@@ -1,0 +1,29 @@
+<ds:SignedInfo>
+    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    <Certificate Id="http://www.manferdelli.com/2011/Cert/00021" version="1">
+        <SerialNumber>20110930001</SerialNumber>
+        <PrincipalType>Attest</PrincipalType>
+        <IssuerName>manferdelli.com</IssuerName>
+        <IssuerID>manferdelli.com</IssuerID>
+        <ValidityPeriod>
+            <NotBefore>2011-01-01Z00:00.00</NotBefore>
+            <NotAfter>2021-01-01Z00:00.00</NotAfter>
+        </ValidityPeriod>
+        <SubjectName>//www.manferdelli.com/Keys/attest/0001</SubjectName>
+        <SubjectKey>
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" 
+            KeyName="//www.manferdelli.com/Keys/attest/0001">
+    <KeyType>RSAKeyType</KeyType>
+    <ds:KeyValue>
+        <ds:RSAKeyValue size="1024">
+            <ds:M>dBwuQ99a8Ydjwp0y5EB+hVjHlASl5DXdIg4ARFoyVgGDpcPx2GrVAytzbPXoNsEVbAAyUo0R7q/F0uIrGRzGK4SvYvIVCDkNhOJglhm369iP38e2v5/QkhZNeap09NyVqhmcBJDCv4/DDVOoONVdBy2oewI+GhGD4HmxP0q5hFU=</ds:M>
+            <ds:E>AAAAAAABAAE=</ds:E>
+        </ds:RSAKeyValue>
+    </ds:KeyValue>
+</ds:KeyInfo>
+        </SubjectKey>
+        <SubjectKeyID>//www.manferdelli.com/Keys/attest/0001</SubjectKeyID>
+        <RevocationPolicy>Local-check-only</RevocationPolicy>
+    </Certificate>
+</ds:SignedInfo>

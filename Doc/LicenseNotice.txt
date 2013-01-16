@@ -1,0 +1,6 @@
+The files LinuxDev.txt, cpio.pdf, the two challener documents and initRamBackground.txt 
+incorporate material licensed under different terms than the the rest of fileProxy.
+
+Please consult those files for license terms and do not incorporate them in
+other material under an Apache License.
+

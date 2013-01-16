@@ -1,0 +1,4 @@
+Instructions for taking ownership of the TPM
+
+
+

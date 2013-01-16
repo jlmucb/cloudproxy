@@ -1,0 +1,61 @@
+Instructions for using dmcrypt on a development machine
+
+fdisk to make partitions (/dev/sda)
+mkfs.ext2  to make file system
+change to single user mode
+grub-install root-directory=/dev/sda
+CRYPTDISKS_ENABLE=Yes in /etc/defaults/cryptdisks
+
+/etc/crypttab
+swap /dev/hda1 /dev/urandom swap
+/etc/fstab
+/dev/swapper/swap none
+swap sw,pri=1 0 0
+
+
+For swap:
+
+swapoff -a
+cryptsetup [-c aes -h sha256] -s 128 -d /dev/urandom create swap /dev/sda1
+mkswap /dev/mapper/swap
+swapon /dev/mapper/swap
+
+Ref: The whole disk Nov, 2006, Linux-magazine.com, Michael Nerba
+
+
+Shell script prototype
+
+#
+#   For debian, first do the following:
+#
+#   Change to single user mode
+#       cat /proc/swaps   (to find out swap device)
+#       /sbin/runlevel    (to find runlevel)
+#       /sbin/telinit 1   (to go single user)
+#       ctrl-alt-f7 puts Linux into console mode.
+#
+#   /etc/defaults/cryptdisks
+#       CRYPTDISKS_ENABLE=Yes
+#   /etc/crypttab
+#       swap /dev/sda5 /dev/urandom swap
+#   /etc/fstab
+#       /dev/mapper/swap none
+#       swap sw,pri=1 0 0
+#   /etc/crypttab
+#       swap /dev/sda5 /dev/urandom cipher=aes-cbc-essiv:sha256,size=256,hash=sha256,swap
+#   /etc/fstab
+#       /dev/mapper/cryptoswap none swap sw 0 0
+#
+#   /dev/sda5 is swap device
+#
+# Ref: The whole disk Nov, 2006, Linux-magazine.com, Michael Nerb
+#
+swapoff -a
+cryptsetup -c aes -h sha256 -s 128 -d /dev/urandom create swap /dev/sda5
+mkswap /dev/mapper/swap
+swapon /dev/mapper/swap
+#
+# To remove:
+#   swapoff /dev/mapper/swap
+#   cryptsetup [luks] remove swap
+

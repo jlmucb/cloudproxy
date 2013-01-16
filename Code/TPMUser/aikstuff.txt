@@ -1,0 +1,2 @@
+gcc -o ~/jlmcrypt/aikpublish.exe aikpublish.c -ltspi
+

@@ -1,0 +1,80 @@
+Phase I
+
+Done 1. Measure hashes and add to KeyNegoServer db
+
+Done 2. Remove TSS
+
+Done 5. Change fileProxy --> FileServer
+
+3. Compile kernel
+
+4. Construct Initramfs
+    Copy tcService, FileClient, FileProxy and dynamic link libraries to intiramfs.
+    Networking files?
+    Don't switch root
+    add tcioDD, tpm, dmcrypt
+
+6. PCR18
+
+7. newTrustedHome
+
+8. Script to start tcService, FileClient and FileServer.
+
+9. Macrobenchmark
+
+
+FileClient:
+    linux-vdso.so.1 =>  (0x00007fff9b9ff000)
+    libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f26bb143000)
+    libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f26bae43000)
+    libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f26bac2c000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f26ba86d000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f26bb375000)
+    libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f26ba571000)
+FileProxy:
+    same
+tcService:
+    linux-vdso.so.1 =>  (0x00007fff81b26000)
+    libtspi.so.1 => /usr/lib/libtspi.so.1 (0x00007f6c2a94b000)
+    libproc-3.2.8.so => /lib/libproc-3.2.8.so (0x00007f6c2a725000)
+    libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f6c2a424000)
+    libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f6c2a20e000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f6c29e4f000)
+    libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f6c29c31000)
+    libcrypto.so.1.0.0 => /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 (0x00007f6c29869000)
+    libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f6c2956d000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f6c2abc9000)
+    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f6c29368000)
+    libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f6c29151000)
+
+    libproc
+
+-------------------------------------------
+
+
+Phase II
+
+
+8. Other programs (fileProxy/fileClient, keyNego, etc)
+        emergency key recovery program
+            revocation
+            2048 bit key
+
+9. Hypervisor
+    Hv itself
+    Management partition
+    VM's
+        Migration
+        Update
+
+
+--------------------------------------------
+
+
+claims/accessControl.cpp:229:       // Fix
+claims/accessControl.cpp:244:       // Fix: Add condition
+claims/accessControl.cpp:308:       // Fix: speaksfor
+fileProxy/request.cpp:454:          // Fix
+fileProxy/request.cpp:1279:         // Fix: Subject
+fileProxy/trustedKeyNego.cpp:270:   // Fix: pull out key
+

@@ -1,0 +1,25 @@
+Instructions for testing fileProxy on a development machine
+
+
+after keys are initialized for fileProxy and fileClient
+
+# sudo bash
+# kill tss if started
+#ps aux | fgrep -n tss
+chown jlm /dev/tpm0
+cd /dev
+mknod tcioDD0 c 100 0
+chmod 0777 /dev/tcioDD0
+cd ~/jlmcrypt
+insmod tcioDD.ko
+
+Regular user
+./tcService.exe &
+sleep 2s
+./fileServer.exe -initProg
+sleep 2s
+./fileClient.exe -initProg
+sleep 5s
+dmesg>driver.log
+
+

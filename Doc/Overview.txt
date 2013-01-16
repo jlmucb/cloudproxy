@@ -1,0 +1,118 @@
+Overview for building and using FileProxy
+
+
+FileProxy consists of several programs, utilities, scripts, device drivers, configuration 
+files and miscellaneous material.  It is described in the paper "CloudProxy: the Tao of
+Trusted Computing" by Manferdelli, Roeder and Schneider in this directory which we
+refer to as "the CloudProxy Paper."  It is helpful to read that paper before hacking
+on this since it provides a good overview and covers many details we omit here.
+
+The git repository for the latest public release is: xxx at code.google.com.
+
+The git development repository is access controlled and sumbitters must agree
+to be bound by the terms of the contributor license, in the Legal Directory
+to obtain access to the development version.  Since this is a small project
+with tiny staff, there are relatively few contributors at this time.  If you 
+are interested in becoming a contributor, please send mail to:
+
+    john.l.manferdelli@intel.com and tmroeder@google.com.
+
+While we welcome contributions, we reserve the right to grant access to the
+development repository at in our sole good faith discretion and remove access
+to the repository in our sole good faith discretion.
+
+The main programs are:
+
+    1. cryptUtility - an offline crypto utility to sign certificates, generate keys, etc.
+    2. KeyNegoServer - a Service accessible via TCP/IP to manage keys in a FileProxy
+       activity.
+    3. FileServer - a cloud based sevice program accessible via TCP/IP that stores files
+        in encrypted format and grants access to FileClient programs under access control.
+    4. FileClient - a cloud based service program that performs processing on FileServer
+        provided data.
+
+FileProxy requires a DRTM boot of a specially configured Linux OS which you must compile and
+link.  We do not distribute Linux binaries of any sort since doing so conflicts with the
+license we grant.  However, you may build and use the specially configured Linux.  In
+this description, we refer to this specially configured Linux as the "Trusted OS."
+
+The Trusted OS requires hardware that includes a TPM version 1.2, an Intel Processor with
+SMX, VT-x, VT-d and TXT.  Most i7 processors and many i5 processors meet this criteria.
+Some AMD processors provide equivalent functionality and may well run FilePorxy without
+modification.
+
+We also include material required to build the Trusted OS and make changes to our system.
+This includes:
+    1. A custom device driver called tcioDD.
+    2. Shell scripts to incorporate and configure dmcrypt which we use to protect swap.
+    3. TBOOT, an open source program from Intel that we use to perform the DRTM of the
+        Trusted OS.
+    4. Instructions and shell scripts to initialize the TPM.
+    5. Instructions and shell scripts to build a custom initramfs used by computers
+        running FileClient and FileServer.
+    6. The source code and make file for tcioDD.
+    7.  Instructions on building, configuring and operating a complete FileProxy activity.
+
+As described in the CloudProxy paper, FileProxy runs on three computers:
+    1. The FileClient Computer 
+    2. The FileServer Computer
+    3. The KeyNegoServer Computer.
+
+We describe how to set up each of these.   In addition, developers will compile,
+test and run all these programs on a Development Computer.  We will describe the
+setup of all these computers as well as how to use our software to provision them.
+Our focus is the Development Computer.
+
+
+Software setup of the Development Computer
+
+1. Install Linux.  These instructions were written for Ubuntu 12.10.
+2. Install the Linux Kernel Developnent environment using the instructions 
+    in "LinuxDev.txt."
+
+For each FileClient, FileServer and Development Computer you want to use:
+
+    3. Activate the TPM using the BIOS interface, using HW manufacturers instructions.
+    4. Take ownership of the TPM and generate the approriate keys using the instructions in
+    "SetupTPM.txt"
+    5. Record the public (AIK) key of your TPM using the instructions in "GetAIK.txt."
+        You will need the "AIK Blob files" in step 6.
+
+On the Development or KeyNegoServer Computer (depending on whether you are developing or
+deploying):
+
+6. Compile cryptUtility using the instructions in "cryptUtility.txt."
+
+7. Generate a FileProxy public/private key pair and produce a self signed certificate
+    using the instructions in "KeySetup.txt."  Provision the files produced as indicated 
+    there, these files include the hardware certificate you produce for the AIK using
+    the AIK Blob Files as well as a file icontaining the Public Key for the activity which
+    will be compiled into FileClient and FileServer.
+
+8.  Compile KeyNegoServer using the instructions in "KeyNegoServer.txt."
+9.  Compile the "tcService" daemon using the instructions in "tcService.txt."
+10. Compile FileServer and FileClient using the instructions in "FileProxyApps.txt."
+11. Build TBOOT and configure any FileClient, FileServer and Development Computer you
+    use to perform a DRTMBoot using the instructions in "DRTMBoot.txt."
+
+If this is a Development Computer, use the instructions in "RunningFileProxy.txt" to
+run and test these programs.
+
+If you are building a deployable FileProxy system, you must setup KeyNegoServer, build
+a Trusted OS image and FileClient and FileServer Linux images (including a special initramfs)
+that you can deploy.  To do this, consult:
+
+    a. "OperatingKeyNegoServer.txt" for KeyNegoServer.
+    b. "BuildingTrustedOS.txt" for building a trusted OS and configuring GRUB.
+    c. "BuildingInitRamFs.txt" for fuilding the initramfs file system for the
+        FileClient and FileServer computers.
+    d. "ConfiguringFileProxyPrograms.txt" for configuration and deployment instructions
+        for FileClient and FileProxy Computers.
+
+Have fun!
+
+John and Tom
+
+
+
+

@@ -1,0 +1,484 @@
+//
+//  jlmcrypto.cpp
+//      John Manferdelli
+//
+//  Description: common crypto interface
+//
+//  Copyright (c) 2011, Intel Corporation. All rights reserved.
+//  Some contributions (c) John Manferdelli.  All rights reserved.
+//
+// Use, duplication and disclosure of this file and derived works of
+// this file are subject to and licensed under the Apache License dated
+// January, 2004, (the "License").  This License is contained in the
+// top level directory originally provided with the CloudProxy Project.
+// Your right to use or distribute this file, or derived works thereof,
+// is subject to your being bound by those terms and your use indicates
+// consent to those terms.
+//
+// If you distribute this file (or portions derived therefrom), you must
+// include License in or with the file and, in the event you do not include
+// the entire License in the file, the file must contain a reference
+// to the location of the License.
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+#include "jlmTypes.h"
+#include "jlmcrypto.h"
+#include "logging.h"
+#include "sha256.h"
+
+
+// ------------------------------------------------------------------------------
+
+
+int     iRandDev= -1;
+
+
+bool initCryptoRand()
+{
+    iRandDev= open("/dev/urandom", O_RDONLY);
+    if(iRandDev<0)
+        return false;
+    return true;
+}
+
+
+bool closeCryptoRand()
+{
+    if(iRandDev>=0) {
+        close(iRandDev);
+    }
+    iRandDev= -1;
+    return true;
+}
+
+
+bool getCryptoRandom(int iNumBits, byte* buf)
+{
+    int     iSize= (iNumBits+NBITSINBYTE-1)/NBITSINBYTE;
+
+    if(iRandDev<0) {
+        return false;
+    }
+    int iSize2= read(iRandDev, buf, iSize);
+    if(iSize2==iSize) {
+        return true;
+    }
+    fprintf(g_logFile, "getCryptoRandom returning false %d bytes instead of %d\n", 
+            iSize2, iSize);
+    return false;
+}
+
+
+static bool g_fAllCryptoInit= false;
+
+bool initAllCrypto()
+{
+    extern void initBigNum();
+
+    if(g_fAllCryptoInit)
+        return true;
+    // init RNG
+    if(!initCryptoRand())
+        return false;
+    // init bignum
+    initBigNum();
+    g_fAllCryptoInit= true;
+   return true; 
+}
+
+
+bool closeAllCrypto()
+{
+    closeCryptoRand();
+    g_fAllCryptoInit= false;
+}
+
+
+// -------------------------------------------------------------------------------------------
+
+
+//
+//  Base64 encode/decode: jmbase64.cpp
+//  (c) 2007, John Manferdelli
+//
+
+//  pad character is '='
+
+static char* s_transChar= (char*)"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static unsigned char s_revTrans[80]= {
+     62 /* + */,   0 /* , */,   0 /* - */,   0 /* . */,  63 /* / */,
+     52 /* 0 */,  53 /* 1 */,  54 /* 2 */,  55 /* 3 */,  56 /* 4 */,
+     57 /* 5 */,  58 /* 6 */,  59 /* 7 */,  60 /* 8 */,  61 /* 9 */,
+      0 /* : */,   0 /* ; */,   0 /* < */,   0 /* = */,   0 /* > */,
+      0 /* ? */,   0 /* @ */,   0 /* A */,   1 /* B */,   2 /* C */,
+      3 /* D */,   4 /* E */,   5 /* F */,   6 /* G */,   7 /* H */,
+      8 /* I */,   9 /* J */,  10 /* K */,  11 /* L */,  12 /* M */,
+     13 /* N */,  14 /* O */,  15 /* P */,  16 /* Q */,  17 /* R */,
+     18 /* S */,  19 /* T */,  20 /* U */,  21 /* V */,  22 /* W */,
+     23 /* X */,  24 /* Y */,  25 /* Z */,   0 /* [ */,   0 /* \ */,
+      0 /* ] */,   0 /* ^ */,   0 /* _ */,   0 /* ` */,  26 /* a */,
+     27 /* b */,  28 /* c */,  29 /* d */,  30 /* e */,  31 /* f */,
+     32 /* g */,  33 /* h */,  34 /* i */,  35 /* j */,  36 /* k */,
+     37 /* l */,  38 /* m */,  39 /* n */,  40 /* o */,  41 /* p */,
+     42 /* q */,  43 /* r */,  44 /* s */,  45 /* t */,  46 /* u */,
+     47 /* v */,  48 /* w */,  49 /* x */,  50 /* y */,  51 /* z */
+    };
+
+
+inline bool whitespace(char b)
+{
+    return(b==' ' || b=='\t' || b=='\r' || b=='\n');
+}
+
+
+// ------------------------------------------------------------------------------------------
+
+
+bool toBase64(int iInLen, byte* puIn, int* piOutLen, char* rgszOut, bool fDirFwd)
+//
+//      Lengths are in characters
+//
+{
+    int         iNumOut= ((iInLen*4)+2)/3;
+    int         i= 0;
+    int         a, b, c, d;
+    byte*       puC;
+
+    // enough room?
+    if(iNumOut>*piOutLen)
+        return false;
+
+    if(fDirFwd) {
+        puC= puIn+iInLen-1;
+        while(iInLen>2) {
+            a= (*puC>>2)&0x3f;
+            b= ((*puC&0x3)<<4) | ((*(puC-1)>>4)&0xf);
+            c= ((*(puC-1)&0xf)<<2) | ((*(puC-2)>>6)&0x3);
+            d= (*(puC-2)&0x3f);
+            rgszOut[i++]= s_transChar[a];
+            rgszOut[i++]= s_transChar[b];
+            rgszOut[i++]= s_transChar[c];
+            rgszOut[i++]= s_transChar[d];
+            puC-= 3;
+            iInLen-= 3;
+        }
+        // 8 bits left
+        if(iInLen==1) {
+            a= (*puC>>2)&0x3f;
+            b= ((*puC&0x3)<<4) | ((*(puC-1)>>4)&0xf);
+            rgszOut[i++]= s_transChar[a];
+            rgszOut[i++]= s_transChar[b];
+            rgszOut[i++]= '=';
+            rgszOut[i++]= '=';
+        }
+        // 16 bits left
+        if(iInLen==2) {
+            a= (*puC>>2)&0x3f;
+            b= ((*puC&0x3)<<4) | ((*(puC-1)>>4)&0xf);
+            c= ((*(puC-1)&0xf)<<2);
+            rgszOut[i++]= s_transChar[a];
+            rgszOut[i++]= s_transChar[b];
+            rgszOut[i++]= s_transChar[c];
+            rgszOut[i++]= '=';
+        }
+    }
+    else {
+        puC= puIn;
+        while(iInLen>2) {
+            a= (*puC>>2)&0x3f;
+            b= ((*puC&0x3)<<4) | ((*(puC+1)>>4)&0xf);
+            c= ((*(puC+1)&0xf)<<2) | ((*(puC+2)>>6)&0x3);
+            d= (*(puC+2)&0x3f);
+            rgszOut[i++]= s_transChar[a];
+            rgszOut[i++]= s_transChar[b];
+            rgszOut[i++]= s_transChar[c];
+            rgszOut[i++]= s_transChar[d];
+            puC+= 3;
+            iInLen-= 3;
+        }
+        // 8 bits left
+        if(iInLen==1) {
+            a= (*puC>>2)&0x3f;
+            b= ((*puC&0x3)<<4) | ((*(puC+1)>>4)&0xf);
+            rgszOut[i++]= s_transChar[a];
+            rgszOut[i++]= s_transChar[b];
+            rgszOut[i++]= '=';
+            rgszOut[i++]= '=';
+        }
+        // 16 bits left
+        if(iInLen==2) {
+            a= (*puC>>2)&0x3f;
+            b= ((*puC&0x3)<<4) | ((*(puC+1)>>4)&0xf);
+            c= ((*(puC+1)&0xf)<<2);
+            rgszOut[i++]= s_transChar[a];
+            rgszOut[i++]= s_transChar[b];
+            rgszOut[i++]= s_transChar[c];
+            rgszOut[i++]= '=';
+        }
+    }
+    *piOutLen= i;
+    rgszOut[i++]= 0;
+    return true;
+}
+
+
+bool fromBase64(int iInLen, char* pszIn, int* piOutLen, unsigned char* puOut, bool fDirFwd)
+//
+//      Lengths are in characters
+//
+{
+    int             iNumOut= ((iInLen*3)+3)/4;
+    unsigned char*  puW;
+    unsigned char   a,b,c,d;
+    int             iLeft= iInLen;
+
+    if(iInLen>2 && *(pszIn+iInLen-1)=='=')
+        iNumOut--;
+    if(iInLen>2 && *(pszIn+iInLen-2)=='=')
+        iNumOut--;
+    puW= puOut+iNumOut-1;
+
+    // enough room?
+    if(iNumOut>*piOutLen) {
+        return false;
+    }
+
+    while(iLeft>3) {
+        while(whitespace(*pszIn) && iLeft>0) {
+            pszIn++; iLeft--;
+        }
+        if(*pszIn<43 || *pszIn>122) {
+            return false;
+        }
+        a= s_revTrans[*pszIn-43];
+        pszIn++; iLeft--;
+        while(whitespace(*pszIn) && iLeft>0) {
+            pszIn++; iLeft--;
+        }
+        if(*pszIn<43 || *pszIn>122) {
+            return false;
+        }
+        b= s_revTrans[*pszIn-43];
+        pszIn++; iLeft--;
+        while(whitespace(*pszIn) && iLeft>0) {
+            pszIn++; iLeft--;
+        }
+        if(*pszIn=='=') {
+            if(!fDirFwd) {
+                *(puOut)= (a<<2) | (b>>4);
+                puOut+= 1;
+            }
+            else {
+                *(puW)= (a<<2) | (b>>4);
+                puW-= 1;
+            }
+            iLeft-= 2;
+            continue;
+        }
+        if(*pszIn<43 || *pszIn>122) {
+            return false;
+        }
+        c= s_revTrans[*pszIn-43];
+        pszIn++; iLeft--;
+        while(whitespace(*pszIn) && iLeft>0) {
+            pszIn++; iLeft--;
+        }
+        if(*pszIn=='=') {
+            if(!fDirFwd) {
+                *(puOut)= (a<<2) | (b>>4);
+                *(puOut+1)= ((b&0xf)<<4) | (c>>2);
+                puOut+= 2;
+            }
+            else {
+                *(puW)= (a<<2) | (b>>4);
+                *(puW-1)= ((b&0xf)<<4) | (c>>2);
+                puW-= 2;
+            }
+            iLeft-= 1;
+            continue;
+        }
+        if(*pszIn<43 || *pszIn>122) {
+            return false;
+        }
+        d= s_revTrans[*pszIn-43];
+        pszIn++; iLeft--;
+        if(!fDirFwd) {
+            *(puOut)= (a<<2) | (b>>4);
+            *(puOut+1)= ((b&0xf)<<4) | (c>>2);
+            *(puOut+2)= ((c&0x3)<<6) | d;
+            puOut+= 3;
+        }
+        else {
+            *(puW)= (a<<2) | (b>>4);
+            *(puW-1)= ((b&0xf)<<4) | (c>>2);
+            *(puW-2)= ((c&0x3)<<6) | d;
+            puW-= 3;
+        }
+    }
+
+    while(whitespace(*pszIn) && iLeft>0) {
+        pszIn++; iLeft--;
+        }
+    if(iLeft>0) {
+        return false;
+    }
+
+    *piOutLen= iNumOut;
+    return true;
+}
+
+
+bool  getBase64Rand(int iBytes, byte* puR, int* pOutSize, char* szOut)
+//  Get random number and base 64 encode it
+{
+    if(!getCryptoRandom(iBytes*NBITSINBYTE, puR)) {
+        return false;
+    }
+    if(!toBase64(iBytes, puR, pOutSize, szOut)) {
+        fprintf(g_logFile, "Bytes: %d, base64 outputsize: %d\n", iBytes, *pOutSize);
+        fprintf(g_logFile, "Can't base64 encode generated random number\n");
+        return false;
+    }
+    return true;
+}
+
+
+// ------------------------------------------------------------------------------------
+
+
+bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, int* poutsize, byte* out,
+                        byte* enckey, byte* intkey)
+{
+    cbc     oCBC;
+    int     inLeft= insize;
+    byte    iv[AES128BYTEBLOCKSIZE];
+    byte*   curIn= in;
+    byte*   curOut= out;
+
+#ifdef CRYPTOTEST2
+    memset(out, 0, *poutsize);
+    fprintf(g_logFile, "*****AES128CBCHMACSHA256SYMPADEncryptBlob. insize: %d\n", insize);
+    PrintBytes((char*) "encKey: ", enckey, AES128BYTEBLOCKSIZE);
+    PrintBytes((char*) "intKey: ", intkey, AES128BYTEBLOCKSIZE);
+    PrintBytes((char*) "input:\n", in, insize);
+#endif
+    // init iv
+    if(!getCryptoRandom(AES128BYTEBLOCKSIZE*NBITSINBYTE, iv)) {
+        fprintf(g_logFile, "Cant generate iv\n");
+        return false;
+    }
+
+    // init 
+    if(!oCBC.initEnc(AES128, SYMPAD, HMACSHA256, 
+                     AES128BYTEKEYSIZE, enckey, AES128BYTEKEYSIZE, 
+                     intkey, insize, AES128BYTEBLOCKSIZE, iv)) {
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false return 1\n");
+        return false;
+    }
+
+    if(!oCBC.computeCipherLen()) {
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false return 2\n");
+        return false;
+    }
+
+    // outputbuffer big enough?
+    if(oCBC.m_iNumCipherBytes>*poutsize) {
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false return 3\n");
+        return false;
+    }
+    *poutsize= oCBC.m_iNumCipherBytes;
+
+    // first cipher block
+    oCBC.firstCipherBlockOut(curOut);
+    curOut+= AES128BYTEBLOCKSIZE;
+
+    while(inLeft>AES128BYTEBLOCKSIZE) {
+        oCBC.nextPlainBlockIn(curIn, curOut);
+        curIn+= AES128BYTEBLOCKSIZE;
+        curOut+= AES128BYTEBLOCKSIZE;
+        inLeft-= AES128BYTEBLOCKSIZE;
+    }
+
+    // final block
+    int n= oCBC.lastPlainBlockIn(inLeft, curIn, curOut);
+    if(n<0) {
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false return 4\n");
+        return false;
+    }
+#ifdef CRYPTOTEST2
+    PrintBytes((char*) "output:\n", out, *poutsize);
+    fprintf(g_logFile, "\n%d, out\n", *poutsize);
+#endif
+    return true;
+}
+
+
+bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, byte* out,
+                         byte* enckey, byte* intkey)
+{
+    cbc     oCBC;
+    int     inLeft= insize;
+    byte*   curIn= in;
+    byte*   curOut= out;
+
+#ifdef CRYPTOTEST2
+    memset(out, 0, *poutsize);
+    fprintf(g_logFile, "*****AES128CBCHMACSHA256SYMPADDecryptBlob, insize: %d\n", insize);
+    PrintBytes((char*) "encKey: ", enckey, AES128BYTEBLOCKSIZE);
+    PrintBytes((char*) "intKey: ", intkey, AES128BYTEBLOCKSIZE);
+    PrintBytes((char*) "input:\n", in, insize);
+#endif
+    // init 
+    if(!oCBC.initDec(AES128, SYMPAD, HMACSHA256, 
+                     AES128BYTEKEYSIZE, enckey, AES128BYTEKEYSIZE, intkey, 
+                     insize)) {
+        return false;
+    }
+
+    if(!oCBC.computePlainLen()) {
+        return false;
+    }
+
+    // outputbuffer big enough?
+    if(oCBC.m_iNumPlainBytes>*poutsize) {
+        return false;
+    }
+    *poutsize= oCBC.m_iNumPlainBytes;
+
+    // first block
+    oCBC.firstCipherBlockIn(curIn);
+    inLeft-= AES128BYTEBLOCKSIZE;
+    curIn+= AES128BYTEBLOCKSIZE;
+
+    while(inLeft>3*AES128BYTEBLOCKSIZE) {
+        oCBC.nextCipherBlockIn(curIn, curOut);
+        curIn+= AES128BYTEBLOCKSIZE;
+        curOut+= AES128BYTEBLOCKSIZE;
+        inLeft-= AES128BYTEBLOCKSIZE;
+    }
+
+    // final blocks
+    int n= oCBC.lastCipherBlockIn(inLeft, curIn, curOut);
+    if(n<0) {
+        return false;
+    }
+    *poutsize= oCBC.m_iNumPlainBytes;
+#ifdef CRYPTOTEST2
+    PrintBytes((char*) "output:\n", out, *poutsize);
+    fprintf(g_logFile, "\n%d, out\n", *poutsize);
+#endif
+    return oCBC.validateMac();
+}
+
+
+// -----------------------------------------------------------------------------
+
+

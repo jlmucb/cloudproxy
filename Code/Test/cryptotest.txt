@@ -1,0 +1,375 @@
+SHA-1
+
+The ASCII string "abc". 
+The resulting 160-bit message digest is 
+a9993e36 4706816a ba3e2571 7850c26c 9cd0d89d.
+
+The ASCII string "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq". 
+84983e44 1c3bd26e baae4aa1 f95129e5 e54670f1.
+
+SHA-256
+
+The ascii string abc	
+ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+The ascii string abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq	
+248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+
+AES
+
+ECB-AES128.Encrypt 
+
+Key 2b7e151628aed2a6abf7158809cf4f3c 
+
+Block #1 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+Input Block  6bc1bee22e409f96e93d7e117393172a 
+Output Block 3ad77bb40d7a3660a89ecaf32466ef97 
+Ciphertext   3ad77bb40d7a3660a89ecaf32466ef97 
+
+Block #2 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+Input Block  ae2d8a571e03ac9c9eb76fac45af8e51 
+Output Block f5d3d58503b9699de785895a96fdbaaf 
+Ciphertext   f5d3d58503b9699de785895a96fdbaaf 
+
+Block #3 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+Input Block  30c81c46a35ce411e5fbc1191a0a52ef 
+Output Block 43b1cd7f598ece23881b00e3ed030688 
+Ciphertext   43b1cd7f598ece23881b00e3ed030688 
+
+Block #4 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+Input Block  f69f2445df4f9b17ad2b417be66c3710 
+Output Block 7b0c785e27e8ad3f8223207104725dd4 
+Ciphertext   7b0c785e27e8ad3f8223207104725dd4 
+
+ECB-AES128.Decrypt 
+
+Key 2b7e151628aed2a6abf7158809cf4f3c 
+
+Block #1 
+Ciphertext   3ad77bb40d7a3660a89ecaf32466ef97 
+Input Block  3ad77bb40d7a3660a89ecaf32466ef97 
+Output Block 6bc1bee22e409f96e93d7e117393172a 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+
+Block #2 
+Ciphertext   f5d3d58503b9699de785895a96fdbaaf 
+Input Block  f5d3d58503b9699de785895a96fdbaaf 
+Output Block ae2d8a571e03ac9c9eb76fac45af8e51 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+
+Block #3 
+Ciphertext   43b1cd7f598ece23881b00e3ed030688 
+Input Block  43b1cd7f598ece23881b00e3ed030688 
+Output Block 30c81c46a35ce411e5fbc1191a0a52ef 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+
+Block #4 
+Ciphertext   7b0c785e27e8ad3f8223207104725dd4 
+Input Block  7b0c785e27e8ad3f8223207104725dd4 
+Output Block f69f2445df4f9b17ad2b417be66c3710 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+
+
+ECB-AES256.Encrypt 
+
+Key 603deb1015ca71be2b73aef0857d7781 
+    1f352c073b6108d72d9810a30914dff4 
+
+Block #1 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+Input Block  6bc1bee22e409f96e93d7e117393172a 
+Output Block f3eed1bdb5d2a03c064b5a7e3db181f8 
+Ciphertext   f3eed1bdb5d2a03c064b5a7e3db181f8 
+
+Block #2 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+Input Block  ae2d8a571e03ac9c9eb76fac45af8e51 
+Output Block 591ccb10d410ed26dc5ba74a31362870 
+Ciphertext   591ccb10d410ed26dc5ba74a31362870 
+
+Block #3 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+Input Block  30c81c46a35ce411e5fbc1191a0a52ef 
+Output Block b6ed21b99ca6f4f9f153e7b1beafed1d 
+Ciphertext   b6ed21b99ca6f4f9f153e7b1beafed1d 
+
+Block #4 
+Plaintext f69f2445df4f9b17ad2b417be66c3710 
+Input Block f69f2445df4f9b17ad2b417be66c3710 
+Output Block 23304b7a39f9f3ff067d8d8f9e24ecc7 
+Ciphertext 23304b7a39f9f3ff067d8d8f9e24ecc7 
+
+
+ECB-AES256.Decrypt 
+
+Key 603deb1015ca71be2b73aef0857d7781 
+    1f352c073b6108d72d9810a30914dff4 
+
+Block #1 
+Ciphertext   f3eed1bdb5d2a03c064b5a7e3db181f8 
+Input Block  f3eed1bdb5d2a03c064b5a7e3db181f8 
+Output Block 6bc1bee22e409f96e93d7e117393172a 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+
+Block #2 
+Ciphertext   591ccb10d410ed26dc5ba74a31362870 
+Input Block  591ccb10d410ed26dc5ba74a31362870 
+Output Block ae2d8a571e03ac9c9eb76fac45af8e51 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+
+Block #3 
+Ciphertext   b6ed21b99ca6f4f9f153e7b1beafed1d 
+Input Block  b6ed21b99ca6f4f9f153e7b1beafed1d 
+Output Block 30c81c46a35ce411e5fbc1191a0a52ef 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+
+Block #4 
+Ciphertext   23304b7a39f9f3ff067d8d8f9e24ecc7 
+Input Block  23304b7a39f9f3ff067d8d8f9e24ecc7 
+Output Block f69f2445df4f9b17ad2b417be66c3710 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+
+
+CBC-AES128.Encrypt 
+
+Key 2b7e151628aed2a6abf7158809cf4f3c 
+IV  000102030405060708090a0b0c0d0e0f 
+
+Block #1 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+Input Block  6bc0bce12a459991e134741a7f9e1925 
+Output Block 7649abac8119b246cee98e9b12e9197d 
+Ciphertext   7649abac8119b246cee98e9b12e9197d 
+
+Block #2 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+Input Block  d86421fb9f1a1eda505ee1375746972c 
+Output Block 5086cb9b507219ee95db113a917678b2 
+Ciphertext   5086cb9b507219ee95db113a917678b2 
+
+Block #3 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+Input Block  604ed7ddf32efdff7020d0238b7c2a5d 
+Output Block 73bed6b8e3c1743b7116e69e22229516 
+Ciphertext   73bed6b8e3c1743b7116e69e22229516 
+
+Block #4 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+Input Block  8521f2fd3c8eef2cdc3da7e5c44ea206 
+Output Block 3ff1caa1681fac09120eca307586e1a7 
+Ciphertext   3ff1caa1681fac09120eca307586e1a7 
+
+CBC-AES128.Decrypt 
+
+Key 2b7e151628aed2a6abf7158809cf4f3c 
+IV  000102030405060708090a0b0c0d0e0f 
+
+Block #1 
+Ciphertext   7649abac8119b246cee98e9b12e9197d 
+Input Block  7649abac8119b246cee98e9b12e9197d 
+Output Block 6bc0bce12a459991e134741a7f9e1925 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+
+Block #2 
+Ciphertext   5086cb9b507219ee95db113a917678b2 
+Input Block  5086cb9b507219ee95db113a917678b2 
+Output Block d86421fb9f1a1eda505ee1375746972c 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+
+Block #3 
+Ciphertext 73bed6b8e3c1743b7116e69e22229516 
+Input Block 73bed6b8e3c1743b7116e69e22229516 
+Output Block 604ed7ddf32efdff7020d0238b7c2a5d 
+Plaintext 30c81c46a35ce411e5fbc1191a0a52ef 
+
+Block #4 
+Ciphertext   3ff1caa1681fac09120eca307586e1a7 
+Input Block  3ff1caa1681fac09120eca307586e1a7 
+Output Block 8521f2fd3c8eef2cdc3da7e5c44ea206 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+
+
+CBC-AES256.Encrypt 
+
+Key 603deb1015ca71be2b73aef0857d7781 
+    1f352c073b6108d72d9810a30914dff4 
+IV  000102030405060708090a0b0c0d0e0f 
+
+Block #1 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+Input Block  6bc0bce12a459991e134741a7f9e1925 
+Output Block f58c4c04d6e5f1ba779eabfb5f7bfbd6 
+Ciphertext   f58c4c04d6e5f1ba779eabfb5f7bfbd6 
+
+Block #2 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+Input Block  5ba1c653c8e65d26e929c4571ad47587 
+Output Block 9cfc4e967edb808d679f777bc6702c7d 
+Ciphertext   9cfc4e967edb808d679f777bc6702c7d 
+
+Block #3 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+Input Block  ac3452d0dd87649c8264b662dc7a7e92 
+Output Block 39f23369a9d9bacfa530e26304231461 
+Ciphertext   39f23369a9d9bacfa530e26304231461 
+
+Block #4 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+Input Block  cf6d172c769621d8081ba318e24f2371 
+Output Block b2eb05e2c39be9fcda6c19078c6a9d1b 
+Ciphertext   b2eb05e2c39be9fcda6c19078c6a9d1b 
+
+
+CBC-AES256.Decrypt 
+
+Key 	 603deb1015ca71be2b73aef0857d7781 
+         1f352c073b6108d72d9810a30914dff4 
+IV       000102030405060708090a0b0c0d0e0f 
+
+Block #1 
+Ciphertext   f58c4c04d6e5f1ba779eabfb5f7bfbd6 
+Input Block  f58c4c04d6e5f1ba779eabfb5f7bfbd6 
+Output Block 6bc0bce12a459991e134741a7f9e1925 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+
+Block #2 
+Ciphertext   9cfc4e967edb808d679f777bc6702c7d 
+Input Block  9cfc4e967edb808d679f777bc6702c7d 
+Output Block 5ba1c653c8e65d26e929c4571ad47587 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+
+Block #3 
+Ciphertext   39f23369a9d9bacfa530e26304231461 
+Input Block  39f23369a9d9bacfa530e26304231461 
+Output Block ac3452d0dd87649c8264b662dc7a7e92 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+
+Block #4 
+Ciphertext   b2eb05e2c39be9fcda6c19078c6a9d1b 
+Input Block  b2eb05e2c39be9fcda6c19078c6a9d1b 
+Output Block cf6d172c769621d8081ba318e24f2371 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+
+
+CTR-AES128.Encrypt 
+
+Key     2b7e151628aed2a6abf7158809cf4f3c 
+Counter f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+
+Block #1 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+Output Block ec8cdf7398607cb0f2d21675ea9ea1e4 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+Ciphertext   874d6191b620e3261bef6864990db6ce 
+
+Block #2 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff00 
+Output Block 362b7c3c6773516318a077d7fc5073ae 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+Ciphertext   9806f66b7970fdff8617187bb9fffdff 
+
+Block #3 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff01 
+Output Block 6a2cc3787889374fbeb4c81b17ba6c44 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+Ciphertext   5ae4df3edbd5d35e5b4f09020db03eab 
+
+Block #4 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff02 
+Output Block e89c399ff0f198c6d40a31db156cabfe 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+Ciphertext    1e031dda2fbe03d1792170a0f3009cee 
+
+CTR-AES128.Decrypt 
+
+Key     2b7e151628aed2a6abf7158809cf4f3c 
+Counter f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+
+Block #1 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+Output Block ec8cdf7398607cb0f2d21675ea9ea1e4 
+Ciphertext   874d6191b620e3261bef6864990db6ce 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+
+Block #2 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff00 
+Output Block 362b7c3c6773516318a077d7fc5073ae 
+Ciphertext   9806f66b7970fdff8617187bb9fffdff 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+
+Block #3 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff01 
+Output Block 6a2cc3787889374fbeb4c81b17ba6c44 
+Ciphertext   5ae4df3edbd5d35e5b4f09020db03eab 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+
+Block #4 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff02 
+Output Block e89c399ff0f198c6d40a31db156cabfe 
+Ciphertext   1e031dda2fbe03d1792170a0f3009cee 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+
+
+CTR-AES256.Encrypt 
+
+Key     603deb1015ca71be2b73aef0857d7781 
+        1f352c073b6108d72d9810a30914dff4 
+Counter f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+
+Block #1 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+Output Block 0bdf7df1591716335e9a8b15c860c502 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+Ciphertext   601ec313775789a5b7a7f504bbf3d228 
+
+Block #2 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff00 
+Output Block 5a6e699d536119065433863c8f657b94 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+Ciphertext   f443e3ca4d62b59aca84e990cacaf5c5 
+
+Block #3 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff01 
+Output Block 1bc12c9c01610d5d0d8bd6a3378eca62 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+Ciphertext   2b0930daa23de94ce87017ba2d84988d 
+
+Block #4 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff02 
+Output Block 2956e1c8693536b1bee99c73a31576b6 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+Ciphertext   dfc9c58db67aada613c2dd08457941a6 
+
+CTR-AES256.Decrypt 
+
+Key     603deb1015ca71be2b73aef0857d7781 
+        1f352c073b6108d72d9810a30914dff4 
+Counter f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+
+Block #1 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff 
+Output Block 0bdf7df1591716335e9a8b15c860c502 
+Ciphertext   601ec313775789a5b7a7f504bbf3d228 
+Plaintext    6bc1bee22e409f96e93d7e117393172a 
+
+Block #2 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff00 
+Output Block 5a6e699d536119065433863c8f657b94 
+Ciphertext   f443e3ca4d62b59aca84e990cacaf5c5 
+Plaintext    ae2d8a571e03ac9c9eb76fac45af8e51 
+
+Block #3 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff01 
+Output Block 1bc12c9c01610d5d0d8bd6a3378eca62 
+Ciphertext   2b0930daa23de94ce87017ba2d84988d 
+Plaintext    30c81c46a35ce411e5fbc1191a0a52ef 
+
+Block #4 
+Input Block  f0f1f2f3f4f5f6f7f8f9fafbfcfdff02 
+Output Block 2956e1c8693536b1bee99c73a31576b6 
+Ciphertext   dfc9c58db67aada613c2dd08457941a6 
+Plaintext    f69f2445df4f9b17ad2b417be66c3710 
+

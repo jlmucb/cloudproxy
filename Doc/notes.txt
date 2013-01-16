@@ -1,0 +1,97 @@
+# Initialization (Done)
+# modprobe tpm_tis   (you may need 'force=1 interrupts=0')
+# tcsd
+# tpm_takeownership -z
+#     -  choose password for TPM
+
+# Define tboot error TPM NV index:
+lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07 -p TPM-password
+
+
+# Define LCP and Verified Launch policy indices:
+lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
+lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
+
+# Write LCP and Verified Launch policies to TPM:
+lcptools/lcp_writepol -i owner -f list.pol -p TPM-password
+lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
+
+
+# Modify grub.conf to load the policy data file:
+# Edit grub.conf and add the following:
+#         module /list.data
+#     where you should use the path to this file.
+# 
+# The new tboot module must be added as the 'kernel' in the grub.conf file.
+# The existing 'kernel' entry should follow as a 'module'.  The SINIT AC
+# module must be added to the grub.conf boot config as the last module, e.g.:
+# 
+#        title Xen w/ Intel(R) Trusted Execution Technology
+#            root (hd0,1)
+#            kernel /tboot.gz logging=serial,vga,memory
+#            module /xen.gz iommu=required dom0_mem=524288 com1=115200,8n1
+#            module /vmlinuz-2.6.18-xen root=/dev/VolGroup00/LogVol00 ro
+#            module /initrd-2.6.18-xen.img
+#            module /Q35_SINIT_17.BIN
+# 
+#    GRUB2 does not pass the file name in the command line field of the multiboot
+#    entry (module_t::string). Since the tboot code is expecting the file name as
+#    the first part of the string, it tries to remove it to determine the command
+#    line arguments, which will cause a verification error. The "official"
+#    workaround for kernels/etc. that depend on the file name is to duplicate the 
+#    file name in the grub.config file like below:
+#        menuentry 'Xen w/ Intel(R) Trusted Execution Technology' {
+#            recordfail
+#            insmod part_msdos
+#            insmod ext2
+#            set root='(/dev/sda,msdos5)'
+#            search --no-floppy --fs-uuid --set=root 4efb64c6-7e11-482e-8bab-07034a52de39
+#            multiboot /tboot.gz /tboot.gz logging=vga,memory,serial
+#            module /xen.gz /xen.gz iommu=required dom0_mem=524288 com1=115200,8n1
+#            module /vmlinuz-2.6.18-xen /vmlinuz-2.6.18-xen root=/dev/VolGroup...
+#            module /initrd-2.6.18-xen.img /initrd-2.6.18-xen.img
+#            module /Q35_SINIT_17.BIN
+#        }
+
+#   For Linux:  the 'intel_iommu=on' command line option will enable VT-d and
+#   the TXT code in Linux will force this if it is not specified.  Support is
+#   now part of the 2.6.32 kernel.
+
+# PCR 17 (Details):
+#    It will be extended with the following values (in this order):
+#        -  The values as documented in the MLE Developers Manual
+#        -  SHA-1 hash of:  tboot policy control value (4 bytes) |
+#                           SHA-1 hash of tboot policy (20 bytes)
+#           : where the hash of the tboot policy will be 0s if
+#             TB_POLCTL_EXTEND_PCR17 is clear
+#        -  SHA-1 hash of first module in grub.conf (e.g. Xen or Linux kernel)
+# PCR 18 (Authorities):
+#    It will be extended with the following values (in this order):
+#       -  The values as documented in the MLE Developers Manual
+#       -  SHA-1 hash of:  tboot policy control value (4 bytes) |
+#                          SHA-1 hash of tboot policy (20 bytes)
+#          : where the hash of the tboot policy will be 0s if
+#            TB_POLCTL_EXTEND_PCR17 is clear
+# PCR * : tboot policy may specify modules' measurements to be extended into
+#         PCRs specified in the policy
+#    The default tboot policy will extend, in order, the SHA-1 hashes of all
+#    modules (other than 0) into PCR 17.
+
+
+#  Create Verified Launch policy:
+# tb_polgen/tb_polgen --create --type nonfatal vl.pol
+# tb_polgen/tb_polgen --add --num 0 --pcr none --hash image
+#     --cmdline "the command line for xen from grub.conf"
+#     --image /boot/xen.gz
+#     vl.pol
+# tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
+#     --cmdline "the command line for dom0 from grub.conf"
+#     --image /boot/vmlinuz-2.6.18.8-xen
+#     vl.pol
+# tb_polgen/tb_polgen --add --num 2 --pcr 19 --hash image
+#     --cmdline ""
+#     --image /boot/initrd-2.6.18.8-xen.img
+#     vl.pol
+
+# Note: The command lines should not include the module name (e.g. "/xen.gz").
+

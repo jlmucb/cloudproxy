@@ -1,0 +1,48 @@
+g_myService.m_trustedHome.inittrustHome
+g_myService.m_procTable.initprocTable(1000)
+procid= getpid();
+ret= sendos(procid, TCSERVICEGETPOLICYKEYFROMOS, 8192, rgRequest);
+ret= getos(&procid, &uReq, &uStatus, &origprocid, &resSize, rgRequest);
+g_myService.initService(szexecFile);
+g_myService.m_procTable.initprocEntry(strdup(szexecFile), g_servicepid,
+                                          g_myService.m_trustedHome.m_hashType,
+                                          g_myService.m_trust();
+g_myService.getpolicyKey(&sizeout, rgBufOut);
+
+faketest();
+
+    ret= sendos(procid, TCSERVICEINITSERVICEFROMAPP, n, rgBuf);
+        WriteBufRequest(g_iWrite, rgBuf, n);
+            g_inQ.enqueue(size, newbuf)
+            serveRequest();
+                getapp(&procid, &reqID, &statusCode, &origprocid, &sizein, rgBuf)
+                    g_inQ.dequeue(&insize, &inbuf)
+                putapp(procid, TCSERVICEINITSERVICEFROMTCSERVICE, TCSERVICE_RESULT_SUCCESS,
+                      -1, sizeof(g_szXmlPolicyCert), rgBuf);
+        serviceLoop();
+            serverRequest();
+                g_inQ.enqueue(newsize, newbuf)
+                ret= getos(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf);
+                    ReadBufRequest
+                    g_outQ.dequeue(&outsize, &outbuf)
+                fork process
+                putapp(origprocid, TCSERVICESTARTAPPFROMAPP, TCSERVICE_RESULT_SUCCESS,
+                      -1, sizein, rgBuf);
+
+    ret= sendos(procid, TCSERVICEGETOSHASHFROMAPP, 0, rgBuf);
+    ret= getos(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf);
+
+    ret= sendos(procid, TCSERVICESEALFORFROMAPP, n, rgBuf);
+    ret= getos(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf);
+
+    ret= sendos(procid, TCSERVICEUNSEALFORFROMAPP, size, rgBuf);
+    ret= getos(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf);
+    
+    ret= sendos(procid, TCSERVICEATTESTFORFROMAPP, n, rgBuf);
+    ret= getos(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf);
+
+
+
+g_myService.m_trustedHome.deinittrustHome();
+
+

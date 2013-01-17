@@ -40,8 +40,6 @@ Merge
 git checkout master
 git merge working
 
-git merge master working
-
 ssh
     ssh-keygen
     cp $HOME/.ssh/id_rsa* /Volumes/JLM1

@@ -239,12 +239,12 @@ bool sha256quoteHash(int sizenonce, byte* nonce,
                      int sizedigest, byte* digest, byte* outputHash)
 {
     Sha256      oHash;
-    char*       szProlog= (char*)"JLMQUOTE";
+    unsigned char*       szProlog= (unsigned char*)"JLMQUOTE";
 
     oHash.Init();
-    oHash.Update((const void*) szProlog, strlen(szProlog));
-    oHash.Update((const void*)tobesignedHash, sizetobesignedHash);
-    oHash.Update((const void*) digest, sizedigest);
+    oHash.Update(szProlog, strlen((const char*)szProlog));
+    oHash.Update(tobesignedHash, sizetobesignedHash);
+    oHash.Update(digest, sizedigest);
     oHash.Final();
     oHash.GetDigest(outputHash);
 

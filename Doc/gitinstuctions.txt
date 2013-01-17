@@ -1,0 +1,45 @@
+Using the Git Repository
+========================
+
+The repository access paths are:
+    https://repo.eecs.berkeley.edu/git/users/manfer/fileProxyPapers.git
+    https://repo.eecs.berkeley.edu/git/users/manfer/fileProxy.git
+
+git push -u origin master
+
+
+Getting the certificates
+
+Linux:
+wget https://cert.incommon.org/InCommonServerCA.crt
+openssl x509 -inform DER -in InCommonServerCA.crt -out incommon.pem
+sudo su
+cp /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt.bak
+cat /etc/ssl/certs/ca-certificates.crt.bak incommon.pem >
+/etc/ssl/certs/ca-certificates.crt
+exit
+
+However, this means that you need to enter your username and password
+each time you want to do a remote operation, so I prefer the SSH
+version, since I can use ssh-agent to keep track of my key.
+
+https
+
+ssh
+
+
+Repository creation
+git clone repoman@repo.eecs.berkeley.edu:users/manfer/fileProxyPapers.git
+git branch working
+git checkout working
+
+
+Adding and removing files
+git add filename	; puts it in staging area
+git commit 		; commits to working branch
+
+Merge
+git checkout master
+git merge working
+
+

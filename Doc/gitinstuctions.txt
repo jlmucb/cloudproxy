@@ -35,10 +35,12 @@ git add filename	; puts it in staging area
 git commit 		; commits to working branch
 git status
 git commit -a
+git pull
 
 Merge
 git checkout master
 git merge working
+git push
 
 ssh
     ssh-keygen

@@ -1,4 +1,34 @@
 Instructions for taking ownership of the TPM
+============================================
+
+install trousers
+sudo agt-get install trousers
+sudo agt-get install tpm-dev
+sudo agt-get install tpm-tools
+sudo agt-get install libtspi-dev
+
+make sure TXT and vt-d is enabled too
+
+must set ownerauth
+
+you need to compile a tool to make an AIK key
+cd TPMUser
+Set your object paths and make the object directories
+    mkdir ~/jlmcrypt
+    mkdir ~/jlmcrypt/vTCIobjects
+make -f vTCI.mak
+    vTCI.exe -initAIK
+
+
+After enabling the TPM in BIOS, type:
+    Note: if someone has already taken ownership, you must disable the tpm and reenable it
+    sudo bash
+    tscd start
+    tpm_takeownership -z
+    tpm_getpubek
+
+
+
 
 
 

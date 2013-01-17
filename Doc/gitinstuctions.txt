@@ -23,10 +23,6 @@ However, this means that you need to enter your username and password
 each time you want to do a remote operation, so I prefer the SSH
 version, since I can use ssh-agent to keep track of my key.
 
-https
-
-ssh
-
 
 Repository creation
 git clone repoman@repo.eecs.berkeley.edu:users/manfer/fileProxyPapers.git
@@ -37,9 +33,22 @@ git checkout working
 Adding and removing files
 git add filename	; puts it in staging area
 git commit 		; commits to working branch
+git status
+git commit -a
 
 Merge
 git checkout master
 git merge working
+
+git merge master working
+
+ssh
+    ssh-keygen
+    cp $HOME/.ssh/id_rsa* /Volumes/JLM1
+    ssh-agent
+    ssh-add
+
+https://repo.eecs.berkeley.edu/svnadmin/ldaplogin.php to get to login
+https://repo.eecs.berkeley.edu/svnadmin/upload_ssh.php
 
 

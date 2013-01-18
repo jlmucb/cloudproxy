@@ -22,6 +22,10 @@ While we welcome contributions, we reserve the right to grant access to the
 development repository at in our sole good faith discretion and remove access
 to the repository in our sole good faith discretion.
 
+Notes on using the git repository hosted in Berkeley are in gitinstructions.txt.
+Public releases are posted to code.google.com.  You can find information on the
+public releases are in PublicRelease.txt.
+
 The main programs are:
 
     1. cryptUtility - an offline crypto utility to sign certificates, generate keys, etc.
@@ -71,9 +75,8 @@ Software setup of the Development Computer
 2. Install the Linux Kernel Developnent environment using the instructions 
     in "LinuxDev.txt."
 3. Create the directories that will the compiled object files and executables.
-   Edit the make files to reflect these directory names.  In the distributed
-   makefiles, the executable files are put in ~/jlmcrypt.  The object directories
-   are named subdirectories under ~/jlmcrypt.
+    Edit the make files to reflect these directory names.  Consult 
+    "DirectoryStructure.txt" to learn more about the directory structure.
 
 For each FileClient, FileServer and Development Computer you want to use:
 

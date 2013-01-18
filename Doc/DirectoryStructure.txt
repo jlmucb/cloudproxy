@@ -5,24 +5,29 @@ Directory structure for building and running FileProxy
 Development Computer
 
 ROOT 
-    This directory contains the executables and it is the top level directory
-    for all program development output files as well as operational files.
-    As distributed, this directory is ~/jlmcrypt in the makefiles.
-    Log files containing debugging output during execution also go here.
+    This directory contains the executables and it is the top level 
+    directory for all program development output files as well as 
+    operational files.  We refer to this directory as ROOT and you
+    must edit the makefiles to reflect the location on your machines.
+    As distributed, the ROOT directory is ~/jlmcrypt in the makefiles.
+
+    Log files containing debugging output during execution also land
+    in ROOT.
+
     Example files include:
-        ROOT/fileClient.exe                 # FileClient executable for debugging
-                                            # Production executable is in intiramfs
-        ROOT/fileServer.exe                 # FileServer executable for debugging
-                                            # Production executable is in intiramfs
-        ROOT/keyNegoServer.exe              # keyNegoServer executable
-        ROOT/keyNegoServer.log              # keyNegoServer log output
-        ROOT/privatePolicyKey.xml           # private policy key (used to sign Certs)
-        ROOT/tcioDD.ko                      # Loadable tcioDD device driver
-        ROOT/tcService.exe                  # tcService executable for debugging
-                                            # Production executable is in intiramfs
-        ROOT/tcService.log                  # tcService debugging output
-        ROOT/vTCIDirect.exe                 # TPM initialization executable
-        ROOT/cryptUtility.exe               # cryptUtility executable
+        ROOT/fileClient.exe        # FileClient executable for debugging
+                                   # Production executable is in intiramfs
+        ROOT/fileServer.exe        # FileServer executable for debugging
+                                   # Production executable is in intiramfs
+        ROOT/keyNegoServer.exe     # keyNegoServer executable
+        ROOT/keyNegoServer.log     # keyNegoServer log output
+        ROOT/privatePolicyKey.xml  # private policy key (used to sign Certs)
+        ROOT/tcioDD.ko             # Loadable tcioDD device driver
+        ROOT/tcService.exe         # tcService executable for debugging
+                                   # Production executable is in intiramfs
+        ROOT/tcService.log         # tcService debugging output
+        ROOT/vTCIDirect.exe        # TPM initialization executable
+        ROOT/cryptUtility.exe      # cryptUtility executable
 
 ROOT/cryptUtilityobjects:
     cryptUtility object directory
@@ -65,8 +70,10 @@ ROOT/fileClient: (Storage for HW Trust files)
     symkey          # FileClient sealed symmetric key
     fileKeys        # FileClient sealed file encryption keys
     files           # Directory for FileClient files
-    authRule1Signed.xml         # An authorization rule used by FileClient
-    jlmPrincPublicKey.xml       # A (user) principal public key certificate
+    authRule1Signed.xml # An authorization rule used 
+                        # by FileClient
+    jlmPrincPublicKey.xml       # A (user) principal public 
+                                # key certificate
     principalPrivateKeys.xml    # User principal private keys
     principalPublicKeys.xml     # User principal public key certs
 
@@ -81,8 +88,9 @@ ROOT/fileServer: (Storage for HW Trust files)
 
 
 Changed files in initramfs
-        fileClient.exe                 # FileClient executable
-        fileServer.exe                 # FileServer executable 
-        tcService.exe                  # tcService executable
-        init                           # initscript for TrustedOS
+        fileClient.exe           # FileClient executable
+        fileServer.exe           # FileServer executable 
+        tcService.exe            # tcService executable
+        init                     # initscript for TrustedOS
+
 

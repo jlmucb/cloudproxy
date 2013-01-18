@@ -36,7 +36,7 @@ all: $(E)/tcService.exe
 
 $(E)/tcService.exe: $(sobjs)
 	@echo "tcService"
-	$(LINK) -o $(E)/tcService.exe $(sobjs) -lproc -lpthread
+	$(LINK) -o $(E)/tcService.exe $(sobjs) -lpthread
 # $(LINK) -o $(E)/tcService.exe $(sobjs) /lib/x86_64-linux-gnu/libprocps.so.0 -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h

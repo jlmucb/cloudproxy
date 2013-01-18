@@ -400,7 +400,7 @@ bool tpmStatus::setOwnerauth(char* ownerSecret)
                     ==TSS_SUCCESS) {
             Tspi_Context_FreeMemory(m_hContext, dummyblob1);
         }
-        ret= Tspi_Policy_SetSecret(m_hTPMPolicy, TSS_SECRET_MODE_POPUP, 0, NULL); 
+        ret= Tspi_Policy_SetSecret(m_hTPMPolicy, TSS_SECRET_MODE_PLAIN, 0, NULL); 
         if(TSS_SUCCESS!=ret) {
             fprintf(g_logFile, "Tspi_Policy_SetSecret failed %08x\n", ret);
             printErr(ret);
@@ -1057,8 +1057,8 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
 #endif
 
     // Get EK
-    if(!getEKInfo(NULL, true))
-        return false;
+    //if(!getEKInfo(NULL, true))
+      //  return false;
 
     // fake PCAKey
     BYTE  fakePCA[2048/8];
@@ -1441,7 +1441,7 @@ int main(int an, char** av)
 
     if(fInitAIK) {
         fprintf(g_logFile, "Initing AIK Key\n");
-        if(!oTpm.setOwnerauth(ownerSecret)) {
+        if(ownerSecret && !oTpm.setOwnerauth(ownerSecret)) {
             fprintf(g_logFile, "can't set Owner auth\n");
             return false;
         }

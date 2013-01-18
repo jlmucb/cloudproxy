@@ -12,7 +12,7 @@ TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 #CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ -D DONTENCRYPTFILES -D METADATATEST -D FAKESHA256
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ -D DONTENCRYPTFILES -D FAKESHA256
+CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ -D DONTENCRYPTFILES
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3

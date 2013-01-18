@@ -11,7 +11,7 @@ VLT=	    ../vault
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
-CFLAGS=     -D TEST -D __FLUSHIO__ -D LINUX -D DONTENCRYPTFILES -D FILECLIENT -D FAKESHA256
+CFLAGS=     -D LINUX -D DONTENCRYPTFILES -D FILECLIENT -D TEST -D __FLUSHIO__ 
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3

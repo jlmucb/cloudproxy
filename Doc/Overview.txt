@@ -1,4 +1,5 @@
 Overview for building and using FileProxy
+=========================================
 
 
 FileProxy consists of several programs, utilities, scripts, device drivers, configuration 
@@ -69,14 +70,16 @@ Software setup of the Development Computer
 1. Install Linux.  These instructions were written for Ubuntu 12.10.
 2. Install the Linux Kernel Developnent environment using the instructions 
     in "LinuxDev.txt."
+3. Create the directories that will the compiled object files and executables.
+   Edit the make files to reflect these directory names.  In the distributed
+   makefiles, the executable files are put in ~/jlmcrypt.  The object directories
+   are named subdirectories under ~/jlmcrypt.
 
 For each FileClient, FileServer and Development Computer you want to use:
 
-    3. Activate the TPM using the BIOS interface, using HW manufacturers instructions.
-    4. Take ownership of the TPM and generate the approriate keys using the instructions in
-    "SetupTPM.txt"
-    5. Record the public (AIK) key of your TPM using the instructions in "GetAIK.txt."
-        You will need the "AIK Blob files" in step 6.
+    4. Activate the TPM using the BIOS interface, using HW manufacturers instructions.
+    5. Take ownership of the TPM and generate the approriate keys using the instructions in
+       "SetupTPM.txt"
 
 On the Development or KeyNegoServer Computer (depending on whether you are developing or
 deploying):

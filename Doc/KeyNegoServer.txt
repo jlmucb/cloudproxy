@@ -1,4 +1,9 @@
 Instructions for building KeyNegoServer
+=======================================
 
 
+Make the KeyNegoServer directory that will hold the object files.
+    cd Code/keyNegoServer
+Edit keyNegoServer.mak to reflect the object file directory.
+    make -f keyNegoServer.mak
 

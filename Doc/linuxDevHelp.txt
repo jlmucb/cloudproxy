@@ -1,4 +1,6 @@
 Compile Linux Kernel on Ubuntu 12.04 LTS (Detailed)
+===================================================
+
 
 This tutorial will outline the process to compile your own kernel for Ubuntu. 
 It will demonstrate both the traditional process using ‘make’ and ‘make install’ as 

@@ -1,4 +1,8 @@
 Instructions for building and booting the Trusted OS
+====================================================
 
 
+Build the tcioDD device driver.
+    cd XXX
+    make
 

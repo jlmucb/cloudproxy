@@ -1,4 +1,17 @@
 Instructions for preparing initramfs for FileClient and FileServer
+==================================================================
 
+Decompress and unpack the existing initramfs
+    cd TMP
+    cp /boot/XXX initrd.gz
+    gunzip initrd.gz
+    cpio -iv < initrd
+
+Copy the executables into the initramfs
+    copy_exec fileServer.exe XXXX
+    copy_exec fileClient.exe XXXX
+
+Change the initscript to run dmcrypt and change the way the system disk is 
+mounted.
 
 

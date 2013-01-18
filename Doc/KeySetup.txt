@@ -1,4 +1,27 @@
 Instructions for signing and installing TPM keys
+================================================
 
+This step used the aikblob and the aik-hex-file generated in step 5.
+
+Generate a public/private key pair (the "activity policy key").
+
+Create the directory that tcService will find the hardware keys and
+certificates, called the hardware store directory (By default this is: ).
+Copy the aikblob into the hardware store directory.
+
+In the executable directory type:
+    ./cryptUtility.exe -GenKey RSA1024 private-key-file
+Store the private-key-file in .
+
+Produce the AIK certificate by typing:
+    ./cryptUtility.exe -SignHexModulus private-key-file aik-hex-file cert-file
+The aik-hex-file is in HW/aikKeyFile.txt if you did not change the
+        defaults in step 5.
+Store the cert-file in .
+
+Produce the include file that will be used to insert the policy cert in the
+activity elements.
+    ./cryptUtility.exe -PolicyCert cert-file output-include-file programname
+Copy the output-include-file to XXX.
 
 

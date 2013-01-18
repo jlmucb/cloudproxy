@@ -1,4 +1,6 @@
 Instructions for using dmcrypt on a development machine
+=======================================================
+
 
 fdisk to make partitions (/dev/sda)
 mkfs.ext2  to make file system

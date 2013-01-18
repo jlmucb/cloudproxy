@@ -4,7 +4,7 @@ S=          ../cryptUtility
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
-CFLAGS=	    -D TEST -D FAKESHA256
+CFLAGS=	    -D TEST 
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3

@@ -1,4 +1,11 @@
 Instructions for building tcService
+===================================
 
+
+Create the directory to receive the objectfiles for tcService.
+Change directory to Code/tcService.  Edit tcService.mak
+to set up the object file directory for tcService.  Then
+compile the tcService:
+    make -f tcService.mak
 
 

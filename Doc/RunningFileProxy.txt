@@ -1,7 +1,8 @@
 Instructions for testing fileProxy on a development machine
+===========================================================
 
 
-after keys are initialized for fileProxy and fileClient
+After keys are initialized for fileProxy and fileClient
 
 # sudo bash
 # kill tss if started

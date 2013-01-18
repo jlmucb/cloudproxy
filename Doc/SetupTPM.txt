@@ -1,6 +1,7 @@
 Instructions for taking ownership of the TPM
 ============================================
 
+
 install trousers
 sudo agt-get install trousers
 sudo agt-get install tpm-dev
@@ -16,7 +17,8 @@ must set ownerauth
 
 
 After enabling the TPM in BIOS, type:
-    Note: if someone has already taken ownership, you must disable the tpm and reenable it
+    Note: if someone has already taken ownership, you must disable the tpm and 
+          reenable it
     sudo bash
     tscd start
     tpm_takeownership -z
@@ -28,9 +30,11 @@ Set your object paths and make the object directories
     mkdir ~/jlmcrypt
     mkdir ~/jlmcrypt/vTCIobjects
 make -f vTCI.mak
-    vTCI.exe -initAIK -ownerSecret xxxxx
+    vTCI.exe -initAIK 
 
-
+This command puts the generated AIK Blob file in the subdirectory ./HW/aikblob.
+The location of the aikblob file can be changed with flags (call vTCI.exe -help
+to find out how).  This blob file will be needed later.
 
 
 

@@ -1,0 +1,12 @@
+Instructions for building and cryptUtility.exe
+==============================================
+
+
+Change directory to Code/cryptUtility.  Edit cryptUtility.mak
+to set up the object file directory for cryptUtility.  Then
+compile the cryptUtility:
+    make -f cryptUtility.mak
+ 
+
+
+

@@ -9,15 +9,10 @@ sudo agt-get install libtspi-dev
 
 make sure TXT and vt-d is enabled too
 
+you may have to remove power to reset TPM
+may have to 
+    tpm_createek
 must set ownerauth
-
-you need to compile a tool to make an AIK key
-cd TPMUser
-Set your object paths and make the object directories
-    mkdir ~/jlmcrypt
-    mkdir ~/jlmcrypt/vTCIobjects
-make -f vTCI.mak
-    vTCI.exe -initAIK
 
 
 After enabling the TPM in BIOS, type:
@@ -26,6 +21,14 @@ After enabling the TPM in BIOS, type:
     tscd start
     tpm_takeownership -z
     tpm_getpubek
+
+you need to compile a tool to make an AIK key
+cd TPMUser
+Set your object paths and make the object directories
+    mkdir ~/jlmcrypt
+    mkdir ~/jlmcrypt/vTCIobjects
+make -f vTCI.mak
+    vTCI.exe -initAIK -ownerSecret xxxxx
 
 
 

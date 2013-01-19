@@ -19,7 +19,7 @@ are interested in becoming a contributor, please send mail to:
     john.l.manferdelli@intel.com and tmroeder@google.com.
 
 While we welcome contributions, we reserve the right to grant access to the
-development repository at in our sole good faith discretion and remove access
+development repository in our sole good faith discretion and revoke access
 to the repository in our sole good faith discretion.
 
 Notes on using the git repository hosted in Berkeley are in gitinstructions.txt.
@@ -75,17 +75,17 @@ Software setup of the Development Computer
 2. Install the Linux Kernel Developnent environment using the instructions 
     in "LinuxDev.txt."
 3. Create the directories that will the compiled object files and executables.
-    Edit the make files to reflect these directory names.  Consult 
-    "DirectoryStructure.txt" to learn more about the directory structure.
+   Consult "DirectoryStructure.txt" to learn more about the directory structure.
 
 For each FileClient, FileServer and Development Computer you want to use:
 
-    4. Activate the TPM using the BIOS interface, using HW manufacturers instructions.
-    5. Take ownership of the TPM and generate the approriate keys using the instructions in
-       "SetupTPM.txt"
+    4. Activate the TPM using the BIOS interface, using HW manufacturers 
+        instructions.
+    5. Take ownership of the TPM and generate the approriate keys using the 
+        instructions in "SetupTPM.txt"
 
-On the Development or KeyNegoServer Computer (depending on whether you are developing or
-deploying):
+On the Development Computer or KeyNegoServer Computer (depending on whether 
+    you are developing or deploying):
 
 6. Compile cryptUtility using the instructions in "cryptUtility.txt."
 

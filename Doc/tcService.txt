@@ -2,10 +2,12 @@ Instructions for building tcService
 ===================================
 
 
-Create the directory to receive the objectfiles for tcService.
-Change directory to Code/tcService.  Edit tcService.mak
-to set up the object file directory for tcService.  Then
-compile the tcService:
+Create the directory for the tcService objects as described
+in DirectoryStructure.txt.
+    cd ROOT/tcService
+Edit the tcService.mak to reflect the correct ROOT directory,
+in the distribution, this is called ~/jlmcrypt.exe.  Then
+compile tcService:
     make -f tcService.mak
 
 

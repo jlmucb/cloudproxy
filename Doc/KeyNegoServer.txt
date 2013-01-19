@@ -2,8 +2,11 @@ Instructions for building KeyNegoServer
 =======================================
 
 
-Make the KeyNegoServer directory that will hold the object files.
-    cd Code/keyNegoServer
-Edit keyNegoServer.mak to reflect the object file directory.
+Create the directory for the keyNegoServer objects as described
+in DirectoryStructure.txt.
+    cd ROOT/keyNegoServer
+Edit the keyNegoServer.mak to reflect the correct ROOT directory,
+in the distribution, this is called ~/jlmcrypt.exe.  Then
+compile keyNegoServer:
     make -f keyNegoServer.mak
 

@@ -15,22 +15,24 @@ is enabled too.  After enabling the TPM in BIOS, type:
     tpm_takeownership -z
     tpm_getpubek
 Note: If someone has already taken ownership, you must disable the tpm and 
-reenable it.  You may have to remove power to reset TPM and you may have to
-create an endorsement key using
+reenable it.  You may have to remove power to reset the TPM and you may 
+have to create an endorsement key using
     tpm_createek
 
 You need to compile a tool to make an AIK key.
-    cd TPMUser
-Set your object paths and make the object directories in the makefile
-as specified in DirectoryStructure.txt.
-    make -f vTCI.mak
-    vTCI.exe -initAIK 
+    cd Code/TPMUser
 
-This command puts the generated AIK Blob file in the subdirectory ./HW/aikblob.
+Set your object paths and make the object directories in the makefile
+as specified in DirectoryStructure.txt.  Then type:
+    make -f vTCI.mak
+    cd ROOT
+    ./vTCI.exe -initAIK 
+
+This command puts the generated AIK Blob file in the subdirectory ROOT/HW/aikblob.
 The location of the aikblob file can be changed with flags (call vTCI.exe -help
 to find out how).  This blob file will be needed later.
 
-Copy ./HW/aikblob, ... to ....
+Copy ROOT/HW/aikblob and ROOT/HW/aikhexmod.txt to ROOT/HWRoot.
 
 
 

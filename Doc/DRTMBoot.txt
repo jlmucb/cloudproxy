@@ -6,11 +6,13 @@ Trousers and trousers-devel packages must already be installed in order
 to build lcptools.
 
 Tboot requires an ACM Module that sets up the machine for TXT.
-The appropriate SINIT AC Module can be downloaded from the tboot 
-SourceForge project site (http://sourceforge.net/projects/tboot/files/).
+The appropriate SINIT Module can be downloaded from the 
+http://sourceforge.net/projects/tboot/files/.
 The current version of tboot requires version 17 or greater of the SINIT 
-AC module.  A copy of the module we used is in tbootprep in this 
-distribution.
+module.  A copy of the module we used is in this distribution.
+
+
+----------------------------------------------------------------------------
 
 
 Building Tboot
@@ -22,13 +24,12 @@ To build the LCPTools
     cd lcptools
     make
 
+
 ----------------------------------------------------------------------------
 
 
 Now you must built a Launch Control Policy (LCP) which controls what can be
-booted.  The LCP consists of policy elements.  These steps assume that all 
-referenced binaries have already been built and paths are relative to the 
-tboot/lcptools/ directory.
+booted.  The LCP consists of policy elements.
 
 Create an MLE element:
 1.  lcp_mlehash -c "the command line for tboot from grub.conf" /boot/tboot.gz
@@ -55,19 +56,22 @@ Create a CUSTOM element:
 Create policy list(s):
 1.  lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
 
-Use lcp_crtpollist to sign the list:
-1.  openssl genrsa -out privkey.pem 2048
-2.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
-3.  cp list_unsig.lst list_sig.lst
-4.  lcp_crtpollist --sign --pub pubkey.pem --priv privkey.pem --out list_sig.lst
+Note:  I dont think you need to sign the list. If not, you can remove the
+indented directions.
 
-Use openssl to sign the list:
-1.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
-2.  cp list_unsig.lst list_sig.lst
-3.  lcp_crtpollist --sign --pub pubkey.pem --nosig --out list_sig.lst
-4.  openssl genrsa -out privkey.pem 2048
-5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
-6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
+    Use lcp_crtpollist to sign the list:
+    1.  openssl genrsa -out privkey.pem 2048
+    2.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
+    3.  cp list_unsig.lst list_sig.lst
+    4.  lcp_crtpollist --sign --pub pubkey.pem --priv privkey.pem --out list_sig.lst
+
+    Use openssl to sign the list:
+    1.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
+    2.  cp list_unsig.lst list_sig.lst
+    3.  lcp_crtpollist --sign --pub pubkey.pem --nosig --out list_sig.lst
+    4.  openssl genrsa -out privkey.pem 2048
+    5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
+    6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
 
 Create policy and policy data files:
 1.  lcp_crtpol2 --create --type list --pol list.pol --data list.data
@@ -105,24 +109,52 @@ Write LCP and Verified Launch policies to TPM:
 -----------------------------------------------------------------
 
 
+Next you must modify grub so that you can choose the tbooted linux from the
+boot window.
+
+The Grub(2) configuration file is usually in /boot/grub and is called
+grub.cfg.  It is updated automatically when a kernel is updated or
+when you run update-grub.  
+
 Tboot module must be added as the 'kernel' in the grub.conf file.
 Here is an example:
    root (hd0,1)
    kernel /tboot.gz logging=vga vga_delay=10
    module /vmlinuz-2.6.18-xen root=/dev/VolGroup00/LogVol00 ro
-   module /initrd-2.6.18-xen.img
+   module /initrd...
    module /Q35_SINIT_17.BIN
 
-For Linux:  the 'intel_iommu=on' command line option will enable VT-d and
-the TXT code in Linux will force this if it is not specified.  Support is
-part of the 2.6.32 kernel and later.
+I don't do the indented thing and it seems to work.
+    For Linux:  the 'intel_iommu=on' command line option will enable VT-d and
+    the TXT code in Linux will force this if it is not specified.  Support is
+    part of the 2.6.32 kernel and later.
+
+The final grub configuration file will look something like:
+menuentry 'Ubuntu Linux 3.0.0-16-generic with TXT' --class ubuntu --class gnu-linux --class gnu --class os {
+        recordfail
+        set gfxpayload=text
+        insmod gzio
+        insmod part_msdos
+        insmod ext2
+        set root='(hd0,msdos5)'
+        search --no-floppy --fs-uuid --set=root 8ab78657-8561-4fa8-af57-bff736275cc6
+        echo 'Multiboot'
+        multiboot /boot/tboot.gz /boot/tboot.gz logging=vga,memory,serial
+        echo 'Linux'
+        module   /boot/vmlinuz-3.0.0-16-generic /boot/vmlinuz-3.0.0-16-generic root=UUID=8ab78657-8561-4fa8-af57-bff736275cc6 ro   splash vt.handoff=7 intel_iommu=on
+        echo 'initrd'
+        module /boot/initrd.img-3.0.0-16-generic /boot/initrd.img-3.0.0-16-generic
+        echo 'sinit'
+        module /boot/sinit51.bin /boot/sinit51.bin
 
 Modify grub.conf to load the policy data file:
 1.  Edit grub.conf and add the following:
         module /list.data
     where you should use the path to this file.
 
-Copy tboot, sinit and xxx into /boot and change run grub.conf
+Copy sinit into /boot and change run grub.conf then run update-grub.
+
+Check the /boot directory to make sure tboot.gz is there.
 
 
 -----------------------------------------------------------------------

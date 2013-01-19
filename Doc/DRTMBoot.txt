@@ -22,11 +22,13 @@ To build the LCPTools
     cd lcptools
     make
 
--------------------------------------------------------
+----------------------------------------------------------------------------
 
 
 Now you must built a Launch Control Policy (LCP) which controls what can be
-booted.  The LCP consists of policy elements.
+booted.  The LCP consists of policy elements.  These steps assume that all 
+referenced binaries have already been built and paths are relative to the 
+tboot/lcptools/ directory.
 
 Create an MLE element:
 1.  lcp_mlehash -c "the command line for tboot from grub.conf" /boot/tboot.gz
@@ -106,7 +108,7 @@ Write LCP and Verified Launch policies to TPM:
 Tboot module must be added as the 'kernel' in the grub.conf file.
 Here is an example:
    root (hd0,1)
-   kernel /tboot.gz logging=vga
+   kernel /tboot.gz logging=vga vga_delay=10
    module /vmlinuz-2.6.18-xen root=/dev/VolGroup00/LogVol00 ro
    module /initrd-2.6.18-xen.img
    module /Q35_SINIT_17.BIN

@@ -2,8 +2,9 @@ Instructions for compiling and configuring FileProxy Apps
 =========================================================
 
 
-Create the directories to hold the object files for the fileProxy apps.
+Create the directories to hold the object files for the fileProxy apps
+as specified in DirectoryStructure.txt.
+    cd ROOT
     make -f fileClient.mak
     make -f fileServer.mak
-
 

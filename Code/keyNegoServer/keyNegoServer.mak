@@ -12,7 +12,7 @@ TPD=        ../TPMDirect
 VLT=        ../vault
 RMM=        ../resources
 TRS=        ../tcService
-CFLAGS=     -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__
+CFLAGS=     -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__
         
 
 

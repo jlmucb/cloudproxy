@@ -1,4 +1,4 @@
-E=          ~/src/tmp
+E=          ~/jlmcrypt
 B=          $(E)/vTCIobjects
 SC=         ../commonCode
 BN=         ../jlmbignum

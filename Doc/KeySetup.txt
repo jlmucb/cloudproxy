@@ -2,7 +2,7 @@ Instructions for signing and installing TPM keys
 ================================================
 
 
-This step used the aikblob and the aik-hex-file generated in step 5.
+This step used the aikblob and the aikKeyFile.txt generated in step 5.
 
 Generate a public/private key pair (the "activity policy key").
 
@@ -13,15 +13,15 @@ the aikblob and the aik-hex-file into this directory.
 
 In the executable directory type:
     cd ROOT
-    ./cryptUtility.exe -GenKey RSA1024 private-key-file
-Store the private-key-file in ROOT for testing.  You should NEVER
-have the private key on an insecure computer and you should
+    ./cryptUtility.exe -GenKey RSA1024 activityPrivateKey.xml
+Store the activityPrivateKey.xml in ROOT for testing.  You should 
+NEVER have the private key on an insecure computer and you should
 NEVER lose this key.  This key will be copied onto the 
 keyNegoServer Computer later.
 
 Produce the AIK certificate by typing:
     cd ROOT
-    ./cryptUtility.exe -SignHexModulus private-key-file HWROOT/aik-hex-file HWROOT/cert-file
+    ./cryptUtility.exe -SignHexModulus activityPrivateKey.xml HWROOT/aikKeyFile.txt HWROOT/aikCert.xml
 
 Produce the include file that will be used to insert the policy cert in the
 activity elements.

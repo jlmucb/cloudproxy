@@ -2,7 +2,144 @@ Instructions for building and installing TBOOT for DRTM Boot
 ============================================================
 
 
-cd Tboot
+Trousers and trousers-devel packages must already be installed in order 
+to build lcptools.
+
+Tboot requires an ACM Module that sets up the machine for TXT.
+The appropriate SINIT AC Module can be downloaded from the tboot 
+SourceForge project site (http://sourceforge.net/projects/tboot/files/).
+The current version of tboot requires version 17 or greater of the SINIT 
+AC module.  A copy of the module we used is in tbootprep in this 
+distribution.
 
 
+Building Tboot
+    cd tbootprep/tboot-1.7.0
+    make
+    make install
+
+To build the LCPTools
+    cd lcptools
+    make
+
+-------------------------------------------------------
+
+
+Now you must built a Launch Control Policy (LCP) which controls what can be
+booted.  The LCP consists of policy elements.
+
+Create an MLE element:
+1.  lcp_mlehash -c "the command line for tboot from grub.conf" /boot/tboot.gz
+    > mle_hash
+2.  lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt
+    mle_hash
+
+Create a PCONF element:
+1.  cat /sys/devices/platform/tpm_tis/pcrs |grep -e PCR-00 -e PCR-01 > pcrs
+2.  lcp_crtpolelt --create --type pconf --out pconf.elt pcrs
+
+Create an SBIOS element:
+1.  Create hash file containing BIOS hash(es), e.g. named sbios_hash
+2.  lcp_crtpolelt --create --type sbios --out sbios.elt sbios_hash
+
+Create a CUSTOM element:
+1.  Create or determine the UUID that will identify this data format (e.g.
+    using 'uuidgen')
+2.  Create the data the will be placed in this element.  E.g. the policy file
+    from tb_polgen.
+3.  lcp_crtpolelt --create --type custom --out custom.elt --uuid <uuid value>
+    <data file>
+
+Create policy list(s):
+1.  lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
+
+Use lcp_crtpollist to sign the list:
+1.  openssl genrsa -out privkey.pem 2048
+2.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
+3.  cp list_unsig.lst list_sig.lst
+4.  lcp_crtpollist --sign --pub pubkey.pem --priv privkey.pem --out list_sig.lst
+
+Use openssl to sign the list:
+1.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
+2.  cp list_unsig.lst list_sig.lst
+3.  lcp_crtpollist --sign --pub pubkey.pem --nosig --out list_sig.lst
+4.  openssl genrsa -out privkey.pem 2048
+5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
+6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
+
+Create policy and policy data files:
+1.  lcp_crtpol2 --create --type list --pol list.pol --data list.data
+    list_{unsig,sig}.lst
+
+Create Verified Launch policy:
+1.  tb_polgen/tb_polgen --create --type nonfatal vl.pol
+2.  tb_polgen/tb_polgen --add --num 0 --pcr none --hash image
+    --cmdline "the command line for xen from grub.conf"
+    --image /boot/xen.gz
+    vl.pol
+3.  tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
+    --cmdline "the command line for dom0 from grub.conf"
+    --image /boot/vmlinuz-2.6.18.8-xen
+    vl.pol
+4.  tb_polgen/tb_polgen --add --num 2 --pcr 19 --hash image
+    --cmdline ""
+    --image /boot/initrd-2.6.18.8-xen.img
+    vl.pol
+
+Define tboot error TPM NV index:
+1.  lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
+    -p TPM-password
+
+Define LCP and Verified Launch policy indices:
+1.  lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
+2.  lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
+
+Write LCP and Verified Launch policies to TPM:
+(modprobe tpm_tis; tcsd;)
+1.  lcptools/lcp_writepol -i owner -f list.pol -p TPM-password
+2.  lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
+
+
+-----------------------------------------------------------------
+
+
+Tboot module must be added as the 'kernel' in the grub.conf file.
+Here is an example:
+   root (hd0,1)
+   kernel /tboot.gz logging=vga
+   module /vmlinuz-2.6.18-xen root=/dev/VolGroup00/LogVol00 ro
+   module /initrd-2.6.18-xen.img
+   module /Q35_SINIT_17.BIN
+
+For Linux:  the 'intel_iommu=on' command line option will enable VT-d and
+the TXT code in Linux will force this if it is not specified.  Support is
+part of the 2.6.32 kernel and later.
+
+Modify grub.conf to load the policy data file:
+1.  Edit grub.conf and add the following:
+        module /list.data
+    where you should use the path to this file.
+
+Copy tboot, sinit and xxx into /boot and change run grub.conf
+
+
+-----------------------------------------------------------------------
+
+Information on PCR Usage (background only)
+
+
+PCR Usage:
+PCR 17 will be extended with the following values (in this order):
+       -  The values as documented in the MLE Developers Manual
+       -  SHA-1 hash of:  tboot policy control value (4 bytes) |
+                          SHA-1 hash of tboot policy (20 bytes)
+          : where the hash of the tboot policy will be 0s if
+            TB_POLCTL_EXTEND_PCR17 is clear
+PCR 18 It will be extended with the following values (in this order):
+       -  SHA-1 hash of tboot (as calculated by lcp_mlehash)
+       -  SHA-1 hash of first module in grub.conf (e.g. Xen or Linux kernel)
+PCR * : tboot policy may specify modules' measurements to be extended into
+        PCRs specified in the policy
+The default tboot policy will extend, in order, the SHA-1 hashes of all
+modules (other than 0) into PCR 19.
 

@@ -1,7 +1,7 @@
 # Initialization (Done)
 # modprobe tpm_tis   (you may need 'force=1 interrupts=0')
 # tcsd
-# tpm_takeownership -z
+# tpm_takeownership -z -y
 #     -  choose password for TPM
 
 # Define tboot error TPM NV index:

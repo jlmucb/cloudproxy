@@ -5,11 +5,14 @@ Instructions for building and installing TBOOT for DRTM Boot
 Trousers and trousers-devel packages must already be installed in order 
 to build lcptools.
 
-Tboot requires an ACM Module that sets up the machine for TXT.
-The appropriate SINIT Module can be downloaded from the 
-http://sourceforge.net/projects/tboot/files/.
-The current version of tboot requires version 17 or greater of the SINIT 
-module.  A copy of the module we used is in this distribution.
+Tboot requires an ACM Module that sets up the machine for TXT.  The appropriate
+SINIT Module can be downloaded from
+http://software.intel.com/en-us/articles/intel-trusted-execution-technology/.
+Tboot will show the appropriate device ID in its output if it is booted with
+the incorrect version of sinit. Use txt-stat (installed with tboot) to read the
+most recent tboot logs.  The current version of tboot requires version 17 or
+greater of the SINIT module.  A copy of the module we used is in this
+distribution.
 
 
 ----------------------------------------------------------------------------
@@ -128,6 +131,9 @@ I don't do the indented thing and it seems to work.
     For Linux:  the 'intel_iommu=on' command line option will enable VT-d and
     the TXT code in Linux will force this if it is not specified.  Support is
     part of the 2.6.32 kernel and later.
+
+Note that the Lenovo T410 is known not to work with the Intel IOMMU; it will
+not successfully boot with TBOOT.
 
 The final grub configuration file will look something like:
 menuentry 'Ubuntu Linux 3.0.0-16-generic with TXT' --class ubuntu --class gnu-linux --class gnu --class os {

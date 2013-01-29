@@ -169,6 +169,21 @@ Copy sinit into /boot and change run grub.conf then run update-grub.
 Check the /boot directory to make sure tboot.gz is there.
 
 
+---------------------------------------------------------------------
+
+Reported problems with TPM's
+
+
+The TPM, driver/char/tpm/tpm.c, depends on TPM chip to report timeout 
+values for timeout_a, b, and d. The Atmel TPM in Dell latitude 6430u, 
+reports wrong timeout values (10 ms each), instead of TCG specified 
+(750ms, 2000ms, 750ms, 750ms for timeout_a/b/c/d respectively).  
+You can fix the driver code and it will work.
+
+Some Lenovo models (410) has faulty firmware that prevents TBOOT from
+working.
+
+
 -----------------------------------------------------------------------
 
 Information on PCR Usage (background only)

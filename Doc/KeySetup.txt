@@ -21,11 +21,9 @@ keyNegoServer Computer later.
 
 Produce the AIK certificate by typing:
     cd ROOT
-    ./cryptUtility.exe -SignHexModulus activityPrivateKey.xml HWROOT/aikKeyFile.txt HWROOT/aikCert.xml
+    ./cryptUtility.exe -SignHexModulus activityPrivateKey.xml HWRoot/aikKeyFile.txt HWRoot/aikCert.xml
 
 Produce the include file that will be used to insert the policy cert in the
 activity elements.
-    ./cryptUtility.exe -PolicyCert cert-file output-include-file programname
-Copy the output-include-file to Code/fileProxy and Code/tcService.
-
-
+    ./cryptUtility.exe -PolicyCert HWRoot/aikCert.xml policyCert.inc FileProxy
+Copy policyCert.inc to Code/fileProxy and Code/tcService.

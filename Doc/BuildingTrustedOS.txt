@@ -7,6 +7,6 @@ keys, certificates and where it stores its files.  By
 default, this is ROOT/TrustedOS.
 
 Build the tcioDD device driver.
-    cd XXX
+    cd Devices
     make
 

@@ -2,17 +2,30 @@ Instructions for testing fileProxy on a development machine
 ===========================================================
 
 
-After keys are initialized for fileProxy and fileClient
+After keys are initialized for fileProxy and fileClient, perform the
+following operations as superuser
 
-# sudo bash
-# kill tss if started
-#ps aux | fgrep -n tss
-chown jlm /dev/tpm0
-cd /dev
-mknod tcioDD0 c 100 0
-chmod 0777 /dev/tcioDD0
-cd ~/jlmcrypt
-insmod tcioDD.ko
+1. stop tcsd if started
+
+  /etc/init.d/trousers stop 
+
+2. make sure you have access to the tpm device. One way to do this is to
+take control of /dev/tpm0 directly using chown. But the more UNIX-y way
+is to add yourself to the tss group. E.g., for user tmroeder:
+
+  usermod -a -G tss tmroeder
+
+you will have to log out and back in to get the right group permissions.
+
+3. create the tcioDD0 device
+
+  cd /dev
+  mknod tcioDD0 c 100 0
+  chmod 0777 /dev/tcioDD0
+
+4. add tcioDD to the kernel  
+  cd ~/jlmcrypt
+  insmod tcioDD.ko
 
 Regular user
 ./tcService.exe &

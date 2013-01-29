@@ -110,7 +110,7 @@ that you can deploy.  To do this, consult:
 
     a. "OperatingKeyNegoServer.txt" for KeyNegoServer.
     b. "BuildingTrustedOS.txt" for building a trusted OS and configuring GRUB.
-    c. "BuildingInitRamFs.txt" for fuilding the initramfs file system for the
+    c. "BuildingInitRamFs.txt" for building the initramfs file system for the
         FileClient and FileServer computers.
     d. "ConfiguringFileProxyPrograms.txt" for configuration and deployment instructions
         for FileClient and FileProxy Computers.

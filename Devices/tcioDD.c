@@ -58,7 +58,7 @@
 #include <linux/fcntl.h>
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
-#include <asm/system.h>
+/* #include <asm/system.h> */
 #include <asm/uaccess.h>
 
 

@@ -50,7 +50,7 @@
 #include <unistd.h>
 
 #ifndef TPMSUPPORT
-extern int      g_policykeySize;
+extern int      g_szpolicykeySize;
 extern char     g_szXmlPolicyCert[];
 #endif
 
@@ -652,20 +652,20 @@ bool taoEnvironment::GetPolicyKey()
         return true;
 #ifndef TPMSUPPORT
      case PLATFORMTYPELINUXAPP:
-        m_policyKey= (byte*) malloc(g_policykeySize);
+        m_policyKey= (byte*) malloc(g_szpolicykeySize);
         if(m_policyKey==NULL) {
             fprintf(g_logFile, "taoEnvironment::GetPolicyKey, malloc failed\n");
             return false;
         }
 #ifdef TEST
         fprintf(g_logFile, "taoEnvironment::GetPolicyKey linux %ld %ld\n",
-                (long int)&g_policykeySize, (long int) g_szXmlPolicyCert);
+                (long int)&g_szpolicykeySize, (long int) g_szXmlPolicyCert);
         fprintf(g_logFile, "taoEnvironment::GetPolicyKey linux\n%s\n",
                 g_szXmlPolicyCert);
         fflush(g_logFile);
 #endif
-        memcpy(m_policyKey, (byte*)g_szXmlPolicyCert, g_policykeySize);
-        m_sizepolicyKey= g_policykeySize;
+        memcpy(m_policyKey, (byte*)g_szXmlPolicyCert, g_szpolicykeySize);
+        m_sizepolicyKey= g_szpolicykeySize;
         m_policyKeyType= EVIDENCECERT;
         m_policyKeyValid= true;
         return true;

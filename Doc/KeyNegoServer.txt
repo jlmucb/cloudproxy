@@ -6,7 +6,7 @@ Create the directory for the keyNegoServer objects as described
 in DirectoryStructure.txt.
     cd ROOT/keyNegoServer
 Edit the keyNegoServer.mak to reflect the correct ROOT directory,
-in the distribution, this is called ~/jlmcrypt.exe.  Then
+in the distribution, this is called ~/jlmcrypt.  Then
 compile keyNegoServer:
     make -f keyNegoServer.mak
 

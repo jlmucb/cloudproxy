@@ -27,6 +27,18 @@ you will have to log out and back in to get the right group permissions.
   cd ~/jlmcrypt
   insmod tcioDD.ko
 
+The first time you run tcService, you must run it with the -initKeys flag.  
+This generates the OS keys stores them and causes keyNegoServer to sign them.  
+In the paper, this is called "tao initialization" for the OS.  keyNegoServer 
+need only be available when a tao layer needs to initialize.  Here
+is a procedure.  Start keyNegoServer.  In a different console on the fileProxy machine,
+type:
+
+./tcService.exe -initKeys
+
+Unlike a normal run of tcService where tcService continues running, tcService will exit
+after the keys are generated and the cert signed and stored.
+
 Regular user
 ./tcService.exe &
 sleep 2s

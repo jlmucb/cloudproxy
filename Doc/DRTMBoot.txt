@@ -183,6 +183,14 @@ You can fix the driver code and it will work.
 Some Lenovo models (410) has faulty firmware that prevents TBOOT from
 working.
 
+A permissive Tboot policy is required for the non-hypervisor solutions.
+In this case, the system will boot whatever it finds, but it will
+still performed measured launch, and clients interacting with the
+system will still be able to check that the right software was booted
+by checking the PCRs.  Once the hypervisor is written, this will be
+tbooted and is fairly stable so a more restrictive launch control policy
+is possible and maybe desireable. 
+
 
 -----------------------------------------------------------------------
 

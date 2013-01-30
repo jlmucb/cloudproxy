@@ -994,7 +994,7 @@ int main(int an, char** av)
     }
 
     if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUX, (char*)"TrustedOS",
-                                DOMAIN, DEFAULTDIRECTORY, 
+                                DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
         fprintf(g_logFile, "tcService main: can't init environment\n");
         iRet= 1;

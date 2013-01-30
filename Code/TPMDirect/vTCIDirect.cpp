@@ -727,11 +727,11 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
     Load(false, cmdblob, &cmdoffset, &contsession, 1);
     Load(false, cmdblob, &cmdoffset, pubauth, 20);
 
-#ifdef TPMTEST
+/* #ifdef TPMTEST */
     fprintf(g_logFile, "\nloadKey\n");
     fprintf(g_logFile, "cmdoffset: %d\n", cmdoffset);
     PrintBytes((char*)"\nTPMloadKey command:\n", cmdblob, cmdoffset);
-#endif
+/* #endif */
 
     // execute
     if(!submitTPMReq(fd, cmdoffset, cmdblob, &outsize, ansblob)) {
@@ -739,9 +739,9 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
         return false;
         }
 
-#ifdef TPMTEST
+/* #ifdef TPMTEST */
     PrintBytes((char*)"TPMloadKey response:\n", ansblob, outsize);
-#endif
+/* #endif */
 
     // decode response
     // retrieve sealeddata, nonceeven, contsession, resauth
@@ -1844,10 +1844,10 @@ bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
     byte    aikBuf[2048];
     int     aikSize= 2048;
 
-#ifdef TEST1
+/* #ifdef TEST1 */
     fprintf(g_logFile, "getAIKKey(%s, %s)\n", aikBlobFile, aikCertFile);
     fflush(g_logFile);
-#endif
+/* #endif */
     if(aikBlobFile==NULL) {
         fprintf(g_logFile, "No AIK Blob file\n");
         return false;

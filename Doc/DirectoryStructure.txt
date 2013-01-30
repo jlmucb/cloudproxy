@@ -21,7 +21,7 @@ ROOT
                                    # Production executable is in intiramfs
         ROOT/keyNegoServer.exe     # keyNegoServer executable
         ROOT/keyNegoServer.log     # keyNegoServer log output
-        ROOT/privatePolicyKey.xml  # private policy key (used to sign Certs)
+        ROOT/policy/privatePolicyKey.xml  # private policy key (used to sign Certs)
         ROOT/tcioDD.ko             # Loadable tcioDD device driver
         ROOT/tcService.exe         # tcService executable for debugging
                                    # Production executable is in intiramfs
@@ -86,6 +86,7 @@ ROOT/fileServer: (Storage for HW Trust files)
     fileKeys        # FileServer sealed file encryption keys
     files           # Directory for FileServer files
 
+ROOT/policy/policyPrivateKey.xml	# the private key for the service, generated in KeySetup.txt
 
 Changed files in initramfs
         fileClient.exe           # FileClient executable

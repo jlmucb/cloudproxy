@@ -211,7 +211,7 @@ bool serverCertNegoMessage1(int maxSize, char* buf, char* szStatus,
     else {
         szErrorCode=(char*)"";
     }
-    if(szErrorCode!=NULL) {
+    if(szCert!=NULL) {
         iSize+= strlen(szCert);
     }
     else {

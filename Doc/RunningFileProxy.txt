@@ -9,11 +9,9 @@ following operations as superuser
 
   /etc/init.d/trousers stop 
 
-2. make sure you have access to the tpm device. One way to do this is to
-take control of /dev/tpm0 directly using chown. But the more UNIX-y way
-is to add yourself to the tss group. E.g., for user tmroeder:
+2. make sure you have access to the tpm device. 
 
-  usermod -a -G tss tmroeder
+  chown <username> /dev/tpm0
 
 you will have to log out and back in to get the right group permissions.
 

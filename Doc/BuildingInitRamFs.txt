@@ -2,16 +2,20 @@ Instructions for preparing initramfs for FileClient and FileServer
 ==================================================================
 
 Decompress and unpack the existing initramfs
-    cd TMP
-    cp /boot/XXX initrd.gz
+    cd /tmp
+    mkdir init
+    cd init
+    cp /boot/initramfs.img-`uname -r` initrd.gz
     gunzip initrd.gz
     cpio -iv < initrd
 
 Copy the executables into the initramfs
-    copy_exec fileServer.exe XXXX
-    copy_exec fileClient.exe XXXX
+    export DESTDIR=/tmp/init
+    source /usr/share/initramfs-tools/hook-functions
+    copy_exec ~/jlmcrypt/fileServer.exe bin
+    copy_exec ~/jlmcrypt/fileClient.exe bin
 
 Change the initscript to run dmcrypt and change the way the system disk is 
 mounted.
-
+  - we don't yet have instructions for this
 

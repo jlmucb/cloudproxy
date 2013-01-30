@@ -951,8 +951,14 @@ int main(int an, char** av)
         }
     }
     g_servicepid= getpid();
-    if(directory==NULL)
+    char** parameters = NULL;
+    int parameterCount = 0;
+    if(directory==NULL) {
         directory= DEFAULTDIRECTORY;
+    } else {
+        parameters = &directory;
+	parameterCount = 1;
+    }
 
     if(!initAllCrypto()) {
         fprintf(g_logFile, "tcService main: can't initcrypto\n");
@@ -961,7 +967,7 @@ int main(int an, char** av)
     }
 
     // init Host and Environment
-    if(!g_myService.m_host.HostInit(PLATFORMTYPEHW, 0, NULL)) {
+    if(!g_myService.m_host.HostInit(PLATFORMTYPEHW, parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;

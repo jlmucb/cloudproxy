@@ -32,8 +32,11 @@ This command puts the generated AIK Blob file in the subdirectory ROOT/HW/aikblo
 The location of the aikblob file can be changed with flags (call vTCI.exe -help
 to find out how).  This blob file will be needed later.
 
-Copy ROOT/HW/aikblob to ROOT/HWRoot/aikcreds and ROOT/HW/aikKeyFile.txt to ROOT/HWRoot/aikhexmod.txt.
-Also copy ROOT/HW/aikblob to ROOT/HWRoot/privatekey
+Copy ROOT/HW/aikblob to ROOT/HWRoot/aikcreds and copy ROOT/HW/aikblob to ROOT/HWRoot/privatekey
+
+Finally, the aikhexmod.txt file must be a hex copy of aikKeyFile.txt. So, run the command
+
+    xxd -ps -c 32 HW/aikKeyFile.txt > HWRoot/aikhexmod.txt
 
 
 

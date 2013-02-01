@@ -41,7 +41,7 @@
 
 #define QUOTEMETHODNONE                     (char*)"none"
 #define QUOTEMETHODTPM12RSA2048             (char*)"Quote-TPM1.2-RSA2048"
-#define QUOTEMETHODTPM12RSA1024             (char*)"Quote-TPM1.2-RSA2048"
+#define QUOTEMETHODTPM12RSA1024             (char*)"Quote-TPM1.2-RSA1024"
 #define QUOTEMETHODSHA256FILEHASHRSA1024    (char*)"Quote-Sha256FileHash-RSA1024"
 #define QUOTEMETHODSHA256FILEHASHRSA2048    (char*)"Quote-Sha256FileHash-RSA2048"
 

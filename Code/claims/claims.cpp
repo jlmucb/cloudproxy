@@ -387,7 +387,7 @@ bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce,
         return false;
     }
 
-    if(strcmp(QUOTEMETHODTPM12RSA2048, szQuoteAlg)==0 
+    if(strcmp(QUOTEMETHODTPM12RSA1024, szQuoteAlg)==0 
         || strcmp(QUOTEMETHODTPM12RSA2048, szQuoteAlg)==0) {
         hashType= SHA1HASH;
     }

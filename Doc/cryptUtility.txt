@@ -23,4 +23,5 @@ options for cryptUtility
     cryptUtility.exe -HashFile input-file [alg]
     cryptUtility.exe -makePolicyKeyFile input-file outputfile
     cryptUtility.exe -makeServiceHashFile input-file outputfile
+    cryptUtility.exe -VerifyQuote xml-Quote xml-aik-cert
 

@@ -2,7 +2,7 @@ Instructions for testing fileProxy on a development machine
 ===========================================================
 
 
-After keys are initialized for fileProxy and fileClient, perform the
+After keys are initialized for fileServer and fileClient, perform the
 following operations as superuser
 
 1. stop tcsd if started

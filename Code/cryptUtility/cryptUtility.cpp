@@ -35,6 +35,7 @@
 #include "mpFunctions.h"
 #include "modesandpadding.h"
 #include "rsaHelper.h"
+#include "cryptSupport.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -61,6 +62,7 @@
 #define HASHFILE                  13
 #define MAKEPOLICYKEYFILE         14
 #define MAKESERVICEHASHFILE       15
+#define VERIFYQUOTE               16
 
 #define MAXREQUESTSIZE          2048
 #define MAXADDEDSIZE              64
@@ -1021,6 +1023,19 @@ bool MakePolicyFile(char* szKeyFile, char* szOutFile, char* szProgramName)
 }
 
 
+bool VerifyQuote(char* szQuote, char* szCert)
+{
+    Quote           oQuote;
+    PrincipalCert   oCert;
+
+    if(!oQuote.init(szQuote)) {
+        fprintf(g_logFile, "Can't parse quote\n");
+        return false;
+    }
+    return true;
+}
+
+
 bool AES128GCMEncryptFile(int filesize, int iRead, int iWrite, u8* enckey)
 {
     gcm     oGCM;
@@ -1781,6 +1796,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -HashFile input-file [alg]\n");
             fprintf(g_logFile, "       cryptUtility -makePolicyKeyFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-aikcert\n");
             return 0;
         }
         if(strcmp(av[i], "-Canonical")==0) {
@@ -1902,6 +1918,12 @@ int main(int an, char** av)
             szInFile= av[i+1];
             szOutFile= av[i+2];
             szAlgorithm= (char*)"SHA256";
+            break;
+        }
+        if(strcmp(av[i], "-VerifyQuote")==0) {
+            iAction= VERIFYQUOTE;
+            szInFile= av[i+1];
+            szKeyFile= av[i+2];
             break;
         }
         if(strcmp(av[i], "-HexquoteTest")==0) {
@@ -2030,12 +2052,12 @@ int main(int an, char** av)
    
     if(iAction==MAKEPOLICYKEYFILE) {
         RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
-	byte*   rgB= pKey->m_rgbM;
+        byte*   rgB= pKey->m_rgbM;
 
-	if(pKey==NULL) {
+        if(pKey==NULL) {
             fprintf(g_logFile, "can't read key %s\n", szKeyFile);
             return 1;
-	}
+        }
 
         // write output file
         FILE* out= fopen(szOutFile,"w");
@@ -2076,6 +2098,14 @@ int main(int an, char** av)
 
         fprintf(g_logFile, "Hash of file %s is: ", szInFile);
         PrintBytes((char*)"", rgHash, size);
+    }
+
+    if(iAction==VERIFYQUOTE) {
+        if(!VerifyQuote(szInFile, szKeyFile)) {
+            fprintf(g_logFile, "cryptUtility: cant verify quote\n");
+            return 1;
+        }
+        return 0;
     }
 
     closeLog();

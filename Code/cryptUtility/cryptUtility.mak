@@ -16,6 +16,7 @@ LINK=       g++
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o $(B)/sha256.o \
             $(B)/jlmUtility.o $(B)/modesandpadding.o $(B)/rsaHelper.o $(B)/hmacsha256.o \
             $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  $(B)/keys.o \
+	    $(B)/cryptSupport.o $(B)/sha1.o \
 	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/tinyxmlparser.o 
 
@@ -36,8 +37,14 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 $(B)/cryptUtility.o: $(S)/cryptUtility.cpp $(S)/cryptUtility.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
 
+$(B)/cryptSupport.o: $(S)/cryptSupport.cpp $(S)/cryptSupport.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/cryptSupport.o $(S)/cryptSupport.cpp
+
 $(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
+
+$(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha1.o $(SCC)/sha1.cpp
 
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha256.o $(SCC)/sha256.cpp

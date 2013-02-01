@@ -19,3 +19,78 @@ Change the initscript to run dmcrypt and change the way the system disk is
 mounted.
   - we don't yet have instructions for this
 
+A sample init that dynamically loads the dirver (don't do this) is:
+Decompress initrd into localdirectory
+Copy needed drivers in /drvs directory
+Copy fileProxy/fileClient/tcService binaries in /bin directory and required libraries in 
+     /lib and lib64 directories
+Copied keys to /bin/HWRoot directory
+Replaced init with my custom init
+Loaded tcioDD
+Configured Ethernet
+Script does not boot all services
+Package initramfs.igz
+Copy to /boot
+Modify entry for OS Tboot section in grub.cfg. replaced initrd by initramfs.igz
+Reboot machine
+From cmd line typed : /bin/tcService.exe –directory /bin/ &
+tcService connected to keynegoServer on different machine. 
+   Gave “bad preamble error” so I was about to figure out what’s the deal. 
+   So far I have not launched fileProxy yet.
+
+ 
+My handcrafted initramfs script
+ 
+#---start
+#!/bin/sh
+echo "Test CloudProxy minimal boot environment!"
+ 
+[ -d /dev ] || mkdir -m 0755 /dev
+[ -d /root ] || mkdir -m 0700 /root
+[ -d /sys ] || mkdir /sys
+[ -d /proc ] || mkdir /proc
+[ -d /tmp ] || mkdir /tmp
+ 
+mkdir -p /proc/net/dev
+mkdir -p /var/lock
+ 
+mount -t sysfs -o nodev,noexec,nosuid sysfs /sys
+ 
+# Function for dropping to a shell
+shell () {
+ 
+        /bin/busybox sh
+}
+ 
+#create tpm device node
+# Basic /dev content, we need it as fast as possible.
+mount -t tmpfs dev /dev
+mount -t proc proc /proc
+ 
+test -c /dev/null || mknod /dev/null c 1 3
+test -c /dev//tty || mknod /dev/tty c 5 0
+test -c /dev/urandom || mknod /dev/urandom c 1 9
+test -c /dev/random || mknod /dev/random c 1 8
+test -c /dev/zero || mknod /dev/zero c 1 5
+test -c /dev/tpm0 || mknod /dev/tpm0 c 10 224
+test -c /dev/tcioDD0 || mknod /dev/tcioDD0 c 100 0
+ 
+#insmod /drvs/tpm_tis.ko
+insmod /drvs/tcioDD.ko
+ 
+echo "loaded tcioDD drivers..."
+ 
+insmod /drvs/e1000e.ko
+ 
+/sbin/ifconfig eth0 192.168.241.11
+/sbin/route add default gw 192.168.241.10
+ 
+/bin/busybox sh
+ 
+# Clean up.
+umount /proc
+umount /sys
+ 
+# Not booting to the real thing at this time.
+ 
+#---end

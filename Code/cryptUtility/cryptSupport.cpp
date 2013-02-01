@@ -36,6 +36,178 @@
 
 // ------------------------------------------------------------------------
 
+#if 0
+bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, byte* sig)
+{
+    byte    rgPadded[RSA2048BYTEBLOCKSIZE];
+    bnum    bnMsg(pKey->m_iByteSizeM/2);
+    bnum    bnOut(pKey->m_iByteSizeM/2);
+
+    memcpy((byte*)bnMsg.m_pValue, sig, sizeSig);
+    if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut))
+        return false;
+    revmemcpy(rgPadded, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
+    if(!emsapkcsverify(hashType, hash, sizeSig, rgPadded))
+        return false;
+
+    return true;
+}
+
+
+bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
+                char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue)
+{
+    Sha1    oSha1Hash;
+    Sha256  oSha256Hash;
+
+    int     sizeNonce= SHA256DIGESTBYTESIZE;
+    byte    nonce[SHA256DIGESTBYTESIZE];
+    int     sizehashBody= SHA256DIGESTBYTESIZE;
+    byte    hashBody[SHA256DIGESTBYTESIZE];
+    int     sizehashCode= SHA256DIGESTBYTESIZE;
+    byte    hashCode[SHA256DIGESTBYTESIZE];
+
+    int     outLen= RSA2048BYTEBLOCKSIZE;
+    byte    quoteValue[RSA2048BYTEBLOCKSIZE];
+
+    int     sizehashFinal= SHA256DIGESTBYTESIZE;
+    byte    hashFinal[SHA256DIGESTBYTESIZE];
+
+    int     hashType= 0;
+    int     sizefinalHash= 0;
+
+    byte    locality= 0; 
+    u32     sizeversion= 0;
+    byte*   versionInfo= NULL;
+#ifdef PCR18
+    byte pcrMask[3]= {0,0,0x6};  // pcr 17, 18
+#else
+    byte pcrMask[3]= {0,0,0x2};  // pcr 17
+#endif
+
+#ifdef TEST
+    fprintf(g_logFile, "checkXMLQuote alg: %s\n", szQuoteAlg);
+    fprintf(g_logFile, "checkXMLQuote sig value: %s\nSigner Keyinfo:\n", szQuoteValue);
+    ((RSAKey*)pKeyInfo)->printMe();
+#endif
+    if(szQuoteAlg==NULL) {
+        fprintf(g_logFile, "checkXMLQuote: empty alg\n");
+        return false;
+    }
+
+    if(strcmp(QUOTEMETHODTPM12RSA1024, szQuoteAlg)==0 
+        || strcmp(QUOTEMETHODTPM12RSA2048, szQuoteAlg)==0) {
+        hashType= SHA1HASH;
+    }
+    else if(strcmp(QUOTEMETHODSHA256FILEHASHRSA1024, szQuoteAlg)==0 
+        || strcmp(QUOTEMETHODSHA256FILEHASHRSA2048, szQuoteAlg)==0) {
+        hashType= SHA256HASH;
+    }
+    else {
+        fprintf(g_logFile, "checkXMLQuote: Unsupported quote algorithm %s\n", szQuoteAlg);
+        return false;
+    }
+
+    // get nonce
+    if(sznonce!=NULL) {
+        if(!fromBase64(strlen(sznonce), sznonce, &sizeNonce, nonce)) {
+            fprintf(g_logFile, "checkXMLQuote: Cant base64 decode noncevalue\n");
+            return false;
+        }
+    }
+    else {
+        sizeNonce= 0;
+    }
+
+    // hash body
+    if(szCanonicalQuotedBody==NULL) {
+        fprintf(g_logFile, "checkXMLQuote: empty body to quote\n");
+        return false;
+    }
+    if(hashType==SHA1HASH) {
+        oSha1Hash.Init();
+        oSha1Hash.Update((byte*) szCanonicalQuotedBody, strlen(szCanonicalQuotedBody));
+        oSha1Hash.Final();
+        oSha1Hash.getDigest(hashBody);
+        sizehashBody= SHA1DIGESTBYTESIZE;
+    }
+    else if(hashType==SHA256HASH) {
+        oSha256Hash.Init();
+        oSha256Hash.Update((byte*) szCanonicalQuotedBody, strlen(szCanonicalQuotedBody));
+        oSha256Hash.Final();
+        oSha256Hash.GetDigest(hashBody);
+        sizehashBody= SHA256DIGESTBYTESIZE;
+    }
+    else {
+        fprintf(g_logFile, "checkXMLQuote: invalid hash type\n");
+        return false;
+    }
+
+    // get code hash
+    if(szdigest==NULL) {
+        fprintf(g_logFile, "checkXMLQuote: no code digest\n");
+        return false;
+    }
+    if(!fromBase64(strlen(szdigest), szdigest, &sizehashCode, hashCode)) {
+        fprintf(g_logFile, "checkXMLQuote: Cant base64 decode noncevalue\n");
+        return false;
+    }
+
+    // decode quote value
+    if(!fromBase64(strlen(szQuoteValue), szQuoteValue, &outLen, quoteValue)) {
+        fprintf(g_logFile, "checkXMLQuote: Cant base64 code decode quote value\n");
+        return false;
+    }
+
+    // generate final quote hash
+    if(strcmp(QUOTEMETHODTPM12RSA2048, szQuoteAlg)==0 || strcmp(QUOTEMETHODTPM12RSA1024, szQuoteAlg)==0) {
+#ifndef QUOTE2_DEFINED 
+        if(!tpm12quoteHash(0, NULL, sizehashBody, hashBody,
+                           sizehashCode, hashCode, hashFinal)) {
+            fprintf(g_logFile, "checkXMLQuote: Cant compute TPM12 hash\n");
+            return false;
+        }
+#else
+         // reconstruct PCR composite and composite hash
+        if(!tpm12quote2Hash(0, NULL, pcrMask, locality,
+                            sizehashBody, hashBody, sizehashCode, hashCode, 
+                            false, sizeversion, versionInfo, 
+                            hashFinal)) {
+            fprintf(g_logFile, "checkXMLQuote: Cant compute TPM12 hash\n");
+            return false;
+        }
+#endif
+        sizefinalHash= SHA1DIGESTBYTESIZE;
+    }
+    else if(strcmp(QUOTEMETHODSHA256FILEHASHRSA2048, szQuoteAlg)==0 || 
+             strcmp(QUOTEMETHODSHA256FILEHASHRSA1024, szQuoteAlg)==0) {
+        if(!sha256quoteHash(0, NULL, sizehashBody, hashBody,
+                           sizehashCode, hashCode, hashFinal)) {
+            fprintf(g_logFile, "checkXMLQuote: Cant compute sha256 hash\n");
+            return false;
+        }
+        sizefinalHash= SHA256DIGESTBYTESIZE;
+    }
+    else {
+        fprintf(g_logFile, "checkXMLQuote: Unsupported quote algorithm %s\n", szQuoteAlg);
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "checkXMLQuote hashtype: %d\n", hashType);
+    PrintBytes((char*)"Code digest: ", hashCode, sizehashCode);
+    PrintBytes((char*)"final hash: ", hashFinal, sizefinalHash);
+    PrintBytes((char*)"quotevalue: ", quoteValue, outLen);
+    fflush(g_logFile);
+#endif
+
+    return RsaPkcsPadSignCheck((RSAKey*) pKeyInfo, hashType, hashFinal,
+                               outLen, quoteValue);
+}
+#endif
+
+
+// ------------------------------------------------------------------------
+
 
 PrincipalCert::PrincipalCert()
 {

@@ -1014,7 +1014,7 @@ bool MakePolicyFile(char* szKeyFile, char* szOutFile, char* szProgramName)
     fprintf(out, "0x00\n};\n\n");
     fprintf(out, "\nint    g_szpolicykeySize= %d;\n\n", iFileSize+1);
     fprintf(out, "\nint    g_szProgramNameSize= %d;\n", (int) strlen(szProgramName)+1);
-    fprintf(out, "\nchar   g_szProgramName= \"%s\";\n\n", szProgramName);
+    fprintf(out, "\nchar*  g_szProgramName= \"%s\";\n\n", szProgramName);
     
     fclose(out);
     close(iRead);

@@ -26,6 +26,7 @@ Set your object paths and make the object directories in the makefile
 as specified in DirectoryStructure.txt.  Then type:
     make -f vTCI.mak
     cd ROOT
+    mkdir HW
     ./vTCI.exe -initAIK 
 
 This command puts the generated AIK Blob file in the subdirectory ROOT/HW/aikblob.

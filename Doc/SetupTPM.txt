@@ -39,4 +39,13 @@ Finally, the aikhexmod.txt file must be a hex copy of aikKeyFile.txt. So, run th
     xxd -ps -c 32 HW/aikKeyFile.txt > HWRoot/aikhexmod.txt
 
 
+----------------------------------
+
+Enabling the TPM varies from computer to computer.  For example, on HP8470p, the TPM is
+enables using a utility (HP Protect tools) obtained from:
+  http://h20000.www2.hp.com/bizsupport/TechSupport/SoftwareDescription.jsp?lang=en&cc=us&prodTypeId=321957&prodSeriesId=4095872&prodNameId=4095876&swEnvOID=4059&swLang=13&mode=2&taskId=135&swItem=ob-98212-1
+and
+http://h20000.www2.hp.com/bizsupport/TechSupport/SoftwareDescription.jsp?lang=en&cc=us&prodTypeId=321957&prodSeriesId=4095872&prodNameId=4095876&swEnvOID=4059&swLang=13&mode=2&taskId=135&swItem=ob-79350-1
+
+Unfortunately, they only run on windows.
 

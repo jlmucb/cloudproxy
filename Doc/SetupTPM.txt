@@ -49,3 +49,16 @@ http://h20000.www2.hp.com/bizsupport/TechSupport/SoftwareDescription.jsp?lang=en
 
 Unfortunately, they only run on windows.
 
+You can activate from software (trousers) if you are in single user mode.  The sequence of
+instructions is:
+
+telinit S or boot to single user mode
+ifup lo
+start tcsd
+tpm_setpresence --assert
+tpm_setenable --enable --force
+tpm_setactive --activate --force
+reboot
+
+
+

@@ -1023,16 +1023,59 @@ bool MakePolicyFile(char* szKeyFile, char* szOutFile, char* szProgramName)
 }
 
 
-bool VerifyQuote(char* szQuote, char* szCert)
+bool VerifyQuote(char* szQuoteFile, char* szCertFile)
 {
     Quote           oQuote;
     PrincipalCert   oCert;
+    char* szCertString= readandstoreString(szCertFile);
+    char* szQuoteString= readandstoreString(szQuoteFile);
 
-    if(!oQuote.init(szQuote)) {
+    // get and parse Quote
+    if(szQuoteFile==NULL) {
+        fprintf(g_logFile, "Can't cant read quote file %s\n", szQuoteFile);
+        return false;
+    }
+    if(!oQuote.init(szQuoteString)) {
         fprintf(g_logFile, "Can't parse quote\n");
         return false;
     }
-    return true;
+
+    // get and parse Cert
+    if(szCertFile==NULL) {
+        fprintf(g_logFile, "Can't cant read cert file %s\n", szCertFile);
+        return false;
+    }
+    if(!oCert.init(szCertString)) {
+        fprintf(g_logFile, "Can't parse cert\n");
+        return false;
+    }
+
+    // decode request
+    char* szAlg= oQuote.getQuoteAlgorithm();
+    char* szQuotedInfo= oQuote.getCanonicalQuoteInfo();
+    char* szQuoteValue= oQuote.getQuoteValue();
+    char* sznonce= oQuote.getnonceValue();
+    char* szDigest= oQuote.getcodeDigest();
+
+    if(!oCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "Can't get principal cert elements\n");
+        return false;
+    }
+
+
+    // check quote
+    RSAKey* pAIKKey= (RSAKey*) oCert.getSubjectKeyInfo();
+    if(pAIKKey==NULL) {
+        fprintf(g_logFile, "Cant get quote keyfromkeyInfo\n");
+        return false;
+    }
+
+    fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
+    fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
+    fprintf(g_logFile, "AIKCert:\n%s\n\n", szCertString);
+    
+    return verifyXMLQuote(szAlg, szQuotedInfo, sznonce,
+                          szDigest, pAIKKey, szQuoteValue);
 }
 
 
@@ -2101,9 +2144,11 @@ int main(int an, char** av)
     }
 
     if(iAction==VERIFYQUOTE) {
-        if(!VerifyQuote(szInFile, szKeyFile)) {
-            fprintf(g_logFile, "cryptUtility: cant verify quote\n");
-            return 1;
+        if(VerifyQuote(szInFile, szKeyFile)) {
+            fprintf(g_logFile, "Quote verifies\n");
+        }
+        else {
+            fprintf(g_logFile, "Quote does NOT verifies\n");
         }
         return 0;
     }

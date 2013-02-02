@@ -25,18 +25,24 @@
 #include "jlmTypes.h"
 #include "logging.h"
 #include "jlmcrypto.h"
+#include "bignum.h"
+#include "mpFunctions.h"
 #include "cryptSupport.h"
 #include "rsaHelper.h"
 #include "sha256.h"
 #include "sha1.h"
 #include "tinyxml.h"
+#include "hashprep.h"
 
 #include <string.h>
 
 
+#define QUOTE2_DEFINED
+
+
 // ------------------------------------------------------------------------
 
-#if 0
+
 bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, byte* sig)
 {
     byte    rgPadded[RSA2048BYTEBLOCKSIZE];
@@ -54,7 +60,7 @@ bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, by
 }
 
 
-bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
+bool verifyXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
                 char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue)
 {
     Sha1    oSha1Hash;
@@ -203,7 +209,33 @@ bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce,
     return RsaPkcsPadSignCheck((RSAKey*) pKeyInfo, hashType, hashFinal,
                                outLen, quoteValue);
 }
-#endif
+
+
+RSAKey* keyfromkeyInfo(char* szKeyInfo)
+{
+    RSAKey*         pKey= new RSAKey();
+    TiXmlElement*   pRootElement= NULL;
+
+    if(pKey==NULL)
+        return NULL;
+    if(!pKey->ParsefromString(szKeyInfo)) {
+        fprintf(g_logFile, "keyfromkeyInfo: cant get key from keyInfo\n");
+        goto cleanup;
+    }
+    pRootElement= pKey->m_pDoc->RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "keyfromkeyInfo: cant get root element\n");
+        goto cleanup;
+    }
+
+    if(!pKey->getDataFromRoot(pRootElement)) {
+        fprintf(g_logFile, "keyfromkeyInfo: cant getDataFromRoot\n");
+        goto cleanup;
+    }
+
+cleanup:
+    return pKey;
+}
 
 
 // ------------------------------------------------------------------------

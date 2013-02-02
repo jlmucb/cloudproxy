@@ -109,6 +109,11 @@ public:
 };
 
 
+RSAKey* keyfromkeyInfo(char* szKeyInfo);
+bool verifyXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
+                char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue);
+
+
 #endif
 
 

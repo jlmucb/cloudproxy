@@ -4,6 +4,7 @@ S=          ../cryptUtility
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
+TPM=	    ../TPMDirect
 CFLAGS=	    -D TEST 
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
@@ -16,7 +17,7 @@ LINK=       g++
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o $(B)/sha256.o \
             $(B)/jlmUtility.o $(B)/modesandpadding.o $(B)/rsaHelper.o $(B)/hmacsha256.o \
             $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  $(B)/keys.o \
-	    $(B)/cryptSupport.o $(B)/sha1.o \
+	    $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
 	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/tinyxmlparser.o 
 
@@ -38,7 +39,10 @@ $(B)/cryptUtility.o: $(S)/cryptUtility.cpp $(S)/cryptUtility.h $(SCC)/jlmcrypto.
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
 
 $(B)/cryptSupport.o: $(S)/cryptSupport.cpp $(S)/cryptSupport.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/cryptSupport.o $(S)/cryptSupport.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -I$(TPM) -c -o $(B)/cryptSupport.o $(S)/cryptSupport.cpp
+
+$(B)/hashprep.o: $(TPM)/hashprep.cpp $(TPM)/hashprep.h
+	$(CC) $(CFLAGS) -D TEST -I$(SC) -I$(SCC) -I$(TPM) -c -o $(B)/hashprep.o $(TPM)/hashprep.cpp
 
 $(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp

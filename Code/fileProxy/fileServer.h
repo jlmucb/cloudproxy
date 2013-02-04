@@ -62,7 +62,7 @@ public:
     fileServer();
     ~fileServer();
 
-    bool    initServer();
+    bool    initServer(char* configDirectory);
     bool    closeServer();
     bool    initPolicy();
     bool    initFileKeys();

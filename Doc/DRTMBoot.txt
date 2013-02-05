@@ -52,6 +52,9 @@ Create an MLE element and policy elements:
   - copy and paste
 cp owner_list.data /boot
 
+If any mle can be launched:
+./lcp_crtpol2 --create --type any --pol any.pol 
+
 Create Verified Launch policy:
 1.  tb_polgen/tb_polgen --create --type nonfatal vl.pol
   - copy and paste

@@ -17,7 +17,6 @@ distribution.
 
 ----------------------------------------------------------------------------
 
-
 Building Tboot
     cd tbootprep/tboot-1.7.0
     make
@@ -27,92 +26,73 @@ To build the LCPTools
     cd lcptools
     make
 
-
 ----------------------------------------------------------------------------
 
 
 Now you must built a Launch Control Policy (LCP) which controls what can be
 booted.  The LCP consists of policy elements.
 
-Create an MLE element:
+Create an MLE element and policy elements:
+0.  sudo bash
 1.  lcp_mlehash -c "the command line for tboot from grub.conf" /boot/tboot.gz
     > mle_hash
-  - the command line in this case is the string from /boot/grub/grub.cfg after multiboot tboot.gz, e.g., "/tboot.gz logging=vga,memory,serial"
+    > mle_hash
+  - the command line in this case is the string from /boot/grub/grub.cfg 
+  - after multiboot tboot.gz, e.g., "logging=vga,memory,serial"
+  - copy and paste:
+./lcp_mlehash -c "logging=vga" /boot/tboot.gz>mle_hash
 2.  lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt mle_hash
-
-Create a PCONF element:
-1.  cat /sys/devices/platform/tpm_tis/pcrs |grep -e PCR-00 -e PCR-01 > pcrs
-  - the location of the pcrs file under /sys might vary. On my T430s, I found it under /sys/devices/pnp0/00:0a/pcrs. To find it, execute 'sudo find /sys -name "*pcrs*" -print'. Also note that you might need to run this command under sudo.
-2.  lcp_crtpolelt --create --type pconf --out pconf.elt pcrs
-
-Create an SBIOS element:
-1.  Create hash file containing BIOS hash(es), e.g. named sbios_hash
-  - this hash file consists of a sequence of SHA-1 hash values, one hash value per line.
-  - one way to get these values for the BIOS is to boot with tboot with the default policy and use txt-stat (installed with tboot) to get the debugging output from tboot: `sudo txt-stat | grep -A1 mle_hash`
-2.  lcp_crtpolelt --create --type sbios --out sbios.elt sbios_hash
-
-SKIPPED (since custom.elt is never used after it is created)
-Create a CUSTOM element:
-1.  Create or determine the UUID that will identify this data format (e.g.
-    using 'uuidgen')
-2.  Create the data the will be placed in this element.  E.g. the policy file
-    from tb_polgen.
-  - in other words, follow the instructions below to generate a policy file before this step
-3.  lcp_crtpolelt --create --type custom --out custom.elt --uuid <uuid value>
-    <data file>
-END SKIPPED
-
-Create policy list(s):
-1.  lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
-
-Note:  I dont think you need to sign the list. If not, you can remove the
-indented directions.
-
-    Use lcp_crtpollist to sign the list:
-    1.  openssl genrsa -out privkey.pem 2048
-    2.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
-    3.  cp list_unsig.lst list_sig.lst
-    4.  lcp_crtpollist --sign --pub pubkey.pem --priv privkey.pem --out list_sig.lst
-
-    Use openssl to sign the list:
-    1.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
-    2.  cp list_unsig.lst list_sig.lst
-    3.  lcp_crtpollist --sign --pub pubkey.pem --nosig --out list_sig.lst
-    4.  openssl genrsa -out privkey.pem 2048
-    5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
-    6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
-
-Create policy and policy data files:
-1.  lcp_crtpol2 --create --type list --pol list.pol --data list.data
-    list_{unsig,sig}.lst
+  - copy and paste
+./lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt mle_hash
+3.  lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
+  - copy and paste
+./lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
+4.  lcp_crtpol2 --create --type list --pol list.pol --data list.data list_unsig.lst
+  - copy and paste
+./lcp_crtpol2 --create --type list --pol list.pol --data list.data list_unsig.lst
+5.  cp list.pol /boot
+  - copy and paste
+cp owner_list.data /boot
 
 Create Verified Launch policy:
 1.  tb_polgen/tb_polgen --create --type nonfatal vl.pol
-2.  tb_polgen/tb_polgen --add --num 0 --pcr none --hash image
-    --cmdline "the command line for xen from grub.conf"
-    --image /boot/xen.gz
-    vl.pol
-3.  tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
-    --cmdline "the command line for dom0 from grub.conf"
+  - copy and paste
+../tb_polgen/tb_polgen --create --type nonfatal vl.pol
+2.  tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image
+    --cmdline "the command line from linux in grub.conf"
     --image /boot/vmlinuz-2.6.18.8-xen
     vl.pol
-4.  tb_polgen/tb_polgen --add --num 2 --pcr 19 --hash image
+  - copy and paste
+../tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image --cmdline "root=UUID=cf6ae6b5-abb5-4d5d-b823-bd798a0621de ro   quiet splash $vt_handoff" --image /boot/vmlinuz-3.5.0-23-generic vl.pol
+3.  tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
     --cmdline ""
     --image /boot/initrd-2.6.18.8-xen.img
     vl.pol
+  - copy and paste
+../tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image --image /boot/initrd-3.5.0-23-generic.img vl.pol
 
 Define tboot error TPM NV index:
 1.  lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
     -p TPM-password
+  - copy and paste
+../lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
 
 Define LCP and Verified Launch policy indices:
 1.  lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
+  - copy and paste
+../lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
 2.  lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
+  - copy and paste
+../lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
 
 Write LCP and Verified Launch policies to TPM:
 (modprobe tpm_tis; tcsd;)
 1.  lcptools/lcp_writepol -i owner -f list.pol -p TPM-password
+  - copy and paste
+../lcp_writepol -i owner -f list.pol -p <ownerauth password>
 2.  lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
+  - copy and paste
+../lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
 
 
 -----------------------------------------------------------------
@@ -185,11 +165,10 @@ working.
 
 A permissive Tboot policy is required for the non-hypervisor solutions.
 In this case, the system will boot whatever it finds, but it will
-still performed measured launch, and clients interacting with the
+still perform measured launch, and clients interacting with the
 system will still be able to check that the right software was booted
-by checking the PCRs.  Once the hypervisor is written, this will be
-tbooted and is fairly stable so a more restrictive launch control policy
-is possible and maybe desireable. 
+by checking the PCRs.  Once the hypervisor is written, a more 
+restrictive launch control policy is possible and maybe desireable. 
 
 
 -----------------------------------------------------------------------
@@ -212,3 +191,50 @@ PCR * : tboot policy may specify modules' measurements to be extended into
 The default tboot policy will extend, in order, the SHA-1 hashes of all
 modules (other than 0) into PCR 19.
 
+
+
+---------------------------------------------------------------------------
+
+REMOVE: 
+
+Create a PCONF element:
+1.  cat /sys/devices/platform/tpm_tis/pcrs |grep -e PCR-00 -e PCR-01 > pcrs
+  - the location of the pcrs file under /sys might vary. On my T430s, I found it under /sys/devices/pnp0/00:0a/pcrs. To find it, execute 'sudo find /sys -name "*pcrs*" -print'. Also note that you might need to run this command under sudo.
+2.  lcp_crtpolelt --create --type pconf --out pconf.elt pcrs
+
+Create an SBIOS element:
+1.  Create hash file containing BIOS hash(es), e.g. named sbios_hash
+  - this hash file consists of a sequence of SHA-1 hash values, one hash value per line.
+  - one way to get these values for the BIOS is to boot with tboot with the default policy and use txt-stat (installed with tboot) to get the debugging output from tboot: `sudo txt-stat | grep -A1 mle_hash`
+2.  lcp_crtpolelt --create --type sbios --out sbios.elt sbios_hash
+
+SKIPPED (since custom.elt is never used after it is created)
+Create a CUSTOM element:
+1.  Create or determine the UUID that will identify this data format (e.g.
+    using 'uuidgen')
+2.  Create the data the will be placed in this element.  E.g. the policy file
+    from tb_polgen.
+  - in other words, follow the instructions below to generate a policy file before this step
+3.  lcp_crtpolelt --create --type custom --out custom.elt --uuid <uuid value>
+    <data file>
+END SKIPPED
+
+
+Note:  I dont think you need to sign the list. If not, you can remove the
+indented directions.
+
+    Use lcp_crtpollist to sign the list:
+    1.  openssl genrsa -out privkey.pem 2048
+    2.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
+    3.  cp list_unsig.lst list_sig.lst
+    4.  lcp_crtpollist --sign --pub pubkey.pem --priv privkey.pem --out list_sig.lst
+
+    Use openssl to sign the list:
+    1.  openssl rsa -pubout -in privkey.pem -out pubkey.pem
+    2.  cp list_unsig.lst list_sig.lst
+    3.  lcp_crtpollist --sign --pub pubkey.pem --nosig --out list_sig.lst
+    4.  openssl genrsa -out privkey.pem 2048
+    5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
+    6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
+
+Create policy and policy data files:

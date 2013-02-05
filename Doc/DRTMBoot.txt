@@ -34,9 +34,7 @@ booted.  The LCP consists of policy elements.
 
 Create an MLE element and policy elements:
 0.  sudo bash
-1.  lcp_mlehash -c "the command line for tboot from grub.conf" /boot/tboot.gz
-    > mle_hash
-    > mle_hash
+1.  lcp_mlehash -c "command line for tboot from grub.cfg" /boot/tboot.gz > mle_hash
   - the command line in this case is the string from /boot/grub/grub.cfg 
   - after multiboot tboot.gz, e.g., "logging=vga,memory,serial"
   - copy and paste:
@@ -60,16 +58,16 @@ Create Verified Launch policy:
 ../tb_polgen/tb_polgen --create --type nonfatal vl.pol
 2.  tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image
     --cmdline "the command line from linux in grub.conf"
-    --image /boot/vmlinuz-2.6.18.8-xen
+    --image /boot/vmlinuz-2.6.18.8
     vl.pol
   - copy and paste
-../tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image --cmdline "root=UUID=cf6ae6b5-abb5-4d5d-b823-bd798a0621de ro   quiet splash $vt_handoff" --image /boot/vmlinuz-3.5.0-23-generic vl.pol
+../tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image --cmdline "root=UUID=cf6ae6b5-abb5-4d5d-b823-bd798a0621de ro quiet splash $vt_handoff" --image /boot/vmlinuz-3.5.0-23-generic vl.pol
 3.  tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
     --cmdline ""
-    --image /boot/initrd-2.6.18.8-xen.img
+    --image /boot/initrd-2.6.18.8
     vl.pol
   - copy and paste
-../tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image --image /boot/initrd-3.5.0-23-generic.img vl.pol
+../tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image --image /boot/initrd-3.5.0-23-generic vl.pol
 
 Define tboot error TPM NV index:
 1.  lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
@@ -109,7 +107,7 @@ Tboot module must be added as the 'kernel' in the grub.conf file.
 Here is an example:
    root (hd0,1)
    kernel /tboot.gz logging=vga vga_delay=10
-   module /vmlinuz-2.6.18-xen root=/dev/VolGroup00/LogVol00 ro
+   module /vmlinuz-2.6.18 root=/dev/VolGroup00/LogVol00 ro
    module /initrd...
    module /Q35_SINIT_17.BIN
 

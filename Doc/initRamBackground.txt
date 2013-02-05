@@ -10,7 +10,7 @@ DESCRIPTION
        The mkinitramfs script generates an initramfs image.  The initramfs is a compressed cpio archive. The archive can
        be used on a different box of the same arch with the  corresponding  Linux  kernel.   mkinitramfs  is  meant  for
        advanced  usage.  On  your  local  box  update-initramfs calls mkinitramfs with the relevant parameters.  update-
-       initramfs keeps sha1sum of generated initramfs. It takes care to generate backups and eventually runs  the  boot‚Äê
+       initramfs keeps sha1sum of generated initramfs. It takes care to generate backups and eventually runs  the  boot‚
        loader.
 
        At  boot time, the kernel unpacks that archive into RAM disk, mounts and uses it as initial root file system. All

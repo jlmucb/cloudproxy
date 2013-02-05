@@ -32,7 +32,7 @@ To build the LCPTools
 Now you must built a Launch Control Policy (LCP) which controls what can be
 booted.  The LCP consists of policy elements.
 
-Create an MLE element and policy elements:
+To specify launch policy via a list of hashes:
 0.  sudo bash
 1.  lcp_mlehash -c "command line for tboot from grub.cfg" /boot/tboot.gz > mle_hash
   - the command line in this case is the string from /boot/grub/grub.cfg 
@@ -52,10 +52,7 @@ Create an MLE element and policy elements:
   - copy and paste
 cp owner_list.data /boot
 
-If any mle can be launched:
-./lcp_crtpol2 --create --type any --pol any.pol 
-
-Create Verified Launch policy:
+Next create a verified Launch policy:
 1.  tb_polgen/tb_polgen --create --type nonfatal vl.pol
   - copy and paste
 ../tb_polgen/tb_polgen --create --type nonfatal vl.pol
@@ -71,6 +68,9 @@ Create Verified Launch policy:
     vl.pol
   - copy and paste
 ../tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image --image /boot/initrd-3.5.0-23-generic vl.pol
+
+If any mle can be launched:
+./lcp_crtpol2 --create --type any --pol any.pol 
 
 Define tboot error TPM NV index:
 1.  lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
@@ -88,10 +88,11 @@ Define LCP and Verified Launch policy indices:
 
 Write LCP and Verified Launch policies to TPM:
 (modprobe tpm_tis; tcsd;)
-1.  lcptools/lcp_writepol -i owner -f list.pol -p TPM-password
+1.  lcptools/lcp_writepol -i owner -f [any.pol|list.pol] -p TPM-password
   - copy and paste
 ../lcp_writepol -i owner -f list.pol -p <ownerauth password>
-2.  lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
+2.  If there is a verified launch policy:
+    lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
   - copy and paste
 ../lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
 
@@ -101,6 +102,10 @@ Write LCP and Verified Launch policies to TPM:
 
 Next you must modify grub so that you can choose the tbooted linux from the
 boot window.
+
+If the verified launch policy is non-empty, it is extended into PCR 17
+by default.  Subsequent loaded modules are extended into PCR 18 by
+default (Check this!).  This behavior can be changed with the VLP.
 
 The Grub(2) configuration file is usually in /boot/grub and is called
 grub.cfg.  It is updated automatically when a kernel is updated or

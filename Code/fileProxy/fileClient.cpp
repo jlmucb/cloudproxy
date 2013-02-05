@@ -283,7 +283,7 @@ bool fileClient::initFileKeys()
 }
 
 
-bool fileClient::initClient()
+bool fileClient::initClient(char* configDirectory)
 {
     struct sockaddr_in  server_addr;
     int                 slen= sizeof(struct sockaddr_in);
@@ -297,8 +297,15 @@ bool fileClient::initClient()
 
     try {
 
-        if(directory==NULL)
+        char** parameters= NULL;
+        int parameterCount= 0;
+        if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
+        } else {
+            directory= configDirectory;
+            parameters= &directory;
+            parameterCount= 1;
+        }
 
         if(!initAllCrypto()) {
             throw((char*)"fileClient::Init: can't initcrypto\n");
@@ -306,7 +313,7 @@ bool fileClient::initClient()
         m_oKeys.m_fClient= true;
 
         // init Host and Environment
-        if(!m_host.HostInit(PLATFORMTYPELINUX, 0, NULL)) {
+        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
             throw((char*)"fileClient::Init: can't init host\n");
         }
 #ifdef TEST
@@ -316,7 +323,7 @@ bool fileClient::initClient()
 
         // init environment
         if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, (char*)"fileClient",
-                                DOMAIN, DEFAULTDIRECTORY, 
+                                DOMAIN, directory, 
                                 &m_host, 0, NULL)) {
             throw((char*)"fileClient::Init: can't init environment\n");
         }
@@ -872,11 +879,11 @@ bool fileClient::protocolNego(int fd, safeChannel& fc)
         // do hashes match?
 #ifdef TEST
         fprintf(g_logFile, "fileClient::protocolNego: server hases\n");
-	PrintBytes((char*)"Computed: ", m_oKeys.m_rgServerMessageHash, 
+    PrintBytes((char*)"Computed: ", m_oKeys.m_rgServerMessageHash, 
                     SHA256DIGESTBYTESIZE);
-	PrintBytes((char*)"Received: ", m_oKeys.m_rgDecodedServerMessageHash, 
+    PrintBytes((char*)"Received: ", m_oKeys.m_rgDecodedServerMessageHash, 
                     SHA256DIGESTBYTESIZE);
-	fflush(g_logFile);
+    fflush(g_logFile);
 #endif
         if(!m_oKeys.m_fServerMessageHashValid || 
            !m_oKeys.m_fDecodedServerMessageHashValid ||
@@ -1041,6 +1048,7 @@ int main(int an, char** av)
     char*           szResource=(char*) "//www.manferdelli.com/Gauss/fileServer/files/file.test";
     int             encType= NOENCRYPT;
     byte*           key= NULL;
+    char*           directory= NULL;
 
     initLog(NULL);
 
@@ -1062,6 +1070,9 @@ int main(int an, char** av)
              }
             if(strcmp(av[i],"-address")==0) {
                 oFileClient.m_szAddress= strdup(av[++i]);
+             }
+            if (strcmp(av[i],"-directory")==0) {
+                directory= strdup(av[++i]);
              }
         }
     }
@@ -1107,7 +1118,7 @@ int main(int an, char** av)
         fflush(g_logFile);
 #endif
         // init logfile, crypto, etc
-        if(!oFileClient.initClient())
+        if(!oFileClient.initClient(directory))
             throw((char *)"fileClient main: initClient() failed\n");
 
         // copy my public key into client public key

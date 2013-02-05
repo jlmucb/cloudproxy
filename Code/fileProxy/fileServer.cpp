@@ -301,22 +301,30 @@ bool fileServer::initFileKeys()
 }
 
 
-bool fileServer::initServer()
+bool fileServer::initServer(char* configDirectory)
 {
     bool            fRet= true;
     char*           directory= NULL;
 
     try {
 
-        if(directory==NULL)
+        char** parameters = NULL;
+        int parameterCount = 0;
+        if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
+            
+        } else {
+            directory= configDirectory;
+            parameters= &directory;
+            parameterCount= 1;
+        }
 
         if(!initAllCrypto()) {
             throw((char*)"fileServer::Init: can't initcrypto\n");
         }
 
         // init Host and Environment
-        if(!m_host.HostInit(PLATFORMTYPELINUX, 0, NULL)) {
+        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
             throw((char*)"fileServer::Init: can't init host\n");
         }
 #ifdef TEST
@@ -326,7 +334,7 @@ bool fileServer::initServer()
 
         // init environment
         if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, (char*)"fileServer",
-                             DOMAIN, DEFAULTDIRECTORY,
+                             DOMAIN, directory,
                              &m_host, 0, NULL)) {
             throw((char*)"fileServer::Init: can't init environment\n");
         }
@@ -1202,6 +1210,7 @@ int main(int an, char** av)
     int         iRet= 0;
     bool        fInit= false;
     bool        fInitProg= false;
+    char*   directory= NULL;
 
 
     initLog(NULL);
@@ -1218,6 +1227,9 @@ int main(int an, char** av)
             if(strcmp(av[i],"-address")==0) {
                 oServer.m_szAddress= strdup(av[++i]);
              }
+        if(strcmp(av[i],"-directory")==0) {
+        directory= strdup(av[++i]);
+        }
         }
     }
 
@@ -1256,7 +1268,7 @@ int main(int an, char** av)
         if(g_policyPrincipalCert==NULL)
             throw((char*)"fileServer main: failed to new Principal\n");
 
-        if(!oServer.initServer()) 
+        if(!oServer.initServer(directory)) 
             throw((char*)"fileServer main: cant initServer\n");
 
 #ifdef TEST

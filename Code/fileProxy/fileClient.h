@@ -64,7 +64,7 @@ public:
     fileClient();
     ~fileClient();
 
-    bool    initClient();
+    bool    initClient(char* configDirectory);
     bool    initPolicy();
     bool    initFileKeys();
     bool    closeClient();

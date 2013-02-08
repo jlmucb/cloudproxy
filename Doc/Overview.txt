@@ -71,8 +71,8 @@ Our focus is the Development Computer.
 
 Software setup of the Development Computer
 
-1. Install Linux.  These instructions were written for Ubuntu 12.10.
-2. Install the Linux Kernel Developnent environment using the instructions 
+1. Install Linux.  These instructions were written for Ubuntu 12.04.
+2. Install the Linux Kernel Development environment using the instructions 
     in "LinuxDev.txt."
 3. Create the directories that will the compiled object files and executables.
    Consult "DirectoryStructure.txt" to learn more about the directory structure.
@@ -81,7 +81,7 @@ For each FileClient, FileServer and Development Computer you want to use:
 
     4. Activate the TPM using the BIOS interface, using HW manufacturers 
         instructions.
-    5. Take ownership of the TPM and generate the approriate keys using the 
+    5. Take ownership of the TPM and generate the appropriate keys using the 
         instructions in "SetupTPM.txt"
 
 On the Development Computer or KeyNegoServer Computer (depending on whether 

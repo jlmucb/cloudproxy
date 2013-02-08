@@ -499,7 +499,7 @@ bool Sign(char* szKeyFile, char* szAlgorithm, char* szInFile, char* szOutFile)
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "Sign(%s, %s, %s, %s\n", szKeyFile, szAlgorithm, szInFile, szOutFile);
+    fprintf(g_logFile, "Sign(%s, %s, %s, %s)\n", szKeyFile, szAlgorithm, szInFile, szOutFile);
 #endif
 
     try {

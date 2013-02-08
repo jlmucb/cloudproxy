@@ -29,8 +29,10 @@ To build the LCPTools
 ----------------------------------------------------------------------------
 
 
-Now you must built a Launch Control Policy (LCP) which controls what can be
-booted.  The LCP consists of policy elements.
+You may built a Launch Control Policy (LCP) which controls what can be
+booted.  If you have no LCP, the default policy will be applied.
+
+The LCP consists of policy elements.
 
 To specify launch policy via a list of hashes:
 0.  sudo bash
@@ -112,12 +114,6 @@ grub.cfg.  It is updated automatically when a kernel is updated or
 when you run update-grub.  
 
 Tboot module must be added as the 'kernel' in the grub.conf file.
-Here is an example:
-   root (hd0,1)
-   kernel /tboot.gz logging=vga vga_delay=10
-   module /vmlinuz-2.6.18 root=/dev/VolGroup00/LogVol00 ro
-   module /initrd...
-   module /Q35_SINIT_17.BIN
 
 I don't do the indented thing and it seems to work.
     For Linux:  the 'intel_iommu=on' command line option will enable VT-d and
@@ -153,6 +149,9 @@ Modify grub.conf to load the policy data file:
 Copy sinit into /boot and change run grub.conf then run update-grub.
 
 Check the /boot directory to make sure tboot.gz is there.
+
+The utility txt-stat in the utils subdirectory of tboot, can be used
+to view the DRTM boot log.
 
 
 ---------------------------------------------------------------------
@@ -245,4 +244,4 @@ indented directions.
     5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
     6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
 
-Create policy and policy data files:
+DCreate policy and policy data files:

@@ -6,6 +6,12 @@ Create the directory that the TrustedOS will find its
 keys, certificates and where it stores its files.  By
 default, this is ROOT/TrustedOS.
 
+Before building tcioDD, open the Makefile and edit
+KDIR to point to the module build directory for the 
+kernel the tcioDD will be loaded into. The current
+version is for the stock 3.7.5 kernel, which installs
+the build directory into /lib/modules/3.7.5/build.
+
 Build the tcioDD device driver.
     cd Devices
     make

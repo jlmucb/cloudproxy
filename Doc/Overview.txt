@@ -92,7 +92,7 @@ On the Development Computer or KeyNegoServer Computer (depending on whether
 7. Generate a FileProxy public/private key pair and produce a self signed certificate
     using the instructions in "KeySetup.txt."  Provision the files produced as indicated 
     there, these files include the hardware certificate you produce for the AIK using
-    the AIK Blob Files as well as a file icontaining the Public Key for the activity which
+    the AIK Blob Files as well as a file containing the Public Key for the activity which
     will be compiled into FileClient and FileServer.
 
 8.  Compile KeyNegoServer using the instructions in "KeyNegoServer.txt."

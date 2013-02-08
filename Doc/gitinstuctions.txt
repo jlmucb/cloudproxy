@@ -38,13 +38,6 @@ https://support.comodo.com/index.php?_m=downloads&_a=viewdownload&downloaditemid
 4. Run
   sudo update-ca-certificates
 
-wget https://cert.incommon.org/InCommonServerCA.crt
-openssl x509 -inform DER -in InCommonServerCA.crt -out incommon.pem
-sudo su
-cp /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt.bak
-cat /etc/ssl/certs/ca-certificates.crt.bak incommon.pem >
-/etc/ssl/certs/ca-certificates.crt
-exit
 
 However, this means that you need to enter your username and password
 each time you want to do a remote operation, so I prefer the SSH

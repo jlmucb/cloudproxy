@@ -176,6 +176,8 @@ system will still be able to check that the right software was booted
 by checking the PCRs.  Once the hypervisor is written, a more 
 restrictive launch control policy is possible and maybe desireable. 
 
+Put 11_tboot in /etc/grub.d
+
 
 -----------------------------------------------------------------------
 

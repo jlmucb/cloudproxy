@@ -29,18 +29,48 @@ The first time you run tcService, you must run it with the -initKeys flag.
 This generates the OS keys stores them and causes keyNegoServer to sign them.  
 In the paper, this is called "tao initialization" for the OS.  keyNegoServer 
 need only be available when a tao layer needs to initialize.  Here
-is a procedure.  Start keyNegoServer.  In a different console on the fileProxy machine,
-type:
+is a procedure.  Start keyNegoServer.  In a different console on the 
+fileProxy machine, type:
 
 ./tcService.exe -initKeys
 
-Unlike a normal run of tcService where tcService continues running, tcService will exit
-after the keys are generated and the cert signed and stored.  If you are running the standard
-test, suppose CODE is the directory where the fileProxy code is and ROOT is the directory
+Unlike a normal run of tcService where tcService continues running, 
+tcService will exit after the keys are generated and the cert signed 
+and stored.  
+
+Next prepare the test files for fileClient
+
+If you are running the standard test, suppose CODE is 
+the directory where the fileProxy code is and ROOT is the directory
 you store your executables (usually jlmcrypt); do the following:
 1. mkdir ROOT/fileClient/files
 2. cp CODE/SupportFiles/testfiles/file.test ROOT/fileClient/files
-2. cp CODE/SupportFiles/testfiles/*.xml ROOT/fileClient
+
+Copy the principal private keys and prototypes into fileClient:
+cp CODE/SupportFiles/testfiles/principalPrivateKeys.xml ROOT/fileClient
+cp CODE/SupportFiles/testfiles/authorizationProto.xml ROOT/fileClient
+cp CODE/SupportFiles/testfiles/jlmPrincipalPrivateKey.xml ROOT/fileClient
+cp CODE/SupportFiles/testfiles/jlmPrincPublicKeyProto.xml ROOT/fileClient
+
+Copy the principal public key prototype file and authorization rule
+prototype into fileClient:
+cp CODE/SupportFiles/testfiles/principalPublicKeysProto.xml ROOT/fileClient/principalPublicKeys.xml
+cp CODE/SupportFiles/testfiles/authRule1Proto.xml ROOT/fileClient/authRule1Signed.xml
+Note:  change this last name soon.
+
+In ROOT, Sign the user principal key prototype and the authorization
+rule prototype:
+./cryptUtility.exe -Sign policy/privatePolicyKey.xml rsa1024-sha256-pkcspad \
+        fileClient/jlmPrincPublicKeyProto.xml fileClient/jlmPrincPublicKey.xml
+./cryptUtility.exe -Sign fileClient/jlmPrincipalPrivateKey.xml rsa1024-sha256-pkcspad \
+        fileClient/authorizationProto.xml fileClient/authorizationRuleSigned.xml
+
+Edit ROOT/fileClient/principalPublicKeys.xml and copy the newly signed 
+jlmPrincPublicKey.xml into the file where indicated.
+
+Edit ROOT/fileClient/authRule1Signed.xml and copy the newly signed 
+authorizationRuleSigned.xml into the file where indicated.
+
 
 Regular user
 ./tcService.exe &

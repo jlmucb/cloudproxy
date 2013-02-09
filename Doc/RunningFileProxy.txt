@@ -62,7 +62,7 @@ In ROOT, Sign the user principal key prototype and the authorization
 rule prototype:
 ./cryptUtility.exe -Sign policy/privatePolicyKey.xml rsa1024-sha256-pkcspad \
         fileClient/jlmPrincPublicKeyProto.xml fileClient/jlmPrincPublicKey.xml
-./cryptUtility.exe -Sign fileClient/jlmPrincipalPrivateKey.xml rsa1024-sha256-pkcspad \
+./cryptUtility.exe -Sign policy/privatePolicyKey.xml rsa1024-sha256-pkcspad \
         fileClient/authorizationProto.xml fileClient/authorizationRuleSigned.xml
 
 Edit ROOT/fileClient/principalPublicKeys.xml and copy the newly signed 

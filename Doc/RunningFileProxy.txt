@@ -35,7 +35,12 @@ type:
 ./tcService.exe -initKeys
 
 Unlike a normal run of tcService where tcService continues running, tcService will exit
-after the keys are generated and the cert signed and stored.
+after the keys are generated and the cert signed and stored.  If you are running the standard
+test, suppose CODE is the directory where the fileProxy code is and ROOT is the directory
+you store your executables (usually jlmcrypt); do the following:
+1. mkdir ROOT/fileClient/files
+2. cp CODE/SupportFiles/testfiles/file.test ROOT/fileClient/files
+2. cp CODE/SupportFiles/testfiles/*.xml ROOT/fileClient
 
 Regular user
 ./tcService.exe &

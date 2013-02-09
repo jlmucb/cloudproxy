@@ -183,6 +183,9 @@ bool tpmStatus::initTPM()
         printErr(ret);
         return false;
     }
+#ifdef TPMTEST
+    fprintf(g_logFile, "Load SRK succeeded, srk key: %08x\n", m_hSRK);
+#endif
 
     // Policy
     ret= Tspi_GetPolicyObject(m_hSRK, TSS_POLICY_USAGE,
@@ -423,6 +426,14 @@ bool tpmStatus::sealData(unsigned sizetoSeal, byte* tosealData,
     // Sealing to PCR values
     if(sizetoSeal>1024)
        return false;
+
+#ifdef TPMTEST
+    fprintf(g_logFile, "\nsealData arguments: sealKey: %08x, srk: %08x, sizetoseal: %d\n",
+            m_hSealingData, m_hSRK, sizetoSeal);
+    fprintf(g_logFile, "\nsealData arguments: allocated size: %d, tpm handle: %08x\n",
+            *psizeSealed, m_hTPM);
+    PrintBytes((char*)"toseal\n", tosealData, sizetoSeal);
+#endif
 
     // This seal does not do locality but does do PCRs
     ret= Tspi_Data_Seal(m_hSealingData, m_hSRK, sizetoSeal, (BYTE*) tosealData,

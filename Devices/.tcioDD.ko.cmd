@@ -1,1 +1,0 @@
-cmd_/home/jlm/fpDev/fileProxy/Devices/tcioDD.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-3.2.0-37-generic/scripts/module-common.lds --build-id  -o /home/jlm/fpDev/fileProxy/Devices/tcioDD.ko /home/jlm/fpDev/fileProxy/Devices/tcioDD.o /home/jlm/fpDev/fileProxy/Devices/tcioDD.mod.o

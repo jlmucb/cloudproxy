@@ -1047,7 +1047,6 @@ int main(int an, char** av)
     char*           szSubject=(char*) "//www.manferdelli.com/User/JohnManferdelli/0001";
     char*           szResource=(char*) "//www.manferdelli.com/Gauss/fileServer/files/file.test";
     int             encType= NOENCRYPT;
-    byte*           key= NULL;
     char*           directory= NULL;
 
     initLog(NULL);
@@ -1152,7 +1151,7 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
 
-    if(clientcreateResourceonserver(fc, szResource, szSubject, szEvidence, encType, key)) {
+    if(clientcreateResourceonserver(fc, szResource, szSubject, szEvidence, encType, oFileClient.m_fileKeys)) {
         fprintf(g_logFile, "fileClient main: create resource successful\n");
         fflush(g_logFile);
     }
@@ -1162,7 +1161,7 @@ int main(int an, char** av)
     }
 
     if(clientsendResourcetoserver(fc, szResource, NULL, (char*)"fileClient/files/file.test", 
-                                  encType, key)) {
+                                  encType, oFileClient.m_fileKeys)) {
         fprintf(g_logFile, "fileClient main: Send file successful\n");
         fflush(g_logFile);
         }
@@ -1174,7 +1173,7 @@ int main(int an, char** av)
     if(clientgetResourcefromserver(fc, 
                                    (char*)"//www.manferdelli.com/Gauss/fileServer/files/file.test", 
                                    NULL, (char*)"fileClient/files/clientfile.test.out", 
-                                   encType, key)) {
+                                   encType, oFileClient.m_fileKeys)) {
         fprintf(g_logFile, "fileClient main: Get file successful\n");
         fflush(g_logFile);
         }

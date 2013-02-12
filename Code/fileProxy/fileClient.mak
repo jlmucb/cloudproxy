@@ -11,10 +11,10 @@ VLT=	    ../vault
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
-CFLAGS=     -D LINUX -D DONTENCRYPTFILES -D FILECLIENT -D TEST -D __FLUSHIO__ 
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++

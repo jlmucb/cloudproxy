@@ -252,6 +252,9 @@ bool Request::validateCreateRequest(sessionKeys& oKeys, char** pszFile,
         return false;
     }
 
+    // Fix: this is certainly a bug and potentially a vulnerability in the code,
+    // since the length of m_szResourceName is not fixed, and szBuf is. This
+    // should be changed to strncpy so it can't overflow
     strcpy(szBuf, m_szResourceName);
     char* p= szBuf;
     while(*p!=0)

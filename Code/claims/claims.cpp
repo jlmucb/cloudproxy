@@ -278,6 +278,15 @@ bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, by
     bnum    bnMsg(pKey->m_iByteSizeM/2);
     bnum    bnOut(pKey->m_iByteSizeM/2);
 
+    // Fix: this is a vulnerability, since sizeSig is controlled by the XML
+    // received from an external source and bnMsg.m_pValue is not necessarily
+    // long enough to hold it. A remediation in this case would be to use the
+    // min of sizeSig and the length of bnMsg.m_pValue (as long as both are
+    // expressed in bytes). But a better solution would be to implement some
+    // kind of buffer class that wraps memcpy and arrays so we don't have to
+    // worry about this problem everywhere. E.g., bnum should have a method that
+    // copies in a string, and a method that copies out to a buffer of a given
+    // length.
     memcpy((byte*)bnMsg.m_pValue, sig, sizeSig);
     if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut))
         return false;

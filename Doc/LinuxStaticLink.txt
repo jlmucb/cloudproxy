@@ -1,0 +1,21 @@
+This document contains instructions (to be updated) on how to statically link
+the Linux kernel for FileProxy.
+
+The basic static linking procedure for Linux is to turn off dynamic module
+loading by unsetting CONFIG_MODULES on the .config file. However, there are a
+few quirks with this configuration that still need to be resolved:
+
+1. make install in the kernel doesn't seem to work if there isn't a /lib/modules
+directory for this kernel. The easiest way I've found to deal with this is to
+fake it: just copy over another modules directory for a dynamically-built copy
+of the kernel.
+
+2. the tcioDD driver needs to be added to the static build of the kernel,
+probably by putting its directory in drivers/misc in the kernel source tree and
+adding its Kbuild information to the Makefile in this directory. However, when I
+tried this simple step, I didn't find any evidence in dmesg that tcioDD had been
+started properly.
+
+3. Even if tcioDD is started properly, udev will have to be modified to add the
+tcioDD node in /dev. This involves creating a new config file in
+/etc/udev/rules.conf.

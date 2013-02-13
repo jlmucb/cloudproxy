@@ -70,7 +70,6 @@
 
 
 bool        g_fTerminateServer= false;
-const char* szServerHostAddr= "127.0.0.1";
 int         iQueueSize= 5;
 
 bool             g_globalpolicyValid= false;

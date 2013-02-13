@@ -56,8 +56,25 @@ int sendPacket(int fd, byte* buf, int len, int type, byte multi, byte final)
     oHdr.finalpart= final;
     oHdr.error= 0;
 
-    write(fd, &oHdr, sizeof(packetHdr));
-    write(fd, buf, len);
+    ssize_t bytesWritten = write(fd, &oHdr, sizeof(packetHdr));
+
+    // make sure we can write the header in one write
+    if (sizeof(packetHdr) != bytesWritten) {
+      fprintf(g_logFile, "Tried to write the packet header (%d bytes), but only wrote %d bytes\n", sizeof(packetHdr), bytesWritten);
+      return 0;
+    }
+    
+    // send the message in chunks as allowed by the underlying protocol
+    bytesWritten = 0;
+    do {
+      ssize_t ret = write(fd, buf + bytesWritten, len - bytesWritten);
+      if (ret < 0) {
+        fprintf(g_logFile, "Could not write the full buffer of length %d to the network after %d bytes were written\n", len, bytesWritten);
+        return 0;
+      }
+
+      bytesWritten += ret;
+    } while (bytesWritten < len);
 
     return len;
 }
@@ -71,10 +88,12 @@ int getPacket(int fd, byte* buf, int maxSize, int* ptype, byte* pmulti, byte* pf
     fprintf(g_logFile, "getPacket %d len %d type %d\n", fd, maxSize, *ptype);
 #endif
     oHdr.error= 0;
-    if(read(fd, &oHdr, sizeof(packetHdr))<(int)sizeof(packetHdr))
-        return false;
+    if(read(fd, &oHdr, sizeof(packetHdr)) < (ssize_t)sizeof(packetHdr)) {
+        return 0;
+    }
+
     // clear input?
-    if((int)oHdr.len>maxSize)
+    if((int)oHdr.len > maxSize)
         return BUFFERTOOSMALL;
     *ptype= oHdr.packetType;
     *pmulti= oHdr.multipart;
@@ -82,7 +101,18 @@ int getPacket(int fd, byte* buf, int maxSize, int* ptype, byte* pmulti, byte* pf
     if(oHdr.error!=0)
         return -((int) oHdr.error);
 
-    return read(fd, buf, maxSize);
+    ssize_t bytesRead = 0;
+    do {
+      ssize_t ret = read(fd, buf + bytesRead, oHdr.len - bytesRead);
+      if (ret < 0) {
+        fprintf(g_logFile, "Could not read a buffer of length %d from the network after %d bytes were read\n", oHdr.len, bytesRead);
+        return 0;
+      }
+
+      bytesRead += ret;
+    } while (bytesRead < oHdr.len);
+
+    return oHdr.len;
 }
 
 

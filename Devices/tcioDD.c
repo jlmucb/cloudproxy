@@ -922,7 +922,6 @@ int tciodd_init(void)
     pdevice= device_create(pclass, NULL, MKDEV(tciodd_major,0), NULL, "tcioDD0");
     if(pdevice==NULL)
         goto fail;
-    // sys_chmod("/dev/tcioDD0", 0755);
 
     tciodd_devices= kmalloc(tciodd_nr_devs*sizeof(struct tciodd_dev), GFP_KERNEL);
     if(!tciodd_devices) {

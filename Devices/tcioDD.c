@@ -22,6 +22,7 @@
 #include <linux/mutex.h>
 #include <linux/sched.h>
 #include <linux/wait.h>
+#include <linux/device.h>
 #include "tcioDD.h"
 #include "tciohdr.h"
 #include "tcServiceCodes.h"
@@ -113,6 +114,13 @@ struct semaphore    tciodd_reqserviceqsem;
 struct tciodd_Qent* tciodd_reqserviceq= NULL;
 struct semaphore    tciodd_resserviceqsem; 
 struct tciodd_Qent* tciodd_resserviceq= NULL;
+
+
+//
+//  For udev and dynamic allocation of device
+static struct class*    pclass= NULL;
+static struct device*   pdevice= NULL;
+
 
 
 // ----------------------------------------------------------------------------
@@ -849,6 +857,16 @@ void tciodd_cleanup(void)
         }
         kfree(tciodd_devices);
     }
+
+    if(pclass!=NULL && pdevice!=NULL) {
+        device_destroy(pclass, MKDEV(tciodd_major,0));
+        pdevice= NULL;
+    }
+    if(pclass!=NULL) {
+        class_destroy(pclass);
+        pclass= NULL;
+    }
+
     // cleanup_module isn't called if registering failed
     unregister_chrdev_region(devno, tciodd_nr_devs);
 #ifdef TESTDEVICE
@@ -898,6 +916,14 @@ int tciodd_init(void)
         return result;
     }
 
+    pclass= class_create(THIS_MODULE, "tcioDD");
+    if(pclass==NULL)
+        goto fail;
+    pdevice= device_create(pclass, NULL, MKDEV(tciodd_major,0), NULL, "tcioDD0");
+    if(pdevice==NULL)
+        goto fail;
+    // sys_chmod("/dev/tcioDD0", 0755);
+
     tciodd_devices= kmalloc(tciodd_nr_devs*sizeof(struct tciodd_dev), GFP_KERNEL);
     if(!tciodd_devices) {
         result= -ENOMEM;
@@ -926,7 +952,7 @@ fail:
 }
 
 
-MODULE_LICENSE("BSD");
+MODULE_LICENSE("GPL");
 module_init(tciodd_init);
 module_exit(tciodd_cleanup);
 

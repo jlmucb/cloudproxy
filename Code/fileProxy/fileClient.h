@@ -74,7 +74,6 @@ public:
 
 
 #define SERVICENAME             "fileServer"
-#define SERVICEADDRESS          "127.0.0.1"
 #define SERVICE_PORT            6000
 
 

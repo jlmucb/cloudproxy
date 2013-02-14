@@ -15,15 +15,10 @@ following operations as superuser
 
 you will have to log out and back in to get the right group permissions.
 
-3. create the tcioDD0 device
-
-  cd /dev
-  mknod tcioDD0 c 100 0
-  chmod 0777 /dev/tcioDD0
-
-4. add tcioDD to the kernel  
+3. add tcioDD to the kernel  
   cd ~/jlmcrypt
   insmod tcioDD.ko
+  chmod 0777 /dev/tcioDD0
 
 The first time you run tcService, you must run it with the -initKeys flag.  
 This generates the OS keys stores them and causes keyNegoServer to sign them.  

@@ -49,7 +49,7 @@ public:
     void                Init();
     void                littleEndian(byte* buf, int size);
     void                Transform(u32* state, u32* data);
-    void                Update(byte*, int);
+    void                Update(const byte*, int);
     void                Final();
     void                GetDigest(byte*);
     };

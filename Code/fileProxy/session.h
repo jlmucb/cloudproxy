@@ -138,12 +138,12 @@ public:
                     ~sessionKeys();
 
     void            clearKeys();
-    bool            getServerCert(char* szXml);
-    bool            getClientCert(char* szXml);
-    bool            getMyProgramCert(char* szCert);
+    bool            getServerCert(const char* szXml);
+    bool            getClientCert(const char* szXml);
+    bool            getMyProgramCert(const char* szCert);
     bool            getMyProgramKey(RSAKey* pKey);
 
-    bool            getPrincipalCertsFromString(char* szXml);
+    bool            getPrincipalCertsFromString(const char* szXml);
     bool            getPrincipalCertsFromFile();
     bool            getPrincipalPrivateKeysFromFile();
 

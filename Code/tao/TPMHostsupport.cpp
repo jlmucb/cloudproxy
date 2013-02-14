@@ -59,7 +59,7 @@
 tpmStatus   g_oTpm;
 
 
-bool initTPM(char* aikblobfile, char* szTPMPassword)
+bool initTPM(const char* aikblobfile, const char* szTPMPassword)
 {
 #ifdef TEST1
     if(szTPMPassword!=NULL)

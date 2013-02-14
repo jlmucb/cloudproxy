@@ -45,9 +45,9 @@
 extern FILE*   g_logFile;
 
 
-bool	initLog(char* szLogFile);
+bool	initLog(const char* szLogFile);
 void	closeLog();
-void	PrintBytes(char* szMsg, byte* pbData, int iSize, int col=32);
+void	PrintBytes(const char* szMsg, byte* pbData, int iSize, int col=32);
 
 #endif
 

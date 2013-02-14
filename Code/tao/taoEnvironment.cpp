@@ -132,14 +132,14 @@ void taoEnvironment::printData()
         fprintf(g_logFile, "\tMeasurement valid\n");
         fprintf(g_logFile, "\tMeasurement type: %08x, size: %d\n",
                         m_myMeasurementType, m_myMeasurementSize);
-        PrintBytes((char*)"Measurement: ", m_myMeasurement, m_myMeasurementSize);
+        PrintBytes("Measurement: ", m_myMeasurement, m_myMeasurementSize);
     }
     else
         fprintf(g_logFile, "\tMeasurement invalid\n");
     if(m_sealedsymKeyValid) {
         fprintf(g_logFile, "\tSealed sym key valid\n");
         fprintf(g_logFile, "\tSealed sym key size: %d\n", m_sealedsymKeySize);
-        PrintBytes((char*)"Sealed sym key:\n", m_sealedsymKey, m_sealedsymKeySize);
+        PrintBytes("Sealed sym key:\n", m_sealedsymKey, m_sealedsymKeySize);
     }
     else
         fprintf(g_logFile, "\tSealed sym key invalid\n");
@@ -148,7 +148,7 @@ void taoEnvironment::printData()
         fprintf(g_logFile, "\tSealed private key size: %d\n",
                 m_sealedprivateKeySize);
 #ifdef TEST1
-        PrintBytes((char*)"Sealed private key: ",
+        PrintBytes("Sealed private key: ",
                     m_sealedprivateKey, m_sealedprivateKeySize);
 #endif
     }
@@ -158,7 +158,7 @@ void taoEnvironment::printData()
         fprintf(g_logFile, "\tSym key valid\n");
         fprintf(g_logFile, "\tSym key size: %d\n", m_symKeySize);
 #ifdef TEST1
-        PrintBytes((char*)"Sym key: ", m_symKey, m_symKeySize);
+        PrintBytes("Sym key: ", m_symKey, m_symKeySize);
 #endif
     }
     else
@@ -168,7 +168,7 @@ void taoEnvironment::printData()
         fprintf(g_logFile, "\tPolicy key type: %08x, size: %d\n",
                         m_policyKeyType, m_sizepolicyKey);
 #ifdef TEST1
-        PrintBytes((char*)"Policy: ", m_policyKey, m_sizepolicyKey);
+        PrintBytes("Policy: ", m_policyKey, m_sizepolicyKey);
 #endif
     }
     else
@@ -178,7 +178,7 @@ void taoEnvironment::printData()
         fprintf(g_logFile, "\tPrivate key type: %08x, size: %d\n",
                         m_privateKeyType, m_privateKeySize);
 #ifdef TEST1
-        PrintBytes((char*)"Private key: ", m_privateKey, m_privateKeySize);
+        PrintBytes("Private key: ", m_privateKey, m_privateKeySize);
 #endif
     }
     else
@@ -187,7 +187,7 @@ void taoEnvironment::printData()
     fprintf(g_logFile, "\tPublic key size: %d, block size: %d\n", 
             m_publicKeySize, m_publicKeyBlockSize);
 #ifdef TEST1
-    PrintBytes((char*)"Public key: ", (byte*)m_publicKey, m_publicKeySize);
+    PrintBytes("Public key: ", (byte*)m_publicKey, m_publicKeySize);
 #endif
     if(m_myCertificateValid) {
         fprintf(g_logFile, "\tCertificate valid\n");
@@ -208,10 +208,10 @@ void taoEnvironment::printData()
 #endif
 
 
-bool taoEnvironment::EnvInit(u32 type, char* program, char* domain, char* directory, 
+bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, const char* directory, 
                              taoHostServices* host, int nArgs, char** rgszParameter)
 {
-    char*   parameter= DEFAULTDEVICE;
+    const char*   parameter= DEFAULTDEVICE;
     char    szhostName[256];
     int     n= 256;
 
@@ -233,7 +233,7 @@ bool taoEnvironment::EnvInit(u32 type, char* program, char* domain, char* direct
         m_machine= strdup(szhostName);
     }
     else {
-        m_machine= strdup((char*)"NoName");
+        m_machine= strdup("NoName");
     } 
     if(!initKeyNames()) {
         fprintf(g_logFile, "taoEnvironment::EnvInit: cant init key names\n");
@@ -336,7 +336,7 @@ bool taoEnvironment::EnvInit(u32 type, char* program, char* domain, char* direct
 #ifdef TEST
         fprintf(g_logFile, "taoEnvironment::EnvInit, got measurement %d %d\n",
                 codeDigestType, sizeCodeDigest);
-        PrintBytes((char*)"        Measurement:\n", m_myMeasurement, 
+        PrintBytes("        Measurement:\n", m_myMeasurement, 
                    m_myMeasurementSize);
         fflush(g_logFile);
 #endif
@@ -466,7 +466,7 @@ bool taoEnvironment::GetHostedMeasurement(int pid, int* psize, u32* ptype, byte*
 }
 
 
-bool taoEnvironment::StartHostedProgram(char* name, int an, char** av, int* phandle)
+bool taoEnvironment::StartHostedProgram(const char* name, int an, char** av, int* phandle)
 {
     // done in tcService
     return false;
@@ -484,10 +484,7 @@ bool taoEnvironment::GetEntropy(int size, byte* buf)
 bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
                         int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed)
 {  
-    int     outsize= 4096;
     byte    tmpout[4096];
-    int     hashsize= 0;
-    int     unsealedsize= 0;
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::Seal, in %d, out %d\n", 
@@ -518,7 +515,7 @@ bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
 #ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::Seal, about to encryptBlob, n=%d\n",
             n);
-    PrintBytes((char*)"To Seal: ", tmpout, n);
+    PrintBytes("To Seal: ", tmpout, n);
     fflush(g_logFile);
 #endif
     if(!AES128CBCHMACSHA256SYMPADEncryptBlob(n, tmpout, psizeSealed, sealed,
@@ -559,8 +556,11 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
 
     if(hashsize!=hostedMeasurementSize)
         return false;
-
-    memcmp(&tmpout[n], hostedMeasurement, hashsize);
+     
+    // Fix: the following line was the old value, 
+    //  but I think it should be memcpy and is just a typo
+    //memcmp(&tmpout[n], hostedMeasurement, hashsize);
+    memcpy(&tmpout[n], hostedMeasurement, hashsize);
     n+= hashsize;
 
     memcpy(psizeunsealed, &tmpout[n], sizeof(int));
@@ -766,7 +766,7 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
     }
 
     if(myInit.m_myMeasurementValid) {
-        m_myMeasurementType== myInit.m_myMeasurementType;
+        m_myMeasurementType= myInit.m_myMeasurementType;
         m_myMeasurementSize= myInit.m_myMeasurementSize;
         m_myMeasurement= (byte*) malloc(myInit.m_myMeasurementSize);
         if(m_myMeasurement==NULL) {
@@ -952,7 +952,7 @@ bool taoEnvironment::restoreTao()
             m_serializedprivateKey);
     fprintf(g_logFile, "taoEnvironment::restoreTao privatekey size, %d\n", 
             m_privateKeySize);
-    PrintBytes((char*)"Private key: ", m_privateKey, m_privateKeySize);
+    PrintBytes("Private key: ", m_privateKey, m_privateKeySize);
     if(pK->m_pbnM!=NULL) {
         fprintf(g_logFile, "M(%d, %08x): ", pK->m_pbnM->mpSize(), pK->m_pbnM);
         printNum(*(pK->m_pbnM)); fprintf(g_logFile, "\n");
@@ -1059,7 +1059,7 @@ bool taoEnvironment::hostunsealKey(int sealedSize, byte* sealed,
     }
 #ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::hostunsealKey, back from unseal\n");
-    PrintBytes((char*) "unsealed:\n", rgOut, size);
+    PrintBytes( "unsealed:\n", rgOut, size);
     fflush(g_logFile);
 #endif
 
@@ -1205,7 +1205,7 @@ bool taoEnvironment::localunsealKey(int sealedSize, byte* sealed,
             outsize);
     fprintf(g_logFile, "taoEnvironment::localunsealKey size of unsealed Key %d\n",
             *psize);
-    PrintBytes((char*)"Unsealed blob\n", rgOut, outsize);
+    PrintBytes("Unsealed blob\n", rgOut, outsize);
 #endif
 
     *ppkey= (byte*) malloc(*psize);

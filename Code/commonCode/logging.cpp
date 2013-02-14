@@ -63,11 +63,14 @@ void*  flushIO(void* ptr)
         sleep(5);
         fflush(g_logFile);
     }
+
+    // unreachable, but eliminates a useless warning
+    return NULL;
 }
 #endif
 
 
-bool initLog(char* szLogFile)
+bool initLog(const char* szLogFile)
 {
 
     if(szLogFile==NULL) {
@@ -100,7 +103,7 @@ void closeLog()
 }
 
 
-void PrintBytes(char* szMsg, byte* pbData, int iSize, int col)
+void PrintBytes(const char* szMsg, byte* pbData, int iSize, int col)
 {
     int i;
 

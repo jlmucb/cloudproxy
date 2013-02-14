@@ -95,7 +95,7 @@ bool metaData::initFileNames()
 }
 
 
-bool metaData::initMetaData(char* directory, char* program)
+bool metaData::initMetaData(const char* directory, const char* program)
 {
 #ifdef TEST
     fprintf(g_logFile, "metaData::initMetaData\n");
@@ -109,12 +109,12 @@ bool metaData::initMetaData(char* directory, char* program)
 
     m_pRM= new objectManager<resource>(NUMRESOURCES, NUMSTRINGS);
     if(m_pRM==NULL) {
-        fprintf(g_logFile,(char*)"Cant init resource manager\n");
+        fprintf(g_logFile,"Cant init resource manager\n");
         return false;
     }
     m_pPM= new objectManager<accessPrincipal>(NUMPRINCIPALS, NUMSTRINGS);
     if(m_pPM==NULL) {
-        fprintf(g_logFile,(char*)"Cant init principal manager\n");
+        fprintf(g_logFile, "Cant init principal manager\n");
         return false;
     }
     m_metaDataValid= true;
@@ -134,7 +134,7 @@ bool metaData::addResource(resource* pResource)
 }
 
 
-resource* metaData::findResource(char* szName)
+resource* metaData::findResource(const char* szName)
 {
     if(m_pRM==NULL)
         return NULL;
@@ -158,7 +158,7 @@ bool metaData::addPrincipal(accessPrincipal* pPrin)
 }
 
 
-accessPrincipal*    metaData::findPrincipal(char* szName)
+accessPrincipal*    metaData::findPrincipal(const char* szName)
 {
     if(m_pPM==NULL)
         return NULL;
@@ -176,11 +176,13 @@ bool metaData::deletePrincipal(accessPrincipal* pPrin)
 
 bool     metaData::addKey(KeyInfo* key)
 {
+  return false;
 }
 
 
-KeyInfo* metaData::findKey(char* szName)
+KeyInfo* metaData::findKey(const char* szName)
 {
+  return NULL;
 }
 
 
@@ -196,7 +198,6 @@ bool    metaData::saveMetaData(int encType, byte* key)
     byte*               bufP= NULL;
     byte*               bufR= NULL;
     int                 iWrite= -1;
-    int                 i;
     encryptedFilewrite  encFile;
     int                 filesize= 0;
     int                 datasize= 0;
@@ -204,7 +205,7 @@ bool    metaData::saveMetaData(int encType, byte* key)
     try {
 
         if(m_szmetadataFile==NULL)
-            throw((char *)"metaData::saveMetaData: no metadata file\n");
+            throw "metaData::saveMetaData: no metadata file\n";
 
 #ifdef  TEST
         fprintf(g_logFile, "metaData::saveMetaData: file: %s\n", m_szmetadataFile);
@@ -212,12 +213,12 @@ bool    metaData::saveMetaData(int encType, byte* key)
         fflush(g_logFile);
 #endif
         if(!m_pPM->SerializeObjectTable(&iSizeP, &bufP))
-            throw((char *)"metaData::saveMetaData: Can't serialize principal table\n");
+            throw "metaData::saveMetaData: Can't serialize principal table\n";
 #ifdef  TEST
         fprintf(g_logFile, "metaData::saveMetaData: Serialize resource table\n");
 #endif
         if(!m_pRM->SerializeObjectTable(&iSizeR, &bufR))
-            throw((char *)"metaData::saveMetaData: Can't serialize principal table\n");
+            throw "metaData::saveMetaData: Can't serialize principal table\n";
 #ifdef  TEST
         fprintf(g_logFile, "metaData::saveMetaData: Serialize done %d %d\n",
                 iSizeP, iSizeR);
@@ -260,11 +261,11 @@ bool    metaData::saveMetaData(int encType, byte* key)
         // open file and write it out
         iWrite= open(m_szmetadataFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if(iWrite<0) 
-            throw((char *)"metaData::saveMetaData: Can't create file\n");
+            throw "metaData::saveMetaData: Can't create file\n";
         encFile.EncWrite(iWrite, bufP, iSizeP);
         encFile.EncWrite(iWrite, bufR, iSizeR);
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         fprintf(g_logFile, "Error: %s\n", szError);
         fflush(g_logFile);
         fRet= false;
@@ -275,9 +276,9 @@ bool    metaData::saveMetaData(int encType, byte* key)
 
 #ifdef  TEST
     fprintf(g_logFile, "\n");
-    PrintBytes((char*)"metaData::saveMetaData: princpal table", bufP, iSizeP);
+    PrintBytes("metaData::saveMetaData: princpal table", bufP, iSizeP);
     fprintf(g_logFile, "\n");
-    PrintBytes((char*)"metaData::saveMetaData: resource table", bufR, iSizeR);
+    PrintBytes("metaData::saveMetaData: resource table", bufR, iSizeR);
     fprintf(g_logFile, "\n");
     fprintf(g_logFile, "metaData::saveMetaData: returning\n");
     fflush(g_logFile);
@@ -298,6 +299,7 @@ bool    metaData::saveMetaData(int encType, byte* key)
 
 bool metaData::deleteKey(KeyInfo* key)
 {
+  return false;
 }
 
 
@@ -330,14 +332,13 @@ bool metaData::restoreMetaData(int encType, byte* key)
 
     int                 filesize= statBlock.st_size;
     int                 datasize= 0;
-    int                 iBitSize= 0;
 
     try {
 
         // open read file
         iRead= open(m_szmetadataFile, O_RDONLY);
         if(iRead<0)
-            throw((char*)"metaData::restoreMetaData: No restoreTableFile\n");
+            throw "metaData::restoreMetaData: No restoreTableFile\n";
    
         // open encrypted read file
         if(encType==NOENCRYPT) {
@@ -349,10 +350,10 @@ bool metaData::restoreMetaData(int encType, byte* key)
             datasize= filesize-AES128BYTEBLOCKSIZE-SHA256_DIGESTSIZE_BYTES;
             if(!encFile.initDec(filesize, datasize, key, 256,
                                 AES128, SYMPAD, CBCMODE, HMACSHA256)) 
-                throw((char*) "metaData::restoreMetaData:: Cant init initialize file keys\n");
+                throw  "metaData::restoreMetaData:: Cant init initialize file keys\n";
         }
         else {
-            throw((char*) "metaData::restoreMetaData: invalid encryption\n");
+            throw  "metaData::restoreMetaData: invalid encryption\n";
         }
 
         // read buffers
@@ -362,7 +363,7 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #endif
         bufP= (byte*) malloc(iSizeP-sizeof(int));
         if(bufP==NULL)
-            throw((char *)"metaData::restoreMetaData: Can't malloc principal buffer\n");
+            throw "metaData::restoreMetaData: Can't malloc principal buffer\n";
         encFile.EncRead(iRead, bufP, iSizeP-sizeof(int));
         encFile.EncRead(iRead, (byte*)&iSizeR, sizeof(int));
 #ifdef  TEST
@@ -370,7 +371,7 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #endif
         bufR= (byte*) malloc(iSizeR-sizeof(int));
         if(bufR==NULL)
-            throw((char *)"metaData::restoreMetaData: Can't malloc resource buffer\n");
+            throw "metaData::restoreMetaData: Can't malloc resource buffer\n";
         encFile.EncRead(iRead, bufR, iSizeR-sizeof(int));
 
 #ifdef  TEST
@@ -380,9 +381,9 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #endif
 
         if(!m_pPM->DeserializeObjectTable(iSizeP, bufP))
-            throw((char *)"metaData::restoreMetaData: Can't deserialize principal table\n");
+            throw "metaData::restoreMetaData: Can't deserialize principal table\n";
         if(!m_pRM->DeserializeObjectTable(iSizeR, bufR)) 
-            throw((char *)"metaData::restoreMetaData: Can't deserialize resource table\n");
+            throw "metaData::restoreMetaData: Can't deserialize resource table\n";
 
         // go back and fix up owners on resource table
         aNode<accessPrincipal>*     pNode= NULL;
@@ -395,19 +396,19 @@ bool metaData::restoreMetaData(int encType, byte* key)
             pResource= m_pRM->getObject(i);
             pNode= pResource->m_myOwners.pFirst;
             while(pNode!=NULL) {
-                pName= (char*) pNode->pElement;
+                pName= (char*)pNode->pElement;
                 pPrincipal= m_pPM->findObject(pName);
                 if(pPrincipal==NULL) {
                     fprintf(g_logFile, 
                             "metaData::restoreMetaData: Cant find %s in principal table\n", pName);
-                    throw((char *)"metaData::restoreMetaData: remaperror\n");
+                    throw "metaData::restoreMetaData: remaperror\n";
                 }
                 pNode->pElement= pPrincipal;
                 pNode= pNode->pNext;
             }
         }
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         fprintf(g_logFile, "Error: %s\n", szError);
         fRet= false;
     }
@@ -415,9 +416,9 @@ bool metaData::restoreMetaData(int encType, byte* key)
 
 #ifdef  TEST
         fprintf(g_logFile, "\n");
-        PrintBytes((char*)"metaData::restoreMetaData: princpal table", bufP, iSizeP);
+        PrintBytes("metaData::restoreMetaData: princpal table", bufP, iSizeP);
         fprintf(g_logFile, "\n");
-        PrintBytes((char*)"metaData::restoreMetaData: resource table", bufR, iSizeR);
+        PrintBytes("metaData::restoreMetaData: resource table", bufR, iSizeR);
         fprintf(g_logFile, "\n");
 #endif
     if(bufP!=NULL) {

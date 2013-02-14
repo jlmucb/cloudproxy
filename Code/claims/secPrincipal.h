@@ -51,7 +51,7 @@ public:
     PrincipalCert();
     ~PrincipalCert();
 
-    bool        init(char* szSig);
+    bool        init(const char* szSig);
     KeyInfo*    getSubjectKeyInfo();
     bool        parsePrincipalCertfromRoot(TiXmlElement*  pRootElement);
     bool        parsePrincipalCertElements();
@@ -114,7 +114,7 @@ public:
     void                printMe();
     char*               getName();
     int                 auxSize();
-    bool                Deserialize(byte* szObj, int* pi);
+    bool                Deserialize(const byte* szObj, int* pi);
     int                 Serialize(byte* sz);
 };
 
@@ -183,7 +183,7 @@ public:
     evidenceCollection();
     ~evidenceCollection();
 
-    bool            parseEvidenceCollection(char* szEvidenceCollection);
+    bool            parseEvidenceCollection(const char* szEvidenceCollection);
     bool            validateEvidenceCollection(RSAKey* pRootKey);
 };
 
@@ -207,7 +207,7 @@ public:
     SignedAssertion();
     ~SignedAssertion();
 
-    bool        init(char* szSig);
+    bool        init(const char* szSig);
     KeyInfo*    getSubjectKeyInfo();
     bool        parseSignedAssertionElements();
     bool        getvalidityPeriod(Period& period);

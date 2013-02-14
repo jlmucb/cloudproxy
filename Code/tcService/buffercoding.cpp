@@ -35,7 +35,7 @@
 // ------------------------------------------------------------------------------
 
 
-int encodeTCSERVICEGETPOLICYKEYFROMOS(u32 keyType, int size, byte* key, 
+int encodeTCSERVICEGETPOLICYKEYFROMOS(u32 keyType, int size, const byte* key, 
                                       int bufsize, byte* buf)
 {
     int n= 0;
@@ -53,7 +53,7 @@ int encodeTCSERVICEGETPOLICYKEYFROMOS(u32 keyType, int size, byte* key,
 
 
 bool  decodeTCSERVICEGETPOLICYKEYFROMOS(u32* pkeyType, int* psize, 
-                                            byte* key, byte* buf)
+                                            byte* key, const byte* buf)
 {
     int n= 0;
     memcpy(pkeyType, buf, sizeof(u32));
@@ -65,7 +65,7 @@ bool  decodeTCSERVICEGETPOLICYKEYFROMOS(u32* pkeyType, int* psize,
 }
 
 
-int encodeTCSERVICEGETOSHASHFROMTCSERVICE(u32 hashType, int size, byte* hash, 
+int encodeTCSERVICEGETOSHASHFROMTCSERVICE(u32 hashType, int size, const byte* hash, 
                                           int bufsize, byte* buf)
 {
     int n= 0;
@@ -83,7 +83,7 @@ int encodeTCSERVICEGETOSHASHFROMTCSERVICE(u32 hashType, int size, byte* hash,
 
 
 bool  decodeTCSERVICEGETOSHASHFROMTCSERVICE(u32* phashType, int* psize, byte* hash, 
-                                            byte* buf)
+                                            const byte* buf)
 {
     int n= 0;
 
@@ -96,7 +96,7 @@ bool  decodeTCSERVICEGETOSHASHFROMTCSERVICE(u32* phashType, int* psize, byte* ha
 }
 
 
-bool  encodeTCSERVICEGETOSCREDSFROMAPP(u32 credType, int size, byte* cred, 
+bool  encodeTCSERVICEGETOSCREDSFROMAPP(u32 credType, int size, const byte* cred, 
                                        byte* buf)
 {
     int n= 0;
@@ -111,7 +111,7 @@ bool  encodeTCSERVICEGETOSCREDSFROMAPP(u32 credType, int size, byte* cred,
 
 
 bool  decodeTCSERVICEGETOSCREDSFROMAPP(u32* pcredType, int* psize, byte* cred, 
-                                       byte* buf)
+                                       const byte* buf)
 {
     int n= 0;
 
@@ -124,7 +124,7 @@ bool  decodeTCSERVICEGETOSCREDSFROMAPP(u32* pcredType, int* psize, byte* cred,
 }
 
 
-int encodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32 credType, int size, byte* cred, 
+int encodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32 credType, int size, const byte* cred, 
                                       int bufsize, byte* buf)
 {
     int n= 0;
@@ -142,7 +142,7 @@ int encodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32 credType, int size, byte* cred,
 
 
 bool  decodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32* pcredType, int* psize, 
-                                             byte* cred, byte* buf)
+                                             byte* cred, const byte* buf)
 {
     int n= 0;
 
@@ -155,7 +155,7 @@ bool  decodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32* pcredType, int* psize,
 }
 
 
-int encodeTCSERVICESEALFORFROMAPP(int sealsize, byte* seal, int bufsize, 
+int encodeTCSERVICESEALFORFROMAPP(int sealsize, const byte* seal, int bufsize, 
                                   byte* buf)
 {
     int n= 0;
@@ -170,7 +170,7 @@ int encodeTCSERVICESEALFORFROMAPP(int sealsize, byte* seal, int bufsize,
 }
 
 
-bool  decodeTCSERVICESEALFORFROMAPP(int* psealsize, byte* seal, byte* buf)
+bool  decodeTCSERVICESEALFORFROMAPP(int* psealsize, byte* seal, const byte* buf)
 {
     int n= 0;
 
@@ -181,7 +181,7 @@ bool  decodeTCSERVICESEALFORFROMAPP(int* psealsize, byte* seal, byte* buf)
 }
 
 
-int encodeTCSERVICESEALFORFROMTCSERVICE(int sealedsize, byte* sealed, int bufsize, byte* buf)
+int encodeTCSERVICESEALFORFROMTCSERVICE(int sealedsize, const byte* sealed, int bufsize, byte* buf)
 {
     int n= 0;
 
@@ -195,7 +195,7 @@ int encodeTCSERVICESEALFORFROMTCSERVICE(int sealedsize, byte* sealed, int bufsiz
 }
 
 
-bool  decodeTCSERVICESEALFORFROMTCSERVICE(int* psealedsize, byte* sealed, byte* buf)
+bool  decodeTCSERVICESEALFORFROMTCSERVICE(int* psealedsize, byte* sealed, const byte* buf)
 {
     int n= 0;
 
@@ -206,7 +206,7 @@ bool  decodeTCSERVICESEALFORFROMTCSERVICE(int* psealedsize, byte* sealed, byte* 
 }
 
 
-int encodeTCSERVICEUNSEALFORFROMAPP(int sealedsize, byte* sealed, int bufsize, byte* buf)
+int encodeTCSERVICEUNSEALFORFROMAPP(int sealedsize, const byte* sealed, int bufsize, byte* buf)
 {
     int n= 0;
 
@@ -220,7 +220,7 @@ int encodeTCSERVICEUNSEALFORFROMAPP(int sealedsize, byte* sealed, int bufsize, b
 }
 
 
-bool decodeTCSERVICEUNSEALFORFROMAPP(int* psealedsize, byte* sealed, byte* buf)
+bool decodeTCSERVICEUNSEALFORFROMAPP(int* psealedsize, byte* sealed, const byte* buf)
 {
     int n= 0;
 
@@ -232,8 +232,8 @@ bool decodeTCSERVICEUNSEALFORFROMAPP(int* psealedsize, byte* sealed, byte* buf)
 }
 
 
-int encodeTCSERVICEUNSEALFORFROMTCSERVICE(u32 hashType, int hashsize, byte* hash,
-                                    int sealsize, byte* seal, int bufsize, byte* buf)
+int encodeTCSERVICEUNSEALFORFROMTCSERVICE(u32 hashType, int hashsize, const byte* hash,
+                                    int sealsize, const byte* seal, int bufsize, byte* buf)
 {
     int n= 0;
 
@@ -254,7 +254,7 @@ int encodeTCSERVICEUNSEALFORFROMTCSERVICE(u32 hashType, int hashsize, byte* hash
 
 
 bool  decodeTCSERVICEUNSEALFORFROMTCSERVICE(int* punsealedsize, 
-                                        byte* unsealed, byte* buf)
+                                        byte* unsealed, const byte* buf)
 {
     int n= 0;
 
@@ -265,7 +265,7 @@ bool  decodeTCSERVICEUNSEALFORFROMTCSERVICE(int* punsealedsize,
 }
 
 
-int encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, byte* toattest, 
+int encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, const byte* toattest, 
                                       int bufsize, byte* buf)
 {
     int n= 0;
@@ -282,7 +282,7 @@ int encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, byte* toattest,
 
 
 bool  decodeTCSERVICEATTESTFORFROMAPP(int* ptoattestsize, byte* toattest, 
-                                      byte* buf)
+                                      const byte* buf)
 {
     int n= 0;
 
@@ -293,7 +293,7 @@ bool  decodeTCSERVICEATTESTFORFROMAPP(int* ptoattestsize, byte* toattest,
 }
 
 
-bool  encodeTCSERVICEATTESTFORFROMTCSERVICE(int attestsize, byte* attested, 
+bool  encodeTCSERVICEATTESTFORFROMTCSERVICE(int attestsize, const byte* attested, 
                                             byte* buf)
 {
     return false;
@@ -301,7 +301,7 @@ bool  encodeTCSERVICEATTESTFORFROMTCSERVICE(int attestsize, byte* attested,
 
 
 bool  decodeTCSERVICEATTESTFORFROMTCSERVICE(int* pattestsize, byte* attested, 
-                                            byte* buf)
+                                            const byte* buf)
 {
     int n= 0;
 
@@ -313,7 +313,7 @@ bool  decodeTCSERVICEATTESTFORFROMTCSERVICE(int* pattestsize, byte* attested,
 
 
 // Todo: security problem with overflow here
-int encodeTCSERVICESTARTAPPFROMAPP(char* file, int nargs, char** args, 
+int encodeTCSERVICESTARTAPPFROMAPP(const char* file, int nargs, char** args, 
                                    int bufsize, byte* buf)
 {
     int n= 0;
@@ -351,7 +351,7 @@ int encodeTCSERVICESTARTAPPFROMAPP(char* file, int nargs, char** args,
 
 
 bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs, 
-                                     char** args, byte* buf)
+                                     char** args, const byte* buf)
 {
     int     size= 0;
     int     n= 0;
@@ -362,7 +362,7 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs,
 #endif 
     memcpy(&size, &buf[n], sizeof(int));
     n+= sizeof(int);
-    *psz= strdup((char*)&buf[n]);
+    *psz= strdup(reinterpret_cast<const char*>(&buf[n]));
     if(*psz==NULL) {
         return false;
     }
@@ -377,7 +377,7 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs,
     for(i=1;i<m;i++) {
         memcpy(&k, &buf[n], sizeof(int));
         n+= sizeof(int);
-        args[i]= strdup((char*)&buf[n]);
+        args[i]= strdup(reinterpret_cast<const char*>(&buf[n]));
         n+= k;
     }
    
@@ -399,7 +399,7 @@ bool  encodeTCSERVICESTARTAPPFROMTCSERVICE(int procid, byte* buf)
 }
 
 
-bool  decodeTCSERVICESTARTAPPFROMTCSERVICE(int* pprocid, byte* buf)
+bool  decodeTCSERVICESTARTAPPFROMTCSERVICE(int* pprocid, const byte* buf)
 {
     if(buf==NULL)
         return false;
@@ -432,7 +432,7 @@ bool  decodeTCSERVICETERMINATEAPPFROMTCSERVICE()
 }
 
 
-int encodeTCSERVICEGETPROGHASHFROMSERVICE (u32 uType, int size, byte* hash,
+int encodeTCSERVICEGETPROGHASHFROMSERVICE (u32 uType, int size, const byte* hash,
                                            int bufsize, byte* buf)
 {
     int n= 0;
@@ -454,7 +454,7 @@ int encodeTCSERVICEGETPROGHASHFROMSERVICE (u32 uType, int size, byte* hash,
 
 
 bool  decodeTCSERVICEGETPROGHASHFROMSERVICE(u32* puType, int* psize, byte* hash,
-                                      int bufsize, byte* buf)
+                                      int bufsize, const byte* buf)
 {
     int n= 0;
 
@@ -470,7 +470,8 @@ int encodeTCSERVICEGETPROGHASHFROMAPP(int pid, int bufsize, byte* buf)
 {
     int n= 0;
 
-    if(bufsize<sizeof(int))
+    // note that this cast is safe, since sizeof(int) is always less than 2^(sizeof(int)-1)
+    if(bufsize<static_cast<int>(sizeof(int)))
         return -1;
     memcpy(&buf[n], &pid, sizeof(int));
     n+= sizeof(int);
@@ -478,7 +479,7 @@ int encodeTCSERVICEGETPROGHASHFROMAPP(int pid, int bufsize, byte* buf)
 }
 
 
-bool  decodeTCSERVICEGETPROGHASHFROMAPP(int* ppid, byte* buf)
+bool  decodeTCSERVICEGETPROGHASHFROMAPP(int* ppid, const byte* buf)
 {
     int n= 0;
 

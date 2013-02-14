@@ -53,7 +53,7 @@ class Sha1 {
 #endif
     void            Init();
     bool            Transform(u32*);
-    void            Update(byte*, const u32 long);
+    void            Update(const byte*, const u32 long);
     void            Final();
     void            getDigest(byte* rgOut);
 };

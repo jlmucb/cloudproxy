@@ -258,8 +258,8 @@ void initest()
         return;
     }
     printf("aesni supported\n\n");
-    PrintBytes((char*)"Key   " ,  enckey, 16);
-    PrintBytes((char*)"In    " ,  bufIn, 16);
+    PrintBytes("Key   " ,  enckey, 16);
+    PrintBytes("In    " ,  bufIn, 16);
 
     // init 
     if(oAesEnc.KeySetupEnc(enckey, BYTEKEYSIZE*NBITSINBYTE)<0) {
@@ -272,34 +272,34 @@ void initest()
     }
 
     oAesEnc.Encrypt(bufIn, bufOut);
-    PrintBytes((char*)"Out   " ,  bufOut, 16);
+    PrintBytes("Out   " ,  bufOut, 16);
     oAesDec.Decrypt(bufOut, bufCheck);
-    PrintBytes((char*)"Check " ,  bufCheck, 16);
+    PrintBytes("Check " ,  bufCheck, 16);
 
     printf("\nEncrypt Key schedule\n");
-    PrintBytes((char*)"\tRound  0" ,  (u8*)&oAesEnc.m_rk[0], 16);
-    PrintBytes((char*)"\tRound  1" ,  (u8*)&oAesEnc.m_rk[4], 16);
-    PrintBytes((char*)"\tRound  2" ,  (u8*)&oAesEnc.m_rk[8], 16);
-    PrintBytes((char*)"\tRound  3" ,  (u8*)&oAesEnc.m_rk[12], 16);
-    PrintBytes((char*)"\tRound  4" ,  (u8*)&oAesEnc.m_rk[16], 16);
-    PrintBytes((char*)"\tRound  5" ,  (u8*)&oAesEnc.m_rk[20], 16);
-    PrintBytes((char*)"\tRound  6" ,  (u8*)&oAesEnc.m_rk[24], 16);
-    PrintBytes((char*)"\tRound  7" ,  (u8*)&oAesEnc.m_rk[28], 16);
-    PrintBytes((char*)"\tRound  8" ,  (u8*)&oAesEnc.m_rk[32], 16);
-    PrintBytes((char*)"\tRound  9" ,  (u8*)&oAesEnc.m_rk[36], 16);
-    PrintBytes((char*)"\tRound 10" ,  (u8*)&oAesEnc.m_rk[40], 16);
+    PrintBytes("\tRound  0" ,  (u8*)&oAesEnc.m_rk[0], 16);
+    PrintBytes("\tRound  1" ,  (u8*)&oAesEnc.m_rk[4], 16);
+    PrintBytes("\tRound  2" ,  (u8*)&oAesEnc.m_rk[8], 16);
+    PrintBytes("\tRound  3" ,  (u8*)&oAesEnc.m_rk[12], 16);
+    PrintBytes("\tRound  4" ,  (u8*)&oAesEnc.m_rk[16], 16);
+    PrintBytes("\tRound  5" ,  (u8*)&oAesEnc.m_rk[20], 16);
+    PrintBytes("\tRound  6" ,  (u8*)&oAesEnc.m_rk[24], 16);
+    PrintBytes("\tRound  7" ,  (u8*)&oAesEnc.m_rk[28], 16);
+    PrintBytes("\tRound  8" ,  (u8*)&oAesEnc.m_rk[32], 16);
+    PrintBytes("\tRound  9" ,  (u8*)&oAesEnc.m_rk[36], 16);
+    PrintBytes("\tRound 10" ,  (u8*)&oAesEnc.m_rk[40], 16);
     printf("Decrypt Key schedule\n");
-    PrintBytes((char*)"\tRound  0" ,  (u8*)&oAesDec.m_rk[0], 16);
-    PrintBytes((char*)"\tRound  1" ,  (u8*)&oAesDec.m_rk[4], 16);
-    PrintBytes((char*)"\tRound  2" ,  (u8*)&oAesDec.m_rk[8], 16);
-    PrintBytes((char*)"\tRound  3" ,  (u8*)&oAesDec.m_rk[12], 16);
-    PrintBytes((char*)"\tRound  4" ,  (u8*)&oAesDec.m_rk[16], 16);
-    PrintBytes((char*)"\tRound  5" ,  (u8*)&oAesDec.m_rk[20], 16);
-    PrintBytes((char*)"\tRound  6" ,  (u8*)&oAesDec.m_rk[24], 16);
-    PrintBytes((char*)"\tRound  7" ,  (u8*)&oAesDec.m_rk[28], 16);
-    PrintBytes((char*)"\tRound  8" ,  (u8*)&oAesDec.m_rk[32], 16);
-    PrintBytes((char*)"\tRound  9" ,  (u8*)&oAesDec.m_rk[36], 16);
-    PrintBytes((char*)"\tRound 10" ,  (u8*)&oAesDec.m_rk[40], 16);
+    PrintBytes("\tRound  0" ,  (u8*)&oAesDec.m_rk[0], 16);
+    PrintBytes("\tRound  1" ,  (u8*)&oAesDec.m_rk[4], 16);
+    PrintBytes("\tRound  2" ,  (u8*)&oAesDec.m_rk[8], 16);
+    PrintBytes("\tRound  3" ,  (u8*)&oAesDec.m_rk[12], 16);
+    PrintBytes("\tRound  4" ,  (u8*)&oAesDec.m_rk[16], 16);
+    PrintBytes("\tRound  5" ,  (u8*)&oAesDec.m_rk[20], 16);
+    PrintBytes("\tRound  6" ,  (u8*)&oAesDec.m_rk[24], 16);
+    PrintBytes("\tRound  7" ,  (u8*)&oAesDec.m_rk[28], 16);
+    PrintBytes("\tRound  8" ,  (u8*)&oAesDec.m_rk[32], 16);
+    PrintBytes("\tRound  9" ,  (u8*)&oAesDec.m_rk[36], 16);
+    PrintBytes("\tRound 10" ,  (u8*)&oAesDec.m_rk[40], 16);
     printf("\n\nDone\n");
 }
 

@@ -35,7 +35,7 @@
 #include <string.h>
 #include <unistd.h>
 
-bool getfileHash(char* szFile, u32* phashType, int* psize, byte* rgHash);
+bool getfileHash(const char* szFile, u32* phashType, int* psize, byte* rgHash);
 
 #endif
 

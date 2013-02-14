@@ -40,7 +40,7 @@ public:
                 hmacsha1();
                 ~hmacsha1();
     void        Init(byte* key, int kLen);
-    void        Update(byte* msg, int mLen);
+    void        Update(const byte* msg, int mLen);
     void        Final(byte* digest);
 };
 

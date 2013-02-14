@@ -64,7 +64,7 @@ int main(int an, char** av)
     }
 
     struct hostent* pHostent;
-    pHostent= gethostbyname((const char *) av[1]);
+    pHostent= gethostbyname(av[1]);
     pa= (char unsigned*) (pHostent->h_addr);
     printf("%s: %d.%d.%d.%d\n", pHostent->h_name, 
            *pa, *(pa+1), *(pa+2), *(pa+3));

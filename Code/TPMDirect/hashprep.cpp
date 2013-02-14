@@ -78,10 +78,10 @@ bool computeTPM12compositepcrDigest(byte pcrMask[3], byte* pcrs, byte* pcrDigest
     oHash.getDigest(pcrDigest);
 
 #ifdef TEST
-    PrintBytes((char*)"computeTPM12compositepcrDigest Mask\n", pcrMask, 3);
-    PrintBytes((char*)"Input pcrs\n", pcrs, 20*numPCRs);
-    PrintBytes((char*)"\nComposite buffer\n", composite, sizeOfComposite);
-    PrintBytes((char*)"Composite buffer hash\n", pcrDigest, 20);
+    PrintBytes("computeTPM12compositepcrDigest Mask\n", pcrMask, 3);
+    PrintBytes("Input pcrs\n", pcrs, 20*numPCRs);
+    PrintBytes("\nComposite buffer\n", composite, sizeOfComposite);
+    PrintBytes("Composite buffer hash\n", pcrDigest, 20);
 #endif
     return true;
 }
@@ -113,11 +113,11 @@ bool tpm12quoteHash(int sizenonce, byte* nonce,
     oHash.getDigest(outputHash);
 
 #ifdef TEST1
-    PrintBytes((char*)"tpm12quoteHash composite buffer hash\n", 
+    PrintBytes("tpm12quoteHash composite buffer hash\n", 
                 pcrDigest, 20);
-    PrintBytes((char*)"\ntpm12quoteHash computed TPM12QUOTEINFO\n", 
+    PrintBytes("\ntpm12quoteHash computed TPM12QUOTEINFO\n", 
                 (byte*)&oTpmInfo, sizeof(oTpmInfo));
-    PrintBytes((char*)"\ntpm12quoteHash computed TPM12QUOTEINFO hash\n", 
+    PrintBytes("\ntpm12quoteHash computed TPM12QUOTEINFO hash\n", 
                 outputHash, 20);
 #endif
     return true;
@@ -222,9 +222,9 @@ bool tpm12quote2Hash(int sizenonce, byte* nonce, byte pcrMask[3],
     oHash.getDigest(outputHash);
 
 #ifdef TEST1
-    PrintBytes((char*)"tpm12quote2Hash composite buffer\n", 
+    PrintBytes("tpm12quote2Hash composite buffer\n", 
                     rgBuf, size);
-    PrintBytes((char*)"\ntpm12quote2Hash computed TPM12QUOTEINFO hash\n", 
+    PrintBytes("\ntpm12quote2Hash computed TPM12QUOTEINFO hash\n", 
                 outputHash, 20);
 #endif
     return true;
@@ -239,7 +239,7 @@ bool sha256quoteHash(int sizenonce, byte* nonce,
                      int sizedigest, byte* digest, byte* outputHash)
 {
     Sha256      oHash;
-    char*       szProlog= (char*)"JLMQUOTE";
+    const char*       szProlog= "JLMQUOTE";
 
     oHash.Init();
     oHash.Update((byte*) szProlog, strlen(szProlog));
@@ -249,9 +249,9 @@ bool sha256quoteHash(int sizenonce, byte* nonce,
     oHash.GetDigest(outputHash);
 
 #ifdef TEST
-    PrintBytes((char*)"sha256quoteHash: to be quoted\n", tobesignedHash, sizetobesignedHash);
-    PrintBytes((char*)"sha256quoteHash: code digest\n", digest, sizedigest);
-    PrintBytes((char*)"sha256quoteHash: quote digest\n", outputHash, SHA256DIGESTBYTESIZE);
+    PrintBytes("sha256quoteHash: to be quoted\n", tobesignedHash, sizetobesignedHash);
+    PrintBytes("sha256quoteHash: code digest\n", digest, sizedigest);
+    PrintBytes("sha256quoteHash: quote digest\n", outputHash, SHA256DIGESTBYTESIZE);
 #endif
     return true;
 }

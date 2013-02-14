@@ -93,7 +93,7 @@ public:
     ~serviceprocTable();
 
     bool                initprocTable(int size);
-    bool                addprocEntry(int procid, char* file, int an, char** av,
+    bool                addprocEntry(int procid, const char* file, int an, char** av,
                                      int sizeHash, byte* hash);
     void                removeprocEntry(int procid);
     serviceprocEnt*     getEntfromprocId(int procid);
@@ -112,7 +112,7 @@ public:
     tcServiceInterface();
     ~tcServiceInterface();
 
-    TCSERVICE_RESULT    initService(char* execfile, int an, char** av);
+    TCSERVICE_RESULT    initService(const char* execfile, int an, char** av);
 
     TCSERVICE_RESULT    GetOsPolicyKey(u32* pType, int* psize, byte* rgBuf);
     TCSERVICE_RESULT    GetOsCert(u32* credType, int* psizeOut, byte* rgOut);
@@ -123,7 +123,7 @@ public:
     TCSERVICE_RESULT    GetEntropy(int size, byte* buf);
     
     TCSERVICE_RESULT    StartApp(tcChannel& oAppChannel, int procid, 
-                            char* file, int an, char** av,
+                            const char* file, int an, char** av,
                             int* poutsize, byte* out);
 
     TCSERVICE_RESULT    SealFor(int procid, int sizeIn, byte* rgIn, 

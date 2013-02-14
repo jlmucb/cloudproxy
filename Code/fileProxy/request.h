@@ -90,7 +90,7 @@ public:
 
                 Request();
                 ~Request();
-    bool        getDatafromDoc(char* szRequest);
+    bool        getDatafromDoc(const char* szRequest);
     bool        validateAddPrincipalRequest(sessionKeys& oKeys, char** pszFile, 
                         resource** ppResource);
     bool        validateDeletePrincipalRequest(sessionKeys& oKeys, char** pszFile, 
@@ -128,28 +128,28 @@ public:
 #endif
 };
 
-bool translateLocationtoResourceName(char* szLocation, char* szResourceName, 
+bool translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
                                      int size);
-bool translateResourceNametoLocation(char* szResourceName, char* szLocation, 
+bool translateResourceNametoLocation(const char* szResourceName, const char* szLocation, 
                                      int size);
 
-bool clientgetResourcefromserver(safeChannel& fc, char* szResourceName, char* szEvidence, 
-                                 char* szFile, int encType, byte* key);
-bool clientsendResourcetoserver(safeChannel& fc, char* szResourceName, char* szEvidence, 
-                                char* szFile, int encType, byte* key);
+bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
+                                 const char* szFile, int encType, byte* key);
+bool clientsendResourcetoserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
+                                const char* szFile, int encType, byte* key);
 
 bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                 int encType, byte* key);
 bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
 
-bool clientchangeownerResource(safeChannel& fc, char* szAction, char* szResourceName,
-                               char* szEvidence, char* szOutFile, int encType, byte* key);
+bool clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
+                               const char* szEvidence, const char* szOutFile, int encType, byte* key);
 bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
 
-bool clientcreateResourceonserver(safeChannel& fc, char* szResourceName, char* szSubject, 
-                                  char* szEvidence, int encType, byte* key);
+bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, const char* szSubject, 
+                                  const char* szEvidence, int encType, byte* key);
 bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
 

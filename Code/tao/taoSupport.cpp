@@ -45,7 +45,7 @@
 // -------------------------------------------------------------------------
 
 
-bool startMeAsMeasuredProgram(int an, char** av)
+bool startMeAsMeasuredProgram(int an, const char** av)
 {
     int     n= 0;
 
@@ -86,7 +86,7 @@ taoFiles::~taoFiles ()
         free(m_szprivateFile);
         m_szprivateFile= NULL;
     }
-    if(m_szcertFile= NULL) {
+    if(m_szcertFile!=NULL) {
         free(m_szcertFile);
         m_szcertFile= NULL;
     }
@@ -97,7 +97,7 @@ taoFiles::~taoFiles ()
 }
 
 
-bool  taoFiles::initNames(char* directory, char* subdirectory)
+bool  taoFiles::initNames(const char* directory, const char* subdirectory)
 {
     char   szName[512];
 
@@ -115,26 +115,25 @@ bool  taoFiles::initNames(char* directory, char* subdirectory)
     sprintf(szName,"%s/%s", directory, subdirectory);
     m_szdirectory= strdup(szName);
 
-    sprintf(szName,"%s/%s", m_szdirectory, (char*)"symkey");
+    sprintf(szName,"%s/%s", m_szdirectory, "symkey");
     m_szsymFile= strdup(szName);
 
-    sprintf(szName,"%s/%s", m_szdirectory, (char*)"privatekey");
+    sprintf(szName,"%s/%s", m_szdirectory, "privatekey");
     m_szprivateFile= strdup(szName);
 
-    sprintf(szName,"%s/%s", m_szdirectory, (char*)"cert");
+    sprintf(szName,"%s/%s", m_szdirectory, "cert");
     m_szcertFile= strdup(szName);
 
-    sprintf(szName,"%s/%s", m_szdirectory, (char*)"evidence");
+    sprintf(szName,"%s/%s", m_szdirectory, "evidence");
     m_szAncestorEvidence= strdup(szName);
 
     return true;
 }
 
 
-bool taoFiles::getBlobData(char* file, bool* pValid, int* pSize, byte** ppData)
+bool taoFiles::getBlobData(const char* file, bool* pValid, int* pSize, byte** ppData)
 {
     struct stat statBlock;
-    byte        rgBuf[2048];
     int         n;
 
     if(file==NULL || stat(file, &statBlock)<0) {
@@ -160,7 +159,7 @@ bool taoFiles::getBlobData(char* file, bool* pValid, int* pSize, byte** ppData)
 }
 
 
-bool taoFiles::putBlobData(char* file, bool fValid, int size, byte* pData)
+bool taoFiles::putBlobData(const char* file, bool fValid, int size, byte* pData)
 {
     if(!fValid)
         return false;

@@ -54,7 +54,7 @@ tcChannel   g_reqChannel;
 int         g_myPid= -1;
 
 
-bool initLinuxService(char* name)
+bool initLinuxService(const char* name)
 {
 #ifdef TCTEST
     if(name!=NULL)
@@ -89,7 +89,7 @@ bool getEntropyfromDeviceDriver(int size, byte* pKey)
 }
 
 
-bool getprogramNamefromDeviceDriver(int* pSize, char* szName)
+bool getprogramNamefromDeviceDriver(int* pSize, const char* szName)
 {
     // this is done elsewhere
     return true;
@@ -120,7 +120,7 @@ bool getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey)
         return false;
     }
 #ifdef TEST1
-    PrintBytes((char*)"Policy key: ", pKey, *pSize);
+    PrintBytes("Policy key: ", pKey, *pSize);
 #endif
     fprintf(g_logFile, "getpolicykeyfromDeviceDriverOS parent returns true\n");
     return true;
@@ -154,7 +154,7 @@ bool getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash)
         return false;
     }
 #ifdef TEST
-    PrintBytes((char*)"OS hash: ", pHash, *pSize);
+    PrintBytes("OS hash: ", pHash, *pSize);
 #endif
     fprintf(g_logFile, "getOSMeasurementfromDeviceDriver OS parent returns true\n");
     return true;
@@ -192,13 +192,13 @@ bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType,
     }
 
 #ifdef TEST
-    PrintBytes((char*)"getHostedMeasurementfromDeviceDriver prog hash: ", pHash, *pSize);
+    PrintBytes("getHostedMeasurementfromDeviceDriver prog hash: ", pHash, *pSize);
 #endif
     return true;
 }
 
 
-bool startAppfromDeviceDriver(char* szexecFile, int* ppid)
+bool startAppfromDeviceDriver(const char* szexecFile, int* ppid)
 {
     u32         ustatus;
     u32         ureq;
@@ -206,8 +206,8 @@ bool startAppfromDeviceDriver(char* szexecFile, int* ppid)
     int         origprocid;
     int         size= PARAMSIZE;
     byte        rgBuf[PARAMSIZE];
-    int         an;
-    char**      av;
+    int         an = 0;
+    char**      av = NULL;
 
     size= encodeTCSERVICESTARTAPPFROMAPP(szexecFile, an, av, PARAMSIZE, rgBuf);
     if(size<0) {
@@ -268,8 +268,8 @@ bool sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData
         return false;
     }
 #ifdef TCTEST1
-    PrintBytes((char*)"To seal: ", inData, inSize);
-    PrintBytes((char*)"Sealed :", outData, *poutSize);
+    PrintBytes("To seal: ", inData, inSize);
+    PrintBytes("Sealed :", outData, *poutSize);
 #endif
     return true;
 }
@@ -281,7 +281,6 @@ bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDa
     u32         ureq;
     int         procid;
     int         origprocid;
-    int         childproc;
     int         size= 0;
     byte        rgBuf[PARAMSIZE];
 
@@ -308,8 +307,8 @@ bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDa
         return false;
     }
 #ifdef TCTEST1
-    PrintBytes((char*)"To unseal: ", inData, inSize);
-    PrintBytes((char*)"Unsealed : ", outData, *poutSize);
+    PrintBytes("To unseal: ", inData, inSize);
+    PrintBytes("Unsealed : ", outData, *poutSize);
 #endif
     return true;
 }
@@ -335,7 +334,7 @@ bool quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDat
     }
 #ifdef TEST1
     fprintf(g_logFile, "quotewithLinuxService: sending %d\n", inSize);
-    PrintBytes((char*)" req buffer: ", inData, inSize); 
+    PrintBytes(" req buffer: ", inData, inSize); 
     fflush(g_logFile);
 #endif
     if(!g_reqChannel.sendtcBuf(g_myPid, TCSERVICEATTESTFORFROMAPP, 0, procid, size, rgBuf)) {
@@ -357,8 +356,8 @@ bool quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDat
     }
 #ifdef TEST1
     fprintf(g_logFile, "quotewithLinuxService: outsize is %d\n", *poutSize);
-    PrintBytes((char*)"To quote: ", inData, inSize);
-    PrintBytes((char*)"Quoted : ", outData, *poutSize);
+    PrintBytes("To quote: ", inData, inSize);
+    PrintBytes("Quoted : ", outData, *poutSize);
     fflush(g_logFile);
 #endif
     return true;

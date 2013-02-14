@@ -38,53 +38,53 @@
 
 
 int   encodeTCSERVICEGETPOLICYKEYFROMOS(u32 keyType, int size, 
-                                    byte* key, int bufsize, byte* buf);
+                                    const byte* key, int bufsize, byte* buf);
 bool  decodeTCSERVICEGETPOLICYKEYFROMOS(u32* pkeyType, int* psize, 
-                                    byte* key, byte* buf);
+                                    byte* key, const byte* buf);
 
 int   encodeTCSERVICEGETOSHASHFROMTCSERVICE(u32 hashType, int size, 
-                                    byte* hash, int bufsize, byte* buf);
+                                    const byte* hash, int bufsize, byte* buf);
 bool  decodeTCSERVICEGETOSHASHFROMTCSERVICE(u32* phashType, int* psize, 
-                                    byte* hash, byte* buf);
+                                    byte* hash, const byte* buf);
 
 bool  decodeTCSERVICEGETOSCREDSFROMAPP(u32* pcredType, int* psize, byte* cred, 
-                                    byte* buf);
+                                    const byte* buf);
 
-int   encodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32 credType, int size, byte* cred, 
+int   encodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32 credType, int size, const byte* cred, 
                                     int bufsize, byte* buf);
 bool  decodeTCSERVICEGETOSCREDSFROMTCSERVICE(u32* pcredType, int* psize, 
-                                    byte* cred, byte* buf);
+                                    byte* cred, const byte* buf);
 
-int   encodeTCSERVICESEALFORFROMAPP(int sealsize, byte* seal, int bufsize, byte* buf);
-bool  decodeTCSERVICESEALFORFROMAPP(int* psealedsize, byte* sealed, byte* buf);
+int   encodeTCSERVICESEALFORFROMAPP(int sealsize, const byte* seal, int bufsize, byte* buf);
+bool  decodeTCSERVICESEALFORFROMAPP(int* psealedsize, byte* sealed, const byte* buf);
 
-int   encodeTCSERVICESEALFORFROMTCSERVICE(int sealedsize, byte* sealed, int bufsize, byte* buf);
-bool  decodeTCSERVICESEALFORFROMTCSERVICE(int* psealedsize, byte* sealed, byte* buf);
+int   encodeTCSERVICESEALFORFROMTCSERVICE(int sealedsize, const byte* sealed, int bufsize, byte* buf);
+bool  decodeTCSERVICESEALFORFROMTCSERVICE(int* psealedsize, byte* sealed, const byte* buf);
 
-int   encodeTCSERVICEUNSEALFORFROMAPP(int sealedsize, byte* sealed, int bufsize, byte* buf);
-bool  decodeTCSERVICEUNSEALFORFROMAPP(int* psealsize, byte* seal, byte* buf);
+int   encodeTCSERVICEUNSEALFORFROMAPP(int sealedsize, const byte* sealed, int bufsize, byte* buf);
+bool  decodeTCSERVICEUNSEALFORFROMAPP(int* psealsize, byte* seal, const byte* buf);
 
-int   encodeTCSERVICEUNSEALFORFROMTCSERVICE(u32 hashType, int hashsize, byte* hash,
-                                    int sealsize, byte* seal, int bufsize, byte* buf);
+int   encodeTCSERVICEUNSEALFORFROMTCSERVICE(u32 hashType, int hashsize, const byte* hash,
+                                    int sealsize, const byte* seal, int bufsize, byte* buf);
 bool  decodeTCSERVICEUNSEALFORFROMTCSERVICE(int* punsealsize, byte* unsealed, 
-                                    byte* buf);
+                                    const byte* buf);
 
-bool  encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, byte* toattest, 
+bool  encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, const byte* toattest, 
                                       int bufsize, byte* buf);
 bool  decodeTCSERVICEATTESTFORFROMAPP(int* ptoattestsize, byte* toattest, 
-                                      byte* buf);
+                                      const byte* buf);
 
-bool  encodeTCSERVICEATTESTFORFROMTCSERVICE(int attestsize, byte* attested, 
+bool  encodeTCSERVICEATTESTFORFROMTCSERVICE(int attestsize, const byte* attested, 
                                             byte* buf);
 bool  decodeTCSERVICEATTESTFORFROMTCSERVICE(int* pattestsize, byte* attested, 
-                                            byte* buf);
+                                            const byte* buf);
 
-int encodeTCSERVICESTARTAPPFROMAPP(char* file, int nargs, char** args,
+int encodeTCSERVICESTARTAPPFROMAPP(const char* file, int nargs, char** args,
                                    int bufsize, byte* buf);
-bool decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs, char**, byte* buf);
+bool decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs, char**, const byte* buf);
 
 int   encodeTCSERVICESTARTAPPFROMTCSERVICE(int procid, int sizebuf, byte* buf);
-bool  decodeTCSERVICESTARTAPPFROMTCSERVICE(int* pprocid, byte* buf);
+bool  decodeTCSERVICESTARTAPPFROMTCSERVICE(int* pprocid, const byte* buf);
 
 bool  encodeTCSERVICETERMINATEAPPFROMAPP();
 bool  decodeTCSERVICETERMINATEAPPFROMAPP();
@@ -92,15 +92,15 @@ bool  encodeTCSERVICETERMINATEAPPFROMTCSERVICE();
 bool  decodeTCSERVICETERMINATEAPPFROMTCSERVICE();
 
 bool  encodeTCSERVICEGETPOLICYKEYFROMOS(u32 keyType, int size, 
-                                        byte* key, byte* buf);
+                                        const byte* key, byte* buf);
 bool  decodeTCSERVICEGETPOLICYKEYFROMOS(u32* pkeyType, int* psize,
-                                        byte* key, byte* buf);
-int encodeTCSERVICEGETPROGHASHFROMSERVICE (u32 uType, int size, byte* hash,
+                                        byte* key, const byte* buf);
+int encodeTCSERVICEGETPROGHASHFROMSERVICE (u32 uType, int size, const byte* hash,
                                            int bufsize, byte* buf);
 bool  decodeTCSERVICEGETPROGHASHFROMSERVICE(u32* puType, int* psize, byte* hash,
-                                      int bufsize, byte* buf);
+                                      int bufsize, const byte* buf);
 int encodeTCSERVICEGETPROGHASHFROMAPP(int pid, int bufsize, byte* buf);
-bool  decodeTCSERVICEGETPROGHASHFROMAPP(int* ppid, byte* buf);
+bool  decodeTCSERVICEGETPROGHASHFROMAPP(int* ppid, const byte* buf);
 
 
 #endif

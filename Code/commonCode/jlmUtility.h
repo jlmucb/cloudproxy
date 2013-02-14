@@ -40,6 +40,11 @@
 #include "tinyxml.h"
 #include "time.h"
 
+// satisfy the compiler and mark a variable as unused
+#define UNUSEDVAR(x) \
+  if (x) \
+    ;
+
 
 template <class T>
 class aNode {
@@ -75,7 +80,7 @@ public:
 
 
 char*  gmTimetoUTCstring(tm* pt);
-bool   UTCtogmTime(char* szTime, tm* pt);
+bool   UTCtogmTime(const char* szTime, tm* pt);
 
 
 template <class T>
@@ -183,22 +188,22 @@ aList<T>::aList()
 }
 
 void        revmemcpy(byte* pTo, byte* pFrom, int len);
-bool        SafeStringAppend(char** pszCur, char* szToAppend, int* piLeft);
+bool        SafeStringAppend(char** pszCur, const char* szToAppend, int* piLeft);
 char*       canonicalize(TiXmlNode* pNode);
-void        printIndent(char* szItem, int indent, bool fEnd=false);
+void        printIndent(const char* szItem, int indent, bool fEnd=false);
 void        Explore(TiXmlNode* pNode, int indent);
-TiXmlNode*  Search(TiXmlNode* pNode, char* szElementName);
-bool        testCanonical(char* szInFile, char* szElementName);
-int         ConvertToHexString(int iSizeBuf, byte* rgbBuf, int iSizeOut, char* szOut);
-int         ConvertFromHexString(char* szIn, int iSizeOut, byte* rgbBuf);
+TiXmlNode*  Search(TiXmlNode* pNode, const char* szElementName);
+bool        testCanonical(const char* szInFile, const char* szElementName);
+int         ConvertToHexString(int iSizeBuf, byte* rgbBuf, int iSizeOut, const char* szOut);
+int         ConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf);
 bool        Sha256Hash(int iSizeIn, byte* pIn, int* piOut, byte* pOut);
-char*       readandstoreString(char* szFile);
-bool        saveBlobtoFile(char* szFile, byte* buf, int size);
-bool        getBlobfromFile(char* szFile, byte* buf, int* psize);
-char*       canonicalizeXML(char* szXML);
+char*       readandstoreString(const char* szFile);
+bool        saveBlobtoFile(const char* szFile, byte* buf, int size);
+bool        getBlobfromFile(const char* szFile, byte* buf, int* psize);
+char*       canonicalizeXML(const char* szXML);
 
 
-inline bool safeTransfer(char** pp, int* piLeft, char* pFrom)
+inline bool safeTransfer(char** pp, int* piLeft, const char* pFrom)
 {
     int k= strlen(pFrom);
 

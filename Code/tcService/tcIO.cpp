@@ -65,8 +65,8 @@ bool g_fterminateLoop= false;
 
 void tcSigCatcher(int n)
 {
-    int status= 0;
 #ifdef LINUX
+    int status= 0;
     if(n==SIGCHLD)
         wait3(&status, WNOHANG, NULL);
 #else
@@ -80,7 +80,7 @@ void tcSigCatcher(int n)
 
 
 #ifndef TCIODEVICEDRIVERPRESENT
-bool openserver(int* pfd, char* szunixPath, struct sockaddr* psrv)
+bool openserver(int* pfd, const char* szunixPath, struct sockaddr* psrv)
 {
     int                 fd;
     int                 slen= 0;
@@ -117,7 +117,7 @@ bool openserver(int* pfd, char* szunixPath, struct sockaddr* psrv)
 }
 
 
-bool openclient(int* pfd, char* szunixPath, struct sockaddr* psrv)
+bool openclient(int* pfd, const char* szunixPath, struct sockaddr* psrv)
 {
     int     fd;
     int     newfd;
@@ -145,7 +145,7 @@ bool openclient(int* pfd, char* szunixPath, struct sockaddr* psrv)
 #endif
 
 
-bool tcChannel::OpenBuf(u32 type, int fd, char* file, u32 flags)
+bool tcChannel::OpenBuf(u32 type, int fd, const char* file, u32 flags)
 {
     m_uType= type;
     m_fd= -1;
@@ -257,7 +257,7 @@ bool tcChannel::gettcBuf(int* procid, u32* puReq, u32* pstatus, int* porigprocid
 #ifdef TEST
     fprintf(g_logFile, "gettcBuf succeeds %d\n", i);
     tcBufferprint((tcBuffer*) rgBuf);
-    PrintBytes((char*) "Buffer: ", rgBuf, i);
+    PrintBytes("Buffer: ", rgBuf, i);
 #endif
 
 #ifdef HEADERTEST
@@ -284,7 +284,7 @@ bool tcChannel::sendtcBuf(int procid, u32 uReq, u32 status, int origproc,
     int             i;
     int             n;
 
-    if(paramsize>PARAMSIZE) {
+    if(paramsize>(PARAMSIZE)) {
         fprintf(g_logFile, "sendtcBuf buffer too small %d\n", paramsize);
         return false;
     }

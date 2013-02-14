@@ -73,10 +73,10 @@ taoHostServices::~taoHostServices()
 }
 
 
-bool taoHostServices::HostInit(u32 hostType, int nParameters, char** rgszParameter)
+bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszParameter)
 {
-    char*   directory= NULL;
-    char*   parameter= NULL;
+    const char*   directory= NULL;
+    const char*   parameter= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "HostInit(%04x)\n", hostType);
@@ -101,7 +101,7 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, char** rgszParamet
         break;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
-        if(!m_fileNames.initNames(directory, (char*)"HWRoot")) {
+        if(!m_fileNames.initNames(directory, "HWRoot")) {
             fprintf(g_logFile, "taoHostServices::HostInit: cant init names\n");
             return false;
         }
@@ -118,7 +118,7 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, char** rgszParamet
         return false;
 #endif
       case PLATFORMTYPELINUX:
-        if(!m_fileNames.initNames(directory, (char*)"TrustedOS")) {
+        if(!m_fileNames.initNames(directory, "TrustedOS")) {
             fprintf(g_logFile, "taoHostServices::HostInit: cant init Linuxservice\n");
             return false;
         }
@@ -161,7 +161,7 @@ bool taoHostServices::HostClose()
 }
 
 
-bool taoHostServices::StartHostedProgram(char* name, int an, char** av, int* phandle)
+bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, int* phandle)
 {
     switch(m_hostType) {
       default:
@@ -337,7 +337,7 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 {
 #ifdef TEST
     fprintf(g_logFile, "taoHostServices::Attest\n");
-    PrintBytes((char*)"Attest this string:\n", toAttest, sizetoAttest);
+    PrintBytes("Attest this string:\n", toAttest, sizetoAttest);
     fflush(g_logFile);
 #endif
     switch(m_hostType) {

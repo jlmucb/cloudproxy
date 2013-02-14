@@ -117,9 +117,9 @@ int  resource::auxSize()
 }
 
 
-bool resource::Deserialize(byte* szObj, int* pi)
+bool resource::Deserialize(const byte* szObj, int* pi)
 {
-    byte*                   sz= szObj;
+    const char*             sz= reinterpret_cast<const char*>(szObj);
     int                     iTotal= 0;
     int                     i, n;
     int                     iNumOwners= 0;
@@ -129,12 +129,12 @@ bool resource::Deserialize(byte* szObj, int* pi)
     fprintf(g_logFile, "resource Deserialize\n");
     fflush(g_logFile);
 #endif
-    m_szResourceName= strdup((char*)sz);
+    m_szResourceName= strdup(sz);
     n= strlen(m_szResourceName)+1;
     sz+= n;
     iTotal+= n;
     
-    m_szLocation= strdup((char*)sz);
+    m_szLocation= strdup(sz);
     n= strlen(m_szLocation)+1;
     sz+= n;
     iTotal+= n;
@@ -165,7 +165,7 @@ bool resource::Deserialize(byte* szObj, int* pi)
     iTotal+= n;
 
     for(i=0; i<iNumOwners; i++) {
-        p= strdup((char*)sz);
+        p= strdup(sz);
         n= strlen(p)+1;
         // name must be converted to access principal afterwards
         m_myOwners.append((accessPrincipal*) p);

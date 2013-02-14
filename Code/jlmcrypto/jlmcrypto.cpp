@@ -99,6 +99,7 @@ bool closeAllCrypto()
 {
     closeCryptoRand();
     g_fAllCryptoInit= false;
+    return true;
 }
 
 
@@ -112,8 +113,8 @@ bool closeAllCrypto()
 
 //  pad character is '='
 
-static char* s_transChar= (char*)"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static unsigned char s_revTrans[80]= {
+static const char* s_transChar= "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const unsigned char s_revTrans[80]= {
      62 /* + */,   0 /* , */,   0 /* - */,   0 /* . */,  63 /* / */,
      52 /* 0 */,  53 /* 1 */,  54 /* 2 */,  55 /* 3 */,  56 /* 4 */,
      57 /* 5 */,  58 /* 6 */,  59 /* 7 */,  60 /* 8 */,  61 /* 9 */,
@@ -142,7 +143,7 @@ inline bool whitespace(char b)
 // ------------------------------------------------------------------------------------------
 
 
-bool toBase64(int iInLen, byte* puIn, int* piOutLen, char* rgszOut, bool fDirFwd)
+bool toBase64(int iInLen, const byte* puIn, int* piOutLen, char* rgszOut, bool fDirFwd)
 //
 //      Lengths are in characters
 //
@@ -150,7 +151,7 @@ bool toBase64(int iInLen, byte* puIn, int* piOutLen, char* rgszOut, bool fDirFwd
     int         iNumOut= ((iInLen*4)+2)/3;
     int         i= 0;
     int         a, b, c, d;
-    byte*       puC;
+    const byte*       puC;
 
     // enough room?
     if(iNumOut>*piOutLen)
@@ -230,7 +231,7 @@ bool toBase64(int iInLen, byte* puIn, int* piOutLen, char* rgszOut, bool fDirFwd
 }
 
 
-bool fromBase64(int iInLen, char* pszIn, int* piOutLen, unsigned char* puOut, bool fDirFwd)
+bool fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puOut, bool fDirFwd)
 //
 //      Lengths are in characters
 //
@@ -366,9 +367,9 @@ bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, int* poutsize, b
 #ifdef CRYPTOTEST2
     memset(out, 0, *poutsize);
     fprintf(g_logFile, "*****AES128CBCHMACSHA256SYMPADEncryptBlob. insize: %d\n", insize);
-    PrintBytes((char*) "encKey: ", enckey, AES128BYTEBLOCKSIZE);
-    PrintBytes((char*) "intKey: ", intkey, AES128BYTEBLOCKSIZE);
-    PrintBytes((char*) "input:\n", in, insize);
+    PrintBytes( "encKey: ", enckey, AES128BYTEBLOCKSIZE);
+    PrintBytes( "intKey: ", intkey, AES128BYTEBLOCKSIZE);
+    PrintBytes( "input:\n", in, insize);
 #endif
     // init iv
     if(!getCryptoRandom(AES128BYTEBLOCKSIZE*NBITSINBYTE, iv)) {
@@ -414,7 +415,7 @@ bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, int* poutsize, b
         return false;
     }
 #ifdef CRYPTOTEST2
-    PrintBytes((char*) "output:\n", out, *poutsize);
+    PrintBytes( "output:\n", out, *poutsize);
     fprintf(g_logFile, "\n%d, out\n", *poutsize);
 #endif
     return true;
@@ -432,9 +433,9 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
 #ifdef CRYPTOTEST2
     memset(out, 0, *poutsize);
     fprintf(g_logFile, "*****AES128CBCHMACSHA256SYMPADDecryptBlob, insize: %d\n", insize);
-    PrintBytes((char*) "encKey: ", enckey, AES128BYTEBLOCKSIZE);
-    PrintBytes((char*) "intKey: ", intkey, AES128BYTEBLOCKSIZE);
-    PrintBytes((char*) "input:\n", in, insize);
+    PrintBytes("encKey: ", enckey, AES128BYTEBLOCKSIZE);
+    PrintBytes("intKey: ", intkey, AES128BYTEBLOCKSIZE);
+    PrintBytes("input:\n", in, insize);
 #endif
     // init 
     if(!oCBC.initDec(AES128, SYMPAD, HMACSHA256, 
@@ -472,7 +473,7 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     }
     *poutsize= oCBC.m_iNumPlainBytes;
 #ifdef CRYPTOTEST2
-    PrintBytes((char*) "output:\n", out, *poutsize);
+    PrintBytes("output:\n", out, *poutsize);
     fprintf(g_logFile, "\n%d, out\n", *poutsize);
 #endif
     return oCBC.validateMac();

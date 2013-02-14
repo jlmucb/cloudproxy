@@ -56,12 +56,12 @@ private:
 public:
                     objectManager(int maxSize, int maxString);
                     ~objectManager();
-object*             findObject(char* szObjectName);
+object*             findObject(const char* szObjectName);
 object*             getObject(int i);
 int                 numObjectsinTable();
 bool                addObject(object* pObject);
-bool                deleteObject(char* szName);
-bool                DeserializeObjectTable(int iSize, byte* buf);
+bool                deleteObject(const char* szName);
+bool                DeserializeObjectTable(int iSize, const byte* buf);
 bool                SerializeObjectTable(int* pi, byte** pbuf);
 };
 
@@ -122,15 +122,14 @@ object* objectManager<object>::getObject(int i)
 
 
 template <class object>
-bool  objectManager<object>::DeserializeObjectTable(int iSize, byte* buf)
+bool  objectManager<object>::DeserializeObjectTable(int iSize, const byte* buf)
 {
     int         iNumObjects;
-    byte*       sz= buf;
+    const char*       sz= reinterpret_cast<const char*>(buf);
     int         i, n;
     bool        fRet= true;
     object*     pObj= NULL;
     object*     pObj2= NULL;
-    bool        fObjectExists= false;
 
     memcpy(&iNumObjects, sz, sizeof(int));
     sz+= sizeof(int);
@@ -140,13 +139,12 @@ bool  objectManager<object>::DeserializeObjectTable(int iSize, byte* buf)
     iSize-= 2*sizeof(int);
 
     for(i=0; i<iNumObjects; i++) {
-        if((pObj=findObject((char*) sz))==NULL) {
-            fObjectExists= true;
+        if((pObj=findObject(sz))==NULL) {
             pObj= new object();
         }
-        if(!pObj->Deserialize(sz, &n))
+        if(!pObj->Deserialize(reinterpret_cast<const byte*>(sz), &n))
             return false;
-        pObj2= findObject((char*) sz);
+        pObj2= findObject(sz);
         if(pObj2!=NULL) {
             *pObj2= *pObj;
         }
@@ -223,7 +221,7 @@ bool  objectManager<object>::SerializeObjectTable(int* piSize, byte** pbuf)
 
 
 template <class object>
-object*  objectManager<object>::findObject(char* szObjectName)
+object*  objectManager<object>::findObject(const char* szObjectName)
 {
     int i;
 
@@ -261,7 +259,7 @@ bool  objectManager<object>::addObject(object* pObject)
 
 
 template <class object>
-bool   objectManager<object>::deleteObject(char* szName)
+bool   objectManager<object>::deleteObject(const char* szName)
 {
     return false;
 }

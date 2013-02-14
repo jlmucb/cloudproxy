@@ -23,6 +23,7 @@
 
 
 #include "jlmTypes.h"
+#include "jlmUtility.h"
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "secPrincipal.h"
@@ -78,7 +79,7 @@ PrincipalCert::~PrincipalCert()
 }
 
 
-bool  PrincipalCert::init(char* szSig)
+bool  PrincipalCert::init(const char* szSig)
 {
     m_szSignature= strdup(szSig);
     return true;
@@ -129,18 +130,18 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     TiXmlNode*      pNode2= NULL;
     TiXmlNode*      pSignedInfoNode= NULL;
     TiXmlNode*      pSubjectKeyInfoNode= NULL;
-    char*           szTimePoint= NULL;
+    const char*           szTimePoint= NULL;
 
 #ifdef CERTTEST
     fprintf(g_logFile, "parsePrincipalCertElementfromRoot\n");
 #endif
-    if(strcmp((char*)pRootElement->Value(), "ds:Signature")!=0) {
-        fprintf(g_logFile, "Does not start with signature (%s)\n", (char*)pRootElement->Value());
+    if(strcmp(pRootElement->Value(), "ds:Signature")!=0) {
+        fprintf(g_logFile, "Does not start with signature (%s)\n", pRootElement->Value());
         return false;
     }
      
     // make sure it's in signedinfo
-    pSignedInfoNode= Search((TiXmlNode*) pRootElement, (char*)"ds:SignedInfo");
+    pSignedInfoNode= Search((TiXmlNode*) pRootElement, "ds:SignedInfo");
     if(pSignedInfoNode==NULL) {
         fprintf(g_logFile, "Cant find SignedInfo\n");
         return false;
@@ -150,36 +151,36 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     m_szSignedInfo= canonicalize(pSignedInfoNode);
 
     // fill m_szSignatureMethod;
-    pNode= Search(pSignedInfoNode, (char*)"ds:SignatureMethod");
+    pNode= Search(pSignedInfoNode, "ds:SignatureMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find SignatureMethod\n");
         return false;
     }
-    m_szSignatureMethod= strdup((char*)((TiXmlElement*) pNode)->Attribute("Algorithm"));
+    m_szSignatureMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
 
     // fill m_szCanonicalizationMethod;
-    pNode= Search(pSignedInfoNode, (char*)"ds:CanonicalizationMethod");
+    pNode= Search(pSignedInfoNode, "ds:CanonicalizationMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find CanonicalizationMethod\n");
         return false;
     }
-    m_szCanonicalizationMethod= strdup((char*)((TiXmlElement*) pNode)->Attribute("Algorithm"));
+    m_szCanonicalizationMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
     // fill m_szRevocationInfo;
-    pNode= Search(pSignedInfoNode, (char*)"RevocationPolicy");
+    pNode= Search(pSignedInfoNode, "RevocationPolicy");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find RevocationPolicy\n");
         return false;
     }
 
     // fill m_pSubjectKeyInfo;
-    pNode= Search(pSignedInfoNode, (char*)"SubjectKey");
+    pNode= Search(pSignedInfoNode, "SubjectKey");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find SubjectKey\n");
         return false;
     }
-    pSubjectKeyInfoNode= Search(pNode, (char*)"ds:KeyInfo");
+    pSubjectKeyInfoNode= Search(pNode, "ds:KeyInfo");
     if(pSubjectKeyInfoNode==NULL) {
         fprintf(g_logFile, "Cant find SubjectKey KeyInfo\n");
         return false;
@@ -191,14 +192,14 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     // fill principal name
-    pNode= Search(pSignedInfoNode, (char*)"SubjectName");
+    pNode= Search(pSignedInfoNode, "SubjectName");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find Subject name\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1!=NULL) {
-        m_szPrincipalName= strdup((char*)((TiXmlElement*)pNode1)->Value());
+        m_szPrincipalName= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
         fprintf(g_logFile, "Cant get subject name value\n");
@@ -206,19 +207,19 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     // fill m_ovalidityPeriod;
-    pNode= Search((TiXmlNode*) pSignedInfoNode, (char*)"ValidityPeriod");
+    pNode= Search((TiXmlNode*) pSignedInfoNode, "ValidityPeriod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find Validity Period\n");
         return false;
     }
-    pNode1= Search(pNode, (char*)"NotBefore");
+    pNode1= Search(pNode, "NotBefore");
     if(pNode1==NULL) {
         fprintf(g_logFile, "Cant find NotBefore\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
     if(pNode2) {
-        szTimePoint= (char*)((TiXmlElement*)pNode2)->Value();
+        szTimePoint= ((TiXmlElement*)pNode2)->Value();
     }
     else {
         fprintf(g_logFile, "Cant get NotBefore value\n");
@@ -229,14 +230,14 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         fprintf(g_logFile, "Cant interpret NotBefore value\n");
         return false;
     }
-    pNode1= Search(pNode, (char*)"NotAfter");
+    pNode1= Search(pNode, "NotAfter");
     if(pNode1==NULL) {
         fprintf(g_logFile, "Cant find NotAfter\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
     if(pNode2) {
-        szTimePoint= (char*)((TiXmlElement*)pNode2)->Value();
+        szTimePoint= ((TiXmlElement*)pNode2)->Value();
     }
     else {
         fprintf(g_logFile, "Cant get NotAftervalue\n");
@@ -249,14 +250,14 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     // fill m_szSignatureValue;
-    pNode= Search((TiXmlNode*) pRootElement, (char*)"ds:SignatureValue");
+    pNode= Search((TiXmlNode*) pRootElement, "ds:SignatureValue");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find SignatureValue\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1) {
-        m_szSignatureValue= strdup((char*)((TiXmlElement*)pNode1)->Value());
+        m_szSignatureValue= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
         fprintf(g_logFile, "Cant get SignatureValue\n");
@@ -358,7 +359,7 @@ bool PrincipalCert::sameAs(PrincipalCert& oPrinc)
 // -------------------------------------------------------------------------------
 
 
-bool  revoked(char* szCert, char* szPolicy)
+bool  revoked(const char* szCert, const char* szPolicy)
 {
     return false;
 }
@@ -384,7 +385,7 @@ bool checktimeinInterval(tm& time, tm& begin, tm& end)
 
 int VerifyEvidence(tm* pt, int iEvidenceType, void* pEvidence, 
                     int parentEvidenceType, void* pparentEvidence,
-                    bool (*pRevoke)(char*, char*))
+                    bool (*pRevoke)(const char*, const char*))
 {
     KeyInfo*            pmyKeyInfo= NULL;
     KeyInfo*            pParentKeyInfo= NULL;
@@ -504,6 +505,8 @@ int VerifyEvidence(tm* pt, int iEvidenceType, void* pEvidence,
         break;
     }
 
+    UNUSEDVAR(pmyKeyInfo);
+
     if(!checkXMLSignature(szSigAlgorithm, szCanonicalSignedBody, 
                           pParentKeyInfo, szSignatureValue))
         return INVALIDSIG;
@@ -607,9 +610,9 @@ accessPrincipal::~accessPrincipal()
 }
 
 
-bool accessPrincipal::Deserialize(byte* szObj, int* pi)
+bool accessPrincipal::Deserialize(const byte* szObj, int* pi)
 {
-    byte*               sz= szObj;
+    const byte*               sz= szObj;
     int                 iTotal= 0;
     int                 n;
     PrincipalCert*      pCert= NULL;
@@ -619,7 +622,7 @@ bool accessPrincipal::Deserialize(byte* szObj, int* pi)
     fprintf(g_logFile, "accessPrincipal Deserialize\n");
     fflush(g_logFile);
 #endif
-    m_szPrincipalName= strdup((char*)sz);
+    m_szPrincipalName= strdup(reinterpret_cast<const char*>(sz));
     n= strlen(m_szPrincipalName)+1;
     sz+= n;
     iTotal+= n;
@@ -632,7 +635,7 @@ bool accessPrincipal::Deserialize(byte* szObj, int* pi)
     sz+= sizeof(bool);
     iTotal+= sizeof(bool);
 
-    p= strdup((char*) sz);
+    p= strdup(reinterpret_cast<const char*>(sz));
     n= strlen(p)+1;
     sz+= n;
     iTotal+= n;
@@ -756,12 +759,12 @@ evidenceCollection::evidenceCollection()
 }
 
 
-bool evidenceCollection::parseEvidenceCollection(char* szEvidenceCollection)
+bool evidenceCollection::parseEvidenceCollection(const char* szEvidenceCollection)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
-    char*           szElt= NULL;
+    const char*           szElt= NULL;
     evidenceList*   pEvidenceList= NULL;
     int             n= 0;
 
@@ -779,7 +782,7 @@ bool evidenceCollection::parseEvidenceCollection(char* szEvidenceCollection)
 
     pNode= pRootElement->FirstChild();
     while(pNode!=NULL) {
-        szElt= (char*)((TiXmlElement*)pNode)->Value();
+        szElt= ((TiXmlElement*)pNode)->Value();
         if(strcmp(szElt,"EvidenceList")==0) {
             pEvidenceList= new evidenceList();
             if(!pEvidenceList->parseEvidenceList((TiXmlElement*)pNode)) {
@@ -858,10 +861,10 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
     pNode= pRootElement->FirstChild();
     while(pNode!=NULL) {
         // find EvidenceType
-        if((pNode1=Search(pNode, (char*)"SignedGrant"))!=NULL) {
+        if((pNode1=Search(pNode, "SignedGrant"))!=NULL) {
             m_rgiEvidenceTypes[n]= SIGNEDGRANT;
         }
-        else if((pNode1=Search(pNode, (char*)"Certificate"))!=NULL) {
+        else if((pNode1=Search(pNode, "Certificate"))!=NULL) {
             m_rgiEvidenceTypes[n]= PRINCIPALCERT;
         }
         else {
@@ -1003,7 +1006,7 @@ SignedAssertion::~SignedAssertion()
 }
 
 
-bool  SignedAssertion::init(char* szSig)
+bool  SignedAssertion::init(const char* szSig)
 {
 #ifdef RULESTEST
     fprintf(g_logFile, "SignedAssertion::init %s\n", szSig);
@@ -1074,7 +1077,7 @@ bool SignedAssertion::parseSignedAssertionElements()
     }
      
     // make sure it's in signedinfo
-    pSignedInfoNode= Search((TiXmlNode*) pRootElement, (char*)"ds:SignedInfo");
+    pSignedInfoNode= Search((TiXmlNode*) pRootElement, "ds:SignedInfo");
     if(pSignedInfoNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find SignedInfo\n");
         return false;
@@ -1085,53 +1088,53 @@ bool SignedAssertion::parseSignedAssertionElements()
 
 
     // fill m_szSignatureMethod;
-    pNode= Search(pSignedInfoNode, (char*)"ds:SignatureMethod");
+    pNode= Search(pSignedInfoNode, "ds:SignatureMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find SignatureMethod\n");
         return false;
     }
-    m_szSignatureMethod= strdup((char*)((TiXmlElement*) pNode)->Attribute("Algorithm"));
+    m_szSignatureMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
     // fill m_szPrincipalName
-    pNode= Search(pSignedInfoNode, (char*)"SubjectName");
+    pNode= Search(pSignedInfoNode, "SubjectName");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find SubjectName\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1!=NULL) {
-        m_szPrincipalName= strdup((char*)((TiXmlElement*)pNode1)->Value());
+        m_szPrincipalName= strdup(((TiXmlElement*)pNode1)->Value());
     }
 
     // fill m_szCanonicalizationMethod;
-    pNode= Search(pSignedInfoNode, (char*)"ds:CanonicalizationMethod");
+    pNode= Search(pSignedInfoNode, "ds:CanonicalizationMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find CanonicalizationMethod\n");
         return false;
     }
-    m_szCanonicalizationMethod= strdup((char*)((TiXmlElement*) pNode)->Attribute("Algorithm"));
+    m_szCanonicalizationMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
     // fill m_szRevocationInfo;
-    pNode= Search(pSignedInfoNode, (char*)"RevocationPolicy");
+    pNode= Search(pSignedInfoNode, "RevocationPolicy");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find RevocationPolicy\n");
         return false;
     }
 
     // fill m_ovalidityPeriod;
-    pNode= Search((TiXmlNode*) pSignedInfoNode, (char*)"ValidityPeriod");
+    pNode= Search((TiXmlNode*) pSignedInfoNode, "ValidityPeriod");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find Validity Period\n");
         return false;
     }
-    pNode1= Search(pNode, (char*)"NotBefore");
+    pNode1= Search(pNode, "NotBefore");
     if(pNode1==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find NotBefore\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
     if(pNode2) {
-        szTimePoint= strdup((char*)((TiXmlElement*)pNode2)->Value());
+        szTimePoint= strdup(((TiXmlElement*)pNode2)->Value());
     }
     else {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant get NotBefore value\n");
@@ -1141,14 +1144,14 @@ bool SignedAssertion::parseSignedAssertionElements()
         fprintf(g_logFile, "parseSignedAssertionElements: Cant interpret NotBefore value\n");
         return false;
     }
-    pNode1= Search(pNode, (char*)"NotAfter");
+    pNode1= Search(pNode, "NotAfter");
     if(pNode1==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find NotAfter\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
     if(pNode2) {
-        szTimePoint= strdup((char*)((TiXmlElement*)pNode2)->Value());
+        szTimePoint= strdup(((TiXmlElement*)pNode2)->Value());
     }
     else {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant get NotAftervalue\n");
@@ -1160,14 +1163,14 @@ bool SignedAssertion::parseSignedAssertionElements()
     }
 
     // fill m_szSignatureValue;
-    pNode= Search((TiXmlNode*) pRootElement, (char*)"ds:SignatureValue");
+    pNode= Search((TiXmlNode*) pRootElement, "ds:SignatureValue");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find SignatureValue\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1!=NULL) {
-        m_szSignatureValue= strdup((char*)((TiXmlElement*)pNode1)->Value());
+        m_szSignatureValue= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant get SignatureValue\n");
@@ -1175,7 +1178,7 @@ bool SignedAssertion::parseSignedAssertionElements()
     }
 
     // Assertions
-    pNodeA= Search((TiXmlNode*) pSignedInfoNode, (char*)"Assertions");
+    pNodeA= Search((TiXmlNode*) pSignedInfoNode, "Assertions");
     if(pNodeA==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find Assertions\n");
         return false;

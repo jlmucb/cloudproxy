@@ -68,14 +68,14 @@
  */
 
 
-char* g_szRequestSig= (char*)
+const char* g_szRequestSig=
     "<clientCertNego phase='1'>\n    <policyKeyId> %s </policyKeyId>\n"\
     "    <signedRequest> %s </signedRequest>\n"\
     "    %s\n</clientCertNego>\n";
 
 
-bool clientCertNegoMessage1(char* buf, int maxSize, char* szpolicyKeyId, 
-                           char* szQuoted, char* szEvidenceList)
+bool clientCertNegoMessage1(char* buf, int maxSize, const char* szpolicyKeyId, 
+                           const char* szQuoted, const char* szEvidenceList)
 {
 #ifdef  TEST1
     fprintf(g_logFile, "clientCertNegoMessage1 %d %s %s %s\n", maxSize, 
@@ -96,16 +96,16 @@ bool clientCertNegoMessage1(char* buf, int maxSize, char* szpolicyKeyId,
 }
 
 
-bool getDatafromServerCertMessage1(char* response, char** pszstatus, 
+bool getDatafromServerCertMessage1(const char* response, char** pszstatus, 
         char** pszerrorCode, char** pszCert)
 {
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlElement*   pRootElement= NULL;
-    char*           szLabel= NULL;
-    char*           szStatus= NULL;
-    char*           szErrorCode= NULL;
+    const char*           szLabel= NULL;
+    const char*           szStatus= NULL;
+    const char*           szErrorCode= NULL;
     int             phase;
     bool            fRet= true;
 
@@ -116,38 +116,38 @@ bool getDatafromServerCertMessage1(char* response, char** pszstatus,
 
         // Parse document
         if(!doc.Parse(response)) 
-            throw((char *)"Message 1 parse failure in key Nego\n");
+            throw "Message 1 parse failure in key Nego\n";
         pRootElement= doc.RootElement();
         if(pRootElement==NULL) 
-            throw((char *)"Cant find root\n");
-        szLabel= (char*)pRootElement->Value();
-        if(szLabel==NULL || strcmp((char*)"serverCertNego", szLabel)!=0)
-            throw((char *)"Bad response format (no serverCertNego)\n");
+            throw "Cant find root\n";
+        szLabel= pRootElement->Value();
+        if(szLabel==NULL || strcmp("serverCertNego", szLabel)!=0)
+            throw "Bad response format (no serverCertNego)\n";
             
         pRootElement->QueryIntAttribute("phase", &phase);
 
         // Status
-        pNode= Search((TiXmlNode*) pRootElement, (char*)"Status");
+        pNode= Search((TiXmlNode*) pRootElement, "Status");
         if(pNode==NULL)
-            throw((char *)"Cant find status in server message 1\n");
+            throw "Cant find status in server message 1\n";
         pNode1= pNode->FirstChild();
         if(pNode1==NULL)
-            throw((char*) "Bad status in server message");
-        szStatus= (char*) pNode1->Value();
+            throw "Bad status in server message";
+        szStatus=  pNode1->Value();
         if(szStatus==NULL)
-            throw((char*) "Bad status value in server message");
+            throw "Bad status value in server message";
         *pszstatus= strdup(szStatus);
 
         // Error Code
-        pNode= Search((TiXmlNode*) pRootElement, (char*)"ErrorCode");
+        pNode= Search((TiXmlNode*) pRootElement, "ErrorCode");
         if(pNode==NULL)
-            throw((char *)"Cant find error code in server message 1\n");
+            throw "Cant find error code in server message 1\n";
         pNode1= pNode->FirstChild();
         if(pNode1==NULL) {
             *pszerrorCode= NULL;
         }
         else {
-            szErrorCode= (char*) pNode1->Value();
+            szErrorCode= pNode1->Value();
             if(szErrorCode==NULL)
                 *pszerrorCode= NULL;
             else
@@ -155,9 +155,9 @@ bool getDatafromServerCertMessage1(char* response, char** pszstatus,
         }
 
         // Cert
-        pNode= Search((TiXmlNode*) pRootElement, (char*)"Cert");
+        pNode= Search((TiXmlNode*) pRootElement, "Cert");
         if(pNode==NULL)
-            throw((char *)"Cant find cert in server message 1\n");
+            throw "Cant find cert in server message 1\n";
         pNode1= pNode->FirstChild();
         if(pNode1==NULL) {
             *pszCert= NULL;
@@ -166,7 +166,7 @@ bool getDatafromServerCertMessage1(char* response, char** pszstatus,
             *pszCert= canonicalize(pNode1);
         }
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         fRet= false;
         fprintf(g_logFile, "%s", szError);
     }
@@ -178,7 +178,7 @@ bool getDatafromServerCertMessage1(char* response, char** pszstatus,
 }
 
 
-bool validateResponse(char* szStatus, char* szErrorCode, char* szCert)
+bool validateResponse(const char* szStatus, const char* szErrorCode, const char* szCert)
 {
 #ifdef  TEST1
     fprintf(g_logFile, "validateResponse %s\n", szStatus);
@@ -192,7 +192,7 @@ bool validateResponse(char* szStatus, char* szErrorCode, char* szCert)
 // ------------------------------------------------------------------------
 
 
-bool KeyNego(char* szQuote, char* szEvidenceList, char** pszCert)
+bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
 {
     bool                fRet= true;
     int                 iError= 0;
@@ -207,7 +207,7 @@ bool KeyNego(char* szQuote, char* szEvidenceList, char** pszCert)
 
     RSAKey*             pKey= NULL;
     char*               szMyPrivateKey= NULL;
-    char*               szpolicyKeyId= NULL;
+    const char*         szpolicyKeyId= NULL;
     char*               szMySignedInfo= NULL;
     char*               szStatus= NULL;
     char*               szErrorCode= NULL;
@@ -226,7 +226,7 @@ bool KeyNego(char* szQuote, char* szEvidenceList, char** pszCert)
         // open socket
         fd= socket(AF_INET, SOCK_STREAM, 0);
         if(fd<0) 
-            throw((char*) "Can't get socket\n");
+            throw  "Can't get socket\n";
         memset((void*) &server_addr, 0, sizeof(struct sockaddr_in));
 
 #ifdef  TEST
@@ -242,9 +242,9 @@ bool KeyNego(char* szQuote, char* szEvidenceList, char** pszCert)
 
         iError= connect(fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
         if(iError<0)
-            throw((char*) "initializeKeys: can't connect");
+            throw  "initializeKeys: can't connect";
 
-        szpolicyKeyId= (char*)"Key1";
+        szpolicyKeyId= "Key1";
 #ifdef  TEST
         fprintf(g_logFile, "initialize keys connect completed\n");
 #endif
@@ -252,19 +252,19 @@ bool KeyNego(char* szQuote, char* szEvidenceList, char** pszCert)
         // construct and send request
         if(!clientCertNegoMessage1(rgBuf, MAXREQUESTSIZE, szpolicyKeyId,
                            szQuote, szEvidenceList))
-            throw((char*) "Can't construct request");
+            throw  "Can't construct request";
         if((n=sendPacket(fd, (byte*)rgBuf, strlen(rgBuf)+1, CHANNEL_NEGO, 0, 1))<0)
-            throw((char*) "Can't send Packet 1 in certNego\n");
+            throw  "Can't send Packet 1 in certNego\n";
 
         // get and interpret response
          if((n=getPacket(fd, (byte*)rgBuf, MAXREQUESTSIZE, &type, &multi, &final))<0)
-            throw((char*) "Can't get packet 1 certNego\n");
+            throw  "Can't get packet 1 certNego\n";
         if(!getDatafromServerCertMessage1(rgBuf, &szStatus, &szErrorCode, &szCert))
-            throw((char*) "server response invalid\n");
+            throw  "server response invalid\n";
 
         // everything OK?
         if(!validateResponse(szStatus, szErrorCode, szCert))
-            throw((char*) "server response invalid\n");
+            throw  "server response invalid\n";
 
         // cert
         *pszCert= szCert;
@@ -272,7 +272,7 @@ bool KeyNego(char* szQuote, char* szEvidenceList, char** pszCert)
         fprintf(g_logFile, "Cert: %s\n", szCert);
 #endif
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         fRet= false;
         fprintf(g_logFile, "Error: %s\n", szError);
     }

@@ -60,8 +60,8 @@ bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, by
 }
 
 
-bool verifyXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
-                char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue)
+bool verifyXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, const char* sznonce, 
+                const char* szdigest, KeyInfo* pKeyInfo, const char* szQuoteValue)
 {
     Sha1    oSha1Hash;
     Sha256  oSha256Hash;
@@ -199,7 +199,7 @@ bool verifyXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce
 }
 
 
-RSAKey* keyfromkeyInfo(char* szKeyInfo)
+RSAKey* keyfromkeyInfo(const char* szKeyInfo)
 {
     RSAKey*         pKey= new RSAKey();
     TiXmlElement*   pRootElement= NULL;
@@ -267,7 +267,7 @@ PrincipalCert::~PrincipalCert()
 }
 
 
-bool  PrincipalCert::init(char* szSig)
+bool  PrincipalCert::init(const char* szSig)
 {
     m_szSignature= strdup(szSig);
     return true;
@@ -323,13 +323,13 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
 #ifdef CERTTEST
     fprintf(g_logFile, "parsePrincipalCertElementfromRoot\n");
 #endif
-    if(strcmp((char*)pRootElement->Value(), "ds:Signature")!=0) {
-        fprintf(g_logFile, "Does not start with signature (%s)\n", (char*)pRootElement->Value());
+    if(strcmp(pRootElement->Value(), "ds:Signature")!=0) {
+        fprintf(g_logFile, "Does not start with signature (%s)\n", pRootElement->Value());
         return false;
     }
      
     // make sure it's in signedinfo
-    pSignedInfoNode= Search((TiXmlNode*) pRootElement, (char*)"ds:SignedInfo");
+    pSignedInfoNode= Search((TiXmlNode*) pRootElement, "ds:SignedInfo");
     if(pSignedInfoNode==NULL) {
         fprintf(g_logFile, "Cant find SignedInfo\n");
         return false;
@@ -339,36 +339,36 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     m_szSignedInfo= canonicalize(pSignedInfoNode);
 
     // fill m_szSignatureMethod;
-    pNode= Search(pSignedInfoNode, (char*)"ds:SignatureMethod");
+    pNode= Search(pSignedInfoNode, "ds:SignatureMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find SignatureMethod\n");
         return false;
     }
-    m_szSignatureMethod= strdup((char*)((TiXmlElement*) pNode)->Attribute("Algorithm"));
+    m_szSignatureMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
 
     // fill m_szCanonicalizationMethod;
-    pNode= Search(pSignedInfoNode, (char*)"ds:CanonicalizationMethod");
+    pNode= Search(pSignedInfoNode, "ds:CanonicalizationMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find CanonicalizationMethod\n");
         return false;
     }
-    m_szCanonicalizationMethod= strdup((char*)((TiXmlElement*) pNode)->Attribute("Algorithm"));
+    m_szCanonicalizationMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
     // fill m_szRevocationInfo;
-    pNode= Search(pSignedInfoNode, (char*)"RevocationPolicy");
+    pNode= Search(pSignedInfoNode, "RevocationPolicy");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find RevocationPolicy\n");
         return false;
     }
 
     // fill m_pSubjectKeyInfo;
-    pNode= Search(pSignedInfoNode, (char*)"SubjectKey");
+    pNode= Search(pSignedInfoNode, "SubjectKey");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find SubjectKey\n");
         return false;
     }
-    pSubjectKeyInfoNode= Search(pNode, (char*)"ds:KeyInfo");
+    pSubjectKeyInfoNode= Search(pNode, "ds:KeyInfo");
     if(pSubjectKeyInfoNode==NULL) {
         fprintf(g_logFile, "Cant find SubjectKey KeyInfo\n");
         return false;
@@ -380,14 +380,14 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     // fill principal name
-    pNode= Search(pSignedInfoNode, (char*)"SubjectName");
+    pNode= Search(pSignedInfoNode, "SubjectName");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find Subject name\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1!=NULL) {
-        m_szPrincipalName= strdup((char*)((TiXmlElement*)pNode1)->Value());
+        m_szPrincipalName= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
         fprintf(g_logFile, "Cant get subject name value\n");
@@ -395,19 +395,19 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     // fill m_ovalidityPeriod;
-    pNode= Search((TiXmlNode*) pSignedInfoNode, (char*)"ValidityPeriod");
+    pNode= Search((TiXmlNode*) pSignedInfoNode, "ValidityPeriod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find Validity Period\n");
         return false;
     }
-    pNode1= Search(pNode, (char*)"NotBefore");
+    pNode1= Search(pNode, "NotBefore");
     if(pNode1==NULL) {
         fprintf(g_logFile, "Cant find NotBefore\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
     if(pNode2) {
-        szTimePoint= (char*)((TiXmlElement*)pNode2)->Value();
+        szTimePoint= ((TiXmlElement*)pNode2)->Value();
     }
     else {
         fprintf(g_logFile, "Cant get NotBefore value\n");
@@ -418,14 +418,14 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         fprintf(g_logFile, "Cant interpret NotBefore value\n");
         return false;
     }
-    pNode1= Search(pNode, (char*)"NotAfter");
+    pNode1= Search(pNode, "NotAfter");
     if(pNode1==NULL) {
         fprintf(g_logFile, "Cant find NotAfter\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
     if(pNode2) {
-        szTimePoint= (char*)((TiXmlElement*)pNode2)->Value();
+        szTimePoint= ((TiXmlElement*)pNode2)->Value();
     }
     else {
         fprintf(g_logFile, "Cant get NotAftervalue\n");
@@ -438,14 +438,14 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     // fill m_szSignatureValue;
-    pNode= Search((TiXmlNode*) pRootElement, (char*)"ds:SignatureValue");
+    pNode= Search((TiXmlNode*) pRootElement, "ds:SignatureValue");
     if(pNode==NULL) {
         fprintf(g_logFile, "Cant find SignatureValue\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1) {
-        m_szSignatureValue= strdup((char*)((TiXmlElement*)pNode1)->Value());
+        m_szSignatureValue= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
         fprintf(g_logFile, "Cant get SignatureValue\n");
@@ -580,11 +580,11 @@ Quote::~Quote()
 }
 
 
-bool  Quote::init(char* szXMLQuote)
+bool  Quote::init(const char* szXMLQuote)
 {
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
-    char*           szA= NULL;
+    const char*           szA= NULL;
     
 #ifdef QUOTETEST1
     fprintf(g_logFile, "init()\n");
@@ -601,42 +601,42 @@ bool  Quote::init(char* szXMLQuote)
         fprintf(g_logFile, "Quote::init: Can't get root of quote\n");
         return false;
     }
-    m_pNodeQuote= Search((TiXmlNode*) pRootElement, (char*)"Quote");
+    m_pNodeQuote= Search((TiXmlNode*) pRootElement, "Quote");
     if(m_pNodeQuote==NULL) {
         fprintf(g_logFile, "Quote::init: No Quote node\n");
         return false;
     }
     // <ds:QuoteMethod Algorithm=
-    pNode=  Search(m_pNodeQuote, (char*)"ds:QuoteMethod");
+    pNode=  Search(m_pNodeQuote, "ds:QuoteMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Quote::init: No ds:QuoteMethod node\n");
         return false;
     }
-    szA= (char*)((TiXmlElement*) pNode)->Attribute ("Algorithm");
+    szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
     if(szA==NULL) {
         fprintf(g_logFile, "Quote::init: No ds:QuoteMethod Algorithm\n");
         return false;
     }
     m_szQuotealg= strdup(szA);
-    m_pNodeNonce= Search(m_pNodeQuote, (char*)"Nonce");
-    m_pNodeCodeDigest= Search(m_pNodeQuote, (char*)"CodeDigest");
+    m_pNodeNonce= Search(m_pNodeQuote, "Nonce");
+    m_pNodeCodeDigest= Search(m_pNodeQuote, "CodeDigest");
     if(m_pNodeCodeDigest==NULL) {
         fprintf(g_logFile, "Quote::init: No CodeDigest node\n");
         return false;
     }
-    m_pNodeQuotedInfo= Search(m_pNodeQuote, (char*)"QuotedInfo");
+    m_pNodeQuotedInfo= Search(m_pNodeQuote, "QuotedInfo");
     if(m_pNodeQuotedInfo==NULL) {
         fprintf(g_logFile, "Quote::init: No QuotedInfo node\n");
         return false;
     }
-    m_pNodeQuoteValue= Search(m_pNodeQuotedInfo, (char*)"QuoteValue");
+    m_pNodeQuoteValue= Search(m_pNodeQuotedInfo, "QuoteValue");
     if(m_pNodeQuoteValue==NULL) {
         fprintf(g_logFile, "Quote::init: No QuoteValue node\n");
         return false;
     }
-    m_pNodequotedKeyInfo= Search(m_pNodeQuotedInfo, (char*)"ds:KeyInfo");
+    m_pNodequotedKeyInfo= Search(m_pNodeQuotedInfo, "ds:KeyInfo");
     pNode= m_pNodeQuoteValue->NextSibling();
-    m_pNodequoteKeyInfo= Search(pNode, (char*)"ds:KeyInfo");
+    m_pNodequoteKeyInfo= Search(pNode, "ds:KeyInfo");
 
     return true;
 }
@@ -654,7 +654,7 @@ char*  Quote::getQuoteValue()
 {
     TiXmlNode* pNode= m_pNodeQuoteValue->FirstChild();
     if(pNode!=NULL)
-        return strdup((char*)(pNode->Value()));
+        return strdup((pNode->Value()));
     return NULL;
 }
 
@@ -665,7 +665,7 @@ char* Quote::getnonceValue()
         return NULL;
     TiXmlNode* pNode= m_pNodeNonce->FirstChild();
     if(pNode!=NULL)
-        return strdup((char*)(pNode->Value()));
+        return strdup((pNode->Value()));
     return NULL;
 }
 
@@ -675,12 +675,12 @@ char* Quote::getcodeDigest()
     if(m_pNodeCodeDigest==NULL)
         return NULL;
 
-    char*   szCodeDigest= NULL;
+    const char*   szCodeDigest= NULL;
     TiXmlNode* pNode= NULL;
     pNode= m_pNodeCodeDigest->FirstChild();
 
     if(pNode!=NULL) {
-        szCodeDigest= (char*)pNode->Value();
+        szCodeDigest= pNode->Value();
         if(szCodeDigest==NULL) {
             return NULL;
         }

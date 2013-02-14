@@ -66,8 +66,8 @@ public:
     u32         m_keyType;
     KeyInfo*    m_pKeyInfo;
 
-    bool        Deserialize(char* szObject);
-    int         Serialize(char* szObject, int maxBufSize);
+    bool        Deserialize(const char* szObject);
+    int         Serialize(const char* szObject, int maxBufSize);
 };
 
 
@@ -119,21 +119,21 @@ public:
                         ~metaData();
 
     bool                initFileNames();
-    bool                initMetaData(char* directory, char* program);
+    bool                initMetaData(const char* directory, const char* program);
 
     bool                restoreMetaData(int encType, byte* key);
     bool                saveMetaData(int encType, byte* key);
     
     bool                addResource(resource* pResource);
-    resource*           findResource(char* szName);
+    resource*           findResource(const char* szName);
     bool                deleteResource(resource* pResource);
     
     bool                addPrincipal(accessPrincipal* pPrin);
-    accessPrincipal*    findPrincipal(char* szName);
+    accessPrincipal*    findPrincipal(const char* szName);
     bool                deletePrincipal(accessPrincipal* pPrin);
 
     bool                addKey(KeyInfo* key);
-    KeyInfo*            findKey(char* szName);
+    KeyInfo*            findKey(const char* szName);
     bool                deleteKey(KeyInfo* key);
 };
 

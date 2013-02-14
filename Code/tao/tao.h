@@ -1,4 +1,5 @@
 //
+
 //  File: tao.h
 //      John Manferdelli
 //  Description:  Tao of Trusted computing major classes
@@ -93,8 +94,8 @@
 #define MAXTPMSEALSIZE                       128
 #define TPMSEALEDSIZE                        313
 
-#define DEFAULTDIRECTORY    (char*)"/home/jlm/jlmcrypt"
-#define DEFAULTDEVICE       (char*)"/dev/tcioDD"
+#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+#define DEFAULTDEVICE       "/dev/tcioDD"
 
 //
 //   Standard files
@@ -111,12 +112,12 @@ public:
                 taoFiles();
                 ~taoFiles();
 
-    bool        initNames(char* directory, char* subdirectory);
+    bool        initNames(const char* directory, const char* subdirectory);
 #ifdef TEST
     void        printAll();
 #endif
-    bool        getBlobData(char* file, bool* pValid, int* pSize, byte** ppData);
-    bool        putBlobData(char* file, bool fValid, int size, byte* pData);
+    bool        getBlobData(const char* file, bool* pValid, int* pSize, byte** ppData);
+    bool        putBlobData(const char* file, bool fValid, int size, byte* pData);
 
 };
 
@@ -146,9 +147,9 @@ public:
                 taoHostServices();
                 ~taoHostServices();
 
-    bool        HostInit(u32 hostType, int nParameters, char** rgszParameter);
+    bool        HostInit(u32 hostType, int nParameters, const char** rgszParameter);
     bool        HostClose();
-    bool        StartHostedProgram(char* name, int an, char** av, int* phandle);
+    bool        StartHostedProgram(const char* name, int an, char** av, int* phandle);
     bool        GetHostedMeasurement(int* psize, u32* ptype, byte* buf);
     bool        GetAncestorCertificates(int* psize, byte** buf);
     bool        GetAttestCertificate(int* psize, u32* pType, byte** buf);
@@ -241,14 +242,14 @@ public:
                 taoEnvironment();
                 ~taoEnvironment();
 
-    bool        EnvInit(u32 type, char* program, char* domain, char* directory, 
+    bool        EnvInit(u32 type, const char* program, const char* domain, const char* directory, 
                         taoHostServices* host, int nArgs, char** rgszParameter);
     bool        EnvClose();
 
     bool        InitMyMeasurement();
     bool        GetMyMeasurement(int* psize, u32* ptype, byte* buf);
     bool        GetHostedMeasurement(int handle, int* psize, u32* ptype, byte* buf);
-    bool        StartHostedProgram(char* name, int nArgs, char** av, int* phandle);
+    bool        StartHostedProgram(const char* name, int nArgs, char** av, int* phandle);
 
     bool        GetEntropy(int size, byte* buf);
     bool        Seal(int hostedMeasurementSize, byte* hostedMeasurement,
@@ -329,11 +330,11 @@ public:
                 ~taoInit();
 
     bool        gensymKey(u32 symType);
-    bool        genprivateKeyPair(u32 type, char* szKeyName);
-    bool        generatequoteandcertifyKey(u32 keyType, char* szKeyName, 
-                                char* szSubjectName, char* szSubjectId);
+    bool        genprivateKeyPair(u32 type, const char* szKeyName);
+    bool        generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
+                                const char* szSubjectName, const char* szSubjectId);
     bool        initKeys(u32 symType, u32 pubkeyType, 
-                         char* szKeyName, char* szSubjectName, char* szSubjectId);
+                         const char* szKeyName, const char* szSubjectName, const char* szSubjectId);
 };
 
 

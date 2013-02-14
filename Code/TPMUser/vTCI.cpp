@@ -54,28 +54,28 @@
 
 struct tssError {
     int     errCode;
-    char*   szMsg;
+    const char*   szMsg;
 };
 
 
 #define NERRORS     16
 tssError  errCodes[NERRORS] = {
-    TSS_SUCCESS, (char*)"success",
-    TSS_E_FAIL, (char*)"E-FAIL",
-    TSS_E_BAD_PARAMETER, (char*)"Bad parameter",
-    TSS_E_KEY_ALREADY_REGISTERED, (char*)"KEY_ALREADY_REGISTERED",
-    TSS_E_TSP_AUTHFAIL, (char*)"TPM authorization failure (1)",
-    TPM_E_AUTH2FAIL,(char*)"TPM authorization failure (2)",
-    TSS_E_INVALID_HANDLE, (char*)"Invalid handle",
-    TSS_E_INTERNAL_ERROR, (char*)"TSS_E_INTERNAL_ERROR",
-    TPM_E_BAD_DATASIZE, (char*)"TPM_E_BAD_DATASIZE",
-    TSS_E_INVALID_ATTRIB_FLAG, (char*)"bad flag",
-    TSS_E_INVALID_ATTRIB_SUBFLAG, (char*)"bad subflag",
-    TSS_E_INVALID_ATTRIB_DATA, (char*)"bad attrib data",
-    TSS_E_POLICY_NO_SECRET, (char*)"No Secret",
-    TSS_E_SILENT_CONTEXT, (char*)"Silent context",
-    TPM_E_INVALID_PCR_INFO, (char*) "Invalid PCRs",
-    TPM_E_INVALID_KEYUSAGE, (char*)"Invalid key usage",
+    TSS_SUCCESS, "success",
+    TSS_E_FAIL, "E-FAIL",
+    TSS_E_BAD_PARAMETER, "Bad parameter",
+    TSS_E_KEY_ALREADY_REGISTERED, "KEY_ALREADY_REGISTERED",
+    TSS_E_TSP_AUTHFAIL, "TPM authorization failure (1)",
+    TPM_E_AUTH2FAIL,"TPM authorization failure (2)",
+    TSS_E_INVALID_HANDLE, "Invalid handle",
+    TSS_E_INTERNAL_ERROR, "TSS_E_INTERNAL_ERROR",
+    TPM_E_BAD_DATASIZE, "TPM_E_BAD_DATASIZE",
+    TSS_E_INVALID_ATTRIB_FLAG, "bad flag",
+    TSS_E_INVALID_ATTRIB_SUBFLAG, "bad subflag",
+    TSS_E_INVALID_ATTRIB_DATA, "bad attrib data",
+    TSS_E_POLICY_NO_SECRET, "No Secret",
+    TSS_E_SILENT_CONTEXT, "Silent context",
+    TPM_E_INVALID_PCR_INFO,  "Invalid PCRs",
+    TPM_E_INVALID_KEYUSAGE, "Invalid key usage",
 };
 
 
@@ -145,6 +145,7 @@ bool tpmStatus::initTPM()
 {
     TSS_RESULT  ret;
     BYTE        wellKnownSecret[20];
+    TSS_UUID        SRK_UUID= TSS_UUID_SRK;
 
     memset(wellKnownSecret,0,20);
 
@@ -177,7 +178,7 @@ bool tpmStatus::initTPM()
     
     // Load SRK key into TPM
     ret= Tspi_Context_LoadKeyByUUID(m_hContext, TSS_PS_TYPE_SYSTEM,
-                                    TSS_UUID_SRK, &m_hSRK);
+                                    SRK_UUID, &m_hSRK);
     if(TSS_SUCCESS!=ret) {
         fprintf(g_logFile, "Load SRK failed %08x\n", ret);
         printErr(ret);
@@ -287,8 +288,8 @@ bool tpmStatus::initTPM()
 
 #ifdef TPMTEST
     fprintf(g_logFile, "\nTspi_TPM_PcrRead succeeded, len= %d\n", pcrLen); 
-    PrintBytes((char*)"PCR 17: ", m_rgPcr17Value, m_iPcr17Len);
-    PrintBytes((char*)"PCR 18: ", m_rgPcr18Value, m_iPcr18Len);
+    PrintBytes("PCR 17: ", m_rgPcr17Value, m_iPcr17Len);
+    PrintBytes("PCR 18: ", m_rgPcr18Value, m_iPcr18Len);
 #endif
 
     // Create Sealing Encryption Object
@@ -360,7 +361,7 @@ bool tpmStatus::getLocality(unsigned* pOut)
 }
 
 
-bool tpmStatus::setOwnerauth(char* ownerSecret)
+bool tpmStatus::setOwnerauth(const char* ownerSecret)
 {
     TSS_RESULT      ret;
 
@@ -432,7 +433,7 @@ bool tpmStatus::sealData(unsigned sizetoSeal, byte* tosealData,
             m_hSealingData, m_hSRK, sizetoSeal);
     fprintf(g_logFile, "\nsealData arguments: allocated size: %d, tpm handle: %08x\n",
             *psizeSealed, m_hTPM);
-    PrintBytes((char*)"toseal\n", tosealData, sizetoSeal);
+    PrintBytes("toseal\n", tosealData, sizetoSeal);
 #endif
 
     // This seal does not do locality but does do PCRs
@@ -545,22 +546,22 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
 #ifdef PCR18
     BYTE    pcrMask[3]= {0,0,0x6};  // pcr 17, 18
     memcpy(pcrS, m_rgPcr17Value, 20);
-    PrintBytes((char*)"\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
+    PrintBytes("\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
     memcpy(&pcrS[20], m_rgPcr18Value, 20);
-    PrintBytes((char*)"\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
+    PrintBytes("\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
 #else
     BYTE    pcrMask[3]= {0,0,0x2};  // pcr 17
     memcpy(pcrS, m_rgPcr17Value, 20);
-    PrintBytes((char*)"\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
+    PrintBytes("\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
 #endif
 
 #ifndef QUOTE2_DEFINED
-    PrintBytes((char*)"TPM_QUOTE_INFO\n", (byte*)oValidation.rgbData, 
+    PrintBytes("TPM_QUOTE_INFO\n", (byte*)oValidation.rgbData, 
                (int)oValidation.ulDataLength);
 #else
     printf("\nLocality: %d, sizeversionInfo: %d\n", m_locality, sizeversionInfo);
-    PrintBytes((char*)"versionInfo: ", versionInfo, sizeversionInfo);
-    PrintBytes((char*)"TPM_QUOTE_INFO2\n", (byte*)oValidation.rgbData, 
+    PrintBytes("versionInfo: ", versionInfo, sizeversionInfo);
+    PrintBytes("TPM_QUOTE_INFO2\n", (byte*)oValidation.rgbData, 
                (int)oValidation.ulDataLength);
 #endif
     
@@ -918,8 +919,8 @@ TSS_RESULT makeEKCert(TSS_HCONTEXT hContext, TSS_HTPM hTPM, UINT32 *pCertLen, BY
 }
 
 
-bool tpmStatus::confirmAIK(char* ownerSecret, char* aikBlobFile, 
-                           char* challengeFile, char* responseFile)
+bool tpmStatus::confirmAIK(const char* ownerSecret, const char* aikBlobFile, 
+                           const char* challengeFile, const char* responseFile)
 //
 //  NOTE TESTED
 //
@@ -1005,8 +1006,8 @@ bool tpmStatus::confirmAIK(char* ownerSecret, char* aikBlobFile,
 
 
 bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts, 
-                        char* pcaFile, char* reqFile, 
-                        char* aikBlobFile, char* aikPKFile)
+                        const char* pcaFile, const char* reqFile, 
+                        const char* aikBlobFile, const char* aikPKFile)
 //
 //  Note:  This function does not assume an inited tpmStatus object
 //
@@ -1020,7 +1021,7 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
     TSS_HPOLICY hSrkPolicy;
 
     BYTE*       rgbIdentityLabelData= NULL;
-    char*       labelString= (char*) "manferdelli.com AIK";
+    const char*       labelString= "manferdelli.com AIK";
 
     UINT32      labelLen= (UINT32)strlen(labelString);
     BYTE*       rgbTCPAIdentityReq= NULL;
@@ -1140,9 +1141,9 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
         return false;
     }
 #ifdef TPMTEST
-    PrintBytes((char*) "\naik\n", aikmodulus, aikmodulusLen);
-    PrintBytes((char*) "\nTCPA req\n", rgbTCPAIdentityReq, ulTCPAIdentityReqLength);
-    PrintBytes((char*) "\naik blob\n", blob, blobLen);
+    PrintBytes("\naik\n", aikmodulus, aikmodulusLen);
+    PrintBytes("\nTCPA req\n", rgbTCPAIdentityReq, ulTCPAIdentityReqLength);
+    PrintBytes("\naik blob\n", blob, blobLen);
 #endif
 
     Tspi_Context_FreeMemory(m_hContext, rgbTCPAIdentityReq);
@@ -1156,7 +1157,7 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
 // --------------------------------------------------------------------------
 
 
-bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
+bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
 {
     TSS_RESULT  ret;
     TSS_UUID    SRK_UUID= TSS_UUID_SRK;
@@ -1197,7 +1198,7 @@ bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
     memcpy(m_rgaikmodulus, aikmodulus, m_iaikmodulusLen);
     m_faikKeyValid= true;
 #ifdef TPMTEST
-    PrintBytes((char*)"AIK modulus\n", m_rgaikmodulus, m_iaikmodulusLen);
+    PrintBytes("AIK modulus\n", m_rgaikmodulus, m_iaikmodulusLen);
 #endif
     Tspi_Context_FreeMemory(m_hContext, aikmodulus);
 
@@ -1214,7 +1215,7 @@ bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
 }
 
 
-bool tpmStatus::getEKInfo(char* fileName, bool fgetKey)
+bool tpmStatus::getEKInfo(const char* fileName, bool fgetKey)
 {
     TSS_RESULT  ret;
     UINT32      ekmodulusLen; 
@@ -1327,7 +1328,7 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
     revmemcpy(result, (u8*)bnR.m_pValue, m_iaikmodulusLen);
 
 #ifdef TPMTEST1
-    PrintBytes((char*)"\nDecrypted\n", result, m_iaikmodulusLen);
+    PrintBytes("\nDecrypted\n", result, m_iaikmodulusLen);
 #endif
 
     quoteHash= (byte*) result;
@@ -1370,10 +1371,10 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
 #ifdef TPMTEST
     fprintf(g_logFile, "\nverifyQuote datasize: %d, keySize: %d, externalSize: %d\n",
             dataSize, m_iaikmodulusLen, externalSize);
-    PrintBytes((char*)"Mask\n", pcrMask, 3);
-    PrintBytes((char*)"External data\n", pbExternal, externalSize);
-    PrintBytes((char*)"\nComputed TPM_QUOTE_INFO hash\n", finalHash, 20);
-    PrintBytes((char*)"Quoted hash\n", quoteHash, 20);
+    PrintBytes("Mask\n", pcrMask, 3);
+    PrintBytes("External data\n", pbExternal, externalSize);
+    PrintBytes("\nComputed TPM_QUOTE_INFO hash\n", finalHash, 20);
+    PrintBytes("Quoted hash\n", quoteHash, 20);
 #endif
 
     // compare calculated hash with quoted hash
@@ -1401,34 +1402,34 @@ int main(int an, char** av)
     u8          rgSigned[BUFSIZE];
     u8          rgRandom[BUFSIZE];
     bool        fInitAIK= false;
-    char*       reqFile= (char*) "HW/requestFile";
-    char*       aikBlobFile= (char*) "HW/aikblob";
-    char*       pcaFile= (char*) "HW/pcaBlobFile";
-    char*       aikKeyFile= (char*) "HW/aikKeyFile.txt";
+    const char*       reqFile= "HW/requestFile";
+    const char*       aikBlobFile= "HW/aikblob";
+    const char*       pcaFile= "HW/pcaBlobFile";
+    const char*       aikKeyFile= "HW/aikKeyFile.txt";
     char*       ownerSecret= NULL;
-    char*       aikCertFile= (char*) "HW/aikCert.xml";
+    const char*       aikCertFile= "HW/aikCert.xml";
     char*       ekCertFile= NULL;
     int         i;
 
     for(i=1;i<an;i++) {
-        if(strcmp(av[i], (char*)"-initAIK")==0)
+        if(strcmp(av[i], "-initAIK")==0)
             fInitAIK= true;
-        if(strcmp(av[i], (char*)"-ownerSecret")==0) {
+        if(strcmp(av[i], "-ownerSecret")==0) {
             ownerSecret= av[++i];
         }
-        if(strcmp(av[i], (char*)"-AIKBlob")==0) {
+        if(strcmp(av[i], "-AIKBlob")==0) {
             aikBlobFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-AIKCertFile")==0) {
+        if(strcmp(av[i], "-AIKCertFile")==0) {
             aikCertFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-AIKeyFile")==0) {
+        if(strcmp(av[i], "-AIKeyFile")==0) {
             aikKeyFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-ekCertFile")==0) {
+        if(strcmp(av[i], "-ekCertFile")==0) {
             ekCertFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-help")==0) {
+        if(strcmp(av[i], "-help")==0) {
                 fprintf(g_logFile, "vTCI.exe -initAIK -ownerSecret secret -AIKBlob blobfile -AIKCertFile file -ekCertFile file\n");
         return 0;
 
@@ -1476,7 +1477,7 @@ int main(int an, char** av)
     // tested
     if(oTpm.getRandom(16, rgRandom)) {
         fprintf(g_logFile, "\ngetRandom succeeded\n");
-        PrintBytes((char*) "Random bytes\n", rgRandom, 16);
+        PrintBytes("Random bytes\n", rgRandom, 16);
     }
     else {
         fprintf(g_logFile, "\ngetRandom failed\n");
@@ -1495,8 +1496,8 @@ int main(int an, char** av)
     v= BUFSIZE;
     if(oTpm.sealData(BUFSIZE/32, rgtoSeal, &v, rgSealed)) {
         fprintf(g_logFile, "sealData succeeded %d bytes\n", v);
-        PrintBytes((char*) "Bytes to seal\n", rgtoSeal, BUFSIZE/32);
-        PrintBytes((char*) "Sealed bytes\n", rgSealed, v);
+        PrintBytes("Bytes to seal\n", rgtoSeal, BUFSIZE/32);
+        PrintBytes("Sealed bytes\n", rgSealed, v);
     }
     else {
         fprintf(g_logFile, "\nsealData failed\n");
@@ -1512,8 +1513,8 @@ for(k=0;k<50;k++) {
     u= BUFSIZE;
     if(oTpm.unsealData(v, rgSealed, &u, rgunSealed)) {
         fprintf(g_logFile, "unsealData succeeded\n");
-        PrintBytes((char*) "Bytes to unseal\n", rgSealed, v);
-        PrintBytes((char*) "Unsealed bytes\n", rgunSealed, u);
+        PrintBytes("Bytes to unseal\n", rgSealed, v);
+        PrintBytes("Unsealed bytes\n", rgunSealed, u);
     }
     else {
         fprintf(g_logFile, "\nunsealData failed\n");
@@ -1556,8 +1557,8 @@ fprintf(g_logFile, "\n%f unseals per seconds\n", elapsedseconds/((double)k));
 
         if(oTpm.quoteData(sizeof(nonce), nonce, &u, rgSigned)) {
             fprintf(g_logFile, "\nquoteData succeeded\n");
-            PrintBytes((char*) "\nData to quote\n", nonce, 20);
-            PrintBytes((char*) "Quoted bytes\n", rgSigned, u);
+            PrintBytes("\nData to quote\n", nonce, 20);
+            PrintBytes("Quoted bytes\n", rgSigned, u);
         }
         else {
             fprintf(g_logFile, "\nquoteData failed\n");

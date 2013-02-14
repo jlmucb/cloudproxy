@@ -64,7 +64,7 @@ public:
 
     assertionNode();
     ~assertionNode();
-    bool        parseAssertion(accessPrincipal* pPrincipalSays, char* szAssertion, 
+    bool        parseAssertion(accessPrincipal* pPrincipalSays, const char* szAssertion, 
                                 bool fValidated);
 #ifdef TEST
     void        printMe();
@@ -101,7 +101,7 @@ public:
     aList<accessPrincipal>  m_Subjects;
 
     bool        initChannelAccess(int iNumSubj, PrincipalCert** rgpPrinc);
-    bool        permitAccess(accessRequest& req, char* szEvidence);
+    bool        permitAccess(accessRequest& req, const char* szEvidence);
     accessGuard();
     ~accessGuard();
 };

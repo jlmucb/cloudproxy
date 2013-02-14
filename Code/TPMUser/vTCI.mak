@@ -6,10 +6,10 @@ CR=         ../jlmcrypto
 TPU=	    ../TPMUser
 S=          .
 # CFLAGS=     -D UNIXRANDBITS -D TPMTEST
-CFLAGS=     -D UNIXRANDBITS -D TPMTEST -D QUOTE2_DEFINED -D PCR18
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS=     -D UNIXRANDBITS -D TPMTEST -D QUOTE2_DEFINED -D PCR18
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -48,16 +48,16 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(CR) -I$(BN) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp
+	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp
 
 $(B)/tinyxmlparser.o : $(SC)/tinyxmlparser.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxmlparser.o $(SC)/tinyxmlparser.cpp
+	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/tinyxmlparser.o $(SC)/tinyxmlparser.cpp
 
 $(B)/tinyxmlerror.o : $(SC)/tinyxmlerror.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxmlerror.o $(SC)/tinyxmlerror.cpp
+	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/tinyxmlerror.o $(SC)/tinyxmlerror.cpp
 
 $(B)/tinystr.o : $(SC)/tinystr.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinystr.o $(SC)/tinystr.cpp
+	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/tinystr.o $(SC)/tinystr.cpp
 
 $(B)/sha256.o: $(CR)/sha256.cpp $(CR)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(CR) -c -o $(B)/sha256.o $(CR)/sha256.cpp

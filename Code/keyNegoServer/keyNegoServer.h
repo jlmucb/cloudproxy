@@ -46,7 +46,7 @@ public:
 
     int         auxSize();
     int         Serialize(byte* szObj);
-    bool        Deserialize(byte* szObj, int* pi);
+    bool        Deserialize(const byte* szObj, int* pi);
 };
 
 

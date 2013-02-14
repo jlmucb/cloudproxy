@@ -62,7 +62,7 @@ void revmemcpy(byte* pTo, byte* pFrom, int len)
 }
 
 
-bool SafeStringAppend(char** pszCur, char* szToAppend, int* piLeft)
+bool SafeStringAppend(char** pszCur, const char* szToAppend, int* piLeft)
 {
     if(pszCur== NULL || szToAppend==NULL)
         return false;
@@ -82,14 +82,14 @@ char* canonicalize(TiXmlNode* pNode)
     TiXmlPrinter printer;
 
     pNode->Accept(&printer);
-    char* szDoc= (char*)printer.CStr();
+    const char* szDoc= printer.CStr();
     if(szDoc==NULL)
         return NULL;
     return strdup(szDoc);
 }
 
 
-void printIndent(char* szItem, int indent, bool fEnd)
+void printIndent(const char* szItem, int indent, bool fEnd)
 {
     int i;
 
@@ -107,11 +107,11 @@ void Explore(TiXmlNode* pNode, int indent)
 {
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
-            printIndent((char*)((TiXmlElement*)pNode)->Value(), indent, false);
+            printIndent(((TiXmlElement*)pNode)->Value(), indent, false);
         }
         Explore(pNode->FirstChild(), indent+1);
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
-            printIndent((char*)((TiXmlElement*)pNode)->Value(), indent, true);
+            printIndent(((TiXmlElement*)pNode)->Value(), indent, true);
         }
         pNode= pNode->NextSibling();
     }
@@ -120,7 +120,7 @@ void Explore(TiXmlNode* pNode, int indent)
 }
 
 
-TiXmlNode* Search(TiXmlNode* pNode, char* szElementName)
+TiXmlNode* Search(TiXmlNode* pNode, const char* szElementName)
 {
     TiXmlNode* pNode1;
 
@@ -140,7 +140,7 @@ TiXmlNode* Search(TiXmlNode* pNode, char* szElementName)
 }
 
 
-bool testCanonical(char* szInFile, char* szElementName)
+bool testCanonical(const char* szInFile, const char* szElementName)
 {
     TiXmlDocument doc;
  
@@ -225,7 +225,7 @@ int ConvertToHexString(int iSizeBuf, byte* rgbBuf, int iSizeOut, char* szOut)
 }
 
 
-int ConvertFromHexString(char* szIn, int iSizeOut, byte* rgbBuf)
+int ConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
 {
     char    a, b;
     int     j= 0;
@@ -268,7 +268,7 @@ bool Sha256Hash(int iSizeIn, byte* pIn, int* piOut, byte* pOut)
 }
 
 
-bool getBlobfromFile(char* szFile, byte* buf, int* psize)
+bool getBlobfromFile(const char* szFile, byte* buf, int* psize)
 {
     if(szFile==NULL)
         return false;
@@ -289,7 +289,7 @@ bool getBlobfromFile(char* szFile, byte* buf, int* psize)
 }
 
 
-bool saveBlobtoFile(char* szFile, byte* buf, int size)
+bool saveBlobtoFile(const char* szFile, byte* buf, int size)
 {
     if(szFile==NULL)
         return false;
@@ -302,7 +302,7 @@ bool saveBlobtoFile(char* szFile, byte* buf, int size)
 }
 
 
-char* readandstoreString(char* szFile)
+char* readandstoreString(const char* szFile)
 {
     int         n;
     struct stat statBlock;
@@ -353,7 +353,7 @@ char*  gmTimetoUTCstring(tm* pt)
 }
 
 
-bool   UTCtogmTime(char* szTime, tm* pt)
+bool   UTCtogmTime(const char* szTime, tm* pt)
 {
     int year, month, day, hour, minutes, secs;
 
@@ -370,7 +370,7 @@ bool   UTCtogmTime(char* szTime, tm* pt)
 }
 
 
-char* canonicalizeXML(char* szXML)
+char* canonicalizeXML(const char* szXML)
 {
     TiXmlDocument doc;
 

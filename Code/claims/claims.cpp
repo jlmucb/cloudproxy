@@ -65,8 +65,8 @@ bool sameRSAKey(RSAKey* pKey1, RSAKey* pKey2)
 // ------------------------------------------------------------------
 
 
-char*   g_szNonceTemplate= (char*) "<nonce> %s </nonce>\n";
-char*   g_szQuoteTemplate= (char*)
+const char*   g_szNonceTemplate= "<nonce> %s </nonce>\n";
+const char*   g_szQuoteTemplate= 
 "<Quote format='xml'>\n"\
 "    %s\n" \
 "    <CodeDigest alg='%s'> %s </CodeDigest>\n" \
@@ -131,11 +131,11 @@ Quote::~Quote()
 }
 
 
-bool  Quote::init(char* szXMLQuote)
+bool  Quote::init(const char* szXMLQuote)
 {
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
-    char*           szA= NULL;
+    const char*           szA= NULL;
     
 #ifdef QUOTETEST1
     fprintf(g_logFile, "init()\n");
@@ -152,42 +152,42 @@ bool  Quote::init(char* szXMLQuote)
         fprintf(g_logFile, "Quote::init: Can't get root of quote\n");
         return false;
     }
-    m_pNodeQuote= Search((TiXmlNode*) pRootElement, (char*)"Quote");
+    m_pNodeQuote= Search((TiXmlNode*) pRootElement, "Quote");
     if(m_pNodeQuote==NULL) {
         fprintf(g_logFile, "Quote::init: No Quote node\n");
         return false;
     }
     // <ds:QuoteMethod Algorithm=
-    pNode=  Search(m_pNodeQuote, (char*)"ds:QuoteMethod");
+    pNode=  Search(m_pNodeQuote, "ds:QuoteMethod");
     if(pNode==NULL) {
         fprintf(g_logFile, "Quote::init: No ds:QuoteMethod node\n");
         return false;
     }
-    szA= (char*)((TiXmlElement*) pNode)->Attribute ("Algorithm");
+    szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
     if(szA==NULL) {
         fprintf(g_logFile, "Quote::init: No ds:QuoteMethod Algorithm\n");
         return false;
     }
     m_szQuotealg= strdup(szA);
-    m_pNodeNonce= Search(m_pNodeQuote, (char*)"Nonce");
-    m_pNodeCodeDigest= Search(m_pNodeQuote, (char*)"CodeDigest");
+    m_pNodeNonce= Search(m_pNodeQuote, "Nonce");
+    m_pNodeCodeDigest= Search(m_pNodeQuote, "CodeDigest");
     if(m_pNodeCodeDigest==NULL) {
         fprintf(g_logFile, "Quote::init: No CodeDigest node\n");
         return false;
     }
-    m_pNodeQuotedInfo= Search(m_pNodeQuote, (char*)"QuotedInfo");
+    m_pNodeQuotedInfo= Search(m_pNodeQuote, "QuotedInfo");
     if(m_pNodeQuotedInfo==NULL) {
         fprintf(g_logFile, "Quote::init: No QuotedInfo node\n");
         return false;
     }
-    m_pNodeQuoteValue= Search(m_pNodeQuotedInfo, (char*)"QuoteValue");
+    m_pNodeQuoteValue= Search(m_pNodeQuotedInfo, "QuoteValue");
     if(m_pNodeQuoteValue==NULL) {
         fprintf(g_logFile, "Quote::init: No QuoteValue node\n");
         return false;
     }
-    m_pNodequotedKeyInfo= Search(m_pNodeQuotedInfo, (char*)"ds:KeyInfo");
+    m_pNodequotedKeyInfo= Search(m_pNodeQuotedInfo, "ds:KeyInfo");
     pNode= m_pNodeQuoteValue->NextSibling();
-    m_pNodequoteKeyInfo= Search(pNode, (char*)"ds:KeyInfo");
+    m_pNodequoteKeyInfo= Search(pNode, "ds:KeyInfo");
 
     return true;
 }
@@ -205,7 +205,7 @@ char*  Quote::getQuoteValue()
 {
     TiXmlNode* pNode= m_pNodeQuoteValue->FirstChild();
     if(pNode!=NULL)
-        return strdup((char*)(pNode->Value()));
+        return strdup(pNode->Value());
     return NULL;
 }
 
@@ -216,7 +216,7 @@ char* Quote::getnonceValue()
         return NULL;
     TiXmlNode* pNode= m_pNodeNonce->FirstChild();
     if(pNode!=NULL)
-        return strdup((char*)(pNode->Value()));
+        return strdup(pNode->Value());
     return NULL;
 }
 
@@ -226,12 +226,12 @@ char* Quote::getcodeDigest()
     if(m_pNodeCodeDigest==NULL)
         return NULL;
 
-    char*   szCodeDigest= NULL;
+    const char*   szCodeDigest= NULL;
     TiXmlNode* pNode= NULL;
     pNode= m_pNodeCodeDigest->FirstChild();
 
     if(pNode!=NULL) {
-        szCodeDigest= (char*)pNode->Value();
+        szCodeDigest= pNode->Value();
         if(szCodeDigest==NULL) {
             return NULL;
         }
@@ -298,8 +298,8 @@ bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, by
 }
 
 
-bool checkXMLSignature(char* szSigAlgorithm, char* szCanonicalSignedBody, 
-                       KeyInfo* pKeyInfo, char* szSignatureValue)
+bool checkXMLSignature(const char* szSigAlgorithm, const char* szCanonicalSignedBody, 
+                       KeyInfo* pKeyInfo, const char* szSignatureValue)
 {
     Sha256   oHash;
     byte     rgHash[SHA256DIGESTBYTESIZE];
@@ -355,8 +355,8 @@ bool checkXMLSignature(char* szSigAlgorithm, char* szCanonicalSignedBody,
 }
 
 
-bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
-                char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue)
+bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, const char* sznonce, 
+                const char* szdigest, KeyInfo* pKeyInfo, const char* szQuoteValue)
 {
     Sha1    oSha1Hash;
     Sha256  oSha256Hash;
@@ -371,7 +371,6 @@ bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce,
     int     outLen= RSA2048BYTEBLOCKSIZE;
     byte    quoteValue[RSA2048BYTEBLOCKSIZE];
 
-    int     sizehashFinal= SHA256DIGESTBYTESIZE;
     byte    hashFinal[SHA256DIGESTBYTESIZE];
 
     int     hashType= 0;
@@ -495,9 +494,9 @@ bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce,
     }
 #ifdef TEST
     fprintf(g_logFile, "checkXMLQuote hashtype: %d\n", hashType);
-    PrintBytes((char*)"Code digest: ", hashCode, sizehashCode);
-    PrintBytes((char*)"final hash: ", hashFinal, sizefinalHash);
-    PrintBytes((char*)"quotevalue: ", quoteValue, outLen);
+    PrintBytes("Code digest: ", hashCode, sizehashCode);
+    PrintBytes("final hash: ", hashFinal, sizefinalHash);
+    PrintBytes("quotevalue: ", quoteValue, outLen);
     fflush(g_logFile);
 #endif
 
@@ -509,11 +508,11 @@ bool checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce,
 // -----------------------------------------------------------------------------
 
 
-char* s_EvidenceListStart= (char*) "<EvidenceList count='%d'>\n";
-char* s_EvidenceListStop= (char*) "</EvidenceList>\n";
+const char* s_EvidenceListStart= "<EvidenceList count='%d'>\n";
+const char* s_EvidenceListStop= "</EvidenceList>\n";
 
 
-char* consttoEvidenceList(char* szEvidence, char* szEvidenceSupport)
+char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
 {
 
     if(szEvidence==NULL) {
@@ -591,7 +590,7 @@ char* consttoEvidenceList(char* szEvidence, char* szEvidenceSupport)
 }
 
 
-char* getSerializedKeyfromCert(char* szCert)
+char* getSerializedKeyfromCert(const char* szCert)
 {
     TiXmlDocument doc;
     if(!doc.Parse(szCert)) {
@@ -603,7 +602,7 @@ char* getSerializedKeyfromCert(char* szCert)
         fprintf(g_logFile, "getSerializedKeyfromCert: Can't get root of quote\n");
         return NULL;
     }
-    TiXmlNode* pNode= Search((TiXmlNode*) pRootElement, (char*)"ds:KeyInfo");
+    TiXmlNode* pNode= Search((TiXmlNode*) pRootElement, "ds:KeyInfo");
     if(pNode==NULL) {
         fprintf(g_logFile, "getSerializedKeyfromCert: No ds:KeyInfo node\n");
         return NULL;
@@ -620,7 +619,7 @@ char* keyInfofromKey(RSAKey* pKey)
 }
 
 
-RSAKey* keyfromkeyInfo(char* szKeyInfo)
+RSAKey* keyfromkeyInfo(const char* szKeyInfo)
 {
     RSAKey*         pKey= new RSAKey();
     TiXmlElement*   pRootElement= NULL;
@@ -664,10 +663,9 @@ cleanup:
 //     </QuoteValue>
 // </Quote>
 char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest, 
-                     byte* codeDigest, char* szQuotedInfo, char* szKeyInfo, 
+                     byte* codeDigest, const char* szQuotedInfo, const char* szKeyInfo, 
                      int sizeQuote, byte* quote)
 {
-    int     size= 4096;
     char    szB[4096];
     int     nsize= 512;
     char    szN[512];
@@ -675,7 +673,7 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
     char*   szQuote= NULL;
     char*   szNonce= NULL;
     char*   szCodeDigest= NULL;
-    char*   szdigestAlg= (char*) "SHA256";
+    const char*   szdigestAlg= "SHA256";
 
     nsize= 256;
     if(sizenonce>0) {
@@ -696,7 +694,7 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
     }
     szCodeDigest= strdup(szN);
     if(sizeCodeDigest==20)
-        szdigestAlg= (char*) "SHA1";
+        szdigestAlg= "SHA1";
 
     nsize= 512;
     if(!toBase64(sizeQuote, quote, &nsize, szN)) {
@@ -735,7 +733,7 @@ cleanup:
 //      CodeDigest value and alg
 //      canonicalized QuotedInfo
 //      quoteValue
-bool decodeXMLQuote(char* szXMLQuote, char** pszAlg, char** psznonce, 
+bool decodeXMLQuote(const char* szXMLQuote, char** pszAlg, char** psznonce, 
                     char** pszDigest, char** pszQuotedInfo, char** pszQuoteValue, 
                     char** pszquoteKeyInfo, char** pszquotedKeyInfo)
 {
@@ -760,13 +758,13 @@ bool decodeXMLQuote(char* szXMLQuote, char** pszAlg, char** psznonce,
 // ------------------------------------------------------------------
 
 
-char*   g_szCertTemplate= (char*) 
+const char*   g_szCertTemplate= 
 "<ds:Signature>\n%s\n"\
 "<ds:SignatureValue>\n%s\n</ds:SignatureValue>\n" \
 "</ds:Signature>\n";
 
 
-char*   formatCert(char* szSignedInfo, char* szSig)
+char*   formatCert(const char* szSignedInfo, const char* szSig)
 {
     char    rgBuf[MAXREQUESTSIZE];
 
@@ -777,7 +775,7 @@ char*   formatCert(char* szSignedInfo, char* szSig)
 }
 
 
-char* g_szSignedInfo1= (char*)
+const char* g_szSignedInfo1=
 "<ds:SignedInfo>\n"\
 "    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\" />\n"\
 "    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#\" />\n"\
@@ -787,19 +785,19 @@ char* g_szSignedInfo1= (char*)
 "        <IssuerName>%s</IssuerName>\n"\
 "        <IssuerID>%d</IssuerID>\n";
 
-char* g_szValidity= (char*)
+const char* g_szValidity=
 "        <ValidityPeriod>\n"\
 "            <NotBefore>%s</NotBefore>\n"\
 "            <NotAfter>%s</NotAfter>\n"\
 "        </ValidityPeriod>\n";
 
-char* g_szSignedInfoDigest= (char*)
+const char* g_szSignedInfoDigest=
 "        <CodeDigest>%s</CodeDigest>\n";
 
-char* g_szSignedInfo2= (char*)
+const char* g_szSignedInfo2=
 "        <SubjectName>%s</SubjectName>\n"\
 "        <SubjectKey>\n";
-char* g_szSignedInfo3= (char*)
+const char* g_szSignedInfo3=
 " </SubjectKey>\n"\
 "        <SubjectKeyID>%s</SubjectKeyID>\n"\
 "        <RevocationPolicy>Local-check-only</RevocationPolicy>\n"\
@@ -808,16 +806,15 @@ char* g_szSignedInfo3= (char*)
 
 
 char*   formatSignedInfo(RSAKey* pKey, 
-            char* szCertid, int serialNo, char* szPrincipalType, 
-            char* szIssuerName, char* szIssuerID, char* szNotBefore, 
-            char* szNotAfter, char* szSubjName, char* szKeyInfo, 
-            char* szDigest, char* szSubjKeyID)
+            const char* szCertid, int serialNo, const char* szPrincipalType, 
+            const char* szIssuerName, const char* szIssuerID, const char* szNotBefore, 
+            const char* szNotAfter, const char* szSubjName, const char* szKeyInfo, 
+            const char* szDigest, const char* szSubjKeyID)
 {
     char    szTemp[MAXREQUESTSIZE];
     char    rgBuf[MAXREQUESTSIZE];
     int     iLeft= MAXREQUESTSIZE;
     char*   p= rgBuf;
-    int     n;
     char*   szSignedInfo= NULL;
 
 #ifdef  TEST

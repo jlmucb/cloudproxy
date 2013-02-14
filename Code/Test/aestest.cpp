@@ -224,7 +224,6 @@ int main(int an, char** av)
 {
     aes     oAesEnc;
     aes     oAesDec;
-    int     nr;
     byte    pt[16], ct[16], npt[16];
     bool    fAllTest= true;
 
@@ -232,16 +231,16 @@ int main(int an, char** av)
     initLog(NULL);
 
     // Test 1
-    PrintBytes((char*)"aes128 key: ", (byte*)aes128EncTestKey1, 16);
-    nr= oAesEnc.KeySetupEnc((byte*)aes128EncTestKey1, 128);
-    nr= oAesDec.KeySetupDec((byte*)aes128EncTestKey1, 128);
+    PrintBytes("aes128 key: ", (byte*)aes128EncTestKey1, 16);
+    oAesEnc.KeySetupEnc((byte*)aes128EncTestKey1, 128);
+    oAesDec.KeySetupDec((byte*)aes128EncTestKey1, 128);
     memcpy(pt, aes128EncTestPlain1, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
 
-    PrintBytes((char*)"aes128 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes128 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes128 PT : ", (byte*)npt, 16);
+    PrintBytes("aes128 PT : ", (byte*)pt, 16);
+    PrintBytes("aes128 CT : ", (byte*)ct, 16);
+    PrintBytes("aes128 PT : ", (byte*)npt, 16);
 
     if(memcmp(ct, aes128EncTestCipher1, 16)==0 && memcmp(npt, aes128EncTestPlain1, 16)==0) {
         fprintf(g_logFile, "Test 1 Passed\n");
@@ -254,16 +253,16 @@ int main(int an, char** av)
 
     
     // Test 2
-    PrintBytes((char*)"aes128 key: ", (byte*)aes128EncTestKey2, 16);
-    nr= oAesEnc.KeySetupEnc((byte*)aes128EncTestKey2, 128);
-    nr= oAesDec.KeySetupDec((byte*)aes128EncTestKey2, 128);
+    PrintBytes("aes128 key: ", (byte*)aes128EncTestKey2, 16);
+    oAesEnc.KeySetupEnc((byte*)aes128EncTestKey2, 128);
+    oAesDec.KeySetupDec((byte*)aes128EncTestKey2, 128);
 
     memcpy(pt, aes128EncTestPlain2a, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes128 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes128 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes128 PT : ", (byte*)npt, 16);
+    PrintBytes("aes128 PT : ", (byte*)pt, 16);
+    PrintBytes("aes128 CT : ", (byte*)ct, 16);
+    PrintBytes("aes128 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes128EncTestCipher2a, 16)==0 && 
        memcmp(npt, aes128EncTestPlain2a, 16)==0) {
         fprintf(g_logFile, "Test 2a Passed\n");
@@ -277,9 +276,9 @@ int main(int an, char** av)
     memcpy(pt, aes128EncTestPlain2b, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes128 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes128 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes128 PT : ", (byte*)npt, 16);
+    PrintBytes("aes128 PT : ", (byte*)pt, 16);
+    PrintBytes("aes128 CT : ", (byte*)ct, 16);
+    PrintBytes("aes128 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes128EncTestCipher2b, 16)==0 && 
        memcmp(npt, aes128EncTestPlain2b, 16)==0) {
         fprintf(g_logFile, "Test 2b Passed\n");
@@ -293,9 +292,9 @@ int main(int an, char** av)
     memcpy(pt, aes128EncTestPlain2c, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes128 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes128 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes128 PT : ", (byte*)npt, 16);
+    PrintBytes("aes128 PT : ", (byte*)pt, 16);
+    PrintBytes("aes128 CT : ", (byte*)ct, 16);
+    PrintBytes("aes128 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes128EncTestCipher2c, 16)==0 && 
        memcmp(npt, aes128EncTestPlain2c, 16)==0) {
         fprintf(g_logFile, "Test 2c Passed\n");
@@ -309,9 +308,9 @@ int main(int an, char** av)
     memcpy(pt, aes128EncTestPlain2d, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes128 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes128 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes128 PT : ", (byte*)npt, 16);
+    PrintBytes("aes128 PT : ", (byte*)pt, 16);
+    PrintBytes("aes128 CT : ", (byte*)ct, 16);
+    PrintBytes("aes128 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes128EncTestCipher2d, 16)==0 && 
        memcmp(npt, aes128EncTestPlain2d, 16)==0) {
         fprintf(g_logFile, "Test 2d Passed\n");
@@ -324,16 +323,16 @@ int main(int an, char** av)
    
  
     // Test 3 (AES256)
-    PrintBytes((char*)"aes256 key: ", (byte*)aes256EncTestKey1, 32);
-    nr= oAesEnc.KeySetupEnc((byte*)aes256EncTestKey1, 256);
-    nr= oAesDec.KeySetupDec((byte*)aes256EncTestKey1, 256);
+    PrintBytes("aes256 key: ", (byte*)aes256EncTestKey1, 32);
+    oAesEnc.KeySetupEnc((byte*)aes256EncTestKey1, 256);
+    oAesDec.KeySetupDec((byte*)aes256EncTestKey1, 256);
 
     memcpy(pt, aes256EncTestPlain1a, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes256 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes256 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes256 PT : ", (byte*)npt, 16);
+    PrintBytes("aes256 PT : ", (byte*)pt, 16);
+    PrintBytes("aes256 CT : ", (byte*)ct, 16);
+    PrintBytes("aes256 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes256EncTestCipher1a, 16)==0 && 
        memcmp(npt, aes256EncTestPlain1a, 16)==0) {
         fprintf(g_logFile, "Test 1a Passed\n");
@@ -347,9 +346,9 @@ int main(int an, char** av)
     memcpy(pt, aes256EncTestPlain1b, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes256 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes256 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes256 PT : ", (byte*)npt, 16);
+    PrintBytes("aes256 PT : ", (byte*)pt, 16);
+    PrintBytes("aes256 CT : ", (byte*)ct, 16);
+    PrintBytes("aes256 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes256EncTestCipher1b, 16)==0 && 
        memcmp(npt, aes256EncTestPlain1b, 16)==0) {
         fprintf(g_logFile, "Test 1b Passed\n");
@@ -363,9 +362,9 @@ int main(int an, char** av)
     memcpy(pt, aes256EncTestPlain1c, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes256 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes256 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes256 PT : ", (byte*)npt, 16);
+    PrintBytes("aes256 PT : ", (byte*)pt, 16);
+    PrintBytes("aes256 CT : ", (byte*)ct, 16);
+    PrintBytes("aes256 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes256EncTestCipher1c, 16)==0 && 
        memcmp(npt, aes256EncTestPlain1c, 16)==0) {
         fprintf(g_logFile, "Test 1c Passed\n");
@@ -379,9 +378,9 @@ int main(int an, char** av)
     memcpy(pt, aes256EncTestPlain1d, 16);
     oAesEnc.Encrypt(pt, ct);
     oAesDec.Decrypt(ct, npt);
-    PrintBytes((char*)"aes256 PT : ", (byte*)pt, 16);
-    PrintBytes((char*)"aes256 CT : ", (byte*)ct, 16);
-    PrintBytes((char*)"aes256 PT : ", (byte*)npt, 16);
+    PrintBytes("aes256 PT : ", (byte*)pt, 16);
+    PrintBytes("aes256 CT : ", (byte*)ct, 16);
+    PrintBytes("aes256 PT : ", (byte*)npt, 16);
     if(memcmp(ct, aes256EncTestCipher1d, 16)==0 && 
        memcmp(npt, aes256EncTestPlain1d, 16)==0) {
         fprintf(g_logFile, "Test 1d Passed\n");
@@ -399,10 +398,10 @@ int main(int an, char** av)
     byte    out[128];
 
     memset(intKey, 0, 16);
-    PrintBytes((char*)"CBC128 enc key : ", aes128CBCTestKey1, 16);
-    PrintBytes((char*)"CBC128 int key : ", intKey, 16);
-    PrintBytes((char*)"CBC128 IV      : ", aes128CBCTestIV1, 16);
-    PrintBytes((char*)"CBC128 Plain : ", aes128CBCTestPlain1a, 16);
+    PrintBytes("CBC128 enc key : ", aes128CBCTestKey1, 16);
+    PrintBytes("CBC128 int key : ", intKey, 16);
+    PrintBytes("CBC128 IV      : ", aes128CBCTestIV1, 16);
+    PrintBytes("CBC128 Plain : ", aes128CBCTestPlain1a, 16);
     if(!oCBCEnc.initEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1,
                 16, intKey, 16, 16, aes128CBCTestIV1)) {
         fprintf(g_logFile, "CBC init failed\n");
@@ -411,8 +410,8 @@ int main(int an, char** av)
     else {
         size= oCBCEnc.lastPlainBlockIn(16, aes128CBCTestPlain1a, out);
         fprintf(g_logFile, "CBC size: %d\n", size);
-        PrintBytes((char*)"CBC128 CT :\n", out, size);
-        PrintBytes((char*)"CBC128 RT :\n", aes128CBCTestCipher1a, 16);
+        PrintBytes("CBC128 CT :\n", out, size);
+        PrintBytes("CBC128 RT :\n", aes128CBCTestCipher1a, 16);
         if(memcmp(out, aes128CBCTestCipher1a, 16)==0) {
             fprintf(g_logFile, "CBC Test 1a Passed\n");
         }

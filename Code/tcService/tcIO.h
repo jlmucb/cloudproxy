@@ -55,11 +55,11 @@
 #define CLIENTSIDEDEVICEDRIVER                5
 
 
-#define TCIODDNAME  (char*)"/dev/tcioDD0"
+#define TCIODDNAME  "/dev/tcioDD0"
 
 
 #define PADDEDREQ 8192
-#define PARAMSIZE (8192-sizeof(tcBuffer))
+#define PARAMSIZE static_cast<int>(8192-sizeof(tcBuffer))
 
 
 //
@@ -74,7 +74,7 @@ public:
     u32                     m_uType;
     int                     m_fd;
 
-    bool OpenBuf(u32 type, int fd, char* file, u32 flags);
+    bool OpenBuf(u32 type, int fd, const char* file, u32 flags);
     int  WriteBuf(byte* buf, int size);
     int  ReadBuf(byte* buf, int size);
     void CloseBuf();
@@ -85,8 +85,8 @@ public:
 };
 
 
-bool openclient(int* pfd, char* szunixPath, struct sockaddr* psrv);
-bool openserver(int* pfd, char* szunixPath, struct sockaddr* psrv);
+bool openclient(int* pfd, const char* szunixPath, struct sockaddr* psrv);
+bool openserver(int* pfd, const char* szunixPath, struct sockaddr* psrv);
 
 
 

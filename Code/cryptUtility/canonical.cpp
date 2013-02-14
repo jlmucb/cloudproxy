@@ -59,7 +59,7 @@ int main(int an, char** av)
         }
     }
 
-    if(strcmp(szAlgorithm,(char*)"-tinyxml")!=0) {
+    if(strcmp(szAlgorithm,"-tinyxml")!=0) {
         printf("Only -tinyxml supported\n");
         return 1;
     }

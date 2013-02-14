@@ -94,7 +94,7 @@ void serviceprocEnt::print()
     if(m_szexeFile!=NULL)
         fprintf(g_logFile, "file: %s, ", m_szexeFile);
     fprintf(g_logFile, "hash size: %d, ", m_sizeHash);
-    PrintBytes((char*)"", m_rgHash, m_sizeHash);
+    PrintBytes("", m_rgHash, m_sizeHash);
 }
 
 
@@ -143,7 +143,7 @@ bool serviceprocTable::initprocTable(int size)
 }
 
 
-bool serviceprocTable::addprocEntry(int procid, char* file, int an, char** av,
+bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
                                     int sizeHash, byte* hash)
 {
     if(m_pFree==NULL)
@@ -263,7 +263,7 @@ tcServiceInterface::~tcServiceInterface()
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::initService(char* execfile, int an, char** av)
+TCSERVICE_RESULT tcServiceInterface::initService(const char* execfile, int an, char** av)
 {
     u32     hashType= 0;
     int     sizehash= SHA256DIGESTBYTESIZE;
@@ -275,7 +275,7 @@ TCSERVICE_RESULT tcServiceInterface::initService(char* execfile, int an, char** 
     }
 #ifdef TEST
     fprintf(g_logFile, "initService size hash %d\n", sizehash);
-    PrintBytes((char*)"getfile hash: ", rgHash, sizehash);
+    PrintBytes("getfile hash: ", rgHash, sizehash);
 #endif
 
     if(sizehash>SHA256DIGESTBYTESIZE)
@@ -381,7 +381,7 @@ TCSERVICE_RESULT tcServiceInterface::GetServiceHash(u32* phashType,
 
 
 TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
-                                int procid, char* file, int an, char** av, 
+                                int procid, const char* file, int an, char** av, 
                                 int* poutsize, byte* out)
 {
     u32     uType= 0;
@@ -497,7 +497,6 @@ TCSERVICE_RESULT tcServiceInterface::SealFor(int procid, int sizeIn, byte* rgIn,
 {
     byte    rgHash[32];
     int     hashSize= 0;
-    int     n;
 
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
         fprintf(g_logFile, "SealFor can't find hash in procTable %ld\n", (long int)procid);
@@ -525,7 +524,6 @@ TCSERVICE_RESULT tcServiceInterface::UnsealFor(int procid, int sizeIn, byte* rgI
 {
     byte    rgHash[32];
     int     hashSize= 0;
-    int     n;
 
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
         fprintf(g_logFile, "UnsealFor can't find hash in procTable %ld\n", (long int)procid);
@@ -549,7 +547,6 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
 {
     byte    rgHash[32];
     int     hashSize= 32;
-    int     n;
 
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
 #ifdef TCTEST
@@ -579,7 +576,6 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
 
 bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 {
-    int                 reqType;
     int                 procid;
     int                 origprocid;
     u32                 uReq;
@@ -601,7 +597,6 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 
     int                 pid;
     u32                 uType;
-    int                 n= 0;
     int                 an;
     char*               av[10];
 
@@ -659,7 +654,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #ifdef TEST
        fprintf(g_logFile, "serviceRequest: TCSERVICEGETOSHASHFROMTCSERVICE type %d, size %d\n",
         uType, size);
-        PrintBytes((char*) "OsHash in tc service ", rgBuf, size);
+        PrintBytes("OsHash in tc service ", rgBuf, size);
 #endif
         outparamsize= encodeTCSERVICEGETOSHASHFROMTCSERVICE(uType, size, rgBuf, 
                                       PARAMSIZE, outparams);
@@ -706,7 +701,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         outparamsize= PARAMSIZE;
 #ifdef TCTEST
         fprintf(g_logFile, "TCSERVICESEALFORFROMTCSERVICE********about to sealFor\n");
-        PrintBytes((char*)"inparams: ", inparams, inparamsize);
+        PrintBytes("inparams: ", inparams, inparamsize);
 #endif
         if(!decodeTCSERVICESEALFORFROMAPP(&outparamsize, outparams, inparams)) {
             fprintf(g_logFile, "serviceRequest: TCSERVICESEALFORFROMTCSERVICE buffer too small\n");
@@ -716,7 +711,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         size= PARAMSIZE;
 #ifdef TCTEST1
         fprintf(g_logFile, "about to sealFor %d\n", outparamsize);
-        PrintBytes((char*)"bytes to seal: ", outparams, outparamsize);
+        PrintBytes("bytes to seal: ", outparams, outparamsize);
 #endif
         if(g_myService.SealFor(origprocid, outparamsize, outparams, &size, rgBuf)
                 !=TCSERVICE_RESULT_SUCCESS) {
@@ -760,7 +755,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
             return false;
         }
 #ifdef TCTEST1
-        PrintBytes((char*)"return from UnsealFor:\n", rgBuf, size);
+        PrintBytes("return from UnsealFor:\n", rgBuf, size);
 #endif
         outparamsize= encodeTCSERVICEUNSEALFORFROMAPP(size, rgBuf, PARAMSIZE, outparams);
         if(outparamsize<0) {
@@ -798,7 +793,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         }
 #ifdef TEST
         fprintf(g_logFile, "program hash for pid found\n");
-        PrintBytes((char*)"Hash: ", hash, sizehash);
+        PrintBytes("Hash: ", hash, sizehash);
         fflush(g_logFile);
 #endif
         outparamsize= encodeTCSERVICEGETPROGHASHFROMSERVICE(uType, sizehash, 
@@ -908,32 +903,16 @@ accessPrincipal* g_policyAccessPrincipal= NULL;
 int main(int an, char** av)
 {
     int                 iRet= 0;
-    bool                fRet= false;
     TCSERVICE_RESULT    ret;
     bool                fInitKeys= false;
-    char*               szexecFile= (char*)"./tcService.exe";
+    const char*               szexecFile= "./tcService.exe";
 
-    u32                 platformType= PLATFORMTYPELINUX;
-    u32                 parentType= PLATFORMTYPEHW;
-
-    byte                rgRequest[PARAMSIZE];
-    byte                rgResponse[PARAMSIZE];
-    byte                rgBuf[PARAMSIZE];
-    int                 procid= 0;
-    int                 origprocid= 0;
-
-    u32                 uReq;
-    u32                 uStatus;
-    u32                 keyType= 0;
-    int                 size= 0;
-
-    int                 resSize;
     int                 i;
     bool                fTerminate= false;
     bool                fServiceStart;
-    char*               directory= NULL;
+    const char*               directory= NULL;
 
-    initLog((char*)"tcService.log");
+    initLog("tcService.log");
 #ifdef TEST
     fprintf(g_logFile, "tcService started\n\n");
 #endif
@@ -951,7 +930,7 @@ int main(int an, char** av)
         }
     }
     g_servicepid= getpid();
-    char** parameters = NULL;
+    const char** parameters = NULL;
     int parameterCount = 0;
     if(directory==NULL) {
         directory= DEFAULTDIRECTORY;
@@ -982,7 +961,7 @@ int main(int an, char** av)
     if(fInitKeys) {
         taoFiles  fileNames;
 
-        if(!fileNames.initNames(directory, (char*)"TrustedOS")) {
+        if(!fileNames.initNames(directory, "TrustedOS")) {
             fprintf(g_logFile, "tcService::main: cant init names\n");
             iRet= 1;
             goto cleanup;
@@ -993,7 +972,7 @@ int main(int an, char** av)
         unlink(fileNames.m_szAncestorEvidence);
     }
 
-    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUX, (char*)"TrustedOS",
+    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUX, "TrustedOS",
                                 DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
         fprintf(g_logFile, "tcService main: can't init environment\n");

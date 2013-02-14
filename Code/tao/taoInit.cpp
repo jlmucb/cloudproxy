@@ -97,7 +97,7 @@ taoInit::~taoInit()
 }
 
 
-char* g_quotedkeyInfoTemplate= (char*)
+const char* g_quotedkeyInfoTemplate= 
 "<QuotedInfo>\n" \
 "    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\"/>  " \
 "    <ds:QuoteMethod Algorithm=\"%s\"/>\n" \
@@ -105,13 +105,13 @@ char* g_quotedkeyInfoTemplate= (char*)
 "</QuotedInfo>\n";
 
 
-char* g_EvidenceListTemplate= (char*)
+const char* g_EvidenceListTemplate= 
 "<EvidenceList count='%d'>\n" \
 "%s\n"
 "</EvidenceList>\n";
 
 
-char* constructEvidenceList(char* szEvidence, char* szEvidenceSupport)
+char* constructEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
 {
     int     sizeList;
     char*   szEvidenceList= NULL;
@@ -138,8 +138,8 @@ char* constructEvidenceList(char* szEvidence, char* szEvidenceSupport)
 }
 
 
-bool taoInit::generatequoteandcertifyKey(u32 keyType, char* szKeyName, 
-                                char* szSubjectName, char* szSubjectId)
+bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
+                                const char* szSubjectName, const char* szSubjectId)
 {
     // this is the host certificate
     int             sizeHostCert= 0;
@@ -153,7 +153,6 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, char* szKeyName,
     char*           szEvidence= NULL;                   
 
     // this is the Quote XML
-    int             sizequotedInfo= 4096;
     char            quotedInfo[4096];                   
 
     // this is the canonicalize Quote XML
@@ -257,7 +256,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, char* szKeyName,
 
 #ifdef TEST
     fprintf(g_logFile, "GenerateQuoteAndCertifyKey\n");
-    PrintBytes((char*)"Code digest: ", codeDigest, sizeCodeDigest);
+    PrintBytes("Code digest: ", codeDigest, sizeCodeDigest);
 #endif
 
     switch(quoteType) {
@@ -326,7 +325,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, char* szKeyName,
 
 #ifdef TEST
     fprintf(g_logFile, "Hash of Quote Body\n");
-    PrintBytes((char*)"Quote Body hash: ", rgHash, sizequotedHash);
+    PrintBytes("Quote Body hash: ", rgHash, sizequotedHash);
     fflush(g_logFile);
 #endif
     // Do attest
@@ -337,7 +336,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, char* szKeyName,
 #ifdef TEST1
     fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Quotevalue size %d\n", 
                        sizequoteValue);
-    PrintBytes((char*)"Quotevalue: ", quoteValue, sizequoteValue);
+    PrintBytes("Quotevalue: ", quoteValue, sizequoteValue);
 #endif
 
     // Get the certificate
@@ -430,8 +429,8 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, char* szKeyName,
 }
 
 
-bool taoInit::initKeys(u32 symType, u32 pubkeyType, char* szKeyName, 
-                       char* szSubjectName, char* szSubjectId)
+bool taoInit::initKeys(u32 symType, u32 pubkeyType, const char* szKeyName, 
+                       const char* szSubjectName, const char* szSubjectId)
 {
     bool        fRet= false;
 
@@ -472,10 +471,9 @@ bool taoInit::gensymKey(u32 symType)
 }
 
 
-bool taoInit::genprivateKeyPair(u32 keyType, char* szKeyName)
+bool taoInit::genprivateKeyPair(u32 keyType, const char* szKeyName)
 {
     int         ikeySize= 0;
-    int         ibigSize= 0;
     RSAKey*     pKey= NULL;
 
 #ifdef TEST
@@ -483,11 +481,9 @@ bool taoInit::genprivateKeyPair(u32 keyType, char* szKeyName)
 #endif
     if(keyType==KEYTYPERSA1024INTERNALSTRUCT) {
         ikeySize= 1024;
-        ibigSize= 32;
     }
     else if(keyType==KEYTYPERSA2048INTERNALSTRUCT) {
        ikeySize= 2048;
-       ibigSize= 64;
     }
     else
         return false;

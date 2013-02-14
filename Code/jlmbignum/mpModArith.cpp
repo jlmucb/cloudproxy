@@ -28,6 +28,7 @@
 
 #include "bignum.h"
 #include "logging.h"
+#include "jlmUtility.h"
 #include "mpFunctions.h"
 
 
@@ -59,7 +60,7 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
         mpUDiv(bnA, bnM, bnQ, bnR);
         fRet= true;
         }
-    catch(char* szError) {
+    catch(const char* szError) {
         szError= NULL;
         fRet= false;
     }
@@ -110,7 +111,7 @@ bool mpModNormalize(bnum& bnA, bnum& bnM)
         bnR.mpCopyNum(bnA);
         return true;
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         szError= NULL;
         return false;
     }
@@ -194,7 +195,7 @@ bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
         fRet= true;
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         szError= NULL;
         fRet= false;
     }
@@ -231,7 +232,7 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
         fRet= true;
      }
-    catch(char* szError) {
+    catch(const char* szError) {
         szError= NULL;
         fRet= false;
     }
@@ -270,7 +271,7 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
         fRet= true;
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         szError= NULL;
         fRet= false;
     }
@@ -293,7 +294,6 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
     int     iMaxSizeB= bnBase.mpSize();
     int     iMaxSizeM= bnM.mpSize();
     int     iMaxSize;
-    bool    fRet= false;
     int     j;
 
     if(iMaxSizeB>iMaxSizeM) {
@@ -308,6 +308,7 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
     bnum    bnTemp(iMaxSize);       // Temporary storage
     bnum    bnQ(iMaxSize);          // Quotient
 
+    UNUSEDVAR(iMaxSize);
     bnBase.mpCopyNum(bnBasePow);
     bnAccum.m_pValue[0]= 1ULL;
 

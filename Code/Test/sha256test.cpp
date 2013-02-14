@@ -44,7 +44,7 @@ void bigEndian(u8* buf, int size)
 }
 
 
-void PrintBytes(char* szMsg, byte* pbData, int iSize)
+void PrintBytes(const char* szMsg, byte* pbData, int iSize)
 {
         int i;
 
@@ -62,15 +62,15 @@ void testvector(int sizetoHash, byte* toHash, int sizeAns, byte* answer)
     byte        rgbDigest[64];
 
     printf("SHA-256 Test, %d bytes\n", sizetoHash);
-    PrintBytes((char*)"In     ", toHash, sizetoHash);
-    PrintBytes((char*)"Answer ", answer, sizeAns);
+    PrintBytes("In     ", toHash, sizetoHash);
+    PrintBytes("Answer ", answer, sizeAns);
 
     oSha.Init();
     oSha.Update(toHash, sizetoHash);
     oSha.Final();
     oSha.GetDigest(rgbDigest);
 
-    PrintBytes((char*)"Out    ", rgbDigest, sizeAns);
+    PrintBytes("Out    ", rgbDigest, sizeAns);
     if(memcmp(rgbDigest, answer, sizeAns) == 0) {
         printf("Test Passed\n\n");
     }

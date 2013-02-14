@@ -69,7 +69,7 @@ inline bool whitespace(char b)
 }
 
 
-int nextToken(char* sz, char** pszToken)
+int nextToken(const char* sz, char** pszToken)
 {
     int     n;
 
@@ -118,7 +118,7 @@ char* verbName(u32 uVerb)
 }
 
 
-u32 verbFlag(char* pVerbName)
+u32 verbFlag(const char* pVerbName)
 {
    if(strcmp(pVerbName,"mayread")==0)
         return MAYREAD;
@@ -166,7 +166,7 @@ assertionNode::~assertionNode()
 
 
 bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays, 
-                    char* szAssertion, bool fValidated)
+                    const char* szAssertion, bool fValidated)
 {
     char                szBuf[MAXTOKEN];
     char*               szTok= NULL;
@@ -185,7 +185,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
         m_pPrincipal= pPrincipalSays;
         m_uVerbs= SAYS;
         m_pAssertion= new assertionNode();
-        return m_pAssertion->parseAssertion((accessPrincipal*)NULL, (char*)szAssertion, 
+        return m_pAssertion->parseAssertion((accessPrincipal*)NULL, szAssertion, 
                     (bool)fValidated);
     }
 
@@ -451,7 +451,7 @@ bool accessGuard::initChannelAccess(int iNumSubj, PrincipalCert** rgpPrinc)
 }
 
 
-bool  accessGuard::permitAccess(accessRequest& req, char* szCollection)
+bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
 {
     resource*               pResource= NULL;
     aNode<accessPrincipal>* pSubjNode= NULL;

@@ -74,7 +74,7 @@ void  hmacsha1::Init(byte* key, int klen)
 }
 
 
-void  hmacsha1::Update(byte* msg, int mLen) 
+void  hmacsha1::Update(const byte* msg, int mLen) 
 {
     m_oHash.Update(msg, mLen);
     return;

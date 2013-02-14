@@ -13,7 +13,8 @@ LINK=       g++
 dobjs=      $(B)/rsaspeedtest.o $(B)/keys.o $(B)/jlmcrypto.o \
 	$(B)/aes.o $(B)/sha256.o $(B)/mpBasicArith.o  $(B)/modesandpadding.o \
 	$(B)/mpModArith.o $(B)/mpNumTheory.o $(B)/tinystr.o \
-	$(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o
+	$(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/logging.o \
+	$(B)/hmacsha256.o
 
 all: $(B)/rsaspeedtest.exe
 
@@ -66,4 +67,8 @@ $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 $(B)/modesandpadding.o: $(SCC)/modesandpadding.cpp $(SCC)/modesandpadding.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/modesandpadding.o $(SCC)/modesandpadding.cpp
 
+$(B)/logging.o: $(SC)/logging.cpp 
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/logging.o $(SC)/logging.cpp
 
+$(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp 
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp

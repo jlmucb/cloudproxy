@@ -107,8 +107,8 @@ public:
 
     bool initTPM();
 
-    bool setSRKauth(char* srkSecret);
-    bool setTPMauth(char* ownerSecret);
+    bool setSRKauth(const char* srkSecret);
+    bool setTPMauth(const char* ownerSecret);
 
     int  getRandom(int size, byte* puData);
 
@@ -130,11 +130,11 @@ public:
     bool quoteData(unsigned sizequoteData, byte* toquoteData,
                    unsigned* psigSize, byte* signature);
 
-    bool makeAIK(int numCerts, byte** rgpCerts, char* pcaFile, 
-                 char* reqFile, char* aikFile, char* aikPKFile);
+    bool makeAIK(int numCerts, byte** rgpCerts, const char* pcaFile, 
+                 const char* reqFile, const char* aikFile, const char* aikPKFile);
 
-    bool getAIKKey(char* aikBlobFile, char* aikCertFile);
-    bool getEKInfo(char* fileName, bool fgetKey);
+    bool getAIKKey(const char* aikBlobFile, const char* aikCertFile);
+    bool getEKInfo(const char* fileName, bool fgetKey);
 
     bool verifyQuote(int dataSize, byte* signedData, byte pcsMask[3],
                      byte* ppcrs, byte locality, 

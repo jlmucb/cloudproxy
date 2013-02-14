@@ -39,14 +39,14 @@
 #include "tinyxml.h"
 
 
-#define QUOTEMETHODNONE                     (char*)"none"
-#define QUOTEMETHODTPM12RSA2048             (char*)"Quote-TPM1.2-RSA2048"
-#define QUOTEMETHODTPM12RSA1024             (char*)"Quote-TPM1.2-RSA2048"
-#define QUOTEMETHODSHA256FILEHASHRSA1024    (char*)"Quote-Sha256FileHash-RSA1024"
-#define QUOTEMETHODSHA256FILEHASHRSA2048    (char*)"Quote-Sha256FileHash-RSA2048"
+#define QUOTEMETHODNONE                     "none"
+#define QUOTEMETHODTPM12RSA2048             "Quote-TPM1.2-RSA2048"
+#define QUOTEMETHODTPM12RSA1024             "Quote-TPM1.2-RSA2048"
+#define QUOTEMETHODSHA256FILEHASHRSA1024    "Quote-Sha256FileHash-RSA1024"
+#define QUOTEMETHODSHA256FILEHASHRSA2048    "Quote-Sha256FileHash-RSA2048"
 
-#define RSA1024SIGALG  (char*)"http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
-#define RSA2048SIGALG (char*)"http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
+#define RSA1024SIGALG  "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
+#define RSA2048SIGALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
 
 
 class Quote {
@@ -64,7 +64,7 @@ public:
     Quote();
     ~Quote();
 
-    bool        init(char* szXMLQuote);
+    bool        init(const char* szXMLQuote);
     char*       getCanonicalQuoteInfo();
     char*       getQuoteValue();
     char*       getnonceValue();
@@ -92,7 +92,7 @@ public:
     PrincipalCert();
     ~PrincipalCert();
 
-    bool        init(char* szSig);
+    bool        init(const char* szSig);
     KeyInfo*    getSubjectKeyInfo();
     bool        parsePrincipalCertfromRoot(TiXmlElement*  pRootElement);
     bool        parsePrincipalCertElements();
@@ -109,9 +109,9 @@ public:
 };
 
 
-RSAKey* keyfromkeyInfo(char* szKeyInfo);
-bool verifyXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
-                char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue);
+RSAKey* keyfromkeyInfo(const char* szKeyInfo);
+bool verifyXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, const char* sznonce, 
+                const char* szdigest, KeyInfo* pKeyInfo, const char* szQuoteValue);
 
 
 #endif

@@ -36,8 +36,8 @@
 #include <string.h>
 
 
-extern char*  szAESKeyProto;
-extern char*  szRSAKeyProto;
+extern const char*  szAESKeyProto;
+extern const char*  szRSAKeyProto;
 
 
 // -----------------------------------------------------------------------------------
@@ -163,13 +163,13 @@ bool initRSAKeyFromKeyInfo(RSAKey** ppKey, TiXmlNode* pNode)
 }
 
 
-bool initRSAKeyFromStringRSAKey(RSAKey** ppKey, char* szXml, char* szLoc)
+bool initRSAKeyFromStringRSAKey(RSAKey** ppKey, const char* szXml, const char* szLoc)
 {
     if(ppKey==NULL || szXml==NULL)
         return false;
 
     if(szLoc==NULL)
-        szLoc= (char*)"unknown";
+        szLoc= "unknown";
 
     *ppKey= new RSAKey();
     if((*ppKey)==NULL) {
@@ -244,7 +244,7 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
         revmemcpy(rgPadded, (byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
     }
 #ifdef CRYPTOTEST
-    PrintBytes((char*)"rsaXmlDecryptandGetNonce:: padded\n", rgPadded, 
+    PrintBytes("rsaXmlDecryptandGetNonce:: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif
     memcpy((void*)rgOut, (void*)&rgPadded[rgKey.m_iByteSizeM-sizeNonce], sizeNonce);
@@ -252,7 +252,7 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
 }
 
 
-bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, char* szSig,
+bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* szSig,
                 int sizeChallenge, byte* puOriginal)
 
 {
@@ -296,7 +296,7 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, char* szSig,
         revmemcpy(rgPadded,(byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
     }
 #ifdef CRYPTOTEST
-    PrintBytes((char*)"rsaXmlDecodeandVerifyChallenge: padded\n", rgPadded, 
+    PrintBytes("rsaXmlDecodeandVerifyChallenge: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif
     if(!emsapkcsverify(SHA256HASH, puOriginal, rgKey.m_iByteSizeM, rgPadded)) {
@@ -344,7 +344,7 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
         return NULL;
     }
 #ifdef CRYPTOTEST
-    PrintBytes((char*)"rsaXmlEncodeChallenge: padded\n", rgPadded, 
+    PrintBytes("rsaXmlEncodeChallenge: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif
     memset(bnMsg.m_pValue, 0, rgKey.m_iByteSizeM);
@@ -376,10 +376,10 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
 #define MAXPRINCIPALS 25
 #define BIGSIGNEDSIZE 256
 
-char* szMsgChallenge1= (char*) "<SignedChallenges count='%d'>";
-char* szMsgChallenge2= (char*) "\n<SignedChallenge>";
-char* szMsgChallenge3= (char*) "\n</SignedChallenge>";
-char* szMsgChallenge4= (char*) "\n</SignedChallenges>\n";
+const char* szMsgChallenge1= "<SignedChallenges count='%d'>";
+const char* szMsgChallenge2= "\n<SignedChallenge>";
+const char* szMsgChallenge3= "\n</SignedChallenge>";
+const char* szMsgChallenge4= "\n</SignedChallenges>\n";
 
 
 char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, 
@@ -388,8 +388,6 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     int     i;
     char*   rgszSignedChallenges[MAXPRINCIPALS];
     byte    rguCurrentChallenge[BIGSIGNEDSIZE];
-    byte    rguDecCurrentChallenge[BIGSIGNEDSIZE];
-    int     iOut= BIGSIGNEDSIZE;
     int     n= 0;
     char    szMsgHdr[64];
     int     iSC1;
@@ -404,7 +402,6 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     iSC1= strlen(szMsgHdr);
     
     for(i=0; i< iNumKeys; i++) {
-        iOut= 256;
         rgszSignedChallenges[i]= rsaXmlEncodeChallenge(fEncrypt,
                 *rgKeys[i], rguCurrentChallenge, sizeChallenge);
         if(rgszSignedChallenges[i]==NULL) {

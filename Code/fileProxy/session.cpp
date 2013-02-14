@@ -101,8 +101,8 @@ sessionKeys::sessionKeys()
     m_myCert= NULL;
     m_policyCert= NULL;
 #ifdef FILECLIENT
-    extern char* g_szClientPrincipalCertsFile;
-    extern char* g_szClientPrincipalPrivateKeysFile;
+    extern const char* g_szClientPrincipalCertsFile;
+    extern const char* g_szClientPrincipalPrivateKeysFile;
 
     m_szPrincipalCertsFile= strdup(g_szClientPrincipalCertsFile);
     m_szPrincipalPrivateKeysFile= strdup(g_szClientPrincipalPrivateKeysFile);
@@ -110,7 +110,7 @@ sessionKeys::sessionKeys()
     m_szPrincipalCertsFile= NULL;
     m_szPrincipalPrivateKeysFile= NULL;
 #endif
-    m_szChallengeSignAlg= strdup((char*)"TLS_RSA1024_WITH_AES128_CBC_SHA256");
+    m_szChallengeSignAlg= strdup("TLS_RSA1024_WITH_AES128_CBC_SHA256");
 }
 
 
@@ -232,7 +232,7 @@ bool sessionKeys::getMyProgramKey(RSAKey* pKey)
 }
 
 
-bool sessionKeys::getMyProgramCert(char* szCert)
+bool sessionKeys::getMyProgramCert(const char* szCert)
 {
     if(szCert==NULL)
         return false;
@@ -242,7 +242,7 @@ bool sessionKeys::getMyProgramCert(char* szCert)
 }
 
 
-bool    sessionKeys::getClientCert(char* szXml)
+bool    sessionKeys::getClientCert(const char* szXml)
 {
 #ifdef TEST
     fprintf(g_logFile, "getClientCert\n");
@@ -301,7 +301,7 @@ bool    sessionKeys::getClientCert(char* szXml)
 }
 
 
-bool sessionKeys::getServerCert(char* szXml)
+bool sessionKeys::getServerCert(const char* szXml)
 {
     m_szXmlServerCert= strdup(szXml);
     if(m_szXmlServerCert==NULL)
@@ -328,7 +328,7 @@ bool sessionKeys::getServerCert(char* szXml)
     // Validate cert chain
     int     rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
     void*   rgObject[2]={m_pserverCert, g_policyKey};
-    extern  bool revoked(char*, char*);
+    extern  bool revoked(const char*, const char*);
     int     iChain= VerifyEvidenceList(NULL, 2, rgType, rgObject, NULL);
     if(iChain<0) {
         fprintf(g_logFile, "sessionKeys::getServerCert: Invalid server certificate chain\n");
@@ -523,7 +523,7 @@ bool sessionKeys::clientcomputeMessageHash()
     oHash.GetDigest(m_rgClientMessageHash);
     m_fClientMessageHashValid= true;
 #ifdef TEST
-    PrintBytes((char*)"client hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
+    PrintBytes("client hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
     fflush(g_logFile);
 #endif
     return true;
@@ -585,7 +585,7 @@ bool sessionKeys::checkclientSignedHash()
     }
 
 #ifdef TEST
-    PrintBytes((char*)"Hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
+    PrintBytes("Hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
 #endif
     return true;
 }
@@ -601,7 +601,7 @@ bool sessionKeys::servercomputeMessageHash()
     m_oMessageHash.GetDigest(m_rgServerMessageHash);
     m_fServerMessageHashValid= true;
 #ifdef TEST
-    PrintBytes((char*)"server hash: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
+    PrintBytes("server hash: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
     fflush(g_logFile);
 #endif
     return true;
@@ -645,16 +645,16 @@ bool sessionKeys::computeClientKeys()
     memcpy(rgSeed, m_rguServerRand, SMALLNONCESIZE);
     memcpy(&rgSeed[SMALLNONCESIZE], m_rguClientRand, SMALLNONCESIZE);
     if(!prf_SHA256(BIGSYMKEYSIZE, m_rguPreMasterSecret, 2*SMALLNONCESIZE, rgSeed,
-                       (char*)"fileServer keyNego protocol", 4*AES128BYTEKEYSIZE, rgKeys)) {
+                       "fileServer keyNego protocol", 4*AES128BYTEKEYSIZE, rgKeys)) {
         fprintf(g_logFile, "sessionKeys::computeClientKeys: Cannot apply prf\n");
         return false;
    }
 
 #ifdef TEST
     fprintf(g_logFile,"sessionKeys::computeClientKeys()\n");
-    PrintBytes((char*)"client rand: ",  m_rguClientRand, SMALLNONCESIZE);
-    PrintBytes((char*)"server rand: ",  m_rguServerRand, SMALLNONCESIZE);
-    PrintBytes((char*)"Premaster : ",  m_rguPreMasterSecret, 2*SMALLNONCESIZE);
+    PrintBytes("client rand: ",  m_rguClientRand, SMALLNONCESIZE);
+    PrintBytes("server rand: ",  m_rguServerRand, SMALLNONCESIZE);
+    PrintBytes("Premaster : ",  m_rguPreMasterSecret, 2*SMALLNONCESIZE);
 #endif
 
     memcpy(m_rguEncryptionKey1, &rgKeys[0], AES128BYTEKEYSIZE);
@@ -679,7 +679,7 @@ bool sessionKeys::checkPrincipalChallenges()
     TiXmlNode*      pNode1;
     int             iNumChecked= 0;
     bool            fRet= true;
-    char*           szSignedChallenge= NULL;
+    const char*     szSignedChallenge= NULL;
     int             iNumSignedChallenges= 0;
 
     if(!doc.Parse(m_szSignedChallenges)) {
@@ -720,7 +720,7 @@ bool sessionKeys::checkPrincipalChallenges()
                     fprintf(g_logFile, "sessionKeys::checkPrincipalChallenges: Empty signed challenge\n");
                     return false;
                 }
-                szSignedChallenge= (char*) pNode1->Value();
+                szSignedChallenge= pNode1->Value();
                 if(!rsaXmlDecodeandVerifyChallenge(true, *m_rgPrincipalPublicKeys[iNumChecked], 
                         szSignedChallenge, SMALLNONCESIZE, rguOriginalChallenge)) {
                     fprintf(g_logFile, "sessionKeys::checkPrincipalChallenges: bad encrypted challenge\n");
@@ -811,13 +811,13 @@ void sessionKeys::printMe()
 
     fprintf(g_logFile, "\n");
     if(m_fClientMessageHashValid) {
-        PrintBytes((char*)"Client Message Hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
+        PrintBytes("Client Message Hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
     }
     else {
         fprintf(g_logFile, "Client Message Hash invalid\n");
     }
     if(m_fServerMessageHashValid) {
-        PrintBytes((char*)"Server Message Hash: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
+        PrintBytes("Server Message Hash: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
     }
     else {
         fprintf(g_logFile, "Server Message Hash invalid\n");
@@ -826,7 +826,7 @@ void sessionKeys::printMe()
     fprintf(g_logFile, "\n");
     if(m_fChallengeValid) {
         fprintf(g_logFile, "Challenge valid, alg: %s\n", m_szChallengeSignAlg);
-        sprintf(szMessage, (char*)"Challenge(%d)" , SMALLNONCESIZE);
+        sprintf(szMessage, "Challenge(%d)" , SMALLNONCESIZE);
         PrintBytes(szMessage, m_rguChallenge, SMALLNONCESIZE);
     }
     if(m_szSignedChallenges!=NULL)
@@ -834,11 +834,11 @@ void sessionKeys::printMe()
 
     fprintf(g_logFile, "\n");
     if(m_fClientRandValid) {
-        sprintf(szMessage, (char*)"Client rand valid(%d)" , SMALLNONCESIZE);
+        sprintf(szMessage, "Client rand valid(%d)" , SMALLNONCESIZE);
         PrintBytes(szMessage, m_rguClientRand, SMALLNONCESIZE);
     }
     if(m_fServerRandValid) {
-        sprintf(szMessage, (char*)"Server rand valid(%d)" , SMALLNONCESIZE);
+        sprintf(szMessage, "Server rand valid(%d)" , SMALLNONCESIZE);
         PrintBytes(szMessage, m_rguServerRand, SMALLNONCESIZE);
     }
 
@@ -849,26 +849,26 @@ void sessionKeys::printMe()
 
     fprintf(g_logFile, "\n");
     if(m_fClientMessageHashValid) {
-        PrintBytes((char*)"Client hash:" , m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
+        PrintBytes("Client hash:" , m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
     }
 
     fprintf(g_logFile, "\n");
     if(m_fServerMessageHashValid) {
-        PrintBytes((char*)"Server hash:" , m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
+        PrintBytes("Server hash:" , m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
     }
 
     fprintf(g_logFile, "\n");
     if(m_fSignedMessageValid) {
-        PrintBytes((char*)"Server hash:" , m_rgSignedMessage, BIGSYMKEYSIZE);
+        PrintBytes("Server hash:" , m_rgSignedMessage, BIGSYMKEYSIZE);
     }
 
     fprintf(g_logFile, "\n");
     if(m_fPreMasterSecretValid) {
-        sprintf(szMessage, (char*)"Pre-Master valid(%d)" , BIGSYMKEYSIZE);
+        sprintf(szMessage, "Pre-Master valid(%d)" , BIGSYMKEYSIZE);
         PrintBytes(szMessage, m_rguPreMasterSecret, BIGSYMKEYSIZE);
     }
     if(m_fEncPreMasterSecretValid) {
-        sprintf(szMessage, (char*)"Encrypted Pre-Master valid(%d)" , BIGSIGNEDSIZE);
+        sprintf(szMessage, "Encrypted Pre-Master valid(%d)" , BIGSIGNEDSIZE);
         PrintBytes(szMessage, m_rguEncPreMasterSecret, BIGSIGNEDSIZE);
     }
 
@@ -880,13 +880,13 @@ void sessionKeys::printMe()
     fprintf(g_logFile, "\n");
     if(m_fChannelKeysEstablished) {
         fprintf(g_logFile, "Channel established\n");
-        sprintf(szMessage, (char*)"Encryption Key 1 (%d)" , AES128BYTEKEYSIZE);
+        sprintf(szMessage, "Encryption Key 1 (%d)" , AES128BYTEKEYSIZE);
         PrintBytes(szMessage, m_rguEncryptionKey1, AES128BYTEKEYSIZE);
-        sprintf(szMessage, (char*)"Integrity Key 1 (%d) " , AES128BYTEKEYSIZE);
+        sprintf(szMessage, "Integrity Key 1 (%d) " , AES128BYTEKEYSIZE);
         PrintBytes(szMessage, m_rguIntegrityKey1, AES128BYTEKEYSIZE);
-        sprintf(szMessage, (char*)"Encryption Key 2 (%d)" , AES128BYTEKEYSIZE);
+        sprintf(szMessage, "Encryption Key 2 (%d)" , AES128BYTEKEYSIZE);
         PrintBytes(szMessage, m_rguEncryptionKey2, AES128BYTEKEYSIZE);
-        sprintf(szMessage, (char*)"Integrity Key 2 (%d) " , AES128BYTEKEYSIZE);
+        sprintf(szMessage, "Integrity Key 2 (%d) " , AES128BYTEKEYSIZE);
         PrintBytes(szMessage, m_rguIntegrityKey2, AES128BYTEKEYSIZE);
     }
     fprintf(g_logFile, "\nEnd of Session Key Data\n");

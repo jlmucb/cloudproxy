@@ -51,8 +51,11 @@ byte tpmCapblob[22]= {
 };
 
 
-#define  TPMDEVICENAME (char*)"/dev/tpm0"
+#define  TPMDEVICENAME "/dev/tpm0"
+
+#ifndef QUOTE2_DEFINED
 #define QUOTE2_DEFINED
+#endif
 
 
 // --------------------------------------------------------------------------
@@ -159,7 +162,6 @@ inline void myXOR(int size, byte* out, byte* in1, byte* in2)
 
 bool fetchpcrValues(int fd, byte* pM, byte* pcrValues)
 {
-    int     i;
     int     n= 0;
     int     m= 0;
     int     k= 20;
@@ -188,7 +190,6 @@ bool create_pcrinfo(u32 locality, tpm_pcr_selection& releaselocs,
                     byte* rgreleasepcrs, tpm_pcrinfo_long* pcrlong)
 {
     int     i;
-    byte    rgTmp[40];
 
     printf("create_pcrinfo\n");
     pcrlong->m_tag= TPM_TAG_PCR_INFO_LONG;
@@ -204,8 +205,8 @@ bool create_pcrinfo(u32 locality, tpm_pcr_selection& releaselocs,
         pcrlong->m_pcratrelease.m_mask[i]= releaselocs.m_mask[i];
 
     printf("create_pcrinfo about to compute composite\n");
-    PrintBytes((char*)"mask: ", releaselocs.m_mask, 3);
-    PrintBytes((char*)"release pcr: ",  rgreleasepcrs, 20);
+    PrintBytes("mask: ", releaselocs.m_mask, 3);
+    PrintBytes("release pcr: ",  rgreleasepcrs, 20);
     printf("create_pcrinfo locality: %d\n", locality);
     if(!computeTPM12quote2compositepcrDigest(releaselocs.m_mask, rgreleasepcrs,
                                           locality, pcrlong->m_digestatcreation)) {
@@ -230,7 +231,7 @@ bool TPMgetCapability(int fd)
         fprintf(g_logFile, "submitTPMReq failed\n");
         return false;
         }
-    PrintBytes((char*)"TPM capability response: ", ansblob, n);
+    PrintBytes("TPM capability response: ", ansblob, n);
     int     offset= 0;
     u16     tag= 0;
     u32     paramsize= 0;
@@ -245,7 +246,7 @@ bool TPMgetCapability(int fd)
     pResp= &ansblob[offset];
     fprintf(g_logFile, "Getcapability tag: %04x, paramsize: %d, result: %d, cmd: %08x\n",
             tag, paramsize, result, cmd);
-    PrintBytes((char*)"Capability response: ", pResp, paramsize-16);
+    PrintBytes("Capability response: ", pResp, paramsize-16);
     
     return true;
 }
@@ -281,7 +282,7 @@ int TPMgetRandom(int fd, int size, byte* out)
     Load(true, cmdblob, &cmdoffset, (byte*)&sizerandom, sizeof(u32));
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMRandom command: ", cmdblob, cmdoffset);
+    PrintBytes("TPMRandom command: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -291,7 +292,7 @@ int TPMgetRandom(int fd, int size, byte* out)
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMRandom response: ", ansblob, outsize);
+    PrintBytes("TPMRandom response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -327,13 +328,11 @@ bool TPMpcrRead(int fd, int pcr, int* psize, byte* out)
     u16     tagin= TPM_TAG_RQU_COMMAND;
     u32     insize= 14;
     u32     cmdin= TPM_ORD_PCR_READ;
-    u32     sizeout= 16;
 
     u16     tagout= 0;
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
     if(*psize<20) {
@@ -348,7 +347,7 @@ bool TPMpcrRead(int fd, int pcr, int* psize, byte* out)
     Load(true, cmdblob, &cmdoffset, (byte*)&pcr, sizeof(u32));
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMpcrReadcommand: ", cmdblob, cmdoffset);
+    PrintBytes("TPMpcrReadcommand: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -358,7 +357,7 @@ bool TPMpcrRead(int fd, int pcr, int* psize, byte* out)
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMpcrRead response: ", ansblob, outsize);
+    PrintBytes("TPMpcrRead response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -416,7 +415,6 @@ bool TPMoiap(int fd, u32 locality, u32* ph, byte* nonce_even2)
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
 
@@ -426,7 +424,7 @@ bool TPMoiap(int fd, u32 locality, u32* ph, byte* nonce_even2)
     Load(true, cmdblob, &cmdoffset, (byte*)&cmdin, sizeof(u32));
 
 #ifdef TPMTEST
-    PrintBytes((char*)"\nTPMoiap command: ", cmdblob, cmdoffset);
+    PrintBytes("\nTPMoiap command: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -436,7 +434,7 @@ bool TPMoiap(int fd, u32 locality, u32* ph, byte* nonce_even2)
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMoiap response: ", ansblob, outsize);
+    PrintBytes("TPMoiap response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -466,13 +464,11 @@ bool TPMosap(int fd, u32 locality, u16 enttype, u32 entvalue,
     u16     tagin= TPM_TAG_RQU_COMMAND;
     u32     insize= 36;
     u32     cmdin= TPM_ORD_OSAP;
-    u32     sizeout= 16;
 
     u16     tagout= 0;
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
 
@@ -485,7 +481,7 @@ bool TPMosap(int fd, u32 locality, u16 enttype, u32 entvalue,
     Load(false, cmdblob, &cmdoffset, (byte*)odd_osap, 20);
 
 #ifdef TPMTEST
-    PrintBytes((char*)"\nTPMosap command: ", cmdblob, cmdoffset);
+    PrintBytes("\nTPMosap command: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -495,7 +491,7 @@ bool TPMosap(int fd, u32 locality, u16 enttype, u32 entvalue,
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMosap response: ", ansblob, outsize);
+    PrintBytes("TPMosap response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -528,13 +524,11 @@ bool TPMseal(int fd, u32 hkey, byte* encauth, u32 pcrinfosize, byte* pcrinfo,
     u16     tagin= TPM_TAG_RQU_AUTH1_COMMAND;
     u32     insize;
     u32     cmdin= TPM_ORD_SEAL;
-    u32     sizeout= 16;
 
     u16     tagout= 0;
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
     insize= 141+sealinsize;
@@ -557,7 +551,7 @@ bool TPMseal(int fd, u32 hkey, byte* encauth, u32 pcrinfosize, byte* pcrinfo,
 #ifdef TPMTEST
     fprintf(g_logFile, "insize: %d\n", insize);
     fprintf(g_logFile, "cmdoffset: %d\n", cmdoffset);
-    PrintBytes((char*)"\nTPMseal command:\n", cmdblob, cmdoffset);
+    PrintBytes("\nTPMseal command:\n", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -567,7 +561,7 @@ bool TPMseal(int fd, u32 hkey, byte* encauth, u32 pcrinfosize, byte* pcrinfo,
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMseal response:\n", ansblob, outsize);
+    PrintBytes("TPMseal response:\n", ansblob, outsize);
 #endif
 
     // decode response
@@ -594,10 +588,10 @@ bool TPMseal(int fd, u32 hkey, byte* encauth, u32 pcrinfosize, byte* pcrinfo,
 
 #ifdef TPMTEST
     fprintf(g_logFile, "\nSize of sealeddata: %d\n", *psealsizeout);
-    PrintBytes((char*)"sealed data:\n", sealout, *psealsizeout);
-    PrintBytes((char*)"new nonce even: ", nonce_even, 20);
+    PrintBytes("sealed data:\n", sealout, *psealsizeout);
+    PrintBytes("new nonce even: ", nonce_even, 20);
     fprintf(g_logFile, "contsession: %08x\n", contsession);
-    PrintBytes((char*)"authdata: ", pubauth, 20);
+    PrintBytes("authdata: ", pubauth, 20);
 #endif
 
     return true;
@@ -624,7 +618,6 @@ bool TPMunseal(int fd, u32 hkey, u32 hauth, byte* nonce_odd,
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
     insize= 104+sizein;
@@ -648,8 +641,8 @@ bool TPMunseal(int fd, u32 hkey, u32 hauth, byte* nonce_odd,
     fprintf(g_logFile, "insize: %d hauth: %08x, hauthd: %08x, key: %08x\n", 
             insize, hauth, hauthd, hkey);
     fprintf(g_logFile, "cmdoffset: %d\n", cmdoffset);
-    PrintBytes((char*)"\nTPMunseal command:\n", cmdblob, cmdoffset);
-    PrintBytes((char*)"in data: ", in, sizein);
+    PrintBytes("\nTPMunseal command:\n", cmdblob, cmdoffset);
+    PrintBytes("in data: ", in, sizein);
 #endif
 
     // execute
@@ -659,7 +652,7 @@ bool TPMunseal(int fd, u32 hkey, u32 hauth, byte* nonce_odd,
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMunseal response:\n", ansblob, outsize);
+    PrintBytes("TPMunseal response:\n", ansblob, outsize);
 #endif
 
     // decode response
@@ -682,13 +675,13 @@ bool TPMunseal(int fd, u32 hkey, u32 hauth, byte* nonce_odd,
 
 #ifdef TPMTEST
     fprintf(g_logFile, "\nsize of unsealeddata: %d\n", *psizeout);
-    PrintBytes((char*)"unsealed data:\n", out, *psizeout);
-    PrintBytes((char*)"new nonce even: ", nonce_even, 20);
+    PrintBytes("unsealed data:\n", out, *psizeout);
+    PrintBytes("new nonce even: ", nonce_even, 20);
     fprintf(g_logFile, "contsession: %08x\n", contsession);
-    PrintBytes((char*)"resauthdata: ", resauth, 20);
-    PrintBytes((char*)"new data nonce even: ", nonce_evend, 20);
+    PrintBytes("resauthdata: ", resauth, 20);
+    PrintBytes("new data nonce even: ", nonce_evend, 20);
     fprintf(g_logFile, "contsession: %08x\n", contsessiond);
-    PrintBytes((char*)"resauthdata: ", resauthd, 20);
+    PrintBytes("resauthdata: ", resauthd, 20);
 #endif
     return true;
 }
@@ -711,7 +704,6 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
     insize= 59+sizekeyIn;
@@ -730,7 +722,7 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
 /* #ifdef TPMTEST */
     fprintf(g_logFile, "\nloadKey\n");
     fprintf(g_logFile, "cmdoffset: %d\n", cmdoffset);
-    PrintBytes((char*)"\nTPMloadKey command:\n", cmdblob, cmdoffset);
+    PrintBytes("\nTPMloadKey command:\n", cmdblob, cmdoffset);
 /* #endif */
 
     // execute
@@ -740,7 +732,7 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
         }
 
 /* #ifdef TPMTEST */
-    PrintBytes((char*)"TPMloadKey response:\n", ansblob, outsize);
+    PrintBytes("TPMloadKey response:\n", ansblob, outsize);
 /* #endif */
 
     // decode response
@@ -759,8 +751,8 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
 
 #ifdef TPMTEST
     fprintf(g_logFile, "contsession: %08x\n", contsession);
-    PrintBytes((char*)"resauthdata: ", resauth, 20);
-    PrintBytes((char*)"new data nonce even: ", nonce_even, 20);
+    PrintBytes("resauthdata: ", resauth, 20);
+    PrintBytes("new data nonce even: ", nonce_even, 20);
 #endif
     return true;
 }
@@ -786,7 +778,6 @@ bool TPMquote2(int fd, u32 keyHandle, byte* toSign, int pcrselectsize,
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
     insize= 80+sizeof(tpm_pcr_selection);
@@ -808,7 +799,7 @@ bool TPMquote2(int fd, u32 keyHandle, byte* toSign, int pcrselectsize,
 #ifdef TPMTEST
     fprintf(g_logFile, "insize: %d\n", insize);
     fprintf(g_logFile, "cmdoffset: %d\n", cmdoffset);
-    PrintBytes((char*)"\nTPMquote2 command: ", cmdblob, cmdoffset);
+    PrintBytes("\nTPMquote2 command: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -818,7 +809,7 @@ bool TPMquote2(int fd, u32 keyHandle, byte* toSign, int pcrselectsize,
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMquote2 response: ", ansblob, outsize);
+    PrintBytes("TPMquote2 response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -843,10 +834,10 @@ bool TPMquote2(int fd, u32 keyHandle, byte* toSign, int pcrselectsize,
 
 #ifdef TPMTEST
     fprintf(g_logFile, "\nSize of signature: %d\n", *psizesig);
-    PrintBytes((char*)"signature: ", sig, *psizesig);
-    PrintBytes((char*)"new nonce even: ", nonce_even, 20);
+    PrintBytes("signature: ", sig, *psizesig);
+    PrintBytes("new nonce even: ", nonce_even, 20);
     fprintf(g_logFile, "contsession: %08x\n", contsession);
-    PrintBytes((char*)"authdata: ", privauth, 20);
+    PrintBytes("authdata: ", privauth, 20);
 #endif
 
     return true;
@@ -870,10 +861,7 @@ bool TPMgetpubkey(int fd, u32 keyHandle, u32 hkeyauth, int* pmodsize, byte* modu
     int         outsize= TPMMAXBUF;
     u32         paramsize= 0;
     u32         result= 0;
-    u32         cmdout= 0;
-    u32         m, n;
-    tpm_pubkey  pubKey;
-    int         sizepubkey= sizeof(tpm_pubkey);  // fix
+    u32         n;
 
     // check parameters
 
@@ -888,7 +876,7 @@ bool TPMgetpubkey(int fd, u32 keyHandle, u32 hkeyauth, int* pmodsize, byte* modu
     Load(false, cmdblob, &cmdoffset, pubauth, 20);
 
 #ifdef TPMTEST
-    PrintBytes((char*)"\nTPMgetpubkey command: ", cmdblob, cmdoffset);
+    PrintBytes("\nTPMgetpubkey command: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -898,7 +886,7 @@ bool TPMgetpubkey(int fd, u32 keyHandle, u32 hkeyauth, int* pmodsize, byte* modu
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMgetpubkey response: ", ansblob, outsize);
+    PrintBytes("TPMgetpubkey response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -938,7 +926,6 @@ bool TPMterminatehandle(int fd, u32 handle)
     int     outsize= TPMMAXBUF;
     u32     paramsize= 0;
     u32     result= 0;
-    u32     cmdout= 0;
 
     // check parameters
 
@@ -949,7 +936,7 @@ bool TPMterminatehandle(int fd, u32 handle)
     Load(true, cmdblob, &cmdoffset, (byte*)&handle, sizeof(u32));
 
 #ifdef TPMTEST
-    PrintBytes((char*)"\nTPMterminatehandle command: ", cmdblob, cmdoffset);
+    PrintBytes("\nTPMterminatehandle command: ", cmdblob, cmdoffset);
 #endif
 
     // execute
@@ -959,7 +946,7 @@ bool TPMterminatehandle(int fd, u32 handle)
         }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"TPMterminatehandle response: ", ansblob, outsize);
+    PrintBytes("TPMterminatehandle response: ", ansblob, outsize);
 #endif
 
     // decode response
@@ -1051,7 +1038,7 @@ tpmStatus::~tpmStatus()
     m_faikKeyValid= false;
     m_iaikmodulusLen= -1;
     m_iEkmodulusLen= -1; 
-    m_rgekmodulus[256];
+    //m_rgekmodulus[256];
     if(m_rgEKCert==NULL)
         free(m_rgEKCert);
     m_rgEKCert= NULL;
@@ -1203,7 +1190,6 @@ bool tpmStatus::loadKey(u32 keytype, byte* buf, int size, u32* ph)
     byte                nonce_even[20];
     byte                nonce_odd[20];
     byte                shared_secret[20];
-    byte                authdata[20];
     byte                pubauth[20];
     byte                resauth[20];
     u32                 hauth= 0;
@@ -1290,9 +1276,9 @@ bool tpmStatus::loadKey(u32 keytype, byte* buf, int size, u32* ph)
     }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"\nshared secret: ", shared_secret, 20);
-    PrintBytes((char*)"digest: ", digest, 20);
-    PrintBytes((char*)"pubauth: ", pubauth, 20);
+    PrintBytes("\nshared secret: ", shared_secret, 20);
+    PrintBytes("digest: ", digest, 20);
+    PrintBytes("pubauth: ", pubauth, 20);
 #endif
 
     if(!TPMloadKey(m_tpmfd, m_hSealKey, size, buf, hauth, nonce_odd, 
@@ -1346,11 +1332,11 @@ bool tpmStatus::loadKey(u32 keytype, byte* buf, int size, u32* ph)
     }
 
 #ifdef TPMTEST
-    PrintBytes((char*)"\nshared secretk: ", shared_secret, 20);
+    PrintBytes("\nshared secretk: ", shared_secret, 20);
     fprintf(g_logFile, "Key handle: %08x\n", m_hQuoteKey);
     fprintf(g_logFile, "Auth handle: %08x\n", hauthk);
-    PrintBytes((char*)"digest: ", digest, 20);
-    PrintBytes((char*)"pubauthk: ", pubauth, 20);
+    PrintBytes("digest: ", digest, 20);
+    PrintBytes("pubauthk: ", pubauth, 20);
 #endif
 
     // get modulus length and modulus
@@ -1370,7 +1356,7 @@ finish:
 }
 
 
-bool tpmStatus::setSRKauth(char* srkSecret)
+bool tpmStatus::setSRKauth(const char* srkSecret)
 {
     if(srkSecret!=NULL)
         m_szSRKSecret= strdup(srkSecret);
@@ -1383,7 +1369,7 @@ bool tpmStatus::setSRKauth(char* srkSecret)
 }
 
 
-bool tpmStatus::setTPMauth(char* ownerSecret)
+bool tpmStatus::setTPMauth(const char* ownerSecret)
 {
     Sha1    osha1;
 
@@ -1465,7 +1451,7 @@ bool tpmStatus::sealData(unsigned sizetoSeal, byte* tosealData,
         goto finish;
     }
 #ifdef TPMTEST
-    PrintBytes((char*)"pcrinfo: ", (byte*)&pcrinfo, sizeof(pcrinfo));
+    PrintBytes("pcrinfo: ", (byte*)&pcrinfo, sizeof(pcrinfo));
 #endif
 
     // TPMosap
@@ -1516,12 +1502,12 @@ bool tpmStatus::sealData(unsigned sizetoSeal, byte* tosealData,
     }
 #ifdef TPMTEST
     fprintf(g_logFile, "size of pcrinfo: %d\n", pcrinfosize);
-    PrintBytes((char*)"pcrinfo: ", (byte*)&pcrinfo, pcrinfosize);
+    PrintBytes("pcrinfo: ", (byte*)&pcrinfo, pcrinfosize);
     fprintf(g_logFile, "handle from osap: %08x\n", hauth);
-    PrintBytes((char*)"shared secret: ", shared_secret, 20);
-    PrintBytes((char*)"encauth: ", encauth, 20);
-    PrintBytes((char*)"digest: ", digest, 20);
-    PrintBytes((char*)"pubauth: ", pubauth, 20);
+    PrintBytes("shared secret: ", shared_secret, 20);
+    PrintBytes("encauth: ", encauth, 20);
+    PrintBytes("digest: ", digest, 20);
+    PrintBytes("pubauth: ", pubauth, 20);
 #endif
 
     // send seal command
@@ -1618,7 +1604,7 @@ bool tpmStatus::unsealData(unsigned sealedSize, byte* sealedData,
 
 #ifdef TPMTEST
     fprintf(g_logFile, "input sealed size: %d\n", sealedSize);
-    PrintBytes((char*)"input sealed data\n", sealedData, sealedSize);
+    PrintBytes("input sealed data\n", sealedData, sealedSize);
 #endif
 
     // calculate auth data (parameters and data)
@@ -1634,8 +1620,8 @@ bool tpmStatus::unsealData(unsigned sealedSize, byte* sealedData,
     oSha1.getDigest(digest);
 #ifdef TPMTEST
     fprintf(g_logFile, "Sealed size: %d\n", sealedSize);
-    PrintBytes((char*)"digest buffer: ", inparams, inparamsize);
-    PrintBytes((char*)"auth data digest: ", digest, 20);
+    PrintBytes("digest buffer: ", inparams, inparamsize);
+    PrintBytes("auth data digest: ", digest, 20);
 #endif
 
     // pubauth= hmacsha1(shared_secret,digest||nonce_even||nonce_odd||contsession)
@@ -1651,8 +1637,8 @@ bool tpmStatus::unsealData(unsigned sealedSize, byte* sealedData,
         goto finish;
     }
 #ifdef TPMTEST
-    PrintBytes((char*)"pubauth buffer: ", inparams, inparamsize);
-    PrintBytes((char*)"pubauth: ", pubauth, 20);
+    PrintBytes("pubauth buffer: ", inparams, inparamsize);
+    PrintBytes("pubauth: ", pubauth, 20);
 #endif
 
     // pubauthd= hmacsha1(authSRK, digest||nonce_evend||nonce_oddd||contsessiond)
@@ -1668,8 +1654,8 @@ bool tpmStatus::unsealData(unsigned sealedSize, byte* sealedData,
         goto finish;
     }
 #ifdef TPMTEST
-    PrintBytes((char*)"pubauthd buffer: ", inparams, inparamsize);
-    PrintBytes((char*)"pubauthd: ", pubauthd, 20);
+    PrintBytes("pubauthd buffer: ", inparams, inparamsize);
+    PrintBytes("pubauthd: ", pubauthd, 20);
 #endif
 
     // send unseal command
@@ -1714,7 +1700,6 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
     int                 inparamsize= 0;
     byte                inparams[256];
     byte                digest[20];
-    u32                 pcrselectsize= sizeof(tpm_pcr_selection);
     tpm_pcr_selection   pcrselect;
     int                 pcrinfosize;
     tpm_pcrinfo_short   pcrinfo;
@@ -1785,12 +1770,12 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
     }
 #ifdef TPMTEST
     fprintf(g_logFile, "size of pcrselection: %d\n", pcrselectsize);
-    PrintBytes((char*)"pcrselect: ", (byte*)&pcrselect, pcrselectsize);
+    PrintBytes("pcrselect: ", (byte*)&pcrselect, pcrselectsize);
     fprintf(g_logFile, "handle from osap: %08x\n", hauth);
-    PrintBytes((char*)"shared secret: ", shared_secret, 20);
-    PrintBytes((char*)"encauth: ", encauth, 20);
-    PrintBytes((char*)"digest: ", digest, 20);
-    PrintBytes((char*)"privauth: ", privauth, 20);
+    PrintBytes("shared secret: ", shared_secret, 20);
+    PrintBytes("encauth: ", encauth, 20);
+    PrintBytes("digest: ", digest, 20);
+    PrintBytes("privauth: ", privauth, 20);
 #endif
 
     if(!TPMquote2(m_tpmfd, m_hQuoteKey, toquoteData, sizeof(pcrselect), 
@@ -1829,8 +1814,8 @@ bool tpmStatus::closeTPM()
 
 
 bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts, 
-                        char* pcaFile, char* reqFile, 
-                        char* aikBlobFile, char* aikPKFile)
+                        const char* pcaFile, const char* reqFile, 
+                        const char* aikBlobFile, const char* aikPKFile)
 //
 //  Note:  This function does not assume an inited tpmStatus object
 //
@@ -1839,7 +1824,7 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
 }
 
 
-bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
+bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
 {
     byte    aikBuf[2048];
     int     aikSize= 2048;
@@ -1874,7 +1859,7 @@ bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
 #ifdef TPMTEST
     if(m_faikKeyValid) {
         fprintf(g_logFile, "\nAIK length: %d\n", m_iaikmodulusLen);
-        PrintBytes((char*)"AIK modulus: ", m_rgaikmodulus, m_iaikmodulusLen);
+        PrintBytes("AIK modulus: ", m_rgaikmodulus, m_iaikmodulusLen);
     }
     if(m_rgAIKCert!=NULL)
         fprintf(g_logFile, "AIKCert:\n%s\n", m_rgAIKCert);
@@ -1885,7 +1870,7 @@ bool tpmStatus::getAIKKey(char* aikBlobFile, char* aikCertFile)
 }
 
 
-bool tpmStatus::getEKInfo(char* fileName, bool fgetKey)
+bool tpmStatus::getEKInfo(const char* fileName, bool fgetKey)
 {
     return true;
 }
@@ -1924,8 +1909,6 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
                             u32 sizeversion, byte* versionInfo)
 {
     byte    pcrDigest[20];
-    int     i;
-    Sha1    oHash;
     byte    finalHash[20];
     byte*   quoteHash= NULL;
 
@@ -1961,7 +1944,7 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
     revmemcpy(result, (byte*)bnR.m_pValue, m_iaikmodulusLen);
 
 #ifdef TPMTEST1
-    PrintBytes((char*)"\nDecrypted\n", result, m_iaikmodulusLen);
+    PrintBytes("\nDecrypted\n", result, m_iaikmodulusLen);
 #endif
 
     quoteHash= (byte*) result;
@@ -2004,10 +1987,10 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
 #ifdef TPMTEST
     fprintf(g_logFile, "\nverifyQuote datasize: %d, keySize: %d, externalSize: %d\n",
             dataSize, m_iaikmodulusLen, externalSize);
-    PrintBytes((char*)"Mask\n", pcrMask, 3);
-    PrintBytes((char*)"External data\n", pbExternal, externalSize);
-    PrintBytes((char*)"\nComputed TPM_QUOTE_INFO hash\n", finalHash, 20);
-    PrintBytes((char*)"Quoted hash\n", quoteHash, 20);
+    PrintBytes("Mask\n", pcrMask, 3);
+    PrintBytes("External data\n", pbExternal, externalSize);
+    PrintBytes("\nComputed TPM_QUOTE_INFO hash\n", finalHash, 20);
+    PrintBytes("Quoted hash\n", quoteHash, 20);
 #endif
 
     // compare calculated hash with quoted hash
@@ -2036,10 +2019,10 @@ int main(int an, char** av)
     byte        rgSigned[BUFSIZE];
     byte        rgRandom[BUFSIZE];
     bool        fInitAIK= false;
-    char*       reqFile= (char*) "HW/requestFile";
-    char*       aikBlobFile= (char*) "HW/aikblob";
-    char*       pcaFile= (char*) "HW/pcaBlobFile";
-    char*       aikKeyFile= (char*) "HW/aikKeyFile.txt";
+    const char*       reqFile= "HW/requestFile";
+    const char*       aikBlobFile= "HW/aikblob";
+    const char*       pcaFile= "HW/pcaBlobFile";
+    const char*       aikKeyFile= "HW/aikKeyFile.txt";
     char*       ownerSecret= NULL;
     char*       aikCertFile= NULL;
     char*       ekCertFile= NULL;
@@ -2047,24 +2030,24 @@ int main(int an, char** av)
     int         size;
 
     for(i=1;i<an;i++) {
-        if(strcmp(av[i], (char*)"-initAIK")==0)
+        if(strcmp(av[i], "-initAIK")==0)
             fInitAIK= true;
-        if(strcmp(av[i], (char*)"-ownerSecret")==0) {
+        if(strcmp(av[i], "-ownerSecret")==0) {
             ownerSecret= av[++i];
         }
-        if(strcmp(av[i], (char*)"-AIKBlob")==0) {
+        if(strcmp(av[i], "-AIKBlob")==0) {
             aikBlobFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-AIKCertFile")==0) {
+        if(strcmp(av[i], "-AIKCertFile")==0) {
             aikCertFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-AIKeyFile")==0) {
+        if(strcmp(av[i], "-AIKeyFile")==0) {
             aikKeyFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-ekCertFile")==0) {
+        if(strcmp(av[i], "-ekCertFile")==0) {
             ekCertFile= av[++i];
         }
-        if(strcmp(av[i], (char*)"-help")==0) {
+        if(strcmp(av[i], "-help")==0) {
                 fprintf(g_logFile, "vTCIDirect.exe -initAIK -ownerSecret secret -AIKBlob blobfile -AIKCertFile file -ekCertFile file\n");
         return 0;
 
@@ -2117,7 +2100,7 @@ int main(int an, char** av)
     // tested
     if((n=oTpm.getRandom(16, rgRandom))>=0) {
         fprintf(g_logFile, "\ngetRandom succeeded got %d bytes\n", n);
-        PrintBytes((char*) "Random bytes: ", rgRandom, 16);
+        PrintBytes("Random bytes: ", rgRandom, 16);
     }
     else {
         fprintf(g_logFile, "\ngetRandom failed\n");
@@ -2128,7 +2111,7 @@ int main(int an, char** av)
     size= BUFSIZE;
     if(oTpm.getPCRValue(pcrno, &size, rgpcr)) {
         fprintf(g_logFile, "\ngetPCRValue, pcr %d, succeeded\n", pcrno);
-        PrintBytes((char*) "PCR contents: ", rgpcr, 20);
+        PrintBytes("PCR contents: ", rgpcr, 20);
     }
     else {
         fprintf(g_logFile, "\ngetRandom succeeded got %d bytes\n", n);
@@ -2139,7 +2122,7 @@ int main(int an, char** av)
     size= BUFSIZE;
     if(oTpm.getPCRValue(pcrno, &size, rgpcr)) {
         fprintf(g_logFile, "\ngetPCRValue, pcr %d, succeeded\n", pcrno);
-        PrintBytes((char*) "PCR contents: ", rgpcr, 20);
+        PrintBytes("PCR contents: ", rgpcr, 20);
     }
     else {
         fprintf(g_logFile, "\ngetRandom succeeded got %d bytes\n", n);
@@ -2162,8 +2145,8 @@ int main(int an, char** av)
     v= BUFSIZE;
     if(oTpm.sealData(BUFSIZE/32, rgtoSeal, &v, rgSealed)) {
         fprintf(g_logFile, "sealData succeeded %d bytes\n", v);
-        PrintBytes((char*) "Bytes to seal\n", rgtoSeal, BUFSIZE/32);
-        PrintBytes((char*) "Sealed bytes\n", rgSealed, v);
+        PrintBytes("Bytes to seal\n", rgtoSeal, BUFSIZE/32);
+        PrintBytes("Sealed bytes\n", rgSealed, v);
     }
     else {
         fprintf(g_logFile, "\nsealData failed\n");
@@ -2174,8 +2157,8 @@ int main(int an, char** av)
     u= BUFSIZE;
     if(oTpm.unsealData(v, rgSealed, &u, rgunSealed)) {
         fprintf(g_logFile, "unsealData succeeded\n");
-        PrintBytes((char*) "Bytes to unseal\n", rgSealed, v);
-        PrintBytes((char*) "Unsealed bytes\n", rgunSealed, u);
+        PrintBytes("Bytes to unseal\n", rgSealed, v);
+        PrintBytes("Unsealed bytes\n", rgunSealed, u);
     }
     else {
         fprintf(g_logFile, "\nunsealData failed\n");
@@ -2215,8 +2198,8 @@ int main(int an, char** av)
     memset(nonce,0,sizeof(nonce));
     if(oTpm.quoteData(sizeof(nonce), nonce, &u, rgSigned)) {
         fprintf(g_logFile, "\nquoteData succeeded\n");
-        PrintBytes((char*) "\nData to quote\n", nonce, 20);
-        PrintBytes((char*) "Quoted bytes\n", rgSigned, u);
+        PrintBytes("\nData to quote\n", nonce, 20);
+        PrintBytes("Quoted bytes\n", rgSigned, u);
     }
     else {
         fprintf(g_logFile, "\nquoteData failed\n");

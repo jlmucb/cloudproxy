@@ -45,8 +45,8 @@ public:
     char            m_rgkeyName[KEYNAMEBUFSIZE];
     TiXmlDocument*  m_pDoc;
 
-    bool            ParsefromString(char* szXML);
-    bool            ParsefromFile(char* szFileName);
+    bool            ParsefromString(const char* szXML);
+    bool            ParsefromFile(const char* szFileName);
     int             getKeyType(TiXmlDocument*  pDoc);
     int             getKeyTypeFromRoot(TiXmlElement*  pRootElement);
 
@@ -68,7 +68,7 @@ public:
     bool            getDataFromDoc();
     bool            getDataFromRoot(TiXmlElement*  pRootElement);
     char*           SerializetoString();
-    bool            SerializetoFile(char* fileName);
+    bool            SerializetoFile(const char* fileName);
 #ifdef TEST
     void            printMe();
 #endif
@@ -102,7 +102,7 @@ public:
     bool            getDataFromDoc();
     bool            getDataFromRoot(TiXmlElement*  pRootElement);
     char*           SerializetoString();
-    bool            SerializetoFile(char* fileName);
+    bool            SerializetoFile(const char* fileName);
     char*           SerializePublictoString();
 #ifdef TEST
     void            printMe();
@@ -111,18 +111,18 @@ public:
 };
 
 
-int     algorithmIndexFromShortName(char* szAlg);
-int     algorithmIndexFromLongName(char* szAlg);
+int     algorithmIndexFromShortName(const char* szAlg);
+int     algorithmIndexFromLongName(const char* szAlg);
 char*   shortAlgNameFromIndex(int iIndex);
 char*   cipherSuiteNameFromIndex(int iIndex);
-int     cipherSuiteIndexFromName(char* szCipherSuite);
+int     cipherSuiteIndexFromName(const char* szCipherSuite);
 char*   longAlgNameFromIndex(int iIndex);
 
 int     pkAlgfromIndex(int iIndex);
 int     hashAlgfromIndex(int iIndex);
 int     padAlgfromIndex(int iIndex);
 
-int     cipherSuiteIndexFromName(char* szCipherSuite);
+int     cipherSuiteIndexFromName(const char* szCipherSuite);
 char*   cipherSuiteNameFromIndex(int iIndex);
 int     modeSuitefromIndex(int iIndex);
 int     pkSuitefromIndex(int iIndex);

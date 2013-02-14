@@ -35,14 +35,14 @@
 
 RSAKey*     generateRSAKeypair(int keySize);
 bool        initRSAKeyFromKeyInfo(RSAKey** ppKey, TiXmlNode* pNode);
-bool        initRSAKeyFromStringRSAKey(RSAKey** ppKey, char* szXml, char* szLoc);
+bool        initRSAKeyFromStringRSAKey(RSAKey** ppKey, const char* szXml, const char* szLoc);
 
 char*       rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
                 int sizeChallenge);
 
 char*       rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
                                     byte* puChallenge, int sizeChallenge);
-bool        rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, char* szSig,
+bool        rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* szSig,
                 int sizeChallenge, byte* puOriginal);
 bool        rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, 
                 byte* rgIn, int sizeNonce, byte* rgOut);

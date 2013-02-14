@@ -67,7 +67,7 @@ public:
     char*                   getName();
     int                     auxSize();
     int                     Serialize(byte* szObj);
-    bool                    Deserialize(byte* szObj, int* pi);
+    bool                    Deserialize(const byte* szObj, int* pi);
 
     bool                    MakeOwnerList(int* pnOwners, accessPrincipal*** ppaccessPrincipals,
                                           objectManager<accessPrincipal>* pPp);

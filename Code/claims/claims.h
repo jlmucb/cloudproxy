@@ -39,14 +39,14 @@
 #include <time.h>
 
 
-#define QUOTEMETHODNONE                     (char*)"none"
-#define QUOTEMETHODTPM12RSA2048             (char*)"Quote-TPM1.2-RSA2048"
-#define QUOTEMETHODTPM12RSA1024             (char*)"Quote-TPM1.2-RSA1024"
-#define QUOTEMETHODSHA256FILEHASHRSA1024    (char*)"Quote-Sha256FileHash-RSA1024"
-#define QUOTEMETHODSHA256FILEHASHRSA2048    (char*)"Quote-Sha256FileHash-RSA2048"
+#define QUOTEMETHODNONE                     "none"
+#define QUOTEMETHODTPM12RSA2048             "Quote-TPM1.2-RSA2048"
+#define QUOTEMETHODTPM12RSA1024             "Quote-TPM1.2-RSA1024"
+#define QUOTEMETHODSHA256FILEHASHRSA1024    "Quote-Sha256FileHash-RSA1024"
+#define QUOTEMETHODSHA256FILEHASHRSA2048    "Quote-Sha256FileHash-RSA2048"
 
-#define RSA1024SIGALG  (char*)"http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
-#define RSA2048SIGALG (char*)"http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
+#define RSA1024SIGALG  "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
+#define RSA2048SIGALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
 
 
 class Quote {
@@ -64,7 +64,7 @@ public:
     Quote();
     ~Quote();
 
-    bool        init(char* szXMLQuote);
+    bool        init(const char* szXMLQuote);
     char*       getCanonicalQuoteInfo();
     char*       getQuoteValue();
     char*       getnonceValue();
@@ -79,29 +79,29 @@ public:
 
 
 bool    sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);
-bool    checkXMLSignature(char* szSigAlgorithm, char* szCanonicalSignedBody, 
-                          KeyInfo* pKeyInfo, char* szSignatureValue);
-bool    checkXMLQuote(char* szQuoteAlg, char* szCanonicalQuotedBody, char* sznonce, 
-                char* szdigest, KeyInfo* pKeyInfo, char* szQuoteValue);
+bool    checkXMLSignature(const char* szSigAlgorithm, const char* szCanonicalSignedBody, 
+                          KeyInfo* pKeyInfo, const char* szSignatureValue);
+bool    checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, const char* sznonce, 
+                const char* szdigest, KeyInfo* pKeyInfo, const char* szQuoteValue);
 
 char*   keyInfofromKey(RSAKey* pKey);
-RSAKey* keyfromkeyInfo(char* szKeyInfo);
+RSAKey* keyfromkeyInfo(const char* szKeyInfo);
 
 char*   encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest, 
-            byte* codeDigest, char* szQuotedInfo, char* szKeyInfo, 
+            byte* codeDigest, const char* szQuotedInfo, const char* szKeyInfo, 
             int sizeQuote, byte* quote);
-bool    decodeXMLQuote(char* szXMLQuote, char** pszAlg, char** psznonce, 
+bool    decodeXMLQuote(const char* szXMLQuote, char** pszAlg, char** psznonce, 
             char** pszDigest, char** pszQuotedInfo, char** pszQuoteValue, 
             char** pszquoteKeyInfo, char** pszquotedKeyInfo);
 
-char*   getSerializedKeyfromCert(char* szCert);
-char*   formatCert(char* szSignedInfo, char* szSig);
+char*   getSerializedKeyfromCert(const char* szCert);
+char*   formatCert(const char* szSignedInfo, const char* szSig);
 char*   formatSignedInfo(RSAKey* pKey, 
-            char* szCertid, int serialNo, char* szPrincipalType, 
-            char* szIssuerName, char* szIssuerID, char* szNotBefore, 
-            char* szNotAfter, char* szSubjName, char* szKeyInfo, 
-            char* szDigest, char* szSubjKeyID);
-char*   consttoEvidenceList(char* szEvidence, char* szEvidenceSupport);
+            const char* szCertid, int serialNo, const char* szPrincipalType, 
+            const char* szIssuerName, const char* szIssuerID, const char* szNotBefore, 
+            const char* szNotAfter, const char* szSubjName, const char* szKeyInfo, 
+            const char* szDigest, const char* szSubjKeyID);
+char*   consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
 bool	sha256quoteHash(int sizenonce, byte* nonce, 
                      int sizetobeSignedHash, byte* tobesignedHash, 
                      int sizecodeHash, byte* codeHash, byte* outputHash);

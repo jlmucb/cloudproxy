@@ -41,7 +41,7 @@ public:
                 hmacsha256();
                 ~hmacsha256();
     void        Init(byte* rguKey, int iKeyLen);
-    void        Update(byte* rguMsg, int iInLen);
+    void        Update(const byte* rguMsg, int iInLen);
     void        Final(byte* rguDigest);
 };
 

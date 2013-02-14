@@ -50,7 +50,7 @@
 // --------------------------------------------------------------------- 
 
 
-KeyInfo* ReadKeyfromFile(char* szKeyFile)
+KeyInfo* ReadKeyfromFile(const char* szKeyFile)
 {
     KeyInfo*    pParseKey= new KeyInfo;
     RSAKey*     pRSAKey= NULL;
@@ -112,9 +112,9 @@ bool EncryptTest(RSAKey* pKey, int numBlocks, bool fEncrypt=true)
     double  ops= 0.0;
     double  opspersecond= 0.0;
 
-    printf("\n");
-    pKey->printMe();
-    printf("\n");
+    //printf("\n");
+    //pKey->printMe();
+    //printf("\n");
 
     bnum    bnIn(pKey->m_iByteSizeM);
     bnum    bnEncrypted(pKey->m_iByteSizeM);

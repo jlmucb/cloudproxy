@@ -164,10 +164,10 @@ void Sha256::Transform(u32* state, u32* data)
 }
 
 
-void  Sha256::Update(byte* data, int size)
+void  Sha256::Update(const byte* data, int size)
 // size in bytes
 {
-    byte*   pCurData= (byte*)data;
+    const byte*   pCurData= data;
     int     processed= 0;
     int     left= size;
     int     n;
@@ -175,7 +175,7 @@ void  Sha256::Update(byte* data, int size)
     // partial block?
     if(m_iBLen>0) {
         if(left<(SHA256_BLOCKSIZE_BYTES-m_iBLen)) {
-            memcpy(&m_rgB[m_iBLen], (byte*)data, left);
+            memcpy(&m_rgB[m_iBLen], data, left);
             m_iBLen+= left;
             return;
         }

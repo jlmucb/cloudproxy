@@ -57,9 +57,9 @@ void  Sha1::Init()
 }
 
 
-void  Sha1::Update(byte* data, const u32 long size)
+void  Sha1::Update(const byte* data, const u32 long size)
 {
-    byte*   pCurData= data;
+    const byte*   pCurData= data;
     int     processed= 0;
     int     left= size;
     int     n;
@@ -67,7 +67,7 @@ void  Sha1::Update(byte* data, const u32 long size)
     // partial block?
     if(m_iBLen>0) {
         if(left<(BLOCKSIZE-m_iBLen)) {
-            memcpy(&m_rgB[m_iBLen], (byte*)data, left);
+            memcpy(&m_rgB[m_iBLen], data, left);
             m_iBLen+= left;
             return;
         }
@@ -195,7 +195,7 @@ bool  Sha1::Transform(u32* data)
     u32     e= m_rgState[4];
 
 #ifdef CRYPTOTEST
-    PrintBytes((char*)"Transform\n", (byte*)data, BLOCKSIZE);
+    PrintBytes("Transform\n", (byte*)data, BLOCKSIZE);
 #endif
     
     R0(a,b,c,d,e, 0); R0(e,a,b,c,d, 1); R0(d,e,a,b,c, 2); R0(c,d,e,a,b, 3);

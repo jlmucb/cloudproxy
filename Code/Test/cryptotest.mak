@@ -30,10 +30,6 @@ $(E)/sha256test.exe: $(sha256objs)
 	@echo "shatest"
 	$(LINK) -o $(E)/sha256test.exe $(sha256objs)
 
-$(E)/aestest.exe: $(dobjs)
-	@echo "aestest"
-	$(LINK) -o $(E)/aestest.exe $(aesobjs)
-
 $(B)/logging.o: $(SC)/logging.cpp 
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/logging.o $(SC)/logging.cpp
 

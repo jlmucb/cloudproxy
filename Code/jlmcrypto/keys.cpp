@@ -32,12 +32,12 @@
 #include <string.h>
 
 
-char*  szAESKeyProto= (char*)
+const char*  szAESKeyProto=
   "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">" \
   "<KeyType></KeyType>"\
   "<ds:KeyValue> <ds:AESKeyValue size=''> </ds:AESKeyValue>" \
   "</ds:KeyValue> </ds:KeyInfo>\n";
-char*  szRSAKeyProto= (char*)
+const char*  szRSAKeyProto=
    "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">\n"\
    "<KeyType></KeyType>\n"\
    " <ds:KeyValue> <ds:RSAKeyValue size=''> "\
@@ -67,7 +67,7 @@ KeyInfo::~KeyInfo()
 }
 
 
-bool KeyInfo::ParsefromString(char* szXML)
+bool KeyInfo::ParsefromString(const char* szXML)
 {
     TiXmlDocument* pDoc= new TiXmlDocument();
     if(!pDoc->Parse(szXML)) {
@@ -79,7 +79,7 @@ bool KeyInfo::ParsefromString(char* szXML)
 }
 
 
-bool KeyInfo::ParsefromFile(char* fileName)
+bool KeyInfo::ParsefromFile(const char* fileName)
 {
     TiXmlDocument* pDoc= new TiXmlDocument();
 
@@ -96,14 +96,14 @@ int KeyInfo::getKeyTypeFromRoot(TiXmlElement*  pRootElement)
 {
     TiXmlNode*  pNode;
     TiXmlNode*  pNode1;
-    char*       szKeyType= NULL;
+    const char*       szKeyType= NULL;
 
     pNode= pRootElement->FirstChild();
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
             if(strcmp(((TiXmlElement*)pNode)->Value(),"KeyType")==0) {
                 pNode1= ((TiXmlElement*)pNode)->FirstChild();
-            szKeyType= (char*)((TiXmlElement*)pNode1)->Value();
+            szKeyType= ((TiXmlElement*)pNode1)->Value();
             break;
             }
         }
@@ -158,7 +158,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlNode*      pNode2;
-    char*           szKeyName= NULL;
+    const char*           szKeyName= NULL;
     int             keySize= 0;
     char*           szBase64KeyValue= NULL;
     char*           szKeyType= NULL;
@@ -170,7 +170,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
     }
 
     if(strcmp(pRootElement->Value(),"ds:KeyInfo")==0) {
-        szKeyName= strdup((char*)(pRootElement->Attribute("KeyName")));
+        szKeyName= strdup((pRootElement->Attribute("KeyName")));
     }
     pNode= pRootElement->FirstChild();
     while(pNode) {
@@ -178,7 +178,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"KeyType")==0) {
                     pNode1= pNode->FirstChild();
                     if(pNode1)
-                        szKeyType= strdup((char*)((TiXmlNode*)pNode1)->Value());
+                        szKeyType= strdup(((TiXmlNode*)pNode1)->Value());
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ds:KeyValue")==0) {
                 pNode1= pNode->FirstChild();
@@ -188,7 +188,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
                         m_ikeyNameSize= keySize;
                         pNode2= pNode1->FirstChild();
                         if(pNode2)
-                            szBase64KeyValue= strdup((char*) ((TiXmlNode*) pNode2)->Value());
+                            szBase64KeyValue= strdup( ((TiXmlNode*) pNode2)->Value());
                     }
                     pNode1= pNode1->NextSibling();
                 }
@@ -241,7 +241,7 @@ char*   symKey::SerializetoString()
 }
 
 
-bool    symKey::SerializetoFile(char* fileName)
+bool    symKey::SerializetoFile(const char* fileName)
 {
     return false;
 }
@@ -260,7 +260,7 @@ void symKey::printMe()
         fprintf(g_logFile, "No key name\n");
     fprintf(g_logFile, "Key size %d\n", m_ikeySize);
     if(m_iByteSizeKey>0)
-        PrintBytes((char*)"Key", m_rgbKey, m_iByteSizeKey);
+        PrintBytes("Key", m_rgbKey, m_iByteSizeKey);
 }
 #endif
 
@@ -344,13 +344,13 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     TiXmlNode*      pNode2;
     TiXmlNode*      pNode3;
     int             keySize= 0;
-    char*           szKeyName= NULL;
-    char*           szKeyType= NULL;
-    char*           szRsaKeyP= NULL;
-    char*           szRsaKeyQ= NULL;
-    char*           szRsaKeyM= NULL;
-    char*           szRsaKeyE= NULL;
-    char*           szRsaKeyD= NULL;
+    const char*     szKeyName= NULL;
+    const char*     szKeyType= NULL;
+    const char*     szRsaKeyP= NULL;
+    const char*     szRsaKeyQ= NULL;
+    const char*     szRsaKeyM= NULL;
+    const char*     szRsaKeyE= NULL;
+    const char*     szRsaKeyD= NULL;
     int             iOutLen= 512;
 
     if(pRootElement==NULL) {
@@ -359,14 +359,14 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     }
 
     if(strcmp(pRootElement->Value(),"ds:KeyInfo")==0) {
-        szKeyName= (char*)(pRootElement->Attribute("KeyName"));
+        szKeyName= pRootElement->Attribute("KeyName");
     }
     pNode= pRootElement->FirstChild();
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
             if(strcmp(((TiXmlElement*)pNode)->Value(),"KeyType")==0) {
                     pNode1= pNode->FirstChild();
-                    szKeyType= (char*)((TiXmlNode*)pNode1)->Value();
+                    szKeyType= ((TiXmlNode*)pNode1)->Value();
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ds:KeyValue")==0) {
                 pNode1= pNode->FirstChild();
@@ -379,26 +379,26 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
                             if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:P")==0) {
                                 pNode3= pNode2->FirstChild();
                                 if(pNode3!=NULL)
-                                    szRsaKeyP= (char*)((TiXmlNode*)pNode3)->Value();
+                                    szRsaKeyP= ((TiXmlNode*)pNode3)->Value();
                             }
                             if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:Q")==0) {
                                 pNode3= pNode2->FirstChild();
                                 if(pNode3!=NULL)
-                                    szRsaKeyQ= (char*)((TiXmlNode*)pNode3)->Value();
+                                    szRsaKeyQ= ((TiXmlNode*)pNode3)->Value();
                             }
                             if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:M")==0) {
                                 pNode3= pNode2->FirstChild();
                                 if(pNode3!=NULL)
-                                    szRsaKeyM= (char*)((TiXmlNode*)pNode3)->Value();
+                                    szRsaKeyM= ((TiXmlNode*)pNode3)->Value();
                             }
                             if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:E")==0) {
                                 pNode3= pNode2->FirstChild();
-                                    szRsaKeyE= (char*)((TiXmlNode*)pNode3)->Value();
+                                    szRsaKeyE= ((TiXmlNode*)pNode3)->Value();
                             }
                             if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:D")==0) {
                                 pNode3= pNode2->FirstChild();
                                 if(pNode3!=NULL)
-                                    szRsaKeyD= (char*)((TiXmlNode*)pNode3)->Value();
+                                    szRsaKeyD= ((TiXmlNode*)pNode3)->Value();
                             }
                             pNode2= pNode2->NextSibling();
                         }
@@ -547,9 +547,9 @@ char*   RSAKey::SerializetoString()
     p+= n;
     nLeft-= n;
 
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody1))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody1))
         return NULL;
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody2))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody2))
         return NULL;
 
     sprintf(p, szlocalKeyInfoBody3, m_ikeySize);
@@ -611,13 +611,13 @@ char*   RSAKey::SerializetoString()
         nLeft-= n;
     }
 
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody4))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody4))
         return NULL;
 
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody5))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody5))
         return NULL;
 
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoTrailer))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoTrailer))
         return NULL;
 
     if(nLeft<=0)
@@ -644,9 +644,9 @@ char*   RSAKey::SerializePublictoString()
     n= strlen(p);
     p+= n;
     nLeft-= n;
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody1))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody1))
         return NULL;
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody2))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody2))
         return NULL;
     sprintf(p, szlocalKeyInfoBody3, m_ikeySize);
     n= strlen(p);
@@ -673,11 +673,11 @@ char*   RSAKey::SerializePublictoString()
         p+= n;
         nLeft-= n;
     }
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody4))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody4))
         return NULL;
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoBody5))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoBody5))
         return NULL;
-    if(!safeTransfer(&p, &nLeft, (char*)szlocalKeyInfoTrailer))
+    if(!safeTransfer(&p, &nLeft, szlocalKeyInfoTrailer))
         return NULL;
     if(nLeft<=0)
         return NULL;
@@ -688,7 +688,7 @@ char*   RSAKey::SerializePublictoString()
 
 
 
-bool    RSAKey::SerializetoFile(char* fileName)
+bool    RSAKey::SerializetoFile(const char* fileName)
 {
     return false;
 }

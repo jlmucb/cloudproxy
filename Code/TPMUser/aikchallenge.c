@@ -71,7 +71,7 @@ main (int ac, char **av)
 	BYTE		key[128/8];
 	BYTE		iv[16];
 	BYTE		asymPlain[8 + sizeof(key) + SHA_DIGEST_LENGTH];
-	unsigned char oaepPad[4] = "TCPA";
+	const unsigned char oaepPad[4] = "TCPA";
 	BYTE		*asymPadded;
 	UINT32		asymPaddedLength;
 	BYTE		*asymEnc;

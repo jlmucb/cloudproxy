@@ -38,6 +38,7 @@
 
 #include "bignum.h"
 #include "logging.h"
+#include "jlmUtility.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -935,8 +936,11 @@ inline bool EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 
         uQ= (u64) -1ULL;
         uR= longdivstep(&uA, uN-vM1, uNM1, vM1);
         uRTop= longaddwithcarry(&uR, uR, vM1, 0ULL);
-        }
-    else {
+
+        // mark unused variables to keep the compiler happy
+        UNUSEDVAR(uRTop);
+        UNUSEDVAR(uA);
+    } else {
         uR= longdivstep(&uQ, uN, uNM1, vM1);
     }
 
@@ -984,7 +988,6 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     u64*    rgutB= NULL;
     u64*    rgutC= NULL;
     u64     uA, uB;
-    char*   szMyError= NULL;
         
     if(bnB.mpIsZero()) {
         fprintf(g_logFile, "mpUDiv: Division by 0\n");
@@ -1027,6 +1030,8 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     rgutA= bnTempA.m_pValue;
     rgutB= bnTempB.m_pValue;
     rgutC= bnTempC.m_pValue;
+
+    UNUSEDVAR(rgutC);
 
     i= LeadingNonZeroWord(bnB.mpSize(), bnB.m_pValue)-1;
     if(i<0) {
@@ -1183,13 +1188,13 @@ bool ConvertToDecimalString(bnum& bnA, i32 iStringSize, char* szNumber)
 //  Function: bool ConvertFromDecimalString
 //  Arguments:
 //      OUT bNum bnA
-//      IN char* szNumber
-bool ConvertFromDecimalString(bnum& bnA, char* szNumber)
+//      IN const char* szNumber
+bool ConvertFromDecimalString(bnum& bnA, const char* szNumber)
 {
     int     i;
     int     iMaxSize= bnA.mpSize();
     u64     uN= 0;
-    char*   pszNum= szNumber;
+    const char*   pszNum= szNumber;
     u64*    rguNum= NULL;
     bool    fSign= false;
 
@@ -1224,6 +1229,7 @@ bool ConvertFromDecimalString(bnum& bnA, char* szNumber)
         pszNum++;
     }
     rguNum= bnA.m_pValue;
+    UNUSEDVAR(rguNum);
 
     // pszNum is correctly positioned
     while(*pszNum!=0) {
@@ -1234,6 +1240,8 @@ bool ConvertFromDecimalString(bnum& bnA, char* szNumber)
         mpSingleUAddTo(bnA, uN);
         pszNum++;
     }
+
+    UNUSEDVAR(fSign);
 
     return true;
 }

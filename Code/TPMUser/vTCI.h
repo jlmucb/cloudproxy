@@ -76,7 +76,7 @@ public:
     ~tpmStatus();
 
     bool initTPM();
-    bool setOwnerauth(char* ownerSecret);
+    bool setOwnerauth(const char* ownerSecret);
 
     bool getRandom(unsigned size, byte* puData);
     bool getCompositePCR(unsigned* pSize, u8* buf);
@@ -89,13 +89,13 @@ public:
     bool unsealData(unsigned unsealedSize, byte* unsealedData, 
                     unsigned* punSealedSize, byte* punSealed);
 
-    bool makeAIK(int numCerts, byte** rgpCerts, char* pcaFile, 
-                 char* reqFile, char* aikFile, char* aikPKFile);
-    bool confirmAIK(char* ownerSecret, char* aikBlobFile, 
-                    char* challengeFile, char* responseFile);
+    bool makeAIK(int numCerts, byte** rgpCerts, const char* pcaFile, 
+                 const char* reqFile, const char* aikFile, const char* aikPKFile);
+    bool confirmAIK(const char* ownerSecret, const char* aikBlobFile, 
+                    const char* challengeFile, const char* responseFile);
 
-    bool getAIKKey(char* aikBlobFile, char* aikCertFile);
-    bool getEKInfo(char* fileName, bool fgetKey);
+    bool getAIKKey(const char* aikBlobFile, const char* aikCertFile);
+    bool getEKInfo(const char* fileName, bool fgetKey);
 
     bool quoteData(unsigned sizequoteData, byte* toquoteData,
                    unsigned* psigSize, byte* signature);

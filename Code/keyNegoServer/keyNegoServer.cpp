@@ -66,15 +66,15 @@
 
 inline byte val(char a)
 {
-    if(a>='0'&a<='9')
+    if((a>='0')&(a<='9'))
         return a-'0';
-    if(a>='a'&a<='f')
+    if((a>='a')&(a<='f'))
         return a-'a'+10;
     return 16;
 }
 
 
-bool fromhex(char* szH, byte* buf, int sizemax, int* psizeout)
+bool fromhex(const char* szH, byte* buf, int sizemax, int* psizeout)
 {
     int     i;
     byte*   p= buf;
@@ -122,7 +122,6 @@ validHashes     g_thevalidHashes[1];
 
 bool    initHashes()
 {
-    int     n= 0;
     byte    rgHash[32];
 
     for(int i=0; i<g_iNumHashes; i++) {
@@ -149,10 +148,10 @@ bool            g_fTerminateProxy= false;
 const int       iQueueSize= 5;
 const char*     szServerHostAddr= "127.0.0.1";
 
-char*           g_szPrivateKeyFileName= (char*) "policy/privatePolicyKey.xml";
+const char*           g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
 bool            g_fIsEncrypted= false;
 RSAKey*         g_pSigningKey= NULL;
-char*           g_szSigningAlgorithm= (char*)
+const char*           g_szSigningAlgorithm=
                      "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#";
 
 bool             g_globalpolicyValid= false;
@@ -168,7 +167,7 @@ accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 #define SERVICENAME             "keyNegoServer"
 #define SERVICEADDRESS          "127.0.0.1"
 #define SERVICE_PORT            6001
-#define REQUESTLOGFILE          (char*)"~/requestLog.log"
+#define REQUESTLOGFILE          "~/requestLog.log"
 
 #include "channel.h"
 
@@ -189,14 +188,14 @@ accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
  */
 
 
-char* g_szResponse= (char*)
+const char* g_szResponse=
     "<serverCertNego phase='1'>\n    <Status> %s </Status>\n"\
     "    <ErrorCode> %s </ErrorCode>\n"\
     "    <Cert> %s </Cert>\n</serverCertNego>\n";
 
 
-bool serverCertNegoMessage1(int maxSize, char* buf, char* szStatus,
-                           char* szErrorCode, char* szCert)
+bool serverCertNegoMessage1(int maxSize, char* buf, const char* szStatus,
+                           const char* szErrorCode, const char* szCert)
 {
 #ifdef  TEST
     fprintf(g_logFile, "serverCertNegoMessage1(%s %s %s\n", szStatus, szErrorCode, szCert);
@@ -209,13 +208,13 @@ bool serverCertNegoMessage1(int maxSize, char* buf, char* szStatus,
         iSize+= strlen(szErrorCode);
     }
     else {
-        szErrorCode=(char*)"";
+        szErrorCode="";
     }
     if(szCert!=NULL) {
         iSize+= strlen(szCert);
     }
     else {
-        szCert=(char*)"";
+        szCert="";
     }
     if(iSize>=maxSize) {
         fprintf(g_logFile, "Response too large\n");
@@ -233,10 +232,9 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlElement*   pRootElement= NULL;
-    char*           szLabel= NULL;
-    char*           szPolicyId= NULL;
-    char*           szsignedRequest= NULL;
-    char*           szEvidence= NULL;
+    const char*     szLabel= NULL;
+    const char*     szPolicyId= NULL;
+    char*     szsignedRequest= NULL;
     int             phase, count;
     bool            fRet= true;
 
@@ -247,35 +245,35 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
 
         // Parse document
         if(!doc.Parse(buf)) 
-            throw((char *)"Message 1 parse failure in key Nego\n");
+            throw "Message 1 parse failure in key Nego\n";
         pRootElement= doc.RootElement();
         if(pRootElement==NULL) 
-            throw((char *)"Cant find root\n");
-        szLabel= (char*)pRootElement->Value();
-        if(szLabel==NULL || strcmp((char*)"clientCertNego", szLabel)!=0)
-            throw((char *)"Bad response format (no clientCertNego)\n");
+            throw "Cant find root\n";
+        szLabel= pRootElement->Value();
+        if(szLabel==NULL || strcmp("clientCertNego", szLabel)!=0)
+            throw "Bad response format (no clientCertNego)\n";
 
         pRootElement->QueryIntAttribute("phase", &phase);
 
         // policy ID
-        pNode= Search((TiXmlNode*) pRootElement, (char*)"policyKeyId");
+        pNode= Search((TiXmlNode*) pRootElement, "policyKeyId");
         if(pNode==NULL)
-            throw((char *)"Cant find policy key id in client message 1\n");
+            throw "Cant find policy key id in client message 1\n";
         pNode1= pNode->FirstChild();
         if(pNode1==NULL)
-            throw((char*) "Bad policy key id in client message");
-        szPolicyId= (char*) pNode1->Value();
+            throw  "Bad policy key id in client message";
+        szPolicyId=  pNode1->Value();
         if(szPolicyId==NULL)
-            throw((char*) "Bad policy key value in client message");
+            throw  "Bad policy key value in client message";
         *pszpolicyKeyId= strdup(szPolicyId);
 
         // signedRequest
-        pNode= Search((TiXmlNode*) pRootElement, (char*)"signedRequest");
+        pNode= Search((TiXmlNode*) pRootElement, "signedRequest");
         if(pNode==NULL)
-            throw((char *)"Cant find signed request in client message 1\n");
+            throw "Cant find signed request in client message 1\n";
         pNode1= pNode->FirstChild();
         if(pNode1==NULL)
-            throw((char*) "Bad signed request in client message");
+            throw  "Bad signed request in client message";
         szsignedRequest= canonicalize(pNode1);
         if(szsignedRequest==NULL)
             *pszAttested= NULL;
@@ -283,9 +281,9 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
             *pszAttested= szsignedRequest;
 
         // Evidence
-        pNode= Search((TiXmlNode*) pRootElement, (char*)"EvidenceList");
+        pNode= Search((TiXmlNode*) pRootElement, "EvidenceList");
         if(pNode==NULL)
-            throw((char *)"Cant find evidence list in client message 1\n");
+            throw "Cant find evidence list in client message 1\n";
         ((TiXmlElement*)pNode)->QueryIntAttribute("count", &count);
         if(count==0) {
             *pszEvidence= NULL;
@@ -295,7 +293,7 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
         }
 
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         fRet= false;
         fprintf(g_logFile, "%s", szError);
     }
@@ -307,7 +305,7 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
 }
 
 
-KeyInfo* ReadKeyfromFile(char* szKeyFile)
+KeyInfo* ReadKeyfromFile(const char* szKeyFile)
 {
     KeyInfo*    pParseKey= new KeyInfo;
     RSAKey*     pRSAKey= NULL;
@@ -362,7 +360,7 @@ KeyInfo* ReadKeyfromFile(char* szKeyFile)
 // ------------------------------------------------------------------------
 
 
-bool initString(char* str, char* strCmp)
+bool initString(const char* str, const char* strCmp)
 {
     int     n= strlen(str);
    
@@ -377,11 +375,11 @@ bool initString(char* str, char* strCmp)
 }
 
 
-char* insertMiddle(char* szName, char* pS, char* pE, char* newStr)
+char* insertMiddle(const char* szName, const char* pS, const char* pE, const char* newStr)
 {
     char    szNewName[512];
     int     n= strlen(szName);
-    char*   p= szName;
+    const char*   p= szName;
     char*   q= szNewName;
 
 #ifdef TEST
@@ -408,12 +406,12 @@ char* insertMiddle(char* szName, char* pS, char* pE, char* newStr)
 }
 
 
-char* replaceKeywithProgram(char* szKeyName)
+char* replaceKeywithProgram(const char* szKeyName)
 {
-    char*   p= szKeyName;
+    const char*   p= szKeyName;
     char*   newstr= NULL;
-    char*   replaced= (char*)"Keys";
-    char*   replacedBy= (char*)"Programs/";
+    const char*   replaced= "Keys";
+    const char*   replacedBy= "Programs/";
 
 #ifdef TEST
     fprintf(g_logFile, "replaceKeywithProgram(%s)\n", szKeyName);
@@ -434,18 +432,18 @@ char* replaceKeywithProgram(char* szKeyName)
 
 
 // Data base call to see if approved and get parameters
-bool getCertParameters(char* szPolicyKeyId, char* szDigest, char* szEvidenceCollection, 
-            char* szKeyName, char** pszCertid, int* pserialNo, char** pszPrincipalType, 
+bool getCertParameters(const char* szPolicyKeyId, const char* szDigest, const char* szEvidenceCollection, 
+            const char* szKeyName, char** pszCertid, int* pserialNo, char** pszPrincipalType, 
             char** pszIssuerName, char** pszIssuerID, char** pszNotBefore, 
             char** pszNotAfter, char** pszSubjName, char** pszSubjKeyID)
 {
-    *pszCertid= strdup((char*)"Certid");
+    *pszCertid= strdup("Certid");
     *pserialNo= 42;
-    *pszPrincipalType= strdup((char*)"Program");
-    *pszIssuerName= strdup((char*)"www.manferdelli.com");
-    *pszIssuerID= strdup((char*)"www.manferdelli.com");
-    *pszNotBefore= strdup((char*)"2011-01-01Z00:00.00");
-    *pszNotAfter= strdup((char*)"2021-01-01Z00:00.00");
+    *pszPrincipalType= strdup("Program");
+    *pszIssuerName= strdup("www.manferdelli.com");
+    *pszIssuerID= strdup("www.manferdelli.com");
+    *pszNotBefore= strdup("2011-01-01Z00:00.00");
+    *pszNotAfter= strdup("2021-01-01Z00:00.00");
 
 #ifdef TEST
     fprintf(g_logFile, 
@@ -455,8 +453,8 @@ bool getCertParameters(char* szPolicyKeyId, char* szDigest, char* szEvidenceColl
 #endif
     // www.manferdelli.com/Herstein/Keys/fileClientProgram"
     if(szKeyName==NULL) {
-        *pszSubjName= strdup((char*)"//www.manferdelli.com/Programs/Unknown");
-        *pszSubjKeyID= strdup((char*)"UnknownKey");
+        *pszSubjName= strdup("//www.manferdelli.com/Programs/Unknown");
+        *pszSubjKeyID= strdup("UnknownKey");
     }
     else {
         *pszSubjName=  replaceKeywithProgram(szKeyName);
@@ -510,13 +508,13 @@ bool getCertParameters(char* szPolicyKeyId, char* szDigest, char* szEvidenceColl
 // </ds:Signature>
 
 
-RSAKey* getKeyfromID(char* szPolicyKeyId)
+RSAKey* getKeyfromID(const char* szPolicyKeyId)
 {
     return g_pSigningKey;
 }
 
 
-char* getKeyNameformQuotedKeyInfo(char* szquotedKeyInfo)
+char* getKeyNameformQuotedKeyInfo(const char* szquotedKeyInfo)
 {
     if(szquotedKeyInfo==NULL)
         return NULL;
@@ -531,19 +529,19 @@ char* getKeyNameformQuotedKeyInfo(char* szquotedKeyInfo)
         fprintf(g_logFile, "getKeyNameformQuotedKeyInfo: Can't get root of quote\n");
         return NULL;
     }
-    TiXmlNode* pNode= Search((TiXmlNode*) pRootElement, (char*)"ds:KeyInfo");
+    TiXmlNode* pNode= Search((TiXmlNode*) pRootElement, "ds:KeyInfo");
     if(pNode==NULL) {
         fprintf(g_logFile, "getKeyNameformQuotedKeyInfo: No ds:KeyInfo node\n");
         return NULL;
     }
-    char* szA= (char*)((TiXmlElement*) pNode)->Attribute ("KeyName");
+    const char* szA= ((TiXmlElement*) pNode)->Attribute ("KeyName");
     if(szA!=NULL)
         return strdup(szA);
    return NULL; 
 }
 
 
-bool registerCertandEvidence(char* szPolicyKeyId, char* szCert, char* szEvidence)
+bool registerCertandEvidence(const char* szPolicyKeyId, const char* szCert, const char* szEvidence)
 {
 #ifdef  TEST
     fprintf(g_logFile, "registerCertandEvidence\n");
@@ -552,7 +550,7 @@ bool registerCertandEvidence(char* szPolicyKeyId, char* szCert, char* szEvidence
 }
 
 
-bool validCodeDigest(char* szPolicyKeyId, char* szCodeDigest)
+bool validCodeDigest(const char* szPolicyKeyId, const char* szCodeDigest)
 {
 #ifdef  TEST
     fprintf(g_logFile, "validCodeDigest\n");
@@ -583,7 +581,7 @@ bool validCodeDigest(char* szPolicyKeyId, char* szCodeDigest)
 }
 
 
-bool validateRequestandIssue(char* szPolicyKeyId, char* szXMLQuote, char* szEvidence, 
+bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote, const char* szEvidence, 
                              char**  pszCert)
 {
     char*   szAlg= NULL;
@@ -845,8 +843,8 @@ bool certNego(int fd)
     char*   szPolicyKeyId= NULL;
     char*   szQuote= NULL;
     char*   szEvidence= NULL;
-    char*   szStatus= NULL;
-    char*   szErrorCode= NULL;
+    const char*   szStatus= NULL;
+    const char*   szErrorCode= NULL;
     char*   szCert= NULL;
     int     n= 0;
     FILE*   requestLog= NULL;
@@ -866,10 +864,10 @@ bool certNego(int fd)
     
         // Phase 1, receive
         if((n=getPacket(fd, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
-            throw((char*) "Can't get packet 1 in keyNegoServer\n");
+            throw  "Can't get packet 1 in keyNegoServer\n";
 
         if(!getDatafromClientCertMessage1(request, &szPolicyKeyId, &szQuote, &szEvidence))
-            throw((char*) "Can't decode client packet in keyNegoServer\n");
+            throw  "Can't decode client packet in keyNegoServer\n";
 
         // log request
         if(requestLog!=NULL) {
@@ -884,12 +882,12 @@ bool certNego(int fd)
         // check request, sign and register
         bool fIssue= validateRequestandIssue(szPolicyKeyId, szQuote, szEvidence, &szCert);
         if(fIssue) {
-            szStatus= (char*)"accept";
+            szStatus= "accept";
             szErrorCode= NULL;
         }
         else {
-            szStatus= (char*)"reject";
-            szErrorCode= (char*) "invalid request";
+            szStatus= "reject";
+            szErrorCode= "invalid request";
             szCert= NULL;
         }
 
@@ -898,15 +896,15 @@ bool certNego(int fd)
 #endif
         // Phase 1, response
         if(!serverCertNegoMessage1(MAXREQUESTSIZE, request, szStatus, szErrorCode, szCert))
-            throw((char*) "Can't construct response in keyNegoServer\n");
+            throw  "Can't construct response in keyNegoServer\n";
 #ifdef  TEST
         fprintf(g_logFile, "Server response:\n%s\n", request);
 #endif
         if((n=sendPacket(fd, (byte*)request, strlen(request)+1, CHANNEL_REQUEST, 0, 1)) <0)
-             throw((char*) "Can't send packet 1 in keyNegoServer\n");
+             throw  "Can't send packet 1 in keyNegoServer\n";
 
     }
-    catch(char* szError) {
+    catch(const char* szError) {
         fprintf(g_logFile, "%s\n", szError);
         fRet= false;
     }
@@ -1014,7 +1012,7 @@ bool server()
 int main(int an, char** av)
 // certNego.exe [-store storename]
 {
-    initLog((char*)"keyNegoServer.log");
+    initLog("keyNegoServer.log");
 #ifdef  TEST
     fprintf(g_logFile, "keyNegoServer\n");
 #endif

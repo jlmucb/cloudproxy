@@ -56,31 +56,31 @@
 #define DEBUGPRINT
 
 
-char*   szRequest1a= (char*) "<Request>\n";
-char*   szRequest1b=  (char*) "</Request>\n";
+const char*   szRequest1a= "<Request>\n";
+const char*   szRequest1b=  "</Request>\n";
 
-char*   szRequest2a= (char*) "     <Action>";
-char*   szRequest2b= (char*) "</Action>\n";
+const char*   szRequest2a= "     <Action>";
+const char*   szRequest2b= "</Action>\n";
 
-char*   szRequest3= (char*) "    <EvidenceCollection count='0'/>\n";
-char*   szRequest3a= (char*) "    <EvidenceCollection count='%d'>\n";
-char*   szRequest3b= (char*) "    </EvidenceCollection>\n";
+const char*   szRequest3= "    <EvidenceCollection count='0'/>\n";
+const char*   szRequest3a= "    <EvidenceCollection count='%d'>\n";
+const char*   szRequest3b= "    </EvidenceCollection>\n";
 
-char*   szRequest4a= (char*) "     <ResourceName>";
-char*   szRequest4b= (char*) "</ResourceName>\n";
+const char*   szRequest4a= "     <ResourceName>";
+const char*   szRequest4b= "</ResourceName>\n";
 
-char*   szRequest5a= (char*) "    <ResourceLength>";
-char*   szRequest5b=  (char*) "</ResourceLength>\n";
+const char*   szRequest5a= "    <ResourceLength>";
+const char*   szRequest5b=  "</ResourceLength>\n";
 
-char*   szRequest6a= (char*) "    <SubjectName>";
-char*   szRequest6b=  (char*) "</SubjectName>\n";
+const char*   szRequest6a= "    <SubjectName>";
+const char*   szRequest6b=  "</SubjectName>\n";
 
 
-char*   szResponse1= (char*) "<Response>\n  <Action>";
-char*   szResponse2= (char*) "</Action>\n  <ErrorCode>";
-char*   szResponse3= (char*) " </ErrorCode>\n  <ResourceName>";
-char*   szResponse4= (char*) " </ResourceName>\n <ResourceLength>";
-char*   szResponse5= (char*) " </ResourceLength>\n </Response>\n";
+const char*   szResponse1= "<Response>\n  <Action>";
+const char*   szResponse2= "</Action>\n  <ErrorCode>";
+const char*   szResponse3= " </ErrorCode>\n  <ResourceName>";
+const char*   szResponse4= " </ResourceName>\n <ResourceLength>";
+const char*   szResponse5= " </ResourceLength>\n </Response>\n";
 
 
 // ------------------------------------------------------------------------
@@ -121,18 +121,18 @@ Request::~Request()
 }
 
 
-bool  Request::getDatafromDoc(char* szRequest)
+bool  Request::getDatafromDoc(const char* szRequest)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement;
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
 
-    char*           szAction= NULL;
-    char*           szResourceName= NULL;
-    char*           szResourceLength= NULL;
-    char*           szSubjectName= NULL;
-    char*           szEvidence= NULL;
+    const char*           szAction= NULL;
+    const char*           szResourceName= NULL;
+    const char*           szResourceLength= NULL;
+    const char*           szSubjectName= NULL;
+    const char*           szEvidence= NULL;
 
     if(szRequest==NULL)
         return false;
@@ -154,25 +154,25 @@ bool  Request::getDatafromDoc(char* szRequest)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"Action")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1) {
-                    szAction= (char*) pNode1->Value();
+                    szAction= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szResourceName= (char*) pNode1->Value();
+                    szResourceName= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"SubjectName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szSubjectName= (char*) pNode1->Value();
+                    szSubjectName= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceLength")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szResourceLength= (char*) pNode1->Value();
+                    szResourceLength= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
@@ -196,15 +196,15 @@ bool  Request::getDatafromDoc(char* szRequest)
     if(szResourceLength!=NULL)
         sscanf(szResourceLength, "%d", &m_iResourceLength);
 
-    if(strcmp(m_szAction, (char*)"createResource")==0)
+    if(strcmp(m_szAction, "createResource")==0)
         m_iRequestType= CREATERESOURCE;
-    else if(strcmp(m_szAction, (char*)"getResource")==0)
+    else if(strcmp(m_szAction, "getResource")==0)
         m_iRequestType= GETRESOURCE;
-    else if(strcmp(m_szAction, (char*)"sendResource")==0)
+    else if(strcmp(m_szAction, "sendResource")==0)
         m_iRequestType= SENDRESOURCE;
-    else if(strcmp(m_szAction, (char*)"addOwner")==0)
+    else if(strcmp(m_szAction, "addOwner")==0)
         m_iRequestType= ADDOWNER;
-    else if(strcmp(m_szAction, (char*)"removeOwner")==0)
+    else if(strcmp(m_szAction, "removeOwner")==0)
         m_iRequestType= REMOVEOWNER;
     else
         m_iRequestType= 0;
@@ -559,17 +559,17 @@ bool  Response::getDatafromDoc(char* szResponse)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"Action")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
-                    m_szAction= strdup((char*) pNode1->Value());
+                    m_szAction= strdup(pNode1->Value());
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
-                    m_szResourceName= strdup((char*) pNode1->Value());
+                    m_szResourceName= strdup(pNode1->Value());
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceLength")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    char* szResourceLength= (char*) pNode1->Value();
+                    const char* szResourceLength= pNode1->Value();
                     if(szResourceLength!=NULL)
                         sscanf(szResourceLength,"%d", &m_iResourceLength);
                 }
@@ -577,7 +577,7 @@ bool  Response::getDatafromDoc(char* szResponse)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ErrorCode")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
-                    m_szErrorCode= strdup((char*) pNode1->Value());
+                    m_szErrorCode= strdup(pNode1->Value());
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
                 m_szEvidence= canonicalize(pNode);
@@ -597,10 +597,10 @@ bool  Response::getDatafromDoc(char* szResponse)
 // -------------------------------------------------------------------------
 
 
-char* g_szPrefix= (char*)"//www.manferdelli.com/Gauss/";
+const char* g_szPrefix= "//www.manferdelli.com/Gauss/";
 
 
-bool translateLocationtoResourceName(char* szLocation, char* szResourceName, 
+bool translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
                                      int size)
 {
     // Fix 
@@ -608,11 +608,11 @@ bool translateLocationtoResourceName(char* szLocation, char* szResourceName,
 }
 
 
-bool translateResourceNametoLocation(char* szResourceName, char* szLocation, 
+bool translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
                                      int size)
 {
     int         n;
-    char*       p= szResourceName;
+    const char*       p= szResourceName;
 
 #ifdef  TEST1
     fprintf(g_logFile, "translate %s\n", p);
@@ -636,7 +636,7 @@ bool translateResourceNametoLocation(char* szResourceName, char* szLocation,
 }
 
 
-int openFile(char* szInFile, int* psize)
+int openFile(const char* szInFile, int* psize)
 {
     struct stat statBlock;
     int         iRead= -1;
@@ -789,8 +789,8 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
 }
 
 
-bool  constructRequest(char** pp, int* piLeft, char* szAction, char* szSubjectName,
-                       char* szResourceName, int size, char* szEvidence)
+bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char* szSubjectName,
+                       const char* szResourceName, int size, const char* szEvidence)
 {
 #ifdef  TEST1
     char*p= *pp;
@@ -851,8 +851,8 @@ bool  constructRequest(char** pp, int* piLeft, char* szAction, char* szSubjectNa
 }
 
 
-bool  constructResponse(bool fError, char** pp, int* piLeft, char* szResourceName, 
-                        int size, char* szChannelError)
+bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szResourceName, 
+                        int size, const char* szChannelError)
 {
     bool    fRet= true;
     int     n= 0;
@@ -862,41 +862,41 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, char* szResourceNam
 #endif
     try {
         if(!safeTransfer(pp, piLeft, szResponse1))
-            throw((char *)"constructResponse: Can't construct response\n");
+            throw "constructResponse: Can't construct response\n";
         if(fError) {
-            if(!safeTransfer(pp, piLeft, (char*)"reject"))
-                throw((char *)"constructResponse: Can't construct response\n");
+            if(!safeTransfer(pp, piLeft, "reject"))
+                throw "constructResponse: Can't construct response\n";
         }
         else {
-            if(!safeTransfer(pp, piLeft, (char*)"accept"))
-                throw((char *)"constructResponse: Can't construct response\n");
+            if(!safeTransfer(pp, piLeft, "accept"))
+                throw "constructResponse: Can't construct response\n";
         }
         if(!safeTransfer(pp, piLeft, szResponse2))
-            throw((char *)"Can't construct response\n");
+            throw "Can't construct response\n";
         if(szChannelError!=NULL) {
             if(!safeTransfer(pp, piLeft, szChannelError))
-                throw((char *)"constructResponse: Can't construct response\n");
+                throw "constructResponse: Can't construct response\n";
         }
         if(!safeTransfer(pp, piLeft, szResponse3))
-            throw((char *)"constructResponse: Can't construct response\n");
+            throw "constructResponse: Can't construct response\n";
         if(szResourceName!=NULL) {
             if(!safeTransfer(pp, piLeft, szResourceName))
-                throw((char *)"Can't construct response\n");
+                throw "Can't construct response\n";
         }
         if(!safeTransfer(pp, piLeft, szResponse4))
-            throw((char *)"constructResponse: Can't construct response\n");
+            throw "constructResponse: Can't construct response\n";
         if(!fError) {
             if(*piLeft<10)
-                throw((char *)"constructResponse: Can't construct response\n");
+                throw "constructResponse: Can't construct response\n";
             sprintf(*pp, "%d", size);
             n= strlen(*pp);
             *piLeft-= n;
             *pp+= n;
         }
         if(!safeTransfer(pp, piLeft, szResponse5))
-            throw((char *)"constructResponse: Can't construct response\n");
+            throw "constructResponse: Can't construct response\n";
     }
-    catch(char* szConstructError) {
+    catch(const char* szConstructError) {
         fRet= false;
         fprintf(g_logFile, "%s", szConstructError);
     }
@@ -911,8 +911,8 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, char* szResourceNam
 // -------------------------------------------------------------------------
 
 
-bool clientgetResourcefromserver(safeChannel& fc, char* szResourceName, 
-            char* szEvidence, char* szOutFile, int encType, byte* key)
+bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
+            const char* szEvidence, const char* szOutFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -927,7 +927,7 @@ bool clientgetResourcefromserver(safeChannel& fc, char* szResourceName,
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, (char*)"getResource", NULL, szResourceName, 0, NULL)) {
+    if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, NULL)) {
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
@@ -981,7 +981,7 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
     int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
     char*       szFile= NULL;
-    char*       szError= NULL;
+    const char* szError= NULL;
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
@@ -998,7 +998,7 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
         iRead= openFile(szFile, &filesize);
         if(iRead<0) {
             fError= true;
-            szError= (char*)"serversendResourcetoclient: Cant open file";
+            szError= "serversendResourcetoclient: Cant open file";
             fprintf(g_logFile, "serversendResourcetoclient: Open file error %s\n", szFile);
         }
     }
@@ -1011,7 +1011,7 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
     }
 
     // send response
-    fc.safesendPacket(szBuf, (int)strlen((char*)szBuf)+1, type, multi, final);
+    fc.safesendPacket(szBuf, (int)strlen(szBuf)+1, type, multi, final);
 
     // send file
     if(!sendFile(fc, iRead, filesize, datasize, encType, key)) {
@@ -1028,8 +1028,8 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
 }
 
 
-bool clientcreateResourceonserver(safeChannel& fc, char* szResourceName, char* szSubject, 
-                                  char* szEvidence, int encType, byte* key)
+bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, const char* szSubject, 
+                                  const char* szEvidence, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -1044,7 +1044,7 @@ bool clientcreateResourceonserver(safeChannel& fc, char* szResourceName, char* s
     fprintf(g_logFile, "clientcreateResourceonserver(%s)\n", szResourceName);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, (char*)"createResource", szSubject, 
+    if(!constructRequest(&p, &iLeft, "createResource", szSubject, 
                                     szResourceName, 0, szEvidence)) {
         fprintf(g_logFile, "clientcreateResourceonserver: constructRequest returns false\n");
         return false;
@@ -1089,7 +1089,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
     int             iLeft= MAXREQUESTSIZE;
     char*           p= (char*)szBuf;
     char*           szFile= NULL;
-    char*           szError= NULL;
+    const char*     szError= NULL;
     int             type= CHANNEL_RESPONSE;
     byte            multi= 0;
     byte            final= 0;
@@ -1192,7 +1192,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
     pResource= g_theVault.findResource(oReq.m_szResourceName);
     if(pResource!=NULL) {
         fError= true;
-        szError= (char*)"servercreateResourceonserver: Resource exists";
+        szError= "servercreateResourceonserver: Resource exists";
     }
 
     if(!fError) {
@@ -1202,7 +1202,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
         }
         else {
             fError= true;
-            szError= (char*)"servercreateResourceonserver: create disallowed";
+            szError= "servercreateResourceonserver: create disallowed";
         }
     }
 
@@ -1212,7 +1212,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
         fprintf(g_logFile, "servercreateResourceonserver: constructResponse failed\n");
         return false;
     }
-    fc.safesendPacket((byte*)szBuf, strlen((char*)szBuf)+1, type, multi, final);
+    fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, type, multi, final);
 
     // Should pResource be deleted?
 #ifdef  TEST
@@ -1223,8 +1223,8 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
 }
 
 
-bool clientsendResourcetoserver(safeChannel& fc, char* szResourceName, char* szEvidence, 
-                                char* szInFile, int encType, byte* key)
+bool clientsendResourcetoserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
+                                const char* szInFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -1237,7 +1237,7 @@ bool clientsendResourcetoserver(safeChannel& fc, char* szResourceName, char* szE
     byte        multi=0;
     byte        final= 0;
     int         iRead= 0;
-    char*       szSubject= (char*) "//www.manferdelli.com/User/JohnManferdelli/0001";
+    const char*       szSubject= "//www.manferdelli.com/User/JohnManferdelli/0001";
 
 #ifdef  TEST
     fprintf(g_logFile, "clientsendResourcetoserver(%s, %s)\n", szResourceName, szInFile);
@@ -1257,7 +1257,7 @@ bool clientsendResourcetoserver(safeChannel& fc, char* szResourceName, char* szE
     datasize= filesize;
 
     // send request
-    if(!constructRequest(&p, &iLeft, (char*)"sendResource", szSubject, szResourceName, 
+    if(!constructRequest(&p, &iLeft, "sendResource", szSubject, szResourceName, 
                          filesize, NULL)) {
         fprintf(g_logFile, "clientsendResourcetoserver: constructRequest returns false\n");
         return false;
@@ -1312,7 +1312,7 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
     byte        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
-    char*       szError= NULL;
+    const char*       szError= NULL;
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
@@ -1333,7 +1333,7 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if(iWrite<0) {
             fError= true;
-            szError= (char*)"servergetResourcefromclient: Cant open file for writing\n";
+            szError= "servergetResourcefromclient: Cant open file for writing\n";
             fprintf(g_logFile, "servergetResourcefromclient: Cant open file %s for writing\n", szOutFile);
         }
     }
@@ -1343,7 +1343,7 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
     }
-    fc.safesendPacket(szBuf, strlen((char*)szBuf)+1, type, multi, final);
+    fc.safesendPacket(szBuf, strlen(szBuf)+1, type, multi, final);
 
 #ifdef  TEST
     fprintf(g_logFile, "servergetResourcefromclient getting file, %d\n", size);
@@ -1368,8 +1368,8 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
 }
 
 
-bool clientchangeownerResource(safeChannel& fc, char* szAction, char* szResourceName,
-                               char* szEvidence, char* szOutFile, int encType, byte* key)
+bool clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
+                               const char* szEvidence, const char* szOutFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -1448,8 +1448,8 @@ bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oK
 }
 
 
-bool clientdeleteResource(safeChannel& fc, char* szAction, char* szResourceName,
-                               char* szEvidence, char* szOutFile, int encType, byte* key)
+bool clientdeleteResource(safeChannel& fc, const char* szAction, const char* szResourceName,
+                               const char* szEvidence, const char* szOutFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;

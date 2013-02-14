@@ -174,9 +174,9 @@ inline void mpShortLoop(bnum& bnU, bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY)
 #ifdef MPTESTEXTENDED
 //  Function: void LabeledprintNum
 //  Arguments:
-//      IN char* pszLabel
+//      IN const char* pszLabel
 //      IN bNum bnA
-void LabeledprintNum(char* pszLabel, bnum& bnA)
+void LabeledprintNum(const char* pszLabel, bnum& bnA)
 {
     fprintf(g_logFile, "%s\t: ", pszLabel);
     printNum(bnA);
@@ -199,7 +199,6 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
 {       
     int     iMaxSize= bnXExt.mpSize();
     int     i, j;
-    bool    fRet= false;
 
     if((int)bnYExt.mpSize()>iMaxSize)
         iMaxSize= bnYExt.mpSize();
@@ -253,11 +252,11 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
 #ifdef MPTESTEXTENDED
     int nc= 0;
     fprintf(g_logFile, "mpBinaryExtendedGCD: initialized\n");
-    LabeledprintNum((char*)"X", bnX); LabeledprintNum((char*)"Y", bnY);  
-    LabeledprintNum((char*)"G", bnG);
-    LabeledprintNum((char*)"A", bnA); LabeledprintNum((char*)"B", bnB); 
-    LabeledprintNum((char*)"C", bnC); LabeledprintNum((char*)"D", bnD);
-    LabeledprintNum((char*)"U", bnU); LabeledprintNum((char*)"V", bnV);
+    LabeledprintNum("X", bnX); LabeledprintNum("Y", bnY);  
+    LabeledprintNum("G", bnG);
+    LabeledprintNum("A", bnA); LabeledprintNum("B", bnB); 
+    LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
+    LabeledprintNum("U", bnU); LabeledprintNum("V", bnV);
 #endif
 
     for(;;) {
@@ -270,9 +269,9 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
 
 #ifdef MPTESTEXTENDED
         fprintf(g_logFile, "mpBinaryExtendedGCD: After ShortLoops\n");
-        LabeledprintNum((char*)"U", bnU);LabeledprintNum((char*)"A", bnA); 
-        LabeledprintNum((char*)"B", bnB); LabeledprintNum((char*)"V", bnV);
-        LabeledprintNum((char*)"C", bnC); LabeledprintNum((char*)"D", bnD);
+        LabeledprintNum("U", bnU);LabeledprintNum("A", bnA); 
+        LabeledprintNum("B", bnB); LabeledprintNum("V", bnV);
+        LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
 #endif
                         
         // Step 6
@@ -288,9 +287,9 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
         }
 #ifdef MPTESTEXTENDED
         fprintf(g_logFile, "mpBinaryExtendedGCD: After Reduce\n");
-        LabeledprintNum((char*)"U", bnU);LabeledprintNum((char*)"A", bnA); 
-        LabeledprintNum((char*)"B", bnB); LabeledprintNum((char*)"V", bnV);
-        LabeledprintNum((char*)"C", bnC); LabeledprintNum((char*)"D", bnD);
+        LabeledprintNum("U", bnU);LabeledprintNum("A", bnA); 
+        LabeledprintNum("B", bnB); LabeledprintNum("V", bnV);
+        LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
 #endif
         // Step 7
         if(bnU.mpIsZero()) {
@@ -299,11 +298,11 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
             mpMult(bnG, bnV, bnGExt);
 #ifdef MPTESTEXTENDED
             fprintf(g_logFile, "mpBinaryExtendedGCD: Transferring Output\n");
-            LabeledprintNum((char*)"U", bnU);LabeledprintNum((char*)"A", bnA); 
-            LabeledprintNum((char*)"B", bnB); LabeledprintNum((char*)"V", bnV);
-            LabeledprintNum((char*)"C", bnC); LabeledprintNum((char*)"D", bnD);
-            LabeledprintNum((char*)"bnAExt", bnAExt);
-            LabeledprintNum((char*)"bnBExt", bnBExt); 
+            LabeledprintNum("U", bnU);LabeledprintNum("A", bnA); 
+            LabeledprintNum("B", bnB); LabeledprintNum("V", bnV);
+            LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
+            LabeledprintNum("bnAExt", bnAExt);
+            LabeledprintNum("bnBExt", bnBExt); 
 #endif
             break;
             }
@@ -417,7 +416,6 @@ u32         rgFirstPrimes[s_iSizeofFirstPrimes]= {
 //      return(prime)
 bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum& bnS)
 {
-    bool            fRet= true;
     int             iMaxSize= bnN.mpSize();
     int             j= 1;
     bnum            bnY(iMaxSize);
@@ -555,7 +553,7 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
         mpZeroNum(bnA);
         // Get Candidate prime (bnA)
         if(!getCryptoRandom(iBitSize, (byte*)rguA)) {
-            fprintf(g_logFile, (char*)"No Random Bits\n");
+            fprintf(g_logFile, "No Random Bits\n");
             return false;
         }
 

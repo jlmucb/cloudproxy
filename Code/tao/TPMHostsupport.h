@@ -27,7 +27,7 @@
 
 #include "jlmTypes.h"
 
-bool initTPM(char* aikblobfile, char* szTPMPassword);
+bool initTPM(const char* aikblobfile, const char* szTPMPassword);
 bool deinitTPM();
 bool getAttestCertificateTPM(int size, byte* pKey);
 bool getEntropyTPM(int size, byte* pKey);

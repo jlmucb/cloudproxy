@@ -40,14 +40,14 @@ extern tcChannel   g_reqChannel;
 extern int         g_myPid;
 
 
-bool initLinuxService(char* name);
+bool initLinuxService(const char* name);
 bool closeLinuxService();
 bool getEntropyfromDeviceDriver(int size, byte* pKey);
-bool getprogramNamefromDeviceDriver(int* pSize, char* szName);
+bool getprogramNamefromDeviceDriver(int* pSize, const char* szName);
 bool getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey);
 bool getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash);
 bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType, int* pSize, byte* pHash);
-bool startAppfromDeviceDriver(char* szexecFile, int* ppid);
+bool startAppfromDeviceDriver(const char* szexecFile, int* ppid);
 bool sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
 bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
 bool quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);

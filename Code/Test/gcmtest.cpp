@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-char* szH= (char*)"66e94bd4ef8a2c3b884cfa59ca342b2e";
-char* szX= (char*)"0388dace60b6a392f328c2b971b2fe78";
+const char* szH= "66e94bd4ef8a2c3b884cfa59ca342b2e";
+const char* szX= "0388dace60b6a392f328c2b971b2fe78";
 
 typedef unsigned char u8;
 
@@ -38,7 +38,7 @@ typedef unsigned char u8;
 
 
 
-void printBits(char* sz,u8* rgA, int n)
+void printBits(const char* sz,u8* rgA, int n)
 {
     int i;
 
@@ -71,7 +71,7 @@ void  toBits(char a, u8* pb)
     return;
 }
 
-void tobitArray(char* p, u8* rgA, int n)
+void tobitArray(const char* p, u8* rgA, int n)
 {
     int i;
 
@@ -106,14 +106,14 @@ main(int an, char** av)
     memset(rgOut, 0, 256);
     tobitArray(szH, rgH, 128);
     tobitArray(szX, rgX, 128);
-    printBits((char*)"H", rgH, 128);
-    printBits((char*)"X", rgX, 128);
+    printBits("H", rgH, 128);
+    printBits("X", rgX, 128);
 
     for(i=0; i<128; i++) {
         if(rgX[i]!=0)
             shiftandXor(rgH, rgOut, i, 128);
     }
-    printBits((char*)"out", rgOut, 256);
+    printBits("out", rgOut, 256);
 
     return 0;
 }

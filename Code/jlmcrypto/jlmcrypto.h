@@ -44,16 +44,16 @@ extern int  iRandDev;
 bool        getCryptoRandom(int iNumBits, byte* buf);
 bool        initCryptoRand();
 bool        closeCryptoRand();
-bool        toBase64(int iInLen, unsigned char* puIn, int* piOutLen, char* rgszOut, 
+bool        toBase64(int iInLen, const unsigned char* puIn, int* piOutLen, char* rgszOut, 
                      bool fDirFwd=true);
-bool        fromBase64(int iInLen, char* pszIn, int* piOutLen, unsigned char* puOut, 
+bool        fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puOut, 
                        bool fDirFwd=true);
 bool        getBase64Rand(int iBytes, byte* puR, int* pOutSize, char* szOut);
 bool        initAllCrypto();
 bool        closeallCrypto();
 
 bool        prf_SHA256(int iKeyLen, byte* rguKey, int iSeedSize, byte* rguSeed,
-                       char* label, int iOutSize, byte* rgOut);
+                       const char* label, int iOutSize, byte* rgOut);
 bool        hmac_sha256(byte* rguMsg, int iInLen, byte* rguKey, int iKeyLen, byte* rguDigest);
 
 

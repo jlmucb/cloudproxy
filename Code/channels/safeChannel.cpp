@@ -126,10 +126,10 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
 
 #ifdef IOTEST
     fprintf(g_logFile, "\nSize of keys: %d\n", sizeofEncKeys);
-    PrintBytes((char*)"Send Enc Key", sendEncKey, sizeofEncKey);
-    PrintBytes((char*)"Get Enc  Key", getEncKey, sizeofEncKey);
-    PrintBytes((char*)"Send Int Key", sendIntKey, sizeofIntKey);
-    PrintBytes((char*)"Get Int  Key", getIntKey, sizeofIntKey);
+    PrintBytes("Send Enc Key", sendEncKey, sizeofEncKey);
+    PrintBytes("Get Enc  Key", getEncKey, sizeofEncKey);
+    PrintBytes("Send Int Key", sendIntKey, sizeofIntKey);
+    PrintBytes("Get Int  Key", getIntKey, sizeofIntKey);
     fprintf(g_logFile, "\n");
 #endif
 
@@ -223,9 +223,9 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     }
 #ifdef IOTEST1
     fprintf(g_logFile, "safesendPacket HMAC, %d bytes\n",newMsgSize);
-    PrintBytes((char*)"Int key:", sendIntKey, sizeofIntKey);
-    PrintBytes((char*)"Message:", plainMessageBlock, newMsgSize);
-    PrintBytes((char*)"Mac:", &plainMessageBlock[newMsgSize], SHA256_DIGESTSIZE_BYTES);
+    PrintBytes("Int key:", sendIntKey, sizeofIntKey);
+    PrintBytes("Message:", plainMessageBlock, newMsgSize);
+    PrintBytes("Mac:", &plainMessageBlock[newMsgSize], SHA256_DIGESTSIZE_BYTES);
     fprintf(g_logFile, "totalSize: %d\n", totalSize);
 #endif
 
@@ -338,10 +338,10 @@ int  safeChannel::safegetPacket(byte* buf, int maxSize, int* ptype,
     }
 #ifdef IOTEST
     fprintf(g_logFile, "safegetPacket HMAC, %d bytes\n",n);
-    PrintBytes((char*)"Int key:", getIntKey, sizeofIntKey);
-    PrintBytes((char*)"Message:", plainMessageBlock, n);
-    PrintBytes((char*)"Computed Mac:", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
-    PrintBytes((char*)"Mac:", rguHmac, SHA256_DIGESTSIZE_BYTES);
+    PrintBytes("Int key:", getIntKey, sizeofIntKey);
+    PrintBytes("Message:", plainMessageBlock, n);
+    PrintBytes("Computed Mac:", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
+    PrintBytes("Mac:", rguHmac, SHA256_DIGESTSIZE_BYTES);
     fprintf(g_logFile, "Header size: %d\n", ((packetHdr*) plainMessageBlock)->len);
 #endif
     if(!isEqual(rguHmac, rguHmacComputed, SHA256_DIGESTSIZE_BYTES)) {

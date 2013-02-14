@@ -39,7 +39,7 @@
 #define HASHINBUFSIZE 1024
 
 
-bool getfileHash(char* szFile, u32* phashType, int* psize, byte* rgHash)
+bool getfileHash(const char* szFile, u32* phashType, int* psize, byte* rgHash)
 {
     Sha256  oHash;
     byte    rgBuf[HASHINBUFSIZE];

@@ -1,1 +1,1 @@
-#define DOMAIN (char*)"www.manferdelli.com"
+#define DOMAIN "www.manferdelli.com"

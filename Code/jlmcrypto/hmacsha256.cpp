@@ -75,7 +75,7 @@ void  hmacsha256::Init(byte* rguKey, int iKeyLen)
 }
 
 
-void  hmacsha256::Update(byte* rguMsg, int iInLen) 
+void  hmacsha256::Update(const byte* rguMsg, int iInLen) 
 {
     oHash.Update(rguMsg, iInLen);
     return;
@@ -150,7 +150,7 @@ bool hmac_sha256(byte* rguMsg, int iInLen, byte* rguKey, int iKeyLen, byte* rguD
 
 
 bool prf_SHA256(int iKeyLen, byte* rguKey, int iSeedSize, byte* rguSeed,
-                       char* label, int iOutSize, byte* rgOut)
+                       const char* label, int iOutSize, byte* rgOut)
 // A[0] = label||seed, A[i+1] = HMAC_hash(secret, A[i])
 // PRF(secret, label, seed) = HMAC_hash(key, A[0]||seed)||HMAC_hash(key, A[1]||seed)...
 // For TLS, secret is master secret, seed is server_random||client_random
@@ -162,8 +162,8 @@ bool prf_SHA256(int iKeyLen, byte* rguKey, int iSeedSize, byte* rguSeed,
 
 #ifdef TEST1
     fprintf(g_logFile, "prf_SHA256 %s %d %d %d\n", label, iKeyLen, iSeedSize, iOutSize);
-    PrintBytes((char*)"Key  ", rguKey, iKeyLen);
-    PrintBytes((char*)"Seed ", rguSeed, iSeedSize);
+    PrintBytes("Key  ", rguKey, iKeyLen);
+    PrintBytes("Seed ", rguSeed, iSeedSize);
 #endif
 
     iModifiedSize= iSeedSize+SHA256_DIGESTSIZE_BYTES+iL;

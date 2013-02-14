@@ -15,8 +15,8 @@ TRS=        ../tcService
         
 
 
-DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
+RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 CFLAGS=     -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
 

@@ -1081,7 +1081,7 @@ bool basicFileTest(safeChannel& fc, fileClient& oFileClient) {
     char*           szEvidence= NULL;
     const char*     szSubject="//www.manferdelli.com/User/JohnManferdelli/0001";
     const char*     szResource="//www.manferdelli.com/Gauss/fileServer/files/file.test";
-    int             encType= oFileClient.m_fEncryptFiles ? DEFAULTENCRYPT : NOENCRYPT;
+    int             encType= NOENCRYPT;
 
     szEvidence= readandstoreString("fileClient/authRule1Signed.xml");
 #ifdef  TEST

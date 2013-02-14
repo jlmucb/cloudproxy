@@ -22,6 +22,7 @@
 
 
 #include "jlmTypes.h"
+#include "jlmUtility.h"
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "secPrincipal.h"
@@ -53,7 +54,7 @@
  *  <Assertions count='5'>
  *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files </Assertion>
  *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files </Assertion>
- *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files/* </Assertion>
+ *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files/\* </Assertion>
  *    <Assertion> K-Policy says K-JLM may write //www.manferdelli.com/Files </Assertion>
  *    <Assertion> K-Policy says K-JLM may say x owns //www.manferdelli.com/Files </Assertion>
  *  </Assertions>
@@ -69,7 +70,7 @@ inline bool whitespace(char b)
 }
 
 
-int nextToken(const char* sz, char** pszToken)
+int nextToken(const char* sz, const char** pszToken)
 {
     int     n;
 
@@ -169,7 +170,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
                     const char* szAssertion, bool fValidated)
 {
     char                szBuf[MAXTOKEN];
-    char*               szTok= NULL;
+    const char*               szTok= NULL;
     accessPrincipal*    pPrinc= NULL;
     resource*           pResource= NULL;
     int                 n;
@@ -292,7 +293,7 @@ bool assertionNode::assertionSucceeds(accessPrincipal* pSubject, u32 uVerb, reso
 
     // K1 says K2 speaksfor verb resource condition
     // Fix: speaksfor
-    if(m_uVerbs&SPEAKSFOR!=0) {
+    if((m_uVerbs&SPEAKSFOR)!=0) {
     }
 
     // K1 says K2 verb resource condition
@@ -478,6 +479,7 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
         return false;
     }
     pOwnerNode= pResource->m_myOwners.pFirst;
+    UNUSEDVAR(pOwnerNode);
     pSubjNode= m_Subjects.pFirst;
 
     // Owners get all rights, we don't need no stinking evidence

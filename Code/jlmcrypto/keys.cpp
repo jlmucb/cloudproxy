@@ -774,7 +774,7 @@ int padAlgfromIndex(int iIndex)
 }
 
 
-int algorithmIndexFromShortName(char* szAlg)
+int algorithmIndexFromShortName(const char* szAlg)
 
 {
     int     i;
@@ -792,7 +792,7 @@ int algorithmIndexFromShortName(char* szAlg)
 }
 
 
-int algorithmIndexFromLongName(char* szAlg)
+int algorithmIndexFromLongName(const char* szAlg)
 
 {
     int     i;
@@ -844,7 +844,7 @@ cipherSuiteMap g_rgCipherSuiteMap[NUMSUPPORTEDCIPHERSUITES]= {
 };
 
 
-int cipherSuiteIndexFromName(char* szCipherSuite)
+int cipherSuiteIndexFromName(const char* szCipherSuite)
 
 {
     int     i;

@@ -1011,7 +1011,7 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
     }
 
     // send response
-    fc.safesendPacket(szBuf, (int)strlen(szBuf)+1, type, multi, final);
+    fc.safesendPacket(szBuf, (int)strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
 
     // send file
     if(!sendFile(fc, iRead, filesize, datasize, encType, key)) {
@@ -1343,7 +1343,7 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
     }
-    fc.safesendPacket(szBuf, strlen(szBuf)+1, type, multi, final);
+    fc.safesendPacket(szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
 
 #ifdef  TEST
     fprintf(g_logFile, "servergetResourcefromclient getting file, %d\n", size);

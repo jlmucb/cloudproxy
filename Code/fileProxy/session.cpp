@@ -669,10 +669,7 @@ bool sessionKeys::computeClientKeys()
 
 bool sessionKeys::checkPrincipalChallenges()
 {
-    int             iOutLen= BIGSIGNEDSIZE;
-    byte            rguSignedChallenge[BIGSIGNEDSIZE];
     byte            rguOriginalChallenge[BIGSIGNEDSIZE];
-    byte            rguDecodedChallenge[BIGSIGNEDSIZE];
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement;
     TiXmlNode*      pNode;

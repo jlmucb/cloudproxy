@@ -152,7 +152,7 @@ bool fileClient::initPolicy()
     if(g_policyPrincipalCert==NULL)
         g_policyPrincipalCert= new PrincipalCert();
 #endif
-    if(!g_policyPrincipalCert->init(m_tcHome.m_policyKey)) {
+    if(!g_policyPrincipalCert->init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
         fprintf(g_logFile, "initPolicy: Can't init policy cert 1\n");
         return false;
     }
@@ -297,7 +297,7 @@ bool fileClient::initClient(const char* configDirectory)
 #endif
 
     try {
-        char** parameters= NULL;
+        const char** parameters= NULL;
         int parameterCount= 0;
         if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
@@ -464,7 +464,7 @@ const char* szMsg4d= "\n</ClientNego>\n";
 // -----------------------------------------------------------------------
 
 
-bool clientNegoMessage1(const char* buf, int maxSize, const char* szAlg, const char* szRand)
+bool clientNegoMessage1(char* buf, int maxSize, const char* szAlg, const char* szRand)
 //  client phase 1  client-->server:
 //      clientMsg1(rand, ciphersuites)
 {
@@ -528,7 +528,6 @@ bool clientNegoMessage4(char* buf, int maxSize, const char* szPrincipalCerts,
 //      clientMsg4(Principal-certs, D_P1(challenge), D_P2(challenge+1),... )
 {
     int     iLeft= maxSize;
-    int     k;
     char*   p= buf;
 
 #ifdef TEST
@@ -560,7 +559,6 @@ bool getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys)
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
-    TiXmlNode*      pNode2;
     TiXmlElement*   pRootElement= NULL;
     char*           szCipherSuite= NULL;
     const char*     szRandom= NULL;
@@ -654,7 +652,6 @@ bool getDatafromServerMessage2(int n, char* request, sessionKeys& oKeys)
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlElement*   pRootElement= NULL;
-    byte            rgRand[128];
     int             iOutLen= 128;
     bool            fRet= true;
 
@@ -724,10 +721,8 @@ bool getDatafromServerMessage3(int n, char* request, sessionKeys& oKeys)
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
-    TiXmlNode*      pNode2;
     TiXmlElement*   pRootElement= NULL;
     bool            fRet= true;
-    int             iOutLen= 128;
 
 #ifdef  TEST
     fprintf(g_logFile, "ServerMessage 3\n%s\n", request);
@@ -773,7 +768,6 @@ bool fileClient::protocolNego(int fd, safeChannel& fc)
     byte    multi= 0;
     byte    final= 0;
     int     iOut64= 256;
-    int     iOut= 256;
     char*   szSignedNonce= NULL;
     char*   szEncPreMasterSecret= NULL;
     char*   szSignedChallenges= NULL;
@@ -998,7 +992,6 @@ bool fileClient::protocolNego(int fd, safeChannel& fc)
 
 bool fileClient::closeClient()
 {
-    packetHdr oPH;
 
     m_clientState= SERVICETERMINATESTATE;
 
@@ -1008,8 +1001,9 @@ bool fileClient::closeClient()
 #endif
 
     if(m_fd>0) {
-        oPH.len= 0;
 #if 0
+        packetHdr oPH;
+        oPH.len= 0;
         write(m_fd, (byte*)&oPH,sizeof(packetHdr));
 #endif
         close(m_fd);
@@ -1054,7 +1048,7 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* d
 #endif
         // init logfile, crypto, etc
         if(!oFileClient.initClient(directory))
-            throw "fileClient main: initClient() failed\n"
+            throw "fileClient main: initClient() failed\n";
 
         // copy my public key into client public key
         if(!oFileClient.m_tcHome.m_myCertificateValid || 
@@ -1115,7 +1109,7 @@ bool basicFileTest(safeChannel& fc, fileClient& oFileClient) {
     }
 
     if(clientgetResourcefromserver(fc, 
-                                   ("//www.manferdelli.com/Gauss/fileServer/files/file.test", 
+                                   "//www.manferdelli.com/Gauss/fileServer/files/file.test", 
                                    NULL, "fileClient/files/clientfile.test.out", 
                                    encType, oFileClient.m_fileKeys)) {
         fprintf(g_logFile, "fileClient main: Get file successful\n");
@@ -1135,9 +1129,8 @@ int main(int an, char** av)
     safeChannel     fc;
     int             iRet= 0;
     int             i;
-    bool            fInit= false;
     bool            fInitProg= false;
-
+    const char*     directory= NULL;
     initLog(NULL);
 
 #ifdef  TEST
@@ -1149,9 +1142,6 @@ int main(int an, char** av)
         for(i=0;i<an;i++) {
             if(strcmp(av[i],"-initProg")==0) {
                 fInitProg= true;
-            }
-            if(strcmp(av[i],"-initKeys")==0) {
-                fInit= true;
             }
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {
                 oFileClient.m_szPort= strdup(av[++i]);

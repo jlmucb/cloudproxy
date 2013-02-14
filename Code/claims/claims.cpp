@@ -376,14 +376,6 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
     int     hashType= 0;
     int     sizefinalHash= 0;
 
-    byte    locality= 0; 
-    u32     sizeversion= 0;
-    byte*   versionInfo= NULL;
-#ifdef PCR18
-    byte pcrMask[3]= {0,0,0x6};  // pcr 17, 18
-#else
-    byte pcrMask[3]= {0,0,0x2};  // pcr 17
-#endif
 
 #ifdef TEST
     fprintf(g_logFile, "checkXMLQuote alg: %s\n", szQuoteAlg);
@@ -468,7 +460,17 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
             return false;
         }
 #else
-         // reconstruct PCR composite and composite hash
+        byte    locality= 0; 
+        u32     sizeversion= 0;
+        byte*   versionInfo= NULL;
+
+#ifdef PCR18
+        byte pcrMask[3]= {0,0,0x6};  // pcr 17, 18
+#else
+        byte pcrMask[3]= {0,0,0x2};  // pcr 17
+#endif
+
+        // reconstruct PCR composite and composite hash
         if(!tpm12quote2Hash(0, NULL, pcrMask, locality,
                             sizehashBody, hashBody, sizehashCode, hashCode, 
                             false, sizeversion, versionInfo, 

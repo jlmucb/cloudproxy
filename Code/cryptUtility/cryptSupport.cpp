@@ -318,7 +318,7 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     TiXmlNode*      pNode2= NULL;
     TiXmlNode*      pSignedInfoNode= NULL;
     TiXmlNode*      pSubjectKeyInfoNode= NULL;
-    char*           szTimePoint= NULL;
+    const char*           szTimePoint= NULL;
 
 #ifdef CERTTEST
     fprintf(g_logFile, "parsePrincipalCertElementfromRoot\n");

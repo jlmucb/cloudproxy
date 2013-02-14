@@ -130,7 +130,7 @@ public:
 
 bool translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
                                      int size);
-bool translateResourceNametoLocation(const char* szResourceName, const char* szLocation, 
+bool translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
                                      int size);
 
 bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 

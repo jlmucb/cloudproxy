@@ -151,7 +151,7 @@ bool fileServer::initPolicy()
             m_tcHome.m_policyKey);
     fflush(g_logFile);
 #endif
-    if(!g_policyPrincipalCert->init(m_tcHome.m_policyKey)) {
+    if(!g_policyPrincipalCert->init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
         fprintf(g_logFile, "fileServer::initPolicy: Can't init policy cert 1\n");
         fflush(g_logFile);
         return false;
@@ -307,7 +307,7 @@ bool fileServer::initServer(const char* configDirectory)
 
     try {
 
-        char** parameters = NULL;
+        const char** parameters = NULL;
         int parameterCount = 0;
         if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
@@ -595,8 +595,7 @@ bool getDatafromClientMessage2(int n, char* request, sessionKeys& oKeys)
     TiXmlNode*      pNode1;
     int             iOutLen= BIGSIGNEDSIZE;
     const char*     szEncryptedPreMasterSecret= NULL;
-    const char*     szSig= NULL;
-    const char*     szClientCert= NULL;
+    char*     szClientCert= NULL;
     bool            fRet= true;
 
 #ifdef  TEST
@@ -664,7 +663,6 @@ bool getDatafromClientMessage3(int n, char* request, sessionKeys& oKeys)
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
-    int             iOutLen= BIGSIGNEDSIZE;
     const char*           szSignedChallenge= NULL;
     bool            fRet= true;
 
@@ -989,7 +987,7 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
         Request oReq;
 
         oReq.m_poAG= &oAG;
-        if(!oReq.getDatafromDoc(request)) {
+        if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
             fprintf(g_logFile, "fileServer::processRequests: cant parse: %s\n", request);
             fprintf(g_logFile, "Cant parse request\n");
             return -1;
@@ -1207,7 +1205,6 @@ int main(int an, char** av)
     fileServer  oServer;
     int         i;
     int         iRet= 0;
-    bool        fInit= false;
     bool        fInitProg= false;
     const char* directory= NULL;
 

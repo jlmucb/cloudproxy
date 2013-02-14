@@ -45,7 +45,7 @@
 // -------------------------------------------------------------------------
 
 
-bool startMeAsMeasuredProgram(int an, const char** av)
+bool startMeAsMeasuredProgram(int an, char** av)
 {
     int     n= 0;
 

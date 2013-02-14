@@ -1023,7 +1023,7 @@ bool MakePolicyFile(const char* szKeyFile, const char* szOutFile, const char* sz
 }
 
 
-bool VerifyQuote(const char* szQuoteFile, char* szCertFile)
+bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
 {
     Quote           oQuote;
     PrincipalCert   oCert;
@@ -1506,7 +1506,7 @@ int MyConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
     return j;
 }
 
-char* g_aikTemplate= (const char*)
+const char* g_aikTemplate=
 "<ds:SignedInfo>\n" \
 "    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\" />\n" \
 "    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#\" />\n" \

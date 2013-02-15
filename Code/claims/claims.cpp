@@ -281,14 +281,23 @@ bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, by
     // Fixed?: this is a vulnerability, since sizeSig is controlled by the XML
     // received from an external source and bnMsg.m_pValue is not necessarily
     // long enough to hold it. 
-    if(sizeSig>(pKey->m_iByteSizeM/sizeof(u64)))
+    if(sizeSig>(pKey->m_iByteSizeM*sizeof(u64))) {
+        fprintf(g_logFile, "RsaPkcsPadSignCheck: sigsize too large\n");
         return false;
+    }
     memcpy((byte*)bnMsg.m_pValue, sig, sizeSig);
-    if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut))
+    if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "RsaPkcsPadSignCheck: decrypt failed\n");
         return false;
+    }
     revmemcpy(rgPadded, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    if(!emsapkcsverify(hashType, hash, sizeSig, rgPadded))
+    if(!emsapkcsverify(hashType, hash, sizeSig, rgPadded)) {
+        fprintf(g_logFile, "RsaPkcsPadSignCheck: padding verify failed\n");
+#ifdef TEST
+        PrintBytes((char*)"decrypted sig\n", rgPadded, sizeSig);
+#endif
         return false;
+    }
 
     return true;
 }

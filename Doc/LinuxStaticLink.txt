@@ -19,3 +19,13 @@ started properly.
 3. Even if tcioDD is started properly, udev will have to be modified to add the
 tcioDD node in /dev. This involves creating a new config file in
 /etc/udev/rules.conf.  [jlm: I think this was fixed by adding create_device.]
+
+4. Change init in intramfs by
+	chmod 0777 /dev/tcioDD0
+	mount fs (untrusted - nosuid, nodev).  make sure suidperl is NOT installed
+	make sure dmcrypt modules are there
+	start dmcrypt with generated key for swap
+	start tcService -initKeys if no keys present
+	start tcService 
+	start relevant app
+

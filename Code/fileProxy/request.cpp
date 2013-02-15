@@ -707,7 +707,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     fflush(g_logFile);
 #endif
     for(;;) {
-        n= fc.safegetPacket(fileBuf, n, &type, &multi, &final);
+        n= fc.safegetPacket(fileBuf, MAXREQUESTSIZE, &type, &multi, &final);
 #ifdef  TEST
         fprintf(g_logFile, "getFile: received %d bytes\n", n);
         fflush(g_logFile);

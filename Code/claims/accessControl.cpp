@@ -170,7 +170,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
                     const char* szAssertion, bool fValidated)
 {
     char                szBuf[MAXTOKEN];
-    const char*               szTok= NULL;
+    const char*         szTok= NULL;
     accessPrincipal*    pPrinc= NULL;
     resource*           pResource= NULL;
     int                 n;
@@ -194,7 +194,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     n= nextToken(szAssertion, &szTok);
     if(n<0 || n>=MAXTOKEN)
         return false;
-    memcpy(szBuf, szTok,n); szBuf[n]= '\0';
+    memcpy(szBuf, szTok, n); szBuf[n]= '\0';
     pPrinc= g_theVault.findPrincipal(szBuf);
     if(pPrinc==NULL) {
         fprintf(g_logFile, "No subject in assertion\n");

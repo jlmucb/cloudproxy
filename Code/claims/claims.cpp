@@ -275,18 +275,14 @@ char* Quote::getQuoteAlgorithm()
 bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, byte* sig)
 {
     byte    rgPadded[RSA2048BYTEBLOCKSIZE];
-    bnum    bnMsg(pKey->m_iByteSizeM/2);
-    bnum    bnOut(pKey->m_iByteSizeM/2);
+    bnum    bnMsg(pKey->m_iByteSizeM);      // size is overkill since bignums
+    bnum    bnOut(pKey->m_iByteSizeM);      // are u64's
 
-    // Fix: this is a vulnerability, since sizeSig is controlled by the XML
+    // Fixed?: this is a vulnerability, since sizeSig is controlled by the XML
     // received from an external source and bnMsg.m_pValue is not necessarily
-    // long enough to hold it. A remediation in this case would be to use the
-    // min of sizeSig and the length of bnMsg.m_pValue (as long as both are
-    // expressed in bytes). But a better solution would be to implement some
-    // kind of buffer class that wraps memcpy and arrays so we don't have to
-    // worry about this problem everywhere. E.g., bnum should have a method that
-    // copies in a string, and a method that copies out to a buffer of a given
-    // length.
+    // long enough to hold it. 
+    if(sizeSig>(pKey->m_iByteSizeM/sizeof(u64)))
+        return false;
     memcpy((byte*)bnMsg.m_pValue, sig, sizeSig);
     if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut))
         return false;

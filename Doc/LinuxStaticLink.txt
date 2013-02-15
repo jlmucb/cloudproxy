@@ -18,4 +18,4 @@ started properly.
 
 3. Even if tcioDD is started properly, udev will have to be modified to add the
 tcioDD node in /dev. This involves creating a new config file in
-/etc/udev/rules.conf.
+/etc/udev/rules.conf.  [jlm: I think this was fixed by adding create_device.]

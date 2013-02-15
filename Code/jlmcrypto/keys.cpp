@@ -34,15 +34,15 @@
 
 const char*  szAESKeyProto=
   "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">" \
-  "<KeyType></KeyType>"\
-  "<ds:KeyValue> <ds:AESKeyValue size=''> </ds:AESKeyValue>" \
-  "</ds:KeyValue> </ds:KeyInfo>\n";
+  "<KeyType></KeyType>"
+  "<ds:KeyValue> <ds:AESKeyValue size=''> </ds:AESKeyValue>" 
+  "</ds:KeyValue> </ds:KeyInfo>n";
 const char*  szRSAKeyProto=
    "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">\n"\
-   "<KeyType></KeyType>\n"\
-   " <ds:KeyValue> <ds:RSAKeyValue size=''> "\
-   "<ds:M></ds:M><ds:E></ds:E><ds:D></ds:D><ds:P></ds:P><ds:Q></ds:Q>"\
-   "</ds:RSAKeyValue></ds:KeyValue>\n</ds:KeyInfo>\n";
+   "<KeyType></KeyType>n"\
+   " <ds:KeyValue> <ds:RSAKeyValue size=''> "
+   "<ds:M></ds:M><ds:E></ds:E><ds:D></ds:D><ds:P></ds:P><ds:Q></ds:Q>"
+   "</ds:RSAKeyValue></ds:KeyValue>n</ds:KeyInfo>\n";
 
 
 // -----------------------------------------------------------------------------
@@ -71,7 +71,7 @@ bool KeyInfo::ParsefromString(const char* szXML)
 {
     TiXmlDocument* pDoc= new TiXmlDocument();
     if(!pDoc->Parse(szXML)) {
-        fprintf(g_logFile, "Cant parse document from file string\n");
+        fprintf(g_logFile, "Cant parse document from file stringn");
         return false;
     }
     m_pDoc= pDoc;
@@ -84,7 +84,7 @@ bool KeyInfo::ParsefromFile(const char* fileName)
     TiXmlDocument* pDoc= new TiXmlDocument();
 
     if(!pDoc->LoadFile(fileName)) {
-        fprintf(g_logFile, "Cant load document from file: %s\n", fileName);
+        fprintf(g_logFile, "Cant load document from file: %sn", fileName);
         return false;
     }
     m_pDoc= pDoc;
@@ -165,7 +165,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
     int             iOutLen= 128;
 
     if(pRootElement==NULL) {
-        fprintf(g_logFile, "No root element\n");
+        fprintf(g_logFile, "No root elementn");
         return false;
     }
 
@@ -212,12 +212,12 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
         m_iByteSizeIV= 0;
         iOutLen= SMALLKEYSIZE;
         if(!fromBase64(strlen(szBase64KeyValue), szBase64KeyValue, &iOutLen, m_rgbKey)) {
-            fprintf(g_logFile, "Cant base64 decode AES key\n");
+            fprintf(g_logFile, "Cant base64 decode AES keyn");
             return false;
         }
     }
     else {
-        fprintf(g_logFile, "Unknown key type\n");
+        fprintf(g_logFile, "Unknown key typen");
         return false;
     }
  
@@ -228,7 +228,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
 bool    symKey::getDataFromDoc()
 {
     if(m_pDoc==NULL) {
-        fprintf(g_logFile, "No Document\n");
+        fprintf(g_logFile, "No Documentn");
         return false;
     }
     return getDataFromRoot(m_pDoc->RootElement());
@@ -250,15 +250,15 @@ bool    symKey::SerializetoFile(const char* fileName)
 void symKey::printMe()
 {
     if(m_ukeyType==AESKEYTYPE) {
-        fprintf(g_logFile, "AES key\n");
+        fprintf(g_logFile, "AES keyn");
     }
     else
-        fprintf(g_logFile, "Unknown key\n");
+        fprintf(g_logFile, "Unknown keyn");
     if(m_ikeyNameSize>0)
-        fprintf(g_logFile, "Key name: %s\n", m_rgkeyName);
+        fprintf(g_logFile, "Key name: %sn", m_rgkeyName);
     else
-        fprintf(g_logFile, "No key name\n");
-    fprintf(g_logFile, "Key size %d\n", m_ikeySize);
+        fprintf(g_logFile, "No key namen");
+    fprintf(g_logFile, "Key size %dn", m_ikeySize);
     if(m_iByteSizeKey>0)
         PrintBytes("Key", m_rgbKey, m_iByteSizeKey);
 }
@@ -354,7 +354,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     int             iOutLen= 512;
 
     if(pRootElement==NULL) {
-        fprintf(g_logFile, "Cant get root element\n");
+        fprintf(g_logFile, "Cant get root elementn");
         return false;
     }
 
@@ -426,7 +426,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         m_iByteSizeM= 0;
         if(szRsaKeyM) {
             if(!fromBase64(strlen(szRsaKeyM), szRsaKeyM, &iOutLen, m_rgbM)) {
-                fprintf(g_logFile, "Cant base64 decode M in RSA key\n");
+                fprintf(g_logFile, "Cant base64 decode M in RSA keyn");
                 return false;
             }
             m_iByteSizeM= iOutLen;
@@ -436,7 +436,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         m_iByteSizeP= 0;
         if(szRsaKeyP) {
             if(!fromBase64(strlen(szRsaKeyP), szRsaKeyP, &iOutLen, m_rgbP)) {
-                fprintf(g_logFile, "Cant base64 decode P in RSA key\n");
+                fprintf(g_logFile, "Cant base64 decode P in RSA keyn");
                 return false;
             }
             m_iByteSizeP= iOutLen;
@@ -446,7 +446,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         iOutLen= BIGKEYSIZE;
         if(szRsaKeyQ) {
             if(!fromBase64(strlen(szRsaKeyQ), szRsaKeyQ, &iOutLen, m_rgbQ)) {
-                fprintf(g_logFile, "Cant base64 decode Q in RSA key\n");
+                fprintf(g_logFile, "Cant base64 decode Q in RSA keyn");
                 return false;
             }
             m_iByteSizeQ= iOutLen;
@@ -456,7 +456,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         m_iByteSizeE= 0;
         if(szRsaKeyE) {
             if(!fromBase64(strlen(szRsaKeyE), szRsaKeyE, &iOutLen, m_rgbE)) {
-                fprintf(g_logFile, "Cant base64 decode E in RSA key\n");
+                fprintf(g_logFile, "Cant base64 decode E in RSA keyn");
                 return false;
             }
             m_iByteSizeE= iOutLen;
@@ -466,14 +466,14 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         m_iByteSizeD= 0;
         if(szRsaKeyD) {
             if(!fromBase64(strlen(szRsaKeyD), szRsaKeyD, &iOutLen, m_rgbD)) {
-                fprintf(g_logFile, "Cant base64 decode D in RSA key\n");
+                fprintf(g_logFile, "Cant base64 decode D in RSA keyn");
                 return false;
             }
             m_iByteSizeD= iOutLen;
         }
     }
     else {
-        fprintf(g_logFile, "Unknown key type\n");
+        fprintf(g_logFile, "Unknown key typen");
         return false;
     }
 
@@ -505,7 +505,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
 bool    RSAKey::getDataFromDoc()
 {
     if(m_pDoc==NULL) {
-        fprintf(g_logFile, "No Document\n");
+        fprintf(g_logFile, "No Documentn");
         return false;
     }
     return getDataFromRoot(m_pDoc->RootElement());
@@ -517,13 +517,13 @@ bool    RSAKey::getDataFromDoc()
 
 const char* szlocalKeyInfoHeader=
   "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" KeyName='%s'>\n";
-const char* szlocalKeyInfoBody1= "    <KeyType>RSAKeyType</KeyType>\n";
-const char* szlocalKeyInfoBody2= "    <ds:KeyValue>\n";
-const char* szlocalKeyInfoBody3= "        <ds:RSAKeyValue size='%d'>\n";
-const char* szlocalKeyInfoParam= "            <ds:%s>%s</ds:%s>\n";
-const char* szlocalKeyInfoBody4= "        </ds:RSAKeyValue>\n";
-const char* szlocalKeyInfoBody5= "    </ds:KeyValue>\n";
-const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>\n";
+const char* szlocalKeyInfoBody1= "    <KeyType>RSAKeyType</KeyType>n";
+const char* szlocalKeyInfoBody2= "    <ds:KeyValue>n";
+const char* szlocalKeyInfoBody3= "        <ds:RSAKeyValue size='%d'>n";
+const char* szlocalKeyInfoParam= "            <ds:%s>%s</ds:%s>n";
+const char* szlocalKeyInfoBody4= "        </ds:RSAKeyValue>n";
+const char* szlocalKeyInfoBody5= "    </ds:KeyValue>n";
+const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>n";
 
 
 #define MAXSTRLEN 8192
@@ -697,35 +697,35 @@ bool    RSAKey::SerializetoFile(const char* fileName)
 #ifdef TEST
 void RSAKey::printMe()
 {
-    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "n");
     if(m_ukeyType==RSAKEYTYPE) {
-        fprintf(g_logFile, "RSA key\n");
+        fprintf(g_logFile, "RSA keyn");
     }
     else
-        fprintf(g_logFile, "Unknown key\n");
-    fprintf(g_logFile, "Key size: %d\n", m_ikeySize);
-    fprintf(g_logFile, "Key name size: %d\n", m_ikeyNameSize);
+        fprintf(g_logFile, "Unknown keyn");
+    fprintf(g_logFile, "Key size: %dn", m_ikeySize);
+    fprintf(g_logFile, "Key name size: %dn", m_ikeyNameSize);
     if(m_ikeyNameSize>0)
-        fprintf(g_logFile, "Key name: %s\n", m_rgkeyName);
+        fprintf(g_logFile, "Key name: %sn", m_rgkeyName);
     else
-        fprintf(g_logFile, "No key name\n");
+        fprintf(g_logFile, "No key namen");
 
     if(m_pbnM) {
-        fprintf(g_logFile, "M: "); printNum(*m_pbnM); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "M: "); printNum(*m_pbnM); fprintf(g_logFile, "n");
     }
     if(m_pbnP) {
-        fprintf(g_logFile, "P: "); printNum(*m_pbnP); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "P: "); printNum(*m_pbnP); fprintf(g_logFile, "n");
     }
     if(m_pbnQ) {
-        fprintf(g_logFile, "Q: "); printNum(*m_pbnQ); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "Q: "); printNum(*m_pbnQ); fprintf(g_logFile, "n");
     }
     if(m_pbnE) {
-        fprintf(g_logFile, "E: "); printNum(*m_pbnE); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "E: "); printNum(*m_pbnE); fprintf(g_logFile, "n");
     }
     if(m_pbnD) {
-        fprintf(g_logFile, "D: "); printNum(*m_pbnD); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "D: "); printNum(*m_pbnD); fprintf(g_logFile, "n");
     }
-    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "n");
 }
 #endif
 

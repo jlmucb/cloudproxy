@@ -252,10 +252,9 @@ bool Request::validateCreateRequest(sessionKeys& oKeys, char** pszFile,
         return false;
     }
 
-    // Fix: this is certainly a bug and potentially a vulnerability in the code,
-    // since the length of m_szResourceName is not fixed, and szBuf is. This
-    // should be changed to strncpy so it can't overflow
-    strcpy(szBuf, m_szResourceName);
+    // Fixed?: this is certainly a bug and potentially a vulnerability in the code,
+    szBuf[MAXNAME-1]= '\0';
+    strncpy(szBuf, m_szResourceName, MAXNAME-1);
     char* p= szBuf;
     while(*p!=0)
         p++;
@@ -1103,6 +1102,10 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
     oReq.printMe();
 #endif
     // Does owner resource exist?
+    if(strlen(oReq.m_szResourceName)>=MAXREQUESTSIZEWITHPAD) {
+        fprintf(g_logFile, "servercreateResourceonserver: requested resource name too long\n");
+        return false;
+    }
     strcpy(szBuf, oReq.m_szResourceName);
     while(*p!=0)
         p++;

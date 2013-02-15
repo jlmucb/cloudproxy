@@ -279,7 +279,7 @@ int encryptedFileread::AES128CBCDecrypt(int iRead, int bufsize, byte* buf)
         if(m_iBufOut==0) 
             return 0;
     }
-    
+   
     if(m_iBufOut<bufsize) {
         m= m_iBufOut;
         memcpy(buf, &m_rguBufOut[m_iOutStart], m);

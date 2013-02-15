@@ -23,7 +23,8 @@
 
 
 // Get rid of this
-#define  BLOCKBUFSIZE  (1024+3*BIGBLOCKSIZE)
+#define  BLOCKBUFSIZE  1024
+#define  EXTENDEDBLOCKBUFSIZE  (BLOCKBUFSIZE+3*BIGBLOCKSIZE)
 
 
 // --------------------------------------------------------------------

@@ -1,5 +1,4 @@
 //
-
 //  File: tao.h
 //      John Manferdelli
 //  Description:  Tao of Trusted computing major classes

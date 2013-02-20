@@ -40,6 +40,7 @@
 #include "rsaHelper.h"
 #include "domain.h"
 #include "tcIO.h"
+#include "timer.h"
 
 #include "objectManager.h"
 #include "resource.h"
@@ -56,6 +57,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/time.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -66,6 +68,8 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
+#include <string>
+using std::string;
 
 const char* szServerHostAddr= "127.0.0.1";
 
@@ -1077,45 +1081,46 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* d
   return true;
 }
 
-bool basicFileTest(safeChannel& fc, fileClient& oFileClient) {                                      
-    char*           szEvidence= NULL;
-    const char*     szSubject="//www.manferdelli.com/User/JohnManferdelli/0001";
-    const char*     szResource="//www.manferdelli.com/Gauss/fileServer/files/file.test";
+bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& uriPrefix, const string& localParentPath, const string& fileName) {                                      
     int             encType= NOENCRYPT;
-
-    szEvidence= readandstoreString("fileClient/authRule1Signed.xml");
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    string          resource = uriPrefix + fileName;
+    string          filePath = localParentPath + fileName;
+    string          outPath = filePath + string(".out");
 #ifdef  TEST
-    fprintf(g_logFile, "fileClient main: Evidence for create: %s\n", szEvidence);
+    fprintf(g_logFile, "fileClient fileTest: Evidence for create: %s\n", szEvidence);
     fflush(g_logFile);
 #endif
 
-    if(clientcreateResourceonserver(fc, szResource, szSubject, szEvidence, encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient main: create resource successful\n");
+    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, oFileClient.m_fileKeys)) {
+        fprintf(g_logFile, "fileClient fileTest: create resource successful\n");
         fflush(g_logFile);
     } else {
-        fprintf(g_logFile, "fileClient main: create resource unsuccessful\n");
+        fprintf(g_logFile, "fileClient fileTest: create resource unsuccessful\n");
         fflush(g_logFile);
         return false;
     }
 
-    if(clientsendResourcetoserver(fc, szResource, NULL, "fileClient/files/file.test", 
+    if(clientsendResourcetoserver(fc, resource.c_str(), NULL, filePath.c_str(),
                                   encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient main: Send file successful\n");
+        fprintf(g_logFile, "fileClient fileTest: Send file successful\n");
         fflush(g_logFile);
     } else {
-        fprintf(g_logFile, "fileClient main: Send file unsuccessful\n");
+        fprintf(g_logFile, "fileClient fileTest: Send file unsuccessful\n");
         fflush(g_logFile);
         return false;
     }
 
     if(clientgetResourcefromserver(fc, 
-                                   "//www.manferdelli.com/Gauss/fileServer/files/file.test", 
-                                   NULL, "fileClient/files/clientfile.test.out", 
+                                   resource.c_str(),
+                                   NULL, 
+                                   outPath.c_str(),
                                    encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient main: Get file successful\n");
+        fprintf(g_logFile, "fileClient fileTest: Get file successful\n");
         fflush(g_logFile);
     } else {
-        fprintf(g_logFile, "fileClient main: Get file unsuccessful\n");
+        fprintf(g_logFile, "fileClient fileTest: Get file unsuccessful\n");
         fflush(g_logFile);
         return false;
     }
@@ -1131,6 +1136,17 @@ int main(int an, char** av)
     int             i;
     bool            fInitProg= false;
     const char*     directory= NULL;
+    string          basicFile("file.test");
+    string          tinyFile("tinyRandomFile.test");
+    string          smallFile("smallRandomFile.test");
+    string          mediumFile("mediumRandomFile.test");
+    string          largeFile("largeRandomFile.test");
+    string          localPath("fileClient/files/");
+    string          uriPrefix("//www.manferdelli.com/Gauss/fileServer/files/");
+    string          subject("//www.manferdelli.com/User/JohnManferdelli/0001");
+    string          evidenceFileName("fileClient/authRule1Signed.xml");
+    timer           connectionTimer;
+    timer           fileTimer;
     initLog(NULL);
 
 #ifdef  TEST
@@ -1185,15 +1201,62 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
 
+    connectionTimer.Start();
     if (!establishConnection(fc, oFileClient, directory)) {
         iRet = 1;
         goto cleanup;  
     }
+    connectionTimer.Stop();
 
-    if (!basicFileTest(fc, oFileClient)) {
+    fprintf(g_logFile, "Connection establishment took %lf microseconds\n", connectionTimer.GetInterval());
+    fflush(g_logFile);
+
+    // test with a simple file
+    fileTimer.Start();
+    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+            uriPrefix, localPath, basicFile)) {
         iRet = 1;
         goto cleanup;
+    } else {
+        printf("Succeeded for file %s\n", basicFile.c_str());
     }
+    fileTimer.Stop();
+
+    fprintf(g_logFile, "Sending the basic file took %lf microseconds\n", fileTimer.GetInterval());
+    fflush(g_logFile);
+
+//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+//            uriPrefix, localPath, smallFile)) {
+//        iRet = 1;
+//        goto cleanup;
+//    } else {
+//        printf("Succeeded for file %s\n", smallFile.c_str());
+//    }
+
+//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+//            uriPrefix, localPath, tinyFile)) {
+//        iRet = 1;
+//        goto cleanup;
+//    } else {
+//        printf("Succeeded for file %s\n", tinyFile.c_str());
+//    }
+
+//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+//            uriPrefix, localPath, mediumFile)) {
+//        iRet = 1;
+//        goto cleanup;
+//    } else {
+//        printf("Succeeded for file %s\n", mediumFile.c_str());
+//    }
+//
+//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+//            uriPrefix, localPath, largeFile)) {
+//        iRet = 1;
+//        goto cleanup;
+//    } else {
+//        printf("Succeeded for file %s\n", largeFile.c_str());
+//    }
+
 cleanup:
     // CHANNEL_TERMINATE 
     if(fc.fd>0) {

@@ -57,7 +57,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
-#include <sys/time.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -1042,9 +1041,11 @@ const char*  g_szTerm= "terminate channel\n";
 
 bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* directory) {
     try {
-        g_policyPrincipalCert= new PrincipalCert();
-        if(g_policyPrincipalCert==NULL)
-            throw "fileClient main: failed to new Principal\n";
+        if (g_policyPrincipalCert==NULL) {
+            g_policyPrincipalCert= new PrincipalCert();
+            if(g_policyPrincipalCert==NULL)
+                throw "fileClient main: failed to new Principal\n";
+        }
 
 #ifdef  TEST
         fprintf(g_logFile, "fileClient main: inited g_policyPrincipalCert\n");
@@ -1127,6 +1128,31 @@ bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, c
     return true;
 }
 
+bool timeConnections(int count, const char* directory) {
+    // create and tear down many connections in sequence to get an average 
+    // timing for connection establishment  
+    timer connectionTimer;
+    connectionTimer.Start();
+    for(int i = 0; i < count; ++i) {
+        safeChannel fc;
+        fileClient oFileClient;
+        if (!establishConnection(fc, oFileClient, directory)) {
+            fprintf(g_logFile, "Could not establish a connection in round %d\n", i);
+            fflush(g_logFile);  
+            return false;
+        } else {
+            if(fc.fd>0) {
+                fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+            }
+        }
+ 
+    }
+    connectionTimer.Stop();
+ 
+    fprintf(g_logFile, "Creating and tearing down %d connections took %lf microseconds\n", count, connectionTimer.GetInterval());
+    fflush(g_logFile);
+    return true;
+}
 
 int main(int an, char** av)
 {
@@ -1200,6 +1226,11 @@ int main(int an, char** av)
     fprintf(g_logFile, "fileClient main in measured loop\n");
     fflush(g_logFile);
 #endif
+    // first try the connection test
+    if (!timeConnections(100, directory)) {
+        fprintf(g_logFile, "Could not time the connections\n");
+        fflush(g_logFile);
+    }
 
     connectionTimer.Start();
     if (!establishConnection(fc, oFileClient, directory)) {

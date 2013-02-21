@@ -368,7 +368,9 @@ int  safeChannel::safegetPacket(byte* buf, int maxSize, int* ptype,
     iMsgLen-= padLen+SHA256_DIGESTSIZE_BYTES+sizeof(packetHdr);
 
     memcpy(buf, &plainMessageBlock[sizeof(packetHdr)], iMsgLen);
-#ifdef IOTEST
+#ifdef TEST
+    fprintf(g_logFile, "safegetPacket: original size: %d\n", ((packetHdr*) plainMessageBlock)->len);
+    fprintf(g_logFile, "safegetPacket: padlength : %d\n", padLen);
     fprintf(g_logFile, "safegetPacket(%d, %d, %d) --- returning %d bytes\n", 
             *ptype, *pmultipart, *pfinalpart, iMsgLen);
 #endif

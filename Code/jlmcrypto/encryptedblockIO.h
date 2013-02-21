@@ -22,7 +22,7 @@
 #define __ENCRYPTEDBLOCKIO_H
 
 
-// Get rid of this
+// this must be a multiple of the block size
 #define  BLOCKBUFSIZE  1024
 #define  EXTENDEDBLOCKBUFSIZE  (BLOCKBUFSIZE+3*BIGBLOCKSIZE)
 
@@ -47,8 +47,8 @@ public:
     u32     m_uPad;
     u32     m_uHmac;
 
+    int     m_fileLeft;	    // total size of encrypted file
     int     m_fileSize;
-    int     m_fileLeft;
     int     m_dataSize;
 
     bool    m_fFinalProcessed;
@@ -56,12 +56,11 @@ public:
     int     m_iBlockSize;
 
     int     m_iBufIn;
-    int     m_iBufOut;
-    int     m_iInStart;
-    int     m_iOutStart;
+    int     m_iBufOut;      // number of decrypted bytes available
+    int     m_iOutStart;    // first available decrypted byte
 
-    byte    m_rguBufIn[BLOCKBUFSIZE];
-    byte    m_rguBufOut[BLOCKBUFSIZE];
+    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];
+    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];
 
     u32     m_uCombinedAlgId;
 
@@ -85,7 +84,7 @@ public:
 
 class encryptedFilewrite {
 public:
-    bool    m_fFirstBlockWritten;
+    bool    m_fFirstBlockWritten;       // true after IV is written
     bool    m_fFirstBlockRead;
     bool    m_fInitialized;
 
@@ -94,17 +93,17 @@ public:
     u32     m_uPad;
     u32     m_uHmac;
 
-    int     m_fileLeft;
-    int     m_fileSize;
-    int     m_dataSize;
+    int     m_fileLeft;                 // number of plaintext bytes corresponding
+                                        // to ciphertext not written out yet
+    int     m_fileSize;                 // size of unencrypted input
+    int     m_dataSize;                 // same
 
-    int     m_iBlockSize;
-    bool    m_fFinalProcessed;
+    int     m_iBlockSize;               // cipher block size
+    bool    m_fFinalProcessed;          // final block processed
 
-    int     m_iBufIn;
-    int     m_iBufOut;
-    int     m_iInStart;
-    int     m_iOutStart;
+    int     m_iBufIn;                   // number of bytes in input buffer
+    int     m_iBufOut;                  // number of bytes in output buffer
+    int     m_iOutStart;                // first byte of output not yet sent
 
     byte    m_rguBufIn[BLOCKBUFSIZE];
     byte    m_rguBufOut[BLOCKBUFSIZE];

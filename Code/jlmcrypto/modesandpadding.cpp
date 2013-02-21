@@ -1094,7 +1094,7 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
     // Adjust to account for size
     nextCipherBlockIn(puIn, m_rguLastBlocks);
-#ifdef CRYPTOTEST1
+#ifdef CRYPTOTEST4
     PrintBytes("last cipher block after decode\n", 
                m_rguLastBlocks, m_iBlockSize);
 #endif

@@ -119,87 +119,16 @@ bool encryptedFileread::initDec(int filesize, int datasize, byte* key, int keyBi
 }
 
 
-bool  encryptedFilewrite::AES128CBCEncryptBlocks(int iWrite)
-{
-    byte*   puIn= m_rguBufIn;
-    byte*   puOut= m_rguBufOut;
-    int     k= m_iBufIn;
-
-    // get, encrypt, and write bytes
-    while(k>m_iBlockSize) {
-        m_oCBC.nextPlainBlockIn(puIn, puOut);
-        puIn+= m_iBlockSize;
-        puOut+= m_iBlockSize;
-        k-= m_iBlockSize;
-    }
-
-#ifdef IOTEST1
-    fprintf(g_logFile, "AES128CBCEncryptBlocks, fileLeft: %d\n", m_fileLeft);
-#endif
-    if(m_fileLeft>0) {
-        m_oCBC.nextPlainBlockIn(puIn, puOut);
-        write(iWrite, m_rguBufOut, m_iBufIn);
-        m_iBufIn= 0;
-        return true;
-    }
-
-    int n= m_oCBC.lastPlainBlockIn(k, puIn, puOut);
-    write(iWrite, m_rguBufOut, m_iBufIn-k+n);
-    m_iBufIn= 0;
-    m_fFinalProcessed= true;
-
-    return true;
-}
-
-
-int encryptedFilewrite::AES128CBCEncrypt(int iWrite, int bufsize, byte* buf)
-{
-    int     k;
-
-#ifdef TEST
-    fprintf(g_logFile, "AES128CBCEncrypt(%d), fileLeft: %d\n", bufsize, m_fileLeft);
-#endif
-    // first block?
-    if(!m_fFirstBlockWritten) {
-        m_oCBC.firstCipherBlockOut(m_rguBufOut);
-        write(iWrite, m_rguBufOut, m_iBlockSize);
-        m_fFirstBlockWritten= true;
-    }
-
-    if(m_iBufIn>=BLOCKBUFSIZE) {
-        if(!AES128CBCEncryptBlocks(iWrite))
-            return -1;
-    }
-
-    if(m_iBufIn>=BLOCKBUFSIZE) 
-        return -1;
-
-    if((m_iBufIn+bufsize)<BLOCKBUFSIZE) {
-        memcpy(&m_rguBufIn[m_iBufIn], buf, bufsize);
-        m_iBufIn+= bufsize;
-        m_fileLeft-= bufsize;
-        if(m_fileLeft==0) {
-            AES128CBCEncryptBlocks(iWrite);
-        }
-        return bufsize; 
-    }
-
-    k= BLOCKBUFSIZE-m_iBufIn;
-    memcpy(m_rguBufIn, buf, k);
-    m_iBufIn+= k;
-    buf+= k;
-    bufsize-= k;
-    m_fileLeft-= k;
-    return k+AES128CBCEncrypt(iWrite, bufsize, buf);
-}
+// ---------------------------------------------------------------------------------
 
 
 bool encryptedFileread::AES128CBCDecryptBlocks(int iRead) 
 {
     int     k, m, n;
 
-#ifdef IOTEST1
-    fprintf(g_logFile, "AES128CBCDecryptBlocks, fileLeft: %d\n", m_fileLeft);
+#ifdef IOTEST
+    fprintf(g_logFile, "AES128CBCDecryptBlocks, fileLeft: %d, m_iBufOut: %d\n",
+            m_fileLeft, m_iBufOut);
 #endif
     if(m_iBufOut!=0)
         return false;
@@ -208,7 +137,7 @@ bool encryptedFileread::AES128CBCDecryptBlocks(int iRead)
         return true;
     }
 
-    int m_iBufIn= read(iRead, m_rguBufIn, BLOCKBUFSIZE);
+    m_iBufIn= read(iRead, m_rguBufIn, BLOCKBUFSIZE);
     if(m_iBufIn<0)
         return false;
 
@@ -219,6 +148,7 @@ bool encryptedFileread::AES128CBCDecryptBlocks(int iRead)
             n= read(iRead, &m_rguBufIn[m_iBufIn], m_fileLeft);
         else
             n= 0;
+
         if(n<0)
             return false;
         m_fileLeft= 0;
@@ -244,15 +174,13 @@ bool encryptedFileread::AES128CBCDecryptBlocks(int iRead)
         puOut+= m_iBlockSize;
         m_iBufOut+= m_iBlockSize;
     }
-
-
-    // Not at end
     if(!m_fFinalProcessed)
         return true;
 
     // process final blocks
     n= m_oCBC.lastCipherBlockIn(m, puIn, puOut);
-    m_iBufOut+= n;
+    if(n>0)
+        m_iBufOut+= n;
 
     return true;
 }
@@ -261,21 +189,27 @@ bool encryptedFileread::AES128CBCDecryptBlocks(int iRead)
 int encryptedFileread::AES128CBCDecrypt(int iRead, int bufsize, byte* buf)
 {
     int     m= 0;       // bytes read from file
+    int     k= 0;       
 
-#ifdef IOTEST1
-    fprintf(g_logFile, "AES128CBCDecrypt(%d)\n", bufsize);
+#ifdef IOTEST
+    fprintf(g_logFile, "AES128CBCDecrypt, bufsize: %d, m_fileLeft: %d\n", 
+            bufsize, m_fileLeft);
 #endif
-    // get and send first cipher block
+    // get IV block
     if(!m_fFirstBlockRead) {
-        read(iRead, m_rguBufIn, m_iBlockSize);
+        m= read(iRead, m_rguBufIn, m_iBlockSize);
+        if(m<m_iBlockSize)
+            return -1;
         m_oCBC.firstCipherBlockIn(m_rguBufIn);
         m_fileLeft-= m_iBlockSize;
         m_fFirstBlockRead= true;
     }
 
     if(m_iBufOut==0) {
-        if(!AES128CBCDecryptBlocks(iRead))
-            return -1;
+        if(m_fileLeft>0) {
+            if(!AES128CBCDecryptBlocks(iRead))
+                return -1;
+        }
         if(m_iBufOut==0) 
             return 0;
     }
@@ -284,9 +218,15 @@ int encryptedFileread::AES128CBCDecrypt(int iRead, int bufsize, byte* buf)
         m= m_iBufOut;
         memcpy(buf, &m_rguBufOut[m_iOutStart], m);
         m_iBufOut= 0;
+        m_iOutStart= 0;
         bufsize-= m;
         buf+= m;
-        return m+AES128CBCDecrypt(iRead, bufsize, buf);
+        k= AES128CBCDecrypt(iRead, bufsize, buf);
+        if(k<0) {
+            fprintf(g_logFile, "Second AES128CBCDecrypt failed\n");
+            return k;
+        }
+        return m+k;
     }
     m= bufsize;
     memcpy(buf, &m_rguBufOut[m_iOutStart], m);
@@ -294,6 +234,89 @@ int encryptedFileread::AES128CBCDecrypt(int iRead, int bufsize, byte* buf)
     m_iOutStart+= m;
     return m;
 }
+
+
+bool  encryptedFilewrite::AES128CBCEncryptBlocks(int iWrite)
+{
+    byte*   puIn= m_rguBufIn;
+    byte*   puOut= m_rguBufOut;
+    int     k= m_iBufIn;
+    int     n= 0;
+
+#ifdef IOTEST
+    fprintf(g_logFile, "AES128CBCEncryptBlocks, bufin: %d, fileLeft: %d\n", k, m_fileLeft);
+    fflush(g_logFile);
+#endif
+    // get, encrypt, and write bytes
+    while(k>m_iBlockSize) {
+        m_oCBC.nextPlainBlockIn(puIn, puOut);
+        puIn+= m_iBlockSize;
+        puOut+= m_iBlockSize;
+        k-= m_iBlockSize;
+    }
+
+    // last block?
+    if((m_fileLeft-m_iBufIn)==0) {
+        n= m_oCBC.lastPlainBlockIn(k, puIn, puOut);
+        write(iWrite, m_rguBufOut, m_iBufIn-k+n);
+        m_fileLeft-= m_iBufIn;
+        m_iBufIn= 0;
+        m_fFinalProcessed= true;
+        return true;
+    }
+
+    if(k==m_iBlockSize) {
+        m_oCBC.nextPlainBlockIn(puIn, puOut);
+        write(iWrite, m_rguBufOut, m_iBufIn);
+        m_fileLeft-= m_iBufIn;
+        m_iBufIn= 0;
+        return true;
+    }
+    return false;
+}
+
+
+int encryptedFilewrite::AES128CBCEncrypt(int iWrite, int bufsize, byte* buf)
+{
+    int     t= 0;       // total (unencrypted) bytes written
+    int     k;
+
+#ifdef IOTEST
+    fprintf(g_logFile, "AES128CBCEncrypt, bufsize: %d, fileLeft: %d\n", 
+            bufsize, m_fileLeft);
+    fflush(g_logFile);
+#endif
+    // first block?
+    if(!m_fFirstBlockWritten) {
+        m_oCBC.firstCipherBlockOut(m_rguBufOut);
+        write(iWrite, m_rguBufOut, m_iBlockSize);
+        m_fFirstBlockWritten= true;
+    }
+
+    // call AES128CBCEncryptBlocks
+    while(bufsize>0) {
+        k= BLOCKBUFSIZE-m_iBufIn;
+        if(k>bufsize)
+            k= bufsize;
+        memcpy(&m_rguBufIn[m_iBufIn], buf, k);
+        m_iBufIn+= k;
+        if(m_iBufIn==BLOCKBUFSIZE || m_fileLeft<=m_iBufIn) {
+            if(!AES128CBCEncryptBlocks(iWrite))
+                return -1;
+        }
+        t+= k;
+        bufsize-= k;
+        buf+= k;
+    }
+
+    return t;
+}
+
+
+//----------------------------------------------------------------------------------
+
+
+// untested
 
 
 bool encryptedFilewrite::AES128GCMEncryptBlocks(int iWrite)
@@ -477,9 +500,12 @@ int encryptedFileread::AES128GCMDecrypt(int iRead, int bufsize, byte* buf)
 }
 
 
+// ------------------------------------------------------------------------
+
+
 int  encryptedFileread::EncRead(int iRead, byte* buf, int size)
 {
-#ifdef IOTEST
+#ifdef TEST
     fprintf(g_logFile, "EncRead size: %d\n", size);
 #endif
     if(!m_fInitialized)
@@ -503,6 +529,7 @@ int  encryptedFilewrite::EncWrite(int iWrite, byte* buf, int size)
 {
 #ifdef IOTEST
     fprintf(g_logFile, "EncWrite size: %d\n", size);
+    fflush(g_logFile);
 #endif
     if(!m_fInitialized)
         return -1;
@@ -524,8 +551,9 @@ int  encryptedFilewrite::EncWrite(int iWrite, byte* buf, int size)
 bool encryptedFilewrite::initEnc(int filesize, int datasize, byte* key, int keyBitSize, 
                                  u32 alg, u32 pad, u32 mode, u32 hmac)
 {
-#ifdef IOTEST
+#ifdef TEST
     fprintf(g_logFile, "initEnc filesize: %d, datasize: %d\n", filesize, datasize);
+    fflush(g_logFile);
 #endif
     m_uAlg= alg;
     m_uMode= mode;

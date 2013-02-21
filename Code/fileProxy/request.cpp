@@ -736,7 +736,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     encryptedFileread   encFile;
 
 #ifdef  TEST
-    fprintf(g_logFile, "sendFile %d %d %d\n", 
+    fprintf(g_logFile, "sendFile: %d %d %d\n", 
             filesize, datasize, encType);
     fflush(g_logFile);
 #endif

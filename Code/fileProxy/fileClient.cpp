@@ -68,8 +68,13 @@
 #include <errno.h>
 
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 using std::string;
-
+using std::ifstream;
+using std::ofstream;
+using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
 bool             g_globalpolicyValid= false;
@@ -1125,7 +1130,40 @@ bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, c
         fflush(g_logFile);
         return false;
     }
-    return true;
+
+    // compare the two files to see if the file returned by the server is exactly the file we sent
+    ifstream origFile;
+    ifstream newFile;
+    int pos = 0;
+    bool failed = false;
+    origFile.open(filePath.c_str(), ifstream::in);
+    newFile.open(outPath.c_str(), ifstream::in);
+    
+    while(origFile.good() && newFile.good()) {
+        char co = origFile.get();
+        char cn = newFile.get();
+        if (co != cn) {
+            printf("The file returned by the server failed to match the file sent at byte %d\n", pos);
+            failed = true;
+            break;
+        }
+
+        ++pos;
+    }
+
+    // when we get here without hitting a character mismatch, one of the streams is no longer good
+    // if one is still good, then the files are not the same length
+    if (!failed && (origFile.good() || newFile.good())) {
+        printf("The file returned by the server was not the same length as the file sent to the server\n");
+        failed = true;
+    } 
+
+    if (!failed) {
+        printf("The file returned by the server is identical to the one sent to the server\n");
+    }
+
+    return !failed;
+
 }
 
 bool timeConnections(int count, const char* directory) {
@@ -1154,6 +1192,34 @@ bool timeConnections(int count, const char* directory) {
     return true;
 }
 
+void generateRandomFile(int length, const string& filePath) {
+    if (length <= 0) {
+        throw "Can't generate a random file of length <= 0";
+    }
+
+    // read from /dev/urandom and write to the filename given
+    ifstream randFile;
+    ofstream outFile;
+    randFile.open("/dev/urandom", ifstream::binary | ifstream::in);
+    outFile.open(filePath.c_str(), ofstream::binary | ofstream::trunc | ofstream::out);
+
+    // use a buffer of a convenient length    
+    char buf[MAXREQUESTSIZE];
+    int bytesRemaining = length;
+    
+    // read bytes from /dev/urandom and write them to the randFile
+    while(bytesRemaining > 0) {
+        int readAmount = bytesRemaining < MAXREQUESTSIZE ? bytesRemaining : MAXREQUESTSIZE;
+        randFile.read(buf, readAmount);
+        outFile.write(buf, readAmount);
+        bytesRemaining -= readAmount;
+    } 
+
+    randFile.close();
+    outFile.close();
+    return;
+}
+
 int main(int an, char** av)
 {
     fileClient      oFileClient;
@@ -1173,7 +1239,9 @@ int main(int an, char** av)
     string          evidenceFileName("fileClient/authRule1Signed.xml");
     timer           connectionTimer;
     timer           fileTimer;
+    int             testSizes[] = {128, 2048, 4096, 6000, 16384, 16385, 20000, 30000, 16384*2, 100000, 200000, 512*1024};
     initLog(NULL);
+
 
 #ifdef  TEST
     fprintf(g_logFile, "fileClient test\n");
@@ -1226,69 +1294,106 @@ int main(int an, char** av)
     fprintf(g_logFile, "fileClient main in measured loop\n");
     fflush(g_logFile);
 #endif
-    // first try the connection test
-    if (!timeConnections(100, directory)) {
-        fprintf(g_logFile, "Could not time the connections\n");
-        fflush(g_logFile);
+    try {
+        // first try the connection test
+    //    if (!timeConnections(100, directory)) {
+    //        fprintf(g_logFile, "Could not time the connections\n");
+    //        fflush(g_logFile);
+    //    }
+
+    //    connectionTimer.Start();
+    //    if (!establishConnection(fc, oFileClient, directory)) {
+    //        iRet = 1;
+    //        goto cleanup;  
+    //    }
+    //    connectionTimer.Stop();
+    //
+    //    fprintf(g_logFile, "Connection establishment took %lf microseconds\n", connectionTimer.GetInterval());
+    //    fflush(g_logFile);
+    //
+    //    // test with a simple file
+    //    fileTimer.Start();
+    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+    //            uriPrefix, localPath, basicFile)) {
+    //        iRet = 1;
+    //        goto cleanup;
+    //    } else {
+    //        printf("Succeeded for file %s\n", basicFile.c_str());
+    //    }
+    //    fileTimer.Stop();
+    //
+    //    fprintf(g_logFile, "Sending the basic file took %lf microseconds\n", fileTimer.GetInterval());
+    //    fflush(g_logFile);
+
+        // note that this cast to int is safe, since the sizes are small
+        for (int i = 0; i < (int)(sizeof(testSizes)/sizeof(testSizes[0])); ++i) {
+            stringstream ss;
+            int length = testSizes[i];
+            ss << length;
+            string tempFileName = string("tempfile") + ss.str() + string(".test");
+            string path = localPath + tempFileName;
+            
+            // generate this random file
+            generateRandomFile(length, path);
+            
+            // get a new client and a connection and try to transfer this file
+            fileClient fClient;
+            safeChannel chan;
+            
+            if (!establishConnection(chan, fClient, directory)) {
+                printf("Failed to establish a channel with the server on round %d\n", i);
+            } else {
+                if (!fileTest(chan, fClient, subject, evidenceFileName, 
+                        uriPrefix, localPath, tempFileName)) {
+                    printf("The file test failed for file %s of length %d\n", path.c_str(), length);
+                } else {
+                    printf("Succeeded for file %s of length %d\n", path.c_str(), length);
+                }
+
+                if(chan.fd>0) {
+                    chan.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+                }
+            } 
+        }
+
+	
+
+    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+    //            uriPrefix, localPath, smallFile)) {
+    //        iRet = 1;
+    //        goto cleanup;
+    //    } else {
+    //        printf("Succeeded for file %s\n", smallFile.c_str());
+    //    }
+
+    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+    //            uriPrefix, localPath, tinyFile)) {
+    //        iRet = 1;
+    //        goto cleanup;
+    //    } else {
+    //        printf("Succeeded for file %s\n", tinyFile.c_str());
+    //    }
+
+    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+    //            uriPrefix, localPath, mediumFile)) {
+    //        iRet = 1;
+    //        goto cleanup;
+    //    } else {
+    //        printf("Succeeded for file %s\n", mediumFile.c_str());
+    //    }
+    //
+    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
+    //            uriPrefix, localPath, largeFile)) {
+    //        iRet = 1;
+    //        goto cleanup;
+    //    } else {
+    //        printf("Succeeded for file %s\n", largeFile.c_str());
+    //    }
+    } catch (const char* err) {
+        printf("execution failed with error %s\n", err);
     }
 
-    connectionTimer.Start();
-    if (!establishConnection(fc, oFileClient, directory)) {
-        iRet = 1;
-        goto cleanup;  
-    }
-    connectionTimer.Stop();
-
-    fprintf(g_logFile, "Connection establishment took %lf microseconds\n", connectionTimer.GetInterval());
-    fflush(g_logFile);
-
-    // test with a simple file
-    fileTimer.Start();
-    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-            uriPrefix, localPath, basicFile)) {
-        iRet = 1;
-        goto cleanup;
-    } else {
-        printf("Succeeded for file %s\n", basicFile.c_str());
-    }
-    fileTimer.Stop();
-
-    fprintf(g_logFile, "Sending the basic file took %lf microseconds\n", fileTimer.GetInterval());
-    fflush(g_logFile);
-
-//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-//            uriPrefix, localPath, smallFile)) {
-//        iRet = 1;
-//        goto cleanup;
-//    } else {
-//        printf("Succeeded for file %s\n", smallFile.c_str());
-//    }
-
-//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-//            uriPrefix, localPath, tinyFile)) {
-//        iRet = 1;
-//        goto cleanup;
-//    } else {
-//        printf("Succeeded for file %s\n", tinyFile.c_str());
-//    }
-
-//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-//            uriPrefix, localPath, mediumFile)) {
-//        iRet = 1;
-//        goto cleanup;
-//    } else {
-//        printf("Succeeded for file %s\n", mediumFile.c_str());
-//    }
-//
-//    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-//            uriPrefix, localPath, largeFile)) {
-//        iRet = 1;
-//        goto cleanup;
-//    } else {
-//        printf("Succeeded for file %s\n", largeFile.c_str());
-//    }
-
-cleanup:
+    //cleanup:
     // CHANNEL_TERMINATE 
     if(fc.fd>0) {
         fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);

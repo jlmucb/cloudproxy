@@ -59,9 +59,9 @@ safeChannel::safeChannel()
     sizeofIntKey= -1;
     fgetIVReceived= false;
     fsendIVSent= false;
+    sizeprereadencrypted= 0;
     nAuthenticatingPrincipals= 0;
     nAuthenticatedPrincipals= 0;
-    iUnGetSize= 0;
 }
 
 
@@ -148,6 +148,9 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
 
     return true;
 }
+
+
+// -------------------------------------------------------------------------------
 
 
 #define BLKSIZE 16
@@ -251,19 +254,213 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
 }
 
 
-int  safeChannel::safegetPacket(byte* buf, int maxSize, int* ptype, 
-                                byte* pmultipart, byte* pfinalpart)
+// -------------------------------------------------------------------------------
+
+
+int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype, 
+                      byte* pmultipart, byte* pfinalpart)
+//
+//  collects a full message
+//      only decrypt to message boundary
+//      put excess preread cipher in prereadencryptedMessageBlock
+//      authenticate message, etc done here
 {
-    int     n;
     int     padLen, residue;
     byte*   pLastCipher= lastgetBlock;
     byte*   pNextCipher= encryptedMessageBlock;
     byte*   pNextPlain= plainMessageBlock;
-    int     iLeft;
-    int     iMsgLen;
+    int     fullMsgSize= 0;
+    int     sizeEncryptedBuf= 0;
+    int     sizedecryptedMsg= 0;
+    int     iLeft= 0;
+    int     m= 0;
+    int     n= 0;
 
-#ifdef IOTEST1
-    fprintf(g_logFile, "safegetPacket(%d, %d, %d, %d)\n", maxSize, *ptype, *pmultipart, *pfinalpart);
+#ifdef TEST
+    fprintf(g_logFile, "getFullPacket(%d, %d, %d, %d)\n", maxSize, 
+            *ptype, *pmultipart, *pfinalpart);
+    fprintf(g_logFile, "\tpre-fetched encrypted: %d\n", sizeprereadencrypted);
+    fflush(g_logFile);
+#endif
+
+    // any preread available?
+    sizeEncryptedBuf= 0;
+    if(sizeprereadencrypted>0) {
+        memcpy(encryptedMessageBlock, prereadencryptedMessageBlock, 
+               sizeprereadencrypted);
+        sizeEncryptedBuf= sizeprereadencrypted;
+        sizeprereadencrypted= 0;
+    }
+
+    if(sizeEncryptedBuf==0) {
+        sizeEncryptedBuf= recv(fd, encryptedMessageBlock, MAXREQUESTSIZE, 0);
+        if(sizeEncryptedBuf==0) {
+            fprintf(g_logFile, "Got 0 return on socket\n");
+            return 0;
+        }
+        if(sizeEncryptedBuf<0) {
+            fprintf(g_logFile, "Cant do initial get\n");
+            return sizeEncryptedBuf;
+        }
+#ifdef TEST
+        fprintf(g_logFile, "getFullPacket: just read, sizeEncrypted: %d\n", sizeEncryptedBuf);
+        fflush(g_logFile);
+#endif
+    }
+
+    // Decrypt first block to get message size
+    getAES.Decrypt(pNextCipher, pNextPlain);
+    inlineXorto(pNextPlain, pLastCipher, BLKSIZE);
+    pLastCipher= pNextCipher;
+    pNextPlain+= BLKSIZE;
+    pNextCipher+= BLKSIZE;
+    fullMsgSize= ((packetHdr*) plainMessageBlock)->len;
+
+#ifdef TEST
+    fprintf(g_logFile, "getFullPacket: message size %d, sizeEncryptedBuf: %d\n", 
+            fullMsgSize, sizeEncryptedBuf);
+    fflush(g_logFile);
+#endif
+    if(fullMsgSize<0 || fullMsgSize>MAXREQUESTSIZEWITHPAD) {
+        fprintf(g_logFile, "getFullPacket: bad message size %d\n", fullMsgSize);
+#ifdef TEST
+        PrintBytes((char*)"Last decrypted: ", plainMessageBlock, BLKSIZE);
+        fflush(g_logFile);
+#endif
+        return -1;
+    }
+
+    // big enough?
+    if(fullMsgSize>sizeEncryptedBuf) {
+#ifdef TEST
+        fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf smaller than message\n");
+        fflush(g_logFile);
+#endif
+        m= fullMsgSize-sizeEncryptedBuf;
+        while(m>0) {
+            n= recv(fd, &encryptedMessageBlock[sizeEncryptedBuf], m, 0);
+#ifdef TEST
+            fprintf(g_logFile, "getFullPacket: received %d in loop\n",n);
+            fflush(g_logFile);
+#endif
+            if(n<0)
+                return n;
+            sizeEncryptedBuf+= n;
+            m-= n;
+        }
+    }
+
+    // too big?
+    if(fullMsgSize<sizeEncryptedBuf) {
+        n=  sizeEncryptedBuf-fullMsgSize;
+#ifdef TEST
+        fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf bigger than message\n");
+        fprintf(g_logFile, "fullMsgSize: %d, sizeEncryptedBuf: %d, storing: %d\n", 
+                fullMsgSize, sizeEncryptedBuf, n);
+        fflush(g_logFile);
+#endif
+        if(n>MAXREQUESTSIZEWITHPAD) {
+            fprintf(g_logFile, "getFullPacket: violate buffer size %d\n", n);
+            return -1;
+        }
+        memcpy(prereadencryptedMessageBlock, &encryptedMessageBlock[fullMsgSize],n);
+        sizeEncryptedBuf-= n;
+        sizeprereadencrypted= n;
+    }
+
+    // should be just right now
+    if(fullMsgSize!=sizeEncryptedBuf) {
+        fprintf(g_logFile, "getFullPacket: fullMsgsize should match buffersize %d %d\n", 
+                fullMsgSize, sizeEncryptedBuf);
+        return -1;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf just right %d\n",
+            sizeEncryptedBuf);
+    fflush(g_logFile);
+#endif
+    // Decrypt remaining
+    iLeft= sizeEncryptedBuf-BLKSIZE;
+    while(iLeft>0) {
+        getAES.Decrypt(pNextCipher, pNextPlain);
+        inlineXorto(pNextPlain, pLastCipher, BLKSIZE);
+        iLeft-= BLKSIZE;
+        pLastCipher= pNextCipher;
+        pNextPlain+= BLKSIZE;
+        pNextCipher+= BLKSIZE;
+    }
+
+    // copy last cipher back for next round
+    memcpy(lastgetBlock, pLastCipher, BLKSIZE);
+
+#ifdef TEST
+    fprintf(g_logFile, "getFullPacket: got last block, checking MAC\n");
+    fflush(g_logFile);
+#endif
+    // check MAC
+    byte*   rguPad= &plainMessageBlock[fullMsgSize-BLKSIZE-SHA256_DIGESTSIZE_BYTES];
+    byte*   rguHmac= &plainMessageBlock[fullMsgSize-SHA256_DIGESTSIZE_BYTES];
+    byte    rguHmacComputed[SHA256_DIGESTSIZE_BYTES];
+
+    n= fullMsgSize-SHA256_DIGESTSIZE_BYTES;   // remove HMAC at the end
+
+    // hmac check
+    if(!hmac_sha256(plainMessageBlock, n, getIntKey, sizeofIntKey, rguHmacComputed)) {
+        fprintf(g_logFile, "getFullPacket: HMAC Compute error 1\n");
+        return HMACCOMPERROR;
+    }
+    if(!isEqual(rguHmac, rguHmacComputed, SHA256_DIGESTSIZE_BYTES)) {
+        fprintf(g_logFile, "getFullPacket: HMAC comparison error 2\n");
+#ifdef TEST
+        PrintBytes((char*) "original buffer\n", encryptedMessageBlock, n);
+        PrintBytes((char*) "decrypted buffer\n", plainMessageBlock, n);
+        PrintBytes((char*) "send Hmac\n", rguHmac, SHA256_DIGESTSIZE_BYTES);
+        PrintBytes((char*) "computed Hmac\n", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
+#endif
+        return HMACMATCHERROR;
+    }
+
+    // depad
+    for(residue=(BLKSIZE-1); residue>=0; residue--) {
+        if(rguPad[residue]!=0) {
+            if(rguPad[residue]!=0x80) {
+                fprintf(g_logFile, "getFullPacket: bad pad error 1, %02x\n", rguPad[residue]);
+                return BADPADDERROR;
+            }
+            break;
+        }
+    }
+    if(residue<0) {
+        fprintf(g_logFile, "getFullPacket: bad pad error\n");
+        return BADPADDERROR;
+    }
+    padLen= BLKSIZE-residue;
+
+    // compute message length and copy
+    sizedecryptedMsg= n-padLen-sizeof(packetHdr);
+    if(maxSize<sizedecryptedMsg)
+        return -1;
+
+#ifdef TEST
+    fprintf(g_logFile, "getFullPacket: copying message %d\n", sizedecryptedMsg);
+    fflush(g_logFile);
+#endif
+
+    memcpy(buf, &plainMessageBlock[sizeof(packetHdr)], sizedecryptedMsg);
+    *ptype= ((packetHdr*) plainMessageBlock)->packetType;
+    *pmultipart= ((packetHdr*) plainMessageBlock)->multipart;
+    *pfinalpart= ((packetHdr*) plainMessageBlock)->finalpart;
+    return sizedecryptedMsg;
+}
+
+
+int  safeChannel::safegetPacket(byte* buf, int maxSize, int* ptype, 
+                                byte* pmultipart, byte* pfinalpart)
+{
+#ifdef TEST
+    fprintf(g_logFile, "safegetPacket(%d, %d, %d, %d)\n", maxSize, *ptype, 
+            *pmultipart, *pfinalpart);
 #endif
 
     // limit on request size
@@ -276,106 +473,7 @@ int  safeChannel::safegetPacket(byte* buf, int maxSize, int* ptype,
     if(!fgetIVReceived)
         return UNINITIALIZEDIV;
 
-    // get 
-    if(iUnGetSize>0) {
-#ifdef IOTEST1
-        fprintf(g_logFile, "retrieving %d bytes from unget buffer\n", iUnGetSize);
-#endif
-        memcpy(plainMessageBlock, ungetBuf, iUnGetSize);
-        n= iUnGetSize;
-        iUnGetSize= 0;
-    }
-    else {
-        n= recv(fd, encryptedMessageBlock, maxSize+MAXADDEDSIZE, 0);
-        if(n==0) {
-            fprintf(g_logFile, "Got 0 return on socket\n");
-        }
-        if(n<0) {
-            fprintf(g_logFile, "Cant do initial get\n");
-            return n;
-        }
-
-        // Decrypt
-        iLeft= n;
-        while(iLeft>0) {
-            getAES.Decrypt(pNextCipher, pNextPlain);
-            inlineXorto(pNextPlain, pLastCipher, BLKSIZE);
-            iLeft-= BLKSIZE;
-            pLastCipher= pNextCipher;
-            pNextPlain+= BLKSIZE;
-            pNextCipher+= BLKSIZE;
-        }
-        memcpy(lastgetBlock, pLastCipher, BLKSIZE);
-    }
-
-    *ptype= ((packetHdr*) plainMessageBlock)->packetType;
-    *pmultipart= ((packetHdr*) plainMessageBlock)->multipart;
-    *pfinalpart= ((packetHdr*) plainMessageBlock)->finalpart;
-    // oHdr.error= 0;?
-
-#ifdef IOTEST1
-    fprintf(g_logFile, "safeget receive is %d, header is %d\n", n, ((packetHdr*) plainMessageBlock)->len);
-#endif
-
-    // Two messages were merged?
-    if(n>(int)((packetHdr*) plainMessageBlock)->len) {
-        iUnGetSize= n-((packetHdr*) plainMessageBlock)->len;
-#ifdef IOTEST1
-        fprintf(g_logFile, "ungetting %d bytes\n", iUnGetSize);
-#endif
-        memcpy(ungetBuf, &plainMessageBlock[((packetHdr*) plainMessageBlock)->len], iUnGetSize);
-        n= ((packetHdr*) plainMessageBlock)->len;
-    }
-
-    byte*   rguPad= &plainMessageBlock[n]-BLKSIZE-SHA256_DIGESTSIZE_BYTES;
-    byte*   rguHmac= &plainMessageBlock[n]-SHA256_DIGESTSIZE_BYTES;
-    byte    rguHmacComputed[SHA256_DIGESTSIZE_BYTES];
-
-    n-= SHA256_DIGESTSIZE_BYTES;   // remove HMAC at the end
-    // hmac check
-    if(!hmac_sha256(plainMessageBlock, n, getIntKey, sizeofIntKey, rguHmacComputed)) {
-        fprintf(g_logFile, "HMAC Compute error 1\n");
-        return HMACCOMPERROR;
-    }
-#ifdef IOTEST
-    fprintf(g_logFile, "safegetPacket HMAC, %d bytes\n",n);
-    PrintBytes("Int key:", getIntKey, sizeofIntKey);
-    PrintBytes("Message:", plainMessageBlock, n);
-    PrintBytes("Computed Mac:", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
-    PrintBytes("Mac:", rguHmac, SHA256_DIGESTSIZE_BYTES);
-    fprintf(g_logFile, "Header size: %d\n", ((packetHdr*) plainMessageBlock)->len);
-#endif
-    if(!isEqual(rguHmac, rguHmacComputed, SHA256_DIGESTSIZE_BYTES)) {
-        fprintf(g_logFile, "HMAC comparison error 2\n");
-        return HMACMATCHERROR;
-    }
-
-    // depad
-    for(residue=(BLKSIZE-1); residue>=0; residue--) {
-        if(rguPad[residue]!=0) {
-            if(rguPad[residue]!=0x80) {
-                fprintf(g_logFile, "bad pad error 1, %02x\n", rguPad[residue]);
-                return BADPADDERROR;
-            }
-            break;
-        }
-    }
-    if(residue<0) {
-        fprintf(g_logFile, "bad pad error\n");
-        return BADPADDERROR;
-    }
-    padLen= BLKSIZE-residue;
-    iMsgLen= ((packetHdr*) plainMessageBlock)->len;
-    iMsgLen-= padLen+SHA256_DIGESTSIZE_BYTES+sizeof(packetHdr);
-
-    memcpy(buf, &plainMessageBlock[sizeof(packetHdr)], iMsgLen);
-#ifdef TEST
-    fprintf(g_logFile, "safegetPacket: original size: %d\n", ((packetHdr*) plainMessageBlock)->len);
-    fprintf(g_logFile, "safegetPacket: padlength : %d\n", padLen);
-    fprintf(g_logFile, "safegetPacket(%d, %d, %d) --- returning %d bytes\n", 
-            *ptype, *pmultipart, *pfinalpart, iMsgLen);
-#endif
-    return iMsgLen;
+    return getFullPacket(buf, maxSize, ptype, pmultipart, pfinalpart);
 }
 
 

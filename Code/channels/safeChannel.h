@@ -42,7 +42,7 @@
 #define CHANNEL_TRANSFER   5
 #define CHANNEL_TERMINATE  6
 
-#define MAXADDEDSIZE		  80
+#define MAXADDEDSIZE		128
 #define MAXREQUESTSIZEWITHPAD   (MAXREQUESTSIZE+MAXADDEDSIZE)
 
 
@@ -64,17 +64,17 @@ public:
     bool    fsendIVValid;
     bool    fgetIVReceived;
     bool    fsendIVSent;
-    byte    lastgetBlock[BIGSYMKEYSIZE];
-    byte    lastsendBlock[BIGSYMKEYSIZE];
+    byte    lastgetBlock[BIGSYMKEYSIZE];    // last decrypted cipher block received
+    byte    lastsendBlock[BIGSYMKEYSIZE];   // last cipher block sent
 
-    byte    plainMessageBlock[MAXREQUESTSIZE+MAXADDEDSIZE];
-    byte    encryptedMessageBlock[MAXREQUESTSIZE+MAXADDEDSIZE];
+    byte    plainMessageBlock[MAXREQUESTSIZEWITHPAD];
+    byte    encryptedMessageBlock[MAXREQUESTSIZEWITHPAD];
+
+    int     sizeprereadencrypted;
+    byte    prereadencryptedMessageBlock[MAXREQUESTSIZEWITHPAD];
 
     aes     sendAES;
     aes     getAES;
-
-    int     iUnGetSize;
-    byte    ungetBuf[MAXREQUESTSIZE+MAXADDEDSIZE];
 
     int     nAuthenticatingPrincipals;
     int     nAuthenticatedPrincipals;
@@ -87,6 +87,8 @@ public:
                         int sizeofEncKeys, int sizeofIntKeys,
                         byte* sendEncKeyIn, byte* sendIntKeyIn,
                         byte* getEncKeyIn, byte* getIntKeyIn);
+    int     getFullPacket(byte* buf, int maxSize, int* ptype, 
+                          byte* pmultipart, byte* pfinalpart);
     int     safesendPacket(byte* buf, int len, int type, byte multipart, byte finalpart);
     int     safegetPacket(byte* buf, int maxSize, int* ptype, 
                           byte* pmultipart, byte* pfinalpart);

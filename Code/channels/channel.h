@@ -38,8 +38,7 @@
 #define CHANNEL_TRANSFER   5
 #define CHANNEL_TERMINATE  6
 
-
-#define MAXREQUESTSIZE          16384
+#define MAXREQUESTSIZE     16384
 
 // getPacket/sendPacket Errors
 #define UNKNOWNERROR     (-1)

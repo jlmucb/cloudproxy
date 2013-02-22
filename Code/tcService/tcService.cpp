@@ -43,6 +43,7 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #ifdef LINUX
@@ -55,7 +56,7 @@
 
 tcServiceInterface      g_myService;
 int                     g_servicepid= 0;
-
+extern bool		g_fterminateLoop;
 u32                     g_fservicehashValid= false;
 u32                     g_servicehashType= 0;
 int                     g_servicehashSize= 0;
@@ -929,6 +930,19 @@ int main(int an, char** av)
             directory= av[++i];
         }
     }
+
+    // set the signal disposition of SIGCHLD to not create zombies
+    struct sigaction sigAct;
+    memset(&sigAct, 0, sizeof(sigAct));
+    sigAct.sa_handler = SIG_DFL;
+    sigAct.sa_flags = SA_NOCLDWAIT; // don't zombify child processes
+    int sigRv = sigaction(SIGCHLD, &sigAct, NULL);
+    if (sigRv < 0) {
+        fprintf(g_logFile, "Failed to set signal disposition for SIGCHLD\n");
+    } else {
+        fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
+    }
+
     g_servicepid= getpid();
     const char** parameters = NULL;
     int parameterCount = 0;
@@ -1019,7 +1033,7 @@ int main(int an, char** av)
     fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
 #endif
 
-    while(!fTerminate) {
+    while(!g_fterminateLoop) {
         fServiceStart= serviceRequest(g_reqChannel, &fTerminate);
 #ifdef TEST
         if(fServiceStart)

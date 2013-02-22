@@ -918,18 +918,6 @@ bool certNego(int fd)
     return fRet;
 }
 
-
-void SigCatcher(int n)
-{
-    int status= 0;
-
-    if(n==SIGCHLD)
-        wait3(&status, WNOHANG, NULL);
-    if(n==SIGUSR1)
-        g_fTerminateProxy= true;
-}
-
-
 bool server()
 {
     int                 fd, newfd;
@@ -971,9 +959,17 @@ bool server()
 
     listen(fd, iQueueSize);
 
-    // no zomies, please
-    signal(SIGCHLD, (void (*)(int)) SigCatcher);
-    signal(SIGUSR1, (void (*)(int)) SigCatcher);
+    // set the signal disposition of SIGCHLD to not create zombies
+    struct sigaction sigAct;
+    memset(&sigAct, 0, sizeof(sigAct));
+    sigAct.sa_handler = SIG_DFL;
+    sigAct.sa_flags = SA_NOCLDWAIT; // don't zombify child processes
+    int sigRv = sigaction(SIGCHLD, &sigAct, NULL);
+    if (sigRv < 0) {
+        fprintf(g_logFile, "Failed to set signal disposition for SIGCHLD\n");
+    } else {
+        fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
+    }
 
     for(;;) {
         newfd= accept(fd, (struct sockaddr*) &client_addr, (socklen_t*)&clen);

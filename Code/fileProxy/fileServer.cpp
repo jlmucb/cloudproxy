@@ -966,6 +966,8 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
     fprintf(g_logFile, "fileServer::processRequests: packetType %d, serverstate %d\n", type, m_serverState);
 #endif
     if(type==CHANNEL_TERMINATE) {
+	fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from fileServer::processRequests\n");
+	fflush(g_logFile);
         return 0;
     }
     if(type!=CHANNEL_REQUEST) {
@@ -1037,18 +1039,6 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
         }
     }
 }
-
-
-void SigCatcher(int n)
-{
-    int status= 0;
-
-    if(n==SIGCHLD)
-        wait3(&status, WNOHANG, NULL);
-    if(n==SIGUSR1)
-        g_fTerminateServer= true;
-}
-
 
 bool fileServer::serviceChannel(int fd)
 {
@@ -1151,9 +1141,17 @@ bool fileServer::server()
 
     listen(fd, iQueueSize);
 
-    // no zomies, please
-    signal(SIGCHLD, (void (*)(int)) SigCatcher);
-    signal(SIGUSR1, (void (*)(int)) SigCatcher);
+    // set the signal disposition of SIGCHLD to not create zombies
+    struct sigaction sigAct;
+    memset(&sigAct, 0, sizeof(sigAct));
+    sigAct.sa_handler = SIG_DFL;
+    sigAct.sa_flags = SA_NOCLDWAIT; // don't zombify child processes
+    int sigRv = sigaction(SIGCHLD, &sigAct, NULL);
+    if (sigRv < 0) {
+        fprintf(g_logFile, "Failed to set signal disposition for SIGCHLD\n");
+    } else {
+        fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
+    }
 
     for(;;) {
         newfd= accept(fd, (struct sockaddr*) &client_addr, (socklen_t*)&clen);
@@ -1177,17 +1175,20 @@ bool fileServer::server()
             fprintf(g_logFile, "fileServer::server: in child\n");
 #endif
             m_serverState= INITSTATE;
-            if(!serviceChannel(newfd)) {
-                close(newfd);
-                break;
+            if(serviceChannel(newfd)) {
+                fprintf(g_logFile, "received a CHANNEL_TERMINATE from the client: exiting successfully\n");
+            } else {
+                fprintf(g_logFile, "Error in channel establishment\n");
             }
+
             // save metadata?
             close(newfd);
             fflush(g_logFile);
+            g_fTerminateServer= true;
         }
 
-    if(g_fTerminateServer)
-        break;
+        if(g_fTerminateServer)
+            break;
     }
 
     close(fd);

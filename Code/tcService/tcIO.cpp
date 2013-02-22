@@ -62,23 +62,6 @@ void tcBufferprint(tcBuffer* p)
 
 bool g_fterminateLoop= false;
 
-
-void tcSigCatcher(int n)
-{
-#ifdef LINUX
-    int status= 0;
-    if(n==SIGCHLD)
-        wait3(&status, WNOHANG, NULL);
-#else
-    int k;
-    if(n==SIGCHLD)
-        wait3(&k,WNOHANG,NULL);
-#endif
-    if(n==SIGUSR1)
-        g_fterminateLoop= true;
-}
-
-
 #ifndef TCIODEVICEDRIVERPRESENT
 bool openserver(int* pfd, const char* szunixPath, struct sockaddr* psrv)
 {
@@ -107,10 +90,6 @@ bool openserver(int* pfd, const char* szunixPath, struct sockaddr* psrv)
         fprintf(g_logFile, "listen error in server init");
         return false;
     }
-
-    // no zomies, please
-    signal(SIGCHLD, (void (*)(int)) tcSigCatcher);
-    signal(SIGUSR1, (void (*)(int)) tcSigCatcher);
 
     *pfd= fd;
     return true;

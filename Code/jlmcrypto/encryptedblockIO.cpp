@@ -505,7 +505,7 @@ int encryptedFileread::AES128GCMDecrypt(int iRead, int bufsize, byte* buf)
 
 int  encryptedFileread::EncRead(int iRead, byte* buf, int size)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "EncRead size: %d\n", size);
 #endif
     if(!m_fInitialized)
@@ -551,7 +551,7 @@ int  encryptedFilewrite::EncWrite(int iWrite, byte* buf, int size)
 bool encryptedFilewrite::initEnc(int filesize, int datasize, byte* key, int keyBitSize, 
                                  u32 alg, u32 pad, u32 mode, u32 hmac)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "initEnc filesize: %d, datasize: %d\n", filesize, datasize);
     fflush(g_logFile);
 #endif

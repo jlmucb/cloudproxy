@@ -276,7 +276,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     int     m= 0;
     int     n= 0;
 
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "getFullPacket(%d, %d, %d, %d)\n", maxSize, 
             *ptype, *pmultipart, *pfinalpart);
     fprintf(g_logFile, "\tpre-fetched encrypted: %d\n", sizeprereadencrypted);
@@ -302,7 +302,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
             fprintf(g_logFile, "Cant do initial get\n");
             return sizeEncryptedBuf;
         }
-#ifdef TEST
+#ifdef IOTEST
         fprintf(g_logFile, "getFullPacket: just read, sizeEncrypted: %d\n", sizeEncryptedBuf);
         fflush(g_logFile);
 #endif
@@ -316,14 +316,14 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     pNextCipher+= BLKSIZE;
     fullMsgSize= ((packetHdr*) plainMessageBlock)->len;
 
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "getFullPacket: message size %d, sizeEncryptedBuf: %d\n", 
             fullMsgSize, sizeEncryptedBuf);
     fflush(g_logFile);
 #endif
     if(fullMsgSize<0 || fullMsgSize>MAXREQUESTSIZEWITHPAD) {
         fprintf(g_logFile, "getFullPacket: bad message size %d\n", fullMsgSize);
-#ifdef TEST
+#ifdef IOTEST
         PrintBytes((char*)"Last decrypted: ", plainMessageBlock, BLKSIZE);
         fflush(g_logFile);
 #endif
@@ -332,14 +332,14 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
 
     // big enough?
     if(fullMsgSize>sizeEncryptedBuf) {
-#ifdef TEST
+#ifdef IOTEST
         fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf smaller than message\n");
         fflush(g_logFile);
 #endif
         m= fullMsgSize-sizeEncryptedBuf;
         while(m>0) {
             n= recv(fd, &encryptedMessageBlock[sizeEncryptedBuf], m, 0);
-#ifdef TEST
+#ifdef IOTEST
             fprintf(g_logFile, "getFullPacket: received %d in loop\n",n);
             fflush(g_logFile);
 #endif
@@ -353,7 +353,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     // too big?
     if(fullMsgSize<sizeEncryptedBuf) {
         n=  sizeEncryptedBuf-fullMsgSize;
-#ifdef TEST
+#ifdef IOTEST
         fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf bigger than message\n");
         fprintf(g_logFile, "fullMsgSize: %d, sizeEncryptedBuf: %d, storing: %d\n", 
                 fullMsgSize, sizeEncryptedBuf, n);
@@ -375,7 +375,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
         return -1;
     }
 
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf just right %d\n",
             sizeEncryptedBuf);
     fflush(g_logFile);
@@ -394,7 +394,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     // copy last cipher back for next round
     memcpy(lastgetBlock, pLastCipher, BLKSIZE);
 
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "getFullPacket: got last block, checking MAC\n");
     fflush(g_logFile);
 #endif
@@ -412,7 +412,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     }
     if(!isEqual(rguHmac, rguHmacComputed, SHA256_DIGESTSIZE_BYTES)) {
         fprintf(g_logFile, "getFullPacket: HMAC comparison error 2\n");
-#ifdef TEST
+#ifdef IOTEST
         PrintBytes((char*) "original buffer\n", encryptedMessageBlock, n);
         PrintBytes((char*) "decrypted buffer\n", plainMessageBlock, n);
         PrintBytes((char*) "send Hmac\n", rguHmac, SHA256_DIGESTSIZE_BYTES);
@@ -442,7 +442,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     if(maxSize<sizedecryptedMsg)
         return -1;
 
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "getFullPacket: copying message %d\n", sizedecryptedMsg);
     fflush(g_logFile);
 #endif
@@ -458,7 +458,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
 int  safeChannel::safegetPacket(byte* buf, int maxSize, int* ptype, 
                                 byte* pmultipart, byte* pfinalpart)
 {
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "safegetPacket(%d, %d, %d, %d)\n", maxSize, *ptype, 
             *pmultipart, *pfinalpart);
 #endif

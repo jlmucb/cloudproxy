@@ -477,15 +477,6 @@ bool serverNegoMessage1(char* buf, int maxSize, int iSessionId, const char* szAl
 }
 
 
-#if 0
-bool serverNegoMessage2(char* buf, int maxSize, char* szAlg, char* szChallenge)
-//  server phase 2  server-->client:
-//      serverMsg2(Principal cert requests, challenge)--Encrypted after this
-{
-    sprintf(buf, szMsg2, szAlg, szChallenge);
-    return true;
-}
-#else
 bool serverNegoMessage2(char* buf, int maxSize, const char* szAlg, 
                          const char* szChallenge, const char* szHash)
 //  server phase 2  server-->client:
@@ -494,7 +485,6 @@ bool serverNegoMessage2(char* buf, int maxSize, const char* szAlg,
     sprintf(buf, szMsg2, szAlg, szChallenge, szHash);
     return true;
 }
-#endif
 
 
 bool serverNegoMessage3(char* buf, int maxSize, bool fSucceed)
@@ -1032,6 +1022,11 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
             }
             return 1;
           case DELETERESOURCE:
+            if(!serverdeleteResource(fc, oReq, oKeys, encType, key)) {
+                fprintf(g_logFile, "serverdeleteResource failed\n");
+                return -1;
+            }
+            return 1;
           case GETOWNER:
           default:
             fprintf(g_logFile, "fileServer::processRequests: invalid request type\n");

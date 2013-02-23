@@ -206,6 +206,8 @@ bool  Request::getDatafromDoc(const char* szRequest)
         m_iRequestType= ADDOWNER;
     else if(strcmp(m_szAction, "removeOwner")==0)
         m_iRequestType= REMOVEOWNER;
+    else if(strcmp(m_szAction, "deleteResource")==0)
+        m_iRequestType= DELETERESOURCE;
     else
         m_iRequestType= 0;
 
@@ -1452,7 +1454,7 @@ bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oK
 
 
 bool clientdeleteResource(safeChannel& fc, const char* szAction, const char* szResourceName,
-                               const char* szEvidence, const char* szOutFile, int encType, byte* key)
+                          const char* szEvidence, const char* szOutFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;

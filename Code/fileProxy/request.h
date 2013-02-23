@@ -143,15 +143,19 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
 bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
 
-bool clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
-                               const char* szEvidence, const char* szOutFile, int encType, byte* key);
+bool clientchangeownerResource(safeChannel& fc, const char* szAction, 
+                               const char* szResourceName, const char* szEvidence, 
+                               const char* szOutFile, int encType, byte* key);
 bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
 
-bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, const char* szSubject, 
-                                  const char* szEvidence, int encType, byte* key);
+bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, 
+                                  const char* szSubject, const char* szEvidence, 
+                                  int encType, byte* key);
 bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
+bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
+                          int encType, byte* key);
 
 bool initAccessGuard(sessionKeys& oKeys);
 

@@ -1453,8 +1453,8 @@ bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oK
 }
 
 
-bool clientdeleteResource(safeChannel& fc, const char* szAction, const char* szResourceName,
-                          const char* szEvidence, const char* szOutFile, int encType, byte* key)
+bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
+                          const char* szEvidence, const char* szFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -1466,14 +1466,18 @@ bool clientdeleteResource(safeChannel& fc, const char* szAction, const char* szR
     byte        final= 0;
 
 #ifdef  TEST
-    fprintf(g_logFile, "clientdeleteResource(%s, %s)\n", szResourceName, szOutFile);
+    fprintf(g_logFile, "clientdeleteResource(%s, %s)\n", szResourceName, szFile);
     fflush(g_logFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, szAction, NULL, szResourceName, 0, szEvidence)) {
+    if(!constructRequest(&p, &iLeft, "deleteResource", NULL, szResourceName, 0, szEvidence)) {
         fprintf(g_logFile, "clientdeleteResource: constructRequest returns false\n");
         return false;
     }
+#ifdef  TEST1
+    fprintf(g_logFile, "clientdeleteResource request\n%s\n", szBuf);
+    fflush(g_logFile);
+#endif
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
     }
@@ -1502,23 +1506,44 @@ bool clientdeleteResource(safeChannel& fc, const char* szAction, const char* szR
 bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                           int encType, byte* key)
 {
-    resource*           pResource= NULL;
-    char*               szFile= NULL;
+    resource*   pResource= NULL;
+    char*       szFile= NULL;
+    bool        fError;
+    int         size= 0;
+    char*       szError= NULL;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= szBuf;
 
 #ifdef  TEST
     fprintf(g_logFile, "serverdeleteResource\n");
     fflush(g_logFile);
 #endif
-    if(!oReq.validateRequest(oKeys, &szFile, &pResource))
+    fError= !oReq.validateRequest(oKeys, &szFile, &pResource);
+
+    if(!fError) {
+        // delete resource
+#ifdef TEST
+        fprintf(g_logFile, "serverdeleteResource: deleting %s\n", szFile);
+        fflush(g_logFile);
+#endif
+        unlink(szFile); 
+        // remove nodes on owner list and delete from resource table
+        pResource->m_fIsDeleted= true;
+    }
+    else {
+        szError= (char*)"serverDeleteResource: authorization error";
+    }
+    // send response
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
+        fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
-
-    // delete resource
-    unlink(szFile);
-
-    // remove nodes on owner list and delete from resource table
-    pResource->m_fIsDeleted= true;
-
-    return false;
+    }
+    fc.safesendPacket((byte*)szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+    return true;
 }
 
 

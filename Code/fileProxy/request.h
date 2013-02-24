@@ -154,6 +154,8 @@ bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName,
                                   int encType, byte* key);
 bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key);
+bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
+                          const char* szEvidence, const char* szFile, int encType, byte* key);
 bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                           int encType, byte* key);
 

@@ -1087,7 +1087,11 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* d
   return true;
 }
 
-bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& uriPrefix, const string& localParentPath, const string& fileName) {                                      
+
+bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, 
+        const string& evidenceFileName, const string& uriPrefix, 
+        const string& localParentPath, const string& fileName) 
+{ 
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
@@ -1162,6 +1166,19 @@ bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, c
         printf("The file returned by the server is identical to the one sent to the server\n");
     }
 
+    // temporary delete test
+#define TOMCHECKTHIS
+#ifdef TOMCHECKTHIS
+    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, 
+                            encType, oFileClient.m_fileKeys)) {
+        fprintf(g_logFile, "fileClient fileTest: Delete file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: Delete file unsuccessful\n");
+        fflush(g_logFile);
+    }
+#endif
+
     return !failed;
 
 }
@@ -1187,10 +1204,12 @@ bool timeConnections(int count, const char* directory) {
     }
     connectionTimer.Stop();
  
-    fprintf(g_logFile, "Creating and tearing down %d connections took %lf microseconds\n", count, connectionTimer.GetInterval());
+    fprintf(g_logFile, "Creating and tearing down %d connections took %lf microseconds\n", 
+            count, connectionTimer.GetInterval());
     fflush(g_logFile);
     return true;
 }
+
 
 void generateRandomFile(int length, const string& filePath) {
     if (length <= 0) {
@@ -1219,6 +1238,7 @@ void generateRandomFile(int length, const string& filePath) {
     outFile.close();
     return;
 }
+
 
 int main(int an, char** av)
 {
@@ -1357,7 +1377,6 @@ int main(int an, char** av)
                 }
             } 
         }
-
 	
 
     //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 

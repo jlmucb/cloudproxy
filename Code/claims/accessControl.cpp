@@ -213,7 +213,8 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
 
     szAssertion= szTok+n;
     if(strcmp(szBuf, "says")==0 || strcmp(szBuf, "maysay")==0) {
-        // Fix
+        // Fix: what is supposed to happen here? Is this meant to be a check 
+        // for things that aren't 'says' or 'maysay'?
     }
 
     // Resource

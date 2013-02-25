@@ -1087,12 +1087,39 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* d
   return true;
 }
 
-
-bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, 
-        const string& evidenceFileName, const string& uriPrefix, 
-        const string& localParentPath, const string& fileName) 
-{ 
+bool createResourceTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& resource) {
     int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, oFileClient.m_fileKeys)) {
+        fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient createResourceTest: create resource unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+bool deleteResourceTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& resource) {
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, oFileClient.m_fileKeys)) {
+        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& uriPrefix, const string& localParentPath, const string& fileName) {                                        int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
     string          resource = uriPrefix + fileName;
@@ -1165,19 +1192,6 @@ bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject,
     if (!failed) {
         printf("The file returned by the server is identical to the one sent to the server\n");
     }
-
-    // temporary delete test
-#define TOMCHECKTHIS
-#ifdef TOMCHECKTHIS
-    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, 
-                            encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient fileTest: Delete file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: Delete file unsuccessful\n");
-        fflush(g_logFile);
-    }
-#endif
 
     return !failed;
 
@@ -1259,9 +1273,8 @@ int main(int an, char** av)
     string          evidenceFileName("fileClient/authRule1Signed.xml");
     timer           connectionTimer;
     timer           fileTimer;
-    // Fix: add this line back when the code works with larger files
-    //int             testSizes[] = {128, 2048, 4096, 6000, 16384, 16385, 20000, 30000, 16384*2, 100000, 200000, 512*1024};
-    int             testSizes[] = {128, 2048, 4096, 6000, 16384, 16385, 20000, 30000};
+    int             creationCount= 10;	
+    int             testSizes[]= {128, 2048, 4096, 6000, 16384, 16385, 20000, 30000, 16384*2, 100000, 200000, 512*1024};
     initLog(NULL);
 
 
@@ -1377,7 +1390,37 @@ int main(int an, char** av)
                 }
             } 
         }
-	
+
+        // try a bunch of resource creation and deletion requests
+        for(int i = 0; i < creationCount; ++i) {
+            fileClient client;
+            safeChannel sc;
+            if (!establishConnection(sc, client, directory)) {
+                printf("Failed to establish a connection for the creation test\n");
+            } else {
+                stringstream ss;
+                ss << i;
+                string resource = string("tempResource") + ss.str();
+                string prefixedResource = uriPrefix + resource;
+                if (!createResourceTest(sc, client, subject, evidenceFileName, prefixedResource)) {
+                    printf("Could not create the resource on the server\n");
+                } else {
+                    if (!deleteResourceTest(sc, client, subject, evidenceFileName, prefixedResource)) {
+                        printf("Could not delete the resource on the server\n");
+                    } else {
+                        printf("Successfully created and deleted the resource %s on the server\n", prefixedResource.c_str());
+                    }
+                }
+
+                // tear down the channel at the end of the test
+                if(sc.fd>0) {
+                    sc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+                }
+            }
+        }
+                
+            
+
 
     //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
     //            uriPrefix, localPath, smallFile)) {

@@ -39,7 +39,7 @@ const char*  szAESKeyProto=
   "</ds:KeyValue> </ds:KeyInfo>n";
 const char*  szRSAKeyProto=
    "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">\n"\
-   "<KeyType></KeyType>n"\
+   "<KeyType></KeyType>\n"\
    " <ds:KeyValue> <ds:RSAKeyValue size=''> "
    "<ds:M></ds:M><ds:E></ds:E><ds:D></ds:D><ds:P></ds:P><ds:Q></ds:Q>"
    "</ds:RSAKeyValue></ds:KeyValue>n</ds:KeyInfo>\n";

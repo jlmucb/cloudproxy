@@ -13,7 +13,6 @@ parser.add_argument("certId", type=int, help="The ordinal identifier of this cer
 parser.add_argument("--cryptUtility", help="The path to cryptUtility.exe (default ./cryptUtility.exe)", default="./cryptUtility.exe")
 parser.add_argument("--privateKey", help="The path to the private key file to use to sign this policy (default policy/privatePolicyKey.xml)", default="policy/privatePolicyKey.xml")
 parser.add_argument("--output", help="The name of the signed authorization file to output (default authorizationRuleSigned.xml)", default="authorizationRuleSigned.xml")
-parser.add_argument("--evidence", help="The name of the authorization evidence file to add this evidence to")
 
 args = parser.parse_args()
 
@@ -82,35 +81,3 @@ temp.flush()
 
 # perform the signing operation using cryptUtility
 check_call([args.cryptUtility, "-Sign", args.privateKey, "rsa1024-sha256-pkcspad", temp.name, args.output])
-
-def transformNamespace(xmlStr):
-    # convert the default ns0 from elementtree to ds to compensate for the 
-    # lack of correct namespace handling in TinyXML
-    namespacePatt = re.compile('ns0:')
-    namespacePatt2 = re.compile(':ns0=')
-    return namespacePatt2.sub(":ds=", namespacePatt.sub('ds:', xmlStr)) 
-
-if not args.evidence is None:
-    evidenceFile = open(args.evidence, "rb")
-    evidenceTree = ET.parse(evidenceFile)
-    evidenceFile.close()
-
-    evidenceNode = evidenceTree.getroot()
-    evidenceListNode = evidenceNode.find("EvidenceList")
-
-    # read the generated certificate file
-    certFile = open(args.output, "rb")
-    certTree = ET.parse(certFile)
-    certFile.close()
-    certNode = certTree.getroot()
-
-    # append our cert to the list of evidence
-    evidenceListNode.append(certNode)
-    evidenceCount = evidenceListNode.get("count")
-    evidenceListNode.set("count", str(int(evidenceCount) + 1))
-    evidenceXml = transformNamespace(ET.tostring(evidenceNode))
- 
-    # write the updated evidence to the file, truncating the file first
-    writeEvidenceFile = open(args.evidence, "wb")
-    writeEvidenceFile.write(evidenceXml)
-    writeEvidenceFile.close()

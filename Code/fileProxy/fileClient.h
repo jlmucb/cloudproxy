@@ -69,7 +69,7 @@ public:
     bool    initFileKeys();
     bool    closeClient();
     bool    initSafeChannel(safeChannel& fc);
-    bool    protocolNego(int fd, safeChannel& fc);
+    bool    protocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile);
 };
 
 

@@ -767,7 +767,7 @@ bool getDatafromServerMessage3(int n, char* request, sessionKeys& oKeys)
 // ------------------------------------------------------------------------
 
 
-bool fileClient::protocolNego(int fd, safeChannel& fc)
+bool fileClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile)
 {
     char    request[MAXREQUESTSIZEWITHPAD];
     char    rgszBase64[256];
@@ -901,12 +901,12 @@ bool fileClient::protocolNego(int fd, safeChannel& fc)
             throw  "fileClient::protocolNego: server hash does not match";
 
         // Phase 4, send
-        if(!m_oKeys.getPrincipalPrivateKeysFromFile(g_szClientPrincipalPrivateKeysFile))  
+        if(!m_oKeys.getPrincipalPrivateKeysFromFile(keyFile))  
             throw  "fileClient: Cant principal private keys from file";
 #ifdef TEST
         fprintf(g_logFile, "fileClient: got principal keys\n");
 #endif
-        if(!m_oKeys.getPrincipalCertsFromFile(g_szClientPrincipalCertsFile))
+        if(!m_oKeys.getPrincipalCertsFromFile(certFile))
             throw  "fileClient: Cant get principal private keys from file";
         if(!m_oKeys.initializePrincipalPrivateKeys())
             throw  "fileClient: Cant initialize principal private keys";
@@ -1044,7 +1044,7 @@ const char*  g_szTerm= "terminate channel\n";
 #define FILECLIENTTEST
 #ifdef  FILECLIENTTEST
 
-bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* directory) {
+bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* keyFile, const char* certFile, const char* directory) {
     try {
         if (g_policyPrincipalCert==NULL) {
             g_policyPrincipalCert= new PrincipalCert();
@@ -1070,7 +1070,7 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* d
         fflush(g_logFile);
 #endif
         // protocol Nego
-        if(!oFileClient.protocolNego(oFileClient.m_fd, fc))
+        if(!oFileClient.protocolNego(oFileClient.m_fd, fc, keyFile, certFile))
             throw "fileClient main: Cant negotiate channel\n";
 
 #ifdef TEST
@@ -1205,7 +1205,7 @@ bool timeConnections(int count, const char* directory) {
     for(int i = 0; i < count; ++i) {
         safeChannel fc;
         fileClient oFileClient;
-        if (!establishConnection(fc, oFileClient, directory)) {
+        if (!establishConnection(fc, oFileClient, g_szClientPrincipalPrivateKeysFile, g_szClientPrincipalCertsFile, directory)) {
             fprintf(g_logFile, "Could not establish a connection in round %d\n", i);
             fflush(g_logFile);  
             return false;
@@ -1375,7 +1375,7 @@ int main(int an, char** av)
             fileClient fClient;
             safeChannel chan;
             
-            if (!establishConnection(chan, fClient, directory)) {
+            if (!establishConnection(chan, fClient, g_szClientPrincipalPrivateKeysFile, g_szClientPrincipalCertsFile, directory)) {
                 printf("Failed to establish a channel with the server on round %d\n", i);
             } else {
                 if (!fileTest(chan, fClient, subject, evidenceFileName, 
@@ -1395,7 +1395,7 @@ int main(int an, char** av)
         for(int i = 0; i < creationCount; ++i) {
             fileClient client;
             safeChannel sc;
-            if (!establishConnection(sc, client, directory)) {
+            if (!establishConnection(sc, client, g_szClientPrincipalPrivateKeysFile, g_szClientPrincipalCertsFile, directory)) {
                 printf("Failed to establish a connection for the creation test\n");
             } else {
                 stringstream ss;

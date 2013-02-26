@@ -901,12 +901,12 @@ bool fileClient::protocolNego(int fd, safeChannel& fc)
             throw  "fileClient::protocolNego: server hash does not match";
 
         // Phase 4, send
-        if(!m_oKeys.getPrincipalPrivateKeysFromFile())  
+        if(!m_oKeys.getPrincipalPrivateKeysFromFile(g_szClientPrincipalPrivateKeysFile))  
             throw  "fileClient: Cant principal private keys from file";
 #ifdef TEST
         fprintf(g_logFile, "fileClient: got principal keys\n");
 #endif
-        if(!m_oKeys.getPrincipalCertsFromFile())
+        if(!m_oKeys.getPrincipalCertsFromFile(g_szClientPrincipalCertsFile))
             throw  "fileClient: Cant get principal private keys from file";
         if(!m_oKeys.initializePrincipalPrivateKeys())
             throw  "fileClient: Cant initialize principal private keys";

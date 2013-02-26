@@ -100,16 +100,6 @@ sessionKeys::sessionKeys()
     m_szSignedChallenges= NULL;
     m_myCert= NULL;
     m_policyCert= NULL;
-#ifdef FILECLIENT
-    extern const char* g_szClientPrincipalCertsFile;
-    extern const char* g_szClientPrincipalPrivateKeysFile;
-
-    m_szPrincipalCertsFile= strdup(g_szClientPrincipalCertsFile);
-    m_szPrincipalPrivateKeysFile= strdup(g_szClientPrincipalPrivateKeysFile);
-#else
-    m_szPrincipalCertsFile= NULL;
-    m_szPrincipalPrivateKeysFile= NULL;
-#endif
     m_szChallengeSignAlg= strdup("TLS_RSA1024_WITH_AES128_CBC_SHA256");
 }
 
@@ -142,17 +132,9 @@ void sessionKeys::clearKeys()
         free(m_szXmlServerCert);
         m_szXmlServerCert= NULL;
     }
-    if(m_szPrincipalCertsFile!=NULL) {
-        free(m_szPrincipalCertsFile);
-        m_szPrincipalCertsFile= NULL;
-    }
     if(m_szPrincipalCerts!=NULL) {
         free(m_szPrincipalCerts);
         m_szPrincipalCerts= NULL;
-    }
-    if(m_szPrincipalPrivateKeysFile!=NULL) {
-        free(m_szPrincipalPrivateKeysFile);
-        m_szPrincipalPrivateKeysFile= NULL;
     }
     if(m_szPrincipalPrivateKeys!=NULL) {
         free(m_szPrincipalPrivateKeys);
@@ -345,10 +327,12 @@ bool sessionKeys::getServerCert(const char* szXml)
 }
 
 
-bool sessionKeys::getPrincipalCertsFromFile()
+bool sessionKeys::getPrincipalCertsFromFile(const char* fileName)
 {
-    if(m_szPrincipalCertsFile!=NULL)
-        m_szPrincipalCerts= readandstoreString(m_szPrincipalCertsFile);
+    if (m_fPrincipalCertsValid)
+        return true;
+    if (m_szPrincipalCerts==NULL)
+        m_szPrincipalCerts= readandstoreString(fileName);
     if(m_szPrincipalCerts==NULL) {
         m_iNumPrincipals= 0;
     }
@@ -363,10 +347,12 @@ bool sessionKeys::getPrincipalCertsFromFile()
 }
 
 
-bool sessionKeys::getPrincipalPrivateKeysFromFile()
+bool sessionKeys::getPrincipalPrivateKeysFromFile(const char* fileName)
 {
-    if(m_szPrincipalPrivateKeysFile!=NULL)
-        m_szPrincipalPrivateKeys= readandstoreString(m_szPrincipalPrivateKeysFile);
+    if (m_fPrincipalPrivateKeysValid)
+        return true;
+    if(m_szPrincipalPrivateKeys==NULL)
+        m_szPrincipalPrivateKeys= readandstoreString(fileName);
     return true;
 }
 

@@ -75,14 +75,12 @@ public:
     RSAKey*         m_pserverPublicKey;             // Server public key
 
     bool            m_fPrincipalCertsValid;
-    char*           m_szPrincipalCertsFile;
     char*           m_szPrincipalCerts;
     int             m_iNumPrincipals;
     PrincipalCert*  m_rgPrincipalCerts[MAXPRINCIPALS];
     RSAKey*         m_rgPrincipalPublicKeys[MAXPRINCIPALS];
 
     bool            m_fPrincipalPrivateKeysValid;   // Principal Private Keys
-    char*           m_szPrincipalPrivateKeysFile;
     char*           m_szPrincipalPrivateKeys;
     int             m_iNumPrincipalPrivateKeys;     // Principal Private Keys
     RSAKey*         m_rgPrincipalPrivateKeys[MAXPRINCIPALS];
@@ -144,8 +142,8 @@ public:
     bool            getMyProgramKey(RSAKey* pKey);
 
     bool            getPrincipalCertsFromString(const char* szXml);
-    bool            getPrincipalCertsFromFile();
-    bool            getPrincipalPrivateKeysFromFile();
+    bool            getPrincipalCertsFromFile(const char* fileName);
+    bool            getPrincipalPrivateKeysFromFile(const char* fileName);
 
     bool            clientcomputeMessageHash();
     bool            servercomputeMessageHash();

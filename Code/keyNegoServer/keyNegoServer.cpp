@@ -470,7 +470,7 @@ bool getCertParameters(const char* szPolicyKeyId, const char* szDigest, const ch
 
 //  Typical signed response to key quote
 // 
-//  <ds:Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id='signeruniqueid'>
+//  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id='signeruniqueid'>
 //     <ds:SignedInfo>
 //         <ds:CanonicalizationMethod 
 //          Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />

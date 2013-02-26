@@ -459,7 +459,7 @@ KeyInfo* ReadKeyfromFile(const char* szKeyFile)
 
 
 const char*   szSigHeader= 
-          "<ds:Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\" Id='uniqueid'>\n";
+          "<ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" Id='uniqueid'>\n";
 const char*   szSigValueBegin= "    <ds:SignatureValue>    \n";
 const char*   szSigValueEnd= "\n    </ds:SignatureValue>\n";
 const char*   szSigTrailer= "</ds:Signature>\n";

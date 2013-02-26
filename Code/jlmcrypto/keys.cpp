@@ -36,13 +36,13 @@ const char*  szAESKeyProto=
   "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">" \
   "<KeyType></KeyType>"
   "<ds:KeyValue> <ds:AESKeyValue size=''> </ds:AESKeyValue>" 
-  "</ds:KeyValue> </ds:KeyInfo>n";
+  "</ds:KeyValue> </ds:KeyInfo>\n";
 const char*  szRSAKeyProto=
    "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">\n"\
    "<KeyType></KeyType>\n"\
    " <ds:KeyValue> <ds:RSAKeyValue size=''> "
    "<ds:M></ds:M><ds:E></ds:E><ds:D></ds:D><ds:P></ds:P><ds:Q></ds:Q>"
-   "</ds:RSAKeyValue></ds:KeyValue>n</ds:KeyInfo>\n";
+   "</ds:RSAKeyValue></ds:KeyValue>\n</ds:KeyInfo>\n";
 
 
 // -----------------------------------------------------------------------------
@@ -517,13 +517,13 @@ bool    RSAKey::getDataFromDoc()
 
 const char* szlocalKeyInfoHeader=
   "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" KeyName='%s'>\n";
-const char* szlocalKeyInfoBody1= "    <KeyType>RSAKeyType</KeyType>n";
-const char* szlocalKeyInfoBody2= "    <ds:KeyValue>n";
-const char* szlocalKeyInfoBody3= "        <ds:RSAKeyValue size='%d'>n";
-const char* szlocalKeyInfoParam= "            <ds:%s>%s</ds:%s>n";
-const char* szlocalKeyInfoBody4= "        </ds:RSAKeyValue>n";
-const char* szlocalKeyInfoBody5= "    </ds:KeyValue>n";
-const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>n";
+const char* szlocalKeyInfoBody1= "    <KeyType>RSAKeyType</KeyType>\n";
+const char* szlocalKeyInfoBody2= "    <ds:KeyValue>\n";
+const char* szlocalKeyInfoBody3= "        <ds:RSAKeyValue size='%d'>\n";
+const char* szlocalKeyInfoParam= "            <ds:%s>%s</ds:%s>\n";
+const char* szlocalKeyInfoBody4= "        </ds:RSAKeyValue>\n";
+const char* szlocalKeyInfoBody5= "    </ds:KeyValue>\n";
+const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>\n";
 
 
 #define MAXSTRLEN 8192

@@ -10,10 +10,10 @@ from subprocess import check_call
 parser = argparse.ArgumentParser(description="Creates a new policy from a set of policy statements. This is meant to be executed in the root executable directory of the FileProxy tree.")
 parser.add_argument("policyFile", help="A text file of policy statements, one per line")
 parser.add_argument("certId", type=int, help="The ordinal identifier of this certificate in the Policy namespace")
-parser.add_argument("id", help="A string identifier for this policy")
-parser.add_argument("cryptUtility", nargs="?", help="The path to cryptUtility.exe (default ./cryptUtility.exe)", default="./cryptUtility.exe")
-parser.add_argument("privateKeyFile", nargs="?", help="The path to the private key file to use to sign this policy (default policy/privatePolicyKey.xml)", default="policy/privatePolicyKey.xml")
-parser.add_argument("output", nargs="?", help="The name of the signed authorization file to output (default authorizationRuleSigned.xml)", default="authorizationRuleSigned.xml")
+parser.add_argument("--cryptUtility", help="The path to cryptUtility.exe (default ./cryptUtility.exe)", default="./cryptUtility.exe")
+parser.add_argument("--privateKey", help="The path to the private key file to use to sign this policy (default policy/privatePolicyKey.xml)", default="policy/privatePolicyKey.xml")
+parser.add_argument("--output", help="The name of the signed authorization file to output (default authorizationRuleSigned.xml)", default="authorizationRuleSigned.xml")
+parser.add_argument("--evidence", help="The name of the authorization evidence file to add this evidence to")
 
 args = parser.parse_args()
 
@@ -22,7 +22,7 @@ policyTemplate = """
 <ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
     <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
-    <SignedGrant Id="http://www.manferdelli.com/2011/Cert/" version="1">
+    <SignedGrant Id="http://www.manferdelli.com/2011/Cert/Policy/" version="1">
         <SerialNumber></SerialNumber>
         <IssuerName>manferdelli.com</IssuerName>
         <IssuerID>manferdelli.com</IssuerID>
@@ -30,19 +30,6 @@ policyTemplate = """
             <NotBefore>2011-01-01Z00:00.00</NotBefore>
             <NotAfter>2021-01-01Z00:00.00</NotAfter>
         </ValidityPeriod>
-        <SubjectName>//www.manferdelli.com/</SubjectName>
-        <SubjectKey>
-            <ds:KeyInfo KeyName="">
-                <KeyType>RSAKeyType</KeyType>
-                <ds:KeyValue>
-                    <ds:RSAKeyValue size="1024">
-                        <ds:M></ds:M>
-                        <ds:E></ds:E>
-                    </ds:RSAKeyValue>
-                </ds:KeyValue>
-            </ds:KeyInfo>
-        </SubjectKey>
-        <SubjectKeyID>//www.manferdelli.com/</SubjectKeyID>
         <RevocationPolicy>Local-check-only</RevocationPolicy>
         <Assertions count="0">
         </Assertions>
@@ -79,17 +66,6 @@ grantNode.set("Id", newCertID)
 serialNode = grantNode.find("SerialNumber")
 serialNode.text = "{0}".format(args.certId);
 
-# write the policy name (like "fileProxyPolicy/001") to the SubjectName, the 
-# KeyInfo KeyName attribute, and the SubjectKeyID
-subjectNameNode = grantNode.find("SubjectName")
-subjectNameNode.text = subjectNameNode.text + args.id
-
-keyInfoNode = grantNode.find("SubjectKey/{0}KeyInfo".format(dsns))
-keyInfoNode.set("KeyName", args.id)
-
-subjectKeyIDNode = grantNode.find("SubjectKeyID")
-subjectKeyIDNode.text = subjectKeyIDNode.text + args.id
-
 # write the resulting XML to a temp file and perform the signing operation
 temp = tempfile.NamedTemporaryFile()
 xmlStr = ET.tostring(tree)
@@ -105,4 +81,36 @@ temp.write(nsXmlStr)
 temp.flush() 
 
 # perform the signing operation using cryptUtility
-check_call([args.cryptUtility, "-Sign", args.privateKeyFile, "rsa1024-sha256-pkcspad", temp.name, args.output])
+check_call([args.cryptUtility, "-Sign", args.privateKey, "rsa1024-sha256-pkcspad", temp.name, args.output])
+
+def transformNamespace(xmlStr):
+    # convert the default ns0 from elementtree to ds to compensate for the 
+    # lack of correct namespace handling in TinyXML
+    namespacePatt = re.compile('ns0:')
+    namespacePatt2 = re.compile(':ns0=')
+    return namespacePatt2.sub(":ds=", namespacePatt.sub('ds:', xmlStr)) 
+
+if not args.evidence is None:
+    evidenceFile = open(args.evidence, "rb")
+    evidenceTree = ET.parse(evidenceFile)
+    evidenceFile.close()
+
+    evidenceNode = evidenceTree.getroot()
+    evidenceListNode = evidenceNode.find("EvidenceList")
+
+    # read the generated certificate file
+    certFile = open(args.output, "rb")
+    certTree = ET.parse(certFile)
+    certFile.close()
+    certNode = certTree.getroot()
+
+    # append our cert to the list of evidence
+    evidenceListNode.append(certNode)
+    evidenceCount = evidenceListNode.get("count")
+    evidenceListNode.set("count", str(int(evidenceCount) + 1))
+    evidenceXml = transformNamespace(ET.tostring(evidenceNode))
+ 
+    # write the updated evidence to the file, truncating the file first
+    writeEvidenceFile = open(args.evidence, "wb")
+    writeEvidenceFile.write(evidenceXml)
+    writeEvidenceFile.close()

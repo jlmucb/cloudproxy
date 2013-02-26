@@ -9,12 +9,13 @@ from xml.etree import ElementTree as ET
 # set up a parser to read the command line arguments
 parser = argparse.ArgumentParser(description="Creates a new policy from a set of policy statements")
 parser.add_argument("id", type=int, help="The ordinal identifier of this certificate in the User namespace")
-parser.add_argument("subject", help="The name of the principal to create (must consist only of characters that are valid for file names)")
-parser.add_argument("--privateKey", default=None, help="The private key file to use. If none is specified, then a new file will be generated with the name <subject>PrivateKey.xml")
-parser.add_argument("--keyName", default=None, help="The name of the key (if left unspecified, the subject name will be used)")
+parser.add_argument("subject", help="The name of the principal to create. This name will also be used as the name of the key. If used in file name, characters that are invalid for file names will be replaced with underscore.")
+parser.add_argument("--privateKey", help="The private key file to use. If none is specified, then a new file will be generated with the name <subject>PrivateKey.xml")
 parser.add_argument("--cryptUtility", default="./cryptUtility.exe", help="The path to cryptUtility.exe (default ./cryptUtility.exe)")
 parser.add_argument("--policyPrivateKey", default="policy/privatePolicyKey.xml", help="The path to the private key file to use to sign this policy (default policy/privatePolicyKey.xml)")
-parser.add_argument("--output", default=None, help="The name of the signed public key file to output (default <subject>PublicKey.xml)")
+parser.add_argument("--output", help="The name of the signed public key file to output (default <subject>PublicKey.xml)")
+parser.add_argument("--evidence", help="The name of the evidence file. If specified, then this script will append the new cert to the evidence list")
+parser.add_argument("--keyList", help="The name of the private key list file. If specified, then this script will append the private key to this list")
 
 args = parser.parse_args()
 
@@ -66,24 +67,20 @@ grantNode.set("Id", newCertID)
 serialNode = grantNode.find("SerialNumber")
 serialNode.text = "{0}".format(args.id);
 
-# check to see if we were given a key name. If not, 
-# then set the key name to the subject name
-keyName = args.keyName
-if keyName is None:
-    keyName = args.subject
-
 # write the subject name to the SubjectName
 subjectNameNode = grantNode.find("SubjectName")
+slashRe = re.compile(r'/')
+subjectFileName = slashRe.sub("_", args.subject)
 subjectNameNode.text = subjectNameNode.text + args.subject
 
 # write the key name to the KeyInfo KeyName 
 # attribute, and the SubjectKeyID
 keyInfoNode = grantNode.find("SubjectKey/{0}KeyInfo".format(dsns))
 keyPrefix = keyInfoNode.get("KeyName")
-keyInfoNode.set("KeyName", keyPrefix + keyName)
+keyInfoNode.set("KeyName", keyPrefix + args.subject)
 
 subjectKeyIDNode = grantNode.find("SubjectKeyID")
-subjectKeyIDNode.text = subjectKeyIDNode.text + keyName
+subjectKeyIDNode.text = subjectKeyIDNode.text + args.subject
 
 def transformNamespace(xmlStr):
     # convert the default ns0 from elementtree to ds to compensate for the 
@@ -97,13 +94,13 @@ privateKeyFileName = args.privateKey
 if privateKeyFileName is None:
     # get a temp file to write the private key and rewrite it to the named location 
     privateTemp = tempfile.NamedTemporaryFile()
-    privateKeyFileName = args.subject + "PrivateKey.xml"
+    privateKeyFileName = subjectFileName + "PrivateKey.xml"
     check_call([args.cryptUtility, "-GenKey", "RSA1024", privateTemp.name])
     
     # rewrite the name of the key to match our public key
     privateTree = ET.parse(privateTemp.name)
     privateRoot = privateTree.getroot()
-    privateRoot.set("KeyName", keyPrefix + keyName)
+    privateRoot.set("KeyName", keyPrefix + args.subject)
     
     # write to the specified file name after transforming the namespace
     privateXmlStr = transformNamespace(ET.tostring(privateRoot))
@@ -136,7 +133,55 @@ temp.flush()
 # use the provided output file or the file <subject>PublicKey.xml
 outputFile = args.output
 if outputFile is None:
-    outputFile = args.subject + "PublicKey.xml"
+    outputFile = subjectFileName + "PublicKey.xml"
 
 # perform the signing operation using cryptUtility
 check_call([args.cryptUtility, "-Sign", args.policyPrivateKey, "rsa1024-sha256-pkcspad", temp.name, outputFile])
+
+# add the cert to the evidence list if needed
+if not args.evidence is None:
+    evidenceFile = open(args.evidence, "rb")
+    evidenceTree = ET.parse(evidenceFile)
+    evidenceFile.close()
+
+    evidenceNode = evidenceTree.getroot()
+    evidenceListNode = evidenceNode.find("EvidenceList")
+
+    # read the signed public key file
+    signedKeyFile = open(outputFile, "rb")
+    signedKeyTree = ET.parse(signedKeyFile)
+    signedKeyFile.close()
+    signedKeyNode = signedKeyTree.getroot()
+
+    # append our cert to the list of evidence
+    evidenceListNode.append(signedKeyNode)
+    evidenceCount = evidenceListNode.get("count")
+    evidenceListNode.set("count", str(int(evidenceCount) + 1))
+    evidenceXml = transformNamespace(ET.tostring(evidenceNode))
+ 
+    # write the updated evidence to the file, truncating the file first
+    writeEvidenceFile = open(args.evidence, "wb")
+    writeEvidenceFile.write(evidenceXml)
+    writeEvidenceFile.close()
+
+# add the private key to the key list if needed
+if not args.keyList is None:
+    keyListFile = open(args.keyList, "rb")
+    keyListTree = ET.parse(keyListFile)
+    keyListFile.close()
+
+    keyListNode = keyListTree.getroot()
+
+    # get the root of the private key node
+    pkRoot = pkTree.getroot()
+
+    # append our key to the list
+    keyListNode.append(pkRoot)
+    keyCount = keyListNode.get("count")
+    keyListNode.set("count", str(int(evidenceCount) + 1))
+    keyXml = transformNamespace(ET.tostring(keyListNode))
+ 
+    # write the updated evidence to the file, truncating the file first
+    keyListFile = open(args.keyList, "wb")
+    keyListFile.write(keyXml)
+    keyListFile.close()

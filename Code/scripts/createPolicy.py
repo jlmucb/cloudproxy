@@ -10,6 +10,7 @@ from subprocess import check_call
 parser = argparse.ArgumentParser(description="Creates a new policy from a set of policy statements. This is meant to be executed in the root executable directory of the FileProxy tree.")
 parser.add_argument("policyFile", help="A text file of policy statements, one per line")
 parser.add_argument("certId", type=int, help="The ordinal identifier of this certificate in the Policy namespace")
+parser.add_argument("--authority", default="fileProxyPolicy/0001", help="The principal that is asserting this policy. Should be the principal corresponding to the private key (default fileProxyPolicy/0001)")
 parser.add_argument("--cryptUtility", help="The path to cryptUtility.exe (default ./cryptUtility.exe)", default="./cryptUtility.exe")
 parser.add_argument("--privateKey", help="The path to the private key file to use to sign this policy (default policy/privatePolicyKey.xml)", default="policy/privatePolicyKey.xml")
 parser.add_argument("--output", help="The name of the signed authorization file to output (default authorizationRuleSigned.xml)", default="authorizationRuleSigned.xml")
@@ -29,6 +30,7 @@ policyTemplate = """
             <NotBefore>2011-01-01Z00:00.00</NotBefore>
             <NotAfter>2021-01-01Z00:00.00</NotAfter>
         </ValidityPeriod>
+        <SubjectName>//www.manferdelli.com/</SubjectName>
         <RevocationPolicy>Local-check-only</RevocationPolicy>
         <Assertions count="0">
         </Assertions>
@@ -64,6 +66,9 @@ grantNode.set("Id", newCertID)
 
 serialNode = grantNode.find("SerialNumber")
 serialNode.text = "{0}".format(args.certId);
+
+subjectNameNode = grantNode.find("SubjectName")
+subjectNameNode.text = subjectNameNode.text + args.authority
 
 # write the resulting XML to a temp file and perform the signing operation
 temp = tempfile.NamedTemporaryFile()

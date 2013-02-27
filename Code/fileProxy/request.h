@@ -135,7 +135,7 @@ bool translateResourceNametoLocation(const char* szResourceName, char* szLocatio
 
 bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
                                  const char* szFile, int encType, byte* key);
-bool clientsendResourcetoserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
+bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
                                 const char* szFile, int encType, byte* key);
 
 bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 

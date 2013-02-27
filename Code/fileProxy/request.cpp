@@ -1228,7 +1228,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
 }
 
 
-bool clientsendResourcetoserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
+bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
                                 const char* szInFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -1242,7 +1242,6 @@ bool clientsendResourcetoserver(safeChannel& fc, const char* szResourceName, con
     byte        multi=0;
     byte        final= 0;
     int         iRead= 0;
-    const char*       szSubject= "//www.manferdelli.com/User/JohnManferdelli/0001";
 
 #ifdef  TEST
     fprintf(g_logFile, "clientsendResourcetoserver(%s, %s)\n", szResourceName, szInFile);

@@ -1139,7 +1139,7 @@ bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, c
         return false;
     }
 
-    if(clientsendResourcetoserver(fc, resource.c_str(), NULL, filePath.c_str(),
+    if(clientsendResourcetoserver(fc, subject.c_str(), resource.c_str(), NULL, filePath.c_str(),
                                   encType, oFileClient.m_fileKeys)) {
         fprintf(g_logFile, "fileClient fileTest: Send file successful\n");
         fflush(g_logFile);
@@ -1269,7 +1269,7 @@ int main(int an, char** av)
     string          largeFile("largeRandomFile.test");
     string          localPath("fileClient/files/");
     string          uriPrefix("//www.manferdelli.com/Gauss/fileServer/files/");
-    string          subject("//www.manferdelli.com/User/JohnManferdelli/0001");
+    string          subject("//www.manferdelli.com/User/P1/0001");
     string          evidenceFileName("fileClient/authRule1Signed.xml");
     timer           connectionTimer;
     timer           fileTimer;

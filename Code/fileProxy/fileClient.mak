@@ -14,7 +14,7 @@ CH=	    ../channels
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(DEBUG_CFLAGS)
+CFLAGS=     -D LINUX -D FILECLIENT -D TIXML_USE_STL -D __FLUSHIO__ $(DEBUG_CFLAGS)
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++

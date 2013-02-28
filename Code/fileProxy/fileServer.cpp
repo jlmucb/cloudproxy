@@ -787,7 +787,7 @@ bool fileServer::protocolNego(int fd, safeChannel& fc, sessionKeys& oKeys)
         if(!getBase64Rand(SMALLNONCESIZE, oKeys.m_rguServerRand, &iOut64, rgszBase64))
             throw  "fileServer::protocolNego: Can't generate first nonce\n";
         oKeys.m_fServerRandValid= true;
-#ifdef TEST1
+#ifdef TEST
         fprintf(g_logFile, "fileServer: got client rand\n");
         fflush(g_logFile);
 #endif
@@ -853,10 +853,7 @@ bool fileServer::protocolNego(int fd, safeChannel& fc, sessionKeys& oKeys)
         if(!getBase64Rand(SMALLNONCESIZE, oKeys.m_rguChallenge, &iOut, rgszBase64)) 
             throw  "fileServer::protocolNego: Can't generate principal challenge\n";
         oKeys.m_fChallengeValid= true;
-#if 0
-        if(!serverNegoMessage2(request, MAXREQUESTSIZE, oKeys.m_szChallengeSignAlg, rgszBase64))
-            throw  "fileServer::protocolNego: Can't format negotiation message 2\n";
-#else
+
         // compute szHash string
         iOut= 256;
         if(!toBase64(SHA256DIGESTBYTESIZE, oKeys.m_rgServerMessageHash, 
@@ -865,7 +862,7 @@ bool fileServer::protocolNego(int fd, safeChannel& fc, sessionKeys& oKeys)
         if(!serverNegoMessage2(request, MAXREQUESTSIZE, oKeys.m_szChallengeSignAlg, 
                                rgszBase64, rgszHashBase64))
             throw  "fileServer::protocolNego: Can't format negotiation message 2\n";
-#endif
+
         if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "fileServer::protocolNego: Can't safesendPacket 2\n";
 #ifdef TEST
@@ -884,7 +881,7 @@ bool fileServer::protocolNego(int fd, safeChannel& fc, sessionKeys& oKeys)
             throw "fileServer::protocolNego: Cant initialize principal public keys\n";
         if(!oKeys.checkPrincipalChallenges())
             throw "fileServer::protocolNego: Principal challenges fail\n";
-#ifdef TEST1
+#ifdef TEST
         fprintf(g_logFile, "fileServer: checked principal challenges\n");
         fflush(g_logFile);
 #endif
@@ -894,7 +891,7 @@ bool fileServer::protocolNego(int fd, safeChannel& fc, sessionKeys& oKeys)
             throw  "fileServer::protocolNego: Can't format negotiation message 3\n";
         if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "fileServer::protocolNego: Can't send packet 3\n";
-#ifdef TEST1
+#ifdef TEST
         fprintf(g_logFile, "fileServer: success packet sent\n");
         fflush(g_logFile);
 #endif
@@ -942,7 +939,7 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
     int     encType= NOENCRYPT;
     byte*   key= NULL;
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "\n\nfileServer: processRequest\n");
 #endif
     m_serverState= REQUESTSTATE;
@@ -952,7 +949,7 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
         return -1;
     }
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "fileServer::processRequests: packetType %d, serverstate %d\n", type, m_serverState);
 #endif
     if(type==CHANNEL_TERMINATE) {
@@ -981,7 +978,6 @@ int fileServer::processRequests(safeChannel& fc, sessionKeys& oKeys, accessGuard
         oReq.m_poAG= &oAG;
         if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
             fprintf(g_logFile, "fileServer::processRequests: cant parse: %s\n", request);
-            fprintf(g_logFile, "Cant parse request\n");
             return -1;
         }
         iRequestType= oReq.m_iRequestType;
@@ -1093,7 +1089,7 @@ bool fileServer::serviceChannel(int fd)
     }
     m_serverState= SERVICETERMINATESTATE;
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "fileServer: serviceChannel terminating\n");
 #endif
     return true;
@@ -1114,7 +1110,7 @@ bool fileServer::server()
         fprintf(g_logFile, "fileServer::server: Can't open socket\n");
         return false;
     }
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "fileServer::server: socket opened\n");
     fflush(g_logFile);
 #endif
@@ -1129,7 +1125,7 @@ bool fileServer::server()
         fprintf(g_logFile, "Can't bind socket: %s", strerror(errno));
         return false;
     }
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "fileServer::server: bind succeeded\n");
     fflush(g_logFile);
 #endif
@@ -1154,7 +1150,7 @@ bool fileServer::server()
             fprintf(g_logFile, "Can't accept socket", strerror(errno));
             return false;
         }
-#ifdef  TEST
+#ifdef TEST
         fprintf(g_logFile, "fileServer: accept succeeded\n");
         fflush(g_logFile);
 #endif
@@ -1166,12 +1162,14 @@ bool fileServer::server()
         }
 
         if(childpid==0) {
-#ifdef  TEST
+#ifdef TEST
             fprintf(g_logFile, "fileServer::server: in child\n");
 #endif
             m_serverState= INITSTATE;
             if(serviceChannel(newfd)) {
+#ifdef TEST
                 fprintf(g_logFile, "received a CHANNEL_TERMINATE from the client: exiting successfully\n");
+#endif
             } else {
                 fprintf(g_logFile, "Error in channel establishment\n");
             }
@@ -1285,7 +1283,7 @@ int main(int an, char** av)
 
 #ifdef TEST
 
-#if METADATATEST
+#ifdef METADATATEST
 void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
 {
     int     encType;

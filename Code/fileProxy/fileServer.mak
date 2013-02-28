@@ -11,7 +11,7 @@ VLT=	    ../vault
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
-#CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ -D METADATATEST -D FAKESHA256
+#CFLAGS=     -D LINUX -D __FLUSHIO__ -D METADATATEST -D FAKESHA256
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3

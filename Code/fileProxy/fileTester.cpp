@@ -42,25 +42,16 @@ fileTester::fileTester(const string& path, const string& testFile)
     m_reuseConnection(false),
     m_filesToDelete()
 {
-    printf("About to load file %s\n", (path + testFile).c_str());
-    fflush(stdout);
     // parse the xml and construct the default parameters and any required resources
     m_testsDoc.LoadFile();
-    printf("loaded file %s\n", (path + testFile).c_str());
-    fflush(stdout);
 
     
     const TiXmlElement* curElt = m_testsDoc.RootElement();
-    printf("Got root element %p\n", curElt);
-    fflush(stdout);
     // look at the attributes on the root to see if we are to reuse the connection or 
     // establish a new connection for each test
     bool connection = false;
     if (curElt->QueryBoolAttribute("reuseConnection", &connection) == TIXML_SUCCESS) {
-        printf("Reusing connection\n");
         m_reuseConnection = connection;
-    } else {
-        printf("Couldn't find a 'reuseConnection' attribute on the Tests node\n");
     }
 
     // walk the children of the root and handle Default, Resources, and Test children
@@ -194,10 +185,8 @@ void fileTester::Run(const char* directory) {
                             m_defaultParams.keyFile.c_str(),
                             m_defaultParams.certFile.c_str(),
                             directory)) {
-            printf("Failed to establish default connection\n");
         } else {
             establishedDefaultConnection = true;
-            printf("Established default connection\n");
         }
     }
                             
@@ -207,7 +196,6 @@ void fileTester::Run(const char* directory) {
         double time = 0;
         bool result = false;
         if (establishedDefaultConnection && m_reuseConnection) {
-            printf("Trying a reused connection\n");
             try {
                 result = runTest(m_defaultClient,
                             m_defaultChannel,
@@ -219,7 +207,6 @@ void fileTester::Run(const char* directory) {
             }
         } else {
             // establish a new connection for this test
-            printf("Establishing a new connection for the channel\n");
             fileClient client;
             safeChannel channel;
             result = client.establishConnection(channel,
@@ -227,27 +214,22 @@ void fileTester::Run(const char* directory) {
                     it->certFile.c_str(),
                     directory);
 
-            printf("Established the connection. Result is %s\n", result ? "true" : "false");
             try {
                 result = runTest(client,
                             channel,
                             *it,
                             time);
-                printf("Test returned without throwing. Result is %s\n", result ? "true" : "false");
             } catch (const char* err) {
                 printf("Error: %s\n", err); 
                 result = false;
             }
-            printf("Closing the connection\n");
             client.closeConnection(channel);
-            printf("Closed the connection\n");
         }
 
         printf("[%s]\n", result ? "OK" : "FAILED");
     }
 
     if (establishedDefaultConnection) {
-        printf("Closing default connection\n");
         m_defaultClient.closeConnection(m_defaultChannel);
     }
 

@@ -211,7 +211,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
     else
         m_iRequestType= 0;
 
-#ifdef  TEST1
+#ifdef TEST
     fprintf(g_logFile, "Response getdata\n");
     printMe();
 #endif
@@ -317,8 +317,9 @@ bool  Request::validateGetSendDeleteRequest(sessionKeys& oKeys, char** pszFile,
         fflush(g_logFile);
         return false;
     }
+#ifdef TEST
     fprintf(g_logFile, "looking for resource %s\n", m_szResourceName);
-    fflush(g_logFile);
+#endif
     pResource= g_theVault.findResource(m_szResourceName);
     if(pResource==NULL) {
         fprintf(g_logFile, "Request::validateGetSendDeleteRequest: GetSendDelete pResource NULL, %s\n", m_szResourceName);
@@ -444,8 +445,9 @@ bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile,
         return false;
     }
 
+#ifdef TEST
     fprintf(g_logFile, "switching on request type\n");
-    fflush(g_logFile);
+#endif
     bool    fAllowed;
     switch(m_iRequestType) {
       case CREATERESOURCE:
@@ -454,7 +456,6 @@ bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile,
       case DELETERESOURCE:
       case GETRESOURCE:
       case SENDRESOURCE:
-        fprintf(g_logFile, "validateGetSendDeleteRequest\n");
         fAllowed= validateGetSendDeleteRequest(oKeys, pszFile, ppResource);
         break;
       case ADDOWNER:
@@ -471,7 +472,7 @@ bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile,
         break;
     }
 
-#ifdef TEST1
+#ifdef TEST
     if(fAllowed) 
         fprintf(g_logFile, "validateRequest returning true\n\n");
     else 
@@ -548,7 +549,7 @@ bool  Response::getDatafromDoc(char* szResponse)
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
 
-#ifdef  TEST1
+#ifdef TEST
     fprintf(g_logFile, "Response::getDatafromDoc\n%s\n", szResponse);
 #endif
     if(!doc.Parse(szResponse)) {
@@ -597,7 +598,7 @@ bool  Response::getDatafromDoc(char* szResponse)
         pNode= pNode->NextSibling();
     }
 
-#ifdef  TEST1
+#ifdef TEST
     fprintf(g_logFile, "Response getdata\n");
     printMe();
 #endif
@@ -625,7 +626,7 @@ bool translateResourceNametoLocation(const char* szResourceName, char* szLocatio
     int         n;
     const char*       p= szResourceName;
 
-#ifdef  TEST1
+#ifdef TEST
     fprintf(g_logFile, "translate %s\n", p);
 #endif
     // strip prefix
@@ -640,7 +641,7 @@ bool translateResourceNametoLocation(const char* szResourceName, char* szLocatio
     }
 
     strcpy(szLocation, p);
-#ifdef  TEST1
+#ifdef TEST
     fprintf(g_logFile, "size: %d %s\n", size, szLocation);
 #endif
     return true;
@@ -686,7 +687,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     byte                fileBuf[MAXREQUESTSIZEWITHPAD];
     encryptedFilewrite  encFile;
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "getFile %d %d\n", filesize, datasize);
     fflush(g_logFile);
 #endif
@@ -714,13 +715,13 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     type= CHANNEL_TRANSFER;
     multi= 1;
     final= 0;
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "getFile: receiving encrypted file \n");
     fflush(g_logFile);
 #endif
     for(;;) {
         n= fc.safegetPacket(fileBuf, MAXREQUESTSIZE, &type, &multi, &final);
-#ifdef  TEST
+#ifdef TEST
         fprintf(g_logFile, "getFile: received %d bytes\n", n);
         fflush(g_logFile);
 #endif
@@ -730,7 +731,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
         if(final>0)
             break;
     }
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "getFile returns true\n");
     fflush(g_logFile);
 #endif
@@ -747,7 +748,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     byte                fileBuf[MAXREQUESTSIZEWITHPAD];
     encryptedFileread   encFile;
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "sendFile: %d %d %d\n", 
             filesize, datasize, encType);
     fflush(g_logFile);
@@ -868,7 +869,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szResou
     bool    fRet= true;
     int     n= 0;
 
-#ifdef  TEST1
+#ifdef  TEST
     char*   p= *pp;
 #endif
     try {
@@ -912,7 +913,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szResou
         fprintf(g_logFile, "%s", szConstructError);
     }
 
-#ifdef  TEST1
+#ifdef  TEST
     fprintf(g_logFile, "constructResponse completed\n%s\n", p);
 #endif
     return fRet;

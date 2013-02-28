@@ -1040,6 +1040,8 @@ int main(int an, char** av)
             fprintf(g_logFile, "tcService main: successful service\n\n");
         else
             fprintf(g_logFile, "tcService main: unsuccessful service\n\n");
+#else 
+        UNUSEDVAR(fServiceStart);
 #endif
     }
 

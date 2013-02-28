@@ -1182,7 +1182,9 @@ bool fileClient::compareFiles(const string& firstFile, const string& secondFile)
         char co = origFile.get();
         char cn = newFile.get();
         if (co != cn) {
-            printf("The file returned by the server failed to match the file sent at byte %d\n", pos);
+#ifdef TEST
+            fprintf(g_logFile, "The file returned by the server failed to match the file sent at byte %d\n", pos);
+#endif
             failed = true;
             break;
         }
@@ -1193,13 +1195,17 @@ bool fileClient::compareFiles(const string& firstFile, const string& secondFile)
     // when we get here without hitting a character mismatch, one of the streams is no longer good
     // if one is still good, then the files are not the same length
     if (!failed && (origFile.good() || newFile.good())) {
-        printf("The file returned by the server was not the same length as the file sent to the server\n");
+#ifdef TEST
+        fprintf(g_logFile, "The file returned by the server was not the same length as the file sent to the server\n");
+#endif
         failed = true;
     } 
 
+#ifdef TEST
     if (!failed) {
-        printf("The file returned by the server is identical to the one sent to the server\n");
+        fprintf(g_logFile, "The file returned by the server is identical to the one sent to the server\n");
     }
+#endif
 
     return !failed;
 }
@@ -1276,9 +1282,9 @@ int main(int an, char** av)
             throw "Could not open the test directory\n";
         }
 
+#ifdef TEST
         fprintf(g_logFile, "reading directory %s\n", testPath.c_str());    
-        fflush(g_logFile);
-
+#endif
     	// each child directory is a test
         struct dirent* entry = NULL;
         string curDir(".");
@@ -1288,29 +1294,25 @@ int main(int an, char** av)
                 parentDir.compare(entry->d_name) == 0) {
                 continue;
             }
+#ifdef TEST
             fprintf(g_logFile, "Got entry with name %s\n", entry->d_name);
-            fflush(g_logFile);	
+#endif
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
-                fprintf(g_logFile, "Got path %s\n", path.c_str());
                 fileTester ft(path, testFileName);
-                fprintf(g_logFile, "Got new fileTester\n");
-                fflush(g_logFile);	
                 ft.Run(directory);
-                fprintf(g_logFile, "Finished running tester\n");
-                fflush(g_logFile);	
             }
         }
 
+#ifdef TEST
         if (0 != errno) {
             fprintf(g_logFile, "Got error %d\n", errno);
         } else {
             fprintf(g_logFile, "Finished reading test directory without error\n");
         }
-        fflush(g_logFile);
-	
+#endif
     } catch (const char* err) {
-        printf("execution failed with error %s\n", err);
+        fprintf(g_logFile, "execution failed with error %s\n", err);
         iRet= 1;
     }
 

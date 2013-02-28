@@ -171,6 +171,7 @@ bool taoFiles::putBlobData(const char* file, bool fValid, int size, byte* pData)
 }
 
 
+#ifdef TEST
 void taoFiles::printAll()
 {
     fprintf(g_logFile, "taoFiles\n");
@@ -181,6 +182,7 @@ void taoFiles::printAll()
     fprintf(g_logFile, "\tCert file: %s\n", m_szcertFile);
     fprintf(g_logFile, "\tEvidence: %s\n", m_szAncestorEvidence);
 }
+#endif
 
 
 // --------------------------------------------------------------------------

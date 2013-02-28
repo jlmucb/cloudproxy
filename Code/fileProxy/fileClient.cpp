@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "fileClient.h"
+#include "fileTester.h"
 #include "session.h"
 #include "channel.h"
 #include "safeChannel.h"
@@ -66,6 +67,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include <string>
 #include <iostream>
@@ -1044,7 +1046,7 @@ const char*  g_szTerm= "terminate channel\n";
 #define FILECLIENTTEST
 #ifdef  FILECLIENTTEST
 
-bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* keyFile, const char* certFile, const char* directory) {
+bool fileClient::establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, const char* directory) {
     try {
         if (g_policyPrincipalCert==NULL) {
             g_policyPrincipalCert= new PrincipalCert();
@@ -1057,12 +1059,12 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* k
         fflush(g_logFile);
 #endif
         // init logfile, crypto, etc
-        if(!oFileClient.initClient(directory))
+        if(!initClient(directory))
             throw "fileClient main: initClient() failed\n";
 
         // copy my public key into client public key
-        if(!oFileClient.m_tcHome.m_myCertificateValid || 
-               !oFileClient.m_oKeys.getClientCert(oFileClient.m_tcHome.m_myCertificate))
+        if(!m_tcHome.m_myCertificateValid || 
+               !m_oKeys.getClientCert(m_tcHome.m_myCertificate))
             throw "fileClient main: Cant load client public key structures\n";
 
 #ifdef  TEST
@@ -1070,11 +1072,11 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* k
         fflush(g_logFile);
 #endif
         // protocol Nego
-        if(!oFileClient.protocolNego(oFileClient.m_fd, fc, keyFile, certFile))
+        if(!protocolNego(m_fd, fc, keyFile, certFile))
             throw "fileClient main: Cant negotiate channel\n";
 
 #ifdef TEST
-        oFileClient.m_oKeys.printMe();
+        m_oKeys.printMe();
         fflush(g_logFile);
 #endif
     }
@@ -1087,11 +1089,18 @@ bool establishConnection(safeChannel& fc, fileClient& oFileClient, const char* k
   return true;
 }
 
-bool createResourceTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& resource) {
+void fileClient::closeConnection(safeChannel& fc) {
+	if(fc.fd>0) {
+		fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+	}
+}
+
+
+bool fileClient::createResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource) {
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, oFileClient.m_fileKeys)) {
+    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
         fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
         fflush(g_logFile);
     } else {
@@ -1103,11 +1112,11 @@ bool createResourceTest(safeChannel& fc, fileClient& oFileClient, const string& 
     return true;
 }
 
-bool deleteResourceTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& resource) {
+bool fileClient::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource) {
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, oFileClient.m_fileKeys)) {
+    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
         fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
         fflush(g_logFile);
     } else {
@@ -1119,56 +1128,55 @@ bool deleteResourceTest(safeChannel& fc, fileClient& oFileClient, const string& 
     return true;
 }
 
-bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, const string& evidenceFileName, const string& uriPrefix, const string& localParentPath, const string& fileName) {                                        int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+bool fileClient::readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput) {
+    int             encType= NOENCRYPT;
  
-    string          resource = uriPrefix + fileName;
-    string          filePath = localParentPath + fileName;
-    string          outPath = filePath + string(".out");
-#ifdef  TEST
-    fprintf(g_logFile, "fileClient fileTest: Evidence for create: %s\n", szEvidence);
-    fflush(g_logFile);
-#endif
-
-    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient fileTest: create resource successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: create resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    if(clientsendResourcetoserver(fc, subject.c_str(), resource.c_str(), NULL, filePath.c_str(),
-                                  encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient fileTest: Send file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: Send file unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
     if(clientgetResourcefromserver(fc, 
-                                   resource.c_str(),
+                                   remoteResource.c_str(),
                                    NULL, 
-                                   outPath.c_str(),
-                                   encType, oFileClient.m_fileKeys)) {
-        fprintf(g_logFile, "fileClient fileTest: Get file successful\n");
+                                   localOutput.c_str(),
+                                   encType, 
+                                   m_fileKeys)) {
+        fprintf(g_logFile, "fileClient fileTest: read file successful\n");
         fflush(g_logFile);
     } else {
-        fprintf(g_logFile, "fileClient fileTest: Get file unsuccessful\n");
+        fprintf(g_logFile, "fileClient fileTest: read file unsuccessful\n");
         fflush(g_logFile);
         return false;
     }
 
+    return true;
+}
+
+bool fileClient::writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName) {
+    int             encType= NOENCRYPT;
+ 
+    if(clientsendResourcetoserver(fc, 
+                                  subject.c_str(),
+                                  remoteResource.c_str(),
+                                  NULL, 
+                                  fileName.c_str(),
+                                  encType, 
+                                  m_fileKeys)) {
+        fprintf(g_logFile, "fileClient fileTest: write file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: write file unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+bool fileClient::compareFiles(const string& firstFile, const string& secondFile) {
     // compare the two files to see if the file returned by the server is exactly the file we sent
     ifstream origFile;
     ifstream newFile;
     int pos = 0;
     bool failed = false;
-    origFile.open(filePath.c_str(), ifstream::in);
-    newFile.open(outPath.c_str(), ifstream::in);
+    origFile.open(firstFile.c_str(), ifstream::in);
+    newFile.open(secondFile.c_str(), ifstream::in);
     
     while(origFile.good() && newFile.good()) {
         char co = origFile.get();
@@ -1194,64 +1202,8 @@ bool fileTest(safeChannel& fc, fileClient& oFileClient, const string& subject, c
     }
 
     return !failed;
-
 }
 
-bool timeConnections(int count, const char* directory) {
-    // create and tear down many connections in sequence to get an average 
-    // timing for connection establishment  
-    timer connectionTimer;
-    connectionTimer.Start();
-    for(int i = 0; i < count; ++i) {
-        safeChannel fc;
-        fileClient oFileClient;
-        if (!establishConnection(fc, oFileClient, g_szClientPrincipalPrivateKeysFile, g_szClientPrincipalCertsFile, directory)) {
-            fprintf(g_logFile, "Could not establish a connection in round %d\n", i);
-            fflush(g_logFile);  
-            return false;
-        } else {
-            if(fc.fd>0) {
-                fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-            }
-        }
- 
-    }
-    connectionTimer.Stop();
- 
-    fprintf(g_logFile, "Creating and tearing down %d connections took %lf microseconds\n", 
-            count, connectionTimer.GetInterval());
-    fflush(g_logFile);
-    return true;
-}
-
-
-void generateRandomFile(int length, const string& filePath) {
-    if (length <= 0) {
-        throw "Can't generate a random file of length <= 0";
-    }
-
-    // read from /dev/urandom and write to the filename given
-    ifstream randFile;
-    ofstream outFile;
-    randFile.open("/dev/urandom", ifstream::binary | ifstream::in);
-    outFile.open(filePath.c_str(), ofstream::binary | ofstream::trunc | ofstream::out);
-
-    // use a buffer of a convenient length    
-    char buf[MAXREQUESTSIZE];
-    int bytesRemaining = length;
-    
-    // read bytes from /dev/urandom and write them to the randFile
-    while(bytesRemaining > 0) {
-        int readAmount = bytesRemaining < MAXREQUESTSIZE ? bytesRemaining : MAXREQUESTSIZE;
-        randFile.read(buf, readAmount);
-        outFile.write(buf, readAmount);
-        bytesRemaining -= readAmount;
-    } 
-
-    randFile.close();
-    outFile.close();
-    return;
-}
 
 
 int main(int an, char** av)
@@ -1262,21 +1214,9 @@ int main(int an, char** av)
     int             i;
     bool            fInitProg= false;
     const char*     directory= NULL;
-    string          basicFile("file.test");
-    string          tinyFile("tinyRandomFile.test");
-    string          smallFile("smallRandomFile.test");
-    string          mediumFile("mediumRandomFile.test");
-    string          largeFile("largeRandomFile.test");
-    string          localPath("fileClient/files/");
-    string          uriPrefix("//www.manferdelli.com/Gauss/fileProxy/files/");
-    string          subject("//www.manferdelli.com/User/JohnManferdelli/0001");
-    string          evidenceFileName("fileClient/authRule1Signed.xml");
-    timer           connectionTimer;
-    timer           fileTimer;
-    int             creationCount= 10;	
-    int             testSizes[]= {128, 2048, 4096, 6000, 16384, 16385, 20000, 30000, 16384*2, 100000, 200000, 512*1024};
+    string          testPath("fileClient/tests/");
+    string          testFileName("tests.xml");
     initLog(NULL);
-
 
 #ifdef  TEST
     fprintf(g_logFile, "fileClient test\n");
@@ -1330,144 +1270,53 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-        // first try the connection test
-    //    if (!timeConnections(100, directory)) {
-    //        fprintf(g_logFile, "Could not time the connections\n");
-    //        fflush(g_logFile);
-    //    }
-
-    //    connectionTimer.Start();
-    //    if (!establishConnection(fc, oFileClient, directory)) {
-    //        iRet = 1;
-    //        goto cleanup;  
-    //    }
-    //    connectionTimer.Stop();
-    //
-    //    fprintf(g_logFile, "Connection establishment took %lf microseconds\n", connectionTimer.GetInterval());
-    //    fflush(g_logFile);
-    //
-    //    // test with a simple file
-    //    fileTimer.Start();
-    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-    //            uriPrefix, localPath, basicFile)) {
-    //        iRet = 1;
-    //        goto cleanup;
-    //    } else {
-    //        printf("Succeeded for file %s\n", basicFile.c_str());
-    //    }
-    //    fileTimer.Stop();
-    //
-    //    fprintf(g_logFile, "Sending the basic file took %lf microseconds\n", fileTimer.GetInterval());
-    //    fflush(g_logFile);
-
-        // note that this cast to int is safe, since the sizes are small
-        for (int i = 0; i < (int)(sizeof(testSizes)/sizeof(testSizes[0])); ++i) {
-            stringstream ss;
-            int length = testSizes[i];
-            ss << length;
-            string tempFileName = string("tempfile") + ss.str() + string(".test");
-            string path = localPath + tempFileName;
-            
-            // generate this random file
-            generateRandomFile(length, path);
-            
-            // get a new client and a connection and try to transfer this file
-            fileClient fClient;
-            safeChannel chan;
-            
-            if (!establishConnection(chan, fClient, g_szClientPrincipalPrivateKeysFile, g_szClientPrincipalCertsFile, directory)) {
-                printf("Failed to establish a channel with the server on round %d\n", i);
-            } else {
-                if (!fileTest(chan, fClient, subject, evidenceFileName, 
-                        uriPrefix, localPath, tempFileName)) {
-                    printf("The file test failed for file %s of length %d\n", path.c_str(), length);
-                } else {
-                    printf("Succeeded for file %s of length %d\n", path.c_str(), length);
-                }
-
-                if(chan.fd>0) {
-                    chan.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-                }
-            } 
+        // read the testPath and iterate through the set of tests, running each in turn
+        DIR* testDir = opendir(testPath.c_str());
+        if (NULL == testDir) {
+            throw "Could not open the test directory\n";
         }
 
-        // try a bunch of resource creation and deletion requests
-        for(int i = 0; i < creationCount; ++i) {
-            fileClient client;
-            safeChannel sc;
-            if (!establishConnection(sc, client, g_szClientPrincipalPrivateKeysFile, g_szClientPrincipalCertsFile, directory)) {
-                printf("Failed to establish a connection for the creation test\n");
-            } else {
-                stringstream ss;
-                ss << i;
-                string resource = string("tempResource") + ss.str();
-                string prefixedResource = uriPrefix + resource;
-                if (!createResourceTest(sc, client, subject, evidenceFileName, prefixedResource)) {
-                    printf("Could not create the resource on the server\n");
-                } else {
-                    if (!deleteResourceTest(sc, client, subject, evidenceFileName, prefixedResource)) {
-                        printf("Could not delete the resource on the server\n");
-                    } else {
-                        printf("Successfully created and deleted the resource %s on the server\n", prefixedResource.c_str());
-                    }
-                }
+        fprintf(g_logFile, "reading directory %s\n", testPath.c_str());    
+        fflush(g_logFile);
 
-                // tear down the channel at the end of the test
-                if(sc.fd>0) {
-                    sc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-                }
+    	// each child directory is a test
+        struct dirent* entry = NULL;
+        string curDir(".");
+        string parentDir("..");
+        while((entry = readdir(testDir))) {
+            if (curDir.compare(entry->d_name) == 0 || 
+                parentDir.compare(entry->d_name) == 0) {
+                continue;
+            }
+            fprintf(g_logFile, "Got entry with name %s\n", entry->d_name);
+            fflush(g_logFile);	
+            if (DT_DIR == entry->d_type) {
+                string path = testPath + string(entry->d_name) + string("/");
+                fprintf(g_logFile, "Got path %s\n", path.c_str());
+                fileTester ft(path, testFileName);
+                fprintf(g_logFile, "Got new fileTester\n");
+                fflush(g_logFile);	
+                ft.Run(directory);
+                fprintf(g_logFile, "Finished running tester\n");
+                fflush(g_logFile);	
             }
         }
-                
-            
 
-
-    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-    //            uriPrefix, localPath, smallFile)) {
-    //        iRet = 1;
-    //        goto cleanup;
-    //    } else {
-    //        printf("Succeeded for file %s\n", smallFile.c_str());
-    //    }
-
-    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-    //            uriPrefix, localPath, tinyFile)) {
-    //        iRet = 1;
-    //        goto cleanup;
-    //    } else {
-    //        printf("Succeeded for file %s\n", tinyFile.c_str());
-    //    }
-
-    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-    //            uriPrefix, localPath, mediumFile)) {
-    //        iRet = 1;
-    //        goto cleanup;
-    //    } else {
-    //        printf("Succeeded for file %s\n", mediumFile.c_str());
-    //    }
-    //
-    //    if (!fileTest(fc, oFileClient, subject, evidenceFileName, 
-    //            uriPrefix, localPath, largeFile)) {
-    //        iRet = 1;
-    //        goto cleanup;
-    //    } else {
-    //        printf("Succeeded for file %s\n", largeFile.c_str());
-    //    }
+        if (0 != errno) {
+            fprintf(g_logFile, "Got error %d\n", errno);
+        } else {
+            fprintf(g_logFile, "Finished reading test directory without error\n");
+        }
+        fflush(g_logFile);
+	
     } catch (const char* err) {
         printf("execution failed with error %s\n", err);
+        iRet= 1;
     }
 
-    //cleanup:
-    // CHANNEL_TERMINATE 
-    if(fc.fd>0) {
-        fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-    }
-    
 #ifdef  TEST
     fprintf(g_logFile, "fileClient main: At close client\n");
 #endif
-    // clean up global keys
-    oFileClient.closeClient();
     closeLog();
 
     return iRet;

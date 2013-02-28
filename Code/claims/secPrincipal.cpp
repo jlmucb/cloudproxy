@@ -589,6 +589,10 @@ int VerifyEvidenceList(tm* pt, int npiecesEvidence, int* rgEvidenceType,
         }
     }
 
+#ifdef TEST
+    fprintf(g_logFile, "VerifyEvidenceList returns true\n");
+    fflush(g_logFile);
+#endif
     return VALID;
 }
 
@@ -963,6 +967,7 @@ bool    evidenceList::validateEvidenceList(RSAKey* pRootKey, RSAKey* pTopKey)
         fprintf(g_logFile, "evidenceList::validateEvidenceList() returns true\n");
     else
         fprintf(g_logFile, "evidenceList::validateEvidenceList() returns false\n");
+    fflush(g_logFile);
 #endif
     return m_fValid;
 }

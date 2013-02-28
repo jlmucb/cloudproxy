@@ -219,6 +219,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
 }
 
 
+#ifdef TEST
 void Request::printMe()
 {
     fprintf(g_logFile, "\n\tRequest type: %d\n", m_iRequestType);
@@ -236,7 +237,7 @@ void Request::printMe()
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
     fprintf(g_logFile, "\tResourcelength: %d\n", m_iResourceLength);
 }
-
+#endif
 
 bool Request::validateCreateRequest(sessionKeys& oKeys, char** pszFile,
                                     resource** ppResource)
@@ -313,11 +314,15 @@ bool  Request::validateGetSendDeleteRequest(sessionKeys& oKeys, char** pszFile,
 
     if(m_poAG==NULL) {
         fprintf(g_logFile, "Request::validateGetSendDeleteRequest: access guard not initialiized\n");
+        fflush(g_logFile);
         return false;
     }
+    fprintf(g_logFile, "looking for resource %s\n", m_szResourceName);
+    fflush(g_logFile);
     pResource= g_theVault.findResource(m_szResourceName);
     if(pResource==NULL) {
         fprintf(g_logFile, "Request::validateGetSendDeleteRequest: GetSendDelete pResource NULL, %s\n", m_szResourceName);
+        fflush(g_logFile);
         return false;
     }
     if(pResource->m_szLocation==NULL) {
@@ -430,13 +435,17 @@ bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile,
 {
 #ifdef TEST
     fprintf(g_logFile, "\nvalidateRequest\n");
+    fflush(g_logFile);
 #endif
 
     if(m_szResourceName==NULL) {
         fprintf(g_logFile, "Request::validateRequest: validateRequest returning false\n");
+        fflush(g_logFile);
         return false;
     }
 
+    fprintf(g_logFile, "switching on request type\n");
+    fflush(g_logFile);
     bool    fAllowed;
     switch(m_iRequestType) {
       case CREATERESOURCE:
@@ -445,6 +454,7 @@ bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile,
       case DELETERESOURCE:
       case GETRESOURCE:
       case SENDRESOURCE:
+        fprintf(g_logFile, "validateGetSendDeleteRequest\n");
         fAllowed= validateGetSendDeleteRequest(oKeys, pszFile, ppResource);
         break;
       case ADDOWNER:
@@ -506,6 +516,7 @@ Response::~Response()
 }
 
 
+#ifdef TEST
 void Response::printMe()
 {
     fprintf(g_logFile, "\tRequestType: %d\n", m_iRequestType);
@@ -527,7 +538,7 @@ void Response::printMe()
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
     fprintf(g_logFile, "\tresourcelength: %d\n", m_iResourceLength);
 }
-
+#endif
 
 
 bool  Response::getDatafromDoc(char* szResponse)
@@ -1002,7 +1013,10 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
             fprintf(g_logFile, "serversendResourcetoclient: Open file error %s\n", szFile);
         }
     }
-    datasize= pResource->m_iSize;
+
+    if (!fError) {	
+        datasize= pResource->m_iSize;
+    }
 
     // construct response
     if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, datasize, szError)) {
@@ -1012,6 +1026,9 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
 
     // send response
     fc.safesendPacket(szBuf, (int)strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+
+    // if we sent an error to the client, then return false
+    if (fError) return false;
 
     // send file
     if(!sendFile(fc, iRead, filesize, datasize, encType, key)) {
@@ -1067,16 +1084,16 @@ bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, c
 #endif
     oResponse.getDatafromDoc(szBuf);
 
+    bool success = (oResponse.m_szAction == NULL) || (strcmp(oResponse.m_szAction, "accept") == 0);
+#ifdef TEST
     // check response
-    if(oResponse.m_szAction==NULL || strcmp(oResponse.m_szAction, "accept")!=0) {
+    if(!success) {
         fprintf(g_logFile, "clientcreateResourceonserver: response is false\n");
         oResponse.printMe();
     }
-
-#ifdef  TEST
-    fprintf(g_logFile, "clientcreateResourceonserver returns true\n");
 #endif
-    return true;
+
+    return success;
 }
 
 
@@ -1152,12 +1169,11 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
             return false;
         }
         pOwnerResource->m_szLocation= strdup(szBuf);
-        fprintf(g_logFile, "tmroeder: using location %s\n", pOwnerResource->m_szLocation);
         // Create directory if it doesn't exist
         struct stat  sb;
         if(stat(pOwnerResource->m_szLocation, &sb)!=0) {
             if(mkdir(pOwnerResource->m_szLocation, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0) {
-                fprintf(g_logFile, "servercreateResourceonserver: can't make directory\n");
+                fprintf(g_logFile, "servercreateResourceonserver: can't make directory %s\n", pOwnerResource->m_szLocation);
                 return false;
             }
             stat(pOwnerResource->m_szLocation, &sb);
@@ -1283,7 +1299,9 @@ bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const ch
     // check response
     if(oResponse.m_szAction==NULL || strcmp(oResponse.m_szAction, "accept")!=0) {
         fprintf(g_logFile, "clientsendResourcetoserver: response is false\n");
+#ifdef TEST
         oResponse.printMe();
+#endif
         // fprintf(g_logFile, "Error: %s\n", oResponse.szErrorCode);
         return false;
     }
@@ -1329,11 +1347,17 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
 #endif
     // validate request (including access check) and get file location
     fError= !oReq.validateRequest(oKeys, &szOutFile, &pResource);
-    size= oReq.m_iResourceLength;
-    pResource->m_iSize= size;
+    fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");	
+    fflush(g_logFile);
+    if (!fError) {	
+        size= oReq.m_iResourceLength;
+        pResource->m_iSize= size;
+    }
 
     // open for writing
     if(!fError) {
+        fprintf(g_logFile, "servergetResourcefromclient opening file %s\n", szOutFile);	
+        fflush(g_logFile);
         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if(iWrite<0) {
             fError= true;
@@ -1346,8 +1370,14 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
     if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
+    } else {
+        fprintf(g_logFile, "Constructed a response\n");
+        fflush(g_logFile);
     }
     fc.safesendPacket(szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+
+    // if the reply was that there was an error, then return false
+    if (fError) return false;
 
 #ifdef  TEST
     fprintf(g_logFile, "servergetResourcefromclient getting file, %d\n", size);

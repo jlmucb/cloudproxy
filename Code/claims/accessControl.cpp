@@ -225,7 +225,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     pResource= g_theVault.findResource(szBuf);
     if(pResource==NULL) {
         fprintf(g_logFile, "Could not find resource %s, so not a valid assertion\n", szBuf);
-        return false;
+        return true;
     }
     m_pResource= pResource;
 
@@ -234,6 +234,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
 }
 
 
+#ifdef TEST
 void    assertionNode::printMe()
 {
     if(m_fValidated)
@@ -254,6 +255,7 @@ void    assertionNode::printMe()
     if(m_pResource!=NULL)
         fprintf(g_logFile, "%s\n", m_pResource->m_szResourceName);
 }
+#endif
 
 
 bool assertionNode::matchAction(u32 uVerb)
@@ -266,6 +268,7 @@ bool assertionNode::matchAction(u32 uVerb)
 
 bool assertionNode::matchResource(resource* pResource)
 {
+    if (NULL == pResource || NULL == m_pResource) return false;
     if(strcmp(pResource->m_szResourceName, m_pResource->m_szResourceName)==0)
         return true;
     return false;
@@ -274,6 +277,7 @@ bool assertionNode::matchResource(resource* pResource)
 
 bool assertionNode::matchPrincipal(accessPrincipal* pSubject)
 {
+    if (NULL == pSubject || NULL == m_pPrincipal) return false;
     if(pSubject->m_fValidated && m_pPrincipal->m_fValidated &&
        strcmp(pSubject->m_szPrincipalName, m_pPrincipal->m_szPrincipalName)==0)
         return true;
@@ -324,7 +328,10 @@ bool assertionNode::assertionSucceeds(accessPrincipal* pSubject, u32 uVerb, reso
         fprintf(g_logFile, "principal mismatch\n");
         return false;
     }
-    
+
+    fprintf(g_logFile, "About to try and check pResource %p against m_pResource %p\n", pResource, m_pResource);
+    fflush(g_logFile);	   
+ 
     if (!matchResource(pResource)) {
         fprintf(g_logFile, "resource mismatch\n");
         return false;
@@ -391,6 +398,7 @@ accessRequest::~accessRequest()
 }
 
 
+#ifdef TEST
 void accessRequest::printMe()
 {
     fprintf(g_logFile, "\n\taccessRequest\n");
@@ -405,6 +413,7 @@ void accessRequest::printMe()
         fprintf(g_logFile, "\tResource is %s\n", m_szResource);
     fprintf(g_logFile, "\n");
 }
+#endif
 
 
 accessGuard::accessGuard()
@@ -551,12 +560,18 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
         return false;
       }
 
+#ifdef TEST
+    fprintf(g_logFile, "Checking assertions\n");
+    fflush(g_logFile);
+#endif
+
     assertionNode**  rgpAssertions= 
             (assertionNode**) malloc(sizeof(assertionNode*)*pAssert->m_iNumAssertions);
     pSaysPrincipal= g_theVault.findPrincipal(pAssert->getPrincipalName());
-#ifdef RULESTEST
+//#ifdef RULESTEST
     fprintf(g_logFile, "says principal name: %s\n", pAssert->getPrincipalName());
-#endif
+    fflush(g_logFile);
+//#endif
     if(pSaysPrincipal==NULL) {
         fprintf(g_logFile, "Who says?\n");
         return false;
@@ -569,17 +584,21 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
             return false;
         }
     }
+    fprintf(g_logFile, "Finished parsing assertions\n");
+    fflush(g_logFile);
     pSubjNode= m_Subjects.pFirst;
     while(pSubjNode!=NULL) {
         pSubjPrincipal= pSubjNode->pElement;
         if(rgpAssertions[0]->assertionSucceeds(pSubjPrincipal, uVerb, pResource,
                   pAssert->m_iNumAssertions, rgpAssertions)) {
             fprintf(g_logFile, "the assertion succeeds\n");
+            fflush(g_logFile);
             return true;
         }
         pSubjNode= pSubjNode->pNext;
     }
-
+    fprintf(g_logFile, "Finished checking assertion without finding one that succeeds\n");
+    fflush(g_logFile);
     return false;
 }
 

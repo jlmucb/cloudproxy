@@ -1,0 +1,47 @@
+<EvidenceCollection count='1'>
+    <EvidenceList count='1'>
+	<ds:Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>
+	<ds:SignedInfo>
+	    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+	    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+	    <Certificate Id="//www.manferdelli.com/2011/Cert/User/00001" version="1">
+		<SerialNumber>20131011001</SerialNumber>
+		<PrincipalType>User</PrincipalType>
+		<IssuerName>manferdelli.com</IssuerName>
+		<IssuerID>manferdelli.com</IssuerID>
+		<ValidityPeriod>
+		    <NotBefore>2011-01-01Z00:00.00</NotBefore>
+		    <NotAfter>2021-01-01Z00:00.00</NotAfter>
+		</ValidityPeriod>
+		<SubjectName>//www.manferdelli.com/User/JohnManferdelli/0001</SubjectName>
+		<SubjectKey>
+		    <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/Keys/jlmPrincipal/0001">
+			<KeyType>RSAKeyType</KeyType>
+			<ds:KeyValue>
+			    <ds:RSAKeyValue size="1024">
+				<ds:M>cfOR9cIRcJcRahDgkWyytcoF61F145DVOoQBc/HuCHOgY9BHPyu47nQnp6FTnC59Rmy6AaxFg9luvTdPXoli1XJWQl4obz7TwDkKItB9AR/0KoaxTiRuc6MqCjStd/hPNiPPxp4M4/7bDgChCUpvygW5uFO0pOGGZ8fIU2KFEsE=</ds:M>
+				<ds:E>AAAAAAABAAE=</ds:E>
+			    </ds:RSAKeyValue>
+			</ds:KeyValue>
+		    </ds:KeyInfo>
+		</SubjectKey>
+		<SubjectKeyID>//www.manferdelli.com/Keys/jlmPrincipal/0001</SubjectKeyID>
+		<RevocationPolicy>Local-check-only</RevocationPolicy>
+	    </Certificate>
+	</ds:SignedInfo>
+	    <ds:SignatureValue>    
+	GeN3iRpFU41xFnWr9FFAvZ8kkTbRqvZ634UWpS+rSfNnJF6l7kAIoC0J+HqfYQm9LVuDna6PHuZh9hgOl4Zzf432f1sm/Ixs3AlZrvVPz7JZQMwkNRVFeshKO0EXjdWayx3CCB6XjQneq2quK0tWuPnq+62e+eWhy5hNqpc2KsU=
+	    </ds:SignatureValue>
+	<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName='KEYNAME'>
+	    <KeyType>RSAKeyType</KeyType>
+	    <ds:KeyValue>
+		<ds:RSAKeyValue size='1024'>
+		    <ds:M>mKz2RCCLjalret9DQqYibkq5QX9dgJDT4SQaKqrzjEnWVghdDxAvXe45vAy8amxGMcdGlHtrJEy5j7u3tHGU+6y+8eTKjqHrQhcuJnD8yUkD/ZzmM0w3+wlby4PqLxRhJR7RMC7bLHWc9JkUsCraG9yaP752s2iwXueOTx2vrOE=</ds:M>
+		    <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+		</ds:RSAKeyValue>
+	    </ds:KeyValue>
+	</ds:KeyInfo>
+	</ds:Signature>
+    </EvidenceList>
+</EvidenceCollection>
+

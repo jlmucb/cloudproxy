@@ -14,7 +14,7 @@ CH=	    ../channels
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
+CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(DEBUG_CFLAGS)
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -30,7 +30,7 @@ dobjs=      $(B)/fileClient.o $(B)/logging.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o  $(B)/secPrincipal.o $(B)/request.o $(B)/resource.o \
 	    $(B)/accessControl.o $(B)/trustedKeyNego.o $(B)/sha1.o $(B)/vault.o \
-	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o
+	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o $(B)/fileTester.o
 
 all: $(E)/fileClient.exe
 
@@ -40,6 +40,9 @@ $(E)/fileClient.exe: $(dobjs)
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(RMM) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
+
+$(B)/fileTester.o: $(S)/fileTester.cpp $(S)/fileTester.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(RMM) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/fileTester.o $(S)/fileTester.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp

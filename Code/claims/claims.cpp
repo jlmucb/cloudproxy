@@ -499,12 +499,16 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
         fprintf(g_logFile, "checkXMLQuote: Unsupported quote algorithm %s\n", szQuoteAlg);
         return false;
     }
+
+
 #ifdef TEST
     fprintf(g_logFile, "checkXMLQuote hashtype: %d\n", hashType);
     PrintBytes("Code digest: ", hashCode, sizehashCode);
     PrintBytes("final hash: ", hashFinal, sizefinalHash);
     PrintBytes("quotevalue: ", quoteValue, outLen);
     fflush(g_logFile);
+#else
+    UNUSEDVAR(sizefinalHash);	
 #endif
 
     return RsaPkcsPadSignCheck((RSAKey*) pKeyInfo, hashType, hashFinal,

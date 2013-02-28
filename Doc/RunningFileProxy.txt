@@ -38,42 +38,39 @@ Next prepare the test files for fileClient
 If you are running the standard test, suppose CODE is 
 the directory where the fileProxy code is and ROOT is the directory
 you store your executables (usually jlmcrypt); do the following:
-1. mkdir ROOT/fileClient/files
-2. cp CODE/SupportFiles/testfiles/file.test ROOT/fileClient/files
 
-Copy the principal private keys and prototypes into fileClient:
-cp CODE/SupportFiles/testfiles/principalPrivateKeys.xml ROOT/fileClient
-cp CODE/SupportFiles/testfiles/authorizationProto.xml ROOT/fileClient
-cp CODE/SupportFiles/testfiles/jlmPrincipalPrivateKey.xml ROOT/fileClient
-cp CODE/SupportFiles/testfiles/jlmPrincPublicKeyProto.xml ROOT/fileClient
+    mkdir ROOT/fileClient/tests
+    mkdir -p ROOT/fileProxy/files
+    cd ROOT
+    CODE/scripts/createSimpleTest.py --scriptPath CODE
+    mv basicTest fileClient/tests/
 
-Copy the principal public key prototype file and authorization rule
-prototype into fileClient:
-cp CODE/SupportFiles/testfiles/principalPublicKeysProto.xml ROOT/fileClient/principalPublicKeys.xml
-cp CODE/SupportFiles/testfiles/authRule1Proto.xml ROOT/fileClient/authRule1Signed.xml
-Note:  change this last name soon.
+createSimpleTest.py creates a new public/private key pair for a user JohnManferdelli/0001,
+generates the public and private key XML files, creates a new test file file.test and a 
+test overview file tests.xml. It also creates a signed authorization file with the single
+statement
 
-In ROOT, Sign the user principal key prototype and the authorization
-rule prototype:
-./cryptUtility.exe -Sign policy/privatePolicyKey.xml rsa1024-sha256-pkcspad \
-        fileClient/jlmPrincPublicKeyProto.xml fileClient/jlmPrincPublicKey.xml
-./cryptUtility.exe -Sign policy/privatePolicyKey.xml rsa1024-sha256-pkcspad \
-        fileClient/authorizationProto.xml fileClient/authorizationRuleSigned.xml
+    //www.manferdelli.com/User/JohnManferdelli/0001 maycreate //www.manferdelli.com/Gauss/fileProxy/files
 
-Edit ROOT/fileClient/principalPublicKeys.xml and copy the newly signed 
-jlmPrincPublicKey.xml into the file where indicated.
-
-Edit ROOT/fileClient/authRule1Signed.xml and copy the newly signed 
-authorizationRuleSigned.xml into the file where indicated.
+This code assumes that the policy key can be found in ROOT/policy/privatePolicyKey.xml and that
+cryptUtility.exe is in ROOT/cryptUtility.exe
 
 
-Regular user
+Now, as a regular user, execute the following commands:
 ./tcService.exe &
 sleep 2s
 ./fileServer.exe -initProg
 sleep 2s
 ./fileClient.exe -initProg
 sleep 5s
-dmesg>driver.log
 
+You should see the following output on the command line:
 
+    basicFileCreate: [OK]
+    basicFileWrite: [OK]
+    basicFileRead: [OK]
+
+see the file fileClient/tests/basicTest/tests.xml for the XML test format, and see the examples
+in CODE/SupportFiles/tests for other samples. Note that these samples have already been 
+signed by a policy key and will need to be generated again using the scripts in CODE/scripts
+to work in an environment with a different policy key

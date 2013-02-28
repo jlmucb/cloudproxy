@@ -272,7 +272,6 @@ bool Request::validateCreateRequest(sessionKeys& oKeys, char** pszFile,
     oAR.m_szSubject= strdup(m_szSubjectName);
     oAR.m_iRequestType= m_iRequestType;
     oAR.m_szResource= strdup(szBuf);
-
     fAllowed= m_poAG->permitAccess(oAR, m_szEvidence);
     if(!fAllowed) {
         fprintf(g_logFile, "Request::validateCreateRequest: permitAccess returns false\n");
@@ -1108,6 +1107,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
         fprintf(g_logFile, "servercreateResourceonserver: requested resource name too long\n");
         return false;
     }
+
     strcpy(szBuf, oReq.m_szResourceName);
     while(*p!=0)
         p++;
@@ -1137,7 +1137,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
             return false;
         }
 
-        // owner is fileServer
+        // owner is the policy principal
         pOwnerPrincipal= g_policyAccessPrincipal;
         if(pOwnerPrincipal==NULL) {
             fprintf(g_logFile, "servercreateResourceonserver: can't get owner principal\n");
@@ -1152,7 +1152,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
             return false;
         }
         pOwnerResource->m_szLocation= strdup(szBuf);
-
+        fprintf(g_logFile, "tmroeder: using location %s\n", pOwnerResource->m_szLocation);
         // Create directory if it doesn't exist
         struct stat  sb;
         if(stat(pOwnerResource->m_szLocation, &sb)!=0) {

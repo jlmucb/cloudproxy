@@ -1268,8 +1268,8 @@ int main(int an, char** av)
     string          mediumFile("mediumRandomFile.test");
     string          largeFile("largeRandomFile.test");
     string          localPath("fileClient/files/");
-    string          uriPrefix("//www.manferdelli.com/Gauss/fileServer/files/");
-    string          subject("//www.manferdelli.com/User/P1/0001");
+    string          uriPrefix("//www.manferdelli.com/Gauss/fileProxy/files/");
+    string          subject("//www.manferdelli.com/User/JohnManferdelli/0001");
     string          evidenceFileName("fileClient/authRule1Signed.xml");
     timer           connectionTimer;
     timer           fileTimer;

@@ -224,8 +224,8 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     memcpy(szBuf, szTok,n); szBuf[n]= '\0';
     pResource= g_theVault.findResource(szBuf);
     if(pResource==NULL) {
-        fprintf(g_logFile, "No resource in assertion\n");
-        return true;
+        fprintf(g_logFile, "Could not find resource %s, so not a valid assertion\n", szBuf);
+        return false;
     }
     m_pResource= pResource;
 
@@ -322,6 +322,11 @@ bool assertionNode::assertionSucceeds(accessPrincipal* pSubject, u32 uVerb, reso
     }
     if(!matchPrincipal(pSubject)) {
         fprintf(g_logFile, "principal mismatch\n");
+        return false;
+    }
+    
+    if (!matchResource(pResource)) {
+        fprintf(g_logFile, "resource mismatch\n");
         return false;
     }
 
@@ -486,8 +491,10 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
     // Owners get all rights, we don't need no stinking evidence
     while(pSubjNode!=NULL) {
         pSubjPrincipal= pSubjNode->pElement;
-        if(isAnOwner(pSubjPrincipal, pResource))
+        if(isAnOwner(pSubjPrincipal, pResource)) {
+            fprintf(g_logFile, "The subject %s is an owner of resource %s, so the access check passes\n", pSubjPrincipal->m_szPrincipalName, req.m_szResource);
             return true;
+        }	
         pSubjNode= pSubjNode->pNext;
     }
 
@@ -566,8 +573,10 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
     while(pSubjNode!=NULL) {
         pSubjPrincipal= pSubjNode->pElement;
         if(rgpAssertions[0]->assertionSucceeds(pSubjPrincipal, uVerb, pResource,
-                  pAssert->m_iNumAssertions, rgpAssertions))
+                  pAssert->m_iNumAssertions, rgpAssertions)) {
+            fprintf(g_logFile, "the assertion succeeds\n");
             return true;
+        }
         pSubjNode= pSubjNode->pNext;
     }
 

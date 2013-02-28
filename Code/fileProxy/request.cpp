@@ -1240,7 +1240,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
     fprintf(g_logFile, "servercreateResourceonserver returning true\n");
     fflush(g_logFile);
 #endif
-    return true;
+    return !fError;
 }
 
 
@@ -1572,7 +1572,7 @@ bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys,
         return false;
     }
     fc.safesendPacket((byte*)szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
-    return true;
+    return !fError;
 }
 
 

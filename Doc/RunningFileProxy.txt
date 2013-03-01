@@ -42,7 +42,7 @@ you store your executables (usually jlmcrypt); do the following:
     mkdir ROOT/fileClient/tests
     mkdir -p ROOT/fileProxy/files
     cd ROOT
-    CODE/scripts/createSimpleTest.py --scriptPath CODE
+    CODE/scripts/createSimpleTest.py --scriptPath CODE/scripts
     mv basicTest fileClient/tests/
 
 createSimpleTest.py creates a new public/private key pair for a user JohnManferdelli/0001,

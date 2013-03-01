@@ -36,14 +36,22 @@
 #include "accessControl.h"
 #include "algs.h"
 #include "vault.h"
+#include <pthread.h>
+
+
+#define  MAXNUMCLIENTS  50
+
 
 
 class fileServer {
 public:
-    int                 m_serverState;
-    bool                m_fChannelAuthenticated;
     char*               m_szPort;
     char*               m_szAddress;
+
+    int                 m_iNumClients;
+    bool                m_fthreadValid[MAXNUMCLIENTS];
+    pthread_t           m_threadData[MAXNUMCLIENTS];
+    int                 m_threadIDs[MAXNUMCLIENTS];
 
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
@@ -67,11 +75,34 @@ public:
     bool    initPolicy();
     bool    initFileKeys();
 
-    bool    protocolNego(int fd, safeChannel&, sessionKeys&);
-    bool    initSafeChannel(int fd, safeChannel& fc, sessionKeys& oKeys);
-    int     processRequests(safeChannel&, sessionKeys&, accessGuard&);
-    bool    serviceChannel(int fd);
     bool    server();
+};
+
+
+//  thread for client channel
+void* channelThread(void* ptr);
+
+
+class theServiceChannel {
+public:
+    fileServer*         m_pParent;
+    int                 m_fdChannel;
+
+    int                 m_serverState;
+    bool                m_fChannelAuthenticated;
+    sessionKeys         m_oKeys;
+    safeChannel         m_osafeChannel;
+    accessGuard         m_oAG;
+    int                 m_myPositionInParent;
+
+    theServiceChannel();
+    ~theServiceChannel();
+
+    bool    initServiceChannel();
+    bool    protocolNego();
+    bool    initSafeChannel();
+    int     processRequests();
+    bool    serviceChannel();
 };
 
 

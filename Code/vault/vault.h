@@ -38,6 +38,7 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 
 // -----------------------------------------------------------------------
@@ -102,6 +103,7 @@ class metaData {
 public:
     bool                m_metaDataValid;
     bool                m_fEncryptFile;
+    pthread_mutex_t     m_mutex;
 
     char*               m_szprogramName;
     char*               m_szdirectoryName;

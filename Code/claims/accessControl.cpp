@@ -196,6 +196,11 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
         return false;
     memcpy(szBuf, szTok, n); szBuf[n]= '\0';
     pPrinc= g_theVault.findPrincipal(szBuf);
+    // jlm READTHIS: should this really return true? That means the assertion was
+    // parsed correctly but the resource in the assertion is NULL. I would think
+    // that any syntactically well-formed assertion should parse and the resource
+    // should be created. Ownership can be determined by the semantics of the 
+    // assertion
     if(pPrinc==NULL) {
         fprintf(g_logFile, "No subject in assertion\n");
         return true;

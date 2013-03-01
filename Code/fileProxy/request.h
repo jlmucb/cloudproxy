@@ -35,6 +35,7 @@
 #include "objectManager.h"
 #include "channel.h"
 #include "safeChannel.h"
+#include "timer.h"
 #include "vault.h"
 #include "policyglobals.h"
 
@@ -134,30 +135,30 @@ bool translateResourceNametoLocation(const char* szResourceName, char* szLocatio
                                      int size);
 
 bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
-                                 const char* szFile, int encType, byte* key);
+                                 const char* szFile, int encType, byte* key, timer& encTimer);
 bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
-                                const char* szFile, int encType, byte* key);
+                                const char* szFile, int encType, byte* key, timer& decTimer);
 
 bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                int encType, byte* key);
+                                int encType, byte* key, timer& accessTimer, timer& decTimer);
 bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key);
+                                 int encType, byte* key, timer& accessTimer, timer& encTimer);
 
 bool clientchangeownerResource(safeChannel& fc, const char* szAction, 
                                const char* szResourceName, const char* szEvidence, 
                                const char* szOutFile, int encType, byte* key);
 bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key);
+                                 int encType, byte* key, timer& accessTimer);
 
 bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, 
                                   const char* szSubject, const char* szEvidence, 
                                   int encType, byte* key);
 bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key);
+                                 int encType, byte* key, timer& accessTimer);
 bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
                           const char* szEvidence, const char* szFile, int encType, byte* key);
 bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                          int encType, byte* key);
+                          int encType, byte* key, timer& accessTimer);
 
 bool initAccessGuard(sessionKeys& oKeys);
 

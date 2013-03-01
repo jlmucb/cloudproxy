@@ -14,8 +14,8 @@ CH=	    ../channels
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-CFLAGS=     -D LINUX -D FILECLIENT -D TIXML_USE_STL -D __FLUSHIO__ $(DEBUG_CFLAGS)
-LDFLAGSXML      := ${RELEASE_LDFLAGS}
+CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(DEBUG_CFLAGS)
+LDFLAGS          := $(RELEASE_LDFLAGS)
 
 CC=         g++
 LINK=       g++
@@ -36,7 +36,7 @@ all: $(E)/fileClient.exe
 
 $(E)/fileClient.exe: $(dobjs)
 	@echo "fileClient"
-	$(LINK) -o $(E)/fileClient.exe $(dobjs) -lpthread
+	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(RMM) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/fileClient.o $(S)/fileClient.cpp

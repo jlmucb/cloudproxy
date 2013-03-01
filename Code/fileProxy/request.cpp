@@ -679,7 +679,7 @@ bool emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
 
 
 bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize, 
-             int encType, byte* enckey)
+             int encType, byte* enckey, timer& encTimer)
 {
     int                 type= CHANNEL_RESPONSE;
     byte                multi, final;
@@ -725,9 +725,11 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
         fprintf(g_logFile, "getFile: received %d bytes\n", n);
         fflush(g_logFile);
 #endif
+        encTimer.Start();
         if(encFile.EncWrite(iWrite, fileBuf, n)<0) {
             fprintf(g_logFile, "getFile: bad write in fileTransfer\n");
         }
+        encTimer.Stop();
         if(final>0)
             break;
     }
@@ -740,7 +742,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
 
 
 bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize, 
-              int encType, byte* enckey)
+              int encType, byte* enckey, timer& decTimer)
 {
     int                 type= CHANNEL_RESPONSE;
     byte                multi, final;
@@ -780,7 +782,9 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     fflush(g_logFile);
 #endif
     for(;;) {
+        decTimer.Start();
         n= encFile.EncRead(iRead, fileBuf, MAXREQUESTSIZE);
+        decTimer.Stop();
         if(n<=0)
             break;
         datasize-= n;
@@ -924,7 +928,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szResou
 
 
 bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
-            const char* szEvidence, const char* szOutFile, int encType, byte* key)
+            const char* szEvidence, const char* szOutFile, int encType, byte* key, timer& encTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -970,7 +974,7 @@ bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName,
         return false;
     }
     if(!getFile(fc, iWrite, oResponse.m_iResourceLength, oResponse.m_iResourceLength, 
-                encType, key)) {
+                encType, key, encTimer)) {
         fprintf(g_logFile, "clientgetResourcefromserver: Can't get file\n");
         return false;
     }
@@ -983,7 +987,7 @@ bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName,
 }
 
 
-bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, int encType, byte* key)
+bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
     bool        fError;
     int         iRead= 0;
@@ -1003,7 +1007,9 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
     fprintf(g_logFile, "serversendResourcetoclient\n");
 #endif
     // validate request (including access check) and get file location
+    accessTimer.Start();
     fError= !oReq.validateRequest(oKeys, &szFile, &pResource);
+    accessTimer.Stop();
 
     // open File (if no Error)
     if(!fError) {
@@ -1032,7 +1038,7 @@ bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKe
     if (fError) return false;
 
     // send file
-    if(!sendFile(fc, iRead, filesize, datasize, encType, key)) {
+    if(!sendFile(fc, iRead, filesize, datasize, encType, key, decTimer)) {
         fprintf(g_logFile, "serversendResourcetoclient: sendFile error\n");
         close(iRead);
         return false;
@@ -1099,7 +1105,7 @@ bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, c
 
 
 bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                  int encType, byte* key)
+                                  int encType, byte* key, timer& accessTimer)
 {
     bool            fAllowed;
     bool            fError;
@@ -1218,7 +1224,9 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
     }
 
     if(!fError) {
+        accessTimer.Start();
         fAllowed= oReq.validateRequest(oKeys, &szFile, &pResource);
+        accessTimer.Stop();
         if(fAllowed) {
             pResource->m_myOwners.append(pSubject);
         }
@@ -1246,7 +1254,7 @@ bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& o
 
 
 bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
-                                const char* szInFile, int encType, byte* key)
+                                const char* szInFile, int encType, byte* key, timer& decTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -1312,7 +1320,7 @@ bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const ch
     fflush(g_logFile);
 #endif
     // send file
-    if(!sendFile(fc, iRead, filesize, datasize, encType, key)) {
+    if(!sendFile(fc, iRead, filesize, datasize, encType, key, decTimer)) {
         close(iRead);
         return false;
     }
@@ -1327,7 +1335,7 @@ bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const ch
 
 
 bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key)
+                                 int encType, byte* key, timer& accessTimer, timer& encTimer)
 {
     bool        fError;
     int         iWrite= 0;
@@ -1347,7 +1355,9 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
     fflush(g_logFile);
 #endif
     // validate request (including access check) and get file location
+    accessTimer.Start();
     fError= !oReq.validateRequest(oKeys, &szOutFile, &pResource);
+    accessTimer.Stop();
     fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");	
     fflush(g_logFile);
     if (!fError) {	
@@ -1385,7 +1395,7 @@ bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oK
     fflush(g_logFile);
 #endif
     // read file
-    if(!getFile(fc, iWrite, size, size, encType, key)) {
+    if(!getFile(fc, iWrite, size, size, encType, key, encTimer)) {
         fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
         close(iWrite);
         return false;
@@ -1450,7 +1460,7 @@ bool clientchangeownerResource(safeChannel& fc, const char* szAction, const char
 
 
 bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key)
+                                 int encType, byte* key, timer& accessTimer)
 // includes delete
 {
     resource*           pResource= NULL;
@@ -1461,8 +1471,10 @@ bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oK
     fprintf(g_logFile, "serverchangeownerofResource\n");
     fflush(g_logFile);
 #endif
+    accessTimer.Start();
     if(!oReq.validateRequest(oKeys, &szFile, &pResource))
         return false;
+    accessTimer.Stop();
 
     if(oReq.m_iRequestType==ADDOWNER) {
         pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
@@ -1534,7 +1546,7 @@ bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
 
 
 bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                          int encType, byte* key)
+                          int encType, byte* key, timer& accessTimer)
 {
     resource*   pResource= NULL;
     char*       szFile= NULL;
@@ -1552,7 +1564,9 @@ bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys,
     fprintf(g_logFile, "serverdeleteResource\n");
     fflush(g_logFile);
 #endif
+    accessTimer.Start();
     fError= !oReq.validateRequest(oKeys, &szFile, &pResource);
+    accessTimer.Stop();
 
     if(!fError) {
         // delete resource

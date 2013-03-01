@@ -35,6 +35,7 @@
 #include "secPrincipal.h"
 #include "accessControl.h"
 #include "algs.h"
+#include "timer.h"
 #include "vault.h"
 
 
@@ -59,6 +60,15 @@ public:
     int                 m_sizeKey;
     byte                m_fileKeys[SMALLKEYSIZE];
 
+    timer               m_sealTimer;
+    timer               m_unsealTimer;
+    timer               m_taoEnvInitializationTimer;
+    timer               m_taoHostInitializationTimer;
+    timer               m_protocolNegoTimer;
+    timer               m_accessCheckTimer;
+    timer               m_encTimer;
+    timer               m_decTimer;
+
     fileServer();
     ~fileServer();
 
@@ -72,6 +82,9 @@ public:
     int     processRequests(safeChannel&, sessionKeys&, accessGuard&);
     bool    serviceChannel(int fd);
     bool    server();
+
+    void    printTimers(FILE* log);
+    void    resetTimers();	
 };
 
 

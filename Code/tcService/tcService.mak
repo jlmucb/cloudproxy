@@ -13,8 +13,8 @@ CLM=	    ../claims
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D __FLUSHIO__ $(DEBUG_CFLAGS)
+LDFLAGS          := ${RELEASE_LDFLAGS}
+CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
 
 CC=         g++
 LINK=       g++
@@ -36,7 +36,7 @@ all: $(E)/tcService.exe
 
 $(E)/tcService.exe: $(sobjs)
 	@echo "tcService"
-	$(LINK) -o $(E)/tcService.exe $(sobjs) -lpthread
+	$(LINK) -o $(E)/tcService.exe $(sobjs) $(LDFLAGS) -lpthread
 # $(LINK) -o $(E)/tcService.exe $(sobjs) /lib/x86_64-linux-gnu/libprocps.so.0 -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h

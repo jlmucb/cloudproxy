@@ -30,6 +30,7 @@
 #include "sha256.h"
 #include "tao.h"
 #include "tcIO.h"
+#include "timer.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -108,6 +109,9 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_trustedHome;
     serviceprocTable    m_procTable;
+
+    timer               m_taoEnvInitializationTimer;
+    timer               m_taoHostInitializationTimer;
 
     tcServiceInterface();
     ~tcServiceInterface();

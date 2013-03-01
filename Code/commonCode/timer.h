@@ -35,45 +35,83 @@
 #define _TIMER__H
 
 #include <sys/time.h>
+#include <vector>
+#include <cstdio>
+
+using std::vector;
 
 // a class for performing timer measurements. The usage is as follows:
 // 
 // timer someTimer;
-// someTimer.Start();
-// .. code to measure ..
-// someTimer.Stop();
-// .. other code as needed ..
-// double microseconds = someTimer.GetInterval();
+// int i = 0;
+// while(i < 10) {
+//     someTimer.Start();
+//     .. code to measure ..
+//     someTimer.Stop();
+//     .. other code as needed ..
+//     i++;
+// }
+// const vector<double>& m = someTimer.GetMeasurements();
+// .. compute avg, std, or whatever ..
 //
-// A timer will throw an exception if GetInteval() is called before Start()
-// and Stop() have been called.
+// A timer will throw if Start/Stop are called out of sequence, or if
+// GetMeasurements is called while the timer is started but not stopped.
 class timer {
- public:
-  timer() : m_start(), m_stop(), m_started(false), m_stopped(false) { }
-  inline void Start() {
-      m_started = gettimeofday(&m_start, NULL) == 0;
-      if (!m_started) throw "Coud not start timer\n";
-  }
+  public:
+    timer() : m_start(), m_stop(), 
+        m_started(false), m_stopped(true),
+        m_measurements() 
+    { }
 
-  inline void Stop() {
-      m_stopped = gettimeofday(&m_stop, NULL) == 0;
-      if (!m_stopped) throw "Coud not stop timer\n";
-  }
+    inline void Start() {
+        if (!m_stopped) throw "Timer Start called when not stopped\n";
+        m_stopped = false;
+        m_started = gettimeofday(&m_start, NULL) == 0;
+        if (!m_started) throw "Coud not start timer\n";
+    }
 
-  inline double GetInterval() {
-    if (!m_started || !m_stopped) throw "Timer not started\n";
-    struct timeval diff;
-    timersub(&m_stop, &m_start, &diff);
-    return diff.tv_sec * 1000000.0 + diff.tv_usec;
-  }
- private:
-  struct timeval m_start;
-  struct timeval m_stop;
-  bool m_started, m_stopped;
+    inline void Stop() {
+        if (!m_started) throw "Timer Stop called when not started\n";
+        m_started = false;
+        m_stopped = gettimeofday(&m_stop, NULL) == 0;
+        if (!m_stopped) throw "Coud not stop timer\n";
 
-  // disable copy and assignment
-  timer(const timer&);
-  timer& operator=(const timer&); 
+        struct timeval diff;
+        timersub(&m_stop, &m_start, &diff);
+        m_measurements.push_back(diff.tv_sec * 1000000.0 + diff.tv_usec);
+    }
+
+    inline const vector<double>& GetMeasurements() { 
+        if (m_started) throw "Timer started but not stopped\n";
+        return m_measurements; 
+    }
+
+    inline void print(FILE* log) {
+        vector<double>::iterator it = m_measurements.begin();
+        fprintf(log, "[");
+        bool first = true;
+        for( ; m_measurements.end() != it; ++it) {
+            if (!first) fprintf(log, ", ");
+            first = false;
+            fprintf(log, "%lf", *it);
+        }
+        fprintf(log, "]\n");
+    }
+
+    inline void Clear() {
+        if (m_started) throw "Timer started but not stopped\n";
+        m_measurements.clear();
+    }
+
+  private:
+    struct timeval m_start;
+    struct timeval m_stop;
+    bool m_started, m_stopped;
+    vector<double> m_measurements;
+
+    // disable copy and assignment
+    timer(const timer&);
+    timer& operator=(const timer&); 
 };
 
 #endif /* ndef _TIMER__H */

@@ -11,11 +11,10 @@ VLT=	    ../vault
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
-#CFLAGS=     -D LINUX -D __FLUSHIO__ -D METADATATEST -D FAKESHA256
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-LDFLAGSXML      := ${RELEASE_LDFLAGS}
+LDFLAGS          := $(RELEASE_LDFLAGS)
 CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
 
 CC=         g++
@@ -38,7 +37,7 @@ all: $(E)/fileServer.exe
 
 $(E)/fileServer.exe: $(dobjs)
 	@echo "fileServer"
-	$(LINK) -o $(E)/fileServer.exe $(dobjs) -lpthread
+	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(RMM) -I$(TH) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp

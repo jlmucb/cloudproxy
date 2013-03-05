@@ -296,7 +296,8 @@ bool saveBlobtoFile(const char* szFile, byte* buf, int size)
     int iWrite= open(szFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if(iWrite<0)
         return false;
-    write(iWrite, buf, size);
+    ssize_t result = write(iWrite, buf, size);
+    UNUSEDVAR(result);	
     close(iWrite);
     return true;
 }

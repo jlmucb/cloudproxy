@@ -388,12 +388,12 @@ bool fileClient::initClient(const char* configDirectory)
 #endif
 
         server_addr.sin_family= AF_INET;
-        server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
+        //server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
         // Fix: set up fileClient and fileServer to pass arguments down to
         // their measured versions so we can control this by arguments
-        //if (!inet_aton("10.0.0.3", &server_addr.sin_addr)) {
-        //  throw "Can't create the address for the fileServer";
-        //}
+        if (!inet_aton("10.0.0.3", &server_addr.sin_addr)) {
+          throw "Can't create the address for the fileServer";
+        }
         //server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
         server_addr.sin_port= htons(SERVICE_PORT);
     

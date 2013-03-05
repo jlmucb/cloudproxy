@@ -22,7 +22,7 @@
 
 #include "jlmTypes.h"
 #include "keys.h"
-#include "aes.h"
+#include "aesni.h"
 #include "sha256.h"
 #include "hmacsha256.h"
 
@@ -60,7 +60,7 @@ public:
     u32     m_uEncAlg;
     u32     m_uPadAlg;
 
-    aes     m_oAES;
+    aesni     m_oAES;
 
     byte*   m_rguH;
     byte*   m_rgFirstY;
@@ -117,8 +117,8 @@ public:
     u32         m_uMacAlg;
     u32         m_uPadAlg;
 
-    aes         m_oAESEnc;
-    aes         m_oAESDec;
+    aesni         m_oAESEnc;
+    aesni         m_oAESDec;
     hmacsha256  m_ohMac;
 
     byte*       m_rguIV;

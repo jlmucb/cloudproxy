@@ -26,7 +26,7 @@
 #include "jlmcrypto.h"
 #include "keys.h"
 #include "modesandpadding.h"
-#include "aes.h"
+#include "aesni.h"
 #include "sha256.h"
 
 #include <string.h>

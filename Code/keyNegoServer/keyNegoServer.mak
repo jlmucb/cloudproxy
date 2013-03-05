@@ -18,13 +18,13 @@ TRS=        ../tcService
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
+CFLAGS=     -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
 
 CC=         g++
 LINK=       g++
 
 dobjs=      $(B)/keyNegoServer.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
-	    $(B)/keys.o $(B)/aes.o $(B)/sha256.o  $(B)/sha1.o $(B)/channel.o \
+	    $(B)/keys.o $(B)/aesni.o $(B)/sha256.o  $(B)/sha1.o $(B)/channel.o \
             $(B)/hmacsha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/hashprep.o \
 	    $(B)/mpNumTheory.o  $(B)/rsaHelper.o $(B)/secPrincipal.o  $(B)/resource.o \
             $(B)/modesandpadding.o $(B)/claims.o $(B)/tinystr.o $(B)/vault.o \
@@ -84,8 +84,8 @@ $(B)/tinyxmlerror.o : $(SC)/tinyxmlerror.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 $(B)/tinystr.o : $(SC)/tinystr.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinystr.o $(SC)/tinystr.cpp
 
-$(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
+$(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
 
 $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha1.o $(SCC)/sha1.cpp

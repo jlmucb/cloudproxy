@@ -597,7 +597,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
     byte                rgBuf[PARAMSIZE];
 
     int                 pid;
-    u32                 uType;
+    u32                 uType= 0;
     int                 an;
     char*               av[10];
 

@@ -314,7 +314,9 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     pLastCipher= pNextCipher;
     pNextPlain+= BLKSIZE;
     pNextCipher+= BLKSIZE;
-    fullMsgSize= ((packetHdr*) plainMessageBlock)->len;
+
+    packetHdr* plainMessageBlockHeader = reinterpret_cast<packetHdr*>(plainMessageBlock);
+    fullMsgSize= plainMessageBlockHeader->len;
 
 #ifdef IOTEST
     fprintf(g_logFile, "getFullPacket: message size %d, sizeEncryptedBuf: %d\n", 
@@ -413,10 +415,10 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     if(!isEqual(rguHmac, rguHmacComputed, SHA256_DIGESTSIZE_BYTES)) {
         fprintf(g_logFile, "getFullPacket: HMAC comparison error 2\n");
 #ifdef IOTEST
-        PrintBytes((char*) "original buffer\n", encryptedMessageBlock, n);
-        PrintBytes((char*) "decrypted buffer\n", plainMessageBlock, n);
-        PrintBytes((char*) "send Hmac\n", rguHmac, SHA256_DIGESTSIZE_BYTES);
-        PrintBytes((char*) "computed Hmac\n", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
+        PrintBytes("original buffer\n", encryptedMessageBlock, n);
+        PrintBytes("decrypted buffer\n", plainMessageBlock, n);
+        PrintBytes("send Hmac\n", rguHmac, SHA256_DIGESTSIZE_BYTES);
+        PrintBytes("computed Hmac\n", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
 #endif
         return HMACMATCHERROR;
     }
@@ -447,10 +449,11 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     fflush(g_logFile);
 #endif
 
+    packetHdr* plainMessageBlockHdr = reinterpret_cast<packetHdr*>(plainMessageBlock);
     memcpy(buf, &plainMessageBlock[sizeof(packetHdr)], sizedecryptedMsg);
-    *ptype= ((packetHdr*) plainMessageBlock)->packetType;
-    *pmultipart= ((packetHdr*) plainMessageBlock)->multipart;
-    *pfinalpart= ((packetHdr*) plainMessageBlock)->finalpart;
+    *ptype= plainMessageBlockHdr->packetType;
+    *pmultipart= plainMessageBlockHdr->multipart;
+    *pfinalpart= plainMessageBlockHdr->finalpart;
     return sizedecryptedMsg;
 }
 

@@ -32,7 +32,7 @@
 
 
 #include "jlmTypes.h"
-#include "aes.h"
+#include "aesni.h"
 #include "sha256.h"
 #include "modesandpadding.h"
 

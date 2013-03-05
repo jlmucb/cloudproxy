@@ -1395,6 +1395,11 @@ void fileServer::printTimers(FILE* log) {
         m_protocolNegoTimer.print(log);
     }
 
+    if (m_accessCheckTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverAccessCheckTimes = ");
+        m_accessCheckTimer.print(log);
+    }	
+
     if (m_encTimer.GetMeasurements().size() > 0) {
         fprintf(log, "serverEncTimes = ");
         m_encTimer.print(log);

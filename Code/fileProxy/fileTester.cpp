@@ -276,7 +276,7 @@ bool fileTester::runTest(fileClient& client,
             if (params.timed) testTimer.Stop();
         } else if (params.action.compare("read") == 0) {
             if (params.timed) testTimer.Start();
-            bool result = client.readResource(channel,
+            result = client.readResource(channel,
                             params.subject,
                             params.authFile,
                             params.remoteObject,

@@ -26,8 +26,6 @@
 #include "jlmcrypto.h"
 #include "jlmUtility.h"
 #include "modesandpadding.h"
-#include "aes.h"
-#include "aesni.h"
 #include "sha256.h"
 #include "secPrincipal.h"
 #include "resource.h"

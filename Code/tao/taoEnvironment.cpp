@@ -26,13 +26,6 @@
 #include "jlmUtility.h"
 #include "modesandpadding.h"
 #include "bignum.h"
-
-#ifdef AESNIENABLED
-#include "aesni.h"
-#else
-#include "aes.h"
-#endif
-
 #include "sha256.h"
 #include "tao.h"
 #include "bignum.h"

@@ -12,10 +12,10 @@ TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 
-DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
-RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
+DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
+RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
 LDFLAGS          := $(RELEASE_LDFLAGS)
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
+CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
 
 CC=         g++
 LINK=       g++

@@ -24,6 +24,8 @@
 #include "logging.h"
 #include "fileTester.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -77,11 +79,14 @@ fileTester::fileTester(const string& path, const string& testFile)
 }    
 
 fileTester::~fileTester() {
-    // delete all the files we created for this test
-    list<string>::iterator it = m_filesToDelete.begin();
-    for( ; m_filesToDelete.end() != it; ++it) {
-        unlink(it->c_str());
-    }
+    // don't delete the test files: this makes multiple test runs more efficient,
+    // since they can reuse the test files (and the encryption is still different
+    // since the IV is different)
+//    // delete all the files we created for this test
+//    list<string>::iterator it = m_filesToDelete.begin();
+//    for( ; m_filesToDelete.end() != it; ++it) {
+//        unlink(it->c_str());
+//    }
 }
 
 void fileTester::createResources(const string& parentPath, const TiXmlNode* parent) {
@@ -93,8 +98,16 @@ void fileTester::createResources(const string& parentPath, const TiXmlNode* pare
         if (elt->QueryStringAttribute("name", &fileName) == TIXML_SUCCESS &&
             elt->QueryIntAttribute("size", &size) == TIXML_SUCCESS) {
             string filePath = parentPath + fileName;
-            generateRandomFile(size, filePath);
-            m_filesToDelete.push_back(filePath);
+
+            // only generate the file if it's not there or is the wrong size
+            struct stat fileStatus;
+            int rv = stat(filePath.c_str(), &fileStatus);
+            bool goodFile = (rv == 0) && (fileStatus.st_size == size);
+            if (!goodFile) generateRandomFile(size, filePath);
+        
+            // we don't currently clean up the files we create, since it 
+            // puts too much load on the disk for a large test suite
+            //m_filesToDelete.push_back(filePath);
         } else {
             throw "Could not get the name and size of this resource\n";
         }

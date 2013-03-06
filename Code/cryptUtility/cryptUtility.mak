@@ -9,7 +9,7 @@ TPM=	    ../TPMDirect
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  $(RELEASE_CFLAGS)
+CFLAGS=	    -D TEST  -D NOINLINEARITH $(RELEASE_CFLAGS)
 CFLAGS1=    -D TEST -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++
@@ -17,8 +17,8 @@ LINK=       g++
 
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o $(B)/sha256.o \
             $(B)/jlmUtility.o $(B)/modesandpadding.o $(B)/rsaHelper.o $(B)/hmacsha256.o \
-            $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  $(B)/keys.o \
-	    $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
+	    $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  \
+	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
 	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/tinyxmlparser.o 
 
@@ -57,8 +57,11 @@ $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
 
+$(B)/fastArith.o: $(SBM)/fastArith.cpp
+	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/fastArith.o $(SBM)/fastArith.cpp
+
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
-	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(SBM)/mpModArith.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpModArith.o $(SBM)/mpModArith.cpp

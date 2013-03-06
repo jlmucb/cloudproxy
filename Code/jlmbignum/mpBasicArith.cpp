@@ -443,7 +443,11 @@ bool IsBitPositionNonZero(bnum& bnN, i32 iPos)
 
 //          Helper Functions for unsigned operations 
 //          These are machine dependent
+#ifdef NOINLINEARITH
+#include "fastArith.h"
+#else
 #include "inlineArith.cpp"
+#endif
 
 
 // ----------------------------------------------------------------------------

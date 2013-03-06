@@ -5,11 +5,12 @@ SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 TPM=	    ../TPMDirect
-CFLAGS=	    -D TEST 
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
+CFLAGS=	    -D TEST  $(RELEASE_CFLAGS)
+CFLAGS1=    -D TEST -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++
 LINK=       g++
@@ -57,7 +58,7 @@ $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
 
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
+	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(SBM)/mpModArith.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpModArith.o $(SBM)/mpModArith.cpp

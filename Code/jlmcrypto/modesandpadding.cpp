@@ -957,6 +957,7 @@ void cbc::nextMac(byte* puA)
 }
 
 
+#ifdef ENCRYPTTHENMAC
 bool cbc::nextPlainMac(byte* puIn, byte* puOut)
 {
     byte    oldX[MAXAUTHSIZE];
@@ -965,22 +966,6 @@ bool cbc::nextPlainMac(byte* puIn, byte* puOut)
     fprintf(g_logFile, "cbc::nextPlainBlockIn\n");
     PrintBytes("In", puIn, 16);
 #endif
-    inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
-    m_oAESEnc.Encrypt(oldX, puOut); 
-    memcpy(m_rgLastBlock, puOut, m_iBlockSize);
-    return true;
-}
-
-
-bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
-{
-    byte    oldX[MAXAUTHSIZE];
-
-#ifdef CRYPTOTEST4
-    fprintf(g_logFile, "cbc::nextPlainBlockIn\n");
-    PrintBytes("In", puIn, 16);
-#endif
-    nextMac(puIn);
     inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
     m_oAESEnc.Encrypt(oldX, puOut); 
     memcpy(m_rgLastBlock, puOut, m_iBlockSize);
@@ -1001,6 +986,27 @@ bool cbc::nextCipherMac(byte* puIn, byte* puOut)
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
     return true;
 }
+#endif
+
+
+bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
+{
+    byte    oldX[MAXAUTHSIZE];
+
+#ifdef CRYPTOTEST4
+    fprintf(g_logFile, "cbc::nextPlainBlockIn\n");
+    PrintBytes("In", puIn, 16);
+#endif
+    inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
+    m_oAESEnc.Encrypt(oldX, puOut); 
+    memcpy(m_rgLastBlock, puOut, m_iBlockSize);
+#ifdef ENCRYPTTHENMAC
+    nextMac(puIn);
+#else
+    nextMac(puOut);
+#endif
+    return true;
+}
 
 
 bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
@@ -1014,7 +1020,11 @@ bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
     m_oAESDec.Decrypt(puIn, oldX); 
     inlineXor(puOut, m_rgLastBlock, oldX, m_iBlockSize);
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
+#ifdef ENCRYPTTHENMAC
     nextMac(puOut);
+#else
+    nextMac(puIn);
+#endif
     return true;
 }
 
@@ -1077,12 +1087,19 @@ int cbc::lastPlainBlockIn(int size, byte* puIn, byte* puOut)
         nextPlainBlockIn(m_rguLastBlocks, puOut);
     }
     m_ohMac.Final(m_rguHMACComputed);
+#ifdef ENCRYPTTHENMAC
     nextPlainMac(m_rguHMACComputed, puOut+num*m_iBlockSize);
     num++;
     nextPlainMac(m_rguHMACComputed+m_iBlockSize, puOut+num*m_iBlockSize);
     num++;
+#else
+    memcpy(puOut+num*m_iBlockSize, m_rguHMACComputed, m_iBlockSize);
+    num++;
+    memcpy(m_rguHMACComputed+m_iBlockSize, puOut+num*m_iBlockSize, m_iBlockSize);
+    num++;
+#endif
 
-    // Note that encrypted HMAC is returned as part of cipher stream
+    // Note that the HMAC (whether encrypted or not) is returned as part of cipher stream
     return m_iBlockSize*num;
 }
 
@@ -1099,8 +1116,13 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
                m_rguLastBlocks, m_iBlockSize);
 #endif
     if(size==3*m_iBlockSize) {
+#ifdef ENCRYPTTHENMAC
         nextCipherMac(puIn+m_iBlockSize, m_rguHMACReceived);
         nextCipherMac(puIn+2*m_iBlockSize, m_rguHMACReceived+m_iBlockSize);
+#else
+        memcpy(m_rguHMACReceived, puIn+m_iBlockSize, m_iBlockSize);
+        memcpy(m_rguHMACReceived+m_iBlockSize, puIn+2*m_iBlockSize, m_iBlockSize);
+#endif
         m_ohMac.Final(m_rguHMACComputed);
     }
     else

@@ -42,7 +42,7 @@ Inline u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
         "2:\n" \
         "\tmovq    %[outaddress], %%rcx\n" \
         "\tmovq    %%rax, (%%rcx)\n" 
-        : [carryout] "=m"(uCarryOut) 
+        : [carryout] "=r"(uCarryOut) 
         : [outaddress] "m" (puOut), [op1] "m" (uIn1), [op2] "m" (uIn2), [carryin] "m" (uCarryIn)
         : "%rax", "%rcx");
 

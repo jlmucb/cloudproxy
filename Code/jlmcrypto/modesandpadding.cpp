@@ -242,189 +242,6 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
 }
 
 
-// ----------------------------------------------------------------------------------
-
-
-/*
- *  GCM
- *
- *  H= E_K(0^128)
- *  Y[0]= IV[96]||0^31||1
- *  C[i]= P[i] xor E_K(Y[i-1])  (use MSB ifnot full block)
- *  T= MSB_t(GHASH(H,A,C) xor E_K(Y[0]))
- * 
- *  GHASH(H,A,C) 
- *      X[0]= 0
- *      X[i]= (X[i-1] xor A[i]) x H, i=1,...,m-1
- *      X[m]= (X[m-1] xor A[m-1]||0^(128-v)) x H
- *      X[m+i]= (X[m+i-1] xor C[i]) x H  ,i=1, ...n-1
- *      X[m+n]= (X[m+n-1] xor C[n]||0^(128-u)) x H 
- *      X[m+n+1]= (X[m+n] xor (len(A)||len(C))) x H 
- *      GHASH(H,A,C)= X[m+n+1]
- *
- *      F= x^128+x^7+x^2+x+1
- *
- *  Note: no pad
- */
-
-
-//
-//  Note on GF(2)^n calculations
-//
-//  Bit position in GF(2) polynomials are as follows
-//      If byte array d[0], d[1], ..., d[n-1] represents the poly,
-//      f(x)= d[0]_8 + d[0]_7 x + d[0]_6 x^2 + ... + d[0]_1 x^7 + d[1]_8 x^8 +
-//            ... + d[n-1]_8 x^(8n-8) + ... + d[n-1]_1 x^(8n-1)
-//            
-//  For example, the reduction polynomial f(x)= 1+x+x^2+x^7+ ...+ x^128
-//      by f[0]= 0xe1= 11100001, f[1]=0, f[2]=0,..., f[14]==, f[15]=0, f[16]= 0x80
-//
-//  Note that constant term is MSB of first byte!
-//      
-//  For GCM, n=16 for the polynomials
-
-
-const byte  F= 0xe1;  // 1110 0001 (0xe1)
-
-
-byte coeff(byte* rguA, int i, int n)
-{
-    int     k= i/NBITSINBYTE;                     // coefficient lies in A[k]
-    int     m= NBITSINBYTE-1-(i%NBITSINBYTE);      // in bit position shifted m
-
-    if(((rguA[k]>>m)&(0x1))!=0)
-        return 1;
-    return 0;
-}
-
-
-struct fLoHi {
-    byte lo;
-    byte hi;
-};
-
-
-struct fLoHi FS[8] = {
-    /* FS[0] */ {(byte)(F>>7), (byte)(F<<1)},
-    /* FS[1] */ {(byte)(F>>6), (byte)(F<<2)},
-    /* FS[2] */ {(byte)(F>>5), (byte)(F<<3)},
-    /* FS[3] */ {(byte)(F>>4), (byte)(F<<4)},
-    /* FS[4] */ {(byte)(F>>3), (byte)(F<<5)},
-    /* FS[5] */ {(byte)(F>>2), (byte)(F<<6)},
-    /* FS[6] */ {(byte)(F>>1), (byte)(F<<7)},
-    /* FS[7] */ {(byte)(F),    (byte)(0x00)}
-};
-
-
-void shiftmaskF(byte in, byte* poutLo, byte* poutHi)
-
-{
-    byte uLo=0;
-    byte uHi=0;
-    int i;
-
-    for(i=0;i<NBITSINBYTE; i++) {
-        if(((in>>i)&0x01)!=0) {
-            uLo^= FS[i].lo;
-            uHi^= FS[i].hi;
-        }
-    }
-    *poutLo= uLo;
-    *poutHi= uHi;
-}
-
-
-void reduceXorF(byte* rguR, int iPos, byte val, int n)
-{
-    byte    uoutLo, uoutHi;
-    int     k= iPos-n;
-
-    shiftmaskF(val, &uoutLo, &uoutHi);
-    if(k<n)
-        rguR[k]^= uoutLo;
-    else
-        reduceXorF(rguR, k, uoutLo, n);
-    if((k+1)<n)
-        rguR[k+1]^= uoutHi;
-    else
-        reduceXorF(rguR, k+1, uoutHi, n);
-}
-
-
-void shiftXorandFreduce(byte* rguR, byte* rguA, int i, int n) 
-{
-    int     j;
-    int     k= i/NBITSINBYTE;
-    int     m= i%NBITSINBYTE;
-    int     t;
-    byte    x;
-    byte    uHi, uLo;
-
-    if(i>NBITSINBYTE*n)      // max shift
-        return;
-
-    for(j=0;j<n;j++) {
-        t= k+j;
-        x= rguA[j];
-        uLo= x>>m;
-        uHi= x<<(8-m);
-        if(t<n) {
-            rguR[t]^= uLo;
-        }
-        else {
-            reduceXorF(rguR, t, uLo, n);
-        }
-        if(t<(n-1)) {
-            rguR[t+1]^= uHi;
-        }
-        else {
-            reduceXorF(rguR, t+1, uHi, n);
-        }
-    }
-}
-
-
-void shiftXor(byte* rguR, byte* rguA, int i, int n) 
-//
-//  rguR has 2n emtries, rguA has n entries
-//      Shift A by i>=0 and xor it into R
-//
-{
-    int     j;
-    int     k= i/NBITSINBYTE;
-    int     m= i%NBITSINBYTE;
-    byte    uHi, uLo;
-
-    if(i>NBITSINBYTE*n)      // max shift
-        return;
-    for(j=0;j<n;j++) {
-        uLo= rguA[j]>>m;
-        uHi= rguA[j]<<(8-m);
-        rguR[k+j]^= uLo;
-        rguR[k+j+1]^= uHi;
-    }
-}
-
-byte rguD[32];
-
-
-bool multmodF(byte* rguC, byte* rguA, byte* rguB, int n)
-//
-//  rguA, rguB and rguC have n entries
-//
-{
-    int     j;
-
-    memset(rguC, 0, n);
-    for(j=0;j<NBITSINBYTE*n;j++) {
-        if(coeff(rguB, j, n)!=0) {
-            shiftXorandFreduce(rguC, rguA, j, n);
-        }
-    }
-    return true;
-}
-
-
 // ----------------------------------------------------------------
 
 
@@ -837,6 +654,185 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
 // ---------------------------------------------------------------
 
+
+/*
+ *  GCM
+ *
+ *  H= E_K(0^128)
+ *  Y[0]= IV[96]||0^31||1
+ *  C[i]= P[i] xor E_K(Y[i-1])  (use MSB ifnot full block)
+ *  T= MSB_t(GHASH(H,A,C) xor E_K(Y[0]))
+ * 
+ *  GHASH(H,A,C) 
+ *      X[0]= 0
+ *      X[i]= (X[i-1] xor A[i]) x H, i=1,...,m-1
+ *      X[m]= (X[m-1] xor A[m-1]||0^(128-v)) x H
+ *      X[m+i]= (X[m+i-1] xor C[i]) x H  ,i=1, ...n-1
+ *      X[m+n]= (X[m+n-1] xor C[n]||0^(128-u)) x H 
+ *      X[m+n+1]= (X[m+n] xor (len(A)||len(C))) x H 
+ *      GHASH(H,A,C)= X[m+n+1]
+ *
+ *      F= x^128+x^7+x^2+x+1
+ *
+ *  Note: no pad
+ */
+
+
+//
+//  Note on GF(2)^n calculations
+//
+//  Bit position in GF(2) polynomials are as follows
+//      If byte array d[0], d[1], ..., d[n-1] represents the poly,
+//      f(x)= d[0]_8 + d[0]_7 x + d[0]_6 x^2 + ... + d[0]_1 x^7 + d[1]_8 x^8 +
+//            ... + d[n-1]_8 x^(8n-8) + ... + d[n-1]_1 x^(8n-1)
+//            
+//  For example, the reduction polynomial f(x)= 1+x+x^2+x^7+ ...+ x^128
+//      by f[0]= 0xe1= 11100001, f[1]=0, f[2]=0,..., f[14]==, f[15]=0, f[16]= 0x80
+//
+//  Note that constant term is MSB of first byte!
+//      
+//  For GCM, n=16 for the polynomials
+
+
+const byte  F= 0xe1;  // 1110 0001 (0xe1)
+
+
+byte coeff(byte* rguA, int i, int n)
+{
+    int     k= i/NBITSINBYTE;                     // coefficient lies in A[k]
+    int     m= NBITSINBYTE-1-(i%NBITSINBYTE);      // in bit position shifted m
+
+    if(((rguA[k]>>m)&(0x1))!=0)
+        return 1;
+    return 0;
+}
+
+
+struct fLoHi {
+    byte lo;
+    byte hi;
+};
+
+
+struct fLoHi FS[8] = {
+    /* FS[0] */ {(byte)(F>>7), (byte)(F<<1)},
+    /* FS[1] */ {(byte)(F>>6), (byte)(F<<2)},
+    /* FS[2] */ {(byte)(F>>5), (byte)(F<<3)},
+    /* FS[3] */ {(byte)(F>>4), (byte)(F<<4)},
+    /* FS[4] */ {(byte)(F>>3), (byte)(F<<5)},
+    /* FS[5] */ {(byte)(F>>2), (byte)(F<<6)},
+    /* FS[6] */ {(byte)(F>>1), (byte)(F<<7)},
+    /* FS[7] */ {(byte)(F),    (byte)(0x00)}
+};
+
+
+void shiftmaskF(byte in, byte* poutLo, byte* poutHi)
+
+{
+    byte uLo=0;
+    byte uHi=0;
+    int i;
+
+    for(i=0;i<NBITSINBYTE; i++) {
+        if(((in>>i)&0x01)!=0) {
+            uLo^= FS[i].lo;
+            uHi^= FS[i].hi;
+        }
+    }
+    *poutLo= uLo;
+    *poutHi= uHi;
+}
+
+
+void reduceXorF(byte* rguR, int iPos, byte val, int n)
+{
+    byte    uoutLo, uoutHi;
+    int     k= iPos-n;
+
+    shiftmaskF(val, &uoutLo, &uoutHi);
+    if(k<n)
+        rguR[k]^= uoutLo;
+    else
+        reduceXorF(rguR, k, uoutLo, n);
+    if((k+1)<n)
+        rguR[k+1]^= uoutHi;
+    else
+        reduceXorF(rguR, k+1, uoutHi, n);
+}
+
+
+void shiftXorandFreduce(byte* rguR, byte* rguA, int i, int n) 
+{
+    int     j;
+    int     k= i/NBITSINBYTE;
+    int     m= i%NBITSINBYTE;
+    int     t;
+    byte    x;
+    byte    uHi, uLo;
+
+    if(i>NBITSINBYTE*n)      // max shift
+        return;
+
+    for(j=0;j<n;j++) {
+        t= k+j;
+        x= rguA[j];
+        uLo= x>>m;
+        uHi= x<<(8-m);
+        if(t<n) {
+            rguR[t]^= uLo;
+        }
+        else {
+            reduceXorF(rguR, t, uLo, n);
+        }
+        if(t<(n-1)) {
+            rguR[t+1]^= uHi;
+        }
+        else {
+            reduceXorF(rguR, t+1, uHi, n);
+        }
+    }
+}
+
+
+void shiftXor(byte* rguR, byte* rguA, int i, int n) 
+//
+//  rguR has 2n emtries, rguA has n entries
+//      Shift A by i>=0 and xor it into R
+//
+{
+    int     j;
+    int     k= i/NBITSINBYTE;
+    int     m= i%NBITSINBYTE;
+    byte    uHi, uLo;
+
+    if(i>NBITSINBYTE*n)      // max shift
+        return;
+    for(j=0;j<n;j++) {
+        uLo= rguA[j]>>m;
+        uHi= rguA[j]<<(8-m);
+        rguR[k+j]^= uLo;
+        rguR[k+j+1]^= uHi;
+    }
+}
+
+byte rguD[32];
+
+
+bool multmodF(byte* rguC, byte* rguA, byte* rguB, int n)
+//
+//  rguA, rguB and rguC have n entries
+//
+{
+    int     j;
+
+    memset(rguC, 0, n);
+    for(j=0;j<NBITSINBYTE*n;j++) {
+        if(coeff(rguB, j, n)!=0) {
+            shiftXorandFreduce(rguC, rguA, j, n);
+        }
+    }
+    return true;
+}
 
 u32 reverseInt(u32 u)
 {

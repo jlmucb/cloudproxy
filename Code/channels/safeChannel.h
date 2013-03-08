@@ -31,7 +31,7 @@
 
 #include "jlmTypes.h"
 #include "keys.h"
-#include "aes.h"
+#include "aesni.h"
 #include "channel.h"
 
 
@@ -73,8 +73,8 @@ public:
     int     sizeprereadencrypted;
     byte    prereadencryptedMessageBlock[MAXREQUESTSIZEWITHPAD];
 
-    aes     sendAES;
-    aes     getAES;
+    aesni     sendAES;
+    aesni     getAES;
 
     int     nAuthenticatingPrincipals;
     int     nAuthenticatedPrincipals;

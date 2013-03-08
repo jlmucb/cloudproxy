@@ -238,11 +238,13 @@ bool fileClient::initFileKeys()
         }
         // seal and save
         size= BIGKEYSIZE;
+        m_sealTimer.Start();
         if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
                         n, keyBuf, &size, sealedkeyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant seal keys\n");
             return false;
         }
+        m_sealTimer.Stop();
         if(!saveBlobtoFile(m_szSealedKeyFile, sealedkeyBuf, size)) {
             fprintf(g_logFile, "initFileKeys: cant save sealed keys\n");
             return false;
@@ -261,11 +263,14 @@ bool fileClient::initFileKeys()
             return false;
         }
         m= SMALLKEYSIZE;
+        m_unsealTimer.Start();
         if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
             return false;
         }
+        m_unsealTimer.Stop();
+
         memcpy(&m_sizeKey, &keyBuf[n], sizeof(int));
         n+= sizeof(int);
         memcpy(&m_uAlg, &keyBuf[n], sizeof(u32));
@@ -323,20 +328,24 @@ bool fileClient::initClient(const char* configDirectory)
         m_oKeys.m_fClient= true;
 
         // init Host and Environment
+        m_taoHostInitializationTimer.Start();
         if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
             throw "fileClient::Init: can't init host\n";
         }
+        m_taoHostInitializationTimer.Stop();
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after HostInit, pid: %d\n",
             getpid());
 #endif
 
         // init environment
+        m_taoEnvInitializationTimer.Start();
         if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "fileClient",
                                 DOMAIN, directory, 
                                 &m_host, 0, NULL)) {
             throw "fileClient::Init: can't init environment\n";
         }
+        m_taoEnvInitializationTimer.Stop();
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after EnvInit\n");
         m_tcHome.printData();
@@ -379,12 +388,12 @@ bool fileClient::initClient(const char* configDirectory)
 #endif
 
         server_addr.sin_family= AF_INET;
-        server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
+        //server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
         // Fix: set up fileClient and fileServer to pass arguments down to
         // their measured versions so we can control this by arguments
-        //if (!inet_aton("10.0.0.3", &server_addr.sin_addr)) {
-        //  throw "Can't create the address for the fileServer";
-        //}
+        if (!inet_aton("10.0.0.3", &server_addr.sin_addr)) {
+          throw "Can't create the address for the fileServer";
+        }
         //server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
         server_addr.sin_port= htons(SERVICE_PORT);
     
@@ -1072,8 +1081,10 @@ bool fileClient::establishConnection(safeChannel& fc, const char* keyFile, const
         fflush(g_logFile);
 #endif
         // protocol Nego
+        m_protocolNegoTimer.Start();
         if(!protocolNego(m_fd, fc, keyFile, certFile))
             throw "fileClient main: Cant negotiate channel\n";
+        m_protocolNegoTimer.Stop();
 
 #ifdef TEST
         m_oKeys.printMe();
@@ -1136,7 +1147,8 @@ bool fileClient::readResource(safeChannel& fc, const string& subject, const stri
                                    NULL, 
                                    localOutput.c_str(),
                                    encType, 
-                                   m_fileKeys)) {
+                                   m_fileKeys, 
+                                   m_encTimer)) {
         fprintf(g_logFile, "fileClient fileTest: read file successful\n");
         fflush(g_logFile);
     } else {
@@ -1157,7 +1169,8 @@ bool fileClient::writeResource(safeChannel& fc, const string& subject, const str
                                   NULL, 
                                   fileName.c_str(),
                                   encType, 
-                                  m_fileKeys)) {
+                                  m_fileKeys,
+                                  m_decTimer)) {
         fprintf(g_logFile, "fileClient fileTest: write file successful\n");
         fflush(g_logFile);
     } else {
@@ -1325,6 +1338,52 @@ int main(int an, char** av)
 }
 #endif
 
+void fileClient::printTimers(FILE* log) {
+    if (m_sealTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientSealTimes = ");
+        m_sealTimer.print(log);
+    }
+
+    if (m_unsealTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientUnsealTimes =  ");
+        m_unsealTimer.print(log);
+    }
+
+    if (m_taoEnvInitializationTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientTaoEnvInitTimes = ");
+        m_taoEnvInitializationTimer.print(log);
+    }
+
+    if (m_taoHostInitializationTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientTaoHostInitTimes = ");
+        m_taoHostInitializationTimer.print(log);
+    }
+
+    if (m_protocolNegoTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientProtocolNegoTimes = ");
+        m_protocolNegoTimer.print(log);
+    }
+
+    if (m_encTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientEncTimes = ");
+        m_encTimer.print(log);
+    }
+
+    if (m_decTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "clientDecTimes = ");
+        m_decTimer.print(log);
+    }
+}
+
+void fileClient::resetTimers() {
+    m_sealTimer.Clear();
+    m_unsealTimer.Clear();
+    m_taoEnvInitializationTimer.Clear();
+    m_taoHostInitializationTimer.Clear();
+    m_protocolNegoTimer.Clear();
+    m_encTimer.Clear();
+    m_decTimer.Clear();
+}
 
 // ------------------------------------------------------------------------
 

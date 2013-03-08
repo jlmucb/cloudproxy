@@ -256,9 +256,11 @@ bool  encryptedFilewrite::AES128CBCEncryptBlocks(int iWrite)
     }
 
     // last block?
+    ssize_t result;
     if((m_fileLeft-m_iBufIn)==0) {
         n= m_oCBC.lastPlainBlockIn(k, puIn, puOut);
-        write(iWrite, m_rguBufOut, m_iBufIn-k+n);
+        result = write(iWrite, m_rguBufOut, m_iBufIn-k+n);
+	UNUSEDVAR(result);
         m_fileLeft-= m_iBufIn;
         m_iBufIn= 0;
         m_fFinalProcessed= true;
@@ -267,7 +269,8 @@ bool  encryptedFilewrite::AES128CBCEncryptBlocks(int iWrite)
 
     if(k==m_iBlockSize) {
         m_oCBC.nextPlainBlockIn(puIn, puOut);
-        write(iWrite, m_rguBufOut, m_iBufIn);
+        result = write(iWrite, m_rguBufOut, m_iBufIn);
+	UNUSEDVAR(result);
         m_fileLeft-= m_iBufIn;
         m_iBufIn= 0;
         return true;
@@ -289,7 +292,8 @@ int encryptedFilewrite::AES128CBCEncrypt(int iWrite, int bufsize, byte* buf)
     // first block?
     if(!m_fFirstBlockWritten) {
         m_oCBC.firstCipherBlockOut(m_rguBufOut);
-        write(iWrite, m_rguBufOut, m_iBlockSize);
+        ssize_t result = write(iWrite, m_rguBufOut, m_iBlockSize);
+	UNUSEDVAR(result);
         m_fFirstBlockWritten= true;
     }
 
@@ -336,15 +340,18 @@ bool encryptedFilewrite::AES128GCMEncryptBlocks(int iWrite)
 #ifdef IOTEST1
     fprintf(g_logFile, "AES128GCMEncryptBlocks, fileLeft: %d\n", m_fileLeft);
 #endif
+    ssize_t result;
     if(m_fileLeft>0) {
         m_oGCM.nextPlainBlockIn(puIn, puOut);
-        write(iWrite, m_rguBufOut, m_iBufIn);
+        result = write(iWrite, m_rguBufOut, m_iBufIn);
+	UNUSEDVAR(result);
         m_iBufIn= 0;
         return true;
     }
 
     int n= m_oGCM.lastPlainBlockIn(k, puIn, puOut);
-    write(iWrite, m_rguBufOut, m_iBufIn-k+n);
+    result = write(iWrite, m_rguBufOut, m_iBufIn-k+n);
+    UNUSEDVAR(result);
     m_iBufIn= 0;
     m_fFinalProcessed= true;
 
@@ -425,7 +432,8 @@ int encryptedFilewrite::AES128GCMEncrypt(int iWrite, int bufsize, byte* buf)
     if(!m_fFirstBlockWritten) {
         // get and send first cipher block
         m_oGCM.firstCipherBlockOut(m_rguBufOut);
-        write(iWrite, m_rguBufOut, m_iBlockSize);
+        ssize_t result = write(iWrite, m_rguBufOut, m_iBlockSize);
+	UNUSEDVAR(result);
         m_fFirstBlockWritten= true;
     }
 
@@ -456,7 +464,8 @@ int encryptedFilewrite::AES128GCMEncrypt(int iWrite, int bufsize, byte* buf)
 
     // write tag
     m_oGCM.getTag(m_iBlockSize, m_rguBufOut);
-    write(iWrite, m_rguBufOut, m_iBlockSize);
+    ssize_t result = write(iWrite, m_rguBufOut, m_iBlockSize);
+    UNUSEDVAR(result);
 
     return bufsize;
 }
@@ -471,7 +480,8 @@ int encryptedFileread::AES128GCMDecrypt(int iRead, int bufsize, byte* buf)
 #endif
     // get and send first cipher block
     if(!m_fFirstBlockRead) {
-        read(iRead, m_rguBufIn, m_iBlockSize);
+        ssize_t result = read(iRead, m_rguBufIn, m_iBlockSize);
+	UNUSEDVAR(result);
         m_oGCM.firstCipherBlockIn(m_rguBufIn);
         m_fileLeft-= m_iBlockSize;
         m_fFirstBlockRead= true;

@@ -701,37 +701,37 @@ int theServiceChannel::processRequests()
 
         switch(iRequestType) {
           case GETRESOURCE:
-            if(!serversendResourcetoclient(m_osafeChannel, oReq,  m_oKeys, encType, key)) {
+            if(!serversendResourcetoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
                 return -1;
             }
             return 1;
           case SENDRESOURCE:
-            if(!servergetResourcefromclient(m_osafeChannel, oReq,  m_oKeys, encType, key)) {
+            if(!servergetResourcefromclient(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
             }
             return 1;
           case CREATERESOURCE:
-            if(!servercreateResourceonserver(m_osafeChannel, oReq,  m_oKeys, encType, key)) {
+            if(!servercreateResourceonserver(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
             }
             return 1;
           case ADDOWNER :
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key)) {
+            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serveraddownertoResourcefailed\n");
                 return -1;
             }
             return 1;
           case REMOVEOWNER:
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key)) {
+            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverremoveownerfromResource failed\n");
                 return -1;
             }
             return 1;
           case DELETERESOURCE:
-            if(!serverdeleteResource(m_osafeChannel, oReq, m_oKeys, encType, key)) {
+            if(!serverdeleteResource(m_osafeChannel, oReq, m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverdeleteResource failed\n");
                 return -1;
             }
@@ -779,8 +779,10 @@ bool theServiceChannel::initServiceChannel()
         return false;
     }
 
+    m_pParent->m_protocolNegoTimer.Start();
     if(!protocolNego())
         return false;
+    m_pParent->m_protocolNegoTimer.Stop();
 
 #ifdef  TEST
     fprintf(g_logFile, "theServiceChannel::serviceChannel, about to init guard\n");
@@ -803,6 +805,9 @@ bool theServiceChannel::initServiceChannel()
         //void metadataTest(char* szDir, m_fEncryptFiles, m_fileKeys);
         //metadataTest(m_tcHome.m_fileNames.m_szdirectory);
 #endif
+
+        m_pParent->printTimers(g_logFile);
+        m_pParent->resetTimers();
     }
     m_serverState= SERVICETERMINATESTATE;
 
@@ -1079,20 +1084,24 @@ bool fileServer::initServer(const char* configDirectory)
         }
 
         // init Host and Environment
+        m_taoHostInitializationTimer.Start();
         if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
             throw "fileServer::Init: can't init host\n";
         }
+        m_taoHostInitializationTimer.Stop();
 #ifdef TEST
         fprintf(g_logFile, "fileServer::Init: after HostInit, pid: %d\n",
             getpid());
 #endif
 
         // init environment
+        m_taoEnvInitializationTimer.Start();
         if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "fileServer",
                              DOMAIN, directory,
                              &m_host, 0, NULL)) {
             throw "fileServer::Init: can't init environment\n";
         }
+        m_taoEnvInitializationTimer.Stop();
 #ifdef TEST
         fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
         m_tcHome.printData();
@@ -1435,6 +1444,59 @@ void printPrincipals(objectManager<accessPrincipal>* pPM)
 }
 #endif
 
+
+void fileServer::printTimers(FILE* log) {
+    if (m_sealTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverSealTimes = ");
+        m_sealTimer.print(log);
+    }
+
+    if (m_unsealTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverUnsealTimes =  ");
+        m_unsealTimer.print(log);
+    }
+
+    if (m_taoEnvInitializationTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverTaoEnvInitTimes = ");
+        m_taoEnvInitializationTimer.print(log);
+    }
+
+    if (m_taoHostInitializationTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverTaoHostInitTimes = ");
+        m_taoHostInitializationTimer.print(log);
+    }
+
+    if (m_protocolNegoTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverProtocolNegoTimes = ");
+        m_protocolNegoTimer.print(log);
+    }
+
+    if (m_accessCheckTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverAccessCheckTimes = ");
+        m_accessCheckTimer.print(log);
+    }
+
+    if (m_encTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverEncTimes = ");
+        m_encTimer.print(log);
+    }
+
+    if (m_decTimer.GetMeasurements().size() > 0) {
+        fprintf(log, "serverDecTimes = ");
+        m_decTimer.print(log);
+    }
+}
+
+void fileServer::resetTimers() {
+    m_sealTimer.Clear();
+    m_unsealTimer.Clear();
+    m_taoEnvInitializationTimer.Clear();
+    m_taoHostInitializationTimer.Clear();
+    m_protocolNegoTimer.Clear();
+    m_accessCheckTimer.Clear();
+    m_encTimer.Clear();
+    m_decTimer.Clear();
+}
 
 // ------------------------------------------------------------------------
 

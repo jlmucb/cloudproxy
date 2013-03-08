@@ -14,14 +14,16 @@ CH=	    ../channels
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-CFLAGS=     -D LINUX -D FILECLIENT -D TIXML_USE_STL -D __FLUSHIO__ $(DEBUG_CFLAGS)
-LDFLAGSXML      := ${RELEASE_LDFLAGS}
+O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
+CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS)
+LDFLAGS          := $(RELEASE_LDFLAGS)
+O1CFLAGS=    -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
 CC=         g++
 LINK=       g++
 
 dobjs=      $(B)/fileClient.o $(B)/logging.o $(B)/jlmcrypto.o \
-            $(B)/jlmUtility.o $(B)/keys.o $(B)/aes.o $(B)/sha256.o $(B)/rsaHelper.o \
+            $(B)/jlmUtility.o $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/rsaHelper.o \
             $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
             $(B)/hmacsha256.o $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
@@ -36,7 +38,7 @@ all: $(E)/fileClient.exe
 
 $(E)/fileClient.exe: $(dobjs)
 	@echo "fileClient"
-	$(LINK) -o $(E)/fileClient.exe $(dobjs) -lpthread
+	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(RMM) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
@@ -119,20 +121,20 @@ $(B)/tinyxmlerror.o : $(SC)/tinyxmlerror.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 $(B)/tinystr.o : $(SC)/tinystr.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinystr.o $(SC)/tinystr.cpp
 
-$(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
+$(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
 
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
 
 $(B)/mpBasicArith.o: $(BSC)/mpBasicArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(BSC)/mpModArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpModArith.o $(BSC)/mpModArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpModArith.o $(BSC)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(BSC)/mpNumTheory.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
 
 $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(RMM) -I$(CLM) -I$(TRS) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp

@@ -18,7 +18,7 @@
 
 
 #include "keys.h"
-#include "aes.h"
+#include "aesni.h"
 #include "sha256.h"
 #include "hmacsha256.h"
 

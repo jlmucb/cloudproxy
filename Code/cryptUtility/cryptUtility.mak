@@ -61,7 +61,7 @@ $(B)/fastArith.o: $(SBM)/fastArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/fastArith.o $(SBM)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
+	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(SBM)/mpModArith.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpModArith.o $(SBM)/mpModArith.cpp

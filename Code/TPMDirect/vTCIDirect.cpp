@@ -65,7 +65,8 @@ bool submitTPMReq(int fd, int sizein, byte* in, int* psizeout, byte* out)
 {
     int     sizebuf= *psizeout;
 
-    write(fd, in, sizein);
+    ssize_t result = write(fd, in, sizein);
+    UNUSEDVAR(result);	
     *psizeout= read(fd, out, sizebuf);
     if(*psizeout<=0)
         return false;
@@ -165,7 +166,7 @@ bool fetchpcrValues(int fd, byte* pM, byte* pcrValues)
     int     n= 0;
     int     m= 0;
     int     k= 20;
-    byte    cb;
+    byte    cb= 0;
     extern  bool TPMpcrRead(int fd, int pcr, int* psize, byte* out);
 
     // PCR's used
@@ -1150,7 +1151,7 @@ bool tpmStatus::getCompositePCR(u32 loc, byte* pM, unsigned* pSize, byte* buf)
     int     i, n;
     int     numPCRs= 0;
     int     rgiPCR[24];
-    byte    cb;
+    byte    cb= 0;
 
     // PCR's used
     for(i=0; i<24;i++) {

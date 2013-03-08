@@ -85,8 +85,8 @@ class fileTester {
     bool runTest(fileClient& client,
             safeChannel& channel,
             const fileTestParams& params,
-            double& time);
-    
+            timer& testTimer); 
+
     // disallow copy construction and assignment
     fileTester(const fileTester&);
     fileTester& operator=(const fileTester&);

@@ -24,6 +24,8 @@
 #include "logging.h"
 #include "fileTester.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -77,11 +79,14 @@ fileTester::fileTester(const string& path, const string& testFile)
 }    
 
 fileTester::~fileTester() {
-    // delete all the files we created for this test
-    list<string>::iterator it = m_filesToDelete.begin();
-    for( ; m_filesToDelete.end() != it; ++it) {
-        unlink(it->c_str());
-    }
+    // don't delete the test files: this makes multiple test runs more efficient,
+    // since they can reuse the test files (and the encryption is still different
+    // since the IV is different)
+//    // delete all the files we created for this test
+//    list<string>::iterator it = m_filesToDelete.begin();
+//    for( ; m_filesToDelete.end() != it; ++it) {
+//        unlink(it->c_str());
+//    }
 }
 
 void fileTester::createResources(const string& parentPath, const TiXmlNode* parent) {
@@ -93,8 +98,16 @@ void fileTester::createResources(const string& parentPath, const TiXmlNode* pare
         if (elt->QueryStringAttribute("name", &fileName) == TIXML_SUCCESS &&
             elt->QueryIntAttribute("size", &size) == TIXML_SUCCESS) {
             string filePath = parentPath + fileName;
-            generateRandomFile(size, filePath);
-            m_filesToDelete.push_back(filePath);
+
+            // only generate the file if it's not there or is the wrong size
+            struct stat fileStatus;
+            int rv = stat(filePath.c_str(), &fileStatus);
+            bool goodFile = (rv == 0) && (fileStatus.st_size == size);
+            if (!goodFile) generateRandomFile(size, filePath);
+        
+            // we don't currently clean up the files we create, since it 
+            // puts too much load on the disk for a large test suite
+            //m_filesToDelete.push_back(filePath);
         } else {
             throw "Could not get the name and size of this resource\n";
         }
@@ -137,7 +150,8 @@ void fileTester::getParams(const TiXmlNode* parent, const string& parentPath, fi
         params.timed = timed;
     }
     
-    int repetitions = 0;
+    // the default is to repeat the test exactly once, unless otherwise specified
+    int repetitions = 1;
     if (elt->QueryIntAttribute("repetitions", &repetitions) == TIXML_SUCCESS) {
         params.repetitions = repetitions; 
     }
@@ -192,81 +206,114 @@ void fileTester::Run(const char* directory) {
                             
     list<fileTestParams>::iterator it = m_tests.begin();
     for( ; m_tests.end() != it; ++it) {
-        printf("%s: ", it->name.c_str());
-        double time = 0;
         bool result = false;
+        if (it->repetitions <= 0) {
+            fprintf(g_logFile, "%s: (Bad number of repetitions %d) [FAILED]\n", it->name.c_str(), it->repetitions);
+            continue;
+        }
+
+        timer testTimer;
         if (establishedDefaultConnection && m_reuseConnection) {
             try {
-                result = runTest(m_defaultClient,
-                            m_defaultChannel,
-                            *it,
-                            time);
+                for(int i = 0; i < it->repetitions; ++i) {
+                    result = runTest(m_defaultClient,
+                                m_defaultChannel,
+                                *it,
+                                testTimer);
+                    if (it->timed) {
+                        fprintf(g_logFile, "Timers for test %s: ", it->name.c_str());
+                        m_defaultClient.printTimers(g_logFile);
+                        m_defaultClient.resetTimers();
+                    }
+                }
             } catch (const char* err) {
-                printf("Error: %s\n", err);
+                fprintf(g_logFile, "Error: %s\n", err);
                 result = false;
             }
         } else {
             // establish a new connection for this test
-            fileClient client;
-            safeChannel channel;
-            result = client.establishConnection(channel,
-                    it->keyFile.c_str(),
-                    it->certFile.c_str(),
-                    directory);
+            for(int i = 0; i < it->repetitions; ++i) {
+                fileClient client;
+                safeChannel channel;
+                result = client.establishConnection(channel,
+                        it->keyFile.c_str(),
+                        it->certFile.c_str(),
+                        directory);
 
-            try {
-                result = runTest(client,
-                            channel,
-                            *it,
-                            time);
-            } catch (const char* err) {
-                printf("Error: %s\n", err); 
-                result = false;
+                try {
+                    result = runTest(client,
+                                channel,
+                                *it,
+                                testTimer);
+                    if (it->timed) {
+                        fprintf(g_logFile, "Timers for test %s: ", it->name.c_str());
+                        client.printTimers(g_logFile);
+                        client.resetTimers();
+                    }
+                } catch (const char* err) {
+                    fprintf(g_logFile, "Error: %s\n", err); 
+                    result = false;
+                }
+                client.closeConnection(channel);
             }
-            client.closeConnection(channel);
         }
 
-        printf("[%s]\n", result ? "OK" : "FAILED");
+        fprintf(g_logFile, "Result for test %s [%s]\n", it->name.c_str(), result ? "OK" : "FAILED");
+        if (result && it->timed) {
+            fprintf(g_logFile, "testTimes = ");
+            testTimer.print(g_logFile);
+        }
     }
 
     if (establishedDefaultConnection) {
         m_defaultClient.closeConnection(m_defaultChannel);
     }
 
+    printf("FileClient done running tests\n");
     return;
 }
 
 bool fileTester::runTest(fileClient& client, 
                         safeChannel& channel,
                         const fileTestParams& params,
-                        double& time)
+                        timer& testTimer)
 {
+    bool result = false;
     try {
         if (params.action.compare("create") == 0) {
-            return client.createResource(channel,
+            if (params.timed) testTimer.Start();
+            result = client.createResource(channel,
                             params.subject,
                             params.authFile,
                             params.remoteObject);            
+            if (params.timed) testTimer.Stop();
         } else if (params.action.compare("read") == 0) {
-            bool result = client.readResource(channel,
+            if (params.timed) testTimer.Start();
+            result = client.readResource(channel,
                             params.subject,
                             params.authFile,
                             params.remoteObject,
                             params.localObject);
+            if (params.timed) testTimer.Stop();
             if (!result) return result;
-    
-            return client.compareFiles(params.localObject, params.match);
+        
+            // don't count the time to check the result, only the time to get it
+            result = client.compareFiles(params.localObject, params.match);
         } else if (params.action.compare("write") == 0) {
-            return client.writeResource(channel,
+            if (params.timed) testTimer.Start();
+            result = client.writeResource(channel,
                             params.subject,
                             params.authFile,
                             params.remoteObject,
                             params.localObject);
+            if (params.timed) testTimer.Stop();
         } else if (params.action.compare("delete") == 0) {
-            return client.deleteResource(channel,
+            if (params.timed) testTimer.Start();
+            result = client.deleteResource(channel,
                             params.subject,
                             params.authFile,
                             params.remoteObject);
+            if (params.timed) testTimer.Stop();
         } else {
             throw "Unknown fileTester action\n";
         }
@@ -275,8 +322,5 @@ bool fileTester::runTest(fileClient& client,
         return false;
     }
 
-    return true;
+    return result;
 }
-
-
-

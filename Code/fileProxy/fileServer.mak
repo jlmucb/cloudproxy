@@ -11,12 +11,13 @@ VLT=	    ../vault
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
-#CFLAGS=     -D LINUX -D __FLUSHIO__ -D METADATATEST -D FAKESHA256
 
-DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
-RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(DEBUG_CFLAGS)
+DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
+RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
+O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
+LDFLAGS          := $(RELEASE_LDFLAGS)
+CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
+O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
 CC=         g++
 LINK=       g++
@@ -24,7 +25,7 @@ LINK=       g++
 dobjs=      $(B)/fileServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
             $(B)/secPrincipal.o $(B)/resource.o $(B)/accessControl.o \
 	    $(B)/session.o $(B)/request.o $(B)/jlmUtility.o $(B)/keys.o \
-	    $(B)/aes.o $(B)/sha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
+	    $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/encryptedblockIO.o $(B)/rsaHelper.o \
 	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/trustedKeyNego.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
@@ -38,7 +39,7 @@ all: $(E)/fileServer.exe
 
 $(E)/fileServer.exe: $(dobjs)
 	@echo "fileServer"
-	$(LINK) -o $(E)/fileServer.exe $(dobjs) -lpthread
+	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(RMM) -I$(TH) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
@@ -118,20 +119,20 @@ $(B)/tinyxmlerror.o : $(SC)/tinyxmlerror.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 $(B)/tinystr.o : $(SC)/tinystr.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinystr.o $(SC)/tinystr.cpp
 
-$(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
+$(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
 
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
 
 $(B)/mpBasicArith.o: $(BSC)/mpBasicArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(BSC)/mpModArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpModArith.o $(BSC)/mpModArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpModArith.o $(BSC)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(BSC)/mpNumTheory.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
 
 $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha1.o $(SCC)/sha1.cpp

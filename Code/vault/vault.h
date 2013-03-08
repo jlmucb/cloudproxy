@@ -23,8 +23,6 @@
 #include "jlmTypes.h"
 #include "objectManager.h"
 #include "keys.h"
-#include "aes.h"
-#include "aesni.h"
 #include "sha256.h"
 #include "secPrincipal.h"
 

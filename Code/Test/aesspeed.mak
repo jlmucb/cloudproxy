@@ -5,7 +5,7 @@ SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -g
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++

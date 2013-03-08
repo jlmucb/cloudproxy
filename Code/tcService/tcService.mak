@@ -13,14 +13,16 @@ CLM=	    ../claims
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
-LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D __FLUSHIO__ $(DEBUG_CFLAGS) -D TEST
+O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
+LDFLAGS          := ${RELEASE_LDFLAGS}
+CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
+O1CFLAGS=    -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
 CC=         g++
 LINK=       g++
 
 sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
-	    $(B)/keys.o $(B)/aes.o $(B)/sha256.o $(B)/mpBasicArith.o \
+	    $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o \
 	    $(B)/mpModArith.o $(B)/mpNumTheory.o $(B)/rsaHelper.o $(B)/fileHash.o \
 	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/buffercoding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
@@ -36,7 +38,7 @@ all: $(E)/tcService.exe
 
 $(E)/tcService.exe: $(sobjs)
 	@echo "tcService"
-	$(LINK) -o $(E)/tcService.exe $(sobjs) -lpthread
+	$(LINK) -o $(E)/tcService.exe $(sobjs) $(LDFLAGS) -lpthread
 # $(LINK) -o $(E)/tcService.exe $(sobjs) /lib/x86_64-linux-gnu/libprocps.so.0 -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
@@ -99,20 +101,20 @@ $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 $(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
 
-$(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
+$(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
 
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
 
 $(B)/mpBasicArith.o: $(BSC)/mpBasicArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(BSC)/mpModArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpModArith.o $(BSC)/mpModArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpModArith.o $(BSC)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(BSC)/mpNumTheory.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
 
 $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha1.o $(SCC)/sha1.cpp

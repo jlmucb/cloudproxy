@@ -42,7 +42,7 @@ byte    g_pcr1718Mask[3]= {0,0,0x06};
 
 bool computeTPM12compositepcrDigest(byte pcrMask[3], byte* pcrs, byte* pcrDigest)
 {
-    byte                        cb;
+    byte                        cb= 0;
     int                         i;
     int                         sizeOfComposite;
     u32                         sizePCRs;

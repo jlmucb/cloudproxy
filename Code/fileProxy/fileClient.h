@@ -35,6 +35,7 @@
 #include "resource.h"
 #include "secPrincipal.h"
 #include "tao.h"
+#include "timer.h"
 #include "vault.h"
 
 #include <string>
@@ -63,6 +64,14 @@ public:
     char*               m_szPort;
     char*               m_szAddress;
 
+    timer               m_sealTimer;
+    timer               m_unsealTimer;
+    timer               m_taoEnvInitializationTimer;
+    timer               m_taoHostInitializationTimer;
+    timer               m_protocolNegoTimer;
+    timer               m_encTimer;
+    timer               m_decTimer;
+
     fileClient();
     ~fileClient();
 
@@ -79,6 +88,9 @@ public:
     bool    readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput);
     bool    writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName);
     bool    compareFiles(const string& firstFile, const string& secondFile);
+
+    void    printTimers(FILE* log);
+    void    resetTimers();
 };
 
 

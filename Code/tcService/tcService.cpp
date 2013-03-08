@@ -597,7 +597,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
     byte                rgBuf[PARAMSIZE];
 
     int                 pid;
-    u32                 uType;
+    u32                 uType= 0;
     int                 an;
     char*               av[10];
 
@@ -960,11 +960,13 @@ int main(int an, char** av)
     }
 
     // init Host and Environment
+    g_myService.m_taoHostInitializationTimer.Start();
     if(!g_myService.m_host.HostInit(PLATFORMTYPEHW, parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;
     }
+    g_myService.m_taoHostInitializationTimer.Stop();
 
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after HostInit, pid: %d\n",
@@ -986,6 +988,7 @@ int main(int an, char** av)
         unlink(fileNames.m_szAncestorEvidence);
     }
 
+    g_myService.m_taoEnvInitializationTimer.Start();
     if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUX, "TrustedOS",
                                 DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
@@ -993,6 +996,7 @@ int main(int an, char** av)
         iRet= 1;
         goto cleanup;
     }
+    g_myService.m_taoEnvInitializationTimer.Stop();
 
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after EnvInit\n");

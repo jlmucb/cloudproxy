@@ -693,6 +693,12 @@ int theServiceChannel::processRequests()
             fprintf(g_logFile, "theServiceChannel::processRequests: cant parse: %s\n", request);
             return -1;
         }
+
+#ifdef TEST
+        fprintf(g_logFile, "parsed oReq from request: %s\n", request);
+#endif
+
+
         iRequestType= oReq.m_iRequestType;
         if(oReq.m_szResourceName==NULL) {
             fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");

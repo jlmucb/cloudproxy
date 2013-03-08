@@ -1,5 +1,5 @@
-<Tests reuseConnection="true">
-    <Default expect="pass" timed="false" repetitions="1">
+<Tests print="true">
+    <Default timed="false" repetitions="1">
         <Authorization>authRule1Signed.xml</Authorization>
         <PrivateKeys>principalPrivateKeys.xml</PrivateKeys>
         <PublicKeys>principalPublicKeys.xml</PublicKeys>
@@ -17,5 +17,19 @@
         <Action>read</Action>
         <LocalObject>files/file.test.out</LocalObject>
         <Match>files/file.test</Match>
+    </Test>
+    <Test name="p2FileRead">
+        <PrivateKeys>P2PrivateKeys.xml</PrivateKeys>
+        <PublicKeys>P2PublicKeys.xml</PublicKeys>
+        <Subject>//www.manferdelli.com/User/P2/0001</Subject>
+        <Action>read</Action>
+        <LocalObject>files/file.test.P2.out</LocalObject>
+        <Match>files/file.test</Match> 
+    </Test>
+    <Test name="p2FileWrite" expect="fail">
+        <PrivateKeys>P2PrivateKeys.xml</PrivateKeys>
+        <PublicKeys>P2PublicKeys.xml</PublicKeys>
+        <Subject>//www.manferdelli.com/User/P2/0001</Subject>
+        <Action>write</Action>
     </Test>
 </Tests>

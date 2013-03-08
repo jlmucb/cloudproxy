@@ -1,5 +1,5 @@
-<Tests reuseConnection="true">
-    <Default time="false" repetitions="1"> 
+<Tests reuseConnection="true" print="true">
+    <Default timed="true" repetitions="1"> 
         <Authorization>authRule1Signed.xml</Authorization>
         <PrivateKeys>principalPrivateKeys.xml</PrivateKeys>
         <PublicKeys>principalPublicKeys.xml</PublicKeys>

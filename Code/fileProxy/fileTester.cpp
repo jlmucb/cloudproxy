@@ -40,6 +40,7 @@ fileTester::fileTester(const string& path, const string& testFile)
     : m_defaultClient(),
     m_defaultChannel(),
     m_defaultParams(),
+    m_testFileName(path + testFile),
     m_testsDoc(path + testFile),
     m_tests(),
     m_reuseConnection(false),
@@ -68,6 +69,11 @@ fileTester::fileTester(const string& path, const string& testFile)
     int port = 0;
     if (curElt->QueryIntAttribute("serverPort", &port) == TIXML_SUCCESS) {
         m_serverPort = static_cast<u_short>(port);
+    }
+
+    bool print = false;
+    if (curElt->QueryBoolAttribute("print", &print) == TIXML_SUCCESS) {
+        m_printToStdout = print;
     }
 
     // walk the children of the root and handle Default, Resources, and Test children
@@ -175,6 +181,20 @@ void fileTester::getParams(const TiXmlNode* parent, const string& parentPath, fi
         params.name = testName;
     }
 
+    string expectation;
+    if (elt->QueryStringAttribute("expect", &expectation) == TIXML_SUCCESS) {
+        if (expectation.compare("pass") == 0) {
+            params.expectSuccess = true;
+        } else if (expectation.compare("fail") == 0) {
+            params.expectSuccess = false;
+        } else {
+            throw "Unknown 'expect' attribute in Test or Defaults\n";
+        }
+    } else {
+        // unless otherwise specified, tests are expected to pass
+        params.expectSuccess = true;
+    }
+
     // iterate over the children to get the appropriate parameters
     const TiXmlNode* child = NULL;
     while((child = parent->IterateChildren(child))) {
@@ -222,8 +242,11 @@ void fileTester::Run(const char* directory) {
                             
     list<fileTestParams>::iterator it = m_tests.begin();
     for( ; m_tests.end() != it; ++it) {
+        if (m_printToStdout) printf("%s: ", it->name.c_str());
+
         bool result = false;
         if (it->repetitions <= 0) {
+            if (m_printToStdout) printf("[FAILED]\n");
             fprintf(g_logFile, "%s: (Bad number of repetitions %d) [FAILED]\n", it->name.c_str(), it->repetitions);
             continue;
         }
@@ -243,6 +266,7 @@ void fileTester::Run(const char* directory) {
                     }
                 }
             } catch (const char* err) {
+                if (m_printToStdout) printf("Error: '%s' ", err);
                 fprintf(g_logFile, "Error: %s\n", err);
                 result = false;
             }
@@ -269,14 +293,17 @@ void fileTester::Run(const char* directory) {
                         client.resetTimers();
                     }
                 } catch (const char* err) {
+                    if (m_printToStdout) printf("Error: '%s' ", err);
                     fprintf(g_logFile, "Error: %s\n", err); 
                     result = false;
                 }
                 client.closeConnection(channel);
             }
         }
-
-        fprintf(g_logFile, "Result for test %s [%s]\n", it->name.c_str(), result ? "OK" : "FAILED");
+    
+        bool pass = (result == it->expectSuccess);
+        if (m_printToStdout) printf("[%s]\n",  pass ? "OK" : "FAILED");
+        fprintf(g_logFile, "Result for test %s [%s]\n", it->name.c_str(), pass ? "OK" : "FAILED");
         if (result && it->timed) {
             fprintf(g_logFile, "testTimes = ");
             testTimer.print(g_logFile);
@@ -287,7 +314,7 @@ void fileTester::Run(const char* directory) {
         m_defaultClient.closeConnection(m_defaultChannel);
     }
 
-    printf("FileClient done running tests\n");
+    if (m_printToStdout) printf("Finished running tests in file %s\n", m_testFileName.c_str());
     return;
 }
 

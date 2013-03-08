@@ -644,6 +644,9 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 // ---------------------------------------------------------------
 
 
+#ifdef GCMENABLED
+
+
 /*
  *  GCM
  *
@@ -1148,6 +1151,7 @@ int gcm::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
     memcpy(m_rgsentTag, puOut, m_iBlockSize);
     return iPlainLeft;
 }
+#endif
 
 
 // ---------------------------------------------------------------

@@ -64,7 +64,9 @@ public:
 
     u32     m_uCombinedAlgId;
 
+#ifdef GCMENABLED
     gcm     m_oGCM;
+#endif
     cbc     m_oCBC;
 
     encryptedFileread();
@@ -110,7 +112,9 @@ public:
 
     u32     m_uCombinedAlgId;
 
+#ifdef GCMENABLED
     gcm     m_oGCM;
+#endif
     cbc     m_oCBC;
 
     encryptedFilewrite();

@@ -30,6 +30,7 @@
 #include "tinyxml.h"
 #include "sha256.h"
 #include "aes.h"
+#include "aesni.h"
 #include "bignum.h"
 #include "fileHash.h"
 #include "mpFunctions.h"
@@ -607,26 +608,47 @@ bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, 
             throw "Can't open file to write signed version\n";
 
         // Header
-        write(iWrite, szSigHeader, strlen(szSigHeader));
+        if(write(iWrite, szSigHeader, strlen(szSigHeader))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
         // write SignedInfo
-        write(iWrite, szToHash, strlen(szToHash));
+        if(write(iWrite, szToHash, strlen(szToHash))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
         // write signature value
-        write(iWrite, szSigValueBegin, strlen(szSigValueBegin));
+        if(write(iWrite, szSigValueBegin, strlen(szSigValueBegin))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
         int iOutLen= 1024;
         if(!toBase64(pRSAKey->m_iByteSizeM, (u8*)bnOut.m_pValue, &iOutLen, rgBase64Sig))
             throw "Cant base64 encode signature value\n";
-        write(iWrite, rgBase64Sig, strlen(rgBase64Sig));
-        write(iWrite, szSigValueEnd, strlen(szSigValueEnd));
+        if(write(iWrite, rgBase64Sig, strlen(rgBase64Sig))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
+        if(write(iWrite, szSigValueEnd, strlen(szSigValueEnd))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
         // public key info of signer
         szKeyInfo= pRSAKey->SerializePublictoString();
         if(szKeyInfo==NULL)
             throw "Can't Serialize key class\n";
     
-        write(iWrite, szKeyInfo, strlen(szKeyInfo));
-        write(iWrite, szSigTrailer, strlen(szSigTrailer));
+        if(write(iWrite, szKeyInfo, strlen(szKeyInfo))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
+        if(write(iWrite, szSigTrailer, strlen(szSigTrailer))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
 #ifdef TEST
         fprintf(g_logFile, "Signature written\n");
@@ -1079,6 +1101,7 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
 }
 
 
+#ifdef GCMENABLED
 bool AES128GCMEncryptFile(int filesize, int iRead, int iWrite, u8* enckey)
 {
     gcm     oGCM;
@@ -1108,14 +1131,20 @@ bool AES128GCMEncryptFile(int filesize, int iRead, int iWrite, u8* enckey)
 
     // read, encrypt, and write bytes
     while(fileLeft>AES128BYTEBLOCKSIZE) {
-        read(iRead, rgBufIn, AES128BYTEBLOCKSIZE);
+        if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
         oGCM.nextPlainBlockIn(rgBufIn, rgBufOut);
         write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
         fileLeft-= AES128BYTEBLOCKSIZE;
     }
 
     // final block
-    read(iRead, rgBufIn, fileLeft);
+    if(read(iRead, rgBufIn, fileLeft)<0) {
+        fprintf(g_logFile, "bad read\n");
+        return false;
+    }
     int n= oGCM.lastPlainBlockIn(fileLeft, rgBufIn, rgBufOut);
     if(n<0)
         return false;
@@ -1146,13 +1175,19 @@ bool AES128GCMDecryptFile(int filesize, int iRead, int iWrite, u8* enckey)
         return false;
 
     // get and send first cipher block
-    read(iRead, rgBufIn, AES128BYTEBLOCKSIZE);
+    if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
+        fprintf(g_logFile, "bad read\n");
+        return false;
+    }
     oGCM.firstCipherBlockIn(rgBufIn);
     fileLeft-= AES128BYTEBLOCKSIZE;
 
     // read, decrypt, and write bytes
     while(fileLeft>2*AES128BYTEBLOCKSIZE) {
-        read(iRead, rgBufIn, AES128BYTEBLOCKSIZE);
+        if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
         oGCM.nextCipherBlockIn(rgBufIn, rgBufOut);
         write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
         fileLeft-= AES128BYTEBLOCKSIZE;
@@ -1165,10 +1200,14 @@ bool AES128GCMDecryptFile(int filesize, int iRead, int iWrite, u8* enckey)
         return false;
 
     // write final decrypted bytes
-    write(iWrite, rgBufOut, n);
+    if(write(iWrite, rgBufOut, n)<0) {
+        fprintf(g_logFile, "bad write\n");
+        return false;
+    }
 
     return oGCM.validateTag();
 }
+#endif
 
 
 bool AES128CBCHMACSHA256SYMPADEncryptFile (int filesize, int iRead, int iWrite, 
@@ -1196,24 +1235,39 @@ bool AES128CBCHMACSHA256SYMPADEncryptFile (int filesize, int iRead, int iWrite,
 
     // get and send first cipher block
     oCBC.firstCipherBlockOut(rgBufOut);
-    write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
+    if(write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE)<0) {
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptFile: bad write\n");
+        return false;
+    }
 
     // read, encrypt, and copy bytes
     while(fileLeft>AES128BYTEBLOCKSIZE) {
-        read(iRead, rgBufIn, AES128BYTEBLOCKSIZE);
+        if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
         oCBC.nextPlainBlockIn(rgBufIn, rgBufOut);
-        write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
+        if(write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
         fileLeft-= AES128BYTEBLOCKSIZE;
     }
 
     // final block
-    read(iRead, rgBufIn, fileLeft);
+    if(read(iRead, rgBufIn, fileLeft)<0) {
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptFile: bad read\n");
+        return false;
+    }
     int n= oCBC.lastPlainBlockIn(fileLeft, rgBufIn, rgBufOut);
     if(n<0)
         return false;
 
     // write final encrypted blocks and HMAC
-    write(iWrite, rgBufOut, n);
+    if(write(iWrite, rgBufOut, n)<0) {
+        fprintf(g_logFile, "bad write\n");
+        return false;
+    }
 
     return true;
 }
@@ -1236,26 +1290,41 @@ bool AES128CBCHMACSHA256SYMPADDecryptFile (int filesize, int iRead, int iWrite,
         return false;
 
     // get and send first cipher block
-    read(iRead, rgBufIn, AES128BYTEBLOCKSIZE);
+    if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
     oCBC.firstCipherBlockIn(rgBufIn);
     fileLeft-= AES128BYTEBLOCKSIZE;
 
     // read, decrypt, and write bytes
     while(fileLeft>3*AES128BYTEBLOCKSIZE) {
-        read(iRead, rgBufIn, AES128BYTEBLOCKSIZE);
+        if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
         oCBC.nextCipherBlockIn(rgBufIn, rgBufOut);
-        write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
+        if(write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE)<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
         fileLeft-= AES128BYTEBLOCKSIZE;
     }
 
     // final blocks
-    read(iRead, rgBufIn, fileLeft);
+    if(read(iRead, rgBufIn, fileLeft)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
     int n= oCBC.lastCipherBlockIn(fileLeft, rgBufIn, rgBufOut);
     if(n<0)
         return false;
 
     // write final decrypted bytes
-    write(iWrite, rgBufOut, n);
+    if(write(iWrite, rgBufOut, n)<0) {
+        fprintf(g_logFile, "bad write\n");
+        return false;
+    }
 
     return oCBC.validateMac();
 }
@@ -1304,9 +1373,15 @@ bool Encrypt(u32 op, const char* szKeyFile, const char* szInFile, const char* sz
         fprintf(g_logFile, "Can't open Key file\n");
         return false;
     }
-    read(iKey, rguEncKey, AES128BYTEKEYSIZE);
+    if(read(iKey, rguEncKey, AES128BYTEKEYSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
     if(mode==CBCMODE)
-        read(iKey, rguIntKey, AES128BYTEKEYSIZE);
+        if(read(iKey, rguIntKey, AES128BYTEKEYSIZE)<0) {
+            fprintf(g_logFile, "bad read\n");
+            return false;
+        }
     close(iKey);
 
     bool fRet= false;
@@ -1317,10 +1392,12 @@ bool Encrypt(u32 op, const char* szKeyFile, const char* szInFile, const char* sz
     else if(op==DECRYPTFILE && alg==AES128 && mode==CBCMODE && mac==HMACSHA256 && pad==SYMPAD)
         fRet= AES128CBCHMACSHA256SYMPADDecryptFile(fileSize, iRead, iWrite, 
                      rguEncKey, rguIntKey);
+#ifdef GCMENABLED
     else if(op==ENCRYPTFILE && alg==AES128 && mode==GCMMODE)
         fRet= AES128GCMEncryptFile(fileSize, iRead, iWrite, rguEncKey);
     else if(op==DECRYPTFILE && alg==AES128 && mode==GCMMODE)
         fRet= AES128GCMDecryptFile(fileSize, iRead, iWrite, rguEncKey);
+#endif
     else
         fRet= false;
     
@@ -1354,6 +1431,7 @@ void  GetTime()
 }
 
 
+#ifdef GCMENABLED
 void printGCM(gcm& oGCM)
 {
     fprintf(g_logFile, "BlockSize: %d, NumAuthBytes: %d, NumPlainBytes: %d, NumCipherBytes: %d, TagSize: %d\n",
@@ -1462,6 +1540,7 @@ void TestGcm()
 
     return;
 }
+#endif
 
 
 inline byte fromHextoVal(char a, char b)
@@ -1490,7 +1569,6 @@ int MyConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
 {
     char    a, b;
     int     j= 0;
-    int     m;
 
     while(*szIn!=0) {
         if(*szIn=='\n' || *szIn==' ') {
@@ -1553,14 +1631,11 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
     int         size= 512;
     char        rgBase64[512];
     TiXmlNode*  pNode= NULL;
-    TiXmlNode*  pNode1= NULL;
     char*       szToHash= NULL;
     RSAKey*     pRSAKey= NULL;
     char*       szKeyInfo= NULL;
     int         iWrite= -1;
     bool        fRet= true;
-
-    int         sizeSigneInfo= 4096;
     char        szSignedInfo[4096];
 
     fprintf(g_logFile, "SignHexModulus(%s, %s, %s)\n", szKeyFile, szInFile, szOutFile);
@@ -1684,26 +1759,47 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
             throw "Can't open file to write signed version\n";
 
         // Header
-        write(iWrite, szSigHeader, strlen(szSigHeader));
+        if(write(iWrite, szSigHeader, strlen(szSigHeader))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
         // write SignedInfo
-        write(iWrite, szToHash, strlen(szToHash));
+        if(write(iWrite, szToHash, strlen(szToHash))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
         // write signature value
-        write(iWrite, szSigValueBegin, strlen(szSigValueBegin));
+        if(write(iWrite, szSigValueBegin, strlen(szSigValueBegin))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
         int iOutLen= 1024;
         if(!toBase64(pRSAKey->m_iByteSizeM, (u8*)bnOut.m_pValue, &iOutLen, rgBase64Sig))
             throw "Cant base64 encode signature value\n";
-        write(iWrite, rgBase64Sig, strlen(rgBase64Sig));
-        write(iWrite, szSigValueEnd, strlen(szSigValueEnd));
+        if(write(iWrite, rgBase64Sig, strlen(rgBase64Sig))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
+        if(write(iWrite, szSigValueEnd, strlen(szSigValueEnd))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
         // public key info of signer
         szKeyInfo= pRSAKey->SerializePublictoString();
         if(szKeyInfo==NULL)
             throw "Can't Serialize key class\n";
     
-        write(iWrite, szKeyInfo, strlen(szKeyInfo));
-        write(iWrite, szSigTrailer, strlen(szSigTrailer));
+        if(write(iWrite, szKeyInfo, strlen(szKeyInfo))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
+        if(write(iWrite, szSigTrailer, strlen(szSigTrailer))<0) {
+            fprintf(g_logFile, "bad write\n");
+            return false;
+        }
 
 #ifdef TEST
         fprintf(g_logFile, "Signature written\n");
@@ -1833,7 +1929,9 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -Encrypt keyfile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Decrypt keyfile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Time \n");
+#ifdef GCMENABLED
             fprintf(g_logFile, "       cryptUtility -TestGCM \n");
+#endif
             fprintf(g_logFile, "       cryptUtility -HexquoteTest\n");
             fprintf(g_logFile, "       cryptUtility -SignHexModulus keyfile input-file output-file\n");
             fprintf(g_logFile, "       cryptUtility -HashFile input-file [alg]\n");
@@ -1926,7 +2024,7 @@ int main(int an, char** av)
             szOutFile= av[i+3];
             iAction= ENCRYPTFILE;
             if(an>(i+4) && strcmp(av[i+4],"gcm")==0)
-                mode= GCMMODE;
+                mode= CBCMODE;
             break;
         }
         if(strcmp(av[i], "-Decrypt")==0) {
@@ -1939,17 +2037,19 @@ int main(int an, char** av)
             szOutFile= av[i+3];
             iAction= DECRYPTFILE;
             if(an>(i+4) && strcmp(av[i+4],"gcm")==0)
-                mode= GCMMODE;
+                mode= CBCMODE;
             break;
         }
         if(strcmp(av[i], "-Time")==0) {
             iAction= TIMEREPORT;
             break;
         }
+#ifdef GCMENABLED
         if(strcmp(av[i], "-TestGCM")==0) {
             iAction= GCMTEST;
             break;
         }
+#endif
         if(strcmp(av[i], "-HashFile")==0) {
             iAction= HASHFILE;
             szInFile= av[i+1];
@@ -2063,9 +2163,11 @@ int main(int an, char** av)
         GetTime();
     }
 
+#ifdef GCMENABLED
     if(iAction==GCMTEST) {
         TestGcm();
     }
+#endif
 
     if(iAction==HEXQUOTETEST) {
         initCryptoRand();

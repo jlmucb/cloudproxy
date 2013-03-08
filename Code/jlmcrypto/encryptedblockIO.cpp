@@ -105,11 +105,13 @@ bool encryptedFileread::initDec(int filesize, int datasize, byte* key, int keyBi
                            key, AES128BYTEKEYSIZE, &key[AES128BYTEKEYSIZE], filesize))
             return false;
         break;
+#ifdef GCMENABLED
       case AES128GCM:
         if(!m_oGCM.initDec(AES128, AES128BYTEKEYSIZE,
                            key, filesize, 0, AES128BYTEKEYSIZE))
             return false;
         break;
+#endif
       default:
         return -1;
     }
@@ -320,6 +322,131 @@ int encryptedFilewrite::AES128CBCEncrypt(int iWrite, int bufsize, byte* buf)
 //----------------------------------------------------------------------------------
 
 
+int  encryptedFileread::EncRead(int iRead, byte* buf, int size)
+{
+#ifdef TEST1
+    fprintf(g_logFile, "EncRead size: %d\n", size);
+#endif
+    if(!m_fInitialized)
+        return -1;
+
+    if(m_uAlg==NOALG)
+        return read(iRead, buf, size);
+
+    switch(m_uCombinedAlgId) {
+      case AES128CBCSYMPADHMACSHA256:
+        return AES128CBCDecrypt(iRead, size, buf);
+#ifdef GCMENABLED
+      case AES128GCM:
+        return AES128GCMDecrypt(iRead, size, buf);
+#endif
+      default:
+        return -1;
+    }
+}
+
+
+int  encryptedFilewrite::EncWrite(int iWrite, byte* buf, int size)
+{
+#ifdef IOTEST
+    fprintf(g_logFile, "EncWrite size: %d\n", size);
+    fflush(g_logFile);
+#endif
+    if(!m_fInitialized)
+        return -1;
+
+    if(m_uAlg==NOALG)
+        return write(iWrite, buf, size);
+
+    switch(m_uCombinedAlgId) {
+      case AES128CBCSYMPADHMACSHA256:
+        return AES128CBCEncrypt(iWrite, size, buf);
+#ifdef GCMENABLED
+      case AES128GCM:
+        return AES128GCMEncrypt(iWrite, size, buf);
+#endif
+      default:
+        return -1;
+    }
+}
+
+
+bool encryptedFilewrite::initEnc(int filesize, int datasize, byte* key, int keyBitSize, 
+                                 u32 alg, u32 pad, u32 mode, u32 hmac)
+{
+#ifdef TEST1
+    fprintf(g_logFile, "initEnc filesize: %d, datasize: %d\n", filesize, datasize);
+    fflush(g_logFile);
+#endif
+    m_uAlg= alg;
+    m_uMode= mode;
+    m_uPad= pad;
+    m_uHmac= hmac;
+    if(alg==NOALG) {
+        m_fInitialized= true;
+        return true;
+    }
+
+    m_iBlockSize= AES128BYTEBLOCKSIZE;
+    m_iBufIn= 0;
+    m_iBufOut= 0;
+    m_uCombinedAlgId= alg | (mode<<8) | (pad<<16) | (hmac<<24);
+
+    m_fileLeft= filesize;
+    m_fileSize= filesize;
+    m_dataSize= datasize;
+
+    byte    iv[AES128BYTEBLOCKSIZE];
+
+    switch(m_uCombinedAlgId) {
+
+      case AES128CBCSYMPADHMACSHA256:
+
+        // init iv
+        if(!getCryptoRandom(AES128BYTEBLOCKSIZE*NBITSINBYTE, iv)) {
+            fprintf(g_logFile, "Cant generate iv\n");
+            return false;
+        }
+
+        // init 
+        if(!m_oCBC.initEnc(AES128, SYMPAD, HMACSHA256, AES128BYTEKEYSIZE, 
+                           key, AES128BYTEKEYSIZE, 
+                           &key[AES128BYTEKEYSIZE], filesize, AES128BYTEBLOCKSIZE, iv))
+            return false;
+        break;
+
+#ifdef GCMENABLED
+      case AES128GCM:
+
+        // init iv
+        if(!getCryptoRandom(AES128BYTEBLOCKSIZE*NBITSINBYTE, iv)) {
+            fprintf(g_logFile, "Cant generate iv\n");
+            return false;
+        }
+
+        // init 
+        if(!m_oGCM.initEnc(AES128, AES128BYTEKEYSIZE-sizeof(u32), iv, AES128BYTEKEYSIZE,
+                            key, datasize, 0, AES128BYTEBLOCKSIZE))
+            return false;
+        break;
+#endif
+
+      default:
+        return -1;
+    }
+
+    m_fInitialized= true;
+
+    return true;
+}
+
+
+// ------------------------------------------------------------------------------------
+
+
+
+#ifdef GCMENABLED
+
 // untested
 
 
@@ -508,123 +635,9 @@ int encryptedFileread::AES128GCMDecrypt(int iRead, int bufsize, byte* buf)
     m_iOutStart+= m;
     return m;
 }
+#endif
 
 
 // ------------------------------------------------------------------------
 
-
-int  encryptedFileread::EncRead(int iRead, byte* buf, int size)
-{
-#ifdef TEST1
-    fprintf(g_logFile, "EncRead size: %d\n", size);
-#endif
-    if(!m_fInitialized)
-        return -1;
-
-    if(m_uAlg==NOALG)
-        return read(iRead, buf, size);
-
-    switch(m_uCombinedAlgId) {
-      case AES128CBCSYMPADHMACSHA256:
-        return AES128CBCDecrypt(iRead, size, buf);
-      case AES128GCM:
-        return AES128GCMDecrypt(iRead, size, buf);
-      default:
-        return -1;
-    }
-}
-
-
-int  encryptedFilewrite::EncWrite(int iWrite, byte* buf, int size)
-{
-#ifdef IOTEST
-    fprintf(g_logFile, "EncWrite size: %d\n", size);
-    fflush(g_logFile);
-#endif
-    if(!m_fInitialized)
-        return -1;
-
-    if(m_uAlg==NOALG)
-        return write(iWrite, buf, size);
-
-    switch(m_uCombinedAlgId) {
-      case AES128CBCSYMPADHMACSHA256:
-        return AES128CBCEncrypt(iWrite, size, buf);
-      case AES128GCM:
-        return AES128GCMEncrypt(iWrite, size, buf);
-      default:
-        return -1;
-    }
-}
-
-
-bool encryptedFilewrite::initEnc(int filesize, int datasize, byte* key, int keyBitSize, 
-                                 u32 alg, u32 pad, u32 mode, u32 hmac)
-{
-#ifdef TEST1
-    fprintf(g_logFile, "initEnc filesize: %d, datasize: %d\n", filesize, datasize);
-    fflush(g_logFile);
-#endif
-    m_uAlg= alg;
-    m_uMode= mode;
-    m_uPad= pad;
-    m_uHmac= hmac;
-    if(alg==NOALG) {
-        m_fInitialized= true;
-        return true;
-    }
-
-    m_iBlockSize= AES128BYTEBLOCKSIZE;
-    m_iBufIn= 0;
-    m_iBufOut= 0;
-    m_uCombinedAlgId= alg | (mode<<8) | (pad<<16) | (hmac<<24);
-
-    m_fileLeft= filesize;
-    m_fileSize= filesize;
-    m_dataSize= datasize;
-
-    byte    iv[AES128BYTEBLOCKSIZE];
-
-    switch(m_uCombinedAlgId) {
-
-      case AES128CBCSYMPADHMACSHA256:
-
-        // init iv
-        if(!getCryptoRandom(AES128BYTEBLOCKSIZE*NBITSINBYTE, iv)) {
-            fprintf(g_logFile, "Cant generate iv\n");
-            return false;
-        }
-
-        // init 
-        if(!m_oCBC.initEnc(AES128, SYMPAD, HMACSHA256, AES128BYTEKEYSIZE, 
-                           key, AES128BYTEKEYSIZE, 
-                           &key[AES128BYTEKEYSIZE], filesize, AES128BYTEBLOCKSIZE, iv))
-            return false;
-        break;
-
-      case AES128GCM:
-
-        // init iv
-        if(!getCryptoRandom(AES128BYTEBLOCKSIZE*NBITSINBYTE, iv)) {
-            fprintf(g_logFile, "Cant generate iv\n");
-            return false;
-        }
-
-        // init 
-        if(!m_oGCM.initEnc(AES128, AES128BYTEKEYSIZE-sizeof(u32), iv, AES128BYTEKEYSIZE,
-                            key, datasize, 0, AES128BYTEBLOCKSIZE))
-            return false;
-        break;
-
-      default:
-        return -1;
-    }
-
-    m_fInitialized= true;
-
-    return true;
-}
-
-
-// ------------------------------------------------------------------------------------
 

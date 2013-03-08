@@ -18,7 +18,7 @@ LINK=       g++
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o $(B)/sha256.o \
             $(B)/jlmUtility.o $(B)/modesandpadding.o $(B)/rsaHelper.o $(B)/hmacsha256.o \
 	    $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  \
-	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
+	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o $(B)/aesni.o \
 	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/tinyxmlparser.o 
 
@@ -47,6 +47,9 @@ $(B)/hashprep.o: $(TPM)/hashprep.cpp $(TPM)/hashprep.h
 
 $(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
+
+$(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
 
 $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha1.o $(SCC)/sha1.cpp

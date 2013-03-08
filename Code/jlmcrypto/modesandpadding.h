@@ -41,8 +41,73 @@
 #define _MODESANDPADDING__H
 
 
+#define MAXAUTHSIZE 32
 extern bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig);
 extern bool emsapkcsverify(int hashType, byte* rgHash, int iSigSize, byte* rgSig);
+
+
+class cbc {
+public:
+    int         m_iBlockSize;
+    int         m_iNumPlainBytes;
+    int         m_iNumCipherBytes;
+    int	        m_iKeySize;
+    int	        m_iIntKeySize;
+
+    bool        m_fIVValid;
+
+    u32         m_uEncAlg;
+    u32         m_uMacAlg;
+    u32         m_uPadAlg;
+
+    aesni         m_oAESEnc;
+    aesni         m_oAESDec;
+    hmacsha256  m_ohMac;
+
+    byte*       m_rguIV;
+    byte*       m_rgLastBlock;
+    byte*       m_rguFirstBlock;
+    byte*       m_rguLastBlocks;
+    byte*       m_rguHMACComputed;
+    byte*       m_rguHMACReceived;
+    byte*       m_rguIntKey;
+
+                cbc();
+                ~cbc();
+
+    bool        computePlainLen();
+    bool        computeCipherLen();
+
+    bool        init(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
+                     int intkeysize, byte* intkey);
+    bool        initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
+                     int intkeysize, byte* intkey, int plainLen, int ivSize, byte* iv);
+    bool        initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
+                    int intkeysize, byte* intkey, int cipherLen);
+
+    void        nextMac(byte* puMac);
+    int         getMac(int bufSize, byte* puMac);
+
+    bool        firstCipherBlockIn(byte* puIn);
+    bool        nextPlainBlockIn(byte* puIn, byte* puOut);
+    int         lastPlainBlockIn(int size, byte* puIn, byte* puOut);
+
+    bool        firstCipherBlockOut(byte* puOut);
+    bool        nextCipherBlockIn(byte* puIn, byte* puOut);
+    int         lastCipherBlockIn(int size, byte* puIn, byte* puOut);
+
+    bool        validateMac();
+}; 
+
+
+#ifdef GCMENABLED
+//      GF(2)^n arithmetic
+//
+byte    coeff(byte* A, int i, int n=16);
+void    shiftXor(byte* R, byte* A, int i, int n=16); 
+void    reducebyF(byte* R, int n=16);
+bool    multmodF(byte* R, byte* A, byte* B, int n=16);
+void    shiftXorandFreduce(byte* rguR, byte* rguA, int i, int n=16); 
 
 
 class gcm {
@@ -100,72 +165,7 @@ public:
 
     void    incY();
 }; 
-
-
-class cbc {
-public:
-    int         m_iBlockSize;
-    int         m_iNumPlainBytes;
-    int         m_iNumCipherBytes;
-    int	        m_iKeySize;
-    int	        m_iIntKeySize;
-
-    bool        m_fIVValid;
-
-    u32         m_uEncAlg;
-    u32         m_uMacAlg;
-    u32         m_uPadAlg;
-
-    aesni         m_oAESEnc;
-    aesni         m_oAESDec;
-    hmacsha256  m_ohMac;
-
-    byte*       m_rguIV;
-    byte*       m_rgLastBlock;
-    byte*       m_rguFirstBlock;
-    byte*       m_rguLastBlocks;
-    byte*       m_rguHMACComputed;
-    byte*       m_rguHMACReceived;
-    byte*       m_rguIntKey;
-
-                cbc();
-                ~cbc();
-
-    bool        computePlainLen();
-    bool        computeCipherLen();
-
-    bool        init(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
-                     int intkeysize, byte* intkey);
-    bool        initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
-                     int intkeysize, byte* intkey, int plainLen, int ivSize, byte* iv);
-    bool        initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
-                    int intkeysize, byte* intkey, int cipherLen);
-
-    void        nextMac(byte* puMac);
-    int         getMac(int bufSize, byte* puMac);
-
-    bool        firstCipherBlockIn(byte* puIn);
-    bool        nextPlainBlockIn(byte* puIn, byte* puOut);
-    int         lastPlainBlockIn(int size, byte* puIn, byte* puOut);
-
-    bool        firstCipherBlockOut(byte* puOut);
-    bool        nextCipherBlockIn(byte* puIn, byte* puOut);
-    int         lastCipherBlockIn(int size, byte* puIn, byte* puOut);
-
-    bool        validateMac();
-}; 
-
-
-#define MAXAUTHSIZE 32
-
-
-//      GF(2)^n arithmetic
-//
-byte    coeff(byte* A, int i, int n=16);
-void    shiftXor(byte* R, byte* A, int i, int n=16); 
-void    reducebyF(byte* R, int n=16);
-bool    multmodF(byte* R, byte* A, byte* B, int n=16);
-void    shiftXorandFreduce(byte* rguR, byte* rguA, int i, int n=16); 
+#endif
 
 
 #endif

@@ -76,11 +76,9 @@ bool verifyXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, c
     int     outLen= RSA2048BYTEBLOCKSIZE;
     byte    quoteValue[RSA2048BYTEBLOCKSIZE];
 
-    int     sizehashFinal= SHA256DIGESTBYTESIZE;
     byte    hashFinal[SHA256DIGESTBYTESIZE];
 
     int     hashType= 0;
-    int     sizefinalHash= 0;
 
     byte    locality= 0; 
     u32     sizeversion= 0;
@@ -178,7 +176,6 @@ bool verifyXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, c
             return false;
         }
 #endif
-        sizefinalHash= SHA1DIGESTBYTESIZE;
     }
     else if(strcmp(QUOTEMETHODSHA256FILEHASHRSA2048, szQuoteAlg)==0 || 
              strcmp(QUOTEMETHODSHA256FILEHASHRSA1024, szQuoteAlg)==0) {
@@ -187,7 +184,6 @@ bool verifyXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, c
             fprintf(g_logFile, "verifyXMLQuote: Cant compute sha256 hash\n");
             return false;
         }
-        sizefinalHash= SHA256DIGESTBYTESIZE;
     }
     else {
         fprintf(g_logFile, "verifyXMLQuote: Unsupported quote algorithm %s\n", szQuoteAlg);

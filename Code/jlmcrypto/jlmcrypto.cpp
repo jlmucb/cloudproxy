@@ -148,10 +148,10 @@ bool toBase64(int iInLen, const byte* puIn, int* piOutLen, char* rgszOut, bool f
 //      Lengths are in characters
 //
 {
-    int         iNumOut= ((iInLen*4)+2)/3;
-    int         i= 0;
-    int         a, b, c, d;
-    const byte*       puC;
+    int             iNumOut= ((iInLen*4)+2)/3;
+    int             i= 0;
+    int             a, b, c, d;
+    const byte*     puC;
 
     // enough room?
     if(iNumOut>*piOutLen)

@@ -1327,16 +1327,15 @@ int main(int an, char** av)
         } else {
             fprintf(g_logFile, "Finished reading test directory without error\n");
         }
+        
+        fprintf(g_logFile, "fileClient main: At close client\n");
 #endif
+        closeLog();
+
     } catch (const char* err) {
         fprintf(g_logFile, "execution failed with error %s\n", err);
         iRet= 1;
     }
-
-#ifdef  TEST
-    fprintf(g_logFile, "fileClient main: At close client\n");
-#endif
-    closeLog();
 
     return iRet;
 }

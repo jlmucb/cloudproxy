@@ -824,29 +824,35 @@ bool theServiceChannel::initServiceChannel()
 
 void* channelThread(void* ptr)
 {
-    theServiceChannel*  poSc= (theServiceChannel*) ptr;
+    try {
+        theServiceChannel*  poSc= (theServiceChannel*) ptr;
 
 #ifdef TEST
-    fprintf(g_logFile, "channelThread activated\n");
-    fprintf(g_logFile, "\tptr: %08x\n", ptr);
-    fprintf(g_logFile, "\tchannel: %d, parent: %08x\n",
-            poSc->m_fdChannel, poSc->m_pParent);
+        fprintf(g_logFile, "channelThread activated\n");
+        fprintf(g_logFile, "\tptr: %08x\n", ptr);
+        fprintf(g_logFile, "\tchannel: %d, parent: %08x\n",
+                poSc->m_fdChannel, poSc->m_pParent);
 
-    fflush(g_logFile);
+        fflush(g_logFile);
 #endif
-    if(!poSc->initServiceChannel()) {
-    	fprintf(g_logFile, "channelThread: initServiceChannel failed\n");
+        if(!poSc->initServiceChannel()) {
+            fprintf(g_logFile, "channelThread: initServiceChannel failed\n");
+        }
+
+        // delete enty in thread table in parent
+        if(poSc->m_myPositionInParent>=0) 
+            poSc->m_pParent->m_fthreadValid[poSc->m_myPositionInParent]= false;
+        poSc->m_myPositionInParent= -1;
+#ifdef TEST
+        fprintf(g_logFile, "channelThread exiting\n");
+        fflush(g_logFile);
+#endif
+        delete  poSc;
+    } catch (const char* err) {
+        fprintf(g_logFile, "Server thread exited with error: %s\n", err);
+        fflush(g_logFile);
     }
 
-    // delete enty in thread table in parent
-    if(poSc->m_myPositionInParent>=0) 
-        poSc->m_pParent->m_fthreadValid[poSc->m_myPositionInParent]= false;
-    poSc->m_myPositionInParent= -1;
-#ifdef TEST
-    fprintf(g_logFile, "channelThread exiting\n");
-    fflush(g_logFile);
-#endif
-    delete  poSc;
     pthread_exit(NULL);
     return NULL;
 }
@@ -1256,7 +1262,7 @@ bool fileServer::server()
                         channelThread, 
                         poSc);
 #ifdef TEST
-            fprintf(g_logFile, "fileServer: pthread return: %d\n", m_threadIDs[i]);
+            fprintf(g_logFile, "fileServer: pthread create returns: %d\n", m_threadIDs[i]);
             fflush(g_logFile);
 #endif
             if(m_threadIDs[i]>=0)
@@ -1344,27 +1350,27 @@ int main(int an, char** av)
 
     try {
 
-        g_policyPrincipalCert= new PrincipalCert();
-        if(g_policyPrincipalCert==NULL)
-            throw "fileServer main: failed to new Principal\n";
+            g_policyPrincipalCert= new PrincipalCert();
+            if(g_policyPrincipalCert==NULL)
+                throw "fileServer main: failed to new Principal\n";
 
-        if(!oServer.initServer(directory)) 
-            throw "fileServer main: cant initServer\n";
+            if(!oServer.initServer(directory)) 
+                throw "fileServer main: cant initServer\n";
 
 #ifdef TEST
-        fprintf(g_logFile, "fileServer main: measured server entering server loop\n");
-        fflush(g_logFile);
+            fprintf(g_logFile, "fileServer main: measured server entering server loop\n");
+            fflush(g_logFile);
 #endif
             oServer.server();
-        }
-    catch(const char* szError) {
+            oServer.closeServer();
+            closeLog();
+    } catch(const char* szError) {
         fprintf(g_logFile, "%s", szError);
         iRet= 1;
     }
 
-    oServer.closeServer();
-    closeLog();
     return iRet;
+
 }
 
 

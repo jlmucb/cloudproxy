@@ -1,4 +1,3 @@
-//
 //  File: modesandpadding.h
 //      John Manferdelli
 //
@@ -147,11 +146,9 @@ public:
 
     bool        firstCipherBlockIn(byte* puIn);
     bool        nextPlainBlockIn(byte* puIn, byte* puOut);
-    bool        nextPlainMac(byte* puIn, byte* puOut);
     int         lastPlainBlockIn(int size, byte* puIn, byte* puOut);
 
     bool        firstCipherBlockOut(byte* puOut);
-    bool        nextCipherMac(byte* puIn, byte* puOut);
     bool        nextCipherBlockIn(byte* puIn, byte* puOut);
     int         lastCipherBlockIn(int size, byte* puIn, byte* puOut);
 

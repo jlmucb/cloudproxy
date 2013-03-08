@@ -38,6 +38,7 @@
 #include "vault.h"
 #include "algs.h"
 
+#include <pthread.h>
 #include <string.h>
 
 
@@ -52,6 +53,7 @@ metaData::metaData()
 {
     m_metaDataValid= false;
     m_fEncryptFile= false;
+    pthread_mutex_init(&m_mutex, NULL);
 
     m_szprogramName= NULL;
     m_szdirectoryName= NULL;
@@ -126,49 +128,61 @@ bool metaData::initMetaData(const char* directory, const char* program)
 
 bool metaData::addResource(resource* pResource)
 {
-    if(m_pRM==NULL)
-        return NULL;
-    return m_pRM->addObject(pResource);
+    if(m_pRM==NULL || pthread_mutex_lock(&m_mutex)!=0)
+        return false;
+    bool fRet= m_pRM->addObject(pResource);
+    pthread_mutex_unlock(&m_mutex);
+    return fRet;
 }
 
 
 resource* metaData::findResource(const char* szName)
 {
-    if(m_pRM==NULL)
+    if(m_pRM==NULL || pthread_mutex_lock(&m_mutex)!=0)
         return NULL;
-    return m_pRM->findObject(szName);
+    resource* res= m_pRM->findObject(szName);
+    pthread_mutex_unlock(&m_mutex);
+    return res;
 }
 
 
 bool metaData::deleteResource(resource* pResource)
 {
-    if(m_pRM==NULL)
-        return NULL;
-    return m_pRM->deleteObject(pResource->m_szResourceName);
+    if(m_pRM==NULL || pthread_mutex_lock(&m_mutex)!=0)
+        return false;
+    bool fRet= m_pRM->deleteObject(pResource->m_szResourceName);
+    pthread_mutex_unlock(&m_mutex);
+    return fRet;
 }
 
 
 bool metaData::addPrincipal(accessPrincipal* pPrin)
 {
-    if(m_pPM==NULL)
+    if(m_pPM==NULL || pthread_mutex_lock(&m_mutex)!=0)
         return false;
-    return m_pPM->addObject(pPrin);
+    bool fRet= m_pPM->addObject(pPrin);
+    pthread_mutex_unlock(&m_mutex);
+    return fRet;
 }
 
 
-accessPrincipal*    metaData::findPrincipal(const char* szName)
+accessPrincipal* metaData::findPrincipal(const char* szName)
 {
-    if(m_pPM==NULL)
+    if(m_pPM==NULL || pthread_mutex_lock(&m_mutex)!=0)
         return NULL;
-    return m_pPM->findObject(szName);
+    accessPrincipal* res= m_pPM->findObject(szName);
+    pthread_mutex_unlock(&m_mutex);
+    return res;
 }
 
 
 bool metaData::deletePrincipal(accessPrincipal* pPrin)
 {
-    if(m_pPM==NULL)
-        return NULL;
-    return m_pPM->deleteObject(pPrin->m_szPrincipalName);
+    if(m_pPM==NULL || pthread_mutex_lock(&m_mutex)!=0)
+        return false;
+    bool fRet= m_pPM->deleteObject(pPrin->m_szPrincipalName);
+    pthread_mutex_unlock(&m_mutex);
+    return fRet;
 }
 
 
@@ -200,10 +214,13 @@ bool    metaData::saveMetaData(int encType, byte* key)
     int                 filesize= 0;
     int                 datasize= 0;
 
+    if(m_pPM==NULL || m_pRM || pthread_mutex_lock(&m_mutex)!=0)
+        return false;
+
     try {
 
         if(m_szmetadataFile==NULL)
-            throw "metaData::saveMetaData: no metadata file\n";
+            throw("metaData::saveMetaData: no metadata file\n");
 
 #ifdef  TEST
         fprintf(g_logFile, "metaData::saveMetaData: file: %s\n", m_szmetadataFile);
@@ -211,12 +228,12 @@ bool    metaData::saveMetaData(int encType, byte* key)
         fflush(g_logFile);
 #endif
         if(!m_pPM->SerializeObjectTable(&iSizeP, &bufP))
-            throw "metaData::saveMetaData: Can't serialize principal table\n";
+            throw("metaData::saveMetaData: Can't serialize principal table\n");
 #ifdef  TEST
         fprintf(g_logFile, "metaData::saveMetaData: Serialize resource table\n");
 #endif
         if(!m_pRM->SerializeObjectTable(&iSizeR, &bufR))
-            throw "metaData::saveMetaData: Can't serialize principal table\n";
+            throw("metaData::saveMetaData: Can't serialize principal table\n");
 #ifdef  TEST
         fprintf(g_logFile, "metaData::saveMetaData: Serialize done %d %d\n",
                 iSizeP, iSizeR);
@@ -226,10 +243,10 @@ bool    metaData::saveMetaData(int encType, byte* key)
         if(m_fEncryptFile) {
                 // Fix: CBC only
                 if((datasize%AES128BYTEBLOCKSIZE)==0) {
-                filesize= datasize+2*AES128BYTEBLOCKSIZE+SHA256_DIGESTSIZE_BYTES;
+                    filesize= datasize+2*AES128BYTEBLOCKSIZE+SHA256_DIGESTSIZE_BYTES;
                 }
                 else {
-                filesize= AES128BYTEBLOCKSIZE+ SHA256_DIGESTSIZE_BYTES+
+                    filesize= AES128BYTEBLOCKSIZE+ SHA256_DIGESTSIZE_BYTES+
                         ((datasize+AES128BYTEBLOCKSIZE-1)/AES128BYTEBLOCKSIZE)*AES128BYTEBLOCKSIZE;
                 }
         }
@@ -240,26 +257,23 @@ bool    metaData::saveMetaData(int encType, byte* key)
         // open encrypted write
         if(encType==NOENCRYPT) {
             if(!encFile.initEnc(filesize, datasize, 0, 0, 0, NOALG)) {
-                fprintf(g_logFile, "metaData::saveMetaData: Cant init initialize file keys\n");
-                return false;
+                throw("metaData::saveMetaData: Cant init initialize file keys\n");
             }
         }
         else if(encType==DEFAULTENCRYPT) {
             if(!encFile.initEnc(filesize, datasize, key, 256,
                             AES128, SYMPAD, CBCMODE, HMACSHA256)) {
-                fprintf(g_logFile, "metaData::saveMetaData:: Cant init initialize file keys\n");
-                return false;
+                throw("metaData::saveMetaData:: Cant init initialize file keys\n");
             }
         }
         else {
-            fprintf(g_logFile, "metaData::saveMetaData: invalid encryption\n");
-            return false;
+            throw("metaData::saveMetaData: invalid encryption\n");
         }
 
         // open file and write it out
         iWrite= open(m_szmetadataFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if(iWrite<0) 
-            throw "metaData::saveMetaData: Can't create file\n";
+            throw("metaData::saveMetaData: Can't create file\n");
         encFile.EncWrite(iWrite, bufP, iSizeP);
         encFile.EncWrite(iWrite, bufR, iSizeR);
     }
@@ -291,6 +305,7 @@ bool    metaData::saveMetaData(int encType, byte* key)
         bufP= NULL;
     }
 
+    pthread_mutex_unlock(&m_mutex);
     return fRet;
 }
 
@@ -331,27 +346,30 @@ bool metaData::restoreMetaData(int encType, byte* key)
     int                 filesize= statBlock.st_size;
     int                 datasize= 0;
 
+    if(pthread_mutex_lock(&m_mutex)!=0)
+        return false;
+
     try {
 
         // open read file
         iRead= open(m_szmetadataFile, O_RDONLY);
         if(iRead<0)
-            throw "metaData::restoreMetaData: No restoreTableFile\n";
+            throw("metaData::restoreMetaData: No restoreTableFile\n");
    
         // open encrypted read file
         if(encType==NOENCRYPT) {
             datasize= filesize;
             if(!encFile.initDec(filesize, datasize, 0, 0, 0, NOALG))
-                throw("(char*) metaData::restoreMetaData: Cant init initialize file keys\n");
+                throw("metaData::restoreMetaData: Cant init initialize file keys\n");
         }
         else if(encType==DEFAULTENCRYPT) {
             datasize= filesize-AES128BYTEBLOCKSIZE-SHA256_DIGESTSIZE_BYTES;
             if(!encFile.initDec(filesize, datasize, key, 256,
                                 AES128, SYMPAD, CBCMODE, HMACSHA256)) 
-                throw  "metaData::restoreMetaData:: Cant init initialize file keys\n";
+                throw("metaData::restoreMetaData:: Cant init initialize file keys\n");
         }
         else {
-            throw  "metaData::restoreMetaData: invalid encryption\n";
+            throw("metaData::restoreMetaData: invalid encryption\n");
         }
 
         // read buffers
@@ -361,7 +379,7 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #endif
         bufP= (byte*) malloc(iSizeP-sizeof(int));
         if(bufP==NULL)
-            throw "metaData::restoreMetaData: Can't malloc principal buffer\n";
+            throw("metaData::restoreMetaData: Can't malloc principal buffer\n");
         encFile.EncRead(iRead, bufP, iSizeP-sizeof(int));
         encFile.EncRead(iRead, (byte*)&iSizeR, sizeof(int));
 #ifdef  TEST
@@ -369,7 +387,7 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #endif
         bufR= (byte*) malloc(iSizeR-sizeof(int));
         if(bufR==NULL)
-            throw "metaData::restoreMetaData: Can't malloc resource buffer\n";
+            throw("metaData::restoreMetaData: Can't malloc resource buffer\n");
         encFile.EncRead(iRead, bufR, iSizeR-sizeof(int));
 
 #ifdef  TEST
@@ -379,9 +397,9 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #endif
 
         if(!m_pPM->DeserializeObjectTable(iSizeP, bufP))
-            throw "metaData::restoreMetaData: Can't deserialize principal table\n";
+            throw("metaData::restoreMetaData: Can't deserialize principal table\n");
         if(!m_pRM->DeserializeObjectTable(iSizeR, bufR)) 
-            throw "metaData::restoreMetaData: Can't deserialize resource table\n";
+            throw("metaData::restoreMetaData: Can't deserialize resource table\n");
 
         // go back and fix up owners on resource table
         aNode<accessPrincipal>*     pNode= NULL;
@@ -399,7 +417,7 @@ bool metaData::restoreMetaData(int encType, byte* key)
                 if(pPrincipal==NULL) {
                     fprintf(g_logFile, 
                             "metaData::restoreMetaData: Cant find %s in principal table\n", pName);
-                    throw "metaData::restoreMetaData: remaperror\n";
+                    throw("metaData::restoreMetaData: remaperror\n");
                 }
                 pNode->pElement= pPrincipal;
                 pNode= pNode->pNext;
@@ -431,6 +449,7 @@ bool metaData::restoreMetaData(int encType, byte* key)
 #ifdef  TEST
     fprintf(g_logFile, "metaData::restoreMetaData: returning\n");
 #endif
+    pthread_mutex_unlock(&m_mutex);
     return fRet;
 }
 

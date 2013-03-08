@@ -30,7 +30,7 @@ Inline u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
     u64 uCarryOut;
 
     asm volatile(
-        "\tmovq    $0, %[carryout]\n" \
+        "movq    $0, %[carryout]\n" \
         "\tmovq    %[op1], %%rax\n" \
         "\taddq    %[carryin], %%rax\n" \
         "\tjnc     1f\n" \
@@ -57,7 +57,7 @@ Inline u64 longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
 
     // result of mulq is in %rdx:%rax
     asm volatile(
-        "\tmovq    $0, %[carryout]\n" \
+        "movq    $0, %[carryout]\n" \
         "\tmovq    %[op1], %%rax\n" \
         "\tmulq    %[op2]\n" \
         "\taddq    %[carryin], %%rax\n" \
@@ -110,7 +110,7 @@ Inline u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy)
 
     // %rdx:%rax contains numerator for uDivBy
     asm volatile(
-        "\tmovq    $0,%[rem]\n" \
+        "movq    $0,%[rem]\n" \
         "\tmovq    %[op1], %%rdx\n" \
         "\tmovq    %[op2], %%rax\n" \
         "\tdivq    %[divisor]\n" \

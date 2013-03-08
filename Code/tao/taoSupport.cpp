@@ -131,8 +131,13 @@ bool taoFiles::getBlobData(const char* file, bool* pValid, int* pSize, byte** pp
     struct stat statBlock;
     int         n;
 
-    if(file==NULL || stat(file, &statBlock)<0) {
-        fprintf(g_logFile, "taoFiles::getBlobData failed (NULL file or stat)\n");
+    if(file==NULL ) {
+        fprintf(g_logFile, "taoFiles::getBlobData failed NULL file\n");
+        return false;
+    }
+
+    if(stat(file, &statBlock)<0) {
+        fprintf(g_logFile, "taoFiles::getBlobData failed bad stat on %s\n", file);
         return false;
     }
 

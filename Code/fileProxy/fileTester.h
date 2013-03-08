@@ -29,6 +29,9 @@
 #include "timer.h"
 #include "tinyxml.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <list>
 #include <string>
 using std::list;
@@ -69,6 +72,8 @@ class fileTester {
     list<fileTestParams> m_tests;
     bool m_reuseConnection;
     list<string> m_filesToDelete;
+    string m_serverAddress;
+    u_short m_serverPort;
 
     void createResources(const string& parentPath, const TiXmlNode* parent);
 

@@ -23,6 +23,7 @@
 
 #include "logging.h"
 #include "fileTester.h"
+#include "fileServer.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -42,7 +43,9 @@ fileTester::fileTester(const string& path, const string& testFile)
     m_testsDoc(path + testFile),
     m_tests(),
     m_reuseConnection(false),
-    m_filesToDelete()
+    m_filesToDelete(),
+    m_serverAddress("127.0.0.1"),
+    m_serverPort(SERVICE_PORT)
 {
     // parse the xml and construct the default parameters and any required resources
     m_testsDoc.LoadFile();
@@ -54,6 +57,17 @@ fileTester::fileTester(const string& path, const string& testFile)
     bool connection = false;
     if (curElt->QueryBoolAttribute("reuseConnection", &connection) == TIXML_SUCCESS) {
         m_reuseConnection = connection;
+    }
+
+    // get the server IP address from the config file, if any
+    string serverAddress;
+    if (curElt->QueryStringAttribute("serverAddress", &serverAddress) == TIXML_SUCCESS) {
+        m_serverAddress = serverAddress;
+    }
+
+    int port = 0;
+    if (curElt->QueryIntAttribute("serverPort", &port) == TIXML_SUCCESS) {
+        m_serverPort = static_cast<u_short>(port);
     }
 
     // walk the children of the root and handle Default, Resources, and Test children
@@ -198,7 +212,9 @@ void fileTester::Run(const char* directory) {
         if (!m_defaultClient.establishConnection(m_defaultChannel,
                             m_defaultParams.keyFile.c_str(),
                             m_defaultParams.certFile.c_str(),
-                            directory)) {
+                            directory,
+                            m_serverAddress.c_str(),
+                            m_serverPort)) {
         } else {
             establishedDefaultConnection = true;
         }
@@ -238,7 +254,9 @@ void fileTester::Run(const char* directory) {
                 result = client.establishConnection(channel,
                         it->keyFile.c_str(),
                         it->certFile.c_str(),
-                        directory);
+                        directory,
+                        m_serverAddress.c_str(),
+                        m_serverPort);
 
                 try {
                     result = runTest(client,

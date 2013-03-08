@@ -75,13 +75,13 @@ public:
     fileClient();
     ~fileClient();
 
-    bool    initClient(const char* configDirectory);
+    bool    initClient(const char* configDirectory, const char* serverAddress, u_short serverPort);
     bool    initPolicy();
     bool    initFileKeys();
     bool    closeClient();
     bool    initSafeChannel(safeChannel& fc);
     bool    protocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile);
-    bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, const char* directory);
+    bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
     bool    createResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource);
     bool    deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource);

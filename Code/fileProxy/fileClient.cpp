@@ -299,7 +299,7 @@ bool fileClient::initFileKeys()
 }
 
 
-bool fileClient::initClient(const char* configDirectory)
+bool fileClient::initClient(const char* configDirectory, const char* serverAddress, u_short serverPort)
 {
     struct sockaddr_in  server_addr;
     int                 slen= sizeof(struct sockaddr_in);
@@ -388,14 +388,13 @@ bool fileClient::initClient(const char* configDirectory)
 #endif
 
         server_addr.sin_family= AF_INET;
-        //server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
+
         // Fix: set up fileClient and fileServer to pass arguments down to
         // their measured versions so we can control this by arguments
-        if (!inet_aton("10.0.0.3", &server_addr.sin_addr)) {
+        if (!inet_aton(serverAddress, &server_addr.sin_addr)) {
           throw "Can't create the address for the fileServer";
         }
-        //server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
-        server_addr.sin_port= htons(SERVICE_PORT);
+        server_addr.sin_port= htons(serverPort);
     
         iError= connect(m_fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
         if(iError!=0)
@@ -1055,7 +1054,12 @@ const char*  g_szTerm= "terminate channel\n";
 #define FILECLIENTTEST
 #ifdef  FILECLIENTTEST
 
-bool fileClient::establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, const char* directory) {
+bool fileClient::establishConnection(safeChannel& fc, 
+                                    const char* keyFile, 
+                                    const char* certFile, 
+                                    const char* directory,
+                                    const char* serverAddress,
+                                    u_short serverPort) {
     try {
         if (g_policyPrincipalCert==NULL) {
             g_policyPrincipalCert= new PrincipalCert();
@@ -1068,7 +1072,7 @@ bool fileClient::establishConnection(safeChannel& fc, const char* keyFile, const
         fflush(g_logFile);
 #endif
         // init logfile, crypto, etc
-        if(!initClient(directory))
+        if(!initClient(directory, serverAddress, serverPort))
             throw "fileClient main: initClient() failed\n";
 
         // copy my public key into client public key

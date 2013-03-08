@@ -78,9 +78,9 @@ const char*   szRequest6b=  "</SubjectName>\n";
 
 const char*   szResponse1= "<Response>\n  <Action>";
 const char*   szResponse2= "</Action>\n  <ErrorCode>";
-const char*   szResponse3= " </ErrorCode>\n  <ResourceName>";
-const char*   szResponse4= " </ResourceName>\n <ResourceLength>";
-const char*   szResponse5= " </ResourceLength>\n </Response>\n";
+const char*   szResponse3= "</ErrorCode>\n  <ResourceName>";
+const char*   szResponse4= "</ResourceName>\n <ResourceLength>";
+const char*   szResponse5= "</ResourceLength>\n </Response>\n";
 
 
 // ------------------------------------------------------------------------
@@ -1091,7 +1091,21 @@ bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, c
 #endif
     oResponse.getDatafromDoc(szBuf);
 
-    bool success = (oResponse.m_szAction == NULL) || (strcmp(oResponse.m_szAction, "accept") == 0);
+    // check to see if the resource already exists or if it was successfully created. 
+    // Either case is success.
+    bool success = false;
+    if (oResponse.m_szAction != NULL) {
+        if (strcmp(oResponse.m_szAction, "accept") == 0) {
+            success = true;
+        } else if (strcmp(oResponse.m_szErrorCode, "servercreateResourceonserver: Resource exists") == 0) {
+            // then the resource already exists, so this is also success
+            success = true;
+#ifdef TEST
+            fprintf(g_logFile, "Success in creation because the resource already exists\n");
+#endif
+        }
+    }
+
 #ifdef TEST
     // check response
     if(!success) {

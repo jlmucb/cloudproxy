@@ -1,4 +1,5 @@
-B=          ~/jlmcrypt
+E=          ~/jlmcrypt
+B=          ~/jlmcrypt/speedtestobjects
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
@@ -13,11 +14,11 @@ LINK=       g++
 dobjs=      $(B)/aesspeedtest.o $(B)/jlmcrypto.o $(B)/aes.o $(B)/sha256.o \
             $(B)/modesandpadding.o $(B)/aesni.o $(B)/hmacsha256.o $(B)/logging.o
 
-all: $(B)/aesspeedtest.exe
+all: $(E)/aesspeedtest.exe
 
-$(B)/aesspeedtest.exe: $(dobjs)
+$(E)/aesspeedtest.exe: $(dobjs)
 	@echo "aesspeedtest"
-	$(LINK) -o $(B)/aesspeedtest.exe $(dobjs)
+	$(LINK) -o $(E)/aesspeedtest.exe $(dobjs)
 
 $(B)/aesspeedtest.o: aesspeedtest.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/aesspeedtest.o aesspeedtest.cpp

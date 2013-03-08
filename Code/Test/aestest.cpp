@@ -128,7 +128,6 @@ byte aes256EncTestCipher1d[16]=  {
 };
 
 
-
 // CBC
 byte aes128CBCTestKey1[16]= {
     0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 
@@ -213,6 +212,18 @@ byte aes256CBCTestPlain1d[16]=  {
 byte aes256CBCTestCipher1d[16]=  {
     0xb2, 0xeb, 0x05, 0xe2, 0xc3, 0x9b, 0xe9, 0xfc, 
     0xda, 0x6c, 0x19, 0x07, 0x8c, 0x6a, 0x9d, 0x1b
+};
+
+
+byte aes128SanityPlain[64] ={
+   0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
+   0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
+   0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
+   0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+   0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
+   0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
+   0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
+   0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00
 };
 
 
@@ -395,28 +406,89 @@ int main(int an, char** av)
     cbc     oCBCDec;
     byte    intKey[16];
     int     size= 0;
-    byte    out[128];
+    int     insize= 0;
+    int     psize= 0;
+    int     csize= 0;
+    byte    out[256];
+    byte    check[256];
+    byte*   pin;
+    byte*   pout;
 
-    memset(intKey, 0, 16);
-    PrintBytes("CBC128 enc key : ", aes128CBCTestKey1, 16);
-    PrintBytes("CBC128 int key : ", intKey, 16);
-    PrintBytes("CBC128 IV      : ", aes128CBCTestIV1, 16);
-    PrintBytes("CBC128 Plain : ", aes128CBCTestPlain1a, 16);
-    if(!oCBCEnc.initEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1,
-                16, intKey, 16, 16, aes128CBCTestIV1)) {
-        fprintf(g_logFile, "CBC init failed\n");
-        fAllTest= false;
-    }
-    else {
-        size= oCBCEnc.lastPlainBlockIn(16, aes128CBCTestPlain1a, out);
-        fprintf(g_logFile, "CBC size: %d\n", size);
-        PrintBytes("CBC128 CT :\n", out, size);
-        PrintBytes("CBC128 RT :\n", aes128CBCTestCipher1a, 16);
-        if(memcmp(out, aes128CBCTestCipher1a, 16)==0) {
-            fprintf(g_logFile, "CBC Test 1a Passed\n");
+    for(psize=1; psize<=64;psize++) {
+        memset(intKey, 0, 16);
+        PrintBytes("CBC128 enc key : ", aes128CBCTestKey1, 16);
+        PrintBytes("CBC128 int key : ", intKey, 16);
+        PrintBytes("CBC128 IV      : ", aes128CBCTestIV1, 16);
+        PrintBytes("CBC128 Plain   : ",  aes128SanityPlain, psize);
+        if(!oCBCEnc.initEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1,
+			        16, intKey, psize, 16, aes128CBCTestIV1)) {
+            fprintf(g_logFile, "CBC encrypt init %d bytes failed\n", psize);
+            fAllTest= false;
+            continue;
+        }
+
+        pin= aes128SanityPlain;
+        pout= out;
+        insize= psize;
+        memcpy(pout, aes128CBCTestIV1, oCBCEnc.m_iBlockSize);
+        pout+= oCBCEnc.m_iBlockSize;
+
+        while(insize>oCBCEnc.m_iBlockSize) {
+            oCBCEnc.nextPlainBlockIn(pin, pout);
+            pin+= oCBCEnc.m_iBlockSize;
+            pout+= oCBCEnc.m_iBlockSize;
+            insize-= oCBCEnc.m_iBlockSize;
+        }
+        size= oCBCEnc.lastPlainBlockIn(insize, pin, pout);
+        if(size<0) {
+            fprintf(g_logFile, "CBC encrypt %d bytes failed\n", psize);
+            fAllTest= false;
+            continue;
+        } 
+
+        csize= oCBCEnc.m_iNumCipherBytes;
+        fprintf(g_logFile, 
+                "CBC encrypted %d plain bytes produced %d cipherbytes\n",
+                oCBCEnc.m_iNumPlainBytes, oCBCEnc.m_iNumCipherBytes);
+
+        PrintBytes("CBC128 Plain:   ", aes128SanityPlain, psize);
+        PrintBytes("CBC128 Cipher:  ", out, csize);
+
+        if(!oCBCDec.initDec(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1,
+                16, intKey, csize)) {
+            fprintf(g_logFile, "CBC decrypt init %d bytes failed\n", psize);
+            fAllTest= false;
+            continue;
+        }
+
+        insize= csize;
+        pin= out;
+        pout= check;
+        oCBCDec.firstCipherBlockIn(pin);
+        insize-= oCBCDec.m_iBlockSize;
+        pin+= oCBCDec.m_iBlockSize;
+        while(insize>4*oCBCDec.m_iBlockSize) {
+            oCBCDec.nextCipherBlockIn(pin, pout);
+            pin+= oCBCDec.m_iBlockSize;
+            pout+= oCBCDec.m_iBlockSize;
+            insize-= oCBCDec.m_iBlockSize;
+        }
+        size= oCBCDec.lastCipherBlockIn(insize, pin, pout);
+        if(size<0) {
+            fprintf(g_logFile, "CBC decrypt %d bytes failed\n", psize);
+            fAllTest= false;
+            continue;
+        } 
+        fprintf(g_logFile, 
+                "CBC decrypt %d cipherbytes produced %d plainbytes\n",
+                oCBCDec.m_iNumCipherBytes, oCBCDec.m_iNumPlainBytes);
+        PrintBytes("CBC128 Decrypt: ", check, oCBCDec.m_iNumPlainBytes);
+        if(psize==oCBCDec.m_iNumPlainBytes && 
+	   memcmp(check, aes128SanityPlain, psize)==0) {
+            fprintf(g_logFile, "CBC %d bytes sanity PASSED\n", psize);
         }
         else {
-            fprintf(g_logFile, "CBC Test 1a Failed\n");
+            fprintf(g_logFile, "CBC %d bytes sanity FAILED\n", psize);
             fAllTest= false;
         }
         fprintf(g_logFile, "\n");
@@ -426,16 +498,6 @@ int main(int an, char** av)
         fprintf(g_logFile, "All tests PASSED\n");
     else
         fprintf(g_logFile, "Some test FAILED\n");
-
-/*
-    if(!oCBCDec.initDec(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1,
-                16, intKey, 16, 16, 48)) {
-    }
-    oCBCDec.firstCipherBlockOut(byte* puOut);
-    oCBCDec.nextCipherBlockIn(byte* puIn, byte* puOut);
-    oCBCDec.lastCipherBlockIn(int size, byte* puIn, byte* puOut);
- */
-
 
     return 0;
 }

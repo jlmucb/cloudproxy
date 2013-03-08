@@ -160,7 +160,7 @@ bool encryptedFileread::AES128CBCDecryptBlocks(int iRead)
 
     m= m_iBufIn;
     if(m_fFinalProcessed)
-        k= 3*m_iBlockSize;
+        k= 4*m_iBlockSize;
     else
         k= 0;
     m_iBufOut= 0;

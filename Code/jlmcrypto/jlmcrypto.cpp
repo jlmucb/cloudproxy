@@ -430,9 +430,9 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     byte*   curIn= in;
     byte*   curOut= out;
 
-#ifdef CRYPTOTEST2
+#ifdef TEST
     memset(out, 0, *poutsize);
-    fprintf(g_logFile, "*****AES128CBCHMACSHA256SYMPADDecryptBlob, insize: %d\n", insize);
+    fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob, insize: %d\n", insize);
     PrintBytes("encKey: ", enckey, AES128BYTEBLOCKSIZE);
     PrintBytes("intKey: ", intkey, AES128BYTEBLOCKSIZE);
     PrintBytes("input:\n", in, insize);
@@ -441,15 +441,18 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     if(!oCBC.initDec(AES128, SYMPAD, HMACSHA256, 
                      AES128BYTEKEYSIZE, enckey, AES128BYTEKEYSIZE, intkey, 
                      insize)) {
+    	fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob: cant init decryption alg\n");
         return false;
     }
 
     if(!oCBC.computePlainLen()) {
+    	fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob: cant compute plain text length\n");
         return false;
     }
 
     // outputbuffer big enough?
     if(oCBC.m_iNumPlainBytes>*poutsize) {
+    	fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob: output buffer too small\n");
         return false;
     }
     *poutsize= oCBC.m_iNumPlainBytes;
@@ -469,14 +472,20 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     // final blocks
     int n= oCBC.lastCipherBlockIn(inLeft, curIn, curOut);
     if(n<0) {
+    	fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob: bad lastCipherin %d\n", inLeft);
         return false;
     }
     *poutsize= oCBC.m_iNumPlainBytes;
-#ifdef CRYPTOTEST2
+#ifdef TEST
     PrintBytes("output:\n", out, *poutsize);
     fprintf(g_logFile, "\n%d, out\n", *poutsize);
-#endif
+    bool fValid= oCBC.validateMac();
+    if(!fValid) 
+    	fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob: validation failed\n");
+    return fValid;
+#else
     return oCBC.validateMac();
+#endif
 }
 
 

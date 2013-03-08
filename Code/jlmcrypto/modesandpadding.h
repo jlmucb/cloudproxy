@@ -1,4 +1,3 @@
-//
 //  File: modesandpadding.h
 //      John Manferdelli
 //
@@ -40,9 +39,6 @@
 
 #ifndef _MODESANDPADDING__H
 #define _MODESANDPADDING__H
-
-
-// #define ENCRYPTTHENMAC
 
 
 extern bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig);
@@ -150,10 +146,6 @@ public:
 
     bool        firstCipherBlockIn(byte* puIn);
     bool        nextPlainBlockIn(byte* puIn, byte* puOut);
-#ifdef ENCRYPTTHENMAC
-    bool        nextPlainMac(byte* puIn, byte* puOut);
-    bool        nextCipherMac(byte* puIn, byte* puOut);
-#endif
     int         lastPlainBlockIn(int size, byte* puIn, byte* puOut);
 
     bool        firstCipherBlockOut(byte* puOut);

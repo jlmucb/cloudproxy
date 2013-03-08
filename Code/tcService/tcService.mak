@@ -14,7 +14,7 @@ CLM=	    ../claims
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D __FLUSHIO__ $(DEBUG_CFLAGS)
+CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D __FLUSHIO__ $(DEBUG_CFLAGS) -D TEST
 
 CC=         g++
 LINK=       g++

@@ -430,7 +430,7 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     byte*   curIn= in;
     byte*   curOut= out;
 
-#ifdef TEST
+#ifdef CRYPTOTEST
     memset(out, 0, *poutsize);
     fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob, insize: %d\n", insize);
     PrintBytes("encKey: ", enckey, AES128BYTEBLOCKSIZE);
@@ -438,9 +438,8 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     PrintBytes("input:\n", in, insize);
 #endif
     // init 
-    if(!oCBC.initDec(AES128, SYMPAD, HMACSHA256, 
-                     AES128BYTEKEYSIZE, enckey, AES128BYTEKEYSIZE, intkey, 
-                     insize)) {
+    if(!oCBC.initDec(AES128, SYMPAD, HMACSHA256, AES128BYTEKEYSIZE, enckey, 
+                             AES128BYTEKEYSIZE, intkey, insize)) {
     	fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADDecryptBlob: cant init decryption alg\n");
         return false;
     }
@@ -462,7 +461,7 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
     inLeft-= AES128BYTEBLOCKSIZE;
     curIn+= AES128BYTEBLOCKSIZE;
 
-    while(inLeft>3*AES128BYTEBLOCKSIZE) {
+    while(inLeft>(AES128BYTEBLOCKSIZE+SHA256DIGESTBYTESIZE)) {
         oCBC.nextCipherBlockIn(curIn, curOut);
         curIn+= AES128BYTEBLOCKSIZE;
         curOut+= AES128BYTEBLOCKSIZE;
@@ -476,7 +475,7 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
         return false;
     }
     *poutsize= oCBC.m_iNumPlainBytes;
-#ifdef TEST
+#ifdef CRYPTOTEST
     PrintBytes("output:\n", out, *poutsize);
     fprintf(g_logFile, "\n%d, out\n", *poutsize);
     bool fValid= oCBC.validateMac();

@@ -421,7 +421,7 @@ int main(int an, char** av)
         PrintBytes("CBC128 IV      : ", aes128CBCTestIV1, 16);
         PrintBytes("CBC128 Plain   : ",  aes128SanityPlain, psize);
         if(!oCBCEnc.initEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1,
-			        16, intKey, psize, 16, aes128CBCTestIV1)) {
+			    16, intKey, psize, 16, aes128CBCTestIV1)) {
             fprintf(g_logFile, "CBC encrypt init %d bytes failed\n", psize);
             fAllTest= false;
             continue;
@@ -467,7 +467,7 @@ int main(int an, char** av)
         oCBCDec.firstCipherBlockIn(pin);
         insize-= oCBCDec.m_iBlockSize;
         pin+= oCBCDec.m_iBlockSize;
-        while(insize>4*oCBCDec.m_iBlockSize) {
+        while(insize>3*oCBCDec.m_iBlockSize) {
             oCBCDec.nextCipherBlockIn(pin, pout);
             pin+= oCBCDec.m_iBlockSize;
             pout+= oCBCDec.m_iBlockSize;

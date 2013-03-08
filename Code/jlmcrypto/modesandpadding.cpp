@@ -306,7 +306,7 @@ cbc::~cbc()
 
 bool cbc::computePlainLen()
 {
-    m_iNumPlainBytes= m_iNumCipherBytes-m_iBlockSize-SHA256_DIGESTSIZE_BYTES;
+    m_iNumPlainBytes= m_iNumCipherBytes-2*m_iBlockSize-SHA256_DIGESTSIZE_BYTES;
     return true;
 }
 
@@ -572,9 +572,7 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 // last three or four blocks
 {
     int     residue= 0;
-    int     hmacsize= SHA256_DIGESTSIZE_BYTES;
-    int     maxpadsize= 2*m_iBlockSize;
-    int     startofdecoded= 0;
+    int     expectedsize= SHA256_DIGESTSIZE_BYTES+m_iBlockSize;
 
 #ifdef CRYPTOTEST
     PrintBytes("cbc::lastCipherBlockIn: ", puIn, size);
@@ -586,28 +584,18 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
         return -1;
     }
     
-    if(size!=(maxpadsize+hmacsize)) {
-        maxpadsize-= m_iBlockSize;
-        if(size!=(maxpadsize+hmacsize)) {
-            fprintf(g_logFile, "cbc::lastCipherBlockIn: wrong lastBlock size, got %d bytes\n", 
-                    size);
-            return -1;
-        }
-    }
-    m_iNumPlainBytes-= maxpadsize;
-
-    if(maxpadsize==2*m_iBlockSize) {
-        nextCipherBlockIn(puIn, m_rguLastBlocks);
-        puIn+= m_iBlockSize;
-        startofdecoded+= m_iBlockSize;
+    if(size!=expectedsize) {
+        fprintf(g_logFile, "cbc::lastCipherBlockIn: wrong lastBlock size, got %d bytes\n", size);
+        return -1;
     }
 
-    nextCipherBlockIn(puIn, m_rguLastBlocks+startofdecoded);
+    // decrypt pad block
+    nextCipherBlockIn(puIn, m_rguLastBlocks);
     puIn+= m_iBlockSize;
     m_ohMac.Final(m_rguHMACComputed);
 
 #ifdef CRYPTOTEST
-    PrintBytes("last cipher blocks decoded: ", m_rguLastBlocks, maxpadsize);
+    PrintBytes("last cipher block decoded: ", m_rguLastBlocks, m_iBlockSize);
     fflush(g_logFile);
 #endif
 
@@ -624,11 +612,12 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
     puIn+= m_iBlockSize;
 #else
+    // Copy mac
     memcpy(m_rguHMACReceived, puIn, SHA256DIGESTBYTESIZE);
 #endif
 
     // depad
-    for(residue=maxpadsize-1; residue>=0; residue--) {
+    for(residue=m_iBlockSize-1; residue>=0; residue--) {
         if(m_rguLastBlocks[residue]!=0) {
             if(m_rguLastBlocks[residue]!=0x80) {
                 fprintf(g_logFile, "cbc::lastCipherBlockIn: bad pad error, %02x, res: %d size: %d\n",

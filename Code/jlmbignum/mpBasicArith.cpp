@@ -441,6 +441,111 @@ bool IsBitPositionNonZero(bnum& bnN, i32 iPos)
 // ----------------------------------------------------------------------------
 
 
+//
+//      Shift
+//
+
+inline u64 bottomMask64(int iNumBits)
+{
+    u64 uMask= (u64) (-1);
+
+    uMask<<= (64-iNumBits);
+    uMask>>= (64-iNumBits);
+    return uMask;
+}
+
+
+void shiftup(bnum& bnA, bnum& bnR, i32 iShiftNumBits)
+{
+    int         i;
+    int         iWordShift= (iShiftNumBits>>6);
+    int         iBitShift= iShiftNumBits&0x3f;
+    int         iBottomShift= 64-iBitShift;
+    u64         ubottomMask= bottomMask64(iBottomShift);
+    u64         utopMask= ((u64)(-1))^ubottomMask;
+    i32         iSizeA= bnA.mpSize();
+    u64*        rguA= bnA.m_pValue;
+    u64*        rguR= bnR.m_pValue;
+    i32         iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
+    u64         r, s, t;
+
+    t= rguA[iRealSizeA-1];
+    if(iBitShift>0) {
+        r= (t&utopMask)>>iBottomShift;
+        rguR[iRealSizeA+iWordShift]= r;
+    }
+    s= (t&ubottomMask)<<iBitShift;
+
+    for(i=(iRealSizeA-1); i>0;i--) {
+        t= rguA[i-1];
+        r= (t&utopMask)>>iBottomShift;
+        rguR[i+iWordShift]|= s|r;
+        s= (t&ubottomMask)<<iBitShift;
+    }
+    rguR[iWordShift]= s;
+}
+
+
+void shiftdown(bnum& bnA, bnum& bnR, i32 iShiftNumBits)
+{
+    int         i;
+    int         iWordShift= (iShiftNumBits>>6);
+    int         iBitShift= iShiftNumBits&0x3f;
+    u64         ubottomMask= bottomMask64(iBitShift);
+    int         iBottomShift= 64-iBitShift;
+    i32         iSizeA= bnA.mpSize();
+    u64*        rguA= bnA.m_pValue;
+    u64*        rguR= bnR.m_pValue;
+    i32         iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
+    u64         r, s, t;
+
+    t= rguA[iWordShift];
+    s= t>>iBitShift;
+    for(i=0; i<(iRealSizeA-iWordShift); i++) {
+        t= rguA[i+1+iWordShift];
+        r= (t&ubottomMask)<<iBottomShift;
+        rguR[i]|= s|r;
+        s= t>>iBitShift;
+    }
+}
+
+
+//  Function: bool mpShift
+//  Arguments:
+//      IN bnum bnA
+//      IN i32 iShiftNumBits
+//      OUT bnum bnR
+//  Description:
+//      iShiftNumBits>0 means shift increases value
+bool mpShift(bnum& bnA, i32 iShiftNumBits, bnum& bnR)
+{
+    i32     iSizeA= bnA.mpSize();
+    i32     iSizeR= bnR.mpSize();
+
+    // Enough room?
+    if(iSizeA+((iShiftNumBits+63)/64)>iSizeR)
+        return false;
+
+    mpZeroNum(bnR);
+    if(iShiftNumBits==0) {
+        bnA.mpCopyNum(bnR);
+        return true;
+    }
+
+    if(iShiftNumBits>0) {
+        shiftup(bnA, bnR, iShiftNumBits);
+    }
+    else {
+        shiftdown(bnA, bnR, -iShiftNumBits);
+    }
+
+    return true;
+}
+
+
+// ----------------------------------------------------------------------------
+
+
 //          Helper Functions for unsigned operations 
 //          These are machine dependent
 #ifdef NOINLINEARITH
@@ -686,111 +791,6 @@ u64 mpUSingleMultBy(bnum& bnA, u64 uB)
 
 
 //
-//      Shift
-//
-
-inline u64 bottomMask64(int iNumBits)
-{
-    u64 uMask= (u64) (-1);
-
-    uMask<<= (64-iNumBits);
-    uMask>>= (64-iNumBits);
-    return uMask;
-}
-
-
-void shiftup(bnum& bnA, bnum& bnR, i32 iShiftNumBits)
-{
-    int         i;
-    int         iWordShift= (iShiftNumBits>>6);
-    int         iBitShift= iShiftNumBits&0x3f;
-    int         iBottomShift= 64-iBitShift;
-    u64         ubottomMask= bottomMask64(iBottomShift);
-    u64         utopMask= ((u64)(-1))^ubottomMask;
-    i32         iSizeA= bnA.mpSize();
-    u64*        rguA= bnA.m_pValue;
-    u64*        rguR= bnR.m_pValue;
-    i32         iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
-    u64         r, s, t;
-
-    t= rguA[iRealSizeA-1];
-    if(iBitShift>0) {
-        r= (t&utopMask)>>iBottomShift;
-        rguR[iRealSizeA+iWordShift]= r;
-    }
-    s= (t&ubottomMask)<<iBitShift;
-
-    for(i=(iRealSizeA-1); i>0;i--) {
-        t= rguA[i-1];
-        r= (t&utopMask)>>iBottomShift;
-        rguR[i+iWordShift]|= s|r;
-        s= (t&ubottomMask)<<iBitShift;
-    }
-    rguR[iWordShift]= s;
-}
-
-
-void shiftdown(bnum& bnA, bnum& bnR, i32 iShiftNumBits)
-{
-    int         i;
-    int         iWordShift= (iShiftNumBits>>6);
-    int         iBitShift= iShiftNumBits&0x3f;
-    u64         ubottomMask= bottomMask64(iBitShift);
-    int         iBottomShift= 64-iBitShift;
-    i32         iSizeA= bnA.mpSize();
-    u64*        rguA= bnA.m_pValue;
-    u64*        rguR= bnR.m_pValue;
-    i32         iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
-    u64         r, s, t;
-
-    t= rguA[iWordShift];
-    s= t>>iBitShift;
-    for(i=0; i<(iRealSizeA-iWordShift); i++) {
-        t= rguA[i+1+iWordShift];
-        r= (t&ubottomMask)<<iBottomShift;
-        rguR[i]|= s|r;
-        s= t>>iBitShift;
-    }
-}
-
-
-//  Function: bool mpShift
-//  Arguments:
-//      IN bnum bnA
-//      IN i32 iShiftNumBits
-//      OUT bnum bnR
-//  Description:
-//      iShiftNumBits>0 means shift increases value
-bool mpShift(bnum& bnA, i32 iShiftNumBits, bnum& bnR)
-{
-    i32     iSizeA= bnA.mpSize();
-    i32     iSizeR= bnR.mpSize();
-
-    // Enough room?
-    if(iSizeA+((iShiftNumBits+63)/64)>iSizeR)
-        return false;
-
-    mpZeroNum(bnR);
-    if(iShiftNumBits==0) {
-        bnA.mpCopyNum(bnR);
-        return true;
-    }
-
-    if(iShiftNumBits>0) {
-        shiftup(bnA, bnR, iShiftNumBits);
-    }
-    else {
-        shiftdown(bnA, bnR, -iShiftNumBits);
-    }
-
-    return true;
-}
-
-
-// ----------------------------------------------------------------------------
-
-
-//
 //          Multiply and Divide for unsigned numbers
 //
 
@@ -864,7 +864,7 @@ bool mpUSingleMultAndShift(bnum& bnA, u64 uB, i32 iShift, bnum& bnR)
     u64     uCarry= 0;
     i32     i;
 
-    if(uB==0L || bnA.mpIsZero()) {
+    if(uB==0ULL || bnA.mpIsZero()) {
         ZeroWords(bnR.mpSize(), bnR.m_pValue);
         return true;
     }
@@ -944,7 +944,8 @@ inline bool EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 
         // mark unused variables to keep the compiler happy
         UNUSEDVAR(uRTop);
         UNUSEDVAR(uA);
-    } else {
+    } 
+    else {
         uR= longdivstep(&uQ, uN, uNM1, vM1);
     }
 
@@ -956,6 +957,9 @@ inline bool EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 
     *pqE= uQ;
     return true;
 }
+
+
+// ----------------------------------------------------------------------------
 
 
 //  Function: bool mpUDiv

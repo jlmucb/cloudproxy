@@ -53,6 +53,7 @@ class fileTester {
     // a struct for holding the large set of parameters for a test
     struct fileTestParams {
         bool timed;
+        bool expectSuccess;
         int repetitions;
         string name;
         string action;
@@ -68,12 +69,14 @@ class fileTester {
     fileClient m_defaultClient;
     safeChannel m_defaultChannel;
     fileTestParams m_defaultParams;
+    string m_testFileName;
     TiXmlDocument m_testsDoc;
     list<fileTestParams> m_tests;
     bool m_reuseConnection;
     list<string> m_filesToDelete;
     string m_serverAddress;
     u_short m_serverPort;
+    bool m_printToStdout;
 
     void createResources(const string& parentPath, const TiXmlNode* parent);
 

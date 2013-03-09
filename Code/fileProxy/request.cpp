@@ -943,7 +943,7 @@ bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName,
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, NULL)) {
+    if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
@@ -1301,7 +1301,7 @@ bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const ch
 
     // send request
     if(!constructRequest(&p, &iLeft, "sendResource", szSubject, szResourceName, 
-                         filesize, NULL)) {
+                         filesize, szEvidence)) {
         fprintf(g_logFile, "clientsendResourcetoserver: constructRequest returns false\n");
         return false;
     }

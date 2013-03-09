@@ -1145,10 +1145,11 @@ bool fileClient::deleteResource(safeChannel& fc, const string& subject, const st
 
 bool fileClient::readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput) {
     int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
     if(clientgetResourcefromserver(fc, 
                                    remoteResource.c_str(),
-                                   NULL, 
+                                   szEvidence,
                                    localOutput.c_str(),
                                    encType, 
                                    m_fileKeys, 
@@ -1166,11 +1167,12 @@ bool fileClient::readResource(safeChannel& fc, const string& subject, const stri
 
 bool fileClient::writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName) {
     int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
     if(clientsendResourcetoserver(fc, 
                                   subject.c_str(),
                                   remoteResource.c_str(),
-                                  NULL, 
+                                  szEvidence,
                                   fileName.c_str(),
                                   encType, 
                                   m_fileKeys,

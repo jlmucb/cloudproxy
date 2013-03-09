@@ -1,5 +1,5 @@
-<Tests reuseConnection="true">
-    <Default time="true" repetitions="10">
+<Tests print="true">
+    <Default timed="true" repetitions="1">
         <Authorization>authRule1Signed.xml</Authorization>
         <PrivateKeys>principalPrivateKeys.xml</PrivateKeys>
         <PublicKeys>principalPublicKeys.xml</PublicKeys>
@@ -20,6 +20,10 @@
         <RandomFile name="files/100000.test" size="100000" />
         <RandomFile name="files/200000.test" size="200000" />
         <RandomFile name="files/524288.test" size="524288" />
+        <RandomFile name="files/1048576.test" size="1048576" />
+        <RandomFile name="files/10485760.test" size="10485760" />
+        <RandomFile name="files/52428800.test" size="52428800" />
+        <RandomFile name="files/104857600.test" size="104857600" />
     </Resources>
     <Test name="create128">
         <Action>create</Action>
@@ -200,5 +204,65 @@
         <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/524288.test</RemoteObject>
         <LocalObject>files/524288.test.out</LocalObject>
         <Match>files/524288.test</Match>
+    </Test>
+    <Test name="create1048576">
+        <Action>create</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/1048576.test</RemoteObject>
+    </Test>
+    <Test name="write1048576">
+        <Action>write</Action>
+        <LocalObject>files/1048576.test</LocalObject>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/1048576.test</RemoteObject>
+    </Test>
+    <Test name="read1048576">
+        <Action>read</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/1048576.test</RemoteObject>
+        <LocalObject>files/1048576.test.out</LocalObject>
+        <Match>files/1048576.test</Match>
+    </Test>
+    <Test name="create10485760">
+        <Action>create</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/10485760.test</RemoteObject>
+    </Test>
+    <Test name="write10485760">
+        <Action>write</Action>
+        <LocalObject>files/10485760.test</LocalObject>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/10485760.test</RemoteObject>
+    </Test>
+    <Test name="read10485760">
+        <Action>read</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/10485760.test</RemoteObject>
+        <LocalObject>files/10485760.test.out</LocalObject>
+        <Match>files/10485760.test</Match>
+    </Test>
+    <Test name="create52428800">
+        <Action>create</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/52428800.test</RemoteObject>
+    </Test>
+    <Test name="write52428800">
+        <Action>write</Action>
+        <LocalObject>files/52428800.test</LocalObject>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/52428800.test</RemoteObject>
+    </Test>
+    <Test name="read52428800">
+        <Action>read</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/52428800.test</RemoteObject>
+        <LocalObject>files/52428800.test.out</LocalObject>
+        <Match>files/52428800.test</Match>
+    </Test>
+    <Test name="create104857600">
+        <Action>create</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/104857600.test</RemoteObject>
+    </Test>
+    <Test name="write104857600">
+        <Action>write</Action>
+        <LocalObject>files/104857600.test</LocalObject>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/104857600.test</RemoteObject>
+    </Test>
+    <Test name="read104857600">
+        <Action>read</Action>
+        <RemoteObject>//www.manferdelli.com/Gauss/fileProxy/files/104857600.test</RemoteObject>
+        <LocalObject>files/104857600.test.out</LocalObject>
+        <Match>files/104857600.test</Match>
     </Test>
 </Tests>

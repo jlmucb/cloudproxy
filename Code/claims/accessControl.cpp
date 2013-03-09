@@ -573,10 +573,10 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
     assertionNode**  rgpAssertions= 
             (assertionNode**) malloc(sizeof(assertionNode*)*pAssert->m_iNumAssertions);
     pSaysPrincipal= g_theVault.findPrincipal(pAssert->getPrincipalName());
-//#ifdef RULESTEST
+#ifdef TEST
     fprintf(g_logFile, "says principal name: %s\n", pAssert->getPrincipalName());
     fflush(g_logFile);
-//#endif
+#endif
     if(pSaysPrincipal==NULL) {
         fprintf(g_logFile, "Who says?\n");
         return false;
@@ -589,16 +589,33 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
             return false;
         }
     }
-    fprintf(g_logFile, "Finished parsing assertions\n");
+
+#ifdef TEST
+    fprintf(g_logFile, "Finished parsing %d assertions\n", pAssert->m_iNumAssertions);
     fflush(g_logFile);
+#endif
     pSubjNode= m_Subjects.pFirst;
     while(pSubjNode!=NULL) {
         pSubjPrincipal= pSubjNode->pElement;
-        if(rgpAssertions[0]->assertionSucceeds(pSubjPrincipal, uVerb, pResource,
-                  pAssert->m_iNumAssertions, rgpAssertions)) {
-            fprintf(g_logFile, "the assertion succeeds\n");
-            fflush(g_logFile);
-            return true;
+#ifdef TEST
+        fprintf(g_logFile, "Trying subject %s\n", pSubjPrincipal->m_szPrincipalName);
+#endif
+        for(i = 0; i < pAssert->m_iNumAssertions; i++) {
+#ifdef TEST
+            fprintf(g_logFile, "trying assertion %d\n", i);
+#endif
+            if(rgpAssertions[i]->assertionSucceeds(pSubjPrincipal, uVerb, pResource,
+                      pAssert->m_iNumAssertions, rgpAssertions)) {
+#ifdef TEST
+                fprintf(g_logFile, "the assertion succeeds\n");
+                fflush(g_logFile);
+#endif
+                return true;
+            } else {
+#ifdef TEST
+                fprintf(g_logFile, "The assertion fails\n");
+#endif
+            }
         }
         pSubjNode= pSubjNode->pNext;
     }

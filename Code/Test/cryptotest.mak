@@ -5,14 +5,14 @@ SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
 LINK=       g++
 
-aesobjs=      $(B)/aestest.o $(B)/aes.o $(B)/logging.o $(B)/modesandpadding.o $(B)/hmacsha256.o \
-	      $(B)/sha256.o
+aesobjs=      $(B)/aestest.o $(B)/aes.o $(B)/logging.o \
+	      $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o 
 shaobjs=      $(B)/shatest.o $(B)/sha1.o 
 sha256objs=   $(B)/sha256test.o $(B)/sha256.o 
 

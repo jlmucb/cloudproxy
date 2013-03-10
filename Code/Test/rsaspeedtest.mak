@@ -1,24 +1,25 @@
-B=          ~/jlmcrypt
+E=          ~/jlmcrypt
+B=          $(E)/speedtestobjects
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
 LINK=       g++
 
-dobjs=      $(B)/rsaspeedtest.o $(B)/keys.o $(B)/jlmcrypto.o \
-	$(B)/aes.o $(B)/sha256.o $(B)/mpBasicArith.o  $(B)/modesandpadding.o \
-	$(B)/mpModArith.o $(B)/mpNumTheory.o $(B)/tinystr.o \
-	$(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/logging.o \
-	$(B)/hmacsha256.o
+dobjs=  $(B)/rsaspeedtest.o $(B)/keys.o $(B)/jlmcrypto.o \
+	$(B)/aes.o $(B)/sha256.o $(B)/mpBasicArith.o  \
+	$(B)/modesandpadding.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
+	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
+	$(B)/tinyxmlparser.o $(B)/logging.o $(B)/hmacsha256.o
 
-all: $(B)/rsaspeedtest.exe
+all: $(E)/rsaspeedtest.exe
 
-$(B)/rsaspeedtest.exe: $(dobjs)
+$(E)/rsaspeedtest.exe: $(dobjs)
 	@echo "rsaspeedtest"
 	$(LINK) -o $(B)/rsaspeedtest.exe $(dobjs)
 

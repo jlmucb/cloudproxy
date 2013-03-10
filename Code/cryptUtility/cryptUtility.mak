@@ -9,20 +9,22 @@ TPM=	    ../TPMDirect
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOINLINEARITH $(RELEASE_CFLAGS)
-CFLAGS1=    -D TEST -Wall -Wno-unknown-pragmas -Wno-format -O1
+CFLAGS=	    -D TEST  -D NOINLINEARITH -D NOAESNI $(RELEASE_CFLAGS)
+CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++
 LINK=       g++
 
-dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o $(B)/sha256.o \
-            $(B)/jlmUtility.o $(B)/modesandpadding.o $(B)/rsaHelper.o $(B)/hmacsha256.o \
-	    $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  \
-	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o $(B)/aesni.o \
-	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
-	    $(B)/tinyxmlparser.o 
+dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
+	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o \
+	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
+            $(B)/jlmUtility.o $(B)/rsaHelper.o $(B)/fastArith.o \
+	    $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  \
+	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o \
+	    $(B)/tinyxml.o $(B)/tinyxmlparser.o 
 
-cobjs=      $(B)/canonical.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o
+cobjs=      $(B)/canonical.o $(B)/tinystr.o $(B)/tinyxmlerror.o \
+	    $(B)/tinyxml.o $(B)/tinyxmlparser.o
 
 all: $(E)/cryptUtility.exe $(E)/canonical.exe
 

@@ -21,7 +21,11 @@
 
 #include "jlmTypes.h"
 #include "keys.h"
+#ifdef NOAESNI
+#include "aes.h"
+#else
 #include "aesni.h"
+#endif
 #include "sha256.h"
 #include "hmacsha256.h"
 
@@ -60,8 +64,13 @@ public:
     u32         m_uMacAlg;
     u32         m_uPadAlg;
 
-    aesni         m_oAESEnc;
-    aesni         m_oAESDec;
+#ifdef NOAESNI
+    aes         m_oAESEnc;
+    aes         m_oAESDec;
+#else
+    aesni       m_oAESEnc;
+    aesni       m_oAESDec;
+#endif
     hmacsha256  m_ohMac;
 
     byte*       m_rguIV;

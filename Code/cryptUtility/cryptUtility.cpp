@@ -29,8 +29,11 @@
 #include "keys.h"
 #include "tinyxml.h"
 #include "sha256.h"
+#ifdef NOAESNI
 #include "aes.h"
+#else
 #include "aesni.h"
+#endif
 #include "bignum.h"
 #include "fileHash.h"
 #include "mpFunctions.h"

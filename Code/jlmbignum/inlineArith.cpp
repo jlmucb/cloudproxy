@@ -128,6 +128,9 @@ Inline u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy)
 // -----------------------------------------------------------------
 
 
+#ifdef IA32ASSEMBLY
+
+
 Inline u32 addwithcarry(u32* puOut, u32 uIn1, u32 uIn2, u32 uCarryIn)
 
 {
@@ -222,6 +225,8 @@ Inline u32 longdivstep(u32* puQ, u32 uDivHi, u32 uDivLo, u32 uDivBy)
 
     return uRem;
 }
+
+#endif   // IA32ASSEMBLY
 
 
 // -----------------------------------------------------------------

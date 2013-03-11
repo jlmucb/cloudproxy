@@ -42,9 +42,9 @@ TESTS=tests/encryptedBlockIOTest
 LIBS=$(LIB)/jlmbignum.a $(LIB)/commonCode.a $(LIB)/jlmcrypto.a 
 LIB_SOURCES=$(COMMON_SOURCE) $(CRYPTO_SOURCE)
 
-.PHONY: keyNego tcServ fileS fileC clean libs tests
+.PHONY: keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest clean libs tests
 
-all: tcServ fileS fileC keyNego
+all: keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
 
 libs: $(LIB_SOURCES) $(LIBS)
 
@@ -65,24 +65,40 @@ obj/%.o: %.cpp
 tests/encryptedBlockIOTest: obj/Test/encryptedBlockIOTest.o $(LIB)/jlmcrypto.a $(LIB)/jlmbignum.a $(LIB)/commonCode.a
 	$(CC) $^ -o $@ $(LDFLAGS)
 
-tcServ:
+tcService:
 	$(MAKE) -C tcService -f tcService.mak
 
-fileS:
+fileServer:
 	$(MAKE) -C fileProxy -f fileServer.mak
 
-fileC:
+fileClient:
 	$(MAKE) -C fileProxy -f fileClient.mak
 
-keyNego:
+keyNegoServer:
 	$(MAKE) -C keyNegoServer -f keyNegoServer.mak
+
+cryptUtility:
+	$(MAKE) -C cryptUtility -f cryptUtility.mak
+
+cryptotest:
+	$(MAKE) -C Test -f cryptotest.mak
+
+aesspeed:
+	$(MAKE) -C Test -f aesspeed.mak
+
+rsaspeedtest:
+	$(MAKE) -C Test -f rsaspeedtest.mak
 
 clean:
 	rm -f $(TESTS)
 	rm -f $(CRYPTO_OBJ) $(COMMON_OBJ) $(BIGNUM_OBJ)
 	rm -f $(LIBS)
 	rm -f $(OBJROOT)/*objects/*
+	rm -f $(OBJROOT)/*.o
 	rm -f $(OBJROOT)/keyNegoServer.exe
 	rm -f $(OBJROOT)/tcService.exe
 	rm -f $(OBJROOT)/fileServer.exe
 	rm -f $(OBJROOT)/fileClient.exe
+	rm -f $(OBJROOT)/rsaspeedtest.exe
+	rm -f $(OBJROOT)/cryptUtility.exe
+	rm -f $(OBJROOT)/aesspeedtest.exe

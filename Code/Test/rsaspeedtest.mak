@@ -1,5 +1,5 @@
 E=          ~/jlmcrypt
-B=          $(E)/speedtestobjects
+B=          $(E)/rsaspeedtestobjects
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum

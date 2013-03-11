@@ -1,5 +1,5 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/speedtestobjects
+B=          ~/jlmcrypt/aesspeedtestobjects
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum

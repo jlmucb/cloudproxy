@@ -42,25 +42,29 @@ typedef unsigned char           byte;
 #ifndef __MPGLOBALDEFINES_
 #define __MPGLOBALDEFINES_
 
-const i32       s_iIsGreaterThan= 1;
-const i32       s_iIsEqualTo= 0;
-const i32       s_iIsLessThan= -1;
+const i32       s_isGreaterThan= 1;
+const i32       s_isEqualTo= 0;
+const i32       s_isLessThan= -1;
 
-const u32       s_SignBit=  0x80000000;
-const u32       s_SizeMask= 0x7fffffff;
+const u32       s_signBit=  0x80000000;
+const u32       s_signMask= 0x7fffffff;
 #endif
 
 
-//      Number Format (bNum): 
-//              Array of 64 bit values: digit1 digit1 ... digitn
-//              Top bit of sLen is sign (1 means negative) remaining 31 bits are
-//              the number of 64 bit words constituting the number low order words first.
-//              Remaining 64 bit words are 64 bit unsigned quantities representing the
-//              absolute value of the number, least significant word is first, most
-//              significant is last.
+//  Number Format (bNum): 
+//      m_signandSize contains sign and number of 64 bit digits allocated.
+//      If the top bit of m_signandSize, 1 the number is negative.
+//      Remaining 31 bits is the number of 64 bit digits allocated.
+//      Array of 64 bit unsigned values in m_pValue are 64 bit
+//      digits: digit1 digit2 ... digitn.  The 64-bit word with lowest 
+//      address (digit1) is the least significant.  The 64 bit word with 
+//      highest address is most significant.
+//      In earlier versions, a number with no digits was treated as 0.
+//      That is now an error.  Every number must have at least one digit.
+
 class bnum {
 public:
-    u32     m_uSignandSize;
+    u32     m_signandSize;
     u64*    m_pValue;
 
     bnum(int iSize);
@@ -78,27 +82,27 @@ public:
 
 inline bool bnum::mpSign()    
 {
-    return (m_uSignandSize&s_SignBit)!=0;
+    return (m_signandSize&s_signBit)!=0;
 }
 
 
 inline u32  bnum::mpSize()    
 {
-    return m_uSignandSize&(~s_SignBit);
+    return m_signandSize&(~s_signBit);
 }
 
 
 inline void bnum::mpNegate()  
 {
     if(mpSize()>0) 
-        m_uSignandSize^= s_SignBit;
+        m_signandSize^= s_signBit;
 }
 
 
 inline void bnum::mpDumpSign()  
 {
     if(mpSize()>0) 
-        m_uSignandSize&= ~s_SignBit;
+        m_signandSize&= ~s_signBit;
 }
 
 
@@ -123,7 +127,8 @@ inline bool bnum::mpIsZero()
 }
 
 
-#define NUMBITSINU64  64
+#define NUMBITSINU64        64
+#define NUMBITSINU64MINUS1  63
 
 
 #ifndef NULL

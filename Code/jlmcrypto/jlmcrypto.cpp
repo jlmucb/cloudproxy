@@ -143,136 +143,136 @@ inline bool whitespace(char b)
 // ------------------------------------------------------------------------------------------
 
 
-bool toBase64(int iInLen, const byte* puIn, int* piOutLen, char* rgszOut, bool fDirFwd)
+bool toBase64(int inLen, const byte* pbIn, int* poutLen, char* szOut, bool fDirFwd)
 //
 //      Lengths are in characters
 //
 {
-    int             iNumOut= ((iInLen*4)+2)/3;
+    int             numOut= ((inLen*4)+2)/3;
     int             i= 0;
     int             a, b, c, d;
-    const byte*     puC;
+    const byte*     pbC;
 
     // enough room?
-    if(iNumOut>*piOutLen)
+    if(numOut>*poutLen)
         return false;
 
     if(fDirFwd) {
-        puC= puIn+iInLen-1;
-        while(iInLen>2) {
-            a= (*puC>>2)&0x3f;
-            b= ((*puC&0x3)<<4) | ((*(puC-1)>>4)&0xf);
-            c= ((*(puC-1)&0xf)<<2) | ((*(puC-2)>>6)&0x3);
-            d= (*(puC-2)&0x3f);
-            rgszOut[i++]= s_transChar[a];
-            rgszOut[i++]= s_transChar[b];
-            rgszOut[i++]= s_transChar[c];
-            rgszOut[i++]= s_transChar[d];
-            puC-= 3;
-            iInLen-= 3;
+        pbC= pbIn+inLen-1;
+        while(inLen>2) {
+            a= (*pbC>>2)&0x3f;
+            b= ((*pbC&0x3)<<4) | ((*(pbC-1)>>4)&0xf);
+            c= ((*(pbC-1)&0xf)<<2) | ((*(pbC-2)>>6)&0x3);
+            d= (*(pbC-2)&0x3f);
+            szOut[i++]= s_transChar[a];
+            szOut[i++]= s_transChar[b];
+            szOut[i++]= s_transChar[c];
+            szOut[i++]= s_transChar[d];
+            pbC-= 3;
+            inLen-= 3;
         }
         // 8 bits left
-        if(iInLen==1) {
-            a= (*puC>>2)&0x3f;
-            b= ((*puC&0x3)<<4) | ((*(puC-1)>>4)&0xf);
-            rgszOut[i++]= s_transChar[a];
-            rgszOut[i++]= s_transChar[b];
-            rgszOut[i++]= '=';
-            rgszOut[i++]= '=';
+        if(inLen==1) {
+            a= (*pbC>>2)&0x3f;
+            b= ((*pbC&0x3)<<4) | ((*(pbC-1)>>4)&0xf);
+            szOut[i++]= s_transChar[a];
+            szOut[i++]= s_transChar[b];
+            szOut[i++]= '=';
+            szOut[i++]= '=';
         }
         // 16 bits left
-        if(iInLen==2) {
-            a= (*puC>>2)&0x3f;
-            b= ((*puC&0x3)<<4) | ((*(puC-1)>>4)&0xf);
-            c= ((*(puC-1)&0xf)<<2);
-            rgszOut[i++]= s_transChar[a];
-            rgszOut[i++]= s_transChar[b];
-            rgszOut[i++]= s_transChar[c];
-            rgszOut[i++]= '=';
+        if(inLen==2) {
+            a= (*pbC>>2)&0x3f;
+            b= ((*pbC&0x3)<<4) | ((*(pbC-1)>>4)&0xf);
+            c= ((*(pbC-1)&0xf)<<2);
+            szOut[i++]= s_transChar[a];
+            szOut[i++]= s_transChar[b];
+            szOut[i++]= s_transChar[c];
+            szOut[i++]= '=';
         }
     }
     else {
-        puC= puIn;
-        while(iInLen>2) {
-            a= (*puC>>2)&0x3f;
-            b= ((*puC&0x3)<<4) | ((*(puC+1)>>4)&0xf);
-            c= ((*(puC+1)&0xf)<<2) | ((*(puC+2)>>6)&0x3);
-            d= (*(puC+2)&0x3f);
-            rgszOut[i++]= s_transChar[a];
-            rgszOut[i++]= s_transChar[b];
-            rgszOut[i++]= s_transChar[c];
-            rgszOut[i++]= s_transChar[d];
-            puC+= 3;
-            iInLen-= 3;
+        pbC= pbIn;
+        while(inLen>2) {
+            a= (*pbC>>2)&0x3f;
+            b= ((*pbC&0x3)<<4) | ((*(pbC+1)>>4)&0xf);
+            c= ((*(pbC+1)&0xf)<<2) | ((*(pbC+2)>>6)&0x3);
+            d= (*(pbC+2)&0x3f);
+            szOut[i++]= s_transChar[a];
+            szOut[i++]= s_transChar[b];
+            szOut[i++]= s_transChar[c];
+            szOut[i++]= s_transChar[d];
+            pbC+= 3;
+            inLen-= 3;
         }
         // 8 bits left
-        if(iInLen==1) {
-            a= (*puC>>2)&0x3f;
-            b= ((*puC&0x3)<<4) | ((*(puC+1)>>4)&0xf);
-            rgszOut[i++]= s_transChar[a];
-            rgszOut[i++]= s_transChar[b];
-            rgszOut[i++]= '=';
-            rgszOut[i++]= '=';
+        if(inLen==1) {
+            a= (*pbC>>2)&0x3f;
+            b= ((*pbC&0x3)<<4) | ((*(pbC+1)>>4)&0xf);
+            szOut[i++]= s_transChar[a];
+            szOut[i++]= s_transChar[b];
+            szOut[i++]= '=';
+            szOut[i++]= '=';
         }
         // 16 bits left
-        if(iInLen==2) {
-            a= (*puC>>2)&0x3f;
-            b= ((*puC&0x3)<<4) | ((*(puC+1)>>4)&0xf);
-            c= ((*(puC+1)&0xf)<<2);
-            rgszOut[i++]= s_transChar[a];
-            rgszOut[i++]= s_transChar[b];
-            rgszOut[i++]= s_transChar[c];
-            rgszOut[i++]= '=';
+        if(inLen==2) {
+            a= (*pbC>>2)&0x3f;
+            b= ((*pbC&0x3)<<4) | ((*(pbC+1)>>4)&0xf);
+            c= ((*(pbC+1)&0xf)<<2);
+            szOut[i++]= s_transChar[a];
+            szOut[i++]= s_transChar[b];
+            szOut[i++]= s_transChar[c];
+            szOut[i++]= '=';
         }
     }
-    *piOutLen= i;
-    rgszOut[i++]= 0;
+    *poutLen= i;
+    szOut[i++]= 0;
     return true;
 }
 
 
-bool fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puOut, bool fDirFwd)
+bool fromBase64(int inLen, const char* szIn, int* poutLen, unsigned char* puOut, bool fDirFwd)
 //
 //      Lengths are in characters
 //
 {
-    int             iNumOut= ((iInLen*3)+3)/4;
+    int             numOut= ((inLen*3)+3)/4;
     unsigned char*  puW;
     unsigned char   a,b,c,d;
-    int             iLeft= iInLen;
+    int             numLeft= inLen;
 
-    if(iInLen>2 && *(pszIn+iInLen-1)=='=')
-        iNumOut--;
-    if(iInLen>2 && *(pszIn+iInLen-2)=='=')
-        iNumOut--;
-    puW= puOut+iNumOut-1;
+    if(inLen>2 && *(szIn+inLen-1)=='=')
+        numOut--;
+    if(inLen>2 && *(szIn+inLen-2)=='=')
+        numOut--;
+    puW= puOut+numOut-1;
 
     // enough room?
-    if(iNumOut>*piOutLen) {
+    if(numOut>*poutLen) {
         return false;
     }
 
-    while(iLeft>3) {
-        while(whitespace(*pszIn) && iLeft>0) {
-            pszIn++; iLeft--;
+    while(numLeft>3) {
+        while(whitespace(*szIn) && numLeft>0) {
+            szIn++; numLeft--;
         }
-        if(*pszIn<43 || *pszIn>122) {
+        if(*szIn<43 || *szIn>122) {
             return false;
         }
-        a= s_revTrans[*pszIn-43];
-        pszIn++; iLeft--;
-        while(whitespace(*pszIn) && iLeft>0) {
-            pszIn++; iLeft--;
+        a= s_revTrans[*szIn-43];
+        szIn++; numLeft--;
+        while(whitespace(*szIn) && numLeft>0) {
+            szIn++; numLeft--;
         }
-        if(*pszIn<43 || *pszIn>122) {
+        if(*szIn<43 || *szIn>122) {
             return false;
         }
-        b= s_revTrans[*pszIn-43];
-        pszIn++; iLeft--;
-        while(whitespace(*pszIn) && iLeft>0) {
-            pszIn++; iLeft--;
+        b= s_revTrans[*szIn-43];
+        szIn++; numLeft--;
+        while(whitespace(*szIn) && numLeft>0) {
+            szIn++; numLeft--;
         }
-        if(*pszIn=='=') {
+        if(*szIn=='=') {
             if(!fDirFwd) {
                 *(puOut)= (a<<2) | (b>>4);
                 puOut+= 1;
@@ -281,18 +281,18 @@ bool fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puO
                 *(puW)= (a<<2) | (b>>4);
                 puW-= 1;
             }
-            iLeft-= 2;
+            numLeft-= 2;
             continue;
         }
-        if(*pszIn<43 || *pszIn>122) {
+        if(*szIn<43 || *szIn>122) {
             return false;
         }
-        c= s_revTrans[*pszIn-43];
-        pszIn++; iLeft--;
-        while(whitespace(*pszIn) && iLeft>0) {
-            pszIn++; iLeft--;
+        c= s_revTrans[*szIn-43];
+        szIn++; numLeft--;
+        while(whitespace(*szIn) && numLeft>0) {
+            szIn++; numLeft--;
         }
-        if(*pszIn=='=') {
+        if(*szIn=='=') {
             if(!fDirFwd) {
                 *(puOut)= (a<<2) | (b>>4);
                 *(puOut+1)= ((b&0xf)<<4) | (c>>2);
@@ -303,14 +303,14 @@ bool fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puO
                 *(puW-1)= ((b&0xf)<<4) | (c>>2);
                 puW-= 2;
             }
-            iLeft-= 1;
+            numLeft-= 1;
             continue;
         }
-        if(*pszIn<43 || *pszIn>122) {
+        if(*szIn<43 || *szIn>122) {
             return false;
         }
-        d= s_revTrans[*pszIn-43];
-        pszIn++; iLeft--;
+        d= s_revTrans[*szIn-43];
+        szIn++; numLeft--;
         if(!fDirFwd) {
             *(puOut)= (a<<2) | (b>>4);
             *(puOut+1)= ((b&0xf)<<4) | (c>>2);
@@ -325,14 +325,14 @@ bool fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puO
         }
     }
 
-    while(whitespace(*pszIn) && iLeft>0) {
-        pszIn++; iLeft--;
+    while(whitespace(*szIn) && numLeft>0) {
+        szIn++; numLeft--;
         }
-    if(iLeft>0) {
+    if(numLeft>0) {
         return false;
     }
 
-    *piOutLen= iNumOut;
+    *poutLen= numOut;
     return true;
 }
 

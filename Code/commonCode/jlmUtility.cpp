@@ -202,19 +202,19 @@ inline byte fromHextoVal(char a, char b)
 }
 
 
-int ConvertToHexString(int iSizeBuf, byte* rgbBuf, int iSizeOut, char* szOut)
+int ConvertToHexString(int sizeBuf, byte* rgbBuf, int sizeOut, char* szOut)
 {
     byte*   puIn= rgbBuf;
     char    a, b;
     byte    c;
-    int     n= 2*iSizeBuf;
+    int     n= 2*sizeBuf;
     int     j= n;
 
     //  Reverse order (most significant hex digit goes in szOut[0])
-    if(n>iSizeOut)
+    if(n>sizeOut)
         return -1;
     szOut[n--]= '\0';
-    for(int i=0; i<iSizeBuf; i++) {
+    for(int i=0; i<sizeBuf; i++) {
         c= *(puIn++);
         a= (char) (c>>4)&0xf;
         b= (char) (c&0xf);
@@ -225,7 +225,7 @@ int ConvertToHexString(int iSizeBuf, byte* rgbBuf, int iSizeOut, char* szOut)
 }
 
 
-int ConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
+int ConvertFromHexString(const char* szIn, int sizeOut, byte* rgbBuf)
 {
     char    a, b;
     int     j= 0;
@@ -233,7 +233,7 @@ int ConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
     int     m;
 
     j= (n+1)/2;
-    if(j>iSizeOut)
+    if(j>sizeOut)
         return -1;
     m= j-1;
 
@@ -252,7 +252,7 @@ int ConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
 }
 
 
-bool Sha256Hash(int iSizeIn, byte* pIn, int* piOut, byte* pOut)
+bool Sha256Hash(int sizeIn, byte* pIn, int* piOut, byte* pOut)
 {
     Sha256      oHash;
 
@@ -260,7 +260,7 @@ bool Sha256Hash(int iSizeIn, byte* pIn, int* piOut, byte* pOut)
         return false;
     
     oHash.Init();
-    oHash.Update(pIn, iSizeIn);
+    oHash.Update(pIn, sizeIn);
     oHash.Final();
     oHash.GetDigest(pOut);
 

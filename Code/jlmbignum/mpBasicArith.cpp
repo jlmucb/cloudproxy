@@ -47,7 +47,7 @@
 bnum::bnum(int iSize)
 {
     m_pValue= new u64[iSize];
-    m_uSignandSize= (u32) iSize;
+    m_signandSize= (u32) iSize;
     for(int i=0; i<iSize; i++)
         m_pValue[i]= 0; 
 }
@@ -128,7 +128,7 @@ void printNum(bnum& bnA, bool fFull=false)
     i32     lA;
 
     if(sizeA<=0) {
-        fprintf(g_logFile, "0x0000000000000000");
+        fprintf(g_logFile, "Bad number, no extent\n");
         return;
     }
 
@@ -215,7 +215,7 @@ bnum* mpDuplicateNum(bnum& bnA)
     i32     sizeA= (int) bnA.mpSize();
     bnum*   bn= new bnum(sizeA);
 
-    bn->m_uSignandSize= bnA.m_uSignandSize;
+    bn->m_signandSize= bnA.m_signandSize;
     for(int i=0; i<sizeA; i++)
         bn->m_pValue[i]=bnA.m_pValue[i];
     return(bn);
@@ -253,13 +253,13 @@ void mpZeroNum(bnum& bnN)
 //      Trim bnA to minimum number of words required
 void mpTrimNum(bnum& bnA)
 {
-    u32     uSign= bnA.m_uSignandSize&s_SignBit;
+    u32     sign= bnA.m_signandSize&s_signBit;
     u32     k= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
 
     if(k==0)
-        bnA.m_uSignandSize= 0;
+        bnA.m_signandSize= 0;
     else
-        bnA.m_uSignandSize= uSign|k;
+        bnA.m_signandSize= sign|k;
 }
 
 
@@ -272,30 +272,30 @@ void mpTrimNum(bnum& bnA)
 //      IN      bnum bnB
 //  Description:
 //      for positive bnA and bnB, return
-//        s_iIsGreaterThan if bnA>bnB
-//        s_iIsEqualTo if bnA==bnB
-//        s_iIsLessThan if bnA<bnB
+//        s_isGreaterThan if bnA>bnB
+//        s_isEqualTo if bnA==bnB
+//        s_isLessThan if bnA<bnB
 i32 mpUCompare(bnum& bnA, bnum& bnB)
 {
     i32 sizeA= (int)mpWordsinNum((int)bnA.mpSize(), bnA.m_pValue);
     i32 sizeB= (int)mpWordsinNum((int)bnB.mpSize(), bnB.m_pValue);
 
     if(sizeA>sizeB)
-        return(s_iIsGreaterThan);
+        return(s_isGreaterThan);
     if(sizeA<sizeB)
-        return(s_iIsLessThan);
+        return(s_isLessThan);
 
     u64* puA= bnA.m_pValue+sizeA-1;
     u64* puB= bnB.m_pValue+sizeB-1;
     while(sizeA-->0) {
         if(*puA>*puB)
-            return(s_iIsGreaterThan);
+            return(s_isGreaterThan);
         if(*puA<*puB)
-            return(s_iIsLessThan);
+            return(s_isLessThan);
         puA--;
         puB--;
     }
-    return(s_iIsEqualTo);
+    return(s_isEqualTo);
 }
 
 
@@ -313,8 +313,8 @@ i32 mpCompare(bnum& bnA, bnum& bnB)
 
     if(fSignA!=fSignB) {
         if(fSignA!=0)
-            return s_iIsLessThan;
-        return s_iIsGreaterThan;
+            return s_isLessThan;
+        return s_isGreaterThan;
     }
     if(fSignA)
         return -mpUCompare(bnA, bnB);
@@ -346,14 +346,14 @@ i32 max2PowerDividing(bnum& bnA)
     if(i>=iMax)
         return(-1);
     uX= rgA[i];
-    for(j=0; j<64; j++) {
+    for(j=0; j<NUMBITSINU64; j++) {
         if((uOne&uX)!=0)
             break;
         uOne<<= 1;
     }
-    if(j>63)
+    if(j>NUMBITSINU64MINUS1)
         j= 0;
-    return i*64+j;
+    return i*NUMBITSINU64+j;
 }
 
 
@@ -365,8 +365,8 @@ i32 max2PowerDividing(bnum& bnA)
 //      Least Significant bit is at position 1.  0 means no bit is on
 i32 MaxBit(u64 uW)
 {
-    u64 uM=(1ULL<<63);
-    int i= 64;
+    u64     uM=(1ULL<<NUMBITSINU64MINUS1);
+    int     i= NUMBITSINU64;
 
     while(i>0) {
         if((uM&uW)!=0ULL)
@@ -386,13 +386,13 @@ i32 MaxBit(u64 uW)
 //      return most significant non-zero bit position.
 i32 mpBitsinNum(i32 size, u64* rguN)
 {
-    int numWords= mpWordsinNum(size, rguN);
+    int     numWords= mpWordsinNum(size, rguN);
 
     if(numWords==0)
         return 0;
     numWords--;
     int numBits= MaxBit(rguN[numWords]);
-    return 64*numWords+numBits;
+    return NUMBITSINU64*numWords+numBits;
 }
 
 
@@ -407,7 +407,7 @@ i32 mpBitsinNum(i32 size, u64* rguN)
 bool IsBitPositionNonZero(bnum& bnN, i32 pos)
 {
     pos--;
-    u64 uM= bnN.m_pValue[(pos/64)];
+    u64     uM= bnN.m_pValue[(pos/NUMBITSINU64)];
 
     pos&= 0x3f;
     if((uM&(1ULL<<pos))!=0)
@@ -425,10 +425,10 @@ bool IsBitPositionNonZero(bnum& bnN, i32 pos)
 
 inline u64 bottomMask64(int numBits)
 {
-    u64 uMask= (u64) (-1);
+    u64     uMask= (u64) (-1);
 
-    uMask<<= (64-numBits);
-    uMask>>= (64-numBits);
+    uMask<<= (NUMBITSINU64-numBits);
+    uMask>>= (NUMBITSINU64-numBits);
     return uMask;
 }
 
@@ -438,7 +438,7 @@ void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits)
     int         i;
     int         wordShift= (numShiftBits>>6);
     int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= 64-bitShift;
+    int         bottomShift= NUMBITSINU64-bitShift;
     u64         ubottomMask= bottomMask64(bottomShift);
     u64         utopMask= ((u64)(-1))^ubottomMask;
     u64*        rgA= bnA.m_pValue;
@@ -499,7 +499,7 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
     i32     sizeR= bnR.mpSize();
 
     // Enough room?
-    if(sizeA+((numShiftBits+63)/64)>sizeR)
+    if(sizeA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64)>sizeR)
         return false;
 
     mpZeroNum(bnR);
@@ -946,7 +946,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     mpZeroNum(bnQ);
     mpZeroNum(bnR);
 
-    if(mpUCompare(bnA, bnB)==s_iIsLessThan) {
+    if(mpUCompare(bnA, bnB)==s_isLessThan) {
         if(sizeR<lA) {
             fprintf(g_logFile, "mpUDiv: Remainder overflow\n");
             return false;
@@ -984,7 +984,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 
     // Normalize
     //  make sure v1>= floor(b/2)
-    if((bnB.m_pValue[i]&(1ULL<<63))!=0) {
+    if((bnB.m_pValue[i]&(1ULL<<NUMBITSINU64MINUS1))!=0) {
         mpCopyWords(sizeA, bnA.m_pValue, sizeA, rgtA);
         mpCopyWords(sizeB, bnB.m_pValue, sizeB, rgtB);
         uScale= 1ULL;     // for renormalization
@@ -1036,7 +1036,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 #endif
 
         // Too big? (if so it's only by 1)
-        while(mpUCompare(bnTempA, bnTempC)==s_iIsLessThan) {
+        while(mpUCompare(bnTempA, bnTempC)==s_isLessThan) {
             uQ--;
             mpZeroNum(bnTempC);
             mpUSingleMultAndShift(bnTempB, uQ, iShift, bnTempC);
@@ -1223,11 +1223,11 @@ bool mpAdd(bnum& bnA, bnum& bnB, bnum& bnR)
     }
     bnR.mpDumpSign();
     iComp= mpUCompare(bnA, bnB);
-    if(iComp==s_iIsEqualTo) {
+    if(iComp==s_isEqualTo) {
         ZeroWords(bnR.mpSize(), bnR.m_pValue);
         return true;
     }
-    if(iComp==s_iIsGreaterThan) {
+    if(iComp==s_isGreaterThan) {
         mpUSub(bnA, bnB, bnR);
         // bnR gets sign of A
         if(fSignA)
@@ -1343,7 +1343,7 @@ u64 mpAddTo(bnum& bnA, bnum& bnB)
     iCompare= mpUCompare(bnA, bnB);
 
     // bnA == bnB
-    if(iCompare==s_iIsEqualTo) {
+    if(iCompare==s_isEqualTo) {
         ZeroWords(bnA.mpSize(), bnA.m_pValue);
         bnA.mpDumpSign();
         bnB.mpNegate();
@@ -1351,7 +1351,7 @@ u64 mpAddTo(bnum& bnA, bnum& bnB)
     }
 
     // bnA > bnB
-    if(iCompare==s_iIsGreaterThan) {
+    if(iCompare==s_isGreaterThan) {
         uCarry= mpUSubFrom(bnA, bnB);
         // restore corrected signs
         if(fSignA)
@@ -1408,7 +1408,7 @@ u64 mpSubFrom(bnum& bnA, bnum& bnB)
     iCompare= mpUCompare(bnA, bnB);
 
     // bnA < bnB
-    if(iCompare==s_iIsLessThan) {
+    if(iCompare==s_isLessThan) {
         bnum bnC(bnB.mpSize());
         bnB.mpCopyNum(bnC);
         uCarry= mpUSubFrom(bnC, bnA);

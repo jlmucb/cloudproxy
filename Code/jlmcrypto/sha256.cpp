@@ -167,10 +167,10 @@ void Sha256::Transform(u32* state, u32* data)
 void  Sha256::Update(const byte* data, int size)
 // size in bytes
 {
-    const byte*   pCurData= data;
-    int     processed= 0;
-    int     left= size;
-    int     n;
+    const byte* pCurData= data;
+    int         processed= 0;
+    int         left= size;
+    int         n;
 
     // partial block?
     if(m_iBLen>0) {

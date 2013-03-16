@@ -76,8 +76,8 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
 //      Compute bnR= bnA (mod bnM), 0=<bnR<bnM
 bool mpModNormalize(bnum& bnA, bnum& bnM)
 {
-    int     maxSize= bnA.mpSize();
-    int     i= bnM.mpSize();
+    int         maxSize= bnA.mpSize();
+    int         i= bnM.mpSize();
     extern bnum g_bnOne;
 
     if(i>maxSize)
@@ -105,7 +105,7 @@ bool mpModNormalize(bnum& bnA, bnum& bnM)
 #endif
             mpAddTo(bnA,bnB);
         }
-        if(mpCompare(bnM, bnA)==s_iIsGreaterThan)
+        if(mpCompare(bnM, bnA)==s_isGreaterThan)
             return true;
         mpDiv(bnA, bnM, bnQ, bnR);
         bnR.mpCopyNum(bnA);
@@ -152,7 +152,7 @@ bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
     if(j>maxSize)
         maxSize= j;
 
-    if(!(mpCompare(bnA, bnB)==s_iIsLessThan)) {
+    if(!(mpCompare(bnA, bnB)==s_isLessThan)) {
         mpUSub(bnA, bnB, bnR);
     }
     else {
@@ -356,7 +356,7 @@ bool mpTestFermatCondition(bnum& bnBase, bnum& bnM)
     fRet= mpModExp(bnBase, bnE, bnM, bnR);
     if(!fRet)
         return false;
-    if(s_iIsEqualTo== mpUCompare(bnR, g_bnOne))
+    if(s_isEqualTo== mpUCompare(bnR, g_bnOne))
         return true;
     return false;
 }
@@ -432,14 +432,14 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnR
     fRet= mpBinaryExtendedGCD(bnE, *pbnPM1, *pbnDP, *pbnTP, *pbnG);
     if(!fRet)
         goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_iIsEqualTo) {
+    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
         fRet= false;
         goto done;
     }
     fRet= mpBinaryExtendedGCD(bnE, *pbnQM1, *pbnDQ, *pbnTQ, *pbnG);
     if(!fRet)
         goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_iIsEqualTo) {
+    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
         fRet= false;
         goto done;
     }
@@ -503,7 +503,7 @@ bool mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR)
 }
 
 
-bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, 
+bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, 
               bnum& bnD, bnum& bnOrder)
 {
     extern bnum g_bnOne;
@@ -515,14 +515,14 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
     fprintf(g_logFile, "mpRSAGen: GenPrime start\n");
 #endif
     // Get two primes
-    if(!mpGenPrime(iNumBits/2, bnP)) {
+    if(!mpGenPrime(numBits/2, bnP)) {
         fprintf(g_logFile, "Cant find P\n");
         return false;
     }
 #ifdef ARITHTEST
     fprintf(g_logFile, "mpRSAGen: GenPrime got first prime\n");
 #endif
-    if(!mpGenPrime(iNumBits/2, bnQ)) {
+    if(!mpGenPrime(numBits/2, bnQ)) {
         fprintf(g_logFile, "Cant find Q\n");
         return false;
     }
@@ -531,21 +531,21 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #endif
 
     // Multiply to get bnM
-    int lP= mpWordsinNum(sizeP, bnP.m_pValue);
-    if((lP)*NUMBITSINU64>iNumBits/2) {
+    int     lP= mpWordsinNum(sizeP, bnP.m_pValue);
+    if((lP*NUMBITSINU64)>numBits/2) {
         fprintf(g_logFile, "P too big\n");
         return false;
     }
-    int lQ= mpWordsinNum(sizeQ, bnQ.m_pValue);
-    if((lQ)*NUMBITSINU64>iNumBits/2) {
+    int     lQ= mpWordsinNum(sizeQ, bnQ.m_pValue);
+    if((lQ*NUMBITSINU64)>numBits/2) {
         fprintf(g_logFile, "Q too big\n");
         return false;
     }
 
     mpUMult(bnP, bnQ, bnM);
 
-    int (lM)= mpWordsinNum(sizeM, bnM.m_pValue);
-    if(lM*NUMBITSINU64>iNumBits) {
+    int     lM= mpWordsinNum(sizeM, bnM.m_pValue);
+    if(lM*NUMBITSINU64>numBits) {
         fprintf(g_logFile, "Modulus too big\n");
         return false;
     }
@@ -575,7 +575,7 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #ifdef ARITHTEST
     fprintf(g_logFile, "mpRSAGen: computed order\n");
 #endif
-    if(mpCompare(bnG, g_bnOne)!=s_iIsEqualTo) {
+    if(mpCompare(bnG, g_bnOne)!=s_isEqualTo) {
         fprintf(g_logFile, "Exponent and Order are not coprime\n");
         printNum(bnG); printf("\n");
         return false;

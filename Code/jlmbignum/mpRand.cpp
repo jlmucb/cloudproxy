@@ -65,18 +65,18 @@ u64 randu(u64 ua)
 bool getCryptoRand(i32 numBits, byte* rguBits)
 {
     int     i= 0;
-    u64     uM= 1L<<63;  
+    u64     uM= 1L<<NUMBITSINU64MINUS1;  
 
     while(numBits>0) {
         rguBits[i]= randu(2L);
-        if(numBits<64) {
-            for(int j=0; j<64-numBits;j++) {
+        if(numBits<NUMBITSINU64) {
+            for(int j=0; j<NUMBITSINU64-numBits;j++) {
                 rguBits[i]&= ~uM;
                 uM>>= 1;
             }
         break;
         }
-        numBits-= 64;
+        numBits-= NUMBITSINU64;
         i++;
     }
     return(true);
@@ -86,7 +86,7 @@ bool getCryptoRand(i32 numBits, byte* rguBits)
 
 #ifdef UNIXRANDBITS
 
-const int g_iMaxGetRandSize= 64;
+const int g_iMaxGetRandSize= NUMBITSINU64;
 
 
 bool getCryptoRandom(i32 numBits, byte* rguBits)

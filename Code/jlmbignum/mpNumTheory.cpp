@@ -54,8 +54,8 @@ inline u64 bottomMask64(int numBits)
 {
     u64 uMask= (u64) (-1);
 
-    uMask<<= (64-numBits);
-    uMask>>= (64-numBits);
+    uMask<<= (NUMBITSINU64-numBits);
+    uMask>>= (NUMBITSINU64-numBits);
     return uMask;
 }
 
@@ -65,7 +65,7 @@ void shiftupinplace(bnum& bnA, i32 numShiftBits)
     int         i,j;
     int         wordShift= (numShiftBits>>6);
     int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= 64-bitShift;
+    int         bottomShift= NUMBITSINU64-bitShift;
     i32         sizeA= bnA.mpSize();
     u64*        rguA= bnA.m_pValue;
     u64         src1, src2;
@@ -93,7 +93,7 @@ void shiftdowninplace(bnum& bnA, i32 numShiftBits)
     int         i, j;
     int         wordShift= (numShiftBits>>6);
     int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= 64-bitShift;
+    int         bottomShift= NUMBITSINU64-bitShift;
     i32         sizeA= bnA.mpSize();
     u64*        rguA= bnA.m_pValue;
     u64         src1, src2;
@@ -128,7 +128,7 @@ bool mpShiftInPlace(bnum& bnA, int numShiftBits)
     if(numShiftBits==0)
         return true;
     // Enough room?
-    if(lA+((numShiftBits+63)/64)>sizeA)
+    if(lA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64)>sizeA)
         return false;
 
     if(numShiftBits>0) {
@@ -275,7 +275,7 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
 #endif
                         
         // Step 6
-        if(mpCompare(bnU, bnV)!=s_iIsLessThan) {
+        if(mpCompare(bnU, bnV)!=s_isLessThan) {
             mpSubFrom(bnU, bnV);
             mpSubFrom(bnA, bnC);
             mpSubFrom(bnB, bnD);
@@ -364,7 +364,7 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
     if(!fRet)
         goto done;
 
-    if(mpCompare(*pbnG, g_bnOne)!=s_iIsEqualTo) {
+    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
         fRet= false;
         goto done;
     }
@@ -524,19 +524,19 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum&
     
     if(!mpModExp(bnA, bnR, bnN, bnY))
         fprintf(g_logFile, "MRPrimeTestLoop: Bad Exponent\n");
-    if(mpCompare(bnY, g_bnOne)!=s_iIsEqualTo && mpCompare(bnY, bnNM1)!=s_iIsEqualTo) {
-        while(j<iS && mpCompare(bnY, g_bnOne)!=s_iIsEqualTo) {
+    if(mpCompare(bnY, g_bnOne)!=s_isEqualTo && mpCompare(bnY, bnNM1)!=s_isEqualTo) {
+        while(j<iS && mpCompare(bnY, g_bnOne)!=s_isEqualTo) {
             // square y mod N
             mpZeroNum(bnTemp);
             mpUMult(bnY, bnY, bnTemp);
             mpZeroNum(bnY);
             mpDiv(bnTemp, bnN, bnQ, bnY);
-            if(mpCompare(bnY, g_bnOne)==s_iIsEqualTo) {
+            if(mpCompare(bnY, g_bnOne)==s_isEqualTo) {
                 return false;
             }
             j++;
         }
-        if(mpCompare(bnY, bnNM1)!=s_iIsEqualTo) {
+        if(mpCompare(bnY, bnNM1)!=s_isEqualTo) {
 #ifdef ARITHTEST3
             fprintf(g_logFile, "\tY: "); printNum(bnY); printf("\n");
             fprintf(g_logFile, "\tNM1: "); printNum(bnNM1); printf("\n");
@@ -609,7 +609,7 @@ bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases, bnum* rgbnBases[
          if(!getCryptoRandom(iBitSize, (byte*)pbNum->m_pValue))
              fprintf(g_logFile, "MakeRandBasisForMR: No Random Bits\n");
         // if it's bigger than number, subtract it
-        if(mpUCompare(bnN, *pbNum)==s_iIsLessThan)
+        if(mpUCompare(bnN, *pbNum)==s_isLessThan)
              mpUSubFrom(*pbNum, bnN);
     }
     return true;
@@ -632,7 +632,7 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
     int     i, j;
     int     iNumTries= 0;
     u64     uPossibleDivisor, uCarry;
-    i32     iWordSize= ((iBitSize+63)>>6);
+    i32     iWordSize= ((iBitSize+NUMBITSINU64MINUS1)>>6);
     bool    fIsPrime= false;
     u64*    rguA= bnA.m_pValue;
     bnum    bnQ(bnA.mpSize());
@@ -660,7 +660,7 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
         rguA[0]|= 1ULL;
         j= iBitSize&0x3f;
         if(j==0)
-            j= 64;
+            j= NUMBITSINU64;
         j--;
         rguA[iWordSize-1]|= 1ULL<<j;
 

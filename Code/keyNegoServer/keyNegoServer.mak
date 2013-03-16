@@ -30,7 +30,8 @@ dobjs=      $(B)/keyNegoServer.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility
             $(B)/hmacsha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/hashprep.o \
 	    $(B)/mpNumTheory.o  $(B)/rsaHelper.o $(B)/secPrincipal.o  $(B)/resource.o \
             $(B)/modesandpadding.o $(B)/claims.o $(B)/tinystr.o $(B)/vault.o \
-            $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/encryptedblockIO.o 
+            $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
+	    $(B)/fastArith.o $(B)/encryptedblockIO.o 
 
 all: $(E)/keyNegoServer.exe
 
@@ -97,6 +98,9 @@ $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 
 $(B)/hashprep.o: $(TPD)/hashprep.cpp $(TPD)/hashprep.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TPD) -c -o $(B)/hashprep.o $(TPD)/hashprep.cpp
+
+$(B)/fastArith.o: $(BSC)/fastArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/fastArith.o $(BSC)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(BSC)/mpBasicArith.cpp
 	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp

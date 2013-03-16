@@ -224,7 +224,7 @@ u64 mpUMultByLoop(i32 lA, u64* pA, u64 uB)
 //      Caller guarentees lA>=lB, lR>=lA+lB
 u64 mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
 {
-    u64     uCarry;
+    u64     uCarry= 0ULL;
     i32     i, j;
 
     for(i=0; i<lA; i++) {
@@ -244,7 +244,7 @@ u64 mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
 bool mpSingleUDivLoop(i32 lA, u64* pA, u64 uB, u64* pR)
 {
     int     i;
-    u64     uRem;
+    u64     uRem= 0ULL;
     u64     uOut= 0ULL;
 
     for(i=(lA-1); i>=0; i--)

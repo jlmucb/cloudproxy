@@ -87,7 +87,7 @@ bool sameBigNum(int size, bnum& bnA, const char* szBase64A)
         return false;
     }
     
-    if(mpCompare(bnA, bnB)!=s_iIsEqualTo) {
+    if(mpCompare(bnA, bnB)!=s_isEqualTo) {
         fprintf(g_logFile, "%d bytes output\n", iOutLen);
         fprintf(g_logFile, "A: "); printNum(bnA); printf("\n");
         fprintf(g_logFile, "B: "); printNum(bnB); printf("\n");

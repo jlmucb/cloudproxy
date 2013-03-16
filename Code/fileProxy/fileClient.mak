@@ -24,7 +24,7 @@ LINK=       g++
 
 dobjs=      $(B)/fileClient.o $(B)/logging.o $(B)/jlmcrypto.o \
             $(B)/jlmUtility.o $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/rsaHelper.o \
-            $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
+            $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o $(B)/fastArith.o \
             $(B)/hmacsha256.o $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/claims.o \
@@ -126,6 +126,9 @@ $(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
 
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
+
+$(B)/fastArith.o: $(BSC)/fastArith.cpp
+	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/fastArith.o $(BSC)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(BSC)/mpBasicArith.cpp
 	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -c -o $(B)/mpBasicArith.o $(BSC)/mpBasicArith.cpp

@@ -1,5 +1,5 @@
 //  File: fastArith.h
-//      Ast arithmetic for jmbignum
+//	Ast arithmetic for jmbignum
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some contributions may be (c) Intel Corporation
@@ -22,16 +22,10 @@
 
 #include "jlmTypes.h"
 
-u64     longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
-u64     longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
-u64     longsubstep(u64* puOut, u64 uIn1, u64 uIn2, u64 uBorrowIn);
-u64     longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy);
-
-u64     mpUAddLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
-u64     mpUSubLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR, u64 uBorrow);
-u64     mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
-u64     mpUMultByLoop(i32 lA, u64* pA, u64 uB);
-bool    mpSingleUDivLoop(i32 lA, u64* pA, u64 uB, u64* pR);
+u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
+u64 longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
+u64 longsubstep(u64* puOut, u64 uIn1, u64 uIn2, u64 uBorrowIn);
+u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy);
 
 
 // -----------------------------------------------------------------

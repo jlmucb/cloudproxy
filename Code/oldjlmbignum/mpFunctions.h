@@ -27,15 +27,16 @@
 bool            mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB);
 bnum*           mpDuplicateNum(bnum& bnA);
 void            mpZeroNum(bnum& bnN);
+int             mpWordSize(bnum& bnN);
 void            ZeroWords(i32 iLen, u64* puN);
 void            mpNormalizeZero(bnum& bnA);
-i32             mpWordsinNum(i32 iLen, u64* puN);
+i32             LeadingNonZeroWord(i32 iLen, u64* puN);
 void            mpTrimNum(bnum& bnA);
 i32             mpUCompare(bnum& bnA, bnum& bnB);
 i32             mpCompare(bnum& bnA, bnum& bnB);
 i32             max2PowerDividing(bnum& bnA);
 i32             MaxBit(u64 uW);
-i32             mpBitsinNum(i32 iSize, u64* rguN);
+i32             LeadingNonZeroBit(i32 iSize, u64* rguN);
 bool            IsBitPositionNonZero(bnum& bnN, i32 iPos);
 void            printNum(bnum& bnA, bool fFull=false);
 void            initBigNum();
@@ -72,15 +73,12 @@ bool            mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR);
 bool            mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR);
 
 bool            mpShiftInPlace(bnum& bnA, int iShiftNumBits);
-bool            mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, 
-                                    bnum& bnBExt, bnum& bnGExt);
-bool            mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR);
+bool            mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt, bnum& bnGExt);
 
 
 bool            mpTestFermatCondition(bnum& bnBase, bnum& bnM);
 bool            mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid=20);
 bool            mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR);
-bool            mpRSADEC(bnum& bnMsg, bnum bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnR);
 bool            mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR);
 bool            mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnD, bnum& bnOrder);
 

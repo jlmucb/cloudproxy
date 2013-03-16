@@ -52,10 +52,10 @@ const u32       s_SizeMask= 0x7fffffff;
 
 
 //      Number Format (bNum): 
-//              Array of 64 bit values: digit1 digit1 ... digitn
-//              Top bit of sLen is sign (1 means negative) remaining 31 bits are
-//              the number of 64 bit words constituting the number low order words first.
-//              Remaining 64 bit words are 64 bit unsigned quantities representing the
+//              Array of 32 bit values: sLen32 digit1 digit1 ... digitn
+//              Top bit of sLen is sign (1 means negative) remaining 64 bits are
+//              the number of 32 bit words constituting the number low order words first.
+//              Remaining 32 bit words are 32 bit unsigned quantities representing the
 //              absolute value of the number, least significant word is first, most
 //              significant is last.
 class bnum {

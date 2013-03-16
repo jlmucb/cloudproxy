@@ -48,15 +48,15 @@
 //      Compute bnR= bnA (mod bnM), 0=<bnR<bnM
 bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
+    int     iMaxSize= bnA.mpSize();
     int     i= bnM.mpSize();
     bool    fRet= false;
 
-    if(i>maxSize)
-        maxSize= i;
+    if(i>iMaxSize)
+        iMaxSize= i;
 
     try {
-        bnum    bnQ(maxSize);
+        bnum    bnQ(iMaxSize);
         mpUDiv(bnA, bnM, bnQ, bnR);
         fRet= true;
         }
@@ -76,17 +76,17 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
 //      Compute bnR= bnA (mod bnM), 0=<bnR<bnM
 bool mpModNormalize(bnum& bnA, bnum& bnM)
 {
-    int     maxSize= bnA.mpSize();
+    int     iMaxSize= bnA.mpSize();
     int     i= bnM.mpSize();
     extern bnum g_bnOne;
 
-    if(i>maxSize)
-        maxSize= i;
+    if(i>iMaxSize)
+        iMaxSize= i;
 
     try {
-        bnum    bnB(maxSize);
-        bnum    bnQ(maxSize);
-        bnum    bnR(maxSize);
+        bnum    bnB(iMaxSize);
+        bnum    bnQ(iMaxSize);
+        bnum    bnR(iMaxSize);
         if(bnA.mpSign()) {
             // make it positive by adding ceil(|A|/|M|)
             bnA.mpCopyNum(bnB);
@@ -143,20 +143,20 @@ bool mpModAdd(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 //      Compute bnA-bnB (mod bnM) with classical algorithm, result>=0
 bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
+    int     iMaxSize= bnA.mpSize();
     int     i= bnB.mpSize();
     int     j= bnM.mpSize();
 
-    if(i>maxSize)
-        maxSize= i;
-    if(j>maxSize)
-        maxSize= j;
+    if(i>iMaxSize)
+        iMaxSize= i;
+    if(j>iMaxSize)
+        iMaxSize= j;
 
     if(!(mpCompare(bnA, bnB)==s_iIsLessThan)) {
         mpUSub(bnA, bnB, bnR);
     }
     else {
-        bnum  bnC(maxSize+2);
+        bnum  bnC(iMaxSize+2);
         mpUAdd(bnA, bnM, bnC);
         mpUSub(bnC, bnB, bnR);
     }
@@ -176,20 +176,20 @@ bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 
 bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
+    int     iMaxSize= bnA.mpSize();
     int     i= bnB.mpSize();
     int     j= bnM.mpSize();
     bool    fRet= false;
 
-    if(i>maxSize)
-        maxSize= i;
-    if(j>maxSize)
-        maxSize= j;
-    maxSize*= 2;
+    if(i>iMaxSize)
+        iMaxSize= i;
+    if(j>iMaxSize)
+        iMaxSize= j;
+    iMaxSize*= 2;
 
     try {
-        bnum  bnC(maxSize+1);
-        bnum  bnQ(maxSize+1);
+        bnum  bnC(iMaxSize+1);
+        bnum  bnQ(iMaxSize+1);
         mpUMult(bnA, bnB, bnC);
         mpUDiv(bnC, bnM, bnQ, bnR);
         mpModNormalize(bnR, bnM);
@@ -214,19 +214,19 @@ bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 //      Compute bnA^(-1) (mod bnM) with classical algorithm, result>=0
 bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
 {
-    int     sizeA= bnA.mpSize();
-    int     sizeM= bnM.mpSize();
-    int     maxSize;
+    int     iSizeA= bnA.mpSize();
+    int     iSizeM= bnM.mpSize();
+    int     iMaxSize;
     bool    fRet= false;
 
-    if(sizeA>sizeM)
-        maxSize= sizeA;
+    if(iSizeA>iSizeM)
+        iMaxSize= iSizeA;
     else
-        maxSize= sizeM;
+        iMaxSize= iSizeM;
 
     try {
-        bnum bnT(maxSize);
-        bnum bnG(maxSize);
+        bnum bnT(iMaxSize);
+        bnum bnG(iMaxSize);
         mpBinaryExtendedGCD(bnA, bnM, bnR, bnT, bnG);
         // Now, bnA (bnR) + bnM (bnT)= 1, so bnR is bnA inverse
         mpModNormalize(bnR, bnM);
@@ -250,19 +250,19 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
 //      Compute bnA/bnB (mod bnM) with classical algorithm, result>=0
 bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
+    int     iMaxSize= bnA.mpSize();
     int     i= bnM.mpSize();
     bool    fRet= false;
 
-    if(i>maxSize)
-        maxSize= i;
-    maxSize*= 2;
+    if(i>iMaxSize)
+        iMaxSize= i;
+    iMaxSize*= 2;
 
     try {
-        bnum    bna(maxSize);
-        bnum    bnc(maxSize);
-        bnum    bnb(maxSize);
-        bnum    bnG(maxSize);
+        bnum    bna(iMaxSize);
+        bnum    bnc(iMaxSize);
+        bnum    bnb(iMaxSize);
+        bnum    bnG(iMaxSize);
 
         mpBinaryExtendedGCD(bnB, bnM, bnb, bnc, bnG);
         // Now, bnB (bnb) + bnM (bnc)= 1, so bnb is bnB inverse
@@ -291,28 +291,28 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 
 bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
 {
-    int     maxSizeB= bnBase.mpSize();
-    int     maxSizeM= bnM.mpSize();
-    int     maxSize;
+    int     iMaxSizeB= bnBase.mpSize();
+    int     iMaxSizeM= bnM.mpSize();
+    int     iMaxSize;
     int     j;
 
-    if(maxSizeB>maxSizeM) {
-        maxSize= 2*maxSizeB+1;
+    if(iMaxSizeB>iMaxSizeM) {
+        iMaxSize= 2*iMaxSizeB+1;
     }
     else {
-        maxSize= 2*maxSizeM+1;
+        iMaxSize= 2*iMaxSizeM+1;
     }
 
-    bnum    bnBasePow(maxSize);    // Base to powers of 2
-    bnum    bnAccum(maxSize);      // Exponent so far
-    bnum    bnTemp(maxSize);       // Temporary storage
-    bnum    bnQ(maxSize);          // Quotient
+    bnum    bnBasePow(iMaxSize);    // Base to powers of 2
+    bnum    bnAccum(iMaxSize);      // Exponent so far
+    bnum    bnTemp(iMaxSize);       // Temporary storage
+    bnum    bnQ(iMaxSize);          // Quotient
 
-    UNUSEDVAR(maxSize);
+    UNUSEDVAR(iMaxSize);
     bnBase.mpCopyNum(bnBasePow);
     bnAccum.m_pValue[0]= 1ULL;
 
-    int iLeadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
+    int iLeadBit= LeadingNonZeroBit(bnExp.mpSize(), bnExp.m_pValue);
     if(IsBitPositionNonZero(bnExp, 1)) {
         mpZeroNum(bnTemp);
         mpUMult(bnBasePow, bnAccum, bnTemp);
@@ -346,9 +346,9 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
 bool mpTestFermatCondition(bnum& bnBase, bnum& bnM)
 {
     extern bnum g_bnOne;
-    int         sizeM= bnM.mpSize();
-    bnum        bnE(sizeM);
-    bnum        bnR(sizeM);
+    int         iSizeM= bnM.mpSize();
+    bnum        bnE(iSizeM);
+    bnum        bnR(iSizeM);
     bool        fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
 
     if(!fRet)
@@ -365,132 +365,13 @@ bool mpTestFermatCondition(bnum& bnBase, bnum& bnM)
 bool mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR)
 {
     extern bnum g_bnOne;
-    int         sizeM= bnM.mpSize();
-    bnum        bnE(sizeM);
+    int         iSizeM= bnM.mpSize();
+    bnum        bnE(iSizeM);
     bool        fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
 
     if(!fRet)
         return false;
     fRet= mpModExp(bnBase, bnE, bnM, bnR);
-    return fRet;
-}
-
-
-bool mpRSADEC(bnum& bnMsg, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnR)
-//  Fast RSA Decrypt using Chinese remainer theorem
-//  Compute e d(p) + (p-1) t(p) =1 with EUA
-//  Compute e d(q) + (q-1) t(q) =1 with EUA
-//  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
-//  Return R
-{
-    extern bnum     g_bnOne;
-    bool            fRet= false;
-    bnum*           pbnDP= NULL;
-    bnum*           pbnDQ= NULL;
-    bnum*           pbnPM1= NULL;
-    bnum*           pbnQM1= NULL;
-    bnum*           pbnTP= NULL;
-    bnum*           pbnTQ= NULL;
-    bnum*           pbnG= NULL;
-    bnum*           pbnT1= NULL;
-    bnum*           pbnT2= NULL;
-
-    int size= (int)bnP.mpSize();
-
-    if((int)bnQ.mpSize()>size)
-        size= (int)bnQ.mpSize();
-    size*= 2;
-    pbnDP= new bnum(size);
-    if(pbnDP==NULL)
-        goto done;
-    pbnDQ= new bnum(size);
-    if(pbnDQ==NULL)
-        goto done;
-    pbnG= new bnum(size);
-    if(pbnG==NULL)
-        goto done;
-    pbnTP= new bnum(size);
-    if(pbnTP==NULL)
-        goto done;
-    pbnTQ= new bnum(size);
-    if(pbnTQ==NULL)
-        goto done;
-    pbnPM1= new bnum(size);
-    if(pbnPM1==NULL)
-        goto done;
-    pbnQM1= new bnum(size);
-    if(pbnQM1==NULL)
-        goto done;
-
-    fRet= mpUSub(bnP, g_bnOne, *pbnPM1);
-    if(!fRet)
-        goto done;
-    fRet= mpUSub(bnQ, g_bnOne, *pbnQM1);
-    if(!fRet)
-        goto done;
-
-    fRet= mpBinaryExtendedGCD(bnE, *pbnPM1, *pbnDP, *pbnTP, *pbnG);
-    if(!fRet)
-        goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_iIsEqualTo) {
-        fRet= false;
-        goto done;
-    }
-    fRet= mpBinaryExtendedGCD(bnE, *pbnQM1, *pbnDQ, *pbnTQ, *pbnG);
-    if(!fRet)
-        goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_iIsEqualTo) {
-        fRet= false;
-        goto done;
-    }
-
-    fRet= mpModExp(bnMsg, *pbnPM1, bnP, *pbnT1);
-    if(!fRet)
-        goto done;
-    fRet= mpModExp(bnMsg, *pbnQM1, bnQ, *pbnT2);
-    if(!fRet)
-        goto done;
-
-    fRet= mpCRT(*pbnT1, bnP, *pbnT2, *pbnT2, bnR);
-
-done:
-    if(pbnT1!=NULL) {
-        delete pbnT1;
-        pbnT1= NULL;
-    }
-    if(pbnT2!=NULL) {
-        delete pbnT2;
-        pbnT2= NULL;
-    }
-    if(pbnTP!=NULL) {
-        delete pbnTP;
-        pbnTP= NULL;
-    }
-    if(pbnTQ!=NULL) {
-        delete pbnTQ;
-        pbnTQ= NULL;
-    }
-    if(pbnDP!=NULL) {
-        delete pbnDP;
-        pbnDP= NULL;
-    }
-    if(pbnDQ!=NULL) {
-        delete pbnDQ;
-        pbnDQ= NULL;
-    }
-    if(pbnPM1!=NULL) {
-        delete pbnPM1;
-        pbnPM1= NULL;
-    }
-    if(pbnQM1!=NULL) {
-        delete pbnQM1;
-        pbnQM1= NULL;
-    }
-    if(pbnG!=NULL) {
-        delete pbnG;
-        pbnG= NULL;
-    }
-
     return fRet;
 }
 
@@ -507,9 +388,9 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
               bnum& bnD, bnum& bnOrder)
 {
     extern bnum g_bnOne;
-    int         sizeP= bnP.mpSize();
-    int         sizeQ= bnQ.mpSize();
-    int         sizeM= bnM.mpSize();
+    int         iSizeP= bnP.mpSize();
+    int         iSizeQ= bnQ.mpSize();
+    int         iSizeM= bnM.mpSize();
 
 #ifdef TEST
     fprintf(g_logFile, "mpRSAGen: GenPrime start\n");
@@ -531,21 +412,21 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #endif
 
     // Multiply to get bnM
-    int lP= mpWordsinNum(sizeP, bnP.m_pValue);
-    if((lP)*NUMBITSINU64>iNumBits/2) {
+    int iRealSizeP= LeadingNonZeroWord(iSizeP, bnP.m_pValue);
+    if((iRealSizeP)*NUMBITSINU64>iNumBits/2) {
         fprintf(g_logFile, "P too big\n");
         return false;
     }
-    int lQ= mpWordsinNum(sizeQ, bnQ.m_pValue);
-    if((lQ)*NUMBITSINU64>iNumBits/2) {
+    int iRealSizeQ= LeadingNonZeroWord(iSizeQ, bnQ.m_pValue);
+    if((iRealSizeQ)*NUMBITSINU64>iNumBits/2) {
         fprintf(g_logFile, "Q too big\n");
         return false;
     }
 
     mpUMult(bnP, bnQ, bnM);
 
-    int (lM)= mpWordsinNum(sizeM, bnM.m_pValue);
-    if(lM*NUMBITSINU64>iNumBits) {
+    int (iRealSizeM)= LeadingNonZeroWord(iSizeM, bnM.m_pValue);
+    if(iRealSizeM*NUMBITSINU64>iNumBits) {
         fprintf(g_logFile, "Modulus too big\n");
         return false;
     }
@@ -554,8 +435,8 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #ifdef ARITHTEST
     fprintf(g_logFile, "mpRSAGen: exponent modulus\n");
 #endif
-    bnum bnPM1(sizeP);
-    bnum bnQM1(sizeQ);
+    bnum bnPM1(iSizeP);
+    bnum bnQM1(iSizeQ);
     mpUSub(bnP, g_bnOne, bnPM1);
     mpUSub(bnQ, g_bnOne, bnQM1);
 
@@ -566,8 +447,8 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
     fprintf(g_logFile, "mpRSAGen: computing order\n");
 #endif
     // get bnD
-    bnum bnT(sizeM);
-    bnum bnG(sizeM);
+    bnum bnT(iSizeM);
+    bnum bnG(iSizeM);
     if(!mpBinaryExtendedGCD(bnE, bnOrder, bnD, bnT, bnG)) {
         fprintf(g_logFile, "Cant find D\n");
         return false;
@@ -577,7 +458,6 @@ bool mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #endif
     if(mpCompare(bnG, g_bnOne)!=s_iIsEqualTo) {
         fprintf(g_logFile, "Exponent and Order are not coprime\n");
-        printNum(bnG); printf("\n");
         return false;
     }
 

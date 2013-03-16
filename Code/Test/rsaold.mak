@@ -2,11 +2,11 @@ E=          ~/jlmcrypt
 B=          $(E)/rsaspeedtestobjects
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
-SBM=	    ../jlmbignum
+SBM=	    ../oldjlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI 
-CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D NOINLINEARITH -D OLD
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -D NOAESNI -D NOINLINEARITH -D OLD
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -25,15 +25,15 @@ tobjs=  $(B)/mpTest.o $(B)/keys.o $(B)/jlmcrypto.o $(B)/logging.o \
 	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	$(B)/tinyxmlparser.o $(B)/hmacsha256.o $(B)/fastArith.o
 
-all: $(E)/rsaspeedtest.exe $(E)/mpTest.exe
+all: $(E)/rsaoldtest.exe $(E)/mpoldTest.exe
 
-$(E)/mpTest.exe: $(tobjs)
+$(E)/mpoldTest.exe: $(tobjs)
 	@echo "mpTest"
-	$(LINK) -o $(E)/mpTest.exe $(tobjs)
+	$(LINK) -o $(E)/mpoldTest.exe $(tobjs)
 
-$(E)/rsaspeedtest.exe: $(dobjs)
+$(E)/rsaoldtest.exe: $(dobjs)
 	@echo "rsaspeedtest"
-	$(LINK) -o $(E)/rsaspeedtest.exe $(dobjs)
+	$(LINK) -o $(E)/rsaoldtest.exe $(dobjs)
 
 $(B)/mpTest.o: mpTest.cpp 
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/mpTest.o mpTest.cpp
@@ -52,13 +52,13 @@ $(B)/fastArith.o: $(SBM)/fastArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -S -o $(B)/fastArith.s $(SBM)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
-	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
+	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp
 
 $(B)/mpModArith.o: $(SBM)/mpModArith.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpModArith.o $(SBM)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(SBM)/mpNumTheory.cpp
-	$(CC) $(CFLAGS1) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/mpNumTheory.o $(SBM)/mpNumTheory.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/mpNumTheory.o $(SBM)/mpNumTheory.cpp
 
 $(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp

@@ -38,7 +38,7 @@
 #include "mpFunctions.h"
 #include "logging.h"
 #ifdef  UNIXRANDBITS
-extern bool getCryptoRandom(i32 numBits, byte* rguBits);
+extern bool getCryptoRandom(i32 iNumBits, byte* rguBits);
 #else
 #include "jlmcrypto.h"
 #endif
@@ -50,66 +50,66 @@ extern bool getCryptoRandom(i32 numBits, byte* rguBits);
 //          Number Theoretic Operations
 //
 
-inline u64 bottomMask64(int numBits)
+inline u64 bottomMask64(int iNumBits)
 {
     u64 uMask= (u64) (-1);
 
-    uMask<<= (64-numBits);
-    uMask>>= (64-numBits);
+    uMask<<= (64-iNumBits);
+    uMask>>= (64-iNumBits);
     return uMask;
 }
 
 
-void shiftupinplace(bnum& bnA, i32 numShiftBits)
+void shiftupinplace(bnum& bnA, i32 iShiftNumBits)
 {
     int         i,j;
-    int         wordShift= (numShiftBits>>6);
-    int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= 64-bitShift;
-    i32         sizeA= bnA.mpSize();
+    int         iWordShift= (iShiftNumBits>>6);
+    int         iBitShift= iShiftNumBits&0x3f;
+    int         iBottomShift= 64-iBitShift;
+    i32         iSizeA= bnA.mpSize();
     u64*        rguA= bnA.m_pValue;
     u64         src1, src2;
 
-    j= sizeA-1-wordShift;
+    j= iSizeA-1-iWordShift;
     if(j<0)
         src1= 0ULL;
     else
         src1= rguA[j];
-    for(i=(sizeA-1); i>=0; i--) {
+    for(i=(iSizeA-1); i>=0; i--) {
         j--;
         if(j<0)
             src2= 0ULL;
         else
             src2= rguA[j];
-        rguA[i]= (src1<<bitShift) | (src2>>bottomShift);
+        rguA[i]= (src1<<iBitShift) | (src2>>iBottomShift);
         src1= src2;
     }
     return;
 }
 
 
-void shiftdowninplace(bnum& bnA, i32 numShiftBits)
+void shiftdowninplace(bnum& bnA, i32 iShiftNumBits)
 {
     int         i, j;
-    int         wordShift= (numShiftBits>>6);
-    int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= 64-bitShift;
-    i32         sizeA= bnA.mpSize();
+    int         iWordShift= (iShiftNumBits>>6);
+    int         iBitShift= iShiftNumBits&0x3f;
+    int         iBottomShift= 64-iBitShift;
+    i32         iSizeA= bnA.mpSize();
     u64*        rguA= bnA.m_pValue;
     u64         src1, src2;
 
-    j= wordShift;
-    if(j>=sizeA)
+    j= iWordShift;
+    if(j>=iSizeA)
         src1= 0ULL;
     else
         src1= rguA[j];
-    for(i=0;i<sizeA; i++) {
+    for(i=0;i<iSizeA; i++) {
         j++;
-        if(j>=sizeA)
+        if(j>=iSizeA)
             src2= 0ULL;
         else
             src2= rguA[j];
-        rguA[i]= (src1>>bitShift) | (src2<<bottomShift);
+        rguA[i]= (src1>>iBitShift) | (src2<<iBottomShift);
         src1= src2;
     }
     return;
@@ -119,23 +119,23 @@ void shiftdowninplace(bnum& bnA, i32 numShiftBits)
 //  Function: mpShiftInPlace
 //  Arguments:
 //      bnum bnA
-//      numShiftBits>0 means shift increases value
-bool mpShiftInPlace(bnum& bnA, int numShiftBits)
+//      iShiftNumBits>0 means shift increases value
+bool mpShiftInPlace(bnum& bnA, int iShiftNumBits)
 {
-    i32     sizeA= bnA.mpSize();
-    i32     lA= mpWordsinNum(sizeA, bnA.m_pValue);
+    i32     iSizeA= bnA.mpSize();
+    i32     iRealSizeA= LeadingNonZeroWord(iSizeA, bnA.m_pValue);
 
-    if(numShiftBits==0)
+    if(iShiftNumBits==0)
         return true;
     // Enough room?
-    if(lA+((numShiftBits+63)/64)>sizeA)
+    if(iRealSizeA+((iShiftNumBits+63)/64)>iSizeA)
         return false;
 
-    if(numShiftBits>0) {
-        shiftupinplace(bnA, numShiftBits);
+    if(iShiftNumBits>0) {
+        shiftupinplace(bnA, iShiftNumBits);
     }
     else {
-        shiftdowninplace(bnA, -numShiftBits);
+        shiftdowninplace(bnA, -iShiftNumBits);
     }
 
     return true;
@@ -197,21 +197,21 @@ void LabeledprintNum(const char* pszLabel, bnum& bnA)
 bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt, bnum& bnGExt)
 
 {       
-    int     maxsize= bnXExt.mpSize();
+    int     iMaxSize= bnXExt.mpSize();
     int     i, j;
 
-    if((int)bnYExt.mpSize()>maxsize)
-        maxsize= bnYExt.mpSize();
+    if((int)bnYExt.mpSize()>iMaxSize)
+        iMaxSize= bnYExt.mpSize();
 
-    bnum bnX(maxsize);
-    bnum bnY(maxsize);
-    bnum bnA(maxsize);
-    bnum bnB(maxsize);
-    bnum bnC(maxsize);
-    bnum bnD(maxsize);
-    bnum bnU(maxsize);
-    bnum bnV(maxsize);
-    bnum bnG(maxsize);
+    bnum bnX(iMaxSize);
+    bnum bnY(iMaxSize);
+    bnum bnA(iMaxSize);
+    bnum bnB(iMaxSize);
+    bnum bnC(iMaxSize);
+    bnum bnD(iMaxSize);
+    bnum bnU(iMaxSize);
+    bnum bnV(iMaxSize);
+    bnum bnG(iMaxSize);
 
     bnXExt.mpCopyNum(bnX);
     bnYExt.mpCopyNum(bnY);
@@ -311,105 +311,6 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
     return true;
 }
 
-
-//  Function: bool mpCRT
-//  Arguments:
-//      IN  bnum  bnA1 
-//      IN  bnum  bnM1
-//      IN  bnum  bnA2
-//      IN  bnum  bnM2
-//      OUT bnum  bnR
-//  Description:
-//      Chinese remainder computation
-//      (bnM1, bnM2)=1, Compute bnR: bnR= bnA1 (mod bnM1), bnR= bnA2 (mod bnM2).
-bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
-{
-    extern bnum g_bnOne;
-    bool fRet= false;
-    int size= (int)bnM1.mpSize();
-    bnum* pbnX1= NULL;
-    bnum* pbnX2= NULL;
-    bnum* pbnG= NULL;
-    bnum* pbnN= NULL;
-    bnum* pbnT1= NULL;
-    bnum* pbnT2= NULL;
-
-    if((int)bnM2.mpSize()>size)
-        size= (int)bnM2.mpSize();
-    size*= 2;
-    pbnX1= new bnum(size);
-    if(pbnX1==NULL)
-        goto done;
-    pbnX2= new bnum(size);
-    if(pbnX2==NULL)
-        goto done;
-    pbnG= new bnum(size);
-    if(pbnG==NULL)
-        goto done;
-    pbnN= new bnum(size);
-    if(pbnN==NULL)
-        goto done;
-    pbnT1= new bnum(2*size);
-    if(pbnT1==NULL)
-        goto done;
-    pbnT2= new bnum(2*size);
-    if(pbnT2==NULL)
-        goto done;
-
-    fRet= mpBinaryExtendedGCD(bnM1, bnM2, *pbnX1, *pbnX2, *pbnG);
-    if(!fRet)
-        goto done;
-
-    fRet= mpUMult(bnM1, bnM2, *pbnN);
-    if(!fRet)
-        goto done;
-
-    if(mpCompare(*pbnG, g_bnOne)!=s_iIsEqualTo) {
-        fRet= false;
-        goto done;
-    }
-
-    fRet= mpModMult(bnM1, *pbnX1, *pbnN, *pbnT1);
-    if(!fRet)
-        goto done;
-    fRet= mpModMult(bnA2, *pbnT1, *pbnN, *pbnT1);
-    if(!fRet)
-        goto done;
-    fRet= mpModMult(bnM2, *pbnX2, *pbnN, *pbnT2);
-    if(!fRet)
-        goto done;
-    fRet= mpModMult(bnA1, *pbnT2, *pbnN, *pbnT2);
-    if(!fRet)
-        goto done;
-    fRet= mpModMult(*pbnT1, *pbnT2, *pbnN, bnR);
-
-done:
-    if(pbnX1!=NULL) {
-        delete pbnX1;
-        pbnX1= NULL;
-    }
-    if(pbnX2!=NULL) {
-        delete pbnX2;
-        pbnX2= NULL;
-    }
-    if(pbnT1!=NULL) {
-        delete pbnT1;
-        pbnT1= NULL;
-    }
-    if(pbnT2!=NULL) {
-        delete pbnX2;
-        pbnT2= NULL;
-    }
-    if(pbnG!=NULL) {
-        delete pbnG;
-        pbnG= NULL;
-    }
-    if(pbnN!=NULL) {
-        delete pbnN;
-        pbnN= NULL;
-    }
-    return fRet;
-}
 
 // ----------------------------------------------------------------------------
 
@@ -515,11 +416,11 @@ u32         rgFirstPrimes[s_iSizeofFirstPrimes]= {
 //      return(prime)
 bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum& bnS)
 {
-    int             maxsize= bnN.mpSize();
+    int             iMaxSize= bnN.mpSize();
     int             j= 1;
-    bnum            bnY(maxsize);
-    bnum            bnQ(maxsize);
-    bnum            bnTemp(maxsize);
+    bnum            bnY(iMaxSize);
+    bnum            bnQ(iMaxSize);
+    bnum            bnTemp(iMaxSize);
     extern bnum     g_bnOne;
     
     if(!mpModExp(bnA, bnR, bnN, bnY))
@@ -563,10 +464,10 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum&
 bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[])
 {
     int     i, iS;
-    int     maxsize= bnN.mpSize();
-    bnum    bnR(maxsize);                 // odd
-    bnum    bnS(maxsize);                 // highest power of 2 dividing
-    bnum    bnNM1(maxsize);
+    int     iMaxSize= bnN.mpSize();
+    bnum    bnR(iMaxSize);                 // odd
+    bnum    bnS(iMaxSize);                 // highest power of 2 dividing
+    bnum    bnNM1(iMaxSize);
     bnum*   pbNum;
    
     bnN.mpCopyNum(bnNM1);
@@ -637,7 +538,7 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
     u64*    rguA= bnA.m_pValue;
     bnum    bnQ(bnA.mpSize());
     bnum*   rgbnBase[MAXBASE];
-    int     lA;
+    int     iRealSizeA;
     bool    fRet= false;
 
 #ifdef TEST
@@ -698,8 +599,8 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
             }
 
             // Number overflows?, subtract instead
-            lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-            if(mpUAddTo(bnA, g_bnTwo)!=0 || lA*NUMBITSINU64>iBitSize) {
+            iRealSizeA= LeadingNonZeroWord(bnA.mpSize(), bnA.m_pValue);
+            if(mpUAddTo(bnA, g_bnTwo)!=0 || iRealSizeA*NUMBITSINU64>iBitSize) {
                 fprintf(g_logFile, "Prime interval exceeded\n");
                 return false;
             }

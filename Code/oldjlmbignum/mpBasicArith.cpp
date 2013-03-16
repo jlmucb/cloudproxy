@@ -1,5 +1,5 @@
 //
-//  File: mpBasicArith.cpp
+//  File: mpBasicarith.cpp
 //      Basic Multiple Precision Arithmetic for jmbignum
 //      including Add, Subtract, Multiply, Divide
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
@@ -65,11 +65,10 @@ bnum::~bnum()
 void mpNormalizeZero(bnum& bnA)
 {
     int     i;
-    u64*    puA;
 
     if(!bnA.mpSign())
         return;
-    puA= bnA.m_pValue;
+    u64*  puA= bnA.m_pValue;
     for(i=0; i<(int)bnA.mpSize(); i++) {
         if(*(puA++)!=0)
             return;
@@ -79,17 +78,17 @@ void mpNormalizeZero(bnum& bnA)
 }
 
 
-//  Function: inline i32 mpWordsinNum
+//  Function: inline i32 LeadingNonZeroWord
 //  Arguments:
 //      IN      i32 iLen
 //      IN      u64* puN
 //  Description:
-//      Returns minumum number of words 
-//      to represent number
-i32 mpWordsinNum(i32 iLen, u64* puN)
+//      Returns position of leading non-zero slot
+//      position at 0 is right after sign/size word
+i32 LeadingNonZeroWord(i32 iLen, u64* puN)
 {
     puN+= iLen-1;
-    while(iLen>1) {
+    while(iLen>0) {
         if((*(puN--))!=0ULL)
             return(iLen);
         iLen--;
@@ -101,19 +100,29 @@ i32 mpWordsinNum(i32 iLen, u64* puN)
 bool bnum::mpCopyNum(bnum& bnC)  
 // copy this into bnC
 {
-    extern bool mpCopyWords(int, u64*, int, u64*);
-    int size=  mpSize();
-    int sizeC= bnC.mpSize();
-    int len= mpWordsinNum(size, m_pValue);
+    extern bool mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB);
+    int iSize=  mpSize();
+    int iSizeC= bnC.mpSize();
+    int iRealSize= LeadingNonZeroWord(iSize, m_pValue);
  
-    if(len>sizeC)
+    if(iRealSize>iSizeC)
         return false;   
 
     // copy Sign
     bnC.mpDumpSign();
     if(mpSign())
         bnC.mpNegate();
-    return mpCopyWords(size, m_pValue, sizeC, bnC.m_pValue);
+    return mpCopyWords(iSize, m_pValue, iSizeC, bnC.m_pValue);
+}
+
+
+bnum* mpMakeBigNum(u64 uA, int iSize=0)
+{
+    bnum* pB= new bnum(iSize);
+
+    pB->m_uSignandSize= (u32) iSize;
+    (pB->m_pValue)[0]= uA;
+    return pB;
 }
 
 
@@ -122,12 +131,12 @@ bool bnum::mpCopyNum(bnum& bnC)
 //      (bNum bnA)
 void printNum(bnum& bnA, bool fFull=false)
 {
-    i32     sizeA= bnA.mpSize();
+    i32     iSizeA= bnA.mpSize();
     bool    fSignA= bnA.mpSign();
     u64*    puN= NULL;
-    i32     lA;
+    i32     iRealSizeA;
 
-    if(sizeA<=0) {
+    if(iSizeA<=0) {
         fprintf(g_logFile, "0x0000000000000000");
         return;
     }
@@ -138,18 +147,18 @@ void printNum(bnum& bnA, bool fFull=false)
         fprintf(g_logFile, "[+");
 
     if(fFull) {
-        puN= bnA.m_pValue+sizeA-1;
-        while(sizeA-->0)  {
+        puN= bnA.m_pValue+iSizeA-1;
+        while(iSizeA-->0)  {
             fprintf(g_logFile, " 0x%016lx", *((unsigned long*)puN));
             puN--;
         }
     }
     else {
-        lA= mpWordsinNum(sizeA, bnA.m_pValue);
-        if(lA<=0)
-            lA= 1;
-        puN= bnA.m_pValue+lA-1;
-        while(lA-->0)  {
+        iRealSizeA= LeadingNonZeroWord(iSizeA, bnA.m_pValue);
+        if(iRealSizeA<=0)
+            iRealSizeA= 1;
+        puN= bnA.m_pValue+iRealSizeA-1;
+        while(iRealSizeA-->0)  {
             fprintf(g_logFile, " 0x%016lx", *((unsigned long*)puN));
             puN--;
         }
@@ -186,17 +195,17 @@ void initBigNum()
 
 //  Function: bool mpCopyWords
 //  Arguments:
-//      IN  int sizeA 
-//      IN  int sizeB 
+//      IN  int iSizeA 
+//      IN  int iSizeB 
 //      IN  u64* puA 
 //      OUT u64* puB
 //      Description:
-//          Copies up to sizeB 64 bit words from puA to puB
-//          if sizeA<sizeB the most significant slots are 0 filled
-bool mpCopyWords(int sizeA, u64* puA, int sizeB, u64* puB)
+//          Copies up to iSizeB 64 bit words from puA to puB
+//          if iSizeA<iSizeB the most significant slots are 0 filled
+bool mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB)
 {
-    for(int i=0; i<sizeB; i++) {
-        if(i<sizeA)
+    for(int i=0; i<iSizeB; i++) {
+        if(i<iSizeA)
             *(puB++)= *(puA++);
         else
             *(puB++)= 0;
@@ -208,29 +217,42 @@ bool mpCopyWords(int sizeA, u64* puA, int sizeB, u64* puB)
 //  Function: bnum mpDuplicateNum
 //  Arguments:
 //      IN bnum bnA
+//      IN i32 iPad=0
 //  Description:
 //      Duplicate bnA and allocate an additional iPad (zero filled) words 
 bnum* mpDuplicateNum(bnum& bnA)
 {
-    i32     sizeA= (int) bnA.mpSize();
-    bnum*   bn= new bnum(sizeA);
+    i32 iS= (int) bnA.mpSize();
+    bnum* bn= new bnum(iS);
 
     bn->m_uSignandSize= bnA.m_uSignandSize;
-    for(int i=0; i<sizeA; i++)
+    for(int i=0; i<iS; i++)
         bn->m_pValue[i]=bnA.m_pValue[i];
     return(bn);
 }
 
 
+//  Function: void mpWordSize
+//  Arguments:
+//      IN      bnum bnN
+//  Description:
+//      Zero words in puN
+int mpWordSize(bnum& bnN)
+{
+    i32  iLen= bnN.mpSize();
+    return  (iLen+63)/64;
+}
+
+
 //  Function: void ZeroWords
 //  Arguments:
-//      IN      i32 len
+//      IN      i32 iLen
 //      INOUT   u32* puN
 //  Description:
-//      Zero len words in puN
-void ZeroWords(i32 len, u64* puN)
+//      Zero iLen words in puN
+void ZeroWords(i32 iLen, u64* puN)
 {
-    while(len-->0) 
+    while(iLen-->0) 
         *(puN++)= 0;
 }
 
@@ -254,7 +276,7 @@ void mpZeroNum(bnum& bnN)
 void mpTrimNum(bnum& bnA)
 {
     u32     uSign= bnA.m_uSignandSize&s_SignBit;
-    u32     k= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    u32     k= LeadingNonZeroWord(bnA.mpSize(), bnA.m_pValue);
 
     if(k==0)
         bnA.m_uSignandSize= 0;
@@ -277,17 +299,17 @@ void mpTrimNum(bnum& bnA)
 //        s_iIsLessThan if bnA<bnB
 i32 mpUCompare(bnum& bnA, bnum& bnB)
 {
-    i32 sizeA= (int)mpWordsinNum((int)bnA.mpSize(), bnA.m_pValue);
-    i32 sizeB= (int)mpWordsinNum((int)bnB.mpSize(), bnB.m_pValue);
+    i32 iSizeA= (int)LeadingNonZeroWord((int)bnA.mpSize(), bnA.m_pValue);
+    i32 iSizeB= (int)LeadingNonZeroWord((int)bnB.mpSize(), bnB.m_pValue);
 
-    if(sizeA>sizeB)
+    if(iSizeA>iSizeB)
         return(s_iIsGreaterThan);
-    if(sizeA<sizeB)
+    if(iSizeA<iSizeB)
         return(s_iIsLessThan);
 
-    u64* puA= bnA.m_pValue+sizeA-1;
-    u64* puB= bnB.m_pValue+sizeB-1;
-    while(sizeA-->0) {
+    u64* puA= bnA.m_pValue+iSizeA-1;
+    u64* puB= bnB.m_pValue+iSizeB-1;
+    while(iSizeA-->0) {
         if(*puA>*puB)
             return(s_iIsGreaterThan);
         if(*puA<*puB)
@@ -378,21 +400,21 @@ i32 MaxBit(u64 uW)
 }
 
 
-//  Function: i32 mpBitsinNum
+//  Function: i32 LeadingNonZeroBit
 //  Arguments:
 //      i32 iSize - Size of array
 //      u32* rguN - Array of unsigned, least significant first
 //  Description:
 //      return most significant non-zero bit position.
-i32 mpBitsinNum(i32 size, u64* rguN)
+i32 LeadingNonZeroBit(i32 iSize, u64* rguN)
 {
-    int numWords= mpWordsinNum(size, rguN);
+    int iMaxWord= LeadingNonZeroWord(iSize, rguN);
 
-    if(numWords==0)
+    if(iMaxWord==0)
         return 0;
-    numWords--;
-    int numBits= MaxBit(rguN[numWords]);
-    return 64*numWords+numBits;
+    iMaxWord--;
+    int iMaxBit= MaxBit(rguN[iMaxWord]);
+    return 64*iMaxWord+iMaxBit;
 }
 
 
@@ -400,17 +422,17 @@ i32 mpBitsinNum(i32 size, u64* rguN)
 //  Function: bool IsBitPositionNonZero
 //  Arguments:
 //      bnum bnN  (Note: Word size is important)
-//      i32 pos
+//      i32 iPos
 //  Description:
-//      Is bit at position pos on?  
+//      Is bit at position iPos on?  
 //      Bit 1 is LSB.
-bool IsBitPositionNonZero(bnum& bnN, i32 pos)
+bool IsBitPositionNonZero(bnum& bnN, i32 iPos)
 {
-    pos--;
-    u64 uM= bnN.m_pValue[(pos/64)];
+    iPos--;
+    u64 uM= bnN.m_pValue[(iPos/64)];
 
-    pos&= 0x3f;
-    if((uM&(1ULL<<pos))!=0)
+    iPos&= 0x3f;
+    if((uM&(1ULL<<iPos))!=0)
         return true;
     return false;
 }
@@ -423,65 +445,67 @@ bool IsBitPositionNonZero(bnum& bnN, i32 pos)
 //      Shift
 //
 
-inline u64 bottomMask64(int numBits)
+inline u64 bottomMask64(int iNumBits)
 {
     u64 uMask= (u64) (-1);
 
-    uMask<<= (64-numBits);
-    uMask>>= (64-numBits);
+    uMask<<= (64-iNumBits);
+    uMask>>= (64-iNumBits);
     return uMask;
 }
 
 
-void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits)
+void shiftup(bnum& bnA, bnum& bnR, i32 iShiftNumBits)
 {
     int         i;
-    int         wordShift= (numShiftBits>>6);
-    int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= 64-bitShift;
-    u64         ubottomMask= bottomMask64(bottomShift);
+    int         iWordShift= (iShiftNumBits>>6);
+    int         iBitShift= iShiftNumBits&0x3f;
+    int         iBottomShift= 64-iBitShift;
+    u64         ubottomMask= bottomMask64(iBottomShift);
     u64         utopMask= ((u64)(-1))^ubottomMask;
-    u64*        rgA= bnA.m_pValue;
-    u64*        rgR= bnR.m_pValue;
-    i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
+    i32         iSizeA= bnA.mpSize();
+    u64*        rguA= bnA.m_pValue;
+    u64*        rguR= bnR.m_pValue;
+    i32         iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
     u64         r, s, t;
 
-    t= rgA[lA-1];
-    if(bitShift>0) {
-        r= (t&utopMask)>>bottomShift;
-        rgR[lA+wordShift]= r;
+    t= rguA[iRealSizeA-1];
+    if(iBitShift>0) {
+        r= (t&utopMask)>>iBottomShift;
+        rguR[iRealSizeA+iWordShift]= r;
     }
-    s= (t&ubottomMask)<<bitShift;
+    s= (t&ubottomMask)<<iBitShift;
 
-    for(i=(lA-1); i>0;i--) {
-        t= rgA[i-1];
-        r= (t&utopMask)>>bottomShift;
-        rgR[i+wordShift]|= s|r;
-        s= (t&ubottomMask)<<bitShift;
+    for(i=(iRealSizeA-1); i>0;i--) {
+        t= rguA[i-1];
+        r= (t&utopMask)>>iBottomShift;
+        rguR[i+iWordShift]|= s|r;
+        s= (t&ubottomMask)<<iBitShift;
     }
-    rgR[wordShift]= s;
+    rguR[iWordShift]= s;
 }
 
 
-void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
+void shiftdown(bnum& bnA, bnum& bnR, i32 iShiftNumBits)
 {
     int         i;
-    int         wordShift= (numShiftBits>>6);
-    int         bitShift= numShiftBits&0x3f;
-    u64         ubottomMask= bottomMask64(bitShift);
-    int         bottomShift= 64-bitShift;
-    u64*        rgA= bnA.m_pValue;
-    u64*        rgR= bnR.m_pValue;
-    i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
+    int         iWordShift= (iShiftNumBits>>6);
+    int         iBitShift= iShiftNumBits&0x3f;
+    u64         ubottomMask= bottomMask64(iBitShift);
+    int         iBottomShift= 64-iBitShift;
+    i32         iSizeA= bnA.mpSize();
+    u64*        rguA= bnA.m_pValue;
+    u64*        rguR= bnR.m_pValue;
+    i32         iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
     u64         r, s, t;
 
-    t= rgA[wordShift];
-    s= t>>bitShift;
-    for(i=0; i<(lA-wordShift); i++) {
-        t= rgA[i+1+wordShift];
-        r= (t&ubottomMask)<<bottomShift;
-        rgR[i]|= s|r;
-        s= t>>bitShift;
+    t= rguA[iWordShift];
+    s= t>>iBitShift;
+    for(i=0; i<(iRealSizeA-iWordShift); i++) {
+        t= rguA[i+1+iWordShift];
+        r= (t&ubottomMask)<<iBottomShift;
+        rguR[i]|= s|r;
+        s= t>>iBitShift;
     }
 }
 
@@ -489,30 +513,30 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
 //  Function: bool mpShift
 //  Arguments:
 //      IN bnum bnA
-//      IN i32 numShiftBits
+//      IN i32 iShiftNumBits
 //      OUT bnum bnR
 //  Description:
-//      numShiftBits>0 means shift increases value
-bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
+//      iShiftNumBits>0 means shift increases value
+bool mpShift(bnum& bnA, i32 iShiftNumBits, bnum& bnR)
 {
-    i32     sizeA= bnA.mpSize();
-    i32     sizeR= bnR.mpSize();
+    i32     iSizeA= bnA.mpSize();
+    i32     iSizeR= bnR.mpSize();
 
     // Enough room?
-    if(sizeA+((numShiftBits+63)/64)>sizeR)
+    if(iSizeA+((iShiftNumBits+63)/64)>iSizeR)
         return false;
 
     mpZeroNum(bnR);
-    if(numShiftBits==0) {
+    if(iShiftNumBits==0) {
         bnA.mpCopyNum(bnR);
         return true;
     }
 
-    if(numShiftBits>0) {
-        shiftup(bnA, bnR, numShiftBits);
+    if(iShiftNumBits>0) {
+        shiftup(bnA, bnR, iShiftNumBits);
     }
     else {
-        shiftdown(bnA, bnR, -numShiftBits);
+        shiftdown(bnA, bnR, -iShiftNumBits);
     }
 
     return true;
@@ -522,133 +546,118 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
 // ----------------------------------------------------------------------------
 
 
-//     Unsigned operations 
-//          Assembly routines are are machine dependent
-
+//          Helper Functions for unsigned operations 
+//          These are machine dependent
+#ifdef NOINLINEARITH
 #include "fastArith.h"
+#else
+#include "inlineArith.cpp"
+#endif
 
 
-//  Function: void mpUAdd (no inline)
+// ----------------------------------------------------------------------------
+
+
+//
+//              Add and Subtract for unsigned numbers
+//
+
+
+//  Function: void mpUAdd
 //  Arguments:
 //      IN bnum bnA 
 //      IN bnum bnB
 //      OUT bnum bnR
 //  Description:
 //      Addition of two non-negative numbers.  bnR = bnA + bnB
-//  Return carry if there's no room
+//      Assumes there is enough room in bnR
 u64 mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR)
 {
-    i32     lR= bnR.mpSize();
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    i32     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    u64     uCarry= 0ULL;
+    i32     iSizeA= bnA.mpSize();
+    i32     iSizeB= bnB.mpSize();
+    i32     iSizeMax, iSizeMin;
+    i32     j;
+    u64     uCarry= 0;
+    u64*    pu1= NULL;
+    u64*    pu2= NULL;
+    u64*    puOut= bnR.m_pValue;
+    i32     iOutSize= bnR.mpSize();
 
-    if(lA<=0) {
-        fprintf(g_logFile, "mpUAdd: first arg not a number\n");
-        return 0ULL;
-    }
-    if(lB<=0) {
-        fprintf(g_logFile, "mpUAdd: second arg not a number\n");
-        return 0ULL;
-    }
-
-    if(lA>=lB) {
-        if(lR<lA) {
-            fprintf(g_logFile, "mpUAdd: Overflow\n");
-            return 0ULL;
-        }
-        uCarry= mpUAddLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnR.m_pValue);
-        if(uCarry>0 && lR>lA) {
-            bnR.m_pValue[lA]= uCarry;
-            uCarry= 0ULL;
-        }
+    if(iSizeA>iSizeB) {
+        iSizeMax= iSizeA;
+        iSizeMin= iSizeB;
+        pu1= bnA.m_pValue;
+        pu2= bnB.m_pValue;
     }
     else {
-        if(lR<lB) {
-            fprintf(g_logFile, "mpUAdd: Overflow\n");
-            return 0ULL;
-        }
-        uCarry= mpUAddLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnR.m_pValue);
-        if(uCarry>0 && lR>lB) {
-            bnR.m_pValue[lB]= uCarry;
-            uCarry= 0ULL;
-        }
+        iSizeMax= iSizeB;
+        iSizeMin= iSizeA;
+        pu1= bnB.m_pValue;
+        pu2= bnA.m_pValue;
     }
+
+    if(iOutSize<iSizeMax) {
+        fprintf(g_logFile, "mpUAdd: Overflow\n");
+        return 0ULL;
+    }
+
+    for(j=0; j<iSizeMax; j++) {
+        if(j<iSizeMin)
+                uCarry= longaddwithcarry(puOut, *pu1, *pu2, uCarry);
+        else
+                uCarry= longaddwithcarry(puOut, *pu1, 0L, uCarry);
+        pu1++;
+        pu2++;
+        puOut++;
+    }
+    if(uCarry>0 && iOutSize>iSizeMax) {
+        *puOut= uCarry;
+        return 0;
+    }
+
     return uCarry;
 }
 
 
-//  Function: u64 mpUAddTo (no inline)
+//  Function: u64 mpUAddTo
 //  Arguments:
 //      INOUT bnum bnA
 //      IN bnum bnB
 //  Description:
 //      bnA+= bnB, don't trim
-//      Return carry if there's no room
+//      Return carry
 u64 mpUAddTo(bnum& bnA, bnum& bnB)
 {
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    i32     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    u64     uCarry= 0ULL;
+    i32     iMaxSizeA= bnA.mpSize();
+    i32     iMaxSizeB= bnB.mpSize();
+    u64*    pu1= bnA.m_pValue;
+    u64*    pu2= bnB.m_pValue;
+    i32     iRealSizeA= LeadingNonZeroWord(iMaxSizeA, pu1);
+    i32     iRealSizeB= LeadingNonZeroWord(iMaxSizeB, pu2);
+    u64     uCarry= 0;
+    i32     j;
+    i32     iMaxSize= iRealSizeA>iRealSizeB?iRealSizeA:iRealSizeB;
+    i32     iLoopSize= iMaxSizeA>iMaxSize?iMaxSize+1:iMaxSize;
 
-    if(lA<=0) {
-        fprintf(g_logFile, "mpUAddTo: first arg not a number\n");
+    if(iMaxSizeA<iRealSizeB) {
+        fprintf(g_logFile, "mpUAddTo: OverFlow\n");
         return 0ULL;
     }
-    if(lB<=0) {
-        fprintf(g_logFile, "mpUAddTo: second arg not a number\n");
-        return 0ULL;
-    }
 
-    if(lA>=lB) {
-        uCarry= mpUAddLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnA.m_pValue);
-        if(uCarry>0 && (int)bnA.mpSize()>lA) {
-            bnA.m_pValue[lA]= uCarry;
-            uCarry= 0ULL;
-        }
+    for(j=0; j<iLoopSize; j++) {
+        if(j<iRealSizeB)
+            uCarry= longaddwithcarry(pu1, *pu1, *pu2, uCarry);
+        else
+            uCarry= longaddwithcarry(pu1, *pu1, 0L, uCarry);
+        pu1++;
+        pu2++;
     }
-    else {
-        if((int)bnA.mpSize()<lB) {
-            fprintf(g_logFile, "mpUAddTo: Overflow\n");
-            return 0ULL;
-        }
-        uCarry= mpUAddLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnA.m_pValue);
-        if(uCarry>0 && (int)bnA.mpSize()>lB) {
-            bnA.m_pValue[lB]= uCarry;
-            uCarry= 0ULL;
-        }
-    }
+    
     return uCarry;
 }
 
 
-//  Function: u64 mpSingleUAddTo (no inline)
-//  Arguments:
-//      INOUT   bnum bnA
-//      IN      u64 uA
-//  Description:
-//      bnA+= uA, don't trim
-//  Return carry if there's no room
-u64 mpSingleUAddTo(bnum& bnA, u64 uA)
-{
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    u64     uCarry= 0ULL;
-
-    if(lA<=0) {
-        fprintf(g_logFile, "mpSingleUAddTo: first arg not a number\n");
-        return 0ULL;
-    }
-
-    uCarry= mpUAddLoop(lA, bnA.m_pValue, 1, &uA, bnA.m_pValue);
-    if(uCarry>0 && (int)bnA.mpSize()>lA) {
-        bnA.m_pValue[lA]= uCarry;
-        uCarry= 0ULL;
-    }
-    return uCarry;
-}
-
-
-//  Function: u64 mpUSub (no inline)
+//  Function: u64 mpUSub
 //  Arguments:
 //      IN bnum bnA
 //      IN bnum bnB
@@ -657,33 +666,36 @@ u64 mpSingleUAddTo(bnum& bnA, u64 uA)
 //      Assumes there is enough room, size A >= size B
 u64 mpUSub(bnum& bnA, bnum& bnB, bnum& bnR, u64 uBorrow=0)
 {
-    i32     lR= bnR.mpSize();
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    i32     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    i32     j;
+    i32     iSizeA= bnA.mpSize();
+    i32     iSizeB= bnB.mpSize();
+    i32     iOutSize= bnR.mpSize();
+    i32     iRealSizeA= LeadingNonZeroWord(iSizeA, bnA.m_pValue);
+    u64*    pu1= bnA.m_pValue;
+    u64*    pu2= bnB.m_pValue;
+    u64*    puOut= bnR.m_pValue;
 
-    if(lA<=0) {
-        fprintf(g_logFile, "mpUSub: first arg not a number\n");
-        return 0ULL;
-    }
-    if(lB<=0) {
-        fprintf(g_logFile, ": second arg not a number\n");
-        return 0ULL;
-    }
-    if(lA<lB) {
-        fprintf(g_logFile, "mpUSub: second argument is bigger than first\n");
-        return 0ULL;
-    }
-
-    if(lR<lA) {
+    if(iOutSize<iRealSizeA) {
         fprintf(g_logFile, "mpUSub: Overflow");
         return 0ULL;
     }
-    uBorrow= mpUSubLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnR.m_pValue, uBorrow);
-    return uBorrow;
+
+    for(j=0; j<iSizeA; j++) {
+        if(j<iSizeB)
+            uBorrow= longsubstep(puOut, *pu1, *pu2, uBorrow);
+        else
+            uBorrow= longsubstep(puOut, *pu1, 0L, uBorrow);
+        pu1++;
+        pu2++;
+        puOut++;
+    }
+
+    return 0;
+    // mpTrimNum(bnR);
 }
 
 
-//  Function: u64 mpUSubFrom (no inline)
+//  Function: u64 mpUSubFrom
 //  Arguments:
 //      INOUT   bnum bnA
 //      IN      bnum bnB
@@ -692,100 +704,152 @@ u64 mpUSub(bnum& bnA, bnum& bnB, bnum& bnR, u64 uBorrow=0)
 //      Return borrow
 u64 mpUSubFrom(bnum& bnA, bnum& bnB)
 {
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    i32     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    u64     uBorrow= 0ULL;
+    i32     iMaxSizeA= bnA.mpSize();
+    i32     iMaxSizeB= bnB.mpSize();
+    u64*    pu1= bnA.m_pValue;
+    u64*    pu2= bnB.m_pValue;
+    i32     iRealSizeA= LeadingNonZeroWord(iMaxSizeA, pu1);
+    i32     iRealSizeB= LeadingNonZeroWord(iMaxSizeB, pu2);
+    u64     uBorrow= 0;
+    i32     j;
+    i32     iMaxSize= iRealSizeA>iRealSizeB?iRealSizeA:iRealSizeB;
+    i32     iLoopSize= iMaxSizeA>iMaxSize?iMaxSize+1:iMaxSize;
 
-    if(lA<=0) {
-        fprintf(g_logFile, "mpUSubFrom: first arg not a number\n");
-        return 0ULL;
-    }
-    if(lB<=0) {
-        fprintf(g_logFile, "mpUSubFrom: second arg not a number\n");
-        return 0ULL;
-    }
-    if(lA<lB) {
-        fprintf(g_logFile, "mpUSubFrom: second argument is bigger than first\n");
+    if(iMaxSizeA<iRealSizeB) {
+        fprintf(g_logFile, "mpUSubFrom: OverFlow\n");
         return 0ULL;
     }
 
-    uBorrow= mpUSubLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnA.m_pValue, uBorrow);
+    for(j=0; j<iLoopSize; j++) {
+        if(j<iRealSizeB)
+            uBorrow= longsubstep(pu1, *pu1, *pu2, uBorrow);
+        else
+            uBorrow= longsubstep(pu1, *pu1, 0L, uBorrow);
+        pu1++;
+        pu2++;
+    }
+
+    // negative?
     return uBorrow;
 }
 
 
-//  Function: u64 mpUSingleMultBy (no inline)
+//  Function: u64 mpSingleUAddTo
+//  Arguments:
+//      INOUT   bnum bnA
+//      IN      u64 uA
+//  Description:
+//      bnA+= uA, don't trim
+//  Return carry
+u64 mpSingleUAddTo(bnum& bnA, u64 uA)
+{
+    i32     iSizeA= bnA.mpSize();
+    u64     uCarry= 0ULL;
+    u64*    pu= bnA.m_pValue;
+    i32     j;
+
+    uCarry= longaddwithcarry(pu, *pu, uA, uCarry);
+    pu++;
+    for(j=1; j<iSizeA; j++) {
+        uCarry= longaddwithcarry(pu, *pu, 0L, uCarry);
+        pu++;
+    }
+
+    // Enough room?
+    return uCarry;
+}
+
+
+//  Function: u64 mpUSingleMultBy
 //  Arguments:
 //      INOUT   bnum bnA
 //      IN      u64  uB
 //  return carry
 u64 mpUSingleMultBy(bnum& bnA, u64 uB)
 {
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    i32     iSizeA= bnA.mpSize();
+    u64*    rguA= bnA.m_pValue;
     u64     uCarry= 0ULL;
+    u64     uA;
+    i32     i;
 
-    if(lA<=0) {
-        fprintf(g_logFile, "mpUSingleMultBy: first arg not a number\n");
-        return 0ULL;
-    }
     if(uB==0) {
-        ZeroWords(bnA.mpSize(), bnA.m_pValue);
+        ZeroWords(iSizeA, bnA.m_pValue);
         return 0ULL;
     }
 
-    uCarry= mpUMultByLoop(lA, bnA.m_pValue, uB);
-    if(uCarry>0 && (int)bnA.mpSize()>lA) {
-        bnA.m_pValue[lA]= uCarry;
-        uCarry= 0;
+    for(i=0; i<iSizeA; i++) {
+        uA= rguA[i];
+        uCarry= longmultiplystep(&rguA[i], uA, uB, uCarry);
     }
+
     return uCarry;
 }
 
 
-//  Function: bool mpUMult (no inline)
+// ----------------------------------------------------------------------------
+
+
+//
+//          Multiply and Divide for unsigned numbers
+//
+
+
+inline void mpMultiplyStep(u64* puCarry, u64* puRes, u64 uIn1, u64 uIn2, u64 uToAdd, u64 uCarry)
+// (*puCarry, *puRes)= uIn1*uIn2 + uToAdd + uCarry
+{
+    u64 uMCarry;
+    u64 uACarry;
+    u64 uMres;
+
+#ifdef ARITHTEST1
+    fprintf(g_logFile, "MStep, uIn1: %016lx, uIn2: %016lx, uCarry: %016lx, uToAdd: %016lx\n", 
+           (up64) uIn1, (up64) uIn2, (up64) uCarry, (up64) uToAdd);
+#endif
+    uMCarry= longmultiplystep(&uMres, uIn1, uIn2, uCarry);
+    uACarry= longaddwithcarry(puRes, uMres, uToAdd, 0L);
+
+    *puCarry= uMCarry+uACarry;   // should never have further carry
+#ifdef ARITHTEST1
+    fprintf(g_logFile, "Result: %016lx, Carry: %016lx\n", (up64) *puRes, (up64) *puCarry);
+#endif
+}
+
+
+//  Function: bool mpUMult
 //  Arguments:
 //      bnum bnA
 //      bnum bnB
 //      bnum bnR
 bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
 {
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    i32     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    u64     uCarry= 0ULL;
-   
-    if(lA<=0) {
-        fprintf(g_logFile, "mpUMult: first arg not a number\n");
-        return 0ULL;
-    }
-    if(lB<=0) {
-        fprintf(g_logFile, "mpUMult: second arg not a number\n");
-        return 0ULL;
-    }
-    if((int)bnR.mpSize()<(lA+lB)) {
+    i32     iSizeA= bnA.mpSize();
+    i32     iSizeB= bnB.mpSize();
+    u64*    rguA= bnA.m_pValue;
+    u64*    rguB= bnB.m_pValue;
+    i32     iRealSizeA= LeadingNonZeroWord(iSizeA, rguA);
+    i32     iRealSizeB= LeadingNonZeroWord(iSizeB, rguB);
+    u64*    rguOut= bnR.m_pValue;
+    u64     uCarry= 0;
+    i32     i, j;
+    i32     iOutSize= bnR.mpSize();
+
+    if(iOutSize<(iRealSizeA+iRealSizeB)) {
         fprintf(g_logFile, "mpUMult: potential overflow\n");
         return false;
     }
-    ZeroWords(bnR.mpSize(), bnR.m_pValue);
-
-    if(lA>=lB) {
-        uCarry= mpUMultLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnR.m_pValue);
+    ZeroWords(iOutSize, rguOut);
+    for(i=0; i<iRealSizeA; i++) {
+        uCarry= 0ULL;
+        for(j=0; j<iRealSizeB; j++)
+            mpMultiplyStep(&uCarry, &rguOut[i+j], rguA[i], rguB[j], rguOut[i+j], uCarry);
+        rguOut[i+j]= uCarry;
     }
-    else {
-        uCarry= mpUMultLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnR.m_pValue);
-    }
-    if(uCarry==0)
-        return true;
-
-    if((int)bnR.mpSize()>(lA+lB-1)) {
-        bnR.m_pValue[lA+lB-1]= uCarry;
-        return true;
-    }
-    fprintf(g_logFile, "mpUMult: overflow\n");
-    return false;
+    return true;
 }
 
 
-//  Function: bool mpUSingleMultAndShift (no inline)
+//  Function: bool mpUSingleMultAndShift
 //  Arguments:
 //      bnum bnA
 //      u32 uB
@@ -793,29 +857,35 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
 //      bnum bnR
 bool mpUSingleMultAndShift(bnum& bnA, u64 uB, i32 iShift, bnum& bnR)
 {
-    i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    i32     iSizeR= bnR.mpSize(); 
+    i32     iRealSizeA= LeadingNonZeroWord(bnA.mpSize(), bnA.m_pValue);
+    u64*    rguOut= bnR.m_pValue;
+    u64*    rguA= bnA.m_pValue;
     u64     uCarry= 0;
+    i32     i;
 
-    ZeroWords(bnR.mpSize(), bnR.m_pValue);
     if(uB==0ULL || bnA.mpIsZero()) {
+        ZeroWords(bnR.mpSize(), bnR.m_pValue);
         return true;
     }
-
-    if((lA+iShift)>(int)bnR.mpSize()) {
-        fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
+    if((iRealSizeA+iShift)>=iSizeR)
         return false;
+    uCarry= 0;
+    for(i=0; i<iRealSizeA; i++) {
+        uCarry= longmultiplystep(&rguOut[i+iShift], rguA[i], uB, uCarry);
     }
-    int lR= (int)bnR.mpSize();
-    mpCopyWords(lA, bnA.m_pValue, lR-iShift, bnR.m_pValue+iShift);
-    uCarry= mpUMultByLoop(lR, bnR.m_pValue, uB);
-    if(uCarry==0)
-        return true;
-    fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
-    return false;
+#ifdef ARITHTEST
+    extern void printNum(bnum&, bool fFull=false);
+    fprintf(g_logFile, "USingle, shift: %d, i+iShift: %d\n", iShift, i+iShift);
+    printNum(bnA); fprintf(g_logFile, " * %016lx << %d = ", (up64) uB, iShift);
+    printNum(bnR); fprintf(g_logFile, ", carry: %016lx\n", (up64) uCarry);
+#endif
+    rguOut[i+iShift]= uCarry;
+    return true;
 }
 
 
-//  Function: bool mpSingleUDiv (no inline)
+//  Function: bool mpSingleUDiv
 //  Arguments:
 //      bnum bnA, 
 //      u32 uB, 
@@ -826,7 +896,7 @@ bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true)
 {
     i32     i;
     u64*    rguA= bnA.m_pValue;
-    i32     iRealSizeA= mpWordsinNum(bnA.mpSize(), rguA);
+    i32     iRealSizeA= LeadingNonZeroWord(bnA.mpSize(), rguA);
     u64     uRem= 0;
     i32     iOutSize= bnQ.mpSize();
     u64*    rguOut= bnQ.m_pValue;
@@ -850,26 +920,22 @@ bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true)
 }
 
 
-//  Function: void EstimateQuotient (no inline)
+//  Function: inline bool EstimateQuotient
 //  Description:
 //      Estimate Quotient.  
-//          vM1!=0
+//      
 //      qE= min(floor((uHi*r+uLo)/uDenom)), radix-1), rE= remainder. r is radix.
 //      qE>= q >= qE-2, if uDenom>= floor(r/2);
 //      if( qE==r || qE*uLower> r*rE+uNext) {
 //          qE--; rE+= uDenom;
 //      }
 //      repeat if rE< r
-void EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 vM2)
+inline bool EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 vM2)
 {
     u64 uQ, uR, uRTop, uA;
     
-#ifdef ARITHTEST
-    fprintf(g_logFile, "longdivstep(%016lx, %016lx, %016lx\n", uN-vM1, uNM1, vM1);
-    fflush(g_logFile);
-#endif
-    // if(vM1==0)
-    //    return false;
+    if(vM1==0)
+        return false;
     if(uN>=vM1) {
         uQ= (u64) -1ULL;
         uR= longdivstep(&uA, uN-vM1, uNM1, vM1);
@@ -883,14 +949,13 @@ void EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 vM2)
         uR= longdivstep(&uQ, uN, uNM1, vM1);
     }
 
-    *pqE= uQ;
 #ifdef ARITHTEST
     fprintf(g_logFile, "EstimateQuotient(%016lx, %016lx, %016lx, %016lx, %016lx) --- ",
            (up64) uN, (up64) uNM1, (up64) uNM2, (up64) vM1, (up64) vM2);
     fprintf(g_logFile, "uQ: %016lx\n", (up64) uQ);
-    fflush(g_logFile);
 #endif
-    return;
+    *pqE= uQ;
+    return true;
 }
 
 
@@ -918,28 +983,28 @@ void EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 vM2)
 bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 {
     i32     i;
-    i32     sizeA= bnA.mpSize();
-    i32     sizeB= bnB.mpSize();
-    i32     sizeQ= bnQ.mpSize();
-    i32     sizeR= bnR.mpSize();
-    i32     lA, lB, iQSize, iShift;
-    i32     scaledA, scaledB;
+    i32     iSizeA= bnA.mpSize();
+    i32     iSizeB= bnB.mpSize();
+    i32     iSizeQ= bnQ.mpSize();
+    i32     iSizeR= bnR.mpSize();
+    i32     iRealSizeA, iRealSizeB, iQSize, iShift;
+    i32     iRealScaledA, iRealScaledB;
     u64     uQ= 0;
     u64     uScale, uRem;
-    u64*    rgQOut= bnQ.m_pValue;
-    u64*    rgtA= NULL;
-    u64*    rgtB= NULL;
-    u64*    rgtC= NULL;
+    u64*    rguQOut= bnQ.m_pValue;
+    u64*    rgutA= NULL;
+    u64*    rgutB= NULL;
+    u64*    rgutC= NULL;
     u64     uA, uB;
         
     if(bnB.mpIsZero()) {
         fprintf(g_logFile, "mpUDiv: Division by 0\n");
         return false;
     }
-    lA= mpWordsinNum(sizeA, bnA.m_pValue);
-    lB= mpWordsinNum(sizeB, bnB.m_pValue);
-    iQSize= lA-lB+1;
-    if(iQSize>sizeQ) {
+    iRealSizeA= LeadingNonZeroWord(iSizeA, bnA.m_pValue);
+    iRealSizeB= LeadingNonZeroWord(iSizeB, bnB.m_pValue);
+    iQSize= iRealSizeA-iRealSizeB+1;
+    if(iQSize>iSizeQ) {
         fprintf(g_logFile, "mpUDiv: Quotient overflow\n");
         return false;
     }
@@ -947,36 +1012,36 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     mpZeroNum(bnR);
 
     if(mpUCompare(bnA, bnB)==s_iIsLessThan) {
-        if(sizeR<lA) {
+        if(iSizeR<iRealSizeA) {
             fprintf(g_logFile, "mpUDiv: Remainder overflow\n");
             return false;
         }
         bnA.mpCopyNum(bnR);
         return true;
     }
-    if(sizeR<lB) {
+    if(iSizeR<iRealSizeB) {
         fprintf(g_logFile, "mpUDiv: Remainder overflow\n");
         return false;
     }
 
     // does bnB have length 1 or less?
-    if(lB==1) {
+    if(iRealSizeB==1) {
         mpSingleUDiv(bnA, bnB.m_pValue[0], bnQ, bnR.m_pValue, true);
         return true;
     }
 
     // Allocate Temporaries: one more digit than bnA in 
     //       case normalization causes digit spill over.
-    bnum bnTempA(sizeA+3);
-    bnum bnTempB(sizeB+3);
-    bnum bnTempC(sizeA+3);
-    rgtA= bnTempA.m_pValue;
-    rgtB= bnTempB.m_pValue;
-    rgtC= bnTempC.m_pValue;
+    bnum bnTempA(iSizeA+3);
+    bnum bnTempB(iSizeB+3);
+    bnum bnTempC(iSizeA+3);
+    rgutA= bnTempA.m_pValue;
+    rgutB= bnTempB.m_pValue;
+    rgutC= bnTempC.m_pValue;
 
-    UNUSEDVAR(rgtC);
+    UNUSEDVAR(rgutC);
 
-    i= mpWordsinNum(bnB.mpSize(), bnB.m_pValue)-1;
+    i= LeadingNonZeroWord(bnB.mpSize(), bnB.m_pValue)-1;
     if(i<0) {
         fprintf(g_logFile, "mpUDiv: divide by 0\n");
         return false;
@@ -985,8 +1050,8 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     // Normalize
     //  make sure v1>= floor(b/2)
     if((bnB.m_pValue[i]&(1ULL<<63))!=0) {
-        mpCopyWords(sizeA, bnA.m_pValue, sizeA, rgtA);
-        mpCopyWords(sizeB, bnB.m_pValue, sizeB, rgtB);
+        mpCopyWords(iSizeA, bnA.m_pValue, iSizeA, rgutA);
+        mpCopyWords(iSizeB, bnB.m_pValue, iSizeB, rgutB);
         uScale= 1ULL;     // for renormalization
     }
     else {
@@ -994,35 +1059,35 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
         mpUSingleMultAndShift(bnA, uScale, 0, bnTempA);
         mpUSingleMultAndShift(bnB, uScale, 0, bnTempB);
     }
-    scaledA= mpWordsinNum(bnTempA.mpSize(), rgtA);
-    scaledB= mpWordsinNum(bnTempB.mpSize(), rgtB);
+    iRealScaledA= LeadingNonZeroWord(bnTempA.mpSize(), rgutA);
+    iRealScaledB= LeadingNonZeroWord(bnTempB.mpSize(), rgutB);
 #ifdef ARITHTEST
     fprintf(g_logFile, "Scale: %016lx, LeadA: %016lx, leadB: %016lx\n", (up64) uScale,
-           (up64) rgtA[scaledA-1], (up64) rgtB[scaledB-1]);
+           (up64) rgutA[iRealScaledA-1], (up64) rgutB[iRealScaledB-1]);
 #endif
 
     // Loop through the digits
-    uA= rgtB[scaledB-1];
-    if(scaledB>=2)
-        uB= rgtB[scaledB-2];
+    uA= rgutB[iRealScaledB-1];
+    if(iRealScaledB>=2)
+        uB= rgutB[iRealScaledB-2];
     else
         uB= 0ULL;
 
-    for(i=scaledA-1; i>=scaledB; i--) {
+    for(i=iRealScaledA-1; i>=iRealScaledB; i--) {
 #ifdef ARITHTEST
         fprintf(g_logFile, "\nLoop head %d\n", i); 
         fprintf(g_logFile, "Estimate Quotient(%016lx, %016lx, %016lx, %016lx, %016lx\n",
-            (up64) rgtA[i], (up64) rgtA[i-1], (up64) rgtA[i-2], 
+            (up64) rgutA[i], (up64) rgutA[i-1], (up64) rgutA[i-2], 
             (up64) uA, (up64) uB); fflush(stdout);
 #endif
         if(i==1)
-            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0, uA, uB);
+            EstimateQuotient(&uQ, rgutA[i], rgutA[i-1], 0, uA, uB);
         else
-            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], rgtA[i-2], uA, uB);
+            EstimateQuotient(&uQ, rgutA[i], rgutA[i-1], rgutA[i-2], uA, uB);
 
         // Compute product
         mpZeroNum(bnTempC);
-        iShift= i-scaledB;
+        iShift= i-iRealScaledB;
         mpUSingleMultAndShift(bnTempB, uQ, iShift, bnTempC);
 #ifdef ARITHTEST
         fprintf(g_logFile, "\n");
@@ -1059,7 +1124,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
         fflush(stdout);
 #endif
         // Set Quotient
-        rgQOut[i-scaledB]= uQ;
+        rguQOut[i-iRealScaledB]= uQ;
     }
 
     // UnNormalize
@@ -1080,11 +1145,11 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 //  Function: bool ConvertToDecimalString
 //  Arguments:
 //      IN bnum bnA,
-//      IN i32 stringSize
+//      IN i32 iStringSize
 //      OUT char* szNumber
 //  Description:
 //      Print as decimal number
-bool ConvertToDecimalString(bnum& bnA, i32 stringSize, char* szNumber)
+bool ConvertToDecimalString(bnum& bnA, i32 iStringSize, char* szNumber)
 {
     int     i, j;
     u64     uRem= 0;
@@ -1101,7 +1166,7 @@ bool ConvertToDecimalString(bnum& bnA, i32 stringSize, char* szNumber)
     else
         *szNumber= '+';
     rgszNum= szNumber+1;
-    for(i=0; i<(stringSize-1); i++) {
+    for(i=0; i<(iStringSize-1); i++) {
         if(bnN.mpIsZero())
             break;
         mpSingleUDiv(bnN, 10L, bnQ, &uRem, false);
@@ -1110,7 +1175,7 @@ bool ConvertToDecimalString(bnum& bnA, i32 stringSize, char* szNumber)
     }
     if(i==0)
         rgszNum[i]= '0'+uRem;
-    if(i>=(stringSize-1)) {
+    if(i>=(iStringSize-1)) {
         fprintf(g_logFile, "String too small\n");
         return false;
     }
@@ -1135,7 +1200,7 @@ bool ConvertToDecimalString(bnum& bnA, i32 stringSize, char* szNumber)
 bool ConvertFromDecimalString(bnum& bnA, const char* szNumber)
 {
     int     i;
-    int     maxSize= bnA.mpSize();
+    int     iMaxSize= bnA.mpSize();
     u64     uN= 0;
     const char*   pszNum= szNumber;
     u64*    rguNum= NULL;
@@ -1148,7 +1213,7 @@ bool ConvertFromDecimalString(bnum& bnA, const char* szNumber)
             i++;
         pszNum++;
     }
-    if((maxSize*9)<i) {
+    if((iMaxSize*9)<i) {
         fprintf(g_logFile, "ConvertFromDecimalString(:Character length too small\n");
         return false;
     }

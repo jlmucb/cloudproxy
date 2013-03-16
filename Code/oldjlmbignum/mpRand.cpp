@@ -58,25 +58,25 @@ u64 randu(u64 ua)
 
 //  Function: bool GetRandBits
 //  Arguments:
-//      IN i32      numBits, 
+//      IN i32      iNumBits, 
 //      OUT u64*    rguBits
 //  Description:
-//      Generate numBits bits of entropy
-bool getCryptoRand(i32 numBits, byte* rguBits)
+//      Generate iNumBits bits of entropy
+bool getCryptoRand(i32 iNumBits, byte* rguBits)
 {
     int     i= 0;
     u64     uM= 1L<<63;  
 
-    while(numBits>0) {
+    while(iNumBits>0) {
         rguBits[i]= randu(2L);
-        if(numBits<64) {
-            for(int j=0; j<64-numBits;j++) {
+        if(iNumBits<64) {
+            for(int j=0; j<64-iNumBits;j++) {
                 rguBits[i]&= ~uM;
                 uM>>= 1;
             }
         break;
         }
-        numBits-= 64;
+        iNumBits-= 64;
         i++;
     }
     return(true);
@@ -89,14 +89,14 @@ bool getCryptoRand(i32 numBits, byte* rguBits)
 const int g_iMaxGetRandSize= 64;
 
 
-bool getCryptoRandom(i32 numBits, byte* rguBits)
+bool getCryptoRandom(i32 iNumBits, byte* rguBits)
 {
     int     iRand= open("/dev/random", O_RDONLY);
     int     iCurrent= 0;
     int     iSize;
     int     iGet;
-    int     iNumBytesLeft= (numBits+7)/8;
-    int     iExtraBits= iNumBytesLeft*8-numBits;
+    int     iNumBytesLeft= (iNumBits+7)/8;
+    int     iExtraBits= iNumBytesLeft*8-iNumBits;
     byte*   rgBuf= (byte*) rguBits;
 
     if(iRand<0) {
@@ -130,7 +130,7 @@ bool getCryptoRandom(i32 numBits, byte* rguBits)
 
 #ifdef WINDOWSRANDBITS
 
-bool getCryptoRand(i32 numBits, byte* rguBits)
+bool getCryptoRand(i32 iNumBits, byte* rguBits)
 {
     return false;
 }

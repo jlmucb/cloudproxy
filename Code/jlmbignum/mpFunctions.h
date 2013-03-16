@@ -80,9 +80,15 @@ bool            mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
 bool            mpTestFermatCondition(bnum& bnBase, bnum& bnM);
 bool            mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid=20);
 bool            mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR);
-bool            mpRSADEC(bnum& bnMsg, bnum bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnR);
+
+bool            mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, 
+                         bnum& bnM, bnum& bnD, bnum& bnOrder);
+bool            mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ, 
+                    bnum& bnPM1, bnum& bnDP, bnum& bnQM1, bnum& bnDQ);
 bool            mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR);
-bool            mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnD, bnum& bnOrder);
+bool            mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
+                    bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR);
+
 
 
 // ---------------------------------------------------------------------------------

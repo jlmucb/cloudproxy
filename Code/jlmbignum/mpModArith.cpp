@@ -376,36 +376,22 @@ bool mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR)
 }
 
 
-bool mpRSADEC(bnum& bnMsg, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnR)
-//  Fast RSA Decrypt using Chinese remainer theorem
+bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ, 
+                    bnum& bnPM1, bnum& bnDP, bnum& bnQM1, bnum& bnDQ)
 //  Compute e d(p) + (p-1) t(p) =1 with EUA
 //  Compute e d(q) + (q-1) t(q) =1 with EUA
-//  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
-//  Return R
 {
     extern bnum     g_bnOne;
     bool            fRet= false;
-    bnum*           pbnDP= NULL;
-    bnum*           pbnDQ= NULL;
-    bnum*           pbnPM1= NULL;
-    bnum*           pbnQM1= NULL;
     bnum*           pbnTP= NULL;
     bnum*           pbnTQ= NULL;
     bnum*           pbnG= NULL;
-    bnum*           pbnT1= NULL;
-    bnum*           pbnT2= NULL;
 
     int size= (int)bnP.mpSize();
-
     if((int)bnQ.mpSize()>size)
         size= (int)bnQ.mpSize();
     size*= 2;
-    pbnDP= new bnum(size);
-    if(pbnDP==NULL)
-        goto done;
-    pbnDQ= new bnum(size);
-    if(pbnDQ==NULL)
-        goto done;
+
     pbnG= new bnum(size);
     if(pbnG==NULL)
         goto done;
@@ -415,43 +401,84 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnR
     pbnTQ= new bnum(size);
     if(pbnTQ==NULL)
         goto done;
-    pbnPM1= new bnum(size);
-    if(pbnPM1==NULL)
-        goto done;
-    pbnQM1= new bnum(size);
-    if(pbnQM1==NULL)
-        goto done;
 
-    fRet= mpUSub(bnP, g_bnOne, *pbnPM1);
-    if(!fRet)
-        goto done;
-    fRet= mpUSub(bnQ, g_bnOne, *pbnQM1);
-    if(!fRet)
-        goto done;
-
-    fRet= mpBinaryExtendedGCD(bnE, *pbnPM1, *pbnDP, *pbnTP, *pbnG);
-    if(!fRet)
-        goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
-        fRet= false;
-        goto done;
-    }
-    fRet= mpBinaryExtendedGCD(bnE, *pbnQM1, *pbnDQ, *pbnTQ, *pbnG);
-    if(!fRet)
-        goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
+    if(mpUSub(bnP, g_bnOne, bnPM1)!=0ULL) {
+        fprintf(g_logFile, "Can't compute PM1\n");
         fRet= false;
         goto done;
     }
 
-    fRet= mpModExp(bnMsg, *pbnPM1, bnP, *pbnT1);
+    if(mpUSub(bnQ, g_bnOne, bnQM1)!=0ULL) {
+        fprintf(g_logFile, "Can't compute QM1\n");
+        fRet= false;
+        goto done;
+    }
+
+    fRet= mpBinaryExtendedGCD(bnE, bnPM1, bnDP, *pbnTP, *pbnG);
     if(!fRet)
         goto done;
-    fRet= mpModExp(bnMsg, *pbnQM1, bnQ, *pbnT2);
+    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
+        fprintf(g_logFile, "PM1 common factor is not 1\n");
+        fRet= false;
+        goto done;
+    }
+    fRet= mpBinaryExtendedGCD(bnE, bnQM1, bnDQ, *pbnTQ, *pbnG);
+    if(!fRet)
+        goto done;
+    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
+        fprintf(g_logFile, "QM1 common factor is not 1\n");
+        fRet= false;
+        goto done;
+    }
+
+done:
+    if(pbnTP!=NULL) {
+        delete pbnTP;
+        pbnTP= NULL;
+    }
+    if(pbnTQ!=NULL) {
+        delete pbnTQ;
+        pbnTQ= NULL;
+    }
+    if(pbnG!=NULL) {
+        delete pbnG;
+        pbnG= NULL;
+    }
+
+    return fRet;
+}
+
+
+bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
+              bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR)
+//  Fast RSA Decrypt using Chinese remainer theorem
+//  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
+//  Return R
+{
+    extern bnum     g_bnOne;
+    bool            fRet= false;
+    bnum*           pbnT1= NULL;
+    bnum*           pbnT2= NULL;
+
+    int size= (int)bnDP.mpSize();
+    if((int)bnDQ.mpSize()>size)
+        size= (int)bnDQ.mpSize();
+
+    pbnT1= new bnum(size);
+    if(pbnT1==NULL)
+        goto done;
+    pbnT2= new bnum(size);
+    if(pbnT2==NULL)
+        goto done;
+
+    fRet= mpModExp(bnMsg, bnPM1, bnP, *pbnT1);
+    if(!fRet)
+        goto done;
+    fRet= mpModExp(bnMsg, bnQM1, bnQ, *pbnT2);
     if(!fRet)
         goto done;
 
-    fRet= mpCRT(*pbnT1, bnP, *pbnT2, *pbnT2, bnR);
+    fRet= mpCRT(*pbnT1, bnP, *pbnT2, bnQ, bnR);
 
 done:
     if(pbnT1!=NULL) {
@@ -461,34 +488,6 @@ done:
     if(pbnT2!=NULL) {
         delete pbnT2;
         pbnT2= NULL;
-    }
-    if(pbnTP!=NULL) {
-        delete pbnTP;
-        pbnTP= NULL;
-    }
-    if(pbnTQ!=NULL) {
-        delete pbnTQ;
-        pbnTQ= NULL;
-    }
-    if(pbnDP!=NULL) {
-        delete pbnDP;
-        pbnDP= NULL;
-    }
-    if(pbnDQ!=NULL) {
-        delete pbnDQ;
-        pbnDQ= NULL;
-    }
-    if(pbnPM1!=NULL) {
-        delete pbnPM1;
-        pbnPM1= NULL;
-    }
-    if(pbnQM1!=NULL) {
-        delete pbnQM1;
-        pbnQM1= NULL;
-    }
-    if(pbnG!=NULL) {
-        delete pbnG;
-        pbnG= NULL;
     }
 
     return fRet;

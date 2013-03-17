@@ -747,6 +747,9 @@ u64 mpUSingleMultBy(bnum& bnA, u64 uB)
 //      bnum bnA
 //      bnum bnB
 //      bnum bnR
+//  Note: bnR is set to zero to compute bnA*bnB so calling
+//      mpUMult(bnA, bnB, bnA);
+//  will result in an error
 bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
 {
     i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
@@ -1269,6 +1272,9 @@ bool mpSub(bnum& bnA, bnum& bnB, bnum& bnR)
 //      IN bnum bnA
 //      IN bnum bnB 
 //      OUT bnum bnR
+//  Note: bnR is set to zero to compute bnA*bnB so calling
+//      mpUMult(bnA, bnB, bnA);
+//  will result in an error
 void mpMult(bnum& bnA, bnum& bnB, bnum& bnR)
 {
     bool    fSignA= bnA.mpSign();

@@ -89,6 +89,12 @@ int main(int an, char** av)
     bnum bnTest11(8);
     bnum bnTestMsg(8);
 
+    bnum bnA(8);
+    bnum bnB(8);
+    bnum bnX(8);
+    bnum bnY(8);
+    bnum bnT(8);
+
     bnum bnPrimeTest(80);
     bnum bnExpP(80);
     bnum bnExpQ(80);
@@ -400,11 +406,38 @@ int main(int an, char** av)
 
         printf("\n");
         printf("Big GCD tests and exponentiate\n");
-        bnum bncA(5);
-        bnum bncB(5);
-        bnum bnGcd(5);
 
-        bnGcd.m_pValue[0]= 1;
+        bnum bncA(8);
+        bnum bncB(8);
+        bnum bnGcd(8);
+        bnA.m_pValue[2]= 9293837ULL;
+        bnB.m_pValue[2]= 17364129ULL;
+        bnA.m_pValue[1]= 9293837ULL;
+        bnB.m_pValue[1]= 17364129ULL;
+        bnA.m_pValue[0]= 13ULL;
+        bnB.m_pValue[0]= 9ULL;
+        bnGcd.m_pValue[0]= 0;
+        if(!mpBinaryExtendedGCD(bnA, bnB, bncA, bncB, bnGcd)) {
+            printf("mpBinaryExtendedGCD returns false\n");
+        }
+        else {
+            printf("mpBinaryExtendedGCD: "); 
+            printNum(bnA); 
+            printf("("); printNum(bncA); printf(") + ");
+            printNum(bnB);
+            printf("("); printNum(bncB); printf(") = ");
+            printNum(bnGcd);
+            printf("\n"); 
+
+            printf("\nCHECK\n");
+            mpMult(bnA, bncA, bnX);
+            mpMult(bnB, bncB, bnY);
+            mpAdd(bnX,bnY,bnT);
+            printf("GCD: "); printNum(bnT);
+            printf("\n"); 
+        }
+
+        bnGcd.m_pValue[0]= 0;
         if(!mpBinaryExtendedGCD(bnTest3, bnTest4, bncA, bncB, bnGcd)) {
             printf("mpBinaryExtendedGCD returns false\n");
         }
@@ -415,6 +448,15 @@ int main(int an, char** av)
             printNum(bnTest4);
             printf("("); printNum(bncB); printf(") = ");
             printNum(bnGcd);
+            printf("\n"); 
+
+            printf("\nCHECK\n");
+            mpMult(bnTest3, bncA, bnX);
+            printNum(bnX); printf("\n");
+            mpMult(bnTest4, bncB, bnY);
+            printNum(bnY); printf("\n");
+            mpAdd(bnX,bnY,bnT);
+            printf("GCD: "); printNum(bnT);
             printf("\n"); 
         }
         mpModInv(bnTest7, bnTest3, bnTest8);

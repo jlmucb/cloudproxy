@@ -128,6 +128,12 @@ bool mpModNormalize(bnum& bnA, bnum& bnM)
 //      Compute bnA+bnB (mod bnM) with classical algorithm
 bool mpModAdd(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
+    if(bnA.mpSign()) {
+    	mpModNormalize(bnA, bnM);
+    }
+    if(bnB.mpSign()) {
+    	mpModNormalize(bnB, bnM);
+    }
     mpUAdd(bnA, bnB, bnR);
     return mpModNormalize(bnR, bnM);
 }
@@ -471,14 +477,17 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
     if(pbnT2==NULL)
         goto done;
 
-    fRet= mpModExp(bnMsg, bnPM1, bnP, *pbnT1);
+    fRet= mpModExp(bnMsg, bnDP, bnP, *pbnT1);
     if(!fRet)
         goto done;
-    fRet= mpModExp(bnMsg, bnQM1, bnQ, *pbnT2);
+    fRet= mpModExp(bnMsg, bnDQ, bnQ, *pbnT2);
     if(!fRet)
         goto done;
 
     fRet= mpCRT(*pbnT1, bnP, *pbnT2, bnQ, bnR);
+    if(!fRet) {
+        fprintf(g_logFile, "mpRSADEC: mpCRT failed\n");
+    }
 
 done:
     if(pbnT1!=NULL) {

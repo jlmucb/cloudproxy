@@ -176,6 +176,91 @@ bool EncryptTest(RSAKey* pKey, int numBlocks, bool fFast= false, bool fEncrypt=t
 }
 
 
+bool RSASanityCheck(RSAKey* key, int file, bool fFast)
+{
+    bool        fRet= true;
+    int         numBytes= 0;
+    byte        buf[4096];
+    int         blockSize= key->m_iByteSizeM;
+    int         numBlocks= 0;
+
+    time_t      start, finish;
+    double      elapsedseconds= 0.0;
+    double      ops= 0.0;
+    double      opspersecond= 0.0;
+
+    bnum        bnMsg(key->m_iByteSizeM/sizeof(u64));
+    bnum        bnEncrypted(key->m_iByteSizeM/sizeof(u64));
+    bnum        bnDecrypted(key->m_iByteSizeM/sizeof(u64));
+    bnum        bnPM1(key->m_iByteSizeM/sizeof(u64));
+    bnum        bnQM1(key->m_iByteSizeM/sizeof(u64));
+    bnum        bnDP(key->m_iByteSizeM/sizeof(u64));
+    bnum        bnDQ(key->m_iByteSizeM/sizeof(u64));
+
+    // bnum        m_pbnM; m_pbnP; m_pbnQ; m_pbnE; m_pbnD;
+
+    if(fFast) {
+        printf("Fast RSA sanity check, block size is %d\n", blockSize);
+        if(!mpRSACalculateFastRSAParameters(*(key->m_pbnE), *(key->m_pbnP),
+                    *(key->m_pbnQ), bnPM1, bnDP, bnQM1, bnDQ)) {
+            printf("Can't calculate RSA fast decrypt parameters\n");
+            return false;
+        }
+    }
+    else {
+        printf("RSA sanity check, block size is %d\n", blockSize);
+    }
+
+    time(&start);
+    for(;;) {
+        numBytes= read(file, buf, blockSize);
+        if(numBytes<blockSize)
+            break;
+        memcpy(bnMsg.m_pValue, buf, blockSize);
+        bnMsg.m_pValue[blockSize-1]&= 0xffffffffULL;
+
+        if(!mpRSAENC(bnMsg, *(key->m_pbnE), *(key->m_pbnM), bnEncrypted)) {
+            printf("Can't encrypt\n");
+            fRet= false;
+        }
+        if(fFast) {
+            if(!mpRSADEC(bnEncrypted, *(key->m_pbnP), bnPM1, bnDP, *(key->m_pbnQ), 
+                           bnQM1, bnDQ, *(key->m_pbnM), bnDecrypted)) {
+                printf("Can't decrypt\n");
+                fRet= false;
+            }
+        }
+        else {
+            if(!mpRSAENC(bnEncrypted, *(key->m_pbnD), *(key->m_pbnM), bnDecrypted)) {;
+                printf("Can't decrypt\n");
+                fRet= false;
+            }
+        }
+        numBlocks++;
+
+        printf("Message\n"); printNum(bnMsg); printf("\n");
+        printf("Encrypted\n"); printNum(bnEncrypted); printf("\n");
+        printf("Decrypted\n"); printNum(bnDecrypted); printf("\n");
+
+        if(memcmp(bnMsg.m_pValue,bnDecrypted.m_pValue, blockSize)==0) {
+            printf("\tpassed\n\n");
+        }
+        else {
+            fRet= false;
+            printf("\tfailed\n\n");
+        }
+    }
+    time(&finish);
+
+    elapsedseconds= difftime(finish, start);
+    ops= (double)numBlocks;
+    opspersecond= ops/elapsedseconds;
+    printf("%10.4lf seconds %d operations %10.4lf operations per second\n", 
+        elapsedseconds, numBlocks, opspersecond);
+    return fRet;
+}
+
+
 // --------------------------------------------------------------------- 
 
 
@@ -190,12 +275,16 @@ int main(int an, char** av)
     int         numBlocks= 1024;
     RSAKey*     pKey= NULL;
     char*       szKeyFile= NULL;
+    char*       szBlockFile= NULL;
     bool        fFast= false;
+    bool        fSanityOnly= false;
+    int         file= -1;
 
     for(i=0; i<an; i++) {
         if(strcmp(av[i], "-help")==0 || an<3) {
             printf("\nUsage: rsaspeedtest keyfile -Encrypt blocks\n");
             printf("         rsaspeedtest keyfile -Decrypt blocks\n");
+            printf("         rsaspeedtest keyfile -sanity file\n");
             printf("         rsaspeedtest -fast (other args)\n");
             return 0;
         }
@@ -220,15 +309,12 @@ int main(int an, char** av)
         if(strcmp(av[i], "-fast")==0) {
             fFast= true;
         }
-    }
-
-    if(mode==ENCRYPT)
-        printf("RSA Encrypt, Key file %s %d blocks\n", szKeyFile, numBlocks);
-    if(mode==DECRYPT) {
-        if(fFast)
-            printf("RSA Fast Decrypt, Key file %s %d blocks\n", szKeyFile, numBlocks);
-        else
-            printf("RSA Decrypt, Key file %s %d blocks\n", szKeyFile, numBlocks);
+        if(strcmp(av[i], "-sanity")==0) {
+            fSanityOnly= true;
+            if(an>(i+1)) {
+                szBlockFile= av[++i];
+            }
+        }
     }
 
     pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
@@ -239,10 +325,39 @@ int main(int an, char** av)
 
     initCryptoRand();
     initBigNum();
-    if(mode==ENCRYPT)
-        EncryptTest(pKey, numBlocks, fFast, true);
-    if(mode==DECRYPT)
-        EncryptTest(pKey, numBlocks, fFast, false);
+
+    if(fSanityOnly) {
+        if(szBlockFile==NULL) {
+            printf("No block file\n");
+            return 1;
+        }
+        file= open(szBlockFile, O_RDONLY);
+        if(file<0) {
+            printf("Cant open block file\n");
+            return 1;
+        }
+        if(RSASanityCheck(pKey, file, fFast)) {
+            printf("PASSED all sanity check operations\n");
+        }
+        else {
+            printf("FAILED some sanity check operations\n");
+        }
+    }
+    else {
+
+        if(mode==ENCRYPT)
+            printf("RSA Encrypt, Key file %s %d blocks\n", szKeyFile, numBlocks);
+        if(mode==DECRYPT) {
+            if(fFast)
+                printf("RSA Fast Decrypt, Key file %s %d blocks\n", szKeyFile, numBlocks);
+            else
+                printf("RSA Decrypt, Key file %s %d blocks\n", szKeyFile, numBlocks);
+        }
+        if(mode==ENCRYPT)
+            EncryptTest(pKey, numBlocks, fFast, true);
+        if(mode==DECRYPT)
+            EncryptTest(pKey, numBlocks, fFast, false);
+    }
     closeCryptoRand();
    
     return 0;

@@ -892,6 +892,7 @@ void EstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u64 vLo)
         newuHi, newuLo, newv, shift, maxBit);
 #endif
     uR= longdivstep(&uQ, newuHi, newuLo, newv);
+    UNUSEDVAR(uR);
 #if 0
     if(uHi>=vHi) {
         *pqE= (-1ULL);

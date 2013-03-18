@@ -461,7 +461,6 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
 //  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
 //  Return R
 {
-    extern bnum     g_bnOne;
     bool            fRet= false;
     bnum*           pbnT1= NULL;
     bnum*           pbnT2= NULL;

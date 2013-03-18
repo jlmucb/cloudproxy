@@ -72,8 +72,8 @@ bool            mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR);
 bool            mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR);
 
 bool            mpShiftInPlace(bnum& bnA, int iShiftNumBits);
-bool            mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, 
-                                    bnum& bnBExt, bnum& bnGExt);
+bool            mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, 
+                                    bnum& bnY, bnum& bnG);
 bool            mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR);
 
 

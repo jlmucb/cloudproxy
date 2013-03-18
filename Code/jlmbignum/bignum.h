@@ -71,10 +71,10 @@ public:
     ~bnum();
 
     inline bool     mpSign();
-    inline u32      mpSize();
+    inline int      mpSize();
     inline void     mpNegate();
     inline void     mpDumpSign();
-    inline u32      mpBitSize();
+    inline int      mpBitSize();
     inline bool     mpIsZero();
     bool            mpCopyNum(bnum& bnC);
 };
@@ -86,9 +86,9 @@ inline bool bnum::mpSign()
 }
 
 
-inline u32  bnum::mpSize()    
+inline int  bnum::mpSize()    
 {
-    return m_signandSize&(~s_signBit);
+    return (int)(m_signandSize&(~s_signBit));
 }
 
 
@@ -106,7 +106,7 @@ inline void bnum::mpDumpSign()
 }
 
 
-inline u32 bnum::mpBitSize()  
+inline int bnum::mpBitSize()  
 {
     return mpSize()*64;
 }
@@ -134,6 +134,11 @@ inline bool bnum::mpIsZero()
 #ifndef NULL
 #define NULL 0
 #endif
+
+
+extern bnum g_bnZero;
+extern bnum g_bnOne;
+extern bnum g_bnTwo;
 
 
 #endif    // _BIGNUM_H

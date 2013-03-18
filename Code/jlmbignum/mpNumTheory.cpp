@@ -62,27 +62,31 @@ inline u64 bottomMask64(int numBits)
 
 void shiftupinplace(bnum& bnA, i32 numShiftBits)
 {
-    int         i,j;
-    int         wordShift= (numShiftBits>>6);
-    int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= NUMBITSINU64-bitShift;
-    i32         sizeA= bnA.mpSize();
-    u64*        rguA= bnA.m_pValue;
-    u64         src1, src2;
+    int     j;
+    int     wordShift= (numShiftBits>>6);
+    int     bitShift= numShiftBits&0x3f;
+    int     bottomShift= NUMBITSINU64-bitShift;
+    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    u64*    rgA= bnA.m_pValue;
+    u64     c;
 
-    j= sizeA-1-wordShift;
-    if(j<0)
-        src1= 0ULL;
-    else
-        src1= rguA[j];
-    for(i=(sizeA-1); i>=0; i--) {
-        j--;
-        if(j<0)
-            src2= 0ULL;
-        else
-            src2= rguA[j];
-        rguA[i]= (src1<<bitShift) | (src2>>bottomShift);
-        src1= src2;
+    // Shift partial word first if necessary
+    if(bitShift>0) {
+        for(j=(lA-1);j>=0;j--) {
+            c= rgA[j];
+            rgA[j+1]|= (c>>bottomShift);
+            rgA[j]= (c<<bitShift);
+        }
+        lA++;
+    }
+
+    // Shift words
+    if(wordShift>0) {
+        for(j=(lA-1);j>=0;j--) {
+            rgA[j+wordShift]= rgA[j];
+        }
+        for(j=0;j<wordShift;j++)
+            rgA[j]= 0ULL;
     }
     return;
 }
@@ -90,27 +94,36 @@ void shiftupinplace(bnum& bnA, i32 numShiftBits)
 
 void shiftdowninplace(bnum& bnA, i32 numShiftBits)
 {
-    int         i, j;
-    int         wordShift= (numShiftBits>>6);
-    int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= NUMBITSINU64-bitShift;
-    i32         sizeA= bnA.mpSize();
-    u64*        rguA= bnA.m_pValue;
-    u64         src1, src2;
+    int     j;
+    int     wordShift= (numShiftBits>>6);
+    int     bitShift= numShiftBits&0x3f;
+    int     bottomShift= NUMBITSINU64-bitShift;
+    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    u64*    rgA= bnA.m_pValue;
+    u64     c;
 
-    j= wordShift;
-    if(j>=sizeA)
-        src1= 0ULL;
-    else
-        src1= rguA[j];
-    for(i=0;i<sizeA; i++) {
-        j++;
-        if(j>=sizeA)
-            src2= 0ULL;
-        else
-            src2= rguA[j];
-        rguA[i]= (src1>>bitShift) | (src2<<bottomShift);
-        src1= src2;
+    // Shift words
+    if(wordShift>0) {
+        if(wordShift>=lA) {
+            for(j=0;j<lA;j++)
+                rgA[j]= 0ULL;
+            return;
+        }
+        for(j=0;j<(lA-wordShift); j++)
+            rgA[j]= rgA[j+wordShift];
+        for(j=(lA-wordShift);j<lA;j++)
+            rgA[j]= 0ULL;
+        lA-= wordShift;
+    }
+
+    // Shift partial words
+    if(bitShift>0) {
+        for(j=0; j<(lA-1); j++) {
+            c= rgA[j+1];
+            rgA[j]>>= bitShift;
+            rgA[j]|= (c<<bottomShift);
+        }
+        rgA[lA-1]>>= bitShift;
     }
     return;
 }
@@ -128,7 +141,7 @@ bool mpShiftInPlace(bnum& bnA, int numShiftBits)
     if(numShiftBits==0)
         return true;
     // Enough room?
-    if(lA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64)>sizeA)
+    if((lA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64))>sizeA)
         return false;
 
     if(numShiftBits>0) {
@@ -142,173 +155,142 @@ bool mpShiftInPlace(bnum& bnA, int numShiftBits)
 }
 
 
-//  Function: inline void mpShortLoop
+//  Function: bool mpExtendedGCD
 //  Arguments:
-//      bnum bnU
-//      bnum bnA
-//      bnum bnB
-//      bnum bnX
-//      bnum bnY
-inline void mpShortLoop(bnum& bnU, bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY)
-{
-    u64* rgU= bnU.m_pValue;
-    u64* rgA= bnA.m_pValue;
-    u64* rgB= bnB.m_pValue;
-
-    while((rgU[0]&1)==0) {
-        mpShiftInPlace(bnU, -1);
-        if((rgA[0]&1)==(rgB[0]&1) && (rgA[0]&1)==0) {
-             mpShiftInPlace(bnA, -1);
-             mpShiftInPlace(bnB, -1);
-        }
-        else {
-            mpAddTo(bnA, bnY);
-            mpSubFrom(bnB, bnX);
-            mpShiftInPlace(bnA, -1);
-            mpShiftInPlace(bnB, -1);
-        }
-    }
-}
-
-
-#ifdef MPTESTEXTENDED
-//  Function: void LabeledprintNum
-//  Arguments:
-//      IN const char* pszLabel
-//      IN bNum bnA
-void LabeledprintNum(const char* pszLabel, bnum& bnA)
-{
-    fprintf(g_logFile, "%s\t: ", pszLabel);
-    printNum(bnA);
-    fprintf(g_logFile, "\n");
-}
-#endif
-
-
-//  Function: bool mpBinaryExtendedGCD
-//  Arguments:
-//      IN bnum bnXExt
-//      IN bnum bnYExt 
-//      OUT bnum bnAExt 
-//      OUT bnum bnBExt 
-//      OUT bnum bnGExt
+//      IN bnum bnA
+//      IN bnum bnB
+//      OUT bnum bnX
+//      OUT bnum bnY
+//      OUT bnum bnG
 //  Description:
-//      Compute a, b, g where ax+by=g=(x,y)
-bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt, bnum& bnGExt)
+//      Compute x, y, g:  ax+by=g=(x,y)
+bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG)
 
-{       
-    int     maxsize= bnXExt.mpSize();
-    int     i, j;
+{
+    int     iPrior= 0;
+    int     iCurrent= 1;
+    int     iNext= 2;
+    bool    fRet= true;
+    int     size= 0;
+    int     compare;
+    int     i;
 
-    if((int)bnYExt.mpSize()>maxsize)
-        maxsize= bnYExt.mpSize();
-
-    bnum bnX(maxsize);
-    bnum bnY(maxsize);
-    bnum bnA(maxsize);
-    bnum bnB(maxsize);
-    bnum bnC(maxsize);
-    bnum bnD(maxsize);
-    bnum bnU(maxsize);
-    bnum bnV(maxsize);
-    bnum bnG(maxsize);
-
-    bnXExt.mpCopyNum(bnX);
-    bnYExt.mpCopyNum(bnY);
-    bnX.mpCopyNum(bnU);
-    bnY.mpCopyNum(bnV);
-    bnG.m_pValue[0]= 1;
-    bnA.m_pValue[0]= 1;
-    bnD.m_pValue[0]= 1;
-
-    // Step 1, 2: Get largest power of 2 divisor       
-    i= max2PowerDividing(bnX);
-    if(i<0) {
-        fprintf(g_logFile, "Zero Arg (X)\n");
-        return false;
-    }
-    j= max2PowerDividing(bnY);
-    if(j<0) {
-        fprintf(g_logFile, "Zero Arg (Y)\n");
-        return false;
-    }
-    if(i>j)
-        i= j;
-
-    mpShiftInPlace(bnX, -i);
-    mpShiftInPlace(bnY, -i);
-    mpShiftInPlace(bnG, i);
-
-    // Step 3
-    if(!bnX.mpCopyNum(bnU)) {
-        fprintf(g_logFile, "Bad Copy\n");
-        return false;
-    }
-    if(!bnY.mpCopyNum(bnV)) {
-        fprintf(g_logFile, "Bad Copy\n");
-        return false;
+    if(bnA.mpSign() || bnB.mpSign()) {
+        fprintf(g_logFile, "mpExtendedGCD: negative arguments forbidden\n");
+        return false;       
     }
 
-#ifdef MPTESTEXTENDED
-    int nc= 0;
-    fprintf(g_logFile, "mpBinaryExtendedGCD: initialized\n");
-    LabeledprintNum("X", bnX); LabeledprintNum("Y", bnY);  
-    LabeledprintNum("G", bnG);
-    LabeledprintNum("A", bnA); LabeledprintNum("B", bnB); 
-    LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
-    LabeledprintNum("U", bnU); LabeledprintNum("V", bnV);
+    bnum*   rgbnR[3]= {NULL, NULL, NULL};
+    bnum*   rgbnX[3]= {NULL, NULL, NULL};
+    bnum*   rgbnY[3]= {NULL, NULL, NULL};
+    bnum*   pbnT= NULL;
+    bnum*   pbnQ= NULL;
+
+    size= bnA.mpSize();
+    if(bnB.mpSize()>size)
+        size= bnB.mpSize();
+    size=2*size+1;
+
+#ifdef ARITHTEST
+    printf("mpExtendedGCD: size %d\n", size);
 #endif
+
+    for(i=0; i<3;i++) {
+        rgbnR[i]= new bnum(size);
+        if(rgbnR[i]==NULL) {
+            fRet= false;
+            goto done;
+        }
+        rgbnX[i]= new bnum(size);
+        if(rgbnX[i]==NULL) {
+            fRet= false;
+            goto done;
+        }
+        rgbnY[i]= new bnum(size);
+        if(rgbnY[i]==NULL) {
+            fRet= false;
+            goto done;
+        }
+    }
+    pbnT= new bnum(size);
+    if(pbnT==NULL) {
+        fRet= false;
+        goto done;
+    }
+    pbnQ= new bnum(size);
+    if(pbnQ==NULL) {
+        fRet= false;
+        goto done;
+    }
+
+    compare= mpCompare(bnA, bnB);
+    if(compare!=s_isLessThan) {
+        bnA.mpCopyNum(*rgbnR[iPrior]);
+        bnB.mpCopyNum(*rgbnR[iCurrent]);
+        g_bnOne.mpCopyNum(*rgbnX[iPrior]);      // Coeff of A
+        g_bnZero.mpCopyNum(*rgbnY[iPrior]);     // Coeff of B
+        g_bnZero.mpCopyNum(*rgbnX[iCurrent]);
+        g_bnOne.mpCopyNum(*rgbnY[iCurrent]);
+    }
+    else {
+        bnB.mpCopyNum(*rgbnR[iPrior]);
+        bnA.mpCopyNum(*rgbnR[iCurrent]);
+        g_bnZero.mpCopyNum(*rgbnX[iPrior]);      // Coeff of A
+        g_bnOne.mpCopyNum(*rgbnY[iPrior]);     // Coeff of B
+        g_bnOne.mpCopyNum(*rgbnX[iCurrent]);
+        g_bnZero.mpCopyNum(*rgbnY[iCurrent]);
+    }
 
     for(;;) {
-
-#ifdef MPTESTEXTENDED
-        fprintf(g_logFile, "mpBinaryExtendedGCD: loop %ld\n", ++nc);
+        // Rprior= Q Rcurrent + Rnext
+#ifdef ARITHTEST
+        printf("mpExtendedGCD, PriorR: ");printNum(*rgbnR[iPrior]);printf("\n");
+        printf("mpExtendedGCD, CurrentR: ");printNum(*rgbnR[iCurrent]);printf("\n");
 #endif
-        mpShortLoop(bnU, bnA, bnB, bnX, bnY);   // Step 4
-        mpShortLoop(bnV, bnC, bnD, bnX, bnY);   // Step 5
-
-#ifdef MPTESTEXTENDED
-        fprintf(g_logFile, "mpBinaryExtendedGCD: After ShortLoops\n");
-        LabeledprintNum("U", bnU);LabeledprintNum("A", bnA); 
-        LabeledprintNum("B", bnB); LabeledprintNum("V", bnV);
-        LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
-#endif
-                        
-        // Step 6
-        if(mpCompare(bnU, bnV)!=s_isLessThan) {
-            mpSubFrom(bnU, bnV);
-            mpSubFrom(bnA, bnC);
-            mpSubFrom(bnB, bnD);
+        if(!mpUDiv(*rgbnR[iPrior], *rgbnR[iCurrent], *pbnQ, *rgbnR[iNext])) {
+            fprintf(g_logFile, "mpExtendedGCD: bad division\n");
+            fRet= false;
+            goto done;
         }
-        else {
-            mpSubFrom(bnV, bnU);
-            mpSubFrom(bnC, bnA);
-            mpSubFrom(bnD, bnB);
-        }
-#ifdef MPTESTEXTENDED
-        fprintf(g_logFile, "mpBinaryExtendedGCD: After Reduce\n");
-        LabeledprintNum("U", bnU);LabeledprintNum("A", bnA); 
-        LabeledprintNum("B", bnB); LabeledprintNum("V", bnV);
-        LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
-#endif
-        // Step 7
-        if(bnU.mpIsZero()) {
-            bnC.mpCopyNum(bnAExt);
-            bnD.mpCopyNum(bnBExt);
-            mpMult(bnG, bnV, bnGExt);
-#ifdef MPTESTEXTENDED
-            fprintf(g_logFile, "mpBinaryExtendedGCD: Transferring Output\n");
-            LabeledprintNum("U", bnU);LabeledprintNum("A", bnA); 
-            LabeledprintNum("B", bnB); LabeledprintNum("V", bnV);
-            LabeledprintNum("C", bnC); LabeledprintNum("D", bnD);
-            LabeledprintNum("bnAExt", bnAExt);
-            LabeledprintNum("bnBExt", bnBExt); 
-#endif
+        if(rgbnR[iNext]->mpIsZero())
             break;
-            }
+        mpMult(*pbnQ,*rgbnX[iCurrent], *pbnT);
+        mpSub(*rgbnX[iPrior], *pbnT, *rgbnX[iNext]);
+        mpMult(*pbnQ,*rgbnY[iCurrent], *pbnT);
+        mpSub(*rgbnY[iPrior], *pbnT, *rgbnY[iNext]);
+        iPrior= (iPrior+1)%3; iCurrent= (iCurrent+1)%3; iNext= (iNext+1)%3;
     }
 
-    return true;
+done:
+    if(fRet) {
+        rgbnX[iCurrent]->mpCopyNum(bnX);
+        rgbnY[iCurrent]->mpCopyNum(bnY);
+        rgbnR[iCurrent]->mpCopyNum(bnG);
+    }
+
+    for(i=0; i<3;i++) {
+        if(rgbnR[i]!=NULL) {
+            delete rgbnR[i];
+            rgbnR[i]= NULL;
+        }
+        if(rgbnX[i]!=NULL) {
+            delete rgbnX[i];
+            rgbnX[i]= NULL;
+        }
+        if(rgbnY[i]!=NULL) {
+            delete rgbnY[i];
+            rgbnY[i]= NULL;
+        }
+    }
+    if(pbnT!=NULL) {
+        delete pbnT;
+        pbnT= NULL;
+    }
+    if(pbnQ!=NULL) {
+        delete pbnQ;
+        pbnQ= NULL;
+    }
+    return fRet;
 }
 
 
@@ -326,9 +308,8 @@ bool mpBinaryExtendedGCD(bnum& bnXExt, bnum& bnYExt, bnum& bnAExt, bnum& bnBExt,
 
 bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
 {
-    extern bnum g_bnOne;
     bool fRet= true;
-    int size= (int)bnM1.mpSize()+1;
+    int size= bnM1.mpSize()+1;
     bnum* pbnX1= NULL;
     bnum* pbnX2= NULL;
     bnum* pbnG= NULL;
@@ -338,8 +319,8 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
     bnum* pbnT3= NULL;
     bnum* pbnT4= NULL;
 
-    if((int)bnM2.mpSize()>=size)
-        size= (int)bnM2.mpSize()+1;
+    if(bnM2.mpSize()>=size)
+        size= bnM2.mpSize()+1;
 
     size*= 2;
     pbnX1= new bnum(size);
@@ -367,9 +348,9 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
     if(pbnT4==NULL)
         goto done;
 
-    fRet= mpBinaryExtendedGCD(bnM1, bnM2, *pbnX1, *pbnX2, *pbnG);
+    fRet= mpExtendedGCD(bnM1, bnM2, *pbnX1, *pbnX2, *pbnG);
     if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpBinaryExtendedGCD failed\n");
+        fprintf(g_logFile, "mpCRT: mpExtendedGCD failed\n");
         fRet= false;
         goto done;
     }
@@ -386,7 +367,7 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
         goto done;
     }
 
-#if 1
+#ifdef ARITHTEST
     mpMult(bnM1, *pbnX1, *pbnT1);
     mpMult(bnM2, *pbnX2, *pbnT2);
     mpAdd(*pbnT1,*pbnT2, *pbnT3);
@@ -432,7 +413,7 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
         fprintf(g_logFile, "mpCRT: mpModMult failed (5)\n");
         goto done;
     }
-#if 1
+#ifdef ARITHTEST
     fprintf(g_logFile, "\nmpCRT at bottom\n");
     fprintf(g_logFile, "R: "); printNum(bnR); fprintf(g_logFile, "\n");
     fprintf(g_logFile, "M1: "); printNum(bnM1); fprintf(g_logFile, "\n");

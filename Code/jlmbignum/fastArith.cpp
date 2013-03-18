@@ -118,7 +118,7 @@ u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy)
     }
 #endif
 
-    // %rdx:%rax contains numerator for uDivBy
+    // %rdx:%rax contains numerator
     asm volatile(
         "movq    $0,%[rem]\n" \
         "\tmovq    %[op1], %%rdx\n" \

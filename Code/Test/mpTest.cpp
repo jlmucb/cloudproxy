@@ -118,6 +118,11 @@ int main(int an, char** av)
     u64 rguTest11[2]= {0x0ULL, 0x1ULL};
     u64 rguTest12[4]= {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
 
+    u64 rgudiv1[4]= {0xffff555205050505, 0x0000000000000002};
+    u64 rgudiv2[4]= { 0xf7b5147a87dd32d4, 0x0000000000000002};
+    bnum    bndiv1(4);
+    bnum    bndiv2(4);
+
     for(i=5;i>=0;i--)
         bnTest10.m_pValue[5-i]= rguTest10[i];
 
@@ -130,6 +135,8 @@ int main(int an, char** av)
         bnTest6.m_pValue[i]= rguTest6[i];
         bnTest7.m_pValue[i]= rguTest7[i];
         bnTest11.m_pValue[i]= rguTest11[i];
+        bndiv1.m_pValue[i]= rgudiv1[i]; 
+        bndiv2.m_pValue[i]=  rgudiv2[i];
     }
     bnTest7.m_pValue[i]= rguTest7[i];
     for(i=0; i<4; i++) {
@@ -293,6 +300,12 @@ int main(int an, char** av)
         mpZeroNum(bnTest8);
         mpZeroNum(bnTest9);
 
+        printNum(bndiv1); printf(" / "); printNum(bndiv2); printf("=\n\t");
+        mpUDiv(bndiv1, bndiv2, bnTest8, bnTest9);
+        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
+        mpZeroNum(bnTest8);
+        mpZeroNum(bnTest9);
+
         printf("\n");
         printf("Signed arithmetic tests\n");
         bnTest1.mpNegate();
@@ -363,17 +376,15 @@ int main(int an, char** av)
         printf("LeadBit in\n"); printNum(g_bnOne); 
         printf("\n is %d\n", iLeadBit);
         printf("\n");
+
         printf("Modular Tests\n");
-        k= -2;
-        printf("mpShiftinPlace: "); printNum(bnTest1);
-        printf(" <<  %d = ", k); 
-        mpShiftInPlace(bnTest1,k);
-        printNum(bnTest1); printf("\n");
-        k= 3;
-        printf("mpShiftinPlace: "); printNum(bnTest1);
-        printf(" <<  %d = ", k); 
-        mpShiftInPlace(bnTest1,k);
-        printNum(bnTest1); printf("\n");
+        for(k=-80;k<=80;k+=16) {
+            bnTest1.mpCopyNum(bnA);
+            printf("mpShiftinPlace: "); printNum(bnA);
+            printf(" <<  %d = ", k); 
+            mpShiftInPlace(bnA, k);
+            printNum(bnA); printf("\n");
+        }
         mpZeroNum(bnTest8);
         mpMod(bnTest7, bnTest5, bnTest8);
         printf("mpMod: "); printNum(bnTest7);
@@ -417,11 +428,15 @@ int main(int an, char** av)
         bnA.m_pValue[0]= 13ULL;
         bnB.m_pValue[0]= 9ULL;
         bnGcd.m_pValue[0]= 0;
+#ifdef OLD
         if(!mpBinaryExtendedGCD(bnA, bnB, bncA, bncB, bnGcd)) {
-            printf("mpBinaryExtendedGCD returns false\n");
+#else
+        if(!mpExtendedGCD(bnA, bnB, bncA, bncB, bnGcd)) {
+#endif
+            printf("mpExtendedGCD returns false\n");
         }
         else {
-            printf("mpBinaryExtendedGCD: "); 
+            printf("mpExtendedGCD: "); 
             printNum(bnA); 
             printf("("); printNum(bncA); printf(") + ");
             printNum(bnB);
@@ -438,11 +453,15 @@ int main(int an, char** av)
         }
 
         bnGcd.m_pValue[0]= 0;
+#ifdef OLD
         if(!mpBinaryExtendedGCD(bnTest3, bnTest4, bncA, bncB, bnGcd)) {
-            printf("mpBinaryExtendedGCD returns false\n");
+#else
+        if(!mpExtendedGCD(bnTest3, bnTest4, bncA, bncB, bnGcd)) {
+#endif
+            printf("mpExtendedGCD returns false\n");
         }
         else {
-            printf("mpBinaryExtendedGCD: "); 
+            printf("mpExtendedGCD: "); 
             printNum(bnTest3); 
             printf("("); printNum(bncA); printf(") + ");
             printNum(bnTest4);

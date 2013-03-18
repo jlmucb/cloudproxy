@@ -55,7 +55,7 @@ bnum::bnum(int iSize)
 
 bnum::~bnum()
 {
-    int iSize= (int) mpSize();
+    int iSize= mpSize();
     for(int i=0; i<iSize;i++)
         m_pValue[i]= 0; 
     delete m_pValue;
@@ -70,7 +70,7 @@ void mpNormalizeZero(bnum& bnA)
     if(!bnA.mpSign())
         return;
     puA= bnA.m_pValue;
-    for(i=0; i<(int)bnA.mpSize(); i++) {
+    for(i=0; i<bnA.mpSize(); i++) {
         if(*(puA++)!=0)
             return;
     }
@@ -79,14 +79,14 @@ void mpNormalizeZero(bnum& bnA)
 }
 
 
-//  Function: inline i32 mpWordsinNum
+//  Function: inline int mpWordsinNum
 //  Arguments:
 //      IN      i32 iLen
 //      IN      u64* puN
 //  Description:
 //      Returns minumum number of words 
 //      to represent number
-i32 mpWordsinNum(i32 iLen, u64* puN)
+int mpWordsinNum(i32 iLen, u64* puN)
 {
     puN+= iLen-1;
     while(iLen>1) {
@@ -165,12 +165,14 @@ void printNum(bnum& bnA, bool fFull=false)
 
 //  Data:
 //      Bignum representations of 1 and 2
+bnum    g_bnZero(1);
 bnum    g_bnOne(1);
 bnum    g_bnTwo(1);
 
 
 void initBigNum()
 {
+    g_bnZero.m_pValue[0]= 0ULL;
     g_bnOne.m_pValue[0]= 1ULL;
     g_bnTwo.m_pValue[0]= 2ULL;
 }
@@ -212,7 +214,7 @@ bool mpCopyWords(int sizeA, u64* puA, int sizeB, u64* puB)
 //      Duplicate bnA and allocate an additional iPad (zero filled) words 
 bnum* mpDuplicateNum(bnum& bnA)
 {
-    i32     sizeA= (int) bnA.mpSize();
+    i32     sizeA=  bnA.mpSize();
     bnum*   bn= new bnum(sizeA);
 
     bn->m_signandSize= bnA.m_signandSize;
@@ -242,7 +244,7 @@ void ZeroWords(i32 len, u64* puN)
 //      Turn bN into a 0 but keep slot size the same
 void mpZeroNum(bnum& bnN)
 {
-    ZeroWords((int)bnN.mpSize(), bnN.m_pValue);
+    ZeroWords(bnN.mpSize(), bnN.m_pValue);
 }
 
 
@@ -277,8 +279,8 @@ void mpTrimNum(bnum& bnA)
 //        s_isLessThan if bnA<bnB
 i32 mpUCompare(bnum& bnA, bnum& bnB)
 {
-    i32 sizeA= (int)mpWordsinNum((int)bnA.mpSize(), bnA.m_pValue);
-    i32 sizeB= (int)mpWordsinNum((int)bnB.mpSize(), bnB.m_pValue);
+    i32 sizeA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    i32 sizeB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
 
     if(sizeA>sizeB)
         return(s_isGreaterThan);
@@ -357,13 +359,13 @@ i32 max2PowerDividing(bnum& bnA)
 }
 
 
-//  Function: i32 MaxBit
+//  Function: int MaxBit
 //  Arguments:
-//      u32 uW
+//      int uW
 //  Description:
 //      Return position of most significant non zero bit.
 //      Least Significant bit is at position 1.  0 means no bit is on
-i32 MaxBit(u64 uW)
+int MaxBit(u64 uW)
 {
     u64     uM=(1ULL<<NUMBITSINU64MINUS1);
     int     i= NUMBITSINU64;
@@ -602,18 +604,18 @@ u64 mpUAddTo(bnum& bnA, bnum& bnB)
 
     if(lA>=lB) {
         uCarry= mpUAddLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnA.m_pValue);
-        if(uCarry>0 && (int)bnA.mpSize()>lA) {
+        if(uCarry>0 && bnA.mpSize()>lA) {
             bnA.m_pValue[lA]= uCarry;
             uCarry= 0ULL;
         }
     }
     else {
-        if((int)bnA.mpSize()<lB) {
+        if(bnA.mpSize()<lB) {
             fprintf(g_logFile, "mpUAddTo: Overflow\n");
             return 0ULL;
         }
         uCarry= mpUAddLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnA.m_pValue);
-        if(uCarry>0 && (int)bnA.mpSize()>lB) {
+        if(uCarry>0 && bnA.mpSize()>lB) {
             bnA.m_pValue[lB]= uCarry;
             uCarry= 0ULL;
         }
@@ -640,7 +642,7 @@ u64 mpSingleUAddTo(bnum& bnA, u64 uA)
     }
 
     uCarry= mpUAddLoop(lA, bnA.m_pValue, 1, &uA, bnA.m_pValue);
-    if(uCarry>0 && (int)bnA.mpSize()>lA) {
+    if(uCarry>0 && bnA.mpSize()>lA) {
         bnA.m_pValue[lA]= uCarry;
         uCarry= 0ULL;
     }
@@ -734,7 +736,7 @@ u64 mpUSingleMultBy(bnum& bnA, u64 uB)
     }
 
     uCarry= mpUMultByLoop(lA, bnA.m_pValue, uB);
-    if(uCarry>0 && (int)bnA.mpSize()>lA) {
+    if(uCarry>0 && bnA.mpSize()>lA) {
         bnA.m_pValue[lA]= uCarry;
         uCarry= 0;
     }
@@ -764,8 +766,9 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
         fprintf(g_logFile, "mpUMult: second arg not a number\n");
         return 0ULL;
     }
-    if((int)bnR.mpSize()<(lA+lB)) {
-        fprintf(g_logFile, "mpUMult: potential overflow\n");
+    if(bnR.mpSize()<(lA+lB)) {
+        fprintf(g_logFile, "mpUMult: potential overflow %d, %d, %d\n",
+                bnR.mpSize(), lA, lB);
         return false;
     }
     ZeroWords(bnR.mpSize(), bnR.m_pValue);
@@ -779,7 +782,7 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
     if(uCarry==0)
         return true;
 
-    if((int)bnR.mpSize()>(lA+lB-1)) {
+    if(bnR.mpSize()>(lA+lB-1)) {
         bnR.m_pValue[lA+lB-1]= uCarry;
         return true;
     }
@@ -792,9 +795,9 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
 //  Arguments:
 //      bnum bnA
 //      u32 uB
-//      i32 iShift (by full words)
+//      int shift (by full words)
 //      bnum bnR
-bool mpUSingleMultAndShift(bnum& bnA, u64 uB, i32 iShift, bnum& bnR)
+bool mpUSingleMultAndShift(bnum& bnA, u64 uB, int shift, bnum& bnR)
 {
     i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     u64     uCarry= 0;
@@ -804,12 +807,12 @@ bool mpUSingleMultAndShift(bnum& bnA, u64 uB, i32 iShift, bnum& bnR)
         return true;
     }
 
-    if((lA+iShift)>(int)bnR.mpSize()) {
+    if((lA+shift)>bnR.mpSize()) {
         fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
         return false;
     }
-    int lR= (int)bnR.mpSize();
-    mpCopyWords(lA, bnA.m_pValue, lR-iShift, bnR.m_pValue+iShift);
+    int lR= bnR.mpSize();
+    mpCopyWords(lA, bnA.m_pValue, lR-shift, bnR.m_pValue+shift);
     uCarry= mpUMultByLoop(lR, bnR.m_pValue, uB);
     if(uCarry==0)
         return true;
@@ -825,28 +828,29 @@ bool mpUSingleMultAndShift(bnum& bnA, u64 uB, i32 iShift, bnum& bnR)
 //      bNum bnR, 
 //      u32* puRem, 
 //      bool fZero=true
+//  Note: uB>b/2
 bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true)
 {
     i32     i;
-    u64*    rguA= bnA.m_pValue;
-    i32     iRealSizeA= mpWordsinNum(bnA.mpSize(), rguA);
+    u64*    rgA= bnA.m_pValue;
+    int     lA= mpWordsinNum(bnA.mpSize(), rgA);
     u64     uRem= 0;
-    i32     iOutSize= bnQ.mpSize();
-    u64*    rguOut= bnQ.m_pValue;
+    int     sizeQ= bnQ.mpSize();
+    u64*    rgQ= bnQ.m_pValue;
 
     if(uB==0L) {
         fprintf(g_logFile, "mpSingleUDiv: Division by 0\n");
         return false;
     }
-    if(iOutSize<iRealSizeA) {
+    if(sizeQ<lA) {
         fprintf(g_logFile, "mpSingleUDiv: potential overflow\n");
         return false;
     }
     if(fZero)
-        ZeroWords(iOutSize, bnQ.m_pValue);
+        ZeroWords(sizeQ, bnQ.m_pValue);
 
-    for(i=(iRealSizeA-1); i>=0; i--)
-        uRem= longdivstep(&rguOut[i], uRem, rguA[i], uB);
+    for(i=(lA-1); i>=0; i--)
+        uRem= longdivstep(&rgQ[i], uRem, rgA[i], uB);
 
     *puRem= uRem;
     return true;
@@ -863,41 +867,58 @@ bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true)
 //          qE--; rE+= uDenom;
 //      }
 //      repeat if rE< r
-void EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 vM2)
+void EstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u64 vLo)
 {
-    u64 uQ, uR, uRTop, uA;
-    
-#ifdef ARITHTEST
-    fprintf(g_logFile, "longdivstep(%016lx, %016lx, %016lx\n", uN-vM1, uNM1, vM1);
-    fflush(g_logFile);
-#endif
-    // if(vM1==0)
-    //    return false;
-    if(uN>=vM1) {
-        uQ= (u64) -1ULL;
-        uR= longdivstep(&uA, uN-vM1, uNM1, vM1);
-        uRTop= longaddwithcarry(&uR, uR, vM1, 0ULL);
-
-        // mark unused variables to keep the compiler happy
-        UNUSEDVAR(uRTop);
-        UNUSEDVAR(uA);
-    } 
-    else {
-        uR= longdivstep(&uQ, uN, uNM1, vM1);
+    u64     uQ, uR;
+    int     maxBit= MaxBit(vHi);
+    int     shift= NUMBITSINU64-maxBit;
+    u64     newv;
+    u64     newuHi;
+    u64     newuLo;
+ 
+    if(maxBit==NUMBITSINU64) {
+        newv= vHi;
+        newuHi= uHi;
+        newuLo= uLo;
+    }
+    else { 
+        newv= (vHi<<shift)|(vLo>>maxBit);
+        newuHi= (uHi<<shift)|(uLo>>maxBit);
+        newuLo= (uLo<<shift)|(uLower>>maxBit);
     }
 
-    *pqE= uQ;
 #ifdef ARITHTEST
-    fprintf(g_logFile, "EstimateQuotient(%016lx, %016lx, %016lx, %016lx, %016lx) --- ",
-           (up64) uN, (up64) uNM1, (up64) uNM2, (up64) vM1, (up64) vM2);
-    fprintf(g_logFile, "uQ: %016lx\n", (up64) uQ);
-    fflush(g_logFile);
+    printf("Estimate quotient new u/v: %016lx %016lx %016lx, shift: %d, maxBit: %d\n", 
+        newuHi, newuLo, newv, shift, maxBit);
 #endif
+    uR= longdivstep(&uQ, newuHi, newuLo, newv);
+#if 0
+    if(uHi>=vHi) {
+        *pqE= (-1ULL);
+        return;
+    }
+#endif
+    *pqE= uQ;
     return;
 }
 
 
 // ----------------------------------------------------------------------------
+
+
+bool notsmallerthan(u64* pA, u64* pB, int size)
+{
+    int i;
+
+    for(i=0;i<size;i++) {
+        if(*pA>*pB)
+            return true;
+        if(*pA<*pB)
+            return false;
+        pA--; pB--;
+    }
+    return true;
+}
 
 
 //  Function: bool mpUDiv
@@ -908,48 +929,49 @@ void EstimateQuotient(u64* pqE, u64 uN, u64 uNM1, u64 uNM2, u64 vM1, u64 vM2)
 //      bNum bnR
 //  Description:
 //      Unsigned division a la Knuth
-//      First normallize:  d<-- floor((r-1)/v[m-1])
-//      A<-- A*d
-//      B<-- B*d
-//      At conclusion, rem<-- rem/d
 //      Uses the following theorem in the estimate quotient inline:
-//          If U=u[n]b^n+..u[0], V=v[n-1]b^(n-1)+...+v[0] and
-//              qE= min([(u[n]b+u[n-1])/v[n-1]},b-1) then eq>=q.  
-//          If v[n-1]>b/2, eq-2<=q<=eq.
+//          If U=u[n]b^n+..u[0], V=v[n-1]b^(n-1)+...+v[0] with u/b<v
+//          qE= min([(u[n]b+u[n-1])/v[n-1]],b-1) then qE>=q.  
+//          If v[n-1]>b/2, qE-2<=q<=qE.
+//      At conclusion, rem:= rem/d
 //          Note that this is the only one of the classical algorithms
 //          that destroys the value of the arguments, so we copy them.
 bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 {
-    i32     i;
-    i32     sizeA= bnA.mpSize();
-    i32     sizeB= bnB.mpSize();
-    i32     sizeQ= bnQ.mpSize();
-    i32     sizeR= bnR.mpSize();
-    i32     lA, lB, iQSize, iShift;
-    i32     scaledA, scaledB;
+    int     sizeA= bnA.mpSize();
+    int     sizeB= bnB.mpSize();
+    int     sizeQ= bnQ.mpSize();
+    int     sizeR= bnR.mpSize();
+    int     lA= mpWordsinNum(sizeA, bnA.m_pValue);
+    int     lB= mpWordsinNum(sizeB, bnB.m_pValue);
+
+    int     scaledA, scaledB;
     u64     uQ= 0;
-    u64     uScale, uRem;
-    u64*    rgQOut= bnQ.m_pValue;
+    u64*    rgQ= bnQ.m_pValue;
     u64*    rgtA= NULL;
-    u64*    rgtB= NULL;
     u64*    rgtC= NULL;
-    u64     uA, uB;
-        
+    u64     uBHi, uBLo;
+    int     i;
+    int     compare;
+
+#ifdef ARITHTEST      
+    printf("mpUDiv: \n"); 
+    printf("A: ");printNum(bnA);printf("\n");
+    printf("B: ");printNum(bnB);printf("\n");
+#endif
     if(bnB.mpIsZero()) {
         fprintf(g_logFile, "mpUDiv: Division by 0\n");
         return false;
     }
-    lA= mpWordsinNum(sizeA, bnA.m_pValue);
-    lB= mpWordsinNum(sizeB, bnB.m_pValue);
-    iQSize= lA-lB+1;
-    if(iQSize>sizeQ) {
+    int lQ= lA-lB+1;
+    if(lQ>sizeQ) {
         fprintf(g_logFile, "mpUDiv: Quotient overflow\n");
         return false;
     }
     mpZeroNum(bnQ);
     mpZeroNum(bnR);
 
-    if(mpUCompare(bnA, bnB)==s_isLessThan) {
+    if(mpCompare(bnA, bnB)==s_isLessThan) {
         if(sizeR<lA) {
             fprintf(g_logFile, "mpUDiv: Remainder overflow\n");
             return false;
@@ -962,7 +984,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
         return false;
     }
 
-    // does bnB have length 1 or less?
+    // does bnB have length 1?
     if(lB==1) {
         mpSingleUDiv(bnA, bnB.m_pValue[0], bnQ, bnR.m_pValue, true);
         return true;
@@ -971,110 +993,66 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     // Allocate Temporaries: one more digit than bnA in 
     //       case normalization causes digit spill over.
     bnum bnTempA(sizeA+3);
-    bnum bnTempB(sizeB+3);
     bnum bnTempC(sizeA+3);
     rgtA= bnTempA.m_pValue;
-    rgtB= bnTempB.m_pValue;
     rgtC= bnTempC.m_pValue;
-
+    bnA.mpCopyNum(bnTempA);
     UNUSEDVAR(rgtC);
 
-    i= mpWordsinNum(bnB.mpSize(), bnB.m_pValue)-1;
-    if(i<0) {
-        fprintf(g_logFile, "mpUDiv: divide by 0\n");
-        return false;
-    }
-
-    // Normalize
-    //  make sure v1>= floor(b/2)
-    if((bnB.m_pValue[i]&(1ULL<<NUMBITSINU64MINUS1))!=0) {
-        mpCopyWords(sizeA, bnA.m_pValue, sizeA, rgtA);
-        mpCopyWords(sizeB, bnB.m_pValue, sizeB, rgtB);
-        uScale= 1ULL;     // for renormalization
-    }
-    else {
-        uRem= longdivstep(&uScale, 1, 0ULL, bnB.m_pValue[i]+1ULL);
-        mpUSingleMultAndShift(bnA, uScale, 0, bnTempA);
-        mpUSingleMultAndShift(bnB, uScale, 0, bnTempB);
-    }
-    scaledA= mpWordsinNum(bnTempA.mpSize(), rgtA);
-    scaledB= mpWordsinNum(bnTempB.mpSize(), rgtB);
-#ifdef ARITHTEST
-    fprintf(g_logFile, "Scale: %016lx, LeadA: %016lx, leadB: %016lx\n", (up64) uScale,
-           (up64) rgtA[scaledA-1], (up64) rgtB[scaledB-1]);
-#endif
+    scaledA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    scaledB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    uBHi= bnB.m_pValue[scaledB-1];
+    uBLo= bnB.m_pValue[scaledB-2];
 
     // Loop through the digits
-    uA= rgtB[scaledB-1];
-    if(scaledB>=2)
-        uB= rgtB[scaledB-2];
-    else
-        uB= 0ULL;
-
-    for(i=scaledA-1; i>=scaledB; i--) {
+    for(i=(scaledA-1); i>=(scaledB-1); i--) {
+        if(rgtA[i]>=uBHi) {
+            if(notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB)) {
+                EstimateQuotient(&uQ, 0ULL, rgtA[i], rgtA[i-1], uBHi, uBLo);
 #ifdef ARITHTEST
-        fprintf(g_logFile, "\nLoop head %d\n", i); 
-        fprintf(g_logFile, "Estimate Quotient(%016lx, %016lx, %016lx, %016lx, %016lx\n",
-            (up64) rgtA[i], (up64) rgtA[i-1], (up64) rgtA[i-2], 
-            (up64) uA, (up64) uB); fflush(stdout);
+                printf("Quotient: %016lx, i: %d, i-scaledB+1: %d\n", uQ, i, i-scaledB+1);
 #endif
-        if(i==1)
-            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0, uA, uB);
+                while(uQ>0) {
+                    mpZeroNum(bnTempC);
+                    mpUSingleMultAndShift(bnB, uQ, i-scaledB+1, bnTempC);
+                    compare= mpCompare(bnTempA, bnTempC);
+                    if(compare!=s_isLessThan)
+                        break;
+                    uQ--;
+                    mpZeroNum(bnTempC);
+                    mpUSingleMultAndShift(bnB, uQ, i-scaledB+1, bnTempC);
+                }
+                if(uQ>0) {
+                    mpUSubFrom(bnTempA, bnTempC);
+                    rgQ[i-scaledB+1]= uQ;
+                    continue;
+                }
+            }
+        }
+        if(i==(scaledB-1))
+            break;
+        if(scaledA<3)
+            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
         else
-            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], rgtA[i-2], uA, uB);
-
-        // Compute product
+            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
         mpZeroNum(bnTempC);
-        iShift= i-scaledB;
-        mpUSingleMultAndShift(bnTempB, uQ, iShift, bnTempC);
-#ifdef ARITHTEST
-        fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "uA: %016lx, uB: %016lx", (up64) uA, (up64) uB);
-        fprintf(g_logFile, ", singlemult, uQ: %016lx\n", (up64) uQ);
-        fprintf(g_logFile, "Shift: %d\n", iShift);
-        fprintf(g_logFile, "A: "); printNum(bnTempA); printf("\n");
-        fprintf(g_logFile, "B: "); printNum(bnTempB); printf("\n");
-        fprintf(g_logFile, "C: "); printNum(bnTempC); printf("\n");
-        fflush(stdout);
-#endif
-
-        // Too big? (if so it's only by 1)
-        while(mpUCompare(bnTempA, bnTempC)==s_isLessThan) {
+        mpUSingleMultAndShift(bnB, uQ, i-scaledB, bnTempC);
+        while(mpCompare(bnTempA, bnTempC)==s_isLessThan) {
             uQ--;
             mpZeroNum(bnTempC);
-            mpUSingleMultAndShift(bnTempB, uQ, iShift, bnTempC);
-#ifdef ARITHTEST
-            fprintf(g_logFile, "\nIn Loop compare, ");
-            fprintf(g_logFile, "uQ: %016lx\n", (up64) uQ);
-            fprintf(g_logFile, "A: "); printNum(bnTempA); printf("\n");
-            fprintf(g_logFile, "C: "); printNum(bnTempC); printf("\n");
-            fflush(stdout);
-#endif
+            mpUSingleMultAndShift(bnB, uQ, i-scaledB, bnTempC);
         }
-#ifdef ARITHTEST
-        fprintf(g_logFile, "Out of loop, i: %d\n", i); fflush(stdout);
-#endif
         mpUSubFrom(bnTempA, bnTempC);
-#ifdef ARITHTEST
-        fprintf(g_logFile, "After USub: ");
-        printNum(bnTempA);
-        fprintf(g_logFile, "\n");
-        fflush(stdout);
-#endif
-        // Set Quotient
-        rgQOut[i-scaledB]= uQ;
+        rgQ[i-scaledB]= uQ;
     }
 
-    // UnNormalize
-    if(uScale>0) {
-        mpSingleUDiv(bnTempA, uScale, bnR, &uRem);
-    }
-    else {
-        bnTempA.mpCopyNum(bnR);
-    }
-        
+#ifdef ARITHTEST
+    printf("mpUDiv returning %016lx\n", uQ);printNum(bnQ);printf("\n");
+#endif
+    bnTempA.mpCopyNum(bnR);
     return true;
 }
+
 
 
 // ----------------------------------------------------------------------------

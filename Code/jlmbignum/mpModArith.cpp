@@ -233,7 +233,7 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
     try {
         bnum bnT(maxSize);
         bnum bnG(maxSize);
-        mpBinaryExtendedGCD(bnA, bnM, bnR, bnT, bnG);
+        mpExtendedGCD(bnA, bnM, bnR, bnT, bnG);
         // Now, bnA (bnR) + bnM (bnT)= 1, so bnR is bnA inverse
         mpModNormalize(bnR, bnM);
         fRet= true;
@@ -270,7 +270,7 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         bnum    bnb(maxSize);
         bnum    bnG(maxSize);
 
-        mpBinaryExtendedGCD(bnB, bnM, bnb, bnc, bnG);
+        mpExtendedGCD(bnB, bnM, bnb, bnc, bnG);
         // Now, bnB (bnb) + bnM (bnc)= 1, so bnb is bnB inverse
         mpModNormalize(bnb, bnM);
         mpMult(bnb, bnA, bnR);
@@ -393,9 +393,9 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
     bnum*           pbnTQ= NULL;
     bnum*           pbnG= NULL;
 
-    int size= (int)bnP.mpSize();
-    if((int)bnQ.mpSize()>size)
-        size= (int)bnQ.mpSize();
+    int size= bnP.mpSize();
+    if(bnQ.mpSize()>size)
+        size= bnQ.mpSize();
     size*= 2;
 
     pbnG= new bnum(size);
@@ -420,7 +420,7 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
         goto done;
     }
 
-    fRet= mpBinaryExtendedGCD(bnE, bnPM1, bnDP, *pbnTP, *pbnG);
+    fRet= mpExtendedGCD(bnE, bnPM1, bnDP, *pbnTP, *pbnG);
     if(!fRet)
         goto done;
     if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
@@ -428,7 +428,7 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
         fRet= false;
         goto done;
     }
-    fRet= mpBinaryExtendedGCD(bnE, bnQM1, bnDQ, *pbnTQ, *pbnG);
+    fRet= mpExtendedGCD(bnE, bnQM1, bnDQ, *pbnTQ, *pbnG);
     if(!fRet)
         goto done;
     if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
@@ -466,9 +466,9 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
     bnum*           pbnT1= NULL;
     bnum*           pbnT2= NULL;
 
-    int size= (int)bnDP.mpSize();
-    if((int)bnDQ.mpSize()>size)
-        size= (int)bnDQ.mpSize();
+    int size= bnDP.mpSize();
+    if(bnDQ.mpSize()>size)
+        size= bnDQ.mpSize();
 
     pbnT1= new bnum(size);
     if(pbnT1==NULL)
@@ -576,7 +576,7 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
     // get bnD
     bnum bnT(sizeM);
     bnum bnG(sizeM);
-    if(!mpBinaryExtendedGCD(bnE, bnOrder, bnD, bnT, bnG)) {
+    if(!mpExtendedGCD(bnE, bnOrder, bnD, bnT, bnG)) {
         fprintf(g_logFile, "Cant find D\n");
         return false;
     }

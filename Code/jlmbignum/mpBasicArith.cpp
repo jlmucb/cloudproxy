@@ -954,6 +954,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     u64     uBHi, uBLo;
     int     i;
     int     compare;
+    bool    fTwoDigitArgs;
 
 #ifdef ARITHTEST      
     printf("mpUDiv: \n"); 
@@ -1007,6 +1008,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 
     // Loop through the digits
     for(i=(scaledA-1); i>=(scaledB-1); i--) {
+        fTwoDigitArgs= false;
         if(rgtA[i]>=uBHi) {
             if(notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB)) {
                 EstimateQuotient(&uQ, 0ULL, rgtA[i], rgtA[i-1], uBHi, uBLo);
@@ -1029,6 +1031,8 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
                     continue;
                 }
             }
+        else
+            fTwoDigitArgs= true;
         }
         if(i==(scaledB-1))
             break;
@@ -1036,6 +1040,12 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
             EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
         else
             EstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
+        if(fTwoDigitArgs && uQ==0) {
+            if(i>(scaledB-1)) {
+                i--;
+                uQ= (u64)-1;
+            }
+        }
         mpZeroNum(bnTempC);
         mpUSingleMultAndShift(bnB, uQ, i-scaledB, bnTempC);
         while(mpCompare(bnTempA, bnTempC)==s_isLessThan) {

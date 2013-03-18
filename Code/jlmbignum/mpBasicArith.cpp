@@ -164,7 +164,7 @@ void printNum(bnum& bnA, bool fFull=false)
 
 
 //  Data:
-//      Bignum representations of 1 and 2
+//      Bignum representations of 0, 1 and 2
 bnum    g_bnZero(1);
 bnum    g_bnOne(1);
 bnum    g_bnTwo(1);
@@ -1061,6 +1061,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
                     rgQ[i-scaledB+1]= uQ;
                     continue;
                 }
+            	fTwoDigitArgs= true;
             }
         else
             fTwoDigitArgs= true;

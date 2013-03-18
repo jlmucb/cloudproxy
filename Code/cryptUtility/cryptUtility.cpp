@@ -2105,7 +2105,10 @@ int main(int an, char** av)
         initCryptoRand();
         initBigNum();
         fRet= GenKey(szKeyType, szOutFile);
-        fprintf(g_logFile, "GenKey returning\n");
+        if(fRet)
+            fprintf(g_logFile, "GenKey returning successfully\n");
+        else
+            fprintf(g_logFile, "GenKey returning unsuccessfully\n");
         closeCryptoRand();
     }
 

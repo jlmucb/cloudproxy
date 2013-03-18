@@ -857,6 +857,43 @@ bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true)
 }
 
 
+//  Function: void TwoDigitEstimateQuotient (no inline)
+void TwoDigitEstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u64 vLo)
+{
+    u64     uQ, uR;
+    int     maxBit= MaxBit(vHi);
+    int     shift= NUMBITSINU64-maxBit;
+    u64     newv;
+    u64     newuHi;
+    u64     newuLo;
+ 
+    if(maxBit==NUMBITSINU64) {
+        newv= vHi;
+        newuHi= uHi;
+        newuLo= uLo;
+    }
+    else { 
+        newv= (vHi<<shift)|(vLo>>maxBit);
+        newuHi= (uHi<<shift)|(uLo>>maxBit);
+        newuLo= (uLo<<shift)|(uLower>>maxBit);
+    }
+
+#ifdef ARITHTEST
+    printf("Estimate quotient new u/v: %016lx %016lx %016lx, shift: %d, maxBit: %d\n", 
+        newuHi, newuLo, newv, shift, maxBit);
+#endif
+    if(newuHi==newv) {
+        *pqE= (u64)-1;
+        return;
+    }
+
+    uR= longdivstep(&uQ, newuHi, newuLo, newv);
+    UNUSEDVAR(uR);
+    *pqE= uQ;
+    return;
+}
+
+
 //  Function: void EstimateQuotient (no inline)
 //  Description:
 //      Estimate Quotient.  
@@ -893,12 +930,6 @@ void EstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u64 vLo)
 #endif
     uR= longdivstep(&uQ, newuHi, newuLo, newv);
     UNUSEDVAR(uR);
-#if 0
-    if(uHi>=vHi) {
-        *pqE= (-1ULL);
-        return;
-    }
-#endif
     *pqE= uQ;
     return;
 }
@@ -1036,15 +1067,21 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
         }
         if(i==(scaledB-1))
             break;
-        if(scaledA<3)
-            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
-        else
-            EstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
-        if(fTwoDigitArgs && uQ==0) {
-            if(i>(scaledB-1)) {
+        if(fTwoDigitArgs) {
+            if(i>scaledB) {
+                if(scaledA<3)
+                    TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
+                else
+                    TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
                 i--;
                 uQ= (u64)-1;
             }
+        }
+        else {
+            if(scaledA<3)
+                EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
+            else
+                EstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
         }
         mpZeroNum(bnTempC);
         mpUSingleMultAndShift(bnB, uQ, i-scaledB, bnTempC);

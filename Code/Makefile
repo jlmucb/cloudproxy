@@ -9,7 +9,7 @@ CFLAGS=-c $(INCLUDES) -Wall -Werror -Wno-format -DLINUX -DTEST -D__FLUSHIO__ $(D
 OBJS=obj
 TEST=test
 LIB=lib
-OBJROOT=/home/tmroeder/jlmcrypt
+OBJROOT=/home/jlm/jlmcrypt
 
 BIGNUM_SOURCE=jlmbignum/mpBasicArith.cpp \
 		jlmbignum/mpModArith.cpp \

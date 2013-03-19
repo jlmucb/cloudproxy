@@ -89,6 +89,11 @@ int main(int an, char** av)
     bnum bnTest11(8);
     bnum bnTestMsg(8);
 
+    bnum bnCarryTest1(8);
+    bnum bnCarryTest1a(8);
+    bnum bnCarryTest2(8);
+    bnum bnCarryTest2a(8);
+
     bnum bnA(8);
     bnum bnB(8);
     bnum bnX(8);
@@ -118,6 +123,11 @@ int main(int an, char** av)
     u64 rguTest11[2]= {0x0ULL, 0x1ULL};
     u64 rguTest12[4]= {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
 
+    u64 rguCarryTest1[4]= {0x00000b255a6beefdULL, 0x00000b255a6beef0ULL, 0ULL};
+    u64 rguCarryTest1a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
+    u64 rguCarryTest2[4]= { 0x00000b255a6beef0ULL, 0x00000b255a6beefdULL, 0ULL};
+    u64 rguCarryTest2a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
+
     u64 rgudiv1[4]= {0xffff555205050505, 0x0000000000000002};
     u64 rgudiv2[4]= { 0xf7b5147a87dd32d4, 0x0000000000000002};
     bnum    bndiv1(4);
@@ -137,7 +147,13 @@ int main(int an, char** av)
         bnTest11.m_pValue[i]= rguTest11[i];
         bndiv1.m_pValue[i]= rgudiv1[i]; 
         bndiv2.m_pValue[i]=  rgudiv2[i];
+        bnCarryTest1.m_pValue[i]=  rguCarryTest1[i];
+        bnCarryTest1a.m_pValue[i]=  rguCarryTest1a[i];
+        bnCarryTest2.m_pValue[i]=  rguCarryTest2[i];
+        bnCarryTest2a.m_pValue[i]=  rguCarryTest2a[i];
     }
+    bnCarryTest1a.m_pValue[2]=  rguCarryTest1a[2];
+    bnCarryTest2a.m_pValue[2]=  rguCarryTest2a[2];
     bnTest7.m_pValue[i]= rguTest7[i];
     for(i=0; i<4; i++) {
         bnTest12.m_pValue[i]= rguTest12[i];
@@ -305,6 +321,18 @@ int main(int an, char** av)
         printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
         mpZeroNum(bnTest8);
         mpZeroNum(bnTest9);
+
+        printNum(bnCarryTest1); printf(" / "); printNum(bnCarryTest1a); printf("=\n\t");
+        mpUDiv(bnCarryTest1, bnCarryTest1a, bnTest8, bnTest9);
+        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
+        mpZeroNum(bnTest8);
+        mpZeroNum(bnTest9);
+        printNum(bnCarryTest2); printf(" / "); printNum(bnCarryTest2a); printf("=\n\t");
+        mpUDiv(bnCarryTest2, bnCarryTest2a, bnTest8, bnTest9);
+        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
+        mpZeroNum(bnTest8);
+        mpZeroNum(bnTest9);
+
 
         printf("\n");
         printf("Signed arithmetic tests\n");

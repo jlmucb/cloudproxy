@@ -427,9 +427,8 @@ bool IsBitPositionNonZero(bnum& bnN, i32 pos)
 
 inline u64 bottomMask64(int numBits)
 {
-    u64     uMask= (u64) (-1);
+    u64     uMask= -1ULL;
 
-    uMask<<= (NUMBITSINU64-numBits);
     uMask>>= (NUMBITSINU64-numBits);
     return uMask;
 }
@@ -440,26 +439,33 @@ void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits)
     int         i;
     int         wordShift= (numShiftBits>>6);
     int         bitShift= numShiftBits&0x3f;
-    int         bottomShift= NUMBITSINU64-bitShift;
-    u64         ubottomMask= bottomMask64(bottomShift);
-    u64         utopMask= ((u64)(-1))^ubottomMask;
+    int         bottomShift= 0;
+    u64         bottomMask= 0ULL;
+    u64         topMask= 0ULL;
     u64*        rgA= bnA.m_pValue;
     u64*        rgR= bnR.m_pValue;
     i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
     u64         r, s, t;
 
+    if(bitShift==0)
+        bottomShift= 0;
+    else
+        bottomShift= NUMBITSINU64-bitShift;
+    bottomMask= bottomMask64(bottomShift);
+    topMask= (-1ULL)^bottomMask;
+
     t= rgA[lA-1];
     if(bitShift>0) {
-        r= (t&utopMask)>>bottomShift;
+        r= (t&topMask)>>bottomShift;
         rgR[lA+wordShift]= r;
     }
-    s= (t&ubottomMask)<<bitShift;
+    s= (t&bottomMask)<<bitShift;
 
     for(i=(lA-1); i>0;i--) {
         t= rgA[i-1];
-        r= (t&utopMask)>>bottomShift;
+        r= (t&topMask)>>bottomShift;
         rgR[i+wordShift]|= s|r;
-        s= (t&ubottomMask)<<bitShift;
+        s= (t&bottomMask)<<bitShift;
     }
     rgR[wordShift]= s;
 }
@@ -470,19 +476,30 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
     int         i;
     int         wordShift= (numShiftBits>>6);
     int         bitShift= numShiftBits&0x3f;
-    u64         ubottomMask= bottomMask64(bitShift);
+    u64         bottomMask= 0ULL;
+    u64         topMask= 0ULL;
     int         bottomShift= 64-bitShift;
     u64*        rgA= bnA.m_pValue;
     u64*        rgR= bnR.m_pValue;
     i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
     u64         r, s, t;
 
+    if(bitShift==0)
+        bottomShift= 0;
+    else
+        bottomShift= NUMBITSINU64-bitShift;
+    bottomMask= bottomMask64(bitShift);
+    topMask= bottomMask^(-1ULL);
+
     t= rgA[wordShift];
     s= t>>bitShift;
     for(i=0; i<(lA-wordShift); i++) {
-        t= rgA[i+1+wordShift];
-        r= (t&ubottomMask)<<bottomShift;
-        rgR[i]|= s|r;
+        if((i+wordShift+1)<lA)
+            t= rgA[i+wordShift+1];
+        else
+            t= 0ULL;
+        r= (t&bottomMask)<<bottomShift;
+        rgR[i]= s|r;
         s= t>>bitShift;
     }
 }

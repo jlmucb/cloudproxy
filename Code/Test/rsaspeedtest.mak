@@ -19,24 +19,11 @@ dobjs=  $(B)/rsaspeedtest.o $(B)/keys.o $(B)/jlmcrypto.o \
 	$(B)/tinyxmlparser.o $(B)/logging.o $(B)/hmacsha256.o \
  	$(B)/fastArith.o 
 
-tobjs=  $(B)/mpTest.o $(B)/keys.o $(B)/jlmcrypto.o $(B)/logging.o \
-	$(B)/aes.o $(B)/sha256.o $(B)/mpBasicArith.o  \
-	$(B)/modesandpadding.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
-	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
-	$(B)/tinyxmlparser.o $(B)/hmacsha256.o $(B)/fastArith.o
-
-all: $(E)/rsaspeedtest.exe $(E)/mpTest.exe
-
-$(E)/mpTest.exe: $(tobjs)
-	@echo "mpTest"
-	$(LINK) -o $(E)/mpTest.exe $(tobjs)
+all: $(E)/rsaspeedtest.exe
 
 $(E)/rsaspeedtest.exe: $(dobjs)
 	@echo "rsaspeedtest"
 	$(LINK) -o $(E)/rsaspeedtest.exe $(dobjs)
-
-$(B)/mpTest.o: mpTest.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/mpTest.o mpTest.cpp
 
 $(B)/rsaspeedtest.o: rsaspeedtest.cpp $(SCC)/jlmcrypto.h $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/rsaspeedtest.o rsaspeedtest.cpp

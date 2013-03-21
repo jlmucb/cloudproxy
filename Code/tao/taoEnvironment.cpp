@@ -805,6 +805,11 @@ bool taoEnvironment::saveTao()
                 fprintf(g_logFile, "taoEnvironment::saveTao: cant serialize private key\n");
                 return false;
             }
+#ifdef DUMPKEYSTOLOGFORDEBUGGING
+            fprintf(g_logFile, "taoEnvironment::saveTao serialized privateKey: %s\n",
+                    m_serializedprivateKey);
+            PrintBytes((char*)"Symmetric key: ", m_symKey, m_symKeySize);
+#endif
             m_serializedprivateKeySize= strlen(m_serializedprivateKey)+1;
             m_serializedprivateKeyType= KEYTYPERSA1024SERIALIZED;
             if(!localsealKey(m_serializedprivateKeyType, m_serializedprivateKeySize,

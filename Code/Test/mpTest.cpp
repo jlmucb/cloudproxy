@@ -29,636 +29,1220 @@
 #include <unistd.h>
 
 #include "bignum.h"
+#include "jlmcrypto.h"
 #include "mpFunctions.h"
+#include "logging.h"
 
 
 // ---------------------------------------------------------------------------------
 
 
-void UCompareTest(bnum& bnA, bnum& bnB)
-{
-    int r= mpUCompare(bnA, bnB);
+//  Test structure
 
-    printNum(bnA);
-    switch(r) {
-      case 1:
-        printf(" > ");
-        break;
-      case -1:
-        printf(" < ");
-        break;
-      case 0:
-        printf(" = ");
-        break;
+class numinit {
+public:
+    int     numWords;
+    u64*    rg;
+};
+
+
+class testinit {
+public:
+    char*   comment;
+    int     in1;
+    int     in2;
+    u64     uparameter;
+    int     iparameter;
+};
+
+
+// ---------------------------------------------------------------------------------
+
+
+int     iRandDev= -1;
+
+
+bool initCryptoRand()
+{
+    iRandDev= open("/dev/urandom", O_RDONLY);
+    if(iRandDev<0)
+        return false;
+    return true;
+}
+
+
+bool closeCryptoRand()
+{
+    if(iRandDev>=0) {
+        close(iRandDev);
     }
-    printNum(bnB);
-    printf("\n");
+    iRandDev= -1;
+    return true;
+}
+
+
+bool getCryptoRandom(int iNumBits, byte* buf)
+{
+    int     iSize= (iNumBits+NBITSINBYTE-1)/NBITSINBYTE;
+
+    if(iRandDev<0) {
+        return false;
+    }
+    int iSize2= read(iRandDev, buf, iSize);
+    if(iSize2==iSize) {
+        return true;
+    }
+    fprintf(g_logFile, "getCryptoRandom returning false %d bytes instead of %d\n", 
+            iSize2, iSize);
+    return false;
+}
+
+
+
+// ---------------------------------------------------------------------------------
+
+
+#define NUMINITIALIZERS 20
+
+
+u64 rguTest1[2]= {0xffffffffffffffffULL, 0xffffffffffffffffULL};
+u64 rguTest2[2]= {0x0101010100000000ULL, 0xccccaaaaeeeebbbbULL};
+u64 rguTest3[3]= {0xccccaaaa01010101ULL, 0xeeeebbbb33333333ULL};
+u64 rguTest4[2]= {0ULL, 0x0000000400000000ULL};
+u64 rguTest5[3]= {0ULL, 0x0000000500000000ULL, 0x0000000000000000ULL};
+u64 rguTest6[2]= {0x0000008100000000ULL, 0x0000000000000000ULL};
+u64 rguTest7[3]= {0xccccaaaa01010101ULL, 0xeeeebbbb33333333ULL, 0x00356ab299771254ULL};
+u64 rguTest8[4]= {0ULL, 0xccccaaaa01010101ULL, 0xeeeebbbb33333333ULL, 0x00356ab299771254ULL};
+u64 rguTest10[7]= {0x00000b255a6beefdULL, 0xf7ee4e1f44d6d60cULL, 0x565bfcecf309e0d0ULL, 
+                       0xe4c2b4b837e8591cULL, 0x1d3605a82eb76d22ULL, 0xa90a55e332313240ULL};
+u64 rguTest11[2]= {0x0ULL, 0x1ULL};
+u64 rguTest12[4]= {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
+u64 rguCarryTest1[4]= {0x00000b255a6beefdULL, 0x00000b255a6beef0ULL, 0ULL};
+u64 rguCarryTest1a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
+u64 rguCarryTest2[4]= { 0x00000b255a6beef0ULL, 0x00000b255a6beefdULL, 0ULL};
+u64 rguCarryTest2a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
+u64 rgudiv1[4]= {0xffff555205050505, 0x0000000000000002};
+u64 rgudiv2[4]= { 0xf7b5147a87dd32d4, 0x0000000000000002};
+
+
+// Initializes
+numinit rgInitializers[]= {
+    // int numWords, u64* rg
+    {2, rguTest1},          // Entry 00
+    {2, rguTest2},          // Entry 01
+    {3, rguTest3},          // Entry 02
+    {2, rguTest4},          // Entry 03
+    {3, rguTest5},          // Entry 04
+    {2, rguTest6},          // Entry 05
+    {3, rguTest7},          // Entry 06
+    {4, rguTest8},          // Entry 07
+    {7, rguTest10},         // Entry 08
+    {2, rguTest11},         // Entry 09
+    {4, rguTest12},         // Entry 10
+    {4, rguCarryTest1},     // Entry 10
+    {2, rguCarryTest1a},    // Entry 12
+    {4, rguCarryTest2},     // Entry 13
+    {2, rguCarryTest2a},    // Entry 14
+    {2, rgudiv1},           // Entry 15
+    {2, rgudiv2}            // Entry 16
+};
+
+bnum*   rgbn[NUMINITIALIZERS];
+
+
+testinit copytestData[] = {
+    // comment, in1; in2; uparameter; iparamater;
+    {(char*)"Copy 1", 0, 0, 0, 0},
+    {(char*)"Copy 2", 7, 0, 0, 0}
+};
+testinit maxtestData[] = {
+    {(char*)"MaxBit 1", 0, 0, 0, 0},
+    {(char*)"MaxBit 2", 1, 0, 0, 0},
+    {(char*)"MaxBit 3", 2, 0, 0, 0},
+    {(char*)"MaxBit 4", 3, 0, 0, 0}
+};
+testinit shifttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+    {(char*)"Shift 1", 0, 0, 0, 4},
+    {(char*)"Shift 2", 0, 0, 0, 72},
+    {(char*)"Shift 3", 0, 0, 0, 20},
+    {(char*)"Shift 4", 0, 0, 0, 84},
+    {(char*)"Shift 5", 0, 0, 0, -4},
+    {(char*)"Shift 6", 0, 0, 0, -72},
+    {(char*)"Shift 7", 0, 0, 0, -20},
+    {(char*)"Shift 8", 0, 0, 0, -84}
+};
+testinit ucomparetestData[] = {
+    {(char*)"Unsigned compare 1", 1, 1, 0, 0},
+    {(char*)"Unsigned compare 2", 5, 5, 0, 0},
+    {(char*)"Unsigned compare 3", 14, 13, 0, 0},
+    {(char*)"Unsigned compare 4", 13, 14, 0, 0},
+    {(char*)"Unsigned compare 4", 11, 10, 0, 0},
+    {(char*)"Unsigned compare 4", 10, 11, 0, 0},
+    {(char*)"Unsigned compare 5", 8, 7, 0, 0},
+    {(char*)"Unsigned compare 6", 7, 8, 0, 0},
+};
+testinit usingleaddtestData[] = {
+    {(char*)"AddTo  1",  0, 0, 0x1, 0},
+    {(char*)"AddTo  2",  1, 0, 0x1, 0},
+    {(char*)"AddTo  3",  2, 0, 0x1, 0},
+    {(char*)"AddTo  4",  3, 0, 0x1, 0},
+    {(char*)"AddTo  5",  4, 0, 0x1, 0},
+    {(char*)"AddTo  6",  5, 0, 0x1, 0},
+    {(char*)"AddTo  7",  6, 0, 0x1, 0},
+    {(char*)"AddTo  8",  7, 0, 0x1, 0},
+    {(char*)"AddTo  9",  8, 0, 0x1, 0},
+    {(char*)"AddTo 10",  9, 0, 0x1, 0},
+    {(char*)"AddTo 11", 10, 0, 0x1, 0},
+    {(char*)"AddTo 12", 11, 0, 0x1, 0},
+    {(char*)"AddTo 13", 12, 0, 0x1, 0},
+    {(char*)"AddTo 14", 13, 0, 0x1, 0},
+    {(char*)"AddTo 15", 13, 0, 0x1, 0},
+    {(char*)"AddTo 16",  0, 0, 0xf, 0},
+    {(char*)"AddTo 17",  1, 0, 0xf, 0},
+    {(char*)"AddTo 18",  2, 0, 0xf, 0},
+    {(char*)"AddTo 19",  3, 0, 0xf, 0},
+    {(char*)"AddTo 20",  4, 0, 0xf, 0},
+    {(char*)"AddTo 21",  5, 0, 0xf, 0},
+    {(char*)"AddTo 22",  6, 0, 0xf, 0},
+    {(char*)"AddTo 23",  7, 0, 0xf, 0},
+    {(char*)"AddTo 24",  8, 0, 0xf, 0},
+    {(char*)"AddTo 25",  9, 0, 0xf, 0},
+    {(char*)"AddTo 26", 10, 0, 0xf, 0},
+    {(char*)"AddTo 27", 11, 0, 0xf, 0},
+    {(char*)"AddTo 28", 12, 0, 0xf, 0},
+    {(char*)"AddTo 29", 13, 0, 0xf, 0},
+    {(char*)"AddTo 30", 14, 0, 0xf, 0},
+};
+testinit uaddtestData[] = {
+    {(char*)"Add  1",  0, 0, 0x0, 0},
+    {(char*)"Add  2",  1, 0, 0x0, 0},
+    {(char*)"Add  3",  2, 0, 0x0, 0},
+    {(char*)"Add  4",  3, 0, 0x0, 0},
+    {(char*)"Add  5",  4, 0, 0x0, 0},
+    {(char*)"Add  6",  5, 0, 0x0, 0},
+    {(char*)"Add  7",  6, 0, 0x0, 0},
+    {(char*)"Add  8",  7, 0, 0x0, 0},
+    {(char*)"Add  9",  8, 0, 0x0, 0},
+    {(char*)"Add 10",  9, 0, 0x0, 0},
+    {(char*)"Add 11", 10, 0, 0x0, 0},
+    {(char*)"Add 12", 11, 0, 0x0, 0},
+    {(char*)"Add 13", 12, 0, 0x0, 0},
+    {(char*)"Add 14", 13, 0, 0x0, 0},
+    {(char*)"Add 15", 13, 0, 0x0, 0},
+    {(char*)"Add 16",  0, 1, 0x0, 0},
+    {(char*)"Add 17",  1, 2, 0x0, 0},
+    {(char*)"Add 18",  2, 3, 0x0, 0},
+    {(char*)"Add 19",  3, 4, 0x0, 0},
+    {(char*)"Add 20",  4, 5, 0x0, 0},
+    {(char*)"Add 21",  5, 6, 0x0, 0},
+    {(char*)"Add 22",  6, 7, 0x0, 0},
+    {(char*)"Add 23",  7, 8, 0x0, 0},
+    {(char*)"Add 24",  8, 9, 0x0, 0},
+    {(char*)"Add 25",  9, 10, 0x0, 0},
+    {(char*)"Add 26", 10, 11, 0x0, 0},
+    {(char*)"Add 27", 11, 12, 0x0, 0},
+    {(char*)"Add 28", 12, 13, 0x0, 0},
+    {(char*)"Add 29", 13, 14, 0x0, 0},
+    {(char*)"Add 30", 14, 15, 0x0, 0},
+};
+testinit usinglemulttestData[] = {
+    {(char*)"MultBy  1",  0, 0, 0x1, 0},
+    {(char*)"MultBy  2",  1, 0, 0x1, 0},
+    {(char*)"MultBy  3",  2, 0, 0x2, 0},
+    {(char*)"MultBy  4",  3, 0, 0x2, 0},
+    {(char*)"MultBy  5",  4, 0, 0x2, 0},
+    {(char*)"MultBy  6",  5, 0, 0x2, 0},
+    {(char*)"MultBy  7",  6, 0, 0x2, 0},
+    {(char*)"MultBy  8",  7, 0, 0x2, 0},
+    {(char*)"MultBy  9",  8, 0, 0x2, 0},
+    {(char*)"MultBy 10",  9, 0, 0x2, 0},
+    {(char*)"MultBy 11", 10, 0, 0x2, 0},
+    {(char*)"MultBy 12", 11, 0, 0x2, 0},
+    {(char*)"MultBy 13", 12, 0, 0x2, 0},
+    {(char*)"MultBy 14", 13, 0, 0x2, 0},
+    {(char*)"MultBy 15", 13, 0, 0x2, 0},
+    {(char*)"MultBy 16",  0, 0, 0x10, 0},
+    {(char*)"MultBy 17",  1, 0, 0x11, 0},
+    {(char*)"MultBy 18",  2, 0, 0x12, 0},
+    {(char*)"MultBy 19",  3, 0, 0x14, 0},
+    {(char*)"MultBy 20",  4, 0, 0x18, 0},
+    {(char*)"MultBy 21",  5, 0, 0x20, 0},
+    {(char*)"MultBy 22",  6, 0, 0x21, 0},
+    {(char*)"MultBy 23",  7, 0, 0x22, 0},
+    {(char*)"MultBy 24",  8, 0, 0x24, 0},
+    {(char*)"MultBy 25",  9, 0, 0x28, 0},
+    {(char*)"MultBy 26", 10, 0, 0x2f, 0},
+    {(char*)"MultBy 27", 11, 0, 0xff, 0},
+    {(char*)"MultBy 28", 12, 0, 0x2f, 0},
+    {(char*)"MultBy 29", 13, 0, 0xf0, 0},
+    {(char*)"MultBy 30", 14, 0, 0x2f, 0},
+};
+testinit usinglemultandshifttestData[] = {
+    {(char*)"MultBy  1",  0, 0, 0x1, 1},
+    {(char*)"MultBy  2",  1, 0, 0x1, 1},
+    {(char*)"MultBy  3",  2, 0, 0x2, 1},
+    {(char*)"MultBy  4",  2, 0, 0x2, 1},
+    {(char*)"MultBy  5",  4, 0, 0x2, -1},
+    {(char*)"MultBy  6",  5, 0, 0x2, -1},
+    {(char*)"MultBy  7",  6, 0, 0x2, 2},
+    {(char*)"MultBy  8",  7, 0, 0x2, -2},
+    {(char*)"MultBy  9",  8, 0, 0x2, 0},
+    {(char*)"MultBy 10",  9, 0, 0x2, 0},
+    {(char*)"MultBy 11", 10, 0, 0x2, 1},
+    {(char*)"MultBy 12", 11, 0, 0x2, 1},
+    {(char*)"MultBy 13", 12, 0, 0x2, 2},
+    {(char*)"MultBy 14", 13, 0, 0x2, 2},
+    {(char*)"MultBy 15", 13, 0, 0x2, 2},
+    {(char*)"MultBy 16",  0, 0, 0x10, 2},
+    {(char*)"MultBy 17",  1, 0, 0x11, 1},
+    {(char*)"MultBy 18",  2, 0, 0x12, 1},
+    {(char*)"MultBy 19",  3, 0, 0x14, 1},
+    {(char*)"MultBy 20",  4, 0, 0x18, -1},
+    {(char*)"MultBy 21",  5, 0, 0x20, -1},
+    {(char*)"MultBy 22",  6, 0, 0x21, 1},
+    {(char*)"MultBy 23",  7, 0, 0x22, 1},
+    {(char*)"MultBy 24",  8, 0, 0x24, -1},
+    {(char*)"MultBy 25",  9, 0, 0x28, 1},
+    {(char*)"MultBy 26", 10, 0, 0x2f, 2},
+    {(char*)"MultBy 27", 11, 0, 0xff, -2},
+    {(char*)"MultBy 28", 12, 0, 0x2f, 2},
+    {(char*)"MultBy 29", 13, 0, 0xf0, 2},
+    {(char*)"MultBy 30", 14, 0, 0x2f, 2},
+};
+
+/*
+testinit usubtracttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit uaddtotestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit usubtractfromtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit umultiplytestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit udividetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit usingledivtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit umultiplydividetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+
+
+testinit negatetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit converttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+
+testinit comparetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit singleaddtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit addtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit subtracttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit addtotestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit subtractfromtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit singlemulttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit singlemultandshifttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit multiplytestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit dividetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit singledivtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit multiplydividetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit multiplydividetestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+
+
+testinit gcdtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit crttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+
+testinit modaddtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit modmulttestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit modexptestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+testinit modinvtestData[] = {
+    //  comment,  in1;  in2;  uparameter; iparamater;
+};
+*/
+
+
+bool initNums()
+{
+    int i, j;
+
+    for(i=0;i<(int)(sizeof(rgInitializers)/sizeof(numinit));i++) {
+        rgbn[i]= new bnum(rgInitializers[i].numWords);
+        if(rgbn[i]==NULL) {
+            printf("Cannot initialize bignum %d\n", i);
+            return false;
+        }
+        for(j=0;j<rgInitializers[i].numWords;j++) {
+            rgbn[i]->m_pValue[j]= rgInitializers[i].rg[j];
+        }
+    }
+
+    return true;
 }
 
 
 // ---------------------------------------------------------------------------------
 
+
+extern  bnum    g_bnZero;
+extern  bnum    g_bnTwo;
+extern  bnum    g_bnOne;
+
+
+char uCompareSymbol(bnum& bnA, bnum& bnB)
+{
+    int r= mpUCompare(bnA, bnB);
+
+    switch(r) {
+      default:
+        return '?';
+      case 1:
+        return '>';
+      case -1:
+        return '<';
+      case 0:
+        return '=';
+    }
+}
+
+
+bool copytests()
+{
+    bool    fRet= true;
+    bnum    bnOut(10);
+    int     i;
+    int     i1;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+
+bool maxbittests()
+{
+    bool    fRet= true;
+    int     i;
+    int     i1;
+    int     i2;
+
+    printf("MaxBit, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(maxtestData)/sizeof(testinit)); i++) {
+        i1= maxtestData[i].in1;
+        i2= MaxBit(rgbn[i1]->m_pValue[0]);
+        printf("%d MaxBit, maxbit in %016lx is %d\n", i+1, rgbn[i1]->m_pValue[0], i2); 
+    }
+    return fRet;
+}
+
+
+bool shifttests()
+{
+    bool    fRet= true;
+    bnum    bnOut(10);
+    int     i;
+    int     i1;
+    int     param1;
+
+    printf("shifttestData, %d tests\n", (int)(sizeof(shifttestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(shifttestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= shifttestData[i].in1;
+        param1= shifttestData[i].iparameter;
+        mpShift(*rgbn[i1], param1, bnOut);
+        printf("%d ", i+1); 
+        printNum(*rgbn[i1]);
+        if(param1>=0)
+            printf(" << %02d = ", param1);
+        else
+            printf(" >> %02d = ", -param1);
+        printNum(bnOut); 
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+
+bool usingleaddtests()
+{
+    bool    fRet= true;
+    bnum    bnOut(10);
+    int     i;
+    int     i1;
+    u64     param2;
+
+    printf("usingleaddtestData, %d tests\n", (int)(sizeof(usingleaddtestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(usingleaddtestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= usingleaddtestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        param2= usingleaddtestData[i].uparameter;
+        mpSingleUAddTo(bnOut, param2);
+        printf("%d ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  +  %016lx =\n  ", param2); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+
+bool uaddtests()
+{
+    bool    fRet= true;
+    bnum    bnOut(10);
+    int     i;
+    int     i1;
+    int     i2;
+
+    printf("uaddtestData, %d tests\n", (int)(sizeof(uaddtestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(uaddtestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= uaddtestData[i].in1;
+        i2= uaddtestData[i].in2;
+        mpUAdd(*rgbn[i1], *rgbn[i2], bnOut);
+        printf("%d   ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  + ");
+        printNum(*rgbn[i2]); 
+        printf("\n  = ");
+        printNum(bnOut); 
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+
+bool usubtracttests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool uaddtotests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool usubfromtests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool usinglemulttests()
+{
+    bool    fRet= true;
+    bnum    bnOut(10);
+    int     i;
+    int     i1;
+    u64     param2;
+
+    printf("usinglemulttestData, %d tests\n", (int)(sizeof(usinglemulttestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(usinglemulttestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= usinglemulttestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        param2= usingleaddtestData[i].uparameter;
+        mpUSingleMultBy(bnOut, param2);
+        printf("%d ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  *  %016lx =\n  ", param2); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+
+bool usinglemultandshifttests()
+{
+    bool    fRet= true;
+    bnum    bnOut(10);
+    int     i;
+    int     i1;
+    int     param1;
+    u64     param2;
+
+    printf("usinglemultandshifttestData, %d tests\n", 
+           (int)(sizeof(usinglemultandshifttestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(usinglemultandshifttestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= usinglemultandshifttestData[i].in1;
+        param1= usinglemultandshifttestData[i].iparameter;
+        param2= usinglemultandshifttestData[i].uparameter;
+        mpUSingleMultAndShift(*rgbn[i1], param2, param1, bnOut);
+        printf("%d ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  *  %016lx << %d =\n  ", param2, param1); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+bool umultiplytests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool ucomparetests()
+{
+    bool    fRet= true;
+    int     i;
+    int     i1;
+    int     i2;
+    char    c;
+
+    printf("ucomparetestData, %d tests\n", (int)(sizeof(ucomparetestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(ucomparetestData)/sizeof(testinit)); i++) {
+        i1= ucomparetestData[i].in1;
+        i2= ucomparetestData[i].in2;
+        c= uCompareSymbol(*rgbn[i1], *rgbn[i2]);
+        printf("%d ", i+1); 
+        printNum(*rgbn[i1]); printf(" %c  ", c);
+        printNum(*rgbn[i2]); printf("\n");
+    }
+
+    return fRet;
+}
+
+
+bool udividetests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool usingledivtests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool umultiplydividetests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool negatetests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool converttests()
+{
+    bool    fRet= true;
+#if 0
+    bnum    bnOut(10);
+    int     i2;
+    int     param1;
+    u64     param2;
+
+    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
+    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
+        mpZeroNum(bnOut);
+        i1= copytestData[i].in1;
+        rgbn[i1]->mpCopyNum(bnOut);
+        printf("%d Copied ", i+1); 
+        printNum(*rgbn[i1]); 
+        printf("\n  to\n  "); 
+        printNum(bnOut); 
+        printf("\n");
+    }
+#endif
+
+    return fRet;
+}
+
+
+bool addtests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool subtracttests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool addtotests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool subfromtests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool multiplytests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool comparetests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool dividetests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool multiplydividetests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool gcdtests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool modaddtests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool modmulttests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool modexptests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool moddinvtests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool crttests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+bool primeGentests()
+{
+    bool    fRet= true;
+
+    return fRet;
+}
+
+
+// ---------------------------------------------------------------------------------
+
+
 int main(int an, char** av)
 {
-    int             i, k;
-    u64             uM;
-    u64             uR;
-    u64             uCarry;
-    extern void     initBigNum();
-    extern bool     initCryptoRand();
-    extern  bnum    g_bnTwo;
-    extern  bnum    g_bnOne;
+    bool    fAllTests= true;
 
     initBigNum();
     initCryptoRand();
 
-    bnum bnTest1(3);
-    bnum bnTest2(2);
-    bnum bnTest3(2);
-    bnum bnTest4(2);
-    bnum bnTest5(2);
-    bnum bnTest6(2);
-    bnum bnTest7(3);
-
-    bnum bnTest12(16);
-    bnum bnTest14(16);
-
-    bnum bnTest8(8);
-    bnum bnTest9(8);
-    bnum bnTest10(8);
-    bnum bnTest11(8);
-    bnum bnTestMsg(8);
-
-    bnum bnCarryTest1(8);
-    bnum bnCarryTest1a(8);
-    bnum bnCarryTest2(8);
-    bnum bnCarryTest2a(8);
-
-    bnum bnA(8);
-    bnum bnB(8);
-    bnum bnX(8);
-    bnum bnY(8);
-    bnum bnT(8);
-
-    bnum bnPrimeTest(80);
-    bnum bnExpP(80);
-    bnum bnExpQ(80);
-    bnum bnExpR(160);
-    bnum bnExpM(160);
-    bnum bnExpE(160);
-    bnum bnExpD(160);
-    bnum bnExpO(160);
-    bnum bnExpT(160);
-
-    u64 rguTest1[2]= {0xffffffffffffffffULL, 0xffffffffffffffffULL};
-    u64 rguTest2[2]= {0x0101010100000000ULL, 0xccccaaaaeeeebbbbULL};
-    u64 rguTest3[3]= {0xccccaaaa01010101ULL, 0xeeeebbbb33333333ULL};
-    u64 rguTest4[2]= {0ULL, 0x0000000400000000ULL};
-    u64 rguTest5[3]= {0ULL, 0x0000000500000000ULL, 0x0000000000000000ULL};
-    u64 rguTest6[2]= {0x0000008100000000ULL, 0x0000000000000000ULL};
-    u64 rguTest7[3]= {0xccccaaaa01010101ULL, 0xeeeebbbb33333333ULL, 0x00356ab299771254ULL};
-
-    u64 rguTest10[7]= {0x00000b255a6beefdULL, 0xf7ee4e1f44d6d60cULL, 0x565bfcecf309e0d0ULL, 
-                       0xe4c2b4b837e8591cULL, 0x1d3605a82eb76d22ULL, 0xa90a55e332313240ULL};
-    u64 rguTest11[2]= {0x0ULL, 0x1ULL};
-    u64 rguTest12[4]= {0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL, 0xffffffffffffffffULL};
-
-    u64 rguCarryTest1[4]= {0x00000b255a6beefdULL, 0x00000b255a6beef0ULL, 0ULL};
-    u64 rguCarryTest1a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
-    u64 rguCarryTest2[4]= { 0x00000b255a6beef0ULL, 0x00000b255a6beefdULL, 0ULL};
-    u64 rguCarryTest2a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
-
-    u64 rgudiv1[4]= {0xffff555205050505, 0x0000000000000002};
-    u64 rgudiv2[4]= { 0xf7b5147a87dd32d4, 0x0000000000000002};
-    bnum    bndiv1(4);
-    bnum    bndiv2(4);
-
-    for(i=5;i>=0;i--)
-        bnTest10.m_pValue[5-i]= rguTest10[i];
-
-    for(i=0; i<2; i++) {
-        bnTest1.m_pValue[i]= rguTest1[i];
-        bnTest2.m_pValue[i]= rguTest2[i];
-        bnTest3.m_pValue[i]= rguTest3[i];
-        bnTest4.m_pValue[i]= rguTest4[i];
-        bnTest5.m_pValue[i]= rguTest5[i];
-        bnTest6.m_pValue[i]= rguTest6[i];
-        bnTest7.m_pValue[i]= rguTest7[i];
-        bnTest11.m_pValue[i]= rguTest11[i];
-        bndiv1.m_pValue[i]= rgudiv1[i]; 
-        bndiv2.m_pValue[i]=  rgudiv2[i];
-        bnCarryTest1.m_pValue[i]=  rguCarryTest1[i];
-        bnCarryTest1a.m_pValue[i]=  rguCarryTest1a[i];
-        bnCarryTest2.m_pValue[i]=  rguCarryTest2[i];
-        bnCarryTest2a.m_pValue[i]=  rguCarryTest2a[i];
-    }
-    bnCarryTest1a.m_pValue[2]=  rguCarryTest1a[2];
-    bnCarryTest2a.m_pValue[2]=  rguCarryTest2a[2];
-    bnTest7.m_pValue[i]= rguTest7[i];
-    for(i=0; i<4; i++) {
-        bnTest12.m_pValue[i]= rguTest12[i];
-    }
-    bnPrimeTest.m_pValue[0]= 0ULL;
-
 
     try {
-        // Multiple Precision Tests
-        printf("\n");
-        printf("Number 2: "); printNum(bnTest2, true); printf("\n"); 
-        printf("Number 3: "); printNum(bnTest3, true); printf("\n"); 
-        printf("Zero: "); printNum(bnTest8); printf("\n"); 
-        printf("\n");
+        printf("mpTest\n\n");
 
-        printf("Shift tests\n");
-        k= 64;
-        if(!mpShift(bnTest1, k, bnTest8)) {
-            printf("Shift returns false\n");
+        if(!initNums()) {
+            throw((char*)"Cant init numbers");
+        }
+
+        if(copytests()) {
+            printf("copytests succeeded\n");
         }
         else {
-            printNum(bnTest1); printf("<<%d=\n\t",k); printNum(bnTest8); printf("\n");
-        }
-        mpZeroNum(bnTest8);
-
-        k= 3;
-        if(!mpShift(bnTest1, k, bnTest8)) {
-            printf("Shift returns false\n");
-        }
-        else {
-            printNum(bnTest1); printf("<<%d=\n\t",k); printNum(bnTest8); printf("\n");
-        }
-        mpZeroNum(bnTest8);
-
-        k= -64;
-        if(!mpShift(bnTest1, k, bnTest8)) {
-            printf("Shift returns false\n");
-        }
-        else {
-            printNum(bnTest1); printf("<<%d=\n\t",k); printNum(bnTest8); printf("\n");
-        }
-        mpZeroNum(bnTest8);
-
-        k= -3;
-        if(!mpShift(bnTest1, k, bnTest8)) {
-            printf("Shift returns false\n");
-        }
-        else {
-            printNum(bnTest1); printf("<<%d=\n\t", k); printNum(bnTest8); printf("\n");
-        }
-        mpZeroNum(bnTest8);
-
-        printf("\n");
-        printf("Unsigned compare tests\n");
-        UCompareTest(bnTest2, bnTest3);
-        UCompareTest(bnTest3, bnTest3);
-        UCompareTest(bnTest3, bnTest2);
-
-        printf("\n");
-        printf("Unsigned addition tests\n");
-        printNum(bnTest1); printf(" + "); printNum(g_bnOne); printf("=\n\t");
-        uCarry= mpUAdd(bnTest1, g_bnOne, bnTest8);
-        printNum(bnTest8); printf(", Carry: %lx\n", (up64) uCarry); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest1); printf(" + "); printNum(bnTest2); printf("=\n\t");
-        uCarry= mpUAddTo(bnTest1, bnTest2);
-        printNum(bnTest1); printf(", Carry: %lx\n", (up64) uCarry); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest1); printf(" + "); printNum(bnTest2); printf("=\n\t");
-        uCarry= mpUAdd(bnTest1, bnTest2, bnTest8);
-        printNum(bnTest8); printf(", Carry: %lx\n", (up64) uCarry); 
-        mpZeroNum(bnTest8);
-        uM= 23;
-        printNum(bnTest7); printf(" + %016lx= \n\t", (up64) uM);
-        mpSingleUAddTo(bnTest7, uM);
-        printNum(bnTest7);
-        printf("\n");
-        mpZeroNum(bnTest8);
-
-        printf("\n");
-        printf("Unsigned subtraction tests\n");
-        printNum(bnTest11); printf(" - ");
-        printNum(g_bnOne); printf("=\n\t");
-        mpUSub(bnTest11, g_bnOne, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest3); printf(" - ");
-        printNum(bnTest2); printf("=\n\t");
-        mpUSub(bnTest3, bnTest2, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest3); printf(" - ");
-        printNum(bnTest2); printf("=\n\t");
-        mpUSubFrom(bnTest3, bnTest2);
-        printNum(bnTest3); printf("\n"); 
-
-        printf("\n");
-        printf("Unsigned multiplication tests\n");
-        printNum(bnTest12); printf(" * "); printNum(g_bnOne); printf("=\n\t"); 
-        mpUMult(bnTest12, g_bnOne, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest12); printf(" * "); printNum(g_bnTwo); printf("=\n\t"); 
-        mpUMult(bnTest12, g_bnTwo, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        uM= 4ULL;
-        bnTest3.m_pValue[0]= rguTest3[0];
-        bnTest3.m_pValue[1]= rguTest3[1];
-        printNum(bnTest3); printf(" * %016lx= \n\t", (up64) uM);
-        uCarry= mpUSingleMultBy(bnTest3, uM);
-        printNum(bnTest3); printf(", Carry: %016lx\n", (up64) uCarry); 
-        mpZeroNum(bnTest8);
-        uM= 4ULL;
-        bnTest3.m_pValue[0]= rguTest3[0];
-        bnTest3.m_pValue[1]= rguTest3[1];
-        printNum(bnTest3); printf(" * %016lx << %d= \n\t", (up64) uM, 2);
-        mpUSingleMultAndShift(bnTest3, uM, 2, bnTest8);
-        printNum(bnTest8); printf("\n");
-        mpZeroNum(bnTest8);
-        printNum(bnTest4); printf(" * "); printNum(bnTest5); printf("=\n\t"); 
-        mpUMult(bnTest4, bnTest5, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest3); printf(" * "); printNum(bnTest2); printf("=\n\t"); 
-        mpUMult(bnTest3, bnTest2, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest3); printf(" * "); printNum(bnTest3); printf("=\n\t"); 
-        mpUMult(bnTest3, bnTest3, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        printNum(bnTest3); printf(" * "); printNum(bnTest3); printf("=\n\t"); 
-        mpUMult(bnTest3, bnTest3, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-
-        printf("\n");
-        printf("Unsigned division tests\n");
-        printNum(bnTest4); printf("/ %016lx= \n", (up64) uM);
-        mpSingleUDiv(bnTest4, uM, bnTest8, &uR, true);
-        printNum(bnTest8);
-        printf(", Rem %016lx\n", (up64) uR);
-        mpZeroNum(bnTest8);
-        uM= 23;
-        printNum(bnTest6); printf("/ %016lx= \n\t", (up64) uM);
-        mpSingleUDiv(bnTest6, uM, bnTest8, &uR, true);
-        printNum(bnTest8);
-        printf(", Rem %016lx\n", (up64) uR);
-        mpZeroNum(bnTest8);
-        printNum(bnTest2); printf(" / "); printNum(bnTest4); printf("=\n\t");
-        mpUDiv(bnTest2, bnTest4, bnTest8, bnTest9);
-        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
-
-        mpZeroNum(bnTest8);
-        mpZeroNum(bnTest9);
-        printNum(bnTest10); printf(" / "); printNum(bnTest3); printf("=\n\t");
-        mpUDiv(bnTest10, bnTest3, bnTest8, bnTest9);
-        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
-        mpZeroNum(bnTest8);
-        mpZeroNum(bnTest9);
-
-        printNum(bndiv1); printf(" / "); printNum(bndiv2); printf("=\n\t");
-        mpUDiv(bndiv1, bndiv2, bnTest8, bnTest9);
-        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
-        mpZeroNum(bnTest8);
-        mpZeroNum(bnTest9);
-
-        printNum(bnCarryTest1); printf(" / "); printNum(bnCarryTest1a); printf("=\n\t");
-        mpUDiv(bnCarryTest1, bnCarryTest1a, bnTest8, bnTest9);
-        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
-        mpZeroNum(bnTest8);
-        mpZeroNum(bnTest9);
-        printNum(bnCarryTest2); printf(" / "); printNum(bnCarryTest2a); printf("=\n\t");
-        mpUDiv(bnCarryTest2, bnCarryTest2a, bnTest8, bnTest9);
-        printNum(bnTest8); printf(", Rem "); printNum(bnTest9); printf("\n");
-        mpZeroNum(bnTest8);
-        mpZeroNum(bnTest9);
-
-
-        printf("\n");
-        printf("Signed arithmetic tests\n");
-        bnTest1.mpNegate();
-        printNum(bnTest1); printf(" + "); printNum(bnTest2); printf("=\n\t");
-        uCarry= mpAdd(bnTest1, bnTest2, bnTest8);
-        printNum(bnTest8); printf(", Carry: %lx\n", (up64) uCarry); 
-        mpZeroNum(bnTest8);
-        bnTest2.mpNegate();
-        printNum(bnTest1); printf(" + "); printNum(bnTest2); printf("=\n\t");
-        uCarry= mpAdd(bnTest1, bnTest2, bnTest8);
-        printNum(bnTest8); printf(", Carry: %lx\n", (up64) uCarry); 
-        mpZeroNum(bnTest8);
-        bnTest2.mpNegate();
-        bnTest3.mpNegate();
-        printNum(bnTest3); printf(" - ");
-        printNum(bnTest2); printf("=\n\t");
-        mpSub(bnTest3, bnTest2, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        bnTest1.mpNegate();
-        bnTest2.mpNegate();
-        mpZeroNum(bnTest8);
-        printNum(bnTest3); printf(" * "); printNum(bnTest2); printf("=\n\t"); 
-        mpMult(bnTest3, bnTest2, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-        bnTest3.mpNegate();
-        printNum(bnTest3); printf(" * "); printNum(bnTest2); printf("=\n\t"); 
-        mpMult(bnTest3, bnTest2, bnTest8);
-        printNum(bnTest8); printf("\n"); 
-        mpZeroNum(bnTest8);
-
-        printf("\n");
-        // Conversion Tests
-        char rgszAns[256];
-        printf("\nFormatting tests\n");
-
-        if(!ConvertToDecimalString(bnTest4, 256, (char*)rgszAns))
-            printf("Bad Conversion\n");
-        else {
-            printNum(bnTest4); printf("_2= "); printf("%s_10\n", rgszAns); 
-        }
-
-        if(!ConvertToDecimalString(bnTest2, 256, rgszAns))
-            printf("Bad Conversion\n");
-        else {
-            printNum(bnTest2); printf("_2= "); printf("%s_10\n", rgszAns); 
-        }
-        bnum bnCB1(20);
-        if(!ConvertFromDecimalString(bnCB1, rgszAns))   
-            printf("Bad Conversion\n");
-        else {
-            printf("Converted back: "); printNum(bnCB1); printf("\n"); 
+            printf("copytests failed\n");
         }
         printf("\n");
-#ifdef OLD
-        int iLeadBit= LeadingNonZeroBit(bnTest1.mpSize(), bnTest1.m_pValue);
-#else
-        int iLeadBit= mpBitsinNum(bnTest1.mpSize(), bnTest1.m_pValue);
-#endif
-        printf("LeadBit in\n"); printNum(bnTest1); 
-        printf("\n is %d\n", iLeadBit);
-#ifdef OLD
-        iLeadBit= LeadingNonZeroBit(g_bnOne.mpSize(), g_bnOne.m_pValue);
-#else
-        iLeadBit= mpBitsinNum(g_bnOne.mpSize(), g_bnOne.m_pValue);
-#endif
-        printf("LeadBit in\n"); printNum(g_bnOne); 
-        printf("\n is %d\n", iLeadBit);
+        if(maxbittests()) {
+            printf("maxbitstests succeeded\n");
+        }
+        else {
+            printf("maxbitstests failed\n");
+        }
+        printf("\n");
+        if(shifttests()) {
+            printf("shifttests succeeded\n");
+        }
+        else {
+            printf("shifttests failed\n");
+        }
+        printf("\n");
+        if(usingleaddtests()) {
+            printf("usingleaddtests succeeded\n");
+        }
+        else {
+            printf("usingleaddtests failed\n");
+        }
+        printf("\n");
+        if(uaddtests()) {
+            printf("uaddtests succeeded\n");
+        }
+        else {
+            printf("uaddtests failed\n");
+        }
+        printf("\n");
+        if(usubtracttests()) {
+            printf("usubtracttests succeeded\n");
+        }
+        else {
+            printf("usubtracttests failed\n");
+        }
+        printf("\n");
+        if(uaddtotests()) {
+            printf("uaddtotests succeeded\n");
+        }
+        else {
+            printf("uaddtotests failed\n");
+        }
+        printf("\n");
+        if(usubfromtests()) {
+            printf("subfromtests succeeded\n");
+        }
+        else {
+            printf("subfromtests failed\n");
+        }
+        printf("\n");
+        if(usinglemulttests()) {
+            printf("usinglemulttests succeeded\n");
+        }
+        else {
+            printf("usinglemulttests failed\n");
+        }
+        printf("\n");
+        if(usinglemultandshifttests()) {
+            printf("usinglemultandshifttests succeeded\n");
+        }
+        else {
+            printf("usinglemultandshifttests failed\n");
+        }
+        printf("\n");
+        if(ucomparetests()) {
+            printf("ucomparetests succeeded\n");
+        }
+        else {
+            printf("ucomparetests failed\n");
+        }
+        printf("\n");
+        if(udividetests()) {
+            printf("udividetests succeeded\n");
+        }
+        else {
+            printf("udividetests failed\n");
+        }
+        printf("\n");
+        if(usingledivtests()) {
+            printf("usingledivtests succeeded\n");
+        }
+        else {
+            printf("usingledivtests failed\n");
+        }
+        printf("\n");
+        if(umultiplydividetests()) {
+            printf("umultiplydividetests succeeded\n");
+        }
+        else {
+            printf("umultiplydividetests failed\n");
+        }
+        printf("\n");
+        if(negatetests()) {
+            printf("negatetests succeeded\n");
+        }
+        else {
+            printf("negatetests failed\n");
+        }
+        printf("\n");
+        if(converttests()) {
+            printf("converttests succeeded\n");
+        }
+        else {
+            printf("converttests failed\n");
+        }
+        printf("\n");
+        if(addtests()) {
+            printf("addtests succeeded\n");
+        }
+        else {
+            printf("addtests failed\n");
+        }
+        printf("\n");
+        if(subtracttests()) {
+            printf("subtracttests succeeded\n");
+        }
+        else {
+            printf("subtracttests failed\n");
+        }
+        printf("\n");
+        if(addtotests()) {
+            printf("addtests succeeded\n");
+        }
+        else {
+            printf("addtests failed\n");
+        }
+        printf("\n");
+        if(subfromtests()) {
+            printf("subfromtests succeeded\n");
+        }
+        else {
+            printf("subfromtests failed\n");
+        }
+        printf("\n");
+        if(multiplytests()) {
+            printf("multiplytests succeeded\n");
+        }
+        else {
+            printf("multiplytests failed\n");
+        }
+        printf("\n");
+        if(comparetests()) {
+            printf("comparetests succeeded\n");
+        }
+        else {
+            printf("comparetests failed\n");
+        }
+        printf("\n");
+        if(dividetests()) {
+            printf("dividetests succeeded\n");
+        }
+        else {
+            printf("dividetests failed\n");
+        }
+        printf("\n");
+        if(multiplydividetests()) {
+            printf("multiplydividetests succeeded\n");
+        }
+        else {
+            printf("multiplydividetests failed\n");
+        }
+        printf("\n");
+        if(gcdtests()) {
+            printf("gcdtests succeeded\n");
+        }
+        else {
+            printf("gcdtests failed\n");
+        }
+        printf("\n");
+        if(modaddtests()) {
+            printf("modaddtests succeeded\n");
+        }
+        else {
+            printf("modaddtests failed\n");
+        }
+        printf("\n");
+        if(modmulttests()) {
+            printf("modmulttests succeeded\n");
+        }
+        else {
+            printf("modmulttests failed\n");
+        }
+        printf("\n");
+        if(modexptests()) {
+            printf("modexptests succeeded\n");
+        }
+        else {
+            printf("modexptests failed\n");
+        }
+        printf("\n");
+        if(moddinvtests()) {
+           printf("moddinvtests succeeded\n");
+        }
+        else {
+            printf("moddinvtests failed\n");
+        }
+        printf("\n");
+        if(crttests()) {
+            printf("crttests succeeded\n");
+        }
+        else {
+            printf("crttests failed\n");
+        }
+        printf("\n");
+        if(primeGentests()) {
+            printf("primeGentests succeeded\n");
+        }
+        else {
+            printf("primeGentests failed\n");
+        }
         printf("\n");
 
-        printf("Modular Tests\n");
-        for(k=-80;k<=80;k+=16) {
-            bnTest1.mpCopyNum(bnA);
-            printf("mpShiftinPlace: "); printNum(bnA);
-            printf(" <<  %d = ", k); 
-            mpShiftInPlace(bnA, k);
-            printNum(bnA); printf("\n");
-        }
-        mpZeroNum(bnTest8);
-        mpMod(bnTest7, bnTest5, bnTest8);
-        printf("mpMod: "); printNum(bnTest7);
-        printf(" mod "); printNum(bnTest5);
-        printf(" = "); printNum(bnTest8); printf("\n");
-        bnTest8.mpNegate();
-        printf("mpModNormalize: "); printNum(bnTest8);
-        mpModNormalize(bnTest8, bnTest5);
-        printf(" mod "); printNum(bnTest5);
-        printf(" = "); printNum(bnTest8); printf("\n");
-        mpZeroNum(bnTest8);
-        mpModAdd(bnTest3, bnTest7, bnTest5, bnTest8);
-        printf("mpModAdd: "); printNum(bnTest3); printf(" + "); printNum(bnTest7);
-        printf(" mod "); printNum(bnTest5);
-        printf(" = "); printNum(bnTest8); printf("\n");
-        mpZeroNum(bnTest9);
-        mpModNormalize(bnTest7, bnTest5);
-        mpModSub(bnTest8, bnTest7, bnTest5, bnTest9);
-        printf("mpModSub: "); printNum(bnTest8); printf(" - "); printNum(bnTest7);
-        printf(" mod "); printNum(bnTest5);
-        printf(" = "); printNum(bnTest9); printf("\n");
-        mpZeroNum(bnTest9);
-        mpZeroNum(bnTest8);
-        mpModMult(bnTest3, bnTest4, bnTest5, bnTest8);
-        printf("mpModMult: "); printNum(bnTest3); printf(" * "); printNum(bnTest4);
-        printf(" mod "); printNum(bnTest5);
-        printf(" = "); printNum(bnTest8); printf("\n");
-        mpZeroNum(bnTest8);
-        mpZeroNum(bnTest9);
-
-        printf("\n");
-        printf("Big GCD tests and exponentiate\n");
-
-        bnum bncA(8);
-        bnum bncB(8);
-        bnum bnGcd(8);
-        bnA.m_pValue[2]= 9293837ULL;
-        bnB.m_pValue[2]= 17364129ULL;
-        bnA.m_pValue[1]= 9293837ULL;
-        bnB.m_pValue[1]= 17364129ULL;
-        bnA.m_pValue[0]= 13ULL;
-        bnB.m_pValue[0]= 9ULL;
-        bnGcd.m_pValue[0]= 0;
-#ifdef OLD
-        if(!mpBinaryExtendedGCD(bnA, bnB, bncA, bncB, bnGcd)) {
-#else
-        if(!mpExtendedGCD(bnA, bnB, bncA, bncB, bnGcd)) {
-#endif
-            printf("mpExtendedGCD returns false\n");
-        }
-        else {
-            printf("mpExtendedGCD: "); 
-            printNum(bnA); 
-            printf("("); printNum(bncA); printf(") + ");
-            printNum(bnB);
-            printf("("); printNum(bncB); printf(") = ");
-            printNum(bnGcd);
-            printf("\n"); 
-
-            printf("\nCHECK\n");
-            mpMult(bnA, bncA, bnX);
-            mpMult(bnB, bncB, bnY);
-            mpAdd(bnX,bnY,bnT);
-            printf("GCD: "); printNum(bnT);
-            printf("\n"); 
-        }
-
-        bnGcd.m_pValue[0]= 0;
-#ifdef OLD
-        if(!mpBinaryExtendedGCD(bnTest3, bnTest4, bncA, bncB, bnGcd)) {
-#else
-        if(!mpExtendedGCD(bnTest3, bnTest4, bncA, bncB, bnGcd)) {
-#endif
-            printf("mpExtendedGCD returns false\n");
-        }
-        else {
-            printf("mpExtendedGCD: "); 
-            printNum(bnTest3); 
-            printf("("); printNum(bncA); printf(") + ");
-            printNum(bnTest4);
-            printf("("); printNum(bncB); printf(") = ");
-            printNum(bnGcd);
-            printf("\n"); 
-
-            printf("\nCHECK\n");
-            mpMult(bnTest3, bncA, bnX);
-            printNum(bnX); printf("\n");
-            mpMult(bnTest4, bncB, bnY);
-            printNum(bnY); printf("\n");
-            mpAdd(bnX,bnY,bnT);
-            printf("GCD: "); printNum(bnT);
-            printf("\n"); 
-        }
-        mpModInv(bnTest7, bnTest3, bnTest8);
-        printf("mpModInv: "); printNum(bnTest7); printf("^-1 (mod "); printNum(bnTest3);
-        printf(")= "); printNum(bnTest8); printf("\n"); printf("\n");
-        mpZeroNum(bnTest8);
-        mpModDiv(bnTest7, bnTest7, bnTest3, bnTest8);
-        printf("mpDiv: "); printNum(bnTest7); printf(" / "); 
-        printNum(bnTest7); printf(" (mod "); 
-        printNum(bnTest3); printf(")= "); printNum(bnTest8); printf("\n"); printf("\n");
-        mpZeroNum(bnTest8);
-        mpModExp(bnTest7, bnTest4, bnTest3, bnTest8);
-        printNum(bnTest7); printf(" ** "); 
-        printNum(bnTest4); printf(" (mod "); 
-        printNum(bnTest3); printf(")= "); printNum(bnTest8); printf("\n"); printf("\n");
-        mpZeroNum(bnTest8);
-
-        // Prime Test
-        printf("Prime Test\n");
-        if(mpGenPrime(100, bnPrimeTest)) {
-            printf("Prime: ");
-            printNum(bnPrimeTest); printf("\n");
-            printf("\n");
-        }
-        else {
-            printf("Prime test failed\n\n");
-        }
-
-        // Fermat Test bool 3671
-        printf("Fermat Test Test\n");
-        bnum    bnTP(1);
-        bnTP.m_pValue[0]= 3671ULL;
-        if(mpFermatTest(g_bnTwo, bnTP, bnExpR)) {
-            printf("Fermat test with base\n    ");
-            printNum(g_bnTwo);
-            printf("\nand proposed prime\n    ");
-            printNum(bnTP);
-            printf("\nyields\n    ");
-            printNum(bnExpR);
-            printf("   ---   Should be 1\n\n");
-        }
-        else {
-            printf("Fermat test returns false\n\n");
-        }
-        mpZeroNum(bnExpR);
-
-        // Fermat Test on generated prime
-        printf("Fermat Test\n");
-        mpZeroNum(bnExpR);
-        if(mpFermatTest(g_bnTwo, bnPrimeTest, bnExpR)) {
-            printf("Fermat test with base\n    ");
-            printNum(g_bnTwo);
-            printf("\nand proposed prime\n    ");
-            printNum(bnPrimeTest);
-            printf("\nyields\n    ");
-            printNum(bnExpR);
-            printf("   ---   Should be 1\n\n");
-        }
-        else {
-            printf("Fermat test returns false\n\n");
-        }
-        mpZeroNum(bnExpR);
-
-        // RSA Tests
-        bnExpE.m_pValue[0]= (1ULL<<31)|1ULL;
-        bool fContinue= mpRSAGen(128, bnExpE, bnExpP, bnExpQ, bnExpM, bnExpD, bnExpO);
-        if(fContinue) {
-            printf("RSA Key:\n");
-            printf("\tE: "); printNum(bnExpE); printf("\n");
-            printf("\tP: "); printNum(bnExpP); printf("\n");
-            printf("\tQ: "); printNum(bnExpQ); printf("\n");
-            printf("\tM: "); printNum(bnExpM); printf("\n");
-            printf("\tD: "); printNum(bnExpD); printf("\n");
-            printf("\tOrder: "); printNum(bnExpO); printf("\n");
-            if(mpTestFermatCondition(g_bnTwo, bnExpP)) {
-                printf("\tP passes Fermat condition\n");
-            }
-            else {
-                printf("\tP fails Fermat condition\n");
-            }
-            if(mpTestFermatCondition(g_bnTwo, bnExpQ)) {
-                printf("\tQ passes Fermat condition\n");
-            }
-            else {
-                printf("\tQ fails Fermat condition\n");
-            }
-            mpZeroNum(bnTest8);
-            printf("\tE*D (mod Order)= ");
-            mpModMult(bnExpE, bnExpD, bnExpO, bnTest8);
-            printNum(bnTest8);
-            printf("\n\n");
-
-        }
-        else {
-            printf("mpRSAGen returns false\n\n");
-        }
-
-        if(fContinue) {
-            bnTestMsg.m_pValue[0]= 0x2310057ULL;
-            fContinue= mpRSAENC(bnTestMsg, bnExpE, bnExpM, bnExpR);
-            if(fContinue) {
-                printf("RSA Encrypt:\n");
-                printf("\tE: "); printNum(bnExpE); printf("\n");
-                printf("\tM: "); printNum(bnExpM); printf("\n");
-                printf("\tMessage: "); printNum(bnTestMsg); printf("\n");
-                printf("\tResult: "); printNum(bnExpR); printf("\n");
-                printf("\n");
-            }
-            else {
-                printf("mpRSAENC returns false\n\n");
-            }
-        }
-        if(fContinue) {
-            fContinue= mpRSAENC(bnExpR, bnExpD, bnExpM, bnExpT);
-            if(fContinue) {
-                printf("RSA Decrypt:\n");
-                printf("\tD: "); printNum(bnExpD); printf("\n");
-                printf("\tM: "); printNum(bnExpM); printf("\n");
-                printf("\tMessage: "); printNum(bnExpR); printf("\n");
-                printf("\tResult: "); printNum(bnExpT); printf("\n");
-                printf("\n");
-            }
-            else {
-                printf("mpRSADEC returns false\n\n");
-            }
-        }
-
-        // Square test
-        mpUMult(bnTest12, bnTest12, bnTest14);
-        printf("mpUMult: "); printNum(bnTest12); printf("^2="); 
-        printf("= "); printNum(bnTest14); printf("\n"); printf("\n");
-
-        u64 s1= 0xffffffffULL;
-        u64 s2= s1*s1;
-        printf("%016lx^2= %016lx\n", (long unsigned int) s1, (long unsigned int) s2);
-
-        bnum P(128);
-        bnum R(128);
-        if(!mpGenPrime(512,P)) {
-            printf("Cant generate prime\n");
-        }
-        else {
-            if(mpFermatTest(g_bnTwo,P,R)) {
-                printNum(P); printf(" passes fermat test\n");
-            }
-            else {
-                printNum(P); printf(" fails fermat test\n");
-            }
-        }
-
-        printf("Tests completed\n");
+        if(fAllTests)
+            printf("\nTests completed, all tests PASSED\n");
+        else
+            printf("\nTests completed, some tests FAILED\n");
         return 0;
         }
         catch(char* szError) {
-            printf("\n\nMain Error! %s.\n",szError);
+            printf("\nMain Error! %s.\n", szError);
             return 1;
         }
 }

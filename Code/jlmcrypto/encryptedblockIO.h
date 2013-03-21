@@ -107,8 +107,8 @@ public:
     int     m_iBufOut;                  // number of bytes in output buffer
     int     m_iOutStart;                // first byte of output not yet sent
 
-    byte    m_rguBufIn[BLOCKBUFSIZE];
-    byte    m_rguBufOut[BLOCKBUFSIZE];
+    byte    m_rguBufIn[EXTENDEDBLOCKSIZE];
+    byte    m_rguBufOut[EXTENDEDBLOCKSIZE];
 
     u32     m_uCombinedAlgId;
 

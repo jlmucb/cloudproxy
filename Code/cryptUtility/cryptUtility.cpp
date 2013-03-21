@@ -86,8 +86,12 @@ bool sameBigNum(int size, bnum& bnA, const char* szBase64A)
         fprintf(g_logFile, "sameBigNum: Cant base64 decode A\n");
         return false;
     }
-    
+
+#ifdef OLD
+    if(mpCompare(bnA, bnB)!=s_iIsEqualTo) {
+#else
     if(mpCompare(bnA, bnB)!=s_isEqualTo) {
+#endif
         fprintf(g_logFile, "%d bytes output\n", iOutLen);
         fprintf(g_logFile, "A: "); printNum(bnA); printf("\n");
         fprintf(g_logFile, "B: "); printNum(bnB); printf("\n");
@@ -1097,11 +1101,62 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
 
     fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
     fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
-    fprintf(g_logFile, "AIKCert:\n%s\n\n", szCertString);
+    fprintf(g_logFile, "AttestCert:\n%s\n\n", szCertString);
     
     return verifyXMLQuote(szAlg, szQuotedInfo, sznonce,
                           szDigest, pAIKKey, szQuoteValue);
 }
+
+#if 0
+bool Quote(char* sztoQuoteFile, char* szMeasurementFile, char* szKeyFile)
+{
+    int     hostedMeasurementSize;
+    byte*   hostedMeasurement;
+    int     sizetoAttest;
+    byte*   toAttest;
+    int*    psizeAttested;
+    byte*   attest;
+    char*   szToQuote= readandstoreString(sztoQuoteFile);
+    char*   szMeasurement= readandstoreString(szMeasurementFile);
+    RSAKey* pKey= ReadKeyfromFile(szKeyFile);
+
+#ifdef TEST
+    fprintf(g_logFile, "Quote\n");
+    fflush(g_logFile);
+#endif
+
+    byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
+    byte        rgToSign[512];
+
+    // Compute quote
+    if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize,
+                        hostedMeasurement, rgQuotedHash)) {
+            fprintf(g_logFile, "taoEnvironment::Attest: Cant compute sha256 quote hash\n");
+            return false;
+        }
+    // pad
+    if(!emsapkcspad(SHA256HASH, rgQuotedHash, m_publicKeyBlockSize, rgToSign)) {
+        fprintf(g_logFile, "taoEnvironment::Attest: emsapkcspad returned false\n");
+        return false;
+    }
+    // sign
+    bnum    bnMsg(m_publicKeyBlockSize/sizeof(u64));
+    bnum    bnOut(m_publicKeyBlockSize/sizeof(u64));
+    memset(bnMsg.m_pValue, 0, m_publicKeyBlockSize);
+    memset(bnOut.m_pValue, 0, m_publicKeyBlockSize);
+    revmemcpy((byte*)bnMsg.m_pValue, rgToSign, m_publicKeyBlockSize);
+
+   if(!mpRSAENC(bnMsg, *(pRSA->m_pbnD), *(pRSA->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
+        return false;
+    }
+
+    memcpy(attest, bnOut.m_pValue, m_publicKeyBlockSize);
+    *psizeAttested= m_publicKeyBlockSize;
+    return true;
+}
+
+#endif
 
 
 #ifdef GCMENABLED
@@ -2256,7 +2311,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "Quote verifies\n");
         }
         else {
-            fprintf(g_logFile, "Quote does NOT verifies\n");
+            fprintf(g_logFile, "Quote does NOT verify\n");
         }
         return 0;
     }

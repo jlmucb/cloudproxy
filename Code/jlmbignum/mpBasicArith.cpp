@@ -477,7 +477,7 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
     int         wordShift= (numShiftBits>>6);
     int         bitShift= numShiftBits&0x3f;
     u64         bottomMask= 0ULL;
-    int         bottomShift= 64-bitShift;
+    int         bottomShift;
     u64*        rgA= bnA.m_pValue;
     u64*        rgR= bnR.m_pValue;
     i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
@@ -488,7 +488,7 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
     else
         bottomShift= NUMBITSINU64-bitShift;
     bottomMask= bottomMask64(bitShift);
-    topMask= bottomMask^(-1ULL);
+    // topMask= bottomMask^(-1ULL);
 
     t= rgA[wordShift];
     s= t>>bitShift;

@@ -64,14 +64,12 @@ class timer {
     { }
 
     inline void Start() {
-        if (!m_stopped) throw "Timer Start called when not stopped\n";
         m_stopped = false;
         m_started = gettimeofday(&m_start, NULL) == 0;
         if (!m_started) throw "Coud not start timer\n";
     }
 
     inline void Stop() {
-        if (!m_started) throw "Timer Stop called when not started\n";
         m_started = false;
         m_stopped = gettimeofday(&m_stop, NULL) == 0;
         if (!m_stopped) throw "Coud not stop timer\n";
@@ -82,7 +80,6 @@ class timer {
     }
 
     inline const vector<double>& GetMeasurements() { 
-        if (m_started) throw "Timer started but not stopped\n";
         return m_measurements; 
     }
 
@@ -99,7 +96,6 @@ class timer {
     }
 
     inline void Clear() {
-        if (m_started) throw "Timer started but not stopped\n";
         m_measurements.clear();
     }
 

@@ -217,7 +217,7 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
                 int sizeNonce, byte* rgOut)
 
 {
-    byte    rgPadded[1024];
+    byte    rgPadded[4096];
     bnum    bnMsg(rgKey.m_iByteSizeM/2);
     bnum    bnOut(rgKey.m_iByteSizeM/2);
 
@@ -225,9 +225,9 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
         fprintf(g_logFile, "rsaXmlDecryptandGetNonce: bad sealed nonce size\n");
         return false;
     }
-    memset(bnMsg.m_pValue, 0, rgKey.m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, rgKey.m_iByteSizeM);
-    memset(rgPadded, 0, 1024);
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+    memset(rgPadded, 0, rgKey.m_iByteSizeM);
     memcpy((byte*)bnMsg.m_pValue, rgIn, rgKey.m_iByteSizeM);
     if(fEncrypt) {
         if(!mpRSAENC(bnMsg, *(rgKey.m_pbnE), *(rgKey.m_pbnM), bnOut)) {
@@ -243,7 +243,7 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
         }
         revmemcpy(rgPadded, (byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
     }
-#ifdef CRYPTOTEST
+#ifdef TEST
     PrintBytes("rsaXmlDecryptandGetNonce:: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif
@@ -273,8 +273,11 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
         fprintf(g_logFile, "rsaXmlDecodeChallenge: Cant base64 decode challenge\n");
         return false;
     }
-    memset(bnMsg.m_pValue, 0, rgKey.m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, rgKey.m_iByteSizeM);
+#ifdef TEST
+    PrintBytes("rsaXmlDecodeandVerifyChallenge decoded\n", rgBase64Decoded, iOut);
+#endif
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
     memset(rgPadded, 0, 1024);
     if(rgKey.m_iByteSizeM!=iOut) {
         fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: bad signed challenge size\n");
@@ -295,7 +298,7 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
         }
         revmemcpy(rgPadded,(byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
     }
-#ifdef CRYPTOTEST
+#ifdef TEST
     PrintBytes("rsaXmlDecodeandVerifyChallenge: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif
@@ -343,7 +346,7 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
         fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: padding failure\n");
         return NULL;
     }
-#ifdef CRYPTOTEST
+#ifdef TEST
     PrintBytes("rsaXmlEncodeChallenge: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif

@@ -49,12 +49,17 @@ bool RsaPkcsPadSignCheck(RSAKey* pKey, int hashType, byte* hash, int sizeSig, by
     bnum    bnMsg(pKey->m_iByteSizeM/2);
     bnum    bnOut(pKey->m_iByteSizeM/2);
 
+    printf("RsaPkcsPadSignCheck\n");
+    PrintBytes((char*)"sig\n", sig, sizeSig);
     memcpy((byte*)bnMsg.m_pValue, sig, sizeSig);
     if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut))
         return false;
     revmemcpy(rgPadded, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    if(!emsapkcsverify(hashType, hash, sizeSig, rgPadded))
+    if(!emsapkcsverify(hashType, hash, sizeSig, rgPadded)) {
+        printf("%d bytes\n", pKey->m_iByteSizeM);
+        PrintBytes((char*)"decrypted sig\n", rgPadded, pKey->m_iByteSizeM);
         return false;
+    }
 
     return true;
 }

@@ -9,7 +9,7 @@ TPM=	    ../TPMDirect
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOINLINEARITH -D NOAESNI $(RELEASE_CFLAGS)
+CFLAGS=	    -D TEST  -D NOINLINEARITH -D NOAESNI $(DEBUG_CFLAGS)
 CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++
@@ -39,7 +39,7 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
 $(B)/cryptUtility.o: $(S)/cryptUtility.cpp $(S)/cryptUtility.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -I $(TPM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
 
 $(B)/cryptSupport.o: $(S)/cryptSupport.cpp $(S)/cryptSupport.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -I$(TPM) -c -o $(B)/cryptSupport.o $(S)/cryptSupport.cpp

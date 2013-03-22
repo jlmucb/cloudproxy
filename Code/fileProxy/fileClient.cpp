@@ -842,7 +842,8 @@ bool fileClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, cons
         szEncPreMasterSecret= rsaXmlEncodeChallenge(true, *m_oKeys.m_pserverPublicKey,
                                     m_oKeys.m_rguPreMasterSecret, BIGSYMKEYSIZE);
 #ifdef TEST
-        fprintf(g_logFile, "fileClient: pre-master encoded\n");
+        fprintf(g_logFile, "fileClient: pre-master encoded %s\n", 
+                szEncPreMasterSecret);
         fflush(g_logFile);
 #endif
         if(szEncPreMasterSecret==NULL)

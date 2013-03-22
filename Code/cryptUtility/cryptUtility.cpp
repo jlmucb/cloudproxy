@@ -40,6 +40,7 @@
 #include "modesandpadding.h"
 #include "rsaHelper.h"
 #include "cryptSupport.h"
+#include "hashprep.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -67,6 +68,7 @@
 #define MAKEPOLICYKEYFILE         14
 #define MAKESERVICEHASHFILE       15
 #define VERIFYQUOTE               16
+#define QUOTE                     17
 
 #define MAXREQUESTSIZE          2048
 #define MAXADDEDSIZE              64
@@ -805,6 +807,8 @@ bool Verify(const char* szKeyFile, const char* szInFile)
         else 
             throw "Unsupported public key algorithm\n";
 
+        PrintBytes("Decrypted:\n", rguOut, pRSAKey->m_iByteSizeM);
+
 #ifdef TEST
         fprintf(g_logFile, "Decrypted signature\n");
         fprintf(g_logFile, "\tM: "); printNum(*(pRSAKey->m_pbnM)); printf("\n");
@@ -1099,6 +1103,8 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
         return false;
     }
 
+    fprintf(g_logFile, "Quote key size: %d\n", pAIKKey->m_iByteSizeM);
+    fprintf(g_logFile, "Quote Algorithm: %s\n", szAlg);
     fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
     fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
     fprintf(g_logFile, "AttestCert:\n%s\n\n", szCertString);
@@ -1107,56 +1113,111 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
                           szDigest, pAIKKey, szQuoteValue);
 }
 
-#if 0
-bool Quote(char* sztoQuoteFile, char* szMeasurementFile, char* szKeyFile)
+bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasurementFile)
 {
     int     hostedMeasurementSize;
-    byte*   hostedMeasurement;
+    byte    hostedMeasurement[64];
     int     sizetoAttest;
-    byte*   toAttest;
-    int*    psizeAttested;
-    byte*   attest;
+    byte    toAttest[64];
+    int     sizeAttested;
+    byte    attest[4096];
+    int     sizenewattest= 2048;
+    char    newattest[2048];
+
     char*   szToQuote= readandstoreString(sztoQuoteFile);
     char*   szMeasurement= readandstoreString(szMeasurementFile);
-    RSAKey* pKey= ReadKeyfromFile(szKeyFile);
+    RSAKey* pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
 
 #ifdef TEST
     fprintf(g_logFile, "Quote\n");
     fflush(g_logFile);
 #endif
 
+    if(szToQuote==NULL) {
+        fprintf(g_logFile, "Cant read quote file %s\n", szToQuote);
+        return false;
+    }
+    if(szMeasurement==NULL) {
+        fprintf(g_logFile, "Cant read measurement file %s\n", szMeasurement);
+        return false;
+    }
+    if(pKey==NULL) {
+        fprintf(g_logFile, "Couldn't get private key from %s\n", szKeyFile);
+        return false;
+    }
+
+    fprintf(g_logFile, "Quote: %s\n", szToQuote);
+    fprintf(g_logFile, "Measurement: %s\n", szMeasurement);
+    szMeasurement[strlen(szMeasurement)-1]= 0;
+    PrintBytes((char*)"string: ", (byte*)szMeasurement, strlen(szMeasurement));
+
+    hostedMeasurementSize= 64;
+    if(!fromBase64(strlen(szMeasurement), szMeasurement, &hostedMeasurementSize, hostedMeasurement)) {
+        fprintf(g_logFile, "Cant base64 decode measurement\n");
+        return false;
+    }
+    PrintBytes((char*)"Code Digest: ", hostedMeasurement, hostedMeasurementSize);
+
     byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
     byte        rgToSign[512];
+    Sha256      oHash;
+
+    // compute quote hash
+    oHash.Init();
+    oHash.Update((byte*) szToQuote, strlen(szToQuote));
+    oHash.Final();
+    oHash.GetDigest(toAttest);
 
     // Compute quote
+    sizetoAttest= SHA256_DIGESTSIZE_BYTES;
+    PrintBytes((char*)"To attest: ", toAttest, sizetoAttest);
     if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize,
                         hostedMeasurement, rgQuotedHash)) {
-            fprintf(g_logFile, "taoEnvironment::Attest: Cant compute sha256 quote hash\n");
+            fprintf(g_logFile, "Cant compute sha256 quote hash\n");
             return false;
         }
     // pad
-    if(!emsapkcspad(SHA256HASH, rgQuotedHash, m_publicKeyBlockSize, rgToSign)) {
-        fprintf(g_logFile, "taoEnvironment::Attest: emsapkcspad returned false\n");
+    if(!emsapkcspad(SHA256HASH, rgQuotedHash, pKey->m_iByteSizeM, rgToSign)) {
+        fprintf(g_logFile, "emsapkcspad returned false\n");
         return false;
     }
+    PrintBytes((char*)"Padded: ", rgToSign, pKey->m_iByteSizeM);
+
     // sign
-    bnum    bnMsg(m_publicKeyBlockSize/sizeof(u64));
-    bnum    bnOut(m_publicKeyBlockSize/sizeof(u64));
-    memset(bnMsg.m_pValue, 0, m_publicKeyBlockSize);
-    memset(bnOut.m_pValue, 0, m_publicKeyBlockSize);
-    revmemcpy((byte*)bnMsg.m_pValue, rgToSign, m_publicKeyBlockSize);
+    bnum    bnMsg(pKey->m_iByteSizeM/sizeof(u64)+2);
+    bnum    bnOut(pKey->m_iByteSizeM/sizeof(u64)+2);
+    memset(bnMsg.m_pValue, 0, pKey->m_iByteSizeM);
+    memset(bnOut.m_pValue, 0, pKey->m_iByteSizeM);
+    revmemcpy((byte*)bnMsg.m_pValue, rgToSign, pKey->m_iByteSizeM);
 
-   if(!mpRSAENC(bnMsg, *(pRSA->m_pbnD), *(pRSA->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
+   if(!mpRSAENC(bnMsg, *(pKey->m_pbnD), *(pKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "mpRSAENC returned false\n");
         return false;
     }
 
-    memcpy(attest, bnOut.m_pValue, m_publicKeyBlockSize);
-    *psizeAttested= m_publicKeyBlockSize;
+    revmemcpy(attest, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
+    sizeAttested= pKey->m_iByteSizeM;
+    PrintBytes((char*)"Quote value: ", attest, sizeAttested);
+    if(!toBase64(sizeAttested, attest, &sizenewattest, newattest)) {
+        fprintf(g_logFile, "can't base64 encode attest\n");
+        return false;
+    }
+    fprintf(g_logFile, "Quote string\n%s\n", newattest);
+
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+    byte rgdecrypted[4096];
+    revmemcpy((byte*)bnMsg.m_pValue, attest, pKey->m_iByteSizeM);
+
+   if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "mpRSAENC returned false\n");
+        return false;
+    }
+    revmemcpy(rgdecrypted, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
+    PrintBytes((char*)"Decrypted\n", rgdecrypted, pKey->m_iByteSizeM);
+
     return true;
 }
-
-#endif
 
 
 #ifdef GCMENABLED
@@ -1970,6 +2031,7 @@ int main(int an, char** av)
     const char*   szOutFile= NULL;
     const char*   szAlgorithm= NULL;
     const char*   szKeyFile= NULL;
+    const char*   szMeasurementFile= NULL;
     const char*   szProgramName=  "Program no name";
     int     iAction= NOACTION;
     int     mode= CBCMODE;
@@ -1995,6 +2057,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -HashFile input-file [alg]\n");
             fprintf(g_logFile, "       cryptUtility -makePolicyKeyFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
             fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-aikcert\n");
             return 0;
         }
@@ -2119,6 +2182,17 @@ int main(int an, char** av)
             szInFile= av[i+1];
             szOutFile= av[i+2];
             szAlgorithm= "SHA256";
+            break;
+        }
+        if(strcmp(av[i], "-Quote")==0) {
+            if(an<(i+3)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file measurement-file\n");
+                return 1;
+            }
+            iAction= QUOTE;
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            szMeasurementFile= av[i+3];
             break;
         }
         if(strcmp(av[i], "-VerifyQuote")==0) {
@@ -2304,6 +2378,17 @@ int main(int an, char** av)
 
         fprintf(g_logFile, "Hash of file %s is: ", szInFile);
         PrintBytes("", rgHash, size);
+    }
+
+    if(iAction==QUOTE) {
+        initCryptoRand();
+        initBigNum();
+        fRet= Quote(szKeyFile, szInFile, szMeasurementFile);
+        if(fRet)
+            fprintf(g_logFile, "Signature generated\n");
+        else
+            fprintf(g_logFile, "Signature failed\n");
+        closeCryptoRand();
     }
 
     if(iAction==VERIFYQUOTE) {

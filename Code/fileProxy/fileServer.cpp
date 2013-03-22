@@ -666,8 +666,8 @@ int theServiceChannel::processRequests()
     fprintf(g_logFile, "theServiceChannel::processRequests: packetType %d, serverstate %d\n", type, m_serverState);
 #endif
     if(type==CHANNEL_TERMINATE) {
-	fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from theServiceChannel::processRequests\n");
-	fflush(g_logFile);
+        fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from theServiceChannel::processRequests\n");
+        fflush(g_logFile);
         return 0;
     }
     if(type!=CHANNEL_REQUEST) {
@@ -811,7 +811,6 @@ bool theServiceChannel::initServiceChannel()
         //void metadataTest(char* szDir, m_fEncryptFiles, m_fileKeys);
         //metadataTest(m_tcHome.m_fileNames.m_szdirectory);
 #endif
-
         m_pParent->printTimers(g_logFile);
         m_pParent->resetTimers();
     }
@@ -1262,11 +1261,8 @@ bool fileServer::server()
 #endif
 
             memset(&m_threadData[i], 0, sizeof(pthread_t));
-            m_threadIDs[i]= pthread_create(
-                        &m_threadData[i], 
-                        NULL, 
-                        channelThread, 
-                        poSc);
+            m_threadIDs[i]= pthread_create(&m_threadData[i], NULL, 
+                                    channelThread, poSc);
 #ifdef TEST
             fprintf(g_logFile, "fileServer: pthread create returns: %d\n", m_threadIDs[i]);
             fflush(g_logFile);
@@ -1319,9 +1315,9 @@ int main(int an, char** av)
             if(strcmp(av[i],"-address")==0) {
                 oServer.m_szAddress= strdup(av[++i]);
              }
-        if(strcmp(av[i],"-directory")==0) {
-        directory= strdup(av[++i]);
-        }
+            if(strcmp(av[i],"-directory")==0) {
+                directory= strdup(av[++i]);
+            }
         }
     }
 
@@ -1370,7 +1366,8 @@ int main(int an, char** av)
             oServer.server();
             oServer.closeServer();
             closeLog();
-    } catch(const char* szError) {
+    } 
+    catch(const char* szError) {
         fprintf(g_logFile, "%s", szError);
         iRet= 1;
     }

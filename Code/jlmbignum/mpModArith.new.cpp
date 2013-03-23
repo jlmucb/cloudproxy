@@ -56,7 +56,8 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
         maxSize= lM;
 
     try {
-        bnum    bnQ(maxSize);
+    	bnum    bnQ(maxSize);
+
         mpUDiv(bnA, bnM, bnQ, bnR);
         fRet= true;
         }
@@ -196,6 +197,7 @@ bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
     try {
         bnum  bnC(maxSize+1);
         bnum  bnQ(maxSize+1);
+
         mpUMult(bnA, bnB, bnC);
         mpUDiv(bnC, bnM, bnQ, bnR);
         mpModNormalize(bnR, bnM);
@@ -231,6 +233,7 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
     try {
         bnum bnT(maxSize);
         bnum bnG(maxSize);
+
         mpExtendedGCD(bnA, bnM, bnR, bnT, bnG);
         // Now, bnA (bnR) + bnM (bnT)= 1, so bnR is bnA inverse
         mpModNormalize(bnR, bnM);
@@ -494,15 +497,15 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
 //  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
 //  Return R
 {
-    bool            fRet= false;
-    bnum*           pbnT1= NULL;
-    bnum*           pbnT2= NULL;
+    bool    fRet= false;
+    bnum*   pbnT1= NULL;
+    bnum*   pbnT2= NULL;
 
-    int lP= mpWordsinNum(bnP.mpSize(), bnP.m_pValue);
-    int lQ= mpWordsinNum(bnQ.mpSize(), bnQ.m_pValue);
-    int lDP= mpWordsinNum(bnDP.mpSize(), bnDP.m_pValue);
-    int lDQ= mpWordsinNum(bnDQ.mpSize(), bnDQ.m_pValue);
-    int size= lP;
+    int     lP= mpWordsinNum(bnP.mpSize(), bnP.m_pValue);
+    int     lQ= mpWordsinNum(bnQ.mpSize(), bnQ.m_pValue);
+    int     lDP= mpWordsinNum(bnDP.mpSize(), bnDP.m_pValue);
+    int     lDQ= mpWordsinNum(bnDQ.mpSize(), bnDQ.m_pValue);
+    int     size= lP;
 
     if(lQ>size)
         size= lQ;

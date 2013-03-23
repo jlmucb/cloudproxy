@@ -558,6 +558,8 @@ bool theServiceChannel::protocolNego()
 
 #ifdef  TEST
         fprintf(g_logFile, "theServiceChannel::protocolNego: Encrypted mode on\n");
+        PrintBytes((char*)"Received IV: ", m_osafeChannel.lastgetBlock, AES128BYTEBLOCKSIZE);
+        PrintBytes((char*)"Sent     IV: ", m_osafeChannel.lastsendBlock, AES128BYTEBLOCKSIZE);
         fflush(g_logFile);
 #endif
 

@@ -106,8 +106,6 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
     iAlg= alg;
     iMode= mode;
     iHMAC= hmac;
-    sizeofEncKey= sizeofEncKeys;
-    sizeofIntKey= sizeofIntKeys;
 
     memset(sendEncKey, 0, BIGSYMKEYSIZE);
     memset(sendIntKey, 0, BIGSYMKEYSIZE);
@@ -115,6 +113,9 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
     memset(getIntKey, 0, BIGSYMKEYSIZE);
     memset(lastgetBlock, 0, BIGSYMKEYSIZE);
     memset(lastsendBlock, 0, BIGSYMKEYSIZE);
+
+    sizeofEncKey= sizeofEncKeys;
+    sizeofIntKey= sizeofIntKeys;
 
     memcpy(sendEncKey, sendEncKeyIn, sizeofEncKeys);
     memcpy(getEncKey, getEncKeyIn, sizeofEncKeys);
@@ -173,6 +174,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     int         i;
     int         iLeft;
     byte        rguCBCMixer[BLKSIZE];
+    byte*       pNext= NULL;
 
     // buffer too big?
     if(len>MAXREQUESTSIZE) {
@@ -193,6 +195,10 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     else {
         newMsgSize+= residue;
     }
+    // Note: neither totalSize nor newMsg size include IV which is
+    // sent once when the channel is opened by initChannel.
+    // However, both include the size of the transmission header,
+    // sizeof(packetHdr).
     totalSize= newMsgSize+hmacSize;
 #ifdef TEST
     if(totalSize>MAXREQUESTSIZEWITHPAD) {
@@ -210,9 +216,9 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     memcpy(plainMessageBlock, (byte*)&oHdr, sizeof(packetHdr));
     memcpy(&plainMessageBlock[sizeof(packetHdr)], buf, len);
 
-    byte* pNext= &plainMessageBlock[newMsgSize-BLKSIZE];
+    pNext= &plainMessageBlock[newMsgSize-BLKSIZE];
 
-    // pad
+    // pad final message block
     if(remaining==0) {
         pNext[0]= 0x80;
         for(i=1; i<BLKSIZE;i++) 
@@ -224,22 +230,38 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
             pNext[remaining+i]= 0x00;
     }
 
-    // hmac
+    // If this is NOT an ENCRYPTTHENMAC.  The hmac is
+    // computed over plaintext and is placed at end of message in 
+    // plainMessageBlock[newMsgSize], increasing message
+    // size by the size of the HMAC .
+    // otherwise, we need to calculate it after encryption.
+#ifndef ENCRYPTTHENMAC
     if(!hmac_sha256(plainMessageBlock, newMsgSize, sendIntKey, 
                     sizeofIntKey, &plainMessageBlock[newMsgSize])) {
-        fprintf(g_logFile, "bad compute mac error\n");
+        fprintf(g_logFile, "safesendPacket: bad compute mac error\n");
         return HMACCOMPERROR;
     }
-#ifdef IOTEST1
-    fprintf(g_logFile, "safesendPacket HMAC, %d bytes\n",newMsgSize);
-    PrintBytes("Int key:", sendIntKey, sizeofIntKey);
-    PrintBytes("Message:", plainMessageBlock, newMsgSize);
+#ifdef TEST
+    fprintf(g_logFile, "MACTHENENCRYPT: %d bytes\n", newMsgSize);
     PrintBytes("Mac:", &plainMessageBlock[newMsgSize], SHA256_DIGESTSIZE_BYTES);
-    fprintf(g_logFile, "totalSize: %d\n", totalSize);
+#endif
 #endif
 
     // encrypt
+    //      pLastCipher points to last encrypted block
+    //      originally set to the IV in initChannel.
+    //      pNextPlain points to next block to encrypt
+    //      pNextCipher points to where we should copy
+    //      the next cipher block.
+    //      iLeft is the total size the portion of the
+    //      message to be encrypted.  It included the
+    //      HMAC if we ENCRYPTTHENMAC but does not
+    //      otherwise.
+#ifndef ENCRYPTTHENMAC
     iLeft= totalSize;
+#else
+    iLeft= newMessageSize;
+#endif
     while(iLeft>0) {
         memcpy(rguCBCMixer, pNextPlain, BLKSIZE);
         inlineXorto(rguCBCMixer, pLastCipher, BLKSIZE);
@@ -249,13 +271,41 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
         pNextPlain+= BLKSIZE;
         pNextCipher+= BLKSIZE;
     }
+    // save last cipher block for next message
     memcpy(lastsendBlock, pLastCipher, BLKSIZE);
 
+#ifdef ENCRYPTTHENMAC
+    if(!hmac_sha256(encryptedMessageBlock, newMsgSize, sendIntKey, 
+                    sizeofIntKey, &encryptedMessageBlock[newMsgSize])) {
+        fprintf(g_logFile, "safesendPacket: bad compute mac error\n");
+        return HMACCOMPERROR;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "ENCRYPTTHENMAC: %d bytes\n", newMsgSize);
+    PrintBytes("Mac:", &plainMessageBlock[newMsgSize], SHA256_DIGESTSIZE_BYTES);
+#endif
+#endif
+
     int n= write(fd, encryptedMessageBlock, totalSize);
+#if 0
+    if(n<totalSize)
+#else
     if(n<0) {
+#endif
         fprintf(g_logFile, "safesendPacket failure\n");
         return n;
     }
+#ifdef TEST
+    fprintf(g_logFile, "safesendPacket: bytes gotten %d, bytes sent %d \n", len, totalSize);
+    PrintBytes((char*)"input: ", buf, len);
+#ifdef ENCRYPTTHENMAC
+    PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, newMsgSize);
+    PrintBytes((char*)"ENCRYPTTHENMAC sent: ", encryptedMessageBlock, totalSize);
+#else
+    PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, totalSize);
+    PrintBytes((char*)"MACTHENENCRYPT sent: ", encryptedMessageBlock, totalSize);
+#endif
+#endif
     return len;
 }
 
@@ -266,10 +316,11 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
 int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype, 
                       byte* pmultipart, byte* pfinalpart)
 //
-//  collects a full message
-//      only decrypt to message boundary
-//      put excess preread cipher in prereadencryptedMessageBlock
-//      authenticate message, etc done here
+//  Get a full message from channel
+//      We only decrypt to message boundary.
+//      Put excess preread cipher in prereadencryptedMessageBlock.
+//      This routine does message authentication and returns only the
+//      original sent message without header, padding or HMAC.
 {
     int     padLen, residue;
     byte*   pLastCipher= lastgetBlock;
@@ -281,6 +332,11 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     int     iLeft= 0;
     int     m= 0;
     int     n= 0;
+
+    packetHdr*  plainMessageBlockHeader = NULL;
+    byte*       rguHmac= NULL;
+    byte        rguHmacComputed[SHA256_DIGESTSIZE_BYTES];
+    byte*       rguPad= NULL;
 
 #ifdef IOTEST
     fprintf(g_logFile, "getFullPacket(%d, %d, %d, %d)\n", maxSize, 
@@ -301,11 +357,11 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     if(sizeEncryptedBuf==0) {
         sizeEncryptedBuf= recv(fd, encryptedMessageBlock, MAXREQUESTSIZE, 0);
         if(sizeEncryptedBuf==0) {
-            fprintf(g_logFile, "Got 0 return on socket\n");
+            fprintf(g_logFile, "getFullPacket: channel empty\n");
             return 0;
         }
         if(sizeEncryptedBuf<0) {
-            fprintf(g_logFile, "Cant do initial get\n");
+            fprintf(g_logFile, "getFullPacket: channel read error\n");
             return sizeEncryptedBuf;
         }
 #ifdef IOTEST
@@ -321,10 +377,15 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     pNextPlain+= BLKSIZE;
     pNextCipher+= BLKSIZE;
 
-    packetHdr* plainMessageBlockHeader = reinterpret_cast<packetHdr*>(plainMessageBlock);
+    // Fix: If we get an error after this we're in trouble because
+    // lastgetblock in no longer properly set.  We should copy the
+    // last cipherblock in this message to lastgetBlock and clear the
+    // buffer
+
+    plainMessageBlockHeader = reinterpret_cast<packetHdr*>(plainMessageBlock);
     fullMsgSize= plainMessageBlockHeader->len;
 
-#ifdef IOTEST
+#ifdef TEST
     fprintf(g_logFile, "getFullPacket: message size %d, sizeEncryptedBuf: %d\n", 
             fullMsgSize, sizeEncryptedBuf);
     fflush(g_logFile);
@@ -338,7 +399,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
         return -1;
     }
 
-    // big enough?
+    // Does input buffer have less than an entire encrypted message in the buffer?
     if(fullMsgSize>sizeEncryptedBuf) {
 #ifdef IOTEST
         fprintf(g_logFile, "getFullPacket: sizeEncryptedBuf smaller than message\n");
@@ -358,7 +419,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
         }
     }
 
-    // too big?
+    // Does input buffer have more than an entire encrypted message?
     if(fullMsgSize<sizeEncryptedBuf) {
         n=  sizeEncryptedBuf-fullMsgSize;
 #ifdef IOTEST
@@ -368,7 +429,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
         fflush(g_logFile);
 #endif
         if(n>MAXREQUESTSIZEWITHPAD) {
-            fprintf(g_logFile, "getFullPacket: violate buffer size %d\n", n);
+            fprintf(g_logFile, "getFullPacket: message violates buffer size %d\n", n);
             return -1;
         }
         memcpy(prereadencryptedMessageBlock, &encryptedMessageBlock[fullMsgSize],n);
@@ -376,7 +437,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
         sizeprereadencrypted= n;
     }
 
-    // should be just right now
+    // Input buffer should contain a single encrypted message
     if(fullMsgSize!=sizeEncryptedBuf) {
         fprintf(g_logFile, "getFullPacket: fullMsgsize should match buffersize %d %d\n", 
                 fullMsgSize, sizeEncryptedBuf);
@@ -388,8 +449,18 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
             sizeEncryptedBuf);
     fflush(g_logFile);
 #endif
-    // Decrypt remaining
+    // Decrypt remaining message blocks
+    //      pLastCipher points to last encrypted block
+    //      originally set to the IV in initChannel.
+    //      pNextPlain points to where to put next plain block
+    //      pNextCipher points to where to get next cipher block
+    //      iLeft is total number of message bytes remaining 
+    //      to be decrypted.
+#ifdef ENCRYPTTHENMAC
+    iLeft= sizeEncryptedBuf-BLKSIZE-SHA256_DIGESTSIZE_BYTES;
+#else
     iLeft= sizeEncryptedBuf-BLKSIZE;
+#endif
     while(iLeft>0) {
         getAES.Decrypt(pNextCipher, pNextPlain);
         inlineXorto(pNextPlain, pLastCipher, BLKSIZE);
@@ -402,34 +473,47 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     // copy last cipher back for next round
     memcpy(lastgetBlock, pLastCipher, BLKSIZE);
 
-#ifdef IOTEST
+#ifdef TEST
     fprintf(g_logFile, "getFullPacket: got last block, checking MAC\n");
+#ifdef ENCRYPTTHENMAC
+    PrintBytes((char*)"ENCRYPTTHENMAC input: ", encryptedMessageBlock, fullMsgSize);
+    PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES);
+#else
+    PrintBytes((char*)"MACTHENENCRYPT input: ", encryptedMessageBlock, fullMsgSize);
+    PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, fullMsgSize);
+#endif
     fflush(g_logFile);
 #endif
-    // check MAC
-    byte*   rguPad= &plainMessageBlock[fullMsgSize-BLKSIZE-SHA256_DIGESTSIZE_BYTES];
-    byte*   rguHmac= &plainMessageBlock[fullMsgSize-SHA256_DIGESTSIZE_BYTES];
-    byte    rguHmacComputed[SHA256_DIGESTSIZE_BYTES];
 
-    n= fullMsgSize-SHA256_DIGESTSIZE_BYTES;   // remove HMAC at the end
-
-    // hmac check
-    if(!hmac_sha256(plainMessageBlock, n, getIntKey, sizeofIntKey, rguHmacComputed)) {
+    // compute HMAC
+#ifdef ENCRYPTTHENMAC
+    if(!hmac_sha256(encryptedMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES, 
+                    getIntKey, sizeofIntKey, rguHmacComputed)) {
         fprintf(g_logFile, "getFullPacket: HMAC Compute error 1\n");
         return HMACCOMPERROR;
     }
+    rguHmac= &encryptedMessageBlock[fullMsgSize-SHA256_DIGESTSIZE_BYTES];
+#else
+    if(!hmac_sha256(plainMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES, getIntKey, 
+                    sizeofIntKey, rguHmacComputed)) {
+        fprintf(g_logFile, "getFullPacket: HMAC Compute error 1\n");
+        return HMACCOMPERROR;
+    }
+    rguHmac= &plainMessageBlock[fullMsgSize-SHA256_DIGESTSIZE_BYTES];
+#endif
+
+    // check MAC
     if(!isEqual(rguHmac, rguHmacComputed, SHA256_DIGESTSIZE_BYTES)) {
         fprintf(g_logFile, "getFullPacket: HMAC comparison error 2\n");
-#ifdef IOTEST
-        PrintBytes("original buffer\n", encryptedMessageBlock, n);
-        PrintBytes("decrypted buffer\n", plainMessageBlock, n);
-        PrintBytes("send Hmac\n", rguHmac, SHA256_DIGESTSIZE_BYTES);
+#ifdef TEST
+        PrintBytes("sent Hmac\n", rguHmac, SHA256_DIGESTSIZE_BYTES);
         PrintBytes("computed Hmac\n", rguHmacComputed, SHA256_DIGESTSIZE_BYTES);
 #endif
         return HMACMATCHERROR;
     }
 
     // depad
+    rguPad= &plainMessageBlock[fullMsgSize-BLKSIZE-SHA256_DIGESTSIZE_BYTES];
     for(residue=(BLKSIZE-1); residue>=0; residue--) {
         if(rguPad[residue]!=0) {
             if(rguPad[residue]!=0x80) {
@@ -446,12 +530,13 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     padLen= BLKSIZE-residue;
 
     // compute message length and copy
-    sizedecryptedMsg= n-padLen-sizeof(packetHdr);
+    sizedecryptedMsg= fullMsgSize-SHA256_DIGESTSIZE_BYTES-padLen-sizeof(packetHdr);
     if(maxSize<sizedecryptedMsg)
         return -1;
 
-#ifdef IOTEST
-    fprintf(g_logFile, "getFullPacket: copying message %d\n", sizedecryptedMsg);
+#ifdef TEST
+    fprintf(g_logFile, "getFullPacket: returned message has %d bytes\n", sizedecryptedMsg);
+    PrintBytes((char*)"plain: ", buf, sizedecryptedMsg);
     fflush(g_logFile);
 #endif
 

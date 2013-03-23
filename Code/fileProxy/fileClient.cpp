@@ -885,6 +885,8 @@ bool fileClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, cons
         fc.fsendIVSent= true;
 #ifdef  TEST
         fprintf(g_logFile, "fileClient::protocolNego: Encrypted mode on\n");
+        PrintBytes((char*)"Received IV: ", fc.lastgetBlock, AES128BYTEBLOCKSIZE);
+        PrintBytes((char*)"Sent     IV: ", fc.lastsendBlock, AES128BYTEBLOCKSIZE);
         fflush(g_logFile);
 #endif
 

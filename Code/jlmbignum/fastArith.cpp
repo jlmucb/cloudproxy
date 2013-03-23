@@ -111,13 +111,6 @@ u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy)
 {
     u64 uRem;
 
-#if 0
-    if(uDivBy==1ULL) {
-        *puQ= uDivHi;
-        return uDivLo;
-    }
-#endif
-
     // %rdx:%rax contains numerator
     asm volatile(
         "movq    $0,%[rem]\n" \
@@ -191,19 +184,10 @@ inline void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uT
     u64 aCarry;
     u64 mResult;
 
-#ifdef ARITHTEST1
-    fprintf(g_logFile, "MStep, uIn1: %016lx, uIn2: %016lx, uCarry: %016lx, uToAdd: %016lx\n", 
-           (up64) uIn1, (up64) uIn2, (up64) uCarry, (up64) uToAdd);
-#endif
     mCarry= longmultiplystep(&mResult, uIn1, uIn2, uCarry);
     aCarry= longaddwithcarry(pResult, mResult, uToAdd, 0ULL);
 
     *pCarry= mCarry+aCarry;   // should never have further carry
-#ifdef ARITHTEST1
-    fprintf(g_logFile, "Result: %016lx, Carry: %016lx\n", (up64) *pResult, (up64) *pCarry);
-#endif
-    //printf("\n***in1: %016lx, In2: %016lx, mResult: %016lx, aCarry: %016lx, mCarry: %016lx Result: %016lx, Carry: %016lx\n", 
- 	   //uIn1, uIn2, mResult, aCarry, mCarry, *pResult, *pCarry);
 }
 
 
@@ -232,9 +216,6 @@ u64 mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
         for(j=0; j<lB; j++)
             mpMultiplyStep(&uCarry, &pR[i+j], pA[i], pB[j], pR[i+j], uCarry);
         pR[i+j]= uCarry;
-// for(int k=0;k<(lA+lB);k++)
-// printf("%016lx ", pR[k]);
-// printf("\n");
     }
     return uCarry;
 }

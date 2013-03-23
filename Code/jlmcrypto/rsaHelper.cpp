@@ -221,6 +221,11 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
     bnum    bnMsg(rgKey.m_iByteSizeM/2);
     bnum    bnOut(rgKey.m_iByteSizeM/2);
 
+#ifdef TEST14
+    fprintf(g_logFile, "rsaXmlDecryptandGetNonce: nonce size is %d\n", sizeNonce);
+    // rgKey.printMe();
+    PrintBytes("rsaXmlDecryptandGetNonce: In\n", rgIn, sizein);
+#endif
     if(sizeNonce>(rgKey.m_iByteSizeM-11)) {
         fprintf(g_logFile, "rsaXmlDecryptandGetNonce: bad sealed nonce size\n");
         return false;
@@ -243,7 +248,7 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
         }
         revmemcpy(rgPadded, (byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
     }
-#ifdef TEST
+#ifdef TEST14
     PrintBytes("rsaXmlDecryptandGetNonce:: padded\n", rgPadded, 
                 rgKey.m_iByteSizeM);
 #endif
@@ -259,8 +264,8 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
     int     iOut;
     byte    rgPadded[1024];
     byte    rgBase64Decoded[1024];
-    bnum    bnMsg(rgKey.m_iByteSizeM/2);
-    bnum    bnOut(rgKey.m_iByteSizeM/2);
+    bnum    bnMsg(2*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnOut(2*rgKey.m_iByteSizeM/sizeof(u64));
 
     if(sizeChallenge!=32) {
         fprintf(g_logFile, 
@@ -274,7 +279,14 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
         return false;
     }
 #ifdef TEST
+    fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: keybytesize is %d\n", rgKey.m_iByteSizeM);
+    fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: %s\n", szSig); 
+    if(fEncrypt)
+        fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: fEncrypt=true\n");
+    else
+        fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: fEncrypt=false\n");
     PrintBytes("rsaXmlDecodeandVerifyChallenge decoded\n", rgBase64Decoded, iOut);
+    rgKey.printMe();
 #endif
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
@@ -322,12 +334,15 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
     int     iOut;
     byte    rgPadded[1024];
     char    rgBase64[1024];
-    bnum    bnMsg(rgKey.m_iByteSizeM/2);
-    bnum    bnOut(rgKey.m_iByteSizeM/2);
+    bnum    bnMsg(2*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnOut(2*rgKey.m_iByteSizeM/sizeof(u64));
     u32     uHash= 0;
 
 #ifdef TEST
-    fprintf(g_logFile, "rsaXmlEncodeChallenge\n");
+    if(fEncrypt)
+        fprintf(g_logFile, "rsaXmlEncodeChallenge, encrypt\n");
+    else
+        fprintf(g_logFile, "rsaXmlEncodeChallenge, decrypt\n");
     fflush(g_logFile);
 #endif
     if(sizeChallenge==32) {
@@ -355,7 +370,7 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
     if(fEncrypt) {
         revmemcpy((byte*)bnMsg.m_pValue, rgPadded, rgKey.m_iByteSizeM);
         if(!mpRSAENC(bnMsg, *(rgKey.m_pbnE), *(rgKey.m_pbnM), bnOut)) {
-            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: decrypt failure\n");
+            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
             return NULL;
         }
     }
@@ -372,6 +387,9 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
         return NULL;
     }
 
+#ifdef TEST
+    PrintBytes("Encrypted challenge\n", (byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
+#endif
     return strdup(rgBase64);
 }
 

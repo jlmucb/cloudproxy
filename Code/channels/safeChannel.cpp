@@ -194,6 +194,12 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
         newMsgSize+= residue;
     }
     totalSize= newMsgSize+hmacSize;
+#ifdef TEST
+    if(totalSize>MAXREQUESTSIZEWITHPAD) {
+        fprintf(g_logFile, "Message too big\n");
+        return PUTTOOBIGERROR;
+    }
+#endif
 
     // message header
     oHdr.packetType= type;

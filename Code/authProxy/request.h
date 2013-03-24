@@ -34,20 +34,12 @@
 #include "objectManager.h"
 #include "channel.h"
 #include "safeChannel.h"
+#include "credential.h"
 #include "timer.h"
-#include "vault.h"
 #include "policyglobals.h"
 
 
-#define CREATERESOURCE   1
-#define DELETERESOURCE   2
-#define SENDRESOURCE     3 
-#define GETRESOURCE      4
-#define ADDOWNER         5
-#define REMOVEOWNER      6
-#define GETOWNER         7
-#define ADDPRINCIPAL     8
-#define REMOVEPRINCIPAL  9
+#define GETTOKEN         1
 
 #define ACCEPT         100
 #define REJECT         200
@@ -75,6 +67,9 @@
  */
 
 
+class accessGuard;
+
+
 class Request {
 public:
     int             m_iRequestType;
@@ -90,10 +85,10 @@ public:
                 Request();
                 ~Request();
     bool        getDatafromDoc(const char* szRequest);
-    bool        validateGetCredentialRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppCredential);
+    bool        validateCredentialRequest(sessionKeys& oKeys, char** pszFile, 
+                        credential** ppCredential);
     bool        validateRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppCredential);
+                        credential** ppCredential);
 #ifdef TEST
     void        printMe();
 #endif
@@ -116,6 +111,14 @@ public:
     void            printMe();
 #endif
 };
+
+
+class accessGuard {
+public:
+    bool  permitAccess(Request& req, char*sz);
+};
+
+
 
 bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName, const char* szEvidence, 
                                  const char* szFile, int encType, byte* key, timer& encTimer);

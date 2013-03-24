@@ -41,13 +41,12 @@
 #include "domain.h"
 #include "tcIO.h"
 #include "timer.h"
+#include "authTester.h"
 
 #include "objectManager.h"
-#include "resource.h"
 #include "tao.h"
 
 #include "trustedKeyNego.h"
-#include "vault.h"
 #include "encryptedblockIO.h"
 #include "secPrincipal.h"
 #include "hashprep.h"
@@ -79,7 +78,7 @@ using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
 bool             g_globalpolicyValid= false;
-metaData         g_theVault;
+// metaData         g_theVault;
 PrincipalCert*   g_policyPrincipalCert= NULL;
 RSAKey*          g_policyKey= NULL;
 accessPrincipal* g_policyAccessPrincipal= NULL;
@@ -212,7 +211,7 @@ bool authClient::initFileKeys()
             return false;
         }
         m_sizeKey= 32;
-        if(!getCryptoRandom(m_sizeKey*NBITSINBYTE, m_fileKeys)) {
+        if(!getCryptoRandom(m_sizeKey*NBITSINBYTE, m_authKeys)) {
             fprintf(g_logFile, "initFileKeys: cant generate keys\n");
             return false;
         }
@@ -228,7 +227,7 @@ bool authClient::initFileKeys()
         n+= sizeof(u32);
         memcpy(&keyBuf[n], &m_uHmac, sizeof(u32));
         n+= sizeof(u32);
-        memcpy(&keyBuf[n], m_fileKeys, m_sizeKey);
+        memcpy(&keyBuf[n], m_authKeys, m_sizeKey);
         n+= m_sizeKey;
 
         if(!m_tcHome.m_myMeasurementValid) {
@@ -280,7 +279,7 @@ bool authClient::initFileKeys()
         n+= sizeof(u32);
         memcpy(&m_uHmac, &keyBuf[n], sizeof(u32));
         n+= sizeof(u32);
-        memcpy(m_fileKeys, &keyBuf[n], m_sizeKey);
+        memcpy(m_authKeys, &keyBuf[n], m_sizeKey);
         n+= m_sizeKey;
         if(n>m) {
             fprintf(g_logFile, "initFileKeys: unsealed keys wrong size\n");
@@ -291,7 +290,7 @@ bool authClient::initFileKeys()
 
 #ifdef  TEST
     fprintf(g_logFile, "initFileKeys\n");
-    PrintBytes("fileKeys\n", m_fileKeys, m_sizeKey);
+    PrintBytes("fileKeys\n", m_authKeys, m_sizeKey);
     fflush(g_logFile);
 #endif
     return true;
@@ -367,10 +366,12 @@ bool authClient::initClient(const char* configDirectory, const char* serverAddre
             throw "authClient::Init: Cant get my Cert\n";
     
         // Initialize resource and principal tables
+#if 0
         if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, "authClient"))
             throw "authClient::Init: Cant init metadata\n";
         if(!g_theVault.initFileNames())
             throw "authClient::Init: Cant init file names\n";
+#endif
 
         // Init global policy 
         if(!initPolicy())
@@ -1130,7 +1131,7 @@ bool authClient::readCredential(safeChannel& fc, const string& subject, const st
                                    szEvidence,
                                    localOutput.c_str(),
                                    encType, 
-                                   m_fileKeys, 
+                                   m_authKeys, 
                                    m_encTimer)) {
         fprintf(g_logFile, "authClient authTest: read file successful\n");
         fflush(g_logFile);
@@ -1213,10 +1214,10 @@ int main(int an, char** av)
                 fInitProg= true;
             }
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {
-                oFileClient.m_szPort= strdup(av[++i]);
+                oAuthClient.m_szPort= strdup(av[++i]);
             }
             if(strcmp(av[i],"-address")==0) {
-                oFileClient.m_szAddress= strdup(av[++i]);
+                oAuthClient.m_szAddress= strdup(av[++i]);
             }
             if (strcmp(av[i],"-directory")==0) {
                 directory= strdup(av[++i]);
@@ -1271,7 +1272,7 @@ int main(int an, char** av)
 #endif
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
-                fileTester ft(path, testFileName);
+                authTester ft(path, testFileName);
                 ft.Run(directory);
             }
         }

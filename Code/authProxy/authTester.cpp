@@ -48,7 +48,7 @@ authTester::authTester(const string& path, const string& testFile)
     m_serverAddress("127.0.0.1"),
     m_serverPort(SERVICE_PORT)
 {
-    // parse the xml and construct the default parameters and any required resources
+    // parse the xml and construct the default parameters and any required credentials
     m_testsDoc.LoadFile();
 
     
@@ -129,7 +129,7 @@ void authTester::createResources(const string& parentPath, const TiXmlNode* pare
             // puts too much load on the disk for a large test suite
             //m_filesToDelete.push_back(filePath);
         } else {
-            throw "Could not get the name and size of this resource\n";
+            throw "Could not get the name and size of this credential\n";
         }
     }
 }

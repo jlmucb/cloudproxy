@@ -35,7 +35,6 @@
 #include "accessControl.h"
 #include "algs.h"
 #include "timer.h"
-#include "vault.h"
 #include <pthread.h>
 
 
@@ -104,7 +103,7 @@ public:
     bool                m_fChannelAuthenticated;
     sessionKeys         m_oKeys;
     safeChannel         m_osafeChannel;
-    accessGuard         m_oAG;
+    // accessGuard         m_oAG;
     int                 m_myPositionInParent;
 
     theServiceChannel();

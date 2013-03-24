@@ -23,18 +23,15 @@ CC=         g++
 LINK=       g++
 
 dobjs=      $(B)/authServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
-            $(B)/secPrincipal.o $(B)/accessControl.o \
 	    $(B)/session.o $(B)/request.o $(B)/jlmUtility.o $(B)/keys.o \
 	    $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
-	    $(B)/mpNumTheory.o $(B)/fastArith.o \
-	    $(B)/encryptedblockIO.o $(B)/rsaHelper.o \
-	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/trustedKeyNego.o \
-	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
-	    $(B)/taoInit.o $(B)/linuxHostsupport.o \
+	    $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/encryptedblockIO.o \
+	    $(B)/rsaHelper.o $(B)/hmacsha256.o $(B)/modesandpadding.o \
+	    $(B)/trustedKeyNego.o $(B)/taoSupport.o $(B)/taoEnvironment.o \
+	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
 	    $(B)/claims.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
-	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
-	    $(B)/tcIO.o 
+	    $(B)/sha1.o $(B)/logging.o $(B)/buffercoding.o $(B)/tcIO.o 
 
 all: $(E)/authServer.exe
 
@@ -72,8 +69,8 @@ $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 $(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
 
-$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(RMM) -I$(CLM) -I$(TRS) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
+#$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
+#	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(RMM) -I$(CLM) -I$(TRS) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/taoInit.o: $(TH)/taoInit.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(TRS) -c -o $(B)/taoInit.o $(TH)/taoInit.cpp
@@ -93,17 +90,17 @@ $(B)/linuxHostsupport.o: $(TH)/linuxHostsupport.cpp $(TH)/linuxHostsupport.h
 $(B)/trustedKeyNego.o: $(TH)/trustedKeyNego.cpp $(TH)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TH) -c -o $(B)/trustedKeyNego.o $(TH)/trustedKeyNego.cpp
 
-$(B)/secPrincipal.o: $(CLM)/secPrincipal.cpp $(CLM)/secPrincipal.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -I$(RMM) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
+#$(B)/secPrincipal.o: $(CLM)/secPrincipal.cpp $(CLM)/secPrincipal.h
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -I$(RMM) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
 
 $(B)/request.o: $(S)/request.cpp $(S)/request.h $(CLM)/accessControl.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(RMM) -I$(VLT) -I$(CH) -c -o $(B)/request.o $(S)/request.cpp
 
-$(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(TH) -I$(VLT) -c -o $(B)/claims.o $(CLM)/claims.cpp
+#$(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(TH) -I$(VLT) -c -o $(B)/claims.o $(CLM)/claims.cpp
 
-$(B)/accessControl.o: $(CLM)/accessControl.cpp $(CLM)/accessControl.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(VLT) -I$(CLM) -I$(CH) -I$(RMM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
+#$(B)/accessControl.o: $(CLM)/accessControl.cpp $(CLM)/accessControl.h
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(VLT) -I$(CLM) -I$(CH) -I$(RMM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

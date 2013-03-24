@@ -35,7 +35,6 @@
 #include "channel.h"
 #include "safeChannel.h"
 #include "jlmUtility.h"
-#include "vault.h"
 #include "request.h"
 #include "encryptedblockIO.h"
 
@@ -95,7 +94,7 @@ Request::Request()
     m_szAction= NULL;
     m_szCredentialName= NULL;
     m_szEvidence= NULL;
-    m_poAG= NULL;
+    // m_poAG= NULL;
 }
 
 
@@ -117,7 +116,7 @@ Request::~Request()
         free(m_szSubjectName);
         m_szSubjectName= NULL;
     }
-    m_poAG= NULL;
+    // m_poAG= NULL;
 }
 
 
@@ -196,10 +195,8 @@ bool  Request::getDatafromDoc(const char* szRequest)
     if(szCredentialLength!=NULL)
         sscanf(szCredentialLength, "%d", &m_iCredentialLength);
 
-    else if(strcmp(m_szAction, "getCredential")==0)
-        m_iRequestType= GETCREDENTIAL;
-    else if(strcmp(m_szAction, "sendCredential")==0)
-        m_iRequestType= SENDCREDENTIAL;
+    else if(strcmp(m_szAction, "getToken")==0)
+        m_iRequestType= GETTOKEN;
     else
         m_iRequestType= 0;
 
@@ -232,28 +229,28 @@ void Request::printMe()
 #endif
 
 
-bool  Request::validateGetSendCerdential(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppCredential)
+bool  Request::validateCredentialRequest(sessionKeys& oKeys, char** pszFile, 
+                                    credential** ppCredential)
 {
-    resource*               pCredential= NULL;
-    accessRequest           oAR;
+    credential*     pCredential= NULL;
+    Request         oAR;
 
     if(m_poAG==NULL) {
-        fprintf(g_logFile, "Request::validateGetSendDeleteRequest: access guard not initialiized\n");
+        fprintf(g_logFile, "Request::validateCredentialRequest: access guard not initialiized\n");
         fflush(g_logFile);
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "looking for resource %s\n", m_szCredentialName);
+    fprintf(g_logFile, "looking for credential %s\n", m_szCredentialName);
 #endif
-    pCredential= g_theVault.findCredential(m_szCredentialName);
+    // pCredential= g_theVault.findCredential(m_szCredentialName);
     if(pCredential==NULL) {
-        fprintf(g_logFile, "Request::validateGetSendDeleteRequest: GetSendDelete pCredential NULL, %s\n", m_szCredentialName);
+        fprintf(g_logFile, "Request::validateCredentialRequest: GetCredential NULL, %s\n", m_szCredentialName);
         fflush(g_logFile);
         return false;
     }
     if(pCredential->m_szLocation==NULL) {
-        fprintf(g_logFile, "Request::validateGetSendDeleteRequest: location NULL\n");
+        fprintf(g_logFile, "Request::validateCredentialRequest: location NULL\n");
         return false;
     }
 
@@ -263,17 +260,17 @@ bool  Request::validateGetSendCerdential(sessionKeys& oKeys, char** pszFile,
 
     // Access allowed?
     if(m_szSubjectName==NULL)
-        oAR.m_szSubject= NULL;
+        oAR.m_szSubjectName= NULL;
     else
-        oAR.m_szSubject= strdup(m_szSubjectName);
+        oAR.m_szSubjectName= strdup(m_szSubjectName);
     oAR.m_iRequestType= m_iRequestType;
-    oAR.m_szCredential= strdup(m_szCredentialName);
+    oAR.m_szCredentialName= strdup(m_szCredentialName);
     return m_poAG->permitAccess(oAR, m_szEvidence);
 }
 
  
 bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppCredential)
+                                    credential** ppCredential)
 {
 #ifdef TEST
     fprintf(g_logFile, "\nvalidateRequest\n");
@@ -291,17 +288,9 @@ bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile,
 #endif
     bool    fAllowed;
     switch(m_iRequestType) {
-      case CREATERESOURCE:
-        fAllowed= validateCreateRequest(oKeys, pszFile, ppCredential);
+      case GETTOKEN:
+        fAllowed= validateCredentialRequest(oKeys, pszFile, ppCredential);
         break;
-      case DELETERESOURCE:
-      case GETRESOURCE:
-      case SENDRESOURCE:
-        fAllowed= validateGetSendDeleteRequest(oKeys, pszFile, ppCredential);
-        break;
-      case ADDPRINCIPAL:
-      case REMOVEPRINCIPAL:
-      case GETOWNER:
       default:
         fAllowed= false;
         break;
@@ -372,7 +361,7 @@ void Response::printMe()
         fprintf(g_logFile, "\tm_szEvidence is NULL\n");
     else
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    fprintf(g_logFile, "\tresourcelength: %d\n", m_iCredentialLength);
+    fprintf(g_logFile, "\tcredentiallength: %d\n", m_iCredentialLength);
 }
 #endif
 
@@ -804,7 +793,7 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
-    resource*   pCredential= NULL;
+    credential*   pCredential= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendCredentialtoclient\n");

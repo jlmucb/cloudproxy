@@ -44,10 +44,8 @@
 #include "tao.h"
 
 #include "objectManager.h"
-#include "resource.h"
 #include "secPrincipal.h"
 #include "accessControl.h"
-#include "vault.h"
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
 #include "domain.h"
@@ -74,7 +72,7 @@ bool             g_fTerminateServer= false;
 int              iQueueSize= 5;
 
 bool             g_globalpolicyValid= false;
-metaData         g_theVault;
+// metaData         g_theVault;
 PrincipalCert*   g_policyPrincipalCert= NULL;
 RSAKey*          g_policyKey= NULL;
 accessPrincipal* g_policyAccessPrincipal= NULL;
@@ -84,7 +82,7 @@ accessPrincipal* g_policyAccessPrincipal= NULL;
 accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 #ifdef TEST
-void printCredentials(objectManager<resource>* pRM);
+void printCredentials(objectManager<credential>* pRM);
 void printPrincipals(objectManager<accessPrincipal>* pPM);
 #endif
 
@@ -683,14 +681,14 @@ int theServiceChannel::processRequests()
             return -1;
         }
         encType= DEFAULTENCRYPT;
-        key= m_pParent->m_fileKeys;
+        key= m_pParent->m_authKeys;
     }
 
     int     iRequestType= 0;
     {
         Request oReq;
 
-        oReq.m_poAG= &m_oAG;
+        // oReq.m_poAG= &m_oAG;
         if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
             fprintf(g_logFile, "theServiceChannel::processRequests: cant parse: %s\n", request);
             return -1;
@@ -703,13 +701,13 @@ int theServiceChannel::processRequests()
 
         iRequestType= oReq.m_iRequestType;
         if(oReq.m_szCredentialName==NULL) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");
+            fprintf(g_logFile, "theServiceChannel::processRequests: Empty credential name\n");
             return -1;
         }
 
         switch(iRequestType) {
-          case GETCREDENTIAL:
-            if(!serversendcredentialtoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, 
+          case GETTOKEN:
+            if(!serversendCredentialtoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, 
                                         m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
                 return -1;
@@ -767,12 +765,14 @@ bool theServiceChannel::initServiceChannel()
     fflush(g_logFile);
 #endif
     // Access Guard valid?
+#if 0
     if(!m_oAG.m_fValid) {
         if(!m_oAG.initChannelAccess(m_oKeys.m_iNumPrincipals, m_oKeys.m_rgPrincipalCerts)) {
             fprintf(g_logFile, "Request::validateRequest: initAccessGuard returned false\n");
             return false;
         }
     }
+#endif
 
     m_serverState= REQUESTSTATE;
     while((n=processRequests())!=0) {
@@ -780,7 +780,7 @@ bool theServiceChannel::initServiceChannel()
             fprintf(g_logFile, "theServiceChannel::serviceChannel: processRequest error\n");
         fflush(g_logFile);
 #ifdef METADATATEST
-        //void metadataTest(char* szDir, m_fEncryptFiles, m_fileKeys);
+        //void metadataTest(char* szDir, m_fEncryptFiles, m_authKeys);
         //metadataTest(m_tcHome.m_fileNames.m_szdirectory);
 #endif
         m_pParent->printTimers(g_logFile);
@@ -866,7 +866,7 @@ authServer::~authServer()
         m_szAddress= NULL;
     }
     if(m_fKeysValid)
-        memset(m_fileKeys, 0, m_sizeKey);
+        memset(m_authKeys, 0, m_sizeKey);
     m_fKeysValid= false;
     if(m_szSealedKeyFile!=NULL)
         free(m_szSealedKeyFile);
@@ -963,7 +963,7 @@ bool authServer::initFileKeys()
             return false;
         }
         m_sizeKey= 32;
-        if(!getCryptoRandom(m_sizeKey*NBITSINBYTE, m_fileKeys)) {
+        if(!getCryptoRandom(m_sizeKey*NBITSINBYTE, m_authKeys)) {
             fprintf(g_logFile, "initFileKeys: cant generate keys\n");
             return false;
         }
@@ -979,7 +979,7 @@ bool authServer::initFileKeys()
         n+= sizeof(u32);
         memcpy(&keyBuf[n], &m_uHmac, sizeof(u32));
         n+= sizeof(u32);
-        memcpy(&keyBuf[n], m_fileKeys, m_sizeKey);
+        memcpy(&keyBuf[n], m_authKeys, m_sizeKey);
         n+= m_sizeKey;
 
         if(!m_tcHome.m_myMeasurementValid) {
@@ -1026,7 +1026,7 @@ bool authServer::initFileKeys()
         n+= sizeof(u32);
         memcpy(&m_uHmac, &keyBuf[n], sizeof(u32));
         n+= sizeof(u32);
-        memcpy(m_fileKeys, &keyBuf[n], m_sizeKey);
+        memcpy(m_authKeys, &keyBuf[n], m_sizeKey);
         n+= m_sizeKey;
         if(n>m) {
             fprintf(g_logFile, "initFileKeys: unsealed keys wrong size\n");
@@ -1037,7 +1037,7 @@ bool authServer::initFileKeys()
 
 #ifdef  TEST
     fprintf(g_logFile, "initFileKeys\n");
-    PrintBytes("fileKeys\n", m_fileKeys, m_sizeKey);
+    PrintBytes("fileKeys\n", m_authKeys, m_sizeKey);
     fflush(g_logFile);
 #endif
     return true;
@@ -1098,12 +1098,14 @@ bool authServer::initServer(const char* configDirectory)
         m_tcHome.printData();
 #endif
 
-        // Initialize resource and principal tables
+        // Initialize credential and principal tables
+#if 0
         if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "authServer"))
             throw "authServer::Init: Cant init metadata\n";
         if(!g_theVault.initFileNames())
             throw "authServer::Init: Cant init file names\n";
+#endif
 
 #ifdef TEST
         fprintf(g_logFile, "initServer about to initPolicy();\n");
@@ -1372,7 +1374,7 @@ void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
         fprintf(g_logFile, "authServer::serviceChannel: save fails\n");
         fflush(g_logFile);
     }
-    metaData localVault;
+    // metaData localVault;
 
     if(!localVault.initMetaData(szDir, "authServer")) {
         fprintf(g_logFile, "authServer::localInit: Cant init local metadata\n");
@@ -1398,11 +1400,11 @@ void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
 #endif
 
 
-void printCredentials(objectManager<resource>* pRM)
+void printCredentials(objectManager<credential>* pRM)
 {
     int     i;
 
-    fprintf(g_logFile, "%d resources\n", pRM->numObjectsinTable());
+    fprintf(g_logFile, "%d credentials\n", pRM->numObjectsinTable());
     for(i=0; i<pRM->numObjectsinTable(); i++) {
         pRM->getObject(i)->printMe();
         fprintf(g_logFile, "\n");

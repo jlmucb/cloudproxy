@@ -1,7 +1,7 @@
-//  File: fileTester.h
+//  File: authTester.h
 //      Tom Roeder
 //
-//  Description: tester for fileClient
+//  Description: tester for authClient
 //
 //  Copyright (c) 2013, Google Inc. All rights reserved
 //
@@ -66,7 +66,7 @@ class authTester {
         string match;
     };
 
-    fileClient m_defaultClient;
+    authClient m_defaultClient;
     safeChannel m_defaultChannel;
     fileTestParams m_defaultParams;
     string m_testFileName;
@@ -90,7 +90,7 @@ class authTester {
 
     // runs an individual test and return success or failure, as well as the 
     // timing of the test, if any
-    bool runTest(fileClient& client,
+    bool runTest(authClient& client,
             safeChannel& channel,
             const fileTestParams& params,
             timer& testTimer); 

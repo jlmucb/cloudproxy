@@ -33,7 +33,6 @@
 #include "secPrincipal.h"
 #include "objectManager.h"
 #include "secPrincipal.h"
-#include "resource.h"
 #include "policyglobals.h"
 
 // Key sizes

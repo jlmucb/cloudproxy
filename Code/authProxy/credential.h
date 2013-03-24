@@ -1,8 +1,8 @@
 //
-//  policyGlobals.h
+//  File: credential.h
 //      John Manferdelli
 //
-//  Description: global values for policy 
+//  Description: Symbol and class definitions for authClient
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.
@@ -21,26 +21,42 @@
 // to the location of the License.
 
 
-// ------------------------------------------------------------------------
+//------------------------------------------------------------------------------------
 
 
-#ifndef _POLICYGLOBALS__H
-#define _POLICYGLOBALS__H
+#ifndef _CREDENTIAL__H
+#define _CREDENTIAL__H
 
-#include "jlmTypes.h"
-#include "keys.h"
+
+#include "channel.h"
+#include "safeChannel.h"
+#include "session.h"
+#include "objectManager.h"
 #include "secPrincipal.h"
+#include "tao.h"
+#include "timer.h"
 
+#include <string>
+using std::string;
 
-extern bool             g_globalpolicyValid;
-// extern metaData	        g_theVault;
-extern PrincipalCert*   g_policyPrincipalCert;
-extern RSAKey*	    	g_policyKey;
-extern accessPrincipal* g_policyAccessPrincipal;
+class credential {
+public:
+    int                 m_clientState;
+    int                 m_iSize;
+    char*               m_szLocation;
+
+    credential();
+    ~credential();
+
+    void    printMe();
+    void    printTimers(FILE* log);
+    void    resetTimers();
+};
+
 
 #endif
 
 
-// -----------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 

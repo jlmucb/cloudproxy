@@ -32,11 +32,9 @@
 #include "safeChannel.h"
 #include "session.h"
 #include "objectManager.h"
-#include "resource.h"
 #include "secPrincipal.h"
 #include "tao.h"
 #include "timer.h"
-#include "vault.h"
 
 #include <string>
 using std::string;

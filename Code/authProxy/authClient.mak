@@ -6,7 +6,6 @@ SCC=        ../jlmcrypto
 BSC=        ../jlmbignum
 CLM=        ../claims
 TH=	    ../tao
-VLT=	    ../vault
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
@@ -31,8 +30,7 @@ dobjs=      $(B)/authClient.o $(B)/logging.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o  $(B)/secPrincipal.o $(B)/request.o \
 	    $(B)/accessControl.o $(B)/trustedKeyNego.o $(B)/sha1.o \
-	    $(B)/vault.o $(B)/buffercoding.o $(B)/tcIO.o \
-	    $(B)/hashprep.o
+	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o
 
 all: $(E)/authClient.exe
 
@@ -41,7 +39,7 @@ $(E)/authClient.exe: $(dobjs)
 	$(LINK) -o $(E)/authClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/authClient.o: $(S)/authClient.cpp $(S)/authClient.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(RMM) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/authClient.o $(S)/authClient.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/authClient.o $(S)/authClient.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
@@ -68,7 +66,7 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
 $(B)/authChannel.o: $(S)/authChannel.cpp $(S)/authChannel.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(RMM) -I$(CLM) -c -o $(B)/authChannel.o $(S)/authChannel.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -c -o $(B)/authChannel.o $(S)/authChannel.cpp
 
 $(B)/taoInit.o: $(TH)/taoInit.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(TRS) -c -o $(B)/taoInit.o $(TH)/taoInit.cpp
@@ -86,25 +84,22 @@ $(B)/linuxHostsupport.o: $(TH)/linuxHostsupport.cpp $(TH)/linuxHostsupport.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TH)/linuxHostsupport.cpp
 
 $(B)/secPrincipal.o: $(CLM)/secPrincipal.cpp $(CLM)/secPrincipal.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -I$(RMM) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
 
 $(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(TS) -c -o $(B)/claims.o $(CLM)/claims.cpp
 
 $(B)/session.o: $(S)/session.cpp $(S)/session.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(RMM) -I$(CLM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(CLM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
 
 $(B)/trustedKeyNego.o: $(TH)/trustedKeyNego.cpp $(TH)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TH) -c -o $(B)/trustedKeyNego.o $(TH)/trustedKeyNego.cpp
 
 $(B)/accessControl.o: $(CLM)/accessControl.cpp $(CLM)/accessControl.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(CH) -I$(BSC) -I$(TH) -I$(CLM) -I$(RMM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
-
-$(B)/resource.o: $(RMM)/resource.cpp $(RMM)/resource.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(RMM) -c -o $(B)/resource.o $(RMM)/resource.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(CH) -I$(BSC) -I$(TH) -I$(CLM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
 
 $(B)/request.o: $(S)/request.cpp $(S)/request.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(TH) -I$(BSC) -I$(CLM) -I$(RMM) -I$(VLT) -c -o $(B)/request.o $(S)/request.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(TH) -I$(BSC) -I$(CLM) -I$(VLT) -c -o $(B)/request.o $(S)/request.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp
@@ -135,9 +130,6 @@ $(B)/mpModArith.o: $(BSC)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(BSC)/mpNumTheory.cpp
 	$(CC) $(O1CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/mpNumTheory.o $(BSC)/mpNumTheory.cpp
-
-$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(RMM) -I$(CLM) -I$(TRS) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha1.o $(SCC)/sha1.cpp

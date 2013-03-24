@@ -35,8 +35,6 @@
 #include "tinyxml.h"
 #include "objectManager.h"
 #include "secPrincipal.h"
-#include "resource.h"
-#include "vault.h"
 #include "policyglobals.h"
 
 #include <stdio.h>

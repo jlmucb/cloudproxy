@@ -1,4 +1,4 @@
-//  File: fileTester.cpp
+//  File: authTester.cpp
 //      Tom Roeder
 //
 //  Description: test manager for fileClient
@@ -22,8 +22,8 @@
 // ------------------------------------------------------------------------
 
 #include "logging.h"
-#include "fileTester.h"
-#include "fileServer.h"
+#include "authTester.h"
+#include "authServer.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -36,7 +36,7 @@ using std::ifstream;
 using std::ofstream;
 using std::stringstream;
 
-fileTester::fileTester(const string& path, const string& testFile) 
+authTester::authTester(const string& path, const string& testFile) 
     : m_defaultClient(),
     m_defaultChannel(),
     m_defaultParams(),
@@ -98,7 +98,7 @@ fileTester::fileTester(const string& path, const string& testFile)
     } 
 }    
 
-fileTester::~fileTester() {
+authTester::~authTester() {
     // don't delete the test files: this makes multiple test runs more efficient,
     // since they can reuse the test files (and the encryption is still different
     // since the IV is different)
@@ -109,7 +109,7 @@ fileTester::~fileTester() {
 //    }
 }
 
-void fileTester::createResources(const string& parentPath, const TiXmlNode* parent) {
+void authTester::createResources(const string& parentPath, const TiXmlNode* parent) {
     const TiXmlNode* child = NULL;
     while((child = parent->IterateChildren(child))) {
         const TiXmlElement* elt = child->ToElement();
@@ -134,7 +134,7 @@ void fileTester::createResources(const string& parentPath, const TiXmlNode* pare
     }
 }
 
-void fileTester::generateRandomFile(int length, const string& filePath) {
+void authTester::generateRandomFile(int length, const string& filePath) {
     if (length <= 0) {
         throw "Can't generate a random file of length <= 0";
     }
@@ -162,7 +162,7 @@ void fileTester::generateRandomFile(int length, const string& filePath) {
     return;
 }
 
-void fileTester::getParams(const TiXmlNode* parent, const string& parentPath, fileTestParams& params) {
+void authTester::getParams(const TiXmlNode* parent, const string& parentPath, fileTestParams& params) {
     // check for the 'timed', 'repetitions', and 'name' attributes
     bool timed = false;
     const TiXmlElement* elt = parent->ToElement();
@@ -223,7 +223,7 @@ void fileTester::getParams(const TiXmlNode* parent, const string& parentPath, fi
     }
 }
 
-void fileTester::Run(const char* directory) {
+void authTester::Run(const char* directory) {
     bool establishedDefaultConnection = false;
 
     // establish the default channel as long as there 
@@ -318,7 +318,7 @@ void fileTester::Run(const char* directory) {
     return;
 }
 
-bool fileTester::runTest(fileClient& client, 
+bool authTester::runTest(fileClient& client, 
                         safeChannel& channel,
                         const fileTestParams& params,
                         timer& testTimer)
@@ -360,7 +360,7 @@ bool fileTester::runTest(fileClient& client,
                             params.remoteObject);
             if (params.timed) testTimer.Stop();
         } else {
-            throw "Unknown fileTester action\n";
+            throw "Unknown authTester action\n";
         }
     } catch (const char* err) {
         fprintf(g_logFile, "Test failed with error message '%s'\n", err);

@@ -21,10 +21,10 @@
 
 // ------------------------------------------------------------------------
 
-#ifndef __FILETESTER__H
-#define __FILETESTER__H
+#ifndef __AUTHTESTER__H
+#define __AUTHTESTER__H
 
-#include "fileClient.h"
+#include "authClient.h"
 #include "safeChannel.h"
 #include "timer.h"
 #include "tinyxml.h"
@@ -37,14 +37,14 @@
 using std::list;
 using std::string;
 
-// A class for performing fileClient tests as specified in a test XML file
+// A class for performing authClient tests as specified in a test XML file
 // Usage example:
-//   fileTester ft("/home/jlm/jlmcrypt/fileClient/tests/basicTest/", "tests.xml");
+//   authTester ft("/home/jlm/jlmcrypt/authClient/tests/basicTest/", "tests.xml");
 //   ft.Run("/home/jlm/jlmcrypt/");
-class fileTester {
+class authTester {
   public:
-    fileTester(const string& path, const string& testFile);
-    virtual ~fileTester();
+    authTester(const string& path, const string& testFile);
+    virtual ~authTester();
 
     // Run the tests specified by the file. Writes the output to stdout.
     void Run(const char* directory);
@@ -96,8 +96,8 @@ class fileTester {
             timer& testTimer); 
 
     // disallow copy construction and assignment
-    fileTester(const fileTester&);
-    fileTester& operator=(const fileTester&);
+    authTester(const authTester&);
+    authTester& operator=(const authTester&);
 };
 
-#endif /* ndef __FILETESTER__H */
+#endif /* ndef __AUTHTESTER__H */

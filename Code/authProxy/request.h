@@ -30,7 +30,6 @@
 #include "keys.h"
 #include "session.h"
 #include "accessControl.h"
-#include "resource.h"
 #include "secPrincipal.h"
 #include "objectManager.h"
 #include "channel.h"
@@ -57,22 +56,21 @@
 /*
  *  <Request>
  *      <Action> 
- *      createResource, getResource, sendResource, deleteResource, 
- *      addOwner, removeOwner, addPrincipal, removePrincpal
+ *          getCredential
  *      </Action>
  *      <EvidenceCollection count='2'>
  *          <EvidenceList count='1'>
  *          </EvidenceList>
  *      </EvidenceCollection>
- *      <ResourceName> </ResourceName>
- *      <ResourceLength> </ResourceLength>
+ *      <CredentialName> </CredentialName>
+ *      <CredentialLength> </CredentialLength>
  *  </Request>
  *
  *  <Response>
  *      <Action> accept, reject</Action>
  *      <ErrorCode> </ErrorCode>
- *      <ResoureName> </ResoureName>
- *      <ResoureLength> </ResoureLength>
+ *      <CredentialName> </CredentialName>
+ *      <CredentialLength> </CredentialLength>
  *  </Response>
  */
 
@@ -81,9 +79,9 @@ class Request {
 public:
     int             m_iRequestType;
     char*           m_szAction;
-    char*           m_szResourceName;
-    int             m_iResourceLength;
-    int             m_iResourceType;
+    char*           m_szCredentialName;
+    int             m_iCredentialLength;
+    int             m_iCredentialType;
     char*           m_szEvidence;
     char*           m_szSubjectName;
 
@@ -92,20 +90,10 @@ public:
                 Request();
                 ~Request();
     bool        getDatafromDoc(const char* szRequest);
-    bool        validateAddPrincipalRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
-    bool        validateDeletePrincipalRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
-    bool        validateCreateRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
-    bool        validateGetSendDeleteRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
-    bool        validateAddOwnerRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
-    bool        validateRemoveOwnerRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
+    bool        validateGetCredentialRequest(sessionKeys& oKeys, char** pszFile, 
+                        resource** ppCredential);
     bool        validateRequest(sessionKeys& oKeys, char** pszFile, 
-                        resource** ppResource);
+                        resource** ppCredential);
 #ifdef TEST
     void        printMe();
 #endif
@@ -117,9 +105,9 @@ public:
     int             m_iRequestType;
     char*           m_szAction;
     char*           m_szErrorCode;
-    char*           m_szResourceName;
+    char*           m_szCredentialName;
     char*           m_szEvidence;
-    int             m_iResourceLength;
+    int             m_iCredentialLength;
 
                     Response();
                     ~Response();
@@ -129,42 +117,17 @@ public:
 #endif
 };
 
-bool translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
-                                     int size);
-bool translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
-                                     int size);
-
-bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, const char* szEvidence, 
+bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName, const char* szEvidence, 
                                  const char* szFile, int encType, byte* key, timer& encTimer);
-bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
-                                const char* szFile, int encType, byte* key, timer& decTimer);
 
-bool serversendResourcetoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
+bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                 int encType, byte* key, timer& accessTimer, timer& decTimer);
-bool servergetResourcefromclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key, timer& accessTimer, timer& encTimer);
-
-bool clientchangeownerResource(safeChannel& fc, const char* szAction, 
-                               const char* szResourceName, const char* szEvidence, 
-                               const char* szOutFile, int encType, byte* key);
-bool serverchangeownerofResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key, timer& accessTimer);
-
-bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, 
-                                  const char* szSubject, const char* szEvidence, 
-                                  int encType, byte* key);
-bool servercreateResourceonserver(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key, timer& accessTimer);
-bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
-                          const char* szEvidence, const char* szFile, int encType, byte* key);
-bool serverdeleteResource(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                          int encType, byte* key, timer& accessTimer);
 
 bool initAccessGuard(sessionKeys& oKeys);
 
 #ifdef TEST
 void printPrincipals();
-void printResources();
+void printCredentials();
 void printKeys();
 #endif
 #endif

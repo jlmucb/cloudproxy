@@ -84,7 +84,7 @@ accessPrincipal* g_policyAccessPrincipal= NULL;
 accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 #ifdef TEST
-void printResources(objectManager<resource>* pRM);
+void printCredentials(objectManager<resource>* pRM);
 void printPrincipals(objectManager<accessPrincipal>* pPM);
 #endif
 
@@ -702,49 +702,19 @@ int theServiceChannel::processRequests()
 
 
         iRequestType= oReq.m_iRequestType;
-        if(oReq.m_szResourceName==NULL) {
+        if(oReq.m_szCredentialName==NULL) {
             fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");
             return -1;
         }
 
         switch(iRequestType) {
-          case GETRESOURCE:
-            if(!serversendResourcetoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
-                fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
+          case GETCREDENTIAL:
+            if(!serversendcredentialtoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, 
+                                        m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
+                fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
                 return -1;
             }
             return 1;
-          case SENDRESOURCE:
-            if(!servergetResourcefromclient(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
-                fprintf(g_logFile, "servercreateResourceonserver failed\n");
-                return -1;
-            }
-            return 1;
-          case CREATERESOURCE:
-            if(!servercreateResourceonserver(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "servercreateResourceonserver failed\n");
-                return -1;
-            }
-            return 1;
-          case ADDOWNER :
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "serveraddownertoResourcefailed\n");
-                return -1;
-            }
-            return 1;
-          case REMOVEOWNER:
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "serverremoveownerfromResource failed\n");
-                return -1;
-            }
-            return 1;
-          case DELETERESOURCE:
-            if(!serverdeleteResource(m_osafeChannel, oReq, m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "serverdeleteResource failed\n");
-                return -1;
-            }
-            return 1;
-          case GETOWNER:
           default:
             fprintf(g_logFile, "theServiceChannel::processRequests: invalid request type\n");
             return -1;
@@ -1353,21 +1323,20 @@ int main(int an, char** av)
 #endif
 
     try {
+        g_policyPrincipalCert= new PrincipalCert();
+        if(g_policyPrincipalCert==NULL)
+            throw "authServer main: failed to new Principal\n";
 
-            g_policyPrincipalCert= new PrincipalCert();
-            if(g_policyPrincipalCert==NULL)
-                throw "authServer main: failed to new Principal\n";
-
-            if(!oServer.initServer(directory)) 
-                throw "authServer main: cant initServer\n";
+        if(!oServer.initServer(directory)) 
+            throw "authServer main: cant initServer\n";
 
 #ifdef TEST
-            fprintf(g_logFile, "authServer main: measured server entering server loop\n");
-            fflush(g_logFile);
+        fprintf(g_logFile, "authServer main: measured server entering server loop\n");
+        fflush(g_logFile);
 #endif
-            oServer.server();
-            oServer.closeServer();
-            closeLog();
+        oServer.server();
+        oServer.closeServer();
+        closeLog();
     } 
     catch(const char* szError) {
         fprintf(g_logFile, "%s", szError);
@@ -1422,14 +1391,14 @@ void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
 
     fprintf(g_logFile, "authServer::localInit: printing tables\n");
     fflush(g_logFile);
-    printResources(localVault.m_pRM);
+    printCredentials(localVault.m_pRM);
     printPrincipals(localVault.m_pPM);
     fflush(g_logFile);
 }
 #endif
 
 
-void printResources(objectManager<resource>* pRM)
+void printCredentials(objectManager<resource>* pRM)
 {
     int     i;
 

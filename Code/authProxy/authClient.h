@@ -24,8 +24,8 @@
 //------------------------------------------------------------------------------------
 
 
-#ifndef _FILECLIENT__H
-#define _FILECLIENT__H
+#ifndef _AUTHCLIENT__H
+#define _AUTHCLIENT__H
 
 
 #include "channel.h"
@@ -81,12 +81,12 @@ public:
     bool    closeClient();
     bool    initSafeChannel(safeChannel& fc);
     bool    protocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile);
-    bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, const char* directory, const char* serverAddress, u_short serverPort);
+    bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
+                        const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
-    bool    createResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource);
-    bool    deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource);
-    bool    readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput);
-    bool    writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName);
+    bool    readCredential(safeChannel& fc, const string& subject, const string& evidenceFileName,
+                               const string& remoteCredential, const string& localOutput);
+
     bool    compareFiles(const string& firstFile, const string& secondFile);
 
     void    printTimers(FILE* log);

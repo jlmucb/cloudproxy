@@ -1119,45 +1119,14 @@ void authClient::closeConnection(safeChannel& fc) {
 //  Application specific logic
 // 
 
-
-bool authClient::createResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource) {
+bool authClient::readCredential(safeChannel& fc, const string& subject, const string& evidenceFileName, 
+                                const string& remoteCredential, const string& localOutput) 
+{
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
-        fprintf(g_logFile, "authClient createResourceTest: create resource successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "authClient createResourceTest: create resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-bool authClient::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
-        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "authClient deleteResourceTest: delete resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-bool authClient::readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientgetResourcefromserver(fc, 
-                                   remoteResource.c_str(),
+    if(clientgetCredentialfromserver(fc, 
+                                   remoteCredential.c_str(),
                                    szEvidence,
                                    localOutput.c_str(),
                                    encType, 
@@ -1165,7 +1134,8 @@ bool authClient::readResource(safeChannel& fc, const string& subject, const stri
                                    m_encTimer)) {
         fprintf(g_logFile, "authClient authTest: read file successful\n");
         fflush(g_logFile);
-    } else {
+    } 
+    else {
         fprintf(g_logFile, "authClient fileTest: read file unsuccessful\n");
         fflush(g_logFile);
         return false;
@@ -1174,28 +1144,6 @@ bool authClient::readResource(safeChannel& fc, const string& subject, const stri
     return true;
 }
 
-bool authClient::writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientsendResourcetoserver(fc, 
-                                  subject.c_str(),
-                                  remoteResource.c_str(),
-                                  szEvidence,
-                                  fileName.c_str(),
-                                  encType, 
-                                  m_fileKeys,
-                                  m_decTimer)) {
-        fprintf(g_logFile, "authClient fileTest: write file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "authClient fileTest: write file unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
 
 bool authClient::compareFiles(const string& firstFile, const string& secondFile) {
     // compare the two files to see if the file returned by the server is exactly the file we sent
@@ -1275,12 +1223,6 @@ int main(int an, char** av)
             }
         }
     }
-
-#ifdef DONTENCRYPTFILES
-    oFileClient.m_fEncryptFiles= false;
-#else
-    oFileClient.m_fEncryptFiles= true;
-#endif
 
     if(fInitProg) {
 #ifdef  TEST

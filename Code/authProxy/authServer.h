@@ -22,8 +22,8 @@
 //----------------------------------------------------------------------
 
 
-#ifndef _FILESERVER__H
-#define _FILESERVER__H
+#ifndef _AUTHSERVER__H
+#define _AUTHSERVER__H
 
 #include "tao.h"
 
@@ -31,7 +31,6 @@
 #include "channel.h"
 #include "safeChannel.h"
 #include "objectManager.h"
-#include "resource.h"
 #include "secPrincipal.h"
 #include "accessControl.h"
 #include "algs.h"

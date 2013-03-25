@@ -54,12 +54,26 @@
 //  Metadata format
 //
 //  <EncapsulatedMessage>
-//      <SealAlg> </SealAlg>
-//      <SignAlg> </SignAlg>
-//      <EncryptAlgAlg> </SealAlg>
+//      <SealAlgorithm> </SealAlgorithm>
+//      <SignAlgorithm> </SignAlgorithm>
+//      <EncryptAlgorithm> </EncryptAlgorithm>
 //      <SealedKey></SealedKey>
 //      <Cert></Cert>
 //  </EncapsulatedMessage>
+//
+
+static char* s_szEncapsulateBeginTemplate= (char*)
+"<EncapsulatedMessage>\n    <SealAlgorithm>%s</SealAlgorithm>\n";
+static char* s_szEncapsulateMidTemplate= (char*)
+"    <EncryptAlgorithm>%s</EncryptAlgorithm>\n";\
+"    <SealedKey>%s</SealedKey>\n";
+static char* s_szEncapsulateSignTemplate= (char*)
+"    <SignAlgorithm>%s</SignAlgorithm>\n";
+static char* s_szEncapsulateCertTemplate= (char*)
+"    <Cert>%s</Cert>\n";
+static char* s_szEncapsulateEndTemplate= (char*)
+"</EncapsulatedMessage>\n";
+
 
 
 // -------------------------------------------------------------------------------------
@@ -159,19 +173,35 @@ char*  encapsulatedMessage::serializeMetaData()
     char    buf[16382];
     char*   p= buf;
     int     left= 16382;
+    int     start= 0;
 
     if(m_szXMLmetadata!=NULL) 
         return strdup(m_szXMLmetadata);
-#if 0
-    if(!safeTransfer(&p, &left, szEvidence)) {
-        fprintf(g_logFile, "encapsulatedMessage::serializeMetaData: \n");
+
+    if(m_szSealAlg==NULL || m_szEncryptAlg==NULL || m_szSealedKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::serializeMetaData: Mandatory metadata missing\n");
         return false;
     }
-        
-    // Canonicalize
-    szToHash= canonicalize(pNode);
-#endif
-    return NULL;
+    if((strlen(m_szSealAlg)+strlen(m_szEncryptAlg)+strlen(m_szSealedKey))> 16000) {
+        fprintf(g_logFile, "encapsulatedMessage::serializeMetaData: parameters too large\n");
+        return false;
+    }
+
+    sprintf(&buf[start], s_szEncapsulateBeginTemplate, m_szSignAlg);
+    start= strlen(buf);
+    sprintf(&buf[start], s_szEncapsulateMidTemplate, m_szEncryptAlg, m_szSealedKey);
+    if(m_szSignAlg!=NULL) {
+        start= strlen(buf);
+        sprintf(&buf[start], s_szEncapsulateSignTemplate, m_szSignAlg);
+    }
+    if(m_szCert!=NULL) {
+        start= strlen(buf);
+        sprintf(&buf[start], s_szEncapsulateCertTemplate, m_szCert);
+    }
+    start= strlen(buf);
+    sprintf(&buf[start], s_szEncapsulateEndTemplate);
+
+    return strdup(buf);
 }
 
 
@@ -262,49 +292,228 @@ bool   encapsulatedMessage::parseMetaData()
 }
 
 
-bool   encapsulatedMessage::sealKey(RSAKey* pSealKey)
+bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
 {
-#if 0
-    if(!toBase64(size/16, (u8*)bnP.m_pValue, &iOutLen, szBase64KeyP)) {
-        fprintf(g_logFile, "Cant base64 encode P\n");
+    char    buf[4096];
+    int     outsize= 4096;
+    byte    in[128];
+    int     insize= 0;
+    byte    padded[512];
+    int     blocksize;
+    bnum    bnMsg(8);
+    bnum    bnOut(8);
+    byte    sealed[512];
+
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey no sealing key\n");
         return false;
     }
-            if(!emsapkcspad(SHA256HASH, rgHashValue, pRSAKey->m_iByteSizeM, rgToSign)) 
-                throw "Padding failure in Signing\n";
-#endif
-    return true;
+
+    blocksize= sealingKey->m_iByteSizeM;
+
+    if((m_sizeEncKey+m_sizeIntKey)>128) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey sealKey: keys too big\n");
+        return false;
+    }
+
+    if(strcmp(m_szSealAlg, RSA1024SEALALG)!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey unsupported sealing algorithm\n");
+        return false;
+    }
+    if(strcmp(m_szEncryptAlg, AESCBCENCRYPTALG)!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey unsupported encryption algorithm\n");
+        return false;
+    }
+
+    m_sizeEncKey= AES128BYTEBLOCKSIZE;
+    m_sizeIntKey= AES128BYTEBLOCKSIZE;
+
+    if(m_encKey==NULL) {
+        m_encKey= (byte*) malloc(m_sizeEncKey);
+        if(!getCryptoRandom(m_sizeEncKey*NBITSINBYTE, m_encKey)) {
+            fprintf(g_logFile, "encapsulatedMessage::sealKey can't generate encryption key\n");
+            return false;
+        }
+    }
+    if(m_intKey==NULL) {
+        m_intKey= (byte*) malloc(m_sizeIntKey);
+        if(!getCryptoRandom(m_sizeIntKey*NBITSINBYTE, m_intKey)) {
+            fprintf(g_logFile, "encapsulatedMessage::sealKey can't generate integrity key\n");
+            return false;
+        }
+    }
+
+    memcpy(&in[insize],m_encKey,m_sizeEncKey);
+    insize+= m_sizeEncKey;
+    memcpy(&in[insize],m_encKey,m_sizeIntKey);
+    insize+= m_sizeIntKey;
+
+    // pad
+    if(!emsapkcspad(m_sizeEncKey+m_sizeIntKey, in, blocksize, padded)) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey can't pad\n");
+        return false;
+    }
+
+    // seal
+    revmemcpy((byte*)bnMsg.m_pValue, padded, blocksize);
+    if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnE), *(sealingKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey can't seal\n");
+        return false;
+    }
+    revmemcpy(sealed, (byte*)bnOut.m_pValue, blocksize);
+
+    if(!toBase64(blocksize, sealed, &iOutLen, buf)) {
+        fprintf(g_logFile, "Cant base64 encode sealed key\n");
+        return false;
+    }
+
+   m_szSealedKey= strdup(buf); 
+   return true;
 }
 
 
-bool   encapsulatedMessage::unSealKey(RSAKey* pSealKey)
+bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
 {
-#if 0
-        if(!fromBase64(strlen(szBase64Sign), szBase64Sign, &iOutLen, rguDecoded))
-            throw "Cant base64 decode signature block\n";
-            fRet= emsapkcsverify(SHA256HASH, rgHashValue, pRSAKey->m_iByteSizeM, rguOut);
-#endif
+    char    buf[4096];
+    int     outsize= 4096;
+    byte    in[128];
+    int     insize= 0;
+    byte    padded[512];
+    int     blocksize;
+    bnum    bnMsg(8);
+    bnum    bnOut(8);
+    int     sizeSealed= 512;
+    byte    sealed[512];
+
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey no sealing key\n");
+        return false;
+    }
+
+    blocksize= sealingKey->m_iByteSizeM;
+
+    if(m_szSealedKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey no base64 encoded sealed key\n");
+        return false;
+    }
+
+    if(strcmp(m_szSealAlg, RSA1024SEALALG)!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey unsupported sealing algorithm\n");
+        return false;
+    }
+    if(strcmp(m_szEncryptAlg, AESCBCENCRYPTALG)!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey unsupported encryption algorithm\n");
+        return false;
+    }
+
+    if(!fromBase64(strlen(m_szSealedKey), m_szSealedKey, &sizeSealed, sealed)) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey no base64 encoded sealed key\n");
+        return false;
+    }
+
+    m_sizeEncKey= AES128BYTEBLOCKSIZE;
+    m_sizeIntKey= AES128BYTEBLOCKSIZE;
+
+    if(m_encKey==NULL) {
+        m_encKey= (byte*) malloc(m_sizeEncKey);
+    }
+    if(m_intKey==NULL) {
+        m_intKey= (byte*) malloc(m_sizeIntKey);
+    }
+
+    // unseal
+    revmemcpy((byte*)bnMsg.m_pValue, sealed, blocksize);
+    if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnD), *(sealingKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey can't unseal\n");
+        return false;
+    }
+    revmemcpy(padded, (byte*)bnOut.m_pValue, blocksize);
+
+    if(!emsapkcsverify(m_sizeEncKey+m_sizeIntKey, padded, blocksize, in)) {
+        fprintf(g_logFile, "encapsulatedMessage::unSealKey failed padding verification\n");
+        return false;
+    }
+
+    memcpy(m_encKey, &in[0], m_sizeEncKey);
+    memcpy(m_encKey, &in[m_sizeEncKey], m_sizeIntKey);
+
     return true;
 }
 
 
 bool   encapsulatedMessage::encryptMessage()
 {
-#if 0
-bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, 
-                                          int* poutsize, byte* out,
-                                          byte* enckey, byte* intkey);
-#endif
+    int outsize; 
+
+    if(strcmp(m_szEncryptAlg, AESCBCENCRYPTALG)!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::encryptMessage unsupported encryption algorithm\n");
+        return false;
+    }
+
+    if(m_encKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::encryptMessage no encryption key\n");
+        return false;
+    }
+    if(m_intKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::encryptMessage no integrity key\n");
+        return false;
+    }
+
+    if(m_rgPlain==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::encryptMessage: no plaintext\n");
+        return false;
+    }
+
+    m_sizeEncrypted= m_sizePlain+64+SHA256DIGESTBYTESIZE;
+    if(m_rgEncrypted==NULL) {
+         m_rgEncrypted= (byte*) malloc(m_sizeEncrypted);
+    }
+    int outsize= m_sizeEncrypted;
+    if(!AES128CBCHMACSHA256SYMPADEncryptBlob(m_sizePlain, m_rgPlain, &outsize, m_rgEncrypted,
+                                              m_encKey, byte* m_intKey)) {
+        fprintf(g_logFile, "encapsulatedMessage::encryptMessage: cant encrypt blob\n");
+        return false;
+    }
+    m_sizeEncrypted= outsize;
+
     return true;
 }
 
 
 bool   encapsulatedMessage::decryptMessage()
 {
-#if 0
-bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, 
-                                          int* poutsize, byte* out,
-                                          byte* enckey, byte* intkey);
-#endif
+    int outsize; 
+
+    if(strcmp(m_szEncryptAlg, AESCBCENCRYPTALG)!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::decryptMessage unsupported encryption algorithm\n");
+        return false;
+    }
+
+    if(m_encKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::decryptMessage no encryption key\n");
+        return false;
+    }
+    if(m_intKey==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::decryptMessage no integrity key\n");
+        return false;
+    }
+
+    if(m_rgEncrypted==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::decryptMessage: no plaintext\n");
+        return false;
+    }
+    m_sizePlain= m_sizeEncrypted;
+    if(m_rgPlain==NULL) {
+         m_rgPlain= (byte*) malloc(m_sizePlain);
+    }
+    int outsize= m_sizeEncrypted;
+    if(!AES128CBCHMACSHA256SYMPADDecryptBlob(m_sizeEncrypted, m_rgEncrypted, &outsize, m_rgPlain,
+                                          m_encKey, byte* m_intKey)) {
+        fprintf(g_logFile, "encapsulatedMessage::decryptMessage: cant decrypt blob\n");
+        return false;
+    }
+    m_sizePlain= outsize;
+
     return true;
 }
 

@@ -41,6 +41,7 @@
 #include "rsaHelper.h"
 #include "cryptSupport.h"
 #include "hashprep.h"
+#include "encapsulate.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -69,6 +70,8 @@
 #define MAKESERVICEHASHFILE       15
 #define VERIFYQUOTE               16
 #define QUOTE                     17
+#define ENCAPSULATE               18
+#define DECAPSULATE               19
 
 #define MAXREQUESTSIZE          2048
 #define MAXADDEDSIZE              64
@@ -2009,6 +2012,24 @@ bool QuoteTest(const char* szKeyFile, const char* szInFile)
 }
 
 
+bool Encapsulate(const char* szCert, const char* szInFile, 
+                    const char* szMetaDataFile, const char* szOutFile)
+{
+    encapsulatedMessage  oM;
+
+    return true;
+}
+
+
+bool Decapsulate(const char* szCert, const char* szInFile, 
+                    const char* szMetaDataFile, const char* szOutFile)
+{
+    encapsulatedMessage  oM;
+
+    return true;
+}
+
+
 // --------------------------------------------------------------------- 
 
 
@@ -2031,6 +2052,7 @@ int main(int an, char** av)
     const char*   szOutFile= NULL;
     const char*   szAlgorithm= NULL;
     const char*   szKeyFile= NULL;
+    const char*   szMetaDataFile= NULL;
     const char*   szMeasurementFile= NULL;
     const char*   szProgramName=  "Program no name";
     int     iAction= NOACTION;
@@ -2059,6 +2081,8 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
             fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-aikcert\n");
+            fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert inputfile metadatafile outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
             return 0;
         }
         if(strcmp(av[i], "-Canonical")==0) {
@@ -2220,6 +2244,30 @@ int main(int an, char** av)
             szInFile= av[i+2];
             szOutFile= av[i+3];
             iAction= SIGNHEXMODULUS;
+            break;
+        }
+        if(strcmp(av[i], "-EncapsulateMessage")==0) {
+            if(an<(i+5)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file output-file\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            szMetaDataFile= av[i+3];
+            szOutFile= av[i+4];
+            iAction= ENCAPSULATE;
+            break;
+        }
+        if(strcmp(av[i], "-DecapsulateMessage")==0) {
+            if(an<(i+5)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file output-file\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            szMetaDataFile= av[i+3];
+            szOutFile= av[i+4];
+            iAction= DECAPSULATE;
             break;
         }
 
@@ -2397,6 +2445,24 @@ int main(int an, char** av)
         }
         else {
             fprintf(g_logFile, "Quote does NOT verify\n");
+        }
+        return 0;
+    }
+    if(iAction==ENCAPSULATE) {
+        if(Encapsulate(szKeyFile, szInFile, szMetaDataFile, szOutFile)) {
+            fprintf(g_logFile, "Encapsulate succeeds\n");
+        }
+        else {
+            fprintf(g_logFile, "Encapsulate fails\n");
+        }
+        return 0;
+    }
+    if(iAction==DECAPSULATE) {
+        if(Decapsulate(szKeyFile, szInFile, szMetaDataFile, szOutFile)) {
+            fprintf(g_logFile, "Decapsulate succeeds\n");
+        }
+        else {
+            fprintf(g_logFile, "Decapsulate fails\n");
         }
         return 0;
     }

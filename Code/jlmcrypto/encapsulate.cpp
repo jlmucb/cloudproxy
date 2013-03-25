@@ -48,6 +48,7 @@
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "modesandpadding.h"
+#include "encapsulate.h"
 
 
 //
@@ -65,7 +66,7 @@
 static char* s_szEncapsulateBeginTemplate= (char*)
 "<EncapsulatedMessage>\n    <SealAlgorithm>%s</SealAlgorithm>\n";
 static char* s_szEncapsulateMidTemplate= (char*)
-"    <EncryptAlgorithm>%s</EncryptAlgorithm>\n";\
+"    <EncryptAlgorithm>%s</EncryptAlgorithm>\n"\
 "    <SealedKey>%s</SealedKey>\n";
 static char* s_szEncapsulateSignTemplate= (char*)
 "    <SignAlgorithm>%s</SignAlgorithm>\n";
@@ -140,9 +141,9 @@ encapsulatedMessage::~encapsulatedMessage()
         free(m_rgPlain);
         m_rgPlain= NULL;
     }
-    if(m_rgEncrypted=!=NULL) {
-        free(m_rgEncrypted=);
-        m_rgEncrypted== NULL;
+    if(m_rgEncrypted!=NULL) {
+        free(m_rgEncrypted);
+        m_rgEncrypted= NULL;
     }
     if(m_rgPackageSignature!=NULL) {
         free(m_rgPackageSignature);
@@ -171,8 +172,6 @@ encapsulatedMessage::~encapsulatedMessage()
 char*  encapsulatedMessage::serializeMetaData()
 {
     char    buf[16382];
-    char*   p= buf;
-    int     left= 16382;
     int     start= 0;
 
     if(m_szXMLmetadata!=NULL) 
@@ -211,7 +210,6 @@ bool   encapsulatedMessage::parseMetaData()
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
-    TiXmlNode*      pNode2;
 
     if(m_szXMLmetadata==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::parseMetaData: XML metadata empty\n");
@@ -362,7 +360,7 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
     }
     revmemcpy(sealed, (byte*)bnOut.m_pValue, blocksize);
 
-    if(!toBase64(blocksize, sealed, &iOutLen, buf)) {
+    if(!toBase64(blocksize, sealed, &outsize, buf)) {
         fprintf(g_logFile, "Cant base64 encode sealed key\n");
         return false;
     }
@@ -374,10 +372,7 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
 
 bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
 {
-    char    buf[4096];
-    int     outsize= 4096;
     byte    in[128];
-    int     insize= 0;
     byte    padded[512];
     int     blocksize;
     bnum    bnMsg(8);
@@ -468,9 +463,9 @@ bool   encapsulatedMessage::encryptMessage()
     if(m_rgEncrypted==NULL) {
          m_rgEncrypted= (byte*) malloc(m_sizeEncrypted);
     }
-    int outsize= m_sizeEncrypted;
+    outsize= m_sizeEncrypted;
     if(!AES128CBCHMACSHA256SYMPADEncryptBlob(m_sizePlain, m_rgPlain, &outsize, m_rgEncrypted,
-                                              m_encKey, byte* m_intKey)) {
+                                              m_encKey, m_intKey)) {
         fprintf(g_logFile, "encapsulatedMessage::encryptMessage: cant encrypt blob\n");
         return false;
     }
@@ -506,9 +501,9 @@ bool   encapsulatedMessage::decryptMessage()
     if(m_rgPlain==NULL) {
          m_rgPlain= (byte*) malloc(m_sizePlain);
     }
-    int outsize= m_sizeEncrypted;
+    outsize= m_sizeEncrypted;
     if(!AES128CBCHMACSHA256SYMPADDecryptBlob(m_sizeEncrypted, m_rgEncrypted, &outsize, m_rgPlain,
-                                          m_encKey, byte* m_intKey)) {
+                                          m_encKey, m_intKey)) {
         fprintf(g_logFile, "encapsulatedMessage::decryptMessage: cant decrypt blob\n");
         return false;
     }
@@ -600,13 +595,13 @@ bool   encapsulatedMessage::verifyPackage(RSAKey* pSignKey)
 
 char*  encapsulatedMessage::getSignerKeyInfo()
 {
-    return true;
+    return NULL;
 }
 
 
 char*  encapsulatedMessage::getSubjectKeyInfo()
 {
-    return true;
+    return NULL;
 }
 
 

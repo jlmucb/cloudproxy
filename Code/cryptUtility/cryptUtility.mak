@@ -16,7 +16,7 @@ CC=         g++
 LINK=       g++
 
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
-	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o \
+	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o $(B)/encapsulate.o \
 	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
             $(B)/jlmUtility.o $(B)/rsaHelper.o $(B)/fastArith.o \
 	    $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  \
@@ -51,7 +51,7 @@ $(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
 
 $(B)/aesni.o: $(SCC)/aesni.cpp $(SCC)/aesni.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/aesni.o $(SCC)/aesni.cpp
 
 $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha1.o $(SCC)/sha1.cpp
@@ -61,6 +61,9 @@ $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
+
+$(B)/encapsulate.o: $(SCC)/encapsulate.cpp $(SCC)/encapsulate.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/encapsulate.o $(SCC)/encapsulate.cpp
 
 $(B)/fastArith.o: $(SBM)/fastArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/fastArith.o $(SBM)/fastArith.cpp

@@ -18,10 +18,11 @@
 // to the location of the License.
 
 
-#include "bignum.h"
-
-
 // ---------------------------------------------------------------------------------
+
+#ifndef _MPFUNCTIONS_H__
+#define _MPFUNCTIONS_H__
+#include "bignum.h"
 
 
 bool            mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB);
@@ -37,7 +38,7 @@ i32             max2PowerDividing(bnum& bnA);
 i32             MaxBit(u64 uW);
 i32             mpBitsinNum(i32 iSize, u64* rguN);
 bool            IsBitPositionNonZero(bnum& bnN, i32 iPos);
-void            printNum(bnum& bnA, bool fFull=false);
+void     	printNum(bnum& bnA, bool fFull=false);
 void            initBigNum();
 
 u64             mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR);
@@ -88,6 +89,7 @@ bool            mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 bool            mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR);
 bool            mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
                     bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR);
+#endif
 
 
 

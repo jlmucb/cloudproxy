@@ -117,8 +117,6 @@ public:
     char*       getSignerKeyInfo();
     char*       getSubjectKeyInfo();
 
-    KeyInfo*    getSubjectKeyInfo();
-
 #ifdef TEST
     void        printMe();
 #endif

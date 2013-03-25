@@ -39,7 +39,7 @@ $(E)/authClient.exe: $(dobjs)
 	$(LINK) -o $(E)/authClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/authClient.o: $(S)/authClient.cpp $(S)/authClient.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TH) -I$(VLT) -I$(TRS) -c -o $(B)/authClient.o $(S)/authClient.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TH) -I$(TRS) -c -o $(B)/authClient.o $(S)/authClient.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp

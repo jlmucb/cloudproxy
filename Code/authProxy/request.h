@@ -48,14 +48,14 @@
 /*
  *  <Request>
  *      <Action> 
- *          getCredential
+ *          getToken
  *      </Action>
  *      <EvidenceCollection count='2'>
  *          <EvidenceList count='1'>
  *          </EvidenceList>
  *      </EvidenceCollection>
- *      <CredentialName> </CredentialName>
- *      <CredentialLength> </CredentialLength>
+ *      <PublicKey> </PublicKey>
+ *      <CredentialType> </CredentialType>
  *  </Request>
  *
  *  <Response>
@@ -74,21 +74,17 @@ class Request {
 public:
     int             m_iRequestType;
     char*           m_szAction;
-    char*           m_szCredentialName;
-    int             m_iCredentialLength;
-    int             m_iCredentialType;
+    char*           m_szCredentialType;
+    char*           m_szPublicKey;
+    char*           m_szSubjectName;  //user
     char*           m_szEvidence;
-    char*           m_szSubjectName;
 
     accessGuard*    m_poAG;
 
-                Request();
-                ~Request();
-    bool        getDatafromDoc(const char* szRequest);
-    bool        validateCredentialRequest(sessionKeys& oKeys, char** pszFile, 
-                        credential** ppCredential);
-    bool        validateRequest(sessionKeys& oKeys, char** pszFile, 
-                        credential** ppCredential);
+                    Request();
+                    ~Request();
+    bool            getDatafromDoc(const char* szRequest);
+    bool            validateCredentialRequest(sessionKeys& oKeys);
 #ifdef TEST
     void        printMe();
 #endif
@@ -119,9 +115,9 @@ public:
 };
 
 
-
-bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName, const char* szEvidence, 
-                                 const char* szFile, int encType, byte* key, timer& encTimer);
+bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const char* szSubjectName, 
+                    const char* szCredentialType, const char* szIdentityCert, const char* szEvidence, 
+                    const char* szKeyinfo, const char* szOutFile, int encType, byte* key, timer& encTimer);
 
 bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                 int encType, byte* key, timer& accessTimer, timer& decTimer);
@@ -129,10 +125,9 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
 bool initAccessGuard(sessionKeys& oKeys);
 
 #ifdef TEST
-void printPrincipals();
-void printCredentials();
 void printKeys();
 #endif
+
 #endif
 
 

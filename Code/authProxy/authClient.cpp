@@ -1054,8 +1054,8 @@ bool authClient::initSafeChannel(safeChannel& fc)
 const char*  g_szTerm= "terminate channel\n";
 
 
-#define FILECLIENTTEST
-#ifdef  FILECLIENTTEST
+#define AUTHCLIENTTEST
+#ifdef  AUTHCLIENTTEST
 
 bool authClient::establishConnection(safeChannel& fc, 
                                     const char* keyFile, 
@@ -1108,9 +1108,9 @@ bool authClient::establishConnection(safeChannel& fc,
 }
 
 void authClient::closeConnection(safeChannel& fc) {
-	if(fc.fd>0) {
-		fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-	}
+        if(fc.fd>0) {
+                fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+        }
 }
 
 
@@ -1123,6 +1123,7 @@ void authClient::closeConnection(safeChannel& fc) {
 bool authClient::readCredential(safeChannel& fc, const string& subject, const string& evidenceFileName, 
                                 const string& remoteCredential, const string& localOutput) 
 {
+#if 0
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
@@ -1141,7 +1142,7 @@ bool authClient::readCredential(safeChannel& fc, const string& subject, const st
         fflush(g_logFile);
         return false;
     }
-
+#endif
     return true;
 }
 
@@ -1224,6 +1225,7 @@ int main(int an, char** av)
             }
         }
     }
+    UNUSEDVAR(directory);
 
     if(fInitProg) {
 #ifdef  TEST
@@ -1249,6 +1251,8 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
+
+#if 0   // replace later with test 
         // read the testPath and iterate through the set of tests, running each in turn
         DIR* testDir = opendir(testPath.c_str());
         if (NULL == testDir) {
@@ -1258,7 +1262,7 @@ int main(int an, char** av)
 #ifdef TEST
         fprintf(g_logFile, "reading directory %s\n", testPath.c_str());    
 #endif
-    	// each child directory is a test
+        // each child directory is a test
         struct dirent* entry = NULL;
         string curDir(".");
         string parentDir("..");
@@ -1276,11 +1280,15 @@ int main(int an, char** av)
                 ft.Run(directory);
             }
         }
+#else
+    // get
+#endif
 
 #ifdef TEST
         if (0 != errno) {
             fprintf(g_logFile, "Got error %d\n", errno);
-        } else {
+        } 
+        else {
             fprintf(g_logFile, "Finished reading test directory without error\n");
         }
         
@@ -1288,7 +1296,8 @@ int main(int an, char** av)
 #endif
         closeLog();
 
-    } catch (const char* err) {
+    } 
+    catch (const char* err) {
         fprintf(g_logFile, "execution failed with error %s\n", err);
         iRet= 1;
     }

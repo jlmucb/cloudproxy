@@ -81,11 +81,6 @@ accessPrincipal* g_policyAccessPrincipal= NULL;
 
 accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
-#ifdef TEST
-void printCredentials(objectManager<credential>* pRM);
-void printPrincipals(objectManager<accessPrincipal>* pPM);
-#endif
-
 
 // ------------------------------------------------------------------------
 
@@ -779,10 +774,6 @@ bool theServiceChannel::initServiceChannel()
         if(n<0)
             fprintf(g_logFile, "theServiceChannel::serviceChannel: processRequest error\n");
         fflush(g_logFile);
-#ifdef METADATATEST
-        //void metadataTest(char* szDir, m_fEncryptFiles, m_authKeys);
-        //metadataTest(m_tcHome.m_fileNames.m_szdirectory);
-#endif
         m_pParent->printTimers(g_logFile);
         m_pParent->resetTimers();
     }
@@ -1351,80 +1342,6 @@ int main(int an, char** av)
 
 
 // ------------------------------------------------------------------------
-
-
-#ifdef TEST
-
-#ifdef METADATATEST
-void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
-{
-    int     encType;
-    if(fEncrypt) {
-        encType= DEFAULTENCRYPT;
-    }
-    else {
-        encType= NOENCRYPT;
-    }
-
-    if(g_theVault.saveMetaData(encType, keys)) {
-        fprintf(g_logFile, "authServer::serviceChannel: save succeeds\n");
-        fflush(g_logFile);
-    }
-    else {
-        fprintf(g_logFile, "authServer::serviceChannel: save fails\n");
-        fflush(g_logFile);
-    }
-    // metaData localVault;
-
-    if(!localVault.initMetaData(szDir, "authServer")) {
-        fprintf(g_logFile, "authServer::localInit: Cant init local metadata\n");
-        fflush(g_logFile);
-    }
-    if(!localVault.initFileNames()) {
-        fprintf(g_logFile, "authServer::localInit: Cant init file names\n");
-        fflush(g_logFile);
-        return;
-    }
-    if(!localVault.restoreMetaData(encType, keys)) {
-        fprintf(g_logFile, "authServer::localInit: Cant init file names\n");
-        fflush(g_logFile);
-        return;
-    }
-
-    fprintf(g_logFile, "authServer::localInit: printing tables\n");
-    fflush(g_logFile);
-    printCredentials(localVault.m_pRM);
-    printPrincipals(localVault.m_pPM);
-    fflush(g_logFile);
-}
-#endif
-
-
-void printCredentials(objectManager<credential>* pRM)
-{
-    int     i;
-
-    fprintf(g_logFile, "%d credentials\n", pRM->numObjectsinTable());
-    for(i=0; i<pRM->numObjectsinTable(); i++) {
-        pRM->getObject(i)->printMe();
-        fprintf(g_logFile, "\n");
-    }
-    fprintf(g_logFile, "\n");
-}
-
-
-void printPrincipals(objectManager<accessPrincipal>* pPM)
-{
-    int     i;
-
-    fprintf(g_logFile, "%d principals\n", pPM->numObjectsinTable());
-    for(i=0; i<pPM->numObjectsinTable(); i++) {
-        pPM->getObject(i)->printMe();
-        fprintf(g_logFile, "\n");
-    }
-    fprintf(g_logFile, "\n");
-}
-#endif
 
 
 void authServer::printTimers(FILE* log) {

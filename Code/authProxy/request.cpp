@@ -58,28 +58,31 @@
 const char*   szRequest1a= "<Request>\n";
 const char*   szRequest1b=  "</Request>\n";
 
-const char*   szRequest2a= "     <Action>";
+const char*   szRequest2a= "<Action>";
 const char*   szRequest2b= "</Action>\n";
 
-const char*   szRequest3= "    <EvidenceCollection count='0'/>\n";
-const char*   szRequest3a= "    <EvidenceCollection count='%d'>\n";
-const char*   szRequest3b= "    </EvidenceCollection>\n";
+const char*   szRequest3a= "    <SubjectName>";
+const char*   szRequest3b=  "</SubjectName>\n";
 
-const char*   szRequest4a= "     <CredentialName>";
-const char*   szRequest4b= "</CredentialName>\n";
+const char*   szRequest4a= "<CredentialType>";
+const char*   szRequest4b= "</CredentialType>\n";
 
-const char*   szRequest5a= "    <CredentialLength>";
-const char*   szRequest5b=  "</CredentialLength>\n";
+const char*   szRequest5a= "    <IdentityCertificate>";
+const char*   szRequest5b=  "</IdentityCertificate>\n";
 
-const char*   szRequest6a= "    <SubjectName>";
-const char*   szRequest6b=  "</SubjectName>\n";
+const char*   szRequest6= "    <EvidenceCollection count='0'/>\n";
+const char*   szRequest6a= "    <EvidenceCollection count='%d'>\n";
+const char*   szRequest6b= "    </EvidenceCollection>\n";
+
+const char*   szRequest7a= "<PublicKey>";
+const char*   szRequest7b= "</PublicKey>\n";
 
 
-const char*   szResponse1= "<Response>\n  <Action>";
-const char*   szResponse2= "</Action>\n  <ErrorCode>";
+const char*   szResponse1= "<Response>\n";
+const char*   szResponse2= "<ErrorCode>";
 const char*   szResponse3= "</ErrorCode>\n  <CredentialName>";
-const char*   szResponse4= "</CredentialName>\n <CredentialLength>";
-const char*   szResponse5= "</CredentialLength>\n </Response>\n";
+const char*   szResponse4= "</CredentialName>\n <Credential>";
+const char*   szResponse5= "</Credential>\n </Response>\n";
 
 
 // ------------------------------------------------------------------------
@@ -229,83 +232,14 @@ void Request::printMe()
 #endif
 
 
-bool  Request::validateCredentialRequest(sessionKeys& oKeys, char** pszFile, 
-                                    credential** ppCredential)
+bool  Request::validateCredentialRequest(sessionKeys& oKeys, char* szCredType,
+                            char* szSubject, char* szEvidence)
 {
-    credential*     pCredential= NULL;
-    Request         oAR;
-
-    if(m_poAG==NULL) {
-        fprintf(g_logFile, "Request::validateCredentialRequest: access guard not initialiized\n");
-        fflush(g_logFile);
-        return false;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "looking for credential %s\n", m_szCredentialName);
-#endif
-    // pCredential= g_theVault.findCredential(m_szCredentialName);
-    if(pCredential==NULL) {
-        fprintf(g_logFile, "Request::validateCredentialRequest: GetCredential NULL, %s\n", m_szCredentialName);
-        fflush(g_logFile);
-        return false;
-    }
-    if(pCredential->m_szLocation==NULL) {
-        fprintf(g_logFile, "Request::validateCredentialRequest: location NULL\n");
-        return false;
-    }
-
-    // Get file location
-    *pszFile= pCredential->m_szLocation;
-    *ppCredential= pCredential;
-
     // Access allowed?
-    if(m_szSubjectName==NULL)
-        oAR.m_szSubjectName= NULL;
-    else
-        oAR.m_szSubjectName= strdup(m_szSubjectName);
-    oAR.m_iRequestType= m_iRequestType;
-    oAR.m_szCredentialName= strdup(m_szCredentialName);
-    return m_poAG->permitAccess(oAR, m_szEvidence);
+    return true;
 }
 
  
-bool  Request::validateRequest(sessionKeys& oKeys, char** pszFile, 
-                                    credential** ppCredential)
-{
-#ifdef TEST
-    fprintf(g_logFile, "\nvalidateRequest\n");
-    fflush(g_logFile);
-#endif
-
-    if(m_szCredentialName==NULL) {
-        fprintf(g_logFile, "Request::validateRequest: validateRequest returning false\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "switching on request type\n");
-#endif
-    bool    fAllowed;
-    switch(m_iRequestType) {
-      case GETTOKEN:
-        fAllowed= validateCredentialRequest(oKeys, pszFile, ppCredential);
-        break;
-      default:
-        fAllowed= false;
-        break;
-    }
-
-#ifdef TEST
-    if(fAllowed) 
-        fprintf(g_logFile, "validateRequest returning true\n\n");
-    else 
-        fprintf(g_logFile, "validateRequest returning false\n\n");
-#endif
-    return fAllowed;
-}
-
-
 // ------------------------------------------------------------------------
 
 
@@ -466,137 +400,13 @@ bool emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
 }
 
 
-bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize, 
-             int encType, byte* enckey, timer& encTimer)
-{
-    int                 type= CHANNEL_RESPONSE;
-    byte                multi, final;
-    int                 n= 0;
-    byte                fileBuf[MAXREQUESTSIZEWITHPAD];
-    encryptedFilewrite  encFile;
-
-#ifdef TEST
-    fprintf(g_logFile, "getFile %d %d\n", filesize, datasize);
-    fflush(g_logFile);
-#endif
-
-    // Fix: Initialize file Encryption keys
-    if(encType==NOENCRYPT) {
-        if(!encFile.initEnc(filesize, datasize, 0, 0, 0, NOALG)) {
-            fprintf(g_logFile, "getFile: Cant init initialize file keys\n");
-            return false;
-        }
-    }
-    else if(encType==DEFAULTENCRYPT) {
-        if(!encFile.initEnc(filesize, datasize, enckey, 256, 
-                        AES128, SYMPAD, CBCMODE, HMACSHA256)) {
-            fprintf(g_logFile, "getFile: Cant init initialize file keys\n");
-            return false;
-        }
-    }
-    else {
-        fprintf(g_logFile, "getFile: invalid encryption\n");
-        return false;
-    }
-
-    // read file and write channel
-    type= CHANNEL_TRANSFER;
-    multi= 1;
-    final= 0;
-#ifdef TEST
-    fprintf(g_logFile, "getFile: receiving encrypted file \n");
-    fflush(g_logFile);
-#endif
-    for(;;) {
-        n= fc.safegetPacket(fileBuf, MAXREQUESTSIZE, &type, &multi, &final);
-#ifdef TEST
-        fprintf(g_logFile, "getFile: received %d bytes\n", n);
-        fflush(g_logFile);
-#endif
-        encTimer.Start();
-        if(encFile.EncWrite(iWrite, fileBuf, n)<0) {
-            fprintf(g_logFile, "getFile: bad write in fileTransfer\n");
-        }
-        encTimer.Stop();
-        if(final>0)
-            break;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "getFile returns true\n");
-    fflush(g_logFile);
-#endif
-    return true;
-}
-
-
-bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize, 
-              int encType, byte* enckey, timer& decTimer)
-{
-    int                 type= CHANNEL_RESPONSE;
-    byte                multi, final;
-    int                 n= 0;
-    byte                fileBuf[MAXREQUESTSIZEWITHPAD];
-    encryptedFileread   encFile;
-
-#ifdef TEST
-    fprintf(g_logFile, "sendFile: %d %d %d\n", 
-            filesize, datasize, encType);
-    fflush(g_logFile);
-#endif
-    if(encType==NOENCRYPT) {
-        if(!encFile.initDec(filesize, datasize, 0, 0, 0, NOALG)) {
-            fprintf(g_logFile, "sendFile: Cant init initialize file keys\n");
-            return false;
-        }
-    }
-    else if(encType==DEFAULTENCRYPT) {
-        if(!encFile.initDec(filesize, datasize, enckey, 256, 
-                        AES128, SYMPAD, CBCMODE, HMACSHA256)) {
-            fprintf(g_logFile, "sendFile: Cant init initialize file keys\n");
-            return false;
-        }
-    }
-    else {
-        fprintf(g_logFile, "sendFile: invalid encryption\n");
-        return false;
-    }
-
-    // read file and write channel
-    type= CHANNEL_TRANSFER;
-    multi= 1;
-    final= 0;
-#ifdef  TEST
-    fprintf(g_logFile, "sendFile: sending file\n"); 
-    fflush(g_logFile);
-#endif
-    for(;;) {
-        decTimer.Start();
-        n= encFile.EncRead(iRead, fileBuf, MAXREQUESTSIZE);
-        decTimer.Stop();
-        if(n<=0)
-            break;
-        datasize-= n;
-        if(datasize<=0)
-            final= 1;
-#ifdef  TEST
-        fprintf(g_logFile, "sendFile: safesend %d bytes\n", n);
-        fflush(g_logFile);
-#endif
-        fc.safesendPacket(fileBuf, n, type, multi, final);
-        if(final>0)
-            break;
-    }
-#ifdef  TEST
-    fprintf(g_logFile, "sendFile returns true\n");
-#endif
-    return true;
-}
-
 
 bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char* szSubjectName,
-                       const char* szCredentialName, int size, const char* szEvidence)
+                       const char* szCredentialType, const char* szIdentityCert, const char* szEvidence,
+                       const char* szKeyinfo)
+)
 {
-#ifdef  TEST1
+#ifdef  TEST
     char*p= *pp;
 #endif
 
@@ -609,46 +419,45 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char*
     if(!safeTransfer(pp, piLeft, szRequest2b))
         return false;
 
-    if(szEvidence==NULL) {
-        if(!safeTransfer(pp, piLeft, szRequest3))
-            return false;
-    }
-    else {
-        if(!safeTransfer(pp, piLeft, szEvidence))
-            return false;
-    }
-
     if(!safeTransfer(pp, piLeft, szRequest4a))
         return false;
-    if(!safeTransfer(pp, piLeft, szCredentialName))
+    if(!safeTransfer(pp, piLeft, szCredentialType))
         return false;
     if(!safeTransfer(pp, piLeft, szRequest4b))
         return false;
 
-    if(!safeTransfer(pp, piLeft, szRequest5a))
-        return false;
-    if(size>0) {
-        sprintf(*pp,"%d", size);
-        int k= strlen(*pp);
-        *pp+= k;
-        *piLeft-= k;
-    }
-    if(!safeTransfer(pp, piLeft, szRequest5b))
-        return false;
-
     if(szSubjectName!=NULL) {
-        if(!safeTransfer(pp, piLeft, szRequest6a))
+        if(!safeTransfer(pp, piLeft, szRequest3a))
             return false;
         if(!safeTransfer(pp, piLeft, szSubjectName))
             return false;
-        if(!safeTransfer(pp, piLeft, szRequest6b))
+        if(!safeTransfer(pp, piLeft, szRequest3b))
             return false;
     }
+
+    if(!safeTransfer(pp, piLeft, szRequest5a))
+        return false;
+    if(!safeTransfer(pp, piLeft, szIdentityCert))
+        return false;
+    if(!safeTransfer(pp, piLeft, szRequest5b))
+        return false;
+
+    if(szEvidence!=NULL) {
+        if(!safeTransfer(pp, piLeft, szEvidence))
+            return false;
+    }
+
+    if(!safeTransfer(pp, piLeft, szRequest7a))
+        return false;
+    if(!safeTransfer(pp, piLeft, szKeyinfo))
+        return false;
+    if(!safeTransfer(pp, piLeft, szRequest7b))
+        return false;
 
     if(!safeTransfer(pp, piLeft, szRequest1b))
         return false;
 
-#ifdef  TEST1
+#ifdef  TEST
     fprintf(g_logFile, "constructRequest completed\n%s\n", p);
 #endif
     return true;
@@ -656,7 +465,7 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char*
 
 
 bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCredentialName, 
-                        int size, const char* szChannelError)
+                        const char* szCredential, const char* szChannelError)
 {
     bool    fRet= true;
     int     n= 0;
@@ -664,6 +473,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
 #ifdef  TEST
     char*   p= *pp;
 #endif
+
     try {
         if(!safeTransfer(pp, piLeft, szResponse1))
             throw "constructResponse: Can't construct response\n";
@@ -675,8 +485,10 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
             if(!safeTransfer(pp, piLeft, "accept"))
                 throw "constructResponse: Can't construct response\n";
         }
+
         if(!safeTransfer(pp, piLeft, szResponse2))
             throw "Can't construct response\n";
+
         if(szChannelError!=NULL) {
             if(!safeTransfer(pp, piLeft, szChannelError))
                 throw "constructResponse: Can't construct response\n";
@@ -689,14 +501,8 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
         }
         if(!safeTransfer(pp, piLeft, szResponse4))
             throw "constructResponse: Can't construct response\n";
-        if(!fError) {
-            if(*piLeft<10)
-                throw "constructResponse: Can't construct response\n";
-            sprintf(*pp, "%d", size);
-            n= strlen(*pp);
-            *piLeft-= n;
-            *pp+= n;
-        }
+        if(!safeTransfer(pp, piLeft, szCredential))
+            throw "constructResponse: Can't construct response\n";
         if(!safeTransfer(pp, piLeft, szResponse5))
             throw "constructResponse: Can't construct response\n";
     }
@@ -719,8 +525,9 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
 //      Applicatiion logic
 //
 
-bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName, 
-            const char* szEvidence, const char* szOutFile, int encType, byte* key, timer& encTimer)
+bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const char* szSubjectName, 
+                    const char* szCredentialType, const char* szIdentityCert, const char* szEvidence, 
+                    const char* szKeyinfo, const char* szOutFile, int encType, byte* key, timer& encTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -735,7 +542,8 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName
     fprintf(g_logFile, "clientgetCredentialfromserver(%s, %s)\n", szCredentialName, szOutFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, "getCredential", NULL, szCredentialName, 0, szEvidence)) {
+    if(!constructRequest(&p, &iLeft, szAction, szSubjectName, szCredentialType, 
+                         szIdentityCert, szEvidence, szKeyinfo)) {
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
@@ -746,7 +554,7 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName
     n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientgetCredentialfromserver: getCredential error %d\n", n);
-        fprintf(g_logFile, "clientgetCredentialfromserver: clientgetCredentialfromserver %s\n", szBuf);
+        fprintf(g_logFile, "clientgetCredentialfromserver: server response %s\n", szBuf);
         return false;
     }
     szBuf[n]= 0;
@@ -758,16 +566,11 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName
         return false;
     }
 
-    // read and write file
-    int         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    // save credential
+    int     iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if(iWrite<0) {
         emptyChannel(fc, oResponse.m_iCredentialLength, 0, NULL, 0, NULL);
         fprintf(g_logFile, "clientgetCredentialfromserver: Cant open out file\n");
-        return false;
-    }
-    if(!getFile(fc, iWrite, oResponse.m_iCredentialLength, oResponse.m_iCredentialLength, 
-                encType, key, encTimer)) {
-        fprintf(g_logFile, "clientgetCredentialfromserver: Can't get file\n");
         return false;
     }
 
@@ -779,10 +582,10 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szCredentialName
 }
 
 
-bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, int encType, byte* key, timer& accessTimer, timer& decTimer)
+bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
+                            int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
     bool        fError;
-    int         iRead= 0;
     int         filesize= 0;
     int         datasize= 0;
     byte        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -793,32 +596,22 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
-    credential*   pCredential= NULL;
+    char*       szCredential= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendCredentialtoclient\n");
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !oReq.validateRequest(oKeys, &szFile, &pCredential);
+    fError= !oReq.validateRequest(oKeys);
     accessTimer.Stop();
 
-    // open File (if no Error)
     if(!fError) {
-        iRead= openFile(szFile, &filesize);
-        if(iRead<0) {
-            fError= true;
-            szError= "serversendCredentialtoclient: Cant open file";
-            fprintf(g_logFile, "serversendCredentialtoclient: Open file error %s\n", szFile);
-        }
-    }
-
-    if (!fError) {	
-        datasize= pCredential->m_iSize;
+        // construct and sign credential
     }
 
     // construct response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szCredentialName, datasize, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szCredentialName, szCredential, szError)) {
         fprintf(g_logFile, "serversendCredentialtoclient: constructResponse error\n");
         return false;
     }
@@ -827,19 +620,12 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
     fc.safesendPacket(szBuf, (int)strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
 
     // if we sent an error to the client, then return false
-    if (fError) return false;
-
-    // send file
-    if(!sendFile(fc, iRead, filesize, datasize, encType, key, decTimer)) {
-        fprintf(g_logFile, "serversendCredentialtoclient: sendFile error\n");
-        close(iRead);
+    if (fError) 
         return false;
-    }
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendCredentialtoclient returns true\n");
 #endif
-    close(iRead);
     return true;
 }
 

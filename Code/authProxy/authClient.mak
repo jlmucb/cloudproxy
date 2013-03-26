@@ -2,7 +2,7 @@ E=          ~/jlmcrypt
 B=          ~/jlmcrypt/authClientobjects
 S=          ../authProxy
 SC=         ../commonCode
-SCC=        ../jlmcrypto
+SCC=        ../oldjlmcrypto
 BSC=        ../jlmbignum
 CLM=        ../claims
 TH=	    ../tao
@@ -22,7 +22,7 @@ LINK=       g++
 
 dobjs=      $(B)/authClient.o $(B)/logging.o $(B)/jlmcrypto.o \
             $(B)/jlmUtility.o $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/rsaHelper.o \
-            $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o $(B)/fastArith.o \
+            $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
             $(B)/hmacsha256.o $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/claims.o \

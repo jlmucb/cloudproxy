@@ -80,6 +80,9 @@ static char* s_szEncapsulateEndTemplate= (char*)
 // -------------------------------------------------------------------------------------
 
 
+//
+//   Todo:  This uses the wrong padding algorithm
+//          Replace emsapkcspad and emsapkcssanity with the right ones later
 bool emsapkcssanity(int sigsize, byte* padded, int sizeout, byte* out)
 {
     if(padded[0]!=0x00 || padded[1]!=0x01)

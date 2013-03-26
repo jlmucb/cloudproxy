@@ -110,7 +110,7 @@ public:
     bool                m_fChannelAuthenticated;
     sessionKeys         m_oKeys;
     safeChannel         m_osafeChannel;
-    // accessGuard         m_oAG;
+    RSAKey*             m_signingKey;
     int                 m_myPositionInParent;
 
     theServiceChannel();

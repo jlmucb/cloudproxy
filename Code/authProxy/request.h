@@ -29,7 +29,6 @@
 #include "jlmUtility.h"
 #include "keys.h"
 #include "session.h"
-// #include "accessControl.h"
 #include "secPrincipal.h"
 #include "objectManager.h"
 #include "channel.h"
@@ -50,19 +49,19 @@
  *      <Action> 
  *          getToken
  *      </Action>
+ *      <CredentialType> </CredentialType>
  *      <EvidenceCollection count='2'>
  *          <EvidenceList count='1'>
  *          </EvidenceList>
  *      </EvidenceCollection>
  *      <PublicKey> </PublicKey>
- *      <CredentialType> </CredentialType>
  *  </Request>
  *
  *  <Response>
  *      <Action> accept, reject</Action>
  *      <ErrorCode> </ErrorCode>
- *      <CredentialName> </CredentialName>
- *      <CredentialLength> </CredentialLength>
+ *      <CredentialType> </CredentialType>
+ *      <Token> </Token>
  *  </Response>
  */
 
@@ -78,6 +77,7 @@ public:
     char*           m_szPublicKey;
     char*           m_szSubjectName;  //user
     char*           m_szEvidence;
+
 
     accessGuard*    m_poAG;
 
@@ -98,6 +98,7 @@ public:
     char*           m_szAction;
     char*           m_szErrorCode;
     char*           m_szCredentialType;
+    char*           m_szToken;
     char*           m_szEvidence;
 
                     Response();
@@ -119,7 +120,7 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
                     const char* szCredentialType, const char* szIdentityCert, const char* szEvidence, 
                     const char* szKeyinfo, const char* szOutFile, int encType, byte* key, timer& encTimer);
 
-bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
+bool serversendCredentialtoclient(RSAKey* signingKey, safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                                 int encType, byte* key, timer& accessTimer, timer& decTimer);
 
 bool initAccessGuard(sessionKeys& oKeys);

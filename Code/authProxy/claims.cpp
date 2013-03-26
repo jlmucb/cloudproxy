@@ -863,7 +863,7 @@ char*   formatSignedInfo(RSAKey* pKey,
 
     szSignedInfo= canonicalize((TiXmlNode*)doc.RootElement());
 
-#ifdef  QUOTETEST
+#ifdef  TEST
     fprintf(g_logFile, "formatSignedInfo, Canonicalized: %s\n", szSignedInfo);
 #endif
     return szSignedInfo;

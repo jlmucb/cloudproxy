@@ -37,6 +37,9 @@
 #include "jlmUtility.h"
 #include "request.h"
 #include "encryptedblockIO.h"
+#include "claims.h"
+#include "bignum.h"
+#include "mpFunctions.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -157,6 +160,12 @@ bool  Request::getDatafromDoc(const char* szRequest)
                     szAction= pNode1->Value();
                 }
             }
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"PublicKey")==0) {
+                pNode1= pNode->FirstChild();
+                if(pNode1!=NULL) {
+                    m_szPublicKey= canonicalize(pNode1);
+                }
+            }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialType")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
@@ -217,6 +226,10 @@ void Request::printMe()
         fprintf(g_logFile, "\tm_szEvidence is NULL\n");
     else
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
+    if(m_szPublicKey==NULL)
+        fprintf(g_logFile, "\tm_szPublicKey is NULL\n");
+    else
+        fprintf(g_logFile, "\tm_szPublicKey: %s \n", m_szPublicKey);
 }
 #endif
 
@@ -283,6 +296,10 @@ void Response::printMe()
         fprintf(g_logFile, "\tm_szEvidence is NULL\n");
     else
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
+    if(m_szToken==NULL)
+        fprintf(g_logFile, "\tm_szToken is NULL\n");
+    else
+        fprintf(g_logFile, "\tm_szToken: %s \n", m_szToken);
 }
 #endif
 
@@ -325,6 +342,11 @@ bool  Response::getDatafromDoc(char* szResponse)
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());
+            }
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"Token")==0) {
+                pNode1= pNode->FirstChild();
+                if(pNode1!=NULL)
+                    m_szToken= canonicalize(pNode1);
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
                 m_szEvidence= canonicalize(pNode);
@@ -559,7 +581,118 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
 }
 
 
-bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
+char*  constructCert(Request& oReq, RSAKey* signingKey)
+{
+    char*   szAlg= NULL;
+    char*   szNonce= NULL;
+    char*   szSignedInfo= NULL;
+    char*   szCert= NULL;
+    Sha256  oHash;
+    byte    rgHash[SHA256_DIGESTSIZE_BYTES];
+    byte    rgPadded[1024];
+    int     base64Size= 1024;
+    char    szbase64[1024];
+
+    char*   szCertid= (char*)"00002";
+    int     serialNo= 0;
+    char*   szPrincipalType= (char*)"Security Principal";
+    char*   szIssuerName= (char*) "AuthProxy Issuing Service";
+    char*   szIssuerID= (char*) "AuthProxy";
+    // FIX:  these should be short term keys!
+    char*   szNotBefore= (char*)"2012-01-01Z00:00.00";
+    char*   szNotAfter= (char*)"2021-01-01Z00:00.00";
+    char*   szSubjName= oReq.m_szSubjectName;
+    char*   szSubjKeyID= oReq.m_szSubjectName;
+
+    RSAKey* signedKey= NULL;
+
+    bnum    bnMsg(128);
+    bnum    bnOut(128);
+
+    bool    fRet= true;
+
+    signedKey= keyfromkeyInfo((char*) oReq.m_szPublicKey);
+    if(signedKey==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: cant generate SignedInfo\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+    // encode signed body
+    szSignedInfo= formatSignedInfo(signedKey, szCertid, serialNo, szPrincipalType, 
+            szIssuerName, szIssuerID, szNotBefore, szNotAfter,
+            szSubjName, (char*)"", (char*)"", szSubjKeyID);
+    if(szSignedInfo==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: cant generate SignedInfo\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "hashing\n");
+#endif
+    // hash, pad, sign
+    oHash.Init();
+    oHash.Update((byte*) szSignedInfo, strlen(szSignedInfo));
+    oHash.Final();
+    oHash.GetDigest(rgHash);
+
+#ifdef  TEST
+    fprintf(g_logFile, "padding\n");
+#endif
+    if(!emsapkcspad(SHA256HASH, rgHash, signingKey->m_iByteSizeM, rgPadded)) {
+        fprintf(g_logFile, "constructCert: bad pad\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "signing\n");
+#endif
+    memset(bnMsg.m_pValue, 0, signingKey->m_iByteSizeM);
+    memset(bnOut.m_pValue, 0, signingKey->m_iByteSizeM);
+    revmemcpy((byte*)bnMsg.m_pValue, rgPadded, signingKey->m_iByteSizeM);
+
+    if(!mpRSAENC(bnMsg, *(signingKey->m_pbnD), *(signingKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "constructCert: decrypt failed\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "base64 encode\n");
+#endif
+    if(!toBase64(signingKey->m_iByteSizeM, (byte*)bnOut.m_pValue, &base64Size, szbase64)) {
+        fprintf(g_logFile, "constructCert: cant transform sigto base64\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "encode signature\n");
+#endif
+    // encode Signature
+    szCert= formatCert(szSignedInfo, szbase64);
+    if(szCert==NULL) {
+        fprintf(g_logFile, "constructCert: cant format Cert\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+cleanup:
+    if(szAlg!=NULL) {
+        szAlg= NULL;
+    }
+    if(szNonce!=NULL) {
+        szNonce= NULL;
+    }
+    if(fRet)
+        return szCert;
+    return NULL;
+}
+
+
+bool serversendCredentialtoclient(RSAKey* signingKey, safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                             int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
     bool        fError= false;
@@ -583,7 +716,11 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
     accessTimer.Stop();
 
     if(!fError) {
-        // construct and sign credential
+        szCredential= constructCert(oReq, signingKey);
+        if(szCredential==NULL) {
+            fprintf(g_logFile, "serversendCredentialtoclient: can't construct proto cert\n");
+            return false;
+        }
     }
 
     // construct response

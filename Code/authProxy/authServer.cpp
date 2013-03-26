@@ -704,7 +704,7 @@ int theServiceChannel::processRequests()
 
         switch(iRequestType) {
           case GETTOKEN:
-            if(!serversendCredentialtoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, 
+            if(!serversendCredentialtoclient(m_signingKey, m_osafeChannel, oReq,  m_oKeys, encType, key, 
                                         m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
                 return -1;
@@ -1300,6 +1300,7 @@ bool authServer::server()
             poSc->m_pParent= this;
             poSc->m_fdChannel= newfd;
             poSc->m_myPositionInParent= i;
+            poSc->m_signingKey=  m_signingKey;
 #ifdef TEST
             fprintf(g_logFile, "authServer: slot %d, about to pthread_create\n", i);
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);

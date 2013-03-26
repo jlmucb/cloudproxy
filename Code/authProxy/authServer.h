@@ -32,7 +32,7 @@
 #include "safeChannel.h"
 #include "objectManager.h"
 #include "secPrincipal.h"
-#include "accessControl.h"
+// #include "accessControl.h"
 #include "algs.h"
 #include "timer.h"
 #include <pthread.h>
@@ -65,6 +65,9 @@ public:
     u32                 m_uHmac;
     int                 m_sizeKey;
     byte                m_authKeys[SMALLKEYSIZE];
+
+    char*               m_szSigningKeyFile;
+    char*               m_szSigningKeyCert;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;

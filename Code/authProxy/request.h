@@ -29,7 +29,7 @@
 #include "jlmUtility.h"
 #include "keys.h"
 #include "session.h"
-#include "accessControl.h"
+// #include "accessControl.h"
 #include "secPrincipal.h"
 #include "objectManager.h"
 #include "channel.h"
@@ -84,7 +84,8 @@ public:
                     Request();
                     ~Request();
     bool            getDatafromDoc(const char* szRequest);
-    bool            validateCredentialRequest(sessionKeys& oKeys);
+    bool            validateCredentialRequest(sessionKeys& oKeys, char* szCredType,
+                            char* szSubject, char* szEvidence);
 #ifdef TEST
     void        printMe();
 #endif
@@ -96,9 +97,8 @@ public:
     int             m_iRequestType;
     char*           m_szAction;
     char*           m_szErrorCode;
-    char*           m_szCredentialName;
+    char*           m_szCredentialType;
     char*           m_szEvidence;
-    int             m_iCredentialLength;
 
                     Response();
                     ~Response();

@@ -2,9 +2,8 @@ E=          ~/jlmcrypt
 B=          ~/jlmcrypt/authClientobjects
 S=          ../authProxy
 SC=         ../commonCode
-SCC=        ../oldjlmcrypto
-BSC=        ../jlmbignum
-CLM=        ../claims
+SCC=        ../jlmcrypto
+BSC=        ../oldjlmbignum
 TH=	    ../tao
 TRS=	    ../tcService
 TS=	    ../TPMDirect
@@ -29,7 +28,7 @@ dobjs=      $(B)/authClient.o $(B)/logging.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o  $(B)/secPrincipal.o $(B)/request.o \
-	    $(B)/accessControl.o $(B)/trustedKeyNego.o $(B)/sha1.o \
+	    $(B)/trustedKeyNego.o $(B)/sha1.o \
 	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o
 
 all: $(E)/authClient.exe
@@ -39,7 +38,7 @@ $(E)/authClient.exe: $(dobjs)
 	$(LINK) -o $(E)/authClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/authClient.o: $(S)/authClient.cpp $(S)/authClient.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TH) -I$(TRS) -c -o $(B)/authClient.o $(S)/authClient.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(CH) -I$(TH) -I$(TRS) -c -o $(B)/authClient.o $(S)/authClient.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
@@ -83,20 +82,17 @@ $(B)/taoHostServices.o: $(TH)/taoHostServices.cpp $(TH)/tao.h
 $(B)/linuxHostsupport.o: $(TH)/linuxHostsupport.cpp $(TH)/linuxHostsupport.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TH)/linuxHostsupport.cpp
 
-$(B)/secPrincipal.o: $(CLM)/secPrincipal.cpp $(CLM)/secPrincipal.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
+$(B)/secPrincipal.o: $(S)/secPrincipal.cpp $(S)/secPrincipal.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(S) -c -o $(B)/secPrincipal.o $(S)/secPrincipal.cpp
 
-$(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(TS) -c -o $(B)/claims.o $(CLM)/claims.cpp
+$(B)/claims.o: $(S)/claims.cpp $(S)/claims.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(S) -I$(TH) -I$(TS) -c -o $(B)/claims.o $(S)/claims.cpp
 
 $(B)/session.o: $(S)/session.cpp $(S)/session.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(CLM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
 
 $(B)/trustedKeyNego.o: $(TH)/trustedKeyNego.cpp $(TH)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TH) -c -o $(B)/trustedKeyNego.o $(TH)/trustedKeyNego.cpp
-
-$(B)/accessControl.o: $(CLM)/accessControl.cpp $(CLM)/accessControl.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(CH) -I$(BSC) -I$(TH) -I$(CLM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
 
 $(B)/request.o: $(S)/request.cpp $(S)/request.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(TH) -I$(BSC) -I$(CLM) -I$(VLT) -c -o $(B)/request.o $(S)/request.cpp

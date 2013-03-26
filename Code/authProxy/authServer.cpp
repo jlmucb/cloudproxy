@@ -45,7 +45,7 @@
 
 #include "objectManager.h"
 #include "secPrincipal.h"
-#include "accessControl.h"
+// #include "accessControl.h"
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
 #include "domain.h"
@@ -695,8 +695,8 @@ int theServiceChannel::processRequests()
 
 
         iRequestType= oReq.m_iRequestType;
-        if(oReq.m_szCredentialName==NULL) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: Empty credential name\n");
+        if(oReq.m_szCredentialType==NULL) {
+            fprintf(g_logFile, "theServiceChannel::processRequests: Empty credential type\n");
             return -1;
         }
 
@@ -843,6 +843,8 @@ authServer::authServer()
     m_uPad= 0;
     m_uHmac= 0;
     m_sizeKey= SMALLKEYSIZE;
+    m_szSigningKeyFile= NULL;
+    m_szSigningKeyCert= NULL;
 }
 
 

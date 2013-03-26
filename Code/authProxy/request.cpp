@@ -92,10 +92,9 @@ const char*   szResponse5= "</Credential>\n </Response>\n";
 Request::Request()
 {
     m_iRequestType= 0;
-    m_iCredentialLength= 0;
     m_szSubjectName= NULL;
     m_szAction= NULL;
-    m_szCredentialName= NULL;
+    m_szCredentialType= NULL;
     m_szEvidence= NULL;
     // m_poAG= NULL;
 }
@@ -103,9 +102,9 @@ Request::Request()
 
 Request::~Request()
 {
-    if(m_szCredentialName!=NULL) {
-        free(m_szCredentialName);
-        m_szCredentialName= NULL;
+    if(m_szCredentialType!=NULL) {
+        free(m_szCredentialType);
+        m_szCredentialType= NULL;
     }
     if(m_szEvidence!=NULL) {
         free(m_szEvidence);
@@ -131,8 +130,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
     TiXmlNode*      pNode1;
 
     const char*           szAction= NULL;
-    const char*           szCredentialName= NULL;
-    const char*           szCredentialLength= NULL;
+    const char*           szCredentialType= NULL;
     const char*           szSubjectName= NULL;
     const char*           szEvidence= NULL;
 
@@ -159,22 +157,16 @@ bool  Request::getDatafromDoc(const char* szRequest)
                     szAction= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialName")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialType")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szCredentialName= pNode1->Value();
+                    szCredentialType= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"SubjectName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
                     szSubjectName= pNode1->Value();
-                }
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialLength")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL) {
-                    szCredentialLength= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
@@ -184,19 +176,17 @@ bool  Request::getDatafromDoc(const char* szRequest)
         pNode= pNode->NextSibling();
     }
 
-    if(szAction==NULL || szCredentialName==NULL)
+    if(szAction==NULL || szCredentialType==NULL)
         return false;
 
     if(szAction!=NULL)
         m_szAction= strdup(szAction);
-    if(szCredentialName!=NULL)
-        m_szCredentialName= strdup(szCredentialName);
+    if(szCredentialType!=NULL)
+        m_szCredentialType= strdup(szCredentialType);
     if(szSubjectName!=NULL)
         m_szSubjectName= strdup(szSubjectName);
     if(szEvidence!=NULL)
         m_szEvidence= strdup(szEvidence);
-    if(szCredentialLength!=NULL)
-        sscanf(szCredentialLength, "%d", &m_iCredentialLength);
 
     else if(strcmp(m_szAction, "getToken")==0)
         m_iRequestType= GETTOKEN;
@@ -215,10 +205,10 @@ bool  Request::getDatafromDoc(const char* szRequest)
 void Request::printMe()
 {
     fprintf(g_logFile, "\n\tRequest type: %d\n", m_iRequestType);
-    if(m_szCredentialName==NULL)
-        fprintf(g_logFile, "\tm_szCredentialName is NULL\n");
+    if(m_szCredentialType==NULL)
+        fprintf(g_logFile, "\tm_szCredentialType is NULL\n");
     else
-        fprintf(g_logFile, "\tm_szCredentialName: %s \n", m_szCredentialName);
+        fprintf(g_logFile, "\tm_szCredentialType: %s \n", m_szCredentialType);
     if(m_szSubjectName==NULL)
         fprintf(g_logFile, "\tm_szSubjectName is NULL\n");
     else
@@ -227,7 +217,6 @@ void Request::printMe()
         fprintf(g_logFile, "\tm_szEvidence is NULL\n");
     else
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    fprintf(g_logFile, "\tCredentiallength: %d\n", m_iCredentialLength);
 }
 #endif
 
@@ -246,10 +235,9 @@ bool  Request::validateCredentialRequest(sessionKeys& oKeys, char* szCredType,
 Response::Response()
 {
     m_iRequestType= 0;
-    m_iCredentialLength= 0;
     m_szAction= NULL;
     m_szErrorCode= NULL;
-    m_szCredentialName= NULL;
+    m_szCredentialType= NULL;
     m_szEvidence= NULL;
 }
 
@@ -268,9 +256,9 @@ Response::~Response()
         free(m_szEvidence);
         m_szEvidence= NULL;
     }
-    if(m_szCredentialName!=NULL) {
-        free(m_szCredentialName);
-        m_szCredentialName= NULL;
+    if(m_szCredentialType!=NULL) {
+        free(m_szCredentialType);
+        m_szCredentialType= NULL;
     }
 }
 
@@ -283,10 +271,10 @@ void Response::printMe()
         fprintf(g_logFile, "\tm_szAction is NULL\n");
     else
         fprintf(g_logFile, "\tm_szAction: %s \n", m_szAction);
-    if(m_szCredentialName==NULL)
-        fprintf(g_logFile, "\tm_szCredentialName is NULL\n");
+    if(m_szCredentialType==NULL)
+        fprintf(g_logFile, "\tm_szCredentialType is NULL\n");
     else
-        fprintf(g_logFile, "\tm_szCredentialName: %s \n", m_szCredentialName);
+        fprintf(g_logFile, "\tm_szCredentialType: %s \n", m_szCredentialType);
     if(m_szErrorCode==NULL)
         fprintf(g_logFile, "\tm_szErrorCode is NULL\n");
     else
@@ -295,7 +283,6 @@ void Response::printMe()
         fprintf(g_logFile, "\tm_szEvidence is NULL\n");
     else
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    fprintf(g_logFile, "\tcredentiallength: %d\n", m_iCredentialLength);
 }
 #endif
 
@@ -321,8 +308,6 @@ bool  Response::getDatafromDoc(char* szResponse)
         return false;
     }
 
-    m_iCredentialLength= 0;
-    
     pNode= pRootElement->FirstChild();
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
@@ -331,18 +316,10 @@ bool  Response::getDatafromDoc(char* szResponse)
                 if(pNode1!=NULL)
                     m_szAction= strdup(pNode1->Value());
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialName")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialType")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
-                    m_szCredentialName= strdup(pNode1->Value());
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialLength")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL) {
-                    const char* szCredentialLength= pNode1->Value();
-                    if(szCredentialLength!=NULL)
-                        sscanf(szCredentialLength,"%d", &m_iCredentialLength);
-                }
+                    m_szCredentialType= strdup(pNode1->Value());
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ErrorCode")==0) {
                 pNode1= pNode->FirstChild();
@@ -404,7 +381,7 @@ bool emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
 bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char* szSubjectName,
                        const char* szCredentialType, const char* szIdentityCert, const char* szEvidence,
                        const char* szKeyinfo)
-)
+
 {
 #ifdef  TEST
     char*p= *pp;
@@ -468,7 +445,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
                         const char* szCredential, const char* szChannelError)
 {
     bool    fRet= true;
-    int     n= 0;
+    // int     n= 0;
 
 #ifdef  TEST
     char*   p= *pp;
@@ -539,7 +516,7 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
     byte        final= 0;
 
 #ifdef  TEST
-    fprintf(g_logFile, "clientgetCredentialfromserver(%s, %s)\n", szCredentialName, szOutFile);
+    fprintf(g_logFile, "clientgetCredentialfromserver(%s, %s)\n", szCredentialType, szOutFile);
 #endif
     // send request
     if(!constructRequest(&p, &iLeft, szAction, szSubjectName, szCredentialType, 
@@ -569,7 +546,7 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
     // save credential
     int     iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if(iWrite<0) {
-        emptyChannel(fc, oResponse.m_iCredentialLength, 0, NULL, 0, NULL);
+        // emptyChannel(fc, oResponse.m_iCredentialLength, 0, NULL, 0, NULL);
         fprintf(g_logFile, "clientgetCredentialfromserver: Cant open out file\n");
         return false;
     }
@@ -585,13 +562,12 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
 bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
                             int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
-    bool        fError;
-    int         filesize= 0;
-    int         datasize= 0;
+    bool        fError= false;
+    //int         filesize= 0;
+    // int         datasize= 0;
     byte        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
-    char*       szFile= NULL;
     const char* szError= NULL;
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
@@ -603,7 +579,7 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !oReq.validateRequest(oKeys);
+    // fError= !oReq.validateRequest(oKeys);
     accessTimer.Stop();
 
     if(!fError) {
@@ -611,7 +587,7 @@ bool serversendCredentialtoclient(safeChannel& fc, Request& oReq, sessionKeys& o
     }
 
     // construct response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szCredentialName, szCredential, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szCredentialType, szCredential, szError)) {
         fprintf(g_logFile, "serversendCredentialtoclient: constructResponse error\n");
         return false;
     }

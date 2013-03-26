@@ -3,8 +3,7 @@ B=          ~/jlmcrypt/authServerobjects
 S=          ../authProxy
 SC=         ../commonCode
 SCC=        ../jlmcrypto
-BSC=        ../jlmbignum
-CLM=        ../claims
+BSC=        ../oldjlmbignum
 RMM=        ../resources
 TH=	    ../tao
 VLT=	    ../vault
@@ -29,8 +28,9 @@ dobjs=      $(B)/authServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/rsaHelper.o $(B)/hmacsha256.o $(B)/modesandpadding.o \
 	    $(B)/trustedKeyNego.o $(B)/taoSupport.o $(B)/taoEnvironment.o \
 	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
-	    $(B)/claims.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
+	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
+	    $(B)/secPrincipal.o $(B)/claims.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/buffercoding.o $(B)/tcIO.o 
 
 all: $(E)/authServer.exe
@@ -40,7 +40,7 @@ $(E)/authServer.exe: $(dobjs)
 	$(LINK) -o $(E)/authServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/authServer.o: $(S)/authServer.cpp $(S)/authServer.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(RMM) -I$(TH) -I$(VLT) -c -o $(B)/authServer.o $(S)/authServer.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(TRS) -I$(RMM) -I$(TH) -I$(VLT) -c -o $(B)/authServer.o $(S)/authServer.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp
@@ -58,7 +58,7 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
 $(B)/session.o: $(S)/session.cpp $(S)/session.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(RMM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(RMM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp
@@ -70,10 +70,10 @@ $(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
 
 #$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
-#	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(RMM) -I$(CLM) -I$(TRS) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
+#	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(RMM) -I$(TRS) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/taoInit.o: $(TH)/taoInit.cpp $(TH)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(TRS) -c -o $(B)/taoInit.o $(TH)/taoInit.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TRS) -c -o $(B)/taoInit.o $(TH)/taoInit.cpp
 
 $(B)/taoSupport.o: $(TH)/taoSupport.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(TH) -c -o $(B)/taoSupport.o $(TH)/taoSupport.cpp
@@ -88,19 +88,16 @@ $(B)/linuxHostsupport.o: $(TH)/linuxHostsupport.cpp $(TH)/linuxHostsupport.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TH)/linuxHostsupport.cpp
 
 $(B)/trustedKeyNego.o: $(TH)/trustedKeyNego.cpp $(TH)/trustedKeyNego.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TH) -c -o $(B)/trustedKeyNego.o $(TH)/trustedKeyNego.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(TH) -c -o $(B)/trustedKeyNego.o $(TH)/trustedKeyNego.cpp
 
-#$(B)/secPrincipal.o: $(CLM)/secPrincipal.cpp $(CLM)/secPrincipal.h
-#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -I$(RMM) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
+$(B)/secPrincipal.o: $(S)/secPrincipal.cpp $(S)/secPrincipal.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -c -o $(B)/secPrincipal.o $(S)/secPrincipal.cpp
 
-$(B)/request.o: $(S)/request.cpp $(S)/request.h $(CLM)/accessControl.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(RMM) -I$(VLT) -I$(CH) -c -o $(B)/request.o $(S)/request.cpp
+$(B)/request.o: $(S)/request.cpp $(S)/request.h 
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(CH) -c -o $(B)/request.o $(S)/request.cpp
 
-#$(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
-#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(TH) -I$(VLT) -c -o $(B)/claims.o $(CLM)/claims.cpp
-
-#$(B)/accessControl.o: $(CLM)/accessControl.cpp $(CLM)/accessControl.h
-#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(VLT) -I$(CLM) -I$(CH) -I$(RMM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
+$(B)/claims.o: $(S)/claims.cpp $(S)/claims.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(TH) -I$(VLT) -c -o $(B)/claims.o $(S)/claims.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

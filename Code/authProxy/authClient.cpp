@@ -74,6 +74,7 @@
 using std::string;
 using std::ifstream;
 using std::ofstream;
+using std::istreambuf_iterator;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
@@ -1252,7 +1253,6 @@ int main(int an, char** av)
 #endif
     try {
 
-#if 0   // replace later with test 
         // read the testPath and iterate through the set of tests, running each in turn
         DIR* testDir = opendir(testPath.c_str());
         if (NULL == testDir) {
@@ -1276,13 +1276,26 @@ int main(int an, char** av)
 #endif
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
-                authTester ft(path, testFileName);
-                ft.Run(directory);
+                
+                // get the three files from tests.xml
+                string identityCertFile;
+                string userCertFile;
+                string keyFile;
+                authClient::getKeyFiles(path,
+                            testFileName,
+                            identityCertFile,
+                            userCertFile,
+                            keyFile);
+
+                string identityCert = authClient::getFileContents(identityCertFile);
+                string userCert = authClient::getFileContents(userCertFile);
+                string key = authClient::getFileContents(keyFile);
+
+                // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
+                printf("Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
+                
             }
         }
-#else
-    // get
-#endif
 
 #ifdef TEST
         if (0 != errno) {
@@ -1351,6 +1364,44 @@ void authClient::resetTimers() {
     m_protocolNegoTimer.Clear();
     m_encTimer.Clear();
     m_decTimer.Clear();
+}
+
+void authClient::getKeyFiles(const string& directory,
+                             const string& testFile,
+                             string& identityCertFile,
+                             string& userCertFile,
+                             string& keyFile)
+{
+    string path = directory + testFile;
+    TiXmlDocument doc(path.c_str());
+    doc.LoadFile();
+
+    const TiXmlElement* curElt = doc.RootElement();
+    const TiXmlNode* child = NULL;
+    while((child = curElt->IterateChildren(child))) {
+        const string& name = child->ValueStr();
+        const TiXmlElement* childElt = child->ToElement();
+        const string& text(childElt->GetText());
+        if (name.compare("IdentityCert") == 0) {
+            identityCertFile = directory + text; 
+        } else if (name.compare("UserCert") == 0) {
+            userCertFile = directory + text;
+        } else if (name.compare("Key") == 0) {
+            keyFile = directory + text;
+        } else {
+            throw "Unknown child node of Test\n";
+        }
+    }
+
+    return;
+}
+
+string authClient::getFileContents(const string& filename) {
+    // read the file and output the text
+    ifstream file(filename.c_str());
+    string fileContents((istreambuf_iterator<char>(file)),
+                        (istreambuf_iterator<char>()));
+    return fileContents;
 }
 
 // ------------------------------------------------------------------------

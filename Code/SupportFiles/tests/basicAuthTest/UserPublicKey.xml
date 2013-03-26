@@ -1,0 +1,42 @@
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>
+<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    <Certificate Id="//www.manferdelli.com/2011/Cert/User/2" version="1">
+        <SerialNumber>2</SerialNumber>
+        <PrincipalType>User</PrincipalType>
+        <IssuerName>manferdelli.com</IssuerName>
+        <IssuerID>manferdelli.com</IssuerID>
+        <ValidityPeriod>
+            <NotBefore>2011-01-01Z00:00.00</NotBefore>
+            <NotAfter>2021-01-01Z00:00.00</NotAfter>
+        </ValidityPeriod>
+        <SubjectName>//www.manferdelli.com/User/User</SubjectName>
+        <SubjectKey>
+            <ds:KeyInfo KeyName="//www.manferdelli.com/Keys/User">
+                <KeyType>RSAKeyType</KeyType>
+                <ds:KeyValue>
+                    <ds:RSAKeyValue size="1024">
+                        <ds:M>jt6VcE5CZhzYht2iyq2qlbO4FXlFIYSB3zLYMdEF0oWV2Z7iq/nYjtydWryZTa41m6sNUoeV16B6Dd9PaxYtce7D6qAXWvxeVBk0TGtqgE710lNIMnmbsAnRW+3BxoUPIl0ubKLb8QdD7fbmQayFwWBsTyWX/UpfDQzlMRUDJfk=</ds:M>
+                        <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+                    </ds:RSAKeyValue>
+                </ds:KeyValue>
+            </ds:KeyInfo>
+        </SubjectKey>
+        <SubjectKeyID>//www.manferdelli.com/Keys/User</SubjectKeyID>
+        <RevocationPolicy>Local-check-only</RevocationPolicy>
+    </Certificate>
+</ds:SignedInfo>
+    <ds:SignatureValue>    
+W5U8GhmzU00Ahgg7XdfxLK6uzUqLSPUTj6VgGw1fy+mEs27supy1hebTF5/BVgzVmCrmboWebCqUIRgx0qb8LN1XCmPL/qSj55LF89jNYuhrI5EBd1eg6QOevP68ShZD1dPZJEJgQtzI0iMzN7TkAiHP5gKmGZFjjhhizJ5FuoY=
+    </ds:SignatureValue>
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName='//www.manferdelli.com/Keys/IdentityProvider'>
+    <KeyType>RSAKeyType</KeyType>
+    <ds:KeyValue>
+        <ds:RSAKeyValue size='1024'>
+            <ds:M>fHnawS1SgaJrWCXBBPk3psFqNnfLiYoTWZ/C1hwZe8uSBEpyJamaJ1HFG5Nwq0ewoahoQJOnbhEfayDO1w9YBqcqRvMRUQVP8trPK0Y/Hcl999VBZGfrkfgkypEaCFDXBuVsfIG6kqVfH1csuIVAnlkbK3hcHf+L3wPcaBiLGvU=</ds:M>
+            <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+        </ds:RSAKeyValue>
+    </ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature>

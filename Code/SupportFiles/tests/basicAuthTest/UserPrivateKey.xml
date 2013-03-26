@@ -1,0 +1,12 @@
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/Keys/User">
+    <KeyType>RSAKeyType</KeyType>
+    <ds:KeyValue>
+        <ds:RSAKeyValue size="1024">
+            <ds:M>jt6VcE5CZhzYht2iyq2qlbO4FXlFIYSB3zLYMdEF0oWV2Z7iq/nYjtydWryZTa41m6sNUoeV16B6Dd9PaxYtce7D6qAXWvxeVBk0TGtqgE710lNIMnmbsAnRW+3BxoUPIl0ubKLb8QdD7fbmQayFwWBsTyWX/UpfDQzlMRUDJfk=</ds:M>
+            <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+            <ds:D>C2YtDDniSF1y1Ufnzj4PB0TAok37uxHkfteCsm7YBRUNgMCRm2Ei6zsk/vFfVfhZZKNAO95/kSXHt0WjA4tQctEXHgD/KCRqQi5xjJ1kyA1Su5elbqw65lSy5diGVvKDWLh/tKHWE95McRt4Fo+qpSmgUxmGtm6KPdg7zD8TW9U=</ds:D>
+            <ds:P>r+ONL6IY95ltbSv5GMKYS6qdViTXoCENaUQ340M3VGY9t4Nv5Cdhno11JgsSYpNC5arr9gN5WApp0NT+PScFAw==</ds:P>
+            <ds:Q>z/EBikA618HirAuzYXh+TtiZ30XONeIavXliV++5/IFfcNJXx6E8gVLGLGXIV75Dt4l9um73hgDNm9eUeJuCUw==</ds:Q>
+        </ds:RSAKeyValue>
+    </ds:KeyValue>
+</ds:KeyInfo>

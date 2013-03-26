@@ -1,0 +1,42 @@
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>
+<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    <Certificate Id="//www.manferdelli.com/2011/Cert/User/1" version="1">
+        <SerialNumber>1</SerialNumber>
+        <PrincipalType>User</PrincipalType>
+        <IssuerName>manferdelli.com</IssuerName>
+        <IssuerID>manferdelli.com</IssuerID>
+        <ValidityPeriod>
+            <NotBefore>2011-01-01Z00:00.00</NotBefore>
+            <NotAfter>2021-01-01Z00:00.00</NotAfter>
+        </ValidityPeriod>
+        <SubjectName>//www.manferdelli.com/User/IdentityProvider</SubjectName>
+        <SubjectKey>
+            <ds:KeyInfo KeyName="//www.manferdelli.com/Keys/IdentityProvider">
+                <KeyType>RSAKeyType</KeyType>
+                <ds:KeyValue>
+                    <ds:RSAKeyValue size="1024">
+                        <ds:M>fHnawS1SgaJrWCXBBPk3psFqNnfLiYoTWZ/C1hwZe8uSBEpyJamaJ1HFG5Nwq0ewoahoQJOnbhEfayDO1w9YBqcqRvMRUQVP8trPK0Y/Hcl999VBZGfrkfgkypEaCFDXBuVsfIG6kqVfH1csuIVAnlkbK3hcHf+L3wPcaBiLGvU=</ds:M>
+                        <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+                    </ds:RSAKeyValue>
+                </ds:KeyValue>
+            </ds:KeyInfo>
+        </SubjectKey>
+        <SubjectKeyID>//www.manferdelli.com/Keys/IdentityProvider</SubjectKeyID>
+        <RevocationPolicy>Local-check-only</RevocationPolicy>
+    </Certificate>
+</ds:SignedInfo>
+    <ds:SignatureValue>    
+UFspfJk/LiVpgjfTaPSfEtN4bV/tZmfwxM/GxjSYVgUATsMG/IkBsE0TWsIQnUDbMcgeTzfURupdlK2hE3Q1yig1QPMj/T00J0vgE4SkWc7pAfEcwpnqUVrOLqgzeLJQDTYSnvU+B1YasNUTjgO5+AFQrGM6Sl5aqkW9UGLVY44=
+    </ds:SignatureValue>
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName='KEYNAME'>
+    <KeyType>RSAKeyType</KeyType>
+    <ds:KeyValue>
+        <ds:RSAKeyValue size='1024'>
+            <ds:M>mKz2RCCLjalret9DQqYibkq5QX9dgJDT4SQaKqrzjEnWVghdDxAvXe45vAy8amxGMcdGlHtrJEy5j7u3tHGU+6y+8eTKjqHrQhcuJnD8yUkD/ZzmM0w3+wlby4PqLxRhJR7RMC7bLHWc9JkUsCraG9yaP752s2iwXueOTx2vrOE=</ds:M>
+            <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+        </ds:RSAKeyValue>
+    </ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature>

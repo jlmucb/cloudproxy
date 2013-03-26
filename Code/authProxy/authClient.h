@@ -89,6 +89,13 @@ public:
 
     void    printTimers(FILE* log);
     void    resetTimers();
+
+    static string  getFileContents(const string& filename);
+    static void getKeyFiles(const string& directory,
+                     const string& testFile,
+                     string& identityCertFile,
+                     string& userCertFile,
+                     string& keyFile);
 };
 
 

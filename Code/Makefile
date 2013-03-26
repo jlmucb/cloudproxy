@@ -17,7 +17,7 @@ keyNegoServer:
 	$(MAKE) -C keyNegoServer -f oldkeyNegoServer.mak
 
 cryptUtility:
-	$(MAKE) -C cryptUtility -f cryptUtility.mak
+	$(MAKE) -C cryptUtility -f oldcryptUtility.mak
 
 cryptotest:
 	$(MAKE) -C Test -f cryptotest.mak

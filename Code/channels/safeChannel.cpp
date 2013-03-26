@@ -297,13 +297,13 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     }
 #ifdef TEST
     fprintf(g_logFile, "safesendPacket: bytes gotten %d, bytes sent %d \n", len, totalSize);
-    PrintBytes((char*)"input: ", buf, len);
+    //PrintBytes((char*)"input: ", buf, len);
 #ifdef ENCRYPTTHENMAC
-    PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, newMsgSize);
-    PrintBytes((char*)"ENCRYPTTHENMAC sent: ", encryptedMessageBlock, totalSize);
+    //PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, newMsgSize);
+    //PrintBytes((char*)"ENCRYPTTHENMAC sent: ", encryptedMessageBlock, totalSize);
 #else
-    PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, totalSize);
-    PrintBytes((char*)"MACTHENENCRYPT sent: ", encryptedMessageBlock, totalSize);
+    //PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, totalSize);
+    //PrintBytes((char*)"MACTHENENCRYPT sent: ", encryptedMessageBlock, totalSize);
 #endif
 #endif
     return len;
@@ -476,11 +476,11 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
 #ifdef TEST
     fprintf(g_logFile, "getFullPacket: got last block, checking MAC\n");
 #ifdef ENCRYPTTHENMAC
-    PrintBytes((char*)"ENCRYPTTHENMAC input: ", encryptedMessageBlock, fullMsgSize);
-    PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES);
+    //PrintBytes((char*)"ENCRYPTTHENMAC input: ", encryptedMessageBlock, fullMsgSize);
+    //PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES);
 #else
-    PrintBytes((char*)"MACTHENENCRYPT input: ", encryptedMessageBlock, fullMsgSize);
-    PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, fullMsgSize);
+    //PrintBytes((char*)"MACTHENENCRYPT input: ", encryptedMessageBlock, fullMsgSize);
+    //PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, fullMsgSize);
 #endif
     fflush(g_logFile);
 #endif
@@ -536,7 +536,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
 
 #ifdef TEST
     fprintf(g_logFile, "getFullPacket: returned message has %d bytes\n", sizedecryptedMsg);
-    PrintBytes((char*)"plain: ", buf, sizedecryptedMsg);
+    //PrintBytes((char*)"plain: ", buf, sizedecryptedMsg);
     fflush(g_logFile);
 #endif
 

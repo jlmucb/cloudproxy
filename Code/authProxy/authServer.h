@@ -67,7 +67,10 @@ public:
     byte                m_authKeys[SMALLKEYSIZE];
 
     char*               m_szSigningKeyFile;
+    char*               m_szSigningKeyMetaDataFile;
     char*               m_szSigningKeyCert;
+    RSAKey*             m_signingKey;
+    char*               m_signingCert;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;
@@ -85,6 +88,7 @@ public:
     bool    closeServer();
     bool    initPolicy();
     bool    initFileKeys();
+    bool    initSigningKeys();
 
     bool    server();
 

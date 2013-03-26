@@ -2148,7 +2148,7 @@ bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile,
         goto done;
     }
     if(!oM.setencryptedMessage(ciphersize, cipher)) {
-        fprintf(g_logFile, "Decapsulate: cant set plaintext\n");
+        fprintf(g_logFile, "Decapsulate: cant set ciphertext\n");
         fRet= false;
         goto done;
     }

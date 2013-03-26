@@ -45,10 +45,12 @@
 
 #include "objectManager.h"
 #include "secPrincipal.h"
-// #include "accessControl.h"
+#include "claims.h"
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
 #include "domain.h"
+
+#include "encapsulate.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -845,6 +847,7 @@ authServer::authServer()
     m_sizeKey= SMALLKEYSIZE;
     m_szSigningKeyFile= NULL;
     m_szSigningKeyCert= NULL;
+    m_szSigningKeyMetaDataFile= NULL;
 }
 
 
@@ -925,6 +928,79 @@ bool authServer::initPolicy()
     fprintf(g_logFile, "authServer::initPolicy, returning true\n");
     fflush(g_logFile);
 #endif
+    return true;
+}
+
+
+bool authServer::initSigningKeys()
+{
+    int     size= 4096;
+    byte    buf[4096];
+    encapsulatedMessage     oM;
+    char*   szMetaData= NULL;
+    RSAKey* sealingKey= NULL;
+
+    if(!m_tcHome.m_privateKeyValid) {
+        fprintf(g_logFile, "authServer::initSigningKeys: private key not valid\n");
+        return false;
+    }
+    sealingKey= (RSAKey*)m_tcHome.m_privateKey;
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "authServer::initSigningKeys: private key empty\n");
+        return false;
+    }
+
+    m_szSigningKeyCert= strdup("./authServer/signingCert");
+    if(!getBlobfromFile(m_szSigningKeyCert, buf, &size)) {
+        fprintf(g_logFile, "authServer::initSigningKeys: Can't read signing cert\n");
+        return false;
+    }
+    m_signingCert= strdup((char *)buf);
+
+    size= 4096;
+    memset(buf,0,size);
+    m_szSigningKeyMetaDataFile= strdup("./authServer/signingKeyMetaData");
+    if(!getBlobfromFile(m_szSigningKeyMetaDataFile, buf, &size)) {
+        fprintf(g_logFile, "authServer::initSigningKeys: Can't read sealed signing key\n");
+        return false;
+    }
+    szMetaData= strdup((char*)buf);
+
+    size= 4096;
+    memset(buf,0,size);
+    m_szSigningKeyFile= strdup("./authServer/signingKey");
+    if(!getBlobfromFile(m_szSigningKeyFile, buf, &size)) {
+        fprintf(g_logFile, "authServer::initSigningKeys: Can't read sealed signing key\n");
+        return false;
+    }
+
+    if(!oM.setencryptedMessage(size, buf)) {
+        fprintf(g_logFile, "authServer::initSigningKeys: cant set ciphertext\n");
+        return false;
+    }
+
+    oM.m_szXMLmetadata= strdup(szMetaData);
+
+    // parse metadata
+    if(!oM.parseMetaData()) {
+        fprintf(g_logFile, "authServer::initSigningKeys: cant parse metadata\n");
+        return false;
+    }
+
+    // unseal key
+    if(!oM.unSealKey(sealingKey)) {
+        fprintf(g_logFile, "authServer::initSigningKeys: cant unseal key\n");
+        return false;
+    }
+
+    if(!oM.decryptMessage()) {
+        fprintf(g_logFile, "authServer::initSigningKeys: cant decrypt message\n");
+        return false;
+    }
+
+    m_signingKey= (RSAKey*)keyfromkeyInfo((char*)oM.m_rgEncrypted);
+    if(m_signingKey==NULL)
+        return false;
     return true;
 }
 
@@ -1099,6 +1175,9 @@ bool authServer::initServer(const char* configDirectory)
         if(!g_theVault.initFileNames())
             throw "authServer::Init: Cant init file names\n";
 #endif
+
+        if(!initSigningKeys())
+            throw "authServer::Init: Cant init signing keys\n";
 
 #ifdef TEST
         fprintf(g_logFile, "initServer about to initPolicy();\n");

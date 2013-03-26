@@ -30,7 +30,7 @@ dobjs=      $(B)/authServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
-	    $(B)/secPrincipal.o $(B)/claims.o \
+	    $(B)/secPrincipal.o $(B)/claims.o $(B)/encapsulate.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/buffercoding.o $(B)/tcIO.o 
 
 all: $(E)/authServer.exe
@@ -62,6 +62,9 @@ $(B)/session.o: $(S)/session.cpp $(S)/session.h
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp
+
+$(B)/encapsulate.o: $(SCC)/encapsulate.cpp $(SCC)/encapsulate.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encapsulate.o $(SCC)/encapsulate.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp

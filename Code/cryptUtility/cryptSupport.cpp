@@ -205,8 +205,10 @@ RSAKey* keyfromkeyInfo(const char* szKeyInfo)
     RSAKey*         pKey= new RSAKey();
     TiXmlElement*   pRootElement= NULL;
 
-    if(pKey==NULL)
+    if(pKey==NULL) {
+        fprintf(g_logFile, "keyfromkeyInfo: did not new key\n");
         return NULL;
+    }
     if(!pKey->ParsefromString(szKeyInfo)) {
         fprintf(g_logFile, "keyfromkeyInfo: cant get key from keyInfo\n");
         goto cleanup;

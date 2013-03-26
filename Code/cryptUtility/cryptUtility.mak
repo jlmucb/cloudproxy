@@ -9,7 +9,7 @@ TPM=	    ../TPMDirect
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOINLINEARITH -D NOAESNI $(DEBUG_CFLAGS)
+CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS)
 CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++

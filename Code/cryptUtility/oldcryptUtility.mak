@@ -9,7 +9,7 @@ TPM=	    ../TPMDirect
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOINLINEARITH -D NOAESNI $(RELEASE_CFLAGS) -D OLD
+CFLAGS=	    -D TEST  -D NOAESNI $(RELEASE_CFLAGS) -D OLD
 CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1 -D OLD
 
 CC=         g++
@@ -18,7 +18,7 @@ LINK=       g++
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o \
 	    $(B)/keys.o $(B)/cryptSupport.o $(B)/sha1.o $(B)/hashprep.o \
-            $(B)/jlmUtility.o $(B)/rsaHelper.o $(B)/fastArith.o \
+            $(B)/jlmUtility.o $(B)/rsaHelper.o $(B)/encapsulate.o \
 	    $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o  \
 	    $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o 
@@ -26,11 +26,11 @@ dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 cobjs=      $(B)/canonical.o $(B)/tinystr.o $(B)/tinyxmlerror.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o
 
-all: $(E)/oldcryptUtility.exe $(E)/canonical.exe
+all: $(E)/cryptUtility.exe $(E)/canonical.exe
 
-$(E)/oldcryptUtility.exe: $(dobjs)
+$(E)/cryptUtility.exe: $(dobjs)
 	@echo "cryptUtility"
-	$(LINK) -o $(E)/oldcryptUtility.exe $(dobjs) -lpthread
+	$(LINK) -o $(E)/cryptUtility.exe $(dobjs) -lpthread
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h 
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/logging.o $(SC)/logging.cpp
@@ -62,8 +62,8 @@ $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
 
-$(B)/fastArith.o: $(SBM)/fastArith.cpp
-	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/fastArith.o $(SBM)/fastArith.cpp
+$(B)/encapsulate.o: $(SCC)/encapsulate.cpp $(SCC)/encapsulate.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/encapsulate.o $(SCC)/encapsulate.cpp
 
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp

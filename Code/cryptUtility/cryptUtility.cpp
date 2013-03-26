@@ -2012,21 +2012,199 @@ bool QuoteTest(const char* szKeyFile, const char* szInFile)
 }
 
 
-bool Encapsulate(const char* szCert, const char* szInFile, 
-                    const char* szMetaDataFile, const char* szOutFile)
+bool Encapsulate(const char* szCert, const char* szMetaDataFile, 
+                 const char* szInFile, const char* szOutFile)
 {
     encapsulatedMessage  oM;
+    byte                 plain[4096];   // stat and allocate later
+    int                  plainsize= 4096;
+    char*                szEncapsulateKeyInfo= NULL;
+    RSAKey*              sealingKey= NULL;
+    bool                 fRet= true;
 
-    return true;
+    if(szCert==NULL) {
+        fprintf(g_logFile, "Encapsulate: no certificate\n");
+        fRet= false;
+        goto done;
+    }
+    oM.m_szCert= strdup(szCert);
+
+    // get key from Cert
+    szEncapsulateKeyInfo= oM.getSubjectKeyInfo();
+    if(szEncapsulateKeyInfo==NULL) {
+        fprintf(g_logFile, "Encapsulate: cant extract sealing key from %s\n", oM.m_szCert);
+        fRet= false;
+        goto done;
+    }
+
+    // Make RSAKey
+    sealingKey= (RSAKey*)keyfromkeyInfo(szEncapsulateKeyInfo);
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "Encapsulate: cant parse key\n");
+        fRet= false;
+        goto done;
+    }
+
+    // get plaintext and encrypt
+    if(!getBlobfromFile(szInFile, plain, &plainsize)) {
+        fprintf(g_logFile, "Encapsulate: cant read: %s\n", szInFile);
+        fRet= false;
+        goto done;
+    }
+    if(!oM.setplainMessage(plainsize, plain)) {
+        fprintf(g_logFile, "Encapsulate: cant set plaintext\n");
+        fRet= false;
+        goto done;
+    }
+
+    // seal key
+    if(!oM.sealKey(sealingKey)) {
+        fprintf(g_logFile, "Encapsulate: cant seal key\n");
+        fRet= false;
+        goto done;
+    }
+
+    if(!oM.encryptMessage()) {
+        fprintf(g_logFile, "Encapsulate: cant encrypt message\n");
+        fRet= false;
+        goto done;
+    }
+
+    // serialize metadata
+    oM.m_szXMLmetadata= oM.serializeMetaData();
+    if(oM.m_szXMLmetadata==NULL) {
+        fprintf(g_logFile, "Encapsulate: cant serialize metadata\n");
+        fRet= false;
+        goto done;
+    }
+
+    // write metadata
+    if(!saveBlobtoFile(szMetaDataFile, (byte*)oM.m_szXMLmetadata, strlen(oM.m_szXMLmetadata)+1)) {
+        fprintf(g_logFile, "Encapsulate: cant write metadata %s\n", oM.m_szXMLmetadata);
+        fRet= false;
+        goto done;
+    }
+
+    // write encrypted data
+    if(!saveBlobtoFile(szOutFile, oM.m_rgEncrypted, oM.m_sizeEncrypted)) {
+        fprintf(g_logFile, "Encapsulate: cant write encrypted data to %s\n", szOutFile);
+        fRet= false;
+        goto done;
+    }
+
+done:
+#ifdef TEST
+    oM.printMe();
+#endif
+    if(szEncapsulateKeyInfo!=NULL) {
+        free(szEncapsulateKeyInfo);
+        szEncapsulateKeyInfo= NULL;
+    }
+    if(sealingKey!=NULL) {
+        delete sealingKey;
+        sealingKey= NULL;
+    }
+    return fRet;
 }
 
 
-bool Decapsulate(const char* szCert, const char* szInFile, 
-                    const char* szMetaDataFile, const char* szOutFile)
+bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile, 
+                 const char* szInFile, const char* szOutFile)
 {
     encapsulatedMessage  oM;
+    byte                 cipher[4096];   // stat and allocate later
+    int                  ciphersize= 4096;
+    RSAKey*              sealingKey= NULL;
+    bool                 fRet= true;
+    char                 szMetadata[4096];
+    int                  sizemetadata= 4096;
 
-    return true;
+    if(szKeyInfo==NULL) {
+        fprintf(g_logFile, "Decapsulate: no keyinfo\n");
+        fRet= false;
+        goto done;
+    }
+
+fprintf(g_logFile, "key: %s\n", szKeyInfo);
+fflush(g_logFile);
+    // Make RSAKey
+    sealingKey= (RSAKey*)keyfromkeyInfo(szKeyInfo);
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "Decapsulate: cant parse key\n");
+        fRet= false;
+        goto done;
+    }
+fprintf(g_logFile, "got key\n");
+fflush(g_logFile);
+
+    // get metadata
+    if(!getBlobfromFile(szMetaDataFile, (byte*)szMetadata, &sizemetadata)) {
+        fprintf(g_logFile, "Encapsulate: cant read metadata: %s\n", szMetaDataFile);
+        fRet= false;
+        goto done;
+    }
+    oM.m_szXMLmetadata= strdup(szMetadata);
+fprintf(g_logFile, "got metadata\n");
+fflush(g_logFile);
+
+    // get ciphertext and decrypt
+    if(!getBlobfromFile(szInFile, cipher, &ciphersize)) {
+        fprintf(g_logFile, "Decapsulate: cant read: %s\n", szInFile);
+        fRet= false;
+        goto done;
+    }
+    if(!oM.setencryptedMessage(ciphersize, cipher)) {
+        fprintf(g_logFile, "Decapsulate: cant set plaintext\n");
+        fRet= false;
+        goto done;
+    }
+fprintf(g_logFile, "got cipher %d\n", ciphersize);
+fflush(g_logFile);
+
+    // parse metadata
+    if(!oM.parseMetaData()) {
+        fprintf(g_logFile, "Decapsulate: cant parse metadata\n");
+        fRet= false;
+        goto done;
+    }
+fprintf(g_logFile, "parsed meta\n");
+fflush(g_logFile);
+
+    // unseal key
+    if(!oM.unSealKey(sealingKey)) {
+        fprintf(g_logFile, "Decapsulate: cant unseal key\n");
+        fRet= false;
+        goto done;
+    }
+fprintf(g_logFile, "unsealed key\n");
+fflush(g_logFile);
+
+    if(!oM.decryptMessage()) {
+        fprintf(g_logFile, "Decapsulate: cant decrypt message\n");
+        fRet= false;
+        goto done;
+    }
+fprintf(g_logFile, "decrypted\n");
+fflush(g_logFile);
+
+    // write plain data
+    if(!saveBlobtoFile(szOutFile, oM.m_rgPlain, oM.m_sizePlain)) {
+        fprintf(g_logFile, "Decapsulate: cant write decrypted data to %s\n", szOutFile);
+        fRet= false;
+        goto done;
+    }
+fprintf(g_logFile, "wrote plain\n");
+fflush(g_logFile);
+
+done:
+#ifdef TEST
+    oM.printMe();
+#endif
+    if(sealingKey!=NULL) {
+        delete sealingKey;
+        sealingKey= NULL;
+    }
+    return fRet;
 }
 
 
@@ -2081,7 +2259,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
             fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-aikcert\n");
-            fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert inputfile metadatafile outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
             return 0;
         }
@@ -2248,24 +2426,24 @@ int main(int an, char** av)
         }
         if(strcmp(av[i], "-EncapsulateMessage")==0) {
             if(an<(i+5)) {
-                fprintf(g_logFile, "Too few arguments: key-file input-file output-file\n");
+                fprintf(g_logFile, "Too few arguments: key-file metadata-file input-file output-file\n");
                 return 1;
             }
             szKeyFile= av[i+1];
-            szInFile= av[i+2];
-            szMetaDataFile= av[i+3];
+            szMetaDataFile= av[i+2];
+            szInFile= av[i+3];
             szOutFile= av[i+4];
             iAction= ENCAPSULATE;
             break;
         }
         if(strcmp(av[i], "-DecapsulateMessage")==0) {
             if(an<(i+5)) {
-                fprintf(g_logFile, "Too few arguments: key-file input-file output-file\n");
+                fprintf(g_logFile, "Too few arguments: key-file metadata-file input-file output-file\n");
                 return 1;
             }
             szKeyFile= av[i+1];
-            szInFile= av[i+2];
-            szMetaDataFile= av[i+3];
+            szMetaDataFile= av[i+2];
+            szInFile= av[i+3];
             szOutFile= av[i+4];
             iAction= DECAPSULATE;
             break;
@@ -2449,21 +2627,33 @@ int main(int an, char** av)
         return 0;
     }
     if(iAction==ENCAPSULATE) {
-        if(Encapsulate(szKeyFile, szInFile, szMetaDataFile, szOutFile)) {
+        initCryptoRand();
+        initBigNum();
+	char* szCertString= readandstoreString(szKeyFile);
+	if(szCertString==NULL) {
+            fprintf(g_logFile, "Cant read certificate\n");
+	    return 1;
+	}
+        if(Encapsulate(szCertString, szMetaDataFile, szInFile, szOutFile)) {
             fprintf(g_logFile, "Encapsulate succeeds\n");
         }
         else {
             fprintf(g_logFile, "Encapsulate fails\n");
         }
+	free(szCertString);
         return 0;
     }
     if(iAction==DECAPSULATE) {
-        if(Decapsulate(szKeyFile, szInFile, szMetaDataFile, szOutFile)) {
+        initCryptoRand();
+        initBigNum();
+	char* szKeyInfoString= readandstoreString(szKeyFile);
+        if(Decapsulate(szKeyInfoString, szMetaDataFile, szInFile, szOutFile)) {
             fprintf(g_logFile, "Decapsulate succeeds\n");
         }
         else {
             fprintf(g_logFile, "Decapsulate fails\n");
         }
+	free(szKeyInfoString);
         return 0;
     }
 

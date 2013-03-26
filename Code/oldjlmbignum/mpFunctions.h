@@ -18,11 +18,13 @@
 // to the location of the License.
 
 
-#include "bignum.h"
-
 
 // ---------------------------------------------------------------------------------
 
+
+#ifndef __MPFUNCTIONS_H__
+#define __MPFUNCTIONS_H__
+#include "bignum.h"
 
 bool            mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB);
 bnum*           mpDuplicateNum(bnum& bnA);
@@ -81,6 +83,7 @@ bool            mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid=20);
 bool            mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR);
 bool            mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR);
 bool            mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, bnum& bnD, bnum& bnOrder);
+#endif
 
 
 // ---------------------------------------------------------------------------------

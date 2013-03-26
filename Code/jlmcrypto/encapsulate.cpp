@@ -222,8 +222,7 @@ bool   encapsulatedMessage::parseMetaData()
     }
 
     pRootElement= doc.RootElement();
-    
-    pNode= pRootElement->FirstChild();
+    pNode= (TiXmlNode*) pRootElement;
     if(pNode->Type()!=TiXmlNode::TINYXML_ELEMENT ||
                   strcmp(((TiXmlElement*)pNode)->Value(),"EncapsulatedMessage")!=0) {
         fprintf(g_logFile, "encapsulatedMessage::parseMetaData: No EncapsulatedMessage\n");
@@ -282,7 +281,7 @@ bool   encapsulatedMessage::parseMetaData()
     if(pNode!=NULL) {
         pNode1= pNode->FirstChild();
         if(pNode1!=NULL) {
-            m_szCert= strdup( ((TiXmlElement*)pNode1)->Value());
+            m_szCert= strdup(((TiXmlElement*)pNode1)->Value());
         }
     }
 
@@ -298,8 +297,8 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
     int     insize= 0;
     byte    padded[512];
     int     blocksize;
-    bnum    bnMsg(8);
-    bnum    bnOut(8);
+    bnum    bnMsg(64);
+    bnum    bnOut(64);
     byte    sealed[512];
 
     if(sealingKey==NULL) {
@@ -347,18 +346,21 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
     insize+= m_sizeIntKey;
 
     // pad
-    if(!emsapkcspad(m_sizeEncKey+m_sizeIntKey, in, blocksize, padded)) {
-        fprintf(g_logFile, "encapsulatedMessage::sealKey can't pad\n");
+    if(!emsapkcspad(SHA256HASH, in, blocksize, padded)) {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey can't pad %d\n", blocksize);
         return false;
     }
-
+PrintBytes("SealKey padded: ", padded, blocksize);
     // seal
     revmemcpy((byte*)bnMsg.m_pValue, padded, blocksize);
+PrintBytes("unSealKey encrypt msg: ", (byte*)bnMsg.m_pValue, blocksize);
     if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnE), *(sealingKey->m_pbnM), bnOut)) {
         fprintf(g_logFile, "encapsulatedMessage::sealKey can't seal\n");
         return false;
     }
+PrintBytes("unSealKey encrypt out: ", (byte*)bnOut.m_pValue, blocksize);
     revmemcpy(sealed, (byte*)bnOut.m_pValue, blocksize);
+PrintBytes("SealKey Sealed: ", sealed, blocksize);
 
     if(!toBase64(blocksize, sealed, &outsize, buf)) {
         fprintf(g_logFile, "Cant base64 encode sealed key\n");
@@ -375,8 +377,8 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
     byte    in[128];
     byte    padded[512];
     int     blocksize;
-    bnum    bnMsg(8);
-    bnum    bnOut(8);
+    bnum    bnMsg(64);
+    bnum    bnOut(64);
     int     sizeSealed= 512;
     byte    sealed[512];
 
@@ -405,6 +407,7 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         fprintf(g_logFile, "encapsulatedMessage::unSealKey no base64 encoded sealed key\n");
         return false;
     }
+PrintBytes("unSealKey Sealed: ", sealed, blocksize);
 
     m_sizeEncKey= AES128BYTEBLOCKSIZE;
     m_sizeIntKey= AES128BYTEBLOCKSIZE;
@@ -418,13 +421,16 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
 
     // unseal
     revmemcpy((byte*)bnMsg.m_pValue, sealed, blocksize);
+PrintBytes("unSealKey decrypt msg: ", (byte*)bnMsg.m_pValue, blocksize);
     if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnD), *(sealingKey->m_pbnM), bnOut)) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey can't unseal\n");
         return false;
     }
+PrintBytes("unSealKey decrypt out: ", (byte*)bnOut.m_pValue, blocksize);
     revmemcpy(padded, (byte*)bnOut.m_pValue, blocksize);
+PrintBytes("unSealKey decrypted: ", padded, blocksize);
 
-    if(!emsapkcsverify(m_sizeEncKey+m_sizeIntKey, padded, blocksize, in)) {
+    if(!emsapkcsverify(SHA256HASH, padded, blocksize, in)) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey failed padding verification\n");
         return false;
     }
@@ -535,7 +541,7 @@ bool   encapsulatedMessage::setencryptedMessage(int size, byte* in)
     m_rgEncrypted= (byte*)malloc(size);
     if(m_rgEncrypted==NULL)
         return false;
-
+    memcpy(m_rgEncrypted, in, size);
     m_sizeEncrypted= size;
     return true;
 }
@@ -563,7 +569,7 @@ bool   encapsulatedMessage::setplainMessage(int size, byte* in)
     m_rgPlain= (byte*)malloc(size);
     if(m_rgPlain==NULL)
         return false;
-
+    memcpy(m_rgPlain, in, size);
     m_sizePlain= size;
     return true;
 }
@@ -601,13 +607,84 @@ char*  encapsulatedMessage::getSignerKeyInfo()
 
 char*  encapsulatedMessage::getSubjectKeyInfo()
 {
-    return NULL;
+    TiXmlDocument   doc;
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode;
+    TiXmlNode*      pNode1;
+
+    if(m_szCert==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::getSubjectKeyInfo: XML empty\n");
+        return false;
+    }
+
+    if(!doc.Parse(m_szCert)) {
+        fprintf(g_logFile, "encapsulatedMessage::getSubjectKeyInfo: Cant parse cert\n");
+        return false;
+    }
+
+    pRootElement= doc.RootElement();
+    pNode= (TiXmlNode*)pRootElement;
+    if(pNode->Type()!=TiXmlNode::TINYXML_ELEMENT ||
+                  strcmp(((TiXmlElement*)pNode)->Value(),"ds:Signature")!=0) {
+        fprintf(g_logFile, "encapsulatedMessage::getSubjectKeyInfo: No signature\n");
+        return false;
+        }
+
+    pNode= Search(pRootElement,"SubjectKey");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::getSubjectKeyInfo: No subject key\n");
+        return false;
+    }
+    pNode1= pNode->FirstChild();
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "encapsulatedMessage::getSubjectKeyInfo: no child of subject key\n");
+        return false;
+    }
+    return canonicalize(pNode1);
 }
 
 
 #ifdef TEST
 void   encapsulatedMessage::printMe()
 {
+    fprintf(g_logFile, "encapsulatedMessage data\n");
+    if(m_szSignerKeyInfo!=NULL)
+        fprintf(g_logFile, "\tm_szSignerKeyInfo: %s\n", m_szSignerKeyInfo);
+    if(m_szSignerKeyInfo!=NULL)
+        fprintf(g_logFile, "\tm_szSignerKeyInfo: %s\n", m_szSignerKeyInfo);
+    if(m_szSubjectKeyInfo!=NULL)
+        fprintf(g_logFile, "\tm_szSubjectKeyInfo: %s\n", m_szSubjectKeyInfo);
+    if(m_szSignAlg!=NULL)
+        fprintf(g_logFile, "\tm_szSignAlg: %s\n", m_szSignAlg);
+    if(m_szSignAlg!=NULL)
+        fprintf(g_logFile, "\tm_szSignAlg: %s\n", m_szSignAlg);
+    if(m_szSealAlg!=NULL)
+        fprintf(g_logFile, "\tm_szSealAlg: %s\n", m_szSealAlg);
+    if(m_szEncryptAlg!=NULL)
+        fprintf(g_logFile, "\tm_szEncryptAlg: %s\n", m_szEncryptAlg);
+    if(m_szSealedKey!=NULL)
+        fprintf(g_logFile, "\tm_szSealedKey: %s\n", m_szSealedKey);
+    if(m_szXMLmetadata!=NULL)
+        fprintf(g_logFile, "\tm_szXMLmetadata: %s\n", m_szXMLmetadata);
+    if(m_szCert!=NULL)
+        fprintf(g_logFile, "\tm_szCert: %s\n", m_szCert);
+
+    if(m_encKey!=NULL) {
+        PrintBytes((char*)"Encrypt Key: ", m_encKey, m_sizeEncKey);
+    }
+    if(m_intKey!=NULL) {
+        PrintBytes((char*)"Integrity Key: ", m_intKey, m_sizeIntKey);
+    }
+    if(m_rgPlain!=NULL) {
+        PrintBytes((char*)"Plaintext: ", m_rgPlain, m_sizePlain);
+    }
+    if(m_rgEncrypted!=NULL) {
+        PrintBytes((char*)"Ciphertext: ", m_rgEncrypted, m_sizeEncrypted);
+    }
+    if(m_rgPackageSignature!=NULL) {
+        PrintBytes((char*)"Ciphertext: ", m_rgPackageSignature, m_sizePackageSignature);
+    }
+
     return;
 }
 

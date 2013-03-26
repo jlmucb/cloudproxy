@@ -80,6 +80,19 @@ static char* s_szEncapsulateEndTemplate= (char*)
 // -------------------------------------------------------------------------------------
 
 
+bool emsapkcssanity(int sigsize, byte* padded, int sizeout, byte* out)
+{
+    if(padded[0]!=0x00 || padded[1]!=0x01)
+        return false;
+    for(int i=3; i<20; i++)
+        if(padded[i]!=0xff)
+            return false;
+    memcpy(out, padded+sigsize-sizeout, sizeout);
+    return true;
+}
+
+
+
 encapsulatedMessage::encapsulatedMessage()
 {
     m_szSignAlg= strdup(RSA1024SIGNALG);
@@ -342,7 +355,7 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
 
     memcpy(&in[insize],m_encKey,m_sizeEncKey);
     insize+= m_sizeEncKey;
-    memcpy(&in[insize],m_encKey,m_sizeIntKey);
+    memcpy(&in[insize],m_intKey,m_sizeIntKey);
     insize+= m_sizeIntKey;
 
     // pad
@@ -350,17 +363,13 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
         fprintf(g_logFile, "encapsulatedMessage::sealKey can't pad %d\n", blocksize);
         return false;
     }
-PrintBytes("SealKey padded: ", padded, blocksize);
     // seal
     revmemcpy((byte*)bnMsg.m_pValue, padded, blocksize);
-PrintBytes("unSealKey encrypt msg: ", (byte*)bnMsg.m_pValue, blocksize);
     if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnE), *(sealingKey->m_pbnM), bnOut)) {
         fprintf(g_logFile, "encapsulatedMessage::sealKey can't seal\n");
         return false;
     }
-PrintBytes("unSealKey encrypt out: ", (byte*)bnOut.m_pValue, blocksize);
     revmemcpy(sealed, (byte*)bnOut.m_pValue, blocksize);
-PrintBytes("SealKey Sealed: ", sealed, blocksize);
 
     if(!toBase64(blocksize, sealed, &outsize, buf)) {
         fprintf(g_logFile, "Cant base64 encode sealed key\n");
@@ -407,7 +416,6 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         fprintf(g_logFile, "encapsulatedMessage::unSealKey no base64 encoded sealed key\n");
         return false;
     }
-PrintBytes("unSealKey Sealed: ", sealed, blocksize);
 
     m_sizeEncKey= AES128BYTEBLOCKSIZE;
     m_sizeIntKey= AES128BYTEBLOCKSIZE;
@@ -421,22 +429,20 @@ PrintBytes("unSealKey Sealed: ", sealed, blocksize);
 
     // unseal
     revmemcpy((byte*)bnMsg.m_pValue, sealed, blocksize);
-PrintBytes("unSealKey decrypt msg: ", (byte*)bnMsg.m_pValue, blocksize);
     if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnD), *(sealingKey->m_pbnM), bnOut)) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey can't unseal\n");
         return false;
     }
-PrintBytes("unSealKey decrypt out: ", (byte*)bnOut.m_pValue, blocksize);
     revmemcpy(padded, (byte*)bnOut.m_pValue, blocksize);
-PrintBytes("unSealKey decrypted: ", padded, blocksize);
 
-    if(!emsapkcsverify(SHA256HASH, padded, blocksize, in)) {
+    if(!emsapkcssanity(blocksize, padded, 32, in)) {
+
         fprintf(g_logFile, "encapsulatedMessage::unSealKey failed padding verification\n");
         return false;
     }
 
     memcpy(m_encKey, &in[0], m_sizeEncKey);
-    memcpy(m_encKey, &in[m_sizeEncKey], m_sizeIntKey);
+    memcpy(m_intKey, &in[m_sizeEncKey], m_sizeIntKey);
 
     return true;
 }

@@ -163,7 +163,7 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
     byte*   pHdr= NULL;
     byte    rgPre[2]= {0x00, 0x01};
 
-#ifdef CRYPTOTEST7
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "emsapkcsverify, hash type %d, blocksize %d\n", hashType, sigSize);
     PrintBytes("Padded block\n", rgSig, sigSize);
     PrintBytes("Hash\n", rgHash, 32);

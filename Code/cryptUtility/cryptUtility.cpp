@@ -2125,8 +2125,6 @@ bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile,
         goto done;
     }
 
-fprintf(g_logFile, "key: %s\n", szKeyInfo);
-fflush(g_logFile);
     // Make RSAKey
     sealingKey= (RSAKey*)keyfromkeyInfo(szKeyInfo);
     if(sealingKey==NULL) {
@@ -2134,8 +2132,6 @@ fflush(g_logFile);
         fRet= false;
         goto done;
     }
-fprintf(g_logFile, "got key\n");
-fflush(g_logFile);
 
     // get metadata
     if(!getBlobfromFile(szMetaDataFile, (byte*)szMetadata, &sizemetadata)) {
@@ -2144,8 +2140,6 @@ fflush(g_logFile);
         goto done;
     }
     oM.m_szXMLmetadata= strdup(szMetadata);
-fprintf(g_logFile, "got metadata\n");
-fflush(g_logFile);
 
     // get ciphertext and decrypt
     if(!getBlobfromFile(szInFile, cipher, &ciphersize)) {
@@ -2158,8 +2152,6 @@ fflush(g_logFile);
         fRet= false;
         goto done;
     }
-fprintf(g_logFile, "got cipher %d\n", ciphersize);
-fflush(g_logFile);
 
     // parse metadata
     if(!oM.parseMetaData()) {
@@ -2167,8 +2159,6 @@ fflush(g_logFile);
         fRet= false;
         goto done;
     }
-fprintf(g_logFile, "parsed meta\n");
-fflush(g_logFile);
 
     // unseal key
     if(!oM.unSealKey(sealingKey)) {
@@ -2176,16 +2166,12 @@ fflush(g_logFile);
         fRet= false;
         goto done;
     }
-fprintf(g_logFile, "unsealed key\n");
-fflush(g_logFile);
 
     if(!oM.decryptMessage()) {
         fprintf(g_logFile, "Decapsulate: cant decrypt message\n");
         fRet= false;
         goto done;
     }
-fprintf(g_logFile, "decrypted\n");
-fflush(g_logFile);
 
     // write plain data
     if(!saveBlobtoFile(szOutFile, oM.m_rgPlain, oM.m_sizePlain)) {
@@ -2193,8 +2179,6 @@ fflush(g_logFile);
         fRet= false;
         goto done;
     }
-fprintf(g_logFile, "wrote plain\n");
-fflush(g_logFile);
 
 done:
 #ifdef TEST

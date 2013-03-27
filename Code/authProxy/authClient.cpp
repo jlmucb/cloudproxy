@@ -1296,7 +1296,7 @@ int main(int an, char** av)
                 string key = authClient::getFileContents(keyFile);
 
                 // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
-                printf("Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
+                //printf("Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
                 authClient client;
                 safeChannel channel;
                 result = client.establishConnection(channel,
@@ -1305,9 +1305,6 @@ int main(int an, char** av)
                         directory,
                         "127.0.0.1",
                         SERVICE_PORT);
-
-                
-                
             }
         }
 

@@ -14,7 +14,7 @@ evidenceCollectionPrefix = '<EvidenceCollection count="{0}">'.format(len(args.fi
 evidenceCollectionSuffix = '</EvidenceCollection>'
 
 evidenceListPrefix = '<EvidenceList count="1">'
-evidenceListSuffix = '</EvidenceList>'
+evidenceListSuffix = '\n</EvidenceList>'
 
 # open the output file for writing and add the evidence lists
 with open(args.output, "wb") as output:

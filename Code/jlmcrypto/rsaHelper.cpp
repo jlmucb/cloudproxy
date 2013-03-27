@@ -264,8 +264,8 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
     int     iOut;
     byte    rgPadded[1024];
     byte    rgBase64Decoded[1024];
-    bnum    bnMsg(2*rgKey.m_iByteSizeM/sizeof(u64));
-    bnum    bnOut(2*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnMsg(4*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnOut(4*rgKey.m_iByteSizeM/sizeof(u64));
 
     if(sizeChallenge!=32) {
         fprintf(g_logFile, 
@@ -334,8 +334,8 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
     int     iOut;
     byte    rgPadded[1024];
     char    rgBase64[1024];
-    bnum    bnMsg(2*rgKey.m_iByteSizeM/sizeof(u64));
-    bnum    bnOut(2*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnMsg(4*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnOut(4*rgKey.m_iByteSizeM/sizeof(u64));
     u32     uHash= 0;
 
 #ifdef TEST

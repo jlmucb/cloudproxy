@@ -962,7 +962,7 @@ bool authClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, cons
 #ifdef TEST
         fprintf(g_logFile, "authClient: channel data validated\n");
 #endif
-
+#if 0
         // register principals
         if(m_oKeys.m_pserverCert!=NULL) {
             if(registerPrincipalfromCert(m_oKeys.m_pserverCert)==NULL)
@@ -974,6 +974,7 @@ bool authClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, cons
 
         if(registerPrincipalfromCert(m_oKeys.m_pclientCert)==NULL)
             throw "authClient: Can't register client principal\n";
+#endif
 #ifdef TEST
         fprintf(g_logFile, "authClient: server principal registered\n");
 #endif

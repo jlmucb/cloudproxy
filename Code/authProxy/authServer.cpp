@@ -586,7 +586,7 @@ bool theServiceChannel::protocolNego()
         if(!m_oKeys.updateMessageHash(strlen(request), (byte*) request))
             throw  "theServiceChannel::protocolNego: Can't update messagehash";
         if(!getDatafromClientMessage4(n, request, m_oKeys)) 
-            throw  "theServiceChannel::protocolNego: Can't decode client message 3\n";
+            throw  "theServiceChannel::protocolNego: Can't decode client message 4\n";
         if(!m_oKeys.initializePrincipalCerts())
             throw "theServiceChannel::protocolNego: Cant initialize principal public keys\n";
         if(!m_oKeys.checkPrincipalChallenges())

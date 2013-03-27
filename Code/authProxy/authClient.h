@@ -99,6 +99,7 @@ public:
                      const string& testFile,
                      string& identityCertFile,
                      string& userCertFile,
+                     string& userKeyFile,
                      string& keyFile);
 };
 

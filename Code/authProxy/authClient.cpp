@@ -1284,11 +1284,13 @@ int main(int an, char** av)
                 // get the three files from tests.xml
                 string identityCertFile;
                 string userCertFile;
+                string userKeyFile;
                 string keyFile;
                 authClient::getKeyFiles(path,
                             testFileName,
                             identityCertFile,
                             userCertFile,
+                            userKeyFile,
                             keyFile);
 
                 string identityCert = authClient::getFileContents(identityCertFile);
@@ -1296,11 +1298,12 @@ int main(int an, char** av)
                 string key = authClient::getFileContents(keyFile);
 
                 // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
-                //printf("Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
+                fprintf(g_logFile, "Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
+                fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", keyFile.c_str(), userCertFile.c_str());
                 authClient client;
                 safeChannel channel;
                 result = client.establishConnection(channel,
-                        keyFile.c_str(),
+                        userKeyFile.c_str(),
                         userCertFile.c_str(),
                         directory,
                         "127.0.0.1",
@@ -1381,6 +1384,7 @@ void authClient::getKeyFiles(const string& directory,
                              const string& testFile,
                              string& identityCertFile,
                              string& userCertFile,
+                             string& userKeyFile,
                              string& keyFile)
 {
     string path = directory + testFile;
@@ -1397,6 +1401,8 @@ void authClient::getKeyFiles(const string& directory,
             identityCertFile = directory + text; 
         } else if (name.compare("UserCert") == 0) {
             userCertFile = directory + text;
+        } else if (name.compare("UserKey") == 0) {
+            userKeyFile = directory + text;
         } else if (name.compare("Key") == 0) {
             keyFile = directory + text;
         } else {

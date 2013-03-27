@@ -335,8 +335,8 @@ bool sessionKeys::getPrincipalCertsFromFile(const char* fileName)
         m_iNumPrincipals= 0;
     }
 
-#ifdef TEST1
-    if(m_szPrincipalCerts==NULL)
+#ifdef TEST
+    if(m_szPrincipalCerts!=NULL)
         fprintf(g_logFile, "sessionKeys::getPrincipalCertsFromFile: Principal Certs from file: %s\n", m_szPrincipalCerts);
     else
         fprintf(g_logFile, "sessionKeys::getPrincipalCertsFromFile: No principal certs\n");
@@ -351,6 +351,13 @@ bool sessionKeys::getPrincipalPrivateKeysFromFile(const char* fileName)
         return true;
     if(m_szPrincipalPrivateKeys==NULL)
         m_szPrincipalPrivateKeys= readandstoreString(fileName);
+
+#ifdef TEST
+    if (m_szPrincipalPrivateKeys!=NULL)
+        fprintf(g_logFile, "sessionKeys::getPrincipalPrivateKeysFromFile: principal keys from file: %s\n", m_szPrincipalPrivateKeys);
+    else 
+        fprintf(g_logFile, "sessionKeys::getPrincipalPrivateKeysFromFile: No principal private keys\n");
+#endif
     return true;
 }
 

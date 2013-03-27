@@ -11,5 +11,5 @@ parser.add_argument("--scriptPath", required="true", help="The path to the direc
 args = parser.parse_args()
 
 check_call([os.path.join(args.scriptPath, "createPrincipal.py"), "5", "AuthServer"])
-check_call(["./cryptUtility.exe", "-EncapsulateMessage", "AuthServerPublicKey.xml", "authServer/signingKeyMetaData", "AuthServerPrivateKey.xml", "authServer/signingKey"])
+check_call(["./cryptUtility.exe", "-EncapsulateMessage", "authServer/cert", "authServer/signingKeyMetaData", "AuthServerPrivateKey.xml", "authServer/signingKey"])
 check_call(["cp", "AuthServerPublicKey.xml", "authServer/signingCert"])

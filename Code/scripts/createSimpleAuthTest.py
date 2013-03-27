@@ -28,9 +28,9 @@ check_call(["./cryptUtility.exe", "-GenKey", "RSA1024", "PrototypePrivateKey.xml
 # cat | grep -v for removing private info and making a public key
 with open('PrototypePrivateKey.xml', 'r') as inFile:
     with open('basicAuthTest/PrototypePublicKey.xml', 'wb') as outFile:
-        for line in inFile.readline():
+        for line in inFile:
             if (not "ds:P" in line) and (not "ds:D" in line) and (not "ds:Q" in line):
-                print(line, file=outFile)
+                print(line, file=outFile, end='')
 
 check_call(["mv", "PrototypePrivateKey.xml", "basicAuthTest"])
 

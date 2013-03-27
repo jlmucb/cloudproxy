@@ -965,6 +965,10 @@ bool authServer::initSigningKeys()
         return false;
     }
     szMetaData= strdup((char*)buf);
+#ifdef TEST
+    fprintf(g_logFile, "authServer::initSigningKeys: encapsulated meta\n%s\n",
+            szMetaData);
+#endif
 
     size= 4096;
     memset(buf,0,size);

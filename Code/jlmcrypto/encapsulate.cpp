@@ -430,6 +430,12 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         m_intKey= (byte*) malloc(m_sizeIntKey);
     }
 
+#ifdef TEST
+    PrintBytes((char*)"\nEncapsulatedMessage::unSealKey, sealed key\n", sealed, sizeSealed);
+    fprintf(g_logFile, "PrivateKey:\n");
+    sealingKey->printMe();
+    fprintf(g_logFile, "\n");
+#endif
     // unseal
     revmemcpy((byte*)bnMsg.m_pValue, sealed, blocksize);
     if(!mpRSAENC(bnMsg, *(sealingKey->m_pbnD), *(sealingKey->m_pbnM), bnOut)) {
@@ -437,9 +443,11 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         return false;
     }
     revmemcpy(padded, (byte*)bnOut.m_pValue, blocksize);
+#ifdef TEST
+    PrintBytes((char*)"EncapsulatedMessage::unSealKey, padded\n", padded, blocksize);
+#endif
 
     if(!emsapkcssanity(blocksize, padded, 32, in)) {
-
         fprintf(g_logFile, "encapsulatedMessage::unSealKey failed padding verification\n");
         return false;
     }

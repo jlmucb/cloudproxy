@@ -1127,16 +1127,13 @@ void authClient::closeConnection(safeChannel& fc) {
 
 bool authClient::readCredential(safeChannel& fc, const string& subject, 
                                 const string& identityCert, 
-                                const string& evidenceFileName, 
-                                const string& remoteCredential, 
                                 const string& proposedKey, 
                                 const string& localOutput) 
 {
     int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
 
     if(clientgetCredentialfromserver(fc, subject.c_str(), "PKToken",
-                                      identityCert.c_str(), szEvidence,
+                                      identityCert.c_str(), NULL,
                                       proposedKey.c_str(), localOutput.c_str(),
                 encType, m_authKeys, m_encTimer)) {
         fprintf(g_logFile, "authClient authTest: read file successful\n");
@@ -1300,7 +1297,8 @@ int main(int an, char** av)
                 string key = authClient::getFileContents(keyFile);
 
                 // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
-                fprintf(g_logFile, "Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
+                fprintf(g_logFile, "Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", 
+                        identityCert.c_str(), userCert.c_str(), key.c_str());
                 fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", keyFile.c_str(), userCertFile.c_str());
                 authClient client;
                 safeChannel channel;
@@ -1310,6 +1308,11 @@ int main(int an, char** av)
                         directory,
                         "127.0.0.1",
                         SERVICE_PORT);
+		result = client.readCredential(channel, 
+				"User",
+				userCert,
+				key,
+				"CredentialResult.xml");
             }
         }
 

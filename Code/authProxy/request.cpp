@@ -197,7 +197,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
     if(szEvidence!=NULL)
         m_szEvidence= strdup(szEvidence);
 
-    else if(strcmp(m_szAction, "getToken")==0)
+    else if(strcmp(m_szAction, "GetToken")==0)
         m_iRequestType= GETTOKEN;
     else
         m_iRequestType= 0;
@@ -548,6 +548,9 @@ bool clientgetCredentialfromserver(safeChannel& fc,
                          szIdentityCert, szEvidence, szKeyinfo)) {
         return false;
     }
+#ifdef  TEST
+    fprintf(g_logFile, "clientgetCredentialfromserver request\n%s\n", szBuf);
+#endif
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
     }

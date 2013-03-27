@@ -84,8 +84,6 @@ public:
     void    closeConnection(safeChannel& fc);
     bool    readCredential(safeChannel& fc, const string& subject,
                                 const string& identityCert,
-                                const string& evidenceFileName,
-                                const string& remoteCredential,
                                 const string& proposedKey,
                                 const string& localOutput);
 

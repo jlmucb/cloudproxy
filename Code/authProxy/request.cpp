@@ -620,6 +620,10 @@ char*  constructCert(Request& oReq, RSAKey* signingKey)
 
     bool    fRet= true;
 
+#ifdef  TEST
+    fprintf(g_logFile, "Signing key\n");
+    signingKey->printMe();
+#endif
     signedKey= keyfromkeyInfo((char*) oReq.m_szPublicKey);
     if(signedKey==NULL) {
         fprintf(g_logFile, "validateRequestandIssue: cant generate SignedInfo\n");

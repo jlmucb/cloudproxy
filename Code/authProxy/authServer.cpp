@@ -953,10 +953,14 @@ bool authServer::initSigningKeys()
         fprintf(g_logFile, "authServer::initSigningKeys: private key empty\n");
         return false;
     }
+#ifdef TEST
+    fprintf(g_logFile, "authServer::initSigningKeys: sealingKey\n");
+    sealingKey->printMe();
+#endif
 
     m_szSigningKeyCert= strdup("./authServer/signingCert");
     if(!getBlobfromFile(m_szSigningKeyCert, buf, &size)) {
-        fprintf(g_logFile, "authServer::initSigningKeys: Can't read signing cert\n");
+        fprintf(g_logFile, "authServer::initSigningKeys: Can't read signing cert, %s\n", m_szSigningKeyCert);
         return false;
     }
     m_signingCert= strdup((char *)buf);
@@ -1005,6 +1009,7 @@ bool authServer::initSigningKeys()
         fprintf(g_logFile, "authServer::initSigningKeys: cant decrypt message\n");
         return false;
     }
+
 #ifdef TEST
     PrintBytes((char*)"authServer::initSigningKeys: encrypted private key\n", 
                oM.m_rgEncrypted, oM.m_sizeEncrypted);
@@ -1320,6 +1325,8 @@ bool authServer::server()
             poSc->m_myPositionInParent= i;
             poSc->m_signingKey=  m_signingKey;
 #ifdef TEST
+            fprintf(g_logFile, "Signing key\n");
+            poSc->m_signingKey->printMe();
             fprintf(g_logFile, "authServer: slot %d, about to pthread_create\n", i);
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);
             fflush(g_logFile);

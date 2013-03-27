@@ -84,7 +84,7 @@ const char*   szRequest7b= "</PublicKey>\n";
 const char*   szResponse1= "<Response>\n";
 const char*   szResponse2= "<ErrorCode>";
 const char*   szResponse3= "</ErrorCode>\n  <CredentialName>";
-const char*   szResponse4= "</CredentialName>\n <Credential>";
+const char*   szResponse4= "</CredentialName>\n <Credential>\n";
 const char*   szResponse5= "</Credential>\n </Response>\n";
 
 
@@ -476,6 +476,10 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
     try {
         if(!safeTransfer(pp, piLeft, szResponse1))
             throw "constructResponse: Can't construct response\n";
+
+        if(!safeTransfer(pp, piLeft, szResponse2))
+            throw "Can't construct response\n";
+
         if(fError) {
             if(!safeTransfer(pp, piLeft, "reject"))
                 throw "constructResponse: Can't construct response\n";
@@ -484,9 +488,6 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
             if(!safeTransfer(pp, piLeft, "accept"))
                 throw "constructResponse: Can't construct response\n";
         }
-
-        if(!safeTransfer(pp, piLeft, szResponse2))
-            throw "Can't construct response\n";
 
         if(szChannelError!=NULL) {
             if(!safeTransfer(pp, piLeft, szChannelError))

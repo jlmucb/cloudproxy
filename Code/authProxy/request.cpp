@@ -564,13 +564,24 @@ bool clientgetCredentialfromserver(safeChannel& fc,
         return false;
     }
     szBuf[n]= 0;
+    oResponse.m_szToken = NULL;
     oResponse.getDatafromDoc(szBuf);
+
+#ifdef TEST
+    fprintf(g_logFile, "Got a response from the server\n");
+    fflush(g_logFile);
+#endif
 
     // check response
     if(strcmp(oResponse.m_szAction, "accept")!=0) {
         fprintf(g_logFile, "Error: %s\n", oResponse.m_szErrorCode);
         return false;
     }
+    
+#ifdef TEST
+    fprintf(g_logFile, "The response was an accept message: %s\n", szBuf);
+    fflush(g_logFile);
+#endif
 
     // save credential
     int     iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);

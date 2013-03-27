@@ -618,6 +618,7 @@ bool theServiceChannel::protocolNego()
         fflush(g_logFile);
 #endif
 
+#if 0
     // register principals
     if(m_oKeys.m_pserverCert!=NULL) {
         if(registerPrincipalfromCert(m_oKeys.m_pserverCert)==NULL)
@@ -628,6 +629,7 @@ bool theServiceChannel::protocolNego()
         if(registerPrincipalfromCert(m_oKeys.m_pclientCert)==NULL)
             throw "theServiceChannel::protocolNego: Can't register client principal\n";
     }
+#endif
 #ifdef TEST
         fprintf(g_logFile, "theServiceChannel: protocol negotiation complete\n");
         m_oKeys.printMe();

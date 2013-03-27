@@ -917,11 +917,13 @@ bool authServer::initPolicy()
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
         return false;
     }
+#if 0
     g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
     if(g_policyAccessPrincipal==NULL) {
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
         return false;
     }
+#endif
 
     g_globalpolicyValid= true;
 #ifdef TEST
@@ -1001,8 +1003,18 @@ bool authServer::initSigningKeys()
         fprintf(g_logFile, "authServer::initSigningKeys: cant decrypt message\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"authServer::initSigningKeys: encrypted private key\n", 
+               oM.m_rgEncrypted, oM.m_sizeEncrypted);
+    fflush(g_logFile);
+    PrintBytes((char*)"authServer::initSigningKeys: dencrypted private key\n", 
+               oM.m_rgPlain, oM.m_sizePlain);
+    fprintf(g_logFile, "%s\n",
+            (char*)oM.m_rgPlain);
+    fflush(g_logFile);
+#endif
 
-    m_signingKey= (RSAKey*)keyfromkeyInfo((char*)oM.m_rgEncrypted);
+    m_signingKey= (RSAKey*)keyfromkeyInfo((char*)oM.m_rgPlain);
     if(m_signingKey==NULL)
         return false;
     return true;

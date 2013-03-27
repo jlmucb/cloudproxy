@@ -8,4 +8,6 @@ rm fileServerobjects/*.o
 rm keyNegoServerobjects/*.o
 rm vTCIDirectobjects/*.o
 rm vTCIobjects/*.o
+rm authServerobjects/*.o
+rm authClientobjects/*.o
 

@@ -3,12 +3,9 @@
 from __future__ import print_function
 from subprocess import check_call
 import os
-import argparse
 
-parser = argparse.ArgumentParser(description="Creates a directory containing a simple test of FileProxy")
-parser.add_argument("--scriptPath", required="true", help="The path to the directory that contains the scripts used by createSimpleTest.py")
+scriptPath = os.path.dirname(__file__)
 
-args = parser.parse_args()
 
 if not os.path.exists("basicTest"):
     os.makedirs("basicTest")
@@ -16,15 +13,15 @@ if not os.path.exists("basicTest"):
 if not os.path.exists("basicTest/files"):
     os.makedirs("basicTest/files")
 
-check_call([os.path.join(args.scriptPath, "createPrincipal.py"), "1", "JohnManferdelli/0001"])
-check_call([os.path.join(args.scriptPath, "createEvidenceList.py"), "JohnManferdelli_0001PublicKey.xml", "-o", "basicTest/principalPublicKeys.xml"])
-check_call([os.path.join(args.scriptPath, "createPrivateKeyList.py"), "JohnManferdelli_0001PrivateKey.xml", "-o", "basicTest/principalPrivateKeys.xml"])
+check_call([os.path.join(scriptPath, "createPrincipal.py"), "1", "JohnManferdelli/0001"])
+check_call([os.path.join(scriptPath, "createEvidenceList.py"), "JohnManferdelli_0001PublicKey.xml", "-o", "basicTest/principalPublicKeys.xml"])
+check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "JohnManferdelli_0001PrivateKey.xml", "-o", "basicTest/principalPrivateKeys.xml"])
 
 with open('testpolicy', 'wb') as f:
     print("//www.manferdelli.com/User/JohnManferdelli/0001 maycreate //www.manferdelli.com/Gauss/fileProxy/files", file=f)
 	
-check_call([os.path.join(args.scriptPath, "createPolicy.py"), "testpolicy", "1"])
-check_call([os.path.join(args.scriptPath, "createEvidenceList.py"), "authorizationRuleSigned.xml", "-o", "basicTest/authRule1Signed.xml"])
+check_call([os.path.join(scriptPath, "createPolicy.py"), "testpolicy", "1"])
+check_call([os.path.join(scriptPath, "createEvidenceList.py"), "authorizationRuleSigned.xml", "-o", "basicTest/authRule1Signed.xml"])
 
 with open('basicTest/files/file.test', 'wb') as f:
     print("This is the test file.\n", file=f)

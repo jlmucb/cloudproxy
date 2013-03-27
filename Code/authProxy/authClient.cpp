@@ -174,11 +174,13 @@ bool authClient::initPolicy()
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
         return false;
     }
+#if 0
     g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
     if(g_policyAccessPrincipal==NULL) {
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
         return false;
     }
+#endif
 
     g_globalpolicyValid= true;
     return true;

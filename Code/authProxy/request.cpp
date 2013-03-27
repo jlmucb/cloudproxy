@@ -83,8 +83,8 @@ const char*   szRequest7b= "</PublicKey>\n";
 
 const char*   szResponse1= "<Response>\n";
 const char*   szResponse2= "<ErrorCode>";
-const char*   szResponse3= "</ErrorCode>\n  <CredentialName>";
-const char*   szResponse4= "</CredentialName>\n <Credential>\n";
+const char*   szResponse3= "</ErrorCode>\n  <CredentialType>";
+const char*   szResponse4= "</CredentialType>\n <Credential>\n";
 const char*   szResponse5= "</Credential>\n </Response>\n";
 
 
@@ -328,11 +328,6 @@ bool  Response::getDatafromDoc(char* szResponse)
     pNode= pRootElement->FirstChild();
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"Action")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL)
-                    m_szAction= strdup(pNode1->Value());
-            }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialType")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
@@ -343,15 +338,12 @@ bool  Response::getDatafromDoc(char* szResponse)
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"Token")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"Credential")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
                     m_szToken= canonicalize(pNode1);
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
-                m_szEvidence= canonicalize(pNode);
-            }
-        }
+	}
         pNode= pNode->NextSibling();
     }
 
@@ -463,7 +455,7 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char*
 }
 
 
-bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCredentialName, 
+bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCredentialType, 
                         const char* szCredential, const char* szChannelError)
 {
     bool    fRet= true;
@@ -495,8 +487,8 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
         }
         if(!safeTransfer(pp, piLeft, szResponse3))
             throw "constructResponse: Can't construct response\n";
-        if(szCredentialName!=NULL) {
-            if(!safeTransfer(pp, piLeft, szCredentialName))
+        if(szCredentialType!=NULL) {
+            if(!safeTransfer(pp, piLeft, szCredentialType))
                 throw "Can't construct response\n";
         }
         if(!safeTransfer(pp, piLeft, szResponse4))

@@ -82,8 +82,12 @@ public:
     bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
                         const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
-    bool    readCredential(safeChannel& fc, const string& subject, const string& evidenceFileName,
-                               const string& remoteCredential, const string& localOutput);
+    bool    readCredential(safeChannel& fc, const string& subject,
+                                const string& identityCert,
+                                const string& evidenceFileName,
+                                const string& remoteCredential,
+                                const string& proposedKey,
+                                const string& localOutput);
 
     bool    compareFiles(const string& firstFile, const string& secondFile);
 

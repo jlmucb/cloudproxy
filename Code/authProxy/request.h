@@ -116,7 +116,7 @@ public:
 };
 
 
-bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const char* szSubjectName, 
+bool clientgetCredentialfromserver(safeChannel& fc, const char* szSubjectName, 
                     const char* szCredentialType, const char* szIdentityCert, const char* szEvidence, 
                     const char* szKeyinfo, const char* szOutFile, int encType, byte* key, timer& encTimer);
 

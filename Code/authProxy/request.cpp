@@ -524,9 +524,11 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
 //      Applicatiion logic
 //
 
-bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const char* szSubjectName, 
-                    const char* szCredentialType, const char* szIdentityCert, const char* szEvidence, 
-                    const char* szKeyinfo, const char* szOutFile, int encType, byte* key, timer& encTimer)
+bool clientgetCredentialfromserver(safeChannel& fc, 
+                const char* szSubjectName, const char* szCredentialType, 
+                const char* szIdentityCert, const char* szEvidence, 
+                const char* szKeyinfo, const char* szOutFile, int encType, byte* key, 
+                timer& encTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -536,6 +538,7 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
     int         type= CHANNEL_REQUEST;
     byte        multi=0;
     byte        final= 0;
+    const char* szAction= "GetToken";
 
 #ifdef  TEST
     fprintf(g_logFile, "clientgetCredentialfromserver(%s, %s)\n", szCredentialType, szOutFile);
@@ -572,7 +575,10 @@ bool clientgetCredentialfromserver(safeChannel& fc, const char* szAction, const 
         fprintf(g_logFile, "clientgetCredentialfromserver: Cant open out file\n");
         return false;
     }
-
+    if(write(iWrite, oResponse.m_szToken, strlen(oResponse.m_szToken))<0) {
+        fprintf(g_logFile, "clientgetCredentialfromserver: Cant write token\n");
+        return false;
+    }
     close(iWrite);
 #ifdef  TEST
     fprintf(g_logFile, "clientgetCredentialfromserver returns true\n");

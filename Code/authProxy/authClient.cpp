@@ -1121,20 +1121,20 @@ void authClient::closeConnection(safeChannel& fc) {
 //  Application specific logic
 // 
 
-bool authClient::readCredential(safeChannel& fc, const string& subject, const string& evidenceFileName, 
-                                const string& remoteCredential, const string& localOutput) 
+bool authClient::readCredential(safeChannel& fc, const string& subject, 
+                                const string& identityCert, 
+                                const string& evidenceFileName, 
+                                const string& remoteCredential, 
+                                const string& proposedKey, 
+                                const string& localOutput) 
 {
-#if 0
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientgetCredentialfromserver(fc, 
-                                   remoteCredential.c_str(),
-                                   szEvidence,
-                                   localOutput.c_str(),
-                                   encType, 
-                                   m_authKeys, 
-                                   m_encTimer)) {
+
+    if(clientgetCredentialfromserver(fc, subject.c_str(), "PKToken",
+                                      identityCert.c_str(), szEvidence,
+                                      proposedKey.c_str(), localOutput.c_str(),
+                encType, m_authKeys, m_encTimer)) {
         fprintf(g_logFile, "authClient authTest: read file successful\n");
         fflush(g_logFile);
     } 
@@ -1143,7 +1143,7 @@ bool authClient::readCredential(safeChannel& fc, const string& subject, const st
         fflush(g_logFile);
         return false;
     }
-#endif
+
     return true;
 }
 
@@ -1203,6 +1203,7 @@ int main(int an, char** av)
     const char*     directory= NULL;
     string          testPath("authClient/tests/");
     string          testFileName("tests.xml");
+    bool            result;
     initLog(NULL);
 
 #ifdef  TEST
@@ -1210,6 +1211,7 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
 
+    UNUSEDVAR(result);
     if(an>1) {
         for(i=0;i<an;i++) {
             if(strcmp(av[i],"-initProg")==0) {
@@ -1293,6 +1295,16 @@ int main(int an, char** av)
 
                 // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
                 printf("Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", identityCert.c_str(), userCert.c_str(), key.c_str());
+                authClient client;
+                safeChannel channel;
+                result = client.establishConnection(channel,
+                        keyFile.c_str(),
+                        userCertFile.c_str(),
+                        directory,
+                        "127.0.0.1",
+                        SERVICE_PORT);
+
+                
                 
             }
         }

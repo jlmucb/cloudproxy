@@ -565,7 +565,7 @@ bool clientgetCredentialfromserver(safeChannel& fc,
 #endif
 
     // check response
-    if(strcmp(oResponse.m_szAction, "accept")!=0) {
+    if(strcmp(oResponse.m_szErrorCode, "accept")!=0) {
         fprintf(g_logFile, "Error: %s\n", oResponse.m_szErrorCode);
         return false;
     }

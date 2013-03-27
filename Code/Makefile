@@ -1,11 +1,17 @@
 OBJROOT=~/jlmcrypt
 
-.PHONY: keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest clean
+.PHONY: keyNegoServer tcService authServer authClient fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest clean
 
-all: keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
+all: keyNegoServer tcService authServer authClient fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
 
 tcService:
 	$(MAKE) -C tcService -f oldtcService.mak
+
+authServer:
+	$(MAKE) -C authProxy -f authServer.mak
+
+authClient:
+	$(MAKE) -C authProxy -f authClient.mak
 
 fileServer:
 	$(MAKE) -C fileProxy -f oldfileServer.mak
@@ -33,6 +39,8 @@ clean:
 	rm -f $(OBJROOT)/*.o
 	rm -f $(OBJROOT)/keyNegoServer.exe
 	rm -f $(OBJROOT)/tcService.exe
+	rm -f $(OBJROOT)/authServer.exe
+	rm -f $(OBJROOT)/authClient.exe
 	rm -f $(OBJROOT)/fileServer.exe
 	rm -f $(OBJROOT)/fileClient.exe
 	rm -f $(OBJROOT)/rsaspeedtest.exe

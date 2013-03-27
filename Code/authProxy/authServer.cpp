@@ -1011,17 +1011,17 @@ bool authServer::initSigningKeys()
     }
 
 #ifdef TEST
-    PrintBytes((char*)"authServer::initSigningKeys: encrypted private key\n", 
+    PrintBytes("authServer::initSigningKeys: encrypted private key\n", 
                oM.m_rgEncrypted, oM.m_sizeEncrypted);
     fflush(g_logFile);
-    PrintBytes((char*)"authServer::initSigningKeys: dencrypted private key\n", 
+    PrintBytes("authServer::initSigningKeys: dencrypted private key\n", 
                oM.m_rgPlain, oM.m_sizePlain);
-    fprintf(g_logFile, "%s\n",
-            (char*)oM.m_rgPlain);
+    fprintf(g_logFile, "%s\n", oM.m_rgPlain);
     fflush(g_logFile);
 #endif
 
-    m_signingKey= (RSAKey*)keyfromkeyInfo((char*)oM.m_rgPlain);
+    string keyInfoStr = string((const char*)oM.m_rgPlain) + string("\n");	
+    m_signingKey= (RSAKey*)keyfromkeyInfo(keyInfoStr.c_str());
     if(m_signingKey==NULL)
         return false;
     return true;

@@ -784,7 +784,7 @@ bool authClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, cons
 {
     char    request[MAXREQUESTSIZEWITHPAD];
     char    rgszBase64[256];
-    int     i, n;
+    int     n;
     int     type= CHANNEL_NEGO;
     byte    multi= 0;
     byte    final= 0;
@@ -978,13 +978,14 @@ bool authClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, cons
 #ifdef TEST
         fprintf(g_logFile, "authClient: server principal registered\n");
 #endif
-
+#if 0
         for(i=0;i<m_oKeys.m_iNumPrincipals; i++) {
             if(m_oKeys.m_rgPrincipalCerts[i]!=NULL) {
                 if(registerPrincipalfromCert(m_oKeys.m_rgPrincipalCerts[i])==NULL)
                     throw "authClient: Can't register client principal\n";
             }
         }
+#endif
         m_clientState= REQUESTSTATE;
 #ifdef TEST
         fprintf(g_logFile, "authClient: protocol nego succesfully completed\n");

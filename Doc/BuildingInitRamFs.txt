@@ -6,8 +6,12 @@ Decompress and unpack the existing initramfs
     mkdir init
     cd init
     cp /boot/initramfs.img-`uname -r` initrd.gz
-    gunzip initrd.gz
-    cpio -iv < initrd
+    cd initramfs
+    gunzip -c -9 /boot/initrd.img-2.6.32-5-686 \
+    | cpio -i -d -H newc --no-absolute-filenames
+    find > ../initramfs.content
+
+    gzip -dc /boot/initrd.img-$(uname -r) | cpio -i
 
 Copy the executables into the initramfs
     export DESTDIR=/tmp/init
@@ -32,32 +36,47 @@ system disk is mounted.
       swapon /dev/mapper/swap
 
 Put initramfs back together
-
-  rm initrd
-  find . -print -depth | cpio -ov > initrd
-  gzip initrd
+    CORRECT:
+        find .|cpio -H newc -o|gzip -9 > ../initrd.img-new
+    INCORRECT
+        rm initrd
+        find . -print | cpio -ov > initrd
+        gzip initrd
+Copy it to the boot directory
   sudo cp initrd.gz /boot/initrd.img-staticLinux
 
-Change /etc/grub.d to use this new initramfs
+Change /etc/grub.d to use this new initramfs.
 
-A sample init that dynamically loads the dirver (don't do this) is:
-Decompress initrd into localdirectory
-Copy needed drivers in /drvs directory
-Copy fileProxy/fileClient/tcService binaries in /bin directory and required libraries in 
-     /lib and lib64 directories
-Copied keys to /bin/HWRoot directory
-Replaced init with my custom init
-Loaded tcioDD
-Configured Ethernet
-Script does not boot all services
-Package initramfs.igz
-Copy to /boot
-Modify entry for OS Tboot section in grub.cfg. replaced initrd by initramfs.igz
-Reboot machine
-From cmd line typed : /bin/tcService.exe –directory /bin/ &
-tcService connected to keynegoServer on different machine. 
-   Gave “bad preamble error” so I was about to figure out what’s the deal. 
-   So far I have not launched fileProxy yet.
+Consult: http://manpages.ubuntu.com/manpages/karmic/man8/initramfs-tools.8.html
+
+mkdir initramfs{,-old}
+ cd initramfs
+ gunzip -c -9 /boot/initrd.img-2.6.32-5-686 \
+  | cpio -i -d -H newc --no-absolute-filenames
+ find > ../initramfs.content
+ cd ../initramfs-old
+ gunzip -c -9 /boot/initrd.img-2.6.32-5-686.bak \
+  | cpio -i -d -H newc --no-absolute-filenames
+ find > ../initramfs-old.content
+ cd ..
+ diff -u initramfs-old.content initramfs.content
+
+A sample init that dynamically loads the driver (don't do this) is:
+ 1 Decompress initrd into localdirectory
+ 2 Copy needed drivers in /drvs directory
+ 3 Copy fileProxy/fileClient/tcService binaries in /bin directory and required libraries in 
+     lib and lib64 directories
+ 4 Copied keys to /bin/HWRoot directory
+ 5 Replaced init with my custom init
+ 6 Loaded tcioDD
+ 7 Configured Ethernet
+ 8 Script does not boot all services
+ 9 Package initramfs.igz
+10 Copy to /boot
+11 Modify entry for OS Tboot section in grub.cfg. replaced initrd by initramfs.igz
+12 Reboot machine
+13 From cmd line type : /bin/tcService.exe –directory /bin/ &
+14 tcService connected to keynegoServer on different machine. 
 
  
 Vinay's handcrafted initramfs script
@@ -83,7 +102,6 @@ shell () {
         /bin/busybox sh
 }
  
-# create tpm device node
 # Basic /dev content, we need it as fast as possible.
 mount -t tmpfs dev /dev
 mount -t proc proc /proc
@@ -474,4 +492,125 @@ exec run-init ${rootmnt} ${init} "$@" ${recovery:+--startup-event=recovery} <${r
 panic "Could not execute run-init."
 
 
+Wrong:
+    gunzip initrd.gz
+    cpio -iv < initrd
 
+
+From http://reboot.pro/topic/14547-linux-load-your-root-partition-to-ram-and-boot-it/
+
+his tutorial will guide you through the steps to modify your initramfs to load all files from / to a tmpfs. This will only work with Debian 5 or newer and Ubuntu 9 ? or any unix thats supports booting from a initramfs. Since this is a virtual filesystem in RAM, not a virtual harddisk, this has many advantages.
+
+What you need:
+* lots of RAM
+* Debian based distribution or any that supports booting from initramfs
+* mkinitramfs or a tool to build a new initramfs
+* some linux knowledge
+* no need to create an image
+* no need for Grub4Dos
+* no need for a "special driver"
+
+Step 1:
+Choose a distribution thats supports booting from initramfs. (like ubuntu)
+
+Step 2:
+Install to harddisk. Make sure you split it into multiple partitions (/, /boot, /home, swap, ...).
+
+Step 3:
+Boot your new system, install updates, drivers if neccessary (this will improve performance), strip it down to the minimum. Every file will be loaded to RAM ! A fresh install uses about 2 GB auf harddisk-space.
+
+Step 4:
+modify /etc/fstab :
+* make a backup
+cp /etc/fstab /etc/fstab.bak* find the line specifing the root partition and change it in:
+none / tmpfs defaults 0 0* save
+
+Step 5:
+edit the local script in your initramfs:
+cd /usr/share/initramfs-tools/scripts/* make a backup of /usr/share/initramfs-tools/scripts/local
+cp local local.bak* modify local, find this line:
+# FIXME This has no error checking
+
+# Mount root
+
+mount ${roflag} -t ${FSTYPE} ${ROOTFLAGS} ${ROOT} ${rootmnt}* change it to:
+# FIXME This has no error checking
+
+# Mount root
+
+#mount ${roflag} -t ${FSTYPE} ${ROOTFLAGS} ${ROOT} ${rootmnt}
+
+mkdir /ramboottmp
+
+mount ${roflag} -t ${FSTYPE} ${ROOTFLAGS} ${ROOT} /ramboottmp
+
+mount -t tmpfs -o size=100% none ${rootmnt}
+
+cd ${rootmnt}
+
+cp -rfa /ramboottmp/* ${rootmnt}
+
+umount /ramboottmp
+* save
+* execute, or rebuild initramfs
+mkinitramfs -o /boot/initrd.img-ramboot* replace modified local with original file
+cp -f local.bak localStep 6:
+* modify this file (needs a better solution)
+/boot/grub/grub.cfg* copy the first boot entry and replace the /initrd line with this:
+/initrd /initrd.img-ramdisk* label the new entrie as RAMBOOT
+This will boot our generated initramfs instead the original one.
+Step 7:
+* reboot
+* choose standart boot (no ramdisk)
+* choose RAMBOOT and all your files on the root partition will be loaded to a tmpfs
+
+Results:
+Test setup:
+*Kernel : Linux 2.6.38-8-generic (i686)
+*Compiled : #42-Ubuntu SMP Mon Apr 11 03:31:50 UTC 2011
+*Distribution : Ubuntu 11.04
+*no graphics driver
+*Desktop HP 8100E
+*Core i7 860
+*4GB Memory 2 Modules (DDR3)
+*WDVeliciraptor 10k rpm 160GB 
+
+Tiotest results for 4 concurrent io threads:
+
+,----------------------------------------------------------------------.
+
+| Item                  | Time     | Rate         | Usr CPU  | Sys CPU |
+
++-----------------------+----------+--------------+----------+---------+
+
+| Write         800 MBs | 0.1489 s | 5372.806 MB/s |  2.80 %  | 32.40 % |
+
+| Random Write   16 MBs | 0.0025 s | 6320.793 MB/s |   0.0 %  |   0.0 % |
+
+| Read          800 MBs | 0.0928 s | 8616.790 MB/s |  11.7 %  |  11.7 % |
+
+| Random Read    16 MBs | 0.0021 s | 7454.676 MB/s |   0.0 %  |   0.0 % |
+
+`----------------------------------------------------------------------&#39;
+
+Tiotest latency results:
+
+,-------------------------------------------------------------------------.
+
+| Item         | Average latency | Maximum latency | % >2 sec | % >10 sec |
+
++--------------+-----------------+-----------------+----------+-----------+
+
+| Write        |        0.003 ms |        0.048 ms |  0.00000 |   0.00000 |
+
+| Random Write |        0.002 ms |        0.011 ms |  0.00000 |   0.00000 |
+
+| Read         |        0.002 ms |        0.025 ms |  0.00000 |   0.00000 |
+
+| Random Read  |        0.002 ms |        0.023 ms |  0.00000 |   0.00000 |
+
+|--------------+-----------------+-----------------+----------+-----------|
+
+| Total        |        0.002 ms |        0.048 ms |  0.00000 |   0.00000 |
+
+`--------------+-----------------+-----------------+----------+-----------&#39

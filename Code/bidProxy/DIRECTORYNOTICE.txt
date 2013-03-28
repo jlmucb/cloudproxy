@@ -1,0 +1,14 @@
+Unless expressly set forth in individual files in this directory,
+use, duplication and disclosure of files in this directory and 
+derived works thereof are subject to and licensed under the Apache 
+License dated January, 2004, (the "License").  This License is 
+contained in the top level directory originally provided with 
+the CloudProxy Project.  Your right to use or distribute these
+files, or derived works thereof, is subject to your being bound by 
+those terms and your use indicates consent to those terms.
+
+If you distribute these files (or portions derived therefrom), you must 
+include License in or with the file and, in the event you do not include
+the entire License in the file, the file must contain a reference 
+to the location of the License.
+

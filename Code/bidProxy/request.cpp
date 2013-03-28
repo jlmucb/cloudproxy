@@ -64,28 +64,22 @@ const char*   szRequest1b=  "</Request>\n";
 const char*   szRequest2a= "<Action>";
 const char*   szRequest2b= "</Action>\n";
 
-const char*   szRequest3a= "    <SubjectName>";
-const char*   szRequest3b=  "</SubjectName>\n";
+const char*   szRequest3a= "    <AuctionID>";
+const char*   szRequest3b=  "</AuctionID>\n";
 
-const char*   szRequest4a= "<CredentialType>";
-const char*   szRequest4b= "</CredentialType>\n";
+const char*   szRequest4a= "<UserName>";
+const char*   szRequest4b= "</UserName>\n";
 
-const char*   szRequest5a= "    <IdentityCertificate>";
-const char*   szRequest5b=  "</IdentityCertificate>\n";
+const char*   szRequest5a= "    <Bid>";
+const char*   szRequest5b=  "</Bid>\n";
 
-const char*   szRequest6= "    <EvidenceCollection count='0'/>\n";
-const char*   szRequest6a= "    <EvidenceCollection count='%d'>\n";
-const char*   szRequest6b= "    </EvidenceCollection>\n";
-
-const char*   szRequest7a= "<PublicKey>";
-const char*   szRequest7b= "</PublicKey>\n";
+const char*   szRequest6a= "<SubmiterCert>\n";
+const char*   szRequest6b= "</SubmitterCert>\n";
 
 
 const char*   szResponse1= "<Response>\n";
 const char*   szResponse2= "<ErrorCode>";
-const char*   szResponse3= "</ErrorCode>\n  <CredentialType>";
-const char*   szResponse4= "</CredentialType>\n <Credential>\n";
-const char*   szResponse5= "</Credential>\n </Response>\n";
+const char*   szResponse3= "</ErrorCode>\n</Response>\n";
 
 
 // ------------------------------------------------------------------------
@@ -95,47 +89,51 @@ const char*   szResponse5= "</Credential>\n </Response>\n";
 Request::Request()
 {
     m_iRequestType= 0;
-    m_szSubjectName= NULL;
     m_szAction= NULL;
-    m_szCredentialType= NULL;
-    m_szEvidence= NULL;
-    // m_poAG= NULL;
+    m_szAuctionID= NULL;
+    m_szUserName= NULL;
+    m_szBid= NULL;
+    m_szBidderCert= NULL;
 }
 
 
 Request::~Request()
 {
-    if(m_szCredentialType!=NULL) {
-        free(m_szCredentialType);
-        m_szCredentialType= NULL;
-    }
-    if(m_szEvidence!=NULL) {
-        free(m_szEvidence);
-        m_szEvidence= NULL;
-    }
     if(m_szAction!=NULL) {
         free(m_szAction);
         m_szAction= NULL;
     }
-    if(m_szSubjectName!=NULL) {
-        free(m_szSubjectName);
-        m_szSubjectName= NULL;
+    if(m_szAuctionID!=NULL) {
+        free(m_szAuctionID);
+        m_szAuctionID= NULL;
     }
-    // m_poAG= NULL;
+    if(m_szUserName!=NULL) {
+        free(m_szUserName);
+        m_szUserName= NULL;
+    }
+    if(m_szBid!=NULL) {
+        free(m_szBid);
+        m_szBid= NULL;
+    }
+    if(m_szBidderCert!=NULL) {
+        free(m_szBidderCert);
+        m_szBidderCert= NULL;
+    }
 }
 
 
 bool  Request::getDatafromDoc(const char* szRequest)
 {
-    TiXmlDocument   doc;
-    TiXmlElement*   pRootElement;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlDocument       doc;
+    TiXmlElement*       pRootElement;
+    TiXmlNode*          pNode;
+    TiXmlNode*          pNode1;
 
-    const char*           szAction= NULL;
-    const char*           szCredentialType= NULL;
-    const char*           szSubjectName= NULL;
-    const char*           szEvidence= NULL;
+    const char*         szAction= NULL;
+    const char*         szAuctionID= NULL;
+    const char*         szUserName= NULL;
+    const char*         szBidderCert= NULL;
+    const char*         szBid= NULL;
 
     if(szRequest==NULL)
         return false;
@@ -160,45 +158,54 @@ bool  Request::getDatafromDoc(const char* szRequest)
                     szAction= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"PublicKey")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"BidderCert")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    m_szPublicKey= canonicalize(pNode1);
+                    m_szBidderCert= canonicalize(pNode1);
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialType")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"AuctionID")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szCredentialType= pNode1->Value();
+                    szAuctionID= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"SubjectName")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"UserName")==0) {
+                pNode1= pNode->FirstChild();
+                if(pNode1!=NULL) {
+                    szAuctionID= pNode1->Value();
+                }
+            }
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"Bid")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
                     szSubjectName= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
-                szEvidence= canonicalize(pNode);
-            }
         }
         pNode= pNode->NextSibling();
     }
 
-    if(szAction==NULL || szCredentialType==NULL)
+    const char*         szAuctionID= NULL;
+    const char*         szUserName= NULL;
+    const char*         szBidderCert= NULL;
+    const char*         szBid= NULL;
+    if(szAction==NULL || szAuctionID==NULL || szBid==NULL || szBidderCert==NULL)
         return false;
 
     if(szAction!=NULL)
         m_szAction= strdup(szAction);
-    if(szCredentialType!=NULL)
-        m_szCredentialType= strdup(szCredentialType);
-    if(szSubjectName!=NULL)
-        m_szSubjectName= strdup(szSubjectName);
-    if(szEvidence!=NULL)
-        m_szEvidence= strdup(szEvidence);
+    if(szAuctionID!=NULL)
+        m_szAuctionID= strdup(szAuctionID);
+    if(szUserName!=NULL)
+        m_szUserName= strdup(szUserName);
+    if(szBidderCert!=NULL)
+        m_szBidderCert= strdup(szBidderCert);
+    if(szBid!=NULL)
+        m_szBid= strdup(szBid);
 
-    if(strcmp(m_szAction, "GetToken")==0)
-        m_iRequestType= GETTOKEN;
+    if(strcmp(m_szAction, "SubmitBid")==0)
+        m_iRequestType= SUBMITBID;
     else
         m_iRequestType= 0;
 
@@ -214,28 +221,28 @@ bool  Request::getDatafromDoc(const char* szRequest)
 void Request::printMe()
 {
     fprintf(g_logFile, "\n\tRequest type: %d\n", m_iRequestType);
-    if(m_szCredentialType==NULL)
-        fprintf(g_logFile, "\tm_szCredentialType is NULL\n");
+    if(m_szauctionID==NULL)
+        fprintf(g_logFile, "\tm_szAuctionID is NULL\n");
     else
-        fprintf(g_logFile, "\tm_szCredentialType: %s \n", m_szCredentialType);
-    if(m_szSubjectName==NULL)
-        fprintf(g_logFile, "\tm_szSubjectName is NULL\n");
+        fprintf(g_logFile, "\tm_szAuctionID: %s \n", m_szAuctionID);
+    if(m_szUserName==NULL)
+        fprintf(g_logFile, "\tm_szUserName is NULL\n");
     else
-        fprintf(g_logFile, "\tm_szSubjectName: %s \n", m_szSubjectName);
-    if(m_szEvidence==NULL)
-        fprintf(g_logFile, "\tm_szEvidence is NULL\n");
+        fprintf(g_logFile, "\tm_szUserName: %s \n", m_szUserName);
+    if(m_szBid==NULL)
+        fprintf(g_logFile, "\tm_szBid is NULL\n");
     else
-        fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    if(m_szPublicKey==NULL)
-        fprintf(g_logFile, "\tm_szPublicKey is NULL\n");
+        fprintf(g_logFile, "\tm_szBid: %s \n", m_szBid);
+    if(m_szBidderCert==NULL)
+        fprintf(g_logFile, "\tm_szBidderCert is NULL\n");
     else
-        fprintf(g_logFile, "\tm_szPublicKey: %s \n", m_szPublicKey);
+        fprintf(g_logFile, "\tm_szBidderCert: %s \n", m_szBidderCert);
 }
 #endif
 
 
-bool  Request::validateCredentialRequest(sessionKeys& oKeys, char* szCredType,
-                            char* szSubject, char* szEvidence)
+bool  Request::validateBid(sessionKeys& oKeys, const char* szAuctionID,
+                           const char* szBid, const char* szBidderCert)
 {
     // Access allowed?
     return true;
@@ -248,30 +255,15 @@ bool  Request::validateCredentialRequest(sessionKeys& oKeys, char* szCredType,
 Response::Response()
 {
     m_iRequestType= 0;
-    m_szAction= NULL;
     m_szErrorCode= NULL;
-    m_szCredentialType= NULL;
-    m_szEvidence= NULL;
 }
 
 
 Response::~Response()
 {
-    if(m_szAction!=NULL) {
-        free(m_szAction);
-        m_szAction= NULL;
-    }
     if(m_szErrorCode!=NULL) {
         free(m_szErrorCode);
         m_szErrorCode= NULL;
-    }
-    if(m_szEvidence!=NULL) {
-        free(m_szEvidence);
-        m_szEvidence= NULL;
-    }
-    if(m_szCredentialType!=NULL) {
-        free(m_szCredentialType);
-        m_szCredentialType= NULL;
     }
 }
 
@@ -280,26 +272,10 @@ Response::~Response()
 void Response::printMe()
 {
     fprintf(g_logFile, "\tRequestType: %d\n", m_iRequestType);
-    if(m_szAction==NULL)
-        fprintf(g_logFile, "\tm_szAction is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szAction: %s \n", m_szAction);
-    if(m_szCredentialType==NULL)
-        fprintf(g_logFile, "\tm_szCredentialType is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szCredentialType: %s \n", m_szCredentialType);
     if(m_szErrorCode==NULL)
         fprintf(g_logFile, "\tm_szErrorCode is NULL\n");
     else
         fprintf(g_logFile, "\tm_szErrorCode: %s \n", m_szErrorCode);
-    if(m_szEvidence==NULL)
-        fprintf(g_logFile, "\tm_szEvidence is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    if(m_szToken==NULL)
-        fprintf(g_logFile, "\tm_szToken is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szToken: %s \n", m_szToken);
 }
 #endif
 
@@ -328,20 +304,10 @@ bool  Response::getDatafromDoc(char* szResponse)
     pNode= pRootElement->FirstChild();
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"CredentialType")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL)
-                    m_szCredentialType= strdup(pNode1->Value());
-            }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ErrorCode")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"Credential")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL)
-                    m_szToken= canonicalize(pNode1);
             }
 	}
         pNode= pNode->NextSibling();
@@ -392,9 +358,8 @@ bool emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
 
 
 
-bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char* szSubjectName,
-                       const char* szCredentialType, const char* szIdentityCert, const char* szEvidence,
-                       const char* szKeyinfo)
+bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char* szAuctionID,
+                       const char* szUserName, const char* szBid, const char* szBidderCert)
 
 {
 #ifdef  TEST
@@ -410,39 +375,34 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char*
     if(!safeTransfer(pp, piLeft, szRequest2b))
         return false;
 
-    if(!safeTransfer(pp, piLeft, szRequest4a))
+    if(!safeTransfer(pp, piLeft, szRequest3a))
         return false;
-    if(!safeTransfer(pp, piLeft, szCredentialType))
+    if(!safeTransfer(pp, piLeft, szAuctionID))
         return false;
-    if(!safeTransfer(pp, piLeft, szRequest4b))
+    if(!safeTransfer(pp, piLeft, szRequest3b))
         return false;
 
-    if(szSubjectName!=NULL) {
-        if(!safeTransfer(pp, piLeft, szRequest3a))
+    if(szUserName!=NULL) {
+        if(!safeTransfer(pp, piLeft, szRequest4a))
             return false;
-        if(!safeTransfer(pp, piLeft, szSubjectName))
+        if(!safeTransfer(pp, piLeft, szUserName))
             return false;
-        if(!safeTransfer(pp, piLeft, szRequest3b))
+        if(!safeTransfer(pp, piLeft, szRequest4b))
             return false;
     }
 
     if(!safeTransfer(pp, piLeft, szRequest5a))
         return false;
-    if(!safeTransfer(pp, piLeft, szIdentityCert))
+    if(!safeTransfer(pp, piLeft, szBid))
         return false;
     if(!safeTransfer(pp, piLeft, szRequest5b))
         return false;
 
-    if(szEvidence!=NULL) {
-        if(!safeTransfer(pp, piLeft, szEvidence))
-            return false;
-    }
-
-    if(!safeTransfer(pp, piLeft, szRequest7a))
+    if(!safeTransfer(pp, piLeft, szRequest6a))
         return false;
-    if(!safeTransfer(pp, piLeft, szKeyinfo))
+    if(!safeTransfer(pp, piLeft, szBidderCert))
         return false;
-    if(!safeTransfer(pp, piLeft, szRequest7b))
+    if(!safeTransfer(pp, piLeft, szRequest6b))
         return false;
 
     if(!safeTransfer(pp, piLeft, szRequest1b))
@@ -455,8 +415,7 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char*
 }
 
 
-bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCredentialType, 
-                        const char* szCredential, const char* szChannelError)
+bool  constructResponse(bool fError, char** pp, int* piLeft)
 {
     bool    fRet= true;
     // int     n= 0;
@@ -481,21 +440,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
                 throw "constructResponse: Can't construct response\n";
         }
 
-        if(szChannelError!=NULL) {
-            if(!safeTransfer(pp, piLeft, szChannelError))
-                throw "constructResponse: Can't construct response\n";
-        }
         if(!safeTransfer(pp, piLeft, szResponse3))
-            throw "constructResponse: Can't construct response\n";
-        if(szCredentialType!=NULL) {
-            if(!safeTransfer(pp, piLeft, szCredentialType))
-                throw "Can't construct response\n";
-        }
-        if(!safeTransfer(pp, piLeft, szResponse4))
-            throw "constructResponse: Can't construct response\n";
-        if(!safeTransfer(pp, piLeft, szCredential))
-            throw "constructResponse: Can't construct response\n";
-        if(!safeTransfer(pp, piLeft, szResponse5))
             throw "constructResponse: Can't construct response\n";
     }
     catch(const char* szConstructError) {
@@ -517,11 +462,17 @@ bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szCrede
 //      Applicatiion logic
 //
 
-bool clientgetCredentialfromserver(safeChannel& fc, 
-                const char* szSubjectName, const char* szCredentialType, 
-                const char* szIdentityCert, const char* szEvidence, 
-                const char* szKeyinfo, const char* szOutFile, int encType, byte* key, 
-                timer& encTimer)
+
+bool SignandSaveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
+{
+    return true;
+}
+
+
+bool clientsendbidtoserver(safeChannel& fc, 
+                    const char* szAuctionID,  char* szUserName,
+                    const char* szBid, const char* szBidderCert,
+                    int encType, byte* key, timer& encTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -531,18 +482,18 @@ bool clientgetCredentialfromserver(safeChannel& fc,
     int         type= CHANNEL_REQUEST;
     byte        multi=0;
     byte        final= 0;
-    const char* szAction= "GetToken";
+    const char* szAction= "SubmitBid";
 
 #ifdef  TEST
-    fprintf(g_logFile, "clientgetCredentialfromserver(%s, %s)\n", szCredentialType, szOutFile);
+    fprintf(g_logFile, "clientsendbidtoserver(%s, %s)\n", szAuctionID, szUserName);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, szAction, szSubjectName, szCredentialType, 
-                         szIdentityCert, szEvidence, szKeyinfo)) {
+    if(!constructRequest(&p, &iLeft, szAction, szAuctionID, szUserName, 
+                         szBid, szBidderCert)) {
         return false;
     }
 #ifdef  TEST
-    fprintf(g_logFile, "clientgetCredentialfromserver request\n%s\n", szBuf);
+    fprintf(g_logFile, "clientsendbidtoserver request\n%s\n", szBuf);
 #endif
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
@@ -551,8 +502,8 @@ bool clientgetCredentialfromserver(safeChannel& fc,
     // should be a CHANNEL_RESPONSE, not multipart
     n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
-        fprintf(g_logFile, "clientgetCredentialfromserver: getCredential error %d\n", n);
-        fprintf(g_logFile, "clientgetCredentialfromserver: server response %s\n", szBuf);
+        fprintf(g_logFile, "clientsendbidtoserver: getCredential error %d\n", n);
+        fprintf(g_logFile, "clientsendbidtoserver: server response %s\n", szBuf);
         return false;
     }
     szBuf[n]= 0;
@@ -575,7 +526,8 @@ bool clientgetCredentialfromserver(safeChannel& fc,
     fflush(g_logFile);
 #endif
 
-    // save credential
+    // save bid
+#if 0
     int     iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if(iWrite<0) {
         // emptyChannel(fc, oResponse.m_iCredentialLength, 0, NULL, 0, NULL);
@@ -587,15 +539,17 @@ bool clientgetCredentialfromserver(safeChannel& fc,
         return false;
     }
     close(iWrite);
+#endif
 #ifdef  TEST
-    fprintf(g_logFile, "clientgetCredentialfromserver returns true\n");
+    fprintf(g_logFile, "clientsendbidtoserver returns true\n");
 #endif
     return true;
 }
 
 
-char*  constructCert(Request& oReq, RSAKey* signingKey)
+char*  constructBid(Request& oReq, RSAKey* signingKey)
 {
+#if 0
     char*   szAlg= NULL;
     char*   szNonce= NULL;
     char*   szSignedInfo= NULL;
@@ -606,18 +560,7 @@ char*  constructCert(Request& oReq, RSAKey* signingKey)
     int     base64Size= 1024;
     char    szbase64[1024];
 
-    char*   szCertid= (char*)"00002";
     int     serialNo= 0;
-    char*   szPrincipalType= (char*)"Security Principal";
-    char*   szIssuerName= (char*) "AuthProxy Issuing Service";
-    char*   szIssuerID= (char*) "AuthProxy";
-    // FIX:  these should be short term keys!
-    char*   szNotBefore= (char*)"2012-01-01Z00:00.00";
-    char*   szNotAfter= (char*)"2021-01-01Z00:00.00";
-    char*   szSubjName= oReq.m_szSubjectName;
-    char*   szSubjKeyID= oReq.m_szSubjectName;
-
-    RSAKey* signedKey= NULL;
 
     bnum    bnMsg(128);
     bnum    bnOut(128);
@@ -628,22 +571,6 @@ char*  constructCert(Request& oReq, RSAKey* signingKey)
     fprintf(g_logFile, "Signing key\n");
     signingKey->printMe();
 #endif
-    signedKey= keyfromkeyInfo((char*) oReq.m_szPublicKey);
-    if(signedKey==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant generate SignedInfo\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-    // encode signed body
-    szSignedInfo= formatSignedInfo(signedKey, szCertid, serialNo, szPrincipalType, 
-            szIssuerName, szIssuerID, szNotBefore, szNotAfter,
-            szSubjName, (char*)"", (char*)"", szSubjKeyID);
-    if(szSignedInfo==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant generate SignedInfo\n");
-        fRet= false;
-        goto cleanup;
-    }
 
 #ifdef  TEST
     fprintf(g_logFile, "hashing\n");
@@ -705,16 +632,17 @@ cleanup:
     }
     if(fRet)
         return szCert;
+#endif
     return NULL;
 }
 
 
-bool serversendCredentialtoclient(RSAKey* signingKey, safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                            int encType, byte* key, timer& accessTimer, timer& decTimer)
+bool clientsendbidtoserver(RSAKey* sealingKey, RSAKey* signingKey,
+                           safeChannel& fc, Request& oReq, 
+                           sessionKeys& oKeys, int encType, byte* key, 
+                           timer& accessTimer, timer& decTimer)
 {
     bool        fError= false;
-    //int         filesize= 0;
-    // int         datasize= 0;
     byte        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
@@ -722,7 +650,7 @@ bool serversendCredentialtoclient(RSAKey* signingKey, safeChannel& fc, Request& 
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
-    char*       szCredential= NULL;
+    char*       szBid= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendCredentialtoclient\n");
@@ -733,15 +661,16 @@ bool serversendCredentialtoclient(RSAKey* signingKey, safeChannel& fc, Request& 
     accessTimer.Stop();
 
     if(!fError) {
-        szCredential= constructCert(oReq, signingKey);
-        if(szCredential==NULL) {
+        szBid= constructBid(oReq, signingKey);
+        if(szBid==NULL) {
             fprintf(g_logFile, "serversendCredentialtoclient: can't construct proto cert\n");
             return false;
         }
+        // SignandSaveBid();
     }
 
     // construct response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szCredentialType, szCredential, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, szError)) {
         fprintf(g_logFile, "serversendCredentialtoclient: constructResponse error\n");
         return false;
     }

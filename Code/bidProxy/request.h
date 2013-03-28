@@ -38,7 +38,7 @@
 #include "policyglobals.h"
 
 
-#define GETTOKEN         1
+#define SUBMITBID        1
 
 #define ACCEPT         100
 #define REJECT         200
@@ -46,22 +46,15 @@
 
 /*
  *  <Request>
- *      <Action> 
- *          GetToken
- *      </Action>
- *      <CredentialType> </CredentialType>
- *      <EvidenceCollection count='2'>
- *          <EvidenceList count='1'>
- *          </EvidenceList>
- *      </EvidenceCollection>
- *      <PublicKey> </PublicKey>
+ *      <Action> SubmitBid </Action>
+ *      <AuctionID></AuctionID>
+ *      <UserName></UserName>
+ *      <Bid></Bid>
+ *      <SubmiterCert> </SubmiterCert>
  *  </Request>
  *
  *  <Response>
- *      <Action> accept, reject</Action>
- *      <ErrorCode> </ErrorCode>
- *      <CredentialType> </CredentialType>
- *      <Token> </Token>
+ *      <ErrorCode> accept, reject</ErrorCode>
  *  </Response>
  */
 
@@ -73,10 +66,10 @@ class Request {
 public:
     int             m_iRequestType;
     char*           m_szAction;
-    char*           m_szCredentialType;
-    char*           m_szPublicKey;
-    char*           m_szSubjectName;  //user
-    char*           m_szEvidence;
+    char*           m_szAuctionID;
+    char*           m_szUserName; 
+    char*           m_szBid;
+    char*           m_szBidderCert;
 
 
     accessGuard*    m_poAG;
@@ -84,10 +77,10 @@ public:
                     Request();
                     ~Request();
     bool            getDatafromDoc(const char* szRequest);
-    bool            validateCredentialRequest(sessionKeys& oKeys, char* szCredType,
-                            char* szSubject, char* szEvidence);
+    bool            validateBid(sessionKeys& oKeys, const char* szAuctionID,
+                                const char* szBid, const char* szBidderCert);
 #ifdef TEST
-    void        printMe();
+    void            printMe();
 #endif
 };
 
@@ -95,11 +88,7 @@ public:
 class Response {
 public:
     int             m_iRequestType;
-    char*           m_szAction;
     char*           m_szErrorCode;
-    char*           m_szCredentialType;
-    char*           m_szToken;
-    char*           m_szEvidence;
 
                     Response();
                     ~Response();
@@ -116,12 +105,14 @@ public:
 };
 
 
-bool clientgetCredentialfromserver(safeChannel& fc, const char* szSubjectName, 
-                    const char* szCredentialType, const char* szIdentityCert, const char* szEvidence, 
-                    const char* szKeyinfo, const char* szOutFile, int encType, byte* key, timer& encTimer);
+bool clientsendbidtoserver(safeChannel& fc, const char* szAuctionID,  char* szUserName,
+                    const char* szBid, const char* szBidderCert, 
+                    int encType, byte* key, timer& encTimer);
 
-bool serversendCredentialtoclient(RSAKey* signingKey, safeChannel& fc, Request& oReq, sessionKeys& oKeys, 
-                                int encType, byte* key, timer& accessTimer, timer& decTimer);
+bool serversendresponsetoclient(RSAKey* signingKey, RSAKey* signingKey, 
+                                safeChannel& fc, Request& oReq, 
+                                sessionKeys& oKeys, int encType, byte* key, 
+                                timer& accessTimer, timer& decTimer);
 
 bool initAccessGuard(sessionKeys& oKeys);
 

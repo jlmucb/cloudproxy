@@ -59,7 +59,7 @@ bidServer.exe opens a port just like fileServer.
 bidClient and bidServer negotiate a secure channel just as fileClient and fileServer except that
 the bidder cert in place of the user cert for file access.
 
-bidServer accepts a single request: submitBid from bidClient containing a auction identifier and
+bidServer accepts a single request: SubmitBid from bidClient containing a auction identifier and
 a bid.
 
 bidServer validates the activityProvider-bidder cert chain. If this chan is valid,

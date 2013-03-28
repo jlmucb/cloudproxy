@@ -6,29 +6,73 @@ Decompress and unpack the existing initramfs
     mkdir init
     cd init
     cp /boot/initramfs.img-`uname -r` initrd.gz
-    cd initramfs
-    gunzip -c -9 /boot/initrd.img-2.6.32-5-686 \
-    | cpio -i -d -H newc --no-absolute-filenames
-    find > ../initramfs.content
+    gunzip -c -9 initrd.gz | cpio -i -d -H newc --no-absolute-filenames
 
-    gzip -dc /boot/initrd.img-$(uname -r) | cpio -i
+Copy the dynamic link libraries for the executables into the filesystem
+for i in `ldd /home/jlm/jlmcrypt/fileServer.exe | cut -d' ' -f3 | sed 's/^\s*//g' | egrep -v '^\s*$'`; do
+    source=$i
+    dir=`dirname $i`
+    mkdir -p $dir
+    dest=`echo $i | sed 's?^/??g'`
+    echo "Copying $source to $dest"
+    cp $source $dest
+done
 
-Copy the executables into the initramfs
-    export DESTDIR=/tmp/init
-    source /usr/share/initramfs-tools/hook-functions
-    copy_exec ~/jlmcrypt/fileServer.exe bin
-    copy_exec ~/jlmcrypt/fileClient.exe bin
-    copy_exec ~/jlmcrypt/tcService.exe bin
-    # note that you don't need keyNegoServer normally
-    copy_exec ~/jlmcrypt/keyNegoServer.exe bin
+Copy the runtime directory into the filesystem
+    mkdir -p home/jlm/jlmcrypt
+    cp -r /home/jlm/jlmcrypt/* home/jlm/jlmcrypt/
+
+You might want to clean out some of the unnecessary files here.
 
 Change the initscript (init) to run dmcrypt and change the way the 
 system disk is mounted.
   vim init
-  # replace the final exec with
-  /bin/busybox sh
 
-  - we don't yet have instructions for this
+Here is a simple script that works:
+
+-- start simple script
+
+#!/bin/sh
+
+[ -d /dev ] || mkdir -m 0755 /dev
+[ -d /root ] || mkdir -m 0700 /root
+[ -d /sys ] || mkdir /sys
+[ -d /proc ] || mkdir /proc
+[ -d /tmp ] || mkdir /tmp
+mkdir -p /var/lock
+mount -t sysfs -o nodev,noexec,nosuid sysfs /sys
+mount -t proc -o nodev,noexec,nosuid proc /proc
+# Some things don't work properly without /etc/mtab.
+ln -sf /proc/mounts /etc/mtab
+
+grep -q '\<quiet\>' /proc/cmdline || echo "Loading, please wait..."
+
+# Note that this only becomes /dev on the real filesystem if udev's scripts
+# are used; which they will be, but it's worth pointing out
+if ! mount -t devtmpfs -o mode=0755 udev /dev; then
+	echo "W: devtmpfs not available, falling back to tmpfs for /dev"
+	mount -t tmpfs -o mode=0755 udev /dev
+	[ -e /dev/console ] || mknod -m 0600 /dev/console c 5 1
+	[ -e /dev/null ] || mknod /dev/null c 1 3
+fi
+mkdir /dev/pts
+mount -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts || true
+mount -t tmpfs -o "nosuid,size=20%,mode=0755" tmpfs /run
+mkdir /run/initramfs
+# compatibility symlink for the pre-oneiric locations
+ln -s /run/initramfs /dev/.initramfs
+
+/sbin/ifconfig lo 127.0.0.1
+# can set up other networks here as needed, e.g., on eth0
+
+# mount /boot as a place to put keys between reboots (e.g., for tcService.exe)
+mkdir /boot
+mount /dev/sda1 /boot
+
+/bin/busybox sh
+
+-- end simple script
+
   - untested:
       swapoff -a
       cryptsetup [-c aes -h sha256] -s 128 -d /dev/urandom create swap /dev/sda1
@@ -36,12 +80,8 @@ system disk is mounted.
       swapon /dev/mapper/swap
 
 Put initramfs back together
-    CORRECT:
-        find .|cpio -H newc -o|gzip -9 > ../initrd.img-new
-    INCORRECT
-        rm initrd
-        find . -print | cpio -ov > initrd
-        gzip initrd
+        find . | cpio -H newc -o|gzip -9 > ../initrd.img-new
+
 Copy it to the boot directory
   sudo cp initrd.gz /boot/initrd.img-staticLinux
 

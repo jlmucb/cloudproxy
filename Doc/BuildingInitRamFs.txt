@@ -18,9 +18,10 @@ for i in `ldd /home/jlm/jlmcrypt/fileServer.exe | cut -d' ' -f3 | sed 's/^\s*//g
     cp $source $dest
 done
 
-Copy the runtime directory into the filesystem
+Copy the runtime directory into the filesystem, and get ifconfig, too
     mkdir -p home/jlm/jlmcrypt
     cp -r /home/jlm/jlmcrypt/* home/jlm/jlmcrypt/
+    cp /sbin/ifconfig sbin/ifconfig
 
 You might want to clean out some of the unnecessary files here.
 

@@ -15,9 +15,14 @@ Copy the executables into the initramfs
     copy_exec ~/jlmcrypt/fileServer.exe bin
     copy_exec ~/jlmcrypt/fileClient.exe bin
 
-Change the initscript to run dmcrypt and change the way the system disk is 
-mounted.
+Change the initscript (init) to run dmcrypt and change the way the 
+system disk is mounted.
   - we don't yet have instructions for this
+  - untested:
+      swapoff -a
+      cryptsetup [-c aes -h sha256] -s 128 -d /dev/urandom create swap /dev/sda1
+      mkswap /dev/mapper/swap
+      swapon /dev/mapper/swap
 
 A sample init that dynamically loads the dirver (don't do this) is:
 Decompress initrd into localdirectory

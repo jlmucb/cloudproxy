@@ -22,7 +22,7 @@ Change the initscript (init) to run dmcrypt and change the way the
 system disk is mounted.
   vim init
   # replace the final exec with
-  exec /bin/sh
+  /bin/busybox sh
 
   - we don't yet have instructions for this
   - untested:

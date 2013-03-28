@@ -14,15 +14,31 @@ Copy the executables into the initramfs
     source /usr/share/initramfs-tools/hook-functions
     copy_exec ~/jlmcrypt/fileServer.exe bin
     copy_exec ~/jlmcrypt/fileClient.exe bin
+    copy_exec ~/jlmcrypt/tcService.exe bin
+    # note that you don't need keyNegoServer normally
+    copy_exec ~/jlmcrypt/keyNegoServer.exe bin
 
 Change the initscript (init) to run dmcrypt and change the way the 
 system disk is mounted.
+  vim init
+  # replace the final exec with
+  exec /bin/sh
+
   - we don't yet have instructions for this
   - untested:
       swapoff -a
       cryptsetup [-c aes -h sha256] -s 128 -d /dev/urandom create swap /dev/sda1
       mkswap /dev/mapper/swap
       swapon /dev/mapper/swap
+
+Put initramfs back together
+
+  rm initrd
+  find . -print -depth | cpio -ov > initrd
+  gzip initrd
+  sudo cp initrd.gz /boot/initrd.img-staticLinux
+
+Change /etc/grub.d to use this new initramfs
 
 A sample init that dynamically loads the dirver (don't do this) is:
 Decompress initrd into localdirectory

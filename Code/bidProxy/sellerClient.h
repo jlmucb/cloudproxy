@@ -92,6 +92,12 @@ public:
     void    printTimers(FILE* log);
     void    resetTimers();
 
+    // read the results from the directory
+    void getResults();
+
+    // return the URI of the winning client
+    string getWinner();
+
     static string  getFileContents(const string& filename);
     static void getKeyFiles(const string& directory,
                      const string& testFile,
@@ -101,9 +107,6 @@ public:
                      string& keyFile);
 };
 
-
-#define SERVICENAME             "sellerServer"
-#define SERVICE_PORT            6000
 
 
 #endif

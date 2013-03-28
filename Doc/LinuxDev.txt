@@ -13,13 +13,17 @@ tar -xjvf linux-3.5.tar.bz2
 cd linux-3.5/
 cp -vi /boot/config-`uname -r` .config
 
-make oldconfig
-make localmodconfig
+yes "" | make oldconfig
+yes "" | make localmodconfig
 make menuconfig
+
+# accept the defaults in make menuconfig (not sure if this is strictly necessary)
 
 make depend
 
+# change the number after j to be the number of concurrent threads of execution in your processor
 #make -j5
 make
 sudo make modules_install
+
 

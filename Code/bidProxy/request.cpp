@@ -40,6 +40,7 @@
 #include "claims.h"
 #include "bignum.h"
 #include "mpFunctions.h"
+#include "encapsulate.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -305,7 +306,7 @@ bool  Response::getDatafromDoc(char* szResponse)
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());
             }
-	}
+        }
         pNode= pNode->NextSibling();
     }
 
@@ -455,13 +456,69 @@ bool  constructResponse(bool fError, char** pp, int* piLeft)
 
 
 //
-//      Applicatiion logic
+//      Application logic
 //
 
 
-bool SignandSaveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
+bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
 {
-    return true;
+    encapsulatedMessage     oM;
+    Sha256                  oHash;
+    byte                    rgHash[SHA256_DIGESTSIZE_BYTES];
+    char                    szMetaName[256];
+    char                    szSealedName[256];
+    u64*                    pl1;
+    u64*                    pl2;
+
+    // hash
+    oHash.Init();
+    oHash.Update((byte*) bidBody, strlen(bidBody));
+    oHash.Final();
+    oHash.GetDigest(rgHash);
+
+    pl1= (u64*) &rgHash[0];
+    pl2= (u64*) &rgHash[16];
+
+    sprintf(szMetaName, "bidServer/bids/BidMeta%016lx%016lx", *pl1, *pl2);
+    sprintf(szSealedName, "bidServer/bids/SealedBid%016lx%016lx", *pl1, *pl2);
+
+
+    if(!oM.setplainMessage(strlen(bidBody), (byte*)bidBody)) {
+        fprintf(g_logFile, "saveBid: cant set plaintext\n");
+        return false;
+    }
+
+    // seal key
+    if(!oM.sealKey(sealingKey)) {
+        fprintf(g_logFile, "saveBid: cant seal key\n");
+        return false;
+    }
+                                      
+    if(!oM.encryptMessage()) {
+        fprintf(g_logFile, "saveBid: cant encrypt message\n");
+        return false;
+    }
+
+    // serialize metadata
+    oM.m_szXMLmetadata= oM.serializeMetaData();
+    if(oM.m_szXMLmetadata==NULL) {
+        fprintf(g_logFile, "saveBid: cant serialize metadata\n");
+        return false;
+    }
+
+    // write metadata
+    if(!saveBlobtoFile(szMetaName, (byte*)oM.m_szXMLmetadata, strlen(oM.m_szXMLmetadata)+1)) {
+        fprintf(g_logFile, "saveBid: cant write metadata %s\n", szMetaName);
+        return false;
+    }
+
+    // write encrypted data
+    if(!saveBlobtoFile(szSealedName, oM.m_rgEncrypted, oM.m_sizeEncrypted)) {
+        fprintf(g_logFile, "saveBid: cant write encrypted data to %s\n", szSealedName);
+        return false;
+    }
+
+  return true;
 }
 
 
@@ -521,121 +578,60 @@ bool clientsendbidtoserver(safeChannel& fc,
     fflush(g_logFile);
 #endif
 
-    // save bid
-#if 0
-    int     iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    if(iWrite<0) {
-        // emptyChannel(fc, oResponse.m_iCredentialLength, 0, NULL, 0, NULL);
-        fprintf(g_logFile, "clientgetCredentialfromserver: Cant open out file\n");
-        return false;
-    }
-    if(write(iWrite, oResponse.m_szToken, strlen(oResponse.m_szToken))<0) {
-        fprintf(g_logFile, "clientgetCredentialfromserver: Cant write token\n");
-        return false;
-    }
-    close(iWrite);
-#endif
-#ifdef  TEST
-    fprintf(g_logFile, "clientsendbidtoserver returns true\n");
-#endif
     return true;
 }
 
 
-char*  constructBid(Request& oReq, RSAKey* signingKey)
+/*
+ *  <Bid>
+ *      <AuctionID> </AuctionID>
+ *      <BidAmount> </BidAmount>
+ *      <SubjectName> </SubjectName>
+ *      <DateTime> </DateTime>
+ *      <BidderCert> </BidderCert>
+ *  <Bid>
+ */
+
+static char* s_szBidTemplate= (char*)
+"<Bid>\n  AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>"\
+"<SubjectName> %s </SubjectName>\n  <DateTime> %s </DateTime>\n"\
+"  <BidderCert>\n %s\n  </BidderCert>\n <Bid>\n";
+
+
+char*  constructBid(Request& oReq)
 {
-#if 0
-    char*   szAlg= NULL;
-    char*   szNonce= NULL;
-    char*   szSignedInfo= NULL;
-    char*   szCert= NULL;
-    Sha256  oHash;
-    byte    rgHash[SHA256_DIGESTSIZE_BYTES];
-    byte    rgPadded[1024];
-    int     base64Size= 1024;
-    char    szbase64[1024];
+    char            rgbid[2048];
 
-    int     serialNo= 0;
+    char*           szBidderCert= NULL;
+    char*           szAuctionID= NULL;
+    char*           szBidAmount= NULL;
+    char*           szUserName= NULL;
+    char            szTimeNow[256];
+    time_t          now;
+    struct tm *     timeinfo;
 
-    bnum    bnMsg(128);
-    bnum    bnOut(128);
+    time(&now);
+    timeinfo= gmtime(&now);
+    // 2011-01-01Z00:00.00
+    sprintf(szTimeNow,"%04d-%02d-%02dZ%02d:%02d.%02d", timeinfo->tm_year, timeinfo->tm_mon,
+            timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 
-    bool    fRet= true;
+    szAuctionID= oReq.m_szAuctionID;
+    szBidAmount= oReq.m_szBid;
+    szBidderCert= oReq.m_szBidderCert;
+    szUserName= oReq.m_szUserName;
 
-#ifdef  TEST
-    fprintf(g_logFile, "Signing key\n");
-    signingKey->printMe();
-#endif
+    sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount, 
+                   szUserName, szTimeNow, szBidderCert);
 
-#ifdef  TEST
-    fprintf(g_logFile, "hashing\n");
-#endif
-    // hash, pad, sign
-    oHash.Init();
-    oHash.Update((byte*) szSignedInfo, strlen(szSignedInfo));
-    oHash.Final();
-    oHash.GetDigest(rgHash);
-
-#ifdef  TEST
-    fprintf(g_logFile, "padding\n");
-#endif
-    if(!emsapkcspad(SHA256HASH, rgHash, signingKey->m_iByteSizeM, rgPadded)) {
-        fprintf(g_logFile, "constructCert: bad pad\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "signing\n");
-#endif
-    memset(bnMsg.m_pValue, 0, signingKey->m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, signingKey->m_iByteSizeM);
-    revmemcpy((byte*)bnMsg.m_pValue, rgPadded, signingKey->m_iByteSizeM);
-
-    if(!mpRSAENC(bnMsg, *(signingKey->m_pbnD), *(signingKey->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "constructCert: decrypt failed\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "base64 encode\n");
-#endif
-    if(!toBase64(signingKey->m_iByteSizeM, (byte*)bnOut.m_pValue, &base64Size, szbase64)) {
-        fprintf(g_logFile, "constructCert: cant transform sigto base64\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "encode signature\n");
-#endif
-    // encode Signature
-    szCert= formatCert(szSignedInfo, szbase64);
-    if(szCert==NULL) {
-        fprintf(g_logFile, "constructCert: cant format Cert\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-cleanup:
-    if(szAlg!=NULL) {
-        szAlg= NULL;
-    }
-    if(szNonce!=NULL) {
-        szNonce= NULL;
-    }
-    if(fRet)
-        return szCert;
-#endif
-    return NULL;
+    return strdup(rgbid);
 }
 
 
-bool clientsendbidtoserver(RSAKey* sealingKey, RSAKey* signingKey,
-                           safeChannel& fc, Request& oReq, 
-                           sessionKeys& oKeys, int encType, byte* key, 
-                           timer& accessTimer, timer& decTimer)
+bool serversendresponsetoclient(RSAKey* sealingKey, RSAKey* signingKey,
+                                safeChannel& fc, Request& oReq,
+                                sessionKeys& oKeys, int encType, byte* key,
+                                timer& accessTimer, timer& decTimer)
 {
     bool        fError= false;
     byte        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -647,7 +643,7 @@ bool clientsendbidtoserver(RSAKey* sealingKey, RSAKey* signingKey,
     char*       szBid= NULL;
 
 #ifdef  TEST
-    fprintf(g_logFile, "serversendCredentialtoclient\n");
+    fprintf(g_logFile, "serversendresponsetoclient\n");
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
@@ -655,29 +651,31 @@ bool clientsendbidtoserver(RSAKey* sealingKey, RSAKey* signingKey,
     accessTimer.Stop();
 
     if(!fError) {
-        szBid= constructBid(oReq, signingKey);
+        szBid= constructBid(oReq);
         if(szBid==NULL) {
-            fprintf(g_logFile, "serversendCredentialtoclient: can't construct proto cert\n");
+            fprintf(g_logFile, "serversendresponsetoclient: can't construct proto cert\n");
             return false;
         }
-        // SignandSaveBid();
+        // save bid
+        if(!saveBid(sealingKey, signingKey, szBid)) {
+            fprintf(g_logFile, "serversendresponsetoclient: can't save bid\n");
+            return false;
+        }
     }
 
     // construct response
     if(!constructResponse(fError, &p, &iLeft)) {
-        fprintf(g_logFile, "serversendCredentialtoclient: constructResponse error\n");
+        fprintf(g_logFile, "serversendresponsetoclient: constructResponse error\n");
         return false;
     }
 
     // send response
     fc.safesendPacket(szBuf, (int)strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
 
-    // if we sent an error to the client, then return false
     if (fError) 
         return false;
-
 #ifdef  TEST
-    fprintf(g_logFile, "serversendCredentialtoclient returns true\n");
+    fprintf(g_logFile, "serversendresponsetoclientreturns true\n");
 #endif
     return true;
 }

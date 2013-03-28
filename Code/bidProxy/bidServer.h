@@ -66,11 +66,12 @@ public:
     int                 m_sizeKey;
     byte                m_bidKeys[SMALLKEYSIZE];
 
-    char*               m_szSigningKeyFile;
-    char*               m_szSigningKeyMetaDataFile;
-    char*               m_szSigningKeyCert;
+    char*               m_szSigningCertFile;
+    char*               m_szSealingCertFile;
     RSAKey*             m_signingKey;
-    char*               m_signingCert;
+    char*               m_szsigningCert;
+    RSAKey*             m_sealingKey;
+    char*               m_szsealingCert;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;
@@ -88,7 +89,7 @@ public:
     bool    closeServer();
     bool    initPolicy();
     bool    initFileKeys();
-    bool    initSigningKeys();
+    bool    initSigningandSealingKeys();
 
     bool    server();
 
@@ -111,6 +112,7 @@ public:
     sessionKeys         m_oKeys;
     safeChannel         m_osafeChannel;
     RSAKey*             m_signingKey;
+    RSAKey*             m_sealingKey;
     int                 m_myPositionInParent;
 
     theServiceChannel();

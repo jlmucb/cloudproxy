@@ -179,17 +179,13 @@ bool  Request::getDatafromDoc(const char* szRequest)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"Bid")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szSubjectName= pNode1->Value();
+                    szBid= pNode1->Value();
                 }
             }
         }
         pNode= pNode->NextSibling();
     }
 
-    const char*         szAuctionID= NULL;
-    const char*         szUserName= NULL;
-    const char*         szBidderCert= NULL;
-    const char*         szBid= NULL;
     if(szAction==NULL || szAuctionID==NULL || szBid==NULL || szBidderCert==NULL)
         return false;
 
@@ -221,7 +217,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
 void Request::printMe()
 {
     fprintf(g_logFile, "\n\tRequest type: %d\n", m_iRequestType);
-    if(m_szauctionID==NULL)
+    if(m_szAuctionID==NULL)
         fprintf(g_logFile, "\tm_szAuctionID is NULL\n");
     else
         fprintf(g_logFile, "\tm_szAuctionID: %s \n", m_szAuctionID);
@@ -507,7 +503,6 @@ bool clientsendbidtoserver(safeChannel& fc,
         return false;
     }
     szBuf[n]= 0;
-    oResponse.m_szToken = NULL;
     oResponse.getDatafromDoc(szBuf);
 
 #ifdef TEST
@@ -646,7 +641,6 @@ bool clientsendbidtoserver(RSAKey* sealingKey, RSAKey* signingKey,
     byte        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
-    const char* szError= NULL;
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
@@ -670,7 +664,7 @@ bool clientsendbidtoserver(RSAKey* sealingKey, RSAKey* signingKey,
     }
 
     // construct response
-    if(!constructResponse(fError, &p, &iLeft, szError)) {
+    if(!constructResponse(fError, &p, &iLeft)) {
         fprintf(g_logFile, "serversendCredentialtoclient: constructResponse error\n");
         return false;
     }

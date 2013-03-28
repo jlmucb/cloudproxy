@@ -1,7 +1,6 @@
 E=          ~/jlmcrypt
 B=          ~/jlmcrypt/bidClientobjects
 S=          ../bidProxy
-T=	    ../bidProxyTester
 SC=         ../commonCode
 SCC=        ../jlmcrypto
 BSC=        ../oldjlmbignum
@@ -20,7 +19,7 @@ O1CFLAGS=    -D LINUX -D AUTHCLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1
 CC=         g++
 LINK=       g++
 
-dobjs=      $(B)/bidClient.o $(B)/logging.o $(B)/jlmcrypto.o \
+dobjs=      $(B)/sellerClient.o $(B)/logging.o $(B)/jlmcrypto.o \
             $(B)/jlmUtility.o $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/rsaHelper.o \
             $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
             $(B)/hmacsha256.o $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
@@ -32,14 +31,14 @@ dobjs=      $(B)/bidClient.o $(B)/logging.o $(B)/jlmcrypto.o \
 	    $(B)/trustedKeyNego.o $(B)/sha1.o \
 	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o
 
-all: $(E)/bidClient.exe
+all: $(E)/sellerClient.exe
 
-$(E)/bidClient.exe: $(dobjs)
-	@echo "bidClient"
-	$(LINK) -o $(E)/bidClient.exe $(dobjs) $(LDFLAGS) -lpthread
+$(E)/sellerClient.exe: $(dobjs)
+	@echo "sellerClient"
+	$(LINK) -o $(E)/sellerClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
-$(B)/bidClient.o: $(S)/bidClient.cpp $(S)/bidClient.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(T) -I$(TS) -I$(CH) -I$(TH) -I$(TRS) -c -o $(B)/bidClient.o $(S)/bidClient.cpp
+$(B)/sellerClient.o: $(S)/sellerClient.cpp $(S)/sellerClient.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(CH) -I$(TH) -I$(TRS) -c -o $(B)/sellerClient.o $(S)/sellerClient.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
@@ -65,8 +64,8 @@ $(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
 $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
-$(B)/bidChannel.o: $(S)/bidChannel.cpp $(S)/bidChannel.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -c -o $(B)/bidChannel.o $(S)/bidChannel.cpp
+$(B)/sellerChannel.o: $(S)/sellerChannel.cpp $(S)/sellerChannel.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -c -o $(B)/sellerChannel.o $(S)/sellerChannel.cpp
 
 $(B)/taoInit.o: $(TH)/taoInit.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TH) -I$(TRS) -c -o $(B)/taoInit.o $(TH)/taoInit.cpp

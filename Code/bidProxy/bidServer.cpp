@@ -699,15 +699,11 @@ int theServiceChannel::processRequests()
 
 
         iRequestType= oReq.m_iRequestType;
-        if(oReq.m_szCredentialType==NULL) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: Empty credential type\n");
-            return -1;
-        }
-
         switch(iRequestType) {
-          case GETTOKEN:
-            if(!serversendCredentialtoclient(m_signingKey, m_osafeChannel, oReq,  m_oKeys, encType, key, 
-                                        m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
+          case SUBMITBID:
+            if(!serversendresponsetoclient(m_sealingKey, m_signingKey,
+                                    m_osafeChannel, oReq,  m_oKeys, encType, key, 
+                                    m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
                 return -1;
             }
@@ -847,9 +843,12 @@ bidServer::bidServer()
     m_uPad= 0;
     m_uHmac= 0;
     m_sizeKey= SMALLKEYSIZE;
-    m_szSigningKeyFile= NULL;
-    m_szSigningKeyCert= NULL;
-    m_szSigningKeyMetaDataFile= NULL;
+    m_szSigningCertFile= NULL;
+    m_szSealingCertFile= NULL;
+    m_szsigningCert= NULL;
+    m_szsealingCert= NULL;
+    m_signingKey= NULL;
+    m_sealingKey= NULL;
 }
 
 
@@ -869,6 +868,19 @@ bidServer::~bidServer()
     if(m_szSealedKeyFile!=NULL)
         free(m_szSealedKeyFile);
     m_szSealedKeyFile= NULL;
+
+    if(m_szsigningCert!=NULL) {
+        free(m_szsigningCert);
+        m_szsigningCert= NULL;
+    }
+    if(m_sealingKey!=NULL) {
+        delete m_sealingKey;
+        m_sealingKey= NULL;
+    }
+    if(m_szsealingCert!=NULL) {
+        free(m_szsealingCert);
+        m_szsealingCert= NULL;
+    }
 }
 
 
@@ -936,94 +948,58 @@ bool bidServer::initPolicy()
 }
 
 
-bool bidServer::initSigningKeys()
+bool bidServer::initSigningandSealingKeys()
 {
     int     size= 4096;
     byte    buf[4096];
-    encapsulatedMessage     oM;
-    char*   szMetaData= NULL;
-    RSAKey* sealingKey= NULL;
 
     if(!m_tcHome.m_privateKeyValid) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: private key not valid\n");
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key not valid\n");
         return false;
     }
-    sealingKey= (RSAKey*)m_tcHome.m_privateKey;
-    if(sealingKey==NULL) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: private key empty\n");
+    m_signingKey= (RSAKey*)m_tcHome.m_privateKey;
+    if(m_signingKey==NULL) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key empty\n");
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "bidServer::initSigningKeys: sealingKey\n");
-    sealingKey->printMe();
+    fprintf(g_logFile, "bidServer::initSigningandSealingKeys: sealingKey\n");
+    m_signingKey->printMe();
 #endif
 
-    m_szSigningKeyCert= strdup("./bidServer/signingCert");
-    if(!getBlobfromFile(m_szSigningKeyCert, buf, &size)) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: Can't read signing cert, %s\n", m_szSigningKeyCert);
+    m_szsigningCert= strdup("./bidServer/signingCert");
+    if(!getBlobfromFile(m_szsigningCert, buf, &size)) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read signing cert, %s\n", m_szsigningCert);
         return false;
     }
-    m_signingCert= strdup((char *)buf);
+    m_szsigningCert= strdup((char *)buf);
 
-    size= 4096;
-    memset(buf,0,size);
-    m_szSigningKeyMetaDataFile= strdup("./bidServer/signingKeyMetaData");
-    if(!getBlobfromFile(m_szSigningKeyMetaDataFile, buf, &size)) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: Can't read sealed signing key\n");
+    m_szsealingCert= strdup("./bidServer/sealingCert");
+    if(!getBlobfromFile(m_szsealingCert, buf, &size)) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read sealing cert, %s\n", m_szsealingCert);
         return false;
     }
-    szMetaData= strdup((char*)buf);
-#ifdef TEST
-    fprintf(g_logFile, "bidServer::initSigningKeys: encapsulated meta\n%s\n",
-            szMetaData);
-#endif
+    m_szsealingCert= strdup((char *)buf);
 
-    size= 4096;
-    memset(buf,0,size);
-    m_szSigningKeyFile= strdup("./bidServer/signingKey");
-    if(!getBlobfromFile(m_szSigningKeyFile, buf, &size)) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: Can't read sealed signing key\n");
+    // get keyinfo from sealing Cert and initialize key
+    PrincipalCert  seal;
+
+    if(!seal.init(m_szsealingCert)) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't init seal Cert\n");
         return false;
     }
 
-    if(!oM.setencryptedMessage(size, buf)) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: cant set ciphertext\n");
+    if(!seal.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't parse seal Cert\n");
         return false;
     }
 
-    oM.m_szXMLmetadata= strdup(szMetaData);
-
-    // parse metadata
-    if(!oM.parseMetaData()) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: cant parse metadata\n");
+    m_sealingKey= (RSAKey*)seal.getSubjectKeyInfo();
+    if(m_sealingKey==NULL) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't get keyinfo from seal Cert\n");
         return false;
     }
 
-    // unseal key
-    if(!oM.unSealKey(sealingKey)) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: cant unseal key\n");
-        return false;
-    }
-
-    if(!oM.decryptMessage()) {
-        fprintf(g_logFile, "bidServer::initSigningKeys: cant decrypt message\n");
-        return false;
-    }
-
-#ifdef TEST
-    PrintBytes("bidServer::initSigningKeys: encrypted private key\n", 
-               oM.m_rgEncrypted, oM.m_sizeEncrypted);
-    fflush(g_logFile);
-    PrintBytes("bidServer::initSigningKeys: dencrypted private key\n", 
-               oM.m_rgPlain, oM.m_sizePlain);
-    fprintf(g_logFile, "%s\n", oM.m_rgPlain);
-    fflush(g_logFile);
-#endif
-
-    string keyInfoStr = string((const char*)oM.m_rgPlain) + string("\n");	
-    m_signingKey= (RSAKey*)keyfromkeyInfo(keyInfoStr.c_str());
-    if(m_signingKey==NULL)
-        return false;
     return true;
 }
 
@@ -1199,7 +1175,7 @@ bool bidServer::initServer(const char* configDirectory)
             throw "bidServer::Init: Cant init file names\n";
 #endif
 
-        if(!initSigningKeys())
+        if(!initSigningandSealingKeys())
             throw "bidServer::Init: Cant init signing keys\n";
 
 #ifdef TEST

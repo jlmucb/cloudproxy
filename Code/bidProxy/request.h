@@ -109,7 +109,7 @@ bool clientsendbidtoserver(safeChannel& fc, const char* szAuctionID,  char* szUs
                     const char* szBid, const char* szBidderCert, 
                     int encType, byte* key, timer& encTimer);
 
-bool serversendresponsetoclient(RSAKey* signingKey, RSAKey* signingKey, 
+bool serversendresponsetoclient(RSAKey* sealingKey, RSAKey* signingKey, 
                                 safeChannel& fc, Request& oReq, 
                                 sessionKeys& oKeys, int encType, byte* key, 
                                 timer& accessTimer, timer& decTimer);

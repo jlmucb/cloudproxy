@@ -1280,43 +1280,8 @@ int main(int an, char** av)
 #endif
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
-                
-                // get the three files from tests.xml
-                string identityCertFile;
-                string userCertFile;
-                string userKeyFile;
-                string keyFile;
-                bidClient::getKeyFiles(path,
-                            testFileName,
-                            identityCertFile,
-                            userCertFile,
-                            userKeyFile,
-                            keyFile);
-
-                string identityCert = bidClient::getFileContents(identityCertFile);
-                string userCert = bidClient::getFileContents(userCertFile);
-                string key = bidClient::getFileContents(keyFile);
-
-                // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
-                fprintf(g_logFile, "Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", 
-                        identityCert.c_str(), userCert.c_str(), key.c_str());
-                fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", keyFile.c_str(), userCertFile.c_str());
-                bidClient client;
-                safeChannel channel;
-                result = client.establishConnection(channel,
-                        userKeyFile.c_str(),
-                        userCertFile.c_str(),
-                        directory,
-                        "127.0.0.1",
-                        SERVICE_PORT);
-/*
-FIX
-		result = client.readBid(channel, 
-				"User",
-				userCert,
-				key,
-				"BidResult.xml");
- */
+                bidTester bt(path, testFileName);
+                bt.Run(directory);
             }
         }
 

@@ -34,6 +34,7 @@
 #include <string>
 using std::list;
 using std::string;
+using std::pair;
 
 // A class for performing bidClient tests as specified in a test XML file
 // Usage example:

@@ -523,7 +523,7 @@ bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
 
 
 bool clientsendbidtoserver(safeChannel& fc, 
-                    const char* szAuctionID,  char* szUserName,
+                    const char* szAuctionID,  const char* szUserName,
                     const char* szBid, const char* szBidderCert,
                     int encType, byte* key, timer& encTimer)
 {
@@ -593,9 +593,9 @@ bool clientsendbidtoserver(safeChannel& fc,
  */
 
 static char* s_szBidTemplate= (char*)
-"<Bid>\n  AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>"\
+"<Bid>\n  <AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>"\
 "<SubjectName> %s </SubjectName>\n  <DateTime> %s </DateTime>\n"\
-"  <BidderCert>\n %s\n  </BidderCert>\n <Bid>\n";
+"  <BidderCert>\n %s\n  </BidderCert>\n </Bid>\n";
 
 
 char*  constructBid(Request& oReq)

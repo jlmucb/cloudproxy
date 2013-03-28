@@ -1125,17 +1125,18 @@ void bidClient::closeConnection(safeChannel& fc) {
 //  Application specific logic
 // 
 
-bool bidClient::readCredential(safeChannel& fc, const string& subject, 
-                                const string& identityCert, 
-                                const string& proposedKey, 
-                                const string& localOutput) 
+bool bidClient::readBid(safeChannel& fc, 
+			       const string& auctionID, 
+			       const string& user, 
+                               const string& bid, 
+                               const string& userCert, 
+                               const string& localOutput) 
 {
     int             encType= NOENCRYPT;
 
-    if(clientgetCredentialfromserver(fc, subject.c_str(), "PKToken",
-                                      identityCert.c_str(), NULL,
-                                      proposedKey.c_str(), localOutput.c_str(),
-                encType, m_bidKeys, m_encTimer)) {
+    if(!clientsendbidtoserver(fc, auctionID.c_str(),  user.c_str(),
+			      bid.c_str(), userCert.c_str(),
+			      encType, m_bidKeys, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
         fflush(g_logFile);
     } 
@@ -1308,11 +1309,14 @@ int main(int an, char** av)
                         directory,
                         "127.0.0.1",
                         SERVICE_PORT);
-		result = client.readCredential(channel, 
+/*
+FIX
+		result = client.readBid(channel, 
 				"User",
 				userCert,
 				key,
-				"CredentialResult.xml");
+				"BidResult.xml");
+ */
             }
         }
 

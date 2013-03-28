@@ -82,11 +82,9 @@ public:
     bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
                         const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
-    bool    readCredential(safeChannel& fc, const string& subject,
-                                const string& identityCert,
-                                const string& proposedKey,
-                                const string& localOutput);
-
+    bool    readBid(safeChannel& fc, const string& auctionID,
+                           const string& user, const string& bid, const string& userCert, 
+                           const string& localOutput);
     bool    compareFiles(const string& firstFile, const string& secondFile);
 
     void    printTimers(FILE* log);

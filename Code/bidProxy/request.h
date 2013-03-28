@@ -105,7 +105,7 @@ public:
 };
 
 
-bool clientsendbidtoserver(safeChannel& fc, const char* szAuctionID,  char* szUserName,
+bool clientsendbidtoserver(safeChannel& fc, const char* szAuctionID,  const char* szUserName,
                     const char* szBid, const char* szBidderCert, 
                     int encType, byte* key, timer& encTimer);
 

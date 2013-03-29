@@ -1,11 +1,19 @@
 OBJROOT=~/jlmcrypt
 
-.PHONY: keyNegoServer tcService authServer authClient fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest clean
+BUILD_TARGETS=keyNegoServer tcService authServer authClient bidServer bidClient filServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
+TARGETS=$(BUILD_TARGETS) clean
+.PHONY: $(TARGETS)
 
-all: keyNegoServer tcService authServer authClient fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
+all: $(BUILD_TARGETS)
 
 tcService:
 	$(MAKE) -C tcService -f oldtcService.mak
+
+bidServer:
+	$(MAKE) -C bidProxy -f bidServer.mak
+
+bidClient:
+	$(MAKE) -C bidProxy -f bidClient.mak
 
 authServer:
 	$(MAKE) -C authProxy -f authServer.mak
@@ -41,6 +49,8 @@ clean:
 	rm -f $(OBJROOT)/tcService.exe
 	rm -f $(OBJROOT)/authServer.exe
 	rm -f $(OBJROOT)/authClient.exe
+	rm -f $(OBJROOT)/bidServer.exe
+	rm -f $(OBJROOT)/bidClient.exe
 	rm -f $(OBJROOT)/fileServer.exe
 	rm -f $(OBJROOT)/fileClient.exe
 	rm -f $(OBJROOT)/rsaspeedtest.exe

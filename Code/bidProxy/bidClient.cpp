@@ -1134,7 +1134,7 @@ bool bidClient::readBid(safeChannel& fc,
 {
     int             encType= NOENCRYPT;
 
-    if(!clientsendbidtoserver(fc, m_oKeys, auctionID.c_str(),  user.c_str(),
+    if(clientsendbidtoserver(fc, m_oKeys, auctionID.c_str(),  user.c_str(),
 			      bid.c_str(), userCert.c_str(),
 			      encType, m_bidKeys, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
@@ -1197,8 +1197,6 @@ bool bidClient::compareFiles(const string& firstFile, const string& secondFile) 
 
 int main(int an, char** av)
 {
-    bidClient       oBidClient;
-    safeChannel     fc;
     int             iRet= 0;
     int             i;
     bool            fInitProg= false;
@@ -1218,12 +1216,6 @@ int main(int an, char** av)
         for(i=0;i<an;i++) {
             if(strcmp(av[i],"-initProg")==0) {
                 fInitProg= true;
-            }
-            if(strcmp(av[i],"-port")==0 && an>(i+1)) {
-                oBidClient.m_szPort= strdup(av[++i]);
-            }
-            if(strcmp(av[i],"-address")==0) {
-                oBidClient.m_szAddress= strdup(av[++i]);
             }
             if (strcmp(av[i],"-directory")==0) {
                 directory= strdup(av[++i]);
@@ -1256,8 +1248,6 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-#define JOHNFORGOTTHETESTFILE
-#ifndef JOHNFORGOTTHETESTFILE
         // read the testPath and iterate through the set of tests, running each in turn
         DIR* testDir = opendir(testPath.c_str());
         if (NULL == testDir) {
@@ -1285,27 +1275,6 @@ int main(int an, char** av)
                 bt.Run(directory);
             }
         }
-#else
-        safeChannel fc;
-        const char*   directory= "/home/jlm/jlmcrypt/";
-        result = oBidClient.establishConnection(fc,
-                       "bidClient/tests/basicBidTest/UserPrivateKey.xml",
-                       "bidClient/tests/basicBidTest/UserPublicKey.xml",
-                       directory, "127.0.0.1", SERVICE_PORT);
-        if(result) {
-            result = oBidClient.readBid(fc, "1", "User", "10",
-                                        "UserCert", "localOutput");
-            if(result) {
-                fprintf(g_logFile, "Test succeeds\n");
-            }
-            else {
-            }
-        }
-        else {
-            fprintf(g_logFile, "Test fails\n");
-        }
-        
-#endif
 
 #ifdef TEST
         if (0 != errno) {

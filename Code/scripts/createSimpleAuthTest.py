@@ -20,7 +20,7 @@ check_call([os.path.join(scriptPath, "createPrincipal.py"), "3", "IdentityProvid
 check_call(["mv", "IdentityProviderPrivateKey.xml", "IdentityProviderPublicKey.xml", "basicAuthTest"])
 
 check_call([os.path.join(scriptPath, "createPrincipal.py"), "--policyPrivateKey", "basicAuthTest/IdentityProviderPrivateKey.xml", "4", "User"])
-check_call([os.path.join(scriptPath, "createEvidenceList.py"), "-o", "basicAuthTest/UserPublicKey.xml", "UserPublicKey.xml"])
+check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-o", "basicAuthTest/UserPublicKey.xml", "-l", "UserPublicKey.xml", "basicAuthTest/IdentityProviderPublicKey.xml"])
 check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "-o", "basicAuthTest/UserPrivateKey.xml", "UserPrivateKey.xml"])
 check_call(["rm", "UserPublicKey.xml", "UserPrivateKey.xml"]) 
 check_call(["./cryptUtility.exe", "-GenKey", "RSA1024", "PrototypePrivateKey.xml"])

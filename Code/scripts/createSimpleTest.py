@@ -6,7 +6,6 @@ import os
 
 scriptPath = os.path.dirname(__file__)
 
-
 if not os.path.exists("basicTest"):
     os.makedirs("basicTest")
 
@@ -14,14 +13,14 @@ if not os.path.exists("basicTest/files"):
     os.makedirs("basicTest/files")
 
 check_call([os.path.join(scriptPath, "createPrincipal.py"), "1", "JohnManferdelli/0001"])
-check_call([os.path.join(scriptPath, "createEvidenceList.py"), "JohnManferdelli_0001PublicKey.xml", "-o", "basicTest/principalPublicKeys.xml"])
+check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-l", "JohnManferdelli_0001PublicKey.xml", "-o", "basicTest/principalPublicKeys.xml"])
 check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "JohnManferdelli_0001PrivateKey.xml", "-o", "basicTest/principalPrivateKeys.xml"])
 
 with open('testpolicy', 'wb') as f:
     print("//www.manferdelli.com/User/JohnManferdelli/0001 maycreate //www.manferdelli.com/Gauss/fileProxy/files", file=f)
 	
 check_call([os.path.join(scriptPath, "createPolicy.py"), "testpolicy", "1"])
-check_call([os.path.join(scriptPath, "createEvidenceList.py"), "authorizationRuleSigned.xml", "-o", "basicTest/authRule1Signed.xml"])
+check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-l", "authorizationRuleSigned.xml", "-o", "basicTest/authRule1Signed.xml"])
 
 with open('basicTest/files/file.test', 'wb') as f:
     print("This is the test file.\n", file=f)

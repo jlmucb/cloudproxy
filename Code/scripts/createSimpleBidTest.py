@@ -38,7 +38,7 @@ testXML = """<Tests print="true">
 
 check_call([os.path.join(scriptPath, "createPrincipal.py"), "3", "User"])
 
-check_call([os.path.join(scriptPath, "createEvidenceList.py"), "-o", "basicBidTest/UserPublicKey.xml", "UserPublicKey.xml"])
+check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-o", "basicBidTest/UserPublicKey.xml", "-l", "UserPublicKey.xml"])
 check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "-o", "basicBidTest/UserPrivateKey.xml", "UserPrivateKey.xml"])
 check_call(["rm", "UserPublicKey.xml", "UserPrivateKey.xml"]) 
 

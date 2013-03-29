@@ -101,11 +101,11 @@ void bidTester::getClientParams(const TiXmlNode* parent,
         const string& text(childElt->GetText());
         if (name.compare("Authorization") == 0) {
             params.authFile = parentPath + text;
-        } else if (name.compare("PrivateKeys")) {
+        } else if (name.compare("PrivateKeys") == 0) {
             params.keyFile = parentPath + text;
-        } else if (name.compare("PublicKeys")) {
+        } else if (name.compare("PublicKeys") == 0) {
             params.certFile = parentPath + text;
-        } else if (name.compare("Subject")) {
+        } else if (name.compare("Subject") == 0) {
             params.subject = text;
         } else {
             throw "Unknown node in Client\n";

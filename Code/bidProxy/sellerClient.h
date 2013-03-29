@@ -62,6 +62,12 @@ public:
     char*               m_szPort;
     char*               m_szAddress;
 
+    char*               m_szAuctionID;
+
+    bool                m_fWinningBidValid;
+    int                 m_WinningBidAmount;
+    char*               m_szSignedWinner;
+
     timer               m_sealTimer;
     timer               m_unsealTimer;
     timer               m_taoEnvInitializationTimer;

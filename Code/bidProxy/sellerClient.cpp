@@ -41,6 +41,7 @@
 #include "domain.h"
 #include "tcIO.h"
 #include "timer.h"
+#include "claims.h"
 #include "bidTester.h"
 
 #include "objectManager.h"
@@ -51,6 +52,7 @@
 #include "secPrincipal.h"
 #include "hashprep.h"
 #include "sellerClient.h"
+#include "encapsulate.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -97,7 +99,7 @@ accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 // ------------------------------------------------------------------------
 
 
-bool	listBids(const char* szDir, int* pNum, char* bidName[])
+bool    listBids(const char* szDir, int* pNum, char* bidName[])
 {
     DIR*            dir= opendir(szDir);
     struct dirent*  ent;
@@ -151,6 +153,11 @@ sellerClient::sellerClient ()
     m_uPad= 0;
     m_uHmac= 0;
     m_sizeKey= SMALLKEYSIZE;
+
+    m_szAuctionID= NULL;
+    m_fWinningBidValid= false;
+    m_WinningBidAmount= -1;
+    m_szSignedWinner= NULL;
 }
 
 
@@ -172,6 +179,15 @@ sellerClient::~sellerClient ()
     if(m_szSealedKeyFile!=NULL)
         free(m_szSealedKeyFile);
     m_szSealedKeyFile= NULL;
+
+    if(m_szAuctionID!=NULL) {
+        free(m_szAuctionID);
+        m_szAuctionID= NULL;
+    }
+    if(m_szSignedWinner!=NULL) {
+        free(m_szSignedWinner);
+        m_szSignedWinner= NULL;
+    }
 }
 
 
@@ -1077,8 +1093,335 @@ bool sellerClient::compareFiles(const string& firstFile, const string& secondFil
 // ------------------------------------------------------------------------
 
 
+int timeCompare(struct tm& time1, struct tm& time2)
+{
+    return 0;
+}
+
+
+/*
+ *  <Bid>
+ *      <AuctionID> </AuctionID>
+ *      <BidAmount> </BidAmount>
+ *      <SubjectName> </SubjectName>
+ *      <DateTime> </DateTime>
+ *      <BidderCert> </BidderCert>
+ *  <Bid>
+ */
+
+
+class bidInfo {
+public:
+    TiXmlDocument   doc;
+    char*           auctionID;
+    int             bidAmount;
+    char*           userName;
+    char*           szTime;
+    struct tm       timeinfo;
+
+    bidInfo();
+    ~bidInfo();
+
+    bool    parse(const char* szBid);
+    bool    getBidInfo(RSAKey* sealingKey, const char* szBid);
+    char*   getUserCert();
+#ifdef TEST
+    void    printMe();
+#endif
+};
+
+
+bidInfo::bidInfo() 
+{
+    auctionID= NULL;
+    bidAmount= -1;
+    userName= NULL;
+    szTime= NULL;
+}
+
+
+bidInfo::~bidInfo()
+{
+    if(auctionID!=NULL) {
+        free(auctionID);
+        auctionID= NULL;
+    }
+    if(userName!=NULL) {
+        free(userName);
+        userName= NULL;
+    }
+    if(szTime!=NULL) {
+        free(szTime);
+        szTime= NULL;
+    }
+}
+
+
+#ifdef TEST
+void bidInfo::printMe() 
+{
+    if(auctionID==NULL) 
+        fprintf(g_logFile, "auctionID is NULL\n");
+    else
+        fprintf(g_logFile, "auctionID is %s\n", auctionID);
+    fprintf(g_logFile, "bidAmount is %d\n", bidAmount);
+    if(userName==NULL) 
+        fprintf(g_logFile, "userName is NULL\n");
+    else
+        fprintf(g_logFile, "userName is %s\n", userName);
+    if(szTime==NULL) 
+        fprintf(g_logFile, "szTime is NULL\n");
+    else
+        fprintf(g_logFile, "szTime is %s\n", szTime);
+}
+#endif
+
+
+bool  bidInfo::parse(const char* szBid) 
+{
+    TiXmlNode*      pNode;
+    TiXmlNode*      pNode1;
+    TiXmlElement*   pRootElement= NULL;
+    bool            fRet= true;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidInfo::parse\n");
+    fflush(g_logFile);
+#endif
+    try {
+        if(!doc.Parse(szBid))
+            throw "bidInfo::parse: parse failure\n";
+        pRootElement= doc.RootElement();
+        if(pRootElement==NULL)
+            throw "bidInfo::parse: No root element\n";
+
+        pNode= Search((TiXmlNode*) pRootElement, "AuctionID");
+        if(pNode==NULL)
+            throw "bidInfo::parse: No AuctionID element\n";
+        pNode1= pNode->FirstChild();
+        if(pNode1==NULL)
+            throw "bidInfo::parse: Bad AuctionID element\n";
+        if(pNode1->Value()!=NULL)
+            auctionID= strdup(pNode1->Value());
+
+        pNode= Search((TiXmlNode*) pRootElement, "BidAmount");
+        if(pNode==NULL)
+            throw "bidInfo::parse: No BidAmount element\n";
+        pNode1= pNode->FirstChild();
+        if(pNode1==NULL)
+            throw "bidInfo::parse: Bad BidAmount element\n";
+        if(pNode1->Value()!=NULL) {
+            bidAmount= atoi(pNode1->Value());
+        }
+
+        pNode= Search((TiXmlNode*) pRootElement, "SubjectName");
+        if(pNode!=NULL) {
+            pNode1= pNode->FirstChild();
+            if(pNode1!=NULL && pNode1->Value()!=NULL) {
+                userName= strdup(pNode1->Value());
+            }
+        }
+
+        pNode= Search((TiXmlNode*) pRootElement, "DateTime");
+        if(pNode==NULL)
+            throw "bidInfo::parse: No DateTime element\n";
+        pNode1= pNode->FirstChild();
+        if(pNode1==NULL)
+            throw "bidInfo::parse: Bad DateTime element\n";
+        if(pNode1->Value()!=NULL) {
+            szTime= strdup(pNode1->Value());
+        }
+    }
+    catch(const char* szError) {
+        fRet= false;
+        fprintf(g_logFile, "%s", szError);
+    }
+
+    return fRet;
+}
+
+
+char* bidInfo::getUserCert()
+{
+    TiXmlNode*      pNode;
+    TiXmlNode*      pNode1;
+    TiXmlElement*   pRootElement= NULL;
+    char*           szCert= NULL;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidInfo::getUserCert\n");
+    fflush(g_logFile);
+#endif
+    try {
+        pRootElement= doc.RootElement();
+        if(pRootElement==NULL)
+            throw "bidInfo::getUserCert: No root element\n";
+
+        pNode= Search((TiXmlNode*) pRootElement, "BidderCert");
+        if(pNode==NULL)
+            throw "bidInfo::getUserCert: No BidderCert element\n";
+        pNode1= pNode->FirstChild();
+        if(pNode1==NULL)
+            throw "bidInfo::getUserCert: Bad BidderCert element\n";
+        if(pNode1->Value()!=NULL)
+            szCert= canonicalize(pNode1);
+
+    }
+    catch(const char* szError) {
+        fprintf(g_logFile, "%s", szError);
+    }
+
+    return szCert;
+}
+
+
+bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
+{
+    int                 size= 8192;
+    byte                buf[8192];
+    encapsulatedMessage oM;
+    const char*         szMetaDataName= szBid;
+    char                szBlobName[256];
+    char*               szMetaData= NULL;
+    bool                fRet= true;
+
+    // construct Blob Name
+    strcpy(szBlobName, "SealedBid");
+
+    // sprintf(szMetaName, "bidServer/bids/BidMeta%016lx%016lx", *pl1, *pl2);
+    // sprintf(szSealedName, "bidServer/bids/SealedBid%016lx%016lx", *pl1, *pl2);
+
+    // get metaData
+    if(!getBlobfromFile(szMetaDataName, buf, &size)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant get metadata file %d\n",
+                szMetaDataName);
+        return false;
+    }
+    szMetaData= strdup((char*)buf);
+
+    // get Blob
+    size= 8192;
+    if(!getBlobfromFile(szBlobName, buf, &size)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant get sealed keys\n");
+        fRet= false;
+        goto done;
+    }
+
+    // parse metadata
+    oM.m_szXMLmetadata= szMetaData;
+    if(!oM.parseMetaData()) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant parse metadata\n");
+        fRet= false;
+        goto done;
+    }
+
+    // unseal key
+    if(!oM.unSealKey(sealingKey)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant unseal key\n");
+        fRet= false;
+        goto done;
+    }
+
+    // decrypt bid
+    if(!oM.setencryptedMessage(size, buf)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant set encrypted\n");
+        fRet= false;
+        goto done;
+    }
+
+    if(!oM.decryptMessage()) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant decrypt message\n");
+        fRet= false;
+        goto done;
+    }
+
+    // parse bid
+    if(!parse((const char*)oM.m_rgPlain)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: can't parse bid\n");
+        fRet= false;
+        goto done;
+    }
+
+done:
+    oM.m_szXMLmetadata= NULL;
+    if(szMetaData!=NULL) {
+        free(szMetaData);
+        szMetaData= NULL;
+    }
+    return fRet;
+}
+
+
 bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
 {
+    int                 i;
+    RSAKey*             sealingKey= NULL;
+    int                 winningBidAmount= 0;
+    char*               szWinningBid= NULL;
+    char*               szCurrentBid= NULL;
+
+    bidInfo*            pWinningBid= NULL;
+    bidInfo*            pCurrentBid= NULL;
+
+#define OFFLINETEST
+#ifdef OFFLINETEST
+    char*   szKey= readandstoreString("../bidServer/privateKey.xml");
+    if(szKey==NULL) {
+        fprintf(g_logFile, 
+                "sellerClient::resolveAuction:  cant read unsealing key\n");
+        return false;
+    }
+    sealingKey= keyfromkeyInfo(szKey);
+#else
+#endif
+
+#ifdef TEST
+    fprintf(g_logFile, "SealingKey\n");
+    sealingKey->printMe();
+#endif
+
+    // init
+    szWinningBid= bidFiles[0];
+    if(!pWinningBid->getBidInfo(sealingKey, szCurrentBid)) {
+        fprintf(g_logFile, 
+            "sellerClient::resolveAuction:  cant read initial bid\n");
+        return false;
+    }
+    winningBidAmount= pWinningBid->bidAmount;
+
+    for(i=1;i<numbids; i++) {
+        szCurrentBid= bidFiles[i];
+        pCurrentBid= new bidInfo();
+        if(!pCurrentBid->getBidInfo(sealingKey, szCurrentBid)) {
+            fprintf(g_logFile, 
+                "sellerClient::resolveAuction:  cant read bid info %d\n",
+                i);
+            return false;
+        }
+        if(winningBidAmount<pCurrentBid->bidAmount) {
+            winningBidAmount= pCurrentBid->bidAmount;
+            szWinningBid=  szCurrentBid;
+            delete pWinningBid;
+            pWinningBid= pCurrentBid;
+            pCurrentBid= NULL;
+        }
+        else {
+            delete pCurrentBid;
+            pCurrentBid= NULL;
+        }
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "Winning Bid\n%s\n", szWinningBid);
+#endif
+
+    // sign winning bid
+
+    // record result
+    m_fWinningBidValid= true;
+    m_WinningBidAmount= winningBidAmount;
+    // m_szSignedWinner= NULL;
+
     return true;
 }
 

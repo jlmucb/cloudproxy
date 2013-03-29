@@ -82,6 +82,7 @@ public:
     bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
                         const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
+    bool    resolveAuction(int numbids, char* bidFiles);
     bool    readCredential(safeChannel& fc, const string& subject,
                                 const string& identityCert,
                                 const string& proposedKey,

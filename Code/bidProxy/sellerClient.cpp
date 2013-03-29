@@ -96,6 +96,44 @@ accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 // ------------------------------------------------------------------------
 
 
+bool	listBids(const char* szDir, int* pNum, char* bidName[])
+{
+    DIR*            dir= opendir(szDir);
+    struct dirent*  ent;
+    char*           fname;
+    int             n= 0;
+
+    if(dir==NULL) {
+        fprintf(g_logFile, "No such directory\n");
+        return false;
+    }
+
+    while((ent=readdir(dir))!=NULL && n<*pNum) {
+        if(ent->d_type&DT_DIR)
+            continue;
+        fname= ent->d_name;
+        if(strcmp(fname, ".")==0 || strcmp(name,"..")==0)
+            continue;
+        bidName[n++]= strdup(fname);
+    }
+    
+    *pNum= n;
+    return true; 
+}
+
+
+bool filePresent(const char* resFile)
+{
+    struct stat statBlock;
+    if(stat(resFile, &statBlock)<0) {
+        return false;
+    }
+    return true;
+}
+
+// ------------------------------------------------------------------------
+
+
 sellerClient::sellerClient ()
 {
     m_clientState= NOSTATE;
@@ -1194,6 +1232,15 @@ bool sellerClient::compareFiles(const string& firstFile, const string& secondFil
 // ------------------------------------------------------------------------
 
 
+bool    sellerClient::resolveAuction(int numbids, char* bidFiles)
+{
+    return true;
+}
+
+
+// ------------------------------------------------------------------------
+
+
 int main(int an, char** av)
 {
     sellerClient      oAuthClient;
@@ -1255,79 +1302,45 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-
-        // read the testPath and iterate through the set of tests, running each in turn
-        DIR* testDir = opendir(testPath.c_str());
-        if (NULL == testDir) {
-            throw "Could not open the test directory\n";
-        }
-
-#ifdef TEST
-        fprintf(g_logFile, "reading directory %s\n", testPath.c_str());    
-#endif
-        // each child directory is a test
-        struct dirent* entry = NULL;
-        string curDir(".");
-        string parentDir("..");
-        while((entry = readdir(testDir))) {
-            if (curDir.compare(entry->d_name) == 0 || 
-                parentDir.compare(entry->d_name) == 0) {
-                continue;
-            }
-#ifdef TEST
-            fprintf(g_logFile, "Got entry with name %s\n", entry->d_name);
-#endif
-            if (DT_DIR == entry->d_type) {
-                string path = testPath + string(entry->d_name) + string("/");
-                
-                // get the three files from tests.xml
-                string identityCertFile;
-                string userCertFile;
-                string userKeyFile;
-                string keyFile;
-                sellerClient::getKeyFiles(path,
-                            testFileName,
-                            identityCertFile,
-                            userCertFile,
-                            userKeyFile,
-                            keyFile);
-
-                string identityCert = sellerClient::getFileContents(identityCertFile);
-                string userCert = sellerClient::getFileContents(userCertFile);
-                string key = sellerClient::getFileContents(keyFile);
-
-                // DO SOMETHING HERE TO RUN THE TEST, using, e.g., key.c_str() for const char* of key
-                fprintf(g_logFile, "Got the file contents: \nidentityCert = %s\nuserCert = %s\nkey = %s\n", 
-                        identityCert.c_str(), userCert.c_str(), key.c_str());
-                fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", keyFile.c_str(), userCertFile.c_str());
-                sellerClient client;
-                safeChannel channel;
-                result = client.establishConnection(channel,
+        if(!filePresent("sellerClient/private")) {
+            safeChannel channel;
+            result = client.establishConnection(channel,
                         userKeyFile.c_str(),
                         userCertFile.c_str(),
                         directory,
                         "127.0.0.1",
                         SERVICE_PORT);
-		result = client.readCredential(channel, 
-				"User",
-				userCert,
-				key,
-				"CredentialResult.xml");
-            }
+            if(result)
+                fprintf(g_logFile, "sellerClient initialization complete\n");
+            else
+                fprintf(g_logFile, "sellerClient initialization failed\n");
+            closeLog();
+            return 0;
+        }
+        if(filePresent("sellerClient/resolve")) {
+            fprintf(g_logFile, "sellerClient not time to resolve auction\n");
+            closeLog();
+            return 0;
         }
 
-#ifdef TEST
-        if (0 != errno) {
-            fprintf(g_logFile, "Got error %d\n", errno);
-        } 
-        else {
-            fprintf(g_logFile, "Finished reading test directory without error\n");
+        int     nBids= 500;
+        char*   rgBid[500];
+
+        if(!listBids("sellerClient/bids", &nBids, rgBids)) {
+            fprintf(g_logFile, "sellerClient: can't retrieve bids\n");
+            closeLog();
+            return 0;
         }
-        
-        fprintf(g_logFile, "sellerClient main: At close client\n");
-#endif
+        if(resolveAuction(nBids, rgBids))
+            fprintf(g_logFile, "sellerClient: auctions successfully concluded\n");
+        else
+            fprintf(g_logFile, "sellerClient: auction resolution unsuccessful\n");
+
+        for(i=0;i<nBids;i++)
+            free(rgBids[i]);
+
         closeLog();
-
+        return 0;
     } 
     catch (const char* err) {
         fprintf(g_logFile, "execution failed with error %s\n", err);
@@ -1336,7 +1349,7 @@ int main(int an, char** av)
 
     return iRet;
 }
-#endif
+
 
 void sellerClient::printTimers(FILE* log) {
     if (m_sealTimer.GetMeasurements().size() > 0) {

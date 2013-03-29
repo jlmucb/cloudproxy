@@ -1359,6 +1359,7 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
     int                 winningBidAmount= 0;
     char*               szWinningBid= NULL;
     char*               szCurrentBid= NULL;
+    char*               szWinnerCert= NULL;
 
     bidInfo*            pWinningBid= NULL;
     bidInfo*            pCurrentBid= NULL;
@@ -1420,7 +1421,14 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
     // record result
     m_fWinningBidValid= true;
     m_WinningBidAmount= winningBidAmount;
-    // m_szSignedWinner= NULL;
+    UNUSEDVAR(szWinnerCert);
+    szWinnerCert= pWinningBid->getUserCert();
+
+    m_fWinningBidValid= true;
+    m_WinningBidAmount= winningBidAmount;
+
+    // sign and save winning bid
+    m_szSignedWinner= NULL;
 
     return true;
 }

@@ -655,3 +655,165 @@ Tiotest latency results:
 | Total        |        0.002 ms |        0.048 ms |  0.00000 |   0.00000 |
 
 `--------------+-----------------+-----------------+----------+-----------&#39
+
+From http://www.stlinux.com/howto/initramfs
+
+initramfs: an overview
+
+The initial ramdisk, or initrd, is a temporary file system commonly used in the boot process 
+of the Linux kernel. The kernel typically uses the ramdisk for making preparations before 
+the real root file system can be mounted. For 2.4 and earlier kernels, initrd is still the 
+only way to perform these tasks. However, the kernel developers chose to implement a new 
+mechanism in 2.6 for several reasons.
+
+A ramdisk (such as initrd) is a ram-based block device, which means that it is a fixed size 
+piece of memory that can be formatted and mounted like a disk. This means the contents of 
+the ramdisk must be formatted and prepared with special tools (such as mke2fs and losetup), 
+and like all block devices it requires a filesystem driver to interpret the data at runtime. 
+This also imposes an artificial size limit that either wastes space (if the ramdisk is not 
+full, the extra memory it takes up cannot be used for anything else) or limits capacity 
+(if the ramdisk fills up but other memory is still free, you cannot expand it without 
+reformatting it).
+
+Ramdisks actually waste even more memory due to caching. Linux is designed to cache all 
+files and directory entries read from or written to block devices, so Linux copies data 
+to and from the ramdisk into the "page cache" (for file data), and the "dentry cache" 
+(for directory entries). The disadvantage of the ramdisk pretending to be a block device 
+is that Linux must treat it like a block device.
+
+initramfs: a brief history
+
+A few years ago, Linus Torvalds asked: what if Linux's cache could be mounted like a 
+filesystem? Just keep the files in cache and never get rid of them until they are deleted 
+or the system reboots? Linus wrote a tiny wrapper around the cache called ramfs, and 
+other kernel developers created an improved version called tmpfs, which can write the 
+data to swap space, and limit the size of a given mount point so it fills up before 
+consuming all available memory. initramfs is an instance of tmpfs.
+
+Unlike block device ramdisks, ram-based filesystems can automatically grow or shrink 
+to fit the size of the data they contain. Adding files to a ramfs (or extending existing 
+files) automatically allocates more memory; deleting or truncating files frees that 
+memory. There is no longer any duplication between the block device and cache, because 
+there is no block device: the copy in the cache is the only copy of the data. Another 
+advantage is that this is not new code, but a new application for the existing Linux 
+caching code, which means it adds almost no size, is very simple, and is based on an 
+extremely well tested infrastructure.
+
+A system using initramfs as its root filesystem does not even need a single filesystem 
+driver built into the kernel, because there are no block devices to interpret as 
+filesystems: only files living in memory.
+
+Comparison of initrd and initramfs
+
+The change in the underlying infrastructure was a reason for the kernel developers 
+to create a new implementation, but at the same time, they cleaned up a lot of bad 
+behavior and assumptions.
+
+initrd was designed as front-end to the old root= root device detection code, not a 
+replacement for it. It ran a program called /linuxrc, which was intended to perform setup 
+functions (like logging onto the network, determining which of several devices contained 
+the root partition, or associating a loopback device with a file), tell the kernel which 
+block device contained the real root device (by writing the de_t number to 
+/proc/sys/kernel/real-root-dev), and then return to the kernel so that the kernel could 
+mount the real root device and execute the real init program.
+
+This assumes that the "real root device" is a block device rather than a network share, 
+and also assumes that initrd is not itself going to be the real root filesystem. The 
+kernel did not even execute /linuxrc as the special process ID 1, because that process 
+ID (and its special properties, such as being the only process that cannot be killed 
+with kill -9) was reserved for init, which the kernel was waiting to run only after 
+it had mounted the real root filesystem.
+
+With initramfs, the kernel developers removed all these assumptions. When the kernel 
+launches /init out of initramfs, the kernel does not need to make its own decisions and 
+can go back to following orders. With initramfs, the kernel does not care where the real 
+root filesystem is (it remains initramfs until further notice), and the /init program 
+from initramfs is run as a real init, with process ID of 1. (If initramfs init needs 
+to hand that special process ID off to another program, it can use the exec() 
+syscall like everybody else.)
+
+Booting with initramfs: how to configure the kernel
+
+To configure Linux to boot by mounting an initramfs image internally, set the 
+following items on the kernel config:
+
+
+ CONFIG_BLK_DEV_INITRD=y
+ CONFIG_INITRAMFS_SOURCE=<Initramfs cpio image path>
+
+After making these changes to the settings, re-compile the kernel. Finally, the kernel 
+can be booted as follows (for instance, we report a boot on a mb442 by using a "vmlinux" 
+with the above settings enabled):
+
+host% st40load_gdb -t stmc:mb442:st40 -c sh4tp -b vmlinux mem=64m
+
+No other parameters have to be passed to st40load_gdb to boot with initramfs, as the 
+kernel mounts that image automatically.
+
+initramfs: how to create a rootfs image
+
+To boot Linux by using the initramfs image, create a typical ext2 (or ext3) filesystem 
+structure in which the only difference with respect to the standard ext2/3 root filesystem 
+used in SysV, or busybox, is related to the init file. 
+
+Usually, the init file is placed under /sbin (for both SysV and Busybox). In the initramfs 
+rootfs image, the init file has to be placed under the root, /, as the kernel tries to 
+execute /init instead of /sbin/init in case the initramfs image was mounted after boot. 
+A typical initramfs filesystem structure is as follows:
+
+target% ls 
+bin  dev  etc  home  include  init  lib mnt  proc  sys  sbin  tmp  usr  var
+
+A guide to the mkshinitramfs tool
+
+The tool mkshinitramfs has been created to improve the process of initramfs rootfs 
+image creation. The current version of the tool is 1.0. To get information about the 
+tool's parameters, type the following command line:
+
+
+host# ./mkshinitramfs -h
+mkshinitramfs-1.0, 
+usage: mkshinitramfs [-h|-H   Help]
+       mkshinitramfs [-o|O:  <Initramfs CPIO image with switch option to HDD(/dev/sda1)>]
+       mkshinitramfs [-s|S:  <Initramfs CPIO image with shell on Initramfs>]
+       mkshinitramfs [-p|P:  <target rootfs path> | default: /opt/STM/STLinux-2.3/devkit/sh4/target/]
+       mkshinitramfs [-k|K:  <SH kernel version>  | default: 2.6.23_stm23_0121]
+       mkshinitramfs [-b|B:  <used board> | default: mb442 (STi710x based board)]
+
+mkshinitramfs must be executed as "root" on the host machine in which a full target root 
+filesystem has previously been installed. It is configured to use default parameters, 
+as listed in the output from the -h option. To change any of the parameters, apply the 
+command line options listed in the help.
+
+The tool mkshinitramfs creates a short initramfs. If invoked with the -s option, the 
+generated initramfs is the final rootfs. If invoked with the -o option, the generated 
+initramfs is a temporary rootfs to be switched to the real one on the HDD.
+
+The script mkshinitramfs internally defines some variables that are useful when defining 
+which files, libraries, scripts and tools are to be placed on the initramfs image. 
+The variables are:
+
+$DIRS
+$BINFILES
+$SBINFILES
+$ETCFILES1
+$USRBINFILES
+
+Version 1.0 of the mkshinitramfs tool can be downloaded from mkshinitramfs tool as a 
+compressed tar.gz file.
+
+If the initramfs rootfs is created to be used temporarily before switching to the real 
+target rootfs on a hard disk drive, a setup script is needed, which is then passed to 
+the chroot in order to setup the final real rootfs properly. This script loads the user 
+space services needed at runtime, such as klogd, udev, D-Bus, and so forth.
+
+If the -o option is used, mkshinitramfs generates a CPIO image in which the following 
+command line is inserted after the kernel mounts the initramfs:
+
+mount /dev/sda1 /mnt
+chroot /mnt /etc/init.d/rcS-initramfs
+
+The script rcS-initramfs performs the same operations performed at rcS level and runlevel3 
+by a classical SysV init system. A typical rcS-initramfs user space start-up script can 
+be downloaded from rcS-initramfs start-up script as a compressed tar.gz file.
+

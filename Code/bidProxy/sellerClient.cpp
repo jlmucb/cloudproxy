@@ -50,6 +50,7 @@
 #include "encryptedblockIO.h"
 #include "secPrincipal.h"
 #include "hashprep.h"
+#include "sellerClient.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -112,7 +113,7 @@ bool	listBids(const char* szDir, int* pNum, char* bidName[])
         if(ent->d_type&DT_DIR)
             continue;
         fname= ent->d_name;
-        if(strcmp(fname, ".")==0 || strcmp(name,"..")==0)
+        if(strcmp(fname, ".")==0 || strcmp(fname,"..")==0)
             continue;
         bidName[n++]= strdup(fname);
     }
@@ -167,8 +168,6 @@ sellerClient::~sellerClient ()
         m_szAddress= NULL;
     }
     m_sizeKey= SMALLKEYSIZE;
-    if(m_fKeysValid)
-        memset(m_bidKeys, 0, m_sizeKey);
     m_fKeysValid= false;
     if(m_szSealedKeyFile!=NULL)
         free(m_szSealedKeyFile);
@@ -225,119 +224,6 @@ bool sellerClient::initPolicy()
 }
 
 
-bool sellerClient::initFileKeys()
-{
-    struct stat statBlock;
-    char        szName[256];
-    int         size= 0;
-    byte        keyBuf[SMALLKEYSIZE];
-    int         n= 0;
-    int         m= 0;
-    byte        sealedkeyBuf[BIGKEYSIZE];
-   
-    if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
-        fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
-        return false;
-    }
-    sprintf(szName, "%s/fileKeys", m_tcHome.m_fileNames.m_szdirectory);
-    m_szSealedKeyFile= strdup(szName);
-    if(stat(m_szSealedKeyFile, &statBlock)<0) {
-        // Keys don't exist, generate and save them
-        m_uAlg= AES128;
-        m_uMode= CBCMODE;
-        m_uPad= SYMPAD;
-        m_uHmac= HMACSHA256;
-        if(m_sizeKey<32) {
-            fprintf(g_logFile, "initFileKeys: key size too small %d\n", m_sizeKey);
-            return false;
-        }
-        m_sizeKey= 32;
-        if(!getCryptoRandom(m_sizeKey*NBITSINBYTE, m_bidKeys)) {
-            fprintf(g_logFile, "initFileKeys: cant generate keys\n");
-            return false;
-        }
-
-        // key buf: sizeKey,alg,mode,pad,hmac, key
-        memcpy(&keyBuf[n], &m_sizeKey, sizeof(int));
-        n+= sizeof(int);
-        memcpy(&keyBuf[n], &m_uAlg, sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&keyBuf[n], &m_uMode, sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&keyBuf[n], &m_uPad, sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&keyBuf[n], &m_uHmac, sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&keyBuf[n], m_bidKeys, m_sizeKey);
-        n+= m_sizeKey;
-
-        if(!m_tcHome.m_myMeasurementValid) {
-            fprintf(g_logFile, "initFileKeys: measurement invalid\n");
-            return false;
-        }
-        // seal and save
-        size= BIGKEYSIZE;
-        m_sealTimer.Start();
-        if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
-                        n, keyBuf, &size, sealedkeyBuf)) {
-            fprintf(g_logFile, "initFileKeys: cant seal keys\n");
-            return false;
-        }
-        m_sealTimer.Stop();
-        if(!saveBlobtoFile(m_szSealedKeyFile, sealedkeyBuf, size)) {
-            fprintf(g_logFile, "initFileKeys: cant save sealed keys\n");
-            return false;
-        }
-        m_fKeysValid= true;
-    }
-    else {
-        // keys exist, unseal them
-        size= BIGKEYSIZE;
-        if(!getBlobfromFile(m_szSealedKeyFile, sealedkeyBuf, &size)) {
-            fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
-            return false;
-        }
-        if(!m_tcHome.m_myMeasurementValid) {
-            fprintf(g_logFile, "initFileKeys: measurement invalid\n");
-            return false;
-        }
-        m= SMALLKEYSIZE;
-        m_unsealTimer.Start();
-        if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
-                        size, sealedkeyBuf, &m, keyBuf)) {
-            fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
-            return false;
-        }
-        m_unsealTimer.Stop();
-
-        memcpy(&m_sizeKey, &keyBuf[n], sizeof(int));
-        n+= sizeof(int);
-        memcpy(&m_uAlg, &keyBuf[n], sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&m_uMode, &keyBuf[n], sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&m_uPad, &keyBuf[n], sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(&m_uHmac, &keyBuf[n], sizeof(u32));
-        n+= sizeof(u32);
-        memcpy(m_bidKeys, &keyBuf[n], m_sizeKey);
-        n+= m_sizeKey;
-        if(n>m) {
-            fprintf(g_logFile, "initFileKeys: unsealed keys wrong size\n");
-            return false;
-        }
-        m_fKeysValid= true;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "initFileKeys\n");
-    PrintBytes("fileKeys\n", m_bidKeys, m_sizeKey);
-    fflush(g_logFile);
-#endif
-    return true;
-}
-
-
 bool sellerClient::initClient(const char* configDirectory, const char* serverAddress, u_short serverPort)
 {
     struct sockaddr_in  server_addr;
@@ -390,14 +276,6 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
         m_tcHome.printData();
 #endif
 
-        // Initialize file encryption keys
-        if(!initFileKeys())
-            throw "sellerClient::Init: can't init file keys\n";
-#ifdef TEST
-        fprintf(g_logFile, "sellerClient::Init: after initFileKeys\n");
-        m_tcHome.printData();
-#endif
-
         // Initialize program private key and certificate for session
         if(!m_tcHome.m_privateKeyValid || 
                !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.m_privateKey))
@@ -406,14 +284,6 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
                !m_oKeys.getMyProgramCert(m_tcHome.m_myCertificate))
             throw "sellerClient::Init: Cant get my Cert\n";
     
-        // Initialize resource and principal tables
-#if 0
-        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, "sellerClient"))
-            throw "sellerClient::Init: Cant init metadata\n";
-        if(!g_theVault.initFileNames())
-            throw "sellerClient::Init: Cant init file names\n";
-#endif
-
         // Init global policy 
         if(!initPolicy())
             throw "sellerClient::Init: Cant init policy objects\n";
@@ -1000,30 +870,6 @@ bool sellerClient::protocolNego(int fd, safeChannel& fc, const char* keyFile, co
 #ifdef TEST
         fprintf(g_logFile, "sellerClient: channel data validated\n");
 #endif
-#if 0
-        // register principals
-        if(m_oKeys.m_pserverCert!=NULL) {
-            if(registerPrincipalfromCert(m_oKeys.m_pserverCert)==NULL)
-                throw "sellerClient: Can't register server principal\n";
-        }
-#ifdef TEST
-        fprintf(g_logFile, "sellerClient: server principal registered\n");
-#endif
-
-        if(registerPrincipalfromCert(m_oKeys.m_pclientCert)==NULL)
-            throw "sellerClient: Can't register client principal\n";
-#endif
-#ifdef TEST
-        fprintf(g_logFile, "sellerClient: server principal registered\n");
-#endif
-#if 0
-        for(i=0;i<m_oKeys.m_iNumPrincipals; i++) {
-            if(m_oKeys.m_rgPrincipalCerts[i]!=NULL) {
-                if(registerPrincipalfromCert(m_oKeys.m_rgPrincipalCerts[i])==NULL)
-                    throw "sellerClient: Can't register client principal\n";
-            }
-        }
-#endif
         m_clientState= REQUESTSTATE;
 #ifdef TEST
         fprintf(g_logFile, "sellerClient: protocol nego succesfully completed\n");
@@ -1097,9 +943,6 @@ bool sellerClient::initSafeChannel(safeChannel& fc)
 const char*  g_szTerm= "terminate channel\n";
 
 
-#define BIDCLIENTTEST
-#ifdef  BIDCLIENTTEST
-
 bool sellerClient::establishConnection(safeChannel& fc, 
                                     const char* keyFile, 
                                     const char* certFile, 
@@ -1163,11 +1006,12 @@ void sellerClient::closeConnection(safeChannel& fc) {
 //  Application specific logic
 // 
 
-bool sellerClient::readCredential(safeChannel& fc, const string& subject, 
+bool sellerClient::readBidResolution(safeChannel& fc, const string& subject, 
                                 const string& identityCert, 
                                 const string& proposedKey, 
                                 const string& localOutput) 
 {
+#if 0
     int             encType= NOENCRYPT;
 
     if(clientgetCredentialfromserver(fc, subject.c_str(), "PKToken",
@@ -1182,6 +1026,7 @@ bool sellerClient::readCredential(safeChannel& fc, const string& subject,
         fflush(g_logFile);
         return false;
     }
+#endif
 
     return true;
 }
@@ -1232,7 +1077,7 @@ bool sellerClient::compareFiles(const string& firstFile, const string& secondFil
 // ------------------------------------------------------------------------
 
 
-bool    sellerClient::resolveAuction(int numbids, char* bidFiles)
+bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
 {
     return true;
 }
@@ -1243,7 +1088,7 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles)
 
 int main(int an, char** av)
 {
-    sellerClient      oAuthClient;
+    sellerClient    oSellerClient;;
     safeChannel     fc;
     int             iRet= 0;
     int             i;
@@ -1252,6 +1097,10 @@ int main(int an, char** av)
     string          testPath("sellerClient/tests/");
     string          testFileName("tests.xml");
     bool            result;
+    string          userKeyFile("bidClient/tests/basicBidTest/UserPublicKey.xml");
+    string          userCertFile("bidClient/tests/basicBidTest/UserCert.xml");
+
+
     initLog(NULL);
 
 #ifdef  TEST
@@ -1266,10 +1115,10 @@ int main(int an, char** av)
                 fInitProg= true;
             }
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {
-                oAuthClient.m_szPort= strdup(av[++i]);
+                oSellerClient.m_szPort= strdup(av[++i]);
             }
             if(strcmp(av[i],"-address")==0) {
-                oAuthClient.m_szAddress= strdup(av[++i]);
+                oSellerClient.m_szAddress= strdup(av[++i]);
             }
             if (strcmp(av[i],"-directory")==0) {
                 directory= strdup(av[++i]);
@@ -1304,7 +1153,7 @@ int main(int an, char** av)
     try {
         if(!filePresent("sellerClient/private")) {
             safeChannel channel;
-            result = client.establishConnection(channel,
+            result = oSellerClient.establishConnection(channel,
                         userKeyFile.c_str(),
                         userCertFile.c_str(),
                         directory,
@@ -1324,14 +1173,14 @@ int main(int an, char** av)
         }
 
         int     nBids= 500;
-        char*   rgBid[500];
+        char*   rgBids[500];
 
         if(!listBids("sellerClient/bids", &nBids, rgBids)) {
             fprintf(g_logFile, "sellerClient: can't retrieve bids\n");
             closeLog();
             return 0;
         }
-        if(resolveAuction(nBids, rgBids))
+        if(oSellerClient.resolveAuction(nBids, rgBids))
             fprintf(g_logFile, "sellerClient: auctions successfully concluded\n");
         else
             fprintf(g_logFile, "sellerClient: auction resolution unsuccessful\n");

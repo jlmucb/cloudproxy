@@ -28,7 +28,7 @@ dobjs=      $(B)/sellerClient.o $(B)/logging.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o  $(B)/secPrincipal.o $(B)/request.o \
-	    $(B)/trustedKeyNego.o $(B)/sha1.o \
+	    $(B)/trustedKeyNego.o $(B)/sha1.o $(B)/encapsulate.o \
 	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o
 
 all: $(E)/sellerClient.exe
@@ -42,6 +42,9 @@ $(B)/sellerClient.o: $(S)/sellerClient.cpp $(S)/sellerClient.h
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
+
+$(B)/encapsulate.o: $(SCC)/encapsulate.cpp $(SCC)/encapsulate.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encapsulate.o $(SCC)/encapsulate.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp

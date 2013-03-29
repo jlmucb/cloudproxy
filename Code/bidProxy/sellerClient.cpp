@@ -1059,8 +1059,8 @@ bool sellerClient::initSafeChannel(safeChannel& fc)
 const char*  g_szTerm= "terminate channel\n";
 
 
-#define AUTHCLIENTTEST
-#ifdef  AUTHCLIENTTEST
+#define BIDCLIENTTEST
+#ifdef  BIDCLIENTTEST
 
 bool sellerClient::establishConnection(safeChannel& fc, 
                                     const char* keyFile, 

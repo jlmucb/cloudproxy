@@ -74,8 +74,8 @@ const char*   szRequest4b= "</UserName>\n";
 const char*   szRequest5a= "    <Bid>";
 const char*   szRequest5b=  "</Bid>\n";
 
-const char*   szRequest6a= "<SubmiterCert>\n";
-const char*   szRequest6b= "</SubmitterCert>\n";
+const char*   szRequest6a= "<BidderCert>\n";
+const char*   szRequest6b= "</BidderCert>\n";
 
 
 const char*   szResponse1= "<Response>\n";
@@ -162,7 +162,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"BidderCert")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    m_szBidderCert= canonicalize(pNode1);
+                    szBidderCert= canonicalize(pNode1);
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"AuctionID")==0) {
@@ -187,8 +187,22 @@ bool  Request::getDatafromDoc(const char* szRequest)
         pNode= pNode->NextSibling();
     }
 
-    if(szAction==NULL || szAuctionID==NULL || szBid==NULL || szBidderCert==NULL)
+    if(szAction==NULL) {
+        fprintf(g_logFile, "Request::getDatafromDoc: szAction is NULL\n");
         return false;
+    }
+    if(szAuctionID==NULL) {
+        fprintf(g_logFile, "Request::getDatafromDoc: szAuctionID is NULL\n");
+        return false;
+    }
+    if(szBid==NULL) {
+        fprintf(g_logFile, "Request::getDatafromDoc: szBid is NULL\n");
+        return false;
+    }
+    if(szBidderCert==NULL) {
+        fprintf(g_logFile, "Request::getDatafromDoc: szBidderCert is NULL\n");
+        return false;
+    }
 
     if(szAction!=NULL)
         m_szAction= strdup(szAction);
@@ -197,7 +211,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
     if(szUserName!=NULL)
         m_szUserName= strdup(szUserName);
     if(szBidderCert!=NULL)
-        m_szBidderCert= strdup(szBidderCert);
+        m_szBidderCert= (char*)szBidderCert;
     if(szBid!=NULL)
         m_szBid= strdup(szBid);
 
@@ -469,10 +483,28 @@ bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
     char                    szSealedName[256];
     u64*                    pl1;
     u64*                    pl2;
+    int                     size= strlen(bidBody)+1;
+
+#ifdef TEST
+    fprintf(g_logFile, "saveBid %d\n", size);
+    fprintf(g_logFile, "bidBody\n%s\n", bidBody);
+    fflush(g_logFile);
+#endif
+
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "saveBid: no sealing key\n");
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "saveBid sealing key %d\n", sealingKey->m_iByteSizeM);
+    sealingKey->printMe();
+    fflush(g_logFile);
+#endif
 
     // hash
     oHash.Init();
-    oHash.Update((byte*) bidBody, strlen(bidBody));
+    oHash.Update((byte*) bidBody, size);
     oHash.Final();
     oHash.GetDigest(rgHash);
 
@@ -483,7 +515,7 @@ bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
     sprintf(szSealedName, "bidServer/bids/SealedBid%016lx%016lx", *pl1, *pl2);
 
 
-    if(!oM.setplainMessage(strlen(bidBody), (byte*)bidBody)) {
+    if(!oM.setplainMessage(size, (byte*)bidBody)) {
         fprintf(g_logFile, "saveBid: cant set plaintext\n");
         return false;
     }
@@ -522,7 +554,7 @@ bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
 }
 
 
-bool clientsendbidtoserver(safeChannel& fc, 
+bool clientsendbidtoserver(safeChannel& fc,  sessionKeys& oKeys, 
                     const char* szAuctionID,  const char* szUserName,
                     const char* szBid, const char* szBidderCert,
                     int encType, byte* key, timer& encTimer)
@@ -540,13 +572,21 @@ bool clientsendbidtoserver(safeChannel& fc,
 #ifdef  TEST
     fprintf(g_logFile, "clientsendbidtoserver(%s, %s)\n", szAuctionID, szUserName);
 #endif
+
     // send request
+    if(oKeys.m_iNumPrincipals<1 || oKeys.m_rgPrincipalCerts[0]->m_szSignature==NULL) {
+        fprintf(g_logFile, "clientsendbidtoserver: no principal cert\n");
+        return false;
+    }
+    szBidderCert= strdup(oKeys.m_rgPrincipalCerts[0]->m_szSignature);
+
     if(!constructRequest(&p, &iLeft, szAction, szAuctionID, szUserName, 
                          szBid, szBidderCert)) {
         return false;
     }
 #ifdef  TEST
     fprintf(g_logFile, "clientsendbidtoserver request\n%s\n", szBuf);
+    fflush(g_logFile);
 #endif
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
@@ -600,7 +640,7 @@ static char* s_szBidTemplate= (char*)
 
 char*  constructBid(Request& oReq)
 {
-    char            rgbid[2048];
+    char            rgbid[8192];
 
     char*           szBidderCert= NULL;
     char*           szAuctionID= NULL;
@@ -610,20 +650,39 @@ char*  constructBid(Request& oReq)
     time_t          now;
     struct tm *     timeinfo;
 
+#ifdef  TEST
+    fprintf(g_logFile, "constructBid\n");
+    fflush(g_logFile);
+#endif
     time(&now);
     timeinfo= gmtime(&now);
-    // 2011-01-01Z00:00.00
-    sprintf(szTimeNow,"%04d-%02d-%02dZ%02d:%02d.%02d", timeinfo->tm_year, timeinfo->tm_mon,
-            timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    if(timeinfo==NULL) {
+        fprintf(g_logFile, "constructBid: can't get current time\n");
+        fflush(g_logFile);
+        szTimeNow[0]= 0;
+    }
+    else {
+        // 2011-01-01Z00:00.00
+        sprintf(szTimeNow,"%04d-%02d-%02dZ%02d:%02d.%02d", 
+                1900+timeinfo->tm_year, timeinfo->tm_mon+1,
+                timeinfo->tm_mday, timeinfo->tm_hour, 
+                timeinfo->tm_min, timeinfo->tm_sec);
+    }
 
     szAuctionID= oReq.m_szAuctionID;
     szBidAmount= oReq.m_szBid;
     szBidderCert= oReq.m_szBidderCert;
     szUserName= oReq.m_szUserName;
+    if(szUserName==NULL)
+        szUserName= (char*)"";
 
     sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount, 
                    szUserName, szTimeNow, szBidderCert);
 
+#ifdef  TEST
+    fprintf(g_logFile, "constructBid returning %s\n", rgbid);
+    fflush(g_logFile);
+#endif
     return strdup(rgbid);
 }
 
@@ -644,12 +703,17 @@ bool serversendresponsetoclient(RSAKey* sealingKey, RSAKey* signingKey,
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendresponsetoclient\n");
+    fflush(g_logFile);
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
     // fError= !oReq.validateRequest(oKeys);
     accessTimer.Stop();
 
+#ifdef TEST
+    fprintf(g_logFile, "after timers\n");
+    fflush(g_logFile);
+#endif
     if(!fError) {
         szBid= constructBid(oReq);
         if(szBid==NULL) {

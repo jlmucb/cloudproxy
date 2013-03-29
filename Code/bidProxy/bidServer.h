@@ -104,7 +104,7 @@ void* channelThread(void* ptr);
 
 class theServiceChannel {
 public:
-    bidServer*         m_pParent;
+    bidServer*          m_pParent;
     int                 m_fdChannel;
 
     int                 m_serverState;

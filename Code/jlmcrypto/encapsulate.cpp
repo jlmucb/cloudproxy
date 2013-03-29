@@ -578,7 +578,7 @@ bool   encapsulatedMessage::setplainMessage(int size, byte* in)
 {
     if(in==NULL)
         return false;
-    if(m_rgPlain==NULL) {
+    if(m_rgPlain!=NULL) {
         free(m_rgPlain);
         m_rgPlain= NULL;
         m_sizePlain= 0;

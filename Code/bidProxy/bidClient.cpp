@@ -1059,8 +1059,8 @@ bool bidClient::initSafeChannel(safeChannel& fc)
 const char*  g_szTerm= "terminate channel\n";
 
 
-#define AUTHCLIENTTEST
-#ifdef  AUTHCLIENTTEST
+#define BIDCLIENTTEST
+#ifdef  BIDCLIENTTEST
 
 bool bidClient::establishConnection(safeChannel& fc, 
                                     const char* keyFile, 
@@ -1134,7 +1134,7 @@ bool bidClient::readBid(safeChannel& fc,
 {
     int             encType= NOENCRYPT;
 
-    if(!clientsendbidtoserver(fc, auctionID.c_str(),  user.c_str(),
+    if(!clientsendbidtoserver(fc, m_oKeys, auctionID.c_str(),  user.c_str(),
 			      bid.c_str(), userCert.c_str(),
 			      encType, m_bidKeys, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
@@ -1197,7 +1197,7 @@ bool bidClient::compareFiles(const string& firstFile, const string& secondFile) 
 
 int main(int an, char** av)
 {
-    bidClient      oAuthClient;
+    bidClient       oBidClient;
     safeChannel     fc;
     int             iRet= 0;
     int             i;
@@ -1220,10 +1220,10 @@ int main(int an, char** av)
                 fInitProg= true;
             }
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {
-                oAuthClient.m_szPort= strdup(av[++i]);
+                oBidClient.m_szPort= strdup(av[++i]);
             }
             if(strcmp(av[i],"-address")==0) {
-                oAuthClient.m_szAddress= strdup(av[++i]);
+                oBidClient.m_szAddress= strdup(av[++i]);
             }
             if (strcmp(av[i],"-directory")==0) {
                 directory= strdup(av[++i]);
@@ -1256,7 +1256,7 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-
+#if 0
         // read the testPath and iterate through the set of tests, running each in turn
         DIR* testDir = opendir(testPath.c_str());
         if (NULL == testDir) {
@@ -1284,6 +1284,27 @@ int main(int an, char** av)
                 bt.Run(directory);
             }
         }
+#else
+        safeChannel fc;
+        const char*   directory= "/home/jlm/jlmcrypt/";
+        result = oBidClient.establishConnection(fc,
+                       "bidClient/tests/basicBidTest/UserPrivateKey.xml",
+                       "bidClient/tests/basicBidTest/UserPublicKey.xml",
+                       directory, "127.0.0.1", SERVICE_PORT);
+        if(result) {
+            result = oBidClient.readBid(fc, "1", "User", "10",
+                                        "UserCert", "localOutput");
+            if(result) {
+                fprintf(g_logFile, "Test succeeds\n");
+            }
+            else {
+            }
+        }
+        else {
+            fprintf(g_logFile, "Test fails\n");
+        }
+        
+#endif
 
 #ifdef TEST
         if (0 != errno) {

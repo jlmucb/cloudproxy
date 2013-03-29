@@ -84,6 +84,9 @@ accessPrincipal* g_policyAccessPrincipal= NULL;
 accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 
+PrincipalCert  g_sealingPrincipal;
+
+
 // ------------------------------------------------------------------------
 
 /*
@@ -981,22 +984,23 @@ bool bidServer::initSigningandSealingKeys()
     }
     m_szsealingCert= strdup((char *)buf);
 
-    // get keyinfo from sealing Cert and initialize key
-    PrincipalCert  seal;
+    // Fix: validate sealing principal
 
-    if(!seal.init(m_szsealingCert)) {
+    // get keyinfo from sealing Cert and initialize key
+    if(!g_sealingPrincipal.init(m_szsealingCert)) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't init seal Cert\n");
         return false;
     }
 
-    if(!seal.parsePrincipalCertElements()) {
+    if(!g_sealingPrincipal.parsePrincipalCertElements()) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't parse seal Cert\n");
         return false;
     }
 
-    m_sealingKey= (RSAKey*)seal.getSubjectKeyInfo();
+    m_sealingKey= (RSAKey*)g_sealingPrincipal.getSubjectKeyInfo();
     if(m_sealingKey==NULL) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't get keyinfo from seal Cert\n");
+        fflush(g_logFile);
         return false;
     }
 
@@ -1300,9 +1304,12 @@ bool bidServer::server()
             poSc->m_fdChannel= newfd;
             poSc->m_myPositionInParent= i;
             poSc->m_signingKey=  m_signingKey;
+            poSc->m_sealingKey=  m_sealingKey;
 #ifdef TEST
             fprintf(g_logFile, "Signing key\n");
             poSc->m_signingKey->printMe();
+            fprintf(g_logFile, "Sealing key\n");
+            poSc->m_sealingKey->printMe();
             fprintf(g_logFile, "bidServer: slot %d, about to pthread_create\n", i);
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);
             fflush(g_logFile);

@@ -1256,7 +1256,8 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-#if 0
+#define JOHNFORGOTTHETESTFILE
+#ifndef JOHNFORGOTTHETESTFILE
         // read the testPath and iterate through the set of tests, running each in turn
         DIR* testDir = opendir(testPath.c_str());
         if (NULL == testDir) {

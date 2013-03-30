@@ -1571,14 +1571,6 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
     sealingKey->printMe();
 #endif
 
-    // get auction id
-    szAuctionID= readandstoreString("./sellerClient/resolve");
-    if(szAuctionID==NULL) {
-        fprintf(g_logFile, 
-                "sellerClient::resolveAuction:  cant read auctionID\n");
-        return false;
-    }
-
     // init
     szWinningBid= bidFiles[0];
     if(!pWinningBid->getBidInfo(sealingKey, szWinningBid)) {
@@ -1616,9 +1608,19 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
             pWinningBid= pCurrentBid;
             pCurrentBid= NULL;
         }
-//        else if(winningBidAmount==pCurrentBid->bidAmount) {
-//        time comparison
-//        }
+        else if(winningBidAmount==pCurrentBid->bidAmount) {
+            if(timeCompare(pCurrent->timeinfo, pWinningBid->timeinfo)<0) {
+                winningBidAmount= pCurrentBid->bidAmount;
+                szWinningBid=  szCurrentBid;
+                delete pWinningBid;
+                pWinningBid= pCurrentBid;
+                pCurrentBid= NULL;
+            }
+            else {
+                delete pCurrentBid;
+                pCurrentBid= NULL;
+            }
+        }
         else {
             delete pCurrentBid;
             pCurrentBid= NULL;
@@ -1647,7 +1649,6 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
 #endif
 
     // record result
-    m_fWinningBidValid= true;
     m_fWinningBidValid= true;
     m_WinningBidAmount= winningBidAmount;
 

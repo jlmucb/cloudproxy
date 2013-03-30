@@ -88,7 +88,7 @@ public:
     void    closeConnection(safeChannel& fc);
     bool    resolveAuction(int numbids, char* bidFiles[]);
     char*   signWinner(RSAKey* sealingKey, const char* auctionID,
-                       const char* winningBidAmount, const char* szWinnerCert);
+                       int winningBidAmount, const char* szWinnerCert);
 
     bool    readBidResolution(safeChannel& fc, const string& subject,
                                 const string& identityCert,

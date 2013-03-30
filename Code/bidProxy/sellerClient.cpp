@@ -1617,7 +1617,7 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
             pCurrentBid= NULL;
         }
 //        else if(winningBidAmount==pCurrentBid->bidAmount) {
-//        time comparison
+//            Fix: time comparison
 //        }
         else {
             delete pCurrentBid;

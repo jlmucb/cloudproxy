@@ -63,7 +63,6 @@ public:
     char*               m_szAddress;
 
     char*               m_szAuctionID;
-
     bool                m_fWinningBidValid;
     int                 m_WinningBidAmount;
     char*               m_szSignedWinner;
@@ -88,6 +87,9 @@ public:
                         const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
     bool    resolveAuction(int numbids, char* bidFiles[]);
+    char*   signWinner(RSAKey* sealingKey, const char* auctionID,
+                       const char* winningBidAmount, const char* szWinnerCert);
+
     bool    readBidResolution(safeChannel& fc, const string& subject,
                                 const string& identityCert,
                                 const string& proposedKey,

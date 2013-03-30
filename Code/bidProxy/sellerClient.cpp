@@ -227,13 +227,6 @@ bool sellerClient::initPolicy()
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
         return false;
     }
-#if 0
-    g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
-    if(g_policyAccessPrincipal==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-#endif
 
     g_globalpolicyValid= true;
     return true;
@@ -1095,6 +1088,31 @@ bool sellerClient::compareFiles(const string& firstFile, const string& secondFil
 
 int timeCompare(struct tm& time1, struct tm& time2)
 {
+    if(time1.tm_year>time2.tm_year)
+        return 1
+    if(time1.tm_year<time2.tm_year)
+        return -1
+    if(time1.tm_mon>time2.tm_mon)
+        return 1
+    if(time1.tm_mon<time2.tm_mon)
+        return -1
+    if(time1.tm_mday>time2.tm_mday)
+        return 1
+    if(time1.tm_mday<time2.tm_mday)
+        return -1
+    if(time1.tm_hour>time2.tm_hour)
+        return 1
+    if(time1.tm_hour<time2.tm_hour)
+        return -1
+    if(time1.tm_min>time2.tm_min)
+        return 1
+    if(time1.tm_min<time2.tm_min)
+        return -1
+    if(time1.tm_sec>time2.tm_sec)
+        return 1
+    if(time1.tm_sec<time2.tm_sec)
+        return -1
+
     return 0;
 }
 
@@ -1237,6 +1255,11 @@ bool  bidInfo::parse(const char* szBid)
         fprintf(g_logFile, "%s", szError);
     }
 
+ ssscanf(szTime, "%04d-%02d-%02dZ%02d:%02d.%02d",
+        &timeinfo->tm_year, &timeinfo->tm_mon,
+        &timeinfo->tm_mday, &timeinfo->tm_hour,
+        &timeinfo->tm_min, &timeinfo->tm_sec);
+
     return fRet;
 }
 
@@ -1281,18 +1304,20 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     byte                buf[8192];
     encapsulatedMessage oM;
     const char*         szMetaDataName= szBid;
-    char                szBlobName[256];
+    char                szName[256];
+    char                szBlob= NULL;
+    char*               szMeta= NULL;
     char*               szMetaData= NULL;
     bool                fRet= true;
 
     // construct Blob Name
-    strcpy(szBlobName, "SealedBid");
-
-    // sprintf(szMetaName, "bidServer/bids/BidMeta%016lx%016lx", *pl1, *pl2);
-    // sprintf(szSealedName, "bidServer/bids/SealedBid%016lx%016lx", *pl1, *pl2);
+    sprintf(szName, "bidServer/bids/SealedBid%s", szMetaDataName+7)
+    szBlob= strdup(szName);
+    sprintf(szName, "bidServer/bids/%s", szMetaDataName)
+    szMeta= strdup(szName);
 
     // get metaData
-    if(!getBlobfromFile(szMetaDataName, buf, &size)) {
+    if(!getBlobfromFile(szMeta, buf, &size)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant get metadata file %d\n",
                 szMetaDataName);
         return false;
@@ -1301,7 +1326,7 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
 
     // get Blob
     size= 8192;
-    if(!getBlobfromFile(szBlobName, buf, &size)) {
+    if(!getBlobfromFile(szBlob, buf, &size)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant get sealed keys\n");
         fRet= false;
         goto done;
@@ -1351,8 +1376,155 @@ done:
     return fRet;
 }
 
+/*
+ *  <SignedInfo>
+ *      <AuctionId> auction </AuctionID>
+ *      <TimeofDetermination> </TimeofDetermination>
+ *      <Price> </Price>
+ *      <WinnerCert> </WinnerCert>
+ *  </SignedInfo>
+ */
+static g_signedBidTemplate= (char*)
+"<SignedInfo>\n  <AuctionId> %s </AuctionID>\n  <TimeofDetermination> %s </TimeofDetermination>\n"\
+"    <Price> %s </Price>\n  <WinnerCert>\n %s\n </WinnerCert>\n </SignedInfo>\n";
 
-bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
+/*
+ *  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>
+ *    <ds:SignedInfo>
+ *      <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+ *      <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+ *      <SignedInfo>
+ *      ...
+ *      </SignedInfo>
+ *      <ds:SignatureValue> ...  </ds:SignatureValue>
+ *      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName='sellerClientKey'>
+ *      </ds:KeyValue>
+ *   </ds:KeyInfo>
+ *  </ds:Signature>
+ */
+static g_signatureTemplate= (char*)
+"<ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" Id='%sWinner'>\n"\
+"  %s\n  <ds:SignatureValue>\n %s </ds:SignatureValue>\n  %s\n</ds:Signature>\n";
+
+
+char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID, 
+                               const char* winningBidAmount, const char* szWinnerCert)
+{
+    char            szTimeNow[256];
+    time_t          now;
+    struct tm *     timeinfo;
+    int             size= 8192;
+    char            szSignedBuf[8192];
+    char*           szSignedInfo= NULL;
+    Sha256          oHash;
+    byte            rgHash[64];
+    bnum            bnMsg(128);
+    bnum            bnOut(128);
+    byte            rgPadded[512];
+    char*           szSignature= NULL;
+    char            szbase64[512];
+    char*           szMyKeyInfo= NULL;
+
+#ifdef  TEST
+    fprintf(g_logFile, "sellerClient::signWinner\n");
+    fflush(g_logFile);
+#endif
+    time(&now);
+    timeinfo= gmtime(&now);
+    if(timeinfo==NULL) {
+        fprintf(g_logFile, "sellerClient::signWinner: can't get current time\n");
+        fflush(g_logFile);
+        szTimeNow[0]= 0;
+    }
+    else {
+        // 2011-01-01Z00:00.00
+        sprintf(szTimeNow,"%04d-%02d-%02dZ%02d:%02d.%02d", 
+                1900+timeinfo->tm_year, timeinfo->tm_mon+1,
+                timeinfo->tm_mday, timeinfo->tm_hour, 
+                timeinfo->tm_min, timeinfo->tm_sec);
+    }
+
+    // encode signed body
+    sprintf(szSignedBuf, g_signedBidTemplate, auctionID, szTimeNow,
+                               winningBidAmount, szWinnerCert);
+    szSignedInfo= canonicalize(szSignedBuf);
+    if(szSignedInfo==NULL) {
+        fprintf(g_logFile, "sellerClient::signWinner: cant generate SignedInfo\n");
+        return false;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "hashing\n");
+#endif
+    // hash, pad, sign
+    oHash.Init();
+    oHash.Update((byte*) szSignedInfo, strlen(szSignedInfo));
+    oHash.Final();
+    oHash.GetDigest(rgHash);
+
+#ifdef  TEST
+    fprintf(g_logFile, "padding\n");
+#endif
+    if(!emsapkcspad(SHA256HASH, rgHash, signingKey->m_iByteSizeM, rgPadded)) {
+        fprintf(g_logFile, "sellerClient::signWinner: bad pad\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "signing\n");
+#endif
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+
+    revmemcpy((byte*)bnMsg.m_pValue, rgPadded, signingKey->m_iByteSizeM);
+
+    if(!mpRSAENC(bnMsg, *(signingKey->m_pbnD), *(signingKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "sellerClient::signWinner: decrypt failed\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "base64 encode\n");
+#endif
+
+    size= 512;
+    if(!toBase64(signingKey->m_iByteSizeM, (byte*)bnOut.m_pValue, &size, szbase64)) {
+        fprintf(g_logFile, "sellerClient::signWinner: cant transform sigto base64\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "encode signature\n");
+#endif
+    // encode Signature
+    szMyKeyInfo= signingKey->SerializePublictoString();
+    sprintf(szSignedBuf, g_signatureTemplate, auctionID, szSignedInfo, szbase64, szMyKeyInfo);
+    szSignature= canonicalize(szSignedBuf);
+
+cleanup:
+    if(szSignedInfo!=NULL) {
+        free(szSignedInfo);
+        szSignedInfo= NULL;
+    }
+    if(szMyKeyInfo!=NULL) {
+        free(szMyKeyInfo);
+        szMyKeyInfo= NULL;
+    }
+    if(szSignedInfo!=NULL) {
+        free(szSignedInfo);
+        szSignedInfo= NULL;
+    }
+
+    if(fRet)
+        return szSignature;
+    return NULL;
+}
+
+
+bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
 {
     int                 i;
     RSAKey*             sealingKey= NULL;
@@ -1360,7 +1532,7 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
     char*               szWinningBid= NULL;
     char*               szCurrentBid= NULL;
     char*               szWinnerCert= NULL;
-
+    char*               szAuctionID= NULL;
     bidInfo*            pWinningBid= NULL;
     bidInfo*            pCurrentBid= NULL;
 
@@ -1374,12 +1546,26 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
     }
     sealingKey= keyfromkeyInfo(szKey);
 #else
+    if(!m_tcHome.m_privateKeyValid) {
+        fprintf(g_logFile, 
+                "sellerClient::resolveAuction: seller private key invalid\n");
+        return false;
+    }
+    sealingKey= (RSAKey*)m_tcHome.m_privateKey;
 #endif
 
 #ifdef TEST
     fprintf(g_logFile, "SealingKey\n");
     sealingKey->printMe();
 #endif
+
+    // get auction id
+    szAuctionID= readandstoreString("./sellerClient/resolve");
+    if(szAuctionID==NULL) {
+        fprintf(g_logFile, 
+                "sellerClient::resolveAuction:  cant read auctionID\n");
+        return false;
+    }
 
     // init
     szWinningBid= bidFiles[0];
@@ -1399,6 +1585,18 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
                 i);
             return false;
         }
+        if(strcmp(m_szAuctionID, pCurrentBid->auctionID)!=0) {
+            fprintf(g_logFile, "sellerClient::resolveAuction: wrong auction, %s\n", 
+                    auctionID);
+            continue;
+        }
+        if(strcmp(m_szAuctionID, pWinningBid->auctionID)!=0) {
+            delete pWinningBid;
+            winningBidAmount= pCurrentBid->bidAmount;
+            pWinningBid= pCurrentBid;
+            pCurrentBid= NULL;
+            continue;
+        }
         if(winningBidAmount<pCurrentBid->bidAmount) {
             winningBidAmount= pCurrentBid->bidAmount;
             szWinningBid=  szCurrentBid;
@@ -1406,29 +1604,40 @@ bool    sellerClient::resolveAuction(int numbids, char* bidFiles[])
             pWinningBid= pCurrentBid;
             pCurrentBid= NULL;
         }
+//        else if(winningBidAmount==pCurrentBid->bidAmount) {
+//        time comparison
+//        }
         else {
             delete pCurrentBid;
             pCurrentBid= NULL;
         }
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "Winning Bid\n%s\n", szWinningBid);
-#endif
-
     // sign winning bid
+    if(strcmp(m_szAuctionID, pWinningBid->auctionID)!=0) {
+        fprintf(g_logFile, "sellerClient::resolveAuction: wrong auction, %s\n", 
+                pWinningBid->auctionID);
+        return false;
+    }
+    szWinnerCert= pWinningBid->getUserCert();
+    m_szSignedWinner= signWinner(sealingKey, auctionID, winningBidAmount, szWinnerCert);
+    if(m_szSignedWinner==NULL) {
+        fprintf(g_logFile, "sellerClient::resolveAuction: cant sign winning bid\n");
+        if(szWinnerCert!=NULL) {
+            free(szWinnerCert);
+            szWinnerCert= NULL;
+        }
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "Winning Bid\n%s\n", m_szSignedWinner);
+#endif
 
     // record result
     m_fWinningBidValid= true;
-    m_WinningBidAmount= winningBidAmount;
-    UNUSEDVAR(szWinnerCert);
-    szWinnerCert= pWinningBid->getUserCert();
-
     m_fWinningBidValid= true;
     m_WinningBidAmount= winningBidAmount;
-
-    // sign and save winning bid
-    m_szSignedWinner= NULL;
 
     return true;
 }
@@ -1522,6 +1731,24 @@ int main(int an, char** av)
             closeLog();
             return 0;
         }
+
+        // get auction id
+        m_szAuctionID= readandstoreString("./sellerClient/resolve");
+        if(m_szAuctionID==NULL) {
+            fprintf(g_logFile, 
+                "sellerClient::resolveAuction:  cant read auctionID\n");
+            return false;
+        }
+        char* p= m_szAuctionID;
+        while(*p!='\0') {
+            if(*p==' '|| *p=='\n') {
+                *p= 0;
+                break;
+            }
+            p++;
+        }
+
+        fprintf(g_logFile, "sellerClient auction %s\n", m_szAuctionID);
 
         int     nBids= 500;
         char*   rgBids[500];

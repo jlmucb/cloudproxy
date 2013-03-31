@@ -117,10 +117,18 @@ bool    listBids(const char* szDir, int* pNum, char* bidName[])
         fname= ent->d_name;
         if(strcmp(fname, ".")==0 || strcmp(fname,"..")==0)
             continue;
+        if(strncmp(fname, "BidMeta", 7)!=0)
+            continue;
         bidName[n++]= strdup(fname);
     }
     
     *pNum= n;
+#ifdef TEST
+    int i;
+    fprintf(g_logFile, "listBids returning %d bids\n", n);
+    for(i=0; i<n;i++)
+        fprintf(g_logFile, "\t%s\n", bidName[i]);
+#endif
     return true; 
 }
 
@@ -233,7 +241,8 @@ bool sellerClient::initPolicy()
 }
 
 
-bool sellerClient::initClient(const char* configDirectory, const char* serverAddress, u_short serverPort)
+bool sellerClient::initClient(const char* configDirectory, const char* serverAddress, u_short serverPort,
+                              bool fInitChannel)
 {
     struct sockaddr_in  server_addr;
     int                 slen= sizeof(struct sockaddr_in);
@@ -297,33 +306,35 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
         if(!initPolicy())
             throw "sellerClient::Init: Cant init policy objects\n";
 
-        // open sockets
-        m_fd= socket(AF_INET, SOCK_STREAM, 0);
-        if(m_fd<0) 
-            throw  "Can't get socket\n";
-        memset((void*) &server_addr, 0, sizeof(struct sockaddr_in));
-
+        if(fInitChannel) {
+            // open sockets
+            m_fd= socket(AF_INET, SOCK_STREAM, 0);
+            if(m_fd<0) 
+                throw  "Can't get socket\n";
+            memset((void*) &server_addr, 0, sizeof(struct sockaddr_in));
+    
 #ifdef  TEST
-        fprintf(g_logFile, "initClient: socket opened\n");
+            fprintf(g_logFile, "initClient: socket opened\n");
 #endif
 
-        server_addr.sin_family= AF_INET;
+            server_addr.sin_family= AF_INET;
 
-        // Fix: set up sellerClient and bidServer to pass arguments down to
-        // their measured versions so we can control this by arguments
-        if (!inet_aton(serverAddress, &server_addr.sin_addr)) {
-          throw "Can't create the address for the bidServer";
-        }
-        server_addr.sin_port= htons(serverPort);
+            // Fix: set up sellerClient and bidServer to pass arguments down to
+            // their measured versions so we can control this by arguments
+            if (!inet_aton(serverAddress, &server_addr.sin_addr)) {
+                throw "Can't create the address for the bidServer";
+            }
+            server_addr.sin_port= htons(serverPort);
     
-        iError= connect(m_fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
-        if(iError!=0)
-            throw  "sellerClient::Init: Can't connect";
+            iError= connect(m_fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
+            if(iError!=0)
+                throw  "sellerClient::Init: Can't connect";
 
 #ifdef TEST
-        fprintf(g_logFile, "initClient: connect completed\n");
-        fflush(g_logFile);
+            fprintf(g_logFile, "initClient: connect completed\n");
+            fflush(g_logFile);
 #endif
+        }
     }
     catch(const char* szError) {
         fRet= false;
@@ -970,7 +981,7 @@ bool sellerClient::establishConnection(safeChannel& fc,
         fflush(g_logFile);
 #endif
         // init logfile, crypto, etc
-        if(!initClient(directory, serverAddress, serverPort))
+        if(!initClient(directory, serverAddress, serverPort, true))
             throw "sellerClient main: initClient() failed\n";
 
         // copy my public key into client public key
@@ -1001,6 +1012,43 @@ bool sellerClient::establishConnection(safeChannel& fc,
 
   return true;
 }
+
+
+bool sellerClient::loadKeys(const char* keyFile, const char* certFile, 
+                            const char* directory) 
+{
+    u_short serverPort= 0;
+    const char* serverAddress= NULL;
+
+    try {
+        if (g_policyPrincipalCert==NULL) {
+            g_policyPrincipalCert= new PrincipalCert();
+            if(g_policyPrincipalCert==NULL)
+                throw "sellerClient main: failed to new Principal\n";
+        }
+
+#ifdef  TEST
+        fprintf(g_logFile, "sellerClient main: inited g_policyPrincipalCert\n");
+        fflush(g_logFile);
+#endif
+        // init logfile, crypto, etc
+        if(!initClient(directory, serverAddress, serverPort, false))
+            throw "sellerClient main: initClient() failed\n";
+
+        // copy my public key into client public key
+        if(!m_tcHome.m_myCertificateValid || 
+               !m_oKeys.getClientCert(m_tcHome.m_myCertificate))
+            throw "sellerClient main: Cant load client public key structures\n";
+    }
+    catch(const char* szError) {
+        fprintf(g_logFile, "Error: %s\n", szError);
+        fflush(g_logFile);
+        return false;
+    }
+
+  return true;
+}
+
 
 void sellerClient::closeConnection(safeChannel& fc) {
         if(fc.fd>0) {
@@ -1200,27 +1248,31 @@ bool  bidInfo::parse(const char* szBid)
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlElement*   pRootElement= NULL;
-    bool            fRet= true;
+    const char*     szAuctionID= NULL;
+    const char*     szBidAmount= NULL;
+    const char*     szSubjectName= NULL;
+    const char*     szBidTime= NULL;
 
 #ifdef  TEST
-    fprintf(g_logFile, "bidInfo::parse\n");
+    fprintf(g_logFile, "bidInfo::parse\n%s\n", szBid);
     fflush(g_logFile);
 #endif
+
     try {
         if(!doc.Parse(szBid))
             throw "bidInfo::parse: parse failure\n";
         pRootElement= doc.RootElement();
         if(pRootElement==NULL)
             throw "bidInfo::parse: No root element\n";
-
         pNode= Search((TiXmlNode*) pRootElement, "AuctionID");
         if(pNode==NULL)
             throw "bidInfo::parse: No AuctionID element\n";
         pNode1= pNode->FirstChild();
         if(pNode1==NULL)
             throw "bidInfo::parse: Bad AuctionID element\n";
-        if(pNode1->Value()!=NULL)
-            auctionID= strdup(pNode1->Value());
+        if(pNode1->Value()!=NULL) {
+            szAuctionID= pNode1->Value();
+        }
 
         pNode= Search((TiXmlNode*) pRootElement, "BidAmount");
         if(pNode==NULL)
@@ -1229,14 +1281,13 @@ bool  bidInfo::parse(const char* szBid)
         if(pNode1==NULL)
             throw "bidInfo::parse: Bad BidAmount element\n";
         if(pNode1->Value()!=NULL) {
-            bidAmount= atoi(pNode1->Value());
+            szBidAmount= pNode1->Value();
         }
-
         pNode= Search((TiXmlNode*) pRootElement, "SubjectName");
         if(pNode!=NULL) {
             pNode1= pNode->FirstChild();
             if(pNode1!=NULL && pNode1->Value()!=NULL) {
-                userName= strdup(pNode1->Value());
+                szSubjectName= pNode1->Value();
             }
         }
 
@@ -1247,20 +1298,48 @@ bool  bidInfo::parse(const char* szBid)
         if(pNode1==NULL)
             throw "bidInfo::parse: Bad DateTime element\n";
         if(pNode1->Value()!=NULL) {
-            szTime= strdup(pNode1->Value());
+            szBidTime= pNode1->Value();
         }
     }
     catch(const char* szError) {
-        fRet= false;
-        fprintf(g_logFile, "%s", szError);
+        fprintf(g_logFile, "bidInfo::parse error: %s\n");
+        return false;
     }
+        
+    if(szAuctionID==NULL) {
+        fprintf(g_logFile, "bidInfo::parse: no auctionID\n");
+        return false;
+    }
+    else
+        auctionID= strdup(szAuctionID);
 
+    if(szBidAmount!=NULL);
+        bidAmount= atoi(szBidAmount);
+    
+    if(szSubjectName==NULL) {
+        szSubjectName= "Anonymous";
+    }
+    userName= strdup(szSubjectName);
+    if(szBidTime==NULL) {
+        fprintf(g_logFile, "bidInfo::parse: no szBidTime\n");
+        return false;
+    }
+    else
+        szTime= strdup(szBidTime);
+
+fprintf(g_logFile, "bidInfo::parse: about to scan\n");
+fflush(g_logFile);
     sscanf(szTime, "%04d-%02d-%02dZ%02d:%02d.%02d",
         &timeinfo.tm_year, &timeinfo.tm_mon,
         &timeinfo.tm_mday, &timeinfo.tm_hour,
         &timeinfo.tm_min, &timeinfo.tm_sec);
 
-    return fRet;
+#ifdef  TEST
+    fprintf(g_logFile, "bidInfo::parse succeeds\n");
+    printMe();
+    fflush(g_logFile);
+#endif
+    return true;
 }
 
 
@@ -1317,6 +1396,7 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     szMeta= strdup(szName);
 
     // get metaData
+    size= 8192;
     if(!getBlobfromFile(szMeta, buf, &size)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant get metadata file %d\n",
                 szMetaDataName);
@@ -1360,12 +1440,40 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
         goto done;
     }
 
+    // sanity check bid
+    char  szBidBuf[8192];
+    size= oM.plainMessageSize();
+    if(size<2) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: Bid xml too small\n");
+        fRet= false;
+        goto done;
+    }
+    if(size>8180) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: Bid xml too large\n");
+        fRet= false;
+        goto done;
+    }
+    memcpy((byte*)szBidBuf, oM.m_rgPlain, size);
+    if(szBidBuf[size-1]!='\0') {
+        szBidBuf[size]= '\0';
+        size++;
+    }
+    if(szBidBuf[size-2]!='\n') {
+        szBidBuf[size-1]= '\n';
+        szBidBuf[size]= '\0';
+        size++;
+    }
+
     // parse bid
-    if(!parse((const char*)oM.m_rgPlain)) {
+    if(!parse(szBidBuf)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: can't parse bid\n");
         fRet= false;
         goto done;
     }
+#ifdef TEST
+    fprintf(g_logFile, "bidInfo::getBidInfo: succeeded\n");
+    fflush(g_logFile);
+#endif
 
 done:
     oM.m_szXMLmetadata= NULL;
@@ -1378,14 +1486,14 @@ done:
 
 /*
  *  <SignedInfo>
- *      <AuctionId> auction </AuctionID>
+ *      <AuctionID> auction </AuctionID>
  *      <TimeofDetermination> </TimeofDetermination>
  *      <Price> </Price>
  *      <WinnerCert> </WinnerCert>
  *  </SignedInfo>
  */
 static char* g_signedBidTemplate= (char*)
-"<SignedInfo>\n  <AuctionId> %s </AuctionID>\n  <TimeofDetermination> %s </TimeofDetermination>\n"\
+"<SignedInfo>\n  <AuctionID> %s </AuctionID>\n  <TimeofDetermination> %s </TimeofDetermination>\n"\
 "    <Price> %d </Price>\n  <WinnerCert>\n %s\n </WinnerCert>\n </SignedInfo>\n";
 
 /*
@@ -1451,7 +1559,7 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
     sprintf(szSignedBuf, g_signedBidTemplate, auctionID, szTimeNow,
                                winningBidAmount, szWinnerCert);
     if(!doc1.Parse(szSignedBuf)) {
-        fprintf(g_logFile, "sellerClient::signWinner: parse szSignedBuf\n");
+        fprintf(g_logFile, "sellerClient::signWinner: cant parse szSignedBuf\n%s\n", szSignedBuf);
         return false;
     }
     szSignedInfo= canonicalize((TiXmlNode*)doc1.RootElement());
@@ -1462,6 +1570,7 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
 
 #ifdef  TEST
     fprintf(g_logFile, "hashing\n");
+    fflush(g_logFile);
 #endif
     // hash, pad, sign
     oHash.Init();
@@ -1471,6 +1580,7 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
 
 #ifdef  TEST
     fprintf(g_logFile, "padding\n");
+    fflush(g_logFile);
 #endif
     if(!emsapkcspad(SHA256HASH, rgHash, signingKey->m_iByteSizeM, rgPadded)) {
         fprintf(g_logFile, "sellerClient::signWinner: bad pad\n");
@@ -1480,6 +1590,7 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
 
 #ifdef  TEST
     fprintf(g_logFile, "signing\n");
+    fflush(g_logFile);
 #endif
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
@@ -1494,6 +1605,7 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
 
 #ifdef  TEST
     fprintf(g_logFile, "base64 encode\n");
+    fflush(g_logFile);
 #endif
 
     size= 512;
@@ -1505,6 +1617,7 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
 
 #ifdef  TEST
     fprintf(g_logFile, "encode signature\n");
+    fflush(g_logFile);
 #endif
     // encode Signature
     szMyKeyInfo= signingKey->SerializePublictoString();
@@ -1514,6 +1627,10 @@ char* sellerClient::signWinner(RSAKey* signingKey, const char* auctionID,
         return false;
     }
     szSignature= canonicalize((TiXmlNode*)doc2.RootElement());
+#ifdef  TEST
+    fprintf(g_logFile, "got final sig\n");
+    fflush(g_logFile);
+#endif
 
 cleanup:
     if(szSignedInfo!=NULL) {
@@ -1542,21 +1659,25 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
     int                 winningBidAmount= 0;
     char*               szCurrentBid= NULL;
     char*               szWinnerCert= NULL;
-    char*               szAuctionID= NULL;
     char*               szWinningBid;
-    char*               szKey= NULL;
     bidInfo*            pWinningBid= NULL;
     bidInfo*            pCurrentBid= NULL;
 
 #define OFFLINETEST
 #ifdef OFFLINETEST
-    szKey= readandstoreString("../bidServer/privateKey.xml");
+    char*               szKey= NULL;
+    szKey= readandstoreString("bidServer/privateKey.xml");
     if(szKey==NULL) {
         fprintf(g_logFile, 
-                "sellerClient::resolveAuction:  cant read unsealing key\n");
+                "sellerClient::resolveAuction: cant read unsealing key\n");
         return false;
     }
     sealingKey= keyfromkeyInfo(szKey);
+#ifdef TEST
+    fprintf(g_logFile, "sellerClient::resolveAuction: back from keyfromkey\n%s\n",
+            szKey);
+    fflush(g_logFile);
+#endif
 #else
     if(!m_tcHome.m_privateKeyValid) {
         fprintf(g_logFile, 
@@ -1566,6 +1687,12 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
     sealingKey= (RSAKey*)m_tcHome.m_privateKey;
 #endif
 
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, 
+                "sellerClient::resolveAuction: sealing key invalid\n");
+        return false;
+    }
+
 #ifdef TEST
     fprintf(g_logFile, "SealingKey\n");
     sealingKey->printMe();
@@ -1573,6 +1700,7 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
 
     // init
     szWinningBid= bidFiles[0];
+    pWinningBid= new bidInfo();
     if(!pWinningBid->getBidInfo(sealingKey, szWinningBid)) {
         fprintf(g_logFile, 
             "sellerClient::resolveAuction:  cant read initial bid\n");
@@ -1585,10 +1713,13 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
         pCurrentBid= new bidInfo();
         if(!pCurrentBid->getBidInfo(sealingKey, szCurrentBid)) {
             fprintf(g_logFile, 
-                "sellerClient::resolveAuction:  cant read bid info %d\n",
-                i);
+                "sellerClient::resolveAuction:  cant read bid info %d\n", i);
             return false;
         }
+#ifdef TEST
+        fprintf(g_logFile, "SealingKey\n");
+        sealingKey->printMe();
+#endif
         if(strcmp(m_szAuctionID, pCurrentBid->auctionID)!=0) {
             fprintf(g_logFile, "sellerClient::resolveAuction: wrong auction, %s\n", 
                     m_szAuctionID);
@@ -1608,13 +1739,8 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
             pWinningBid= pCurrentBid;
             pCurrentBid= NULL;
         }
-<<<<<<< HEAD
-//        else if(winningBidAmount==pCurrentBid->bidAmount) {
-//            Fix: time comparison
-//        }
-=======
         else if(winningBidAmount==pCurrentBid->bidAmount) {
-            if(timeCompare(pCurrent->timeinfo, pWinningBid->timeinfo)<0) {
+            if(timeCompare(pCurrentBid->timeinfo, pWinningBid->timeinfo)<0) {
                 winningBidAmount= pCurrentBid->bidAmount;
                 szWinningBid=  szCurrentBid;
                 delete pWinningBid;
@@ -1626,7 +1752,6 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
                 pCurrentBid= NULL;
             }
         }
->>>>>>> 76840d4938f8950b7f55713404f3f473b7c74fb7
         else {
             delete pCurrentBid;
             pCurrentBid= NULL;
@@ -1730,7 +1855,11 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-        if(!filePresent("sellerClient/private")) {
+        if(!filePresent("sellerClient/privatekey")) {
+#ifdef  TEST
+            fprintf(g_logFile, "sellerClient no private file, initializing\n");
+            fflush(g_logFile);
+#endif
             safeChannel channel;
             result = oSellerClient.establishConnection(channel,
                         userKeyFile.c_str(),
@@ -1745,7 +1874,7 @@ int main(int an, char** av)
             closeLog();
             return 0;
         }
-        if(filePresent("sellerClient/resolve")) {
+        if(!filePresent("sellerClient/resolve")) {
             fprintf(g_logFile, "sellerClient not time to resolve auction\n");
             closeLog();
             return 0;
@@ -1767,8 +1896,21 @@ int main(int an, char** av)
             p++;
         }
 
-        fprintf(g_logFile, "sellerClient auction %s\n", oSellerClient.m_szAuctionID);
+        fprintf(g_logFile, "sellerClient, resolving  auction %s\n", oSellerClient.m_szAuctionID);
 
+        // load keys
+        if(!oSellerClient.loadKeys(userKeyFile.c_str(), userCertFile.c_str(),
+                                    directory))  {
+            fprintf(g_logFile, "sellerClient cant load keys\n");
+            closeLog();
+            return 0;
+        }
+#ifdef  TEST
+        fprintf(g_logFile, "LoadKeys done\n");
+        fflush(g_logFile);
+#endif
+
+        // get bids
         int     nBids= 500;
         char*   rgBids[500];
 
@@ -1777,8 +1919,12 @@ int main(int an, char** av)
             closeLog();
             return 0;
         }
+#ifdef  TEST
+        fprintf(g_logFile, "Got %d bids\n", nBids);
+        fflush(g_logFile);
+#endif
         if(oSellerClient.resolveAuction(nBids, rgBids))
-            fprintf(g_logFile, "sellerClient: auctions successfully concluded\n");
+            fprintf(g_logFile, "sellerClient: auction successfully concluded\n");
         else
             fprintf(g_logFile, "sellerClient: auction resolution unsuccessful\n");
 

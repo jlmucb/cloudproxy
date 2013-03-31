@@ -78,13 +78,16 @@ public:
     sellerClient();
     ~sellerClient();
 
-    bool    initClient(const char* configDirectory, const char* serverAddress, u_short serverPort);
+    bool    initClient(const char* configDirectory, const char* serverAddress, 
+                       u_short serverPort, bool fInitChannel);
     bool    initPolicy();
     bool    closeClient();
     bool    initSafeChannel(safeChannel& fc);
     bool    protocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile);
     bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
                         const char* directory, const char* serverAddress, u_short serverPort);
+    bool    loadKeys(const char* keyFile, const char* certFile, 
+                            const char* directory);
     void    closeConnection(safeChannel& fc);
     bool    resolveAuction(int numbids, char* bidFiles[]);
     char*   signWinner(RSAKey* sealingKey, const char* auctionID,

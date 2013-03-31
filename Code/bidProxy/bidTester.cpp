@@ -288,8 +288,7 @@ bool bidTester::runTest(const char* directory,
                                             "1",
                                             it->first.subject,
                                             ss.str(),
-                                            it->first.authFile,
-                                            "localOutput");
+                                            it->first.authFile);
                         if (params.timed) {
                             bidTestTimer.Stop();
                             fprintf(g_logFile, "Timers for test %s: ", params.name.c_str());

@@ -174,7 +174,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"UserName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szAuctionID= pNode1->Value();
+                    szUserName= (const char*) pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"Bid")==0) {
@@ -633,8 +633,8 @@ bool clientsendbidtoserver(safeChannel& fc,  sessionKeys& oKeys,
  */
 
 static char* s_szBidTemplate= (char*)
-"<Bid>\n  <AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>"\
-"<SubjectName> %s </SubjectName>\n  <DateTime> %s </DateTime>\n"\
+"<Bid>\n  <AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>\n"\
+"  <SubjectName> %s </SubjectName>\n  <DateTime> %s </DateTime>\n"\
 "  <BidderCert>\n %s\n  </BidderCert>\n </Bid>\n";
 
 
@@ -674,7 +674,7 @@ char*  constructBid(Request& oReq)
     szBidderCert= oReq.m_szBidderCert;
     szUserName= oReq.m_szUserName;
     if(szUserName==NULL)
-        szUserName= (char*)"";
+        szUserName= (char*)"Anonymous";
 
     sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount, 
                    szUserName, szTimeNow, szBidderCert);

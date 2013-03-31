@@ -1,5 +1,5 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/bidClientobjects
+B=          ~/jlmcrypt/sellerClientobjects
 S=          ../bidProxy
 SC=         ../commonCode
 SCC=        ../jlmcrypto

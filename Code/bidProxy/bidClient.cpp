@@ -1126,17 +1126,16 @@ void bidClient::closeConnection(safeChannel& fc) {
 // 
 
 bool bidClient::readBid(safeChannel& fc, 
-			       const string& auctionID, 
-			       const string& user, 
+                               const string& auctionID, 
+                               const string& user, 
                                const string& bid, 
-                               const string& userCert, 
-                               const string& localOutput) 
+                               const string& userCert)
 {
     int             encType= NOENCRYPT;
 
     if(clientsendbidtoserver(fc, m_oKeys, auctionID.c_str(),  user.c_str(),
-			      bid.c_str(), userCert.c_str(),
-			      encType, m_bidKeys, m_encTimer)) {
+                              bid.c_str(), userCert.c_str(),
+                              encType, m_bidKeys, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
         fflush(g_logFile);
     } 
@@ -1267,12 +1266,52 @@ int main(int an, char** av)
                 continue;
             }
 #ifdef TEST
-            fprintf(g_logFile, "Got entry with name %s\n", entry->d_name);
+            fprintf(g_logFile, "Got entry with name %s \n", entry->d_name);
+            fflush(g_logFile);
 #endif
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
+
+                string userCertFile("UserPublicKey.xml");
+                string userKeyFile("UserPrivateKey.xml");
+#ifdef TEST
+                fprintf(g_logFile, "Path: %s\n", path.c_str());
+                fflush(g_logFile);
+#endif
+                bidClient::getKeyFiles(path,
+                            testFileName,
+                            userCertFile,
+                            userKeyFile);
+
+                fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", 
+                        userKeyFile.c_str(), userCertFile.c_str());
+                fflush(g_logFile);
+                string userCert = bidClient::getFileContents(userCertFile);
+
+                bidClient client;
+                safeChannel channel;
+                result = client.establishConnection(channel,
+                        userKeyFile.c_str(),
+                        userCertFile.c_str(),
+                        directory,
+                        "127.0.0.1",
+                        SERVICE_PORT);
+#define UNTILTOMFIXES
+#ifdef UNTILTOMFIXES
+                const string auctionID("Auction1");
+                const string user("John");
+                const string bid1("1");
+                const string bid2("2");
+                if(!client.readBid(channel, auctionID, user, bid1, userCert)) {
+                    fprintf(g_logFile, "bid 1 failed\n");
+                }
+                if(!client.readBid(channel, auctionID, user, bid2, userCert)) {
+                    fprintf(g_logFile, "bid 1 failed\n");
+                }
+#else
                 bidTester bt(path, testFileName);
                 bt.Run(directory);
+#endif
             }
         }
 
@@ -1291,6 +1330,7 @@ int main(int an, char** av)
     } 
     catch (const char* err) {
         fprintf(g_logFile, "execution failed with error %s\n", err);
+        fflush(g_logFile);
         iRet= 1;
     }
 
@@ -1347,12 +1387,15 @@ void bidClient::resetTimers() {
 
 void bidClient::getKeyFiles(const string& directory,
                              const string& testFile,
-                             string& identityCertFile,
                              string& userCertFile,
-                             string& userKeyFile,
-                             string& keyFile)
+                             string& userKeyFile)
 {
     string path = directory + testFile;
+#ifdef TEST
+    fprintf(g_logFile, "getKeyFiles Path: %s\n", path.c_str());
+    fflush(g_logFile);
+#endif
+
     TiXmlDocument doc(path.c_str());
     doc.LoadFile();
 
@@ -1362,14 +1405,10 @@ void bidClient::getKeyFiles(const string& directory,
         const string& name = child->ValueStr();
         const TiXmlElement* childElt = child->ToElement();
         const string& text(childElt->GetText());
-        if (name.compare("IdentityCert") == 0) {
-            identityCertFile = directory + text; 
-        } else if (name.compare("UserCert") == 0) {
+        if (name.compare("UserCert") == 0) {
             userCertFile = directory + text;
         } else if (name.compare("UserKey") == 0) {
             userKeyFile = directory + text;
-        } else if (name.compare("Key") == 0) {
-            keyFile = directory + text;
         } else {
             throw "Unknown child node of Test\n";
         }

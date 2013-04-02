@@ -1382,31 +1382,62 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     int                 size= 8192;
     byte                buf[8192];
     encapsulatedMessage oM;
-    const char*         szMetaDataName= szBid;
+    const char*         szMeta= szBid;
+    const char*         szSignatureName= NULL;
+    const char*         szSignature= NULL;
     char                szName[256];
-    char*               szBlob= NULL;
-    char*               szMeta= NULL;
+    char*               szSealedName= NULL;
+    char*               szMetaDataName= NULL;
     char*               szMetaData= NULL;
+    Sha256              oHash;
+    byte                rgComputedHash[SHA256_DIGESTSIZE_BYTES];
+    byte                rgSigValue[1024];
+    byte                rgPadded[1024];
     bool                fRet= true;
 
+    bnum                bnMsg(128);
+    bnum                bnOut(128);
+    TiXmlDocument       doc;
+    TiXmlElement*       pRootElement= NULL;
+    TiXmlNode*          pfirstSignatureNode= NULL;
+    TiXmlNode*          psecondSignatureNode= NULL;
+    TiXmlNode*          pNode= NULL;
+    TiXmlNode*          pNode1= NULL;
+    RSAKey*             signingKey= NULL;
+    char*               szbidServerCert= NULL;
+    char*               szKey= NULL;
+    PrincipalCert       oPrincipal;
+    int                 rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
+    void*               rgObject[2]={NULL, g_policyKey};
+    int                 iChain= 0;
+
     // construct Blob Name
-    sprintf(szName, "bidServer/bids/SealedBid%s", szMetaDataName+7);
-    szBlob= strdup(szName);
-    sprintf(szName, "bidServer/bids/%s", szMetaDataName);
-    szMeta= strdup(szName);
+    sprintf(szName, "bidServer/bids/SealedBid%s", szMeta+7);
+    szSealedName= strdup(szName);
+    sprintf(szName, "bidServer/bids/%s", szMeta);
+    szMetaDataName= strdup(szName);
+    sprintf(szName, "bidServer/bids/Signature%s", szMeta+7);
+    szSignatureName= strdup(szName);
+
+#ifdef TEST
+    fprintf(g_logFile, "bidInfo::getBidInfo: \n");
+    fprintf(g_logFile, "\tMetaData file: %s\n", szMetaDataName);
+    fprintf(g_logFile, "\tSealedData file: %s\n", szSealedName);
+    fprintf(g_logFile, "\tSignature file: %s\n", szSignatureName);
+#endif
 
     // get metaData
     size= 8192;
-    if(!getBlobfromFile(szMeta, buf, &size)) {
+    if(!getBlobfromFile(szMetaDataName, buf, &size)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant get metadata file %d\n",
                 szMetaDataName);
         return false;
     }
     szMetaData= strdup((char*)buf);
 
-    // get Blob
+    // get sealed data
     size= 8192;
-    if(!getBlobfromFile(szBlob, buf, &size)) {
+    if(!getBlobfromFile(szSealedName, buf, &size)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant get sealed keys\n");
         fRet= false;
         goto done;
@@ -1427,13 +1458,163 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
         goto done;
     }
 
-    // decrypt bid
+    // get encrypted bid
     if(!oM.setencryptedMessage(size, buf)) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant set encrypted\n");
         fRet= false;
         goto done;
     }
 
+    // get and check Signature
+    size= 8192;
+    if(!getBlobfromFile(szSignatureName, buf, &size)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant get signature\n");
+        fRet= false;
+        goto done;
+    }
+
+    // hash file contents
+    oHash.Init();
+    oHash.Update((byte*) oM.m_rgEncrypted, oM.m_sizeEncrypted);
+    oHash.Final();
+    oHash.GetDigest(rgComputedHash);
+
+    // parse signature
+#ifdef TEST
+    fprintf(g_logFile, "bidInfo::getBidInfo, detached sig:\n%s \n", (char*) buf);
+#endif
+    if(!doc.Parse((char*)buf)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant parse detached signature\n");
+        fRet= false;
+        goto done;
+    }
+
+    pRootElement= doc.RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant get root of detached signature\n");
+        fRet= false;
+        goto done;
+    }
+
+    pfirstSignatureNode= Search((TiXmlNode*) pRootElement, "ds:Signature");
+    if(pfirstSignatureNode==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant find signature element\n");
+        fRet= false;
+        goto done;
+    }
+    pNode= Search((TiXmlNode*) pfirstSignatureNode, "ds:SignatureValue");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant parse detached Signaturevalue\n");
+        fRet= false;
+        goto done;
+    }
+    pNode1= pNode->FirstChild();
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant parse detached signatureValue string\n");
+        fRet= false;
+        goto done;
+    }
+    szSignature= pNode1->Value();
+
+    // get signing Key
+    pNode= Search((TiXmlNode*) pfirstSignatureNode, "ds:KeyInfo");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant parse detached signature\n");
+        fRet= false;
+        goto done;
+    }
+    szKey= canonicalize(pNode);
+    if(szKey==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant canonicalize keyinfo\n");
+        fRet= false;
+        goto done;
+    }
+
+    signingKey= keyfromkeyInfo(szKey);
+    if(signingKey==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: signing key invalid\n");
+        fRet= false;
+        goto done;
+    }
+
+    // get signer certificate
+    pNode= pfirstSignatureNode->NextSibling();
+    if(pNode==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: no signature siblings\n");
+        fRet= false;
+        goto done;
+    }
+    psecondSignatureNode= Search((TiXmlNode*) pNode, "ds:Signature");
+    if(psecondSignatureNode==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant find server cert\n");
+        fRet= false;
+        goto done;
+    }
+    szbidServerCert= canonicalize(psecondSignatureNode);
+    if(szbidServerCert==NULL) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant canonicalize server cert\n");
+        fRet= false;
+        goto done;
+    }
+
+    // decrypt signature
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+
+
+    size= 1024;
+    memset(rgSigValue, 0, size);
+    if(!fromBase64(strlen(szSignature), szSignature, &size, rgSigValue)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: cant base64 decode signature\n");
+        fRet= false;
+        goto done;
+    }
+    memcpy((byte*)bnMsg.m_pValue, rgSigValue, signingKey->m_iByteSizeM);
+    if(!mpRSAENC(bnMsg, *(signingKey->m_pbnE), *(signingKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "bidServer::getBidInfo: encrypt failed\n");
+        fRet= false;
+        goto done;
+    }
+    revmemcpy(rgPadded, (byte*)bnOut.m_pValue, signingKey->m_iByteSizeM);
+
+#ifdef TEST
+    fprintf(g_logFile, "bidServer::getBidInfo, signature %s \n", szSignature);
+    PrintBytes((char*)"SigValue:\n", rgSigValue, signingKey->m_iByteSizeM);
+
+    fprintf(g_logFile, "bidServer::getBidInfo: signingKey\n");
+    signingKey->printMe();
+    PrintBytes((char*)"rgpadded: ", rgPadded, signingKey->m_iByteSizeM);
+#endif
+
+    // depad
+    if(!emsapkcsverify(SHA256HASH, rgComputedHash, signingKey->m_iByteSizeM, rgPadded)) {
+        fprintf(g_logFile, "bidServer::getBidInfo: padding verification failed\n");
+        fRet= false;
+        goto done;
+    }
+
+    // set top key to signing key, rootKey to 
+    // Validate cert chain
+    if(!oPrincipal.init(szbidServerCert)) {
+        fprintf(g_logFile, "bidInfo::getBidInfo: signing key invalid\n");
+        fRet= false;
+        goto done;
+    }
+
+    if(!oPrincipal.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "bidServer::getBidInfo: can't parse seal Cert\n");
+        fRet= false;
+        goto done;
+    }
+
+    rgObject[0]= (void*) &oPrincipal;
+    iChain= VerifyEvidenceList(NULL, 2, rgType, rgObject, g_policyKey, signingKey);
+    if(iChain<0) {
+        fprintf(g_logFile, "bidServer::getBidInfo: Invalid bidServer certificate chain\n");
+        return false;
+    }
+
+    // decrypt bid
     if(!oM.decryptMessage()) {
         fprintf(g_logFile, "bidInfo::getBidInfo: cant decrypt message\n");
         fRet= false;
@@ -1481,8 +1662,22 @@ done:
         free(szMetaData);
         szMetaData= NULL;
     }
+    oM.m_szXMLmetadata= NULL;
+    if(szKey!=NULL) {
+        free(szKey);
+        szKey= NULL;
+    }
+    if(signingKey!=NULL) {
+        delete signingKey;
+        signingKey= NULL;
+    }
+    if(szbidServerCert!=NULL) {
+        free(szbidServerCert);
+        szbidServerCert= NULL;
+    }
     return fRet;
 }
+
 
 /*
  *  <SignedInfo>
@@ -1495,6 +1690,7 @@ done:
 static char* g_signedBidTemplate= (char*)
 "<SignedInfo>\n  <AuctionID> %s </AuctionID>\n  <TimeofDetermination> %s </TimeofDetermination>\n"\
 "    <Price> %d </Price>\n  <WinnerCert>\n %s\n </WinnerCert>\n </SignedInfo>\n";
+
 
 /*
  *  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>

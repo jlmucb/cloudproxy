@@ -158,7 +158,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlNode*      pNode2;
-    const char*           szKeyName= NULL;
+    const char*     szKeyName= NULL;
     int             keySize= 0;
     char*           szBase64KeyValue= NULL;
     char*           szKeyType= NULL;

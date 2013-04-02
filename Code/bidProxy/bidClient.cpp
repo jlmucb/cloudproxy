@@ -368,14 +368,6 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
                !m_oKeys.getMyProgramCert(m_tcHome.m_myCertificate))
             throw "bidClient::Init: Cant get my Cert\n";
     
-        // Initialize resource and principal tables
-#if 0
-        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, "bidClient"))
-            throw "bidClient::Init: Cant init metadata\n";
-        if(!g_theVault.initFileNames())
-            throw "bidClient::Init: Cant init file names\n";
-#endif
-
         // Init global policy 
         if(!initPolicy())
             throw "bidClient::Init: Cant init policy objects\n";

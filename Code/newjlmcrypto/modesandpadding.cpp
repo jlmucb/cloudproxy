@@ -249,6 +249,144 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
 // ----------------------------------------------------------------
 
 
+//  PK Message Padding
+//  EME-PKCS1-v1_5 decoding: Separate the encoded message EM into an
+//  octet string PS consisting of nonzero octets and a message M as
+//  
+//           EM = 0x00 || 0x02 || PS || 0x00 || M.
+//  
+//  If the first octet of EM does not have hexadecimal value 0x00, if
+//  the second octet of EM does not have hexadecimal value 0x02, if
+//  there is no octet with hexadecimal value 0x00 to separate PS from
+//  M, or if the length of PS is less than 8 octets, output
+//  "decryption error" and stop.  
+
+
+bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
+
+{
+    int     n= 0;
+    int     m= 0;
+    int     j= 0;
+    int     k= 0;
+    int     psLen= sigSize-3-sizeIn;
+    byte*   pStart= &rgMsg[2];
+    byte*   p;
+    byte*   q;
+    int     padTogo;
+
+#ifdef CRYPTOTEST
+    fprintf(g_logFile, "pkcsmessagepad, insize %d, sigsize %d\n", sizeIn, sigSize);
+#endif
+
+    // 2 byte header
+    rgSig[n++]= 0x00; rgSig[n++]= 0x02;
+
+    // get non-zero bytes
+    padTogo= psLen;
+    while(padTogo>0) {
+        if(!getCryptoRandom(padTogo, &rgSig[n])) {
+            fprintf(g_logFile, "pkcsmessagepad: can't get random bits\n");
+            return false;
+        }
+        p= &rgSig[n];
+        for(m=0; m<padTogo; m++) {
+            if(p[m]==0)
+                break;
+        }
+        if(m<padTogo) {
+            k= 0;
+            j= 1;
+            while(j<padTogo) {
+                if(p[m+k]!=0) {
+                    p[m+k]= p[m+j];
+                    k++;
+                }
+                j++;
+            }
+        n+= (m+k);
+        }
+        padTogo= psLen+2-n;
+    }
+
+    // single 0x00 byte
+    rgSig[n++]= 0x00;
+
+    // copy message
+    memcpy(&rgSig[n], rgMsg, sizeIn);
+
+#ifdef CRYPTOTEST4
+    PrintBytes("pkcsmessagepad: Padded block\n", rgSig, sigSize);
+#endif
+    return true;
+}
+
+
+bool pkcsmessageverify(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
+{
+    int     n= 0;
+    int     m= 0;
+    int     i= 0;
+    byte    rgPre[2]= {0x00, 0x02};
+
+#ifdef CRYPTOTEST
+    fprintf(g_logFile, "pkcsmessageverify, sigsize %d\n", sigSize);
+#endif
+
+    // preamble wrong?
+    if(memcmp(&rgSig[n], rgPre, 2)!=0) {
+        fprintf(g_logFile, "pkcsmessageverify: Bad preamble\n");
+        return false;
+    }
+    n+= 2;
+
+    // PS
+    for(i=n;i<sigSize; i++) {
+        if(rgSig[i]==0x00)
+            break;
+    }
+
+    // overflow?
+    if(i>=sigSize) {
+        fprintf(g_logFile, "pkcsmessageverify: no zero bytes\n");
+        return false;
+    }
+   
+    // 0 byte 
+    if(rgSig[i]!=0x00) {
+        fprintf(g_logFile, "pkcsmessageverify: no zero byte\n");
+        return false;
+    }
+    n= i;
+
+    m= sigSize-n;
+    if(m>*psizeOut) {
+        fprintf(g_logFile, "pkcsmessageverify: output buffer too small\n");
+        return false;
+    }
+    *psizeOut= m;
+    memcpy(rgOut, &rgSig[n], m);
+
+#ifdef CRYPTOTEST
+    fprintf(g_logFile, "pkcsmessageverify, output size is %d\n", *psizeOut);
+#endif
+    return true;
+}
+
+
+// ----------------------------------------------------------------
+
+
+
+
+// ----------------------------------------------------------------
+
+
+
+
+// ----------------------------------------------------------------
+
+
 /*
  *  CBC
  *

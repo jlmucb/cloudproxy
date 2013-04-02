@@ -43,12 +43,39 @@ extern const char*  szRSAKeyProto;
 // -----------------------------------------------------------------------------------
 
 
+bool  RSADecrypt(RSAKey& key, byte* in, byte* out)
+{
+    return true;
+}
+
+
+bool  RSAEncrypt(RSAKey& key, byte* in, byte* out)
+{
+    return true;
+}
+
+
+bool  RSASign(RSAKey& key, int hashType, byte* hash, byte* out)
+{
+    return true;
+}
+
+
+bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* out)
+{
+    return true;
+}
+
+
+// -----------------------------------------------------------------------------------
+
+
 #ifndef MAXTRY
 #define MAXTRY 30
 #endif
 
 
-RSAKey* generateRSAKeypair(int keySize)
+RSAKey* RSAGenerateKeyPair(int keySize)
 {
     int     iTry= 0;
     int     ikeyByteSize= 0;
@@ -135,65 +162,96 @@ RSAKey* generateRSAKeypair(int keySize)
 // -----------------------------------------------------------------------------------
 
 
-bool initRSAKeyFromKeyInfo(RSAKey** ppKey, TiXmlNode* pNode)
+RSAKey* RSAKeyFromParsedKeyInfo(TiXmlNode* pNode)
 {
-    *ppKey= new RSAKey();
-    if((*ppKey)==NULL) {
-         fprintf(g_logFile, "Cant allocate key\n");
-         return false;
-    }
+
+    RSAKey* pKey= NULL;
+    char*   szDoc= NULL;
+
+    try {
+        new RSAKey();
     
-    char* szDoc = canonicalize(pNode);
-    if(szDoc==NULL) {
-         fprintf(g_logFile, "Cant canonicalize keyinfo\n");
-         return false;
-    }
+        szDoc = canonicalize(pNode);
+        if(szDoc==NULL)
+            throw("Cant canonicalize keyinfo\n");
 
-    if(!(*ppKey)->ParsefromString(szDoc)) {
-         fprintf(g_logFile, "Cant parse KeyInfor\n");
-         return false;
-    }
+        if(!pKey->ParsefromString(szDoc)) 
+            throw("Cant parse KeyInfor\n");
 
-    if(!(*ppKey)->getDataFromDoc()) {
-         fprintf(g_logFile, "Cant get data from KeyInfo\n");
-         return false;
+        if(!pKey->getDataFromDoc())
+            throw("Cant get data from KeyInfo\n");
+        }
+    catch(const char* szError) {
+        fprintf(g_logFile, "RSAKeyFromParsedKeyInfo: %s\n", szError);
+        if(pKey!=NULL) {
+            delete pKey;
+            pKey= NULL;
+        }
+        if(szDoc!=NULL) {
+            free(szDoc);
+            szDoc= NULL;
+        }
     }
-
-    return true;
+    return pKey;
 }
 
 
-bool initRSAKeyFromStringRSAKey(RSAKey** ppKey, const char* szXml, const char* szLoc)
+char* canonicalkeyfromCert(const char* szCert)
 {
-    if(ppKey==NULL || szXml==NULL)
-        return false;
-
-    if(szLoc==NULL)
-        szLoc= "unknown";
-
-    *ppKey= new RSAKey();
-    if((*ppKey)==NULL) {
-         fprintf(g_logFile, "Cant %s key (1)\n", szLoc);
-         return false;
+    TiXmlDocument doc;
+    if(!doc.Parse(szCert)) {
+        fprintf(g_logFile, "getSerializedKeyfromCert: cant parse cert\n");
+        return NULL;
     }
-    
-    (*ppKey)->m_pDoc= new TiXmlDocument();  
-    if((*ppKey)->m_pDoc==NULL) {
-         fprintf(g_logFile, "Cant init %s key document\n", szLoc);
-         return false;
+    TiXmlElement*   pRootElement= doc.RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "getSerializedKeyfromCert: Can't get root of quote\n");
+        return NULL;
+    }
+    TiXmlNode* pNode= Search((TiXmlNode*) pRootElement, "ds:KeyInfo");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "getSerializedKeyfromCert: No ds:KeyInfo node\n");
+        return NULL;
+    }
+    return canonicalize(pNode);
+}
+
+
+char* RSAkeyInfofromKey(RSAKey* pKey)
+{
+    if(pKey==NULL)
+        return NULL;
+    return pKey->SerializePublictoString();
+}
+
+
+RSAKey* RSAkeyfromkeyInfo(const char* szKeyInfo)
+{
+    RSAKey*         pKey= new RSAKey();
+    TiXmlElement*   pRootElement= NULL;
+
+    if(pKey==NULL)
+        return NULL;
+#ifdef QUOTETEST
+    fprintf(g_logFile, "keyfromkeyInfo, Keyinfo\n%s\n", szKeyInfo);
+#endif
+    if(!pKey->ParsefromString(szKeyInfo)) {
+        fprintf(g_logFile, "keyfromkeyInfo: cant get key from keyInfo\n");
+        goto cleanup;
+    }
+    pRootElement= pKey->m_pDoc->RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "keyfromkeyInfo: cant get root element\n");
+        goto cleanup;
     }
 
-    if(!(*ppKey)->ParsefromString(szXml)) {
-         fprintf(g_logFile, "Cant parse %s key\n%s\n", szLoc,szXml);
-         return false;
+    if(!pKey->getDataFromRoot(pRootElement)) {
+        fprintf(g_logFile, "keyfromkeyInfo: cant getDataFromRoot\n");
+        goto cleanup;
     }
 
-    if(!(*ppKey)->getDataFromDoc()) {
-         fprintf(g_logFile, "Cant get data from %s key document\n", szLoc);
-         return false;
-    }
-
-    return true;
+cleanup:
+    return pKey;
 }
 
 
@@ -210,6 +268,151 @@ bool bumpChallenge(int iSize, byte* puChallenge)
     memcpy(puChallenge, bnN.m_pValue, iSize);
     
     return true;
+}
+
+
+char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge, 
+                            int sizeChallenge)
+{
+    int     iOut;
+    byte    rgPadded[1024];
+    char    rgBase64[1024];
+    bnum    bnMsg(4*rgKey.m_iByteSizeM/sizeof(u64));
+    bnum    bnOut(4*rgKey.m_iByteSizeM/sizeof(u64));
+    u32     uHash= 0;
+
+#ifdef TEST
+    if(fEncrypt)
+        fprintf(g_logFile, "rsaXmlEncodeChallenge, encrypt\n");
+    else
+        fprintf(g_logFile, "rsaXmlEncodeChallenge, decrypt\n");
+    fflush(g_logFile);
+#endif
+    if(sizeChallenge==32) {
+        uHash=SHA256HASH;
+    }
+    else if(sizeChallenge==64) {
+        uHash=SHA512HASH;
+    }
+    else {
+        fprintf(g_logFile, "Only take 32 byte challenges now, this is %d\n",
+                sizeChallenge);
+        return NULL;
+    }
+    memset(rgPadded, 0, 512);
+    if(!emsapkcspad(uHash, puChallenge, rgKey.m_iByteSizeM, rgPadded)) {
+        fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: padding failure\n");
+        return NULL;
+    }
+#ifdef TEST
+    PrintBytes("rsaXmlEncodeChallenge: padded\n", rgPadded, 
+                rgKey.m_iByteSizeM);
+#endif
+    memset(bnMsg.m_pValue, 0, rgKey.m_iByteSizeM);
+    memset(bnOut.m_pValue, 0, rgKey.m_iByteSizeM);
+    if(fEncrypt) {
+        revmemcpy((byte*)bnMsg.m_pValue, rgPadded, rgKey.m_iByteSizeM);
+        if(!mpRSAENC(bnMsg, *(rgKey.m_pbnE), *(rgKey.m_pbnM), bnOut)) {
+            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
+            return NULL;
+        }
+    }
+    else {
+        revmemcpy((byte*)bnMsg.m_pValue, rgPadded, rgKey.m_iByteSizeM);
+        if(!mpRSAENC(bnMsg, *(rgKey.m_pbnD), *(rgKey.m_pbnM), bnOut)) {
+            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: decrypt failure\n");
+            return NULL;
+        }
+    }
+    iOut= 1024;
+    if(!toBase64(rgKey.m_iByteSizeM, (byte*)bnOut.m_pValue, &iOut, rgBase64)) {
+        fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: can't base64 encode challenge\n");
+        return NULL;
+    }
+
+#ifdef TEST
+    PrintBytes("Encrypted challenge\n", (byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
+#endif
+    return strdup(rgBase64);
+}
+
+
+// -------------------------------------------------------------------------------
+
+ 
+#define MAXPRINCIPALS 25
+#define BIGSIGNEDSIZE 256
+
+const char* szMsgChallenge1= "<SignedChallenges count='%d'>";
+const char* szMsgChallenge2= "\n<SignedChallenge>";
+const char* szMsgChallenge3= "\n</SignedChallenge>";
+const char* szMsgChallenge4= "\n</SignedChallenges>\n";
+
+
+char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, 
+                             byte* puChallenge, int sizeChallenge) 
+{
+    int     i;
+    char*   rgszSignedChallenges[MAXPRINCIPALS];
+    byte    rguCurrentChallenge[BIGSIGNEDSIZE];
+    int     n= 0;
+    char    szMsgHdr[64];
+    int     iSC1;
+    int     iSC2= strlen(szMsgChallenge2);
+    int     iSC3= strlen(szMsgChallenge3);
+    int     iSC4= strlen(szMsgChallenge4);
+
+    memset(rguCurrentChallenge, 0, BIGSIGNEDSIZE);
+    memcpy(rguCurrentChallenge, puChallenge, sizeChallenge);
+
+    sprintf(szMsgHdr, szMsgChallenge1, iNumKeys);
+    iSC1= strlen(szMsgHdr);
+    
+    for(i=0; i< iNumKeys; i++) {
+        rgszSignedChallenges[i]= rsaXmlEncodeChallenge(fEncrypt,
+                *rgKeys[i], rguCurrentChallenge, sizeChallenge);
+        if(rgszSignedChallenges[i]==NULL) {
+            fprintf(g_logFile, "Bad signed challenge %d\n", i);
+            return NULL;
+        }
+        n+= strlen(rgszSignedChallenges[i]);
+        if(i<(iNumKeys-1)) {
+            if(!bumpChallenge(sizeChallenge, rguCurrentChallenge)) {
+                fprintf(g_logFile, "Can't bump challenge %d\n", i);
+                return NULL;
+            }
+        }
+    }
+
+    // concatinate and return
+    n+= iSC1+iSC4+iNumKeys*(iSC2+iSC3);
+    char*   szReturn= (char*) malloc(n+1);
+    char*   p= szReturn;
+    int     iLeft= n+1;
+
+    if(szReturn!=NULL) {
+
+        if(!safeTransfer(&p, &iLeft, szMsgHdr))
+            return NULL;
+
+        for(i=0; i< iNumKeys; i++) {
+            if(!safeTransfer(&p, &iLeft, szMsgChallenge2))
+                return NULL;
+            if(!safeTransfer(&p, &iLeft, rgszSignedChallenges[i]))
+                return NULL;
+            if(!safeTransfer(&p, &iLeft, szMsgChallenge3))
+                return NULL;
+            // free(rgszSignedChallenges[i]);
+        }
+        if(!safeTransfer(&p, &iLeft, szMsgChallenge4))
+            return NULL;
+        *p= 0;
+    }
+    
+#ifdef CRYPTOTEST
+    fprintf(g_logFile, "Signed challenges: %s\n", szReturn);
+#endif
+    return szReturn;
 }
 
 
@@ -324,149 +527,6 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
     fflush(g_logFile);
 #endif
     return true;
-}
-
-
-char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge, 
-                            int sizeChallenge)
-
-{
-    int     iOut;
-    byte    rgPadded[1024];
-    char    rgBase64[1024];
-    bnum    bnMsg(4*rgKey.m_iByteSizeM/sizeof(u64));
-    bnum    bnOut(4*rgKey.m_iByteSizeM/sizeof(u64));
-    u32     uHash= 0;
-
-#ifdef TEST
-    if(fEncrypt)
-        fprintf(g_logFile, "rsaXmlEncodeChallenge, encrypt\n");
-    else
-        fprintf(g_logFile, "rsaXmlEncodeChallenge, decrypt\n");
-    fflush(g_logFile);
-#endif
-    if(sizeChallenge==32) {
-        uHash=SHA256HASH;
-    }
-    else if(sizeChallenge==64) {
-        uHash=SHA512HASH;
-    }
-    else {
-        fprintf(g_logFile, "Only take 32 byte challenges now, this is %d\n",
-                sizeChallenge);
-        return NULL;
-    }
-    memset(rgPadded, 0, 512);
-    if(!emsapkcspad(uHash, puChallenge, rgKey.m_iByteSizeM, rgPadded)) {
-        fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: padding failure\n");
-        return NULL;
-    }
-#ifdef TEST
-    PrintBytes("rsaXmlEncodeChallenge: padded\n", rgPadded, 
-                rgKey.m_iByteSizeM);
-#endif
-    memset(bnMsg.m_pValue, 0, rgKey.m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, rgKey.m_iByteSizeM);
-    if(fEncrypt) {
-        revmemcpy((byte*)bnMsg.m_pValue, rgPadded, rgKey.m_iByteSizeM);
-        if(!mpRSAENC(bnMsg, *(rgKey.m_pbnE), *(rgKey.m_pbnM), bnOut)) {
-            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
-            return NULL;
-        }
-    }
-    else {
-        revmemcpy((byte*)bnMsg.m_pValue, rgPadded, rgKey.m_iByteSizeM);
-        if(!mpRSAENC(bnMsg, *(rgKey.m_pbnD), *(rgKey.m_pbnM), bnOut)) {
-            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: decrypt failure\n");
-            return NULL;
-        }
-    }
-    iOut= 1024;
-    if(!toBase64(rgKey.m_iByteSizeM, (byte*)bnOut.m_pValue, &iOut, rgBase64)) {
-        fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: can't base64 encode challenge\n");
-        return NULL;
-    }
-
-#ifdef TEST
-    PrintBytes("Encrypted challenge\n", (byte*)bnOut.m_pValue, rgKey.m_iByteSizeM);
-#endif
-    return strdup(rgBase64);
-}
-
- 
-#define MAXPRINCIPALS 25
-#define BIGSIGNEDSIZE 256
-
-const char* szMsgChallenge1= "<SignedChallenges count='%d'>";
-const char* szMsgChallenge2= "\n<SignedChallenge>";
-const char* szMsgChallenge3= "\n</SignedChallenge>";
-const char* szMsgChallenge4= "\n</SignedChallenges>\n";
-
-
-char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, 
-                                    byte* puChallenge, int sizeChallenge) 
-{
-    int     i;
-    char*   rgszSignedChallenges[MAXPRINCIPALS];
-    byte    rguCurrentChallenge[BIGSIGNEDSIZE];
-    int     n= 0;
-    char    szMsgHdr[64];
-    int     iSC1;
-    int     iSC2= strlen(szMsgChallenge2);
-    int     iSC3= strlen(szMsgChallenge3);
-    int     iSC4= strlen(szMsgChallenge4);
-
-    memset(rguCurrentChallenge, 0, BIGSIGNEDSIZE);
-    memcpy(rguCurrentChallenge, puChallenge, sizeChallenge);
-
-    sprintf(szMsgHdr, szMsgChallenge1, iNumKeys);
-    iSC1= strlen(szMsgHdr);
-    
-    for(i=0; i< iNumKeys; i++) {
-        rgszSignedChallenges[i]= rsaXmlEncodeChallenge(fEncrypt,
-                *rgKeys[i], rguCurrentChallenge, sizeChallenge);
-        if(rgszSignedChallenges[i]==NULL) {
-            fprintf(g_logFile, "Bad signed challenge %d\n", i);
-            return NULL;
-        }
-        n+= strlen(rgszSignedChallenges[i]);
-        if(i<(iNumKeys-1)) {
-            if(!bumpChallenge(sizeChallenge, rguCurrentChallenge)) {
-                fprintf(g_logFile, "Can't bump challenge %d\n", i);
-                return NULL;
-            }
-        }
-    }
-
-    // concatinate and return
-    n+= iSC1+iSC4+iNumKeys*(iSC2+iSC3);
-    char*   szReturn= (char*) malloc(n+1);
-    char*   p= szReturn;
-    int     iLeft= n+1;
-
-    if(szReturn!=NULL) {
-
-        if(!safeTransfer(&p, &iLeft, szMsgHdr))
-            return NULL;
-
-        for(i=0; i< iNumKeys; i++) {
-            if(!safeTransfer(&p, &iLeft, szMsgChallenge2))
-                return NULL;
-            if(!safeTransfer(&p, &iLeft, rgszSignedChallenges[i]))
-                return NULL;
-            if(!safeTransfer(&p, &iLeft, szMsgChallenge3))
-                return NULL;
-            // free(rgszSignedChallenges[i]);
-        }
-        if(!safeTransfer(&p, &iLeft, szMsgChallenge4))
-            return NULL;
-        *p= 0;
-    }
-    
-#ifdef CRYPTOTEST
-    fprintf(g_logFile, "Signed challenges: %s\n", szReturn);
-#endif
-    return szReturn;
 }
 
 

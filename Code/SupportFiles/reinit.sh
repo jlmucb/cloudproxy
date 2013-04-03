@@ -47,3 +47,10 @@ rm bidServer/symkey
 rm bidServer/files/temp*.test
 rm bidClient.log
 rm bidServer.log
+rm sellerClient/cert
+rm sellerClient/evidence
+rm sellerClient/fileKeys
+rm sellerClient/privatekey
+rm sellerClient/symkey
+rm sellerClient/files/temp*.test
+rm sellerClient.log

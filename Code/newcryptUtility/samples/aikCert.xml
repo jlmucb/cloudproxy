@@ -1,0 +1,42 @@
+<ds:Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>
+<ds:SignedInfo>
+    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    <Certificate Id="www.manferdelli.com/certs/000122" version="1">
+        <SerialNumber>20110930001</SerialNumber>
+        <PrincipalType>Hardware</PrincipalType>
+        <IssuerName>manferdelli.com</IssuerName>
+        <IssuerID>manferdelli.com</IssuerID>
+        <ValidityPeriod>
+            <NotBefore>2011-01-01Z00:00.00</NotBefore>
+            <NotAfter>2021-01-01Z00:00.00</NotAfter>
+        </ValidityPeriod>
+        <SubjectName>//www.manferdelli.com/Keys/attest/0001</SubjectName>
+        <SubjectKey>
+            <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="Gauss-AIK-CERT">
+                <KeyType>RSAKeyType</KeyType>
+                <ds:KeyValue>
+                    <ds:RSAKeyValue size="2048">
+                        <ds:M>wAFIIKMRv842mPR1lyJGE/i9GH8IHjMsroHfaJOwcbBKYhK4YfLa5JTuJBV0dHkTYlfmra23Lps8aibxy+dFjA7ITYSEcHpubwE9FTrkRHn8N7sSX8zQ8+xVCu3GWeOqKu7HchRs7cjIVgtWhUyZ0uJo2L1W2RTYxg6gKfj496fx/4D1kNRNh60wop/sJrNM0VdAv2befcnTTX+hbvViT8jYTShRNDBRQfwJMeH+sM8pGjKXoyCJ1tBfU1k3ZG16fEslH83duJm/JydRnHEuTcUCgJAkuqnWmpEpMLVjAOza1JMjAnrjsT4Vm54FgQ6AWKhF9iCBFBJMUxWeonQ8TQ==</ds:M>
+                        <ds:E>AAAAAAABAAE=</ds:E>
+                    </ds:RSAKeyValue>
+                </ds:KeyValue>
+            </ds:KeyInfo>
+        </SubjectKey>
+        <SubjectKeyID>/Gauss/AIK</SubjectKeyID>
+        <RevocationPolicy>Local-check-only</RevocationPolicy>
+    </Certificate>
+</ds:SignedInfo>
+    <ds:SignatureValue>    
+TjAMZNi/85A3vMH1p7blrHEtXUcPTpQqTIj7nSLXiX7EiEIR9FWM4nQT96jWSQtXglYiPpPN1EmXAwBFHqrjHJW4fwNaoMWemNkm/afrqcSVj+VtMh7SeczgHXn323Xm18giq8hY6YA/f3n5qKy0pyp4vmccHt36NAUnaPttEUY=
+    </ds:SignatureValue>
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName='//manferdelli.com/fileProxyPolicy/0001'>
+    <KeyType>RSAKeyType</KeyType>
+    <ds:KeyValue>
+        <ds:RSAKeyValue size='1024'>
+            <ds:M>Yh5o3VKXvgWGOKaV0b+pw5RdTJBcwoHbBm7KLwws3/YhqZyMcEw6AR8QDgXCcCJl01j9SpHKEaN8RYTkE3qBhCu1E5h1FLl3PYBvvIiQ8urghhxSCshcWAvnOY2fAf8HVOVVfuuFDJEd/v7xpThRenCE5uMWU9bbmJiwXwmMrfk=</ds:M>
+            <ds:E>AAAAAAABAAE=</ds:E>
+        </ds:RSAKeyValue>
+    </ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature>

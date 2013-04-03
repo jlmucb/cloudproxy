@@ -953,8 +953,8 @@ bool bidServer::initPolicy()
 
 bool bidServer::initSigningandSealingKeys()
 {
-    int     size= 4096;
-    byte    buf[4096];
+    int     size= 8192;
+    byte    buf[8192];
 
     if(!m_tcHome.m_privateKeyValid) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key not valid\n");
@@ -966,19 +966,21 @@ bool bidServer::initSigningandSealingKeys()
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "bidServer::initSigningandSealingKeys: sealingKey\n");
+    fprintf(g_logFile, "bidServer::initSigningandSealingKeys: signingKey\n");
     m_signingKey->printMe();
 #endif
 
-    m_szsigningCert= strdup("./bidServer/signingCert");
-    if(!getBlobfromFile(m_szsigningCert, buf, &size)) {
+    size= 8192;
+    m_szSigningCertFile= strdup("./bidServer/cert");
+    if(!getBlobfromFile(m_szSigningCertFile, buf, &size)) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read signing cert, %s\n", m_szsigningCert);
         return false;
     }
     m_szsigningCert= strdup((char *)buf);
 
-    m_szsealingCert= strdup("./bidServer/sealingCert");
-    if(!getBlobfromFile(m_szsealingCert, buf, &size)) {
+    size= 8192;
+    m_szSealingCertFile= strdup("./bidServer/sealingCert");
+    if(!getBlobfromFile(m_szSealingCertFile, buf, &size)) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read sealing cert, %s\n", m_szsealingCert);
         return false;
     }
@@ -993,7 +995,8 @@ bool bidServer::initSigningandSealingKeys()
     }
 
     if(!g_sealingPrincipal.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't parse seal Cert\n");
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't parse seal Cert\n%s\n",
+                m_szsealingCert);
         return false;
     }
 
@@ -1168,15 +1171,6 @@ bool bidServer::initServer(const char* configDirectory)
 #ifdef TEST
         fprintf(g_logFile, "bidServer::Init: after initFileKeys\n");
         m_tcHome.printData();
-#endif
-
-        // Initialize credential and principal tables
-#if 0
-        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
-            "bidServer"))
-            throw "bidServer::Init: Cant init metadata\n";
-        if(!g_theVault.initFileNames())
-            throw "bidServer::Init: Cant init file names\n";
 #endif
 
         if(!initSigningandSealingKeys())

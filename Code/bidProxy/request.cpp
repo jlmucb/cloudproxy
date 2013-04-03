@@ -174,7 +174,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"UserName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL) {
-                    szAuctionID= pNode1->Value();
+                    szUserName= (const char*) pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"Bid")==0) {
@@ -474,16 +474,47 @@ bool  constructResponse(bool fError, char** pp, int* piLeft)
 //
 
 
-bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
+/*
+ *  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id='uniqueid'>
+ *    <ds:SignedInfo>
+ *      <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+ *      <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+ *      <SignedInfo>
+ *      ...
+ *      </SignedInfo>
+ *      <ds:SignatureValue> ...  </ds:SignatureValue>
+ *      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName='sellerClientKey'>
+ *      </ds:KeyValue>
+ *   </ds:KeyInfo>
+ *  </ds:Signature>
+ */
+static char* s_signatureTemplate= (char*)
+"<ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" Id='BidSignature'>\n"\
+"  <ds:SignatureValue>\n %s </ds:SignatureValue>\n  %s\n</ds:Signature>\n";
+
+
+static const char* s_evidenceListTemplate= (char*)
+"<EvidenceList count='%d'>\n  %s\n  %s\n</EvidenceList>\n";
+
+
+bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody, char* szMyCert)
 {
     encapsulatedMessage     oM;
     Sha256                  oHash;
     byte                    rgHash[SHA256_DIGESTSIZE_BYTES];
     char                    szMetaName[256];
     char                    szSealedName[256];
+    char                    szSignatureName[256];
+    char                    sigValue[1024];
     u64*                    pl1;
     u64*                    pl2;
     int                     size= strlen(bidBody)+1;
+    bnum                    bnMsg(128);
+    bnum                    bnOut(128);
+    byte                    rgPadded[1024];
+    char*                   szSigningKeyInfo= NULL;
+    char                    szSignedInfo[2048];
+    char                    szEvidence[8192];
 
 #ifdef TEST
     fprintf(g_logFile, "saveBid %d\n", size);
@@ -513,6 +544,7 @@ bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
 
     sprintf(szMetaName, "bidServer/bids/BidMeta%016lx%016lx", *pl1, *pl2);
     sprintf(szSealedName, "bidServer/bids/SealedBid%016lx%016lx", *pl1, *pl2);
+    sprintf(szSignatureName, "bidServer/bids/Signature%016lx%016lx", *pl1, *pl2);
 
 
     if(!oM.setplainMessage(size, (byte*)bidBody)) {
@@ -547,6 +579,74 @@ bool saveBid(RSAKey* sealingKey, RSAKey* signingKey, const char* bidBody)
     // write encrypted data
     if(!saveBlobtoFile(szSealedName, oM.m_rgEncrypted, oM.m_sizeEncrypted)) {
         fprintf(g_logFile, "saveBid: cant write encrypted data to %s\n", szSealedName);
+        return false;
+    }
+
+    // Sign the bid data
+    if(signingKey==NULL) {
+        fprintf(g_logFile, "saveBid: no signing key\n");
+        return false;
+    }
+
+    // hash bid
+    memset(rgHash, 0, SHA256_DIGESTSIZE_BYTES);
+    oHash.Init();
+    oHash.Update(oM.m_rgEncrypted, oM.m_sizeEncrypted);
+    oHash.Final();
+    oHash.GetDigest(rgHash);
+
+    // encode signed body
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+
+    if(!emsapkcspad(SHA256HASH, rgHash, signingKey->m_iByteSizeM, rgPadded)) {
+        fprintf(g_logFile, "bidServer::saveBid:: bad pad\n");
+        return false;
+    }
+    revmemcpy((byte*)bnMsg.m_pValue, rgPadded, signingKey->m_iByteSizeM);
+
+    if(!mpRSAENC(bnMsg, *(signingKey->m_pbnD), *(signingKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "bidServer::saveBid: decrypt failed\n");
+        return false;
+    }
+
+    size= 1024;
+    memset(sigValue,0,size);
+    if(!toBase64(signingKey->m_iByteSizeM, (byte*)bnOut.m_pValue, &size, sigValue)) {
+        fprintf(g_logFile, "bidServer::saveBid:: cant transform sig to base64\n");
+        return false;
+    }
+
+    // get signing key info
+    szSigningKeyInfo= signingKey->SerializePublictoString();
+    if(szSigningKeyInfo==NULL) {
+        fprintf(g_logFile, "bidServer::saveBid:: can't get signing key info\n");
+        return false;
+    }
+    sprintf(szSignedInfo, s_signatureTemplate, sigValue, szSigningKeyInfo);
+    if(szSigningKeyInfo!=NULL) {
+        free(szSigningKeyInfo);
+        szSigningKeyInfo= NULL;
+    }
+
+    // get my cert
+    if(szMyCert==NULL) {
+        fprintf(g_logFile, "bidServer::saveBid:: can't get signing key cert\n");
+        return false;
+    }
+
+    // write Evidence
+    sprintf(szEvidence, s_evidenceListTemplate, 2, szSignedInfo, szMyCert);
+
+#ifdef  TEST
+    fprintf(g_logFile, "signature file: %s\n", szSignatureName);
+    fprintf(g_logFile, "evidence: \n%s\n", szEvidence);
+    fflush(g_logFile);
+#endif
+
+    // save detached signature
+    if(!saveBlobtoFile(szSignatureName, (byte*)szEvidence, strlen(szEvidence)+1)) {
+        fprintf(g_logFile, "saveBid: cant write signature file %s\n", szSignatureName);
         return false;
     }
 
@@ -633,8 +733,8 @@ bool clientsendbidtoserver(safeChannel& fc,  sessionKeys& oKeys,
  */
 
 static char* s_szBidTemplate= (char*)
-"<Bid>\n  <AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>"\
-"<SubjectName> %s </SubjectName>\n  <DateTime> %s </DateTime>\n"\
+"<Bid>\n  <AuctionID> %s </AuctionID>\n  <BidAmount> %s </BidAmount>\n"\
+"  <SubjectName> %s </SubjectName>\n  <DateTime> %s </DateTime>\n"\
 "  <BidderCert>\n %s\n  </BidderCert>\n </Bid>\n";
 
 
@@ -674,7 +774,7 @@ char*  constructBid(Request& oReq)
     szBidderCert= oReq.m_szBidderCert;
     szUserName= oReq.m_szUserName;
     if(szUserName==NULL)
-        szUserName= (char*)"";
+        szUserName= (char*)"Anonymous";
 
     sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount, 
                    szUserName, szTimeNow, szBidderCert);
@@ -700,6 +800,7 @@ bool serversendresponsetoclient(RSAKey* sealingKey, RSAKey* signingKey,
     byte        multi= 0;
     byte        final= 0;
     char*       szBid= NULL;
+    char*       szMyCert= oKeys.m_myCert;
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendresponsetoclient\n");
@@ -721,7 +822,7 @@ bool serversendresponsetoclient(RSAKey* sealingKey, RSAKey* signingKey,
             return false;
         }
         // save bid
-        if(!saveBid(sealingKey, signingKey, szBid)) {
+        if(!saveBid(sealingKey, signingKey, szBid, szMyCert)) {
             fprintf(g_logFile, "serversendresponsetoclient: can't save bid\n");
             return false;
         }

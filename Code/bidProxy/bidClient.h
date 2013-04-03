@@ -83,8 +83,7 @@ public:
                         const char* directory, const char* serverAddress, u_short serverPort);
     void    closeConnection(safeChannel& fc);
     bool    readBid(safeChannel& fc, const string& auctionID,
-                           const string& user, const string& bid, const string& userCert, 
-                           const string& localOutput);
+                           const string& user, const string& bid, const string& userCert);
     bool    compareFiles(const string& firstFile, const string& secondFile);
 
     void    printTimers(FILE* log);
@@ -93,10 +92,8 @@ public:
     static string  getFileContents(const string& filename);
     static void getKeyFiles(const string& directory,
                      const string& testFile,
-                     string& identityCertFile,
                      string& userCertFile,
-                     string& userKeyFile,
-                     string& keyFile);
+                     string& userKeyFile);
 };
 
 

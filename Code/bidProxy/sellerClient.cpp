@@ -1663,7 +1663,7 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
     bidInfo*            pWinningBid= NULL;
     bidInfo*            pCurrentBid= NULL;
 
-#define OFFLINETEST
+//#define OFFLINETEST
 #ifdef OFFLINETEST
     char*               szKey= NULL;
     szKey= readandstoreString("bidServer/privateKey.xml");

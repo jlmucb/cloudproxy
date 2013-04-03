@@ -954,6 +954,7 @@ bool bidServer::initPolicy()
 bool bidServer::initSigningandSealingKeys()
 {
     int     size= 4096;
+    int     bufSize= 4096;
     byte    buf[4096];
 
     if(!m_tcHome.m_privateKeyValid) {
@@ -978,10 +979,17 @@ bool bidServer::initSigningandSealingKeys()
     m_szsigningCert= strdup((char *)buf);
 
     m_szsealingCert= strdup("./bidServer/sealingCert");
+    size= bufSize;	
     if(!getBlobfromFile(m_szsealingCert, buf, &size)) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read sealing cert, %s\n", m_szsealingCert);
         return false;
     }
+
+#ifdef TEST
+    fprintf(g_logFile, "Got a sealing cert of length %d\n", size);
+    fflush(g_logFile);
+#endif
+    
     m_szsealingCert= strdup((char *)buf);
 
     // Fix: validate sealing principal

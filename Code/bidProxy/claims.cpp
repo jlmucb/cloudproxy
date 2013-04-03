@@ -636,7 +636,7 @@ RSAKey* keyfromkeyInfo(const char* szKeyInfo)
 
     if(pKey==NULL)
         return NULL;
-#ifdef QUOTETEST
+#ifdef TEST
     fprintf(g_logFile, "keyfromkeyInfo, Keyinfo\n%s\n", szKeyInfo);
 #endif
     if(!pKey->ParsefromString(szKeyInfo)) {

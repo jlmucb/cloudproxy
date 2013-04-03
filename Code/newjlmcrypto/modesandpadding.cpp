@@ -280,7 +280,7 @@ bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
     // get non-zero bytes
 #define NORANDPKCSPAD
 #ifdef  NORANDPKCSPAD
-    memcpy(&rgSig[n], 0xff, psLen);
+    memset(&rgSig[n], 0xff, psLen);
     n+= psLen;
 #else
     while(n<padEnd) {

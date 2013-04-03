@@ -34,6 +34,11 @@
 #ifndef _CRYPTOHELPER__H
 #define _CRYPTOHELPER__H
 
+#include "jlmTypes.h"
+#include "jlmUtility.h"
+#include "jlmCrypto.h"
+#include "tinyxml.h"
+
 
 bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
 bool        RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
@@ -52,7 +57,7 @@ RSAKey*     RSAKeyfromkeyInfo(const char* szKeyInfo);
 int         timeCompare(struct tm& time1, struct tm& time2);
 char*       stringtimefromtimeInfo(struct tm* timeinfo);
 struct tm*  timeNow();
-bool        timeInfofromstring();
+bool        timeInfofromstring(const char szTime, struct tm& thetime);
 
 int         maxbytesfromBase64string(int nc);
 int         maxcharsinBase64stringfrombytes(int nb);
@@ -60,7 +65,7 @@ bool        base64frombytes(int nb, byte* in, int* pnc, char* out);
 bool        bytesfrombase64(char* in, int* pnb, byte* out);
 
 bool        XMLenclosingtypefromelements(const char* tag, int numAttr, 
-                                   const char** attrName, char** attrValues, 
+                                   const char** attrName, const char** attrValues, 
                                    int numElts, const char** elts, 
                                    int* psize, char* buf);
 
@@ -69,9 +74,9 @@ bool        VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
                                                   char* szSigValue);
 
 char*       XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key, 
-                                                char* szsignedInfo);
+                                                const char* szsignedInfo);
 char*       XMLRSASha256SignaturefromSignedInfoNodeandKey(RSAKey& key, 
-                                                    TIXMLNode* signedInfo);
+                                                    TiXmlNode* signedInfo);
 
 char*       constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
                                                 const char* id,

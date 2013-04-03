@@ -25,13 +25,13 @@
 #include "logging.h"
 #include "keys.h"
 #include "tinyxml.h"
+#include "modesandpadding.h"
 #include "jlmcrypto.h"
 #include "jlmUtility.h"
 #include "sha256.h"
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "cryptoHelper.h"
-#include "modesandpadding.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -112,7 +112,6 @@ bool  RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in)
 bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 {
     byte    padded[1024];
-    int     size= 1024;
     
     if(!pkcsmessagepad(sizein, in, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSASeal: padding failed\n");
@@ -135,7 +134,7 @@ bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
         fprintf(g_logFile, "RSAUnseal: decryption failed\n");
         return false;
     }
-    if(!pkcsmessageextract(psizeOut, out, key.m_iByteSizeM, padded)) {
+    if(!pkcsmessageextract(psizeout, out, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSAUnseal: padding failed\n");
         return false;
     }
@@ -273,17 +272,13 @@ RSAKey* RSAKeyfromKeyInfoNode(TiXmlNode* pNode)
 
 char* RSAKeyInfofromKey(RSAKey& key)
 {
-    if(pKey==NULL)
-        return NULL;
-    return pKey->SerializePublictoString();
+    return key.SerializePublictoString();
 }
 
 
 char* RSAPublicKeyInfofromKey(RSAKey& key)
 {
-    if(pKey==NULL)
-        return NULL;
-    return pKey->SerializePublictoString();
+    return key.SerializePublictoString();
 }
 
 
@@ -371,7 +366,7 @@ struct tm* timeNow()
 }
 
 
-bool timeInfofromstring(char szTime, struct tm& thetime)
+bool timeInfofromstring(const char* szTime, struct tm& thetime)
 {
     sscanf(szTime, "%04d-%02d-%02dZ%02d:%02d.%02d",
             &thetime.tm_year, &thetime.tm_mon,
@@ -433,7 +428,7 @@ bool bytesfrombase64(char* in, int* pnb, byte* out)
 
 
 bool  XMLenclosingtypefromelements(const char* tag, int numAttr, 
-                                   const char** attrName, char** attrValues, 
+                                   const char** attrName, const char** attrValues, 
                                    int numElts, const char** elts, 
                                    int* psize, char* buf)
 {
@@ -444,7 +439,7 @@ bool  XMLenclosingtypefromelements(const char* tag, int numAttr,
     n= 2*strlen(tag)+8;
     for(i=0; i<numAttr; i++)
         n+= strlen(attrName[i])+strlen(attrValues[i])+4;
-    for(i=0; i<numelts; i++)
+    for(i=0; i<numElts; i++)
         n+= strlen(elts[i])+3;
     if(n>*psize) {
         fprintf(g_logFile, "XMLenclosingtypefromelements: output buffer too small\n");
@@ -486,6 +481,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
     byte        rgSigValue[1024];
     int         size;
+    int         n;
 
     // hash  signedInfo
     oHash.Init();
@@ -511,7 +507,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 
 
 char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key, 
-                                                char* szsignedInfo)
+                                                const char* szsignedInfo)
 {
     Sha256      oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
@@ -519,7 +515,6 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     int         size;
     int         n;
     char        szSigValue[2048];
-    char*       szSignerKeyInfo= NULL;
 
     // hash  signedInfo
     n= strlen(szsignedInfo);
@@ -537,7 +532,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     }
 
     n= 2048;
-    if(!base64frombytes(size, rgSigSize, &n, szSigValue)) {
+    if(!base64frombytes(size, rgSigValue, &n, szSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: base64 encode fails\n");
         return false;
@@ -547,7 +542,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 
 
 char* XMLRSASha256SignaturefromSignedInfoNodeandKey(RSAKey& key, 
-                                                    TIXMLNode* signedInfo)
+                                                    TiXmlNode* signedInfo)
 {
     char*   szsignedInfo= canonicalize(signedInfo);
     char*   szSig= XMLRSASha256SignaturefromSignedInfoandKey(key,
@@ -589,10 +584,9 @@ char* constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     elts[1]= szSignatureElement;
 
     size= 8192;
-    fRet= XMLenclosingtypefromelements("ds:Signature", 2, attrName, attrValues, 
-                                   2, elts &size, szSignature);
+    fRet= XMLenclosingtypefromelements("ds:Signature", 2, attrName, attrValue, 
+                                   2, elts, &size, szSignature);
 
-done:
     if(szKeyInfo!=NULL) {
         free(szKeyInfo);
         szKeyInfo= NULL;

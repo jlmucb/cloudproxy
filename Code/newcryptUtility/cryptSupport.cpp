@@ -27,6 +27,7 @@
 #include "jlmcrypto.h"
 #include "bignum.h"
 #include "mpFunctions.h"
+#include "cryptoHelper.h"
 #include "cryptSupport.h"
 #include "rsaHelper.h"
 #include "sha256.h"
@@ -377,7 +378,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         return false;
     }
 
-    if(!initRSAKeyFromKeyInfo(&m_pSubjectKeyInfo, pSubjectKeyInfoNode)) {
+    m_pSubjectKeyInfo= RSAKeyfromKeyInfoNode(pSubjectKeyInfoNode);
+    if(m_pSubjectKeyInfo==NULL) {
         fprintf(g_logFile, "Cant init KeyInfo\n");
         return false;
     }

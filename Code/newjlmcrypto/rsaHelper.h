@@ -33,9 +33,12 @@
 #define _RSAHELPER__H
 
 
-RSAKey*     generateRSAKeypair(int keySize);
-bool        initRSAKeyFromKeyInfo(RSAKey** ppKey, TiXmlNode* pNode);
-bool        initRSAKeyFromStringRSAKey(RSAKey** ppKey, const char* szXml, const char* szLoc);
+RSAKey*     RSAGenerateKeyPair(int keySize);
+RSAKey*     RSAKeyFromParsedKeyInfo(TiXmlNode* pNode);
+char*       RSAcanonicalkeyfromCert(const char* szCert);
+char*       RSAPublickeyInfofromKey(RSAKey* pKey);
+RSAKey*     RSAkeyfromkeyInfo(const char* szKeyInfo);
+
 
 char*       rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
                 int sizeChallenge);

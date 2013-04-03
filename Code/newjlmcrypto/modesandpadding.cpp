@@ -266,14 +266,9 @@ bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
 
 {
     int     n= 0;
-    int     m= 0;
-    int     j= 0;
-    int     k= 0;
     int     psLen= sigSize-3-sizeIn;
-    byte*   pStart= &rgMsg[2];
-    byte*   p;
-    byte*   q;
-    int     padTogo;
+    int     padEnd= 2+psLen;
+    int     k= 0;
 
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "pkcsmessagepad, insize %d, sigsize %d\n", sizeIn, sigSize);
@@ -283,31 +278,28 @@ bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
     rgSig[n++]= 0x00; rgSig[n++]= 0x02;
 
     // get non-zero bytes
-    padTogo= psLen;
-    while(padTogo>0) {
-        if(!getCryptoRandom(padTogo, &rgSig[n])) {
+#define NORANDPKCSPAD
+#ifdef  NORANDPKCSPAD
+    memcpy(&rgSig[n], 0xff, psLen);
+    n+= psLen;
+#else
+    while(n<padEnd) {
+        if(!getCryptoRandom(sigSize-n, &rgSig[n])) {
             fprintf(g_logFile, "pkcsmessagepad: can't get random bits\n");
             return false;
         }
-        p= &rgSig[n];
-        for(m=0; m<padTogo; m++) {
-            if(p[m]==0)
-                break;
+        while(rgSig[n]!=0x00 && n<padEnd)
+            n++;
+        if(n>=padEnd)
+            break;
+        k= n+1;
+        while(n<padEnd && k<sigSize) {
+            if(rgSig[k]!=0x00)
+                rgSig[n++]= rgSig[k];
+            k++;
         }
-        if(m<padTogo) {
-            k= 0;
-            j= 1;
-            while(j<padTogo) {
-                if(p[m+k]!=0) {
-                    p[m+k]= p[m+j];
-                    k++;
-                }
-                j++;
-            }
-        n+= (m+k);
-        }
-        padTogo= psLen+2-n;
     }
+#endif
 
     // single 0x00 byte
     rgSig[n++]= 0x00;
@@ -322,7 +314,7 @@ bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
 }
 
 
-bool pkcsmessageverify(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
+bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
 {
     int     n= 0;
     int     m= 0;
@@ -330,12 +322,12 @@ bool pkcsmessageverify(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
     byte    rgPre[2]= {0x00, 0x02};
 
 #ifdef CRYPTOTEST
-    fprintf(g_logFile, "pkcsmessageverify, sigsize %d\n", sigSize);
+    fprintf(g_logFile, "pkcsmessageextract, sigsize %d\n", sigSize);
 #endif
 
     // preamble wrong?
     if(memcmp(&rgSig[n], rgPre, 2)!=0) {
-        fprintf(g_logFile, "pkcsmessageverify: Bad preamble\n");
+        fprintf(g_logFile, "pkcsmessageextract: Bad preamble\n");
         return false;
     }
     n+= 2;
@@ -348,27 +340,27 @@ bool pkcsmessageverify(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
 
     // overflow?
     if(i>=sigSize) {
-        fprintf(g_logFile, "pkcsmessageverify: no zero bytes\n");
+        fprintf(g_logFile, "pkcsmessageextract: no zero bytes\n");
         return false;
     }
    
     // 0 byte 
     if(rgSig[i]!=0x00) {
-        fprintf(g_logFile, "pkcsmessageverify: no zero byte\n");
+        fprintf(g_logFile, "pkcsmessageextract: no zero byte\n");
         return false;
     }
     n= i;
 
     m= sigSize-n;
     if(m>*psizeOut) {
-        fprintf(g_logFile, "pkcsmessageverify: output buffer too small\n");
+        fprintf(g_logFile, "pkcsmessageextract: output buffer too small\n");
         return false;
     }
     *psizeOut= m;
     memcpy(rgOut, &rgSig[n], m);
 
 #ifdef CRYPTOTEST
-    fprintf(g_logFile, "pkcsmessageverify, output size is %d\n", *psizeOut);
+    fprintf(g_logFile, "pkcsmessageextract, output size is %d\n", *psizeOut);
 #endif
     return true;
 }

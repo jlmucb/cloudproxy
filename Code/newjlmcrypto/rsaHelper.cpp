@@ -45,12 +45,38 @@ extern const char*  szRSAKeyProto;
 
 bool  RSADecrypt(RSAKey& key, byte* in, byte* out)
 {
+    bnum    bnMsg(128);
+    bnum    bnOut(128);
+
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+
+    revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
+    if(!mpRSAENC(bnMsg, *key.m_pbnD, *key.m_pbnM, bnOut)) {
+        fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
+        return false;
+    }
+    revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
+
     return true;
 }
 
 
 bool  RSAEncrypt(RSAKey& key, byte* in, byte* out)
 {
+    bnum    bnMsg(128);
+    bnum    bnOut(128);
+
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+
+    revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
+    if(!mpRSAENC(bnMsg, *key.m_pbnE, *key.m_pbnM, bnOut)) {
+        fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
+        return false;
+    }
+    revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
+
     return true;
 }
 
@@ -62,6 +88,18 @@ bool  RSASign(RSAKey& key, int hashType, byte* hash, byte* out)
 
 
 bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* out)
+{
+    return true;
+}
+
+
+bool  RSASeal(RSAKey& key, int hashType, byte* hash, byte* out)
+{
+    return true;
+}
+
+
+bool  RSAUnseal(RSAKey& key, int hashType, byte* hash, byte* out)
 {
     return true;
 }
@@ -196,7 +234,7 @@ RSAKey* RSAKeyFromParsedKeyInfo(TiXmlNode* pNode)
 }
 
 
-char* canonicalkeyfromCert(const char* szCert)
+char* RSAcanonicalkeyfromCert(const char* szCert)
 {
     TiXmlDocument doc;
     if(!doc.Parse(szCert)) {
@@ -217,7 +255,7 @@ char* canonicalkeyfromCert(const char* szCert)
 }
 
 
-char* RSAkeyInfofromKey(RSAKey* pKey)
+char* RSAPublickeyInfofromKey(RSAKey* pKey)
 {
     if(pKey==NULL)
         return NULL;

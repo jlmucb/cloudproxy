@@ -47,9 +47,11 @@
 
 #define MAXAUTHSIZE 32
 extern bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig);
-extern bool emsapkcsverify(int hashType, byte* rgHash, int iSigSize, byte* rgSig);
+extern bool emsapkcsverify(int hashType, byte* rgHash, 
+                           int iSigSize, byte* rgSig);
 extern bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig);
-extern bool pkcsmessageverify(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig);
+extern bool pkcsmessageextract(int* psizeOut, byte* rgOut, 
+                               int sigSize, byte* rgSig);
 
 
 class cbc {

@@ -1,0 +1,13 @@
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" 
+            KeyName="//www.manferdelli.com/Keys/JohnManferdelli/0001">
+    <KeyType>RSAKeyType</KeyType>
+    <ds:KeyValue>
+        <ds:RSAKeyValue size="1024">
+            <ds:M>cfOR9cIRcJcRahDgkWyytcoF61F145DVOoQBc/HuCHOgY9BHPyu47nQnp6FTnC59Rmy6AaxFg9luvTdPXoli1XJWQl4obz7TwDkKItB9AR/0KoaxTiRuc6MqCjStd/hPNiPPxp4M4/7bDgChCUpvygW5uFO0pOGGZ8fIU2KFEsE=</ds:M>
+            <ds:E>AAAAAAABAAE=</ds:E>
+            <ds:D>CHu4nxIumDI28q2E+m6cM1px7F3pJ+LtbOjM7uPQ88If665iz3oiz2XIWftxrQvs+aQ4iM1Zc4Jpcx6+Auy5dc7MmnoqoMgHa9NvGyYFW1DkiRADwxn3/Hp5sD4s7hK62nAo3uzksqFzM0gFaA9DcicgEFERS/gi/18andd7Le0=</ds:D>
+            <ds:P>xz3I0ZIn2tE2wGCMnYHOsxvM9Nds4GofbjAr5a7SE+Q9MX7vNPptoFTwxvJiH/d8LG7exyMGW6DuE1JFktBTcw==</ds:P>
+            <ds:Q>kmnJ1wk+LInqpyd7zNk7Oh1dl+Tx6ajMVqcjaxwEnjeYgaWgzUG1zCRgiExfdQDBkTADule+Ppd6igOD6ml7+w==</ds:Q>
+        </ds:RSAKeyValue>
+    </ds:KeyValue>
+</ds:KeyInfo>

@@ -55,6 +55,7 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
         return false;
     }
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
+    *psizeout= key.m_iByteSizeM;
 
     return true;
 }
@@ -68,13 +69,20 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
 
+#ifdef TEST
+    PrintBytes((char*)"RSAEncrypt in: ", in, sizein);
+#endif
     revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
     if(!mpRSAENC(bnMsg, *key.m_pbnE, *key.m_pbnM, bnOut)) {
         fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
         return false;
     }
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
+    *psizeout= key.m_iByteSizeM;
 
+#ifdef TEST
+    PrintBytes((char*)"RSAEncrypt out: ", out, *psizeout);
+#endif
     return true;
 }
 
@@ -84,6 +92,9 @@ bool  RSASha256Sign(RSAKey& key, int hashType, byte* hash,
 {
     byte    padded[1024];
 
+#ifdef TEST
+    PrintBytes((char*)"RSASign in: ", hash, 32);
+#endif
     if(*psizeout<key.m_iByteSizeM) {
         fprintf(g_logFile, "RSASha256Sign: output buffer too small\n");
         return false;
@@ -92,7 +103,16 @@ bool  RSASha256Sign(RSAKey& key, int hashType, byte* hash,
         fprintf(g_logFile, "RSASha256Sign: padding failed\n");
         return false;
     }
-    return RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out);
+#ifdef TEST
+    PrintBytes((char*)"RSASign padded: ", padded, key.m_iByteSizeM);
+#endif
+    if(!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out))
+        return false;
+
+#ifdef TEST
+    PrintBytes((char*)"RSASign out: ", out, *psizeout);
+#endif
+    return true;
 }
 
 
@@ -101,11 +121,20 @@ bool  RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in)
     byte    padded[1024];
     int     size= 1024;
 
+#ifdef TEST
+    PrintBytes((char*)"RSASha256Verify hash: ", hash, 32);
+    PrintBytes((char*)"RSASha256Verify in: ", in, key.m_iByteSizeM);
+#endif
     if(!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
         fprintf(g_logFile, "RSASha256Verify: encryption failed\n");
         return false;
     }
-    return emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded);
+    if(!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded))
+        return false;
+#ifdef TEST
+    fprintf(g_logFile, "RSASha256Verify returns true\n");
+#endif
+    return true;
 }
 
 
@@ -113,14 +142,23 @@ bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 {
     byte    padded[1024];
     
+#ifdef TEST
+    PrintBytes((char*)"RSASeal in: ", in, sizein);
+#endif
     if(!pkcsmessagepad(sizein, in, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSASeal: padding failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSASeal padded: ", padded, key.m_iByteSizeM);
+#endif
     if(!RSAEncrypt(key, key.m_iByteSizeM, padded, psizeout, out)) {
         fprintf(g_logFile, "RSASeal: encryption failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSASeal out: ", out, *psizeout);
+#endif
     return true;
 }
 
@@ -130,14 +168,23 @@ bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     byte    padded[1024];
     int     size= 1024;
     
+#ifdef TEST
+    PrintBytes((char*)"RSAUnseal in: ", in, sizein);
+#endif
     if(!RSADecrypt(key, sizein, in, &size, padded)) {
         fprintf(g_logFile, "RSAUnseal: decryption failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSAUnseal decrypted: ", padded, key.m_iByteSizeM);
+#endif
     if(!pkcsmessageextract(psizeout, out, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSAUnseal: padding failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSAUnseal extracted: ", out, *psizeout);
+#endif
     return true;
 }
 

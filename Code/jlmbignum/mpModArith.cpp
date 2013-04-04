@@ -48,22 +48,24 @@
 //      Compute bnR= bnA (mod bnM), 0=<bnR<bnM
 bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
-    int     i= bnM.mpSize();
-    bool    fRet= false;
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(i>maxSize)
-        maxSize= i;
+    if(lM>maxSize)
+        maxSize= lM;
 
     try {
         bnum    bnQ(maxSize);
-        mpUDiv(bnA, bnM, bnQ, bnR);
-        fRet= true;
+
+        if(!mpUDiv(bnA, bnM, bnQ, bnR))
+            throw("mpUDiv failed");
         }
     catch(const char* szError) {
         szError= NULL;
         fRet= false;
     }
+
     return fRet;
 }
 
@@ -76,17 +78,18 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
 //      Compute bnR= bnA (mod bnM), 0=<bnR<bnM
 bool mpModNormalize(bnum& bnA, bnum& bnM)
 {
-    int         maxSize= bnA.mpSize();
-    int         i= bnM.mpSize();
     extern bnum g_bnOne;
+    int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(i>maxSize)
-        maxSize= i;
+    if(lM>maxSize)
+        maxSize= lM;
 
     try {
         bnum    bnB(maxSize);
         bnum    bnQ(maxSize);
         bnum    bnR(maxSize);
+
         if(bnA.mpSign()) {
             // make it positive by adding ceil(|A|/|M|)
             bnA.mpCopyNum(bnB);
@@ -129,11 +132,12 @@ bool mpModNormalize(bnum& bnA, bnum& bnM)
 bool mpModAdd(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
     if(bnA.mpSign()) {
-    	mpModNormalize(bnA, bnM);
+        mpModNormalize(bnA, bnM);
     }
     if(bnB.mpSign()) {
-    	mpModNormalize(bnB, bnM);
+        mpModNormalize(bnB, bnM);
     }
+
     mpUAdd(bnA, bnB, bnR);
     return mpModNormalize(bnR, bnM);
 }
@@ -149,24 +153,33 @@ bool mpModAdd(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 //      Compute bnA-bnB (mod bnM) with classical algorithm, result>=0
 bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
-    int     i= bnB.mpSize();
-    int     j= bnM.mpSize();
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(i>maxSize)
-        maxSize= i;
-    if(j>maxSize)
-        maxSize= j;
+    if(lM>maxSize)
+        maxSize= lM;
+    if(lB>maxSize)
+        maxSize= lB;
 
-    if(!(mpCompare(bnA, bnB)==s_isLessThan)) {
-        mpUSub(bnA, bnB, bnR);
+    try {
+        if(!(mpCompare(bnA, bnB)==s_isLessThan)) {
+            mpUSub(bnA, bnB, bnR);
+        }
+        else {
+            bnum  bnC(maxSize+2);
+    
+            mpUAdd(bnA, bnM, bnC);
+            mpUSub(bnC, bnB, bnR);
+        }
+        mpModNormalize(bnR, bnM);
     }
-    else {
-        bnum  bnC(maxSize+2);
-        mpUAdd(bnA, bnM, bnC);
-        mpUSub(bnC, bnB, bnR);
+    catch(const char* sz) {
+        sz= NULL;
+        fRet= false;
     }
-    mpModNormalize(bnR, bnM);
+
     return true;
 }
 
@@ -182,24 +195,25 @@ bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 
 bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
-    int     i= bnB.mpSize();
-    int     j= bnM.mpSize();
-    bool    fRet= false;
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(i>maxSize)
-        maxSize= i;
-    if(j>maxSize)
-        maxSize= j;
+    if(lM>maxSize)
+        maxSize= lM;
+    if(lB>maxSize)
+        maxSize= lB;
+
     maxSize*= 2;
 
     try {
         bnum  bnC(maxSize+1);
         bnum  bnQ(maxSize+1);
+
         mpUMult(bnA, bnB, bnC);
         mpUDiv(bnC, bnM, bnQ, bnR);
         mpModNormalize(bnR, bnM);
-        fRet= true;
     }
     catch(const char* szError) {
         szError= NULL;
@@ -220,23 +234,20 @@ bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 //      Compute bnA^(-1) (mod bnM) with classical algorithm, result>=0
 bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
 {
-    int     sizeA= bnA.mpSize();
-    int     sizeM= bnM.mpSize();
-    int     maxSize;
-    bool    fRet= false;
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(sizeA>sizeM)
-        maxSize= sizeA;
-    else
-        maxSize= sizeM;
+    if(lM>maxSize)
+        maxSize= lM;
 
     try {
         bnum bnT(maxSize);
         bnum bnG(maxSize);
+
         mpExtendedGCD(bnA, bnM, bnR, bnT, bnG);
         // Now, bnA (bnR) + bnM (bnT)= 1, so bnR is bnA inverse
         mpModNormalize(bnR, bnM);
-        fRet= true;
      }
     catch(const char* szError) {
         szError= NULL;
@@ -256,12 +267,15 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
 //      Compute bnA/bnB (mod bnM) with classical algorithm, result>=0
 bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 {
-    int     maxSize= bnA.mpSize();
-    int     i= bnM.mpSize();
-    bool    fRet= false;
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(i>maxSize)
-        maxSize= i;
+    if(lM>maxSize)
+        maxSize= lM;
+    if(lB>maxSize)
+        maxSize= lB;
     maxSize*= 2;
 
     try {
@@ -275,7 +289,6 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         mpModNormalize(bnb, bnM);
         mpMult(bnb, bnA, bnR);
         mpModNormalize(bnR, bnM);
-        fRet= true;
     }
     catch(const char* szError) {
         szError= NULL;
@@ -284,6 +297,40 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 
     return fRet;
 }
+
+
+#ifdef MPMODOVERFLOWTEST
+void sizeUDiv(int pos, bnum& bnA, bnum& bnB, bnum& bnC, bnum& bnD)
+{
+    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    int     lC= mpWordsinNum(bnC.mpSize(), bnC.m_pValue);
+    int     lD= mpWordsinNum(bnD.mpSize(), bnD.m_pValue);
+
+    fprintf(g_logFile, "Udiv reduction, position %d: %d %d %d %d\n", 
+              pos, lA, lB, lC, lD);
+    if(lD>lB) {
+        fprintf(g_logFile, "A: "); printNum(bnA); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "B: "); printNum(bnB); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "D: "); printNum(bnD); fprintf(g_logFile, "\n");
+    }
+}
+
+
+void sizeMultArgs(int pos, bnum& bnA, bnum& bnB, bnum& bnC)
+{
+    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    int     sizeC= bnC.mpSize();
+
+    if((lA+lB)>sizeC) {
+        fprintf(g_logFile, "\nUMult monitor, position %d, lA: %d, lB: %d, sizeC: %d\n",
+                  pos, lA, lB, sizeC);
+        fprintf(g_logFile, "A: "); printNum(bnA); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "B: "); printNum(bnB); fprintf(g_logFile, "\n\n");
+    }
+}
+#endif
 
 
 //  Function: bool mpModExp
@@ -297,58 +344,113 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 
 bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
 {
-    int     maxSizeB= bnBase.mpSize();
-    int     maxSizeM= bnM.mpSize();
-    int     maxSize;
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnBase.mpSize(), bnBase.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    int     iLeadBit= 0;
     int     j;
 
-    if(maxSizeB>maxSizeM) {
-        maxSize= 4*maxSizeB+1;
-    }
-    else {
-        maxSize= 4*maxSizeM+1;
-    }
-fprintf(g_logFile, "mpModExp %d\n", maxSize);
+    if(lM>maxSize)
+        maxSize= lM;
+    maxSize*= 4;
 
-    bnum    bnBasePow(maxSize);    // Base to powers of 2
-    bnum    bnAccum(maxSize);      // Exponent so far
-    bnum    bnTemp(maxSize);       // Temporary storage
-    bnum    bnQ(maxSize);          // Quotient
-
-    mpZeroNum(bnBasePow);
-    mpZeroNum(bnAccum);
-    mpZeroNum(bnTemp);
-    mpZeroNum(bnQ);
-
-    UNUSEDVAR(maxSize);
-    bnBase.mpCopyNum(bnBasePow);
-    bnAccum.m_pValue[0]= 1ULL;
-
-    int iLeadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
-    if(IsBitPositionNonZero(bnExp, 1)) {
-        mpZeroNum(bnTemp);
-        mpUMult(bnBasePow, bnAccum, bnTemp);
-        mpZeroNum(bnAccum);
-        mpDiv(bnTemp, bnM, bnQ, bnAccum);
-    }
-    for(j=2;j<=iLeadBit; j++) {
-        mpZeroNum(bnTemp);
-        mpUMult(bnBasePow, bnBasePow, bnTemp);
-        mpZeroNum(bnBasePow);
-        mpUDiv(bnTemp, bnM, bnQ, bnBasePow); 
-        if(IsBitPositionNonZero(bnExp, j)) {
-#ifdef ARITHTEST81
-            fprintf(g_logFile, "%d mult\n", j);
+#ifdef MPMODOVERFLOWTEST
+    fprintf(g_logFile, "\nmpModExp %d\n", maxSize);
+    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n\n");
 #endif
-            mpZeroNum(bnTemp);
+    try {
+        bnum    bnBasePow(maxSize);    // Base to powers of 2
+        bnum    bnAccum(maxSize);      // Exponent so far
+        bnum    bnTemp(maxSize);       // Temporary storage
+        bnum    bnQ(maxSize);          // Quotient
+
+        mpZeroNum(bnBasePow);
+        mpZeroNum(bnAccum);
+        mpZeroNum(bnTemp);
+        mpZeroNum(bnQ);
+    
+        UNUSEDVAR(maxSize);
+        bnBase.mpCopyNum(bnBasePow);
+        bnAccum.m_pValue[0]= 1ULL;
+
+        iLeadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
+        if(IsBitPositionNonZero(bnExp, 1)) {
+#ifdef MPMODOVERFLOWTEST
+            sizeMultArgs(1, bnBasePow, bnAccum, bnTemp);
+#endif
             mpUMult(bnBasePow, bnAccum, bnTemp);
             mpZeroNum(bnAccum);
-            mpUDiv(bnTemp, bnM, bnQ, bnAccum);
+            if(!mpUDiv(bnTemp, bnM, bnQ, bnAccum)) {
+#ifdef MPMODOVERFLOWTEST
+                fprintf(g_logFile, "bad UDiv in mpModExp\n");
+                fprintf(g_logFile, "Temp: "); printNum(bnTemp); fprintf(g_logFile, "\n");
+                fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+                fprintf(g_logFile, "Q: "); printNum(bnQ); fprintf(g_logFile, "\n");
+                fprintf(g_logFile, "Accum: "); printNum(bnAccum); fprintf(g_logFile, "\n");
+#else
+                throw("UDiv error");
+#endif
+            }
+#ifdef MPMODOVERFLOWTEST
+            sizeUDiv(4, bnTemp, bnM, bnQ, bnAccum);
+#endif
+            mpZeroNum(bnTemp);
         }
+        for(j=2;j<=iLeadBit; j++) {
+#ifdef MPMODOVERFLOWTEST
+            sizeMultArgs(2, bnBasePow, bnBasePow, bnTemp);
+#endif
+            mpUMult(bnBasePow, bnBasePow, bnTemp);
+            mpZeroNum(bnBasePow);
+            if(!mpUDiv(bnTemp, bnM, bnQ, bnBasePow)) {
+#ifdef MPMODOVERFLOWTEST
+                fprintf(g_logFile, "bad UDiv in mpModExp\n");
+                fprintf(g_logFile, "Temp: "); printNum(bnTemp); fprintf(g_logFile, "\n");
+                fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+                fprintf(g_logFile, "Q: "); printNum(bnQ); fprintf(g_logFile, "\n");
+                fprintf(g_logFile, "BasePow: "); printNum(bnBasePow); fprintf(g_logFile, "\n");
+#else
+                throw("UDiv error");
+#endif
+            }
+#ifdef MPMODOVERFLOWTEST
+            sizeUDiv(5, bnTemp, bnM, bnQ, bnBasePow);
+#endif
+            mpZeroNum(bnTemp);
+            if(IsBitPositionNonZero(bnExp, j)) {
+#ifdef MPMODOVERFLOWTEST
+                sizeMultArgs(3, bnBasePow, bnAccum, bnTemp);
+#endif
+                mpUMult(bnBasePow, bnAccum, bnTemp);
+                mpZeroNum(bnAccum);
+                if(!mpUDiv(bnTemp, bnM, bnQ, bnAccum)) {
+#ifdef MPMODOVERFLOWTEST
+                    fprintf(g_logFile, "bad UDiv in mpModExp\n");
+                    fprintf(g_logFile, "Temp: "); printNum(bnTemp); fprintf(g_logFile, "\n");
+                    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+                    fprintf(g_logFile, "Q: "); printNum(bnQ); fprintf(g_logFile, "\n");
+                    fprintf(g_logFile, "Accum: "); printNum(bnAccum); fprintf(g_logFile, "\n");
+#else
+                    throw("UDiv error");
+#endif
+                }
+#ifdef MPMODOVERFLOWTEST
+                sizeUDiv(6, bnTemp, bnM, bnQ, bnAccum);
+#endif
+                mpZeroNum(bnTemp);
+            }
+        }
+        bnAccum.mpCopyNum(bnR);
     }
-    bnAccum.mpCopyNum(bnR);
+    catch(const char* sz) {
+        sz= NULL;
+        fRet= false;
+    }
 
-    return true;
+#ifdef ARITHTEST
+    fprintf(g_logFile, "mpModExp returning\n");
+#endif
+    return fRet;
 }
 
 
@@ -377,13 +479,25 @@ bool mpTestFermatCondition(bnum& bnBase, bnum& bnM)
 bool mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR)
 {
     extern bnum g_bnOne;
-    int         sizeM= bnM.mpSize();
-    bnum        bnE(sizeM);
-    bool        fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
+    bool        fRet= true;
+    int         maxSize= mpWordsinNum(bnBase.mpSize(), bnBase.m_pValue);
+    int         lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(!fRet)
-        return false;
-    fRet= mpModExp(bnBase, bnE, bnM, bnR);
+    if(lM>maxSize)
+        maxSize= lM;
+
+    try {
+        bnum        bnE(lM);
+        bool        fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
+
+        if(!fRet)
+            throw("mpModSub failed");
+        fRet= mpModExp(bnBase, bnE, bnM, bnR);
+    }
+    catch(const char* sz) {
+        sz= NULL;
+        fRet= false;
+    }
     return fRet;
 }
 
@@ -393,57 +507,47 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 //  Compute e d(p) + (p-1) t(p) =1 with EUA
 //  Compute e d(q) + (q-1) t(q) =1 with EUA
 {
+    bool            fRet= true;
     extern bnum     g_bnOne;
-    bool            fRet= false;
     bnum*           pbnTP= NULL;
     bnum*           pbnTQ= NULL;
     bnum*           pbnG= NULL;
 
-    int size= bnP.mpSize();
-    if(bnQ.mpSize()>size)
-        size= bnQ.mpSize();
+    int     size= mpWordsinNum(bnP.mpSize(), bnP.m_pValue);
+    int     lQ= mpWordsinNum(bnQ.mpSize(), bnQ.m_pValue);
+
+    if(lQ>size)
+        size= lQ;
     size*= 2;
 
-    pbnG= new bnum(size);
-    if(pbnG==NULL)
-        goto done;
-    pbnTP= new bnum(size);
-    if(pbnTP==NULL)
-        goto done;
-    pbnTQ= new bnum(size);
-    if(pbnTQ==NULL)
-        goto done;
+    try {
+        pbnG= new bnum(size);
+        pbnTP= new bnum(size);
+        pbnTQ= new bnum(size);
 
-    if(mpUSub(bnP, g_bnOne, bnPM1)!=0ULL) {
-        fprintf(g_logFile, "Can't compute PM1\n");
+        if(mpUSub(bnP, g_bnOne, bnPM1)!=0ULL) 
+            throw("Can't compute PM1");
+    
+        if(mpUSub(bnQ, g_bnOne, bnQM1)!=0ULL)
+            throw("Can't compute QM1");
+
+        if(!mpExtendedGCD(bnE, bnPM1, bnDP, *pbnTP, *pbnG))
+            throw("Can't compute mpExtendedGCD (1)");
+
+        if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo)
+            throw("PM1 common factor is not 1");
+
+        if(!mpExtendedGCD(bnE, bnQM1, bnDQ, *pbnTQ, *pbnG)) 
+            throw("Can't compute mpExtendedGCD (2)");
+
+        if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo)
+            throw("QM1 common factor is not 1");
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpRSACalculateFastRSAParameters error: %s", sz);
         fRet= false;
-        goto done;
     }
 
-    if(mpUSub(bnQ, g_bnOne, bnQM1)!=0ULL) {
-        fprintf(g_logFile, "Can't compute QM1\n");
-        fRet= false;
-        goto done;
-    }
-
-    fRet= mpExtendedGCD(bnE, bnPM1, bnDP, *pbnTP, *pbnG);
-    if(!fRet)
-        goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
-        fprintf(g_logFile, "PM1 common factor is not 1\n");
-        fRet= false;
-        goto done;
-    }
-    fRet= mpExtendedGCD(bnE, bnQM1, bnDQ, *pbnTQ, *pbnG);
-    if(!fRet)
-        goto done;
-    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
-        fprintf(g_logFile, "QM1 common factor is not 1\n");
-        fRet= false;
-        goto done;
-    }
-
-done:
     if(pbnTP!=NULL) {
         delete pbnTP;
         pbnTP= NULL;
@@ -467,34 +571,37 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
 //  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
 //  Return R
 {
-    bool            fRet= false;
-    bnum*           pbnT1= NULL;
-    bnum*           pbnT2= NULL;
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnMsg.mpSize(), bnMsg.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    bnum*   pbnT1= NULL;
+    bnum*   pbnT2= NULL;
+
+    if(lM>maxSize)
+        maxSize= lM;
+    maxSize*= 2;
 
     int size= bnDP.mpSize();
     if(bnDQ.mpSize()>size)
         size= bnDQ.mpSize();
 
-    pbnT1= new bnum(size);
-    if(pbnT1==NULL)
-        goto done;
-    pbnT2= new bnum(size);
-    if(pbnT2==NULL)
-        goto done;
+    try {
+        pbnT1= new bnum(size);
+        pbnT2= new bnum(size);
 
-    fRet= mpModExp(bnMsg, bnDP, bnP, *pbnT1);
-    if(!fRet)
-        goto done;
-    fRet= mpModExp(bnMsg, bnDQ, bnQ, *pbnT2);
-    if(!fRet)
-        goto done;
+        if(!mpModExp(bnMsg, bnDP, bnP, *pbnT1))
+            throw("mpModExp fails");
+        if(!mpModExp(bnMsg, bnDQ, bnQ, *pbnT2))
+            throw("mpModExp fails");
 
-    fRet= mpCRT(*pbnT1, bnP, *pbnT2, bnQ, bnR);
-    if(!fRet) {
-        fprintf(g_logFile, "mpRSADEC: mpCRT failed\n");
+        if(!mpCRT(*pbnT1, bnP, *pbnT2, bnQ, bnR))
+            throw("mpCRT fails");
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpRSADEC error: %s", sz);
+        fRet= false;
     }
 
-done:
     if(pbnT1!=NULL) {
         delete pbnT1;
         pbnT1= NULL;
@@ -519,29 +626,25 @@ bool mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR)
 bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM, 
               bnum& bnD, bnum& bnOrder)
 {
+    bool        fRet= true;
     extern bnum g_bnOne;
     int         sizeP= bnP.mpSize();
     int         sizeQ= bnQ.mpSize();
     int         sizeM= bnM.mpSize();
 
 #ifdef TEST
-    fprintf(g_logFile, "mpRSAGen: GenPrime start\n");
+    fprintf(g_logFile, "mpRSAGen: GenPrime start %d %d %d\n", sizeP, sizeQ, sizeM);
 #endif
     // Get two primes
     if(!mpGenPrime(numBits/2, bnP)) {
         fprintf(g_logFile, "Cant find P\n");
         return false;
     }
-#ifdef ARITHTEST
-    fprintf(g_logFile, "mpRSAGen: GenPrime got first prime\n");
-#endif
+
     if(!mpGenPrime(numBits/2, bnQ)) {
         fprintf(g_logFile, "Cant find Q\n");
         return false;
     }
-#ifdef ARITHTEST
-    fprintf(g_logFile, "mpRSAGen: GenPrime got second prime\n");
-#endif
 
     // Multiply to get bnM
     int     lP= mpWordsinNum(sizeP, bnP.m_pValue);
@@ -567,37 +670,35 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #ifdef ARITHTEST
     fprintf(g_logFile, "mpRSAGen: exponent modulus\n");
 #endif
-    bnum bnPM1(sizeP);
-    bnum bnQM1(sizeQ);
-    mpUSub(bnP, g_bnOne, bnPM1);
-    mpUSub(bnQ, g_bnOne, bnQM1);
+    try {
+        bnum bnPM1(sizeP);
+        bnum bnQM1(sizeQ);
+        mpUSub(bnP, g_bnOne, bnPM1);
+        mpUSub(bnQ, g_bnOne, bnQM1);
 
-    // Compute Order
-    mpUMult(bnPM1, bnQM1, bnOrder);
+        // Compute Order
+        mpUMult(bnPM1, bnQM1, bnOrder);
 
 #ifdef ARITHTEST
-    fprintf(g_logFile, "mpRSAGen: computing order\n");
+        fprintf(g_logFile, "mpRSAGen: computing order\n");
 #endif
-    // get bnD
-    bnum bnT(sizeM);
-    bnum bnG(sizeM);
-    if(!mpExtendedGCD(bnE, bnOrder, bnD, bnT, bnG)) {
-        fprintf(g_logFile, "Cant find D\n");
-        return false;
-    }
+        // get bnD
+        bnum bnT(sizeM);
+        bnum bnG(sizeM);
+        if(!mpExtendedGCD(bnE, bnOrder, bnD, bnT, bnG))
+            throw("Cant find D");
 #ifdef ARITHTEST
-    fprintf(g_logFile, "mpRSAGen: computed order\n");
+        fprintf(g_logFile, "mpRSAGen: computed order\n");
 #endif
-    if(mpCompare(bnG, g_bnOne)!=s_isEqualTo) {
-        fprintf(g_logFile, "Exponent and Order are not coprime\n");
-        printNum(bnG); printf("\n");
-        return false;
+        if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
+            throw("Exponent and Order are not coprime");
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpRSAGen error: %s", sz);
+        fRet= false;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "mpRSAGen: returns true\n");
-#endif
-    return true;
+    return fRet;
 }
 
 

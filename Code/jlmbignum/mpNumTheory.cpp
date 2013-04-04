@@ -575,11 +575,14 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum&
 {
     int             maxsize= bnN.mpSize();
     int             j= 1;
-    bnum            bnY(maxsize);
+    bnum            bnY(2*maxsize+1);
     bnum            bnQ(maxsize);
     bnum            bnTemp(maxsize);
     extern bnum     g_bnOne;
     
+#ifdef ARITHTEST
+    fprintf(g_logFile, "MRPrimeTestLoop\n");
+#endif
     if(!mpModExp(bnA, bnR, bnN, bnY))
         fprintf(g_logFile, "MRPrimeTestLoop: Bad Exponent\n");
     if(mpCompare(bnY, g_bnOne)!=s_isEqualTo && mpCompare(bnY, bnNM1)!=s_isEqualTo) {
@@ -626,7 +629,10 @@ bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[])
     bnum    bnS(maxsize);                 // highest power of 2 dividing
     bnum    bnNM1(maxsize);
     bnum*   pbNum;
-   
+
+#ifdef ARITHTEST
+    fprintf(g_logFile, "MRPrimeTest\n");
+#endif
     bnN.mpCopyNum(bnNM1);
     mpDec(bnNM1);
     iS= max2PowerDividing(bnNM1);
@@ -656,6 +662,9 @@ bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases, bnum* rgbnBases[
     int     i;
     bnum*   pbNum;
 
+#ifdef ARITHTEST
+    fprintf(g_logFile, "MakeRandBasisForMR\n");
+#endif
     // first one is always 2
     pbNum= rgbnBases[0];
     mpZeroNum(*pbNum);

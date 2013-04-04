@@ -349,6 +349,7 @@ bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
         fprintf(g_logFile, "pkcsmessageextract: no zero byte\n");
         return false;
     }
+    i++;
     n= i;
 
     m= sigSize-n;

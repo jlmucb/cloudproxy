@@ -807,6 +807,13 @@ bool udividetests()
         return false;
     }
 
+    int lR= mpWordsinNum(bnR.mpSize(), bnR.m_pValue);
+    int lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    if(lR>lB) {
+        printf("umultdiv error: remainder larger than divisor\n");
+        return false;
+    }
+
     if(mpUCompare(bnA, bnY)==s_isEqualTo)
         return true;
 
@@ -1166,47 +1173,63 @@ bool primeGentests()
 }
 
 
+bool singlersaTest(RSAKey* pKey, int sizein, byte* in)
+{
+    bool    fRet= true;
+    byte    out[1024];
+    byte    recovered[1024];
+    int     m, n;
+
+    n= 1024;
+    if(!RSASeal(*pKey, sizein, in, &n, out)) {
+        printf("singlersaTest: RSASeal failed\n");
+        fRet= false;
+        goto done;
+    }
+    m= 1024;
+    if(!RSAUnseal(*pKey, n, out, &m, recovered)) {
+        printf("singlersaTest: RSAUnseal failed\n");
+        fRet= false;
+        goto done;
+    }
+    printf("RSAUnseal returns %d bytes\n", m);
+    if(memcmp(in, recovered, sizein)!=0) {
+        printf("singlersaTest: input and recovered dont match\n");
+        fRet= false;
+    }
+
+done:
+    return fRet;
+}
+
+
 bool rsaTests()
 {
     bool    fRet= true;
     int     i;
-    int     n;
-    int     m;
     RSAKey* pKey= RSAGenerateKeyPair(1024);
     byte    testmessage[32]= { 
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04};
-    byte    out[1024];
-    byte    recovered[1024];
     u64*    pU= (u64*) testmessage;
 
     if(pKey==NULL) {
         printf("rsaTests: cant generate key\n");
         return false;
     }
+#ifdef TEST
     pKey->printMe();
     printf("\n");
-
+#endif
 
     for (i=0; i<100; i++) {
-        n= 1024;
-        if(!RSASeal(*pKey, 32, testmessage, &n, out)) {
-            printf("rsaTests: RSASeal failed\n");
+        if(singlersaTest(pKey, 32, testmessage))
+            fprintf(g_logFile, "singlersaTest %d passed\n", i);
+        else {
             fRet= false;
-            continue;
-        }
-        m= 1024;
-        if(!RSAUnseal(*pKey, n, out, &m, recovered)) {
-            printf("rsaTests: RSAUnseal failed\n");
-            fRet= false;
-            continue;
-        }
-        printf("RSAUnseal returns %d bytes\n", m);
-        if(memcmp(testmessage, recovered, 32)!=0) {
-            printf("rsaTests: input and recovered dont match\n");
-            fRet= false;
+            fprintf(g_logFile, "singlersaTest %d failed\n", i);
         }
         (*pU)++;
     }
@@ -1262,15 +1285,6 @@ int main(int an, char** av)
 
         if(!udividetests()) 
             throw((char*)"special test fails");
-
-        if(!rsaTests()) {
-            printf("rsaTests succeeded\n");
-        }
-        else {
-            fAllTests= false;
-            printf("rsaTests failed\n");
-            throw("Stop");
-        }
 
         if(!initNums()) {
             throw((char*)"Cant init numbers");
@@ -1524,6 +1538,14 @@ int main(int an, char** av)
             printf("primeGentests failed\n");
         }
         printf("\n");
+
+        if(rsaTests()) {
+            printf("rsaTests succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("rsaTests failed\n");
+        }
 
         if(fAllTests)
             printf("\nTests completed, all tests PASSED\n");

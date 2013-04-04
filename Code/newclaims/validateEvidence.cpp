@@ -27,20 +27,16 @@
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "validateEvidence.h"
-#include "time.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
 
-#include "policyglobals.h"
-
+#include <time.h>
 #include <string.h>
+
+// #include "policyglobals.h"
 
 
 // ------------------------------------------------------------------------
-
-
-
-// -------------------------------------------------------------------------------
 
 
 bool  revoked(const char* szCert, const char* szPolicy)
@@ -49,22 +45,7 @@ bool  revoked(const char* szCert, const char* szPolicy)
 }
 
 
-bool checktimeinInterval(tm& time, tm& begin, tm& end)
-{
-    long long int iBegin;
-    long long int iMiddle;
-    long long int iEnd;
-    
-    iBegin=begin.tm_year*(3600L*24L*31L*366)+begin.tm_mon*(3600L*24L*31L)+
-           begin.tm_mday*(3600L*24L)+ begin.tm_hour*3600L+ begin.tm_min*60L+ begin.tm_sec;
-    iMiddle=time.tm_year*(3600L*24L*31L*366)+time.tm_mon*(3600L*24L*31L)+
-           time.tm_mday*(3600L*24L)+ time.tm_hour*3600L+ time.tm_min*60L+ time.tm_sec;
-    iEnd=end.tm_year*(3600L*24L*31L*366)+end.tm_mon*(3600L*24L*31L)+
-           end.tm_mday*(3600L*24L)+ end.tm_hour*3600L+ end.tm_min*60L+ end.tm_sec;
-    if(iBegin<=iMiddle && iMiddle<=iEnd)
-        return true;
-    return false;
-}
+// -------------------------------------------------------------------------------
 
 
 int VerifyEvidence(tm* pt, int iEvidenceType, void* pEvidence, 

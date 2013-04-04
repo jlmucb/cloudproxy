@@ -20,13 +20,6 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-#include "jlmTypes.h"
-#include "tinyxml.h"
-#include "bignum.h"
-#include "modesandpadding.h"
-
-#include "time.h"
-
 
 // --------------------------------------------------------------------------
 
@@ -36,7 +29,7 @@
 
 #include "jlmTypes.h"
 #include "jlmUtility.h"
-#include "jlmCrypto.h"
+#include "jlmcrypto.h"
 #include "tinyxml.h"
 
 
@@ -58,6 +51,7 @@ int         timeCompare(struct tm& time1, struct tm& time2);
 char*       stringtimefromtimeInfo(struct tm* timeinfo);
 struct tm*  timeNow();
 bool        timeInfofromstring(const char szTime, struct tm& thetime);
+bool        checktimeinInterval(tm& time, tm& begin, tm& end);
 
 bool        sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);
 KeyInfo*    ReadKeyfromFile(const char* szKeyFile);

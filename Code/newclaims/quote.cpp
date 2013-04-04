@@ -29,7 +29,7 @@
 #include "sha1.h"
 #include "sha256.h"
 #include "algs.h"
-#include "certPrincipal.h"
+#include "cert.h"
 #include "tao.h"
 #include "bignum.h"
 #include "mpFunctions.h"
@@ -606,13 +606,7 @@ char*   formatSignedInfo(RSAKey* pKey,
     if(!safeTransfer(&p, &iLeft, szTemp))
         return NULL;
 
-    TiXmlDocument  doc;
-    if(!doc.Parse(rgBuf)) {
-        fprintf(g_logFile, "formatSignedInfo: can't parse document\n");
-        return NULL;
-    }
-
-    szSignedInfo= canonicalize((TiXmlNode*)doc.RootElement());
+    szSignedInfo= XMLCanonicalizedString(rgbuf);
 
 #ifdef  QUOTETEST
     fprintf(g_logFile, "formatSignedInfo, Canonicalized: %s\n", szSignedInfo);

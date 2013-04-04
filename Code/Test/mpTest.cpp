@@ -693,7 +693,7 @@ bool usinglemulttests()
 bool usinglemultandshifttests()
 {
     bool    fRet= true;
-    bnum    bnOut(10);
+    bnum    bnOut(128);
     int     i;
     int     i1;
     int     param1;
@@ -701,12 +701,12 @@ bool usinglemultandshifttests()
 
     printf("usinglemultandshifttestData, %d tests\n", 
            (int)(sizeof(usinglemultandshifttestData)/sizeof(testinit)));
-    for(i=0;i<(int)(sizeof(usinglemultandshifttestData)/sizeof(testinit)); i++) {
+    for(i=0;i<(int)(sizeof(usinglemultandshifttestData)/sizeof(testinit))-1; i++) {
         mpZeroNum(bnOut);
         i1= usinglemultandshifttestData[i].in1;
         param1= usinglemultandshifttestData[i].iparameter;
         param2= usinglemultandshifttestData[i].uparameter;
-        mpUSingleMultAndShift(*rgbn[i1], param2, param1, bnOut);
+        // mpUSingleMultAndShift(*rgbn[i1], param2, param1, bnOut);
         printf("%d ", i+1); 
         printNum(*rgbn[i1]); 
         printf("\n  *  %016lx << %d =\n  ", param2, param1); 
@@ -893,20 +893,24 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
     bnum    bnD(128);
 
     //      a=bq+r
+#ifdef PRINTNUMS
     printf("umultdiv\n");
     printNum(bnA); printf("\n");
     printf("divided by\n");
     printNum(bnB); printf("\n");
+#endif
     
     if(!mpUDiv(bnA, bnB, bnQ, bnR)) {
         printf("umultdiv: mpUDiv fails\n");
         return false;
     }
 
+#ifdef PRINTNUMS
     printf("quotient\n");
     printNum(bnQ); printf("\n");
     printf("remainder\n");
     printNum(bnR); printf("\n");
+#endif
 
     if(!mpUMult(bnQ, bnB, bnX)) {
         printf("umultdiv: mpUMult failed\n");
@@ -920,6 +924,7 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
     if(mpUCompare(bnA, bnY)!=s_isEqualTo) {
         printf("umultdiv: a!=bq+r\n");
         printf("A\n"); printNum(bnA); printf("\n");
+        printf("B\n"); printNum(bnB); printf("\n");
         printf("X\n");printNum(bnX); printf("\n");
         printf("Y\n");printNum(bnY); printf("\n\n");
         mpZeroNum(bnD);
@@ -1234,6 +1239,13 @@ bool rsaTests()
         (*pU)++;
     }
 
+    if(!fRet) {
+        char* szKey= pKey->SerializetoString();
+        if(szKey!=NULL)
+            saveBlobtoFile("FailedRSAKey", (byte*) szKey, strlen(szKey)+1);
+        printf("wrote FailedRSAKey\n");
+    }
+
     return fRet;
 }
 
@@ -1270,7 +1282,9 @@ int main(int an, char** av)
                     printf("getCryptoRandom cant generate enough bits\n");
                     break;
                 }
-                write(iWrite, buf, 8192);
+                if(write(iWrite, buf, 8192)) {
+                    printf("write failed\n");
+                }
                 num-= 8192;
             }
             close(iWrite);

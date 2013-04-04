@@ -26,16 +26,15 @@
 #include "jlmUtility.h"
 #include "logging.h"
 #include "jlmcrypto.h"
-#include "secPrincipal.h"
-#include "vault.h"
-#include "claims.h"
+#include "cert.h"
 #include "time.h"
-#include "rsaHelper.h"
+#include "cryptoHelper.h"
 #include "sha256.h"
 
-#include "policyglobals.h"
-
 #include <string.h>
+#include <time.h>
+
+//#include "policyglobals.h"
 
 
 // ------------------------------------------------------------------------
@@ -186,7 +185,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         return false;
     }
 
-    if(!initRSAKeyFromKeyInfo(&m_pSubjectKeyInfo, pSubjectKeyInfoNode)) {
+    m_pSubjectKeyInfo= RSAKeyfromKeyInfoNode(pSubjectKeyInfoNode);
+    if(m_pSubjectKeyInfo==NULL) {
         fprintf(g_logFile, "Cant init KeyInfo\n");
         return false;
     }

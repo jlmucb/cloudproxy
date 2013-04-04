@@ -507,6 +507,14 @@ bool timeInfofromstring(const char* szTime, struct tm& thetime)
 }
 
 
+bool checktimeinInterval(tm& time, tm& begin, tm& end)
+// is time less than or equal to endtime and greater than or equal to begin time
+{
+    return timeCompare(end, time)!=(-1) && timeCompare(begin, time)!=1;
+}
+
+
+
 // -------------------------------------------------------------------------------
 
 

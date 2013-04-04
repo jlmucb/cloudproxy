@@ -35,7 +35,7 @@
 #define _VALIDATEEVIDENCE__H
 
 
-
+// evidence types
 #define NOEVIDENCE              0
 #define EMBEDDEDPOLICYPRINCIPAL 1
 #define PRINCIPALCERT           2
@@ -44,7 +44,7 @@
 #define SIGNEDX509CERT          5
 #define ATTESTATION             6
 
-
+// validation errors
 #define VALID               1
 #define INVALIDSIG       (-1)
 #define INVALIDPRINCIPAL (-2)

@@ -262,13 +262,12 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
 //  "decryption error" and stop.  
 
 
+#define NORANDPKCSPAD
 bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
 
 {
     int     n= 0;
     int     psLen= sigSize-3-sizeIn;
-    int     padEnd= 2+psLen;
-    int     k= 0;
 
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "pkcsmessagepad, insize %d, sigsize %d\n", sizeIn, sigSize);
@@ -278,11 +277,12 @@ bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
     rgSig[n++]= 0x00; rgSig[n++]= 0x02;
 
     // get non-zero bytes
-#define NORANDPKCSPAD
 #ifdef  NORANDPKCSPAD
     memset(&rgSig[n], 0xff, psLen);
     n+= psLen;
 #else
+    int     padEnd= 2+psLen;
+    int     k= 0;
     while(n<padEnd) {
         if(!getCryptoRandom(sigSize-n, &rgSig[n])) {
             fprintf(g_logFile, "pkcsmessagepad: can't get random bits\n");

@@ -173,10 +173,10 @@ RSAKey* RSAGenerateKeyPair(int keySize)
 
     bnum       bnPhi(128);
     bnum       bnE(4);
-    bnum       bnP(ikeyu64Size);
-    bnum       bnQ(ikeyu64Size);
-    bnum       bnD(ikeyu64Size);
-    bnum       bnM(ikeyu64Size);
+    bnum       bnP(128);
+    bnum       bnQ(128);
+    bnum       bnD(128);
+    bnum       bnM(128);
 
     bnE.m_pValue[0]= (1ULL<<16)+1ULL;
     while(iTry++<MAXTRY) {

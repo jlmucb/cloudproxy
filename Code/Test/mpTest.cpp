@@ -32,6 +32,7 @@
 #include "jlmcrypto.h"
 #include "mpFunctions.h"
 #include "logging.h"
+#include "cryptoHelper.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -65,7 +66,7 @@ int   s_isGreaterThan= s_iIsGreaterThan;
 
 // ---------------------------------------------------------------------------------
 
-
+#if 0
 int     iRandDev= -1;
 
 
@@ -103,7 +104,7 @@ bool getCryptoRandom(int iNumBits, byte* buf)
             iSize2, iSize);
     return false;
 }
-
+#endif
 
 
 // ---------------------------------------------------------------------------------
@@ -1165,6 +1166,55 @@ bool primeGentests()
 }
 
 
+bool rsaTests()
+{
+    bool    fRet= true;
+    int     i;
+    int     n;
+    int     m;
+    RSAKey* pKey= RSAGenerateKeyPair(1024);
+    byte    testmessage[32]= { 
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04};
+    byte    out[1024];
+    byte    recovered[1024];
+    u64*    pU= (u64*) testmessage;
+
+    if(pKey==NULL) {
+        printf("rsaTests: cant generate key\n");
+        return false;
+    }
+    pKey->printMe();
+    printf("\n");
+
+
+    for (i=0; i<100; i++) {
+        n= 1024;
+        if(!RSASeal(*pKey, 32, testmessage, &n, out)) {
+            printf("rsaTests: RSASeal failed\n");
+            fRet= false;
+            continue;
+        }
+        m= 1024;
+        if(!RSAUnseal(*pKey, n, out, &m, recovered)) {
+            printf("rsaTests: RSAUnseal failed\n");
+            fRet= false;
+            continue;
+        }
+        printf("RSAUnseal returns %d bytes\n", m);
+        if(memcmp(testmessage, recovered, 32)!=0) {
+            printf("rsaTests: input and recovered dont match\n");
+            fRet= false;
+        }
+        (*pU)++;
+    }
+
+    return fRet;
+}
+
+
 // ---------------------------------------------------------------------------------
 
 
@@ -1212,6 +1262,15 @@ int main(int an, char** av)
 
         if(!udividetests()) 
             throw((char*)"special test fails");
+
+        if(!rsaTests()) {
+            printf("rsaTests succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("rsaTests failed\n");
+            throw("Stop");
+        }
 
         if(!initNums()) {
             throw((char*)"Cant init numbers");

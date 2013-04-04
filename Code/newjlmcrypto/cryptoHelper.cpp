@@ -373,10 +373,74 @@ bool sameRSAKey(RSAKey* pKey1, RSAKey* pKey2)
 }
 
 
-// ------------------------------------------------------------------
+char* XMLCanonicalizedString(const char* szXML)
+{
+    TiXmlDocument doc;
+
+    if(!doc.Parse(szXML)) {
+        fprintf(g_logFile, "XMLCanonicalizedString: Cant parse Xml Document\n");
+        return NULL;
+    }
+    if(doc.RootElement()==NULL) {
+        fprintf(g_logFile, "XMLCanonicalizedString: Cant get root element\n");
+        return NULL;
+    }
+    return canonicalize((TiXmlNode*) doc.RootElement());
+}
 
 
-const char*   g_szNonceTemplate= "<nonce> %s </nonce>\n";
+KeyInfo* ReadKeyfromFile(const char* szKeyFile)
+{
+    KeyInfo*    pParseKey= new KeyInfo;
+    RSAKey*     pRSAKey= NULL;
+    symKey*     pAESKey= NULL;
+    KeyInfo*    pRetKey= NULL;
+    int         iKeyType;
+
+    TiXmlDocument* pDoc= new TiXmlDocument();
+    if(pDoc==NULL) {
+        fprintf(g_logFile, "Cant get new an Xml Document\n");
+        return NULL;
+    }
+
+    if(!pDoc->LoadFile(szKeyFile)) {
+        fprintf(g_logFile, "Cant load keyfile\n");
+        return NULL;
+    }
+    iKeyType= pParseKey->getKeyType(pDoc);
+
+    switch(iKeyType) {
+      case AESKEYTYPE:
+        pAESKey= new symKey();
+        if(pAESKey==NULL) {
+            fprintf(g_logFile, "Cant new symKey\n");
+            break;
+        }
+        else
+            pAESKey->m_pDoc= pDoc;
+        pAESKey->getDataFromDoc();
+        pRetKey= (KeyInfo*) pAESKey;
+        break;
+      case RSAKEYTYPE:
+        pRSAKey= new RSAKey();
+        if(pRSAKey==NULL) {
+            fprintf(g_logFile, "Cant new RSAKey\n");
+            break;
+        }
+        else
+            pRSAKey->m_pDoc= pDoc;
+        pRSAKey->getDataFromDoc();
+        pRetKey= (KeyInfo*) pRSAKey;
+        break;
+      default:
+       fprintf(g_logFile, "Unknown key type in ReadFromFile\n");
+       break;
+    }
+    delete pParseKey;
+    // Dont forget to delete pDoc;
+
+    return pRetKey;
+}
 
 
 // -------------------------------------------------------------------------------

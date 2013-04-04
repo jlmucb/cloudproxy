@@ -60,11 +60,15 @@ struct tm*  timeNow();
 bool        timeInfofromstring(const char szTime, struct tm& thetime);
 
 bool        sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);
+KeyInfo*    ReadKeyfromFile(const char* szKeyFile);
 
 int         maxbytesfromBase64string(int nc);
 int         maxcharsinBase64stringfrombytes(int nb);
 bool        base64frombytes(int nb, byte* in, int* pnc, char* out);
 bool        bytesfrombase64(char* in, int* pnb, byte* out);
+
+char*	    XMLCanonicalizedString(const char* szXML);
+
 
 bool        XMLenclosingtypefromelements(const char* tag, int numAttr, 
                                    const char** attrName, const char** attrValues, 

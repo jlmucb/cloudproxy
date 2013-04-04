@@ -1264,46 +1264,8 @@ int main(int an, char** av)
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
 
-                string userCertFile("UserPublicKey.xml");
-                string userKeyFile("UserPrivateKey.xml");
-#ifdef TEST
-                fprintf(g_logFile, "Path: %s\n", path.c_str());
-                fflush(g_logFile);
-#endif
-                bidClient::getKeyFiles(path,
-                            testFileName,
-                            userCertFile,
-                            userKeyFile);
-
-                fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", 
-                        userKeyFile.c_str(), userCertFile.c_str());
-                fflush(g_logFile);
-                string userCert = bidClient::getFileContents(userCertFile);
-
-                bidClient client;
-                safeChannel channel;
-                result = client.establishConnection(channel,
-                        userKeyFile.c_str(),
-                        userCertFile.c_str(),
-                        directory,
-                        "127.0.0.1",
-                        SERVICE_PORT);
-#define UNTILTOMFIXES
-#ifdef UNTILTOMFIXES
-                const string auctionID("Auction1");
-                const string user("John");
-                const string bid1("1");
-                const string bid2("2");
-                if(!client.readBid(channel, auctionID, user, bid1, userCert)) {
-                    fprintf(g_logFile, "bid 1 failed\n");
-                }
-                if(!client.readBid(channel, auctionID, user, bid2, userCert)) {
-                    fprintf(g_logFile, "bid 1 failed\n");
-                }
-#else
                 bidTester bt(path, testFileName);
                 bt.Run(directory);
-#endif
             }
         }
 

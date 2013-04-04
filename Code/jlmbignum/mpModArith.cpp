@@ -303,16 +303,22 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
     int     j;
 
     if(maxSizeB>maxSizeM) {
-        maxSize= 2*maxSizeB+1;
+        maxSize= 4*maxSizeB+1;
     }
     else {
-        maxSize= 2*maxSizeM+1;
+        maxSize= 4*maxSizeM+1;
     }
+fprintf(g_logFile, "mpModExp %d\n", maxSize);
 
     bnum    bnBasePow(maxSize);    // Base to powers of 2
     bnum    bnAccum(maxSize);      // Exponent so far
     bnum    bnTemp(maxSize);       // Temporary storage
     bnum    bnQ(maxSize);          // Quotient
+
+    mpZeroNum(bnBasePow);
+    mpZeroNum(bnAccum);
+    mpZeroNum(bnTemp);
+    mpZeroNum(bnQ);
 
     UNUSEDVAR(maxSize);
     bnBase.mpCopyNum(bnBasePow);

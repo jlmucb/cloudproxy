@@ -32,6 +32,7 @@
 #include "jlmcrypto.h"
 #include "mpFunctions.h"
 #include "logging.h"
+#include "cryptoHelper.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -56,9 +57,16 @@ public:
 };
 
 
+#ifdef OLD
+int   s_isEqualTo= s_iIsEqualTo;
+int   s_isLessThan= s_iIsLessThan;
+int   s_isGreaterThan= s_iIsGreaterThan;
+#endif
+
+
 // ---------------------------------------------------------------------------------
 
-
+#if 0
 int     iRandDev= -1;
 
 
@@ -92,11 +100,11 @@ bool getCryptoRandom(int iNumBits, byte* buf)
     if(iSize2==iSize) {
         return true;
     }
-    fprintf(g_logFile, "getCryptoRandom returning false %d bytes instead of %d\n", 
+    printf("getCryptoRandom returning false %d bytes instead of %d\n", 
             iSize2, iSize);
     return false;
 }
-
+#endif
 
 
 // ---------------------------------------------------------------------------------
@@ -123,6 +131,11 @@ u64 rguCarryTest2[4]= { 0x00000b255a6beef0ULL, 0x00000b255a6beefdULL, 0ULL};
 u64 rguCarryTest2a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
 u64 rgudiv1[4]= {0xffff555205050505, 0x0000000000000002};
 u64 rgudiv2[4]= { 0xf7b5147a87dd32d4, 0x0000000000000002};
+
+u64 rgudivbug1A[8]= {0x31422645a3b30df9, 0x36cd02a1a93a6d4e, 0x07142aaebc5c4d91, 0x822392071130c692, 
+                     0x336a2a6d27326c96, 0x906efef0c626aee3, 0x6b37ebffcb2452b8, 0x8a6fd278ae4ee55e};
+u64 rgudivbug1B[4]= {0x2b1628268ab5acd6, 0xcb03e0028709eff5, 0x2fb92baeee16d107, 0x3c00ed20e0494db1};
+
 
 
 // Initializes
@@ -422,6 +435,9 @@ bool initNums()
 
     return true;
 }
+
+
+const char* g_szRandTestfile= "random.bin";
 
 
 // ---------------------------------------------------------------------------------
@@ -751,27 +767,54 @@ bool ucomparetests()
 
 bool udividetests()
 {
-    bool    fRet= true;
-#if 0
-    bnum    bnOut(10);
-    int     i2;
-    int     param1;
-    u64     param2;
+    bnum    bnA(128);
+    bnum    bnB(128);
+    bnum    bnQ(128);
+    bnum    bnR(128);
+    bnum    bnX(128);
+    bnum    bnY(128);
+    bnum    bnD(128);
 
-    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
-    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
-        mpZeroNum(bnOut);
-        i1= copytestData[i].in1;
-        rgbn[i1]->mpCopyNum(bnOut);
-        printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
-        printf("\n  to\n  "); 
-        printNum(bnOut); 
-        printf("\n");
+    printf("special udividetests\n");
+    mpZeroNum(bnA);
+    mpZeroNum(bnB);
+    mpZeroNum(bnQ);
+    mpZeroNum(bnR);
+    mpZeroNum(bnD);
+
+    memcpy((byte*)bnA.m_pValue, (byte*)rgudivbug1A, 64);
+    memcpy((byte*)bnB.m_pValue, (byte*)rgudivbug1B, 32);
+
+    printf("A: "); printNum(bnA); printf("\n");
+    printf("B: "); printNum(bnB); printf("\n");
+ 
+    if(!mpUDiv(bnA, bnB, bnQ, bnR)) {
+        printf("udividetests: mpUDiv fails\n");
+        return false;
     }
-#endif
 
-    return fRet;
+    printf("quotient\n");
+    printNum(bnQ); printf("\n");
+    printf("remainder\n");
+    printNum(bnR); printf("\n");
+
+    if(!mpUMult(bnQ, bnB, bnX)) {
+        printf("umultdiv: mpUMult failed\n");
+        return false;
+    }
+    if(mpUAdd(bnX, bnR, bnY)!=0) {
+        printf("umultdiv: mpUAdd failed\n");
+        return false;
+    }
+
+    if(mpUCompare(bnA, bnY)==s_isEqualTo)
+        return true;
+
+    printf("X: ");printNum(bnX); printf("\n");
+    printf("Y: ");printNum(bnY); printf("\n");
+    mpSub(bnA, bnY, bnD);
+    printf("Difference\n");printNum(bnD); printf("\n\n");
+    return false;
 }
 
 
@@ -801,27 +844,151 @@ bool usingledivtests()
 }
 
 
+int getNext(int iRead, int* pnumLeft, int* pnumUsed, byte* inbuf, int numtoget, byte* outbuf)
+{
+    int     numbytesgotten= 0;
+    int     numbytestoget= numtoget*sizeof(u64);
+    int     n;
+
+    while(numbytestoget>0) {
+        if(*pnumLeft>0) {
+            if(*pnumLeft>numbytestoget)
+                n= numbytestoget;
+            else
+                n= *pnumLeft;
+            *pnumLeft-= n;
+            memcpy(outbuf, &inbuf[*pnumUsed], n);
+            outbuf+= n;
+            *pnumUsed+= n; 
+            numbytesgotten+= n;
+            numbytestoget-= n;
+        }
+
+        if(numbytestoget<=0)
+            break;
+
+        if(*pnumLeft<=0) {
+            n= read(iRead, inbuf, 8192);
+            if(n<=0) {
+                return 0;
+            }
+            *pnumUsed= 0;
+            *pnumLeft= n;
+        }
+    }
+
+    return numbytesgotten;
+}
+
+
+bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
+{
+    bnum    bnD(128);
+
+    //      a=bq+r
+    printf("umultdiv\n");
+    printNum(bnA); printf("\n");
+    printf("divided by\n");
+    printNum(bnB); printf("\n");
+    
+    if(!mpUDiv(bnA, bnB, bnQ, bnR)) {
+        printf("umultdiv: mpUDiv fails\n");
+        return false;
+    }
+
+    printf("quotient\n");
+    printNum(bnQ); printf("\n");
+    printf("remainder\n");
+    printNum(bnR); printf("\n");
+
+    if(!mpUMult(bnQ, bnB, bnX)) {
+        printf("umultdiv: mpUMult failed\n");
+        return false;
+    }
+    if(mpUAdd(bnX, bnR, bnY)!=0) {
+        printf("umultdiv: mpUAdd failed\n");
+        return false;
+    }
+
+    if(mpUCompare(bnA, bnY)!=s_isEqualTo) {
+        printf("umultdiv: a!=bq+r\n");
+        printf("A\n"); printNum(bnA); printf("\n");
+        printf("X\n");printNum(bnX); printf("\n");
+        printf("Y\n");printNum(bnY); printf("\n\n");
+        mpZeroNum(bnD);
+        mpSub(bnA, bnY, bnD);
+        printf("Difference\n");printNum(bnD); printf("\n\n");
+        return false;
+    }
+
+    printf("umultdiv succeeded\n\n");
+    return true;
+}
+
+
 bool umultiplydividetests()
 {
     bool    fRet= true;
-#if 0
-    bnum    bnOut(10);
-    int     i2;
-    int     param1;
-    u64     param2;
+    bool    fDone= false;
+    int     iRead= -1;
+    byte    buf[8192];
+    int     numUsed= 0;
+    int     numLeft= 0;
 
-    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
-    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
-        mpZeroNum(bnOut);
-        i1= copytestData[i].in1;
-        rgbn[i1]->mpCopyNum(bnOut);
-        printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
-        printf("\n  to\n  "); 
-        printNum(bnOut); 
-        printf("\n");
+    //      a=bq+r
+    bnum    bnA(128);
+    bnum    bnB(128);
+    bnum    bnQ(128);
+    bnum    bnR(128);
+    bnum    bnX(128);
+    bnum    bnY(128);
+
+    int     sizeA;
+    int     sizeB;
+    int     i, j;
+
+    iRead= open(g_szRandTestfile, O_RDONLY);
+    if(iRead<0) {
+        printf("umultiplydividetests: cant open random number file\n");
+        return false;
     }
-#endif
+
+    for(;;) {
+        if(fDone)
+            break;
+        mpZeroNum(bnA);
+        mpZeroNum(bnB);
+        mpZeroNum(bnQ);
+        mpZeroNum(bnR);
+        mpZeroNum(bnX);
+        mpZeroNum(bnY);
+        for(i=4;i<128; i+= 4) {
+            if(fDone)
+                break;
+            sizeA= getNext(iRead, &numLeft, &numUsed, buf, i, (byte*)bnA.m_pValue);
+            if(sizeA<=0) {
+                fDone= true;
+                break;
+            }
+            for(j=4;j<=i; j+= 4) {
+                sizeB= getNext(iRead, &numLeft, &numUsed, buf, j, (byte*)bnB.m_pValue);
+                if(sizeB<=0) {
+                    fDone= true;
+                    break;
+                }
+                if(!umultdiv(bnA, bnB, bnQ, bnR, bnX, bnY))
+                    fRet= false;
+            }
+        }
+    }
+
+    if(iRead>0)
+        close(iRead);
+
+    if(fRet)
+        printf("umultiplydividetests completed, all tests PASSED\n");
+    else
+        printf("umultiplydividetests completed, some tests FAILED\n");
 
     return fRet;
 }
@@ -999,19 +1166,111 @@ bool primeGentests()
 }
 
 
+bool rsaTests()
+{
+    bool    fRet= true;
+    int     i;
+    int     n;
+    int     m;
+    RSAKey* pKey= RSAGenerateKeyPair(1024);
+    byte    testmessage[32]= { 
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04};
+    byte    out[1024];
+    byte    recovered[1024];
+    u64*    pU= (u64*) testmessage;
+
+    if(pKey==NULL) {
+        printf("rsaTests: cant generate key\n");
+        return false;
+    }
+    pKey->printMe();
+    printf("\n");
+
+
+    for (i=0; i<100; i++) {
+        n= 1024;
+        if(!RSASeal(*pKey, 32, testmessage, &n, out)) {
+            printf("rsaTests: RSASeal failed\n");
+            fRet= false;
+            continue;
+        }
+        m= 1024;
+        if(!RSAUnseal(*pKey, n, out, &m, recovered)) {
+            printf("rsaTests: RSAUnseal failed\n");
+            fRet= false;
+            continue;
+        }
+        printf("RSAUnseal returns %d bytes\n", m);
+        if(memcmp(testmessage, recovered, 32)!=0) {
+            printf("rsaTests: input and recovered dont match\n");
+            fRet= false;
+        }
+        (*pU)++;
+    }
+
+    return fRet;
+}
+
+
 // ---------------------------------------------------------------------------------
 
 
 int main(int an, char** av)
 {
-    bool    fAllTests= true;
+    bool        fAllTests= true;
+    const char* szFile= NULL;
+    int         iWrite= -1;
+    int         num= 0;
+    byte        buf[8192];
+    int         i;
 
     initBigNum();
     initCryptoRand();
 
+    printf("mpTests, use genRand option to generate new random tests (often to random.bin)\n");
+    for(i=1; i<an; i++) {
+        if(strcmp(av[i], "-genRand")==0) {
+            szFile= av[++i];
+            i++;
+            num= atoi(av[i]);
+            printf("Generate %d random numbers and put in %s\n", num, szFile);
+            iWrite= open(szFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            if(iWrite<0) {
+                printf("cant open random number file %s\n", szFile);
+                return 1;
+            }
+            while(num>0) {
+                if(!getCryptoRandom(NBITSINBYTE*8192, buf)) {
+                    printf("getCryptoRandom cant generate enough bits\n");
+                    break;
+                }
+                write(iWrite, buf, 8192);
+                num-= 8192;
+            }
+            close(iWrite);
+            printf("File generation complete\n");
+            return 0;
+        }
+    }
+
 
     try {
         printf("mpTest\n\n");
+
+        if(!udividetests()) 
+            throw((char*)"special test fails");
+
+        if(!rsaTests()) {
+            printf("rsaTests succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("rsaTests failed\n");
+            throw("Stop");
+        }
 
         if(!initNums()) {
             throw((char*)"Cant init numbers");
@@ -1021,6 +1280,7 @@ int main(int an, char** av)
             printf("copytests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("copytests failed\n");
         }
         printf("\n");
@@ -1028,6 +1288,7 @@ int main(int an, char** av)
             printf("maxbitstests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("maxbitstests failed\n");
         }
         printf("\n");
@@ -1035,6 +1296,7 @@ int main(int an, char** av)
             printf("shifttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("shifttests failed\n");
         }
         printf("\n");
@@ -1042,6 +1304,7 @@ int main(int an, char** av)
             printf("usingleaddtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("usingleaddtests failed\n");
         }
         printf("\n");
@@ -1049,6 +1312,7 @@ int main(int an, char** av)
             printf("uaddtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("uaddtests failed\n");
         }
         printf("\n");
@@ -1056,6 +1320,7 @@ int main(int an, char** av)
             printf("usubtracttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("usubtracttests failed\n");
         }
         printf("\n");
@@ -1063,6 +1328,7 @@ int main(int an, char** av)
             printf("uaddtotests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("uaddtotests failed\n");
         }
         printf("\n");
@@ -1070,6 +1336,7 @@ int main(int an, char** av)
             printf("subfromtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("subfromtests failed\n");
         }
         printf("\n");
@@ -1077,6 +1344,7 @@ int main(int an, char** av)
             printf("usinglemulttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("usinglemulttests failed\n");
         }
         printf("\n");
@@ -1084,6 +1352,7 @@ int main(int an, char** av)
             printf("usinglemultandshifttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("usinglemultandshifttests failed\n");
         }
         printf("\n");
@@ -1091,6 +1360,7 @@ int main(int an, char** av)
             printf("ucomparetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("ucomparetests failed\n");
         }
         printf("\n");
@@ -1098,6 +1368,7 @@ int main(int an, char** av)
             printf("udividetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("udividetests failed\n");
         }
         printf("\n");
@@ -1105,6 +1376,7 @@ int main(int an, char** av)
             printf("usingledivtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("usingledivtests failed\n");
         }
         printf("\n");
@@ -1112,6 +1384,7 @@ int main(int an, char** av)
             printf("umultiplydividetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("umultiplydividetests failed\n");
         }
         printf("\n");
@@ -1119,6 +1392,7 @@ int main(int an, char** av)
             printf("negatetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("negatetests failed\n");
         }
         printf("\n");
@@ -1126,6 +1400,7 @@ int main(int an, char** av)
             printf("converttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("converttests failed\n");
         }
         printf("\n");
@@ -1133,6 +1408,7 @@ int main(int an, char** av)
             printf("addtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("addtests failed\n");
         }
         printf("\n");
@@ -1140,6 +1416,7 @@ int main(int an, char** av)
             printf("subtracttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("subtracttests failed\n");
         }
         printf("\n");
@@ -1147,6 +1424,7 @@ int main(int an, char** av)
             printf("addtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("addtests failed\n");
         }
         printf("\n");
@@ -1154,6 +1432,7 @@ int main(int an, char** av)
             printf("subfromtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("subfromtests failed\n");
         }
         printf("\n");
@@ -1161,6 +1440,7 @@ int main(int an, char** av)
             printf("multiplytests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("multiplytests failed\n");
         }
         printf("\n");
@@ -1168,6 +1448,7 @@ int main(int an, char** av)
             printf("comparetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("comparetests failed\n");
         }
         printf("\n");
@@ -1175,6 +1456,7 @@ int main(int an, char** av)
             printf("dividetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("dividetests failed\n");
         }
         printf("\n");
@@ -1182,6 +1464,7 @@ int main(int an, char** av)
             printf("multiplydividetests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("multiplydividetests failed\n");
         }
         printf("\n");
@@ -1189,6 +1472,7 @@ int main(int an, char** av)
             printf("gcdtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("gcdtests failed\n");
         }
         printf("\n");
@@ -1196,6 +1480,7 @@ int main(int an, char** av)
             printf("modaddtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("modaddtests failed\n");
         }
         printf("\n");
@@ -1203,6 +1488,7 @@ int main(int an, char** av)
             printf("modmulttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("modmulttests failed\n");
         }
         printf("\n");
@@ -1210,6 +1496,7 @@ int main(int an, char** av)
             printf("modexptests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("modexptests failed\n");
         }
         printf("\n");
@@ -1217,6 +1504,7 @@ int main(int an, char** av)
            printf("moddinvtests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("moddinvtests failed\n");
         }
         printf("\n");
@@ -1224,6 +1512,7 @@ int main(int an, char** av)
             printf("crttests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("crttests failed\n");
         }
         printf("\n");
@@ -1231,6 +1520,7 @@ int main(int an, char** av)
             printf("primeGentests succeeded\n");
         }
         else {
+            fAllTests= false;
             printf("primeGentests failed\n");
         }
         printf("\n");

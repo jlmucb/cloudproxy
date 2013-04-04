@@ -1000,10 +1000,10 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     u64*    rgtC= NULL;
     u64     uBHi, uBLo;
     int     i;
+    int     k;      // quotient position
     int     compare;
-    bool    fTwoDigitArgs;
 
-#ifdef ARITHTEST      
+#ifdef DEBUGUDIV
     printf("mpUDiv: \n"); 
     printf("A: ");printNum(bnA);printf("\n");
     printf("B: ");printNum(bnB);printf("\n");
@@ -1053,66 +1053,78 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     uBHi= bnB.m_pValue[scaledB-1];
     uBLo= bnB.m_pValue[scaledB-2];
 
+#ifdef DEBUGUDIV
+    printf("scaledA: %d, scaledB: %d, uBHi: %016lx, uBLo: %016lx\n", scaledA, scaledB, uBHi, uBLo);
+    printf("tempA: "); printNum(bnTempA); printf("\n");
+#endif
+
     // Loop through the digits
     for(i=(scaledA-1); i>=(scaledB-1); i--) {
-        fTwoDigitArgs= false;
-        if(rgtA[i]>=uBHi) {
-            if(notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB)) {
-                EstimateQuotient(&uQ, 0ULL, rgtA[i], rgtA[i-1], uBHi, uBLo);
-#ifdef ARITHTEST
-                printf("Quotient: %016lx, i: %d, i-scaledB+1: %d\n", uQ, i, i-scaledB+1);
+
+        // top scaledB digits of A>=B
+        if(rgtA[i]>uBHi || 
+	       (rgtA[i]==uBHi && notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB))) {
+            k= i-scaledB+1;  // position of quotient digit
+            EstimateQuotient(&uQ, 0ULL, rgtA[i], rgtA[i-1], uBHi, uBLo);
+#ifdef DEBUGUDIV
+            fprintf(g_logFile, "top scaledB digits of A>=B, quotient digit\n", k);
+            fprintf(g_logFile, "Quotient digit estimate is rgQ[%d]= %016lx\n", k, uQ);
 #endif
-                while(uQ>0) {
-                    mpZeroNum(bnTempC);
-                    mpUSingleMultAndShift(bnB, uQ, i-scaledB+1, bnTempC);
-                    compare= mpCompare(bnTempA, bnTempC);
-                    if(compare!=s_isLessThan)
-                        break;
-                    uQ--;
-                    mpZeroNum(bnTempC);
-                    mpUSingleMultAndShift(bnB, uQ, i-scaledB+1, bnTempC);
-                }
-                if(uQ>0) {
-                    mpUSubFrom(bnTempA, bnTempC);
-                    rgQ[i-scaledB+1]= uQ;
-                    continue;
-                }
-                fTwoDigitArgs= true;
+            while(uQ>0) {
+                mpZeroNum(bnTempC);
+                mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
+                compare= mpUCompare(bnTempA, bnTempC);
+                if(compare!=s_isLessThan)
+                    break;
+                uQ--;
             }
-        else
-            fTwoDigitArgs= true;
+            mpZeroNum(bnTempC);
+            mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
+            mpUSubFrom(bnTempA, bnTempC);
+            rgQ[k]= uQ;
+
+#ifdef DEBUGUDIV
+            fprintf(g_logFile, "rgQ[%d]= %016lx\n", k, uQ);
+            fprintf(g_logFile, "New tempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
+#endif
+            continue;
         }
-        if(i==(scaledB-1))
+
+        // top scaledB digits of A<B
+        // dividing scaledB+1 digit number by scaledB digit number
+        k= i-scaledB;
+#ifdef DEBUGUDIV
+        fprintf(g_logFile, "top scaledB digits of A<B, quotient digit\n", k);
+#endif
+        if(k<0)
             break;
-        if(fTwoDigitArgs) {
-            if(i>scaledB) {
-                if(scaledA<3)
-                    TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
-                else
-                    TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
-                i--;
-                uQ= (u64)-1;
-            }
-        }
-        else {
-            if(scaledA<3)
-                EstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
-            else
-                EstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
-        }
+        if(i>scaledB) 
+            TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
+        else
+            TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
+#ifdef DEBUGUDIV
+        fprintf(g_logFile, "TwoDigit i: %d, %016lx %016lx xxx / %016lx %016lx\n  estimate %016lx\n", 
+                i, rgtA[i], rgtA[i-1], uBHi, uBLo, uQ);
+#endif
         mpZeroNum(bnTempC);
-        mpUSingleMultAndShift(bnB, uQ, i-scaledB, bnTempC);
+        mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
         while(mpCompare(bnTempA, bnTempC)==s_isLessThan) {
             uQ--;
             mpZeroNum(bnTempC);
-            mpUSingleMultAndShift(bnB, uQ, i-scaledB, bnTempC);
+            mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
         }
         mpUSubFrom(bnTempA, bnTempC);
-        rgQ[i-scaledB]= uQ;
+        rgQ[k]= uQ; 
+        i--;
+#ifdef DEBUGUDIV
+        fprintf(g_logFile, "Two digit rgQ[%d]= %016lx\n", k, uQ);
+        fprintf(g_logFile, "New tempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
+#endif
     }
 
-#ifdef ARITHTEST
-    printf("mpUDiv returning %016lx\n", uQ);printNum(bnQ);printf("\n");
+#ifdef DEBUGDIV
+    fprintf(g_logFile, "mpUDiv returning %016lx\n", uQ); 
+    printNum(bnQ); fprintf(g_logFile, "\n");
 #endif
     bnTempA.mpCopyNum(bnR);
     return true;

@@ -103,7 +103,7 @@ bool PrincipalCert::parsePrincipalCertElements()
     TiXmlDocument   doc;
     TiXmlElement*  pRootElement;
 
-#ifdef CERTTEST
+#ifdef TEST
     fprintf(g_logFile, "parsePrincipalCertElements\n%s\n", m_szSignature);
 #endif
     if(m_szSignature==NULL) {

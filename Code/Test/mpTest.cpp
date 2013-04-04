@@ -131,6 +131,11 @@ u64 rguCarryTest2a[4]= {0x00000b255a6beefdULL, 0x000000000000000ULL};
 u64 rgudiv1[4]= {0xffff555205050505, 0x0000000000000002};
 u64 rgudiv2[4]= { 0xf7b5147a87dd32d4, 0x0000000000000002};
 
+u64 rgudivbug1A[8]= {0x31422645a3b30df9, 0x36cd02a1a93a6d4e, 0x07142aaebc5c4d91, 0x822392071130c692, 
+                     0x336a2a6d27326c96, 0x906efef0c626aee3, 0x6b37ebffcb2452b8, 0x8a6fd278ae4ee55e};
+u64 rgudivbug1B[4]= {0x2b1628268ab5acd6, 0xcb03e0028709eff5, 0x2fb92baeee16d107, 0x3c00ed20e0494db1};
+
+
 
 // Initializes
 numinit rgInitializers[]= {
@@ -761,27 +766,54 @@ bool ucomparetests()
 
 bool udividetests()
 {
-    bool    fRet= true;
-#if 0
-    bnum    bnOut(10);
-    int     i2;
-    int     param1;
-    u64     param2;
+    bnum    bnA(128);
+    bnum    bnB(128);
+    bnum    bnQ(128);
+    bnum    bnR(128);
+    bnum    bnX(128);
+    bnum    bnY(128);
+    bnum    bnD(128);
 
-    printf("copytestData, %d tests\n", (int)(sizeof(copytestData)/sizeof(testinit)));
-    for(i=0;i<(int)(sizeof(copytestData)/sizeof(testinit)); i++) {
-        mpZeroNum(bnOut);
-        i1= copytestData[i].in1;
-        rgbn[i1]->mpCopyNum(bnOut);
-        printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
-        printf("\n  to\n  "); 
-        printNum(bnOut); 
-        printf("\n");
+    printf("special udividetests\n");
+    mpZeroNum(bnA);
+    mpZeroNum(bnB);
+    mpZeroNum(bnQ);
+    mpZeroNum(bnR);
+    mpZeroNum(bnD);
+
+    memcpy((byte*)bnA.m_pValue, (byte*)rgudivbug1A, 64);
+    memcpy((byte*)bnB.m_pValue, (byte*)rgudivbug1B, 32);
+
+    printf("A: "); printNum(bnA); printf("\n");
+    printf("B: "); printNum(bnB); printf("\n");
+ 
+    if(!mpUDiv(bnA, bnB, bnQ, bnR)) {
+        printf("udividetests: mpUDiv fails\n");
+        return false;
     }
-#endif
 
-    return fRet;
+    printf("quotient\n");
+    printNum(bnQ); printf("\n");
+    printf("remainder\n");
+    printNum(bnR); printf("\n");
+
+    if(!mpUMult(bnQ, bnB, bnX)) {
+        printf("umultdiv: mpUMult failed\n");
+        return false;
+    }
+    if(mpUAdd(bnX, bnR, bnY)!=0) {
+        printf("umultdiv: mpUAdd failed\n");
+        return false;
+    }
+
+    if(mpUCompare(bnA, bnY)==s_isEqualTo)
+        return true;
+
+    printf("X: ");printNum(bnX); printf("\n");
+    printf("Y: ");printNum(bnY); printf("\n");
+    mpSub(bnA, bnY, bnD);
+    printf("Difference\n");printNum(bnD); printf("\n\n");
+    return false;
 }
 
 
@@ -850,6 +882,8 @@ int getNext(int iRead, int* pnumLeft, int* pnumUsed, byte* inbuf, int numtoget, 
 
 bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
 {
+    bnum    bnD(128);
+
     //      a=bq+r
     printf("umultdiv\n");
     printNum(bnA); printf("\n");
@@ -880,6 +914,9 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
         printf("A\n"); printNum(bnA); printf("\n");
         printf("X\n");printNum(bnX); printf("\n");
         printf("Y\n");printNum(bnY); printf("\n\n");
+        mpZeroNum(bnD);
+        mpSub(bnA, bnY, bnD);
+        printf("Difference\n");printNum(bnD); printf("\n\n");
         return false;
     }
 
@@ -1172,6 +1209,9 @@ int main(int an, char** av)
 
     try {
         printf("mpTest\n\n");
+
+        if(!udividetests()) 
+            throw((char*)"special test fails");
 
         if(!initNums()) {
             throw((char*)"Cant init numbers");

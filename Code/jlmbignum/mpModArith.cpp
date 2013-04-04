@@ -375,68 +375,26 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
 
         iLeadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
         if(IsBitPositionNonZero(bnExp, 1)) {
-#ifdef MPMODOVERFLOWTEST
-            sizeMultArgs(1, bnBasePow, bnAccum, bnTemp);
-#endif
             mpUMult(bnBasePow, bnAccum, bnTemp);
             mpZeroNum(bnAccum);
             if(!mpUDiv(bnTemp, bnM, bnQ, bnAccum)) {
-#ifdef MPMODOVERFLOWTEST
-                fprintf(g_logFile, "bad UDiv in mpModExp\n");
-                fprintf(g_logFile, "Temp: "); printNum(bnTemp); fprintf(g_logFile, "\n");
-                fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
-                fprintf(g_logFile, "Q: "); printNum(bnQ); fprintf(g_logFile, "\n");
-                fprintf(g_logFile, "Accum: "); printNum(bnAccum); fprintf(g_logFile, "\n");
-#else
                 throw("UDiv error");
-#endif
             }
-#ifdef MPMODOVERFLOWTEST
-            sizeUDiv(4, bnTemp, bnM, bnQ, bnAccum);
-#endif
             mpZeroNum(bnTemp);
         }
         for(j=2;j<=iLeadBit; j++) {
-#ifdef MPMODOVERFLOWTEST
-            sizeMultArgs(2, bnBasePow, bnBasePow, bnTemp);
-#endif
             mpUMult(bnBasePow, bnBasePow, bnTemp);
             mpZeroNum(bnBasePow);
             if(!mpUDiv(bnTemp, bnM, bnQ, bnBasePow)) {
-#ifdef MPMODOVERFLOWTEST
-                fprintf(g_logFile, "bad UDiv in mpModExp\n");
-                fprintf(g_logFile, "Temp: "); printNum(bnTemp); fprintf(g_logFile, "\n");
-                fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
-                fprintf(g_logFile, "Q: "); printNum(bnQ); fprintf(g_logFile, "\n");
-                fprintf(g_logFile, "BasePow: "); printNum(bnBasePow); fprintf(g_logFile, "\n");
-#else
                 throw("UDiv error");
-#endif
             }
-#ifdef MPMODOVERFLOWTEST
-            sizeUDiv(5, bnTemp, bnM, bnQ, bnBasePow);
-#endif
             mpZeroNum(bnTemp);
             if(IsBitPositionNonZero(bnExp, j)) {
-#ifdef MPMODOVERFLOWTEST
-                sizeMultArgs(3, bnBasePow, bnAccum, bnTemp);
-#endif
                 mpUMult(bnBasePow, bnAccum, bnTemp);
                 mpZeroNum(bnAccum);
                 if(!mpUDiv(bnTemp, bnM, bnQ, bnAccum)) {
-#ifdef MPMODOVERFLOWTEST
-                    fprintf(g_logFile, "bad UDiv in mpModExp\n");
-                    fprintf(g_logFile, "Temp: "); printNum(bnTemp); fprintf(g_logFile, "\n");
-                    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
-                    fprintf(g_logFile, "Q: "); printNum(bnQ); fprintf(g_logFile, "\n");
-                    fprintf(g_logFile, "Accum: "); printNum(bnAccum); fprintf(g_logFile, "\n");
-#else
                     throw("UDiv error");
-#endif
                 }
-#ifdef MPMODOVERFLOWTEST
-                sizeUDiv(6, bnTemp, bnM, bnQ, bnAccum);
-#endif
                 mpZeroNum(bnTemp);
             }
         }

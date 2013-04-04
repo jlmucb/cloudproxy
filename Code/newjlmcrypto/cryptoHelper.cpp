@@ -359,6 +359,26 @@ cleanup:
 }
 
 
+bool sameRSAKey(RSAKey* pKey1, RSAKey* pKey2)
+{
+    if(pKey1->m_iByteSizeM!=pKey2->m_iByteSizeM)
+        return false;
+    if(memcmp(pKey1->m_rgbM, pKey2->m_rgbM, pKey1->m_iByteSizeM)!=0)
+        return false;
+    if(pKey1->m_iByteSizeE!=pKey2->m_iByteSizeE)
+        return false;
+    if(memcmp(pKey1->m_rgbE, pKey2->m_rgbE, pKey1->m_iByteSizeE)!=0)
+        return false;
+    return true;
+}
+
+
+// ------------------------------------------------------------------
+
+
+const char*   g_szNonceTemplate= "<nonce> %s </nonce>\n";
+
+
 // -------------------------------------------------------------------------------
 
 

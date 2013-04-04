@@ -59,6 +59,8 @@ char*       stringtimefromtimeInfo(struct tm* timeinfo);
 struct tm*  timeNow();
 bool        timeInfofromstring(const char szTime, struct tm& thetime);
 
+bool        sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);
+
 int         maxbytesfromBase64string(int nc);
 int         maxcharsinBase64stringfrombytes(int nb);
 bool        base64frombytes(int nb, byte* in, int* pnc, char* out);

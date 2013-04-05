@@ -189,7 +189,7 @@ bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG)
     size= bnA.mpSize();
     if(bnB.mpSize()>size)
         size= bnB.mpSize();
-    size=2*size+1;
+    size= 2*size+1;
 
 #ifdef ARITHTEST
     printf("mpExtendedGCD: size %d\n", size);
@@ -236,11 +236,19 @@ bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG)
         bnB.mpCopyNum(*rgbnR[iPrior]);
         bnA.mpCopyNum(*rgbnR[iCurrent]);
         g_bnZero.mpCopyNum(*rgbnX[iPrior]);      // Coeff of A
-        g_bnOne.mpCopyNum(*rgbnY[iPrior]);     // Coeff of B
+        g_bnOne.mpCopyNum(*rgbnY[iPrior]);       // Coeff of B
         g_bnOne.mpCopyNum(*rgbnX[iCurrent]);
         g_bnZero.mpCopyNum(*rgbnY[iCurrent]);
     }
 
+    //  If a>=b, a= bq+r, r= a-bq
+    //          aCoeff          bCoeff
+    //  r[0]    1               0           (a)
+    //  r[1]    0               1           (b)
+    //  r[2]    r[0]-qr[1]      r[0]-qr[1]  (r)
+    //  recurse
+    //  Example at r[2]
+    //  r[2]    1               -q
     for(;;) {
         // Rprior= Q Rcurrent + Rnext
 #ifdef ARITHTEST

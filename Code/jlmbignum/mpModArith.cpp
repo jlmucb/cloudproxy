@@ -615,9 +615,7 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
         fprintf(g_logFile, "Q too big\n");
         return false;
     }
-
     mpUMult(bnP, bnQ, bnM);
-
     int     lM= mpWordsinNum(sizeM, bnM.m_pValue);
     if(lM*NUMBITSINU64>numBits) {
         fprintf(g_logFile, "Modulus too big\n");
@@ -650,6 +648,10 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #endif
         if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
             throw("Exponent and Order are not coprime");
+        while(bnD.mpSign()) {
+            // D is negative, add bnOrder
+            mpAddTo(bnD, bnOrder);
+        }
     }
     catch(const char* sz) {
         fprintf(g_logFile, "mpRSAGen error: %s", sz);

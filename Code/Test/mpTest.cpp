@@ -66,45 +66,22 @@ int   s_isGreaterThan= s_iIsGreaterThan;
 
 // ---------------------------------------------------------------------------------
 
-#if 0
-int     iRandDev= -1;
+
+struct genRSATest {
+    const char*   m_szComment;
+    const char*   m_szE;
+    const char*   m_szP;
+    const char*   m_szQ;
+};
 
 
-bool initCryptoRand()
-{
-    iRandDev= open("/dev/urandom", O_RDONLY);
-    if(iRandDev<0)
-        return false;
-    return true;
-}
+genRSATest  rgCases[] = {
+{ "Bug 1", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=",
+"gRkcZgx2jDYWhnCIImmD07tCxPrYENos7wnQCY0z9g1hsItQY8eKCykJ9DcVOqEY0DGQfEPSHDpez3X+BWyjxQ==",
+"+no9z0cOuoNSPAmLSPEhG8S0XtbeAwB5vVDpOBGQsxzbn1xtoiqyA5vL6ztCiI8H4McUNVaeSgnGdk8IQI5cl3=="},
+};
 
 
-bool closeCryptoRand()
-{
-    if(iRandDev>=0) {
-        close(iRandDev);
-    }
-    iRandDev= -1;
-    return true;
-}
-
-
-bool getCryptoRandom(int iNumBits, byte* buf)
-{
-    int     iSize= (iNumBits+NBITSINBYTE-1)/NBITSINBYTE;
-
-    if(iRandDev<0) {
-        return false;
-    }
-    int iSize2= read(iRandDev, buf, iSize);
-    if(iSize2==iSize) {
-        return true;
-    }
-    printf("getCryptoRandom returning false %d bytes instead of %d\n", 
-            iSize2, iSize);
-    return false;
-}
-#endif
 
 
 // ---------------------------------------------------------------------------------
@@ -1125,6 +1102,64 @@ bool multiplydividetests()
 bool gcdtests()
 {
     bool    fRet= true;
+    int     i;
+    int     lP, lQ, lE;
+    byte    rgP[2048];
+    byte    rgQ[2048];
+    byte    rgE[2048];
+    bnum    bnP(128);
+    bnum    bnPM1(128);
+    bnum    bnQ(128);
+    bnum    bnQM1(128);
+    bnum    bnOrder(128);
+    bnum    bnE(128);
+    bnum    bnG(128);
+    bnum    bnX(128);
+    bnum    bnY(128);
+
+    printf("gcdtests, %d tests\n", (int)(sizeof(rgCases)/sizeof(genRSATest)));
+
+    for(i=0;i<(int)(int)(sizeof(rgCases)/sizeof(genRSATest)); i++) {
+
+        // base64 convert m_szE, m_szP, m_szQ
+        lP= 2048;
+        lQ= 2048;
+        lE= 2048;
+        
+        if(!bytesfrombase64((char*)rgCases[i].m_szE, &lE, rgE)) {
+            printf("gcdtests: E conversion failed\n");
+            return false;
+        }
+        if(!bytesfrombase64((char*)rgCases[i].m_szP, &lP, rgP)) {
+            printf("gcdtests: P conversion failed\n");
+            return false;
+        }
+        if(!bytesfrombase64((char*)rgCases[i].m_szQ, &lQ, rgQ)) {
+            printf("gcdtests: Q conversion failed\n");
+            return false;
+        }
+
+        memcpy((byte*)bnE.m_pValue, rgE, lE);
+        memcpy((byte*)bnP.m_pValue, rgP, lP);
+        memcpy((byte*)bnQ.m_pValue, rgQ, lQ);
+
+        // Order= (P-1)(Q-1)
+        mpUSub(bnP, g_bnOne, bnPM1);
+        mpUSub(bnQ, g_bnOne, bnQM1);
+        mpUMult(bnPM1, bnQM1, bnOrder);
+
+        // X E+Y Order= G
+        if(!mpExtendedGCD(bnE, bnOrder, bnX, bnY, bnG)) {
+            printf("gcdtests: gcd failed\n");
+            return false;
+        }
+    printf("E     : "); printNum(bnE); printf("\n");
+    printf("Order : "); printNum(bnOrder); printf("\n");
+    printf("X     : "); printNum(bnX); printf("\n");
+    printf("Y     : "); printNum(bnY); printf("\n");
+    printf("GCD   : "); printNum(bnG); printf("\n");
+    printf("\n");
+    }
 
     return fRet;
 }
@@ -1293,6 +1328,12 @@ int main(int an, char** av)
         }
     }
 
+        if(gcdtests()) {
+            printf("gcdtests succeeded\n");
+        }
+        else {
+            printf("gcdtests failed\n");
+        }
 
     try {
         printf("mpTest\n\n");

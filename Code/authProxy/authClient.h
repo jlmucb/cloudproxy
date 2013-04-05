@@ -98,7 +98,9 @@ public:
                      string& identityCertFile,
                      string& userCertFile,
                      string& userKeyFile,
-                     string& keyFile);
+                     string& keyFile,
+                     string& serverAddres,
+                     u_short& serverPort);
 };
 
 

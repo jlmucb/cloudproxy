@@ -43,7 +43,8 @@ bidTester::bidTester(const string& path, const string& testFile)
     m_tests(),
     m_reuseConnection(false),
     m_serverAddress("127.0.0.1"),
-    m_serverPort(SERVICE_PORT)
+    m_serverPort(SERVICE_PORT),
+    m_printToStdout(false)
 {
     // parse the xml and construct the default parameters and any required resources
     m_testsDoc.LoadFile();
@@ -266,6 +267,7 @@ bool bidTester::runTest(const char* directory,
 
             timer bidTestTimer;
             timer sellerTestTimer;
+            if (params.timed) bidTestTimer.Start();
             for(int i = 0; i < params.repetitions; ++i) {
                 list<bidClientParams>::const_iterator it = params.bids.begin();
                 while(params.bids.end() != it) {
@@ -283,28 +285,30 @@ bool bidTester::runTest(const char* directory,
                         // send the bid to the server
                         stringstream ss;
                         ss << it->second;
-                        if (params.timed) bidTestTimer.Start();
                         result = client.readBid(channel,
                                             "1",
                                             it->first.subject,
                                             ss.str(),
                                             it->first.authFile);
-                        if (params.timed) {
-                            bidTestTimer.Stop();
-                            fprintf(g_logFile, "Timers for test %s: ", params.name.c_str());
-                            client.printTimers(g_logFile);
-                            client.resetTimers();
-                        }
                     } catch (const char* err) {
                         if (m_printToStdout) printf("Error: '%s' ", err);
                         fprintf(g_logFile, "Error: %s\n", err); 
                         result = false;
+                    }
+                    if (params.timed) {
+                        fprintf(g_logFile, "Timers for test %s: ", params.name.c_str());
+                        client.printTimers(g_logFile);
+                        client.resetTimers();
                     }
                     
                     client.closeConnection(channel);                    
 
                     ++it;
                 }
+            }
+            if (params.timed) {
+                bidTestTimer.Stop();
+                fprintf(g_logFile, "Timers for test %s: ", params.name.c_str());
             }
         
             bool pass = result;

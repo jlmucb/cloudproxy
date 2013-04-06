@@ -179,7 +179,7 @@ bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         fRet= false;
     }
 
-    return true;
+    return fRet;
 }
 
 

@@ -672,6 +672,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     oHash.Final();
     oHash.GetDigest(rgComputedHash);
 
+    UNUSEDVAR(n);
     n= strlen(szSigValue);
     if(1024<maxbytesfromBase64string(strlen(szSigValue))) {
         fprintf(g_logFile, 

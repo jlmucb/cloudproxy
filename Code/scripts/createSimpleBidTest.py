@@ -1,46 +1,74 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+
+import argparse
 from subprocess import check_call
 import os, sys
 
+parser = argparse.ArgumentParser(description="Creates a BidProxy test with a given number of servers")
+parser.add_argument("n", type=int, help="The number of bidders to create. Bidders are named from 1 to n")
 scriptPath = os.path.dirname(__file__)
 
-if not os.path.exists("basicBidTest"):
-    os.makedirs("basicBidTest")
+args = parser.parse_args()
 
-testXML = """<Tests print="true">
+dirName = "basicBidTest." + str(args.n)
+if not os.path.exists(dirName):
+    os.makedirs(dirName)
+
+test_xml_prefix_template = """<Tests print="true">
     <Default timed="true" repetitions="1">
         <Seller>
             <Client>
-                <Authorization>UserPublicKey.xml</Authorization>
-                <PrivateKeys>UserPrivateKey.xml</PrivateKeys>
-                <PublicKeys>UserPublicKey.xml</PublicKeys>
-                <Subject>//www.manferdelli.com/User/User</Subject>
+                <Authorization>SellerPublicKey.xml</Authorization>
+                <PrivateKeys>SellerPrivateKey.xml</PrivateKeys>
+                <PublicKeys>SellerPublicKey.xml</PublicKeys>
+                <Subject>//www.manferdelli.com/User/Seller</Subject>
             </Client>
         </Seller>
     </Default>
-    <Test name="oneBid">
-        <Clients>
+    <Test name="{0}">
+        <Clients>"""
+bidder_template = """
             <Bidder>
                 <Client>
-                    <Authorization>UserPublicKey.xml</Authorization>
-                    <PrivateKeys>UserPrivateKey.xml</PrivateKeys>
-                    <PublicKeys>UserPublicKey.xml</PublicKeys>
-                    <Subject>//www.manferdelli.com/User/User</Subject>
+                    <Authorization>{0}</Authorization>
+                    <PrivateKeys>{1}</PrivateKeys>
+                    <PublicKeys>{0}</PublicKeys>
+                    <Subject>//www.manferdelli.com/User/{2}</Subject>
                 </Client>
-                <Bid value="1" />
-            </Bidder>
+                <Bid value="{2}" />
+            </Bidder>"""
+
+test_xml_suffix_template = """
         </Clients>
-        <Winner name="//www.manferdelli.com/User/User" />
+        <Winner name="//www.manferdelli.com/User/{0}" />
     </Test>
 </Tests>"""
 
-check_call([os.path.join(scriptPath, "createPrincipal.py"), "3", "User"])
 
-check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-o", "basicBidTest/UserPublicKey.xml", "-l", "UserPublicKey.xml"])
-check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "-o", "basicBidTest/UserPrivateKey.xml", "UserPrivateKey.xml"])
-check_call(["rm", "UserPublicKey.xml", "UserPrivateKey.xml"]) 
+# create the Seller principal
+check_call([os.path.join(scriptPath, "createPrincipal.py"), "0", "Seller"])
+public_key_name = "SellerPublicKey.xml"
+private_key_name = "SellerPrivateKey.xml"
+check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-o", dirName + "/" + public_key_name, "-l", public_key_name])
+check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "-o", dirName + "/" + private_key_name, private_key_name])
+check_call(["rm", public_key_name, private_key_name]) 
 
-with open('basicBidTest/tests.xml', 'wb') as testFile:
-    print(testXML, file=testFile)
+# create all the bidder principals from 1 to n
+test_xml = test_xml_prefix_template.format(str(args.n) + "BidTest")
+for i in range(1, args.n + 1):
+    check_call([os.path.join(scriptPath, "createPrincipal.py"), str(i), str(i)])
+    public_key_name = str(i) + "PublicKey.xml"
+    private_key_name = str(i) + "PrivateKey.xml"
+    check_call([os.path.join(scriptPath, "createEvidenceCollection.py"), "-o", dirName + "/" + public_key_name, "-l", public_key_name])
+    check_call([os.path.join(scriptPath, "createPrivateKeyList.py"), "-o", dirName + "/" + private_key_name, private_key_name])
+    check_call(["rm", public_key_name, private_key_name]) 
+
+    test_xml += bidder_template.format(public_key_name, private_key_name, str(i))
+
+# the winner will be the user args.n, since it will have the highest bid
+test_xml += test_xml_suffix_template.format(str(args.n))
+
+with open(dirName + '/tests.xml', 'wb') as testFile:
+    print(test_xml, file=testFile)

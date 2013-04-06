@@ -1204,15 +1204,15 @@ int main(int an, char** av)
     const char*     directory= NULL;
     string          testPath("authClient/tests/");
     string          testFileName("tests.xml");
-    bool            result;
+    bool            result = false;
+    timer           testTimer;
     initLog(NULL);
 
 #ifdef  TEST
-    fprintf(g_logFile, "authClient test\n");
-    fflush(g_logFile);
+    //fprintf(g_logFile, "authClient test\n");
+    //fflush(g_logFile);
 #endif
 
-    UNUSEDVAR(result);
     if(an>1) {
         for(i=0;i<an;i++) {
             if(strcmp(av[i],"-initProg")==0) {
@@ -1229,7 +1229,6 @@ int main(int an, char** av)
             }
         }
     }
-    UNUSEDVAR(directory);
 
     if(fInitProg) {
 #ifdef  TEST
@@ -1285,12 +1284,16 @@ int main(int an, char** av)
                 string userCertFile;
                 string userKeyFile;
                 string keyFile;
+                string serverAddress;
+                u_short serverPort = 0;
                 authClient::getKeyFiles(path,
                             testFileName,
                             identityCertFile,
                             userCertFile,
                             userKeyFile,
-                            keyFile);
+                            keyFile,
+                            serverAddress,
+                            serverPort);
 
                 string identityCert = authClient::getFileContents(identityCertFile);
                 string userCert = authClient::getFileContents(userCertFile);
@@ -1302,25 +1305,33 @@ int main(int an, char** av)
                 fprintf(g_logFile, "using keyFile = %s and certFile = %s\n", keyFile.c_str(), userCertFile.c_str());
                 authClient client;
                 safeChannel channel;
+                testTimer.Start();
                 result = client.establishConnection(channel,
                         userKeyFile.c_str(),
                         userCertFile.c_str(),
                         directory,
-                        "127.0.0.1",
-                        SERVICE_PORT);
-		result = client.readCredential(channel, 
-				"User",
-				userCert,
-				key,
-				"CredentialResult.xml");
+                        serverAddress.c_str(),
+                        serverPort);
+                result = client.readCredential(channel, 
+                        "User",
+                        userCert,
+                        key,
+                        "CredentialResult.xml");
+		client.closeConnection(channel);
+                testTimer.Stop();
+            	client.printTimers(g_logFile);
             }
         }
 
 #ifdef TEST
-        if (0 != errno) {
-            fprintf(g_logFile, "Got error %d\n", errno);
+        if (!result) {
+            fprintf(g_logFile, "Test failed\n");
+            if (0 != errno) 
+                fprintf(g_logFile, "Got error %d\n", errno);
         } 
         else {
+            fprintf(g_logFile, "Test time = ");
+            testTimer.print(g_logFile);
             fprintf(g_logFile, "Finished reading test directory without error\n");
         }
         
@@ -1390,13 +1401,30 @@ void authClient::getKeyFiles(const string& directory,
                              string& identityCertFile,
                              string& userCertFile,
                              string& userKeyFile,
-                             string& keyFile)
+                             string& keyFile,
+                             string& serverAddress,
+                             u_short& serverPort)
 {
     string path = directory + testFile;
     TiXmlDocument doc(path.c_str());
     doc.LoadFile();
-
     const TiXmlElement* curElt = doc.RootElement();
+
+    // get the serverAddress attribute, if any
+    string addr;
+    if (curElt->QueryStringAttribute("serverAddress", &addr) == TIXML_SUCCESS) {
+        serverAddress = addr;
+    } else {
+        serverAddress = string("127.0.0.1");
+    }
+
+    int port = 0;
+    if (curElt->QueryIntAttribute("serverPort", &port) == TIXML_SUCCESS) {
+        serverPort = static_cast<u_short>(port);
+    } else {
+        serverPort = SERVICE_PORT;
+    }
+
     const TiXmlNode* child = NULL;
     while((child = curElt->IterateChildren(child))) {
         const string& name = child->ValueStr();

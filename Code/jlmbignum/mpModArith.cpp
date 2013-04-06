@@ -496,6 +496,12 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 
         if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
             throw("QM1 common factor is not 1");
+
+        while(bnDP.mpSign())
+            mpAddTo(bnDP, bnPM1);
+
+        while(bnDQ.mpSign())
+            mpAddTo(bnDQ, bnQM1);
     }
     catch(const char* sz) {
         fprintf(g_logFile, "mpRSACalculateFastRSAParameters error: %s", sz);

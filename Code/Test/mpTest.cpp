@@ -1307,7 +1307,7 @@ bool rsaTests()
 #endif
 
     for (i=0; i<100; i++) {
-        if(singlersaTest(pKey, 32, testmessage, false))
+        if(singlersaTest(pKey, 32, testmessage, i>75))
             fprintf(g_logFile, "singlersaTest %d passed\n", i);
         else {
             fRet= false;

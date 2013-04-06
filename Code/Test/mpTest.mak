@@ -8,8 +8,8 @@ SBM=	    ../jlmbignum
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 #CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D DEBUGUDIV -D TEST
 #CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST -D DEBUGUDIV -D TEST
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST 
-CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST -D TEST
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -51,8 +51,8 @@ $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
 
-$(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -D TEST -c -o $(B)/keys.o $(SCC)/keys.cpp
+$(B)/keys.o: $(SCD)/keys.cpp $(SCD)/keys.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -D TEST -c -o $(B)/keys.o $(SCD)/keys.cpp
 
 $(B)/jlmUtility.o : $(SC)/jlmUtility.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp

@@ -318,162 +318,95 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
 {
     bool fRet= true;
     int size= bnM1.mpSize()+1;
-    bnum* pbnX1= NULL;
-    bnum* pbnX2= NULL;
-    bnum* pbnG= NULL;
-    bnum* pbnN= NULL;
-    bnum* pbnT1= NULL;
-    bnum* pbnT2= NULL;
-    bnum* pbnT3= NULL;
-    bnum* pbnT4= NULL;
-
     if(bnM2.mpSize()>=size)
         size= bnM2.mpSize()+1;
-
     size*= 2;
-    pbnX1= new bnum(size);
-    if(pbnX1==NULL)
-        goto done;
-    pbnX2= new bnum(size);
-    if(pbnX2==NULL)
-        goto done;
-    pbnG= new bnum(size);
-    if(pbnG==NULL)
-        goto done;
-    pbnN= new bnum(size);
-    if(pbnN==NULL)
-        goto done;
-    pbnT1= new bnum(2*size);
-    if(pbnT1==NULL)
-        goto done;
-    pbnT2= new bnum(2*size);
-    if(pbnT2==NULL)
-        goto done;
-    pbnT3= new bnum(2*size);
-    if(pbnT3==NULL)
-        goto done;
-    pbnT4= new bnum(2*size);
-    if(pbnT4==NULL)
-        goto done;
 
-    fRet= mpExtendedGCD(bnM1, bnM2, *pbnX1, *pbnX2, *pbnG);
-    if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpExtendedGCD failed\n");
-        fRet= false;
-        goto done;
-    }
+    try {
+        bnum    bnX1(size);
+        bnum    bnX2(size);
+        bnum    bnG(size);
+        bnum    bnN(size);
+        bnum    bnT1(size);
+        bnum    bnT2(size);
+        bnum    bnT3(size);
+        bnum    bnT4(size);
 
-    if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo) {
-        fprintf(g_logFile, "mpCRT: GCD is not 1\n");
-        fRet= false;
-        goto done;
-    }
+        fRet= mpExtendedGCD(bnM1, bnM2, bnX1, bnX2, bnG);
+        if(!fRet)
+            throw("mpCRT: mpExtendedGCD failed\n");
+        if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
+            throw("mpCRT: GCD is not 1\n");
 
-    if(!mpUMult(bnM1, bnM2, *pbnN)) {
-        fprintf(g_logFile, "mpCRT: mpUMult failed\n");
-        fRet= false;
-        goto done;
-    }
+        if(!mpUMult(bnM1, bnM2, bnN)) 
+            throw("mpCRT: mpUMult failed\n");
 
 #ifdef ARITHTEST
-    mpMult(bnM1, *pbnX1, *pbnT1);
-    mpMult(bnM2, *pbnX2, *pbnT2);
-    mpAdd(*pbnT1,*pbnT2, *pbnT3);
-    printNum(bnM1); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " *  \n"); 
-    printNum(*pbnX1); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " +  \n"); 
-    printNum(bnM2); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " *  \n"); 
-    printNum(*pbnX2); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " =  \n"); 
-    printNum(*pbnT3); fprintf(g_logFile, "\n");
+        mpMult(bnM1, bnX1, bnT1);
+        mpMult(bnM2, bnX2, bnT2);
+        mpAdd(bnT1,bnT2, bnT3);
+        printNum(bnM1); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, " *  \n"); 
+        printNum(bnX1); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, " +  \n"); 
+        printNum(bnM2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, " *  \n"); 
+        printNum(bnX2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, " =  \n"); 
+        printNum(bnT3); fprintf(g_logFile, "\n");
 #endif
 
-    while(pbnX1->mpSign())
-        mpModNormalize(*pbnX1, *pbnN);
-    while(pbnX2->mpSign())
-        mpModNormalize(*pbnX2, *pbnN);
+        while(bnX1.mpSign())
+            mpModNormalize(bnX1, bnN);
+        while(bnX2.mpSign())
+            mpModNormalize(bnX2, bnN);
 
-    //  if M1 X1 + M2 X2 = 1, R= A2 M1 X1 + A1 M2 X2
-    fRet= mpModMult(bnM1, *pbnX1, *pbnN, *pbnT1);
-    if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpModMult failed (1)\n");
-        goto done;
-    }
-    fRet= mpModMult(bnA2, *pbnT1, *pbnN, *pbnT3);
-    if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpModMult failed (2)\n");
-        goto done;
-    }
-    fRet= mpModMult(bnM2, *pbnX2, *pbnN, *pbnT2);
-    if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpModMult failed (3)\n");
-        goto done;
-    }
-    fRet= mpModMult(bnA1, *pbnT2, *pbnN, *pbnT4);
-    if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpModMult failed (4)\n");
-        goto done;
-    }
-    fRet= mpModAdd(*pbnT3, *pbnT4, *pbnN, bnR); 
-    if(!fRet) {
-        fprintf(g_logFile, "mpCRT: mpModMult failed (5)\n");
-        goto done;
-    }
+        //  if M1 X1 + M2 X2 = 1, R= A2 M1 X1 + A1 M2 X2
+        fRet= mpModMult(bnM1, bnX1, bnN, bnT1);
+        if(!fRet)
+            throw("mpCRT: mpModMult failed (1)\n");
+
+        fRet= mpModMult(bnA2, bnT1, bnN, bnT3);
+        if(!fRet)
+            throw("mpCRT: mpModMult failed (2)\n");
+
+        fRet= mpModMult(bnM2, bnX2, bnN, bnT2);
+        if(!fRet)
+            throw("mpCRT: mpModMult failed (3)\n");
+
+        fRet= mpModMult(bnA1, bnT2, bnN, bnT4);
+        if(!fRet)
+            throw("mpCRT: mpModMult failed (4)\n");
+
+        fRet= mpModAdd(bnT3, bnT4, bnN, bnR); 
+        if(!fRet) 
+            throw("mpCRT: mpModMult failed (5)\n");
+
 #ifdef ARITHTEST
-    fprintf(g_logFile, "\nmpCRT at bottom\n");
-    fprintf(g_logFile, "R: "); printNum(bnR); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M1: "); printNum(bnM1); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M2: "); printNum(bnM2); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M1*M2: "); printNum(*pbnN); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "A1: "); printNum(bnA1); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "A2: "); printNum(bnA2); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "X1: "); printNum(*pbnX1); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "X2: "); printNum(*pbnX2); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T1: "); printNum(*pbnT1); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T2: "); printNum(*pbnT2); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T3: "); printNum(*pbnT3); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T4: "); printNum(*pbnT4); fprintf(g_logFile, "\n");
-    mpMod(bnR, bnM1, *pbnT1);
-    fprintf(g_logFile, "R(mod M1): "); printNum(*pbnT1); fprintf(g_logFile, "\n");
-    mpMod(bnR, bnM2, *pbnT2);
-    fprintf(g_logFile, "R(mod M2): "); printNum(*pbnT2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "\nmpCRT at bottom\n");
+        fprintf(g_logFile, "R: "); printNum(bnR); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "M1: "); printNum(bnM1); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "M2: "); printNum(bnM2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "M1*M2: "); printNum(bnN); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "A1: "); printNum(bnA1); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "A2: "); printNum(bnA2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "X1: "); printNum(bnX1); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "X2: "); printNum(bnX2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "T1: "); printNum(bnT1); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "T2: "); printNum(bnT2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "T3: "); printNum(bnT3); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "T4: "); printNum(bnT4); fprintf(g_logFile, "\n");
+        mpMod(bnR, bnM1, bnT1);
+        fprintf(g_logFile, "R(mod M1): "); printNum(bnT1); fprintf(g_logFile, "\n");
+        mpMod(bnR, bnM2, bnT2);
+        fprintf(g_logFile, "R(mod M2): "); printNum(bnT2); fprintf(g_logFile, "\n");
 #endif
+    } 
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpCRT error: %s\n", sz);
+        fRet= false;
+    }
 
-done:
-    if(pbnX1!=NULL) {
-        delete pbnX1;
-        pbnX1= NULL;
-    }
-    if(pbnX2!=NULL) {
-        delete pbnX2;
-        pbnX2= NULL;
-    }
-    if(pbnT1!=NULL) {
-        delete pbnT1;
-        pbnT1= NULL;
-    }
-    if(pbnT2!=NULL) {
-        delete pbnT2;
-        pbnT2= NULL;
-    }
-    if(pbnT3!=NULL) {
-        delete pbnT3;
-        pbnT3= NULL;
-    }
-    if(pbnT4!=NULL) {
-        delete pbnT4;
-        pbnT4= NULL;
-    }
-    if(pbnG!=NULL) {
-        delete pbnG;
-        pbnG= NULL;
-    }
-    if(pbnN!=NULL) {
-        delete pbnN;
-        pbnN= NULL;
-    }
     return fRet;
 }
 

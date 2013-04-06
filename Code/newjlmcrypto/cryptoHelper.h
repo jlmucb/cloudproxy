@@ -29,17 +29,20 @@
 
 #include "jlmTypes.h"
 #include "jlmUtility.h"
+#include "keys.h"
 #include "jlmcrypto.h"
 #include "tinyxml.h"
 
 
-bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
+bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                       byte* out, bool fFast=false);
 bool        RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
 bool        RSASha256Sign(RSAKey& key, int hashType, byte* hash, 
                                        int* psizeout, byte* out);
 bool        RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in);
 bool        RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
-bool        RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
+bool        RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                      byte* out, bool fFast=false);
 
 RSAKey*     RSAGenerateKeyPair(int keySize);
 RSAKey*     RSAKeyfromKeyInfoNode(TiXmlNode* pNode);

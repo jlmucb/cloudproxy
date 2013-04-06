@@ -41,7 +41,8 @@
 // ----------------------------------------------------------------------------
 
 
-bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
+bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                 byte* out, bool fFast)
 {
     bnum    bnMsg(128);
     bnum    bnOut(128);
@@ -50,9 +51,20 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     mpZeroNum(bnOut);
 
     revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
-    if(!mpRSAENC(bnMsg, *key.m_pbnD, *key.m_pbnM, bnOut)) {
-        fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
-        return false;
+    if(fFast && key.m_pbnDP!=NULL && key.m_pbnDQ!=NULL &&
+                key.m_pbnPM1!=NULL && key.m_pbnQM1!=NULL) {
+        if(!mpRSADEC(bnMsg, *key.m_pbnP, *key.m_pbnPM1, *key.m_pbnDP, 
+                     *key.m_pbnQ, *key.m_pbnQM1, 
+                     *key.m_pbnDQ, *key.m_pbnM, bnOut)) {
+            fprintf(g_logFile, "RSADecrypt: can't mpRSADEC\n");
+            return false;
+        }
+    }
+    else {
+        if(!mpRSAENC(bnMsg, *key.m_pbnD, *key.m_pbnM, bnOut)) {
+            fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
+            return false;
+        }
     }
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
     *psizeout= key.m_iByteSizeM;
@@ -163,7 +175,8 @@ bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 }
 
 
-bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
+bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                byte* out, bool fFast)
 {
     byte    padded[1024];
     int     size= 1024;
@@ -171,7 +184,7 @@ bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 #ifdef TEST
     PrintBytes((char*)"RSAUnseal in: ", in, sizein);
 #endif
-    if(!RSADecrypt(key, sizein, in, &size, padded)) {
+    if(!RSADecrypt(key, sizein, in, &size, padded, fFast)) {
         fprintf(g_logFile, "RSAUnseal: decryption failed\n");
         return false;
     }
@@ -224,6 +237,10 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     bnum       bnQ(128);
     bnum       bnD(128);
     bnum       bnM(128);
+    bnum       bnDP(128);
+    bnum       bnDQ(128);
+    bnum       bnPM1(128);
+    bnum       bnQM1(128);
 
     bnE.m_pValue[0]= (1ULL<<16)+1ULL;
     while(iTry++<MAXTRY) {
@@ -276,6 +293,33 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     memcpy(pKey->m_pbnQ->m_pValue,(byte*)bnQ.m_pValue, pKey->m_iByteSizeQ);
     memcpy(pKey->m_pbnE->m_pValue,(byte*)bnE.m_pValue, pKey->m_iByteSizeE);
     memcpy(pKey->m_pbnD->m_pValue,(byte*)bnD.m_pValue, pKey->m_iByteSizeD);
+    pKey->m_pbnPM1= new bnum(ikeyu64Size/2);
+    pKey->m_pbnQM1= new bnum(ikeyu64Size/2);
+
+    if(!mpRSACalculateFastRSAParameters(bnE, bnP, bnQ, bnPM1, bnDP, bnQM1, bnDQ)) {
+        fprintf(g_logFile, "Cant generate fast rsa parameters\n");
+    }
+    else {
+        pKey->m_iByteSizeDP= ikeyByteSize/2;
+        pKey->m_iByteSizeDQ= ikeyByteSize/2;
+        pKey->m_pbnDP= new bnum(ikeyu64Size/2);
+        pKey->m_pbnDQ= new bnum(ikeyu64Size/2);
+
+        memcpy(pKey->m_pbnDP->m_pValue,(byte*)bnDP.m_pValue, pKey->m_iByteSizeDP);
+        memcpy(pKey->m_pbnDQ->m_pValue,(byte*)bnDQ.m_pValue, pKey->m_iByteSizeDQ);
+
+        memcpy(pKey->m_rgbDP,(byte*)bnDP.m_pValue, pKey->m_iByteSizeDP);
+        memcpy(pKey->m_rgbDQ,(byte*)bnDQ.m_pValue, pKey->m_iByteSizeDQ);
+        memcpy(pKey->m_rgbDP,(byte*)bnDP.m_pValue, pKey->m_iByteSizeDP);
+        memcpy(pKey->m_rgbDQ,(byte*)bnDQ.m_pValue, pKey->m_iByteSizeDQ);
+
+        if(pKey->m_iByteSizeDP>0 &&  pKey->m_iByteSizeDQ>0 && 
+                   pKey->m_pbnPM1!=NULL && pKey->m_pbnQM1!=NULL) {
+            mpSub(*(pKey->m_pbnP), g_bnOne, *(pKey->m_pbnPM1));
+            mpSub(*(pKey->m_pbnQ), g_bnOne, *(pKey->m_pbnQM1));
+        }
+
+    }
 
     return pKey;
 }

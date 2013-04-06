@@ -465,6 +465,46 @@ bool copytests()
 }
 
 
+bool keygenrestoretest()
+{
+    bool    fRet= true;
+    RSAKey* pKey= RSAGenerateKeyPair(1024);
+    if(pKey==NULL) {
+        printf("keygenrestoretest: cant generate key\n");
+        return false;
+    }
+
+    printf("keygenrestoretest:\n");
+    pKey->printMe();
+    printf("\n");
+
+    char* szKey= pKey->SerializetoString();
+    if(szKey==NULL) {
+	printf("keygenrestoretest: can't serialize key\n");
+	return false;
+    }
+    if(!saveBlobtoFile("keytest.xml", (byte*) szKey, strlen(szKey)+1)) {
+	printf("keygenrestoretest: can't save key\n");
+	return false;
+    }
+
+    printf("reading key\n");
+    fflush(stdout);
+    RSAKey* pKeyAgain= (RSAKey*)ReadKeyfromFile("keytest.xml");
+    if(pKeyAgain==NULL) {
+	printf("keygenrestoretest: can't reread key\n");
+	return false;
+    }
+
+    printf("keygenrestoretest reprinting key:\n");
+    fflush(stdout);
+    pKey->printMe();
+    printf("\n");
+
+    return fRet;
+}
+
+
 bool maxbittests()
 {
     bool    fRet= true;
@@ -910,7 +950,9 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
         return false;
     }
 
-    printf("umultdiv succeeded\n\n");
+#if 0
+    printf("umultdiv succeeded\n");
+#endif
     return true;
 }
 
@@ -1213,7 +1255,7 @@ bool primeGentests()
 }
 
 
-bool singlersaTest(RSAKey* pKey, int sizein, byte* in)
+bool singlersaTest(RSAKey* pKey, int sizein, byte* in, bool fFast=false)
 {
     bool    fRet= true;
     byte    out[1024];
@@ -1227,7 +1269,7 @@ bool singlersaTest(RSAKey* pKey, int sizein, byte* in)
         goto done;
     }
     m= 1024;
-    if(!RSAUnseal(*pKey, n, out, &m, recovered)) {
+    if(!RSAUnseal(*pKey, n, out, &m, recovered, fFast)) {
         printf("singlersaTest: RSAUnseal failed\n");
         fRet= false;
         goto done;
@@ -1265,7 +1307,7 @@ bool rsaTests()
 #endif
 
     for (i=0; i<100; i++) {
-        if(singlersaTest(pKey, 32, testmessage))
+        if(singlersaTest(pKey, 32, testmessage, false))
             fprintf(g_logFile, "singlersaTest %d passed\n", i);
         else {
             fRet= false;
@@ -1328,15 +1370,11 @@ int main(int an, char** av)
         }
     }
 
-        if(gcdtests()) {
-            printf("gcdtests succeeded\n");
-        }
-        else {
-            printf("gcdtests failed\n");
-        }
-
     try {
         printf("mpTest\n\n");
+
+	if(!keygenrestoretest())
+	    throw("Keytest failed");
 
         if(!udividetests()) 
             throw((char*)"special test fails");

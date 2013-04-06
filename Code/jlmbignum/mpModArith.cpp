@@ -82,8 +82,7 @@ bool mpModNormalize(bnum& bnA, bnum& bnM)
     int     maxSize= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
-    if(lM>maxSize)
-        maxSize= lM;
+    maxSize+= lM;
 
     try {
         bnum    bnB(maxSize);
@@ -467,9 +466,6 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 {
     bool            fRet= true;
     extern bnum     g_bnOne;
-    bnum*           pbnTP= NULL;
-    bnum*           pbnTQ= NULL;
-    bnum*           pbnG= NULL;
 
     int     size= mpWordsinNum(bnP.mpSize(), bnP.m_pValue);
     int     lQ= mpWordsinNum(bnQ.mpSize(), bnQ.m_pValue);
@@ -479,9 +475,9 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
     size*= 2;
 
     try {
-        pbnG= new bnum(size);
-        pbnTP= new bnum(size);
-        pbnTQ= new bnum(size);
+        bnum	bnG(size);
+        bnum	bnTP(size);
+        bnum	bnTQ(size);
 
         if(mpUSub(bnP, g_bnOne, bnPM1)!=0ULL) 
             throw("Can't compute PM1");
@@ -489,34 +485,21 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
         if(mpUSub(bnQ, g_bnOne, bnQM1)!=0ULL)
             throw("Can't compute QM1");
 
-        if(!mpExtendedGCD(bnE, bnPM1, bnDP, *pbnTP, *pbnG))
+        if(!mpExtendedGCD(bnE, bnPM1, bnDP, bnTP, bnG))
             throw("Can't compute mpExtendedGCD (1)");
 
-        if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo)
+        if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
             throw("PM1 common factor is not 1");
 
-        if(!mpExtendedGCD(bnE, bnQM1, bnDQ, *pbnTQ, *pbnG)) 
+        if(!mpExtendedGCD(bnE, bnQM1, bnDQ, bnTQ, bnG)) 
             throw("Can't compute mpExtendedGCD (2)");
 
-        if(mpCompare(*pbnG, g_bnOne)!=s_isEqualTo)
+        if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
             throw("QM1 common factor is not 1");
     }
     catch(const char* sz) {
         fprintf(g_logFile, "mpRSACalculateFastRSAParameters error: %s", sz);
         fRet= false;
-    }
-
-    if(pbnTP!=NULL) {
-        delete pbnTP;
-        pbnTP= NULL;
-    }
-    if(pbnTQ!=NULL) {
-        delete pbnTQ;
-        pbnTQ= NULL;
-    }
-    if(pbnG!=NULL) {
-        delete pbnG;
-        pbnG= NULL;
     }
 
     return fRet;
@@ -532,41 +515,34 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
     bool    fRet= true;
     int     maxSize= mpWordsinNum(bnMsg.mpSize(), bnMsg.m_pValue);
     int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
-    bnum*   pbnT1= NULL;
-    bnum*   pbnT2= NULL;
+    int     size;
 
     if(lM>maxSize)
         maxSize= lM;
+
+    size= mpWordsinNum(bnDP.mpSize(), bnDP.m_pValue);
+    if(size>maxSize)
+        maxSize= size;
+    size= mpWordsinNum(bnDQ.mpSize(), bnDQ.m_pValue);
+    if(size>maxSize)
+        maxSize= size;
     maxSize*= 2;
 
-    int size= bnDP.mpSize();
-    if(bnDQ.mpSize()>size)
-        size= bnDQ.mpSize();
-
     try {
-        pbnT1= new bnum(size);
-        pbnT2= new bnum(size);
+        bnum    bnT1(maxSize);
+        bnum    bnT2(maxSize);
 
-        if(!mpModExp(bnMsg, bnDP, bnP, *pbnT1))
+        if(!mpModExp(bnMsg, bnDP, bnP, bnT1))
             throw("mpModExp fails");
-        if(!mpModExp(bnMsg, bnDQ, bnQ, *pbnT2))
+        if(!mpModExp(bnMsg, bnDQ, bnQ, bnT2))
             throw("mpModExp fails");
 
-        if(!mpCRT(*pbnT1, bnP, *pbnT2, bnQ, bnR))
+        if(!mpCRT(bnT1, bnP, bnT2, bnQ, bnR))
             throw("mpCRT fails");
     }
     catch(const char* sz) {
         fprintf(g_logFile, "mpRSADEC error: %s", sz);
         fRet= false;
-    }
-
-    if(pbnT1!=NULL) {
-        delete pbnT1;
-        pbnT1= NULL;
-    }
-    if(pbnT2!=NULL) {
-        delete pbnT2;
-        pbnT2= NULL;
     }
 
     return fRet;

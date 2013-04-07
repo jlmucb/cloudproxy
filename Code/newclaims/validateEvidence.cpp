@@ -153,20 +153,8 @@ char* getChainElementPrincipalType(TiXmlNode* node, int evidenceType)
 
 char* getChainElementSignatureAlgorithm(TiXmlNode* node, int evidenceType)
 {
-    TiXmlNode* nodeSigAlg= NULL;
-
-    switch(evidenceType) {
-      default:
-      case NOEVIDENCE:
-      case EMBEDDEDPOLICYPRINCIPAL:
-      case KEYINFO:
-        return NULL;
-      case PRINCIPALCERT:
-      case SIGNEDGRANT:
-      case QUOTECERTIFICATE:
-        break;
-    }
     TiXmlNode* nodeSigAlg= Search((TiXmlNode*)node, "ds:SignatureMethod");
+
     if(nodeCanonical==NULL) {
         fprintf(g_logFile, "getChainElementSignatureAlgorithm: Cant find it\n");
         return NULL;

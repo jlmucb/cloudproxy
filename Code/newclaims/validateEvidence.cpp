@@ -45,12 +45,36 @@ bool  revoked(const char* szCert, const char* szPolicy)
 }
 
 
-// -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
 
-int VerifyEvidence(tm* pt, int iEvidenceType, void* pEvidence, 
-                    int parentEvidenceType, void* pparentEvidence,
-                    bool (*pRevoke)(const char*, const char*))
+/*
+ *      VerifyChain is simplest evidence evaluation, validating a topmost
+ *      (position 0) signed credential for a particular purpose.  The root
+ *      key is at the highest numbered position and must be the same as the
+ *      supplied root key.
+ *      
+ *      Except for the root key each piece of evidence, each object is 
+ *      a parsed credential.  The SignedInfo in each piece of evidence 
+ *      (except the root) must include must expose an EvidenceType, Purpose, 
+ *      signature algorithm, canonicalization algorithm, a ValidityPeriod 
+ *      and possibly RevocationPolicy.
+ *
+ *      Intermediate evidence must be PrincipalCert's and must expose a 
+ *      PrincipalName, PrincipalType and Purpose, in addition to the other
+ *      items.
+ *
+ *      The topmost certificate can be a PrincipalCert, Quote or
+ *      SignedGrant.
+ *
+ *      VerifyChain confirms the key chain, verifies the ValidityPeriod,
+ *      checks revocation (if there is a RevocationPolicy) and ensures
+ *      that the Purpose of each statement is sufficient for the Purpose.
+ */
+
+
+int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, 
+                 int npieces, int* rgType, void** rgObject)
 {
     KeyInfo*            pmyKeyInfo= NULL;
     KeyInfo*            pParentKeyInfo= NULL;
@@ -263,91 +287,6 @@ int VerifyEvidenceList(tm* pt, int npiecesEvidence, int* rgEvidenceType,
 
 
 // -----------------------------------------------------------------------------
-
-
-const char* s_EvidenceListStart= "<EvidenceList count='%d'>\n";
-const char* s_EvidenceListStop= "</EvidenceList>\n";
-
-
-char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
-{
-
-    if(szEvidence==NULL) {
-        return NULL;
-    }
-
-    TiXmlDocument   listDoc;
-    TiXmlNode*      pNode= NULL;
-    int             numpiecesofEvidence= 0;
-    int             len= strlen(szEvidenceSupport)+strlen(szEvidence)+128;
-    char*           buf= (char*) malloc(len);
-    char*           p= buf;
-    int             left= len;
-    int             n;
-    char*           szNode= NULL;
-
-    if(buf==NULL) {
-        return NULL;
-    }
-
-    if(szEvidenceSupport==NULL) {
-        // append szEvidence
-        sprintf(buf, s_EvidenceListStart, 1);
-        n= strlen(p);
-        p+= n;
-        left-= n;
-        if(!safeTransfer(&p, &left, szEvidence)) {
-            return NULL;
-        }
-        if(!safeTransfer(&p, &left, s_EvidenceListStop)) {
-            return NULL;
-        }
-        return strdup(buf);
-    }
-
-
-    if(listDoc.Parse(szEvidenceSupport)) {
-        return NULL;
-    }
-
-    TiXmlElement* pRootElement= listDoc.RootElement();
-    pRootElement->QueryIntAttribute ("count", &numpiecesofEvidence);
-    numpiecesofEvidence++;
-
-    // append szEvidence
-    sprintf(buf, s_EvidenceListStart, numpiecesofEvidence);
-    n= strlen(p);
-    p+= n;
-    left-= n;
-    if(!safeTransfer(&p, &left, szEvidence)) {
-        return NULL;
-    }
-
-    // add evidence support
-    pNode= pRootElement->FirstChild();
-    while(pNode!=NULL) {
-        if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
-            szNode= canonicalize(pNode);
-            if(szNode==NULL) {
-                return NULL;
-            }
-            if(!safeTransfer(&p, &left, szEvidence)) {
-                free(szNode);
-                return NULL;
-            }
-            free(szNode);
-            szNode= NULL;
-        }
-        pNode= pNode->NextSibling();
-    }
-    if(!safeTransfer(&p, &left, s_EvidenceListStop)) {
-        return NULL;
-    }
-    return strdup(buf);
-}
-
-
-// ----------------------------------------------------------------------------
 
 
 evidenceCollection::~evidenceCollection()
@@ -576,5 +515,90 @@ bool    evidenceList::validateEvidenceList(RSAKey* pRootKey, RSAKey* pTopKey)
 
 
 // -------------------------------------------------------------------------------
+
+
+const char* s_EvidenceListStart= "<EvidenceList count='%d'>\n";
+const char* s_EvidenceListStop= "</EvidenceList>\n";
+
+
+char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
+{
+
+    if(szEvidence==NULL) {
+        return NULL;
+    }
+
+    TiXmlDocument   listDoc;
+    TiXmlNode*      pNode= NULL;
+    int             numpiecesofEvidence= 0;
+    int             len= strlen(szEvidenceSupport)+strlen(szEvidence)+128;
+    char*           buf= (char*) malloc(len);
+    char*           p= buf;
+    int             left= len;
+    int             n;
+    char*           szNode= NULL;
+
+    if(buf==NULL) {
+        return NULL;
+    }
+
+    if(szEvidenceSupport==NULL) {
+        // append szEvidence
+        sprintf(buf, s_EvidenceListStart, 1);
+        n= strlen(p);
+        p+= n;
+        left-= n;
+        if(!safeTransfer(&p, &left, szEvidence)) {
+            return NULL;
+        }
+        if(!safeTransfer(&p, &left, s_EvidenceListStop)) {
+            return NULL;
+        }
+        return strdup(buf);
+    }
+
+
+    if(listDoc.Parse(szEvidenceSupport)) {
+        return NULL;
+    }
+
+    TiXmlElement* pRootElement= listDoc.RootElement();
+    pRootElement->QueryIntAttribute ("count", &numpiecesofEvidence);
+    numpiecesofEvidence++;
+
+    // append szEvidence
+    sprintf(buf, s_EvidenceListStart, numpiecesofEvidence);
+    n= strlen(p);
+    p+= n;
+    left-= n;
+    if(!safeTransfer(&p, &left, szEvidence)) {
+        return NULL;
+    }
+
+    // add evidence support
+    pNode= pRootElement->FirstChild();
+    while(pNode!=NULL) {
+        if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
+            szNode= canonicalize(pNode);
+            if(szNode==NULL) {
+                return NULL;
+            }
+            if(!safeTransfer(&p, &left, szEvidence)) {
+                free(szNode);
+                return NULL;
+            }
+            free(szNode);
+            szNode= NULL;
+        }
+        pNode= pNode->NextSibling();
+    }
+    if(!safeTransfer(&p, &left, s_EvidenceListStop)) {
+        return NULL;
+    }
+    return strdup(buf);
+}
+
+
+// ----------------------------------------------------------------------------
 
 

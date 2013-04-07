@@ -41,25 +41,26 @@
 #define PRINCIPALCERT           2
 #define KEYINFO                 3
 #define SIGNEDGRANT             4
-#define SIGNEDX509CERT          5
-#define ATTESTATION             6
+#define QUOTECERTIFICATE        5
+
 
 // validation errors
-#define VALID               1
-#define INVALIDSIG       (-1)
-#define INVALIDPRINCIPAL (-2)
-#define INVALIDPERIOD    (-3)
-#define INVALIDREVOKED   (-4)
-#define INVALIDPARENT    (-5)
-#define INVALIDRIGHTS    (-6)
-#define INVALIDEVIDENCE  (-7)
+#define VALID                   1
+#define INVALIDSIG           (-1)
+#define INVALIDPRINCIPAL     (-2)
+#define INVALIDPERIOD        (-3)
+#define INVALIDREVOKED       (-4)
+#define INVALIDPARENT        (-5)
+#define INVALIDRIGHTS        (-6)
+#define INVALIDEVIDENCE      (-7)
 
 
-int  VerifyEvidenceList(tm* pt, int npieces, int* rgType, void** rgObject, 
-                        RSAKey* pRootKey, RSAKey* pTopKey=NULL);
+int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
+                 int npieces, int* rgType, void** rgObject);
 
 
 #define STATICNUMLISTELTS 8
+#define STATICNUMCOLLECTIONELTS  20
 
 
 class evidenceList {
@@ -81,9 +82,6 @@ public:
 };
 
 
-#define STATICNUMCOLLECTIONELTS  20
-
-
 class evidenceCollection {
 public:
     bool            m_fParsed;
@@ -102,9 +100,6 @@ public:
     bool            parseEvidenceCollection(const char* szEvidenceCollection);
     bool            validateEvidenceCollection(RSAKey* pRootKey);
 };
-
-
-char*   consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
 
 
 #endif

@@ -53,6 +53,8 @@
 #define INVALIDPARENT        (-5)
 #define INVALIDRIGHTS        (-6)
 #define INVALIDEVIDENCE      (-7)
+#define INVALIDROOT          (-8)
+#define INVALIDPURPOSE       (-9)
 
 
 int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,

@@ -19,7 +19,7 @@ tobjs=  $(B)/mpTest.o $(B)/logging.o $(B)/mpBasicArith.o  $(B)/mpModArith.o \
 	$(B)/mpNumTheory.o $(B)/modesandpadding.o $(B)/cryptoHelper.o \
 	$(B)/aes.o $(B)/sha256.o $(B)/jlmcrypto.o $(B)/hmacsha256.o \
 	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
-	$(B)/jlmUtility.o $(B)/keys.o $(B)/fastArith.o
+	$(B)/sha1.o $(B)/jlmUtility.o $(B)/keys.o $(B)/fastArith.o
 
 all: $(E)/mpTest.exe
 
@@ -47,6 +47,9 @@ $(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
 
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
+
+$(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha1.o $(SCC)/sha1.cpp
 
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha256.o $(SCC)/sha256.cpp

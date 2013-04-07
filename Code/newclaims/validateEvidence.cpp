@@ -26,6 +26,7 @@
 #include "jlmUtility.h"
 #include "logging.h"
 #include "jlmcrypto.h"
+#include "tinyxml.h"
 #include "validateEvidence.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
@@ -39,9 +40,285 @@
 // ------------------------------------------------------------------------
 
 
+
 bool  revoked(const char* szCert, const char* szPolicy)
 {
     return false;
+}
+
+
+char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
+{
+    TiXmlNode* nodeSignedInfo= NULL;
+    TiXmlNode* nodePurpose=  NULL;
+    TiXmlNode* pNode=  NULL;
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+      case SIGNEDGRANT:
+        nodeSignedInfo= Search((TiXmlNode*)pObject, "ds:SignedInfo");
+        break;
+      case QUOTECERTIFICATE:
+        nodeSignedInfo= Search((TiXmlNode*)pObject, "QuotedInfo");
+        break;
+    }
+    if(nodeSignedInfo==NULL) {
+        fprintf(g_logFile, "getChainElementSignedInfoPurpose: Cant find it\n");
+        return NULL;
+    }
+
+    nodePurpose= Search(nodeSignedInfo, "Purpose");
+    if(nodePurpose==NULL) {
+        fprintf(g_logFile, "getChainElementSignedInfoPurpose: Cant find it\n");
+        return NULL;
+    }
+
+    pNode= ((TiXmlElement*)nodePurpose)->FirstChild();
+    if(pNode==NULL) {
+        fprintf(g_logFile, "getChainElementSignedInfoPurpose: Cant get purpose\n");
+        return NULL;
+    }
+    if(pNode->Value()==NULL) {
+        fprintf(g_logFile, "getChainElementSignedInfoPurpose: Cant get purpose value\n");
+        return NULL;
+    }
+    return strdup(pNode->Value());
+}
+
+
+TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
+{
+    TiXmlNode* nodeSignedInfo=  NULL;
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+        nodeSignedInfo= Search((TiXmlNode*)pObject, "ds:SignedInfo");
+        break;
+      case SIGNEDGRANT:
+      case QUOTECERTIFICATE:
+        nodeSignedInfo= Search((TiXmlNode*)pObject, "QuotedInfo");
+        break;
+    }
+    if(nodeSignedInfo==NULL) {
+        fprintf(g_logFile, "getChainElementSignedInfo: Cant find Validity Period\n");
+        return false;
+    }
+    return nodeSignedInfo;
+}
+
+
+char* getChainElementPrincipalName(TiXmlNode* node, int evidenceType)
+{
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+      case SIGNEDGRANT:
+      case QUOTECERTIFICATE:
+        break;
+    }
+    return NULL;
+}
+
+
+char* getChainElementPrincipalType(TiXmlNode* node, int evidenceType)
+{
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+      case SIGNEDGRANT:
+      case QUOTECERTIFICATE:
+        break;
+    }
+    return NULL;
+}
+
+
+char* getChainElementSignatureAlgorithm(TiXmlNode* node, int evidenceType)
+{
+    TiXmlNode* nodeSigAlg= NULL;
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+      case SIGNEDGRANT:
+      case QUOTECERTIFICATE:
+        break;
+    }
+    TiXmlNode* nodeSigAlg= Search((TiXmlNode*)node, "ds:SignatureMethod");
+    if(nodeCanonical==NULL) {
+        fprintf(g_logFile, "getChainElementSignatureAlgorithm: Cant find it\n");
+        return NULL;
+    }
+    if(((TiXmlElement*)nodeSigAlg)->Attribute("Algorithm")==NULL) {
+        fprintf(g_logFile, "getChainElementSignatureAlgorithm: Cant algorithm value\n");
+        return NULL;
+    }
+
+    // <ds:SignatureMethod 
+    //   Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    // <ds:SignatureMethod 
+    //   Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#" />
+    // <ds:QuoteMethod Algorithm="Quote-Sha256FileHash-RSA1024" />
+    return strdup(((TiXmlElement*)nodeSigAlg)->Attribute("Algorithm"));
+}
+
+
+char* getChainElementCanonicalizationAlgorithm(TiXmlNode* node, int evidenceType)
+{
+    TiXmlNode* nodeCanonical= NULL;
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+      case SIGNEDGRANT:
+      case QUOTECERTIFICATE:
+        break;
+    }
+    TiXmlNode* nodeCanonical= Search((TiXmlNode*)node, "ds:CanonicalizationMethod");
+    if(nodeCanonical==NULL) {
+        fprintf(g_logFile, "getChainElementCanonicalizationAlgorithm: Cant find it\n");
+        return NULL;
+    }
+    if(((TiXmlElement*)nodeCanonical)->Attribute("Algorithm")==NULL) {
+        fprintf(g_logFile, "getChainElementCanonicalizationAlgorithm: Cant algorithm value\n");
+        return NULL;
+    }
+    // <ds:CanonicalizationMethod 
+    //    Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+    return strdup(((TiXmlElement*)nodeCanonical)->Attribute("Algorithm"));
+}
+
+
+bool getChainElementValidityPeriod(TiXmlNode* node, int evidenceType, 
+                                   tm* pnotBefore, tm* pNotAfter)
+{
+    TiXmlNode* nodeValidity= Search((TiXmlNode*)node, "ValidityPeriod");
+    TiXmlNode* pNode1= NULL;
+    TiXmlNode* pNode2= NULL;
+
+    if(nodeValidity==NULL) {
+        fprintf(g_logFile, "getChainElementValidityPeriod: Cant find Validity Period\n");
+        return false;
+    }
+    pNode1= Search(nodeValidity, "NotBefore");
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "getChainElementValidityPeriod: Cant find NotBefore\n");
+        return false;
+    }
+    pNode2= ((TiXmlElement*)pNode1)->FirstChild();
+    if(pNode2==NULL) {
+        fprintf(g_logFile, "getChainElementValidityPeriod: Cant get NotBefore value\n");
+        return false;
+    }
+    if(!timeInfofromstring(pNode2->Value(), *pnotBefore)) {
+        fprintf(g_logFile, "getChainElementValidityPeriod: Cant get NotBefore\n");
+        return false;
+    }
+    pNode1= Search(nodeValidity, "NotAfter");
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "getChainElementValidityPeriod:Cant find NotAfter\n");
+        return false;
+    }
+    pNode2= ((TiXmlElement*)pNode1)->FirstChild();
+    if(pNode2==NULL) {
+        fprintf(g_logFile, "getChainElementValidityPeriod:Cant get NotAfter value\n");
+        return false;
+    }
+    if(!timeInfofromstring(pNode2->Value(), *pnotAfter)) {
+        fprintf(g_logFile, "getChainElementValidityPeriod: Cant get NotAfter\n");
+        return false;
+    }
+    return true;
+}
+
+
+char* getChainElementRevocationPolicy(TiXmlNode* node, int evidenceType)
+{
+    return NULL;
+}
+
+
+char* getChainElementSignatureValue(int evidenceType, void* pObject)
+{
+    TiXmlNode* nodeSignatureValue= NULL;
+    TiXmlNode* pNode= NULL;
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+      case PRINCIPALCERT:
+      case SIGNEDGRANT:
+        nodeSignatureValue= Search((TiXmlNode*)node, "ds:SignatureValue");
+        break;
+      case QUOTECERTIFICATE:
+        nodeSignatureValue= Search((TiXmlNode*)node, "QuoteValue");
+        break;
+    }
+    if(nodeSignatureValue==NULL) {
+        fprintf(g_logFile, "Cant find SignatureValue\n");
+        return NULL;
+    }
+    pNode= ((TiXmlElement*)nodeSignatureValue)->FirstChild();
+    if(pNode==NULL) {
+        fprintf(g_logFile, "Cant find SignatureValue\n");
+        return NULL;
+    }
+    if(pNode->Value()==NULL) {
+        fprintf(g_logFile, "Cant obtain SignatureValue\n");
+        return NULL;
+    }
+    return strdup(((TiXmlElement*)pNode)->Value());
+
+}
+
+
+KeyInfo* getChainElementSubjectKey(int evidenceType, void* pObject)
+{
+    TiXmlNode* nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
+    TiXmlNode* pNode= NULL;
+
+    if(nodeSignedInfo==NULL) {
+    }
+    pNode= Search(nodeSignedInfo, "SubjectKey");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "getChainElementSubjectKey: Cant SubjectKey\n");
+        return NULL;
+    }
+
+    if(((TiXmlElement*)pNode)->FirstChild()==NULL) {
+        fprintf(g_logFile, "getChainElementSubjectKey: Cant get keyInfo\n");
+        return NULL;
+    }
+    return (KeyInfo*)RSAKeyfromKeyInfoNode(((TiXmlElement*)pNode)->FirstChild());
 }
 
 
@@ -73,216 +350,163 @@ bool  revoked(const char* szCert, const char* szPolicy)
  */
 
 
-int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, 
-                 int npieces, int* rgType, void** rgObject)
+int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* pObject)
 {
-    KeyInfo*            pmyKeyInfo= NULL;
-    KeyInfo*            pParentKeyInfo= NULL;
-    PrincipalCert*      pSignature= NULL;
-    PrincipalCert*      pparentSignature= NULL;
-    SignedAssertion*    pAssertion= NULL;
-    SignedAssertion*    pparentAssertion= NULL;
-    Period              period;
-    char*               szCanonicalSignedBody= NULL;
-    char*               szCert= NULL;
-    char*               szRevocationPolicy= NULL;
-    char*               szSigAlgorithm= NULL;
-    char*               szSignatureValue= NULL;
+    tm          notBefore;
+    tm          notAfter;
+    char*       szCanonicalSignedBody= NULL;
+    char*       szRevocationPolicy= NULL;
+    char*       szSignatureValue= NULL;
+    char*       szSignatureAlg= NULL;
+    char*       szCanonicalAlg= NULL;
+    int         iRet= VALID;
 
 #ifdef TEST
-    fprintf(g_logFile, "VerifyEvidence me: %d parent: %d\n", 
-            iEvidenceType, parentEvidenceType);
+    fprintf(g_logFile, "VerifySignedEvidence, type is %d\n", evidenceType);
     fflush(g_logFile);
 #endif
-    switch(iEvidenceType) {
-      case NOEVIDENCE:
-      default:
-        return INVALIDEVIDENCE;
-      case KEYINFO:
-        return INVALIDEVIDENCE;
-      case PRINCIPALCERT:
-        pSignature= (PrincipalCert*) pEvidence;
-        if(pSignature==NULL)
-            return INVALIDEVIDENCE;
-        pmyKeyInfo= pSignature->getSubjectKeyInfo();
-        if(!pSignature->getvalidityPeriod(period))
-            return INVALIDPERIOD;
-        // now check time
-        if(!checktimeinInterval(*pt,period.notBefore,period.notAfter)) {
-            fprintf(g_logFile, "Not in interval\n");
-            return INVALIDPERIOD;
+
+    try {
+        // SignedInfo
+        TiXmlNode* nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
+        if(nodeSignedInfo==NULL) {
+            iRet= INVALIDSIG;
+            throw("VerifySignedEvidence: can't get SignedInfo\n");
         }
-        szCanonicalSignedBody= pSignature->getCanonicalwasSigned();
-#ifdef CERTTEST
-        fprintf(g_logFile, "Canonicalized size: %d\n", (int)strlen(szCanonicalSignedBody));
-#endif
-        if(szCanonicalSignedBody==NULL)
-            return INVALIDEVIDENCE;
-        szRevocationPolicy= pSignature->getRevocationPolicy();
-        if(szRevocationPolicy==NULL) {
-            if(pRevoke(szCert, szRevocationPolicy))
-                return INVALIDREVOKED;
+
+        // revocation?
+        szRevocationPolicy= getChainElementRevocationPolicy(nodeSignedInfo, evidenceType);
+        if(szRevocationPolicy!=NULL) {
+            iRet= INVALIDREVOKED;
+            throw("VerifySignedEvidence does not support revocation yet\n");
         }
-        szSignatureValue= pSignature->getSignatureValue();
-        if(szSignatureValue==NULL)
-            return INVALIDSIG;
-        szSigAlgorithm= pSignature->getSignatureAlgorithm();
-        if(szSigAlgorithm==NULL)
-            return INVALIDSIG;
-        break;
-      case SIGNEDGRANT:
-        pAssertion= (SignedAssertion*) pEvidence;
-        if(pAssertion==NULL)
-            return INVALIDEVIDENCE;
-        pmyKeyInfo= pAssertion->getSubjectKeyInfo();
-        if(!pAssertion->getvalidityPeriod(period))
-            return INVALIDPERIOD;
-        // now check time
-        if(!checktimeinInterval(*pt,period.notBefore,period.notAfter)) {
-            fprintf(g_logFile, "Not in interval\n");
-            return INVALIDPERIOD;
+
+        // time valid?
+        if(!getChainElementValidityPeriod(nodeSignedInfo, evidenceType, 
+                                    &notBefore, &NotAfter)) {
+            iRet= INVALIDPERIOD;
+            throw("VerifySignedEvidence: can't get validity period\n");
         }
-        szCanonicalSignedBody= pAssertion->getCanonicalwasSigned();
-        if(szCanonicalSignedBody==NULL)
-            return INVALIDEVIDENCE;
-        szRevocationPolicy= pAssertion->getRevocationPolicy();
-        if(szRevocationPolicy==NULL) {
-            if(pRevoke(szCert, szRevocationPolicy))
-                return INVALIDREVOKED;
+        if(!checktimeinInterval(*pt, notBefore, notAfter)) {
+            iRet= INVALIDPERIOD;
+            throw("VerifySignedEvidence: invalid validity period\n");
         }
-        szSignatureValue= pAssertion->getSignatureValue();
-        if(szSignatureValue==NULL)
-            return INVALIDSIG;
-        szSigAlgorithm= pAssertion->getSignatureAlgorithm();
-        if(szSigAlgorithm==NULL)
-            return INVALIDSIG;
-#ifdef RULESTEST
-        fprintf(g_logFile, "Signed grant\n");
-        pAssertion->printMe();
-        fprintf(g_logFile, "\n");
-#endif
-        break;
+
+        // signed properly?
+        szSignatureAlg= getChainElementSignatureAlgorithm(nodeSignedInfo, evidenceType);
+        if(szSignatureAlg==NULL) {
+            iRet= INVALIDSIG;
+            throw("VerifySignedEvidence: cant get signature algorithm \n");
+        }
+        szCanonicalAlg= getChainElementCanonicalizationAlgorithm(nodeSignedInfo, evidenceType);
+        if(szCanonicalAlg==NULL) {
+            iRet= INVALIDSIG;
+            throw("VerifySignedEvidence: no canonicalization algorithm\n");
+        }
+        szCanonicalSignedBody= canonicalize(nodeSignedInfo);
+        if(szCanonicalSignedBody==NULL) {
+            iRet= INVALIDSIG;
+            throw("VerifySignedEvidence: cant canonicalize signedInfo\n");
+        }
+        szSignatureValue= getChainElementsignatureValue(evidenceType, pObject);
+        if(szSignatureValue==NULL) {
+            iRet= INVALIDSIG;
+            throw("VerifySignedEvidence: cant get signature value element\n");
+        }
+
+        // check hash
+        if(!VerifyRSASha256SignaturefromSignedInfoandKey(*pSignerKey,
+                                    szCanonicalSignedBody, szSignatureValue)) {
+            iRet= INVALIDSIG;
+            throw("VerifySignedEvidence: Verify Evidence failed\n");
+        }
+    }
+    catch(const char* szError) {
+        fprintf(g_logFile, "%s", szError);
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "examining parent evidence type\n");
-    fflush(g_logFile);
-#endif
-    switch(parentEvidenceType) {
-      case NOEVIDENCE:
-        break;      // must be root
-      default:
-        return INVALIDEVIDENCE;
-
-      case PRINCIPALCERT:
-        pparentSignature= (PrincipalCert*) pparentEvidence;
-        pParentKeyInfo=  pparentSignature->getSubjectKeyInfo();
-        break;
-
-      case SIGNEDGRANT:
-        pparentAssertion= (SignedAssertion*) pparentEvidence;
-        pParentKeyInfo=  pparentAssertion->getSubjectKeyInfo();
-        break;
-        
-      case EMBEDDEDPOLICYPRINCIPAL:
-      case KEYINFO:
-#ifdef TEST
-        fprintf(g_logFile, "embedded policy principal\n");
-        fflush(g_logFile);
-#endif
-        pParentKeyInfo= (KeyInfo*) pparentEvidence;
-        break;
+    if(szSignatureAlg!=NULL) {
+        free(szSignatureAlg);
+        szSignatureAlg= NULL;
+    }
+    if(szCanonicalAlg!=NULL) {
+        free(szCanonicalAlg);
+        szCanonicalAlg= NULL;
+    }
+    if(szCanonicalSignedBody!=NULL) {
+        free(szCanonicalSignedBody);
+        szCanonicalSignedBody= NULL;
+    }
+    if(szSignatureValue!=NULL) {
+        free(szSignatureValue);
+        szSignatureValue= NULL;
     }
 
-    UNUSEDVAR(pmyKeyInfo);
-
-    if(!checkXMLSignature(szSigAlgorithm, szCanonicalSignedBody, 
-                          pParentKeyInfo, szSignatureValue))
-        return INVALIDSIG;
-#ifdef TEST
-    fprintf(g_logFile, "VerifyEvidence returns true\n");
-    fflush(g_logFile);
-#endif
-    return VALID;
+   return iRet; 
 }
 
 
-int VerifyEvidenceList(tm* pt, int npiecesEvidence, int* rgEvidenceType, 
-                        void** rgEvidence, RSAKey* pRootKey, RSAKey* pTopKey)
-//
-//  This checks signatures, time based validity and revocation
-//      but not specific purpose or grant use.
+int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, 
+                 int npieces, int* rgType, void** rgObject)
+
 //  Only RSA is supported for now.
-//
 {
     int         i;
-    int         iError;
-    int         iParentType;
-    void*       pParent;
-    int         iMyType;
-    void*       pMe;
+    int         iRet= VALID;
     time_t      timer;
+    RSAKey*     pSignerKey= NULL;
+    char*       szPurpose= NULL;
 
 #ifdef TEST
-    fprintf(g_logFile, "VerifyEvidenceList %d\n", npiecesEvidence);
+    fprintf(g_logFile, "VerifyChain %d\n", npiecesEvidence);
     fflush(g_logFile);
 #endif
-    // now if not specified
-    if(pt==NULL) {
-        time(&timer);
-        pt= gmtime((const time_t*)&timer);
-    }
 
-    // must root in policy key
-    if(rgEvidenceType[npiecesEvidence-1]!=EMBEDDEDPOLICYPRINCIPAL) {
-        fprintf(g_logFile, "No embedded policy principal\n");
-        return INVALIDPRINCIPAL;
-    }
+    try {
 
-    KeyInfo*            pParentKeyInfo= NULL;
-    PrincipalCert*      pparentSignature= NULL;
-    // check prior key?
-    if(pTopKey!=NULL) {
-        iParentType= rgEvidenceType[0];
-        pParent= rgEvidence[0];
-        switch(iParentType) {
-          case NOEVIDENCE:
-            return INVALIDEVIDENCE;
-          default:
-            return INVALIDEVIDENCE;
-
-          case PRINCIPALCERT:
-            pparentSignature= (PrincipalCert*) pParent;
-            pParentKeyInfo=  pparentSignature->getSubjectKeyInfo();
-          break;
-
-          case EMBEDDEDPOLICYPRINCIPAL:
-          case KEYINFO:
-            pParentKeyInfo=  (KeyInfo*) pParent;
-            break;
+        // now if not specified
+        if(pt==NULL) {
+            time(&timer);
+            pt= gmtime((const time_t*)&timer);
         }
-        if(!sameRSAKey((RSAKey*)pTopKey, (RSAKey*)pParentKeyInfo))
-            return INVALIDEVIDENCE;
-    }
 
-    // verify
-    for(i=0;i<(npiecesEvidence-1);i++) {
-        iParentType= rgEvidenceType[i+1];
-        pParent= rgEvidence[i+1];
-        iMyType= rgEvidenceType[i];
-        pMe= rgEvidence[i];
-        iError=  VerifyEvidence(pt, iMyType, pMe, iParentType, pParent, revoked);
-        if(iError<0) {
-            fprintf(g_logFile, "Verify error %d\n", iError);
-            return iError;
+        // root at bottom?
+        if(rgType[npieces-1]!= KEYINFO || !sameRSAKey((RSAKey*)rgObject, &rootKey)) {
+            iRet= INVALIDROOT;
+            throw("VerifyChain: Chain does not end with root\n");
+        }
+
+        for(i=0; i<(npieces-1); i++) {
+
+            // check purpose
+            szPurpose= getChainElementSignedInfoPurpose(rgType[i], rgObject[i]);
+            if(purposeNode==NULL) {
+                iRet= INVALIDPURPOSE;
+                throw("VerifyChain: cant get signer key\n");
+            }
+            // Fix: check
+
+            // get signer's key
+            pSignerKey= (RSAKeyInfo*) getChainElementSubjectKey(rgType[i+1], rgObject[i+1]);
+            if(pSignerKey==NULL) {
+                iRet= INVALIDPARENT;
+                throw("VerifyChain: cant get signer key\n");
+            }
+
+            // check evidence
+            iRet= VerifySignedEvidence((KeyInfo*)pSignerKey, pt, rgType[i], rgObject[i]);
         }
     }
-
+    catch(const char* szError) {
+        fprintf(g_logFile, "%s");
+        fflush(g_logFile);
+    }
+    
 #ifdef TEST
-    fprintf(g_logFile, "VerifyEvidenceList returns true\n");
+    fprintf(g_logFile, "VerifyChain returns %d\n", iRet);
     fflush(g_logFile);
 #endif
-    return VALID;
+    return iRet;
 }
 
 

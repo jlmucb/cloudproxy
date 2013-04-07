@@ -29,6 +29,7 @@
 #include "jlmcrypto.h"
 #include "jlmUtility.h"
 #include "sha256.h"
+#include "sha1.h"
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "cryptoHelper.h"
@@ -99,7 +100,7 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 }
 
 
-bool  RSASha256Sign(RSAKey& key, int hashType, byte* hash, 
+bool  RSASign(RSAKey& key, int hashType, byte* hash, 
                                  int* psizeout, byte* out)
 {
     byte    padded[1024];
@@ -108,11 +109,11 @@ bool  RSASha256Sign(RSAKey& key, int hashType, byte* hash,
     PrintBytes((char*)"RSASign in: ", hash, 32);
 #endif
     if(*psizeout<key.m_iByteSizeM) {
-        fprintf(g_logFile, "RSASha256Sign: output buffer too small\n");
+        fprintf(g_logFile, "RSASign: output buffer too small\n");
         return false;
     }
     if(!emsapkcspad(hashType, hash, key.m_iByteSizeM, padded)) {
-        fprintf(g_logFile, "RSASha256Sign: padding failed\n");
+        fprintf(g_logFile, "RSASign: padding failed\n");
         return false;
     }
 #ifdef TEST
@@ -128,23 +129,26 @@ bool  RSASha256Sign(RSAKey& key, int hashType, byte* hash,
 }
 
 
-bool  RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in)
+bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 {
     byte    padded[1024];
     int     size= 1024;
 
 #ifdef TEST
-    PrintBytes((char*)"RSASha256Verify hash: ", hash, 32);
-    PrintBytes((char*)"RSASha256Verify in: ", in, key.m_iByteSizeM);
+    if(hashtype==SHA1HASH)
+        PrintBytes((char*)"RSAVerify hash (sha1): ", hash, 20);
+    else if(hashtype==SHA256HASH)
+        PrintBytes((char*)"RSAVerify hash (sha256): ", hash, 32);
+    PrintBytes((char*)"RSAVerify in: ", in, key.m_iByteSizeM);
 #endif
     if(!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
-        fprintf(g_logFile, "RSASha256Verify: encryption failed\n");
+        fprintf(g_logFile, "RSAVerify: encryption failed\n");
         return false;
     }
     if(!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded))
         return false;
 #ifdef TEST
-    fprintf(g_logFile, "RSASha256Verify returns true\n");
+    fprintf(g_logFile, "RSAVerify returns true\n");
 #endif
     return true;
 }
@@ -656,6 +660,40 @@ bool  XMLenclosingtypefromelements(const char* tag, int numAttr,
 // -------------------------------------------------------------------------------
 
 
+bool VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key, 
+                                                  char* szsignedInfo, 
+                                                  char* szSigValue)
+{
+    Sha1        oHash;
+    byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
+    byte        rgSigValue[1024];
+    int         size;
+    int         n;
+
+    // hash  signedInfo
+    oHash.Init();
+    oHash.Update((byte*)szsignedInfo, strlen(szsignedInfo));
+    oHash.Final();
+    oHash.getDigest(rgComputedHash);
+
+    UNUSEDVAR(n);
+    n= strlen(szSigValue);
+    if(1024<maxbytesfromBase64string(strlen(szSigValue))) {
+        fprintf(g_logFile, 
+             "VerifyRSASha1SignaturefromSignedInfoandKey: buffer too small\n");
+        return false;
+    }
+    size= 1024;
+    if(!bytesfrombase64(szSigValue, &size, rgSigValue)) {
+        fprintf(g_logFile, 
+             "VerifyRSASha1SignaturefromSignedInfoandKey: cant base64 decode\n");
+        return false;
+    }
+
+    return RSAVerify(key, SHA1HASH, rgComputedHash, rgSigValue);
+}
+
+
 bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key, 
                                                   char* szsignedInfo, 
                                                   char* szSigValue)
@@ -686,7 +724,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
         return false;
     }
 
-    return RSASha256Verify(key, SHA256HASH, rgComputedHash, rgSigValue);
+    return RSAVerify(key, SHA256HASH, rgComputedHash, rgSigValue);
 }
 
 
@@ -708,7 +746,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     oHash.GetDigest(rgComputedHash);
 
     size= 1024;
-    if(!RSASha256Sign(key, SHA256HASH, rgComputedHash, 
+    if(!RSASign(key, SHA256HASH, rgComputedHash, 
                                  &size, rgSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: sign fails\n");

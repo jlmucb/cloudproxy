@@ -37,9 +37,9 @@
 bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
                        byte* out, bool fFast=false);
 bool        RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
-bool        RSASha256Sign(RSAKey& key, int hashType, byte* hash, 
+bool        RSASign(RSAKey& key, int hashType, byte* hash, 
                                        int* psizeout, byte* out);
-bool        RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in);
+bool        RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in);
 bool        RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
 bool        RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
                       byte* out, bool fFast=false);
@@ -71,6 +71,10 @@ bool        XMLenclosingtypefromelements(const char* tag, int numAttr,
                                    const char** attrName, const char** attrValues, 
                                    int numElts, const char** elts, 
                                    int* psize, char* buf);
+
+bool        VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key, 
+                                                  char* szsignedInfo, 
+                                                  char* szSigValue);
 
 bool        VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key, 
                                                   char* szsignedInfo, 

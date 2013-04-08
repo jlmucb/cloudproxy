@@ -29,6 +29,7 @@
 #include "jlmcrypto.h"
 #include "jlmUtility.h"
 #include "sha256.h"
+#include "sha1.h"
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "cryptoHelper.h"
@@ -41,7 +42,8 @@
 // ----------------------------------------------------------------------------
 
 
-bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
+bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                 byte* out, bool fFast)
 {
     bnum    bnMsg(128);
     bnum    bnOut(128);
@@ -50,11 +52,23 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     mpZeroNum(bnOut);
 
     revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
-    if(!mpRSAENC(bnMsg, *key.m_pbnD, *key.m_pbnM, bnOut)) {
-        fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
-        return false;
+    if(fFast && key.m_pbnDP!=NULL && key.m_pbnDQ!=NULL &&
+                key.m_pbnPM1!=NULL && key.m_pbnQM1!=NULL) {
+        if(!mpRSADEC(bnMsg, *key.m_pbnP, *key.m_pbnPM1, *key.m_pbnDP, 
+                     *key.m_pbnQ, *key.m_pbnQM1, 
+                     *key.m_pbnDQ, *key.m_pbnM, bnOut)) {
+            fprintf(g_logFile, "RSADecrypt: can't mpRSADEC\n");
+            return false;
+        }
+    }
+    else {
+        if(!mpRSAENC(bnMsg, *key.m_pbnD, *key.m_pbnM, bnOut)) {
+            fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
+            return false;
+        }
     }
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
+    *psizeout= key.m_iByteSizeM;
 
     return true;
 }
@@ -68,44 +82,75 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
 
+#ifdef TEST
+    PrintBytes((char*)"RSAEncrypt in: ", in, sizein);
+#endif
     revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
     if(!mpRSAENC(bnMsg, *key.m_pbnE, *key.m_pbnM, bnOut)) {
         fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
         return false;
     }
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
+    *psizeout= key.m_iByteSizeM;
 
+#ifdef TEST
+    PrintBytes((char*)"RSAEncrypt out: ", out, *psizeout);
+#endif
     return true;
 }
 
 
-bool  RSASha256Sign(RSAKey& key, int hashType, byte* hash, 
+bool  RSASign(RSAKey& key, int hashType, byte* hash, 
                                  int* psizeout, byte* out)
 {
     byte    padded[1024];
 
+#ifdef TEST
+    PrintBytes((char*)"RSASign in: ", hash, 32);
+#endif
     if(*psizeout<key.m_iByteSizeM) {
-        fprintf(g_logFile, "RSASha256Sign: output buffer too small\n");
+        fprintf(g_logFile, "RSASign: output buffer too small\n");
         return false;
     }
     if(!emsapkcspad(hashType, hash, key.m_iByteSizeM, padded)) {
-        fprintf(g_logFile, "RSASha256Sign: padding failed\n");
+        fprintf(g_logFile, "RSASign: padding failed\n");
         return false;
     }
-    return RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out);
+#ifdef TEST
+    PrintBytes((char*)"RSASign padded: ", padded, key.m_iByteSizeM);
+#endif
+    if(!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out))
+        return false;
+
+#ifdef TEST
+    PrintBytes((char*)"RSASign out: ", out, *psizeout);
+#endif
+    return true;
 }
 
 
-bool  RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in)
+bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 {
     byte    padded[1024];
     int     size= 1024;
 
+#ifdef TEST
+    if(hashtype==SHA1HASH)
+        PrintBytes((char*)"RSAVerify hash (sha1): ", hash, 20);
+    else if(hashtype==SHA256HASH)
+        PrintBytes((char*)"RSAVerify hash (sha256): ", hash, 32);
+    PrintBytes((char*)"RSAVerify in: ", in, key.m_iByteSizeM);
+#endif
     if(!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
-        fprintf(g_logFile, "RSASha256Verify: encryption failed\n");
+        fprintf(g_logFile, "RSAVerify: encryption failed\n");
         return false;
     }
-    return emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded);
+    if(!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded))
+        return false;
+#ifdef TEST
+    fprintf(g_logFile, "RSAVerify returns true\n");
+#endif
+    return true;
 }
 
 
@@ -113,31 +158,50 @@ bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 {
     byte    padded[1024];
     
+#ifdef TEST
+    PrintBytes((char*)"RSASeal in: ", in, sizein);
+#endif
     if(!pkcsmessagepad(sizein, in, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSASeal: padding failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSASeal padded: ", padded, key.m_iByteSizeM);
+#endif
     if(!RSAEncrypt(key, key.m_iByteSizeM, padded, psizeout, out)) {
         fprintf(g_logFile, "RSASeal: encryption failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSASeal out: ", out, *psizeout);
+#endif
     return true;
 }
 
 
-bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
+bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                byte* out, bool fFast)
 {
     byte    padded[1024];
     int     size= 1024;
     
-    if(!RSADecrypt(key, sizein, in, &size, padded)) {
+#ifdef TEST
+    PrintBytes((char*)"RSAUnseal in: ", in, sizein);
+#endif
+    if(!RSADecrypt(key, sizein, in, &size, padded, fFast)) {
         fprintf(g_logFile, "RSAUnseal: decryption failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSAUnseal decrypted: ", padded, key.m_iByteSizeM);
+#endif
     if(!pkcsmessageextract(psizeout, out, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSAUnseal: padding failed\n");
         return false;
     }
+#ifdef TEST
+    PrintBytes((char*)"RSAUnseal extracted: ", out, *psizeout);
+#endif
     return true;
 }
 
@@ -177,6 +241,10 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     bnum       bnQ(128);
     bnum       bnD(128);
     bnum       bnM(128);
+    bnum       bnDP(128);
+    bnum       bnDQ(128);
+    bnum       bnPM1(128);
+    bnum       bnQM1(128);
 
     bnE.m_pValue[0]= (1ULL<<16)+1ULL;
     while(iTry++<MAXTRY) {
@@ -229,6 +297,33 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     memcpy(pKey->m_pbnQ->m_pValue,(byte*)bnQ.m_pValue, pKey->m_iByteSizeQ);
     memcpy(pKey->m_pbnE->m_pValue,(byte*)bnE.m_pValue, pKey->m_iByteSizeE);
     memcpy(pKey->m_pbnD->m_pValue,(byte*)bnD.m_pValue, pKey->m_iByteSizeD);
+    pKey->m_pbnPM1= new bnum(ikeyu64Size/2);
+    pKey->m_pbnQM1= new bnum(ikeyu64Size/2);
+
+    if(!mpRSACalculateFastRSAParameters(bnE, bnP, bnQ, bnPM1, bnDP, bnQM1, bnDQ)) {
+        fprintf(g_logFile, "Cant generate fast rsa parameters\n");
+    }
+    else {
+        pKey->m_iByteSizeDP= ikeyByteSize/2;
+        pKey->m_iByteSizeDQ= ikeyByteSize/2;
+        pKey->m_pbnDP= new bnum(ikeyu64Size/2);
+        pKey->m_pbnDQ= new bnum(ikeyu64Size/2);
+
+        memcpy(pKey->m_pbnDP->m_pValue,(byte*)bnDP.m_pValue, pKey->m_iByteSizeDP);
+        memcpy(pKey->m_pbnDQ->m_pValue,(byte*)bnDQ.m_pValue, pKey->m_iByteSizeDQ);
+
+        memcpy(pKey->m_rgbDP,(byte*)bnDP.m_pValue, pKey->m_iByteSizeDP);
+        memcpy(pKey->m_rgbDQ,(byte*)bnDQ.m_pValue, pKey->m_iByteSizeDQ);
+        memcpy(pKey->m_rgbDP,(byte*)bnDP.m_pValue, pKey->m_iByteSizeDP);
+        memcpy(pKey->m_rgbDQ,(byte*)bnDQ.m_pValue, pKey->m_iByteSizeDQ);
+
+        if(pKey->m_iByteSizeDP>0 &&  pKey->m_iByteSizeDQ>0 && 
+                   pKey->m_pbnPM1!=NULL && pKey->m_pbnQM1!=NULL) {
+            mpSub(*(pKey->m_pbnP), g_bnOne, *(pKey->m_pbnPM1));
+            mpSub(*(pKey->m_pbnQ), g_bnOne, *(pKey->m_pbnQM1));
+        }
+
+    }
 
     return pKey;
 }
@@ -312,6 +407,90 @@ cleanup:
 }
 
 
+bool sameRSAKey(RSAKey* pKey1, RSAKey* pKey2)
+{
+    if(pKey1->m_iByteSizeM!=pKey2->m_iByteSizeM)
+        return false;
+    if(memcmp(pKey1->m_rgbM, pKey2->m_rgbM, pKey1->m_iByteSizeM)!=0)
+        return false;
+    if(pKey1->m_iByteSizeE!=pKey2->m_iByteSizeE)
+        return false;
+    if(memcmp(pKey1->m_rgbE, pKey2->m_rgbE, pKey1->m_iByteSizeE)!=0)
+        return false;
+    return true;
+}
+
+
+char* XMLCanonicalizedString(const char* szXML)
+{
+    TiXmlDocument doc;
+
+    if(!doc.Parse(szXML)) {
+        fprintf(g_logFile, "XMLCanonicalizedString: Cant parse Xml Document\n");
+        return NULL;
+    }
+    if(doc.RootElement()==NULL) {
+        fprintf(g_logFile, "XMLCanonicalizedString: Cant get root element\n");
+        return NULL;
+    }
+    return canonicalize((TiXmlNode*) doc.RootElement());
+}
+
+
+KeyInfo* ReadKeyfromFile(const char* szKeyFile)
+{
+    KeyInfo*    pParseKey= new KeyInfo;
+    RSAKey*     pRSAKey= NULL;
+    symKey*     pAESKey= NULL;
+    KeyInfo*    pRetKey= NULL;
+    int         iKeyType;
+
+    TiXmlDocument* pDoc= new TiXmlDocument();
+    if(pDoc==NULL) {
+        fprintf(g_logFile, "Cant get new an Xml Document\n");
+        return NULL;
+    }
+
+    if(!pDoc->LoadFile(szKeyFile)) {
+        fprintf(g_logFile, "Cant load keyfile\n");
+        return NULL;
+    }
+    iKeyType= pParseKey->getKeyType(pDoc);
+
+    switch(iKeyType) {
+      case AESKEYTYPE:
+        pAESKey= new symKey();
+        if(pAESKey==NULL) {
+            fprintf(g_logFile, "Cant new symKey\n");
+            break;
+        }
+        else
+            pAESKey->m_pDoc= pDoc;
+        pAESKey->getDataFromDoc();
+        pRetKey= (KeyInfo*) pAESKey;
+        break;
+      case RSAKEYTYPE:
+        pRSAKey= new RSAKey();
+        if(pRSAKey==NULL) {
+            fprintf(g_logFile, "Cant new RSAKey\n");
+            break;
+        }
+        else
+            pRSAKey->m_pDoc= pDoc;
+        pRSAKey->getDataFromDoc();
+        pRetKey= (KeyInfo*) pRSAKey;
+        break;
+      default:
+       fprintf(g_logFile, "Unknown key type in ReadFromFile\n");
+       break;
+    }
+    delete pParseKey;
+    // Dont forget to delete pDoc;
+
+    return pRetKey;
+}
+
+
 // -------------------------------------------------------------------------------
 
 
@@ -374,6 +553,14 @@ bool timeInfofromstring(const char* szTime, struct tm& thetime)
             &thetime.tm_min, &thetime.tm_sec);
     return true;
 }
+
+
+bool checktimeinInterval(tm& time, tm& begin, tm& end)
+// is time less than or equal to endtime and greater than or equal to begin time
+{
+    return timeCompare(end, time)!=(-1) && timeCompare(begin, time)!=1;
+}
+
 
 
 // -------------------------------------------------------------------------------
@@ -473,6 +660,40 @@ bool  XMLenclosingtypefromelements(const char* tag, int numAttr,
 // -------------------------------------------------------------------------------
 
 
+bool VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key, 
+                                                  char* szsignedInfo, 
+                                                  char* szSigValue)
+{
+    Sha1        oHash;
+    byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
+    byte        rgSigValue[1024];
+    int         size;
+    int         n;
+
+    // hash  signedInfo
+    oHash.Init();
+    oHash.Update((byte*)szsignedInfo, strlen(szsignedInfo));
+    oHash.Final();
+    oHash.getDigest(rgComputedHash);
+
+    UNUSEDVAR(n);
+    n= strlen(szSigValue);
+    if(1024<maxbytesfromBase64string(strlen(szSigValue))) {
+        fprintf(g_logFile, 
+             "VerifyRSASha1SignaturefromSignedInfoandKey: buffer too small\n");
+        return false;
+    }
+    size= 1024;
+    if(!bytesfrombase64(szSigValue, &size, rgSigValue)) {
+        fprintf(g_logFile, 
+             "VerifyRSASha1SignaturefromSignedInfoandKey: cant base64 decode\n");
+        return false;
+    }
+
+    return RSAVerify(key, SHA1HASH, rgComputedHash, rgSigValue);
+}
+
+
 bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key, 
                                                   char* szsignedInfo, 
                                                   char* szSigValue)
@@ -489,6 +710,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     oHash.Final();
     oHash.GetDigest(rgComputedHash);
 
+    UNUSEDVAR(n);
     n= strlen(szSigValue);
     if(1024<maxbytesfromBase64string(strlen(szSigValue))) {
         fprintf(g_logFile, 
@@ -502,7 +724,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
         return false;
     }
 
-    return RSASha256Verify(key, SHA256HASH, rgComputedHash, rgSigValue);
+    return RSAVerify(key, SHA256HASH, rgComputedHash, rgSigValue);
 }
 
 
@@ -524,7 +746,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     oHash.GetDigest(rgComputedHash);
 
     size= 1024;
-    if(!RSASha256Sign(key, SHA256HASH, rgComputedHash, 
+    if(!RSASign(key, SHA256HASH, rgComputedHash, 
                                  &size, rgSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: sign fails\n");

@@ -37,7 +37,7 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
 $(B)/cryptUtility.o: $(S)/cryptUtility.cpp $(S)/cryptUtility.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -I $(TPM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -I $(TPM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
 
 $(B)/cryptSupport.o: $(S)/cryptSupport.cpp $(S)/cryptSupport.h $(SCC)/jlmcrypto.h $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -I$(TPM) -c -o $(B)/cryptSupport.o $(S)/cryptSupport.cpp

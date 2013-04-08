@@ -20,13 +20,6 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-#include "jlmTypes.h"
-#include "tinyxml.h"
-#include "bignum.h"
-#include "modesandpadding.h"
-
-#include "time.h"
-
 
 // --------------------------------------------------------------------------
 
@@ -36,17 +29,20 @@
 
 #include "jlmTypes.h"
 #include "jlmUtility.h"
-#include "jlmCrypto.h"
+#include "keys.h"
+#include "jlmcrypto.h"
 #include "tinyxml.h"
 
 
-bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
+bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                       byte* out, bool fFast=false);
 bool        RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
-bool        RSASha256Sign(RSAKey& key, int hashType, byte* hash, 
+bool        RSASign(RSAKey& key, int hashType, byte* hash, 
                                        int* psizeout, byte* out);
-bool        RSASha256Verify(RSAKey& key, int hashType, byte* hash, byte* in);
+bool        RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in);
 bool        RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
-bool        RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
+bool        RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
+                      byte* out, bool fFast=false);
 
 RSAKey*     RSAGenerateKeyPair(int keySize);
 RSAKey*     RSAKeyfromKeyInfoNode(TiXmlNode* pNode);
@@ -58,16 +54,27 @@ int         timeCompare(struct tm& time1, struct tm& time2);
 char*       stringtimefromtimeInfo(struct tm* timeinfo);
 struct tm*  timeNow();
 bool        timeInfofromstring(const char szTime, struct tm& thetime);
+bool        checktimeinInterval(tm& time, tm& begin, tm& end);
+
+bool        sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);
+KeyInfo*    ReadKeyfromFile(const char* szKeyFile);
 
 int         maxbytesfromBase64string(int nc);
 int         maxcharsinBase64stringfrombytes(int nb);
 bool        base64frombytes(int nb, byte* in, int* pnc, char* out);
 bool        bytesfrombase64(char* in, int* pnb, byte* out);
 
+char*	    XMLCanonicalizedString(const char* szXML);
+
+
 bool        XMLenclosingtypefromelements(const char* tag, int numAttr, 
                                    const char** attrName, const char** attrValues, 
                                    int numElts, const char** elts, 
                                    int* psize, char* buf);
+
+bool        VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key, 
+                                                  char* szsignedInfo, 
+                                                  char* szSigValue);
 
 bool        VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key, 
                                                   char* szsignedInfo, 

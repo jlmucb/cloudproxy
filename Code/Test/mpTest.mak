@@ -6,10 +6,10 @@ SCD=	    ../newjlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-#CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D DEBUGUDIV
-#CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST -D DEBUGUDIV
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
-CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST -D TEST
+#CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D DEBUGUDIV -D TEST
+#CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST -D DEBUGUDIV -D TEST
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST 
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST 
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -19,7 +19,7 @@ tobjs=  $(B)/mpTest.o $(B)/logging.o $(B)/mpBasicArith.o  $(B)/mpModArith.o \
 	$(B)/mpNumTheory.o $(B)/modesandpadding.o $(B)/cryptoHelper.o \
 	$(B)/aes.o $(B)/sha256.o $(B)/jlmcrypto.o $(B)/hmacsha256.o \
 	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
-	$(B)/jlmUtility.o $(B)/keys.o $(B)/fastArith.o
+	$(B)/sha1.o $(B)/jlmUtility.o $(B)/keys.o $(B)/fastArith.o
 
 all: $(E)/mpTest.exe
 
@@ -28,7 +28,7 @@ $(E)/mpTest.exe: $(tobjs)
 	$(LINK) -o $(E)/mpTest.exe $(tobjs)
 
 $(B)/mpTest.o: mpTest.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -c -o $(B)/mpTest.o mpTest.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -D TEST -c -o $(B)/mpTest.o mpTest.cpp
 
 $(B)/jlmErrors.o: $(SC)/jlmErrors.cpp $(SC)/jlmErrors.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/jlmErrors.o $(SC)/jlmErrors.cpp
@@ -48,11 +48,14 @@ $(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
 
+$(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha1.o $(SCC)/sha1.cpp
+
 $(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
 
-$(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -c -o $(B)/keys.o $(SCC)/keys.cpp
+$(B)/keys.o: $(SCD)/keys.cpp $(SCD)/keys.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -D TEST -c -o $(B)/keys.o $(SCD)/keys.cpp
 
 $(B)/jlmUtility.o : $(SC)/jlmUtility.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -I$(SCD) -I$(SCC) -I$(SBM) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp

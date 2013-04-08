@@ -1059,15 +1059,21 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 #endif
 
     // Loop through the digits
-    for(i=(scaledA-1); i>=(scaledB-1); i--) {
+    for(;;) {
+        i= mpWordsinNum(bnTempA.mpSize(), bnTempA.m_pValue);
+        if(i<scaledB)
+            break;
+        i--;    // position of high order digit of current divisor
 
         // top scaledB digits of A>=B
         if(rgtA[i]>uBHi || 
-	       (rgtA[i]==uBHi && notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB))) {
+               (rgtA[i]==uBHi && notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB))) {
             k= i-scaledB+1;  // position of quotient digit
             EstimateQuotient(&uQ, 0ULL, rgtA[i], rgtA[i-1], uBHi, uBLo);
 #ifdef DEBUGUDIV
-            fprintf(g_logFile, "top scaledB digits of A>=B, quotient digit\n", k);
+            fprintf(g_logFile, "top scaledB digits of A>=B, top position: %d, quotient position: %d\n",
+                    i, k);
+            fprintf(g_logFile, "top positions of current A: %016lx %016lx\n", rgtA[i], rgtA[i-1]);
             fprintf(g_logFile, "Quotient digit estimate is rgQ[%d]= %016lx\n", k, uQ);
 #endif
             while(uQ>0) {
@@ -1085,7 +1091,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 
 #ifdef DEBUGUDIV
             fprintf(g_logFile, "rgQ[%d]= %016lx\n", k, uQ);
-            fprintf(g_logFile, "New tempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
+            fprintf(g_logFile, "TempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
 #endif
             continue;
         }
@@ -1094,7 +1100,9 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
         // dividing scaledB+1 digit number by scaledB digit number
         k= i-scaledB;
 #ifdef DEBUGUDIV
-        fprintf(g_logFile, "top scaledB digits of A<B, quotient digit\n", k);
+        fprintf(g_logFile, "top scaledB digits of A<B, top position: %d, quotient digit: %d\n",
+                i, k);
+        fprintf(g_logFile, "top positions of current A: %016lx %016lx\n", rgtA[i], rgtA[i-1]);
 #endif
         if(k<0)
             break;
@@ -1115,10 +1123,9 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
         }
         mpUSubFrom(bnTempA, bnTempC);
         rgQ[k]= uQ; 
-        i--;
 #ifdef DEBUGUDIV
         fprintf(g_logFile, "Two digit rgQ[%d]= %016lx\n", k, uQ);
-        fprintf(g_logFile, "New tempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "TempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
 #endif
     }
 

@@ -66,45 +66,22 @@ int   s_isGreaterThan= s_iIsGreaterThan;
 
 // ---------------------------------------------------------------------------------
 
-#if 0
-int     iRandDev= -1;
+
+struct genRSATest {
+    const char*   m_szComment;
+    const char*   m_szE;
+    const char*   m_szP;
+    const char*   m_szQ;
+};
 
 
-bool initCryptoRand()
-{
-    iRandDev= open("/dev/urandom", O_RDONLY);
-    if(iRandDev<0)
-        return false;
-    return true;
-}
+genRSATest  rgCases[] = {
+{ "Bug 1", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=",
+"gRkcZgx2jDYWhnCIImmD07tCxPrYENos7wnQCY0z9g1hsItQY8eKCykJ9DcVOqEY0DGQfEPSHDpez3X+BWyjxQ==",
+"+no9z0cOuoNSPAmLSPEhG8S0XtbeAwB5vVDpOBGQsxzbn1xtoiqyA5vL6ztCiI8H4McUNVaeSgnGdk8IQI5cl3=="},
+};
 
 
-bool closeCryptoRand()
-{
-    if(iRandDev>=0) {
-        close(iRandDev);
-    }
-    iRandDev= -1;
-    return true;
-}
-
-
-bool getCryptoRandom(int iNumBits, byte* buf)
-{
-    int     iSize= (iNumBits+NBITSINBYTE-1)/NBITSINBYTE;
-
-    if(iRandDev<0) {
-        return false;
-    }
-    int iSize2= read(iRandDev, buf, iSize);
-    if(iSize2==iSize) {
-        return true;
-    }
-    printf("getCryptoRandom returning false %d bytes instead of %d\n", 
-            iSize2, iSize);
-    return false;
-}
-#endif
 
 
 // ---------------------------------------------------------------------------------
@@ -488,6 +465,46 @@ bool copytests()
 }
 
 
+bool keygenrestoretest()
+{
+    bool    fRet= true;
+    RSAKey* pKey= RSAGenerateKeyPair(1024);
+    if(pKey==NULL) {
+        printf("keygenrestoretest: cant generate key\n");
+        return false;
+    }
+
+    printf("keygenrestoretest:\n");
+    pKey->printMe();
+    printf("\n");
+
+    char* szKey= pKey->SerializetoString();
+    if(szKey==NULL) {
+	printf("keygenrestoretest: can't serialize key\n");
+	return false;
+    }
+    if(!saveBlobtoFile("keytest.xml", (byte*) szKey, strlen(szKey)+1)) {
+	printf("keygenrestoretest: can't save key\n");
+	return false;
+    }
+
+    printf("reading key\n");
+    fflush(stdout);
+    RSAKey* pKeyAgain= (RSAKey*)ReadKeyfromFile("keytest.xml");
+    if(pKeyAgain==NULL) {
+	printf("keygenrestoretest: can't reread key\n");
+	return false;
+    }
+
+    printf("keygenrestoretest reprinting key:\n");
+    fflush(stdout);
+    pKey->printMe();
+    printf("\n");
+
+    return fRet;
+}
+
+
 bool maxbittests()
 {
     bool    fRet= true;
@@ -693,7 +710,7 @@ bool usinglemulttests()
 bool usinglemultandshifttests()
 {
     bool    fRet= true;
-    bnum    bnOut(10);
+    bnum    bnOut(128);
     int     i;
     int     i1;
     int     param1;
@@ -701,12 +718,12 @@ bool usinglemultandshifttests()
 
     printf("usinglemultandshifttestData, %d tests\n", 
            (int)(sizeof(usinglemultandshifttestData)/sizeof(testinit)));
-    for(i=0;i<(int)(sizeof(usinglemultandshifttestData)/sizeof(testinit)); i++) {
+    for(i=0;i<(int)(sizeof(usinglemultandshifttestData)/sizeof(testinit))-1; i++) {
         mpZeroNum(bnOut);
         i1= usinglemultandshifttestData[i].in1;
         param1= usinglemultandshifttestData[i].iparameter;
         param2= usinglemultandshifttestData[i].uparameter;
-        mpUSingleMultAndShift(*rgbn[i1], param2, param1, bnOut);
+        // mpUSingleMultAndShift(*rgbn[i1], param2, param1, bnOut);
         printf("%d ", i+1); 
         printNum(*rgbn[i1]); 
         printf("\n  *  %016lx << %d =\n  ", param2, param1); 
@@ -807,6 +824,13 @@ bool udividetests()
         return false;
     }
 
+    int lR= mpWordsinNum(bnR.mpSize(), bnR.m_pValue);
+    int lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
+    if(lR>lB) {
+        printf("umultdiv error: remainder larger than divisor\n");
+        return false;
+    }
+
     if(mpUCompare(bnA, bnY)==s_isEqualTo)
         return true;
 
@@ -886,20 +910,24 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
     bnum    bnD(128);
 
     //      a=bq+r
+#ifdef PRINTNUMS
     printf("umultdiv\n");
     printNum(bnA); printf("\n");
     printf("divided by\n");
     printNum(bnB); printf("\n");
+#endif
     
     if(!mpUDiv(bnA, bnB, bnQ, bnR)) {
         printf("umultdiv: mpUDiv fails\n");
         return false;
     }
 
+#ifdef PRINTNUMS
     printf("quotient\n");
     printNum(bnQ); printf("\n");
     printf("remainder\n");
     printNum(bnR); printf("\n");
+#endif
 
     if(!mpUMult(bnQ, bnB, bnX)) {
         printf("umultdiv: mpUMult failed\n");
@@ -913,6 +941,7 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
     if(mpUCompare(bnA, bnY)!=s_isEqualTo) {
         printf("umultdiv: a!=bq+r\n");
         printf("A\n"); printNum(bnA); printf("\n");
+        printf("B\n"); printNum(bnB); printf("\n");
         printf("X\n");printNum(bnX); printf("\n");
         printf("Y\n");printNum(bnY); printf("\n\n");
         mpZeroNum(bnD);
@@ -921,7 +950,9 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
         return false;
     }
 
-    printf("umultdiv succeeded\n\n");
+#if 0
+    printf("umultdiv succeeded\n");
+#endif
     return true;
 }
 
@@ -1113,6 +1144,64 @@ bool multiplydividetests()
 bool gcdtests()
 {
     bool    fRet= true;
+    int     i;
+    int     lP, lQ, lE;
+    byte    rgP[2048];
+    byte    rgQ[2048];
+    byte    rgE[2048];
+    bnum    bnP(128);
+    bnum    bnPM1(128);
+    bnum    bnQ(128);
+    bnum    bnQM1(128);
+    bnum    bnOrder(128);
+    bnum    bnE(128);
+    bnum    bnG(128);
+    bnum    bnX(128);
+    bnum    bnY(128);
+
+    printf("gcdtests, %d tests\n", (int)(sizeof(rgCases)/sizeof(genRSATest)));
+
+    for(i=0;i<(int)(int)(sizeof(rgCases)/sizeof(genRSATest)); i++) {
+
+        // base64 convert m_szE, m_szP, m_szQ
+        lP= 2048;
+        lQ= 2048;
+        lE= 2048;
+        
+        if(!bytesfrombase64((char*)rgCases[i].m_szE, &lE, rgE)) {
+            printf("gcdtests: E conversion failed\n");
+            return false;
+        }
+        if(!bytesfrombase64((char*)rgCases[i].m_szP, &lP, rgP)) {
+            printf("gcdtests: P conversion failed\n");
+            return false;
+        }
+        if(!bytesfrombase64((char*)rgCases[i].m_szQ, &lQ, rgQ)) {
+            printf("gcdtests: Q conversion failed\n");
+            return false;
+        }
+
+        memcpy((byte*)bnE.m_pValue, rgE, lE);
+        memcpy((byte*)bnP.m_pValue, rgP, lP);
+        memcpy((byte*)bnQ.m_pValue, rgQ, lQ);
+
+        // Order= (P-1)(Q-1)
+        mpUSub(bnP, g_bnOne, bnPM1);
+        mpUSub(bnQ, g_bnOne, bnQM1);
+        mpUMult(bnPM1, bnQM1, bnOrder);
+
+        // X E+Y Order= G
+        if(!mpExtendedGCD(bnE, bnOrder, bnX, bnY, bnG)) {
+            printf("gcdtests: gcd failed\n");
+            return false;
+        }
+    printf("E     : "); printNum(bnE); printf("\n");
+    printf("Order : "); printNum(bnOrder); printf("\n");
+    printf("X     : "); printNum(bnX); printf("\n");
+    printf("Y     : "); printNum(bnY); printf("\n");
+    printf("GCD   : "); printNum(bnG); printf("\n");
+    printf("\n");
+    }
 
     return fRet;
 }
@@ -1166,49 +1255,72 @@ bool primeGentests()
 }
 
 
+bool singlersaTest(RSAKey* pKey, int sizein, byte* in, bool fFast=false)
+{
+    bool    fRet= true;
+    byte    out[1024];
+    byte    recovered[1024];
+    int     m, n;
+
+    n= 1024;
+    if(!RSASeal(*pKey, sizein, in, &n, out)) {
+        printf("singlersaTest: RSASeal failed\n");
+        fRet= false;
+        goto done;
+    }
+    m= 1024;
+    if(!RSAUnseal(*pKey, n, out, &m, recovered, fFast)) {
+        printf("singlersaTest: RSAUnseal failed\n");
+        fRet= false;
+        goto done;
+    }
+    printf("RSAUnseal returns %d bytes\n", m);
+    if(memcmp(in, recovered, sizein)!=0) {
+        printf("singlersaTest: input and recovered dont match\n");
+        fRet= false;
+    }
+
+done:
+    return fRet;
+}
+
+
 bool rsaTests()
 {
     bool    fRet= true;
     int     i;
-    int     n;
-    int     m;
     RSAKey* pKey= RSAGenerateKeyPair(1024);
     byte    testmessage[32]= { 
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04};
-    byte    out[1024];
-    byte    recovered[1024];
     u64*    pU= (u64*) testmessage;
 
     if(pKey==NULL) {
         printf("rsaTests: cant generate key\n");
         return false;
     }
+#ifdef TEST
     pKey->printMe();
     printf("\n");
-
+#endif
 
     for (i=0; i<100; i++) {
-        n= 1024;
-        if(!RSASeal(*pKey, 32, testmessage, &n, out)) {
-            printf("rsaTests: RSASeal failed\n");
+        if(singlersaTest(pKey, 32, testmessage, i>75))
+            fprintf(g_logFile, "singlersaTest %d passed\n", i);
+        else {
             fRet= false;
-            continue;
-        }
-        m= 1024;
-        if(!RSAUnseal(*pKey, n, out, &m, recovered)) {
-            printf("rsaTests: RSAUnseal failed\n");
-            fRet= false;
-            continue;
-        }
-        printf("RSAUnseal returns %d bytes\n", m);
-        if(memcmp(testmessage, recovered, 32)!=0) {
-            printf("rsaTests: input and recovered dont match\n");
-            fRet= false;
+            fprintf(g_logFile, "singlersaTest %d failed\n", i);
         }
         (*pU)++;
+    }
+
+    if(!fRet) {
+        char* szKey= pKey->SerializetoString();
+        if(szKey!=NULL)
+            saveBlobtoFile("FailedRSAKey", (byte*) szKey, strlen(szKey)+1);
+        printf("wrote FailedRSAKey\n");
     }
 
     return fRet;
@@ -1247,7 +1359,9 @@ int main(int an, char** av)
                     printf("getCryptoRandom cant generate enough bits\n");
                     break;
                 }
-                write(iWrite, buf, 8192);
+                if(write(iWrite, buf, 8192)) {
+                    printf("write failed\n");
+                }
                 num-= 8192;
             }
             close(iWrite);
@@ -1256,21 +1370,14 @@ int main(int an, char** av)
         }
     }
 
-
     try {
         printf("mpTest\n\n");
 
+	if(!keygenrestoretest())
+	    throw("Keytest failed");
+
         if(!udividetests()) 
             throw((char*)"special test fails");
-
-        if(!rsaTests()) {
-            printf("rsaTests succeeded\n");
-        }
-        else {
-            fAllTests= false;
-            printf("rsaTests failed\n");
-            throw("Stop");
-        }
 
         if(!initNums()) {
             throw((char*)"Cant init numbers");
@@ -1524,6 +1631,14 @@ int main(int an, char** av)
             printf("primeGentests failed\n");
         }
         printf("\n");
+
+        if(rsaTests()) {
+            printf("rsaTests succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("rsaTests failed\n");
+        }
 
         if(fAllTests)
             printf("\nTests completed, all tests PASSED\n");

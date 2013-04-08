@@ -1936,8 +1936,8 @@ int main(int an, char** av)
     initLog(NULL);
 
 #ifdef  TEST
-    fprintf(g_logFile, "sellerClient test\n");
-    fflush(g_logFile);
+    //fprintf(g_logFile, "sellerClient test\n");
+    //fflush(g_logFile);
 #endif
 
     UNUSEDVAR(result);

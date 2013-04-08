@@ -38,7 +38,7 @@
 #include "fileHash.h"
 #include "mpFunctions.h"
 #include "modesandpadding.h"
-#include "rsaHelper.h"
+#include "cryptoHelper.h"
 #include "cryptSupport.h"
 #include "hashprep.h"
 #include "encapsulate.h"
@@ -57,7 +57,6 @@
 #define SIGN                       2
 #define CANONICAL                  3
 #define VERIFY                     4
-#define RSATEST                    5
 #define MAKEPOLICYFILE             6
 #define ENCRYPTFILE                7
 #define DECRYPTFILE                8
@@ -81,207 +80,13 @@
 // --------------------------------------------------------------------- 
 
 
-bool sameBigNum(int size, bnum& bnA, const char* szBase64A)  
-//size in # bytes
+
+bool GenRSAKey(int size, const char* szOutFile)
 {
-    int iOutLen= 512;
-    bnum bnB(64);
-
-    if(!fromBase64(strlen(szBase64A), szBase64A, &iOutLen, (u8*)bnB.m_pValue)) {
-        fprintf(g_logFile, "sameBigNum: Cant base64 decode A\n");
+    RSAKey* pKey= RSAGenerateKeyPair(size);
+    char*   szKeyInfo= RSAKeyInfofromKey(*pKey);
+    if(!saveBlobtoFile(szOutFile, (byte*)szKeyInfo, strlen(szKeyInfo)+1))
         return false;
-    }
-
-#ifdef OLD
-    if(mpCompare(bnA, bnB)!=s_iIsEqualTo) {
-#else
-    if(mpCompare(bnA, bnB)!=s_isEqualTo) {
-#endif
-        fprintf(g_logFile, "%d bytes output\n", iOutLen);
-        fprintf(g_logFile, "A: "); printNum(bnA); printf("\n");
-        fprintf(g_logFile, "B: "); printNum(bnB); printf("\n");
-        return false;
-        }
-    return true;
-}
-
-
-#define MAXTRY 20
-
-
-bool GenRSAKey(int size, const char*szOutFile)
-{
-    TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
-    TiXmlNode*      pNode2;
-    extern char*    szRSAKeyProto;
-    int             iOutLen= 1024;
-    char            szBase64KeyP[1024];
-    char            szBase64KeyQ[1024];
-    char            szBase64KeyM[1024];
-    char            szBase64KeyE[1024];
-    char            szBase64KeyD[1024];
-    bnum            bnP(32);
-    bnum            bnQ(32);
-    bnum            bnM(64);
-    bnum            bnPhi(64);
-    bnum            bnE(64);
-    bnum            bnD(64);
-    bnum            bnG(64);
-    int             iTry= 0;
-    bool            fGotKey;
-
-    fprintf(g_logFile, "RSAKeyGen %d bits, psize(bytes): %d, msize(bytes): %d\n", 
-            size, size/16, size/8);
-    // Set E
-    bnE.m_pValue[0]= (1ULL<<16)+1ULL;
-
-    while(iTry++<MAXTRY) {
-        fGotKey= mpRSAGen(size, bnE, bnP, bnQ, bnM, bnD, bnPhi);
-        if(fGotKey)
-            break;
-    }
-    if(!fGotKey) {
-        fprintf(g_logFile, "Cant generate key\n");
-        return false;
-    }
-
-    fprintf(g_logFile, "P: "); printNum(bnP); printf("\n");
-    fprintf(g_logFile, "Q: "); printNum(bnQ); printf("\n");
-    PrintBytes("P:", (u8*)bnP.m_pValue, size/16);
-    PrintBytes("Q:", (u8*)bnQ.m_pValue, size/16);
-    PrintBytes("M:", (u8*)bnM.m_pValue, size/8);
-    PrintBytes("E:", (u8*)bnE.m_pValue, size/8);
-    PrintBytes("D:", (u8*)bnD.m_pValue, size/8);
-
-    iOutLen= 1024;
-    if(!toBase64(size/16, (u8*)bnP.m_pValue, &iOutLen, szBase64KeyP)) {
-        fprintf(g_logFile, "Cant base64 encode P\n");
-        return false;
-    }
-    iOutLen= 1024;
-    if(!toBase64(size/16, (u8*)bnQ.m_pValue, &iOutLen, szBase64KeyQ)) {
-        fprintf(g_logFile, "Cant base64 encode Q\n");
-        return false;
-    }
-    iOutLen= 1024;
-    if(!toBase64(size/8, (u8*)bnM.m_pValue, &iOutLen, szBase64KeyM)) {
-        fprintf(g_logFile, "Cant base64 encode M\n");
-        return false;
-    }
-    iOutLen= 1024;
-    if(!toBase64(size/8, (u8*)bnE.m_pValue, &iOutLen, szBase64KeyE)) {
-        fprintf(g_logFile, "Cant base64 encode E\n");
-        return false;
-    }
-    iOutLen= 1024;
-    if(!toBase64(size/8, (u8*)bnD.m_pValue, &iOutLen, szBase64KeyD)) {
-        fprintf(g_logFile, "Cant base64 encode D\n");
-        return false;
-    }
-
-    fprintf(g_logFile, "\nEncoded size: %d\n", (int)strlen(szBase64KeyM));
-    if(sameBigNum(size/16, bnP, szBase64KeyP)) {
-        fprintf(g_logFile, "P key matches\n");
-    }
-    else {
-        fprintf(g_logFile, "P key fails\n");
-        return false;
-    }
-    if(sameBigNum(size/16, bnQ, szBase64KeyQ)) {
-        fprintf(g_logFile, "Q key matches\n");
-    }
-    else {
-        fprintf(g_logFile, "Q key fails\n");
-        return false;
-    }
-    if(sameBigNum(size/8, bnM, szBase64KeyM)) {
-        fprintf(g_logFile, "M key matches\n");
-    }
-    else {
-        fprintf(g_logFile, "M key fails\n");
-        return false;
-    }
-    if(sameBigNum(size/8, bnE, szBase64KeyE)) {
-        fprintf(g_logFile, "E key matches\n");
-    }
-    else {
-        fprintf(g_logFile, "E key fails\n");
-        return false;
-    }
-    if(sameBigNum(size/8, bnD, szBase64KeyD)) {
-        fprintf(g_logFile, "D key matches\n");
-    }
-    else {
-        fprintf(g_logFile, "D key fails\n");
-        return false;
-    }
-
-    fprintf(g_logFile, "Writing: %s\n", szOutFile);
-
-    if(!doc.Parse(szRSAKeyProto)) {
-        fprintf(g_logFile, "Cant parse RSAKeyProto\n%s\n",szRSAKeyProto);
-        return false;
-    }
-
-    TiXmlElement* pRootElement= doc.RootElement();
-    TiXmlText* pNewText;
-    if(strcmp(pRootElement->Value(),"ds:KeyInfo")==0) {
-        pRootElement->SetAttribute("KeyName","KEYNAME");
-    }
-    
-    pNode= pRootElement->FirstChild();
-    while(pNode) {
-        if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"KeyType")==0) {
-                    pNewText= new TiXmlText("RSAKeyType");
-                    pNode->InsertEndChild(*pNewText);
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"ds:KeyValue")==0) {
-                pNode1= pNode->FirstChild();
-                while(pNode1) {
-                    if(strcmp(((TiXmlElement*)pNode1)->Value(),"ds:RSAKeyValue")==0) {
-                        ((TiXmlElement*) pNode1)->SetAttribute ("size", size);
-                        pNode2= pNode1->FirstChild();
-                        while(pNode2) {
-                            if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:P")==0) {
-                                TiXmlText* pNewTextP= new TiXmlText(szBase64KeyP);
-                                pNode2->InsertEndChild(*pNewTextP);
-                            }
-                            if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:Q")==0) {
-                                TiXmlText* pNewTextQ= new TiXmlText(szBase64KeyQ);
-                                pNode2->InsertEndChild(*pNewTextQ);
-                            }
-                            if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:M")==0) {
-                                TiXmlText* pNewTextM= new TiXmlText(szBase64KeyM);
-                                pNode2->InsertEndChild(*pNewTextM);
-                            }
-                            if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:E")==0) {
-                                TiXmlText* pNewTextE= new TiXmlText(szBase64KeyE);
-                                pNode2->InsertEndChild(*pNewTextE);
-                            }
-                            if(strcmp(((TiXmlElement*)pNode2)->Value(),"ds:D")==0) {
-                                TiXmlText* pNewTextD= new TiXmlText(szBase64KeyD);
-                                pNode2->InsertEndChild(*pNewTextD);
-                            }
-                            pNode2= pNode2->NextSibling();
-                        }
-                    }
-                    pNode1= pNode1->NextSibling();
-                }
-            }
-        }
-        pNode= pNode->NextSibling();
-    }
-
-    TiXmlPrinter printer;
-    doc.Accept(&printer);
-    const char* szDoc= printer.CStr();
-    fprintf(g_logFile, "Writing: %s\n", szOutFile);
-    FILE* out= fopen(szOutFile,"w");
-    fprintf(out, "%s", szDoc);
-    fclose(out);
     return true;
 }
 
@@ -414,63 +219,6 @@ bool GenKey(const char* szKeyType, const char* szOutFile)
 // --------------------------------------------------------------------
 
 
-KeyInfo* ReadKeyfromFile(const char* szKeyFile)
-{
-    KeyInfo*    pParseKey= new KeyInfo;
-    RSAKey*     pRSAKey= NULL;
-    symKey*     pAESKey= NULL;
-    KeyInfo*    pRetKey= NULL;
-    int         iKeyType;
-
-    TiXmlDocument* pDoc= new TiXmlDocument();
-    if(pDoc==NULL) {
-        fprintf(g_logFile, "Cant get new an Xml Document\n");
-        return NULL;
-    }
-
-    if(!pDoc->LoadFile(szKeyFile)) {
-        fprintf(g_logFile, "Cant load keyfile\n");
-        return NULL;
-    }
-    iKeyType= pParseKey->getKeyType(pDoc);
-
-    switch(iKeyType) {
-      case AESKEYTYPE:
-        pAESKey= new symKey();
-        if(pAESKey==NULL) {
-            fprintf(g_logFile, "Cant new symKey\n");
-            break;
-        }
-        else
-            pAESKey->m_pDoc= pDoc;
-        pAESKey->getDataFromDoc();
-        pRetKey= (KeyInfo*) pAESKey;
-        break;
-      case RSAKEYTYPE:
-        pRSAKey= new RSAKey();
-        if(pRSAKey==NULL) {
-            fprintf(g_logFile, "Cant new RSAKey\n");
-            break;
-        }
-        else
-            pRSAKey->m_pDoc= pDoc;
-        pRSAKey->getDataFromDoc();
-        pRetKey= (KeyInfo*) pRSAKey;
-        break;
-      default:
-       fprintf(g_logFile, "Unknown key type in ReadFromFile\n");
-       break;
-    }
-    delete pParseKey;
-    // Dont forget to delete pDoc;
-
-    return pRetKey;
-}
-
-
-// --------------------------------------------------------------------
-
-
 const char*   szSigHeader= 
           "<ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" Id='uniqueid'>\n";
 const char*   szSigValueBegin= "    <ds:SignatureValue>    \n";
@@ -480,516 +228,92 @@ const char*   szSigTrailer= "</ds:Signature>\n";
 
 bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, const char* szOutFile)
 {
-    int         iAlgIndex;
-    Sha256      oHash;
-    u8          rgHashValue[SHA256_DIGESTSIZE_BYTES];
-    u8          rgToSign[512];
-    char        rgBase64Sig[1024];
-    int         iSigSize= 512;
-    TiXmlNode*  pNode= NULL;
-    TiXmlNode*  pNode1= NULL;
-    char*       szToHash= NULL;
-    RSAKey*     pRSAKey= NULL;
-    char*       szKeyInfo= NULL;
-    int         iWrite= -1;
-    bool        fRet= true;
+    char*   szBuf[8192];
+    int     bufLen= 8192;
+    RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
 
-    if(szKeyFile==NULL) {
-        fprintf(g_logFile, "No Key file\n");
-        return false;
-    }
-    if(szAlgorithm==NULL) {
-        fprintf(g_logFile, "No Algorithm specifier\n");
-        return false;
-    }
-    if(szInFile==NULL) {
-        fprintf(g_logFile, "No Input file\n");
-        return false;
-    }
-    if(szOutFile==NULL) {
-        fprintf(g_logFile, "No Output file\n");
+    if(pKey==NULL) {
+        fprintf(g_logFile, "Can't get key from keyfile %s\n", szKeyFile);
         return false;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "Sign(%s, %s, %s, %s)\n", szKeyFile, szAlgorithm, szInFile, szOutFile);
-#endif
-
-    try {
-
-        pRSAKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
-        if(pRSAKey==NULL)
-            throw "Cant parse or open Keyfile\n";
-        if(((KeyInfo*)pRSAKey)->m_ukeyType!=RSAKEYTYPE) {
-            delete (KeyInfo*) pRSAKey;
-            pRSAKey= NULL;
-            throw "Wrong key type for signing\n";
-        }
-        // Signature algorithm
-        iAlgIndex= algorithmIndexFromShortName(szAlgorithm);
-        if(iAlgIndex<0)
-            throw "Unsupported signing algorithm\n";
-
-        fprintf(g_logFile, "\n");
-        pRSAKey->printMe();
-        fprintf(g_logFile, "\n");
-
-        // read input file
-        TiXmlDocument toSignDoc;
-        if(!toSignDoc.LoadFile(szInFile))
-            throw "Can't open file for signing\n";
-        
-        pNode= Search(toSignDoc.RootElement(),"ds:SignedInfo");
-        if(pNode==NULL) {
-            fprintf(g_logFile, "Can't find SignedInfo\n");
-            return false;
-        }
-
-        // Canonicalize
-        szToHash= canonicalize(pNode);
-        if(szToHash==NULL) 
-            throw "Can't canonicalize\n";
-
-        pNode1= Search(toSignDoc.RootElement(), "ds:SignatureMethod");
-        if(pNode1==NULL)
-            throw "Can't find SignatureMethod\n";
-
-        char* szAlgLongName= longAlgNameFromIndex(iAlgIndex);
-        if(szAlgLongName==NULL)
-            throw "Can't find Algorithm index\n";
-        ((TiXmlElement*) pNode1)->SetAttribute("Algorithm", szAlgLongName);
-    
-        // hash it
-        if(hashAlgfromIndex(iAlgIndex)==SHA256HASH) {
-            oHash.Init();
-            oHash.Update((byte*) szToHash , strlen(szToHash));
-            oHash.Final();
-            oHash.GetDigest(rgHashValue);
-        }
-        else 
-            throw "Unsupported hash algorithm\n";
-
-        // pad it
-        if(padAlgfromIndex(iAlgIndex)==PKCSPAD) {
-            memset(rgToSign, 0, 512);
-            if(!emsapkcspad(SHA256HASH, rgHashValue, pRSAKey->m_iByteSizeM, rgToSign)) 
-                throw "Padding failure in Signing\n";
-        }
-        else
-            throw  "Unsupported hash algorithm\n";
-
-        bnum    bnMsg(pRSAKey->m_iByteSizeM/2);
-        bnum    bnOut(pRSAKey->m_iByteSizeM/2);
-
-        iSigSize= pRSAKey->m_iByteSizeM;
-        // encrypt with private key
-        if( (pkAlgfromIndex(iAlgIndex)==RSA2048 && pRSAKey->m_iByteSizeM == 256) ||
-            (pkAlgfromIndex(iAlgIndex)==RSA1024 && pRSAKey->m_iByteSizeM == 128)) {
-
-            memset(bnMsg.m_pValue, 0, pRSAKey->m_iByteSizeM);
-            memset(bnOut.m_pValue, 0, pRSAKey->m_iByteSizeM);
-
-            revmemcpy((byte*)bnMsg.m_pValue, rgToSign, iSigSize);
-            if(iSigSize>pRSAKey->m_iByteSizeM) 
-                throw "Signing key block too small\n";
-            if((pRSAKey->m_iByteSizeM==0) || (pRSAKey->m_iByteSizeD==0))
-                throw "Signing keys not available\n";
-
-            if(!mpRSAENC(bnMsg, *(pRSAKey->m_pbnD), *(pRSAKey->m_pbnM), bnOut))
-                throw "Can't sign with private key\n";
-        }
-        else 
-            throw "Unsupported public key algorithm\n";
-
-#ifdef TEST
-        fprintf(g_logFile, "Signed output\n");
-        fprintf(g_logFile, "\tM: "); printNum(*(pRSAKey->m_pbnM)); printf("\n");
-        fprintf(g_logFile, "\tD: "); printNum(*(pRSAKey->m_pbnD)); printf("\n");
-        fprintf(g_logFile, "\tIn: "); printNum(bnMsg); printf("\n");
-        fprintf(g_logFile, "\tOut: "); printNum(bnOut); printf("\n");
-
-        bnum  bnCheck(pRSAKey->m_iByteSizeM/2);
-        mpRSAENC(bnOut, *(pRSAKey->m_pbnE), *(pRSAKey->m_pbnM), bnCheck);
-        fprintf(g_logFile, "\tCheck: "); printNum(bnCheck); printf("\n"); printf("\n");
-
-#endif
-
-        // write XML to output file
-        iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        if(iWrite<0)
-            throw "Can't open file to write signed version\n";
-
-        // Header
-        if(write(iWrite, szSigHeader, strlen(szSigHeader))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-
-        // write SignedInfo
-        if(write(iWrite, szToHash, strlen(szToHash))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-
-        // write signature value
-        if(write(iWrite, szSigValueBegin, strlen(szSigValueBegin))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-        int iOutLen= 1024;
-        if(!toBase64(pRSAKey->m_iByteSizeM, (u8*)bnOut.m_pValue, &iOutLen, rgBase64Sig))
-            throw "Cant base64 encode signature value\n";
-        if(write(iWrite, rgBase64Sig, strlen(rgBase64Sig))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-        if(write(iWrite, szSigValueEnd, strlen(szSigValueEnd))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-
-        // public key info of signer
-        szKeyInfo= pRSAKey->SerializePublictoString();
-        if(szKeyInfo==NULL)
-            throw "Can't Serialize key class\n";
-    
-        if(write(iWrite, szKeyInfo, strlen(szKeyInfo))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-        if(write(iWrite, szSigTrailer, strlen(szSigTrailer))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-
-#ifdef TEST
-        fprintf(g_logFile, "Signature written\n");
-#endif
+    if(!getBlobfromFile(szInFile, (byte*)szBuf, &bufLen)) {
+        fprintf(g_logFile, "Can't read signedInfo from %s\n", szInFile);
+        return false;
     }
-    catch(const char* szError) {
-        fRet= false;
-        fprintf(g_logFile, "Sign error: %s\n", szError);
+    szBuf[bufLen]= 0;
+    char* szSignedInfo= XMLCanonicalizedString((const char*) szBuf);
+    if(szSignedInfo==NULL) {
+        fprintf(g_logFile, "Cant canonicalize signedInfo\n");
+        return false;
     }
 
-    // clean up
-    if(iWrite>0)
-        close(iWrite);
-    if(szKeyInfo!=NULL) {
-        free(szKeyInfo);
-        szKeyInfo= NULL;
+    char* szSig= constructXMLRSASha256SignaturefromSignedInfoandKey(*pKey,
+                                                "newKey", szSignedInfo);
+    if(szSig==NULL) {
+        fprintf(g_logFile, "Cant construct signature\n");
+        return false;
     }
-    if(szToHash!=NULL) {
-        free(szToHash);
-        szToHash= NULL;
+
+    if(!saveBlobtoFile(szOutFile, (byte*)szSig, strlen(szSig)+1)) {
+        fprintf(g_logFile, "Cant save %s\n", szOutFile);
+        return false;
     }
-    if(pRSAKey!=NULL) {
-        delete pRSAKey;
-        pRSAKey= NULL;
-    }
-    return fRet;
+    return true;
 }
 
 
 bool Verify(const char* szKeyFile, const char* szInFile)
 {
-    int         iAlgIndex= 0;  // Fix: there's only one now
-    Sha256      oHash;
-    u8          rgHashValue[SHA256_DIGESTSIZE_BYTES];
-    u8          rguDecoded[1024];
-    u8          rguOut[1024];
-    TiXmlNode*  pNode= NULL;
-    TiXmlNode*  pNode1= NULL;
-    TiXmlNode*  pNode2= NULL;
+    char*   szBuf[8192];
+    int     bufLen= 8192;
+    RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
 
-    RSAKey*     pRSAKey= NULL;
-    char*       szToHash= NULL;
-    bool        fRet= true;
-
-#ifdef TEST
-    fprintf(g_logFile, "Verify(%s, %s)\n", szKeyFile, szInFile);
-#endif
-    if(szKeyFile==NULL) {
-        fprintf(g_logFile, "No Key file\n");
-        return false;
-    }
-    if(szInFile==NULL) {
-        fprintf(g_logFile, "No Input file\n");
-        return false;
-    }
-
-    try {
-
-        // read input file
-        TiXmlDocument signedDoc;
-        if(!signedDoc.LoadFile(szInFile)) 
-            throw "Can't read signed file\n";
-
-        // SignedInfo
-        pNode= Search(signedDoc.RootElement(), "ds:SignedInfo");
-        if(pNode==NULL)
-            throw "Can't find SignedInfo\n";
-        szToHash= canonicalize(pNode);
-        if(szToHash==NULL)
-            throw "Can't canonicalize\n";
-
-        // hash it
-        if(hashAlgfromIndex(iAlgIndex)==SHA256HASH) {
-            oHash.Init();
-            oHash.Update((byte*) szToHash, strlen(szToHash));
-            oHash.Final();
-            oHash.GetDigest(rgHashValue);
-        }
-        else
-            throw "Unsupported hash algorithm\n";
-
-#ifdef TEST
-            fprintf(g_logFile, "Canonical SignedInfo\n%s\n", szToHash);
-            fprintf(g_logFile, "Size hashed: %d\n", (int)strlen(szToHash));
-            PrintBytes("Hash", rgHashValue, SHA256_DIGESTSIZE_BYTES);
-            fprintf(g_logFile, "\tBytes hashed: %d\n", (int)strlen(szToHash));
-#endif
-
-        // key from keyfile
-        pRSAKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
-        if(pRSAKey==NULL) {
-            delete (KeyInfo*) pRSAKey;
-            throw "Cant parse or open Keyfile\n";
-        }
-        if(((KeyInfo*)pRSAKey)->m_ukeyType!=RSAKEYTYPE) {
-            delete (KeyInfo*) pRSAKey;
-            throw "Wrong key type for signing\n";
-        }
-
-        fprintf(g_logFile, "\n");
-        pRSAKey->printMe();
-        fprintf(g_logFile, "\n");
-
-        // signature method
-        pNode1= Search(signedDoc.RootElement(), "ds:SignatureMethod");
-        if(pNode1==NULL)
-            throw "Can't find SignatureMethod\n";
-
-        const char* szAlgorithm= ((((TiXmlElement*) pNode1)->Attribute("Algorithm")));
-        if(szAlgorithm==NULL)
-            throw "Cant get signing algorithm\n";
-        iAlgIndex= algorithmIndexFromLongName(szAlgorithm);
-        if(iAlgIndex<0)
-            throw "Unsupported signing algorithm\n";
-
-        // get SignatureValue
-        pNode1= Search(signedDoc.RootElement(), "ds:SignatureValue");
-        if(pNode1==NULL)
-            throw "Can't find SignatureValue\n";
-        pNode2= pNode1->FirstChild();
-        if(pNode2==NULL)
-            throw "Can't find SignatureValue element\n";
-
-        const char* szBase64Sign= pNode2->Value();
-        if(szBase64Sign==NULL)
-            throw "Can't get base64 signature value\n";
-        int iOutLen= 1024;
-        if(!fromBase64(strlen(szBase64Sign), szBase64Sign, &iOutLen, rguDecoded))
-            throw "Cant base64 decode signature block\n";
-
-        // decrypt with public key
-        bnum    bnMsg(pRSAKey->m_iByteSizeM/2);
-        bnum    bnOut(pRSAKey->m_iByteSizeM/2);
-    
-        if( (pkAlgfromIndex(iAlgIndex)==RSA2048 && pRSAKey->m_iByteSizeM == 256) ||
-            (pkAlgfromIndex(iAlgIndex)==RSA1024 && pRSAKey->m_iByteSizeM == 128)) {
-            if((pRSAKey->m_iByteSizeM==0) || (pRSAKey->m_iByteSizeE==0))
-                throw "Verifying keys not available\n";
-            memset(bnMsg.m_pValue, 0, pRSAKey->m_iByteSizeM);
-            memset(bnOut.m_pValue, 0, pRSAKey->m_iByteSizeM);
-            memcpy(bnMsg.m_pValue, rguDecoded, iOutLen);
-    
-            if(!mpRSAENC(bnMsg, *(pRSAKey->m_pbnE), *(pRSAKey->m_pbnM), bnOut))
-                throw "Can't sign with private key\n";
-            revmemcpy(rguOut, (byte*)bnOut.m_pValue, pRSAKey->m_iByteSizeM);
-        }
-        else 
-            throw "Unsupported public key algorithm\n";
-
-        PrintBytes("Decrypted:\n", rguOut, pRSAKey->m_iByteSizeM);
-
-#ifdef TEST
-        fprintf(g_logFile, "Decrypted signature\n");
-        fprintf(g_logFile, "\tM: "); printNum(*(pRSAKey->m_pbnM)); printf("\n");
-        fprintf(g_logFile, "\tE: "); printNum(*(pRSAKey->m_pbnE)); printf("\n");
-        fprintf(g_logFile, "\tIn: "); printNum(bnMsg); printf("\n");
-        fprintf(g_logFile, "\tOut: "); printNum(bnOut); printf("\n"); printf("\n");
-#endif
-
-        // pick alg from index
-        if(padAlgfromIndex(iAlgIndex)==PKCSPAD) 
-            fRet= emsapkcsverify(SHA256HASH, rgHashValue, pRSAKey->m_iByteSizeM, rguOut);
-        else 
-            throw "(char*) Unsupported public key algorithm\n";
-    }
-    catch(const char* szError) {
-        fRet= false;
-        fprintf(g_logFile, "Verify error: %s\n", szError);
-    }
-
-    // clean up
-    if(szToHash!=NULL) {
-        free(szToHash);
-        szToHash= NULL;
-    }
-    if(pRSAKey!=NULL) {
-        delete pRSAKey;
-        pRSAKey= NULL;
-    }
-
-    return fRet;
-}
-
-
-bool RSATest(const char* szKeyFile, const char* szInFile)
-{
-    if(szKeyFile==NULL) {
-        fprintf(g_logFile, "No Key file\n");
-        return false;
-    }
-    if(szInFile==NULL) {
-        fprintf(g_logFile, "No Input file\n");
-        return false;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "RSATest(%s, %s\n", szKeyFile, szInFile);
-#endif
-
-    KeyInfo* pKey= ReadKeyfromFile(szKeyFile);
     if(pKey==NULL) {
-        fprintf(g_logFile, "Cant parse or open Keyfile %s\n", szKeyFile);
-        return false;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "Key file retreived\n");
-#endif
-
-    if(pKey->m_ukeyType!=RSAKEYTYPE) {
-        fprintf(g_logFile, "Wrong key type for test\n");
-        return false;
-    }
-    RSAKey*     pRSAKey= (RSAKey*) pKey;
-
-    fprintf(g_logFile, "\n");
-    pRSAKey->printMe();
-    fprintf(g_logFile, "\n");
-
-    // read input file
-    TiXmlDocument theDoc;
-
-    if(!theDoc.LoadFile(szInFile)) {
-        fprintf(g_logFile, "Can't read doc file\n");
+        fprintf(g_logFile, "Can't get key from keyfile %s\n", szKeyFile);
         return false;
     }
 
-    TiXmlNode* pNode= Search(theDoc.RootElement(), "ds:SignedInfo");
+    if(!getBlobfromFile(szInFile, (byte*)szBuf, &bufLen)) {
+        fprintf(g_logFile, "Can't read signature from %s\n", szInFile);
+        return false;
+    }
+
+    TiXmlDocument doc;
+    if(!doc.Parse((const char*)szBuf)) {
+        fprintf(g_logFile, "Cant parse Signature Document\n");
+        return NULL;
+    }
+    if(doc.RootElement()==NULL) {
+        fprintf(g_logFile, "Cant get root element\n");
+        return NULL;
+    }
+    TiXmlNode* pNode= Search((TiXmlNode*) doc.RootElement(), "ds:SignedInfo");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Can't find SignedInfo\n");
+        fprintf(g_logFile, "Can't get SignedInfo\n");
         return false;
     }
-    char* szToHash= canonicalize(pNode);
-    if(szToHash==NULL) {
-        fprintf(g_logFile, "Can't canonicalize\n");
+    char* szSignedInfo= canonicalize(pNode);
+
+    pNode= Search((TiXmlNode*) doc.RootElement(), "ds:SignatureValue");
+    TiXmlNode* pNode1= pNode->FirstChild();
+    if(pNode==NULL) {
+        fprintf(g_logFile, "Can't get SignatureValue element\n");
         return false;
     }
-#ifdef TEST
-    fprintf(g_logFile, "\nCanonical SignedInfo\n%s\n", szToHash);
-#endif
-
-    // hash it
-    Sha256      oHash;
-    u8          rgHashValue[SHA256_DIGESTSIZE_BYTES];
-    u8          rguoriginalMsg[1024];
-    u8          rguencryptedMsg[1024];
-    u8          rgudecryptedMsg[1024];
-
-    oHash.Init();
-    oHash.Update((byte*) szToHash, strlen(szToHash));
-    oHash.Final();
-    oHash.GetDigest(rgHashValue);
-#ifdef TEST
-    PrintBytes("Hash", rgHashValue, SHA256_DIGESTSIZE_BYTES);
-#endif
-
-    memset(rguoriginalMsg, 0, 1024);
-    memset(rguencryptedMsg, 0, 1024);
-    memset(rgudecryptedMsg, 0, 1024);
-
-    int iEncSize= SHA256_DIGESTSIZE_BYTES;
-    if(iEncSize>pRSAKey->m_iByteSizeM)
-        iEncSize= pRSAKey->m_iByteSizeM-1;
-    memcpy(rguoriginalMsg, rgHashValue, iEncSize);
-
-    free(szToHash);
-    szToHash= NULL;
-
-    // encrypt/decrypt with public key
-    if((pRSAKey->m_iByteSizeM==0) || (pRSAKey->m_iByteSizeD==0) || (pRSAKey->m_iByteSizeE==0)) {
-        fprintf(g_logFile, "Keys not available\n");
+    if(pNode1->Value()==NULL) {
+        fprintf(g_logFile, "Can't get SignatureValue\n");
+        return false;
+    }
+    char* szSigValue= strdup(pNode1->Value());
+    if(szSigValue==NULL) {
+        fprintf(g_logFile, "Can't get zSigValuen");
         return false;
     }
 
-    bnum    bnIn(pRSAKey->m_iByteSizeM/2);
-    bnum    bnEncrypted(pRSAKey->m_iByteSizeM/2);
-    bnum    bnDecrypted(pRSAKey->m_iByteSizeM/2);
-    memcpy(bnIn.m_pValue, rguoriginalMsg, iEncSize);
-
-    bnum R(256);
-
-    fprintf(g_logFile, "About to fermat test\n");
-    if(mpTestFermatCondition(bnIn, *(pRSAKey->m_pbnP))) {
-        fprintf(g_logFile, "P passes Fermat test\n");
-        fprintf(g_logFile, "P: "); printNum(*(pRSAKey->m_pbnP)); printf("\n");
-        fprintf(g_logFile, "bnIn: "); printNum(bnIn);printf("\n");
-        }
-    else
-        fprintf(g_logFile, "P fails Fermat test\n");
-    if(mpTestFermatCondition(bnIn, *(pRSAKey->m_pbnQ))) 
-        fprintf(g_logFile, "Q passes Fermat test\n");
-    else
-        fprintf(g_logFile, "Q fails Fermat test\n");
-
-    if(!mpRSAENC(bnIn, *(pRSAKey->m_pbnE), *(pRSAKey->m_pbnM), bnEncrypted)) {
-        fprintf(g_logFile, "Can't encrypt\n");
-        return false;
-    }
-    if(!mpRSAENC(bnEncrypted, *(pRSAKey->m_pbnD), *(pRSAKey->m_pbnM), bnDecrypted)) {
-        fprintf(g_logFile, "Can't encrypt\n");
-        return false;
-    }
-    
-    fprintf(g_logFile, "\n\nOriginal:"); printNum(bnIn); printf("\n");
-    fprintf(g_logFile, "\nEncrypted:"); printNum(bnEncrypted); printf("\n");
-    fprintf(g_logFile, "\nDecrypted:"); printNum(bnDecrypted); printf("\n");
-    memcpy(rguencryptedMsg, bnEncrypted.m_pValue, pRSAKey->m_iByteSizeM);
-    memcpy(rgudecryptedMsg, bnDecrypted.m_pValue, pRSAKey->m_iByteSizeM);
-    fprintf(g_logFile, "\n\nAs Bytes\n");
-    PrintBytes("Original ", rguoriginalMsg, pRSAKey->m_iByteSizeM);
-    PrintBytes("Encrypted", rguencryptedMsg, pRSAKey->m_iByteSizeM);
-    PrintBytes("Decrypted", rgudecryptedMsg, pRSAKey->m_iByteSizeM);
-
-    int     i;
-    bool    fMatch= true;
-
-    for(i=0;i<pRSAKey->m_iByteSizeM;i++) {
-        if(rguoriginalMsg[i]!=rgudecryptedMsg[i]) {
-            fMatch= false;
-            break;
-        }
-    }
-
-    if(fMatch)
-        fprintf(g_logFile, "Test succeeds\n");
-    else
-        fprintf(g_logFile, "Test fails\n");
-
-    return true;
+    return VerifyRSASha256SignaturefromSignedInfoandKey(*pKey, szSignedInfo, szSigValue);
 }
+
 
 
 #define BUFSIZE       2048
@@ -1057,279 +381,6 @@ bool MakePolicyFile(const char* szKeyFile, const char* szOutFile, const char* sz
 
     return true;
 }
-
-
-bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
-{
-    Quote           oQuote;
-    PrincipalCert   oCert;
-    char* szCertString= readandstoreString(szCertFile);
-    char* szQuoteString= readandstoreString(szQuoteFile);
-
-    // get and parse Quote
-    if(szQuoteFile==NULL) {
-        fprintf(g_logFile, "Can't cant read quote file %s\n", szQuoteFile);
-        return false;
-    }
-    if(!oQuote.init(szQuoteString)) {
-        fprintf(g_logFile, "Can't parse quote\n");
-        return false;
-    }
-
-    // get and parse Cert
-    if(szCertFile==NULL) {
-        fprintf(g_logFile, "Can't cant read cert file %s\n", szCertFile);
-        return false;
-    }
-    if(!oCert.init(szCertString)) {
-        fprintf(g_logFile, "Can't parse cert\n");
-        return false;
-    }
-
-    // decode request
-    char* szAlg= oQuote.getQuoteAlgorithm();
-    char* szQuotedInfo= oQuote.getCanonicalQuoteInfo();
-    char* szQuoteValue= oQuote.getQuoteValue();
-    char* sznonce= oQuote.getnonceValue();
-    char* szDigest= oQuote.getcodeDigest();
-
-    if(!oCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "Can't get principal cert elements\n");
-        return false;
-    }
-
-
-    // check quote
-    RSAKey* pAIKKey= (RSAKey*) oCert.getSubjectKeyInfo();
-    if(pAIKKey==NULL) {
-        fprintf(g_logFile, "Cant get quote keyfromkeyInfo\n");
-        return false;
-    }
-
-    fprintf(g_logFile, "Quote key size: %d\n", pAIKKey->m_iByteSizeM);
-    fprintf(g_logFile, "Quote Algorithm: %s\n", szAlg);
-    fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
-    fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
-    fprintf(g_logFile, "AttestCert:\n%s\n\n", szCertString);
-    
-    return verifyXMLQuote(szAlg, szQuotedInfo, sznonce,
-                          szDigest, pAIKKey, szQuoteValue);
-}
-
-bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasurementFile)
-{
-    int     hostedMeasurementSize;
-    byte    hostedMeasurement[64];
-    int     sizetoAttest;
-    byte    toAttest[64];
-    int     sizeAttested;
-    byte    attest[4096];
-    int     sizenewattest= 2048;
-    char    newattest[2048];
-
-    char*   szToQuote= readandstoreString(sztoQuoteFile);
-    char*   szMeasurement= readandstoreString(szMeasurementFile);
-    RSAKey* pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
-
-#ifdef TEST
-    fprintf(g_logFile, "Quote\n");
-    fflush(g_logFile);
-#endif
-
-    if(szToQuote==NULL) {
-        fprintf(g_logFile, "Cant read quote file %s\n", szToQuote);
-        return false;
-    }
-    if(szMeasurement==NULL) {
-        fprintf(g_logFile, "Cant read measurement file %s\n", szMeasurement);
-        return false;
-    }
-    if(pKey==NULL) {
-        fprintf(g_logFile, "Couldn't get private key from %s\n", szKeyFile);
-        return false;
-    }
-
-    fprintf(g_logFile, "Quote: %s\n", szToQuote);
-    fprintf(g_logFile, "Measurement: %s\n", szMeasurement);
-    szMeasurement[strlen(szMeasurement)-1]= 0;
-    PrintBytes((char*)"string: ", (byte*)szMeasurement, strlen(szMeasurement));
-
-    hostedMeasurementSize= 64;
-    if(!fromBase64(strlen(szMeasurement), szMeasurement, &hostedMeasurementSize, hostedMeasurement)) {
-        fprintf(g_logFile, "Cant base64 decode measurement\n");
-        return false;
-    }
-    PrintBytes((char*)"Code Digest: ", hostedMeasurement, hostedMeasurementSize);
-
-    byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
-    byte        rgToSign[512];
-    Sha256      oHash;
-
-    // compute quote hash
-    oHash.Init();
-    oHash.Update((byte*) szToQuote, strlen(szToQuote));
-    oHash.Final();
-    oHash.GetDigest(toAttest);
-
-    // Compute quote
-    sizetoAttest= SHA256_DIGESTSIZE_BYTES;
-    PrintBytes((char*)"To attest: ", toAttest, sizetoAttest);
-    if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize,
-                        hostedMeasurement, rgQuotedHash)) {
-            fprintf(g_logFile, "Cant compute sha256 quote hash\n");
-            return false;
-        }
-    // pad
-    if(!emsapkcspad(SHA256HASH, rgQuotedHash, pKey->m_iByteSizeM, rgToSign)) {
-        fprintf(g_logFile, "emsapkcspad returned false\n");
-        return false;
-    }
-    PrintBytes((char*)"Padded: ", rgToSign, pKey->m_iByteSizeM);
-
-    // sign
-    bnum    bnMsg(pKey->m_iByteSizeM/sizeof(u64)+2);
-    bnum    bnOut(pKey->m_iByteSizeM/sizeof(u64)+2);
-    memset(bnMsg.m_pValue, 0, pKey->m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, pKey->m_iByteSizeM);
-    revmemcpy((byte*)bnMsg.m_pValue, rgToSign, pKey->m_iByteSizeM);
-
-   if(!mpRSAENC(bnMsg, *(pKey->m_pbnD), *(pKey->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "mpRSAENC returned false\n");
-        return false;
-    }
-
-    revmemcpy(attest, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    sizeAttested= pKey->m_iByteSizeM;
-    PrintBytes((char*)"Quote value: ", attest, sizeAttested);
-    if(!toBase64(sizeAttested, attest, &sizenewattest, newattest)) {
-        fprintf(g_logFile, "can't base64 encode attest\n");
-        return false;
-    }
-    fprintf(g_logFile, "Quote string\n%s\n", newattest);
-
-    mpZeroNum(bnMsg);
-    mpZeroNum(bnOut);
-    byte rgdecrypted[4096];
-    revmemcpy((byte*)bnMsg.m_pValue, attest, pKey->m_iByteSizeM);
-
-   if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "mpRSAENC returned false\n");
-        return false;
-    }
-    revmemcpy(rgdecrypted, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    PrintBytes((char*)"Decrypted\n", rgdecrypted, pKey->m_iByteSizeM);
-
-    return true;
-}
-
-
-#ifdef GCMENABLED
-bool AES128GCMEncryptFile(int filesize, int iRead, int iWrite, u8* enckey)
-{
-    gcm     oGCM;
-    int     ivSize= AES128BYTEBLOCKSIZE-sizeof(u32);
-    int     fileLeft= filesize;
-    u8      iv[AES128BYTEBLOCKSIZE];
-    u8      rgBufIn[4*AES128BYTEBLOCKSIZE];
-    u8      rgBufOut[4*AES128BYTEBLOCKSIZE];
-
-#ifdef TEST
-    fprintf(g_logFile, "GCMEncrypt\n");
-#endif
-    // init iv
-    if(!getCryptoRandom(ivSize*NBITSINBYTE, iv)) {
-        fprintf(g_logFile, "Cant generate iv\n");
-        return false;
-    }
-    memset(&iv[ivSize],0, sizeof(u32));
-
-    // init 
-    if(!oGCM.initEnc(AES128, ivSize, iv, AES128BYTEKEYSIZE, enckey, filesize, 0, AES128BYTEKEYSIZE))
-        return false;
-
-    // get and send first cipher block
-    oGCM.firstCipherBlockOut(rgBufOut);
-    write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
-
-    // read, encrypt, and write bytes
-    while(fileLeft>AES128BYTEBLOCKSIZE) {
-        if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
-            fprintf(g_logFile, "bad read\n");
-            return false;
-        }
-        oGCM.nextPlainBlockIn(rgBufIn, rgBufOut);
-        write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
-        fileLeft-= AES128BYTEBLOCKSIZE;
-    }
-
-    // final block
-    if(read(iRead, rgBufIn, fileLeft)<0) {
-        fprintf(g_logFile, "bad read\n");
-        return false;
-    }
-    int n= oGCM.lastPlainBlockIn(fileLeft, rgBufIn, rgBufOut);
-    if(n<0)
-        return false;
-
-    // write final encrypted block
-    write(iWrite, rgBufOut, n);
-
-    // write tag
-    oGCM.getTag(oGCM.m_iBlockSize, rgBufOut);
-    write(iWrite, rgBufOut, oGCM.m_iBlockSize);
-
-    return true;
-}
-
-
-bool AES128GCMDecryptFile(int filesize, int iRead, int iWrite, u8* enckey)
-{
-    gcm     oGCM;
-    int     fileLeft= filesize;
-    u8      rgBufIn[4*AES128BYTEBLOCKSIZE];
-    u8      rgBufOut[4*AES128BYTEBLOCKSIZE];
-
-#ifdef TEST
-    fprintf(g_logFile, "GCMDecrypt\n");
-#endif
-    // init 
-    if(!oGCM.initDec(AES128, AES128BYTEKEYSIZE, enckey, filesize, 0, AES128BYTEKEYSIZE))
-        return false;
-
-    // get and send first cipher block
-    if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
-        fprintf(g_logFile, "bad read\n");
-        return false;
-    }
-    oGCM.firstCipherBlockIn(rgBufIn);
-    fileLeft-= AES128BYTEBLOCKSIZE;
-
-    // read, decrypt, and write bytes
-    while(fileLeft>2*AES128BYTEBLOCKSIZE) {
-        if(read(iRead, rgBufIn, AES128BYTEBLOCKSIZE)<0) {
-            fprintf(g_logFile, "bad read\n");
-            return false;
-        }
-        oGCM.nextCipherBlockIn(rgBufIn, rgBufOut);
-        write(iWrite, rgBufOut, AES128BYTEBLOCKSIZE);
-        fileLeft-= AES128BYTEBLOCKSIZE;
-    }
-
-    // final block
-    read(iRead, rgBufIn, fileLeft);
-    int n= oGCM.lastCipherBlockIn(fileLeft, rgBufIn, rgBufOut);
-    if(n<0)
-        return false;
-
-    // write final decrypted bytes
-    if(write(iWrite, rgBufOut, n)<0) {
-        fprintf(g_logFile, "bad write\n");
-        return false;
-    }
-
-    return oGCM.validateTag();
-}
-#endif
 
 
 bool AES128CBCHMACSHA256SYMPADEncryptFile (int filesize, int iRead, int iWrite, 
@@ -1553,118 +604,6 @@ void  GetTime()
 }
 
 
-#ifdef GCMENABLED
-void printGCM(gcm& oGCM)
-{
-    fprintf(g_logFile, "BlockSize: %d, NumAuthBytes: %d, NumPlainBytes: %d, NumCipherBytes: %d, TagSize: %d\n",
-            oGCM.m_iBlockSize, oGCM.m_iNumAuthBytes, oGCM.m_iNumPlainBytes, 
-            oGCM.m_iNumCipherBytes, oGCM.m_iTagSize);
-    PrintBytes("H", oGCM.m_rguH, oGCM.m_iBlockSize);
-    PrintBytes("Y", oGCM.m_rgLastY, oGCM.m_iBlockSize);
-    PrintBytes("X", oGCM.m_rgLastX, oGCM.m_iBlockSize);
-    PrintBytes("First", oGCM.m_rguFirstBlock, oGCM.m_iBlockSize);
-    PrintBytes("Last", oGCM.m_rguLastBlocks, 2*oGCM.m_iBlockSize);
-    PrintBytes("Tag", oGCM.m_rgTag, oGCM.m_iBlockSize);
-    PrintBytes("sentTag", oGCM.m_rgsentTag, oGCM.m_iBlockSize);
-    fprintf(g_logFile, "\n");
-}
-
-
-void TestGcm()
-{
-    int     n;
-    gcm     oGCM;
-    int     ivSize= AES128BYTEBLOCKSIZE-sizeof(u32);
-    int     filesize= AES128BYTEBLOCKSIZE;
-    int     fileLeft= filesize;
-    u8      iv[AES128BYTEBLOCKSIZE];
-    u8      enckey[AES128BYTEBLOCKSIZE];
-    u8      rgBufOut[4*AES128BYTEBLOCKSIZE];
-    u8      rgplainText[10*AES128BYTEBLOCKSIZE];
-    u8      rgcipherText[10*AES128BYTEBLOCKSIZE];
-    u8      rgEy0[AES128BYTEBLOCKSIZE];
-
-#ifdef TEST
-    fprintf(g_logFile, "TestGcm\n");
-#endif
-
-#if 0
-    extern bool multmodF(u8* rguC, u8* rguA, u8* rguB, int n);
-    u8  rgA[16];
-    u8  rgB[16];
-    u8  rgC[16];
-
-    memset(rgA, 0, 16);
-    memset(rgB, 0, 16);
-    memset(rgC, 0, 16);
-    rgA[15]= 0x01;
-    rgB[0]= 0xff;
-    multmodF(rgC, rgA, rgB, 16);
-
-    fprintf(g_logFile, "\nmodmultF\n");
-    PrintBytes("\tA", rgA, 16);
-    PrintBytes("\tB", rgB, 16);
-    PrintBytes("\tC", rgC, 16);
-    fprintf(g_logFile, "\n");
-    return;
-#endif
-
-    memset(iv, 0, AES128BYTEBLOCKSIZE);
-    memset(enckey, 0, AES128BYTEBLOCKSIZE);
-    memset(rgplainText, 0, 10*AES128BYTEBLOCKSIZE);
-    memset(rgcipherText, 0, 10*AES128BYTEBLOCKSIZE);
-    memset(rgEy0, 0, AES128BYTEBLOCKSIZE);
-
-    PrintBytes("Key", enckey, AES128BYTEBLOCKSIZE);
-    fprintf(g_logFile, "\n");
-
-    // init 
-    if(!oGCM.initEnc(AES128, ivSize, iv, AES128BYTEKEYSIZE, enckey, filesize, 0, AES128BYTEKEYSIZE)) {
-        fprintf(g_logFile, "init failed\n");
-        return;
-    }
-
-    PrintBytes("Y0", oGCM.m_rgLastY, oGCM.m_iBlockSize);
-    oGCM.m_oAES.Encrypt(oGCM.m_rgLastY, rgEy0);
-    PrintBytes("EY0", rgEy0, oGCM.m_iBlockSize);
-    fprintf(g_logFile, "\n");
-    
-    printGCM(oGCM);
-
-    // get and send first cipher block
-    oGCM.firstCipherBlockOut(rgBufOut);
-    PrintBytes("first cipher block", rgBufOut, oGCM.m_iBlockSize);
-
-    u8*  puIn= rgplainText;
-    u8*  puOut= rgcipherText;
-
-    // read, encrypt, and write bytes
-    while(fileLeft>oGCM.m_iBlockSize) {
-        oGCM.nextPlainBlockIn(puIn, puOut);
-        PrintBytes("Cipher in", puIn, oGCM.m_iBlockSize);
-        PrintBytes("Cipher out", puOut, oGCM.m_iBlockSize);
-        puIn+= oGCM.m_iBlockSize;
-        puOut+= oGCM.m_iBlockSize;
-        fileLeft-= oGCM.m_iBlockSize;
-    }
-
-    // final block
-    fprintf(g_logFile, "Final block\n");
-    n= oGCM.lastPlainBlockIn(fileLeft, puIn, puOut);
-    if(n<0) {
-        fprintf(g_logFile, "lastPlainBlock failed\n");
-        return;
-    }
-    PrintBytes("last cipher block", puOut, oGCM.m_iBlockSize);
-
-    oGCM.getTag(oGCM.m_iBlockSize, rgBufOut);
-    PrintBytes("Final Tag        ", rgBufOut, oGCM.m_iBlockSize);
-
-    return;
-}
-#endif
-
-
 inline byte fromHextoVal(char a, char b)
 {
     byte x= 0;
@@ -1743,21 +682,18 @@ const char* g_aikTemplate=
 // Subject Key id
 
 
+// --------------------------------------------------------------------- 
+
+
+
 bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szOutFile)
 {
-    Sha256      oHash;
-    u8          rgHashValue[SHA256_DIGESTSIZE_BYTES];
-    u8          rgToSign[512];
-    int         iSigSize= 512;
-    char        rgBase64Sig[1024];
-    int         size= 512;
-    char        rgBase64[512];
-    TiXmlNode*  pNode= NULL;
-    char*       szToHash= NULL;
-    RSAKey*     pRSAKey= NULL;
-    char*       szKeyInfo= NULL;
-    int         iWrite= -1;
     bool        fRet= true;
+    TiXmlNode*  pNode= NULL;
+    RSAKey*     pRSAKey= NULL;
+    char        rgBase64[1024];
+    int         size= 1024;
+    char*       szToHash= NULL;
     char        szSignedInfo[4096];
 
     fprintf(g_logFile, "SignHexModulus(%s, %s, %s)\n", szKeyFile, szInFile, szOutFile);
@@ -1830,98 +766,14 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
         if(szToHash==NULL) 
             throw "Can't canonicalize\n";
 
-        // hash it
-        oHash.Init();
-        oHash.Update((byte*) szToHash , strlen(szToHash));
-        oHash.Final();
-        oHash.GetDigest(rgHashValue);
-
-        // pad it
-        memset(rgToSign, 0, 512);
-        if(!emsapkcspad(SHA256HASH, rgHashValue, pRSAKey->m_iByteSizeM, rgToSign)) 
-            throw "Padding failure in Signing\n";
-
-        bnum    bnMsg(pRSAKey->m_iByteSizeM/2);
-        bnum    bnOut(pRSAKey->m_iByteSizeM/2);
-
-        iSigSize= pRSAKey->m_iByteSizeM;
-
-        // encrypt with private key
-        memset(bnMsg.m_pValue, 0, pRSAKey->m_iByteSizeM);
-        memset(bnOut.m_pValue, 0, pRSAKey->m_iByteSizeM);
-
-        revmemcpy((byte*)bnMsg.m_pValue, rgToSign, iSigSize);
-#ifdef TEST
-        PrintBytes("from pad: ", rgToSign, iSigSize);
-        PrintBytes("As signed: ", (byte*)bnMsg.m_pValue, iSigSize);
-#endif
-        if(iSigSize>pRSAKey->m_iByteSizeM) 
-            throw "Signing key block too small\n";
-        if((pRSAKey->m_iByteSizeM==0) || (pRSAKey->m_iByteSizeD==0))
-            throw "Signing keys not available\n";
-
-        if(!mpRSAENC(bnMsg, *(pRSAKey->m_pbnD), *(pRSAKey->m_pbnM), bnOut))
-            throw "Can't sign with private key\n";
-
-#ifdef TEST
-        fprintf(g_logFile, "Signed output\n");
-        fprintf(g_logFile, "\tM: "); printNum(*(pRSAKey->m_pbnM)); printf("\n");
-        fprintf(g_logFile, "\tD: "); printNum(*(pRSAKey->m_pbnD)); printf("\n");
-        fprintf(g_logFile, "\tIn: "); printNum(bnMsg); printf("\n");
-        fprintf(g_logFile, "\tOut: "); printNum(bnOut); printf("\n");
-
-        bnum  bnCheck(pRSAKey->m_iByteSizeM/2);
-        mpRSAENC(bnOut, *(pRSAKey->m_pbnE), *(pRSAKey->m_pbnM), bnCheck);
-        fprintf(g_logFile, "\tCheck: "); printNum(bnCheck); printf("\n"); printf("\n");
-#endif
-
-        // write XML to output file
-        iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        if(iWrite<0)
-            throw "Can't open file to write signed version\n";
-
-        // Header
-        if(write(iWrite, szSigHeader, strlen(szSigHeader))<0) {
-            fprintf(g_logFile, "bad write\n");
+        char* szSignature= constructXMLRSASha256SignaturefromSignedInfoandKey(*pRSAKey,
+                                                szKeyId, szToHash);
+        if(szSignature==NULL) {
+            fprintf(g_logFile, "Can't construct signature\n");
             return false;
         }
-
-        // write SignedInfo
-        if(write(iWrite, szToHash, strlen(szToHash))<0) {
-            fprintf(g_logFile, "bad write\n");
+        if(!saveBlobtoFile(szOutFile, (byte*)szSignature, strlen(szSignature)+1))
             return false;
-        }
-
-        // write signature value
-        if(write(iWrite, szSigValueBegin, strlen(szSigValueBegin))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-        int iOutLen= 1024;
-        if(!toBase64(pRSAKey->m_iByteSizeM, (u8*)bnOut.m_pValue, &iOutLen, rgBase64Sig))
-            throw "Cant base64 encode signature value\n";
-        if(write(iWrite, rgBase64Sig, strlen(rgBase64Sig))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-        if(write(iWrite, szSigValueEnd, strlen(szSigValueEnd))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-
-        // public key info of signer
-        szKeyInfo= pRSAKey->SerializePublictoString();
-        if(szKeyInfo==NULL)
-            throw "Can't Serialize key class\n";
-    
-        if(write(iWrite, szKeyInfo, strlen(szKeyInfo))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
-        if(write(iWrite, szSigTrailer, strlen(szSigTrailer))<0) {
-            fprintf(g_logFile, "bad write\n");
-            return false;
-        }
 
 #ifdef TEST
         fprintf(g_logFile, "Signature written\n");
@@ -1932,13 +784,6 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
         fprintf(g_logFile, "Sign error: %s\n", szError);
     }
 
-    // clean up
-    if(iWrite>0)
-        close(iWrite);
-    if(szKeyInfo!=NULL) {
-        free(szKeyInfo);
-        szKeyInfo= NULL;
-    }
     if(szToHash!=NULL) {
         free(szToHash);
         szToHash= NULL;
@@ -1952,6 +797,171 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
 }
 
 
+// --------------------------------------------------------------------- 
+
+
+bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
+{
+    Quote           oQuote;
+    PrincipalCert   oCert;
+    char* szCertString= readandstoreString(szCertFile);
+    char* szQuoteString= readandstoreString(szQuoteFile);
+
+    // get and parse Quote
+    if(szQuoteFile==NULL) {
+        fprintf(g_logFile, "Can't cant read quote file %s\n", szQuoteFile);
+        return false;
+    }
+    if(!oQuote.init(szQuoteString)) {
+        fprintf(g_logFile, "Can't parse quote\n");
+        return false;
+    }
+
+    // get and parse Cert
+    if(szCertFile==NULL) {
+        fprintf(g_logFile, "Can't cant read cert file %s\n", szCertFile);
+        return false;
+    }
+    if(!oCert.init(szCertString)) {
+        fprintf(g_logFile, "Can't parse cert\n");
+        return false;
+    }
+
+    // decode request
+    char* szAlg= oQuote.getQuoteAlgorithm();
+    char* szQuotedInfo= oQuote.getCanonicalQuoteInfo();
+    char* szQuoteValue= oQuote.getQuoteValue();
+    char* sznonce= oQuote.getnonceValue();
+    char* szDigest= oQuote.getcodeDigest();
+
+    if(!oCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "Can't get principal cert elements\n");
+        return false;
+    }
+
+
+    // check quote
+    RSAKey* pAIKKey= (RSAKey*) oCert.getSubjectKeyInfo();
+    if(pAIKKey==NULL) {
+        fprintf(g_logFile, "Cant get quote keyfromkeyInfo\n");
+        return false;
+    }
+
+    fprintf(g_logFile, "Quote key size: %d\n", pAIKKey->m_iByteSizeM);
+    fprintf(g_logFile, "Quote Algorithm: %s\n", szAlg);
+    fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
+    fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
+    fprintf(g_logFile, "AttestCert:\n%s\n\n", szCertString);
+    
+    return verifyXMLQuote(szAlg, szQuotedInfo, sznonce,
+                          szDigest, pAIKKey, szQuoteValue);
+}
+
+bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasurementFile)
+{
+    int     hostedMeasurementSize;
+    byte    hostedMeasurement[64];
+    int     sizetoAttest;
+    byte    toAttest[64];
+    int     sizeAttested;
+    byte    attest[4096];
+    int     sizenewattest= 2048;
+    char    newattest[2048];
+
+    char*   szToQuote= readandstoreString(sztoQuoteFile);
+    char*   szMeasurement= readandstoreString(szMeasurementFile);
+    RSAKey* pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
+
+#ifdef TEST
+    fprintf(g_logFile, "Quote\n");
+    fflush(g_logFile);
+#endif
+
+    if(szToQuote==NULL) {
+        fprintf(g_logFile, "Cant read quote file %s\n", szToQuote);
+        return false;
+    }
+    if(szMeasurement==NULL) {
+        fprintf(g_logFile, "Cant read measurement file %s\n", szMeasurement);
+        return false;
+    }
+    if(pKey==NULL) {
+        fprintf(g_logFile, "Couldn't get private key from %s\n", szKeyFile);
+        return false;
+    }
+
+    fprintf(g_logFile, "Quote: %s\n", szToQuote);
+    fprintf(g_logFile, "Measurement: %s\n", szMeasurement);
+    szMeasurement[strlen(szMeasurement)-1]= 0;
+    PrintBytes((char*)"string: ", (byte*)szMeasurement, strlen(szMeasurement));
+
+    hostedMeasurementSize= 64;
+    if(!fromBase64(strlen(szMeasurement), szMeasurement, &hostedMeasurementSize, hostedMeasurement)) {
+        fprintf(g_logFile, "Cant base64 decode measurement\n");
+        return false;
+    }
+    PrintBytes((char*)"Code Digest: ", hostedMeasurement, hostedMeasurementSize);
+
+    byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
+    byte        rgToSign[512];
+    Sha256      oHash;
+
+    // compute quote hash
+    oHash.Init();
+    oHash.Update((byte*) szToQuote, strlen(szToQuote));
+    oHash.Final();
+    oHash.GetDigest(toAttest);
+
+    // Compute quote
+    sizetoAttest= SHA256_DIGESTSIZE_BYTES;
+    PrintBytes((char*)"To attest: ", toAttest, sizetoAttest);
+    if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize,
+                        hostedMeasurement, rgQuotedHash)) {
+            fprintf(g_logFile, "Cant compute sha256 quote hash\n");
+            return false;
+        }
+    // pad
+    if(!emsapkcspad(SHA256HASH, rgQuotedHash, pKey->m_iByteSizeM, rgToSign)) {
+        fprintf(g_logFile, "emsapkcspad returned false\n");
+        return false;
+    }
+    PrintBytes((char*)"Padded: ", rgToSign, pKey->m_iByteSizeM);
+
+    // sign
+    bnum    bnMsg(pKey->m_iByteSizeM/sizeof(u64)+2);
+    bnum    bnOut(pKey->m_iByteSizeM/sizeof(u64)+2);
+    memset(bnMsg.m_pValue, 0, pKey->m_iByteSizeM);
+    memset(bnOut.m_pValue, 0, pKey->m_iByteSizeM);
+    revmemcpy((byte*)bnMsg.m_pValue, rgToSign, pKey->m_iByteSizeM);
+
+   if(!mpRSAENC(bnMsg, *(pKey->m_pbnD), *(pKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "mpRSAENC returned false\n");
+        return false;
+    }
+
+    revmemcpy(attest, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
+    sizeAttested= pKey->m_iByteSizeM;
+    PrintBytes((char*)"Quote value: ", attest, sizeAttested);
+    if(!toBase64(sizeAttested, attest, &sizenewattest, newattest)) {
+        fprintf(g_logFile, "can't base64 encode attest\n");
+        return false;
+    }
+    fprintf(g_logFile, "Quote string\n%s\n", newattest);
+
+    mpZeroNum(bnMsg);
+    mpZeroNum(bnOut);
+    byte rgdecrypted[4096];
+    revmemcpy((byte*)bnMsg.m_pValue, attest, pKey->m_iByteSizeM);
+
+   if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "mpRSAENC returned false\n");
+        return false;
+    }
+    revmemcpy(rgdecrypted, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
+    PrintBytes((char*)"Decrypted\n", rgdecrypted, pKey->m_iByteSizeM);
+
+    return true;
+}
 
 bool QuoteTest(const char* szKeyFile, const char* szInFile)
 {
@@ -2010,6 +1020,9 @@ bool QuoteTest(const char* szKeyFile, const char* szInFile)
     
     return true;
 }
+
+
+// --------------------------------------------------------------------- 
 
 
 bool Encapsulate(const char* szCert, const char* szMetaDataFile, 
@@ -2200,7 +1213,6 @@ done:
 //  -Verify keyfile inputfile 
 //  -Hash algname inputfile outputfile
 //  -Canonical inputfile outputfile 
-//  -RSATest keyfile SignedInfoFile
 //  -PolicyCert certFile outputfile
 //  -Encrypt   keyFile inputfile outputfile
 //  -Decrypt   keyFile inputfile outputfile
@@ -2228,7 +1240,6 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -Sign keyfile rsa1024-sha256-pkcspad inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Verify keyfile inputfile\n");
             fprintf(g_logFile, "       cryptUtility -Canonical inputfile outputfile\n");
-            fprintf(g_logFile, "       cryptUtility -RSATest keyfile\n");
             fprintf(g_logFile, "       cryptUtility -PolicyCert certfile outputfile programname\n");
             fprintf(g_logFile, "       cryptUtility -Encrypt keyfile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Decrypt keyfile inputfile outputfile\n");
@@ -2289,16 +1300,6 @@ int main(int an, char** av)
             iAction= VERIFY;
             break;
         }
-        if(strcmp(av[i], "-RSATest")==0) {
-            if(an<(i+2)) {
-                fprintf(g_logFile, "Too few arguments: key-file\n");
-                return 1;
-            }
-            szKeyFile= av[i+1];
-            szInFile= av[i+2];
-            iAction= RSATEST;
-            break;
-        }
         if(strcmp(av[i], "-PolicyCert")==0) {
             if(an<(i+3)) {
                 fprintf(g_logFile, "Too few arguments: cert-file\n");
@@ -2351,12 +1352,7 @@ int main(int an, char** av)
             iAction= TIMEREPORT;
             break;
         }
-#ifdef GCMENABLED
-        if(strcmp(av[i], "-TestGCM")==0) {
-            iAction= GCMTEST;
-            break;
-        }
-#endif
+
         if(strcmp(av[i], "-HashFile")==0) {
             iAction= HASHFILE;
             szInFile= av[i+1];
@@ -2483,13 +1479,6 @@ int main(int an, char** av)
         fprintf(g_logFile, "Canonical complete\n");
     }
 
-    if(iAction==RSATEST) {
-        initCryptoRand();
-        initBigNum();
-        fRet= RSATest(szKeyFile, szInFile);
-        closeCryptoRand();
-    }
-
     if(iAction==ENCRYPTFILE) {
         initCryptoRand();
         initBigNum();
@@ -2507,12 +1496,6 @@ int main(int an, char** av)
     if(iAction==TIMEREPORT) {
         GetTime();
     }
-
-#ifdef GCMENABLED
-    if(iAction==GCMTEST) {
-        TestGcm();
-    }
-#endif
 
     if(iAction==HEXQUOTETEST) {
         initCryptoRand();
@@ -2613,31 +1596,31 @@ int main(int an, char** av)
     if(iAction==ENCAPSULATE) {
         initCryptoRand();
         initBigNum();
-	char* szCertString= readandstoreString(szKeyFile);
-	if(szCertString==NULL) {
+        char* szCertString= readandstoreString(szKeyFile);
+        if(szCertString==NULL) {
             fprintf(g_logFile, "Cant read certificate\n");
-	    return 1;
-	}
+            return 1;
+        }
         if(Encapsulate(szCertString, szMetaDataFile, szInFile, szOutFile)) {
             fprintf(g_logFile, "Encapsulate succeeds\n");
         }
         else {
             fprintf(g_logFile, "Encapsulate fails\n");
         }
-	free(szCertString);
+        free(szCertString);
         return 0;
     }
     if(iAction==DECAPSULATE) {
         initCryptoRand();
         initBigNum();
-	char* szKeyInfoString= readandstoreString(szKeyFile);
+        char* szKeyInfoString= readandstoreString(szKeyFile);
         if(Decapsulate(szKeyInfoString, szMetaDataFile, szInFile, szOutFile)) {
             fprintf(g_logFile, "Decapsulate succeeds\n");
         }
         else {
             fprintf(g_logFile, "Decapsulate fails\n");
         }
-	free(szKeyInfoString);
+        free(szKeyInfoString);
         return 0;
     }
 

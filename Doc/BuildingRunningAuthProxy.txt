@@ -14,49 +14,10 @@ In Code/authProxy
 In Code authNegoServer
     make -f authNegoServer.mak
 
-Make up an activity policy key pair and embed the public key certificate in authClient
-and authServer as with fileClient and fileServer.
 
-Generate an identity provider key pair and sign a certificate naming the public key.
-Sign an identity provider certificate with activity policy private key. 
-Generate a user key pair and sign a certificate naming the public key.
-Sign the user certificate with the identity provider private key. 
-
-Provision the user cert and private key to the client as you would a principal cert for fileClient
-along with the signed cert from the identity provider.
-
-Generate a key pair for signing tokens and sign a certificate naming the public key with the
-activity policy key.  Put the certificate in ROOT/authNegoServer/signingCert.xml and the
-private key in ROOT/authNegoServer/signingPrivateKey.xml
-Sign an identity provider certificate with activity policy private key. 
-
-Start  authNegoServer.exe
-
-authNegoServer.exe -SigningCert authNegoServer/signingCert.xml -PrivateKey authNegoServer/signingPrivateKey.xml
-
-Start authServer.exe 
-    authServer.exe initProg &
-
-authServer.exe will contact authNegoServer and get a program cert just as fileServer does, however,
-authNegoServer.exe will also transmit signingCert.xml, an encrypted copy of signingPrivateKey.xml,
-and the encryption and integrity key used to encrypt signingPrivateKey.xml sealed to the public key
-of authServer.exe.
-
-Start authClient.exe
-    authClient.exe initProg &
-
-authClient.exe will contact authNegoServer and get a program cert just as fileClient does.
-
-authServer.exe opens a port just like fileServer.
-authClient and authServer negotiate a secure channel just as fileCLient and fileServer except that
-the user cert signed by the identity provider is used in place of the user cert for file access.
-authServer accepts a single request: getToken from authClient which also provides a public key to 
-be signed.
-
-authServer validates the activityProvider-idenityProvider-user cert chain and if valid, build and signs
-a certificate naming the authClient provided public key which can be used as a short term 
-authentication cerificate.  authserver returns the signed certificate.
-
-That's it.
-
+Two scripts facilitate the execution of tests in authClient.exe; these two tests
+can be found in CODE/scripts/provisionAuthTests.sh and
+CODE/scripts/runAuthTests.sh. These two scripts can be executed from ROOT to set
+up an authServer (provisionAuthTests.sh) with a new signing key and run a set of
+tests as specified in authClient.exe.
 

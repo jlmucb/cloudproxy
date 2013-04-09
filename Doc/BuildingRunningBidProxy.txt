@@ -22,64 +22,15 @@ In Code bidNegoServer
 Make up an activity policy key pair and embed the public key certificate in bidClient, sellerClient
 and bidServer as with fileClient and fileServer.
 
-Start  bidNegoServer.exe
+Two scripts facilitate the execution of XML tests as for fileProxy. These two
+scripts can be found at CODE/scripts/provisionAuction.sh and
+CODE/scripts/runAuction.sh. The latter test assumes that there is a single XML
+test directory under bidClient/tests, and it clears out all bids from
+sellerClient/bids and bidServer/bids before running the test and checking the
+results. It also assumes that the auction id is 1.
 
-bidNegoServer.exe 
-
-Start sellerClient.exe 
-    sellerClient.exe initProg &
-
-sellerClient.exe will contact bidNegoServer and get a program cert just as fileClient does.
-
-Stop bidNegoServer.exe 
-
-Provision sellerClient's cert to bidNegoServer 
-    cp ROOT/sellerClient/cert ROOT/bidNegoServer/auctionCert.xml
-restart bidNegoServer
-
-    bidNegoServer.exe -auctionCert auctionCert.xml
-
-Generate a bidder key pair and sign a certificate naming the public key.
-Provision bidder cert and private key to the bidClient as you would a principal cert 
-for fileClient.
-
-Start  bidServer.exe
-
-    bidServer.exe -initProg &
-
-bidServer.exe will contact bidNegoServer and get a program cert just as fileServer does, however,
-bidNegoServer.exe will also transmit auctionCert.xml.
-
-Start bidClient.exe
-    bidClient.exe initProg &
-
-bidClient.exe will contact bidNegoServer and get a program cert just as fileClient does.
-
-bidServer.exe opens a port just like fileServer.
-bidClient and bidServer negotiate a secure channel just as fileClient and fileServer except that
-the bidder cert in place of the user cert for file access.
-
-bidServer accepts a single request: SubmitBid from bidClient containing a auction identifier and
-a bid.
-
-bidServer validates the activityProvider-bidder cert chain. If this chan is valid,
-bidServer generates a symmetric encryption/integrity key, and encrypts the bidders bid, 
-certificate and the time of the bid.  It seals these keys with the sellerClient public key and
-appends this to the sealed blob.   It hashes the composite blob and signs the hash with its
-private key.  It then saves the encrypted blob, sealed key, signed hash and its program 
-certificate in a single file in ROOT/bidServer/bids with a unique name.
-
-Periodically, and at the end of the auction, some process copies ROOT/bidServer/bids from
-all of the bidServers to sellerClient/bids.
-
-Start sellerClient:
-
-    sellerClient -initProg
-
-sellerClient will examine the bid and select the highest one (in the event of a tie, the highest
-bid with earliest time).  It then signs a certificate naming the auction identifier, the public key 
-of the winning bid, the bid, and the time the bid was submitted.
-
-That's it.
-
-
+Run CODE/scripts/provisionAuction.sh to set up sellerClient and bidServer for a
+set of auctions. Run CODE/scripts/runAuction.sh to run a single auction
+directory in bidClient/tests/. The python script
+CODE/scripts/createSimpleBidTest.py can be used to create a set of
+bidProxy tests with a given number of principals.

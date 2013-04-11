@@ -993,7 +993,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     int     lA= mpWordsinNum(sizeA, bnA.m_pValue);
     int     lB= mpWordsinNum(sizeB, bnB.m_pValue);
 
-    int     scaledA, scaledB;
+    int     scaledB;
     u64     uQ= 0;
     u64*    rgQ= bnQ.m_pValue;
     u64*    rgtA= NULL;
@@ -1004,6 +1004,7 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     int     compare;
 
 #ifdef DEBUGUDIV
+    int     scaledA;
     printf("mpUDiv: \n"); 
     printf("A: ");printNum(bnA);printf("\n");
     printf("B: ");printNum(bnB);printf("\n");
@@ -1048,12 +1049,12 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     bnA.mpCopyNum(bnTempA);
     UNUSEDVAR(rgtC);
 
-    scaledA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     scaledB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
     uBHi= bnB.m_pValue[scaledB-1];
     uBLo= bnB.m_pValue[scaledB-2];
 
 #ifdef DEBUGUDIV
+    scaledA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     printf("scaledA: %d, scaledB: %d, uBHi: %016lx, uBLo: %016lx\n", scaledA, scaledB, uBHi, uBLo);
     printf("tempA: "); printNum(bnTempA); printf("\n");
 #endif

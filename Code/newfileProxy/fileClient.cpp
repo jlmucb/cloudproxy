@@ -24,33 +24,36 @@
 
 
 #include "jlmTypes.h"
-#include "logging.h"
+#include "jlmUtility.h"
 #include "jlmcrypto.h"
-#include "fileClient.h"
-#include "fileTester.h"
+
 #include "session.h"
+#include "logging.h"
+
 #include "channel.h"
 #include "safeChannel.h"
 #include "channelstate.h"
+#include "tao.h"
+
 #include "bignum.h"
 #include "mpFunctions.h"
-#include "jlmUtility.h"
-#include "request.h"
 #include "sha256.h"
-#include "tinyxml.h"
-#include "rsaHelper.h"
+#include "cryptoHelper.h"
 #include "domain.h"
 #include "tcIO.h"
 #include "timer.h"
 
+#include "tinyxml.h"
+
 #include "objectManager.h"
 #include "resource.h"
-#include "tao.h"
 
+#include "fileClient.h"
+#include "fileTester.h"
+#include "request.h"
 #include "trustedKeyNego.h"
 #include "vault.h"
 #include "encryptedblockIO.h"
-#include "secPrincipal.h"
 #include "hashprep.h"
 
 #include <stdio.h>

@@ -135,9 +135,9 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
     int     size= 1024;
 
 #ifdef TEST
-    if(hashtype==SHA1HASH)
+    if(hashType==SHA1HASH)
         PrintBytes((char*)"RSAVerify hash (sha1): ", hash, 20);
-    else if(hashtype==SHA256HASH)
+    else if(hashType==SHA256HASH)
         PrintBytes((char*)"RSAVerify hash (sha256): ", hash, 32);
     PrintBytes((char*)"RSAVerify in: ", in, key.m_iByteSizeM);
 #endif

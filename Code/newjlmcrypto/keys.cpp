@@ -24,10 +24,10 @@
 #include "jlmTypes.h"
 #include "logging.h"
 #include "keys.h"
-#include "tinyxml.h"
 #include "jlmcrypto.h"
 #include "bignum.h"
 #include "mpFunctions.h"
+#include "tinyxml.h"
 
 #include <string.h>
 

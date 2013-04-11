@@ -1359,7 +1359,7 @@ int main(int an, char** av)
                     printf("getCryptoRandom cant generate enough bits\n");
                     break;
                 }
-                if(write(iWrite, buf, 8192)) {
+                if(write(iWrite, buf, 8192)<0) {
                     printf("write failed\n");
                 }
                 num-= 8192;

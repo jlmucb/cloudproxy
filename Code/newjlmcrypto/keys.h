@@ -21,19 +21,17 @@
 // to the location of the License.
 
 
-#include "jlmTypes.h"
-#include "jlmUtility.h"
-#include "tinyxml.h"
-#include "bignum.h"
-
-
 // -------------------------------------------------------------------------------
 
 
 #ifndef _KEYS__H
 #define _KEYS__H
 
+#include "jlmTypes.h"
+#include "jlmUtility.h"
 #include "algs.h"
+#include "bignum.h"
+#include "tinyxml.h"
 
 
 class KeyInfo {

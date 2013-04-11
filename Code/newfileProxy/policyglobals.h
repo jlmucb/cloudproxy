@@ -29,14 +29,14 @@
 
 #include "jlmTypes.h"
 #include "keys.h"
-#include "vault.h"
+// #include "vault.h"
 
 
 extern bool             g_globalpolicyValid;
-extern metaData	        g_theVault;
 extern PrincipalCert*   g_policyPrincipalCert;
 extern RSAKey*	    	g_policyKey;
-extern accessPrincipal* g_policyAccessPrincipal;
+// extern metaData	        g_theVault;
+// extern accessPrincipal* g_policyAccessPrincipal;
 
 #endif
 

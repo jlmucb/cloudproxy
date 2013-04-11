@@ -35,7 +35,7 @@
 #include "channel.h"
 #include "safeChannel.h"
 #include "jlmUtility.h"
-#include "vault.h"
+// #include "vault.h"
 #include "request.h"
 #include "encryptedblockIO.h"
 
@@ -94,7 +94,6 @@ Request::Request()
     m_szAction= NULL;
     m_szResourceName= NULL;
     m_szEvidence= NULL;
-    m_poAG= NULL;
 }
 
 

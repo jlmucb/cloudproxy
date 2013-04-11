@@ -30,10 +30,9 @@
 #include "jlmTypes.h"
 #include "keys.h"
 #include "sha256.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "objectManager.h"
-#include "secPrincipal.h"
-#include "resource.h"
+// #include "resource.h"
 #include "policyglobals.h"
 
 // Key sizes

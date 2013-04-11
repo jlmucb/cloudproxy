@@ -9,13 +9,13 @@ TAO=	    ../tao
 TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
-PROT=	    ../protocolChannel
+PROTO=	    ../protocolChannel
 VLT=	    ../vault
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
-CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS)
+CFLAGS=     -D LINUX -D FILECLIENT -D NEWANDREORGANIZED -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS)
 LDFLAGS          := $(RELEASE_LDFLAGS)
 O1CFLAGS=    -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
@@ -27,7 +27,7 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/aesni.o $(B)/sha256.o $(B)/sha1.o $(B)/hmacsha256.o \
 	    $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
-	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/claims.o \
+	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/cert.o $(B)/quote.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o  $(B)/request.o $(B)/resource.o \
@@ -80,11 +80,14 @@ $(B)/taoHostServices.o: $(TAO)/taoHostServices.cpp $(TAO)/tao.h
 $(B)/linuxHostsupport.o: $(TAO)/linuxHostsupport.cpp $(TAO)/linuxHostsupport.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TAO)/linuxHostsupport.cpp
 
-$(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/claims.o $(CLM)/claims.cpp
+$(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/cert.o $(CLM)/cert.cpp
 
-$(B)/request.o: $(S)/request.cpp $(S)/request.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(TAO) -I$(BSC) -I$(CLM) -I$(VLT) -c -o $(B)/request.o $(S)/request.cpp
+$(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
+
+$(B)/request.o: $(PROTO)/request.cpp $(PROTO)/request.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(TAO) -I$(BSC) -I$(CLM) -I$(S) -c -o $(B)/request.o $(PROTO)/request.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp
@@ -144,7 +147,8 @@ $(B)/fileChannel.o: $(S)/fileChannel.cpp $(S)/fileChannel.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -c -o $(B)/fileChannel.o $(S)/fileChannel.cpp
 
 $(B)/session.o: $(PROTO)/session.cpp $(PROTO)/session.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(CLM) -I$(TRS) -c -o $(B)/session.o $(PROTO)/session.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(PROTO) -I$(BSC) -I$(TAO) -I$(CLM) -I$(S) -c -o $(B)/session.o $(PROTO)/session.cpp
+# -I$(TRS) 
 
 $(B)/trustedKeyNego.o: $(TAO)/trustedKeyNego.cpp $(TAO)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/trustedKeyNego.o $(TAO)/trustedKeyNego.cpp

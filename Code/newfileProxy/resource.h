@@ -31,7 +31,7 @@
 #include "jlmTypes.h"
 #include "jlmUtility.h"
 #include "keys.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "objectManager.h"
 
 

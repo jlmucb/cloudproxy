@@ -405,8 +405,15 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
     UNUSEDVAR(sizefinalHash);	
 #endif
 
+    
+#if 0
     return RsaPkcsPadSignCheck((RSAKey*) pKeyInfo, hashType, hashFinal,
                                outLen, quoteValue);
+#else
+    bool fRet= RSAVerify(*(RSAKey*)pKeyInfo, hashType, hashFinal,
+                               quoteValue);
+    return fRet;
+#endif
 }
 
 
@@ -606,7 +613,7 @@ char*   formatSignedInfo(RSAKey* pKey,
     if(!safeTransfer(&p, &iLeft, szTemp))
         return NULL;
 
-    szSignedInfo= XMLCanonicalizedString(rgbuf);
+    szSignedInfo= XMLCanonicalizedString(rgBuf);
 
 #ifdef  QUOTETEST
     fprintf(g_logFile, "formatSignedInfo, Canonicalized: %s\n", szSignedInfo);

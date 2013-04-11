@@ -31,6 +31,9 @@
 #include "jlmUtility.h"
 #include "modesandpadding.h"
 #include "cryptoHelper.h"
+#include "rsaHelper.h"
+#include "validateEvidence.h"
+#include "mpFunctions.h"
 #include "tinyxml.h"
 
 #include <stdio.h>
@@ -40,6 +43,190 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
+
+
+// ------------------------------------------------------------------------
+
+
+bool bumpChallenge(int iSize, byte* puChallenge)
+{
+    int     ibnSize= ((iSize+sizeof(u64)-1)/sizeof(u64))*sizeof(u64);
+    bnum    bnN(ibnSize);
+
+    revmemcpy((byte*) bnN.m_pValue, puChallenge, iSize);
+    mpInc(bnN);
+    revmemcpy(puChallenge, (byte*) bnN.m_pValue, iSize);
+    
+    return true;
+}
+
+
+char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge, 
+                            int sizeChallenge)
+{
+    int     iOut= 1024;
+    byte    rgSealed[1024];
+    int     iBase64= 1024;
+    char    rgBase64[1024];
+
+#ifdef TEST
+    if(fEncrypt)
+        fprintf(g_logFile, "rsaXmlEncodeChallenge, encrypt\n");
+    else
+        fprintf(g_logFile, "rsaXmlEncodeChallenge, decrypt\n");
+    fflush(g_logFile);
+#endif
+    UNUSEDVAR(iBase64);
+    if(fEncrypt) {
+        if(!RSASeal(rgKey, sizeChallenge, puChallenge, &iOut, rgSealed)) {
+            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
+            return NULL;
+        }
+    }
+    else {
+        if(!RSAUnseal(rgKey, sizeChallenge, puChallenge, &iOut, rgSealed, false)) {
+            fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
+            return NULL;
+        }
+    }
+    iOut= 1024;
+    if(!base64frombytes(rgKey.m_iByteSizeM, rgSealed, &iBase64, rgBase64)) {
+        fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: can't base64 encode challenge\n");
+        return NULL;
+    }
+
+#ifdef TEST
+    PrintBytes("Encrypted challenge\n", rgSealed, rgKey.m_iByteSizeM);
+#endif
+    return strdup(rgBase64);
+}
+
+
+#define MAXPRINCIPALS 25
+#define BIGSIGNEDSIZE 256
+
+const char* szMsgChallenge1= "<SignedChallenges count='%d'>";
+const char* szMsgChallenge2= "\n<SignedChallenge>";
+const char* szMsgChallenge3= "\n</SignedChallenge>";
+const char* szMsgChallenge4= "\n</SignedChallenges>\n";
+
+
+char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, 
+                             byte* puChallenge, int sizeChallenge) 
+{
+    int     i;
+    char*   rgszSignedChallenges[MAXPRINCIPALS];
+    byte    rguCurrentChallenge[BIGSIGNEDSIZE];
+    int     n= 0;
+    char    szMsgHdr[64];
+    int     iSC1;
+    int     iSC2= strlen(szMsgChallenge2);
+    int     iSC3= strlen(szMsgChallenge3);
+    int     iSC4= strlen(szMsgChallenge4);
+
+    memset(rguCurrentChallenge, 0, BIGSIGNEDSIZE);
+    memcpy(rguCurrentChallenge, puChallenge, sizeChallenge);
+
+    sprintf(szMsgHdr, szMsgChallenge1, iNumKeys);
+    iSC1= strlen(szMsgHdr);
+    
+    for(i=0; i< iNumKeys; i++) {
+        rgszSignedChallenges[i]= rsaXmlEncodeChallenge(fEncrypt,
+                *rgKeys[i], rguCurrentChallenge, sizeChallenge);
+        if(rgszSignedChallenges[i]==NULL) {
+            fprintf(g_logFile, "Bad signed challenge %d\n", i);
+            return NULL;
+        }
+        n+= strlen(rgszSignedChallenges[i]);
+        if(i<(iNumKeys-1)) {
+            if(!bumpChallenge(sizeChallenge, rguCurrentChallenge)) {
+                fprintf(g_logFile, "Can't bump challenge %d\n", i);
+                return NULL;
+            }
+        }
+    }
+
+    // concatinate and return
+    n+= iSC1+iSC4+iNumKeys*(iSC2+iSC3);
+    char*   szReturn= (char*) malloc(n+1);
+    char*   p= szReturn;
+    int     iLeft= n+1;
+
+    if(szReturn!=NULL) {
+
+        if(!safeTransfer(&p, &iLeft, szMsgHdr))
+            return NULL;
+
+        for(i=0; i< iNumKeys; i++) {
+            if(!safeTransfer(&p, &iLeft, szMsgChallenge2))
+                return NULL;
+            if(!safeTransfer(&p, &iLeft, rgszSignedChallenges[i]))
+                return NULL;
+            if(!safeTransfer(&p, &iLeft, szMsgChallenge3))
+                return NULL;
+            // free(rgszSignedChallenges[i]);
+        }
+        if(!safeTransfer(&p, &iLeft, szMsgChallenge4))
+            return NULL;
+        *p= 0;
+    }
+    
+#ifdef CRYPTOTEST
+    fprintf(g_logFile, "Signed challenges: %s\n", szReturn);
+#endif
+    return szReturn;
+}
+
+
+bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rgIn,
+                int sizeNonce, byte* rgOut)
+
+{
+    int iOut= sizeNonce;
+
+    if(fEncrypt) {
+        if(!RSASeal(rgKey, sizein, rgIn, &iOut, rgOut)) {
+            return false;
+        }
+    }
+    else {
+        if(!RSAUnseal(rgKey, sizein, rgIn, &iOut, rgOut, false)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* szSig,
+                int sizeChallenge, byte* puOriginal)
+
+{
+    int     sizeunSealed= 1024;
+    byte    rgUnsealed[1024];
+    int     iOut= 1024;
+    byte    rgBase64Decoded[1024];
+
+    if(!bytesfrombase64((char*)szSig, &iOut, rgBase64Decoded)) {
+        fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: cant base64 decode\n");
+        return false;
+    }
+
+    if(fEncrypt) {
+        if(!RSASeal(rgKey, iOut, rgBase64Decoded, &sizeunSealed, rgUnsealed)) {
+            fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: cant seal\n");
+            return false;
+        }
+    }
+    else {
+        if(!RSAUnseal(rgKey, iOut, rgBase64Decoded, &sizeunSealed, rgUnsealed, false)) {
+            fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: cant unseal\n");
+            return false;
+        }
+    }
+    bool fRet= memcmp(rgUnsealed, puOriginal, sizeChallenge);
+    return fRet;
+}
 
 
 // ------------------------------------------------------------------------
@@ -260,7 +447,8 @@ bool sessionKeys::getClientCert(const char* szXml)
     // Validate cert chain
     int     rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
     void*   rgObject[2]={m_pclientCert, g_policyKey};
-    int     iChain= VerifyEvidenceList(NULL, 2, rgType, rgObject, NULL);
+
+    int     iChain= VerifyChain(*g_policyKey, "", NULL, 2, rgType, rgObject);
     if(iChain<0) {
         fprintf(g_logFile, "sessionKeys::getClientCert: Invalid client certificate chain\n");
         return false;
@@ -305,7 +493,8 @@ bool sessionKeys::getServerCert(const char* szXml)
     int     rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
     void*   rgObject[2]={m_pserverCert, g_policyKey};
     extern  bool revoked(const char*, const char*);
-    int     iChain= VerifyEvidenceList(NULL, 2, rgType, rgObject, NULL);
+    int     iChain= VerifyChain(*g_policyKey, "", NULL, 2, rgType, rgObject);
+
     if(iChain<0) {
         fprintf(g_logFile, "sessionKeys::getServerCert: Invalid server certificate chain\n");
         return false;
@@ -448,7 +637,8 @@ bool sessionKeys::initializePrincipalPrivateKeys()
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ds:KeyInfo")==0) {
-                if(!initRSAKeyFromKeyInfo(&m_rgPrincipalPrivateKeys[iKeyList], pNode)) {
+                m_rgPrincipalPrivateKeys[iKeyList]= RSAKeyfromKeyInfoNode(pNode);
+                if(m_rgPrincipalPrivateKeys[iKeyList]==NULL) {
                     fprintf(g_logFile, "sessionKeys::initializePrincipalPrivateKeys: Cant init private key\n");
                     return false;
                 }

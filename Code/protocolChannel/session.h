@@ -2,7 +2,7 @@
 //  session.h
 //      John Manferdelli
 //
-//  Description: channel session for fileProxy and fileClient
+//  Description: channel session for server and client
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.
@@ -31,9 +31,6 @@
 #include "keys.h"
 #include "sha256.h"
 #include "cert.h"
-#include "objectManager.h"
-// #include "resource.h"
-#include "policyglobals.h"
 
 // Key sizes
 #define BIGNONCESIZE     64
@@ -47,21 +44,29 @@
 #define MAXPRINCIPALS    25
 
 
-class sessionKeys {
+class session {
 public:
+
+    //      Session setup and state variables
+
     bool            m_fClient;
+    bool            m_fAuthenticatedChanelEstablished;
     int             m_iSessionId;
-
-    bool            m_myProgramKeyValid;
-    RSAKey*         m_myProgramKey;
-
-    bool            m_myCertValid;
-    char*           m_myCert;
+    int             m_sessionState;
+    KeyInfo*        m_policyKey;
 
     bool            m_policyCertValid;
     u32             m_policyCertType;
     int             m_sizepolicyCert;
     char*           m_policyCert;
+
+
+    //      Channel setup variables
+    bool            m_myProgramKeyValid;
+    RSAKey*         m_myProgramKey;
+
+    bool            m_myCertValid;
+    char*           m_myCert;
 
     bool            m_fClientCertValid;
     char*           m_szXmlClientCert;              // Client Cert
@@ -131,9 +136,39 @@ public:
     byte            m_rguEncryptionKey2[SMALLSYMKEYSIZE];  // Confidentiality key
     byte            m_rguIntegrityKey2[SMALLSYMKEYSIZE];   // HMAC key
 
-                    sessionKeys();
-                    ~sessionKeys();
 
+                    session();
+                    ~session();
+
+    //      Session setup functions
+    bool            serverNegoMessage1(char* buf, int maxSize, int iSessionId, const char* szAlg,
+                        const char* szRand, const char* szServerCert);
+    bool            serverNegoMessage2(char* buf, int maxSize, const char* szAlg,
+                         const char* szChallenge, const char* szHash);
+    bool            serverNegoMessage3(char* buf, int maxSize, bool fSucceed);
+    bool            clientNegoMessage1(char* buf, int maxSize, const char* szAlg, const char* szRand);
+    bool            clientNegoMessage2(char* buf, int maxSize, const char* szEncPreMasterSecret,
+                                   const char* szClientCert, int iSessionId);
+    bool            clientNegoMessage3(char* buf, int maxSize, const char* szSignedHash);
+    bool            clientNegoMessage4(char* buf, int maxSize, const char* szPrincipalCerts,
+                           int principalCount, const char* szSignedChallenges);
+
+    bool            getDatafromServerMessage1(int n, char* request);
+    bool            getDatafromServerMessage2(int n, char* request);
+    bool            getDatafromServerMessage3(int n, char* request);
+    bool            getDatafromClientMessage1(int n, char* request);
+    bool            getDatafromClientMessage2(int n, char* request);
+    bool            getDatafromClientMessage3(int n, char* request);
+    bool            getDatafromClientMessage4(int n, char* request);
+
+    bool            clientprotocolNego(int fd, safeChannel& fc, 
+                                       const char* keyFile, const char* certFile);
+    bool            clientInit(const char* szPolicyCert);
+    bool            serverprotocolNego(int fd, safeChannel& fc, 
+                                       const char* keyFile, const char* certFile);
+    bool            serverInit(const char* szPolicyCert);
+
+    //      Channel negotiation functions
     void            clearKeys();
     bool            getServerCert(const char* szXml);
     bool            getClientCert(const char* szXml);
@@ -159,6 +194,7 @@ public:
     bool            checkPrincipalChallenges();
     bool            validateChannelData(bool fClient=true);
     bool            generatePreMaster();
+
 #if TEST
     void            printMe();
 #endif

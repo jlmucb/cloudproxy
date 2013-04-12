@@ -30,6 +30,7 @@
 #include "jlmTypes.h"
 #include "cert.h"
 #include "resource.h"
+#include "accessPrincipal.h"
 #include "vault.h"
 
 
@@ -80,7 +81,7 @@ public:
 class accessRequest {
 public:
     char*           m_szSubject;
-    int             m_iRequestType;
+    char*           m_szRequest;
     char*           m_szResource;
 
     accessRequest();
@@ -95,22 +96,24 @@ public:
 class accessGuard {
 public:
     bool                    m_fValid;
+    metaData*               m_pMeta;
+    session*                m_pSession;
+
     int                     m_iNumAssertions;
     assertionNode**         m_rgpAssertions;
     int                     m_iNumSubjects; 
     aList<accessPrincipal>  m_Subjects;
 
-    bool        initChannelAccess(int iNumSubj, PrincipalCert** rgpPrinc);
-    bool        permitAccess(accessRequest& req, const char* szEvidence);
     accessGuard();
     ~accessGuard();
+
+    bool        initChannelGuard(session* pSession, metaData* pMeta);
+    bool        permitAccess(accessRequest& req, const char* szEvidence);
 };
 
 
 extern bool isAnOwner(accessPrincipal* pSubject, resource* pResource);
 extern bool isPolicyPrincipal(accessPrincipal* pSubject);
-bool        initAccessGuard(sessionKeys& oKeys);
-
 
 #endif
 

@@ -70,18 +70,10 @@
 #endif
 
 
-bool             g_fTerminateServer= false;
-int              iQueueSize= 5;
-
-bool             g_globalpolicyValid= false;
-metaData         g_theVault;
-PrincipalCert*   g_policyPrincipalCert= NULL;
-RSAKey*          g_policyKey= NULL;
-accessPrincipal* g_policyAccessPrincipal= NULL;
+bool     g_fTerminateServer= false;
+int      iQueueSize= 5;
 
 #include "./policyCert.inc"
-
-accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 #ifdef TEST
 void printResources(objectManager<resource>* pRM);
@@ -107,17 +99,6 @@ theServiceChannel::~theServiceChannel()
 }
 
 
-bool theServiceChannel::initSafeChannel()
-{
-    return m_osafeChannel.initChannel(m_fdChannel, AES128, CBCMODE, HMACSHA256, 
-                          AES128BYTEKEYSIZE, AES128BYTEKEYSIZE,
-                          m_oKeys.m_rguEncryptionKey2, m_oKeys.m_rguIntegrityKey2, 
-                          m_oKeys.m_rguEncryptionKey1, m_oKeys.m_rguIntegrityKey1);
-}
-
-
-
-
 int theServiceChannel::processRequests()
 {
     byte    request[MAXREQUESTSIZEWITHPAD];
@@ -132,7 +113,7 @@ int theServiceChannel::processRequests()
 #endif
     m_serverState= REQUESTSTATE;
 
-    if(m_osafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final)<(int)sizeof(packetHdr)) {
+    if(m_oSafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final)<(int)sizeof(packetHdr)) {
         fprintf(g_logFile, "theServiceChannel::processRequests: Can't get ProcessRequest packet\n");
         return -1;
     }
@@ -159,6 +140,7 @@ int theServiceChannel::processRequests()
         key= m_pParent->m_fileKeys;
     }
 
+#if 0
     int     iRequestType= 0;
     {
         Request oReq;
@@ -223,6 +205,7 @@ int theServiceChannel::processRequests()
             return -1;
         }
     }
+#endif
 }
 
 
@@ -282,10 +265,6 @@ bool theServiceChannel::initServiceChannel()
         if(n<0)
             fprintf(g_logFile, "theServiceChannel::serviceChannel: processRequest error\n");
         fflush(g_logFile);
-#ifdef METADATATEST
-        //void metadataTest(char* szDir, m_fEncryptFiles, m_fileKeys);
-        //metadataTest(m_tcHome.m_fileNames.m_szdirectory);
-#endif
         m_pParent->printTimers(g_logFile);
         m_pParent->resetTimers();
     }
@@ -315,9 +294,8 @@ void* channelThread(void* ptr)
 
         fflush(g_logFile);
 #endif
-        if(!poSc->initServiceChannel()) {
-            fprintf(g_logFile, "channelThread: initServiceChannel failed\n");
-        }
+        if(!poSc->initServiceChannel())
+            throw("channelThread: initServiceChannel failed\n");
 
         // delete enty in thread table in parent
         if(poSc->m_myPositionInParent>=0) 
@@ -328,7 +306,8 @@ void* channelThread(void* ptr)
         fflush(g_logFile);
 #endif
         delete  poSc;
-    } catch (const char* err) {
+    } 
+    catch (const char* err) {
         fprintf(g_logFile, "Server thread exited with error: %s\n", err);
         fflush(g_logFile);
     }
@@ -393,6 +372,8 @@ bool fileServer::initPolicy()
         return false;
     }
 
+#if 0
+
 #ifdef TEST
     fprintf(g_logFile, "fileServer::initPolicy: about to initpolicy Cert\n",
             m_tcHome.m_policyKey);
@@ -431,6 +412,7 @@ bool fileServer::initPolicy()
     }
 
     g_globalpolicyValid= true;
+#endif
 #ifdef TEST
     fprintf(g_logFile, "fileServer::initPolicy, returning true\n");
     fflush(g_logFile);
@@ -601,12 +583,14 @@ bool fileServer::initServer(const char* configDirectory)
         m_tcHome.printData();
 #endif
 
+#if 0
         // Initialize resource and principal tables
-        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
+        if(!m_oMeta.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "fileServer"))
             throw "fileServer::Init: Cant init metadata\n";
-        if(!g_theVault.initFileNames())
+        if(!m_oMeta.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
+#endif
 
 #ifdef TEST
         fprintf(g_logFile, "initServer about to initPolicy();\n");

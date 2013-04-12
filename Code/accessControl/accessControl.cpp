@@ -25,18 +25,17 @@
 #include "jlmUtility.h"
 #include "logging.h"
 #include "jlmcrypto.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "resource.h"
 #include "request.h"
 #include "accessControl.h"
 #include "vault.h"
-#include "rsaHelper.h"
-
-#include "policyglobals.h"
+#include "cryptoHelper.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 
 // ----------------------------------------------------------------------------
@@ -176,10 +175,11 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     int                 n;
 
 #ifdef RULESTEST1
-        fprintf(g_logFile, "parseAssertion %s\n", szAssertion);
-        if(pPrincipalSays!=NULL)
-            fprintf(g_logFile, "%s says\n", pPrincipalSays->getName());
+    fprintf(g_logFile, "parseAssertion %s\n", szAssertion);
+    if(pPrincipalSays!=NULL)
+        fprintf(g_logFile, "%s says\n", pPrincipalSays->getName());
 #endif
+
     m_fValidated= fValidated;
     // who says
     if(pPrincipalSays!=NULL) {
@@ -195,7 +195,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     if(n<0 || n>=MAXTOKEN)
         return false;
     memcpy(szBuf, szTok, n); szBuf[n]= '\0';
-    pPrinc= g_theVault.findPrincipal(szBuf);
+    pPrinc= m_pMeta->findPrincipal(szBuf);
     // jlm READTHIS: should this really return true? That means the assertion was
     // parsed correctly but the resource in the assertion is NULL. I would think
     // that any syntactically well-formed assertion should parse and the resource
@@ -227,7 +227,7 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     if(n<0 || n>=MAXTOKEN)
         return false;
     memcpy(szBuf, szTok,n); szBuf[n]= '\0';
-    pResource= g_theVault.findResource(szBuf);
+    pResource= m_pMeta->findResource(szBuf);
     if(pResource==NULL) {
         fprintf(g_logFile, "Could not find resource %s, so not a valid assertion\n", szBuf);
         return true;
@@ -335,7 +335,7 @@ bool assertionNode::assertionSucceeds(accessPrincipal* pSubject, u32 uVerb, reso
     }
 
     fprintf(g_logFile, "About to try and check pResource %p against m_pResource %p\n", pResource, m_pResource);
-    fflush(g_logFile);	   
+    fflush(g_logFile);     
  
     if (!matchResource(pResource)) {
         fprintf(g_logFile, "resource mismatch\n");
@@ -424,6 +424,8 @@ void accessRequest::printMe()
 accessGuard::accessGuard()
 {
     m_fValid= false;
+    m_pMeta= NULL;
+    m_pSession= NULL;
     m_iNumAssertions= 0;
     m_iNumSubjects= 0; 
     m_rgpAssertions= NULL;
@@ -435,32 +437,56 @@ accessGuard::~accessGuard()
 }
 
 
-bool accessGuard::initChannelAccess(int iNumSubj, PrincipalCert** rgpPrinc)
+bool accessGuard::initChannelGuard(session* pSession, metaData* pMeta)
 {
-    accessPrincipal*        pPrincipal= NULL;
-    PrincipalCert*          pCert= NULL;
-    int                     i;
+    int                 iNumSubj;
+    PrincipalCert**     rgpPrinc;
+    accessPrincipal*    pPrincipal= NULL;
+    PrincipalCert*      pCert= NULL;
+    int                 i;
 
 #ifdef TEST  
-    fprintf(g_logFile, "initChannelAccess %d\n", iNumSubj); 
+    fprintf(g_logFile, "initChannelGuard\n");
     fflush(g_logFile);
+#endif
+    if(m_pMeta==NULL || m_pSession) {
+        fprintf(g_logFile, "initChannelGuard: missing metaData or session\n");
+        return false;
+    }
+
+#if 0
+    // register principals
+    if(m_pserverCert!=NULL) {
+        if(registerPrincipalfromCert(m_pserverCert)==NULL)
+            throw "session::clientprotocolNego: Can't register server principal\n";
+    }
+
+    if(registerPrincipalfromCert(m_pclientCert)==NULL)
+        throw "session::clientprotocolNego: Can't register client principal\n";
+
+    for(i=0;i<m_iNumPrincipals; i++) {
+        if(m_rgPrincipalCerts[i]!=NULL) {
+            if(registerPrincipalfromCert(m_rgPrincipalCerts[i])==NULL)
+                throw "session::clientprotocolNego: Can't register client principal\n";
+        }
+    }
 #endif
 
     m_iNumSubjects= iNumSubj;
     for(i=0;i< iNumSubj; i++) {
         pCert= rgpPrinc[i];
         if(pCert==NULL) {
-            fprintf(g_logFile, "initChannelAccess: NULL principal\n");
+            fprintf(g_logFile, "initChannelGuard: NULL principal\n");
             return false;
         }
-        if((pPrincipal=g_theVault.findPrincipal(pCert->getPrincipalName()))==NULL) {
+        if((pPrincipal= m_pMeta->findPrincipal(pCert->getPrincipalName()))==NULL) {
             pPrincipal= principalFromCert(pCert, true);
-            if(!g_theVault.addPrincipal(pPrincipal)) {
-                fprintf(g_logFile, "initChannelAccess: can't add principal\n");
+            if(!m_pMeta->addPrincipal(pPrincipal)) {
+                fprintf(g_logFile, "initChannelGuard: can't add principal\n");
                 return false;
             }
             if(pPrincipal==NULL) {
-                fprintf(g_logFile, "initChannelAccess: pPrincipal is NULL\n");
+                fprintf(g_logFile, "initChannelGuard: pPrincipal is NULL\n");
                 return false;
             }
         }
@@ -480,20 +506,21 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
     accessPrincipal*        pSubjPrincipal= NULL;
     accessPrincipal*        pSaysPrincipal= NULL;
     int                     i;
-    u32                     uVerb;
+    u32                     uVerb= 0;
 
-#ifdef RULESTEST
+#ifdef TEST
     fprintf(g_logFile, "permitAccess\n");
     req.printMe();
     fprintf(g_logFile, "szCollection: %s\n", szCollection);
 #endif
+
     if(!m_fValid) {
-        fprintf(g_logFile, "accessGuard invalid\n");
+        fprintf(g_logFile, "permitAccess: accessGuard invalid\n");
         return false;
     }
 
     // accessPrincipals should have been validated by now
-    pResource= g_theVault.findResource(req.m_szResource);
+    pResource= m_pMeta->findResource(req.m_szResource);
     if(pResource==NULL) {
         fprintf(g_logFile, "permitAccess resource is NULL\n");
         return false;
@@ -506,16 +533,20 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
     while(pSubjNode!=NULL) {
         pSubjPrincipal= pSubjNode->pElement;
         if(isAnOwner(pSubjPrincipal, pResource)) {
-            fprintf(g_logFile, "The subject %s is an owner of resource %s, so the access check passes\n", pSubjPrincipal->m_szPrincipalName, req.m_szResource);
+            fprintf(g_logFile, 
+                    "permitAccess: The subject %s is an owner of resource %s, so the access check passes\n", 
+                    pSubjPrincipal->m_szPrincipalName, req.m_szResource);
             return true;
-        }	
+        }       
         pSubjNode= pSubjNode->pNext;
     }
 
     // if request is add or delete owner, return false
-    //      only owners have this rightA
-    if(req.m_iRequestType==ADDOWNER || req.m_iRequestType==REMOVEOWNER)
+    //      only owners have this right.
+    if(req.m_iRequestType==ADDOWNER || req.m_iRequestType==REMOVEOWNER) {
+        fprintf(g_logFile, "permitAccess: no Evidence\n");
         return false;
+    }
 
     // Does evidence support access?
     if(szCollection==NULL) {
@@ -528,52 +559,47 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
     evidenceCollection  oEvidenceCollection;
 
     if(!oEvidenceCollection.parseEvidenceCollection(szCollection)) {
-        fprintf(g_logFile, "Can't parse Evidence list\n");
+        fprintf(g_logFile, "permitAccess: Can't parse Evidence list\n");
         return false;
     }
     if(!oEvidenceCollection.validateEvidenceCollection(g_policyKey)) {
-        fprintf(g_logFile, "Can't validate Evidence list\n");
+        fprintf(g_logFile, "permitAccess: Can't validate Evidence list\n");
         return false;
     }
     if(oEvidenceCollection.m_iNumEvidenceLists<1 || 
             oEvidenceCollection.m_rgiCollectionTypes[0]!=SIGNEDGRANT) {
-        fprintf(g_logFile, "No Signed grant\n");
+        fprintf(g_logFile, "permitAccess: No Signed grant\n");
         return false;
     }
     pAssert= (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[0]->m_rgEvidence[0];
 
     // map request to required access
-    switch(req.m_iRequestType) {
-      case CREATERESOURCE:
+    if(strcmp(req.m_szRequest, "createResource")==0)
         uVerb= MAYCREATE;
-        break;
-      case SENDRESOURCE:
+    else if(strcmp(req.m_szRequest, "sendResource")==0)
         uVerb= MAYWRITE;
-        break;
-      case GETRESOURCE:
+    else if(strcmp(req.m_szRequest, "getResource")==0)
         uVerb= MAYREAD;
-        break;
-      case GETOWNER :
-      case ADDOWNER :
-      case REMOVEOWNER :
+    else if(strcmp(req.m_szRequest, "getOwner")==0 || 
+            strcmp(req.m_szRequest, "addOwner")==0 ||
+            strcmp(req.m_szRequest, "removeOwner")==0)
         uVerb= MAYOWN;
-        break;
-      case DELETERESOURCE:
+    else if(strcmp(req.m_szRequest, "deleteResource")==0)
         uVerb= MAYDELETE;
-        break;
-      default:
+    else {
+        fprintf(g_logFile, "permitAccess: Unknown request\n");
         return false;
-      }
+    }
 
-#ifdef TEST
-    fprintf(g_logFile, "Checking assertions\n");
+#ifdef ACCESSTEST
+    fprintf(g_logFile, "permitAccess: Checking assertions\n");
     fflush(g_logFile);
 #endif
 
     assertionNode**  rgpAssertions= 
             (assertionNode**) malloc(sizeof(assertionNode*)*pAssert->m_iNumAssertions);
-    pSaysPrincipal= g_theVault.findPrincipal(pAssert->getPrincipalName());
-#ifdef TEST
+    pSaysPrincipal= m_pMeta->findPrincipal(pAssert->getPrincipalName());
+#ifdef ACCESSTEST
     fprintf(g_logFile, "says principal name: %s\n", pAssert->getPrincipalName());
     fflush(g_logFile);
 #endif
@@ -590,36 +616,39 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
         }
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "Finished parsing %d assertions\n", pAssert->m_iNumAssertions);
+#ifdef ACCESSTEST
+    fprintf(g_logFile, "permitAccess: Finished parsing %d assertions\n", pAssert->m_iNumAssertions);
     fflush(g_logFile);
 #endif
+
     pSubjNode= m_Subjects.pFirst;
     while(pSubjNode!=NULL) {
         pSubjPrincipal= pSubjNode->pElement;
-#ifdef TEST
+#ifdef ACCESSTEST
         fprintf(g_logFile, "Trying subject %s\n", pSubjPrincipal->m_szPrincipalName);
 #endif
         for(i = 0; i < pAssert->m_iNumAssertions; i++) {
-#ifdef TEST
+#ifdef ACCESSTEST
             fprintf(g_logFile, "trying assertion %d\n", i);
 #endif
             if(rgpAssertions[i]->assertionSucceeds(pSubjPrincipal, uVerb, pResource,
                       pAssert->m_iNumAssertions, rgpAssertions)) {
-#ifdef TEST
-                fprintf(g_logFile, "the assertion succeeds\n");
+#ifdef ACCESSTEST
+                fprintf(g_logFile, "permitAccess: The assertion succeeds\n");
                 fflush(g_logFile);
 #endif
                 return true;
-            } else {
-#ifdef TEST
-                fprintf(g_logFile, "The assertion fails\n");
+            } 
+            else {
+#ifdef ACCESSTEST
+                fprintf(g_logFile, "permitAccess: The assertion fails\n");
 #endif
             }
         }
         pSubjNode= pSubjNode->pNext;
     }
-    fprintf(g_logFile, "Finished checking assertion without finding one that succeeds\n");
+
+    fprintf(g_logFile, "permitAccess: Finished checking assertion without finding one that succeeds\n");
     fflush(g_logFile);
     return false;
 }

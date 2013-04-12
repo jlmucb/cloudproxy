@@ -1870,34 +1870,6 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
         if(!getDatafromServerMessage3(n, request))
             throw  "session::clientprotocolNego: Can't decode client message 3";
 
-#ifdef TEST
-        fprintf(g_logFile, "session::clientprotocolNego: channel data validated\n");
-#endif
-
-#if 0
-        // register principals
-        if(m_pserverCert!=NULL) {
-            if(registerPrincipalfromCert(m_pserverCert)==NULL)
-                throw "session::clientprotocolNego: Can't register server principal\n";
-        }
-#ifdef TEST
-        fprintf(g_logFile, "fileClient: server principal registered\n");
-#endif
-
-        if(registerPrincipalfromCert(m_pclientCert)==NULL)
-            throw "session::clientprotocolNego: Can't register client principal\n";
-#ifdef TEST
-        fprintf(g_logFile, "fileClient: server principal registered\n");
-#endif
-
-        for(i=0;i<m_iNumPrincipals; i++) {
-            if(m_rgPrincipalCerts[i]!=NULL) {
-                if(registerPrincipalfromCert(m_rgPrincipalCerts[i])==NULL)
-                    throw "session::clientprotocolNego: Can't register client principal\n";
-            }
-        }
-#endif
-
         m_sessionState= REQUESTSTATE;
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: protocol nego succesfully completed\n");
@@ -2161,31 +2133,12 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "session::serverprotocolNego: protocol data validated\n");
-    fflush(g_logFile);
-#endif
-
-    // register principals
-#if 0
-    if(m_pserverCert!=NULL) {
-        if(registerPrincipalfromCert(m_pserverCert)==NULL)
-            throw "session::serverprotocolNego: Can't register server principal\n";
-    }
-
-    if(m_pclientCert!=NULL) {
-        if(registerPrincipalfromCert(m_pclientCert)==NULL)
-            throw "session::serverprotocolNego: Can't register client principal\n";
-    }
-#endif
-
-#ifdef TEST
         fprintf(g_logFile, "session::serverprotocolNego: protocol negotiation complete\n");
         printMe();
         fflush(g_logFile);
 #endif
 
     m_sessionState= REQUESTSTATE;
-
     return fRet;
 }
 

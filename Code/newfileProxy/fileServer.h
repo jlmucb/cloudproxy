@@ -68,6 +68,8 @@ public:
     int                 m_sizeKey;
     byte                m_fileKeys[SMALLKEYSIZE];
 
+    metaData            m_oMeta;
+
     timer               m_sealTimer;
     timer               m_unsealTimer;
     timer               m_taoEnvInitializationTimer;
@@ -103,17 +105,15 @@ public:
 
     int                 m_serverState;
     bool                m_fChannelAuthenticated;
-    sessionKeys         m_oKeys;
-    safeChannel         m_osafeChannel;
     accessGuard         m_oAG;
+    session             m_oSession;
+    safeChannel         m_oSafeChannel;
     int                 m_myPositionInParent;
 
     theServiceChannel();
     ~theServiceChannel();
 
     bool    initServiceChannel();
-    bool    protocolNego();
-    bool    initSafeChannel();
     int     processRequests();
     bool    serviceChannel();
 };

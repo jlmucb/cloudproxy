@@ -28,7 +28,7 @@
 #define _ACCESSCONTROL__H
 
 #include "jlmTypes.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "resource.h"
 #include "vault.h"
 

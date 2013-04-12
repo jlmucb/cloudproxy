@@ -31,23 +31,28 @@
 #include "channel.h"
 #include "safeChannel.h"
 #include "session.h"
+#include "fileServices.h"
 #include "objectManager.h"
-#include "resource.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "tao.h"
 #include "timer.h"
+
+#include "resource.h"
 #include "vault.h"
 
 #include <string>
+
+
 using std::string;
+
 
 class fileClient {
 public:
-    int                 m_clientState;
-    bool                m_fChannelAuthenticated;
-
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
+
+    session             m_clientSession;
+    fileServices        m_fileServe;
 
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
@@ -59,10 +64,10 @@ public:
     int                 m_sizeKey;
     byte                m_fileKeys[SMALLKEYSIZE];
 
-    int	                m_fd;
-    sessionKeys         m_oKeys;
     char*               m_szPort;
     char*               m_szAddress;
+    int                 m_fd;
+    safeChannel         m_fc;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;
@@ -75,20 +80,20 @@ public:
     fileClient();
     ~fileClient();
 
-    bool    initClient(const char* configDirectory, const char* serverAddress, u_short serverPort);
+    bool    initClient(const char* configDirectory, const char* serverAddress, 
+                       u_short serverPort, const char* certFile, 
+                       const char* keyFile);
     bool    initPolicy();
     bool    initFileKeys();
     bool    closeClient();
-    bool    initSafeChannel(safeChannel& fc);
-    bool    protocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile);
-    bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, const char* directory, const char* serverAddress, u_short serverPort);
-    void    closeConnection(safeChannel& fc);
-    bool    createResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource);
-    bool    deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource);
-    bool    readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput);
-    bool    writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName);
-    bool    compareFiles(const string& firstFile, const string& secondFile);
+    void    closeConnection();
 
+    bool    processRequests();
+
+    bool    establishConnection(const char* keyFile, const char* certFile, 
+                    const char* directory, const char* serverAddress, 
+                    u_short serverPort);
+    bool    compareFiles(const string& firstFile, const string& secondFile);
     void    printTimers(FILE* log);
     void    resetTimers();
 };

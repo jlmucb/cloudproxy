@@ -121,7 +121,6 @@ fileClient::fileClient ()
 
 fileClient::~fileClient ()
 {
-    m_clientState= NOSTATE;
     m_fChannelAuthenticated= false;
 
     if(m_szPort!=NULL) {
@@ -162,27 +161,7 @@ bool fileClient::initPolicy()
     fprintf(g_logFile, "fileClient::initPolicy, about to initpolicy Cert\n%s\n",
             m_tcHome.m_policyKey);
     fflush(g_logFile);
-    if(g_policyPrincipalCert==NULL)
-        g_policyPrincipalCert= new PrincipalCert();
 #endif
-    if(!g_policyPrincipalCert->init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
-        fprintf(g_logFile, "initPolicy: Can't init policy cert 1\n");
-        return false;
-    }
-    if(!g_policyPrincipalCert->parsePrincipalCertElements()) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 2\n");
-        return false;
-    }
-    g_policyKey= (RSAKey*)g_policyPrincipalCert->getSubjectKeyInfo();
-    if(g_policyKey==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-    g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
-    if(g_policyAccessPrincipal==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
 
     g_globalpolicyValid= true;
     return true;
@@ -302,13 +281,17 @@ bool fileClient::initFileKeys()
 }
 
 
-bool fileClient::initClient(const char* configDirectory, const char* serverAddress, u_short serverPort)
+bool fileClient::initClient(const char* configDirectory, const char* serverAddress, 
+                    const char* certFile, const char* keyFile,
+                    u_short serverPort)
 {
     struct sockaddr_in  server_addr;
     int                 slen= sizeof(struct sockaddr_in);
     int                 iError;
     bool                fRet= true;
     const char*         directory= NULL;
+    const char*         szPrincipalKeys= NULL;
+    const char*         szPrincipalCerts= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "initClient\n");
@@ -319,23 +302,22 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         int parameterCount= 0;
         if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
-        } else {
+        } 
+        else {
             directory= configDirectory;
             parameters= &directory;
             parameterCount= 1;
         }
 
-        if(!initAllCrypto()) {
-            throw "fileClient::Init: can't initcrypto\n";
-        }
-        m_oKeys.m_fClient= true;
+        if(!initAllCrypto()) 
+            throw("fileClient::Init: can't initcrypto\n");
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
-            throw "fileClient::Init: can't init host\n";
-        }
+        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) 
+            throw("fileClient::Init: can't init host\n");
         m_taoHostInitializationTimer.Stop();
+
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after HostInit, pid: %d\n",
             getpid());
@@ -344,11 +326,10 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         // init environment
         m_taoEnvInitializationTimer.Start();
         if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "fileClient",
-                                DOMAIN, directory, 
-                                &m_host, 0, NULL)) {
-            throw "fileClient::Init: can't init environment\n";
-        }
+                                DOMAIN, directory, &m_host, 0, NULL))
+            throw("fileClient::Init: can't init environment\n");
         m_taoEnvInitializationTimer.Stop();
+
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after EnvInit\n");
         m_tcHome.printData();
@@ -356,34 +337,20 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
         // Initialize file encryption keys
         if(!initFileKeys())
-            throw "fileClient::Init: can't init file keys\n";
+            throw("fileClient::Init: can't init file keys\n");
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after initFileKeys\n");
         m_tcHome.printData();
 #endif
 
-        // Initialize program private key and certificate for session
-        if(!m_tcHome.m_privateKeyValid || 
-               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.m_privateKey))
-            throw "fileClient::Init: Cant get my private key\n";
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getMyProgramCert(m_tcHome.m_myCertificate))
-            throw "fileClient::Init: Cant get my Cert\n";
-    
-        // Initialize resource and principal tables
-        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, "fileClient"))
-            throw "fileClient::Init: Cant init metadata\n";
-        if(!g_theVault.initFileNames())
-            throw "fileClient::Init: Cant init file names\n";
-
         // Init global policy 
         if(!initPolicy())
-            throw "fileClient::Init: Cant init policy objects\n";
+            throw("fileClient::Init: Cant init policy objects\n");
 
         // open sockets
         m_fd= socket(AF_INET, SOCK_STREAM, 0);
         if(m_fd<0) 
-            throw  "Can't get socket\n";
+            throw( "Can't get socket\n");
         memset((void*) &server_addr, 0, sizeof(struct sockaddr_in));
 
 #ifdef  TEST
@@ -392,19 +359,50 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
         server_addr.sin_family= AF_INET;
 
-        // Fix: set up fileClient and fileServer to pass arguments down to
-        // their measured versions so we can control this by arguments
-        if (!inet_aton(serverAddress, &server_addr.sin_addr)) {
-          throw "Can't create the address for the fileServer";
-        }
+        if (!inet_aton(serverAddress, &server_addr.sin_addr))
+          throw("Can't create the address for the fileServer");
         server_addr.sin_port= htons(serverPort);
     
         iError= connect(m_fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
         if(iError!=0)
-            throw  "fileClient::Init: Can't connect";
+            throw( "fileClient::Init: Can't connect");
+
+        // this section should move to the tao
+        PrincipalCert   oCert;    
+        if(!oCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) 
+          throw("fileClient::Init:: Can't init policy cert 1\n");
+        if(!oCert.parsePrincipalCertElements())
+          throw("fileClient::Init:: Can't init policy key 2\n");
+
+        RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
+
+        // m_tcHome.m_policyKeyValid must be true
+        if(!m_clientSession.clientInit(reinterpret_cast<char*>(m_tcHome.m_policyKey), 
+                                   ppolicyKey, m_tcHome.m_myCertificate, 
+                                   (RSAKey*)m_tcHome.m_privateKey)) 
+            throw("fileClient::Init: Can't init policy key 3\n");
+
+        // get principal certs
+        szPrincipalKeys= readandstoreString(keyFile);
+        szPrincipalCerts= readandstoreString(certFile);
+
+        // negotiate channel
+        m_protocolNegoTimer.Start();
+        if(!m_clientSession.clientprotocolNego(m_fd, m_fc, 
+                                    szPrincipalKeys, szPrincipalCerts))
+            throw("fileClient::Init: protocolNego failed\n");
+        m_protocolNegoTimer.Stop();
+
+#if 0
+        // Initialize resource and principal tables
+        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, "fileClient"))
+            throw "fileClient::Init: Cant init metadata\n";
+        if(!g_theVault.initFileNames())
+            throw "fileClient::Init: Cant init file names\n";
+#endif
 
 #ifdef TEST
-        fprintf(g_logFile, "initClient: connect completed\n");
+        fprintf(g_logFile, "initClient: initializationcompleted\n");
         fflush(g_logFile);
 #endif
     }
@@ -422,22 +420,15 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
 // -------------------------------------------------------------------------
 
+
 bool fileClient::closeClient()
 {
-
-    m_clientState= SERVICETERMINATESTATE;
-
 #ifdef TEST
     fprintf(g_logFile,"in closeClient()\n");
     fflush(g_logFile);
 #endif
 
     if(m_fd>0) {
-#if 0
-        packetHdr oPH;
-        oPH.len= 0;
-        write(m_fd, (byte*)&oPH,sizeof(packetHdr));
-#endif
         close(m_fd);
         m_fd= 0;
     }
@@ -450,12 +441,16 @@ bool fileClient::closeClient()
 }
 
 
-bool fileClient::initSafeChannel(safeChannel& fc)
+void fileClient::closeConnection() 
 {
-    return fc.initChannel(m_fd, AES128, CBCMODE, HMACSHA256, 
-                          AES128BYTEKEYSIZE, AES128BYTEKEYSIZE,
-                          m_oKeys.m_rguEncryptionKey1, m_oKeys.m_rguIntegrityKey1, 
-                          m_oKeys.m_rguEncryptionKey2, m_oKeys.m_rguIntegrityKey2);
+    if(m_fc.fd>0) 
+        m_fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+}
+
+
+bool fileCllient::processRequests()
+{
+    return true;
 }
 
 
@@ -465,49 +460,18 @@ bool fileClient::initSafeChannel(safeChannel& fc)
 const char*  g_szTerm= "terminate channel\n";
 
 
-#define FILECLIENTTEST
-#ifdef  FILECLIENTTEST
-
-bool fileClient::establishConnection(safeChannel& fc, 
-                                    const char* keyFile, 
+bool fileClient::establishConnection(const char* keyFile, 
                                     const char* certFile, 
                                     const char* directory,
                                     const char* serverAddress,
-                                    u_short serverPort) {
+                                    u_short serverPort) 
+{
     try {
-        if (g_policyPrincipalCert==NULL) {
-            g_policyPrincipalCert= new PrincipalCert();
-            if(g_policyPrincipalCert==NULL)
-                throw "fileClient main: failed to new Principal\n";
-        }
 
-#ifdef  TEST
-        fprintf(g_logFile, "fileClient main: inited g_policyPrincipalCert\n");
-        fflush(g_logFile);
-#endif
         // init logfile, crypto, etc
-        if(!initClient(directory, serverAddress, serverPort))
+        if(!initClient(directory, serverAddress, serverPort,
+                        certFile, keyfile))
             throw "fileClient main: initClient() failed\n";
-
-        // copy my public key into client public key
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getClientCert(m_tcHome.m_myCertificate))
-            throw "fileClient main: Cant load client public key structures\n";
-
-#ifdef  TEST
-        fprintf(g_logFile, "fileClient main: protocol nego\n");
-        fflush(g_logFile);
-#endif
-        // protocol Nego
-        m_protocolNegoTimer.Start();
-        if(!protocolNego(m_fd, fc, keyFile, certFile))
-            throw "fileClient main: Cant negotiate channel\n";
-        m_protocolNegoTimer.Stop();
-
-#ifdef TEST
-        m_oKeys.printMe();
-        fflush(g_logFile);
-#endif
     }
     catch(const char* szError) {
         fprintf(g_logFile, "Error: %s\n", szError);
@@ -518,89 +482,6 @@ bool fileClient::establishConnection(safeChannel& fc,
   return true;
 }
 
-void fileClient::closeConnection(safeChannel& fc) {
-	if(fc.fd>0) {
-		fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-	}
-}
-
-
-bool fileClient::createResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
-        fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient createResourceTest: create resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-bool fileClient::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& resource) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
-        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-bool fileClient::readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& localOutput) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientgetResourcefromserver(fc, 
-                                   remoteResource.c_str(),
-                                   szEvidence,
-                                   localOutput.c_str(),
-                                   encType, 
-                                   m_fileKeys, 
-                                   m_encTimer)) {
-        fprintf(g_logFile, "fileClient fileTest: read file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: read file unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-bool fileClient::writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, const string& remoteResource, const string& fileName) {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientsendResourcetoserver(fc, 
-                                  subject.c_str(),
-                                  remoteResource.c_str(),
-                                  szEvidence,
-                                  fileName.c_str(),
-                                  encType, 
-                                  m_fileKeys,
-                                  m_decTimer)) {
-        fprintf(g_logFile, "fileClient fileTest: write file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: write file unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
 
 bool fileClient::compareFiles(const string& firstFile, const string& secondFile) {
     // compare the two files to see if the file returned by the server is exactly the file we sent
@@ -718,7 +599,7 @@ int main(int an, char** av)
 #ifdef TEST
         fprintf(g_logFile, "reading directory %s\n", testPath.c_str());    
 #endif
-    	// each child directory is a test
+        // each child directory is a test
         struct dirent* entry = NULL;
         string curDir(".");
         string parentDir("..");
@@ -755,7 +636,7 @@ int main(int an, char** av)
 
     return iRet;
 }
-#endif
+
 
 void fileClient::printTimers(FILE* log) {
     if (m_sealTimer.GetMeasurements().size() > 0) {

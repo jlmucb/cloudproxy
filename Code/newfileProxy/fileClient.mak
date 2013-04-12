@@ -10,6 +10,7 @@ TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 PROTO=	    ../protocolChannel
+ACC=	    ../accessControl
 VLT=	    ../vault
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
@@ -30,9 +31,8 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/cert.o $(B)/quote.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
-	    $(B)/session.o  $(B)/request.o $(B)/resource.o \
-	    $(B)/accessControl.o $(B)/trustedKeyNego.o $(B)/vault.o \
-	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
+	    $(B)/session.o $(B)/request.o $(B)/fileServices.o $(B)/resource.o \
+	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
 	    $(B)/fileTester.o $(B)/fileClient.o $(B)/logging.o 
 
 all: $(E)/fileClient.exe
@@ -147,18 +147,11 @@ $(B)/fileChannel.o: $(S)/fileChannel.cpp $(S)/fileChannel.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -c -o $(B)/fileChannel.o $(S)/fileChannel.cpp
 
 $(B)/session.o: $(PROTO)/session.cpp $(PROTO)/session.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(PROTO) -I$(BSC) -I$(TAO) -I$(CLM) -I$(S) -c -o $(B)/session.o $(PROTO)/session.cpp
-# -I$(TRS) 
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(PROTO) -I$(BSC) -I$(TAO) -I$(CLM) -I$(S) -c -o $(B)/session.o $(PROTO)/session.cpp
 
 $(B)/trustedKeyNego.o: $(TAO)/trustedKeyNego.cpp $(TAO)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/trustedKeyNego.o $(TAO)/trustedKeyNego.cpp
 
-$(B)/accessControl.o: $(CLM)/accessControl.cpp $(CLM)/accessControl.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(VLT) -I$(CH) -I$(BSC) -I$(TAO) -I$(CLM) -c -o $(B)/accessControl.o $(CLM)/accessControl.cpp
-
-$(B)/resource.o: $(S)/resource.cpp $(S)/resource.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(S) -c -o $(B)/resource.o $(S)/resource.cpp
-
-$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(CH) -I$(CLM) -I$(TRS) -I$(TAO) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
+$(B)/fileServices.o: $(S)/fileServices.cpp $(S)/fileServices.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(S) -I$(BSC) -I$(VLT) -I$(ACC) -I$(CLM) -I$(PROTO) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
 

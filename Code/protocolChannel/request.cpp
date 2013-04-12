@@ -88,7 +88,6 @@ const char*   szResponse5= "</ResourceLength>\n </Response>\n";
 
 Request::Request()
 {
-    m_iRequestType= 0;
     m_iResourceLength= 0;
     m_szSubjectName= NULL;
     m_szAction= NULL;
@@ -193,21 +192,6 @@ bool  Request::getDatafromDoc(const char* szRequest)
     if(szResourceLength!=NULL)
         sscanf(szResourceLength, "%d", &m_iResourceLength);
 
-    if(strcmp(m_szAction, "createResource")==0)
-        m_iRequestType= CREATERESOURCE;
-    else if(strcmp(m_szAction, "getResource")==0)
-        m_iRequestType= GETRESOURCE;
-    else if(strcmp(m_szAction, "sendResource")==0)
-        m_iRequestType= SENDRESOURCE;
-    else if(strcmp(m_szAction, "addOwner")==0)
-        m_iRequestType= ADDOWNER;
-    else if(strcmp(m_szAction, "removeOwner")==0)
-        m_iRequestType= REMOVEOWNER;
-    else if(strcmp(m_szAction, "deleteResource")==0)
-        m_iRequestType= DELETERESOURCE;
-    else
-        m_iRequestType= 0;
-
 #ifdef TEST
     fprintf(g_logFile, "Response getdata\n");
     printMe();
@@ -219,7 +203,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
 #ifdef TEST
 void Request::printMe()
 {
-    fprintf(g_logFile, "\n\tRequest type: %d\n", m_iRequestType);
+    fprintf(g_logFile, "\n\tRequest action: %s\n", m_szAction);
     if(m_szResourceName==NULL)
         fprintf(g_logFile, "\tm_szResourceName is NULL\n");
     else
@@ -242,7 +226,6 @@ void Request::printMe()
 
 Response::Response()
 {
-    m_iRequestType= 0;
     m_iResourceLength= 0;
     m_szAction= NULL;
     m_szErrorCode= NULL;
@@ -275,7 +258,6 @@ Response::~Response()
 #ifdef TEST
 void Response::printMe()
 {
-    fprintf(g_logFile, "\tRequestType: %d\n", m_iRequestType);
     if(m_szAction==NULL)
         fprintf(g_logFile, "\tm_szAction is NULL\n");
     else

@@ -29,22 +29,10 @@
 #include "jlmUtility.h"
 #include "keys.h"
 #include "session.h"
-// #include "accessControl.h"
-#include "resource.h"
 #include "channel.h"
 #include "safeChannel.h"
 #include "timer.h"
 
-
-#define CREATERESOURCE   1
-#define DELETERESOURCE   2
-#define SENDRESOURCE     3 
-#define GETRESOURCE      4
-#define ADDOWNER         5
-#define REMOVEOWNER      6
-#define GETOWNER         7
-#define ADDPRINCIPAL     8
-#define REMOVEPRINCIPAL  9
 
 #define ACCEPT         100
 #define REJECT         200
@@ -75,7 +63,6 @@
 
 class Request {
 public:
-    int             m_iRequestType;
     char*           m_szAction;
     char*           m_szResourceName;
     int             m_iResourceLength;
@@ -94,7 +81,6 @@ public:
 
 class Response {
 public:
-    int             m_iRequestType;
     char*           m_szAction;
     char*           m_szErrorCode;
     char*           m_szResourceName;

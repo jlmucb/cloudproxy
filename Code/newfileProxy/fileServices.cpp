@@ -317,7 +317,7 @@ bool  fileServices::validatefileServices(sessionKeys& oKeys, char** pszFile,
 const char* g_szPrefix= "//www.manferdelli.com/Gauss/";
 
 
-bool translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
+bool fileServices::translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
                                      int size)
 {
     // Fix 
@@ -325,7 +325,7 @@ bool translateLocationtoResourceName(const char* szLocation, const char* szResou
 }
 
 
-bool translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
+bool fileServices::translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
                                      int size)
 {
     int         n;
@@ -356,7 +356,7 @@ bool translateResourceNametoLocation(const char* szResourceName, char* szLocatio
 // -------------------------------------------------------------------------
 
 
-bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
+bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
             const char* szEvidence, const char* szOutFile, int encType, byte* key, timer& encTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -416,7 +416,8 @@ bool clientgetResourcefromserver(safeChannel& fc, const char* szResourceName,
 }
 
 
-bool serversendResourcetoclient(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, int encType, byte* key, timer& accessTimer, timer& decTimer)
+bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oReq, 
+            sessionKeys& oKeys, int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
     bool        fError;
     int         iRead= 0;
@@ -481,7 +482,7 @@ bool serversendResourcetoclient(safeChannel& fc, fileServices& oReq, sessionKeys
 }
 
 
-bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, const char* szSubject, 
+bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, const char* szSubject, 
                                   const char* szEvidence, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -547,7 +548,7 @@ bool clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, c
 }
 
 
-bool servercreateResourceonserver(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
+bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
                                   int encType, byte* key, timer& accessTimer)
 {
     bool            fAllowed;
@@ -696,7 +697,7 @@ bool servercreateResourceonserver(safeChannel& fc, fileServices& oReq, sessionKe
 }
 
 
-bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
+bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
                                 const char* szInFile, int encType, byte* key, timer& decTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -777,7 +778,7 @@ bool clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const ch
 }
 
 
-bool servergetResourcefromclient(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
+bool fileServices::servergetResourcefromclient(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key, timer& accessTimer, timer& encTimer)
 {
     bool        fError;
@@ -856,7 +857,7 @@ bool servergetResourcefromclient(safeChannel& fc, fileServices& oReq, sessionKey
 }
 
 
-bool clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
+bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
                                const char* szEvidence, const char* szOutFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -902,7 +903,7 @@ bool clientchangeownerResource(safeChannel& fc, const char* szAction, const char
 }
 
 
-bool serverchangeownerofResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
+bool fileServices::serverchangeownerofResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
                                  int encType, byte* key, timer& accessTimer)
 // includes delete
 {
@@ -938,7 +939,7 @@ bool serverchangeownerofResource(safeChannel& fc, fileServices& oReq, sessionKey
 }
 
 
-bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
+bool fileServices::clientdeleteResource(safeChannel& fc, const char* szResourceName,
                           const char* szEvidence, const char* szFile, int encType, byte* key)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
@@ -988,7 +989,7 @@ bool clientdeleteResource(safeChannel& fc, const char* szResourceName,
 }
 
 
-bool serverdeleteResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
+bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
                           int encType, byte* key, timer& accessTimer)
 {
     resource*   pResource= NULL;
@@ -1033,6 +1034,98 @@ bool serverdeleteResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKey
     return !fError;
 }
 
+
+bool fileServices::createResource(safeChannel& fc, const string& subject, 
+                const string& evidenceFileName, const string& resource) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, 
+                                    encType, m_fileKeys)) {
+        fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
+        fflush(g_logFile);
+    } 
+    else {
+        fprintf(g_logFile, "fileClient createResourceTest: create resource unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool fileServices::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
+                                const string& resource) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
+        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool fileServices::readResource(safeChannel& fc, const string& subject, 
+            const string& evidenceFileName, const string& remoteResource, 
+            const string& localOutput) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientgetResourcefromserver(fc, 
+                                   remoteResource.c_str(),
+                                   szEvidence,
+                                   localOutput.c_str(),
+                                   encType, 
+                                   m_fileKeys, 
+                                   m_encTimer)) {
+        fprintf(g_logFile, "fileClient fileTest: read file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: read file unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool fileServices::writeResource(safeChannel& fc, const string& subject, 
+            const string& evidenceFileName, const string& remoteResource, 
+            const string& fileName) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientsendResourcetoserver(fc, 
+                                  subject.c_str(),
+                                  remoteResource.c_str(),
+                                  szEvidence,
+                                  fileName.c_str(),
+                                  encType, 
+                                  m_fileKeys,
+                                  m_decTimer)) {
+        fprintf(g_logFile, "fileClient fileTest: write file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: write file unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
 
 // ---------------------------------------------------------------------------------
 

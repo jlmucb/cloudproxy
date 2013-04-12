@@ -31,6 +31,7 @@
 #include "validateEvidence.h"
 #include "mpFunctions.h"
 #include "tinyxml.h"
+#include "channelstate.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -44,11 +45,22 @@
 // ------------------------------------------------------------------------
 
 
-
 session::session()
 {
+    m_fClient= false;
+    m_iSessionId= 0;
+    m_sessionState= NOSTATE;
+
+    m_myCertValid= false;
+    m_myCert= NULL;
+
     m_myProgramKeyValid= false;
     m_myProgramKey= NULL;
+
+    m_policyKey= false;
+    m_policyCertValid= false;
+    m_sizepolicyCert= 0;
+    m_szpolicyCert= NULL;
 
     m_fChannelKeysEstablished= false;
     m_fClientCertValid= false;
@@ -63,17 +75,16 @@ session::session()
     m_iSuiteIndex= -1;
     m_fClientRandValid= false;
     m_fServerRandValid= false;
-    m_myCertValid= false;
-    m_iSessionId= 0;
-    m_fClient= false;
-    m_policyCertValid= false;
+
 
     m_fClientMessageHashValid= false;
     m_fServerMessageHashValid= false;
+
     m_fDecodedServerMessageHashValid= false;
     m_fbase64SignedMessageHashValid= false;
     m_fbase64ClientMessageHashValid= false;
     m_fbase64ServerMessageHashValid= false;
+
     m_szbase64SignedMessageHash= NULL;
     m_szbase64ClientMessageHash= NULL;
     m_szbase64ServerMessageHash= NULL;
@@ -82,18 +93,17 @@ session::session()
 
     m_pclientCert= NULL;
     m_pserverCert= NULL;
+
     m_pclientPublicKey= NULL;
     m_pserverPublicKey= NULL;
+
     m_szXmlClientCert= NULL;
     m_szXmlServerCert= NULL;
+
     m_szSuite= NULL;
-    m_szPrincipalPrivateKeys= NULL;
-    m_szPrincipalCerts= NULL;
     m_szChallengeSignAlg= NULL;
     m_szChallenge= NULL;
     m_szSignedChallenges= NULL;
-    m_myCert= NULL;
-    m_policyCert= NULL;
     m_szChallengeSignAlg= strdup("TLS_RSA1024_WITH_AES128_CBC_SHA256");
 }
 
@@ -212,8 +222,8 @@ bool session::serverNegoMessage1(char* buf, int maxSize, int iSessionId, const c
 
 bool session::serverNegoMessage2(char* buf, int maxSize, const char* szAlg, 
                          const char* szChallenge, const char* szHash)
-//  server phase 2  server-->client:
-//      serverMsg2(Principal cert requests, challenge)--Encrypted after this
+//  server phase 2  server-->client: serverMsg2(Principal cert requests, challenge)
+//         --Encrypted after this
 {
     sprintf(buf, szMsg2, szAlg, szChallenge, szHash);
     return true;
@@ -239,8 +249,7 @@ bool session::serverNegoMessage3(char* buf, int maxSize, bool fSucceed)
 
 
 bool session::clientNegoMessage1(char* buf, int maxSize, const char* szAlg, const char* szRand)
-//  client phase 1  client-->server:
-//      clientMsg1(rand, ciphersuites)
+//  client phase 1  client-->server: clientMsg1(rand, ciphersuites)
 {
     sprintf(buf,szMsg1, szRand, szAlg);
     return true;
@@ -249,8 +258,7 @@ bool session::clientNegoMessage1(char* buf, int maxSize, const char* szAlg, cons
 
 bool session::clientNegoMessage2(char* buf, int maxSize, const char* szEncPreMasterSecret, 
                                    const char* szClientCert, int iSessionId)
-//  client phase 2  client-->server:
-//      clientMsg2(E_S(premaster), D_C(rand1||rand2), client-cert)
+//  client phase 2  client-->server: clientMsg2(E_S(premaster), D_C(rand1||rand2), client-cert)
 {
     int     iLeft= maxSize;
     char*   p= buf;
@@ -277,8 +285,7 @@ bool session::clientNegoMessage2(char* buf, int maxSize, const char* szEncPreMas
 
 
 bool session::clientNegoMessage3(char* buf, int maxSize, const char* szSignedHash)
-//  client phase 3  client-->server:
-//      clientMsg2(signed hash)
+//  client phase 3  client-->server: clientMsg2(signed hash)
 {
     int     iLeft= maxSize;
     char*   p= buf;
@@ -298,8 +305,7 @@ bool session::clientNegoMessage3(char* buf, int maxSize, const char* szSignedHas
 
 bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipalCerts,
                            int principalCount, const char* szSignedChallenges)
-//  client phase 4  client-->server:
-//      clientMsg4(Principal-certs, D_P1(challenge), D_P2(challenge+1),... )
+//  client phase 4  client-->server: clientMsg4(Principal-certs, D_P1(challenge), D_P2(challenge+1),... )
 {
     int     iLeft= maxSize;
     char*   p= buf;
@@ -328,7 +334,7 @@ bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipal
 }
 
 
-bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromServerMessage1(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
@@ -347,6 +353,7 @@ bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys
     fprintf(g_logFile, "MAXREQUESTSIZE = %d\n", MAXREQUESTSIZE);
     fflush(g_logFile);
 #endif
+
     try {
         // Parse document
         if(!doc.Parse(request)) 
@@ -354,7 +361,7 @@ bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys
         pRootElement= doc.RootElement();
         if(pRootElement==NULL) 
             throw "getDatafromServerMessage1: Cant find root\n";
-        pRootElement->QueryIntAttribute("sessionId", &oKeys.m_iSessionId);
+        pRootElement->QueryIntAttribute("sessionId", &m_iSessionId);
         pNode= Search((TiXmlNode*) pRootElement, "Random");
         if(pNode==NULL)
             throw "getDatafromServerMessage1: Cant find random1\n";
@@ -365,9 +372,9 @@ bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys
         if(szRandom==NULL)
             throw  "getDatafromServerMessage1: Bad random value";
         iOutLen= SMALLNONCESIZE;
-        if(!fromBase64(strlen(szRandom), szRandom, &iOutLen, (byte*)oKeys.m_rguServerRand)) 
+        if(!fromBase64(strlen(szRandom), szRandom, &iOutLen, (byte*)m_rguServerRand)) 
             throw "getDatafromServerMessage1: Cant base64 decode random number\n";
-        oKeys.m_fServerRandValid= true;
+        m_fServerRandValid= true;
 
         // get ciphersuite
         iIndex= -1;
@@ -386,7 +393,7 @@ bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys
         szCipherSuite= cipherSuiteNameFromIndex(iIndex);
         if(szCipherSuite==NULL)
             throw "getDatafromServerMessage1: No ciphersuite";
-        oKeys.m_szSuite= strdup(szCipherSuite);
+        m_szSuite= strdup(szCipherSuite);
 
         // ServerCertificate
         pNode= Search((TiXmlNode*) pRootElement, "ServerCertificate");
@@ -398,16 +405,16 @@ bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys
         szServerCert= canonicalize(pNode1);
         if(szServerCert==NULL)
             throw  "getDatafromServerMessage1: Can't canonicalize Server Certificate\n";
-        oKeys.m_szXmlServerCert= szServerCert;
-        oKeys.m_pserverCert= new PrincipalCert();
-        if(!oKeys.m_pserverCert->init(szServerCert))
+        m_szXmlServerCert= szServerCert;
+        m_pserverCert= new PrincipalCert();
+        if(!m_pserverCert->init(szServerCert))
             throw "getDatafromServerMessage1: Cant initialize server certificate\n";
-        if(!oKeys.m_pserverCert->parsePrincipalCertElements())
+        if(!m_pserverCert->parsePrincipalCertElements())
             throw "getDatafromServerMessage1: Cant parse client certificate\n";
-        oKeys.m_pserverPublicKey= (RSAKey*)oKeys.m_pserverCert->getSubjectKeyInfo();
-        if(oKeys.m_pserverPublicKey==NULL)
+        m_pserverPublicKey= (RSAKey*)m_pserverCert->getSubjectKeyInfo();
+        if(m_pserverPublicKey==NULL)
             throw "getDatafromServerMessage1: Cant init client public RSA key\n";
-        oKeys.m_fServerCertValid= true;
+        m_fServerCertValid= true;
     }
     catch(const char* szError) {
         fRet= false;
@@ -420,7 +427,7 @@ bool session::getDatafromServerMessage1(int n, char* request, sessionKeys& oKeys
 
 // <RequestPrincipalCertificates/>
 // <Challenge> </Challenge>
-bool session::getDatafromServerMessage2(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromServerMessage2(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
@@ -444,7 +451,7 @@ bool session::getDatafromServerMessage2(int n, char* request, sessionKeys& oKeys
             throw "getDatafromServerMessage2: No RequestAuthentication\n";
         const char* p= ((TiXmlElement*) pNode)->Attribute("Algorithm");
         if(p!=NULL)
-            oKeys.m_szChallengeSignAlg= strdup(p);
+            m_szChallengeSignAlg= strdup(p);
 
 #ifdef  TEST
         fprintf(g_logFile, "getDatafromServerMessage2: hash processing\n");
@@ -460,9 +467,9 @@ bool session::getDatafromServerMessage2(int n, char* request, sessionKeys& oKeys
         if(szRandom==NULL)
             throw "getDatafromServerMessage2: No random element\n";
         iOutLen= SMALLNONCESIZE;
-        if(!fromBase64(strlen(szRandom), szRandom, &iOutLen, (byte*)oKeys.m_rguChallenge))
+        if(!fromBase64(strlen(szRandom), szRandom, &iOutLen, (byte*)m_rguChallenge))
             throw "getDatafromServerMessage2: Cant base64 decode random number\n";
-        oKeys.m_fChallengeValid= true;
+        m_fChallengeValid= true;
 
         pNode= Search((TiXmlNode*) pRootElement, "Hash");
         if(pNode==NULL)
@@ -470,16 +477,16 @@ bool session::getDatafromServerMessage2(int n, char* request, sessionKeys& oKeys
         pNode1= pNode->FirstChild();
         if(pNode1==NULL)
             throw "getDatafromServerMessage2: Bad hash element\n";
-        oKeys.m_szbase64ServerMessageHash= strdup( pNode1->Value());
-        oKeys.m_fbase64ServerMessageHashValid= true;
-        if(oKeys.m_szbase64ServerMessageHash==NULL)
+        m_szbase64ServerMessageHash= strdup( pNode1->Value());
+        m_fbase64ServerMessageHashValid= true;
+        if(m_szbase64ServerMessageHash==NULL)
             throw "getDatafromServerMessage2: No hash element\n";
         iOutLen= SHA256DIGESTBYTESIZE;
-        if(!fromBase64(strlen(oKeys.m_szbase64ServerMessageHash), 
-                              oKeys.m_szbase64ServerMessageHash, &iOutLen, 
-                              (byte*)oKeys.m_rgDecodedServerMessageHash))
+        if(!fromBase64(strlen(m_szbase64ServerMessageHash), 
+                              m_szbase64ServerMessageHash, &iOutLen, 
+                              (byte*)m_rgDecodedServerMessageHash))
             throw "getDatafromServerMessage2: Cant base64 decode hash\n";
-        oKeys.m_fDecodedServerMessageHashValid= true;
+        m_fDecodedServerMessageHashValid= true;
     }
     catch(const char* szError) {
         fRet= false;
@@ -490,7 +497,7 @@ bool session::getDatafromServerMessage2(int n, char* request, sessionKeys& oKeys
 }
 
 
-bool session::getDatafromServerMessage3(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromServerMessage3(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
@@ -532,7 +539,7 @@ bool session::getDatafromServerMessage3(int n, char* request, sessionKeys& oKeys
 
 // Client encode and decode messages
 
-bool session::getDatafromClientMessage1(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromClientMessage1(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlNode*      pNode;
@@ -562,11 +569,11 @@ bool session::getDatafromClientMessage1(int n, char* request, sessionKeys& oKeys
         return false;
 
     if(!fromBase64(strlen(szRandom), szRandom, &iOutLen, 
-                                     (byte*)oKeys.m_rguClientRand)) {
+                                     (byte*)m_rguClientRand)) {
         fprintf(g_logFile, "getDatafromClientMessage1: Cant base64 decode random number\n");
         return false;
     }
-    oKeys.m_fClientRandValid= true;
+    m_fClientRandValid= true;
 
     pNode= Search((TiXmlNode*) pRootElement, "CipherSuites");
     if(pNode==NULL)
@@ -598,13 +605,13 @@ bool session::getDatafromClientMessage1(int n, char* request, sessionKeys& oKeys
         return false;
     }
     char*   szCipherSuite= cipherSuiteNameFromIndex(iIndex);
-    oKeys.m_szSuite= strdup(szCipherSuite);
+    m_szSuite= strdup(szCipherSuite);
 
     return true;
 }
 
 
-bool session::getDatafromClientMessage2(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromClientMessage2(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
@@ -636,9 +643,9 @@ bool session::getDatafromClientMessage2(int n, char* request, sessionKeys& oKeys
         if(szEncryptedPreMasterSecret==NULL)
             throw  "getDatafromClientMessage2: Cant find encrypted pPreMaster secret";
         if(!fromBase64(strlen(szEncryptedPreMasterSecret), szEncryptedPreMasterSecret, 
-                       &iOutLen, (byte*)oKeys.m_rguEncPreMasterSecret))
+                       &iOutLen, (byte*)m_rguEncPreMasterSecret))
             throw "getDatafromClientMessage2: Cant base64 decode pre-master secret\n";
-        oKeys.m_fEncPreMasterSecretValid= true;
+        m_fEncPreMasterSecretValid= true;
     
         pNode= Search((TiXmlNode*) pRootElement, "ClientCertificate");
         if(pNode==NULL)
@@ -649,16 +656,16 @@ bool session::getDatafromClientMessage2(int n, char* request, sessionKeys& oKeys
         szClientCert= canonicalize(pNode1);
         if(szClientCert==NULL)
             throw "getDatafromClientMessage2: Cant canonicalize Client Certificate\n";
-        oKeys.m_szXmlClientCert= szClientCert;
-        oKeys.m_pclientCert= new PrincipalCert();
-        if(!oKeys.m_pclientCert->init(szClientCert)) 
+        m_szXmlClientCert= szClientCert;
+        m_pclientCert= new PrincipalCert();
+        if(!m_pclientCert->init(szClientCert)) 
             throw "getDatafromClientMessage2: Cant initialize client certificate\n";
-        if(!oKeys.m_pclientCert->parsePrincipalCertElements()) 
+        if(!m_pclientCert->parsePrincipalCertElements()) 
             throw "getDatafromClientMessage2: Cant parse client certificate\n";
-        oKeys.m_pclientPublicKey= (RSAKey*)oKeys.m_pclientCert->getSubjectKeyInfo();
-        if(oKeys.m_pclientPublicKey==NULL)
+        m_pclientPublicKey= (RSAKey*)m_pclientCert->getSubjectKeyInfo();
+        if(m_pclientPublicKey==NULL)
             throw "getDatafromClientMessage2: Cant init client public RSA key\n";
-        oKeys.m_fClientCertValid= true;
+        m_fClientCertValid= true;
     }
     catch(const char* szError) {
         fRet= false;
@@ -674,7 +681,7 @@ bool session::getDatafromClientMessage2(int n, char* request, sessionKeys& oKeys
 }
 
 
-bool session::getDatafromClientMessage3(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromClientMessage3(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
@@ -706,13 +713,13 @@ bool session::getDatafromClientMessage3(int n, char* request, sessionKeys& oKeys
         if(szSignedChallenge==NULL)
             throw  "getDatafromClientMessage3: Cant extract szSignedChallenge";
 
-        oKeys.m_szbase64SignedMessageHash= strdup(szSignedChallenge);
-        oKeys.m_fbase64SignedMessageHashValid= true;
+        m_szbase64SignedMessageHash= strdup(szSignedChallenge);
+        m_fbase64SignedMessageHashValid= true;
 
         if(!fromBase64(strlen(szSignedChallenge), szSignedChallenge, 
-                       &oKeys.m_sizeSignedMessage, oKeys.m_rgSignedMessage))
+                       &m_sizeSignedMessage, m_rgSignedMessage))
             throw "getDatafromClientMessage3: Cant base64 decode signed hash \n";
-        oKeys.m_fSignedMessageValid= true;
+        m_fSignedMessageValid= true;
     
     }
     catch(const char* szError) {
@@ -724,9 +731,9 @@ bool session::getDatafromClientMessage3(int n, char* request, sessionKeys& oKeys
 }
 
 
-bool session::getDatafromClientMessage4(int n, char* request, sessionKeys& oKeys)
+bool session::getDatafromClientMessage4(int n, char* request)
+// Principal certs, signed sequential challenges by principals
 {
-    // Principal certs, signed sequential challenges by principals
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode;
@@ -751,15 +758,15 @@ bool session::getDatafromClientMessage4(int n, char* request, sessionKeys& oKeys
         fprintf(g_logFile, "getDatafromClientMessage4: no Principal EvidenceCollection tag\n");
         return false;
     }
-    ((TiXmlElement*) pNode)->QueryIntAttribute("count", &oKeys.m_iNumPrincipals);
+    ((TiXmlElement*) pNode)->QueryIntAttribute("count", &m_iNumPrincipals);
     pNode1= pNode->FirstChild();
     if(pNode1!=NULL) {
-        oKeys.m_szPrincipalCerts= canonicalize(pNode);
+        m_szPrincipalCerts= canonicalize(pNode);
     }
 
     pNode= Search((TiXmlNode*) pRootElement, "SignedChallenges");
     if(pNode!=NULL) {
-        oKeys.m_szSignedChallenges= canonicalize(pNode);
+        m_szSignedChallenges= canonicalize(pNode);
     }
 
     return true;
@@ -855,13 +862,13 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
         rgszSignedChallenges[i]= rsaXmlEncodeChallenge(fEncrypt,
                 *rgKeys[i], rguCurrentChallenge, sizeChallenge);
         if(rgszSignedChallenges[i]==NULL) {
-            fprintf(g_logFile, "Bad signed challenge %d\n", i);
+            fprintf(g_logFile, "rsaXmlEncodeChallenges: Bad signed challenge %d\n", i);
             return NULL;
         }
         n+= strlen(rgszSignedChallenges[i]);
         if(i<(iNumKeys-1)) {
             if(!bumpChallenge(sizeChallenge, rguCurrentChallenge)) {
-                fprintf(g_logFile, "Can't bump challenge %d\n", i);
+                fprintf(g_logFile, "rsaXmlEncodeChallenges: Can't bump challenge %d\n", i);
                 return NULL;
             }
         }
@@ -945,6 +952,7 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
             return false;
         }
     }
+
     bool fRet= memcmp(rgUnsealed, puOriginal, sizeChallenge);
     return fRet;
 }
@@ -966,6 +974,10 @@ void session::clearKeys()
     memset(m_rguEncryptionKey2,0, SMALLSYMKEYSIZE);
     memset(m_rguIntegrityKey2,0, SMALLSYMKEYSIZE);
 
+    if(m_myCert!=NULL) {
+        free(m_myCert);
+        m_myCert= NULL;
+    }
     if(m_szXmlClientCert!=NULL) {
         free(m_szXmlClientCert);
         m_szXmlClientCert= NULL;
@@ -974,14 +986,11 @@ void session::clearKeys()
         free(m_szXmlServerCert);
         m_szXmlServerCert= NULL;
     }
-    if(m_szPrincipalCerts!=NULL) {
-        free(m_szPrincipalCerts);
-        m_szPrincipalCerts= NULL;
+    if(m_szpolicyCert!=NULL) {
+        free(m_szpolicyCert);
+        m_szpolicyCert= NULL;
     }
-    if(m_szPrincipalPrivateKeys!=NULL) {
-        free(m_szPrincipalPrivateKeys);
-        m_szPrincipalPrivateKeys= NULL;
-    }
+
     if(m_szChallengeSignAlg!=NULL) {
         free(m_szChallengeSignAlg);
         m_szChallengeSignAlg= NULL;
@@ -999,8 +1008,6 @@ void session::clearKeys()
         m_szSuite= NULL;
     }
 
-    m_myCert= NULL;
-
     m_fChannelKeysEstablished= false;
     m_fClientCertValid= false;
     m_fServerCertValid= false;
@@ -1014,7 +1021,6 @@ void session::clearKeys()
     m_szPrincipalCerts= NULL;
     m_iNumPrincipals= 0;
     m_fPrincipalPrivateKeysValid= false;
-    m_szPrincipalPrivateKeys= NULL;
     m_iNumPrincipalPrivateKeys= 0;
     m_szXmlClientCert= NULL;
     m_szXmlServerCert= NULL;
@@ -1035,34 +1041,9 @@ void session::clearKeys()
         delete m_pserverPublicKey;
         m_pserverPublicKey= NULL;
     }
-}
 
-
-bool session::getMyProgramKey(RSAKey* pKey)
-{
-    if(pKey==NULL)
-        return false;
-
-    m_myProgramKeyValid= true;
-    m_myProgramKey= pKey;
-
-#ifdef TEST
-    fprintf(g_logFile, "session::getMyProgramKey: program key set\n");
-    fflush(g_logFile);
-    pKey->printMe();
-    fflush(g_logFile);
-#endif
-    return true;
-}
-
-
-bool session::getMyProgramCert(const char* szCert)
-{
-    if(szCert==NULL)
-        return false;
-    m_myCert= strdup(szCert);
-    m_myCertValid= true;
-    return true;
+    m_myProgramKey= NULL;
+    m_policyKey= NULL;
 }
 
 
@@ -1106,8 +1087,8 @@ bool session::getClientCert(const char* szXml)
 #endif
 
     // Validate cert chain
-    int     rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
-    void*   rgObject[2]={m_pclientCert, m_policyKey};
+    int     rgType[2]= {PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
+    void*   rgObject[2]= {m_pclientCert, m_policyKey};
 
     int     iChain= VerifyChain(*m_policyKey, "", NULL, 2, rgType, rgObject);
     if(iChain<0) {
@@ -1171,40 +1152,12 @@ bool session::getServerCert(const char* szXml)
 }
 
 
-bool session::getPrincipalCertsFromFile(const char* fileName)
+bool session::initializePrincipalCerts(const char* szPrincipalCerts)
 {
-    if (m_fPrincipalCertsValid)
-        return true;
-    if (m_szPrincipalCerts==NULL)
-        m_szPrincipalCerts= readandstoreString(fileName);
-    if(m_szPrincipalCerts==NULL) {
-        m_iNumPrincipals= 0;
-    }
+    int                 i;
+    evidenceCollection  oEvidenceCollection;
 
-#ifdef TEST1
-    if(m_szPrincipalCerts==NULL)
-        fprintf(g_logFile, "session::getPrincipalCertsFromFile: Principal Certs from file: %s\n", m_szPrincipalCerts);
-    else
-        fprintf(g_logFile, "session::getPrincipalCertsFromFile: No principal certs\n");
-#endif
-    return true;
-}
-
-
-bool session::getPrincipalPrivateKeysFromFile(const char* fileName)
-{
-    if (m_fPrincipalPrivateKeysValid)
-        return true;
-    if(m_szPrincipalPrivateKeys==NULL)
-        m_szPrincipalPrivateKeys= readandstoreString(fileName);
-    return true;
-}
-
-
-bool session::initializePrincipalCerts()
-{
-    int     i;
-
+    m_szPrincipalCerts= strdup(szPrincipalCerts);
 #ifdef TEST
     if(m_szPrincipalCerts==NULL)
         fprintf(g_logFile, "initializePrincipalCerts is NULL\n");
@@ -1212,15 +1165,8 @@ bool session::initializePrincipalCerts()
         fprintf(g_logFile, "initializePrincipalCerts:\n%s\n", m_szPrincipalCerts);
     fflush(g_logFile);
 #endif
-    if(m_szPrincipalCerts==NULL) {
-        m_iNumPrincipals= 0;
-        m_fPrincipalCertsValid= true;
-        return true;
-    }
 
-    evidenceCollection  oEvidenceCollection;
-
-    if(!oEvidenceCollection.parseEvidenceCollection(m_szPrincipalCerts)) {
+    if(!oEvidenceCollection.parseEvidenceCollection(szPrincipalCerts)) {
         fprintf(g_logFile, "session::initializePrincipalCerts: Cannot parse Principal Public Keys\n");
         return false;
     }
@@ -1259,20 +1205,14 @@ bool session::initializePrincipalCerts()
 }
 
 
-bool session::initializePrincipalPrivateKeys()
+bool session::initializePrincipalPrivateKeys(const char* szPrincipalPrivateKeys)
 {
-    if(m_szPrincipalPrivateKeys==NULL) {
-        m_iNumPrincipalPrivateKeys= 0;
-        m_fPrincipalPrivateKeysValid= true;
-        return true;
-    }
-
     int             iNumKeys= 0;
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement;
     TiXmlNode*      pNode;
 
-    if(!doc.Parse(m_szPrincipalPrivateKeys)) {
+    if(!doc.Parse(szPrincipalPrivateKeys)) {
         fprintf(g_logFile,  "session::initializePrincipalPrivateKeys: Cannot parse Principal Private Keys\n");
         return false;
     }
@@ -1348,11 +1288,13 @@ bool session::clientcomputeMessageHash()
     fprintf(g_logFile, "session::clientcomputeMessageHash\n");
     fflush(g_logFile);
 #endif
+
     Sha256 oHash;
     memcpy((byte*)&oHash, (byte*)&m_oMessageHash, sizeof(oHash));
     oHash.Final();
     oHash.GetDigest(m_rgClientMessageHash);
     m_fClientMessageHashValid= true;
+
 #ifdef TEST
     PrintBytes("client hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
     fflush(g_logFile);
@@ -1367,6 +1309,7 @@ bool session::clientsignMessageHash()
     fprintf(g_logFile, "session::clientsignMessageHash\n");
     fflush(g_logFile);
 #endif
+
     if(!m_myProgramKeyValid || m_myProgramKey==NULL) {
         fprintf(g_logFile, "session::clientsignMessageHash: program key invalid\n");
         return false;
@@ -1395,6 +1338,7 @@ bool session::checkclientSignedHash()
     fprintf(g_logFile, "session::checkclientSignedHash\n");
     fflush(g_logFile);
 #endif
+
     if(!m_fClientCertValid) {
         fprintf(g_logFile, "session::checkclientSignedHash: client cert invalid\n");
         return false;
@@ -1575,14 +1519,6 @@ bool session::checkPrincipalChallenges()
 }
 
 
-bool session::validateChannelData(bool fClient)
-{
-    // set the principals
-    m_fClient= fClient;
-    return m_fChannelKeysEstablished;
-}
-
-
 bool session::generatePreMaster()
 {
     if(!getCryptoRandom(BIGSYMKEYSIZE*NBITSINBYTE, m_rguPreMasterSecret))
@@ -1601,7 +1537,38 @@ void session::printMe()
     int     i;
     char    szMessage[128];
 
-    fprintf(g_logFile, "\n\nSession Key Data\n");
+    fprintf(g_logFile, "\nSession Data\n");
+
+    if(m_fClient)
+        fprintf(g_logFile, "Client role\n");
+    else
+        fprintf(g_logFile, "Server role\n");
+
+    fprintf(g_logFile, "Session id: %d, session state: %d\n",
+            m_iSessionId, m_sessionState);
+
+    if(m_policyCertValid)
+        fprintf(g_logFile, "Policy cert\n%s\n", m_szpolicyCert);
+    else
+        fprintf(g_logFile, "Policy cert invalid\n");
+
+    if(m_policyKey!=NULL)
+        fprintf(g_logFile, "Policy key valid\n");
+    else
+        fprintf(g_logFile, "Policy key invalid\n");
+
+    if(m_myProgramKeyValid) {
+        fprintf(g_logFile, "Program key valid\n");
+        m_myProgramKey->printMe();
+    }
+    else
+        fprintf(g_logFile, "Program key invalid\n");
+
+    if(m_myCertValid) {
+        fprintf(g_logFile, "My cert valid\n%s\n", m_myCert);
+    }
+    else
+        fprintf(g_logFile, "My cert invalid\n");
 
     fprintf(g_logFile, "\n");
     if(m_fClientCertValid) {
@@ -1636,8 +1603,8 @@ void session::printMe()
     else {
         fprintf(g_logFile, "No principal private keys\n");
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fClientMessageHashValid) {
         PrintBytes("Client Message Hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
     }
@@ -1650,8 +1617,8 @@ void session::printMe()
     else {
         fprintf(g_logFile, "Server Message Hash invalid\n");
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fChallengeValid) {
         fprintf(g_logFile, "Challenge valid, alg: %s\n", m_szChallengeSignAlg);
         sprintf(szMessage, "Challenge(%d)" , SMALLNONCESIZE);
@@ -1669,28 +1636,28 @@ void session::printMe()
         sprintf(szMessage, "Server rand valid(%d)" , SMALLNONCESIZE);
         PrintBytes(szMessage, m_rguServerRand, SMALLNONCESIZE);
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fbase64SignedMessageHashValid) {
         fprintf(g_logFile, "Signed message hash: %s\n" , m_szbase64SignedMessageHash);
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fClientMessageHashValid) {
         PrintBytes("Client hash:" , m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fServerMessageHashValid) {
         PrintBytes("Server hash:" , m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fSignedMessageValid) {
         PrintBytes("Server hash:" , m_rgSignedMessage, BIGSYMKEYSIZE);
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_fPreMasterSecretValid) {
         sprintf(szMessage, "Pre-Master valid(%d)" , BIGSYMKEYSIZE);
         PrintBytes(szMessage, m_rguPreMasterSecret, BIGSYMKEYSIZE);
@@ -1699,13 +1666,13 @@ void session::printMe()
         sprintf(szMessage, "Encrypted Pre-Master valid(%d)" , BIGSIGNEDSIZE);
         PrintBytes(szMessage, m_rguEncPreMasterSecret, BIGSIGNEDSIZE);
     }
-
     fprintf(g_logFile, "\n");
+
     if(m_szSuite!=NULL)
         fprintf(g_logFile, "Suite: %s\n", m_szSuite);
     fprintf(g_logFile, "Suite index %d\n",m_iSuiteIndex);
-
     fprintf(g_logFile, "\n");
+
     if(m_fChannelKeysEstablished) {
         fprintf(g_logFile, "Channel established\n");
         sprintf(szMessage, "Encryption Key 1 (%d)" , AES128BYTEKEYSIZE);
@@ -1717,7 +1684,7 @@ void session::printMe()
         sprintf(szMessage, "Integrity Key 2 (%d) " , AES128BYTEKEYSIZE);
         PrintBytes(szMessage, m_rguIntegrityKey2, AES128BYTEKEYSIZE);
     }
-    fprintf(g_logFile, "\nEnd of Session Key Data\n");
+    fprintf(g_logFile, "\nEnd of Session Data\n");
 
     return;
 }
@@ -1727,23 +1694,26 @@ void session::printMe()
 // -----------------------------------------------------------------------
 
 
-bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile)
+bool session::clientprotocolNego(int fd, safeChannel& fc,
+                                 const char* szPrincipalKeys, 
+                                 const char* szPrincipalCerts)
 {
     char    request[MAXREQUESTSIZEWITHPAD];
-    char    rgszBase64[256];
-    int     i, n;
+    int     n;
     int     type= CHANNEL_NEGO;
     byte    multi= 0;
     byte    final= 0;
+
     int     iOut64= 256;
+    char    rgszBase64[256];
+
     char*   szSignedNonce= NULL;
     char*   szEncPreMasterSecret= NULL;
     char*   szSignedChallenges= NULL;
     char*   szAlg= (char*) "TLS_RSA1024_WITH_AES128_CBC_SHA256";
     bool    fRet= true;
 
-
-    m_clientState= KEYNEGOSTATE;
+    m_sessionState= KEYNEGOSTATE;
     request[0]= '\0';
 #ifdef TEST
     fprintf(g_logFile, "fileClient: protocol negotiation\n");
@@ -1820,8 +1790,12 @@ bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
             throw  "session::clientprotocolNego: Can't send packet 2";
 
         // encrypted from here on
-        if(!initSafeChannel(fc))
+        if(!fc.initChannel(fd, AES128, CBCMODE, HMACSHA256, AES128BYTEKEYSIZE, 
+                           AES128BYTEKEYSIZE,
+                           m_rguEncryptionKey1, m_rguIntegrityKey1, 
+                           m_rguEncryptionKey2, m_rguIntegrityKey2))
             throw  "session::clientprotocolNego: Can't init safe channel";
+
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: initsafeChannel succeeded\n");
 #endif
@@ -1833,6 +1807,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         if((n=sendPacket(fd, fc.lastsendBlock, AES128BYTEBLOCKSIZE, CHANNEL_NEGO_IV, 0, 1))<0)
             throw "session::clientprotocolNego: Cant send IV\n";
         fc.fsendIVSent= true;
+
 #ifdef  TEST
         fprintf(g_logFile, "session::clientprotocolNego: Encrypted mode on\n");
         PrintBytes((char*)"Received IV: ", fc.lastgetBlock, AES128BYTEBLOCKSIZE);
@@ -1851,45 +1826,35 @@ bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         // do hashes match?
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: server hases\n");
-    PrintBytes("Computed: ", m_rgServerMessageHash, 
-                    SHA256DIGESTBYTESIZE);
-    PrintBytes("Received: ", m_rgDecodedServerMessageHash, 
-                    SHA256DIGESTBYTESIZE);
-    fflush(g_logFile);
+        PrintBytes("Computed: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
+        PrintBytes("Received: ", m_rgDecodedServerMessageHash, SHA256DIGESTBYTESIZE);
+        fflush(g_logFile);
 #endif
-        if(!m_fServerMessageHashValid || 
-           !m_fDecodedServerMessageHashValid ||
-           memcmp(m_rgServerMessageHash, m_rgDecodedServerMessageHash, 
-                  SHA256DIGESTBYTESIZE)!=0)
+        if(!m_fServerMessageHashValid || !m_fDecodedServerMessageHashValid ||
+                memcmp(m_rgServerMessageHash, m_rgDecodedServerMessageHash, 
+                SHA256DIGESTBYTESIZE)!=0)
             throw  "session::clientprotocolNego: server hash does not match";
 
         // Phase 4, send
-        if(!getPrincipalPrivateKeysFromFile(keyFile))  
-            throw  "session::clientprotocolNego: Cant principal private keys from file";
-#ifdef TEST
-        fprintf(g_logFile, "session::clientprotocolNego: got principal keys\n");
-#endif
-        if(!getPrincipalCertsFromFile(certFile))
-            throw  "session::clientprotocolNego: Cant get principal private keys from file";
-        if(!initializePrincipalPrivateKeys())
+        if(!initializePrincipalPrivateKeys(szPrincipalKeys))
             throw  "session::clientprotocolNego: Cant initialize principal private keys";
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: got principal private keys\n");
 #endif
-        if(!initializePrincipalCerts())
+        if(!initializePrincipalCerts(szPrincipalCerts))
             throw  "session::clientprotocolNego: Cant initialize principal certs\n";
 
         if(strcmp(m_szChallengeSignAlg, "TLS_RSA2048_WITH_AES128_CBC_SHA256")!=0 &&
            strcmp(m_szChallengeSignAlg, "TLS_RSA1024_WITH_AES128_CBC_SHA256")!=0)
             throw  "session::clientprotocolNego: Unsupported challenge algorithm\n";
         
-        szSignedChallenges= 
-                rsaXmlEncodeChallenges(false, m_iNumPrincipalPrivateKeys,
+        szSignedChallenges= rsaXmlEncodeChallenges(false, m_iNumPrincipalPrivateKeys,
                                                  m_rgPrincipalPrivateKeys,
                                                  m_rguChallenge, SMALLNONCESIZE);
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: challenges encoded\n");
 #endif
+
         if(szSignedChallenges==NULL)
             throw  "session::clientprotocolNego: Can't sign principal challenges";
         if(!clientNegoMessage4(request, MAXREQUESTSIZE, m_szPrincipalCerts, 
@@ -1902,14 +1867,14 @@ bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         if((n=fc.safegetPacket((byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::clientprotocolNego: Can't get packet 3";
 
-        if(!getDatafromServerMessage3(n, request, m_oKeys))
+        if(!getDatafromServerMessage3(n, request))
             throw  "session::clientprotocolNego: Can't decode client message 3";
 
-        validateChannelData(true);
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: channel data validated\n");
 #endif
 
+#if 0
         // register principals
         if(m_pserverCert!=NULL) {
             if(registerPrincipalfromCert(m_pserverCert)==NULL)
@@ -1931,7 +1896,9 @@ bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
                     throw "session::clientprotocolNego: Can't register client principal\n";
             }
         }
-        m_clientState= REQUESTSTATE;
+#endif
+
+        m_sessionState= REQUESTSTATE;
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: protocol nego succesfully completed\n");
         fflush(g_logFile);
@@ -1955,46 +1922,88 @@ bool session::clientprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         free(szSignedChallenges);
         szSignedChallenges= NULL;
     }
-    m_clientState= REQUESTSTATE;
+    m_sessionState= REQUESTSTATE;
 
     return fRet;
 }
 
 
-bool session::clientinitSafeChannel(safeChannel& fc)
+bool session::clientInit(const char* szPolicyCert, RSAKey* policyKey, 
+                         const char* szmyCert, RSAKey* myKey)
 {
-    return fc.initChannel(m_fd, AES128, CBCMODE, HMACSHA256, 
-                          AES128BYTEKEYSIZE, AES128BYTEKEYSIZE,
-                          m_rguEncryptionKey1, m_rguIntegrityKey1, 
-                          m_rguEncryptionKey2, m_rguIntegrityKey2);
-}
+    m_fClient= true;
+    m_sessionState= NOSTATE;
 
+    m_myProgramKeyValid= true;
+    m_myProgramKey= myKey;
+    m_myCertValid= true;
+    m_myCert= strdup(szmyCert);
 
-bool session::clientInit(KeyInfo* policyKey)
-{
-    m_clientState= NOSTATE;
-    m_fChannelAuthenticated= false;
-    m_szPort= NULL;
-    m_szAddress= NULL;
-    m_fd= 0;
+    m_policyKey= policyKey;
+    m_policyCertValid= true;
+    m_sizepolicyCert= strlen(szPolicyCert);
+    m_szpolicyCert= strdup(szPolicyCert);
+
+    m_fClientCertValid= true;
+    m_szXmlClientCert= strdup(szmyCert);
+    m_pclientCert= new PrincipalCert();
+    if(!m_pclientCert->init(m_szXmlClientCert)) {
+        fprintf(g_logFile, "session::clientInit: Cant initialize Client Cert\n");
+        return false;
+    }
+    if(!m_pclientCert->parsePrincipalCertElements()) {
+        fprintf(g_logFile, "session::clientInit: Cant parse client cert\n");
+        return false;
+    }
+    m_pclientPublicKey= (RSAKey*)m_pclientCert->getSubjectKeyInfo();
+    if(m_pclientPublicKey==NULL) {
+        fprintf(g_logFile, "session::clientInit: client public key is empty\n");
+        return false;
+    }
+    return true;
 }
 
 
 // ------------------------------------------------------------------------
 
 
-bool session::serverInit(KeyInfo* policyKey)
+bool session::serverInit(const char* szPolicyCert, RSAKey* policyKey, 
+                               const char* szmyCert, RSAKey* myKey)
 {
-    m_clientState= NOSTATE;
-    m_fChannelAuthenticated= false;
-    m_szPort= NULL;
-    m_szAddress= NULL;
-    m_fd= 0;
+    m_fClient= false;
+    m_sessionState= NOSTATE;
+
+    m_myProgramKeyValid= true;
+    m_myProgramKey= myKey;
+    m_myCertValid= true;
+    m_myCert= strdup(szmyCert);
+
+    m_policyKey= policyKey;
+    m_policyCertValid= true;
+    m_sizepolicyCert= strlen(szPolicyCert);
+    m_szpolicyCert= strdup(szPolicyCert);
+
+    m_fServerCertValid= true;
+    m_szXmlServerCert= strdup(szmyCert);
+    m_pserverCert= new PrincipalCert();
+    if(!m_pserverCert->init(m_szXmlServerCert)) {
+        fprintf(g_logFile, "session::clientInit: Cant initialize Server Cert\n");
+        return false;
+    }
+    if(!m_pserverCert->parsePrincipalCertElements()) {
+        fprintf(g_logFile, "session::clientInit: Cant parse Server cert\n");
+        return false;
+    }
+    m_pserverPublicKey= (RSAKey*)m_pserverCert->getSubjectKeyInfo();
+    if(m_pserverPublicKey==NULL) {
+        fprintf(g_logFile, "session::clientInit: Server public key is empty\n");
+        return false;
+    }
+    return true;
 }
 
 
-
-bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, const char* certFile)
+bool session::serverprotocolNego(int fd, safeChannel& fc)
 {
     char    request[MAXREQUESTSIZEWITHPAD];
     char    rgszBase64[256];
@@ -2011,7 +2020,7 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
     fprintf(g_logFile, "session::serverprotocolNego\n");
     fflush(g_logFile);
 #endif
-    m_serverState= KEYNEGOSTATE;
+    m_sessionState= KEYNEGOSTATE;
     request[0]= '\0';
 
     try {
@@ -2021,11 +2030,11 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
             throw  "session::serverprotocolNego: Can't init message hash";
 
         // Phase 1, receive
-        if((n=getPacket(m_fdChannel, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
+        if((n=getPacket(fd, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::serverprotocolNego: Can't get packet 1\n";
         if(!updateMessageHash(strlen(request), (byte*) request))
             throw  "session::serverprotocolNego: Can't update messagehash";
-        if(!getDatafromClientMessage1(n, request, m_oKeys))
+        if(!getDatafromClientMessage1(n, request))
             throw  "session::serverprotocolNego: Can't decode client message 1\n";
         iOut64= 256;
         if(!getBase64Rand(SMALLNONCESIZE, m_rguServerRand, &iOut64, rgszBase64))
@@ -2044,29 +2053,30 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
             throw  "session::serverprotocolNego: Can't format negotiation message 1\n";
         if(!updateMessageHash(strlen(request), (byte*) request))
             throw  "session::serverprotocolNego: Can't update messagehash";
-        if((n=sendPacket(m_fdChannel, (byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
+        if((n=sendPacket(fd, (byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "session::serverprotocolNego: Can't send packet 1\n";
 
         // Phase 2, receive
-        if((n=getPacket(m_fdChannel, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
+        if((n=getPacket(fd, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::serverprotocolNego: Can't get packet 2\n";
         if(!updateMessageHash(strlen(request), (byte*) request))
             throw  "session::serverprotocolNego: Can't update messagehash";
-        if(!getDatafromClientMessage2(n, request, m_oKeys))
+        if(!getDatafromClientMessage2(n, request))
             throw  "session::serverprotocolNego: Can't decode client message 2\n";
         if(!clientcomputeMessageHash())
             throw "session::serverprotocolNego: client cant compute message hash";
         if(!computeServerKeys()) 
             throw  "session::serverprotocolNego: Cant compute channel keys\n";
+
 #ifdef TEST
         fprintf(g_logFile, "session::serverprotocolNego: computed server keys\n");
         fflush(g_logFile);
 #endif
 
         // Phase 3, receive
-        if((n=getPacket(m_fdChannel, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
+        if((n=getPacket(fd, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::serverprotocolNego: Can't get packet 3\n";
-        if(!getDatafromClientMessage3(n, request, m_oKeys))
+        if(!getDatafromClientMessage3(n, request))
             throw  "session::serverprotocolNego: Can't decode client message 3\n";
         if(!checkclientSignedHash())
             throw "session::serverprotocolNego: client signed message hash does not match";
@@ -2076,21 +2086,24 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
             throw "session::serverprotocolNego: can't compute server hash";
 
         // init safeChannel
-        if(!initSafeChannel())
-            throw  "session::serverprotocolNego: Cant init channel\n";
+        if(!fc.initChannel(fd, AES128, CBCMODE, HMACSHA256, AES128BYTEKEYSIZE, 
+                           AES128BYTEKEYSIZE,
+                           m_rguEncryptionKey1, m_rguIntegrityKey1, 
+                           m_rguEncryptionKey2, m_rguIntegrityKey2))
+            throw("session::serverprotocolNego: Cant init channel\n");
 
         // Assume CBC
-        if((n=sendPacket(m_fdChannel, m_osafeChannel.lastsendBlock, AES128BYTEBLOCKSIZE, CHANNEL_NEGO_IV, 0, 1))<0)
+        if((n=sendPacket(fd, fc.lastsendBlock, AES128BYTEBLOCKSIZE, CHANNEL_NEGO_IV, 0, 1))<0)
             throw "session::serverprotocolNego: Cant send IV\n";
-        m_osafeChannel.fsendIVSent= true;
-        if((n=getPacket(m_fdChannel, m_osafeChannel.lastgetBlock, AES128BYTEBLOCKSIZE, &type, &multi, &final))<0)
+        fc.fsendIVSent= true;
+        if((n=getPacket(fd, fc.lastgetBlock, AES128BYTEBLOCKSIZE, &type, &multi, &final))<0)
             throw "session::serverprotocolNego: Cant get IV\n";
-        m_osafeChannel.fgetIVReceived= true;
+        fc.fgetIVReceived= true;
 
 #ifdef  TEST
         fprintf(g_logFile, "session::serverprotocolNego: Encrypted mode on\n");
-        PrintBytes((char*)"Received IV: ", m_osafeChannel.lastgetBlock, AES128BYTEBLOCKSIZE);
-        PrintBytes((char*)"Sent     IV: ", m_osafeChannel.lastsendBlock, AES128BYTEBLOCKSIZE);
+        PrintBytes((char*)"Received IV: ", fc.lastgetBlock, AES128BYTEBLOCKSIZE);
+        PrintBytes((char*)"Sent     IV: ", fc.lastsendBlock, AES128BYTEBLOCKSIZE);
         fflush(g_logFile);
 #endif
 
@@ -2102,28 +2115,27 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
 
         // compute szHash string
         iOut= 256;
-        if(!toBase64(SHA256DIGESTBYTESIZE, m_rgServerMessageHash, 
-                      &iOut, rgszHashBase64))
+        if(!toBase64(SHA256DIGESTBYTESIZE, m_rgServerMessageHash, &iOut, rgszHashBase64))
             throw  "session::serverprotocolNego: Can't base64 encode server hash\n";
         if(!serverNegoMessage2(request, MAXREQUESTSIZE, m_szChallengeSignAlg, 
                                rgszBase64, rgszHashBase64))
             throw  "session::serverprotocolNego: Can't format negotiation message 2\n";
 
-        if((n=m_osafeChannel.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
+        if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "session::serverprotocolNego: Can't safesendPacket 2\n";
 #ifdef TEST
-        fprintf(g_logFile, "session::serverprotocolNego: client signed message hash matches\n");
+        fprintf(g_logFile, "session::serverprotocolNego: client signed message hash match\n");
         fflush(g_logFile);
 #endif
 
         // Phase 4, receive
-        if((n=m_osafeChannel.safegetPacket((byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
+        if((n=fc.safegetPacket((byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::serverprotocolNego: Can't get packet 4\n";
         if(!updateMessageHash(strlen(request), (byte*) request))
-            throw  "session::serverprotocolNego: Can't update messagehash";
-        if(!getDatafromClientMessage4(n, request, m_oKeys)) 
+            throw  "session::serverprotocolNego: Can't update message hash";
+        if(!getDatafromClientMessage4(n, request))
             throw  "session::serverprotocolNego: Can't decode client message 3\n";
-        if(!initializePrincipalCerts())
+        if(!initializePrincipalCerts(m_szPrincipalCerts))
             throw "session::serverprotocolNego: Cant initialize principal public keys\n";
         if(!checkPrincipalChallenges())
             throw "session::serverprotocolNego: Principal challenges fail\n";
@@ -2135,7 +2147,7 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         // Phase 4, send
         if(!serverNegoMessage3(request, MAXREQUESTSIZE, true))
             throw  "session::serverprotocolNego: Can't format negotiation message 3\n";
-        if((n=m_osafeChannel.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
+        if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "session::serverprotocolNego: Can't send packet 3\n";
 #ifdef TEST
         fprintf(g_logFile, "session::serverprotocolNego: success packet sent\n");
@@ -2148,13 +2160,13 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         return false;
     }
 
-    validateChannelData(false);
 #ifdef TEST
-        fprintf(g_logFile, "session::serverprotocolNego: protocol data validated\n");
-        fflush(g_logFile);
+    fprintf(g_logFile, "session::serverprotocolNego: protocol data validated\n");
+    fflush(g_logFile);
 #endif
 
     // register principals
+#if 0
     if(m_pserverCert!=NULL) {
         if(registerPrincipalfromCert(m_pserverCert)==NULL)
             throw "session::serverprotocolNego: Can't register server principal\n";
@@ -2164,13 +2176,15 @@ bool session::serverprotocolNego(int fd, safeChannel& fc, const char* keyFile, c
         if(registerPrincipalfromCert(m_pclientCert)==NULL)
             throw "session::serverprotocolNego: Can't register client principal\n";
     }
+#endif
+
 #ifdef TEST
         fprintf(g_logFile, "session::serverprotocolNego: protocol negotiation complete\n");
         printMe();
         fflush(g_logFile);
 #endif
 
-    m_serverState= REQUESTSTATE;
+    m_sessionState= REQUESTSTATE;
 
     return fRet;
 }

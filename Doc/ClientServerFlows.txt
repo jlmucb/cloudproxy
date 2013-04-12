@@ -1,0 +1,29 @@
+Process Flows
+=============
+
+fileClient
+    initCrypto()
+    initTao
+    initFileKeys()
+    initPolicy
+    open TCP channel
+    clientInit
+    clientprotocolNego
+    fileTester
+
+
+fileServer
+    initserver
+        initcrypto()
+        initTao
+        initFileKeys
+        ** initMetaData, policy principal
+        initPolicy
+        open master channel
+        for(;;) {
+            accept
+            new theServiceChannel
+            initThread
+            createThread for SC
+                processRequests
+

@@ -68,8 +68,12 @@ fileServices::~fileServices()
 // ------------------------------------------------------------------------
 
 
-bool fileServices::validateCreatefileServices(sessionKeys& oKeys, char** pszFile,
-                                    resource** ppResource)
+#ifdef SERVER
+
+//  Server services
+
+
+bool fileServices::validateCreatefileServices(char** pszFile, resource** ppResource)
 {
     resource*               pResource= NULL;
     bool                    fAllowed= false;
@@ -135,11 +139,10 @@ bool fileServices::validateCreatefileServices(sessionKeys& oKeys, char** pszFile
 }
 
 
-bool  fileServices::validateGetSendDeletefileServices(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppResource)
+bool  fileServices::validateGetSendDeletefileServices(char** pszFile, resource** ppResource)
 {
     resource*               pResource= NULL;
-    accessfileServices           oAR;
+    accessfileServices      oAR;
 
     if(m_poAG==NULL) {
         fprintf(g_logFile, "fileServices::validateGetSendDeletefileServices: access guard not initialiized\n");
@@ -175,8 +178,7 @@ bool  fileServices::validateGetSendDeletefileServices(sessionKeys& oKeys, char**
 }
 
 
-bool  fileServices::validateAddOwnerfileServices(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppResource)
+bool  fileServices::validateAddOwnerfileServices(char** pszFile, resource** ppResource)
                     
 {
     resource*               pResource= NULL;
@@ -211,25 +213,22 @@ bool  fileServices::validateAddOwnerfileServices(sessionKeys& oKeys, char** pszF
 }
 
 
-bool  fileServices::validateAddPrincipalfileServices(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppResource)
+bool  fileServices::validateAddPrincipalfileServices(char** pszFile, resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateDeletePrincipalfileServices(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppResource)
+bool  fileServices::validateDeletePrincipalfileServices(char** pszFile, resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateRemoveOwnerfileServices(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppResource)
+bool  fileServices::validateRemoveOwnerfileServices(char** pszFile, resource** ppResource)
 {
     resource*               pResource= NULL;
-    accessfileServices           oAR;
+    accessfileServices      oAR;
 
     if(m_poAG==NULL) {
         fprintf(g_logFile, "fileServices::validateRemoveOwnerfileServices: access guard not initialiized\n");
@@ -260,8 +259,7 @@ bool  fileServices::validateRemoveOwnerfileServices(sessionKeys& oKeys, char** p
 }
 
  
-bool  fileServices::validatefileServices(sessionKeys& oKeys, char** pszFile, 
-                                    resource** ppResource)
+bool  fileServices::validatefileServices(char** pszFile, resource** ppResource)
 {
 #ifdef TEST
     fprintf(g_logFile, "\nvalidatefileServices\n");
@@ -280,18 +278,18 @@ bool  fileServices::validatefileServices(sessionKeys& oKeys, char** pszFile,
     bool    fAllowed;
     switch(m_ifileServicesType) {
       case CREATERESOURCE:
-        fAllowed= validateCreatefileServices(oKeys, pszFile, ppResource);
+        fAllowed= validateCreatefileServices(pszFile, ppResource);
         break;
       case DELETERESOURCE:
       case GETRESOURCE:
       case SENDRESOURCE:
-        fAllowed= validateGetSendDeletefileServices(oKeys, pszFile, ppResource);
+        fAllowed= validateGetSendDeletefileServices(pszFile, ppResource);
         break;
       case ADDOWNER:
-        fAllowed= validateAddOwnerfileServices(oKeys, pszFile, ppResource);
+        fAllowed= validateAddOwnerfileServices(pszFile, ppResource);
         break;
       case REMOVEOWNER:
-        fAllowed= validateRemoveOwnerfileServices(oKeys, pszFile, ppResource);
+        fAllowed= validateRemoveOwnerfileServices(pszFile, ppResource);
         break;
       case ADDPRINCIPAL:
       case REMOVEPRINCIPAL:
@@ -309,9 +307,6 @@ bool  fileServices::validatefileServices(sessionKeys& oKeys, char** pszFile,
 #endif
     return fAllowed;
 }
-
-
-// -------------------------------------------------------------------------
 
 
 const char* g_szPrefix= "//www.manferdelli.com/Gauss/";
@@ -353,71 +348,8 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName, c
 }
 
 
-// -------------------------------------------------------------------------
-
-
-bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
-            const char* szEvidence, const char* szOutFile, int encType, byte* key, timer& encTimer)
-{
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
-
-#ifdef  TEST
-    fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
-#endif
-    // send request
-    if(!constructfileServices(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
-        return false;
-    }
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
-        return false;
-    }
-
-    // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
-    if(n<0) {
-        fprintf(g_logFile, "clientgetResourcefromserver: getResource error %d\n", n);
-        fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n", szBuf);
-        return false;
-    }
-    szBuf[n]= 0;
-    oResponse.getDatafromDoc(szBuf);
-
-    // check response
-    if(strcmp(oResponse.m_szAction, "accept")!=0) {
-        fprintf(g_logFile, "Error: %s\n", oResponse.m_szErrorCode);
-        return false;
-    }
-
-    // read and write file
-    int         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    if(iWrite<0) {
-        emptyChannel(fc, oResponse.m_iResourceLength, 0, NULL, 0, NULL);
-        fprintf(g_logFile, "clientgetResourcefromserver: Cant open out file\n");
-        return false;
-    }
-    if(!getFile(fc, iWrite, oResponse.m_iResourceLength, oResponse.m_iResourceLength, 
-                encType, key, encTimer)) {
-        fprintf(g_logFile, "clientgetResourcefromserver: Can't get file\n");
-        return false;
-    }
-
-    close(iWrite);
-#ifdef  TEST
-    fprintf(g_logFile, "clientgetResourcefromserver returns true\n");
-#endif
-    return true;
-}
-
-
 bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oReq, 
-            sessionKeys& oKeys, int encType, byte* key, timer& accessTimer, timer& decTimer)
+            int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
     bool        fError;
     int         iRead= 0;
@@ -438,7 +370,7 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oRe
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !oReq.validatefileServices(oKeys, &szFile, &pResource);
+    fError= !oReq.validatefileServices(&szFile, &pResource);
     accessTimer.Stop();
 
     // open File (if no Error)
@@ -482,73 +414,7 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oRe
 }
 
 
-bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, const char* szSubject, 
-                                  const char* szEvidence, int encType, byte* key)
-{
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
-
-#ifdef  TEST
-    fprintf(g_logFile, "clientcreateResourceonserver(%s)\n", szResourceName);
-#endif
-    // send request
-    if(!constructfileServices(&p, &iLeft, "createResource", szSubject, 
-                                    szResourceName, 0, szEvidence)) {
-        fprintf(g_logFile, "clientcreateResourceonserver: constructfileServices returns false\n");
-        return false;
-    }
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
-        fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructfileServices returns false\n");
-        return false;
-    }
-
-    // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
-    if(n<0) {
-        fprintf(g_logFile, "clientcreateResourceonserver: createResource error %d\n", n);
-        return false;
-    }
-    szBuf[n]= 0;
-#ifdef  TEST
-    fprintf(g_logFile, "clientcreateResourceonserver got response\n%s\n", szBuf);
-    fflush(g_logFile);
-#endif
-    oResponse.getDatafromDoc(szBuf);
-
-    // check to see if the resource already exists or if it was successfully created. 
-    // Either case is success.
-    bool success = false;
-    if (oResponse.m_szAction != NULL) {
-        if (strcmp(oResponse.m_szAction, "accept") == 0) {
-            success = true;
-        } else if (strcmp(oResponse.m_szErrorCode, "servercreateResourceonserver: Resource exists") == 0) {
-            // then the resource already exists, so this is also success
-            success = true;
-#ifdef TEST
-            fprintf(g_logFile, "Success in creation because the resource already exists\n");
-#endif
-        }
-    }
-
-#ifdef TEST
-    // check response
-    if(!success) {
-        fprintf(g_logFile, "clientcreateResourceonserver: response is false\n");
-        oResponse.printMe();
-    }
-#endif
-
-    return success;
-}
-
-
-bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
+bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& oReq,
                                   int encType, byte* key, timer& accessTimer)
 {
     bool            fAllowed;
@@ -669,7 +535,7 @@ bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& o
 
     if(!fError) {
         accessTimer.Start();
-        fAllowed= oReq.validatefileServices(oKeys, &szFile, &pResource);
+        fAllowed= oReq.validatefileServices(&szFile, &pResource);
         accessTimer.Stop();
         if(fAllowed) {
             pResource->m_myOwners.append(pSubject);
@@ -697,8 +563,302 @@ bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& o
 }
 
 
-bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSubject, const char* szResourceName, const char* szEvidence, 
-                                const char* szInFile, int encType, byte* key, timer& decTimer)
+bool fileServices::servergetResourcefromclient(safeChannel& fc, fileServices& oReq, 
+                                 int encType, byte* key, timer& accessTimer, timer& encTimer)
+{
+    bool        fError;
+    int         iWrite= 0;
+    int         size= 0;
+    byte        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= (char*)szBuf;
+    const char*       szError= NULL;
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
+    char*       szOutFile= NULL;
+    resource*   pResource= NULL;
+
+#ifdef  TEST
+    fprintf(g_logFile, "servergetResourcefromclient %d\n", size);
+    fflush(g_logFile);
+#endif
+    // validate request (including access check) and get file location
+    accessTimer.Start();
+    fError= !oReq.validatefileServices(&szOutFile, &pResource);
+    accessTimer.Stop();
+    fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");	
+    fflush(g_logFile);
+    if (!fError) {	
+        size= oReq.m_iResourceLength;
+        pResource->m_iSize= size;
+    }
+
+    // open for writing
+    if(!fError) {
+        fprintf(g_logFile, "servergetResourcefromclient opening file %s\n", szOutFile);	
+        fflush(g_logFile);
+        iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if(iWrite<0) {
+            fError= true;
+            szError= "servergetResourcefromclient: Cant open file for writing\n";
+            fprintf(g_logFile, "servergetResourcefromclient: Cant open file %s for writing\n", szOutFile);
+        }
+    }
+
+    // send response
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
+        fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
+        return false;
+    } else {
+        fprintf(g_logFile, "Constructed a response\n");
+        fflush(g_logFile);
+    }
+    fc.safesendPacket(szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+
+    // if the reply was that there was an error, then return false
+    if (fError) return false;
+
+#ifdef  TEST
+    fprintf(g_logFile, "servergetResourcefromclient getting file, %d\n", size);
+    fflush(g_logFile);
+#endif
+    // read file
+    if(!getFile(fc, iWrite, size, size, encType, key, encTimer)) {
+        fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
+        close(iWrite);
+        return false;
+    }
+    if(pResource!=NULL) {
+        pResource->m_fIsPresent= true;
+    }
+    close(iWrite);
+
+#ifdef  TEST
+    fprintf(g_logFile, "servergetResourcefromclient returns true\n");
+    fflush(g_logFile);
+#endif
+    return true;
+}
+
+
+bool fileServices::serverchangeownerofResource(safeChannel& fc, fileServices& oReq, 
+                                 int encType, byte* key, timer& accessTimer)
+// includes delete
+{
+    resource*           pResource= NULL;
+    accessPrincipal*    pPrinc= NULL;
+    char*               szFile= NULL;
+
+#ifdef  TEST
+    fprintf(g_logFile, "serverchangeownerofResource\n");
+    fflush(g_logFile);
+#endif
+    accessTimer.Start();
+    if(!oReq.validatefileServices(&szFile, &pResource))
+        return false;
+    accessTimer.Stop();
+
+    if(oReq.m_ifileServicesType==ADDOWNER) {
+        pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
+        if(pPrinc==NULL)
+            return false;
+        return pResource->m_myOwners.append(pPrinc);
+        
+    }
+
+    if(oReq.m_ifileServicesType==REMOVEOWNER) {
+        pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
+        if(pPrinc==NULL)
+            return false;
+        return pResource->m_myOwners.deletenode(pPrinc);
+    }
+
+    return false;
+}
+
+
+bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq,
+                          int encType, byte* key, timer& accessTimer)
+{
+    resource*   pResource= NULL;
+    char*       szFile= NULL;
+    bool        fError;
+    int         size= 0;
+    char*       szError= NULL;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= szBuf;
+
+#ifdef  TEST
+    fprintf(g_logFile, "serverdeleteResource\n");
+    fflush(g_logFile);
+#endif
+    accessTimer.Start();
+    fError= !oReq.validatefileServices(&szFile, &pResource);
+    accessTimer.Stop();
+
+    if(!fError) {
+        // delete resource
+#ifdef TEST
+        fprintf(g_logFile, "serverdeleteResource: deleting %s\n", szFile);
+        fflush(g_logFile);
+#endif
+        unlink(szFile); 
+        // remove nodes on owner list and delete from resource table
+        pResource->m_fIsDeleted= true;
+    }
+    else {
+        szError= (char*)"serverDeleteResource: authorization error";
+    }
+    // send response
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
+        fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
+        return false;
+    }
+    fc.safesendPacket((byte*)szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+    return !fError;
+}
+
+
+#else  // end of server fileServices, beginning of client services
+
+
+//  Client fileServices
+
+
+bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
+            const char* szEvidence, const char* szOutFile, int encType, byte* key, timer& encTimer)
+{
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= szBuf;
+    Response    oResponse;
+    int         n= 0;
+    int         type= CHANNEL_REQUEST;
+    byte        multi=0;
+    byte        final= 0;
+
+#ifdef  TEST
+    fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
+#endif
+    // send request
+    if(!constructfileServices(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
+        return false;
+    }
+    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+        return false;
+    }
+
+    // should be a CHANNEL_RESPONSE, not multipart
+    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    if(n<0) {
+        fprintf(g_logFile, "clientgetResourcefromserver: getResource error %d\n", n);
+        fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n", szBuf);
+        return false;
+    }
+    szBuf[n]= 0;
+    oResponse.getDatafromDoc(szBuf);
+
+    // check response
+    if(strcmp(oResponse.m_szAction, "accept")!=0) {
+        fprintf(g_logFile, "Error: %s\n", oResponse.m_szErrorCode);
+        return false;
+    }
+
+    // read and write file
+    int         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if(iWrite<0) {
+        emptyChannel(fc, oResponse.m_iResourceLength, 0, NULL, 0, NULL);
+        fprintf(g_logFile, "clientgetResourcefromserver: Cant open out file\n");
+        return false;
+    }
+    if(!getFile(fc, iWrite, oResponse.m_iResourceLength, oResponse.m_iResourceLength, 
+                encType, key, encTimer)) {
+        fprintf(g_logFile, "clientgetResourcefromserver: Can't get file\n");
+        return false;
+    }
+
+    close(iWrite);
+#ifdef  TEST
+    fprintf(g_logFile, "clientgetResourcefromserver returns true\n");
+#endif
+    return true;
+}
+
+
+bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, 
+           const char* szSubject, const char* szEvidence, int encType, byte* key)
+{
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= szBuf;
+    Response    oResponse;
+    int         n= 0;
+    int         type= CHANNEL_REQUEST;
+    byte        multi=0;
+    byte        final= 0;
+
+#ifdef  TEST
+    fprintf(g_logFile, "clientcreateResourceonserver(%s)\n", szResourceName);
+#endif
+    // send request
+    if(!constructfileServices(&p, &iLeft, "createResource", szSubject, 
+                                    szResourceName, 0, szEvidence)) {
+        fprintf(g_logFile, "clientcreateResourceonserver: constructfileServices returns false\n");
+        return false;
+    }
+    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+        fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructfileServices returns false\n");
+        return false;
+    }
+
+    // should be a CHANNEL_RESPONSE, not multipart
+    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    if(n<0) {
+        fprintf(g_logFile, "clientcreateResourceonserver: createResource error %d\n", n);
+        return false;
+    }
+    szBuf[n]= 0;
+#ifdef  TEST
+    fprintf(g_logFile, "clientcreateResourceonserver got response\n%s\n", szBuf);
+    fflush(g_logFile);
+#endif
+    oResponse.getDatafromDoc(szBuf);
+
+    // check to see if the resource already exists or if it was successfully created. 
+    // Either case is success.
+    bool success = false;
+    if (oResponse.m_szAction != NULL) {
+        if (strcmp(oResponse.m_szAction, "accept") == 0) {
+            success = true;
+        } else if (strcmp(oResponse.m_szErrorCode, "servercreateResourceonserver: Resource exists") == 0) {
+            // then the resource already exists, so this is also success
+            success = true;
+#ifdef TEST
+            fprintf(g_logFile, "Success in creation because the resource already exists\n");
+#endif
+        }
+    }
+
+#ifdef TEST
+    // check response
+    if(!success) {
+        fprintf(g_logFile, "clientcreateResourceonserver: response is false\n");
+        oResponse.printMe();
+    }
+#endif
+
+    return success;
+}
+
+
+bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSubject, 
+    const char* szResourceName, const char* szEvidence, const char* szInFile, 
+    int encType, byte* key, timer& decTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -778,85 +938,6 @@ bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSub
 }
 
 
-bool fileServices::servergetResourcefromclient(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key, timer& accessTimer, timer& encTimer)
-{
-    bool        fError;
-    int         iWrite= 0;
-    int         size= 0;
-    byte        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    const char*       szError= NULL;
-    int         type= CHANNEL_RESPONSE;
-    byte        multi= 0;
-    byte        final= 0;
-    char*       szOutFile= NULL;
-    resource*   pResource= NULL;
-
-#ifdef  TEST
-    fprintf(g_logFile, "servergetResourcefromclient %d\n", size);
-    fflush(g_logFile);
-#endif
-    // validate request (including access check) and get file location
-    accessTimer.Start();
-    fError= !oReq.validatefileServices(oKeys, &szOutFile, &pResource);
-    accessTimer.Stop();
-    fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");	
-    fflush(g_logFile);
-    if (!fError) {	
-        size= oReq.m_iResourceLength;
-        pResource->m_iSize= size;
-    }
-
-    // open for writing
-    if(!fError) {
-        fprintf(g_logFile, "servergetResourcefromclient opening file %s\n", szOutFile);	
-        fflush(g_logFile);
-        iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        if(iWrite<0) {
-            fError= true;
-            szError= "servergetResourcefromclient: Cant open file for writing\n";
-            fprintf(g_logFile, "servergetResourcefromclient: Cant open file %s for writing\n", szOutFile);
-        }
-    }
-
-    // send response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
-        fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
-        return false;
-    } else {
-        fprintf(g_logFile, "Constructed a response\n");
-        fflush(g_logFile);
-    }
-    fc.safesendPacket(szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
-
-    // if the reply was that there was an error, then return false
-    if (fError) return false;
-
-#ifdef  TEST
-    fprintf(g_logFile, "servergetResourcefromclient getting file, %d\n", size);
-    fflush(g_logFile);
-#endif
-    // read file
-    if(!getFile(fc, iWrite, size, size, encType, key, encTimer)) {
-        fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
-        close(iWrite);
-        return false;
-    }
-    if(pResource!=NULL) {
-        pResource->m_fIsPresent= true;
-    }
-    close(iWrite);
-
-#ifdef  TEST
-    fprintf(g_logFile, "servergetResourcefromclient returns true\n");
-    fflush(g_logFile);
-#endif
-    return true;
-}
-
-
 bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
                                const char* szEvidence, const char* szOutFile, int encType, byte* key)
 {
@@ -899,42 +980,6 @@ bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szActi
 #ifdef  TEST
     fprintf(g_logFile, "clientchangeownerofResource returns false\n");
 #endif
-    return false;
-}
-
-
-bool fileServices::serverchangeownerofResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
-                                 int encType, byte* key, timer& accessTimer)
-// includes delete
-{
-    resource*           pResource= NULL;
-    accessPrincipal*    pPrinc= NULL;
-    char*               szFile= NULL;
-
-#ifdef  TEST
-    fprintf(g_logFile, "serverchangeownerofResource\n");
-    fflush(g_logFile);
-#endif
-    accessTimer.Start();
-    if(!oReq.validatefileServices(oKeys, &szFile, &pResource))
-        return false;
-    accessTimer.Stop();
-
-    if(oReq.m_ifileServicesType==ADDOWNER) {
-        pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
-        if(pPrinc==NULL)
-            return false;
-        return pResource->m_myOwners.append(pPrinc);
-        
-    }
-
-    if(oReq.m_ifileServicesType==REMOVEOWNER) {
-        pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
-        if(pPrinc==NULL)
-            return false;
-        return pResource->m_myOwners.deletenode(pPrinc);
-    }
-
     return false;
 }
 
@@ -988,144 +1033,8 @@ bool fileServices::clientdeleteResource(safeChannel& fc, const char* szResourceN
     return false;
 }
 
+#endif // client interfaces
 
-bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq, sessionKeys& oKeys, 
-                          int encType, byte* key, timer& accessTimer)
-{
-    resource*   pResource= NULL;
-    char*       szFile= NULL;
-    bool        fError;
-    int         size= 0;
-    char*       szError= NULL;
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         type= CHANNEL_RESPONSE;
-    byte        multi= 0;
-    byte        final= 0;
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= szBuf;
-
-#ifdef  TEST
-    fprintf(g_logFile, "serverdeleteResource\n");
-    fflush(g_logFile);
-#endif
-    accessTimer.Start();
-    fError= !oReq.validatefileServices(oKeys, &szFile, &pResource);
-    accessTimer.Stop();
-
-    if(!fError) {
-        // delete resource
-#ifdef TEST
-        fprintf(g_logFile, "serverdeleteResource: deleting %s\n", szFile);
-        fflush(g_logFile);
-#endif
-        unlink(szFile); 
-        // remove nodes on owner list and delete from resource table
-        pResource->m_fIsDeleted= true;
-    }
-    else {
-        szError= (char*)"serverDeleteResource: authorization error";
-    }
-    // send response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
-        fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
-        return false;
-    }
-    fc.safesendPacket((byte*)szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
-    return !fError;
-}
-
-
-bool fileServices::createResource(safeChannel& fc, const string& subject, 
-                const string& evidenceFileName, const string& resource) 
-{
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, 
-                                    encType, m_fileKeys)) {
-        fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
-        fflush(g_logFile);
-    } 
-    else {
-        fprintf(g_logFile, "fileClient createResourceTest: create resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-
-bool fileServices::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
-                                const string& resource) 
-{
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
-        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-
-bool fileServices::readResource(safeChannel& fc, const string& subject, 
-            const string& evidenceFileName, const string& remoteResource, 
-            const string& localOutput) 
-{
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientgetResourcefromserver(fc, 
-                                   remoteResource.c_str(),
-                                   szEvidence,
-                                   localOutput.c_str(),
-                                   encType, 
-                                   m_fileKeys, 
-                                   m_encTimer)) {
-        fprintf(g_logFile, "fileClient fileTest: read file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: read file unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
-
-
-bool fileServices::writeResource(safeChannel& fc, const string& subject, 
-            const string& evidenceFileName, const string& remoteResource, 
-            const string& fileName) 
-{
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
- 
-    if(clientsendResourcetoserver(fc, 
-                                  subject.c_str(),
-                                  remoteResource.c_str(),
-                                  szEvidence,
-                                  fileName.c_str(),
-                                  encType, 
-                                  m_fileKeys,
-                                  m_decTimer)) {
-        fprintf(g_logFile, "fileClient fileTest: write file successful\n");
-        fflush(g_logFile);
-    } else {
-        fprintf(g_logFile, "fileClient fileTest: write file unsuccessful\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-    return true;
-}
 
 // ---------------------------------------------------------------------------------
 

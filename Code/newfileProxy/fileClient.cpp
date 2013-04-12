@@ -82,19 +82,10 @@ using std::ofstream;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
-bool             g_globalpolicyValid= false;
-metaData         g_theVault;
-PrincipalCert*   g_policyPrincipalCert= NULL;
-RSAKey*          g_policyKey= NULL;
-accessPrincipal* g_policyAccessPrincipal= NULL;
-
 #include "./policyCert.inc"
 
 const char* g_szClientPrincipalCertsFile= "fileClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys.xml";
-
-
-accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 
 // ------------------------------------------------------------------------
@@ -147,23 +138,15 @@ bool fileClient::initPolicy()
     fprintf(g_logFile, "fileClient::initPolicy\n");
     fflush(g_logFile);
 #endif
+    // doesn't do much any more
     if(!m_tcHome.m_envValid) {
         fprintf(g_logFile, "fileClient::initPolicy(): environment invalid\n");
         return false;
     }
-
     if(!m_tcHome.m_policyKeyValid)  {
         fprintf(g_logFile, "fileClient::initPolicy(): policyKey invalid\n");
         return false;
     }
-
-#ifdef TEST1
-    fprintf(g_logFile, "fileClient::initPolicy, about to initpolicy Cert\n%s\n",
-            m_tcHome.m_policyKey);
-    fflush(g_logFile);
-#endif
-
-    g_globalpolicyValid= true;
     return true;
 }
 
@@ -448,12 +431,6 @@ void fileClient::closeConnection()
 }
 
 
-bool fileCllient::processRequests()
-{
-    return true;
-}
-
-
 // ------------------------------------------------------------------------
 
 
@@ -629,7 +606,8 @@ int main(int an, char** av)
 #endif
         closeLog();
 
-    } catch (const char* err) {
+    } 
+    catch (const char* err) {
         fprintf(g_logFile, "execution failed with error %s\n", err);
         iRet= 1;
     }
@@ -685,7 +663,100 @@ void fileClient::resetTimers() {
     m_decTimer.Clear();
 }
 
-// ------------------------------------------------------------------------
 
+bool fileClient::createResource(safeChannel& fc, const string& subject, 
+                const string& evidenceFileName, const string& resource) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, 
+                                    encType, m_fileKeys)) {
+        fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
+        fflush(g_logFile);
+    } 
+    else {
+        fprintf(g_logFile, "fileClient createResourceTest: create resource unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool fileClient::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
+                                const string& resource) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
+        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient deleteResourceTest: delete resource unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool fileClient::readResource(safeChannel& fc, const string& subject, 
+            const string& evidenceFileName, const string& remoteResource, 
+            const string& localOutput) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientgetResourcefromserver(fc, 
+                                   remoteResource.c_str(),
+                                   szEvidence,
+                                   localOutput.c_str(),
+                                   encType, 
+                                   m_fileKeys, 
+                                   m_encTimer)) {
+        fprintf(g_logFile, "fileClient fileTest: read file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: read file unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool fileClient::writeResource(safeChannel& fc, const string& subject, 
+            const string& evidenceFileName, const string& remoteResource, 
+            const string& fileName) 
+{
+    int             encType= NOENCRYPT;
+    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+ 
+    if(clientsendResourcetoserver(fc, 
+                                  subject.c_str(),
+                                  remoteResource.c_str(),
+                                  szEvidence,
+                                  fileName.c_str(),
+                                  encType, 
+                                  m_fileKeys,
+                                  m_decTimer)) {
+        fprintf(g_logFile, "fileClient fileTest: write file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: write file unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
+// ------------------------------------------------------------------------
 
 

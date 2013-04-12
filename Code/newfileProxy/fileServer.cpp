@@ -37,7 +37,6 @@
 #include "sha256.h"
 #include "bignum.h"
 #include "mpFunctions.h"
-#include "rsaHelper.h"
 #include "request.h"
 #include "tcIO.h"
 
@@ -45,7 +44,7 @@
 
 #include "objectManager.h"
 #include "resource.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "accessControl.h"
 #include "vault.h"
 #include "trustedKeyNego.h"
@@ -88,9 +87,9 @@ theServiceChannel::theServiceChannel()
 {
     m_pParent= NULL;
     m_fdChannel= -1;
-
     m_serverState= NOSTATE;
     m_fChannelAuthenticated= false;
+
 }
 
 
@@ -551,6 +550,8 @@ bool fileServer::initServer(const char* configDirectory)
             throw "fileServer::Init: can't initcrypto\n";
         }
 
+        // init policyPrincipal and key
+
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
         if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
@@ -674,7 +675,6 @@ bool fileServer::server()
     else {
         fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
     }
-
 
     theServiceChannel*  poSc= NULL;
     int                 i;
@@ -811,20 +811,16 @@ int main(int an, char** av)
 
     try {
 
-            g_policyPrincipalCert= new PrincipalCert();
-            if(g_policyPrincipalCert==NULL)
-                throw "fileServer main: failed to new Principal\n";
-
-            if(!oServer.initServer(directory)) 
-                throw "fileServer main: cant initServer\n";
+        if(!oServer.initServer(directory)) 
+            throw "fileServer main: cant initServer\n";
 
 #ifdef TEST
-            fprintf(g_logFile, "fileServer main: measured server entering server loop\n");
-            fflush(g_logFile);
+        fprintf(g_logFile, "fileServer main: measured server entering server loop\n");
+        fflush(g_logFile);
 #endif
-            oServer.server();
-            oServer.closeServer();
-            closeLog();
+        oServer.server();
+        oServer.closeServer();
+        closeLog();
     } 
     catch(const char* szError) {
         fprintf(g_logFile, "%s", szError);

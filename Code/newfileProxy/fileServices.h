@@ -29,45 +29,64 @@
 #include "jlmUtility.h"
 #include "keys.h"
 #include "session.h"
-#include "fileServices.h"
-#include "accessControl.h"
-#include "resource.h"
 #include "channel.h"
 #include "safeChannel.h"
 #include "timer.h"
 
+#ifdef SERVER
+#include "accessControl.h"
+#include "resource.h"
+#endif
+
 
 class fileServices{
 public:
+    session*    m_pSession;
+#ifdef SERVER
+    metaData*   m_pMeta;
+#endif
+
                 fileServices();
                 ~fileServices();
+#ifdef SERVER
+    bool        initFileServices(session* pSession, metaData* pMeta);
+#else
+    bool        initFileServices(session* pSession);
+#endif
 
-    bool        validateAddPrincipalRequest(session& oKeys, char** pszFile, 
+#ifdef SERVER
+    bool        validateAddPrincipalRequest(char** pszFile, 
                         resource** ppResource);
-    bool        validateDeletePrincipalRequest(session& oKeys, char** pszFile, 
+    bool        validateDeletePrincipalRequest(char** pszFile, 
                         resource** ppResource);
-    bool        validateCreateRequest(session& oKeys, char** pszFile, resource** ppResource);
-    bool        validateGetSendDeleteRequest(session& oKeys, char** pszFile, 
+    bool        validateCreateRequest(char** pszFile, resource** ppResource);
+    bool        validateGetSendDeleteRequest(char** pszFile, 
                         resource** ppResource);
-    bool        validateAddOwnerRequest(session& oKeys, char** pszFile, 
+    bool        validateAddOwnerRequest(char** pszFile, 
                         resource** ppResource);
-    bool        validateRemoveOwnerRequest(session& oKeys, char** pszFile, 
+    bool        validateRemoveOwnerRequest(char** pszFile, 
                         resource** ppResource);
-    bool        validateRequest(session& oKeys, char** pszFile, resource** ppResource);
-
-    bool    	createResource(safeChannel& fc, const string& subject, 
-                    const string& evidenceFileName, const string& resource);
-    bool        deleteResource(safeChannel& fc, const string& subject, 
-                    const string& evidenceFileName, const string& resource);
-    bool        readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
-                    const string& remoteResource, const string& localOutput);
-    bool        writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
-                    const string& remoteResource, const string& fileName);
+    bool        validateRequest(char** pszFile, resource** ppResource);
 
     bool        translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
                     int size);
     bool        translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
                     int size);
+
+    bool        serversendResourcetoclient(safeChannel& fc, Request& oReq, 
+                    int encType, byte* key, timer& accessTimer, timer& decTimer);
+    bool        servergetResourcefromclient(safeChannel& fc, Request& oReq, 
+                    int encType, byte* key, timer& accessTimer, timer& encTimer);
+
+    bool        serverchangeownerofResource(safeChannel& fc, Request& oReq, 
+                    int encType, byte* key, timer& accessTimer);
+
+    bool        servercreateResourceonserver(safeChannel& fc, Request& oReq, 
+                    int encType, byte* key, timer& accessTimer);
+    bool        serverdeleteResource(safeChannel& fc, Request& oReq, 
+                    int encType, byte* key, timer& accessTimer);
+
+#else  // end of server services, beginning of client services
 
     bool        clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
                     const char* szEvidence, const char* szFile, 
@@ -75,27 +94,15 @@ public:
     bool        clientsendResourcetoserver(safeChannel& fc, const char* szSubject, 
                     const char* szResourceName, const char* szEvidence, 
                     const char* szFile, int encType, byte* key, timer& decTimer);
-
-    bool        serversendResourcetoclient(safeChannel& fc, Request& oReq, session& oKeys, 
-                    int encType, byte* key, timer& accessTimer, timer& decTimer);
-    bool        servergetResourcefromclient(safeChannel& fc, Request& oReq, session& oKeys, 
-                    int encType, byte* key, timer& accessTimer, timer& encTimer);
-
     bool        clientchangeownerResource(safeChannel& fc, const char* szAction, 
                     const char* szResourceName, const char* szEvidence, 
                     const char* szOutFile, int encType, byte* key);
-    bool        serverchangeownerofResource(safeChannel& fc, Request& oReq, session& oKeys, 
-                    int encType, byte* key, timer& accessTimer);
-
     bool        clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, 
                     const char* szSubject, const char* szEvidence, 
                     int encType, byte* key);
-    bool        servercreateResourceonserver(safeChannel& fc, Request& oReq, session& oKeys, 
-                    int encType, byte* key, timer& accessTimer);
     bool        clientdeleteResource(safeChannel& fc, const char* szResourceName,
                     const char* szEvidence, const char* szFile, int encType, byte* key);
-    bool        serverdeleteResource(safeChannel& fc, Request& oReq, session& oKeys, 
-                    int encType, byte* key, timer& accessTimer);
+#endif  //client services
 };
 
 

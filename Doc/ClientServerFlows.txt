@@ -17,7 +17,7 @@ fileServer
         initcrypto()
         initTao
         initFileKeys
-        ** initMetaData, policy principal
+        initMetaData and policy principal
         initPolicy
         open master channel
         for(;;) {

@@ -139,12 +139,9 @@ int theServiceChannel::processRequests()
         key= m_pParent->m_fileKeys;
     }
 
-#if 0
-    int     iRequestType= 0;
     {
         Request oReq;
 
-        oReq.m_poAG= &m_oAG;
         if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
             fprintf(g_logFile, "theServiceChannel::processRequests: cant parse: %s\n", request);
             return -1;
@@ -154,57 +151,64 @@ int theServiceChannel::processRequests()
         fprintf(g_logFile, "parsed oReq from request: %s\n", request);
 #endif
 
-
-        iRequestType= oReq.m_iRequestType;
         if(oReq.m_szResourceName==NULL) {
             fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");
             return -1;
         }
 
-        switch(iRequestType) {
-          case GETRESOURCE:
-            if(!serversendResourcetoclient(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
+        if(strcmp(oReq.m_szAction, "getResource")==0) {
+            if(!serversendResourcetoclient(m_oSafeChannel, oReq,  encType, key, 
+                        m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
                 return -1;
             }
             return 1;
-          case SENDRESOURCE:
-            if(!servergetResourcefromclient(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
+        }
+        else if(strcmp(oReq.m_szAction, "sendResource")==0) {
+            if(!servergetResourcefromclient(m_osafeChannel, oReq,  encType, key, 
+                        m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
             }
             return 1;
-          case CREATERESOURCE:
-            if(!servercreateResourceonserver(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
+        }
+        else if(strcmp(oReq.m_szAction, "createResource")==0) {
+            if(!servercreateResourceonserver(m_osafeChannel, oReq,  encType, key, 
+                        m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
             }
             return 1;
-          case ADDOWNER :
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
+        }
+        else if(strcmp(oReq.m_szAction, "addOwner")==0) {
+            if(!serverchangeownerofResource(m_osafeChannel, oReq,  encType, key, 
+                        m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serveraddownertoResourcefailed\n");
                 return -1;
             }
             return 1;
-          case REMOVEOWNER:
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
+        }
+        else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
+            if(!serverchangeownerofResource(m_osafeChannel, oReq,  encType, key, 
+                        m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverremoveownerfromResource failed\n");
                 return -1;
             }
             return 1;
-          case DELETERESOURCE:
-            if(!serverdeleteResource(m_osafeChannel, oReq, m_oKeys, encType, key, m_pParent->m_accessCheckTimer)) {
+        }
+        else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
+            if(!serverdeleteResource(m_osafeChannel, oReq, encType, key, 
+                        m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverdeleteResource failed\n");
                 return -1;
             }
             return 1;
-          case GETOWNER:
-          default:
+        }
+        else {
             fprintf(g_logFile, "theServiceChannel::processRequests: invalid request type\n");
             return -1;
         }
     }
-#endif
 }
 
 
@@ -221,7 +225,7 @@ bool theServiceChannel::initServiceChannel()
 
     // Initialize program private key and certificate for session
     if(!m_pParent->m_tcHome.m_privateKeyValid ||
-           !m_oKeys.getMyProgramKey((RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
+           !m_pSession->getMyProgramKey((RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant get my private key\n");
         return false;
     }
@@ -230,31 +234,49 @@ bool theServiceChannel::initServiceChannel()
     fflush(g_logFile);
 #endif
     if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_oKeys.getMyProgramCert(m_pParent->m_tcHome.m_myCertificate)) {
+           !m_pSession->getMyProgramCert(m_pParent->m_tcHome.m_myCertificate)) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant get my Cert\n");
         return false;
     }
 
     // copy my public key into server public key
     if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_oKeys.getServerCert(m_pParent->m_tcHome.m_myCertificate)) {
+           !m_pSession->getServerCert(m_pParent->m_tcHome.m_myCertificate)) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant load client public key structures\n");
         return false;
     }
 
+    // init policyPrincipal and key
+    // this section should move to the tao
+    PrincipalCert   oCert;
+    if(!oCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey)))
+      throw("fileServer::Init:: Can't init policy cert 1\n");
+    if(!oCert.parsePrincipalCertElements())
+      throw("fileServer::Init:: Can't init policy key 2\n");
+
+    RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
+
     m_pParent->m_protocolNegoTimer.Start();
-    if(!protocolNego())
-        return false;
+    if(!m_oSession.ServerInit(reinterpret_cast<char*>(m_tcHome.m_policyKey),
+                               ppolicyKey, m_tcHome.m_myCertificate,
+                               (RSAKey*)m_tcHome.m_privateKey))
+        throw("fileServer::Init: Can't init policy key 3\n");
+
+    // negotiate channel
+    m_protocolNegoTimer.Start();
+    if(!m_oSession.serverprotocolNego(m_fdChannel, m_oSafeChannel))
+        throw("fileServer::Init: protocolNego failed\n");
     m_pParent->m_protocolNegoTimer.Stop();
 
 #ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel, about to init guard\n");
+    fprintf(g_logFile, "theServiceChannel::serviceChannel: about to init guard\n");
     fflush(g_logFile);
 #endif
     // Access Guard valid?
     if(!m_oAG.m_fValid) {
-        if(!m_oAG.initChannelAccess(m_oKeys.m_iNumPrincipals, m_oKeys.m_rgPrincipalCerts)) {
-            fprintf(g_logFile, "Request::validateRequest: initAccessGuard returned false\n");
+        if(!m_oAG.initChannelGuard(m_pSession, m_pMeta)) {
+            fprintf(g_logFile, 
+                    "theServiceChannel::serviceChannel: initAccessGuard returned false\n");
             return false;
         }
     }
@@ -272,6 +294,7 @@ bool theServiceChannel::initServiceChannel()
 #ifdef TEST
     fprintf(g_logFile, "theServiceChannel: serviceChannel terminating\n");
 #endif
+
     if(m_fdChannel>0) {
         close(m_fdChannel);
         m_fdChannel= -1;
@@ -289,8 +312,7 @@ void* channelThread(void* ptr)
         fprintf(g_logFile, "channelThread activated\n");
         fprintf(g_logFile, "\tptr: %08x\n", ptr);
         fprintf(g_logFile, "\tchannel: %d, parent: %08x\n",
-                poSc->m_fdChannel, poSc->m_pParent);
-
+                    poSc->m_fdChannel, poSc->m_pParent);
         fflush(g_logFile);
 #endif
         if(!poSc->initServiceChannel())
@@ -371,47 +393,6 @@ bool fileServer::initPolicy()
         return false;
     }
 
-#if 0
-
-#ifdef TEST
-    fprintf(g_logFile, "fileServer::initPolicy: about to initpolicy Cert\n",
-            m_tcHome.m_policyKey);
-    fflush(g_logFile);
-#endif
-    if(!g_policyPrincipalCert->init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
-        fprintf(g_logFile, "fileServer::initPolicy: Can't init policy cert 1\n");
-        fflush(g_logFile);
-        return false;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "fileServer::initPolicy, about to parse policy Cert\n");
-    fprintf(g_logFile, "fileServer::initPolicy, policy Cert\n%s\n",
-            m_tcHome.m_policyKey);
-    fflush(g_logFile);
-#endif
-    if(!g_policyPrincipalCert->parsePrincipalCertElements()) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 2\n");
-        return false;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "fileServer::initPolicy, about to get policy key\n");
-    fflush(g_logFile);
-#endif
-    g_policyKey= (RSAKey*)g_policyPrincipalCert->getSubjectKeyInfo();
-    if(g_policyKey==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-    g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
-    if(g_policyAccessPrincipal==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-
-    g_globalpolicyValid= true;
-#endif
 #ifdef TEST
     fprintf(g_logFile, "fileServer::initPolicy, returning true\n");
     fflush(g_logFile);
@@ -546,18 +527,15 @@ bool fileServer::initServer(const char* configDirectory)
             parameterCount= 1;
         }
 
-        if(!initAllCrypto()) {
+        if(!initAllCrypto())
             throw "fileServer::Init: can't initcrypto\n";
-        }
-
-        // init policyPrincipal and key
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
+        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters))
             throw "fileServer::Init: can't init host\n";
-        }
         m_taoHostInitializationTimer.Stop();
+
 #ifdef TEST
         fprintf(g_logFile, "fileServer::Init: after HostInit, pid: %d\n",
             getpid());
@@ -583,23 +561,17 @@ bool fileServer::initServer(const char* configDirectory)
         fprintf(g_logFile, "fileServer::Init: after initFileKeys\n");
         m_tcHome.printData();
 #endif
+        // Init global policy 
+        if(!initPolicy())
+            throw("fileServer::Init: Cant init policy objects\n");
 
-#if 0
         // Initialize resource and principal tables
         if(!m_oMeta.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "fileServer"))
             throw "fileServer::Init: Cant init metadata\n";
         if(!m_oMeta.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
-#endif
 
-#ifdef TEST
-        fprintf(g_logFile, "initServer about to initPolicy();\n");
-        fflush(g_logFile);
-#endif
-        // Init global policy 
-        if(!initPolicy())
-            throw "fileServer::Init: Cant init policy objects\n";
 #ifdef TEST
         fprintf(g_logFile, "initServer has private key and public key\n");
         fflush(g_logFile);

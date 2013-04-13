@@ -32,7 +32,7 @@
 #include "safeChannel.h"
 #include "objectManager.h"
 #include "resource.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "accessControl.h"
 #include "algs.h"
 #include "timer.h"

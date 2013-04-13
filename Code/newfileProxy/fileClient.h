@@ -37,8 +37,8 @@
 #include "tao.h"
 #include "timer.h"
 
-#include "resource.h"
-#include "vault.h"
+// #include "resource.h"
+// #include "vault.h"
 
 #include <string>
 
@@ -68,6 +68,7 @@ public:
     char*               m_szAddress;
     int                 m_fd;
     safeChannel         m_fc;
+    fileServices        m_oServices;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;

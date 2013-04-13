@@ -95,9 +95,24 @@ public:
 #endif
 };
 
+
+bool    constructRequest(char** pp, int* piLeft, const char* szAction, 
+                       const char* szSubjectName, const char* szResourceName, 
+                       int size, const char* szEvidence);
+bool    constructResponse(bool fError, char** pp, int* piLeft, 
+                        const char* szResourceName, int size, 
+                        const char* szChannelError);
+int     openFile(const char* szInFile, int* psize);
+bool    getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
+             int encType, byte* enckey, timer& encTimer);
+bool    emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
+             int intkeyType, byte* intkey);
+bool    sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
+              int encType, byte* enckey, timer& decTimer);
+
 #endif
 
 
-// -----------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 

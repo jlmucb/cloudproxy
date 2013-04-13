@@ -46,13 +46,11 @@
 #include "tinyxml.h"
 
 #include "objectManager.h"
-#include "resource.h"
 
 #include "fileClient.h"
 #include "fileTester.h"
 #include "request.h"
 #include "trustedKeyNego.h"
-#include "vault.h"
 #include "encryptedblockIO.h"
 #include "hashprep.h"
 
@@ -84,6 +82,7 @@ const char* szServerHostAddr= "127.0.0.1";
 
 #include "./policyCert.inc"
 
+extern const char*  g_szTerm;
 const char* g_szClientPrincipalCertsFile= "fileClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys.xml";
 
@@ -93,8 +92,6 @@ const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys
 
 fileClient::fileClient ()
 {
-    m_clientState= NOSTATE;
-    m_fChannelAuthenticated= false;
     m_szPort= NULL;
     m_szAddress= NULL;
     m_fd= 0;
@@ -112,8 +109,6 @@ fileClient::fileClient ()
 
 fileClient::~fileClient ()
 {
-    m_fChannelAuthenticated= false;
-
     if(m_szPort!=NULL) {
         free(m_szPort);
         m_szPort= NULL;
@@ -265,8 +260,7 @@ bool fileClient::initFileKeys()
 
 
 bool fileClient::initClient(const char* configDirectory, const char* serverAddress, 
-                    const char* certFile, const char* keyFile,
-                    u_short serverPort)
+                    u_short serverPort, const char* certFile, const char* keyFile)
 {
     struct sockaddr_in  server_addr;
     int                 slen= sizeof(struct sockaddr_in);
@@ -434,9 +428,6 @@ void fileClient::closeConnection()
 // ------------------------------------------------------------------------
 
 
-const char*  g_szTerm= "terminate channel\n";
-
-
 bool fileClient::establishConnection(const char* keyFile, 
                                     const char* certFile, 
                                     const char* directory,
@@ -447,7 +438,7 @@ bool fileClient::establishConnection(const char* keyFile,
 
         // init logfile, crypto, etc
         if(!initClient(directory, serverAddress, serverPort,
-                        certFile, keyfile))
+                        certFile, keyFile))
             throw "fileClient main: initClient() failed\n";
     }
     catch(const char* szError) {
@@ -670,8 +661,8 @@ bool fileClient::createResource(safeChannel& fc, const string& subject,
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), szEvidence, 
-                                    encType, m_fileKeys)) {
+    if(m_oServices.clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), 
+                szEvidence, encType, m_fileKeys)) {
         fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
         fflush(g_logFile);
     } 
@@ -691,7 +682,8 @@ bool fileClient::deleteResource(safeChannel& fc, const string& subject, const st
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientdeleteResource(fc, resource.c_str(), subject.c_str(), szEvidence, encType, m_fileKeys)) {
+    if(m_oServices.clientdeleteResource(fc, resource.c_str(), subject.c_str(), 
+                        szEvidence, encType, m_fileKeys)) {
         fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
         fflush(g_logFile);
     } else {
@@ -711,7 +703,7 @@ bool fileClient::readResource(safeChannel& fc, const string& subject,
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientgetResourcefromserver(fc, 
+    if(m_oServices.clientgetResourcefromserver(fc, 
                                    remoteResource.c_str(),
                                    szEvidence,
                                    localOutput.c_str(),
@@ -737,7 +729,7 @@ bool fileClient::writeResource(safeChannel& fc, const string& subject,
     int             encType= NOENCRYPT;
     char*           szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(clientsendResourcetoserver(fc, 
+    if(m_oServices.clientsendResourcetoserver(fc, 
                                   subject.c_str(),
                                   remoteResource.c_str(),
                                   szEvidence,

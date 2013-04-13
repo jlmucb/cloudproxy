@@ -33,6 +33,7 @@
 #include "keys.h"
 #include "cert.h"
 #include "objectManager.h"
+#include "accessPrincipal.h"
 
 
 // uTypes

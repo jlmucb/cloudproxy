@@ -27,14 +27,17 @@
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "tinyxml.h"
+#include "cert.h"
 #include "validateEvidence.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
 
+#ifndef FILECLIENT
+#include "signedAssertion.h"
+#endif
+
 #include <time.h>
 #include <string.h>
-
-// #include "policyglobals.h"
 
 
 // ------------------------------------------------------------------------
@@ -155,7 +158,7 @@ char* getChainElementSignatureAlgorithm(TiXmlNode* node, int evidenceType)
 {
     TiXmlNode* nodeSigAlg= Search((TiXmlNode*)node, "ds:SignatureMethod");
 
-    if(nodeCanonical==NULL) {
+    if(nodeSigAlg==NULL) {
         fprintf(g_logFile, "getChainElementSignatureAlgorithm: Cant find it\n");
         return NULL;
     }
@@ -188,7 +191,8 @@ char* getChainElementCanonicalizationAlgorithm(TiXmlNode* node, int evidenceType
       case QUOTECERTIFICATE:
         break;
     }
-    TiXmlNode* nodeCanonical= Search((TiXmlNode*)node, "ds:CanonicalizationMethod");
+
+    nodeCanonical= Search((TiXmlNode*)node, "ds:CanonicalizationMethod");
     if(nodeCanonical==NULL) {
         fprintf(g_logFile, "getChainElementCanonicalizationAlgorithm: Cant find it\n");
         return NULL;
@@ -204,7 +208,7 @@ char* getChainElementCanonicalizationAlgorithm(TiXmlNode* node, int evidenceType
 
 
 bool getChainElementValidityPeriod(TiXmlNode* node, int evidenceType, 
-                                   tm* pnotBefore, tm* pNotAfter)
+                                   tm* pnotBefore, tm* pnotAfter)
 {
     TiXmlNode* nodeValidity= Search((TiXmlNode*)node, "ValidityPeriod");
     TiXmlNode* pNode1= NULL;
@@ -265,10 +269,10 @@ char* getChainElementSignatureValue(int evidenceType, void* pObject)
         return NULL;
       case PRINCIPALCERT:
       case SIGNEDGRANT:
-        nodeSignatureValue= Search((TiXmlNode*)node, "ds:SignatureValue");
+        nodeSignatureValue= Search((TiXmlNode*)pNode, "ds:SignatureValue");
         break;
       case QUOTECERTIFICATE:
-        nodeSignatureValue= Search((TiXmlNode*)node, "QuoteValue");
+        nodeSignatureValue= Search((TiXmlNode*)pNode, "QuoteValue");
         break;
     }
     if(nodeSignatureValue==NULL) {
@@ -371,7 +375,7 @@ int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* p
 
         // time valid?
         if(!getChainElementValidityPeriod(nodeSignedInfo, evidenceType, 
-                                    &notBefore, &NotAfter)) {
+                                    &notBefore, &notAfter)) {
             iRet= INVALIDPERIOD;
             throw("VerifySignedEvidence: can't get validity period\n");
         }
@@ -396,14 +400,14 @@ int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* p
             iRet= INVALIDSIG;
             throw("VerifySignedEvidence: cant canonicalize signedInfo\n");
         }
-        szSignatureValue= getChainElementsignatureValue(evidenceType, pObject);
+        szSignatureValue= getChainElementSignatureValue(evidenceType, pObject);
         if(szSignatureValue==NULL) {
             iRet= INVALIDSIG;
             throw("VerifySignedEvidence: cant get signature value element\n");
         }
 
         // check hash
-        if(!VerifyRSASha256SignaturefromSignedInfoandKey(*pSignerKey,
+        if(!VerifyRSASha256SignaturefromSignedInfoandKey(*(RSAKey*)pSignerKey,
                                     szCanonicalSignedBody, szSignatureValue)) {
             iRet= INVALIDSIG;
             throw("VerifySignedEvidence: Verify Evidence failed\n");
@@ -443,10 +447,9 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
     int         iRet= VALID;
     time_t      timer;
     RSAKey*     pSignerKey= NULL;
-    char*       szPurpose= NULL;
 
 #ifdef TEST
-    fprintf(g_logFile, "VerifyChain %d\n", npiecesEvidence);
+    fprintf(g_logFile, "VerifyChain %d\n", npieces);
     fflush(g_logFile);
 #endif
 
@@ -468,14 +471,14 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
 
             // check purpose
             szPurpose= getChainElementSignedInfoPurpose(rgType[i], rgObject[i]);
-            if(purposeNode==NULL) {
+            if(szPurpose==NULL) {
                 iRet= INVALIDPURPOSE;
                 throw("VerifyChain: cant get signer key\n");
             }
             // Fix: check
 
             // get signer's key
-            pSignerKey= (RSAKeyInfo*) getChainElementSubjectKey(rgType[i+1], rgObject[i+1]);
+            pSignerKey= (RSAKey*) getChainElementSubjectKey(rgType[i+1], rgObject[i+1]);
             if(pSignerKey==NULL) {
                 iRet= INVALIDPARENT;
                 throw("VerifyChain: cant get signer key\n");
@@ -603,7 +606,9 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
     int                 n= 0;
     char*               szEvidence= NULL;
     PrincipalCert*      pCert= NULL;
+#ifndef FILECLIENT
     SignedAssertion*    pAssert= NULL;
+#endif
 
     if(strcmp(pRootElement->Value(),"EvidenceList")!=0) {
         fprintf(g_logFile, "Should be EvidenceList %s\n", pRootElement->Value());
@@ -636,6 +641,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
         // parse Evidence
         szEvidence= canonicalize(pNode);
         switch(m_rgiEvidenceTypes[n]) {
+#ifndef FILECLIENT
           case SIGNEDGRANT:
             pAssert= new SignedAssertion();
             if(!pAssert->init(szEvidence)) {
@@ -648,6 +654,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
             }
             m_rgEvidence[n]= (void*) pAssert;
             break;
+#endif
           case PRINCIPALCERT:
             pCert= new PrincipalCert();
             if(!pCert->init(szEvidence)) {
@@ -708,8 +715,11 @@ bool    evidenceList::validateEvidenceList(RSAKey* pRootKey, RSAKey* pTopKey)
         return false;
     }
 
-    iVerify= VerifyEvidenceList(NULL, m_iNumPiecesofEvidence, m_rgiEvidenceTypes,
-                                (void**) m_rgEvidence, pRootKey, pTopKey);
+    iVerify= VerifyChain(*pRootKey, "", NULL, m_iNumPiecesofEvidence, 
+                         m_rgiEvidenceTypes, (void**) m_rgEvidence);
+    // Changed VerifyEvidenceList(NULL, m_iNumPiecesofEvidence, m_rgiEvidenceTypes,
+    //                            (void**) m_rgEvidence, pRootKey, pTopKey);
+
     if(iVerify>0)
         m_fValid= true;
     else

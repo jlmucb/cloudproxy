@@ -504,8 +504,9 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
 }
 
 
-bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char* szSubjectName,
-                       const char* szResourceName, int size, const char* szEvidence)
+bool  constructRequest(char** pp, int* piLeft, const char* szAction, 
+                       const char* szSubjectName, const char* szResourceName, 
+                       int size, const char* szEvidence)
 {
 #ifdef  TEST1
     char*p= *pp;
@@ -566,8 +567,9 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction, const char*
 }
 
 
-bool  constructResponse(bool fError, char** pp, int* piLeft, const char* szResourceName, 
-                        int size, const char* szChannelError)
+bool  constructResponse(bool fError, char** pp, int* piLeft, 
+			const char* szResourceName, int size, 
+			const char* szChannelError)
 {
     bool    fRet= true;
     int     n= 0;

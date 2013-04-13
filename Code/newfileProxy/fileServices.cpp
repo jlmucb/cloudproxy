@@ -37,7 +37,11 @@
 #include "jlmUtility.h"
 #include "fileServices.h"
 #include "encryptedblockIO.h"
+#include "request.h"
+
+#ifndef FILECLIENT
 #include "vault.h"
+#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -68,7 +72,7 @@ fileServices::~fileServices()
 // ------------------------------------------------------------------------
 
 
-#ifdef SERVER
+#ifndef FILECLIENT
 
 //  Server services
 
@@ -746,7 +750,7 @@ bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szRe
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
 #endif
     // send request
-    if(!constructfileServices(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
+    if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
@@ -806,13 +810,13 @@ bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szR
     fprintf(g_logFile, "clientcreateResourceonserver(%s)\n", szResourceName);
 #endif
     // send request
-    if(!constructfileServices(&p, &iLeft, "createResource", szSubject, 
+    if(!constructRequest(&p, &iLeft, "createResource", szSubject, 
                                     szResourceName, 0, szEvidence)) {
-        fprintf(g_logFile, "clientcreateResourceonserver: constructfileServices returns false\n");
+        fprintf(g_logFile, "clientcreateResourceonserver: constructRequest returns false\n");
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
-        fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructfileServices returns false\n");
+        fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructRequest returns false\n");
         return false;
     }
 
@@ -890,13 +894,13 @@ bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSub
     datasize= filesize;
 
     // send request
-    if(!constructfileServices(&p, &iLeft, "sendResource", szSubject, szResourceName, 
+    if(!constructRequest(&p, &iLeft, "sendResource", szSubject, szResourceName, 
                          filesize, szEvidence)) {
-        fprintf(g_logFile, "clientsendResourcetoserver: constructfileServices returns false\n");
+        fprintf(g_logFile, "clientsendResourcetoserver: constructRequest returns false\n");
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
-        fprintf(g_logFile, "clientsendResourcetoserver: safesendPacket after constructfileServices returns false\n");
+        fprintf(g_logFile, "clientsendResourcetoserver: safesendPacket after constructRequest returns false\n");
         return false;
     }
 
@@ -956,8 +960,8 @@ bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szActi
 #endif
 
     // send request
-    if(!constructfileServices(&p, &iLeft, szAction, NULL, szResourceName, 0, szEvidence)) {
-        fprintf(g_logFile, "clientchangeownerResource: constructfileServices returns false\n");
+    if(!constructRequest(&p, &iLeft, szAction, NULL, szResourceName, 0, szEvidence)) {
+        fprintf(g_logFile, "clientchangeownerResource: constructRequest returns false\n");
         return false;
     }
     if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
@@ -1001,8 +1005,8 @@ bool fileServices::clientdeleteResource(safeChannel& fc, const char* szResourceN
     fflush(g_logFile);
 #endif
     // send request
-    if(!constructfileServices(&p, &iLeft, "deleteResource", NULL, szResourceName, 0, szEvidence)) {
-        fprintf(g_logFile, "clientdeleteResource: constructfileServices returns false\n");
+    if(!constructRequest(&p, &iLeft, "deleteResource", NULL, szResourceName, 0, szEvidence)) {
+        fprintf(g_logFile, "clientdeleteResource: constructRequest returns false\n");
         return false;
     }
 #ifdef  TEST1

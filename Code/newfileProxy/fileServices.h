@@ -33,7 +33,7 @@
 #include "safeChannel.h"
 #include "timer.h"
 
-#ifdef SERVER
+#ifndef FILECLIENT
 #include "accessControl.h"
 #include "resource.h"
 #endif
@@ -42,19 +42,19 @@
 class fileServices{
 public:
     session*    m_pSession;
-#ifdef SERVER
+#ifndef FILECLIENT
     metaData*   m_pMeta;
 #endif
 
                 fileServices();
                 ~fileServices();
-#ifdef SERVER
+#ifndef FILECLIENT
     bool        initFileServices(session* pSession, metaData* pMeta);
 #else
     bool        initFileServices(session* pSession);
 #endif
 
-#ifdef SERVER
+#ifndef FILECLIENT
     bool        validateAddPrincipalRequest(char** pszFile, 
                         resource** ppResource);
     bool        validateDeletePrincipalRequest(char** pszFile, 

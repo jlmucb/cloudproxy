@@ -24,7 +24,12 @@
 #include "objectManager.h"
 #include "keys.h"
 #include "sha256.h"
+
+#ifdef NEWANDREORGANIZED
+#include "cert.h"
+#else
 #include "secPrincipal.h"
+#endif
 
 #include "tao.h"
 #include "resource.h"

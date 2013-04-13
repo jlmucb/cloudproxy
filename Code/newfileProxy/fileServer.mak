@@ -1,5 +1,5 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/fileServerobjects
+B=          ~/jlmcrypt/newfileServerobjects
 S=          ../fileProxy
 SC=         ../commonCode
 SCC=        ../jlmcrypto

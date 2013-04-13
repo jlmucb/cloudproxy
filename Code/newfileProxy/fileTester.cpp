@@ -23,7 +23,9 @@
 
 #include "logging.h"
 #include "fileTester.h"
+#ifndef FILECLIENT
 #include "fileServer.h"
+#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -229,7 +231,7 @@ void fileTester::Run(const char* directory) {
     // establish the default channel as long as there 
     // is a default keyFile and certFile
     if (!m_defaultParams.keyFile.empty() && !m_defaultParams.certFile.empty()) {
-        if (!m_defaultClient.establishConnection(m_defaultChannel,
+        if (!m_defaultClient.establishConnection(
                             m_defaultParams.keyFile.c_str(),
                             m_defaultParams.certFile.c_str(),
                             directory,
@@ -274,8 +276,7 @@ void fileTester::Run(const char* directory) {
             // establish a new connection for this test
             for(int i = 0; i < it->repetitions; ++i) {
                 fileClient client;
-                safeChannel channel;
-                result = client.establishConnection(channel,
+                result = client.establishConnection(
                         it->keyFile.c_str(),
                         it->certFile.c_str(),
                         directory,
@@ -284,7 +285,7 @@ void fileTester::Run(const char* directory) {
 
                 try {
                     result = runTest(client,
-                                channel,
+                                client.m_fc,
                                 *it,
                                 testTimer);
                     if (it->timed) {
@@ -297,7 +298,7 @@ void fileTester::Run(const char* directory) {
                     fprintf(g_logFile, "Error: %s\n", err); 
                     result = false;
                 }
-                client.closeConnection(channel);
+                client.closeConnection();
             }
         }
     
@@ -311,7 +312,7 @@ void fileTester::Run(const char* directory) {
     }
 
     if (establishedDefaultConnection) {
-        m_defaultClient.closeConnection(m_defaultChannel);
+        m_defaultClient.closeConnection();
     }
 
     if (m_printToStdout) printf("Finished running tests in file %s\n", m_testFileName.c_str());
@@ -327,14 +328,14 @@ bool fileTester::runTest(fileClient& client,
     try {
         if (params.action.compare("create") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.createResource(channel,
+            result = client.createResource(client.m_fc,
                             params.subject,
                             params.authFile,
                             params.remoteObject);            
             if (params.timed) testTimer.Stop();
         } else if (params.action.compare("read") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.readResource(channel,
+            result = client.readResource(client.m_fc,
                             params.subject,
                             params.authFile,
                             params.remoteObject,
@@ -346,7 +347,7 @@ bool fileTester::runTest(fileClient& client,
             result = client.compareFiles(params.localObject, params.match);
         } else if (params.action.compare("write") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.writeResource(channel,
+            result = client.writeResource(client.m_fc,
                             params.subject,
                             params.authFile,
                             params.remoteObject,
@@ -354,7 +355,7 @@ bool fileTester::runTest(fileClient& client,
             if (params.timed) testTimer.Stop();
         } else if (params.action.compare("delete") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.deleteResource(channel,
+            result = client.deleteResource(client.m_fc,
                             params.subject,
                             params.authFile,
                             params.remoteObject);

@@ -53,7 +53,7 @@ RSAKey*     RSAKeyfromkeyInfo(const char* szKeyInfo);
 int         timeCompare(struct tm& time1, struct tm& time2);
 char*       stringtimefromtimeInfo(struct tm* timeinfo);
 struct tm*  timeNow();
-bool        timeInfofromstring(const char szTime, struct tm& thetime);
+bool        timeInfofromstring(const char* szTime, struct tm& thetime);
 bool        checktimeinInterval(tm& time, tm& begin, tm& end);
 
 bool        sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);

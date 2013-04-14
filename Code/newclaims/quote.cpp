@@ -345,7 +345,7 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
     }
 
     // decode quote value
-    if(!fromBase64(strlen(szQuoteValue), szQuoteValue, &outLen, quoteValue)) {
+    if(!fromBase64(strlen(szQuoteValue), szQuoteValue, &outLen, quoteValue, false)) {
         fprintf(g_logFile, "checkXMLQuote: Cant base64 code decode quote value\n");
         return false;
     }
@@ -396,24 +396,17 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
 
 
 #ifdef TEST
-    fprintf(g_logFile, "checkXMLQuote hashtype: %d\n", hashType);
-    PrintBytes("Code digest: ", hashCode, sizehashCode);
-    PrintBytes("final hash: ", hashFinal, sizefinalHash);
-    PrintBytes("quotevalue: ", quoteValue, outLen);
+    PrintBytes((char*)"Hash body: ", hashBody, sizehashBody);
+    PrintBytes((char*)"Code digest: ", hashCode, sizehashCode);
+    PrintBytes((char*)"final hash: ", hashFinal, sizehashCode);
     fflush(g_logFile);
 #else
     UNUSEDVAR(sizefinalHash);	
 #endif
 
-    
-#if 0
-    return RsaPkcsPadSignCheck((RSAKey*) pKeyInfo, hashType, hashFinal,
-                               outLen, quoteValue);
-#else
     bool fRet= RSAVerify(*(RSAKey*)pKeyInfo, hashType, hashFinal,
                                quoteValue);
     return fRet;
-#endif
 }
 
 

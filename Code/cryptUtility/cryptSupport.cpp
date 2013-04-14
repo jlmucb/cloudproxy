@@ -195,6 +195,12 @@ bool verifyXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, c
         return false;
     }
 
+#ifdef TEST
+    PrintBytes((char*)"Hash body: ", hashBody, sizehashBody);
+    PrintBytes((char*)"Code digest: ", hashCode, sizehashCode);
+    PrintBytes((char*)"final hash: ", hashFinal, sizehashCode);
+#endif
+
     return RsaPkcsPadSignCheck((RSAKey*) pKeyInfo, hashType, hashFinal,
                                outLen, quoteValue);
 }

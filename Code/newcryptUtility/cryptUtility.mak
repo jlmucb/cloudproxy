@@ -11,7 +11,7 @@ TAO=	    ../tao
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS) -D TEST
+CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS) -D TEST -D QUOTE2_DEFINED
 CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++

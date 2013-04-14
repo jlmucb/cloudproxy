@@ -38,8 +38,9 @@
 #include "fileHash.h"
 #include "mpFunctions.h"
 #include "modesandpadding.h"
+#include "cert.h"
+#include "quote.h"
 #include "cryptoHelper.h"
-#include "cryptSupport.h"
 #include "hashprep.h"
 #include "encapsulate.h"
 
@@ -84,7 +85,7 @@
 bool GenRSAKey(int size, const char* szOutFile)
 {
     RSAKey* pKey= RSAGenerateKeyPair(size);
-    char*   szKeyInfo= RSAKeyInfofromKey(*pKey);
+    char*   szKeyInfo= pKey->SerializetoString();
     if(!saveBlobtoFile(szOutFile, (byte*)szKeyInfo, strlen(szKeyInfo)+1))
         return false;
     return true;
@@ -233,30 +234,30 @@ bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, 
     RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
 
     if(pKey==NULL) {
-        fprintf(g_logFile, "Can't get key from keyfile %s\n", szKeyFile);
+        fprintf(g_logFile, "Sign: Can't get key from keyfile %s\n", szKeyFile);
         return false;
     }
 
     if(!getBlobfromFile(szInFile, (byte*)szBuf, &bufLen)) {
-        fprintf(g_logFile, "Can't read signedInfo from %s\n", szInFile);
+        fprintf(g_logFile, "Sign: Can't read signedInfo from %s\n", szInFile);
         return false;
     }
     szBuf[bufLen]= 0;
     char* szSignedInfo= XMLCanonicalizedString((const char*) szBuf);
     if(szSignedInfo==NULL) {
-        fprintf(g_logFile, "Cant canonicalize signedInfo\n");
+        fprintf(g_logFile, "Sign: Cant canonicalize signedInfo\n");
         return false;
     }
 
     char* szSig= constructXMLRSASha256SignaturefromSignedInfoandKey(*pKey,
                                                 "newKey", szSignedInfo);
     if(szSig==NULL) {
-        fprintf(g_logFile, "Cant construct signature\n");
+        fprintf(g_logFile, "Sign: Cant construct signature\n");
         return false;
     }
 
     if(!saveBlobtoFile(szOutFile, (byte*)szSig, strlen(szSig)+1)) {
-        fprintf(g_logFile, "Cant save %s\n", szOutFile);
+        fprintf(g_logFile, "Sign: Cant save %s\n", szOutFile);
         return false;
     }
     return true;
@@ -270,46 +271,63 @@ bool Verify(const char* szKeyFile, const char* szInFile)
     RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
 
     if(pKey==NULL) {
-        fprintf(g_logFile, "Can't get key from keyfile %s\n", szKeyFile);
+        fprintf(g_logFile, "Verify: Can't get key from keyfile %s\n", szKeyFile);
         return false;
     }
 
     if(!getBlobfromFile(szInFile, (byte*)szBuf, &bufLen)) {
-        fprintf(g_logFile, "Can't read signature from %s\n", szInFile);
+        fprintf(g_logFile, "Verify: Can't read signature from %s\n", szInFile);
         return false;
     }
 
+#ifdef TEST
+    fprintf(g_logFile, "Verify: got blob\n"); fflush(g_logFile);
+#endif
+
     TiXmlDocument doc;
     if(!doc.Parse((const char*)szBuf)) {
-        fprintf(g_logFile, "Cant parse Signature Document\n");
+        fprintf(g_logFile, "Verify: Cant parse Signature Document\n");
         return NULL;
     }
     if(doc.RootElement()==NULL) {
-        fprintf(g_logFile, "Cant get root element\n");
+        fprintf(g_logFile, "Verify: Cant get root element\n");
         return NULL;
     }
     TiXmlNode* pNode= Search((TiXmlNode*) doc.RootElement(), "ds:SignedInfo");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Can't get SignedInfo\n");
+        fprintf(g_logFile, "Verify: Can't get SignedInfo\n");
         return false;
     }
     char* szSignedInfo= canonicalize(pNode);
 
+#ifdef TEST
+    fprintf(g_logFile, "Verify: got signedinfo\n"); fflush(g_logFile);
+#endif
+
     pNode= Search((TiXmlNode*) doc.RootElement(), "ds:SignatureValue");
-    TiXmlNode* pNode1= pNode->FirstChild();
     if(pNode==NULL) {
-        fprintf(g_logFile, "Can't get SignatureValue element\n");
+        fprintf(g_logFile, "Verify: Can't get SignatureValue element\n");
+        return false;
+    }
+    TiXmlNode* pNode1= pNode->FirstChild();
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "Verify: Can't get SignatureValue element\n");
         return false;
     }
     if(pNode1->Value()==NULL) {
-        fprintf(g_logFile, "Can't get SignatureValue\n");
+        fprintf(g_logFile, "Verify: Can't get SignatureValue\n");
         return false;
     }
     char* szSigValue= strdup(pNode1->Value());
     if(szSigValue==NULL) {
-        fprintf(g_logFile, "Can't get zSigValuen");
+        fprintf(g_logFile, "Verify: Can't get szSigValue\n");
         return false;
     }
+
+#ifdef TEST
+    fprintf(g_logFile, "Verify: about to VerifyRSASha256SignaturefromSignedInfoandKey\n"); 
+    fflush(g_logFile);
+#endif
 
     return VerifyRSASha256SignaturefromSignedInfoandKey(*pKey, szSignedInfo, szSigValue);
 }
@@ -853,7 +871,7 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
     fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
     fprintf(g_logFile, "AttestCert:\n%s\n\n", szCertString);
     
-    return verifyXMLQuote(szAlg, szQuotedInfo, sznonce,
+    return checkXMLQuote(szAlg, szQuotedInfo, sznonce,
                           szDigest, pAIKKey, szQuoteValue);
 }
 
@@ -1051,7 +1069,7 @@ bool Encapsulate(const char* szCert, const char* szMetaDataFile,
     }
 
     // Make RSAKey
-    sealingKey= (RSAKey*)keyfromkeyInfo(szEncapsulateKeyInfo);
+    sealingKey= (RSAKey*)RSAKeyfromkeyInfo(szEncapsulateKeyInfo);
     if(sealingKey==NULL) {
         fprintf(g_logFile, "Encapsulate: cant parse key\n");
         fRet= false;
@@ -1139,7 +1157,7 @@ bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile,
     }
 
     // Make RSAKey
-    sealingKey= (RSAKey*)keyfromkeyInfo(szKeyInfo);
+    sealingKey= (RSAKey*)RSAKeyfromkeyInfo(szKeyInfo);
     if(sealingKey==NULL) {
         fprintf(g_logFile, "Decapsulate: cant parse key\n");
         fRet= false;

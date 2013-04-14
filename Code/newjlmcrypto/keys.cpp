@@ -548,9 +548,16 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         return false;
     }
 
-printf("DP: %s\n", szRsaKeyDP); fflush(stdout);
-printf("DQ: %s\n", szRsaKeyDQ); fflush(stdout);
-printf("making bignums\n"); fflush(stdout);
+#ifdef TEST
+    if(szRsaKeyDP!=NULL) {
+        printf("DP: %s\n", szRsaKeyDP); fflush(stdout);
+    }
+    if(szRsaKeyDQ!=NULL) {
+        printf("DQ: %s\n", szRsaKeyDQ); fflush(stdout);
+    }
+    printf("making bignums\n"); fflush(stdout);
+#endif
+
     // make bignums
     if(m_iByteSizeM>0) {
         m_pbnM= new bnum((m_iByteSizeM+sizeof(u64)-1)/sizeof(u64));
@@ -588,6 +595,10 @@ printf("making bignums\n"); fflush(stdout);
         mpSub(*m_pbnQ, g_bnOne, *m_pbnQM1);
     }
  
+#ifdef TEST
+    printf("leaving getatafromDoc\n"); fflush(stdout);
+#endif
+
     return true;
 }
 

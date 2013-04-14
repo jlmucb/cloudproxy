@@ -85,6 +85,10 @@ bool    decodeXMLQuote(const char* szXMLQuote, char** pszAlg, char** psznonce,
 bool	sha256quoteHash(int sizenonce, byte* nonce, 
                      int sizetobeSignedHash, byte* tobesignedHash, 
                      int sizecodeHash, byte* codeHash, byte* outputHash);
+bool    checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, 
+                      const char* sznonce, const char* szdigest, KeyInfo* pKeyInfo, 
+                      const char* szQuoteValue);
+
 #endif
 
 

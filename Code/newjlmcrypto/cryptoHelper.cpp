@@ -784,7 +784,7 @@ char* constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 {
     const char* attrName[2]= {"xmlns", "Id"};
     const char* attrValue[2]= {"http://www.w3.org/2000/09/xmldsig#", NULL};
-    const char* elts[2];
+    const char* elts[3];
     int         size= 8192;
     char        szSignature[8192];
     char*       szKeyInfo= NULL;
@@ -793,21 +793,23 @@ char* constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
                                                 szsignedInfo);
     bool        fRet= true;
 
-    if(szSig==NULL)
+    if(szSig==NULL) {
         return NULL;
+    }
     szKeyInfo= RSAPublicKeyInfofromKey(key);
     if(szKeyInfo==NULL) 
         return NULL;
-    sprintf(szSignatureElement, "  <SignatureValue> %s </SignatureValue>\n",
-            szKeyInfo);
+    sprintf(szSignatureElement, "  <ds:SignatureValue> %s </ds:SignatureValue>\n",
+            szSig);
 
     attrValue[1]= id;
     elts[0]= szsignedInfo;
     elts[1]= szSignatureElement;
+    elts[2]= szKeyInfo;
 
     size= 8192;
     fRet= XMLenclosingtypefromelements("ds:Signature", 2, attrName, attrValue, 
-                                   2, elts, &size, szSignature);
+                                   3, elts, &size, szSignature);
 
     if(szKeyInfo!=NULL) {
         free(szKeyInfo);

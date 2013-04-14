@@ -72,6 +72,9 @@
 #define QUOTE                     17
 #define ENCAPSULATE               18
 #define DECAPSULATE               19
+#define VALIDATECHAIN             20
+#define VALIDATEASSERTION         21
+
 
 #define MAXREQUESTSIZE          2048
 #define MAXADDEDSIZE              64
@@ -1228,6 +1231,20 @@ done:
 }
 
 
+bool validateChain(const char* szKeyString, const char* szInFile)
+{
+    fprintf(g_logFile, "validateChain not implemented\n");
+    return false;
+}
+
+
+bool validateAssertion(const char* szKeyString, const char* szInFile)
+{
+    fprintf(g_logFile, "validateAssertion not implemented\n");
+    return false;
+}
+
+
 // --------------------------------------------------------------------- 
 
 
@@ -1279,6 +1296,8 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-aikcert\n");
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -validateChain rootKeyFile evidenceFile\n");
+            fprintf(g_logFile, "       cryptUtility -validateAssertion rootKeyFile evidenceFile\n");
             return 0;
         }
         if(strcmp(av[i], "-Canonical")==0) {
@@ -1451,7 +1470,26 @@ int main(int an, char** av)
             iAction= DECAPSULATE;
             break;
         }
-
+        if(strcmp(av[i], "-validateChain")==0) {
+            if(an<(i+3)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            iAction= VALIDATECHAIN;
+            break;
+        }
+        if(strcmp(av[i], "-validateAssertion")==0) {
+            if(an<(i+3)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            iAction= VALIDATEASSERTION;
+            break;
+        }
     }
 
     if(iAction==NOACTION) {
@@ -1644,6 +1682,40 @@ int main(int an, char** av)
             fprintf(g_logFile, "Decapsulate fails\n");
         }
         free(szKeyInfoString);
+        return 0;
+    }
+    if(iAction==VALIDATECHAIN) {
+        initCryptoRand();
+        initBigNum();
+        char* szKeyString= readandstoreString(szKeyFile);
+        char* szEvidenceList= readandstoreString(szInFile);
+        if(validateChain(szKeyString, szInFile)) {
+            fprintf(g_logFile, "validateChain succeeds\n");
+        }
+        else {
+            fprintf(g_logFile, "validateChain fails\n");
+        }
+	if(szKeyString!=NULL)
+            free(szKeyString);
+	if(szEvidenceList!=NULL)
+            free(szEvidenceList);
+        return 0;
+    }
+    if(iAction==VALIDATEASSERTION) {
+        initCryptoRand();
+        initBigNum();
+        char* szKeyString= readandstoreString(szKeyFile);
+        char* szEvidenceList= readandstoreString(szInFile);
+        if(validateAssertion(szKeyString, szInFile)) {
+            fprintf(g_logFile, "validateAssertion succeeds\n");
+        }
+        else {
+            fprintf(g_logFile, "validateAssertion fails\n");
+        }
+	if(szKeyString!=NULL)
+            free(szKeyString);
+	if(szEvidenceList!=NULL)
+            free(szEvidenceList);
         return 0;
     }
 

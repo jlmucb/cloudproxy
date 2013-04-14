@@ -129,7 +129,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     TiXmlNode*      pNode2= NULL;
     TiXmlNode*      pSignedInfoNode= NULL;
     TiXmlNode*      pSubjectKeyInfoNode= NULL;
-    const char*           szTimePoint= NULL;
+    const char*     szNotBefore= NULL;
+    const char*     szNotAfter= NULL;
 
 #ifdef CERTTEST
     fprintf(g_logFile, "parsePrincipalCertElementfromRoot\n");
@@ -152,16 +153,15 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     // fill m_szSignatureMethod;
     pNode= Search(pSignedInfoNode, "ds:SignatureMethod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find SignatureMethod\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find SignatureMethod\n");
         return false;
     }
     m_szSignatureMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
 
-
     // fill m_szCanonicalizationMethod;
     pNode= Search(pSignedInfoNode, "ds:CanonicalizationMethod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find CanonicalizationMethod\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find CanonicalizationMethod\n");
         return false;
     }
     m_szCanonicalizationMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
@@ -169,32 +169,32 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     // fill m_szRevocationInfo;
     pNode= Search(pSignedInfoNode, "RevocationPolicy");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find RevocationPolicy\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find RevocationPolicy\n");
         return false;
     }
 
     // fill m_pSubjectKeyInfo;
     pNode= Search(pSignedInfoNode, "SubjectKey");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find SubjectKey\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find SubjectKey\n");
         return false;
     }
     pSubjectKeyInfoNode= Search(pNode, "ds:KeyInfo");
     if(pSubjectKeyInfoNode==NULL) {
-        fprintf(g_logFile, "Cant find SubjectKey KeyInfo\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find SubjectKey KeyInfo\n");
         return false;
     }
 
     m_pSubjectKeyInfo= RSAKeyfromKeyInfoNode(pSubjectKeyInfoNode);
     if(m_pSubjectKeyInfo==NULL) {
-        fprintf(g_logFile, "Cant init KeyInfo\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant init KeyInfo\n");
         return false;
     }
 
     // fill principal name
     pNode= Search(pSignedInfoNode, "SubjectName");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find Subject name\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find Subject name\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
@@ -202,57 +202,58 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         m_szPrincipalName= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
-        fprintf(g_logFile, "Cant get subject name value\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get subject name value\n");
         return false;
     }
 
     // fill m_ovalidityPeriod;
     pNode= Search((TiXmlNode*) pSignedInfoNode, "ValidityPeriod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find Validity Period\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find Validity Period\n");
         return false;
     }
     pNode1= Search(pNode, "NotBefore");
     if(pNode1==NULL) {
-        fprintf(g_logFile, "Cant find NotBefore\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find NotBefore\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
-    if(pNode2) {
-        szTimePoint= ((TiXmlElement*)pNode2)->Value();
+    if(pNode2!=NULL) {
+        szNotBefore= ((TiXmlElement*)pNode2)->Value();
     }
     else {
-        fprintf(g_logFile, "Cant get NotBefore value\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get NotBefore value\n");
         return false;
     }
 
-    if(!UTCtogmTime(szTimePoint, &m_ovalidityPeriod.notBefore)) {
-        fprintf(g_logFile, "Cant interpret NotBefore value\n");
-        return false;
-    }
     pNode1= Search(pNode, "NotAfter");
     if(pNode1==NULL) {
-        fprintf(g_logFile, "Cant find NotAfter\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find NotAfter\n");
         return false;
     }
     pNode2= ((TiXmlElement*)pNode1)->FirstChild();
-    if(pNode2) {
-        szTimePoint= ((TiXmlElement*)pNode2)->Value();
+    if(pNode2!=NULL) {
+        szNotAfter= ((TiXmlElement*)pNode2)->Value();
     }
     else {
-        fprintf(g_logFile, "Cant get NotAftervalue\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get NotAftervalue\n");
         return false;
     }
 
-    if(!UTCtogmTime(szTimePoint, &m_ovalidityPeriod.notAfter)) {
-        fprintf(g_logFile, "Cant interpret NotAftervalue\n");
+    if(!timeInfofromstring(szNotBefore, m_ovalidityPeriod.notBefore)) {
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant interpret NotBefore value\n");
+        return false;
+    }
+
+    if(!timeInfofromstring(szNotAfter, m_ovalidityPeriod.notAfter)) {
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant interpret NotAftervalue\n");
         return false;
     }
 
     // fill m_szSignatureValue;
     pNode= Search((TiXmlNode*) pRootElement, "ds:SignatureValue");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Cant find SignatureValue\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find SignatureValue\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
@@ -260,7 +261,7 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         m_szSignatureValue= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
-        fprintf(g_logFile, "Cant get SignatureValue\n");
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get SignatureValue\n");
         return false;
     }
 

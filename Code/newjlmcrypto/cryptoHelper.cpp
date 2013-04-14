@@ -338,14 +338,14 @@ RSAKey* RSAKeyfromKeyInfoNode(TiXmlNode* pNode)
     char*   szDoc= NULL;
 
     try {
-        new RSAKey();
+        pKey= new RSAKey();
     
         szDoc = canonicalize(pNode);
         if(szDoc==NULL)
             throw("Cant canonicalize keyinfo\n");
 
         if(!pKey->ParsefromString(szDoc)) 
-            throw("Cant parse KeyInfor\n");
+            throw("Cant parse KeyInfo\n");
 
         if(!pKey->getDataFromDoc())
             throw("Cant get data from KeyInfo\n");

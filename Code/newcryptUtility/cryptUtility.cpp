@@ -825,23 +825,29 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
     char* szCertString= readandstoreString(szCertFile);
     char* szQuoteString= readandstoreString(szQuoteFile);
 
+#ifdef TEST
+    fprintf(g_logFile, "VerifyQuote: quoteFile: %s, certFile: %s\n",
+            szQuoteFile, szCertFile);
+    fflush(g_logFile);
+#endif
+
     // get and parse Quote
     if(szQuoteFile==NULL) {
-        fprintf(g_logFile, "Can't cant read quote file %s\n", szQuoteFile);
+        fprintf(g_logFile, "VerifyQuote: Can't cant read quote file %s\n", szQuoteFile);
         return false;
     }
     if(!oQuote.init(szQuoteString)) {
-        fprintf(g_logFile, "Can't parse quote\n");
+        fprintf(g_logFile, "VerifyQuote: Can't parse quote\n");
         return false;
     }
 
     // get and parse Cert
     if(szCertFile==NULL) {
-        fprintf(g_logFile, "Can't cant read cert file %s\n", szCertFile);
+        fprintf(g_logFile, "VerifyQuote: Can't cant read cert file %s\n", szCertFile);
         return false;
     }
     if(!oCert.init(szCertString)) {
-        fprintf(g_logFile, "Can't parse cert\n");
+        fprintf(g_logFile, "VerifyQuote: Can't parse cert\n");
         return false;
     }
 
@@ -853,15 +859,14 @@ bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
     char* szDigest= oQuote.getcodeDigest();
 
     if(!oCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "Can't get principal cert elements\n");
+        fprintf(g_logFile, "VerifyQuote: Can't get principal cert elements\n");
         return false;
     }
-
 
     // check quote
     RSAKey* pAIKKey= (RSAKey*) oCert.getSubjectKeyInfo();
     if(pAIKKey==NULL) {
-        fprintf(g_logFile, "Cant get quote keyfromkeyInfo\n");
+        fprintf(g_logFile, "VerifyQuote: Cant get quote keyfromkeyInfo\n");
         return false;
     }
 

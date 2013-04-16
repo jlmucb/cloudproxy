@@ -274,7 +274,7 @@ bool theServiceChannel::initServiceChannel()
 #endif
     // Access Guard valid?
     if(!m_oAG.m_fValid) {
-        if(!m_oAG.initChannelGuard(m_pSession, m_pMeta)) {
+        if(!m_oAG.initGuard(m_pSession, m_pMeta)) {
             fprintf(g_logFile, 
                     "theServiceChannel::serviceChannel: initAccessGuard returned false\n");
             return false;

@@ -108,8 +108,8 @@ public:
     accessGuard();
     ~accessGuard();
 
-    bool        initChannelGuard(int numPrin, PrincipalCert** rgPrincs, 
-                                 RSAKey* pPolicy, metaData* pMeta);
+    bool        initGuard(int numPrin, PrincipalCert** rgPrincs, 
+                           RSAKey* pPolicy, metaData* pMeta);
     bool        permitAccess(accessRequest& req, const char* szEvidence);
 };
 

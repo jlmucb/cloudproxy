@@ -447,7 +447,7 @@ accessGuard::~accessGuard()
 }
 
 
-bool accessGuard::initChannelGuard(int numPrin, PrincipalCert** rgPrincs,
+bool accessGuard::initGuard(int numPrin, PrincipalCert** rgPrincs,
                                    RSAKey* pPolicy, metaData* pMeta)
 {
     int                 iNumSubj;
@@ -457,13 +457,13 @@ bool accessGuard::initChannelGuard(int numPrin, PrincipalCert** rgPrincs,
     int                 i;
 
 #ifdef TEST  
-    fprintf(g_logFile, "initChannelGuard\n");
+    fprintf(g_logFile, "initGuard\n");
     fflush(g_logFile);
 #endif
 
 #if 0
     if(m_pMeta==NULL || m_pSession) {
-        fprintf(g_logFile, "initChannelGuard: missing metaData or session\n");
+        fprintf(g_logFile, "initGuard: missing metaData or session\n");
         return false;
     }
 
@@ -488,17 +488,17 @@ bool accessGuard::initChannelGuard(int numPrin, PrincipalCert** rgPrincs,
     for(i=0;i< iNumSubj; i++) {
         pCert= rgpPrinc[i];
         if(pCert==NULL) {
-            fprintf(g_logFile, "initChannelGuard: NULL principal\n");
+            fprintf(g_logFile, "initGuard: NULL principal\n");
             return false;
         }
         if((pPrincipal= m_pMeta->findPrincipal(pCert->getPrincipalName()))==NULL) {
             pPrincipal= principalFromCert(pCert, true);
             if(!m_pMeta->addPrincipal(pPrincipal)) {
-                fprintf(g_logFile, "initChannelGuard: can't add principal\n");
+                fprintf(g_logFile, "initGuard: can't add principal\n");
                 return false;
             }
             if(pPrincipal==NULL) {
-                fprintf(g_logFile, "initChannelGuard: pPrincipal is NULL\n");
+                fprintf(g_logFile, "initGuard: pPrincipal is NULL\n");
                 return false;
             }
         }

@@ -1274,8 +1274,16 @@ bool validateAssertion(const char* szKeyString, const char* szInFile)
     }
     oCollection.m_pRootElement= oCollection.m_doc.RootElement();
 
-    guard.m_pMeta= NULL;
-    guard.m_pPolicy= pKey;
+    // initialize guard
+    metaData*	pMeta= NULL;
+    if(!guard.initGuard(0, NULL, pKey, pMeta)) {   // Fix
+        fprintf(g_logFile, "validateAssertion: can't initialize metadata\n");
+        return false;
+    }
+
+    // call validateEvidenceList on each child of root
+
+    // collect chidren of root for permit access
 
     fprintf(g_logFile, "validateAssertion not implemented\n");
     return true;

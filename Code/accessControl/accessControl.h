@@ -97,7 +97,8 @@ class accessGuard {
 public:
     bool                    m_fValid;
     metaData*               m_pMeta;
-    session*                m_pSession;
+    RSAKey*		    m_pPolicy;
+    int			    m_numPrincipals;
 
     int                     m_iNumAssertions;
     assertionNode**         m_rgpAssertions;
@@ -107,7 +108,8 @@ public:
     accessGuard();
     ~accessGuard();
 
-    bool        initChannelGuard(session* pSession, metaData* pMeta);
+    bool        initChannelGuard(int numPrin, PrincipalCert** rgPrincs, 
+                                 RSAKey* pPolicy, metaData* pMeta);
     bool        permitAccess(accessRequest& req, const char* szEvidence);
 };
 

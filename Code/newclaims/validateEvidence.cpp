@@ -513,6 +513,7 @@ evidenceCollection::evidenceCollection()
 {
     m_fParsed= false;
     m_fValid= false;
+    m_pRootElement= NULL;
     m_iNumEvidenceLists= 0;
     m_rgiCollectionTypes= m_rgistaticCollectionTypes;
     m_rgCollectionList= m_rgstaticCollectionList;
@@ -521,26 +522,24 @@ evidenceCollection::evidenceCollection()
 
 bool evidenceCollection::parseEvidenceCollection(const char* szEvidenceCollection)
 {
-    TiXmlDocument   doc;
-    TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
-    const char*           szElt= NULL;
+    const char*     szElt= NULL;
     evidenceList*   pEvidenceList= NULL;
     int             n= 0;
 
-    if(!doc.Parse(szEvidenceCollection)) {
+    if(!m_doc.Parse(szEvidenceCollection)) {
         fprintf(g_logFile, "Can't parse Evidence Collection\n");
         return false;
     }
 
-    pRootElement= doc.RootElement();
-    pRootElement->QueryIntAttribute ("count", &m_iNumEvidenceLists);
+    m_pRootElement= m_doc.RootElement();
+    m_pRootElement->QueryIntAttribute ("count", &m_iNumEvidenceLists);
     if(m_iNumEvidenceLists>STATICNUMCOLLECTIONELTS) {
         fprintf(g_logFile, "Too many collection elements\n");
         return false;
     }
 
-    pNode= pRootElement->FirstChild();
+    pNode= m_pRootElement->FirstChild();
     while(pNode!=NULL) {
         szElt= ((TiXmlElement*)pNode)->Value();
         if(strcmp(szElt,"EvidenceList")==0) {
@@ -548,6 +547,7 @@ bool evidenceCollection::parseEvidenceCollection(const char* szEvidenceCollectio
             if(!pEvidenceList->parseEvidenceList((TiXmlElement*)pNode)) {
                 return false;
             }
+            pEvidenceList->m_pRootElement= (TiXmlElement*) pNode;
             m_rgiCollectionTypes[n]= pEvidenceList->m_rgiEvidenceTypes[0];
             m_rgCollectionList[n]= pEvidenceList;
             if(n>=STATICNUMCOLLECTIONELTS) {
@@ -560,7 +560,8 @@ bool evidenceCollection::parseEvidenceCollection(const char* szEvidenceCollectio
     }
 
     if(n!=m_iNumEvidenceLists) {
-        fprintf(g_logFile, "Evidence collection mismatch %d %d\n", n, m_iNumEvidenceLists);
+        fprintf(g_logFile, "Evidence collection mismatch %d %d\n", n, 
+                m_iNumEvidenceLists);
         return false;
     }
 
@@ -574,7 +575,7 @@ bool evidenceCollection::validateEvidenceCollection(RSAKey* pRootKey)
     int     i;
 
     for(i=0;i<m_iNumEvidenceLists; i++) {
-        if(!m_rgCollectionList[i]->validateEvidenceList(pRootKey, NULL)) {
+        if(!m_rgCollectionList[i]->validateEvidenceList(pRootKey)) {
             fprintf(g_logFile, "Failing on %d\n",i);
             return false;
         }
@@ -588,7 +589,9 @@ evidenceList::evidenceList()
 {
     m_fParsed= false;
     m_fValid= false;
+    m_fDocValid= false;
     m_iNumPiecesofEvidence= 0;
+    m_pRootElement= NULL;
     m_rgiEvidenceTypes= m_rgistaticEvidenceTypes;
     m_rgEvidence= m_rgstaticEvidence;
 }
@@ -687,7 +690,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
 }
 
 
-bool    evidenceList::validateEvidenceList(RSAKey* pRootKey, RSAKey* pTopKey)
+bool    evidenceList::validateEvidenceList(RSAKey* pRootKey)
 {
     int             iVerify;
 

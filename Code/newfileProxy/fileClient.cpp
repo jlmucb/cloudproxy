@@ -370,14 +370,6 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
             throw("fileClient::Init: protocolNego failed\n");
         m_protocolNegoTimer.Stop();
 
-#if 0
-        // Initialize resource and principal tables
-        if(!g_theVault.initMetaData(m_tcHome.m_fileNames.m_szdirectory, "fileClient"))
-            throw "fileClient::Init: Cant init metadata\n";
-        if(!g_theVault.initFileNames())
-            throw "fileClient::Init: Cant init file names\n";
-#endif
-
 #ifdef TEST
         fprintf(g_logFile, "initClient: initializationcompleted\n");
         fflush(g_logFile);

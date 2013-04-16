@@ -57,6 +57,8 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
+    metaData            m_oMeta;
+
     //    Keys for file encryption
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
@@ -67,8 +69,6 @@ public:
     u32                 m_uHmac;
     int                 m_sizeKey;
     byte                m_fileKeys[SMALLKEYSIZE];
-
-    metaData            m_oMeta;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;
@@ -101,14 +101,14 @@ void* channelThread(void* ptr);
 class theServiceChannel {
 public:
     fileServer*         m_pParent;
-    int                 m_fdChannel;
-
-    int                 m_serverState;
-    bool                m_fChannelAuthenticated;
-    accessGuard         m_oAG;
-    session             m_oSession;
-    safeChannel         m_oSafeChannel;
     int                 m_myPositionInParent;
+    int                 m_serverState;
+    accessGuard         m_oAG;
+
+    session             m_serverSession;
+    bool                m_fChannelAuthenticated;
+    int                 m_fdChannel;
+    safeChannel         m_oSafeChannel;
 
     theServiceChannel();
     ~theServiceChannel();

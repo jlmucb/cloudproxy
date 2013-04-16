@@ -50,9 +50,7 @@ class fileClient {
 public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
-
-    session             m_clientSession;
-    fileServices        m_fileServe;
+    fileServices        m_oServices;
 
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
@@ -64,11 +62,11 @@ public:
     int                 m_sizeKey;
     byte                m_fileKeys[SMALLKEYSIZE];
 
+    session             m_clientSession;
     char*               m_szPort;
     char*               m_szAddress;
     int                 m_fd;
     safeChannel         m_fc;
-    fileServices        m_oServices;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;

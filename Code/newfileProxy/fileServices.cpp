@@ -77,6 +77,11 @@ fileServices::~fileServices()
 //  Server services
 
 
+bool fileServices::initFileServices(session& session, RSAKey* pPolicy, metaData* pMeta)
+{
+}
+
+
 bool fileServices::validateCreatefileServices(char** pszFile, resource** ppResource)
 {
     resource*               pResource= NULL;
@@ -732,6 +737,11 @@ bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq,
 
 
 //  Client fileServices
+
+
+bool fileServices::initFileServices(session& session, RSAKey* pPolicy)
+{
+}
 
 
 bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 

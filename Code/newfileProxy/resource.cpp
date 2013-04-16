@@ -28,7 +28,7 @@
 #include "logging.h"
 #include "keys.h"
 #include "jlmUtility.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "resource.h"
 #include "objectManager.h"
 

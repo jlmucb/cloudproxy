@@ -257,14 +257,14 @@ bool theServiceChannel::initServiceChannel()
     RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
 
     m_pParent->m_protocolNegoTimer.Start();
-    if(!m_oSession.ServerInit(reinterpret_cast<char*>(m_tcHome.m_policyKey),
+    if(!m_serverSession.ServerInit(reinterpret_cast<char*>(m_tcHome.m_policyKey),
                                ppolicyKey, m_tcHome.m_myCertificate,
                                (RSAKey*)m_tcHome.m_privateKey))
         throw("fileServer::Init: Can't init policy key 3\n");
 
     // negotiate channel
     m_protocolNegoTimer.Start();
-    if(!m_oSession.serverprotocolNego(m_fdChannel, m_oSafeChannel))
+    if(!m_serverSession.serverprotocolNego(m_fdChannel, m_oSafeChannel))
         throw("fileServer::Init: protocolNego failed\n");
     m_pParent->m_protocolNegoTimer.Stop();
 

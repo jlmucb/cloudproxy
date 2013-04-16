@@ -24,6 +24,7 @@
 #include "jlmTypes.h"
 #include "keys.h"
 #include "tinyxml.h"
+#include "cert.h"
 #include <time.h>
 
 

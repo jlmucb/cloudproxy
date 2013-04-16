@@ -29,9 +29,9 @@
 #include "cert.h"
 #else
 #include "secPrincipal.h"
+#include "tao.h"
 #endif
 
-#include "tao.h"
 #include "resource.h"
 
 #include <stdio.h>

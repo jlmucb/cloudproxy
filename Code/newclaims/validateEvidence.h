@@ -69,8 +69,12 @@ class evidenceList {
 public:
     bool            m_fParsed;
     bool            m_fValid;
-    int             m_iNumPiecesofEvidence;
 
+    bool            m_fDocValid;
+    TiXmlDocument   m_doc;
+    TiXmlElement*   m_pRootElement;
+
+    int             m_iNumPiecesofEvidence;
     int             m_rgistaticEvidenceTypes[STATICNUMLISTELTS];
     void*           m_rgstaticEvidence[STATICNUMLISTELTS];
     int*            m_rgiEvidenceTypes;
@@ -80,16 +84,20 @@ public:
     ~evidenceList();
 
     bool    parseEvidenceList(TiXmlElement* pRootElement);
-    bool    validateEvidenceList(RSAKey* pRootKey, RSAKey* pTopKey);
+    bool    validateEvidenceList(RSAKey* pRootKey);
 };
 
 
 class evidenceCollection {
 public:
-    bool            m_fParsed;
     bool            m_fValid;
-    int             m_iNumEvidenceLists;
 
+    TiXmlDocument   m_doc;
+
+    bool            m_fParsed;
+    TiXmlElement*   m_pRootElement;
+
+    int             m_iNumEvidenceLists;
     int             m_rgistaticCollectionTypes[STATICNUMCOLLECTIONELTS];
     evidenceList*   m_rgstaticCollectionList[STATICNUMCOLLECTIONELTS];
 

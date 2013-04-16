@@ -41,17 +41,15 @@
 
 class fileServices{
 public:
-    session*    m_pSession;
-#ifndef FILECLIENT
-    metaData*   m_pMeta;
-#endif
+    accessGuard m_guard;
 
                 fileServices();
                 ~fileServices();
+
 #ifndef FILECLIENT
-    bool        initFileServices(session* pSession, metaData* pMeta);
+    bool        initFileServices(session& session, RSAKey* pPolicy, metaData* pMeta);
 #else
-    bool        initFileServices(session* pSession);
+    bool        initFileServices(session& session, RSAKey* pPolicy);
 #endif
 
 #ifndef FILECLIENT

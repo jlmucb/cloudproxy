@@ -7,11 +7,16 @@ SBM=	    ../jlmbignum
 TPM=	    ../TPMDirect
 CLM=	    ../newclaims
 TAO=	    ../tao
+ACC=	    ../accessControl
+FPX=	    ../newfileProxy
+VLT=	    ../vault
+PROTO=	    ../protocolChannel
+CHL=	    ../channels
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS) -D TEST -D QUOTE2_DEFINED
+CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS) -D TEST -D QUOTE2_DEFINED -D NEWANDREORGANIZED
 CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1
 
 CC=         g++
@@ -20,10 +25,11 @@ LINK=       g++
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o $(B)/encapsulate.o \
 	    $(B)/keys.o $(B)/sha1.o $(B)/hashprep.o $(B)/jlmUtility.o \
-	    $(B)/cert.o $(B)/quote.o \
+	    $(B)/validateEvidence.o $(B)/cert.o $(B)/quote.o $(B)/vault.o \
+	    $(B)/signedAssertion.o $(B)/accessControl.o $(B)/accessPrincipal.o \
 	    $(B)/cryptoHelper.o $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
-	    $(B)/mpNumTheory.o  $(B)/fileHash.o $(B)/tinystr.o $(B)/tinyxmlerror.o \
-	    $(B)/tinyxml.o $(B)/tinyxmlparser.o 
+	    $(B)/mpNumTheory.o $(B)/fileHash.o $(B)/encryptedblockIO.o $(B)/resource.o \
+	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o 
 
 all: $(E)/newcryptUtility.exe
 
@@ -38,7 +44,7 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -I$(SCD) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
 
 $(B)/cryptUtility.o: $(S)/cryptUtility.cpp $(S)/cryptUtility.h $(SCD)/jlmcrypto.h $(SCD)/keys.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SCD) -I$(CLM) -I$(SBM) -I $(TPM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(ACC) -I$(CLM) -I$(FPX) -I$(PROTO) -I$(VLT) -I$(SBM) -I $(TPM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
 
 $(B)/hashprep.o: $(TPM)/hashprep.cpp $(TPM)/hashprep.h
 	$(CC) $(CFLAGS) -D TEST -I$(SC) -I$(SCD) -I$(TPM) -c -o $(B)/hashprep.o $(TPM)/hashprep.cpp
@@ -100,9 +106,30 @@ $(B)/tinyxmlerror.o : $(SC)/tinyxmlerror.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 $(B)/tinystr.o : $(SC)/tinystr.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinystr.o $(SC)/tinystr.cpp
 
+$(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(ACC) -I$(SCD) -I$(SBM) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
+
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -c -o $(B)/cert.o $(CLM)/cert.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(SCD) -I$(ACC) -I$(SBM) -c -o $(B)/cert.o $(CLM)/cert.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(TAO) -I$(TPM) -I$(SBM) -c -o $(B)/quote.o $(CLM)/quote.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CLM) -I$(TAO) -I$(TPM) -I$(SBM) -c -o $(B)/quote.o $(CLM)/quote.cpp
+
+$(B)/accessControl.o: $(ACC)/accessControl.cpp $(ACC)/accessControl.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -I$(CHL) -c -o $(B)/accessControl.o $(ACC)/accessControl.cpp
+
+$(B)/accessPrincipal.o: $(ACC)/accessPrincipal.cpp $(ACC)/accessPrincipal.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -c -o $(B)/accessPrincipal.o $(ACC)/accessPrincipal.cpp
+
+$(B)/signedAssertion.o: $(ACC)/signedAssertion.cpp $(ACC)/signedAssertion.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -c -o $(B)/signedAssertion.o $(ACC)/signedAssertion.cpp
+
+$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
+
+$(B)/encryptedblockIO.o: $(SCD)/encryptedblockIO.cpp $(SCD)/encryptedblockIO.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -c -o $(B)/encryptedblockIO.o $(SCD)/encryptedblockIO.cpp
+
+$(B)/resource.o: $(FPX)/resource.cpp $(FPX)/resource.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -c -o $(B)/resource.o $(FPX)/resource.cpp
 

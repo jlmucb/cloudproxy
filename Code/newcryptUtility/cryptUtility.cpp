@@ -43,6 +43,8 @@
 #include "cryptoHelper.h"
 #include "hashprep.h"
 #include "encapsulate.h"
+#include "validateEvidence.h"
+#include "accessControl.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -1233,15 +1235,50 @@ done:
 
 bool validateChain(const char* szKeyString, const char* szInFile)
 {
-    fprintf(g_logFile, "validateChain not implemented\n");
-    return false;
+    evidenceList    oEvidence;
+    RSAKey*         pKey= RSAKeyfromkeyInfo(szKeyString);
+    const char*     szEvidenceList= readandstoreString(szInFile);
+
+    if(szEvidenceList==NULL) {
+        fprintf(g_logFile, "validateChain: can't read evidence list\n");
+        return false;
+    }
+    if(!oEvidence.m_doc.Parse(szEvidenceList)) {
+        fprintf(g_logFile, "validateChain: can't parse evidence list \n");
+        return false;
+    }
+    oEvidence.m_fDocValid= true;
+    oEvidence.m_pRootElement= oEvidence.m_doc.RootElement();
+    if(!oEvidence.validateEvidenceList(pKey)) {
+        fprintf(g_logFile, "validateChain: validate evidence list fails\n");
+        return false;
+    }
+    return true;
 }
 
 
 bool validateAssertion(const char* szKeyString, const char* szInFile)
 {
+    accessGuard         guard;
+    evidenceCollection  oCollection;
+    RSAKey*             pKey= RSAKeyfromkeyInfo(szKeyString);
+    const char*         szEvidence= readandstoreString(szInFile);
+
+    if(szEvidence==NULL) {
+        fprintf(g_logFile, "validateAssertion: can't read evidence collection\n");
+        return false;
+    }
+    if(!oCollection.m_doc.Parse(szEvidence)) {
+        fprintf(g_logFile, "validateAssertion: can't parse evidence collection\n");
+        return false;
+    }
+    oCollection.m_pRootElement= oCollection.m_doc.RootElement();
+
+    guard.m_pMeta= NULL;
+    guard.m_pPolicy= pKey;
+
     fprintf(g_logFile, "validateAssertion not implemented\n");
-    return false;
+    return true;
 }
 
 
@@ -1695,9 +1732,9 @@ int main(int an, char** av)
         else {
             fprintf(g_logFile, "validateChain fails\n");
         }
-	if(szKeyString!=NULL)
+        if(szKeyString!=NULL)
             free(szKeyString);
-	if(szEvidenceList!=NULL)
+        if(szEvidenceList!=NULL)
             free(szEvidenceList);
         return 0;
     }
@@ -1712,9 +1749,9 @@ int main(int an, char** av)
         else {
             fprintf(g_logFile, "validateAssertion fails\n");
         }
-	if(szKeyString!=NULL)
+        if(szKeyString!=NULL)
             free(szKeyString);
-	if(szEvidenceList!=NULL)
+        if(szEvidenceList!=NULL)
             free(szEvidenceList);
         return 0;
     }

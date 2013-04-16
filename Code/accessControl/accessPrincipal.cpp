@@ -54,7 +54,7 @@ accessPrincipal::~accessPrincipal()
 
 bool accessPrincipal::Deserialize(const byte* szObj, int* pi)
 {
-    const byte*               sz= szObj;
+    const byte*         sz= szObj;
     int                 iTotal= 0;
     int                 n;
     PrincipalCert*      pCert= NULL;
@@ -186,6 +186,7 @@ accessPrincipal* principalFromCert(PrincipalCert* pCert, bool fValidated)
 accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig)
 {
     accessPrincipal *pP= NULL;
+#if 0
     if((pP=g_theVault.findPrincipal(pSig->getPrincipalName()))!=NULL) {
         return pP;
     }   
@@ -207,6 +208,9 @@ accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig)
         fprintf(g_logFile, "Can't add object to principal table\n");
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }
 
 

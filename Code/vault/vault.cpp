@@ -27,14 +27,18 @@
 #include "jlmUtility.h"
 #include "modesandpadding.h"
 #include "sha256.h"
+#ifdef NEWANDREORGANIZED
+#include "cert.h"
+#else
 #include "secPrincipal.h"
+#include "channel.h"
+#include "tao.h"
+#include "tcIO.h"
+#endif
 #include "resource.h"
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "encryptedblockIO.h"
-#include "tao.h"
-#include "channel.h"
-#include "tcIO.h"
 #include "vault.h"
 #include "algs.h"
 

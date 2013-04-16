@@ -28,9 +28,11 @@
 #include "cert.h"
 #include "resource.h"
 #include "request.h"
+#include "signedAssertion.h"
 #include "accessControl.h"
 #include "vault.h"
 #include "cryptoHelper.h"
+#include "validateEvidence.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -195,7 +197,9 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     if(n<0 || n>=MAXTOKEN)
         return false;
     memcpy(szBuf, szTok, n); szBuf[n]= '\0';
+#if 0
     pPrinc= m_pMeta->findPrincipal(szBuf);
+#endif
     // jlm READTHIS: should this really return true? That means the assertion was
     // parsed correctly but the resource in the assertion is NULL. I would think
     // that any syntactically well-formed assertion should parse and the resource
@@ -227,7 +231,9 @@ bool assertionNode::parseAssertion(accessPrincipal* pPrincipalSays,
     if(n<0 || n>=MAXTOKEN)
         return false;
     memcpy(szBuf, szTok,n); szBuf[n]= '\0';
+#if 0
     pResource= m_pMeta->findResource(szBuf);
+#endif
     if(pResource==NULL) {
         fprintf(g_logFile, "Could not find resource %s, so not a valid assertion\n", szBuf);
         return true;
@@ -373,8 +379,10 @@ bool isAnOwner(accessPrincipal* pSubject, resource* pResource)
 
 bool isPolicyPrincipal(accessPrincipal* pSubject)
 {
+#if 0
     if(strcmp(pSubject->m_szPrincipalName, g_policyAccessPrincipal->m_szPrincipalName)==0)
         return true;
+#endif
     return false;
 }
 
@@ -385,7 +393,7 @@ bool isPolicyPrincipal(accessPrincipal* pSubject)
 accessRequest::accessRequest()
 {
     m_szSubject= NULL;
-    m_iRequestType= 0;
+    m_szRequest= NULL;
     m_szResource= NULL;
 }
 
@@ -407,11 +415,14 @@ accessRequest::~accessRequest()
 void accessRequest::printMe()
 {
     fprintf(g_logFile, "\n\taccessRequest\n");
-    fprintf(g_logFile, "\tRequest type: %d\n", m_iRequestType);
     if(m_szSubject==NULL)
         fprintf(g_logFile, "\tSubject is NULL\n");
     else
         fprintf(g_logFile, "\tSubject is %s\n", m_szSubject);
+    if(m_szRequest==NULL)
+        fprintf(g_logFile, "\tRequest is NULL\n");
+    else
+        fprintf(g_logFile, "\tRequest is %s\n", m_szRequest);
     if(m_szResource==NULL)
         fprintf(g_logFile, "\tResource is NULL\n");
     else
@@ -425,7 +436,6 @@ accessGuard::accessGuard()
 {
     m_fValid= false;
     m_pMeta= NULL;
-    m_pSession= NULL;
     m_iNumAssertions= 0;
     m_iNumSubjects= 0; 
     m_rgpAssertions= NULL;
@@ -437,7 +447,8 @@ accessGuard::~accessGuard()
 }
 
 
-bool accessGuard::initChannelGuard(session* pSession, metaData* pMeta)
+bool accessGuard::initChannelGuard(int numPrin, PrincipalCert** rgPrincs,
+                                   RSAKey* pPolicy, metaData* pMeta)
 {
     int                 iNumSubj;
     PrincipalCert**     rgpPrinc;
@@ -449,12 +460,13 @@ bool accessGuard::initChannelGuard(session* pSession, metaData* pMeta)
     fprintf(g_logFile, "initChannelGuard\n");
     fflush(g_logFile);
 #endif
+
+#if 0
     if(m_pMeta==NULL || m_pSession) {
         fprintf(g_logFile, "initChannelGuard: missing metaData or session\n");
         return false;
     }
 
-#if 0
     // register principals
     if(m_pserverCert!=NULL) {
         if(registerPrincipalfromCert(m_pserverCert)==NULL)
@@ -543,7 +555,8 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
 
     // if request is add or delete owner, return false
     //      only owners have this right.
-    if(req.m_iRequestType==ADDOWNER || req.m_iRequestType==REMOVEOWNER) {
+    if(strcmp(req.m_szRequest, "addOwner")==0 || 
+       strcmp(req.m_szRequest, "removeOwner")==0) {
         fprintf(g_logFile, "permitAccess: no Evidence\n");
         return false;
     }
@@ -562,10 +575,12 @@ bool  accessGuard::permitAccess(accessRequest& req, const char* szCollection)
         fprintf(g_logFile, "permitAccess: Can't parse Evidence list\n");
         return false;
     }
-    if(!oEvidenceCollection.validateEvidenceCollection(g_policyKey)) {
+
+    if(!oEvidenceCollection.validateEvidenceCollection(m_pPolicy)) {
         fprintf(g_logFile, "permitAccess: Can't validate Evidence list\n");
         return false;
     }
+
     if(oEvidenceCollection.m_iNumEvidenceLists<1 || 
             oEvidenceCollection.m_rgiCollectionTypes[0]!=SIGNEDGRANT) {
         fprintf(g_logFile, "permitAccess: No Signed grant\n");

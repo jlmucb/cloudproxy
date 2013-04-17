@@ -1257,35 +1257,82 @@ bool validateChain(const char* szKeyString, const char* szInFile)
 }
 
 
-bool validateAssertion(const char* szKeyString, const char* szInFile)
+bool  parseReq(const char* szReq, accessRequest* pReq)
 {
-    accessGuard         guard;
-    evidenceCollection  oCollection;
-    RSAKey*             pKey= RSAKeyfromkeyInfo(szKeyString);
-    const char*         szEvidence= readandstoreString(szInFile);
+    return false;
+}
 
-    if(szEvidence==NULL) {
-        fprintf(g_logFile, "validateAssertion: can't read evidence collection\n");
+
+bool  parsePrincpals(const char* szPrincipals, int* pnumPrincipals, PrincipalCert*** pppCerts)
+{
+    return false;
+}
+
+
+bool  parseMetaData(const char* szMeta, metaData& meta)
+{
+    /*
+     *  initFileNames();
+     *  initMetaData(const char* directory, const char* program);
+     *  restoreMetaData(int encType, byte* key);
+     *  saveMetaData(int encType, byte* key);
+     *  addResource(resource* pResource);
+     *  resource*           findResource(const char* szName);
+     *  bool                deleteResource(resource* pResource);
+     *  bool                addPrincipal(accessPrincipal* pPrin);
+     *  accessPrincipal*    findPrincipal(const char* szName);
+     *  bool                deletePrincipal(accessPrincipal* pPrin);
+     */
+    return false;
+}
+
+
+bool validateAssertion(const char* szKey, const char* szReq, const char* szCollection, 
+                       const char* szPrincipals, const char* szMeta)
+{
+    metaData            oMeta;
+    accessGuard         guard;
+    RSAKey*             pKey= RSAKeyfromkeyInfo(szKey);
+    accessRequest       req;
+    int                 numPrincipals= 0;
+    PrincipalCert**     rgCerts= NULL;
+
+    if(szCollection==NULL|| szKey==NULL || szReq==NULL) {
+        fprintf(g_logFile, "validateAssertion: missing key data\n");
         return false;
     }
-    if(!oCollection.m_doc.Parse(szEvidence)) {
-        fprintf(g_logFile, "validateAssertion: can't parse evidence collection\n");
+
+    // initialize principals
+    if(!parsePrincpals(szPrincipals, &numPrincipals, &rgCerts)) {
+        fprintf(g_logFile, "validateAssertion: can't parse principals\n");
         return false;
     }
-    oCollection.m_pRootElement= oCollection.m_doc.RootElement();
+
+    // add principals to metadata
+
+    // initialize metadata
+    if(!parseMetaData(szMeta, oMeta)) {
+        fprintf(g_logFile, "validateAssertion: can't parse metadata\n");
+        return false;
+    }
+
+    if(!parseReq(szReq, &req)) {
+        fprintf(g_logFile, "validateAssertion: can't parse reqs\n");
+        return false;
+    }
 
     // initialize guard
-    metaData*	pMeta= NULL;
-    if(!guard.initGuard(0, NULL, pKey, pMeta)) {   // Fix
+    if(!guard.initGuard(numPrincipals, rgCerts, pKey, &oMeta)) {
         fprintf(g_logFile, "validateAssertion: can't initialize metadata\n");
         return false;
     }
 
-    // call validateEvidenceList on each child of root
-
     // collect chidren of root for permit access
-
-    fprintf(g_logFile, "validateAssertion not implemented\n");
+    if(!guard.permitAccess(req, szCollection)) {
+        fprintf(g_logFile, "validateAssertion: access NOT permitted\n");
+        return false;
+    }
+    fprintf(g_logFile, "validateAssertion: access permitted\n");
     return true;
 }
 
@@ -1312,12 +1359,14 @@ int main(int an, char** av)
     const char*   szAlgorithm= NULL;
     const char*   szKeyFile= NULL;
     const char*   szMetaDataFile= NULL;
+    const char*   szReqFile= NULL;
+    const char*   szPrincipalsFile= NULL;
     const char*   szMeasurementFile= NULL;
     const char*   szProgramName=  "Program no name";
-    int     iAction= NOACTION;
-    int     mode= CBCMODE;
-    bool    fRet;
-    int     i;
+    int           iAction= NOACTION;
+    int           mode= CBCMODE;
+    bool          fRet;
+    int           i;
 
     for(i=0; i<an; i++) {
         if(strcmp(av[i], "-help")==0) {
@@ -1342,7 +1391,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -validateChain rootKeyFile evidenceFile\n");
-            fprintf(g_logFile, "       cryptUtility -validateAssertion rootKeyFile evidenceFile\n");
+            fprintf(g_logFile, "       cryptUtility -validateAssertion rootKeyFile reqFile evidenceFile principalFile metaDataFile\n");
             return 0;
         }
         if(strcmp(av[i], "-Canonical")==0) {
@@ -1526,12 +1575,15 @@ int main(int an, char** av)
             break;
         }
         if(strcmp(av[i], "-validateAssertion")==0) {
-            if(an<(i+3)) {
+            if(an<(i+6)) {
                 fprintf(g_logFile, "Too few arguments: key-file input-file\n");
                 return 1;
             }
             szKeyFile= av[i+1];
-            szInFile= av[i+2];
+            szReqFile= av[i+2];
+            szInFile= av[i+3];
+            szPrincipalsFile= av[i+4];
+            szMetaDataFile= av[i+5];
             iAction= VALIDATEASSERTION;
             break;
         }
@@ -1734,6 +1786,7 @@ int main(int an, char** av)
         initBigNum();
         char* szKeyString= readandstoreString(szKeyFile);
         char* szEvidenceList= readandstoreString(szInFile);
+
         if(validateChain(szKeyString, szInFile)) {
             fprintf(g_logFile, "validateChain succeeds\n");
         }
@@ -1747,11 +1800,20 @@ int main(int an, char** av)
         return 0;
     }
     if(iAction==VALIDATEASSERTION) {
+        char* szKeyString= readandstoreString(szKeyFile);
+        char* szCollection= readandstoreString(szInFile);
+        char* szPrincipals= NULL;
+        char* szMeta= NULL;
+        char* szReq= readandstoreString(szReqFile);
+
+        if(szPrincipalsFile!=NULL)
+            szPrincipals= readandstoreString(szPrincipalsFile);
+        if(szMetaDataFile!=NULL)
+            szMeta= readandstoreString(szMetaDataFile);
+
         initCryptoRand();
         initBigNum();
-        char* szKeyString= readandstoreString(szKeyFile);
-        char* szEvidenceList= readandstoreString(szInFile);
-        if(validateAssertion(szKeyString, szInFile)) {
+        if(validateAssertion(szKeyString, szReq, szCollection, szPrincipals, szMeta)) {
             fprintf(g_logFile, "validateAssertion succeeds\n");
         }
         else {
@@ -1759,8 +1821,14 @@ int main(int an, char** av)
         }
         if(szKeyString!=NULL)
             free(szKeyString);
-        if(szEvidenceList!=NULL)
-            free(szEvidenceList);
+        if(szCollection!=NULL)
+            free(szCollection);
+        if(szPrincipals!=NULL)
+            free(szPrincipals);
+        if(szMeta!=NULL)
+            free(szMeta);
+        if(szReq!=NULL)
+            free(szReq);
         return 0;
     }
 

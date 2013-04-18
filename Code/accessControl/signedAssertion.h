@@ -36,33 +36,42 @@
 
 class SignedAssertion {
 public:
-    bool        m_fSigValuesValid;
-    char*       m_szSignature;
-    char*       m_szSignedInfo;
-    char*       m_szSignatureValue;
-    char*       m_szSignatureMethod;
-    char*       m_szCanonicalizationMethod;
-    char*       m_szPrincipalName;
-    char*       m_szRevocationInfo;
-    KeyInfo*    m_pSignerKeyInfo;
-    RSAKey*     m_pSubjectKeyInfo;
-    Period      m_ovalidityPeriod;
+    bool            m_fDocValid;
+    TiXmlDocument   m_doc;
+    TiXmlElement*   m_pRootElement;
+
+    bool            m_fSigValuesValid;
+    char*           m_szSignature;
+    char*           m_szSignedInfo;
+    char*           m_szSignatureValue;
+    char*           m_szSignatureMethod;
+    char*           m_szCanonicalizationMethod;
+    char*           m_szPrincipalName;
+    char*           m_szRevocationInfo;
+    KeyInfo*        m_pSignerKeyInfo;
+    RSAKey*         m_pSubjectKeyInfo;
+    Period          m_ovalidityPeriod;
 
     SignedAssertion();
     ~SignedAssertion();
 
-    bool        init(const char* szSig);
-    KeyInfo*    getSubjectKeyInfo();
-    bool        parseSignedAssertionElements();
-    bool        getvalidityPeriod(Period& period);
-    char*       getCanonicalwasSigned();
-    char*       getCanonicalizationMethod();
-    char*       getRevocationPolicy();
-    char*       getSignatureValue();
-    char*       getSignatureAlgorithm();
-    char*       getPrincipalName();
+    bool            init(const char* szSig);
+    KeyInfo*        getSubjectKeyInfo();
+    bool            parseSignedAssertionElements();
+    bool            getvalidityPeriod(Period& period);
+    char*           getCanonicalwasSigned();
+    char*           getCanonicalizationMethod();
+    char*           getRevocationPolicy();
+    char*           getSignatureValue();
+    char*           getSignatureAlgorithm();
+    char*           getPrincipalName();
+
+    char*           getGrantSubject();
+    char*           getGrantRight();
+    char*           getGrantObject();
+
 #ifdef TEST
-    void        printMe();
+    void            printMe();
 #endif
 };
 

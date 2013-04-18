@@ -44,13 +44,14 @@
  */
 
 
-#define  MAYREAD    0x001
-#define  MAYWRITE   0x002
-#define  MAYCREATE  0x004
-#define  MAYDELETE  0x008
-#define  MAYOWN     0x010
-#define  SPEAKSFOR  0x020
-#define  SAYS       0x400
+#define  MAYREAD    	0x001
+#define  MAYWRITE   	0x002
+#define  MAYCREATE  	0x004
+#define  MAYDELETE  	0x008
+#define  MAYOWN     	0x010
+#define  SPEAKSFOR  	0x020
+#define  SAYS       	0x400
+#define  MAYDELEGATE	0x40000
 
 
 class accessRequest {
@@ -82,12 +83,17 @@ public:
     accessGuard();
     ~accessGuard();
 
+    bool        includesSubject(const char* szRequested, const char* szGranted);
+    bool        includesRight(const char* szRequested, const char* szGranted);
+    bool        includesObject(const char* szRequested, const char* szGranted);
+
     bool        initGuard(RSAKey* pPolicy, metaData* pMeta);
     bool        permitAccess(accessRequest& req, const char* szEvidence);
+    int         checkPermitChain(resource* pResource, SignedAssertion* pAssert1, 
+                                 SignedAssertion* pAssert2);
 };
 
 
-extern bool isAnOwner(PrincipalCert* rSubject, resource* pResource);
 extern bool isPolicyPrincipal(RSAKey* pKey, RSAKey* pPolicy);
 #endif
 

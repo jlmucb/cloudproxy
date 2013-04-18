@@ -178,6 +178,87 @@ accessGuard::~accessGuard()
 // ---------------------------------------------------------------------------
 
 
+bool accessGuard::includesSubject(const char* szRequested, const char* szGranted)
+{
+    if(szRequested==NULL || szGranted==NULL)
+        return false;
+    if(strcmp(szRequested, szGranted)==0)
+        return true;
+    return true;
+}
+
+
+bool accessGuard::includesRight(const char* szRequested, const char* szGranted)
+{
+    if(szRequested==NULL || szGranted==NULL)
+        return false;
+    u32 uVerb1= verbFlag(szRequested);
+    u32 uVerb2= verbFlag(szGranted);
+
+    if(uVerb2==(uVerb1|MAYDELEGATE))
+        return true;
+    return false;
+}
+
+
+bool accessGuard::includesObject(const char* szRequested, const char* szGranted)
+{
+    if(szRequested==NULL || szGranted==NULL)
+        return false;
+    if(strcmp(szRequested, szGranted)==0)
+        return true;
+    // handle *
+    return false;
+}
+
+
+int accessGuard::checkPermitChain(resource* pResource,
+                                  SignedAssertion* pAssert1, 
+                                  SignedAssertion* pAssert2)
+//  return
+//      -1: fail
+//       0: ok so far
+//       hit owner, succeed
+{
+    const char* szrequestedSubject= pAssert1->getGrantSubject();
+
+    // time period valid?
+
+    // is subject an owner?
+    if(pResource->isAnOwner(NULL)) {
+#ifdef TEST
+        fprintf(g_logFile, "checkPermitChain: The subject is an owner of resource\n");
+#endif
+        return 1;
+    }       
+    
+    const char* szrequestedVerb= pAssert1->getGrantRight();
+    const char* szrequestedObject= pAssert1->getGrantObject();
+    const char* szgrantedVerb= pAssert2->getGrantRight();
+    const char* szgrantedSubject= pAssert2->getGrantSubject();
+    const char* szgrantedObject= pAssert2->getGrantObject();
+
+    if(!includesSubject(szrequestedSubject, szgrantedSubject)) {
+#ifdef TEST
+        fprintf(g_logFile, "checkPermitChain: requesting subject is not in granted subject\n");
+#endif
+        return -1;
+    }
+    if(!includesRight(szrequestedVerb, szgrantedVerb)) {
+#ifdef TEST
+        fprintf(g_logFile, "checkPermitChain: requested right is not in granted right\n");
+#endif
+        return -1;
+    }
+    if(!includesObject(szrequestedObject, szgrantedObject)) {
+#ifdef TEST
+        fprintf(g_logFile, "checkPermitChain: requested object is not in granted object\n");
+#endif
+        return -1;
+    }
+    return 0;
+}
+
 
 bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta)
 {
@@ -198,15 +279,17 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
 {
     resource*           pResource= NULL;
     PrincipalCert*      pSubjPrincipal= NULL;
-    RSAKey*             pSaysKey= NULL;
     RSAKey*             pSubjectKey= NULL;
+    SignedAssertion*    pAssert= NULL;
     int                 i;
-    u32                 uVerb= 0;
+    bool                fRet= false;
+    int                 iPermit= 0;
 
 #ifdef TEST
     fprintf(g_logFile, "permitAccess: Can %s %s %s\n", req.m_szSubject,
                 req.m_szRequest, req.m_szResource);
     fprintf(g_logFile, "Based on: %s\n", szEvidence);
+    fflush(g_logFile);
 #endif
 
     if(!m_fValid) {
@@ -220,14 +303,15 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         fprintf(g_logFile, "permitAccess resource is NULL\n");
         return false;
     }
+
     // are any channel keys the owner?
     for(i=0;i<m_numCurrentPrincipals;i++) {
         pSubjPrincipal= m_myPrincipals[i];
-        if(isAnOwner(pSubjPrincipal, pResource)) {
+        if(pResource->isAnOwner(m_myPrincipals[i])) {
 #ifdef TEST
-        fprintf(g_logFile, "permitAccess: The subject is an owner of resource\n");
+            fprintf(g_logFile, "permitAccess: The subject is an owner of resource\n");
 #endif
-        return true;
+            return true;
         }       
     }
 
@@ -240,13 +324,14 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     }
 
     // Does evidence support access?
+    // Note: This does not support compond principals yet
+    // eg: JohnManferdelli and fileClient may read.
     if(szEvidence==NULL) {
         fprintf(g_logFile, "permitAccess: no Evidence\n");
         return false;
     }
 
     // parse evidence
-    SignedAssertion*    pAssert= NULL; 
     evidenceCollection  oEvidenceCollection;
 
     if(!oEvidenceCollection.parseEvidenceCollection(szEvidence)) {
@@ -277,41 +362,45 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
 
-    // map request to required access
-    if(strcmp(req.m_szRequest, "createResource")==0)
-        uVerb= MAYCREATE;
-    else if(strcmp(req.m_szRequest, "sendResource")==0)
-        uVerb= MAYWRITE;
-    else if(strcmp(req.m_szRequest, "getResource")==0)
-        uVerb= MAYREAD;
-    else if(strcmp(req.m_szRequest, "getOwner")==0 || 
-            strcmp(req.m_szRequest, "addOwner")==0 ||
-            strcmp(req.m_szRequest, "removeOwner")==0)
-        uVerb= MAYOWN;
-    else if(strcmp(req.m_szRequest, "deleteResource")==0)
-        uVerb= MAYDELETE;
-    else {
-        fprintf(g_logFile, "permitAccess: Unknown request\n");
+    // top level must name resource and verb
+    if(!includesRight(req.m_szRequest, pAssert->getGrantRight())) {
+#ifdef TEST
+        fprintf(g_logFile, "permitAccess: top level grant does not name right\n");
+        fflush(g_logFile);
+#endif
+        return false;
+    }
+    if(!includesObject(req.m_szResource, pAssert->getGrantObject())) {
+#ifdef TEST
+        fprintf(g_logFile, "permitAccess: top level grant does not name object\n");
+        fflush(g_logFile);
+#endif
         return false;
     }
 
-    // request must be subsumed in grant and name resource
-
-    // time period valid?
-
-#ifdef ACCESSTEST
-    fprintf(g_logFile, "permitAccess: Checking assertions\n");
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: Evaluating assertion chain of %d length\n", m_iNumAssertions);
     fflush(g_logFile);
 #endif
-    pSaysKey= (RSAKey*)pAssert->m_pSignerKeyInfo;
-
-    SignedAssertion**  rgpAssertions= 
-            (SignedAssertion**) malloc(sizeof(SignedAssertion*)*m_iNumAssertions);
-   
     // succeed when we hit owner
+    SignedAssertion*    pParentAssert= NULL;
     for(i=0;i<m_iNumAssertions; i++) {
+        if(i<(m_iNumAssertions-1))
+            pParentAssert= (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[i+1]->m_rgEvidence[0];
+        else
+            pParentAssert= NULL;
+        iPermit= checkPermitChain(pResource,
+                            (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[i]->m_rgEvidence[0],
+                            pParentAssert);
+        if(iPermit==1) {
+            fRet= true;
+            break;
+        }
+        if(iPermit==-1) {
+            fRet= false;
+            break;
+        }
     }
-    bool fRet= i<m_iNumAssertions;
 
     // clean up
 

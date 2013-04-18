@@ -39,6 +39,8 @@
 
 SignedAssertion::SignedAssertion()
 {
+    m_pRootElement= false;
+    m_fDocValid= false;
     m_szSignature= NULL;
     m_szSignedInfo= NULL;
     m_szSignatureValue= NULL;
@@ -106,10 +108,26 @@ void  SignedAssertion::printMe()
 #endif
 
 
+char* SignedAssertion::getGrantSubject()
+{
+    return NULL;
+}
+
+
+char* SignedAssertion::getGrantRight()
+{
+    return NULL;
+}
+
+
+char* SignedAssertion::getGrantObject()
+{
+    return NULL;
+}
+
+
 bool SignedAssertion::parseSignedAssertionElements()
 {
-    TiXmlDocument   doc;
-    TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
     TiXmlNode*      pNode2= NULL;
@@ -125,19 +143,20 @@ bool SignedAssertion::parseSignedAssertionElements()
         return false;
     }
 
-    if(!doc.Parse(m_szSignature)) {
+    if(!m_doc.Parse(m_szSignature)) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant parse document from file string\n");
         return false;
     }
+    m_fDocValid= true;
 
-    pRootElement= doc.RootElement();
-    if(pRootElement==NULL) {
+    m_pRootElement= m_doc.RootElement();
+    if(m_pRootElement==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant get root element of SignedAssertion\n");
         return false;
     }
      
     // make sure it's in signedinfo
-    pSignedInfoNode= Search((TiXmlNode*) pRootElement, "ds:SignedInfo");
+    pSignedInfoNode= Search((TiXmlNode*) m_pRootElement, "ds:SignedInfo");
     if(pSignedInfoNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find SignedInfo\n");
         return false;
@@ -223,7 +242,7 @@ bool SignedAssertion::parseSignedAssertionElements()
     }
 
     // fill m_szSignatureValue;
-    pNode= Search((TiXmlNode*) pRootElement, "ds:SignatureValue");
+    pNode= Search((TiXmlNode*) m_pRootElement, "ds:SignatureValue");
     if(pNode==NULL) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find SignatureValue\n");
         return false;

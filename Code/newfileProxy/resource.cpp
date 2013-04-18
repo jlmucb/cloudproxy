@@ -292,6 +292,12 @@ void  resource::printMe()
 #endif
 
 
+bool resource::isAnOwner(PrincipalCert* pSubject)
+{
+    return false;
+}
+
+
 bool resource::MakeOwnerList(int* pnOwners, PrincipalCert*** pprgpPrincipalCerts,
                             objectManager<PrincipalCert>* pPp)
 {

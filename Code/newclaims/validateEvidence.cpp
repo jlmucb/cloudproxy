@@ -720,9 +720,6 @@ bool    evidenceList::validateEvidenceList(RSAKey* pRootKey)
 
     iVerify= VerifyChain(*pRootKey, "", NULL, m_iNumPiecesofEvidence, 
                          m_rgiEvidenceTypes, (void**) m_rgEvidence);
-    // Changed VerifyEvidenceList(NULL, m_iNumPiecesofEvidence, m_rgiEvidenceTypes,
-    //                            (void**) m_rgEvidence, pRootKey, pTopKey);
-
     if(iVerify>0)
         m_fValid= true;
     else

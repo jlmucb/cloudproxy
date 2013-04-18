@@ -71,6 +71,7 @@ public:
     bool                    MakeOwnerList(int* pnOwners, 
                                           PrincipalCert*** ppPrincipalCerts,
                                           objectManager<PrincipalCert>* pPp);
+    bool                    isAnOwner(PrincipalCert* pSubject);
 };
 
 

@@ -44,10 +44,14 @@ public:
     char*       m_szSignatureMethod;
     char*       m_szCanonicalizationMethod;
     char*       m_szPrincipalName;
+    char*       m_szPrincipalType;
     char*       m_szRevocationInfo;
     KeyInfo*    m_pSignerKeyInfo;
     RSAKey*     m_pSubjectKeyInfo;
     Period      m_ovalidityPeriod;
+
+    TiXmlDocument  m_doc;
+    TiXmlElement*  m_pRootElement;
 
     PrincipalCert();
     ~PrincipalCert();
@@ -63,6 +67,13 @@ public:
     char*       getSignatureValue();
     char*       getSignatureAlgorithm();
     char*       getPrincipalName();
+    char*       getPrincipalType();
+
+    char*       getName() {return getPrincipalName();};
+    int		Serialize(byte* in){return 0;};
+    bool        Deserialize(const byte* szCert, int* pN) {return true;};
+    int         auxSize(){return 0;};
+
     bool        sameAs(PrincipalCert& oPrinc);
 #ifdef TEST
     void        printMe();

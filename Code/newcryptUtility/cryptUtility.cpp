@@ -1272,16 +1272,10 @@ bool  parsePrincpals(const char* szPrincipals, int* pnumPrincipals, PrincipalCer
 bool  parseMetaData(const char* szMeta, metaData& meta)
 {
     /*
-     *  initFileNames();
-     *  initMetaData(const char* directory, const char* program);
-     *  restoreMetaData(int encType, byte* key);
-     *  saveMetaData(int encType, byte* key);
      *  addResource(resource* pResource);
      *  resource*           findResource(const char* szName);
-     *  bool                deleteResource(resource* pResource);
      *  bool                addPrincipal(accessPrincipal* pPrin);
-     *  accessPrincipal*    findPrincipal(const char* szName);
-     *  bool                deletePrincipal(accessPrincipal* pPrin);
+     *  PrincipalCert*      findPrincipal(const char* szName);
      */
     return false;
 }
@@ -1296,11 +1290,15 @@ bool validateAssertion(const char* szKey, const char* szReq, const char* szColle
     accessRequest       req;
     int                 numPrincipals= 0;
     PrincipalCert**     rgCerts= NULL;
+    int                 i;
 
     if(szCollection==NULL|| szKey==NULL || szReq==NULL) {
         fprintf(g_logFile, "validateAssertion: missing key data\n");
         return false;
     }
+
+    oMeta.m_metaDataValid= true;
+    oMeta.m_fEncryptFile= true;
 
     // initialize principals
     if(!parsePrincpals(szPrincipals, &numPrincipals, &rgCerts)) {
@@ -1308,7 +1306,12 @@ bool validateAssertion(const char* szKey, const char* szReq, const char* szColle
         return false;
     }
 
-    // add principals to metadata
+    for(i=0; i<numPrincipals; i++) {
+        if(!oMeta.addPrincipal(rgCerts[i])) {
+                fprintf(g_logFile, "validateAssertion: can't add principals\n");
+                return false;
+        }
+    }
 
     // initialize metadata
     if(!parseMetaData(szMeta, oMeta)) {
@@ -1316,13 +1319,14 @@ bool validateAssertion(const char* szKey, const char* szReq, const char* szColle
         return false;
     }
 
+    // parse request
     if(!parseReq(szReq, &req)) {
         fprintf(g_logFile, "validateAssertion: can't parse reqs\n");
         return false;
     }
 
     // initialize guard
-    if(!guard.initGuard(numPrincipals, rgCerts, pKey, &oMeta)) {
+    if(!guard.initGuard(pKey, &oMeta)) {
         fprintf(g_logFile, "validateAssertion: can't initialize metadata\n");
         return false;
     }

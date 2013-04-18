@@ -33,7 +33,6 @@
 #include "keys.h"
 #include "cert.h"
 #include "objectManager.h"
-#include "accessPrincipal.h"
 
 
 // uTypes
@@ -50,7 +49,7 @@ public:
     bool                    m_fIsPresent;
     bool                    m_fIsDeleted;
     int                     m_iSize;
-    aList<accessPrincipal>  m_myOwners;
+    aList<PrincipalCert>    m_myOwners;
     byte                    m_rguKey1[SMALLSYMKEYSIZE];
 
     resource();
@@ -59,19 +58,19 @@ public:
 #ifdef TEST
     void                    printMe();
 #endif
-    bool                    addOwner(accessPrincipal* pPrincipal);
-    bool                    removeOwner(accessPrincipal* pPrincipal);
-    aNode<accessPrincipal>* getFirstOwnerNode();
-    aNode<accessPrincipal>* getNextOwnerNode(aNode<accessPrincipal>* pNode);
-    bool                    getDatafromDoc();
+    bool                    addOwner(PrincipalCert* pPrincipal);
+    bool                    removeOwner(PrincipalCert* pPrincipal);
+    aNode<PrincipalCert>* getFirstOwnerNode();
+    aNode<PrincipalCert>* getNextOwnerNode(aNode<PrincipalCert>* pNode);
     int                     getSize();
     char*                   getName();
     int                     auxSize();
     int                     Serialize(byte* szObj);
     bool                    Deserialize(const byte* szObj, int* pi);
 
-    bool                    MakeOwnerList(int* pnOwners, accessPrincipal*** ppaccessPrincipals,
-                                          objectManager<accessPrincipal>* pPp);
+    bool                    MakeOwnerList(int* pnOwners, 
+                                          PrincipalCert*** ppPrincipalCerts,
+                                          objectManager<PrincipalCert>* pPp);
 };
 
 

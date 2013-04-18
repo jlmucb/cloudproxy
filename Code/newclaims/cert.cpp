@@ -51,7 +51,9 @@ PrincipalCert::PrincipalCert()
     m_pSignerKeyInfo= NULL;
     m_pSubjectKeyInfo= NULL;
     m_szPrincipalName= NULL;
+    m_szPrincipalType= NULL;
     m_fSigValuesValid= false;
+    m_pRootElement= NULL;
 }
 
 
@@ -85,6 +87,12 @@ bool  PrincipalCert::init(const char* szSig)
 }
 
 
+char* PrincipalCert::getPrincipalType()
+{
+    return m_szPrincipalName;
+}
+
+
 char* PrincipalCert::getPrincipalName()
 {
     return m_szPrincipalName;
@@ -99,8 +107,8 @@ char* PrincipalCert::getCanonicalizationMethod()
 
 bool PrincipalCert::parsePrincipalCertElements()
 {
-    TiXmlDocument   doc;
-    TiXmlElement*  pRootElement;
+    TiXmlDocument   m_doc;
+    TiXmlElement*   m_pRootElement;
 
 #ifdef CERTTEST
     fprintf(g_logFile, "parsePrincipalCertElements\n%s\n", m_szSignature);
@@ -109,16 +117,16 @@ bool PrincipalCert::parsePrincipalCertElements()
         fprintf(g_logFile, "parsePrincipalCertElements: No signature document\n");
         return false;
     }
-    if(!doc.Parse(m_szSignature)) {
+    if(!m_doc.Parse(m_szSignature)) {
         fprintf(g_logFile, "parsePrincipalCertElements: Cant parse document from file string\n");
         return false;
     }
-    pRootElement= doc.RootElement();
-    if(pRootElement==NULL) {
+    m_pRootElement= m_doc.RootElement();
+    if(m_pRootElement==NULL) {
         fprintf(g_logFile, "parsePrincipalCertElements: Cant get root element of PrincipalCert\n");
         return false;
     }
-    return parsePrincipalCertfromRoot(pRootElement);
+    return parsePrincipalCertfromRoot(m_pRootElement);
 }
 
 
@@ -203,6 +211,21 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
     else {
         fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get subject name value\n");
+        return false;
+    }
+
+    // fill principal type 
+    pNode= Search(pSignedInfoNode, "PrincipalType");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find principal type\n");
+        return false;
+    }
+    pNode1= ((TiXmlElement*)pNode)->FirstChild();
+    if(pNode1!=NULL) {
+        m_szPrincipalType= strdup(((TiXmlElement*)pNode1)->Value());
+    }
+    else {
+        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get principal type value\n");
         return false;
     }
 

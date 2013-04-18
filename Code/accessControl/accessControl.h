@@ -30,7 +30,6 @@
 #include "jlmTypes.h"
 #include "cert.h"
 #include "resource.h"
-#include "accessPrincipal.h"
 #include "vault.h"
 
 
@@ -54,30 +53,6 @@
 #define  SAYS       0x400
 
 
-class assertionNode {
-public:
-    bool                    m_fValidated;
-    accessPrincipal*        m_pPrincipal;
-    assertionNode*          m_pAssertion;
-    u32                     m_uVerbs;
-    resource*               m_pResource;
-    char*                   m_szCondition;   
-
-    assertionNode();
-    ~assertionNode();
-    bool        parseAssertion(accessPrincipal* pPrincipalSays, const char* szAssertion, 
-                                bool fValidated);
-#ifdef TEST
-    void        printMe();
-#endif
-    bool        assertionSucceeds(accessPrincipal* pSubject, u32 uVerb, resource* pResouce,
-                             int iNumAssertions, assertionNode** rgpAssertions);
-    bool        matchAction(u32 uVerb);
-    bool        matchResource(resource* pResource);
-    bool        matchPrincipal(accessPrincipal* pSubject);
-};
-
-
 class accessRequest {
 public:
     char*           m_szSubject;
@@ -96,27 +71,24 @@ public:
 class accessGuard {
 public:
     bool                    m_fValid;
-    metaData*               m_pMeta;
-    RSAKey*		    m_pPolicy;
-    int			    m_numPrincipals;
+    RSAKey*                 m_pPolicy;
+    metaData*               m_pMetaData;
 
     int                     m_iNumAssertions;
-    assertionNode**         m_rgpAssertions;
-    int                     m_iNumSubjects; 
-    aList<accessPrincipal>  m_Subjects;
+    SignedAssertion**       m_rgAssertions;
+    int                     m_numCurrentPrincipals;
+    PrincipalCert**         m_myPrincipals;
 
     accessGuard();
     ~accessGuard();
 
-    bool        initGuard(int numPrin, PrincipalCert** rgPrincs, 
-                           RSAKey* pPolicy, metaData* pMeta);
+    bool        initGuard(RSAKey* pPolicy, metaData* pMeta);
     bool        permitAccess(accessRequest& req, const char* szEvidence);
 };
 
 
-extern bool isAnOwner(accessPrincipal* pSubject, resource* pResource);
-extern bool isPolicyPrincipal(accessPrincipal* pSubject);
-
+extern bool isAnOwner(PrincipalCert* rSubject, resource* pResource);
+extern bool isPolicyPrincipal(RSAKey* pKey, RSAKey* pPolicy);
 #endif
 
 

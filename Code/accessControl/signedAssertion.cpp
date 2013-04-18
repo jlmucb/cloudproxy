@@ -48,8 +48,6 @@ SignedAssertion::SignedAssertion()
     m_pSignerKeyInfo= NULL;
     m_szPrincipalName= NULL;
     m_fSigValuesValid= false;
-    m_iNumAssertions= 0;
-    m_rgszAssertion= NULL;
 }
 
 
@@ -104,10 +102,6 @@ void  SignedAssertion::printMe()
     fprintf(g_logFile, "Signature: %s\n", m_szSignature);
     fprintf(g_logFile, "Signed Info: %s\n", m_szSignedInfo);
     fprintf(g_logFile, "SignatureValue: %s\n", m_szSignatureValue);
-    fprintf(g_logFile, "%d assertions\n", m_iNumAssertions);
-    int i;
-    for(i=0;i<m_iNumAssertions; i++)
-        fprintf(g_logFile, "\tAssertion %d: %s\n", i, m_rgszAssertion[i]);
 }
 #endif
 
@@ -249,6 +243,7 @@ bool SignedAssertion::parseSignedAssertionElements()
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find Assertions\n");
         return false;
     }
+#if 0
     ((TiXmlElement*)pNodeA)->QueryIntAttribute ("count", &m_iNumAssertions);
 
     int     iAssertions= 0;
@@ -277,6 +272,7 @@ bool SignedAssertion::parseSignedAssertionElements()
         fprintf(g_logFile, "parseSignedAssertionElements: Count mismatch in assertions %d %d\n", m_iNumAssertions, iAssertions);
         return false;
     }
+#endif
 
     m_fSigValuesValid= true;
 #ifdef RULESTEST

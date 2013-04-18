@@ -9,7 +9,7 @@ CLM=	    ../newclaims
 TAO=	    ../tao
 ACC=	    ../accessControl
 FPX=	    ../newfileProxy
-VLT=	    ../vault
+VLT=	    ../newvault
 PROTO=	    ../protocolChannel
 CHL=	    ../channels
 

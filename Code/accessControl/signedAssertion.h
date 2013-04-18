@@ -47,8 +47,6 @@ public:
     KeyInfo*    m_pSignerKeyInfo;
     RSAKey*     m_pSubjectKeyInfo;
     Period      m_ovalidityPeriod;
-    int         m_iNumAssertions;
-    char**      m_rgszAssertion;
 
     SignedAssertion();
     ~SignedAssertion();

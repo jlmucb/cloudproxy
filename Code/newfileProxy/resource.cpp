@@ -68,7 +68,7 @@ resource::~resource()
 }
 
 
-bool resource::addOwner(accessPrincipal* pPrincipal)
+bool resource::addOwner(PrincipalCert* pPrincipal)
 {
     return m_myOwners.append(pPrincipal);
 }
@@ -86,7 +86,7 @@ char*  resource::getName()
 }
 
 
-bool resource::removeOwner(accessPrincipal* pPrincipal)
+bool resource::removeOwner(PrincipalCert* pPrincipal)
 {
     return false;
 }
@@ -96,8 +96,8 @@ int  resource::auxSize()
 {
     int                     iTotal= 0;
     int                     iNumOwners= 0;
-    aNode<accessPrincipal>* pNode= NULL;
-    accessPrincipal*        pPrinc= NULL;
+    aNode<PrincipalCert>* pNode= NULL;
+    PrincipalCert*        pPrinc= NULL;
 
     iTotal+= strlen(m_szResourceName)+1;
     iTotal+= strlen(m_szLocation)+1;
@@ -168,7 +168,7 @@ bool resource::Deserialize(const byte* szObj, int* pi)
         p= strdup(sz);
         n= strlen(p)+1;
         // name must be converted to access principal afterwards
-        m_myOwners.append((accessPrincipal*) p);
+        m_myOwners.append((PrincipalCert*) p);
         sz+= n;
         iTotal+= n;
     }
@@ -188,8 +188,8 @@ int resource::Serialize(byte* szObj)
     int                     iTotal= 0;
     int                     n;
     int                     iNumOwners= 0;
-    aNode<accessPrincipal>* pNode= NULL;
-    accessPrincipal*        pPrinc= NULL;
+    aNode<PrincipalCert>* pNode= NULL;
+    PrincipalCert*        pPrinc= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "resource Serialize\n");
@@ -249,13 +249,13 @@ int resource::Serialize(byte* szObj)
 }
 
 
-aNode<accessPrincipal>* resource::getFirstOwnerNode()
+aNode<PrincipalCert>* resource::getFirstOwnerNode()
 {
     return m_myOwners.pFirst;
 }
 
 
-aNode<accessPrincipal>*   resource::getNextOwnerNode(aNode<accessPrincipal>* pNode)
+aNode<PrincipalCert>*   resource::getNextOwnerNode(aNode<PrincipalCert>* pNode)
 {
     return pNode->pNext;
     return NULL;
@@ -277,8 +277,8 @@ void  resource::printMe()
     }
     fprintf(g_logFile, "\tSize: %d\n", m_iSize);
 
-    accessPrincipal*    pPrinc= NULL;
-    aNode<accessPrincipal>*  pOwnerNode= m_myOwners.pFirst;
+    PrincipalCert*    pPrinc= NULL;
+    aNode<PrincipalCert>*  pOwnerNode= m_myOwners.pFirst;
     fprintf(g_logFile, "Owners: ");
     while(pOwnerNode!=NULL) {
         pPrinc= pOwnerNode->pElement;
@@ -292,24 +292,24 @@ void  resource::printMe()
 #endif
 
 
-bool resource::MakeOwnerList(int* pnOwners, accessPrincipal*** pprgpaccessPrincipals,
-                            objectManager<accessPrincipal>* pPp)
+bool resource::MakeOwnerList(int* pnOwners, PrincipalCert*** pprgpPrincipalCerts,
+                            objectManager<PrincipalCert>* pPp)
 {
     int                 iNumOwners= 0;
     int                 i;
-    accessPrincipal*    pPrinc= NULL;
-    accessPrincipal**   rgpPrinc= NULL;
+    PrincipalCert*    pPrinc= NULL;
+    PrincipalCert**   rgpPrinc= NULL;
 
-    aNode<accessPrincipal>*  pOwnerNode= m_myOwners.pFirst;
+    aNode<PrincipalCert>*  pOwnerNode= m_myOwners.pFirst;
     while(pOwnerNode!=NULL) {
         iNumOwners++;
         pOwnerNode= pOwnerNode->pNext;
     }
 
-    rgpPrinc= (accessPrincipal**) malloc(iNumOwners*sizeof(accessPrincipal*));
+    rgpPrinc= (PrincipalCert**) malloc(iNumOwners*sizeof(PrincipalCert*));
     if(rgpPrinc==NULL)
         return false;
-    *pprgpaccessPrincipals= rgpPrinc;
+    *pprgpPrincipalCerts= rgpPrinc;
     *pnOwners= iNumOwners;
 
     i= 0;

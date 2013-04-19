@@ -34,6 +34,19 @@
 #define _SIGNEDASSERTION__H
 
 
+class Assertion {
+public:
+    char*   m_szSubject;
+    char*   m_szRight;
+    char*   m_szObject;
+
+    Assertion();
+    ~Assertion();
+
+    bool   parseMe(const char* szAssert);
+};
+
+
 class SignedAssertion {
 public:
     bool            m_fDocValid;
@@ -51,6 +64,7 @@ public:
     KeyInfo*        m_pSignerKeyInfo;
     RSAKey*         m_pSubjectKeyInfo;
     Period          m_ovalidityPeriod;
+    Assertion*      m_pAssertion;
 
     SignedAssertion();
     ~SignedAssertion();
@@ -69,6 +83,8 @@ public:
     char*           getGrantSubject();
     char*           getGrantRight();
     char*           getGrantObject();
+
+    bool            parseAssertion();
 
 #ifdef TEST
     void            printMe();

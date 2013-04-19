@@ -213,6 +213,7 @@ bool accessGuard::includesObject(const char* szRequested, const char* szGranted)
 
 
 int accessGuard::checkPermitChain(resource* pResource,
+                                  tm& pt,
                                   SignedAssertion* pAssert1, 
                                   SignedAssertion* pAssert2)
 //  return
@@ -220,12 +221,24 @@ int accessGuard::checkPermitChain(resource* pResource,
 //       0: ok so far
 //       hit owner, succeed
 {
-    const char* szrequestedSubject= pAssert1->getGrantSubject();
+    const char*     szrequestedSubject= pAssert1->getGrantSubject();
+    PrincipalCert*  pCert= NULL;
 
     // time period valid?
+    if(!checktimeinInterval(pt, pAssert1->m_ovalidityPeriod.notBefore, 
+                                pAssert1->m_ovalidityPeriod.notAfter)) {
+        return -1;
+    }
 
     // is subject an owner?
-    if(pResource->isAnOwner(NULL)) {
+    pCert= m_pMetaData->findPrincipal(pAssert1->getGrantObject());
+    if(pCert==NULL) {
+#ifdef TEST
+        fprintf(g_logFile, "checkPermitChain: cant get principal\n");
+#endif
+        return -1;
+    }
+    if(pResource->isAnOwner(pCert)) {
 #ifdef TEST
         fprintf(g_logFile, "checkPermitChain: The subject is an owner of resource\n");
 #endif
@@ -284,6 +297,8 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     int                 i;
     bool                fRet= false;
     int                 iPermit= 0;
+    time_t              now;
+    tm*                 pt;
 
 #ifdef TEST
     fprintf(g_logFile, "permitAccess: Can %s %s %s\n", req.m_szSubject,
@@ -296,6 +311,9 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         fprintf(g_logFile, "permitAccess: accessGuard invalid\n");
         return false;
     }
+
+    time(&now);
+    pt= localtime(&now);
 
     // PrincipalCerts should have been validated by now
     pResource= m_pMetaData->findResource(req.m_szResource);
@@ -389,7 +407,7 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
             pParentAssert= (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[i+1]->m_rgEvidence[0];
         else
             pParentAssert= NULL;
-        iPermit= checkPermitChain(pResource,
+        iPermit= checkPermitChain(pResource, *pt,
                             (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[i]->m_rgEvidence[0],
                             pParentAssert);
         if(iPermit==1) {

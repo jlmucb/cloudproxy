@@ -37,6 +37,97 @@
 // ------------------------------------------------------------------------
 
 
+inline bool whitespace(char b)
+{
+    return(b==' ' || b=='\t' || b=='\r' || b=='\n');
+}
+
+
+int nextToken(const char* sz, const char** pszToken)
+{
+    int     n;
+
+    if(sz==NULL)
+        return -1;
+
+    while(*sz!='\0') {
+        if(!whitespace(*sz))
+            break;
+    sz++;
+    }
+
+    if(*sz=='\0')
+        return -1;
+
+    *pszToken= sz;
+    n= 0;
+    while(*sz!='\0' && !whitespace(*sz)) {
+        sz++;
+        n++;
+    }
+    return n;
+}
+
+
+Assertion::Assertion()
+{
+    m_szSubject= NULL;
+    m_szRight= NULL;
+    m_szObject= NULL;
+}
+
+
+Assertion::~Assertion()
+{
+    if(m_szSubject!=NULL) {
+	free(m_szSubject);
+	m_szSubject= NULL;
+    }
+    if(m_szRight!=NULL) {
+	free(m_szRight);
+	m_szRight= NULL;
+    }
+    if(m_szObject!=NULL) {
+	free(m_szObject);
+	m_szObject= NULL;
+    }
+}
+
+
+bool Assertion::parseMe(const char* szAssert)
+{
+    char            szBuf[512];
+    const char*     szTok= NULL;
+    int             n;
+
+    n= nextToken(szAssert, &szTok);
+    if(n<0 || n>=512)
+        return false;
+    memcpy(szBuf, szTok, n); 
+    szBuf[n]= '\0';
+    szAssert+= n;
+    m_szSubject= strdup(szBuf);
+
+    n= nextToken(szAssert, &szTok);
+    if(n<0 || n>=512)
+        return false;
+    memcpy(szBuf, szTok, n); 
+    szBuf[n]= '\0';
+    szAssert+= n;
+    m_szRight= strdup(szBuf);
+
+    n= nextToken(szAssert, &szTok);
+    if(n<0 || n>=512)
+        return false;
+    memcpy(szBuf, szTok, n); 
+    szBuf[n]= '\0';
+    szAssert+= n;
+    m_szObject= strdup(szBuf);
+
+   return true;
+}
+
+
 SignedAssertion::SignedAssertion()
 {
     m_pRootElement= false;
@@ -50,6 +141,7 @@ SignedAssertion::SignedAssertion()
     m_pSignerKeyInfo= NULL;
     m_szPrincipalName= NULL;
     m_fSigValuesValid= false;
+    m_pAssertion= NULL;
 }
 
 
@@ -69,6 +161,52 @@ SignedAssertion::~SignedAssertion()
     m_szRevocationInfo= NULL;
     m_pSignerKeyInfo= NULL;
     m_fSigValuesValid= false;
+}
+
+
+bool  SignedAssertion::parseAssertion()
+{
+    TiXmlNode*  pSignedInfoNode= NULL;
+    TiXmlNode*  pSignedGrant= NULL;
+    TiXmlNode*  pAssertions= NULL;
+    TiXmlNode*  pAssertion= NULL;
+    const char* szAssertion= NULL;
+    
+    if(m_pRootElement==NULL) {
+#ifdef TEST
+        fprintf(g_logFile, "SignedAssertion::parseAssertion: rootElement is NULL\n");
+        fflush(g_logFile);
+#endif
+        return NULL;
+    }
+    // make sure it's in signedinfo
+    pSignedInfoNode= Search((TiXmlNode*) m_pRootElement, "ds:SignedInfo");
+    if(pSignedInfoNode==NULL) {
+        fprintf(g_logFile, "SignedAssertion::parseAssertion: Cant find SignedInfo\n");
+        return false;
+    }
+    pSignedGrant= Search(pSignedInfoNode, "SignedGrant");
+    if(pSignedGrant==NULL) {
+        fprintf(g_logFile, "SignedAssertion::parseAssertion: Cant find SignedGrant\n");
+        return false;
+    }
+    pAssertions= Search(pSignedGrant, "Assertions");
+    if(pAssertions==NULL) {
+        fprintf(g_logFile, "SignedAssertion::parseAssertion: Cant find Assertions\n");
+        return false;
+    }
+    pAssertion= Search(pAssertions, "Assertion");
+    if(pAssertions==NULL) {
+        fprintf(g_logFile, "SignedAssertion::parseAssertion: Cant find Assertion\n");
+        return false;
+    }
+    // SignedGrant in ds:SignedInfo
+    if(pAssertion==NULL || pAssertion->FirstChild()==NULL || pAssertion->FirstChild()==NULL) {
+        return false;
+    }
+    szAssertion= pAssertion->FirstChild()->Value();
+    // parse it
+    return true;
 }
 
 
@@ -110,18 +248,39 @@ void  SignedAssertion::printMe()
 
 char* SignedAssertion::getGrantSubject()
 {
+    if(m_pAssertion==NULL) {
+        if(!parseAssertion()) {
+            return NULL;
+        }
+    }
+    if(m_pAssertion==NULL)
+        return m_pAssertion->m_szSubject;
     return NULL;
 }
 
 
 char* SignedAssertion::getGrantRight()
 {
+    if(m_pAssertion==NULL) {
+        if(!parseAssertion()) {
+            return NULL;
+        }
+    }
+    if(m_pAssertion==NULL)
+        return m_pAssertion->m_szRight;
     return NULL;
 }
 
 
 char* SignedAssertion::getGrantObject()
 {
+    if(m_pAssertion==NULL) {
+        if(!parseAssertion()) {
+            return NULL;
+        }
+    }
+    if(m_pAssertion==NULL)
+        return m_pAssertion->m_szObject;
     return NULL;
 }
 
@@ -219,7 +378,7 @@ bool SignedAssertion::parseSignedAssertionElements()
         fprintf(g_logFile, "parseSignedAssertionElements: Cant get NotBefore value\n");
         return false;
     }
-    if(!UTCtogmTime(szTimePoint, &m_ovalidityPeriod.notBefore)) {
+    if(!timeInfofromstring(szTimePoint, m_ovalidityPeriod.notBefore)) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant interpret NotBefore value\n");
         return false;
     }
@@ -236,7 +395,7 @@ bool SignedAssertion::parseSignedAssertionElements()
         fprintf(g_logFile, "parseSignedAssertionElements: Cant get NotAftervalue\n");
         return false;
     }
-    if(!UTCtogmTime(szTimePoint, &m_ovalidityPeriod.notAfter)) {
+    if(!timeInfofromstring(szTimePoint, m_ovalidityPeriod.notAfter)) {
         fprintf(g_logFile, "parseSignedAssertionElements: Cant interpret NotAftervalue\n");
         return false;
     }

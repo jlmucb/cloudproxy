@@ -89,7 +89,8 @@ public:
 
     bool        initGuard(RSAKey* pPolicy, metaData* pMeta);
     bool        permitAccess(accessRequest& req, const char* szEvidence);
-    int         checkPermitChain(resource* pResource, SignedAssertion* pAssert1, 
+    int         checkPermitChain(resource* pResource, tm& pt,
+                                 SignedAssertion* pAssert1, 
                                  SignedAssertion* pAssert2);
 };
 

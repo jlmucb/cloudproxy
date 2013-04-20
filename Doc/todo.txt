@@ -6,30 +6,20 @@ Todo
 
 3. Check on filelock in tcService
 
-4. Static kernel (see notes)
+4. PCR18 (19 too if lcp is set)
 
-5. Construct Initramfs
-    Copy tcService, FileClient, FileProxy and dynamic link libraries to intiramfs.
-    Rewrite init
-    include dmcrypt and turn on swap space encrypt
-    add tcioDD, tpm, dmcrypt
-
-6. PCR18 (19 too if lcp is set)
-
-7. Collect zombies
-
-8. Close file descriptors for dead clients
-
-9. keyNegoServer: emergency key recovery program, revocation
+5. keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
 
-10.Hypervisor
+6. Individual file keys to avoid escalation of privilige 
+   based on file names.
 
-11.Management partition
+7. Hypervisor
 
-12.VM update and keys
+8. Management partition
 
-13.Group keys
+9. VM update and keys
+
 
 14.Fix up certificates
 

@@ -69,6 +69,7 @@ $(B)/encapsulate.o: $(SCD)/encapsulate.cpp $(SCD)/encapsulate.h
 
 $(B)/fastArith.o: $(SBM)/fastArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/fastArith.o $(SBM)/fastArith.cpp
+#	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -S -o $(B)/fastArith.s $(SBM)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp

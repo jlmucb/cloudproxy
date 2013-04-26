@@ -29,6 +29,7 @@
 
 #include "jlmTypes.h"
 #include "cert.h"
+#include "signedAssertion.h"
 #include "resource.h"
 #include "vault.h"
 

@@ -275,12 +275,13 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
     int     hashType= 0;
     int     sizefinalHash= 0;
 
-
 #ifdef TEST
     fprintf(g_logFile, "checkXMLQuote alg: %s\n", szQuoteAlg);
     fprintf(g_logFile, "checkXMLQuote sig value: %s\nSigner Keyinfo:\n", szQuoteValue);
     ((RSAKey*)pKeyInfo)->printMe();
 #endif
+    UNUSEDVAR(sizefinalHash);	
+
     if(szQuoteAlg==NULL) {
         fprintf(g_logFile, "checkXMLQuote: empty alg\n");
         return false;
@@ -400,8 +401,6 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
     PrintBytes((char*)"Code digest: ", hashCode, sizehashCode);
     PrintBytes((char*)"final hash: ", hashFinal, sizehashCode);
     fflush(g_logFile);
-#else
-    UNUSEDVAR(sizefinalHash);	
 #endif
 
     bool fRet= RSAVerify(*(RSAKey*)pKeyInfo, hashType, hashFinal,

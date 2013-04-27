@@ -42,7 +42,6 @@
 #include "quote.h"
 #include "validateEvidence.h"
 #include "hashprep.h"
-#include "vault.h"
 
 #include <stdio.h>
 #include <sys/types.h>

@@ -4,6 +4,7 @@ S=          ../newkeyNegoServer
 SC=         ../commonCode
 FPX=        ../newfileProxy
 SCC=        ../newjlmcrypto
+ACC=        ../accessControl
 BSC=        ../jlmbignum
 CLM=        ../newclaims
 TH=         ../tao
@@ -18,8 +19,8 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
-CFLAGS1=    -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
+CFLAGS=     -D FILECLIENT -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
+CFLAGS1=    -D FILECLIENT -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
 CC=         g++
 LINK=       g++
@@ -27,9 +28,9 @@ LINK=       g++
 dobjs=      $(B)/keyNegoServer.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/keys.o $(B)/aesni.o $(B)/sha256.o  $(B)/sha1.o $(B)/channel.o \
             $(B)/hmacsha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/hashprep.o \
-	    $(B)/mpNumTheory.o  $(B)/rsaHelper.o $(B)/secPrincipal.o  $(B)/resource.o \
-            $(B)/modesandpadding.o $(B)/claims.o $(B)/tinystr.o $(B)/vault.o \
-            $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
+	    $(B)/mpNumTheory.o  $(B)/cryptoHelper.o $(B)/quote.o $(B)/cert.o  \
+	    $(B)/resource.o $(B)/modesandpadding.o $(B)/validateEvidence.o \
+	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
 	    $(B)/fastArith.o $(B)/encryptedblockIO.o 
 
 all: $(E)/keyNegoServer.exe
@@ -56,11 +57,14 @@ $(B)/resource.o: $(FPX)/resource.cpp $(FPX)/resource.h
 $(B)/claims.o: $(CLM)/claims.cpp $(CLM)/claims.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/claims.o $(CLM)/claims.cpp
 
-$(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(CH) -I$(TRS) -I$(SCC) -I$(BSC) -I$(VLT) -I$(RMM) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/vault.o $(VLT)/vault.cpp
+$(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TPD) -I$(ACC) -I$(CLM) -I$(TH) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
 
-$(B)/secPrincipal.o: $(CLM)/secPrincipal.cpp $(CLM)/secPrincipal.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(RMM) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/secPrincipal.o $(CLM)/secPrincipal.cpp
+$(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/cert.o $(CLM)/cert.cpp
+
+$(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(FPX) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp
@@ -71,8 +75,8 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
 
-$(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
+$(B)/cryptoHelper.o: $(SCC)/cryptoHelper.cpp $(SCC)/cryptoHelper.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/cryptoHelper.o $(SCC)/cryptoHelper.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

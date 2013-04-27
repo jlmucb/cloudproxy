@@ -131,6 +131,7 @@ bool  objectManager<object>::DeserializeObjectTable(int iSize, const byte* buf)
     object*     pObj= NULL;
     object*     pObj2= NULL;
 
+    n= 0;
     memcpy(&iNumObjects, sz, sizeof(int));
     sz+= sizeof(int);
 #ifdef TEST

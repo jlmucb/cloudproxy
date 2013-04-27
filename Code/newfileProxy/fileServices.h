@@ -41,7 +41,9 @@
 
 class fileServices{
 public:
+#ifndef FILECLIENT
     accessGuard m_guard;
+#endif
 
                 fileServices();
                 ~fileServices();

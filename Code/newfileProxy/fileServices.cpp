@@ -79,6 +79,7 @@ fileServices::~fileServices()
 
 bool fileServices::initFileServices(session& session, RSAKey* pPolicy, metaData* pMeta)
 {
+    return true;
 }
 
 
@@ -86,7 +87,7 @@ bool fileServices::validateCreatefileServices(char** pszFile, resource** ppResou
 {
     resource*               pResource= NULL;
     bool                    fAllowed= false;
-    accessfileServices           oAR;
+    accessfileServices      oAR;
     char                    szBuf[MAXNAME];
 
 #ifdef TEST
@@ -741,6 +742,7 @@ bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq,
 
 bool fileServices::initFileServices(session& session, RSAKey* pPolicy)
 {
+    return true;
 }
 
 

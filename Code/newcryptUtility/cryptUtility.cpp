@@ -76,11 +76,31 @@
 #define DECAPSULATE               19
 #define VALIDATECHAIN             20
 #define VALIDATEASSERTION         21
+#define GENCERT                   22
 
 
 #define MAXREQUESTSIZE          2048
 #define MAXADDEDSIZE              64
 #define MAXREQUESTSIZEWITHPAD   (MAXREQUESTSIZE+MAXADDEDSIZE)
+
+
+static const char* s_szCertTemplate= 
+"<Certificate Id=\"%s\" version=\"1\">\n"\
+"        <SerialNumber>%s</SerialNumber>\n"\
+"        <PrincipalType>%s</PrincipalType>\n"\
+"        <IssuerName>%s</IssuerName>\n"\
+"        <IssuerID>%s</IssuerID>\n"\
+"        <ValidityPeriod>\n"\
+"            <NotBefore>%s</NotBefore>\n"\
+"            <NotAfter>%s</NotAfter>\n"\
+"        </ValidityPeriod>        \n"\
+"        <SubjectName>%s</SubjectName>\n"\
+"        <SubjectKey>\n"\
+"%s\n"\
+"       </SubjectKey>\n"\
+"       <SubjectKeyID>%s</SubjectKeyID>\n"\
+"       <RevocationPolicy>Local-check-only</RevocationPolicy>\n"\
+"   </Certificate>\n";
 
 
 // --------------------------------------------------------------------- 
@@ -93,6 +113,103 @@ bool GenRSAKey(int size, const char* szOutFile)
     char*   szKeyInfo= pKey->SerializetoString();
     if(!saveBlobtoFile(szOutFile, (byte*)szKeyInfo, strlen(szKeyInfo)+1))
         return false;
+    return true;
+}
+
+
+bool GenCertSignedInfo(int an, char** av)
+{
+    int             i;
+    const char*     szKeyFile= NULL;
+    const char*     szOutFile= NULL;
+    const char*     szSerialNumber= "00001";
+    const char*     szCertID= "http://www.manferdelli.com/2013/Cert/00002";
+    const char*     szPrincipalType= "User";
+    const char*     szIssuerName= NULL;
+    const char*     szIssuerID= NULL;
+    const char*     szSubjectName= NULL;
+    const char*     szNotBefore= NULL;
+    const char*     szNotAfter= NULL;
+    const char*     szSubjectKeyID= "newKey";
+    const char*     szRevocationPolicy= "Local-check-only";
+    int             sizeKey= 4096;
+    char            szKeyBuf[4096];
+    int             sizeOut= 8192;
+    char            szOutBuf[8192];
+
+    // get notbefore and notafter if not specified
+    time_t      timer;
+    time(&timer);
+    struct tm*  pgmtime= gmtime((const time_t*)&timer);
+    szNotBefore= stringtimefromtimeInfo(pgmtime);
+    pgmtime->tm_year+= 1;
+    szNotAfter= stringtimefromtimeInfo(pgmtime);
+
+    i= 0;
+    szKeyFile= av[i++];
+    fprintf(g_logFile, "GenCertSignedInfo\n");
+    for(; i<(an-1);i++) {
+        if(strcmp(av[i], "-SerialNumber")==0) {
+            szSerialNumber= av[++i];
+        }
+        else if(strcmp(av[i], "-PrincipalType")==0) {
+            szPrincipalType= "User";
+        }
+        else if(strcmp(av[i], "-CertID")==0) {
+            szCertID= av[++i];
+        }
+        else if(strcmp(av[i], "-IssuerName")==0) {
+            szIssuerName= av[++i];
+        }
+        else if(strcmp(av[i], "-IssuerID")==0) {
+            szIssuerID= av[++i];
+        }
+        else if(strcmp(av[i], "-SubjectName")==0) {
+            szSubjectName= av[++i];
+        }
+        else if(strcmp(av[i], "-Period")==0) {
+            szNotBefore= av[++i];
+            szNotAfter= av[++i];
+        }
+        else if(strcmp(av[i], "-RevocationPolicy")==0) {
+            szRevocationPolicy= av[++i];
+        }
+        else if(strcmp(av[i], "-SubjectKeyID")==0) {
+            szSubjectKeyID= av[++i];
+        }
+    }
+    szOutFile= av[i];
+
+    if(!getBlobfromFile(szKeyFile, (byte*)szKeyBuf, &sizeKey)) {
+        fprintf(g_logFile, "GenCertSignedInfo: Can't read key from %s\n", szKeyFile);
+        return false;
+    }
+
+    sprintf(szOutBuf,s_szCertTemplate,
+            szCertID,
+            szSerialNumber,
+            szPrincipalType,
+            szIssuerName,
+            szIssuerID,
+            szNotBefore,
+            szNotAfter,
+            szSubjectName,
+            szKeyBuf,
+            szSubjectKeyID,
+            szRevocationPolicy);
+
+    char* szCanonical= XMLCanonicalizedString(szOutBuf);
+    if(szCanonical==NULL) {
+        fprintf(g_logFile, "GenCertSignedInfo: Can't canonicalize\n");
+        return false;
+    }
+    sizeOut= strlen(szCanonical);
+    if(!saveBlobtoFile(szOutFile, (byte*)szCanonical, sizeOut)) {
+        fprintf(g_logFile, "GenCertSignedInfo: Can't write output from %s\n", szOutFile);
+        return false;
+    }
+    free(szCanonical);
+    szCanonical= NULL;
     return true;
 }
 
@@ -619,8 +736,7 @@ void  GetTime()
     time(&timer);
     // 1997-07-16T19:20:30.45+01:00
     struct tm*  pgmtime= gmtime((const time_t*)&timer);
-    char* szTime= gmTimetoUTCstring(pgmtime);
-
+    char* szTime= stringtimefromtimeInfo(pgmtime);
     fprintf(g_logFile,  "The current date/time is: %s\n", szTime);
 
     return;
@@ -1367,6 +1483,8 @@ int main(int an, char** av)
     const char*   szPrincipalsFile= NULL;
     const char*   szMeasurementFile= NULL;
     const char*   szProgramName=  "Program no name";
+    int           numArgs= 0;
+    char**        pszArgs= NULL;
     int           iAction= NOACTION;
     int           mode= CBCMODE;
     bool          fRet;
@@ -1375,6 +1493,16 @@ int main(int an, char** av)
     for(i=0; i<an; i++) {
         if(strcmp(av[i], "-help")==0) {
             fprintf(g_logFile, "\nUsage: cryptUtility -GenKey keytype outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -GenCertSignedInfo keyfile ");
+                fprintf(g_logFile, " -SerialNumber SN");
+                fprintf(g_logFile, " -PrincipalType [User|Program|Channel]");
+                fprintf(g_logFile, " -IssuerName Name");
+                fprintf(g_logFile, " -IssuerID ID");
+                fprintf(g_logFile, " -SubjectName SN");
+                fprintf(g_logFile, " -Period 2011-01-01Z00:00.00 2011-01-01Z00:00.00");
+                fprintf(g_logFile, " -RevocationPolicy file");
+                fprintf(g_logFile, " -SubjectKeyID ID");
+                fprintf(g_logFile, " outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Sign keyfile rsa1024-sha256-pkcspad inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Verify keyfile inputfile\n");
             fprintf(g_logFile, "       cryptUtility -Canonical inputfile outputfile\n");
@@ -1416,6 +1544,13 @@ int main(int an, char** av)
             szKeyType= av[i+1];
             szOutFile= av[i+2];
             iAction= GENKEY;
+            break;
+        }
+        if(strcmp(av[i], "-GenCertSignedInfo")==0) {
+            i++;
+            numArgs= an-i;
+            pszArgs= &av[i];
+            iAction= GENCERT;
             break;
         }
         if(strcmp(av[i], "-Sign")==0) {
@@ -1618,6 +1753,10 @@ int main(int an, char** av)
         else
             fprintf(g_logFile, "Signature fails\n");
         closeCryptoRand();
+    }
+
+    if(iAction==GENCERT) {
+        fRet= GenCertSignedInfo(numArgs, pszArgs);
     }
 
     if(iAction==SIGN) {

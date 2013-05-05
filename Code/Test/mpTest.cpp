@@ -1373,12 +1373,6 @@ int main(int an, char** av)
     try {
         printf("mpTest\n\n");
 
-	if(!keygenrestoretest())
-	    throw("Keytest failed");
-
-        if(!udividetests()) 
-            throw((char*)"special test fails");
-
         if(!initNums()) {
             throw((char*)"Cant init numbers");
         }
@@ -1639,6 +1633,12 @@ int main(int an, char** av)
             fAllTests= false;
             printf("rsaTests failed\n");
         }
+
+	if(!keygenrestoretest())
+	    throw("Keytest failed");
+
+        if(!udividetests()) 
+            throw((char*)"special test fails");
 
         if(fAllTests)
             printf("\nTests completed, all tests PASSED\n");

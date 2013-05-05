@@ -46,8 +46,8 @@ u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
         "\tmovq    %%rax, (%%rcx)\n" 
         : [carryout] "=m"(uCarryOut) 
         : [outaddress] "m" (puOut), [op1] "m" (uIn1), [op2] "m" (uIn2), [carryin] "m" (uCarryIn)
-        : "%rax", "%rcx", 
-          "%eax", "ebx", "%esi", "%rsi", "%rdi", "%rdx");
+        : "%rax", "%rcx");
+        /*, "%eax", "ebx", "%esi", "%rsi", "%rdi", "%rdx"); --- remove this */
 
     return uCarryOut;
 }
@@ -129,12 +129,69 @@ u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy)
 }
 
 
+#define ALLASSEMBLER
+
 //  Function: u64 mpUAddLoop
 //      Caller guarentees lA>=lB, lR>=lA
-u64 mpUAddLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
+u64 mpUAddLoop(int lA, u64* pA, int lB, u64* pB, u64* pR)
 {
-    i32     j;
     u64     uCarry= 0;
+
+#ifdef ALLASSEMBLER
+    asm volatile(
+        // esi is j
+        // rbx is pA
+        // rcx is pB
+        // rdx is pR
+        // carry is in r12
+        "movl     $0, %%esi\n" \
+        "\tmovq   %[pR], %%rdx\n"\
+        "\tmovq   %[pA], %%rbx\n" \
+        "\tmovq   %[pB], %%rcx\n" \
+        "\tmovq   $0, %%r12\n" \
+        "1:\n" \
+        "\tcmpl   %%esi, %[lB]\n"\
+        "\tjle    4f\n" \
+        "\tmovq   (%%rbx), %%rax\n" \
+        "\tclc\n" \
+        "\taddq   %%r12, %%rax\n"\
+        "\tmovq   $0, %%r12\n" \
+        "jnc      2f\n"\
+        "\tmovq   $1, %%r12\n"\
+        "2:\n" \
+        "\tclc\n" \
+        "\taddq   (%%rcx), %%rax\n"\
+        "jnc      3f\n"\
+        "\tmovq   $1, %%r12\n"\
+        "3:\n"\
+        "\tmovq   %%rax, (%%rdx)\n"\
+        "\taddq   $8, %%rbx\n"\
+        "\taddq   $8, %%rcx\n"\
+        "\taddq   $8, %%rdx\n"\
+        "\tincl   %%esi\n"\
+        "\tjmp    1b\n" \
+        "4:\n" \
+        "\tcmpl   %%esi, %[lA]\n" \
+        "\tjle    6f\n" \
+        "\tmovq   (%%rbx), %%rax\n"\
+        "\tclc\n" \
+        "\taddq   %%r12, %%rax\n"\
+        "\tmovq   $0, %%r12\n"\
+        "jnc      5f\n"\
+        "\tmovq   $1, %%r12\n"\
+        "5:\n" \
+        "\tmovq   %%rax, (%%rdx)\n"\
+        "\taddq   $8, %%rbx\n"\
+        "\taddq   $8, %%rdx\n"\
+        "\tincl   %%esi\n"\
+        "\tjmp    4b\n" \
+        "6:\n" \
+        "\tmovq  %%r12, %[uCarry]\n"
+        : [uCarry] "=m"(uCarry) 
+        : [pR] "m" (pR), [lA] "m" (lA), [pA] "m" (pA), [lB] "m" (lB), [pB] "m" (pB)
+        : "%rax", "%rbx", "%rcx", "%rdx", "%esi", "%r12");
+#else
+    int     j;
 
     for(j=0; j<lB; j++) {
         uCarry= longaddwithcarry(pR, *pA, *pB, uCarry);
@@ -148,17 +205,16 @@ u64 mpUAddLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
         pB++;
         pR++;
     }
-
+#endif
     return uCarry;
 }
 
 
 //  Function: u64 mpUSubLoop
-u64 mpUSubLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR, u64 uBorrow)
+u64 mpUSubLoop(int lA, u64* pA, int lB, u64* pB, u64* pR, u64 uBorrow)
 //      Caller guarentees lA>=lB, lR>=lA
 {
-    i32     j;
-
+    int     j;
     for(j=0; j<lB; j++) {
         uBorrow= longsubstep(pR, *pA, *pB, uBorrow);
         pA++;
@@ -172,7 +228,6 @@ u64 mpUSubLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR, u64 uBorrow)
         pB++;
         pR++;
     }
-
     return 0ULL;
 }
 
@@ -192,10 +247,10 @@ inline void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uT
 
 
 //  Function: bool mpUMultByLoop
-u64 mpUMultByLoop(i32 lA, u64* pA, u64 uB)
+u64 mpUMultByLoop(int lA, u64* pA, u64 uB)
 {
     u64     uCarry= 0ULL;
-    i32     i;
+    int     i;
 
     for(i=0; i<lA; i++) {
 	uCarry= longmultiplystep(&pA[i], pA[i], uB, uCarry);
@@ -206,10 +261,10 @@ u64 mpUMultByLoop(i32 lA, u64* pA, u64 uB)
 
 //  Function: bool mpUMultLoop
 //      Caller guarentees lA>=lB, lR>=lA+lB
-u64 mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
+u64 mpUMultLoop(int lA, u64* pA, int lB, u64* pB, u64* pR)
 {
     u64     uCarry= 0ULL;
-    i32     i, j;
+    int     i, j;
 
     for(i=0; i<lA; i++) {
         uCarry= 0ULL;
@@ -217,12 +272,13 @@ u64 mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR)
             mpMultiplyStep(&uCarry, &pR[i+j], pA[i], pB[j], pR[i+j], uCarry);
         pR[i+j]= uCarry;
     }
+
     return uCarry;
 }
 
 
 //  Function: bool mpSingleUDivLoop
-bool mpSingleUDivLoop(i32 lA, u64* pA, u64 uB, u64* pR)
+bool mpSingleUDivLoop(int lA, u64* pA, u64 uB, u64* pR)
 {
     int     i;
     u64     uRem= 0ULL;

@@ -11,7 +11,7 @@ TS=	    ../TPMDirect
 CH=	    ../channels
 PROTO=	    ../protocolChannel
 ACC=	    ../accessControl
-VLT=	    ../vault
+VLT=	    ../newvault
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3

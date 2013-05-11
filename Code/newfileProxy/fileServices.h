@@ -32,24 +32,28 @@
 #include "channel.h"
 #include "safeChannel.h"
 #include "timer.h"
+#include "request.h"
 
 #ifndef FILECLIENT
 #include "accessControl.h"
 #include "resource.h"
+#include "tao.h"
 #endif
 
 
 class fileServices{
 public:
 #ifndef FILECLIENT
-    accessGuard m_guard;
+    taoEnvironment* m_pTaoEnv;
+    accessGuard     m_guard;
 #endif
 
                 fileServices();
                 ~fileServices();
 
 #ifndef FILECLIENT
-    bool        initFileServices(session& session, RSAKey* pPolicy, metaData* pMeta);
+    bool        initFileServices(session& session, RSAKey* pPolicy, 
+				 taoEnvironment* pTaoEnv, metaData* pMeta);
 #else
     bool        initFileServices(session& session, RSAKey* pPolicy);
 #endif

@@ -206,6 +206,9 @@ bool  SignedAssertion::parseAssertion()
     }
     szAssertion= pAssertion->FirstChild()->Value();
     // parse it
+
+    // Fix
+   UNUSEDVAR(szAssertion);
     return true;
 }
 

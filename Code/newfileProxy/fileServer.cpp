@@ -76,7 +76,6 @@ int      iQueueSize= 5;
 
 #ifdef TEST
 void printResources(objectManager<resource>* pRM);
-void printPrincipals(objectManager<accessPrincipal>* pPM);
 #endif
 
 
@@ -157,7 +156,7 @@ int theServiceChannel::processRequests()
         }
 
         if(strcmp(oReq.m_szAction, "getResource")==0) {
-            if(!serversendResourcetoclient(m_oSafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.serversendResourcetoclient(m_oSafeChannel, oReq,  encType, key, 
                         m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
                 return -1;
@@ -165,7 +164,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-            if(!servergetResourcefromclient(m_osafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.servergetResourcefromclient(m_oSafeChannel, oReq,  encType, key, 
                         m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
@@ -173,7 +172,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "createResource")==0) {
-            if(!servercreateResourceonserver(m_osafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.servercreateResourceonserver(m_oSafeChannel, oReq,  encType, key, 
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
@@ -181,7 +180,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.serverchangeownerofResource(m_oSafeChannel, oReq,  encType, key, 
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serveraddownertoResourcefailed\n");
                 return -1;
@@ -189,7 +188,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-            if(!serverchangeownerofResource(m_osafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.serverchangeownerofResource(m_oSafeChannel, oReq,  encType, key, 
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverremoveownerfromResource failed\n");
                 return -1;
@@ -197,7 +196,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-            if(!serverdeleteResource(m_osafeChannel, oReq, encType, key, 
+            if(!m_fileServices.serverdeleteResource(m_oSafeChannel, oReq, encType, key, 
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverdeleteResource failed\n");
                 return -1;
@@ -223,47 +222,37 @@ bool theServiceChannel::initServiceChannel()
 
     m_serverState= INITSTATE;
 
-    // Initialize program private key and certificate for session
-    if(!m_pParent->m_tcHome.m_privateKeyValid ||
-           !m_pSession->getMyProgramKey((RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
-        fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant get my private key\n");
+    // this section should move to the tao
+    PrincipalCert   oCert;
+    if(!oCert.init(reinterpret_cast<char*>(m_pParent->m_tcHome.m_policyKey))) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
         return false;
     }
-#ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel: program key set\n");
-    fflush(g_logFile);
-#endif
-    if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_pSession->getMyProgramCert(m_pParent->m_tcHome.m_myCertificate)) {
-        fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant get my Cert\n");
+    if(!oCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
+        return false;
+    }
+
+    RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
+
+
+    // Initialize program private key and certificate for session
+    if(!m_serverSession.serverInit(reinterpret_cast<char*>(m_pParent->m_tcHome.m_policyKey),
+                                   ppolicyKey, m_pParent->m_tcHome.m_myCertificate,
+                                   (RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
+        fprintf(g_logFile, "theServiceChannel::serviceChannel: session serverInit failed\n");
         return false;
     }
 
     // copy my public key into server public key
     if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_pSession->getServerCert(m_pParent->m_tcHome.m_myCertificate)) {
+           !m_serverSession.getServerCert(m_pParent->m_tcHome.m_myCertificate)) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant load client public key structures\n");
         return false;
     }
 
-    // init policyPrincipal and key
-    // this section should move to the tao
-    PrincipalCert   oCert;
-    if(!oCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey)))
-      throw("fileServer::Init:: Can't init policy cert 1\n");
-    if(!oCert.parsePrincipalCertElements())
-      throw("fileServer::Init:: Can't init policy key 2\n");
-
-    RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
-
-    m_pParent->m_protocolNegoTimer.Start();
-    if(!m_serverSession.ServerInit(reinterpret_cast<char*>(m_tcHome.m_policyKey),
-                               ppolicyKey, m_tcHome.m_myCertificate,
-                               (RSAKey*)m_tcHome.m_privateKey))
-        throw("fileServer::Init: Can't init policy key 3\n");
-
     // negotiate channel
-    m_protocolNegoTimer.Start();
+    m_pParent->m_protocolNegoTimer.Start();
     if(!m_serverSession.serverprotocolNego(m_fdChannel, m_oSafeChannel))
         throw("fileServer::Init: protocolNego failed\n");
     m_pParent->m_protocolNegoTimer.Stop();
@@ -272,6 +261,8 @@ bool theServiceChannel::initServiceChannel()
     fprintf(g_logFile, "theServiceChannel::serviceChannel: about to init guard\n");
     fflush(g_logFile);
 #endif
+
+#if 0
     // Access Guard valid?
     if(!m_oAG.m_fValid) {
         if(!m_oAG.initGuard(m_pSession, m_pMeta)) {
@@ -280,6 +271,7 @@ bool theServiceChannel::initServiceChannel()
             return false;
         }
     }
+#endif
 
     m_serverState= REQUESTSTATE;
     while((n=processRequests())!=0) {
@@ -565,12 +557,14 @@ bool fileServer::initServer(const char* configDirectory)
         if(!initPolicy())
             throw("fileServer::Init: Cant init policy objects\n");
 
+#if 0
         // Initialize resource and principal tables
         if(!m_oMeta.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "fileServer"))
             throw "fileServer::Init: Cant init metadata\n";
         if(!m_oMeta.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
+#endif
 
 #ifdef TEST
         fprintf(g_logFile, "initServer has private key and public key\n");
@@ -867,7 +861,7 @@ void printResources(objectManager<resource>* pRM)
 }
 
 
-void printPrincipals(objectManager<accessPrincipal>* pPM)
+void printPrincipals(objectManager<PrincipalCert>* pPM)
 {
     int     i;
 

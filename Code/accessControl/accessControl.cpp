@@ -291,7 +291,7 @@ bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta)
 bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
 {
     resource*           pResource= NULL;
-    PrincipalCert*      pSubjPrincipal= NULL;
+    // PrincipalCert*      pSubjPrincipal= NULL;
     RSAKey*             pSubjectKey= NULL;
     SignedAssertion*    pAssert= NULL;
     int                 i;
@@ -324,7 +324,6 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
 
     // are any channel keys the owner?
     for(i=0;i<m_numCurrentPrincipals;i++) {
-        pSubjPrincipal= m_myPrincipals[i];
         if(pResource->isAnOwner(m_myPrincipals[i])) {
 #ifdef TEST
             fprintf(g_logFile, "permitAccess: The subject is an owner of resource\n");

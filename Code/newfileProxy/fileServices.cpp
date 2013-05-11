@@ -62,6 +62,9 @@
 
 fileServices::fileServices()
 {
+#ifndef FILECLIENT
+    m_pTaoEnv= NULL;
+#endif
 }
 
 
@@ -77,26 +80,24 @@ fileServices::~fileServices()
 //  Server services
 
 
-bool fileServices::initFileServices(session& session, RSAKey* pPolicy, metaData* pMeta)
+bool fileServices::initFileServices(session& session, RSAKey* pPolicy, 
+                                    taoEnvironment* pTaoEnv, metaData* pMeta)
 {
     return true;
 }
 
 
-bool fileServices::validateCreatefileServices(char** pszFile, resource** ppResource)
+bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
 {
-    resource*               pResource= NULL;
     bool                    fAllowed= false;
-    accessfileServices      oAR;
+#if 0
+    resource*               pResource= NULL;
+    accessRequest           oAR;
     char                    szBuf[MAXNAME];
 
 #ifdef TEST
     fprintf(g_logFile, "validateCreatefileServices\n");
 #endif
-    if(m_poAG==NULL) {
-        fprintf(g_logFile, "fileServices::validateCreatefileServices: access guard not initialiized\n");
-        return false;
-    }
 
     // Fixed?: this is certainly a bug and potentially a vulnerability in the code,
     szBuf[MAXNAME-1]= '\0';
@@ -116,7 +117,7 @@ bool fileServices::validateCreatefileServices(char** pszFile, resource** ppResou
     oAR.m_szSubject= strdup(m_szSubjectName);
     oAR.m_ifileServicesType= m_ifileServicesType;
     oAR.m_szResource= strdup(szBuf);
-    fAllowed= m_poAG->permitAccess(oAR, m_szEvidence);
+    fAllowed= m_guard.permitAccess(oAR, m_szEvidence);
     if(!fAllowed) {
         fprintf(g_logFile, "fileServices::validateCreatefileServices: permitAccess returns false\n");
         return false;
@@ -144,21 +145,21 @@ bool fileServices::validateCreatefileServices(char** pszFile, resource** ppResou
     }
     pResource->m_szLocation= strdup(szBuf);
     *pszFile= pResource->m_szLocation;
+    if(fAllowed) {
+        // file keys
+    }
     *ppResource= pResource;
+#endif
     return fAllowed;
 }
 
 
-bool  fileServices::validateGetSendDeletefileServices(char** pszFile, resource** ppResource)
+bool  fileServices::validateGetSendDeleteRequest(char** pszFile, resource** ppResource)
 {
+#if 0
     resource*               pResource= NULL;
-    accessfileServices      oAR;
+    accessRequest           oAR;
 
-    if(m_poAG==NULL) {
-        fprintf(g_logFile, "fileServices::validateGetSendDeletefileServices: access guard not initialiized\n");
-        fflush(g_logFile);
-        return false;
-    }
 #ifdef TEST
     fprintf(g_logFile, "looking for resource %s\n", m_szResourceName);
 #endif
@@ -184,20 +185,19 @@ bool  fileServices::validateGetSendDeletefileServices(char** pszFile, resource**
         oAR.m_szSubject= strdup(m_szSubjectName);
     oAR.m_ifileServicesType= m_ifileServicesType;
     oAR.m_szResource= strdup(m_szResourceName);
-    return m_poAG->permitAccess(oAR, m_szEvidence);
+    return m_guard.permitAccess(oAR, m_szEvidence);
+#endif
+    return false;
 }
 
 
-bool  fileServices::validateAddOwnerfileServices(char** pszFile, resource** ppResource)
+bool  fileServices::validateAddOwnerRequest(char** pszFile, resource** ppResource)
                     
 {
+#if 0
     resource*               pResource= NULL;
-    accessfileServices           oAR;
+    accessRequest           oAR;
 
-    if(m_poAG==NULL) {
-        fprintf(g_logFile, "fileServices::validateAddOwnerfileServices: access guard not initialiized\n");
-        return false;
-    }
     pResource= g_theVault.findResource(m_szResourceName);
     if(pResource==NULL) {
         fprintf(g_logFile, "fileServices::validateAddOwnerfileServices: AddOwner pResource NULL, %s\n", m_szResourceName);
@@ -219,31 +219,30 @@ bool  fileServices::validateAddOwnerfileServices(char** pszFile, resource** ppRe
         oAR.m_szSubject= strdup(m_szSubjectName);
     oAR.m_ifileServicesType= m_ifileServicesType;
     oAR.m_szResource= strdup(m_szResourceName);
-    return m_poAG->permitAccess(oAR, m_szEvidence);
+    return m_guard.permitAccess(oAR, m_szEvidence);
+#endif
+    return false;
 }
 
 
-bool  fileServices::validateAddPrincipalfileServices(char** pszFile, resource** ppResource)
+bool  fileServices::validateAddPrincipalRequest(char** pszFile, resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateDeletePrincipalfileServices(char** pszFile, resource** ppResource)
+bool  fileServices::validateDeletePrincipalRequest(char** pszFile, resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateRemoveOwnerfileServices(char** pszFile, resource** ppResource)
+bool  fileServices::validateRemoveOwnerRequest(char** pszFile, resource** ppResource)
 {
+#if 0
     resource*               pResource= NULL;
-    accessfileServices      oAR;
+    accessRequest           oAR;
 
-    if(m_poAG==NULL) {
-        fprintf(g_logFile, "fileServices::validateRemoveOwnerfileServices: access guard not initialiized\n");
-        return false;
-    }
     pResource= g_theVault.findResource(m_szResourceName);
     if(pResource==NULL) {
         fprintf(g_logFile, "fileServices::validateRemoveOwnerfileServices: RemoveOwner pResource NULL, %s\n", m_szResourceName);
@@ -265,12 +264,15 @@ bool  fileServices::validateRemoveOwnerfileServices(char** pszFile, resource** p
         oAR.m_szSubject= strdup(m_szSubjectName);
     oAR.m_ifileServicesType= m_ifileServicesType;
     oAR.m_szResource= strdup(m_szResourceName);
-    return m_poAG->permitAccess(oAR, m_szEvidence);
+    return m_guard.permitAccess(oAR, m_szEvidence);
+#endif
+    return false;
 }
 
  
-bool  fileServices::validatefileServices(char** pszFile, resource** ppResource)
+bool  fileServices::validateRequest(char** pszFile, resource** ppResource)
 {
+#if 0
 #ifdef TEST
     fprintf(g_logFile, "\nvalidatefileServices\n");
     fflush(g_logFile);
@@ -288,18 +290,18 @@ bool  fileServices::validatefileServices(char** pszFile, resource** ppResource)
     bool    fAllowed;
     switch(m_ifileServicesType) {
       case CREATERESOURCE:
-        fAllowed= validateCreatefileServices(pszFile, ppResource);
+        fAllowed= validateCreateRequest(pszFile, ppResource);
         break;
       case DELETERESOURCE:
       case GETRESOURCE:
       case SENDRESOURCE:
-        fAllowed= validateGetSendDeletefileServices(pszFile, ppResource);
+        fAllowed= validateGetSendDeleteRequest(pszFile, ppResource);
         break;
       case ADDOWNER:
-        fAllowed= validateAddOwnerfileServices(pszFile, ppResource);
+        fAllowed= validateAddOwnerRequest(pszFile, ppResource);
         break;
       case REMOVEOWNER:
-        fAllowed= validateRemoveOwnerfileServices(pszFile, ppResource);
+        fAllowed= validateRemoveOwnerRequest(pszFile, ppResource);
         break;
       case ADDPRINCIPAL:
       case REMOVEPRINCIPAL:
@@ -316,6 +318,8 @@ bool  fileServices::validatefileServices(char** pszFile, resource** ppResource)
         fprintf(g_logFile, "validatefileServices returning false\n\n");
 #endif
     return fAllowed;
+#endif
+    return false;
 }
 
 
@@ -358,7 +362,7 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName, c
 }
 
 
-bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oReq, 
+bool fileServices::serversendResourcetoclient(safeChannel& fc, Request& oReq, 
             int encType, byte* key, timer& accessTimer, timer& decTimer)
 {
     bool        fError;
@@ -380,7 +384,7 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oRe
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !oReq.validatefileServices(&szFile, &pResource);
+    fError= !validateRequest(&szFile, &pResource);
     accessTimer.Stop();
 
     // open File (if no Error)
@@ -393,7 +397,7 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oRe
         }
     }
 
-    if (!fError) {	
+    if (!fError) {      
         datasize= pResource->m_iSize;
     }
 
@@ -424,10 +428,11 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, fileServices& oRe
 }
 
 
-bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& oReq,
+bool fileServices::servercreateResourceonserver(safeChannel& fc, Request& oReq,
                                   int encType, byte* key, timer& accessTimer)
 {
-    bool            fAllowed;
+#if 0
+    bool            fAllowed= false;
     bool            fError;
     char            szBuf[MAXREQUESTSIZEWITHPAD];
     int             iLeft= MAXREQUESTSIZE;
@@ -545,7 +550,7 @@ bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& o
 
     if(!fError) {
         accessTimer.Start();
-        fAllowed= oReq.validatefileServices(&szFile, &pResource);
+        fAllowed= oReq.validateRequest(&szFile, &pResource);
         accessTimer.Stop();
         if(fAllowed) {
             pResource->m_myOwners.append(pSubject);
@@ -570,12 +575,15 @@ bool fileServices::servercreateResourceonserver(safeChannel& fc, fileServices& o
     fflush(g_logFile);
 #endif
     return !fError;
+#endif
+    return false;
 }
 
 
-bool fileServices::servergetResourcefromclient(safeChannel& fc, fileServices& oReq, 
+bool fileServices::servergetResourcefromclient(safeChannel& fc, Request& oReq, 
                                  int encType, byte* key, timer& accessTimer, timer& encTimer)
 {
+#if 0
     bool        fError;
     int         iWrite= 0;
     int         size= 0;
@@ -595,18 +603,18 @@ bool fileServices::servergetResourcefromclient(safeChannel& fc, fileServices& oR
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !oReq.validatefileServices(&szOutFile, &pResource);
+    fError= !validateRequest(&szOutFile, &pResource);
     accessTimer.Stop();
-    fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");	
+    fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");   
     fflush(g_logFile);
-    if (!fError) {	
+    if (!fError) {      
         size= oReq.m_iResourceLength;
         pResource->m_iSize= size;
     }
 
     // open for writing
     if(!fError) {
-        fprintf(g_logFile, "servergetResourcefromclient opening file %s\n", szOutFile);	
+        fprintf(g_logFile, "servergetResourcefromclient opening file %s\n", szOutFile); 
         fflush(g_logFile);
         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if(iWrite<0) {
@@ -649,13 +657,16 @@ bool fileServices::servergetResourcefromclient(safeChannel& fc, fileServices& oR
     fflush(g_logFile);
 #endif
     return true;
+#endif
+    return false;
 }
 
 
-bool fileServices::serverchangeownerofResource(safeChannel& fc, fileServices& oReq, 
+bool fileServices::serverchangeownerofResource(safeChannel& fc, Request& oReq, 
                                  int encType, byte* key, timer& accessTimer)
 // includes delete
 {
+#if 0
     resource*           pResource= NULL;
     accessPrincipal*    pPrinc= NULL;
     char*               szFile= NULL;
@@ -665,7 +676,7 @@ bool fileServices::serverchangeownerofResource(safeChannel& fc, fileServices& oR
     fflush(g_logFile);
 #endif
     accessTimer.Start();
-    if(!oReq.validatefileServices(&szFile, &pResource))
+    if(!oReq.validateRequest(&szFile, &pResource))
         return false;
     accessTimer.Stop();
 
@@ -683,14 +694,15 @@ bool fileServices::serverchangeownerofResource(safeChannel& fc, fileServices& oR
             return false;
         return pResource->m_myOwners.deletenode(pPrinc);
     }
-
+#endif
     return false;
 }
 
 
-bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq,
+bool fileServices::serverdeleteResource(safeChannel& fc, Request& oReq,
                           int encType, byte* key, timer& accessTimer)
 {
+#if 0
     resource*   pResource= NULL;
     char*       szFile= NULL;
     bool        fError;
@@ -708,7 +720,7 @@ bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq,
     fflush(g_logFile);
 #endif
     accessTimer.Start();
-    fError= !oReq.validatefileServices(&szFile, &pResource);
+    fError= !oReq.validateRequest(&szFile, &pResource);
     accessTimer.Stop();
 
     if(!fError) {
@@ -731,6 +743,8 @@ bool fileServices::serverdeleteResource(safeChannel& fc, fileServices& oReq,
     }
     fc.safesendPacket((byte*)szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
     return !fError;
+#endif
+    return false;
 }
 
 

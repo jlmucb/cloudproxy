@@ -34,6 +34,7 @@
 #include "resource.h"
 #include "cert.h"
 #include "accessControl.h"
+#include "fileServices.h"
 #include "algs.h"
 #include "timer.h"
 #include "vault.h"
@@ -57,7 +58,6 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
-    metaData            m_oMeta;
 
     //    Keys for file encryption
     bool                m_fEncryptFiles;
@@ -109,6 +109,9 @@ public:
     bool                m_fChannelAuthenticated;
     int                 m_fdChannel;
     safeChannel         m_oSafeChannel;
+
+    fileServices        m_fileServices;
+    metaData            m_oMeta;
 
     theServiceChannel();
     ~theServiceChannel();

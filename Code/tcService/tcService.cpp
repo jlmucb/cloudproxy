@@ -451,7 +451,8 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         setresuid(uid, uid, uid);
 
         // record procid and hash
-        if(!g_myService.m_procTable.addprocEntry(child, file, 0, (char**) NULL, size, rgHash)) {
+        if(!g_myService.m_procTable.addprocEntry(child, file, 0, (char**) NULL, 
+                                                 size, rgHash)) {
             fprintf(g_logFile, "StartApp: cant add to proc table\n");
             return TCSERVICE_RESULT_FAILED;
         }
@@ -477,7 +478,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         lock.l_type= F_UNLCK;
         lock.l_start= 0;
         lock.l_len= SEEK_SET;
-        lock.l_pid= getpid();
+        lock.l_pid= getpid();   // is this right?
         ret= fcntl(fd, F_SETLK, &lock);
         close(fd);
 #endif

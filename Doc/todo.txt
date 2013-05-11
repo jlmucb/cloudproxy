@@ -1,41 +1,33 @@
 Todo
+====
 
 1. Measure hashes and add to KeyNegoServer db
 
-2. Fix vTCI to handle TPM owner password
+2. 2048 bit keys, CBC encrypt and mac (rather than mac then encrypt),
+   Fix timing attack.  More optimization? SHA-3, ECC.
 
-3. Check on filelock in tcService
+3. Individual file keys to avoid escalation of privilige 
+   based on file names.
 
 4. PCR18 (19 too if lcp is set)
 
-5. keyNegoServer: emergency key recovery program, revocation
+5. Check for leaks buffer overflows
+
+------------------------------------------------------   
+
+6. Hypervisor
+    Management partition
+        schedule, start vm's, montoring, update
+    VM update and keys
+
+7. keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
 
-6. Individual file keys to avoid escalation of privilige 
-   based on file names.
 
-7. Hypervisor
+8. Fix vTCI to handle TPM owner password
 
-8. Management partition
-
-9. VM update and keys
-
-
-14.Fix up certificates
-
-15.Crypto: 2048 bit keys, ECC, CBC encrypt and mac (rather than mac then encrypt),
-           SHA-3, GCM, spped up RSA (CRT)
-
-16.Check for leaks buffer overflows
-
-
---------------------------------------------
-
-1. there are no instructions in OperatingKeyNegoServer
-
-2. the tcioDD instructions are incomplete
-  - they don't say how to set up the makefile (e.g., to find the
-current linux headers)
-  - they don't gives the steps to build tcioDD
+9. Check on filelock in tcService (How long does it last?)
+   Not necessary now.  executables should be in initramfs and write protected.
+   Need to revist for Hv.
 
 

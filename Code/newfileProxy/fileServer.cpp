@@ -88,7 +88,7 @@ theServiceChannel::theServiceChannel()
     m_fdChannel= -1;
     m_serverState= NOSTATE;
     m_fChannelAuthenticated= false;
-
+    m_pMetaData= NULL;
 }
 
 
@@ -103,8 +103,6 @@ int theServiceChannel::processRequests()
     int     type= 0;
     byte    multi= 0;
     byte    final= 0;
-    int     encType= NOENCRYPT;
-    byte*   key= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "\n\ntheServiceChannel: processRequest\n");
@@ -129,6 +127,8 @@ int theServiceChannel::processRequests()
         return -1;
     }
 
+#if 0
+    // this gets moved somewhere
     if(m_pParent->m_fEncryptFiles) {
         if(!m_pParent->m_fKeysValid) {
             fprintf(g_logFile, "theServiceChannel::processRequests: Encryption enabled but key invalid\n");
@@ -137,6 +137,7 @@ int theServiceChannel::processRequests()
         encType= DEFAULTENCRYPT;
         key= m_pParent->m_fileKeys;
     }
+#endif
 
     {
         Request oReq;
@@ -156,7 +157,7 @@ int theServiceChannel::processRequests()
         }
 
         if(strcmp(oReq.m_szAction, "getResource")==0) {
-            if(!m_fileServices.serversendResourcetoclient(m_oSafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.serversendResourcetoclient(oReq,
                         m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
                 fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
                 return -1;
@@ -164,7 +165,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-            if(!m_fileServices.servergetResourcefromclient(m_oSafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.servergetResourcefromclient(oReq,  
                         m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
@@ -172,7 +173,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "createResource")==0) {
-            if(!m_fileServices.servercreateResourceonserver(m_oSafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.servercreateResourceonserver(oReq,
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "servercreateResourceonserver failed\n");
                 return -1;
@@ -180,7 +181,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-            if(!m_fileServices.serverchangeownerofResource(m_oSafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.serverchangeownerofResource(oReq,
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serveraddownertoResourcefailed\n");
                 return -1;
@@ -188,7 +189,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-            if(!m_fileServices.serverchangeownerofResource(m_oSafeChannel, oReq,  encType, key, 
+            if(!m_fileServices.serverchangeownerofResource(oReq,
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverremoveownerfromResource failed\n");
                 return -1;
@@ -196,7 +197,7 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-            if(!m_fileServices.serverdeleteResource(m_oSafeChannel, oReq, encType, key, 
+            if(!m_fileServices.serverdeleteResource(oReq,
                         m_pParent->m_accessCheckTimer)) {
                 fprintf(g_logFile, "serverdeleteResource failed\n");
                 return -1;
@@ -211,7 +212,8 @@ int theServiceChannel::processRequests()
 }
 
 
-bool theServiceChannel::initServiceChannel()
+bool theServiceChannel::initServiceChannel(metaData* pMetaData, 
+                                           safeChannel* pSafeChannel)
 {
     int     n= 0;
 
@@ -307,7 +309,8 @@ void* channelThread(void* ptr)
                     poSc->m_fdChannel, poSc->m_pParent);
         fflush(g_logFile);
 #endif
-        if(!poSc->initServiceChannel())
+        if(!poSc->initServiceChannel(poSc->m_pMetaData,
+                                     &poSc->m_oSafeChannel))
             throw("channelThread: initServiceChannel failed\n");
 
         // delete enty in thread table in parent
@@ -750,6 +753,7 @@ int main(int an, char** av)
     oServer.m_fEncryptFiles= false;
 #else
     oServer.m_fEncryptFiles= true;
+    oServer.m_encType= DEFAULTENCRYPT;
 #endif
 
     // am I alread measured?

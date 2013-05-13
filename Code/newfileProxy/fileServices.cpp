@@ -81,7 +81,9 @@ fileServices::~fileServices()
 
 
 bool fileServices::initFileServices(session& session, RSAKey* pPolicy, 
-                                    taoEnvironment* pTaoEnv, metaData* pMeta)
+                                    taoEnvironment* pTaoEnv, 
+                                    int encType, metaData* pMeta,
+                                    safeChannel* pSafeChannel)
 {
     return true;
 }
@@ -326,19 +328,21 @@ bool  fileServices::validateRequest(char** pszFile, resource** ppResource)
 const char* g_szPrefix= "//www.manferdelli.com/Gauss/";
 
 
-bool fileServices::translateLocationtoResourceName(const char* szLocation, const char* szResourceName, 
-                                     int size)
+bool fileServices::translateLocationtoResourceName(const char* szLocation, 
+                                                   const char* szResourceName, 
+                                                   int size)
 {
     // Fix 
     return false;
 }
 
 
-bool fileServices::translateResourceNametoLocation(const char* szResourceName, char* szLocation, 
-                                     int size)
+bool fileServices::translateResourceNametoLocation(const char* szResourceName, 
+                                                   const char* szLocation, 
+                                                   int size)
 {
-    int         n;
-    const char*       p= szResourceName;
+    int             n;
+    const char*     p= szResourceName;
 
 #ifdef TEST
     fprintf(g_logFile, "translate %s\n", p);
@@ -354,7 +358,7 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName, c
         return false;
     }
 
-    strcpy(szLocation, p);
+    strcpy((char*)szLocation, p);
 #ifdef TEST
     fprintf(g_logFile, "size: %d %s\n", size, szLocation);
 #endif
@@ -362,8 +366,9 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName, c
 }
 
 
-bool fileServices::serversendResourcetoclient(safeChannel& fc, Request& oReq, 
-            int encType, byte* key, timer& accessTimer, timer& decTimer)
+bool fileServices::serversendResourcetoclient(Request& oReq, 
+                                              timer& accessTimer, 
+                                              timer& decTimer)
 {
     bool        fError;
     int         iRead= 0;
@@ -378,6 +383,8 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, Request& oReq,
     byte        multi= 0;
     byte        final= 0;
     resource*   pResource= NULL;
+    int         encType= 0;
+    byte*       key= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendResourcetoclient\n");
@@ -408,13 +415,16 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, Request& oReq,
     }
 
     // send response
-    fc.safesendPacket(szBuf, (int)strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+    m_pSafeChannel->safesendPacket(szBuf, 
+                                   (int)strlen(reinterpret_cast<char*>(szBuf))+1, 
+                                   type, multi, final);
 
     // if we sent an error to the client, then return false
     if (fError) return false;
 
     // send file
-    if(!sendFile(fc, iRead, filesize, datasize, encType, key, decTimer)) {
+    // Fix
+    if(!sendFile(*m_pSafeChannel, iRead, filesize, datasize, encType, key, decTimer)) {
         fprintf(g_logFile, "serversendResourcetoclient: sendFile error\n");
         close(iRead);
         return false;
@@ -428,8 +438,8 @@ bool fileServices::serversendResourcetoclient(safeChannel& fc, Request& oReq,
 }
 
 
-bool fileServices::servercreateResourceonserver(safeChannel& fc, Request& oReq,
-                                  int encType, byte* key, timer& accessTimer)
+bool fileServices::servercreateResourceonserver(Request& oReq,
+                                                timer& accessTimer)
 {
 #if 0
     bool            fAllowed= false;
@@ -567,7 +577,7 @@ bool fileServices::servercreateResourceonserver(safeChannel& fc, Request& oReq,
         fprintf(g_logFile, "servercreateResourceonserver: constructResponse failed\n");
         return false;
     }
-    fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, type, multi, final);
+    m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, type, multi, final);
 
     // Should pResource be deleted?
 #ifdef  TEST
@@ -580,8 +590,9 @@ bool fileServices::servercreateResourceonserver(safeChannel& fc, Request& oReq,
 }
 
 
-bool fileServices::servergetResourcefromclient(safeChannel& fc, Request& oReq, 
-                                 int encType, byte* key, timer& accessTimer, timer& encTimer)
+bool fileServices::servergetResourcefromclient(Request& oReq, 
+                                               timer& accessTimer, 
+                                               timer& encTimer)
 {
 #if 0
     bool        fError;
@@ -632,7 +643,7 @@ bool fileServices::servergetResourcefromclient(safeChannel& fc, Request& oReq,
         fprintf(g_logFile, "Constructed a response\n");
         fflush(g_logFile);
     }
-    fc.safesendPacket(szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+    m_pSafeChannel->safesendPacket(szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
 
     // if the reply was that there was an error, then return false
     if (fError) return false;
@@ -662,8 +673,8 @@ bool fileServices::servergetResourcefromclient(safeChannel& fc, Request& oReq,
 }
 
 
-bool fileServices::serverchangeownerofResource(safeChannel& fc, Request& oReq, 
-                                 int encType, byte* key, timer& accessTimer)
+bool fileServices::serverchangeownerofResource(Request& oReq, 
+                                               timer& accessTimer)
 // includes delete
 {
 #if 0
@@ -699,8 +710,8 @@ bool fileServices::serverchangeownerofResource(safeChannel& fc, Request& oReq,
 }
 
 
-bool fileServices::serverdeleteResource(safeChannel& fc, Request& oReq,
-                          int encType, byte* key, timer& accessTimer)
+bool fileServices::serverdeleteResource(Request& oReq,
+                                        timer& accessTimer)
 {
 #if 0
     resource*   pResource= NULL;
@@ -741,7 +752,9 @@ bool fileServices::serverdeleteResource(safeChannel& fc, Request& oReq,
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
     }
-    fc.safesendPacket((byte*)szBuf, strlen(reinterpret_cast<char*>(szBuf))+1, type, multi, final);
+    m_pSafeChannel->safesendPacket((byte*)szBuf, 
+                                    strlen(reinterpret_cast<char*>(szBuf))+1, 
+                                    type, multi, final);
     return !fError;
 #endif
     return false;
@@ -754,14 +767,17 @@ bool fileServices::serverdeleteResource(safeChannel& fc, Request& oReq,
 //  Client fileServices
 
 
-bool fileServices::initFileServices(session& session, RSAKey* pPolicy)
+bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
+                                    safeChannel* pSafeChannel)
 {
     return true;
 }
 
 
-bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szResourceName, 
-            const char* szEvidence, const char* szOutFile, int encType, byte* key, timer& encTimer)
+bool fileServices::clientgetResourcefromserver(const char* szResourceName, 
+                                               const char* szEvidence, 
+                                               const char* szOutFile, 
+                                               timer& encTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -771,6 +787,7 @@ bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szRe
     int         type= CHANNEL_REQUEST;
     byte        multi=0;
     byte        final= 0;
+    byte*       key= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
@@ -779,12 +796,13 @@ bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szRe
     if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
         return false;
     }
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, 
+                                         strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
     }
 
     // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientgetResourcefromserver: getResource error %d\n", n);
         fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n", szBuf);
@@ -802,12 +820,13 @@ bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szRe
     // read and write file
     int         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if(iWrite<0) {
-        emptyChannel(fc, oResponse.m_iResourceLength, 0, NULL, 0, NULL);
+        emptyChannel(*m_pSafeChannel, oResponse.m_iResourceLength, 0, NULL, 0, NULL);
         fprintf(g_logFile, "clientgetResourcefromserver: Cant open out file\n");
         return false;
     }
-    if(!getFile(fc, iWrite, oResponse.m_iResourceLength, oResponse.m_iResourceLength, 
-                encType, key, encTimer)) {
+    // Fix: key
+    if(!getFile(*m_pSafeChannel, iWrite, oResponse.m_iResourceLength, oResponse.m_iResourceLength, 
+                m_encType, key, encTimer)) {
         fprintf(g_logFile, "clientgetResourcefromserver: Can't get file\n");
         return false;
     }
@@ -820,8 +839,9 @@ bool fileServices::clientgetResourcefromserver(safeChannel& fc, const char* szRe
 }
 
 
-bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szResourceName, 
-           const char* szSubject, const char* szEvidence, int encType, byte* key)
+bool fileServices::clientcreateResourceonserver(const char* szResourceName, 
+                                                const char* szSubject, 
+                                                const char* szEvidence)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -841,13 +861,13 @@ bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szR
         fprintf(g_logFile, "clientcreateResourceonserver: constructRequest returns false\n");
         return false;
     }
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructRequest returns false\n");
         return false;
     }
 
     // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientcreateResourceonserver: createResource error %d\n", n);
         return false;
@@ -886,9 +906,11 @@ bool fileServices::clientcreateResourceonserver(safeChannel& fc, const char* szR
 }
 
 
-bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSubject, 
-    const char* szResourceName, const char* szEvidence, const char* szInFile, 
-    int encType, byte* key, timer& decTimer)
+bool fileServices::clientsendResourcetoserver(const char* szSubject, 
+                                              const char* szResourceName, 
+                                              const char* szEvidence, 
+                                              const char* szInFile, 
+                                              timer& decTimer)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -901,6 +923,7 @@ bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSub
     byte        multi=0;
     byte        final= 0;
     int         iRead= 0;
+    byte*       key= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientsendResourcetoserver(%s, %s)\n", szResourceName, szInFile);
@@ -925,13 +948,13 @@ bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSub
         fprintf(g_logFile, "clientsendResourcetoserver: constructRequest returns false\n");
         return false;
     }
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         fprintf(g_logFile, "clientsendResourcetoserver: safesendPacket after constructRequest returns false\n");
         return false;
     }
 
     // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientsendResourcetoserver: sendResource error %d\n", n);
         return false;
@@ -954,7 +977,8 @@ bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSub
     fflush(g_logFile);
 #endif
     // send file
-    if(!sendFile(fc, iRead, filesize, datasize, encType, key, decTimer)) {
+    // Fix: key
+    if(!sendFile(*m_pSafeChannel, iRead, filesize, datasize, m_encType, key, decTimer)) {
         close(iRead);
         return false;
     }
@@ -968,8 +992,10 @@ bool fileServices::clientsendResourcetoserver(safeChannel& fc, const char* szSub
 }
 
 
-bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szAction, const char* szResourceName,
-                               const char* szEvidence, const char* szOutFile, int encType, byte* key)
+bool fileServices::clientchangeownerResource(const char* szAction, 
+                                             const char* szResourceName,
+                                             const char* szEvidence, 
+                                             const char* szOutFile)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -990,12 +1016,12 @@ bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szActi
         fprintf(g_logFile, "clientchangeownerResource: constructRequest returns false\n");
         return false;
     }
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
     }
 
     // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientchangeownerResource: sendResource error %d\n", n);
         return false;
@@ -1014,8 +1040,9 @@ bool fileServices::clientchangeownerResource(safeChannel& fc, const char* szActi
 }
 
 
-bool fileServices::clientdeleteResource(safeChannel& fc, const char* szResourceName,
-                          const char* szEvidence, const char* szFile, int encType, byte* key)
+bool fileServices::clientdeleteResource(const char* szResourceName,
+                                        const char* szEvidence, 
+                                        const char* szFile)
 {
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
@@ -1039,12 +1066,12 @@ bool fileServices::clientdeleteResource(safeChannel& fc, const char* szResourceN
     fprintf(g_logFile, "clientdeleteResource request\n%s\n", szBuf);
     fflush(g_logFile);
 #endif
-    if((n=fc.safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         return false;
     }
 
     // should be a CHANNEL_RESPONSE, not multipart
-    n= fc.safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientdeleteResource: sendResource error %d\n", n);
         return false;

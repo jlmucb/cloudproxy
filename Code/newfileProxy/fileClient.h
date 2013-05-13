@@ -88,13 +88,13 @@ public:
 
     // testing interfaces
     void    closeConnection();
-    bool    createResource(safeChannel& fc, const string& subject, 
+    bool    createResource(const string& subject, 
                     const string& evidenceFileName, const string& resource);
-    bool    deleteResource(safeChannel& fc, const string& subject, 
+    bool    deleteResource(const string& subject, 
                     const string& evidenceFileName, const string& resource);
-    bool    readResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
+    bool    readResource(const string& subject, const string& evidenceFileName, 
                     const string& remoteResource, const string& localOutput);
-    bool    writeResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
+    bool    writeResource(const string& subject, const string& evidenceFileName, 
                     const string& remoteResource, const string& fileName);
     bool    establishConnection(const char* keyFile, const char* certFile, 
                     const char* directory, const char* serverAddress, 

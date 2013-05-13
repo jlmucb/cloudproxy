@@ -647,14 +647,13 @@ void fileClient::resetTimers() {
 }
 
 
-bool fileClient::createResource(safeChannel& fc, const string& subject, 
+bool fileClient::createResource(const string& subject, 
                 const string& evidenceFileName, const string& resource) 
 {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+    char*   szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(m_oServices.clientcreateResourceonserver(fc, resource.c_str(), subject.c_str(), 
-                szEvidence, encType, m_fileKeys)) {
+    if(m_oServices.clientcreateResourceonserver(resource.c_str(), subject.c_str(), 
+                                                szEvidence)) {
         fprintf(g_logFile, "fileClient createResourceTest: create resource successful\n");
         fflush(g_logFile);
     } 
@@ -668,14 +667,13 @@ bool fileClient::createResource(safeChannel& fc, const string& subject,
 }
 
 
-bool fileClient::deleteResource(safeChannel& fc, const string& subject, const string& evidenceFileName, 
+bool fileClient::deleteResource(const string& subject, const string& evidenceFileName, 
                                 const string& resource) 
 {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+    char*   szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(m_oServices.clientdeleteResource(fc, resource.c_str(), subject.c_str(), 
-                        szEvidence, encType, m_fileKeys)) {
+    if(m_oServices.clientdeleteResource(resource.c_str(), subject.c_str(), 
+                        szEvidence)) {
         fprintf(g_logFile, "fileClient deleteResourceTest: delete resource successful\n");
         fflush(g_logFile);
     } else {
@@ -688,19 +686,16 @@ bool fileClient::deleteResource(safeChannel& fc, const string& subject, const st
 }
 
 
-bool fileClient::readResource(safeChannel& fc, const string& subject, 
+bool fileClient::readResource(const string& subject, 
             const string& evidenceFileName, const string& remoteResource, 
             const string& localOutput) 
 {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+    char* szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(m_oServices.clientgetResourcefromserver(fc, 
+    if(m_oServices.clientgetResourcefromserver(
                                    remoteResource.c_str(),
                                    szEvidence,
                                    localOutput.c_str(),
-                                   encType, 
-                                   m_fileKeys, 
                                    m_encTimer)) {
         fprintf(g_logFile, "fileClient fileTest: read file successful\n");
         fflush(g_logFile);
@@ -714,20 +709,17 @@ bool fileClient::readResource(safeChannel& fc, const string& subject,
 }
 
 
-bool fileClient::writeResource(safeChannel& fc, const string& subject, 
+bool fileClient::writeResource(const string& subject, 
             const string& evidenceFileName, const string& remoteResource, 
             const string& fileName) 
 {
-    int             encType= NOENCRYPT;
-    char*           szEvidence= readandstoreString(evidenceFileName.c_str());
+    char*  szEvidence= readandstoreString(evidenceFileName.c_str());
  
-    if(m_oServices.clientsendResourcetoserver(fc, 
+    if(m_oServices.clientsendResourcetoserver(
                                   subject.c_str(),
                                   remoteResource.c_str(),
                                   szEvidence,
                                   fileName.c_str(),
-                                  encType, 
-                                  m_fileKeys,
                                   m_decTimer)) {
         fprintf(g_logFile, "fileClient fileTest: write file successful\n");
         fflush(g_logFile);

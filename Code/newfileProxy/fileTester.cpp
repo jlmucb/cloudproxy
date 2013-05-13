@@ -328,14 +328,14 @@ bool fileTester::runTest(fileClient& client,
     try {
         if (params.action.compare("create") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.createResource(client.m_fc,
+            result = client.createResource(
                             params.subject,
                             params.authFile,
                             params.remoteObject);            
             if (params.timed) testTimer.Stop();
         } else if (params.action.compare("read") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.readResource(client.m_fc,
+            result = client.readResource(
                             params.subject,
                             params.authFile,
                             params.remoteObject,
@@ -347,7 +347,7 @@ bool fileTester::runTest(fileClient& client,
             result = client.compareFiles(params.localObject, params.match);
         } else if (params.action.compare("write") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.writeResource(client.m_fc,
+            result = client.writeResource(
                             params.subject,
                             params.authFile,
                             params.remoteObject,
@@ -355,7 +355,7 @@ bool fileTester::runTest(fileClient& client,
             if (params.timed) testTimer.Stop();
         } else if (params.action.compare("delete") == 0) {
             if (params.timed) testTimer.Start();
-            result = client.deleteResource(client.m_fc,
+            result = client.deleteResource(
                             params.subject,
                             params.authFile,
                             params.remoteObject);

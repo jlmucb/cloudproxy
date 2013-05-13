@@ -55,11 +55,12 @@ public:
     pthread_t           m_threadData[MAXNUMCLIENTS];
     int                 m_threadIDs[MAXNUMCLIENTS];
 
+    // the Tap
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
 
-    //    Keys for file encryption
+    //    Keys for file encryption 
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
     bool                m_fKeysValid;
@@ -67,8 +68,14 @@ public:
     u32                 m_uMode;
     u32                 m_uPad;
     u32                 m_uHmac;
+
+    // metadata file keys
+    int                 m_encType;
     int                 m_sizeKey;
     byte                m_fileKeys[SMALLKEYSIZE];
+
+    // metadata table
+    metaData            m_oMetaData;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;
@@ -103,7 +110,6 @@ public:
     fileServer*         m_pParent;
     int                 m_myPositionInParent;
     int                 m_serverState;
-    accessGuard         m_oAG;
 
     session             m_serverSession;
     bool                m_fChannelAuthenticated;
@@ -111,12 +117,12 @@ public:
     safeChannel         m_oSafeChannel;
 
     fileServices        m_fileServices;
-    metaData            m_oMeta;
+    metaData*           m_pMetaData;
 
     theServiceChannel();
     ~theServiceChannel();
 
-    bool    initServiceChannel();
+    bool    initServiceChannel(metaData* pMetaData, safeChannel* pSafeChannel);
     int     processRequests();
     bool    serviceChannel();
 };

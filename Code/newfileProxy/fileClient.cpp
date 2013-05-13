@@ -370,8 +370,13 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
             throw("fileClient::Init: protocolNego failed\n");
         m_protocolNegoTimer.Stop();
 
+        // Fix
+        // m_oServices.initFileServices(session& session, RSAKey* pPolicy, safeChannel* pSafeChannel);
+        m_oServices.initFileServices(m_clientSession, NULL, NULL);
+
+
 #ifdef TEST
-        fprintf(g_logFile, "initClient: initializationcompleted\n");
+        fprintf(g_logFile, "initClient: initialization completed\n");
         fflush(g_logFile);
 #endif
     }

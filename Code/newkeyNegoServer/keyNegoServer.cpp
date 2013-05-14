@@ -63,7 +63,6 @@
 // ------------------------------------------------------------------------
 
 
-
 inline byte val(char a)
 {
     if((a>='0')&(a<='9'))
@@ -92,8 +91,6 @@ bool fromhex(const char* szH, byte* buf, int sizemax, int* psizeout)
     *psizeout= i;
     return true;
 }
-
-
 
 
 inline bool whitespace(char b)
@@ -128,7 +125,6 @@ int nextToken(const char* sz, const char** pszToken)
 }
 
 
-
 int   getnextline(int file, char* buf, int sizeBuf)
 {
     int     n= 0;
@@ -137,6 +133,9 @@ int   getnextline(int file, char* buf, int sizeBuf)
         if(n>=(sizeBuf-1))
             return -1;
         if(read(file, &buf[n], 1)<=0) {
+            return -1;
+        }
+        if(buf[n]=='\0') {
             return -1;
         }
         if(buf[n]=='\n') {
@@ -164,10 +163,68 @@ validBase64Hashes   validBase64HashesTable[MAXBASE64HASHES];
 bool parseEntry(const char* p, const char** pszPolicyId, 
                 const char** pszProgramName, const char** pszBase64Hash)
 {
-    const char* q;
-    int         k;
+    char* q;
+    char* r;
+    int   k;
 
-    return false;
+    *pszPolicyId= NULL;
+    *pszProgramName= NULL;
+    *pszBase64Hash= NULL;
+
+    if(*p!='\"')
+        return false;
+    q= (char*) (p+1);
+    while(*q!='\n' && *q!='\0') {
+        if(*q=='\"')
+            break;
+        q++;
+    }
+    if(*q!='\"')
+        return false;
+    r= q+1;
+    while(*r!=',' && *r!='\0' && *r!='\n')
+        r++; 
+    if(*r!=',')
+        return false;
+    *(q+1)= '\0';
+    *pszPolicyId= p;
+    r++;
+
+    k= nextToken(r, &p);
+    if(*p!='\"')
+        return false;
+    q= (char*) (p+1);
+    while(*q!='\n' && *q!='\0') {
+        if(*q=='\"')
+            break;
+        q++;
+    }
+    if(*q!='\"')
+        return false;
+    r= q+1;
+    while(*r!=',' && *r!='\0' && *r!='\n')
+        r++; 
+    if(*r!=',')
+        return false;
+    *(q+1)= '\0';
+    *pszProgramName= p;
+    r++;
+
+    k= nextToken(r, &p);
+    if(*p!='\"')
+        return false;
+    q= (char*) (p+1);
+    while(*q!='\n' && *q!='\0') {
+        if(*q=='\"')
+            break;
+        q++;
+    }
+    if(*q!='\"')
+        return false;
+    *(q+1)= '\0';
+    *pszProgramName= p;
+
+    return true;
 }
 
 
@@ -257,7 +314,7 @@ bool            g_fTerminateProxy= false;
 const int       iQueueSize= 5;
 const char*     szServerHostAddr= "127.0.0.1";
 
-const char*           g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
+const char*     g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
 bool            g_fIsEncrypted= false;
 RSAKey*         g_pSigningKey= NULL;
 const char*     g_szSigningAlgorithm=

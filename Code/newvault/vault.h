@@ -91,6 +91,8 @@ class metaData {
 public:
     bool                m_metaDataValid;
     bool                m_fEncryptFile;
+    int                 m_encType;
+    byte                m_rgKeys[BIGKEYSIZE];
     pthread_mutex_t     m_mutex;
 
     char*               m_szprogramName;
@@ -109,10 +111,11 @@ public:
                         ~metaData();
 
     bool                initFileNames();
-    bool                initMetaData(const char* directory, const char* program);
+    bool                initMetaData(const char* directory, const char* program,
+                                     int encType, byte* key);
 
-    bool                restoreMetaData(int encType, byte* key);
-    bool                saveMetaData(int encType, byte* key);
+    bool                restoreMetaData();
+    bool                saveMetaData();
     
     bool                addResource(resource* pResource);
     resource*           findResource(const char* szName);

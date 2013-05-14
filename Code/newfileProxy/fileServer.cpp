@@ -127,18 +127,6 @@ int theServiceChannel::processRequests()
         return -1;
     }
 
-#if 0
-    // this gets moved somewhere
-    if(m_pParent->m_fEncryptFiles) {
-        if(!m_pParent->m_fKeysValid) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: Encryption enabled but key invalid\n");
-            return -1;
-        }
-        encType= DEFAULTENCRYPT;
-        key= m_pParent->m_fileKeys;
-    }
-#endif
-
     {
         Request oReq;
 
@@ -560,14 +548,25 @@ bool fileServer::initServer(const char* configDirectory)
         if(!initPolicy())
             throw("fileServer::Init: Cant init policy objects\n");
 
-#if 0
+        // Metadata keys
+        if(m_fEncryptFiles) {
+            if(!m_fKeysValid) {
+                fprintf(g_logFile, "fileServer::init: Encryption enabled but key invalid\n");
+                return -1;
+            }
+            // should check
+            m_encType= DEFAULTENCRYPT;
+        }
+        else {
+            m_encType= NOENCRYPT;
+        }
+
         // Initialize resource and principal tables
         if(!m_oMeta.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
-            "fileServer"))
+            "fileServer", m_encType, m_fileKeys))
             throw "fileServer::Init: Cant init metadata\n";
         if(!m_oMeta.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
-#endif
 
 #ifdef TEST
         fprintf(g_logFile, "initServer has private key and public key\n");

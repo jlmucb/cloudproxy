@@ -94,16 +94,60 @@ bool fromhex(const char* szH, byte* buf, int sizemax, int* psizeout)
 }
 
 
-class validHashes {
-public:
-    char*       m_szPolicyId;
-    char*       m_szProgramName;
-    int         m_iHashSize;
-    byte        m_hash[32];
-};
 
 
-class validAsciiHashes {
+inline bool whitespace(char b)
+{
+    return(b==' ' || b=='\t' || b=='\r' || b=='\n');
+}
+
+
+int nextToken(const char* sz, const char** pszToken)
+{
+    int     n;
+
+    if(sz==NULL)
+        return -1;
+
+    while(*sz!='\0') {
+        if(!whitespace(*sz))
+            break;
+    sz++;
+    }
+
+    if(*sz=='\0')
+        return -1;
+
+    *pszToken= sz;
+    n= 0;
+    while(*sz!='\0' && !whitespace(*sz)) {
+        sz++;
+        n++;
+    }
+    return n;
+}
+
+
+
+int   getnextline(int file, char* buf, int sizeBuf)
+{
+    int     n= 0;
+
+    for(;;) {
+        if(n>=(sizeBuf-1))
+            return -1;
+        if(read(file, &buf[n], 1)<=0) {
+            return -1;
+        }
+        if(buf[n]=='\n') {
+            buf[++n]= '\0';
+            return n;
+        }
+    }
+}
+
+
+class validBase64Hashes {
 public:
     char*       m_szPolicyId;
     char*       m_szProgramName;
@@ -111,33 +155,98 @@ public:
 };
 
 
-#ifdef   HASHESDEFINED
-#include "validHashes.inc"
-#else
-int              g_iNumHashes= 0;
-validAsciiHashes AsciiHashes[1];
-validHashes     g_thevalidHashes[1];
-#endif
+#define MAXLINE 256
+#define MAXBASE64HASHES 2048
+int                 g_numbase64Hashes= 0;
+validBase64Hashes   validBase64HashesTable[MAXBASE64HASHES];
 
 
-bool    initHashes()
+bool parseEntry(const char* p, const char** pszPolicyId, 
+                const char** pszProgramName, const char** pszBase64Hash)
 {
-    byte    rgHash[32];
+    const char* q;
+    int         k;
 
-    for(int i=0; i<g_iNumHashes; i++) {
-        g_thevalidHashes[i].m_szPolicyId= strdup(AsciiHashes[i].m_szPolicyId);
-        g_thevalidHashes[i].m_szProgramName= strdup(AsciiHashes[i].m_szProgramName);
-        // convert from base64
-        g_thevalidHashes[i].m_iHashSize= 32;
-        if(!fromBase64(strlen(AsciiHashes[i].m_szBase64Hash), 
-                       AsciiHashes[i].m_szBase64Hash, &g_thevalidHashes[i].m_iHashSize, 
-                       rgHash)) {
-            fprintf(g_logFile, "keyNegoServer: can't base64 decode\n");
-            return false;
-        }
-        memcpy(g_thevalidHashes[i].m_hash, rgHash, g_thevalidHashes[i].m_iHashSize);
+    return false;
+}
+
+
+bool getValidHashes(const char* szHashFile)
+//
+//  Format of file is 
+//      numhashes
+//  numhashes lines of
+//      "id", "name", "hash"
+//
+{
+    int             i, j, n;
+    char            buf[MAXLINE];
+    const char*     nextp;
+    const char*     szPolicyId= NULL;
+    const char*     szProgramName= NULL;
+    const char*     szBase64Hash= NULL;
+    bool            fRet= false;
+
+    if(szHashFile==NULL) {
+        fprintf(g_logFile, "getBase64Hash: empty hash file name\n");
+        return false;
     }
-    return true;
+    int iRead = open(szHashFile, O_RDONLY);
+
+    if(iRead<0) {
+        fprintf(g_logFile, "getBase64Hash: can't open %s\n", szHashFile);
+        return false;
+    }
+
+    // get first non comment
+    for(;;) {
+        n= getnextline(iRead, buf, MAXLINE);
+        if(n<0) {
+            goto done;
+        }
+        i= nextToken(buf, &nextp);
+        if(i<0) {
+            goto done;
+        }
+        if(*nextp!='#')
+            break;
+    }
+    // should be a number
+    sscanf(nextp, "%d", &g_numbase64Hashes);
+    if(g_numbase64Hashes<1 ||g_numbase64Hashes>=MAXBASE64HASHES) {
+        fprintf(g_logFile, "getBase64Hash: bad hash entry number %d\n", g_numbase64Hashes);
+        goto done;
+    }
+
+    // get lines of hashes
+    i= 0;
+    while(i<g_numbase64Hashes) {
+        n= getnextline(iRead, buf, MAXLINE);
+        if(n<0)
+            break;
+        j= nextToken(buf, &nextp);
+        if(*nextp=='#')
+            continue;
+        // should be: "id", "name", "hash"
+        if(!parseEntry(nextp, &szPolicyId, &szProgramName, &szBase64Hash))
+            continue;
+        validBase64HashesTable[i].m_szPolicyId= strdup(szPolicyId);
+        validBase64HashesTable[i].m_szProgramName= strdup(szProgramName);
+        validBase64HashesTable[i].m_szBase64Hash= strdup(szBase64Hash);
+    }
+     
+    if(i!=g_numbase64Hashes) {
+        fprintf(g_logFile, "getBase64Hash: mismatch between expected entries (%d) and entries (%d)\n",
+                g_numbase64Hashes, i);
+    }
+    if(i<=g_numbase64Hashes)
+        g_numbase64Hashes= i;
+    fRet= true;
+
+done:
+    if(iRead>0)
+        close(iRead);
+    return fRet;
 }
 
 
@@ -153,13 +262,6 @@ bool            g_fIsEncrypted= false;
 RSAKey*         g_pSigningKey= NULL;
 const char*     g_szSigningAlgorithm=
                      "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#";
-
-#if 0
-bool             g_globalpolicyValid= false;
-metaData         g_theVault;
-PrincipalCert*   g_policyPrincipalCert= NULL;
-RSAKey*          g_policyKey= NULL;
-#endif
 
 #define MAXREQUESTSIZE          16384
 #define SERVICENAME             "keyNegoServer"
@@ -504,20 +606,10 @@ bool validCodeDigest(const char* szPolicyKeyId, const char* szCodeDigest)
 
 #ifdef HASHESDEFINED
     int     i;
-    int     sizeHash= 32;
-    byte    myHash[32];
 
-    // compare against composite hash (output of tpm12quote2Hash) 
-    //      includes PCR, mask, hashed data
-    // compute myHash from szCodeDIgest
-    if(!fromBase64(strlen(szCodeDigest), szCodeDigest, &sizeHash, rgHash)) {
-        fprintf(g_logFile, "keyNegoServer: can't base64 decode\n");
-        return false;
-    }
-
-    for(i=0; i<g_numHashes;i++) {
-        if(sizeHash==g_thevalidHashes[i].m_iHashSize && 
-           memcmp(g_thevalidHashes[i].m_hash, myHash, sizeHash)==0)
+    for(i=0; i<g_numbase64Hashes; i++) {
+        if(strcmp(validBase64Hashes[i].m_szPolicyId, szPolicyKeyId)==0 &&
+           strcmp(validBase64Hashes[i].m_szBase64Hash, szCodeDigest)==0)
             return true;
     }
     return false;

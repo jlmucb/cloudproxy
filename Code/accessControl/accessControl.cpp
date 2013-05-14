@@ -49,15 +49,15 @@
  *  Principal says Principal verb resource if condition
  *  Principal says Principal may say other-Principal verb object condition
  *  Example
- *      K-Policy says K-JLM can read //www.manferdelli.com/Files
- *      K-Policy says K-JLM can write //www.manferdelli.com/Files
- *      K-Policy says K-JLM can say x owns //www.manferdelli.com/Files
+ *      K-Policy says K-JLM mayread //www.manferdelli.com/Files
+ *      K-Policy says K-JLM maywrite //www.manferdelli.com/Files
+ *      K-Policy says K-JLM maysay x owns //www.manferdelli.com/Files
  *  <Assertions count='5'>
- *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files </Assertion>
- *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files </Assertion>
- *    <Assertion> K-Policy says K-JLM may read //www.manferdelli.com/Files/\* </Assertion>
- *    <Assertion> K-Policy says K-JLM may write //www.manferdelli.com/Files </Assertion>
- *    <Assertion> K-Policy says K-JLM may say x owns //www.manferdelli.com/Files </Assertion>
+ *    <Assertion> K-Policy says K-JLM mayread //www.manferdelli.com/Files </Assertion>
+ *    <Assertion> K-Policy says K-JLM mayread //www.manferdelli.com/Files </Assertion>
+ *    <Assertion> K-Policy says K-JLM mayread //www.manferdelli.com/Files/\* </Assertion>
+ *    <Assertion> K-Policy says K-JLM maywrite //www.manferdelli.com/Files </Assertion>
+ *    <Assertion> K-Policy says K-JLM maysay x owns //www.manferdelli.com/Files </Assertion>
  *  </Assertions>
  *
  *  Request

@@ -64,12 +64,23 @@ fileServices::fileServices()
 {
 #ifndef FILECLIENT
     m_pTaoEnv= NULL;
+    m_pMetaData= NULL;
 #endif
+    m_szPrefix= strdup("//www.manferdelli.com/Gauss/");
+    m_pSafeChannel= NULL;
+    m_encType= NOENCRYPT;
+    m_pPolicy= NULL;
 }
 
 
 fileServices::~fileServices()
 {
+    // DO NOT delete Tao or metadata
+    memset(m_rgKeys, 0, 32);
+    if(m_szPrefix!=NULL) {
+        free(m_szPrefix);
+        m_szPrefix= NULL;
+    }
 }
 
 // ------------------------------------------------------------------------
@@ -85,6 +96,32 @@ bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
                                     int encType, metaData* pMeta,
                                     safeChannel* pSafeChannel)
 {
+    if(pPolicy==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no policy principal\n");
+        return false;
+    }
+    m_pPolicy= pPolicy;
+    if(m_pTaoEnv==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no Tao\n");
+        return false;
+    }
+    m_pTaoEnv= pTaoEnv;
+
+    if(pMeta==NULL || !pMeta->m_metaDataValid) {
+        fprintf(g_logFile, "fileServices::initFileServices: no metaData or invalid\n");
+        return false;
+    }
+    m_pMetaData= pMeta;
+    if(pSafeChannel==NULL ){
+        fprintf(g_logFile, "fileServices::initFileServices: no safeChannel\n");
+        return false;
+    }
+    m_pSafeChannel= pSafeChannel;
+    m_encType= encType;
+
+    // initialize guard
+    // Fix: m_guard;
+
     return true;
 }
 
@@ -92,7 +129,6 @@ bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
 bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
 {
     bool                    fAllowed= false;
-#if 0
     resource*               pResource= NULL;
     accessRequest           oAR;
     char                    szBuf[MAXNAME];
@@ -101,6 +137,7 @@ bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
     fprintf(g_logFile, "validateCreatefileServices\n");
 #endif
 
+    // initialize guard
     // Fixed?: this is certainly a bug and potentially a vulnerability in the code,
     szBuf[MAXNAME-1]= '\0';
     strncpy(szBuf, m_szResourceName, MAXNAME-1);
@@ -136,36 +173,30 @@ bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
     pResource->m_szResourceName= strdup(m_szResourceName);
     pResource->m_uType= RESOURCEFILE;
     pResource->m_iSize= m_iResourceLength;
-    if(!g_theVault.addResource(pResource)) {
+    if(!m_pMeta->addResource(pResource)) {
         fprintf(g_logFile, "fileServices::validateCreatefileServices: can't add resource to table\n");
         return false;
     }
-    if(!translateResourceNametoLocation(m_szResourceName, szBuf, 
-                      MAXREQUESTSIZE)) {
+    if(!translateResourceNametoLocation(m_szResourceName, szBuf, MAXREQUESTSIZE)) {
         fprintf(g_logFile, "fileServices::validateCreatefileServices: translateResourceName failed\n");
         return false;
     }
     pResource->m_szLocation= strdup(szBuf);
     *pszFile= pResource->m_szLocation;
-    if(fAllowed) {
-        // file keys
-    }
     *ppResource= pResource;
-#endif
     return fAllowed;
 }
 
 
 bool  fileServices::validateGetSendDeleteRequest(char** pszFile, resource** ppResource)
 {
-#if 0
     resource*               pResource= NULL;
     accessRequest           oAR;
 
 #ifdef TEST
     fprintf(g_logFile, "looking for resource %s\n", m_szResourceName);
 #endif
-    pResource= g_theVault.findResource(m_szResourceName);
+    pResource= m_pMeta->findResource(m_szResourceName);
     if(pResource==NULL) {
         fprintf(g_logFile, "fileServices::validateGetSendDeletefileServices: GetSendDelete pResource NULL, %s\n", m_szResourceName);
         fflush(g_logFile);
@@ -188,41 +219,12 @@ bool  fileServices::validateGetSendDeleteRequest(char** pszFile, resource** ppRe
     oAR.m_ifileServicesType= m_ifileServicesType;
     oAR.m_szResource= strdup(m_szResourceName);
     return m_guard.permitAccess(oAR, m_szEvidence);
-#endif
-    return false;
 }
 
 
 bool  fileServices::validateAddOwnerRequest(char** pszFile, resource** ppResource)
                     
 {
-#if 0
-    resource*               pResource= NULL;
-    accessRequest           oAR;
-
-    pResource= g_theVault.findResource(m_szResourceName);
-    if(pResource==NULL) {
-        fprintf(g_logFile, "fileServices::validateAddOwnerfileServices: AddOwner pResource NULL, %s\n", m_szResourceName);
-        return false;
-    }
-    if(pResource->m_szLocation==NULL) {
-        fprintf(g_logFile, "fileServices::validateAddOwnerfileServices: location NULL\n");
-        return false;
-    }
-
-    // Get file location
-    *pszFile= pResource->m_szLocation;
-    *ppResource= pResource;
-
-    // Access allowed?
-    if(m_szSubjectName==NULL)
-        oAR.m_szSubject= NULL;
-    else
-        oAR.m_szSubject= strdup(m_szSubjectName);
-    oAR.m_ifileServicesType= m_ifileServicesType;
-    oAR.m_szResource= strdup(m_szResourceName);
-    return m_guard.permitAccess(oAR, m_szEvidence);
-#endif
     return false;
 }
 
@@ -241,40 +243,12 @@ bool  fileServices::validateDeletePrincipalRequest(char** pszFile, resource** pp
 
 bool  fileServices::validateRemoveOwnerRequest(char** pszFile, resource** ppResource)
 {
-#if 0
-    resource*               pResource= NULL;
-    accessRequest           oAR;
-
-    pResource= g_theVault.findResource(m_szResourceName);
-    if(pResource==NULL) {
-        fprintf(g_logFile, "fileServices::validateRemoveOwnerfileServices: RemoveOwner pResource NULL, %s\n", m_szResourceName);
-        return false;
-    }
-    if(pResource->m_szLocation==NULL) {
-        fprintf(g_logFile, "fileServices::validateRemoveOwnerfileServices: location NULL\n");
-        return false;
-    }
-
-    // Get file location
-    *pszFile= pResource->m_szLocation;
-    *ppResource= pResource;
-
-    // Access allowed?
-    if(m_szSubjectName==NULL)
-        oAR.m_szSubject= NULL;
-    else
-        oAR.m_szSubject= strdup(m_szSubjectName);
-    oAR.m_ifileServicesType= m_ifileServicesType;
-    oAR.m_szResource= strdup(m_szResourceName);
-    return m_guard.permitAccess(oAR, m_szEvidence);
-#endif
     return false;
 }
 
  
 bool  fileServices::validateRequest(char** pszFile, resource** ppResource)
 {
-#if 0
 #ifdef TEST
     fprintf(g_logFile, "\nvalidatefileServices\n");
     fflush(g_logFile);
@@ -320,12 +294,7 @@ bool  fileServices::validateRequest(char** pszFile, resource** ppResource)
         fprintf(g_logFile, "validatefileServices returning false\n\n");
 #endif
     return fAllowed;
-#endif
-    return false;
 }
-
-
-const char* g_szPrefix= "//www.manferdelli.com/Gauss/";
 
 
 bool fileServices::translateLocationtoResourceName(const char* szLocation, 
@@ -348,8 +317,8 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName,
     fprintf(g_logFile, "translate %s\n", p);
 #endif
     // strip prefix
-    n= strlen(g_szPrefix);
-   if(strncmp(p, g_szPrefix, n)!=0) {
+    n= strlen(m_szPrefix);
+   if(strncmp(p, m_szPrefix, n)!=0) {
         return false;
     } 
 
@@ -441,7 +410,6 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 bool fileServices::servercreateResourceonserver(Request& oReq,
                                                 timer& accessTimer)
 {
-#if 0
     bool            fAllowed= false;
     bool            fError;
     char            szBuf[MAXREQUESTSIZEWITHPAD];
@@ -454,8 +422,8 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
     byte            final= 0;
     resource*       pResource= NULL;
     resource*       pOwnerResource= NULL;
-    accessPrincipal* pSubject= NULL;
-    accessPrincipal* pOwnerPrincipal= NULL;
+    PrincipalCert*  pSubject= NULL;
+    PrincipalCert*  pOwnerPrincipal= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "servercreateResourceonserver\n");
@@ -478,7 +446,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         return false;
     }
     *p= 0; 
-    pOwnerResource= g_theVault.findResource(szBuf);
+    pOwnerResource= m_pMeta->findResource(szBuf);
     if(pOwnerResource==NULL) {
 #ifdef  TEST
         fprintf(g_logFile, "parent resource doesnt exist: %s\n", szBuf);
@@ -491,7 +459,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         }
         pOwnerResource->m_szResourceName= strdup(szBuf);
         pOwnerResource->m_uType= RESOURCEDIRECTORY;
-        if(!g_theVault.addResource(pOwnerResource)) {
+        if(!m_pMeta->addResource(pOwnerResource)) {
             fprintf(g_logFile, "servercreateResourceonserver: can't add resource to table\n");
             return false;
         }
@@ -535,7 +503,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
             oReq.m_szSubjectName);
     fflush(g_logFile);
 #endif
-    pSubject= g_theVault.findPrincipal(oReq.m_szSubjectName);
+    pSubject= m_pMeta->findPrincipal(oReq.m_szSubjectName);
     if(pSubject==NULL) {
         fprintf(g_logFile, "servercreateResourceonserver: Subject principal doesn't exist %s\n", oReq.m_szSubjectName);
         return false;
@@ -552,7 +520,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
             oReq.m_szResourceName);
     fflush(g_logFile);
 #endif
-    pResource= g_theVault.findResource(oReq.m_szResourceName);
+    pResource= m_pMeta->findResource(oReq.m_szResourceName);
     if(pResource!=NULL) {
         fError= true;
         szError= "servercreateResourceonserver: Resource exists";
@@ -585,8 +553,6 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
     fflush(g_logFile);
 #endif
     return !fError;
-#endif
-    return false;
 }
 
 
@@ -594,7 +560,6 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
                                                timer& accessTimer, 
                                                timer& encTimer)
 {
-#if 0
     bool        fError;
     int         iWrite= 0;
     int         size= 0;
@@ -668,8 +633,6 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
     fflush(g_logFile);
 #endif
     return true;
-#endif
-    return false;
 }
 
 
@@ -677,9 +640,8 @@ bool fileServices::serverchangeownerofResource(Request& oReq,
                                                timer& accessTimer)
 // includes delete
 {
-#if 0
     resource*           pResource= NULL;
-    accessPrincipal*    pPrinc= NULL;
+    PrincipalCert*    	pPrinc= NULL;
     char*               szFile= NULL;
 
 #ifdef  TEST
@@ -692,7 +654,7 @@ bool fileServices::serverchangeownerofResource(Request& oReq,
     accessTimer.Stop();
 
     if(oReq.m_ifileServicesType==ADDOWNER) {
-        pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
+        pPrinc= m_pMeta->findPrincipal(oReq.m_szResourceName);
         if(pPrinc==NULL)
             return false;
         return pResource->m_myOwners.append(pPrinc);
@@ -700,13 +662,11 @@ bool fileServices::serverchangeownerofResource(Request& oReq,
     }
 
     if(oReq.m_ifileServicesType==REMOVEOWNER) {
-        pPrinc= g_theVault.findPrincipal(oReq.m_szResourceName);
+        pPrinc= m_pMeta->findPrincipal(oReq.m_szResourceName);
         if(pPrinc==NULL)
             return false;
         return pResource->m_myOwners.deletenode(pPrinc);
     }
-#endif
-    return false;
 }
 
 

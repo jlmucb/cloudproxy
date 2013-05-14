@@ -94,7 +94,8 @@ bool metaData::initFileNames()
 }
 
 
-bool metaData::initMetaData(const char* directory, const char* program)
+bool metaData::initMetaData(const char* directory, const char* program,
+                            int encType, byte* key)
 {
 #ifdef TEST
     fprintf(g_logFile, "metaData::initMetaData\n");
@@ -115,6 +116,16 @@ bool metaData::initMetaData(const char* directory, const char* program)
     if(m_pPM==NULL) {
         fprintf(g_logFile, "Cant init principal manager\n");
         return false;
+    }
+
+    if(encType==DEFAULTENCRYPT) {
+        m_encType= encType;
+        m_fEncryptFiles= true;
+        memcpy(m_rgKeys, key, 32);
+    }
+    else {
+        m_encType= NOENCRYPT;
+        m_fEncryptFiles= false;
     }
 
     m_metaDataValid= true;
@@ -198,7 +209,7 @@ KeyInfo* metaData::findKey(const char* szName)
 }
 
 
-bool    metaData::saveMetaData(int encType, byte* key)
+bool    metaData::saveMetaData()
 {
 #ifdef TEST
     fprintf(g_logFile, "metaData::saveMetaData\n");
@@ -255,13 +266,13 @@ bool    metaData::saveMetaData(int encType, byte* key)
         }
 
         // open encrypted write
-        if(encType==NOENCRYPT) {
+        if(m_encType==NOENCRYPT) {
             if(!encFile.initEnc(filesize, datasize, 0, 0, 0, NOALG)) {
                 throw("metaData::saveMetaData: Cant init initialize file keys\n");
             }
         }
-        else if(encType==DEFAULTENCRYPT) {
-            if(!encFile.initEnc(filesize, datasize, key, 256,
+        else if(m_encType==DEFAULTENCRYPT) {
+            if(!encFile.initEnc(filesize, datasize, m_rgKeys, 256,
                             AES128, SYMPAD, CBCMODE, HMACSHA256)) {
                 throw("metaData::saveMetaData:: Cant init initialize file keys\n");
             }
@@ -316,7 +327,7 @@ bool metaData::deleteKey(KeyInfo* key)
 }
 
 
-bool metaData::restoreMetaData(int encType, byte* key)
+bool metaData::restoreMetaData()
 {
     bool                fRet= true;
     int                 iSizeP= 0;
@@ -357,14 +368,14 @@ bool metaData::restoreMetaData(int encType, byte* key)
             throw("metaData::restoreMetaData: No restoreTableFile\n");
    
         // open encrypted read file
-        if(encType==NOENCRYPT) {
+        if(m_encType==NOENCRYPT) {
             datasize= filesize;
             if(!encFile.initDec(filesize, datasize, 0, 0, 0, NOALG))
                 throw("metaData::restoreMetaData: Cant init initialize file keys\n");
         }
-        else if(encType==DEFAULTENCRYPT) {
+        else if(m_encType==DEFAULTENCRYPT) {
             datasize= filesize-AES128BYTEBLOCKSIZE-SHA256_DIGESTSIZE_BYTES;
-            if(!encFile.initDec(filesize, datasize, key, 256,
+            if(!encFile.initDec(filesize, datasize, m_rgKeys, 256,
                                 AES128, SYMPAD, CBCMODE, HMACSHA256)) 
                 throw("metaData::restoreMetaData:: Cant init initialize file keys\n");
         }

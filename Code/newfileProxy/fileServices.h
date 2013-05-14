@@ -44,19 +44,21 @@
 class fileServices{
 public:
 #ifndef FILECLIENT
+    RSAKey*         m_pPolicy;
     taoEnvironment* m_pTaoEnv;
     metaData*       m_pMetaData;
     accessGuard     m_guard;
 #endif
     safeChannel*    m_pSafeChannel;
-    int		    m_encType;	
+    int             m_encType;  
+    char*           m_szPrefix;
 
                 fileServices();
                 ~fileServices();
 
 #ifndef FILECLIENT
     bool        initFileServices(session& session, RSAKey* pPolicy, 
-				 taoEnvironment* pTaoEnv, 
+                                 taoEnvironment* pTaoEnv, 
                                  int encType, metaData* pMeta,
                                  safeChannel* pSafeChannel);
 #else

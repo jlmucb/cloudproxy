@@ -26,7 +26,7 @@ dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o $(B)/encapsulate.o \
 	    $(B)/keys.o $(B)/sha1.o $(B)/hashprep.o $(B)/jlmUtility.o \
 	    $(B)/validateEvidence.o $(B)/cert.o $(B)/quote.o $(B)/vault.o \
-	    $(B)/signedAssertion.o $(B)/accessControl.o $(B)/accessPrincipal.o \
+	    $(B)/signedAssertion.o $(B)/accessControl.o \
 	    $(B)/cryptoHelper.o $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/fileHash.o $(B)/encryptedblockIO.o $(B)/resource.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o 
@@ -118,9 +118,6 @@ $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 
 $(B)/accessControl.o: $(ACC)/accessControl.cpp $(ACC)/accessControl.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -I$(CHL) -c -o $(B)/accessControl.o $(ACC)/accessControl.cpp
-
-$(B)/accessPrincipal.o: $(ACC)/accessPrincipal.cpp $(ACC)/accessPrincipal.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -c -o $(B)/accessPrincipal.o $(ACC)/accessPrincipal.cpp
 
 $(B)/signedAssertion.o: $(ACC)/signedAssertion.cpp $(ACC)/signedAssertion.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -c -o $(B)/signedAssertion.o $(ACC)/signedAssertion.cpp

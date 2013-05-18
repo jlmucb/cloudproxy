@@ -191,6 +191,9 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     r++;
 
     k= nextToken(r, &p);
+    if(k<=0){
+        return false;
+    }
     if(*p!='\"')
         return false;
     q= (char*) (p+1);
@@ -245,13 +248,13 @@ bool getValidHashes(const char* szHashFile)
     bool            fRet= false;
 
     if(szHashFile==NULL) {
-        fprintf(g_logFile, "getBase64Hash: empty hash file name\n");
+        fprintf(g_logFile, "getValidHashes: empty hash file name\n");
         return false;
     }
     int iRead = open(szHashFile, O_RDONLY);
 
     if(iRead<0) {
-        fprintf(g_logFile, "getBase64Hash: can't open %s\n", szHashFile);
+        fprintf(g_logFile, "getValidHashes: can't open %s\n", szHashFile);
         return false;
     }
 
@@ -271,7 +274,8 @@ bool getValidHashes(const char* szHashFile)
     // should be a number
     sscanf(nextp, "%d", &g_numbase64Hashes);
     if(g_numbase64Hashes<1 ||g_numbase64Hashes>=MAXBASE64HASHES) {
-        fprintf(g_logFile, "getBase64Hash: bad hash entry number %d\n", g_numbase64Hashes);
+        fprintf(g_logFile, "getValidHashes: bad hash entry number %d\n", 
+                g_numbase64Hashes);
         goto done;
     }
 
@@ -282,6 +286,10 @@ bool getValidHashes(const char* szHashFile)
         if(n<0)
             break;
         j= nextToken(buf, &nextp);
+        if(j<0) {
+            fprintf(g_logFile, "getValidHashes: bad token length %d\n", j);
+            continue;
+        }
         if(*nextp=='#')
             continue;
         // should be: "id", "name", "hash"
@@ -293,7 +301,8 @@ bool getValidHashes(const char* szHashFile)
     }
      
     if(i!=g_numbase64Hashes) {
-        fprintf(g_logFile, "getBase64Hash: mismatch between expected entries (%d) and entries (%d)\n",
+        fprintf(g_logFile, 
+               "getValidHashes: mismatch between expected entries (%d) and entries (%d)\n",
                 g_numbase64Hashes, i);
     }
     if(i<=g_numbase64Hashes)
@@ -619,24 +628,24 @@ RSAKey* getKeyfromID(const char* szPolicyKeyId)
 }
 
 
-char* getKeyNameformQuotedKeyInfo(const char* szquotedKeyInfo)
+char* getKeyNamefromQuotedKeyInfo(const char* szquotedKeyInfo)
 {
     if(szquotedKeyInfo==NULL)
         return NULL;
 
     TiXmlDocument doc;
     if(!doc.Parse(szquotedKeyInfo)) {
-        fprintf(g_logFile, "getKeyNameformQuotedKeyInfo: cant parse cert\n");
+        fprintf(g_logFile, "getKeyNamefromQuotedKeyInfo: cant parse cert\n");
         return NULL;
     }
     TiXmlElement*   pRootElement= doc.RootElement();
     if(pRootElement==NULL) {
-        fprintf(g_logFile, "getKeyNameformQuotedKeyInfo: Can't get root of quote\n");
+        fprintf(g_logFile, "getKeyNamefromQuotedKeyInfo: Can't get root of quote\n");
         return NULL;
     }
     TiXmlNode* pNode= Search((TiXmlNode*) pRootElement, "ds:KeyInfo");
     if(pNode==NULL) {
-        fprintf(g_logFile, "getKeyNameformQuotedKeyInfo: No ds:KeyInfo node\n");
+        fprintf(g_logFile, "getKeyNamefromQuotedKeyInfo: No ds:KeyInfo node\n");
         return NULL;
     }
     const char* szA= ((TiXmlElement*) pNode)->Attribute ("KeyName");
@@ -646,7 +655,8 @@ char* getKeyNameformQuotedKeyInfo(const char* szquotedKeyInfo)
 }
 
 
-bool registerCertandEvidence(const char* szPolicyKeyId, const char* szCert, const char* szEvidence)
+bool registerCertandEvidence(const char* szPolicyKeyId, const char* szCert, 
+                             const char* szEvidence)
 {
 #ifdef  TEST
     fprintf(g_logFile, "registerCertandEvidence\n");
@@ -676,8 +686,8 @@ bool validCodeDigest(const char* szPolicyKeyId, const char* szCodeDigest)
 }
 
 
-bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote, const char* szEvidence, 
-                             char**  pszCert)
+bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote, 
+                             const char* szEvidence, char**  pszCert)
 {
     char*   szAlg= NULL;
     char*   szNonce= NULL;
@@ -739,7 +749,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote, 
         goto cleanup;
     }
 
-    szKeyName= getKeyNameformQuotedKeyInfo(szquotedKeyInfo);
+    szKeyName= getKeyNamefromQuotedKeyInfo(szquotedKeyInfo);
 #ifdef TEST
     fprintf(g_logFile, "validateRequestandIssue: quotedkeyinfo\n%s\n", szquotedKeyInfo);
     if(szKeyName==NULL)

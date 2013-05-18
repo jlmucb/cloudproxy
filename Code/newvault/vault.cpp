@@ -120,12 +120,12 @@ bool metaData::initMetaData(const char* directory, const char* program,
 
     if(encType==DEFAULTENCRYPT) {
         m_encType= encType;
-        m_fEncryptFiles= true;
+        m_fEncryptFile= true;
         memcpy(m_rgKeys, key, 32);
     }
     else {
         m_encType= NOENCRYPT;
-        m_fEncryptFiles= false;
+        m_fEncryptFile= false;
     }
 
     m_metaDataValid= true;

@@ -47,8 +47,8 @@
 #include <unistd.h>
 
 #ifndef TPMSUPPORT
-extern int      g_szpolicykeySize;
-extern char     g_szXmlPolicyCert[];
+extern int            g_szpolicykeySize;
+extern char           g_szXmlPolicyCert[];
 #endif
 
 

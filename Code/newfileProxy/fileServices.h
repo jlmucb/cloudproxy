@@ -66,13 +66,27 @@ public:
 #endif
 
 #ifndef FILECLIENT
-    bool        validateAddPrincipalRequest(char** pszFile, resource** ppResource);
-    bool        validateDeletePrincipalRequest(char** pszFile, resource** ppResource);
-    bool        validateCreateRequest(char** pszFile, resource** ppResource);
-    bool        validateGetSendDeleteRequest(char** pszFile, resource** ppResource);
-    bool        validateAddOwnerRequest(char** pszFile, resource** ppResource);
-    bool        validateRemoveOwnerRequest(char** pszFile, resource** ppResource);
-    bool        validateRequest(char** pszFile, resource** ppResource);
+    bool        validateAddPrincipalRequest(Request& oReq,
+                                            char** pszFile, 
+                                            resource** ppResource);
+    bool        validateDeletePrincipalRequest(Request& oReq,
+                                               char** pszFile, 
+                                               resource** ppResource);
+    bool        validateCreateRequest(Request& oReq,
+                                      char** pszFile, 
+                                      resource** ppResource);
+    bool        validateGetSendDeleteRequest(Request& oReq,
+                                             char** pszFile, 
+                                             resource** ppResource);
+    bool        validateAddOwnerRequest(Request& oReq,
+                                        char** pszFile, 
+                                        resource** ppResource);
+    bool        validateRemoveOwnerRequest(Request& oReq,
+                                           char** pszFile, 
+                                           resource** ppResource);
+    bool        validateRequest(Request& oReq,
+                                char** pszFile, 
+                                resource** ppResource);
 
     bool        translateLocationtoResourceName(const char* szLocation, 
                                                 const char* szResourceName, 

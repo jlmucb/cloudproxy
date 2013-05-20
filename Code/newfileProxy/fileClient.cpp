@@ -80,7 +80,7 @@ using std::ofstream;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
-#include "./policyCert.inc"
+#include "policyCert.inc"
 
 extern const char*  g_szTerm;
 const char* g_szClientPrincipalCertsFile= "fileClient/principalPublicKeys.xml";

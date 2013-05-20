@@ -65,22 +65,17 @@ fileServices::fileServices()
 #ifndef FILECLIENT
     m_pTaoEnv= NULL;
     m_pMetaData= NULL;
+    m_pPolicy= NULL;
 #endif
     m_szPrefix= strdup("//www.manferdelli.com/Gauss/");
     m_pSafeChannel= NULL;
     m_encType= NOENCRYPT;
-    m_pPolicy= NULL;
 }
 
 
 fileServices::~fileServices()
 {
     // DO NOT delete Tao or metadata
-    memset(m_rgKeys, 0, 32);
-    if(m_szPrefix!=NULL) {
-        free(m_szPrefix);
-        m_szPrefix= NULL;
-    }
 }
 
 // ------------------------------------------------------------------------
@@ -126,7 +121,7 @@ bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
 }
 
 
-bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
+bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
     bool                    fAllowed= false;
     resource*               pResource= NULL;
@@ -140,7 +135,7 @@ bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
     // initialize guard
     // Fixed?: this is certainly a bug and potentially a vulnerability in the code,
     szBuf[MAXNAME-1]= '\0';
-    strncpy(szBuf, m_szResourceName, MAXNAME-1);
+    strncpy(szBuf, oReq.m_szResourceName, MAXNAME-1);
     char* p= szBuf;
     while(*p!=0)
         p++;
@@ -153,16 +148,17 @@ bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
     }
     *p= 0; 
 
-    oAR.m_szSubject= strdup(m_szSubjectName);
-    oAR.m_ifileServicesType= m_ifileServicesType;
+    oAR.m_szSubject= strdup(oReq.m_szSubjectName);
+    // oAR.m_ifileServicesType= m_ifileServicesType;
     oAR.m_szResource= strdup(szBuf);
-    fAllowed= m_guard.permitAccess(oAR, m_szEvidence);
+    fAllowed= m_guard.permitAccess(oAR, oReq.m_szEvidence);
     if(!fAllowed) {
         fprintf(g_logFile, "fileServices::validateCreatefileServices: permitAccess returns false\n");
         return false;
     }
 #ifdef  TEST
-    fprintf(g_logFile, "permitAccess returns true in createResource adding %s\n", m_szResourceName);
+    fprintf(g_logFile, "permitAccess returns true in createResource adding %s\n", 
+	    oReq.m_szResourceName);
 #endif
 
     pResource= new resource();
@@ -170,14 +166,14 @@ bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
         fprintf(g_logFile, "fileServices::validateCreatefileServices: can't new resource\n");
         return false;
     }
-    pResource->m_szResourceName= strdup(m_szResourceName);
+    pResource->m_szResourceName= strdup(oReq.m_szResourceName);
     pResource->m_uType= RESOURCEFILE;
-    pResource->m_iSize= m_iResourceLength;
-    if(!m_pMeta->addResource(pResource)) {
+    pResource->m_iSize= oReq.m_iResourceLength;
+    if(!m_pMetaData->addResource(pResource)) {
         fprintf(g_logFile, "fileServices::validateCreatefileServices: can't add resource to table\n");
         return false;
     }
-    if(!translateResourceNametoLocation(m_szResourceName, szBuf, MAXREQUESTSIZE)) {
+    if(!translateResourceNametoLocation(oReq.m_szResourceName, szBuf, MAXREQUESTSIZE)) {
         fprintf(g_logFile, "fileServices::validateCreatefileServices: translateResourceName failed\n");
         return false;
     }
@@ -188,17 +184,17 @@ bool fileServices::validateCreateRequest(char** pszFile, resource** ppResource)
 }
 
 
-bool  fileServices::validateGetSendDeleteRequest(char** pszFile, resource** ppResource)
+bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
     resource*               pResource= NULL;
     accessRequest           oAR;
 
 #ifdef TEST
-    fprintf(g_logFile, "looking for resource %s\n", m_szResourceName);
+    fprintf(g_logFile, "looking for resource %s\n", oReq.m_szResourceName);
 #endif
-    pResource= m_pMeta->findResource(m_szResourceName);
+    pResource= m_pMetaData->findResource(oReq.m_szResourceName);
     if(pResource==NULL) {
-        fprintf(g_logFile, "fileServices::validateGetSendDeletefileServices: GetSendDelete pResource NULL, %s\n", m_szResourceName);
+        fprintf(g_logFile, "fileServices::validateGetSendDeletefileServices: GetSendDelete pResource NULL, %s\n", oReq.m_szResourceName);
         fflush(g_logFile);
         return false;
     }
@@ -212,49 +208,49 @@ bool  fileServices::validateGetSendDeleteRequest(char** pszFile, resource** ppRe
     *ppResource= pResource;
 
     // Access allowed?
-    if(m_szSubjectName==NULL)
+    if(oReq.m_szSubjectName==NULL)
         oAR.m_szSubject= NULL;
     else
-        oAR.m_szSubject= strdup(m_szSubjectName);
-    oAR.m_ifileServicesType= m_ifileServicesType;
-    oAR.m_szResource= strdup(m_szResourceName);
-    return m_guard.permitAccess(oAR, m_szEvidence);
+        oAR.m_szSubject= strdup(oReq.m_szSubjectName);
+    // oAR.m_ifileServicesType= m_ifileServicesType;
+    oAR.m_szResource= strdup(oReq.m_szResourceName);
+    return m_guard.permitAccess(oAR, oReq.m_szEvidence);
 }
 
 
-bool  fileServices::validateAddOwnerRequest(char** pszFile, resource** ppResource)
+bool  fileServices::validateAddOwnerRequest(Request& oReq, char** pszFile, resource** ppResource)
                     
 {
     return false;
 }
 
 
-bool  fileServices::validateAddPrincipalRequest(char** pszFile, resource** ppResource)
+bool  fileServices::validateAddPrincipalRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateDeletePrincipalRequest(char** pszFile, resource** ppResource)
+bool  fileServices::validateDeletePrincipalRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateRemoveOwnerRequest(char** pszFile, resource** ppResource)
+bool  fileServices::validateRemoveOwnerRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
     return false;
 }
 
  
-bool  fileServices::validateRequest(char** pszFile, resource** ppResource)
+bool  fileServices::validateRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
 #ifdef TEST
     fprintf(g_logFile, "\nvalidatefileServices\n");
     fflush(g_logFile);
 #endif
 
-    if(m_szResourceName==NULL) {
+    if(oReq.m_szResourceName==NULL) {
         fprintf(g_logFile, "fileServices::validatefileServices: validatefileServices returning false\n");
         fflush(g_logFile);
         return false;
@@ -263,28 +259,20 @@ bool  fileServices::validateRequest(char** pszFile, resource** ppResource)
 #ifdef TEST
     fprintf(g_logFile, "switching on request type\n");
 #endif
-    bool    fAllowed;
-    switch(m_ifileServicesType) {
-      case CREATERESOURCE:
-        fAllowed= validateCreateRequest(pszFile, ppResource);
-        break;
-      case DELETERESOURCE:
-      case GETRESOURCE:
-      case SENDRESOURCE:
-        fAllowed= validateGetSendDeleteRequest(pszFile, ppResource);
-        break;
-      case ADDOWNER:
-        fAllowed= validateAddOwnerRequest(pszFile, ppResource);
-        break;
-      case REMOVEOWNER:
-        fAllowed= validateRemoveOwnerRequest(pszFile, ppResource);
-        break;
-      case ADDPRINCIPAL:
-      case REMOVEPRINCIPAL:
-      case GETOWNER:
-      default:
-        fAllowed= false;
-        break;
+    bool    fAllowed= false;
+    if(strcmp(oReq.m_szAction, "createResource")== 0) {
+        fAllowed= validateCreateRequest(oReq, pszFile, ppResource);
+    }
+    else if(strcmp(oReq.m_szAction, "deleteResource")== 0 ||
+	    strcmp(oReq.m_szAction, "getResource")== 0 ||
+	    strcmp(oReq.m_szAction, "sendResource")== 0) {
+        fAllowed= validateGetSendDeleteRequest(oReq, pszFile, ppResource);
+    }
+    else if(strcmp(oReq.m_szAction, "addOwner")== 0) {
+        fAllowed= validateAddOwnerRequest(oReq, pszFile, ppResource);
+    }
+    else if(strcmp(oReq.m_szAction, "removeOwner")== 0) {
+        fAllowed= validateRemoveOwnerRequest(oReq, pszFile, ppResource);
     }
 
 #ifdef TEST
@@ -360,7 +348,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !validateRequest(&szFile, &pResource);
+    fError= !validateRequest(oReq, &szFile, &pResource);
     accessTimer.Stop();
 
     // open File (if no Error)
@@ -446,7 +434,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         return false;
     }
     *p= 0; 
-    pOwnerResource= m_pMeta->findResource(szBuf);
+    pOwnerResource= m_pMetaData->findResource(szBuf);
     if(pOwnerResource==NULL) {
 #ifdef  TEST
         fprintf(g_logFile, "parent resource doesnt exist: %s\n", szBuf);
@@ -459,13 +447,15 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         }
         pOwnerResource->m_szResourceName= strdup(szBuf);
         pOwnerResource->m_uType= RESOURCEDIRECTORY;
-        if(!m_pMeta->addResource(pOwnerResource)) {
+        if(!m_pMetaData->addResource(pOwnerResource)) {
             fprintf(g_logFile, "servercreateResourceonserver: can't add resource to table\n");
             return false;
         }
 
         // owner is the policy principal
+#if 0
         pOwnerPrincipal= g_policyAccessPrincipal;
+#endif
         if(pOwnerPrincipal==NULL) {
             fprintf(g_logFile, "servercreateResourceonserver: can't get owner principal\n");
             return false;
@@ -503,15 +493,17 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
             oReq.m_szSubjectName);
     fflush(g_logFile);
 #endif
-    pSubject= m_pMeta->findPrincipal(oReq.m_szSubjectName);
+    pSubject= m_pMetaData->findPrincipal(oReq.m_szSubjectName);
     if(pSubject==NULL) {
         fprintf(g_logFile, "servercreateResourceonserver: Subject principal doesn't exist %s\n", oReq.m_szSubjectName);
         return false;
     }
+#if 0
     if(!pSubject->m_fValidated) {
         fprintf(g_logFile, "servercreateResourceonserver: Subject principal not validated\n");
         return false;
     }
+#endif
 
     fError= false;
     // does it already exist?
@@ -520,7 +512,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
             oReq.m_szResourceName);
     fflush(g_logFile);
 #endif
-    pResource= m_pMeta->findResource(oReq.m_szResourceName);
+    pResource= m_pMetaData->findResource(oReq.m_szResourceName);
     if(pResource!=NULL) {
         fError= true;
         szError= "servercreateResourceonserver: Resource exists";
@@ -528,7 +520,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 
     if(!fError) {
         accessTimer.Start();
-        fAllowed= oReq.validateRequest(&szFile, &pResource);
+        fAllowed= validateRequest(oReq, &szFile, &pResource);
         accessTimer.Stop();
         if(fAllowed) {
             pResource->m_myOwners.append(pSubject);
@@ -579,7 +571,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
 #endif
     // validate request (including access check) and get file location
     accessTimer.Start();
-    fError= !validateRequest(&szOutFile, &pResource);
+    fError= !validateRequest(oReq, &szOutFile, &pResource);
     accessTimer.Stop();
     fprintf(g_logFile, "Got fError %s\n", fError ? "true" : "false");   
     fflush(g_logFile);
@@ -618,7 +610,9 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
     fflush(g_logFile);
 #endif
     // read file
-    if(!getFile(fc, iWrite, size, size, encType, key, encTimer)) {
+    // Fix: get key form entry
+    byte*   key= NULL;
+    if(!getFile(*m_pSafeChannel, iWrite, size, size, m_encType, key, encTimer)) {
         fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
         close(iWrite);
         return false;
@@ -649,24 +643,25 @@ bool fileServices::serverchangeownerofResource(Request& oReq,
     fflush(g_logFile);
 #endif
     accessTimer.Start();
-    if(!oReq.validateRequest(&szFile, &pResource))
+    if(!validateRequest(oReq, &szFile, &pResource))
         return false;
     accessTimer.Stop();
 
-    if(oReq.m_ifileServicesType==ADDOWNER) {
-        pPrinc= m_pMeta->findPrincipal(oReq.m_szResourceName);
+    if(strcmp(oReq.m_szAction, "addOwner")==0) {
+        pPrinc= m_pMetaData->findPrincipal(oReq.m_szResourceName);
         if(pPrinc==NULL)
             return false;
         return pResource->m_myOwners.append(pPrinc);
         
     }
 
-    if(oReq.m_ifileServicesType==REMOVEOWNER) {
-        pPrinc= m_pMeta->findPrincipal(oReq.m_szResourceName);
+    if(strcmp(oReq.m_szAction, "removeOwner")==0) {
+        pPrinc= m_pMetaData->findPrincipal(oReq.m_szResourceName);
         if(pPrinc==NULL)
             return false;
         return pResource->m_myOwners.deletenode(pPrinc);
     }
+    return false;
 }
 
 

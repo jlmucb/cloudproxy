@@ -562,10 +562,10 @@ bool fileServer::initServer(const char* configDirectory)
         }
 
         // Initialize resource and principal tables
-        if(!m_oMeta.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
+        if(!m_oMetaData.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "fileServer", m_encType, m_fileKeys))
             throw "fileServer::Init: Cant init metadata\n";
-        if(!m_oMeta.initFileNames())
+        if(!m_oMetaData.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
 
 #ifdef TEST

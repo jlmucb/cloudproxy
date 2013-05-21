@@ -22,6 +22,7 @@
 
 
 #define CHANNEL_REQUEST    1
+#define HASHESDEFINED
 
 
 // ------------------------------------------------------------------------
@@ -128,20 +129,20 @@ int nextToken(const char* sz, const char** pszToken)
 int   getnextline(int file, char* buf, int sizeBuf)
 {
     int     n= 0;
+    int     k= 0;
 
     for(;;) {
-        if(n>=(sizeBuf-1))
-            return -1;
-        if(read(file, &buf[n], 1)<=0) {
+        if(n>=(sizeBuf-1)) {
             return -1;
         }
-        if(buf[n]=='\0') {
-            return -1;
-        }
+        k= read(file, &buf[n], 1);
+        if(k<=0)
+            return k;
         if(buf[n]=='\n') {
             buf[++n]= '\0';
             return n;
         }
+        n++;
     }
 }
 
@@ -225,7 +226,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     if(*q!='\"')
         return false;
     *(q+1)= '\0';
-    *pszProgramName= p;
+    *pszBase64Hash= p;
 
     return true;
 }
@@ -247,6 +248,10 @@ bool getValidHashes(const char* szHashFile)
     const char*     szBase64Hash= NULL;
     bool            fRet= false;
 
+#ifdef  TEST
+    fprintf(g_logFile, "getValidHashes %s\n", szHashFile);
+    fflush(g_logFile);
+#endif
     if(szHashFile==NULL) {
         fprintf(g_logFile, "getValidHashes: empty hash file name\n");
         return false;
@@ -262,10 +267,14 @@ bool getValidHashes(const char* szHashFile)
     for(;;) {
         n= getnextline(iRead, buf, MAXLINE);
         if(n<0) {
+            fprintf(g_logFile, "getValidHashes: getnextline<0\n");
             goto done;
         }
+        if(n==0)
+            break;
         i= nextToken(buf, &nextp);
         if(i<0) {
+            fprintf(g_logFile, "getValidHashes: nextToken<0\n");
             goto done;
         }
         if(*nextp!='#')
@@ -282,8 +291,8 @@ bool getValidHashes(const char* szHashFile)
     // get lines of hashes
     i= 0;
     while(i<g_numbase64Hashes) {
-        n= getnextline(iRead, buf, MAXLINE);
-        if(n<0)
+        n= getnextline(iRead, buf, MAXLINE-1);
+        if(n<=0)
             break;
         j= nextToken(buf, &nextp);
         if(j<0) {
@@ -298,6 +307,7 @@ bool getValidHashes(const char* szHashFile)
         validBase64HashesTable[i].m_szPolicyId= strdup(szPolicyId);
         validBase64HashesTable[i].m_szProgramName= strdup(szProgramName);
         validBase64HashesTable[i].m_szBase64Hash= strdup(szBase64Hash);
+        i++;
     }
      
     if(i!=g_numbase64Hashes) {
@@ -324,6 +334,7 @@ const int       iQueueSize= 5;
 const char*     szServerHostAddr= "127.0.0.1";
 
 const char*     g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
+const char*     g_szValidHashFileName= "policy/validHash.txt";
 bool            g_fIsEncrypted= false;
 RSAKey*         g_pSigningKey= NULL;
 const char*     g_szSigningAlgorithm=
@@ -668,15 +679,15 @@ bool registerCertandEvidence(const char* szPolicyKeyId, const char* szCert,
 bool validCodeDigest(const char* szPolicyKeyId, const char* szCodeDigest)
 {
 #ifdef  TEST
-    fprintf(g_logFile, "validCodeDigest\n");
+    fprintf(g_logFile, "validCodeDigest %s %s\n", szPolicyKeyId, szCodeDigest);
 #endif
 
 #ifdef HASHESDEFINED
     int     i;
 
     for(i=0; i<g_numbase64Hashes; i++) {
-        if(strcmp(validBase64Hashes[i].m_szPolicyId, szPolicyKeyId)==0 &&
-           strcmp(validBase64Hashes[i].m_szBase64Hash, szCodeDigest)==0)
+        if(strcmp(validBase64HashesTable[i].m_szPolicyId, szPolicyKeyId)==0 &&
+           strcmp(validBase64HashesTable[i].m_szBase64Hash, szCodeDigest)==0)
             return true;
     }
     return false;
@@ -1113,9 +1124,30 @@ bool server()
 int main(int an, char** av)
 // certNego.exe [-store storename]
 {
+    int     i;
+
     initLog("keyNegoServer.log");
 #ifdef  TEST
     fprintf(g_logFile, "keyNegoServer\n");
+    fflush(g_logFile);
+#endif
+
+#ifdef HASHESDEFINED
+    if(!getValidHashes(g_szValidHashFileName)) {
+        fprintf(g_logFile, "keyNegoServer can't get valid hashes\n");
+        return 1;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "Hash table, %d entries\n", g_numbase64Hashes);
+    for(i=0; i<g_numbase64Hashes;i++) {
+        fprintf(g_logFile, "Policy: %s, Program name: %s, Hash: %s\n",
+            validBase64HashesTable[i].m_szPolicyId,
+            validBase64HashesTable[i].m_szProgramName,
+            validBase64HashesTable[i].m_szBase64Hash);
+    }
+#endif
+    fflush(g_logFile);
 #endif
 
     server();

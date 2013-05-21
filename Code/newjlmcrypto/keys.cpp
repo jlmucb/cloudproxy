@@ -555,7 +555,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     if(szRsaKeyDQ!=NULL) {
         printf("DQ: %s\n", szRsaKeyDQ); fflush(stdout);
     }
-    printf("making bignums\n"); fflush(stdout);
+    fprintf(g_logFile, "making bignums\n"); fflush(stdout);
 #endif
 
     // make bignums
@@ -596,7 +596,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     }
  
 #ifdef TEST
-    printf("leaving getatafromDoc\n"); fflush(stdout);
+    fprintf(g_logFile, "leaving getatafromDoc\n"); fflush(stdout);
 #endif
 
     return true;

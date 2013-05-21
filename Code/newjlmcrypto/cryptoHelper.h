@@ -56,6 +56,10 @@ struct tm*  timeNow();
 bool        timeInfofromstring(const char* szTime, struct tm& thetime);
 bool        checktimeinInterval(tm& time, tm& begin, tm& end);
 
+#ifdef TEST
+void        printTime(struct tm* timeinfo);
+#endif 
+
 bool        sameRSAKey(RSAKey* pKey1, RSAKey* pKey2);
 KeyInfo*    ReadKeyfromFile(const char* szKeyFile);
 

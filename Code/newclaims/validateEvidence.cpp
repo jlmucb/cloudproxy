@@ -28,6 +28,7 @@
 #include "jlmcrypto.h"
 #include "tinyxml.h"
 #include "cert.h"
+#include "quote.h"
 #include "validateEvidence.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
@@ -50,13 +51,14 @@ bool  revoked(const char* szCert, const char* szPolicy)
 }
 
 
-char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
+TiXmlNode* getParseRoot(int evidenceType, void* pObject)
 {
-    TiXmlNode* nodeSignedInfo= NULL;
-    TiXmlNode* nodePurpose=  NULL;
-    TiXmlNode* pNode=  NULL;
-
-    // FIX
+    TiXmlNode*          nodeRoot= NULL;
+    PrincipalCert*      pCert= (PrincipalCert*) pObject;
+    Quote*              pQuote= (Quote*) pObject;
+#ifndef FILECLIENT
+    SignedAssertion*    pAssert= (SignedAssertion*) pObject;
+#endif
 
     switch(evidenceType) {
       default:
@@ -64,14 +66,93 @@ char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
       case EMBEDDEDPOLICYPRINCIPAL:
       case KEYINFO:
         return NULL;
-      case PRINCIPALCERT:
+#ifndef FILECLIENT
       case SIGNEDGRANT:
-        nodeSignedInfo= Search((TiXmlNode*)pObject, "ds:SignedInfo");
+        nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
+        break;
+#endif
+      case PRINCIPALCERT:
+        nodeRoot= (TiXmlNode*) pCert->m_pRootElement;
         break;
       case QUOTECERTIFICATE:
-        nodeSignedInfo= Search((TiXmlNode*)pObject, "QuotedInfo");
+        nodeRoot= pQuote->m_doc.RootElement();
         break;
     }
+    return nodeRoot;
+}
+
+
+TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
+{
+    TiXmlNode*          nodeRoot= NULL;
+    TiXmlNode*          nodeSignedInfo=  NULL;
+    PrincipalCert*      pCert= (PrincipalCert*) pObject;
+    Quote*              pQuote= (Quote*) pObject;
+#ifndef FILECLIENT
+    SignedAssertion*    pAssert= (SignedAssertion*) pObject;
+#endif
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case EMBEDDEDPOLICYPRINCIPAL:
+      case KEYINFO:
+        return NULL;
+#ifndef FILECLIENT
+      case SIGNEDGRANT:
+        nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
+        if(nodeRoot==NULL)
+            return NULL:
+        nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
+        break;
+#endif
+      case PRINCIPALCERT:
+        nodeRoot= (TiXmlNode*) pCert->m_pRootElement;
+        if(nodeRoot==NULL)
+            return NULL;
+        nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
+        break;
+      case QUOTECERTIFICATE:
+        nodeRoot= pQuote->m_doc.RootElement();
+        nodeSignedInfo= Search(nodeRoot, "QuotedInfo");
+        break;
+    }
+    if(nodeSignedInfo==NULL) {
+        fprintf(g_logFile, "getChainElementSignedInfo: Cant find Validity Period\n");
+        return false;
+    }
+    return nodeSignedInfo;
+}
+
+
+char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
+{
+    TiXmlNode*      nodeSignedInfo= NULL;
+    TiXmlNode*      nodePurpose=  NULL;
+    TiXmlNode*      pNode=  NULL;
+
+    switch(evidenceType) {
+      default:
+      case NOEVIDENCE:
+      case KEYINFO:
+        return NULL;
+#ifndef FILECLIENT
+      case SIGNEDGRANT:
+        nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
+        if(nodeRoot==NULL)
+            return NULL:
+        nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
+        break;
+#endif
+      case PRINCIPALCERT:
+        nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
+        break;
+      case QUOTECERTIFICATE:
+        return strdup("attest");
+      case EMBEDDEDPOLICYPRINCIPAL:
+        return strdup("all");
+    }
+
     if(nodeSignedInfo==NULL) {
         fprintf(g_logFile, "getChainElementSignedInfoPurpose: Cant find it\n");
         return NULL;
@@ -93,70 +174,6 @@ char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
         return NULL;
     }
     return strdup(pNode->Value());
-}
-
-
-TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
-{
-    TiXmlNode* nodeSignedInfo=  NULL;
-
-    // FIX
-
-    switch(evidenceType) {
-      default:
-      case NOEVIDENCE:
-      case EMBEDDEDPOLICYPRINCIPAL:
-      case KEYINFO:
-        return NULL;
-      case PRINCIPALCERT:
-        nodeSignedInfo= Search((TiXmlNode*)pObject, "ds:SignedInfo");
-        break;
-      case SIGNEDGRANT:
-      case QUOTECERTIFICATE:
-        nodeSignedInfo= Search((TiXmlNode*)pObject, "QuotedInfo");
-        break;
-    }
-    if(nodeSignedInfo==NULL) {
-        fprintf(g_logFile, "getChainElementSignedInfo: Cant find Validity Period\n");
-        return false;
-    }
-    return nodeSignedInfo;
-}
-
-
-char* getChainElementPrincipalName(TiXmlNode* node, int evidenceType)
-{
-    // FIX
-    switch(evidenceType) {
-      default:
-      case NOEVIDENCE:
-      case EMBEDDEDPOLICYPRINCIPAL:
-      case KEYINFO:
-        return NULL;
-      case PRINCIPALCERT:
-      case SIGNEDGRANT:
-      case QUOTECERTIFICATE:
-        break;
-    }
-    return NULL;
-}
-
-
-char* getChainElementPrincipalType(TiXmlNode* node, int evidenceType)
-{
-    // FIX
-    switch(evidenceType) {
-      default:
-      case NOEVIDENCE:
-      case EMBEDDEDPOLICYPRINCIPAL:
-      case KEYINFO:
-        return NULL;
-      case PRINCIPALCERT:
-      case SIGNEDGRANT:
-      case QUOTECERTIFICATE:
-        break;
-    }
-    return NULL;
 }
 
 
@@ -265,10 +282,10 @@ char* getChainElementRevocationPolicy(TiXmlNode* node, int evidenceType)
 
 char* getChainElementSignatureValue(int evidenceType, void* pObject)
 {
-    TiXmlNode* nodeSignatureValue= NULL;
-    TiXmlNode* pNode= NULL;
+    TiXmlNode*          nodeSignatureValue= NULL;
+    TiXmlNode*          pNode= NULL;
+    TiXmlNode*          nodeSignedInfo=  NULL;
 
-    // FIX
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -277,10 +294,16 @@ char* getChainElementSignatureValue(int evidenceType, void* pObject)
         return NULL;
       case PRINCIPALCERT:
       case SIGNEDGRANT:
-        nodeSignatureValue= Search((TiXmlNode*)pNode, "ds:SignatureValue");
+        nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
+        if(nodeSignedInfo==NULL)
+            return NULL;
+        nodeSignatureValue= Search(nodeSignedInfo, "ds:SignatureValue");
         break;
       case QUOTECERTIFICATE:
-        nodeSignatureValue= Search((TiXmlNode*)pNode, "QuoteValue");
+        nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
+        if(nodeSignedInfo==NULL)
+            return NULL;
+        nodeSignatureValue= Search(nodeSignedInfo, "QuoteValue");
         break;
     }
     if(nodeSignatureValue==NULL) {
@@ -303,10 +326,13 @@ char* getChainElementSignatureValue(int evidenceType, void* pObject)
 
 KeyInfo* getChainElementSubjectKey(int evidenceType, void* pObject)
 {
+    if(evidenceType==EMBEDDEDPOLICYPRINCIPAL) {
+        return (KeyInfo*) pObject;
+    }
+
     TiXmlNode* nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
     TiXmlNode* pNode= NULL;
 
-    // FIX
     if(nodeSignedInfo==NULL) {
         return NULL;
     }
@@ -390,6 +416,9 @@ int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* p
             throw("VerifySignedEvidence: can't get validity period\n");
         }
         if(!checktimeinInterval(*pt, notBefore, notAfter)) {
+printTime(pt);
+printTime(&notBefore);
+printTime(&notAfter);
             iRet= INVALIDPERIOD;
             throw("VerifySignedEvidence: invalid validity period\n");
         }
@@ -448,6 +477,13 @@ int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* p
 }
 
 
+bool  includesPurpose(const char* szIntended, const char* szGranted)
+{
+    // FIX
+    return true;
+}
+
+
 int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, 
                  int npieces, int* rgType, void** rgObject)
 
@@ -457,6 +493,7 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
     int         iRet= VALID;
     time_t      timer;
     RSAKey*     pSignerKey= NULL;
+    const char* szMyPurpose= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "VerifyChain %d\n", npieces);
@@ -480,11 +517,13 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
 
         for(i=0; i<(npieces-1); i++) {
 
-            // check purpose
-            szPurpose= getChainElementSignedInfoPurpose(rgType[i], rgObject[i]);
-            if(szPurpose==NULL) {
-                iRet= INVALIDPURPOSE;
-                throw("VerifyChain: cant get signer key\n");
+            // check purpose if required
+            if(szPurpose!=NULL) {
+                szMyPurpose= getChainElementSignedInfoPurpose(rgType[i], rgObject[i]);
+                if(!includesPurpose(szPurpose, szMyPurpose)) {
+                    iRet= INVALIDPURPOSE;
+                    throw("VerifyChain: inadequate purpose\n");
+                }
             }
 
             // get signer's key
@@ -728,7 +767,7 @@ bool    evidenceList::validateEvidenceList(RSAKey* pRootKey)
         return false;
     }
 
-    iVerify= VerifyChain(*pRootKey, "", NULL, m_iNumPiecesofEvidence, 
+    iVerify= VerifyChain(*pRootKey, NULL, NULL, m_iNumPiecesofEvidence, 
                          m_rgiEvidenceTypes, (void**) m_rgEvidence);
     if(iVerify>0)
         m_fValid= true;

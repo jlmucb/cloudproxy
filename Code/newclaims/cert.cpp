@@ -107,9 +107,6 @@ char* PrincipalCert::getCanonicalizationMethod()
 
 bool PrincipalCert::parsePrincipalCertElements()
 {
-    TiXmlDocument   m_doc;
-    TiXmlElement*   m_pRootElement;
-
 #ifdef CERTTEST
     fprintf(g_logFile, "parsePrincipalCertElements\n%s\n", m_szSignature);
 #endif

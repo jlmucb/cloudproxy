@@ -525,6 +525,20 @@ int timeCompare(struct tm& time1, struct tm& time2)
 }
 
 
+#ifdef TEST
+void printTime(struct tm* timeinfo)
+{
+    if(timeinfo==NULL) {
+    fprintf(g_logFile, "NULL\n");
+    }
+    fprintf(g_logFile, "%04d-%02d-%02dZ%02d:%02d.%02d\n",
+                1900+timeinfo->tm_year, timeinfo->tm_mon+1,
+                timeinfo->tm_mday, timeinfo->tm_hour,
+                timeinfo->tm_min, timeinfo->tm_sec);
+}
+#endif
+
+
 char* stringtimefromtimeInfo(struct tm* timeinfo)
 {
     char    szTime[128];
@@ -551,6 +565,8 @@ bool timeInfofromstring(const char* szTime, struct tm& thetime)
             &thetime.tm_year, &thetime.tm_mon,
             &thetime.tm_mday, &thetime.tm_hour,
             &thetime.tm_min, &thetime.tm_sec);
+    thetime.tm_year-= 1900;
+    thetime.tm_mon-= 1;
     return true;
 }
 

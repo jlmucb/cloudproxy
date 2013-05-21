@@ -174,7 +174,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
 
     if(*p!='\"')
         return false;
-    q= (char*) (p+1);
+    q= (char*)++p;
     while(*q!='\n' && *q!='\0') {
         if(*q=='\"')
             break;
@@ -182,6 +182,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     }
     if(*q!='\"')
         return false;
+    *q= '\0';
     r= q+1;
     while(*r!=',' && *r!='\0' && *r!='\n')
         r++; 
@@ -197,7 +198,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     }
     if(*p!='\"')
         return false;
-    q= (char*) (p+1);
+    q= (char*) ++p;
     while(*q!='\n' && *q!='\0') {
         if(*q=='\"')
             break;
@@ -205,19 +206,19 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     }
     if(*q!='\"')
         return false;
+    *q= '\0';
     r= q+1;
     while(*r!=',' && *r!='\0' && *r!='\n')
         r++; 
     if(*r!=',')
         return false;
-    *(q+1)= '\0';
     *pszProgramName= p;
     r++;
 
     k= nextToken(r, &p);
     if(*p!='\"')
         return false;
-    q= (char*) (p+1);
+    q= (char*)++p;
     while(*q!='\n' && *q!='\0') {
         if(*q=='\"')
             break;
@@ -225,7 +226,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     }
     if(*q!='\"')
         return false;
-    *(q+1)= '\0';
+    *q= '\0';
     *pszBase64Hash= p;
 
     return true;
@@ -335,6 +336,7 @@ const char*     szServerHostAddr= "127.0.0.1";
 
 const char*     g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
 const char*     g_szValidHashFileName= "policy/validHash.txt";
+const char*     g_szPolicy= "Policy1";
 bool            g_fIsEncrypted= false;
 RSAKey*         g_pSigningKey= NULL;
 const char*     g_szSigningAlgorithm=

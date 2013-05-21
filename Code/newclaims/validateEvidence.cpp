@@ -56,6 +56,8 @@ char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
     TiXmlNode* nodePurpose=  NULL;
     TiXmlNode* pNode=  NULL;
 
+    // FIX
+
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -98,6 +100,8 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
 {
     TiXmlNode* nodeSignedInfo=  NULL;
 
+    // FIX
+
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -122,6 +126,7 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
 
 char* getChainElementPrincipalName(TiXmlNode* node, int evidenceType)
 {
+    // FIX
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -139,6 +144,7 @@ char* getChainElementPrincipalName(TiXmlNode* node, int evidenceType)
 
 char* getChainElementPrincipalType(TiXmlNode* node, int evidenceType)
 {
+    // FIX
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -180,6 +186,7 @@ char* getChainElementCanonicalizationAlgorithm(TiXmlNode* node, int evidenceType
 {
     TiXmlNode* nodeCanonical= NULL;
 
+    // FIX
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -261,6 +268,7 @@ char* getChainElementSignatureValue(int evidenceType, void* pObject)
     TiXmlNode* nodeSignatureValue= NULL;
     TiXmlNode* pNode= NULL;
 
+    // FIX
     switch(evidenceType) {
       default:
       case NOEVIDENCE:
@@ -298,7 +306,9 @@ KeyInfo* getChainElementSubjectKey(int evidenceType, void* pObject)
     TiXmlNode* nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
     TiXmlNode* pNode= NULL;
 
+    // FIX
     if(nodeSignedInfo==NULL) {
+        return NULL;
     }
     pNode= Search(nodeSignedInfo, "SubjectKey");
     if(pNode==NULL) {
@@ -462,7 +472,8 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
         }
 
         // root at bottom?
-        if(rgType[npieces-1]!= KEYINFO || !sameRSAKey((RSAKey*)rgObject, &rootKey)) {
+        if(rgType[npieces-1]!= EMBEDDEDPOLICYPRINCIPAL || 
+                          !sameRSAKey((RSAKey*)rgObject[npieces-1], &rootKey)) {
             iRet= INVALIDROOT;
             throw("VerifyChain: Chain does not end with root\n");
         }
@@ -475,7 +486,6 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
                 iRet= INVALIDPURPOSE;
                 throw("VerifyChain: cant get signer key\n");
             }
-            // Fix: check
 
             // get signer's key
             pSignerKey= (RSAKey*) getChainElementSubjectKey(rgType[i+1], rgObject[i+1]);
@@ -489,7 +499,7 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
         }
     }
     catch(const char* szError) {
-        fprintf(g_logFile, "%s");
+        fprintf(g_logFile, "%s", szError);
         fflush(g_logFile);
     }
     

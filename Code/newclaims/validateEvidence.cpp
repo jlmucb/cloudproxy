@@ -102,7 +102,7 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
       case SIGNEDGRANT:
         nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
         if(nodeRoot==NULL)
-            return NULL:
+            return NULL;
         nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
         break;
 #endif
@@ -138,11 +138,6 @@ char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
         return NULL;
 #ifndef FILECLIENT
       case SIGNEDGRANT:
-        nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
-        if(nodeRoot==NULL)
-            return NULL:
-        nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
-        break;
 #endif
       case PRINCIPALCERT:
         nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);

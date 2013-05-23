@@ -2,14 +2,14 @@ Changes to code during the April Reorg
 ======================================
 
 
-I April the code was reorganized and some rewritten party as
+In April the code was reorganized and some rewritten party as
 a result of building bidProxy and authProxy.  Here is an overview
 of the changes.
 
 
 1.  The bignum code was rewritten and is faster and simpler.  
     A fast RSA decrypt which uses the Chinese remainder theorem
-    was implemented and an extensive set of tests were implemented.
+    was implemented as well as an extensive set of tests for bignum.
     The tests are in Code/Test/mpTest.  This code presents the 
     same interface as the old so should just "drop in."  
     Because of the CRT decrypt, a few more parameters were added
@@ -17,12 +17,12 @@ of the changes.
     bugs in the existing version.
 
 2.  A set of crypto helper functions was implemented in 
-    jlmcrypto/cryptoHelper.cpp to implment common patterns
-    for using RSA and some of the XML stuff.  As a result,
+    jlmcrypto/cryptoHelper.cpp for common patterns
+    using RSA and some of the XML stuff.  As a result,
     there are two functional improvements: the endianness for 
     signing and verifying are centralized and
     now comply with the usual practice; and, the "correct" padding
-    for RSA encrypted challenges is implmented so that we no longer
+    for RSA encrypted challenges is implemented so that we no longer
     re-use the "signing" padding.  This should probably be replaced
     by OAEP soemtime but it's all there.  Encrypt-then-MAC is
     turned on be default.  As a result of using the helper functions,

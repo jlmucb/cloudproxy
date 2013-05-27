@@ -34,15 +34,21 @@
 #include "tinyxml.h"
 
 
+#define USEPUBLIC      1
+#define USEPRIVATE     2
+#define USEPRIVATEFAST 3
+
+
 bool        RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
                        byte* out, bool fFast=false);
 bool        RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
 bool        RSASign(RSAKey& key, int hashType, byte* hash, 
                                        int* psizeout, byte* out);
 bool        RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in);
-bool        RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out);
-bool        RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
-                      byte* out, bool fFast=false);
+bool        RSASeal(RSAKey& key, u32 keyUse, int sizein, byte* in, int* psizeout, 
+                    byte* out);
+bool        RSAUnseal(RSAKey& key, u32 keyUse, int sizein, byte* in, int* psizeout, 
+                      byte* out);
 
 RSAKey*     RSAGenerateKeyPair(int keySize);
 RSAKey*     RSAKeyfromKeyInfoNode(TiXmlNode* pNode);

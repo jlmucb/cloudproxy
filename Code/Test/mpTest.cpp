@@ -1261,15 +1261,18 @@ bool singlersaTest(RSAKey* pKey, int sizein, byte* in, bool fFast=false)
     byte    out[1024];
     byte    recovered[1024];
     int     m, n;
+    u32     useprivate= USEPRIVATE;
 
     n= 1024;
-    if(!RSASeal(*pKey, sizein, in, &n, out)) {
+    if(!RSASeal(*pKey, USEPUBLIC, sizein, in, &n, out)) {
         printf("singlersaTest: RSASeal failed\n");
         fRet= false;
         goto done;
     }
     m= 1024;
-    if(!RSAUnseal(*pKey, n, out, &m, recovered, fFast)) {
+    if(fFast)
+        useprivate= USEPRIVATEFAST;
+    if(!RSAUnseal(*pKey, useprivate, n, out, &m, recovered)) {
         printf("singlersaTest: RSAUnseal failed\n");
         fRet= false;
         goto done;

@@ -806,13 +806,15 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
 #endif
     UNUSEDVAR(iBase64);
     if(fEncrypt) {
-        if(!RSASeal(rgKey, sizeChallenge, puChallenge, &iOut, rgSealed)) {
+        if(!RSASeal(rgKey, USEPUBLIC, sizeChallenge, puChallenge, 
+                    &iOut, rgSealed)) {
             fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
             return NULL;
         }
     }
     else {
-        if(!RSAUnseal(rgKey, sizeChallenge, puChallenge, &iOut, rgSealed, false)) {
+        if(!RSASeal(rgKey, USEPRIVATE, sizeChallenge, puChallenge, 
+                    &iOut, rgSealed)) {
             fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: encrypt failure\n");
             return NULL;
         }
@@ -913,12 +915,12 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
     int iOut= sizeNonce;
 
     if(fEncrypt) {
-        if(!RSASeal(rgKey, sizein, rgIn, &iOut, rgOut)) {
+        if(!RSAUnseal(rgKey, USEPUBLIC, sizein, rgIn, &iOut, rgOut)) {
             return false;
         }
     }
     else {
-        if(!RSAUnseal(rgKey, sizein, rgIn, &iOut, rgOut, false)) {
+        if(!RSAUnseal(rgKey, USEPRIVATE, sizein, rgIn, &iOut, rgOut)) {
             return false;
         }
     }
@@ -941,19 +943,21 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
     }
 
     if(fEncrypt) {
-        if(!RSASeal(rgKey, iOut, rgBase64Decoded, &sizeunSealed, rgUnsealed)) {
+        if(!RSAUnseal(rgKey, USEPUBLIC, iOut, rgBase64Decoded, 
+                      &sizeunSealed, rgUnsealed)) {
             fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: cant seal\n");
             return false;
         }
     }
     else {
-        if(!RSAUnseal(rgKey, iOut, rgBase64Decoded, &sizeunSealed, rgUnsealed, false)) {
+        if(!RSAUnseal(rgKey, USEPRIVATE, iOut, rgBase64Decoded, 
+                      &sizeunSealed, rgUnsealed)) {
             fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: cant unseal\n");
             return false;
         }
     }
 
-    bool fRet= memcmp(rgUnsealed, puOriginal, sizeChallenge);
+    bool fRet= (memcmp(rgUnsealed, puOriginal, sizeChallenge)==0);
     return fRet;
 }
 

@@ -22,7 +22,7 @@
 
 
 #define CHANNEL_REQUEST    1
-#define HASHESDEFINED
+// #define HASHESDEFINED
 
 
 // ------------------------------------------------------------------------
@@ -1081,8 +1081,6 @@ bool server()
 int main(int an, char** av)
 // certNego.exe [-store storename]
 {
-    int     i;
-
     initLog("keyNegoServer.log");
 #ifdef  TEST
     fprintf(g_logFile, "keyNegoServer\n");
@@ -1096,6 +1094,7 @@ int main(int an, char** av)
     }
 
 #ifdef  TEST
+    int     i;
     fprintf(g_logFile, "Hash table, %d entries\n", g_numbase64Hashes);
     for(i=0; i<g_numbase64Hashes;i++) {
         fprintf(g_logFile, "Policy: %s, Program name: %s, Hash: %s\n",

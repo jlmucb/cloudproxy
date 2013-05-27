@@ -154,7 +154,8 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 }
 
 
-bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
+bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in, 
+              int* psizeout, byte* out)
 {
     byte    padded[1024];
     
@@ -168,9 +169,26 @@ bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 #ifdef TEST
     PrintBytes((char*)"RSASeal padded: ", padded, key.m_iByteSizeM);
 #endif
-    if(!RSAEncrypt(key, key.m_iByteSizeM, padded, psizeout, out)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
-        return false;
+    switch(keyuse) {
+      default:
+      case USEPUBLIC:
+        if(!RSAEncrypt(key, key.m_iByteSizeM, padded, psizeout, out)) {
+            fprintf(g_logFile, "RSASeal: encryption failed\n");
+            return false;
+        }
+        break;
+      case USEPRIVATE:
+        if(!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out, false)) {
+            fprintf(g_logFile, "RSASeal: encryption failed\n");
+            return false;
+        }
+        break;
+      case USEPRIVATEFAST:
+        if(!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out, true)) {
+            fprintf(g_logFile, "RSASeal: encryption failed\n");
+            return false;
+        }
+        break;
     }
 #ifdef TEST
     PrintBytes((char*)"RSASeal out: ", out, *psizeout);
@@ -179,8 +197,8 @@ bool  RSASeal(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 }
 
 
-bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout, 
-                byte* out, bool fFast)
+bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in, 
+                int* psizeout, byte* out)
 {
     byte    padded[1024];
     int     size= 1024;
@@ -188,9 +206,26 @@ bool  RSAUnseal(RSAKey& key, int sizein, byte* in, int* psizeout,
 #ifdef TEST
     PrintBytes((char*)"RSAUnseal in: ", in, sizein);
 #endif
-    if(!RSADecrypt(key, sizein, in, &size, padded, fFast)) {
-        fprintf(g_logFile, "RSAUnseal: decryption failed\n");
-        return false;
+    switch(keyuse) {
+      default:
+      case USEPUBLIC:
+        if(!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
+            fprintf(g_logFile, "RSASeal: encryption failed\n");
+            return false;
+        }
+        break;
+      case USEPRIVATE:
+        if(!RSADecrypt(key, key.m_iByteSizeM, in, &size, padded, false)) {
+            fprintf(g_logFile, "RSASeal: encryption failed\n");
+            return false;
+        }
+        break;
+      case USEPRIVATEFAST:
+        if(!RSADecrypt(key, key.m_iByteSizeM, in, &size, padded, true)) {
+            fprintf(g_logFile, "RSASeal: encryption failed\n");
+            return false;
+        }
+        break;
     }
 #ifdef TEST
     PrintBytes((char*)"RSAUnseal decrypted: ", padded, key.m_iByteSizeM);

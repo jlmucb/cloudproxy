@@ -35,11 +35,11 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
 	    $(B)/fileTester.o $(B)/fileClient.o $(B)/logging.o 
 
-all: $(E)/fileClient.exe
+all: $(E)/newfileClient.exe
 
-$(E)/fileClient.exe: $(dobjs)
+$(E)/newfileClient.exe: $(dobjs)
 	@echo "fileClient"
-	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/newfileClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/jlmcrypto.o: $(SCD)/jlmcrypto.cpp $(SCD)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SCD) -I$(BSC) -I$(SC) -c -o $(B)/jlmcrypto.o $(SCD)/jlmcrypto.cpp

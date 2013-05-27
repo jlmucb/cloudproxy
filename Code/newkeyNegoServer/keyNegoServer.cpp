@@ -709,11 +709,6 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     char*   szQuoteValue= NULL;
     char*   szSignedInfo= NULL;
     char*   szCert= NULL;
-    Sha256  oHash;
-    byte    rgHash[SHA256_DIGESTSIZE_BYTES];
-    byte    rgPadded[1024];
-    int     base64Size= 1024;
-    char    szbase64[1024];
 
     char*   szCertid= NULL;
     int     serialNo= 0;
@@ -803,6 +798,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     // Check evidence chain
 #ifdef  TEST
     fprintf(g_logFile, "keyNegoServer: checking Evidence List\n");
+    fprintf(g_logFile, "%s\n", szEvidence);
     fflush(g_logFile);
 #endif
     if(szEvidence!=NULL) {
@@ -854,52 +850,11 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 #ifdef  TEST
     fprintf(g_logFile, "hashing\n");
 #endif
-    // hash, pad, sign
-    oHash.Init();
-    oHash.Update((byte*) szSignedInfo, strlen(szSignedInfo));
-    oHash.Final();
-    oHash.GetDigest(rgHash);
-
-#ifdef  TEST
-    fprintf(g_logFile, "padding\n");
-#endif
-    if(!emsapkcspad(SHA256HASH, rgHash, pKey->m_iByteSizeM, rgPadded)) {
-        fprintf(g_logFile, "validateRequestandIssue: bad pad\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "signing\n");
-#endif
-    memset(bnMsg.m_pValue, 0, pKey->m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, pKey->m_iByteSizeM);
-    revmemcpy((byte*)bnMsg.m_pValue, rgPadded, pKey->m_iByteSizeM);
-
-    if(!mpRSAENC(bnMsg, *(pKey->m_pbnD), *(pKey->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "validateRequestandIssue: decrypt failed\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "base64 encode\n");
-#endif
-    if(!toBase64(pKey->m_iByteSizeM, (byte*)bnOut.m_pValue, &base64Size, szbase64)) {
-        fprintf(g_logFile, "validateRequestandIssue: cant transform sigto base64\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "encode signature\n");
-#endif
-    // encode Signature
-    szCert= formatCert(szSignedInfo, szbase64);
+    szCert= constructXMLRSASha256SignaturefromSignedInfoandKey(*pKey,
+                                                szSubjName, szSignedInfo);
     if(szCert==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant format Cert\n");
-        fRet= false;
-        goto cleanup;
+        fprintf(g_logFile, "validateRequestandIssue: Cant construct signature\n");
+        return false;
     }
     *pszCert= szCert;
 

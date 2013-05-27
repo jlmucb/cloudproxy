@@ -38,11 +38,11 @@ dobjs=      $(B)/fileServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
 	    $(B)/tcIO.o 
 
-all: $(E)/fileServer.exe
+all: $(E)/newfileServer.exe
 
-$(E)/fileServer.exe: $(dobjs)
+$(E)/newfileServer.exe: $(dobjs)
 	@echo "fileServer"
-	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/newfileServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp

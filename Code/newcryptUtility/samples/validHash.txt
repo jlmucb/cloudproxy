@@ -1,0 +1,8 @@
+#
+#	valid hashes
+#
+3
+"Key1","TrustedOS", "JUF+X2JjL6OaZFOlZvbshN65UU8="
+"Key1","fileClient", "exyp6fWCoW6m+lfZnG8f/F694UqxpcbrzRt4/yaySlw="
+"Key1","fileServer", "MOs90F5R8uyTz+MqQcScXopwnc17c0olszl+QWR++rk="
+#end

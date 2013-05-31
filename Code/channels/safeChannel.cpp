@@ -127,10 +127,10 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
 
 #ifdef IOTEST
     fprintf(g_logFile, "\nSize of keys: %d\n", sizeofEncKeys);
-    PrintBytes("Send Enc Key", sendEncKey, sizeofEncKey);
-    PrintBytes("Get Enc  Key", getEncKey, sizeofEncKey);
-    PrintBytes("Send Int Key", sendIntKey, sizeofIntKey);
-    PrintBytes("Get Int  Key", getIntKey, sizeofIntKey);
+    PrintBytes("Send Enc Key: ", sendEncKey, sizeofEncKey);
+    PrintBytes("Get Enc  Key: ", getEncKey, sizeofEncKey);
+    PrintBytes("Send Int Key: ", sendIntKey, sizeofIntKey);
+    PrintBytes("Get Int  Key: ", getIntKey, sizeofIntKey);
     fprintf(g_logFile, "\n");
 #endif
 
@@ -297,13 +297,13 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     }
 #ifdef TEST
     fprintf(g_logFile, "safesendPacket: bytes gotten %d, bytes sent %d \n", len, totalSize);
-    //PrintBytes((char*)"input: ", buf, len);
+    PrintBytes((char*)"input: ", buf, len);
 #ifdef ENCRYPTTHENMAC
-    //PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, newMsgSize);
-    //PrintBytes((char*)"ENCRYPTTHENMAC sent: ", encryptedMessageBlock, totalSize);
+    PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, newMsgSize);
+    PrintBytes((char*)"ENCRYPTTHENMAC sent: ", encryptedMessageBlock, totalSize);
 #else
-    //PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, totalSize);
-    //PrintBytes((char*)"MACTHENENCRYPT sent: ", encryptedMessageBlock, totalSize);
+    PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, totalSize);
+    PrintBytes((char*)"MACTHENENCRYPT sent: ", encryptedMessageBlock, totalSize);
 #endif
 #endif
     return len;
@@ -342,6 +342,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     fprintf(g_logFile, "getFullPacket(%d, %d, %d, %d)\n", maxSize, 
             *ptype, *pmultipart, *pfinalpart);
     fprintf(g_logFile, "\tpre-fetched encrypted: %d\n", sizeprereadencrypted);
+    PrintBytes((char*)"Encrypted: ", pNextCipher, sizeprereadencrypted);
     fflush(g_logFile);
 #endif
 
@@ -373,6 +374,12 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     // Decrypt first block to get message size
     getAES.Decrypt(pNextCipher, pNextPlain);
     inlineXorto(pNextPlain, pLastCipher, BLKSIZE);
+#ifdef IOTEST
+    PrintBytes((char*)"Last Encrypted: ", pLastCipher, BLKSIZE);
+    PrintBytes((char*)"Cipher read: ", pNextCipher, BLKSIZE);
+    PrintBytes((char*)"Plain read: ", pNextPlain, BLKSIZE);
+    fflush(g_logFile);
+#endif
     pLastCipher= pNextCipher;
     pNextPlain+= BLKSIZE;
     pNextCipher+= BLKSIZE;
@@ -475,13 +482,6 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
 
 #ifdef TEST
     fprintf(g_logFile, "getFullPacket: got last block, checking MAC\n");
-#ifdef ENCRYPTTHENMAC
-    //PrintBytes((char*)"ENCRYPTTHENMAC input: ", encryptedMessageBlock, fullMsgSize);
-    //PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES);
-#else
-    //PrintBytes((char*)"MACTHENENCRYPT input: ", encryptedMessageBlock, fullMsgSize);
-    //PrintBytes((char*)"MACTHENENCRYPT formatted: ", plainMessageBlock, fullMsgSize);
-#endif
     fflush(g_logFile);
 #endif
 

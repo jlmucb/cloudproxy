@@ -216,6 +216,9 @@ bool session::serverNegoMessage1(char* buf, int maxSize, int iSessionId, const c
     if(!safeTransfer(&p, &iLeft, szMsg1b))
         return false;
 
+#ifdef TEST
+    fprintf(g_logFile, "serverNegoMessage1: %s\n", buf);
+#endif
     return true;
 }
 
@@ -226,6 +229,10 @@ bool session::serverNegoMessage2(char* buf, int maxSize, const char* szAlg,
 //         --Encrypted after this
 {
     sprintf(buf, szMsg2, szAlg, szChallenge, szHash);
+
+#ifdef TEST
+    fprintf(g_logFile, "serverNegoMessage2: %s\n", buf);
+#endif
     return true;
 }
 
@@ -244,6 +251,10 @@ bool session::serverNegoMessage3(char* buf, int maxSize, bool fSucceed)
         if(!safeTransfer(&p, &iLeft, szMsg3Fail))
             return false;
     }
+
+#ifdef TEST
+    fprintf(g_logFile, "serverNegoMessage3: %s\n", buf);
+#endif
     return true;
 }
 
@@ -252,6 +263,10 @@ bool session::clientNegoMessage1(char* buf, int maxSize, const char* szAlg, cons
 //  client phase 1  client-->server: clientMsg1(rand, ciphersuites)
 {
     sprintf(buf,szMsg1, szRand, szAlg);
+
+#ifdef TEST
+    fprintf(g_logFile, "clientNegoMessage1: %s\n", buf);
+#endif
     return true;
 }
 
@@ -280,6 +295,9 @@ bool session::clientNegoMessage2(char* buf, int maxSize, const char* szEncPreMas
     if(!safeTransfer(&p, &iLeft, szMsg2d))
         return false;
 
+#ifdef TEST
+    fprintf(g_logFile, "clientNegoMessage2: %s\n", buf);
+#endif
     return true;
 }
 
@@ -299,6 +317,9 @@ bool session::clientNegoMessage3(char* buf, int maxSize, const char* szSignedHas
     if(!safeTransfer(&p, &iLeft, szMsg3c))
         return false;
 
+#ifdef TEST
+    fprintf(g_logFile, "clientNegoMessage3: %s\n", buf);
+#endif
     return true;
 }
 
@@ -311,7 +332,8 @@ bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipal
     char*   p= buf;
 
 #ifdef TEST
-    fprintf(g_logFile, "clientNegoMessage4(%d), principals: %d\nCerts: %s\nSignedChallenges: %s\n",
+    fprintf(g_logFile, 
+            "clientNegoMessage4(%d), principals: %d\nCerts: %s\nSignedChallenges: %s\n",
             maxSize, principalCount, szPrincipalCerts,szSignedChallenges);
 #endif
     if(principalCount==0) {
@@ -330,6 +352,9 @@ bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipal
     if(!safeTransfer(&p, &iLeft, szMsg4d))
         return false;
     
+#ifdef TEST
+    fprintf(g_logFile, "clientNegoMessage4: %s\n", buf);
+#endif
     return true;
 }
 
@@ -937,6 +962,11 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
     int     iOut= 1024;
     byte    rgBase64Decoded[1024];
 
+#ifdef TEST
+    fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: key\n");
+    rgKey.printMe();
+    fflush(g_logFile);
+#endif
     if(!bytesfrombase64((char*)szSig, &iOut, rgBase64Decoded)) {
         fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: cant base64 decode\n");
         return false;
@@ -1829,7 +1859,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
 
         // do hashes match?
 #ifdef TEST
-        fprintf(g_logFile, "session::clientprotocolNego: server hases\n");
+        fprintf(g_logFile, "session::clientprotocolNego: server hashes\n");
         PrintBytes("Computed: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
         PrintBytes("Received: ", m_rgDecodedServerMessageHash, SHA256DIGESTBYTESIZE);
         fflush(g_logFile);
@@ -2064,8 +2094,8 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
         // init safeChannel
         if(!fc.initChannel(fd, AES128, CBCMODE, HMACSHA256, AES128BYTEKEYSIZE, 
                            AES128BYTEKEYSIZE,
-                           m_rguEncryptionKey1, m_rguIntegrityKey1, 
-                           m_rguEncryptionKey2, m_rguIntegrityKey2))
+                           m_rguEncryptionKey2, m_rguIntegrityKey2, 
+                           m_rguEncryptionKey1, m_rguIntegrityKey1))
             throw("session::serverprotocolNego: Cant init channel\n");
 
         // Assume CBC
@@ -2107,6 +2137,11 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
         // Phase 4, receive
         if((n=fc.safegetPacket((byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::serverprotocolNego: Can't get packet 4\n";
+#ifdef TEST
+        fprintf(g_logFile, "session::serverprotocolNego: %d from safegetPacket, phase 4\n", n);
+        fprintf(g_logFile, "session::serverprotocolNego: %s\n", request);
+        fflush(g_logFile);
+#endif
         if(!updateMessageHash(strlen(request), (byte*) request))
             throw  "session::serverprotocolNego: Can't update message hash";
         if(!getDatafromClientMessage4(n, request))

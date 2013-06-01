@@ -886,6 +886,13 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     iSC1= strlen(szMsgHdr);
     
     for(i=0; i< iNumKeys; i++) {
+#ifdef TEST
+	if(fEncrypt)
+            fprintf(g_logFile, "rsaXmlEncodeChallenges key usepublic\n");
+        else
+            fprintf(g_logFile, "rsaXmlEncodeChallenges key use private\n");
+        rgKeys[i]->printMe();
+#endif
         rgszSignedChallenges[i]= rsaXmlEncodeChallenge(fEncrypt,
                 *rgKeys[i], rguCurrentChallenge, sizeChallenge);
         if(rgszSignedChallenges[i]==NULL) {
@@ -926,7 +933,7 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
         *p= 0;
     }
     
-#ifdef CRYPTOTEST
+#ifdef TEST
     fprintf(g_logFile, "Signed challenges: %s\n", szReturn);
 #endif
     return szReturn;

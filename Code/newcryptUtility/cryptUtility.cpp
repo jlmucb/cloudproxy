@@ -472,6 +472,11 @@ bool Seal(const char* szKeyFile, bool fPublic, const char* szDataIn,
     int     strSize= 4096;
     char    szOut[4096];
 
+#ifdef TEST
+    fprintf(g_logFile, "Seal: key\n"); 
+    pKey->printMe();
+    fflush(g_logFile);
+#endif
     if(!fromBase64(strlen(szDataIn), szDataIn, &size, inBuf)) {
         fprintf(g_logFile, "Seal: Cant base64 decode input data\n");
         return false;
@@ -511,6 +516,11 @@ bool Unseal(const char* szKeyFile, bool fPublic, const char* szDataIn, const cha
     int     strSize= 4096;
     char    szOut[4096];
 
+#ifdef TEST
+    fprintf(g_logFile, "Unseal: key\n"); 
+    pKey->printMe();
+    fflush(g_logFile);
+#endif
     if(!fromBase64(strlen(szDataIn), szDataIn, &size, inBuf)) {
         fprintf(g_logFile, "Unseal: Cant base64 decode sealed data\n");
         return false;

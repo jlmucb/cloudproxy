@@ -77,6 +77,8 @@
 #define VALIDATECHAIN             20
 #define VALIDATEASSERTION         21
 #define GENCERT                   22
+#define SEAL                      23
+#define UNSEAL                    24
 
 
 #define MAXREQUESTSIZE          2048
@@ -454,6 +456,84 @@ bool Verify(const char* szKeyFile, const char* szInFile)
     return VerifyRSASha256SignaturefromSignedInfoandKey(*pKey, szSignedInfo, szSigValue);
 }
 
+
+bool Seal(const char* szKeyFile, bool fPublic, const char* szDataIn, 
+          const char** pszDataOut)
+{
+    RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
+    if(pKey==NULL) {
+        fprintf(g_logFile, "Sign: Can't get key from keyfile %s\n", szKeyFile);
+        return false;
+    }
+    byte    inBuf[4096];
+    byte    outBuf[4096];
+    int     size= 4096;
+    int     outsize= 4096;
+    int     strSize= 4096;
+    char    szOut[4096];
+
+    if(!fromBase64(strlen(szDataIn), szDataIn, &size, inBuf)) {
+        fprintf(g_logFile, "Seal: Cant base64 decode input data\n");
+        return false;
+    }
+    PrintBytes((char*)"Input data: ", inBuf, size);
+    u32     keyUse= USEPUBLIC;
+    if(fPublic)
+        keyUse= USEPUBLIC;
+    else
+        keyUse= USEPRIVATE;
+
+    if(!RSASeal(*pKey, keyUse, size, inBuf, &outsize, outBuf)) {
+        fprintf(g_logFile, "Seal: Cant RSAUnseal\n");
+        return false;
+    }
+    PrintBytes((char*)"Sealed data: ", outBuf, outsize);
+    if(!toBase64(outsize, outBuf, &strSize, szOut)) {
+        fprintf(g_logFile, "Seal: Cant base64 encode sealed data\n");
+        return false;
+    }
+    *pszDataOut= strdup(szOut); 
+    return true;
+}
+
+
+bool Unseal(const char* szKeyFile, bool fPublic, const char* szDataIn, const char** pszDataOut)
+{
+    RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
+    if(pKey==NULL) {
+        fprintf(g_logFile, "Sign: Can't get key from keyfile %s\n", szKeyFile);
+        return false;
+    }
+    byte    inBuf[4096];
+    byte    outBuf[4096];
+    int     size= 4096;
+    int     outsize= 4096;
+    int     strSize= 4096;
+    char    szOut[4096];
+
+    if(!fromBase64(strlen(szDataIn), szDataIn, &size, inBuf)) {
+        fprintf(g_logFile, "Unseal: Cant base64 decode sealed data\n");
+        return false;
+    }
+    PrintBytes((char*)"Sealed data: ", inBuf, size);
+    u32     keyUse= USEPUBLIC;
+    if(fPublic)
+        keyUse= USEPUBLIC;
+    else
+        keyUse= USEPRIVATE;
+
+    if(!RSAUnseal(*pKey, keyUse, size, inBuf, &outsize, outBuf)) {
+        fprintf(g_logFile, "Unseal: Cant RSAUnseal\n");
+        return false;
+    }
+    PrintBytes((char*)"Unsealed data: ", outBuf, outsize);
+    if(!toBase64(outsize, outBuf, &strSize, szOut)) {
+        fprintf(g_logFile, "Unseal: Cant base64 encode sealed data\n");
+        return false;
+    }
+    *pszDataOut= strdup(szOut); 
+    return true;
+}
 
 
 #define BUFSIZE       2048
@@ -1482,7 +1562,10 @@ int main(int an, char** av)
     const char*   szReqFile= NULL;
     const char*   szPrincipalsFile= NULL;
     const char*   szMeasurementFile= NULL;
+    const char*   szDataIn= NULL;
+    const char*   szDataOut= NULL;
     const char*   szProgramName=  "Program no name";
+    bool          fPublic= true;
     int           numArgs= 0;
     char**        pszArgs= NULL;
     int           iAction= NOACTION;
@@ -1523,7 +1606,8 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -validateChain rootKeyFile evidenceFile\n");
-            fprintf(g_logFile, "       cryptUtility -validateAssertion rootKeyFile reqFile evidenceFile principalFile metaDataFile\n");
+            fprintf(g_logFile, "       cryptUtility -Seal key-file -Public|-Private base64in\n");
+            fprintf(g_logFile, "       cryptUtility -Unseal key-file -Public|-Private base64in\n");
             return 0;
         }
         if(strcmp(av[i], "-Canonical")==0) {
@@ -1726,6 +1810,38 @@ int main(int an, char** av)
             iAction= VALIDATEASSERTION;
             break;
         }
+        if(strcmp(av[i], "-Seal")==0) {
+            if(an<(i+4)) {
+                fprintf(g_logFile, "Too few arguments: key-file -Public|-Private base64in\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            if(strcmp(av[i+2], "-Public")==0) {
+                fPublic= true;
+            }
+            if(strcmp(av[i+2], "-Private")==0) {
+                fPublic= false;
+            }
+            szDataIn= av[i+3];
+            iAction= SEAL;
+            break;
+        }
+        if(strcmp(av[i], "-Unseal")==0) {
+            if(an<(i+4)) {
+                fprintf(g_logFile, "Too few arguments: key-file -Public|-Private base64in\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            if(strcmp(av[i+2], "-Public")==0) {
+                fPublic= true;
+            }
+            if(strcmp(av[i+2], "-Private")==0) {
+                fPublic= false;
+            }
+            szDataIn= av[i+3];
+            iAction= UNSEAL;
+            break;
+        }
     }
 
     if(iAction==NOACTION) {
@@ -1768,6 +1884,28 @@ int main(int an, char** av)
             fprintf(g_logFile, "Sign succeeded\n");
         else
             fprintf(g_logFile, "Sign failed\n");
+    }
+
+    if(iAction==SEAL) {
+        initCryptoRand();
+        initBigNum();
+        fRet= Seal(szKeyFile, fPublic, szDataIn, &szDataOut);
+        closeCryptoRand();
+        if(fRet)
+            fprintf(g_logFile, "Seal succeeded %s\n", szDataOut);
+        else
+            fprintf(g_logFile, "Seal failed\n");
+    }
+
+    if(iAction==UNSEAL) {
+        initCryptoRand();
+        initBigNum();
+        fRet= Unseal(szKeyFile, fPublic, szDataIn, &szDataOut);
+        closeCryptoRand();
+        if(fRet)
+            fprintf(g_logFile, "Unseal succeeded %s\n", szDataOut);
+        else
+            fprintf(g_logFile, "Unseal failed\n");
     }
 
     if(iAction==MAKEPOLICYFILE) {

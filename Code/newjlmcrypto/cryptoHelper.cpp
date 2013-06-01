@@ -48,6 +48,9 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout,
     bnum    bnMsg(128);
     bnum    bnOut(128);
 
+#ifdef TEST
+    PrintBytes((char*)"RSADecrypt in: ", in, sizein);
+#endif
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
 
@@ -204,6 +207,7 @@ bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in,
     int     size= 1024;
     
 #ifdef TEST
+    fprintf(g_logFile, "RSAUnseal direction %d\n", keyuse);
     PrintBytes((char*)"RSAUnseal in: ", in, sizein);
 #endif
     switch(keyuse) {

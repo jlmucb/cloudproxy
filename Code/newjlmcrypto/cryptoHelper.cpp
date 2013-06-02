@@ -48,7 +48,7 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout,
     bnum    bnMsg(128);
     bnum    bnOut(128);
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSADecrypt in: ", in, sizein);
 #endif
     mpZeroNum(bnMsg);
@@ -85,7 +85,7 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSAEncrypt in: ", in, sizein);
 #endif
     revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
@@ -96,7 +96,7 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
     *psizeout= key.m_iByteSizeM;
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSAEncrypt out: ", out, *psizeout);
 #endif
     return true;
@@ -108,7 +108,7 @@ bool  RSASign(RSAKey& key, int hashType, byte* hash,
 {
     byte    padded[1024];
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSASign in: ", hash, 32);
 #endif
     if(*psizeout<key.m_iByteSizeM) {
@@ -119,13 +119,13 @@ bool  RSASign(RSAKey& key, int hashType, byte* hash,
         fprintf(g_logFile, "RSASign: padding failed\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSASign padded: ", padded, key.m_iByteSizeM);
 #endif
     if(!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out))
         return false;
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSASign out: ", out, *psizeout);
 #endif
     return true;
@@ -137,7 +137,7 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
     byte    padded[1024];
     int     size= 1024;
 
-#ifdef TEST
+#ifdef TEST1
     if(hashType==SHA1HASH)
         PrintBytes((char*)"RSAVerify hash (sha1): ", hash, 20);
     else if(hashType==SHA256HASH)
@@ -150,7 +150,7 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
     }
     if(!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded))
         return false;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "RSAVerify returns true\n");
 #endif
     return true;
@@ -162,14 +162,14 @@ bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in,
 {
     byte    padded[1024];
     
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSASeal in: ", in, sizein);
 #endif
     if(!pkcsmessagepad(sizein, in, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSASeal: padding failed\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSASeal padded: ", padded, key.m_iByteSizeM);
 #endif
     switch(keyuse) {
@@ -193,7 +193,7 @@ bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in,
         }
         break;
     }
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSASeal out: ", out, *psizeout);
 #endif
     return true;
@@ -206,7 +206,7 @@ bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in,
     byte    padded[1024];
     int     size= 1024;
     
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "RSAUnseal direction %d\n", keyuse);
     PrintBytes((char*)"RSAUnseal in: ", in, sizein);
 #endif
@@ -231,14 +231,14 @@ bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in,
         }
         break;
     }
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSAUnseal decrypted: ", padded, key.m_iByteSizeM);
 #endif
     if(!pkcsmessageextract(psizeout, out, key.m_iByteSizeM, padded)) {
         fprintf(g_logFile, "RSAUnseal: padding failed\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"RSAUnseal extracted: ", out, *psizeout);
 #endif
     return true;
@@ -260,7 +260,7 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     int     ikeyu64Size= 0;
     bool    fGotKey= false;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "generateRSAKeypair(%d)\n", keySize);
 #endif
     if(keySize==1024) {
@@ -295,7 +295,7 @@ RSAKey* RSAGenerateKeyPair(int keySize)
         fprintf(g_logFile, "Cant generate key\n");
         return NULL;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "generateRSAKeypair: RSA Key generated\n");
 #endif
 

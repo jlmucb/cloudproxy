@@ -295,7 +295,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
         fprintf(g_logFile, "safesendPacket failure\n");
         return n;
     }
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "safesendPacket: bytes gotten %d, bytes sent %d \n", len, totalSize);
     PrintBytes((char*)"input: ", buf, len);
 #ifdef ENCRYPTTHENMAC

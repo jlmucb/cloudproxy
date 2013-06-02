@@ -216,7 +216,7 @@ bool session::serverNegoMessage1(char* buf, int maxSize, int iSessionId, const c
     if(!safeTransfer(&p, &iLeft, szMsg1b))
         return false;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "serverNegoMessage1: %s\n", buf);
 #endif
     return true;
@@ -230,7 +230,7 @@ bool session::serverNegoMessage2(char* buf, int maxSize, const char* szAlg,
 {
     sprintf(buf, szMsg2, szAlg, szChallenge, szHash);
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "serverNegoMessage2: %s\n", buf);
 #endif
     return true;
@@ -252,7 +252,7 @@ bool session::serverNegoMessage3(char* buf, int maxSize, bool fSucceed)
             return false;
     }
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "serverNegoMessage3: %s\n", buf);
 #endif
     return true;
@@ -264,7 +264,7 @@ bool session::clientNegoMessage1(char* buf, int maxSize, const char* szAlg, cons
 {
     sprintf(buf,szMsg1, szRand, szAlg);
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "clientNegoMessage1: %s\n", buf);
 #endif
     return true;
@@ -295,7 +295,7 @@ bool session::clientNegoMessage2(char* buf, int maxSize, const char* szEncPreMas
     if(!safeTransfer(&p, &iLeft, szMsg2d))
         return false;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "clientNegoMessage2: %s\n", buf);
 #endif
     return true;
@@ -317,7 +317,7 @@ bool session::clientNegoMessage3(char* buf, int maxSize, const char* szSignedHas
     if(!safeTransfer(&p, &iLeft, szMsg3c))
         return false;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "clientNegoMessage3: %s\n", buf);
 #endif
     return true;
@@ -331,7 +331,7 @@ bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipal
     int     iLeft= maxSize;
     char*   p= buf;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, 
             "clientNegoMessage4(%d), principals: %d\nCerts: %s\nSignedChallenges: %s\n",
             maxSize, principalCount, szPrincipalCerts,szSignedChallenges);
@@ -352,7 +352,7 @@ bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipal
     if(!safeTransfer(&p, &iLeft, szMsg4d))
         return false;
     
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "clientNegoMessage4: %s\n", buf);
 #endif
     return true;
@@ -373,7 +373,7 @@ bool session::getDatafromServerMessage1(int n, char* request)
     int             iIndex= -1;
     bool            fRet= true;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "ServerMessage 1\n%s\n", request);
     fprintf(g_logFile, "MAXREQUESTSIZE = %d\n", MAXREQUESTSIZE);
     fflush(g_logFile);
@@ -461,7 +461,7 @@ bool session::getDatafromServerMessage2(int n, char* request)
     int             iOutLen= 128;
     bool            fRet= true;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "ServerMessage 2\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -478,7 +478,7 @@ bool session::getDatafromServerMessage2(int n, char* request)
         if(p!=NULL)
             m_szChallengeSignAlg= strdup(p);
 
-#ifdef  TEST
+#ifdef  TEST1
         fprintf(g_logFile, "getDatafromServerMessage2: hash processing\n");
         fflush(g_logFile);
 #endif
@@ -530,7 +530,7 @@ bool session::getDatafromServerMessage3(int n, char* request)
     TiXmlElement*   pRootElement= NULL;
     bool            fRet= true;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "ServerMessage 3\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -571,7 +571,7 @@ bool session::getDatafromClientMessage1(int n, char* request)
     TiXmlNode*      pNode1;
     int             iOutLen= 64;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "Client Message 1\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -647,7 +647,7 @@ bool session::getDatafromClientMessage2(int n, char* request)
     char*     szClientCert= NULL;
     bool            fRet= true;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "Client Message 2\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -715,7 +715,7 @@ bool session::getDatafromClientMessage3(int n, char* request)
     const char*           szSignedChallenge= NULL;
     bool            fRet= true;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "getDatafromClientMessage 3\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -764,7 +764,7 @@ bool session::getDatafromClientMessage4(int n, char* request)
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "Client Message 4\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -822,7 +822,7 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
     int     iBase64= 1024;
     char    rgBase64[1024];
 
-#ifdef TEST
+#ifdef TEST1
     if(fEncrypt)
         fprintf(g_logFile, "rsaXmlEncodeChallenge, encrypt\n");
     else
@@ -850,7 +850,7 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
         return NULL;
     }
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes("Encrypted challenge\n", rgSealed, rgKey.m_iByteSizeM);
 #endif
     return strdup(rgBase64);
@@ -886,7 +886,7 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     iSC1= strlen(szMsgHdr);
     
     for(i=0; i< iNumKeys; i++) {
-#ifdef TEST
+#ifdef TEST1
 	if(fEncrypt)
             fprintf(g_logFile, "rsaXmlEncodeChallenges key usepublic\n");
         else
@@ -933,7 +933,7 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
         *p= 0;
     }
     
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Signed challenges: %s\n", szReturn);
 #endif
     return szReturn;
@@ -969,7 +969,7 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
     int     iOut= 1024;
     byte    rgBase64Decoded[1024];
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: key\n");
     rgKey.printMe();
     fflush(g_logFile);
@@ -1138,7 +1138,7 @@ bool session::getClientCert(const char* szXml)
     }
     m_fClientCertValid= true;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "session::getClientCert: Client Key\n");
     m_pclientPublicKey->printMe();
     fprintf(g_logFile, "\n");
@@ -1199,7 +1199,7 @@ bool session::initializePrincipalCerts(const char* szPrincipalCerts)
     evidenceCollection  oEvidenceCollection;
 
     m_szPrincipalCerts= strdup(szPrincipalCerts);
-#ifdef TEST
+#ifdef TEST1
     if(m_szPrincipalCerts==NULL)
         fprintf(g_logFile, "initializePrincipalCerts is NULL\n");
     else
@@ -1265,7 +1265,7 @@ bool session::initializePrincipalPrivateKeys(const char* szPrincipalPrivateKeys)
     }
     pRootElement->QueryIntAttribute ("count", &iNumKeys);
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "%d principal private keys\n", iNumKeys);
 #endif
 
@@ -1346,7 +1346,7 @@ bool session::clientcomputeMessageHash()
 
 bool session::clientsignMessageHash()
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "session::clientsignMessageHash\n");
     fflush(g_logFile);
 #endif
@@ -1400,7 +1400,7 @@ bool session::checkclientSignedHash()
         return false;
     }
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes("Hash: ", m_rgClientMessageHash, SHA256DIGESTBYTESIZE);
 #endif
     return true;
@@ -1416,7 +1416,7 @@ bool session::servercomputeMessageHash()
     m_oMessageHash.Final();
     m_oMessageHash.GetDigest(m_rgServerMessageHash);
     m_fServerMessageHashValid= true;
-#ifdef TEST
+#ifdef TEST1
     PrintBytes("server hash: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
     fflush(g_logFile);
 #endif
@@ -1802,7 +1802,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
 
         szEncPreMasterSecret= rsaXmlEncodeChallenge(true, *m_pserverPublicKey,
                                     m_rguPreMasterSecret, BIGSYMKEYSIZE);
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "session::clientprotocolNego: pre-master encoded %s\n", 
                 szEncPreMasterSecret);
         fflush(g_logFile);
@@ -2113,7 +2113,7 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
             throw "session::serverprotocolNego: Cant get IV\n";
         fc.fgetIVReceived= true;
 
-#ifdef  TEST
+#ifdef  TEST1
         fprintf(g_logFile, "session::serverprotocolNego: Encrypted mode on\n");
         PrintBytes((char*)"Received IV: ", fc.lastgetBlock, AES128BYTEBLOCKSIZE);
         PrintBytes((char*)"Sent     IV: ", fc.lastsendBlock, AES128BYTEBLOCKSIZE);
@@ -2144,7 +2144,7 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
         // Phase 4, receive
         if((n=fc.safegetPacket((byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::serverprotocolNego: Can't get packet 4\n";
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "session::serverprotocolNego: %d from safegetPacket, phase 4\n", n);
         fprintf(g_logFile, "session::serverprotocolNego: %s\n", request);
         fflush(g_logFile);
@@ -2157,7 +2157,7 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
             throw "session::serverprotocolNego: Cant initialize principal public keys\n";
         if(!checkPrincipalChallenges())
             throw "session::serverprotocolNego: Principal challenges fail\n";
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "session::serverprotocolNego: checked principal challenges\n");
         fflush(g_logFile);
 #endif
@@ -2167,7 +2167,7 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
             throw  "session::serverprotocolNego: Can't format negotiation message 3\n";
         if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "session::serverprotocolNego: Can't send packet 3\n";
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "session::serverprotocolNego: success packet sent\n");
         fflush(g_logFile);
 #endif

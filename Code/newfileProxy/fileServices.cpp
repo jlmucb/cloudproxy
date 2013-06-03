@@ -65,8 +65,9 @@ fileServices::fileServices()
 #ifndef FILECLIENT
     m_pTaoEnv= NULL;
     m_pMetaData= NULL;
-    m_pPolicy= NULL;
+    m_pSession= NULL;
 #endif
+    m_pPolicy= NULL;
     m_szPrefix= strdup("//www.manferdelli.com/Gauss/");
     m_pSafeChannel= NULL;
     m_encType= NOENCRYPT;
@@ -86,11 +87,15 @@ fileServices::~fileServices()
 //  Server services
 
 
-bool fileServices::initFileServices(session& session, RSAKey* pPolicy, 
+bool fileServices::initFileServices(session* psession, RSAKey* pPolicy, 
                                     taoEnvironment* pTaoEnv, 
                                     int encType, metaData* pMeta,
                                     safeChannel* pSafeChannel)
 {
+#ifdef TEST
+    fprintf(g_logFile, "fileServices::initFileServices for Server\n");
+    fflush(g_logFile);
+#endif
     if(pPolicy==NULL) {
         fprintf(g_logFile, "fileServices::initFileServices: no policy principal\n");
         return false;
@@ -101,6 +106,12 @@ bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
         return false;
     }
     m_pTaoEnv= pTaoEnv;
+
+    if(psession==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no session\n");
+        return false;
+    }
+    m_pSession= psession;
 
     if(pMeta==NULL || !pMeta->m_metaDataValid) {
         fprintf(g_logFile, "fileServices::initFileServices: no metaData or invalid\n");
@@ -115,7 +126,21 @@ bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
     m_encType= encType;
 
     // initialize guard
-    // Fix: m_guard;
+#ifdef TEST
+    fprintf(g_logFile, "fileServices::initFileServices, initializing guard\n");
+    fflush(g_logFile);
+#endif
+     if(!m_guard.m_fValid) {
+        if(!m_guard.initGuard(pPolicy, pMeta)) {
+            fprintf(g_logFile,
+                    "theServiceChannel::serviceChannel: initAccessGuard returned false\n");
+            return false;
+        }
+    }
+#ifdef TEST
+    fprintf(g_logFile, "fileServices::initFileServices, guard initialized\n");
+    fflush(g_logFile);
+#endif
 
     return true;
 }
@@ -130,6 +155,7 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
 
 #ifdef TEST
     fprintf(g_logFile, "validateCreatefileServices\n");
+    fflush(g_logFile);
 #endif
 
     // initialize guard
@@ -722,9 +748,24 @@ bool fileServices::serverdeleteResource(Request& oReq,
 //  Client fileServices
 
 
-bool fileServices::initFileServices(session& session, RSAKey* pPolicy,
+bool fileServices::initFileServices(session* psession, RSAKey* pPolicy,
                                     safeChannel* pSafeChannel)
 {
+#ifdef TEST
+    fprintf(g_logFile, "fileServices::initFileServices for Client\n");
+    fflush(g_logFile);
+#endif
+    if(pPolicy==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no policy principal\n");
+        return false;
+    }
+    m_pPolicy= pPolicy;
+    if(pSafeChannel==NULL ){
+        fprintf(g_logFile, "fileServices::initFileServices: no safeChannel\n");
+        return false;
+    }
+    m_pSafeChannel= pSafeChannel;
+
     return true;
 }
 
@@ -809,6 +850,7 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
 
 #ifdef  TEST
     fprintf(g_logFile, "clientcreateResourceonserver(%s)\n", szResourceName);
+    fflush(g_logFile);
 #endif
     // send request
     if(!constructRequest(&p, &iLeft, "createResource", szSubject, 
@@ -816,10 +858,20 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
         fprintf(g_logFile, "clientcreateResourceonserver: constructRequest returns false\n");
         return false;
     }
+#ifdef  TEST
+    fprintf(g_logFile, "clientcreateResourceonserver, back from construct %08x\n%s\n", 
+            m_pSafeChannel, szBuf);
+    fflush(g_logFile);
+#endif
     if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructRequest returns false\n");
         return false;
     }
+
+#ifdef  TEST
+    fprintf(g_logFile, "clientcreateResourceonserver just sent\n%s\n", szBuf);
+    fflush(g_logFile);
+#endif
 
     // should be a CHANNEL_RESPONSE, not multipart
     n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
@@ -840,7 +892,8 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
     if (oResponse.m_szAction != NULL) {
         if (strcmp(oResponse.m_szAction, "accept") == 0) {
             success = true;
-        } else if (strcmp(oResponse.m_szErrorCode, "servercreateResourceonserver: Resource exists") == 0) {
+        } 
+    else if (strcmp(oResponse.m_szErrorCode, "servercreateResourceonserver: Resource exists") == 0) {
             // then the resource already exists, so this is also success
             success = true;
 #ifdef TEST

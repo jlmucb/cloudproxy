@@ -227,6 +227,10 @@ void fileTester::getParams(const TiXmlNode* parent, const string& parentPath, fi
 
 void fileTester::Run(const char* directory) {
     bool establishedDefaultConnection = false;
+#ifdef TEST
+    fprintf(g_logFile, "Entering  fileTester::Run\n");
+    fflush(g_logFile);
+#endif 
 
     // establish the default channel as long as there 
     // is a default keyFile and certFile
@@ -241,7 +245,11 @@ void fileTester::Run(const char* directory) {
             establishedDefaultConnection = true;
         }
     }
-                            
+                           
+#ifdef TEST
+    fprintf(g_logFile, "establishConnection returned in fileTester::Run\n");
+    fflush(g_logFile);
+#endif 
     list<fileTestParams>::iterator it = m_tests.begin();
     for( ; m_tests.end() != it; ++it) {
         if (m_printToStdout) printf("%s: ", it->name.c_str());
@@ -328,12 +336,29 @@ bool fileTester::runTest(fileClient& client,
     try {
         if (params.action.compare("create") == 0) {
             if (params.timed) testTimer.Start();
+#ifdef TEST
+        fprintf(g_logFile, "fileTester::runTest create %s %s\n", 
+                  params.subject.c_str(), params.authFile.c_str());
+        fflush(g_logFile);
+#endif
             result = client.createResource(
                             params.subject,
                             params.authFile,
                             params.remoteObject);            
+#ifdef TEST
+            if(result)
+                fprintf(g_logFile, "fileTester::runTest createResource returns true\n");
+            else
+                fprintf(g_logFile, "fileTester::runTest createResource returns false\n");
+            fflush(g_logFile);
+#endif
             if (params.timed) testTimer.Stop();
         } else if (params.action.compare("read") == 0) {
+#ifdef TEST
+        fprintf(g_logFile, "fileTester::runTest read %s %s\n", 
+                  params.subject.c_str(), params.authFile.c_str());
+        fflush(g_logFile);
+#endif
             if (params.timed) testTimer.Start();
             result = client.readResource(
                             params.subject,
@@ -346,6 +371,11 @@ bool fileTester::runTest(fileClient& client,
             // don't count the time to check the result, only the time to get it
             result = client.compareFiles(params.localObject, params.match);
         } else if (params.action.compare("write") == 0) {
+#ifdef TEST
+        fprintf(g_logFile, "fileTester::runTest write %s %s\n", 
+                  params.subject.c_str(), params.authFile.c_str());
+        fflush(g_logFile);
+#endif
             if (params.timed) testTimer.Start();
             result = client.writeResource(
                             params.subject,

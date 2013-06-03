@@ -109,7 +109,8 @@ int theServiceChannel::processRequests()
 #endif
     m_serverState= REQUESTSTATE;
 
-    if(m_oSafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final)<(int)sizeof(packetHdr)) {
+    if(m_oSafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final)<
+                    (int)sizeof(packetHdr)) {
         fprintf(g_logFile, "theServiceChannel::processRequests: Can't get ProcessRequest packet\n");
         return -1;
     }
@@ -252,15 +253,9 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     fflush(g_logFile);
 #endif
 
-#if 0
-    // Access Guard valid?
-    if(!m_oAG.m_fValid) {
-        if(!m_oAG.initGuard(m_pSession, m_pMeta)) {
-            fprintf(g_logFile, 
-                    "theServiceChannel::serviceChannel: initAccessGuard returned false\n");
-            return false;
-        }
-    }
+#ifdef  TEST
+    fprintf(g_logFile, "theServiceChannel::serviceChannel: after init guard\n");
+    fflush(g_logFile);
 #endif
 
     m_serverState= REQUESTSTATE;
@@ -270,11 +265,17 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
         fflush(g_logFile);
         m_pParent->printTimers(g_logFile);
         m_pParent->resetTimers();
+#if 1
+        // temporary
+    	fflush(g_logFile);
+        return false;
+#endif
     }
     m_serverState= SERVICETERMINATESTATE;
 
 #ifdef TEST
     fprintf(g_logFile, "theServiceChannel: serviceChannel terminating\n");
+    fflush(g_logFile);
 #endif
 
     if(m_fdChannel>0) {

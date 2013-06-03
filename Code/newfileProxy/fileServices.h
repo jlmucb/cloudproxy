@@ -43,10 +43,11 @@
 
 class fileServices{
 public:
-#ifndef FILECLIENT
     RSAKey*         m_pPolicy;
+#ifndef FILECLIENT
     taoEnvironment* m_pTaoEnv;
     metaData*       m_pMetaData;
+    session*        m_pSession;
     accessGuard     m_guard;
 #endif
     safeChannel*    m_pSafeChannel;
@@ -57,12 +58,12 @@ public:
                 ~fileServices();
 
 #ifndef FILECLIENT
-    bool        initFileServices(session& session, RSAKey* pPolicy, 
+    bool        initFileServices(session* session, RSAKey* pPolicy, 
                                  taoEnvironment* pTaoEnv, 
                                  int encType, metaData* pMeta,
                                  safeChannel* pSafeChannel);
 #else
-    bool        initFileServices(session& session, RSAKey* pPolicy, safeChannel* pSafeChannel);
+    bool        initFileServices(session* session, RSAKey* pPolicy, safeChannel* pSafeChannel);
 #endif
 
 #ifndef FILECLIENT

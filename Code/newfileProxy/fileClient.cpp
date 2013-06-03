@@ -272,6 +272,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
 #ifdef  TEST
     fprintf(g_logFile, "initClient\n");
+    fflush(g_logFile);
 #endif
 
     try {
@@ -298,6 +299,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after HostInit, pid: %d\n",
             getpid());
+    	fflush(g_logFile);
 #endif
 
         // init environment
@@ -332,6 +334,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
 #ifdef  TEST
         fprintf(g_logFile, "initClient: socket opened\n");
+    	fflush(g_logFile);
 #endif
 
         server_addr.sin_family= AF_INET;
@@ -371,8 +374,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         m_protocolNegoTimer.Stop();
 
         // Fix
-        // m_oServices.initFileServices(session& session, RSAKey* pPolicy, safeChannel* pSafeChannel);
-        m_oServices.initFileServices(m_clientSession, NULL, NULL);
+        m_oServices.initFileServices(&m_clientSession, ppolicyKey, &m_fc);
 
 
 #ifdef TEST

@@ -195,6 +195,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
 #ifdef TEST
     fprintf(g_logFile, "Response getdata\n");
     printMe();
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -288,6 +289,7 @@ bool  Response::getDatafromDoc(char* szResponse)
 
 #ifdef TEST
     fprintf(g_logFile, "Response::getDatafromDoc\n%s\n", szResponse);
+    fflush(g_logFile);
 #endif
     if(!doc.Parse(szResponse)) {
         fprintf(g_logFile, "Response::getDatafromDoc: cant parse response\n");
@@ -338,6 +340,7 @@ bool  Response::getDatafromDoc(char* szResponse)
 #ifdef TEST
     fprintf(g_logFile, "Response getdata\n");
     printMe();
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -450,8 +453,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     encryptedFileread   encFile;
 
 #ifdef TEST
-    fprintf(g_logFile, "sendFile: %d %d %d\n", 
-            filesize, datasize, encType);
+    fprintf(g_logFile, "sendFile: %d %d %d\n", filesize, datasize, encType);
     fflush(g_logFile);
 #endif
     if(encType==NOENCRYPT) {

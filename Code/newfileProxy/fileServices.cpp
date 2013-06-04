@@ -442,6 +442,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 #ifdef  TEST
     fprintf(g_logFile, "servercreateResourceonserver\n");
     oReq.printMe();
+    fflush(g_logFile);
 #endif
     // Does owner resource exist?
     if(strlen(oReq.m_szResourceName)>=MAXREQUESTSIZEWITHPAD) {
@@ -460,6 +461,11 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         return false;
     }
     *p= 0; 
+#ifdef  TEST
+    fprintf(g_logFile, "servercreateResourceonserver: looking up %s on %08x\n", 
+            szBuf, m_pMetaData);
+    fflush(g_logFile);
+#endif
     pOwnerResource= m_pMetaData->findResource(szBuf);
     if(pOwnerResource==NULL) {
 #ifdef  TEST
@@ -515,7 +521,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "servercreateResourceonserver: find printcipal %s\n", 
+    fprintf(g_logFile, "servercreateResourceonserver: find principal %s\n", 
             oReq.m_szSubjectName);
     fflush(g_logFile);
 #endif

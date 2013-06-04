@@ -241,7 +241,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
         fprintf(g_logFile, "safesendPacket: bad compute mac error\n");
         return HMACCOMPERROR;
     }
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "MACTHENENCRYPT: %d bytes\n", newMsgSize);
     PrintBytes("Mac:", &plainMessageBlock[newMsgSize], SHA256_DIGESTSIZE_BYTES);
 #endif
@@ -280,7 +280,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
         fprintf(g_logFile, "safesendPacket: bad compute mac error\n");
         return HMACCOMPERROR;
     }
-#ifdef TEST
+#ifdef IOTEST
     fprintf(g_logFile, "ENCRYPTTHENMAC: %d bytes\n", newMsgSize);
     PrintBytes("Mac:", &plainMessageBlock[newMsgSize], SHA256_DIGESTSIZE_BYTES);
 #endif

@@ -249,12 +249,19 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     m_pParent->m_protocolNegoTimer.Stop();
 
 #ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel: about to init guard\n");
+    fprintf(g_logFile, "theServiceChannel::serviceChannel: about to init fileServices\n");
     fflush(g_logFile);
 #endif
 
+    if(!m_fileServices.initFileServices(&m_serverSession, (RSAKey*)oCert.getSubjectKeyInfo(),
+                            &m_pParent->m_tcHome, m_pParent->m_encType, 
+                            pMetaData, pSafeChannel)) {
+        throw("theServiceChannel::serviceChannel: can't init fileServices\n");
+    }
+
+
 #ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel: after init guard\n");
+    fprintf(g_logFile, "theServiceChannel::serviceChannel: after init fileServices\n");
     fflush(g_logFile);
 #endif
 

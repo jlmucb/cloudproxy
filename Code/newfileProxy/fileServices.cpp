@@ -67,6 +67,7 @@ fileServices::fileServices()
     m_pMetaData= NULL;
     m_pSession= NULL;
 #endif
+    m_ppolicyCert= NULL;
     m_pPolicy= NULL;
     m_szPrefix= strdup("//www.manferdelli.com/Gauss/");
     m_pSafeChannel= NULL;
@@ -87,21 +88,25 @@ fileServices::~fileServices()
 //  Server services
 
 
-bool fileServices::initFileServices(session* psession, RSAKey* pPolicy, 
+bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCert,
                                     taoEnvironment* pTaoEnv, 
                                     int encType, metaData* pMeta,
                                     safeChannel* pSafeChannel)
 {
 #ifdef TEST
     fprintf(g_logFile, "fileServices::initFileServices for Server\n");
+    fprintf(g_logFile, 
+      "session: %08x, policyCert: %08x, tao: %08x, encType: %d, meta: %08x, channel: %08x\n",
+      psession, ppolicyCert, pTaoEnv, encType, pMeta, pSafeChannel);
     fflush(g_logFile);
 #endif
-    if(pPolicy==NULL) {
-        fprintf(g_logFile, "fileServices::initFileServices: no policy principal\n");
+    if(ppolicyCert==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no policy principal cert\n");
         return false;
     }
-    m_pPolicy= pPolicy;
-    if(m_pTaoEnv==NULL) {
+    m_ppolicyCert= ppolicyCert;
+    m_pPolicy= (RSAKey*)ppolicyCert->getSubjectKeyInfo();
+    if(pTaoEnv==NULL) {
         fprintf(g_logFile, "fileServices::initFileServices: no Tao\n");
         return false;
     }
@@ -131,7 +136,7 @@ bool fileServices::initFileServices(session* psession, RSAKey* pPolicy,
     fflush(g_logFile);
 #endif
      if(!m_guard.m_fValid) {
-        if(!m_guard.initGuard(pPolicy, pMeta)) {
+        if(!m_guard.initGuard(m_pPolicy, pMeta)) {
             fprintf(g_logFile,
                     "theServiceChannel::serviceChannel: initAccessGuard returned false\n");
             return false;
@@ -485,9 +490,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         }
 
         // owner is the policy principal
-#if 0
-        pOwnerPrincipal= g_policyAccessPrincipal;
-#endif
+        pOwnerPrincipal= m_ppolicyCert;
         if(pOwnerPrincipal==NULL) {
             fprintf(g_logFile, "servercreateResourceonserver: can't get owner principal\n");
             return false;
@@ -754,18 +757,19 @@ bool fileServices::serverdeleteResource(Request& oReq,
 //  Client fileServices
 
 
-bool fileServices::initFileServices(session* psession, RSAKey* pPolicy,
+bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCert,
                                     safeChannel* pSafeChannel)
 {
 #ifdef TEST
     fprintf(g_logFile, "fileServices::initFileServices for Client\n");
     fflush(g_logFile);
 #endif
-    if(pPolicy==NULL) {
-        fprintf(g_logFile, "fileServices::initFileServices: no policy principal\n");
+    if(ppolicyCert==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no policy principal cert\n");
         return false;
     }
-    m_pPolicy= pPolicy;
+    m_ppolicyCert= ppolicyCert;
+    m_pPolicy= (RSAKey*) ppolicyCert->getSubjectKeyInfo();
     if(pSafeChannel==NULL ){
         fprintf(g_logFile, "fileServices::initFileServices: no safeChannel\n");
         return false;

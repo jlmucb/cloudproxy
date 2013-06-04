@@ -104,6 +104,7 @@ fileClient::fileClient ()
     m_uPad= 0;
     m_uHmac= 0;
     m_sizeKey= SMALLKEYSIZE;
+    m_fpolicyCertValid= false;
 }
 
 
@@ -348,13 +349,13 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
             throw( "fileClient::Init: Can't connect");
 
         // this section should move to the tao
-        PrincipalCert   oCert;    
-        if(!oCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) 
+        if(!m_opolicyCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) 
           throw("fileClient::Init:: Can't init policy cert 1\n");
-        if(!oCert.parsePrincipalCertElements())
+        if(!m_opolicyCert.parsePrincipalCertElements())
           throw("fileClient::Init:: Can't init policy key 2\n");
 
-        RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
+    	m_fpolicyCertValid= true;
+        RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
 
         // m_tcHome.m_policyKeyValid must be true
         if(!m_clientSession.clientInit(reinterpret_cast<char*>(m_tcHome.m_policyKey), 
@@ -374,7 +375,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         m_protocolNegoTimer.Stop();
 
         // Fix
-        m_oServices.initFileServices(&m_clientSession, ppolicyKey, &m_fc);
+        m_oServices.initFileServices(&m_clientSession, &m_opolicyCert, &m_fc);
 
 
 #ifdef TEST

@@ -50,6 +50,9 @@ class fileClient {
 public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
+
+    bool                m_fpolicyCertValid;
+    PrincipalCert       m_opolicyCert;    
     fileServices        m_oServices;
 
     bool                m_fEncryptFiles;

@@ -207,25 +207,14 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     int     n= 0;
 
 #ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::initserviceChannel\n");
+    fprintf(g_logFile, "theServiceChannel::initserviceChannel(%08x, %08x\n",
+            pMetaData, pSafeChannel);
     fflush(g_logFile);
 #endif
 
     m_serverState= INITSTATE;
 
-    // this section should move to the tao
-    PrincipalCert   oCert;
-    if(!oCert.init(reinterpret_cast<char*>(m_pParent->m_tcHome.m_policyKey))) {
-        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
-        return false;
-    }
-    if(!oCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
-        return false;
-    }
-
-    RSAKey* ppolicyKey= (RSAKey*)oCert.getSubjectKeyInfo();
-
+    RSAKey* ppolicyKey= (RSAKey*)m_pParent->m_opolicyCert.getSubjectKeyInfo();
 
     // Initialize program private key and certificate for session
     if(!m_serverSession.serverInit(reinterpret_cast<char*>(m_pParent->m_tcHome.m_policyKey),
@@ -253,9 +242,10 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     fflush(g_logFile);
 #endif
 
-    if(!m_fileServices.initFileServices(&m_serverSession, (RSAKey*)oCert.getSubjectKeyInfo(),
-                            &m_pParent->m_tcHome, m_pParent->m_encType, 
-                            pMetaData, pSafeChannel)) {
+    if(!m_fileServices.initFileServices(&m_serverSession, 
+                                        &(m_pParent->m_opolicyCert),
+                                        &(m_pParent->m_tcHome), m_pParent->m_encType, 
+                                        pMetaData, pSafeChannel)) {
         throw("theServiceChannel::serviceChannel: can't init fileServices\n");
     }
 
@@ -274,7 +264,7 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
         m_pParent->resetTimers();
 #if 1
         // temporary
-    	fflush(g_logFile);
+        fflush(g_logFile);
         return false;
 #endif
     }
@@ -346,6 +336,7 @@ fileServer::fileServer()
     m_uPad= 0;
     m_uHmac= 0;
     m_sizeKey= SMALLKEYSIZE;
+    m_fpolicyCertValid= false;
 }
 
 
@@ -569,6 +560,17 @@ bool fileServer::initServer(const char* configDirectory)
             m_encType= NOENCRYPT;
         }
 
+        // this section should move to the tao?
+        if(!m_opolicyCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
+            fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
+            return false;
+        }
+        if(!m_opolicyCert.parsePrincipalCertElements()) {
+            fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
+            return false;
+        }
+        m_fpolicyCertValid= true;
+
         // Initialize resource and principal tables
         if(!m_oMetaData.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "fileServer", m_encType, m_fileKeys))
@@ -689,6 +691,7 @@ bool fileServer::server()
             poSc->m_pParent= this;
             poSc->m_fdChannel= newfd;
             poSc->m_myPositionInParent= i;
+            poSc->m_pMetaData= &m_oMetaData;
 #ifdef TEST
             fprintf(g_logFile, "fileServer: slot %d, about to pthread_create\n", i);
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);

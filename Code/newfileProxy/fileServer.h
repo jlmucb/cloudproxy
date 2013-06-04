@@ -59,6 +59,9 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
+    bool                m_fpolicyCertValid;
+    PrincipalCert       m_opolicyCert;    
+
 
     //    Keys for file encryption 
     bool                m_fEncryptFiles;

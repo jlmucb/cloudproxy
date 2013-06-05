@@ -142,6 +142,8 @@ SignedAssertion::SignedAssertion()
     m_szPrincipalName= NULL;
     m_fSigValuesValid= false;
     m_pAssertion= NULL;
+    m_pSubjectKeyInfo= NULL;
+
 }
 
 
@@ -242,9 +244,32 @@ void  SignedAssertion::printMe()
         fprintf(g_logFile, "Signed assertion signature valid\n");
     else
         fprintf(g_logFile, "Signed assertion signature invalid\n");
-    fprintf(g_logFile, "Signature: %s\n", m_szSignature);
-    fprintf(g_logFile, "Signed Info: %s\n", m_szSignedInfo);
-    fprintf(g_logFile, "SignatureValue: %s\n", m_szSignatureValue);
+    if(m_fSigValuesValid)
+    	fprintf(g_logFile, "Signature: %s\n", m_szSignature);
+    if(m_fSigValuesValid)
+    	fprintf(g_logFile, "Signed Info: %s\n", m_szSignedInfo);
+    else
+    if(m_fSigValuesValid)
+    	fprintf(g_logFile, "SignatureValue: %s\n", m_szSignatureValue);
+    else
+    if(m_szSignatureMethod!=NULL)
+    	fprintf(g_logFile, "SignatureMethod: %s\n", m_szSignatureMethod);
+    else
+    if(m_szCanonicalizationMethod!=NULL)
+    	fprintf(g_logFile, "CanonicalizationMethod: %s\n", m_szCanonicalizationMethod);
+    else
+    	fprintf(g_logFile, "SignatureMethod: NULL\n");
+    if(m_szPrincipalName!=NULL)
+    	fprintf(g_logFile, "PrincipalName: %s\n", m_szPrincipalName);
+    else
+    	fprintf(g_logFile, "PrincipalName: NULL\n");
+    if(m_szRevocationInfo!=NULL)
+    	fprintf(g_logFile, "Revocation: %s\n", m_szRevocationInfo);
+    else
+    	fprintf(g_logFile, "Revocation: NULL\n");
+    fprintf(g_logFile, "SignerKeyInfo: %08x\n", m_pSignerKeyInfo);
+    fprintf(g_logFile, "SubjectKeyInfo: %08x\n", m_pSubjectKeyInfo);
+    fprintf(g_logFile, "m_pAssertion: %08x\n", m_pAssertion);
 }
 #endif
 
@@ -500,6 +525,10 @@ char*    SignedAssertion::getSignatureAlgorithm()
 
 KeyInfo*    SignedAssertion::getSubjectKeyInfo()
 {
+#ifdef TEST
+    fprintf(g_logFile, "SignedAssertion::getSubjectKeyInfo: %08x\n", m_pSubjectKeyInfo);
+    fflush(g_logFile);
+#endif
     return m_pSubjectKeyInfo;
 }
 

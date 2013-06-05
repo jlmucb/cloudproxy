@@ -44,6 +44,9 @@ public:
     ~Assertion();
 
     bool   parseMe(const char* szAssert);
+#ifdef TEST
+    void   printMe();
+#endif
 };
 
 

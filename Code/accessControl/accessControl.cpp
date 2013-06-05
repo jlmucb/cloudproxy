@@ -291,6 +291,7 @@ bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta)
 bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
 {
     resource*           pResource= NULL;
+    PrincipalCert*      pSubjectCert= NULL;
     RSAKey*             pSubjectKey= NULL;
     SignedAssertion*    pAssert= NULL;
     int                 i;
@@ -374,37 +375,58 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
     pAssert= (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[0]->m_rgEvidence[0];
+    if(!pAssert->parseAssertion()) {
+        fprintf(g_logFile, "permitAccess: cant parse signed assertion\n");
+        return false;
+    }
+
 #ifdef TEST
-    fprintf(g_logFile, "permitAccess: position 3\n");
+    fprintf(g_logFile, "permitAccess: examining assertion\n");
     pAssert->printMe();
     fflush(g_logFile);
 #endif
 
+    if(pAssert->m_pAssertion==NULL) {
+        fprintf(g_logFile, "permitAccess: Rule is NULL\n");
+        return false;
+    }
+
     // subjects of top grant must be channel principals
-    pSubjectKey= (RSAKey*)((SignedAssertion*)pAssert->getSubjectKeyInfo());
+    char* szSubj= pAssert->getGrantSubject();
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: looking up subject %s, %08lx\n", szSubj, m_pMetaData);
+    fflush(g_logFile);
+#endif
+    pSubjectCert= m_pMetaData->findPrincipal(szSubj);
+    if(pSubjectCert==NULL)  {
+        fprintf(g_logFile, "permitAccess: pSubjectCert is NULL\n");
+        return false;
+    }
+    pSubjectKey= (RSAKey*)(pSubjectCert->getSubjectKeyInfo());
     if(pSubjectKey==NULL)  {
         fprintf(g_logFile, "permitAccess: pSubject is NULL\n");
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "permitAccess: position 3\n");
+    fprintf(g_logFile, "permitAccess: Assertion, got subject key\n");
     pSubjectKey->printMe();
     fflush(g_logFile);
 #endif
     for(i=0; i<m_numCurrentPrincipals; i++) {
 #ifdef TEST
-    	fprintf(g_logFile, "permitAccess: named principal\n");
-    	((RSAKey*)((RSAKey*)m_myPrincipals[i]->getSubjectKeyInfo()))->printMe();
-    	fflush(g_logFile);
+        fprintf(g_logFile, "permitAccess: named principal\n");
+        ((RSAKey*)(m_myPrincipals[i]->getSubjectKeyInfo()))->printMe();
+        fflush(g_logFile);
 #endif
         if(sameRSAKey(pSubjectKey, (RSAKey*)m_myPrincipals[i]->getSubjectKeyInfo()))
             break;
     }
     if(i==m_numCurrentPrincipals) {
-        fprintf(g_logFile, "permitAccess: grantee not represented principal\n");
+        fprintf(g_logFile, "permitAccess: grantee not represented principal %d\n", 
+                m_numCurrentPrincipals);
 #ifdef TEST
-    	fprintf(g_logFile, "permitAccess: position 4\n");
-    	fflush(g_logFile);
+        fprintf(g_logFile, "permitAccess: position 4\n");
+        fflush(g_logFile);
 #endif
         return false;
     }

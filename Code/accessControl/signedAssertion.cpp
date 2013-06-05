@@ -80,18 +80,28 @@ Assertion::Assertion()
 Assertion::~Assertion()
 {
     if(m_szSubject!=NULL) {
-	free(m_szSubject);
-	m_szSubject= NULL;
+        free(m_szSubject);
+        m_szSubject= NULL;
     }
     if(m_szRight!=NULL) {
-	free(m_szRight);
-	m_szRight= NULL;
+        free(m_szRight);
+        m_szRight= NULL;
     }
     if(m_szObject!=NULL) {
-	free(m_szObject);
-	m_szObject= NULL;
+        free(m_szObject);
+        m_szObject= NULL;
     }
 }
+
+
+#ifdef TEST
+void Assertion::printMe()
+{
+    fprintf(g_logFile, "Assertion: %s %s %s\n",
+            m_szSubject, m_szRight, m_szObject);
+
+}
+#endif
 
 
 bool Assertion::parseMe(const char* szAssert)
@@ -100,6 +110,10 @@ bool Assertion::parseMe(const char* szAssert)
     const char*     szTok= NULL;
     int             n;
 
+#ifdef TEST
+    fprintf(g_logFile, "Assertion::parseMe: %s\n", szAssert);
+    fflush(g_logFile);
+#endif
     n= nextToken(szAssert, &szTok);
     if(n<0 || n>=512)
         return false;
@@ -113,7 +127,7 @@ bool Assertion::parseMe(const char* szAssert)
         return false;
     memcpy(szBuf, szTok, n); 
     szBuf[n]= '\0';
-    szAssert+= n;
+    szAssert+= n+1;
     m_szRight= strdup(szBuf);
 
     n= nextToken(szAssert, &szTok);
@@ -174,11 +188,12 @@ bool  SignedAssertion::parseAssertion()
     TiXmlNode*  pAssertion= NULL;
     const char* szAssertion= NULL;
     
-    if(m_pRootElement==NULL) {
 #ifdef TEST
-        fprintf(g_logFile, "SignedAssertion::parseAssertion: rootElement is NULL\n");
-        fflush(g_logFile);
+    fprintf(g_logFile, "SignedAssertion::parseAssertion\n");
+    fflush(g_logFile);
 #endif
+    if(m_pRootElement==NULL) {
+        fprintf(g_logFile, "SignedAssertion::parseAssertion: rootElement is NULL\n");
         return NULL;
     }
     // make sure it's in signedinfo
@@ -202,15 +217,27 @@ bool  SignedAssertion::parseAssertion()
         fprintf(g_logFile, "SignedAssertion::parseAssertion: Cant find Assertion\n");
         return false;
     }
+
     // SignedGrant in ds:SignedInfo
     if(pAssertion==NULL || pAssertion->FirstChild()==NULL || pAssertion->FirstChild()==NULL) {
         return false;
     }
     szAssertion= pAssertion->FirstChild()->Value();
+#ifdef TEST
+    fprintf(g_logFile, "SignedAssertion::parseAssertion: about to parse rule\n%s\n",
+            szAssertion);
+    fflush(g_logFile);
+#endif
     // parse it
-
-    // Fix
-   UNUSEDVAR(szAssertion);
+    m_pAssertion= new Assertion();
+    if(!m_pAssertion->parseMe(szAssertion)) {
+    fprintf(g_logFile, "SignedAssertion::parseAssertion: cant parse rule\n");
+    return false;
+    }
+#ifdef TEST
+    m_pAssertion->printMe();
+    fflush(g_logFile);
+#endif
     return true;
 }
 
@@ -245,28 +272,33 @@ void  SignedAssertion::printMe()
     else
         fprintf(g_logFile, "Signed assertion signature invalid\n");
     if(m_fSigValuesValid)
-    	fprintf(g_logFile, "Signature: %s\n", m_szSignature);
+        fprintf(g_logFile, "Signature: %s\n", m_szSignature);
     if(m_fSigValuesValid)
-    	fprintf(g_logFile, "Signed Info: %s\n", m_szSignedInfo);
+        fprintf(g_logFile, "Signed Info: %s\n", m_szSignedInfo);
     else
     if(m_fSigValuesValid)
-    	fprintf(g_logFile, "SignatureValue: %s\n", m_szSignatureValue);
+        fprintf(g_logFile, "SignatureValue: %s\n", m_szSignatureValue);
     else
     if(m_szSignatureMethod!=NULL)
-    	fprintf(g_logFile, "SignatureMethod: %s\n", m_szSignatureMethod);
+        fprintf(g_logFile, "SignatureMethod: %s\n", m_szSignatureMethod);
     else
     if(m_szCanonicalizationMethod!=NULL)
-    	fprintf(g_logFile, "CanonicalizationMethod: %s\n", m_szCanonicalizationMethod);
+        fprintf(g_logFile, "CanonicalizationMethod: %s\n", m_szCanonicalizationMethod);
     else
-    	fprintf(g_logFile, "SignatureMethod: NULL\n");
+        fprintf(g_logFile, "SignatureMethod: NULL\n");
     if(m_szPrincipalName!=NULL)
-    	fprintf(g_logFile, "PrincipalName: %s\n", m_szPrincipalName);
+        fprintf(g_logFile, "PrincipalName: %s\n", m_szPrincipalName);
     else
-    	fprintf(g_logFile, "PrincipalName: NULL\n");
+        fprintf(g_logFile, "PrincipalName: NULL\n");
     if(m_szRevocationInfo!=NULL)
-    	fprintf(g_logFile, "Revocation: %s\n", m_szRevocationInfo);
+        fprintf(g_logFile, "Revocation: %s\n", m_szRevocationInfo);
     else
-    	fprintf(g_logFile, "Revocation: NULL\n");
+        fprintf(g_logFile, "Revocation: NULL\n");
+    if(m_pAssertion!=NULL)
+        m_pAssertion->printMe();
+    else
+        fprintf(g_logFile, "No assertions\n");
+
     fprintf(g_logFile, "SignerKeyInfo: %08x\n", m_pSignerKeyInfo);
     fprintf(g_logFile, "SubjectKeyInfo: %08x\n", m_pSubjectKeyInfo);
     fprintf(g_logFile, "m_pAssertion: %08x\n", m_pAssertion);
@@ -281,7 +313,7 @@ char* SignedAssertion::getGrantSubject()
             return NULL;
         }
     }
-    if(m_pAssertion==NULL)
+    if(m_pAssertion!=NULL)
         return m_pAssertion->m_szSubject;
     return NULL;
 }
@@ -294,7 +326,7 @@ char* SignedAssertion::getGrantRight()
             return NULL;
         }
     }
-    if(m_pAssertion==NULL)
+    if(m_pAssertion!=NULL)
         return m_pAssertion->m_szRight;
     return NULL;
 }
@@ -307,7 +339,7 @@ char* SignedAssertion::getGrantObject()
             return NULL;
         }
     }
-    if(m_pAssertion==NULL)
+    if(m_pAssertion!=NULL)
         return m_pAssertion->m_szObject;
     return NULL;
 }

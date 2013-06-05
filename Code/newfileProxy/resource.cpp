@@ -294,6 +294,10 @@ void  resource::printMe()
 
 bool resource::isAnOwner(PrincipalCert* pSubject)
 {
+#ifdef TEST
+    fprintf(g_logFile, "resource::isAnOwner(%08x)\n", pSubject);
+    fflush(g_logFile);
+#endif
     return false;
 }
 

@@ -315,6 +315,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     time(&now);
     pt= localtime(&now);
 
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: got time\n");
+    fflush(g_logFile);
+#endif
     // PrincipalCerts should have been validated by now
     pResource= m_pMetaData->findResource(req.m_szResource);
     if(pResource==NULL) {
@@ -322,6 +326,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
 
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: got resource\n");
+    fflush(g_logFile);
+#endif
     // are any channel keys the owner?
     for(i=0;i<m_numCurrentPrincipals;i++) {
         if(pResource->isAnOwner(m_myPrincipals[i])) {
@@ -351,6 +359,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     // parse evidence
     evidenceCollection  oEvidenceCollection;
 
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: position 1\n");
+    fflush(g_logFile);
+#endif
     if(!oEvidenceCollection.parseEvidenceCollection(szEvidence)) {
         fprintf(g_logFile, "permitAccess: Can't parse Evidence list\n");
         return false;
@@ -361,6 +373,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
 
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: position 2\n");
+    fflush(g_logFile);
+#endif
     if(oEvidenceCollection.m_iNumEvidenceLists<1 || 
             oEvidenceCollection.m_rgiCollectionTypes[0]!=SIGNEDGRANT) {
         fprintf(g_logFile, "permitAccess: No Signed grant\n");
@@ -368,6 +384,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     }
     pAssert= (SignedAssertion*) oEvidenceCollection.m_rgCollectionList[0]->m_rgEvidence[0];
 
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: position 3\n");
+    fflush(g_logFile);
+#endif
     // subjects of top grant must be channel principals
     pSubjectKey= (RSAKey*)pAssert->getSubjectKeyInfo();
     for(i=0; i<m_numCurrentPrincipals; i++) {
@@ -379,6 +399,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
 
+#ifdef TEST
+    fprintf(g_logFile, "permitAccess: position 4\n");
+    fflush(g_logFile);
+#endif
     // top level must name resource and verb
     if(!includesRight(req.m_szRequest, pAssert->getGrantRight())) {
 #ifdef TEST
@@ -396,7 +420,8 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "permitAccess: Evaluating assertion chain of %d length\n", m_iNumAssertions);
+    fprintf(g_logFile, "permitAccess: Evaluating assertion chain of %d length\n", 
+            m_iNumAssertions);
     fflush(g_logFile);
 #endif
     // succeed when we hit owner

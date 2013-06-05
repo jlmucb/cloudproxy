@@ -93,6 +93,8 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
                                     int encType, metaData* pMeta,
                                     safeChannel* pSafeChannel)
 {
+    int     i;
+
 #ifdef TEST
     fprintf(g_logFile, "fileServices::initFileServices for Server\n");
     fprintf(g_logFile, 
@@ -100,6 +102,7 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
       psession, ppolicyCert, pTaoEnv, encType, pMeta, pSafeChannel);
     fflush(g_logFile);
 #endif
+
     if(ppolicyCert==NULL) {
         fprintf(g_logFile, "fileServices::initFileServices: no policy principal cert\n");
         return false;
@@ -130,7 +133,19 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
     m_pSafeChannel= pSafeChannel;
     m_encType= encType;
 
-    // initialize guard
+    // add channel principals to table
+    for(i=0; i<psession->m_iNumPrincipals; i++) {
+#ifdef TEST
+        fprintf(g_logFile, "fileServices::initFileServices, adding principal %s\n",
+                psession->m_rgPrincipalCerts[i]->m_szPrincipalName);
+        fflush(g_logFile);
+#endif
+        if(!m_pMetaData->addPrincipal(psession->m_rgPrincipalCerts[i])) {
+            fprintf(g_logFile, "fileServices::initFileServices: cant add principalssafeChannel\n");
+        }
+    }
+
+    // init
 #ifdef TEST
     fprintf(g_logFile, "fileServices::initFileServices, initializing guard\n");
     fflush(g_logFile);
@@ -180,7 +195,7 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
     *p= 0; 
 
     oAR.m_szSubject= strdup(oReq.m_szSubjectName);
-    // oAR.m_ifileServicesType= m_ifileServicesType;
+    oAR.m_szRequest= (char*)"create";
     oAR.m_szResource= strdup(szBuf);
     fAllowed= m_guard.permitAccess(oAR, oReq.m_szEvidence);
     if(!fAllowed) {
@@ -277,7 +292,7 @@ bool  fileServices::validateRemoveOwnerRequest(Request& oReq, char** pszFile, re
 bool  fileServices::validateRequest(Request& oReq, char** pszFile, resource** ppResource)
 {
 #ifdef TEST
-    fprintf(g_logFile, "\nvalidatefileServices\n");
+    fprintf(g_logFile, "\nvalidateRequest\n");
     fflush(g_logFile);
 #endif
 

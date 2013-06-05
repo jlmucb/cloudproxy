@@ -88,7 +88,8 @@ public:
     bool        includesRight(const char* szRequested, const char* szGranted);
     bool        includesObject(const char* szRequested, const char* szGranted);
 
-    bool        initGuard(RSAKey* pPolicy, metaData* pMeta);
+    bool        initGuard(RSAKey* pPolicy, metaData* pMeta, int numPrincipals, 
+                          PrincipalCert** rgPrinc);
     bool        permitAccess(accessRequest& req, const char* szEvidence);
     int         checkPermitChain(resource* pResource, tm& pt,
                                  SignedAssertion* pAssert1, 

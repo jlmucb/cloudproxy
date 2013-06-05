@@ -108,6 +108,27 @@ u32 verbFlag(const char* pVerbName)
    if(strcmp(pVerbName, "speaksfor")==0)
         return SPEAKSFOR;
 
+   if(strcmp(pVerbName, "maysay")==0)
+        return SAYS;
+
+   if(strcmp(pVerbName,"read")==0)
+        return MAYREAD;
+
+   if(strcmp(pVerbName, "write")==0)
+        return MAYWRITE;
+
+   if(strcmp(pVerbName, "create")==0)
+        return MAYCREATE;
+
+   if(strcmp(pVerbName, "delete")==0)
+        return MAYDELETE;
+
+   if(strcmp(pVerbName, "own")==0)
+        return MAYOWN;
+
+   if(strcmp(pVerbName, "speaksfor")==0)
+        return SPEAKSFOR;
+
    if(strcmp(pVerbName, "says")==0)
         return SAYS;
 
@@ -180,6 +201,10 @@ accessGuard::~accessGuard()
 
 bool accessGuard::includesSubject(const char* szRequested, const char* szGranted)
 {
+#ifdef TEST
+    fprintf(g_logFile, "includesSUbject((%s, %s)\n", szRequested, szGranted);
+    fflush(g_logFile);
+#endif
     if(szRequested==NULL || szGranted==NULL)
         return false;
     if(strcmp(szRequested, szGranted)==0)
@@ -194,8 +219,13 @@ bool accessGuard::includesRight(const char* szRequested, const char* szGranted)
         return false;
     u32 uVerb1= verbFlag(szRequested);
     u32 uVerb2= verbFlag(szGranted);
+#ifdef TEST
+    fprintf(g_logFile, "includesRight((%s, %s) %x %x\n", szRequested, szGranted, uVerb1, uVerb2);
+    fflush(g_logFile);
+#endif
 
-    if(uVerb2==(uVerb1|MAYDELEGATE))
+    // Fix!
+    if(uVerb1==uVerb2 || uVerb2==(uVerb1|MAYDELEGATE))
         return true;
     return false;
 }
@@ -203,6 +233,10 @@ bool accessGuard::includesRight(const char* szRequested, const char* szGranted)
 
 bool accessGuard::includesObject(const char* szRequested, const char* szGranted)
 {
+#ifdef TEST
+    fprintf(g_logFile, "includesObject((%s, %s)\n", szRequested, szGranted);
+    fflush(g_logFile);
+#endif
     if(szRequested==NULL || szGranted==NULL)
         return false;
     if(strcmp(szRequested, szGranted)==0)
@@ -273,13 +307,20 @@ int accessGuard::checkPermitChain(resource* pResource,
 }
 
 
-bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta)
+bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta, 
+                            int numPrincipals, PrincipalCert** rgPrinc)
 {
+    int i;
 #ifdef TEST  
-    fprintf(g_logFile, "initGuard\n");
+    fprintf(g_logFile, "initGuard %08x %08x %d %08x\n",
+            pPolicy, pMeta, numPrincipals, rgPrinc);
     fflush(g_logFile);
 #endif
-
+    m_numCurrentPrincipals= numPrincipals;
+    m_myPrincipals= new PrincipalCert*[numPrincipals];
+    for(i=0; i<numPrincipals; i++) {
+        m_myPrincipals[i]= rgPrinc[i];
+    }
     // note all principals have been authenticated before they go in
     m_pPolicy= pPolicy;
     m_pMetaData= pMeta;
@@ -295,8 +336,10 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     RSAKey*             pSubjectKey= NULL;
     SignedAssertion*    pAssert= NULL;
     int                 i;
+#if 0
     bool                fRet= false;
     int                 iPermit= 0;
+#endif
     time_t              now;
     tm*                 pt;
 
@@ -312,6 +355,7 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
 
+    UNUSEDVAR(pt);
     time(&now);
     pt= localtime(&now);
 
@@ -424,35 +468,29 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     if(i==m_numCurrentPrincipals) {
         fprintf(g_logFile, "permitAccess: grantee not represented principal %d\n", 
                 m_numCurrentPrincipals);
-#ifdef TEST
-        fprintf(g_logFile, "permitAccess: position 4\n");
-        fflush(g_logFile);
-#endif
         return false;
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "permitAccess: position 4\n");
+    fprintf(g_logFile, "permitAccess: checking rights\n");
     fflush(g_logFile);
 #endif
     // top level must name resource and verb
     if(!includesRight(req.m_szRequest, pAssert->getGrantRight())) {
-#ifdef TEST
         fprintf(g_logFile, "permitAccess: top level grant does not name right\n");
-        fflush(g_logFile);
-#endif
         return false;
     }
     if(!includesObject(req.m_szResource, pAssert->getGrantObject())) {
-#ifdef TEST
         fprintf(g_logFile, "permitAccess: top level grant does not name object\n");
-        fflush(g_logFile);
-#endif
         return false;
     }
 
+    return true;
+
+#if 0
+    // Fix
 #ifdef TEST
-    fprintf(g_logFile, "permitAccess: Evaluating assertion chain of %d length\n", 
+    fprintf(g_logFile, "permitAccess: Evaluating assertion chain of length %d\n", 
             m_iNumAssertions);
     fflush(g_logFile);
 #endif
@@ -479,6 +517,7 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     // clean up
 
     return fRet;
+#endif
 }
 
 

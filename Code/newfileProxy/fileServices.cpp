@@ -134,6 +134,11 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
     m_encType= encType;
 
     // add channel principals to table
+#ifdef TEST
+        fprintf(g_logFile, "fileServices::initFileServices, initializing %d channel principals\n",
+                psession->m_iNumPrincipals);
+        fflush(g_logFile);
+#endif
     for(i=0; i<psession->m_iNumPrincipals; i++) {
 #ifdef TEST
         fprintf(g_logFile, "fileServices::initFileServices, adding principal %s\n",
@@ -151,7 +156,8 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
     fflush(g_logFile);
 #endif
      if(!m_guard.m_fValid) {
-        if(!m_guard.initGuard(m_pPolicy, pMeta)) {
+        if(!m_guard.initGuard(m_pPolicy, pMeta, psession->m_iNumPrincipals, 
+                              psession->m_rgPrincipalCerts)) {
             fprintf(g_logFile,
                     "theServiceChannel::serviceChannel: initAccessGuard returned false\n");
             return false;
@@ -204,7 +210,7 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
     }
 #ifdef  TEST
     fprintf(g_logFile, "permitAccess returns true in createResource adding %s\n", 
-	    oReq.m_szResourceName);
+            oReq.m_szResourceName);
 #endif
 
     pResource= new resource();
@@ -310,8 +316,8 @@ bool  fileServices::validateRequest(Request& oReq, char** pszFile, resource** pp
         fAllowed= validateCreateRequest(oReq, pszFile, ppResource);
     }
     else if(strcmp(oReq.m_szAction, "deleteResource")== 0 ||
-	    strcmp(oReq.m_szAction, "getResource")== 0 ||
-	    strcmp(oReq.m_szAction, "sendResource")== 0) {
+            strcmp(oReq.m_szAction, "getResource")== 0 ||
+            strcmp(oReq.m_szAction, "sendResource")== 0) {
         fAllowed= validateGetSendDeleteRequest(oReq, pszFile, ppResource);
     }
     else if(strcmp(oReq.m_szAction, "addOwner")== 0) {
@@ -685,7 +691,7 @@ bool fileServices::serverchangeownerofResource(Request& oReq,
 // includes delete
 {
     resource*           pResource= NULL;
-    PrincipalCert*    	pPrinc= NULL;
+    PrincipalCert*      pPrinc= NULL;
     char*               szFile= NULL;
 
 #ifdef  TEST

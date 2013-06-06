@@ -286,21 +286,15 @@ int accessGuard::checkPermitChain(resource* pResource,
     const char* szgrantedObject= pAssert2->getGrantObject();
 
     if(!includesSubject(szrequestedSubject, szgrantedSubject)) {
-#ifdef TEST
         fprintf(g_logFile, "checkPermitChain: requesting subject is not in granted subject\n");
-#endif
         return -1;
     }
     if(!includesRight(szrequestedVerb, szgrantedVerb)) {
-#ifdef TEST
         fprintf(g_logFile, "checkPermitChain: requested right is not in granted right\n");
-#endif
         return -1;
     }
     if(!includesObject(szrequestedObject, szgrantedObject)) {
-#ifdef TEST
         fprintf(g_logFile, "checkPermitChain: requested object is not in granted object\n");
-#endif
         return -1;
     }
     return 0;
@@ -359,10 +353,6 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     time(&now);
     pt= localtime(&now);
 
-#ifdef TEST
-    fprintf(g_logFile, "permitAccess: got time\n");
-    fflush(g_logFile);
-#endif
     // PrincipalCerts should have been validated by now
     pResource= m_pMetaData->findResource(req.m_szResource);
     if(pResource==NULL) {
@@ -370,10 +360,6 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
         return false;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "permitAccess: got resource\n");
-    fflush(g_logFile);
-#endif
     // are any channel keys the owner?
     for(i=0;i<m_numCurrentPrincipals;i++) {
         if(pResource->isAnOwner(m_myPrincipals[i])) {
@@ -457,11 +443,6 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     fflush(g_logFile);
 #endif
     for(i=0; i<m_numCurrentPrincipals; i++) {
-#ifdef TEST
-        fprintf(g_logFile, "permitAccess: named principal\n");
-        ((RSAKey*)(m_myPrincipals[i]->getSubjectKeyInfo()))->printMe();
-        fflush(g_logFile);
-#endif
         if(sameRSAKey(pSubjectKey, (RSAKey*)m_myPrincipals[i]->getSubjectKeyInfo()))
             break;
     }
@@ -475,6 +456,7 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     fprintf(g_logFile, "permitAccess: checking rights\n");
     fflush(g_logFile);
 #endif
+
     // top level must name resource and verb
     if(!includesRight(req.m_szRequest, pAssert->getGrantRight())) {
         fprintf(g_logFile, "permitAccess: top level grant does not name right\n");

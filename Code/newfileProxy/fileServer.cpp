@@ -237,23 +237,12 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
         throw("fileServer::Init: protocolNego failed\n");
     m_pParent->m_protocolNegoTimer.Stop();
 
-#ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel: about to init fileServices\n");
-    fflush(g_logFile);
-#endif
-
     if(!m_fileServices.initFileServices(&m_serverSession, 
                                         &(m_pParent->m_opolicyCert),
                                         &(m_pParent->m_tcHome), m_pParent->m_encType, 
                                         pMetaData, pSafeChannel)) {
         throw("theServiceChannel::serviceChannel: can't init fileServices\n");
     }
-
-
-#ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel: after init fileServices\n");
-    fflush(g_logFile);
-#endif
 
     m_serverState= REQUESTSTATE;
     while((n=processRequests())!=0) {
@@ -262,11 +251,6 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
         fflush(g_logFile);
         m_pParent->printTimers(g_logFile);
         m_pParent->resetTimers();
-#if 1
-        // temporary
-        fflush(g_logFile);
-        return false;
-#endif
     }
     m_serverState= SERVICETERMINATESTATE;
 
@@ -361,7 +345,7 @@ fileServer::~fileServer()
 
 bool fileServer::initPolicy()
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "fileServer::initPolicy\n");
     fflush(g_logFile);
 #endif
@@ -531,7 +515,8 @@ bool fileServer::initServer(const char* configDirectory)
             throw "fileServer::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();
-#ifdef TEST
+
+#ifdef TEST1
         fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
         m_tcHome.printData();
 #endif
@@ -539,10 +524,11 @@ bool fileServer::initServer(const char* configDirectory)
         // Initialize file encryption keys
         if(!initFileKeys())
             throw "fileServer::Init: can't init file keys\n";
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "fileServer::Init: after initFileKeys\n");
         m_tcHome.printData();
 #endif
+
         // Init global policy 
         if(!initPolicy())
             throw("fileServer::Init: Cant init policy objects\n");
@@ -578,7 +564,7 @@ bool fileServer::initServer(const char* configDirectory)
         if(!m_oMetaData.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
 
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "initServer has private key and public key\n");
         fflush(g_logFile);
 #endif

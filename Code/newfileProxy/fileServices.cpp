@@ -140,21 +140,12 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
         fflush(g_logFile);
 #endif
     for(i=0; i<psession->m_iNumPrincipals; i++) {
-#ifdef TEST
-        fprintf(g_logFile, "fileServices::initFileServices, adding principal %s\n",
-                psession->m_rgPrincipalCerts[i]->m_szPrincipalName);
-        fflush(g_logFile);
-#endif
         if(!m_pMetaData->addPrincipal(psession->m_rgPrincipalCerts[i])) {
             fprintf(g_logFile, "fileServices::initFileServices: cant add principalssafeChannel\n");
         }
     }
 
     // init
-#ifdef TEST
-    fprintf(g_logFile, "fileServices::initFileServices, initializing guard\n");
-    fflush(g_logFile);
-#endif
      if(!m_guard.m_fValid) {
         if(!m_guard.initGuard(m_pPolicy, pMeta, psession->m_iNumPrincipals, 
                               psession->m_rgPrincipalCerts)) {
@@ -308,9 +299,6 @@ bool  fileServices::validateRequest(Request& oReq, char** pszFile, resource** pp
         return false;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "switching on request type\n");
-#endif
     bool    fAllowed= false;
     if(strcmp(oReq.m_szAction, "createResource")== 0) {
         fAllowed= validateCreateRequest(oReq, pszFile, ppResource);
@@ -487,11 +475,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         return false;
     }
     *p= 0; 
-#ifdef  TEST
-    fprintf(g_logFile, "servercreateResourceonserver: looking up %s on %08x\n", 
-            szBuf, m_pMetaData);
-    fflush(g_logFile);
-#endif
+
     pOwnerResource= m_pMetaData->findResource(szBuf);
     if(pOwnerResource==NULL) {
 #ifdef  TEST
@@ -544,11 +528,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         fprintf(g_logFile, "servercreateResourceonserver: createResource must have subject\n");
         return false;
     }
-#ifdef TEST
-    fprintf(g_logFile, "servercreateResourceonserver: find principal %s\n", 
-            oReq.m_szSubjectName);
-    fflush(g_logFile);
-#endif
+
     pSubject= m_pMetaData->findPrincipal(oReq.m_szSubjectName);
     if(pSubject==NULL) {
         fprintf(g_logFile, "servercreateResourceonserver: Subject principal doesn't exist %s\n", oReq.m_szSubjectName);
@@ -666,7 +646,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
     fflush(g_logFile);
 #endif
     // read file
-    // Fix: get key form entry
+    // Fix: get key from entry
     byte*   key= NULL;
     if(!getFile(*m_pSafeChannel, iWrite, size, size, m_encType, key, encTimer)) {
         fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
@@ -889,11 +869,7 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
         fprintf(g_logFile, "clientcreateResourceonserver: constructRequest returns false\n");
         return false;
     }
-#ifdef  TEST
-    fprintf(g_logFile, "clientcreateResourceonserver, back from construct %08x\n%s\n", 
-            m_pSafeChannel, szBuf);
-    fflush(g_logFile);
-#endif
+
     if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         fprintf(g_logFile, "clientcreateResourceonserver: safesendPacket after constructRequest returns false\n");
         return false;
@@ -932,14 +908,6 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
 #endif
         }
     }
-
-#ifdef TEST
-    // check response
-    if(!success) {
-        fprintf(g_logFile, "clientcreateResourceonserver: response is false\n");
-        oResponse.printMe();
-    }
-#endif
 
     return success;
 }
@@ -1004,10 +972,6 @@ bool fileServices::clientsendResourcetoserver(const char* szSubject,
     // check response
     if(oResponse.m_szAction==NULL || strcmp(oResponse.m_szAction, "accept")!=0) {
         fprintf(g_logFile, "clientsendResourcetoserver: response is false\n");
-#ifdef TEST
-        oResponse.printMe();
-#endif
-        // fprintf(g_logFile, "Error: %s\n", oResponse.szErrorCode);
         return false;
     }
 

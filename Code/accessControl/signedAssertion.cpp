@@ -223,11 +223,7 @@ bool  SignedAssertion::parseAssertion()
         return false;
     }
     szAssertion= pAssertion->FirstChild()->Value();
-#ifdef TEST
-    fprintf(g_logFile, "SignedAssertion::parseAssertion: about to parse rule\n%s\n",
-            szAssertion);
-    fflush(g_logFile);
-#endif
+
     // parse it
     m_pAssertion= new Assertion();
     if(!m_pAssertion->parseMe(szAssertion)) {
@@ -298,10 +294,6 @@ void  SignedAssertion::printMe()
         m_pAssertion->printMe();
     else
         fprintf(g_logFile, "No assertions\n");
-
-    fprintf(g_logFile, "SignerKeyInfo: %08x\n", m_pSignerKeyInfo);
-    fprintf(g_logFile, "SubjectKeyInfo: %08x\n", m_pSubjectKeyInfo);
-    fprintf(g_logFile, "m_pAssertion: %08x\n", m_pAssertion);
 }
 #endif
 

@@ -66,6 +66,7 @@ fileServices::fileServices()
     m_pTaoEnv= NULL;
     m_pMetaData= NULL;
     m_pSession= NULL;
+    m_metadataKey= NULL;
 #endif
     m_ppolicyCert= NULL;
     m_pPolicy= NULL;
@@ -90,8 +91,8 @@ fileServices::~fileServices()
 
 bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCert,
                                     taoEnvironment* pTaoEnv, 
-                                    int encType, metaData* pMeta,
-                                    safeChannel* pSafeChannel)
+                                    int encType, byte* metaFileKey, 
+                                    metaData* pMeta, safeChannel* pSafeChannel)
 {
     int     i;
 
@@ -132,6 +133,11 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
     }
     m_pSafeChannel= pSafeChannel;
     m_encType= encType;
+    if(metaFileKey==NULL) {
+        fprintf(g_logFile, "fileServices::initFileServices: no metadata key\n");
+        return false;
+    }
+    m_metadataKey= metaFileKey;
 
     // add channel principals to table
 #ifdef TEST
@@ -381,7 +387,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     byte        final= 0;
     resource*   pResource= NULL;
     int         encType= 0;
-    byte*       key= NULL;
+    byte*       key= m_metadataKey;
 
 #ifdef  TEST
     fprintf(g_logFile, "serversendResourcetoclient\n");
@@ -534,12 +540,6 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         fprintf(g_logFile, "servercreateResourceonserver: Subject principal doesn't exist %s\n", oReq.m_szSubjectName);
         return false;
     }
-#if 0
-    if(!pSubject->m_fValidated) {
-        fprintf(g_logFile, "servercreateResourceonserver: Subject principal not validated\n");
-        return false;
-    }
-#endif
 
     fError= false;
     // does it already exist?
@@ -600,6 +600,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
     byte        final= 0;
     char*       szOutFile= NULL;
     resource*   pResource= NULL;
+    byte*       key= m_metadataKey;
 
 #ifdef  TEST
     fprintf(g_logFile, "servergetResourcefromclient %d\n", size);
@@ -647,7 +648,6 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
 #endif
     // read file
     // Fix: get key from entry
-    byte*   key= NULL;
     if(!getFile(*m_pSafeChannel, iWrite, size, size, m_encType, key, encTimer)) {
         fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
         close(iWrite);
@@ -794,7 +794,7 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
     int         type= CHANNEL_REQUEST;
     byte        multi=0;
     byte        final= 0;
-    byte*       key= NULL;
+    byte*       key= m_metadataKey;;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
@@ -930,7 +930,7 @@ bool fileServices::clientsendResourcetoserver(const char* szSubject,
     byte        multi=0;
     byte        final= 0;
     int         iRead= 0;
-    byte*       key= NULL;
+    byte*       key= m_metadataKey;;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientsendResourcetoserver(%s, %s)\n", szResourceName, szInFile);

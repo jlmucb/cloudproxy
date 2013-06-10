@@ -53,6 +53,7 @@ public:
 #endif
     safeChannel*    m_pSafeChannel;
     int             m_encType;  
+    byte*           m_metadataKey;
     char*           m_szPrefix;
 
                 fileServices();
@@ -61,7 +62,8 @@ public:
 #ifndef FILECLIENT
     bool        initFileServices(session* session, PrincipalCert* ppolicyCert,
                                  taoEnvironment* pTaoEnv, 
-                                 int encType, metaData* pMeta,
+                                 int encType, byte* metakey, 
+                                 metaData* pMeta,
                                  safeChannel* pSafeChannel);
 #else
     bool        initFileServices(session* session, PrincipalCert* ppolicyCert, safeChannel* pSafeChannel);

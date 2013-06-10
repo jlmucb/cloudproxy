@@ -239,7 +239,8 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
 
     if(!m_fileServices.initFileServices(&m_serverSession, 
                                         &(m_pParent->m_opolicyCert),
-                                        &(m_pParent->m_tcHome), m_pParent->m_encType, 
+                                        &(m_pParent->m_tcHome), 
+                                        m_pParent->m_encType, m_pParent->m_fileKeys, 
                                         pMetaData, pSafeChannel)) {
         throw("theServiceChannel::serviceChannel: can't init fileServices\n");
     }

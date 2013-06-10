@@ -298,6 +298,26 @@ bool resource::isAnOwner(PrincipalCert* pSubject)
     fprintf(g_logFile, "resource::isAnOwner(%08x)\n", pSubject);
     fflush(g_logFile);
 #endif
+    aNode<PrincipalCert>*   pOwnerNode= m_myOwners.pFirst;
+    PrincipalCert*          pOwnerPrincipal= NULL;
+
+    while(pOwnerNode!=NULL) {
+        pOwnerPrincipal= pOwnerNode->pElement;
+        // Fix: Should check key?
+        if(strcmp(pSubject->m_szPrincipalName, pOwnerPrincipal->m_szPrincipalName)==0) {
+#ifdef TEST
+            fprintf(g_logFile, "resource::isAnOwner returns false\n");
+            fflush(g_logFile);
+#endif
+            return true;
+        }
+        pOwnerNode= pOwnerNode->pNext;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "resource::isAnOwner returns false\n");
+    fflush(g_logFile);
+#endif
     return false;
 }
 

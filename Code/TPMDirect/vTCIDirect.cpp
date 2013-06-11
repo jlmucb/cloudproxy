@@ -1163,7 +1163,7 @@ bool tpmStatus::getCompositePCR(u32 loc, byte* pM, unsigned* pSize, byte* buf)
         cb>>= 1;
     }
 
-    if(*pSize<(numPCRs*20)) {
+    if((int)(*pSize)<(numPCRs*20)) {
         fprintf(g_logFile, "getCompositePCR: buffer too small for PCRs\n");
         return false;
     }

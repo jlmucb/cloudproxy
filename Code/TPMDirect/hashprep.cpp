@@ -137,7 +137,7 @@ bool tpm12quoteHash(int sizenonce, byte* nonce,
 
 u32  localityModifier(byte loc)
 {
-    if(loc>=((byte)0) && loc<=((byte)4))
+    if(loc<=((byte)4))
         return ((u32)1)<<loc;
     return (u32)0xff;
 }

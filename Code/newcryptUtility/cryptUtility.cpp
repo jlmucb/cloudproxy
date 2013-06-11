@@ -1532,7 +1532,7 @@ bool validateAssertion(const char* szKey, const char* szReq, const char* szColle
     }
 
     // initialize guard
-    if(!guard.initGuard(pKey, &oMeta)) {
+    if(!guard.initGuard(pKey, &oMeta, 0, NULL)) {
         fprintf(g_logFile, "validateAssertion: can't initialize metadata\n");
         return false;
     }

@@ -386,7 +386,6 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     byte        multi= 0;
     byte        final= 0;
     resource*   pResource= NULL;
-    int         encType= 0;
     byte*       key= m_metadataKey;
 
 #ifdef  TEST
@@ -427,7 +426,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 
     // send file
     // Fix
-    if(!sendFile(*m_pSafeChannel, iRead, filesize, datasize, encType, key, decTimer)) {
+    if(!sendFile(*m_pSafeChannel, iRead, filesize, datasize, m_encType, key, decTimer)) {
         fprintf(g_logFile, "serversendResourcetoclient: sendFile error\n");
         close(iRead);
         return false;
@@ -643,7 +642,8 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
     if (fError) return false;
 
 #ifdef  TEST
-    fprintf(g_logFile, "servergetResourcefromclient getting file, %d\n", size);
+    fprintf(g_logFile, "servergetResourcefromclient getting file %s, size is %d\n", 
+	    szOutFile, size);
     fflush(g_logFile);
 #endif
     // read file
@@ -776,6 +776,7 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
         return false;
     }
     m_pSafeChannel= pSafeChannel;
+    m_encType= NOENCRYPT;
 
     return true;
 }
@@ -832,7 +833,8 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
         return false;
     }
     // Fix: key
-    if(!getFile(*m_pSafeChannel, iWrite, oResponse.m_iResourceLength, oResponse.m_iResourceLength, 
+    if(!getFile(*m_pSafeChannel, iWrite, oResponse.m_iResourceLength, 
+                oResponse.m_iResourceLength, 
                 m_encType, key, encTimer)) {
         fprintf(g_logFile, "clientgetResourcefromserver: Can't get file\n");
         return false;

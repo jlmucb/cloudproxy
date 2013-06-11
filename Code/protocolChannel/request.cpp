@@ -355,6 +355,11 @@ int openFile(const char* szInFile, int* psize)
     struct stat statBlock;
     int         iRead= -1;
 
+#ifdef TEST
+    fprintf(g_logFile, "openFile: %s\n", szInFile);
+    fflush(g_logFile);
+#endif
+
     iRead= open(szInFile, O_RDONLY);
     if(iRead<0) {
         return -1;
@@ -390,7 +395,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     encryptedFilewrite  encFile;
 
 #ifdef TEST
-    fprintf(g_logFile, "getFile %d %d\n", filesize, datasize);
+    fprintf(g_logFile, "getFile %d %d, enc is %d\n", filesize, datasize, encType);
     fflush(g_logFile);
 #endif
 

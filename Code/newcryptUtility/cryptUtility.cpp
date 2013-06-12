@@ -113,7 +113,7 @@ bool GenRSAKey(int size, const char* szOutFile)
 {
     RSAKey* pKey= RSAGenerateKeyPair(size);
     char*   szKeyInfo= pKey->SerializetoString();
-    if(!saveBlobtoFile(szOutFile, (byte*)szKeyInfo, strlen(szKeyInfo)+1))
+    if(!saveBlobtoFile(szOutFile, (byte*)szKeyInfo, strlen(szKeyInfo)))
         return false;
     return true;
 }
@@ -380,7 +380,7 @@ bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, 
         return false;
     }
 
-    if(!saveBlobtoFile(szOutFile, (byte*)szSig, strlen(szSig)+1)) {
+    if(!saveBlobtoFile(szOutFile, (byte*)szSig, strlen(szSig))) {
         fprintf(g_logFile, "Sign: Cant save %s\n", szOutFile);
         return false;
     }
@@ -1001,7 +1001,7 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
             fprintf(g_logFile, "Can't construct signature\n");
             return false;
         }
-        if(!saveBlobtoFile(szOutFile, (byte*)szSignature, strlen(szSignature)+1))
+        if(!saveBlobtoFile(szOutFile, (byte*)szSignature, strlen(szSignature)))
             return false;
 
 #ifdef TEST
@@ -1326,7 +1326,7 @@ bool Encapsulate(const char* szCert, const char* szMetaDataFile,
     }
 
     // write metadata
-    if(!saveBlobtoFile(szMetaDataFile, (byte*)oM.m_szXMLmetadata, strlen(oM.m_szXMLmetadata)+1)) {
+    if(!saveBlobtoFile(szMetaDataFile, (byte*)oM.m_szXMLmetadata, strlen(oM.m_szXMLmetadata))) {
         fprintf(g_logFile, "Encapsulate: cant write metadata %s\n", oM.m_szXMLmetadata);
         fRet= false;
         goto done;

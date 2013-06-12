@@ -30,14 +30,14 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/sha1.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/resource.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/vTCIDirect.o  $(B)/vault.o \
 	    $(B)/tcService.o $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o \
-	    $(B)/hashprep.o $(B)/encryptedblockIO.o
+	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
 
 
 all: $(E)/newtcService.exe
 
 $(E)/newtcService.exe: $(sobjs)
 	@echo "tcService"
-	$(LINK) -o $(E)/tcService.exe $(sobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/newtcService.exe $(sobjs) $(LDFLAGS) -lpthread
 # $(LINK) -o $(E)/tcService.exe $(sobjs) /lib/x86_64-linux-gnu/libprocps.so.0 -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
@@ -54,6 +54,9 @@ $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 
 $(B)/tcService.o: $(S)/tcService.cpp
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o $(B)/tcService.o $(S)/tcService.cpp
+
+$(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/cert.o $(CLM)/cert.cpp
@@ -144,6 +147,9 @@ $(B)/hashprep.o: $(TS)/hashprep.cpp $(TS)/hashprep.h
 
 $(B)/trustedKeyNego.o: $(TH)/trustedKeyNego.cpp $(TH)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(CH) -I$(TH) -c -o $(B)/trustedKeyNego.o $(TH)/trustedKeyNego.cpp
+
+$(B)/channel.o: $(CH)/channel.cpp $(CH)/channel.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(CH) -I$(TH) -c -o $(B)/channel.o $(CH)/channel.cpp
 
 $(B)/encryptedblockIO.o: $(SCC)/encryptedblockIO.cpp $(SCC)/encryptedblockIO.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encryptedblockIO.o $(SCC)/encryptedblockIO.cpp

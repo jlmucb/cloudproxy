@@ -13,6 +13,10 @@ Todo
 
 5. Check for leaks buffer overflows
 
+6. Turn on HASHESDEFINED during operational phase.
+
+7. Add functionality to accessControl checks
+
 ------------------------------------------------------   
 
 6. Hypervisor
@@ -22,7 +26,6 @@ Todo
 
 7. keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
-
 
 8. Fix vTCI to handle TPM owner password
 

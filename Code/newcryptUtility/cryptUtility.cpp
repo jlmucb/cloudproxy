@@ -353,7 +353,7 @@ const char*   szSigTrailer= "</ds:Signature>\n";
 
 bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, const char* szOutFile)
 {
-    char*   szBuf[8192];
+    char    szBuf[8192];
     int     bufLen= 8192;
     RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
 
@@ -367,7 +367,7 @@ bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, 
         return false;
     }
     szBuf[bufLen]= 0;
-    char* szSignedInfo= XMLCanonicalizedString((const char*) szBuf);
+    char* szSignedInfo= XMLCanonicalizedString(szBuf);
     if(szSignedInfo==NULL) {
         fprintf(g_logFile, "Sign: Cant canonicalize signedInfo\n");
         return false;
@@ -390,7 +390,7 @@ bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, 
 
 bool Verify(const char* szKeyFile, const char* szInFile)
 {
-    char*   szBuf[8192];
+    char    szBuf[8192];
     int     bufLen= 8192;
     RSAKey* pKey= (RSAKey*)ReadKeyfromFile(szKeyFile);
 
@@ -481,7 +481,7 @@ bool Seal(const char* szKeyFile, bool fPublic, const char* szDataIn,
         fprintf(g_logFile, "Seal: Cant base64 decode input data\n");
         return false;
     }
-    PrintBytes((char*)"Input data: ", inBuf, size);
+    PrintBytes("Input data: ", inBuf, size);
     u32     keyUse= USEPUBLIC;
     if(fPublic)
         keyUse= USEPUBLIC;
@@ -492,7 +492,7 @@ bool Seal(const char* szKeyFile, bool fPublic, const char* szDataIn,
         fprintf(g_logFile, "Seal: Cant RSAUnseal\n");
         return false;
     }
-    PrintBytes((char*)"Sealed data: ", outBuf, outsize);
+    PrintBytes("Sealed data: ", outBuf, outsize);
     if(!toBase64(outsize, outBuf, &strSize, szOut)) {
         fprintf(g_logFile, "Seal: Cant base64 encode sealed data\n");
         return false;
@@ -525,7 +525,7 @@ bool Unseal(const char* szKeyFile, bool fPublic, const char* szDataIn, const cha
         fprintf(g_logFile, "Unseal: Cant base64 decode sealed data\n");
         return false;
     }
-    PrintBytes((char*)"Sealed data: ", inBuf, size);
+    PrintBytes("Sealed data: ", inBuf, size);
     u32     keyUse= USEPUBLIC;
     if(fPublic)
         keyUse= USEPUBLIC;
@@ -536,7 +536,7 @@ bool Unseal(const char* szKeyFile, bool fPublic, const char* szDataIn, const cha
         fprintf(g_logFile, "Unseal: Cant RSAUnseal\n");
         return false;
     }
-    PrintBytes((char*)"Unsealed data: ", outBuf, outsize);
+    PrintBytes("Unsealed data: ", outBuf, outsize);
     if(!toBase64(outsize, outBuf, &strSize, szOut)) {
         fprintf(g_logFile, "Unseal: Cant base64 encode sealed data\n");
         return false;
@@ -604,7 +604,7 @@ bool MakePolicyFile(const char* szKeyFile, const char* szOutFile, const char* sz
     fprintf(out, "0x00\n};\n\n");
     fprintf(out, "\nint    g_szpolicykeySize= %d;\n\n", iFileSize+1);
     fprintf(out, "\nint    g_szProgramNameSize= %d;\n", (int) strlen(szProgramName)+1);
-    fprintf(out, "\nchar*  g_szProgramName= \"%s\";\n\n", szProgramName);
+    fprintf(out, "\nconst char*  g_szProgramName= \"%s\";\n\n", szProgramName);
     
     fclose(out);
     close(iRead);
@@ -1127,14 +1127,14 @@ bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasu
     fprintf(g_logFile, "Quote: %s\n", szToQuote);
     fprintf(g_logFile, "Measurement: %s\n", szMeasurement);
     szMeasurement[strlen(szMeasurement)-1]= 0;
-    PrintBytes((char*)"string: ", (byte*)szMeasurement, strlen(szMeasurement));
+    PrintBytes("string: ", (byte*)szMeasurement, strlen(szMeasurement));
 
     hostedMeasurementSize= 64;
     if(!fromBase64(strlen(szMeasurement), szMeasurement, &hostedMeasurementSize, hostedMeasurement)) {
         fprintf(g_logFile, "Cant base64 decode measurement\n");
         return false;
     }
-    PrintBytes((char*)"Code Digest: ", hostedMeasurement, hostedMeasurementSize);
+    PrintBytes("Code Digest: ", hostedMeasurement, hostedMeasurementSize);
 
     byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
     byte        rgToSign[512];
@@ -1148,7 +1148,7 @@ bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasu
 
     // Compute quote
     sizetoAttest= SHA256_DIGESTSIZE_BYTES;
-    PrintBytes((char*)"To attest: ", toAttest, sizetoAttest);
+    PrintBytes("To attest: ", toAttest, sizetoAttest);
     if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize,
                         hostedMeasurement, rgQuotedHash)) {
             fprintf(g_logFile, "Cant compute sha256 quote hash\n");
@@ -1159,7 +1159,7 @@ bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasu
         fprintf(g_logFile, "emsapkcspad returned false\n");
         return false;
     }
-    PrintBytes((char*)"Padded: ", rgToSign, pKey->m_iByteSizeM);
+    PrintBytes("Padded: ", rgToSign, pKey->m_iByteSizeM);
 
     // sign
     bnum    bnMsg(pKey->m_iByteSizeM/sizeof(u64)+2);
@@ -1175,7 +1175,7 @@ bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasu
 
     revmemcpy(attest, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
     sizeAttested= pKey->m_iByteSizeM;
-    PrintBytes((char*)"Quote value: ", attest, sizeAttested);
+    PrintBytes("Quote value: ", attest, sizeAttested);
     if(!toBase64(sizeAttested, attest, &sizenewattest, newattest)) {
         fprintf(g_logFile, "can't base64 encode attest\n");
         return false;
@@ -1192,7 +1192,7 @@ bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasu
         return false;
     }
     revmemcpy(rgdecrypted, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    PrintBytes((char*)"Decrypted\n", rgdecrypted, pKey->m_iByteSizeM);
+    PrintBytes("Decrypted\n", rgdecrypted, pKey->m_iByteSizeM);
 
     return true;
 }

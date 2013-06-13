@@ -7,7 +7,7 @@ TARGETS=$(BUILD_TARGETS) clean
 all: $(BUILD_TARGETS)
 
 tcService:
-	$(MAKE) -C tcService -f oldtcService.mak
+	$(MAKE) -C newtcService -f tcService.mak
 
 bidServer:
 	$(MAKE) -C bidProxy -f bidServer.mak
@@ -25,16 +25,16 @@ authClient:
 	$(MAKE) -C authProxy -f authClient.mak
 
 fileServer:
-	$(MAKE) -C fileProxy -f oldfileServer.mak
+	$(MAKE) -C newfileProxy -f fileServer.mak
 
 fileClient:
-	$(MAKE) -C fileProxy -f oldfileClient.mak
+	$(MAKE) -C newfileProxy -f fileClient.mak
 
 keyNegoServer:
-	$(MAKE) -C keyNegoServer -f oldkeyNegoServer.mak
+	$(MAKE) -C newkeyNegoServer -f keyNegoServer.mak
 
 cryptUtility:
-	$(MAKE) -C cryptUtility -f oldcryptUtility.mak
+	$(MAKE) -C newcryptUtility -f cryptUtility.mak
 
 cryptotest:
 	$(MAKE) -C Test -f cryptotest.mak

@@ -1,35 +1,36 @@
 Todo
 ====
 
-1. Measure hashes and add to KeyNegoServer db
+1.  Measure hashes and add to KeyNegoServer db  DONE.  Define
+    HASHDEFINED during compilation to activate.
 
-2. 2048 bit keys, CBC encrypt and mac (rather than mac then encrypt),
-   Fix timing attack.  More optimization? SHA-3, ECC.
+2a. 2048 bit keys, 
+2b. CBC encrypt and mac (rather than mac then encrypt)
+2c. Fix timing attack.
 
-3. Individual file keys to avoid escalation of privilige 
-   based on file names.
+3.  Individual file keys to avoid escalation of privilege 
+    based on file names.
 
-4. PCR18 (19 too if lcp is set)
+4.  PCR18 (19 too if lcp is set).  Define PCR18 during 
+    compilation to activate.
 
 5. Check for leaks buffer overflows
 
-6. Turn on HASHESDEFINED during operational phase.
-
-7. Add functionality to accessControl checks
+6. Add functionality to accessControl checks
 
 ------------------------------------------------------   
 
-6. Hypervisor
+7. Hypervisor
     Management partition
         schedule, start vm's, montoring, update
     VM update and keys
 
-7. keyNegoServer: emergency key recovery program, revocation
+8. keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
 
-8. Fix vTCI to handle TPM owner password
+9. Fix vTCI to handle TPM owner password
 
-9. Check on filelock in tcService (How long does it last?)
+10.Check on filelock in tcService (How long does it last?)
    Not necessary now.  executables should be in initramfs and write protected.
    Need to revist for Hv.
 

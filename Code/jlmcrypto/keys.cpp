@@ -548,15 +548,6 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         return false;
     }
 
-#ifdef TEST
-    if(szRsaKeyDP!=NULL) {
-        printf("DP: %s\n", szRsaKeyDP); fflush(stdout);
-    }
-    if(szRsaKeyDQ!=NULL) {
-        printf("DQ: %s\n", szRsaKeyDQ); fflush(stdout);
-    }
-#endif
-
     // make bignums
     if(m_iByteSizeM>0) {
         m_pbnM= new bnum((m_iByteSizeM+sizeof(u64)-1)/sizeof(u64));

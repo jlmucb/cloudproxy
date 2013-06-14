@@ -21,7 +21,7 @@ with open('testpolicy', 'wb') as f:
     print('//www.manferdelli.com/User/JohnManferdelli/0001 maycreate //www.manferdelli.com/Gauss/fileProxy/files', file=f)
 	
 cloud_proxy.create_policy('testpolicy', 1)
-cloud_proxy.create_evidence_collection(['authorizationRuleSigned.xml'], 'basicTest/authRule1Signed.xml')
+cloud_proxy.create_evidence_collection([['authorizationRuleSigned.xml']], 'basicTest/authRule1Signed.xml')
 
 # create a simple test file to transfer between the client and server
 with open('basicTest/files/file.test', 'wb') as f:

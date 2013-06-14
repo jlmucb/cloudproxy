@@ -252,16 +252,7 @@ def create_policy(policy_file, cert_id, authority='CloudProxyPolicy',
     subject_name_node = grant_node.find('SubjectName')
     subject_name_node.text = subject_name_node.text + authority
 
-    # write the resulting XML to a temp file and perform the signing operation
-    temp = tempfile.NamedTemporaryFile()
-    xml_str = _transform_namespace(ET.tostring(tree))
-
-    # this temp file will be signed by cryptUtility
-    temp.write(xml_str)
-    temp.flush() 
-
-    # perform the signing operation using cryptUtility
-    check_call([cryptUtility, '-Sign', privateKey, 'rsa1024-sha256-pkcspad', temp.name, output])
+    _sign_tree(tree, output, crypt_utility, private_key)
 
 
 # code to generate an EvidenceCollection from a set of lists

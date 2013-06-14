@@ -1,15 +1,15 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/newcryptUtilityobjects
-S=          ../newcryptUtility
+B=          ~/jlmcrypt/cryptUtilityobjects
+S=          ../cryptUtility
 SC=         ../commonCode
-SCD=	    ../newjlmcrypto
+SCD=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 TPM=	    ../TPMDirect
-CLM=	    ../newclaims
+CLM=	    ../claims
 TAO=	    ../tao
 ACC=	    ../accessControl
-FPX=	    ../newfileProxy
-VLT=	    ../newvault
+FPX=	    ../fileProxy
+VLT=	    ../vault
 PROTO=	    ../protocolChannel
 CHL=	    ../channels
 
@@ -31,11 +31,11 @@ dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 	    $(B)/mpNumTheory.o $(B)/fileHash.o $(B)/encryptedblockIO.o $(B)/resource.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o 
 
-all: $(E)/newcryptUtility.exe
+all: $(E)/cryptUtility.exe
 
-$(E)/newcryptUtility.exe: $(dobjs)
-	@echo "newcryptUtility"
-	$(LINK) -o $(E)/newcryptUtility.exe $(dobjs) -lpthread
+$(E)/cryptUtility.exe: $(dobjs)
+	@echo "cryptUtility"
+	$(LINK) -o $(E)/cryptUtility.exe $(dobjs) -lpthread
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h 
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/logging.o $(SC)/logging.cpp

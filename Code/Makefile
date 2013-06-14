@@ -7,19 +7,19 @@ TARGETS=$(BUILD_TARGETS) clean
 all: $(BUILD_TARGETS)
 
 tcService:
-	$(MAKE) -C newtcService -f tcService.mak
+	$(MAKE) -C tcService -f tcService.mak
 
 fileServer:
-	$(MAKE) -C newfileProxy -f fileServer.mak
+	$(MAKE) -C fileProxy -f fileServer.mak
 
 fileClient:
-	$(MAKE) -C newfileProxy -f fileClient.mak
+	$(MAKE) -C fileProxy -f fileClient.mak
 
 keyNegoServer:
-	$(MAKE) -C newkeyNegoServer -f keyNegoServer.mak
+	$(MAKE) -C keyNegoServer -f keyNegoServer.mak
 
 cryptUtility:
-	$(MAKE) -C newcryptUtility -f cryptUtility.mak
+	$(MAKE) -C cryptUtility -f cryptUtility.mak
 
 cryptotest:
 	$(MAKE) -C Test -f cryptotest.mak
@@ -33,10 +33,10 @@ aesspeed:
 clean:
 	rm -f $(OBJROOT)/*objects/*
 	rm -f $(OBJROOT)/*.o
-	rm -f $(OBJROOT)/newkeyNegoServer.exe
-	rm -f $(OBJROOT)/newtcService.exe
-	rm -f $(OBJROOT)/newfileServer.exe
-	rm -f $(OBJROOT)/newfileClient.exe
+	rm -f $(OBJROOT)/keyNegoServer.exe
+	rm -f $(OBJROOT)/tcService.exe
+	rm -f $(OBJROOT)/fileServer.exe
+	rm -f $(OBJROOT)/fileClient.exe
 #	rm -f $(OBJROOT)/rsaspeedtest.exe
 	rm -f $(OBJROOT)/cryptUtility.exe
 	rm -f $(OBJROOT)/aesspeedtest.exe

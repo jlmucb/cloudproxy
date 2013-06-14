@@ -1,15 +1,15 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/newtcServiceobjects
-S=          ../newtcService
+B=          ~/jlmcrypt/tcServiceobjects
+S=          ../tcService
 TH=         ../tao
 SC=         ../commonCode
-SCC=        ../newjlmcrypto
+SCC=        ../jlmcrypto
 BSC=        ../jlmbignum
 TS=         ../TPMDirect
 CH=         ../channels
-VLT=        ../newvault
-CLM=	    ../newclaims
-FPX=	    ../newfileProxy
+VLT=        ../vault
+CLM=	    ../claims
+FPX=	    ../fileProxy
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
@@ -33,11 +33,11 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
 
 
-all: $(E)/newtcService.exe
+all: $(E)/tcService.exe
 
-$(E)/newtcService.exe: $(sobjs)
+$(E)/tcService.exe: $(sobjs)
 	@echo "tcService"
-	$(LINK) -o $(E)/newtcService.exe $(sobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/tcService.exe $(sobjs) $(LDFLAGS) -lpthread
 # $(LINK) -o $(E)/tcService.exe $(sobjs) /lib/x86_64-linux-gnu/libprocps.so.0 -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h

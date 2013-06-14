@@ -1,16 +1,16 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/newkeyNegoServerobjects
-S=          ../newkeyNegoServer
+B=          ~/jlmcrypt/keyNegoServerobjects
+S=          ../keyNegoServer
 SC=         ../commonCode
-FPX=        ../newfileProxy
-SCC=        ../newjlmcrypto
+FPX=        ../fileProxy
+SCC=        ../jlmcrypto
 ACC=        ../accessControl
 BSC=        ../jlmbignum
-CLM=        ../newclaims
+CLM=        ../claims
 TH=         ../tao
 CH=         ../channels
 TPD=        ../TPMDirect
-VLT=        ../newvault
+VLT=        ../vault
 TRS=        ../tcService
         
 
@@ -33,11 +33,11 @@ dobjs=      $(B)/keyNegoServer.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
 	    $(B)/fastArith.o $(B)/encryptedblockIO.o 
 
-all: $(E)/newkeyNegoServer.exe
+all: $(E)/keyNegoServer.exe
 
-$(E)/newkeyNegoServer.exe: $(dobjs)
-	@echo "newkeyNegoServer"
-	$(LINK) -o $(E)/newkeyNegoServer.exe $(dobjs) -lpthread
+$(E)/keyNegoServer.exe: $(dobjs)
+	@echo "keyNegoServer"
+	$(LINK) -o $(E)/keyNegoServer.exe $(dobjs) -lpthread
 
 $(B)/keyNegoServer.o: $(S)/keyNegoServer.cpp $(S)/keyNegoServer.h
 	$(CC) $(CFLAGS) -I$(S) -I$(TRS) -I$(FPX) -I$(TPD) -I$(VLT) -I$(SC) -I$(TH) -I$(SCC) -I$(BSC) -I$(CH) -I$(CLM) -c -o $(B)/keyNegoServer.o $(S)/keyNegoServer.cpp

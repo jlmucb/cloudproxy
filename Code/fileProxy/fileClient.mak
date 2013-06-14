@@ -1,17 +1,17 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/newfileClientobjects
-S=          ../newfileProxy
+B=          ~/jlmcrypt/fileClientobjects
+S=          ../fileProxy
 SC=         ../commonCode
-SCD=        ../newjlmcrypto
+SCD=        ../jlmcrypto
 BSC=        ../jlmbignum
-CLM=        ../newclaims
+CLM=        ../claims
 TAO=	    ../tao
-TRS=	    ../newtcService
+TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 PROTO=	    ../protocolChannel
 ACC=	    ../accessControl
-VLT=	    ../newvault
+VLT=	    ../vault
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
@@ -35,11 +35,11 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
 	    $(B)/fileTester.o $(B)/fileClient.o $(B)/logging.o 
 
-all: $(E)/newfileClient.exe
+all: $(E)/fileClient.exe
 
-$(E)/newfileClient.exe: $(dobjs)
+$(E)/fileClient.exe: $(dobjs)
 	@echo "fileClient"
-	$(LINK) -o $(E)/newfileClient.exe $(dobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/jlmcrypto.o: $(SCD)/jlmcrypto.cpp $(SCD)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SCD) -I$(BSC) -I$(SC) -c -o $(B)/jlmcrypto.o $(SCD)/jlmcrypto.cpp

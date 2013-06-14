@@ -1,15 +1,15 @@
 E=          ~/jlmcrypt
-B=          ~/jlmcrypt/newfileServerobjects
-S=          ../newfileProxy
+B=          ~/jlmcrypt/fileServerobjects
+S=          ../fileProxy
 SC=         ../commonCode
-SCC=        ../newjlmcrypto
+SCC=        ../jlmcrypto
 BSC=        ../jlmbignum
-CLM=        ../newclaims
+CLM=        ../claims
 PROTO=	    ../protocolChannel
 ACC=	    ../accessControl
 TAO=	    ../tao
-VLT=	    ../newvault
-TRS=	    ../newtcService
+VLT=	    ../vault
+TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 
@@ -38,11 +38,11 @@ dobjs=      $(B)/fileServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
 	    $(B)/tcIO.o 
 
-all: $(E)/newfileServer.exe
+all: $(E)/fileServer.exe
 
-$(E)/newfileServer.exe: $(dobjs)
+$(E)/fileServer.exe: $(dobjs)
 	@echo "fileServer"
-	$(LINK) -o $(E)/newfileServer.exe $(dobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp

@@ -9,7 +9,7 @@ PROTO=	    ../protocolChannel
 ACC=	    ../accessControl
 TAO=	    ../tao
 VLT=	    ../newvault
-TRS=	    ../tcService
+TRS=	    ../newtcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 

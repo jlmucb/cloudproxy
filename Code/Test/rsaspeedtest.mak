@@ -1,7 +1,7 @@
 E=          ~/jlmcrypt
 B=          $(E)/rsaspeedtestobjects
 SC=         ../commonCode
-SCC=	    ../jlmcrypto
+SCC=	    ../newjlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG

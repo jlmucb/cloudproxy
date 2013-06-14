@@ -1,6 +1,6 @@
 OBJROOT=~/jlmcrypt
 
-BUILD_TARGETS=keyNegoServer tcService authServer authClient bidServer bidClient sellerClient fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
+BUILD_TARGETS=keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
 TARGETS=$(BUILD_TARGETS) clean
 .PHONY: $(TARGETS)
 
@@ -8,21 +8,6 @@ all: $(BUILD_TARGETS)
 
 tcService:
 	$(MAKE) -C newtcService -f tcService.mak
-
-bidServer:
-	$(MAKE) -C bidProxy -f bidServer.mak
-
-sellerClient:
-	$(MAKE) -C bidProxy -f sellerClient.mak
-
-bidClient:
-	$(MAKE) -C bidProxy -f bidClient.mak
-
-authServer:
-	$(MAKE) -C authProxy -f authServer.mak
-
-authClient:
-	$(MAKE) -C authProxy -f authClient.mak
 
 fileServer:
 	$(MAKE) -C newfileProxy -f fileServer.mak
@@ -42,21 +27,16 @@ cryptotest:
 aesspeed:
 	$(MAKE) -C Test -f aesspeed.mak
 
-rsaspeedtest:
-	$(MAKE) -C Test -f rsaspeedtest.mak
+#rsaspeedtest:
+#	$(MAKE) -C Test -f rsaspeedtest.mak
 
 clean:
 	rm -f $(OBJROOT)/*objects/*
 	rm -f $(OBJROOT)/*.o
-	rm -f $(OBJROOT)/keyNegoServer.exe
-	rm -f $(OBJROOT)/tcService.exe
-	rm -f $(OBJROOT)/authServer.exe
-	rm -f $(OBJROOT)/authClient.exe
-	rm -f $(OBJROOT)/bidServer.exe
-	rm -f $(OBJROOT)/sellerClient.exe
-	rm -f $(OBJROOT)/bidClient.exe
-	rm -f $(OBJROOT)/fileServer.exe
-	rm -f $(OBJROOT)/fileClient.exe
-	rm -f $(OBJROOT)/rsaspeedtest.exe
+	rm -f $(OBJROOT)/newkeyNegoServer.exe
+	rm -f $(OBJROOT)/newtcService.exe
+	rm -f $(OBJROOT)/newfileServer.exe
+	rm -f $(OBJROOT)/newfileClient.exe
+#	rm -f $(OBJROOT)/rsaspeedtest.exe
 	rm -f $(OBJROOT)/cryptUtility.exe
 	rm -f $(OBJROOT)/aesspeedtest.exe

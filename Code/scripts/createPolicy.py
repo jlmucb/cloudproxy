@@ -18,9 +18,9 @@ parser.add_argument('--authority', default='fileProxyPolicy/0001',
                     help='The principal that is asserting this policy. Should'
                          ' be the principal corresponding to the private key'
                          ' (default fileProxyPolicy/0001)')
-parser.add_argument('--crypt_utility', help='The path to newcryptUtility.exe'
-                    ' (default ./newcryptUtility.exe)',
-                    default='./newcryptUtility.exe')
+parser.add_argument('--crypt_utility', help='The path to cryptUtility.exe'
+                    ' (default ./cryptUtility.exe)',
+                    default='./cryptUtility.exe')
 parser.add_argument('--private_key',
                     help='The path to the private key file to use to sign this'
                          ' policy (default policy/privatePolicyKey.xml)', 

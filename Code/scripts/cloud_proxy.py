@@ -7,7 +7,7 @@ import tempfile
 from xml.etree import ElementTree as ET
 
 ROOT_DIR = '/home/jlm/jlmcrypt/'
-CRYPT_UTILITY = ROOT_DIR + 'newcryptUtility.exe'
+CRYPT_UTILITY = ROOT_DIR + 'cryptUtility.exe'
 POLICY_KEY = ROOT_DIR + 'policy/policyPrivateKey.xml'
 
 policy_key_template = """

@@ -1,7 +1,7 @@
 E=          ~/jlmcrypt
 B=          $(E)/mptestobjects
 SC=         ../commonCode
-SCD=	    ../newjlmcrypto
+SCD=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG

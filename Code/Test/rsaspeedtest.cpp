@@ -28,7 +28,7 @@
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "modesandpadding.h"
-#include "rsaHelper.h"
+#include "cryptoHelper.h"
 
 #include <stdio.h>
 #include <sys/types.h>

@@ -98,6 +98,7 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
       case PLATFORMTYPEHYPERVISOR:
         m_hostValid= false;
         break;
+
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         if(!m_fileNames.initNames(directory, "HWRoot")) {
@@ -121,6 +122,7 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
             fprintf(g_logFile, "taoHostServices::HostInit: cant init Linuxservice\n");
             return false;
         }
+
         if(nParameters>1)
             parameter= rgszParameter[1];
         else

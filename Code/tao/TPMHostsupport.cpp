@@ -60,12 +60,12 @@ tpmStatus   g_oTpm;
 
 bool initTPM(const char* aikblobfile, const char* szTPMPassword)
 {
-#ifdef TEST1
+#ifdef TEST
     if(szTPMPassword!=NULL)
         fprintf(g_logFile, "initTPM(%s,%s)\n", aikblobfile, szTPMPassword);
     else
         fprintf(g_logFile, "initTPM(%s, NULL)\n", aikblobfile);
-        fflush(g_logFile);
+    fflush(g_logFile);
 #endif
 
     if(aikblobfile==NULL)
@@ -75,19 +75,19 @@ bool initTPM(const char* aikblobfile, const char* szTPMPassword)
          if(szTPMPassword==NULL || !g_oTpm.setTPMauth(szTPMPassword))
             return false;
     }
-#ifdef TEST1
-        fprintf(g_logFile, "g_oTpm.initTPM succeeded\n");
+#ifdef TEST
+        fprintf(g_logFile, "initTPM: g_oTpm.initTPM succeeded\n");
         fflush(g_logFile);
 #endif
 
     // AIK
     if(!g_oTpm.getAIKKey(aikblobfile, NULL)) {
-        fprintf(g_logFile, "getAIKKey failed\n");
+        fprintf(g_logFile, "initTPM: getAIKKey failed\n");
 	return false;
     }
 
-#ifdef TEST1
-    fprintf(g_logFile, "getAIKKey succeeded\n");
+#ifdef TEST
+    fprintf(g_logFile, "initTPM: getAIKKey succeeded\n");
     fflush(g_logFile);
 #endif
     return true;

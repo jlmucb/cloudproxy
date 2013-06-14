@@ -66,7 +66,7 @@ bool submitTPMReq(int fd, int sizein, byte* in, int* psizeout, byte* out)
     int     sizebuf= *psizeout;
 
     ssize_t result = write(fd, in, sizein);
-    UNUSEDVAR(result);	
+    UNUSEDVAR(result);  
     *psizeout= read(fd, out, sizebuf);
     if(*psizeout<=0)
         return false;
@@ -720,11 +720,11 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
     Load(false, cmdblob, &cmdoffset, &contsession, 1);
     Load(false, cmdblob, &cmdoffset, pubauth, 20);
 
-/* #ifdef TPMTEST */
+#ifdef TPMTEST
     fprintf(g_logFile, "\nloadKey\n");
     fprintf(g_logFile, "cmdoffset: %d\n", cmdoffset);
     PrintBytes("\nTPMloadKey command:\n", cmdblob, cmdoffset);
-/* #endif */
+#endif 
 
     // execute
     if(!submitTPMReq(fd, cmdoffset, cmdblob, &outsize, ansblob)) {
@@ -732,9 +732,9 @@ bool TPMloadKey(int fd, u32 hparentKey, int sizekeyIn, byte* keyblob,
         return false;
         }
 
-/* #ifdef TPMTEST */
+#ifdef TPMTEST
     PrintBytes("TPMloadKey response:\n", ansblob, outsize);
-/* #endif */
+#endif
 
     // decode response
     // retrieve sealeddata, nonceeven, contsession, resauth
@@ -1827,17 +1827,20 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
 
 bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
 {
-    byte    aikBuf[2048];
-    int     aikSize= 2048;
-
-/* #ifdef TEST1 */
-    fprintf(g_logFile, "getAIKKey(%s, %s)\n", aikBlobFile, aikCertFile);
+#ifdef TEST1
+    if(aikCertFile==NULL)
+        fprintf(g_logFile, "tpmStatus::getAIKKey(%s), no certfile\n", aikBlobFile);
+    else
+        fprintf(g_logFile, "tpmStatus::getAIKKey(%s, %s)\n", aikBlobFile, aikCertFile);
     fflush(g_logFile);
-/* #endif */
+#endif
     if(aikBlobFile==NULL) {
         fprintf(g_logFile, "No AIK Blob file\n");
         return false;
     }
+
+    byte    aikBuf[2048];
+    int     aikSize= 2048;
 
     //  Key Blob in file
     if(!getBlobfromFile(aikBlobFile, aikBuf, &aikSize)) {
@@ -1845,11 +1848,23 @@ bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
         return false;
     }
 
+#ifdef TEST1
+    fprintf(g_logFile, "getAIKKey got blob %d\n", aikSize);
+    fflush(g_logFile);
+#endif
+
     if(!loadKey(KEYTYPE_AIK, aikBuf, aikSize, &m_hQuoteKey)) {
         fprintf(g_logFile, "Can't load aik\n");
         return false;
     }
+
+#ifdef TEST1
+    fprintf(g_logFile, "getAIKKey loaded blob\n");
+    fflush(g_logFile);
+#endif
+
     m_faikKeyValid= true;
+    m_rgAIKCert= NULL;
     if(aikCertFile!=NULL) {
         fprintf(g_logFile, "Loading AIK Cert file\n");
         m_rgAIKCert= readandstoreString(aikCertFile);
@@ -1857,15 +1872,17 @@ bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
             fprintf(g_logFile, "Cant read AIK key cert file\n");
             return false;
         }
-#ifdef TPMTEST
+    }
+
+#ifdef TEST1
     if(m_faikKeyValid) {
         fprintf(g_logFile, "\nAIK length: %d\n", m_iaikmodulusLen);
         PrintBytes("AIK modulus: ", m_rgaikmodulus, m_iaikmodulusLen);
     }
     if(m_rgAIKCert!=NULL)
         fprintf(g_logFile, "AIKCert:\n%s\n", m_rgAIKCert);
+    fflush(g_logFile);
 #endif
-    }
 
     return true;
 }

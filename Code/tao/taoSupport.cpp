@@ -94,14 +94,14 @@ taoFiles::~taoFiles ()
 
 bool  taoFiles::initNames(const char* directory, const char* subdirectory)
 {
-    char   szName[512];
+    char   szName[1024];
 
     m_storageType= STORAGETYPENONE;
     if(directory==NULL)
         return false;
     if(subdirectory==NULL)
         return false;
-    if(511<(strlen(directory)+strlen(subdirectory)+20))
+    if(1023<(strlen(directory)+strlen(subdirectory)+20))
         return false;
 #ifdef TEST
     fprintf(g_logFile, "initNames(%s, %s)\n", directory, subdirectory);
@@ -142,11 +142,12 @@ bool taoFiles::getBlobData(const char* file, bool* pValid, int* pSize, byte** pp
     }
 
     n= statBlock.st_size;
-    *ppData= (byte*) malloc(n);
+    *ppData= (byte*) malloc(n+1);
     if(*ppData==NULL) {
         fprintf(g_logFile, "taoFiles::getBlobData failed, can't allocate block\n");
         return false;
     }
+    *(*ppData+n)= 0;  // just in case its a non null terminated string
     *pSize= n;
 
     if(!getBlobfromFile(file, *ppData, pSize)) {

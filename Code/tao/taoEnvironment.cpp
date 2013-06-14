@@ -814,7 +814,7 @@ bool taoEnvironment::saveTao()
                     m_serializedprivateKey);
             PrintBytes((char*)"Symmetric key: ", m_symKey, m_symKeySize);
 #endif
-            m_serializedprivateKeySize= strlen(m_serializedprivateKey)+1;
+            m_serializedprivateKeySize= strlen(m_serializedprivateKey);
             m_serializedprivateKeyType= KEYTYPERSA1024SERIALIZED;
             if(!localsealKey(m_serializedprivateKeyType, m_serializedprivateKeySize,
                             (byte*)m_serializedprivateKey, &m_sealedprivateKeySize, 

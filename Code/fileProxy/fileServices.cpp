@@ -36,6 +36,7 @@
 #include "safeChannel.h"
 #include "jlmUtility.h"
 #include "fileServices.h"
+#include "sha256.h"
 #include "encryptedblockIO.h"
 #include "request.h"
 
@@ -425,7 +426,10 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     if (fError) return false;
 
     // send file
-    // Fix
+    if(pResource->m_fKeyValid) 
+        key= pResource->m_rguKey1;
+    else
+        key= m_metadataKey;
     if(!sendFile(*m_pSafeChannel, iRead, filesize, datasize, m_encType, key, decTimer)) {
         fprintf(g_logFile, "serversendResourcetoclient: sendFile error\n");
         close(iRead);
@@ -457,6 +461,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
     resource*       pOwnerResource= NULL;
     PrincipalCert*  pSubject= NULL;
     PrincipalCert*  pOwnerPrincipal= NULL;
+    Sha256          oHash;
 
 #ifdef  TEST
     fprintf(g_logFile, "servercreateResourceonserver\n");
@@ -518,7 +523,8 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         struct stat  sb;
         if(stat(pOwnerResource->m_szLocation, &sb)!=0) {
             if(mkdir(pOwnerResource->m_szLocation, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0) {
-                fprintf(g_logFile, "servercreateResourceonserver: can't make directory %s\n", pOwnerResource->m_szLocation);
+                fprintf(g_logFile, "servercreateResourceonserver: can't make directory %s\n", 
+                        pOwnerResource->m_szLocation);
                 return false;
             }
             stat(pOwnerResource->m_szLocation, &sb);
@@ -558,7 +564,16 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
         fAllowed= validateRequest(oReq, &szFile, &pResource);
         accessTimer.Stop();
         if(fAllowed) {
-            pResource->m_myOwners.append(pSubject);
+            if(m_encType==DEFAULTENCRYPT) {
+                pResource->m_fKeyValid= true;
+                oHash.Init();
+                oHash.Update(m_metadataKey, 2*AES128BYTEKEYSIZE);
+                oHash.Update((byte*)pResource->m_szResourceName, 
+                             strlen(pResource->m_szResourceName));
+                oHash.Final();
+                oHash.GetDigest(pResource->m_rguKey1);
+                pResource->m_myOwners.append(pSubject);
+            }
         }
         else {
             fError= true;
@@ -647,7 +662,11 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
     fflush(g_logFile);
 #endif
     // read file
-    // Fix: get key from entry
+    if(pResource->m_fKeyValid) 
+        key= pResource->m_rguKey1;
+    else
+        key= m_metadataKey;
+    pResource->m_iSize= size;
     if(!getFile(*m_pSafeChannel, iWrite, size, size, m_encType, key, encTimer)) {
         fprintf(g_logFile, "servergetResourcefromclient: getFile failed\n");
         close(iWrite);

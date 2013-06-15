@@ -260,7 +260,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
 #ifndef ENCRYPTTHENMAC
     iLeft= totalSize;
 #else
-    iLeft= newMessageSize;
+    iLeft=  newMsgSize;
 #endif
     while(iLeft>0) {
         memcpy(rguCBCMixer, pNextPlain, BLKSIZE);

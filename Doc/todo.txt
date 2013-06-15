@@ -5,7 +5,7 @@ Todo
     HASHDEFINED during compilation to activate.
 
 2a. 2048 bit keys, 
-2b. CBC encrypt and mac (rather than mac then encrypt)
+2b. CBC encrypt and mac (rather than mac then encrypt) DONE.
 2c. Fix timing attack.
 
 3.  Individual file keys to avoid escalation of privilege 

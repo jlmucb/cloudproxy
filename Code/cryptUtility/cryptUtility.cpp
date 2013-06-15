@@ -1263,8 +1263,8 @@ bool Encapsulate(const char* szCert, const char* szMetaDataFile,
                  const char* szInFile, const char* szOutFile)
 {
     encapsulatedMessage  oM;
-    byte                 plain[4096];   // stat and allocate later
-    int                  plainsize= 4096;
+    byte                 plain[8192];   // stat and allocate later
+    int                  plainsize= 8192;
     char*                szEncapsulateKeyInfo= NULL;
     RSAKey*              sealingKey= NULL;
     bool                 fRet= true;
@@ -1362,9 +1362,10 @@ bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile,
     byte                 cipher[4096];   // stat and allocate later
     int                  ciphersize= 4096;
     RSAKey*              sealingKey= NULL;
-    bool                 fRet= true;
     char                 szMetadata[4096];
     int                  sizemetadata= 4096;
+    bool                 fRet= true;
+    bool		 fRead;
 
     if(szKeyInfo==NULL) {
         fprintf(g_logFile, "Decapsulate: no keyinfo\n");
@@ -1382,18 +1383,21 @@ bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile,
 
     // get metadata
     if(!getBlobfromFile(szMetaDataFile, (byte*)szMetadata, &sizemetadata)) {
-        fprintf(g_logFile, "Encapsulate: cant read metadata: %s\n", szMetaDataFile);
+        fprintf(g_logFile, "Decapsulate: cant read metadata: %s\n", szMetaDataFile);
         fRet= false;
         goto done;
     }
+    szMetadata[sizemetadata]= 0;
     oM.m_szXMLmetadata= strdup(szMetadata);
 
     // get ciphertext and decrypt
-    if(!getBlobfromFile(szInFile, cipher, &ciphersize)) {
+    fRead= getBlobfromFile(szInFile, cipher, &ciphersize);
+    if(!fRead) {
         fprintf(g_logFile, "Decapsulate: cant read: %s\n", szInFile);
         fRet= false;
         goto done;
     }
+
     if(!oM.setencryptedMessage(ciphersize, cipher)) {
         fprintf(g_logFile, "Decapsulate: cant set ciphertext\n");
         fRet= false;

@@ -34,11 +34,7 @@
 #include "tao.h"
 #include "bignum.h"
 #include "mpFunctions.h"
-#ifdef NEWANDREORGANIZED
 #include "cryptoHelper.h"
-#else
-#include "rsaHelper.h"
-#endif
 #include "trustedKeyNego.h"
 #include "hashprep.h"
 #include "vTCIDirect.h"

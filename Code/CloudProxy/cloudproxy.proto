@@ -1,0 +1,34 @@
+package cloudproxy;
+
+enum Op {
+    ALL = 0;
+    CREATE = 2;
+    DESTROY = 3;
+    WRITE = 4;
+    READ = 5;
+}
+
+message Action {
+    required string subject = 1;
+    required Op verb = 2;
+    repeated string objects = 3;
+}
+
+message ACL {
+    repeated Action permissions = 1;
+}
+
+message Challenge {
+    required string nonce = 1;
+}
+
+message Response {
+    required string nonce = 1;
+    required string signature = 2;
+    optional string hint = 3;
+}
+
+message Operation {
+    required Action action = 1;
+    optional string data = 2;
+}

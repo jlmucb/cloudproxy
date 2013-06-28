@@ -1,0 +1,18 @@
+
+Use, duplication and disclosure of the tcioDD device driver consisting of 
+tcioDD.c and the support files in this directory required to compile   
+tcioDD.c (hereinafter "TCIODD") is different from the license terms that
+apply to the other software in the CloudProxy Project.  TCIODD is licensed
+under terms which  are generally described as a dual BSD/GPL license.
+
+TCIODD is licensed either under the terms of the Lesser GNU Lesser General 
+Public License,  version 2.1, set forth in the file "gpl.txt" of this 
+directory or the BSD license, set forth in the file "BSDLicense.pdf."  Note,
+however, that if the symbol "LINUX" is defined during compilation, the
+resulting loadable object module is subject to the Lesser GNU Lesser General 
+Public License,  version 2.1 since it is combined with functionality that is 
+only available to GPL licensed software.
+
+These license terms do not affect the license terms of other software or 
+documentation provided with CloudProxy.
+

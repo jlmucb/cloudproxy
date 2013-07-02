@@ -1,6 +1,6 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include "CloudServer.h"
+#include "cloudserver.h"
 
 DEFINE_int32(port, 0, "The port to listen on");
 

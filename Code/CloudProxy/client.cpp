@@ -1,6 +1,6 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include "CloudClient.h"
+#include "cloudclient.h"
 #include "cloudproxy.pb.h"
 
 DEFINE_int32(port, 0, "The server port to connect to");

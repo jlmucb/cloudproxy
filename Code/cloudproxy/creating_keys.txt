@@ -1,0 +1,59 @@
+Create a directory structure for the openssl keys:
+
+> mkdir -p openssl_keys/policy openssl_keys/server openssl_keys/client
+> cd openssl_keys/policy
+
+Create an X.509 defaults config file to save typing. It should have contents
+that are something like the following:
+
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]              
+countryName                     = Country Name (2 letter code)
+countryName_default             = US
+countryName_min                 = 2
+countryName_max                 = 2
+
+stateOrProvinceName             = State or Province Name (full name)
+stateOrProvinceName_default     = Washington
+
+localityName                    = Locality Name (eg, city)
+localityName_default            = Kirkland
+
+organizationName              = Organization Name (eg, company)
+organizationName_default      = Google
+
+organizationalUnitName          = Organizational Unit Name (eg, section)
+organizationalUnitName_default  = CloudProxy
+
+commonName                      = Common Name (eg, YOUR name)
+commonName_max                  = 64
+
+emailAddress                    = Email Address
+emailAddress_max                = 40
+
+
+Then, create a policy key:
+
+> openssl genrsa -aes128 -out policy.key 1024
+
+and give it a password when it requests one.
+Then create a self-signed certificate for this key:
+
+> openssl req -new -key policy.key -x509 -days 1095 -out policy.crt \
+    -config ../openssl.cfg
+
+Now create a certificate signing request for the server and get it signed:
+
+> cd ../server
+> openssl genrsa -aes128 -out server.key 1024
+> openssl req -new -key server.key -out server.csr -config ../openssl.cfg
+> openssl x509 -req -days 365 -in server.csr -CA ../policy/policy.crt \
+    -CAkey ../policy/policy.key -CAcreateserial -out server.crt
+
+Now do the same for the client:
+
+> cd ../client
+> openssl genrsa -aes128 -out server.key 1024
+> openssl req -new -key server.key -out server.csr -config ../openssl.cfg
+> openssl x509 -req -days 365 -in server.csr -CA ../policy/policy.crt \
+    -CAkey ../policy/policy.key -CAcreateserial -out server.crt

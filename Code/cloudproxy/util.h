@@ -10,7 +10,7 @@
 namespace cloudproxy {
 // taken from a private definition in keyczar/openssl/aes.h
 typedef scoped_ptr_malloc<
-	EVP_CIPHER_CTX, openssl::OSSLDestroyer<EVP_CIPHER_CTX,
+	EVP_CIPHER_CTX, keyczar::openssl::OSSLDestroyer<EVP_CIPHER_CTX,
 	EVP_CIPHER_CTX_free> > ScopedCipherCtx;
 typedef scoped_ptr_malloc<
 	SSL_CTX, keyczar::openssl::OSSLDestroyer<SSL_CTX,

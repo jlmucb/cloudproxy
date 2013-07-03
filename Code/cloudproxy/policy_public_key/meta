@@ -1,0 +1,11 @@
+{
+   "encrypted": false,
+   "name": "Policy Key",
+   "purpose": "VERIFY",
+   "type": "RSA_PUB",
+   "versions": [ {
+      "exportable": false,
+      "status": "ACTIVE",
+      "versionNumber": 1
+   } ]
+}

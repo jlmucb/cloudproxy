@@ -1,0 +1,11 @@
+{
+   "encrypted": true,
+   "name": "Policy Key",
+   "purpose": "SIGN_AND_VERIFY",
+   "type": "RSA_PRIV",
+   "versions": [ {
+      "exportable": false,
+      "status": "ACTIVE",
+      "versionNumber": 1
+   } ]
+}

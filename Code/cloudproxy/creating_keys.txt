@@ -57,3 +57,21 @@ Now do the same for the client:
 > openssl req -new -key server.key -out server.csr -config ../openssl.cfg
 > openssl x509 -req -days 365 -in server.csr -CA ../policy/policy.crt \
     -CAkey ../policy/policy.key -CAcreateserial -out server.crt
+
+
+Now set up a keyczar version of the policy key (including the private key), and
+import the current version of the key and extract a public-only version of the
+key that can be used for signature verification:
+
+> cd ../..
+> mkdir policy_key
+> keyczart create --location policy_key --purpose sign --name "Policy Key" \
+    --asymmetric rsa
+> keyczart importkey --location=./policy_key --status=active \
+    --key=openssl_keys/policy/policy.key --passphrase=<passphrase for key>
+    --pass=<new passphrase for keyczar key>
+> mkdir policy_public_key
+> keyczart pubkey --location=./policy_key --destination=./policy_public_key
+    --pass=<same as --pass in previous command>
+
+

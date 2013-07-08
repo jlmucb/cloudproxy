@@ -20,7 +20,7 @@ message ACL {
 }
 
 message SignedACL {
-    required string serialized_acls = 1;
+    required bytes serialized_acls = 1;
     required string signature = 2;
 }
 
@@ -30,7 +30,7 @@ message Challenge {
 }
 
 message Response {
-    required string serialized_chall = 1;
+    required bytes serialized_chall = 1;
     required string signature = 2;
 }
 
@@ -51,6 +51,6 @@ message SpeaksFor {
 }
 
 message SignedSpeaksFor {
-    required string serialized_speaks_for = 1;
+    required bytes serialized_speaks_for = 1;
     required string signature = 2;
 }

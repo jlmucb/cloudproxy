@@ -1,0 +1,10 @@
+permissions {
+  subject: "tmroeder"
+  verb: ALL
+  object: "test"
+}
+permissions {
+  subject: "jlm"
+  verb: READ
+  object: "test"
+}

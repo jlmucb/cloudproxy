@@ -29,4 +29,4 @@ acls_sig: acls sign_acls
 	./sign_acls --acl_file acls --acl_sig_file acls_sig
 
 clean:
-	rm -f *.o cloudproxy.pb.* test sign_acls acls acls_sig verify_acls sign_pub_key
+	rm -f *.o cloudproxy.pb.* test sign_acls acls acls_sig verify_acls sign_pub_key verify_pub_key

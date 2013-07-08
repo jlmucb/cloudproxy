@@ -65,13 +65,31 @@ key that can be used for signature verification:
 
 > cd ../..
 > mkdir policy_key
-> keyczart create --location policy_key --purpose sign --name "Policy Key" \
-    --asymmetric rsa
-> keyczart importkey --location=./policy_key --status=active \
+> keyczart create --location=policy_key --purpose=sign --asymmetric=rsa
+> keyczart importkey --location=policy_key --status=primary \
     --key=openssl_keys/policy/policy.key --passphrase=<passphrase for key>
     --pass=<new passphrase for keyczar key>
 > mkdir policy_public_key
-> keyczart pubkey --location=./policy_key --destination=./policy_public_key
+> keyczart pubkey --location=policy_key --destination=policy_public_key \
     --pass=<same as --pass in previous command>
+
+
+Create keys for users tmroeder and jlm
+
+> mkdir -p keys/tmroeder keys/jlm
+> keyczart create --location=keys/tmroeder --purpose=sign --asymmetric=rsa
+> keyczart addkey --location=keys/tmroeder --status=primary
+
+> keyczart create --location=keys/jlm --purpose=sign --asymmetric=rsa
+> keyczart addkey --location=keys/jlm --status=primary
+
+
+Extract and sign the public keys for these files using the policy key
+
+> keyczart create --location=keys/tmroeder_pub --purpose=sign --asymmetric=rsa
+> keyczart pubkey --location=keys/tmroeder --destination=keys/tmroeder_pub
+
+> keyczart create --location=keys/jlm_pub --purpose=sign --asymmetric=rsa
+> keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub
 
 

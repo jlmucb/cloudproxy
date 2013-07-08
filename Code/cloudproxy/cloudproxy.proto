@@ -19,12 +19,18 @@ message ACL {
     repeated Action permissions = 1;
 }
 
+message SignedACL {
+    required ACL acls = 1;
+    required string signature = 2;
+}
+
 message Challenge {
-    required string nonce = 1;
+    required string subject = 1;
+    required string nonce = 2;
 }
 
 message Response {
-    required string nonce = 1;
+    required string serialized_chall = 1;
     required string signature = 2;
 }
 
@@ -37,3 +43,14 @@ message ServerMessage {
     optional Challenge challenge = 1;
 }
 
+// a message that gives a name to a given keyczar public key structure
+message SpeaksFor {
+    required string subject = 1;
+    required string pub_key = 2;
+    required string meta = 3;
+}
+
+message SignedSpeaksFor {
+    required string serialized_speaks_for = 1;
+    required string signature = 2;
+}

@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
         " supplied operation";
 
     action.set_verb(op);
-    action.add_objects(FLAGS_object);
+    action.set_object(FLAGS_object);
 
     string serialized;
     CHECK(action.SerializeToString(&serialized)) << "Could not serialize an"

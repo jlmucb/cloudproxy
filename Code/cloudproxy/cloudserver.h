@@ -20,10 +20,13 @@ namespace cloudproxy {
 // ACL database to see if the operations is authorized by CloudProxy policy.
 class CloudServer {
   public:
-    // Creates a CloudServer with a given key store, location of its (encrypted
-    // and integrity-protected) ACL database, and the port on which to listen.
+    // Creates a CloudServer with a given key store, location of its signed ACL
+    // database, and the port on which to listen. It also needs the location of
+    // the public policy key in two ways: one as a PEM file for use in TLS, and
+    // one as public RSA keyczar directory
     CloudServer(const string &tls_key_location, 
-		const string &public_policy_key,
+		const string &public_policy_keyczar,
+        const string &public_policy_pem,
 		const string &acl_location,
                 ushort port);
 

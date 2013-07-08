@@ -29,8 +29,11 @@ class CloudClient {
     // Creates a CloudClient with a directory (key_location) it searches to find
     // keyczar directories, the location of certificates and keys for TLS, as
     // well as with the addr:port of a CloudServer. 
-    CloudClient(const string &user_key_location, const string &tls_key_location,
-                const string &server_addr, ushort server_port);
+    CloudClient(const string &user_key_location,
+		const string &tls_key_location,
+		const string &public_policy_pem,
+                const string &server_addr,
+		ushort server_port);
 
     virtual ~CloudClient();
 

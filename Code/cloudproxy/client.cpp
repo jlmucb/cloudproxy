@@ -11,8 +11,11 @@ int main(int argc, char** argv) {
 
     google::ParseCommandLineFlags(&argc, &argv, false);
 
-    cloudproxy::CloudClient cc("./keys", "./tls_keys",
-                               FLAGS_address, FLAGS_port);
+    cloudproxy::CloudClient cc("./keys",
+			       "./openssl_keys/client",
+			       "./public_policy_key",
+                               FLAGS_address, 
+			       FLAGS_port);
 
     CHECK(cc.Connect()) << "Could not connect to the server at "
                       << FLAGS_address << ":" << FLAGS_port;

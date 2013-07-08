@@ -9,8 +9,11 @@ int main(int argc, char **argv) {
 
     google::ParseCommandLineFlags(&argc, &argv, true);
     
-    cloudproxy::CloudServer cs("./tls_keys", "./policy_key", "./acls",
-        FLAGS_port);
+    cloudproxy::CloudServer cs("./openssl_keys/server",
+			       "./public_policy_key",
+			       "./openssl_keys/policy",
+			       "./acls",
+			       FLAGS_port);
 
     cs.Listen();
     return 0;

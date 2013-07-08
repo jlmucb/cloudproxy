@@ -11,6 +11,8 @@
 #include <keyczar/base/stl_util-inl.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
+#include "cloudproxy.pb.h"
+
 using std::string;
 using std::stringstream;
 using std::unique_ptr;
@@ -23,6 +25,8 @@ DEFINE_string(key_loc, "./policy_key", "The location of the private key");
 DEFINE_string(pass, "cppolicy", "The password to use for this private key");
 
 int main(int argc, char** argv) {
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     // load the protobuf file
@@ -48,7 +52,15 @@ int main(int argc, char** argv) {
     string sig;
     CHECK(signer->Sign(acl_buf.str(), &sig)) << "Could not sign acl file";
 
+    cloudproxy::SignedACL sacl;
+    sacl.set_serialized_acls(acl_buf.str());
+    sacl.set_signature(sig);
+
+    string serialized;
+    CHECK(sacl.SerializeToString(&serialized)) << "Could not serialize the"
+            " signed ACLs";
+
     ofstream sig_file(FLAGS_acl_sig_file.c_str());
-    sig_file.write(sig.data(), sig.length());
+    sig_file.write(serialized.data(), serialized.length());
     return 0;
 }

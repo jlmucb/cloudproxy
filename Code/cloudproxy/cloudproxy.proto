@@ -20,7 +20,7 @@ message ACL {
 }
 
 message SignedACL {
-    required ACL acls = 1;
+    required string serialized_acls = 1;
     required string signature = 2;
 }
 

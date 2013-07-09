@@ -2,17 +2,20 @@ package cloudproxy;
 
 enum Op {
     ALL = 0;
-    AUTH = 1;
-    CREATE = 2;
-    DESTROY = 3;
-    WRITE = 4;
-    READ = 5;
+    CREATE = 1;
+    DESTROY = 2;
+    WRITE = 3;
+    READ = 4;
 }
 
 message Action {
     required string subject = 1;
     required Op verb = 2;
-    optional string object = 3;
+    required string object = 3;
+}
+
+message Auth {
+    required string subject = 1;
 }
 
 message ACL {
@@ -36,7 +39,8 @@ message Response {
 
 message ClientMessage {
     optional Action action = 1;
-    optional Response response = 2;
+    optional Auth auth = 2;
+    optional Response response = 3;
 }
 
 message ServerMessage {

@@ -3,8 +3,12 @@
 
 #include "cloudproxy.pb.h"
 
+#include <map>
+#include <set>
 #include <string>
 
+using std::map;
+using std::set;
 using std::string;
 
 namespace cloudproxy {
@@ -13,24 +17,23 @@ class CloudAuth{
     // cloudproxy::ACL object.
     CloudAuth(const string &acl);
 
-    virtual ~CloudAuth();
+    virtual ~CloudAuth() { }
 
     // Checks to see if this operation is permitted by the ACL
-    bool Permitted(const string &subject, cloudproxy::Op op,
-		   const string &object);
+    bool Permitted(const string &subject, Op op, const string &object);
 
     // Removes a given entry from the ACL if it exists
-    bool Delete(const string &subject, cloudproxy::Op op,
-		const string &object);
+    bool Delete(const string &subject, Op op, const string &object);
 
     // Adds a given entry to the ACL
-    bool Insert(const string &subect, cloudproxy::Op op,
-		const string &object);
+    bool Insert(const string &subect, Op op, const string &object);
 
     // serializes the ACL into a given string
     bool Serialize(string *data);
   private:
-    ACL acl_;
+    bool findPermissions(const string &subject, const string &object,
+        set<Op> **perms);
+    map<string, map<string, set<Op> > > permissions_;
 };
 }
 

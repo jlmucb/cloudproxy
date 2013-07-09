@@ -9,7 +9,7 @@ Todo
 2c. Fix timing attack.
 
 3.  Individual file keys to avoid escalation of privilege 
-    based on file names.
+    based on file names.  DONE.
 
 4.  PCR18 (19 too if lcp is set).  Define PCR18 during 
     compilation to activate.

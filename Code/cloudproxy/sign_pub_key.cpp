@@ -1,4 +1,3 @@
-#include <memory>
 #include <string>
 #include <fstream>
 #include <streambuf>
@@ -15,7 +14,6 @@
 
 using std::string;
 using std::stringstream;
-using std::unique_ptr;
 using std::ifstream;
 using std::ofstream;
 
@@ -50,7 +48,7 @@ int main(int argc, char** argv) {
                                                *password));
 
     // sign this serialized data with the keyset in FLAGS_key_loc
-    unique_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
+    scoped_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
     CHECK(signer.get()) << "Could not initialize the signer from "
                          << FLAGS_key_loc;
 

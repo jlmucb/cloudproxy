@@ -11,7 +11,8 @@
 using std::ifstream;
 using stringstream;
 
-bool cloudproxy::set_up_SSL_CTX(SSL_CTX *ctx, const string &public_policy_key,
+namespace cloudproxy {
+bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
 		const string &cert, const string &key) {
   // set up the TLS connection with the list of acceptable ciphers
   CHECK(SSL_CTX_set_cipher_list(ctx, "AES128-SHA256")) <<
@@ -33,7 +34,7 @@ bool cloudproxy::set_up_SSL_CTX(SSL_CTX *ctx, const string &public_policy_key,
   return true;
 }
 
-bool cloudproxy::extract_ACL(const string &signed_acls_file, keyczar::Keyczar *key,
+bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
 		 string *acl) {
 
   CHECK(key) << "null key";
@@ -47,7 +48,7 @@ bool cloudproxy::extract_ACL(const string &signed_acls_file, keyczar::Keyczar *k
   cloudproxy::SignedACL sacl;
   sacl.ParseFromString(sig_buf.str());
 
-  if (!verify_signature(sacl.serialized_acls(), sacl.signature())) {
+  if (!VerifySignature(sacl.serialized_acls(), sacl.signature())) {
     return false;
   }
 
@@ -55,7 +56,7 @@ bool cloudproxy::extract_ACL(const string &signed_acls_file, keyczar::Keyczar *k
   return true;
 }
 
-bool verify_signature(const string &data, const string &signature,
+bool VerifySignature(const string &data, const string &signature,
 		keyczar::Keyczar *key) {
   if (!key->Verify(data, signature)) {
     LOG(ERROR) << "Verify failed";
@@ -65,9 +66,10 @@ bool verify_signature(const string &data, const string &signature,
   return true;
 }
 
-bool create_rsa_public_keyset(const string &key, const string &metadata,
+bool CreateRSAPublicKeyset(const string &key, const string &metadata,
 		keyczar::Keyset *keyset) {
   CHECK(keyset) << "null keyset";
+
   // create KeyMetadata from the metadata string
   shared_ptr<Value> meta_value(keyczar::base::JSONReader::Read(metadata,
 			  false));

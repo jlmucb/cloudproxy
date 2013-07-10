@@ -1,8 +1,18 @@
-CPPFLAGS=-Wall -Werror -std=c++0x
-LDFLAGS=-lgflags -lglog -lkeyczar -lcrypto -lprotobuf
+CPPFLAGS=-Wall -Werror -std=c++0x -MMD
+LDFLAGS=
+LIBS=-lgflags -lglog -lkeyczar -lcrypto -lprotobuf
 PROTOC=protoc
+AR=ar
+ARFLAG=rcu
 
-all: test sign_acls verify_acls acls acls_sig sign_pub_key verify_pub_key
+SRCS=cloud_auth.cpp \
+    cloud_server.cpp \
+    cloud_user_manager.cpp
+    cloudproxy.pb.cc
+
+OBJS=$(CS_SRCS:.cpp=.o)
+
+all: test sign_acls verify_acls acls acls_sig sign_pub_key verify_pub_key cloudserver
 
 cloudproxy.pb.cc: cloudproxy.proto
 	protoc -I. --cpp_out=. cloudproxy.proto
@@ -28,5 +38,10 @@ acls: acls.ascii cloudproxy.proto
 acls_sig: acls sign_acls
 	./sign_acls --acl_file acls --acl_sig_file acls_sig
 
+cloudproxy.lib: $(OBJS)
+	$(AR) $(ARFLAGS) $@ $^
+
 clean:
 	rm -f *.o cloudproxy.pb.* test sign_acls acls acls_sig verify_acls sign_pub_key verify_pub_key
+
+-include $(OBJS:.o=.d)

@@ -5,11 +5,11 @@
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/scoped_ptr.h>
 
 #include "cloudproxy.pb.h"
 
 using std::string;
-using std::unique_ptr;
 
 DEFINE_string(subject, "", "The subject of the action");
 DEFINE_string(operation, "ALL", "The operation to send");
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
         " Action to a string\n";
 
     // encrypt this serialized data with the keyset in FLAGS_key_loc
-    unique_ptr<keyczar::Keyczar> crypter(keyczar::Crypter::Read(FLAGS_key_loc));
+    scoped_ptr<keyczar::Keyczar> crypter(keyczar::Crypter::Read(FLAGS_key_loc));
     CHECK(crypter.get()) << "Could not initialize the crypter from "
                          << FLAGS_key_loc;
 

@@ -3,7 +3,9 @@
 
 #include "util.h"
 
-cloudproxy::CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) {
+namespace cloudproxy {
+
+CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) {
   string acl;
 
   CHECK(extract_ACL(acl_path, key, &acl)) << "Could not extract the ACL";
@@ -21,7 +23,7 @@ cloudproxy::CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) 
   }
 }
 
-bool cloudproxy::CloudAuth::findPermissions(const string &subject,
+bool CloudAuth::findPermissions(const string &subject,
 		const string &object,
 		set<Op> **perms) {
   CHECK(perms) << "null perms parameter";
@@ -37,7 +39,7 @@ bool cloudproxy::CloudAuth::findPermissions(const string &subject,
   return true;
 }
 
-bool cloudproxy::CloudAuth::Permitted(const string &subject,
+bool CloudAuth::Permitted(const string &subject,
 				      Op op,
 				      const string &object) {
   set<Op> *perms = nullptr;
@@ -52,7 +54,7 @@ bool cloudproxy::CloudAuth::Permitted(const string &subject,
   return perms->end() != op_it;
 }
 
-bool cloudproxy::CloudAuth::Delete(const string &subject, Op op,
+bool CloudAuth::Delete(const string &subject, Op op,
 		const string &object) {
   set<Op> *perms = nullptr;
   if (!findPermissions(subject, object, &perms)) return false;
@@ -64,13 +66,13 @@ bool cloudproxy::CloudAuth::Delete(const string &subject, Op op,
   return true;
 }
 
-bool cloudproxy::CloudAuth::Insert(const string &subject, Op op,
+bool CloudAuth::Insert(const string &subject, Op op,
 		const string &object) {
   permissions_[subject][object].insert(op);
   return true;
 }
 
-bool cloudproxy::CloudAuth::Serialize(string *data) {
+bool CloudAuth::Serialize(string *data) {
   // create an ACL from the map and serialize it to the data string
   CHECK(data) << "Can't serialize to a null string";
 
@@ -92,3 +94,5 @@ bool cloudproxy::CloudAuth::Serialize(string *data) {
 
   return acl.SerializeToString(data);
 }
+
+} // namespace cloudproxy

@@ -7,7 +7,8 @@
 
 using std::stringstream;
 
-cloudproxy::CloudServer::CloudServer(const string &tls_cert,
+namespace cloudproxy {
+CloudServer::CloudServer(const string &tls_cert,
     const string &tls_key, 
     const string &public_policy_keyczar,
     const string &public_policy_pem,
@@ -28,7 +29,7 @@ cloudproxy::CloudServer::CloudServer(const string &tls_cert,
     challenges_(),
     users_() {
   // set up the SSL context and BIOs for getting client connections
-  CHECK(set_up_SSL_CTX(context_.get(), public_policy_pem, tls_cert,
+  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert,
                        tls_key)) << "Could not set up TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
@@ -52,7 +53,7 @@ cloudproxy::CloudServer::CloudServer(const string &tls_cert,
     " the host and port combination " << host_and_port;
 }
 
-bool cloudproxy::CloudServer::Listen() {
+bool CloudServer::Listen() {
   while(true) {
     LOG(INFO) << "About to listen for a client";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
@@ -73,7 +74,7 @@ bool cloudproxy::CloudServer::Listen() {
   }
 }
 
-bool cloudproxy::CloudServer::ReceiveData(BIO *bio, void *buffer,
+bool CloudServer::ReceiveData(BIO *bio, void *buffer,
     size_t buffer_len) {
   CHECK(bio) << "null bio";
   CHECK(buffer) << "null buffer";
@@ -89,7 +90,7 @@ bool cloudproxy::CloudServer::ReceiveData(BIO *bio, void *buffer,
   return true;
 }
 
-bool cloudproxy::CloudServer::ReceiveData(BIO *bio, string *data) {
+bool CloudServer::ReceiveData(BIO *bio, string *data) {
   CHECK(bio) << "null bio";
   CHECK(data) << "null data";
 
@@ -111,7 +112,7 @@ bool cloudproxy::CloudServer::ReceiveData(BIO *bio, string *data) {
   return true;
 }
 
-bool cloudproxy::CloudServer::SendData(BIO *bio, void *buffer,
+bool CloudServer::SendData(BIO *bio, void *buffer,
     int buffer_len) {
   int x = 0;
   while((x = BIO_write(bio, buffer, buffer_len)) != buffer_len) {
@@ -123,7 +124,7 @@ bool cloudproxy::CloudServer::SendData(BIO *bio, void *buffer,
 }
 
 
-bool cloudproxy::CloudServer::SendData(BIO *bio, const string &data) {
+bool CloudServer::SendData(BIO *bio, const string &data) {
   size_t s = data.length();
   uint32_t net_len = htonl(s);
 
@@ -141,7 +142,7 @@ bool cloudproxy::CloudServer::SendData(BIO *bio, const string &data) {
   return true;
 }
 
-bool cloudproxy::CloudServer::HandleConnection(
+bool CloudServer::HandleConnection(
     keyczar::openssl::ScopedBIO &sbio) {
   keyczar::openssl::ScopedBIO bio(sbio.release()); 
 
@@ -184,7 +185,7 @@ bool cloudproxy::CloudServer::HandleConnection(
   return rv;
 }
 
-bool cloudproxy::CloudServer::HandleMessage(const ClientMessage &message,
+bool CloudServer::HandleMessage(const ClientMessage &message,
     BIO *bio, string *reason, bool *reply) {
   CHECK(bio) << "null bio";
   CHECK(reason) << "null reason";
@@ -236,7 +237,7 @@ bool cloudproxy::CloudServer::HandleMessage(const ClientMessage &message,
   return false;
 }
 
-bool cloudproxy::CloudServer::HandleAuth(const Auth &auth, BIO *bio,
+bool CloudServer::HandleAuth(const Auth &auth, BIO *bio,
     string *reason, bool *reply) {
   string subject = auth.subject();
 
@@ -288,7 +289,7 @@ bool cloudproxy::CloudServer::HandleAuth(const Auth &auth, BIO *bio,
   return true;
 }
 
-bool cloudproxy::CloudServer::HandleResponse(const Response &response,
+bool CloudServer::HandleResponse(const Response &response,
     BIO *bio, string *reason, bool *reply) {
   // check to see if this is an outstanding challenge
   Challenge c;
@@ -339,7 +340,7 @@ bool cloudproxy::CloudServer::HandleResponse(const Response &response,
   CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
 
   // check the signature on the serialized_challenge
-  if (!verify_signature(response.serialized_chall(), response.signature(),
+  if (!VerifySignature(response.serialized_chall(), response.signature(),
         user_key.get())) {
     LOG(ERROR) << "Challenge signature failed";
     reason->assign("Invalid response signature");
@@ -354,7 +355,7 @@ bool cloudproxy::CloudServer::HandleResponse(const Response &response,
   return true;
 }
 
-bool cloudproxy::CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
+bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
     bool *reply) {
   // note that CREATE fails if the object already exists
   if (objects_.end() != objects_.find(action.object())) {
@@ -369,7 +370,7 @@ bool cloudproxy::CloudServer::HandleCreate(const Action &action, BIO *bio, strin
   return true;
 }
 
-bool cloudproxy::CloudServer::HandleDestroy(const Action &action, BIO *bio,
+bool CloudServer::HandleDestroy(const Action &action, BIO *bio,
     string *reason, bool *reply) {
   auto object_it = objects_.find(action.object());
   if (objects_.end() == object_it) {
@@ -386,7 +387,7 @@ bool cloudproxy::CloudServer::HandleDestroy(const Action &action, BIO *bio,
   return true;
 }
 
-bool cloudproxy::CloudServer::HandleWrite(const Action &action, BIO *bio,
+bool CloudServer::HandleWrite(const Action &action, BIO *bio,
     string *reason, bool *reply) {
   // this is mostly a nop; just check to make sure the object exists
   if (objects_.end() == objects_.find(action.object())) {
@@ -398,7 +399,7 @@ bool cloudproxy::CloudServer::HandleWrite(const Action &action, BIO *bio,
 
   return true;
 
-bool cloudproxy::CloudServer::HandleRead(const Action &action, BIO *bio,
+bool CloudServer::HandleRead(const Action &action, BIO *bio,
     string *reason, bool *reply) {
   // this is mostly a nop; just check to make sure the object exists
   if (objects_.end() == objects_.find(action.object())) {
@@ -410,3 +411,5 @@ bool cloudproxy::CloudServer::HandleRead(const Action &action, BIO *bio,
 
   return true;
 }
+
+} // namespace cloudproxy

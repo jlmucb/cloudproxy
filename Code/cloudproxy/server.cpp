@@ -1,6 +1,6 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include "cloudserver.h"
+#include "cloud_server.h"
 
 DEFINE_string(server_cert, "./openssl_keys/server/server.pem",
 		"The PEM certificate for the server to use for TLS");

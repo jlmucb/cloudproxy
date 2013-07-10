@@ -2,7 +2,7 @@
 #define CLOUDSERVER_H_
 
 #include "cloudproxy.pb.h"
-#include "cloudauth.h"
+#include "cloud_auth.h"
 #include "cloud_user_manager.h"
 #include "util.h"
 #include <openssl/ssl.h>

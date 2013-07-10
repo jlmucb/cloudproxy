@@ -15,7 +15,7 @@ namespace cloudproxy {
 class CloudAuth{
     // Instantiates the Auth class with a serialized representation of a
     // cloudproxy::ACL object.
-    CloudAuth(const string &acl);
+    CloudAuth(const string &acl_path);
 
     virtual ~CloudAuth() { }
 

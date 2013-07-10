@@ -13,6 +13,7 @@
 #include <google/protobuf/text_format.h>
 
 #include "cloudproxy.pb.h"
+#include "util.h"
 
 using std::string;
 using std::stringstream;
@@ -28,26 +29,17 @@ int main(int argc, char** argv) {
 
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    // load the signature
-    ifstream sig(FLAGS_acl_sig_file.c_str());
-    stringstream sig_buf;
-    sig_buf << sig.rdbuf();
-
-    cloudproxy::SignedACL sacl;
-    sacl.ParseFromString(sig_buf.str());
-
     // get the public key for verification
-    keyczar::Keyczar *verifier = keyczar::Verifier::Read(FLAGS_key_loc.c_str());   
-    CHECK(verifier) << "Could not get the public key for verification";
+    unique_ptr<keyczar::Keyczar> verifier(keyczar::Verifier::Read(FLAGS_key_loc.c_str()));
+    CHECK(verifier.get()) << "Could not get the public key for verification";
 
-    CHECK(verifier->Verify(sacl.serialized_acls(), sacl.signature())) << "Verify failed";
-
-    LOG(INFO) << FLAGS_acl_sig_file << " contained a valid signature " <<
-        " under public key in " << FLAGS_key_loc;
+    string serialized_acl;
+    CHECK(extract_ACL(FLAGS_acl_sig_file, verifier.get(), &serialized_acl)) <<
+      "Could not verify and load the ACL file";
 
     string text;
     cloudproxy::ACL acls;
-    acls.ParseFromString(sacl.serialized_acls());
+    acls.ParseFromString(serialized_acl);
     google::protobuf::TextFormat::PrintToString(acls, &text);
     LOG(INFO) << "The ACLs are: " << text;
     return 0;

@@ -29,12 +29,13 @@ message SignedACL {
 
 message Challenge {
     required string subject = 1;
-    required string nonce = 2;
+    required bytes nonce = 2;
 }
 
 message Response {
     required bytes serialized_chall = 1;
     required string signature = 2;
+    optional SignedSpeaksFor binding = 3;
 }
 
 message ClientMessage {
@@ -43,8 +44,14 @@ message ClientMessage {
     optional Response response = 3;
 }
 
+message Result {
+    required bool success = 1;
+    optional string reason = 2;
+}
+
 message ServerMessage {
     optional Challenge challenge = 1;
+    optional Result result = 2;
 }
 
 // a message that gives a name to a given keyczar public key structure

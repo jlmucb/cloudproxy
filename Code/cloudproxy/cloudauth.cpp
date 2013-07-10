@@ -1,7 +1,13 @@
 #include "cloudauth.h"
 #include <glog/logging.h>
 
-cloudproxy::CloudAuth::CloudAuth(const string &acl) {
+#include "util.h"
+
+cloudproxy::CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) {
+  string acl;
+
+  CHECK(extract_ACL(acl_path, key, &acl)) << "Could not extract the ACL";
+
   // deserialize the cloudproxy::ACL and convert it into a map of permissions
   ACL acl_proto;
   acl_proto.ParseFromString(acl);

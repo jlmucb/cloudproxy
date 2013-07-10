@@ -5,17 +5,17 @@ PROTOC=protoc
 AR=ar
 ARFLAG=rcu
 
-SRCS=cloud_auth.cpp \
-    cloud_server.cpp \
-    cloud_user_manager.cpp
+SRCS=cloud_auth.cc \
+    cloud_server.cc \
+    cloud_user_manager.cc \
     cloudproxy.pb.cc
 
-OBJS=$(CS_SRCS:.cpp=.o)
+OBJS=$(SRCS:.cc=.o)
 
 all: test sign_acls verify_acls acls acls_sig sign_pub_key verify_pub_key cloudserver
 
 cloudproxy.pb.cc: cloudproxy.proto
-	protoc -I. --cpp_out=. cloudproxy.proto
+	protoc -I. --cc_out=. cloudproxy.proto
 
 test: cloudproxy.pb.o main.o 
 	$(CC) -o $@ $^ $(LDFLAGS)

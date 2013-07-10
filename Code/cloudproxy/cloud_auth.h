@@ -1,6 +1,7 @@
 #ifndef CLOUDPROXY_CLOUD_AUTH_H_
 #define CLOUDPROXY_CLOUD_AUTH_H_
 
+#include <keyczar/keyczar.h>
 #include "cloudproxy.pb.h"
 
 #include <map>
@@ -13,9 +14,10 @@ using std::string;
 
 namespace cloudproxy {
 class CloudAuth{
+  public:
     // Instantiates the Auth class with a serialized representation of a
     // cloudproxy::ACL object.
-    CloudAuth(const string &acl_path);
+    CloudAuth(const string &acl_path, keyczar::Keyczar *key);
 
     virtual ~CloudAuth() { }
 
@@ -30,10 +32,17 @@ class CloudAuth{
 
     // serializes the ACL into a given string
     bool Serialize(string *data);
+
+    // removes all subject permissions for object except potentially CREATE (if
+    // present)
+    bool DestroyObject(const string &subject, const string &object);
+
   private:
     bool findPermissions(const string &subject, const string &object,
         set<Op> **perms);
     map<string, map<string, set<Op> > > permissions_;
+
+    DISALLOW_COPY_AND_ASSIGN(CloudAuth);
 };
 }
 

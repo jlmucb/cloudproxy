@@ -72,6 +72,8 @@ class CloudClient {
     // disallow copy construction and assignment
     CloudClient(const CloudClient&);
     CloudClient& operator=(const CloudClient&);
+
+    DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };
 }
 

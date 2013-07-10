@@ -7,9 +7,13 @@
 #include <keyczar/keyset_metadata.h>
 #include <keyczar/keyset.h>
 #include <keyczar/keyczar.h>
+#include <keyczar/rsa_impl.h>
+#include <keyczar/rsa_public_key.h>
+
+#include "cloudproxy.pb.h"
 
 using std::ifstream;
-using stringstream;
+using std::stringstream;
 
 namespace cloudproxy {
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
@@ -22,13 +26,13 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
   CHECK(SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION)) <<
     "Could not turn off compression on the TLS connection";
 
-  CHECK(SSL_CTX_load_verify_locations(ctx, public_policy_key)) <<
+  CHECK(SSL_CTX_load_verify_locations(ctx, public_policy_key.c_str(), NULL)) <<
     "Could not load the public policy key for verification";
 
-  CHECK(SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM)) <<
+  CHECK(SSL_CTX_use_certificate_file(ctx, cert.c_str(), SSL_FILETYPE_PEM)) <<
     "Could not load the certificate for this connection";
 
-  CHECK(SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM)) <<
+  CHECK(SSL_CTX_use_PrivateKey_file(ctx, key.c_str(), SSL_FILETYPE_PEM)) <<
     "Could not load the private key for this connection";
 
   return true;
@@ -48,7 +52,7 @@ bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
   cloudproxy::SignedACL sacl;
   sacl.ParseFromString(sig_buf.str());
 
-  if (!VerifySignature(sacl.serialized_acls(), sacl.signature())) {
+  if (!VerifySignature(sacl.serialized_acls(), sacl.signature(), key)) {
     return false;
   }
 
@@ -71,18 +75,15 @@ bool CreateRSAPublicKeyset(const string &key, const string &metadata,
   CHECK(keyset) << "null keyset";
 
   // create KeyMetadata from the metadata string
-  shared_ptr<Value> meta_value(keyczar::base::JSONReader::Read(metadata,
+  scoped_ptr<Value> meta_value(keyczar::base::JSONReader::Read(metadata,
 			  false));
-  if (!keyset->set_metadata(keyczar::KeysetMetadata::CreateFromValue(meta_value.get()))) {
-    LOG(ERROR) << "Could not add the metadata for this key";
-    return false;
-  }
+  keyset->set_metadata(keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
 
   // create an RSA public Key from the key JSON string
-  shared_ptr<Value> key_value(keyczar::base::JSONReader::Read(key, false));
+  scoped_ptr<Value> key_value(keyczar::base::JSONReader::Read(key, false));
   // Note: it is always key version 1, since this is the first key we are adding.
   // TODO(tmroeder): Or do I need to read this information from the metadata? Look in the file.
-  if (!keyset->AddKey(keyczar::RSAPublicKey::CreateFromValue(key_value.get())), 1) {
+  if (!keyset->AddKey(keyczar::RSAPublicKey::CreateFromValue(*key_value), 1)) {
     LOG(ERROR) << "Could not add an RSA Public Key";
     return false;
   }
@@ -95,3 +96,4 @@ bool CreateRSAPublicKeyset(const string &key, const string &metadata,
   
   return true;
 }
+} // namespace cloudproxy

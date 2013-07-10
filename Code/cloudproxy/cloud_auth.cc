@@ -8,7 +8,7 @@ namespace cloudproxy {
 CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) {
   string acl;
 
-  CHECK(extract_ACL(acl_path, key, &acl)) << "Could not extract the ACL";
+  CHECK(ExtractACL(acl_path, key, &acl)) << "Could not extract the ACL";
 
   // deserialize the cloudproxy::ACL and convert it into a map of permissions
   ACL acl_proto;
@@ -35,6 +35,8 @@ bool CloudAuth::findPermissions(const string &subject,
   auto object_it = subject_it->second.find(object);
   if (subject_it->second.end() == object_it) return false;
 
+  // this is safe in single-threaded code because references to map objects are
+  // guaranteed to remain unchanged unless the given item is deleted
   *perms = &object_it->second;;
   return true;
 }
@@ -93,6 +95,23 @@ bool CloudAuth::Serialize(string *data) {
   }
 
   return acl.SerializeToString(data);
+}
+
+bool CloudAuth::DestroyObject(const string &subject, const string &object) {
+  set<Op> *perms;
+  if (!findPermissions(subject, object, &perms)) {
+    LOG(ERROR) << "Could not find the permissions for " << subject << " on "
+      << object;
+    return false;
+  }
+
+  bool has_create = perms->find(CREATE) != perms->end();
+  perms->clear();
+  if (has_create) {
+    perms->insert(CREATE);
+  }
+
+  return true;
 }
 
 } // namespace cloudproxy

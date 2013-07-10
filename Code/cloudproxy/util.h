@@ -3,9 +3,14 @@
 
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/base/basictypes.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/openssl/util.h>
+
+#include <string>
+
+using std::string;
 
 namespace cloudproxy {
 // taken from a private definition in keyczar/openssl/aes.h
@@ -25,7 +30,7 @@ bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
 bool VerifySignature(const string &data, const string &signature,
 		keyczar::Keyczar *key);
 
-bool CreateKeyset(const string &key, const string &metadata,
+bool CreateRSAPublicKeyset(const string &key, const string &metadata,
 		keyczar::Keyset *keyset);
 }
 #endif // CLOUDPROXY_UTIL_H_

@@ -9,6 +9,7 @@
 #include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
 
 #include <string>
 #include <set>
@@ -23,6 +24,8 @@ namespace cloudproxy {
 // ACL database to see if the operations is authorized by CloudProxy policy.
 class CloudServer {
   public:
+    static const int NonceSize = 16;
+
     // Creates a CloudServer with a given key store, location of its signed ACL
     // database, and the port on which to listen. It also needs the location of
     // the public policy key in two ways: one as a PEM file for use in TLS, and
@@ -32,7 +35,10 @@ class CloudServer {
 		const string &public_policy_keyczar,
 		const string &public_policy_pem,
 		const string &acl_location,
-                ushort port);
+        const string &users_location,
+        const string &server_key_location,
+        const string &host,
+        ushort port);
 
     virtual ~CloudServer();
 
@@ -54,7 +60,7 @@ class CloudServer {
 
     bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);
     bool ReceiveData(BIO *bio, string *data);
-    bool SendData(BIO *bio, void *buffer, size_t buffer_len);
+    bool SendData(BIO *bio, const void *buffer, size_t buffer_len);
     bool SendData(BIO *bio, const string &data);
 
   private:
@@ -100,7 +106,7 @@ class CloudServer {
     // in a cache instead of a map
     map<string, string> challenges_;
 
-    scoped_ptr<CloudUserManager> users_;
+    DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };
 }
 

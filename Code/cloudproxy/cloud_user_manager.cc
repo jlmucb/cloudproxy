@@ -4,7 +4,7 @@
 
 namespace cloudproxy {
 
-bool CloudUserManager::HasUser(const string &user) {
+bool CloudUserManager::HasKey(const string &user) const {
   return users_.end() != users_.find(user);
 }
 
@@ -33,22 +33,16 @@ bool CloudUserManager::AddKey(const string &user,
   return true;
 }
 
-bool CloudUserManager::AddKey(const string &binding,
+bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
     keyczar::Keyczar *verifier) {
-  // deserialize the binding and check its signature
-  SignedSpeaksFor ssf;
-  if (!ssf.ParseFromString(binding)) {
-    LOG(ERROR) << "Could not parse a SignedSpeaksFor message";
-    return false;
-  }
-
+  // check the signature for this binding
   if (!VerifySignature(ssf.serialized_speaks_for(), ssf.signature(), verifier)) {
     LOG(ERROR) << "The SignedSpeaksFor was not correctly signed";
     return false;
   }
 
   SpeaksFor sf;
-  if (!sf.ParseFromString(ssf.seralized_speaks_for())) {
+  if (!sf.ParseFromString(ssf.serialized_speaks_for())) {
     LOG(ERROR) << "Could not deserialize the SpeaksFor message";
     return false;
   }
@@ -61,7 +55,7 @@ void CloudUserManager::SetAuthenticated(const string &user) {
 }
 
 bool CloudUserManager::IsAuthenticated(const string &user) {
-  return authenticated_.end() != authenticated.find(user);
+  return authenticated_.end() != authenticated_.find(user);
 }
 
 } // namespace cloudproxy

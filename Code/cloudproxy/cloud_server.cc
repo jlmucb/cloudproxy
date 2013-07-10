@@ -19,15 +19,14 @@ CloudServer::CloudServer(const string &tls_cert,
     ushort port) 
   : crypter_(keyczar::Crypter::Read(server_key_location)),
     public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
-    rand_(keyczar::CryptoFactory::Rand());
+    rand_(keyczar::CryptoFactory::Rand()),
     context_(SSL_CTX_new(TLSv1_2_server_method())),
     bio_(nullptr),
     abio_(nullptr),
-    auth_(acl_location, public_policy_key_.get()),
-    users_(users_location, public_policy_key_.get()),
+    auth_(new CloudAuth(acl_location, public_policy_key_.get())),
+    users_(new CloudUserManager()),
     objects_(),
-    challenges_(),
-    users_() {
+    challenges_() {
   // set up the SSL context and BIOs for getting client connections
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert,
                        tls_key)) << "Could not set up TLS";
@@ -72,6 +71,8 @@ bool CloudServer::Listen() {
       }
     }
   }
+
+  return true;
 }
 
 bool CloudServer::ReceiveData(BIO *bio, void *buffer,
@@ -82,6 +83,7 @@ bool CloudServer::ReceiveData(BIO *bio, void *buffer,
   // get the data, retrying until we get it.
   // Note: this assumes that BIO_read doesn't get partial data from the SSL
   // connection but instead blocks until it has enough data.
+  int x = 0;
   while ((x = BIO_read(bio, buffer, buffer_len)) != buffer_len) {
     if (x == 0) return false;
     if ((x < 0) && !BIO_should_retry(bio)) return false;
@@ -95,29 +97,31 @@ bool CloudServer::ReceiveData(BIO *bio, string *data) {
   CHECK(data) << "null data";
 
   uint32_t net_len;
-  if (!ReceiveData(bio.get(), &net_len, sizeof(net_len))) {
+  if (!ReceiveData(bio, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not get the length of the data";
     return false;
   }
 
   // convert from network byte order to get the length
   uint32_t len = ntohl(net_len);
-  data->reserve(len);
+  scoped_array<char> temp_data(new char[len]);
 
-  if (!ReceiveData(bio.get(), data.data(), data.length())) {
+  if (!ReceiveData(bio, temp_data.get(), len)) {
     LOG(ERROR) << "Could not get the data";
     return false;
   }
 
+  data->assign(temp_data.get(), len);
+
   return true;
 }
 
-bool CloudServer::SendData(BIO *bio, void *buffer,
-    int buffer_len) {
+bool CloudServer::SendData(BIO *bio, const void *buffer,
+    size_t buffer_len) {
   int x = 0;
   while((x = BIO_write(bio, buffer, buffer_len)) != buffer_len) {
     if (x == 0) return false;
-    if ((x < 0) && !BIO_should_return(bio)) return false;
+    if ((x < 0) && !BIO_should_retry(bio)) return false;
   }
 
   return true;
@@ -322,7 +326,7 @@ bool CloudServer::HandleResponse(const Response &response,
   }
 
   // get or add the public key for this user
-  shared_ptr<keyczar::Verifier> user_key;
+  shared_ptr<keyczar::Keyczar> user_key;
   if (!users_->HasKey(c.subject())) {
     if (!response.has_binding()) {
       LOG(ERROR) << "No key known for user " << c.subject();
@@ -365,7 +369,7 @@ bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
   }
 
   // create the object and grant the subject all permissions on it
-  objects.insert(action.object());
+  objects_.insert(action.object());
   auth_->Insert(action.subject(), ALL, action.object());
   return true;
 }
@@ -398,6 +402,7 @@ bool CloudServer::HandleWrite(const Action &action, BIO *bio,
   }
 
   return true;
+}
 
 bool CloudServer::HandleRead(const Action &action, BIO *bio,
     string *reason, bool *reply) {

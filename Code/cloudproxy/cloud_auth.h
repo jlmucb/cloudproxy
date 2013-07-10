@@ -1,5 +1,5 @@
-#ifndef CLOUDAUTH_H_
-#define CLOUDAUTH_H_
+#ifndef CLOUDPROXY_CLOUD_AUTH_H_
+#define CLOUDPROXY_CLOUD_AUTH_H_
 
 #include "cloudproxy.pb.h"
 
@@ -37,4 +37,4 @@ class CloudAuth{
 };
 }
 
-#endif // CLOUDAUTH_H_
+#endif // CLOUDPROXY_CLOUD_AUTH_H_

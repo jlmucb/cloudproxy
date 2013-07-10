@@ -1,5 +1,5 @@
-#ifndef CLOUDCLIENT_H_
-#define CLOUDCLIENT_H_
+#ifndef CLOUDPROXY_CLOUD_CLIENT_H_
+#define CLOUDPROXY_CLOUD_CLIENT_H_
 
 #include <openssl/ssl.h>
 
@@ -75,4 +75,4 @@ class CloudClient {
 };
 }
 
-#endif // CLOUDCLIENT_H_
+#endif // CLOUDPROXY_CLOUD_CLIENT_H_

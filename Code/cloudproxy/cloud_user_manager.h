@@ -1,5 +1,5 @@
-#ifndef CLOUD_USER_MANAGER_H_
-#define CLOUD_USER_MANAGER_H_
+#ifndef CLOUDPROXY_CLOUD_USER_MANAGER_H_
+#define CLOUDPROXY_CLOUD_USER_MANAGER_H_
 
 #include <keyczar/keyczar.h>
 
@@ -31,4 +31,4 @@ class CloudUserManager {
 };
 }
 
-#endif // CLOUD_USER_MANAGER_H_
+#endif // CLOUDPROXY_CLOUD_USER_MANAGER_H_

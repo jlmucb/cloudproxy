@@ -1,5 +1,5 @@
-#ifndef __CLOUD_CLIENT_H_
-#define __CLOUD_CLIENT_H_
+#ifndef CLOUDPROXY_FILE_CLIENT_H_
+#define CLOUDPROXY_FILE_CLIENT_H_
 
 namespace cloudproxy {
 class CloudClient {
@@ -11,4 +11,4 @@ class CloudClient {
 };
 }
 
-#endif /* ndef __CLOUD_CLIENT_H_ */
+#endif // CLOUDPROXY_FILE_CLIENT_H_

@@ -1,5 +1,5 @@
-#ifndef CLOUDSERVER_H_
-#define CLOUDSERVER_H_
+#ifndef CLOUDPROXY_CLOUD_SERVER_H_
+#define CLOUDPROXY_CLOUD_SERVER_H_
 
 #include "cloudproxy.pb.h"
 #include "cloud_auth.h"
@@ -7,6 +7,7 @@
 #include "util.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
+#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
 
 #include <string>
@@ -68,13 +69,13 @@ class CloudServer {
 		    bool *reply);
 
     // the encryption/decryption key for this server
-    unique_ptr<keyczar::Keyczar> crypter_;
+    scoped_ptr<keyczar::Keyczar> crypter_;
 
     // the public policy key, used to check signatures
-    unique_ptr<keyczar::Keyczar> public_policy_key_;
+    scoped_ptr<keyczar::Keyczar> public_policy_key_;
 
     // random number generator for generating challenges
-    unique_ptr<keyczar::RandImpl> rand_;
+    scoped_ptr<keyczar::RandImpl> rand_;
 
     // a context object that stores all the TLS parameters for the connection
     ScopedSSLCtx context_;
@@ -86,10 +87,10 @@ class CloudServer {
     keyczar::openssl::ScopedBIO abio_;
 
     // an object that manages an ACL for requests from the client
-    unique_ptr<CloudAuth> auth_;
+    scoped_ptr<CloudAuth> auth_;
 
     // an object that manages users known to the server
-    unique_ptr<CloudUserManager> users_;
+    scoped_ptr<CloudUserManager> users_;
 
     // a simple object management tool: a set of object names
     set<string> objects_;
@@ -99,8 +100,8 @@ class CloudServer {
     // in a cache instead of a map
     map<string, string> challenges_;
 
-    unique_ptr<CloudUserManager> users_;
+    scoped_ptr<CloudUserManager> users_;
 };
 }
 
-#endif // CLOUDSERVER_H_
+#endif // CLOUDPROXY_CLOUD_SERVER_H_

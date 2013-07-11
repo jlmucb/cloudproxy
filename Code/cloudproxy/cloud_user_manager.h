@@ -21,7 +21,8 @@ class CloudUserManager {
     
     bool HasKey(const string &user) const;
     bool GetKey(const string &user, shared_ptr<keyczar::Keyczar> *key);
-    bool AddSigningKey(const string &user, const string &path);
+    bool AddSigningKey(const string &user, const string &path,
+      const string &password);
     bool AddKey(const string &user, const string &key, const string &meta);
     bool AddKey(const SignedSpeaksFor &ssf, keyczar::Keyczar *verifier);
 

@@ -2,6 +2,8 @@
 #include "util.h"
 #include "cloudproxy.pb.h"
 
+#include <keyczar/rw/keyset_file_reader.h>
+
 namespace cloudproxy {
 
 bool CloudUserManager::HasKey(const string &user) const {
@@ -20,9 +22,19 @@ bool CloudUserManager::GetKey(const string &user,
   return true;
 }
 
-bool CloudUserManager::AddSigningKey(const string &user, const string &path) {
-  shared_ptr<keyczar::Keyczar> verifier(keyczar::Signer::Read(path.c_str()));
-  users_[user] = verifier;
+bool CloudUserManager::AddSigningKey(const string &user, const string &path,
+    const string &password) {
+  keyczar::base::ScopedSafeString safe_password(new string(password));
+  scoped_ptr<keyczar::rw::KeysetReader> reader(
+    new keyczar::rw::KeysetPBEJSONFileReader(path.c_str(), *safe_password));
+    
+  shared_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
+  if (signer.get() == nullptr) {
+    LOG(ERROR) << "Could not read the key from " << path;
+    return false;
+  }
+
+  users_[user] = signer;
   return true;
 }
 

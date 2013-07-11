@@ -16,7 +16,7 @@ DEFINE_string(policy_key, "./public_policy_key", "The keyczar public"
 DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.pem",
 		"The PEM public policy cert");
 DEFINE_string(address, "localhost", "The address of the local server");
-DEFINE_int32(port, 0, "The server port to connect to");
+DEFINE_int32(port, 11235, "The server port to connect to");
 
 int main(int argc, char** argv) {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -34,12 +34,16 @@ int main(int argc, char** argv) {
                       << FLAGS_address << ":" << FLAGS_port;
                     
 
-    CHECK(cc.Authenticate("tmroeder", "./keys/tmroeder")) << "Could not get"
-      " keys from ./keys/tmroeder";
+    CHECK(cc.AddUser("tmroeder", "./keys/tmroeder", "tmroeder")) << "Could not"
+      " add the user credential from its keyczar path";
+    CHECK(cc.Authenticate("tmroeder", "./keys/tmroeder_pub_signed")) << "Could"
+      " not authenticate tmroeder with the server";
     CHECK(cc.Create("tmroeder", "test")) << "Could not create the object"
         " 'test' on the server";
     CHECK(cc.Read("tmroeder", "test")) << "Could not read the object";
     CHECK(cc.Destroy("tmroeder", "test")) << "Could not destroy the object";
+
+    LOG(INFO) << "Test succeeded";
 
     return 0;
 }

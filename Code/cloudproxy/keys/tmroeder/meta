@@ -1,5 +1,5 @@
 {
-   "encrypted": false,
+   "encrypted": true,
    "name": "Test",
    "purpose": "SIGN_AND_VERIFY",
    "type": "RSA_PRIV",

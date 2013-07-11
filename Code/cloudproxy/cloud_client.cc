@@ -49,6 +49,16 @@ bool CloudClient::Connect() {
   return true;
 }
 
+bool CloudClient::AddUser(const string &user, const string &key_path,
+    const string &password) {
+  if (users_->HasKey(user)) {
+    LOG(ERROR) << "User " << user << " already has a key";
+    return false;
+  }
+
+  return users_->AddKey(user, key_path, password);
+}
+
 bool CloudClient::Authenticate(const string &subject,
 		const string &binding_file) {
   // check to see if we have already authenticated this subject

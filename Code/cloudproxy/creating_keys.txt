@@ -74,22 +74,33 @@ key that can be used for signature verification:
     --pass=<same as --pass in previous command>
 
 
-Create keys for users tmroeder and jlm
+Create keys for users tmroeder and jlm with simple passwords (will be replaced
+with better passwords when we get this info from the TPM)
 
 > mkdir -p keys/tmroeder keys/jlm
 > keyczart create --location=keys/tmroeder --purpose=sign --asymmetric=rsa
-> keyczart addkey --location=keys/tmroeder --status=primary
+> keyczart addkey --location=keys/tmroeder --status=primary --pass=tmroeder
 
 > keyczart create --location=keys/jlm --purpose=sign --asymmetric=rsa
-> keyczart addkey --location=keys/jlm --status=primary
+> keyczart addkey --location=keys/jlm --status=primary --pass=jlm
 
 
 Extract and sign the public keys for these files using the policy key
 
+> mkdir -p keys/tmroeder_pub keys/jlm_pub
 > keyczart create --location=keys/tmroeder_pub --purpose=sign --asymmetric=rsa
-> keyczart pubkey --location=keys/tmroeder --destination=keys/tmroeder_pub
+> keyczart pubkey --location=keys/tmroeder --destination=keys/tmroeder_pub \
+    --pass=tmroeder
 
 > keyczart create --location=keys/jlm_pub --purpose=sign --asymmetric=rsa
-> keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub
+> keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
+    --pass=jlm
 
-
+> make sign_pub_key
+> ./sign_pub_key 
+./sign_pub_key --key_loc ./policy_key --meta_file keys/tmroeder_pub/meta \
+    --pass cppolicy --pub_key_file keys/tmroeder_pub/1 \
+    --signed_speaks_for keys/tmroeder_pub_signed --subject tmroeder
+./sign_pub_key --key_loc ./policy_key --meta_file keys/jlm_pub/meta \
+    --pass cppolicy --pub_key_file keys/jlm_pub/1 \
+    --signed_speaks_for keys/jlm_pub_signed --subject jlm

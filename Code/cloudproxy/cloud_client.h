@@ -45,6 +45,8 @@ class CloudClient {
     // Connects to the specified server using the keys
     bool Connect();
 
+    bool AddUser(const string &user, const string &key_path,
+      const string &password);
     // Authenticates the subject to a connected CloudServer. There must be a
     // directory under key_location that has a name matching the parameter.
     bool Authenticate(const string &subject, const string &binding_file);

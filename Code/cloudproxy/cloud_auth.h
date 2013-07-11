@@ -33,10 +33,6 @@ class CloudAuth{
     // serializes the ACL into a given string
     bool Serialize(string *data);
 
-    // removes all subject permissions for object except potentially CREATE (if
-    // present)
-    bool DestroyObject(const string &subject, const string &object);
-
   private:
     bool findPermissions(const string &subject, const string &object,
         set<Op> **perms);

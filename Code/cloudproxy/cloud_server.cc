@@ -339,9 +339,8 @@ bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
     return false;
   }
 
-  // create the object and grant the subject all permissions on it
+  // create the object
   objects_.insert(action.object());
-  auth_->Insert(action.subject(), ALL, action.object());
   return true;
 }
 
@@ -357,8 +356,6 @@ bool CloudServer::HandleDestroy(const Action &action, BIO *bio,
 
   objects_.erase(object_it);
 
-  // remove all permissions except CREATE
-  auth_->DestroyObject(action.subject(), action.object());
   return true;
 }
 

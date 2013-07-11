@@ -97,21 +97,4 @@ bool CloudAuth::Serialize(string *data) {
   return acl.SerializeToString(data);
 }
 
-bool CloudAuth::DestroyObject(const string &subject, const string &object) {
-  set<Op> *perms;
-  if (!findPermissions(subject, object, &perms)) {
-    LOG(ERROR) << "Could not find the permissions for " << subject << " on "
-      << object;
-    return false;
-  }
-
-  bool has_create = perms->find(CREATE) != perms->end();
-  perms->clear();
-  if (has_create) {
-    perms->insert(CREATE);
-  }
-
-  return true;
-}
-
 } // namespace cloudproxy

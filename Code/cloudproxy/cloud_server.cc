@@ -5,6 +5,7 @@
 
 #include <sstream>
 
+using std::lock_guard;
 using std::stringstream;
 
 namespace cloudproxy {
@@ -58,26 +59,21 @@ bool CloudServer::Listen() {
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
       " connection";
 
-    keyczar::openssl::ScopedBIO out(BIO_pop(abio_.get()));
-    if (BIO_do_handshake(out.get()) <= 0) {
-      LOG(ERROR) << "Could not perform a TLS handshake with the client";
-    } else {
-      LOG(INFO) << "Successful client handshake";
-      
-      // pass the BIO to a handler that gets a length and an Action and forwards
-      // to the correct handler for this action
-      if (!HandleConnection(out)) {
-        LOG(ERROR) << "Could not handle the client connection";
-      }
-    }
+    BIO *out = BIO_pop(abio_.get());
+    thread t(&CloudServer::HandleConnection, this, out);
+    t.detach();
   }
 
   return true;
 }
 
-bool CloudServer::HandleConnection(
-    keyczar::openssl::ScopedBIO &sbio) {
-  keyczar::openssl::ScopedBIO bio(sbio.release()); 
+void CloudServer::HandleConnection(BIO *sbio) {
+  keyczar::openssl::ScopedBIO bio(sbio); 
+  if (BIO_do_handshake(bio.get()) <= 0) {
+    LOG(ERROR) << "Could not perform a TLS handshake with the client";
+  } else {
+    LOG(INFO) << "Successful client handshake";
+  }
 
   // loop on the message handler for this connection with the client
   bool rv = true;
@@ -92,7 +88,7 @@ bool CloudServer::HandleConnection(
     string serialized_cm;
     if (!ReceiveData(bio.get(), &serialized_cm)) {
       LOG(ERROR) << "Could not get the serialized ClientMessage";
-      return false;
+      return;
     }
 
     cm.ParseFromString(serialized_cm);
@@ -130,7 +126,7 @@ bool CloudServer::HandleConnection(
     LOG(ERROR) << "The channel closed with an error";
   }
 
-  return rv;
+  return;
 
 }
 
@@ -151,11 +147,14 @@ bool CloudServer::HandleMessage(const ClientMessage &message,
     }
 
     // check with the auth code to see if this action is allowed
-    if (!auth_->Permitted(a.subject(), a.verb(), a.object())) {
-      LOG(ERROR) << "User " << a.subject() << " not authorized to perform"
-        << a.verb() << " on " << a.object();
-      reason->assign("Not authorized");
-      return false;
+    {
+      lock_guard<mutex> l(m_);
+      if (!auth_->Permitted(a.subject(), a.verb(), a.object())) {
+	LOG(ERROR) << "User " << a.subject() << " not authorized to perform"
+	  << a.verb() << " on " << a.object();
+	reason->assign("Not authorized");
+	return false;
+      }
     }
 
     switch (a.verb()) {
@@ -237,7 +236,10 @@ bool CloudServer::HandleAuth(const Auth &auth, BIO *bio,
   // challenge for a given username: subsequent challenges will wipe out older
   // challenges. This map could be replaced with a multimap to handle this case.
   // TODO(tmroeder): need synchronization here when we allow multiple threads
-  challenges_[subject] = nonce;
+  {
+    lock_guard<mutex> l(m_);
+    challenges_[subject].insert(nonce);
+  }
 
   string serialized_chall;
   if (!c.SerializeToString(&serialized_chall)) {
@@ -272,66 +274,89 @@ bool CloudServer::HandleResponse(const Response &response,
     return false;
   }
 
-  auto chall_it = challenges_.find(c.subject());
-  if (challenges_.end() == chall_it) {
-    LOG(ERROR) << "Could not find the challenge provided in this response";
-    reason->assign("Could not find the challenge for this response");
-    return false;
-  }
+  {
+    lock_guard<mutex> l(m_);
+    auto chall_it = challenges_.find(c.subject());
+    if (challenges_.end() == chall_it) {
+      LOG(ERROR) << "Could not find the challenge provided in this response";
+      reason->assign("Could not find the challenge for this response");
+      return false;
+    }
 
-  // compare the length and contents of the nonce
-  // TODO(tmroeder): can you use string compare safely here?
-  if (chall_it->second.length() != c.nonce().length()) {
-    LOG(ERROR) << "Invalid nonce";
-    reason->assign("Invalid nonce");
-    return false;
-  }
+    // search this set for the nonce we were supplied
+    auto nonce_it = chall_it->second.find(c.nonce());
+    if (chall_it->second.end() == nonce_it) {
+      LOG(ERROR) << "The user had outstanding nonces, but not the right ones";
+      reason->assign("Could not find this nonce");
+      return false;
+    }
 
-  if (memcmp(chall_it->second.data(), c.nonce().data(),
-        c.nonce().length()) != 0) {
-    LOG(ERROR) << "Nonces do not match";
-    reason->assign("Nonces do not match");
-    return false;
+    // compare the length and contents of the nonce
+    // TODO(tmroeder): can you use string compare safely here?
+    if (nonce_it->length() != c.nonce().length()) {
+      LOG(ERROR) << "Invalid nonce";
+      reason->assign("Invalid nonce");
+      return false;
+    }
+
+    if (memcmp(nonce_it->data(), c.nonce().data(),
+	  c.nonce().length()) != 0) {
+      LOG(ERROR) << "Nonces do not match";
+      reason->assign("Nonces do not match");
+      return false;
+    }
+  
+    chall_it->second.erase(nonce_it);
   }
 
   // get or add the public key for this user
   shared_ptr<keyczar::Keyczar> user_key;
-  if (!users_->HasKey(c.subject())) {
-    if (!response.has_binding()) {
-      LOG(ERROR) << "No key known for user " << c.subject();
-      reason->assign("No key binding for response");
-      return false;
-    }
+  {
+    lock_guard<mutex> l(m_);
+    if (!users_->HasKey(c.subject())) {
+      if (!response.has_binding()) {
+        LOG(ERROR) << "No key known for user " << c.subject();
+        reason->assign("No key binding for response");
+        return false;
+      }
 
-    if (!users_->AddKey(response.binding(), public_policy_key_.get())) {
-      LOG(ERROR) << "Could not add the binding from the response";
-      reason->assign("Invalid binding");
-      return false;
+      if (!users_->AddKey(response.binding(), public_policy_key_.get())) {
+        LOG(ERROR) << "Could not add the binding from the response";
+        reason->assign("Invalid binding");
+        return false;
+      }
     }
-  }
   
-  CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
+    CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
+  
 
-  // check the signature on the serialized_challenge
-  if (!VerifySignature(response.serialized_chall(), response.signature(),
-        user_key.get())) {
-    LOG(ERROR) << "Challenge signature failed";
-    reason->assign("Invalid response signature");
-    return false;
+    // check the signature on the serialized_challenge
+    if (!VerifySignature(response.serialized_chall(), response.signature(),
+          user_key.get())) {
+      LOG(ERROR) << "Challenge signature failed";
+      reason->assign("Invalid response signature");
+      return false;
+    }
   }
 
   LOG(INFO) << "Challenge passed. Adding user " << c.subject() << " as"
     " authenticated";
+
   // remove this challenge from the list, since it was verified and the user was
   // authenticated on this channel
-  challenges_.erase(chall_it);
-  users_->SetAuthenticated(c.subject());
+  {
+    lock_guard<mutex> l(m_);
+    users_->SetAuthenticated(c.subject());
+  }
 
   return true;
 }
 
 bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
     bool *reply) {
+
+  lock_guard<mutex> l(m_);
+
   // note that CREATE fails if the object already exists
   if (objects_.end() != objects_.find(action.object())) {
     LOG(ERROR) << "Object " << action.object() << " already exists";
@@ -341,11 +366,15 @@ bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
 
   // create the object
   objects_.insert(action.object());
+
   return true;
 }
 
 bool CloudServer::HandleDestroy(const Action &action, BIO *bio,
     string *reason, bool *reply) {
+
+  lock_guard<mutex> l(m_);
+
   auto object_it = objects_.find(action.object());
   if (objects_.end() == object_it) {
     LOG(ERROR) << "Can't destroy object " << action.object() << " since it"
@@ -355,12 +384,14 @@ bool CloudServer::HandleDestroy(const Action &action, BIO *bio,
   }
 
   objects_.erase(object_it);
-
   return true;
 }
 
 bool CloudServer::HandleWrite(const Action &action, BIO *bio,
     string *reason, bool *reply) {
+
+  lock_guard<mutex> l(m_);
+
   // this is mostly a nop; just check to make sure the object exists
   if (objects_.end() == objects_.find(action.object())) {
     LOG(ERROR) << "Can't write to object " << action.object() << " that"
@@ -374,6 +405,9 @@ bool CloudServer::HandleWrite(const Action &action, BIO *bio,
 
 bool CloudServer::HandleRead(const Action &action, BIO *bio,
     string *reason, bool *reply) {
+
+  lock_guard<mutex> l(m_);
+
   // this is mostly a nop; just check to make sure the object exists
   if (objects_.end() == objects_.find(action.object())) {
     LOG(ERROR) << "Can't read from object " << action.object() << " that"

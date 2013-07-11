@@ -10,10 +10,17 @@
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
+#include <pthread.h>
 
+#include <map>
+#include <mutex>
+#include <thread>
 #include <string>
 #include <set>
 
+using std::map;
+using std::mutex;
+using std::thread;
 using std::set;
 using std::string;
 
@@ -46,6 +53,11 @@ class CloudServer {
     bool Listen();
 
   protected:
+    // a single guard for all synchronized data access
+    // TODO(tmroeder): in C++14, make this a shared_mutex and support readers
+    // and writers semantics
+    mutex m_;
+
     // Handles specific requests for resources. In this superclass
     // implementation, it just deals with names in a std::set. Subclasses
     // override these methods to implement their functionality
@@ -62,7 +74,7 @@ class CloudServer {
 
     // handles an incoming message from a client
     bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
-    bool HandleConnection(keyczar::openssl::ScopedBIO &sbio);
+    void HandleConnection(BIO *bio);
     bool HandleMessage(const ClientMessage& message, BIO *bio, string *reason,
 		    bool *reply, bool *close);
     bool HandleAuth(const Auth &auth, BIO *bio, string *reason,
@@ -100,7 +112,7 @@ class CloudServer {
     // a map of outstanding challenge nonces and the subject they apply to.
     // TODO(tmroeder): these challenges should be timed out or should be stored
     // in a cache instead of a map
-    map<string, string> challenges_;
+    map<string, set<string> > challenges_;
 
     DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };

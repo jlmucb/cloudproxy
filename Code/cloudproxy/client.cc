@@ -1,6 +1,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <openssl/ssl.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/base/base64w.h>
 #include "cloud_client.h"
 #include "cloudproxy.pb.h"
 
@@ -49,19 +51,29 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Connected to the server";
                   
 
+    // create a random object name to write
+    scoped_ptr<keyczar::RandImpl> rand(keyczar::CryptoFactory::Rand());
+    string name_bytes;
+    CHECK(rand->RandBytes(6, &name_bytes)) << "Could not get random bytes for a name";
+
+    // Base64 encode the bytes to get a printable name
+    string name;
+    CHECK(keyczar::base::Base64WEncode(name_bytes, &name)) << "Could not encode"
+      " name";
+
     CHECK(cc.AddUser("tmroeder", "./keys/tmroeder", "tmroeder")) << "Could not"
       " add the user credential from its keyczar path";
     LOG(INFO) << "Added credentials for the user tmroeder";
     CHECK(cc.Authenticate("tmroeder", "./keys/tmroeder_pub_signed")) << "Could"
       " not authenticate tmroeder with the server";
     LOG(INFO) << "Authenticated to the server for tmroeder";
-    CHECK(cc.Create("tmroeder", "test")) << "Could not create the object"
-        " 'test' on the server";
-    LOG(INFO) << "Created the object test";
-    CHECK(cc.Read("tmroeder", "test")) << "Could not read the object";
-    LOG(INFO) << "Read the object test";
-    CHECK(cc.Destroy("tmroeder", "test")) << "Could not destroy the object";
-    LOG(INFO) << "Destroyed the test object";
+    CHECK(cc.Create("tmroeder", name)) << "Could not create the object"
+        << "'" << name << "' on the server";
+    LOG(INFO) << "Created the object " << name;
+    CHECK(cc.Read("tmroeder", name)) << "Could not read the object";
+    LOG(INFO) << "Read the object " << name;
+    CHECK(cc.Destroy("tmroeder", name)) << "Could not destroy the object";
+    LOG(INFO) << "Destroyed the object " << name;
 
     CHECK(cc.Close(false)) << "Could not close the channel";
     

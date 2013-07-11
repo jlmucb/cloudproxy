@@ -31,11 +31,8 @@ int main(int argc, char** argv) {
 
     // load the signature
     ifstream sig(FLAGS_signed_pub_key_file.c_str());
-    stringstream sig_buf;
-    sig_buf << sig.rdbuf();
-
     cloudproxy::SignedSpeaksFor ssf;
-    ssf.ParseFromString(sig_buf.str());
+    ssf.ParseFromIstream(&sig);
 
     // get the public key for verification
     keyczar::Keyczar *verifier = keyczar::Verifier::Read(FLAGS_key_loc.c_str());   

@@ -27,10 +27,19 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
 bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
 		 string *acls);
 
+bool SignData(const string &data, string *signature,
+		keyczar::Keyczar *key);
 bool VerifySignature(const string &data, const string &signature,
 		keyczar::Keyczar *key);
 
 bool CreateRSAPublicKeyset(const string &key, const string &metadata,
 		keyczar::Keyset *keyset);
+
+// methods to send a receive data on a TLS BIO
+bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);
+bool ReceiveData(BIO *bio, string *data);
+bool SendData(BIO *bio, const void *buffer, size_t buffer_len);
+bool SendData(BIO *bio, const string &data);
+
 }
 #endif // CLOUDPROXY_UTIL_H_

@@ -35,10 +35,10 @@ class CloudServer {
 		const string &public_policy_keyczar,
 		const string &public_policy_pem,
 		const string &acl_location,
-        const string &users_location,
-        const string &server_key_location,
-        const string &host,
-        ushort port);
+		const string &users_location,
+		const string &server_key_location,
+		const string &host,
+		ushort port);
 
     virtual ~CloudServer();
 
@@ -57,11 +57,6 @@ class CloudServer {
 		    bool *reply);
     virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
 		    bool *reply);
-
-    bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);
-    bool ReceiveData(BIO *bio, string *data);
-    bool SendData(BIO *bio, const void *buffer, size_t buffer_len);
-    bool SendData(BIO *bio, const string &data);
 
   private:
 

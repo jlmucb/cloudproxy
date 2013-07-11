@@ -20,6 +20,12 @@ bool CloudUserManager::GetKey(const string &user,
   return true;
 }
 
+bool CloudUserManager::AddSigningKey(const string &user, const string &path) {
+  shared_ptr<keyczar::Keyczar> verifier(keyczar::Signer::Read(path.c_str()));
+  users_[user] = verifier;
+  return true;
+}
+
 bool CloudUserManager::AddKey(const string &user,
     const string &key, const string &meta) {
   scoped_ptr<keyczar::Keyset> keyset(new keyczar::Keyset());

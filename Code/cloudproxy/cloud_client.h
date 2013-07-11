@@ -2,6 +2,10 @@
 #define CLOUDPROXY_CLOUD_CLIENT_H_
 
 #include <openssl/ssl.h>
+#include <keyczar/keyczar.h>
+
+#include "util.h"
+#include "cloud_user_manager.h"
 
 #include <set>
 #include <string>
@@ -29,10 +33,11 @@ class CloudClient {
     // Creates a CloudClient with a directory (key_location) it searches to find
     // keyczar directories, the location of certificates and keys for TLS, as
     // well as with the addr:port of a CloudServer. 
-    CloudClient(const string &user_key_location,
-		const string &tls_key_location,
-		const string &public_policy_pem,
-                const string &server_addr,
+    CloudClient(const string &tls_cert,
+        const string &tls_key,
+        const string &public_policy_keyczar, 
+        const string &public_policy_pem,
+        const string &server_addr,
 		ushort server_port);
 
     virtual ~CloudClient();
@@ -42,7 +47,7 @@ class CloudClient {
 
     // Authenticates the subject to a connected CloudServer. There must be a
     // directory under key_location that has a name matching the parameter.
-    bool Authenticate(const string &subject);
+    bool Authenticate(const string &subject, const string &binding_file);
 
     // Sends a CREATE request to the attached CloudServer
     virtual bool Create(const string &owner, const string &object_name);
@@ -57,21 +62,22 @@ class CloudClient {
     virtual bool Write(const string &requestor, const string &object_name);
 
   private:
+    bool HandleChallenge(const Challenge& chall);
+    bool HandleReply();
+    bool SendAction(const string &subject, const string &object, Op op);
+
+    // the public policy key for this connection
+    scoped_ptr<keyczar::Keyczar> public_policy_key_;
+
     // A TLS connection to the server
-    SSL_CTX *ctx_;
+    ScopedSSLCtx context_;
 
     // The BIO used to communicate over the TLS channel
-    BIO *bio_;
+    keyczar::openssl::ScopedBIO bio_;
 
-    // The location of all keyczar key directories for this client
-    string key_location_;
-    
-    // Principals that have been authenticated on this connection
-    set<string> principals_;
-
-    // disallow copy construction and assignment
-    CloudClient(const CloudClient&);
-    CloudClient& operator=(const CloudClient&);
+    // Principals that have been authenticated on this connection, and the keys
+    // for each user
+    scoped_ptr<CloudUserManager> users_;
 
     DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };

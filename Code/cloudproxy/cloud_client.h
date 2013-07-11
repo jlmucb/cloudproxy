@@ -40,7 +40,7 @@ class CloudClient {
         const string &server_addr,
 		ushort server_port);
 
-    virtual ~CloudClient();
+    virtual ~CloudClient() { }
 
     // Connects to the specified server using the keys
     bool Connect();

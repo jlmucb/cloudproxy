@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     CHECK(verifier.get()) << "Could not get the public key for verification";
 
     string serialized_acl;
-    CHECK(extract_ACL(FLAGS_acl_sig_file, verifier.get(), &serialized_acl)) <<
+    CHECK(cloudproxy::ExtractACL(FLAGS_acl_sig_file, verifier.get(), &serialized_acl)) <<
       "Could not verify and load the ACL file";
 
     string text;

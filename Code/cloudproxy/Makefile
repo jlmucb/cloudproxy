@@ -15,25 +15,27 @@ SRCS=cloud_auth.cc \
 
 OBJS=$(SRCS:.cc=.o)
 
-all: client server
+default: client server
+
+all: default test sign_acls verify_acls sign_pub_key verify_pub_key
 
 cloudproxy.pb.cc cloudproxy.pb.h: cloudproxy.proto
 	protoc -I. --cpp_out=. cloudproxy.proto
 
-test: cloudproxy.pb.o main.o 
-	$(CC) -o $@ $^ $(LIBS)
+test: cloudproxy.pb.h main.o cloudproxy.lib
+	$(CC) -o test main.o cloudproxy.lib $(LIBS)
 
-sign_acls: cloudproxy.pb.o sign_acls.o 
-	$(CC) -o $@ $^ $(LIBS)
+sign_acls: cloudproxy.pb.h sign_acls.o cloudproxy.lib
+	$(CC) -o $@ sign_acls.o cloudproxy.lib $(LIBS)
 
-verify_acls: cloudproxy.pb.o verify_acls.o  
-	$(CC) -o $@ $^ $(LIBS)
+verify_acls: cloudproxy.pb.h verify_acls.o cloudproxy.lib
+	$(CC) -o $@ verify_acls.o cloudproxy.lib $(LIBS)
 
-sign_pub_key: cloudproxy.pb.o sign_pub_key.o 
-	$(CC) -o $@ $^ $(LIBS)
+sign_pub_key: cloudproxy.pb.h sign_pub_key.o cloudproxy.lib
+	$(CC) -o $@ sign_pub_key.o cloudproxy.lib $(LIBS)
 
-verify_pub_key: cloudproxy.pb.o verify_pub_key.o 
-	$(CC) -o $@ $^ $(LIBS)
+verify_pub_key: cloudproxy.pb.h verify_pub_key.o cloudproxy.lib
+	$(CC) -o $@ verify_pub_key.o cloudproxy.lib $(LIBS)
 
 acls: acls.ascii cloudproxy.proto
 	$(PROTOC) -I./ --encode=cloudproxy.ACL ./cloudproxy.proto <$< >$@
@@ -46,10 +48,10 @@ cloudproxy.lib: $(OBJS)
 	$(RANLIB) $@
 
 client: cloudproxy.pb.h client.o cloudproxy.lib
-	$(CC) -o client client.o cloudproxy.lib $(LIBS)
+	$(CC) -o $@ client.o cloudproxy.lib $(LIBS)
 
 server: cloudproxy.pb.h server.o cloudproxy.lib
-	$(CC) -o server server.o cloudproxy.lib $(LIBS)
+	$(CC) -o $@ server.o cloudproxy.lib $(LIBS)
 
 clean:
 	rm -f *.o cloudproxy.pb.* test sign_acls acls acls_sig verify_acls

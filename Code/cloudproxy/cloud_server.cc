@@ -10,6 +10,7 @@ using std::stringstream;
 namespace cloudproxy {
 CloudServer::CloudServer(const string &tls_cert,
     const string &tls_key, 
+    const string &tls_password,
     const string &public_policy_keyczar,
     const string &public_policy_pem,
     const string &acl_location,
@@ -28,7 +29,7 @@ CloudServer::CloudServer(const string &tls_cert,
     challenges_() {
   // set up the SSL context and BIOs for getting client connections
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert,
-                       tls_key)) << "Could not set up TLS";
+                       tls_key, tls_password)) << "Could not set up TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 
@@ -53,7 +54,7 @@ CloudServer::CloudServer(const string &tls_cert,
 
 bool CloudServer::Listen() {
   while(true) {
-    LOG(INFO) << "About to listen for a client";
+    LOG(INFO) << "About to listen for a client message";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
       " connection";
 
@@ -78,52 +79,70 @@ bool CloudServer::HandleConnection(
     keyczar::openssl::ScopedBIO &sbio) {
   keyczar::openssl::ScopedBIO bio(sbio.release()); 
 
-  // read a 4-byte integer from the channel to get the length of the
-  // ClientMessage.
-  // TODO(tmroeder): the right way to do this would be to
-  // implement something like ParseFromIstream with an istream wrapping the
-  // OpenSSL BIO abstraction. This would then render the first integer otiose,
-  // since protobufs already have length information in their metadata.
-  ClientMessage cm;
-  string serialized_cm;
-  if (!ReceiveData(bio.get(), &serialized_cm)) {
-    LOG(ERROR) << "Could not get the serialized ClientMessage";
-    return false;
-  }
-
-  cm.ParseFromString(serialized_cm);
-
-  string failure_reason;
-  bool reply = true;
-  bool rv = HandleMessage(cm, bio.get(), &failure_reason, &reply);
-
-  if (reply) {
-    Result r;
-    r.set_success(rv);
-    if (!failure_reason.empty()) {
-      r.set_reason(failure_reason);
+  // loop on the message handler for this connection with the client
+  bool rv = true;
+  while (true) {
+    // read a 4-byte integer from the channel to get the length of the
+    // ClientMessage.
+    // TODO(tmroeder): the right way to do this would be to
+    // implement something like ParseFromIstream with an istream wrapping the
+    // OpenSSL BIO abstraction. This would then render the first integer otiose,
+    // since protobufs already have length information in their metadata.
+    ClientMessage cm;
+    string serialized_cm;
+    if (!ReceiveData(bio.get(), &serialized_cm)) {
+      LOG(ERROR) << "Could not get the serialized ClientMessage";
+      return false;
     }
 
-    string serialized_r;
-    if (!r.SerializeToString(&serialized_r)) {
-      LOG(ERROR) << "Could not serialize reply";
-    } else {
-      if (!SendData(bio.get(), serialized_r)) {
-        LOG(ERROR) << "Could not reply";
+    cm.ParseFromString(serialized_cm);
+
+    string reason;
+    bool reply = true;
+    bool close = false;
+    rv = HandleMessage(cm, bio.get(), &reason, &reply, &close);
+
+    if (close) {
+      break;
+    }
+
+    if (reply) {
+      Result r;
+      r.set_success(rv);
+      if (!reason.empty()) {
+        r.set_reason(reason);
+      }
+
+      string serialized_r;
+      if (!r.SerializeToString(&serialized_r)) {
+        LOG(ERROR) << "Could not serialize reply";
+      } else {
+        if (!SendData(bio.get(), serialized_r)) {
+          LOG(ERROR) << "Could not reply";
+        }
       }
     }
   }
 
+  if (rv) { 
+    LOG(INFO) << "The channel closed successfully";
+  } else {
+    LOG(ERROR) << "The channel closed with an error";
+  }
+
   return rv;
+
 }
 
 bool CloudServer::HandleMessage(const ClientMessage &message,
-    BIO *bio, string *reason, bool *reply) {
+    BIO *bio, string *reason, bool *reply, bool *close) {
   CHECK(bio) << "null bio";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
 
+  int rv = false;
   if (message.has_action()) {
+    LOG(INFO) << "It's an Action message";
     Action a = message.action();
     if (!users_->IsAuthenticated(a.subject())) {
       LOG(ERROR) << "User " << a.subject() << " not authenticated";
@@ -145,22 +164,40 @@ bool CloudServer::HandleMessage(const ClientMessage &message,
         reason->assign("Invalid request for the ALL action");
         return false;
       case CREATE: 
-        return HandleCreate(a, bio, reason, reply);
+	    LOG(INFO) << "Handling a CREATE request";
+        rv = HandleCreate(a, bio, reason, reply);
+	    LOG(INFO) << "return value: " << rv;
+	    return rv;
       case DESTROY:
-        return HandleDestroy(a, bio, reason, reply);
+	    LOG(INFO) << "Handling a DESTROY request";
+        rv = HandleDestroy(a, bio, reason, reply);
+        LOG(INFO) << "return value: " << rv;
+        return rv;
       case WRITE:
-        return HandleWrite(a, bio, reason, reply);
+	    LOG(INFO) << "Handling a WRITE request";
+        rv = HandleWrite(a, bio, reason, reply);
+        LOG(INFO) << "return value: " << rv;
+        return rv;
       case READ:
-        return HandleRead(a, bio, reason, reply);
+	    LOG(INFO) << "Handling a READ request";
+        rv = HandleRead(a, bio, reason, reply);
+        LOG(INFO) << "return value: " << rv;
+        return rv;
       default:
         LOG(ERROR) << "Request for invalid operation " << a.verb();
         reason->assign("Invalid operation requested");
         return false;
     }
   } else if (message.has_auth()) {
+    LOG(INFO) << "Received an Auth message";
     return HandleAuth(message.auth(), bio, reason, reply);
   } else if (message.has_response()) {
+    LOG(INFO) << "Received a Response message";
     return HandleResponse(message.response(), bio, reason, reply);
+  } else if (message.has_close()) {
+    rv = !message.close().error();
+    *close = true;
+    return rv;
   } else {
     LOG(ERROR) << "Message from client did not have any recognized content";
     reason->assign("Unrecognized ClientMessage type");
@@ -209,15 +246,19 @@ bool CloudServer::HandleAuth(const Auth &auth, BIO *bio,
     return false;
   }
 
+  LOG(INFO) << "Sending a challenge to the client";
   if (!SendData(bio, serialized_chall)) {
     LOG(ERROR) << "Could not send the Challenge to the client";
     reason->assign("Could not send serialized Challenge");
     return false;
   }
 
-  // don't send any reply to the client other than the Challenge
+  LOG(INFO) << "Successfully processed an Auth message";
+
   *reply = false;
-  
+
+  // now listen again on this BIO for the Response
+  // TODO(tmroeder): this needs to timeout if we wait for too long
   return true;
 }
 
@@ -279,6 +320,8 @@ bool CloudServer::HandleResponse(const Response &response,
     return false;
   }
 
+  LOG(INFO) << "Challenge passed. Adding user " << c.subject() << " as"
+    " authenticated";
   // remove this challenge from the list, since it was verified and the user was
   // authenticated on this channel
   challenges_.erase(chall_it);

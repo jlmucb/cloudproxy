@@ -1,18 +1,22 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
+#include <openssl/ssl.h>
 #include "cloud_server.h"
 
 #include <string>
 
 using std::string;
 
-DEFINE_string(server_cert, "./openssl_keys/server/server.pem",
+DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
 		"The PEM certificate for the server to use for TLS");
 DEFINE_string(server_key, "./openssl_keys/server/server.key",
 		"The private key file for the server for TLS");
-DEFINE_string(policy_key, "./public_policy_key", "The keyczar public"
+DEFINE_string(server_password, "cpserver",
+		"The password for the server key");
+DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
 		" policy key");
-DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.pem",
+DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
 		"The PEM public policy cert");
 DEFINE_string(acls, "./acls_sig", "A file containing a SignedACL signed by"
 		" the public policy key (e.g., using sign_acls)");
@@ -35,6 +39,7 @@ int main(int argc, char **argv) {
 
     cloudproxy::CloudServer cs(FLAGS_server_cert,
                                FLAGS_server_key,
+			                   FLAGS_server_password,
                                FLAGS_policy_key,
                                FLAGS_pem_policy_key,
                                FLAGS_acls,

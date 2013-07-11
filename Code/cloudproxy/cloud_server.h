@@ -32,6 +32,7 @@ class CloudServer {
     // one as public RSA keyczar directory
     CloudServer(const string &tls_cert,
 		const string &tls_key,
+		const string &tls_password,
 		const string &public_policy_keyczar,
 		const string &public_policy_pem,
 		const string &acl_location,
@@ -60,9 +61,10 @@ class CloudServer {
   private:
 
     // handles an incoming message from a client
+    bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
     bool HandleConnection(keyczar::openssl::ScopedBIO &sbio);
     bool HandleMessage(const ClientMessage& message, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, bool *close);
     bool HandleAuth(const Auth &auth, BIO *bio, string *reason,
 		    bool *reply);
     bool HandleResponse(const Response &response, BIO *bio, string *reason,

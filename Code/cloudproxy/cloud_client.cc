@@ -14,6 +14,7 @@ namespace cloudproxy {
 
 CloudClient::CloudClient(const string &tls_cert,
 		const string &tls_key,
+		const string &tls_password,
 		const string &public_policy_keyczar,
 		const string &public_policy_pem,
 		const string &server_addr,
@@ -21,9 +22,10 @@ CloudClient::CloudClient(const string &tls_cert,
 	: public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
 	context_(SSL_CTX_new(TLSv1_2_client_method())),
 	bio_(nullptr),
-	users_() {
+	users_(new CloudUserManager()) {
+  LOG(INFO) << "About to set up the SSL CTX";
   // set up the TLS connection with the cert and keys and trust DB
-  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key)) 
+  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key, tls_password))
     << "Could not set up the client TLS connection";
 
   bio_.reset(BIO_new_ssl_connect(context_.get()));
@@ -56,7 +58,7 @@ bool CloudClient::AddUser(const string &user, const string &key_path,
     return false;
   }
 
-  return users_->AddKey(user, key_path, password);
+  return users_->AddSigningKey(user, key_path, password);
 }
 
 bool CloudClient::Authenticate(const string &subject,
@@ -76,14 +78,16 @@ bool CloudClient::Authenticate(const string &subject,
     << subject;
 
   // send to the server an AUTH request
-  Auth a;
-  a.set_subject(subject);
+  ClientMessage cm;
+  Auth *a = cm.mutable_auth();
+  a->set_subject(subject);
 
-  string serialized_auth;
-  CHECK(a.SerializeToString(&serialized_auth)) << "Could not serialize the"
-      " Auth message";
+  string serialized_cm;
+  CHECK(cm.SerializeToString(&serialized_cm)) << "Could not serialize the"
+      " ClientMessage(Auth)";
 
-  CHECK(SendData(bio_.get(), serialized_auth)) << "Could not request auth";
+  LOG(INFO) << "Sending ClientMessage(Auth) to server";
+  CHECK(SendData(bio_.get(), serialized_cm)) << "Could not request auth";
 
   // now listen for the connection
   string serialized_chall;
@@ -100,36 +104,38 @@ bool CloudClient::Authenticate(const string &subject,
   CHECK(SignData(serialized_chall, &sig, signer.get())) << "Could not sign the"
       " challenge";
 
-  Response r;
-  r.set_serialized_chall(serialized_chall);
-  r.set_signature(sig);
+  ClientMessage cm2;
+  Response *r = cm2.mutable_response();
+  r->set_serialized_chall(serialized_chall);
+  r->set_signature(sig);
 
-  SignedSpeaksFor *ssf = r.mutable_binding();
+  SignedSpeaksFor *ssf = r->mutable_binding();
 
   // now create a SignedSpeaksFor annotation from the corresponding signed file
   // for this user
   ifstream ssf_file(binding_file.c_str());
   ssf->ParseFromIstream(&ssf_file);
 
-  string serialized_response;
-  CHECK(r.SerializeToString(&serialized_response)) << "Could not serialize"
+  CHECK(cm2.SerializeToString(&serialized_cm)) << "Could not serialize"
     " the Response to the Challenge";
 
-  CHECK(SendData(bio_.get(), serialized_response)) << "Could not send"
+  CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send"
     " Response";
 
+  LOG(INFO) << "Auth successful: waiting for reply";
   return HandleReply();
 }
 
 bool CloudClient::SendAction(const string &owner, const string &object_name,
 		Op op) {
-  Action a;
-  a.set_subject(owner);
-  a.set_verb(op);
-  a.set_object(object_name);
+  ClientMessage cm;
+  Action *a = cm.mutable_action();
+  a->set_subject(owner);
+  a->set_verb(op);
+  a->set_object(object_name);
 
   string s;
-  CHECK(a.SerializeToString(&s)) << "Could not serialize Action";
+  CHECK(cm.SerializeToString(&s)) << "Could not serialize Action";
   CHECK(SendData(bio_.get(), s)) << "Could not send the Action to CloudServer";
   return HandleReply();
 }
@@ -176,4 +182,17 @@ bool CloudClient::HandleReply() {
   return true;
 }
 
+bool CloudClient::Close(bool error) {
+  ClientMessage cm;
+  CloseConnection *cc = cm.mutable_close();
+  cc->set_error(error);
+
+  string s;
+  CHECK(cm.SerializeToString(&s)) << "Could not serialize the CloseConnection"
+    " message";
+
+  CHECK(SendData(bio_.get(), s)) << "Could not send a CloseConnection to the"
+    " server";
+  return true;
+}
 } // namespace cloudproxy

@@ -18,8 +18,19 @@ using std::ifstream;
 using std::stringstream;
 
 namespace cloudproxy {
+
+// this callback will change once we get the password from the Tao/TPM
+int PasswordCallback(char *buf, int size, int rwflag, void *password)
+{
+ strncpy(buf, (char *)(password), size);
+ buf[size - 1] = '\0';
+ return(strlen(buf));
+}
+
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
-		const string &cert, const string &key) {
+		const string &cert, const string &key, const string &password) {
+  CHECK(ctx) << "null ctx";
+
   // set up the TLS connection with the list of acceptable ciphers
   CHECK(SSL_CTX_set_cipher_list(ctx, "AES128-SHA256")) <<
     "Could not set up a cipher list on the TLS context";
@@ -31,8 +42,14 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
   CHECK(SSL_CTX_load_verify_locations(ctx, public_policy_key.c_str(), NULL)) <<
     "Could not load the public policy key for verification";
 
+  LOG(INFO) << "Loading the cert location " << cert;
   CHECK(SSL_CTX_use_certificate_file(ctx, cert.c_str(), SSL_FILETYPE_PEM)) <<
     "Could not load the certificate for this connection";
+
+  // set up the password callback and the password itself
+  SSL_CTX_set_default_passwd_cb(ctx, PasswordCallback);
+  SSL_CTX_set_default_passwd_cb_userdata(ctx,
+    const_cast<char*>(password.c_str()));
 
   CHECK(SSL_CTX_use_PrivateKey_file(ctx, key.c_str(), SSL_FILETYPE_PEM)) <<
     "Could not load the private key for this connection";
@@ -90,12 +107,6 @@ bool CreateRSAPublicKeyset(const string &key, const string &metadata,
     return false;
   }
 
-  // make sure this key is the primary key
-  if (!keyset->PromoteKey(1)) {
-    LOG(ERROR) << "Could not promote the key to primary";
-    return false;
-  }
-  
   return true;
 }
 

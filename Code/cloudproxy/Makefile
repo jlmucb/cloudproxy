@@ -15,7 +15,7 @@ SRCS=cloud_auth.cc \
 
 OBJS=$(SRCS:.cc=.o)
 
-default: client server
+default: client server acls_sig
 
 all: default test sign_acls verify_acls sign_pub_key verify_pub_key
 

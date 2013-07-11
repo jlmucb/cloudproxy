@@ -35,6 +35,7 @@ class CloudClient {
     // well as with the addr:port of a CloudServer. 
     CloudClient(const string &tls_cert,
         const string &tls_key,
+	const string &tls_password,
         const string &public_policy_keyczar, 
         const string &public_policy_pem,
         const string &server_addr,
@@ -62,6 +63,9 @@ class CloudClient {
 
     // Sends a WRITE request to a CloudServer
     virtual bool Write(const string &requestor, const string &object_name);
+
+    // Closes the connection to the server
+    bool Close(bool error);
 
   private:
     bool HandleChallenge(const Challenge& chall);

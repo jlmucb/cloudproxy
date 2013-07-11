@@ -21,8 +21,10 @@ typedef scoped_ptr_malloc<
 	SSL_CTX, keyczar::openssl::OSSLDestroyer<SSL_CTX,
 	SSL_CTX_free> > ScopedSSLCtx;
 
+int PasswordCallback(char *buf, int size, int rwflag, void *password);
+
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
-		const string &cert, const string &key);
+		const string &cert, const string &key, const string &password);
 
 bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
 		 string *acls);

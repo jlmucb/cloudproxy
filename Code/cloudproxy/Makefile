@@ -53,4 +53,10 @@ server: cloudproxy.pb.h server.o cloudproxy.lib
 
 clean:
 	rm -f *.o cloudproxy.pb.* test sign_acls acls acls_sig verify_acls
-	rm -f sign_pub_key verify_pub_key cloudproxy.lib server client *.d
+	rm -f sign_pub_key verify_pub_key cloudproxy.lib server client
+
+
+distclean: clean
+	rm -f *.d
+
+-include $(OBJS:.o=.d)

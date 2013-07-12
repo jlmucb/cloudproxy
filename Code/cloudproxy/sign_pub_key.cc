@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
     scoped_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
     CHECK(signer.get()) << "Could not initialize the signer from "
                          << FLAGS_key_loc;
+    signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
     cloudproxy::SpeaksFor sf;
     sf.set_subject(FLAGS_subject);

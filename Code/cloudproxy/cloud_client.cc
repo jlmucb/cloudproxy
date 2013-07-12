@@ -23,6 +23,10 @@ CloudClient::CloudClient(const string &tls_cert,
 	context_(SSL_CTX_new(TLSv1_2_client_method())),
 	bio_(nullptr),
 	users_(new CloudUserManager()) {
+
+  // set the policy_key to handle bytes, not strings
+  public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
   LOG(INFO) << "About to set up the SSL CTX";
   // set up the TLS connection with the cert and keys and trust DB
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key, tls_password))

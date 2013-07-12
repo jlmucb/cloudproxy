@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
     // get the public key for verification
     unique_ptr<keyczar::Keyczar> verifier(keyczar::Verifier::Read(FLAGS_key_loc.c_str()));
     CHECK(verifier.get()) << "Could not get the public key for verification";
+    verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
     string serialized_acl;
     CHECK(cloudproxy::ExtractACL(FLAGS_acl_sig_file, verifier.get(), &serialized_acl)) <<

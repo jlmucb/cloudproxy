@@ -63,7 +63,7 @@ message SignedACL {
 
     // A public-key signature on serialized_acls. The details of the key type
     // depends on the CloudServer implementation.
-    required string signature = 2;
+    required bytes signature = 2;
 }
 
 // The response from a CloudServer to a CloudClient after the client has sent
@@ -86,7 +86,7 @@ message Response {
     required bytes serialized_chall = 1;
 
     // A signature on the serialized_chall field
-    required string signature = 2;
+    required bytes signature = 2;
 
     // A binding of the subject (in Auth/Challenge) to a public key
     optional SignedSpeaksFor binding = 3;
@@ -152,5 +152,5 @@ message SignedSpeaksFor {
     required bytes serialized_speaks_for = 1;
 
     // A signature by the public policy key on serialized_speaks_for
-    required string signature = 2;
+    required bytes signature = 2;
 }

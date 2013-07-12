@@ -34,6 +34,9 @@ bool CloudUserManager::AddSigningKey(const string &user, const string &path,
     return false;
   }
 
+  // get bytes from Sign instead of Base64w-encoded strings
+  signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
   users_[user] = signer;
   return true;
 }
@@ -47,6 +50,9 @@ bool CloudUserManager::AddKey(const string &user,
   }
 
   shared_ptr<keyczar::Keyczar> verifier(new keyczar::Verifier(keyset.release()));
+  
+  // handle bytes instead of Base64w-encoded strings
+  verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
   users_[user] = verifier;
   return true;
 }

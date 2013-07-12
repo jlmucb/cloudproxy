@@ -38,6 +38,8 @@ int main(int argc, char** argv) {
     keyczar::Keyczar *verifier = keyczar::Verifier::Read(FLAGS_key_loc.c_str());   
     CHECK(verifier) << "Could not get the public key for verification";
 
+    verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
     CHECK(verifier->Verify(ssf.serialized_speaks_for(), ssf.signature()))
         << "Verify failed";
 

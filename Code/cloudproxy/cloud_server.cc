@@ -25,9 +25,14 @@ CloudServer::CloudServer(const string &tls_cert,
     context_(SSL_CTX_new(TLSv1_2_server_method())),
     bio_(nullptr),
     abio_(nullptr),
-    auth_(new CloudAuth(acl_location, public_policy_key_.get())),
+    auth_(),
     users_(new CloudUserManager()),
     objects_() {
+
+  // set up the policy key to verify bytes, not strings
+  public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
+  auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
+
   // set up the SSL context and BIOs for getting client connections
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert,
                        tls_key, tls_password)) << "Could not set up TLS";
@@ -332,6 +337,7 @@ bool CloudServer::HandleResponse(const Response &response,
       " not copy the key";
 
     user_key.reset(new keyczar::Verifier(user_keyset.release()));
+    user_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
   }
 
   // check the signature on the serialized_challenge

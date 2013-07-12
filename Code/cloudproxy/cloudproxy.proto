@@ -72,6 +72,9 @@ message Challenge {
 
     // A new random nonce to add to the client signature
     required bytes nonce = 2;
+
+    // Whether or not to send a binding
+    required bool send_binding = 3;
 }
 
 // This message is sent by CloudClient in response to a Challenge message

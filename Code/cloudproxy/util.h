@@ -34,6 +34,9 @@ bool SignData(const string &data, string *signature,
 bool VerifySignature(const string &data, const string &signature,
 		keyczar::Keyczar *key);
 
+bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
+               keyczar::Keyset *keyset);
+
 bool CreateRSAPublicKeyset(const string &key, const string &metadata,
 		keyczar::Keyset *keyset);
 

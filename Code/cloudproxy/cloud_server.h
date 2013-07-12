@@ -4,6 +4,7 @@
 #include "cloudproxy.pb.h"
 #include "cloud_auth.h"
 #include "cloud_user_manager.h"
+#include "cloud_server_thread_data.h"
 #include "util.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
@@ -53,22 +54,32 @@ class CloudServer {
     bool Listen();
 
   protected:
-    // a single guard for all synchronized data access
-    // TODO(tmroeder): in C++14, make this a shared_mutex and support readers
+    // TODO(tmroeder): in C++14, make these shared_mutex and support readers
     // and writers semantics
-    mutex m_;
+
+    // mutex for authorization
+    mutex auth_m_;
+
+    // mutex for key management
+    mutex key_m_;
+
+    // mutex for data operations
+    mutex data_m_;
+
+    // a mutex for managing challenges
+    mutex challenge_m_;
 
     // Handles specific requests for resources. In this superclass
     // implementation, it just deals with names in a std::set. Subclasses
     // override these methods to implement their functionality
     virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, CloudServerThreadData &cstd);
     virtual bool HandleDestroy(const Action &action, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, CloudServerThreadData &cstd);
     virtual bool HandleWrite(const Action &action, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, CloudServerThreadData &cstd);
     virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, CloudServerThreadData &cstd);
 
   private:
 
@@ -76,11 +87,11 @@ class CloudServer {
     bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
     void HandleConnection(BIO *bio);
     bool HandleMessage(const ClientMessage& message, BIO *bio, string *reason,
-		    bool *reply, bool *close);
+		    bool *reply, bool *close, CloudServerThreadData &cstd);
     bool HandleAuth(const Auth &auth, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, CloudServerThreadData &cstd);
     bool HandleResponse(const Response &response, BIO *bio, string *reason,
-		    bool *reply);
+		    bool *reply, CloudServerThreadData &cstd);
 
     // the encryption/decryption key for this server
     scoped_ptr<keyczar::Keyczar> crypter_;
@@ -100,19 +111,14 @@ class CloudServer {
     // an accept BIO that listens on the TLS connection
     keyczar::openssl::ScopedBIO abio_;
 
-    // an object that manages an ACL for requests from the client
+    // an object for managing authorization policy
     scoped_ptr<CloudAuth> auth_;
 
-    // an object that manages users known to the server
+    // an object that manages keys for users known to the server
     scoped_ptr<CloudUserManager> users_;
 
     // a simple object management tool: a set of object names
     set<string> objects_;
-
-    // a map of outstanding challenge nonces and the subject they apply to.
-    // TODO(tmroeder): these challenges should be timed out or should be stored
-    // in a cache instead of a map
-    map<string, set<string> > challenges_;
 
     DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };

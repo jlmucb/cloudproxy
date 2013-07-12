@@ -10,6 +10,7 @@ SRCS=cloud_auth.cc \
     cloud_server.cc \
     cloud_client.cc \
     cloud_user_manager.cc \
+    cloud_server_thread_data.cc \
     cloudproxy.pb.cc \
     util.cc
 

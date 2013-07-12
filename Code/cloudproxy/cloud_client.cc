@@ -90,13 +90,29 @@ bool CloudClient::Authenticate(const string &subject,
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not request auth";
 
   // now listen for the connection
-  string serialized_chall;
-  CHECK(ReceiveData(bio_.get(), &serialized_chall)) << "Could not get a"
-    " challenge from the server";
+  string serialized_sm;
+  CHECK(ReceiveData(bio_.get(), &serialized_sm)) << "Could not get a"
+    " reply from the server";
 
-  Challenge c;
-  CHECK(c.ParseFromString(serialized_chall)) << "Could not deserialize the"
-    " challenge from the server";
+  ServerMessage sm;
+  CHECK(sm.ParseFromString(serialized_sm)) << "Could not deserialize the"
+    " message from the server";
+  
+  // there are two possible replies to an Auth request: a Result(true) or a Challenge
+  if (sm.has_result()) {
+    CHECK(sm.result().success()) << "Authentication failed";
+    return true;
+  }
+
+  if (!sm.has_challenge()) {
+    LOG(FATAL) << "Unknown response from CloudServer to Auth message";
+    return false;
+  } 
+
+  const Challenge &c = sm.challenge();
+  string serialized_chall;
+  CHECK(c.SerializeToString(&serialized_chall)) << "Could not serialize the"
+    " challenge";
 
   CHECK_STREQ(c.subject().c_str(), subject.c_str()) << "Challenge for the wrong subject";
 
@@ -163,12 +179,18 @@ bool CloudClient::HandleReply() {
     return false;
   }
 
-  Result r;
-  if (!r.ParseFromString(s)) {
+  ServerMessage sm;
+  if (!sm.ParseFromString(s)) {
     LOG(ERROR) << "Could not parse the response from the server";
     return false;
   }
 
+  if (!sm.has_result()) {
+    LOG(ERROR) << "The reply from the server does not contain a Result";
+    return false;
+  }
+
+  const Result &r = sm.result();
   if (!r.success()) {
     if (r.has_reason()) {
       LOG(ERROR) << "Error: " << r.reason();

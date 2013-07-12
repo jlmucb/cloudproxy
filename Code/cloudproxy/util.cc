@@ -89,6 +89,35 @@ bool VerifySignature(const string &data, const string &signature,
   return true;
 }
 
+bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
+               keyczar::Keyset *keyset) {
+  CHECK(public_key) << "null public_key";
+  CHECK(keyset) << "null keyset";
+  LOG(INFO) << "Getting the public_key keyset";
+  const keyczar::Keyset *public_keyset = public_key->keyset();
+  CHECK(public_keyset) << "null public keyset";
+  LOG(INFO) << "Getting the key value";
+  const keyczar::Key *k1 = public_keyset->GetKey(1);
+  CHECK(k1) << "Null key 1";
+  scoped_ptr<Value> key_value(k1->GetValue());
+  LOG(INFO) << "Getting the metadata";
+  scoped_ptr<Value> meta_value(public_keyset->metadata()->GetValue(true));
+  LOG(INFO) << "Setting metadata for the keyset";
+
+  keyset->set_metadata(keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
+
+  LOG(INFO) << "Adding the key";
+  // TODO(tmroeder): read the number of the primary key from the public_key
+  // metadata
+  if (!keyset->AddKey(keyczar::RSAPublicKey::CreateFromValue(*key_value), 1)) {
+    LOG(ERROR) << "Could not add an RSA Public Key";
+    return false;
+  }
+
+  return true;
+}
+
+
 bool CreateRSAPublicKeyset(const string &key, const string &metadata,
 		keyczar::Keyset *keyset) {
   CHECK(keyset) << "null keyset";

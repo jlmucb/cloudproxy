@@ -66,9 +66,6 @@ class CloudServer {
     // mutex for data operations
     mutex data_m_;
 
-    // a mutex for managing challenges
-    mutex challenge_m_;
-
     // Handles specific requests for resources. In this superclass
     // implementation, it just deals with names in a std::set. Subclasses
     // override these methods to implement their functionality

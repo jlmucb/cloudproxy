@@ -96,8 +96,8 @@ class CloudServer {
     // the public policy key, used to check signatures
     scoped_ptr<keyczar::Keyczar> public_policy_key_;
 
-    // random number generator for generating challenges
-    scoped_ptr<keyczar::RandImpl> rand_;
+    // (static) random number generator for generating challenges
+    keyczar::RandImpl *rand_;
 
     // a context object that stores all the TLS parameters for the connection
     ScopedSSLCtx context_;

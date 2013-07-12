@@ -5,7 +5,8 @@
 
 namespace cloudproxy {
 
-CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) {
+CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) 
+  : permissions_(), admins_() {
   string acl;
 
   CHECK(ExtractACL(acl_path, key, &acl)) << "Could not extract the ACL";
@@ -17,9 +18,16 @@ CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) {
     Action a = acl_proto.permissions(i);
     string subject = a.subject();
     Op o = a.verb();
-    string object = a.object();
 
-    permissions_[subject][object].insert(o);
+    if (o == ADMIN) {
+      admins_.insert(subject);
+    } else {
+      CHECK(a.has_object()) << "No object for a non-ADMIN permission";
+      string object = a.object();
+
+      permissions_[subject][object].insert(o);
+    }
+
   }
 }
 
@@ -44,6 +52,9 @@ bool CloudAuth::findPermissions(const string &subject,
 bool CloudAuth::Permitted(const string &subject,
 				      Op op,
 				      const string &object) {
+  // first check to see if this subject is an ADMIN
+  if (admins_.find(subject) != admins_.end()) return true;
+
   set<Op> *perms = nullptr;
   if (!findPermissions(subject, object, &perms)) return false;
 
@@ -92,6 +103,13 @@ bool CloudAuth::Serialize(string *data) {
 	a->set_object(object_it->first);
       }
     }
+  }
+
+  auto admin_it = admins_.begin();
+  for(; admins_.end() != admin_it; admin_it++) {
+    Action *a = acl.add_permissions();
+    a->set_subject(*admin_it);
+    a->set_verb(ADMIN);
   }
 
   return acl.SerializeToString(data);

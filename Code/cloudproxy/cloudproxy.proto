@@ -3,20 +3,23 @@ package cloudproxy;
 // The types of permissions allowed in ACLs.
 // Other than ALL, this is also a list of all supported object operations.
 enum Op {
-    // all permissions
-    ALL = 0;
+    // permission to perform any operation on any object
+    ADMIN = 0;
+
+    // all permissions on a given object
+    ALL = 1;
 
     // can create an object with the given name
-    CREATE = 1;
+    CREATE = 2;
 
     // can destroy an object with this name
-    DESTROY = 2;
+    DESTROY = 3;
 
     // can write to an object with this name
-    WRITE = 3;
+    WRITE = 4;
 
     // can read an object with this name
-    READ = 4;
+    READ = 5;
 }
 
 // An action that can be requested by a client; also the entry type for ACLs.
@@ -31,7 +34,7 @@ message Action {
 
     // The object of this operation. The interpretation of this string is left
     // up to the CloudServer class that handles this Action.
-    required string object = 3;
+    optional string object = 3;
 }
 
 // An authentication request from a CloudClient to a CloudServer consists of

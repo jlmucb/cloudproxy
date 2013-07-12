@@ -1,7 +1,6 @@
 permissions {
   subject: "tmroeder"
-  verb: ALL
-  object: "test"
+  verb: ADMIN
 }
 permissions {
   subject: "jlm"

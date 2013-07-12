@@ -52,16 +52,16 @@ int main(int argc, char** argv) {
                   
 
     // create a random object name to write
-//    scoped_ptr<keyczar::RandImpl> rand(keyczar::CryptoFactory::Rand());
-//    string name_bytes;
-//    CHECK(rand->RandBytes(6, &name_bytes)) << "Could not get random bytes for a name";
-//
-//    // Base64 encode the bytes to get a printable name
-//    string name;
-//    CHECK(keyczar::base::Base64WEncode(name_bytes, &name)) << "Could not encode"
-//      " name";
+    keyczar::RandImpl *rand = keyczar::CryptoFactory::Rand();
+    string name_bytes;
+    CHECK(rand->RandBytes(6, &name_bytes)) << "Could not get random bytes for a name";
 
-    string name("test");
+    // Base64 encode the bytes to get a printable name
+    string name;
+    CHECK(keyczar::base::Base64WEncode(name_bytes, &name)) << "Could not encode"
+      " name";
+
+    //string name("test");
     CHECK(cc.AddUser("tmroeder", "./keys/tmroeder", "tmroeder")) << "Could not"
       " add the user credential from its keyczar path";
     LOG(INFO) << "Added credentials for the user tmroeder";

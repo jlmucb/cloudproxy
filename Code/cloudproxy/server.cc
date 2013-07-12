@@ -2,11 +2,16 @@
 #include <glog/logging.h>
 
 #include <openssl/ssl.h>
+#include <openssl/crypto.h>
 #include "cloud_server.h"
 
+#include <mutex>
 #include <string>
+#include <vector>
 
+using std::mutex;
 using std::string;
+using std::vector;
 
 DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
 		"The PEM certificate for the server to use for TLS");
@@ -25,6 +30,17 @@ DEFINE_string(server_enc_key, "./server_key", "A keyczar crypter"
 DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_int32(port, 11235, "The port to listen on");
 
+
+vector<shared_ptr<mutex> > locks;
+
+void locking_function(int mode, int n, const char *file, int line) {
+  if (mode & CRYPTO_LOCK) {
+    locks[n]->lock();
+  } else {
+    locks[n]->unlock();
+  }
+}
+
 int main(int argc, char **argv) {
     // make sure protocol buffers is using the right version
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -36,6 +52,16 @@ int main(int argc, char **argv) {
     ERR_load_BIO_strings();
     OpenSSL_add_all_algorithms();
     SSL_library_init();
+
+
+    // set up locking in OpenSSL
+    int lock_count = CRYPTO_num_locks();
+    locks.resize(lock_count);
+    for(int i = 0; i < lock_count; i++) {
+      locks[i].reset(new mutex());
+    }
+    CRYPTO_set_locking_callback(locking_function);
+
 
     cloudproxy::CloudServer cs(FLAGS_server_cert,
                                FLAGS_server_key,

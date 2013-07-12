@@ -18,7 +18,7 @@ SRCS=cloud_auth.cc \
 
 OBJS=$(SRCS:.cc=.o)
 
-default: client server acls_sig
+default: client server acls_sig fclient fserver
 
 all: default test sign_acls verify_acls sign_pub_key verify_pub_key
 
@@ -56,9 +56,16 @@ client: cloudproxy.pb.h client.o cloudproxy.a
 server: cloudproxy.pb.h server.o cloudproxy.a
 	$(CC) -o $@ server.o cloudproxy.a $(LIBS)
 
+fclient: cloudproxy.pb.h fclient.o cloudproxy.a
+	$(CC) -o $@ fclient.o cloudproxy.a $(LIBS)
+
+fserver: cloudproxy.pb.h fserver.o cloudproxy.a
+	$(CC) -o $@ fserver.o cloudproxy.a $(LIBS)
+
 clean:
 	rm -f *.o cloudproxy.pb.* test sign_acls acls acls_sig verify_acls
 	rm -f sign_pub_key verify_pub_key cloudproxy.a server client
+	rm -f fserver fclient
 
 
 distclean: clean

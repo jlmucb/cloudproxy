@@ -19,9 +19,9 @@ CloudClient::CloudClient(const string &tls_cert,
 		const string &public_policy_pem,
 		const string &server_addr,
 		ushort server_port)
-	: public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
+	: bio_(nullptr),
+	public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
 	context_(SSL_CTX_new(TLSv1_2_client_method())),
-	bio_(nullptr),
 	users_(new CloudUserManager()) {
 
   // set the policy_key to handle bytes, not strings

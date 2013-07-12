@@ -22,12 +22,7 @@ namespace cloudproxy {
 // used by CloudServer to check if actions requested by the CloudClient are
 // authorized by CloudProxy policy.
 //
-// Sample usage:
-// 
-// CloudClient cc("/var/keys", 12345);
-// CHECK(cc.Authenticate("tmroeder")) << "Could not get /var/keys/tmroeder";
-// CHECK(cc.Create("tmroeder", "test")) << "Could not create a test object";
-// CHECK(cc.Destroy("tmroeder", "test")) << "Could not destroy the test obj";
+// Sample usage: see client.cc
 class CloudClient {
   public:
     // Creates a CloudClient with a directory (key_location) it searches to find
@@ -67,19 +62,21 @@ class CloudClient {
     // Closes the connection to the server
     bool Close(bool error);
 
+  protected:
+    bool SendAction(const string &subject, const string &object, Op op);
+    bool HandleReply();
+
+    // The BIO used to communicate over the TLS channel
+    keyczar::openssl::ScopedBIO bio_;
+
   private:
     bool HandleChallenge(const Challenge& chall);
-    bool HandleReply();
-    bool SendAction(const string &subject, const string &object, Op op);
 
     // the public policy key for this connection
     scoped_ptr<keyczar::Keyczar> public_policy_key_;
 
     // A TLS connection to the server
     ScopedSSLCtx context_;
-
-    // The BIO used to communicate over the TLS channel
-    keyczar::openssl::ScopedBIO bio_;
 
     // Principals that have been authenticated on this connection, and the keys
     // for each user

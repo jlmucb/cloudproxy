@@ -12,7 +12,9 @@ SRCS=cloud_auth.cc \
     cloud_user_manager.cc \
     cloud_server_thread_data.cc \
     cloudproxy.pb.cc \
-    util.cc
+    util.cc \
+    file_server.cc \
+    file_client.cc 
 
 OBJS=$(SRCS:.cc=.o)
 

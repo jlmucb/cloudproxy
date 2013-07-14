@@ -442,6 +442,41 @@ char uCompareSymbol(bnum& bnA, bnum& bnB)
 }
 
 
+bool squaretests()
+{
+    bool    fRet= true;
+    bnum    bnOut1(32);
+    bnum    bnOut2(32);
+    int     i;
+
+    printf("squaretestData tests\n");
+
+    for(i=0;i<(int)(sizeof(rgInitializers)/sizeof(numinit));i++) {
+        if(mpUCompare(bnOut2, bnOut1)!=s_isEqualTo) {
+            printf("MISMATCH\n");
+            fRet= false;
+        }
+        if(!mpUSquare(*rgbn[i], bnOut1)) {
+            printf("mpUSquare reports error\n");
+            fRet= false;
+        }
+        if(!mpUMult(*rgbn[i],*rgbn[i], bnOut2)) {
+            printf("mpUMult reports error\n");
+            fRet= false;
+        }
+        printNum(*rgbn[i]); printf("**2= \n");
+        printNum(bnOut1); printf("\n");
+        printf("Normal alg says: ");
+        printNum(bnOut2); printf("\n");
+        mpZeroNum(bnOut1);
+        mpZeroNum(bnOut2);
+        printf("\n");
+    }
+
+    return fRet;
+}
+
+
 bool copytests()
 {
     bool    fRet= true;
@@ -480,20 +515,20 @@ bool keygenrestoretest()
 
     char* szKey= pKey->SerializetoString();
     if(szKey==NULL) {
-	printf("keygenrestoretest: can't serialize key\n");
-	return false;
+        printf("keygenrestoretest: can't serialize key\n");
+        return false;
     }
     if(!saveBlobtoFile("keytest.xml", (byte*) szKey, strlen(szKey)+1)) {
-	printf("keygenrestoretest: can't save key\n");
-	return false;
+        printf("keygenrestoretest: can't save key\n");
+        return false;
     }
 
     printf("reading key\n");
     fflush(stdout);
     RSAKey* pKeyAgain= (RSAKey*)ReadKeyfromFile("keytest.xml");
     if(pKeyAgain==NULL) {
-	printf("keygenrestoretest: can't reread key\n");
-	return false;
+        printf("keygenrestoretest: can't reread key\n");
+        return false;
     }
 
     printf("keygenrestoretest reprinting key:\n");
@@ -1380,6 +1415,14 @@ int main(int an, char** av)
             throw((char*)"Cant init numbers");
         }
 
+        if(squaretests()) {
+            printf("squaretests succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("squaretests failed\n");
+        }
+
         if(copytests()) {
             printf("copytests succeeded\n");
         }
@@ -1637,8 +1680,8 @@ int main(int an, char** av)
             printf("rsaTests failed\n");
         }
 
-	if(!keygenrestoretest())
-	    throw("Keytest failed");
+        if(!keygenrestoretest())
+            throw("Keytest failed");
 
         if(!udividetests()) 
             throw((char*)"special test fails");

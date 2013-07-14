@@ -346,7 +346,7 @@ i32 max2PowerDividing(bnum& bnA)
             break;
     }
     if(i>=iMax)
-        return(-1);
+        return -1;
     uX= rgA[i];
     for(j=0; j<NUMBITSINU64; j++) {
         if((uOne&uX)!=0)
@@ -488,7 +488,6 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
     else
         bottomShift= NUMBITSINU64-bitShift;
     bottomMask= bottomMask64(bitShift);
-    // topMask= bottomMask^(-1ULL);
 
     t= rgA[wordShift];
     s= t>>bitShift;
@@ -546,7 +545,7 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
 #include "fastArith.h"
 
 
-//  Function: void mpUAdd (no inline)
+//  Function: void mpUAdd
 //  Arguments:
 //      IN bnum bnA 
 //      IN bnum bnB
@@ -596,7 +595,7 @@ u64 mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR)
 }
 
 
-//  Function: u64 mpUAddTo (no inline)
+//  Function: u64 mpUAddTo
 //  Arguments:
 //      INOUT bnum bnA
 //      IN bnum bnB
@@ -640,7 +639,7 @@ u64 mpUAddTo(bnum& bnA, bnum& bnB)
 }
 
 
-//  Function: u64 mpSingleUAddTo (no inline)
+//  Function: u64 mpSingleUAddTo
 //  Arguments:
 //      INOUT   bnum bnA
 //      IN      u64 uA
@@ -666,7 +665,7 @@ u64 mpSingleUAddTo(bnum& bnA, u64 uA)
 }
 
 
-//  Function: u64 mpUSub (no inline)
+//  Function: u64 mpUSub
 //  Arguments:
 //      IN bnum bnA
 //      IN bnum bnB
@@ -701,7 +700,7 @@ u64 mpUSub(bnum& bnA, bnum& bnB, bnum& bnR, u64 uBorrow=0)
 }
 
 
-//  Function: u64 mpUSubFrom (no inline)
+//  Function: u64 mpUSubFrom
 //  Arguments:
 //      INOUT   bnum bnA
 //      IN      bnum bnB
@@ -732,7 +731,7 @@ u64 mpUSubFrom(bnum& bnA, bnum& bnB)
 }
 
 
-//  Function: u64 mpUSingleMultBy (no inline)
+//  Function: u64 mpUSingleMultBy
 //  Arguments:
 //      INOUT   bnum bnA
 //      IN      u64  uB
@@ -760,7 +759,7 @@ u64 mpUSingleMultBy(bnum& bnA, u64 uB)
 }
 
 
-//  Function: bool mpUMult (no inline)
+//  Function: bool mpUMult
 //  Arguments:
 //      bnum bnA
 //      bnum bnB
@@ -807,7 +806,7 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
 }
 
 
-//  Function: bool mpUSingleMultAndShift (no inline)
+//  Function: bool mpUSingleMultAndShift
 //  Arguments:
 //      bnum bnA
 //      u32 uB
@@ -837,7 +836,7 @@ bool mpUSingleMultAndShift(bnum& bnA, u64 uB, int shift, bnum& bnR)
 }
 
 
-//  Function: bool mpSingleUDiv (no inline)
+//  Function: bool mpSingleUDiv
 //  Arguments:
 //      bnum bnA, 
 //      u32 uB, 
@@ -873,7 +872,7 @@ bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true)
 }
 
 
-//  Function: void TwoDigitEstimateQuotient (no inline)
+//  Function: void TwoDigitEstimateQuotient
 void TwoDigitEstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u64 vLo)
 {
     u64     uQ, uR;
@@ -910,7 +909,7 @@ void TwoDigitEstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u
 }
 
 
-//  Function: void EstimateQuotient (no inline)
+//  Function: void EstimateQuotient
 //  Description:
 //      Estimate Quotient.  
 //          vM1!=0
@@ -1518,6 +1517,113 @@ u64 mpDec(bnum& bnN)
 u64 mpInc(bnum& bnN)
 {
     return mpUAddTo(bnN, g_bnOne);
+}
+
+
+// ----------------------------------------------------------------------------
+
+
+inline bool rawUAddTo(int lA, u64* rgA, int lB, u64* rgB)
+{
+    u64     uCarry= 0ULL;
+
+    if(lA>=lB)
+        uCarry= mpUAddLoop(lA, rgA, lB, rgB, rgB);
+    else
+        uCarry= mpUAddLoop(lB, rgB, lA, rgA, rgB);
+    if(uCarry==0ULL)
+        return true;
+    return false;
+}
+
+
+inline bool rawUMult(int lA, u64* rgA, int lB, u64* rgB, int lR, u64* rgR)
+{
+    u64     uCarry= 0ULL;
+   
+    if(lA<=0 || lB<=0) {
+        fprintf(g_logFile, "rawUMult: arg not a number\n");
+        return 0ULL;
+    }
+
+    if(lR<(lA+lB)) {
+        fprintf(g_logFile, "rawUMult: potential overflow %d, %d, %d\n",
+                lR, lA, lB);
+        return false;
+    }
+    ZeroWords(lR, rgR);
+
+    if(lA>=lB) {
+        uCarry= mpUMultLoop(lA, rgA, lB, rgB, rgR);
+    }
+    else {
+        uCarry= mpUMultLoop(lB, rgB, lA, rgA, rgR);
+    }
+
+    if(lR>(lA+lB-1)) {
+        rgR[lA+lB-1]= uCarry;
+        return true;
+    }
+
+    if(uCarry==0)
+        return true;
+    return false;
+}
+
+
+inline bool rawUSquare(int lA, u64* rgA, int lR, u64* rgR)
+{
+    if(lA<3) 
+        return rawUMult(lA, rgA, lA, rgA, lR, rgR);
+
+    int     l1= lA/2;
+    int     l2= lA-l1;
+    bool    fRet= true;
+    int     j;
+    u64     u= 0ULL;
+    u64     rgR1[128];
+    u64     rgR2[128];
+
+    // A= A1(B^l2)+ A2
+    // A*A= (A1*A1) B^(2*l2)+ 2*(A1*A2) B^l1 + A2*A2
+    try {
+        int     lR1= l1+l2+2;
+        int     lR2= 2*l1+1;
+        //u64*    rgR1= new u64[lR1];
+        //u64*    rgR2= new u64[lR2];
+
+        if(!rawUSquare(l2, rgA, lR, rgR)||!rawUSquare(l1, &rgA[l2], lR2, rgR2))
+            throw("failed subsquare 1");
+        if(!rawUMult(l2, rgA, l1, &rgA[l2], lR1, rgR1))
+            throw("failed submult 1");
+
+        // shift
+        for(j=(lR1-2);j>=0;j--) {
+            u= rgR1[j];
+            rgR1[j+1]|= (u>>(NUMBITSINU64-1));
+            rgR1[j]= u<<1;
+        }
+
+        // add subresults
+        if(!rawUAddTo(lR1, rgR1, lR-l2, &rgR[l2]))
+            throw("failed submult 2");
+        if(!rawUAddTo(lR2, rgR2, lR-(2*l2), &rgR[2*l2]))
+            throw("failed submult 2");
+    }
+    catch(const char* sz) {
+        fRet= false;
+        fprintf(g_logFile, "rawUSquare error: %s\n", sz);
+    }
+
+    return fRet;
+}
+
+
+bool mpUSquare(bnum& bnA, bnum& bnR)
+{
+    int lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    return rawUSquare(lA, bnA.m_pValue, 
+                      (int)bnR.mpSize(), bnR.m_pValue);
 }
 
 

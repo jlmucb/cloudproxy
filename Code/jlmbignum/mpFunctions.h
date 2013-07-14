@@ -77,6 +77,7 @@ bool            mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX,
                                     bnum& bnY, bnum& bnG);
 bool            mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR);
 
+bool            mpUSquare(bnum& bnA,bnum& bnR);
 
 bool            mpTestFermatCondition(bnum& bnBase, bnum& bnM);
 bool            mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid=20);

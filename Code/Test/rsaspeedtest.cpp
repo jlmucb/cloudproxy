@@ -221,7 +221,9 @@ bool RSASanityCheck(RSAKey* key, int file, bool fPrint, bool fFast)
     else 
 #endif
     printf("RSA sanity check, block size is %d\n", blockSize);
- 
+    printf("M  : "); printNum(*(key->m_pbnM)); printf("\n");
+    printf("E  : "); printNum(*(key->m_pbnE)); printf("\n");
+    printf("D  : "); printNum(*(key->m_pbnD)); printf("\n");
 
     time(&start);
     for(;;) {

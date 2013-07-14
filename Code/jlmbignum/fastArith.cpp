@@ -47,7 +47,6 @@ u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
         : [carryout] "=m"(uCarryOut) 
         : [outaddress] "m" (puOut), [op1] "m" (uIn1), [op2] "m" (uIn2), [carryin] "m" (uCarryIn)
         : "%rax", "%rcx");
-        /*, "%eax", "ebx", "%esi", "%rsi", "%rdi", "%rdx"); --- remove this */
 
     return uCarryOut;
 }

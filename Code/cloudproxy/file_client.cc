@@ -18,41 +18,51 @@ FileClient::FileClient(const string &file_path,
       server_addr,
       server_port),
     file_path_(file_path) {
-  LOG(INFO) << "Constructing the file client";
-  // TODO(tmroeder): check that this path exists
+  struct stat st;
+  CHECK_EQ(stat(file_path.c_str(), &st), 0) << file_path << " does not exist";
+
+  CHECK(S_ISDIR(st.st_mode)) << file_path << " is not a directory";
 }
 
 bool FileClient::Create(const string &owner, const string &object_name) {
-  // defer to the CloudClient implementation to get this created
+  // defer to the CloudClient implementation to get this created, since there's
+  // nothing else to do with the file
   return CloudClient::Create(owner, object_name);
 }
 
 bool FileClient::Destroy(const string &owner, const string &object_name) {
-  // defer to the CloudClient implementation to get this destroyed
+  // defer to the CloudClient implementation to get this destroyed, since
+  // there's nothing else to do with the file
   return CloudClient::Destroy(owner, object_name);
 }
 
 bool FileClient::Read(const string &requestor, const string &object_name) {
   // make the call to get permission for the operation, and it that succeeds,
   // start to receive the bits
-  CHECK(CloudClient::Read(requestor, object_name)) << "Could not get permission to"
-    " read the object";
+  CHECK(CloudClient::Read(requestor, object_name)) << "Could not get"
+    << " permission to READ " << object_name;
 
-  LOG(INFO) << "TODO: accept the bits from the network and write them to disk";
+  string path = file_path_ + string("/") + object_name;
+  CHECK(ReceiveStreamData(bio_.get(), path)) << "Error while reading the"
+    << " file and writing it to disk";
   return true;
 }
 
 bool FileClient::Write(const string &requestor, const string &object_name) {
+  // look up the file to get its length and make sure there is such a file
+  string path = file_path_ + string("/") + object_name;
+  struct stat st;
+  CHECK_EQ(stat(path.c_str(), &st), 0) << "Could not stat the file " << path;
+
+
   // make the call to get permission for the operation, and if that succeeds,
   // then start to write the bits to the network
   CHECK(CloudClient::Write(requestor, object_name)) << "Could not get"
     " permission to write to the file";
   
-  // TODO(tmroeder): add a StreamBytes and ReceiveByteStream methods that take
-  // callbacks for each chunk of bytes that are received
 
-  LOG(INFO) << "TODO: read the bits from the disk and write them to the"
-    " network";
+  CHECK(SendStreamData(path, st.st_size, bio_.get())) << "Could not send the"
+    << " file data to the server";
   return true;
 }
 

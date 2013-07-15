@@ -78,6 +78,9 @@ class CloudServer {
     virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
 		    bool *reply, CloudServerThreadData &cstd);
 
+    // sends a reply to the client with a given success code and error message
+    bool SendReply(BIO *bio, bool success, const string &reason);
+  
   private:
 
     // handles an incoming message from a client

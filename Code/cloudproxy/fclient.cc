@@ -10,7 +10,7 @@
 
 using std::string;
 
-DEFINE_string(file_path, "file_server_files",
+DEFINE_string(file_path, "file_client_files",
         "The path used by the file server to store files");
 DEFINE_string(client_cert, "./openssl_keys/client/client.crt",
 		"The PEM certificate for the client to use for TLS");
@@ -55,16 +55,16 @@ int main(int argc, char** argv) {
                   
 
     // create a random object name to write
-    keyczar::RandImpl *rand = keyczar::CryptoFactory::Rand();
-    string name_bytes;
-    CHECK(rand->RandBytes(6, &name_bytes)) << "Could not get random bytes for a name";
+//    keyczar::RandImpl *rand = keyczar::CryptoFactory::Rand();
+//    string name_bytes;
+//    CHECK(rand->RandBytes(6, &name_bytes)) << "Could not get random bytes for a name";
+//
+//    // Base64 encode the bytes to get a printable name
+//    string name;
+//    CHECK(keyczar::base::Base64WEncode(name_bytes, &name)) << "Could not encode"
+//      " name";
 
-    // Base64 encode the bytes to get a printable name
-    string name;
-    CHECK(keyczar::base::Base64WEncode(name_bytes, &name)) << "Could not encode"
-      " name";
-
-    //string name("test");
+    string name("test");
     CHECK(fc.AddUser("tmroeder", "./keys/tmroeder", "tmroeder")) << "Could not"
       " add the user credential from its keyczar path";
     LOG(INFO) << "Added credentials for the user tmroeder";
@@ -74,10 +74,10 @@ int main(int argc, char** argv) {
     CHECK(fc.Create("tmroeder", name)) << "Could not create the object"
         << "'" << name << "' on the server";
     LOG(INFO) << "Created the object " << name;
-    CHECK(fc.Read("tmroeder", name)) << "Could not read the object";
-    LOG(INFO) << "Read the object " << name;
-    CHECK(fc.Destroy("tmroeder", name)) << "Could not destroy the object";
-    LOG(INFO) << "Destroyed the object " << name;
+    CHECK(fc.Write("tmroeder", name)) << "Could not write the file to the server";
+    LOG(INFO) << "Wrote the object " << name;
+    //CHECK(fc.Destroy("tmroeder", name)) << "Could not destroy the object";
+    //LOG(INFO) << "Destroyed the object " << name;
 
     CHECK(fc.Close(false)) << "Could not close the channel";
     

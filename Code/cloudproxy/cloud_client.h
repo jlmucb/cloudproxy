@@ -7,6 +7,10 @@
 #include "util.h"
 #include "cloud_user_manager.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <set>
 #include <string>
 
@@ -63,7 +67,8 @@ class CloudClient {
     bool Close(bool error);
 
   protected:
-    bool SendAction(const string &subject, const string &object, Op op);
+    bool SendAction(const string &subject, const string &object, Op op,
+      bool handle_reply);
     bool HandleReply();
 
     // The BIO used to communicate over the TLS channel

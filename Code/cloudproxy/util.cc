@@ -17,6 +17,8 @@
 using std::ifstream;
 using std::stringstream;
 
+#define READ_BUFFER_LEN 16384
+
 namespace cloudproxy {
 
 // this callback will change once we get the password from the Tao/TPM
@@ -213,6 +215,109 @@ bool SignData(const string &data, string *signature,
 		keyczar::Keyczar *key) {
   if (!key->Sign(data, signature)) {
     LOG(ERROR) << "Could not sign the data";
+    return false;
+  }
+
+  return true;
+}
+
+// TODO(tmroeder): change this function to take a function pointer parameter to actually write the data:
+// size_t write_data(const void *buffer, int len, FILE *f)
+bool ReceiveStreamData(BIO *bio, const string &path) {
+  // open the file
+  CHECK(bio) << "null bio";
+  ScopedFile f(fopen(path.c_str(), "w"));
+  if (nullptr == f.get()) {
+    LOG(ERROR) << "Could not open the file " << path << " for writing";
+    return false;
+  }
+
+  // first receive the length
+  uint32_t net_len = 0;
+  if (!ReceiveData(bio, &net_len, sizeof(net_len))) {
+    LOG(ERROR) << "Could not get the length of the data";
+    return false;
+  }
+
+  // convert from network byte order to get the length
+  uint32_t expected_len = ntohl(net_len);
+
+  uint32_t total_len = 0;
+  int len = READ_BUFFER_LEN;
+  int out_len = 0;
+  size_t bytes_written = 0;
+  scoped_array<unsigned char> buf(new unsigned char[len]);
+  while((total_len < expected_len) && (out_len = BIO_read(bio, buf.get(), len)) != 0) {
+    if (out_len < 0) {
+      if (!BIO_should_retry(bio)) {
+	LOG(ERROR) << "Write failed after " << total_len << " bytes were written";
+	return false;
+      }
+    } else {
+      // TODO(tmroeder): write to a temp file first so we only need to lock on
+      // the final rename step
+      bytes_written = fwrite(buf.get(), 1, out_len, f.get());
+      // this cast is safe, since out_len is guaranteed to be non-negative
+      if (bytes_written != static_cast<size_t>(out_len)) {
+	LOG(ERROR) << "Could not write the received bytes to disk after " << total_len << " bytes were written";
+	return false;
+      }
+
+      total_len += bytes_written;
+    }
+  }
+
+  return true;
+}
+
+// TODO(tmroeder): change this function to take a function pointer argument as for ReceiveStreamData
+// size_t read_data(FILE *f, void *buffer, int *len)
+bool SendStreamData(const string &path, size_t size, BIO *bio) {
+  CHECK(bio) << "null bio";
+
+  // open the file
+  CHECK(bio) << "null bio";
+  ScopedFile f(fopen(path.c_str(), "r"));
+  if (nullptr == f.get()) {
+    LOG(ERROR) << "Could not open the file " << path << " for reading";
+    return false;
+  }
+
+  // send the length of the file first
+  uint32_t net_len = htonl(size);
+
+  // send the length to the client 
+  if (!SendData(bio, &net_len, sizeof(net_len))) {
+    LOG(ERROR) << "Could not send the len";
+    return false;
+  }
+
+  // stream the file bytes from disk to the network
+  size_t total_bytes = 0;
+  size_t len = READ_BUFFER_LEN;
+  size_t bytes_read = 0;
+  scoped_array<unsigned char> buf(new unsigned char[len]);
+  while((total_bytes < size) &&
+        (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
+    int x = 0;
+    while((x = BIO_write(bio, buf.get(), bytes_read)) < 0) {
+      if (!BIO_should_retry(bio)) {
+        LOG(ERROR) << "Network write operation failed";
+        return false;
+      }
+    }
+
+    if (x == 0) {
+      LOG(ERROR) << "Could not write the bytes to the network after " <<
+        " total_bytes were written";
+    }
+
+    // this cast is safe, since x is guaranteed to be non-negative
+    total_bytes += static_cast<size_t>(x);
+  }
+
+  if (!feof(f.get())) {
+    LOG(ERROR) << "Not all bytes were read in the file";
     return false;
   }
 

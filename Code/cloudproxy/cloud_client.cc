@@ -147,7 +147,7 @@ bool CloudClient::Authenticate(const string &subject,
 }
 
 bool CloudClient::SendAction(const string &owner, const string &object_name,
-		Op op) {
+		Op op, bool handle_reply) {
   ClientMessage cm;
   Action *a = cm.mutable_action();
   a->set_subject(owner);
@@ -157,23 +157,27 @@ bool CloudClient::SendAction(const string &owner, const string &object_name,
   string s;
   CHECK(cm.SerializeToString(&s)) << "Could not serialize Action";
   CHECK(SendData(bio_.get(), s)) << "Could not send the Action to CloudServer";
-  return HandleReply();
+  if (handle_reply) {
+    return HandleReply();
+  } else {
+    return true;
+  }
 }
 
 bool CloudClient::Create(const string &owner, const string &object_name) {
-  return SendAction(owner, object_name, CREATE);
+  return SendAction(owner, object_name, CREATE, true);
 }
 
 bool CloudClient::Destroy(const string &requestor, const string &object_name) {
-  return SendAction(requestor, object_name, DESTROY);
+  return SendAction(requestor, object_name, DESTROY, true);
 }
 
 bool CloudClient::Read(const string &requestor, const string &object_name) {
-  return SendAction(requestor, object_name, READ);
+  return SendAction(requestor, object_name, READ, true);
 }
 
 bool CloudClient::Write(const string &requestor, const string &object_name) {
-  return SendAction(requestor, object_name, WRITE);
+  return SendAction(requestor, object_name, WRITE, true);
 }
 
 bool CloudClient::HandleReply() {

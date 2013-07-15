@@ -110,20 +110,8 @@ void CloudServer::HandleConnection(BIO *sbio) {
     }
 
     if (reply) {
-      ServerMessage sm;
-      Result *r = sm.mutable_result();
-      r->set_success(rv);
-      if (!reason.empty()) {
-        r->set_reason(reason);
-      }
-
-      string serialized_sm;
-      if (!sm.SerializeToString(&serialized_sm)) {
-        LOG(ERROR) << "Could not serialize reply";
-      } else {
-        if (!SendData(bio.get(), serialized_sm)) {
-          LOG(ERROR) << "Could not reply";
-        }
+      if (!SendReply(bio.get(), true, reason.c_str())) {
+	LOG(ERROR) << "Could not send a reply to the client";
       }
     }
   }
@@ -138,6 +126,27 @@ void CloudServer::HandleConnection(BIO *sbio) {
 
 }
 
+bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
+  ServerMessage sm;
+  Result *r = sm.mutable_result();
+  r->set_success(success);
+  if (!reason.empty()) {
+    r->set_reason(reason);
+  }
+
+  string serialized_sm;
+  if (!sm.SerializeToString(&serialized_sm)) {
+    LOG(ERROR) << "Could not serialize reply";
+    return false;
+  } else {
+    if (!SendData(bio, serialized_sm)) {
+      LOG(ERROR) << "Could not reply";
+      return false;
+    }
+  }
+
+  return true;
+}
 bool CloudServer::HandleMessage(const ClientMessage &message,
     BIO *bio, string *reason, bool *reply, bool *close,
     CloudServerThreadData &cstd) {

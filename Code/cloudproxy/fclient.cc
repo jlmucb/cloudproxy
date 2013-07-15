@@ -74,8 +74,14 @@ int main(int argc, char** argv) {
     CHECK(fc.Create("tmroeder", name)) << "Could not create the object"
         << "'" << name << "' on the server";
     LOG(INFO) << "Created the object " << name;
-    CHECK(fc.Write("tmroeder", name)) << "Could not write the file to the server";
+    CHECK(fc.Write("tmroeder", name, name)) << "Could not write the file to the server";
     LOG(INFO) << "Wrote the object " << name;
+
+    string temp_file = name + ".out";
+    CHECK(fc.Read("tmroeder", name, temp_file)) << "Could not read the file from the"
+      " server for comparison";
+    LOG(INFO) << "Read the file";
+
     //CHECK(fc.Destroy("tmroeder", name)) << "Could not destroy the object";
     //LOG(INFO) << "Destroyed the object " << name;
 

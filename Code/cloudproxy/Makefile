@@ -1,4 +1,4 @@
-CPPFLAGS=-Wall -Werror -std=c++0x -MMD -O3
+CPPFLAGS=-Wall -Werror -std=c++0x -MMD -g
 LDFLAGS=
 LIBS=-lgflags -lglog -lkeyczar -lcrypto -lprotobuf -lssl
 PROTOC=protoc

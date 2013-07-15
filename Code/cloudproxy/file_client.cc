@@ -36,21 +36,23 @@ bool FileClient::Destroy(const string &owner, const string &object_name) {
   return CloudClient::Destroy(owner, object_name);
 }
 
-bool FileClient::Read(const string &requestor, const string &object_name) {
+bool FileClient::Read(const string &requestor, const string &object_name,
+  const string &output_name) {
   // make the call to get permission for the operation, and it that succeeds,
   // start to receive the bits
-  CHECK(CloudClient::Read(requestor, object_name)) << "Could not get"
+  CHECK(CloudClient::Read(requestor, object_name, output_name)) << "Could not get"
     << " permission to READ " << object_name;
 
-  string path = file_path_ + string("/") + object_name;
+  string path = file_path_ + string("/") + output_name;
   CHECK(ReceiveStreamData(bio_.get(), path)) << "Error while reading the"
     << " file and writing it to disk";
-  return true;
+  return HandleReply();
 }
 
-bool FileClient::Write(const string &requestor, const string &object_name) {
+bool FileClient::Write(const string &requestor, const string &input_name,
+  const string &object_name) {
   // look up the file to get its length and make sure there is such a file
-  string path = file_path_ + string("/") + object_name;
+  string path = file_path_ + string("/") + input_name;
   struct stat st;
   CHECK_EQ(stat(path.c_str(), &st), 0) << "Could not stat the file " << path;
 
@@ -58,14 +60,14 @@ bool FileClient::Write(const string &requestor, const string &object_name) {
 
   // make the call to get permission for the operation, and if that succeeds,
   // then start to write the bits to the network
-  CHECK(CloudClient::Write(requestor, object_name)) << "Could not get"
+  CHECK(CloudClient::Write(requestor, input_name, object_name)) << "Could not get"
     " permission to write to the file";
   
   LOG(INFO) << "Got permission to write the file " << path;
 
   CHECK(SendStreamData(path, st.st_size, bio_.get())) << "Could not send the"
     << " file data to the server";
-  return true;
+  return HandleReply();
 }
 
 } // namespace cloudproxy

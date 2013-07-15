@@ -226,8 +226,10 @@ bool SignData(const string &data, string *signature,
 bool ReceiveStreamData(BIO *bio, const string &path) {
   // open the file
   CHECK(bio) << "null bio";
-  ScopedFile f(fopen(path.c_str(), "w"));
-  if (nullptr == f.get()) {
+  FILE *f = fopen(path.c_str(), "w");
+
+  //ScopedFile f(fopen(path.c_str(), "w"));
+  if (nullptr == f) {
     LOG(ERROR) << "Could not open the file " << path << " for writing";
     return false;
   }
@@ -257,7 +259,7 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
       // the final rename step
-      bytes_written = fwrite(buf.get(), 1, out_len, f.get());
+      bytes_written = fwrite(buf.get(), 1, out_len, f);
       // this cast is safe, since out_len is guaranteed to be non-negative
       if (bytes_written != static_cast<size_t>(out_len)) {
 	LOG(ERROR) << "Could not write the received bytes to disk after " << total_len << " bytes were written";
@@ -267,6 +269,8 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
       total_len += bytes_written;
     }
   }
+
+  fclose(f);
 
   return true;
 }
@@ -278,8 +282,9 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
 
   // open the file
   CHECK(bio) << "null bio";
-  ScopedFile f(fopen(path.c_str(), "r"));
-  if (nullptr == f.get()) {
+  FILE *f = fopen(path.c_str(), "r");
+  //ScopedFile f(fopen(path.c_str(), "r"));
+  if (nullptr == f) {
     LOG(ERROR) << "Could not open the file " << path << " for reading";
     return false;
   }
@@ -299,7 +304,7 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
   size_t bytes_read = 0;
   scoped_array<unsigned char> buf(new unsigned char[len]);
   while((total_bytes < size) &&
-        (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
+        (bytes_read = fread(buf.get(), 1, len, f)) != 0) {
     int x = 0;
     while((x = BIO_write(bio, buf.get(), bytes_read)) < 0) {
       if (!BIO_should_retry(bio)) {
@@ -322,6 +327,7 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
     return false;
   }
 
+  fclose(f);
   return true;
 }
 

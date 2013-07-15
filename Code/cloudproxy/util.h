@@ -15,13 +15,13 @@ using std::string;
 
 namespace cloudproxy {
 
-struct FileDestroyer {
-  void operator()(FILE *ptr) const {
-    if (ptr) {
-      fclose(ptr);
-    }
-  }
-};
+//struct FileDestroyer {
+//  void operator()(FILE *ptr) const {
+//    if (ptr) {
+//      fclose(ptr);
+//    }
+//  }
+//};
 
 // taken from a private definition in keyczar/openssl/aes.h
 typedef scoped_ptr_malloc<
@@ -31,7 +31,7 @@ typedef scoped_ptr_malloc<
 	SSL_CTX, keyczar::openssl::OSSLDestroyer<SSL_CTX,
 	SSL_CTX_free> > ScopedSSLCtx;
 
-typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
+//typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
 int PasswordCallback(char *buf, int size, int rwflag, void *password);
 

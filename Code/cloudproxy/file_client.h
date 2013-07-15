@@ -25,10 +25,12 @@ class FileClient : public CloudClient {
     virtual bool Destroy(const string &owner, const string &object_name);
 
     // Send a READ request to a CloudServer
-    virtual bool Read(const string &requestor, const string &object_name);
+    virtual bool Read(const string &requestor, const string &object_name,
+      const string &output_name);
 
     // Sends a WRITE request to a CloudServer
-    virtual bool Write(const string &requestor, const string &object_name);
+    virtual bool Write(const string &requestor, const string &input_name,
+      const string &object_name);
 
   private:
 

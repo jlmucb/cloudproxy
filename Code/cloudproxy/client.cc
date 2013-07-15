@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     CHECK(cc.Create("tmroeder", name)) << "Could not create the object"
         << "'" << name << "' on the server";
     LOG(INFO) << "Created the object " << name;
-    CHECK(cc.Read("tmroeder", name)) << "Could not read the object";
+    CHECK(cc.Read("tmroeder", name, name)) << "Could not read the object";
     LOG(INFO) << "Read the object " << name;
     CHECK(cc.Destroy("tmroeder", name)) << "Could not destroy the object";
     LOG(INFO) << "Destroyed the object " << name;

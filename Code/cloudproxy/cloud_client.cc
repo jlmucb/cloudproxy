@@ -172,11 +172,17 @@ bool CloudClient::Destroy(const string &requestor, const string &object_name) {
   return SendAction(requestor, object_name, DESTROY, true);
 }
 
-bool CloudClient::Read(const string &requestor, const string &object_name) {
+bool CloudClient::Read(const string &requestor, const string &object_name,
+  const string &output_name) {
+  // cloud client ignores the output name, since it's not reading any data from
+  // the server
   return SendAction(requestor, object_name, READ, true);
 }
 
-bool CloudClient::Write(const string &requestor, const string &object_name) {
+bool CloudClient::Write(const string &requestor, const string &input_name,
+  const string &object_name) {
+  // cloud client ignores the input name, since it's not writing any data to
+  // the server
   return SendAction(requestor, object_name, WRITE, true);
 }
 

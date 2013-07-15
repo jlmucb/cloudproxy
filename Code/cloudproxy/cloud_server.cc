@@ -69,6 +69,8 @@ bool CloudServer::Listen() {
     t.detach();
   }
 
+  LOG(INFO) << "returning from listening";
+
   return true;
 }
 
@@ -214,6 +216,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message,
   } else if (message.has_close()) {
     rv = !message.close().error();
     *close = true;
+    *reply = false;
     return rv;
   } else {
     LOG(ERROR) << "Message from client did not have any recognized content";

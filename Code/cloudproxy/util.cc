@@ -241,6 +241,7 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
 
   // convert from network byte order to get the length
   uint32_t expected_len = ntohl(net_len);
+  LOG(INFO) << "Got expected length " << expected_len;
 
   uint32_t total_len = 0;
   int len = READ_BUFFER_LEN;
@@ -316,8 +317,8 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
     total_bytes += static_cast<size_t>(x);
   }
 
-  if (!feof(f.get())) {
-    LOG(ERROR) << "Not all bytes were read in the file";
+  if (total_bytes != size) {
+    LOG(ERROR) << "Did not send all bytes to the server";
     return false;
   }
 

@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     cloudproxy::Action action;
     action.set_subject(FLAGS_subject);
 
-    cloudproxy::Op op;
+    cloudproxy::Op op = cloudproxy::ALL;
     CHECK(cloudproxy::Op_Parse(FLAGS_operation, &op)) << "Could not parse the"
         " supplied operation";
 

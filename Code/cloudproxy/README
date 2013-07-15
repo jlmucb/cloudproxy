@@ -49,4 +49,5 @@ gflags >= 2.0
 
 
 After installing these packages, follow the steps in creating_keys.txt to create
-the required keys for CloudProxy.
+the required keys for CloudProxy, and run make to build the client and server
+applications.

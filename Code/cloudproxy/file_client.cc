@@ -54,12 +54,14 @@ bool FileClient::Write(const string &requestor, const string &object_name) {
   struct stat st;
   CHECK_EQ(stat(path.c_str(), &st), 0) << "Could not stat the file " << path;
 
+  LOG(INFO) << "Found the file " << path;
 
   // make the call to get permission for the operation, and if that succeeds,
   // then start to write the bits to the network
   CHECK(CloudClient::Write(requestor, object_name)) << "Could not get"
     " permission to write to the file";
   
+  LOG(INFO) << "Got permission to write the file " << path;
 
   CHECK(SendStreamData(path, st.st_size, bio_.get())) << "Could not send the"
     << " file data to the server";

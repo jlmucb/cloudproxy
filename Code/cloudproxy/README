@@ -1,0 +1,53 @@
+CloudProxy v1.5
+
+This project depends on several third-party libraries. Before building
+CloudProxy, you must download, build, and install these libraries. We have
+provided a third_party directory under Code.
+
+
+keyczar >= 0.71
+
+keyczar will give a test error in the build step, but this is not important for
+our use of the library. Note that you must have the openssl development
+libraries installed for keyczar to build. See the instructions for keyczar for
+more information.
+
+> cd ${CODE}/third_party
+> git clone https://code.google.com/p/keyczar/
+> cd keyczar/cpp
+> cd src && sh ./tools/swtoolkit/hammer.sh --mode=opt-linux --compat
+> sudo su
+# cd src && sh ./tools/swtoolkit/hammer.sh --mode=opt-linux --compat install
+# exit
+
+
+protobuf >= 2.5.1
+
+> cd ${CODE}/third_party
+> svn checkout http://protobuf.googlecode.com/svn/trunk/ protobuf-read-only
+> cd protobuf-read-only
+> ./configure && make
+> sudo make install
+
+
+google-glog >= 0.3.3
+
+> cd ${CODE}/third_party
+> svn checkout http://google-glog.googlecode.com/svn/trunk/ google-glog-read-only
+> cd google-glog-read-only
+> ./configure && make
+> sudo make install
+
+
+gflags >= 2.0
+
+> cd ${CODE}/third_party
+> svn checkout http://gflags.googlecode.com/svn/ gflags-read-only
+> cd gflags-read-only/trunk
+> ./configure && make
+> sudo make install
+
+
+After installing these packages, follow the steps in creating_keys.txt to create
+the required keys for CloudProxy, and run make to build the client and server
+applications.

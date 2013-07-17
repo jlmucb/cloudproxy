@@ -106,37 +106,32 @@ bool closeAllCrypto()
 // -------------------------------------------------------------------------------------------
 
 
-//
-//  Base64 encode/decode: jmbase64.cpp
-//  (c) 2007, John Manferdelli
-//
-
 //  pad character is '='
 
 static const char* s_transChar= "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const unsigned char s_revTrans[80]= {
-     62 /* + */,   0 /* , */,   0 /* - */,   0 /* . */,  63 /* / */,
-     52 /* 0 */,  53 /* 1 */,  54 /* 2 */,  55 /* 3 */,  56 /* 4 */,
-     57 /* 5 */,  58 /* 6 */,  59 /* 7 */,  60 /* 8 */,  61 /* 9 */,
-      0 /* : */,   0 /* ; */,   0 /* < */,   0 /* = */,   0 /* > */,
-      0 /* ? */,   0 /* @ */,   0 /* A */,   1 /* B */,   2 /* C */,
-      3 /* D */,   4 /* E */,   5 /* F */,   6 /* G */,   7 /* H */,
-      8 /* I */,   9 /* J */,  10 /* K */,  11 /* L */,  12 /* M */,
-     13 /* N */,  14 /* O */,  15 /* P */,  16 /* Q */,  17 /* R */,
-     18 /* S */,  19 /* T */,  20 /* U */,  21 /* V */,  22 /* W */,
-     23 /* X */,  24 /* Y */,  25 /* Z */,   0 /* [ */,   0 /* \ */,
-      0 /* ] */,   0 /* ^ */,   0 /* _ */,   0 /* ` */,  26 /* a */,
-     27 /* b */,  28 /* c */,  29 /* d */,  30 /* e */,  31 /* f */,
-     32 /* g */,  33 /* h */,  34 /* i */,  35 /* j */,  36 /* k */,
-     37 /* l */,  38 /* m */,  39 /* n */,  40 /* o */,  41 /* p */,
-     42 /* q */,  43 /* r */,  44 /* s */,  45 /* t */,  46 /* u */,
-     47 /* v */,  48 /* w */,  49 /* x */,  50 /* y */,  51 /* z */
-    };
+    62,  0,  0,  0, 63,
+    52, 53, 54, 55, 56,
+    57, 58, 59, 60, 61,
+     0,  0,  0,  0,  0,
+     0,  0,  0,  1,  2,
+     3,  4,  5,  6,  7,
+     8,  9, 10, 11, 12,
+    13, 14, 15, 16, 17,
+    18, 19, 20, 21, 22,
+    23, 24, 25,  0,  0,
+     0,  0,  0,  0, 26,
+    27, 28, 29, 30, 31,
+    32, 33, 34, 35, 36,
+    37, 38, 39, 40, 41,
+    42, 43, 44, 45, 46,
+    47, 48, 49, 50, 51,
+};
 
 
 inline bool whitespace(char b)
 {
-    return(b==' ' || b=='\t' || b=='\r' || b=='\n');
+    return (b==' ' || b=='\t' || b=='\r' || b=='\n');
 }
 
 
@@ -364,7 +359,7 @@ bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, int* poutsize, b
     byte*   curIn= in;
     byte*   curOut= out;
 
-#ifdef CRYPTOTEST2
+#ifdef CRYPTOTEST
     memset(out, 0, *poutsize);
     fprintf(g_logFile, "*****AES128CBCHMACSHA256SYMPADEncryptBlob. insize: %d\n", insize);
     PrintBytes( "encKey: ", enckey, AES128BYTEBLOCKSIZE);
@@ -414,7 +409,7 @@ bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, int* poutsize, b
         fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false return 4\n");
         return false;
     }
-#ifdef CRYPTOTEST2
+#ifdef CRYPTOTEST
     PrintBytes( "output:\n", out, *poutsize);
     fprintf(g_logFile, "\n%d, out\n", *poutsize);
 #endif
@@ -455,6 +450,10 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
         return false;
     }
     *poutsize= oCBC.m_iNumPlainBytes;
+#ifdef CRYPTOTEST
+    fprintf(g_logFile, "Initial computed plaintext size: %d\n", 
+            oCBC.m_iNumPlainBytes);
+#endif
 
     // first block
     oCBC.firstCipherBlockIn(curIn);

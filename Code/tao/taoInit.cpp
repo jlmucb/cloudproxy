@@ -36,15 +36,9 @@
 #include "hashprep.h"
 #endif
 #include "linuxHostsupport.h"
-#ifdef   NEWANDREORGANIZED
 #include "cert.h"
 #include "quote.h"
 #include "cryptoHelper.h"
-#else
-#include "rsaHelper.h"
-#include "claims.h"
-#include "secPrincipal.h"
-#endif
 
 #include <string.h>
 #include <time.h>
@@ -489,11 +483,7 @@ bool taoInit::genprivateKeyPair(u32 keyType, const char* szKeyName)
     else
         return false;
 
-#ifdef NEWANDREORGANIZED
     pKey= RSAGenerateKeyPair(ikeySize);
-#else
-    pKey= generateRSAKeypair(ikeySize);
-#endif
     if(pKey==NULL) {
         fprintf(g_logFile, "taoEnvironment::genprivateKeyPair: Can't generate RSA key pair\n");
         return false;

@@ -48,6 +48,7 @@ public:
     u16                     m_uType;
     bool                    m_fIsPresent;
     bool                    m_fIsDeleted;
+    bool                    m_fKeyValid;
     int                     m_iSize;
     aList<PrincipalCert>    m_myOwners;
     byte                    m_rguKey1[SMALLSYMKEYSIZE];

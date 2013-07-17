@@ -48,6 +48,7 @@ resource::resource()
     m_uType= 0;
     m_fIsPresent= false;
     m_fIsDeleted= false;
+    m_fKeyValid= false;
     m_iSize= 0;
     memset(m_rguKey1, 0, SMALLSYMKEYSIZE);
 }

@@ -146,7 +146,7 @@ bool emsapkcspad(int hashType, byte* rgHash, int  sigSize, byte* rgSig)
     // hash
     memcpy(&rgSig[n], rgHash, hashLen);
 
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     PrintBytes("Padded block\n", rgSig, sigSize);
 #endif
     return true;
@@ -307,7 +307,7 @@ bool pkcsmessagepad(int sizeIn, byte* rgMsg, int  sigSize, byte* rgSig)
     // copy message
     memcpy(&rgSig[n], rgMsg, sizeIn);
 
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     PrintBytes("pkcsmessagepad: Padded block\n", rgSig, sigSize);
 #endif
     return true;
@@ -365,16 +365,6 @@ bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig)
 #endif
     return true;
 }
-
-
-// ----------------------------------------------------------------
-
-
-
-
-// ----------------------------------------------------------------
-
-
 
 
 // ----------------------------------------------------------------
@@ -464,7 +454,7 @@ bool cbc::computeCipherLen()
 bool cbc::initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, int intkeysize, byte* intkey,
                     int cipherLen)
 {
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::initDec\n");
 #endif
     if(!init(alg, pad, hashalg, keysize, key, intkeysize, intkey))
@@ -478,7 +468,7 @@ bool cbc::initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, int int
 }
 
 
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
 void printCBCState(cbc* pMode)
 {
     fprintf(g_logFile, "CBC State:\n");
@@ -506,7 +496,7 @@ void printCBCState(cbc* pMode)
 bool cbc::initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, int intkeysize, byte* intkey,
                     int plainLen, int ivSize, byte* iv)
 {
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::initEnc\n");
 #endif
     if(!init(alg, pad, hashalg, keysize, key, intkeysize, intkey))
@@ -577,7 +567,7 @@ bool cbc::init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key, int intkeys
 
 int cbc::getMac(int size, byte* puMac)
 {
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::getMac\n");
 #endif
     memcpy(puMac, m_rguHMACComputed, SHA256_DIGESTSIZE_BYTES);
@@ -588,8 +578,8 @@ int cbc::getMac(int size, byte* puMac)
 void cbc::nextMac(byte* puA)
 // always full block at a time
 {
-#ifdef CRYPTOTEST4
-    PrintBytes("cbc::nextMac", puA, m_iBlockSize);
+#ifdef CRYPTOTEST
+    PrintBytes("cbc::nextMac: ", puA, m_iBlockSize);
 #endif
     m_ohMac.Update(puA, m_iBlockSize);
 }
@@ -599,14 +589,14 @@ bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
 {
     byte    oldX[MAXAUTHSIZE];
 
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::nextPlainBlockIn\n");
-    PrintBytes("In", puIn, 16);
+    PrintBytes("In: ", puIn, 16);
 #endif
     inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
     m_oAESEnc.Encrypt(oldX, puOut); 
     memcpy(m_rgLastBlock, puOut, m_iBlockSize);
-#ifdef ENCRYPTTHENMAC
+#ifndef ENCRYPTTHENMAC
     nextMac(puIn);
 #else
     nextMac(puOut);
@@ -619,14 +609,14 @@ bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
 {
     byte    oldX[MAXAUTHSIZE];
 
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::nextCipherBlockIn\n");
-    PrintBytes("In", puIn, 16);
+    PrintBytes("In: ", puIn, 16);
 #endif
     m_oAESDec.Decrypt(puIn, oldX); 
     inlineXor(puOut, m_rgLastBlock, oldX, m_iBlockSize);
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
-#ifdef ENCRYPTTHENMAC
+#ifndef ENCRYPTTHENMAC
     nextMac(puOut);
 #else
     nextMac(puIn);
@@ -637,9 +627,9 @@ bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
 
 bool cbc::firstCipherBlockIn(byte* puIn)
 {
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::firstCipherBlockIn\n");
-    PrintBytes("IV", puIn, m_iBlockSize);
+    PrintBytes("IV: ", puIn, m_iBlockSize);
 #endif
     memcpy(m_rguFirstBlock, puIn, m_iBlockSize);
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
@@ -650,9 +640,9 @@ bool cbc::firstCipherBlockIn(byte* puIn)
 
 bool cbc::firstCipherBlockOut(byte* puOut)
 {
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::firstCipherBlockOut\n");
-    PrintBytes("IV", m_rgLastBlock, m_iBlockSize);
+    PrintBytes("IV: ", m_rgLastBlock, m_iBlockSize);
 #endif
     memcpy(puOut, m_rgLastBlock, m_iBlockSize);
     return true;
@@ -661,7 +651,7 @@ bool cbc::firstCipherBlockOut(byte* puOut)
 
 bool cbc::validateMac()
 {
-#ifdef CRYPTOTEST4
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::validateMac\n");
 #endif
     return isEqual(m_rguHMACComputed, m_rguHMACReceived, SHA256_DIGESTSIZE_BYTES);
@@ -673,7 +663,7 @@ int cbc::lastPlainBlockIn(int size, byte* puIn, byte* puOut)
     int     num= 0;
     int     i;
 
-#ifdef CRYPTOTEST1
+#ifdef CRYPTOTEST
     PrintBytes("cbc::lastPlainBlockIn\n", puIn, size);
 #endif
     memcpy(m_rguLastBlocks, puIn, size);
@@ -698,6 +688,9 @@ int cbc::lastPlainBlockIn(int size, byte* puIn, byte* puOut)
     memcpy(puOut+num*m_iBlockSize, m_rguHMACComputed, SHA256_DIGESTSIZE_BYTES);
     num+= 2;
 
+#ifdef CRYPTOTEST
+    PrintBytes("cbc::lastPlainBlockIn, mac: \n", m_rguHMACComputed, SHA256_DIGESTSIZE_BYTES);
+#endif
     // Note that the HMAC (whether encrypted or not) is returned as part of cipher stream
     return m_iBlockSize*num;
 }
@@ -734,7 +727,7 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
     fflush(g_logFile);
 #endif
 
-#ifdef ENCRYPTTHENMAC
+#ifndef ENCRYPTTHENMAC
     // decrypt Mac
     byte    oldX[MAXAUTHSIZE];
 
@@ -1069,7 +1062,7 @@ bool gcm::initDec(u32 alg, int keysize, byte* key, int cipherLen, int authLen, i
     m_puCtr= (u32*) &m_rgLastY[m_iBlockSize-sizeof(u32)];
     computePlainLen();
 #ifdef CRYPTOTEST5
-    PrintBytes("H", m_rguH, m_iBlockSize);
+    PrintBytes("H: ", m_rguH, m_iBlockSize);
 #endif
     return true;
 }
@@ -1179,7 +1172,7 @@ bool gcm::nextPlainBlockIn(byte* puIn, byte* puOut)
     byte    oldX[MAXAUTHSIZE];
 
 #ifdef CRYPTOTEST
-    PrintBytes("gcm::nextPlainBlockIn, in", puIn, m_iBlockSize);
+    PrintBytes("gcm::nextPlainBlockIn, in: ", puIn, m_iBlockSize);
 #endif
     incY();
     m_oAES.Encrypt(m_rgLastY, oldX); 
@@ -1198,7 +1191,7 @@ bool gcm::nextCipherBlockIn(byte* puIn, byte* puOut)
     m_oAES.Encrypt(m_rgLastY, oldX); 
     inlineXor(puOut, oldX, puIn, m_iBlockSize);
 #ifdef CRYPTOTEST
-    PrintBytes("gcm::nextCipherBlockIn, out", puOut, m_iBlockSize);
+    PrintBytes("gcm::nextCipherBlockIn, out: ", puOut, m_iBlockSize);
 #endif
     return true;
 }
@@ -1207,7 +1200,7 @@ bool gcm::nextCipherBlockIn(byte* puIn, byte* puOut)
 bool gcm::firstCipherBlockIn(byte* puIn)
 {
 #ifdef CRYPTOTEST5
-    PrintBytes("gcm::firstCipherBlockIn, in", puIn, m_iBlockSize);
+    PrintBytes("gcm::firstCipherBlockIn, in: ", puIn, m_iBlockSize);
 #endif
     memcpy(m_rgLastY, puIn, m_iBlockSize);
     memcpy(m_rguFirstBlock, puIn, m_iBlockSize);
@@ -1220,7 +1213,7 @@ bool gcm::firstCipherBlockIn(byte* puIn)
 bool gcm::firstCipherBlockOut(byte* puOut)
 {
 #ifdef CRYPTOTEST
-    PrintBytes("gcm::firstCipherBlockout", m_rguFirstBlock, m_iBlockSize);
+    PrintBytes("gcm::firstCipherBlockout: ", m_rguFirstBlock, m_iBlockSize);
 #endif
     memcpy(puOut, m_rguFirstBlock, m_iBlockSize);
     return true;
@@ -1230,8 +1223,8 @@ bool gcm::firstCipherBlockOut(byte* puOut)
 bool gcm::validateTag()
 {
 #ifdef CRYPTOTEST5
-    PrintBytes("gcm::validateTag, computed", m_rgTag, m_iBlockSize);
-    PrintBytes("gcm::validateTag, sent", m_rgsentTag, m_iBlockSize);
+    PrintBytes("gcm::validateTag, computed: ", m_rgTag, m_iBlockSize);
+    PrintBytes("gcm::validateTag, sent: ", m_rgsentTag, m_iBlockSize);
 #endif
     return isEqual(m_rgTag, m_rgsentTag, m_iBlockSize);
 }
@@ -1245,7 +1238,7 @@ int gcm::lastPlainBlockIn(int size, byte* puIn, byte* puOut)
 
 #ifdef CRYPTOTEST5
     fprintf(g_logFile, "lastPlainBlockIn(%d)\n", size);
-    PrintBytes("lastPlainBlockIn", puIn, m_iBlockSize);
+    PrintBytes("lastPlainBlockIn: ", puIn, m_iBlockSize);
 #endif
     memcpy(rgLast, puIn, iPlainLeft);
     incY();
@@ -1268,7 +1261,7 @@ int gcm::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
 #ifdef CRYPTOTEST5
     fprintf(g_logFile, "lastCipherBlockIn(%d)\n", size);
-    PrintBytes("gcm::lastCipherBlockIn, in", puIn, m_iBlockSize);
+    PrintBytes("gcm::lastCipherBlockIn, in: ", puIn, m_iBlockSize);
 #endif
     memset(rgLast, 0, m_iBlockSize);
     memcpy(rgLast, puIn, iPlainLeft);

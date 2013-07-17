@@ -62,7 +62,7 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR)
             throw("mpUDiv failed");
         }
     catch(const char* szError) {
-        szError= NULL;
+        fprintf(g_logFile, "mpMod error\n");
         fRet= false;
     }
 
@@ -114,7 +114,7 @@ bool mpModNormalize(bnum& bnA, bnum& bnM)
         return true;
     }
     catch(const char* szError) {
-        szError= NULL;
+        fprintf(g_logFile, "mpModNormalize error\n");
         return false;
     }
 }
@@ -175,7 +175,7 @@ bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
     }
     catch(const char* sz) {
-        sz= NULL;
+        fprintf(g_logFile, "mpModSub error\n");
         fRet= false;
     }
 
@@ -215,7 +215,7 @@ bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
     }
     catch(const char* szError) {
-        szError= NULL;
+        fprintf(g_logFile, "mpModMult error\n");
         fRet= false;
     }
 
@@ -249,7 +249,7 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
      }
     catch(const char* szError) {
-        szError= NULL;
+        fprintf(g_logFile, "mpModInv error\n");
         fRet= false;
     }
     return fRet;
@@ -290,7 +290,7 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
         mpModNormalize(bnR, bnM);
     }
     catch(const char* szError) {
-        szError= NULL;
+        fprintf(g_logFile, "mpModDiv error\n");
         fRet= false;
     }
 
@@ -346,7 +346,7 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
     bool    fRet= true;
     int     maxSize= mpWordsinNum(bnBase.mpSize(), bnBase.m_pValue);
     int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
-    int     iLeadBit= 0;
+    int     leadBit= 0;
     int     j;
 
     if(lM>maxSize)
@@ -358,49 +358,57 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
     fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n\n");
 #endif
     try {
-        bnum    bnBasePow(maxSize);    // Base to powers of 2
-        bnum    bnAccum(maxSize);      // Exponent so far
-        bnum    bnTemp(maxSize);       // Temporary storage
-        bnum    bnQ(maxSize);          // Quotient
+        bnum    bnBasePower(maxSize);   // Base to Power of 2
+        bnum    bnA(maxSize);           // Accumulated product
 
-        mpZeroNum(bnBasePow);
-        mpZeroNum(bnAccum);
-        mpZeroNum(bnTemp);
+        bnum    bnT(maxSize);           // Temporary result
+        bnum    bnQ(maxSize);           // Temporary quotient
+
+        mpZeroNum(bnBasePower);
+        mpZeroNum(bnA);
+
+        mpZeroNum(bnT);
         mpZeroNum(bnQ);
     
         UNUSEDVAR(maxSize);
-        bnBase.mpCopyNum(bnBasePow);
-        bnAccum.m_pValue[0]= 1ULL;
+        bnBase.mpCopyNum(bnBasePower);
+        bnA.m_pValue[0]= 1ULL;
 
-        iLeadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
+        leadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
+        // maybe we should always multiply to avoid timing attack
         if(IsBitPositionNonZero(bnExp, 1)) {
-            mpUMult(bnBasePow, bnAccum, bnTemp);
-            mpZeroNum(bnAccum);
-            if(!mpUDiv(bnTemp, bnM, bnQ, bnAccum)) {
+            mpUMult(bnBasePower, bnA, bnT);
+            mpZeroNum(bnA);
+            if(!mpUDiv(bnT, bnM, bnQ, bnA)) {
                 throw("UDiv error");
             }
-            mpZeroNum(bnTemp);
+            mpZeroNum(bnT);
         }
-        for(j=2;j<=iLeadBit; j++) {
-            mpUMult(bnBasePow, bnBasePow, bnTemp);
-            mpZeroNum(bnBasePow);
-            if(!mpUDiv(bnTemp, bnM, bnQ, bnBasePow)) {
+        for(j=2; j<=leadBit; j++) {
+#define DONTSQUARE
+#ifdef DONTSQUARE
+            mpUMult(bnBasePower, bnBasePower, bnT);
+#else
+            mpUSquare(bnBasePower, bnT);
+#endif
+            mpZeroNum(bnBasePower);
+            if(!mpUDiv(bnT, bnM, bnQ, bnBasePower)) {
                 throw("UDiv error");
             }
-            mpZeroNum(bnTemp);
+            mpZeroNum(bnT);
             if(IsBitPositionNonZero(bnExp, j)) {
-                mpUMult(bnBasePow, bnAccum, bnTemp);
-                mpZeroNum(bnAccum);
-                if(!mpUDiv(bnTemp, bnM, bnQ, bnAccum)) {
+                mpUMult(bnBasePower, bnA, bnT);
+                mpZeroNum(bnA);
+                if(!mpUDiv(bnT, bnM, bnQ, bnA)) {
                     throw("UDiv error");
                 }
-                mpZeroNum(bnTemp);
+                mpZeroNum(bnT);
             }
         }
-        bnAccum.mpCopyNum(bnR);
+        bnA.mpCopyNum(bnR);
     }
     catch(const char* sz) {
-        sz= NULL;
+        fprintf(g_logFile, "mpModExp error\n");
         fRet= false;
     }
 
@@ -444,8 +452,8 @@ bool mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR)
         maxSize= lM;
 
     try {
-        bnum        bnE(lM);
-        bool        fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
+        bnum     bnE(lM);
+        bool     fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
 
         if(!fRet)
             throw("mpModSub failed");
@@ -475,9 +483,9 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
     size*= 2;
 
     try {
-        bnum	bnG(size);
-        bnum	bnTP(size);
-        bnum	bnTQ(size);
+        bnum    bnG(size);
+        bnum    bnTP(size);
+        bnum    bnTQ(size);
 
         if(mpUSub(bnP, g_bnOne, bnPM1)!=0ULL) 
             throw("Can't compute PM1");

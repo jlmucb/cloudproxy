@@ -27,11 +27,7 @@
 #include "tao.h"
 #include "bignum.h"
 #include "mpFunctions.h"
-#ifndef NEWANDREORGANIZED
-#include "rsaHelper.h"
-#else
 #include "cryptoHelper.h"
-#endif
 #include "trustedKeyNego.h"
 #include "tcIO.h"
 #include "buffercoding.h"

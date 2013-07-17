@@ -16,11 +16,9 @@ CloudServer::CloudServer(const string &tls_cert,
     const string &public_policy_keyczar,
     const string &public_policy_pem,
     const string &acl_location,
-    const string &server_key_location,
     const string &host,
     ushort port) 
-  : crypter_(keyczar::Crypter::Read(server_key_location)),
-    public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
+  : public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
     rand_(keyczar::CryptoFactory::Rand()),
     context_(SSL_CTX_new(TLSv1_2_server_method())),
     bio_(nullptr),
@@ -93,6 +91,7 @@ void CloudServer::HandleConnection(BIO *sbio) {
     // implement something like ParseFromIstream with an istream wrapping the
     // OpenSSL BIO abstraction. This would then render the first integer otiose,
     // since protobufs already have length information in their metadata.
+    LOG(INFO) << "Waiting for client message";
     ClientMessage cm;
     string serialized_cm;
     if (!ReceiveData(bio.get(), &serialized_cm)) {
@@ -112,9 +111,11 @@ void CloudServer::HandleConnection(BIO *sbio) {
     }
 
     if (reply) {
-      if (!SendReply(bio.get(), true, reason.c_str())) {
+      LOG(INFO) << "Sending reply";
+      if (!SendReply(bio.get(), rv, reason.c_str())) {
 	LOG(ERROR) << "Could not send a reply to the client";
       }
+      LOG(INFO) << "Sent reply";
     }
   }
 

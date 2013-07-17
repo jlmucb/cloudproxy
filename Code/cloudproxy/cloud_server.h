@@ -44,7 +44,6 @@ class CloudServer {
 		const string &public_policy_keyczar,
 		const string &public_policy_pem,
 		const string &acl_location,
-		const string &server_key_location,
 		const string &host,
 		ushort port);
 
@@ -92,9 +91,6 @@ class CloudServer {
 		    bool *reply, CloudServerThreadData &cstd);
     bool HandleResponse(const Response &response, BIO *bio, string *reason,
 		    bool *reply, CloudServerThreadData &cstd);
-
-    // the encryption/decryption key for this server
-    scoped_ptr<keyczar::Keyczar> crypter_;
 
     // the public policy key, used to check signatures
     scoped_ptr<keyczar::Keyczar> public_policy_key_;

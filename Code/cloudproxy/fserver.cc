@@ -15,6 +15,8 @@ using std::vector;
 
 DEFINE_string(file_path, "file_server_files",
         "The path used by the file server to store files");
+DEFINE_string(meta_path, "file_server_meta",
+        "The path used by the file server to store metadata");
 DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
 		"The PEM certificate for the server to use for TLS");
 DEFINE_string(server_key, "./openssl_keys/server/server.key",
@@ -66,6 +68,7 @@ int main(int argc, char **argv) {
 
 
     cloudproxy::FileServer fs(FLAGS_file_path,
+                              FLAGS_meta_path,
                                FLAGS_server_cert,
                                FLAGS_server_key,
 			                   FLAGS_server_password,

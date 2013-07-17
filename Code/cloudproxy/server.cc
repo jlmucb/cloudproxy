@@ -25,8 +25,6 @@ DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
 		"The PEM public policy cert");
 DEFINE_string(acls, "./acls_sig", "A file containing a SignedACL signed by"
 		" the public policy key (e.g., using sign_acls)");
-DEFINE_string(server_enc_key, "./server_key", "A keyczar crypter"
-        " directory");
 DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_int32(port, 11235, "The port to listen on");
 
@@ -69,7 +67,6 @@ int main(int argc, char **argv) {
                                FLAGS_policy_key,
                                FLAGS_pem_policy_key,
                                FLAGS_acls,
-                               FLAGS_server_enc_key,
                                FLAGS_address,
                                FLAGS_port);
 

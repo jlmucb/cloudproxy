@@ -1,8 +1,8 @@
 {
    "encrypted": false,
    "name": "Test",
-   "purpose": "DECRYPT_AND_ENCRYPT",
-   "type": "AES",
+   "purpose": "SIGN_AND_VERIFY",
+   "type": "HMAC_SHA1",
    "versions": [ {
       "exportable": false,
       "status": "PRIMARY",

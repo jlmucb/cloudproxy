@@ -8,6 +8,7 @@ namespace cloudproxy {
 class FileServer : public CloudServer {
   public:
     FileServer(const string &file_path,
+	       const string &meta_path,
 	       const string &tls_cert,
 	       const string &tls_key,
 		const string &tls_password,
@@ -31,8 +32,17 @@ class FileServer : public CloudServer {
 		    bool *reply, CloudServerThreadData &cstd);
 
   private:
+    // a key for deriving keys for encryption
+    scoped_ptr<keyczar::Keyczar> main_key_;
+
+    keyczar::base::ScopedSafeString enc_key_;
+    keyczar::base::ScopedSafeString hmac_key_;
+
     // the path to which we write incoming files
     string file_path_;
+
+    // the path to which we write file metadata
+    string meta_path_;
 };
 
 } // namespace cloudproxy

@@ -154,3 +154,26 @@ message SignedSpeaksFor {
     // A signature by the public policy key on serialized_speaks_for
     required bytes signature = 2;
 }
+
+// metadata for encrypted objects
+message ObjectMetadata {
+    // the name of the object
+    required string name = 1;
+
+    // the size in bytes of the object
+    required uint32 size = 2;
+
+    // the IV for the object
+    required bytes iv = 3;
+
+    // the HMAC of the object
+    required bytes hmac = 4;
+}
+
+message HmacdObjectMetadata {
+  // a serialized ObjectMetadata message
+  required bytes serialized_metadata = 1;
+
+  // an hmac of serialized_metadata 
+  required bytes hmac = 2;
+}

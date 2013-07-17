@@ -187,12 +187,14 @@ bool CloudClient::Write(const string &requestor, const string &input_name,
 }
 
 bool CloudClient::HandleReply() {
+  LOG(INFO) << "Waiting for a reply from the server";
   string s;
   if (!ReceiveData(bio_.get(), &s)) {
     LOG(ERROR) << "Could not receive a reply from the server";
     return false;
   }
 
+  LOG(INFO) << "Got a reply from the server";
   ServerMessage sm;
   if (!sm.ParseFromString(s)) {
     LOG(ERROR) << "Could not parse the response from the server";

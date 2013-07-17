@@ -2,6 +2,7 @@
 #define CLOUDPROXY_UTIL_H_
 
 #include <openssl/ssl.h>
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/base/basictypes.h>
@@ -15,23 +16,37 @@ using std::string;
 
 namespace cloudproxy {
 
-//struct FileDestroyer {
-//  void operator()(FILE *ptr) const {
-//    if (ptr) {
-//      fclose(ptr);
-//    }
-//  }
-//};
+struct FileDestroyer {
+  void operator()(FILE *ptr) const {
+    if (ptr) {
+      fclose(ptr);
+    }
+  }
+};
+
+static const int AesKeySize = 16;
+static const int AesBlockSize = 16;
+static const int IvSize = AesBlockSize;
+
+// for now, we are using 128-bit HMAC keys
+static const int HmacKeySize = 16;
+
+// functions that ignore the return value from cleanup
+void ecleanup(EVP_CIPHER_CTX *ctx);
+void hcleanup(HMAC_CTX *ctx);
 
 // taken from a private definition in keyczar/openssl/aes.h
 typedef scoped_ptr_malloc<
 	EVP_CIPHER_CTX, keyczar::openssl::OSSLDestroyer<EVP_CIPHER_CTX,
-	EVP_CIPHER_CTX_free> > ScopedCipherCtx;
+	ecleanup> > ScopedCipherCtx;
+typedef scoped_ptr_malloc<
+	HMAC_CTX, keyczar::openssl::OSSLDestroyer<HMAC_CTX,
+	hcleanup> > ScopedHmacCtx;
 typedef scoped_ptr_malloc<
 	SSL_CTX, keyczar::openssl::OSSLDestroyer<SSL_CTX,
 	SSL_CTX_free> > ScopedSSLCtx;
 
-//typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
+typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
 int PasswordCallback(char *buf, int size, int rwflag, void *password);
 
@@ -61,6 +76,33 @@ bool SendData(BIO *bio, const string &data);
 // send or receive files on a TLS BIO
 bool ReceiveStreamData(BIO *bio, const string &path);
 bool SendStreamData(const string &path, size_t size, BIO *bio);
+
+bool ReceiveAndEncryptStreamData(BIO *bio,
+  const string &path,
+  const string &meta_path,
+  const string &object_name,
+  const keyczar::base::ScopedSafeString &key,
+  const keyczar::base::ScopedSafeString &hmac,
+  keyczar::Keyczar *main_key);
+
+bool DecryptAndSendStreamData(const string &path,
+  const string &meta_path,
+  const string &object_name,
+  BIO *bio,
+  const keyczar::base::ScopedSafeString &key,
+  const keyczar::base::ScopedSafeString &hmac,
+  keyczar::Keyczar *main_key);
+
+// crypto functions
+bool DeriveKeys(keyczar::Keyczar *main_key, keyczar::base::ScopedSafeString *enc_key, keyczar::base::ScopedSafeString *hmac_key);
+bool InitEncryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key, const string &iv, EVP_CIPHER_CTX *aes);
+bool InitDecryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key, const string &iv, EVP_CIPHER_CTX *aes);
+bool InitHmacCtx(const keyczar::base::ScopedSafeString &hmac_key, HMAC_CTX *hmac);
+bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
+bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
+bool GetFinalDecryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes);
+bool GetFinalEncryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
+bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
 
 }
 

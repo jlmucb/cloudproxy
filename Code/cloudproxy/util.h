@@ -37,35 +37,31 @@ void hcleanup(HMAC_CTX *ctx);
 
 // taken from a private definition in keyczar/openssl/aes.h
 typedef scoped_ptr_malloc<
-	EVP_CIPHER_CTX, keyczar::openssl::OSSLDestroyer<EVP_CIPHER_CTX,
-	ecleanup> > ScopedCipherCtx;
-typedef scoped_ptr_malloc<
-	HMAC_CTX, keyczar::openssl::OSSLDestroyer<HMAC_CTX,
-	hcleanup> > ScopedHmacCtx;
-typedef scoped_ptr_malloc<
-	SSL_CTX, keyczar::openssl::OSSLDestroyer<SSL_CTX,
-	SSL_CTX_free> > ScopedSSLCtx;
+    EVP_CIPHER_CTX, keyczar::openssl::OSSLDestroyer<EVP_CIPHER_CTX, ecleanup> >
+    ScopedCipherCtx;
+typedef scoped_ptr_malloc<HMAC_CTX, keyczar::openssl::OSSLDestroyer<
+                                        HMAC_CTX, hcleanup> > ScopedHmacCtx;
+typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
+                                       SSL_CTX, SSL_CTX_free> > ScopedSSLCtx;
 
 typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
 int PasswordCallback(char *buf, int size, int rwflag, void *password);
 
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
-		const string &cert, const string &key, const string &password);
+                 const string &cert, const string &key, const string &password);
 
 bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
-		 string *acls);
+                string *acls);
 
-bool SignData(const string &data, string *signature,
-		keyczar::Keyczar *key);
+bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
 bool VerifySignature(const string &data, const string &signature,
-		keyczar::Keyczar *key);
+                     keyczar::Keyczar *key);
 
-bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
-               keyczar::Keyset *keyset);
+bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key, keyczar::Keyset *keyset);
 
 bool CreateRSAPublicKeyset(const string &key, const string &metadata,
-		keyczar::Keyset *keyset);
+                           keyczar::Keyset *keyset);
 
 // methods to send a receive data on a TLS BIO
 bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);
@@ -77,33 +73,38 @@ bool SendData(BIO *bio, const string &data);
 bool ReceiveStreamData(BIO *bio, const string &path);
 bool SendStreamData(const string &path, size_t size, BIO *bio);
 
-bool ReceiveAndEncryptStreamData(BIO *bio,
-  const string &path,
-  const string &meta_path,
-  const string &object_name,
-  const keyczar::base::ScopedSafeString &key,
-  const keyczar::base::ScopedSafeString &hmac,
-  keyczar::Keyczar *main_key);
+bool ReceiveAndEncryptStreamData(BIO *bio, const string &path,
+                                 const string &meta_path,
+                                 const string &object_name,
+                                 const keyczar::base::ScopedSafeString &key,
+                                 const keyczar::base::ScopedSafeString &hmac,
+                                 keyczar::Keyczar *main_key);
 
-bool DecryptAndSendStreamData(const string &path,
-  const string &meta_path,
-  const string &object_name,
-  BIO *bio,
-  const keyczar::base::ScopedSafeString &key,
-  const keyczar::base::ScopedSafeString &hmac,
-  keyczar::Keyczar *main_key);
+bool DecryptAndSendStreamData(const string &path, const string &meta_path,
+                              const string &object_name, BIO *bio,
+                              const keyczar::base::ScopedSafeString &key,
+                              const keyczar::base::ScopedSafeString &hmac,
+                              keyczar::Keyczar *main_key);
 
 // crypto functions
-bool DeriveKeys(keyczar::Keyczar *main_key, keyczar::base::ScopedSafeString *enc_key, keyczar::base::ScopedSafeString *hmac_key);
-bool InitEncryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key, const string &iv, EVP_CIPHER_CTX *aes);
-bool InitDecryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key, const string &iv, EVP_CIPHER_CTX *aes);
-bool InitHmacCtx(const keyczar::base::ScopedSafeString &hmac_key, HMAC_CTX *hmac);
-bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
-bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
-bool GetFinalDecryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes);
-bool GetFinalEncryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
+bool DeriveKeys(keyczar::Keyczar *main_key,
+                keyczar::base::ScopedSafeString *enc_key,
+                keyczar::base::ScopedSafeString *hmac_key);
+bool InitEncryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key,
+                             const string &iv, EVP_CIPHER_CTX *aes);
+bool InitDecryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key,
+                             const string &iv, EVP_CIPHER_CTX *aes);
+bool InitHmacCtx(const keyczar::base::ScopedSafeString &hmac_key,
+                 HMAC_CTX *hmac);
+bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out,
+                  int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
+bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out,
+                  int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
+bool GetFinalDecryptedBytes(unsigned char *out, int *out_size,
+                            EVP_CIPHER_CTX *aes);
+bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
+                            EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
 bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
-
 }
 
-#endif // CLOUDPROXY_UTIL_H_
+#endif  // CLOUDPROXY_UTIL_H_

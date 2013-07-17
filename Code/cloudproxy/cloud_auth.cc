@@ -5,8 +5,8 @@
 
 namespace cloudproxy {
 
-CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key) 
-  : permissions_(), admins_() {
+CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
+    : permissions_(), admins_() {
   string acl;
 
   CHECK(ExtractACL(acl_path, key, &acl)) << "Could not extract the ACL";
@@ -14,7 +14,7 @@ CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
   // deserialize the cloudproxy::ACL and convert it into a map of permissions
   ACL acl_proto;
   acl_proto.ParseFromString(acl);
-  for(int i = 0; i < acl_proto.permissions_size(); i++) {
+  for (int i = 0; i < acl_proto.permissions_size(); i++) {
     Action a = acl_proto.permissions(i);
     string subject = a.subject();
     Op o = a.verb();
@@ -27,13 +27,11 @@ CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
 
       permissions_[subject][object].insert(o);
     }
-
   }
 }
 
-bool CloudAuth::findPermissions(const string &subject,
-		const string &object,
-		set<Op> **perms) {
+bool CloudAuth::findPermissions(const string &subject, const string &object,
+                                set<Op> **perms) {
   CHECK(perms) << "null perms parameter";
 
   // look it up in the permissions
@@ -45,13 +43,12 @@ bool CloudAuth::findPermissions(const string &subject,
 
   // this is safe in single-threaded code because references to map objects are
   // guaranteed to remain unchanged unless the given item is deleted
-  *perms = &object_it->second;;
+  *perms = &object_it->second;
+  ;
   return true;
 }
 
-bool CloudAuth::Permitted(const string &subject,
-				      Op op,
-				      const string &object) {
+bool CloudAuth::Permitted(const string &subject, Op op, const string &object) {
   // first check to see if this subject is an ADMIN
   if (admins_.find(subject) != admins_.end()) return true;
 
@@ -67,8 +64,7 @@ bool CloudAuth::Permitted(const string &subject,
   return perms->end() != op_it;
 }
 
-bool CloudAuth::Delete(const string &subject, Op op,
-		const string &object) {
+bool CloudAuth::Delete(const string &subject, Op op, const string &object) {
   set<Op> *perms = nullptr;
   if (!findPermissions(subject, object, &perms)) return false;
 
@@ -79,8 +75,7 @@ bool CloudAuth::Delete(const string &subject, Op op,
   return true;
 }
 
-bool CloudAuth::Insert(const string &subject, Op op,
-		const string &object) {
+bool CloudAuth::Insert(const string &subject, Op op, const string &object) {
   permissions_[subject][object].insert(op);
   return true;
 }
@@ -92,21 +87,21 @@ bool CloudAuth::Serialize(string *data) {
   ACL acl;
 
   auto subject_it = permissions_.begin();
-  for(; subject_it != permissions_.end(); subject_it++) {
+  for (; subject_it != permissions_.end(); subject_it++) {
     auto object_it = subject_it->second.begin();
-    for(; object_it != subject_it->second.end(); object_it++) {
+    for (; object_it != subject_it->second.end(); object_it++) {
       auto op_it = object_it->second.begin();
-      for(; op_it != object_it->second.end(); op_it++) {
-	Action *a = acl.add_permissions();
-	a->set_subject(subject_it->first);
-	a->set_verb(*op_it);
-	a->set_object(object_it->first);
+      for (; op_it != object_it->second.end(); op_it++) {
+        Action *a = acl.add_permissions();
+        a->set_subject(subject_it->first);
+        a->set_verb(*op_it);
+        a->set_object(object_it->first);
       }
     }
   }
 
   auto admin_it = admins_.begin();
-  for(; admins_.end() != admin_it; admin_it++) {
+  for (; admins_.end() != admin_it; admin_it++) {
     Action *a = acl.add_permissions();
     a->set_subject(*admin_it);
     a->set_verb(ADMIN);
@@ -115,4 +110,4 @@ bool CloudAuth::Serialize(string *data) {
   return acl.SerializeToString(data);
 }
 
-} // namespace cloudproxy
+}  // namespace cloudproxy

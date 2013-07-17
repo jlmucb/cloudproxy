@@ -25,23 +25,25 @@ DEFINE_string(acl_sig_file, "acls_sig", "The name of the signature file");
 DEFINE_string(key_loc, "./policy_public_key", "The location of the public key");
 
 int main(int argc, char** argv) {
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    google::ParseCommandLineFlags(&argc, &argv, true);
+  google::ParseCommandLineFlags(&argc, &argv, true);
 
-    // get the public key for verification
-    unique_ptr<keyczar::Keyczar> verifier(keyczar::Verifier::Read(FLAGS_key_loc.c_str()));
-    CHECK(verifier.get()) << "Could not get the public key for verification";
-    verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
+  // get the public key for verification
+  unique_ptr<keyczar::Keyczar> verifier(
+      keyczar::Verifier::Read(FLAGS_key_loc.c_str()));
+  CHECK(verifier.get()) << "Could not get the public key for verification";
+  verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-    string serialized_acl;
-    CHECK(cloudproxy::ExtractACL(FLAGS_acl_sig_file, verifier.get(), &serialized_acl)) <<
-      "Could not verify and load the ACL file";
+  string serialized_acl;
+  CHECK(cloudproxy::ExtractACL(FLAGS_acl_sig_file, verifier.get(),
+                               &serialized_acl))
+      << "Could not verify and load the ACL file";
 
-    string text;
-    cloudproxy::ACL acls;
-    acls.ParseFromString(serialized_acl);
-    google::protobuf::TextFormat::PrintToString(acls, &text);
-    LOG(INFO) << "The ACLs are: " << text;
-    return 0;
+  string text;
+  cloudproxy::ACL acls;
+  acls.ParseFromString(serialized_acl);
+  google::protobuf::TextFormat::PrintToString(acls, &text);
+  LOG(INFO) << "The ACLs are: " << text;
+  return 0;
 }

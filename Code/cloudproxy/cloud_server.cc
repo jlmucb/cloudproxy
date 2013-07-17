@@ -10,35 +10,34 @@ using std::stringstream;
 
 namespace cloudproxy {
 
-CloudServer::CloudServer(const string &tls_cert,
-    const string &tls_key, 
-    const string &tls_password,
-    const string &public_policy_keyczar,
-    const string &public_policy_pem,
-    const string &acl_location,
-    const string &host,
-    ushort port) 
-  : public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
-    rand_(keyczar::CryptoFactory::Rand()),
-    context_(SSL_CTX_new(TLSv1_2_server_method())),
-    bio_(nullptr),
-    abio_(nullptr),
-    auth_(),
-    users_(new CloudUserManager()),
-    objects_() {
+CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
+                         const string &tls_password,
+                         const string &public_policy_keyczar,
+                         const string &public_policy_pem,
+                         const string &acl_location, const string &host,
+                         ushort port)
+    : public_policy_key_(
+          keyczar::Verifier::Read(public_policy_keyczar.c_str())),
+      rand_(keyczar::CryptoFactory::Rand()),
+      context_(SSL_CTX_new(TLSv1_2_server_method())),
+      bio_(nullptr),
+      abio_(nullptr),
+      auth_(),
+      users_(new CloudUserManager()),
+      objects_() {
 
   // set up the policy key to verify bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
   auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
 
   // set up the SSL context and BIOs for getting client connections
-  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert,
-                       tls_key, tls_password)) << "Could not set up TLS";
+  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
+                    tls_password)) << "Could not set up TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 
   bio_.reset(BIO_new_ssl(context_.get(), 0));
-  
+
   SSL *ssl = nullptr;
   BIO_get_ssl(bio_.get(), &ssl);
   CHECK(ssl) << "Could not get an SSL pointer from the BIO";
@@ -47,20 +46,22 @@ CloudServer::CloudServer(const string &tls_cert,
   stringstream ss;
   ss << port;
   string host_and_port = host + string(":") + ss.str();
-  abio_.reset(BIO_new_accept(const_cast<char*>(host_and_port.c_str())));
+  abio_.reset(BIO_new_accept(const_cast<char *>(host_and_port.c_str())));
 
-  CHECK(BIO_set_accept_bios(abio_.get(), bio_.get())) << "Could not get an"
-    " accept BIO for the TLS connection";
+  CHECK(BIO_set_accept_bios(abio_.get(), bio_.get()))
+      << "Could not get an"
+         " accept BIO for the TLS connection";
 
   CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not set up an accept for"
-    " the host and port combination " << host_and_port;
+                                             " the host and port combination "
+                                          << host_and_port;
 }
 
 bool CloudServer::Listen() {
-  while(true) {
+  while (true) {
     LOG(INFO) << "About to listen for a client message";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
-      " connection";
+                                               " connection";
 
     BIO *out = BIO_pop(abio_.get());
     thread t(&CloudServer::HandleConnection, this, out);
@@ -75,7 +76,7 @@ bool CloudServer::Listen() {
 void CloudServer::HandleConnection(BIO *sbio) {
   CloudServerThreadData cstd;
 
-  keyczar::openssl::ScopedBIO bio(sbio); 
+  keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
   } else {
@@ -113,20 +114,19 @@ void CloudServer::HandleConnection(BIO *sbio) {
     if (reply) {
       LOG(INFO) << "Sending reply";
       if (!SendReply(bio.get(), rv, reason.c_str())) {
-	LOG(ERROR) << "Could not send a reply to the client";
+        LOG(ERROR) << "Could not send a reply to the client";
       }
       LOG(INFO) << "Sent reply";
     }
   }
 
-  if (rv) { 
+  if (rv) {
     LOG(INFO) << "The channel closed successfully";
   } else {
     LOG(ERROR) << "The channel closed with an error";
   }
 
   return;
-
 }
 
 bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
@@ -150,9 +150,9 @@ bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
 
   return true;
 }
-bool CloudServer::HandleMessage(const ClientMessage &message,
-    BIO *bio, string *reason, bool *reply, bool *close,
-    CloudServerThreadData &cstd) {
+bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
+                                string *reason, bool *reply, bool *close,
+                                CloudServerThreadData &cstd) {
   CHECK(bio) << "null bio";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
@@ -171,10 +171,10 @@ bool CloudServer::HandleMessage(const ClientMessage &message,
     {
       lock_guard<mutex> l(auth_m_);
       if (!auth_->Permitted(a.subject(), a.verb(), a.object())) {
-	LOG(ERROR) << "User " << a.subject() << " not authorized to perform"
-	  << a.verb() << " on " << a.object();
-	reason->assign("Not authorized");
-	return false;
+        LOG(ERROR) << "User " << a.subject() << " not authorized to perform"
+                   << a.verb() << " on " << a.object();
+        reason->assign("Not authorized");
+        return false;
       }
     }
 
@@ -183,23 +183,23 @@ bool CloudServer::HandleMessage(const ClientMessage &message,
         LOG(ERROR) << "Received a request for the ALL action from a client";
         reason->assign("Invalid request for the ALL action");
         return false;
-      case CREATE: 
-	    LOG(INFO) << "Handling a CREATE request";
+      case CREATE:
+        LOG(INFO) << "Handling a CREATE request";
         rv = HandleCreate(a, bio, reason, reply, cstd);
-	    LOG(INFO) << "return value: " << rv;
-	    return rv;
+        LOG(INFO) << "return value: " << rv;
+        return rv;
       case DESTROY:
-	    LOG(INFO) << "Handling a DESTROY request";
+        LOG(INFO) << "Handling a DESTROY request";
         rv = HandleDestroy(a, bio, reason, reply, cstd);
         LOG(INFO) << "return value: " << rv;
         return rv;
       case WRITE:
-	    LOG(INFO) << "Handling a WRITE request";
+        LOG(INFO) << "Handling a WRITE request";
         rv = HandleWrite(a, bio, reason, reply, cstd);
         LOG(INFO) << "return value: " << rv;
         return rv;
       case READ:
-	    LOG(INFO) << "Handling a READ request";
+        LOG(INFO) << "Handling a READ request";
         rv = HandleRead(a, bio, reason, reply, cstd);
         LOG(INFO) << "return value: " << rv;
         return rv;
@@ -227,8 +227,8 @@ bool CloudServer::HandleMessage(const ClientMessage &message,
   return false;
 }
 
-bool CloudServer::HandleAuth(const Auth &auth, BIO *bio,
-    string *reason, bool *reply, CloudServerThreadData &cstd) {
+bool CloudServer::HandleAuth(const Auth &auth, BIO *bio, string *reason,
+                             bool *reply, CloudServerThreadData &cstd) {
   string subject = auth.subject();
 
   // check to see if this user is already authenticated on some channel
@@ -288,8 +288,9 @@ bool CloudServer::HandleAuth(const Auth &auth, BIO *bio,
   return true;
 }
 
-bool CloudServer::HandleResponse(const Response &response,
-    BIO *bio, string *reason, bool *reply, CloudServerThreadData &cstd) {
+bool CloudServer::HandleResponse(const Response &response, BIO *bio,
+                                 string *reason, bool *reply,
+                                 CloudServerThreadData &cstd) {
   // check to see if this is an outstanding challenge
   Challenge c;
   if (!c.ParseFromString(response.serialized_chall())) {
@@ -314,8 +315,7 @@ bool CloudServer::HandleResponse(const Response &response,
     return false;
   }
 
-  if (memcmp(nonce.data(), c.nonce().data(),
-	 c.nonce().length()) != 0) {
+  if (memcmp(nonce.data(), c.nonce().data(), c.nonce().length()) != 0) {
     LOG(ERROR) << "Nonces do not match";
     reason->assign("Nonces do not match");
     return false;
@@ -340,14 +340,15 @@ bool CloudServer::HandleResponse(const Response &response,
         return false;
       }
     }
-  
+
     shared_ptr<keyczar::Keyczar> temp_key;
     CHECK(users_->GetKey(c.subject(), &temp_key)) << "Could not get a key";
 
     // TODO(tmroeder): Generalize to other types of keys
     scoped_ptr<keyczar::Keyset> user_keyset(new keyczar::Keyset());
-    CHECK(CopyRSAPublicKeyset(temp_key.get(), user_keyset.get())) << "Could"
-      " not copy the key";
+    CHECK(CopyRSAPublicKeyset(temp_key.get(), user_keyset.get()))
+        << "Could"
+           " not copy the key";
 
     user_key.reset(new keyczar::Verifier(user_keyset.release()));
     user_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
@@ -355,14 +356,15 @@ bool CloudServer::HandleResponse(const Response &response,
 
   // check the signature on the serialized_challenge
   if (!VerifySignature(response.serialized_chall(), response.signature(),
-       user_key.get())) {
+                       user_key.get())) {
     LOG(ERROR) << "Challenge signature failed";
     reason->assign("Invalid response signature");
     return false;
   }
 
-  LOG(INFO) << "Challenge passed. Adding user " << c.subject() << " as"
-    " authenticated";
+  LOG(INFO) << "Challenge passed. Adding user " << c.subject()
+            << " as"
+               " authenticated";
 
   cstd.SetAuthenticated(c.subject());
 
@@ -370,7 +372,7 @@ bool CloudServer::HandleResponse(const Response &response,
 }
 
 bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
-    bool *reply, CloudServerThreadData &cstd) {
+                               bool *reply, CloudServerThreadData &cstd) {
 
   lock_guard<mutex> l(data_m_);
 
@@ -387,15 +389,15 @@ bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleDestroy(const Action &action, BIO *bio,
-    string *reason, bool *reply, CloudServerThreadData &cstd) {
+bool CloudServer::HandleDestroy(const Action &action, BIO *bio, string *reason,
+                                bool *reply, CloudServerThreadData &cstd) {
 
   lock_guard<mutex> l(data_m_);
 
   auto object_it = objects_.find(action.object());
   if (objects_.end() == object_it) {
     LOG(ERROR) << "Can't destroy object " << action.object() << " since it"
-      << " doesn't exist";
+               << " doesn't exist";
     reason->assign("Object doesn't exist");
     return false;
   }
@@ -404,15 +406,15 @@ bool CloudServer::HandleDestroy(const Action &action, BIO *bio,
   return true;
 }
 
-bool CloudServer::HandleWrite(const Action &action, BIO *bio,
-    string *reason, bool *reply, CloudServerThreadData &cstd) {
+bool CloudServer::HandleWrite(const Action &action, BIO *bio, string *reason,
+                              bool *reply, CloudServerThreadData &cstd) {
 
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
   if (objects_.end() == objects_.find(action.object())) {
     LOG(ERROR) << "Can't write to object " << action.object() << " that"
-      << " doesn't exist";
+               << " doesn't exist";
     reason->assign("Object doesn't exist");
     return false;
   }
@@ -420,15 +422,15 @@ bool CloudServer::HandleWrite(const Action &action, BIO *bio,
   return true;
 }
 
-bool CloudServer::HandleRead(const Action &action, BIO *bio,
-    string *reason, bool *reply, CloudServerThreadData &cstd) {
+bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
+                             bool *reply, CloudServerThreadData &cstd) {
 
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
   if (objects_.end() == objects_.find(action.object())) {
     LOG(ERROR) << "Can't read from object " << action.object() << " that"
-      << " doesn't exist";
+               << " doesn't exist";
     reason->assign("Object doesn't exist");
     return false;
   }
@@ -436,4 +438,4 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio,
   return true;
 }
 
-} // namespace cloudproxy
+}  // namespace cloudproxy

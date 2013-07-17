@@ -11,7 +11,8 @@ bool CloudServerThreadData::GetChallenge(const string &user, string *chall) {
   return true;
 }
 
-bool CloudServerThreadData::AddChallenge(const string &user, const string &chall) {
+bool CloudServerThreadData::AddChallenge(const string &user,
+                                         const string &chall) {
   challenges_[user] = chall;
   return true;
 }
@@ -39,4 +40,4 @@ bool CloudServerThreadData::RemoveAuthenticated(const string &user) {
   auth_.erase(a_it);
   return true;
 }
-} // namespace cloudproxy
+}  // namespace cloudproxy

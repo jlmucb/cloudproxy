@@ -14,38 +14,38 @@ using std::string;
 
 namespace cloudproxy {
 class CloudAuth {
-  public:
-    // Instantiates the Auth class with a serialized representation of a
-    // cloudproxy::ACL object.
-    CloudAuth(const string &acl_path, keyczar::Keyczar *key);
+ public:
+  // Instantiates the Auth class with a serialized representation of a
+  // cloudproxy::ACL object.
+  CloudAuth(const string &acl_path, keyczar::Keyczar *key);
 
-    virtual ~CloudAuth() { }
+  virtual ~CloudAuth() {}
 
-    // Checks to see if this operation is permitted by the ACL
-    virtual bool Permitted(const string &subject, Op op, const string &object);
+  // Checks to see if this operation is permitted by the ACL
+  virtual bool Permitted(const string &subject, Op op, const string &object);
 
-    // Removes a given entry from the ACL if it exists
-    virtual bool Delete(const string &subject, Op op, const string &object);
+  // Removes a given entry from the ACL if it exists
+  virtual bool Delete(const string &subject, Op op, const string &object);
 
-    // Adds a given entry to the ACL
-    virtual bool Insert(const string &subect, Op op, const string &object);
+  // Adds a given entry to the ACL
+  virtual bool Insert(const string &subect, Op op, const string &object);
 
-    // serializes the ACL into a given string
-    virtual bool Serialize(string *data);
+  // serializes the ACL into a given string
+  virtual bool Serialize(string *data);
 
-  protected:
-    bool findPermissions(const string &subject, const string &object,
-        set<Op> **perms);
+ protected:
+  bool findPermissions(const string &subject, const string &object,
+                       set<Op> **perms);
 
-  private:
-    // a map from subject->(object, permission set)
-    map<string, map<string, set<Op> > > permissions_;
+ private:
+  // a map from subject->(object, permission set)
+  map<string, map<string, set<Op> > > permissions_;
 
-    // a list of users with admin privilege (able to perform any action)
-    set<string> admins_;
+  // a list of users with admin privilege (able to perform any action)
+  set<string> admins_;
 
-    DISALLOW_COPY_AND_ASSIGN(CloudAuth);
+  DISALLOW_COPY_AND_ASSIGN(CloudAuth);
 };
 }
 
-#endif // CLOUDPROXY_CLOUD_AUTH_H_
+#endif  // CLOUDPROXY_CLOUD_AUTH_H_

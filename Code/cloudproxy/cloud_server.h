@@ -31,93 +31,89 @@ namespace cloudproxy {
 // such servers). This class handles requests from a CloudClient and checks its
 // ACL database to see if the operations is authorized by CloudProxy policy.
 class CloudServer {
-  public:
-    static const int NonceSize = 16;
+ public:
+  static const int NonceSize = 16;
 
-    // Creates a CloudServer with a given key store, location of its signed ACL
-    // database, and the port on which to listen. It also needs the location of
-    // the public policy key in two ways: one as a PEM file for use in TLS, and
-    // one as public RSA keyczar directory
-    CloudServer(const string &tls_cert,
-		const string &tls_key,
-		const string &tls_password,
-		const string &public_policy_keyczar,
-		const string &public_policy_pem,
-		const string &acl_location,
-		const string &host,
-		ushort port);
+  // Creates a CloudServer with a given key store, location of its signed ACL
+  // database, and the port on which to listen. It also needs the location of
+  // the public policy key in two ways: one as a PEM file for use in TLS, and
+  // one as public RSA keyczar directory
+  CloudServer(const string &tls_cert, const string &tls_key,
+              const string &tls_password, const string &public_policy_keyczar,
+              const string &public_policy_pem, const string &acl_location,
+              const string &host, ushort port);
 
-    virtual ~CloudServer() { }
+  virtual ~CloudServer() {}
 
-    // start listening to the port and handle connections as they arrive
-    bool Listen();
+  // start listening to the port and handle connections as they arrive
+  bool Listen();
 
-  protected:
-    // TODO(tmroeder): in C++14, make these shared_mutex and support readers
-    // and writers semantics
+ protected:
+  // TODO(tmroeder): in C++14, make these shared_mutex and support readers
+  // and writers semantics
 
-    // mutex for authorization
-    mutex auth_m_;
+  // mutex for authorization
+  mutex auth_m_;
 
-    // mutex for key management
-    mutex key_m_;
+  // mutex for key management
+  mutex key_m_;
 
-    // mutex for data operations
-    mutex data_m_;
+  // mutex for data operations
+  mutex data_m_;
 
-    // Handles specific requests for resources. In this superclass
-    // implementation, it just deals with names in a std::set. Subclasses
-    // override these methods to implement their functionality
-    virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,
-		    bool *reply, CloudServerThreadData &cstd);
-    virtual bool HandleDestroy(const Action &action, BIO *bio, string *reason,
-		    bool *reply, CloudServerThreadData &cstd);
-    virtual bool HandleWrite(const Action &action, BIO *bio, string *reason,
-		    bool *reply, CloudServerThreadData &cstd);
-    virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
-		    bool *reply, CloudServerThreadData &cstd);
+  // Handles specific requests for resources. In this superclass
+  // implementation, it just deals with names in a std::set. Subclasses
+  // override these methods to implement their functionality
+  virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,
+                            bool *reply, CloudServerThreadData &cstd);
+  virtual bool HandleDestroy(const Action &action, BIO *bio, string *reason,
+                             bool *reply, CloudServerThreadData &cstd);
+  virtual bool HandleWrite(const Action &action, BIO *bio, string *reason,
+                           bool *reply, CloudServerThreadData &cstd);
+  virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
+                          bool *reply, CloudServerThreadData &cstd);
 
-    // sends a reply to the client with a given success code and error message
-    bool SendReply(BIO *bio, bool success, const string &reason);
-  
-  private:
+  // sends a reply to the client with a given success code and error message
+  bool SendReply(BIO *bio, bool success, const string &reason);
 
-    // handles an incoming message from a client
-    bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
-    void HandleConnection(BIO *bio);
-    bool HandleMessage(const ClientMessage& message, BIO *bio, string *reason,
-		    bool *reply, bool *close, CloudServerThreadData &cstd);
-    bool HandleAuth(const Auth &auth, BIO *bio, string *reason,
-		    bool *reply, CloudServerThreadData &cstd);
-    bool HandleResponse(const Response &response, BIO *bio, string *reason,
-		    bool *reply, CloudServerThreadData &cstd);
+ private:
 
-    // the public policy key, used to check signatures
-    scoped_ptr<keyczar::Keyczar> public_policy_key_;
+  // handles an incoming message from a client
+  bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
+  void HandleConnection(BIO *bio);
+  bool HandleMessage(const ClientMessage &message, BIO *bio, string *reason,
+                     bool *reply, bool *close, CloudServerThreadData &cstd);
+  bool HandleAuth(const Auth &auth, BIO *bio, string *reason, bool *reply,
+                  CloudServerThreadData &cstd);
+  bool HandleResponse(const Response &response, BIO *bio, string *reason,
+                      bool *reply, CloudServerThreadData &cstd);
 
-    // (static) random number generator for generating challenges
-    keyczar::RandImpl *rand_;
+  // the public policy key, used to check signatures
+  scoped_ptr<keyczar::Keyczar> public_policy_key_;
 
-    // a context object that stores all the TLS parameters for the connection
-    ScopedSSLCtx context_;
+  // (static) random number generator for generating challenges
+  keyczar::RandImpl *rand_;
 
-    // the main BIO set up for this connection
-    keyczar::openssl::ScopedBIO bio_;
+  // a context object that stores all the TLS parameters for the connection
+  ScopedSSLCtx context_;
 
-    // an accept BIO that listens on the TLS connection
-    keyczar::openssl::ScopedBIO abio_;
+  // the main BIO set up for this connection
+  keyczar::openssl::ScopedBIO bio_;
 
-    // an object for managing authorization policy
-    scoped_ptr<CloudAuth> auth_;
+  // an accept BIO that listens on the TLS connection
+  keyczar::openssl::ScopedBIO abio_;
 
-    // an object that manages keys for users known to the server
-    scoped_ptr<CloudUserManager> users_;
+  // an object for managing authorization policy
+  scoped_ptr<CloudAuth> auth_;
 
-    // a simple object management tool: a set of object names
-    set<string> objects_;
+  // an object that manages keys for users known to the server
+  scoped_ptr<CloudUserManager> users_;
 
-    DISALLOW_COPY_AND_ASSIGN(CloudServer);
+  // a simple object management tool: a set of object names
+  set<string> objects_;
+
+  DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };
 }
 
-#endif // CLOUDPROXY_CLOUD_SERVER_H_
+#endif  // CLOUDPROXY_CLOUD_SERVER_H_

@@ -23,54 +23,49 @@ using std::stringstream;
 
 namespace cloudproxy {
 
-void ecleanup(EVP_CIPHER_CTX *ctx) {
-  EVP_CIPHER_CTX_cleanup(ctx);
-}
+void ecleanup(EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_cleanup(ctx); }
 
-void hcleanup(HMAC_CTX *ctx) {
-  HMAC_CTX_cleanup(ctx);
-}
-
+void hcleanup(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
 
 // this callback will change once we get the password from the Tao/TPM
-int PasswordCallback(char *buf, int size, int rwflag, void *password)
-{
- strncpy(buf, (char *)(password), size);
- buf[size - 1] = '\0';
- return(strlen(buf));
+int PasswordCallback(char *buf, int size, int rwflag, void *password) {
+  strncpy(buf, (char *)(password), size);
+  buf[size - 1] = '\0';
+  return (strlen(buf));
 }
 
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
-		const string &cert, const string &key, const string &password) {
+                 const string &cert, const string &key,
+                 const string &password) {
   CHECK(ctx) << "null ctx";
 
   // set up the TLS connection with the list of acceptable ciphers
-  CHECK(SSL_CTX_set_cipher_list(ctx, "AES128-SHA256")) <<
-    "Could not set up a cipher list on the TLS context";
+  CHECK(SSL_CTX_set_cipher_list(ctx, "AES128-SHA256"))
+      << "Could not set up a cipher list on the TLS context";
 
-  // turn off compression (?) 
-  CHECK(SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION)) <<
-    "Could not turn off compression on the TLS connection";
+  // turn off compression (?)
+  CHECK(SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION))
+      << "Could not turn off compression on the TLS connection";
 
-  CHECK(SSL_CTX_load_verify_locations(ctx, public_policy_key.c_str(), NULL)) <<
-    "Could not load the public policy key for verification";
+  CHECK(SSL_CTX_load_verify_locations(ctx, public_policy_key.c_str(), NULL))
+      << "Could not load the public policy key for verification";
 
-  CHECK(SSL_CTX_use_certificate_file(ctx, cert.c_str(), SSL_FILETYPE_PEM)) <<
-    "Could not load the certificate for this connection";
+  CHECK(SSL_CTX_use_certificate_file(ctx, cert.c_str(), SSL_FILETYPE_PEM))
+      << "Could not load the certificate for this connection";
 
   // set up the password callback and the password itself
   SSL_CTX_set_default_passwd_cb(ctx, PasswordCallback);
   SSL_CTX_set_default_passwd_cb_userdata(ctx,
-    const_cast<char*>(password.c_str()));
+                                         const_cast<char *>(password.c_str()));
 
-  CHECK(SSL_CTX_use_PrivateKey_file(ctx, key.c_str(), SSL_FILETYPE_PEM)) <<
-    "Could not load the private key for this connection";
+  CHECK(SSL_CTX_use_PrivateKey_file(ctx, key.c_str(), SSL_FILETYPE_PEM))
+      << "Could not load the private key for this connection";
 
   return true;
 }
 
 bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
-		 string *acl) {
+                string *acl) {
 
   CHECK(key) << "null key";
   CHECK(acl) << "null acl";
@@ -92,7 +87,7 @@ bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
 }
 
 bool VerifySignature(const string &data, const string &signature,
-		keyczar::Keyczar *key) {
+                     keyczar::Keyczar *key) {
   if (!key->Verify(data, signature)) {
     LOG(ERROR) << "Verify failed";
     return false;
@@ -102,7 +97,7 @@ bool VerifySignature(const string &data, const string &signature,
 }
 
 bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
-               keyczar::Keyset *keyset) {
+                         keyczar::Keyset *keyset) {
   CHECK(public_key) << "null public_key";
   CHECK(keyset) << "null keyset";
   const keyczar::Keyset *public_keyset = public_key->keyset();
@@ -112,7 +107,8 @@ bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
   scoped_ptr<Value> key_value(k1->GetValue());
   scoped_ptr<Value> meta_value(public_keyset->metadata()->GetValue(true));
 
-  keyset->set_metadata(keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
+  keyset->set_metadata(
+      keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
 
   // TODO(tmroeder): read the number of the primary key from the public_key
   // metadata
@@ -124,20 +120,22 @@ bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
   return true;
 }
 
-
 bool CreateRSAPublicKeyset(const string &key, const string &metadata,
-		keyczar::Keyset *keyset) {
+                           keyczar::Keyset *keyset) {
   CHECK(keyset) << "null keyset";
 
   // create KeyMetadata from the metadata string
-  scoped_ptr<Value> meta_value(keyczar::base::JSONReader::Read(metadata,
-			  false));
-  keyset->set_metadata(keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
+  scoped_ptr<Value> meta_value(
+      keyczar::base::JSONReader::Read(metadata, false));
+  keyset->set_metadata(
+      keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
 
   // create an RSA public Key from the key JSON string
   scoped_ptr<Value> key_value(keyczar::base::JSONReader::Read(key, false));
-  // Note: it is always key version 1, since this is the first key we are adding.
-  // TODO(tmroeder): Or do I need to read this information from the metadata? Look in the file.
+  // Note: it is always key version 1, since this is the first key we are
+  // adding.
+  // TODO(tmroeder): Or do I need to read this information from the metadata?
+  // Look in the file.
   if (!keyset->AddKey(keyczar::RSAPublicKey::CreateFromValue(*key_value), 1)) {
     LOG(ERROR) << "Could not add an RSA Public Key";
     return false;
@@ -186,17 +184,15 @@ bool ReceiveData(BIO *bio, string *data) {
   return true;
 }
 
-bool SendData(BIO *bio, const void *buffer,
-    size_t buffer_len) {
+bool SendData(BIO *bio, const void *buffer, size_t buffer_len) {
   int x = 0;
-  while((x = BIO_write(bio, buffer, buffer_len)) != buffer_len) {
+  while ((x = BIO_write(bio, buffer, buffer_len)) != buffer_len) {
     if (x == 0) return false;
     if ((x < 0) && !BIO_should_retry(bio)) return false;
   }
 
   return true;
 }
-
 
 bool SendData(BIO *bio, const string &data) {
   size_t s = data.length();
@@ -216,8 +212,7 @@ bool SendData(BIO *bio, const string &data) {
   return true;
 }
 
-bool SignData(const string &data, string *signature,
-		keyczar::Keyczar *key) {
+bool SignData(const string &data, string *signature, keyczar::Keyczar *key) {
   if (!key->Sign(data, signature)) {
     LOG(ERROR) << "Could not sign the data";
     return false;
@@ -251,11 +246,13 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
   int out_len = 0;
   size_t bytes_written = 0;
   scoped_array<unsigned char> buf(new unsigned char[len]);
-  while((total_len < expected_len) && (out_len = BIO_read(bio, buf.get(), len)) != 0) {
+  while ((total_len < expected_len) &&
+         (out_len = BIO_read(bio, buf.get(), len)) != 0) {
     if (out_len < 0) {
       if (!BIO_should_retry(bio)) {
-	LOG(ERROR) << "Write failed after " << total_len << " bytes were written";
-	return false;
+        LOG(ERROR) << "Write failed after " << total_len
+                   << " bytes were written";
+        return false;
       }
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
@@ -264,14 +261,14 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
 
       // this cast is safe, since out_len is guaranteed to be non-negative
       if (bytes_written != static_cast<size_t>(out_len)) {
-	LOG(ERROR) << "Could not write the received bytes to disk after " << total_len << " bytes were written";
-	return false;
+        LOG(ERROR) << "Could not write the received bytes to disk after "
+                   << total_len << " bytes were written";
+        return false;
       }
 
       total_len += bytes_written;
     }
   }
-
 
   return true;
 }
@@ -290,7 +287,7 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
   // send the length of the file first
   uint32_t net_len = htonl(size);
 
-  // send the length to the client 
+  // send the length to the client
   if (!SendData(bio, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not send the len";
     return false;
@@ -301,10 +298,10 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
   size_t len = READ_BUFFER_LEN;
   size_t bytes_read = 0;
   scoped_array<unsigned char> buf(new unsigned char[len]);
-  while((total_bytes < size) &&
-        (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
+  while ((total_bytes < size) &&
+         (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
     int x = 0;
-    while((x = BIO_write(bio, buf.get(), bytes_read)) < 0) {
+    while ((x = BIO_write(bio, buf.get(), bytes_read)) < 0) {
       if (!BIO_should_retry(bio)) {
         LOG(ERROR) << "Network write operation failed";
         return false;
@@ -312,8 +309,8 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
     }
 
     if (x == 0) {
-      LOG(ERROR) << "Could not write the bytes to the network after " <<
-        " total_bytes were written";
+      LOG(ERROR) << "Could not write the bytes to the network after "
+                 << " total_bytes were written";
     }
 
     // this cast is safe, since x is guaranteed to be non-negative
@@ -328,58 +325,71 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
   return true;
 }
 
-bool DeriveKeys(keyczar::Keyczar *main_key, keyczar::base::ScopedSafeString *aes_key, keyczar::base::ScopedSafeString *hmac_key) {
+bool DeriveKeys(keyczar::Keyczar *main_key,
+                keyczar::base::ScopedSafeString *aes_key,
+                keyczar::base::ScopedSafeString *hmac_key) {
   CHECK(main_key) << "null main_key";
   CHECK(aes_key->get()) << "null aes_key";
   CHECK(hmac_key->get()) << "null hmac_key";
 
-  // derive the keys 
+  // derive the keys
   string aes_context = "1 || encryption";
   string hmac_context = "1 || hmac";
 
   keyczar::base::ScopedSafeString temp_aes_key(new string());
   keyczar::base::ScopedSafeString temp_hmac_key(new string());
 
-  CHECK(main_key->Sign(aes_context, temp_aes_key.get())) << "Could not derive the aes key";
-  CHECK(main_key->Sign(hmac_context, temp_hmac_key.get())) << "Could not derive the hmac key";
+  CHECK(main_key->Sign(aes_context, temp_aes_key.get()))
+      << "Could not derive the aes key";
+  CHECK(main_key->Sign(hmac_context, temp_hmac_key.get()))
+      << "Could not derive the hmac key";
 
   // skip the header to get the bytes
   size_t header_size = keyczar::Key::GetHeaderSize();
-  CHECK_LE(AesKeySize + header_size, temp_aes_key.get()->size()) << "There were not enough bytes to get the aes key";
-  CHECK_LE(HmacKeySize + header_size, temp_hmac_key.get()->size()) << "There were not enough bytes to get the hmac key";
+  CHECK_LE(AesKeySize + header_size, temp_aes_key.get()->size())
+      << "There were not enough bytes to get the aes key";
+  CHECK_LE(HmacKeySize + header_size, temp_hmac_key.get()->size())
+      << "There were not enough bytes to get the hmac key";
 
   aes_key->get()->assign(temp_aes_key.get()->data() + header_size, AesKeySize);
-  hmac_key->get()->assign(temp_hmac_key.get()->data() + header_size, HmacKeySize);
+  hmac_key->get()
+      ->assign(temp_hmac_key.get()->data() + header_size, HmacKeySize);
 
   return true;
 }
 
-bool InitEncryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key, const string &iv, EVP_CIPHER_CTX *aes) {
+bool InitEncryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key,
+                             const string &iv, EVP_CIPHER_CTX *aes) {
   EVP_CIPHER_CTX_init(aes);
-  EVP_EncryptInit_ex(aes, EVP_aes_128_cbc(), NULL,
-    reinterpret_cast<const unsigned char *>(aes_key.get()->data()),
-    reinterpret_cast<const unsigned char *>(iv.data()));
+  EVP_EncryptInit_ex(
+      aes, EVP_aes_128_cbc(), NULL,
+      reinterpret_cast<const unsigned char *>(aes_key.get()->data()),
+      reinterpret_cast<const unsigned char *>(iv.data()));
 
   return true;
 }
 
-bool InitDecryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key, const string &iv, EVP_CIPHER_CTX *aes) {
+bool InitDecryptEvpCipherCtx(const keyczar::base::ScopedSafeString &aes_key,
+                             const string &iv, EVP_CIPHER_CTX *aes) {
   EVP_CIPHER_CTX_init(aes);
-  EVP_DecryptInit_ex(aes, EVP_aes_128_cbc(), NULL,
-    reinterpret_cast<const unsigned char *>(aes_key.get()->data()),
-    reinterpret_cast<const unsigned char *>(iv.data()));
+  EVP_DecryptInit_ex(
+      aes, EVP_aes_128_cbc(), NULL,
+      reinterpret_cast<const unsigned char *>(aes_key.get()->data()),
+      reinterpret_cast<const unsigned char *>(iv.data()));
 
   return true;
 }
 
-
-bool InitHmacCtx(const keyczar::base::ScopedSafeString &hmac_key, HMAC_CTX *hmac) {
-  HMAC_Init(hmac, hmac_key.get()->data(), hmac_key.get()->length(), EVP_sha256());
+bool InitHmacCtx(const keyczar::base::ScopedSafeString &hmac_key,
+                 HMAC_CTX *hmac) {
+  HMAC_Init(hmac, hmac_key.get()->data(), hmac_key.get()->length(),
+            EVP_sha256());
 
   return true;
 }
 
-bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac) {
+bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out,
+                  int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac) {
   // add the encrypted bytes to the hmac computation before decrypting
   if (!HMAC_Update(hmac, buffer, size)) {
     LOG(ERROR) << "Could not add the encrypted bytes to the hmac";
@@ -394,7 +404,8 @@ bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out, int
   return true;
 }
 
-bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac) {
+bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out,
+                  int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac) {
   if (!EVP_EncryptUpdate(aes, out, out_size, buffer, size)) {
     LOG(ERROR) << "Could not encrypt a block of data";
     return false;
@@ -410,7 +421,8 @@ bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out, int
 }
 
 // no need for the HMAC here, since the output is plaintext bytes
-bool GetFinalDecryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes) {
+bool GetFinalDecryptedBytes(unsigned char *out, int *out_size,
+                            EVP_CIPHER_CTX *aes) {
   if (!EVP_DecryptFinal_ex(aes, out, out_size)) {
     LOG(ERROR) << "Could not get the final decrypted bytes";
     return false;
@@ -419,7 +431,8 @@ bool GetFinalDecryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *a
   return true;
 }
 
-bool GetFinalEncryptedBytes(unsigned char *out, int *out_size, EVP_CIPHER_CTX *aes, HMAC_CTX *hmac) {
+bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
+                            EVP_CIPHER_CTX *aes, HMAC_CTX *hmac) {
   if (!EVP_EncryptFinal_ex(aes, out, out_size)) {
     LOG(ERROR) << "Could not get the final encrypted bytes";
     return false;
@@ -444,11 +457,11 @@ bool GetHmacOutput(unsigned char *out, unsigned int *out_size, HMAC_CTX *hmac) {
   return true;
 }
 
-bool ReceiveAndEncryptStreamData(BIO *bio, const string &path, const string &meta_path,
-  const string &object_name,
-  const keyczar::base::ScopedSafeString &aes_key,
-  const keyczar::base::ScopedSafeString &hmac_key,
-  keyczar::Keyczar *main_key) {
+bool ReceiveAndEncryptStreamData(
+    BIO *bio, const string &path, const string &meta_path,
+    const string &object_name, const keyczar::base::ScopedSafeString &aes_key,
+    const keyczar::base::ScopedSafeString &hmac_key,
+    keyczar::Keyczar *main_key) {
   CHECK(bio) << "null bio";
   CHECK(main_key) << "null main_key";
 
@@ -514,20 +527,22 @@ bool ReceiveAndEncryptStreamData(BIO *bio, const string &path, const string &met
   size_t bytes_written = 0;
   scoped_array<unsigned char> buf(new unsigned char[len]);
   scoped_array<unsigned char> enc_buf(new unsigned char[enc_len]);
-  while((total_len < expected_len) && (out_len = BIO_read(bio, buf.get(), len)) != 0) {
+  while ((total_len < expected_len) &&
+         (out_len = BIO_read(bio, buf.get(), len)) != 0) {
     if (out_len < 0) {
       if (!BIO_should_retry(bio)) {
-	LOG(ERROR) << "Write failed after " << total_len << " bytes were written";
-	return false;
+        LOG(ERROR) << "Write failed after " << total_len
+                   << " bytes were written";
+        return false;
       }
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
       // the final rename step
       out_enc_len = enc_len;
       if (!EncryptBlock(buf.get(), out_len, enc_buf.get(), &out_enc_len, &aes,
-	&hmac)) {
-	LOG(ERROR) << "Could not encrypt the bytes";
-	return false;
+                        &hmac)) {
+        LOG(ERROR) << "Could not encrypt the bytes";
+        return false;
       }
 
       // keep track of the total number of plaintext bytes in the file
@@ -537,10 +552,10 @@ bool ReceiveAndEncryptStreamData(BIO *bio, const string &path, const string &met
 
       // this cast is safe, since out_len is guaranteed to be non-negative
       if (bytes_written != static_cast<size_t>(out_enc_len)) {
-	LOG(ERROR) << "Could not write the encrypted bytes to disk after " << total_len << " bytes were written";
-	return false;
+        LOG(ERROR) << "Could not write the encrypted bytes to disk after "
+                   << total_len << " bytes were written";
+        return false;
       }
-
     }
   }
 
@@ -562,7 +577,7 @@ bool ReceiveAndEncryptStreamData(BIO *bio, const string &path, const string &met
     LOG(ERROR) << "Could not get the hmac output";
     return false;
   }
-  
+
   // now write metadata to disk about this file, including the iv and hmac
   string computed_hmac(reinterpret_cast<char *>(enc_buf.get()), out_hmac_len);
 
@@ -591,13 +606,11 @@ bool ReceiveAndEncryptStreamData(BIO *bio, const string &path, const string &met
   return true;
 }
 
-bool DecryptAndSendStreamData(const string &path,
-    const string &meta_path,
-    const string &object_name,
-    BIO *bio,
-    const keyczar::base::ScopedSafeString &aes_key,
-    const keyczar::base::ScopedSafeString &hmac_key,
-    keyczar::Keyczar *main_key) {
+bool DecryptAndSendStreamData(const string &path, const string &meta_path,
+                              const string &object_name, BIO *bio,
+                              const keyczar::base::ScopedSafeString &aes_key,
+                              const keyczar::base::ScopedSafeString &hmac_key,
+                              keyczar::Keyczar *main_key) {
   // open the file
   CHECK(bio) << "null bio";
   ScopedFile f(fopen(path.c_str(), "r"));
@@ -623,7 +636,6 @@ bool DecryptAndSendStreamData(const string &path,
     return false;
   }
 
-
   ObjectMetadata om;
   if (!om.ParseFromString(hom.serialized_metadata())) {
     LOG(ERROR) << "Could not parse the serialized metadata";
@@ -634,7 +646,7 @@ bool DecryptAndSendStreamData(const string &path,
   // metadata
   if (object_name.compare(om.name()) != 0) {
     LOG(ERROR) << "The name of the object is " << object_name << " but the"
-      << " name in the metadata is " << om.name();
+               << " name in the metadata is " << om.name();
     return false;
   }
 
@@ -670,7 +682,7 @@ bool DecryptAndSendStreamData(const string &path,
   // send the length of the file first
   uint32_t net_len = htonl(om.size());
 
-  // send the length to the client 
+  // send the length to the client
   if (!SendData(bio, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not send the len";
     return false;
@@ -687,19 +699,19 @@ bool DecryptAndSendStreamData(const string &path,
   size_t bytes_read = 0;
   scoped_array<unsigned char> buf(new unsigned char[len]);
   scoped_array<unsigned char> dec_buf(new unsigned char[dec_len]);
-  while((total_bytes < om.size()) &&
-        (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
-  
+  while ((total_bytes < om.size()) &&
+         (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
+
     out_dec_len = dec_len;
-    if (!DecryptBlock(buf.get(), bytes_read, dec_buf.get(), &out_dec_len,
-      &aes, &hmac)) {
+    if (!DecryptBlock(buf.get(), bytes_read, dec_buf.get(), &out_dec_len, &aes,
+                      &hmac)) {
       LOG(ERROR) << "Could not decrypt bytes from the file";
       return false;
     }
 
     if (out_dec_len > 0) {
       int x = 0;
-      while((x = BIO_write(bio, dec_buf.get(), out_dec_len)) < 0) {
+      while ((x = BIO_write(bio, dec_buf.get(), out_dec_len)) < 0) {
         if (!BIO_should_retry(bio)) {
           LOG(ERROR) << "Network write operation failed";
           return false;
@@ -707,8 +719,8 @@ bool DecryptAndSendStreamData(const string &path,
       }
 
       if (x == 0) {
-        LOG(ERROR) << "Could not write the bytes to the network after " <<
-          " total_bytes were written";
+        LOG(ERROR) << "Could not write the bytes to the network after "
+                   << " total_bytes were written";
         return false;
       }
 
@@ -724,12 +736,11 @@ bool DecryptAndSendStreamData(const string &path,
     return false;
   }
 
-
   if (out_dec_len > 0) {
 
     // send it to the client
     int x = 0;
-    while((x = BIO_write(bio, dec_buf.get(), out_dec_len)) < 0) {
+    while ((x = BIO_write(bio, dec_buf.get(), out_dec_len)) < 0) {
       if (!BIO_should_retry(bio)) {
         LOG(ERROR) << "Final network operation failed";
         return false;
@@ -738,7 +749,6 @@ bool DecryptAndSendStreamData(const string &path,
 
     total_bytes += out_dec_len;
   }
-
 
   if (total_bytes != om.size()) {
     LOG(ERROR) << "Did not send all bytes to the server";
@@ -760,14 +770,14 @@ bool DecryptAndSendStreamData(const string &path,
     return false;
   }
 
-
   computed_hmac.assign(reinterpret_cast<char *>(dec_buf.get()), out_hmac_len);
   if (om.hmac().compare(computed_hmac) != 0) {
-    LOG(ERROR) << "The computed HMAC for the file did not match the stored hmac";
+    LOG(ERROR)
+        << "The computed HMAC for the file did not match the stored hmac";
     return false;
   }
 
   return true;
 }
 
-} // namespace cloudproxy
+}  // namespace cloudproxy

@@ -12,37 +12,38 @@ using std::stringstream;
 
 namespace cloudproxy {
 
-CloudClient::CloudClient(const string &tls_cert,
-		const string &tls_key,
-		const string &tls_password,
-		const string &public_policy_keyczar,
-		const string &public_policy_pem,
-		const string &server_addr,
-		ushort server_port)
-	: bio_(nullptr),
-	public_policy_key_(keyczar::Verifier::Read(public_policy_keyczar.c_str())),
-	context_(SSL_CTX_new(TLSv1_2_client_method())),
-	users_(new CloudUserManager()) {
+CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
+                         const string &tls_password,
+                         const string &public_policy_keyczar,
+                         const string &public_policy_pem,
+                         const string &server_addr, ushort server_port)
+    : bio_(nullptr),
+      public_policy_key_(
+          keyczar::Verifier::Read(public_policy_keyczar.c_str())),
+      context_(SSL_CTX_new(TLSv1_2_client_method())),
+      users_(new CloudUserManager()) {
 
   // set the policy_key to handle bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
   LOG(INFO) << "About to set up the SSL CTX";
   // set up the TLS connection with the cert and keys and trust DB
-  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key, tls_password))
-    << "Could not set up the client TLS connection";
+  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
+                    tls_password))
+      << "Could not set up the client TLS connection";
 
   bio_.reset(BIO_new_ssl_connect(context_.get()));
   SSL *ssl = nullptr;
 
   BIO_get_ssl(bio_.get(), &ssl);
-  CHECK(ssl) << "Could not get the SSL pointer for the TLS bio"; SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+  CHECK(ssl) << "Could not get the SSL pointer for the TLS bio";
+  SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
   stringstream ss;
   ss << server_port;
   string host_and_port = server_addr + string(":") + ss.str();
 
-  BIO_set_conn_hostname(bio_.get(), const_cast<char*>(host_and_port.c_str()));
+  BIO_set_conn_hostname(bio_.get(), const_cast<char *>(host_and_port.c_str()));
 }
 
 bool CloudClient::Connect() {
@@ -56,7 +57,7 @@ bool CloudClient::Connect() {
 }
 
 bool CloudClient::AddUser(const string &user, const string &key_path,
-    const string &password) {
+                          const string &password) {
   if (users_->HasKey(user)) {
     LOG(ERROR) << "User " << user << " already has a key";
     return false;
@@ -66,7 +67,7 @@ bool CloudClient::AddUser(const string &user, const string &key_path,
 }
 
 bool CloudClient::Authenticate(const string &subject,
-		const string &binding_file) {
+                               const string &binding_file) {
   // check to see if we have already authenticated this subject
   if (users_->IsAuthenticated(subject)) {
     LOG(INFO) << "User " << subject << " is already authenticated";
@@ -79,7 +80,7 @@ bool CloudClient::Authenticate(const string &subject,
 
   shared_ptr<keyczar::Keyczar> signer;
   CHECK(users_->GetKey(subject, &signer)) << "Could not get the key for user "
-    << subject;
+                                          << subject;
 
   // send to the server an AUTH request
   ClientMessage cm;
@@ -88,7 +89,7 @@ bool CloudClient::Authenticate(const string &subject,
 
   string serialized_cm;
   CHECK(cm.SerializeToString(&serialized_cm)) << "Could not serialize the"
-      " ClientMessage(Auth)";
+                                                 " ClientMessage(Auth)";
 
   LOG(INFO) << "Sending ClientMessage(Auth) to server";
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not request auth";
@@ -96,13 +97,14 @@ bool CloudClient::Authenticate(const string &subject,
   // now listen for the connection
   string serialized_sm;
   CHECK(ReceiveData(bio_.get(), &serialized_sm)) << "Could not get a"
-    " reply from the server";
+                                                    " reply from the server";
 
   ServerMessage sm;
   CHECK(sm.ParseFromString(serialized_sm)) << "Could not deserialize the"
-    " message from the server";
-  
-  // there are two possible replies to an Auth request: a Result(true) or a Challenge
+                                              " message from the server";
+
+  // there are two possible replies to an Auth request: a Result(true) or a
+  // Challenge
   if (sm.has_result()) {
     CHECK(sm.result().success()) << "Authentication failed";
     return true;
@@ -111,18 +113,19 @@ bool CloudClient::Authenticate(const string &subject,
   if (!sm.has_challenge()) {
     LOG(FATAL) << "Unknown response from CloudServer to Auth message";
     return false;
-  } 
+  }
 
   const Challenge &c = sm.challenge();
   string serialized_chall;
   CHECK(c.SerializeToString(&serialized_chall)) << "Could not serialize the"
-    " challenge";
+                                                   " challenge";
 
-  CHECK_STREQ(c.subject().c_str(), subject.c_str()) << "Challenge for the wrong subject";
+  CHECK_STREQ(c.subject().c_str(), subject.c_str())
+      << "Challenge for the wrong subject";
 
   string sig;
   CHECK(SignData(serialized_chall, &sig, signer.get())) << "Could not sign the"
-      " challenge";
+                                                           " challenge";
 
   ClientMessage cm2;
   Response *r = cm2.mutable_response();
@@ -136,18 +139,19 @@ bool CloudClient::Authenticate(const string &subject,
   ifstream ssf_file(binding_file.c_str());
   ssf->ParseFromIstream(&ssf_file);
 
-  CHECK(cm2.SerializeToString(&serialized_cm)) << "Could not serialize"
-    " the Response to the Challenge";
+  CHECK(cm2.SerializeToString(&serialized_cm))
+      << "Could not serialize"
+         " the Response to the Challenge";
 
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send"
-    " Response";
+                                                " Response";
 
   LOG(INFO) << "Auth successful: waiting for reply";
   return HandleReply();
 }
 
 bool CloudClient::SendAction(const string &owner, const string &object_name,
-		Op op, bool handle_reply) {
+                             Op op, bool handle_reply) {
   ClientMessage cm;
   Action *a = cm.mutable_action();
   a->set_subject(owner);
@@ -173,14 +177,14 @@ bool CloudClient::Destroy(const string &requestor, const string &object_name) {
 }
 
 bool CloudClient::Read(const string &requestor, const string &object_name,
-  const string &output_name) {
+                       const string &output_name) {
   // cloud client ignores the output name, since it's not reading any data from
   // the server
   return SendAction(requestor, object_name, READ, true);
 }
 
 bool CloudClient::Write(const string &requestor, const string &input_name,
-  const string &object_name) {
+                        const string &object_name) {
   // cloud client ignores the input name, since it's not writing any data to
   // the server
   return SendAction(requestor, object_name, WRITE, true);
@@ -215,7 +219,7 @@ bool CloudClient::HandleReply() {
     }
     return false;
   }
-  
+
   LOG(INFO) << "The operation was successful";
   return true;
 }
@@ -227,10 +231,10 @@ bool CloudClient::Close(bool error) {
 
   string s;
   CHECK(cm.SerializeToString(&s)) << "Could not serialize the CloseConnection"
-    " message";
+                                     " message";
 
   CHECK(SendData(bio_.get(), s)) << "Could not send a CloseConnection to the"
-    " server";
+                                    " server";
   return true;
 }
-} // namespace cloudproxy
+}  // namespace cloudproxy

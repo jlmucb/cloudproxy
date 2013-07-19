@@ -79,6 +79,7 @@ void CloudServer::HandleConnection(BIO *sbio) {
   keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
+    return;
   } else {
     LOG(INFO) << "Successful client handshake";
   }

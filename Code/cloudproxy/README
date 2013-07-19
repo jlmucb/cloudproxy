@@ -47,7 +47,35 @@ gflags >= 2.0
 > ./configure && make
 > sudo make install
 
+gyp
+
+> cd ${CODE}/third_party
+> svn checkout http://gyp.googlecode.com/svn/trunk/ gyp-read-only
+> export PATH=${PATH}:${CODE}/third_party/gyp
+
+ninja
+
+> git clone git://github.com/martine/ninja.git
+> cd ninja
+> git checkout release
+> cat README
+
+(follow the instructions to build and install it)
+
 
 After installing these packages, follow the steps in creating_keys.txt to create
 the required keys for CloudProxy, and run make to build the client and server
 applications.
+
+
+Generating the build files:
+
+We use gyp to generate ninja build files.
+
+> cd ${CODE}/cloudproxy
+> ./build/run_gyp.sh
+> ninja -C out/Default all
+
+
+
+

@@ -7,7 +7,7 @@
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/scoped_ptr.h>
 
-#include "cloudproxy.pb.h"
+#include <cloudproxy.pb.h>
 
 using std::string;
 

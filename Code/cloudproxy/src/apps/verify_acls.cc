@@ -12,8 +12,8 @@
 #include <keyczar/rw/keyset_file_reader.h>
 #include <google/protobuf/text_format.h>
 
-#include "cloudproxy.pb.h"
-#include "util.h"
+#include <cloudproxy.pb.h>
+#include <cloudproxy/util.h>
 
 using std::string;
 using std::stringstream;

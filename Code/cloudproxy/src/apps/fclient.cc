@@ -3,8 +3,8 @@
 #include <openssl/ssl.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/base/base64w.h>
-#include "file_client.h"
-#include "cloudproxy.pb.h"
+#include <cloudproxy/file_client.h>
+#include <cloudproxy.pb.h>
 
 #include <string>
 

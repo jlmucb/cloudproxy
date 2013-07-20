@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This file was copied from Chromium's src/build/protoc.gypi, then modified for
-# our purposes
+# This file was copied from Chromium's src/build/protoc.gypi, then modified
+# extensively for our purposes
 
 # This file is meant to be included into a target to provide a rule
 # to invoke protoc in a consistent manner. 
@@ -41,11 +41,11 @@
       'action': [
         '<(protoc)',
         #  | sed "s/^\(.*\)\/[^/]*$/\1/g")',
-        '-I<(RULE_INPUT_DIRNAME)',
+        '-I<(RULE_INPUT_DIRNAME)/',
         '--cpp_out=<(cc_dir)',
-        '<(RULE_INPUT_PATH)'
+        '<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_NAME)'
       ],
-      'message': 'Generating C++ and Python code from <(RULE_INPUT_PATH)',
+      'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
       'process_outputs_as_sources': 1,
     },
   ],

@@ -1,0 +1,806 @@
+download qemu
+libvirt
+virt-manager
+libvirt.d
+group add
+
+
+You will need (see download section):
+
+qemu-kvm-release.tar.gz
+kvm-kmod-release.tar.bz2 (if you want/need to compile kernel modules yourself)
+A VT capable Intel processor, or an SVM capable AMD processor
+qemu prerequisites:
+`zlib` libraries and headers
+`SDL` libraries and headers
+`alsa` libraries and headers (optional alsa support: disabled by default but can be enabled with --enable-alsa)
+`gnutls` libraries and headers (optional VNC TLS support: enabled by default but can be disabled with --disable-vnc-tls)
+kernel headers (on Fedora, the kernel-devel package)
+On a debian etch system you can install the prerequisites with:
+
+ apt-get install gcc libsdl1.2-dev zlib1g-dev libasound2-dev linux-kernel-headers pkg-config libgnutls-dev libpci-dev
+Note: When building from git, you also need gawk.
+
+Please report problems (and successes) to the mailing list.
+
+Unpacking and configuring kvm components
+
+You may wish to take a look at the ["Kernel-optimizations"] page. There exists a [attachment:kvm-26-alt-grab.diff.gz patch] which will change the SDL keygrab combination from ctrl-alt to ctrl-alt-shift. It was written primarily to deal with the heavy use of ctrl-alt-delete in NT-based VMs.
+
+If you are using a recent kernel (2.6.25+) with kvm modules included, boot into it, and:
+
+tar xzf qemu-kvm-release.tar.gz
+cd qemu-kvm-release
+./configure --prefix=/usr/local/kvm
+make
+sudo make install
+sudo /sbin/modprobe kvm-intel
+# or: sudo /sbin/modprobe kvm-amd
+If you're using an older kernel, or a kernel from your distribution without the kvm modules, you'll have to compile the modules yourself:
+
+tar xjf kvm-kmod-release.tar.bz2
+cd kvm-kmod-release 
+./configure
+make 
+sudo make install 
+sudo /sbin/modprobe kvm-intel 
+# or: sudo /sbin/modprobe kvm-amd
+Note: if sound doesn't play in the guest vm you can add --audio-drv-list="alsa oss" to ./configure as explained in http://www.linux-kvm.com/content/sound-problem-solved
+
+Creating a disk image for the guest
+
+/usr/local/kvm/bin/qemu-img create -f qcow2 vdisk.img 10G 
+
+Installing a guest operating system
+
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -hda vdisk.img -cdrom /path/to/boot-media.iso \ 
+   -boot d  -m 384
+(kvm doesn't make a distinction between i386 and x86_64 so even in i386 you should use `qemu-system-x86_64`)BR
+
+If you have less than 1GB of memory don't use the -m 384 flag (which allocates 384 MB of RAM for the guest). For computers with 512MB of RAM it's safe to use -m 192, or even -m 128 (the default)
+
+Running the newly-installed guest
+
+sudo /usr/local/kvm/bin/qemu-system-x86_64 vdisk.img -m 384
+or a slightly more complicated example, where it is assumed that bridged networking is available on tap0; see ["Kernel-optimizations"] for some setup hints:
+
+/usr/local/kvm/bin/qemu-system-x86_64 -hda xp-curr.img -m 512 -soundhw es1370 -no-acpi -snapshot -localtime -boot c -usb -usbdevice tablet -net nic,vlan=0,macaddr=00:00:10:52:37:48 -net tap,vlan=0,ifname=tap0,script=no
+(kvm doesn't make a distinction between i386 and x86_64 so even in i386 you should use `qemu-system-x86_64`)
+
+If you're on Debian Etch, substitute `kvm` for `qemu-system-x86_64` (thanks to fromport, soren and mael_). See also the entries under the label "Ubuntu" on the HOWTO page. qemu-system-x86_64`
+
+If you're on Fedora/RHEL/CentOS (and installed a kvm package and not built kvm yourself from source) then substitute qemu-kvm for qemu-system-x86_64
+
+
+In this HowTo I'll explain how to install and use KVM for running your services in virtual machines. KVM (Kernel-based Virtual Machine) is a Linux kernel virtualization technique that provides full virtualization by using Intel VT (Vanderpool) or AMD-V (Pacifica).
+
+I'm working as root on the server. If you are using a normal user, you have to install everything with sudo, e.g.
+
+sudo apt-get install kvm
+
+Download and install KVM
+You can use the package included in Ubuntu 7.10, just execute:
+
+apt-get install kvm
+
+You can also download the last release of KVM and compile it. But you need following packages for compiling:
+
+apt-get install gcc gcc-3.4 gcc-4.1 libsdl1.2-dev make libz-dev uuid-dev libasound2-dev gcc libc6-dev zlib1g-dev
+
+You also need the linux-headers packages for the Kernel you are using. E.g. linux-headers-2.6.22-14.
+
+First of all we need the KVM package:
+
+You can find the actual release at http://sourceforge.net/projects/kvm/. Download it to your server:
+
+wget link/to/file /usr/src/
+
+Now unpack the content.
+
+cd /usr/src/
+tar -xzf file.tar.gz
+cd folder/to/kvm
+
+Before compiling KVM make sure that your CPU supports virtualization and if that option is activated in the BIOS. Without this support, you won't have much performance...
+
+So let's compile KVM.
+
+./configure
+make
+make install
+
+Now load the KVM modules:
+
+If you have an Intel CPU load:
+
+modprobe kvm
+modprobe kvm_intel
+
+If you have an AMD CPU load:
+
+modprobe kvm
+modprobe kvm_amd
+
+Creating the network bridge
+First, we have to install bridge-utils:
+
+apt-get install bridge-utils
+
+If you want to connect to your virtual machine later, you need to set up a network bridge.
+
+Edit /etc/network/interfaces like this (make sure to insert your public IP Address):
+
+auto lo
+iface lo inet loopback
+auto br0
+iface br0 inet static
+address xxx.xxx.xxx.xxx
+netmask xxx.xxx.xxx.xxx
+gateway xxx.xxx.xxx.xxx
+bridge_ports eth0
+bridge_stp off
+bridge_maxwait 5
+Also edit /etc/qemu-ifup like this:
+
+#!/bin/sh
+/sbin/ifconfig $1 0.0.0.0 promisc up
+/usr/sbin/brctl addif br0 $1
+sleep 2
+I recommand restarting your server at this point. If you are able to reconnect, your bridge is working.
+
+Creating a virtual disk for a virtual machine & install a system into it.
+Create an .img file for installation. This file acts as a virtual disk for your vm.
+
+You have 2 possibilities for creating such a file.
+
+Allocate the disk space needed by the .img file directly. In this case the file will have a size of 4 GBytes.
+
+dd if=/dev/zero of=disk01.img bs=1G count=4
+
+Create an .img file with a maximal size but the disk space will only be allocated when needed. In this case, the maximum size will be 10 GBytes, but the disk space used will be the space required by the files in the vm.
+
+qemu-img create -f qcow2 disk01.img 10G
+
+Next, we need an ISO file of the system you want to install. Make sure you have downloaded on onto your server.
+
+Let's install the virtual machine. When you don't have physical access to the server, start the installation with the VNC option. So you can connect to the VNC session and you will have the GUI from the installer. In this case we will set the RAM size of the vm to 512 MBytes. At the moment the vm doesn't have access to the network interface. I prefer activating it later, after configuring IP Addresses of the vm.
+
+kvm -hda disk01.img -cdrom os.iso -m 512 -boot d -vnc IP:1
+
+Now you can connect to IP:1 with a VNC client. You can configure your system and network settings at this point. Don't forget to install a SSH Server. After configuring, shut down the vm.
+
+Now we are going to start the vm with networking support. We assign a MAC-Address to the vm network interfaces. This is important if you use more than 1 vm. Every vm will get its MAC-Address.
+
+kvm -hda disk01.img -m 512 -boot c -net nic,vlan=0,macaddr=00:16:3e:00:00:01 -net tap -nographic -daemonize
+
+After some seconds you should be able to connect via ssh to the vm. If not, you can add the -vnc option to check if there are problems.
+
+I had the problem that I couldn't reach my vm over the network after some time. I had to add a different network card emulation to the start command. This solved my problem.
+
+kvm -hda disk01.img -m 512 -boot c -net nic,vlan=0,macaddr=00:16:3e:00:00:01,model=rtl8139 -net tap -nographic -daemonize
+
+If you have the problem that your configured network interface isn't starting, delete the following file (depending on your os):
+
+/etc/udev/rules.d/70-persistent-net.rules
+
+or
+
+/etc/udev/rules.d/z25-persistent-net.rules
+
+You also have the possibility to add more virtual disks to one vm. You can add the following parameter to the start command:
+
+-hdb disk02.img
+
+You can add more virtual machines if you need so. You could also create start scripts for your vms.
+
+Enjoy using KVM! :)
+
+
+When used as a machine emulator, QEMU can run OSes and programs made for one machine (e.g. an ARM board) on a different machine (e.g. your x86 PC). By using dynamic translation, it achieves very good performance.
+QEMU can use other hypervisors like Xen or KVM to use CPU extensions (HVM) for virtualization. When used as a virtualizer, QEMU achieves near native performances by executing the guest code directly on the host CPU.
+Contents [hide] 
+1 Installing QEMU
+2 Graphical front-ends for QEMU
+3 Running virtualized system
+3.1 Enabling KVM
+4 Creating new virtualized system
+4.1 Creating a hard disk image
+4.1.1 Overlay images
+4.1.2 Resizing the image
+4.1.2.1 Up-to-date way
+4.1.2.2 Old way
+4.2 Preparing the installation media
+4.3 Installing the operating system
+5 Moving data between host and guest OS
+5.1 Network
+5.2 QEMU's built-in SMB server
+5.3 Mounting a partition inside a raw disk image
+5.3.1 With manually specifying byte offset
+5.3.2 With loop module autodetecting partitions
+5.3.3 With kpartx
+5.4 Mounting qcow2 image
+5.5 Using any real partition as the single primary partition of a hard disk image
+5.5.1 By specifying kernel and initrd manually
+5.5.2 Simulate virtual disk with MBR using linear RAID
+6 Networking
+6.1 User-mode networking
+6.2 Tap networking with QEMU
+6.2.1 Basic idea
+6.2.2 Bridge virtual machines to external network
+6.2.3 Simpler bridge method
+6.2.4 Host-only networking
+6.2.5 Internal networking
+6.2.6 Link-level address caveat
+6.3 Networking with VDE2
+6.3.1 What is VDE?
+6.3.2 Basics
+6.3.3 Startup scripts
+6.3.4 Alternative method
+6.4 VDE2 Bridge
+6.4.1 Basics
+6.4.2 Startup scripts
+7 Graphics
+7.1 std
+7.2 vmware
+7.3 qxl
+7.4 none
+8 Installing virtio drivers
+8.1 Preparing an (Arch) Linux guest
+8.2 Preparing a Windows guest
+8.2.1 Block device drivers
+8.2.2 Network drivers
+8.3 Preparing a FreeBSD guest
+9 Tips and tricks
+9.1 Starting QEMU virtual machines on boot
+9.1.1 With libvirt
+9.1.2 Custom script
+9.2 Mouse integration
+9.3 Pass-through host USB device
+9.4 Enabling KSM
+9.5 Spice support
+9.6 Windows-specific notes
+9.6.1 Remote Desktop Protocol
+10 Troubleshooting
+10.1 Mouse cursor is jittery or erratic
+10.2 Keyboard seems broken or the arrow keys do not work
+10.3 Virtual machine runs too slowly
+11 See also
+Installing QEMU
+
+Install qemu from the official repositories.
+Graphical front-ends for QEMU
+
+Unlike other virtualization progrems such as VirtualBox and VMware, QEMU does not provide a GUI to manage virtual machines (other than the window that appears when running a virtual machine), nor does it provide a way to create persistent virtual machines with saved settings. All parameters to run a virtual machine must be specified on the command line at every launch, unless you have created a custom script to start your virtual machine(s). However, there are several GUI front-ends for QEMU:
+virt-manager (part of libvirt)
+qemu-launcher
+qtemu
+From AUR:
+aqemu-git
+qemulator
+Running virtualized system
+
+qemu-system-* binaries (for example qemu-system-i386 or qemu-system-x86_64, depending on emulated architecture) are used to run the virtualized system. The usage is:
+$ qemu-system-i386 [options] [disk_image]
+Options are the same for all qemu-system-* binaries, see qemu(1) for documentation of all options.
+By default, QEMU will show the virtual machine's video output in a window. One thing to keep in mind: when you click inside the QEMU window, the mouse pointer is grabbed. To release it, press Ctrl+Alt.
+Warning: QEMU should never be run as root. If you must launch it in a script as root, you should use the -runas option to make QEMU drop root privileges.
+Enabling KVM
+KVM must be supported by your processor and kernel, and necessary kernel modules must be loaded. See KVM for more information.
+To start QEMU in KVM mode, append -enable-kvm to the additional start options.
+Note: If you start your VM with a GUI tool and experience very bad performance, you should check for proper KVM support, as QEMU may be falling back to software emulation.
+Creating new virtualized system
+
+Creating a hard disk image
+To run QEMU you will need a hard disk image, unless you are booting a live system from CD-ROM or the network (and not doing so to install an operating system to a hard disk image). A hard disk image is a file which stores the contents of the emulated hard disk.
+A hard disk image may simply contain the literal contents, byte for byte, of the hard disk. This is usually called raw format, and it provides the least I/O overhead, although the images may take up a large amount of space.
+Alternatively, the hard disk image can be in a format such as qcow2 that can save enormous amounts of space by only allocating space to the image file when the guest operating system actually writes to those sectors on its virtual hard disk. The image appears as the full size to the guest operating system, even though it may take up only a very small amount of space on the host system.
+QEMU provides the qemu-img command to create hard disk images. For example to create 4GB image in the qcow2 format:
+$ qemu-img create -f qcow2 <qcow2_disk_image> 4G
+You may use -f raw to create a raw disk instead, although you can also do so simply by creating a file of the needed size using dd or fallocate.
+Tip: raw disk usually provides much better performance than qcow2.
+Overlay images
+A good idea is to use overlay images. This way you can a create hard disk image once and tell QEMU to store changes in an external file. This makes it easy to revert the virtual machine's disk to a previous state.
+To create an overlay image, type:
+$ qemu-img create -b <base_image> -f qcow2 <overlay_image>
+After that you can run QEMU as usual (see #Running virtualized system):
+$ qemu-system-i386 <overlay_image>
+and the original image will be left untouched. One hitch, the base image cannot be renamed or moved, the overlay remembers the base's full path.
+Resizing the image
+Warning: Resizing an image containing an NTFS boot filesystem could make the VM installed on it unbootable. One solution, which is really tricky and for expert users only, is shown here along with a deep explanation of the problem.
+Up-to-date way
+The qemu-img executable has resize option, which allows resizing a qcow2 image directly, with no need to pass through raw conversion. For example to increase image space by 10GB:
+$ qemu-img resize <qcow2_disk_image> +10G
+Old way
+It is possible to increase the size of a qcow2 image later, at least with ext3. Convert it to a raw image, expand its size with dd, convert it back to qcow2, replace the partition with a larger one, do a fsck and resize the filesystem.
+$ qemu-img convert -O raw image.qcow2 image.img
+$ dd if=/dev/zero of=image.img bs=1G count=0 seek=[NUMBER_OF_GB]
+$ qemu-img convert -O qcow2 -o cluster_size=64K image.img imageplus.qcow2
+$ qemu-kvm -hda imageplus.qcow2 -m 512 -cdrom </Path/to/the/ISO/Image> -boot d -vga std
+# fdisk /dev/sda [delete the partition, create new one occupying whole disk]
+# e2fsck -f /dev/sda1
+# resize2fs /dev/sda1
+Preparing the installation media
+To install an operating system into your disk image, you need the installation media (e.g. CD-ROM, floppy, or ISO image) for the operating system.
+Tip: If you would like to run an Arch Linux virtual machine, you can install it using the official installation media for Arch Linux. It is also possible to set up an Arch Linux virtual machine without the installation media, provided that your host machine is running Arch Linux, although this is more difficult; it is detailed here.
+The installation media should not be mounted because QEMU accesses the media directly. Also, if using physical media (e.g. CD-ROM or floppy), it is a good idea to first dump the media to a file because this both improves performance and does not require you to have direct access to the devices (that is, you can run QEMU as a regular user without having to change access permissions on the media's device file). For example, if the CD-ROM device node is named /dev/cdrom, you can dump it to a file with the command:
+$ dd if=/dev/cdrom of=<cd_image.iso>
+Installing the operating system
+This is the first time you will need to start the emulator. To install the operating system on the disk image, you must attach both the disk image and the installation media to the virtual machine, and have it boot from the installation media.
+For example on i386 systems, to install from a bootable ISO file as CD-ROM:
+$ qemu-system-i386 -cdrom <iso_image> -boot order=d <qemu_image>
+See qemu(1) for information about loading other media types, such as floppy or disk images, or physical drives.
+After the operating system has finished installing, the QEMU image can be booted directly (see #Running virtualized system).
+Tip: By default only 128MB of memory is assigned to the machine, the amount of memory can be adjusted with the -m switch, for example -m 512.
+Note: If you need to replace floppies or CDs as part of the installation process, you can use the QEMU machine monitor (press Ctrl-Alt-2 in the virtual machine's window) to remove and attach storage devices to a virtual machine. Type info block to see the block devices, and use the change command to swap out a device. Press Ctrl-Alt-1 to go back to the virtual machine.
+Moving data between host and guest OS
+
+Network
+Data can be shared between the host and guest OS using any network protocol that can transfer files, such as NFS, SMB, NBD, HTTP, FTP, or SSH, provided that you have set up the network appropriately and enabled the appropriate services.
+The default user-mode networking allows the guest to access the host OS at the IP address 10.0.2.2. Any servers that you are running on your host OS, such as a SSH server or SMB server, will be accessible at this IP address. So on the guests, you can mount directories exported on the host via SMB or NFS, or you can access the host's HTTP server, etc. It will not be possible for the host OS to access servers running on the guest OS, but this can be done with other network configurations (see #Tap networking with QEMU).
+QEMU's built-in SMB server
+QEMU's documentation says it has a "built-in" SMB server, but actually it just starts up Samba with an automatically generated configuration file and makes it accessible to the guest at a different IP address (10.0.2.4 by default). This only works for user networking, and this isn't necessarily very useful since the guest can also access the normal Samba service on the host if you have set up shares on it.
+To enable this feature, start QEMU with a command like:
+$ qemu-system-i386 <disk_image> -net nic -net user,smb=<shared_dir_path>
+where <shared_dir_path> is a directory that you want to share between the guest and host.
+Then, in the guest, you will be able to access the shared directory on the host 10.0.2.4 with the share name "qemu". For example, in Windows Explorer you would go to \\10.0.2.4\qemu.
+Mounting a partition inside a raw disk image
+When the virtual machine is not running, it is possible to mount partitions that are inside a raw disk image file by setting them up as loopback devices. This does not work with disk images in special formats, such as qcow2, although those can be mounted using qemu-nbd.
+Warning: You must make sure to unmount the partitions before running the virtual machine again. Otherwise data corruption could occur, unless you had mounted the partitions read-only.
+With manually specifying byte offset
+One way to mount a disk image partition is to mount the disk image at a certain offset using a command like the following:
+# mount -o loop,offset=32256 <disk_image> <mountpoint>
+The offset=32256 option is actually passed to the losetup program to set up a loopback device that starts at byte offset 32256 of the file and continues to the end. This loopback device is then mounted. You may also use the sizelimit option to specify the exact size of the partition, but this is usually unnecessary.
+Depending on your disk image, the needed partition may not start at offset 32256. Run fdisk -l <disk_image> to see the partitions in the image. fdisk gives the start and end offsets in 512-byte sectors, so multiply by 512 to get the correct offset to pass to mount.
+With loop module autodetecting partitions
+The Linux loop driver actually supports partitions in loopback devices, but it is disabled by default. To enable it, do the following:
+Get rid of all your loopback devices (unmount all mounted images, etc.).
+Unload the loop module.
+# modprobe -r loop
+Load the loop module with the max_part parameter set.
+# modprobe loop max_part=15
+Tip: You can put an entry in /etc/modprobe.d to load the loop module with max_part=15 every time, or you can put loop.max_part=15 on the kernel command line, depending on whether you have the loop.ko module built into your kernel or not.
+Set up your image as a loopback device:
+# losetup -f <disk_image>
+Then, if the device created was /dev/loop0, additional devices /dev/loop0pX will have been automatically created, where X is the number of the partition. These partition loopback devices can be mounted directly. For example:
+# mount /dev/loop0p1 <mountpoint>
+With kpartx
+kpartx from the multipath-tools-git package from the AUR can read a partition table on a device and create a new device for each partition. For example:
+# kpartx -a /dev/loop0
+Mounting qcow2 image
+You may mount a qcow2 image using qemu-nbd. See Wikibooks.
+Using any real partition as the single primary partition of a hard disk image
+Sometimes, you may wish to use one of your system partitions from within QEMU. Using a raw partition for a virtual machine will improve performance, as the read and write operations do not go through the filesystem layer on the physical host. Such a partition also provides a way to share data between the host and guest.
+In Arch Linux, device files for raw partitions are, by default, owned by root and the disk group. If you would like to have a non-root user be able to read and write to a raw partition, you need to change the owner of the partition's device file to that user.
+Warning: Although it is possible, it is not recommended to allow virtual machines to alter critical data on the host system, such as the root partition.
+Warning: You must not mount a filesystem on a partition read-write on both the host and the guest at the same time. Otherwise, data corruption will result.
+After doing so, you can attach the partition to a QEMU virtual machine as a virtual disk.
+However, things are a little more complicated if you want to have the entire virtual machine contained in a partition. In that case, there would be no disk image file to actually boot the virtual machine since you cannot install a bootloader to a partition that is itself formatted as a filesystem and not as a partitioned device with a MBR. Such a virtual machine can be booted either by specifying the kernel and initrd manually, or by simulating a disk with a MBR by using linear RAID.
+By specifying kernel and initrd manually
+QEMU supports loading Linux kernels and init ramdisks directly, thereby circumventing bootloaders such as GRUB. It then can be launched with the physical partition containing the root filesystem as the virtual disk, which will not appear to be partitioned. This is done by issuing a command similar to the following:
+$ qemu -kernel /boot/vmlinuz-linux -initrd /boot/initramfs-linux.img -append root=/dev/sda /dev/sda3
+In the above example, the physical partition being used for the guest's root filesystem is /dev/sda3 on the host, but it shows up as /dev/sda on the guest.
+You may, of course, specify any kernel and initrd that you want, and not just the ones that come with Arch Linux.
+Simulate virtual disk with MBR using linear RAID
+A more complicated way to have a virtual machine use a physical partition, while keeping that partition formatted as a filesystem and not just having the guest partition the partition as if it were a disk, is to simulate a MBR for it so that it can boot using a bootloader such as GRUB.
+You can do this using software RAID in linear mode (you need the linear.ko kernel driver) and a loopback device: the trick is to dynamically prepend a master boot record (MBR) to the real partition you wish to embed in a QEMU raw disk image.
+Suppose you have a plain, unmounted /dev/hdaN partition with some filesystem on it you wish to make part of a QEMU disk image. First, you create some small file to hold the MBR:
+$ dd if=/dev/zero of=/path/to/mbr count=32
+Here, a 16 KB (32 * 512 bytes) file is created. It is important not to make it too small (even if the MBR only needs a single 512 bytes block), since the smaller it will be, the smaller the chunk size of the software RAID device will have to be, which could have an impact on performance. Then, you setup a loopback device to the MBR file:
+# losetup -f /path/to/mbr
+Let's assume the resulting device is /dev/loop0, because we would not already have been using other loopbacks. Next step is to create the "merged" MBR + /dev/hdaN disk image using software RAID:
+ # modprobe linear
+ # mdadm --build --verbose /dev/md0 --chunk=16 --level=linear --raid-devices=2 /dev/loop0 /dev/hdaN
+The resulting /dev/md0 is what you will use as a QEMU raw disk image (do not forget to set the permissions so that the emulator can access it). The last (and somewhat tricky) step is to set the disk configuration (disk geometry and partitions table) so that the primary partition start point in the MBR matches the one of /dev/hdaN inside /dev/md0 (an offset of exactly 16 * 512 = 16384 bytes in this example). Do this using fdisk on the host machine, not in the emulator: the default raw disc detection routine from QEMU often results in non kilobyte-roundable offsets (such as 31.5 KB, as in the previous section) that cannot be managed by the software RAID code. Hence, from the the host:
+# fdisk /dev/md0
+Press X to enter the expert menu. Set number of 's'ectors per track so that the size of one cylinder matches the size of your MBR file. For two heads and a sector size of 512, the number of sectors per track should be 16, so we get cylinders of size 2x16x512=16k.
+Now, press R to return to the main menu.
+Press P and check that the cylinder size is now 16k.
+Now, create a single primary partition corresponding to /dev/hdaN. It should start at cylinder 2 and end at the end of the disk (note that the number of cylinders now differs from what it was when you entered fdisk.
+Finally, 'w'rite the result to the file: you are done. You now have a partition you can mount directly from your host, as well as part of a QEMU disk image:
+$ qemu -hdc /dev/md0 [...]
+You can of course safely set any bootloader on this disk image using QEMU, provided the original /dev/hdaN partition contains the necessary tools.
+Networking
+
+Tango-mail-mark-junk.png	This article or section is poorly written.
+Reason: This section needs serious cleanup and may contain out-of-date information. (Discuss)
+Tango-mail-mark-junk.png
+The performance of virtual networking should be better with tap devices and bridges than with user-mode networking or vde, since tap devices and bridges are implemented in-kernel.
+In addition, networking performance can be improved by assigning virtual machines a virtio network device rather than the default emulation of an e1000 NIC. See #Installing virtio drivers for more information.
+Note: Remember, to start qemu it is important to set a unique MAC address for each machine because they are on the same network. See #Link-level address caveat.
+$ qemu-system-i386 -net nic,macaddr=52:54:00:00:EE:03 -net vde <disk_image>
+User-mode networking
+By default, without any -netdev arguments, QEMU will use user-mode networking with a built-in DHCP server. Your virtual machines will be assigned an IP address when they run their DHCP client, and they will be able to access the physical host's network through IP masquerading done by QEMU. This only works with the TCP and UDP protocols, so ICMP, including ping, will not work.
+This default configuration allows your virtual machines to easily access the Internet, provided that the host is connected to it, but the virtual machines will not be directly visible on the external network, nor will virtual machines be able to talk to each other if you start up more than one concurrently.
+QEMU's user-mode networking can offer more capabilities such as built-in TFTP or SMB servers, or attaching guests to virtual LANs so that they can talk to each other. See the QEMU documentation on the -net user flag for more details.
+However, user-mode networking has limitations in both utility and performance. More advanced network configurations require the use of tap devices or other methods.
+Tap networking with QEMU
+Basic idea
+Tap devices are a Linux kernel feature that allows you to create virtual network interfaces that appear as real network interfaces. Packets sent to a "tap" interface are delivered to a userspace program, such as QEMU, that has bound itself to the interface.
+QEMU can use tap networking for a virtual machine so that packets sent to the tap interface will be sent to the virtual machine and appear as coming from a network interface (usually an Ethernet interface) in the virtual machine. Conversely, everything that the virtual machine sends through its network interface will appear on the tap interface.
+Tap devices are supported by the Linux bridge drivers, so it is possible to bridge together tap devices with each other and possibly with other host interfaces such as eth0. This is desirable if you want your virtual machines to be able to talk to each other, or if you want other machines on your LAN to be able to talk to the virtual machines.
+Bridge virtual machines to external network
+The following describes how to bridge a virtual machine to a host interface such as eth0, which is probably the most common configuration. This configuration makes it appear that the virtual machine is located directly on the external network, on the same Ethernet segment as the physical host machine.
+Warning: Beware that since your virtual machines will appear directly on the external network, this may expose them to attack. Depending on what resources your virtual machines have access to, you may need to take all the precautions you normally would take in securing a computer to secure your virtual machines.
+We will replace the normal Ethernet adapter with a bridge adapter and bind the normal Ethernet adapter to it. See http://en.gentoo-wiki.com/wiki/KVM#Networking_2 .
+Make sure that the following packages are installed:
+bridge-utils (provides brctl, to manipulate bridges)
+Enable IPv4 forwarding:
+sysctl net.ipv4.ip_forward=1
+To make the change permanent, change net.ipv4.ip_forward = 0 to net.ipv4.ip_forward = 1 in /etc/sysctl.conf.
+Load the tun module and configure it to be loaded on boot. See Kernel modules for details.
+Now create the bridge. See Bridge with netcfg for details.
+Remember to name your bridge as br0, or change the scripts below to your bridge's name.
+Create the script that QEMU uses to bring up the tap adapter with root:kvm 750 permissions:
+/etc/qemu-ifup
+#!/bin/sh
+  
+echo "Executing /etc/qemu-ifup"
+echo "Bringing up $1 for bridged mode..."
+sudo /usr/bin/ip link set $1 up promisc on
+echo "Adding $1 to br0..."
+sudo /usr/bin/brctl addif br0 $1
+sleep 2
+Create the script that QEMU uses to bring down the tap adapter in /etc/qemu-ifdown with root:kvm 750 permissions:
+/etc/qemu-ifdown
+#!/bin/sh
+ 
+echo "Executing /etc/qemu-ifdown"
+sudo /usr/bin/ip link set $1 down
+sudo /usr/bin/brctl delif br0 $1
+sudo /usr/bin/ip link delete dev $1
+Use visudo to add the following to your sudoers file:
+Cmnd_Alias      QEMU=/usr/bin/ip,/usr/bin/modprobe,/usr/bin/brctl
+%kvm     ALL=NOPASSWD: QEMU
+Make sure the user(s) wishing to use this new functionality are in the kvm group. Exit and log in again if necessary.
+You launch QEMU using the following run-qemu script:
+run-qemu
+#!/bin/bash
+USERID=`whoami`
+precreationg=$(/usr/bin/ip tuntap list | /usr/bin/cut -d: -f1 | /usr/bin/sort)
+sudo /usr/bin/ip tuntap add user $USERID mode tap
+postcreation=$(/usr/bin/ip tuntap list | /usr/bin/cut -d: -f1 | /usr/bin/sort)
+IFACE=$(comm -13 <(echo "$precreationg") <(echo "$postcreation"))
+
+# This line creates a random mac address. The downside is the dhcp server will assign a different ip each time
+printf -v macaddr "52:54:%02x:%02x:%02x:%02x" $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff )) $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff ))
+# Instead, uncomment and edit this line to set an static mac address. The benefit is that the dhcp server will assign the same ip.
+# macaddr='52:54:be:36:42:a9'
+  
+qemu-system-i386 -net nic,macaddr=$macaddr -net tap,ifname="$IFACE" $*
+  
+sudo ip link set dev $IFACE down &> /dev/null
+sudo ip tuntap del $IFACE mode tap &> /dev/null 
+Then to launch a VM, do something like this
+$ run-qemu -hda myvm.img -m 512 -vga std
+If you cannot get a DHCP address in the host, it might be because iptables are up by default in the bridge. In that case (from http://www.linux-kvm.org/page/Networking ):
+# cd /proc/sys/net/bridge
+# ls
+bridge-nf-call-arptables  bridge-nf-call-iptables
+bridge-nf-call-ip6tables  bridge-nf-filter-vlan-tagged
+# for f in bridge-nf-*; do echo 0 > $f; done
+You can use the following command to achieve the same effect:
+iptables -I FORWARD -m physdev --physdev-is-bridge -j ACCEPT
+And if you still cannot get networking to work, see: Linux_Containers#Bridge_device_setup.
+Simpler bridge method
+Use -net bridge, which creates a tap on an existing bridge. This method does not require a script and readily accomodates multiple taps and multiple bridges.
+First, copy /etc/qemu/bridge.conf.sample to /etc/qemu/bridge.conf. Now modify /etc/qemu/bridge.conf to contain the names of all bridges to be used:
+/etc/qemu/bridge.conf
+allow <bridge0>
+allow <bridge1>
+...
+Now start the VM. The most basic usage would be:
+$ qemu-system-i386 -net nic -net bridge,br=<bridge0> [...]
+With multiple taps, the most basic usage requires specifying the vlan for all additional nics:
+$ qemu-system-i386 -net nic -net bridge,br=<bridge0> -net nic,vlan=1 -net bridge,vlan=1,br=<bridge1> [...]
+Host-only networking
+If the bridge is given an IP address and traffic destined for it is allowed, but no "real" interface (e.g. eth0) is also connected to the bridge, then the virtual machines will be able to talk to each other and the physical host. However, they will not be able to talk to anything on the external network, provided that you do not set up IP masquerading on the physical host. This configuration is called "host-only" networking by other virtualization software such as VirtualBox.
+Note: If you want to set up IP masquerading, e.g. NAT for virtual machines, you can use iptables as it said at the Internet Share#Enable_NAT page.
+You may want to have a DHCP server running on the bridge interface to service the virtual network. For example, to use the 172.20.0.1/16 subnet with Dnsmasq as the DHCP server:
+# ip addr add 172.20.0.1/16 dev br0
+# ip link set br0 up
+# dnsmasq --interface=br0 --bind-interfaces --dhcp-range=172.20.0.2,172.20.255.254
+Internal networking
+If you do not give the bridge an IP address and add an iptables rule to drop all traffic to the bridge in the INPUT chain, then the virtual machines will be able to talk to each other, but not to the physical host or to the outside network. This configuration is called "internal" networking by other virtualization software such as VirtualBox. You will need to either assign static IP addresses to the virtual machines or run a DHCP server on one of them.
+Link-level address caveat
+By giving the -net nic argument to QEMU, it will, by default, assign a virtual machine a network interface with the link-level address 52:54:00:12:34:56. However, when using bridged networking with multiple virtual machines, it is essential that each virtual machine has a unique link-level (MAC) address on the virtual machine side of the tap device. Otherwise, the bridge will not work correctly, because it will receive packets from multiple sources that have the same link-level address. This problem occurs even if the tap devices themselves have unique link-level addresses because the source link-level address is not rewritten as packets pass through the tap device.
+To solve this problem, the last 8 digits of the link-level address of the virtual NICs should be randomized, as in the script above, to make sure that each virtual machine has a unique link-level address.
+Networking with VDE2
+What is VDE?
+VDE stands for Virtual Distributed Ethernet. It started as an enhancement of uml_switch. It is a toolbox to manage virtual networks.
+The idea is to create virtual switches, which are basically sockets, and to "plug" both physical and virtual machines in them. The configuration we show here is quite simple; However, VDE is much more powerful than this, it can plug virtual switches together, run them on different hosts and monitor the traffic in the switches. Your are invited to read the documentation of the project.
+The advantage of this method is you do not have to add sudo privileges to your users. Regular users should not be allowed to run modprobe.
+Basics
+VDE support can be installed via the vde2 package in the official repositories.
+In our config, we use tun/tap to create a virtual interface on my host. Load the tun module (see here for more info):
+# modprobe tun
+Now create the virtual switch:
+# vde_switch -tap tap0 -daemon -mod 660 -group kvm
+This line creates the switch, creates tap0, "plugs" it, and allows the users of the group kvm to use it.
+The interface is plugged in but not configured yet. To configure it, run this command:
+# ip addr add 192.168.100.254/24 dev tap0
+Now, you just have to run KVM with these -net options as a normal user:
+$ qemu-system-i386 -net nic -net vde -hda [...]
+Configure your guest as you would do in a physical network. We gave them static addresses and let them access the WAN using IP forwarding and masquerading on our host:
+# echo "1" > /proc/sys/net/ipv4/ip_forward
+# iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o eth0 -j MASQUERADE
+Startup scripts
+Example of main script starting VDE:
+/etc/systemd/scripts/qemu-network-env
+#!/bin/sh
+# QEMU/VDE network environment preparation script
+
+# The IP configuration for the tap device that will be used for
+# the virtual machine network:
+
+TAP_DEV=tap0
+TAP_IP=192.168.100.254
+TAP_MASK=24
+TAP_NETWORK=192.168.100.0
+
+
+# Host interface
+NIC=eth0
+
+case "$1" in
+  start)
+        echo -n "Starting VDE network for QEMU: "
+
+        # If you want tun kernel module to be loaded by script uncomment here 
+	#modprobe tun 2>/dev/null
+	## Wait for the module to be loaded
+ 	#while ! lsmod |grep -q "^tun"; do echo Waiting for tun device;sleep 1; done
+
+        # Start tap switch
+        vde_switch -tap "$TAP_DEV" -daemon -mod 660 -group kvm
+
+        # Bring tap interface up
+        ip address add "$TAP_IP"/"$TAP_MASK" dev "$TAP_DEV"
+        ip link set "$TAP_DEV" up
+
+        # Start IP Forwarding
+        echo "1" > /proc/sys/net/ipv4/ip_forward
+        iptables -t nat -A POSTROUTING -s "$TAP_NETWORK"/"$TAP_MASK" -o "$NIC" -j MASQUERADE
+        ;;
+  stop)
+        echo -n "Stopping VDE network for QEMU: "
+        # Delete the NAT rules
+        iptables -t nat -D POSTROUTING "$TAP_NETWORK"/"$TAP_MASK" -o "$NIC" -j MASQUERADE
+
+        # Bring tap interface down
+        ip link set "$TAP_DEV" down
+
+        # Kill VDE switch
+        pgrep -f vde_switch | xargs kill -TERM 
+        ;;
+  restart|reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart|reload}"
+        exit 1
+esac
+exit 0
+Example of systemd service using the above script:
+/etc/systemd/system/qemu-network-env.service
+[Unit]
+Description=Manage VDE Switch
+
+[Service]
+Type=oneshot
+ExecStart=/etc/systemd/scripts/qemu-network-env start
+ExecStop=/etc/systemd/scripts/qemu-network-env stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+Change permissions for qemu-network-env to be executed
+# chmod u+x /etc/systemd/scripts/qemu-network-env
+After that you can enable the service if you want to start this at boot time
+# systemctl enable qemu-network-env
+If you want to start it (you can replace start by stop or restart)
+# systemctl start qemu-network-env
+Alternative method
+If the above method does not work or you do not want to mess with kernel configs, TUN, dnsmasq and iptables you can do the following for the same result.
+# vde_switch -daemon -mod 660 -group kvm
+# slirpvde --dhcp --daemon
+Then to start the vm with a connection to the network of the host:
+$ qemu-system-i386 -net nic,macaddr=52:54:00:00:EE:03 -net vde <disk_image>
+VDE2 Bridge
+Based on quickhowto: qemu networking using vde, tun/tap, and bridge graphic. Any virtual machine connected to vde is externally exposed. For example, each virtual machine can receive dhcp configuration directly from you ADSL router.
+Basics
+Remember that you need tun module and bridge-utils package.
+Create the vde2/tap device:
+# vde_switch -tap tap0 -daemon -mod 660 -group kvm
+# ip link set tap0 up
+Create bridge:
+# brctl addbr br0
+Add devices:
+# brctl addif br0 eth0
+# brctl addif br0 tap0
+And configure bridge interface:
+# dhcpcd br0
+Startup scripts
+All devices must be set up. And only the bridge needs ip address. For physical devices on the bridge (e.g. eth0), this can be done with netctl using a custom ethernet profile with:
+/etc/netctl/ethernet-noip
+Description='A more versatile static ethernet connection'
+Interface=eth0
+Connection=ethernet
+IP=no
+VDE2 tap interface can be activated with the VDE2 interface custom systemd service.
+And finally, you can create the bridge interface with netctl.
+Graphics
+
+QEMU can use the following different graphic outputs: std, cirrus, vmware, qxl, xenfb and vnc. With the vnc option you can run your guest standalone and connect to it via VNC.
+Tango-view-fullscreen.png	This article or section needs expansion.
+Reason: Missing info on how to enable VNC. It's not -vga vnc. (Discuss)
+Tango-view-fullscreen.png
+std
+With -vga std you can get a resolution of up to 2560 x 1600 pixels.
+vmware
+Although it is a bit buggy, it performs better than std and cirrus. On the guest, install the VMware drivers. For Arch Linux guests:
+# pacman -S xf86-video-vmware xf86-input-vmmouse
+qxl
+QXL is a paravirt graphics driver with 2D support. You can install it from AUR xf86-video-qxl in your guest VM. Then start your VM with -vga qxl
+none
+If you do not want to see the graphical output from your virtual machine because you will be accessing it entirely through the network or serial port, you can run QEMU with the -nographic option.
+Installing virtio drivers
+
+QEMU offers guests the ability to use paravirtualized block and network devices using the virtio drivers, which provide better performance and lower overhead.
+A virtio block device requires the option -drive instead of the simple -hd* plus if=virtio:
+$ qemu-system-i386 -boot order=c -drive file=<disk_image>,if=virtio
+Note: -boot order=c is absolutely necessary when you want to boot from it. There is no auto-detection as with -hd*.
+Almost the same goes for the network:
+$ qemu-system-i386 -net nic,model=virtio
+Note: This will only work if the guest machine has a drivers for virtio devices. Linux does, and the required drivers are included in Arch Linux, but there is no guarantee that virtio devices will work with other operating systems.
+Preparing an (Arch) Linux guest
+To use virtio devices after an Arch Linux guest has been installed, the following modules can be loaded in the guest: virtio, virtio_pci, virtio_blk, virtio_net, and virtio_ring (for 32-bit guests, the specific "virtio" module is not necessary).
+If you want to boot from a virtio disk, the initial ramdisk must be rebuilt. Add the appropriate modules in /etc/mkinitcpio.conf like this:
+MODULES="virtio_blk virtio_pci virtio_net"
+and rebuild the initial ramdisk:
+# mkinitcpio -p linux
+Virtio disks are recognized with the prefix v (e.g. vda, vdb, etc.); therefore, changes must be made in at least /etc/fstab and /boot/grub/grub.cfg when booting from a virtio disk.
+Tip: When referencing to disks by UUID in both /etc/fstab and bootloader, nothing has to be done.
+Further information on paravirtualization with KVM can be found here.
+Preparing a Windows guest
+Block device drivers
+Preparing a Windows guest for booting from virtio disk is a bit tricky.
+You can download the virtio disk driver from the Fedora repository.
+Now you need to create a new disk image, which fill force Windows to search for the driver. For example:
+$ qemu-img create -f qcow2 fake.qcow2 1G
+Run the original Windows guest (with the boot disk still in IDE mode) with the fake disk (in virtio mode) and a CD-ROM with the driver.
+$ qemu-system-i386 -m 512 -vga std -drive file=<windows_disk_image>,if=ide -drive file=fake.qcow2,if=virtio -cdrom virtio-win-0.1-59.iso
+Windows will detect the fake disk and try to find a driver for it. If it fails, go to the Device Manager, locate the SCSI drive with an exclamation mark icon (should be open), click Update driver and select the virtual CD-ROM. Don't forget to mark the checkbox which says to search for directories recursively.
+When the installation is successful, you can turn off the virtual machine and launch it again, now with the boot disk attached in virtio mode:
+$ qemu-system-i386 -m 512 -vga std -drive file=<windows_disk_image>,if=virtio
+Note: If you encounter the Blue Screen of Death, make sure you did not forget the -m parameter, and that you do not boot with virtio instead of ide for the system drive before drivers are installed.
+Network drivers
+Installing virtio network drivers is a bit easier, simply add the -net argument as explained above.
+$ qemu-system-i386 -m 512 -vga std -drive file=<windows_disk_image>,if=virtio -net nic,model=virtio -cdrom virtio-win-0.1-30.iso
+Windows will detect the network adapter and try to find a driver for it. If it fails, go to the Device Manager, locate the network adapter with an exclamation mark icon (should be open), click Update driver and select the virtual CD-ROM. Don't forget to mark the checkbox which says to search for directories recursively.
+Preparing a FreeBSD guest
+Install the emulators/virtio-kmod port if you are using FreeBSD 8.3 or later up until 10.0-CURRENT where they are included into the kernel. After installation, add the following to your /boot/loader.conf file:
+virtio_loader="YES"
+virtio_pci_load="YES"
+virtio_blk_load="YES"
+if_vtnet_load="YES"
+virtio_balloon_load="YES"
+Then modify your /etc/fstab by doing the following:
+sed -i/etc/fstab.bak "s/ad/vtbd/g" /etc/fstab
+And verify that /etc/fstab is consistent. If anything goes wrong, just boot into a rescue CD and copy /etc/fstab.bak back to /etc/fstab.
+Tips and tricks
+
+Starting QEMU virtual machines on boot
+With libvirt
+If a virtual machine is set up with libvirt, it can be configured through the virt-manager GUI to start at host boot by going to the Boot Options for the virtual machine and selecting "Start virtual machine on host boot up".
+Custom script
+To run QEMU VMs on boot, you can use following systemd unit and config.
+/etc/systemd/system/qemu@.service
+[Unit]
+Description=QEMU virtual machine
+
+[Service]
+Environment="type=system-x86-64" "haltcmd=kill -INT $MAINPID"
+EnvironmentFile=/etc/conf.d/qemu.d/%i
+ExecStart=/usr/bin/qemu-${type} -name %i -nographic $args
+ExecStop=/bin/sh -c ${haltcmd}
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+Then create per-VM configuration files, named /etc/conf.d/qemu.d/vm_name, with the following variables set:
+type
+QEMU binary to call. If specified, will be prepended with /usr/bin/qemu- and that binary will be used to start the VM. I.e. you can boot e.g. qemu-system-arm images with type="system-arm".
+args
+QEMU command line to start with. Will always be prepended with -name ${vm} -nographic.
+haltcmd
+Command to shutdown VM safely. I am using -monitor telnet:.. and power off my VMs via ACPI by sending system_powerdown to monitor. You can use ssh or some other ways.
+Example configs:
+/etc/conf.d/qemu.d/one
+type="system-x86_64"
+
+args="-enable-kvm -m 512 -hda /dev/mapper/vg0-vm1 -net nic,macaddr=DE:AD:BE:EF:E0:00 \
+ -net tap,ifname=tap0 -serial telnet:localhost:7000,server,nowait,nodelay \
+ -monitor telnet:localhost:7100,server,nowait,nodelay -vnc :0"
+
+haltcmd="echo 'system_powerdown' | nc localhost 7100" # or netcat/ncat
+
+# You can use other ways to shutdown your VM correctly
+#haltcmd="ssh powermanager@vm1 sudo poweroff"
+/etc/conf.d/qemu.d/two
+args="-enable-kvm -m 512 -hda /srv/kvm/vm2.img -net nic,macaddr=DE:AD:BE:EF:E0:01 \
+ -net tap,ifname=tap1 -serial telnet:localhost:7001,server,nowait,nodelay \
+ -monitor telnet:localhost:7101,server,nowait,nodelay -vnc :1"
+
+haltcmd="echo 'system_powerdown' | nc localhost 7101"
+To set which virtual machines will start on bootup, use
+# systemctl enable qemu@vm_name
+# systemctl disable qemu@vm_name
+Mouse integration
+To prevent the mouse from being grabbed when clicking on the guest operating system's window, add the option -usbdevice tablet. This means QEMU is able to report the mouse position without having to grab the mouse. This also overrides PS/2 mouse emulation when activated. For example:
+$ qemu-system-i386 -hda <disk_image> -m 512 -vga std -usbdevice tablet
+Pass-through host USB device
+To access physical USB device connected to host from VM, you can start QEMU with following option:
+$ qemu-system-i386 -usbdevice host:<vendor_id>:<product_id> <disk_image>
+You can find vendor_id and product_id of your device with lsusb command.
+Note: If you encounter permission errors when running QEMU, see Udev#Writing udev rules for information on how to set permissions of the device.
+Enabling KSM
+Kernel Samepage Merging (KSM) is a feature of the Linux kernel introduced in the 2.6.32 kernel. KSM allows for an application to register with the kernel to have its pages merged with other processes that also register to have their pages merged. The KSM mechanism allows for guest virtual machines to share pages with each other. In an environment where many of the guest operating systems are similar, this can result in significant memory savings.
+To enable KSM, simply run
+# echo 1 > /sys/kernel/mm/ksm/run
+To make it permanent, you can use systemd's temporary files:
+/etc/tmpfiles.d/ksm.conf
+w /sys/kernel/mm/ksm/run - - - - 1
+If KSM is running, and there are pages to be merged (i.e. at least two similar VMs are running), then /sys/kernel/mm/ksm/pages_shared should be non-zero. See https://www.kernel.org/doc/Documentation/vm/ksm.txt for more information.
+Tip: An easy way to see how well KSM is performing is to simply print the contents of all the files in that directory:
+$ grep . /sys/kernel/mm/ksm/*
+Spice support
+The Spice project aims to provide a complete open source solution for interaction with virtualized desktop devices. Its main focus is to provide high-quality remote access to QEMU virtual machines. Spice project homepage
+The official QEMU package is built without Spice support. To build your version with Spice enabled you need to have the Arch Build System on your system.
+Install spice first.
+Then update ABS on your system to the latest version and copy /var/abs/extra/qemu to somewhere (here we use ~/temp/ as an example) you like:
+$ sudo abs
+$ cp -r /var/abs/extra/qemu ~/temp
+Go to your copy of the package folder (here ~/temp/qemu and add --enable-spice after .configure in the build() function of the PKGBUILD:
+$ cd ~/temp/qemu
+$ sed -i "s/\.\/configure/& --enable-spice/g" PKGBUILD
+Then build and install the package:
+$ makepkg -i
+After installation of all the spice packages, you can start your VM:
+$ qemu-system-i386 -vga qxl -spice port=5930,disable-ticketing
+Then connect with the the spice client
+$ spicec -h 127.0.0.1 -p 5930
+Windows-specific notes
+QEMU can run any version of Windows from Windows 95 through Windows 8.
+It is possible to run Windows PE in QEMU.
+Remote Desktop Protocol
+If you use a MS Windows guest, you might want to use RDP to connect to your guest VM. If you are using a VLAN or are not in the same network as the guest, use:
+$ qemu -nographic -net user,hostfwd=tcp::5555-:3389
+Then connect with either rdesktop or freerdp to the guest, for example:
+$ xfreerdp -g 2048x1152 localhost:5555 -z -x lan
+Troubleshooting
+
+Mouse cursor is jittery or erratic
+If the cursor jumps around the screen uncontrollably, entering this on the terminal before starting qemu might help:
+$ export SDL_VIDEO_X11_DGAMOUSE=0
+If this helps, you can add this to your bashrc.
+Keyboard seems broken or the arrow keys do not work
+Should you find that some of your keys do not work or "press" the wrong key (in particular, the arrow keys), you likely need to specify your keyboard layout as an option. The keyboard layouts can be found in /usr/share/qemu/keymaps.
+$ qemu-system-i386 -k <keymap> <disk_image>
+Virtual machine runs too slowly
+There are a number of techniques that you can use to improve the performance if your virtual machine. For example:
+Use the -cpu host option to make QEMU emulate the host's exact CPU. If you don't do this, it may be trying to emulate a more generic CPU.
+If the host machine has multiple CPUs, assign the guest more CPUs using the -smp option.
+Make sure you have assigned the virtual machine enough memory. By default, QEMU only assigns 128MiB of memory to each virtual machine. Use the -m option to assign more memory. For example, -m 1024 runs a virtual machine with 1024MiB of memory.
+Use KVM if possible: add -machine type=pc,accel=kvm to the qemu start command you use.
+If supported by drivers in the guest operating system, use virtio for network and/or block devices. For example:
+$ qemu-system-i386 -net nic,model=virtio -net tap,if=tap0,script=no -drive file=<disk_image>,media=disk,if=virtio
+Use TAP devices instead of user-mode networking. See #Tap networking with QEMU.
+If the guest OS is doing heavy writing to its disk, you may benefit from certain mount options on the host's filesystem. For example, you can mount an ext4 filesystem with the option barrier=0. You should read the documentation for any options that you change, since sometimes performance-enhancing options for filesystems come at the cost of data integrity.
+If you have a raw disk image, disable the cache:
+$ qemu-system-i386 -drive file=<disk_image>,if=virtio,cache=none
+If you are running multiple virtual machines concurrently that all have the same operating system installed, you can save memory by enabling kernel same-page merging:
+# echo 1 > /sys/kernel/mm/ksm/run
+In some cases, memory can be reclaimed from running virtual machines by running a memory ballooning driver in the guest operating system and launching QEMU with the -balloon virtio option.
+

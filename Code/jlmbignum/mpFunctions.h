@@ -90,6 +90,7 @@ bool            mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 bool            mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR);
 bool            mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
                     bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR);
+bool            mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut);
 #endif
 
 

@@ -1,0 +1,21 @@
+John's MAC
+
+OpenSSL 0.9.8x 10 May 2012
+The 'numbers' are in 1000s of bytes per second processed.
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes
+sha256           15944.77k    38951.69k    71796.47k    91411.05k    99516.92k
+
+                  sign    verify    sign/s verify/s
+rsa 1024 bits 0.001844s 0.000088s    542.3  11342.8
+
+fileProxy crypto
+./rsaspeedtest.exe privatePolicyKey.xml -Decrypt 400 -fast
+RSA Fast Decrypt, Key file privatePolicyKey.xml 400 blocks
+    6.0000 seconds 400 operations    66.6667 operations per second
+
+Weyl:jlmcrypt jlm$ ./sha256speedtest.exe -Blocks 150000
+    2.0000 seconds, 153600000 bytes, blocksize: 1024, 76800000.0000 bytes per second
+
+
+
+

@@ -32,6 +32,7 @@
 #include "mpFunctions.h"
 
 
+// #define MONTGOMERYENABLED
 // ----------------------------------------------------------------------------
 
 //
@@ -420,6 +421,316 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
 
 
 // ---------------------------------------------------------------------------------
+// #define MPMONTTEST
+
+
+inline bool mpShiftUpWords(bnum& bnN, int r, bnum& bnOut)
+{
+    int     lN= mpWordsinNum(bnN.mpSize(), bnN.m_pValue);
+    int     j;
+
+    if(bnOut.mpSize()<(lN+r))
+        return false;
+
+    for(j=0;j<lN; j++)
+        bnOut.m_pValue[j+r]= bnN.m_pValue[j];
+    for(j=0; j<r; j++)
+        bnOut.m_pValue[j]= 0ULL;
+    return true;
+}
+
+
+inline bool mpShiftDownWords(bnum& bnN, int r, bnum& bnOut)
+{
+    int     lN= mpWordsinNum(bnN.mpSize(), bnN.m_pValue);
+    int     j;
+
+    if(bnOut.mpSize()<(lN-r)) {
+        fprintf(g_logFile, "ShiftDownWords no room: Out: %d, transfer: %d\n",
+                bnOut.mpSize(), lN-r);
+        return false;
+    }
+    for(j=r;j<lN; j++)
+        bnOut.m_pValue[j-r]= bnN.m_pValue[j];
+    for(j=lN;j<bnOut.mpSize(); j++)
+        bnOut.m_pValue[j]= 0ULL;
+    return true;
+}
+
+
+
+inline bool mpModPowerofTwo(bnum& bnN, int r)
+// reset bnN to bnN (mod 2^r)
+{
+    int     j;
+
+    for(j=r;j<bnN.mpSize(); j++)
+        bnN.m_pValue[j]= 0ULL;
+    return true;
+}
+
+
+bool mpMontRed(bnum& bnN, bnum& bnM, int r, bnum& bnMPrime, bnum& bnmontN)
+//
+//   0<= bnN < bnM*2^r, bnMPrime= -bnM^(-1) (mod 2^r)
+//   return x= bnN 2^(-r) (mod bnM)
+{
+    bool    fRet= true;
+    int     lN= mpWordsinNum(bnN.mpSize(), bnN.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+
+    if(lM>r || lN>2*r) {
+        fprintf(g_logFile, "mpMontRed inputs too large lM: %d, lN: %d, r: %d\n",
+                lM, lN, r);
+        return false;
+    }
+
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "\nmpMontRed, r: %d\n", r);
+    fprintf(g_logFile, "N: "); printNum(bnN); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "MPrime: "); printNum(bnMPrime); fprintf(g_logFile, "\n");
+#endif
+    try {
+        bnum    bnU(4*r);
+        bnum    bnV(4*r);
+
+        if(!mpUMult(bnN, bnMPrime, bnU)) {
+            throw("UMult failed");
+        }
+        mpModPowerofTwo(bnU, r);
+        if(!mpUMult(bnU, bnM, bnV)) {
+            throw("UMult failed");
+        }
+        mpAddTo(bnV, bnN);
+        // bnmontN= bnV/2^r
+        if(!mpShiftDownWords(bnV, r, bnmontN)) {
+            fprintf(g_logFile, "mpShiftDownWords failed\n");
+        }
+        if(s_isGreaterThan== mpUCompare(bnmontN, bnM)) {
+            mpUSubFrom(bnmontN, bnM);
+        }
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpMontRed error\n");
+        fRet= false;
+    }
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "montN (%d): ", mpWordsinNum(bnmontN.mpSize(), bnmontN.m_pValue)); 
+    printNum(bnmontN); fprintf(g_logFile, "\n\n");
+#endif
+    return fRet;
+}
+
+
+bool mpMakeMont(bnum& bnN, bnum& bnM, int r, bnum& bnmontN)
+// montN= N*2**r (mod M)
+{
+    bool    fRet= true;
+    int     lN= mpWordsinNum(bnN.mpSize(), bnN.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+
+    if(lM>r || lN>2*r) {
+        fprintf(g_logFile, "mpMakeMont inputs too large lM: %d, lN: %d, r: %d\n",
+                lM, lN, r);
+        return false;
+    }
+
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "\nmpMakeMont, r: %d\n", r);
+    fprintf(g_logFile, "N: "); printNum(bnN); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+#endif
+    try {
+        bnum    bnU(4*r);
+
+        if(!mpShiftUpWords(bnN, r, bnU))
+            throw("mpShiftUpWords error");
+        mpMod(bnU, bnM, bnmontN);
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpMakeMont error\n");
+        fRet= false;
+    }
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "montN: "); printNum(bnmontN); fprintf(g_logFile, "\n\n");
+#endif
+    return fRet;
+}
+
+
+bool mpMontStep(bnum& bnmontA, bnum& bnmontB, bnum& bnM, bnum& bnMPrime, 
+                      int r, bnum& bnmontC)
+// return bnmontC= bnmontA*bnmontB*2^(-r)
+//      bnMPrime= -(bnM^(-1)) (mod 2^r)
+{
+    bool    fRet= true;
+    int     lMontA= mpWordsinNum(bnmontA.mpSize(), bnmontA.m_pValue);
+    int     lMontB= mpWordsinNum(bnmontB.mpSize(), bnmontB.m_pValue);
+    int     maxSize= lMontA;
+    
+    if(lMontA<lMontB)
+        maxSize= lMontB;
+    if(r>maxSize)
+        maxSize= r;
+    maxSize*= 4;
+    UNUSEDVAR(maxSize);
+
+    try {
+        bnum    bnT(maxSize);
+
+        mpZeroNum(bnT);
+        if(!mpUMult(bnmontA, bnmontB, bnT)) {
+            throw("UMult failed");
+        }
+        if(!mpMontRed(bnT, bnM, r, bnMPrime, bnmontC)) {
+            throw("MontRed failed");
+        }
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "montStep error\n");
+        fRet= false;
+    }
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "\nMontStep, r: %d, in sizes: %d, %d, outsize: %d\n", 
+            r, lMontA, lMontB, mpWordsinNum(bnmontC.mpSize(), bnmontC.m_pValue));
+    fprintf(g_logFile, "A: "); printNum(bnmontA); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "B: "); printNum(bnmontB); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "montC: "); printNum(bnmontC); fprintf(g_logFile, "\n\n");
+#endif
+    return fRet;
+}
+
+
+//  Function: bool mpMontModExp
+//  Arguments:
+//      IN bnum bnBase
+//      IN bnum bnExp
+//      IN bnum bnM
+//      OUT bnum bnR
+//  Description:
+//      Compute bnBase^bnExp (mod bnM) with classical algorithm, result>=0
+
+bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut)
+{
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnBase.mpSize(), bnBase.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    int     leadBit= 0;
+    int     j;
+
+    if(lM>maxSize)
+        maxSize= lM;
+    maxSize*= 4;
+
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "\nmpMontModExp, r: %d, maxSize: %d\n", lM, maxSize);
+    fprintf(g_logFile, "Base: "); printNum(bnBase); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "Exp: "); printNum(bnExp); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
+#endif
+    try {
+        int     r= lM;
+        bnum    bnmontBasePower(maxSize);   // Base to Power of 2
+        bnum    bnmontA(maxSize);           // Accumulated product
+
+        bnum    bnT(maxSize);
+        bnum    bnR(maxSize);
+        bnum    bncoR(maxSize);           
+        bnum    bnMPrime(maxSize); 
+
+        mpZeroNum(bnmontBasePower);
+        mpZeroNum(bnmontA);
+        mpZeroNum(bnT);
+        mpZeroNum(bncoR);
+        mpZeroNum(bnR);
+        mpZeroNum(bnMPrime);
+        bnR.m_pValue[r]= 1;
+
+        UNUSEDVAR(maxSize);
+
+        // bncoR*bnR + bnM*bnX = 1
+        if(!mpExtendedGCD(bnR, bnM, bncoR, bnMPrime, bnT)) {
+            throw("cant compute mont gcd");
+        }
+        // bnT should be 1
+#ifdef MPMONTTEST
+        fprintf(g_logFile, "T: "); printNum(bnT); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "R: "); printNum(bnR); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "MPrime: "); printNum(bnMPrime); fprintf(g_logFile, "\n");
+#endif
+
+        // bnMPrime= -bnMPrime (mod 2^r)
+        bnMPrime.mpNegate();
+        while(bnMPrime.mpSign()) {
+            mpAddTo(bnMPrime, bnR);
+        }
+#ifdef MPMONTTEST
+        fprintf(g_logFile, "finalMPrime: "); printNum(bnMPrime); fprintf(g_logFile, "\n");
+#endif
+
+        if(!mpMakeMont(bnBase, bnM, r, bnmontBasePower)) {
+            throw("MontMake error 1");
+        }
+        if(!mpMakeMont(g_bnOne, bnM, r, bnmontA)) {
+            throw("MontMake error 2");
+        }
+#ifdef MPMONTTEST
+        fprintf(g_logFile, "montBasePower: "); printNum(bnmontBasePower); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "montA: "); printNum(bnmontA); fprintf(g_logFile, "\n\n");
+#endif
+
+        leadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
+        
+        if(IsBitPositionNonZero(bnExp, 1)) {
+            if(!mpMontStep(bnmontBasePower, bnmontA, bnM, 
+                           bnMPrime, r, bnT)) {
+                throw("MontStep error 1");
+            }
+            mpZeroNum(bnmontA);
+            bnT.mpCopyNum(bnmontA);
+            mpZeroNum(bnT);
+        }
+        for(j=2; j<=leadBit; j++) {
+            if(!mpMontStep(bnmontBasePower, bnmontBasePower, bnM, 
+                           bnMPrime, r, bnT)) {
+                throw("MontStep error 2");
+            }
+            mpZeroNum(bnmontBasePower);
+            bnT.mpCopyNum(bnmontBasePower);
+            mpZeroNum(bnT);
+            if(IsBitPositionNonZero(bnExp, j)) {
+                if(!mpMontStep(bnmontBasePower, bnmontA, bnM, bnMPrime, r, bnT)) {
+                    throw("MontStep error 3");
+                }
+                mpZeroNum(bnmontA);
+                bnT.mpCopyNum(bnmontA);
+                mpZeroNum(bnT);
+            }
+        }
+        if(!mpMontRed(bnmontA, bnM, r, bnMPrime, bnOut)) {
+            throw("MontStep error 4");
+        }
+#ifdef MPMONTTEST
+        fprintf(g_logFile, "j: %d\n", j);
+        fprintf(g_logFile, "montBasePower: "); printNum(bnmontBasePower); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "montA: "); printNum(bnmontA); fprintf(g_logFile, "\n\n");
+        fprintf(g_logFile, "reduced: "); printNum(bnOut); fprintf(g_logFile, "\n\n");
+#endif
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpMontModExp error\n");
+        fRet= false;
+    }
+#ifdef MPMONTTEST
+    fprintf(g_logFile, "Out: "); printNum(bnOut); fprintf(g_logFile, "\n\n");
+#endif
+    return fRet;
+}
+
+
+// ---------------------------------------------------------------------------------
 
 
 bool mpTestFermatCondition(bnum& bnBase, bnum& bnM)
@@ -546,16 +857,23 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
         bnum    bnT1(maxSize);
         bnum    bnT2(maxSize);
 
+#ifndef MONTGOMERYENABLED
         if(!mpModExp(bnMsg, bnDP, bnP, bnT1))
             throw("mpModExp fails");
         if(!mpModExp(bnMsg, bnDQ, bnQ, bnT2))
             throw("mpModExp fails");
+#else
+        if(!mpMontModExp(bnMsg, bnDP, bnP, bnT1))
+            throw("mpModExp fails");
+        if(!mpMontModExp(bnMsg, bnDQ, bnQ, bnT2))
+            throw("mpModExp fails");
+#endif
 
         if(!mpCRT(bnT1, bnP, bnT2, bnQ, bnR))
             throw("mpCRT fails");
     }
     catch(const char* sz) {
-        fprintf(g_logFile, "mpRSADEC error: %s", sz);
+        fprintf(g_logFile, "mpRSADEC error: %s\n", sz);
         fRet= false;
     }
 

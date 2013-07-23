@@ -7,6 +7,8 @@ SBM=	    ../jlmbignum
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST
 CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST
+#CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI
+#CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -36,7 +38,6 @@ $(B)/jlmErrors.o: $(SC)/jlmErrors.cpp $(SC)/jlmErrors.h
 
 $(B)/fastArith.o: $(SBM)/fastArith.cpp
 	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -c -o $(B)/fastArith.o $(SBM)/fastArith.cpp
-	$(CC) $(CFLAGS1) -I$(SC) -I$(SBM) -S -o $(B)/fastArith.s $(SBM)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(SBM)/mpBasicArith.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SBM) -c -o $(B)/mpBasicArith.o $(SBM)/mpBasicArith.cpp

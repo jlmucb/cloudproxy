@@ -28,6 +28,8 @@
 #include "jlmTypes.h"
 #include "logging.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 
 template <class T> inline T rotrFixed(T x, unsigned int y)
@@ -191,7 +193,7 @@ void  Sha256::Update(const byte* data, int size)
         processed+= SHA256_BLOCKSIZE_BYTES;
     }
 
-    while(left>SHA256_BLOCKSIZE_BYTES) {
+    while(left>=SHA256_BLOCKSIZE_BYTES) {
         memcpy(m_rgB, pCurData, SHA256_BLOCKSIZE_BYTES);
 #ifdef LITTLE_ENDIAN
         littleEndian(m_rgB, SHA256_BLOCKSIZE_BYTES);
@@ -223,7 +225,6 @@ void  Sha256::Final()
 
     if(m_iBLen>0)
         m_uLen+= m_iBLen;
-
     // append 1
     m_rgB[m_iBLen++]= 0x80;
 

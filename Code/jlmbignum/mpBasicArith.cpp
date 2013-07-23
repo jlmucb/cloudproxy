@@ -447,6 +447,10 @@ void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits)
     i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
     u64         r, s, t;
 
+#ifdef SHIFTTEST
+    fprintf(g_logFile, "shiftup(%d)\n", numShiftBits);
+    fprintf(g_logFile, "wordShift: %d, bitshift: %d\n", wordShift, bitShift);
+#endif
     if(bitShift==0)
         bottomShift= 0;
     else
@@ -483,6 +487,9 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
     i32         lA= mpWordsinNum(bnA.mpSize(), rgA);
     u64         r, s, t;
 
+#ifdef SHIFTTEST
+    fprintf(g_logFile, "shiftdown(%d)\n", numShiftBits);
+#endif
     if(bitShift==0)
         bottomShift= 0;
     else
@@ -502,7 +509,6 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
     }
 }
 
-
 //  Function: bool mpShift
 //  Arguments:
 //      IN bnum bnA
@@ -515,6 +521,10 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
     i32     sizeA= bnA.mpSize();
     i32     sizeR= bnR.mpSize();
 
+#ifdef SHIFTTEST
+    fprintf(g_logFile, "mpShift %d bits\n", numShiftBits);
+    fprintf(g_logFile, "bnA: "); printNum(bnA); fprintf(g_logFile, "\n");
+#endif
     // Enough room?
     if(sizeA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64)>sizeR)
         return false;
@@ -532,6 +542,9 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
         shiftdown(bnA, bnR, -numShiftBits);
     }
 
+#ifdef SHIFTTEST
+    fprintf(g_logFile, "bnR: "); printNum(bnR); fprintf(g_logFile, "\n");
+#endif
     return true;
 }
 

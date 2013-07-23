@@ -442,6 +442,39 @@ char uCompareSymbol(bnum& bnA, bnum& bnB)
 }
 
 
+bool singlersaTest(RSAKey* pKey, int sizein, byte* in, bool fFast=false)
+{
+    bool    fRet= true;
+    byte    out[1024];
+    byte    recovered[1024];
+    int     m, n;
+    u32     useprivate= USEPRIVATE;
+
+    n= 1024;
+    if(!RSASeal(*pKey, USEPUBLIC, sizein, in, &n, out)) {
+        printf("singlersaTest: RSASeal failed\n");
+        fRet= false;
+        goto done;
+    }
+    m= 1024;
+    if(fFast)
+        useprivate= USEPRIVATEFAST;
+    if(!RSAUnseal(*pKey, useprivate, n, out, &m, recovered)) {
+        printf("singlersaTest: RSAUnseal failed\n");
+        fRet= false;
+        goto done;
+    }
+    printf("RSAUnseal returns %d bytes\n", m);
+    if(memcmp(in, recovered, sizein)!=0) {
+        printf("singlersaTest: input and recovered dont match\n");
+        fRet= false;
+    }
+
+done:
+    return fRet;
+}
+
+
 bool squaretests()
 {
     bool    fRet= true;
@@ -609,6 +642,101 @@ bool usingleaddtests()
 
     return fRet;
 }
+
+
+bool monttests()
+{
+    bool    fRet= true;
+    bnum    bnB(10);
+    bnum    bnE(10);
+    bnum    bnM(10);
+    bnum    bnOut(10);
+    bnum    bnOut2(10);
+    int     i= 0;
+
+#if 0
+    bnB.m_pValue[0]= 2ULL;
+    bnE.m_pValue[0]= 1ULL;
+    bnM.m_pValue[0]= 97;
+    if(!mpMontModExp(bnB, bnE, bnM, bnOut)) {
+        fprintf(g_logFile, "mpMontModExp fails\n");
+        fRet= false;
+    }
+    printNum(bnB);
+    printf("**\n  ");   
+    printNum(bnE); 
+    printf("\n(mod  ");   
+    printNum(bnM); 
+    printf(")\n=  \n");   
+    printNum(bnOut); 
+    printf("\n");
+    printf("\n");
+#endif
+
+    RSAKey* pKey= RSAGenerateKeyPair(1024);
+    byte    testmessage[32]= { 
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04};
+    if(pKey==NULL) {
+        printf("rsaTests: cant generate key\n");
+        return false;
+    }
+#ifdef TEST
+    pKey->printMe();
+    printf("\n");
+#endif
+
+    for(i=0;i<100;i++) {
+        if(singlersaTest(pKey, 32, testmessage, true))
+            fprintf(g_logFile, "singlersaTest %d passed\n", i);
+        else {
+            fRet= false;
+            fprintf(g_logFile, "singlersaTest %d failed\n", i);
+        }
+        testmessage[0]++;
+    }
+
+#if 0
+    bnB.m_pValue[0]= 0x7384ULL;
+    bnM.m_pValue[0]= 0x7384755ULL;
+    int i;
+    u64 u= 0x1ULL;
+
+    for(i=0;i<15;i++) {
+    	bnE.m_pValue[0]= u;
+        if(!mpModExp(bnB, bnE, bnM, bnOut)) {
+            fprintf(g_logFile, "mpMontModExp fails\n");
+            fRet= false;
+        }
+        if(!mpMontModExp(bnB, bnE, bnM, bnOut2)) {
+            fprintf(g_logFile, "mpMontModExp fails\n");
+            fRet= false;
+        }
+
+        fprintf(g_logFile, "\n********\n\n");
+        fprintf(g_logFile, "Classical result: "); printNum(bnOut); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "Montgomery result: "); printNum(bnOut2); fprintf(g_logFile, "\n");
+        fprintf(g_logFile, "\n********\n\n");
+
+        if(mpUCompare(bnOut, bnOut2)==s_isEqualTo) {
+            fprintf(g_logFile, "Montgomery and classical match\n");
+        }
+        else {
+            fprintf(g_logFile, "algorithms diverge\n");
+            fRet= false;
+        }
+        mpZeroNum(bnOut);
+        mpZeroNum(bnOut2);
+        u= (u<<1)|1ULL;
+    }
+#endif
+    return fRet;
+}
+
+
+// ---------------------------------------------------------------------------------
 
 
 bool uaddtests()
@@ -1290,39 +1418,6 @@ bool primeGentests()
 }
 
 
-bool singlersaTest(RSAKey* pKey, int sizein, byte* in, bool fFast=false)
-{
-    bool    fRet= true;
-    byte    out[1024];
-    byte    recovered[1024];
-    int     m, n;
-    u32     useprivate= USEPRIVATE;
-
-    n= 1024;
-    if(!RSASeal(*pKey, USEPUBLIC, sizein, in, &n, out)) {
-        printf("singlersaTest: RSASeal failed\n");
-        fRet= false;
-        goto done;
-    }
-    m= 1024;
-    if(fFast)
-        useprivate= USEPRIVATEFAST;
-    if(!RSAUnseal(*pKey, useprivate, n, out, &m, recovered)) {
-        printf("singlersaTest: RSAUnseal failed\n");
-        fRet= false;
-        goto done;
-    }
-    printf("RSAUnseal returns %d bytes\n", m);
-    if(memcmp(in, recovered, sizein)!=0) {
-        printf("singlersaTest: input and recovered dont match\n");
-        fRet= false;
-    }
-
-done:
-    return fRet;
-}
-
-
 bool rsaTests()
 {
     bool    fRet= true;
@@ -1415,6 +1510,16 @@ int main(int an, char** av)
             throw((char*)"Cant init numbers");
         }
 
+        if(monttests()) {
+            printf("monttests succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("monttests failed\n");
+        }
+        printf("\n");
+        return 0;
+
         if(squaretests()) {
             printf("squaretests succeeded\n");
         }
@@ -1422,6 +1527,7 @@ int main(int an, char** av)
             fAllTests= false;
             printf("squaretests failed\n");
         }
+        printf("\n");
 
         if(copytests()) {
             printf("copytests succeeded\n");
@@ -1431,6 +1537,7 @@ int main(int an, char** av)
             printf("copytests failed\n");
         }
         printf("\n");
+
         if(maxbittests()) {
             printf("maxbitstests succeeded\n");
         }
@@ -1439,6 +1546,7 @@ int main(int an, char** av)
             printf("maxbitstests failed\n");
         }
         printf("\n");
+
         if(shifttests()) {
             printf("shifttests succeeded\n");
         }
@@ -1447,6 +1555,7 @@ int main(int an, char** av)
             printf("shifttests failed\n");
         }
         printf("\n");
+
         if(usingleaddtests()) {
             printf("usingleaddtests succeeded\n");
         }
@@ -1455,6 +1564,7 @@ int main(int an, char** av)
             printf("usingleaddtests failed\n");
         }
         printf("\n");
+
         if(uaddtests()) {
             printf("uaddtests succeeded\n");
         }
@@ -1463,6 +1573,7 @@ int main(int an, char** av)
             printf("uaddtests failed\n");
         }
         printf("\n");
+
         if(usubtracttests()) {
             printf("usubtracttests succeeded\n");
         }
@@ -1471,6 +1582,7 @@ int main(int an, char** av)
             printf("usubtracttests failed\n");
         }
         printf("\n");
+
         if(uaddtotests()) {
             printf("uaddtotests succeeded\n");
         }
@@ -1479,6 +1591,7 @@ int main(int an, char** av)
             printf("uaddtotests failed\n");
         }
         printf("\n");
+
         if(usubfromtests()) {
             printf("subfromtests succeeded\n");
         }
@@ -1487,6 +1600,7 @@ int main(int an, char** av)
             printf("subfromtests failed\n");
         }
         printf("\n");
+
         if(usinglemulttests()) {
             printf("usinglemulttests succeeded\n");
         }
@@ -1495,6 +1609,7 @@ int main(int an, char** av)
             printf("usinglemulttests failed\n");
         }
         printf("\n");
+
         if(usinglemultandshifttests()) {
             printf("usinglemultandshifttests succeeded\n");
         }
@@ -1503,6 +1618,7 @@ int main(int an, char** av)
             printf("usinglemultandshifttests failed\n");
         }
         printf("\n");
+
         if(ucomparetests()) {
             printf("ucomparetests succeeded\n");
         }
@@ -1511,6 +1627,7 @@ int main(int an, char** av)
             printf("ucomparetests failed\n");
         }
         printf("\n");
+
         if(udividetests()) {
             printf("udividetests succeeded\n");
         }
@@ -1519,6 +1636,7 @@ int main(int an, char** av)
             printf("udividetests failed\n");
         }
         printf("\n");
+
         if(usingledivtests()) {
             printf("usingledivtests succeeded\n");
         }
@@ -1527,6 +1645,7 @@ int main(int an, char** av)
             printf("usingledivtests failed\n");
         }
         printf("\n");
+
         if(umultiplydividetests()) {
             printf("umultiplydividetests succeeded\n");
         }
@@ -1535,6 +1654,7 @@ int main(int an, char** av)
             printf("umultiplydividetests failed\n");
         }
         printf("\n");
+
         if(negatetests()) {
             printf("negatetests succeeded\n");
         }
@@ -1543,6 +1663,7 @@ int main(int an, char** av)
             printf("negatetests failed\n");
         }
         printf("\n");
+
         if(converttests()) {
             printf("converttests succeeded\n");
         }
@@ -1551,6 +1672,7 @@ int main(int an, char** av)
             printf("converttests failed\n");
         }
         printf("\n");
+
         if(addtests()) {
             printf("addtests succeeded\n");
         }
@@ -1559,6 +1681,7 @@ int main(int an, char** av)
             printf("addtests failed\n");
         }
         printf("\n");
+
         if(subtracttests()) {
             printf("subtracttests succeeded\n");
         }
@@ -1567,6 +1690,7 @@ int main(int an, char** av)
             printf("subtracttests failed\n");
         }
         printf("\n");
+
         if(addtotests()) {
             printf("addtests succeeded\n");
         }
@@ -1575,6 +1699,7 @@ int main(int an, char** av)
             printf("addtests failed\n");
         }
         printf("\n");
+
         if(subfromtests()) {
             printf("subfromtests succeeded\n");
         }
@@ -1583,6 +1708,7 @@ int main(int an, char** av)
             printf("subfromtests failed\n");
         }
         printf("\n");
+
         if(multiplytests()) {
             printf("multiplytests succeeded\n");
         }
@@ -1591,6 +1717,7 @@ int main(int an, char** av)
             printf("multiplytests failed\n");
         }
         printf("\n");
+
         if(comparetests()) {
             printf("comparetests succeeded\n");
         }
@@ -1599,6 +1726,7 @@ int main(int an, char** av)
             printf("comparetests failed\n");
         }
         printf("\n");
+
         if(dividetests()) {
             printf("dividetests succeeded\n");
         }
@@ -1607,6 +1735,7 @@ int main(int an, char** av)
             printf("dividetests failed\n");
         }
         printf("\n");
+
         if(multiplydividetests()) {
             printf("multiplydividetests succeeded\n");
         }
@@ -1615,6 +1744,7 @@ int main(int an, char** av)
             printf("multiplydividetests failed\n");
         }
         printf("\n");
+
         if(gcdtests()) {
             printf("gcdtests succeeded\n");
         }
@@ -1623,6 +1753,7 @@ int main(int an, char** av)
             printf("gcdtests failed\n");
         }
         printf("\n");
+
         if(modaddtests()) {
             printf("modaddtests succeeded\n");
         }
@@ -1631,6 +1762,7 @@ int main(int an, char** av)
             printf("modaddtests failed\n");
         }
         printf("\n");
+
         if(modmulttests()) {
             printf("modmulttests succeeded\n");
         }
@@ -1639,6 +1771,7 @@ int main(int an, char** av)
             printf("modmulttests failed\n");
         }
         printf("\n");
+
         if(modexptests()) {
             printf("modexptests succeeded\n");
         }
@@ -1647,6 +1780,7 @@ int main(int an, char** av)
             printf("modexptests failed\n");
         }
         printf("\n");
+
         if(moddinvtests()) {
            printf("moddinvtests succeeded\n");
         }
@@ -1655,6 +1789,7 @@ int main(int an, char** av)
             printf("moddinvtests failed\n");
         }
         printf("\n");
+
         if(crttests()) {
             printf("crttests succeeded\n");
         }
@@ -1663,6 +1798,7 @@ int main(int an, char** av)
             printf("crttests failed\n");
         }
         printf("\n");
+
         if(primeGentests()) {
             printf("primeGentests succeeded\n");
         }
@@ -1679,6 +1815,7 @@ int main(int an, char** av)
             fAllTests= false;
             printf("rsaTests failed\n");
         }
+        printf("\n");
 
         if(!keygenrestoretest())
             throw("Keytest failed");

@@ -40,36 +40,11 @@
   },
   'target_defaults': {
     'product_dir': 'bin',
-    'include_dirs': [
-      '<(SHARED_INTERMEDIATE_DIR)',
-      '<(basesrc)/commonCode',
-      '<(basesrc)/jlmbignum',
-      '<(basesrc)/jlmcrypto',
-      '<(basesrc)/TPMDirect',
-      '<(basesrc)/accessControl',
-      '<(basesrc)/channels',
-      '<(basesrc)/claims',
-      '<(basesrc)/protocolChannel',
-      '<(basesrc)/fileProxy',
-      '<(basesrc)/tao',
-      '<(basesrc)/tcService',
-      '<(basesrc)/vault',
-    ],
     'cflags': [
       '-Wall',
       '-Werror',
       '-Wno-format',
       '-Wno-unknown-pragmas',
-    ],
-    'defines': [
-      'LINUX',
-      'TEST',
-      '__FLUSHIO__',
-      'ENCRYPTTHENMAC',
-      'TIXML_USE_STL',
-    ],
-    'libraries': [
-      '-lpthread',
     ],
   },
   'targets': [
@@ -94,6 +69,36 @@
 	    '<(cm)/tinyxmlerror.cpp',
 	    '<(cm)/tinyxmlparser.cpp',
       ],
+      'include_dirs': [
+        '<(cm)',
+        '<(jc)',
+        '<(jb)',
+      ],
+      'libraries': [
+	    '-lpthread',
+      ],
+	  'defines': [
+	    'LINUX',
+	    'TEST',
+	    '__FLUSHIO__',
+	    'TIXML_USE_STL',
+	  ],
+      'direct_dependent_settings': {
+	    'include_dirs': [
+	      '<(cm)',
+          '<(jc)',
+          '<(jb)',
+	    ],
+	    'defines': [
+	      'LINUX',
+	      'TEST',
+	      '__FLUSHIO__',
+	      'TIXML_USE_STL',
+	    ],
+	    'libraries': [
+	      '-lpthread',
+	    ],
+      },
     },
     {
       'target_name': 'jlmbignum',
@@ -114,6 +119,14 @@
     	'<(jb)/bignum.h',
       ],
       'dependencies': [
+	    'jlmcommon',
+      ],
+      'direct_dependent_settings': {
+	    'include_dirs': [
+	      '<(jb)',
+	    ],
+      },
+      'export_dependent_settings': [
 	    'jlmcommon',
       ],
     },
@@ -150,6 +163,18 @@
     	'jlmbignum',
     	'jlmcommon',
       ],
+      'direct_dependent_settings': {
+	    'include_dirs': [
+	      '<(jc)',
+	    ],
+	    'defines': [
+	      'ENCRYPTTHENMAC',
+	    ],
+      },
+      'export_dependent_settings': [
+	    'jlmcommon',
+	    'jlmbignum',
+      ],
     },
     {
       'target_name': 'jlmsupport',
@@ -182,10 +207,37 @@
         '<(vt)/vault.h',
         '<(vt)/vault.cpp',
       ],
+	  'include_dirs': [
+	    '<(ac)',
+	    '<(ch)',
+	    '<(cl)',
+	    '<(pr)',
+	    '<(fp)',
+	    '<(vt)',
+        '<(ta)',
+        '<(tp)',
+	  ],
       'dependencies': [
         'jlmcrypto',
         'jlmbignum',
         'jlmcommon',
+      ],
+      'direct_dependent_settings': {
+	    'include_dirs': [
+	      '<(ac)',
+	      '<(ch)',
+	      '<(cl)',
+	      '<(pr)',
+	      '<(fp)',
+	      '<(vt)',
+          '<(ta)',
+          '<(tp)',
+	    ],
+      },
+      'export_dependent_settings': [
+	    'jlmcommon',
+	    'jlmbignum',
+	    'jlmcrypto',
       ],
     },
     {
@@ -199,11 +251,29 @@
       'sources': [
         '<@(tao_sources)',
       ],
+	  'include_dirs': [
+	    '<(ta)',
+	    '<(tp)',
+	    '<(tc)',
+	  ],
       'dependencies': [
         'jlmsupport',
         'jlmcrypto',
         'jlmbignum',
         'jlmcommon',
+      ],
+      'direct_dependent_settings': {
+	    'include_dirs': [
+	      '<(ta)',
+	      '<(tp)',
+	      '<(tc)',
+	    ],
+      },
+      'export_dependent_settings': [
+    	'jlmcommon',
+    	'jlmbignum',
+    	'jlmcrypto',
+    	'jlmsupport',
       ],
     },
     {
@@ -221,11 +291,33 @@
       'sources': [
         '<@(tao_sources)',
       ],
+	  'include_dirs': [
+	    '<(ta)',
+	    '<(tp)',
+	    '<(tc)',
+	  ],
       'dependencies': [
         'jlmsupport',
         'jlmcrypto',
         'jlmbignum',
         'jlmcommon',
+      ],
+      'direct_dependent_settings': {
+    	'include_dirs': [
+    	  '<(ta)',
+    	  '<(tp)',
+    	  '<(tc)',
+    	],
+    	'defines': [
+    	  'QUOTE2_DEFINED'
+    	  'TPMSUPPORT',
+    	],
+      },
+      'export_dependent_settings': [
+    	'jlmcommon',
+    	'jlmbignum',
+    	'jlmcrypto',
+    	'jlmsupport',
       ],
     },
     {

@@ -8,17 +8,6 @@
       '-Werror',
       '-std=c++0x',
     ],
-    'libraries': [
-      '-lgflags',
-      '-lglog',
-      '-lkeyczar',
-      '-lcrypto',
-      '-lprotobuf',
-      '-lssl',
-    ],
-    'include_dirs': [
-      '<(SHARED_INTERMEDIATE_DIR)',
-    ],
   },
   'targets': [
     {
@@ -47,9 +36,34 @@
         '<(src)/util.cc',
         '<(src)/util.h',
       ],
+      'libraries': [
+        '-lgflags',
+        '-lglog',
+        '-lkeyczar',
+        '-lcrypto',
+        '-lprotobuf',
+        '-lssl',
+      ],
+      'include_dirs': [
+        '<(SHARED_INTERMEDIATE_DIR)',
+      ],
       'includes': [
         'protoc.gypi',
       ],
+      'direct_dependent_settings': {
+        'libraries': [
+          '-lgflags',
+          '-lglog',
+          '-lkeyczar',
+          '-lcrypto',
+          '-lprotobuf',
+          '-lssl',
+        ],
+        'include_dirs': [
+          '<(SHARED_INTERMEDIATE_DIR)',
+          '<(src)',
+        ],
+      },
     },
     {
       'target_name': 'test',
@@ -123,5 +137,20 @@
       'include_dirs': [ '<(basesrc)', ],
       'dependencies': [ 'cloudproxy', ],
     },
+    {
+      'target_name': 'bootstrap',
+      'type': 'executable',
+      'variables': { 'src': '<(basesrc)/bootstrap', },
+      'sources': [ '<(src)/bootstrap.cc', ],
+      'include_dirs': [ '<(basesrc)' ],
+      'dependencies': [
+        'cloudproxy',
+        'tao.gyp:jlmcommon',
+        'tao.gyp:jlmcrypto',
+        'tao.gyp:jlmbignum',
+        'tao.gyp:jlmsupport',
+        'tao.gyp:taotpm',
+      ],
+    }
   ]
 }

@@ -8,6 +8,7 @@
       '-Werror',
       '-std=c++0x',
     ],
+    'product_dir': 'bin',
   },
   'targets': [
     {
@@ -149,7 +150,7 @@
         'tao.gyp:jlmcrypto',
         'tao.gyp:jlmbignum',
         'tao.gyp:jlmsupport',
-        'tao.gyp:taotpm',
+        'tao.gyp:taotpmquote',
       ],
     }
   ]

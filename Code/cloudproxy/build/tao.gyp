@@ -37,6 +37,31 @@
       '<(tc)/buffercoding.h',
       '<(tc)/buffercoding.cpp',
     ],
+    'support_sources': [
+      '<(ac)/accessControl.h',
+      '<(ac)/accessControl.cpp',
+      '<(ac)/signedAssertion.h',
+      '<(ac)/signedAssertion.cpp',
+      '<(ch)/channel.h',
+      '<(ch)/channel.cpp',
+      '<(ch)/safeChannel.h',
+      '<(ch)/safeChannel.cpp',
+      '<(cl)/cert.h',
+      '<(cl)/cert.cpp',
+      '<(cl)/quote.h',
+      '<(cl)/quote.cpp',
+      '<(cl)/validateEvidence.h',
+      '<(cl)/validateEvidence.cpp',
+      '<(pr)/channelstate.h',
+      '<(pr)/request.h',
+      '<(pr)/request.cpp',
+      '<(pr)/session.h',
+      '<(pr)/session.cpp',
+      '<(fp)/resource.h',
+      '<(fp)/resource.cpp',
+      '<(vt)/vault.h',
+      '<(vt)/vault.cpp',
+    ],
   },
   'target_defaults': {
     'product_dir': 'bin',
@@ -103,9 +128,6 @@
     {
       'target_name': 'jlmbignum',
       'type': 'static_library',
-      'cflags': [
-        '-O1',
-      ],
       # should add a condition for aes/aesni
       'sources': [
     	# bignum
@@ -135,6 +157,9 @@
       'type': 'static_library',
       'cflags': [
 	    '-O3',
+      ],
+      'defines': [
+	'ENCRYPTTHENMAC',
       ],
       'sources': [
     	# core crypto
@@ -167,13 +192,58 @@
 	    'include_dirs': [
 	      '<(jc)',
 	    ],
-	    'defines': [
-	      'ENCRYPTTHENMAC',
-	    ],
       },
       'export_dependent_settings': [
 	    'jlmcommon',
 	    'jlmbignum',
+      ],
+    },
+    {
+      'target_name': 'jlmsupportclient',
+      'type': 'static_library',
+      'cflags': [
+        '-O3',
+      ],
+      'sources': [
+        '<@(support_sources)',
+      ],
+      'defines': [
+        'FILECLIENT',
+      ],
+	  'include_dirs': [
+	    '<(ac)',
+	    '<(ch)',
+	    '<(cl)',
+	    '<(pr)',
+	    '<(fp)',
+	    '<(vt)',
+        '<(ta)',
+        '<(tp)',
+	  ],
+      'dependencies': [
+        'jlmcrypto',
+        'jlmbignum',
+        'jlmcommon',
+      ],
+      'direct_dependent_settings': {
+	    'include_dirs': [
+	      '<(ac)',
+	      '<(ch)',
+	      '<(cl)',
+	      '<(pr)',
+	      '<(fp)',
+	      '<(vt)',
+          '<(ta)',
+          '<(tp)',
+	    ],
+        'defines': [
+          'FILECLIENT',
+        ],
+      },
+      'export_dependent_settings': [
+	    'jlmcommon',
+	    'jlmbignum',
+	    'jlmcrypto',
       ],
     },
     {
@@ -183,29 +253,7 @@
         '-O3',
       ],
       'sources': [
-        '<(ac)/accessControl.h',
-        '<(ac)/accessControl.cpp',
-        '<(ac)/signedAssertion.h',
-        '<(ac)/signedAssertion.cpp',
-        '<(ch)/channel.h',
-        '<(ch)/channel.cpp',
-        '<(ch)/safeChannel.h',
-        '<(ch)/safeChannel.cpp',
-        '<(cl)/cert.h',
-        '<(cl)/cert.cpp',
-        '<(cl)/quote.h',
-        '<(cl)/quote.cpp',
-        '<(cl)/validateEvidence.h',
-        '<(cl)/validateEvidence.cpp',
-        '<(pr)/channelstate.h',
-        '<(pr)/request.h',
-        '<(pr)/request.cpp',
-        '<(pr)/session.h',
-        '<(pr)/session.cpp',
-        '<(fp)/resource.h',
-        '<(fp)/resource.cpp',
-        '<(vt)/vault.h',
-        '<(vt)/vault.cpp',
+        '<@(support_sources)',
       ],
 	  'include_dirs': [
 	    '<(ac)',
@@ -277,7 +325,46 @@
       ],
     },
     {
-      'target_name': 'taotpm',
+      'target_name': 'taoquote',
+      'type': 'static_library',
+      'variables': {
+      },
+      'cflags': [
+        '-O3',
+      ],
+      'defines': [
+        'QUOTE2_DEFINED',
+      ],
+      'sources': [
+        '<@(tao_sources)',
+      ],
+	  'include_dirs': [
+	    '<(ta)',
+	    '<(tp)',
+	    '<(tc)',
+	  ],
+      'dependencies': [
+        'jlmsupport',
+        'jlmcrypto',
+        'jlmbignum',
+        'jlmcommon',
+      ],
+      'direct_dependent_settings': {
+    	'include_dirs': [
+    	  '<(ta)',
+    	  '<(tp)',
+    	  '<(tc)',
+    	],
+      },
+      'export_dependent_settings': [
+    	'jlmcommon',
+    	'jlmbignum',
+    	'jlmcrypto',
+    	'jlmsupport',
+      ],
+    },
+    {
+      'target_name': 'taotpmquote',
       'type': 'static_library',
       'variables': {
       },
@@ -307,10 +394,6 @@
     	  '<(ta)',
     	  '<(tp)',
     	  '<(tc)',
-    	],
-    	'defines': [
-    	  'QUOTE2_DEFINED'
-    	  'TPMSUPPORT',
     	],
       },
       'export_dependent_settings': [
@@ -368,7 +451,7 @@
         'jlmcommon',
         'jlmbignum',
         'jlmcrypto',
-        'jlmsupport',
+        'jlmsupportclient',
         'tao',
       ],
     },
@@ -390,7 +473,7 @@
         'jlmbignum',
         'jlmcrypto',
         'jlmsupport',
-        'tao',
+        'taoquote',
       ],
     },
     {
@@ -415,7 +498,7 @@
         'jlmbignum',
         'jlmcrypto',
         'jlmsupport',
-        'taotpm',
+        'taotpmquote',
       ],
     },
     {
@@ -437,8 +520,8 @@
         'jlmcommon',
         'jlmbignum',
         'jlmcrypto',
-        'jlmsupport',
-        'taotpm',
+        'jlmsupportclient',
+        'taoquote',
       ],
     },
   ]

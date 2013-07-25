@@ -40,7 +40,9 @@
 #include "encryptedblockIO.h"
 #include "request.h"
 
+#ifndef FILECLIENT
 #include "vault.h"
+#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -61,10 +63,12 @@
 
 fileServices::fileServices()
 {
+#ifndef FILECLIENT
     m_pTaoEnv= NULL;
     m_pMetaData= NULL;
     m_pSession= NULL;
     m_metadataKey= NULL;
+#endif
     m_ppolicyCert= NULL;
     m_pPolicy= NULL;
     m_szPrefix= strdup("//www.manferdelli.com/Gauss/");
@@ -81,6 +85,7 @@ fileServices::~fileServices()
 // ------------------------------------------------------------------------
 
 
+#ifndef FILECLIENT
 
 //  Server services
 
@@ -766,6 +771,8 @@ bool fileServices::serverdeleteResource(Request& oReq,
 }
 
 
+#else  // end of server fileServices, beginning of client services
+
 
 //  Client fileServices
 
@@ -1106,6 +1113,8 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
 #endif
     return false;
 }
+
+#endif // client interfaces
 
 
 // ---------------------------------------------------------------------------------

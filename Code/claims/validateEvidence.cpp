@@ -33,7 +33,9 @@
 #include "cryptoHelper.h"
 #include "sha256.h"
 
+#ifndef FILECLIENT
 #include "signedAssertion.h"
+#endif
 
 #include <time.h>
 #include <string.h>
@@ -54,7 +56,9 @@ TiXmlNode* getParseRoot(int evidenceType, void* pObject)
     TiXmlNode*          nodeRoot= NULL;
     PrincipalCert*      pCert= (PrincipalCert*) pObject;
     Quote*              pQuote= (Quote*) pObject;
+#ifndef FILECLIENT
     SignedAssertion*    pAssert= (SignedAssertion*) pObject;
+#endif
 
     switch(evidenceType) {
       default:
@@ -62,9 +66,11 @@ TiXmlNode* getParseRoot(int evidenceType, void* pObject)
       case EMBEDDEDPOLICYPRINCIPAL:
       case KEYINFO:
         return NULL;
+#ifndef FILECLIENT
       case SIGNEDGRANT:
         nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
         break;
+#endif
       case PRINCIPALCERT:
         nodeRoot= (TiXmlNode*) pCert->m_pRootElement;
         break;
@@ -82,7 +88,9 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
     TiXmlNode*          nodeSignedInfo=  NULL;
     PrincipalCert*      pCert= (PrincipalCert*) pObject;
     Quote*              pQuote= (Quote*) pObject;
+#ifndef FILECLIENT
     SignedAssertion*    pAssert= (SignedAssertion*) pObject;
+#endif
 
     switch(evidenceType) {
       default:
@@ -90,12 +98,14 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
       case EMBEDDEDPOLICYPRINCIPAL:
       case KEYINFO:
         return NULL;
+#ifndef FILECLIENT
       case SIGNEDGRANT:
         nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
         if(nodeRoot==NULL)
             return NULL;
         nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
         break;
+#endif
       case PRINCIPALCERT:
         nodeRoot= (TiXmlNode*) pCert->m_pRootElement;
         if(nodeRoot==NULL)
@@ -126,7 +136,9 @@ char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
       case NOEVIDENCE:
       case KEYINFO:
         return NULL;
+#ifndef FILECLIENT
       case SIGNEDGRANT:
+#endif
       case PRINCIPALCERT:
         nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
         break;
@@ -641,7 +653,9 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
     int                 n= 0;
     char*               szEvidence= NULL;
     PrincipalCert*      pCert= NULL;
+#ifndef FILECLIENT
     SignedAssertion*    pAssert= NULL;
+#endif
 
     if(strcmp(pRootElement->Value(),"EvidenceList")!=0) {
         fprintf(g_logFile, "Should be EvidenceList %s\n", pRootElement->Value());
@@ -674,6 +688,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
         // parse Evidence
         szEvidence= canonicalize(pNode);
         switch(m_rgiEvidenceTypes[n]) {
+#ifndef FILECLIENT
           case SIGNEDGRANT:
             pAssert= new SignedAssertion();
             if(!pAssert->init(szEvidence)) {
@@ -686,6 +701,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
             }
             m_rgEvidence[n]= (void*) pAssert;
             break;
+#endif
           case PRINCIPALCERT:
             pCert= new PrincipalCert();
             if(!pCert->init(szEvidence)) {

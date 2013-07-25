@@ -34,19 +34,23 @@
 #include "timer.h"
 #include "request.h"
 
+#ifndef FILECLIENT
 #include "accessControl.h"
 #include "resource.h"
 #include "tao.h"
+#endif
 
 
 class fileServices{
 public:
     PrincipalCert*  m_ppolicyCert;
     RSAKey*         m_pPolicy;
+#ifndef FILECLIENT
     taoEnvironment* m_pTaoEnv;
     metaData*       m_pMetaData;
     session*        m_pSession;
     accessGuard     m_guard;
+#endif
     safeChannel*    m_pSafeChannel;
     int             m_encType;  
     byte*           m_metadataKey;
@@ -55,13 +59,17 @@ public:
                 fileServices();
                 ~fileServices();
 
+#ifndef FILECLIENT
     bool        initFileServices(session* session, PrincipalCert* ppolicyCert,
                                  taoEnvironment* pTaoEnv, 
                                  int encType, byte* metakey, 
                                  metaData* pMeta,
                                  safeChannel* pSafeChannel);
+#else
     bool        initFileServices(session* session, PrincipalCert* ppolicyCert, safeChannel* pSafeChannel);
+#endif
 
+#ifndef FILECLIENT
     bool        validateAddPrincipalRequest(Request& oReq,
                                             char** pszFile, 
                                             resource** ppResource);
@@ -101,6 +109,7 @@ public:
     bool        servercreateResourceonserver(Request& oReq, timer& accessTimer);
     bool        serverdeleteResource(Request& oReq, timer& accessTimer);
 
+#else  // end of server services, beginning of client services
 
     bool        clientgetResourcefromserver(const char* szResourceName, 
                                             const char* szEvidence, 
@@ -120,6 +129,7 @@ public:
     bool        clientdeleteResource(const char* szResourceName,
                                      const char* szEvidence, 
                                      const char* szFile);
+#endif  //client services
 };
 
 

@@ -500,22 +500,25 @@ bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
     n+= sizeof(int);
     memcpy(&tmpout[n], hostedMeasurement, hostedMeasurementSize);
     n+= hostedMeasurementSize;
+    fprintf(g_logFile, "Sealing data length %d\n", sizetoSeal);
     memcpy(&tmpout[n], &sizetoSeal, sizeof(int));
     n+= sizeof(int);
     memcpy(&tmpout[n], toSeal, sizetoSeal);
     n+= sizetoSeal;
 
-#ifdef TEST1
+//#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::Seal, about to encryptBlob, n=%d\n",
             n);
     PrintBytes("To Seal: ", tmpout, n);
     fflush(g_logFile);
-#endif
+//#endif
     if(!AES128CBCHMACSHA256SYMPADEncryptBlob(n, tmpout, psizeSealed, sealed,
                                     m_symKey, &m_symKey[AES128BYTEBLOCKSIZE])) {
         fprintf(g_logFile, "taoEnvironment::seal: AES128CBCHMACSHA256SYMPADEncryptBlob failed\n");
         return false;
     }
+
+    PrintBytes("Encrypted Blob: ", sealed, *psizeSealed);
     return true;
 }
 
@@ -535,28 +538,50 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
         fprintf(g_logFile, "taoEnvironment::Unseal, seal key invalid\n");
         return false;
     }
-
+    fprintf(g_logFile, "Attempting decryption\n");
+    fflush(g_logFile);
     if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeSealed, sealed, &outsize, tmpout, 
                         m_symKey, &m_symKey[AES128BYTEBLOCKSIZE])) {
         fprintf(g_logFile, 
            "taoEnvironment::unseal: AES128CBCHMACSHA256SYMPADDecryptBlob failed\n");
         return false;
     }
+    fprintf(g_logFile, "Decryption succeeded with size %d\n", outsize);
+    fflush(g_logFile);
 
     // tmpout is hashsize||hash||sealdatasize||sealeddata
     memcpy(&hashsize, &tmpout[n], sizeof(int));
     n+= sizeof(int);
+    fprintf(g_logFile, "Got hashsize = %d\n", hashsize);
+    fflush(g_logFile);
 
-    if(hashsize!=hostedMeasurementSize)
+    if(hashsize!=hostedMeasurementSize) {
+        fprintf(g_logFile, "Wrong measurement size: %d vs %d\n", hashsize,
+                hostedMeasurementSize);
         return false;
+    } else {
+        fprintf(g_logFile, "The hash sizes match\n");
+        fflush(g_logFile);
+    }
+    
+    fprintf(g_logFile, "tmpout is %p\n", tmpout);
+    fprintf(g_logFile, "Comparing %p with %p of length %d\n", tmpout + n,
+            hostedMeasurement, hashsize);
+    PrintBytes("left meas:  ", &tmpout[n], hashsize);
+    PrintBytes("right meas: ", hostedMeasurement, hashsize);
+    fflush(g_logFile);
      
-    // Fix: the following line was the old value, 
-    //  but I think it should be memcpy and is just a typo
-    //memcmp(&tmpout[n], hostedMeasurement, hashsize);
-    memcpy(&tmpout[n], hostedMeasurement, hashsize);
-    n+= hashsize;
+    if (memcmp(&tmpout[n], hostedMeasurement, hashsize) != 0) {
+        fprintf(g_logFile, "The measurements don't match\n");
+        return false;
+    }
+    n += hashsize;
+    fprintf(g_logFile, "The hashes match. Copying an int into %p\n", psizeunsealed);
+    fflush(g_logFile);
 
     memcpy(psizeunsealed, &tmpout[n], sizeof(int));
+    fprintf(g_logFile, "Got unsealed size %d\n", *psizeunsealed);
+    fflush(g_logFile);
     n+= sizeof(int);
     memcpy(unsealed, &tmpout[n], *psizeunsealed);
     return true;

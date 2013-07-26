@@ -168,7 +168,7 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
       case PLATFORMTYPEHW:
         return false;
       case PLATFORMTYPELINUX:
-        return startAppfromDeviceDriver(name, phandle);
+        return startAppfromDeviceDriver(name, phandle, an, av);
     }
 }
 

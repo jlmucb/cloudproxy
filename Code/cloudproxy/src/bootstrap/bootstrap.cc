@@ -43,6 +43,7 @@
 #include <logging.h>
 #include <tao.h>
 #include "policyCert.inc"
+#include "binaries.pb.h"
 
 #include <fstream>
 #include <string>
@@ -55,9 +56,9 @@ DEFINE_string(key_path, "bootstrap_key",
               "The path to the TPM-sealed key for this binary");
 DEFINE_string(directory, "/home/jlm/jlmcrypt",
               "The directory to use for Tao initialization");
-DEFINE_string(hmac_key_path, "bootstrap_hmac_key",
-              "An encrypted HMAC keyczar directory");
-DEFINE_bool(initProg, false, "A flag that indicates measured boot");
+DEFINE_string(enc_key_path, "bootstrap_files/bootstrap_key",
+              "An encrypted keyczar directory for an encryption key");
+DEFINE_bool(start_measured, false, "A flag that indicates measured boot");
 
 const int AesBlockSize = 16;
 const int Sha256Size = 32;
@@ -85,16 +86,9 @@ int main(int argc, char **argv) {
 
   bool start_measured = false;
 
-  if (argc > 1) {
-    for (int i = 0; i < argc; i++) {
-      if (strcmp(argv[i], "-initProg") == 0) {
-        start_measured = true;
-      }
-    }
-  }
-
-  // set up a logging directory depending on whether or not this is measured
-  if (start_measured) {
+  // call this program like this: ./bootstrap --start_measured -- <real flags for the instance>
+  if (FLAGS_start_measured) {
+    start_measured = true;
     FLAGS_log_dir = "b_orig";
   } else {
     FLAGS_log_dir = "b_meas";
@@ -120,45 +114,35 @@ int main(int argc, char **argv) {
     taoEnvironment taoEnv;
     CHECK(initTao(FLAGS_directory.c_str(), &taoHost, &taoEnv))
         << "Could not initialize the Tao";
-    fprintf(g_logFile, "Initialized the Tao\n");
-    fflush(g_logFile);
     LOG(INFO) << "Initialized the Tao";
 
     keyczar::base::ScopedSafeString secret(new string());
     CHECK(getSecret(&taoHost, &taoEnv, secret, SecretSize))
         << "Could not generate (and seal) or unseal the secret using the Tao";
     LOG(INFO) << "Got the secret";
-    fprintf(g_logFile, "Got the secret\n");
-    fflush(g_logFile);
 
     // now get our keyczar::Verifier HMAC key that was encrypted using this
     // secret or generate and encrypt a new one
     scoped_ptr<keyczar::Keyset> keyset(new keyczar::Keyset());
-    FilePath fp(FLAGS_hmac_key_path);
+    FilePath fp(FLAGS_enc_key_path);
     if (!keyczar::base::PathExists(fp)) {
       CHECK(keyczar::base::CreateDirectory(fp))
-        << "Could not create the key directory " << FLAGS_hmac_key_path;
+        << "Could not create the key directory " << FLAGS_enc_key_path;
 
       // create a new keyset
       CHECK(createKey(*secret, keyset.get())) << "Could not create keyset";
-      fprintf(g_logFile, "Created a new keyset\n");
-      fflush(g_logFile);
     } else {
       // read the keyset from the encrypted directory
       scoped_ptr<keyczar::rw::KeysetReader> reader(
           new keyczar::rw::KeysetPBEJSONFileReader(fp, *secret));
       keyset.reset(keyczar::Keyset::Read(*reader, true));
       CHECK_NOTNULL(keyset.get());
-      fprintf(g_logFile, "Recovered the previous keyset\n");
-      fflush(g_logFile);
     }
 
-    const keyczar::Key* hmac_key(keyset->primary_key());
-    CHECK_NOTNULL(hmac_key);
+    const keyczar::Key* key = keyset->primary_key();
+    CHECK_NOTNULL(key);
 
-    // IAH: get this to compile and see if it works
-
-    LOG(INFO) << "Finished the basic key setup";
+    LOG(INFO) << "Finished bootstrap successfully";
 
     closeLog();
   }
@@ -264,7 +248,7 @@ bool getSecret(taoHostServices *taoHost, taoEnvironment *taoEnv,
 bool createKey(const string &secret, keyczar::Keyset *keyset) {
   CHECK_NOTNULL(keyset);
 
-  FilePath fp(FLAGS_hmac_key_path);
+  FilePath fp(FLAGS_enc_key_path);
   scoped_ptr<keyczar::rw::KeysetWriter> writer(
       new keyczar::rw::KeysetPBEJSONFileWriter(fp, secret));
   CHECK_NOTNULL(writer.get());
@@ -272,8 +256,8 @@ bool createKey(const string &secret, keyczar::Keyset *keyset) {
   keyset->AddObserver(writer.get());
   keyset->set_encrypted(true);
 
-  keyczar::KeyType::Type key_type = keyczar::KeyType::HMAC;
-  keyczar::KeyPurpose::Type key_purpose = keyczar::KeyPurpose::SIGN_AND_VERIFY;
+  keyczar::KeyType::Type key_type = keyczar::KeyType::AES;
+  keyczar::KeyPurpose::Type key_purpose = keyczar::KeyPurpose::DECRYPT_AND_ENCRYPT;
   keyczar::KeysetMetadata *metadata = NULL;
   metadata = new keyczar::KeysetMetadata("bootstrap", key_type, key_purpose,
                                          true, 1);
@@ -281,7 +265,5 @@ bool createKey(const string &secret, keyczar::Keyset *keyset) {
 
   keyset->set_metadata(metadata);
   keyset->GenerateDefaultKeySize(keyczar::KeyStatus::PRIMARY);
-  fprintf(g_logFile, "Finished generating the key\n");
-  fflush(g_logFile);
   return true;
 }

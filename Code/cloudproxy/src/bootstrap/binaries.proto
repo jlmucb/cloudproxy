@@ -1,0 +1,24 @@
+package cloudproxy;
+
+message Binary {
+    // the name of the binary
+    required string name = 1;
+
+    // the known hash of the binary
+    required bytes hash = 2;
+
+    // a secret to pass to this binary after it starts in a measured state
+    optional bytes secret = 3;
+}
+
+message Binaries {
+    repeated Binary binaries = 1;
+}
+
+message SignedBinaries {
+    // a serialized Binaries message
+    required string serialized_binaries = 1;
+    
+    // the signature on this message
+    required bytes signature = 2;
+}

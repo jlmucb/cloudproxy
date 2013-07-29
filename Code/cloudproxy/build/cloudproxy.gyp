@@ -195,6 +195,7 @@
         ],
         'sources': [
             '<(src)/bootstrap.cc',
+            '<(src)/binaries.proto',
             '<(cm)/jlmUtility.cpp',
             '<(jc)/keys.cpp',
             '<(jc)/cryptoHelper.cpp',
@@ -228,6 +229,9 @@
             '<(tp)/hashprep.cpp',
             '<(cm)/logging.cpp',
 	    '<(fp)/policyCert.inc',
+        ],
+        'includes': [
+            'protoc.gypi',
         ],
         'dependencies': [
             'jlmtao.gyp:bignum_O1',

@@ -1,6 +1,5 @@
-#include "bootstrap.h"
+#include "legacy_tao.h"
 
-#include <keyczar/crypto_factory.h>
 #include <keyczar/rw/keyset_file_reader.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/base/file_path.h>
@@ -13,16 +12,16 @@
 #include <keys.h>
 #include <logging.h>
 #include "policyCert.inc"
-#include "whitelist.pb.h"
 
 #include <fstream>
 
 using std::ifstream;
 using std::ofstream;
+using std::ios;
 
 namespace cloudproxy {
 
-Bootstrap::Bootstrap(const string &secret_path, const string &directory,
+LegacyTao::LegacyTao(const string &secret_path, const string &directory,
 		     const string &key_path)
   : secret_path_(secret_path),
     directory_(directory),
@@ -35,7 +34,7 @@ Bootstrap::Bootstrap(const string &secret_path, const string &directory,
   // leave setup for Init
 }
 
-bool Bootstrap::Init() {
+bool LegacyTao::Init() {
     // initialize jlmcrypto
     CHECK(initAllCrypto()) << "Could not initialize jlmcrypto";
 
@@ -62,18 +61,18 @@ bool Bootstrap::Init() {
       // read the keyset from the encrypted directory
       scoped_ptr<keyczar::rw::KeysetReader> reader(
           new keyczar::rw::KeysetPBEJSONFileReader(fp, *secret));
-      keyset.reset(keyczar::Keyset::Read(*reader, true));
-      CHECK_NOTNULL(keyset.get());
+      keyset_.reset(keyczar::Keyset::Read(*reader, true));
+      CHECK_NOTNULL(keyset_.get());
     }
 
     key_ = keyset_->primary_key();
     CHECK_NOTNULL(key_);
 
-    VLOG(1) << "Finished bootstrap initialization successfully";
+    VLOG(1) << "Finished legacy tao initialization successfully";
     return true;
 }
 
-bool Bootstrap::initTao() {
+bool LegacyTao::initTao() {
   const char *directory = directory_.c_str();
   const char **parameters = &directory;
   int parameterCount = 1;
@@ -85,7 +84,8 @@ bool Bootstrap::initTao() {
 
     // init environment
     CHECK(tao_env_->EnvInit(PLATFORMTYPELINUXAPP, "bootstrap_files",
-                          "www.manferdelli.com", directory, tao_host_, 0, NULL))
+                          "www.manferdelli.com", directory, tao_host_.get(), 0,
+			  NULL))
         << "Can't init the environment";
   }
   catch (const char * err) {
@@ -98,13 +98,13 @@ bool Bootstrap::initTao() {
   return true;
 }
 
-bool Bootstrap::getSecret(keyczar::base::ScopedSafeString *secret) {
+bool LegacyTao::getSecret(keyczar::base::ScopedSafeString *secret) {
   CHECK_NOTNULL(secret);
   CHECK(tao_env_->m_myMeasurementValid)
       << "Can't create or unseal secrets due to invalid measurement";
-  int size = secret_size;
+  int size = SecretSize;
   FilePath fp(secret_path_);
-  if (!keyczar::PathExists(fp))
+  if (!keyczar::base::PathExists(fp)) {
     // generate a random value for the key and seal it, writing the result
     // into this file
     keyczar::RandImpl *rand = keyczar::CryptoFactory::Rand();
@@ -118,7 +118,7 @@ bool Bootstrap::getSecret(keyczar::base::ScopedSafeString *secret) {
     // this is safe, since the 4th argument is only read, despite not having
     // a const annotation
     byte *secret_data = reinterpret_cast<unsigned char *>(
-        const_cast<char *>(secret.get()->data()));
+        const_cast<char *>(secret->get()->data()));
     CHECK(tao_env_->Seal(tao_env_->m_myMeasurementSize,
 			 tao_env_->m_myMeasurement,
 			 size, secret_data, &sealed_size, sealed_secret.get()))
@@ -132,11 +132,14 @@ bool Bootstrap::getSecret(keyczar::base::ScopedSafeString *secret) {
     VLOG(1) << "Sealed the secret";
   } else {
     // get the existing key blob and unseal it using the Tao
-    int sealed_size = st.st_size;
+    ifstream in_file(secret_path_.c_str(), ifstream::in | ios::binary | ios::ate);
+    int sealed_size = in_file.tellg();
+
     VLOG(2) << "Trying to read a secret of size " << sealed_size;
     scoped_array<unsigned char> sealed_secret(new unsigned char[sealed_size]);
 
-    ifstream in_file(secret_path_.c_str(), ifstream::in);
+    // rewind to beginning of the file to read it
+    in_file.seekg(0, ios::beg);
     in_file.read(reinterpret_cast<char *>(sealed_secret.get()), sealed_size);
     VLOG(1) << "Read the file";
     // a temporary ScopedSafeString to hold extra bytes until we know the
@@ -155,7 +158,7 @@ bool Bootstrap::getSecret(keyczar::base::ScopedSafeString *secret) {
   return true;
 }
 
-bool Bootstrap::createKey(const string &secret) {
+bool LegacyTao::createKey(const string &secret) {
   FilePath fp(key_path_);
   scoped_ptr<keyczar::rw::KeysetWriter> writer(
       new keyczar::rw::KeysetPBEJSONFileWriter(fp, secret));
@@ -167,12 +170,41 @@ bool Bootstrap::createKey(const string &secret) {
   keyczar::KeyType::Type key_type = keyczar::KeyType::AES;
   keyczar::KeyPurpose::Type key_purpose = keyczar::KeyPurpose::DECRYPT_AND_ENCRYPT;
   keyczar::KeysetMetadata *metadata = NULL;
-  metadata = new keyczar::KeysetMetadata("bootstrap", key_type, key_purpose,
+  metadata = new keyczar::KeysetMetadata("legacy_tao", key_type, key_purpose,
                                          true, 1);
   CHECK_NOTNULL(metadata);
 
   keyset_->set_metadata(metadata);
   keyset_->GenerateDefaultKeySize(keyczar::KeyStatus::PRIMARY);
   return true;
+}
+
+bool LegacyTao::Destroy() {
+    return false;
+}
+
+bool LegacyTao::StartHostedProgram(const string &path, int argc,
+				   char **argv) {
+    return false;
+}
+
+bool LegacyTao::GetRandomBytes(size_t size, string *bytes) {
+    return false;
+}
+
+bool LegacyTao::Seal(const string &data, string *sealed) {
+    return false;
+}
+
+bool LegacyTao::Unseal(const string &sealed, string *data) {
+    return false;
+}
+
+bool LegacyTao::Attest(const string &data, string *attested) {
+    return false;
+}
+
+bool LegacyTao::Verify(const string &attested) {
+    return false;
 }
 } // namespace cloudproxy

@@ -1,21 +1,27 @@
-#ifndef TAO_BOOTSTRAP_H_
-#define TAO_BOOTSTRAP_H_
+#ifndef LEGACY_TAO_LEGACY_TAO_H_
+#define LEGACY_TAO_LEGACY_TAO_H_
+
+#include <keyczar/keyczar.h>
+#include <keyczar/crypto_factory.h>
+
+// jlm's taoHostServices and taoEnvironment
+// along with startMeAsMeasuredProgram for clients of LegacyTao
+#include <tao.h>
 
 // cloudproxy::Tao
 #include <tao/tao.h>
 
-// jlm's taoHostServices and taoEnvironment
-// along with startMeAsMeasuredProgram for clients of Bootstrap
-#include <tao.h>
-#include <keyczar/keyczar.h>
+#include <string>
+
+using std::string;
 
 namespace cloudproxy {
 
-class Bootstrap : public Tao {
+class LegacyTao : public Tao {
   public:
-    Bootstrap(const string &secret_path, const string &directory,
-	      const string &key_path) { }
-    virtual ~Bootstrap() { }
+    LegacyTao(const string &secret_path, const string &directory,
+	      const string &key_path);
+    virtual ~LegacyTao() { }
     virtual bool Init();
     virtual bool Destroy();
     virtual bool StartHostedProgram(const string &path, int argc,
@@ -49,10 +55,11 @@ class Bootstrap : public Tao {
     // A file descriptor used to communicate with the child process
     int child_fd_;
 
-    const int AesBlockSize = 16;
-    const int Sha256Size = 32;
-    const int SecretSize = 64;
-    const int SealedSize = 160;  // until the Tao provides a way to get this info
+    static const int AesBlockSize = 16;
+    static const int Sha256Size = 32;
+    static const int SecretSize = 64;
+    // until the Tao provides a way to get this info
+    static const int SealedSize = 160;  
 
     // initializes the legacy tao by setting up tao_host_ and tao_env_
     bool initTao();
@@ -64,6 +71,6 @@ class Bootstrap : public Tao {
     // basis of the bootstrap Tao
     bool createKey(const string &secret);
 };
-} // namespace bootstrap
+} // namespace cloudproxy
 
-#endif // TAO_BOOTSTRAP_H_
+#endif // LEGACY_TAO_LEGACY_TAO_H_

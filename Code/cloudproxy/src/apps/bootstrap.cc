@@ -25,7 +25,8 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
-#include <tao/bootstrap.h>
+#include <legacy_tao/legacy_tao.h>
+#include <logging.h>
 
 DEFINE_string(secret_path, "bootstrap_sealed_secret",
               "The path to the TPM-sealed key for this binary");
@@ -65,10 +66,10 @@ int main(int argc, char **argv) {
   initLog("bootstrap.log");
 
   LOG(INFO) << "Measured program starting";
-  scoped_ptr<cloudproxy::Tao> bootstrap(new cloudproxy::Bootstrap(
-    FLAGS_secret_path, FLAGS_directory, FLAGS_key_path);
+  scoped_ptr<cloudproxy::Tao> tao(new cloudproxy::LegacyTao(
+    FLAGS_secret_path, FLAGS_directory, FLAGS_key_path));
   
-  CHECK(bootstrap->Init()) << "Could not initialize the Bootstrap Tao";
-  LOG(INFO) << "Finished initializing the bootstrap Tao";
+  CHECK(tao->Init()) << "Could not initialize the Legacy Tao";
+  LOG(INFO) << "Finished initializing the Legacy Tao";
   return 0;
 }

@@ -13,7 +13,6 @@
   'targets': [
     {
       'target_name': 'cloudproxy',
-      'product_prefix': '',
       'type': 'static_library',
       'variables': {
         'src': '<(basesrc)/cloudproxy',
@@ -61,6 +60,47 @@
           '-lprotobuf',
           '-lssl',
           '-lpthread',
+        ],
+        'include_dirs': [
+          '<(SHARED_INTERMEDIATE_DIR)',
+          '<(src)',
+        ],
+      },
+    },
+    {
+      'target_name': 'tao',
+      'type': 'static_library',
+      'variables': {
+        'src': '<(basesrc)/tao',
+      },
+      'sources': [
+        '<(src)/binaries.proto',
+        '<(src)/tao.h',
+        '<(src)/tao_binary_cache.h',
+        '<(src)/tao_stub.h',
+      ],
+      'libraries': [
+        '-lgflags',
+        '-lglog',
+        '-lkeyczar',
+        '-lcrypto',
+        '-lprotobuf',
+        '-lssl',
+      ],
+      'include_dirs': [
+        '<(SHARED_INTERMEDIATE_DIR)',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+      'direct_dependent_settings': {
+        'libraries': [
+          '-lgflags',
+          '-lglog',
+          '-lkeyczar',
+          '-lcrypto',
+          '-lprotobuf',
+          '-lssl',
         ],
         'include_dirs': [
           '<(SHARED_INTERMEDIATE_DIR)',
@@ -141,10 +181,10 @@
       'dependencies': [ 'cloudproxy', ],
     },
     {
-        'target_name': 'bootstrap',
-        'type': 'executable',
+        'target_name': 'legacy_tao',
+        'type': 'static_library',
         'variables': {
-            'src': '<(basesrc)/bootstrap',
+            'src': '<(basesrc)/legacy_tao',
             'basejlm': '../../',
             'ac': '<(basejlm)/accessControl',
             'ch': '<(basejlm)/channels',
@@ -194,8 +234,8 @@
             '<(vt)',
         ],
         'sources': [
-            '<(src)/bootstrap.cc',
-            '<(src)/whitelist.proto',
+            '<(src)/legacy_tao.h',
+            '<(src)/legacy_tao.cc',
             '<(cm)/jlmUtility.cpp',
             '<(jc)/keys.cpp',
             '<(jc)/cryptoHelper.cpp',
@@ -228,15 +268,43 @@
             '<(tc)/tcIO.cpp',
             '<(tp)/hashprep.cpp',
             '<(cm)/logging.cpp',
-	    '<(fp)/policyCert.inc',
-        ],
-        'includes': [
-            'protoc.gypi',
+	        '<(fp)/policyCert.inc',
         ],
         'dependencies': [
             'jlmtao.gyp:bignum_O1',
-            'cloudproxy',
+            'tao',
         ],
+        'direct_dependent_settings': {
+          'include_dirs': [
+            '<(SHARED_INTERMEDIATE_DIR)',
+            '<(basesrc)',
+            '<(fp)',
+            '<(cm)',
+            '<(jc)',
+            '<(jb)',
+            '<(cl)',
+            '<(ta)',
+            '<(tc)',
+            '<(tp)',
+            '<(ch)',
+            '<(pr)',
+            '<(ac)',
+            '<(vt)',
+          ],
+        },
+        'export_dependent_settings': [
+            'tao',
+        ],
+    },
+    {
+      'target_name': 'bootstrap',
+      'type': 'executable',
+      'variables': { 'src' : '<(basesrc)/apps', },
+      'sources': [ '<(src)/bootstrap.cc', ],
+      'include_dirs': [ '<(basesrc)', ],
+      'dependencies': [
+        'legacy_tao',
+      ],
     },
     
   ]

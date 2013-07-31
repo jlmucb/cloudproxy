@@ -11,7 +11,7 @@ namespace cloudproxy {
 class Tao {
   public:
     virtual ~Tao() { }
-    virtual bool Init(void *init_data) = 0;
+    virtual bool Init() = 0;
     virtual bool Destroy() = 0;
     virtual bool StartHostedProgram(const string &path, int argc,
                                     char **argv) = 0;

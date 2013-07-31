@@ -1,8 +1,8 @@
-#include "cloud_client.h"
+#include "cloudproxy/cloud_client.h"
 
 #include <glog/logging.h>
 
-#include "cloudproxy.pb.h"
+#include "cloudproxy/cloudproxy.pb.h"
 
 #include <sstream>
 #include <fstream>

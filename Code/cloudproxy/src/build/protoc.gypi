@@ -35,14 +35,14 @@
         '<(protoc)',
       ],
       'outputs': [
-        '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
-        '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
+        '<(cc_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.cc',
+        '<(cc_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.h',
       ],
       'action': [
         '<(protoc)',
         #  | sed "s/^\(.*\)\/[^/]*$/\1/g")',
         '-I<(RULE_INPUT_DIRNAME)/',
-        '--cpp_out=<(cc_dir)',
+        '--cpp_out=<(cc_dir)/<(RULE_INPUT_DIRNAME)',
         '<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_NAME)'
       ],
       'message': 'Generating C++ code from <(RULE_INPUT_PATH)',

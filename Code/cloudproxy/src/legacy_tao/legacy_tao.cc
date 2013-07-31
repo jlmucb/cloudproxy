@@ -1,4 +1,4 @@
-#include "legacy_tao.h"
+#include "legacy_tao/legacy_tao.h"
 
 #include <keyczar/rw/keyset_file_reader.h>
 #include <keyczar/rw/keyset_file_writer.h>
@@ -6,11 +6,11 @@
 #include <keyczar/base/file_util.h>
 #include <glog/logging.h>
 
-// minimal amount of code needed from old CloudProxy implementation to bootstrap
-// into a new one
-#include <jlmcrypto.h>
-#include <keys.h>
-#include <logging.h>
+// minimal amount of code needed from the old CloudProxy implementation to
+// bootstrap into a new one
+#include "jlmcrypto.h"
+#include "keys.h"
+#include "logging.h"
 #include "policyCert.inc"
 
 #include <fstream>
@@ -19,7 +19,7 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 
-namespace cloudproxy {
+namespace legacy_tao {
 
 LegacyTao::LegacyTao(const string &secret_path, const string &directory,
 		     const string &key_path)

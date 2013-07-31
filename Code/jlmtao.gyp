@@ -3,7 +3,7 @@
     'product_dir': 'bin',
   },
   'variables': {
-    'base': '../../',
+    'base': '.',
     'ac': '<(base)/accessControl',
     'ch': '<(base)/channels',
     'cl': '<(base)/claims',

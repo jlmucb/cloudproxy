@@ -1,11 +1,11 @@
 #ifndef CLOUDPROXY_CLOUD_SERVER_H_
 #define CLOUDPROXY_CLOUD_SERVER_H_
 
-#include "cloudproxy.pb.h"
-#include "cloud_auth.h"
-#include "cloud_user_manager.h"
-#include "cloud_server_thread_data.h"
-#include "util.h"
+#include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/cloud_server_thread_data.h"
+#include "cloudproxy/util.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>

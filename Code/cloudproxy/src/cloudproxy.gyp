@@ -1,7 +1,4 @@
 {
-  'variables': {
-    'basesrc': '../src',
-  },
   'target_defaults': {
     'cflags': [
       '-Wall',
@@ -15,7 +12,7 @@
       'target_name': 'cloudproxy',
       'type': 'static_library',
       'variables': {
-        'src': '<(basesrc)/cloudproxy',
+        'src': 'cloudproxy',
       },
       'sources': [
         '<(src)/cloudproxy.proto',
@@ -47,9 +44,10 @@
       ],
       'include_dirs': [
         '<(SHARED_INTERMEDIATE_DIR)',
+        '.',
       ],
       'includes': [
-        'protoc.gypi',
+        'build/protoc.gypi',
       ],
       'direct_dependent_settings': {
         'libraries': [
@@ -63,7 +61,7 @@
         ],
         'include_dirs': [
           '<(SHARED_INTERMEDIATE_DIR)',
-          '<(src)',
+          '.',
         ],
       },
     },
@@ -71,7 +69,7 @@
       'target_name': 'tao',
       'type': 'static_library',
       'variables': {
-        'src': '<(basesrc)/tao',
+        'src': 'tao',
       },
       'sources': [
         '<(src)/binaries.proto',
@@ -89,9 +87,10 @@
       ],
       'include_dirs': [
         '<(SHARED_INTERMEDIATE_DIR)',
+        '.',
       ],
       'includes': [
-        'protoc.gypi',
+        'build/protoc.gypi',
       ],
       'direct_dependent_settings': {
         'libraries': [
@@ -104,88 +103,88 @@
         ],
         'include_dirs': [
           '<(SHARED_INTERMEDIATE_DIR)',
-          '<(src)',
+          '.',
         ],
       },
     },
     {
       'target_name': 'test',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/main.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'sign_acls',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/sign_acls.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'verify_acls',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/verify_acls.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'sign_pub_key',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/sign_pub_key.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'verify_pub_key',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/verify_pub_key.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'client',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/client.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'fclient',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/fclient.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'server',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/server.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
       'target_name': 'fserver',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/fserver.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
     },
     {
         'target_name': 'legacy_tao',
         'type': 'static_library',
         'variables': {
-            'src': '<(basesrc)/legacy_tao',
-            'basejlm': '../../',
+            'src': 'legacy_tao',
+            'basejlm': '../..',
             'ac': '<(basejlm)/accessControl',
             'ch': '<(basejlm)/channels',
             'cl': '<(basejlm)/claims',
@@ -219,7 +218,7 @@
             'ENCRYPTTHENMAC',
         ],
         'include_dirs': [
-            '<(basesrc)',
+            '.',
             '<(fp)',
             '<(cm)',
             '<(jc)',
@@ -271,13 +270,13 @@
 	        '<(fp)/policyCert.inc',
         ],
         'dependencies': [
-            'jlmtao.gyp:bignum_O1',
+            '../../jlmtao.gyp:bignum_O1',
             'tao',
         ],
         'direct_dependent_settings': {
           'include_dirs': [
             '<(SHARED_INTERMEDIATE_DIR)',
-            '<(basesrc)',
+            '.',
             '<(fp)',
             '<(cm)',
             '<(jc)',
@@ -299,9 +298,9 @@
     {
       'target_name': 'bootstrap',
       'type': 'executable',
-      'variables': { 'src' : '<(basesrc)/apps', },
+      'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/bootstrap.cc', ],
-      'include_dirs': [ '<(basesrc)', ],
+      'include_dirs': [ '.', ],
       'dependencies': [
         'legacy_tao',
       ],

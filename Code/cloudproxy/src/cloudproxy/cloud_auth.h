@@ -2,7 +2,7 @@
 #define CLOUDPROXY_CLOUD_AUTH_H_
 
 #include <keyczar/keyczar.h>
-#include "cloudproxy.pb.h"
+#include "cloudproxy/cloudproxy.pb.h"
 
 #include <map>
 #include <set>

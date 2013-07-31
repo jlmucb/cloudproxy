@@ -1,5 +1,5 @@
-#include "cloud_server.h"
-#include "util.h"
+#include "cloudproxy/cloud_server.h"
+#include "cloudproxy/util.h"
 
 #include <arpa/inet.h>
 

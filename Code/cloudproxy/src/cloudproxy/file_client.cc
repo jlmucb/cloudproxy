@@ -1,4 +1,4 @@
-#include "file_client.h"
+#include "cloudproxy/file_client.h"
 
 namespace cloudproxy {
 

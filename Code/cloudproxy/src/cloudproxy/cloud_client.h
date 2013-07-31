@@ -4,8 +4,8 @@
 #include <openssl/ssl.h>
 #include <keyczar/keyczar.h>
 
-#include "util.h"
-#include "cloud_user_manager.h"
+#include "cloudproxy/util.h"
+#include "cloudproxy/cloud_user_manager.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

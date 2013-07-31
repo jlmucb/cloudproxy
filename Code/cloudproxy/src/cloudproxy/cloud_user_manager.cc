@@ -1,6 +1,6 @@
-#include "cloud_user_manager.h"
-#include "util.h"
-#include "cloudproxy.pb.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/util.h"
+#include "cloudproxy/cloudproxy.pb.h"
 
 #include <keyczar/rw/keyset_file_reader.h>
 

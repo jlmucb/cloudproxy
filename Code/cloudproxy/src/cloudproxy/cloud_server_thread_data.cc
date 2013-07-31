@@ -1,4 +1,4 @@
-#include "cloud_server_thread_data.h"
+#include "cloudproxy/cloud_server_thread_data.h"
 
 namespace cloudproxy {
 bool CloudServerThreadData::GetChallenge(const string &user, string *chall) {

@@ -1,4 +1,4 @@
-#include "cloud_auth.h"
+#include "cloudproxy/cloud_auth.h"
 #include <glog/logging.h>
 
 #include "util.h"

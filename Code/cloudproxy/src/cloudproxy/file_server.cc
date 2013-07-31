@@ -1,4 +1,4 @@
-#include "file_server.h"
+#include "cloudproxy/file_server.h"
 
 // for stat(2)
 #include <sys/types.h>

@@ -15,9 +15,9 @@
 
 using std::string;
 
-namespace cloudproxy {
+namespace legacy_tao {
 
-class LegacyTao : public Tao {
+class LegacyTao : public tao::Tao {
   public:
     LegacyTao(const string &secret_path, const string &directory,
 	      const string &key_path);
@@ -71,6 +71,6 @@ class LegacyTao : public Tao {
     // basis of the bootstrap Tao
     bool createKey(const string &secret);
 };
-} // namespace cloudproxy
+} // namespace legacy_tao
 
 #endif // LEGACY_TAO_LEGACY_TAO_H_

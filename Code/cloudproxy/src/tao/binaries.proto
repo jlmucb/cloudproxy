@@ -1,4 +1,4 @@
-package cloudproxy;
+package tao;
 
 message Binary {
     // the name of the binary
@@ -18,7 +18,7 @@ message Whitelist {
 
 message SignedWhitelist {
     // a serialized Whitelist message
-    required string serialized_binaries = 1;
+    required string serialized_whitelist = 1;
     
     // the signature on this message
     required bytes signature = 2;

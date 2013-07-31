@@ -10,7 +10,7 @@
 #include <keyczar/base/stl_util-inl.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
-#include <cloudproxy.pb.h>
+#include "cloudproxy/cloudproxy.pb.h"
 
 using std::string;
 using std::stringstream;

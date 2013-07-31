@@ -5,7 +5,7 @@
 
 using std::string;
 
-namespace cloudproxy {
+namespace tao {
 
 // The Tao interface
 class Tao {

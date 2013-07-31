@@ -1,7 +1,7 @@
 #ifndef CLOUDPROXY_FILE_SERVER_H_
 #define CLOUDPROXY_FILE_SERVER_H_
 
-#include "cloud_server.h"
+#include "cloudproxy/cloud_server.h"
 
 namespace cloudproxy {
 

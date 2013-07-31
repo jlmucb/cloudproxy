@@ -1,7 +1,7 @@
 #ifndef CLOUDPROXY_FILE_CLIENT_H_
 #define CLOUDPROXY_FILE_CLIENT_H_
 
-#include "cloud_client.h"
+#include "cloudproxy/cloud_client.h"
 
 namespace cloudproxy {
 class FileClient : public CloudClient {

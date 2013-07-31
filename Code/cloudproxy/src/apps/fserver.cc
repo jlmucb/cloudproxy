@@ -3,7 +3,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
-#include <cloudproxy/file_server.h>
+#include "cloudproxy/file_server.h"
 
 #include <mutex>
 #include <string>

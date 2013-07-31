@@ -1,4 +1,4 @@
-#include "util.h"
+#include "cloudproxy/util.h"
 
 #include <fstream>
 #include <sstream>
@@ -13,7 +13,7 @@
 #include <keyczar/rsa_impl.h>
 #include <keyczar/rsa_public_key.h>
 
-#include "cloudproxy.pb.h"
+#include "cloudproxy/cloudproxy.pb.h"
 
 using std::ifstream;
 using std::ofstream;

@@ -195,7 +195,7 @@
         ],
         'sources': [
             '<(src)/bootstrap.cc',
-            '<(src)/binaries.proto',
+            '<(src)/whitelist.proto',
             '<(cm)/jlmUtility.cpp',
             '<(jc)/keys.cpp',
             '<(jc)/cryptoHelper.cpp',

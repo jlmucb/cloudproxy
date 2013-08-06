@@ -10,7 +10,7 @@
 #include <keyczar/base/stl_util-inl.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
-#include "tao/whitelist.pb.h"
+#include "tao/hosted_programs.pb.h"
 
 using std::string;
 using std::stringstream;

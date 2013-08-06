@@ -34,6 +34,8 @@ DEFINE_string(directory, "/home/jlm/jlmcrypt",
               "The directory to use for Tao initialization");
 DEFINE_string(key_path, "bootstrap_files/bootstrap_key",
               "An encrypted keyczar directory for an encryption key");
+DEFINE_string(pk_key_path, "bootstrap_files/bootstrap_pk_key",
+              "An encrypted keyczar directory for a signing key");
 DEFINE_bool(start_measured, false, "A flag that indicates measured boot");
 
 int main(int argc, char **argv) {
@@ -67,7 +69,7 @@ int main(int argc, char **argv) {
 
   LOG(INFO) << "Measured program starting";
   scoped_ptr<tao::Tao> tao(new legacy_tao::LegacyTao(
-    FLAGS_secret_path, FLAGS_directory, FLAGS_key_path));
+    FLAGS_secret_path, FLAGS_directory, FLAGS_key_path, FLAGS_pk_key_path));
   
   CHECK(tao->Init()) << "Could not initialize the Legacy Tao";
   LOG(INFO) << "Finished initializing the Legacy Tao";

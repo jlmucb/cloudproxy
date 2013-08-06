@@ -2,6 +2,8 @@
 
 #include <keyczar/rw/keyset_file_reader.h>
 #include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/rw/keyset_encrypted_file_reader.h>
+#include <keyczar/rw/keyset_encrypted_file_writer.h>
 #include <keyczar/base/file_path.h>
 #include <keyczar/base/file_util.h>
 #include <glog/logging.h>
@@ -22,13 +24,15 @@ using std::ios;
 namespace legacy_tao {
 
 LegacyTao::LegacyTao(const string &secret_path, const string &directory,
-		     const string &key_path)
+		     const string &key_path, const string &pk_path)
   : secret_path_(secret_path),
     directory_(directory),
     key_path_(key_path),
+    pk_path_(pk_path),
     tao_host_(new taoHostServices()),
     tao_env_(new taoEnvironment()),
     keyset_(new keyczar::Keyset()),
+    pk_keyset_(new keyczar::Keyset()),
     key_(nullptr),
     child_fd_(-1) {
   // leave setup for Init
@@ -48,7 +52,7 @@ bool LegacyTao::Init() {
         << "Could not generate (and seal) or unseal the secret using the Tao";
     VLOG(1) << "Got the secret";
 
-    // now get our keyczar::Verifier HMAC key that was encrypted using this
+    // now get our keyczar::Crypter key that was encrypted using this
     // secret or generate and encrypt a new one
     FilePath fp(key_path_);
     if (!keyczar::base::PathExists(fp)) {
@@ -67,6 +71,33 @@ bool LegacyTao::Init() {
 
     key_ = keyset_->primary_key();
     CHECK_NOTNULL(key_);
+
+    // get a public-private key pair from the Tao key (either create and seal or
+    // just unseal it).
+    
+    // First we need another copy of the crypter to give to the encrypted file
+    // reader. By this point, however, there should be a copy on disk, so we can
+    // use the secret again to get it.
+    scoped_ptr<keyczar::rw::KeysetReader> crypter_reader(
+        new keyczar::rw::KeysetPBEJSONFileReader(fp, *secret));
+    scoped_ptr<keyczar::Crypter> crypter(new keyczar::Crypter(
+        keyczar::Keyset::Read(*crypter_reader, true)));
+    
+    FilePath pk_fp(pk_path_);
+    if (!keyczar::base::PathExists(pk_fp)) {
+        CHECK(keyczar::base::CreateDirectory(pk_fp))
+            << "Could not create the directory for a public-private key pair";
+        CHECK(createPublicKey(crypter.release()))
+            << "Could not create the publick key";
+    } else {
+        scoped_ptr<keyczar::rw::KeysetReader> reader(
+            new keyczar::rw::KeysetEncryptedJSONFileReader(pk_fp,
+                crypter.release()));
+        pk_keyset_.reset(keyczar::Keyset::Read(*reader, true));
+        CHECK_NOTNULL(pk_keyset_.get());
+    } 
+
+    pk_ = pk_keyset_->primary_key();
 
     VLOG(1) << "Finished legacy tao initialization successfully";
     return true;
@@ -158,6 +189,30 @@ bool LegacyTao::getSecret(keyczar::base::ScopedSafeString *secret) {
   return true;
 }
 
+// TODO(tmroeder): combine this function and createKey by taking in the key type
+// and purpose and writer.
+bool LegacyTao::createPublicKey(keyczar::Encrypter *crypter) {
+    FilePath fp(pk_path_);
+    scoped_ptr<keyczar::rw::KeysetWriter> writer(
+      new keyczar::rw::KeysetEncryptedJSONFileWriter(fp, crypter));
+
+    CHECK_NOTNULL(writer.get());
+
+    pk_keyset_->AddObserver(writer.get());
+    pk_keyset_->set_encrypted(true);
+    
+    keyczar::KeyType::Type key_type = keyczar::KeyType::ECDSA_PRIV;
+    keyczar::KeyPurpose::Type key_purpose = keyczar::KeyPurpose::SIGN_AND_VERIFY;
+    keyczar::KeysetMetadata *metadata = nullptr;
+    metadata = new keyczar::KeysetMetadata("legacy_tao_pk", key_type,
+                                           key_purpose, true, 1);
+    CHECK_NOTNULL(metadata);
+    pk_keyset_->set_metadata(metadata);
+    pk_keyset_->GenerateDefaultKeySize(keyczar::KeyStatus::PRIMARY);
+
+    return true;
+}
+
 bool LegacyTao::createKey(const string &secret) {
   FilePath fp(key_path_);
   scoped_ptr<keyczar::rw::KeysetWriter> writer(
@@ -169,7 +224,7 @@ bool LegacyTao::createKey(const string &secret) {
 
   keyczar::KeyType::Type key_type = keyczar::KeyType::AES;
   keyczar::KeyPurpose::Type key_purpose = keyczar::KeyPurpose::DECRYPT_AND_ENCRYPT;
-  keyczar::KeysetMetadata *metadata = NULL;
+  keyczar::KeysetMetadata *metadata = nullptr;
   metadata = new keyczar::KeysetMetadata("legacy_tao", key_type, key_purpose,
                                          true, 1);
   CHECK_NOTNULL(metadata);

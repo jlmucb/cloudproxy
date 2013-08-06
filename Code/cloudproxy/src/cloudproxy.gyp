@@ -72,7 +72,7 @@
         'src': 'tao',
       },
       'sources': [
-        '<(src)/binaries.proto',
+        '<(src)/hosted_programs.proto',
         '<(src)/tao.h',
         '<(src)/tao_binary_cache.h',
         '<(src)/tao_stub.h',
@@ -178,6 +178,19 @@
       'sources': [ '<(src)/fserver.cc', ],
       'include_dirs': [ '.', ],
       'dependencies': [ 'cloudproxy', ],
+    },
+    {
+      'target_name': 'hash_file',
+      'type': 'executable',
+      'variables': { 'src' : 'apps', },
+      'sources': [ '<(src)/hash_file.cc', ],
+      'include_dirs': [ '.', ],
+      'libraries' : [
+        '-lgflags',
+        '-lglog',
+        '-lkeyczar',
+        '-lcrypto',
+      ],
     },
     {
         'target_name': 'legacy_tao',

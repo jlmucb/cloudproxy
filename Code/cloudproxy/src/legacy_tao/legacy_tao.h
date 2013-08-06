@@ -20,7 +20,7 @@ namespace legacy_tao {
 class LegacyTao : public tao::Tao {
   public:
     LegacyTao(const string &secret_path, const string &directory,
-	      const string &key_path);
+	      const string &key_path, const string &pk_path);
     virtual ~LegacyTao() { }
     virtual bool Init();
     virtual bool Destroy();
@@ -42,6 +42,9 @@ class LegacyTao : public tao::Tao {
     // the path to the sealed keyczar key
     string key_path_;
 
+    // the path to the sealed public/private keyczar key
+    string pk_path_;
+
     // the legacy tao host and environment
     scoped_ptr<taoHostServices> tao_host_;
     scoped_ptr<taoEnvironment> tao_env_;
@@ -49,8 +52,14 @@ class LegacyTao : public tao::Tao {
     // keys unlocked by the secret
     scoped_ptr<keyczar::Keyset> keyset_;
 
+    // public/private keys unlocked by the secret
+    scoped_ptr<keyczar::Keyset> pk_keyset_;
+
     // a reference to the current primary key from the keyset
     const keyczar::Key *key_;
+
+    // a reference to the current primary key from the pk keyset
+    const keyczar::Key *pk_;
 
     // A file descriptor used to communicate with the child process
     int child_fd_;
@@ -70,6 +79,10 @@ class LegacyTao : public tao::Tao {
     // create a new keyset with a primary AES key that we will use as the
     // basis of the bootstrap Tao
     bool createKey(const string &secret);
+    
+    // create a new keyset with an ECDSA public/private key pair to use for
+    // signing
+    bool createPublicKey(keyczar::Encrypter *crypter);
 };
 } // namespace legacy_tao
 

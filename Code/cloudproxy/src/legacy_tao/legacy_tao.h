@@ -8,7 +8,7 @@
 // along with startMeAsMeasuredProgram for clients of LegacyTao
 #include <tao.h>
 
-// cloudproxy::Tao
+// tao::Tao
 #include <tao/tao.h>
 
 #include <string>

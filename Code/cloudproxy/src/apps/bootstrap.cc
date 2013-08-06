@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
     FLAGS_log_dir = "b_meas";
   }
 
+  FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
   // request a measured start

@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
 
   // keyczar::Keyczar *signer = keyczar::Signer::Read("./tempk");
   // print out the length of the string representation of the whitelist file
-  size_t len = whitelist.str().size();
+  size_t len = whitelist_buf.str().size();
   CHECK(len > 0) << "Could not read any bytes from the whitelist file";
   string sig;
   CHECK(signer->Sign(whitelist_buf.str(), &sig))

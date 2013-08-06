@@ -193,6 +193,14 @@
       ],
     },
     {
+      'target_name': 'sign_whitelist',
+      'type': 'executable',
+      'variables': { 'src' : 'apps', },
+      'sources': [ '<(src)/sign_whitelist.cc', ],
+      'include_dirs': [ '.', ],
+      'dependencies': [ 'tao', ],
+    },
+    {
         'target_name': 'legacy_tao',
         'type': 'static_library',
         'variables': {

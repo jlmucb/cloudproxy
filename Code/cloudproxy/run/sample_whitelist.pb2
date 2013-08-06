@@ -1,0 +1,11 @@
+programs {
+    name: "server"
+    hash_alg: "SHA256"
+    hash: "jDXv69cY8CRtsucD0vOkMSrp2sj9zE9toJZbjO6bqCI"
+}
+
+programs {
+    name: "client"
+    hash_alg: "SHA256"
+    hash: "haEQEGksqr_bU5U96atbvl98O8SwvHXNKtD-UG2qYlU"
+}

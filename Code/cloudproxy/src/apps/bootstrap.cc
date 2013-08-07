@@ -37,6 +37,9 @@ DEFINE_string(key_path, "bootstrap_files/bootstrap_key",
 DEFINE_string(pk_key_path, "bootstrap_files/bootstrap_pk_key",
               "An encrypted keyczar directory for a signing key");
 DEFINE_bool(start_measured, false, "A flag that indicates measured boot");
+DEFINE_string(whitelist, "signed_whitelist", "A signed whitelist file");
+DEFINE_string(policy_pk_path, "./policy_public_key",
+	      "The path to the public policy key");
 
 int main(int argc, char **argv) {
 
@@ -70,8 +73,9 @@ int main(int argc, char **argv) {
 
   LOG(INFO) << "Measured program starting";
   scoped_ptr<tao::Tao> tao(new legacy_tao::LegacyTao(
-    FLAGS_secret_path, FLAGS_directory, FLAGS_key_path, FLAGS_pk_key_path));
-  
+      FLAGS_secret_path, FLAGS_directory, FLAGS_key_path, FLAGS_pk_key_path,
+      FLAGS_whitelist, FLAGS_policy_pk_path));
+
   CHECK(tao->Init()) << "Could not initialize the Legacy Tao";
   LOG(INFO) << "Finished initializing the Legacy Tao";
   return 0;

@@ -12,15 +12,18 @@
 #include <tao/tao.h>
 
 #include <string>
+#include <map>
 
 using std::string;
+using std::map;
 
 namespace legacy_tao {
 
 class LegacyTao : public tao::Tao {
   public:
     LegacyTao(const string &secret_path, const string &directory,
-	      const string &key_path, const string &pk_path);
+	      const string &key_path, const string &pk_path,
+	      const string &whitelist_path, const string &policy_pk_path);
     virtual ~LegacyTao() { }
     virtual bool Init();
     virtual bool Destroy();
@@ -29,8 +32,10 @@ class LegacyTao : public tao::Tao {
     virtual bool GetRandomBytes(size_t size, string *bytes);
     virtual bool Seal(const string &data, string *sealed);
     virtual bool Unseal(const string &sealed, string *data);
-    virtual bool Attest(const string &data, string *attested);
-    virtual bool Verify(const string &attested);
+    virtual bool Quote(const string &data, string *signature);
+    virtual bool VerifyQuote(const string &data, const string &signature);
+    virtual bool Attest(string *attestation);
+    virtual bool Verify(const string &attestation);
 
   private:
     // the path to the secret sealed by the legacy Tao
@@ -44,6 +49,12 @@ class LegacyTao : public tao::Tao {
 
     // the path to the sealed public/private keyczar key
     string pk_path_;
+
+    // the path to the whitelist for programs to start
+    string whitelist_path_;
+
+    // the path to the public key
+    string policy_pk_path_;
 
     // the legacy tao host and environment
     scoped_ptr<taoHostServices> tao_host_;
@@ -60,6 +71,12 @@ class LegacyTao : public tao::Tao {
 
     // a reference to the current primary key from the pk keyset
     const keyczar::Key *pk_;
+
+    // the public policy key
+    scoped_ptr<keyczar::Keyczar> policy_pk_;
+
+    // the verified whitelist of applications that can be started
+    map<string, string> whitelist_;
 
     // A file descriptor used to communicate with the child process
     int child_fd_;

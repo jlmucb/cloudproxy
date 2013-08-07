@@ -73,6 +73,8 @@
       },
       'sources': [
         '<(src)/hosted_programs.proto',
+        '<(src)/attestation.proto',
+        '<(src)/quote.proto',
         '<(src)/tao.h',
         '<(src)/tao_binary_cache.h',
         '<(src)/tao_stub.h',

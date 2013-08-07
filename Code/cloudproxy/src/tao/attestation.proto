@@ -1,0 +1,23 @@
+package tao;
+
+message Attestation {
+  // the time at which the attestation was made
+  required string time = 1;
+  
+  // the algorithm used to hash the program
+  required string hash_alg = 2;
+
+  // the hash of the program
+  required string hash = 3;
+
+  // a sequence of other attestations or certificates, as needed, to show the
+  // correctness of the signer
+  repeated bytes evidence = 4;
+}
+
+message SignedAttestion {
+  // a serialized Attestation message
+  required bytes serialized_attestation = 1;
+
+  required bytes signature = 2;
+}

@@ -1,5 +1,9 @@
 #include "legacy_tao/legacy_tao.h"
+#include "tao/attestation.pb.h"
+#include "tao/hosted_programs.pb.h"
+#include "tao/quote.pb.h"
 
+#include <keyczar/base/base64w.h>
 #include <keyczar/rw/keyset_file_reader.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_encrypted_file_reader.h>
@@ -10,13 +14,19 @@
 
 // minimal amount of code needed from the old CloudProxy implementation to
 // bootstrap into a new one
-#include "jlmcrypto.h"
-#include "keys.h"
-#include "logging.h"
-#include "policyCert.inc"
+#include <jlmcrypto.h>
+#include <keys.h>
+#include <logging.h>
+#include <policyCert.inc>
 
 #include <fstream>
+#include <sstream>
 
+using tao::HostedProgram;
+using tao::SignedWhitelist;
+using tao::Whitelist;
+
+using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
 using keyczar::Encrypter;
@@ -25,7 +35,9 @@ using keyczar::KeysetMetadata;
 using keyczar::KeyType;
 using keyczar::KeyPurpose;
 using keyczar::KeyStatus;
+using keyczar::MessageDigestImpl;
 using keyczar::RandImpl;
+using keyczar::Verifier;
 
 using keyczar::base::CreateDirectory;
 using keyczar::base::PathExists;
@@ -41,25 +53,51 @@ using keyczar::rw::KeysetEncryptedJSONFileWriter;
 using std::ifstream;
 using std::ofstream;
 using std::ios;
+using std::stringstream;
 
 namespace legacy_tao {
 
 LegacyTao::LegacyTao(const string &secret_path, const string &directory,
-                     const string &key_path, const string &pk_path)
+                     const string &key_path, const string &pk_path,
+		     const string &whitelist_path, const string &policy_pk_path)
     : secret_path_(secret_path),
       directory_(directory),
       key_path_(key_path),
       pk_path_(pk_path),
+      whitelist_path_(whitelist_path),
+      policy_pk_path_(policy_pk_path),
       tao_host_(new taoHostServices()),
       tao_env_(new taoEnvironment()),
       keyset_(new Keyset()),
       pk_keyset_(new Keyset()),
       key_(nullptr),
+      pk_(nullptr),
+      policy_pk_(nullptr),
       child_fd_(-1) {
   // leave setup for Init
 }
 
 bool LegacyTao::Init() {
+  // load the public policy key
+  policy_pk_.reset(Verifier::Read(policy_pk_path_.c_str()));
+  CHECK_NOTNULL(policy_pk_.get());
+  
+  // load the whitelist file and check its signature
+  ifstream whitelist(whitelist_path_);
+
+  SignedWhitelist sw;
+  sw.ParseFromIstream(&whitelist);
+  CHECK(policy_pk_->Verify(sw.serialized_whitelist(), sw.signature()))
+    << "The signature did not verify on the signed whitelist";
+
+  Whitelist w;
+  w.ParseFromString(sw.serialized_whitelist());
+  for (auto &i : w.programs()) {
+    CHECK(whitelist_.find(i.name()) == whitelist_.end())
+      << "Can't add " << i.name() << " to the whitelist twice";
+    whitelist_[i.name()] = i.hash();
+  }
+
   // initialize jlmcrypto
   CHECK(initAllCrypto()) << "Could not initialize jlmcrypto";
 
@@ -250,19 +288,89 @@ bool LegacyTao::createKey(const string &secret) {
   return true;
 }
 
-bool LegacyTao::Destroy() { return false; }
+bool LegacyTao::Destroy() { return true; }
 
 bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
+  // first check to make sure that this program is authorized
+
+  // TODO(tmroeder): get the final component of the path rather than
+  // insisting that the path match exactly
+  if (whitelist_.find(path) == whitelist_.end()) 
+    return false;
+
+  ifstream program_stream(path.c_str());
+  stringstream program_buf;
+  program_buf << program_stream.rdbuf();
+
+  // TODO(tmroeder): take in the right hash type and use it here. For
+  // now, we just assume that it's SHA256
+  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
+  string digest;
+  if (!sha256->Digest(program_buf.str(), &digest)) {
+    LOG(ERROR) << "Could not compute the digest over the file";
+    return false;
+  }
+  
+  string serialized_digest;
+  if (!Base64WEncode(digest, &serialized_digest)) {
+    LOG(ERROR) << "Could not encode the digest as Base64W";
+    return false;
+  }
+  
+  return true;
+}
+  
+bool LegacyTao::GetRandomBytes(size_t size, string *bytes) {
+  // just ask keyczar for random bytes, which will ask OpenSSL in turn
+  RandImpl *rand = CryptoFactory::Rand();
+  if (!rand->RandBytes(size, bytes)) {
+    LOG(ERROR) << "Could not generate a random secret to seal";
+    return false;
+  }
+  
+  return true;
+}
+  
+
+bool LegacyTao::Seal(const string &data, string *sealed) {
+  // encrypt it using our symmetric key
+  if (!key_->Encrypt(data, sealed)) {
+    LOG(ERROR) << "Could not seal the data";
+    return false;
+  }
+
+  return true;
+}
+
+bool LegacyTao::Unseal(const string &sealed, string *data)  {
+  // decrypt it using our symmetric key
+  if (!key_->Decrypt(sealed, data)) {
+    LOG(ERROR) << "Could not unseal the data";
+    return false;
+  }
+
+  return true;
+}
+  
+bool LegacyTao::Quote(const string &data, string *signature) {
+  // TODO(tmroeder): implement this with tao::SignedQuote as the signature
   return false;
 }
 
-bool LegacyTao::GetRandomBytes(size_t size, string *bytes) { return false; }
+bool LegacyTao::VerifyQuote(const string &data, const string &signature) {
+  // TODO(tmroeder): implement this with tao::SignedQuote as the signature
+  return false;
+}
 
-bool LegacyTao::Seal(const string &data, string *sealed) { return false; }
 
-bool LegacyTao::Unseal(const string &sealed, string *data) { return false; }
+bool LegacyTao::Attest(string *attestation) {
+  // TOOD(tmroeder): get the current time and produce a signature
+  return false;
+}
 
-bool LegacyTao::Attest(const string &data, string *attested) { return false; }
-
-bool LegacyTao::Verify(const string &attested) { return false; }
+bool LegacyTao::Verify(const string &attestation) {
+  // TODO(tmroeder): check that the time isn't too long ago (5 minutes?) and check the signature
+  // TODO(tmroeder): make this signature depend on all lower levels of the Tao
+  return false;
+}
 }  // namespace cloudproxy

@@ -1,0 +1,19 @@
+package tao;
+
+message Quote {
+  // the data to quote
+  required bytes data = 1;
+
+  required string hash_alg = 2;
+
+  // the hash of the program making the statement
+  required string hash = 3;
+
+  // a sequence of quotes or other evidence showing that the signing key is correct
+  repeated bytes evidence = 4;
+}
+
+message SignedQuote {
+  required bytes serialized_quote = 1;
+  required bytes signature = 2;
+}

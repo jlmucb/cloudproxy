@@ -72,12 +72,16 @@
         'src': 'tao',
       },
       'sources': [
-        '<(src)/hosted_programs.proto',
         '<(src)/attestation.proto',
+        '<(src)/hosted_programs.proto',
+        '<(src)/pipe_tao_channel.h',
+        '<(src)/pipe_tao_channel.cc',
         '<(src)/quote.proto',
         '<(src)/tao.h',
+        '<(src)/tao_channel.h',
+        '<(src)/tao_channel.cc',
+        '<(src)/tao_channel_rpc.proto',
         '<(src)/tao_binary_cache.h',
-        '<(src)/tao_stub.h',
       ],
       'libraries': [
         '-lgflags',

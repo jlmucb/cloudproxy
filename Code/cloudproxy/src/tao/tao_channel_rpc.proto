@@ -1,0 +1,38 @@
+package tao;
+
+enum RPC {
+  INIT = 0;
+  DESTROY = 1;
+  START_HOSTED_PROGRAM = 2;
+  GET_RANDOM_BYTES = 3;
+  SEAL = 4;
+  UNSEAL = 5;
+  QUOTE = 6;
+  VERIFY_QUOTE = 7;
+  ATTEST = 8;
+  VERIFY_ATTESTATION = 9;
+}
+
+message TaoChannelRPC {
+  required RPC rpc = 1;
+  optional bytes data = 2;
+  optional bytes signature = 3;
+  optional StartHostedProgramArgs start = 4;
+  optional GetRandomBytesArgs random = 5;
+}
+
+message TaoChannelResponse {
+  required RPC rpc = 1;
+  required bool success = 2;
+  optional bytes data = 3;
+}
+
+message StartHostedProgramArgs {
+  required string path = 1;
+  required int32 argc = 2;
+  repeated string argv = 3;
+}
+
+message GetRandomBytesArgs {
+  required int32 size = 1;
+}

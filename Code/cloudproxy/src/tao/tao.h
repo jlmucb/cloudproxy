@@ -21,7 +21,7 @@ class Tao {
     virtual bool Quote(const string &data, string *signature) = 0;
     virtual bool VerifyQuote(const string &data, const string &signature) = 0;
     virtual bool Attest(string *attestation) = 0;
-    virtual bool Verify(const string &attestation) = 0;
+    virtual bool VerifyAttestation(const string &attestation) = 0;
 };
 }
 

@@ -35,7 +35,7 @@ class LegacyTao : public tao::Tao {
     virtual bool Quote(const string &data, string *signature);
     virtual bool VerifyQuote(const string &data, const string &signature);
     virtual bool Attest(string *attestation);
-    virtual bool Verify(const string &attestation);
+    virtual bool VerifyAttestation(const string &attestation);
 
   private:
     // the path to the secret sealed by the legacy Tao

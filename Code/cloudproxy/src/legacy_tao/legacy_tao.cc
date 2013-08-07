@@ -2,6 +2,7 @@
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/quote.pb.h"
+#include "tao/pipe_tao_channel.h"
 
 #include <keyczar/base/base64w.h>
 #include <keyczar/rw/keyset_file_reader.h>
@@ -23,6 +24,7 @@
 #include <sstream>
 
 using tao::HostedProgram;
+using tao::PipeTaoChannel;
 using tao::SignedWhitelist;
 using tao::Whitelist;
 
@@ -295,7 +297,8 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
 
   // TODO(tmroeder): get the final component of the path rather than
   // insisting that the path match exactly
-  if (whitelist_.find(path) == whitelist_.end()) 
+  auto w = whitelist_.find(path);
+  if (w == whitelist_.end()) 
     return false;
 
   ifstream program_stream(path.c_str());
@@ -317,6 +320,85 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     return false;
   }
   
+  // check that the digests match
+  if (w->second.compare(serialized_digest) != 0) {
+    LOG(ERROR) << "The digest stored for " << path << " is " << w->second
+	       << "which does not match the computed digest "
+	       << serialized_digest;
+    return false;
+  }
+
+  // create a pipe on which the child can communicate with the Tao
+  int pipedown[2];
+  int pipeup[2];
+  
+  if (pipe(pipedown) != 0) {
+    LOG(ERROR) << "Could not create the downward pipe";
+    return false;
+  }
+
+  if (pipe(pipeup) != 0) {
+    LOG(ERROR) << "Could not create the upward pipe";
+    return false;
+  }
+
+  int child_pid = fork();
+  if (child_pid == -1) {
+    LOG(ERROR) << "Could not fork";
+    return false;
+  }
+
+  if (child_pid == 0) {
+    // child process; exec with the read end of pipedown and the write end of pipeup
+    close(pipedown[1]);
+    close(pipeup[0]);
+
+    scoped_array<char*> new_argv(new char*[argc + 3]);
+
+    for (int i = 0; i < argc; i++) {
+      new_argv[i] = argv[i];
+    }
+
+    stringstream pread_buf;
+    pread_buf << pipedown[0];
+    string pread = pread_buf.str();
+    scoped_array<char> pr(new char[pread.size() + 1]);
+    size_t len = pread.copy(pr.get(), pread.size());
+    pr[len] = '\0';
+
+    stringstream pwrite_buf;
+    pwrite_buf << pipeup[1];
+    string pwrite = pwrite_buf.str();
+    scoped_array<char> pw(new char[pwrite.size() + 1]);
+    len = pwrite.copy(pw.get(), pwrite.size());
+    pw[len] = '\0';
+
+    new_argv[argc] = pr.get();
+    new_argv[argc + 1] = pw.get();
+    new_argv[argc + 2] = NULL;
+
+    int rv = execv(path.c_str(), new_argv);
+    if (rv == -1) {
+      LOG(ERROR) << "Could not exec " << path;
+      return false;
+    }
+  } else {
+    // parent process: send message on downward pipe and receive message on upward pipe
+    close(pipedown[0]);
+    close(pipeup[1]);
+
+    int fds[2];
+    fds[0] = pipeup[0];
+    fds[1] = pipedown[1];
+    PipeTaoChannel ptc(fds);
+    bool rv = ptc.Listen(this);
+    if (!rv) {
+      LOG(ERROR) << "Listening failed";
+    }
+
+    return rv;
+  }
+
   return true;
 }
   
@@ -368,9 +450,10 @@ bool LegacyTao::Attest(string *attestation) {
   return false;
 }
 
-bool LegacyTao::Verify(const string &attestation) {
+bool LegacyTao::VerifyAttestation(const string &attestation) {
   // TODO(tmroeder): check that the time isn't too long ago (5 minutes?) and check the signature
   // TODO(tmroeder): make this signature depend on all lower levels of the Tao
+  // Also need to make sure that we're checking that it's a trusted signature, *not* necessarily a signature from our key
   return false;
 }
 }  // namespace cloudproxy

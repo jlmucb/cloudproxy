@@ -175,7 +175,10 @@
       'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/server.cc', ],
       'include_dirs': [ '.', ],
-      'dependencies': [ 'cloudproxy', ],
+      'dependencies': [
+         'cloudproxy',
+         'tao',
+      ],
     },
     {
       'target_name': 'fserver',

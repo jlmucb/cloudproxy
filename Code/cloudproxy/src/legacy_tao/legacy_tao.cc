@@ -32,6 +32,7 @@ using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
 using keyczar::Encrypter;
+using keyczar::Keyczar;
 using keyczar::Keyset;
 using keyczar::KeysetMetadata;
 using keyczar::KeyType;
@@ -39,6 +40,7 @@ using keyczar::KeyPurpose;
 using keyczar::KeyStatus;
 using keyczar::MessageDigestImpl;
 using keyczar::RandImpl;
+using keyczar::Signer;
 using keyczar::Verifier;
 
 using keyczar::base::CreateDirectory;
@@ -70,37 +72,46 @@ LegacyTao::LegacyTao(const string &secret_path, const string &directory,
       policy_pk_path_(policy_pk_path),
       tao_host_(new taoHostServices()),
       tao_env_(new taoEnvironment()),
-      keyset_(new Keyset()),
-      pk_keyset_(new Keyset()),
-      key_(nullptr),
-      pk_(nullptr),
-      policy_pk_(nullptr),
+      crypter_(nullptr),
+      signer_(nullptr),
+      policy_verifier_(nullptr),
+      whitelist_(),
       child_fd_(-1) {
   // leave setup for Init
 }
 
 bool LegacyTao::Init() {
   // load the public policy key
-  policy_pk_.reset(Verifier::Read(policy_pk_path_.c_str()));
-  CHECK_NOTNULL(policy_pk_.get());
+  LOG(INFO) << "Loading public policy key from " << policy_pk_path_;
+  policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
+  CHECK_NOTNULL(policy_verifier_.get());
+  policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
   
+  LOG(INFO) << "Loading the whitelist from " << whitelist_path_;
   // load the whitelist file and check its signature
   ifstream whitelist(whitelist_path_);
 
   SignedWhitelist sw;
   sw.ParseFromIstream(&whitelist);
-  CHECK(policy_pk_->Verify(sw.serialized_whitelist(), sw.signature()))
+  CHECK(policy_verifier_->Verify(sw.serialized_whitelist(), sw.signature()))
     << "The signature did not verify on the signed whitelist";
 
   Whitelist w;
-  w.ParseFromString(sw.serialized_whitelist());
-  for (auto &i : w.programs()) {
-    CHECK(whitelist_.find(i.name()) == whitelist_.end())
-      << "Can't add " << i.name() << " to the whitelist twice";
-    whitelist_[i.name()] = i.hash();
+  const string &serialized_w = sw.serialized_whitelist();
+  LOG(INFO) << "serialized whitelist has length " << serialized_w.size();
+  w.ParseFromString(serialized_w);
+  LOG(INFO) << "The number of program hashes is " << w.programs_size();
+  for (int i = 0; i < w.programs_size(); i++) {
+    const HostedProgram &hp = w.programs(i);
+    CHECK(whitelist_.find(hp.name()) == whitelist_.end())
+      << "Can't add " << hp.name() << " to the whitelist twice";
+    LOG(INFO) << "Adding " << hp.name() << " to the whitelist";
+    whitelist_[hp.name()] = hp.hash();
   }
+  LOG(INFO) << "Done populating the whitelist";
 
-  // initialize jlmcrypto
+  // initialize jlmcrypto from the legacy tao; this is required to use
+  // any of the original tao
   CHECK(initAllCrypto()) << "Could not initialize jlmcrypto";
 
   CHECK(initTao()) << "Could not initialize the Tao";
@@ -113,7 +124,7 @@ bool LegacyTao::Init() {
       << "Could not generate (and seal) or unseal the secret using the Tao";
   VLOG(1) << "Got the secret";
 
-  // now get our Crypter key that was encrypted using this
+  // now get our Crypter that was encrypted using this
   // secret or generate and encrypt a new one
   FilePath fp(key_path_);
   if (!PathExists(fp)) {
@@ -121,16 +132,15 @@ bool LegacyTao::Init() {
                                << key_path_;
 
     // create a new keyset
-    CHECK(createKey(*secret)) << "Could not create keyset";
+    CHECK(createKey(*secret)) << "Could not create crypter";
   } else {
-    // read the keyset from the encrypted directory
+    // read the crypter from the encrypted directory
     scoped_ptr<KeysetReader> reader(new KeysetPBEJSONFileReader(fp, *secret));
-    keyset_.reset(Keyset::Read(*reader, true));
-    CHECK_NOTNULL(keyset_.get());
+    crypter_.reset(Crypter::Read(*reader));
+    CHECK_NOTNULL(crypter_.get());
   }
 
-  key_ = keyset_->primary_key();
-  CHECK_NOTNULL(key_);
+  crypter_->set_encoding(Keyczar::NO_ENCODING);
 
   // get a public-private key pair from the Tao key (either create and seal or
   // just unseal it).
@@ -140,7 +150,7 @@ bool LegacyTao::Init() {
   // use the secret again to get it.
   scoped_ptr<KeysetReader> crypter_reader(
       new KeysetPBEJSONFileReader(fp, *secret));
-  scoped_ptr<Crypter> crypter(new Crypter(Keyset::Read(*crypter_reader, true)));
+  scoped_ptr<Crypter> crypter(Crypter::Read(*crypter_reader));
 
   FilePath pk_fp(pk_path_);
   if (!PathExists(pk_fp)) {
@@ -151,11 +161,11 @@ bool LegacyTao::Init() {
   } else {
     scoped_ptr<KeysetReader> reader(
         new KeysetEncryptedJSONFileReader(pk_fp, crypter.release()));
-    pk_keyset_.reset(Keyset::Read(*reader, true));
-    CHECK_NOTNULL(pk_keyset_.get());
+    signer_.reset(Signer::Read(*reader));
+    CHECK_NOTNULL(signer_.get());
   }
 
-  pk_ = pk_keyset_->primary_key();
+  signer_->set_encoding(Keyczar::NO_ENCODING);
 
   VLOG(1) << "Finished legacy tao initialization successfully";
   return true;
@@ -255,9 +265,9 @@ bool LegacyTao::createPublicKey(Encrypter *crypter) {
       new KeysetEncryptedJSONFileWriter(fp, crypter));
 
   CHECK_NOTNULL(writer.get());
-
-  pk_keyset_->AddObserver(writer.get());
-  pk_keyset_->set_encrypted(true);
+  scoped_ptr<Keyset> k(new Keyset());
+  k->AddObserver(writer.get());
+  k->set_encrypted(true);
 
   KeyType::Type key_type = KeyType::ECDSA_PRIV;
   KeyPurpose::Type key_purpose = KeyPurpose::SIGN_AND_VERIFY;
@@ -265,8 +275,10 @@ bool LegacyTao::createPublicKey(Encrypter *crypter) {
   metadata =
       new KeysetMetadata("legacy_tao_pk", key_type, key_purpose, true, 1);
   CHECK_NOTNULL(metadata);
-  pk_keyset_->set_metadata(metadata);
-  pk_keyset_->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  k->set_metadata(metadata);
+  k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+
+  signer_.reset(new Signer(k.release()));
 
   return true;
 }
@@ -276,8 +288,10 @@ bool LegacyTao::createKey(const string &secret) {
   scoped_ptr<KeysetWriter> writer(new KeysetPBEJSONFileWriter(fp, secret));
   CHECK_NOTNULL(writer.get());
 
-  keyset_->AddObserver(writer.get());
-  keyset_->set_encrypted(true);
+  scoped_ptr<Keyset> k(new Keyset());
+
+  k->AddObserver(writer.get());
+  k->set_encrypted(true);
 
   KeyType::Type key_type = KeyType::AES;
   KeyPurpose::Type key_purpose = KeyPurpose::DECRYPT_AND_ENCRYPT;
@@ -285,8 +299,10 @@ bool LegacyTao::createKey(const string &secret) {
   metadata = new KeysetMetadata("legacy_tao", key_type, key_purpose, true, 1);
   CHECK_NOTNULL(metadata);
 
-  keyset_->set_metadata(metadata);
-  keyset_->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  k->set_metadata(metadata);
+  k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  
+  crypter_.reset(new Crypter(k.release()));
   return true;
 }
 
@@ -295,11 +311,16 @@ bool LegacyTao::Destroy() { return true; }
 bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
   // first check to make sure that this program is authorized
 
+  LOG(INFO) << "About to check the whitelist";
   // TODO(tmroeder): get the final component of the path rather than
   // insisting that the path match exactly
   auto w = whitelist_.find(path);
-  if (w == whitelist_.end()) 
+  if (w == whitelist_.end()) {
+    LOG(ERROR) << "Could not find the path " << path << " in the whitelist";
     return false;
+  }
+
+  
 
   ifstream program_stream(path.c_str());
   stringstream program_buf;
@@ -313,6 +334,8 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     LOG(ERROR) << "Could not compute the digest over the file";
     return false;
   }
+
+  LOG(INFO) << "Computed the digest of the program";
   
   string serialized_digest;
   if (!Base64WEncode(digest, &serialized_digest)) {
@@ -328,6 +351,8 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     return false;
   }
 
+  LOG(INFO) << "The digests match";
+
   // create a pipe on which the child can communicate with the Tao
   int pipedown[2];
   int pipeup[2];
@@ -341,6 +366,8 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     LOG(ERROR) << "Could not create the upward pipe";
     return false;
   }
+
+  LOG(INFO) << "Set up the pipes; about to fork";
 
   int child_pid = fork();
   if (child_pid == -1) {
@@ -377,12 +404,13 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     new_argv[argc + 1] = pw.get();
     new_argv[argc + 2] = NULL;
 
-    int rv = execv(path.c_str(), new_argv);
+    int rv = execv(path.c_str(), new_argv.get());
     if (rv == -1) {
       LOG(ERROR) << "Could not exec " << path;
       return false;
     }
   } else {
+    LOG(INFO) << "Parent setting up listening";
     // parent process: send message on downward pipe and receive message on upward pipe
     close(pipedown[0]);
     close(pipeup[1]);
@@ -416,7 +444,7 @@ bool LegacyTao::GetRandomBytes(size_t size, string *bytes) {
 
 bool LegacyTao::Seal(const string &data, string *sealed) {
   // encrypt it using our symmetric key
-  if (!key_->Encrypt(data, sealed)) {
+  if (!crypter_->Encrypt(data, sealed)) {
     LOG(ERROR) << "Could not seal the data";
     return false;
   }
@@ -426,7 +454,7 @@ bool LegacyTao::Seal(const string &data, string *sealed) {
 
 bool LegacyTao::Unseal(const string &sealed, string *data)  {
   // decrypt it using our symmetric key
-  if (!key_->Decrypt(sealed, data)) {
+  if (!crypter_->Decrypt(sealed, data)) {
     LOG(ERROR) << "Could not unseal the data";
     return false;
   }

@@ -78,5 +78,14 @@ int main(int argc, char **argv) {
 
   CHECK(tao->Init()) << "Could not initialize the Legacy Tao";
   LOG(INFO) << "Finished initializing the Legacy Tao";
+
+  // now start the server and start listening for requests from it
+  size_t slen = strlen("server");
+  scoped_array<char> sname(new char[slen + 1]);
+  strncpy(sname.get(), "server", slen + 1);
+  char *server_name = sname.get();
+  char *new_argv[] = { server_name };
+  CHECK(tao->StartHostedProgram("server", 1, new_argv))
+    << "Could not start the server under LegacyTao";
   return 0;
 }

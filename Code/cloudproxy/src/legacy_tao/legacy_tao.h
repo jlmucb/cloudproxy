@@ -61,19 +61,13 @@ class LegacyTao : public tao::Tao {
     scoped_ptr<taoEnvironment> tao_env_;
 
     // keys unlocked by the secret
-    scoped_ptr<keyczar::Keyset> keyset_;
+    scoped_ptr<keyczar::Keyczar> crypter_;
 
-    // public/private keys unlocked by the secret
-    scoped_ptr<keyczar::Keyset> pk_keyset_;
-
-    // a reference to the current primary key from the keyset
-    const keyczar::Key *key_;
-
-    // a reference to the current primary key from the pk keyset
-    const keyczar::Key *pk_;
+    // public/private keys unlocked by crypter_
+    scoped_ptr<keyczar::Keyczar> signer_;
 
     // the public policy key
-    scoped_ptr<keyczar::Keyczar> policy_pk_;
+    scoped_ptr<keyczar::Keyczar> policy_verifier_;
 
     // the verified whitelist of applications that can be started
     map<string, string> whitelist_;

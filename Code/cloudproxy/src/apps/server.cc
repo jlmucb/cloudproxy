@@ -4,6 +4,7 @@
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include "cloudproxy/cloud_server.h"
+#include <tao/pipe_tao_channel.h>
 
 #include <mutex>
 #include <string>
@@ -12,6 +13,11 @@
 using std::mutex;
 using std::string;
 using std::vector;
+
+using cloudproxy::CloudServer;
+
+using tao::PipeTaoChannel;
+using tao::TaoChannel;
 
 DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
               "The PEM certificate for the server to use for TLS");
@@ -44,6 +50,26 @@ int main(int argc, char **argv) {
 
   google::ParseCommandLineFlags(&argc, &argv, true);
 
+  FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging(argv[0]);
+
+  LOG(INFO) << "Got argc = " << argc;
+
+  // try to establish a channel with the Tao
+  int fds[2];
+  CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
+    << "Could not extract pipes from the end of the argument list";
+  scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
+  CHECK_NOTNULL(channel.get());
+
+  LOG(INFO) << "Successfully established communication with the Tao";
+  int size = 16;
+  string rand_bytes;
+  CHECK(channel->GetRandomBytes(size, &rand_bytes))
+    << "Could not get random bytes from the Tao";
+
+  LOG(INFO) << "Got random bytes from the Tao";
+
   // initialize OpenSSL
   SSL_load_error_strings();
   ERR_load_BIO_strings();
@@ -58,10 +84,10 @@ int main(int argc, char **argv) {
   }
   CRYPTO_set_locking_callback(locking_function);
 
-  cloudproxy::CloudServer cs(FLAGS_server_cert, FLAGS_server_key,
-                             FLAGS_server_password, FLAGS_policy_key,
-                             FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address,
-                             FLAGS_port);
+  CloudServer cs(FLAGS_server_cert, FLAGS_server_key,
+		 FLAGS_server_password, FLAGS_policy_key,
+		 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address,
+		 FLAGS_port);
 
   CHECK(cs.Listen()) << "Could not listen for client connections";
   return 0;

@@ -12,6 +12,7 @@ namespace tao {
       
       string result_data;
       bool result = false;
+      GetRandomBytesArgs *grba = nullptr;
       switch(rpc.rpc()) {
       case INIT:
 	result = t->Init();
@@ -22,9 +23,19 @@ namespace tao {
       case START_HOSTED_PROGRAM:
 	// TODO(tmroeder): unpack the arguments and set this up
 	break;
+      case GET_RANDOM_BYTES:
+	if (!rpc.has_random()) {
+	  LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
+	  break;
+	}
+	
+	grba = rpc.mutable_random();
+	result = t->GetRandomBytes(grba->size(), &result_data);
+	resp.set_data(result_data);
+	break;
       case SEAL:
 	if (!rpc.has_data()) {
-	  LOG(ERROR) << "Invalid rpc: must supply data for Seal";
+	  LOG(ERROR) << "Invalid RPC: must supply data for Seal";
 	  break;
 	}
 
@@ -208,5 +219,23 @@ namespace tao {
     GetResponse(&resp);
 
     return resp.success();
+  }
+
+  bool TaoChannel::GetRPC(TaoChannelRPC *rpc) {
+    CHECK_NOTNULL(rpc);
+    return ReceiveMessage(rpc);
+  }
+
+  bool TaoChannel::SendRPC(const TaoChannelRPC &rpc) {
+    return SendMessage(rpc);
+  }
+
+  bool TaoChannel::GetResponse(TaoChannelResponse *resp) {
+    CHECK_NOTNULL(resp);
+    return ReceiveMessage(resp);
+  }
+
+  bool TaoChannel::SendResponse(const TaoChannelResponse &resp) {
+    return SendMessage(resp);
   }
 } // namespace tao

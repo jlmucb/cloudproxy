@@ -27,13 +27,15 @@ namespace tao {
     virtual bool VerifyAttestation(const string &attestation);
 
   protected:
-    // subclasses implement these methods for the underlying transport.
-    virtual bool GetRPC(TaoChannelRPC *rpc) = 0;
-    virtual bool SendRPC(const TaoChannelRPC &rpc) = 0;
-    virtual bool GetResponse(TaoChannelResponse *resp) = 0;
-    virtual bool SendResponse(const TaoChannelResponse &resp) = 0;
+    virtual bool ReceiveMessage(google::protobuf::Message *m) = 0;
+    virtual bool SendMessage(const google::protobuf::Message &m) = 0;
     
   private:
+    // subclasses implement these methods for the underlying transport.
+    virtual bool GetRPC(TaoChannelRPC *rpc);
+    virtual bool SendRPC(const TaoChannelRPC &rpc);
+    virtual bool GetResponse(TaoChannelResponse *resp);
+    virtual bool SendResponse(const TaoChannelResponse &resp);
     bool SendAndReceiveData(const string &in, string *out, RPC rpc_type);
   };
 } // namespace tao

@@ -15,11 +15,11 @@ namespace tao {
 
     PipeTaoChannel(int fds[2]);
     virtual ~PipeTaoChannel();
+
   protected:
-    virtual bool GetRPC(TaoChannelRPC *rpc);
-    virtual bool SendRPC(const TaoChannelRPC &rpc);
-    virtual bool GetResponse(TaoChannelResponse *resp);
-    virtual bool SendResponse(const TaoChannelResponse &resp);
+    virtual bool ReceiveMessage(google::protobuf::Message *m);
+    virtual bool SendMessage(const google::protobuf::Message &m);
+
   private:
     int readfd_;
     int writefd_;

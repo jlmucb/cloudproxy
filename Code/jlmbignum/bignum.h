@@ -64,8 +64,8 @@ const u32       s_signMask= 0x7fffffff;
 
 class bnum {
 public:
-    u32     m_signandSize;
-    u64*    m_pValue;
+    u32             m_signandSize;
+    u64*            m_pValue;       //  __attribute__((aligned(64)));
 
     bnum(int iSize);
     ~bnum();

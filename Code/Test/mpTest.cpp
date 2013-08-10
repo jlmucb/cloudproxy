@@ -33,6 +33,7 @@
 #include "mpFunctions.h"
 #include "logging.h"
 #include "cryptoHelper.h"
+#include "fastArith.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -480,15 +481,33 @@ bool squaretests()
     bool    fRet= true;
     bnum    bnOut1(32);
     bnum    bnOut2(32);
+    bnum    bnOut3(32);
     int     i;
 
     printf("squaretestData tests\n");
+    bnOut1.m_pValue[0]= 0xffffffffffffffffULL;
+    bnOut1.m_pValue[1]= 0xffffffffffffffffULL;
+    bnOut1.m_pValue[2]= 0xffffffffffffffffULL;
+    if(!mpUSquare(bnOut1, bnOut2)) {
+        printf("mpUSquare reports error test 1\n");
+        fRet= false;
+    }
+    if(!mpUMult(bnOut1,bnOut1, bnOut3)) {
+        printf("mpUMult reports error test 1\n");
+        fRet= false;
+    }
+    if(mpUCompare(bnOut2, bnOut3)!=s_isEqualTo) {
+        printf("MISMATCH test 1\n");
+        fRet= false;
+    }
+    printNum(bnOut1); printf("**2= \n");
+    printNum(bnOut2); printf("\n");
+    printNum(bnOut1); printf("**2= \n");
+    printNum(bnOut3); printf("\n");
+    mpZeroNum(bnOut1);
+    mpZeroNum(bnOut2);
 
     for(i=0;i<(int)(sizeof(rgInitializers)/sizeof(numinit));i++) {
-        if(mpUCompare(bnOut2, bnOut1)!=s_isEqualTo) {
-            printf("MISMATCH\n");
-            fRet= false;
-        }
         if(!mpUSquare(*rgbn[i], bnOut1)) {
             printf("mpUSquare reports error\n");
             fRet= false;
@@ -497,6 +516,14 @@ bool squaretests()
             printf("mpUMult reports error\n");
             fRet= false;
         }
+        if(mpUCompare(bnOut2, bnOut1)!=s_isEqualTo) {
+            printf("MISMATCH\n");
+            fRet= false;
+        }
+        else {
+            printf("MATCH\n");
+        }
+
         printNum(*rgbn[i]); printf("**2= \n");
         printNum(bnOut1); printf("\n");
         printf("Normal alg says: ");
@@ -647,31 +674,7 @@ bool usingleaddtests()
 bool monttests()
 {
     bool    fRet= true;
-    bnum    bnB(10);
-    bnum    bnE(10);
-    bnum    bnM(10);
-    bnum    bnOut(10);
-    bnum    bnOut2(10);
     int     i= 0;
-
-#if 0
-    bnB.m_pValue[0]= 2ULL;
-    bnE.m_pValue[0]= 1ULL;
-    bnM.m_pValue[0]= 97;
-    if(!mpMontModExp(bnB, bnE, bnM, bnOut)) {
-        fprintf(g_logFile, "mpMontModExp fails\n");
-        fRet= false;
-    }
-    printNum(bnB);
-    printf("**\n  ");   
-    printNum(bnE); 
-    printf("\n(mod  ");   
-    printNum(bnM); 
-    printf(")\n=  \n");   
-    printNum(bnOut); 
-    printf("\n");
-    printf("\n");
-#endif
 
     RSAKey* pKey= RSAGenerateKeyPair(1024);
     byte    testmessage[32]= { 
@@ -680,7 +683,7 @@ bool monttests()
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
                 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04};
     if(pKey==NULL) {
-        printf("rsaTests: cant generate key\n");
+        printf("montTests: cant generate key\n");
         return false;
     }
 #ifdef TEST
@@ -688,50 +691,47 @@ bool monttests()
     printf("\n");
 #endif
 
-    for(i=0;i<100;i++) {
-        if(singlersaTest(pKey, 32, testmessage, true))
-            fprintf(g_logFile, "singlersaTest %d passed\n", i);
-        else {
-            fRet= false;
-            fprintf(g_logFile, "singlersaTest %d failed\n", i);
-        }
-        testmessage[0]++;
+    bnum    bnIn(pKey->m_iByteSizeM);
+    bnum    bnEncrypted(pKey->m_iByteSizeM);
+    bnum    bnDecrypted(pKey->m_iByteSizeM);
+    bnum    bnRmodM(pKey->m_iByteSizeM);
+    bnum    bnRsqmodM(pKey->m_iByteSizeM);
+    bnum    bnMPrime(pKey->m_iByteSizeM);
+
+    int r= pKey->m_iByteSizeM/sizeof(u64);
+
+    if(!mpMontInit(r, *(pKey->m_pbnM), bnMPrime, bnRmodM, bnRsqmodM)) {
+        printf("RSA Montgomery: can't initialize Montgomery components\n");
+        return false;
     }
 
-#if 0
-    bnB.m_pValue[0]= 0x7384ULL;
-    bnM.m_pValue[0]= 0x7384755ULL;
-    int i;
-    u64 u= 0x1ULL;
+    memcpy(bnIn.m_pValue, testmessage,32);
 
     for(i=0;i<15;i++) {
-    	bnE.m_pValue[0]= u;
-        if(!mpModExp(bnB, bnE, bnM, bnOut)) {
-            fprintf(g_logFile, "mpMontModExp fails\n");
-            fRet= false;
+	if(!mpModExp(bnIn, *(pKey->m_pbnE), *(pKey->m_pbnM), bnEncrypted)) {
+            printf("Can't encrypt\n");
+            return false;
         }
-        if(!mpMontModExp(bnB, bnE, bnM, bnOut2)) {
-            fprintf(g_logFile, "mpMontModExp fails\n");
-            fRet= false;
+        if(!mpMontModExp(bnEncrypted, *(pKey->m_pbnD), *(pKey->m_pbnM), bnDecrypted,
+                         r, bnMPrime, bnRmodM, bnRsqmodM)) {
+            printf("Can't decrypt\n");
+            return false;
         }
+        printf("In       : "); printNum(bnIn); printf("\n");
+        printf("Encrypted: "); printNum(bnEncrypted); printf("\n");
+        printf("Decrypted: "); printNum(bnDecrypted); printf("\n");
 
-        fprintf(g_logFile, "\n********\n\n");
-        fprintf(g_logFile, "Classical result: "); printNum(bnOut); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "Montgomery result: "); printNum(bnOut2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "\n********\n\n");
-
-        if(mpUCompare(bnOut, bnOut2)==s_isEqualTo) {
-            fprintf(g_logFile, "Montgomery and classical match\n");
+        if(mpUCompare(bnIn, bnDecrypted)==s_isEqualTo) {
+            fprintf(g_logFile, "match\n");
         }
         else {
-            fprintf(g_logFile, "algorithms diverge\n");
+            fprintf(g_logFile, "mismatch\n");
             fRet= false;
         }
-        mpZeroNum(bnOut);
-        mpZeroNum(bnOut2);
-        u= (u<<1)|1ULL;
+        mpZeroNum(bnEncrypted);
+        mpZeroNum(bnDecrypted);
+	bnIn.m_pValue[0]++;
     }
-#endif
     return fRet;
 }
 
@@ -1321,6 +1321,12 @@ bool gcdtests()
     bnum    bnG(128);
     bnum    bnX(128);
     bnum    bnY(128);
+    bnum    bnGBinary(128);
+    bnum    bnXBinary(128);
+    bnum    bnYBinary(128);
+    bnum    bnTest1(128);
+    bnum    bnTest2(128);
+    bnum    bnTest3(128);
 
     printf("gcdtests, %d tests\n", (int)(sizeof(rgCases)/sizeof(genRSATest)));
 
@@ -1358,14 +1364,41 @@ bool gcdtests()
             printf("gcdtests: gcd failed\n");
             return false;
         }
+        if(!mpBinaryExtendedGCD(bnE, bnOrder, bnXBinary, bnYBinary, bnGBinary)) {
+            printf("gcdtests: gcd failed\n");
+            return false;
+        }
+        // mpZeroNum(bnX);
+        // mpZeroNum(bnY);
+        // mpZeroNum(bnG);
+        // mpZeroNum(bnXBinary);
+        // mpZeroNum(bnYBinary);
+        // mpZeroNum(bnGBinary);
+    }
+
     printf("E     : "); printNum(bnE); printf("\n");
     printf("Order : "); printNum(bnOrder); printf("\n");
     printf("X     : "); printNum(bnX); printf("\n");
     printf("Y     : "); printNum(bnY); printf("\n");
     printf("GCD   : "); printNum(bnG); printf("\n");
-    printf("\n");
-    }
 
+    printf("XBin  : "); printNum(bnXBinary); printf("\n");
+    printf("YBin  : "); printNum(bnYBinary); printf("\n");
+    printf("GCDBin: "); printNum(bnGBinary); printf("\n");
+    printf("\n");
+
+    if(mpCompare(bnX, bnXBinary)!=s_isEqualTo ||
+       mpCompare(bnY, bnYBinary)!=s_isEqualTo ||
+       mpCompare(bnG, bnGBinary)!=s_isEqualTo) {
+        printf("Extended Euclid and Binary extended Euclid DO NOT agree\n");
+        mpMult(bnE, bnXBinary, bnTest1);
+        mpMult(bnOrder, bnYBinary, bnTest2);
+        mpAdd(bnTest1, bnTest2, bnTest3);
+        printf("A*X+B*Y: "); printNum(bnTest3); printf("\n");
+    }
+    else {
+        printf("Extended Euclid and Binary extended Euclid agree\n");
+    }
     return fRet;
 }
 
@@ -1503,6 +1536,29 @@ int main(int an, char** av)
         }
     }
 
+#if 0
+    bnum  bnA(8);
+    bnum  bnB(8);
+    bnum  bnX(8);
+    bnum  bnY(8);
+    bnum  bnG(8);
+    bnA.m_pValue[0]= 1520ULL;
+    bnB.m_pValue[0]= 2480ULL;
+    if(mpBinaryExtendedGCD(bnA, bnB, bnX, bnY, bnG)) {
+        printf("mpBinaryExtendedGCD, succeeded\n");
+    }
+    else {
+        printf("mpBinaryExtendedGCD, failed\n");
+    }
+
+    printf("A: "); printNum(bnA); printf("\n");
+    printf("B: "); printNum(bnB); printf("\n");
+    printf("X: "); printNum(bnX); printf("\n");
+    printf("Y: "); printNum(bnY); printf("\n");
+    printf("G: "); printNum(bnG); printf("\n");
+    return 0;
+#endif
+
     try {
         printf("mpTest\n\n");
 
@@ -1518,7 +1574,6 @@ int main(int an, char** av)
             printf("monttests failed\n");
         }
         printf("\n");
-        return 0;
 
         if(squaretests()) {
             printf("squaretests succeeded\n");

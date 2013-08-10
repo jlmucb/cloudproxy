@@ -29,7 +29,7 @@ u64     longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy);
 
 u64     mpUAddLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
 u64     mpUSubLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR, u64 uBorrow);
-u64     mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
+void    mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
 u64     mpUMultByLoop(i32 lA, u64* pA, u64 uB);
 bool    mpSingleUDivLoop(i32 lA, u64* pA, u64 uB, u64* pR);
 

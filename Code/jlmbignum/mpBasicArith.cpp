@@ -244,6 +244,7 @@ void ZeroWords(i32 len, u64* puN)
 //      Turn bN into a 0 but keep slot size the same
 void mpZeroNum(bnum& bnN)
 {
+    bnN.m_signandSize&= ~s_signBit;
     ZeroWords(bnN.mpSize(), bnN.m_pValue);
 }
 
@@ -335,17 +336,17 @@ i32 mpCompare(bnum& bnA, bnum& bnB)
 //      Largest power of 2 dividing bnA
 i32 max2PowerDividing(bnum& bnA)
 {
-    int     iMax= bnA.mpSize();
-    u64*    rgA= bnA.m_pValue;
     int     i, j;
+    u64*    rgA= bnA.m_pValue;
+    int     lA= mpWordsinNum(bnA.mpSize(), rgA);
     u64     uX;
     u64     uOne= 1ULL;
 
-    for(i=0; i<iMax; i++) {
+    for(i=0; i<lA; i++) {
         if(rgA[i]!=0ULL)
             break;
     }
-    if(i>=iMax)
+    if(i>=lA)
         return -1;
     uX= rgA[i];
     for(j=0; j<NUMBITSINU64; j++) {
@@ -353,8 +354,6 @@ i32 max2PowerDividing(bnum& bnA)
             break;
         uOne<<= 1;
     }
-    if(j>NUMBITSINU64MINUS1)
-        j= 0;
     return i*NUMBITSINU64+j;
 }
 
@@ -388,13 +387,13 @@ int MaxBit(u64 uW)
 //      return most significant non-zero bit position.
 i32 mpBitsinNum(i32 size, u64* rguN)
 {
-    int     numWords= mpWordsinNum(size, rguN);
+    int     lN= mpWordsinNum(size, rguN);
 
-    if(numWords==0)
+    if(lN==0)
         return 0;
-    numWords--;
-    int numBits= MaxBit(rguN[numWords]);
-    return NUMBITSINU64*numWords+numBits;
+    lN--;
+    int numBits= MaxBit(rguN[lN]);
+    return NUMBITSINU64*lN+numBits;
 }
 
 
@@ -472,6 +471,9 @@ void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits)
         s= (t&bottomMask)<<bitShift;
     }
     rgR[wordShift]= s;
+#ifdef SHIFTTEST
+    fprintf(g_logFile, "shiftup result %d\n", rgR[0]);
+#endif
 }
 
 
@@ -518,7 +520,7 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits)
 //      numShiftBits>0 means shift increases value
 bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
 {
-    i32     sizeA= bnA.mpSize();
+    i32     lA= mpWordsinNum( bnA.mpSize(), bnA.m_pValue); 
     i32     sizeR= bnR.mpSize();
 
 #ifdef SHIFTTEST
@@ -526,7 +528,7 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR)
     fprintf(g_logFile, "bnA: "); printNum(bnA); fprintf(g_logFile, "\n");
 #endif
     // Enough room?
-    if(sizeA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64)>sizeR)
+    if(lA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64)>sizeR)
         return false;
 
     mpZeroNum(bnR);
@@ -784,7 +786,6 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
 {
     i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     i32     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    u64     uCarry= 0ULL;
    
     if(lA<=0) {
         fprintf(g_logFile, "mpUMult: first arg not a number\n");
@@ -802,20 +803,12 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR)
     ZeroWords(bnR.mpSize(), bnR.m_pValue);
 
     if(lA>=lB) {
-        uCarry= mpUMultLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnR.m_pValue);
+        mpUMultLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnR.m_pValue);
     }
     else {
-        uCarry= mpUMultLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnR.m_pValue);
+        mpUMultLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnR.m_pValue);
     }
-    if(uCarry==0)
-        return true;
-
-    if(bnR.mpSize()>(lA+lB-1)) {
-        bnR.m_pValue[lA+lB-1]= uCarry;
-        return true;
-    }
-    fprintf(g_logFile, "mpUMult: overflow\n");
-    return false;
+    return true;
 }
 
 
@@ -830,18 +823,18 @@ bool mpUSingleMultAndShift(bnum& bnA, u64 uB, int shift, bnum& bnR)
     i32     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     u64     uCarry= 0;
 
-    ZeroWords(bnR.mpSize(), bnR.m_pValue);
+    // ZeroWords(bnR.mpSize(), bnR.m_pValue);
     if(uB==0ULL || bnA.mpIsZero()) {
         return true;
     }
 
-    if((lA+shift)>bnR.mpSize()) {
+    if((lA+shift+1)>bnR.mpSize()) {
         fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
         return false;
     }
     int lR= bnR.mpSize();
     mpCopyWords(lA, bnA.m_pValue, lR-shift, bnR.m_pValue+shift);
-    uCarry= mpUMultByLoop(lR, bnR.m_pValue, uB);
+    uCarry= mpUMultByLoop(lA+shift+1, bnR.m_pValue, uB);
     if(uCarry==0)
         return true;
     fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
@@ -1005,21 +998,19 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     int     lA= mpWordsinNum(sizeA, bnA.m_pValue);
     int     lB= mpWordsinNum(sizeB, bnB.m_pValue);
 
-    int     scaledB;
     u64     uQ= 0;
     u64*    rgQ= bnQ.m_pValue;
     u64*    rgtA= NULL;
     u64*    rgtC= NULL;
     u64     uBHi, uBLo;
-    int     i;
-    int     k;      // quotient position
+    int     posNZNum;       // position of highest non-zero word in numerator
+    int     posQuotDig;     // position of quotient digit
     int     compare;
 
 #ifdef DEBUGUDIV
-    int     scaledA;
-    printf("mpUDiv: \n"); 
-    printf("A: ");printNum(bnA);printf("\n");
-    printf("B: ");printNum(bnB);printf("\n");
+    fprintf(g_logFile, "mpUDiv: \n"); 
+    fprintf(g_logFile, "A: ");printNum(bnA);printf("\n");
+    fprintf(g_logFile, "B: ");printNum(bnB);printf("\n");
 #endif
     if(bnB.mpIsZero()) {
         fprintf(g_logFile, "mpUDiv: Division by 0\n");
@@ -1054,90 +1045,100 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
 
     // Allocate Temporaries: one more digit than bnA in 
     //       case normalization causes digit spill over.
-    bnum bnTempA(sizeA+3);
-    bnum bnTempC(sizeA+3);
+    bnum    bnTempA(sizeA+3);
+    bnum    bnTempC(sizeA+3);
+    int     lTA;            // # Words in bnTempA
+
     rgtA= bnTempA.m_pValue;
     rgtC= bnTempC.m_pValue;
     bnA.mpCopyNum(bnTempA);
     UNUSEDVAR(rgtC);
 
-    scaledB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    uBHi= bnB.m_pValue[scaledB-1];
-    uBLo= bnB.m_pValue[scaledB-2];
+    uBHi= bnB.m_pValue[lB-1];
+    uBLo= bnB.m_pValue[lB-2];
 
 #ifdef DEBUGUDIV
-    scaledA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    printf("scaledA: %d, scaledB: %d, uBHi: %016lx, uBLo: %016lx\n", scaledA, scaledB, uBHi, uBLo);
+    printf("lA: %d, lB: %d, uBHi: %016lx, uBLo: %016lx\n", lA, lB, uBHi, uBLo);
     printf("tempA: "); printNum(bnTempA); printf("\n");
 #endif
 
     // Loop through the digits
     for(;;) {
-        i= mpWordsinNum(bnTempA.mpSize(), bnTempA.m_pValue);
-        if(i<scaledB)
+        lTA= mpWordsinNum(bnTempA.mpSize(), bnTempA.m_pValue);
+        if(lTA<lB)
             break;
-        i--;    // position of high order digit of current divisor
+        posNZNum= lTA-1;   // position of high order digit of current numerator
 
-        // top scaledB digits of A>=B
-        if(rgtA[i]>uBHi || 
-               (rgtA[i]==uBHi && notsmallerthan(&rgtA[i], &bnB.m_pValue[scaledB-1], scaledB))) {
-            k= i-scaledB+1;  // position of quotient digit
-            EstimateQuotient(&uQ, 0ULL, rgtA[i], rgtA[i-1], uBHi, uBLo);
+        // top lB digits of A>=B
+        if(rgtA[posNZNum]>uBHi || 
+               (rgtA[posNZNum]==uBHi && 
+                notsmallerthan(&rgtA[posNZNum], &bnB.m_pValue[lB-1], lB))) {
+            posQuotDig= posNZNum-lB+1;  // position of quotient digit
+            EstimateQuotient(&uQ, 0ULL, rgtA[posNZNum], rgtA[posNZNum-1], uBHi, uBLo);
 #ifdef DEBUGUDIV
-            fprintf(g_logFile, "top scaledB digits of A>=B, top position: %d, quotient position: %d\n",
-                    i, k);
-            fprintf(g_logFile, "top positions of current A: %016lx %016lx\n", rgtA[i], rgtA[i-1]);
-            fprintf(g_logFile, "Quotient digit estimate is rgQ[%d]= %016lx\n", k, uQ);
+            fprintf(g_logFile, 
+                    "top lB digits of A>=B, top position: %d, quotient position: %d\n",
+                    posNZNum, posQuotDig);
+            fprintf(g_logFile, 
+                    "top positions of current A: %016lx %016lx\n", 
+                    rgtA[posNZNum], rgtA[posNZNum-1]);
+            fprintf(g_logFile, "Quotient digit estimate is rgQ[%d]= %016lx\n", 
+                    posQuotDig, uQ);
 #endif
             while(uQ>0) {
                 mpZeroNum(bnTempC);
-                mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
+                mpUSingleMultAndShift(bnB, uQ, posQuotDig, bnTempC);
                 compare= mpUCompare(bnTempA, bnTempC);
                 if(compare!=s_isLessThan)
                     break;
                 uQ--;
             }
             mpZeroNum(bnTempC);
-            mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
+            mpUSingleMultAndShift(bnB, uQ, posQuotDig, bnTempC);
             mpUSubFrom(bnTempA, bnTempC);
-            rgQ[k]= uQ;
+            rgQ[posQuotDig]= uQ;
 
 #ifdef DEBUGUDIV
-            fprintf(g_logFile, "rgQ[%d]= %016lx\n", k, uQ);
+            fprintf(g_logFile, "rgQ[%d]= %016lx\n", posQuotDig, uQ);
             fprintf(g_logFile, "TempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
 #endif
             continue;
         }
 
-        // top scaledB digits of A<B
-        // dividing scaledB+1 digit number by scaledB digit number
-        k= i-scaledB;
+        // top lB digits of A<B
+        // dividing lB+1 digit number by lB digit number
+        posQuotDig= posNZNum-lB;
 #ifdef DEBUGUDIV
-        fprintf(g_logFile, "top scaledB digits of A<B, top position: %d, quotient digit: %d\n",
-                i, k);
-        fprintf(g_logFile, "top positions of current A: %016lx %016lx\n", rgtA[i], rgtA[i-1]);
+        fprintf(g_logFile, 
+                "top lB digits of A<B, top position: %d, quotient digit: %d\n",
+                posNZNum, posQuotDig);
+        fprintf(g_logFile, "top positions of current A: %016lx %016lx\n", 
+                rgtA[posNZNum], rgtA[posNZNum-1]);
 #endif
-        if(k<0)
+        if(posQuotDig<0)
             break;
-        if(i>scaledB) 
-            TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1],rgtA[i-2], uBHi, uBLo);
+        if(posNZNum>lB) 
+            TwoDigitEstimateQuotient(&uQ, rgtA[posNZNum], rgtA[posNZNum-1],
+                                     rgtA[posNZNum-2], uBHi, uBLo);
         else
-            TwoDigitEstimateQuotient(&uQ, rgtA[i], rgtA[i-1], 0ULL, uBHi, uBLo);
+            TwoDigitEstimateQuotient(&uQ, rgtA[posNZNum], rgtA[posNZNum-1], 0ULL, 
+                                     uBHi, uBLo);
 #ifdef DEBUGUDIV
-        fprintf(g_logFile, "TwoDigit i: %d, %016lx %016lx xxx / %016lx %016lx\n  estimate %016lx\n", 
-                i, rgtA[i], rgtA[i-1], uBHi, uBLo, uQ);
+        fprintf(g_logFile, 
+                "TwoDigit posNZNum: %d, %016lx %016lx xxx / %016lx %016lx\n  estimate %016lx\n", 
+                posNZNum, rgtA[posNZNum], rgtA[posNZNum-1], uBHi, uBLo, uQ);
 #endif
         mpZeroNum(bnTempC);
-        mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
+        mpUSingleMultAndShift(bnB, uQ, posQuotDig, bnTempC);
         while(mpCompare(bnTempA, bnTempC)==s_isLessThan) {
             uQ--;
             mpZeroNum(bnTempC);
-            mpUSingleMultAndShift(bnB, uQ, k, bnTempC);
+            mpUSingleMultAndShift(bnB, uQ, posQuotDig, bnTempC);
         }
         mpUSubFrom(bnTempA, bnTempC);
-        rgQ[k]= uQ; 
+        rgQ[posQuotDig]= uQ; 
 #ifdef DEBUGUDIV
-        fprintf(g_logFile, "Two digit rgQ[%d]= %016lx\n", k, uQ);
+        fprintf(g_logFile, "Two digit rgQ[%d]= %016lx\n", posQuotDig, uQ);
         fprintf(g_logFile, "TempA: "); printNum(bnTempA); fprintf(g_logFile, "\n");
 #endif
     }
@@ -1149,7 +1150,6 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR)
     bnTempA.mpCopyNum(bnR);
     return true;
 }
-
 
 
 // ----------------------------------------------------------------------------
@@ -1536,107 +1536,94 @@ u64 mpInc(bnum& bnN)
 // ----------------------------------------------------------------------------
 
 
-inline bool rawUAddTo(int lA, u64* rgA, int lB, u64* rgB)
-{
-    u64     uCarry= 0ULL;
-
-    if(lA>=lB)
-        uCarry= mpUAddLoop(lA, rgA, lB, rgB, rgB);
-    else
-        uCarry= mpUAddLoop(lB, rgB, lA, rgA, rgB);
-    if(uCarry==0ULL)
-        return true;
-    return false;
-}
-
-
-inline bool rawUMult(int lA, u64* rgA, int lB, u64* rgB, int lR, u64* rgR)
-{
-    u64     uCarry= 0ULL;
-   
-    if(lA<=0 || lB<=0) {
-        fprintf(g_logFile, "rawUMult: arg not a number\n");
-        return 0ULL;
-    }
-
-    if(lR<(lA+lB)) {
-        fprintf(g_logFile, "rawUMult: potential overflow %d, %d, %d\n",
-                lR, lA, lB);
-        return false;
-    }
-    ZeroWords(lR, rgR);
-
-    if(lA>=lB) {
-        uCarry= mpUMultLoop(lA, rgA, lB, rgB, rgR);
-    }
-    else {
-        uCarry= mpUMultLoop(lB, rgB, lA, rgA, rgR);
-    }
-
-    if(lR>(lA+lB-1)) {
-        rgR[lA+lB-1]= uCarry;
-        return true;
-    }
-
-    if(uCarry==0)
-        return true;
-    return false;
-}
-
-
-inline bool rawUSquare(int lA, u64* rgA, int lR, u64* rgR)
-{
-    if(lA<3) 
-        return rawUMult(lA, rgA, lA, rgA, lR, rgR);
-
-    int     l1= lA/2;
-    int     l2= lA-l1;
-    bool    fRet= true;
-    int     j;
-    u64     u= 0ULL;
-    u64     rgR1[128];
-    u64     rgR2[128];
-
-    // A= A1(B^l2)+ A2
-    // A*A= (A1*A1) B^(2*l2)+ 2*(A1*A2) B^l1 + A2*A2
-    try {
-        int     lR1= l1+l2+2;
-        int     lR2= 2*l1+1;
-        //u64*    rgR1= new u64[lR1];
-        //u64*    rgR2= new u64[lR2];
-
-        if(!rawUSquare(l2, rgA, lR, rgR)||!rawUSquare(l1, &rgA[l2], lR2, rgR2))
-            throw("failed subsquare 1");
-        if(!rawUMult(l2, rgA, l1, &rgA[l2], lR1, rgR1))
-            throw("failed submult 1");
-
-        // shift
-        for(j=(lR1-2);j>=0;j--) {
-            u= rgR1[j];
-            rgR1[j+1]|= (u>>(NUMBITSINU64-1));
-            rgR1[j]= u<<1;
-        }
-
-        // add subresults
-        if(!rawUAddTo(lR1, rgR1, lR-l2, &rgR[l2]))
-            throw("failed submult 2");
-        if(!rawUAddTo(lR2, rgR2, lR-(2*l2), &rgR[2*l2]))
-            throw("failed submult 2");
-    }
-    catch(const char* sz) {
-        fRet= false;
-        fprintf(g_logFile, "rawUSquare error: %s\n", sz);
-    }
-
-    return fRet;
-}
-
-
+#define ALLASSEMBLER
 bool mpUSquare(bnum& bnA, bnum& bnR)
 {
-    int lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    return rawUSquare(lA, bnA.m_pValue, 
-                      (int)bnR.mpSize(), bnR.m_pValue);
+#ifdef ALLASSEMBLER
+    i64     lA= (i64)mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    u64*    rgA= bnA.m_pValue;
+    u64*    rgR= bnR.m_pValue;
+
+    if(2*lA>bnR.mpSize()) {
+        fprintf(g_logFile, "mpUSquare: output too small\n");
+        return false;
+    }
+
+    i64     lAM1= lA-1;
+    i64     lR= 2*lA;
+
+    //  mulq    op:     rdx:rax= rax*op
+    //  r8:  i
+    //  r9:  j
+    //  r12: 2i, loop 1, i+j, loop 2
+    //  rbx: pA
+    //  rcx: spillover from doubling a[i]*a[j]
+    //  r14: pR
+    //  A= a[0]+a[1]b+a[2]b**2+ ...
+    //  first loop calculates a[i]*a[i] and puts it in R
+    //  second loop calculates 2a[i]a[j] and adds it in with carry
+    asm volatile (
+        "\tmovq    %[rgA],%%rbx\n"\
+        "\tmovq    %[rgR],%%r14\n"\
+        "\tmovq    $0, %%r8\n"\
+        "\tmovq    $0, %%r12\n"\
+        "1:\n"\
+        "\tcmpq    %%r8, %[lA]\n"\
+        "\tjle     8f\n"\
+        "\tmovq    (%%rbx, %%r8, 8), %%rax\n"\
+        "\tmulq    %%rax\n"\
+        "\tmovq    %%rax, (%%r14, %%r12, 8)\n"\
+        "\taddq    $1, %%r12\n"\
+        "\tmovq    %%rdx, (%%r14, %%r12, 8)\n"\
+        "\taddq    $1, %%r12\n"\
+        "\taddq    $1, %%r8\n"\
+        "\tjmp     1b\n"\
+        "8:\n"\
+        "\tmovq    $0, %%r8\n"\
+        "1:\n"\
+        "\tcmpq    %%r8, %[lAM1]\n"\
+        "\tjle     4f\n"\
+        "\tmovq    %%r8, %%r9\n"\
+        "\taddq    $1, %%r9\n"\
+        "\tmovq    %%r8, %%r12\n"\
+        "\taddq    %%r9, %%r12\n"\
+        "\tmovq    $0, %%r11\n"\
+        "\tmovq    $0, %%rcx\n"\
+        "2:\n"\
+        "\tcmpq    %%r9, %[lA]\n"\
+        "\tjle     3f\n"\
+        "\tmovq    (%%rbx,%%r8,8), %%rax\n"\
+        "\tmulq    (%%rbx,%%r9,8)\n"\
+        "\taddq    %%rax,%%rax\n"\
+        "\tadcq    %%rdx,%%rdx\n"\
+        "\tadcq    $0,%%r11\n"\
+        "\taddq    %%rax,(%%r14,%%r12,8)\n"\
+        "\tadcq    %%rcx, %%rdx\n"\
+        "\tadcq    $0, %%r11\n"\
+        "\taddq    $1, %%r12\n"\
+        "\taddq    %%rdx,(%%r14,%%r12,8)\n"\
+        "\tadcq    $0, %%r11\n"\
+        "\tmovq    %%r11,%%rcx\n"\
+        "\tmovq    $0, %%r11\n"\
+        "\taddq    $1, %%r9\n"\
+        "\tjmp     2b\n"\
+        "3:\n"\
+        "\taddq    $1,%%r12\n"\
+        "\tcmpq    %%r12, %[lR]\n"\
+        "\tjle     5f\n"\
+        "\taddq    %%rcx,(%%r14,%%r12,8)\n"\
+        "\tjnc     5f\n"\
+        "\tmovq    $1, %%rcx\n"\
+        "\tjmp     3b\n"\
+        "5:\n"
+        "\taddq    $1, %%r8\n"\
+        "\tjmp     1b\n"\
+        "4:\n"
+        :: [lA] "m" (lA), [rgA] "m" (rgA), [rgR] "m" (rgR), 
+           [lAM1] "m" (lAM1), [lR] "m" (lR)
+        : "%rax", "%rbx", "%rcx", "%rdx", "%r8", "%r9", "%r12", "%r14");
+#endif
+    return true;
 }
 
 

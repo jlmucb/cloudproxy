@@ -5,8 +5,8 @@ SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST
-CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST 
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST
 #CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI
 #CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
@@ -19,7 +19,7 @@ dobjs=  $(B)/rsaspeedtest.o $(B)/keys.o $(B)/jlmcrypto.o \
 	$(B)/modesandpadding.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
 	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	$(B)/tinyxmlparser.o $(B)/logging.o $(B)/hmacsha256.o \
- 	$(B)/fastArith.o 
+ 	$(B)/fastArith.o
 
 all: $(E)/rsaspeedtest.exe
 
@@ -47,9 +47,6 @@ $(B)/mpModArith.o: $(SBM)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(SBM)/mpNumTheory.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/mpNumTheory.o $(SBM)/mpNumTheory.cpp
-
-$(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

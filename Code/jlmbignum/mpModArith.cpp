@@ -30,9 +30,11 @@
 #include "logging.h"
 #include "jlmUtility.h"
 #include "mpFunctions.h"
+#include "rsax.h"
 
 
-// #define MONTGOMERYENABLED
+#define SLIDINGMONTENABLED
+//#define DONTSQUARE
 // ----------------------------------------------------------------------------
 
 //
@@ -354,9 +356,10 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
         maxSize= lM;
     maxSize*= 4;
 
-#ifdef MPMODOVERFLOWTEST
+#ifdef MPMODOVERFLOWTEST2
     fprintf(g_logFile, "\nmpModExp %d\n", maxSize);
     fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n\n");
+    fflush(g_logFile);
 #endif
     try {
         bnum    bnBasePower(maxSize);   // Base to Power of 2
@@ -386,7 +389,6 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
             mpZeroNum(bnT);
         }
         for(j=2; j<=leadBit; j++) {
-#define DONTSQUARE
 #ifdef DONTSQUARE
             mpUMult(bnBasePower, bnBasePower, bnT);
 #else
@@ -421,10 +423,9 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR)
 
 
 // ---------------------------------------------------------------------------------
-// #define MPMONTTEST
 
 
-inline bool mpShiftUpWords(bnum& bnN, int r, bnum& bnOut)
+bool mpShiftUpWords(bnum& bnN, int r, bnum& bnOut)
 {
     int     lN= mpWordsinNum(bnN.mpSize(), bnN.m_pValue);
     int     j;
@@ -440,14 +441,16 @@ inline bool mpShiftUpWords(bnum& bnN, int r, bnum& bnOut)
 }
 
 
-inline bool mpShiftDownWords(bnum& bnN, int r, bnum& bnOut)
+bool mpShiftDownWords(bnum& bnN, int r, bnum& bnOut)
 {
     int     lN= mpWordsinNum(bnN.mpSize(), bnN.m_pValue);
     int     j;
 
+    // FIX
     if(bnOut.mpSize()<(lN-r)) {
-        fprintf(g_logFile, "ShiftDownWords no room: Out: %d, transfer: %d\n",
-                bnOut.mpSize(), lN-r);
+        fprintf(g_logFile, 
+                "ShiftDownWords no room: Out: %d, transfer: %d, lN: %d, r: %d\n",
+                bnOut.mpSize(), lN-r, lN, r);
         return false;
     }
     for(j=r;j<lN; j++)
@@ -456,7 +459,6 @@ inline bool mpShiftDownWords(bnum& bnN, int r, bnum& bnOut)
         bnOut.m_pValue[j]= 0ULL;
     return true;
 }
-
 
 
 inline bool mpModPowerofTwo(bnum& bnN, int r)
@@ -485,12 +487,6 @@ bool mpMontRed(bnum& bnN, bnum& bnM, int r, bnum& bnMPrime, bnum& bnmontN)
         return false;
     }
 
-#ifdef MPMONTTEST
-    fprintf(g_logFile, "\nmpMontRed, r: %d\n", r);
-    fprintf(g_logFile, "N: "); printNum(bnN); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "MPrime: "); printNum(bnMPrime); fprintf(g_logFile, "\n");
-#endif
     try {
         bnum    bnU(4*r);
         bnum    bnV(4*r);
@@ -505,7 +501,7 @@ bool mpMontRed(bnum& bnN, bnum& bnM, int r, bnum& bnMPrime, bnum& bnmontN)
         mpAddTo(bnV, bnN);
         // bnmontN= bnV/2^r
         if(!mpShiftDownWords(bnV, r, bnmontN)) {
-            fprintf(g_logFile, "mpShiftDownWords failed\n");
+            throw("mpShiftDownWords failed");
         }
         if(s_isGreaterThan== mpUCompare(bnmontN, bnM)) {
             mpUSubFrom(bnmontN, bnM);
@@ -515,10 +511,6 @@ bool mpMontRed(bnum& bnN, bnum& bnM, int r, bnum& bnMPrime, bnum& bnmontN)
         fprintf(g_logFile, "mpMontRed error\n");
         fRet= false;
     }
-#ifdef MPMONTTEST
-    fprintf(g_logFile, "montN (%d): ", mpWordsinNum(bnmontN.mpSize(), bnmontN.m_pValue)); 
-    printNum(bnmontN); fprintf(g_logFile, "\n\n");
-#endif
     return fRet;
 }
 
@@ -552,9 +544,6 @@ bool mpMakeMont(bnum& bnN, bnum& bnM, int r, bnum& bnmontN)
         fprintf(g_logFile, "mpMakeMont error\n");
         fRet= false;
     }
-#ifdef MPMONTTEST
-    fprintf(g_logFile, "montN: "); printNum(bnmontN); fprintf(g_logFile, "\n\n");
-#endif
     return fRet;
 }
 
@@ -565,15 +554,7 @@ bool mpMontStep(bnum& bnmontA, bnum& bnmontB, bnum& bnM, bnum& bnMPrime,
 //      bnMPrime= -(bnM^(-1)) (mod 2^r)
 {
     bool    fRet= true;
-    int     lMontA= mpWordsinNum(bnmontA.mpSize(), bnmontA.m_pValue);
-    int     lMontB= mpWordsinNum(bnmontB.mpSize(), bnmontB.m_pValue);
-    int     maxSize= lMontA;
-    
-    if(lMontA<lMontB)
-        maxSize= lMontB;
-    if(r>maxSize)
-        maxSize= r;
-    maxSize*= 4;
+    int     maxSize= 4*r;
     UNUSEDVAR(maxSize);
 
     try {
@@ -591,14 +572,60 @@ bool mpMontStep(bnum& bnmontA, bnum& bnmontB, bnum& bnM, bnum& bnMPrime,
         fprintf(g_logFile, "montStep error\n");
         fRet= false;
     }
+    return fRet;
+}
+
+
+//  Function: bool mpMontInit
+//  Arguments:
+//      IN int  r
+//      IN bnum bnM
+//      OUT bnum bnMPrime
+//      OUT bnum bnRmodM
+//  Description:
+//      Compute bnBase^bnExp (mod bnM) with classical algorithm, result>=0
+
+bool mpMontInit(int r, bnum& bnM, bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM)
+{
+    bool    fRet= true;
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    int     maxSize= 4*lM;
+
 #ifdef MPMONTTEST
-    fprintf(g_logFile, "\nMontStep, r: %d, in sizes: %d, %d, outsize: %d\n", 
-            r, lMontA, lMontB, mpWordsinNum(bnmontC.mpSize(), bnmontC.m_pValue));
-    fprintf(g_logFile, "A: "); printNum(bnmontA); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "B: "); printNum(bnmontB); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "\nmpMontInit, r: %d, maxSize: %d\n", lM, maxSize);
     fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "montC: "); printNum(bnmontC); fprintf(g_logFile, "\n\n");
 #endif
+
+    try {
+        bnum    bnT(maxSize);
+        bnum    bnR(maxSize);
+        bnum    bncoR(maxSize);           
+
+        mpZeroNum(bnT);
+        mpZeroNum(bncoR);
+        mpZeroNum(bnMPrime);
+        bnR.m_pValue[r]= 1ULL;
+        UNUSEDVAR(maxSize);
+
+        // bncoR*bnR + bnM*bnX = 1
+        if(!mpExtendedGCD(bnR, bnM, bncoR, bnMPrime, bnT))
+            throw("cant compute mont gcd");
+
+        // bnMPrime= -bnMPrime (mod 2^r)
+        bnMPrime.mpNegate();
+        while(bnMPrime.mpSign()) {
+            mpAddTo(bnMPrime, bnR);
+        }
+
+        if(!mpMod(bnR, bnM, bnRmodM))
+            throw("cant get R mod M");
+        if(!mpMakeMont(bnRmodM, bnM, r, bnRsqmodM))
+            throw("cant get R**2 mod M");
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpMontInit error\n");
+        fRet= false;
+    }
     return fRet;
 }
 
@@ -608,124 +635,95 @@ bool mpMontStep(bnum& bnmontA, bnum& bnmontB, bnum& bnM, bnum& bnMPrime,
 //      IN bnum bnBase
 //      IN bnum bnExp
 //      IN bnum bnM
-//      OUT bnum bnR
+//      OUT bnum bnOut
 //  Description:
-//      Compute bnBase^bnExp (mod bnM) with classical algorithm, result>=0
+//      Compute bnBase^bnExp (mod bnM) with Montgomery
 
-bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut)
+bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut, int r,
+                  bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM)
 {
     bool    fRet= true;
-    int     maxSize= mpWordsinNum(bnBase.mpSize(), bnBase.m_pValue);
     int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    int     maxSize= 4*r;
     int     leadBit= 0;
     int     j;
 
-    if(lM>maxSize)
-        maxSize= lM;
-    maxSize*= 4;
+    bnum*   rgbnmontBasePower[2];
+    int     evenBP= 0;
+    bnum*   rgbnmontA[2];
+    int     evenA= 0;
+
+    rgbnmontBasePower[0]= NULL;
+    rgbnmontBasePower[1]= NULL;
+    rgbnmontA[0]= NULL;
+    rgbnmontA[1]= NULL;
+
+    if(lM>r) {
+        fprintf(g_logFile, "mpMontModExp: Modulus too large %d %d\n", lM, r); 
+        return false;
+    }
 
 #ifdef MPMONTTEST
     fprintf(g_logFile, "\nmpMontModExp, r: %d, maxSize: %d\n", lM, maxSize);
     fprintf(g_logFile, "Base: "); printNum(bnBase); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "Exp: "); printNum(bnExp); fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M: "); printNum(bnM); fprintf(g_logFile, "\n");
 #endif
     try {
-        int     r= lM;
-        bnum    bnmontBasePower(maxSize);   // Base to Power of 2
-        bnum    bnmontA(maxSize);           // Accumulated product
-
-        bnum    bnT(maxSize);
-        bnum    bnR(maxSize);
-        bnum    bncoR(maxSize);           
-        bnum    bnMPrime(maxSize); 
-
-        mpZeroNum(bnmontBasePower);
-        mpZeroNum(bnmontA);
-        mpZeroNum(bnT);
-        mpZeroNum(bncoR);
-        mpZeroNum(bnR);
-        mpZeroNum(bnMPrime);
-        bnR.m_pValue[r]= 1;
-
         UNUSEDVAR(maxSize);
+        rgbnmontBasePower[0]= new bnum(maxSize);
+        rgbnmontBasePower[1]= new bnum(maxSize);
+        rgbnmontA[0]= new bnum(maxSize);
+        rgbnmontA[1]= new bnum(maxSize);
 
-        // bncoR*bnR + bnM*bnX = 1
-        if(!mpExtendedGCD(bnR, bnM, bncoR, bnMPrime, bnT)) {
-            throw("cant compute mont gcd");
+        if(!mpMontStep(bnBase, bnRsqmodM, bnM, 
+                       bnMPrime, r, *rgbnmontBasePower[evenBP])) {
+            throw("MontStep error 0");
         }
-        // bnT should be 1
-#ifdef MPMONTTEST
-        fprintf(g_logFile, "T: "); printNum(bnT); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "R: "); printNum(bnR); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "MPrime: "); printNum(bnMPrime); fprintf(g_logFile, "\n");
-#endif
-
-        // bnMPrime= -bnMPrime (mod 2^r)
-        bnMPrime.mpNegate();
-        while(bnMPrime.mpSign()) {
-            mpAddTo(bnMPrime, bnR);
-        }
-#ifdef MPMONTTEST
-        fprintf(g_logFile, "finalMPrime: "); printNum(bnMPrime); fprintf(g_logFile, "\n");
-#endif
-
-        if(!mpMakeMont(bnBase, bnM, r, bnmontBasePower)) {
-            throw("MontMake error 1");
-        }
-        if(!mpMakeMont(g_bnOne, bnM, r, bnmontA)) {
-            throw("MontMake error 2");
-        }
-#ifdef MPMONTTEST
-        fprintf(g_logFile, "montBasePower: "); printNum(bnmontBasePower); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "montA: "); printNum(bnmontA); fprintf(g_logFile, "\n\n");
-#endif
+        bnRmodM.mpCopyNum(*rgbnmontA[evenA]);
 
         leadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
         
         if(IsBitPositionNonZero(bnExp, 1)) {
-            if(!mpMontStep(bnmontBasePower, bnmontA, bnM, 
-                           bnMPrime, r, bnT)) {
+            if(!mpMontStep(*rgbnmontBasePower[evenBP], *rgbnmontA[evenA], bnM, 
+                           bnMPrime, r, *rgbnmontA[evenA^1])) {
                 throw("MontStep error 1");
             }
-            mpZeroNum(bnmontA);
-            bnT.mpCopyNum(bnmontA);
-            mpZeroNum(bnT);
+            mpZeroNum(*rgbnmontA[evenA]);
+            evenA^= 1;
         }
         for(j=2; j<=leadBit; j++) {
-            if(!mpMontStep(bnmontBasePower, bnmontBasePower, bnM, 
-                           bnMPrime, r, bnT)) {
+            if(!mpMontStep(*rgbnmontBasePower[evenBP], *rgbnmontBasePower[evenBP], bnM, 
+                           bnMPrime, r, *rgbnmontBasePower[evenBP^1])) {
                 throw("MontStep error 2");
             }
-            mpZeroNum(bnmontBasePower);
-            bnT.mpCopyNum(bnmontBasePower);
-            mpZeroNum(bnT);
+            mpZeroNum(*rgbnmontBasePower[evenBP]);
+            evenBP^= 1;
             if(IsBitPositionNonZero(bnExp, j)) {
-                if(!mpMontStep(bnmontBasePower, bnmontA, bnM, bnMPrime, r, bnT)) {
+                if(!mpMontStep(*rgbnmontBasePower[evenBP], *rgbnmontA[evenA], bnM, 
+                                bnMPrime, r, *rgbnmontA[evenA^1])) {
                     throw("MontStep error 3");
                 }
-                mpZeroNum(bnmontA);
-                bnT.mpCopyNum(bnmontA);
-                mpZeroNum(bnT);
+                mpZeroNum(*rgbnmontA[evenA]);
+                evenA^= 1;
             }
         }
-        if(!mpMontRed(bnmontA, bnM, r, bnMPrime, bnOut)) {
+        if(!mpMontRed(*rgbnmontA[evenA], bnM, r, bnMPrime, bnOut)) {
             throw("MontStep error 4");
         }
-#ifdef MPMONTTEST
-        fprintf(g_logFile, "j: %d\n", j);
-        fprintf(g_logFile, "montBasePower: "); printNum(bnmontBasePower); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "montA: "); printNum(bnmontA); fprintf(g_logFile, "\n\n");
-        fprintf(g_logFile, "reduced: "); printNum(bnOut); fprintf(g_logFile, "\n\n");
-#endif
     }
     catch(const char* sz) {
         fprintf(g_logFile, "mpMontModExp error\n");
         fRet= false;
     }
-#ifdef MPMONTTEST
-    fprintf(g_logFile, "Out: "); printNum(bnOut); fprintf(g_logFile, "\n\n");
-#endif
+
+    if(rgbnmontBasePower[0]!=NULL)
+        delete rgbnmontBasePower[0];
+    if(rgbnmontBasePower[1]!=NULL)
+        delete rgbnmontBasePower[1];
+    if(rgbnmontA[0]!=NULL)
+        delete rgbnmontA[0];
+    if(rgbnmontA[1]!=NULL)
+        delete rgbnmontA[1];
+
     return fRet;
 }
 
@@ -831,6 +829,58 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 }
 
 
+bool mpRSAMontDEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
+              bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR,
+              int r, bnum& bnPPrime, bnum& bnRmodP, bnum& bnRsqmodP,
+              bnum& bnQPrime, bnum& bnRmodQ, bnum& bnRsqmodQ)
+
+//  Fast RSA Decrypt using Chinese remainer theorem
+//  Call mpCRT(Msg^d(p),p,Msg^d(q),q, R)
+//  Return R
+{
+    bool    fRet= true;
+    int     maxSize= mpWordsinNum(bnMsg.mpSize(), bnMsg.m_pValue);
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    int     size;
+
+    if(lM>maxSize)
+        maxSize= lM;
+
+    size= mpWordsinNum(bnDP.mpSize(), bnDP.m_pValue);
+    if(size>maxSize)
+        maxSize= size;
+    size= mpWordsinNum(bnDQ.mpSize(), bnDQ.m_pValue);
+    if(size>maxSize)
+        maxSize= size;
+    maxSize*= 2;
+
+    try {
+        bnum    bnT1(maxSize);
+        bnum    bnT2(maxSize);
+
+#ifdef SLIDINGMONTENABLED
+        if(!mpSlidingModExp(bnMsg, bnDP, bnP, bnT1, lM/2, bnPPrime, bnRmodP, bnRsqmodP))
+            throw("mpMontModExp fails 1");
+        if(!mpSlidingModExp(bnMsg, bnDQ, bnQ, bnT2, lM/2, bnQPrime, bnRmodQ, bnRsqmodQ))
+            throw("mpMontModExp fails 2");
+#else
+        if(!mpMontModExp(bnMsg, bnDP, bnP, bnT1, lM/2, bnPPrime, bnRmodP, bnRsqmodP))
+            throw("mpMontModExp fails");
+        if(!mpMontModExp(bnMsg, bnDQ, bnQ, bnT2, lM/2, bnQPrime, bnRmodQ, bnRsqmodQ))
+            throw("mpMontModExp fails");
+#endif
+        if(!mpCRT(bnT1, bnP, bnT2, bnQ, bnR))
+            throw("mpCRT fails");
+    }
+    catch(const char* sz) {
+        fprintf(g_logFile, "mpRSAMontDEC error: %s\n", sz);
+        fRet= false;
+    }
+
+    return fRet;
+}
+
+
 bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
               bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR)
 //  Fast RSA Decrypt using Chinese remainer theorem
@@ -857,18 +907,10 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
         bnum    bnT1(maxSize);
         bnum    bnT2(maxSize);
 
-#ifndef MONTGOMERYENABLED
         if(!mpModExp(bnMsg, bnDP, bnP, bnT1))
             throw("mpModExp fails");
         if(!mpModExp(bnMsg, bnDQ, bnQ, bnT2))
             throw("mpModExp fails");
-#else
-        if(!mpMontModExp(bnMsg, bnDP, bnP, bnT1))
-            throw("mpModExp fails");
-        if(!mpMontModExp(bnMsg, bnDQ, bnQ, bnT2))
-            throw("mpModExp fails");
-#endif
-
         if(!mpCRT(bnT1, bnP, bnT2, bnQ, bnR))
             throw("mpCRT fails");
     }
@@ -966,6 +1008,197 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
         fRet= false;
     }
 
+    return fRet;
+}
+
+
+// ---------------------------------------------------------------------------------
+
+
+void maxBracket(int i, int max, bnum& bnExp, int* pL, int* pV)
+{
+    int     l= 1;
+    int     j= i;
+    int     u= 1;  // leading 1
+    int     m= max;
+
+#ifdef MPSLIDINGTEST
+    fprintf(g_logFile, "maxBracket(%d %d)\n", i, max);
+#endif
+    if(i<max) {
+        *pL= 1;
+        *pV= 1;
+        return;
+    }
+    while((--j)>0 && (--m)>0) {
+        if(IsBitPositionNonZero(bnExp, j)) {
+            u= (u<<1)|1;
+            l= i-j+1;
+        }
+	else
+	    u<<= 1;
+    }
+    *pL= l;
+    *pV= u>>(max-l);
+#ifdef MPSLIDINGTEST
+    fprintf(g_logFile, "maxBracket: %d %08x\n", l, *pV);
+#endif
+    return;
+}
+
+
+//  Function: bool mpSlidingModExp
+//  Arguments:
+//      IN bnum bnBase
+//      IN bnum bnExp
+//      IN bnum bnM
+//      OUT bnum bnR
+//  Description:
+//      Compute bnBase^bnExp (mod bnM) with classical algorithm, result>=0
+
+bool mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR,
+                     int r, bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM)
+{
+    int     j, v;
+    bool    fRet= true;
+    int     lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
+    int     leadBit= 0;
+    int     maxsize= 4*lM;
+    bnum*   rgTable[16];
+    bnum*   rgbnmontA[2];                   // accum products
+
+#ifdef MPSLIDINGTEST
+    fprintf(g_logFile, "\nmpSlidingModExp %d\n", maxsize);
+    fprintf(g_logFile, "M   : "); printNum(bnM); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "Base: "); printNum(bnBase); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "Exp : "); printNum(bnExp); fprintf(g_logFile, "\n\n");
+    fflush(g_logFile);
+#endif
+    for(j=0;j<16;j++)
+        rgTable[j]= NULL;
+    // rgTable[j] is g[j]
+    // g[0]= 1, g[1]= Base, g[2]= Base**3,g[3]= Base**3, g[5]= Base**5,...
+    rgbnmontA[0]= NULL;
+    rgbnmontA[1]= NULL;
+
+    try {
+        bnum    bnT(maxsize); 
+        int     l= 0;
+        int     k= 0;
+        int     even= 0;
+
+        // Accumulated products
+        rgbnmontA[0]= new bnum(maxsize); 
+        rgbnmontA[1]= new bnum(maxsize); 
+
+        for(j=0; j<16;j++) {
+            if((j&1)==0 && j!=2)
+                continue;
+            rgTable[j]= new bnum(lM+1);
+        }
+        if(!mpMakeMont(bnBase, bnM, r, *rgTable[1])) {
+            throw("MontStep error 1");
+        }
+        bnRmodM.mpCopyNum(*rgbnmontA[0]);   // 1
+
+        // Precompute small base exponents
+        // g1= g; g2= g*g;
+        // for(i=0; i<((1<<k)-1); i++)  g(2i+1)= g(2i-1)*g2;
+#ifdef MPSLIDINGTEST
+        fprintf(g_logFile, "initializing rgTable\n");
+        fflush(g_logFile);
+#endif
+        if(!mpMontStep(*rgTable[1], *rgTable[1], bnM,
+                       bnMPrime, r, *rgTable[2])) {
+            throw("MontStep error 1a");
+        }
+        for(k=0;k<7;k++) {
+            if(!mpMontStep(*rgTable[2], *rgTable[2*k+1], bnM,
+                           bnMPrime, r, *rgTable[2*k+3])) {
+                throw("MontStep error 1b");
+            }
+        }
+
+#ifdef MPSLIDINGTEST
+        for(j=0; j<16; j++) {
+            if(rgTable[j]!=NULL) {
+                fprintf(g_logFile, "g[%02d]:", j); 
+                printNum(*rgTable[j]); 
+                fprintf(g_logFile, "\n");
+            }
+        }
+#endif
+
+        // least significant bit is 1 
+        leadBit= mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);
+        for(j=leadBit; j>0;j--) {
+            // for(t= highbit; t>=0; t--)
+            //     if(e[h]==0)
+            //         bnA= bnA*bnA;
+            //     else
+            //         bnA= (bnA**(2^l)*g(n)
+            if(!IsBitPositionNonZero(bnExp, j)) {
+                if(!mpMontStep(*rgbnmontA[even], *rgbnmontA[even], bnM,
+                           bnMPrime, r, *rgbnmontA[even^1])) {
+                    throw("MontStep error 2");
+                }
+                mpZeroNum(*rgbnmontA[even]);
+                even^= 1;
+            }
+            else {
+                maxBracket(j, 4, bnExp, &l, &v);
+                for(k=0; k<l; k++) {
+                    if(!mpMontStep(*rgbnmontA[even], *rgbnmontA[even], bnM,
+                                    bnMPrime, r, *rgbnmontA[even^1])) {
+                        throw("MontStep error 3");
+                    }
+                    mpZeroNum(*rgbnmontA[even]);
+                    even^= 1;
+                }
+                // mult by correct table ent
+                if(!mpMontStep(*rgbnmontA[even], *rgTable[v], bnM,
+                           bnMPrime, r, *rgbnmontA[even^1])) {
+                    throw("MontStep error 4");
+                }
+#ifdef MPSLIDINGTEST
+                fprintf(g_logFile, "length %d, val %d\n", l, v);
+#endif
+                even^= 1;
+                j-= l-1;
+            }
+#ifdef MPSLIDINGTEST1
+            fprintf(g_logFile, "MontA at end, j= %d: ", j);
+            fprintf(g_logFile, "g[%02d]:", j); 
+            printNum(*rgbnmontA[even]); fprintf(g_logFile, "\n");
+#endif
+        }
+
+        if(!mpMontRed(*rgbnmontA[even], bnM, r, bnMPrime, bnR))
+           throw("MontStep error 5");
+    }
+    catch(const char* sz) {
+        if(sz!=NULL)
+            fprintf(g_logFile, "mpSlidingModExp: %s \n", sz);
+        else
+            fprintf(g_logFile, "mpSlidingModExp error\n");
+        fRet= false;
+    }
+
+    // clean up
+    if(rgbnmontA[0]!=NULL) {
+        delete rgbnmontA[0];
+        rgbnmontA[0]= NULL;
+    }
+    if(rgbnmontA[1]!=NULL) {
+        delete rgbnmontA[1];
+        rgbnmontA[1]= NULL;
+    }
+    for(j=0;j<16;j++) {
+        if(rgTable[j]!=NULL) {
+            delete rgTable[j];
+            rgTable[j]= NULL;
+        }
+    }
     return fRet;
 }
 

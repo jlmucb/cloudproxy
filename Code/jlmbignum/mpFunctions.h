@@ -28,6 +28,7 @@
 bool            mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB);
 bnum*           mpDuplicateNum(bnum& bnA);
 void            mpZeroNum(bnum& bnN);
+int             mpWordsinNum(i32 iLen, u64* puN);
 void            ZeroWords(i32 iLen, u64* puN);
 void            mpNormalizeZero(bnum& bnA);
 i32             mpWordsinNum(i32 iLen, u64* puN);
@@ -71,9 +72,13 @@ bool            mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR);
 bool            mpModInv(bnum& bnA, bnum& bnM, bnum& bnR);
 bool            mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR);
 bool            mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR);
+bool            mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR,
+                            int r, bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM);
 
 bool            mpShiftInPlace(bnum& bnA, int iShiftNumBits);
 bool            mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, 
+                                    bnum& bnY, bnum& bnG);
+bool            mpBinaryExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, 
                                     bnum& bnY, bnum& bnG);
 bool            mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR);
 
@@ -90,7 +95,15 @@ bool            mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
 bool            mpRSAENC(bnum& bnMsg, bnum& bnE, bnum& bnM, bnum& bnR);
 bool            mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
                     bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR);
-bool            mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut);
+bool            mpRSAMontDEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP,
+                             bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, 
+                             bnum& bnR, int r, bnum& bnDPrime, bnum& bnDRmodP, 
+                             bnum& bnDRsqmodP, bnum& bnQPrime, bnum& bnQRmodP, 
+                             bnum& bnQRsqmodP);
+bool            mpMontInit(int r, bnum& bnM, bnum& bnMPrime, bnum& bnRmodM, 
+                                  bnum& bnRsqmodM);
+bool            mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut,
+                             int r, bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM);
 #endif
 
 

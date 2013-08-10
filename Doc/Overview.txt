@@ -10,7 +10,7 @@ on this since it provides a good overview and covers many details we omit here.
 
 The git repository for the latest public release is: xxx at code.google.com.
 
-The git development repository is access controlled and sumbitters must agree
+The git development repository is access controlled and submitters must agree
 to be bound by the terms of the contributor license, in the Legal Directory
 to obtain access to the development version.  Since this is a small project
 with tiny staff, there are relatively few contributors at this time.  If you 

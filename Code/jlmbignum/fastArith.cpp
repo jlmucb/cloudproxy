@@ -1,5 +1,5 @@
 //  File: fastArith.cpp
-//	fast arithmetic for jmbignum
+//      fast arithmetic for jmbignum
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some contributions may be (c) Intel Corporation
@@ -231,17 +231,35 @@ u64 mpUSubLoop(int lA, u64* pA, int lB, u64* pB, u64* pR, u64 uBorrow)
 }
 
 
-inline void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uToAdd, u64 uCarry)
+/*inline*/ 
+void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uToAdd, u64 uCarry)
 // (*pCarry, *pResult)= uIn1*uIn2 + uToAdd + uCarry
 {
+#ifdef ALLASSEMBLER
+    //  mulq    op:     rdx:rax= rax*op
+    asm volatile(
+        "\tmovq    %[op1], %%rax\n" \
+        "\tmulq    %[op2]\n" \
+        "\taddq    %[uC], %%rax\n" \
+        "\tadcq    $0, %%rdx\n" \
+        "\taddq    %[uA], %%rax\n" \
+        "\tadcq    $0, %%rdx\n" \
+        "\tmovq    %[pR], %%rcx\n" \
+        "\tmovq    %%rax, (%%rcx)\n" \
+        "\tmovq    %[pC], %%rcx\n" \
+        "\tmovq    %%rdx, (%%rcx)\n"
+        :: [pC] "m" (pCarry), [pR] "m" (pResult), [op1] "m" (uIn1), [op2] "m" (uIn2), 
+           [uA] "m" (uToAdd), [uC] "m" (uCarry)
+        :  "%rax", "%rcx", "%rdx");
+#else
     u64 mCarry;
     u64 aCarry;
     u64 mResult;
 
     mCarry= longmultiplystep(&mResult, uIn1, uIn2, uCarry);
     aCarry= longaddwithcarry(pResult, mResult, uToAdd, 0ULL);
-
     *pCarry= mCarry+aCarry;   // should never have further carry
+#endif
 }
 
 
@@ -249,21 +267,97 @@ inline void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uT
 u64 mpUMultByLoop(int lA, u64* pA, u64 uB)
 {
     u64     uCarry= 0ULL;
+#ifdef ALLASSEMBLER
+    u64     ulA=  (u64)lA;
+    //  mulq    op:     rdx:rax= rax*op
+    //  r8:  i
+    //  r9: uB 
+    //  rbx: pA
+    //  r13: uCarry
+    //  cmp a,b:  jge succeeds if b>=a
+    asm volatile(
+        "\tmovq    %[pA], %%rbx\n"\
+        "\tmovq    $0, %%r8\n"\
+        "\tmovq    %[uB], %%r9\n"\
+        "\tmovq    $0, %%r13\n"\
+        "1:\n"\
+        "\tcmpq    %%r8, %[ulA]\n"\
+        "\tjle     2f\n"\
+        "\tmovq    (%%rbx, %%r8, 0x8), %%rax\n" \
+        "\tmulq    %%r9\n" \
+        "\taddq    %%r13, %%rax\n" \
+        "\tadcq    $0, %%rdx\n" \
+        "\tmovq    %%rax,(%%rbx, %%r8, 0x8)\n" \
+        "\tmovq    %%rdx, %%r13\n" \
+        "\taddq    $1, %%r8\n"\
+        "\tjmp     1b\n"\
+        "2:\n"\
+        "\tmovq    %%r13, %[uC]\n"\
+        :: [pA] "m" (pA), [uB] "m" (uB), [ulA] "m" (ulA), [uC] "m" (uCarry)
+        :  "%rax", "%rbx", "%rdx", "%r8", "%r9", "%r13");
+#else
     int     i;
-
     for(i=0; i<lA; i++) {
-	uCarry= longmultiplystep(&pA[i], pA[i], uB, uCarry);
+        uCarry= longmultiplystep(&pA[i], pA[i], uB, uCarry);
     }
+#endif
     return uCarry;
 }
 
 
 //  Function: bool mpUMultLoop
 //      Caller guarentees lA>=lB, lR>=lA+lB
-u64 mpUMultLoop(int lA, u64* pA, int lB, u64* pB, u64* pR)
+void mpUMultLoop(int ilA, u64* pA, int ilB, u64* pB, u64* pR)
 {
-    u64     uCarry= 0ULL;
+    i64 lA= (i64)ilA;
+    i64 lB= (i64)ilB;
+
+#ifdef ALLASSEMBLER
+    //  mulq    op:     rdx:rax= rax*op
+    //  r8:  i
+    //  r9:  j
+    //  r12: i+j
+    //  rbx: pA
+    //  rcx: pB
+    //  r14: pR
+    //  r13: uCarry
+    //  cmp a,b:  jge succeeds if b>=a
+    asm volatile(
+        "\tmovq    %[pA], %%rbx\n"\
+        "\tmovq    %[pB], %%rcx\n"\
+        "\tmovq    %[pR], %%r14\n"\
+        "\tmovq    $0, %%r8\n"\
+        "1:\n"\
+        "\tcmpq    %%r8, %[lA]\n"\
+        "\tjle     4f\n"\
+        "\tmovq    $0, %%r9\n"\
+        "\tmovq    $0, %%r13\n"\
+        "\tmovq    %%r8, %%r12\n"\
+        "2:\n"\
+        "\tcmpq    %%r9, %[lB]\n"\
+        "\tjle     3f\n"\
+        "\tmovq    (%%rbx, %%r8, 0x8), %%rax\n"\
+        "\tmulq    (%%rcx, %%r9, 0x8)\n"\
+        "\taddq    %%r13, %%rax\n"\
+        "\tadcq    $0, %%rdx\n"\
+        "\taddq    (%%r14, %%r12, 0x8), %%rax\n"\
+        "\tadcq    $0, %%rdx\n"\
+        "\tmovq    %%rax, (%%r14, %%r12, 0x8)\n"\
+        "\tmovq    %%rdx, %%r13\n"\
+        "\taddq    $1, %%r9\n"\
+        "\taddq    $1, %%r12\n"\
+        "\tjmp     2b\n"\
+        "3:\n"\
+        "\tmovq    %%r13, (%%r14, %%r12, 0x8)\n"\
+        "\taddq    $1, %%r8\n"\
+        "\tjmp     1b\n"\
+        "4:\n"
+        :
+        : [lA] "m" (lA), [pA] "m" (pA), [lB] "m" (lB), [pB] "m" (pB), [pR] "m" (pR)
+        : "%rax", "rbx", "%rcx", "%rdx", "%r8", "%r9", "%r12", "%r13", "%r14");
+#else
     int     i, j;
+    u64     uCarry= 0ULL;
 
     for(i=0; i<lA; i++) {
         uCarry= 0ULL;
@@ -271,8 +365,8 @@ u64 mpUMultLoop(int lA, u64* pA, int lB, u64* pB, u64* pR)
             mpMultiplyStep(&uCarry, &pR[i+j], pA[i], pB[j], pR[i+j], uCarry);
         pR[i+j]= uCarry;
     }
-
-    return uCarry;
+#endif
+    return;
 }
 
 
@@ -292,5 +386,4 @@ bool mpSingleUDivLoop(int lA, u64* pA, u64 uB, u64* pR)
 
 
 // -----------------------------------------------------------------
-
 

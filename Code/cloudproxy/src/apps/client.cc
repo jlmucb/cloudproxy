@@ -1,14 +1,21 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <openssl/ssl.h>
-#include <keyczar/crypto_factory.h>
 #include <keyczar/base/base64w.h>
 #include "cloudproxy/cloud_client.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/pipe_tao_channel.h"
 
 #include <string>
 
 using std::string;
+
+using cloudproxy::CloudClient;
+
+using keyczar::base::Base64WEncode;
+
+using tao::PipeTaoChannel;
+using tao::TaoChannel;
 
 DEFINE_string(client_cert, "./openssl_keys/client/client.crt",
               "The PEM certificate for the client to use for TLS");
@@ -30,27 +37,39 @@ int main(int argc, char** argv) {
 
   google::ParseCommandLineFlags(&argc, &argv, false);
 
+  FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging(argv[0]);
+
   // initialize OpenSSL
   SSL_load_error_strings();
   ERR_load_BIO_strings();
   OpenSSL_add_all_algorithms();
   SSL_library_init();
 
+  // try to establish a channel with the Tao
+  int fds[2];
+  CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
+    << "Could not extract pipes from the end of the argument list";
+  scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
+  CHECK_NOTNULL(channel.get());
+
+  LOG(INFO) << "Client successfully established communication with the Tao";
+  int size = 6;
+  string name_bytes;
+  CHECK(channel->GetRandomBytes(size, &name_bytes))
+    << "Could not get a random name from the Tao";
+
   LOG(INFO) << "About to create a client";
-  cloudproxy::CloudClient cc(FLAGS_client_cert, FLAGS_client_key,
-                             FLAGS_client_password, FLAGS_policy_key,
-                             FLAGS_pem_policy_key, FLAGS_address, FLAGS_port);
+  CloudClient cc(FLAGS_client_cert, FLAGS_client_key,
+		 FLAGS_client_password, FLAGS_policy_key,
+		 FLAGS_pem_policy_key, FLAGS_address, FLAGS_port);
 
   LOG(INFO) << "Created a client";
   CHECK(cc.Connect()) << "Could not connect to the server at " << FLAGS_address
                       << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
-  // create a random object name to write
-  keyczar::RandImpl* rand = keyczar::CryptoFactory::Rand();
-  string name_bytes;
-  CHECK(rand->RandBytes(6, &name_bytes))
-      << "Could not get random bytes for a name";
+  // create a random object name to write, getting randomness from the Tao
 
   // Base64 encode the bytes to get a printable name
   string name;

@@ -40,6 +40,7 @@ DEFINE_bool(start_measured, false, "A flag that indicates measured boot");
 DEFINE_string(whitelist, "signed_whitelist", "A signed whitelist file");
 DEFINE_string(policy_pk_path, "./policy_public_key",
 	      "The path to the public policy key");
+DEFINE_string(program, "server", "The program to run");
 
 int main(int argc, char **argv) {
 
@@ -61,7 +62,6 @@ int main(int argc, char **argv) {
 
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
-
   // request a measured start
   if (start_measured) {
     if (!startMeAsMeasuredProgram(argc, argv)) {
@@ -80,12 +80,12 @@ int main(int argc, char **argv) {
   LOG(INFO) << "Finished initializing the Legacy Tao";
 
   // now start the server and start listening for requests from it
-  size_t slen = strlen("server");
-  scoped_array<char> sname(new char[slen + 1]);
-  strncpy(sname.get(), "server", slen + 1);
-  char *server_name = sname.get();
-  char *new_argv[] = { server_name };
-  CHECK(tao->StartHostedProgram("server", 1, new_argv))
+  size_t plen = FLAGS_program.size();
+  scoped_array<char> pname(new char[plen + 1]);
+  strncpy(pname.get(), FLAGS_program.data(), plen + 1);
+  char *program_name = pname.get();
+  char *new_argv[] = { program_name };
+  CHECK(tao->StartHostedProgram(FLAGS_program.c_str(), 1, new_argv))
     << "Could not start the server under LegacyTao";
   return 0;
 }

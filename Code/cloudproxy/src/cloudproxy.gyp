@@ -159,7 +159,10 @@
       'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/client.cc', ],
       'include_dirs': [ '.', ],
-      'dependencies': [ 'cloudproxy', ],
+      'dependencies': [
+        'cloudproxy',
+	'tao',
+      ],
     },
     {
       'target_name': 'fclient',

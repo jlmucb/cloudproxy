@@ -53,8 +53,6 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
-  LOG(INFO) << "Got argc = " << argc;
-
   // try to establish a channel with the Tao
   int fds[2];
   CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))

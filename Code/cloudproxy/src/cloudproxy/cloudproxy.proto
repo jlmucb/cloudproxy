@@ -1,3 +1,5 @@
+import "tao/quote.proto";
+
 package cloudproxy;
 
 // The types of permissions allowed in ACLs.
@@ -111,8 +113,11 @@ message ClientMessage {
     // authentication
     optional Response response = 3;
 
+    // a SignedQuote of the X.509 certificate used to establish this connection
+    optional tao.SignedQuote quote = 4;
+    
     // Close the connection, potentially with an error
-    optional CloseConnection close = 4;
+    optional CloseConnection close = 5;
 }
 
 // This message is sent from CloudServer to CloudClient as the result of an
@@ -132,6 +137,9 @@ message ServerMessage {
 
     // The result of a CloudClient-requested Action
     optional Result result = 2;
+
+    // a SignedQuote of the X.509 certificate used to establish this connection
+    optional tao.SignedQuote quote = 3;
 }
 
 // A message that gives a name to a given keyczar public key structure

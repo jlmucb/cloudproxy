@@ -20,11 +20,17 @@
 #include <logging.h>
 #include <policyCert.inc>
 
+#include <time.h>
+
 #include <fstream>
 #include <sstream>
 
+using tao::Attestation;
 using tao::HostedProgram;
 using tao::PipeTaoChannel;
+using tao::Quote;
+using tao::SignedAttestation;
+using tao::SignedQuote;
 using tao::SignedWhitelist;
 using tao::Whitelist;
 
@@ -76,7 +82,8 @@ LegacyTao::LegacyTao(const string &secret_path, const string &directory,
       signer_(nullptr),
       policy_verifier_(nullptr),
       whitelist_(),
-      child_fd_(-1) {
+      hash_whitelist_(),
+      child_fds_({-1,-1}) {
   // leave setup for Init
 }
 
@@ -107,6 +114,7 @@ bool LegacyTao::Init() {
       << "Can't add " << hp.name() << " to the whitelist twice";
     LOG(INFO) << "Adding " << hp.name() << " to the whitelist";
     whitelist_[hp.name()] = hp.hash();
+    hash_whitelist_.insert(hp.hash());
   }
   LOG(INFO) << "Done populating the whitelist";
 
@@ -309,6 +317,11 @@ bool LegacyTao::createKey(const string &secret) {
 bool LegacyTao::Destroy() { return true; }
 
 bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
+  if (!child_hash_.empty()) {
+    LOG(ERROR) << "Cannot start a second program under the legacy tao bootstrap";
+    return false;
+  }
+  
   // first check to make sure that this program is authorized
 
   LOG(INFO) << "About to check the whitelist";
@@ -319,8 +332,6 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     LOG(ERROR) << "Could not find the path " << path << " in the whitelist";
     return false;
   }
-
-  
 
   ifstream program_stream(path.c_str());
   stringstream program_buf;
@@ -369,6 +380,7 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
 
   LOG(INFO) << "Set up the pipes; about to fork";
 
+  // TODO(tmroeder): replace fork with clone
   int child_pid = fork();
   if (child_pid == -1) {
     LOG(ERROR) << "Could not fork";
@@ -410,15 +422,13 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
       return false;
     }
   } else {
-    LOG(INFO) << "Parent setting up listening";
-    // parent process: send message on downward pipe and receive message on upward pipe
     close(pipedown[0]);
     close(pipeup[1]);
 
-    int fds[2];
-    fds[0] = pipeup[0];
-    fds[1] = pipedown[1];
-    PipeTaoChannel ptc(fds);
+    child_fds_[0] = pipeup[0];
+    child_fds_[1] = pipedown[1];
+    child_hash_.assign(serialized_digest);
+    PipeTaoChannel ptc(child_fds_);
     bool rv = ptc.Listen(this);
     if (!rv) {
       LOG(ERROR) << "Listening failed";
@@ -430,7 +440,7 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
   return true;
 }
   
-bool LegacyTao::GetRandomBytes(size_t size, string *bytes) {
+bool LegacyTao::GetRandomBytes(size_t size, string *bytes) const {
   // just ask keyczar for random bytes, which will ask OpenSSL in turn
   RandImpl *rand = CryptoFactory::Rand();
   if (!rand->RandBytes(size, bytes)) {
@@ -442,7 +452,7 @@ bool LegacyTao::GetRandomBytes(size_t size, string *bytes) {
 }
   
 
-bool LegacyTao::Seal(const string &data, string *sealed) {
+bool LegacyTao::Seal(const string &data, string *sealed) const {
   // encrypt it using our symmetric key
   if (!crypter_->Encrypt(data, sealed)) {
     LOG(ERROR) << "Could not seal the data";
@@ -452,7 +462,7 @@ bool LegacyTao::Seal(const string &data, string *sealed) {
   return true;
 }
 
-bool LegacyTao::Unseal(const string &sealed, string *data)  {
+bool LegacyTao::Unseal(const string &sealed, string *data) const {
   // decrypt it using our symmetric key
   if (!crypter_->Decrypt(sealed, data)) {
     LOG(ERROR) << "Could not unseal the data";
@@ -462,26 +472,176 @@ bool LegacyTao::Unseal(const string &sealed, string *data)  {
   return true;
 }
   
-bool LegacyTao::Quote(const string &data, string *signature) {
-  // TODO(tmroeder): implement this with tao::SignedQuote as the signature
-  return false;
+// TODO(tmroeder): add a time and check it in VerifyQuote
+bool LegacyTao::Quote(const string &data, string *signature) const {
+  if (child_hash_.empty()) {
+    LOG(ERROR) << "Cannot create an attestation when there is no child process";
+    return false;
+  }
+
+  if (!signature) {
+    LOG(ERROR) << "signature was null in LegacyTao::Quote";
+    return false;
+  }
+
+  tao::Quote q;
+  q.set_data(data);
+  q.set_hash_alg("SHA256");
+  
+  // TODO(tmroeder): for now, this is easy, since we only have one
+  // program that is bootstrapped. For more complex implementations of
+  // the Tao, this will depend on the channel that the request comes
+  // from.
+  q.set_hash(child_hash_);
+
+  // TODO(tmroeder): call down to the Tao to get a quote of our public
+  // key and an attestation about this copy of the LegacyTao getting
+  // started correctly. Then put that evidence in q.evidence()
+
+  SignedQuote sq;
+  string serialized_quote;
+  if (!q.SerializeToString(&serialized_quote)) {
+    LOG(ERROR) << "Could not serialize the Quote to a string";
+    return false;
+  }
+
+  sq.set_serialized_quote(serialized_quote);
+
+  string sig;
+  if (!signer_->Sign(serialized_quote, &sig)) {
+    LOG(ERROR) << "Could not sign a quote for a child process";
+    return false;
+  }
+
+  sq.set_signature(sig);
+
+  if (!sq.SerializeToString(signature)) {
+    LOG(ERROR) << "Could not serialize the signature to a string";
+    return false;
+  }
+
+  return true;
 }
 
-bool LegacyTao::VerifyQuote(const string &data, const string &signature) {
-  // TODO(tmroeder): implement this with tao::SignedQuote as the signature
-  return false;
+bool LegacyTao::VerifyQuote(const string &data, const string &signature) const {
+  // check the signature on the data
+  SignedQuote sq;
+  if (!sq.ParseFromString(signature)) {
+    LOG(ERROR) << "Could not parse a SignedQuote from the signature";
+    return false;
+  }
+
+  // TODO(tmroeder): also check the evidence for the key used to sign
+  // the signature. Right now, we're depending on the bootstrap key
+  // being the same for client and server, which won't work in general.
+  if (!signer_->Verify(sq.serialized_quote(), sq.signature())) {
+    LOG(ERROR) << "The signature on the quote does not pass verification";
+    return false;
+  }
+
+  tao::Quote q;
+  if (!q.ParseFromString(sq.serialized_quote())) {
+    LOG(ERROR) << "Could not parse a Quote from the serialized quote";
+    return false;
+  }
+
+  // check that the input data and the data in the quote match
+  if (!data.compare(q.data()) == 0) {
+    LOG(ERROR) << "The data in the quote does not match the input data";
+    return false;
+  }
+
+  // check that the program making the quote is whitelisted
+  // TODO(tmroeder): extend this check up the chain of evidence.
+  if (hash_whitelist_.find(q.hash()) == hash_whitelist_.end()) {
+    LOG(ERROR) << "The program making the quote was not whitelisted";
+    return false;
+  }
+
+  return true;
 }
 
 
-bool LegacyTao::Attest(string *attestation) {
-  // TOOD(tmroeder): get the current time and produce a signature
-  return false;
+bool LegacyTao::Attest(string *attestation) const {
+  if (child_hash_.empty()) {
+    LOG(ERROR) << "Cannot create an attestation when there is no child process";
+    return false;
+  }
+
+  if (!attestation) {
+    LOG(ERROR) << "attestation was null";
+    return false;
+  }
+
+  Attestation a;
+  time_t cur_time;
+  time(&cur_time);
+
+  a.set_time(cur_time);
+  a.set_hash_alg("SHA256");
+  a.set_hash(child_hash_);
+  // TODO(tmroeder): add evidence as in Quote
+
+  string serialized_attestation;
+  if (!a.SerializeToString(&serialized_attestation)) {
+    LOG(ERROR) << "Could not serialize the attestation";
+    return false;
+  }
+
+  string signature;
+  if (!signer_->Sign(serialized_attestation, &signature)) {
+    LOG(ERROR) << "Could not sign the attestation";
+    return false;
+  }
+
+  SignedAttestation sa;
+  sa.set_serialized_attestation(serialized_attestation);
+  sa.set_signature(signature);
+
+  if (!sa.SerializeToString(attestation)) {
+    LOG(ERROR) << "Could not serialize the SignedAttestation";
+    return false;
+  }
+
+  return true;
 }
 
-bool LegacyTao::VerifyAttestation(const string &attestation) {
-  // TODO(tmroeder): check that the time isn't too long ago (5 minutes?) and check the signature
+bool LegacyTao::VerifyAttestation(const string &attestation) const {
+  SignedAttestation sa;
+  if (!sa.ParseFromString(attestation)) {
+    LOG(ERROR) << "Could not deserialize a SignedAttestation";
+    return false;
+  }
+
+  if (!signer_->Verify(sa.serialized_attestation(), sa.signature())) {
+    LOG(ERROR) << "The signature for the serialized attestation did not pass verification";
+    return false;
+  }
+
+  Attestation a;
+  if (!a.ParseFromString(sa.serialized_attestation())) {
+    LOG(ERROR) << "Could not parse an Attestation from the serialized attestation";
+    return false;
+  }
+
+  // check that the time isn't too far in the past
+  time_t cur_time;
+  time(&cur_time);
+  
+  time_t past_time = a.time();
+  if (cur_time - past_time > AttestationTimeout) {
+    LOG(ERROR) << "The attestation was too old";
+    return false;
+  }
+
+  // check that this is a whitelisted program
+  if (hash_whitelist_.find(a.hash()) == hash_whitelist_.end()) {
+    LOG(ERROR) << "The attested program was not a whitelisted program";
+    return false;
+  }
+
   // TODO(tmroeder): make this signature depend on all lower levels of the Tao
   // Also need to make sure that we're checking that it's a trusted signature, *not* necessarily a signature from our key
-  return false;
+  return true;
 }
 }  // namespace cloudproxy

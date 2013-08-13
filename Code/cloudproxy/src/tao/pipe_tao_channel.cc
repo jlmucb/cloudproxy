@@ -1,4 +1,4 @@
-#include "pipe_tao_channel.h"
+#include "tao/pipe_tao_channel.h"
 
 #include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -60,7 +60,7 @@ namespace tao {
     close(writefd_);
   }
 
-  bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m) {
+  bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m) const {
     // try to receive an integer
     CHECK_NOTNULL(m);
     size_t len;
@@ -84,7 +84,7 @@ namespace tao {
     return m->ParseFromString(serialized);
   }
 
-  bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m) {
+  bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m) const {
     // send the length then the serialized message
     string serialized;
     if (!m.SerializeToString(&serialized)) {

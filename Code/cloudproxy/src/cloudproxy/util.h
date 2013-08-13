@@ -43,6 +43,8 @@ typedef scoped_ptr_malloc<HMAC_CTX, keyczar::openssl::OSSLDestroyer<
                                         HMAC_CTX, hcleanup> > ScopedHmacCtx;
 typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
                                        SSL_CTX, SSL_CTX_free> > ScopedSSLCtx;
+ typedef scoped_ptr_malloc<X509, keyczar::openssl::OSSLDestroyer<
+   X509, X509_free> > ScopedX509Ctx;
 
 typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
@@ -105,6 +107,8 @@ bool GetFinalDecryptedBytes(unsigned char *out, int *out_size,
 bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
                             EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
 bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
+
+bool SerializeX509(X509 *x509, string *serialized_x509);
 }
 
 #endif  // CLOUDPROXY_UTIL_H_

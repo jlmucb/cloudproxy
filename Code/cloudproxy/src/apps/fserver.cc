@@ -4,6 +4,7 @@
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include "cloudproxy/file_server.h"
+#include "tao/pipe_tao_channel.h"
 
 #include <mutex>
 #include <string>
@@ -12,6 +13,9 @@
 using std::mutex;
 using std::string;
 using std::vector;
+
+using tao::PipeTaoChannel;
+using tao::TaoChannel;
 
 DEFINE_string(file_path, "file_server_files",
               "The path used by the file server to store files");
@@ -50,6 +54,16 @@ int main(int argc, char **argv) {
 
   google::ParseCommandLineFlags(&argc, &argv, true);
 
+  FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging(argv[0]);
+
+  // try to establish a channel with the Tao
+  int fds[2];
+  CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
+    << "Could not extract pipes from the end of the argument list";
+  scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
+  CHECK_NOTNULL(channel.get());
+
   // initialize OpenSSL
   SSL_load_error_strings();
   ERR_load_BIO_strings();
@@ -69,6 +83,6 @@ int main(int argc, char **argv) {
                             FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
                             FLAGS_server_enc_key, FLAGS_address, FLAGS_port);
 
-  CHECK(fs.Listen()) << "Could not listen for client connections";
+  CHECK(fs.Listen(*channel)) << "Could not listen for client connections";
   return 0;
 }

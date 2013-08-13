@@ -3,7 +3,7 @@
 
 namespace tao {
 
-  bool TaoChannel::Listen(Tao *t) {
+  bool TaoChannel::Listen(Tao *t) const {
     TaoChannelRPC rpc;
     while (GetRPC(&rpc)) {
       // switch on the type of RPC and pass it to the tao function
@@ -115,7 +115,7 @@ namespace tao {
     return resp.success();
   }
 
-  bool TaoChannel::GetRandomBytes(size_t size, string *bytes) {
+  bool TaoChannel::GetRandomBytes(size_t size, string *bytes) const {
     TaoChannelRPC rpc;
     rpc.set_rpc(GET_RANDOM_BYTES);
     GetRandomBytesArgs *grba = rpc.mutable_random();
@@ -139,7 +139,7 @@ namespace tao {
     return resp.success();
   }
 
-  bool TaoChannel::SendAndReceiveData(const string &in, string *out, RPC rpc_type) {
+  bool TaoChannel::SendAndReceiveData(const string &in, string *out, RPC rpc_type) const {
     CHECK_NOTNULL(out);
 
     TaoChannelRPC rpc;
@@ -163,19 +163,19 @@ namespace tao {
     return resp.success();
   }
 
-  bool TaoChannel::Seal(const string &data, string *sealed) {
+  bool TaoChannel::Seal(const string &data, string *sealed) const {
     return SendAndReceiveData(data, sealed, SEAL);
   }
 
-  bool TaoChannel::Unseal(const string &sealed, string *data) {
+  bool TaoChannel::Unseal(const string &sealed, string *data) const {
     return SendAndReceiveData(sealed, data, UNSEAL);
   }
 
-  bool TaoChannel::Quote(const string &data, string *signature) {
+  bool TaoChannel::Quote(const string &data, string *signature) const {
     return SendAndReceiveData(data, signature, QUOTE);
   }
 
-  bool TaoChannel::VerifyQuote(const string &data, const string &signature) {
+  bool TaoChannel::VerifyQuote(const string &data, const string &signature) const {
     TaoChannelRPC rpc;
     rpc.set_rpc(VERIFY_QUOTE);
     rpc.set_data(data);
@@ -189,7 +189,7 @@ namespace tao {
     return resp.success();
   }
 
-  bool TaoChannel::Attest(string *attestation) {
+  bool TaoChannel::Attest(string *attestation) const {
     TaoChannelRPC rpc;
     rpc.set_rpc(ATTEST);
     SendRPC(rpc);
@@ -209,7 +209,7 @@ namespace tao {
     return resp.success();
   }
 
-  bool TaoChannel::VerifyAttestation(const string &attestation) {
+  bool TaoChannel::VerifyAttestation(const string &attestation) const {
     TaoChannelRPC rpc;
     rpc.set_rpc(VERIFY_ATTESTATION);
     rpc.set_data(attestation);
@@ -221,21 +221,21 @@ namespace tao {
     return resp.success();
   }
 
-  bool TaoChannel::GetRPC(TaoChannelRPC *rpc) {
+  bool TaoChannel::GetRPC(TaoChannelRPC *rpc) const {
     CHECK_NOTNULL(rpc);
     return ReceiveMessage(rpc);
   }
 
-  bool TaoChannel::SendRPC(const TaoChannelRPC &rpc) {
+  bool TaoChannel::SendRPC(const TaoChannelRPC &rpc) const {
     return SendMessage(rpc);
   }
 
-  bool TaoChannel::GetResponse(TaoChannelResponse *resp) {
+  bool TaoChannel::GetResponse(TaoChannelResponse *resp) const {
     CHECK_NOTNULL(resp);
     return ReceiveMessage(resp);
   }
 
-  bool TaoChannel::SendResponse(const TaoChannelResponse &resp) {
+  bool TaoChannel::SendResponse(const TaoChannelResponse &resp) const {
     return SendMessage(resp);
   }
 } // namespace tao

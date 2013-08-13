@@ -13,9 +13,11 @@
 
 #include <string>
 #include <map>
+#include <set>
 
-using std::string;
 using std::map;
+using std::set;
+using std::string;
 
 namespace legacy_tao {
 
@@ -29,15 +31,18 @@ class LegacyTao : public tao::Tao {
     virtual bool Destroy();
     virtual bool StartHostedProgram(const string &path, int argc,
                                     char **argv);
-    virtual bool GetRandomBytes(size_t size, string *bytes);
-    virtual bool Seal(const string &data, string *sealed);
-    virtual bool Unseal(const string &sealed, string *data);
-    virtual bool Quote(const string &data, string *signature);
-    virtual bool VerifyQuote(const string &data, const string &signature);
-    virtual bool Attest(string *attestation);
-    virtual bool VerifyAttestation(const string &attestation);
+    virtual bool GetRandomBytes(size_t size, string *bytes) const;
+    virtual bool Seal(const string &data, string *sealed) const;
+    virtual bool Unseal(const string &sealed, string *data) const;
+    virtual bool Quote(const string &data, string *signature) const;
+    virtual bool VerifyQuote(const string &data, const string &signature) const;
+    virtual bool Attest(string *attestation) const;
+    virtual bool VerifyAttestation(const string &attestation) const;
 
   private:
+    // 5 minute attestation timeout
+    static const int AttestationTimeout = 300;
+
     // the path to the secret sealed by the legacy Tao
     string secret_path_;
 
@@ -72,8 +77,14 @@ class LegacyTao : public tao::Tao {
     // the verified whitelist of applications that can be started
     map<string, string> whitelist_;
 
-    // A file descriptor used to communicate with the child process
-    int child_fd_;
+    // a set of hashes of whitelisted binaries
+    set<string> hash_whitelist_;
+
+    // File descriptors used to communicate with the child process
+    int child_fds_[2];
+
+    // the hash of the child program, for use in quotes or attestation
+    string child_hash_;
 
     static const int AesBlockSize = 16;
     static const int Sha256Size = 32;

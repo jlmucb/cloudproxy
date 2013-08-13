@@ -6,6 +6,8 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
+#include "tao/tao.h"
+#include "tao/quote.pb.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -45,8 +47,11 @@ class CloudServer {
 
   virtual ~CloudServer() {}
 
-  // start listening to the port and handle connections as they arrive
-  bool Listen();
+  // Start listening to the port and handle connections as they arrive.
+  // The Tao implementation allows the server to check that programs
+  // that connect to it are allowed by the Tao and to get a
+  // SignedQuote for its key
+  bool Listen(const tao::Tao &t);
 
  protected:
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers
@@ -80,13 +85,17 @@ class CloudServer {
 
   // handles an incoming message from a client
   bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
-  void HandleConnection(BIO *bio);
+  void HandleConnection(BIO *bio, const tao::Tao *t);
   bool HandleMessage(const ClientMessage &message, BIO *bio, string *reason,
-                     bool *reply, bool *close, CloudServerThreadData &cstd);
+                     bool *reply, bool *close, CloudServerThreadData &cstd,
+		     const tao::Tao &t);
   bool HandleAuth(const Auth &auth, BIO *bio, string *reason, bool *reply,
                   CloudServerThreadData &cstd);
   bool HandleResponse(const Response &response, BIO *bio, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
+  bool HandleQuote(const tao::SignedQuote &quote, BIO *bio, string *reason,
+		   bool *reply, CloudServerThreadData &cstd, 
+		   const tao::Tao &t);
 
   // the public policy key, used to check signatures
   scoped_ptr<keyczar::Keyczar> public_policy_key_;

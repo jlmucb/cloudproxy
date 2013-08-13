@@ -8,6 +8,9 @@
 using std::lock_guard;
 using std::stringstream;
 
+using tao::Tao;
+using tao::SignedQuote;
+
 namespace cloudproxy {
 
 CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
@@ -57,14 +60,14 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                                           << host_and_port;
 }
 
-bool CloudServer::Listen() {
+bool CloudServer::Listen(const Tao &quote_tao) {
   while (true) {
     LOG(INFO) << "About to listen for a client message";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
                                                " connection";
 
     BIO *out = BIO_pop(abio_.get());
-    thread t(&CloudServer::HandleConnection, this, out);
+    thread t(&CloudServer::HandleConnection, this, out, &quote_tao);
     t.detach();
   }
 
@@ -73,9 +76,7 @@ bool CloudServer::Listen() {
   return true;
 }
 
-void CloudServer::HandleConnection(BIO *sbio) {
-  CloudServerThreadData cstd;
-
+void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
   keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
@@ -84,11 +85,22 @@ void CloudServer::HandleConnection(BIO *sbio) {
     LOG(INFO) << "Successful client handshake";
   }
 
+  SSL *cur_ssl = nullptr;
+  BIO_get_ssl(bio.get(), &cur_ssl);
+  ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
+  ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
+  
+  CloudServerThreadData cstd(peer_cert.release(), self_cert.release());
+  if (cstd.GetPeerCert() == nullptr) {
+    LOG(ERROR) << "No X.509 certificate received from the client";
+    return;
+  }
+
   // loop on the message handler for this connection with the client
   bool rv = true;
   while (true) {
     // read a 4-byte integer from the channel to get the length of the
-    // ClientMessage.
+    // ClientMessage
     // TODO(tmroeder): the right way to do this would be to
     // implement something like ParseFromIstream with an istream wrapping the
     // OpenSSL BIO abstraction. This would then render the first integer otiose,
@@ -103,10 +115,11 @@ void CloudServer::HandleConnection(BIO *sbio) {
 
     cm.ParseFromString(serialized_cm);
 
+
     string reason;
     bool reply = true;
     bool close = false;
-    rv = HandleMessage(cm, bio.get(), &reason, &reply, &close, cstd);
+    rv = HandleMessage(cm, bio.get(), &reason, &reply, &close, cstd, *t);
 
     if (close) {
       break;
@@ -153,10 +166,15 @@ bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
 }
 bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
                                 string *reason, bool *reply, bool *close,
-                                CloudServerThreadData &cstd) {
+                                CloudServerThreadData &cstd, const Tao &t) {
   CHECK(bio) << "null bio";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
+
+  if (!cstd.GetCertValidated() && !message.has_quote()) {
+    LOG(ERROR) << "Client did not provide a SignedQuote before sending other messages";
+    return false;
+  }
 
   int rv = false;
   if (message.has_action()) {
@@ -219,6 +237,13 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
     rv = !message.close().error();
     *close = true;
     *reply = false;
+    return rv;
+  } else if (message.has_quote()) {
+    rv = HandleQuote(message.quote(), bio, reason, reply, cstd, t);
+    if (!rv) {
+      LOG(ERROR) << "Quote verification failed. Closing connection";
+      *close = true;
+    }
     return rv;
   } else {
     LOG(ERROR) << "Message from client did not have any recognized content";
@@ -439,4 +464,67 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
+bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio, string *reason,
+			      bool *reply, CloudServerThreadData &cstd, 
+			      const Tao &t) {
+  string serialized_quote;
+  if (!quote.SerializeToString(&serialized_quote)) {
+    LOG(ERROR) << "Could not serialize the quote to pass it to the Tao";
+    return false;
+  }
+
+  string serialized_x509;
+  if (!SerializeX509(cstd.GetPeerCert(), &serialized_x509)) {
+    LOG(ERROR) << "Could not serialize the X.509 certificate";
+    return true;
+  }
+
+  LOG(INFO) << "The serialized X.509 client cert (at the server) has size " << (int)serialized_x509.size();
+
+  // check that this is a valid quote
+  if (!t.VerifyQuote(serialized_x509, serialized_quote)) {
+    LOG(ERROR) << "The SignedQuote did not pass Tao verification";
+    return false;
+  }
+
+  cstd.SetCertValidated();
+
+  // get our X509 certificate
+  string serialized_self_x509;
+  if (!SerializeX509(cstd.GetSelfCert(), &serialized_self_x509)) {
+    LOG(ERROR) << "Could not serialize our own X.509 certificate";
+    return false;
+  }
+
+  // quote it to send it to the client
+  string signature;
+  if (!t.Quote(serialized_self_x509, &signature)) {
+    LOG(ERROR) << "Could not get a signed quote for our own X.509 certificate";
+    return false;
+  }
+
+  ServerMessage sm;
+  SignedQuote *sq = sm.mutable_quote();
+  if (!sq->ParseFromString(signature)) {
+    LOG(ERROR) << "Could not parse the SignedQuote provided by the Tao";
+    return false;
+  }
+
+  string serialized_sm;
+  if (!sm.SerializeToString(&serialized_sm)) {
+    LOG(ERROR) << "Could not serialize the ServerMessage";
+    return false;
+  }
+
+  if (!SendData(bio, serialized_sm)) {
+    LOG(ERROR) << "Could not send the serialized ServerMessage to the client";
+    return false;
+  }
+
+  LOG(INFO) << "All SignedQuote checks passed at the server";
+  
+  // don't send another reply
+  *reply = false;
+  return true;
+}
 }  // namespace cloudproxy

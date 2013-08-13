@@ -13,6 +13,8 @@
 #include <keyczar/rsa_impl.h>
 #include <keyczar/rsa_public_key.h>
 
+#include <glog/logging.h>
+
 #include "cloudproxy/cloudproxy.pb.h"
 
 using std::ifstream;
@@ -27,11 +29,20 @@ void ecleanup(EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_cleanup(ctx); }
 
 void hcleanup(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
 
-// this callback will change once we get the password from the Tao/TPM
+// TODO(tmroeder): change this callback will change to get the
+// password from the Tao/TPM
 int PasswordCallback(char *buf, int size, int rwflag, void *password) {
   strncpy(buf, (char *)(password), size);
   buf[size - 1] = '\0';
   return (strlen(buf));
+}
+
+static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
+  // we always let the X.509 cert pass verification because we're
+  // going to check it using a SignedQuote in the first message (and
+  // fail if no SignedQuote is provided or if it doesn't pass
+  // verification
+  return 1;
 }
 
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
@@ -47,9 +58,6 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
   CHECK(SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION))
       << "Could not turn off compression on the TLS connection";
 
-  CHECK(SSL_CTX_load_verify_locations(ctx, public_policy_key.c_str(), NULL))
-      << "Could not load the public policy key for verification";
-
   CHECK(SSL_CTX_use_certificate_file(ctx, cert.c_str(), SSL_FILETYPE_PEM))
       << "Could not load the certificate for this connection";
 
@@ -60,6 +68,10 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
 
   CHECK(SSL_CTX_use_PrivateKey_file(ctx, key.c_str(), SSL_FILETYPE_PEM))
       << "Could not load the private key for this connection";
+
+  // set up verification to insist on getting a certificate from the peer
+  int verify_mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+  SSL_CTX_set_verify(ctx, verify_mode, AlwaysAcceptCert);
 
   return true;
 }
@@ -777,6 +789,27 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
     return false;
   }
 
+  return true;
+}
+
+bool SerializeX509(X509 *x509, string *serialized_x509) {
+  CHECK_NOTNULL(x509);
+
+  int len = i2d_X509(x509, NULL);
+  if (len < 0) {
+    LOG(ERROR) << "Could not get the length of an X.509 certificate";
+    return false;
+  }
+
+  unsigned char *serialization = nullptr;
+  len = i2d_X509(x509, &serialization);
+  scoped_ptr_malloc<unsigned char> der_x509(serialization);
+  if (len < 0) {
+    LOG(ERROR) << "Could not encode an X.509 certificate in DER";
+    return false;
+  }
+
+  serialized_x509->assign(reinterpret_cast<char *>(der_x509.get()), len);
   return true;
 }
 

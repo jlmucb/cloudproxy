@@ -46,6 +46,9 @@
         '<(SHARED_INTERMEDIATE_DIR)',
         '.',
       ],
+      'dependencies': [
+        'tao',
+      ],
       'includes': [
         'build/protoc.gypi',
       ],
@@ -170,7 +173,10 @@
       'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/fclient.cc', ],
       'include_dirs': [ '.', ],
-      'dependencies': [ 'cloudproxy', ],
+      'dependencies': [
+        'cloudproxy',
+	'tao',
+      ],
     },
     {
       'target_name': 'server',
@@ -189,7 +195,10 @@
       'variables': { 'src' : 'apps', },
       'sources': [ '<(src)/fserver.cc', ],
       'include_dirs': [ '.', ],
-      'dependencies': [ 'cloudproxy', ],
+      'dependencies': [
+         'cloudproxy',
+         'tao',
+      ],
     },
     {
       'target_name': 'hash_file',

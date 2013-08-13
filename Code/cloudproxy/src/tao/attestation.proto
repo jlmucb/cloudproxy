@@ -1,8 +1,8 @@
 package tao;
 
 message Attestation {
-  // the time at which the attestation was made
-  required string time = 1;
+  // the time at which the attestation was made, in 64-bit POSIX time
+  required int64 time = 1;
   
   // the algorithm used to hash the program
   required string hash_alg = 2;
@@ -15,7 +15,7 @@ message Attestation {
   repeated bytes evidence = 4;
 }
 
-message SignedAttestion {
+message SignedAttestation {
   // a serialized Attestation message
   required bytes serialized_attestation = 1;
 

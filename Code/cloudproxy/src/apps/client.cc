@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
 		 FLAGS_pem_policy_key, FLAGS_address, FLAGS_port);
 
   LOG(INFO) << "Created a client";
-  CHECK(cc.Connect()) << "Could not connect to the server at " << FLAGS_address
+  CHECK(cc.Connect(*channel)) << "Could not connect to the server at " << FLAGS_address
                       << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 

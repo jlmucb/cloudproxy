@@ -40,10 +40,9 @@
       ],
       'action': [
         '<(protoc)',
-        #  | sed "s/^\(.*\)\/[^/]*$/\1/g")',
-        '-I<(RULE_INPUT_DIRNAME)/',
-        '--cpp_out=<(cc_dir)/<(RULE_INPUT_DIRNAME)',
-        '<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_NAME)'
+        '-I./',
+        '--cpp_out=<(cc_dir)',
+        './<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_NAME)'
       ],
       'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
       'process_outputs_as_sources': 1,

@@ -40,4 +40,13 @@ bool CloudServerThreadData::RemoveAuthenticated(const string &user) {
   auth_.erase(a_it);
   return true;
 }
+
+bool CloudServerThreadData::SetCertValidated() {
+  cert_validated_ = true;
+  return true;
+}
+
+bool CloudServerThreadData::GetCertValidated() { return cert_validated_; }
+X509 *CloudServerThreadData::GetPeerCert() { return peer_cert_.get(); }
+X509 *CloudServerThreadData::GetSelfCert() { return self_cert_.get(); }
 }  // namespace cloudproxy

@@ -3,12 +3,16 @@
 #include <glog/logging.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/quote.pb.h"
 
 #include <sstream>
 #include <fstream>
 
 using std::ifstream;
 using std::stringstream;
+
+using tao::Tao;
+using tao::SignedQuote;
 
 namespace cloudproxy {
 
@@ -46,13 +50,70 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   BIO_set_conn_hostname(bio_.get(), const_cast<char *>(host_and_port.c_str()));
 }
 
-bool CloudClient::Connect() {
+bool CloudClient::Connect(const Tao &t) {
   int r = BIO_do_connect(bio_.get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
     return false;
   }
 
+  // get a quote for our X.509 cert and send it to the server, then
+  // check the server's reply
+  SSL *cur_ssl = nullptr;
+  BIO_get_ssl(bio_.get(), &cur_ssl);
+  ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
+  CHECK_NOTNULL(self_cert.get());
+  
+  ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
+  CHECK_NOTNULL(peer_cert.get());
+
+  string serialized_client_cert;
+  CHECK(SerializeX509(self_cert.get(), &serialized_client_cert))
+    << "Could not serialize the client certificate";
+  string signature;
+  CHECK(t.Quote(serialized_client_cert, &signature)) 
+    << "Could not get a SignedQuote for our client certificate";
+
+  ClientMessage cm;
+  SignedQuote *sq = cm.mutable_quote();
+  CHECK(sq->ParseFromString(signature))
+    << "Could not parse a SignedQuote from the Tao quote";
+  
+  string serialized_cm;
+  CHECK(cm.SerializeToString(&serialized_cm))
+    << "Could not serialize the ClientMessage(SignedQuote)";
+
+  LOG(INFO) << "Sending ClientMessage(SignedQuote) to server";
+  CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send quote";
+
+  // now listen for the connection
+  string serialized_sm;
+  CHECK(ReceiveData(bio_.get(), &serialized_sm))
+    << "Could not get a reply from the server";
+
+  ServerMessage sm;
+  CHECK(sm.ParseFromString(serialized_sm))
+    << "Could not deserialize the message from the server";
+    
+  CHECK(sm.has_quote()) << "The server did not reply with a quote";
+
+  // check the quote from the server
+  string serialized_server_quote;
+  CHECK(sm.quote().SerializeToString(&serialized_server_quote))
+    << "Could not serialize the server's SignedQuote";
+
+  string serialized_peer_cert;
+  CHECK(SerializeX509(peer_cert.get(), &serialized_peer_cert))
+    << "Could not serialize the server's X.509 certificate";
+
+  LOG(INFO) << "Serialized server cert (at the client) has length " << serialized_peer_cert.size();
+
+  CHECK(t.VerifyQuote(serialized_peer_cert, serialized_server_quote))
+    << "The SignedQuote from the server did not pass verification";
+
+  LOG(INFO) << "All SignedQuote checks passed at the client";
+  // once we get here, both sides have verified their quotes and know
+  // that they are talked to authorized applications under the Tao.
   return true;
 }
 

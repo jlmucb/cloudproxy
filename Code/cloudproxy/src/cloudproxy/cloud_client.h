@@ -6,6 +6,7 @@
 
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloud_user_manager.h"
+#include "tao/tao.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -40,7 +41,7 @@ class CloudClient {
   virtual ~CloudClient() {}
 
   // Connects to the specified server using the keys
-  bool Connect();
+  bool Connect(const tao::Tao &t);
 
   bool AddUser(const string &user, const string &key_path,
                const string &password);

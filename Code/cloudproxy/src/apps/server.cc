@@ -61,12 +61,6 @@ int main(int argc, char **argv) {
   CHECK_NOTNULL(channel.get());
 
   LOG(INFO) << "Successfully established communication with the Tao";
-  int size = 16;
-  string rand_bytes;
-  CHECK(channel->GetRandomBytes(size, &rand_bytes))
-    << "Could not get random bytes from the Tao";
-
-  LOG(INFO) << "Got random bytes from the Tao";
 
   // initialize OpenSSL
   SSL_load_error_strings();
@@ -87,6 +81,6 @@ int main(int argc, char **argv) {
 		 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address,
 		 FLAGS_port);
 
-  CHECK(cs.Listen()) << "Could not listen for client connections";
+  CHECK(cs.Listen(*channel)) << "Could not listen for client connections";
   return 0;
 }

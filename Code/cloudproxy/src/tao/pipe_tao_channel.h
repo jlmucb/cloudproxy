@@ -17,8 +17,8 @@ namespace tao {
     virtual ~PipeTaoChannel();
 
   protected:
-    virtual bool ReceiveMessage(google::protobuf::Message *m);
-    virtual bool SendMessage(const google::protobuf::Message &m);
+    virtual bool ReceiveMessage(google::protobuf::Message *m) const;
+    virtual bool SendMessage(const google::protobuf::Message &m) const;
 
   private:
     int readfd_;

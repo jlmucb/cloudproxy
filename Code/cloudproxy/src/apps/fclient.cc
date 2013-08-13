@@ -5,10 +5,15 @@
 #include <keyczar/base/base64w.h>
 #include "cloudproxy/file_client.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/pipe_tao_channel.h"
 
 #include <string>
 
 using std::string;
+
+using cloudproxy::FileClient;
+using tao::PipeTaoChannel;
+using tao::TaoChannel;
 
 DEFINE_string(file_path, "file_client_files",
               "The path used by the file server to store files");
@@ -32,6 +37,16 @@ int main(int argc, char** argv) {
 
   google::ParseCommandLineFlags(&argc, &argv, false);
 
+  FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging(argv[0]);
+
+  // try to establish a channel with the Tao
+  int fds[2];
+  CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
+    << "Could not extract pipes from the end of the argument list";
+  scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
+  CHECK_NOTNULL(channel.get());
+
   // initialize OpenSSL
   SSL_load_error_strings();
   ERR_load_BIO_strings();
@@ -45,7 +60,7 @@ int main(int argc, char** argv) {
                             FLAGS_address, FLAGS_port);
 
   LOG(INFO) << "Created a client";
-  CHECK(fc.Connect()) << "Could not connect to the server at " << FLAGS_address
+  CHECK(fc.Connect(*channel)) << "Could not connect to the server at " << FLAGS_address
                       << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 

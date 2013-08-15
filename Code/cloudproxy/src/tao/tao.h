@@ -31,20 +31,21 @@ namespace tao {
 
 // The Tao interface
 class Tao {
-  public:
-    virtual ~Tao() { }
-    virtual bool Init() = 0;
-    virtual bool Destroy() = 0;
-    virtual bool StartHostedProgram(const string &path, int argc,
-                                    char **argv) = 0;
-    virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
-    virtual bool Seal(const string &data, string *sealed) const = 0;
-    virtual bool Unseal(const string &sealed, string *data) const = 0;
-    virtual bool Quote(const string &data, string *signature) const = 0;
-    virtual bool VerifyQuote(const string &data, const string &signature) const = 0;
-    virtual bool Attest(string *attestation) const = 0;
-    virtual bool VerifyAttestation(const string &attestation) const = 0;
+ public:
+  virtual ~Tao() {}
+  virtual bool Init() = 0;
+  virtual bool Destroy() = 0;
+  virtual bool StartHostedProgram(const string &path, int argc,
+                                  char **argv) = 0;
+  virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
+  virtual bool Seal(const string &data, string *sealed) const = 0;
+  virtual bool Unseal(const string &sealed, string *data) const = 0;
+  virtual bool Quote(const string &data, string *signature) const = 0;
+  virtual bool VerifyQuote(const string &data,
+                           const string &signature) const = 0;
+  virtual bool Attest(string *attestation) const = 0;
+  virtual bool VerifyAttestation(const string &attestation) const = 0;
 };
 }
 
-#endif // TAO_TAO_H_
+#endif  // TAO_TAO_H_

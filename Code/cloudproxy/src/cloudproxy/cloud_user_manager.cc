@@ -3,7 +3,7 @@
 //
 // Description: Implementation of the CloudUserManager class that
 // handles authenticated users for CloudClient and CloudServer
-// 
+//
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //

@@ -2,7 +2,7 @@
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 // Description: The FileServer class manages files for FileClient
-// 
+//
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //

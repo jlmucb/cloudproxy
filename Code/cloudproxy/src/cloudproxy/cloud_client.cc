@@ -58,7 +58,7 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
   CHECK(auth_manager_->Init(whitelist_path, *public_policy_key_))
-    << "Could not initialize the whitelist authorization manager";
+      << "Could not initialize the whitelist authorization manager";
 
   LOG(INFO) << "About to set up the SSL CTX";
   // set up the TLS connection with the cert and keys and trust DB
@@ -145,9 +145,10 @@ bool CloudClient::Connect(const Tao &t) {
   // check that this is an authorized hash
   Quote server_quote;
   CHECK(server_quote.ParseFromString(sm.quote().serialized_quote()))
-    << "Could not deserialize the Quote from the server";
+      << "Could not deserialize the Quote from the server";
   CHECK(auth_manager_->IsAuthorized(server_quote.hash()))
-    << "The server hash " << server_quote.hash() << " in the SignedQuote was not authorized";
+      << "The server hash " << server_quote.hash()
+      << " in the SignedQuote was not authorized";
 
   LOG(INFO) << "All SignedQuote checks passed at the client";
   // once we get here, both sides have verified their quotes and know

@@ -34,18 +34,21 @@ using std::set;
 
 namespace tao {
 class WhitelistAuthorizationManager : public TaoAuthorizationManager {
-public:
-  WhitelistAuthorizationManager() : whitelist_(), hash_whitelist_() { }
-  virtual ~WhitelistAuthorizationManager() { }
-  bool Init(const string &whitelist_path, const keyczar::Keyczar &public_policy_key);
+ public:
+  WhitelistAuthorizationManager() : whitelist_(), hash_whitelist_() {}
+  virtual ~WhitelistAuthorizationManager() {}
+  bool Init(const string &whitelist_path,
+            const keyczar::Keyczar &public_policy_key);
   virtual bool IsAuthorized(const string &program_hash) const;
-  virtual bool IsAuthorized(const string &program_name, const string &program_hash) const;
-private:
+  virtual bool IsAuthorized(const string &program_name,
+                            const string &program_hash) const;
+
+ private:
   map<string, string> whitelist_;
   set<string> hash_whitelist_;
 
   DISALLOW_COPY_AND_ASSIGN(WhitelistAuthorizationManager);
 };
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_WHITELIST_AUTHORIZATION_MANAGER_H_
+#endif  // TAO_WHITELIST_AUTHORIZATION_MANAGER_H_

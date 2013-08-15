@@ -423,7 +423,7 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     child_fds_[1] = pipedown[1];
     child_hash_.assign(serialized_digest);
     LOG(INFO) << "LegacyTao setting the child hash to be " << child_hash_;
-  
+
     PipeTaoChannel ptc(child_fds_);
     bool rv = ptc.Listen(this);
     if (!rv) {

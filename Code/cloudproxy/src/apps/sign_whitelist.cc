@@ -40,9 +40,9 @@ using std::ifstream;
 using std::ofstream;
 
 DEFINE_string(whitelist_file, "whitelist",
-    "The name of the whitelist protobuf file to sign");
+              "The name of the whitelist protobuf file to sign");
 DEFINE_string(whitelist_sig_file, "signed_whitelist",
-    "The name of the signature file");
+              "The name of the signature file");
 DEFINE_string(key_loc, "./policy_key", "The location of the private key");
 DEFINE_string(pass, "cppolicy", "The password to use for this private key");
 
@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
   CHECK(len > 0) << "Could not read any bytes from the whitelist file";
   string sig;
   CHECK(signer->Sign(whitelist_buf.str(), &sig))
-    << "Could not sign whitelist file";
+      << "Could not sign whitelist file";
 
   tao::SignedWhitelist sw;
   sw.set_serialized_whitelist(whitelist_buf.str());
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 
   string serialized;
   CHECK(sw.SerializeToString(&serialized))
-    << "Could not serialize the signed ACLs";
+      << "Could not serialize the signed ACLs";
 
   ofstream sig_file(FLAGS_whitelist_sig_file.c_str());
   sig_file.write(serialized.data(), serialized.length());

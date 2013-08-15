@@ -3,7 +3,7 @@
 //
 // Description: The CloudServerThreadData class is used to store
 // thread-local data for the CloudServer class
-// 
+//
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -45,7 +45,11 @@ namespace cloudproxy {
 // authentication information
 class CloudServerThreadData {
  public:
- CloudServerThreadData(X509 *peer_cert, X509 *self_cert) : peer_cert_(peer_cert), self_cert_(self_cert), cert_validated_(false), auth_() { }
+  CloudServerThreadData(X509 *peer_cert, X509 *self_cert)
+      : peer_cert_(peer_cert),
+        self_cert_(self_cert),
+        cert_validated_(false),
+        auth_() {}
   virtual ~CloudServerThreadData() {}
 
   bool GetChallenge(const string &user, string *chall);
@@ -61,6 +65,7 @@ class CloudServerThreadData {
 
   X509 *GetPeerCert();
   X509 *GetSelfCert();
+
  private:
   ScopedX509Ctx peer_cert_;
 

@@ -29,11 +29,12 @@ using std::string;
 
 namespace tao {
 class TaoAuthorizationManager {
-public:
-  virtual ~TaoAuthorizationManager() { }
+ public:
+  virtual ~TaoAuthorizationManager() {}
   virtual bool IsAuthorized(const string &program_hash) const = 0;
-  virtual bool IsAuthorized(const string &program_name, const string &program_hash) const = 0;
+  virtual bool IsAuthorized(const string &program_name,
+                            const string &program_hash) const = 0;
 };
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_AUTHORIZATION_MANAGER_H_
+#endif  // TAO_AUTHORIZATION_MANAGER_H_

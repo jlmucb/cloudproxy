@@ -31,7 +31,8 @@ using std::ifstream;
 
 namespace tao {
 
-bool WhitelistAuthorizationManager::Init(const string &whitelist_path, const Keyczar &public_policy_key) {
+bool WhitelistAuthorizationManager::Init(const string &whitelist_path,
+                                         const Keyczar &public_policy_key) {
   LOG(INFO) << "Loading the whitelist from " << whitelist_path;
   // load the whitelist file and check its signature
   ifstream whitelist(whitelist_path);
@@ -58,21 +59,23 @@ bool WhitelistAuthorizationManager::Init(const string &whitelist_path, const Key
       LOG(ERROR) << "Can't add " << hp.name() << " to the whitelist twice";
       return false;
     }
-    
+
     LOG(INFO) << "Adding " << hp.name() << " to the whitelist";
     whitelist_[hp.name()] = hp.hash();
     hash_whitelist_.insert(hp.hash());
   }
   LOG(INFO) << "Done populating the whitelist";
-  
+
   return true;
 }
 
-bool WhitelistAuthorizationManager::IsAuthorized(const string &program_hash) const {
+bool WhitelistAuthorizationManager::IsAuthorized(
+    const string &program_hash) const {
   return hash_whitelist_.find(program_hash) != hash_whitelist_.end();
 }
 
-bool WhitelistAuthorizationManager::IsAuthorized(const string &program_name, const string &program_hash) const {
+bool WhitelistAuthorizationManager::IsAuthorized(
+    const string &program_name, const string &program_hash) const {
   auto it = whitelist_.find(program_name);
   if (it == whitelist_.end()) {
     return false;
@@ -81,4 +84,4 @@ bool WhitelistAuthorizationManager::IsAuthorized(const string &program_name, con
   return (it->second.compare(program_hash) == 0);
 }
 
-} // namespace tao
+}  // namespace tao

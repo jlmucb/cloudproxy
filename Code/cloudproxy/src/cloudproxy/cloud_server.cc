@@ -3,7 +3,7 @@
 //
 // Description: Implementation of the CloudServer class used to
 // implement CloudProxy applications
-// 
+//
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -44,8 +44,8 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
                          const string &acl_location,
-			 const string &whitelist_location,
-			 const string &host, ushort port)
+                         const string &whitelist_location, const string &host,
+                         ushort port)
     : public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       rand_(keyczar::CryptoFactory::Rand()),
@@ -62,7 +62,7 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
   auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
 
   CHECK(auth_manager_->Init(whitelist_location, *public_policy_key_))
-    << "Could not initialize the whitelist";
+      << "Could not initialize the whitelist";
 
   // set up the SSL context and BIOs for getting client connections
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
@@ -120,7 +120,7 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
   BIO_get_ssl(bio.get(), &cur_ssl);
   ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
   ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
-  
+
   CloudServerThreadData cstd(peer_cert.release(), self_cert.release());
   if (cstd.GetPeerCert() == nullptr) {
     LOG(ERROR) << "No X.509 certificate received from the client";
@@ -145,7 +145,6 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
     }
 
     cm.ParseFromString(serialized_cm);
-
 
     string reason;
     bool reply = true;
@@ -203,7 +202,8 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
   CHECK(reply) << "null reply";
 
   if (!cstd.GetCertValidated() && !message.has_quote()) {
-    LOG(ERROR) << "Client did not provide a SignedQuote before sending other messages";
+    LOG(ERROR)
+        << "Client did not provide a SignedQuote before sending other messages";
     return false;
   }
 
@@ -495,9 +495,9 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio, string *reason,
-			      bool *reply, CloudServerThreadData &cstd, 
-			      const Tao &t) {
+bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio,
+                              string *reason, bool *reply,
+                              CloudServerThreadData &cstd, const Tao &t) {
   string serialized_quote;
   if (!quote.SerializeToString(&serialized_quote)) {
     LOG(ERROR) << "Could not serialize the quote to pass it to the Tao";
@@ -510,7 +510,8 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio, string *reason
     return true;
   }
 
-  LOG(INFO) << "The serialized X.509 client cert (at the server) has size " << (int)serialized_x509.size();
+  LOG(INFO) << "The serialized X.509 client cert (at the server) has size "
+            << (int)serialized_x509.size();
 
   // check that this is a valid quote
   if (!t.VerifyQuote(serialized_x509, serialized_quote)) {
@@ -526,7 +527,8 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio, string *reason
 
   // check that this hash is authorized
   if (!auth_manager_->IsAuthorized(client_quote.hash())) {
-    LOG(ERROR) << "The client with hash " << client_quote.hash() << " is not authorized";
+    LOG(ERROR) << "The client with hash " << client_quote.hash()
+               << " is not authorized";
     return false;
   }
 
@@ -565,7 +567,7 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio, string *reason
   }
 
   LOG(INFO) << "All SignedQuote checks passed at the server";
-  
+
   // don't send another reply
   *reply = false;
   return true;

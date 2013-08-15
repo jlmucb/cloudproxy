@@ -3,7 +3,7 @@
 //
 // Description: Implementation of the CloudServerThreadData class used
 // to store thread-local data for the CloudServer class
-// 
+//
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //

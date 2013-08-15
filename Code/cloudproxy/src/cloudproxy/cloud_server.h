@@ -3,7 +3,7 @@
 //
 // Description: The CloudServer class is used to implement CloudProxy
 // applications
-// 
+//
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -68,7 +68,8 @@ class CloudServer {
   CloudServer(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &acl_location,
-              const string &whitelist_location, const string &host, ushort port);
+              const string &whitelist_location, const string &host,
+              ushort port);
 
   virtual ~CloudServer() {}
 
@@ -113,14 +114,13 @@ class CloudServer {
   void HandleConnection(BIO *bio, const tao::Tao *t);
   bool HandleMessage(const ClientMessage &message, BIO *bio, string *reason,
                      bool *reply, bool *close, CloudServerThreadData &cstd,
-		     const tao::Tao &t);
+                     const tao::Tao &t);
   bool HandleAuth(const Auth &auth, BIO *bio, string *reason, bool *reply,
                   CloudServerThreadData &cstd);
   bool HandleResponse(const Response &response, BIO *bio, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
   bool HandleQuote(const tao::SignedQuote &quote, BIO *bio, string *reason,
-		   bool *reply, CloudServerThreadData &cstd, 
-		   const tao::Tao &t);
+                   bool *reply, CloudServerThreadData &cstd, const tao::Tao &t);
 
   // the public policy key, used to check signatures
   scoped_ptr<keyczar::Keyczar> public_policy_key_;

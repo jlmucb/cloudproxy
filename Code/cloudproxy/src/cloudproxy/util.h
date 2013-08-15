@@ -65,8 +65,8 @@ typedef scoped_ptr_malloc<HMAC_CTX, keyczar::openssl::OSSLDestroyer<
                                         HMAC_CTX, hcleanup> > ScopedHmacCtx;
 typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
                                        SSL_CTX, SSL_CTX_free> > ScopedSSLCtx;
- typedef scoped_ptr_malloc<X509, keyczar::openssl::OSSLDestroyer<
-   X509, X509_free> > ScopedX509Ctx;
+typedef scoped_ptr_malloc<
+    X509, keyczar::openssl::OSSLDestroyer<X509, X509_free> > ScopedX509Ctx;
 
 typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 

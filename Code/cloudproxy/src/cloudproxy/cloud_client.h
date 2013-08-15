@@ -7,6 +7,7 @@
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloud_user_manager.h"
 #include "tao/tao.h"
+#include "tao/whitelist_authorization_manager.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -27,7 +28,7 @@ namespace cloudproxy {
 // used by CloudServer to check if actions requested by the CloudClient are
 // authorized by CloudProxy policy.
 //
-// Sample usage: see client.cc
+// Sample usage: see apps/client.cc
 class CloudClient {
  public:
   // Creates a CloudClient with a directory (key_location) it searches to find
@@ -35,8 +36,8 @@ class CloudClient {
   // well as with the addr:port of a CloudServer.
   CloudClient(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
-              const string &public_policy_pem, const string &server_addr,
-              ushort server_port);
+              const string &public_policy_pem, const string &whitelist_path,
+              const string &server_addr, ushort server_port);
 
   virtual ~CloudClient() {}
 
@@ -86,6 +87,9 @@ class CloudClient {
   // Principals that have been authenticated on this connection, and the keys
   // for each user
   scoped_ptr<CloudUserManager> users_;
+
+  // a way to check that a given hash corresponds to an authorized program
+  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };

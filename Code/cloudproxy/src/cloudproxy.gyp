@@ -81,10 +81,13 @@
         '<(src)/pipe_tao_channel.cc',
         '<(src)/quote.proto',
         '<(src)/tao.h',
+	'<(src)/tao_authorization_manager.h',
         '<(src)/tao_channel.h',
         '<(src)/tao_channel.cc',
         '<(src)/tao_channel_rpc.proto',
         '<(src)/tao_binary_cache.h',
+	'<(src)/whitelist_authorization_manager.h',
+	'<(src)/whitelist_authorization_manager.cc',
       ],
       'libraries': [
         '-lgflags',

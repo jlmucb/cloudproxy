@@ -3,6 +3,7 @@
 #include "tao/hosted_programs.pb.h"
 #include "tao/quote.pb.h"
 #include "tao/pipe_tao_channel.h"
+#include "tao/whitelist_authorization_manager.h"
 
 #include <keyczar/base/base64w.h>
 #include <keyczar/rw/keyset_file_reader.h>
@@ -32,7 +33,9 @@ using tao::Quote;
 using tao::SignedAttestation;
 using tao::SignedQuote;
 using tao::SignedWhitelist;
+using tao::TaoAuthorizationManager;
 using tao::Whitelist;
+using tao::WhitelistAuthorizationManager;
 
 using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
@@ -69,21 +72,21 @@ namespace legacy_tao {
 
 LegacyTao::LegacyTao(const string &secret_path, const string &directory,
                      const string &key_path, const string &pk_path,
-		     const string &whitelist_path, const string &policy_pk_path)
+                     const string &whitelist_path, const string &policy_pk_path)
     : secret_path_(secret_path),
       directory_(directory),
       key_path_(key_path),
       pk_path_(pk_path),
-      whitelist_path_(whitelist_path),
       policy_pk_path_(policy_pk_path),
       tao_host_(new taoHostServices()),
       tao_env_(new taoEnvironment()),
       crypter_(nullptr),
       signer_(nullptr),
       policy_verifier_(nullptr),
-      whitelist_(),
-      hash_whitelist_(),
-      child_fds_({-1,-1}) {
+      child_fds_({-1, -1}),
+      child_hash_(),
+      whitelist_path_(whitelist_path),
+      auth_manager_(new WhitelistAuthorizationManager()) {
   // leave setup for Init
 }
 
@@ -93,30 +96,10 @@ bool LegacyTao::Init() {
   policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
   CHECK_NOTNULL(policy_verifier_.get());
   policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
-  
+
   LOG(INFO) << "Loading the whitelist from " << whitelist_path_;
-  // load the whitelist file and check its signature
-  ifstream whitelist(whitelist_path_);
-
-  SignedWhitelist sw;
-  sw.ParseFromIstream(&whitelist);
-  CHECK(policy_verifier_->Verify(sw.serialized_whitelist(), sw.signature()))
-    << "The signature did not verify on the signed whitelist";
-
-  Whitelist w;
-  const string &serialized_w = sw.serialized_whitelist();
-  LOG(INFO) << "serialized whitelist has length " << serialized_w.size();
-  w.ParseFromString(serialized_w);
-  LOG(INFO) << "The number of program hashes is " << w.programs_size();
-  for (int i = 0; i < w.programs_size(); i++) {
-    const HostedProgram &hp = w.programs(i);
-    CHECK(whitelist_.find(hp.name()) == whitelist_.end())
-      << "Can't add " << hp.name() << " to the whitelist twice";
-    LOG(INFO) << "Adding " << hp.name() << " to the whitelist";
-    whitelist_[hp.name()] = hp.hash();
-    hash_whitelist_.insert(hp.hash());
-  }
-  LOG(INFO) << "Done populating the whitelist";
+  CHECK(auth_manager_->Init(whitelist_path_, *policy_verifier_))
+      << "Could not initialize the whitelist manager";
 
   // initialize jlmcrypto from the legacy tao; this is required to use
   // any of the original tao
@@ -309,7 +292,7 @@ bool LegacyTao::createKey(const string &secret) {
 
   k->set_metadata(metadata);
   k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-  
+
   crypter_.reset(new Crypter(k.release()));
   return true;
 }
@@ -318,21 +301,14 @@ bool LegacyTao::Destroy() { return true; }
 
 bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
   if (!child_hash_.empty()) {
-    LOG(ERROR) << "Cannot start a second program under the legacy tao bootstrap";
+    LOG(ERROR)
+        << "Cannot start a second program under the legacy tao bootstrap";
     return false;
   }
-  
+
   // first check to make sure that this program is authorized
 
   LOG(INFO) << "About to check the whitelist";
-  // TODO(tmroeder): get the final component of the path rather than
-  // insisting that the path match exactly
-  auto w = whitelist_.find(path);
-  if (w == whitelist_.end()) {
-    LOG(ERROR) << "Could not find the path " << path << " in the whitelist";
-    return false;
-  }
-
   ifstream program_stream(path.c_str());
   stringstream program_buf;
   program_buf << program_stream.rdbuf();
@@ -346,28 +322,22 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     return false;
   }
 
-  LOG(INFO) << "Computed the digest of the program";
-  
   string serialized_digest;
   if (!Base64WEncode(digest, &serialized_digest)) {
     LOG(ERROR) << "Could not encode the digest as Base64W";
     return false;
   }
-  
-  // check that the digests match
-  if (w->second.compare(serialized_digest) != 0) {
-    LOG(ERROR) << "The digest stored for " << path << " is " << w->second
-	       << "which does not match the computed digest "
-	       << serialized_digest;
+
+  if (!auth_manager_->IsAuthorized(path, serialized_digest)) {
+    LOG(ERROR) << "Program " << path << " with digest " << serialized_digest
+               << " is not authorized";
     return false;
   }
-
-  LOG(INFO) << "The digests match";
 
   // create a pipe on which the child can communicate with the Tao
   int pipedown[2];
   int pipeup[2];
-  
+
   if (pipe(pipedown) != 0) {
     LOG(ERROR) << "Could not create the downward pipe";
     return false;
@@ -388,11 +358,12 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
   }
 
   if (child_pid == 0) {
-    // child process; exec with the read end of pipedown and the write end of pipeup
+    // child process; exec with the read end of pipedown and the write end of
+    // pipeup
     close(pipedown[1]);
     close(pipeup[0]);
 
-    scoped_array<char*> new_argv(new char*[argc + 3]);
+    scoped_array<char *> new_argv(new char *[argc + 3]);
 
     for (int i = 0; i < argc; i++) {
       new_argv[i] = argv[i];
@@ -428,6 +399,8 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     child_fds_[0] = pipeup[0];
     child_fds_[1] = pipedown[1];
     child_hash_.assign(serialized_digest);
+    LOG(INFO) << "LegacyTao setting the child hash to be " << child_hash_;
+  
     PipeTaoChannel ptc(child_fds_);
     bool rv = ptc.Listen(this);
     if (!rv) {
@@ -439,7 +412,7 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
 
   return true;
 }
-  
+
 bool LegacyTao::GetRandomBytes(size_t size, string *bytes) const {
   // just ask keyczar for random bytes, which will ask OpenSSL in turn
   RandImpl *rand = CryptoFactory::Rand();
@@ -447,10 +420,9 @@ bool LegacyTao::GetRandomBytes(size_t size, string *bytes) const {
     LOG(ERROR) << "Could not generate a random secret to seal";
     return false;
   }
-  
+
   return true;
 }
-  
 
 bool LegacyTao::Seal(const string &data, string *sealed) const {
   // encrypt it using our symmetric key
@@ -471,7 +443,7 @@ bool LegacyTao::Unseal(const string &sealed, string *data) const {
 
   return true;
 }
-  
+
 // TODO(tmroeder): add a time and check it in VerifyQuote
 bool LegacyTao::Quote(const string &data, string *signature) const {
   if (child_hash_.empty()) {
@@ -487,7 +459,7 @@ bool LegacyTao::Quote(const string &data, string *signature) const {
   tao::Quote q;
   q.set_data(data);
   q.set_hash_alg("SHA256");
-  
+
   // TODO(tmroeder): for now, this is easy, since we only have one
   // program that is bootstrapped. For more complex implementations of
   // the Tao, this will depend on the channel that the request comes
@@ -551,16 +523,13 @@ bool LegacyTao::VerifyQuote(const string &data, const string &signature) const {
     return false;
   }
 
-  // check that the program making the quote is whitelisted
-  // TODO(tmroeder): extend this check up the chain of evidence.
-  if (hash_whitelist_.find(q.hash()) == hash_whitelist_.end()) {
+  if (!auth_manager_->IsAuthorized(q.hash())) {
     LOG(ERROR) << "The program making the quote was not whitelisted";
     return false;
   }
 
   return true;
 }
-
 
 bool LegacyTao::Attest(string *attestation) const {
   if (child_hash_.empty()) {
@@ -614,20 +583,22 @@ bool LegacyTao::VerifyAttestation(const string &attestation) const {
   }
 
   if (!signer_->Verify(sa.serialized_attestation(), sa.signature())) {
-    LOG(ERROR) << "The signature for the serialized attestation did not pass verification";
+    LOG(ERROR) << "The signature for the serialized attestation did not pass "
+                  "verification";
     return false;
   }
 
   Attestation a;
   if (!a.ParseFromString(sa.serialized_attestation())) {
-    LOG(ERROR) << "Could not parse an Attestation from the serialized attestation";
+    LOG(ERROR)
+        << "Could not parse an Attestation from the serialized attestation";
     return false;
   }
 
   // check that the time isn't too far in the past
   time_t cur_time;
   time(&cur_time);
-  
+
   time_t past_time = a.time();
   if (cur_time - past_time > AttestationTimeout) {
     LOG(ERROR) << "The attestation was too old";
@@ -635,13 +606,14 @@ bool LegacyTao::VerifyAttestation(const string &attestation) const {
   }
 
   // check that this is a whitelisted program
-  if (hash_whitelist_.find(a.hash()) == hash_whitelist_.end()) {
+  if (!auth_manager_->IsAuthorized(a.hash())) {
     LOG(ERROR) << "The attested program was not a whitelisted program";
     return false;
   }
 
   // TODO(tmroeder): make this signature depend on all lower levels of the Tao
-  // Also need to make sure that we're checking that it's a trusted signature, *not* necessarily a signature from our key
+  // Also need to make sure that we're checking that it's a trusted signature,
+  // *not* necessarily a signature from our key
   return true;
 }
 }  // namespace cloudproxy

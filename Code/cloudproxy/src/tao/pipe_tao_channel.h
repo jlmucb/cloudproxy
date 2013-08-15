@@ -1,7 +1,9 @@
 #ifndef TAO_PIPE_TAO_CHANNEL_H_
 #define TAO_PIPE_TAO_CHANNEL_H_
 
+#include <keyczar/keyczar.h>
 #include <tao/tao_channel.h>
+
 
 namespace tao {
   // a TaoChannel that communicates over a pair of file descriptors
@@ -23,6 +25,8 @@ namespace tao {
   private:
     int readfd_;
     int writefd_;
+
+    DISALLOW_COPY_AND_ASSIGN(PipeTaoChannel);
   };
 }
 

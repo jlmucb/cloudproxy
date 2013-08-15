@@ -29,6 +29,8 @@ DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
                                                  " policy key");
 DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
               "The PEM public policy cert");
+DEFINE_string(whitelist_path, "./signed_whitelist",
+              "The path to the whitelist");
 DEFINE_string(address, "localhost", "The address of the local server");
 DEFINE_int32(port, 11235, "The server port to connect to");
 
@@ -49,7 +51,7 @@ int main(int argc, char** argv) {
   // try to establish a channel with the Tao
   int fds[2];
   CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
-    << "Could not extract pipes from the end of the argument list";
+      << "Could not extract pipes from the end of the argument list";
   scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
   CHECK_NOTNULL(channel.get());
 
@@ -57,16 +59,16 @@ int main(int argc, char** argv) {
   int size = 6;
   string name_bytes;
   CHECK(channel->GetRandomBytes(size, &name_bytes))
-    << "Could not get a random name from the Tao";
+      << "Could not get a random name from the Tao";
 
   LOG(INFO) << "About to create a client";
-  CloudClient cc(FLAGS_client_cert, FLAGS_client_key,
-		 FLAGS_client_password, FLAGS_policy_key,
-		 FLAGS_pem_policy_key, FLAGS_address, FLAGS_port);
+  CloudClient cc(FLAGS_client_cert, FLAGS_client_key, FLAGS_client_password,
+                 FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_whitelist_path,
+                 FLAGS_address, FLAGS_port);
 
   LOG(INFO) << "Created a client";
-  CHECK(cc.Connect(*channel)) << "Could not connect to the server at " << FLAGS_address
-                      << ":" << FLAGS_port;
+  CHECK(cc.Connect(*channel)) << "Could not connect to the server at "
+                              << FLAGS_address << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write, getting randomness from the Tao

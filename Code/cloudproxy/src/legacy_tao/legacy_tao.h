@@ -8,8 +8,8 @@
 // along with startMeAsMeasuredProgram for clients of LegacyTao
 #include <tao.h>
 
-// tao::Tao
 #include <tao/tao.h>
+#include <tao/whitelist_authorization_manager.h>
 
 #include <string>
 #include <map>
@@ -55,9 +55,6 @@ class LegacyTao : public tao::Tao {
     // the path to the sealed public/private keyczar key
     string pk_path_;
 
-    // the path to the whitelist for programs to start
-    string whitelist_path_;
-
     // the path to the public key
     string policy_pk_path_;
 
@@ -74,17 +71,16 @@ class LegacyTao : public tao::Tao {
     // the public policy key
     scoped_ptr<keyczar::Keyczar> policy_verifier_;
 
-    // the verified whitelist of applications that can be started
-    map<string, string> whitelist_;
-
-    // a set of hashes of whitelisted binaries
-    set<string> hash_whitelist_;
-
     // File descriptors used to communicate with the child process
     int child_fds_[2];
 
     // the hash of the child program, for use in quotes or attestation
     string child_hash_;
+
+    // the path to the whitelist
+    string whitelist_path_;
+
+    scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
 
     static const int AesBlockSize = 16;
     static const int Sha256Size = 32;
@@ -105,6 +101,8 @@ class LegacyTao : public tao::Tao {
     // create a new keyset with an ECDSA public/private key pair to use for
     // signing
     bool createPublicKey(keyczar::Encrypter *crypter);
+
+    DISALLOW_COPY_AND_ASSIGN(LegacyTao);
 };
 } // namespace legacy_tao
 

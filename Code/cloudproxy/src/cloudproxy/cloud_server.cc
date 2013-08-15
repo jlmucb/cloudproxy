@@ -8,8 +8,10 @@
 using std::lock_guard;
 using std::stringstream;
 
+using tao::Quote;
 using tao::Tao;
 using tao::SignedQuote;
+using tao::WhitelistAuthorizationManager;
 
 namespace cloudproxy {
 
@@ -17,8 +19,9 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                          const string &tls_password,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
-                         const string &acl_location, const string &host,
-                         ushort port)
+                         const string &acl_location,
+			 const string &whitelist_location,
+			 const string &host, ushort port)
     : public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       rand_(keyczar::CryptoFactory::Rand()),
@@ -27,11 +30,15 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
       abio_(nullptr),
       auth_(),
       users_(new CloudUserManager()),
-      objects_() {
+      objects_(),
+      auth_manager_(new WhitelistAuthorizationManager()) {
 
   // set up the policy key to verify bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
   auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
+
+  CHECK(auth_manager_->Init(whitelist_location, *public_policy_key_))
+    << "Could not initialize the whitelist";
 
   // set up the SSL context and BIOs for getting client connections
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
@@ -484,6 +491,18 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio, string *reason
   // check that this is a valid quote
   if (!t.VerifyQuote(serialized_x509, serialized_quote)) {
     LOG(ERROR) << "The SignedQuote did not pass Tao verification";
+    return false;
+  }
+
+  Quote client_quote;
+  if (!client_quote.ParseFromString(quote.serialized_quote())) {
+    LOG(ERROR) << "Could not parse the client Quote";
+    return false;
+  }
+
+  // check that this hash is authorized
+  if (!auth_manager_->IsAuthorized(client_quote.hash())) {
+    LOG(ERROR) << "The client with hash " << client_quote.hash() << " is not authorized";
     return false;
   }
 

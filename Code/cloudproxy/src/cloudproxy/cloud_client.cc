@@ -11,8 +11,10 @@
 using std::ifstream;
 using std::stringstream;
 
-using tao::Tao;
+using tao::Quote;
 using tao::SignedQuote;
+using tao::Tao;
+using tao::WhitelistAuthorizationManager;
 
 namespace cloudproxy {
 
@@ -20,15 +22,20 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
                          const string &tls_password,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
+                         const string &whitelist_path,
                          const string &server_addr, ushort server_port)
     : bio_(nullptr),
       public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       context_(SSL_CTX_new(TLSv1_2_client_method())),
-      users_(new CloudUserManager()) {
+      users_(new CloudUserManager()),
+      auth_manager_(new WhitelistAuthorizationManager()) {
 
   // set the policy_key to handle bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
+  CHECK(auth_manager_->Init(whitelist_path, *public_policy_key_))
+    << "Could not initialize the whitelist authorization manager";
 
   LOG(INFO) << "About to set up the SSL CTX";
   // set up the TLS connection with the cert and keys and trust DB
@@ -63,25 +70,25 @@ bool CloudClient::Connect(const Tao &t) {
   BIO_get_ssl(bio_.get(), &cur_ssl);
   ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
   CHECK_NOTNULL(self_cert.get());
-  
+
   ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
   CHECK_NOTNULL(peer_cert.get());
 
   string serialized_client_cert;
   CHECK(SerializeX509(self_cert.get(), &serialized_client_cert))
-    << "Could not serialize the client certificate";
+      << "Could not serialize the client certificate";
   string signature;
-  CHECK(t.Quote(serialized_client_cert, &signature)) 
-    << "Could not get a SignedQuote for our client certificate";
+  CHECK(t.Quote(serialized_client_cert, &signature))
+      << "Could not get a SignedQuote for our client certificate";
 
   ClientMessage cm;
   SignedQuote *sq = cm.mutable_quote();
   CHECK(sq->ParseFromString(signature))
-    << "Could not parse a SignedQuote from the Tao quote";
-  
+      << "Could not parse a SignedQuote from the Tao quote";
+
   string serialized_cm;
   CHECK(cm.SerializeToString(&serialized_cm))
-    << "Could not serialize the ClientMessage(SignedQuote)";
+      << "Could not serialize the ClientMessage(SignedQuote)";
 
   LOG(INFO) << "Sending ClientMessage(SignedQuote) to server";
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send quote";
@@ -89,27 +96,35 @@ bool CloudClient::Connect(const Tao &t) {
   // now listen for the connection
   string serialized_sm;
   CHECK(ReceiveData(bio_.get(), &serialized_sm))
-    << "Could not get a reply from the server";
+      << "Could not get a reply from the server";
 
   ServerMessage sm;
   CHECK(sm.ParseFromString(serialized_sm))
-    << "Could not deserialize the message from the server";
-    
+      << "Could not deserialize the message from the server";
+
   CHECK(sm.has_quote()) << "The server did not reply with a quote";
 
   // check the quote from the server
   string serialized_server_quote;
   CHECK(sm.quote().SerializeToString(&serialized_server_quote))
-    << "Could not serialize the server's SignedQuote";
+      << "Could not serialize the server's SignedQuote";
 
   string serialized_peer_cert;
   CHECK(SerializeX509(peer_cert.get(), &serialized_peer_cert))
-    << "Could not serialize the server's X.509 certificate";
+      << "Could not serialize the server's X.509 certificate";
 
-  LOG(INFO) << "Serialized server cert (at the client) has length " << serialized_peer_cert.size();
+  LOG(INFO) << "Serialized server cert (at the client) has length "
+            << serialized_peer_cert.size();
 
   CHECK(t.VerifyQuote(serialized_peer_cert, serialized_server_quote))
-    << "The SignedQuote from the server did not pass verification";
+      << "The SignedQuote from the server did not pass verification";
+
+  // check that this is an authorized hash
+  Quote server_quote;
+  CHECK(server_quote.ParseFromString(sm.quote().serialized_quote()))
+    << "Could not deserialize the Quote from the server";
+  CHECK(auth_manager_->IsAuthorized(server_quote.hash()))
+    << "The server hash " << server_quote.hash() << " in the SignedQuote was not authorized";
 
   LOG(INFO) << "All SignedQuote checks passed at the client";
   // once we get here, both sides have verified their quotes and know

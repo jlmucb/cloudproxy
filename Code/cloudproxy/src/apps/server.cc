@@ -31,6 +31,8 @@ DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
 DEFINE_string(acls, "./acls_sig",
               "A file containing a SignedACL signed by"
               " the public policy key (e.g., using sign_acls)");
+DEFINE_string(whitelist_path, "./signed_whitelist",
+              "The path to the signed whitelist");
 DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_int32(port, 11235, "The port to listen on");
 
@@ -56,7 +58,7 @@ int main(int argc, char **argv) {
   // try to establish a channel with the Tao
   int fds[2];
   CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
-    << "Could not extract pipes from the end of the argument list";
+      << "Could not extract pipes from the end of the argument list";
   scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
   CHECK_NOTNULL(channel.get());
 
@@ -76,10 +78,9 @@ int main(int argc, char **argv) {
   }
   CRYPTO_set_locking_callback(locking_function);
 
-  CloudServer cs(FLAGS_server_cert, FLAGS_server_key,
-		 FLAGS_server_password, FLAGS_policy_key,
-		 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address,
-		 FLAGS_port);
+  CloudServer cs(FLAGS_server_cert, FLAGS_server_key, FLAGS_server_password,
+                 FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
+                 FLAGS_whitelist_path, FLAGS_address, FLAGS_port);
 
   CHECK(cs.Listen(*channel)) << "Could not listen for client connections";
   return 0;

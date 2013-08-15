@@ -8,6 +8,7 @@
 #include "cloudproxy/util.h"
 #include "tao/tao.h"
 #include "tao/quote.pb.h"
+#include "tao/whitelist_authorization_manager.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -43,7 +44,7 @@ class CloudServer {
   CloudServer(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &acl_location,
-              const string &host, ushort port);
+              const string &whitelist_location, const string &host, ushort port);
 
   virtual ~CloudServer() {}
 
@@ -120,6 +121,9 @@ class CloudServer {
 
   // a simple object management tool: a set of object names
   set<string> objects_;
+
+  // authorized hashes of programs
+  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };

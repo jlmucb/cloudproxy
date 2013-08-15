@@ -1,5 +1,5 @@
-//  File: bootstrap.cpp
-//      Tom Roeder
+//  File: bootstrap.cc
+//  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: A simple client that initializes the Tao then gets a signed
 //  list and path to a binary as input. It checks the signature on the list,

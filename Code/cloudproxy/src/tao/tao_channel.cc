@@ -1,241 +1,267 @@
+//  File: tao_channel.cc
+//  Author: Tom Roeder <tmroeder@google.com>
+//
+//  Description: High-level implementation of Tao communication that
+//  can function over any subclass that implements the pure virtual
+//  functions in TaoChannel
+//
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//
+// Use, duplication and disclosure of this file and derived works of
+// this file are subject to and licensed under the Apache License dated
+// January, 2004, (the "License").  This License is contained in the
+// top level directory originally provided with the CloudProxy Project.
+// Your right to use or distribute this file, or derived works thereof,
+// is subject to your being bound by those terms and your use indicates
+// consent to those terms.
+//
+// If you distribute this file (or portions derived therefrom), you must
+// include License in or with the file and, in the event you do not include
+// the entire License in the file, the file must contain a reference
+// to the location of the License.
+
+// ------------------------------------------------------------------------
+
 #include <tao/tao_channel.h>
 #include <glog/logging.h>
 
 namespace tao {
 
-  bool TaoChannel::Listen(Tao *t) const {
-    TaoChannelRPC rpc;
-    while (GetRPC(&rpc)) {
-      // switch on the type of RPC and pass it to the tao function
-      TaoChannelResponse resp;
-      resp.set_rpc(rpc.rpc());
-      
-      string result_data;
-      bool result = false;
-      GetRandomBytesArgs *grba = nullptr;
-      switch(rpc.rpc()) {
+bool TaoChannel::Listen(Tao *t) const {
+  TaoChannelRPC rpc;
+  while (GetRPC(&rpc)) {
+    // switch on the type of RPC and pass it to the tao function
+    TaoChannelResponse resp;
+    resp.set_rpc(rpc.rpc());
+
+    string result_data;
+    bool result = false;
+    GetRandomBytesArgs *grba = nullptr;
+    switch (rpc.rpc()) {
       case INIT:
-	result = t->Init();
-	break;
+        result = t->Init();
+        break;
       case DESTROY:
-	result = t->Destroy();
-	break;
+        result = t->Destroy();
+        break;
       case START_HOSTED_PROGRAM:
-	// TODO(tmroeder): unpack the arguments and set this up
-	break;
+        // TODO(tmroeder): unpack the arguments and set this up
+        break;
       case GET_RANDOM_BYTES:
-	if (!rpc.has_random()) {
-	  LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
-	  break;
-	}
-	
-	grba = rpc.mutable_random();
-	result = t->GetRandomBytes(grba->size(), &result_data);
-	resp.set_data(result_data);
-	break;
-      case SEAL:
-	if (!rpc.has_data()) {
-	  LOG(ERROR) << "Invalid RPC: must supply data for Seal";
-	  break;
-	}
+        if (!rpc.has_random()) {
+          LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
+          break;
+        }
 
-	result = t->Seal(rpc.data(), &result_data);
+        grba = rpc.mutable_random();
+        result = t->GetRandomBytes(grba->size(), &result_data);
         resp.set_data(result_data);
-	break;
+        break;
+      case SEAL:
+        if (!rpc.has_data()) {
+          LOG(ERROR) << "Invalid RPC: must supply data for Seal";
+          break;
+        }
+
+        result = t->Seal(rpc.data(), &result_data);
+        resp.set_data(result_data);
+        break;
       case UNSEAL:
-	if (!rpc.has_data()) {
-	  LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
-	  break;
-	}
+        if (!rpc.has_data()) {
+          LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
+          break;
+        }
 
-	result = t->Unseal(rpc.data(), &result_data);
-	resp.set_data(result_data);
-	break;
+        result = t->Unseal(rpc.data(), &result_data);
+        resp.set_data(result_data);
+        break;
       case QUOTE:
-	if (!rpc.has_data()) {
-	  LOG(ERROR) << "Invalid RPC: must supply data for Quote";
-	  break;
-	}
+        if (!rpc.has_data()) {
+          LOG(ERROR) << "Invalid RPC: must supply data for Quote";
+          break;
+        }
 
-	result = t->Quote(rpc.data(), &result_data);
-	resp.set_data(result_data);
-	break;
+        result = t->Quote(rpc.data(), &result_data);
+        resp.set_data(result_data);
+        break;
       case VERIFY_QUOTE:
-	if (!rpc.has_data() || !rpc.has_signature()) {
-	  LOG(ERROR) << "Invalid RPC: must supply data and signature for VerifyQuote";
-	  break;
-	}
+        if (!rpc.has_data() || !rpc.has_signature()) {
+          LOG(ERROR)
+              << "Invalid RPC: must supply data and signature for VerifyQuote";
+          break;
+        }
 
-	result = t->VerifyQuote(rpc.data(), rpc.signature());
-	break;
+        result = t->VerifyQuote(rpc.data(), rpc.signature());
+        break;
       case ATTEST:
-	result = t->Attest(&result_data);
-	resp.set_data(result_data);
-	break;
+        result = t->Attest(&result_data);
+        resp.set_data(result_data);
+        break;
       case VERIFY_ATTESTATION:
-	if (!rpc.has_data()) {
-	  LOG(ERROR) << "Invald RPC: must supply data for VerifyAttest";
-	  break;
-	}
+        if (!rpc.has_data()) {
+          LOG(ERROR) << "Invald RPC: must supply data for VerifyAttest";
+          break;
+        }
 
-	result = t->VerifyAttestation(rpc.data());
-	break;
+        result = t->VerifyAttestation(rpc.data());
+        break;
       default:
-	LOG(ERROR) << "Unknown RPC " << rpc.rpc();
-	break;
-      }
-      
-      resp.set_success(result);
-
-      SendResponse(resp);
-    }
-    
-    return true;
-  }
-
-  bool TaoChannel::StartHostedProgram(const string &path, int argc,
-			  char **argv) {
-    TaoChannelRPC rpc;
-    rpc.set_rpc(START_HOSTED_PROGRAM);
-
-    StartHostedProgramArgs *shpa = rpc.mutable_start();
-    shpa->set_path(path);
-    shpa->set_argc(argc);
-    for (int i = 0; i < argc; i++) {
-      string *cur = shpa->add_argv();
-      cur->assign(argv[i], strlen(argv[i]) + 1);
+        LOG(ERROR) << "Unknown RPC " << rpc.rpc();
+        break;
     }
 
-    SendRPC(rpc);
+    resp.set_success(result);
 
-    // wait for a response to the message
-    TaoChannelResponse resp;
-    GetResponse(&resp);
-
-    return resp.success();
+    SendResponse(resp);
   }
 
-  bool TaoChannel::GetRandomBytes(size_t size, string *bytes) const {
-    TaoChannelRPC rpc;
-    rpc.set_rpc(GET_RANDOM_BYTES);
-    GetRandomBytesArgs *grba = rpc.mutable_random();
-    grba->set_size(size);
-    
-    SendRPC(rpc);
+  return true;
+}
 
-    // wait for a response
-    TaoChannelResponse resp;
-    GetResponse(&resp);
+bool TaoChannel::StartHostedProgram(const string &path, int argc, char **argv) {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(START_HOSTED_PROGRAM);
 
-    if (resp.success()) {
-      if (!resp.has_data()) {
-	LOG(ERROR) << "The successful GetRandomBytes did not contain data";
-	return false;
-      }
+  StartHostedProgramArgs *shpa = rpc.mutable_start();
+  shpa->set_path(path);
+  shpa->set_argc(argc);
+  for (int i = 0; i < argc; i++) {
+    string *cur = shpa->add_argv();
+    cur->assign(argv[i], strlen(argv[i]) + 1);
+  }
 
-      bytes->assign(resp.data().data(), resp.data().size());
+  SendRPC(rpc);
+
+  // wait for a response to the message
+  TaoChannelResponse resp;
+  GetResponse(&resp);
+
+  return resp.success();
+}
+
+bool TaoChannel::GetRandomBytes(size_t size, string *bytes) const {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(GET_RANDOM_BYTES);
+  GetRandomBytesArgs *grba = rpc.mutable_random();
+  grba->set_size(size);
+
+  SendRPC(rpc);
+
+  // wait for a response
+  TaoChannelResponse resp;
+  GetResponse(&resp);
+
+  if (resp.success()) {
+    if (!resp.has_data()) {
+      LOG(ERROR) << "The successful GetRandomBytes did not contain data";
+      return false;
     }
 
-    return resp.success();
+    bytes->assign(resp.data().data(), resp.data().size());
   }
 
-  bool TaoChannel::SendAndReceiveData(const string &in, string *out, RPC rpc_type) const {
-    CHECK_NOTNULL(out);
+  return resp.success();
+}
 
-    TaoChannelRPC rpc;
-    rpc.set_rpc(rpc_type);
-    rpc.set_data(in);
+bool TaoChannel::SendAndReceiveData(const string &in, string *out,
+                                    RPC rpc_type) const {
+  CHECK_NOTNULL(out);
 
-    SendRPC(rpc);
+  TaoChannelRPC rpc;
+  rpc.set_rpc(rpc_type);
+  rpc.set_data(in);
 
-    TaoChannelResponse resp;
-    GetResponse(&resp);
+  SendRPC(rpc);
 
-    if (resp.success()) {
-      if (!resp.has_data()) {
-	LOG(ERROR) << "A successful call did not return data";
-	return false;
-      }
+  TaoChannelResponse resp;
+  GetResponse(&resp);
 
-      out->assign(resp.data().data(), resp.data().size());
+  if (resp.success()) {
+    if (!resp.has_data()) {
+      LOG(ERROR) << "A successful call did not return data";
+      return false;
     }
 
-    return resp.success();
+    out->assign(resp.data().data(), resp.data().size());
   }
 
-  bool TaoChannel::Seal(const string &data, string *sealed) const {
-    return SendAndReceiveData(data, sealed, SEAL);
-  }
+  return resp.success();
+}
 
-  bool TaoChannel::Unseal(const string &sealed, string *data) const {
-    return SendAndReceiveData(sealed, data, UNSEAL);
-  }
+bool TaoChannel::Seal(const string &data, string *sealed) const {
+  return SendAndReceiveData(data, sealed, SEAL);
+}
 
-  bool TaoChannel::Quote(const string &data, string *signature) const {
-    return SendAndReceiveData(data, signature, QUOTE);
-  }
+bool TaoChannel::Unseal(const string &sealed, string *data) const {
+  return SendAndReceiveData(sealed, data, UNSEAL);
+}
 
-  bool TaoChannel::VerifyQuote(const string &data, const string &signature) const {
-    TaoChannelRPC rpc;
-    rpc.set_rpc(VERIFY_QUOTE);
-    rpc.set_data(data);
-    rpc.set_signature(signature);
+bool TaoChannel::Quote(const string &data, string *signature) const {
+  return SendAndReceiveData(data, signature, QUOTE);
+}
 
-    SendRPC(rpc);
+bool TaoChannel::VerifyQuote(const string &data,
+                             const string &signature) const {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(VERIFY_QUOTE);
+  rpc.set_data(data);
+  rpc.set_signature(signature);
 
-    TaoChannelResponse resp;
-    GetResponse(&resp);
+  SendRPC(rpc);
 
-    return resp.success();
-  }
+  TaoChannelResponse resp;
+  GetResponse(&resp);
 
-  bool TaoChannel::Attest(string *attestation) const {
-    TaoChannelRPC rpc;
-    rpc.set_rpc(ATTEST);
-    SendRPC(rpc);
+  return resp.success();
+}
 
-    TaoChannelResponse resp;
-    GetResponse(&resp);
+bool TaoChannel::Attest(string *attestation) const {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(ATTEST);
+  SendRPC(rpc);
 
-    if (resp.success()) {
-      if (!resp.has_data()) {
-	LOG(ERROR) << "A successful Attest did not return data";
-	return false;
-      }
+  TaoChannelResponse resp;
+  GetResponse(&resp);
 
-      attestation->assign(resp.data().data(), resp.data().size());
+  if (resp.success()) {
+    if (!resp.has_data()) {
+      LOG(ERROR) << "A successful Attest did not return data";
+      return false;
     }
 
-    return resp.success();
+    attestation->assign(resp.data().data(), resp.data().size());
   }
 
-  bool TaoChannel::VerifyAttestation(const string &attestation) const {
-    TaoChannelRPC rpc;
-    rpc.set_rpc(VERIFY_ATTESTATION);
-    rpc.set_data(attestation);
-    SendRPC(rpc);
+  return resp.success();
+}
 
-    TaoChannelResponse resp;
-    GetResponse(&resp);
+bool TaoChannel::VerifyAttestation(const string &attestation) const {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(VERIFY_ATTESTATION);
+  rpc.set_data(attestation);
+  SendRPC(rpc);
 
-    return resp.success();
-  }
+  TaoChannelResponse resp;
+  GetResponse(&resp);
 
-  bool TaoChannel::GetRPC(TaoChannelRPC *rpc) const {
-    CHECK_NOTNULL(rpc);
-    return ReceiveMessage(rpc);
-  }
+  return resp.success();
+}
 
-  bool TaoChannel::SendRPC(const TaoChannelRPC &rpc) const {
-    return SendMessage(rpc);
-  }
+bool TaoChannel::GetRPC(TaoChannelRPC *rpc) const {
+  CHECK_NOTNULL(rpc);
+  return ReceiveMessage(rpc);
+}
 
-  bool TaoChannel::GetResponse(TaoChannelResponse *resp) const {
-    CHECK_NOTNULL(resp);
-    return ReceiveMessage(resp);
-  }
+bool TaoChannel::SendRPC(const TaoChannelRPC &rpc) const {
+  return SendMessage(rpc);
+}
 
-  bool TaoChannel::SendResponse(const TaoChannelResponse &resp) const {
-    return SendMessage(resp);
-  }
-} // namespace tao
+bool TaoChannel::GetResponse(TaoChannelResponse *resp) const {
+  CHECK_NOTNULL(resp);
+  return ReceiveMessage(resp);
+}
+
+bool TaoChannel::SendResponse(const TaoChannelResponse &resp) const {
+  return SendMessage(resp);
+}
+}  // namespace tao

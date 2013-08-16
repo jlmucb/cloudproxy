@@ -79,8 +79,10 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
                  const string &password) {
   CHECK(ctx) << "null ctx";
 
-  // set up the TLS connection with the list of acceptable ciphers
-  CHECK(SSL_CTX_set_cipher_list(ctx, "AES128-SHA256"))
+  // Set up the TLS connection with the list of acceptable ciphers.
+  // We only accept ECDH key exchange, with ECDSA signatures and GCM
+  // for the channel.
+  CHECK(SSL_CTX_set_cipher_list(ctx, "ECDHE-ECDSA-AES256-GCM-SHA384"))
       << "Could not set up a cipher list on the TLS context";
 
   // turn off compression (?)
@@ -869,6 +871,8 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
     return false;
   }
 
+  EC_GROUP_set_asn1_flag(group, OPENSSL_EC_NAMED_CURVE);
+
   EC_KEY_set_group(ec_key, group);
 
   if (!EC_KEY_generate_key(ec_key)) {
@@ -920,6 +924,14 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
     return false;
   }
 
+  if (!X509_NAME_add_entry_by_txt(name, "ST", MBSTRING_ASC,
+                                  reinterpret_cast<unsigned char *>(
+								    const_cast<char *>("Washington")),
+                                  -1, -1, 0)) {
+    LOG(ERROR) << "Could not add an Organization";
+    return false;
+  }
+
   if (!X509_NAME_add_entry_by_txt(
           name, "CN", MBSTRING_ASC,
           reinterpret_cast<unsigned char *>(const_cast<char *>(cn.c_str())), -1,
@@ -933,7 +945,7 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
     return false;
   }
 
-  if (!X509_sign(x509.get(), key.get(), EVP_sha256())) {
+  if (!X509_sign(x509.get(), key.get(), EVP_sha1())) {
     LOG(ERROR) << "Could not perform self-signing on the X.509 cert";
     return false;
   }
@@ -963,10 +975,8 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
   int err = PEM_write_PKCS8PrivateKey(
       priv_file.get(), key.get(), EVP_aes_256_cbc(),
       const_cast<char *>(secret.c_str()), secret.size(), NULL, NULL);
-  LOG(INFO) << "Got return value " << err;
   unsigned long last_error = ERR_get_error();
   if (!err) {
-    LOG(ERROR) << "The error code was " << last_error;
     string s(ERR_reason_error_string(last_error));
     LOG(ERROR) << "OpenSSL error: " << s;
     LOG(ERROR) << "Could not write the private key to an encrypted PKCS8 file";
@@ -981,7 +991,6 @@ bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
   // create or unseal a secret from the Tao
   FilePath fp(sealed_path);
   if (PathExists(fp)) {
-    LOG(INFO) << "The path " << sealed_path << " exists";
     // Unseal it
     ifstream sealed_file(sealed_path.c_str(), ifstream::in | ios::binary);
     stringstream sealed_buf;
@@ -992,7 +1001,6 @@ bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
       return false;
     }
 
-    LOG(INFO) << "Got a secret of length " << (int)secret->size();
   } else {
     // create and seal the secret
     const int SecretSize = 16;

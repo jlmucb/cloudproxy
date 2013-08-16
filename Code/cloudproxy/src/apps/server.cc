@@ -25,7 +25,9 @@
 
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
 #include "cloudproxy/cloud_server.h"
+#include "cloudproxy/util.h"
 #include <tao/pipe_tao_channel.h>
 
 #include <mutex>
@@ -37,6 +39,9 @@ using std::string;
 using std::vector;
 
 using cloudproxy::CloudServer;
+using cloudproxy::SealOrUnsealSecret;
+
+using keyczar::base::ScopedSafeString;
 
 using tao::PipeTaoChannel;
 using tao::TaoChannel;
@@ -45,7 +50,7 @@ DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
               "The PEM certificate for the server to use for TLS");
 DEFINE_string(server_key, "./openssl_keys/server/server.key",
               "The private key file for the server for TLS");
-DEFINE_string(server_password, "cpserver", "The password for the server key");
+DEFINE_string(sealed_secret, "server_secret", "A Tao-sealed secret");
 DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
                                                  " policy key");
 DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
@@ -86,9 +91,15 @@ int main(int argc, char **argv) {
 
   LOG(INFO) << "Successfully established communication with the Tao";
 
+  // get a secret from the Tao
+  ScopedSafeString secret(new string());
+  CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
+    << "Could not get the secret";
+
   // initialize OpenSSL
   SSL_load_error_strings();
   ERR_load_BIO_strings();
+  ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
   SSL_library_init();
 
@@ -100,7 +111,7 @@ int main(int argc, char **argv) {
   }
   CRYPTO_set_locking_callback(locking_function);
 
-  CloudServer cs(FLAGS_server_cert, FLAGS_server_key, FLAGS_server_password,
+  CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret,
                  FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
                  FLAGS_whitelist_path, FLAGS_address, FLAGS_port);
 

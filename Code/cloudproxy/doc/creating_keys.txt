@@ -53,10 +53,10 @@ Now create a certificate signing request for the server and get it signed:
 Now do the same for the client:
 
 > cd ../client
-> openssl genrsa -aes128 -out server.key 1024
-> openssl req -new -key server.key -out server.csr -config ../openssl.cfg
-> openssl x509 -req -days 365 -in server.csr -CA ../policy/policy.crt \
-    -CAkey ../policy/policy.key -CAcreateserial -out server.crt
+> openssl genrsa -aes128 -out client.key 1024
+> openssl req -new -key client.key -out client.csr -config ../openssl.cfg
+> openssl x509 -req -days 365 -in client.csr -CA ../policy/policy.crt \
+    -CAkey ../policy/policy.key -CAcreateserial -out client.crt
 
 
 Now set up a keyczar version of the policy key (including the private key), and

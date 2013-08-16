@@ -115,12 +115,10 @@ LegacyTao::LegacyTao(const string &secret_path, const string &directory,
 
 bool LegacyTao::Init() {
   // load the public policy key
-  LOG(INFO) << "Loading public policy key from " << policy_pk_path_;
   policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
   CHECK_NOTNULL(policy_verifier_.get());
   policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
 
-  LOG(INFO) << "Loading the whitelist from " << whitelist_path_;
   CHECK(auth_manager_->Init(whitelist_path_, *policy_verifier_))
       << "Could not initialize the whitelist manager";
 
@@ -331,7 +329,6 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
 
   // first check to make sure that this program is authorized
 
-  LOG(INFO) << "About to check the whitelist";
   ifstream program_stream(path.c_str());
   stringstream program_buf;
   program_buf << program_stream.rdbuf();
@@ -370,8 +367,6 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     LOG(ERROR) << "Could not create the upward pipe";
     return false;
   }
-
-  LOG(INFO) << "Set up the pipes; about to fork";
 
   // TODO(tmroeder): replace fork with clone
   int child_pid = fork();
@@ -422,8 +417,6 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     child_fds_[0] = pipeup[0];
     child_fds_[1] = pipedown[1];
     child_hash_.assign(serialized_digest);
-    LOG(INFO) << "LegacyTao setting the child hash to be " << child_hash_;
-
     PipeTaoChannel ptc(child_fds_);
     bool rv = ptc.Listen(this);
     if (!rv) {

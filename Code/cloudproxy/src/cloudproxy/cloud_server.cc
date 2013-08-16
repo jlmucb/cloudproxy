@@ -25,12 +25,20 @@
 #include "cloudproxy/cloud_server.h"
 #include "cloudproxy/util.h"
 
+#include <keyczar/keyczar.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
+
 #include <arpa/inet.h>
 
 #include <sstream>
 
 using std::lock_guard;
 using std::stringstream;
+
+using keyczar::base::ScopedSafeString;
+using keyczar::base::Base64WEncode;
+using keyczar::base::PathExists;
 
 using tao::Quote;
 using tao::Tao;
@@ -40,7 +48,7 @@ using tao::WhitelistAuthorizationManager;
 namespace cloudproxy {
 
 CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
-                         const string &tls_password,
+                         const string &secret,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
                          const string &acl_location,
@@ -64,9 +72,21 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
   CHECK(auth_manager_->Init(whitelist_location, *public_policy_key_))
       << "Could not initialize the whitelist";
 
+  ScopedSafeString encoded_secret(new string());
+  CHECK(Base64WEncode(secret, encoded_secret.get()))
+    << "Could not encode the secret as a Base64W string";
+
+  // check to see if the public/private keys exist. If not, create them
+  FilePath fp(tls_cert);
+  if (!PathExists(fp)) {
+    CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
+  			"server"))
+      << "Could not create new keys for OpenSSL for the client";
+  }
+
   // set up the SSL context and BIOs for getting client connections
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
-                    tls_password)) << "Could not set up TLS";
+                    *encoded_secret)) << "Could not set up TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 
@@ -102,8 +122,6 @@ bool CloudServer::Listen(const Tao &quote_tao) {
     t.detach();
   }
 
-  LOG(INFO) << "returning from listening";
-
   return true;
 }
 
@@ -111,10 +129,9 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
   keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
+    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(ERR_get_error(), NULL);
     return;
-  } else {
-    LOG(INFO) << "Successful client handshake";
-  }
+  } 
 
   SSL *cur_ssl = nullptr;
   BIO_get_ssl(bio.get(), &cur_ssl);
@@ -130,9 +147,6 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
     LOG(ERROR) << "Could not serialize the X.509 certificate";
     return;
   }
-
-  // LOG(INFO) << "The serialized X.509 client cert (at the server) has size "
-  //           << (int)serialized_peer_cert.size();
 
   string serialized_self_cert;
   if (!SerializeX509(self_cert, &serialized_self_cert)) {
@@ -171,11 +185,9 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
     }
 
     if (reply) {
-      LOG(INFO) << "Sending reply";
       if (!SendReply(bio.get(), rv, reason.c_str())) {
         LOG(ERROR) << "Could not send a reply to the client";
       }
-      LOG(INFO) << "Sent reply";
     }
   }
 
@@ -224,7 +236,6 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
 
   int rv = false;
   if (message.has_action()) {
-    LOG(INFO) << "It's an Action message";
     Action a = message.action();
     if (!cstd.IsAuthenticated(a.subject())) {
       LOG(ERROR) << "User " << a.subject() << " not authenticated";
@@ -419,8 +430,7 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
     // TODO(tmroeder): Generalize to other types of keys
     scoped_ptr<keyczar::Keyset> user_keyset(new keyczar::Keyset());
     CHECK(CopyRSAPublicKeyset(temp_key.get(), user_keyset.get()))
-        << "Could"
-           " not copy the key";
+        << "Could not copy the key";
 
     user_key.reset(new keyczar::Verifier(user_keyset.release()));
     user_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
@@ -435,8 +445,7 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
   }
 
   LOG(INFO) << "Challenge passed. Adding user " << c.subject()
-            << " as"
-               " authenticated";
+            << " as authenticated";
 
   cstd.SetAuthenticated(c.subject());
 
@@ -573,8 +582,6 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio,
     LOG(ERROR) << "Could not send the serialized ServerMessage to the client";
     return false;
   }
-
-  LOG(INFO) << "All SignedQuote checks passed at the server";
 
   // don't send another reply
   *reply = false;

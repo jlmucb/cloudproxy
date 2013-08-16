@@ -68,7 +68,6 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   CHECK(auth_manager_->Init(whitelist_path, *public_policy_key_))
       << "Could not initialize the whitelist authorization manager";
 
-  LOG(INFO) << "The secret has length " << (int)secret.size();
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
     << "Could not encode the secret as a Base64W string";
@@ -133,7 +132,6 @@ bool CloudClient::Connect(const Tao &t) {
   CHECK(cm.SerializeToString(&serialized_cm))
       << "Could not serialize the ClientMessage(SignedQuote)";
 
-  LOG(INFO) << "Sending ClientMessage(SignedQuote) to server";
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send quote";
 
   // now listen for the connection
@@ -156,9 +154,6 @@ bool CloudClient::Connect(const Tao &t) {
   CHECK(SerializeX509(peer_cert.get(), &serialized_peer_cert))
       << "Could not serialize the server's X.509 certificate";
 
-  LOG(INFO) << "Serialized server cert (at the client) has length "
-            << serialized_peer_cert.size();
-
   CHECK(t.VerifyQuote(serialized_peer_cert, serialized_server_quote))
       << "The SignedQuote from the server did not pass verification";
 
@@ -170,7 +165,6 @@ bool CloudClient::Connect(const Tao &t) {
       << "The server hash " << server_quote.hash()
       << " in the SignedQuote was not authorized";
 
-  LOG(INFO) << "All SignedQuote checks passed at the client";
   // once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.
   return true;
@@ -190,7 +184,7 @@ bool CloudClient::Authenticate(const string &subject,
                                const string &binding_file) {
   // check to see if we have already authenticated this subject
   if (users_->IsAuthenticated(subject)) {
-    LOG(INFO) << "User " << subject << " is already authenticated";
+    LOG(ERROR) << "User " << subject << " is already authenticated";
     return true;
   }
 
@@ -211,7 +205,6 @@ bool CloudClient::Authenticate(const string &subject,
   CHECK(cm.SerializeToString(&serialized_cm)) << "Could not serialize the"
                                                  " ClientMessage(Auth)";
 
-  LOG(INFO) << "Sending ClientMessage(Auth) to server";
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not request auth";
 
   // now listen for the connection
@@ -311,14 +304,12 @@ bool CloudClient::Write(const string &requestor, const string &input_name,
 }
 
 bool CloudClient::HandleReply() {
-  LOG(INFO) << "Waiting for a reply from the server";
   string s;
   if (!ReceiveData(bio_.get(), &s)) {
     LOG(ERROR) << "Could not receive a reply from the server";
     return false;
   }
 
-  LOG(INFO) << "Got a reply from the server";
   ServerMessage sm;
   if (!sm.ParseFromString(s)) {
     LOG(ERROR) << "Could not parse the response from the server";

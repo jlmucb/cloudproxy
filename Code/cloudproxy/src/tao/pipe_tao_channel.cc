@@ -38,15 +38,10 @@ bool PipeTaoChannel::ExtractPipes(int *argc, char ***argv, int fds[2]) {
   CHECK_NOTNULL(argv);
   CHECK_NOTNULL(fds);
 
-  LOG(INFO) << "Establishing the Tao Channel";
-
   if (*argc < 3) {
     LOG(ERROR) << "Not enough arguments to extract the pipes";
     return false;
   }
-  LOG(INFO) << "We have the right number of arguments. *argc = " << *argc;
-  LOG(INFO) << "argv = " << argv;
-  LOG(INFO) << "*argv = " << *argv;
 
   errno = 0;
   fds[0] = strtol((*argv)[*argc - 2], NULL, 0);
@@ -55,15 +50,12 @@ bool PipeTaoChannel::ExtractPipes(int *argc, char ***argv, int fds[2]) {
     return false;
   }
 
-  LOG(INFO) << "Got fds[0] = " << fds[0];
-
   errno = 0;
   fds[1] = strtol((*argv)[*argc - 1], NULL, 0);
   if (errno != 0) {
     LOG(ERROR) << "Could not convert the last argument to an integer";
     return false;
   }
-  LOG(INFO) << "Got fds[1] = " << fds[1];
 
   // clean up argc and argv
   // TODO(tmroeder): do I need to free the memory here?

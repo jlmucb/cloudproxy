@@ -33,7 +33,6 @@ namespace tao {
 
 bool WhitelistAuthorizationManager::Init(const string &whitelist_path,
                                          const Keyczar &public_policy_key) {
-  LOG(INFO) << "Loading the whitelist from " << whitelist_path;
   // load the whitelist file and check its signature
   ifstream whitelist(whitelist_path);
 
@@ -52,7 +51,6 @@ bool WhitelistAuthorizationManager::Init(const string &whitelist_path,
     return false;
   }
 
-  LOG(INFO) << "The number of program hashes is " << w.programs_size();
   for (int i = 0; i < w.programs_size(); i++) {
     const HostedProgram &hp = w.programs(i);
     if (whitelist_.find(hp.name()) != whitelist_.end()) {
@@ -60,11 +58,9 @@ bool WhitelistAuthorizationManager::Init(const string &whitelist_path,
       return false;
     }
 
-    LOG(INFO) << "Adding " << hp.name() << " to the whitelist";
     whitelist_[hp.name()] = hp.hash();
     hash_whitelist_.insert(hp.hash());
   }
-  LOG(INFO) << "Done populating the whitelist";
 
   return true;
 }

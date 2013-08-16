@@ -9,9 +9,9 @@ Tboot requires an ACM Module that sets up the machine for TXT.  The appropriate
 SINIT Module can be downloaded from
 http://software.intel.com/en-us/articles/intel-trusted-execution-technology/.
 Tboot will show the appropriate device ID in its output if it is booted with
-the incorrect version of sinit. Use txt-stat (installed with tboot) to read the
-most recent tboot logs.  The current version of tboot requires version 17 or
-greater of the SINIT module.  A copy of the module we used is in this
+the incorrect version of sinit. Use txt-stat (installed with tboot) to read 
+the most recent tboot logs.  The current version of tboot requires version 
+17 or greater of the SINIT module.  A copy of the module we used is in this
 distribution.
 
 
@@ -206,13 +206,18 @@ REMOVE:
 
 Create a PCONF element:
 1.  cat /sys/devices/platform/tpm_tis/pcrs |grep -e PCR-00 -e PCR-01 > pcrs
-  - the location of the pcrs file under /sys might vary. On my T430s, I found it under /sys/devices/pnp0/00:0a/pcrs. To find it, execute 'sudo find /sys -name "*pcrs*" -print'. Also note that you might need to run this command under sudo.
+  - the location of the pcrs file under /sys might vary. On my T430s, I found it 
+    under /sys/devices/pnp0/00:0a/pcrs. To find it, execute 'sudo find /sys -name 
+    "*pcrs*" -print'. Also note that you might need to run this command under sudo.
 2.  lcp_crtpolelt --create --type pconf --out pconf.elt pcrs
 
 Create an SBIOS element:
 1.  Create hash file containing BIOS hash(es), e.g. named sbios_hash
-  - this hash file consists of a sequence of SHA-1 hash values, one hash value per line.
-  - one way to get these values for the BIOS is to boot with tboot with the default policy and use txt-stat (installed with tboot) to get the debugging output from tboot: `sudo txt-stat | grep -A1 mle_hash`
+  - this hash file consists of a sequence of SHA-1 hash values, one hash value 
+    per line.
+  - one way to get these values for the BIOS is to boot with tboot with the 
+    default policy and use txt-stat (installed with tboot) to get the debugging 
+    output from tboot: `sudo txt-stat | grep -A1 mle_hash`
 2.  lcp_crtpolelt --create --type sbios --out sbios.elt sbios_hash
 
 SKIPPED (since custom.elt is never used after it is created)
@@ -221,7 +226,8 @@ Create a CUSTOM element:
     using 'uuidgen')
 2.  Create the data the will be placed in this element.  E.g. the policy file
     from tb_polgen.
-  - in other words, follow the instructions below to generate a policy file before this step
+  - in other words, follow the instructions below to generate a policy file before 
+    this step
 3.  lcp_crtpolelt --create --type custom --out custom.elt --uuid <uuid value>
     <data file>
 END SKIPPED
@@ -245,3 +251,4 @@ indented directions.
     6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
 
 DCreate policy and policy data files:
+

@@ -24,17 +24,24 @@
 #include <glog/logging.h>
 #include <openssl/ssl.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/keyczar.h>
 #include "cloudproxy/cloud_client.h"
+#include "cloudproxy/util.h"
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/pipe_tao_channel.h"
 
+#include <fstream>
+#include <sstream>
 #include <string>
 
+using std::ifstream;
 using std::string;
+using std::stringstream;
 
 using cloudproxy::CloudClient;
+using cloudproxy::SealOrUnsealSecret;
 
-using keyczar::base::Base64WEncode;
+using keyczar::base::ScopedSafeString;
 
 using tao::PipeTaoChannel;
 using tao::TaoChannel;
@@ -43,10 +50,7 @@ DEFINE_string(client_cert, "./openssl_keys/client/client.crt",
               "The PEM certificate for the client to use for TLS");
 DEFINE_string(client_key, "./openssl_keys/client/client.key",
               "The private key file for the client for TLS");
-
-// this will be removed when get this password released by the TPM
-DEFINE_string(client_password, "cpclient",
-              "The private key file for the client for TLS");
+DEFINE_string(sealed_secret, "client_secret", "The sealed secret for the client");
 DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
                                                  " policy key");
 DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
@@ -83,8 +87,14 @@ int main(int argc, char** argv) {
   CHECK(channel->GetRandomBytes(size, &name_bytes))
       << "Could not get a random name from the Tao";
 
+  // get a secret from the Tao
+  ScopedSafeString secret(new string());
+  CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
+    << "Could not get the secret";
+
+
   LOG(INFO) << "About to create a client";
-  CloudClient cc(FLAGS_client_cert, FLAGS_client_key, FLAGS_client_password,
+  CloudClient cc(FLAGS_client_cert, FLAGS_client_key, *secret,
                  FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_whitelist_path,
                  FLAGS_address, FLAGS_port);
 
@@ -99,7 +109,6 @@ int main(int argc, char** argv) {
   string name;
   CHECK(keyczar::base::Base64WEncode(name_bytes, &name)) << "Could not encode"
                                                             " name";
-
   // string name("test");
   CHECK(cc.AddUser("tmroeder", "./keys/tmroeder", "tmroeder"))
       << "Could not"

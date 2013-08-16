@@ -34,12 +34,19 @@
 #include <keyczar/keyczar.h>
 #include <keyczar/rsa_impl.h>
 #include <keyczar/rsa_public_key.h>
+#include <keyczar/base/file_util.h>
 
 #include <glog/logging.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 
+using keyczar::base::PathExists;
+using keyczar::base::ScopedSafeString;
+
+using tao::Tao;
+
 using std::ifstream;
+using std::ios;
 using std::ofstream;
 using std::stringstream;
 
@@ -94,6 +101,12 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
   // set up verification to insist on getting a certificate from the peer
   int verify_mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
   SSL_CTX_set_verify(ctx, verify_mode, AlwaysAcceptCert);
+
+  // set up the server to use ECDH for key agreement using ANSI X9.62
+  // Prime 256 V1
+  EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+  CHECK_NOTNULL(ecdh);
+  CHECK(SSL_CTX_set_tmp_ecdh(ctx, ecdh)) << "Could not set up ECDH";
 
   return true;
 }
@@ -832,6 +845,173 @@ bool SerializeX509(X509 *x509, string *serialized_x509) {
   }
 
   serialized_x509->assign(reinterpret_cast<char *>(der_x509.get()), len);
+  return true;
+}
+
+bool CreateECDSAKey(const string &private_path, const string &public_path,
+                    const string &secret, const string &country_code,
+                    const string &org_code, const string &cn) {
+  // this function assumes that private_path and public_path do not exist as
+  // files. If they do, then they'll get overwritten.
+  ScopedEvpPkey key(EVP_PKEY_new());
+
+  // generate a new ECDSA key
+  EC_KEY *ec_key = EC_KEY_new();
+  if (ec_key == NULL) {
+    LOG(ERROR) << "Could not create an EC_KEY";
+    return false;
+  }
+
+  // use the ANSI X9.62 Prime 256v1 curve
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
+  if (group == NULL) {
+    LOG(ERROR) << "Could not get the elliptic curve NID_secp256k1";
+    return false;
+  }
+
+  EC_KEY_set_group(ec_key, group);
+
+  if (!EC_KEY_generate_key(ec_key)) {
+    LOG(ERROR) << "Could not generate a new EC key";
+    return false;
+  }
+
+  if (!EVP_PKEY_assign_EC_KEY(key.get(), ec_key)) {
+    LOG(ERROR) << "Could not assign the key";
+    return false;
+  }
+
+  ScopedX509Ctx x509(X509_new());
+
+  // set up properties of the x509 object
+  // the serial number (always 1, for us)
+  ASN1_INTEGER_set(X509_get_serialNumber(x509.get()), 1);
+
+  // set notBefore, and notAfter to get a 365-day validity period
+  X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
+  X509_gmtime_adj(X509_get_notAfter(x509.get()), 31536000L);
+
+  // TODO(tmroeder): does x509 get ownership of key here?
+  if (!X509_set_pubkey(x509.get(), key.get())) {
+    LOG(ERROR) << "Could not add the public key to the X.509 structure";
+    return false;
+  }
+
+  // set up the CN and Issuer to be the same
+  X509_NAME *name = X509_get_subject_name(x509.get());
+  if (name == NULL) {
+    LOG(ERROR) << "Could not get the name of the X.509 certificate";
+    return false;
+  }
+
+  if (!X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC,
+                                  reinterpret_cast<unsigned char *>(
+                                      const_cast<char *>(country_code.c_str())),
+                                  -1, -1, 0)) {
+    LOG(ERROR) << "Could not add a Country code";
+    return false;
+  }
+
+  if (!X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC,
+                                  reinterpret_cast<unsigned char *>(
+                                      const_cast<char *>(org_code.c_str())),
+                                  -1, -1, 0)) {
+    LOG(ERROR) << "Could not add an Organization";
+    return false;
+  }
+
+  if (!X509_NAME_add_entry_by_txt(
+          name, "CN", MBSTRING_ASC,
+          reinterpret_cast<unsigned char *>(const_cast<char *>(cn.c_str())), -1,
+          -1, 0)) {
+    LOG(ERROR) << "Could not add a Common Name (CN)";
+    return false;
+  }
+
+  if (!X509_set_issuer_name(x509.get(), name)) {
+    LOG(ERROR) << "Could not set the issuer to be the same as the subject";
+    return false;
+  }
+
+  if (!X509_sign(x509.get(), key.get(), EVP_sha256())) {
+    LOG(ERROR) << "Could not perform self-signing on the X.509 cert";
+    return false;
+  }
+
+  ScopedFile pub_file(fopen(public_path.c_str(), "wb"));
+  if (pub_file.get() == NULL) {
+    LOG(ERROR) << "Could not open file " << public_path << " for writing";
+    return false;
+  }
+
+  if (!PEM_write_X509(pub_file.get(), x509.get())) {
+    LOG(ERROR) << "Could not write the X.509 certificate to " << public_path;
+    return false;
+  }
+
+  ScopedFile priv_file(fopen(private_path.c_str(), "wb"));
+  if (priv_file.get() == NULL) {
+    LOG(ERROR) << "Could not open file " << private_path << " for writing";
+    return false;
+  }
+
+  // TODO(tmroeder): I'll probably need to create an HMAC on this file
+  // and check it myself rather than trusting OpenSSL to do the Right
+  // Thing. However, I suppose that changes to the private key would
+  // cause it not to match the X.509 cert.  This still makes me
+  // nervous.
+  int err = PEM_write_PKCS8PrivateKey(
+      priv_file.get(), key.get(), EVP_aes_256_cbc(),
+      const_cast<char *>(secret.c_str()), secret.size(), NULL, NULL);
+  LOG(INFO) << "Got return value " << err;
+  unsigned long last_error = ERR_get_error();
+  if (!err) {
+    LOG(ERROR) << "The error code was " << last_error;
+    string s(ERR_reason_error_string(last_error));
+    LOG(ERROR) << "OpenSSL error: " << s;
+    LOG(ERROR) << "Could not write the private key to an encrypted PKCS8 file";
+    return false;
+  }
+
+  return true;
+}
+
+bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
+			string *secret) {
+  // create or unseal a secret from the Tao
+  FilePath fp(sealed_path);
+  if (PathExists(fp)) {
+    LOG(INFO) << "The path " << sealed_path << " exists";
+    // Unseal it
+    ifstream sealed_file(sealed_path.c_str(), ifstream::in | ios::binary);
+    stringstream sealed_buf;
+    sealed_buf << sealed_file.rdbuf();
+
+    if (!t.Unseal(sealed_buf.str(), secret)) {
+      LOG(ERROR) << "Could not unseal the secret from " << sealed_path;
+      return false;
+    }
+
+    LOG(INFO) << "Got a secret of length " << (int)secret->size();
+  } else {
+    // create and seal the secret
+    const int SecretSize = 16;
+    if (!t.GetRandomBytes(SecretSize, secret)) {
+      LOG(ERROR) << "Could not get a random secret from the Tao";
+      return false;
+    }
+
+    // seal it and write the result to the specified file
+    string sealed_secret;
+    if (!t.Seal(*secret, &sealed_secret)) {
+      LOG(ERROR) << "Could not seal the secret";
+      return false;
+    }
+
+    ofstream sealed_file(sealed_path.c_str(), ofstream::out | ios::binary);
+    sealed_file.write(sealed_secret.data(), sealed_secret.size());
+  }
+
   return true;
 }
 

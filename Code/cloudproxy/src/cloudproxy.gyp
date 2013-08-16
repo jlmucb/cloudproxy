@@ -204,6 +204,16 @@
       ],
     },
     {
+      'target_name': 'create_ecdsa',
+      'type': 'executable',
+      'variables': { 'src' : 'apps', },
+      'sources': [ '<(src)/create_ecdsa.cc', ],
+      'include_dirs': [ '.', ],
+      'dependencies': [
+         'cloudproxy',
+      ],
+    },
+    {
       'target_name': 'hash_file',
       'type': 'executable',
       'variables': { 'src' : 'apps', },

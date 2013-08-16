@@ -58,7 +58,7 @@ class CloudClient {
   // keyczar directories, the location of certificates and keys for TLS, as
   // well as with the addr:port of a CloudServer.
   CloudClient(const string &tls_cert, const string &tls_key,
-              const string &tls_password, const string &public_policy_keyczar,
+              const string &secret, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &whitelist_path,
               const string &server_addr, ushort server_port);
 

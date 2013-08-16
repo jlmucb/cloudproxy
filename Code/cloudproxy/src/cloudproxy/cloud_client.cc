@@ -25,6 +25,10 @@
 
 #include <glog/logging.h>
 
+#include <keyczar/base/file_path.h>
+#include <keyczar/base/file_util.h>
+#include <keyczar/base/base64w.h>
+
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/quote.pb.h"
 
@@ -34,6 +38,10 @@
 using std::ifstream;
 using std::stringstream;
 
+using keyczar::base::Base64WEncode;
+using keyczar::base::PathExists;
+using keyczar::base::ScopedSafeString;
+
 using tao::Quote;
 using tao::SignedQuote;
 using tao::Tao;
@@ -42,7 +50,7 @@ using tao::WhitelistAuthorizationManager;
 namespace cloudproxy {
 
 CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
-                         const string &tls_password,
+                         const string &secret,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
                          const string &whitelist_path,
@@ -60,10 +68,22 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   CHECK(auth_manager_->Init(whitelist_path, *public_policy_key_))
       << "Could not initialize the whitelist authorization manager";
 
-  LOG(INFO) << "About to set up the SSL CTX";
+  LOG(INFO) << "The secret has length " << (int)secret.size();
+  ScopedSafeString encoded_secret(new string());
+  CHECK(Base64WEncode(secret, encoded_secret.get()))
+    << "Could not encode the secret as a Base64W string";
+
+  // check to see if the public/private keys exist. If not, create them
+  FilePath fp(tls_cert);
+  if (!PathExists(fp)) {
+    CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
+			"client"))
+      << "Could not create new keys for OpenSSL for the client";
+  }
+
   // set up the TLS connection with the cert and keys and trust DB
   CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
-                    tls_password))
+                    *encoded_secret))
       << "Could not set up the client TLS connection";
 
   bio_.reset(BIO_new_ssl_connect(context_.get()));

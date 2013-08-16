@@ -26,10 +26,13 @@
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/x509.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/base/basictypes.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/openssl/util.h>
+
+#include "tao/tao.h"
 
 #include <stdio.h>
 #include <string>
@@ -67,6 +70,10 @@ typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
                                        SSL_CTX, SSL_CTX_free> > ScopedSSLCtx;
 typedef scoped_ptr_malloc<
     X509, keyczar::openssl::OSSLDestroyer<X509, X509_free> > ScopedX509Ctx;
+
+typedef scoped_ptr_malloc<
+    EVP_PKEY, keyczar::openssl::OSSLDestroyer<EVP_PKEY, EVP_PKEY_free> >
+    ScopedEvpPkey;
 
 typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
@@ -131,6 +138,11 @@ bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
 bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
 
 bool SerializeX509(X509 *x509, string *serialized_x509);
+
+bool CreateECDSAKey(const string &private_path, const string &public_path,
+                    const string &secret, const string &country_code,
+                    const string &org_code, const string &cn);
+bool SealOrUnsealSecret(const tao::Tao &t, const string &sealed_path, string *secret);
 }
 
 #endif  // CLOUDPROXY_UTIL_H_

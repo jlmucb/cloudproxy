@@ -1,5 +1,5 @@
 #!/bin/bash
-rm -fr b_meas/* bootstrap_files/* boots* server client
+rm -fr b_meas/* bootstrap_files/* boots* server client openssl_keys/client/* client_secret openssl_keys/server/* server_secret
 mkdir bootstrap_files
 cp ~/src/fileProxy/Code/cloudproxy/src/out/Default/bin/bootstrap .
 cp ~/src/fileProxy/Code/cloudproxy/src/out/Default/bin/server .

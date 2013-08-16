@@ -118,14 +118,29 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
 
   SSL *cur_ssl = nullptr;
   BIO_get_ssl(bio.get(), &cur_ssl);
+  X509 *self_cert = SSL_get_certificate(cur_ssl);
   ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
-  ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
-
-  CloudServerThreadData cstd(peer_cert.release(), self_cert.release());
-  if (cstd.GetPeerCert() == nullptr) {
+  if (peer_cert.get() == nullptr) {
     LOG(ERROR) << "No X.509 certificate received from the client";
     return;
   }
+
+  string serialized_peer_cert;
+  if (!SerializeX509(peer_cert.get(), &serialized_peer_cert)) {
+    LOG(ERROR) << "Could not serialize the X.509 certificate";
+    return;
+  }
+
+  // LOG(INFO) << "The serialized X.509 client cert (at the server) has size "
+  //           << (int)serialized_peer_cert.size();
+
+  string serialized_self_cert;
+  if (!SerializeX509(self_cert, &serialized_self_cert)) {
+    LOG(ERROR) << "Could not serialize our own X.509 certificate";
+    return;
+  }
+
+  CloudServerThreadData cstd(serialized_peer_cert, serialized_self_cert);
 
   // loop on the message handler for this connection with the client
   bool rv = true;
@@ -504,19 +519,13 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio,
     return false;
   }
 
-  string serialized_x509;
-  if (!SerializeX509(cstd.GetPeerCert(), &serialized_x509)) {
-    LOG(ERROR) << "Could not serialize the X.509 certificate";
-    return true;
-  }
-
-  LOG(INFO) << "The serialized X.509 client cert (at the server) has size "
-            << (int)serialized_x509.size();
-
   // check that this is a valid quote
-  if (!t.VerifyQuote(serialized_x509, serialized_quote)) {
-    LOG(ERROR) << "The SignedQuote did not pass Tao verification";
-    return false;
+  {
+    lock_guard<mutex> l(tao_m_);
+    if (!t.VerifyQuote(cstd.GetPeerCert(), serialized_quote)) {
+      LOG(ERROR) << "The SignedQuote did not pass Tao verification";
+      return false;
+    }
   }
 
   Quote client_quote;
@@ -526,26 +535,25 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio,
   }
 
   // check that this hash is authorized
-  if (!auth_manager_->IsAuthorized(client_quote.hash())) {
-    LOG(ERROR) << "The client with hash " << client_quote.hash()
-               << " is not authorized";
-    return false;
+  {
+    lock_guard<mutex> l(auth_m_);
+    if (!auth_manager_->IsAuthorized(client_quote.hash())) {
+      LOG(ERROR) << "The client with hash " << client_quote.hash()
+		 << " is not authorized";
+      return false;
+    }
   }
 
   cstd.SetCertValidated();
 
-  // get our X509 certificate
-  string serialized_self_x509;
-  if (!SerializeX509(cstd.GetSelfCert(), &serialized_self_x509)) {
-    LOG(ERROR) << "Could not serialize our own X.509 certificate";
-    return false;
-  }
-
   // quote it to send it to the client
   string signature;
-  if (!t.Quote(serialized_self_x509, &signature)) {
-    LOG(ERROR) << "Could not get a signed quote for our own X.509 certificate";
-    return false;
+  {
+    lock_guard<mutex> l(tao_m_);
+    if (!t.Quote(cstd.GetSelfCert(), &signature)) {
+      LOG(ERROR) << "Could not get a signed quote for our own X.509 certificate";
+      return false;
+    }
   }
 
   ServerMessage sm;

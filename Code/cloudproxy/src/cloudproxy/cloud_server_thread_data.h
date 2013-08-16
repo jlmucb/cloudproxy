@@ -45,9 +45,9 @@ namespace cloudproxy {
 // authentication information
 class CloudServerThreadData {
  public:
-  CloudServerThreadData(X509 *peer_cert, X509 *self_cert)
-      : peer_cert_(peer_cert),
-        self_cert_(self_cert),
+ CloudServerThreadData(const string &peer_cert, const string &self_cert)
+      : serialized_peer_cert_(peer_cert),
+        serialized_self_cert_(self_cert),
         cert_validated_(false),
         auth_() {}
   virtual ~CloudServerThreadData() {}
@@ -63,13 +63,13 @@ class CloudServerThreadData {
   bool SetCertValidated();
   bool GetCertValidated();
 
-  X509 *GetPeerCert();
-  X509 *GetSelfCert();
+  string GetPeerCert() { return serialized_peer_cert_; }
+  string GetSelfCert() { return serialized_self_cert_; }
 
  private:
-  ScopedX509Ctx peer_cert_;
+  string serialized_peer_cert_;
 
-  ScopedX509Ctx self_cert_;
+  string serialized_self_cert_;
 
   // whether or not the certificate used for this connection has been validated
   bool cert_validated_;

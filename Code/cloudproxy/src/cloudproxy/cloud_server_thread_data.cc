@@ -71,6 +71,4 @@ bool CloudServerThreadData::SetCertValidated() {
 }
 
 bool CloudServerThreadData::GetCertValidated() { return cert_validated_; }
-X509 *CloudServerThreadData::GetPeerCert() { return peer_cert_.get(); }
-X509 *CloudServerThreadData::GetSelfCert() { return self_cert_.get(); }
 }  // namespace cloudproxy

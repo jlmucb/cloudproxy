@@ -92,6 +92,9 @@ class CloudServer {
   // mutex for data operations
   mutex data_m_;
 
+  // mutex for Tao communication
+  mutex tao_m_;
+
   // Handles specific requests for resources. In this superclass
   // implementation, it just deals with names in a std::set. Subclasses
   // override these methods to implement their functionality

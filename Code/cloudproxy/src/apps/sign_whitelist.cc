@@ -5,20 +5,19 @@
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
-// Use, duplication and disclosure of this file and derived works of
-// this file are subject to and licensed under the Apache License dated
-// January, 2004, (the "License").  This License is contained in the
-// top level directory originally provided with the CloudProxy Project.
-// Your right to use or distribute this file, or derived works thereof,
-// is subject to your being bound by those terms and your use indicates
-// consent to those terms.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// If you distribute this file (or portions derived therefrom), you must
-// include License in or with the file and, in the event you do not include
-// the entire License in the file, the file must contain a reference
-// to the location of the License.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// ------------------------------------------------------------------------
+
 
 #include <string>
 #include <fstream>

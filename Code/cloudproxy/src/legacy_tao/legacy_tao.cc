@@ -6,25 +6,25 @@
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
-// Use, duplication and disclosure of this file and derived works of
-// this file are subject to and licensed under the Apache License dated
-// January, 2004, (the "License").  This License is contained in the
-// top level directory originally provided with the CloudProxy Project.
-// Your right to use or distribute this file, or derived works thereof,
-// is subject to your being bound by those terms and your use indicates
-// consent to those terms.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// If you distribute this file (or portions derived therefrom), you must
-// include License in or with the file and, in the event you do not include
-// the entire License in the file, the file must contain a reference
-// to the location of the License.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// ------------------------------------------------------------------------
+
 
 #include "legacy_tao/legacy_tao.h"
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/quote.pb.h"
+#include "tao/sealed_data.pb.h"
 #include "tao/pipe_tao_channel.h"
 #include "tao/whitelist_authorization_manager.h"
 
@@ -53,6 +53,7 @@ using tao::Attestation;
 using tao::HostedProgram;
 using tao::PipeTaoChannel;
 using tao::Quote;
+using tao::SealedData;
 using tao::SignedAttestation;
 using tao::SignedQuote;
 using tao::SignedWhitelist;
@@ -441,8 +442,26 @@ bool LegacyTao::GetRandomBytes(size_t size, string *bytes) const {
 }
 
 bool LegacyTao::Seal(const string &data, string *sealed) const {
+  if (child_hash_.empty()) {
+    LOG(ERROR) << "Cannot seal to an empty child";
+    return false;
+  }
+
+  SealedData sd;
+  sd.set_hash(child_hash_);
+
+  // TODO(tmroeder): generalize to other hash algorithms
+  sd.set_hash_alg("SHA256");
+  sd.set_data(data);
+  
+  string serialized_sd;
+  if (!sd.SerializeToString(&serialized_sd)) {
+    LOG(ERROR) << "Could not serialize the SealedData";
+    return false;
+  }
+
   // encrypt it using our symmetric key
-  if (!crypter_->Encrypt(data, sealed)) {
+  if (!crypter_->Encrypt(serialized_sd, sealed)) {
     LOG(ERROR) << "Could not seal the data";
     return false;
   }
@@ -452,8 +471,22 @@ bool LegacyTao::Seal(const string &data, string *sealed) const {
 
 bool LegacyTao::Unseal(const string &sealed, string *data) const {
   // decrypt it using our symmetric key
-  if (!crypter_->Decrypt(sealed, data)) {
-    LOG(ERROR) << "Could not unseal the data";
+  string temp_decrypted;
+  if (!crypter_->Decrypt(sealed, &temp_decrypted)) {
+    LOG(ERROR) << "Could not decrypt the sealed data";
+    return false;
+  }
+
+  // try to parse it as SealedData, and check the hash to make sure it matches
+  SealedData sd;
+  if (!sd.ParseFromString(temp_decrypted)) {
+    // note that this is safe, since we always use authenticated encryption
+    LOG(ERROR) << "Could not parse the decrypted data as SealedData";
+    return false;
+  }
+
+  if (child_hash_.compare(sd.hash()) != 0) {
+    LOG(ERROR) << "This data was not sealed to this program";
     return false;
   }
 

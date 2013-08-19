@@ -490,6 +490,8 @@ bool LegacyTao::Unseal(const string &sealed, string *data) const {
     return false;
   }
 
+  data->assign(sd.data().data(), sd.data().size());
+
   return true;
 }
 

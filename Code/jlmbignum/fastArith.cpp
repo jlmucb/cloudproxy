@@ -29,18 +29,16 @@
 u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
 
 {
-    u64 uCarryOut;
+    u64 uCarryOut= 0ULL;
 
     asm volatile(
-        "movq    $0, %[carryout]\n" \
         "\tmovq    %[op1], %%rax\n" \
         "\taddq    %[carryin], %%rax\n" \
-        "\tjnc     1f\n" \
-        "\tmovq    $1, %[carryout]\n" \
-        "1:\n" \
+        "\tsetc    %[carryout]\n" \
         "\taddq    %[op2], %%rax\n" \
         "\tjnc     2f\n" \
         "\tmovq    $1, %[carryout]\n" \
+        ".balign 16\n" \
         "2:\n" \
         "\tmovq    %[outaddress], %%rcx\n" \
         "\tmovq    %%rax, (%%rcx)\n" 
@@ -55,17 +53,14 @@ u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
 u64 longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn)
 
 {
-    u64 uCarryOut;
+    u64 uCarryOut= 0ULL;
 
     // result of mulq is in %rdx:%rax
     asm volatile(
-        "\tmovq    $0, %[carryout]\n" \
         "\tmovq    %[op1], %%rax\n" \
         "\tmulq    %[op2]\n" \
         "\taddq    %[carryin], %%rax\n" \
-        "\tjnc     1f\n" \
-        "\taddq    $1, %%rdx\n" \
-        "1:\n" \
+        "\tadcq    $0, %%rdx\n" \
         "\tmovq    %%rdx,%[carryout]\n" \
         "\tmovq    %[outaddress],%%rcx\n" \
         "\tmovq    %%rax,(%%rcx)\n" 
@@ -108,11 +103,10 @@ u64 longsubstep(u64* puOut, u64 uIn1, u64 uIn2, u64 uBorrowIn)
 
 u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy)
 {
-    u64 uRem;
+    u64 uRem= 0ULL;
 
     // %rdx:%rax contains numerator
     asm volatile(
-        "movq    $0,%[rem]\n" \
         "\tmovq    %[op1], %%rdx\n" \
         "\tmovq    %[op2], %%rax\n" \
         "\tdivq    %[divisor]\n" \
@@ -143,25 +137,26 @@ u64 mpUAddLoop(int lA, u64* pA, int lB, u64* pB, u64* pR)
         // rcx is pB
         // rdx is pR
         // carry is in r12
-        "movl     $0, %%esi\n" \
+        "xorl     %%esi, %%esi\n" \
         "\tmovq   %[pR], %%rdx\n"\
         "\tmovq   %[pA], %%rbx\n" \
         "\tmovq   %[pB], %%rcx\n" \
-        "\tmovq   $0, %%r12\n" \
+        "\txorq   %%r12, %%r12\n" \
+        ".balign 16\n"\
         "1:\n" \
         "\tcmpl   %%esi, %[lB]\n"\
         "\tjle    4f\n" \
         "\tmovq   (%%rbx), %%rax\n" \
-        "\tclc\n" \
         "\taddq   %%r12, %%rax\n"\
-        "\tmovq   $0, %%r12\n" \
+        "\txorq   %%r12, %%r12\n" \
         "jnc      2f\n"\
         "\tmovq   $1, %%r12\n"\
+        ".balign 16\n"\
         "2:\n" \
-        "\tclc\n" \
         "\taddq   (%%rcx), %%rax\n"\
         "jnc      3f\n"\
         "\tmovq   $1, %%r12\n"\
+        ".balign 16\n"\
         "3:\n"\
         "\tmovq   %%rax, (%%rdx)\n"\
         "\taddq   $8, %%rbx\n"\
@@ -169,21 +164,23 @@ u64 mpUAddLoop(int lA, u64* pA, int lB, u64* pB, u64* pR)
         "\taddq   $8, %%rdx\n"\
         "\tincl   %%esi\n"\
         "\tjmp    1b\n" \
+        ".balign 16\n"\
         "4:\n" \
         "\tcmpl   %%esi, %[lA]\n" \
         "\tjle    6f\n" \
         "\tmovq   (%%rbx), %%rax\n"\
-        "\tclc\n" \
         "\taddq   %%r12, %%rax\n"\
-        "\tmovq   $0, %%r12\n"\
+        "\txorq   %%r12, %%r12\n"\
         "jnc      5f\n"\
         "\tmovq   $1, %%r12\n"\
+        ".balign 16\n"\
         "5:\n" \
         "\tmovq   %%rax, (%%rdx)\n"\
         "\taddq   $8, %%rbx\n"\
         "\taddq   $8, %%rdx\n"\
         "\tincl   %%esi\n"\
         "\tjmp    4b\n" \
+        ".balign 16\n"\
         "6:\n" \
         "\tmovq  %%r12, %[uCarry]\n"
         : [uCarry] "=m"(uCarry) 
@@ -277,9 +274,10 @@ u64 mpUMultByLoop(int lA, u64* pA, u64 uB)
     //  cmp a,b:  jge succeeds if b>=a
     asm volatile(
         "\tmovq    %[pA], %%rbx\n"\
-        "\tmovq    $0, %%r8\n"\
+        "\txorq    %%r8, %%r8\n"\
         "\tmovq    %[uB], %%r9\n"\
-        "\tmovq    $0, %%r13\n"\
+        "\txorq    %%r13, %%r13\n"\
+        ".balign 16\n"\
         "1:\n"\
         "\tcmpq    %%r8, %[ulA]\n"\
         "\tjle     2f\n"\
@@ -291,6 +289,7 @@ u64 mpUMultByLoop(int lA, u64* pA, u64 uB)
         "\tmovq    %%rdx, %%r13\n" \
         "\taddq    $1, %%r8\n"\
         "\tjmp     1b\n"\
+        ".balign 16\n"\
         "2:\n"\
         "\tmovq    %%r13, %[uC]\n"\
         :: [pA] "m" (pA), [uB] "m" (uB), [ulA] "m" (ulA), [uC] "m" (uCarry)
@@ -326,13 +325,15 @@ void mpUMultLoop(int ilA, u64* pA, int ilB, u64* pB, u64* pR)
         "\tmovq    %[pA], %%rbx\n"\
         "\tmovq    %[pB], %%rcx\n"\
         "\tmovq    %[pR], %%r14\n"\
-        "\tmovq    $0, %%r8\n"\
+        "\txorq    %%r8, %%r8\n"\
+        ".balign 16\n"\
         "1:\n"\
         "\tcmpq    %%r8, %[lA]\n"\
         "\tjle     4f\n"\
-        "\tmovq    $0, %%r9\n"\
-        "\tmovq    $0, %%r13\n"\
+        "\txorq    %%r9, %%r9\n"\
+        "\txorq    %%r13, %%r13\n"\
         "\tmovq    %%r8, %%r12\n"\
+        ".balign 16\n"\
         "2:\n"\
         "\tcmpq    %%r9, %[lB]\n"\
         "\tjle     3f\n"\
@@ -347,6 +348,7 @@ void mpUMultLoop(int ilA, u64* pA, int ilB, u64* pB, u64* pR)
         "\taddq    $1, %%r9\n"\
         "\taddq    $1, %%r12\n"\
         "\tjmp     2b\n"\
+        ".balign 16\n"\
         "3:\n"\
         "\tmovq    %%r13, (%%r14, %%r12, 0x8)\n"\
         "\taddq    $1, %%r8\n"\

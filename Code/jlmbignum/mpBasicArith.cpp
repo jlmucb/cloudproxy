@@ -1565,8 +1565,9 @@ bool mpUSquare(bnum& bnA, bnum& bnR)
     asm volatile (
         "\tmovq    %[rgA],%%rbx\n"\
         "\tmovq    %[rgR],%%r14\n"\
-        "\tmovq    $0, %%r8\n"\
-        "\tmovq    $0, %%r12\n"\
+        "\txorq    %%r8, %%r8\n"\
+        "\txorq    %%r12, %%r12\n"\
+        ".balign 16\n"\
         "1:\n"\
         "\tcmpq    %%r8, %[lA]\n"\
         "\tjle     8f\n"\
@@ -1578,17 +1579,20 @@ bool mpUSquare(bnum& bnA, bnum& bnR)
         "\taddq    $1, %%r12\n"\
         "\taddq    $1, %%r8\n"\
         "\tjmp     1b\n"\
+        ".balign 16\n"\
         "8:\n"\
-        "\tmovq    $0, %%r8\n"\
-        "1:\n"\
+        "\txorq    %%r8, %%r8\n"\
+        ".balign 16\n"\
+        "7:\n"\
         "\tcmpq    %%r8, %[lAM1]\n"\
         "\tjle     4f\n"\
         "\tmovq    %%r8, %%r9\n"\
         "\taddq    $1, %%r9\n"\
         "\tmovq    %%r8, %%r12\n"\
         "\taddq    %%r9, %%r12\n"\
-        "\tmovq    $0, %%r11\n"\
-        "\tmovq    $0, %%rcx\n"\
+        "\txorq    %%r11, %%r11\n"\
+        "\txorq    %%rcx, %%rcx\n"\
+        ".balign 16\n"\
         "2:\n"\
         "\tcmpq    %%r9, %[lA]\n"\
         "\tjle     3f\n"\
@@ -1604,9 +1608,10 @@ bool mpUSquare(bnum& bnA, bnum& bnR)
         "\taddq    %%rdx,(%%r14,%%r12,8)\n"\
         "\tadcq    $0, %%r11\n"\
         "\tmovq    %%r11,%%rcx\n"\
-        "\tmovq    $0, %%r11\n"\
+        "\txorq    %%r11, %%r11\n"\
         "\taddq    $1, %%r9\n"\
         "\tjmp     2b\n"\
+        ".balign 16\n"\
         "3:\n"\
         "\taddq    $1,%%r12\n"\
         "\tcmpq    %%r12, %[lR]\n"\
@@ -1615,11 +1620,14 @@ bool mpUSquare(bnum& bnA, bnum& bnR)
         "\tjnc     5f\n"\
         "\tmovq    $1, %%rcx\n"\
         "\tjmp     3b\n"\
+        ".balign 16\n"\
         "5:\n"
         "\taddq    $1, %%r8\n"\
-        "\tjmp     1b\n"\
+        "\tjmp     7b\n"\
+        ".balign 16\n"\
         "4:\n"
         :: [lA] "m" (lA), [rgA] "m" (rgA), [rgR] "m" (rgR), 
+
            [lAM1] "m" (lAM1), [lR] "m" (lR)
         : "%rax", "%rbx", "%rcx", "%rdx", "%r8", "%r9", "%r12", "%r14");
 #endif

@@ -39,9 +39,9 @@ using keyczar::base::ScopedSafeString;
 using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
 
-using tao::Quote;
+using tao::Attestation;
 using tao::Tao;
-using tao::SignedQuote;
+using tao::SignedAttestation;
 using tao::WhitelistAuthorizationManager;
 
 namespace cloudproxy {
@@ -227,9 +227,9 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
 
-  if (!cstd.GetCertValidated() && !message.has_quote()) {
+  if (!cstd.GetCertValidated() && !message.has_attestation()) {
     LOG(ERROR)
-        << "Client did not provide a SignedQuote before sending other messages";
+        << "Client did not provide a SignedAttestation before sending other messages";
     return false;
   }
 
@@ -294,10 +294,10 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
     *close = true;
     *reply = false;
     return rv;
-  } else if (message.has_quote()) {
-    rv = HandleQuote(message.quote(), bio, reason, reply, cstd, t);
+  } else if (message.has_attestation()) {
+    rv = HandleAttestation(message.attestation(), bio, reason, reply, cstd, t);
     if (!rv) {
-      LOG(ERROR) << "Quote verification failed. Closing connection";
+      LOG(ERROR) << "Attestation verification failed. Closing connection";
       *close = true;
     }
     return rv;
@@ -405,8 +405,6 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
 
   CHECK(cstd.RemoveChallenge(c.subject())) << "Could not delete the challenge";
 
-  // get or add the public key for this user
-  scoped_ptr<keyczar::Keyczar> user_key;
   {
     lock_guard<mutex> l(key_m_);
     if (!users_->HasKey(c.subject())) {
@@ -423,24 +421,16 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
       }
     }
 
-    shared_ptr<keyczar::Keyczar> temp_key;
-    CHECK(users_->GetKey(c.subject(), &temp_key)) << "Could not get a key";
+    keyczar::Keyczar *user_key = nullptr;
+    CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
 
-    // TODO(tmroeder): Generalize to other types of keys
-    scoped_ptr<keyczar::Keyset> user_keyset(new keyczar::Keyset());
-    CHECK(CopyRSAPublicKeyset(temp_key.get(), user_keyset.get()))
-        << "Could not copy the key";
-
-    user_key.reset(new keyczar::Verifier(user_keyset.release()));
-    user_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
-  }
-
-  // check the signature on the serialized_challenge
-  if (!VerifySignature(response.serialized_chall(), response.signature(),
-                       user_key.get())) {
-    LOG(ERROR) << "Challenge signature failed";
-    reason->assign("Invalid response signature");
-    return false;
+    // check the signature on the serialized_challenge
+    if (!VerifySignature(response.serialized_chall(), response.signature(),
+			 user_key)) {
+      LOG(ERROR) << "Challenge signature failed";
+      reason->assign("Invalid response signature");
+      return false;
+    }
   }
 
   LOG(INFO) << "Challenge passed. Adding user " << c.subject()
@@ -518,36 +508,21 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio,
-                              string *reason, bool *reply,
-                              CloudServerThreadData &cstd, const Tao &t) {
-  string serialized_quote;
-  if (!quote.SerializeToString(&serialized_quote)) {
-    LOG(ERROR) << "Could not serialize the quote to pass it to the Tao";
+bool CloudServer::HandleAttestation(const SignedAttestation &attestation, BIO *bio,
+				    string *reason, bool *reply,
+				    CloudServerThreadData &cstd, const Tao &t) {
+  string serialized_attestation;
+  if (!attestation.SerializeToString(&serialized_attestation)) {
+    LOG(ERROR) << "Could not serialize the attestation to pass it to the Tao";
     return false;
   }
 
-  // check that this is a valid quote
+  // check that this is a valid attestation, including checking that
+  // the client hash is authorized.
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.VerifyQuote(cstd.GetPeerCert(), serialized_quote)) {
-      LOG(ERROR) << "The SignedQuote did not pass Tao verification";
-      return false;
-    }
-  }
-
-  Quote client_quote;
-  if (!client_quote.ParseFromString(quote.serialized_quote())) {
-    LOG(ERROR) << "Could not parse the client Quote";
-    return false;
-  }
-
-  // check that this hash is authorized
-  {
-    lock_guard<mutex> l(auth_m_);
-    if (!auth_manager_->IsAuthorized(client_quote.hash())) {
-      LOG(ERROR) << "The client with hash " << client_quote.hash()
-		 << " is not authorized";
+    if (!t.VerifyAttestation(cstd.GetPeerCert(), serialized_attestation)) {
+      LOG(ERROR) << "The SignedAttestation did not pass Tao verification";
       return false;
     }
   }
@@ -558,16 +533,16 @@ bool CloudServer::HandleQuote(const SignedQuote &quote, BIO *bio,
   string signature;
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.Quote(cstd.GetSelfCert(), &signature)) {
-      LOG(ERROR) << "Could not get a signed quote for our own X.509 certificate";
+    if (!t.Attest(cstd.GetSelfCert(), &signature)) {
+      LOG(ERROR) << "Could not get a signed attestation for our own X.509 certificate";
       return false;
     }
   }
 
   ServerMessage sm;
-  SignedQuote *sq = sm.mutable_quote();
-  if (!sq->ParseFromString(signature)) {
-    LOG(ERROR) << "Could not parse the SignedQuote provided by the Tao";
+  SignedAttestation *sa = sm.mutable_attestation();
+  if (!sa->ParseFromString(signature)) {
+    LOG(ERROR) << "Could not parse the SignedAttestation provided by the Tao";
     return false;
   }
 

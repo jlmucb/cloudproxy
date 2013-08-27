@@ -75,7 +75,7 @@ class CloudServer {
   // Start listening to the port and handle connections as they arrive.
   // The Tao implementation allows the server to check that programs
   // that connect to it are allowed by the Tao and to get a
-  // SignedQuote for its key
+  // SignedAttestation for its key
   bool Listen(const tao::Tao &t);
 
  protected:
@@ -121,8 +121,8 @@ class CloudServer {
                   CloudServerThreadData &cstd);
   bool HandleResponse(const Response &response, BIO *bio, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
-  bool HandleQuote(const tao::SignedQuote &quote, BIO *bio, string *reason,
-                   bool *reply, CloudServerThreadData &cstd, const tao::Tao &t);
+  bool HandleAttestation(const tao::SignedAttestation &attest, BIO *bio, string *reason,
+			 bool *reply, CloudServerThreadData &cstd, const tao::Tao &t);
 
   // the public policy key, used to check signatures
   scoped_ptr<keyczar::Keyczar> public_policy_key_;

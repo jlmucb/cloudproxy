@@ -47,10 +47,8 @@ class TaoChannel : public Tao {
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
-  virtual bool Quote(const string &data, string *signature) const;
-  virtual bool VerifyQuote(const string &data, const string &signature) const;
-  virtual bool Attest(string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation) const;
+  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool VerifyAttestation(const string &data, const string &attestation) const;
 
  protected:
   // subclasses implement these methods for the underlying transport.

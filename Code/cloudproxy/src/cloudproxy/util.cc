@@ -24,9 +24,12 @@
 #include <fstream>
 #include <sstream>
 
+// for mkdtemp
+#include <stdlib.h>
 #include <arpa/inet.h>
 
 #include <keyczar/base/json_reader.h>
+#include <keyczar/base/json_writer.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyset_metadata.h>
 #include <keyczar/keyset.h>
@@ -34,15 +37,30 @@
 #include <keyczar/rsa_impl.h>
 #include <keyczar/rsa_public_key.h>
 #include <keyczar/base/file_util.h>
+#include <keyczar/base/values.h>
+#include <keyczar/rw/keyset_writer.h>
+#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/rw/keyset_file_reader.h>
 
 #include <glog/logging.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/keyczar_public_key.pb.h"
 
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
+using keyczar::Key;
+using keyczar::Keyset;
+using keyczar::KeysetMetadata;
+using keyczar::rw::KeysetReader;
+using keyczar::base::JSONReader;
+using keyczar::base::JSONWriter;
+using keyczar::rw::KeysetWriter;
+using keyczar::rw::KeysetJSONFileWriter;
+using keyczar::rw::KeysetJSONFileReader;
 
 using tao::Tao;
+using tao::KeyczarPublicKey;
 
 using std::ifstream;
 using std::ios;
@@ -144,49 +162,114 @@ bool VerifySignature(const string &data, const string &signature,
   return true;
 }
 
-bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key,
-                         keyczar::Keyset *keyset) {
-  CHECK(public_key) << "null public_key";
+bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
+                         keyczar::Keyset **keyset) {
   CHECK(keyset) << "null keyset";
-  const keyczar::Keyset *public_keyset = public_key->keyset();
-  CHECK(public_keyset) << "null public keyset";
-  const keyczar::Key *k1 = public_keyset->GetKey(1);
-  CHECK(k1) << "Null key 1";
-  scoped_ptr<Value> key_value(k1->GetValue());
-  scoped_ptr<Value> meta_value(public_keyset->metadata()->GetValue(true));
 
-  keyset->set_metadata(
-      keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
+  KeyczarPublicKey kpk;
+  if (!SerializePublicKey(public_key, &kpk)) {
+    LOG(ERROR) << "Could not serialize the public key";
+    return false;
+  }
 
-  // TODO(tmroeder): read the number of the primary key from the public_key
-  // metadata
-  if (!keyset->AddKey(keyczar::RSAPublicKey::CreateFromValue(*key_value), 1)) {
-    LOG(ERROR) << "Could not add an RSA Public Key";
+  if (!DeserializePublicKey(kpk, keyset)) {
+    LOG(ERROR) << "Could not deserialize the public key";
     return false;
   }
 
   return true;
 }
 
-bool CreateRSAPublicKeyset(const string &key, const string &metadata,
-                           keyczar::Keyset *keyset) {
-  CHECK(keyset) << "null keyset";
-
-  // create KeyMetadata from the metadata string
-  scoped_ptr<Value> meta_value(
-      keyczar::base::JSONReader::Read(metadata, false));
-  keyset->set_metadata(
-      keyczar::KeysetMetadata::CreateFromValue(meta_value.get()));
-
-  // create an RSA public Key from the key JSON string
-  scoped_ptr<Value> key_value(keyczar::base::JSONReader::Read(key, false));
-  // Note: it is always key version 1, since this is the first key we are
-  // adding.
-  // TODO(tmroeder): Or do I need to read this information from the metadata?
-  // Look in the file.
-  if (!keyset->AddKey(keyczar::RSAPublicKey::CreateFromValue(*key_value), 1)) {
-    LOG(ERROR) << "Could not add an RSA Public Key";
+bool DeserializePublicKey(const KeyczarPublicKey &kpk,
+			  keyczar::Keyset **keyset) {
+  if (keyset == nullptr) {
+    LOG(ERROR) << "null keyset";
     return false;
+  }
+
+  char tempdir[] = "/tmp/public_key_XXXXXX";
+  if (mkdtemp(tempdir) == nullptr) {
+    LOG(ERROR) << "Could not create a temp directory for public key export";
+    return false;
+  }
+
+  string destination(tempdir);
+
+  // write the files to the temp directory and make sure they close
+  {
+    // write the metadata
+    string metadata_file_name = destination + string("/meta");
+    ofstream meta_file(metadata_file_name.c_str(), ofstream::out | ios::binary);
+    meta_file.write(kpk.metadata().data(), kpk.metadata().size());
+
+    // iterate over the public keys and write each one to disk
+    int key_count = kpk.files_size();
+    for(int i = 0; i < key_count; i++) {
+      const KeyczarPublicKey::KeyFile &kf = kpk.files(i);
+      stringstream ss;
+      ss << destination << "/" << kf.name();
+      ofstream file(ss.str().c_str(), ofstream::out | ios::binary);
+      file.write(kf.data().data(), kf.data().size());
+    }
+  }
+
+  // read the data from the directory
+  scoped_ptr<KeysetReader> reader(new KeysetJSONFileReader(destination));
+  if (reader.get() == NULL) {
+    return false;
+  }
+
+  *keyset = Keyset::Read(*reader, true);
+
+  return true;
+}
+
+bool SerializePublicKey(const keyczar::Keyczar &key, KeyczarPublicKey *kpk) {
+  char tempdir[] = "/tmp/public_key_XXXXXX";
+  if (kpk == nullptr) {
+    LOG(ERROR) << "Could not serialize to a null public key structure";
+    return false;
+  }
+
+  if (mkdtemp(tempdir) == nullptr) {
+    LOG(ERROR) << "Could not create a temp directory for public key export";
+    return false;
+  }
+
+  string destination(tempdir);
+
+  scoped_ptr<KeysetWriter> writer(new KeysetJSONFileWriter(destination));
+  if (writer.get() == NULL) {
+    return false;
+  }
+
+  const Keyset *keyset = key.keyset();
+  if (!keyset->PublicKeyExport(*writer)) {
+    LOG(ERROR) << "Could not export the public key";
+    return false;
+  }
+
+  LOG(INFO) << "Exported the public key to " << destination;
+
+  // now iterate over the files in the directory and add them to the public key
+  string meta_file_name = destination + string("/meta");
+  ifstream meta_file(meta_file_name.c_str(), ifstream::in | ios::binary);
+  stringstream meta_stream;
+  meta_stream << meta_file.rdbuf();
+  kpk->set_metadata(meta_stream.str());
+  
+  KeysetMetadata::const_iterator version_iterator = keyset->metadata()->Begin();
+  for (; version_iterator != keyset->metadata()->End(); ++version_iterator) {
+    int v = version_iterator->first;
+    stringstream file_name_stream;
+    file_name_stream << destination << "/" << v;
+    ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
+    stringstream file_buf;
+    file_buf << file.rdbuf();
+    
+    KeyczarPublicKey::KeyFile *kf = kpk->add_files();
+    kf->set_name(v);
+    kf->set_data(file_buf.str());
   }
 
   return true;

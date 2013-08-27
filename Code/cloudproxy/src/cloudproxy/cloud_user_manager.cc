@@ -27,6 +27,10 @@
 
 #include <keyczar/rw/keyset_file_reader.h>
 
+#include <glog/logging.h>
+
+using tao::KeyczarPublicKey;
+
 namespace cloudproxy {
 
 bool CloudUserManager::HasKey(const string &user) const {
@@ -34,14 +38,14 @@ bool CloudUserManager::HasKey(const string &user) const {
 }
 
 bool CloudUserManager::GetKey(const string &user,
-                              shared_ptr<keyczar::Keyczar> *key) {
-  CHECK(key) << "null key";
+                              keyczar::Keyczar **key) {
+  CHECK_NOTNULL(key);
   auto user_it = users_.find(user);
   if (users_.end() == user_it) {
     return false;
   }
 
-  *key = user_it->second;
+  *key = user_it->second.get();
   return true;
 }
 
@@ -64,16 +68,15 @@ bool CloudUserManager::AddSigningKey(const string &user, const string &path,
   return true;
 }
 
-bool CloudUserManager::AddKey(const string &user, const string &key,
-                              const string &meta) {
-  scoped_ptr<keyczar::Keyset> keyset(new keyczar::Keyset());
-  if (!CreateRSAPublicKeyset(key, meta, keyset.get())) {
+bool CloudUserManager::AddKey(const string &user, const KeyczarPublicKey &kpk) {
+  keyczar::Keyset *keyset = nullptr;
+  if (!DeserializePublicKey(kpk, &keyset)) {
     LOG(ERROR) << "Could not deserialize the keyset";
     return false;
   }
 
   shared_ptr<keyczar::Keyczar> verifier(
-      new keyczar::Verifier(keyset.release()));
+      new keyczar::Verifier(keyset));
 
   // handle bytes instead of Base64w-encoded strings
   verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
@@ -96,7 +99,7 @@ bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
     return false;
   }
 
-  return AddKey(sf.subject(), sf.pub_key(), sf.meta());
+  return AddKey(sf.subject(), sf.pub_key());
 }
 
 void CloudUserManager::SetAuthenticated(const string &user) {

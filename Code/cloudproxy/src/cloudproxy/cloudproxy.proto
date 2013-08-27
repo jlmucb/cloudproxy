@@ -20,7 +20,8 @@
 
 
 
-import "tao/quote.proto";
+import "tao/attestation.proto";
+import "tao/keyczar_public_key.proto";
 
 package cloudproxy;
 
@@ -135,8 +136,8 @@ message ClientMessage {
     // authentication
     optional Response response = 3;
 
-    // a SignedQuote of the X.509 certificate used to establish this connection
-    optional tao.SignedQuote quote = 4;
+    // a SignedAttestation of the X.509 certificate used to establish this connection
+    optional tao.SignedAttestation attestation = 4;
     
     // Close the connection, potentially with an error
     optional CloseConnection close = 5;
@@ -160,8 +161,8 @@ message ServerMessage {
     // The result of a CloudClient-requested Action
     optional Result result = 2;
 
-    // a SignedQuote of the X.509 certificate used to establish this connection
-    optional tao.SignedQuote quote = 3;
+    // a SignedAttestation of the X.509 certificate used to establish this connection
+    optional tao.SignedAttestation attestation = 3;
 }
 
 // A message that gives a name to a given keyczar public key structure
@@ -169,11 +170,7 @@ message SpeaksFor {
     // The name to bind to this key
     required string subject = 1;
 
-    // The public-key file, taken directly from disk
-    required string pub_key = 2;
-
-    // The metadata file, taken directly from disk
-    required string meta = 3;
+    required tao.KeyczarPublicKey pub_key = 2;
 }
 
 // A signed SpeaksFor message

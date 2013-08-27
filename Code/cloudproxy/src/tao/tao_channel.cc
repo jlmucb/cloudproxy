@@ -74,26 +74,8 @@ bool TaoChannel::Listen(Tao *t) const {
         result = t->Unseal(rpc.data(), &result_data);
         resp.set_data(result_data);
         break;
-      case QUOTE:
-        if (!rpc.has_data()) {
-          LOG(ERROR) << "Invalid RPC: must supply data for Quote";
-          break;
-        }
-
-        result = t->Quote(rpc.data(), &result_data);
-        resp.set_data(result_data);
-        break;
-      case VERIFY_QUOTE:
-        if (!rpc.has_data() || !rpc.has_signature()) {
-          LOG(ERROR)
-              << "Invalid RPC: must supply data and signature for VerifyQuote";
-          break;
-        }
-
-        result = t->VerifyQuote(rpc.data(), rpc.signature());
-        break;
       case ATTEST:
-        result = t->Attest(&result_data);
+        result = t->Attest(rpc.data(), &result_data);
         resp.set_data(result_data);
         break;
       case VERIFY_ATTESTATION:
@@ -102,7 +84,7 @@ bool TaoChannel::Listen(Tao *t) const {
           break;
         }
 
-        result = t->VerifyAttestation(rpc.data());
+        result = t->VerifyAttestation(rpc.data(), rpc.signature());
         break;
       default:
         LOG(ERROR) << "Unknown RPC " << rpc.rpc();
@@ -195,28 +177,10 @@ bool TaoChannel::Unseal(const string &sealed, string *data) const {
   return SendAndReceiveData(sealed, data, UNSEAL);
 }
 
-bool TaoChannel::Quote(const string &data, string *signature) const {
-  return SendAndReceiveData(data, signature, QUOTE);
-}
-
-bool TaoChannel::VerifyQuote(const string &data,
-                             const string &signature) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(VERIFY_QUOTE);
-  rpc.set_data(data);
-  rpc.set_signature(signature);
-
-  SendRPC(rpc);
-
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-
-  return resp.success();
-}
-
-bool TaoChannel::Attest(string *attestation) const {
+bool TaoChannel::Attest(const string &data, string *attestation) const {
   TaoChannelRPC rpc;
   rpc.set_rpc(ATTEST);
+  rpc.set_data(data);
   SendRPC(rpc);
 
   TaoChannelResponse resp;
@@ -234,10 +198,11 @@ bool TaoChannel::Attest(string *attestation) const {
   return resp.success();
 }
 
-bool TaoChannel::VerifyAttestation(const string &attestation) const {
+bool TaoChannel::VerifyAttestation(const string &data, const string &attestation) const {
   TaoChannelRPC rpc;
   rpc.set_rpc(VERIFY_ATTESTATION);
-  rpc.set_data(attestation);
+  rpc.set_data(data);
+  rpc.set_signature(attestation);
   SendRPC(rpc);
 
   TaoChannelResponse resp;

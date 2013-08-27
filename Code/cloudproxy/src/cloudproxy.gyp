@@ -91,9 +91,9 @@
       'sources': [
         '<(src)/attestation.proto',
         '<(src)/hosted_programs.proto',
+	'<(src)/keyczar_public_key.proto',
         '<(src)/pipe_tao_channel.h',
         '<(src)/pipe_tao_channel.cc',
-        '<(src)/quote.proto',
 	'<(src)/sealed_data.proto',
         '<(src)/tao.h',
 	'<(src)/tao_authorization_manager.h',
@@ -342,6 +342,7 @@
         'dependencies': [
             '../../jlmtao.gyp:bignum_O1',
             'tao',
+	    'cloudproxy',
         ],
         'direct_dependent_settings': {
           'include_dirs': [

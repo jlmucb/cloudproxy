@@ -1,7 +1,7 @@
-//  File: quote.proto
+//  File: attestation.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Protocol buffers for Tao Quote operations
+//  Description: Protocol buffers for Tao Attestation
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,24 +17,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 package tao;
 
-message Quote {
-  // the data to quote
-  required bytes data = 1;
+message KeyczarPublicKey {
+  message KeyFile {
+    required int32 name = 1;
+    required string data = 2;
+  }
 
-  required string hash_alg = 2;
-
-  // the hash of the program making the statement
-  required string hash = 3;
-
-  // a sequence of quotes or other evidence showing that the signing key is correct
-  repeated bytes evidence = 4;
-}
-
-message SignedQuote {
-  required bytes serialized_quote = 1;
-  required bytes signature = 2;
+  required string metadata = 1;
+  repeated KeyFile files = 2;
 }

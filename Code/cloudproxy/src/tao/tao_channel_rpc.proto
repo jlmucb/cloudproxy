@@ -29,10 +29,8 @@ enum RPC {
   GET_RANDOM_BYTES = 3;
   SEAL = 4;
   UNSEAL = 5;
-  QUOTE = 6;
-  VERIFY_QUOTE = 7;
-  ATTEST = 8;
-  VERIFY_ATTESTATION = 9;
+  ATTEST = 6;
+  VERIFY_ATTESTATION = 7;
 }
 
 message TaoChannelRPC {

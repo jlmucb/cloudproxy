@@ -17,23 +17,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 package tao;
 
 message Attestation {
   // the time at which the attestation was made, in 64-bit POSIX time
   required int64 time = 1;
+
+  // the data to attest to
+  required bytes data = 2;
   
   // the algorithm used to hash the program
-  required string hash_alg = 2;
+  required string hash_alg = 3;
 
   // the hash of the program
-  required string hash = 3;
-
-  // a sequence of other attestations or certificates, as needed, to show the
-  // correctness of the signer
-  repeated bytes evidence = 4;
+  required string hash = 4;
 }
 
 message SignedAttestation {
@@ -41,4 +38,8 @@ message SignedAttestation {
   required bytes serialized_attestation = 1;
 
   required bytes signature = 2;
+
+  // a sequence of other attestations or certificates, as needed, to show the
+  // correctness of the signer
+  repeated bytes evidence = 3;
 }

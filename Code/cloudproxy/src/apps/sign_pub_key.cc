@@ -18,7 +18,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
+#include <dirent.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #include <string>
 #include <fstream>
@@ -38,11 +40,14 @@ using std::string;
 using std::stringstream;
 using std::ifstream;
 using std::ofstream;
+using std::ios;
+
+using cloudproxy::SpeaksFor;
+using cloudproxy::SignedSpeaksFor;
+using tao::KeyczarPublicKey;
 
 DEFINE_string(subject, "tmroeder", "The subject to bind to this key");
-DEFINE_string(pub_key_file, "keys/tmroeder_pub/1",
-              "The name of the pub key file");
-DEFINE_string(meta_file, "keys/tmroeder_pub/meta", "The name of the meta file");
+DEFINE_string(pub_key_loc, "keys/tmroeder_pub", "The directory containing this public key");
 DEFINE_string(key_loc, "./policy_key", "The location of the private key");
 DEFINE_string(pass, "cppolicy", "The password to use for this private key");
 DEFINE_string(signed_speaks_for, "keys/tmroeder_pub_signed",
@@ -53,15 +58,47 @@ int main(int argc, char** argv) {
 
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  // load the pub key file
-  ifstream pk(FLAGS_pub_key_file.c_str());
-  stringstream pk_buf;
-  pk_buf << pk.rdbuf();
+  SpeaksFor sf;
+  sf.set_subject(FLAGS_subject);
+  KeyczarPublicKey *kpk = sf.mutable_pub_key();
 
   // load the meta file
-  ifstream meta(FLAGS_meta_file.c_str());
+  string dir_name(FLAGS_pub_key_loc);
+  string meta_file_name = dir_name + string("/meta");
+  ifstream meta(meta_file_name.c_str());
   stringstream meta_buf;
   meta_buf << meta.rdbuf();
+
+  kpk->set_metadata(meta_buf.str());
+
+  DIR *dir = opendir(FLAGS_pub_key_loc.c_str());
+  CHECK_NOTNULL(dir);
+
+  struct dirent *d = readdir(dir);
+  while (d != nullptr) {
+    if (d->d_type == DT_REG) {
+      string name(d->d_name);
+      if (name.compare("meta") != 0) {
+	// try to interpret this name as an integer
+	errno = 0;
+	long n = strtol(d->d_name, nullptr, 0);
+	if (errno == 0) {
+	  // parse this data and add to the KeyczarPublicKey
+	  KeyczarPublicKey::KeyFile *kf = kpk->add_files();
+	  kf->set_name(n);
+	  stringstream file_name_stream;
+	  file_name_stream << dir_name << "/" << n;
+	  ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
+	  stringstream file_stream;
+	  file_stream << file.rdbuf();
+	  kf->set_data(file_stream.str());
+	}
+      }
+    }
+    
+    d = readdir(dir);
+  }
+  
 
   // decrypt the private policy key so we can construct a signer
   keyczar::base::ScopedSafeString password(new string(FLAGS_pass));
@@ -75,10 +112,6 @@ int main(int argc, char** argv) {
                       << FLAGS_key_loc;
   signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  cloudproxy::SpeaksFor sf;
-  sf.set_subject(FLAGS_subject);
-  sf.set_pub_key(pk_buf.str());
-  sf.set_meta(meta_buf.str());
 
   string sf_serialized;
   CHECK(sf.SerializeToString(&sf_serialized)) << "Could not serialize"

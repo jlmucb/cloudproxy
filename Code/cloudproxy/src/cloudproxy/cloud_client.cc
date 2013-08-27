@@ -29,7 +29,7 @@
 #include <keyczar/base/base64w.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
-#include "tao/quote.pb.h"
+#include "tao/attestation.pb.h"
 
 #include <sstream>
 #include <fstream>
@@ -41,8 +41,8 @@ using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
-using tao::Quote;
-using tao::SignedQuote;
+using tao::Attestation;
+using tao::SignedAttestation;
 using tao::Tao;
 using tao::WhitelistAuthorizationManager;
 
@@ -105,8 +105,8 @@ bool CloudClient::Connect(const Tao &t) {
     return false;
   }
 
-  // get a quote for our X.509 cert and send it to the server, then
-  // check the server's reply
+  // get an attestation for our X.509 cert and send it to the server,
+  // then check the server's reply
   SSL *cur_ssl = nullptr;
   BIO_get_ssl(bio_.get(), &cur_ssl);
   ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
@@ -119,13 +119,13 @@ bool CloudClient::Connect(const Tao &t) {
   CHECK(SerializeX509(self_cert.get(), &serialized_client_cert))
       << "Could not serialize the client certificate";
   string signature;
-  CHECK(t.Quote(serialized_client_cert, &signature))
-      << "Could not get a SignedQuote for our client certificate";
+  CHECK(t.Attest(serialized_client_cert, &signature))
+      << "Could not get a SignedAttestation for our client certificate";
 
   ClientMessage cm;
-  SignedQuote *sq = cm.mutable_quote();
-  CHECK(sq->ParseFromString(signature))
-      << "Could not parse a SignedQuote from the Tao quote";
+  SignedAttestation *sa = cm.mutable_attestation();
+  CHECK(sa->ParseFromString(signature))
+      << "Could not parse a SignedAttestation from the Tao attestation";
 
   string serialized_cm;
   CHECK(cm.SerializeToString(&serialized_cm))
@@ -142,27 +142,20 @@ bool CloudClient::Connect(const Tao &t) {
   CHECK(sm.ParseFromString(serialized_sm))
       << "Could not deserialize the message from the server";
 
-  CHECK(sm.has_quote()) << "The server did not reply with a quote";
+  CHECK(sm.has_attestation()) << "The server did not reply with an attestation";
 
-  // check the quote from the server
-  string serialized_server_quote;
-  CHECK(sm.quote().SerializeToString(&serialized_server_quote))
-      << "Could not serialize the server's SignedQuote";
+  // check the attestation from the server
+  string serialized_server_attestation;
+  CHECK(sm.attestation().SerializeToString(&serialized_server_attestation))
+      << "Could not serialize the server's SignedAttestation";
 
   string serialized_peer_cert;
   CHECK(SerializeX509(peer_cert.get(), &serialized_peer_cert))
       << "Could not serialize the server's X.509 certificate";
 
-  CHECK(t.VerifyQuote(serialized_peer_cert, serialized_server_quote))
-      << "The SignedQuote from the server did not pass verification";
-
-  // check that this is an authorized hash
-  Quote server_quote;
-  CHECK(server_quote.ParseFromString(sm.quote().serialized_quote()))
-      << "Could not deserialize the Quote from the server";
-  CHECK(auth_manager_->IsAuthorized(server_quote.hash()))
-      << "The server hash " << server_quote.hash()
-      << " in the SignedQuote was not authorized";
+  // this step also checks to see if the program hash is authorized
+  CHECK(t.VerifyAttestation(serialized_peer_cert, serialized_server_attestation))
+      << "The SignedAttestation from the server did not pass verification";
 
   // once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.
@@ -191,7 +184,7 @@ bool CloudClient::Authenticate(const string &subject,
   // authenticate
   CHECK(users_->HasKey(subject)) << "No key loaded for user " << subject;
 
-  shared_ptr<keyczar::Keyczar> signer;
+  keyczar::Keyczar *signer = nullptr;
   CHECK(users_->GetKey(subject, &signer)) << "Could not get the key for user "
                                           << subject;
 
@@ -236,7 +229,7 @@ bool CloudClient::Authenticate(const string &subject,
       << "Challenge for the wrong subject";
 
   string sig;
-  CHECK(SignData(serialized_chall, &sig, signer.get())) << "Could not sign the"
+  CHECK(SignData(serialized_chall, &sig, signer)) << "Could not sign the"
                                                            " challenge";
 
   ClientMessage cm2;

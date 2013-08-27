@@ -32,6 +32,7 @@
 #include <keyczar/openssl/util.h>
 
 #include "tao/tao.h"
+#include "tao/keyczar_public_key.pb.h"
 
 #include <stdio.h>
 #include <string>
@@ -88,10 +89,10 @@ bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
 bool VerifySignature(const string &data, const string &signature,
                      keyczar::Keyczar *key);
 
-bool CopyRSAPublicKeyset(keyczar::Keyczar *public_key, keyczar::Keyset *keyset);
-
-bool CreateRSAPublicKeyset(const string &key, const string &metadata,
-                           keyczar::Keyset *keyset);
+bool CopyPublicKeyset(const keyczar::Keyczar &public_key, keyczar::Keyset **keyset);
+bool DeserializePublicKey(const tao::KeyczarPublicKey &kpk,
+			  keyczar::Keyset **keyset);
+bool SerializePublicKey(const keyczar::Keyczar &key, tao::KeyczarPublicKey *kpk);
 
 // methods to send a receive data on a TLS BIO
 bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);

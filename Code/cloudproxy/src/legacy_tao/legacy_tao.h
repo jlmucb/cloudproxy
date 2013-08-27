@@ -30,6 +30,9 @@
 // along with startMeAsMeasuredProgram for clients of LegacyTao
 #include <tao.h>
 
+// for PrincipalCert
+#include <cert.h>
+
 #include <tao/tao.h>
 #include <tao/whitelist_authorization_manager.h>
 
@@ -55,10 +58,8 @@ class LegacyTao : public tao::Tao {
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
-  virtual bool Quote(const string &data, string *signature) const;
-  virtual bool VerifyQuote(const string &data, const string &signature) const;
-  virtual bool Attest(string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation) const;
+  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool VerifyAttestation(const string &data, const string &attestation) const;
 
  private:
   // 5 minute attestation timeout
@@ -103,6 +104,8 @@ class LegacyTao : public tao::Tao {
 
   scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
 
+  scoped_ptr<PrincipalCert> legacy_policy_cert_;
+
   static const int AesBlockSize = 16;
   static const int Sha256Size = 32;
   static const int SecretSize = 64;
@@ -122,6 +125,10 @@ class LegacyTao : public tao::Tao {
   // create a new keyset with an ECDSA public/private key pair to use for
   // signing
   bool createPublicKey(keyczar::Encrypter *crypter);
+
+  bool SignWithLegacyKey(RSAKey &key, const string &data, string *signature) const;
+  bool VerifyWithLegacyKey(RSAKey &key, const string &data, const string &signature) const;
+
 
   DISALLOW_COPY_AND_ASSIGN(LegacyTao);
 };

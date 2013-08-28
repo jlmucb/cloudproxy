@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 33
+/svn/!svn/ver/82/trunk/src/gflags
+END
+gflags_completions.h.in
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/78/trunk/src/gflags/gflags_completions.h.in
+END
+gflags_declare.h.in
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/78/trunk/src/gflags/gflags_declare.h.in
+END
+gflags.h.in
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/82/trunk/src/gflags/gflags.h.in
+END

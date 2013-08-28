@@ -1,0 +1,18 @@
+K 10
+svn:ignore
+V 281
+protobuf.Makefile
+protobuf.sln
+protobuf.xcodeproj
+protobuf_full_do_not_use.host.mk
+protobuf_full_do_not_use.target.mk
+protobuf_full_do_not_use.vcproj
+protobuf_lite.host.mk
+protobuf_lite.target.mk
+protobuf_lite.vcproj
+protoc.host.mk
+protoc.vcproj
+py_proto.target.mk
+py_proto.vcproj
+
+END

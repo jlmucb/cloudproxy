@@ -1,0 +1,131 @@
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/google/protobuf/io
+END
+zero_copy_stream_impl_lite.cc
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream_impl_lite.cc
+END
+printer_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/google/protobuf/io/printer_unittest.cc
+END
+zero_copy_stream_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream_unittest.cc
+END
+printer.cc
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/printer.cc
+END
+zero_copy_stream.cc
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream.cc
+END
+gzip_stream.cc
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/gzip_stream.cc
+END
+zero_copy_stream_impl_lite.h
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream_impl_lite.h
+END
+printer.h
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/io/printer.h
+END
+gzip_stream.h
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/google/protobuf/io/gzip_stream.h
+END
+zero_copy_stream.h
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream.h
+END
+coded_stream_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/coded_stream_unittest.cc
+END
+coded_stream.cc
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/coded_stream.cc
+END
+coded_stream.h
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/coded_stream.h
+END
+coded_stream_inl.h
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/coded_stream_inl.h
+END
+zero_copy_stream_impl.cc
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream_impl.cc
+END
+zero_copy_stream_impl.h
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/io/zero_copy_stream_impl.h
+END
+package_info.h
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/io/package_info.h
+END
+gzip_stream_unittest.sh
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/src/google/protobuf/io/gzip_stream_unittest.sh
+END
+tokenizer_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/google/protobuf/io/tokenizer_unittest.cc
+END
+tokenizer.cc
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/tokenizer.cc
+END
+tokenizer.h
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/io/tokenizer.h
+END

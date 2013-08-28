@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/google/protobuf/testing
+END
+file.cc
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/testing/file.cc
+END
+file.h
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/testing/file.h
+END
+zcgzip.cc
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/testing/zcgzip.cc
+END
+zcgunzip.cc
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/!svn/ver/182368/trunk/src/third_party/protobuf/src/google/protobuf/testing/zcgunzip.cc
+END
+googletest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/testing/googletest.cc
+END
+googletest.h
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/google/protobuf/testing/googletest.h
+END

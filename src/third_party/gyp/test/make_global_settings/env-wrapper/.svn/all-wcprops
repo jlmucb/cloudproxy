@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/1665/trunk/test/make_global_settings/env-wrapper
+END
+wrapper.gyp
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/1635/trunk/test/make_global_settings/env-wrapper/wrapper.gyp
+END
+gyptest-wrapper.py
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/!svn/ver/1665/trunk/test/make_global_settings/env-wrapper/gyptest-wrapper.py
+END

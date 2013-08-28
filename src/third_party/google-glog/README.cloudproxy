@@ -1,0 +1,5 @@
+Version r137 from svn repo http://google-glog.googlecode.com/svn/trunk/
+
+License: BSD (see file COPYING)
+
+This is an unmodified copy of r137 after running ./configure on Linux.

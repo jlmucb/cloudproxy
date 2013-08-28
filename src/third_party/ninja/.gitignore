@@ -1,0 +1,22 @@
+*.pyc
+*.exe
+*.pdb
+*.ilk
+TAGS
+/build
+/build.ninja
+/ninja
+/build_log_perftest
+/canon_perftest
+/hash_collision_bench
+/ninja_test
+/parser_perftest
+/graph.png
+/doc/manual.html
+/doc/doxygen
+/gtest-1.6.0
+
+# Eclipse project files
+.project
+.cproject
+

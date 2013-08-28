@@ -46,7 +46,7 @@ bool startMeAsMeasuredProgram(int an, char** av)
 
     if(!initLinuxService(DEFAULTDEVICE))
         return false;
-    if(!startAppfromDeviceDriver(av[0], &n))
+    if(!startAppfromDeviceDriver(av[0], &n, an, av))
         return false;
     return true;
 }

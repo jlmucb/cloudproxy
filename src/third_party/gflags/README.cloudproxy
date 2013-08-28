@@ -1,0 +1,5 @@
+Version r84 from svn repo http://gflags.googlecode.com/svn/
+
+License: BSD (see file COPYING)
+
+This is an unmodified copy of r84 after running ./configure on Linux.

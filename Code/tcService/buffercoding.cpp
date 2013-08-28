@@ -321,11 +321,11 @@ int encodeTCSERVICESTARTAPPFROMAPP(const char* file, int nargs, char** args,
     int i;
     int k= 0;
 
-#ifdef CODINGTEST 
+//#ifdef CODINGTEST 
     fprintf(g_logFile, "encodeTCSERVICESTARTAPPFROMAPP, file %s, nargs: %d\n", file, nargs);
     for(i=0;i<nargs; i++)
         fprintf(g_logFile, "\targ[%d]: %s\n", i, args[i]);
-#endif
+//#endif
     for(i=1;i<nargs;i++)
         k+= sizeof(int)+strlen(args[i])+1;
     if(bufsize<(int)(sizeof(int)+m+k)) {
@@ -367,13 +367,21 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs,
         return false;
     }
     n+= size;
+    fprintf(g_logFile, "Got size %d\n", size);
     memcpy(&m, &buf[n], sizeof(int));
+    fprintf(g_logFile, "Got argc %d\n", m);
     if(m>*pnargs) {
         fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP too few args avail\n");
         return false;
     }
     n+= sizeof(int);
     *pnargs= m;
+
+    // argv[0] must always be the name of the program
+    if (*pnargs < 1) {
+	    *pnargs = 1;
+    }   
+
     for(i=1;i<m;i++) {
         memcpy(&k, &buf[n], sizeof(int));
         n+= sizeof(int);
@@ -381,11 +389,11 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs,
         n+= k;
     }
    
-#ifdef CODINGTEST
+//#ifdef CODINGTEST
     fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP file: %s, %d args\n", *psz, m);
     for(i=1; i<m;i++)
         fprintf(g_logFile, "\targ[%d]: %s\n", i, args[i]);
-#endif 
+//#endif 
     return true;
 }
 

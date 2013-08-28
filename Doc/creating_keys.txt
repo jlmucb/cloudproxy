@@ -1,0 +1,112 @@
+Create a directory structure for the openssl keys:
+
+> mkdir -p openssl_keys/policy openssl_keys/server openssl_keys/client
+> cd openssl_keys/policy
+
+Create an X.509 defaults config file to save typing. It should have contents
+that are something like the following:
+
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]              
+countryName                     = Country Name (2 letter code)
+countryName_default             = US
+countryName_min                 = 2
+countryName_max                 = 2
+
+stateOrProvinceName             = State or Province Name (full name)
+stateOrProvinceName_default     = Washington
+
+localityName                    = Locality Name (eg, city)
+localityName_default            = Kirkland
+
+organizationName              = Organization Name (eg, company)
+organizationName_default      = Google
+
+organizationalUnitName          = Organizational Unit Name (eg, section)
+organizationalUnitName_default  = CloudProxy
+
+commonName                      = Common Name (eg, YOUR name)
+commonName_max                  = 64
+
+emailAddress                    = Email Address
+emailAddress_max                = 40
+
+
+Then, create a policy key:
+
+> openssl genrsa -aes128 -out policy.key 1024
+
+and give it a password when it requests one.
+Then create a self-signed certificate for this key:
+
+> openssl req -new -key policy.key -x509 -days 1095 -out policy.crt \
+    -config ../openssl.cfg
+
+Now create a certificate signing request for the server and get it signed:
+
+> cd ../server
+> openssl genrsa -aes128 -out server.key 1024
+> openssl req -new -key server.key -out server.csr -config ../openssl.cfg
+> openssl x509 -req -days 365 -in server.csr -CA ../policy/policy.crt \
+    -CAkey ../policy/policy.key -CAcreateserial -out server.crt
+
+Now do the same for the client:
+
+> cd ../client
+> openssl genrsa -aes128 -out client.key 1024
+> openssl req -new -key client.key -out client.csr -config ../openssl.cfg
+> openssl x509 -req -days 365 -in client.csr -CA ../policy/policy.crt \
+    -CAkey ../policy/policy.key -CAcreateserial -out client.crt
+
+
+Now set up a keyczar version of the policy key (including the private key), and
+import the current version of the key and extract a public-only version of the
+key that can be used for signature verification:
+
+> cd ../..
+> mkdir policy_key
+> keyczart create --location=policy_key --purpose=sign --asymmetric=rsa
+> keyczart importkey --location=policy_key --status=primary \
+    --key=openssl_keys/policy/policy.key --passphrase=<passphrase for key>
+    --pass=<new passphrase for keyczar key>
+> mkdir policy_public_key
+> keyczart pubkey --location=policy_key --destination=policy_public_key \
+    --pass=<same as --pass in previous command>
+
+
+Create keys for users tmroeder and jlm with simple passwords (will be replaced
+with better passwords when we get this info from the TPM)
+
+> mkdir -p keys/tmroeder keys/jlm
+> keyczart create --location=keys/tmroeder --purpose=sign --asymmetric=rsa
+> keyczart addkey --location=keys/tmroeder --status=primary --pass=tmroeder
+
+> keyczart create --location=keys/jlm --purpose=sign --asymmetric=rsa
+> keyczart addkey --location=keys/jlm --status=primary --pass=jlm
+
+
+Extract and sign the public keys for these files using the policy key
+
+> mkdir -p keys/tmroeder_pub keys/jlm_pub
+> keyczart create --location=keys/tmroeder_pub --purpose=sign --asymmetric=rsa
+> keyczart pubkey --location=keys/tmroeder --destination=keys/tmroeder_pub \
+    --pass=tmroeder
+
+> keyczart create --location=keys/jlm_pub --purpose=sign --asymmetric=rsa
+> keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
+    --pass=jlm
+
+> make sign_pub_key
+> ./sign_pub_key 
+./sign_pub_key --key_loc ./policy_key --meta_file keys/tmroeder_pub/meta \
+    --pass cppolicy --pub_key_file keys/tmroeder_pub/1 \
+    --signed_speaks_for keys/tmroeder_pub_signed --subject tmroeder
+./sign_pub_key --key_loc ./policy_key --meta_file keys/jlm_pub/meta \
+    --pass cppolicy --pub_key_file keys/jlm_pub/1 \
+    --signed_speaks_for keys/jlm_pub_signed --subject jlm
+
+
+Create an HMAC key for the server to use for key derivation
+
+> keyczart create --location=server_key --purpose=sign
+> keyczart addkey --location=server_key --status=primary

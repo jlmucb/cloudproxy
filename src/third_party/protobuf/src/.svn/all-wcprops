@@ -1,0 +1,11 @@
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/217548/trunk/src/third_party/protobuf/src/Makefile.am
+END

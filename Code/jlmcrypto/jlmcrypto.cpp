@@ -387,7 +387,9 @@ bool AES128CBCHMACSHA256SYMPADEncryptBlob(int insize, byte* in, int* poutsize, b
 
     // outputbuffer big enough?
     if(oCBC.m_iNumCipherBytes>*poutsize) {
-        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false return 3\n");
+        fprintf(g_logFile, "AES128CBCHMACSHA256SYMPADEncryptBlob false"
+            " return 3.  bytes required = %d, bytes provided %d\n",
+            oCBC.m_iNumCipherBytes, *poutsize);
         return false;
     }
     *poutsize= oCBC.m_iNumCipherBytes;
@@ -450,10 +452,10 @@ bool AES128CBCHMACSHA256SYMPADDecryptBlob(int insize, byte* in, int* poutsize, b
         return false;
     }
     *poutsize= oCBC.m_iNumPlainBytes;
-#ifdef CRYPTOTEST
+//#ifdef CRYPTOTEST
     fprintf(g_logFile, "Initial computed plaintext size: %d\n", 
             oCBC.m_iNumPlainBytes);
-#endif
+//#endif
 
     // first block
     oCBC.firstCipherBlockIn(curIn);

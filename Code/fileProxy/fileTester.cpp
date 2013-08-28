@@ -23,9 +23,7 @@
 
 #include "logging.h"
 #include "fileTester.h"
-#ifndef FILECLIENT
 #include "fileServer.h"
-#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>

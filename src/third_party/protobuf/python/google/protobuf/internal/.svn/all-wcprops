@@ -1,0 +1,191 @@
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal
+END
+message_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/message_test.py
+END
+unknown_fields_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/unknown_fields_test.py
+END
+message_cpp_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/message_cpp_test.py
+END
+generator_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/generator_test.py
+END
+test_bad_identifiers.proto
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/test_bad_identifiers.proto
+END
+reflection_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/reflection_test.py
+END
+more_extensions.proto
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/more_extensions.proto
+END
+__init__.py
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/__init__.py
+END
+more_extensions_dynamic.proto
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/more_extensions_dynamic.proto
+END
+descriptor_database_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/descriptor_database_test.py
+END
+factory_test1.proto
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/factory_test1.proto
+END
+factory_test2.proto
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/factory_test2.proto
+END
+more_messages.proto
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/more_messages.proto
+END
+enum_type_wrapper.py
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/enum_type_wrapper.py
+END
+containers.py
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/containers.py
+END
+descriptor_pool_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/descriptor_pool_test.py
+END
+message_factory_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/message_factory_test.py
+END
+test_util.py
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/test_util.py
+END
+descriptor_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/descriptor_test.py
+END
+wire_format.py
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/wire_format.py
+END
+encoder.py
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/!svn/ver/80265/trunk/src/third_party/protobuf/python/google/protobuf/internal/encoder.py
+END
+python_message.py
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/python_message.py
+END
+cpp_message.py
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/cpp_message.py
+END
+type_checkers.py
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/type_checkers.py
+END
+message_listener.py
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/message_listener.py
+END
+text_format_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/text_format_test.py
+END
+decoder.py
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/decoder.py
+END
+reflection_cpp_generated_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/reflection_cpp_generated_test.py
+END
+service_reflection_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/service_reflection_test.py
+END
+wire_format_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/python/google/protobuf/internal/wire_format_test.py
+END
+api_implementation.py
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/python/google/protobuf/internal/api_implementation.py
+END

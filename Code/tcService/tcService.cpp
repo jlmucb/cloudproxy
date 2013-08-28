@@ -403,6 +403,11 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     if(an>30) {
         return TCSERVICE_RESULT_FAILED;
     }
+    
+    if (newan<1) {
+	newan = 1;
+    }
+
     newav[0]= strdup(file);
     for(i=1;i<newan;i++)
         newav[i]= strdup(av[i]);

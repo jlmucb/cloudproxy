@@ -22,7 +22,6 @@
 
 #include "tao/pipe_tao_channel.h"
 
-#include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
 
 #include <stdlib.h>
@@ -33,9 +32,9 @@ extern int errno;
 namespace tao {
 
 bool PipeTaoChannel::ExtractPipes(int *argc, char ***argv, int fds[2]) {
-  CHECK_NOTNULL(argc);
-  CHECK_NOTNULL(argv);
-  CHECK_NOTNULL(fds);
+  CHECK(argc) << "argc was null";
+  CHECK(argv) << "argv was null";
+  CHECK(fds) << "fds was null";
 
   if (*argc < 3) {
     LOG(ERROR) << "Not enough arguments to extract the pipes";
@@ -74,7 +73,7 @@ PipeTaoChannel::~PipeTaoChannel() {
 
 bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m) const {
   // try to receive an integer
-  CHECK_NOTNULL(m);
+  CHECK(m) << "m was null";
   size_t len;
   ssize_t bytes_read = read(readfd_, &len, sizeof(size_t));
   if (bytes_read != sizeof(size_t)) {

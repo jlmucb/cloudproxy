@@ -21,6 +21,8 @@
 
 package tao;
 
+option optimize_for = LITE_RUNTIME;
+
 message SealedData {
   // the hash of the program sealing the data
   required string hash = 1;

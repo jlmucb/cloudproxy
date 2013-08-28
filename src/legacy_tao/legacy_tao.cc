@@ -23,7 +23,6 @@
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/keyczar_public_key.pb.h"
-#include "tao/quote.pb.h"
 #include "tao/sealed_data.pb.h"
 #include "tao/pipe_tao_channel.h"
 #include "tao/whitelist_authorization_manager.h"

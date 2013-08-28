@@ -30,7 +30,6 @@
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
 #include "tao/tao.h"
-#include "tao/quote.pb.h"
 #include "tao/whitelist_authorization_manager.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>

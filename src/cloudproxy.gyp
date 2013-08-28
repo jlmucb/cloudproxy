@@ -16,7 +16,7 @@
   'target_defaults': {
     'cflags': [
       '-Wall',
-      '-Werror',
+      #'-Werror',
       '-std=c++0x',
     ],
     'product_dir': 'bin',
@@ -48,11 +48,7 @@
         '<(src)/util.h',
       ],
       'libraries': [
-        '-lgflags',
-        '-lglog',
-        '-lkeyczar',
         '-lcrypto',
-        '-lprotobuf',
         '-lssl',
         '-lpthread',
       ],
@@ -62,17 +58,23 @@
       ],
       'dependencies': [
         'tao',
+	'third_party/gflags/gflags.gyp:gflags',
+	'third_party/google-glog/glog.gyp:glog',
+	'third_party/keyczar/keyczar.gyp:keyczar',
+	'third_party/protobuf/protobuf.gyp:protobuf',
+      ],
+      'export_dependent_settings': [
+	'third_party/gflags/gflags.gyp:gflags',
+	'third_party/google-glog/glog.gyp:glog',
+	'third_party/keyczar/keyczar.gyp:keyczar',
+	'third_party/protobuf/protobuf.gyp:protobuf',
       ],
       'includes': [
         'build/protoc.gypi',
       ],
       'direct_dependent_settings': {
         'libraries': [
-          '-lgflags',
-          '-lglog',
-          '-lkeyczar',
           '-lcrypto',
-          '-lprotobuf',
           '-lssl',
           '-lpthread',
         ],
@@ -105,11 +107,7 @@
 	'<(src)/whitelist_authorization_manager.cc',
       ],
       'libraries': [
-        '-lgflags',
-        '-lglog',
-        '-lkeyczar',
         '-lcrypto',
-        '-lprotobuf',
         '-lssl',
       ],
       'include_dirs': [
@@ -119,13 +117,15 @@
       'includes': [
         'build/protoc.gypi',
       ],
+      'dependencies': [
+	'third_party/gflags/gflags.gyp:gflags',
+	'third_party/google-glog/glog.gyp:glog',
+	'third_party/keyczar/keyczar.gyp:keyczar',
+	'third_party/protobuf/protobuf.gyp:protobuf',
+      ],        
       'direct_dependent_settings': {
         'libraries': [
-          '-lgflags',
-          '-lglog',
-          '-lkeyczar',
           '-lcrypto',
-          '-lprotobuf',
           '-lssl',
         ],
         'include_dirs': [
@@ -133,6 +133,12 @@
           '.',
         ],
       },
+      'export_dependent_settings': [
+	'third_party/gflags/gflags.gyp:gflags',
+	'third_party/google-glog/glog.gyp:glog',
+	'third_party/keyczar/keyczar.gyp:keyczar',
+	'third_party/protobuf/protobuf.gyp:protobuf',
+      ],
     },
     {
       'target_name': 'test',
@@ -235,11 +241,12 @@
       'sources': [ '<(src)/hash_file.cc', ],
       'include_dirs': [ '.', ],
       'libraries' : [
-        '-lgflags',
-        '-lglog',
-        '-lkeyczar',
         '-lcrypto',
       ],
+      'dependencies': [
+	'third_party/gflags/gflags.gyp:gflags',
+	'third_party/keyczar/keyczar.gyp:keyczar',
+      ],        
     },
     {
       'target_name': 'sign_whitelist',
@@ -254,7 +261,7 @@
         'type': 'static_library',
         'variables': {
             'src': 'legacy_tao',
-            'basejlm': '../..',
+            'basejlm': '../Code',
             'ac': '<(basejlm)/accessControl',
             'ch': '<(basejlm)/channels',
             'cl': '<(basejlm)/claims',
@@ -271,7 +278,7 @@
         },
         'cflags': [
             '-Wall',
-            '-Werror',
+            #'-Werror',
             '-Wno-unknown-pragmas',
             '-Wno-format',
             '-O3',
@@ -337,12 +344,16 @@
             '<(tc)/tcIO.cpp',
             '<(tp)/hashprep.cpp',
             '<(cm)/logging.cpp',
-	        '<(fp)/policyCert.inc',
+	    '<(fp)/policyCert.inc',
         ],
         'dependencies': [
-            '../../jlmtao.gyp:bignum_O1',
+            '../Code/jlmtao.gyp:bignum_O1',
             'tao',
 	    'cloudproxy',
+	    'third_party/gflags/gflags.gyp:gflags',
+	    'third_party/google-glog/glog.gyp:glog',
+	    'third_party/keyczar/keyczar.gyp:keyczar',
+	    'third_party/protobuf/protobuf.gyp:protobuf',
         ],
         'direct_dependent_settings': {
           'include_dirs': [
@@ -362,8 +373,18 @@
             '<(vt)',
           ],
         },
+	'dependencies': [
+          '../Code/jlmtao.gyp:bignum_O1',
+          'tao',
+	  'cloudproxy',
+	  'third_party/gflags/gflags.gyp:gflags',
+	  'third_party/google-glog/glog.gyp:glog',
+	  'third_party/keyczar/keyczar.gyp:keyczar',
+	  'third_party/protobuf/protobuf.gyp:protobuf',
+        ],
         'export_dependent_settings': [
             'tao',
+	    'cloudproxy',
         ],
     },
     {

@@ -41,9 +41,8 @@
     # that don't specify the LITE_RUNTIME option.  The protocol
     # compiler itself (protoc) falls into that category.
     #
-    # DO NOT LINK AGAINST THIS TARGET IN CHROME CODE  --agl
     {
-      'target_name': 'protobuf_full_do_not_use',
+      'target_name': 'protobuf',
       'type': 'static_library',
       'toolsets': ['host','target'],
       'includes': [
@@ -169,7 +168,7 @@
         'src/google/protobuf/compiler/main.cc',
       ],
       'dependencies': [
-        'protobuf_full_do_not_use',
+        'protobuf',
       ],
       'include_dirs': [
         '<(config_h_dir)',

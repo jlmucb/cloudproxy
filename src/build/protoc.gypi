@@ -25,7 +25,7 @@
 {
   'variables': {
     'cc_dir': '<(SHARED_INTERMEDIATE_DIR)',
-    'protoc': '<!(which protoc)',
+    'protoc': '<(PRODUCT_DIR)/protoc',
   },
   'rules': [
     {
@@ -37,6 +37,9 @@
       'outputs': [
         '<(cc_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.cc',
         '<(cc_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.h',
+      ],
+      'dependencies': [
+        '../third_party/protobuf/protobuf.gyp:protoc',
       ],
       'action': [
         '<(protoc)',

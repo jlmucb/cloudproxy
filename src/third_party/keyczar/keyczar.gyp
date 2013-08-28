@@ -22,6 +22,7 @@
   'variables': {
     'src': 'cpp/src/keyczar',
     'base': '<(src)/base',
+    'modp': '<(base)/modp',
     'openssl': '<(src)/openssl',
     'rw': '<(src)/rw',
   },
@@ -162,6 +163,9 @@
 	'<(base)/values.h',
 	'<(base)/zlib.cc',
 	'<(base)/zlib.h',
+	'<(modp)/modp_b64w.cc',
+	'<(modp)/modp_b64w_data.h',
+	'<(modp)/modp_b64w.h',
 	'<(rw)/keyset_encrypted_file_reader.cc',
 	'<(rw)/keyset_encrypted_file_reader.h',
 	'<(rw)/keyset_encrypted_file_writer.cc',
@@ -182,9 +186,6 @@
         'cpp/src',
       ],
       'direct_dependent_settings': {
-	'dependencies': [
-	  'keyczar_openssl',
-        ],
         'include_dirs': [
 	  'cpp/src',
         ],

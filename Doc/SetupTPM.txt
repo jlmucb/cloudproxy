@@ -42,6 +42,10 @@ Finally, the aikhexmod.txt file must be a hex copy of aikKeyFile.txt. So, run th
 
 ----------------------------------
 
+
+New Instructions
+
+
 Enabling the TPM varies from computer to computer.  For example, on HP8470p, the TPM is
 enables using a utility (HP Protect tools) obtained from:
   http://h20000.www2.hp.com/bizsupport/TechSupport/SoftwareDescription.jsp?lang=en&cc=us&prodTypeId=321957&prodSeriesId=4095872&prodNameId=4095876&swEnvOID=4059&swLang=13&mode=2&taskId=135&swItem=ob-98212-1
@@ -61,5 +65,122 @@ tpm_setenable --enable --force
 tpm_setactive --activate --force
 reboot
 
+
+First we must initialize the TPM physical chip with the tpm_clear command, which returns the 
+TPM to the default state, which is unowned, disabled and inactive. That command wipes all the 
+ownership information from the TPM, invalidates all the keys and data tied to the TPM and 
+even disables and deactivates the TPM.
+
+We must remember that the TPM won’t actually be used to encrypt/decrypt our data on the 
+hard drive; it’s just a hardware that contains secret keys that are used by the software 
+component to actually do the encryption and decryption on the fly. The TPM is primarily 
+used to check during boot if the kernel is unmodified, because otherwise an attacker could 
+change our kernel with a malicious one, since the /boot partition is not encrypted when 
+used with LUKS. But the TPM is not checking the integrity of the kernel only, but also the 
+integrity of all BIOS components, bootloader, and other OS components.
+
+1.1. Clearing the TPM
+
+# tpm_clear --force
+Tspi_TPM_ClearOwner failed: 0x00000007 - layer=tpm, code=0007 (7), TPM is disabled
+We can see that the TPM is disabled, which is why we can’t clear it. This can happen if 
+we forget to actually enable the TPM in BIOS. The first thing to do would be to actually 
+enable the TPM in BIOS. But if the TPM has been initialized before, we would receive the 
+output that can be seen below:
+
+# tpm_clear --force
+TPM Successfully Cleared.  You need to reboot to complete this operation.  After reboot 
+the TPM will be in the default state: unowned, disabled and inactive.
+This would require us to reboot the computer for changes to take effect. When clearing the 
+TPM we’ll return it to the default state, which is unowned, disabled and inactive, as 
+already mentioned. To enable the TPM afterwards, we need the owner password. But since 
+the TPM owner has been cleared, there is no owner password and we can set a new one 
+without entering the old one. We can also receive an error like the following:
+
+# tpm_clear --force
+Tspi_TPM_ClearOwner failed: 0x0000002d - layer=tpm, code=002d (45), Bad physical presence value
+
+1.2. Owning the TPM
+
+We must also own the TPM to protect our data. Owning the TPM means setting the password 
+that ensures that only the authorized user can access and manage the TPM. This password is 
+also used when we want to turn off the TPM, disable the TPM, clear the TPM, etc, so we 
+must always remember it and don’t forget it. The TPM is shipped in unowned state.
+
+We must set two passwords. The first password is an administration password, which is 
+used for administering the TPM, and the second password is a SRK (Storage Root Key) 
+password that is needed whenever we will load a key into the TPM. We can set both passwords 
+with the tpm_takeownership command as can be seen below:
+
+# tpm_takeownership
+Enter owner password:
+Confirm password:
+Enter SRK password:
+Confirm password:
+If we later want to change either of the commands, we can do it with the tpm_changeownerauth 
+command. If we pass the –owner argument to the tpm_changeownerauth command we’ll be 
+changing the administration password and if we pass the –srk into the tpm_changeownerauth 
+command we’ll be changing the SRK password. We can see the example of both commands in 
+the output below:
+
+# tpm_changeownerauth --owner
+Enter owner password:
+Enter new owner password:
+Confirm password:
+ 
+# tpm_changeownerauth --srk
+Enter owner password:
+Enter new SRK password:
+Confirm password:
+There are 5 keys in TPM:
+
+TPM Endorsement Key (EK): This key is created by the manufacturer and cannot be removed. 
+Sometimes it can be changed by the owner of the computer.
+TPM Storage Key (SRK): Is the 2048 bit RSA key created when configuring the ownership. 
+This key is stored inside the chip and can be removed. The key is used to encrypt the 
+Storage Key (SK) and Attestation Identity Key (AIK).
+TPM Storage Key (SK): This key is created during initialization and is used to encrypt other 
+elements in the TPM hierarchy, presumably the Binding Key (BK):
+Binding Key (BK): This key is used to encrypt little data blocks used by TPM.
+Attestation Key (AIK): This key is used for the exchanges with TPM, it is used to 
+allow applications to authenticate the TPM.
+To enable the TPM we must run the tpm_setenable and tpm_setactive commands as below. 
+If we pass the –force option to any of those commands, it will try to use physical presence 
+authorization to execute the command. We must know that most of the TPM operations 
+require owner authorization, but physical access allows us to access certain TPM 
+functions without the owner password. Of course, the physical access doesn’t allow 
+us to reveal TPM ownership password, which would break the confidentiality.
+
+# tpm_setenable --enable
+Enter owner password:
+Disabled status: false
+ 
+# tpm_setactive
+Enter owner password:
+Persistent Deactivated Status: false
+Volatile Deactivated Status: false
+There are usually two Endorsement Keys (EK): the public and private one. 
+The private key is always stored at the TPM and cannot even be seen by anyone, 
+while the public key can be displayed with the tpm_getpubek command.
+
+# tpm_getpubek
+Tspi_TPM_GetPubEndorsementKey failed: 0x00000008 - layer=tpm, code=0008 (8), The TPM target command has been disabled
+Enter owner password:
+Public Endorsement Key:
+  Version:   01010000
+  Usage:     0x0002 (Unknown)
+  Flags:     0x00000000 (!VOLATILE, !MIGRATABLE, !REDIRECTION)
+  AuthUsage: 0x00 (Never)
+  Algorithm:         0x00000020 (Unknown)
+  Encryption Scheme: 0x00000012 (Unknown)
+  Signature Scheme:  0x00000010 (Unknown)
+  Public Key:
+        a350b3a3 3edddc30 06248f4f 5d3eb80a 34fcbea0 83dde002 8dffa703 e116f8b0
+        eb1962ee a65998b3 384aeb6e 85486be9 0316a6ca a189a5ba 2217b2a2 9da014db
+        dfbe7731 fb675e7a 438c4775 deea54fb 0c75de5d ba961950 3eda4555 d27a9a30
+        e94d39d0 a4ea314d a70eaf08 e49dd354 d57ed34d 234220d9 604471a9 86173050
+        9ff9b0e5 b65cb4b5 5f46a7f9 4378bd7e 8c61b91b ad312974 fef5d70f 84f4484f
+        e5c95300 0eef76f2 1667443f dc2fa82e 351d945e 6b5f75e8 828d010f 61541552
+        [...]
 
 

@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/477/trunk/python/google/protobuf
+END
+reflection.py
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/425/trunk/python/google/protobuf/reflection.py
+END
+service_reflection.py
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/92/trunk/python/google/protobuf/service_reflection.py
+END
+message_factory.py
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/425/trunk/python/google/protobuf/message_factory.py
+END
+text_format.py
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/477/trunk/python/google/protobuf/text_format.py
+END
+descriptor.py
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/425/trunk/python/google/protobuf/descriptor.py
+END
+__init__.py
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/2/trunk/python/google/protobuf/__init__.py
+END
+service.py
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/294/trunk/python/google/protobuf/service.py
+END
+descriptor_database.py
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/425/trunk/python/google/protobuf/descriptor_database.py
+END
+message.py
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/425/trunk/python/google/protobuf/message.py
+END
+descriptor_pool.py
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/425/trunk/python/google/protobuf/descriptor_pool.py
+END

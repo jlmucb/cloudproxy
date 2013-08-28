@@ -1,0 +1,10 @@
+K 13
+svn:externals
+V 49
+gtest http://googletest.googlecode.com/svn/trunk
+
+K 13
+svn:mergeinfo
+V 22
+/tags/2.5.0rc1:439-443
+END

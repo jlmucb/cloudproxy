@@ -1,0 +1,221 @@
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/504/trunk/src/google/protobuf/stubs
+END
+common.cc
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/461/trunk/src/google/protobuf/stubs/common.cc
+END
+atomicops_internals_arm_gcc.h
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/418/trunk/src/google/protobuf/stubs/atomicops_internals_arm_gcc.h
+END
+common.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/489/trunk/src/google/protobuf/stubs/common.h
+END
+stringprintf.h
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/472/trunk/src/google/protobuf/stubs/stringprintf.h
+END
+structurally_valid_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/249/trunk/src/google/protobuf/stubs/structurally_valid_unittest.cc
+END
+atomicops.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/504/trunk/src/google/protobuf/stubs/atomicops.h
+END
+atomicops_internals_arm_qnx.h
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/467/trunk/src/google/protobuf/stubs/atomicops_internals_arm_qnx.h
+END
+atomicops_internals_tsan.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/504/trunk/src/google/protobuf/stubs/atomicops_internals_tsan.h
+END
+strutil.cc
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/strutil.cc
+END
+strutil.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/strutil.h
+END
+type_traits.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/459/trunk/src/google/protobuf/stubs/type_traits.h
+END
+atomicops_internals_x86_msvc.cc
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/!svn/ver/460/trunk/src/google/protobuf/stubs/atomicops_internals_x86_msvc.cc
+END
+template_util.h
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/template_util.h
+END
+atomicops_internals_atomicword_compat.h
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/430/trunk/src/google/protobuf/stubs/atomicops_internals_atomicword_compat.h
+END
+atomicops_internals_x86_msvc.h
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/418/trunk/src/google/protobuf/stubs/atomicops_internals_x86_msvc.h
+END
+substitute.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/50/trunk/src/google/protobuf/stubs/substitute.h
+END
+once_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/256/trunk/src/google/protobuf/stubs/once_unittest.cc
+END
+atomicops_internals_mips_gcc.h
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/418/trunk/src/google/protobuf/stubs/atomicops_internals_mips_gcc.h
+END
+hash.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/hash.h
+END
+common_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/435/trunk/src/google/protobuf/stubs/common_unittest.cc
+END
+stringprintf_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/482/trunk/src/google/protobuf/stubs/stringprintf_unittest.cc
+END
+atomicops_internals_macosx.h
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/!svn/ver/430/trunk/src/google/protobuf/stubs/atomicops_internals_macosx.h
+END
+stringprintf.cc
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/426/trunk/src/google/protobuf/stubs/stringprintf.cc
+END
+map-util.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/map-util.h
+END
+platform_macros.h
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/466/trunk/src/google/protobuf/stubs/platform_macros.h
+END
+structurally_valid.cc
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/249/trunk/src/google/protobuf/stubs/structurally_valid.cc
+END
+atomicops_internals_pnacl.h
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/462/trunk/src/google/protobuf/stubs/atomicops_internals_pnacl.h
+END
+atomicops_internals_x86_gcc.cc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/418/trunk/src/google/protobuf/stubs/atomicops_internals_x86_gcc.cc
+END
+atomicops_internals_x86_gcc.h
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/418/trunk/src/google/protobuf/stubs/atomicops_internals_x86_gcc.h
+END
+stl_util.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/stl_util.h
+END
+strutil_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/83/trunk/src/google/protobuf/stubs/strutil_unittest.cc
+END
+type_traits_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/471/trunk/src/google/protobuf/stubs/type_traits_unittest.cc
+END
+template_util_unittest.cc
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/template_util_unittest.cc
+END
+substitute.cc
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/425/trunk/src/google/protobuf/stubs/substitute.cc
+END
+once.cc
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/413/trunk/src/google/protobuf/stubs/once.cc
+END
+once.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/472/trunk/src/google/protobuf/stubs/once.h
+END

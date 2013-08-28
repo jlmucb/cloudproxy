@@ -1,0 +1,58 @@
+//  File: tao_channel_rpc.proto
+//  Author: Tom Roeder <tmroeder@google.com>
+//
+//  Description: Minimal protocol buffers for Tao RPC communication over
+//  TaoChannel
+//
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+package tao;
+
+enum RPC {
+  INIT = 0;
+  DESTROY = 1;
+  START_HOSTED_PROGRAM = 2;
+  GET_RANDOM_BYTES = 3;
+  SEAL = 4;
+  UNSEAL = 5;
+  ATTEST = 6;
+  VERIFY_ATTESTATION = 7;
+}
+
+message TaoChannelRPC {
+  required RPC rpc = 1;
+  optional bytes data = 2;
+  optional bytes signature = 3;
+  optional StartHostedProgramArgs start = 4;
+  optional GetRandomBytesArgs random = 5;
+}
+
+message TaoChannelResponse {
+  required RPC rpc = 1;
+  required bool success = 2;
+  optional bytes data = 3;
+}
+
+message StartHostedProgramArgs {
+  required string path = 1;
+  required int32 argc = 2;
+  repeated string argv = 3;
+}
+
+message GetRandomBytesArgs {
+  required int32 size = 1;
+}

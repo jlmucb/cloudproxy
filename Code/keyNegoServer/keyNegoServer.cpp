@@ -100,7 +100,7 @@ inline bool whitespace(char b)
 }
 
 
-int nextToken(const char* sz, const char** pszToken)
+int getNextToken(const char* sz, const char** pszToken)
 {
     int     n;
 
@@ -192,7 +192,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     *pszPolicyId= p;
     r++;
 
-    k= nextToken(r, &p);
+    k= getNextToken(r, &p);
     if(k<=0){
         return false;
     }
@@ -215,7 +215,7 @@ bool parseEntry(const char* p, const char** pszPolicyId,
     *pszProgramName= p;
     r++;
 
-    k= nextToken(r, &p);
+    k= getNextToken(r, &p);
     if(*p!='\"')
         return false;
     q= (char*)++p;
@@ -273,9 +273,9 @@ bool getValidHashes(const char* szHashFile)
         }
         if(n==0)
             break;
-        i= nextToken(buf, &nextp);
+        i= getNextToken(buf, &nextp);
         if(i<0) {
-            fprintf(g_logFile, "getValidHashes: nextToken<0\n");
+            fprintf(g_logFile, "getValidHashes: getNextToken<0\n");
             goto done;
         }
         if(*nextp!='#')
@@ -295,7 +295,7 @@ bool getValidHashes(const char* szHashFile)
         n= getnextline(iRead, buf, MAXLINE-1);
         if(n<=0)
             break;
-        j= nextToken(buf, &nextp);
+        j= getNextToken(buf, &nextp);
         if(j<0) {
             fprintf(g_logFile, "getValidHashes: bad token length %d\n", j);
             continue;

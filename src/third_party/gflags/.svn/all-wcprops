@@ -1,0 +1,137 @@
+K 25
+svn:wc:ra_dav:version-url
+V 22
+/svn/!svn/ver/84/trunk
+END
+configure.ac
+K 25
+svn:wc:ra_dav:version-url
+V 35
+/svn/!svn/ver/74/trunk/configure.ac
+END
+INSTALL
+K 25
+svn:wc:ra_dav:version-url
+V 30
+/svn/!svn/ver/51/trunk/INSTALL
+END
+COPYING
+K 25
+svn:wc:ra_dav:version-url
+V 29
+/svn/!svn/ver/7/trunk/COPYING
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 34
+/svn/!svn/ver/74/trunk/Makefile.am
+END
+missing
+K 25
+svn:wc:ra_dav:version-url
+V 30
+/svn/!svn/ver/51/trunk/missing
+END
+autogen.sh
+K 25
+svn:wc:ra_dav:version-url
+V 33
+/svn/!svn/ver/51/trunk/autogen.sh
+END
+NEWS
+K 25
+svn:wc:ra_dav:version-url
+V 27
+/svn/!svn/ver/84/trunk/NEWS
+END
+aclocal.m4
+K 25
+svn:wc:ra_dav:version-url
+V 33
+/svn/!svn/ver/51/trunk/aclocal.m4
+END
+install-sh
+K 25
+svn:wc:ra_dav:version-url
+V 33
+/svn/!svn/ver/51/trunk/install-sh
+END
+configure
+K 25
+svn:wc:ra_dav:version-url
+V 32
+/svn/!svn/ver/74/trunk/configure
+END
+Makefile.in
+K 25
+svn:wc:ra_dav:version-url
+V 34
+/svn/!svn/ver/74/trunk/Makefile.in
+END
+README_windows.txt
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn/!svn/ver/48/trunk/README_windows.txt
+END
+AUTHORS
+K 25
+svn:wc:ra_dav:version-url
+V 30
+/svn/!svn/ver/74/trunk/AUTHORS
+END
+depcomp
+K 25
+svn:wc:ra_dav:version-url
+V 30
+/svn/!svn/ver/51/trunk/depcomp
+END
+ChangeLog
+K 25
+svn:wc:ra_dav:version-url
+V 32
+/svn/!svn/ver/74/trunk/ChangeLog
+END
+gflags-vs2010.sln
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/80/trunk/gflags-vs2010.sln
+END
+gflags-vs2012.sln
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/80/trunk/gflags-vs2012.sln
+END
+gflags-vs2003.sln
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/80/trunk/gflags-vs2003.sln
+END
+config.guess
+K 25
+svn:wc:ra_dav:version-url
+V 35
+/svn/!svn/ver/51/trunk/config.guess
+END
+config.sub
+K 25
+svn:wc:ra_dav:version-url
+V 33
+/svn/!svn/ver/51/trunk/config.sub
+END
+README
+K 25
+svn:wc:ra_dav:version-url
+V 29
+/svn/!svn/ver/39/trunk/README
+END
+ltmain.sh
+K 25
+svn:wc:ra_dav:version-url
+V 32
+/svn/!svn/ver/42/trunk/ltmain.sh
+END

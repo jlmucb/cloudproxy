@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/testdata
+END
+golden_message
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/src/google/protobuf/testdata/golden_message
+END
+text_format_unittest_extensions_data.txt
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/testdata/text_format_unittest_extensions_data.txt
+END
+text_format_unittest_data.txt
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svn/!svn/ver/216961/trunk/src/third_party/protobuf/src/google/protobuf/testdata/text_format_unittest_data.txt
+END
+golden_packed_fields_message
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/!svn/ver/61072/trunk/src/third_party/protobuf/src/google/protobuf/testdata/golden_packed_fields_message
+END

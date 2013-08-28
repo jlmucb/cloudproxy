@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn/!svn/ver/71/trunk/src/windows/gflags
+END
+gflags_declare.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/60/trunk/src/windows/gflags/gflags_declare.h
+END
+gflags.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/71/trunk/src/windows/gflags/gflags.h
+END
+gflags_completions.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/60/trunk/src/windows/gflags/gflags_completions.h
+END

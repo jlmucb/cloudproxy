@@ -1,0 +1,64 @@
+//  File: hosted_programs.proto
+//  Author: Tom Roeder <tmroeder@google.com>
+//
+//  Description: Protocol buffers for program binaries and whitelists
+//
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+package tao;
+
+message HostedProgram {
+    // the name of the binary
+    required string name = 1;
+
+    // the hashing algorithm to use
+    required string hash_alg = 2;
+
+    // the known hash of the binary
+    required bytes hash = 3;
+}
+
+// a list of permitted hosted programs
+message Whitelist {
+    repeated HostedProgram programs = 1;
+}
+
+// This is the message stored on a bulletin board and signed by the policy key.
+// It describes the set of hosted programs that are permitted to run.
+message SignedWhitelist {
+    // a serialized Whitelist message
+    required string serialized_whitelist = 1;
+    
+    // the signature on this message
+    required bytes signature = 2;
+}
+
+// This is the map from hosted-program identity to the secret associated with
+// this hosted program at a given level of the Tao.
+message HostedProgramState {
+    // a representation of the hosted program
+    required HostedProgram hp = 1;
+
+    // the secret for this hosted program
+    required bytes secret = 2;
+}
+
+// This should be kept in a file and sealed to this layer of the Tao using its
+// authenticated encryption key
+message Secrets {
+    repeated HostedProgramState program_secrets = 1;
+}

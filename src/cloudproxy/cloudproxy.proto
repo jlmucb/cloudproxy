@@ -1,0 +1,206 @@
+//  File: cloudproxy.proto
+//  Author: Tom Roeder <tmroeder@google.com>
+//
+// Description: Protocol buffers for communicate and storage of data in
+// user-level CloudProxy applications
+//
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+import "tao/attestation.proto";
+import "tao/keyczar_public_key.proto";
+
+package cloudproxy;
+
+// The types of permissions allowed in ACLs.
+// Other than ALL, this is also a list of all supported object operations.
+enum Op {
+    // permission to perform any operation on any object
+    ADMIN = 0;
+
+    // all permissions on a given object
+    ALL = 1;
+
+    // can create an object with the given name
+    CREATE = 2;
+
+    // can destroy an object with this name
+    DESTROY = 3;
+
+    // can write to an object with this name
+    WRITE = 4;
+
+    // can read an object with this name
+    READ = 5;
+}
+
+// An action that can be requested by a client; also the entry type for ACLs.
+// Each line in an ACL is an Action, representing a given permission.
+message Action {
+    // The user performing this action. To be useful, the server must have a
+    // binding (from a SignedSpeaksFor) between this user and a public key
+    required string subject = 1;
+
+    // The operation to be performed or authorized. See the Op enum above.
+    required Op verb = 2;
+
+    // The object of this operation. The interpretation of this string is left
+    // up to the CloudServer class that handles this Action.
+    optional string object = 3;
+}
+
+// An authentication request from a CloudClient to a CloudServer consists of
+// this message. The CloudServer will then reply with a Challenge message, and
+// the client must reply with a Response.
+message Auth {
+    // The user to authenticate on this channel
+    required string subject = 1;
+}
+
+// An access-control list, represented as a collection of actions. CloudServer
+// reads a signed ACL to decide which actions are authorized.
+message ACL {
+    repeated Action permissions = 1;
+}
+
+// A message that is signed with the public policy key and stored on disk to
+// represent the (initial) ACL for a CloudServer when it starts up.
+message SignedACL {
+    // A serialized ACL protobuf. The serialization is used instead of the
+    // protobuf type to make sure that minor differences in serialization do
+    // not break the signature. Using the serialized version means that the
+    // only requirement on the receiving side is the ability to deserialize
+    // (and to check the signature).
+    required bytes serialized_acls = 1;
+
+    // A public-key signature on serialized_acls. The details of the key type
+    // depends on the CloudServer implementation.
+    required bytes signature = 2;
+}
+
+// The response from a CloudServer to a CloudClient after the client has sent
+// an Auth message to the server. The client must sign a serialized copy of the
+// challenge and return it to the server in a Response message
+message Challenge {
+    // The subject of the challenge, as sent in the original Auth message
+    required string subject = 1;
+
+    // A new random nonce to add to the client signature
+    required bytes nonce = 2;
+
+    // Whether or not to send a binding
+    required bool send_binding = 3;
+}
+
+// This message is sent by CloudClient in response to a Challenge message
+message Response {
+    // A serialization of the Challenge message
+    required bytes serialized_chall = 1;
+
+    // A signature on the serialized_chall field
+    required bytes signature = 2;
+
+    // A binding of the subject (in Auth/Challenge) to a public key
+    optional SignedSpeaksFor binding = 3;
+}
+
+// a message that can be sent by the client or server to close the current
+// connection
+message CloseConnection {
+    // A value indicating whether or not this is a clean shutdown
+    required bool error = 1;
+}
+
+// This message captures all the possible messages sent from CloudClient
+message ClientMessage {
+    // A message that requests an Action to be performed
+    optional Action action = 1;
+
+    // A message that starts an authentication sequence for a given user
+    optional Auth auth = 2;
+
+    // The reply message in the challenge-response protocol for user
+    // authentication
+    optional Response response = 3;
+
+    // a SignedAttestation of the X.509 certificate used to establish this connection
+    optional tao.SignedAttestation attestation = 4;
+    
+    // Close the connection, potentially with an error
+    optional CloseConnection close = 5;
+}
+
+// This message is sent from CloudServer to CloudClient as the result of an
+// Action message
+message Result {
+    // Whether or not the operation succeeded
+    required bool success = 1;
+
+    // An error from the operation
+    optional string reason = 2;
+}
+
+// The message captures all the possible message sent from CloudServer
+message ServerMessage {
+    // The second message in the challenge-response authentication protocol
+    optional Challenge challenge = 1;
+
+    // The result of a CloudClient-requested Action
+    optional Result result = 2;
+
+    // a SignedAttestation of the X.509 certificate used to establish this connection
+    optional tao.SignedAttestation attestation = 3;
+}
+
+// A message that gives a name to a given keyczar public key structure
+message SpeaksFor {
+    // The name to bind to this key
+    required string subject = 1;
+
+    required tao.KeyczarPublicKey pub_key = 2;
+}
+
+// A signed SpeaksFor message
+message SignedSpeaksFor {
+    // A serialized SpeaksFor message. 
+    required bytes serialized_speaks_for = 1;
+
+    // A signature by the public policy key on serialized_speaks_for
+    required bytes signature = 2;
+}
+
+// metadata for encrypted objects
+message ObjectMetadata {
+    // the name of the object
+    required string name = 1;
+
+    // the size in bytes of the object
+    required uint32 size = 2;
+
+    // the IV for the object
+    required bytes iv = 3;
+
+    // the HMAC of the object
+    required bytes hmac = 4;
+}
+
+message HmacdObjectMetadata {
+  // a serialized ObjectMetadata message
+  required bytes serialized_metadata = 1;
+
+  // an hmac of serialized_metadata 
+  required bytes hmac = 2;
+}

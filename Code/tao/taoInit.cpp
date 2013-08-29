@@ -92,12 +92,22 @@ taoInit::~taoInit()
 }
 
 
+#ifdef NAMELOCALITY
+const char* g_quotedkeyInfoTemplate= 
+"<QuotedInfo>\n" \
+"    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\"/>  " \
+"    <ds:QuoteMethod Algorithm=\"%s\"/>\n" \
+"    <Locality locality= \"%02x\"/>\n" \
+"%s\n" \
+"</QuotedInfo>\n";
+#else
 const char* g_quotedkeyInfoTemplate= 
 "<QuotedInfo>\n" \
 "    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\"/>  " \
 "    <ds:QuoteMethod Algorithm=\"%s\"/>\n" \
 "%s\n" \
 "</QuotedInfo>\n";
+#endif
 
 
 const char* g_EvidenceListTemplate= 
@@ -171,6 +181,10 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
     // this is the final formatted Quote
     u32             quoteType=0;
     char*           szQuote= NULL;                      
+
+#ifdef NAMELOCALITY
+    u32             locality= 0x1f;
+#endif
 
 #ifdef TEST
     fprintf(g_logFile, "taoInit::generatequoteandcertifyKey(%d)\n", keyType);
@@ -264,8 +278,13 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
 
       case QUOTETYPETPM12RSA2048:
         // Construct quote body
+#ifdef NAMELOCALITY
+        sprintf(quotedInfo, g_quotedkeyInfoTemplate, QUOTEMETHODTPM12RSA2048, 
+                locality, m_serializedpublicKey);
+#else
         sprintf(quotedInfo, g_quotedkeyInfoTemplate, QUOTEMETHODTPM12RSA2048, 
                 m_serializedpublicKey);
+#endif
         szCanonicalQuotedBody= canonicalizeXML(quotedInfo);
         if(szCanonicalQuotedBody==NULL) {
             fprintf(g_logFile, 

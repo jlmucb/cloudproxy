@@ -34,11 +34,7 @@
 #include "tao.h"
 #include "bignum.h"
 #include "mpFunctions.h"
-#ifndef NEWANDREORGANIZED
-#include "rsaHelper.h"
-#else
 #include "cryptoHelper.h"
-#endif
 #include "trustedKeyNego.h"
 #include "hashprep.h"
 #include "vTCIDirect.h"
@@ -51,8 +47,140 @@
 // -------------------------------------------------------------------------
 
 
+#ifndef KVM
 
 
+//
+//   Service support with TPM 
+//
+
+tpmStatus   g_oTpm;
+
+
+bool initTPM(const char* aikblobfile, const char* szTPMPassword)
+{
+#ifdef TEST
+    if(szTPMPassword!=NULL)
+        fprintf(g_logFile, "initTPM(%s,%s)\n", aikblobfile, szTPMPassword);
+    else
+        fprintf(g_logFile, "initTPM(%s, NULL)\n", aikblobfile);
+    fflush(g_logFile);
+#endif
+
+    if(aikblobfile==NULL)
+        return false;
+
+    if(!g_oTpm.initTPM()) {
+         if(szTPMPassword==NULL || !g_oTpm.setTPMauth(szTPMPassword))
+            return false;
+    }
+#ifdef TEST
+        fprintf(g_logFile, "initTPM: g_oTpm.initTPM succeeded\n");
+        fflush(g_logFile);
+#endif
+
+    // AIK
+    if(!g_oTpm.getAIKKey(aikblobfile, NULL)) {
+        fprintf(g_logFile, "initTPM: getAIKKey failed\n");
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "initTPM: getAIKKey succeeded\n");
+    fflush(g_logFile);
+#endif
+    return true;
+}
+
+
+bool deinitTPM()
+{
+    return g_oTpm.closeTPM();
+}
+
+
+bool getAttestCertificateTPM(int size, byte* pKey)
+{
+    return false;
+}
+
+
+bool getEntropyTPM(int size, byte* pKey)
+{
+    return false;
+}
+
+
+bool getMeasurementTPM(int* pSize, byte* pHash)
+// return TPM1.2 composite hash
+{
+    u32     size= SHA1DIGESTBYTESIZE*24; 
+    byte    pcrs[SHA1DIGESTBYTESIZE*24];
+
+    if(!g_oTpm.getCompositePCR(g_oTpm.m_locality, g_oTpm.m_rgpcrMask, &size, pcrs)) {
+        fprintf(g_logFile, "getMeasurementTPM: getCompositePCR failed\n");
+        return false;
+    }
+
+#ifndef QUOTE2_DEFINED
+    // reconstruct PCR composite and composite hash
+    if(!computeTPM12compositepcrDigest(g_oTpm.m_rgpcrMask, pcrs, pHash)) {
+        fprintf(g_logFile, "getMeasurementTPM: can't compute composite digest\n");
+        return false;
+    }
+#else
+    // reconstruct PCR composite and composite hash
+    if(!computeTPM12quote2compositepcrDigest(g_oTpm.m_rgpcrMask, pcrs, 
+                    g_oTpm.m_locality, pHash)) {
+        fprintf(g_logFile, "getMeasurementTPM: can't compute composite digest\n");
+        return false;
+    }
+#endif
+
+    *pSize= SHA1DIGESTBYTESIZE;
+    return true;
+}
+
+
+bool sealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
+{
+#ifdef TEST
+    fprintf(g_logFile, "sealwithTPM\n");
+#endif
+    return g_oTpm.sealData(inSize, inData, (unsigned*) poutSize, outData);
+}
+
+
+bool unsealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
+{
+    return g_oTpm.unsealData(inSize, inData, (unsigned*) poutSize, outData);
+}
+
+
+bool quotewithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
+{
+    byte    newout[1024];
+    bool    fRet= g_oTpm.quoteData(inSize, inData, (unsigned*) poutSize, newout);
+
+    if(fRet) {
+        revmemcpy(outData, newout, *poutSize);
+        return true;
+    }
+    else {
+        fprintf(g_logFile, "quotewithTPM failed\n");
+        fflush(g_logFile);
+    }
+    return false;
+}
+
+
+#endif  // no KVM
+
+
+// -------------------------------------------------------------------------
+
+
+#ifdef   KVM
 RSAKey g_rsa;
 symKey g_aes;
 
@@ -65,18 +193,18 @@ int g_publicKeyBlockSize= 256;
 
 bool initTPM(const char* aikblobfile, const char* szTPMPassword)
 {
-	bool pValid;
-	int size = 1024;
-	byte szxml[4096];
-	byte* pdata = &szxml[0];
-	taoFiles xmlkey;
-	
-	fprintf(stdout, "Called %s\n", __FUNCTION__);
-	
-	xmlkey.getBlobData("./HWRoot/p2048tpm.xml", &pValid, &size, &pdata);
-	
-	g_rsa.m_pDoc= new TiXmlDocument();
-	
+        bool        pValid;
+        int         size = 1024;
+        byte        szxml[4096];
+        byte*       pdata = &szxml[0];
+        taoFiles    xmlkey;
+        
+        fprintf(stdout, "Called %s\n", __FUNCTION__);
+        
+        xmlkey.getBlobData("./HWRoot/p2048tpm.xml", &pValid, &size, &pdata);
+        
+        g_rsa.m_pDoc= new TiXmlDocument();
+        
     if(g_rsa.m_pDoc==NULL) {
          fprintf(stdout, "Cant init %s key document\n", "");
          return false;
@@ -91,12 +219,12 @@ bool initTPM(const char* aikblobfile, const char* szTPMPassword)
          fprintf(stdout, "Cant get data from %s key document\n", "");
          return false;
     }
-	
-	memset(g_aes.m_rgbKey, 0x1, 32);
-	
-	g_aes.m_iByteSizeKey = 32;
-	g_aes.m_iByteSizeIV = 0;
-	
+        
+    memset(g_aes.m_rgbKey, 0x1, 32);
+    
+    g_aes.m_iByteSizeKey = 32;
+    g_aes.m_iByteSizeIV = 0;
+        
     return true;
 }
 
@@ -140,7 +268,7 @@ bool getMeasurementTPM(int* pSize, byte* pHash)
   
 #endif
 
-	memcpy(g_measurement, pHash, SHA1DIGESTBYTESIZE);
+        memcpy(g_measurement, pHash, SHA1DIGESTBYTESIZE);
     *pSize= SHA1DIGESTBYTESIZE;
     return true;
 }
@@ -186,7 +314,7 @@ bool sealwithTPM(int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed)
         fprintf(g_logFile, "taoEnvironment::seal: AES128CBCHMACSHA256SYMPADEncryptBlob failed\n");
         return false;
     }
-	return true;
+        return true;
 }
 
 
@@ -242,23 +370,23 @@ bool quotewithTPM(int sizetoAttest, byte* toAttest, int* psizeAttested, byte* at
 
     byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
     byte        rgToSign[512];
-	
-	    
-	byte    locality= 0; 
-	u32     sizeversion= 0;
-	byte*   versionInfo= NULL;
-	byte    pcr17Mask[3]= {0,0,0x02};
+        
+            
+        byte    locality= 0; 
+        u32     sizeversion= 0;
+        byte*   versionInfo= NULL;
+        byte    pcr17Mask[3]= {0,0,0x02};
 
    // getMeasurementTPM(&sizehashCode, hashCode);
     
-		// construct PCR composite and composite hash
-	if(!tpm12quote2Hash(0, NULL, pcr17Mask, locality,
-						sizetoAttest, toAttest, SHA1DIGESTBYTESIZE, g_measurement, 
-						false, sizeversion, versionInfo, 
-						rgQuotedHash)) {
-		fprintf(g_logFile, "checkXMLQuote: Cant compute TPM12 hash\n");
-		return false;
-	}
+                // construct PCR composite and composite hash
+        if(!tpm12quote2Hash(0, NULL, pcr17Mask, locality,
+                                                sizetoAttest, toAttest, SHA1DIGESTBYTESIZE, g_measurement, 
+                                                false, sizeversion, versionInfo, 
+                                                rgQuotedHash)) {
+                fprintf(g_logFile, "checkXMLQuote: Cant compute TPM12 hash\n");
+                return false;
+        }
     
     fprintf(g_logFile, "checkXMLQuote hashtype: 2\n");
     PrintBytes("Code digest: ", g_measurement, SHA1DIGESTBYTESIZE);
@@ -276,11 +404,11 @@ bool quotewithTPM(int sizetoAttest, byte* toAttest, int* psizeAttested, byte* at
     // sign
     
 #if 1 //ONERSA
-	RSAKey* pRSA= (RSAKey*) &g_rsa;
-	if (! RSADecrypt_i(*pRSA, g_publicKeyBlockSize, rgToSign, psizeAttested, attest)){
-		fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
+        RSAKey* pRSA= (RSAKey*) &g_rsa;
+        if (! RSADecrypt_i(*pRSA, g_publicKeyBlockSize, rgToSign, psizeAttested, attest)){
+                fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
         return false;
-	}
+        }
 
 #else
     RSAKey* pRSA= (RSAKey*) &g_rsa;
@@ -310,14 +438,12 @@ bool quotewithTPM(int sizetoAttest, byte* toAttest, int* psizeAttested, byte* at
     *psizeAttested= g_publicKeyBlockSize;
     return true;
 }
+#endif 	// KVM
 
 
 // -------------------------------------------------------------------------
 
+#endif  // TPMSUPPORT
 
-#endif
-
-
-// -------------------------------------------------------------------------
 
 

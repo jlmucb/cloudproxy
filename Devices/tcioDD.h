@@ -75,6 +75,7 @@ extern  int    tciodd_insertQent(struct tciodd_Qent** phead, struct tciodd_Qent*
 extern  int    tciodd_appendQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent);
 extern  int    tciodd_removeQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent);
 extern  struct tciodd_Qent* tciodd_findQentbypid(struct tciodd_Qent* head, int pid);
+void tciodd_clearQent(struct tciodd_Qent** phead);
 
 
 struct tciodd_dev {

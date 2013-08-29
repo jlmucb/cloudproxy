@@ -76,7 +76,7 @@ extern int      tciodd_close(struct inode *inode, struct file *filp);
 // ----------------------------------------------------------------------------
 
 
-unsigned    tciodd_serviceInitilized= 0;
+unsigned    tciodd_serviceInitialized= 0;
 int         tciodd_servicepid= 0;
 
 
@@ -266,6 +266,20 @@ int  tciodd_removeQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
     return 0;
 }
 
+void tciodd_clearQent(struct tciodd_Qent** phead)
+{
+  struct tciodd_Qent* cur = NULL;
+  if (phead == NULL) return;
+
+  cur = *phead;
+  while (cur != NULL) {
+    // remove the current head
+    *phead = cur->m_next;
+
+    tciodd_deleteQent(cur);
+    cur = *phead;
+  }
+}
 
 struct tciodd_Qent* tciodd_findQentbypid(struct tciodd_Qent* head, int pid)
 {
@@ -597,10 +611,10 @@ int tciodd_open(struct inode *inode, struct file *filp)
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: open called\n");
 #endif
-    if(tciodd_serviceInitilized==0) {
+    if(tciodd_serviceInitialized==0) {
         if(current->pid>0) {
             tciodd_servicepid= current->pid;
-            tciodd_serviceInitilized= 1;
+            tciodd_serviceInitialized= 1;
 #ifdef TESTDEVICE
             printk(KERN_DEBUG "tcioDD: expected server pid is %d\n", tciodd_servicepid);
 #endif
@@ -668,7 +682,22 @@ int tciodd_close(struct inode *inode, struct file *filp)
         up(&tciodd_resserviceqsem);
     }
     
-    sendTerminate(tciodd_servicepid, pid);
+    if (tciodd_servicepid != pid) {
+      sendTerminate(tciodd_servicepid, pid);
+    } else {
+      tciodd_serviceInitialized = 0;
+
+      // make sure q's don't have any entries, since tciodd is not initialized
+      if(down_interruptible(&tciodd_reqserviceqsem)==0)  {
+	tciodd_clearQent(&tciodd_reqserviceq);
+        up(&tciodd_reqserviceqsem);
+      }
+      if(down_interruptible(&tciodd_resserviceqsem)==0)  {
+	tciodd_clearQent(&tciodd_resserviceq);
+        up(&tciodd_resserviceqsem);
+      }
+    }
+    
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: close complete %d\n", pid);
 #endif
@@ -683,6 +712,10 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
     ssize_t             retval= 0;
     int                 pid= current->pid;
     struct tciodd_Qent* pent= NULL;
+
+    if (!tciodd_serviceInitialized) {
+      return -EFAULT;
+    }
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: read %d, privdata: %08lx, pid: %d\n", 
@@ -767,6 +800,11 @@ ssize_t tciodd_write(struct file *filp, const char __user *buf, size_t count,
 #endif
     if(down_interruptible(&dev->sem)) {
         return -ERESTARTSYS;
+    }
+
+    if (!tciodd_serviceInitialized) {
+      retval = -EFAULT;
+      goto out;
     }
 
     // add to tciodd_reqserviceQ then process
@@ -860,6 +898,8 @@ void tciodd_cleanup(void)
         class_destroy(pclass);
         pclass= NULL;
     }
+
+    tciodd_serviceInitialized = 0;
 
     // cleanup_module isn't called if registering failed
     unregister_chrdev_region(devno, tciodd_nr_devs);

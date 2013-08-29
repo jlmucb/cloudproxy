@@ -1,6 +1,11 @@
 Instructions for setting up the TPM
 ===================================
 
+
+Note: There are new instructions for initializing the TPM on Linux which
+can be obscure and time consuming.
+
+
 install trousers
 sudo agt-get install trousers
 sudo agt-get install tpm-dev

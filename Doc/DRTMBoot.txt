@@ -15,8 +15,6 @@ the most recent tboot logs.  The current version of tboot requires version
 distribution.
 
 
-----------------------------------------------------------------------------
-
 Building Tboot
     cd tbootprep/tboot-1.7.0
     make
@@ -30,76 +28,9 @@ To build the LCPTools
 
 
 You may built a Launch Control Policy (LCP) which controls what can be
-booted.  If you have no LCP, the default policy will be applied.
-
-The LCP consists of policy elements.
-
-To specify launch policy via a list of hashes:
-0.  sudo bash
-1.  lcp_mlehash -c "command line for tboot from grub.cfg" /boot/tboot.gz > mle_hash
-  - the command line in this case is the string from /boot/grub/grub.cfg 
-  - after multiboot tboot.gz, e.g., "logging=vga,memory,serial"
-  - copy and paste:
-./lcp_mlehash -c "logging=vga" /boot/tboot.gz>mle_hash
-2.  lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt mle_hash
-  - copy and paste
-./lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt mle_hash
-3.  lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
-  - copy and paste
-./lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
-4.  lcp_crtpol2 --create --type list --pol list.pol --data list.data list_unsig.lst
-  - copy and paste
-./lcp_crtpol2 --create --type list --pol list.pol --data list.data list_unsig.lst
-5.  cp list.pol /boot
-  - copy and paste
-cp owner_list.data /boot
-
-Next create a verified Launch policy:
-1.  tb_polgen/tb_polgen --create --type nonfatal vl.pol
-  - copy and paste
-../tb_polgen/tb_polgen --create --type nonfatal vl.pol
-2.  tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image
-    --cmdline "the command line from linux in grub.conf"
-    --image /boot/vmlinuz-2.6.18.8
-    vl.pol
-  - copy and paste
-../tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image --cmdline "root=UUID=cf6ae6b5-abb5-4d5d-b823-bd798a0621de ro quiet splash $vt_handoff" --image /boot/vmlinuz-3.5.0-23-generic vl.pol
-3.  tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
-    --cmdline ""
-    --image /boot/initrd-2.6.18.8
-    vl.pol
-  - copy and paste
-../tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image --image /boot/initrd-3.5.0-23-generic vl.pol
-
-If any mle can be launched:
-./lcp_crtpol2 --create --type any --pol any.pol 
-
-Define tboot error TPM NV index:
-1.  lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
-    -p TPM-password
-  - copy and paste
-../lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
-
-Define LCP and Verified Launch policy indices:
-1.  lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
-  - copy and paste
-../lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
-2.  lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
-  - copy and paste
-../lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
-
-Write LCP and Verified Launch policies to TPM:
-(modprobe tpm_tis; tcsd;)
-1.  lcptools/lcp_writepol -i owner -f [any.pol|list.pol] -p TPM-password
-  - copy and paste
-../lcp_writepol -i owner -f list.pol -p <ownerauth password>
-2.  If there is a verified launch policy:
-    lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
-  - copy and paste
-../lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
-
-
------------------------------------------------------------------
+booted.  If you have no LCP, the default policy will be applied and this should
+work!  If not, there are instructions on creating policy at the bottonm of this file.
+Latest tboot test was tboot-1.7.3.2 with SINIT67.BIN.
 
 
 Next you must modify grub so that you can choose the tbooted linux from the
@@ -202,35 +133,80 @@ modules (other than 0) into PCR 19.
 
 ---------------------------------------------------------------------------
 
-REMOVE: 
 
-Create a PCONF element:
-1.  cat /sys/devices/platform/tpm_tis/pcrs |grep -e PCR-00 -e PCR-01 > pcrs
-  - the location of the pcrs file under /sys might vary. On my T430s, I found it 
-    under /sys/devices/pnp0/00:0a/pcrs. To find it, execute 'sudo find /sys -name 
-    "*pcrs*" -print'. Also note that you might need to run this command under sudo.
-2.  lcp_crtpolelt --create --type pconf --out pconf.elt pcrs
+Note: On some hardware, Ubuntu boots but the X Server hangs after tboot.  
+To fix this, after the boot go into single user mode by typing Control-Alt-F1 and
+then (as root) pKill X.
 
-Create an SBIOS element:
-1.  Create hash file containing BIOS hash(es), e.g. named sbios_hash
-  - this hash file consists of a sequence of SHA-1 hash values, one hash value 
-    per line.
-  - one way to get these values for the BIOS is to boot with tboot with the 
-    default policy and use txt-stat (installed with tboot) to get the debugging 
-    output from tboot: `sudo txt-stat | grep -A1 mle_hash`
-2.  lcp_crtpolelt --create --type sbios --out sbios.elt sbios_hash
 
-SKIPPED (since custom.elt is never used after it is created)
-Create a CUSTOM element:
-1.  Create or determine the UUID that will identify this data format (e.g.
-    using 'uuidgen')
-2.  Create the data the will be placed in this element.  E.g. the policy file
-    from tb_polgen.
-  - in other words, follow the instructions below to generate a policy file before 
-    this step
-3.  lcp_crtpolelt --create --type custom --out custom.elt --uuid <uuid value>
-    <data file>
-END SKIPPED
+-------------------------------------------------------------------------------
+
+The LCP consists of policy elements.
+
+To specify launch policy via a list of hashes:
+0.  sudo bash
+1.  lcp_mlehash -c "command line for tboot from grub.cfg" /boot/tboot.gz > mle_hash
+  - the command line in this case is the string from /boot/grub/grub.cfg 
+  - after multiboot tboot.gz, e.g., "logging=vga,memory,serial"
+  - copy and paste:
+./lcp_mlehash -c "logging=vga" /boot/tboot.gz>mle_hash
+2.  lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt mle_hash
+  - copy and paste
+./lcp_crtpolelt --create --type mle --ctrl 0x00 --minver 17 --out mle.elt mle_hash
+3.  lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
+  - copy and paste
+./lcp_crtpollist --create --out list_unsig.lst mle.elt pconf.elt
+4.  lcp_crtpol2 --create --type list --pol list.pol --data list.data list_unsig.lst
+  - copy and paste
+./lcp_crtpol2 --create --type list --pol list.pol --data list.data list_unsig.lst
+5.  cp list.pol /boot
+  - copy and paste
+cp owner_list.data /boot
+
+Next create a verified Launch policy:
+1.  tb_polgen/tb_polgen --create --type nonfatal vl.pol
+  - copy and paste
+../tb_polgen/tb_polgen --create --type nonfatal vl.pol
+2.  tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image
+    --cmdline "the command line from linux in grub.conf"
+    --image /boot/vmlinuz-2.6.18.8
+    vl.pol
+  - copy and paste
+../tb_polgen/tb_polgen --add --num 0 --pcr 18 --hash image --cmdline "root=UUID=cf6ae6b5-abb5-4d5d-b823-bd798a0621de ro quiet splash $vt_handoff" --image /boot/vmlinuz-3.5.0-23-generic vl.pol
+3.  tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image
+    --cmdline ""
+    --image /boot/initrd-2.6.18.8
+    vl.pol
+  - copy and paste
+../tb_polgen/tb_polgen --add --num 1 --pcr 19 --hash image --image /boot/initrd-3.5.0-23-generic vl.pol
+
+If any mle can be launched:
+./lcp_crtpol2 --create --type any --pol any.pol 
+
+Define tboot error TPM NV index:
+1.  lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
+    -p TPM-password
+  - copy and paste
+../lcptools/tpmnv_defindex -i 0x20000002 -s 8 -pv 0 -rl 0x07 -wl 0x07
+
+Define LCP and Verified Launch policy indices:
+1.  lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
+  - copy and paste
+../lcptools/tpmnv_defindex -i owner -s 0x36 -p TPM-owner-password
+2.  lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
+  - copy and paste
+../lcptools/tpmnv_defindex -i 0x20000001 -s 256 -pv 0x02 -p TPM-owner-password
+
+Write LCP and Verified Launch policies to TPM:
+(modprobe tpm_tis; tcsd;)
+1.  lcptools/lcp_writepol -i owner -f [any.pol|list.pol] -p TPM-password
+  - copy and paste
+../lcp_writepol -i owner -f list.pol -p <ownerauth password>
+2.  If there is a verified launch policy:
+    lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
+  - copy and paste
+../lcptools/lcp_writepol -i 0x20000001 -f vl.pol -p TPM-password
+
 
 
 Note:  I dont think you need to sign the list. If not, you can remove the
@@ -250,5 +226,6 @@ indented directions.
     5.  openssl dgst -sha1 -sign privkey.pem -out list.sig list_sig.lst
     6.  lcp_crtpollist --addsig --sig list.sig --out list_sig.lst
 
-DCreate policy and policy data files:
+
+-----------------------------------------------------------------
 

@@ -15,7 +15,7 @@ LDFLAGSXML      := ${RELEASE_LDFLAGS}
 CC=         g++
 LINK=       g++
 
-dobjs=      $(B)/vTCI.o $(B)/sha1.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
+dobjs=      $(B)/vTCI.o $(B)/sha1.o $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/mpRand.o $(B)/jlmUtility.o $(B)/tinyxml.o \
 	    $(B)/tinyxmlparser.o $(B)/tinyxmlerror.o $(B)/tinystr.o \
 	    $(B)/hashprep.o $(B)/sha256.o $(B)/logging.o
@@ -31,6 +31,9 @@ $(B)/sha1.o: $(CR)/sha1.cpp $(CR)/sha1.h
 
 $(B)/vTCI.o: $(S)/vTCI.cpp $(S)/vTCI.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(CR) -I$(TPU) -I$(BN) -I/usr/include/tss -c -o $(B)/vTCI.o $(S)/vTCI.cpp
+
+$(B)/fastArith.o: $(BN)/fastArith.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(BN) -c -o $(B)/fastArith.o $(BN)/fastArith.cpp
 
 $(B)/mpBasicArith.o: $(BN)/mpBasicArith.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(BN) -c -o $(B)/mpBasicArith.o $(BN)/mpBasicArith.cpp

@@ -25,6 +25,8 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 #include "ktcioDD.h"
+#include <asm/vmdd.h>
+//#include <asm/kvm_para.h>
 
 extern ssize_t  ktciodd_read(struct file *filp, char __user *buf, size_t count,
                             loff_t *f_pos);
@@ -32,8 +34,10 @@ extern ssize_t  ktciodd_write(struct file *filp, const char __user *buf, size_t 
                              loff_t *f_pos);
 //extern int ktciodd_ioctl(struct inode *inode, struct file *filp, unsigned cmd, unsigned long arg); 
 
-extern int ktciodd_init(void);
-extern void ktciodd_exit(void);
+//extern int ktciodd_init(void);
+//extern int ktciodd_exit(void);
+extern int ktciodd_open(void);
+extern int ktciodd_close(void);
 
 int ktciodd_major = KTCIODD_MAJOR;
 int ktciodd_minor = 0;
@@ -49,8 +53,8 @@ struct file_operations ktciodd_fops= {
     .owner=    THIS_MODULE,
     .read=     ktciodd_read,
     .write=    ktciodd_write,
-    .open=     ktciodd_init,
-    .release=  ktciodd_exit,
+    .open=     ktciodd_open,
+    .release=  ktciodd_close,
 };
 
 static struct class*    kclass= NULL;
@@ -74,14 +78,16 @@ void ktciodd_setup_cdev(struct ktciodd_dev *dev, int index)
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "ktcioDD: setup cdev complete, devno is %08x\n", devno);
 #endif
+
 }
 
-void ktciodd_exit(void) {
+int ktciodd_close(void) {
     int         i;
     dev_t       devno= MKDEV(ktciodd_major, ktciodd_minor);
+	int result;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktcioDD: cleanup started\n");
+    printk(KERN_DEBUG "ktcioDD: close started\n");
 #endif
     // Get rid of dev entries
     if(ktciodd_devices) {
@@ -103,11 +109,14 @@ void ktciodd_exit(void) {
     // cleanup_module isn't called if registering failed
     unregister_chrdev_region(devno, ktciodd_nr_devs);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktcioDD: cleanup complete\n");
+    printk(KERN_DEBUG "ktcioDD: close complete\n");
 #endif
-} //end ktciodd_exit
+	result = tc_hypercall0(int, KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE);
+//	res = kvm_hypercall0(KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE);
+	return result;
+} //end ktciodd_close
 
-int ktciodd_init(void) {
+int ktciodd_open(void) {
     int     result, i;
     dev_t   dev= 0;
 
@@ -147,40 +156,54 @@ int ktciodd_init(void) {
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "ktcioDD: ktciodd_init complete\n");
 #endif
-    return 0;
+	result = tc_hypercall0(int, KVM_HYPERCALL_CONNECT_TO_TCSERVICE);
+//	result = kvm_hypercall0(KVM_HYPERCALL_CONNECT_TO_TCSERVICE);
+	return result;
+//    return 0;
 
 fail:
-    ktciodd_exit();
+    ktciodd_close();
     return result;
-} //end ktciodd_init
+} //end ktciodd_open
 
 ssize_t ktciodd_read(struct file *filp, char __user *buf, size_t count,
                     loff_t *f_pos) {
 
+	ssize_t result = 0;
+	result = tc_hypercall4(ssize_t, KVM_HYPERCALL_READ_FROM_TCSERVICE, filp, buf, count, f_pos);
+//	result = kvm_hypercall4(KVM_HYPERCALL_READ_FROM_TCSERVICE, (unsigned long) filp, (unsigned long) buf, (unsigned long) count, (unsigned long) f_pos);
 	//	return tciodd_read(filp, buf, count, f_pos);
 /*
- * TODO: there are two ways to communicate to the tcService:
+ * REK: there are two ways to communicate to the tcService:
  * 	a) Use a port via serial interface between the guest and host
  *	b) Do a hypercall to invoke host, and handle the hypercall to 
  *	pass the message to tcService
  */
-	return 0;
+	return result;
+//	return 0;
 } //end ktciodd_read
 
 ssize_t ktciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos) {
-//		return tciodd_write(filp, buf, count, f_pos);
+
+	ssize_t result = 0;
 /*
- * TODO: there are two ways to communicate to the tcService:
+ * REK: there are two ways to communicate to the tcService:
  * 	a) Use a port via serial interface between the guest and host
  *	b) Do a hypercall to invoke host, and handle the hypercall to 
  *	pass the message to tcService
  */
-	return 0;
+	result = tc_hypercall4(ssize_t, KVM_HYPERCALL_WRITE_TO_TCSERVICE, filp, buf, count, f_pos);
+//	result = kvm_hypercall4(KVM_HYPERCALL_WRITE_TO_TCSERVICE, 
+//				(unsigned long) filp, (unsigned long) buf, 
+//				(unsigned long) count, (unsigned long) f_pos);
+//		return tciodd_write(filp, buf, count, f_pos);
+	return result;
+//	return 0;
 }
 
 #ifdef LINUXLICENSED
 MODULE_LICENSE("GPL");
-module_init(ktciodd_init);
-module_exit(ktciodd_exit);
+module_init(ktciodd_open);
+module_exit(ktciodd_close);
 #endif

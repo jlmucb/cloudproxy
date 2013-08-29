@@ -1,0 +1,82 @@
+Overview
+--------
+To virtualize the tcioDD driver/tcService, following changes are done:
+
+	a) Add a tcioDD driver like driver to the guest kernel.  This driver does a
+hypercall into kvm for all file operations.
+
+	b) KVM modifications to handle the new hypercalls, and redirection to
+tciioDD driver if it is running.
+
+	c) Wrapper routines that provide communication between the hypercall
+handlers and tcioDD driver.  Note that this part is not complete. It is missing
+the calls for hashing/seal/unseal.
+
+Files added:
+
+vmdd.c - File with the wrapper routines that connect to the native
+tcService/tcioDD.  These routines are called from the hypercall handlers in
+x86.c.  This file is added in linux-distro/arch/x86/kvm/ directory.
+
+vmdd.h - Header file with new hypercall defines and the wrapper routine
+prototypes.  This file is added in linux-distro/arch/include/asm directory.
+
+A new driver for the guest is added under the drivers/misc  directory.  This
+driver should be added only for the guest kernel image (and not the native
+kernel).  The file operations of this drive do a hypercall into KVM, which will
+redirect these calls to the tcioDD driver.
+
+vmDriver/ktcioDD.c
+vmDriver/ktcioDD.h
+vmDriver/Makefile
+
+Files modified:
+linux-distro/arch/x86/kvm/x86.c
+
+	- Added 4 hypercalls to handle 4 tcioDD operations.  Below is the patch
+	  with the changes to the file.
+
+x86.patch
+====================START=====================
+--- /home/rekha/istc/cloudproxy/linux-3.7.10/arch/x86/kvm/x86.c	2013-02-27 09:22:04.000000000 -0800
++++ /home/rekha/istc/cloudproxy/linux-3.7.10-kvmtciodd/arch/x86/kvm/x86.c	2013-08-29 00:08:48.095260894 -0700
+@@ -5019,7 +5019,9 @@
+ {
+ 	unsigned long nr, a0, a1, a2, a3, ret;
+ 	int r = 1;
+-
++#ifdef TESTDEVICE
++	int result;
++#endif 
+ 	if (kvm_hv_hypercall_enabled(vcpu->kvm))
+ 		return kvm_hv_hypercall(vcpu);
+ 
+@@ -5048,6 +5050,27 @@
+ 	case KVM_HC_VAPIC_POLL_IRQ:
+ 		ret = 0;
+ 		break;
++/*
++ * REK:- special hypercalls to connect to tcService
++ */
++#ifdef TESTDEVICE
++	case KVM_HYPERCALL_CONNECT_TO_TCSERVICE://13579
++//		handle_hypercall(nr);
++		ret = vmdd_connect(vcpu->pid);
++		break;
++	case KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE: //13580
++//		handle_hypercall(nr);
++		ret = vmdd_disconnect(vcpu->pid);
++		break;
++	case KVM_HYPERCALL_READ_FROM_TCSERVICE://13581
++//		handle_hypercall(nr, a0, a1, a2, a3);
++		ret = vmdd_read(vcpu->pid, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t) a3);
++		break;
++	case KVM_HYPERCALL_WRITE_TO_TCSERVICE:	//13580
++//		handle_hypercall(nr, a0, a1, a2, a3);
++		ret = vmdd_write(vcpu->pid, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t) a3);
++		break;
++#endif
+ 	default:
+ 		ret = -KVM_ENOSYS;
+ 		break;
+==================================END=======================

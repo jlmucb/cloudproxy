@@ -1,0 +1,41 @@
+--- /home/rekha/istc/cloudproxy/linux-3.7.10/arch/x86/kvm/x86.c	2013-02-27 09:22:04.000000000 -0800
++++ /home/rekha/istc/cloudproxy/linux-3.7.10-kvmtciodd/arch/x86/kvm/x86.c	2013-08-29 00:08:48.095260894 -0700
+@@ -5019,7 +5019,9 @@
+ {
+ 	unsigned long nr, a0, a1, a2, a3, ret;
+ 	int r = 1;
+-
++#ifdef TESTDEVICE
++	int result;
++#endif 
+ 	if (kvm_hv_hypercall_enabled(vcpu->kvm))
+ 		return kvm_hv_hypercall(vcpu);
+ 
+@@ -5048,6 +5050,27 @@
+ 	case KVM_HC_VAPIC_POLL_IRQ:
+ 		ret = 0;
+ 		break;
++/*
++ * REK:- special hypercalls to connect to tcService
++ */
++#ifdef TESTDEVICE
++	case KVM_HYPERCALL_CONNECT_TO_TCSERVICE://13579
++//		handle_hypercall(nr);
++		ret = vmdd_connect(vcpu->pid);
++		break;
++	case KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE: //13580
++//		handle_hypercall(nr);
++		ret = vmdd_disconnect(vcpu->pid);
++		break;
++	case KVM_HYPERCALL_READ_FROM_TCSERVICE://13581
++//		handle_hypercall(nr, a0, a1, a2, a3);
++		ret = vmdd_read(vcpu->pid, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t) a3);
++		break;
++	case KVM_HYPERCALL_WRITE_TO_TCSERVICE:	//13580
++//		handle_hypercall(nr, a0, a1, a2, a3);
++		ret = vmdd_write(vcpu->pid, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t) a3);
++		break;
++#endif
+ 	default:
+ 		ret = -KVM_ENOSYS;
+ 		break;

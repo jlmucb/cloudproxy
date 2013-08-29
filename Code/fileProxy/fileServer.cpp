@@ -758,7 +758,8 @@ int main(int an, char** av)
 #ifdef TEST
         fprintf(g_logFile, "fileServer main: start measured program %s\n", av[0]);
 #endif
-        if(!startMeAsMeasuredProgram(an, av)) {
+        av[1]= NULL;
+        if(!startMeAsMeasuredProgram(1, av)) {
 #ifdef TEST
             fprintf(g_logFile, "fileServer main: measured program failed, exiting\n");
 #endif

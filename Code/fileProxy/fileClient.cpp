@@ -535,10 +535,11 @@ int main(int an, char** av)
 #endif
 
     if(fInitProg) {
+	av[1] = NULL;
 #ifdef  TEST
         fprintf(g_logFile, "fileClient main starting measured %s\n", av[0]);
 #endif
-        if(!startMeAsMeasuredProgram(an, av)) {
+        if(!startMeAsMeasuredProgram(1, av)) {
 #ifdef TEST
             fprintf(g_logFile, "main: measured program failed, exiting\n");
             fflush(g_logFile);

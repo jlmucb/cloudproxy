@@ -26,18 +26,6 @@
 #include <asm/uaccess.h>
 #include "ktcioDD.h"
 #include <asm/vmdd.h>
-//#include <asm/kvm_para.h>
-
-extern ssize_t  ktciodd_read(struct file *filp, char __user *buf, size_t count,
-                            loff_t *f_pos);
-extern ssize_t  ktciodd_write(struct file *filp, const char __user *buf, size_t count,
-                             loff_t *f_pos);
-//extern int ktciodd_ioctl(struct inode *inode, struct file *filp, unsigned cmd, unsigned long arg); 
-
-//extern int ktciodd_init(void);
-//extern int ktciodd_exit(void);
-extern int ktciodd_open(void);
-extern int ktciodd_close(void);
 
 int ktciodd_major = KTCIODD_MAJOR;
 int ktciodd_minor = 0;
@@ -81,10 +69,9 @@ void ktciodd_setup_cdev(struct ktciodd_dev *dev, int index)
 
 }
 
-int ktciodd_close(void) {
+int ktciodd_close(struct inode *inode, struct file *filp) {
     int         i;
     dev_t       devno= MKDEV(ktciodd_major, ktciodd_minor);
-	int result;
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "ktcioDD: close started\n");
@@ -111,12 +98,11 @@ int ktciodd_close(void) {
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "ktcioDD: close complete\n");
 #endif
-	result = tc_hypercall0(int, KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE);
-//	res = kvm_hypercall0(KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE);
-	return result;
-} //end ktciodd_close
 
-int ktciodd_open(void) {
+    return 1;
+}
+
+int ktciodd_open(struct inode *inode, struct file *filp) {
     int     result, i;
     dev_t   dev= 0;
 
@@ -156,50 +142,60 @@ int ktciodd_open(void) {
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "ktcioDD: ktciodd_init complete\n");
 #endif
-	result = tc_hypercall0(int, KVM_HYPERCALL_CONNECT_TO_TCSERVICE);
-//	result = kvm_hypercall0(KVM_HYPERCALL_CONNECT_TO_TCSERVICE);
-	return result;
-//    return 0;
+    return 0;
 
 fail:
-    ktciodd_close();
+    ktciodd_close(inode, filp);
     return result;
-} //end ktciodd_open
+}
 
 ssize_t ktciodd_read(struct file *filp, char __user *buf, size_t count,
                     loff_t *f_pos) {
 
-	ssize_t result = 0;
-	result = tc_hypercall4(ssize_t, KVM_HYPERCALL_READ_FROM_TCSERVICE, filp, buf, count, f_pos);
-//	result = kvm_hypercall4(KVM_HYPERCALL_READ_FROM_TCSERVICE, (unsigned long) filp, (unsigned long) buf, (unsigned long) count, (unsigned long) f_pos);
-	//	return tciodd_read(filp, buf, count, f_pos);
-/*
- * REK: there are two ways to communicate to the tcService:
- * 	a) Use a port via serial interface between the guest and host
- *	b) Do a hypercall to invoke host, and handle the hypercall to 
- *	pass the message to tcService
- */
-	return result;
-//	return 0;
-} //end ktciodd_read
+  /* Pass the buffer pointer down to the host kernel to see if there is anything to read.
+   * Poll the hypercall interface here until it reads something, then copy it out and return.
+   * TODO(tmroeder): the right way to do this is to wait for an interrupt from the host kernel
+   * that signals the availability of data for the reply to this read.
+   */
+  ssize_t result = 0;
+  
+  void* databuf= kmalloc(count, GFP_KERNEL);
+
+  while((result = (ssize_t)kvm_hypercall2(KVM_HYPERCALL_READ_FROM_TCSERVICE,
+					  (unsigned long)databuf,
+					  (unsigned long)count)) == 0) {
+    yield();
+  }
+
+  // copy the received buffer back up to the user
+  if (copy_to_user(buf, databuf, result))
+    result = -EFAULT;
+
+  kfree(databuf);
+  return result;
+}
 
 ssize_t ktciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos) {
 
-	ssize_t result = 0;
-/*
- * REK: there are two ways to communicate to the tcService:
- * 	a) Use a port via serial interface between the guest and host
- *	b) Do a hypercall to invoke host, and handle the hypercall to 
- *	pass the message to tcService
- */
-	result = tc_hypercall4(ssize_t, KVM_HYPERCALL_WRITE_TO_TCSERVICE, filp, buf, count, f_pos);
-//	result = kvm_hypercall4(KVM_HYPERCALL_WRITE_TO_TCSERVICE, 
-//				(unsigned long) filp, (unsigned long) buf, 
-//				(unsigned long) count, (unsigned long) f_pos);
-//		return tciodd_write(filp, buf, count, f_pos);
-	return result;
-//	return 0;
+  ssize_t ret = 0;
+
+  void *databuf = kmalloc(count, GFP_KERNEL);
+  if (databuf == NULL)
+    return -ENOMEM;
+
+  if (copy_from_user(databuf, buf, count)) {
+    ret = -EFAULT;
+    goto out;
+  }
+
+  // pass this data down to the the host kernel by a hypercall
+  ret = (ssize_t)kvm_hypercall2(KVM_HYPERCALL_WRITE_TO_TCSERVICE,
+				(unsigned long)databuf,
+				(unsigned long)count);
+ out:
+  kfree(databuf);
+  return ret;
 }
 
 #ifdef LINUXLICENSED

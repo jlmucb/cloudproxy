@@ -31,6 +31,7 @@ ssize_t ktciodd_read(struct file *filp, char __user *buf, size_t count,
 ssize_t ktciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos);
 
-//int ktciodd_ioctl(struct inode *inode, struct file *filp, unsigned cmd, unsigned long arg); 
+int ktciodd_open(struct inode *inode, struct file *filp);
+int ktciodd_close(struct inode *inode, struct file *filp);
 
 #endif

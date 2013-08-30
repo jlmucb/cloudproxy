@@ -144,7 +144,7 @@ $(B)/hashprep.o: $(TS)/hashprep.cpp $(TS)/hashprep.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TS) -c -o $(B)/hashprep.o $(TS)/hashprep.cpp
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
-	$(CC) $(CFLAGS) -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
+	$(CC) $(CFLAGS) -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -D LINUXTCSERVICE -c -o $(B)/fileClient.o $(S)/fileClient.cpp
 
 $(B)/fileTester.o: $(S)/fileTester.cpp $(S)/fileTester.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TAO) -I$(VLT) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(S) -c -o $(B)/fileTester.o $(S)/fileTester.cpp

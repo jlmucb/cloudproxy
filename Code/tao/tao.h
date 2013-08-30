@@ -94,7 +94,7 @@
 #define TPMSEALEDSIZE                        313
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
-#define DEFAULTDEVICE       "/dev/tcioDD"
+// #define DEFAULTDEVICE       "/dev/tcioDD"
 
 //
 //   Standard files

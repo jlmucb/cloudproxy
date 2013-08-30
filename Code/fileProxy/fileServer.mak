@@ -48,7 +48,7 @@ $(E)/fileServer.exe: $(dobjs)
 	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -D LINUXTCSERVICE -c -o $(B)/fileServer.o $(S)/fileServer.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp

@@ -204,7 +204,8 @@ void taoEnvironment::printData()
 bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, const char* directory, 
                              taoHostServices* host, int nArgs, char** rgszParameter)
 {
-    const char*   parameter= DEFAULTDEVICE;
+    extern const char* g_tcioDDName;
+    const char*   parameter= g_tcioDDName;
     char    szhostName[256];
     int     n= 256;
 

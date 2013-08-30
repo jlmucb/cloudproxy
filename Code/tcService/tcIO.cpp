@@ -45,6 +45,8 @@
 #include <sys/wait.h>
 #endif
 
+extern const char* g_tcioDDName;
+
 
 // -------------------------------------------------------------------
 
@@ -132,9 +134,9 @@ bool tcChannel::OpenBuf(u32 type, int fd, const char* file, u32 flags)
     switch(type) {
 #ifdef TCIODEVICEDRIVERPRESENT
       case TCDEVICEDRIVER:
-        m_fd= open(TCIODDNAME, O_RDWR);
+        m_fd= open(g_tcioDDName, O_RDWR);
         if(m_fd<0) {
-            fprintf(g_logFile, "Can't open device driver %s\n", TCIODDNAME);
+            fprintf(g_logFile, "Can't open device driver %s\n", g_tcioDDName);
             return false;
         }
         return true;

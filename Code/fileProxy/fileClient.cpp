@@ -86,6 +86,16 @@ extern const char*  g_szTerm;
 const char* g_szClientPrincipalCertsFile= "fileClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys.xml";
 
+#ifdef KVMTCSERVICE
+const char* g_tcioDDName= "kvmtciodd0";
+#endif
+#ifdef KVMGUESTOSTCSERVICE 
+const char* g_tcioDDName= "ktciodd0";
+#endif
+#ifdef LINUXTCSERVICE 
+const char* g_tcioDDName= "tcioDD0";
+#endif
+
 
 // ------------------------------------------------------------------------
 

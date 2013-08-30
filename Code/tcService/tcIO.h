@@ -55,7 +55,7 @@
 #define CLIENTSIDEDEVICEDRIVER                5
 
 
-#define TCIODDNAME  "/dev/tcioDD0"
+// #define TCIODDNAME  "/dev/tcioDD0"
 
 
 #define PADDEDREQ 8192

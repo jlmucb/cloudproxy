@@ -51,7 +51,7 @@ int         g_myPid= -1;
 
 bool initLinuxService(const char* name)
 {
-#ifdef TCTEST
+#ifdef TEST
     if(name!=NULL)
         fprintf(g_logFile, "initLinuxService started %s\n", name);
     else

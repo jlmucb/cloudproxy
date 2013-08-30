@@ -18,8 +18,11 @@ vmdd.c - File with the wrapper routines that connect to the native
 tcService/tcioDD.  These routines are called from the hypercall handlers in
 x86.c.  This file is added in linux-distro/arch/x86/kvm/ directory.
 
-vmdd.h - Header file with new hypercall defines and the wrapper routine
-prototypes.  This file is added in linux-distro/arch/include/asm directory.
+vmdd.h - Header file with new hypercall defines and the wrapper
+routine prototypes.  This file is added in
+linux-distro/arch/include/asm directory. (tmroeder: in my version of
+linux (3.10.1), there is no directory arch/include/asm. But there is
+arch/x86/include/asm).
 
 A new driver for the guest is added under the drivers/misc  directory.  This
 driver should be added only for the guest kernel image (and not the native
@@ -29,6 +32,8 @@ redirect these calls to the tcioDD driver.
 vmDriver/ktcioDD.c
 vmDriver/ktcioDD.h
 vmDriver/Makefile
+
+You also need to copy vmdd.h into the guest code, since ktcioDD.c includes asm/vmdd.h.
 
 Files modified:
 linux-distro/arch/x86/kvm/x86.c

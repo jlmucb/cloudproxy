@@ -72,6 +72,7 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
 {
     const char*   directory= NULL;
     const char*   parameter= NULL;
+    const char*   subdirectory;
 
 #ifdef TEST
     fprintf(g_logFile, "HostInit(%04x)\n", hostType);
@@ -86,6 +87,33 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
         directory= strdup(DEFAULTDIRECTORY);
     }
 
+    switch(hostType) {
+      case PLATFORMTYPEHW:
+        subdirectory= "HWRoot";
+        break;
+      case PLATFORMTYPEKVMHYPERVISOR:
+        subdirectory= "KvmHost";
+        break;
+      case PLATFORMTYPELINUXGUEST:
+        subdirectory= "OSGuest";
+        break;
+      case PLATFORMTYPELINUX:
+        subdirectory= "TrustedOS";
+        break;
+      default:
+        subdirectory= NULL;
+        break;
+    }
+
+    // init filenames
+    if(!m_fileNames.initNames(directory, subdirectory)) {
+        fprintf(g_logFile, "taoHostServices::HostInit: cant init names\n");
+        return false;
+    }
+    if(nParameters>1)
+        parameter= rgszParameter[1];
+    else
+        parameter= NULL;
 
     switch(m_hostType) {
       default:
@@ -95,23 +123,8 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
         m_hostValid= false;
         break;
 
-      case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-      case PLATFORMTYPELINUXGUEST:
-        // TODO
-        m_hostValid= false;
-        break;
-
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
-        if(!m_fileNames.initNames(directory, "HWRoot")) {
-            fprintf(g_logFile, "taoHostServices::HostInit: cant init names\n");
-            return false;
-        }
-        if(nParameters>1)
-            parameter= rgszParameter[1];
-        else
-            parameter= NULL;
         if(!initTPM(m_fileNames.m_szprivateFile, parameter)) {
             fprintf(g_logFile, "taoHostServices::HostInit: cant init TPM\n");
             return false;
@@ -120,16 +133,9 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
 #else
         return false;
 #endif
+      case PLATFORMTYPEKVMHYPERVISOR:
+      case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUX:
-        if(!m_fileNames.initNames(directory, "TrustedOS")) {
-            fprintf(g_logFile, "taoHostServices::HostInit: cant init Linuxservice\n");
-            return false;
-        }
-
-        if(nParameters>1)
-            parameter= rgszParameter[1];
-        else
-            parameter= NULL;
         if(!initLinuxService(parameter)) {
             fprintf(g_logFile, "taoHostServices::HostInit: cant init Linuxservice\n");
             return false;
@@ -174,9 +180,11 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
       case PLATFORMTYPEHYPERVISOR:
       case PLATFORMTYPEHW:
         return false;
+
       case PLATFORMTYPEKVMHYPERVISOR:
         // Todo
         return false;
+
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUX:
         return startAppfromDeviceDriver(name, phandle, an, av);
@@ -192,16 +200,16 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
         return false;
-      case PLATFORMTYPELINUXGUEST:
-      case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
+
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return getMeasurementTPM(psize, buf);
 #else
         return false;
 #endif
+
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
         return getHostedMeasurementfromDeviceDriver(getpid(), ptype, psize, buf);
     }
@@ -276,8 +284,6 @@ bool taoHostServices::GetHostPolicyKey(int* psize, u32* pType, byte* buf)
         return false;
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
       case PLATFORMTYPELINUX:
         return getOSMeasurementfromDeviceDriver(pType, psize, buf);
     }
@@ -292,10 +298,6 @@ bool taoHostServices::GetEntropy(int size, byte* buf)
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
         return false;
-      case PLATFORMTYPELINUXGUEST:
-      case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return getEntropyTPM(size, buf);
@@ -303,6 +305,8 @@ bool taoHostServices::GetEntropy(int size, byte* buf)
         return false;
 #endif
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
         return getEntropyfromDeviceDriver(size, buf);
     }
 }
@@ -316,16 +320,15 @@ bool taoHostServices::Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte*
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
         return false;
-      case PLATFORMTYPELINUXGUEST:
-      case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
+
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return sealwithTPM(sizetoSeal, toSeal, psizeSealed, sealed);
 #else
         return false;
 #endif
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
         return sealfromDeviceDriver(sizetoSeal, toSeal, psizeSealed, sealed);
     }
@@ -344,16 +347,14 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
         return false;
-      case PLATFORMTYPELINUXGUEST:
-      case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return unsealwithTPM(sizeSealed, sealed, psizetoSeal, toSeal);
 #else
         return false;
 #endif
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
         return unsealfromDeviceDriver(sizeSealed, sealed, psizetoSeal, toSeal);
     }
@@ -374,16 +375,14 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
         return false;
-      case PLATFORMTYPELINUXGUEST:
-      case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return quotewithTPM(sizetoAttest, toAttest, psizeAttested, attested);
 #else
         return false;
 #endif
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
         return quotefromDeviceDriver(sizetoAttest, toAttest, psizeAttested, attested);
     }

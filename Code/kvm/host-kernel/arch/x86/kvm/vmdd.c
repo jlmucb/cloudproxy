@@ -1,4 +1,4 @@
-#include <asm/page.h> x
+#include <asm/page.h>
 #include <linux/kvm_host.h>
 #include <asm/kvm_host.h>
 #include <asm/vmdd.h>

@@ -6,7 +6,9 @@ else
     KERNEL_DIR=$1
 fi
 
-for i in `find . -name "*.c" -or -name "*.h"`; do 
+for i in `find . -not -name "*.patch" -and -not -type d`; do 
+    dir=`dirname $i`
+    mkdir -p ${KERNEL_DIR}/$dir
     cp $i ${KERNEL_DIR}/$i
 done
 

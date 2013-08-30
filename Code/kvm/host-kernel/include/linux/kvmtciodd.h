@@ -1,5 +1,5 @@
-//  File: tcioddDD.h
-//      Defines for tciodd device driver
+//  File: kvmtcioddDD.h
+//      Defines for kvmtciodd device driver
 //
 //  Copyright (c) 2012, John Manferdelli.  All rights reserved.
 //  Some portion Copyright (c), 2012, Intel Corporation.
@@ -36,8 +36,8 @@
 // --------------------------------------------------------------------
 
 
-#ifndef _TCIODD_H_
-#define _TCIODD_H_
+#ifndef _KVMTCIODD_H_
+#define _KVMTCIODD_H_
 
 #include <linux/module.h>
 #include <linux/ioctl.h>
@@ -45,9 +45,9 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 
-#define TCIODD_MAJOR 100
-#ifndef TCIODD_MAJOR
-#define TCIODD_MAJOR 0           // dynamic major by default
+#define KVMTCIODD_MAJOR 100
+#ifndef KVMTCIODD_MAJOR
+#define KVMTCIODD_MAJOR 0           // dynamic major by default
 #endif
 
 #ifndef byte
@@ -56,25 +56,25 @@ typedef unsigned char byte;
 
 
 // Q's for read and write
-struct tciodd_Qent {
+struct kvmtciodd_Qent {
     int                 m_pid;
     byte*               m_data;
     int                 m_sizedata;
-    // struct tciodd_Qent* m_next;
+    // struct kvmtciodd_Qent* m_next;
     void*               m_next;
 };
 
-extern  struct tciodd_Qent* tciodd_makeQent(int pid, int sizedata, byte* data, 
-                                                struct tciodd_Qent* next);
-extern  void   tciodd_deleteQent(struct tciodd_Qent* pent);
-extern  int    tciodd_insertQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent);
-extern  int    tciodd_appendQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent);
-extern  int    tciodd_removeQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent);
-extern  struct tciodd_Qent* tciodd_findQentbypid(struct tciodd_Qent* head, int pid);
-void tciodd_clearQent(struct tciodd_Qent** phead);
+extern  struct kvmtciodd_Qent* kvmtciodd_makeQent(int pid, int sizedata, byte* data, 
+                                                struct kvmtciodd_Qent* next);
+extern  void   kvmtciodd_deleteQent(struct kvmtciodd_Qent* pent);
+extern  int    kvmtciodd_insertQent(struct kvmtciodd_Qent** phead, struct kvmtciodd_Qent* pent);
+extern  int    kvmtciodd_appendQent(struct kvmtciodd_Qent** phead, struct kvmtciodd_Qent* pent);
+extern  int    kvmtciodd_removeQent(struct kvmtciodd_Qent** phead, struct kvmtciodd_Qent* pent);
+extern  struct kvmtciodd_Qent* kvmtciodd_findQentbypid(struct kvmtciodd_Qent* head, int pid);
+void kvmtciodd_clearQent(struct kvmtciodd_Qent** phead);
 
 
-struct tciodd_dev {
+struct kvmtciodd_dev {
     wait_queue_head_t   waitq;
     struct semaphore    sem;           // mutual exclusion semaphore 
     struct cdev         cdev;          // char device structure  
@@ -88,18 +88,18 @@ struct tciodd_dev {
 #define JIFTIMEOUT 100
 
 
-extern int      tciodd_major;     
-extern int      tciodd_nr_devs;
+extern int      kvmtciodd_major;     
+extern int      kvmtciodd_nr_devs;
 
-ssize_t         tciodd_read(struct file *filp, char __user *buf, size_t count,
+ssize_t         kvmtciodd_read(struct file *filp, char __user *buf, size_t count,
                     loff_t *f_pos);
-ssize_t         tciodd_write(struct file *filp, const char __user *buf, size_t count,
+ssize_t         kvmtciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos);
-extern int      tciodd_ioctl(struct inode *inode, struct file *filp,
+extern int      kvmtciodd_ioctl(struct inode *inode, struct file *filp,
                      unsigned cmd, unsigned long arg);
-int      tciodd_open(struct inode *inode, struct file *filp);
-int      tciodd_close(struct inode *inode, struct file *filp);
-bool tciodd_processService(void);
+int      kvmtciodd_open(struct inode *inode, struct file *filp);
+int      kvmtciodd_close(struct inode *inode, struct file *filp);
+bool kvmtciodd_processService(void);
 
 struct tcBuffer {
     int                 m_procid;

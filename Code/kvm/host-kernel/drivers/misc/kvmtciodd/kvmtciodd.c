@@ -1,5 +1,5 @@
 //
-//  File: tcioDD.c
+//  File: kvmtciodd.c
 //      Trusted service device driver
 //
 //  This file and derived words are subject to the terms and conditions
@@ -15,7 +15,7 @@
 #include <linux/device.h>
 
 #include "algs.h"
-#include <linux/tcioDD.h>
+#include <linux/kvmtciodd.h>
 #include "tcServiceCodes.h"
 
 #include "serviceHash.inc"
@@ -52,7 +52,7 @@
 #include <linux/fcntl.h>
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
-#include <linux/tcioDD.h>
+#include <linux/kvmtciodd.h>
 /* #include <asm/system.h> */
 #include <asm/uaccess.h>
 
@@ -68,42 +68,42 @@
 // ----------------------------------------------------------------------------
 
 
-unsigned    tciodd_serviceInitialized= 0;
-int         tciodd_servicepid= 0;
+unsigned    kvmtciodd_serviceInitialized= 0;
+int         kvmtciodd_servicepid= 0;
 
 
-int         tciodd_major=   TCIODD_MAJOR;
-int         tciodd_minor=   0;
+int         kvmtciodd_major=   KVMTCIODD_MAJOR;
+int         kvmtciodd_minor=   0;
 
 // there can only be such device
-int         tciodd_nr_devs= 1;
+int         kvmtciodd_nr_devs= 1;
 
 // there will never be more than one, since there is only one
 // tcService at a time that connects, and all other calls come down
-// through KVM rather than from a process that opens /dev/tcioDD{N}
-struct tciodd_dev *tciodd_device = NULL;
+// through KVM rather than from a process that opens /dev/kvmtciodd{N}
+struct kvmtciodd_dev *kvmtciodd_device = NULL;
 
 
-module_param(tciodd_major, int, S_IRUGO);
-module_param(tciodd_minor, int, S_IRUGO);
-module_param(tciodd_nr_devs, int, S_IRUGO);
+module_param(kvmtciodd_major, int, S_IRUGO);
+module_param(kvmtciodd_minor, int, S_IRUGO);
+module_param(kvmtciodd_nr_devs, int, S_IRUGO);
 
-struct file_operations tciodd_fops= {
+struct file_operations kvmtciodd_fops= {
     .owner=    THIS_MODULE,
-    .read=     tciodd_read,
-    .write=    tciodd_write,
-    .open=     tciodd_open,
-    .release=  tciodd_close,
+    .read=     kvmtciodd_read,
+    .write=    kvmtciodd_write,
+    .open=     kvmtciodd_open,
+    .release=  kvmtciodd_close,
 };
 
 
 //  Read and write buffers have the following format:
 //      tcBuffer header || data
 
-struct semaphore    tciodd_reqserviceqsem; 
-struct tciodd_Qent* tciodd_reqserviceq= NULL;
-struct semaphore    tciodd_resserviceqsem; 
-struct tciodd_Qent* tciodd_resserviceq= NULL;
+struct semaphore    kvmtciodd_reqserviceqsem; 
+struct kvmtciodd_Qent* kvmtciodd_reqserviceq= NULL;
+struct semaphore    kvmtciodd_resserviceqsem; 
+struct kvmtciodd_Qent* kvmtciodd_resserviceq= NULL;
 
 
 //
@@ -130,7 +130,7 @@ void printcmdbuffer(byte* pB)
 }
 
 
-void printent(struct tciodd_Qent* pE)
+void printent(struct kvmtciodd_Qent* pE)
 {
     int     n;
 
@@ -149,13 +149,13 @@ void printent(struct tciodd_Qent* pE)
 }
 
 
-void printlist(struct tciodd_Qent* pE)
+void printlist(struct kvmtciodd_Qent* pE)
 {
     int     n= 0;
 
     while(pE!=NULL) {
         printent(pE);
-        pE= (struct tciodd_Qent*) pE->m_next;
+        pE= (struct kvmtciodd_Qent*) pE->m_next;
         n++;
     }
     printk(KERN_DEBUG "  %d list elements\n", n);
@@ -164,15 +164,15 @@ void printlist(struct tciodd_Qent* pE)
 
 void printrequestQ(void)
 {
-    printk(KERN_DEBUG "tcioDD: request list\n");
-    printlist(tciodd_reqserviceq);
+    printk(KERN_DEBUG "kvmtciodd: request list\n");
+    printlist(kvmtciodd_reqserviceq);
 }
 
 
 void printresponseQ(void)
 {
-    printk(KERN_DEBUG "tcioDD: response list\n");
-    printlist(tciodd_resserviceq);
+    printk(KERN_DEBUG "kvmtciodd: response list\n");
+    printlist(kvmtciodd_resserviceq);
 }
 
 
@@ -182,15 +182,15 @@ void printresponseQ(void)
 // ------------------------------------------------------------------------------
 
 
-struct tciodd_Qent* tciodd_makeQent(int pid, int sizedata, byte* data, 
-                                    struct tciodd_Qent* next)
+struct kvmtciodd_Qent* kvmtciodd_makeQent(int pid, int sizedata, byte* data, 
+                                    struct kvmtciodd_Qent* next)
 {
-    struct tciodd_Qent* pent= NULL;
-    void*               area= kmalloc(sizeof(struct tciodd_Qent), GFP_KERNEL);
+    struct kvmtciodd_Qent* pent= NULL;
+    void*               area= kmalloc(sizeof(struct kvmtciodd_Qent), GFP_KERNEL);
 
     if(area==NULL)
         return NULL;
-    pent= (struct tciodd_Qent*)area;
+    pent= (struct kvmtciodd_Qent*)area;
     pent->m_pid= current->pid;
     pent->m_data= data;
     pent->m_sizedata= sizedata;
@@ -199,15 +199,15 @@ struct tciodd_Qent* tciodd_makeQent(int pid, int sizedata, byte* data,
 }
 
 
-void tciodd_deleteQent(struct tciodd_Qent* pent)
+void kvmtciodd_deleteQent(struct kvmtciodd_Qent* pent)
 {
-    memset((void*)pent, 0, sizeof(struct tciodd_Qent));
+    memset((void*)pent, 0, sizeof(struct kvmtciodd_Qent));
     kfree((void*)pent);
     return;
 }
 
 
-int  tciodd_insertQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
+int  kvmtciodd_insertQent(struct kvmtciodd_Qent** phead, struct kvmtciodd_Qent* pent)
 {
     pent->m_next= *phead;
     *phead= pent;
@@ -215,9 +215,9 @@ int  tciodd_insertQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
 }
 
 
-int  tciodd_appendQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
+int  kvmtciodd_appendQent(struct kvmtciodd_Qent** phead, struct kvmtciodd_Qent* pent)
 {
-    struct tciodd_Qent* p;
+    struct kvmtciodd_Qent* p;
 
     pent->m_next= NULL;
     if(*phead==NULL) {
@@ -234,13 +234,13 @@ int  tciodd_appendQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
 }
 
 
-int  tciodd_removeQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
+int  kvmtciodd_removeQent(struct kvmtciodd_Qent** phead, struct kvmtciodd_Qent* pent)
 {
-    struct tciodd_Qent* pPrev= NULL;
-    struct tciodd_Qent* p= NULL;
+    struct kvmtciodd_Qent* pPrev= NULL;
+    struct kvmtciodd_Qent* p= NULL;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: removeQent\n");
+    printk(KERN_DEBUG "kvmtciodd: removeQent\n");
 #endif
     if(*phead==NULL)
         return 0;
@@ -262,9 +262,9 @@ int  tciodd_removeQent(struct tciodd_Qent** phead, struct tciodd_Qent* pent)
     return 0;
 }
 
-void tciodd_clearQent(struct tciodd_Qent** phead)
+void kvmtciodd_clearQent(struct kvmtciodd_Qent** phead)
 {
-  struct tciodd_Qent* cur = NULL;
+  struct kvmtciodd_Qent* cur = NULL;
   if (phead == NULL) return;
 
   cur = *phead;
@@ -272,14 +272,14 @@ void tciodd_clearQent(struct tciodd_Qent** phead)
     // remove the current head
     *phead = cur->m_next;
 
-    tciodd_deleteQent(cur);
+    kvmtciodd_deleteQent(cur);
     cur = *phead;
   }
 }
 
-struct tciodd_Qent* tciodd_findQentbypid(struct tciodd_Qent* head, int pid)
+struct kvmtciodd_Qent* kvmtciodd_findQentbypid(struct kvmtciodd_Qent* head, int pid)
 {
-    struct tciodd_Qent* p= head;
+    struct kvmtciodd_Qent* p= head;
 
     while(p!=NULL) {
         if(p->m_pid==pid)
@@ -298,10 +298,10 @@ bool sendTerminate(int procid, int origprocid)
     tcBuffer*           newhdr= NULL;
     int                 newdatasize;
     byte*               newdata;
-    struct tciodd_Qent* pent= NULL;
+    struct kvmtciodd_Qent* pent= NULL;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: sendTerminate(%d, %d)\n", procid, origprocid);
+    printk(KERN_DEBUG "kvmtciodd: sendTerminate(%d, %d)\n", procid, origprocid);
 #endif
     //  create new buffer
     newdatasize= sizeof(tcBuffer);
@@ -318,18 +318,18 @@ bool sendTerminate(int procid, int origprocid)
     newhdr->m_reqSize= 0;
 
     //  adjust pent
-    pent= tciodd_makeQent(tciodd_servicepid, newdatasize, newdata, NULL);
+    pent= kvmtciodd_makeQent(kvmtciodd_servicepid, newdatasize, newdata, NULL);
     if(pent==NULL)
         return false;
 
-    if(down_interruptible(&tciodd_reqserviceqsem)) 
+    if(down_interruptible(&kvmtciodd_reqserviceqsem)) 
         return false;
-    tciodd_appendQent(&tciodd_reqserviceq, pent);
-    up(&tciodd_reqserviceqsem);
+    kvmtciodd_appendQent(&kvmtciodd_reqserviceq, pent);
+    up(&kvmtciodd_reqserviceqsem);
     return true;
 }
 
-bool copyResultandqueue(struct tciodd_Qent* pent, u32 type, int sizebuf, byte* buf)
+bool copyResultandqueue(struct kvmtciodd_Qent* pent, u32 type, int sizebuf, byte* buf)
 //  Copy from buf to new ent
 {
     int         n= 0;
@@ -340,7 +340,7 @@ bool copyResultandqueue(struct tciodd_Qent* pent, u32 type, int sizebuf, byte* b
     int         m= 0;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: copyResultandqueue\n");
+    printk(KERN_DEBUG "kvmtciodd: copyResultandqueue\n");
 #endif
     //  create new buffer
     newdatasize= sizebuf+sizeof(u32)+sizeof(int)+sizeof(tcBuffer);
@@ -374,76 +374,76 @@ bool copyResultandqueue(struct tciodd_Qent* pent, u32 type, int sizebuf, byte* b
     pent->m_data= newdata;
     newhdr->m_ustatus= TCIOSUCCESS;
 
-    if(down_interruptible(&tciodd_resserviceqsem)) 
+    if(down_interruptible(&kvmtciodd_resserviceqsem)) 
         return false;
-    n= tciodd_appendQent(&tciodd_resserviceq, pent);
-    up(&tciodd_resserviceqsem);
+    n= kvmtciodd_appendQent(&kvmtciodd_resserviceq, pent);
+    up(&kvmtciodd_resserviceqsem);
     return true;
 }
 
 
-bool queueforService(struct tciodd_Qent* pent, u32 appReq, u32 serviceReq)
+bool queueforService(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
 {
     int         n;
     tcBuffer*   hdr= (tcBuffer*)pent->m_data;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: queueforService appCode: %d serviceCode: %d\n",
+    printk(KERN_DEBUG "kvmtciodd: queueforService appCode: %d serviceCode: %d\n",
             appReq, serviceReq);
 #endif
     // adjust and append to waitq
-    if(down_interruptible(&tciodd_resserviceqsem)) 
+    if(down_interruptible(&kvmtciodd_resserviceqsem)) 
         return false;
     hdr->m_origprocid= hdr->m_procid;
-    hdr->m_procid= tciodd_servicepid;
+    hdr->m_procid= kvmtciodd_servicepid;
     hdr->m_reqID= serviceReq;
     hdr->m_ustatus= TCIOSUCCESS;
-    pent->m_pid= tciodd_servicepid;
-    n= tciodd_appendQent(&tciodd_resserviceq, pent);
-    up(&tciodd_resserviceqsem);
+    pent->m_pid= kvmtciodd_servicepid;
+    n= kvmtciodd_appendQent(&kvmtciodd_resserviceq, pent);
+    up(&kvmtciodd_resserviceqsem);
     return true;
 }
 
 
-bool queueforApp(struct tciodd_Qent* pent, u32 appReq, u32 serviceReq)
+bool queueforApp(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
 {
     tcBuffer*   hdr= (tcBuffer*) pent->m_data;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: queueforApp appCode: %d serviceCode: %d\n",
+    printk(KERN_DEBUG "kvmtciodd: queueforApp appCode: %d serviceCode: %d\n",
             appReq, serviceReq);
 #endif
     // adjust and append to waitq
-    if(down_interruptible(&tciodd_resserviceqsem))
+    if(down_interruptible(&kvmtciodd_resserviceqsem))
         return false;
     hdr->m_procid= hdr->m_origprocid;
     hdr->m_reqID= appReq;
     pent->m_pid= hdr->m_origprocid;
-    tciodd_appendQent(&tciodd_resserviceq, pent);
-    up(&tciodd_resserviceqsem);
+    kvmtciodd_appendQent(&kvmtciodd_resserviceq, pent);
+    up(&kvmtciodd_resserviceqsem);
     return true;
 }
 
 
-bool tciodd_processService(void)
+bool kvmtciodd_processService(void)
 //  Take entry off request queue, service it and put it on response queue
 {
     int                 n= 0;
-    struct tciodd_Qent* pent= NULL;
+    struct kvmtciodd_Qent* pent= NULL;
     tcBuffer*           hdr= NULL;
     int                 datasize= 0;
     byte*               data= NULL;
     bool                fRet= true;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: processService started\n");
+    printk(KERN_DEBUG "kvmtciodd: processService started\n");
     printrequestQ(); printresponseQ();
 #endif
-    if(down_interruptible(&tciodd_reqserviceqsem)) 
+    if(down_interruptible(&kvmtciodd_reqserviceqsem)) 
         return false;
-    pent= tciodd_reqserviceq;
-    n= tciodd_removeQent(&tciodd_reqserviceq, pent);
-    up(&tciodd_reqserviceqsem);
+    pent= kvmtciodd_reqserviceq;
+    n= kvmtciodd_removeQent(&kvmtciodd_reqserviceq, pent);
+    up(&kvmtciodd_reqserviceqsem);
 
     if(n<=0 || pent==NULL)
         return false;
@@ -453,7 +453,7 @@ bool tciodd_processService(void)
     hdr= (tcBuffer*)data;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: processService got ent from reqQ %d, size: %d\n", 
+    printk(KERN_DEBUG "kvmtciodd: processService got ent from reqQ %d, size: %d\n", 
            pent->m_pid, pent->m_sizedata);
     printcmdbuffer(pent->m_data);
 #endif
@@ -463,14 +463,14 @@ bool tciodd_processService(void)
 
       // For first four, no need to go to service
       case TCSERVICEGETPOLICYKEYFROMAPP:
-        if(!copyResultandqueue(pent, tciodd_policykeyType, tciodd_sizepolicykey, 
-                               tciodd_policykey)) {
+        if(!copyResultandqueue(pent, kvmtciodd_policykeyType, kvmtciodd_sizepolicykey, 
+                               kvmtciodd_policykey)) {
             fRet= false;
         }
         break;
       case TCSERVICEGETPOLICYKEYFROMTCSERVICE:
-        if(!copyResultandqueue(pent, tciodd_policykeyType, tciodd_sizepolicykey, 
-                               tciodd_policykey)) {
+        if(!copyResultandqueue(pent, kvmtciodd_policykeyType, kvmtciodd_sizepolicykey, 
+                               kvmtciodd_policykey)) {
             fRet= false;
         }
         break;
@@ -599,51 +599,51 @@ bool tciodd_processService(void)
 // ------------------------------------------------------------------------------
 
 
-int tciodd_open(struct inode *inode, struct file *filp)
+int kvmtciodd_open(struct inode *inode, struct file *filp)
 {
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: open called\n");
+    printk(KERN_DEBUG "kvmtciodd: open called\n");
 #endif
-    if(tciodd_serviceInitialized==0) {
+    if(kvmtciodd_serviceInitialized==0) {
         if(current->pid>0) {
-            tciodd_servicepid= current->pid;
-            tciodd_serviceInitialized= 1;
+            kvmtciodd_servicepid= current->pid;
+            kvmtciodd_serviceInitialized= 1;
 #ifdef TESTDEVICE
-            printk(KERN_DEBUG "tcioDD: expected server pid is %d\n", tciodd_servicepid);
+            printk(KERN_DEBUG "kvmtciodd: expected server pid is %d\n", kvmtciodd_servicepid);
 #endif
         }
         else {
-            printk(KERN_DEBUG "tcioDD: bad server\n");
+            printk(KERN_DEBUG "kvmtciodd: bad server\n");
             return -ERESTARTSYS;
         }
     }
 
     if((filp->f_flags & O_ACCMODE)==O_WRONLY) {
-        if(down_interruptible(&tciodd_device->sem))
+        if(down_interruptible(&kvmtciodd_device->sem))
             return -ERESTARTSYS;
-        up(&tciodd_device->sem);
+        up(&kvmtciodd_device->sem);
     }
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: open complete\n");
+    printk(KERN_DEBUG "kvmtciodd: open complete\n");
 #endif
     return 0;
 }
 
 
-int tciodd_close(struct inode *inode, struct file *filp)
+int kvmtciodd_close(struct inode *inode, struct file *filp)
 {
     int                 pid= current->pid;
-    struct tciodd_Qent* pent= NULL;
+    struct kvmtciodd_Qent* pent= NULL;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: close called %d\n", current->pid);
+    printk(KERN_DEBUG "kvmtciodd: close called %d\n", current->pid);
 #endif
 
     // make sure q's don't have entries with this pid
-    if(down_interruptible(&tciodd_reqserviceqsem)==0)  {
+    if(down_interruptible(&kvmtciodd_reqserviceqsem)==0)  {
         for(;;) {
-            pent= tciodd_findQentbypid(tciodd_reqserviceq, pid);
+            pent= kvmtciodd_findQentbypid(kvmtciodd_reqserviceq, pid);
             if(pent==NULL)
                 break;
             if(pent->m_data!=NULL) {
@@ -651,14 +651,14 @@ int tciodd_close(struct inode *inode, struct file *filp)
                 kfree(pent->m_data);
             }
             pent->m_data= NULL;
-            tciodd_removeQent(&tciodd_reqserviceq, pent); 
+            kvmtciodd_removeQent(&kvmtciodd_reqserviceq, pent); 
             pent= NULL;
         }
-        up(&tciodd_reqserviceqsem);
+        up(&kvmtciodd_reqserviceqsem);
     }
-    if(down_interruptible(&tciodd_resserviceqsem)==0)  {
+    if(down_interruptible(&kvmtciodd_resserviceqsem)==0)  {
         for(;;) {
-            pent= tciodd_findQentbypid(tciodd_resserviceq, pid);
+            pent= kvmtciodd_findQentbypid(kvmtciodd_resserviceq, pid);
             if(pent==NULL)
                 break;
             if(pent->m_data!=NULL) {
@@ -666,80 +666,80 @@ int tciodd_close(struct inode *inode, struct file *filp)
                 kfree(pent->m_data);
             }
             pent->m_data= NULL;
-            tciodd_removeQent(&tciodd_resserviceq, pent); 
+            kvmtciodd_removeQent(&kvmtciodd_resserviceq, pent); 
             pent= NULL;
         }
-        up(&tciodd_resserviceqsem);
+        up(&kvmtciodd_resserviceqsem);
     }
     
-    if (tciodd_servicepid != pid) {
-      sendTerminate(tciodd_servicepid, pid);
+    if (kvmtciodd_servicepid != pid) {
+      sendTerminate(kvmtciodd_servicepid, pid);
     } else {
-      tciodd_serviceInitialized = 0;
+      kvmtciodd_serviceInitialized = 0;
 
-      // make sure q's don't have any entries, since tciodd is not initialized
-      if(down_interruptible(&tciodd_reqserviceqsem)==0)  {
-	tciodd_clearQent(&tciodd_reqserviceq);
-        up(&tciodd_reqserviceqsem);
+      // make sure q's don't have any entries, since kvmtciodd is not initialized
+      if(down_interruptible(&kvmtciodd_reqserviceqsem)==0)  {
+	kvmtciodd_clearQent(&kvmtciodd_reqserviceq);
+        up(&kvmtciodd_reqserviceqsem);
       }
-      if(down_interruptible(&tciodd_resserviceqsem)==0)  {
-	tciodd_clearQent(&tciodd_resserviceq);
-        up(&tciodd_resserviceqsem);
+      if(down_interruptible(&kvmtciodd_resserviceqsem)==0)  {
+	kvmtciodd_clearQent(&kvmtciodd_resserviceq);
+        up(&kvmtciodd_resserviceqsem);
       }
     }
     
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: close complete %d\n", pid);
+    printk(KERN_DEBUG "kvmtciodd: close complete %d\n", pid);
 #endif
     return 1;
 }
 
 
-ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
+ssize_t kvmtciodd_read(struct file *filp, char __user *buf, size_t count,
                     loff_t *f_pos)
 {
-    struct tciodd_dev*  dev= tciodd_device;
+    struct kvmtciodd_dev*  dev= kvmtciodd_device;
     ssize_t             retval= 0;
     int                 pid= current->pid;
-    struct tciodd_Qent* pent= NULL;
+    struct kvmtciodd_Qent* pent= NULL;
 
-    if (!tciodd_serviceInitialized) {
+    if (!kvmtciodd_serviceInitialized) {
       return -EFAULT;
     }
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: read %d, privdata: %08lx, pid: %d\n", 
+    printk(KERN_DEBUG "kvmtciodd: read %d, privdata: %08lx, pid: %d\n", 
             (int)count, (long int)dev, pid);
 #endif
 
     // if something is on the response queue, fill buffer, otherwise wait
      for(;;) {
-        if(down_interruptible(&tciodd_resserviceqsem)==0) {
+        if(down_interruptible(&kvmtciodd_resserviceqsem)==0) {
 #ifdef TESTDEVICE
-            printk(KERN_DEBUG "tcioDD: read looking on response queue for %d\n",
+            printk(KERN_DEBUG "kvmtciodd: read looking on response queue for %d\n",
                     pid);
 #endif
-            pent= tciodd_findQentbypid(tciodd_resserviceq, pid);
-            up(&tciodd_resserviceqsem);
+            pent= kvmtciodd_findQentbypid(kvmtciodd_resserviceq, pid);
+            up(&kvmtciodd_resserviceqsem);
         }
         if(pent!=NULL)
             break;
 
 #ifdef TESTDEVICE
-        printk(KERN_DEBUG "tcioDD: read, waiting on responses in %d\n", pid);
+        printk(KERN_DEBUG "kvmtciodd: read, waiting on responses in %d\n", pid);
 #endif
 #if 0
-        wait_event_interruptible(dev->waitq, tciodd_resserviceq!=NULL);
+        wait_event_interruptible(dev->waitq, kvmtciodd_resserviceq!=NULL);
 #else
-        wait_event_timeout(dev->waitq, tciodd_resserviceq!=NULL, TIMEOUT);
+        wait_event_timeout(dev->waitq, kvmtciodd_resserviceq!=NULL, TIMEOUT);
 #endif
 #ifdef TESTDEVICE1
-        printk(KERN_DEBUG "tcioDD: read, returned from wait in %d\n", pid); 
+        printk(KERN_DEBUG "kvmtciodd: read, returned from wait in %d\n", pid); 
 #endif
     }
 
 #ifdef TESTDEVICE1
-    printk(KERN_DEBUG "tcioDD: copying buffer for %d\n", pid);
+    printk(KERN_DEBUG "kvmtciodd: copying buffer for %d\n", pid);
 #endif
     if(down_interruptible(&dev->sem))
         return -ERESTARTSYS;
@@ -754,8 +754,8 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
         retval= -EFAULT;
     }
 
-    if(down_interruptible(&tciodd_resserviceqsem)==0) {
-        tciodd_removeQent(&tciodd_resserviceq, pent);
+    if(down_interruptible(&kvmtciodd_resserviceqsem)==0) {
+        kvmtciodd_removeQent(&kvmtciodd_resserviceq, pent);
     
         // erase and free entry and data
         if(pent->m_data!=NULL) {
@@ -763,41 +763,41 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
             kfree(pent->m_data);
         }
         pent->m_data= NULL;
-        tciodd_deleteQent(pent);
-        up(&tciodd_resserviceqsem);
+        kvmtciodd_deleteQent(pent);
+        up(&kvmtciodd_resserviceqsem);
     }
 
     up(&dev->sem);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: read complete for %d\n", pid);
+    printk(KERN_DEBUG "kvmtciodd: read complete for %d\n", pid);
 #endif
     return retval;
 }
 
 
-ssize_t tciodd_write(struct file *filp, const char __user *buf, size_t count,
+ssize_t kvmtciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos)
 {
-    struct tciodd_dev*      dev= tciodd_device;
+    struct kvmtciodd_dev*      dev= kvmtciodd_device;
     ssize_t                 retval= -ENOMEM;
     byte*                   databuf= NULL;
-    struct tciodd_Qent*     pent= NULL;
+    struct kvmtciodd_Qent*     pent= NULL;
     tcBuffer*               pCBuf= NULL;
     int                     pid= current->pid;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: write %d for %d\n", (int)count, pid);
+    printk(KERN_DEBUG "kvmtciodd: write %d for %d\n", (int)count, pid);
 #endif
     if(down_interruptible(&dev->sem)) {
         return -ERESTARTSYS;
     }
 
-    if (!tciodd_serviceInitialized) {
+    if (!kvmtciodd_serviceInitialized) {
       retval = -EFAULT;
       goto out;
     }
 
-    // add to tciodd_reqserviceQ then process
+    // add to kvmtciodd_reqserviceQ then process
     if(count<sizeof(tcBuffer)) {
         retval= -EFAULT;
         goto out;
@@ -817,36 +817,36 @@ ssize_t tciodd_write(struct file *filp, const char __user *buf, size_t count,
     // make tcheader authoritative
     pCBuf= (tcBuffer*) databuf;
     pCBuf->m_procid= pid;
-    if(pid!=tciodd_servicepid)
+    if(pid!=kvmtciodd_servicepid)
         pCBuf->m_origprocid= pid;
 
-    pent= tciodd_makeQent(pid, count, databuf, NULL);
+    pent= kvmtciodd_makeQent(pid, count, databuf, NULL);
     if(pent==NULL) {
         retval= -EFAULT;
         goto out;
     }
 
-    if(down_interruptible(&tciodd_reqserviceqsem)) {
+    if(down_interruptible(&kvmtciodd_reqserviceqsem)) {
         retval= -ERESTARTSYS;
         goto out;
     }
 
 #ifdef TESTDEVICE1
-    printk(KERN_DEBUG "tcioDD: write, appending entry\n");
+    printk(KERN_DEBUG "kvmtciodd: write, appending entry\n");
     printcmdbuffer(pent->m_data);
 #endif
-    tciodd_appendQent(&tciodd_reqserviceq, pent);
-    up(&tciodd_reqserviceqsem);
+    kvmtciodd_appendQent(&kvmtciodd_reqserviceq, pent);
+    up(&kvmtciodd_reqserviceqsem);
     retval= count;
 
 out:
     up(&dev->sem);
 
     if(retval>=0)
-        while(tciodd_processService());
+        while(kvmtciodd_processService());
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: about to call wake up in %d\n", pid);
+    printk(KERN_DEBUG "kvmtciodd: about to call wake up in %d\n", pid);
 #endif
 #if 0
     wake_up_interruptible(&(dev->waitq));
@@ -854,7 +854,7 @@ out:
     wake_up(&(dev->waitq));
 #endif
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: write complete for %d\n", pid);
+    printk(KERN_DEBUG "kvmtciodd: write complete for %d\n", pid);
 #endif
     return retval;
 }
@@ -864,21 +864,21 @@ out:
 
 
 // The cleanup function must handle initialization failures.
-void tciodd_cleanup(void)
+void kvmtciodd_cleanup(void)
 {
-    dev_t       devno= MKDEV(tciodd_major, tciodd_minor);
+    dev_t       devno= MKDEV(kvmtciodd_major, kvmtciodd_minor);
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: cleanup started\n");
+    printk(KERN_DEBUG "kvmtciodd: cleanup started\n");
 #endif
     // Get rid of dev entries
-    if(tciodd_device) {
-      cdev_del(&tciodd_device->cdev);
-      kfree(tciodd_device);
+    if(kvmtciodd_device) {
+      cdev_del(&kvmtciodd_device->cdev);
+      kfree(kvmtciodd_device);
     }
 
     if(pclass!=NULL && pdevice!=NULL) {
-        device_destroy(pclass, MKDEV(tciodd_major,0));
+        device_destroy(pclass, MKDEV(kvmtciodd_major,0));
         pdevice= NULL;
     }
     if(pclass!=NULL) {
@@ -886,107 +886,107 @@ void tciodd_cleanup(void)
         pclass= NULL;
     }
 
-    tciodd_serviceInitialized = 0;
+    kvmtciodd_serviceInitialized = 0;
 
     // cleanup_module isn't called if registering failed
-    unregister_chrdev_region(devno, tciodd_nr_devs);
+    unregister_chrdev_region(devno, kvmtciodd_nr_devs);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: cleanup complete\n");
+    printk(KERN_DEBUG "kvmtciodd: cleanup complete\n");
 #endif
 }
 
 // Set up the char_dev structure for this device.
-void tciodd_setup_cdev(struct tciodd_dev *dev, int index)
+void kvmtciodd_setup_cdev(struct kvmtciodd_dev *dev, int index)
 {
     int err, devno;
     
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: setup cdev started\n");
+    printk(KERN_DEBUG "kvmtciodd: setup cdev started\n");
 #endif
-    devno= MKDEV(tciodd_major, tciodd_minor+index);
-    cdev_init(&dev->cdev, &tciodd_fops);
+    devno= MKDEV(kvmtciodd_major, kvmtciodd_minor+index);
+    cdev_init(&dev->cdev, &kvmtciodd_fops);
     dev->cdev.owner= THIS_MODULE;
-    dev->cdev.ops= &tciodd_fops;
+    dev->cdev.ops= &kvmtciodd_fops;
     err= cdev_add (&dev->cdev, devno, 1);
     if(err)
-        printk(KERN_NOTICE "Error %d adding tciodd %d", err, index);
+        printk(KERN_NOTICE "Error %d adding kvmtciodd %d", err, index);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: setup cdev complete, devno is %08x\n", devno);
+    printk(KERN_DEBUG "kvmtciodd: setup cdev complete, devno is %08x\n", devno);
 #endif
 }
 
 
-int tciodd_init(void)
+int kvmtciodd_init(void)
 {
     int     result;
     dev_t   dev= 0;
 
-    if(tciodd_major) {
+    if(kvmtciodd_major) {
         // static registration
-        dev= MKDEV(tciodd_major, tciodd_minor);
-        result= register_chrdev_region(dev, tciodd_nr_devs, "tciodd");
+        dev= MKDEV(kvmtciodd_major, kvmtciodd_minor);
+        result= register_chrdev_region(dev, kvmtciodd_nr_devs, "kvmtciodd");
     } 
     else {
         // dynamic registration
-        result= alloc_chrdev_region(&dev, tciodd_minor, tciodd_nr_devs, "tciodd");
-        tciodd_major= MAJOR(dev);
+        result= alloc_chrdev_region(&dev, kvmtciodd_minor, kvmtciodd_nr_devs, "kvmtciodd");
+        kvmtciodd_major= MAJOR(dev);
     }
     if(result<0) {
-        printk(KERN_WARNING "tciodd: can't get major %d\n", tciodd_major);
+        printk(KERN_WARNING "kvmtciodd: can't get major %d\n", kvmtciodd_major);
         return result;
     }
 
-    pclass= class_create(THIS_MODULE, "tcioDD");
+    pclass= class_create(THIS_MODULE, "kvmtciodd");
     if(pclass==NULL)
         goto fail;
-    pdevice= device_create(pclass, NULL, MKDEV(tciodd_major,0), NULL, "tcioDD0");
+    pdevice= device_create(pclass, NULL, MKDEV(kvmtciodd_major,0), NULL, "kvmtciodd0");
     if(pdevice==NULL)
         goto fail;
 
-    tciodd_device= kmalloc(sizeof(struct tciodd_dev), GFP_KERNEL);
-    if(!tciodd_device) {
+    kvmtciodd_device= kmalloc(sizeof(struct kvmtciodd_dev), GFP_KERNEL);
+    if(!kvmtciodd_device) {
         result= -ENOMEM;
         goto fail;
     }
-    memset(tciodd_device, 0, sizeof(struct tciodd_dev));
+    memset(kvmtciodd_device, 0, sizeof(struct kvmtciodd_dev));
 
     // initialize service Q semaphore
-    sema_init(&tciodd_reqserviceqsem, 1);
-    sema_init(&tciodd_resserviceqsem, 1);
+    sema_init(&kvmtciodd_reqserviceqsem, 1);
+    sema_init(&kvmtciodd_resserviceqsem, 1);
 
     // Initialize the device
-    sema_init(&tciodd_device->sem, 1);
-    init_waitqueue_head(&tciodd_device->waitq);
-    tciodd_setup_cdev(tciodd_device, 1);
+    sema_init(&kvmtciodd_device->sem, 1);
+    init_waitqueue_head(&kvmtciodd_device->waitq);
+    kvmtciodd_setup_cdev(kvmtciodd_device, 1);
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: tciodd_init complete\n");
+    printk(KERN_DEBUG "kvmtciodd: kvmtciodd_init complete\n");
 #endif
     return 0;
 
 fail:
-    tciodd_cleanup();
+    kvmtciodd_cleanup();
     return result;
 }
 
 // expose the device structure itself to the KVM vmdd code
-EXPORT_SYMBOL(tciodd_device);
+EXPORT_SYMBOL(kvmtciodd_device);
 
 // expose a variable to check whether or not the service is initialized
-EXPORT_SYMBOL(tciodd_serviceInitialized);
+EXPORT_SYMBOL(kvmtciodd_serviceInitialized);
 
 // expose the queues and their semaphores to the KVM hypercall handlers
-EXPORT_SYMBOL(tciodd_reqserviceqsem);
-EXPORT_SYMBOL(tciodd_resserviceqsem);
-EXPORT_SYMBOL(tciodd_reqserviceq);
-EXPORT_SYMBOL(tciodd_resserviceq);
+EXPORT_SYMBOL(kvmtciodd_reqserviceqsem);
+EXPORT_SYMBOL(kvmtciodd_resserviceqsem);
+EXPORT_SYMBOL(kvmtciodd_reqserviceq);
+EXPORT_SYMBOL(kvmtciodd_resserviceq);
 
-EXPORT_SYMBOL(tciodd_processService);
+EXPORT_SYMBOL(kvmtciodd_processService);
 
 #ifdef LINUXLICENSED
 MODULE_LICENSE("GPL");
-module_init(tciodd_init);
-module_exit(tciodd_cleanup);
+module_init(kvmtciodd_init);
+module_exit(kvmtciodd_cleanup);
 #endif
 
 

@@ -1,8 +1,10 @@
 --- Makefile.old	2013-08-29 19:04:33.770876431 -0700
 +++ Makefile	2013-08-29 18:57:40.419194598 -0700
-@@ -53,3 +53,4 @@
+@@ -53,3 +53,6 @@
  obj-$(CONFIG_VMWARE_VMCI)	+= vmw_vmci/
  obj-$(CONFIG_LATTICE_ECP3_CONFIG)	+= lattice-ecp3-config.o
  obj-$(CONFIG_SRAM)		+= sram.o
-+obj-y				+= tcioDD/
++obj-y				+= kvmtciodd/
++obj-y				+= ktciodd/
++obj-y				+= tciodd/
 \ No newline at end of file

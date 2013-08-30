@@ -1,32 +1,32 @@
-#include <asm/page.h>
+#include <asm/page.h> x
 #include <linux/kvm_host.h>
 #include <asm/kvm_host.h>
 #include <asm/vmdd.h>
 #include <linux/types.h>
-#include <linux/tcioDD.h>
+#include <linux/kvmkvmtciodd.h>
 #include "x86.h"
 
-extern int tciodd_serviceInitialized;
+extern int kvmtciodd_serviceInitialized;
 
-// the tciodd device
-extern struct tciodd_dev *tciodd_device;
+// the kvmtciodd device
+extern struct kvmtciodd_dev *kvmtciodd_device;
 
 // the request queue and its semaphore
-extern struct semaphore    tciodd_reqserviceqsem; 
-extern struct tciodd_Qent* tciodd_reqserviceq;
+extern struct semaphore    kvmtciodd_reqserviceqsem; 
+extern struct kvmtciodd_Qent* kvmtciodd_reqserviceq;
 
 // the response queue and its semaphore
-extern struct semaphore    tciodd_resserviceqsem; 
-extern struct tciodd_Qent* tciodd_resserviceq;
+extern struct semaphore    kvmtciodd_resserviceqsem; 
+extern struct kvmtciodd_Qent* kvmtciodd_resserviceq;
 
 int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
-    struct tciodd_dev*  dev= tciodd_device;
+    struct kvmtciodd_dev*  dev= kvmtciodd_device;
     ssize_t             retval= 0;
     // TODO(tmroeder): find a better id, since this might not be unique across virtual machines
     int                 pid= vcpu->vcpu_id;
-    struct tciodd_Qent* pent= NULL;
+    struct kvmtciodd_Qent* pent= NULL;
 
-    if (!tciodd_serviceInitialized) {
+    if (!kvmtciodd_serviceInitialized) {
       return -EFAULT;
     }
 
@@ -34,11 +34,11 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
             (int)count, (long int)dev, pid);
 
     // if something is on the response queue, fill buffer, otherwise return
-    if (down_interruptible(&tciodd_resserviceqsem) == 0) {
-      printk(KERN_DEBUG "tcioDD: read looking on response queue for %d\n",
+    if (down_interruptible(&kvmtciodd_resserviceqsem) == 0) {
+      printk(KERN_DEBUG "kvmkvmtciodd: read looking on response queue for %d\n",
 	     pid);
-      pent = tciodd_findQentbypid(tciodd_resserviceq, pid);
-      up(&tciodd_resserviceqsem);
+      pent = kvmtciodd_findQentbypid(kvmtciodd_resserviceq, pid);
+      up(&kvmtciodd_resserviceqsem);
     }
 
     if (pent == NULL) {
@@ -65,8 +65,8 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
       retval= -EFAULT;
     }
 
-    if (down_interruptible(&tciodd_resserviceqsem) == 0) {
-        tciodd_removeQent(&tciodd_resserviceq, pent);
+    if (down_interruptible(&kvmtciodd_resserviceqsem) == 0) {
+        kvmtciodd_removeQent(&kvmtciodd_resserviceq, pent);
     
         // erase and free entry and data
         if(pent->m_data!=NULL) {
@@ -74,22 +74,22 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
             kfree(pent->m_data);
         }
         pent->m_data= NULL;
-        tciodd_deleteQent(pent);
-        up(&tciodd_resserviceqsem);
+        kvmtciodd_deleteQent(pent);
+        up(&kvmtciodd_resserviceqsem);
     }
 
     up(&dev->sem);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: read complete for %d\n", pid);
+    printk(KERN_DEBUG "kvmkvmtciodd: read complete for %d\n", pid);
 #endif
     return retval;
 }
 
 int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
-    struct tciodd_dev*      dev= tciodd_device;
+    struct kvmtciodd_dev*      dev= kvmtciodd_device;
     ssize_t                 retval= -ENOMEM;
     byte*                   databuf= NULL;
-    struct tciodd_Qent*     pent= NULL;
+    struct kvmtciodd_Qent*     pent= NULL;
     tcBuffer*               pCBuf= NULL;
     // TODO(tmroeder): find out if this is the right representation
     // for the VM/VCPU combination
@@ -97,18 +97,18 @@ int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
     struct x86_exception    e;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: write %d for %d\n", (int)count, pid);
+    printk(KERN_DEBUG "kvmkvmtciodd: write %d for %d\n", (int)count, pid);
 #endif
     if (down_interruptible(&dev->sem)) {
         return -ERESTARTSYS;
     }
 
-    if (!tciodd_serviceInitialized) {
+    if (!kvmtciodd_serviceInitialized) {
       retval = -EFAULT;
       goto out;
     }
 
-    // add to tciodd_reqserviceQ then process
+    // add to kvmtciodd_reqserviceQ then process
     if (count < sizeof(tcBuffer)) {
         retval= -EFAULT;
         goto out;
@@ -137,20 +137,20 @@ int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
     // disjoint (maybe make all vcpu pids negative?)
     pCBuf->m_origprocid= pid;
 
-    pent= tciodd_makeQent(pid, count, databuf, NULL);
+    pent= kvmtciodd_makeQent(pid, count, databuf, NULL);
     if (pent == NULL) {
         retval= -EFAULT;
         goto out;
     }
 
-    if (down_interruptible(&tciodd_reqserviceqsem)) {
+    if (down_interruptible(&kvmtciodd_reqserviceqsem)) {
         retval= -ERESTARTSYS;
         goto out;
     }
 
-    printk(KERN_DEBUG "tcioDD: write, appending entry\n");
-    tciodd_appendQent(&tciodd_reqserviceq, pent);
-    up(&tciodd_reqserviceqsem);
+    printk(KERN_DEBUG "kvmkvmtciodd: write, appending entry\n");
+    kvmtciodd_appendQent(&kvmtciodd_reqserviceq, pent);
+    up(&kvmtciodd_reqserviceqsem);
     retval= count;
 
 out:
@@ -158,7 +158,7 @@ out:
     
     // TODO(tmroeder): is this going to take too much time for a
     // hypercall handler to use?
-    while(tciodd_processService());
+    while(kvmtciodd_processService());
 
     return retval;
 }

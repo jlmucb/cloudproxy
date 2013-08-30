@@ -13,10 +13,10 @@
  		ret = 0;
  		break;
 +	case KVM_HYPERCALL_READ_FROM_TCSERVICE://13581
-+		ret = vmdd_read(vcpu, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t *) a3);
++		ret = vmdd_read(vcpu, (gva_t)a0, (ssize_t)a1);
 +		break;
 +	case KVM_HYPERCALL_WRITE_TO_TCSERVICE:	//13580
-+		ret = vmdd_write(vcpu, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t *) a3);
++		ret = vmdd_write(vcpu, (gva_t)a0, (ssize_t)a1);
 +		break;
  	default:
  		ret = -KVM_ENOSYS;

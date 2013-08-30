@@ -92,6 +92,10 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        m_hostValid= false;
+        break;
+
+      case PLATFORMTYPEKVMHYPERVISOR:
         // TODO
       case PLATFORMTYPELINUXGUEST:
         // TODO
@@ -170,6 +174,10 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
       case PLATFORMTYPEHYPERVISOR:
       case PLATFORMTYPEHW:
         return false;
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // Todo
+        return false;
+      case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUX:
         return startAppfromDeviceDriver(name, phandle, an, av);
     }
@@ -183,6 +191,10 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        return false;
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // TODO
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
@@ -262,6 +274,10 @@ bool taoHostServices::GetHostPolicyKey(int* psize, u32* pType, byte* buf)
       case PLATFORMTYPEHYPERVISOR:
       case PLATFORMTYPEHW:
         return false;
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // TODO
+        return false;
       case PLATFORMTYPELINUX:
         return getOSMeasurementfromDeviceDriver(pType, psize, buf);
     }
@@ -275,6 +291,10 @@ bool taoHostServices::GetEntropy(int size, byte* buf)
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        return false;
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // TODO
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
@@ -295,6 +315,10 @@ bool taoHostServices::Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte*
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        return false;
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // TODO
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
@@ -319,6 +343,10 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        return false;
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // TODO
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
@@ -345,6 +373,10 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        return false;
+      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // TODO
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT

@@ -487,10 +487,13 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         ret= fcntl(fd, F_SETLK, &lock);
         close(fd);
 #endif
-#ifdef HVTCSERVICE
-        // start VM guest
+#ifdef KVMTCSERVICE
+        // start KVM guest
+        if(execve(file, newav, NULL)<0) {
+            fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
+        }
 #endif
-#ifdef OSGUESTTCSERVICE
+#ifdef KVMGUESTOSTCSERVICE
         // start Linux guest application
         if(execve(file, newav, NULL)<0) {
             fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
@@ -977,15 +980,15 @@ int main(int an, char** av)
         goto cleanup;
     }
 #endif
-#ifdef OSGUESTTCSERVICE 
+#ifdef KVMGUESTOSTCSERVICE 
     if(!g_myService.m_host.HostInit(PLATFORMTYPELINUXGUEST, parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;
     }
 #endif
-#ifdef HVTCSERVICE 
-    if(!g_myService.m_host.HostInit(PLATFORMTYPEHYPERVISOR, parameterCount, parameters)) {
+#ifdef KVMTCSERVICE 
+    if(!g_myService.m_host.HostInit(PLATFORMTYPEKVMHYPERVISOR, parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;
@@ -1023,7 +1026,7 @@ int main(int an, char** av)
         goto cleanup;
     }
 #endif
-#ifdef OSGUESTTCSERVICE 
+#ifdef KVMGUESTOSTCSERVICE 
     if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUXGUEST, "KVMGuest",
                                 DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
@@ -1032,8 +1035,8 @@ int main(int an, char** av)
         goto cleanup;
     }
 #endif
-#ifdef HVTCSERVICE 
-    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPEHYPERVISOR, "KVMHost",
+#ifdef KVMTCSERVICE 
+    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPEKVMHYPERVISOR, "KVMHost",
                                 DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
         fprintf(g_logFile, "tcService main: can't init environment\n");

@@ -43,9 +43,11 @@
 
 
 bool startKvmVM(const char* szvmimage, const char* systemname,
-                const char* xmldomainstring, virConnectPtr* pvmconnection,
-                virDomainPtr*  pvmdomain)
+                const char* xmldomainstring)
 {
+    virConnectPtr   vmconnection;
+    virDomainPtr    vmdomain;
+
     if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL) {
         fprintf(g_logFile, "startKvm: Bad input arguments\n");
         return false;
@@ -54,18 +56,15 @@ bool startKvmVM(const char* szvmimage, const char* systemname,
 #ifdef TEST
     fprintf(g_logFile, "startKvm: %s, %s, %s\n", szvmimage, systemname, xmldomainstring);
 #endif
-    // const char*     systemname= "qemu:///system";
-    *pvmconnection= NULL;
-    *pvmdomain= NULL;
     
-    *pvmconnection= virConnectOpen(systemname);
-    if(*pvmconnection==NULL) {
+    vmconnection= virConnectOpen(systemname);
+    if(vmconnection==NULL) {
         fprintf(g_logFile, "startKvm: couldn't connect\n");
         return false;
     }
    
-    *pvmdomain= virDomainCreateXML(*pvmconnection, xmldomainstring, 0); 
-    if(*pvmdomain==NULL) {
+    vmdomain= virDomainCreateXML(vmconnection, xmldomainstring, 0); 
+    if(vmdomain==NULL) {
         fprintf(g_logFile, "startKvm: couldn't start domain\n");
         return false;
     }

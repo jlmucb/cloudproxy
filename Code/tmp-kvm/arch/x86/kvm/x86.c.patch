@@ -8,16 +8,10 @@
  
  #define MAX_IO_MSRS 256
  #define KVM_MAX_MCE_BANKS 32
-@@ -5481,6 +5482,18 @@
+@@ -5481,6 +5482,12 @@
  	case KVM_HC_VAPIC_POLL_IRQ:
  		ret = 0;
  		break;
-+	case KVM_HYPERCALL_CONNECT_TO_TCSERVICE://13579
-+		ret = vmdd_connect(vcpu);
-+		break;
-+	case KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE: //13580
-+		ret = vmdd_disconnect(vcpu);
-+		break;
 +	case KVM_HYPERCALL_READ_FROM_TCSERVICE://13581
 +		ret = vmdd_read(vcpu, (struct file *) a0, (char *)a1, (ssize_t) a2, (loff_t *) a3);
 +		break;

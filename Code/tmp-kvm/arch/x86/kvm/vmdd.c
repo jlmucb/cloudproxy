@@ -1,55 +1,164 @@
 #include <asm/page.h>
 #include <linux/kvm_host.h>
+#include <asm/kvm_host.h>
 #include <asm/vmdd.h>
 #include <linux/types.h>
 #include <linux/tcioDD.h>
-
-//check if the tcService is running.  If yes, connect to it; else start the service and then connect.
+#include "x86.h"
 
 extern int tciodd_serviceInitialized;
-extern int tciodd_servicepid;
 
-//kernel externs
+// the tciodd device
+extern struct tciodd_dev *tciodd_device;
 
-int vmdd_connect(struct kvm_vcpu *vcpu) {
+// the request queue and its semaphore
+extern struct semaphore    tciodd_reqserviceqsem; 
+extern struct tciodd_Qent* tciodd_reqserviceq;
 
-	int ret = 0, vmpid;
-	if (!tciodd_serviceInitialized) {
-		ret = tciodd_init();
-		if (ret != 0) {
-    			printk(KERN_DEBUG "tcioDD: tciodd_init complete\n");
-			tciodd_serviceInitialized = 1;
-		} //endif ret
-	} //endif tciodd_serviceInitialize 
-	
-	/*
- 	 * REK: The vmpid is the pid of the VM that requested this service.  This pid
-	 *	should be used for authentication/verfication
-	 */
-	vmpid = vcpu->vcpu_id;
-	//REK: I believe this field is used to identify a process for all the operations,
-	// but please double check.
-	tciodd_servicepid = vmpid;
+// the response queue and its semaphore
+extern struct semaphore    tciodd_resserviceqsem; 
+extern struct tciodd_Qent* tciodd_resserviceq;
 
-	return ret;
-}//end vmdd_connect
+int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
+    struct tciodd_dev*  dev= tciodd_device;
+    ssize_t             retval= 0;
+    // TODO(tmroeder): find a better id, since this might not be unique across virtual machines
+    int                 pid= vcpu->vcpu_id;
+    struct tciodd_Qent* pent= NULL;
 
-int vmdd_disconnect(struct kvm_vcpu *vcpu) {
-	int ret = 0;
+    if (!tciodd_serviceInitialized) {
+      return -EFAULT;
+    }
 
-	//REK: I don't think we need this hypercall
-	return ret;
-}//end vmdd_disconnect
+    printk(KERN_DEBUG "vmdd_read: read %d, privdata: %08lx, pid: %d\n", 
+            (int)count, (long int)dev, pid);
 
-int vmdd_read(struct kvm_vcpu *vcpu, struct file *fp, char *buf, ssize_t count, loff_t *pos) {
+    // if something is on the response queue, fill buffer, otherwise return
+    if (down_interruptible(&tciodd_resserviceqsem) == 0) {
+      printk(KERN_DEBUG "tcioDD: read looking on response queue for %d\n",
+	     pid);
+      pent = tciodd_findQentbypid(tciodd_resserviceq, pid);
+      up(&tciodd_resserviceqsem);
+    }
 
-	int ret = 0;
-		ret = tciodd_read(fp, buf, count, pos);
-	return ret;
-}//end vmdd_read
+    if (pent == NULL) {
+      // we read 0 bytes
+      return 0;
+    }
 
-int vmdd_write(struct kvm_vcpu *vcpu, struct file *fp, char *buf, ssize_t count, loff_t *pos) {
-	int ret = 0;
-		ret = tciodd_write(fp, buf, count, pos);
-	return ret;
-}//vmdd_write
+    printk(KERN_DEBUG "vmdd_read: copying buffer for vcpu %d\n", pid);
+    if(down_interruptible(&dev->sem))
+        return -ERESTARTSYS;
+
+    if (pent->m_sizedata <= count) {
+      // try to write to the guest and propagate the page fault if
+      // there is one while reading
+      struct x86_exception e;
+      if (kvm_write_guest_virt_system(&vcpu->arch.emulate_ctxt, buf,
+				      pent->m_data, pent->m_sizedata, &e)) {
+	kvm_inject_page_fault(vcpu, &e);
+	return -EFAULT;
+      }
+
+      retval = pent->m_sizedata;
+    } else {
+      retval= -EFAULT;
+    }
+
+    if (down_interruptible(&tciodd_resserviceqsem) == 0) {
+        tciodd_removeQent(&tciodd_resserviceq, pent);
+    
+        // erase and free entry and data
+        if(pent->m_data!=NULL) {
+            memset(pent->m_data, 0, pent->m_sizedata);
+            kfree(pent->m_data);
+        }
+        pent->m_data= NULL;
+        tciodd_deleteQent(pent);
+        up(&tciodd_resserviceqsem);
+    }
+
+    up(&dev->sem);
+#ifdef TESTDEVICE
+    printk(KERN_DEBUG "tcioDD: read complete for %d\n", pid);
+#endif
+    return retval;
+}
+
+int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
+    struct tciodd_dev*      dev= tciodd_device;
+    ssize_t                 retval= -ENOMEM;
+    byte*                   databuf= NULL;
+    struct tciodd_Qent*     pent= NULL;
+    tcBuffer*               pCBuf= NULL;
+    // TODO(tmroeder): find out if this is the right representation
+    // for the VM/VCPU combination
+    int                     pid= vcpu->vcpu_id;
+    struct x86_exception    e;
+
+#ifdef TESTDEVICE
+    printk(KERN_DEBUG "tcioDD: write %d for %d\n", (int)count, pid);
+#endif
+    if (down_interruptible(&dev->sem)) {
+        return -ERESTARTSYS;
+    }
+
+    if (!tciodd_serviceInitialized) {
+      retval = -EFAULT;
+      goto out;
+    }
+
+    // add to tciodd_reqserviceQ then process
+    if (count < sizeof(tcBuffer)) {
+        retval= -EFAULT;
+        goto out;
+    }
+
+    databuf = (byte*) kmalloc(count, GFP_KERNEL);
+    if(databuf==NULL) {
+        retval= -EFAULT;
+        goto out;
+    }
+
+    // read the memory from the guest and propagate the fault if there is one
+    if (kvm_read_guest_virt(&vcpu->arch.emulate_ctxt, buf, databuf,
+				   count, &e)) {
+      kvm_inject_page_fault(vcpu, &e);
+      return -EFAULT;
+    }
+
+    // make tcheader authoritative
+    pCBuf= (tcBuffer*) databuf;
+    pCBuf->m_procid= pid;
+
+    // the pid here can never be the service pid, since it's coming
+    // from a different source
+    // TODO(tmroeder): force the process space and the vmpid space to be
+    // disjoint (maybe make all vcpu pids negative?)
+    pCBuf->m_origprocid= pid;
+
+    pent= tciodd_makeQent(pid, count, databuf, NULL);
+    if (pent == NULL) {
+        retval= -EFAULT;
+        goto out;
+    }
+
+    if (down_interruptible(&tciodd_reqserviceqsem)) {
+        retval= -ERESTARTSYS;
+        goto out;
+    }
+
+    printk(KERN_DEBUG "tcioDD: write, appending entry\n");
+    tciodd_appendQent(&tciodd_reqserviceq, pent);
+    up(&tciodd_reqserviceqsem);
+    retval= count;
+
+out:
+    up(&dev->sem);
+    
+    // TODO(tmroeder): is this going to take too much time for a
+    // hypercall handler to use?
+    while(tciodd_processService());
+
+    return retval;
+}

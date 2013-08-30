@@ -2,15 +2,13 @@
 #include <linux/stddef.h>
 #include <linux/const.h>
 #include <asm/kvm_para.h>
+#include <linux/kvm_types.h>
 
 #define TESTDEVICE
 #define VMDD
 
-#define KVM_HYPERCALL_CONNECT_TO_TCSERVICE	13579
-#define KVM_HYPERCALL_DISCONNECT_FROM_TCSERVICE	13578
 #define KVM_HYPERCALL_READ_FROM_TCSERVICE	13577
 #define KVM_HYPERCALL_WRITE_TO_TCSERVICE	13576
-#define KVM_HYPERCALL_IOCTL_TO_TCSERVICE	13575
 
 #define tc_hypercall0(type, name)			\
 ({							\
@@ -49,7 +47,5 @@
 	(type)res;					\
 })
 
-int vmdd_connect(struct kvm_vcpu *vcpu);
-int vmdd_disconnect(struct kvm_vcpu *vcpu);
-int vmdd_read(struct kvm_vcpu *vcpu, struct file *fp, char *buf, ssize_t count, loff_t *pos);
-int vmdd_write(struct kvm_vcpu *vcpu, struct file *fp, char *buf, ssize_t count, loff_t *pos);
+int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count);
+int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count);

@@ -14,10 +14,9 @@
 #include <linux/wait.h>
 #include <linux/device.h>
 
-#include "tcioDD.h"
-#include "tciohdr.h"
-#include "tcServiceCodes.h"
 #include "algs.h"
+#include <linux/tcioDD.h>
+#include "tcServiceCodes.h"
 
 #include "serviceHash.inc"
 #include "policyKey.inc"
@@ -75,15 +74,19 @@ int         tciodd_servicepid= 0;
 
 int         tciodd_major=   TCIODD_MAJOR;
 int         tciodd_minor=   0;
-int         tciodd_nr_devs= TCIODD_NR_DEVS;
+
+// there can only be such device
+int         tciodd_nr_devs= 1;
+
+// there will never be more than one, since there is only one
+// tcService at a time that connects, and all other calls come down
+// through KVM rather than from a process that opens /dev/tcioDD{N}
+struct tciodd_dev *tciodd_device = NULL;
 
 
 module_param(tciodd_major, int, S_IRUGO);
 module_param(tciodd_minor, int, S_IRUGO);
 module_param(tciodd_nr_devs, int, S_IRUGO);
-
-
-struct tciodd_dev*  tciodd_devices;
 
 struct file_operations tciodd_fops= {
     .owner=    THIS_MODULE,
@@ -325,7 +328,6 @@ bool sendTerminate(int procid, int origprocid)
     up(&tciodd_reqserviceqsem);
     return true;
 }
-
 
 bool copyResultandqueue(struct tciodd_Qent* pent, u32 type, int sizebuf, byte* buf)
 //  Copy from buf to new ent
@@ -599,8 +601,6 @@ bool tciodd_processService(void)
 
 int tciodd_open(struct inode *inode, struct file *filp)
 {
-    struct tciodd_dev*  dev= NULL;
-
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: open called\n");
 #endif
@@ -618,13 +618,10 @@ int tciodd_open(struct inode *inode, struct file *filp)
         }
     }
 
-    dev= container_of(inode->i_cdev, struct tciodd_dev, cdev);
-    filp->private_data= dev; 
-
     if((filp->f_flags & O_ACCMODE)==O_WRONLY) {
-        if(down_interruptible(&dev->sem))
+        if(down_interruptible(&tciodd_device->sem))
             return -ERESTARTSYS;
-        up(&dev->sem);
+        up(&tciodd_device->sem);
     }
 
 #ifdef TESTDEVICE
@@ -701,7 +698,7 @@ int tciodd_close(struct inode *inode, struct file *filp)
 ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
                     loff_t *f_pos)
 {
-    struct tciodd_dev*  dev= filp->private_data; 
+    struct tciodd_dev*  dev= tciodd_device;
     ssize_t             retval= 0;
     int                 pid= current->pid;
     struct tciodd_Qent* pent= NULL;
@@ -781,7 +778,7 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
 ssize_t tciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos)
 {
-    struct tciodd_dev*      dev= filp->private_data;
+    struct tciodd_dev*      dev= tciodd_device;
     ssize_t                 retval= -ENOMEM;
     byte*                   databuf= NULL;
     struct tciodd_Qent*     pent= NULL;
@@ -869,18 +866,15 @@ out:
 // The cleanup function must handle initialization failures.
 void tciodd_cleanup(void)
 {
-    int         i;
     dev_t       devno= MKDEV(tciodd_major, tciodd_minor);
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: cleanup started\n");
 #endif
     // Get rid of dev entries
-    if(tciodd_devices) {
-        for(i= 0; i<tciodd_nr_devs; i++) {
-            cdev_del(&tciodd_devices[i].cdev);
-        }
-        kfree(tciodd_devices);
+    if(tciodd_device) {
+      cdev_del(&tciodd_device->cdev);
+      kfree(tciodd_device);
     }
 
     if(pclass!=NULL && pdevice!=NULL) {
@@ -900,7 +894,6 @@ void tciodd_cleanup(void)
     printk(KERN_DEBUG "tcioDD: cleanup complete\n");
 #endif
 }
-
 
 // Set up the char_dev structure for this device.
 void tciodd_setup_cdev(struct tciodd_dev *dev, int index)
@@ -925,7 +918,7 @@ void tciodd_setup_cdev(struct tciodd_dev *dev, int index)
 
 int tciodd_init(void)
 {
-    int     result, i;
+    int     result;
     dev_t   dev= 0;
 
     if(tciodd_major) {
@@ -950,23 +943,22 @@ int tciodd_init(void)
     if(pdevice==NULL)
         goto fail;
 
-    tciodd_devices= kmalloc(tciodd_nr_devs*sizeof(struct tciodd_dev), GFP_KERNEL);
-    if(!tciodd_devices) {
+    tciodd_device= kmalloc(sizeof(struct tciodd_dev), GFP_KERNEL);
+    if(!tciodd_device) {
         result= -ENOMEM;
         goto fail;
     }
-    memset(tciodd_devices, 0, tciodd_nr_devs*sizeof(struct tciodd_dev));
+    memset(tciodd_device, 0, sizeof(struct tciodd_dev));
 
     // initialize service Q semaphore
     sema_init(&tciodd_reqserviceqsem, 1);
     sema_init(&tciodd_resserviceqsem, 1);
 
-    // Initialize each device. 
-    for(i= 0; i<tciodd_nr_devs; i++) {
-        sema_init(&tciodd_devices[i].sem, 1);
-        init_waitqueue_head(&tciodd_devices[i].waitq);
-        tciodd_setup_cdev(&tciodd_devices[i], i);
-    }
+    // Initialize the device
+    sema_init(&tciodd_device->sem, 1);
+    init_waitqueue_head(&tciodd_device->waitq);
+    tciodd_setup_cdev(tciodd_device, 1);
+
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: tciodd_init complete\n");
 #endif
@@ -977,12 +969,19 @@ fail:
     return result;
 }
 
+// expose the device structure itself to the KVM vmdd code
+EXPORT_SYMBOL(tciodd_device);
 
-EXPORT_SYMBOL(tciodd_init);
+// expose a variable to check whether or not the service is initialized
 EXPORT_SYMBOL(tciodd_serviceInitialized);
-EXPORT_SYMBOL(tciodd_servicepid);
-EXPORT_SYMBOL(tciodd_read);
-EXPORT_SYMBOL(tciodd_write);
+
+// expose the queues and their semaphores to the KVM hypercall handlers
+EXPORT_SYMBOL(tciodd_reqserviceqsem);
+EXPORT_SYMBOL(tciodd_resserviceqsem);
+EXPORT_SYMBOL(tciodd_reqserviceq);
+EXPORT_SYMBOL(tciodd_resserviceq);
+
+EXPORT_SYMBOL(tciodd_processService);
 
 #ifdef LINUXLICENSED
 MODULE_LICENSE("GPL");

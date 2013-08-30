@@ -50,10 +50,6 @@
 #define TCIODD_MAJOR 0           // dynamic major by default
 #endif
 
-#ifndef TCIODD_NR_DEVS
-#define TCIODD_NR_DEVS 1         // tciodd0 only
-#endif
-
 #ifndef byte
 typedef unsigned char byte;
 #endif
@@ -103,9 +99,25 @@ extern int      tciodd_ioctl(struct inode *inode, struct file *filp,
                      unsigned cmd, unsigned long arg);
 int      tciodd_open(struct inode *inode, struct file *filp);
 int      tciodd_close(struct inode *inode, struct file *filp);
+bool tciodd_processService(void);
+
+struct tcBuffer {
+    int                 m_procid;
+    u32                 m_reqID;
+    u32                 m_reqSize;
+    u32                 m_ustatus;
+    int                 m_origprocid;
+};
+typedef struct tcBuffer tcBuffer;
 
 
-// functions for communicating with tcioDD from KVM
+//  tcService - status values
+#define TCIOSUCCESS             0
+#define TCIOFAILED              1
+#define TCIONOSERVICE           2
+#define TCIONOMEM               3
+#define TCIONOSERVICERESOURCE   4
+#define TCIONOTPM               5
 
 #endif
 

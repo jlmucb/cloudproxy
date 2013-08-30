@@ -63,13 +63,13 @@ $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(CLM) -I$(S) -I$(FPX) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/tcService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o -D LINUXTCSERVICE $(B)/tcService.o $(S)/tcService.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D LINUXTCSERVICE -c -o $(B)/tcService.o $(S)/tcService.cpp
 
 #$(B)/tcGuestService.o: $(S)/tcGuestService.cpp
-#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o -D OSGUESTTCSERVICE $(B)/tcGuestService.o $(S)/tcService.cpp
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D OSGUESTTCSERVICE -c -o $(B)/tcGuestService.o $(S)/tcService.cpp
 
 #$(B)/tcHvService.o: $(S)/tcHvService.cpp
-#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o -D HVTCSERVICE $(B)/tcHvService.o $(S)/tcService.cpp
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D HVTCSERVICE -c -o $(B)/tcHvService.o $(S)/tcService.cpp
 
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h

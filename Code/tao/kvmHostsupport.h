@@ -32,8 +32,7 @@
 
 
 bool startKvmVM(const char* szvmimage, const char* systemname,
-                const char* xmldomainstring, virConnectPtr* pvmconnection,
-                virDomainPtr*  pvmdomain);
+                const char* xmldomainstring);
 #endif
 
 

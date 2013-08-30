@@ -40,9 +40,7 @@
 extern int      g_policykeySize;
 extern char*    g_szXmlPolicyCert;
 #endif
-#ifdef KVMTCSERVICE
 #include "kvmHostsupport.h"
-#endif
 
 #include <string.h>
 #include <time.h>
@@ -174,11 +172,37 @@ bool taoHostServices::HostClose()
 }
 
 
+// TODO: delete
+const char* g_vmxml=
+"<xml version=\"1.0\"?>"\
+"<domain type='qemu'>"\
+"  <name>ReactOS-on-QEMU<name>"\
+"  <uuid<uuid>"\
+"  <memory>131072<memory>"\
+"  <currentMemory>131072<currentMemory>"\
+"  <vcpu>1<vcpu>"\
+"  <os>"\
+"    <type arch='i686' machine='pc'>hvm<type>"\
+"  <os>"\
+"  <devices>"\
+"    <emulator>usr/bin/qemu<emulator>"\
+"    <disk type='file' device='disk'>"\
+"      <source file='/home/jlmcrypt/vms/cloudproxy-client.img'/>"\
+"      <target dev='hda'/>"\
+"    <disk>"\
+"    <interface type='network'>"\
+"      <source network='default'/>"\
+"    <interface>"\
+"    <graphics type='vnc' port='-1'/>"\
+"  <devices>"\
+"<domain>";
+
 bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, int* phandle)
 {
 #ifdef KVMTCSERVICE
-    virConnectPtr vmconnection;
-    virDomainPtr  vmdomain;
+    virConnectPtr   vmconnection;
+    virDomainPtr    vmdomain;
+    const char*     szsys= "qemu:///system";
 #endif
 
     switch(m_hostType) {
@@ -191,7 +215,7 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
 
       case PLATFORMTYPEKVMHYPERVISOR:
 #ifdef KVMTCSERVICE
-	return startKvmVM(name, av[1], av[2], &vmconnection,
+        return startKvmVM(name, szsys,  g_vmxml, &vmconnection,
                           &vmdomain);
 #else
         return false;

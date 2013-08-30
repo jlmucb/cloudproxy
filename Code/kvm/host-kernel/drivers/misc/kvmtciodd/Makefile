@@ -1,1 +1,1 @@
-obj-y := tcioDD.o
+obj-y := kvmtciodd.o

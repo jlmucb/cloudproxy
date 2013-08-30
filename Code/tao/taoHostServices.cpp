@@ -40,6 +40,9 @@
 extern int      g_policykeySize;
 extern char*    g_szXmlPolicyCert;
 #endif
+#ifdef KVMTCSERVICE
+#include "kvmHostsupport.h"
+#endif
 
 #include <string.h>
 #include <time.h>
@@ -173,6 +176,11 @@ bool taoHostServices::HostClose()
 
 bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, int* phandle)
 {
+#ifdef KVMTCSERVICE
+    virConnectPtr vmconnection;
+    virDomainPtr  vmdomain;
+#endif
+
     switch(m_hostType) {
       default:
       case PLATFORMTYPENONE:
@@ -182,8 +190,12 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
         return false;
 
       case PLATFORMTYPEKVMHYPERVISOR:
-        // Todo
+#ifdef KVMTCSERVICE
+	return startKvmVM(name, av[1], av[2], &vmconnection,
+                          &vmdomain);
+#else
         return false;
+#endif
 
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUX:

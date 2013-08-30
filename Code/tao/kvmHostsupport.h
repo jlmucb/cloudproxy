@@ -23,6 +23,7 @@
 #include "buffercoding.h"
 #include <string.h>
 #include <time.h>
+#include <libvirt/libvirt.h>
 
 
 
@@ -30,18 +31,9 @@
 #define _KVMHOSTSUPPORT__H
 
 
-// request channel to device driver
-extern tcChannel   g_reqChannel;
-extern int         g_myPid;
-
-
-bool initKvmService(const char* name);
-bool closeKvmService();
-bool startKvmVM(const char* szexecFile, int* ppid,
-                int argc, char **argv);
-
-
-
+bool startKvmVM(const char* szvmimage, const char* systemname,
+                const char* xmldomainstring, virConnectPtr* pvmconnection,
+                virDomainPtr*  pvmdomain);
 #endif
 
 

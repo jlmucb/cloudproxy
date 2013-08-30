@@ -17,6 +17,8 @@ O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGS          := ${RELEASE_LDFLAGS}
 CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC
 O1CFLAGS=    -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
+LIBVIRTINCLUDE= /usr/include/libvirt
+
 
 # add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
 
@@ -45,9 +47,9 @@ $(E)/tcKvmGuestOsService.exe: $(sobjs) $(B)/tcKvmGuestOsService.o
 	@echo "tcKvmGuestOsService"
 	$(LINK) -o $(E)/tcKvmGuestOsService.exe $(sobjs) $(B)/tcKvmGuestOsService.o $(LDFLAGS) -lpthread
 
-$(E)/tcKvmService.exe: $(sobjs) $(B)/tcKvmService.o
+$(E)/tcKvmService.exe: $(sobjs) $(B)/tcKvmService.o $(B)/kvmHostsupport.o 
 	@echo "tcKvmService"
-	$(LINK) -o $(E)/tcKvmService.exe $(sobjs) $(B)/tcKvmService.o $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/tcKvmService.exe $(sobjs) $(B)/tcKvmService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -c -o $(B)/fileHash.o $(SCC)/fileHash.cpp
@@ -68,8 +70,7 @@ $(B)/tcKvmGuestOsService.o: $(S)/tcService.cpp
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D KVMGUESTOSTCSERVICE -c -o $(B)/tcKvmGuestOsService.o $(S)/tcService.cpp
 
 $(B)/tcKvmService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D KVMTCSERVICE -c -o $(B)/tcKvmService.o $(S)/tcService.cpp
-
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -I$(LIBVIRTINCLUDE) -D KVMTCSERVICE -c -o $(B)/tcKvmService.o $(S)/tcService.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/quote.o $(CLM)/quote.cpp
@@ -169,3 +170,7 @@ $(B)/channel.o: $(CH)/channel.cpp $(CH)/channel.h
 
 $(B)/encryptedblockIO.o: $(SCC)/encryptedblockIO.cpp $(SCC)/encryptedblockIO.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encryptedblockIO.o $(SCC)/encryptedblockIO.cpp
+
+$(B)/kvmHostsupport.o: $(TH)/kvmHostsupport.cpp $(TH)/kvmHostsupport.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -I$(LIBVIRTINCLUDE) -c -o $(B)/kvmHostsupport.o $(TH)/kvmHostsupport.cpp
+

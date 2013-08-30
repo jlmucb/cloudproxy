@@ -42,28 +42,33 @@
 // -------------------------------------------------------------------------
 
 
-bool initKvmService(const char* name)
+bool startKvmVM(const char* szvmimage, const char* systemname,
+                const char* xmldomainstring, virConnectPtr* pvmconnection,
+                virDomainPtr*  pvmdomain)
 {
-#ifdef TCTEST
-    if(name!=NULL)
-        fprintf(g_logFile, "initKvmService started %s\n", name);
-    else
-        fprintf(g_logFile, "initKvmService started no name\n");
+    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL) {
+        fprintf(g_logFile, "startKvm: Bad input arguments\n");
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "startKvm: %s, %s, %s\n", szvmimage, systemname, xmldomainstring);
 #endif
-
-    return true;
-}
-
-
-bool closeKvmService()
-{
-    return true;
-}
-
-
-bool startKvmVM(const char* szexecFile, int* ppid,
-    int argc, char **argv)
-{
+    // const char*     systemname= "qemu:///system";
+    *pvmconnection= NULL;
+    *pvmdomain= NULL;
+    
+    *pvmconnection= virConnectOpen(systemname);
+    if(*pvmconnection==NULL) {
+        fprintf(g_logFile, "startKvm: couldn't connect\n");
+        return false;
+    }
+   
+    *pvmdomain= virDomainCreateXML(*pvmconnection, xmldomainstring, 0); 
+    if(*pvmdomain==NULL) {
+        fprintf(g_logFile, "startKvm: couldn't start domain\n");
+        return false;
+    }
     return true;
 }
 

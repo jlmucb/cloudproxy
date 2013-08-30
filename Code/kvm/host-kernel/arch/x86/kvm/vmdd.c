@@ -3,7 +3,7 @@
 #include <asm/kvm_host.h>
 #include <asm/vmdd.h>
 #include <linux/types.h>
-#include <linux/kvmkvmtciodd.h>
+#include <linux/kvmtciodd.h>
 #include "x86.h"
 
 extern int kvmtciodd_serviceInitialized;
@@ -35,7 +35,7 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
 
     // if something is on the response queue, fill buffer, otherwise return
     if (down_interruptible(&kvmtciodd_resserviceqsem) == 0) {
-      printk(KERN_DEBUG "kvmkvmtciodd: read looking on response queue for %d\n",
+      printk(KERN_DEBUG "kvmtciodd: read looking on response queue for %d\n",
 	     pid);
       pent = kvmtciodd_findQentbypid(kvmtciodd_resserviceq, pid);
       up(&kvmtciodd_resserviceqsem);
@@ -80,7 +80,7 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
 
     up(&dev->sem);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "kvmkvmtciodd: read complete for %d\n", pid);
+    printk(KERN_DEBUG "kvmtciodd: read complete for %d\n", pid);
 #endif
     return retval;
 }
@@ -97,7 +97,7 @@ int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
     struct x86_exception    e;
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "kvmkvmtciodd: write %d for %d\n", (int)count, pid);
+    printk(KERN_DEBUG "kvmtciodd: write %d for %d\n", (int)count, pid);
 #endif
     if (down_interruptible(&dev->sem)) {
         return -ERESTARTSYS;
@@ -148,7 +148,7 @@ int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
         goto out;
     }
 
-    printk(KERN_DEBUG "kvmkvmtciodd: write, appending entry\n");
+    printk(KERN_DEBUG "kvmtciodd: write, appending entry\n");
     kvmtciodd_appendQent(&kvmtciodd_reqserviceq, pent);
     up(&kvmtciodd_reqserviceqsem);
     retval= count;

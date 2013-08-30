@@ -245,9 +245,6 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
 
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
-
       case PLATFORMTYPELINUX:
       case PLATFORMTYPELINUXAPP:
         if(!m_fileNames.initNames(directory, program)) {
@@ -358,8 +355,6 @@ bool taoEnvironment::EnvClose()
     switch(m_envType) {
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
       case PLATFORMTYPELINUX:
         closeLinuxService();
         return true;
@@ -429,8 +424,6 @@ bool taoEnvironment::initKeyNames()
     switch(m_envType) {
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
       case PLATFORMTYPELINUX:
         sprintf(szName, "//%s/%s/Keys/%sAttest", m_domain, m_machine, m_program);
         m_szPrivateKeyName= strdup(szName);
@@ -673,9 +666,6 @@ bool taoEnvironment::GetPolicyKey()
 
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPEKVMHYPERVISOR:
-        // TODO
-        return false;
-
       case PLATFORMTYPELINUX:
         m_sizepolicyKey= 4096;
         if(!getpolicykeyfromDeviceDriver(&m_policyKeyType, &m_sizepolicyKey, buf)) {

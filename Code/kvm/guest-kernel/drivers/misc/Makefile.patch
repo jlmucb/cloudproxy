@@ -1,7 +1,0 @@
---- Makefile.old	2013-08-30 13:39:24.957580678 -0700
-+++ Makefile	2013-08-30 13:39:07.477591359 -0700
-@@ -53,3 +53,4 @@
- obj-$(CONFIG_VMWARE_VMCI)	+= vmw_vmci/
- obj-$(CONFIG_LATTICE_ECP3_CONFIG)	+= lattice-ecp3-config.o
- obj-$(CONFIG_SRAM)		+= sram.o
-+obj-y               += tcGuestIoDD/

@@ -37,6 +37,7 @@
 #define PLATFORMTYPEHYPERVISOR                 2
 #define PLATFORMTYPELINUX                      3
 #define PLATFORMTYPELINUXAPP                   4
+#define PLATFORMTYPELINUXGUEST                 5
  
 #define STORAGETYPENONE                        0
 #define STORAGETYPETPM                         1

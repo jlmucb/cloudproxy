@@ -19,7 +19,6 @@ CFLAGS=     -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFL
 O1CFLAGS=    -D TPMSUPPORT -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
 
 # add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
-# removed -D NEWANDREORGANIZED 
 
 CC=         g++
 LINK=       g++
@@ -32,16 +31,24 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/TPMHostsupport.o \
 	    $(B)/sha1.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/resource.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/vTCIDirect.o  $(B)/vault.o \
-	    $(B)/tcService.o $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o \
+	    $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o \
 	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
 
 
-all: $(E)/tcService.exe
+all: $(E)/tcService.exe  
+# $(E)/tcGuestService.exe $(E)/tcHvService.exe
 
-$(E)/tcService.exe: $(sobjs)
+$(E)/tcService.exe: $(sobjs) $(B)/tcService.o
 	@echo "tcService"
-	$(LINK) -o $(E)/tcService.exe $(sobjs) $(LDFLAGS) -lpthread
-# $(LINK) -o $(E)/tcService.exe $(sobjs) /lib/x86_64-linux-gnu/libprocps.so.0 -lpthread
+	$(LINK) -o $(E)/tcService.exe $(sobjs) $(B)/tcService.o $(LDFLAGS) -lpthread
+
+#$(E)/tcGuestService.exe: $(sobjs) $(B)/tcGuestService.o
+#	@echo "tcGuestService"
+#	$(LINK) -o $(E)/tcGuestService.exe $(sobjs) $(B)/tcGuestService.o $(LDFLAGS) -lpthread
+
+#$(E)/tcHvService.exe: $(sobjs) $(B)/tcHvService.o
+#	@echo "tcHvService"
+#	$(LINK) -o $(E)/tcHvService.exe $(sobjs) $(B)/tcHvService.o $(LDFLAGS) -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -c -o $(B)/fileHash.o $(SCC)/fileHash.cpp
@@ -56,7 +63,14 @@ $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(CLM) -I$(S) -I$(FPX) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/tcService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o $(B)/tcService.o $(S)/tcService.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o -D LINUXTCSERVICE $(B)/tcService.o $(S)/tcService.cpp
+
+#$(B)/tcGuestService.o: $(S)/tcGuestService.cpp
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o -D OSGUESTTCSERVICE $(B)/tcGuestService.o $(S)/tcService.cpp
+
+#$(B)/tcHvService.o: $(S)/tcHvService.cpp
+#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -c -o -D HVTCSERVICE $(B)/tcHvService.o $(S)/tcService.cpp
+
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/quote.o $(CLM)/quote.cpp

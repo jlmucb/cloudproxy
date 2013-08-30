@@ -487,9 +487,21 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         ret= fcntl(fd, F_SETLK, &lock);
         close(fd);
 #endif
+#ifdef HVTCSERVICE
+        // start VM guest
+#endif
+#ifdef OSGUESTTCSERVICE
+        // start Linux guest application
         if(execve(file, newav, NULL)<0) {
             fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
         }
+#endif
+#ifdef LINUXTCSERVICE
+        // start Linux application
+        if(execve(file, newav, NULL)<0) {
+            fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
+        }
+#endif
     }
 
     *poutsize= sizeof(int);
@@ -958,11 +970,27 @@ int main(int an, char** av)
 
     // init Host and Environment
     g_myService.m_taoHostInitializationTimer.Start();
+#ifdef LINUXTCSERVICE
     if(!g_myService.m_host.HostInit(PLATFORMTYPEHW, parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;
     }
+#endif
+#ifdef OSGUESTTCSERVICE 
+    if(!g_myService.m_host.HostInit(PLATFORMTYPELINUXGUEST, parameterCount, parameters)) {
+        fprintf(g_logFile, "tcService main: can't init host\n");
+        iRet= 1;
+        goto cleanup;
+    }
+#endif
+#ifdef HVTCSERVICE 
+    if(!g_myService.m_host.HostInit(PLATFORMTYPEHYPERVISOR, parameterCount, parameters)) {
+        fprintf(g_logFile, "tcService main: can't init host\n");
+        iRet= 1;
+        goto cleanup;
+    }
+#endif
     g_myService.m_taoHostInitializationTimer.Stop();
 
 #ifdef TEST
@@ -986,6 +1014,7 @@ int main(int an, char** av)
     }
 
     g_myService.m_taoEnvInitializationTimer.Start();
+#ifdef LINUXTCSERVICE
     if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUX, "TrustedOS",
                                 DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
@@ -993,6 +1022,25 @@ int main(int an, char** av)
         iRet= 1;
         goto cleanup;
     }
+#endif
+#ifdef OSGUESTTCSERVICE 
+    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUXGUEST, "KVMGuest",
+                                DOMAIN, directory, 
+                                &g_myService.m_host, 0, NULL)) {
+        fprintf(g_logFile, "tcService main: can't init environment\n");
+        iRet= 1;
+        goto cleanup;
+    }
+#endif
+#ifdef HVTCSERVICE 
+    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPEHYPERVISOR, "KVMHost",
+                                DOMAIN, directory, 
+                                &g_myService.m_host, 0, NULL)) {
+        fprintf(g_logFile, "tcService main: can't init environment\n");
+        iRet= 1;
+        goto cleanup;
+    }
+#endif
     g_myService.m_taoEnvInitializationTimer.Stop();
 
 #ifdef TEST

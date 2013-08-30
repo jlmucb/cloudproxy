@@ -92,6 +92,9 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        // TODO
+      case PLATFORMTYPELINUXGUEST:
+        // TODO
         m_hostValid= false;
         break;
 

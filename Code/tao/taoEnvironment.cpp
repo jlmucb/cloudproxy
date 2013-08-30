@@ -240,7 +240,12 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
 
     switch(type) {
       default:
+      case PLATFORMTYPEHYPERVISOR:
+        // TODO
+      case PLATFORMTYPELINUXGUEST:
+        // TODO
         return false;
+
       case PLATFORMTYPELINUX:
       case PLATFORMTYPELINUXAPP:
         if(!m_fileNames.initNames(directory, program)) {
@@ -312,7 +317,8 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
         u32     codeDigestType= 0;
         byte    codeDigest[64];
 
-        if(!m_myHost->GetHostedMeasurement(&sizeCodeDigest, &codeDigestType, codeDigest)) {
+        if(!m_myHost->GetHostedMeasurement(&sizeCodeDigest, 
+                                &codeDigestType, codeDigest)) {
             fprintf(g_logFile, "taoEnvironment::EnvInit: Can't get code digest\n");
             return false;
         }

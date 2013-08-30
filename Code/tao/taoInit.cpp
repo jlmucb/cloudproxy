@@ -201,6 +201,9 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
       default:
       case PLATFORMTYPENONE:
       case PLATFORMTYPEHYPERVISOR:
+        // TODO
+      case PLATFORMTYPELINUXGUEST:
+        // TODO
         return false;
       case PLATFORMTYPEHW:
         quoteType= QUOTETYPETPM12RSA2048;

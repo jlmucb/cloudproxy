@@ -57,7 +57,19 @@ ROOT/HWRoot: (Storage for HW Trust files)
     aikhexmod.txt   # aik modulus in Hex
     cert            # TPM Public key Certificate
 
-ROOT/TrustedOS: (Storage for HW Trust files)
+ROOT/TrustedOS: (Storage for Linux base files)
+    cert            # OS public key certificate
+    evidence        # OS public key certificate chain
+    privatekey      # OS sealed private key
+    symkey          # OS sealed symmetric key
+
+ROOT/KvmHost: (Storage for KVM Trust files)
+    cert            # OS public key certificate
+    evidence        # OS public key certificate chain
+    privatekey      # OS sealed private key
+    symkey          # OS sealed symmetric key
+
+ROOT/OSGuest: (Storage for OS Guest Trust files)
     cert            # OS public key certificate
     evidence        # OS public key certificate chain
     privatekey      # OS sealed private key

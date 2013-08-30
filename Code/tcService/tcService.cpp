@@ -56,7 +56,7 @@
 
 tcServiceInterface      g_myService;
 int                     g_servicepid= 0;
-extern bool		g_fterminateLoop;
+extern bool             g_fterminateLoop;
 u32                     g_fservicehashValid= false;
 u32                     g_servicehashType= 0;
 int                     g_servicehashSize= 0;
@@ -405,7 +405,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     }
     
     if (newan<1) {
-	newan = 1;
+        newan = 1;
     }
 
     newav[0]= strdup(file);
@@ -450,7 +450,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         if(!uidfrompid(procid, &uid)) {
             fprintf(g_logFile, "StartApp: cant get uid from procid\n");
             return TCSERVICE_RESULT_FAILED;
-	}
+        }
 
         // setuid to correct user (uid, eid and saved id)
         setresuid(uid, uid, uid);
@@ -487,10 +487,13 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         ret= fcntl(fd, F_SETLK, &lock);
         close(fd);
 #endif
-#ifdef HVTCSERVICE
-        // start VM guest
+#ifdef KVMTCSERVICE
+        // start KVM guest
+        if(execve(file, newav, NULL)<0) {
+            fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
+        }
 #endif
-#ifdef OSGUESTTCSERVICE
+#ifdef KVMGUESTOSTCSERVICE
         // start Linux guest application
         if(execve(file, newav, NULL)<0) {
             fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
@@ -915,14 +918,33 @@ int main(int an, char** av)
     int                 iRet= 0;
     TCSERVICE_RESULT    ret;
     bool                fInitKeys= false;
-    const char*               szexecFile= "./tcService.exe";
-
     int                 i;
     bool                fTerminate= false;
     bool                fServiceStart;
-    const char*               directory= NULL;
+    const char*         directory= NULL;
 
+#ifdef LINUXTCSERVICE
+    u32                 hostplatform= PLATFORMTYPEHW;
+    u32                 envplatform= PLATFORMTYPELINUX;
+    const char*         progname= "TrustedOS";
+    const char*         szexecFile= "./tcService.exe";
     initLog("tcService.log");
+#endif
+#ifdef KVMTCSERVICE
+    u32                 hostplatform= PLATFORMTYPEHW;
+    u32                 envplatform= PLATFORMTYPEKVMHYPERVISOR;
+    const char*         progname= "KvmHost";
+    const char*         szexecFile= "./tcKvmService.exe";
+    initLog("tcKvmService.log");
+#endif
+#ifdef KVMGUESTOSTCSERVICE
+    u32                 hostplatform= PLATFORMTYPEKVMHYPERVISOR;
+    u32                 envplatform= PLATFORMTYPELINUXGUEST;
+    const char*         progname= "KvmHost";
+    const char*         szexecFile= "./tcKvmGuestOsService.exe";
+    initLog("tcKvmGuestOsService.log");
+#endif
+
 #ifdef TEST
     fprintf(g_logFile, "tcService started\n\n");
 #endif
@@ -959,7 +981,7 @@ int main(int an, char** av)
         directory= DEFAULTDIRECTORY;
     } else {
         parameters = &directory;
-	parameterCount = 1;
+        parameterCount = 1;
     }
 
     if(!initAllCrypto()) {
@@ -970,27 +992,11 @@ int main(int an, char** av)
 
     // init Host and Environment
     g_myService.m_taoHostInitializationTimer.Start();
-#ifdef LINUXTCSERVICE
-    if(!g_myService.m_host.HostInit(PLATFORMTYPEHW, parameterCount, parameters)) {
+    if(!g_myService.m_host.HostInit(hostplatform, parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;
     }
-#endif
-#ifdef OSGUESTTCSERVICE 
-    if(!g_myService.m_host.HostInit(PLATFORMTYPELINUXGUEST, parameterCount, parameters)) {
-        fprintf(g_logFile, "tcService main: can't init host\n");
-        iRet= 1;
-        goto cleanup;
-    }
-#endif
-#ifdef HVTCSERVICE 
-    if(!g_myService.m_host.HostInit(PLATFORMTYPEHYPERVISOR, parameterCount, parameters)) {
-        fprintf(g_logFile, "tcService main: can't init host\n");
-        iRet= 1;
-        goto cleanup;
-    }
-#endif
     g_myService.m_taoHostInitializationTimer.Stop();
 
 #ifdef TEST
@@ -1014,33 +1020,13 @@ int main(int an, char** av)
     }
 
     g_myService.m_taoEnvInitializationTimer.Start();
-#ifdef LINUXTCSERVICE
-    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUX, "TrustedOS",
+    if(!g_myService.m_trustedHome.EnvInit(envplatform, progname,
                                 DOMAIN, directory, 
                                 &g_myService.m_host, 0, NULL)) {
         fprintf(g_logFile, "tcService main: can't init environment\n");
         iRet= 1;
         goto cleanup;
     }
-#endif
-#ifdef OSGUESTTCSERVICE 
-    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPELINUXGUEST, "KVMGuest",
-                                DOMAIN, directory, 
-                                &g_myService.m_host, 0, NULL)) {
-        fprintf(g_logFile, "tcService main: can't init environment\n");
-        iRet= 1;
-        goto cleanup;
-    }
-#endif
-#ifdef HVTCSERVICE 
-    if(!g_myService.m_trustedHome.EnvInit(PLATFORMTYPEHYPERVISOR, "KVMHost",
-                                DOMAIN, directory, 
-                                &g_myService.m_host, 0, NULL)) {
-        fprintf(g_logFile, "tcService main: can't init environment\n");
-        iRet= 1;
-        goto cleanup;
-    }
-#endif
     g_myService.m_taoEnvInitializationTimer.Stop();
 
 #ifdef TEST

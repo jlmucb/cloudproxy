@@ -201,13 +201,13 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
       default:
       case PLATFORMTYPENONE:
       case PLATFORMTYPEHYPERVISOR:
-        // TODO
-      case PLATFORMTYPELINUXGUEST:
-        // TODO
         return false;
+
       case PLATFORMTYPEHW:
         quoteType= QUOTETYPETPM12RSA2048;
         break;
+
+      case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
         if(keyType==KEYTYPERSA1024INTERNALSTRUCT)
             quoteType= QUOTETYPESHA256FILEHASHRSA1024;
@@ -216,6 +216,8 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
         else
             return false;
         break;
+
+      case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUXAPP:
         if(keyType==KEYTYPERSA1024INTERNALSTRUCT)
             quoteType= QUOTETYPESHA256FILEHASHRSA1024;

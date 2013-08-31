@@ -90,6 +90,11 @@ public:
     serviceprocEnt*     m_rgProcEnts;
     serviceprocMap*     m_rgProcMap;
 
+#ifdef KVMTCSERVICE
+    virConnectPtr       m_vmconnection;
+    virDomainPtr        m_vmdomain;
+#endif
+
     serviceprocTable();
     ~serviceprocTable();
 
@@ -126,9 +131,15 @@ public:
     TCSERVICE_RESULT    GetHostedMeasurement(int pid, u32* phashType, int* psize, byte* rgBuf);
     TCSERVICE_RESULT    GetEntropy(int size, byte* buf);
     
+#ifdef KVMTCSERVICE
+    TCSERVICE_RESULT    StartApp(int procid, const char* file, 
+                            int an, char** av, 
+                            int* poutsize, byte* out);
+#else
     TCSERVICE_RESULT    StartApp(tcChannel& oAppChannel, int procid, 
                             const char* file, int an, char** av,
                             int* poutsize, byte* out);
+#endif
 
     TCSERVICE_RESULT    SealFor(int procid, int sizeIn, byte* rgIn, 
                             int* psizeOut, byte* rgOut);

@@ -392,6 +392,136 @@ TCSERVICE_RESULT tcServiceInterface::GetServiceHash(u32* phashType,
 }
 
 
+#ifdef KVMTCSERVICE
+
+
+// template vm xml
+const char* g_vmtemplatexml=
+"<xml version=\"1.0\"?>"\
+"<domain type='qemu'>"\
+"  <name>%s<name>"\
+"  <uuid<uuid>"\
+"  <memory>131072<memory>"\
+"  <currentMemory>131072<currentMemory>"\
+"  <vcpu>1<vcpu>"\
+"  <os>"\
+"    <type arch='i686' machine='pc'>hvm<type>"\
+"  <os>"\
+"  <devices>"\
+"    <emulator>usr/bin/qemu<emulator>"\
+"    <disk type='file' device='disk'>"\
+"      <source file='%s'/>"\
+"      <target dev='hda'/>"\
+"    <disk>"\
+"    <interface type='network'>"\
+"      <source network='default'/>"\
+"    <interface>"\
+"    <graphics type='vnc' port='-1'/>"\
+"  <devices>"\
+"<domain>";
+
+
+#define MAXMLBUF 2048
+
+
+TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int an, char** av, 
+                                int* poutsize, byte* out)
+{
+    u32     uType= 0;
+    int     size= SHA256DIGESTBYTESIZE;
+    byte    rgHash[SHA256DIGESTBYTESIZE];
+    int     vmid= 0;
+    int     i;
+    int     newan= an;
+    char*   newav[32];
+    int     uid= -1;
+
+#ifdef TEST
+    fprintf(g_logFile, "tcServiceInterface::StartApp(%s) %d args\n", file, an);
+    for(i=0;i<an;i++)
+       fprintf(g_logFile, "\tav[%d]: %s\n", i, av[i]);
+#endif
+
+    if(an>30) {
+        return TCSERVICE_RESULT_FAILED;
+    }
+    
+    if (newan<1) {
+        newan = 1;
+    }
+
+    newav[0]= strdup(file);
+    for(i=1;i<newan;i++)
+        newav[i]= strdup(av[i]);
+    newav[newan]= NULL;
+
+#ifdef TEST
+    fprintf(g_logFile, "StartApp (VM) file %s %d arguments\n", file, newan);
+#endif
+
+    // lock file
+#ifdef LOCKFILE
+    struct flock    lock;
+    int             ret;
+    int             fd= open(file, O_RDONLY);
+
+    // F_UNLCK
+    lock.l_type= F_WRLCK;
+    lock.l_start= 0;
+    lock.l_len= SEEK_SET;
+    lock.l_pid= getpid();
+    ret= fcntl(fd, F_SETLK, &lock);
+#endif
+
+    if(!getfileHash(file, &uType, &size, rgHash)) {
+        fprintf(g_logFile, "StartApp : getfilehash failed %s\n", file);
+        return TCSERVICE_RESULT_FAILED;
+    }
+
+    // look up uid for procid
+    if(!uidfrompid(procid, &uid)) {
+        fprintf(g_logFile, "StartApp: cant get uid from procid\n");
+        return TCSERVICE_RESULT_FAILED;
+    }
+
+    const char*     szsys= "qemu:///system";
+    char            buf[MAXMLBUF];
+
+    // av[1] is name
+    if(an<2 || strlen(file)>256 || strlen(av[1])>256) {
+        return false;
+    }
+    sprintf(buf, g_vmtemplatexml, file, av[1]);
+
+    if((vmid=startKvmVM(file, szsys,  buf, av[1], this))<0) {
+        fprintf(g_logFile, "StartApp : cant start VM\n");
+        return TCSERVICE_RESULT_FAILED;
+    }
+
+    // record procid and hash
+    if(!g_myService.m_procTable.addprocEntry(vmid, file, 0, (char**) NULL, 
+                                             size, rgHash)) {
+        fprintf(g_logFile, "StartApp: cant add to proc table\n");
+        return TCSERVICE_RESULT_FAILED;
+    }
+#ifdef TCTEST
+    fprintf(g_logFile, "\nProc table after create. vmid: %d, serviceid: %d\n", 
+            vmid, g_servicepid);
+    g_myService.m_procTable.print();
+#endif
+#ifdef LOCKFILE
+        close(fd);
+#endif
+    }
+
+    *poutsize= sizeof(int);
+    *((int*)out)= vmid;
+    return TCSERVICE_RESULT_SUCCESS;
+}
+#endif
+
+
+#ifndef KVMTCSERVICE
 TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
                                 int procid, const char* file, int an, char** av, 
                                 int* poutsize, byte* out)
@@ -498,30 +628,18 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         ret= fcntl(fd, F_SETLK, &lock);
         close(fd);
 #endif
-#ifdef KVMTCSERVICE
-        // start KVM guest
-        if(execve(file, newav, NULL)<0) {
-            fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
-        }
-#endif
-#ifdef KVMGUESTOSTCSERVICE
+
         // start Linux guest application
         if(execve(file, newav, NULL)<0) {
             fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
         }
-#endif
-#ifdef LINUXTCSERVICE
-        // start Linux application
-        if(execve(file, newav, NULL)<0) {
-            fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
-        }
-#endif
     }
 
     *poutsize= sizeof(int);
     *((int*)out)= child;
     return TCSERVICE_RESULT_SUCCESS;
 }
+#endif
 
 
 TCSERVICE_RESULT tcServiceInterface::SealFor(int procid, int sizeIn, byte* rgIn, 
@@ -886,6 +1004,15 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         fprintf(g_logFile, "serviceRequest, about to StartHostedProgram %s, for %d\n",
                 szappexecfile, origprocid);
 #endif
+#ifdef KVMTCSERVICE
+        if(g_myService.StartApp(origprocid, szappexecfile, an, av,
+                                    &outparamsize, outparams)
+                !=TCSERVICE_RESULT_SUCCESS) {
+            fprintf(g_logFile, "serviceRequest: StartHostedProgram failed %s\n", szappexecfile);
+            chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
+            return false;
+        }
+#else
         if(g_myService.StartApp(chan, origprocid, szappexecfile, an, av,
                                     &outparamsize, outparams)
                 !=TCSERVICE_RESULT_SUCCESS) {
@@ -893,6 +1020,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
             chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
             return false;
         }
+#endif
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, StartHostedProgram succeeded, about to send\n");
 #endif

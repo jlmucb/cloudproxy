@@ -40,7 +40,6 @@
 extern int      g_policykeySize;
 extern char*    g_szXmlPolicyCert;
 #endif
-#include "kvmHostsupport.h"
 
 #include <string.h>
 #include <time.h>
@@ -172,39 +171,8 @@ bool taoHostServices::HostClose()
 }
 
 
-// TODO: delete
-const char* g_vmxml=
-"<xml version=\"1.0\"?>"\
-"<domain type='qemu'>"\
-"  <name>ReactOS-on-QEMU<name>"\
-"  <uuid<uuid>"\
-"  <memory>131072<memory>"\
-"  <currentMemory>131072<currentMemory>"\
-"  <vcpu>1<vcpu>"\
-"  <os>"\
-"    <type arch='i686' machine='pc'>hvm<type>"\
-"  <os>"\
-"  <devices>"\
-"    <emulator>usr/bin/qemu<emulator>"\
-"    <disk type='file' device='disk'>"\
-"      <source file='/home/jlmcrypt/vms/cloudproxy-client.img'/>"\
-"      <target dev='hda'/>"\
-"    <disk>"\
-"    <interface type='network'>"\
-"      <source network='default'/>"\
-"    <interface>"\
-"    <graphics type='vnc' port='-1'/>"\
-"  <devices>"\
-"<domain>";
-
 bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, int* phandle)
 {
-#ifdef KVMTCSERVICE
-    virConnectPtr   vmconnection;
-    virDomainPtr    vmdomain;
-    const char*     szsys= "qemu:///system";
-#endif
-
     switch(m_hostType) {
       default:
       case PLATFORMTYPENONE:
@@ -214,13 +182,6 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
         return false;
 
       case PLATFORMTYPEKVMHYPERVISOR:
-#ifdef KVMTCSERVICE
-        return startKvmVM(name, szsys,  g_vmxml, &vmconnection,
-                          &vmdomain);
-#else
-        return false;
-#endif
-
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUX:
         return startAppfromDeviceDriver(name, phandle, an, av);

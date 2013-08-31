@@ -39,36 +39,82 @@
 #include <time.h>
 
 
+//  Config
+//      listen_tls= 0
+//      listen_tcp= 1
+//      auth_tcp= "sasl"
+//      mech_list: digest-md5
+
+
 // -------------------------------------------------------------------------
 
 
-bool startKvmVM(const char* szvmimage, const char* systemname,
-                const char* xmldomainstring)
-{
-    virConnectPtr   vmconnection;
-    virDomainPtr    vmdomain;
+int startKvmVM(const char* szvmimage, const char* systemname,
+                const char* xmldomainstring, const char* szdomainName,
+		tcServiceInterface* ptc)
 
-    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL) {
+// returns -1 if error, vmid otherwise
+
+{
+    int     vmid= 0;  //TODO
+    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL
+                          szdomainName==NULL) {
         fprintf(g_logFile, "startKvm: Bad input arguments\n");
-        return false;
+        return -1;
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "startKvm: %s, %s, %s\n", szvmimage, systemname, xmldomainstring);
+    fprintf(g_logFile, "startKvm: %s, %s, %s %s\n", 
+               szvmimage, systemname, xmldomainstring, szdomainName);
 #endif
-    
-    vmconnection= virConnectOpen(systemname);
-    if(vmconnection==NULL) {
+
+    // Replace later with virConnectOpenAuth(name, virConnectAuthPtrDefault, 0)
+    ptc->m_vmconnection= virConnectOpen(systemname);
+    if(ptc->m_vmconnection==NULL) {
         fprintf(g_logFile, "startKvm: couldn't connect\n");
-        return false;
+        return -1;
     }
+
+#ifdef TEST
+    char*   szCap= virConnectGetCapabilities(ptc->m_vmconnection);
+    fprintf(g_logFile, "VM Host capabilities:\n%s\n", szCap);
+    free(szCap);
+    char*   szHostname= virConnectGetHostname(ptc->m_vmconnection);
+    fprintf(g_logFile, "Host name: %s\n", szHostname);
+    free(szszHostname);
+    int ncpus= virConnectGetMaxVcpus(ptc->m_vmconnection);
+    fprintf(g_logFile, "Virtual cpus: %d\n", ncpus);
+    virNodeInfo oInfo;
+    virNodeGetInfo(ptc->m_vmconnection, &oInfo);
+    fprintf(g_logFile, "\tModel : %s\n", oInfo.model);
+    fprintf(g_logFile, "\tMemory size: %d\n", oInfo.memory);
+    fprintf(g_logFile, "\tNum cpus: %d\n", oInfo.cpus);
+#if 0
+    virErrorPtr  err;
+    err= virGetLastError();
+    fprintf(g_logFile, "Error: %s\n", err->message);
+#endif
+#endif
    
-    vmdomain= virDomainCreateXML(vmconnection, xmldomainstring, 0); 
-    if(vmdomain==NULL) {
+    ptc->m_vmdomain= virDomainCreateXML(ptc->m_vmconnection, xmldomainstring, 0); 
+    if(ptc->m_vmdomain==NULL) {
         fprintf(g_logFile, "startKvm: couldn't start domain\n");
-        return false;
+        return -1;
     }
-    return true;
+#ifdef TEST
+    int     ndom= virConnectNumDomains(ptc->m_vmconnection);
+    fprintf(g_logFile, "%d domains\n", ndom);
+
+    int*    rgactiveDomains= malloc(sizeof(int)*ndom);
+    int     i;
+    ndom= virConnectListDomains(ptc->m_vmconnection, rgactiveDomains, ndom);
+    fprintf(g_logFile, "active domains\n");
+    for(i=0; i<ndom; i++) {
+        fprintf(g_logFile, "\t%d\n", activeDomains[i]);
+    }
+#endif
+
+    return vmid;
 }
 
 

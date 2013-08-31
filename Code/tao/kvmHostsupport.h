@@ -23,7 +23,7 @@
 #include "buffercoding.h"
 #include <string.h>
 #include <time.h>
-#include <libvirt/libvirt.h>
+#include "tcService.h"
 
 
 
@@ -31,8 +31,9 @@
 #define _KVMHOSTSUPPORT__H
 
 
-bool startKvmVM(const char* szvmimage, const char* systemname,
-                const char* xmldomainstring);
+int startKvmVM(const char* szvmimage, const char* systemname,
+                const char* xmldomainstring, const char* szdomainName,
+                tcServiceInterface* ptc);
 #endif
 
 

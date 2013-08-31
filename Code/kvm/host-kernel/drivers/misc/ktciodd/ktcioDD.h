@@ -11,7 +11,7 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 
-#define KTCIODD_MAJOR 100
+#define KTCIODD_MAJOR 101
 #ifndef KTCIODD_MAJOR
 #define KTCIODD_MAJOR 0           // dynamic major by default
 #endif

@@ -121,7 +121,7 @@ static struct device*   pdevice= NULL;
 
 // These are unsafe but they are only used for debug
 
-void printcmdbuffer(byte* pB)
+void kvmtcio_printcmdbuffer(byte* pB)
 {
     tcBuffer* pC= (tcBuffer*) pB;
     pB+= sizeof(tcBuffer);
@@ -130,7 +130,7 @@ void printcmdbuffer(byte* pB)
 }
 
 
-void printent(struct kvmtciodd_Qent* pE)
+void kvmtcio_printent(struct kvmtciodd_Qent* pE)
 {
     int     n;
 
@@ -149,12 +149,12 @@ void printent(struct kvmtciodd_Qent* pE)
 }
 
 
-void printlist(struct kvmtciodd_Qent* pE)
+void kvmtcio_printlist(struct kvmtciodd_Qent* pE)
 {
     int     n= 0;
 
     while(pE!=NULL) {
-        printent(pE);
+        kvmtcio_printent(pE);
         pE= (struct kvmtciodd_Qent*) pE->m_next;
         n++;
     }
@@ -162,17 +162,17 @@ void printlist(struct kvmtciodd_Qent* pE)
 }
 
 
-void printrequestQ(void)
+void kvmtcio_printrequestQ(void)
 {
     printk(KERN_DEBUG "kvmtciodd: request list\n");
-    printlist(kvmtciodd_reqserviceq);
+    kvmtcio_printlist(kvmtciodd_reqserviceq);
 }
 
 
-void printresponseQ(void)
+void kvmtcio_printresponseQ(void)
 {
     printk(KERN_DEBUG "kvmtciodd: response list\n");
-    printlist(kvmtciodd_resserviceq);
+    kvmtcio_printlist(kvmtciodd_resserviceq);
 }
 
 
@@ -293,7 +293,7 @@ struct kvmtciodd_Qent* kvmtciodd_findQentbypid(struct kvmtciodd_Qent* head, int 
 // --------------------------------------------------------------------
 
 
-bool sendTerminate(int procid, int origprocid)
+bool kvmtcio_sendTerminate(int procid, int origprocid)
 {
     tcBuffer*           newhdr= NULL;
     int                 newdatasize;
@@ -329,7 +329,7 @@ bool sendTerminate(int procid, int origprocid)
     return true;
 }
 
-bool copyResultandqueue(struct kvmtciodd_Qent* pent, u32 type, int sizebuf, byte* buf)
+bool kvmtcio_copyResultandqueue(struct kvmtciodd_Qent* pent, u32 type, int sizebuf, byte* buf)
 //  Copy from buf to new ent
 {
     int         n= 0;
@@ -382,7 +382,7 @@ bool copyResultandqueue(struct kvmtciodd_Qent* pent, u32 type, int sizebuf, byte
 }
 
 
-bool queueforService(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
+bool kvmtcio_queueforService(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
 {
     int         n;
     tcBuffer*   hdr= (tcBuffer*)pent->m_data;
@@ -405,7 +405,7 @@ bool queueforService(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
 }
 
 
-bool queueforApp(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
+bool kvmtcio_queueforApp(struct kvmtciodd_Qent* pent, u32 appReq, u32 serviceReq)
 {
     tcBuffer*   hdr= (tcBuffer*) pent->m_data;
 
@@ -437,7 +437,7 @@ bool kvmtciodd_processService(void)
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: processService started\n");
-    printrequestQ(); printresponseQ();
+    kvmtcio_printrequestQ(); kvmtcio_printresponseQ();
 #endif
     if(down_interruptible(&kvmtciodd_reqserviceqsem)) 
         return false;
@@ -455,7 +455,7 @@ bool kvmtciodd_processService(void)
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: processService got ent from reqQ %d, size: %d\n", 
            pent->m_pid, pent->m_sizedata);
-    printcmdbuffer(pent->m_data);
+    kvmtcio_printcmdbuffer(pent->m_data);
 #endif
 
     // don't forget to wake up reading processes
@@ -463,26 +463,26 @@ bool kvmtciodd_processService(void)
 
       // For first four, no need to go to service
       case TCSERVICEGETPOLICYKEYFROMAPP:
-        if(!copyResultandqueue(pent, kvmtciodd_policykeyType, kvmtciodd_sizepolicykey, 
+        if(!kvmtcio_copyResultandqueue(pent, kvmtciodd_policykeyType, kvmtciodd_sizepolicykey, 
                                kvmtciodd_policykey)) {
             fRet= false;
         }
         break;
       case TCSERVICEGETPOLICYKEYFROMTCSERVICE:
-        if(!copyResultandqueue(pent, kvmtciodd_policykeyType, kvmtciodd_sizepolicykey, 
+        if(!kvmtcio_copyResultandqueue(pent, kvmtciodd_policykeyType, kvmtciodd_sizepolicykey, 
                                kvmtciodd_policykey)) {
             fRet= false;
         }
         break;
 
       case TCSERVICEGETOSHASHFROMAPP:
-        if(!queueforService(pent, TCSERVICEGETOSHASHFROMAPP, 
+        if(!kvmtcio_queueforService(pent, TCSERVICEGETOSHASHFROMAPP, 
                             TCSERVICEGETOSHASHFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICEGETOSHASHFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICEGETOSHASHFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICEGETOSHASHFROMAPP, 
                         TCSERVICEGETOSHASHFROMTCSERVICE)) {
             fRet= false;
         }
@@ -490,99 +490,99 @@ bool kvmtciodd_processService(void)
 
       // forward to service or app as appropriate
       case TCSERVICEGETOSCREDSFROMAPP:
-        if(!queueforService(pent, TCSERVICEGETOSCREDSFROMAPP, 
+        if(!kvmtcio_queueforService(pent, TCSERVICEGETOSCREDSFROMAPP, 
                             TCSERVICEGETOSCREDSFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICEGETOSCREDSFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICEGETOSCREDSFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICEGETOSCREDSFROMAPP, 
                         TCSERVICEGETOSCREDSFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICESEALFORFROMAPP:
-        if(!queueforService(pent, TCSERVICESEALFORFROMAPP, 
+        if(!kvmtcio_queueforService(pent, TCSERVICESEALFORFROMAPP, 
                             TCSERVICESEALFORFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICESEALFORFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICESEALFORFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICESEALFORFROMAPP, 
                         TCSERVICESEALFORFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICEUNSEALFORFROMAPP:
-        if(!queueforService(pent, TCSERVICEUNSEALFORFROMAPP, 
+        if(!kvmtcio_queueforService(pent, TCSERVICEUNSEALFORFROMAPP, 
                             TCSERVICEUNSEALFORFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICEUNSEALFORFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICEUNSEALFORFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICEUNSEALFORFROMAPP, 
                         TCSERVICEUNSEALFORFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICEATTESTFORFROMAPP:
-        if(!queueforService(pent, TCSERVICEATTESTFORFROMAPP, 
+        if(!kvmtcio_queueforService(pent, TCSERVICEATTESTFORFROMAPP, 
                             TCSERVICEATTESTFORFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICEATTESTFORFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICEATTESTFORFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICEATTESTFORFROMAPP, 
                         TCSERVICEATTESTFORFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICESTARTAPPFROMAPP:
-        if(!queueforService(pent, TCSERVICESTARTAPPFROMAPP,
+        if(!kvmtcio_queueforService(pent, TCSERVICESTARTAPPFROMAPP,
                             TCSERVICESTARTAPPFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICESTARTAPPFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICESTARTAPPFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICESTARTAPPFROMAPP, 
                         TCSERVICESTARTAPPFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICETERMINATEAPPFROMAPP:
-        if(!queueforService(pent, TCSERVICETERMINATEAPPFROMAPP,
+        if(!kvmtcio_queueforService(pent, TCSERVICETERMINATEAPPFROMAPP,
                             TCSERVICETERMINATEAPPFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICETERMINATEAPPFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICETERMINATEAPPFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICETERMINATEAPPFROMAPP, 
                         TCSERVICETERMINATEAPPFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICEGETPROGHASHFROMAPP:
-        if(!queueforService(pent, TCSERVICEGETPROGHASHFROMAPP, 
+        if(!kvmtcio_queueforService(pent, TCSERVICEGETPROGHASHFROMAPP, 
                             TCSERVICEGETPROGHASHFROMTCSERVICE)) {
             fRet= false;
         }
         break;
       case TCSERVICEGETPROGHASHFROMTCSERVICE:
-        if(!queueforApp(pent, TCSERVICEGETPROGHASHFROMAPP, 
+        if(!kvmtcio_queueforApp(pent, TCSERVICEGETPROGHASHFROMAPP, 
                         TCSERVICEGETPROGHASHFROMTCSERVICE)) {
             fRet= false;
         }
         break;
 
       case TCSERVICETERMINATE:
-        if(!queueforService(pent, TCSERVICETERMINATE, TCSERVICETERMINATE)) {
+        if(!kvmtcio_queueforService(pent, TCSERVICETERMINATE, TCSERVICETERMINATE)) {
             fRet= false;
         }
         break;
@@ -673,7 +673,7 @@ int kvmtciodd_close(struct inode *inode, struct file *filp)
     }
     
     if (kvmtciodd_servicepid != pid) {
-      sendTerminate(kvmtciodd_servicepid, pid);
+      kvmtcio_sendTerminate(kvmtciodd_servicepid, pid);
     } else {
       kvmtciodd_serviceInitialized = 0;
 
@@ -833,7 +833,7 @@ ssize_t kvmtciodd_write(struct file *filp, const char __user *buf, size_t count,
 
 #ifdef TESTDEVICE1
     printk(KERN_DEBUG "kvmtciodd: write, appending entry\n");
-    printcmdbuffer(pent->m_data);
+    kvmtcio_printcmdbuffer(pent->m_data);
 #endif
     kvmtciodd_appendQent(&kvmtciodd_reqserviceq, pent);
     up(&kvmtciodd_reqserviceqsem);

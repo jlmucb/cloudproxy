@@ -45,7 +45,7 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 
-#define TCIODD_MAJOR 100
+#define TCIODD_MAJOR 102
 #ifndef TCIODD_MAJOR
 #define TCIODD_MAJOR 0           // dynamic major by default
 #endif

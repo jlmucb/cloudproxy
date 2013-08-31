@@ -38,6 +38,7 @@ The main programs are:
         under access control.
     4. FileClient - a cloud based service program that performs processing on 
         FileServer provided data.
+    5. tcLaunch - support program that launches measured programs and vms
 
 FileProxy requires a DRTM boot of a specially configured Linux OS which you must 
 compile and link.  We do not distribute Linux binaries of any sort since doing so 
@@ -110,6 +111,7 @@ On the Development Computer or KeyNegoServer Computer (depending on whether
 11. Build TBOOT and configure any FileClient, FileServer and Development 
     Computer you use to perform a DRTMBoot using the instructions in 
     "DRTMBoot.txt."
+12. Build tcLaunch 
 
 If this is a Development Computer, use the instructions in "RunningFileProxy.txt" 
 to run and test these programs.

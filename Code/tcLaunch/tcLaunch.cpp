@@ -171,24 +171,24 @@ bool startAppfromDeviceDriver(int fd, const char* szexecFile, int* ppid,
 
     size= encodeTCSERVICESTARTAPPFROMAPP(szexecFile, argc, argv, PARAMSIZE, rgBuf);
     if(size<0) {
-        fprintf(g_logFile, "startProcessLinuxService: encodeTCSERVICESTARTAPPFROMAPP failed\n");
+        fprintf(g_logFile, "startAppfromDeviceDriver: encodeTCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
     if(!sendtcBuf(fd, g_myPid, TCSERVICESTARTAPPFROMAPP, 0, g_myPid, size, rgBuf)) {
-        fprintf(g_logFile, "startProcessLinuxService: sendtcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
+        fprintf(g_logFile, "startAppfromDeviceDriver: sendtcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
     if(!gettcBuf(fd, &procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
-        fprintf(g_logFile, "startProcessLinuxService: gettcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
+        fprintf(g_logFile, "startAppfromDeviceDriver: gettcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
     if(!decodeTCSERVICESTARTAPPFROMTCSERVICE(ppid, rgBuf)) {
-        fprintf(g_logFile, "startProcessLinuxService: cant decode childproc\n");
+        fprintf(g_logFile, "startAppfromDeviceDriver: cant decode childproc\n");
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "startProcessLinuxService: Process created: %d by servicepid %d\n", 
+    fprintf(g_logFile, "Program created: %d by servicepid %d\n", 
           *ppid, g_myPid);
 #endif
 #endif
@@ -216,100 +216,6 @@ int initLinuxService()
 
 
 // -------------------------------------------------------------------------
-
-
-#ifdef KVMTCSERVICE
-    virConnectPtr       g_vmconnection;
-    virDomainPtr        g_vmdomain;
-#endif
-
-
-int startKvmVM(const char* szvmimage, const char* systemname,
-                const char* xmldomainstring, const char* szdomainName)
-
-// returns -1 if error, vmid otherwise
-
-{
-#ifdef KVMTCSERVICE
-    int     vmid= 0;  //TODO
-    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL ||
-                          szdomainName==NULL) {
-        fprintf(g_logFile, "startKvm: Bad input arguments\n");
-        return -1;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "startKvm: %s, %s, %s %s\n", 
-               szvmimage, systemname, xmldomainstring, szdomainName);
-#endif
-
-    // Replace later with virConnectOpenAuth(name, virConnectAuthPtrDefault, 0)
-    g_vmconnection= virConnectOpen(systemname);
-    if(g_vmconnection==NULL) {
-        fprintf(g_logFile, "startKvm: couldn't connect\n");
-        return -1;
-    }
-
-#ifdef TEST
-    char*   szCap= virConnectGetCapabilities(g_vmconnection);
-    fprintf(g_logFile, "VM Host capabilities:\n%s\n", szCap);
-    free(szCap);
-    char*   szHostname= virConnectGetHostname(g_vmconnection);
-    fprintf(g_logFile, "Host name: %s\n", szHostname);
-    free(szszHostname);
-    int ncpus= virConnectGetMaxVcpus(g_vmconnection);
-    fprintf(g_logFile, "Virtual cpus: %d\n", ncpus);
-    virNodeInfo oInfo;
-    virNodeGetInfo(g_vmconnection, &oInfo);
-    fprintf(g_logFile, "\tModel : %s\n", oInfo.model);
-    fprintf(g_logFile, "\tMemory size: %d\n", oInfo.memory);
-    fprintf(g_logFile, "\tNum cpus: %d\n", oInfo.cpus);
-#if 0
-    virErrorPtr  err;
-    err= virGetLastError();
-    fprintf(g_logFile, "Error: %s\n", err->message);
-#endif
-#endif
-   
-    g_vmdomain= virDomainCreateXML(g_vmconnection, xmldomainstring, 0); 
-    if(g_vmdomain==NULL) {
-        fprintf(g_logFile, "startKvm: couldn't start domain\n");
-        return -1;
-    }
-#ifdef TEST
-    int     ndom= virConnectNumDomains(g_vmconnection);
-    fprintf(g_logFile, "%d domains\n", ndom);
-
-    int*    rgactiveDomains= malloc(sizeof(int)*ndom);
-    int     i;
-    ndom= virConnectListDomains(g_vmconnection, rgactiveDomains, ndom);
-    fprintf(g_logFile, "active domains\n");
-    for(i=0; i<ndom; i++) {
-        fprintf(g_logFile, "\t%d\n", activeDomains[i]);
-    }
-#endif
-
-    return vmid;
-#else
-    return -1;
-#endif
-}
-
-
-// ------------------------------------------------------------------------
-
-
-bool startAsMeasuredProgram(int fd, int an, char** av)
-{
-    int     n= 0;
-
-    if(!startAppfromDeviceDriver(fd, av[0], &n, an, av))
-        return false;
-    return true;
-}
-
-
-// ------------------------------------------------------------------------
 
 
 int main(int an, char** av)

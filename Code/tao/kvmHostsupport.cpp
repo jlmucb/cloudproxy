@@ -56,8 +56,9 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 // returns -1 if error, vmid otherwise
 
 {
+#ifdef KVMTCSERVICE
     int     vmid= 0;  //TODO
-    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL
+    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL ||
                           szdomainName==NULL) {
         fprintf(g_logFile, "startKvm: Bad input arguments\n");
         return -1;
@@ -115,6 +116,9 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 #endif
 
     return vmid;
+#else
+    return -1;
+#endif
 }
 
 

@@ -39,8 +39,11 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
-
 #include "domain.h"
+
+#ifdef KVMTCSERVICE
+#include <libvirt/libvirt.h>
+#endif
 
 
 typedef u64 TCSERVICE_RESULT;

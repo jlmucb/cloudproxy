@@ -53,6 +53,11 @@
 #endif
 #include <errno.h>
 
+#ifdef KVMTCSERVICE
+#include "kvmHostsupport.h"
+#include <libvirt/libvirt.h>
+#endif
+
 
 tcServiceInterface      g_myService;
 int                     g_servicepid= 0;
@@ -455,6 +460,10 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
         newav[i]= strdup(av[i]);
     newav[newan]= NULL;
 
+    // temporary to placate compiler
+    if(newav[0]!=NULL)
+    	fprintf(g_logFile, "Huh?\n");
+
 #ifdef TEST
     fprintf(g_logFile, "StartApp (VM) file %s %d arguments\n", file, newan);
 #endif
@@ -512,7 +521,6 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
 #ifdef LOCKFILE
         close(fd);
 #endif
-    }
 
     *poutsize= sizeof(int);
     *((int*)out)= vmid;

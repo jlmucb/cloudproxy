@@ -41,9 +41,8 @@
 #else
 #include <sys/un.h>
 #endif
-
-
 #include "tciohdr.h"
+
 
 #define TCIODEVICEDRIVERPRESENT
 

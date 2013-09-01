@@ -216,6 +216,63 @@ int initLinuxService()
 // -------------------------------------------------------------------------
 
 
+#define MAXPROGNAME 512
+
+
+char* programNamefromFileName(const char* fileName)
+{
+    char*   p= (char*) fileName;
+    char*   q;
+    char*   r;
+    char    progNameBuf[MAXPROGNAME];
+
+    if(fileName==NULL)
+        return NULL;
+#ifdef TEST
+    fprintf(g_logFile, "fileName: %s\n", fileName);
+#endif
+    while(*p!='\0')
+        p++;
+    q= p-1;
+    while((--p)!=fileName) {
+        if(*p=='/') {
+            break;
+        }
+        if(*p=='.') {
+            break;
+        }
+    }
+
+    if(*p=='/') {
+        r= p+1;
+    }
+    else if(*p=='.') {
+        q= p-1;
+        r= q;
+        while(r>=fileName) {
+            if(*r=='/')
+                break;
+            r--;
+        }
+    }
+    else {
+        r= (char*)fileName-1;
+    }
+    if((q-r)>=(MAXPROGNAME-1))
+        return NULL;
+    r++;
+    p= progNameBuf;
+    while(r<=q)
+        *(p++)= *(r++);
+    *p= '\0';
+    q= strdup(progNameBuf);
+#ifdef TEST
+    fprintf(g_logFile, "fileName: %s, progname: %s\n", fileName, q);
+#endif
+    return q;
+}
+
+
 int main(int an, char** av)
 {
     int         i;
@@ -229,22 +286,22 @@ int main(int an, char** av)
         return 0;
       }
       if(strcmp(av[i],"-KVMHost")==0) {
-        g_tcioDDName= "kvmtciodd0";
+        g_tcioDDName= "/dev/kvmtciodd0";
         newan--;
         newav++;
       }
       else if(strcmp(av[i],"-KVMGuest")==0) {
-        g_tcioDDName= "ktciodd0";
+        g_tcioDDName= "/dev/ktciodd0";
         newan--;
         newav++;
       }
       else if(strcmp(av[i],"-LinuxHost")==0) {
-        g_tcioDDName= "tcioDD0";
+        g_tcioDDName= "/dev/tcioDD0";
         newan--;
         newav++;
       }
       else {
-        g_tcioDDName= "tcioDD0";
+        g_tcioDDName= "/dev/tcioDD0";
       }
     }
 
@@ -261,6 +318,15 @@ int main(int an, char** av)
         fprintf(g_logFile, "tcLaunch: can't open tcio device driver\n");
         return 1;
     }
+
+    if(newan<1) {
+        fprintf(g_logFile, "tcLaunch: too few arguments\n");
+        return 1;
+    }
+    newav[0]= newav[1];
+    newav[1]= programNamefromFileName(newav[0]);
+    newan= 2;
+
     int   handle= 0;
     if(startAppfromDeviceDriver(fd, &handle, newan, newav))
         fprintf(g_logFile, "tcLaunch: measured program started, id: %d, exiting\n",

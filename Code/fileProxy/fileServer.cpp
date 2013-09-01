@@ -79,13 +79,13 @@ void printResources(objectManager<resource>* pRM);
 #endif
 
 #ifdef KVMTCSERVICE
-const char* g_tcioDDName= "kvmtciodd0";
+const char* g_tcioDDName= "/dev/kvmtciodd0";
 #endif
 #ifdef KVMGUESTOSTCSERVICE 
-const char* g_tcioDDName= "ktciodd0";
+const char* g_tcioDDName= "/dev/ktciodd0";
 #endif
 #ifdef LINUXTCSERVICE 
-const char* g_tcioDDName= "tcioDD0";
+const char* g_tcioDDName= "/dev/tcioDD0";
 #endif
 
 

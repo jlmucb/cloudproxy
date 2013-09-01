@@ -58,11 +58,10 @@ cryptUtility.exe is in ROOT/cryptUtility.exe
 
 Now, as a regular user, execute the following commands:
 ./tcService.exe &
-sleep 2s
-./fileServer.exe -initProg
-sleep 2s
-./fileClient.exe -initProg
-sleep 5s
+[sleep 2s]
+./tcLaunch.exe -LinuxHost  ./fileServer.exe
+[sleep 2s]
+./tcLaunch.exe -LinuxHost  ./fileClient.exe
 
 You should see the following output on the command line:
 

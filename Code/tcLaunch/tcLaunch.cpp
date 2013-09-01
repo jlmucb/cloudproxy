@@ -282,7 +282,7 @@ int main(int an, char** av)
     for(i=0;i<an;i++) {
       if(strcmp(av[i],"-help")==0) {
         fprintf(g_logFile, 
-         "tcLaunch.exe [-KVMHost |-KVMGuest | LinuxHost]  KVNImage/ProcessImage remainingargs\n");
+         "tcLaunch.exe [-KVMHost |-KVMGuest | -LinuxHost]  KVNImage/ProcessImage remainingargs\n");
         return 0;
       }
       if(strcmp(av[i],"-KVMHost")==0) {

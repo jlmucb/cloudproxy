@@ -15,8 +15,8 @@ you will have to log out and back in to get the right group permissions.
 
 3. add tcioDD to the kernel  
   cd ~/jlmcrypt
-  insmod tcHvioDD.ko
-  chmod 0777 /dev/tcHvIoDD0
+  insmod kvmtciodd.ko
+  chmod 0777 /dev/kvmtciod
 
 The first time you run tcService, you must run it with the -initKeys flag.  
 This generates the OS keys stores them and causes keyNegoServer to sign them.  
@@ -25,50 +25,17 @@ need only be available when a tao layer needs to initialize.  Here
 is a procedure.  Start keyNegoServer.  In a different console on the 
 fileProxy machine, type:
 
-./tcService.exe -initKeys
+./tcKvmService.exe -initKeys
 
 Unlike a normal run of tcService where tcService continues running, 
 tcService will exit after the keys are generated and the cert signed 
 and stored.  
 
-Next prepare the test files for fileClient
+The procedure is similar to the Linux tests after that.  The KVM must
+also have custom CloudProxy patches installed to intercept service calls
+from ktciodd to the KVM.
 
-If you are running the standard test, suppose CODE is 
-the directory where the fileProxy code is and ROOT is the directory
-you store your executables (usually jlmcrypt); do the following:
+A KVM guest partition must have a statically linked ktciodd device
+driver and be running a tcKvmGuestOsService.exe services.  
+Initialization of all the tcservices is analogous.
 
-    mkdir ROOT/fileClient/tests
-    mkdir -p ROOT/fileProxy/files
-    cd ROOT
-    CODE/scripts/createSimpleTest.py --scriptPath CODE/scripts
-    mv basicTest fileClient/tests/
-
-createSimpleTest.py creates a new public/private key pair for a user JohnManferdelli/0001,
-generates the public and private key XML files, creates a new test file file.test and a 
-test overview file tests.xml. It also creates a signed authorization file with the single
-statement
-
-    //www.manferdelli.com/User/JohnManferdelli/0001 maycreate //www.manferdelli.com/Gauss/fileProxy/files
-
-This code assumes that the policy key can be found in ROOT/policy/privatePolicyKey.xml and that
-cryptUtility.exe is in ROOT/cryptUtility.exe
-
-
-Now, as a regular user, execute the following commands:
-./tcService.exe &
-sleep 2s
-./fileServer.exe -initProg
-sleep 2s
-./fileClient.exe -initProg
-sleep 5s
-
-You should see the following output on the command line:
-
-    basicFileCreate: [OK]
-    basicFileWrite: [OK]
-    basicFileRead: [OK]
-
-see the file fileClient/tests/basicTest/tests.xml for the XML test format, and see the examples
-in CODE/SupportFiles/tests for other samples. Note that these samples have already been 
-signed by a policy key and will need to be generated again using the scripts in CODE/scripts
-to work in an environment with a different policy key

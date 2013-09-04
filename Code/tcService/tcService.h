@@ -93,11 +93,6 @@ public:
     serviceprocEnt*     m_rgProcEnts;
     serviceprocMap*     m_rgProcMap;
 
-#ifdef KVMTCSERVICE
-    virConnectPtr       m_vmconnection;
-    virDomainPtr        m_vmdomain;
-#endif
-
     serviceprocTable();
     ~serviceprocTable();
 
@@ -120,6 +115,11 @@ public:
 
     timer               m_taoEnvInitializationTimer;
     timer               m_taoHostInitializationTimer;
+
+#ifdef KVMTCSERVICE
+    virConnectPtr       m_vmconnection;
+    virDomainPtr        m_vmdomain;
+#endif
 
     tcServiceInterface();
     ~tcServiceInterface();

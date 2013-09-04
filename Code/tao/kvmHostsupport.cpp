@@ -46,7 +46,7 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 
 {
 #ifdef TEST
-    fprintf(g_logFile, "startKvmVM: %s, %s, %s\n%s\n"
+    fprintf(g_logFile, "startKvmVM: %s, %s, %s\n%s\n",
             szvmimage, systemname, szdomainName, xmldomainstring);
 #endif
 

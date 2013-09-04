@@ -502,7 +502,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
     }
     sprintf(buf, g_vmtemplatexml, file, av[1]);
 
-    if((vmid=startKvmVM(file, szsys,  buf, av[1], this))<0) {
+    if((vmid=startKvmVM(file, szsys,  buf, av[1], &m_vmconnection, &m_vmdomain))<0) {
         fprintf(g_logFile, "StartApp : cant start VM\n");
         return TCSERVICE_RESULT_FAILED;
     }
@@ -858,10 +858,6 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         //  sealfor returns m= ENC(hashsize||hash||sealsize||sealdata)
         //  returned buffer is sizeof(m) || m
         outparamsize= PARAMSIZE;
-#ifdef TCTEST
-        fprintf(g_logFile, "TCSERVICESEALFORFROMTCSERVICE********about to sealFor\n");
-        PrintBytes("inparams: ", inparams, inparamsize);
-#endif
         if(!decodeTCSERVICESEALFORFROMAPP(&outparamsize, outparams, inparams)) {
             fprintf(g_logFile, "serviceRequest: TCSERVICESEALFORFROMTCSERVICE buffer too small\n");
             chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
@@ -894,9 +890,6 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
       case TCSERVICEUNSEALFORFROMTCSERVICE:
         // outparamsize is sizeof(m)m outparams is m from above
         // unsealfor returns sizof unsealed data || unsealeddata
-#ifdef TCTEST1
-        fprintf(g_logFile, "TCSERVICEUNSEALFORFROMTCSERVICE********about to UnsealFor\n");
-#endif
         outparamsize= PARAMSIZE;
         if(!decodeTCSERVICEUNSEALFORFROMAPP(&outparamsize, outparams, inparams)) {
             fprintf(g_logFile, "serviceRequest: service loop TCSERVICEUNSEALFORFROMTCSERVICE failed\n");

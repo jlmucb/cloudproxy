@@ -19,11 +19,10 @@
 // to the location of the License.
 
 #include "jlmTypes.h"
-#include "tcIO.h"
-#include "buffercoding.h"
+#include "logging.h"
+#include <libvirt/libvirt.h>
 #include <string.h>
 #include <time.h>
-#include "tcService.h"
 
 
 
@@ -33,7 +32,8 @@
 
 int startKvmVM(const char* szvmimage, const char* systemname,
                 const char* xmldomainstring, const char* szdomainName,
-                tcServiceInterface* ptc);
+                virConnectPtr* ppvmconnection,
+                virDomainPtr*  ppvmdomain);
 #endif
 
 

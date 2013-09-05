@@ -71,6 +71,10 @@ typedef u64 TCSERVICE_RESULT;
 class serviceprocEnt {
 public:
     int                 m_procid;
+#ifdef KVMTCSERVICE
+    virConnectPtr       m_vmconnection;
+    virDomainPtr        m_vmdomain;
+#endif
     int                 m_sizeHash;
     byte                m_rgHash[32];
     char*               m_szexeFile;
@@ -92,13 +96,24 @@ public:
     serviceprocMap*     m_pMap;
     serviceprocEnt*     m_rgProcEnts;
     serviceprocMap*     m_rgProcMap;
+#ifdef KVMTCSERVICE
+    virConnectPtr	m_vmconnection;
+    virDomainPtr	m_vmdomain;
+#endif
 
     serviceprocTable();
     ~serviceprocTable();
 
     bool                initprocTable(int size);
+
+#ifdef KVMTCSERVICE
+    bool                addprocEntry(int procid, const char* file, int an, char** av,
+                                     int sizeHash, byte* hash, virConnectPtr* ppvmconnection,
+                                     virDomainPtr*  ppvmdomain);
+#else
     bool                addprocEntry(int procid, const char* file, int an, char** av,
                                      int sizeHash, byte* hash);
+#endif
     void                removeprocEntry(int procid);
     serviceprocEnt*     getEntfromprocId(int procid);
     bool                gethashfromprocId(int procid, int* psizeHash, byte* hash);
@@ -115,11 +130,6 @@ public:
 
     timer               m_taoEnvInitializationTimer;
     timer               m_taoHostInitializationTimer;
-
-#ifdef KVMTCSERVICE
-    virConnectPtr       m_vmconnection;
-    virDomainPtr        m_vmdomain;
-#endif
 
     tcServiceInterface();
     ~tcServiceInterface();

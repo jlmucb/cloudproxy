@@ -123,6 +123,10 @@ serviceprocTable::serviceprocTable()
     m_pMap= NULL;
     m_rgProcMap= NULL;
     m_rgProcEnts= NULL;
+#ifdef KVMTCSERVICE
+    m_vmconnection= NULL;
+    m_vmdomain= NULL;
+#endif
 }
 
 
@@ -160,8 +164,14 @@ bool serviceprocTable::initprocTable(int size)
 }
 
 
+#ifdef KVMTCSERVICE
+bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
+                                     int sizeHash, byte* hash, virConnectPtr* ppvmconnection,
+                                     virDomainPtr*  ppvmdomain);
+#else
 bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
                                     int sizeHash, byte* hash)
+#endif
 {
     if(m_pFree==NULL)
         return false;
@@ -179,6 +189,10 @@ bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char**
     pEnt->m_szexeFile= strdup(file);
     pMap->pNext= m_pMap;
     m_pMap= pMap;
+#ifdef KVMTCSERVICE
+    m_vmconnection= *ppvmconnection;
+    m_vmdomain= *ppvmdomain;
+#endif
     return true;
 }
 
@@ -493,25 +507,29 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
         return TCSERVICE_RESULT_FAILED;
     }
 
-    const char*     szsys= "qemu:///system";
-    char            buf[MAXMLBUF];
+    {
+        const char*     szsys= "qemu:///system";
+        char            buf[MAXMLBUF];
 
-    // av[1] is name
-    if(an<2 || strlen(file)>256 || strlen(av[1])>256) {
-        return false;
-    }
-    sprintf(buf, g_vmtemplatexml, file, av[1]);
+        // av[1] is name
+        if(an<2 || strlen(file)>256 || strlen(av[1])>256) {
+            return false;
+        }
+       sprintf(buf, g_vmtemplatexml, file, av[1]);
+       virConnectPtr    vmconnection= NULL;
+       virDomainPtr     vmdomain= NULL;
+    
+       if((vmid=startKvmVM(file, szsys,  buf, av[1], &vmconnection, &vmdomain))<0) {
+           fprintf(g_logFile, "StartApp : cant start VM\n");
+           return TCSERVICE_RESULT_FAILED;
+       }
 
-    if((vmid=startKvmVM(file, szsys,  buf, av[1], &m_vmconnection, &m_vmdomain))<0) {
-        fprintf(g_logFile, "StartApp : cant start VM\n");
-        return TCSERVICE_RESULT_FAILED;
-    }
-
-    // record procid and hash
-    if(!g_myService.m_procTable.addprocEntry(vmid, file, 0, (char**) NULL, 
-                                             size, rgHash)) {
-        fprintf(g_logFile, "StartApp: cant add to proc table\n");
-        return TCSERVICE_RESULT_FAILED;
+       // record procid and hash
+      if(!g_myService.m_procTable.addprocEntry(vmid, file, 0, (char**) NULL, 
+                                   size, rgHash, &vmconnection, &vmdomain)) {
+           fprintf(g_logFile, "StartApp: cant add to proc table\n");
+           return TCSERVICE_RESULT_FAILED;
+       }
     }
 #ifdef TCTEST
     fprintf(g_logFile, "\nProc table after create. vmid: %d, serviceid: %d\n", 

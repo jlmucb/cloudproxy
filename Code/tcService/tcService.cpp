@@ -167,7 +167,7 @@ bool serviceprocTable::initprocTable(int size)
 #ifdef KVMTCSERVICE
 bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
                                      int sizeHash, byte* hash, virConnectPtr* ppvmconnection,
-                                     virDomainPtr*  ppvmdomain);
+                                     virDomainPtr*  ppvmdomain)
 #else
 bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
                                     int sizeHash, byte* hash)
@@ -1093,6 +1093,8 @@ int main(int an, char** av)
     u32                 envplatform= PLATFORMTYPEKVMHYPERVISOR;
     const char*         progname= "KvmHost";
     const char*         szexecFile= "./tcKvmService.exe";
+    virConnectPtr       vmconnection= NULL;
+    virDomainPtr        vmdomain= NULL;
     initLog("tcKvmService.log");
 #endif
 #ifdef KVMGUESTOSTCSERVICE
@@ -1218,9 +1220,16 @@ int main(int an, char** av)
 #endif
 
     // add self proctable entry
+#ifdef KVMTCSERVICE
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(szexecFile), 0, NULL,
+                                      g_myService.m_trustedHome.m_myMeasurementSize,
+                                      g_myService.m_trustedHome.m_myMeasurement,
+                                      &vmconnection, &vmdomain);
+#else
     g_myService.m_procTable.addprocEntry(g_servicepid, strdup(szexecFile), 0, NULL,
                                       g_myService.m_trustedHome.m_myMeasurementSize,
                                       g_myService.m_trustedHome.m_myMeasurement);
+#endif
    
 #ifdef TEST
     fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");

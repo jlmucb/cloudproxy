@@ -416,6 +416,71 @@ TCSERVICE_RESULT tcServiceInterface::GetServiceHash(u32* phashType,
 
 // template vm xml
 const char* g_vmtemplatexml=
+"<domain type='kvm'>"\
+"  <name>%s</name>"\
+"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>"\
+"  <memory>1048576</memory>"\
+"  <currentMemory>1048576</currentMemory>"\
+"  <vcpu>1</vcpu>"\
+"  <os>"\
+"    <type arch='x86_64' machine='pc-1.0'>hvm</type>"\
+"    <boot dev='hd'/>"\
+"  </os>"\
+"  <features>"\
+"    <acpi/>"\
+"    <apic/>"\
+"    <pae/>"\
+"  </features>"\
+"  <clock offset='utc'/>"\
+"  <on_poweroff>destroy</on_poweroff>"\
+"  <on_reboot>restart</on_reboot>"\
+"  <on_crash>restart</on_crash>"\
+"  <devices>"\
+"    <emulator>/usr/bin/kvm</emulator>"\
+"    <disk type='file' device='disk'>"\
+"      <driver name='qemu' type='raw'/>"\
+"      <source file='%s'/>"\
+"      <target dev='hda' bus='ide'/>"\
+"      <address type='drive' controller='0' bus='0' unit='0'/>"\
+"    </disk>"\
+"    <disk type='file' device='cdrom'>"\
+"      <driver name='qemu' type='raw'/>"\
+"      <source file='/home/jlm/tmp/ubuntu-12.04.2-desktop-amd64.iso'/>"\
+"      <target dev='hdc' bus='ide'/>"\
+"      <readonly/>"\
+"      <address type='drive' controller='0' bus='1' unit='0'/>"\
+"    </disk>"\
+"    <controller type='ide' index='0'>"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>"\
+"    </controller>"\
+"    <interface type='bridge'>"\
+"      <mac address='52:54:00:82:22:a8'/>"\
+"      <source bridge='virbr0'/>"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>"\
+"    </interface>"\
+"    <serial type='pty'>"\
+"      <target port='0'/>"\
+"    </serial>"\
+"    <console type='pty'>"\
+"      <target type='serial' port='0'/>"\
+"    </console>"\
+"    <input type='mouse' bus='ps2'/>"\
+"    <graphics type='vnc' port='-1' autoport='yes'/>"\
+"    <sound model='ich6'>"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>"\
+"    </sound>"\
+"    <video>"\
+"      <model type='cirrus' vram='9216' heads='1'/>"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>"\
+"    </video>"\
+"    <memballoon model='virtio'>"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>"\
+"    </memballoon>"\
+"  </devices>"\
+"</domain>";
+
+/*
+const char* g_vmtemplatexml=
 "<xml version=\"1.0\"?>"\
 "<domain type='qemu'>"\
 "  <name>%s<name>"\
@@ -438,9 +503,10 @@ const char* g_vmtemplatexml=
 "    <graphics type='vnc' port='-1'/>"\
 "  <devices>"\
 "<domain>";
+*/
 
 
-#define MAXMLBUF 2048
+#define MAXMLBUF 4096
 
 
 TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int an, char** av, 

@@ -287,6 +287,7 @@ int main(int an, char** av)
     int         i;
     int         newan= an;
     char**      newav= av;
+    bool        fSucceed= false;
 
     for(i=0;i<an;i++) {
       if(strcmp(av[i],"-help")==0) {
@@ -299,21 +300,30 @@ int main(int an, char** av)
         g_tcioDDName= "/dev/tcioDD0";
         newan--;
         newav++;
+        fSucceed= true;
       }
       else if(strcmp(av[i],"-KVMGuest")==0) {
         g_tcioDDName= "/dev/ktciodd0";
         newan--;
         newav++;
+        fSucceed= true;
       }
       else if(strcmp(av[i],"-LinuxHost")==0) {
         g_tcioDDName= "/dev/tcioDD0";
         newan--;
         newav++;
+        fSucceed= true;
       }
       else {
         g_tcioDDName= "/dev/tcioDD0";
       }
     }
+
+    if(!fSucceed) {
+        fprintf(g_logFile, "tcLaunch: error called with no flag\n");
+        return 1;
+    }
+    
 
     g_myPid= getpid();
 

@@ -137,6 +137,7 @@ bool tcChannel::OpenBuf(u32 type, int fd, const char* file, u32 flags)
         m_fd= open(g_tcioDDName, O_RDWR);
         if(m_fd<0) {
             fprintf(g_logFile, "Can't open device driver %s\n", g_tcioDDName);
+            fprintf(g_logFile, "Reason: %s\n", strerror(errno));
             return false;
         }
         return true;

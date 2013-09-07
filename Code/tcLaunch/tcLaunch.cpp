@@ -163,6 +163,15 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
         fprintf(g_logFile, "startAppfromDeviceDriver: no argument\n");
         return false;
     }
+#ifdef TEST
+    int i;
+    fprintf(g_logFile, "startAppfromDeviceDriver, %d args\n", argc);
+    for(i=0; i<argc;i++) {
+        fprintf(g_logFile, "\t%s\n", argv[i]);
+    }
+    fprintf(g_logFile, "\n");
+    fflush(g_logFile);
+#endif
 
     size= encodeTCSERVICESTARTAPPFROMAPP(argv[0], argc-1, argv+1, PARAMSIZE, rgBuf);
     if(size<0) {
@@ -286,7 +295,8 @@ int main(int an, char** av)
         return 0;
       }
       if(strcmp(av[i],"-KVMHost")==0) {
-        g_tcioDDName= "/dev/kvmtciodd0";
+        // g_tcioDDName= "/dev/kvmtciodd0";
+        g_tcioDDName= "/dev/tcioDD0";
         newan--;
         newav++;
       }

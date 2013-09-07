@@ -172,5 +172,5 @@ $(B)/encryptedblockIO.o: $(SCC)/encryptedblockIO.cpp $(SCC)/encryptedblockIO.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encryptedblockIO.o $(SCC)/encryptedblockIO.cpp
 
 $(B)/kvmHostsupport.o: $(TH)/kvmHostsupport.cpp $(TH)/kvmHostsupport.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -D KVMGUESTOSTCSERVICE -I$(LIBVIRTINCLUDE) -c -o $(B)/kvmHostsupport.o $(TH)/kvmHostsupport.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -D KVMTCSERVICE -I$(LIBVIRTINCLUDE) -c -o $(B)/kvmHostsupport.o $(TH)/kvmHostsupport.cpp
 

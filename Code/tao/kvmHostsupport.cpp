@@ -23,7 +23,8 @@
 #include "kvmHostsupport.h"
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
-#include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include <time.h>
 
 
@@ -64,6 +65,12 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 
 #ifdef KVMTCSERVICE
     int     vmid= 0;
+
+#ifdef TEST
+    fprintf(g_logFile, "startKvmVM service code included\n");
+    fflush(g_logFile);
+#endif
+
     if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL ||
                           szdomainName==NULL) {
         fprintf(g_logFile, "startKvm: Bad input arguments\n");
@@ -90,8 +97,8 @@ int startKvmVM(const char* szvmimage, const char* systemname,
     char*   szHostname= virConnectGetHostname(*ppvmconnection);
     fprintf(g_logFile, "Host name: %s\n", szHostname);
     fflush(g_logFile);
-    free(szszHostname);
-    int ncpus= virConnectGetMaxVcpus(*ppvmconnection);
+    free(szHostname);
+    int ncpus= virConnectGetMaxVcpus(*ppvmconnection, NULL);
     fprintf(g_logFile, "Virtual cpus: %d\n", ncpus);
     fflush(g_logFile);
     virNodeInfo oInfo;
@@ -113,21 +120,27 @@ int startKvmVM(const char* szvmimage, const char* systemname,
     fflush(g_logFile);
 #endif
 #ifdef TEST
-    int     ndom= virConnectNumDomains(*ppvmconnection);
+    int     ndom= virConnectNumOfDomains(*ppvmconnection);
     fprintf(g_logFile, "%d domains\n", ndom);
 
-    int*    rgactiveDomains= malloc(sizeof(int)*ndom);
+    int*    rgactiveDomains= (int*)malloc(sizeof(int)*ndom);
     int     i;
     ndom= virConnectListDomains(*ppvmconnection, rgactiveDomains, ndom);
     fprintf(g_logFile, "active domains\n");
     for(i=0; i<ndom; i++) {
-        fprintf(g_logFile, "\t%d\n", activeDomains[i]);
+        fprintf(g_logFile, "\t%d\n", rgactiveDomains[i]);
     }
     fflush(g_logFile);
 #endif
 
     return vmid;
 #else
+
+#ifdef TEST
+    fprintf(g_logFile, "startKvmVM service code NOT included\n");
+    fflush(g_logFile);
+#endif
+
     return -1;
 #endif
 }

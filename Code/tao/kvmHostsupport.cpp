@@ -22,6 +22,7 @@
 #include "logging.h"
 #include "kvmHostsupport.h"
 #include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
 #include <string.h>
 #include <time.h>
 
@@ -36,6 +37,16 @@
 // -------------------------------------------------------------------------
 
 
+void printVirtlibError()
+{
+    virError*    err;
+
+    err= virGetLastError();
+    fprintf(g_logFile, "Error: %s\n", err->message);
+    fflush(g_logFile);
+}
+
+
 int startKvmVM(const char* szvmimage, const char* systemname,
                 const char* xmldomainstring, const char* szdomainName,
                 virConnectPtr* ppvmconnection,
@@ -48,6 +59,7 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM: %s, %s, %s\n%s\n",
             szvmimage, systemname, szdomainName, xmldomainstring);
+    fflush(g_logFile);
 #endif
 
 #ifdef KVMTCSERVICE
@@ -61,41 +73,51 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 #ifdef TEST
     fprintf(g_logFile, "startKvm: %s, %s, %s %s\n", 
                szvmimage, systemname, xmldomainstring, szdomainName);
+    fflush(g_logFile);
 #endif
 
     // Replace later with virConnectOpenAuth(name, virConnectAuthPtrDefault, 0)
     *ppvmconnection= virConnectOpen(systemname);
     if(*ppvmconnection==NULL) {
         fprintf(g_logFile, "startKvm: couldn't connect\n");
+         printVirtlibError();
         return -1;
     }
+#ifdef TEST
+    fprintf(g_logFile, "startKvm: connection succeeded\n");
+    fflush(g_logFile);
+#endif
 
 #ifdef TEST
     char*   szCap= virConnectGetCapabilities(*ppvmconnection);
     fprintf(g_logFile, "VM Host capabilities:\n%s\n", szCap);
+    fflush(g_logFile);
     free(szCap);
     char*   szHostname= virConnectGetHostname(*ppvmconnection);
     fprintf(g_logFile, "Host name: %s\n", szHostname);
+    fflush(g_logFile);
     free(szszHostname);
     int ncpus= virConnectGetMaxVcpus(*ppvmconnection);
     fprintf(g_logFile, "Virtual cpus: %d\n", ncpus);
+    fflush(g_logFile);
     virNodeInfo oInfo;
     virNodeGetInfo(*ppvmconnection, &oInfo);
     fprintf(g_logFile, "\tModel : %s\n", oInfo.model);
     fprintf(g_logFile, "\tMemory size: %d\n", oInfo.memory);
     fprintf(g_logFile, "\tNum cpus: %d\n", oInfo.cpus);
-#if 0
-    virErrorPtr  err;
-    err= virGetLastError();
-    fprintf(g_logFile, "Error: %s\n", err->message);
-#endif
+    fflush(g_logFile);
 #endif
    
     *ppvmdomain= virDomainCreateXML(*ppvmconnection, xmldomainstring, 0); 
     if(*ppvmdomain==NULL) {
         fprintf(g_logFile, "startKvm: couldn't start domain\n");
+         printVirtlibError();
         return -1;
     }
+#ifdef TEST
+    fprintf(g_logFile, "startKvm: virDomainCreateXML succeeded\n");
+    fflush(g_logFile);
+#endif
 #ifdef TEST
     int     ndom= virConnectNumDomains(*ppvmconnection);
     fprintf(g_logFile, "%d domains\n", ndom);
@@ -107,6 +129,7 @@ int startKvmVM(const char* szvmimage, const char* systemname,
     for(i=0; i<ndom; i++) {
         fprintf(g_logFile, "\t%d\n", activeDomains[i]);
     }
+    fflush(g_logFile);
 #endif
 
     return vmid;

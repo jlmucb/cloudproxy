@@ -70,12 +70,6 @@ int startKvmVM(const char* szvmimage, const char* systemname,
         return -1;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "startKvm: %s, %s, %s %s\n", 
-               szvmimage, systemname, xmldomainstring, szdomainName);
-    fflush(g_logFile);
-#endif
-
     // Replace later with virConnectOpenAuth(name, virConnectAuthPtrDefault, 0)
     *ppvmconnection= virConnectOpen(systemname);
     if(*ppvmconnection==NULL) {

@@ -132,7 +132,7 @@ int startKvmVM(const char* szvmimage, const char* systemname,
     }
     fflush(g_logFile);
 #endif
-
+    vmid= (int)virDomainGetID(*ppvmdomain);
     return vmid;
 #else
 

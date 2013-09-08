@@ -74,8 +74,7 @@ byte                    g_servicehash[32]= {
 
 
 #ifdef KVMTCSERVICE
-// const char* g_tcioDDName= "/dev/kvmtciodd0";
-const char* g_tcioDDName= "/dev/tcioDD0";
+const char* g_tcioDDName= "/dev/kvmtciodd0";
 #endif
 #ifdef KVMGUESTOSTCSERVICE 
 const char* g_tcioDDName= "/dev/ktciodd0";

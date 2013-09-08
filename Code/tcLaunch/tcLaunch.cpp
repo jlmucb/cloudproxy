@@ -296,8 +296,7 @@ int main(int an, char** av)
         return 0;
       }
       if(strcmp(av[i],"-KVMHost")==0) {
-        // g_tcioDDName= "/dev/kvmtciodd0";
-        g_tcioDDName= "/dev/tcioDD0";
+        g_tcioDDName= "/dev/kvmtciodd0";
         newan--;
         newav++;
         fSucceed= true;

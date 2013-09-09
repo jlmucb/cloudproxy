@@ -18,6 +18,8 @@ Here is a quick description of how to build the kernel for host and guest.
 variables: $KERNEL is the kernel source directory (e.g.,
 /usr/src/linux-3.11.0), $CODE is the fileProxy Code directory (e.g.,
 ~/src/fileProxy/Code)
+    export KERNEL="/usr/src/linux-lts-quantal-3.5.0"
+    export CODE="/home/jlm/fpDev/fileProxy/Code"
 
 - Make sure you have all the prerequisites for building the kernel
 - get the kernel source and make its root directory be $KERNEL
@@ -1411,4 +1413,21 @@ operating system installed, you can save memory by enabling kernel same-page mer
 In some cases, memory can be reclaimed from running virtual machines by running 
 a memory ballooning driver in the guest operating system and launching QEMU with 
 the -balloon virtio option.
+
+apt-get install --install-recommends \
+     linux-generic-lts-quantal \
+     xserver-xorg-lts-quantal \
+     libgl1-mesa-glx-lts-quantal
+
+
+apt-get source linux-image-linux-lts-quantal-3.5.0-40
+
+linux-lts-quantal-3.5.0-40.62~precise1
+
+https://launchpad.net/ubuntu/precise/+source/linux-lts-quantal/3.5.0-40.62~precise1
+
+apt-get source linux-headers-3.5.0-40
+apt-get source linux--3.5.0-40
+
+
 

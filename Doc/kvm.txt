@@ -1,3 +1,62 @@
+Instructions for building and running Linus and KVM with CloudProxy support
+===========================================================================
+
+
+KVM (Kernel-based Virtual Machine) is a Linux kernel virtualization technique 
+providing guest support using Intel VT.
+
+These instructions cover how to build Linux and KVM Guests to run CloudProxy.
+Consult the "KVMHv" for an architectural layout of the components.  CloudProxy
+requires VT-d, SMX and TPM 1.2 in addition to VT.
+
+Building Kernel and Guest partitions
+------------------------------------
+
+
+Here is a quick description of how to build the kernel for host and guest.
+
+variables: $KERNEL is the kernel source directory (e.g.,
+/usr/src/linux-3.11.0), $CODE is the fileProxy Code directory (e.g.,
+~/src/fileProxy/Code)
+
+- Make sure you have all the prerequisites for building the kernel
+- get the kernel source and make its root directory be $KERNEL
+- navigate to ${CODE}/kvm/host-kernel
+- execute the commands
+  - ./apply-patches.sh $KERNEL
+  - ./copy_to_kernel.sh $KERNEL
+
+  The apply-patches.sh command might fail, depending on the vintage of
+the kernel you have. If the patches fail, they are fairly easy to fix
+by hand. You can look at the patches to see what they do:
+  - the Makefile in ${KERNEL}/drivers/misc needs to have three extra
+lines, one obj-y += DIR for each of the three directories we added
+(*tcio*)
+  - the Makefile in ${KERNEL}/arch/x86/kvm needs to add vmdd.o to the
+dependencies of kvm.o
+  - ${KERNEL}/arch/x86/kvm/x86.c needs to have the lines added from
+the patch in ${CODE}/kvm/host-kernel/arch/x86/kvm/x86.c.patch (just a
+couple of lines)
+
+- copy a working config over to $KERNEL as .config
+- run
+  - yes "" | make oldconfig
+  - yes "" | make localmodconfig
+  - make (with a -j factor appropriate for your machine)
+  - sudo make modules_install
+  - sudo make install
+
+- and you should have a copy of the new kernel in /boot, ready to go.
+- update the tboot script for this kernel and try to tboot it.
+
+
+KVM support
+-----------
+
+
+This is out of order, you must do some of the following before kuilding the kernel
+and guest.
+
 download qemu
 libvirt
 virt-manager
@@ -24,9 +83,10 @@ On a debian etch system you can install the prerequisites with:
 
 Note: When building from git, you also need gawk.
 
-Please report problems (and successes) to the mailing list.
+
 
 Unpacking and configuring kvm components
+----------------------------------------
 
 You may wish to take a look at the ["Kernel-optimizations"] page. There exists a 
 [attachment:kvm-26-alt-grab.diff.gz patch] which will change the SDL keygrab 
@@ -61,6 +121,7 @@ Creating a disk image for the guest
 /usr/local/kvm/bin/qemu-img create -f qcow2 vdisk.img 10G 
 
 Installing a guest operating system
+-----------------------------------
 
 sudo /usr/local/kvm/bin/qemu-system-x86_64 -hda vdisk.img -cdrom /path/to/boot-media.iso \ 
    -boot d  -m 384
@@ -72,6 +133,7 @@ If you have less than 1GB of memory don't use the -m 384 flag (which allocates
 -m 192, or even -m 128 (the default)
 
 Running the newly-installed guest
+---------------------------------
 
 sudo /usr/local/kvm/bin/qemu-system-x86_64 vdisk.img -m 384
 or a slightly more complicated example, where it is assumed that bridged 
@@ -92,11 +154,8 @@ If you're on Fedora/RHEL/CentOS (and installed a kvm package and not built kvm
 yourself from source) then substitute qemu-kvm for qemu-system-x86_64
 
 
-In this HowTo I'll explain how to install and use KVM for running your services in 
-virtual machines. 
-
-KVM (Kernel-based Virtual Machine) is a Linux kernel virtualization technique 
-that provides full virtualization by using Intel VT (Vanderpool) or AMD-V (Pacifica).
+Detailed instructions
+---------------------
 
 I'm working as root on the server. If you are using a normal user, you have to 
 install everything with sudo, e.g.

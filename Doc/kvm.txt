@@ -28,6 +28,9 @@ variables: $KERNEL is the kernel source directory (e.g.,
   - ./apply-patches.sh $KERNEL
   - ./copy_to_kernel.sh $KERNEL
 
+make menuconfig
+   disable loadable module support
+
   The apply-patches.sh command might fail, depending on the vintage of
 the kernel you have. If the patches fail, they are fairly easy to fix
 by hand. You can look at the patches to see what they do:

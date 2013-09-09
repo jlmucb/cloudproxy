@@ -1435,5 +1435,6 @@ apt-get source linux--3.5.0-40
 
 
 add timer.c in Makefile in kvm
+grub-mkconfig
 update-grub
 

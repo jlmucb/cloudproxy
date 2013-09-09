@@ -30,6 +30,7 @@ variables: $KERNEL is the kernel source directory (e.g.,
 
 make menuconfig
    disable loadable module support
+   edit config CONFIG_ACPI=n
 
   The apply-patches.sh command might fail, depending on the vintage of
 the kernel you have. If the patches fail, they are fairly easy to fix

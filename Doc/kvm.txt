@@ -1434,4 +1434,6 @@ apt-get source linux-headers-3.5.0-40
 apt-get source linux--3.5.0-40
 
 
+add timer.c in Makefile in kvm
+update-grub
 

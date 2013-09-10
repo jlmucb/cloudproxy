@@ -45,6 +45,10 @@ the patch in ${CODE}/kvm/host-kernel/arch/x86/kvm/x86.c.patch (just a
 couple of lines)
 
 - copy a working config over to $KERNEL as .config
+    This is more important than it may seem at first glance.  Often dependencies
+    in make menuconfig make getting an appropriate configuration (e.g.-one that
+    CONFIG_INTEL_TXT=y) difficult.  A sample .config file (for Linux 3.5.7) is
+    in config.sample in this directory.
 - run
   - yes "" | make oldconfig
   - yes "" | make localmodconfig

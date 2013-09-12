@@ -337,7 +337,7 @@ int main(int an, char** av)
     if(fLinuxLaunch) {
         fprintf(g_logFile, "Linux launch.  initram: %s, kernel: %s\n",
             initramImage, kernelImage);
-        if(!startLinuxvm(initramImage, kernelImage) ) {
+        if(startLinuxvm(initramImage, kernelImage) ) {
             fprintf(g_logFile, "Linux launch succeeds\n");
         }
         else {
@@ -345,7 +345,7 @@ int main(int an, char** av)
         }
     }
     if(fImageLaunch) {
-        fprintf(g_logFile, "Image launch.  image: %s\n", diskImage);
+        fprintf(g_logFile, "Image launch.  Image: %s\n", diskImage);
         if(startImagevm(diskImage)) {
             fprintf(g_logFile, "Image launch succeeds\n");
         }

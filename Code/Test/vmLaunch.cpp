@@ -447,7 +447,7 @@ int main(int an, char** av)
     for(i=0;i<an;i++) {
       if(strcmp(av[i],"-help")==0) {
         fprintf(g_logFile, 
-         "vmLaunch.exe [-ImageLaunch ProcessImage |-LinuxLaunch initramImage kernelimage]\n");
+         "vmLaunch.exe [-ImageLaunch diskimage |-LinuxLaunch initramImage kernelimage diskimage]\n");
         return 0;
       }
       if(strcmp(av[i],"-ImageLaunch")==0) {

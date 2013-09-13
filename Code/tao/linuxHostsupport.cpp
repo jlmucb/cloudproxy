@@ -193,8 +193,7 @@ bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType,
 }
 
 
-bool startAppfromDeviceDriver(const char* szexecFile, int* ppid,
-    int argc, char **argv)
+bool startAppfromDeviceDriver(int* ppid, int argc, char **argv)
 {
     u32         ustatus;
     u32         ureq;
@@ -203,7 +202,7 @@ bool startAppfromDeviceDriver(const char* szexecFile, int* ppid,
     int         size= PARAMSIZE;
     byte        rgBuf[PARAMSIZE];
 
-    size= encodeTCSERVICESTARTAPPFROMAPP(szexecFile, argc, argv, PARAMSIZE, rgBuf);
+    size= encodeTCSERVICESTARTAPPFROMAPP(argc, argv, PARAMSIZE, rgBuf);
     if(size<0) {
         fprintf(g_logFile, "startProcessLinuxService: encodeTCSERVICESTARTAPPFROMAPP failed\n");
         return false;

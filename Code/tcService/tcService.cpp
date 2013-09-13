@@ -536,80 +536,139 @@ const char* g_vmtemplatexml=
 "  </devices>\n"\
 "</domain>\n";
 
-/*
-const char* g_vmtemplatexml=
-"<xml version=\"1.0\"?>"\
-"<domain type='qemu'>"\
-"  <name>%s<name>"\
-"  <uuid<uuid>"\
-"  <memory>131072<memory>"\
-"  <currentMemory>131072<currentMemory>"\
-"  <vcpu>1<vcpu>"\
-"  <os>"\
-"    <type arch='i686' machine='pc'>hvm<type>"\
-"  <os>"\
-"  <devices>"\
-"    <emulator>/usr/bin/qemu<emulator>"\
-"    <disk type='file' device='disk'>"\
-"      <source file='%s'/>"\
-"      <target dev='hda'/>"\
-"    <disk>"\
-"    <interface type='network'>"\
-"      <source network='default'/>"\
-"    <interface>"\
-"    <graphics type='vnc' port='-1'/>"\
-"  <devices>"\
-"<domain>";
-*/
+// template vm xml
+const char* g_linuxtemplatexml=
+"<domain type='kvm'>\n"\
+"  <name>%s</name>\n"\
+"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
+"  <memory>1048576</memory>\n"\
+"  <currentMemory>1048576</currentMemory>\n"\
+"  <vcpu>1</vcpu>\n"\
+"  <os>\n"\
+"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
+"    <boot dev='hd'/>\n"\
+"  </os>\n"\
+"  <features>\n"\
+"    <acpi/>\n"\
+"    <apic/>\n"\
+"    <pae/>\n"\
+"  </features>\n"\
+"  <clock offset='utc'/>\n"\
+"  <on_poweroff>destroy</on_poweroff>\n"\
+"  <on_reboot>destroy</on_reboot>\n"\
+"  <on_crash>restart</on_crash>\n"\
+"  <devices>\n"\
+"    <emulator>/usr/bin/kvm</emulator>\n"\
+"    <disk type='file' device='disk'>\n"\
+"      <driver name='qemu' type='raw'/>\n"\
+"      <source file='%s'/>\n"\
+"      <target dev='hda' bus='ide'/>\n"\
+"      <address type='drive' controller='0' bus='0' unit='0'/>\n"\
+"    </disk>\n"\
+"    <disk type='file' device='cdrom'>\n"\
+"      <driver name='qemu' type='raw'/>\n"\
+"      <source file='/home/jlm/tmp/ubuntu-12.04.2-desktop-amd64.iso'/>\n"\
+"      <target dev='hdc' bus='ide'/>\n"\
+"      <readonly/>\n"\
+"      <address type='drive' controller='0' bus='1' unit='0'/>\n"\
+"    </disk>\n"\
+"    <controller type='ide' index='0'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"\
+"    </controller>\n"\
+"    <interface type='bridge'>\n"\
+"      <mac address='52:54:00:82:22:a8'/>\n"\
+"      <source bridge='virbr0'/>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"\
+"    </interface>\n"\
+"    <serial type='pty'>\n"\
+"      <target port='0'/>\n"\
+"    </serial>\n"\
+"    <console type='pty'>\n"\
+"      <target type='serial' port='0'/>\n"\
+"    </console>\n"\
+"    <input type='mouse' bus='ps2'/>\n"\
+"    <graphics type='vnc' port='-1' autoport='yes'/>\n"\
+"    <sound model='ich6'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
+"    </sound>\n"\
+"    <video>\n"\
+"      <model type='cirrus' vram='9216' heads='1'/>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"\
+"    </video>\n"\
+"    <memballoon model='virtio'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"\
+"    </memballoon>\n"\
+"  </devices>\n"\
+"</domain>\n";
 
 
-#define MAXMLBUF 4096
+
+#define MAXMLBUF 8192
 
 
-TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int an, char** av, 
+TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** av, 
                                 int* poutsize, byte* out)
 {
-    u32     uType= 0;
-    int     size= SHA256DIGESTBYTESIZE;
-    byte    rgHash[SHA256DIGESTBYTESIZE];
-    int     vmid= 0;
-    int     i;
-    char*   szProgName= NULL;
-    int     uid= -1;
+    u32             uType= 0;
+    int             size= SHA256DIGESTBYTESIZE;
+    byte            rgHash[SHA256DIGESTBYTESIZE];
+    int             vmid= 0;
+    int             i;
+    int             uid= -1;
+    const char*     szsys= "qemu:///system";
+    char            buf[MAXMLBUF];
 
+    // if an= 2
+    //      av[0] is name of VM
+    //      av[1] is image file
+    // if an=4
+    //      av[0] is name of VM
+    //      av[1] is kernel file
+    //      av[2] is initram file
+    //      av[3] is image file
 #ifdef TEST
-    fprintf(g_logFile, "tcServiceInterface::StartApp(%s) %d args\n", file, an);
+    fprintf(g_logFile, "tcServiceInterface::StartApp(VM), %d args\n", an);
     for(i=0;i<an;i++)
        fprintf(g_logFile, "\tav[%d]: %s\n", i, av[i]);
 #endif
 
-    if(an>1 && av[2]!=NULL) {
-        szProgName= av[1];
+    // lock file
+
+    if(an==2) {
+
+#ifdef LOCKFILE
+        struct flock    lock;
+        int             ret;
+        int             fd= open(file, O_RDONLY);
+
+        // F_UNLCK
+        lock.l_type= F_WRLCK;
+        lock.l_start= 0;
+        lock.l_len= SEEK_SET;
+        lock.l_pid= getpid();
+        ret= fcntl(fd, F_SETLK, &lock);
+#endif
+
+        if(!getfileHash(av[1], &uType, &size, rgHash)) {
+            fprintf(g_logFile, "StartApp : getfilehash failed %s\n", av[0]);
+            return TCSERVICE_RESULT_FAILED;
+        }
+        if(strlen(av[0])>256) {
+            fprintf(g_logFile, "tcServiceInterface::StartApp: bad arguments\n");
+            return false;
+        }
+       sprintf(buf, g_vmtemplatexml, av[1], av[0]);
+    }
+    else if(an==4) {
+        if(!getcombinedfileHash(2, &av[1], &uType, &size, rgHash)) {
+            fprintf(g_logFile, "startLinuxvm error: getcombinedfilehash failed\n");
+            return false;
+        }
+        // programname, kernel file name ramname distimagename
+        sprintf(buf, g_linuxtemplatexml, av[0], av[1], av[2], av[3]);
     }
     else {
-        szProgName= programNamefromFileName(file);
-    }
-    
-#ifdef TEST
-    fprintf(g_logFile, "StartApp (VM) file %s %s arguments\n", file, szProgName);
-#endif
-
-    // lock file
-#ifdef LOCKFILE
-    struct flock    lock;
-    int             ret;
-    int             fd= open(file, O_RDONLY);
-
-    // F_UNLCK
-    lock.l_type= F_WRLCK;
-    lock.l_start= 0;
-    lock.l_len= SEEK_SET;
-    lock.l_pid= getpid();
-    ret= fcntl(fd, F_SETLK, &lock);
-#endif
-
-    if(!getfileHash(file, &uType, &size, rgHash)) {
-        fprintf(g_logFile, "StartApp : getfilehash failed %s\n", file);
+        fprintf(g_logFile, "StartApp : wrong arguments\n");
         return TCSERVICE_RESULT_FAILED;
     }
 
@@ -620,37 +679,26 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "uid of VM is %d\n", uid);
-    PrintBytes((char*)"Hash of image is: ", rgHash, 32);
-    fprintf(g_logFile, "\n");
-    fflush(g_logFile);
-#endif
-
-    {
-        const char*     szsys= "qemu:///system";
-        char            buf[MAXMLBUF];
-
-        // av[1] is name
-        if(strlen(file)>256 || an<1) {
-            fprintf(g_logFile, "tcServiceInterface::StartApp: bad arguments\n");
-            return false;
-        }
-       sprintf(buf, g_vmtemplatexml, szProgName, file);
-       virConnectPtr    vmconnection= NULL;
-       virDomainPtr     vmdomain= NULL;
-
-#ifdef TEST
+        fprintf(g_logFile, "uid of VM is %d\n", uid);
+        PrintBytes((char*)"Hash of image is: ", rgHash, 32);
+        fprintf(g_logFile, "\n");
+        fflush(g_logFile);
         fprintf(g_logFile, "xml to start vm:\n%s\n", buf);
         fflush(g_logFile);
 #endif
-    
+
+    {
+
+       virConnectPtr    vmconnection= NULL;
+       virDomainPtr     vmdomain= NULL;
+
        if((vmid=startKvmVM(szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "StartApp : cant start VM\n");
            return TCSERVICE_RESULT_FAILED;
        }
 
        // record procid and hash
-      if(!g_myService.m_procTable.addprocEntry(vmid, file, 0, (char**) NULL, 
+      if(!g_myService.m_procTable.addprocEntry(vmid, av[0], 0, (char**) NULL, 
                                    size, rgHash, &vmconnection, &vmdomain)) {
            fprintf(g_logFile, "StartApp: cant add to proc table\n");
            return TCSERVICE_RESULT_FAILED;
@@ -675,7 +723,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
 
 #ifndef KVMTCSERVICE
 TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
-                                int procid, const char* file, int an, char** av, 
+                                int procid, int an, const char** av, 
                                 int* poutsize, byte* out)
 {
     u32     uType= 0;
@@ -683,38 +731,24 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     byte    rgHash[SHA256DIGESTBYTESIZE];
     int     child= 0;
     int     i;
-    int     newan= an;
-    char*   newav[32];
     int     uid= -1;
 
 #ifdef TEST
-    fprintf(g_logFile, "tcServiceInterface::StartApp(%s) %d args\n", file, an);
+    fprintf(g_logFile, "tcServiceInterface::StartApp, %d args\n", an);
     for(i=0;i<an;i++)
        fprintf(g_logFile, "\tav[%d]: %s\n", i, av[i]);
 #endif
 
-    if(an>30) {
+    // av[0] is file to execute
+    if(an>30 || an<1) {
         return TCSERVICE_RESULT_FAILED;
     }
     
-    if (newan<1) {
-        newan = 1;
-    }
-
-    newav[0]= strdup(file);
-    for(i=1;i<newan;i++)
-        newav[i]= strdup(av[i]);
-    newav[newan]= NULL;
-
-#ifdef TEST
-    fprintf(g_logFile, "StartApp file %s %d arguments\n", file, newan);
-#endif
-
     // lock file
 #ifdef LOCKFILE
     struct flock lock;
     int     ret;
-    int     fd= open(file, O_RDONLY);
+    int     fd= open(av[0], O_RDONLY);
 
     // F_UNLCK
     lock.l_type= F_WRLCK;
@@ -724,8 +758,8 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     ret= fcntl(fd, F_SETLK, &lock);
 #endif
 
-    if(!getfileHash(file, &uType, &size, rgHash)) {
-        fprintf(g_logFile, "StartApp : getfilehash failed %s\n", file);
+    if(!getfileHash(av[0], &uType, &size, rgHash)) {
+        fprintf(g_logFile, "StartApp : getfilehash failed %s\n", av[0]);
         return TCSERVICE_RESULT_FAILED;
     }
 
@@ -749,7 +783,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         setresuid(uid, uid, uid);
 
         // record procid and hash
-        if(!g_myService.m_procTable.addprocEntry(child, file, 0, (char**) NULL, 
+        if(!g_myService.m_procTable.addprocEntry(child, av[0], 0, (char**) NULL, 
                                                  size, rgHash)) {
             fprintf(g_logFile, "StartApp: cant add to proc table\n");
             return TCSERVICE_RESULT_FAILED;
@@ -766,9 +800,6 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
 
     // child
     if(child==0) {
-#ifdef TEST1
-        fprintf(g_logFile, "StartApp about to exec %d args\n", newan);
-#endif
 #ifdef LOCKFILE
         // drop lock
         // this actually drops it a bit too soon
@@ -782,8 +813,8 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
 #endif
 
         // start Linux guest application
-        if(execve(file, newav, NULL)<0) {
-            fprintf(g_logFile, "StartApp: execvp %s failed\n", file);
+        if(execve((char*)av[0], (char**)av, NULL)<0) {
+            fprintf(g_logFile, "StartApp: execvp %s failed\n", av[0]);
         }
     }
 
@@ -1138,8 +1169,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         fprintf(g_logFile, "serviceRequest, TCSERVICESTARTAPPFROMTCSERVICE, decoding\n");
 #endif
         an= 10;
-        if(!decodeTCSERVICESTARTAPPFROMAPP(&szappexecfile, &an, 
-                    (char**) av, inparams)) {
+        if(!decodeTCSERVICESTARTAPPFROMAPP(&an, (char**) av, inparams)) {
             fprintf(g_logFile, "serviceRequest: decodeTCSERVICESTARTAPPFROMTCSERVICE failed\n");
             chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
             return false;
@@ -1147,10 +1177,10 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         outparamsize= PARAMSIZE;
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, about to StartHostedProgram %s, for %d\n",
-                szappexecfile, origprocid);
+                av[0], origprocid);
 #endif
 #ifdef KVMTCSERVICE
-        if(g_myService.StartApp(origprocid, szappexecfile, an, av,
+        if(g_myService.StartApp(origprocid, an, (const char**) av,
                                     &outparamsize, outparams)
                 !=TCSERVICE_RESULT_SUCCESS) {
             fprintf(g_logFile, "serviceRequest: StartHostedProgram failed %s\n", szappexecfile);
@@ -1158,7 +1188,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
             return false;
         }
 #else
-        if(g_myService.StartApp(chan, origprocid, szappexecfile, an, av,
+        if(g_myService.StartApp(chan, origprocid, an, (const char**) av,
                                     &outparamsize, outparams)
                 !=TCSERVICE_RESULT_SUCCESS) {
             fprintf(g_logFile, "serviceRequest: StartHostedProgram failed %s\n", szappexecfile);

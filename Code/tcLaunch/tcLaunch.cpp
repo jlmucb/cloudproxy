@@ -151,7 +151,6 @@ bool sendtcBuf(int fd, int procid, u32 uReq, u32 status, int origproc,
 
 bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
 {
-#if 1
     u32         ustatus;
     u32         ureq;
     int         procid= g_myPid;
@@ -173,18 +172,29 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
     fflush(g_logFile);
 #endif
 
-    size= encodeTCSERVICESTARTAPPFROMAPP(argv[0], argc-1, argv+1, PARAMSIZE, rgBuf);
+    size= encodeTCSERVICESTARTAPPFROMAPP(argc, argv, PARAMSIZE, rgBuf);
     if(size<0) {
         fprintf(g_logFile, "startAppfromDeviceDriver: encodeTCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
+#ifdef TEST1
+    int     nc= 30;
+    char*   nav[32];
+    if(!decodeTCSERVICESTARTAPPFROMAPP(&nc, nav, rgBuf)) {
+        fprintf(g_logFile, "startAppfromDeviceDriver: cant decodebuf\n");
+        return false;
+    }
+    fprintf(g_logFile, "Decoded args: %d\n", nc);
+    for(i=0; i<nc;i++) {
+        fprintf(g_logFile, "\t%s\n", nav[i]);
+    }
+    fprintf(g_logFile, "Sending request %s\n", rgBuf);
+    return true;
+#endif
     if(!sendtcBuf(fd, g_myPid, TCSERVICESTARTAPPFROMAPP, 0, g_myPid, size, rgBuf)) {
         fprintf(g_logFile, "startAppfromDeviceDriver: sendtcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
-#ifdef TEST
-    fprintf(g_logFile, "Sending request %s\n", rgBuf);
-#endif
     size= PARAMSIZE;
     if(!gettcBuf(fd, &procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "startAppfromDeviceDriver: gettcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
@@ -197,7 +207,6 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
 #ifdef TEST
     fprintf(g_logFile, "Program created: %d by servicepid %d\n", 
           *ppid, g_myPid);
-#endif
 #endif
     return true;
 }
@@ -285,37 +294,42 @@ char* programNamefromFileName(const char* fileName)
 int main(int an, char** av)
 {
     int         i;
-    int         newan= an;
-    char**      newav= av;
     bool        fSucceed= false;
 
-    for(i=0;i<an;i++) {
-      if(strcmp(av[i],"-help")==0) {
-        fprintf(g_logFile, 
-         "tcLaunch.exe [-KVMHost |-KVMGuest | -LinuxHost]  KVNImage/ProcessImage remainingargs\n");
+#ifdef  TEST
+    initLog(NULL);
+    fprintf(g_logFile, "tcLaunch.exe, %d args\n", an);
+    for(i=0; i<an; i++) {
+        fprintf(g_logFile, "\t%s\n", av[i]);
+    }
+    fflush(g_logFile);
+#endif
+
+    if(an<2 ||an>30 || strcmp(av[1],"-help")==0) {
+        fprintf(g_logFile, "\ttcLaunch.exe [-KVMImage programname image-file \n");
+        fprintf(g_logFile, "\ttcLaunch.exe [-KVMLinux programname kernel-file initram-file imgage-file\n");
+        fprintf(g_logFile, "\ttcLaunch.exe -KVMGuest program-file remaining arguments\n");
+        fprintf(g_logFile, "\ttcLaunch.exe -LinuxHost program-file remaining-args\n");
         return 0;
-      }
-      if(strcmp(av[i],"-KVMHost")==0) {
+    }
+    if(strcmp(av[1],"-KVMImage")==0) {
         g_tcioDDName= "/dev/kvmtciodd0";
-        newan--;
-        newav++;
         fSucceed= true;
-      }
-      else if(strcmp(av[i],"-KVMGuest")==0) {
+    }
+    if(strcmp(av[1],"-KVMLinux")==0) {
+        g_tcioDDName= "/dev/kvmtciodd0";
+        fSucceed= true;
+    }
+    else if(strcmp(av[1],"-KVMGuest")==0) {
         g_tcioDDName= "/dev/ktciodd0";
-        newan--;
-        newav++;
         fSucceed= true;
-      }
-      else if(strcmp(av[i],"-LinuxHost")==0) {
+    }
+    else if(strcmp(av[1],"-LinuxHost")==0) {
         g_tcioDDName= "/dev/tcioDD0";
-        newan--;
-        newav++;
         fSucceed= true;
-      }
-      else {
+    }
+    else {
         g_tcioDDName= "/dev/tcioDD0";
-      }
     }
 
     if(!fSucceed) {
@@ -323,13 +337,10 @@ int main(int an, char** av)
         return 1;
     }
     
-
     g_myPid= getpid();
 
 #ifdef  TEST
-    initLog(NULL);
-    fprintf(g_logFile, "tcLaunch test %s, %d\n", g_tcioDDName, g_myPid);
-    fflush(g_logFile);
+    fprintf(g_logFile, "tcLaunch device: %s, pid: %d\n", g_tcioDDName, g_myPid);
 #endif
 
     int fd= initLinuxService();
@@ -338,16 +349,8 @@ int main(int an, char** av)
         return 1;
     }
 
-    if(newan<1) {
-        fprintf(g_logFile, "tcLaunch: too few arguments\n");
-        return 1;
-    }
-    newav[0]= newav[1];
-    newav[1]= programNamefromFileName(newav[0]);
-    newan= 2;
-
     int   handle= 0;
-    if(startAppfromDeviceDriver(fd, &handle, newan, newav))
+    if(startAppfromDeviceDriver(fd, &handle, an-2, av+2))
         fprintf(g_logFile, "tcLaunch: measured program started, id: %d, exiting\n",
                         handle);
     else

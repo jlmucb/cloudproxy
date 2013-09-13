@@ -79,9 +79,9 @@ bool  encodeTCSERVICEATTESTFORFROMTCSERVICE(int attestsize, const byte* attested
 bool  decodeTCSERVICEATTESTFORFROMTCSERVICE(int* pattestsize, byte* attested, 
                                             const byte* buf);
 
-int encodeTCSERVICESTARTAPPFROMAPP(const char* file, int nargs, char** args,
+int encodeTCSERVICESTARTAPPFROMAPP(int nargs, char** args,
                                    int bufsize, byte* buf);
-bool decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs, char**, const byte* buf);
+bool decodeTCSERVICESTARTAPPFROMAPP(int* pnargs, char**, const byte* buf);
 
 int   encodeTCSERVICESTARTAPPFROMTCSERVICE(int procid, int sizebuf, byte* buf);
 bool  decodeTCSERVICESTARTAPPFROMTCSERVICE(int* pprocid, const byte* buf);

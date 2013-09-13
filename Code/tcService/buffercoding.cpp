@@ -313,32 +313,28 @@ bool  decodeTCSERVICEATTESTFORFROMTCSERVICE(int* pattestsize, byte* attested,
 
 
 // Todo: security problem with overflow here
-int encodeTCSERVICESTARTAPPFROMAPP(const char* file, int nargs, char** args, 
+int encodeTCSERVICESTARTAPPFROMAPP(int nargs, char** args, 
                                    int bufsize, byte* buf)
 {
     int n= 0;
-    int m= strlen(file)+1;
-    int i;
+    int m= 0;
     int k= 0;
+    int i;
 
-//#ifdef CODINGTEST 
-    fprintf(g_logFile, "encodeTCSERVICESTARTAPPFROMAPP, file %s, nargs: %d\n", file, nargs);
+#ifdef TEST 
+    fprintf(g_logFile, "encodeTCSERVICESTARTAPPFROMAPP, nargs: %d\n", nargs);
     for(i=0;i<nargs; i++)
         fprintf(g_logFile, "\targ[%d]: %s\n", i, args[i]);
-//#endif
-    for(i=1;i<nargs;i++)
+#endif
+    for(i=0;i<nargs;i++)
         k+= sizeof(int)+strlen(args[i])+1;
-    if(bufsize<(int)(sizeof(int)+m+k)) {
+    if(bufsize<(int)(sizeof(int)+k)) {
         fprintf(g_logFile, "encodeTCSERVICESTARTAPPFROMAPP buffer too small\n");
         return -1;
     }
-    memcpy(buf, &m, sizeof(int));
-    n+= sizeof(int);
-    memcpy(&buf[n], (byte*)file, m);
-    n+= m;
     memcpy(&buf[n], (byte*)&nargs, sizeof(int));
     n+= sizeof(int);
-    for(i=1;i<nargs;i++) {
+    for(i=0;i<nargs;i++) {
         m= strlen(args[i])+1;
         memcpy(&buf[n], &m, sizeof(int));
         n+= sizeof(int);
@@ -350,26 +346,18 @@ int encodeTCSERVICESTARTAPPFROMAPP(const char* file, int nargs, char** args,
 }
 
 
-bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs, 
-                                     char** args, const byte* buf)
+bool  decodeTCSERVICESTARTAPPFROMAPP(int* pnargs, char** args, const byte* buf)
 {
-    int     size= 0;
     int     n= 0;
     int     i, m, k;
 
-#ifdef CODINGTEST
+#ifdef TEST
     fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP: starting\n");
 #endif 
-    memcpy(&size, &buf[n], sizeof(int));
-    n+= sizeof(int);
-    *psz= strdup(reinterpret_cast<const char*>(&buf[n]));
-    if(*psz==NULL) {
-        return false;
-    }
-    n+= size;
-    fprintf(g_logFile, "Got size %d\n", size);
     memcpy(&m, &buf[n], sizeof(int));
+#ifdef TEST
     fprintf(g_logFile, "Got argc %d\n", m);
+#endif 
     if(m>*pnargs) {
         fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP too few args avail\n");
         return false;
@@ -377,23 +365,18 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(char** psz, int* pnargs,
     n+= sizeof(int);
     *pnargs= m;
 
-    // argv[0] must always be the name of the program
-    if (*pnargs < 1) {
-	    *pnargs = 1;
-    }   
-
-    for(i=1;i<m;i++) {
+    for(i=0;i<m;i++) {
         memcpy(&k, &buf[n], sizeof(int));
         n+= sizeof(int);
         args[i]= strdup(reinterpret_cast<const char*>(&buf[n]));
         n+= k;
     }
    
-//#ifdef CODINGTEST
-    fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP file: %s, %d args\n", *psz, m);
+#ifdef TEST
+    fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP %d args\n",  m);
     for(i=1; i<m;i++)
         fprintf(g_logFile, "\targ[%d]: %s\n", i, args[i]);
-//#endif 
+#endif 
     return true;
 }
 

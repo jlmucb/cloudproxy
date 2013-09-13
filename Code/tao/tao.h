@@ -147,7 +147,7 @@ public:
 
     bool        HostInit(u32 hostType, int nParameters, const char** rgszParameter);
     bool        HostClose();
-    bool        StartHostedProgram(const char* name, int an, char** av, int* phandle);
+    bool        StartHostedProgram(int an, char** av, int* phandle);
     bool        GetHostedMeasurement(int* psize, u32* ptype, byte* buf);
     bool        GetAncestorCertificates(int* psize, byte** buf);
     bool        GetAttestCertificate(int* psize, u32* pType, byte** buf);

@@ -171,7 +171,7 @@ bool taoHostServices::HostClose()
 }
 
 
-bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, int* phandle)
+bool taoHostServices::StartHostedProgram(int an, char** av, int* phandle)
 {
     switch(m_hostType) {
       default:
@@ -184,7 +184,7 @@ bool taoHostServices::StartHostedProgram(const char* name, int an, char** av, in
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUXGUEST:
       case PLATFORMTYPELINUX:
-        return startAppfromDeviceDriver(name, phandle, an, av);
+        return startAppfromDeviceDriver(phandle, an, av);
     }
 }
 

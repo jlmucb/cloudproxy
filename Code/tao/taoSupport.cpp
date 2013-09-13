@@ -47,7 +47,7 @@ bool startMeAsMeasuredProgram(int an, char** av)
 
     if(!initLinuxService(g_tcioDDName))
         return false;
-    if(!startAppfromDeviceDriver(av[0], &n, an, av))
+    if(!startAppfromDeviceDriver(&n, an, av))
         return false;
     return true;
 }

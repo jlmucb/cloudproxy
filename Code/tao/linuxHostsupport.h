@@ -47,8 +47,7 @@ bool getprogramNamefromDeviceDriver(int* pSize, const char* szName);
 bool getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey);
 bool getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash);
 bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType, int* pSize, byte* pHash);
-bool startAppfromDeviceDriver(const char* szexecFile, int* ppid, int argc,
-    char **argv);
+bool startAppfromDeviceDriver(int* ppid, int argc, char **argv);
 bool sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
 bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
 bool quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);

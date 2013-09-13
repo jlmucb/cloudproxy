@@ -145,12 +145,11 @@ public:
     TCSERVICE_RESULT    GetEntropy(int size, byte* buf);
     
 #ifdef KVMTCSERVICE
-    TCSERVICE_RESULT    StartApp(int procid, const char* file, 
-                            int an, char** av, 
+    TCSERVICE_RESULT    StartApp(int procid, int an, const char** av, 
                             int* poutsize, byte* out);
 #else
     TCSERVICE_RESULT    StartApp(tcChannel& oAppChannel, int procid, 
-                            const char* file, int an, char** av,
+                            int an, const char** av,
                             int* poutsize, byte* out);
 #endif
 

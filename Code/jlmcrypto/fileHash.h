@@ -36,6 +36,8 @@
 #include <unistd.h>
 
 bool getfileHash(const char* szFile, u32* phashType, int* psize, byte* rgHash);
+bool getcombinedfileHash(int numfiles, const char** fileNames, u32* phashType, 
+                         int* psize, byte* rgHash);
 
 #endif
 

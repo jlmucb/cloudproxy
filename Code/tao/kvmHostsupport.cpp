@@ -48,8 +48,7 @@ void printVirtlibError()
 }
 
 
-int startKvmVM(const char* szvmimage, const char* systemname,
-                const char* xmldomainstring, const char* szdomainName,
+int startKvmVM(const char* systemname, const char* xmldomainstring, 
                 virConnectPtr* ppvmconnection,
                 virDomainPtr*  ppvmdomain)
 
@@ -58,8 +57,8 @@ int startKvmVM(const char* szvmimage, const char* systemname,
 
 {
 #ifdef TEST
-    fprintf(g_logFile, "startKvmVM: %s, %s, %s\n%s\n",
-            szvmimage, systemname, szdomainName, xmldomainstring);
+    fprintf(g_logFile, "startKvmVM: %s\n%s\n",
+            systemname, xmldomainstring);
     fflush(g_logFile);
 #endif
 
@@ -71,8 +70,7 @@ int startKvmVM(const char* szvmimage, const char* systemname,
     fflush(g_logFile);
 #endif
 
-    if(szvmimage==NULL || systemname==NULL || xmldomainstring==NULL ||
-                          szdomainName==NULL) {
+    if(systemname==NULL || xmldomainstring==NULL) {
         fprintf(g_logFile, "startKvm: Bad input arguments\n");
         return -1;
     }

@@ -644,7 +644,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, const char* file, int 
         fflush(g_logFile);
 #endif
     
-       if((vmid=startKvmVM(file, szsys,  buf, szProgName, &vmconnection, &vmdomain))<0) {
+       if((vmid=startKvmVM(szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "StartApp : cant start VM\n");
            return TCSERVICE_RESULT_FAILED;
        }

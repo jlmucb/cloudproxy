@@ -124,6 +124,75 @@ const char* g_imagetemplatexml=
 "  <memory>1048576</memory>\n"\
 "  <currentMemory>1048576</currentMemory>\n"\
 "  <vcpu>1</vcpu>\n"\
+"<bootloader>/usr/bin/pygrub</bootloader>\n"\
+"  <os>\n"\
+"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
+"    <kernel>%s</kernel>\n"\
+"    <initrd>%s</initrd>\n"\
+"    <boot dev='hd'/>\n"\
+"  </os>\n"\
+"  <features>\n"\
+"    <acpi/>\n"\
+"    <apic/>\n"\
+"    <pae/>\n"\
+"  </features>\n"\
+"  <clock offset='utc'/>\n"\
+"  <on_poweroff>destroy</on_poweroff>\n"\
+"  <on_reboot>restart</on_reboot>\n"\
+"  <on_crash>restart</on_crash>\n"\
+"  <devices>\n"\
+"    <emulator>/usr/bin/kvm</emulator>\n"\
+"    <disk type='file' device='disk'>\n"\
+"      <driver name='qemu' type='raw'/>\n"\
+"      <source file='%s'/>\n"\
+"      <target dev='hda' bus='ide'/>\n"\
+"      <address type='drive' controller='0' bus='0' unit='0'/>\n"\
+"    </disk>\n"\
+"    <disk type='file' device='cdrom'>\n"\
+"      <driver name='qemu' type='raw'/>\n"\
+"      <source file='/home/jlm/tmp/ubuntu-12.04.2-desktop-amd64.iso'/>\n"\
+"      <target dev='hdc' bus='ide'/>\n"\
+"      <readonly/>\n"\
+"      <address type='drive' controller='0' bus='1' unit='0'/>\n"\
+"    </disk>\n"\
+"    <controller type='ide' index='0'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"\
+"    </controller>\n"\
+"    <interface type='bridge'>\n"\
+"      <mac address='52:54:00:82:22:a8'/>\n"\
+"      <source bridge='virbr0'/>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"\
+"    </interface>\n"\
+"    <serial type='pty'>\n"\
+"      <target port='0'/>\n"\
+"    </serial>\n"\
+"    <console type='pty'>\n"\
+"      <target type='serial' port='0'/>\n"\
+"    </console>\n"\
+"    <input type='mouse' bus='ps2'/>\n"\
+"    <graphics type='vnc' port='-1' autoport='yes'/>\n"\
+"    <sound model='ich6'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
+"    </sound>\n"\
+"    <video>\n"\
+"      <model type='cirrus' vram='9216' heads='1'/>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"\
+"    </video>\n"\
+"    <memballoon model='virtio'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"\
+"    </memballoon>\n"\
+"  </devices>\n"\
+"</domain>\n";
+
+
+// template vm xml
+const char* g_linuxtemplatexml=
+"<domain type='kvm'>\n"\
+"  <name>%s</name>\n"\
+"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
+"  <memory>1048576</memory>\n"\
+"  <currentMemory>1048576</currentMemory>\n"\
+"  <vcpu>1</vcpu>\n"\
 "  <os>\n"\
 "    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
 "    <boot dev='hd'/>\n"\
@@ -135,7 +204,7 @@ const char* g_imagetemplatexml=
 "  </features>\n"\
 "  <clock offset='utc'/>\n"\
 "  <on_poweroff>destroy</on_poweroff>\n"\
-"  <on_reboot>restart</on_reboot>\n"\
+"  <on_reboot>destroy</on_reboot>\n"\
 "  <on_crash>restart</on_crash>\n"\
 "  <devices>\n"\
 "    <emulator>/usr/bin/kvm</emulator>\n"\
@@ -204,9 +273,76 @@ bool uidfrompid(int pid, int* puid)
 // ---------------------------------------------------------------------------
 
 
-bool startLinuxvm(const char* ramName, const char* kernelName) 
+bool startLinuxvm(const char* ramName, const char* kernelName, const char* imageName) 
 {
-    return false;
+    char*   szProgName= NULL;
+    int     procid= getpid();
+    int     vmid= -1;
+
+    if(ramName==NULL || kernelName==NULL || imageName==NULL) {
+        fprintf(g_logFile, "startLinuxvm error: empty arguments\n");
+        return false;
+    }
+    szProgName= programNamefromFileName(imageName);
+
+#ifdef TEST
+    fprintf(g_logFile, "startLinuxvm( %s, %s, %s)\n",
+            ramName, kernelName, imageName);
+    fflush(g_logFile);
+#endif
+
+    int             uid= 0;
+    u32             uType= 0;
+    int             size=64;
+    byte            rgHash[64];
+    const char*	    files[2];
+
+    files[0]= kernelName;
+    files[1]= ramName;
+
+    if(!getcombinedfileHash(2, files, &uType, &size, rgHash)) {
+        fprintf(g_logFile, "startLinuxvm error: getcombinedfilehash failed\n");
+        return false;
+    }
+
+    // look up uid for procid
+    if(!uidfrompid(procid, &uid)) {
+        fprintf(g_logFile, "startLinuxvm error: cant get uid from procid\n");
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "uid of VM is %d\n", uid);
+    PrintBytes((char*)"Hash of kernel and initram is: ", rgHash, 32);
+    fprintf(g_logFile, "\n");
+    fflush(g_logFile);
+#endif
+
+    {
+        const char*     szsys= "qemu:///system";
+        char            buf[MAXMLBUF];
+
+       sprintf(buf, g_linuxtemplatexml, szProgName, kernelName, ramName, imageName);
+       virConnectPtr    vmconnection= NULL;
+       virDomainPtr     vmdomain= NULL;
+
+#ifdef TEST
+        fprintf(g_logFile, "xml to start vm:\n%s\n", buf);
+        fflush(g_logFile);
+#endif
+
+       if((vmid=startKvmVM(szsys,  buf, &vmconnection, &vmdomain))<0) {
+           fprintf(g_logFile, "startLinuxvm: cant start VM\n");
+           return false;
+       }
+    }
+
+    fprintf(g_logFile, "\tvmid: %d\n", vmid);
+#ifdef LOCKFILE
+    close(fd);
+#endif
+
+    return true;
 }
 
 
@@ -226,7 +362,7 @@ bool startImagevm(const char* imageName)
     int             fd= open(imageName, O_RDONLY);
     int             uid= 0;
     u32             uType= 0;
-    int             size;
+    int             size= 64;
     byte            rgHash[64];
 
 #ifdef TEST
@@ -282,7 +418,7 @@ bool startImagevm(const char* imageName)
         fflush(g_logFile);
 #endif
 
-       if((vmid=startKvmVM(imageName, szsys,  buf, szProgName, &vmconnection, &vmdomain))<0) {
+       if((vmid=startKvmVM(szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "startImagevm: cant start VM\n");
            return false;
        }
@@ -325,6 +461,7 @@ int main(int an, char** av)
         if(an>(i+2)) {
             initramImage= av[++i];
             kernelImage= av[++i];
+            diskImage= av[++i];
             fLinuxLaunch= true;
             fSucceed= true;
         }
@@ -341,7 +478,7 @@ int main(int an, char** av)
     if(fLinuxLaunch) {
         fprintf(g_logFile, "Linux launch.  initram: %s, kernel: %s\n",
             initramImage, kernelImage);
-        if(startLinuxvm(initramImage, kernelImage) ) {
+        if(startLinuxvm(initramImage, kernelImage, diskImage) ) {
             fprintf(g_logFile, "Linux launch succeeds\n");
         }
         else {

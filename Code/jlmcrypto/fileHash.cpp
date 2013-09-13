@@ -39,12 +39,61 @@
 #define HASHINBUFSIZE 1024
 
 
+bool hashfilefromdescriptor(int fd, Sha256& oHash)
+{
+    int     n;
+    byte    rgBuf[HASHINBUFSIZE];
+
+    for(;;) {
+        n= read(fd, rgBuf, HASHINBUFSIZE);
+        if(n<=0)
+            break;
+        oHash.Update(rgBuf, n);
+        if(n<HASHINBUFSIZE)
+            break;
+    }
+    return true;
+}
+
+
+bool getcombinedfileHash(int numfiles, const char** fileNames, u32* phashType, 
+                         int* psize, byte* rgHash)
+{
+    int     i;
+    Sha256  oHash;
+    int     fd;
+
+    if(*psize<SHA256DIGESTBYTESIZE) {
+        fprintf(g_logFile, "getcombinedfileHash: hash buffer too small %d\n", *psize);
+        return false;
+    }
+    oHash.Init();
+
+    for(i=0; i<numfiles;i++) {
+        if(fileNames[i]==NULL)
+            return false;
+        fd= open(fileNames[i], O_RDONLY);
+        if(fd<0) {
+            fprintf(g_logFile, "getcombinedfileHash: cant open %s\n", fileNames[i]);
+            return false;
+        }
+        hashfilefromdescriptor(fd, oHash);
+        close(fd);
+    }
+
+    oHash.Final();
+    oHash.GetDigest(rgHash);
+    *phashType= SHA256HASH;
+    *psize= SHA256DIGESTBYTESIZE;
+
+    return true;
+}
+
+
 bool getfileHash(const char* szFile, u32* phashType, int* psize, byte* rgHash)
 {
     Sha256  oHash;
-    byte    rgBuf[HASHINBUFSIZE];
     int     iFile= -1;
-    int     n;
 
     if(szFile==NULL)
         return false;
@@ -60,14 +109,7 @@ bool getfileHash(const char* szFile, u32* phashType, int* psize, byte* rgHash)
     }
 
     oHash.Init();
-    for(;;) {
-        n= read(iFile, rgBuf, HASHINBUFSIZE);
-        if(n<=0)
-            break;
-        oHash.Update(rgBuf, n);
-        if(n<HASHINBUFSIZE)
-            break;
-    }
+    hashfilefromdescriptor(iFile, oHash);
     oHash.Final();
 
     oHash.GetDigest(rgHash);

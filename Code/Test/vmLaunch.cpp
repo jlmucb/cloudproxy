@@ -201,10 +201,7 @@ bool uidfrompid(int pid, int* puid)
 }
 
 
-
 // ---------------------------------------------------------------------------
-
-
 
 
 bool startLinuxvm(const char* ramName, const char* kernelName) 
@@ -226,18 +223,24 @@ bool startImagevm(const char* imageName)
     szProgName= programNamefromFileName(imageName);
 
     // lock file
-    struct flock    lock;
     int             fd= open(imageName, O_RDONLY);
     int             uid= 0;
     u32             uType= 0;
     int             size;
     byte            rgHash[64];
 
+#ifdef TEST
+    fprintf(g_logFile, "startImagevm(%s)\n", imageName);
+    fflush(g_logFile);
+#endif
+
     if(fd<0) {
         fprintf(g_logFile, "startImagevm error: cant measure %s\n", imageName);
         return false;
     }
 
+#ifdef LOCKFILE
+    struct flock    lock;
     // F_UNLCK
     lock.l_type= F_WRLCK;
     lock.l_start= 0;
@@ -246,6 +249,7 @@ bool startImagevm(const char* imageName)
     int     ret= fcntl(fd, F_SETLK, &lock);
     if(ret<0)
         return false;
+#endif
 
     if(!getfileHash(imageName, &uType, &size, rgHash)) {
         fprintf(g_logFile, "startImagevm error: getfilehash failed %s\n",imageName);
@@ -279,7 +283,7 @@ bool startImagevm(const char* imageName)
 #endif
 
        if((vmid=startKvmVM(imageName, szsys,  buf, szProgName, &vmconnection, &vmdomain))<0) {
-           fprintf(g_logFile, "StartApp : cant start VM\n");
+           fprintf(g_logFile, "startImagevm: cant start VM\n");
            return false;
        }
     }

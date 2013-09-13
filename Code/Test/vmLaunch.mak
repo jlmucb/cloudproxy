@@ -27,7 +27,7 @@ $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp
 
 $(B)/kvmHostsupport.o: $(TAO)/kvmHostsupport.cpp $(TAO)/kvmHostsupport.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(TAO) -c -o $(B)/kvmHostsupport.o $(TAO)/kvmHostsupport.cpp
+	$(CC) $(CFLAGS) -I$(SC) -D KVMTCSERVICE -I$(TAO) -c -o $(B)/kvmHostsupport.o $(TAO)/kvmHostsupport.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

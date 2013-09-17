@@ -14,7 +14,7 @@ examples:
 This starts fileClient.exe as a measured program in a Linux system serving
 as the primary (base) host.
 
-    ./tcLaunch.exe -KVMHost ../vm/fileClientPartition.img
+    ./tcLaunch.exe [-KVMLinux programname kernel-file initram-file image-file
 This starts a virtual machine from fileClientPartition.img as a measured 
 guest in a KVM system serving as the primary (base) host.
 

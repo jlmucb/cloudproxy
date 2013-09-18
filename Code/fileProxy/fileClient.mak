@@ -5,9 +5,9 @@ SC=         ../commonCode
 SCD=        ../jlmcrypto
 BSC=        ../jlmbignum
 CLM=        ../claims
+TS=	    ../TPMDirect
 TAO=	    ../tao
 TRS=	    ../tcService
-TS=	    ../TPMDirect
 CH=	    ../channels
 PROTO=	    ../protocolChannel
 ACC=	    ../accessControl
@@ -16,9 +16,9 @@ VLT=	    ../vault
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
-CFLAGS=     -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC
+CFLAGS=     -D TPMSUPPORT -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC
 LDFLAGS          := $(RELEASE_LDFLAGS)
-O1CFLAGS=    -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
+O1CFLAGS=    -D TPMSUPPORT -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
 
 # add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
 # removed -D NEWANDREORGANIZED 

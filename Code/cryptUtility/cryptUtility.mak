@@ -117,7 +117,7 @@ $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(SCD) -I$(ACC) -I$(SBM) -c -o $(B)/cert.o $(CLM)/cert.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CLM) -I$(TAO) -I$(TPM) -I$(SBM) -c -o $(B)/quote.o $(CLM)/quote.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CLM) -I$(TPM) -I$(TAO) -I$(SBM) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/accessControl.o: $(ACC)/accessControl.cpp $(ACC)/accessControl.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(FPX) -I$(ACC) -I$(SCD) -I$(SBM) -I$(PROTO) -I$(VLT) -I$(CHL) -c -o $(B)/accessControl.o $(ACC)/accessControl.cpp

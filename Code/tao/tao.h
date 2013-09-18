@@ -93,7 +93,8 @@
 #define MAXTPMSEALSIZE                       128
 #define TPMSEALEDSIZE                        313
 
-#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+//#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+#define DEFAULTDIRECTORY    "/home/bachwani/jlmcrypt"
 
 //
 //   Standard files

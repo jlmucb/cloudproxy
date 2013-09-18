@@ -1770,8 +1770,8 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
         goto finish;
     }
 #ifdef TPMTEST
-    fprintf(g_logFile, "size of pcrselection: %d\n", pcrselectsize);
-    PrintBytes("pcrselect: ", (byte*)&pcrselect, pcrselectsize);
+//    fprintf(g_logFile, "size of pcrselection: %d\n", pcrselectsize);
+ //   PrintBytes("pcrselect: ", (byte*)&pcrselect, pcrselectsize);
     fprintf(g_logFile, "handle from osap: %08x\n", hauth);
     PrintBytes("shared secret: ", shared_secret, 20);
     PrintBytes("encauth: ", encauth, 20);

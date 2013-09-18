@@ -282,6 +282,7 @@ bool getValidHashes(const char* szHashFile)
             break;
     }
     // should be a number
+	assert (nextp == NULL);
     sscanf(nextp, "%d", &g_numbase64Hashes);
     if(g_numbase64Hashes<1 ||g_numbase64Hashes>=MAXBASE64HASHES) {
         fprintf(g_logFile, "getValidHashes: bad hash entry number %d\n", 

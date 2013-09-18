@@ -7,18 +7,18 @@ BSC=        ../jlmbignum
 CLM=        ../claims
 PROTO=	    ../protocolChannel
 ACC=	    ../accessControl
+TS=	    ../TPMDirect
 TAO=	    ../tao
 VLT=	    ../vault
 TRS=	    ../tcService
-TS=	    ../TPMDirect
 CH=	    ../channels
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGS          := $(RELEASE_LDFLAGS)
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC
-O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
+CFLAGS=     -D TPMSUPPORT -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC
+O1CFLAGS=    -D TPMSUPPORT -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
 
 # add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
 # removed -D NEWANDREORGANIZED 

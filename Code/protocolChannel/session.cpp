@@ -57,7 +57,7 @@ session::session()
     m_myProgramKeyValid= false;
     m_myProgramKey= NULL;
 
-    m_policyKey= (RSAKey *) false;
+    m_policyKey= false;
     m_policyCertValid= false;
     m_sizepolicyCert= 0;
     m_szpolicyCert= NULL;

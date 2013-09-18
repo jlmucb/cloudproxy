@@ -34,8 +34,8 @@
 #include "linuxHostsupport.h"
 #ifdef TPMSUPPORT
 #include "TPMHostsupport.h"
-#include "hashprep.h"
 #endif
+#include "hashprep.h"
 #ifndef TPMSUPPORT
 extern int      g_policykeySize;
 extern char*    g_szXmlPolicyCert;

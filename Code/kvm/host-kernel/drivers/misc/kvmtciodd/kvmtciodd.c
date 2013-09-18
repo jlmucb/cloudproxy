@@ -65,6 +65,13 @@
 #endif
 
 
+extern ssize_t  kvmtciodd_read(struct file *filp, char __user *buf, size_t count,
+                            loff_t *f_pos);
+extern ssize_t  kvmtciodd_write(struct file *filp, const char __user *buf, size_t count,
+                             loff_t *f_pos);
+extern int      kvmtciodd_open(struct inode *inode, struct file *filp);
+extern int      kvmtciodd_close(struct inode *inode, struct file *filp);
+
 // ----------------------------------------------------------------------------
 
 
@@ -931,6 +938,9 @@ int kvmtciodd_init(void)
         result= alloc_chrdev_region(&dev, kvmtciodd_minor, kvmtciodd_nr_devs, "kvmtciodd");
         kvmtciodd_major= MAJOR(dev);
     }
+#ifdef TESTDEVICE 
+	printk(KERN_DEBUG "kvmtciodd: major %d, minor %d\n", kvmtciodd_major, kvmtciodd_minor);
+#endif
     if(result<0) {
         printk(KERN_WARNING "kvmtciodd: can't get major %d\n", kvmtciodd_major);
         return result;
@@ -957,7 +967,10 @@ int kvmtciodd_init(void)
     // Initialize the device
     sema_init(&kvmtciodd_device->sem, 1);
     init_waitqueue_head(&kvmtciodd_device->waitq);
-    kvmtciodd_setup_cdev(kvmtciodd_device, 1);
+	
+	//REK: changed 1 to 0
+//    kvmtciodd_setup_cdev(kvmtciodd_device, 1);
+    kvmtciodd_setup_cdev(kvmtciodd_device, 0);
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: kvmtciodd_init complete\n");

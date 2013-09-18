@@ -61,7 +61,7 @@ void ktciodd_setup_cdev(struct ktciodd_dev *dev, int index)
     int err, devno;
    
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "tcioDD: setup cdev started\n");
+    printk(KERN_DEBUG "ktciodd: setup cdev started\n");
 #endif
     devno= MKDEV(ktciodd_major, ktciodd_minor+index);
     cdev_init(&dev->kdev, &ktciodd_fops);
@@ -71,7 +71,7 @@ void ktciodd_setup_cdev(struct ktciodd_dev *dev, int index)
     if(err)
         printk(KERN_NOTICE "Error %d adding ktciodd %d", err, index);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktcioDD: setup cdev complete, devno is %08x\n", devno);
+    printk(KERN_DEBUG "ktciodd: setup cdev complete, devno is %08x\n", devno);
 #endif
 
 }
@@ -81,7 +81,7 @@ int ktciodd_close(struct inode *inode, struct file *filp) {
     dev_t       devno= MKDEV(ktciodd_major, ktciodd_minor);
 
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktcioDD: close started\n");
+    printk(KERN_DEBUG "ktciodd: close started\n");
 #endif
     // Get rid of dev entries
     if(ktciodd_devices) {
@@ -103,7 +103,7 @@ int ktciodd_close(struct inode *inode, struct file *filp) {
     // cleanup_module isn't called if registering failed
     unregister_chrdev_region(devno, ktciodd_nr_devs);
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktcioDD: close complete\n");
+    printk(KERN_DEBUG "ktciodd: close complete\n");
 #endif
 
     return 1;
@@ -209,10 +209,10 @@ int ktciodd_open(struct inode *inode, struct file *filp) {
         return result;
     }
 
-    kclass= class_create(THIS_MODULE, "ktcioDD");
+    kclass= class_create(THIS_MODULE, "ktciodd");
     if(kclass==NULL)
         goto fail;
-    kdevice= device_create(kclass, NULL, MKDEV(ktciodd_major,0), NULL, "ktcioDD0");
+    kdevice= device_create(kclass, NULL, MKDEV(ktciodd_major,0), NULL, "ktciodd0");
     if(kdevice==NULL)
         goto fail;
 
@@ -228,7 +228,7 @@ int ktciodd_open(struct inode *inode, struct file *filp) {
         ktciodd_setup_cdev(&ktciodd_devices[i], i);
     }
 #ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktcioDD: ktciodd_init complete\n");
+    printk(KERN_DEBUG "ktciodd: ktciodd_init complete\n");
 #endif
     return 0;
 

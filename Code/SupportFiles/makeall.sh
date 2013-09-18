@@ -1,14 +1,14 @@
 #
-cd ~//fileProxy/Code/cryptUtility
+cd ~/fpDev/fileProxy/Code/cryptUtility
 make -f cryptUtility.mak
-cd ~//fileProxy/Code/tcService
+cd ~/fpDev/fileProxy/Code/tcService
 make -f tcService.mak
-cd ~//fileProxy/Code/keyNegoServer
+cd ~/fpDev/fileProxy/Code/keyNegoServer
 make -f keyNegoServer.mak
-cd ~//fileProxy/Code/fileProxy
+cd ~/fpDev/fileProxy/Code/fileProxy
 make -f fileClient.mak
 make -f fileServer.mak
-cd ~//fileProxy/Code/Test
+cd ~/fpDev/fileProxy/Code/Test
 make -f cryptotest.mak
 make -f aesspeedtest.mak
 make -f rsaspeedtest.mak

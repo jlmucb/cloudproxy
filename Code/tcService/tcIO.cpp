@@ -131,10 +131,6 @@ bool tcChannel::OpenBuf(u32 type, int fd, const char* file, u32 flags)
     m_uType= type;
     m_fd= -1;
 
-#ifdef TEST
-        fprintf(g_logFile, "OpenBuf started %s\n", file);
-	fflush(g_logFile);
-#endif
     switch(type) {
 #ifdef TCIODEVICEDRIVERPRESENT
       case TCDEVICEDRIVER:
@@ -205,9 +201,7 @@ int tcChannel::ReadBuf(byte* buf, int size)
 
 void tcChannel::CloseBuf()
 {
-	if (m_fd >= 0) {
-	    close(m_fd);
-	}
+    close(m_fd);
 }
 
 

@@ -1,7 +1,6 @@
 OBJROOT=~/jlmcrypt
 
-#BUILD_TARGETS=keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
-BUILD_TARGETS=keyNegoServer tcService cryptUtility fileServer fileClient cryptotest aesspeed 
+BUILD_TARGETS=keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
 TARGETS=$(BUILD_TARGETS) clean
 .PHONY: $(TARGETS)
 

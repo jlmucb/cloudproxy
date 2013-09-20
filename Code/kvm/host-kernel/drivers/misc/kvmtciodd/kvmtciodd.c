@@ -957,7 +957,7 @@ int kvmtciodd_init(void)
     // Initialize the device
     sema_init(&kvmtciodd_device->sem, 1);
     init_waitqueue_head(&kvmtciodd_device->waitq);
-    kvmtciodd_setup_cdev(kvmtciodd_device, 1);
+    kvmtciodd_setup_cdev(kvmtciodd_device, 0);
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: kvmtciodd_init complete\n");

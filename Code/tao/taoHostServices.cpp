@@ -94,10 +94,11 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
       case PLATFORMTYPEKVMHYPERVISOR:
         subdirectory= "KvmHost";
         break;
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
         subdirectory= "OSGuest";
         break;
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         subdirectory= "TrustedOS";
         break;
       default:
@@ -134,8 +135,9 @@ bool taoHostServices::HostInit(u32 hostType, int nParameters, const char** rgszP
         return false;
 #endif
       case PLATFORMTYPEKVMHYPERVISOR:
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         if(!initLinuxService(parameter)) {
             fprintf(g_logFile, "taoHostServices::HostInit: cant init Linuxservice\n");
             return false;
@@ -182,8 +184,9 @@ bool taoHostServices::StartHostedProgram(int an, char** av, int* phandle)
         return false;
 
       case PLATFORMTYPEKVMHYPERVISOR:
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         return startAppfromDeviceDriver(phandle, an, av);
     }
 }
@@ -205,9 +208,10 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
         return false;
 #endif
 
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         return getHostedMeasurementfromDeviceDriver(getpid(), ptype, psize, buf);
     }
 }
@@ -279,9 +283,10 @@ bool taoHostServices::GetHostPolicyKey(int* psize, u32* pType, byte* buf)
       case PLATFORMTYPEHYPERVISOR:
       case PLATFORMTYPEHW:
         return false;
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         return getOSMeasurementfromDeviceDriver(pType, psize, buf);
     }
 }
@@ -302,7 +307,8 @@ bool taoHostServices::GetEntropy(int size, byte* buf)
         return false;
 #endif
       case PLATFORMTYPELINUX:
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEGUESTLINUX:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
         return getEntropyfromDeviceDriver(size, buf);
     }
@@ -324,9 +330,10 @@ bool taoHostServices::Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte*
 #else
         return false;
 #endif
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         return sealfromDeviceDriver(sizetoSeal, toSeal, psizeSealed, sealed);
     }
 }
@@ -350,9 +357,10 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
 #else
         return false;
 #endif
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         return unsealfromDeviceDriver(sizeSealed, sealed, psizetoSeal, toSeal);
     }
 }
@@ -378,9 +386,10 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 #else
         return false;
 #endif
-      case PLATFORMTYPELINUXGUEST:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
+      case PLATFORMTYPEGUESTLINUX:
         return quotefromDeviceDriver(sizetoAttest, toAttest, psizeAttested, attested);
     }
 }

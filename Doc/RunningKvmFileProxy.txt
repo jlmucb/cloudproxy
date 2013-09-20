@@ -25,7 +25,7 @@ need only be available when a tao layer needs to initialize.  Here
 is a procedure.  Start keyNegoServer.  In a different console on the 
 fileProxy machine, type:
 
-./tcKvmService.exe -initKeys
+./tcKvmHostService.exe -initKeys
 
 Unlike a normal run of tcService where tcService continues running, 
 tcService will exit after the keys are generated and the cert signed 

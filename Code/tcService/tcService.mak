@@ -37,19 +37,23 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
 
 
-all: $(E)/tcService.exe $(E)/tcKvmGuestOsService.exe $(E)/tcKvmService.exe
+all: $(E)/tcService.exe $(E)/tcKvmGuestOsService.exe $(E)/tcKvmHostService.exe
 
 $(E)/tcService.exe: $(sobjs) $(B)/tcService.o
 	@echo "tcService"
 	$(LINK) -o $(E)/tcService.exe $(sobjs) $(B)/tcService.o $(LDFLAGS) -lpthread
 
+$(E)/tcGuestService.exe: $(sobjs) $(B)/tcService.o
+	@echo "tcGuestService"
+	$(LINK) -o $(E)/tcGuestService.exe $(sobjs) $(B)/tcGuestService.o $(LDFLAGS) -lpthread
+
 $(E)/tcKvmGuestOsService.exe: $(sobjs) $(B)/tcKvmGuestOsService.o
 	@echo "tcKvmGuestOsService"
 	$(LINK) -o $(E)/tcKvmGuestOsService.exe $(sobjs) $(B)/tcKvmGuestOsService.o $(LDFLAGS) -lpthread
 
-$(E)/tcKvmService.exe: $(sobjs) $(B)/tcKvmService.o $(B)/kvmHostsupport.o 
-	@echo "tcKvmService"
-	$(LINK) -o $(E)/tcKvmService.exe $(sobjs) $(B)/tcKvmService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
+$(E)/tcKvmHostService.exe: $(sobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o 
+	@echo "tcKvmHostService"
+	$(LINK) -o $(E)/tcKvmHostService.exe $(sobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -c -o $(B)/fileHash.o $(SCC)/fileHash.cpp
@@ -66,11 +70,15 @@ $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 $(B)/tcService.o: $(S)/tcService.cpp
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D LINUXTCSERVICE -c -o $(B)/tcService.o $(S)/tcService.cpp
 
+$(B)/tcGuestService.o: $(S)/tcGuestService.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D HOSTEDLINUXTCSERVICE -c -o $(B)/tcGuestService.o $(S)/tcGuestService.cpp
+
+
 $(B)/tcKvmGuestOsService.o: $(S)/tcService.cpp
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D KVMGUESTOSTCSERVICE -c -o $(B)/tcKvmGuestOsService.o $(S)/tcService.cpp
 
-$(B)/tcKvmService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -I$(LIBVIRTINCLUDE) -D KVMTCSERVICE -c -o $(B)/tcKvmService.o $(S)/tcService.cpp
+$(B)/tcKvmHostService.o: $(S)/tcService.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -I$(LIBVIRTINCLUDE) -D KVMTCSERVICE -c -o $(B)/tcKvmHostService.o $(S)/tcService.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/quote.o $(CLM)/quote.cpp

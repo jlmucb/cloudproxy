@@ -79,6 +79,9 @@ const char* g_tcioDDName= "/dev/kvmtciodd0";
 #ifdef KVMGUESTOSTCSERVICE 
 const char* g_tcioDDName= "/dev/ktciodd0";
 #endif
+#ifdef HOSTEDLINUXTCSERVICE 
+const char* g_tcioDDName= "/dev/tchostediodd0";
+#endif
 #ifdef LINUXTCSERVICE 
 const char* g_tcioDDName= "/dev/tcioDD0";
 #endif
@@ -1237,6 +1240,13 @@ int main(int an, char** av)
     bool                fServiceStart;
     const char*         directory= NULL;
 
+#ifdef HOSTEDLINUXTCSERVICE
+    u32                 hostplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
+    u32                 envplatform= PLATFORMTYPEGUESTLINUX;
+    const char*         progname= "TrustedOS";
+    const char*         szexecFile= "./tcService.exe";
+    initLog("tcService.log");
+#endif
 #ifdef LINUXTCSERVICE
     u32                 hostplatform= PLATFORMTYPEHW;
     u32                 envplatform= PLATFORMTYPELINUX;
@@ -1248,15 +1258,14 @@ int main(int an, char** av)
     u32                 hostplatform= PLATFORMTYPEHW;
     u32                 envplatform= PLATFORMTYPEKVMHYPERVISOR;
     const char*         progname= "KvmHost";
-    // const char*         szexecFile= "./tcKvmService.exe";
-    const char*         szexecFile= "./tcKvmService.exe";
+    const char*         szexecFile= "./tcKvmHostService.exe";
     virConnectPtr       vmconnection= NULL;
     virDomainPtr        vmdomain= NULL;
-    initLog("tcKvmService.log");
+    initLog("tcKvmHostService.log");
 #endif
 #ifdef KVMGUESTOSTCSERVICE
     u32                 hostplatform= PLATFORMTYPEKVMHYPERVISOR;
-    u32                 envplatform= PLATFORMTYPELINUXGUEST;
+    u32                 envplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
     const char*         progname= "KvmGuest";
     const char*         szexecFile= "./tcKvmGuestOsService.exe";
     initLog("tcKvmGuestOsService.log");

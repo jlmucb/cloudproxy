@@ -35,10 +35,11 @@
 #define PLATFORMTYPENONE                       0
 #define PLATFORMTYPEHW                         1
 #define PLATFORMTYPEHYPERVISOR                 2
-#define PLATFORMTYPELINUX                      3
-#define PLATFORMTYPELINUXAPP                   4
-#define PLATFORMTYPELINUXGUEST                 5
-#define PLATFORMTYPEKVMHYPERVISOR              6
+#define PLATFORMTYPEKVMHYPERVISOR              3
+#define PLATFORMTYPELINUX                      4
+#define PLATFORMTYPEKVMHOSTEDLINUXGUESTOS      5
+#define PLATFORMTYPEGUESTLINUX                 6
+#define PLATFORMTYPELINUXAPP                   7
  
 #define STORAGETYPENONE                        0
 #define STORAGETYPETPM                         1

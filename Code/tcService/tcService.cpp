@@ -1245,7 +1245,7 @@ int main(int an, char** av)
 
     for(i=0; i<an; i++) {
         if(strcmp(av[i], "-help")==0) {
-            fprintf(g_logFile, "\nUsage: tcService.exe [-initKeys] ");
+            fprintf(g_logFile, "\nUsage: tcService.exe [-initKeys]\n");
             return 0;
         }
         if(strcmp(av[i], "-initKeys")==0) {

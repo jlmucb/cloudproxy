@@ -502,7 +502,7 @@ bool fileServer::initServer(const char* configDirectory)
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
         if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
-                            "TrustedOS", parameterCount, parameters))
+                            g_hostsubDirectory, parameterCount, parameters))
             throw "fileServer::Init: can't init host\n";
         m_taoHostInitializationTimer.Stop();
 

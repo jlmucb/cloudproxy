@@ -295,7 +295,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
         if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
-                            "TrustedOS", parameterCount, parameters)) 
+                            g_hostsubDirectory, parameterCount, parameters)) 
             throw("fileClient::Init: can't init host\n");
         m_taoHostInitializationTimer.Stop();
 

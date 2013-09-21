@@ -1,4 +1,4 @@
-Instructions for building and running Linus and KVM with CloudProxy support
+Instructions for building and running Linux and KVM with CloudProxy support
 ===========================================================================
 
 

@@ -34,7 +34,7 @@ const char* g_hostProvider= "/dev/tcioDD0";
 const char* g_serviceProvider= "/dev/tcioDD0";
 const char* g_serviceexecFile= "./tcService.exe";
 const char* g_logName= "tcService.log";
-const char* g_hostDirectory= "~/jlmcrypt";
+const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_hostsubDirectory= "TrustedOS";
 #endif
 
@@ -45,7 +45,7 @@ const char* g_hostProvider= "/dev/ktciodd0";
 const char* g_serviceProvider= "/dev/tchostediodd0";
 const char* g_serviceexecFile= "./tcGuestService.exe";
 const char* g_logName= "tcGuestService.log";
-const char* g_hostDirectory= "~/jlmcrypt";
+const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_hostsubDirectory= "TrustedOS";
 #endif
 

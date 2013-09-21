@@ -76,6 +76,8 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
 
 #ifdef TEST
     fprintf(g_logFile, "HostInit(%04x)\n", hostType);
+    fprintf(g_logFile, "HostInit: %s, %s, %s\n", hostProvider, 
+                       directory, subdirectory);
     fflush(g_logFile);
 #endif
 
@@ -109,6 +111,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
         }
         break;
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: HW platform not supported\n");
         return false;
 #endif
       case PLATFORMTYPEKVMHYPERVISOR:
@@ -121,6 +124,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
             return false;
         }
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: initLinuxService not supported\n");
         return false;
 #endif
         break;
@@ -162,6 +166,7 @@ bool taoHostServices::StartHostedProgram(int an, char** av, int* phandle)
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
       case PLATFORMTYPEHW:
+        fprintf(g_logFile, "taoHostServices::HostInit: HW StartHostedProgram not supported\n");
         return false;
 
       case PLATFORMTYPEKVMHYPERVISOR:
@@ -171,6 +176,7 @@ bool taoHostServices::StartHostedProgram(int an, char** av, int* phandle)
 #ifndef TPMSUPPORT
         return m_linuxmyHostChannel.startAppfromDeviceDriver(phandle, an, av);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux StartHostedProgram not supported\n");
         return false;
 #endif
     }
@@ -200,6 +206,7 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 #ifndef TPMSUPPORT
         return m_linuxmyHostChannel.getHostedMeasurementfromDeviceDriver(getpid(), ptype, psize, buf);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: m_linuxmyHostChannel.getHostedMeasurementfromDeviceDriver not supported\n");
         return false;
 #endif
     }
@@ -279,6 +286,7 @@ bool taoHostServices::GetHostPolicyKey(int* psize, u32* pType, byte* buf)
 #ifndef TPMSUPPORT
         return  m_linuxmyHostChannel.getOSMeasurementfromDeviceDriver(pType, psize, buf);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: m_linuxmyHostChannel.getHostedMeasurementfromDeviceDriver not supported\n");
         return false;
 #endif
     }
@@ -292,11 +300,13 @@ bool taoHostServices::GetEntropy(int size, byte* buf)
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        fprintf(g_logFile, "taoHostServices::HostInit: m_linuxmyHostChannel.getEntropy not supported\n");
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return m_oTpm.getEntropyTPM(size, buf);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: TPM.getEntropy not supported\n");
         return false;
 #endif
       case PLATFORMTYPELINUX:
@@ -306,6 +316,7 @@ bool taoHostServices::GetEntropy(int size, byte* buf)
 #ifndef TPMSUPPORT
         return  m_linuxmyHostChannel.getEntropyfromDeviceDriver(size, buf);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.getEntropy not supported\n");
         return false;
 #endif
     }
@@ -325,6 +336,7 @@ bool taoHostServices::Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte*
 #ifdef TPMSUPPORT
         return m_oTpm.sealwithTPM(sizetoSeal, toSeal, psizeSealed, sealed);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.seal not supported\n");
         return false;
 #endif
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
@@ -334,6 +346,7 @@ bool taoHostServices::Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte*
 #ifndef TPMSUPPORT
         return  m_linuxmyHostChannel.sealfromDeviceDriver(sizetoSeal, toSeal, psizeSealed, sealed);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.seal not supported\n");
         return false;
 #endif
     }
@@ -351,11 +364,13 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.unseal not supported\n");
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return m_oTpm.unsealwithTPM(sizeSealed, sealed, psizetoSeal, toSeal);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.unseal not supported\n");
         return false;
 #endif
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
@@ -365,6 +380,7 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
 #ifndef TPMSUPPORT
         return  m_linuxmyHostChannel.unsealfromDeviceDriver(sizeSealed, sealed, psizetoSeal, toSeal);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.unseal not supported\n");
         return false;
 #endif
     }
@@ -384,11 +400,13 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
       case PLATFORMTYPENONE:
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
+        fprintf(g_logFile, "taoHostServices::HostInit: TPM.Attest not supported\n");
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return m_oTpm.quotewithTPM(sizetoAttest, toAttest, psizeAttested, attested);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: TPM.quote not supported\n");
         return false;
 #endif
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
@@ -398,6 +416,7 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 #ifndef TPMSUPPORT
         return  m_linuxmyHostChannel.quotefromDeviceDriver(sizetoAttest, toAttest, psizeAttested, attested);
 #else
+        fprintf(g_logFile, "taoHostServices::HostInit: linux.quote not supported\n");
         return false;
 #endif
     }

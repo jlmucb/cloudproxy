@@ -1825,7 +1825,7 @@ bool tpmStatus::makeAIK(int numCerts, byte** rgpCerts,
 
 bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
 {
-#ifdef TEST1
+#ifdef TEST
     if(aikCertFile==NULL)
         fprintf(g_logFile, "tpmStatus::getAIKKey(%s), no certfile\n", aikBlobFile);
     else
@@ -1842,11 +1842,11 @@ bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
 
     //  Key Blob in file
     if(!getBlobfromFile(aikBlobFile, aikBuf, &aikSize)) {
-        fprintf(g_logFile, "Can't get AIK from file\n");
+        fprintf(g_logFile, "Can't get AIK from file %s\n", aikBlobFile);
         return false;
     }
 
-#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "getAIKKey got blob %d\n", aikSize);
     fflush(g_logFile);
 #endif
@@ -1856,7 +1856,7 @@ bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
         return false;
     }
 
-#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "getAIKKey loaded blob\n");
     fflush(g_logFile);
 #endif
@@ -1872,7 +1872,7 @@ bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
         }
     }
 
-#ifdef TEST1
+#ifdef TEST
     if(m_faikKeyValid) {
         fprintf(g_logFile, "\nAIK length: %d\n", m_iaikmodulusLen);
         PrintBytes("AIK modulus: ", m_rgaikmodulus, m_iaikmodulusLen);

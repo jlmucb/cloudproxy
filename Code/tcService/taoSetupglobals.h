@@ -34,7 +34,7 @@ const char* g_serviceProvider= "/dev/kvmtciodd0";
 const char* g_progName= "KvmHost";
 const char* g_serviceexecFile= "./tcKvmHostService.exe";
 const char* g_logName= "tcKvmHostService.log";
-const char* g_hostDirectory= "~/jlmcrypt";
+const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_hostsubDirectory= "HWRoot";
 #endif
 
@@ -47,7 +47,7 @@ const char* g_progName= "TrustedOS";
 const char* g_serviceexecFile= "./tcService.exe";
 const char* g_logName= "tcService.log";
 const char* g_hostsubDirectory= "HWRoot";
-const char* g_hostDirectory= "~/jlmcrypt";
+const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 #endif
 
 #ifdef KVMGUESTOSTCSERVICE 
@@ -59,7 +59,7 @@ const char* g_progName= "KvmGuest";
 const char* g_serviceexecFile= "./tcKvmGuestOsService.exe";
 const char* g_logName=  "tcKvmGuestOsService.log";
 const char* g_hostsubDirectory= "KvmHost";
-const char* g_hostDirectory= "~/jlmcrypt";
+const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 #endif
 
 #ifdef HOSTEDLINUXTCSERVICE 
@@ -71,7 +71,7 @@ const char* g_progName= "TrustedGuestOS";
 const char* g_serviceexecFile= "./tcGuestService.exe";
 const char* g_logName= "tcGuestService.log";
 const char* g_hostsubDirectory= "TrustedOS";
-const char* g_hostDirectory= "~/jlmcrypt";
+const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 #endif
 
 

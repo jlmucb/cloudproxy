@@ -30,31 +30,37 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o \
 	    $(B)/mpModArith.o $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/cryptoHelper.o \
 	    $(B)/fileHash.o $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/buffercoding.o \
-	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
-	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/TPMHostsupport.o \
+	    $(B)/taoSupport.o $(B)/linuxHostsupport.o \
 	    $(B)/sha1.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/resource.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/vTCIDirect.o  $(B)/vault.o \
 	    $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o \
 	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
+tpmobjs=    $(B)/taoEnvironmentwithtpm.o $(B)/taoHostServiceswithtpm.o \
+	    $(B)/taoInitwithtpm.o $(B)/TPMHostsupportwithtpm.o 
+notpmobjs=  $(B)/taoEnvironment.o $(B)/taoHostServices.o $(B)/taoInit.o \
+	    $(B)/TPMHostsupport.o 
+
+# TPMHOSTSUPPORT in
+#     taoEnvironment.cpp, taoHostServices.cpp taoInit.cpp TPMHostsupport.cpp 
 
 
 all: $(E)/tcService.exe $(E)/tcKvmGuestOsService.exe $(E)/tcKvmHostService.exe
 
-$(E)/tcService.exe: $(sobjs) $(B)/tcService.o
+$(E)/tcService.exe: $(sobjs) $(tpmobjs) $(B)/tcService.o
 	@echo "tcService"
-	$(LINK) -o $(E)/tcService.exe $(sobjs) $(B)/tcService.o $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/tcService.exe $(sobjs) $(tpmobjs) $(B)/tcService.o $(LDFLAGS) -lpthread
 
-$(E)/tcGuestService.exe: $(sobjs) $(B)/tcService.o
+$(E)/tcGuestService.exe: $(sobjs) $(B)/tcService.o $(notpmobjs)
 	@echo "tcGuestService"
-	$(LINK) -o $(E)/tcGuestService.exe $(sobjs) $(B)/tcGuestService.o $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/tcGuestService.exe $(sobjs) $(notpmobjs) $(B)/tcGuestService.o $(LDFLAGS) -lpthread
 
-$(E)/tcKvmGuestOsService.exe: $(sobjs) $(B)/tcKvmGuestOsService.o
+$(E)/tcKvmGuestOsService.exe: $(sobjs) $(B)/tcKvmGuestOsService.o $(notpmobjs)
 	@echo "tcKvmGuestOsService"
-	$(LINK) -o $(E)/tcKvmGuestOsService.exe $(sobjs) $(B)/tcKvmGuestOsService.o $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/tcKvmGuestOsService.exe $(sobjs) $(notpmobjs) $(B)/tcKvmGuestOsService.o $(LDFLAGS) -lpthread
 
-$(E)/tcKvmHostService.exe: $(sobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o 
+$(E)/tcKvmHostService.exe: $(sobjs) $(B)/tcKvmHostService.o $(tmpobjs) $(B)/kvmHostsupport.o 
 	@echo "tcKvmHostService"
-	$(LINK) -o $(E)/tcKvmHostService.exe $(sobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
+	$(LINK) -o $(E)/tcKvmHostService.exe $(sobjs) $(notpmobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -c -o $(B)/fileHash.o $(SCC)/fileHash.cpp
@@ -69,17 +75,16 @@ $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(CLM) -I$(S) -I$(FPX) -I$(TH) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/tcService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D LINUXTCSERVICE -c -o $(B)/tcService.o $(S)/tcService.cpp
+	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(TS) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D LINUXTCSERVICE -c -o $(B)/tcService.o $(S)/tcService.cpp
 
 $(B)/tcGuestService.o: $(S)/tcGuestService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D HOSTEDLINUXTCSERVICE -c -o $(B)/tcGuestService.o $(S)/tcGuestService.cpp
-
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(TS) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D HOSTEDLINUXTCSERVICE -c -o $(B)/tcGuestService.o $(S)/tcGuestService.cpp
 
 $(B)/tcKvmGuestOsService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D KVMGUESTOSTCSERVICE -c -o $(B)/tcKvmGuestOsService.o $(S)/tcService.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(TS) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D KVMGUESTOSTCSERVICE -c -o $(B)/tcKvmGuestOsService.o $(S)/tcService.cpp
 
 $(B)/tcKvmHostService.o: $(S)/tcService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -I$(LIBVIRTINCLUDE) -D KVMTCSERVICE -c -o $(B)/tcKvmHostService.o $(S)/tcService.cpp
+	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(TS) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -I$(LIBVIRTINCLUDE) -D KVMTCSERVICE -c -o $(B)/tcKvmHostService.o $(S)/tcService.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/quote.o $(CLM)/quote.cpp
@@ -108,17 +113,31 @@ $(B)/taoSupport.o: $(TH)/taoSupport.cpp $(TH)/tao.h
 $(B)/taoInit.o: $(TH)/taoInit.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/taoInit.o $(TH)/taoInit.cpp
 
+$(B)/taoInitwithtpm.o: $(TH)/taoInit.cpp $(TH)/tao.h
+	$(CC) $(CFLAGS) $(CFLAGSTPM)-I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/taoInitwithtpm.o $(TH)/taoInit.cpp
+
 $(B)/taoEnvironment.o: $(TH)/taoEnvironment.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/taoEnvironment.o $(TH)/taoEnvironment.cpp
 
+$(B)/taoEnvironmentwithtpm.o: $(TH)/taoEnvironment.cpp $(TH)/tao.h
+	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/taoEnvironmentwithtpm.o $(TH)/taoEnvironment.cpp
+
 $(B)/taoHostServices.o: $(TH)/taoHostServices.cpp $(TH)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/taoHostServices.o $(TH)/taoHostServices.cpp
+
+$(B)/taoHostServiceswithtpm.o: $(TH)/taoHostServices.cpp $(TH)/tao.h
+	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/taoHostServiceswithtpm.o $(TH)/taoHostServices.cpp
 
 $(B)/linuxHostsupport.o: $(TH)/linuxHostsupport.cpp $(TH)/linuxHostsupport.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/linuxHostsupport.o $(TH)/linuxHostsupport.cpp
 
 $(B)/TPMHostsupport.o: $(TH)/TPMHostsupport.cpp $(TH)/TPMHostsupport.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/TPMHostsupport.o $(TH)/TPMHostsupport.cpp
+
+$(B)/TPMHostsupportwithtpm.o: $(TH)/TPMHostsupport.cpp $(TH)/TPMHostsupport.h
+	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TH) -I$(TS) -I$(CLM) -c -o $(B)/TPMHostsupportwithtpm.o $(TH)/TPMHostsupport.cpp
+
+$(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 
 $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmUtility.o $(SC)/jlmUtility.cpp
@@ -151,7 +170,7 @@ $(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/sha1.o $(SCC)/sha1.cpp
 
 $(B)/vTCIDirect.o: $(TS)/vTCIDirect.cpp $(TS)/vTCIDirect.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TS) -I$(BSC) -c -o $(B)/vTCIDirect.o $(TS)/vTCIDirect.cpp
+	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(TS) -I$(BSC) -c -o $(B)/vTCIDirect.o $(TS)/vTCIDirect.cpp
 
 $(B)/hmacsha1.o: $(TS)/hmacsha1.cpp $(TS)/hmacsha1.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TS) -I$(BSC) -c -o $(B)/hmacsha1.o $(TS)/hmacsha1.cpp

@@ -51,8 +51,6 @@ byte tpmCapblob[22]= {
 };
 
 
-#define  TPMDEVICENAME "/dev/tpm0"
-
 #ifndef QUOTE2_DEFINED
 #define QUOTE2_DEFINED
 #endif
@@ -1049,14 +1047,14 @@ tpmStatus::~tpmStatus()
 }
 
 
-bool tpmStatus::initTPM()
+bool tpmStatus::initTPM(const char* deviceName)
 {
     if(m_fTPMInitialized)
         return true;
 
-    m_tpmfd= open(TPMDEVICENAME, O_RDWR);
+    m_tpmfd= open(deviceName, O_RDWR);
     if(m_tpmfd<0) {
-        fprintf(g_logFile, "Can't open tpm driver %s\n", TPMDEVICENAME);
+        fprintf(g_logFile, "Can't open tpm driver %s\n", deviceName);
         fprintf(g_logFile, "Open error: %s\n", strerror(errno));
         return false;
         }

@@ -30,8 +30,12 @@
 #include "fileHash.h"
 #include "jlmUtility.h"
 
+#include "policyCert.inc"
 #include "tao.h"
+
+#ifdef TPMSUPPORT
 #include "TPMHostsupport.h"
+#endif
 #include "linuxHostsupport.h"
 
 #include "vault.h"
@@ -46,6 +50,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
 #ifdef LINUX
 #include <linux/un.h>
 #else
@@ -72,19 +77,7 @@ byte                    g_servicehash[32]= {
 
 #define NUMPROCENTS 200
 
-
-#ifdef KVMTCSERVICE
-const char* g_tcioDDName= "/dev/kvmtciodd0";
-#endif
-#ifdef KVMGUESTOSTCSERVICE 
-const char* g_tcioDDName= "/dev/ktciodd0";
-#endif
-#ifdef HOSTEDLINUXTCSERVICE 
-const char* g_tcioDDName= "/dev/tchostediodd0";
-#endif
-#ifdef LINUXTCSERVICE 
-const char* g_tcioDDName= "/dev/tcioDD0";
-#endif
+#include "taoSetupglobals.h"
 
 
 // ---------------------------------------------------------------------------
@@ -1238,41 +1231,16 @@ int main(int an, char** av)
     int                 i;
     bool                fTerminate= false;
     bool                fServiceStart;
-    const char*         directory= NULL;
 
-#ifdef HOSTEDLINUXTCSERVICE
-    u32                 hostplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
-    u32                 envplatform= PLATFORMTYPEGUESTLINUX;
-    const char*         progname= "TrustedOS";
-    const char*         szexecFile= "./tcService.exe";
-    initLog("tcService.log");
-#endif
-#ifdef LINUXTCSERVICE
-    u32                 hostplatform= PLATFORMTYPEHW;
-    u32                 envplatform= PLATFORMTYPELINUX;
-    const char*         progname= "TrustedOS";
-    const char*         szexecFile= "./tcService.exe";
-    initLog("tcService.log");
-#endif
-#ifdef KVMTCSERVICE
-    u32                 hostplatform= PLATFORMTYPEHW;
-    u32                 envplatform= PLATFORMTYPEKVMHYPERVISOR;
-    const char*         progname= "KvmHost";
-    const char*         szexecFile= "./tcKvmHostService.exe";
-    virConnectPtr       vmconnection= NULL;
-    virDomainPtr        vmdomain= NULL;
-    initLog("tcKvmHostService.log");
-#endif
-#ifdef KVMGUESTOSTCSERVICE
-    u32                 hostplatform= PLATFORMTYPEKVMHYPERVISOR;
-    u32                 envplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
-    const char*         progname= "KvmGuest";
-    const char*         szexecFile= "./tcKvmGuestOsService.exe";
-    initLog("tcKvmGuestOsService.log");
-#endif
+    initLog(g_logName);
 
 #ifdef TEST
     fprintf(g_logFile, "tcService started\n\n");
+#endif
+
+#ifdef KVMTCSERVICE
+    virConnectPtr       vmconnection= NULL;
+    virDomainPtr        vmdomain= NULL;
 #endif
 
     for(i=0; i<an; i++) {
@@ -1282,9 +1250,6 @@ int main(int an, char** av)
         }
         if(strcmp(av[i], "-initKeys")==0) {
             fInitKeys= true;
-        }
-        if(strcmp(av[i], "-directory")==0) {
-            directory= av[++i];
         }
     }
 
@@ -1303,12 +1268,6 @@ int main(int an, char** av)
     g_servicepid= getpid();
     const char** parameters = NULL;
     int parameterCount = 0;
-    if(directory==NULL) {
-        directory= DEFAULTDIRECTORY;
-    } else {
-        parameters = &directory;
-        parameterCount = 1;
-    }
 
     if(!initAllCrypto()) {
         fprintf(g_logFile, "tcService main: can't initcrypto\n");
@@ -1318,7 +1277,9 @@ int main(int an, char** av)
 
     // init Host and Environment
     g_myService.m_taoHostInitializationTimer.Start();
-    if(!g_myService.m_host.HostInit(hostplatform, parameterCount, parameters)) {
+    if(!g_myService.m_host.HostInit(g_hostplatform, g_hostProvider,
+                                    g_hostDirectory, g_hostsubDirectory,
+                                    parameterCount, parameters)) {
         fprintf(g_logFile, "tcService main: can't init host\n");
         iRet= 1;
         goto cleanup;
@@ -1334,7 +1295,7 @@ int main(int an, char** av)
     if(fInitKeys) {
         taoFiles  fileNames;
 
-        if(!fileNames.initNames(directory, "TrustedOS")) {
+        if(!fileNames.initNames(g_hostDirectory, g_hostsubDirectory)) {
             fprintf(g_logFile, "tcService::main: cant init names\n");
             iRet= 1;
             goto cleanup;
@@ -1346,9 +1307,10 @@ int main(int an, char** av)
     }
 
     g_myService.m_taoEnvInitializationTimer.Start();
-    if(!g_myService.m_trustedHome.EnvInit(envplatform, progname,
-                                DOMAIN, directory, 
-                                &g_myService.m_host, 0, NULL)) {
+    if(!g_myService.m_trustedHome.EnvInit(g_envplatform, g_progName, DOMAIN, 
+                                          g_hostDirectory, g_hostsubDirectory,
+                                          &g_myService.m_host, g_serviceProvider,
+                                          0, NULL)) {
         fprintf(g_logFile, "tcService main: can't init environment\n");
         iRet= 1;
         goto cleanup;
@@ -1375,9 +1337,9 @@ int main(int an, char** av)
     fprintf(g_logFile, "tcService main: proctable init complete\n\n");
 #endif
 
-    ret= g_myService.initService(szexecFile, 0, NULL);
+    ret= g_myService.initService(g_serviceexecFile, 0, NULL);
     if(ret!=TCSERVICE_RESULT_SUCCESS) {
-        fprintf(g_logFile, "tcService main: initService failed %s\n", szexecFile);
+        fprintf(g_logFile, "tcService main: initService failed %s\n", g_serviceexecFile);
         iRet= 1;
         goto cleanup;
     }
@@ -1387,12 +1349,12 @@ int main(int an, char** av)
 
     // add self proctable entry
 #ifdef KVMTCSERVICE
-    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(szexecFile), 0, NULL,
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
                                       g_myService.m_trustedHome.m_myMeasurementSize,
                                       g_myService.m_trustedHome.m_myMeasurement,
                                       &vmconnection, &vmdomain);
 #else
-    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(szexecFile), 0, NULL,
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
                                       g_myService.m_trustedHome.m_myMeasurementSize,
                                       g_myService.m_trustedHome.m_myMeasurement);
 #endif
@@ -1402,7 +1364,9 @@ int main(int an, char** av)
 #endif
 
     while(!g_fterminateLoop) {
-        fServiceStart= serviceRequest(g_reqChannel, &fTerminate);
+        fServiceStart= serviceRequest(
+                        g_myService.m_trustedHome.m_linuxEnvChannel.m_reqChannel, 
+                        &fTerminate);
 #ifdef TEST
         if(fServiceStart)
             fprintf(g_logFile, "tcService main: successful service\n\n");

@@ -32,6 +32,7 @@
 #include "tcIO.h"
 #include "buffercoding.h"
 #include "tcService.h"
+#include "linuxHostsupport.h"
 #include <string.h>
 #include <time.h>
 
@@ -40,16 +41,27 @@
 
 
 //
-//   Service support from LINUX
+//   Service support for Linux request channel
 //
 
-
-// request channel to device driver
-tcChannel   g_reqChannel;
 int         g_myPid= -1;
 
 
-bool initLinuxService(const char* name)
+linuxDeviceChannel::linuxDeviceChannel()
+{
+    m_fChannelInitialized= false;
+    m_driverName= NULL;
+}
+
+
+linuxDeviceChannel::~linuxDeviceChannel()
+{
+    if(m_fChannelInitialized)
+        closeLinuxService();
+}
+
+
+bool linuxDeviceChannel::initLinuxService(const char* name)
 {
 #ifdef TEST
     if(name!=NULL)
@@ -59,10 +71,12 @@ bool initLinuxService(const char* name)
 #endif
 
     g_myPid= getpid();
-    if(!g_reqChannel.OpenBuf(TCDEVICEDRIVER, 0, name ,0)) {
+    if(!m_reqChannel.OpenBuf(TCDEVICEDRIVER, name, 0, NULL, 0)) {
         fprintf(g_logFile, "initLinuxService: OpenBuf returned false \n");
         return false;
     }
+    m_driverName= strdup(name);
+    m_fChannelInitialized= true;
 
 #ifdef TCTEST
     fprintf(g_logFile, "initLinuxService returns true\n");
@@ -71,27 +85,32 @@ bool initLinuxService(const char* name)
 }
 
 
-bool closeLinuxService()
+bool linuxDeviceChannel::closeLinuxService()
 {
-    g_reqChannel.CloseBuf();
+    m_reqChannel.CloseBuf();
+    if(m_driverName!=NULL) {
+        free(m_driverName);
+        m_driverName= NULL;
+    }
+    m_fChannelInitialized= false;
     return true;
 }
 
 
-bool getEntropyfromDeviceDriver(int size, byte* pKey)
+bool linuxDeviceChannel::getEntropyfromDeviceDriver(int size, byte* pKey)
 {
     return false;
 }
 
 
-bool getprogramNamefromDeviceDriver(int* pSize, const char* szName)
+bool linuxDeviceChannel::getprogramNamefromDeviceDriver(int* pSize, const char* szName)
 {
     // this is done elsewhere
     return true;
 }
 
 
-bool getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey)
+bool linuxDeviceChannel::getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey)
 {
     u32         ustatus;
     u32         ureq;
@@ -100,13 +119,13 @@ bool getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey)
     int         size= PARAMSIZE;
     byte        rgBuf[PARAMSIZE];
 
-    if(!g_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETPOLICYKEYFROMAPP, 0, 
+    if(!m_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETPOLICYKEYFROMAPP, 0, 
                                g_myPid, size, rgBuf)) {
         fprintf(g_logFile, "getpolicykeyfromDeviceDriver: sendtcBuf for encodeTCSERVICEPOLICYKEYFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "getpolicykeyfromDeviceDriver: gettcBuf for encodeTCSERVICEPOLICYKEYFROMAPP failed\n");
         return false;
     }
@@ -122,7 +141,7 @@ bool getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey)
 }
 
 
-bool getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash)
+bool linuxDeviceChannel::getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash)
 {
     u32         ustatus;
     u32         ureq;
@@ -134,13 +153,13 @@ bool getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash)
 #ifdef TEST
     fprintf(g_logFile, "getOSMeasurementfromDeviceDriver\n");
 #endif
-    if(!g_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETOSHASHFROMAPP, 0, 
+    if(!m_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETOSHASHFROMAPP, 0, 
                                g_myPid, size, rgBuf)) {
         fprintf(g_logFile, "getOSMeasurementfromDeviceDriver: sendtcBuf for encodeTCSERVICESEALFORFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "getOSMeasurementfromDeviceDriver: gettcBuf for encodeTCSERVICESEALFORFROMAPP failed\n");
         return false;
     }
@@ -156,7 +175,7 @@ bool getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash)
 }
 
 
-bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType, 
+bool linuxDeviceChannel::getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType, 
                                           int* pSize, byte* pHash)
 {
     u32         ustatus;
@@ -171,13 +190,13 @@ bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType,
 #endif
     // Does my pid have valid hash?
     size= encodeTCSERVICEGETPROGHASHFROMAPP(childproc, 1024, rgBuf);
-    if(!g_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETPROGHASHFROMAPP,
+    if(!m_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETPROGHASHFROMAPP,
                         0, g_myPid, size, rgBuf)) {
         fprintf(g_logFile, "getHostedMeasurementfromDeviceDriver: sendtcBuf for TCSERVICEGETPROGHASHFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "getHostedMeasurementfromDeviceDriver: gettcBuf for TCSERVICEGETPROGHASHFROMAPP failed\n");
     }
     size= PARAMSIZE;
@@ -193,7 +212,7 @@ bool getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType,
 }
 
 
-bool startAppfromDeviceDriver(int* ppid, int argc, char **argv)
+bool linuxDeviceChannel::startAppfromDeviceDriver(int* ppid, int argc, char **argv)
 {
     u32         ustatus;
     u32         ureq;
@@ -207,12 +226,12 @@ bool startAppfromDeviceDriver(int* ppid, int argc, char **argv)
         fprintf(g_logFile, "startProcessLinuxService: encodeTCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
-    if(!g_reqChannel.sendtcBuf(g_myPid, TCSERVICESTARTAPPFROMAPP, 0, g_myPid, size, rgBuf)) {
+    if(!m_reqChannel.sendtcBuf(g_myPid, TCSERVICESTARTAPPFROMAPP, 0, g_myPid, size, rgBuf)) {
         fprintf(g_logFile, "startProcessLinuxService: sendtcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "startProcessLinuxService: gettcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
         return false;
     }
@@ -228,7 +247,7 @@ bool startAppfromDeviceDriver(int* ppid, int argc, char **argv)
 }
 
 
-bool sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
+bool linuxDeviceChannel::sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
 {
     u32         ustatus;
     u32         ureq;
@@ -246,13 +265,13 @@ bool sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData
         fprintf(g_logFile, "sealwithLinuxService: encodeTCSERVICESEALFORFROMAPP failed\n");
         return false;
     }
-    if(!g_reqChannel.sendtcBuf(getpid(), TCSERVICESEALFORFROMAPP, 0, 
+    if(!m_reqChannel.sendtcBuf(getpid(), TCSERVICESEALFORFROMAPP, 0, 
                                getpid(), size, rgBuf)) {
         fprintf(g_logFile, "sealwithLinuxService: sendtcBuf for encodeTCSERVICESEALFORFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "sealwithLinuxService: gettcBuf for encodeTCSERVICESEALFORFROMAPP failed\n");
         return false;
     }
@@ -268,7 +287,7 @@ bool sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData
 }
 
 
-bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
+bool linuxDeviceChannel::unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
 {
     u32         ustatus;
     u32         ureq;
@@ -286,12 +305,12 @@ bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDa
         fprintf(g_logFile, "unsealwithLinuxService: encodeTCSERVICEUNSEALFORFROMAPP failed\n");
         return false;
     }
-    if(!g_reqChannel.sendtcBuf(getpid(), TCSERVICEUNSEALFORFROMAPP, 0, getpid(), size, rgBuf)) {
+    if(!m_reqChannel.sendtcBuf(getpid(), TCSERVICEUNSEALFORFROMAPP, 0, getpid(), size, rgBuf)) {
         fprintf(g_logFile, "unsealwithLinuxService: sendtcBuf for TCSERVICEUNSEALFORFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "unsealwithLinuxService: gettcBuf for TCSERVICEUNSEALFORFROMAPP failed\n");
         return false;
     }
@@ -307,7 +326,7 @@ bool unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDa
 }
 
 
-bool quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
+bool linuxDeviceChannel::quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
 {
     u32         ustatus;
     u32         ureq;
@@ -330,12 +349,12 @@ bool quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outDat
     PrintBytes(" req buffer: ", inData, inSize); 
     fflush(g_logFile);
 #endif
-    if(!g_reqChannel.sendtcBuf(g_myPid, TCSERVICEATTESTFORFROMAPP, 0, procid, size, rgBuf)) {
+    if(!m_reqChannel.sendtcBuf(g_myPid, TCSERVICEATTESTFORFROMAPP, 0, procid, size, rgBuf)) {
         fprintf(g_logFile, "quotewithLinuxService: sendtcBuf for TCSERVICEATTESTFORFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
-    if(!g_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "quotewithLinuxService: gettcBuf for TCSERVICEATTESTFORFROMAPP failed\n");
         return false;
     }

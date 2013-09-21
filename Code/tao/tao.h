@@ -24,6 +24,11 @@
 #include "sha256.h"
 #include <time.h>
 
+#include "linuxHostsupport.h"
+#ifdef TPMSUPPORT
+#include "TPMHostsupport.h"
+#endif
+
 
 // --------------------------------------------------------------------------
 
@@ -101,12 +106,12 @@
 //
 class taoFiles {
 public:
-    u32         m_storageType;
-    char*       m_szdirectory;
-    char*       m_szsymFile;
-    char*       m_szprivateFile;
-    char*       m_szcertFile;
-    char*       m_szAncestorEvidence;
+    u32                 m_storageType;
+    char*               m_szdirectory;
+    char*               m_szsymFile;
+    char*               m_szprivateFile;
+    char*               m_szcertFile;
+    char*               m_szAncestorEvidence;
 
                 taoFiles();
                 ~taoFiles();
@@ -141,12 +146,19 @@ public:
     u32         m_hostEvidenceType;
     int         m_hostEvidenceSize;
     byte*       m_hostEvidence;
+#ifdef TPMSUPPORT
+    tpmSupport  m_oTpm;
+#else
+    linuxDeviceChannel  m_linuxmyHostChannel;
+#endif
 
 public:
                 taoHostServices();
                 ~taoHostServices();
 
-    bool        HostInit(u32 hostType, int nParameters, const char** rgszParameter);
+    bool        HostInit(u32 hostType, const char* hostProvider,
+                         const char* directory, const char* subdirectory,
+                         int nParameters, const char** rgszParameter);
     bool        HostClose();
     bool        StartHostedProgram(int an, char** av, int* phandle);
     bool        GetHostedMeasurement(int* psize, u32* ptype, byte* buf);
@@ -238,11 +250,16 @@ public:
     bool                firstRun();
 
 public:
+    linuxDeviceChannel  m_linuxEnvChannel;
+
+public:
                 taoEnvironment();
                 ~taoEnvironment();
 
-    bool        EnvInit(u32 type, const char* program, const char* domain, const char* directory, 
-                        taoHostServices* host, int nArgs, char** rgszParameter);
+    bool        EnvInit(u32 type, const char* program, const char* domain,
+                             const char* directory, const char* subdirectory,
+                             taoHostServices* host,
+                             const char* serviceProvider, int nArgs, char** rgszParameter);
     bool        EnvClose();
 
     bool        InitMyMeasurement();
@@ -336,8 +353,6 @@ public:
                          const char* szKeyName, const char* szSubjectName, const char* szSubjectId);
 };
 
-
-bool startMeAsMeasuredProgram(int an, char** av);
 
 #endif
 

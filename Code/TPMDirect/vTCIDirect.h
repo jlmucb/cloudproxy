@@ -105,7 +105,7 @@ public:
     tpmStatus();
     ~tpmStatus();
 
-    bool initTPM();
+    bool initTPM(const char* deviceName);
 
     bool setSRKauth(const char* srkSecret);
     bool setTPMauth(const char* ownerSecret);

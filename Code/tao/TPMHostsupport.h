@@ -26,15 +26,24 @@
 #define _TPMHOSTSUPPORT__H
 
 #include "jlmTypes.h"
+#include "vTCIDirect.h"
 
-bool initTPM(const char* aikblobfile, const char* szTPMPassword);
-bool deinitTPM();
-bool getAttestCertificateTPM(int size, byte* pKey);
-bool getEntropyTPM(int size, byte* pKey);
-bool getMeasurementTPM(int* pSize, byte* pHash);
-bool sealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData);
-bool unsealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData);
-bool quotewithTPM(int inSize, byte* inData, int* poutSize, byte* outData);
+class  tpmSupport {
+    bool        m_fInitialized;
+    tpmStatus   m_oTpm;
+public:
+
+    tpmSupport();
+    ~tpmSupport();
+    bool initTPM(const char* deviceName, const char* aikblobfile, const char* szTPMPassword);
+    bool deinitTPM();
+    bool getAttestCertificateTPM(int size, byte* pKey);
+    bool getEntropyTPM(int size, byte* pKey);
+    bool getMeasurementTPM(int* pSize, byte* pHash);
+    bool sealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData);
+    bool unsealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData);
+    bool quotewithTPM(int inSize, byte* inData, int* poutSize, byte* outData);
+};
 
 #endif
 

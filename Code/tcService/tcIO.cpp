@@ -45,8 +45,6 @@
 #include <sys/wait.h>
 #endif
 
-extern const char* g_tcioDDName;
-
 
 // -------------------------------------------------------------------
 
@@ -126,7 +124,8 @@ bool openclient(int* pfd, const char* szunixPath, struct sockaddr* psrv)
 #endif
 
 
-bool tcChannel::OpenBuf(u32 type, int fd, const char* file, u32 flags)
+bool tcChannel::OpenBuf(u32 type, const char* deviceName, 
+                        int fd, const char* file, u32 flags)
 {
     m_uType= type;
     m_fd= -1;
@@ -134,9 +133,9 @@ bool tcChannel::OpenBuf(u32 type, int fd, const char* file, u32 flags)
     switch(type) {
 #ifdef TCIODEVICEDRIVERPRESENT
       case TCDEVICEDRIVER:
-        m_fd= open(g_tcioDDName, O_RDWR);
+        m_fd= open(deviceName, O_RDWR);
         if(m_fd<0) {
-            fprintf(g_logFile, "Can't open device driver %s\n", g_tcioDDName);
+            fprintf(g_logFile, "Can't open device driver %s\n", deviceName);
             fprintf(g_logFile, "Reason: %s\n", strerror(errno));
             return false;
         }

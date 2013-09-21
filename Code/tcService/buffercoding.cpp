@@ -266,7 +266,7 @@ bool  decodeTCSERVICEUNSEALFORFROMTCSERVICE(int* punsealedsize,
 
 
 int encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, const byte* toattest, 
-                                      int bufsize, byte* buf)
+                                    int bufsize, byte* buf)
 {
     int n= 0;
 

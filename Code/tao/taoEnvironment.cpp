@@ -32,20 +32,20 @@
 #include "mpFunctions.h"
 #include "cryptoHelper.h"
 #include "trustedKeyNego.h"
+
 #ifdef TPMSUPPORT
 #include "TPMHostsupport.h"
+#else
+extern int            g_szpolicykeySize;
+extern char           g_szXmlPolicyCert[];
 #endif
+
 #include "hashprep.h"
 #include "linuxHostsupport.h"
 
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#ifndef TPMSUPPORT
-extern int            g_szpolicykeySize;
-extern char           g_szXmlPolicyCert[];
-#endif
 
 
 // -------------------------------------------------------------------------
@@ -201,17 +201,17 @@ void taoEnvironment::printData()
 #endif
 
 
-bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, const char* directory, 
-                             taoHostServices* host, int nArgs, char** rgszParameter)
+bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
+                             const char* directory, const char* subdirectory, 
+                             taoHostServices* host, 
+                             const char* serviceProvider, int nArgs, char** rgszParameter)
 {
-    extern const char* g_tcioDDName;
-    const char*   parameter= g_tcioDDName;
     char    szhostName[256];
     int     n= 256;
 
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::EnvInit: %04x, %s, %s, %s\n",
-            type, program, domain, directory);
+    fprintf(g_logFile, "taoEnvironment::EnvInit: %04x, %s, %s, %s, %s, %s\n",
+            type, program, domain, directory, directory, serviceProvider);
 #endif
     m_envValid= false;
     m_envType= type;
@@ -249,7 +249,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
       case PLATFORMTYPELINUX:
       case PLATFORMTYPEGUESTLINUX:
       case PLATFORMTYPELINUXAPP:
-        if(!m_fileNames.initNames(directory, program)) {
+        if(!m_fileNames.initNames(directory, subdirectory)) {
             fprintf(g_logFile, "taoEnvironment::EnvInit: cant init names\n");
             return false;
         }
@@ -259,7 +259,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
         fflush(g_logFile);
 #endif
         // open linuxService
-        if(!initLinuxService(parameter)) {
+        if(!m_linuxEnvChannel.initLinuxService(serviceProvider)) {
             fprintf(g_logFile, "taoEnvironment::EnvInit: cant init linuxService\n");
             return false;
         }
@@ -359,7 +359,7 @@ bool taoEnvironment::EnvClose()
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPELINUX:
       case PLATFORMTYPEGUESTLINUX:
-        closeLinuxService();
+        m_linuxEnvChannel.closeLinuxService();
         return true;
     }
     return false;
@@ -673,7 +673,7 @@ bool taoEnvironment::GetPolicyKey()
       case PLATFORMTYPELINUX:
       case PLATFORMTYPEGUESTLINUX:
         m_sizepolicyKey= 4096;
-        if(!getpolicykeyfromDeviceDriver(&m_policyKeyType, &m_sizepolicyKey, buf)) {
+        if(!m_linuxEnvChannel.getpolicykeyfromDeviceDriver(&m_policyKeyType, &m_sizepolicyKey, buf)) {
             fprintf(g_logFile, "taoEnvironment::GetPolicyKey, getpolicykeyfromDeviceDriver failed\n");
             return false;
         }

@@ -510,7 +510,6 @@ int main(int an, char** av)
     safeChannel     fc;
     int             iRet= 0;
     int             i;
-    bool            fInitProg= false;
     const char*     directory= NULL;
     string          testPath("fileClient/tests/");
     string          testFileName("tests.xml");
@@ -523,9 +522,6 @@ int main(int an, char** av)
 
     if(an>1) {
         for(i=0;i<an;i++) {
-            if(strcmp(av[i],"-initProg")==0) {
-                fInitProg= true;
-            }
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {
                 oFileClient.m_szPort= strdup(av[++i]);
             }
@@ -543,25 +539,7 @@ int main(int an, char** av)
 #else
     oFileClient.m_fEncryptFiles= true;
 #endif
-
-    if(fInitProg) {
-	av[1] = NULL;
-#ifdef  TEST
-        fprintf(g_logFile, "fileClient main starting measured %s\n", av[0]);
-#endif
-        if(!startMeAsMeasuredProgram(1, av)) {
-#ifdef TEST
-            fprintf(g_logFile, "main: measured program failed, exiting\n");
-            fflush(g_logFile);
-#endif
-            return 1;
-        }
-#ifdef TEST
-        fprintf(g_logFile, "main: measured program started, exiting\n");
-        fflush(g_logFile);
-#endif
-        return 0;
-    }
+    // jlm: removed initProg stuff.  Replaced by tcLaunch
 
     initLog("fileClient.log");
 #ifdef  TEST

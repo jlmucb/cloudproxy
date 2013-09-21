@@ -40,22 +40,6 @@
 // -------------------------------------------------------------------------
 
 
-bool startMeAsMeasuredProgram(int an, char** av)
-{
-    int     n= 0;
-    extern const char* g_tcioDDName;
-
-    if(!initLinuxService(g_tcioDDName))
-        return false;
-    if(!startAppfromDeviceDriver(&n, an, av))
-        return false;
-    return true;
-}
-
-
-// -------------------------------------------------------------------------
-
-
 taoFiles::taoFiles ()
 {
     m_storageType= 0;

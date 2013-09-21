@@ -69,8 +69,9 @@ int   encodeTCSERVICEUNSEALFORFROMTCSERVICE(u32 hashType, int hashsize, const by
 bool  decodeTCSERVICEUNSEALFORFROMTCSERVICE(int* punsealsize, byte* unsealed, 
                                     const byte* buf);
 
-bool  encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, const byte* toattest, 
+int encodeTCSERVICEATTESTFORFROMAPP(int toattestsize, const byte* toattest, 
                                       int bufsize, byte* buf);
+
 bool  decodeTCSERVICEATTESTFORFROMAPP(int* ptoattestsize, byte* toattest, 
                                       const byte* buf);
 

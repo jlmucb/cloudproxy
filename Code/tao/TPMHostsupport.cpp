@@ -39,6 +39,7 @@
 #include "hashprep.h"
 #include "vTCIDirect.h"
 #include "tcIO.h"
+#include "TPMHostsupport.h"
 
 #include <string.h>
 #include <time.h>
@@ -51,10 +52,21 @@
 //   Service support with TPM 
 //
 
-tpmStatus   g_oTpm;
+
+tpmSupport::tpmSupport() 
+{
+    m_fInitialized= false;
+}
 
 
-bool initTPM(const char* aikblobfile, const char* szTPMPassword)
+tpmSupport::~tpmSupport() 
+{
+    m_fInitialized= false;
+}
+
+
+bool tpmSupport::initTPM(const char* deviceName, const char* aikblobfile, 
+                         const char* szTPMPassword)
 {
 #ifdef TEST
     if(szTPMPassword!=NULL)
@@ -67,17 +79,17 @@ bool initTPM(const char* aikblobfile, const char* szTPMPassword)
     if(aikblobfile==NULL)
         return false;
 
-    if(!g_oTpm.initTPM()) {
-         if(szTPMPassword==NULL || !g_oTpm.setTPMauth(szTPMPassword))
+    if(!m_oTpm.initTPM(deviceName)) {
+         if(szTPMPassword==NULL || !m_oTpm.setTPMauth(szTPMPassword))
             return false;
     }
 #ifdef TEST
-        fprintf(g_logFile, "initTPM: g_oTpm.initTPM succeeded\n");
+        fprintf(g_logFile, "initTPM: m_oTpm.initTPM succeeded\n");
         fflush(g_logFile);
 #endif
 
     // AIK
-    if(!g_oTpm.getAIKKey(aikblobfile, NULL)) {
+    if(!m_oTpm.getAIKKey(aikblobfile, NULL)) {
         fprintf(g_logFile, "initTPM: getAIKKey failed\n");
         return false;
     }
@@ -90,45 +102,45 @@ bool initTPM(const char* aikblobfile, const char* szTPMPassword)
 }
 
 
-bool deinitTPM()
+bool tpmSupport::deinitTPM()
 {
-    return g_oTpm.closeTPM();
+    return m_oTpm.closeTPM();
 }
 
 
-bool getAttestCertificateTPM(int size, byte* pKey)
-{
-    return false;
-}
-
-
-bool getEntropyTPM(int size, byte* pKey)
+bool tpmSupport::getAttestCertificateTPM(int size, byte* pKey)
 {
     return false;
 }
 
 
-bool getMeasurementTPM(int* pSize, byte* pHash)
+bool tpmSupport::getEntropyTPM(int size, byte* pKey)
+{
+    return false;
+}
+
+
+bool tpmSupport::getMeasurementTPM(int* pSize, byte* pHash)
 // return TPM1.2 composite hash
 {
     u32     size= SHA1DIGESTBYTESIZE*24; 
     byte    pcrs[SHA1DIGESTBYTESIZE*24];
 
-    if(!g_oTpm.getCompositePCR(g_oTpm.m_locality, g_oTpm.m_rgpcrMask, &size, pcrs)) {
+    if(!m_oTpm.getCompositePCR(m_oTpm.m_locality, m_oTpm.m_rgpcrMask, &size, pcrs)) {
         fprintf(g_logFile, "getMeasurementTPM: getCompositePCR failed\n");
         return false;
     }
 
 #ifndef QUOTE2_DEFINED
     // reconstruct PCR composite and composite hash
-    if(!computeTPM12compositepcrDigest(g_oTpm.m_rgpcrMask, pcrs, pHash)) {
+    if(!computeTPM12compositepcrDigest(m_oTpm.m_rgpcrMask, pcrs, pHash)) {
         fprintf(g_logFile, "getMeasurementTPM: can't compute composite digest\n");
         return false;
     }
 #else
     // reconstruct PCR composite and composite hash
-    if(!computeTPM12quote2compositepcrDigest(g_oTpm.m_rgpcrMask, pcrs, 
-                    g_oTpm.m_locality, pHash)) {
+    if(!computeTPM12quote2compositepcrDigest(m_oTpm.m_rgpcrMask, pcrs, 
+                    m_oTpm.m_locality, pHash)) {
         fprintf(g_logFile, "getMeasurementTPM: can't compute composite digest\n");
         return false;
     }
@@ -139,25 +151,25 @@ bool getMeasurementTPM(int* pSize, byte* pHash)
 }
 
 
-bool sealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
+bool tpmSupport::sealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
 {
 #ifdef TEST
     fprintf(g_logFile, "sealwithTPM\n");
 #endif
-    return g_oTpm.sealData(inSize, inData, (unsigned*) poutSize, outData);
+    return m_oTpm.sealData(inSize, inData, (unsigned*) poutSize, outData);
 }
 
 
-bool unsealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
+bool tpmSupport::unsealwithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
 {
-    return g_oTpm.unsealData(inSize, inData, (unsigned*) poutSize, outData);
+    return m_oTpm.unsealData(inSize, inData, (unsigned*) poutSize, outData);
 }
 
 
-bool quotewithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
+bool tpmSupport::quotewithTPM(int inSize, byte* inData, int* poutSize, byte* outData)
 {
     byte    newout[1024];
-    bool    fRet= g_oTpm.quoteData(inSize, inData, (unsigned*) poutSize, newout);
+    bool    fRet= m_oTpm.quoteData(inSize, inData, (unsigned*) poutSize, newout);
 
     if(fRet) {
         revmemcpy(outData, newout, *poutSize);

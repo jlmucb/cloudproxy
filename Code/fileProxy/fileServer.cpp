@@ -732,7 +732,6 @@ int main(int an, char** av)
     fileServer  oServer;
     int         i;
     int         iRet= 0;
-    bool        fInitProg= false;
     const char* directory= NULL;
 
 
@@ -744,9 +743,6 @@ int main(int an, char** av)
     // check arguments
     if(an>1) {
         for(i=0;i<an;i++) {
-             if(strcmp(av[i],"-initProg")==0) {
-                fInitProg= true;
-             }
             if(strcmp(av[i],"-address")==0) {
                 oServer.m_szAddress= strdup(av[++i]);
              }
@@ -763,25 +759,9 @@ int main(int an, char** av)
     oServer.m_encType= DEFAULTENCRYPT;
 #endif
 
-    // am I alread measured?
-    if(fInitProg) {
-#ifdef TEST
-        fprintf(g_logFile, "fileServer main: start measured program %s\n", av[0]);
-#endif
-        av[1]= NULL;
-        if(!startMeAsMeasuredProgram(1, av)) {
-#ifdef TEST
-            fprintf(g_logFile, "fileServer main: measured program failed, exiting\n");
-#endif
-            return 1;
-        }
-#ifdef TEST
-        fprintf(g_logFile, "fileServer main: measured program started\n");
-#endif
-        return 0;
-    }
-
+    // JLM: remover initProg.  Replaced by tcLaunch.
     initLog("fileServer.log");
+
 #ifdef TEST
         fprintf(g_logFile, "fileServer main: measured server about to init server\n");
         fflush(g_logFile);

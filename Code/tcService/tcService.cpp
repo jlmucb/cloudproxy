@@ -1295,7 +1295,7 @@ int main(int an, char** av)
     if(fInitKeys) {
         taoFiles  fileNames;
 
-        if(!fileNames.initNames(g_hostDirectory, g_hostsubDirectory)) {
+        if(!fileNames.initNames(g_hostDirectory, g_clientsubDirectory)) {
             fprintf(g_logFile, "tcService::main: cant init names\n");
             iRet= 1;
             goto cleanup;
@@ -1308,7 +1308,7 @@ int main(int an, char** av)
 
     g_myService.m_taoEnvInitializationTimer.Start();
     if(!g_myService.m_trustedHome.EnvInit(g_envplatform, g_progName, DOMAIN, 
-                                          g_hostDirectory, g_hostsubDirectory,
+                                          g_hostDirectory, g_clientsubDirectory,
                                           &g_myService.m_host, g_serviceProvider,
                                           0, NULL)) {
         fprintf(g_logFile, "tcService main: can't init environment\n");

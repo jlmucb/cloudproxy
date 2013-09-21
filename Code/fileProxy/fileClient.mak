@@ -36,13 +36,17 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o $(B)/request.o $(B)/fileServices.o $(B)/validateEvidence.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
-	    $(B)/fileTester.o $(B)/fileClient.o $(B)/logging.o 
+	    $(B)/fileTester.o $(B)/logging.o 
 
-all: $(E)/fileClient.exe
+all: $(E)/fileClient.exe $(E)/guestfileClient.exe
 
-$(E)/fileClient.exe: $(dobjs)
+$(E)/fileClient.exe: $(dobjs) $(B)/fileClient.o 
 	@echo "fileClient"
-	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(B)/fileClient.o $(LDFLAGS) -lpthread
+
+$(E)/guestfileClient.exe: $(dobjs) $(B)/guestfileClient.o 
+	@echo "guestfileClient"
+	$(LINK) -o $(E)/guestfileClient.exe $(dobjs) $(B)/guestfileClient.o $(LDFLAGS) -lpthread
 
 $(B)/jlmcrypto.o: $(SCD)/jlmcrypto.cpp $(SCD)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SCD) -I$(BSC) -I$(SC) -c -o $(B)/jlmcrypto.o $(SCD)/jlmcrypto.cpp
@@ -90,7 +94,7 @@ $(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(ACC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TRS) -I$(TAO) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/request.o: $(PROTO)/request.cpp $(PROTO)/request.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(TAO) -I$(BSC) -I$(CLM) -I$(S) -c -o $(B)/request.o $(PROTO)/request.cpp
@@ -144,7 +148,10 @@ $(B)/hashprep.o: $(TS)/hashprep.cpp $(TS)/hashprep.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TS) -c -o $(B)/hashprep.o $(TS)/hashprep.cpp
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
-	$(CC) $(CFLAGS) -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -D LINUXTCSERVICE -c -o $(B)/fileClient.o $(S)/fileClient.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D LINUXTCSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
+
+$(B)/guestfileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
+	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -D HOSTEDLINUXTCSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/guestfileClient.o $(S)/fileClient.cpp
 
 $(B)/fileTester.o: $(S)/fileTester.cpp $(S)/fileTester.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TAO) -I$(VLT) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(S) -c -o $(B)/fileTester.o $(S)/fileTester.cpp
@@ -159,5 +166,5 @@ $(B)/trustedKeyNego.o: $(TAO)/trustedKeyNego.cpp $(TAO)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/trustedKeyNego.o $(TAO)/trustedKeyNego.cpp
 
 $(B)/fileServices.o: $(S)/fileServices.cpp $(S)/fileServices.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(S) -I$(BSC) -I$(VLT) -I$(ACC) -I$(CLM) -I$(PROTO) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(S) -I$(BSC) -I$(VLT) -I$(TRS) -I$(ACC) -I$(CLM) -I$(PROTO) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
 

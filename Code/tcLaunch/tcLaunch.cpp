@@ -309,6 +309,8 @@ int main(int an, char** av)
         fprintf(g_logFile, "\ttcLaunch.exe [-KVMImage programname image-file \n");
         fprintf(g_logFile, "\ttcLaunch.exe [-KVMLinux programname kernel-file initram-file image-file\n");
         fprintf(g_logFile, "\ttcLaunch.exe -KVMGuest program-file remaining arguments\n");
+        fprintf(g_logFile, "\ttcLaunch.exe -LinuxGuest program-file remaining-args\n");
+        return 0;
         fprintf(g_logFile, "\ttcLaunch.exe -LinuxHost program-file remaining-args\n");
         return 0;
     }
@@ -322,6 +324,10 @@ int main(int an, char** av)
     }
     else if(strcmp(av[1],"-KVMGuest")==0) {
         g_tcioDDName= "/dev/ktciodd0";
+        fSucceed= true;
+    }
+    else if(strcmp(av[1],"-LinuxGuest")==0) {
+        g_tcioDDName= "/dev/hostedtcioDD0";
         fSucceed= true;
     }
     else if(strcmp(av[1],"-LinuxHost")==0) {

@@ -73,19 +73,10 @@ bool     g_fTerminateServer= false;
 int      iQueueSize= 5;
 
 #include "./policyCert.inc"
+#include "./taoSetupglobals.h"
 
 #ifdef TEST
 void printResources(objectManager<resource>* pRM);
-#endif
-
-#ifdef KVMTCSERVICE
-const char* g_tcioDDName= "/dev/kvmtciodd0";
-#endif
-#ifdef KVMGUESTOSTCSERVICE 
-const char* g_tcioDDName= "/dev/ktciodd0";
-#endif
-#ifdef LINUXTCSERVICE 
-const char* g_tcioDDName= "/dev/tcioDD0";
 #endif
 
 
@@ -498,7 +489,8 @@ bool fileServer::initServer(const char* configDirectory)
         if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
             
-        } else {
+        } 
+        else {
             directory= configDirectory;
             parameters= &directory;
             parameterCount= 1;
@@ -509,7 +501,8 @@ bool fileServer::initServer(const char* configDirectory)
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters))
+        if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
+                            "fileServer", parameterCount, parameters))
             throw "fileServer::Init: can't init host\n";
         m_taoHostInitializationTimer.Stop();
 
@@ -520,9 +513,8 @@ bool fileServer::initServer(const char* configDirectory)
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "fileServer",
-                             DOMAIN, directory,
-                             &m_host, 0, NULL)) {
+        if(!m_tcHome.EnvInit(g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
+                             "fileClient", &m_host, g_serviceProvider, 0, NULL)) {
             throw "fileServer::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();

@@ -26,7 +26,7 @@ O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENM
 CC=         g++
 LINK=       g++
 
-dobjs=      $(B)/fileServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
+dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/session.o $(B)/request.o $(B)/jlmUtility.o $(B)/keys.o \
 	    $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/cryptoHelper.o \
@@ -41,14 +41,21 @@ dobjs=      $(B)/fileServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
 	    $(B)/tcIO.o 
 
-all: $(E)/fileServer.exe
+all: $(E)/fileServer.exe $(E)/guestfileServer.exe
 
-$(E)/fileServer.exe: $(dobjs)
+$(E)/fileServer.exe: $(dobjs) $(B)/fileServer.o
 	@echo "fileServer"
-	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/fileServer.exe $(dobjs) $(B)/fileServer.o $(LDFLAGS) -lpthread
+
+$(E)/guestfileServer.exe: $(dobjs) $(B)/guestfileServer.o
+	@echo "guestfileServer"
+	$(LINK) -o $(E)/guestfileServer.exe $(dobjs) $(B)/fileServer.o $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -D LINUXTCSERVICE -c -o $(B)/fileServer.o $(S)/fileServer.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D LINUXTCSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
+
+$(B)/guestfileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
+	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -D HOSTEDTCSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/guestfileServer.o $(S)/fileServer.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp
@@ -72,7 +79,7 @@ $(B)/resource.o: $(S)/resource.cpp $(S)/resource.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(S) -c -o $(B)/resource.o $(S)/resource.cpp
 
 $(B)/fileServices.o: $(S)/fileServices.cpp $(S)/fileServices.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(S) -I$(CH) -I$(PROTO) -I$(TAO) -I$(ACC) -I$(VLT) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TRS) -I$(S) -I$(CH) -I$(PROTO) -I$(TAO) -I$(ACC) -I$(VLT) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
 
 $(B)/session.o: $(PROTO)/session.cpp $(PROTO)/session.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TAO) -I$(PROTO) -I$(VLT) -I$(CH) -I$(TRS) -c -o $(B)/session.o $(PROTO)/session.cpp
@@ -111,7 +118,7 @@ $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(CLM) -c -o $(B)/cert.o $(CLM)/cert.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(CLM) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(ACC) -I$(CLM) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp

@@ -80,21 +80,12 @@ using std::ofstream;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
-#include "policyCert.inc"
+#include "./policyCert.inc"
+#include "./taoSetupglobals.h"
 
 extern const char*  g_szTerm;
 const char* g_szClientPrincipalCertsFile= "fileClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys.xml";
-
-#ifdef KVMTCSERVICE
-const char* g_tcioDDName= "/dev/kvmtciodd0";
-#endif
-#ifdef KVMGUESTOSTCSERVICE 
-const char* g_tcioDDName= "/dev/ktciodd0";
-#endif
-#ifdef LINUXTCSERVICE 
-const char* g_tcioDDName= "/dev/tcioDD0";
-#endif
 
 
 // ------------------------------------------------------------------------
@@ -303,7 +294,8 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) 
+        if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
+                            "fileClient", parameterCount, parameters)) 
             throw("fileClient::Init: can't init host\n");
         m_taoHostInitializationTimer.Stop();
 
@@ -315,8 +307,8 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "fileClient",
-                                DOMAIN, directory, &m_host, 0, NULL))
+        if(!m_tcHome.EnvInit(g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
+                             "fileClient", &m_host, g_serviceProvider, 0, NULL))
             throw("fileClient::Init: can't init environment\n");
         m_taoEnvInitializationTimer.Stop();
 

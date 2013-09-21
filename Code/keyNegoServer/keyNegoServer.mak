@@ -66,7 +66,7 @@ $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/cert.o $(CLM)/cert.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(FPX) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/quote.o $(CLM)/quote.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(FPX) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp

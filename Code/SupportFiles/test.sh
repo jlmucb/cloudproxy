@@ -25,5 +25,5 @@ cd ~/jlmcrypt
 ./tcKvmService.exe -initKeys # in another window
 cd ~/jlmcrypt
 ./tcKvmService.exe &
-./tcLaunch.exe -KVMHost Test1 /home/jlm/jlmcrypt/vms/vmlinuz-3.5.0-23-generic /home/jlm/jlmcrypt/vms/initrd.img-3.5.0-23-generic /home/jlm/jlmcrypt/vms/Test1.img
+./tcLaunch.exe -KVMLinux Test1 /home/jlm/jlmcrypt/vms/vmlinuz-3.5.0-23-generic /home/jlm/jlmcrypt/vms/initrd.img-3.5.0-23-generic /home/jlm/jlmcrypt/vms/Test1.img
 

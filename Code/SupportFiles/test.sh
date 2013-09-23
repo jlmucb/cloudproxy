@@ -9,9 +9,9 @@ chmod 0777 /dev/tcioDD0
 ./tcService.exe -initKeys
 ./tcService.exe &
 sleep 2s
-./tcLaunch.exe -LinuxGuest ./fileServer.exe
+./tcLaunch.exe -LinuxHost ./fileServer.exe
 sleep 2s
-tcLaunch.exe -LinuxGuest ./fileClient.exe
+tcLaunch.exe -LinuxHost ./fileClient.exe
 sleep 5s
 
 #this is the standalone test in the kvm host

@@ -365,12 +365,14 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
         fprintf(g_logFile, "taoHostServices::HostInit: linux.unseal not supported\n");
+        fflush(g_logFile);
         return false;
       case PLATFORMTYPEHW:
 #ifdef TPMSUPPORT
         return m_oTpm.unsealwithTPM(sizeSealed, sealed, psizetoSeal, toSeal);
 #else
         fprintf(g_logFile, "taoHostServices::HostInit: linux.unseal not supported\n");
+        fflush(g_logFile);
         return false;
 #endif
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
@@ -381,6 +383,7 @@ bool taoHostServices::Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byt
         return  m_linuxmyHostChannel.unsealfromDeviceDriver(sizeSealed, sealed, psizetoSeal, toSeal);
 #else
         fprintf(g_logFile, "taoHostServices::HostInit: linux.unseal not supported\n");
+        fflush(g_logFile);
         return false;
 #endif
     }

@@ -152,6 +152,7 @@ bool linuxDeviceChannel::getOSMeasurementfromDeviceDriver(u32* phashType, int* p
 
 #ifdef TEST
     fprintf(g_logFile, "getOSMeasurementfromDeviceDriver\n");
+    fflush(g_logFile);
 #endif
     if(!m_reqChannel.sendtcBuf(g_myPid, TCSERVICEGETOSHASHFROMAPP, 0, 
                                g_myPid, size, rgBuf)) {
@@ -169,8 +170,9 @@ bool linuxDeviceChannel::getOSMeasurementfromDeviceDriver(u32* phashType, int* p
     }
 #ifdef TEST
     PrintBytes("OS hash: ", pHash, *pSize);
-#endif
     fprintf(g_logFile, "getOSMeasurementfromDeviceDriver OS parent returns true\n");
+    fflush(g_logFile);
+#endif
     return true;
 }
 
@@ -298,11 +300,13 @@ bool linuxDeviceChannel::unsealfromDeviceDriver(int inSize, byte* inData, int* p
 
 #ifdef TEST
     fprintf(g_logFile, "unsealwithLinuxService(%d)\n", inSize);
+    fflush(g_logFile);
 #endif
     memset(outData, 0, *poutSize);
     size= encodeTCSERVICEUNSEALFORFROMAPP(inSize, inData, PARAMSIZE, rgBuf);
     if(size<0) {
         fprintf(g_logFile, "unsealwithLinuxService: encodeTCSERVICEUNSEALFORFROMAPP failed\n");
+        fflush(g_logFile);
         return false;
     }
     if(!m_reqChannel.sendtcBuf(getpid(), TCSERVICEUNSEALFORFROMAPP, 0, getpid(), size, rgBuf)) {
@@ -312,15 +316,21 @@ bool linuxDeviceChannel::unsealfromDeviceDriver(int inSize, byte* inData, int* p
     size= PARAMSIZE;
     if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
         fprintf(g_logFile, "unsealwithLinuxService: gettcBuf for TCSERVICEUNSEALFORFROMAPP failed\n");
+        fflush(g_logFile);
         return false;
     }
     if(!decodeTCSERVICEUNSEALFORFROMTCSERVICE(poutSize, outData, rgBuf)) {
         fprintf(g_logFile, "unsealwithLinuxService: gettcBuf for decodeTCSERVICESEALFORFROMTCSERVICE failed\n");
+        fflush(g_logFile);
         return false;
     }
 #ifdef TCTEST1
     PrintBytes("To unseal: ", inData, inSize);
     PrintBytes("Unsealed : ", outData, *poutSize);
+#endif
+#ifdef TEST
+    fprintf(g_logFile, "unsealwithLinuxService returns true\n");
+    fflush(g_logFile);
 #endif
     return true;
 }

@@ -424,6 +424,10 @@ void fileClient::closeConnection()
 {
     if(m_fc.fd>0) 
         m_fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+#ifdef TEST
+    fprintf(g_logFile,"closeConnection returning\n");
+    fflush(g_logFile);
+#endif
 }
 
 

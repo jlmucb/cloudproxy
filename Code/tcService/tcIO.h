@@ -87,6 +87,10 @@ public:
 bool openclient(int* pfd, const char* szunixPath, struct sockaddr* psrv);
 bool openserver(int* pfd, const char* szunixPath, struct sockaddr* psrv);
 
+#ifdef TEST
+void tcBufferprint(tcBuffer* p);
+#endif
+
 
 
 #define TERMINATE  102

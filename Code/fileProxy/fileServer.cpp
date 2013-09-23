@@ -117,10 +117,14 @@ int theServiceChannel::processRequests()
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "theServiceChannel::processRequests: packetType %d, serverstate %d\n", type, m_serverState);
+    fprintf(g_logFile, "theServiceChannel::processRequests: packetType %d, serverstate %d\n", 
+            type, m_serverState);
 #endif
     if(type==CHANNEL_TERMINATE) {
         fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from theServiceChannel::processRequests\n");
+#ifdef TEST
+        tcBufferprint((tcBuffer*) request);
+#endif
         fflush(g_logFile);
         return 0;
     }

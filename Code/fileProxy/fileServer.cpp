@@ -513,8 +513,8 @@ bool fileServer::initServer(const char* configDirectory)
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
-                             "fileClient", &m_host, g_serviceProvider, 0, NULL)) {
+        if(!m_tcHome.EnvInit(g_envplatform, "fileServer", DOMAIN, g_hostDirectory,
+                             "fileServer", &m_host, g_serviceProvider, 0, NULL)) {
             throw "fileServer::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();

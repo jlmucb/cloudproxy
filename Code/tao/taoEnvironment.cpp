@@ -1078,7 +1078,8 @@ bool taoEnvironment::hostunsealKey(int sealedSize, byte* sealed,
                               u32* ptype, int* psize, byte** ppkey)
 {
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::hostunsealKey\n");
+    fprintf(g_logFile, "taoEnvironment::hostunsealKey %d, %d\n",
+            sealedSize, *psize);
     fflush(g_logFile);
 #endif
 
@@ -1088,7 +1089,7 @@ bool taoEnvironment::hostunsealKey(int sealedSize, byte* sealed,
     bool        fRet= true;
 
     if(rgOut==NULL) {
-        fprintf(g_logFile, "taoEnvironment::hostunsealKey, malloc failed\n");
+        fprintf(g_logFile, "taoEnvironment::hostunsealKey, malloc failed (%d)\n", size);
         return false;
     }
     

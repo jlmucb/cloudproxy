@@ -24,6 +24,7 @@
 #ifndef CLOUDPROXY_CLOUD_SERVER_H_
 #define CLOUDPROXY_CLOUD_SERVER_H_
 
+#include <glog/logging.h>
 #include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"

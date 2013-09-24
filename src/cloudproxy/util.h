@@ -22,6 +22,7 @@
 #ifndef CLOUDPROXY_UTIL_H_
 #define CLOUDPROXY_UTIL_H_
 
+#include <glog/logging.h>
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>

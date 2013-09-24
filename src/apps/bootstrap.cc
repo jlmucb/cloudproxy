@@ -29,14 +29,18 @@ DEFINE_string(secret_path, "bootstrap_sealed_secret",
               "The path to the TPM-sealed key for this binary");
 DEFINE_string(directory, "/home/jlm/jlmcrypt",
               "The directory to use for Tao initialization");
+DEFINE_string(
+    subdirectory, "bootstrap_files",
+    "The subdirectory to write the files into for the bootstrap application");
 DEFINE_string(key_path, "bootstrap_files/bootstrap_key",
               "An encrypted keyczar directory for an encryption key");
 DEFINE_string(pk_key_path, "bootstrap_files/bootstrap_pk_key",
               "An encrypted keyczar directory for a signing key");
-DEFINE_bool(start_measured, false, "A flag that indicates measured boot");
 DEFINE_string(whitelist, "signed_whitelist", "A signed whitelist file");
 DEFINE_string(policy_pk_path, "./policy_public_key",
               "The path to the public policy key");
+DEFINE_string(tao_provider, "/dev/tcioDD0",
+              "The path to the device that the LegacyTao will use");
 DEFINE_string(program, "server", "The program to run");
 
 int main(int argc, char **argv) {
@@ -46,32 +50,18 @@ int main(int argc, char **argv) {
 
   initLog(NULL);
 
-  bool start_measured = false;
-
   // call this program like this:
-  // ./bootstrap --start_measured -- <real flags for the instance>
-  if (FLAGS_start_measured) {
-    start_measured = true;
-    FLAGS_log_dir = "b_orig";
-  } else {
-    FLAGS_log_dir = "b_meas";
-  }
-
+  // ./bootstrap <bootstrap flags> -- <flags for the bootstrapped application>
+  FLAGS_log_dir = "b_meas";
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
-  // request a measured start
-  if (start_measured) {
-    if (!startMeAsMeasuredProgram(argc, argv)) {
-      return 1;
-    }
-    return 0;
-  }
   initLog("bootstrap.log");
 
   LOG(INFO) << "Measured program starting";
   scoped_ptr<tao::Tao> tao(new legacy_tao::LegacyTao(
-      FLAGS_secret_path, FLAGS_directory, FLAGS_key_path, FLAGS_pk_key_path,
-      FLAGS_whitelist, FLAGS_policy_pk_path));
+      FLAGS_secret_path, FLAGS_directory, FLAGS_subdirectory, FLAGS_key_path,
+      FLAGS_pk_key_path, FLAGS_whitelist, FLAGS_policy_pk_path,
+      FLAGS_tao_provider));
 
   CHECK(tao->Init()) << "Could not initialize the Legacy Tao";
   LOG(INFO) << "Finished initializing the Legacy Tao";

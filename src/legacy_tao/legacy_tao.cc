@@ -98,13 +98,16 @@ using std::stringstream;
 namespace legacy_tao {
 
 LegacyTao::LegacyTao(const string &secret_path, const string &directory,
-                     const string &key_path, const string &pk_path,
-                     const string &whitelist_path, const string &policy_pk_path)
+                     const string &subdirectory, const string &key_path,
+                     const string &pk_path, const string &whitelist_path,
+                     const string &policy_pk_path, const string &tao_provider)
     : secret_path_(secret_path),
       directory_(directory),
+      subdirectory_(subdirectory),
       key_path_(key_path),
       pk_path_(pk_path),
       policy_pk_path_(policy_pk_path),
+      tao_provider_(tao_provider),
       tao_host_(new taoHostServices()),
       tao_env_(new taoEnvironment()),
       crypter_(nullptr),
@@ -186,8 +189,11 @@ bool LegacyTao::Init() {
 
   // set up the legacy policy key
   legacy_policy_cert_.reset(new PrincipalCert());
-  CHECK(legacy_policy_cert_->init(const_cast<const char*>(reinterpret_cast<char *>(tao_env_->m_policyKey)))) << "Could not initialize the legacy policy public key";
-  CHECK(legacy_policy_cert_->parsePrincipalCertElements()) << "Could not finish legacy policy public key initialization";
+  CHECK(legacy_policy_cert_->init(const_cast<const char *>(
+      reinterpret_cast<char *>(tao_env_->m_policyKey))))
+      << "Could not initialize the legacy policy public key";
+  CHECK(legacy_policy_cert_->parsePrincipalCertElements())
+      << "Could not finish legacy policy public key initialization";
 
   VLOG(1) << "Finished legacy tao initialization successfully";
   return true;
@@ -200,13 +206,19 @@ bool LegacyTao::initTao() {
 
   try {
     // init host
-    CHECK(tao_host_->HostInit(PLATFORMTYPELINUX, parameterCount, parameters))
+    CHECK(tao_host_->HostInit(PLATFORMTYPELINUX, tao_provider_.c_str(),
+                              directory_.c_str(), subdirectory_.c_str(),
+                              parameterCount, parameters))
         << "Can't init the host";
 
-    // init environment
-    CHECK(tao_env_->EnvInit(PLATFORMTYPELINUXAPP, "bootstrap_files",
-                            "www.manferdelli.com", directory, tao_host_.get(),
-                            0, NULL)) << "Can't init the environment";
+    // Init the environment.
+    // Note that the provider for the Env and Host is currently the
+    // same. This will change when we start working in a KVM Guest
+    // partition.
+    CHECK(tao_env_->EnvInit(
+        PLATFORMTYPELINUXAPP, "bootstrap_files", "www.manferdelli.com",
+        directory_.c_str(), subdirectory_.c_str(), tao_host_.get(),
+        tao_provider_.c_str(), 0, NULL)) << "Can't init the environment";
   }
   catch (const char * err) {
     LOG(ERROR) << "Error in initializing the legacy tao: " << err;
@@ -462,7 +474,7 @@ bool LegacyTao::Seal(const string &data, string *sealed) const {
   // TODO(tmroeder): generalize to other hash algorithms
   sd.set_hash_alg("SHA256");
   sd.set_data(data);
-  
+
   string serialized_sd;
   if (!sd.SerializeToString(&serialized_sd)) {
     LOG(ERROR) << "Could not serialize the SealedData";
@@ -550,19 +562,17 @@ bool LegacyTao::Attest(const string &data, string *attestation) const {
     LOG(ERROR) << "Could not serialize the public key for signing";
     return false;
   }
-  
+
   string *pub_key = sa.add_evidence();
   if (!kpk.SerializeToString(pub_key)) {
     LOG(ERROR) << "Could not serialize the KeyczarPublicKey to a string";
     return false;
   }
-  
+
   // sign this key with our public key
   string *legacy_sig = sa.add_evidence();
-  if (!SignWithLegacyKey(
-			 *reinterpret_cast<RSAKey*>(tao_env_->m_privateKey),
-			 *pub_key,
-			 legacy_sig)) {
+  if (!SignWithLegacyKey(*reinterpret_cast<RSAKey *>(tao_env_->m_privateKey),
+                         *pub_key, legacy_sig)) {
     LOG(ERROR) << "Could not sign our public key with the legacy public key";
     return false;
   }
@@ -570,7 +580,7 @@ bool LegacyTao::Attest(const string &data, string *attestation) const {
   // add the certificate signed by the policy private key
   string *host_cert = sa.add_evidence();
   host_cert->assign(tao_env_->m_myCertificate, tao_env_->m_myCertificateSize);
-  
+
   if (!sa.SerializeToString(attestation)) {
     LOG(ERROR) << "Could not serialize the SignedAttestation";
     return false;
@@ -579,7 +589,8 @@ bool LegacyTao::Attest(const string &data, string *attestation) const {
   return true;
 }
 
-bool LegacyTao::VerifyAttestation(const string &data, const string &attestation) const {
+bool LegacyTao::VerifyAttestation(const string &data,
+                                  const string &attestation) const {
   SignedAttestation sa;
   if (!sa.ParseFromString(attestation)) {
     LOG(ERROR) << "Could not deserialize a SignedAttestation";
@@ -607,13 +618,15 @@ bool LegacyTao::VerifyAttestation(const string &data, const string &attestation)
 
   Keyset *keyset = nullptr;
   if (!DeserializePublicKey(kpk, &keyset)) {
-    LOG(ERROR) << "Could not deserialize the public key from the first evidence string";
+    LOG(ERROR) << "Could not deserialize the public key from the first "
+                  "evidence string";
     return false;
   }
 
   scoped_ptr<Verifier> verifier(new Verifier(keyset));
   if (verifier.get() == nullptr) {
-    LOG(ERROR) << "Could not construct a verifier from the deserialized public key";
+    LOG(ERROR)
+        << "Could not construct a verifier from the deserialized public key";
     return false;
   }
 
@@ -643,16 +656,18 @@ bool LegacyTao::VerifyAttestation(const string &data, const string &attestation)
 
   // set up a chain to verify
   int chain_types[2] = {PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
-  RSAKey *legacy_policy_key = reinterpret_cast<RSAKey *>(legacy_policy_cert_->getSubjectKeyInfo());
+  RSAKey *legacy_policy_key =
+      reinterpret_cast<RSAKey *>(legacy_policy_cert_->getSubjectKeyInfo());
   void *chain_objects[2] = {pc.get(), legacy_policy_key};
-  if (VerifyChain(*legacy_policy_key, "", NULL, 2, chain_types, chain_objects) < 0) {
+  if (VerifyChain(*legacy_policy_key, "", NULL, 2, chain_types, chain_objects) <
+      0) {
     LOG(ERROR) << "The certificate in the evidence did not pass verification";
     return false;
   }
 
   // now extract the RSAKey from the certificate and verify the
   // signature on the serialized keyczar public key
-  RSAKey *inner_key = reinterpret_cast<RSAKey*>(pc->getSubjectKeyInfo());
+  RSAKey *inner_key = reinterpret_cast<RSAKey *>(pc->getSubjectKeyInfo());
   if (!VerifyWithLegacyKey(*inner_key, serialized_pk, legacy_sig)) {
     LOG(ERROR) << "The legacy signature did not pass verification";
     return false;
@@ -686,7 +701,8 @@ bool LegacyTao::VerifyAttestation(const string &data, const string &attestation)
 
   // and verify that the data matches the data in the attestation
   if (data.compare(a.data()) != 0) {
-    LOG(ERROR) << "The supplied data does not match the data in the attestation";
+    LOG(ERROR)
+        << "The supplied data does not match the data in the attestation";
     return false;
   }
 
@@ -695,7 +711,8 @@ bool LegacyTao::VerifyAttestation(const string &data, const string &attestation)
   return true;
 }
 
-bool LegacyTao::SignWithLegacyKey(RSAKey &key, const string &data, string *signature) const {
+bool LegacyTao::SignWithLegacyKey(RSAKey &key, const string &data,
+                                  string *signature) const {
   CHECK_NOTNULL(signature);
   Sha256 sha;
   unsigned char hash[SHA256_DIGESTSIZE_BYTES];
@@ -707,25 +724,31 @@ bool LegacyTao::SignWithLegacyKey(RSAKey &key, const string &data, string *signa
   sha.Final();
   sha.GetDigest(hash);
 
-  if(!RSASign(key, SHA256HASH, hash, &size, sig_value)) {
+  if (!RSASign(key, SHA256HASH, hash, &size, sig_value)) {
     LOG(ERROR) << "Could not compute the RSA signature for this hash value";
     return false;
   }
 
-  signature->assign(const_cast<const char *>(reinterpret_cast<char *>(sig_value)), static_cast<size_t>(size));
+  signature->assign(
+      const_cast<const char *>(reinterpret_cast<char *>(sig_value)),
+      static_cast<size_t>(size));
   return true;
 }
 
-bool LegacyTao::VerifyWithLegacyKey(RSAKey &key, const string &data, const string &signature) const {
+bool LegacyTao::VerifyWithLegacyKey(RSAKey &key, const string &data,
+                                    const string &signature) const {
   Sha256 sha;
   unsigned char hash[SHA256_DIGESTSIZE_BYTES];
-  
+
   sha.Init();
   sha.Update(reinterpret_cast<const unsigned char *>(data.data()), data.size());
   sha.Final();
   sha.GetDigest(hash);
 
-  if (!RSAVerify(key, SHA256HASH, hash, const_cast<unsigned char *>(reinterpret_cast<const unsigned char *>(signature.data())))) {
+  if (!RSAVerify(
+          key, SHA256HASH, hash,
+          const_cast<unsigned char *>(
+              reinterpret_cast<const unsigned char *>(signature.data())))) {
     LOG(ERROR) << "Could not verify an RSA signature";
     return false;
   }

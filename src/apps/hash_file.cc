@@ -19,7 +19,7 @@
 // limitations under the License.
 
 
-
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/crypto_factory.h>

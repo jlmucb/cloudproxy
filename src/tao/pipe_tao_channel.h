@@ -23,6 +23,7 @@
 #ifndef TAO_PIPE_TAO_CHANNEL_H_
 #define TAO_PIPE_TAO_CHANNEL_H_
 
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <tao/tao_channel.h>
 

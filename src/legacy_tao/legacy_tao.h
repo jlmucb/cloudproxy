@@ -18,11 +18,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef LEGACY_TAO_LEGACY_TAO_H_
 #define LEGACY_TAO_LEGACY_TAO_H_
 
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/crypto_factory.h>
 
@@ -49,8 +48,9 @@ namespace legacy_tao {
 class LegacyTao : public tao::Tao {
  public:
   LegacyTao(const string &secret_path, const string &directory,
-            const string &key_path, const string &pk_path,
-            const string &whitelist_path, const string &policy_pk_path);
+            const string &subdirectory, const string &key_path,
+            const string &pk_path, const string &whitelist_path,
+            const string &policy_pk_path, const string &tao_provider);
   virtual ~LegacyTao() {}
   virtual bool Init();
   virtual bool Destroy();
@@ -59,7 +59,8 @@ class LegacyTao : public tao::Tao {
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
   virtual bool Attest(const string &data, string *attestation) const;
-  virtual bool VerifyAttestation(const string &data, const string &attestation) const;
+  virtual bool VerifyAttestation(const string &data,
+                                 const string &attestation) const;
 
  private:
   // 5 minute attestation timeout
@@ -71,6 +72,9 @@ class LegacyTao : public tao::Tao {
   // the directory for legacy Tao initialization
   string directory_;
 
+  // the subdirectory to write files to
+  string subdirectory_;
+
   // the path to the sealed keyczar key
   string key_path_;
 
@@ -79,6 +83,9 @@ class LegacyTao : public tao::Tao {
 
   // the path to the public key
   string policy_pk_path_;
+
+  // the path to the device that the legacy tao uses
+  string tao_provider_;
 
   // the legacy tao host and environment
   scoped_ptr<taoHostServices> tao_host_;
@@ -126,9 +133,10 @@ class LegacyTao : public tao::Tao {
   // signing
   bool createPublicKey(keyczar::Encrypter *crypter);
 
-  bool SignWithLegacyKey(RSAKey &key, const string &data, string *signature) const;
-  bool VerifyWithLegacyKey(RSAKey &key, const string &data, const string &signature) const;
-
+  bool SignWithLegacyKey(RSAKey &key, const string &data,
+                         string *signature) const;
+  bool VerifyWithLegacyKey(RSAKey &key, const string &data,
+                           const string &signature) const;
 
   DISALLOW_COPY_AND_ASSIGN(LegacyTao);
 };

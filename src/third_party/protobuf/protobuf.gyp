@@ -3,12 +3,15 @@
 # found in the LICENSE file.
 
 # modified by tmroeder@google.com for use in CloudProxy
-
-# fdii
 {
   'variables': {
     'config_h_dir':
        '.',  # crafted for gcc/linux.
+  },
+  'target_defaults': {
+    'cflags': [
+      '-Wno-deprecated',
+    ],
   },
   'targets': [
     # The "lite" lib is about 1/7th the size of the heavy lib,

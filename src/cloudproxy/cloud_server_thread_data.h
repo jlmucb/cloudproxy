@@ -27,6 +27,7 @@
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
 
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <openssl/ssl.h>
 

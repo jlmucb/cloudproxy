@@ -23,6 +23,7 @@
 #ifndef CLOUDPROXY_CLOUD_CLIENT_H_
 #define CLOUDPROXY_CLOUD_CLIENT_H_
 
+#include <glog/logging.h>
 #include <openssl/ssl.h>
 #include <keyczar/keyczar.h>
 

@@ -23,6 +23,7 @@
 #ifndef CLOUDPROXY_CLOUD_AUTH_H_
 #define CLOUDPROXY_CLOUD_AUTH_H_
 
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include "cloudproxy/cloudproxy.pb.h"
 

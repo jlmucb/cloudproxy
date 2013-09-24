@@ -24,8 +24,11 @@
 #ifndef CLOUDPROXY_CLOUD_USER_MANAGER_H_
 #define CLOUDPROXY_CLOUD_USER_MANAGER_H_
 
-#include <keyczar/keyczar.h>
+
 #include "cloudproxy/cloudproxy.pb.h"
+
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
 
 #include <map>
 #include <memory>

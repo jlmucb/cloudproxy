@@ -24,7 +24,10 @@
 #define TAO_WHITELIST_AUTHORIZATION_MANAGER_H_
 
 #include "tao/tao_authorization_manager.h"
+
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
+
 #include <map>
 #include <set>
 

@@ -1,37 +1,22 @@
 Todo
 ====
 
-1.  Measure hashes and add to KeyNegoServer db  DONE.  Define
-    HASHDEFINED during compilation to activate.
+Enable measure hashes and add to KeyNegoServer db  
+2048 bit keys, 
+Check timing attack.
+Check for leaks buffer overflows
 
-2a. 2048 bit keys, 
-2b. CBC encrypt and mac (rather than mac then encrypt) DONE.
-2c. Fix timing attack.
+Add functionality to accessControl checks
 
-3.  Individual file keys to avoid escalation of privilege 
-    based on file names.  DONE.
-
-4.  PCR18 (19 too if lcp is set).  Define PCR18 during 
-    compilation to activate.
-
-5. Check for leaks buffer overflows
-
-6. Add functionality to accessControl checks
-
-------------------------------------------------------   
-
-7. Hypervisor
+Hypervisor
     Management partition
         schedule, start vm's, montoring, update
     VM update and keys
 
-8. keyNegoServer: emergency key recovery program, revocation
+keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
 
-9. Fix vTCI to handle TPM owner password
+Make sure boot loader is the os element in image.
 
-10.Check on filelock in tcService (How long does it last?)
-   Not necessary now.  executables should be in initramfs and write protected.
-   Need to revist for Hv.
-
+Disable save state for OS
 

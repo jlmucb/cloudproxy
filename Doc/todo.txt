@@ -2,11 +2,9 @@ Todo
 ====
 
 Enable measure hashes and add to KeyNegoServer db  
-2048 bit keys, 
+Enable 2048 bit keys, 
 Check timing attack.
 Check for leaks buffer overflows
-
-Add functionality to accessControl checks
 
 Hypervisor
     Management partition
@@ -15,8 +13,17 @@ Hypervisor
 
 keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
+KVM:
+    initram
+    Disable any functions-migrate, etc
+    Make sure boot loader is the os element in image.
+    Disable save state for OS
+    Minimize Linux and configure policy
 
-Make sure boot loader is the os element in image.
+KVM Guest:
+   Minimize Linux
+   Network save of key files, etc.
 
-Disable save state for OS
+Not required (if configuration is perfect and initram is measured) but disireable:
+measure tcService.
 

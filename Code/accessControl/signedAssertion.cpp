@@ -144,7 +144,7 @@ bool Assertion::parseMe(const char* szAssert)
 
 SignedAssertion::SignedAssertion()
 {
-    m_pRootElement= false;
+    m_pRootElement= NULL;
     m_fDocValid= false;
     m_szSignature= NULL;
     m_szSignedInfo= NULL;

@@ -158,6 +158,7 @@
             'TEST',
             '__FLUSHIO__',
             'ENCRYPTTHENMAC',
+	    'LINUXTCSERVICE',
         ],
         'include_dirs': [
             '<(tc)',
@@ -282,6 +283,55 @@
             '<(vt)/vault.cpp',
             '<(tc)/buffercoding.cpp',
             '<(tc)/tcIO.cpp',
+        ],
+        'dependencies': [
+            'bignum_O1',
+        ],
+    },
+    {
+        'target_name': 'tcLaunch',
+        'type': 'executable',
+        'cflags': [
+            '-Wall',
+            '-Werror',
+            '-Wno-unknown-pragmas',
+            '-Wno-format',
+            '-O3',
+        ],
+	'variables': {
+	  'tcl': '<(base)/tcLaunch',
+	},
+        'libraries': [
+            '-lpthread',
+        ],
+        'defines': [
+            'LINUX',
+            'TEST',
+            'TIXML_USE_STL',
+        ],
+        'include_dirs': [
+            '<(fp)',
+            '<(cm)',
+            '<(jc)',
+            '<(jb)',
+            '<(cl)',
+            '<(pr)',
+            '<(ac)',
+            '<(ta)',
+            '<(vt)',
+            '<(tc)',
+            '<(tp)',
+            '<(ch)',
+	    '<(tcl)',
+        ],
+        'sources': [
+	    '<(tcl)/tcLaunch.cpp',
+            '<(cm)/tinyxml.cpp',
+            '<(cm)/tinystr.cpp',
+            '<(cm)/tinyxmlerror.cpp',
+            '<(cm)/tinyxmlparser.cpp',
+            '<(tc)/buffercoding.cpp',
+            '<(cm)/logging.cpp',
         ],
         'dependencies': [
             'bignum_O1',

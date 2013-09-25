@@ -244,6 +244,7 @@
         '-lcrypto',
       ],
       'dependencies': [
+        'third_party/google-glog/glog.gyp:glog',
 	'third_party/gflags/gflags.gyp:gflags',
 	'third_party/keyczar/keyczar.gyp:keyczar',
       ],        

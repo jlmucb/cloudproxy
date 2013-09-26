@@ -52,9 +52,6 @@ struct file_operations ktciodd_fops= {
     .release=  ktciodd_close,
 };
 
-static struct class*    kclass= NULL;
-static struct device*   kdevice= NULL;
-
 // Set up the char_dev structure for this device.
 void ktciodd_setup_cdev(struct ktciodd_dev *dev, int index)
 {
@@ -77,36 +74,7 @@ void ktciodd_setup_cdev(struct ktciodd_dev *dev, int index)
 }
 
 int ktciodd_close(struct inode *inode, struct file *filp) {
-    int         i;
-    dev_t       devno= MKDEV(ktciodd_major, ktciodd_minor);
-
-#ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktciodd: close started\n");
-#endif
-    // Get rid of dev entries
-    if(ktciodd_devices) {
-        for(i= 0; i<ktciodd_nr_devs; i++) {
-            cdev_del(&ktciodd_devices[i].kdev);
-        }
-        kfree(ktciodd_devices);
-    }
-
-    if(kclass!=NULL && kdevice!=NULL) {
-        device_destroy(kclass, MKDEV(ktciodd_major,0));
-        kdevice= NULL;
-    }
-    if(kclass!=NULL) {
-        class_destroy(kclass);
-        kclass= NULL;
-    }
-
-    // cleanup_module isn't called if registering failed
-    unregister_chrdev_region(devno, ktciodd_nr_devs);
-#ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktciodd: close complete\n");
-#endif
-
-    return 1;
+    return 0;
 }
 
 void ktciodd_cleanup(void)
@@ -147,17 +115,19 @@ int ktciodd_init(void)
     dev_t   dev= 0;
 
     if(ktciodd_major) {
+      printk("Trying static registration\n");
         // static registration
         dev= MKDEV(ktciodd_major, ktciodd_minor);
         result= register_chrdev_region(dev, ktciodd_nr_devs, "ktciodd");
     } 
     else {
+      printk("Trying dynamic registration\n");
         // dynamic registration
         result= alloc_chrdev_region(&dev, ktciodd_minor, ktciodd_nr_devs, "ktciodd");
         ktciodd_major= MAJOR(dev);
     }
     if(result<0) {
-        printk(KERN_WARNING "ktciodd: can't get major %d\n", ktciodd_major);
+      printk(KERN_WARNING "ktciodd: can't get major %d. Error is %d\n", ktciodd_major, result);
         return result;
     }
 
@@ -190,51 +160,9 @@ fail:
 }
 
 
+// nothing to do at open time
 int ktciodd_open(struct inode *inode, struct file *filp) {
-    int     result, i;
-    dev_t   dev= 0;
-
-    if(ktciodd_major) {
-        // static registration
-        dev= MKDEV(ktciodd_major, ktciodd_minor);
-        result= register_chrdev_region(dev, ktciodd_nr_devs, "ktciodd");
-    } 
-    else {
-        // dynamic registration
-        result= alloc_chrdev_region(&dev, ktciodd_minor, ktciodd_nr_devs, "ktciodd");
-        ktciodd_major= MAJOR(dev);
-    }
-    if(result<0) {
-        printk(KERN_WARNING "ktciodd: can't get major %d\n", ktciodd_major);
-        return result;
-    }
-
-    kclass= class_create(THIS_MODULE, "ktciodd");
-    if(kclass==NULL)
-        goto fail;
-    kdevice= device_create(kclass, NULL, MKDEV(ktciodd_major,0), NULL, "ktciodd0");
-    if(kdevice==NULL)
-        goto fail;
-
-    ktciodd_devices= kmalloc(ktciodd_nr_devs*sizeof(struct ktciodd_dev), GFP_KERNEL);
-    if(!ktciodd_devices) {
-        result= -ENOMEM;
-        goto fail;
-    }
-    memset(ktciodd_devices, 0, ktciodd_nr_devs*sizeof(struct ktciodd_dev));
-
-    // Initialize each device. 
-    for(i= 0; i<ktciodd_nr_devs; i++) {
-        ktciodd_setup_cdev(&ktciodd_devices[i], i);
-    }
-#ifdef TESTDEVICE
-    printk(KERN_DEBUG "ktciodd: ktciodd_init complete\n");
-#endif
-    return 0;
-
-fail:
-    ktciodd_close(inode, filp);
-    return result;
+  return 0;
 }
 
 ssize_t ktciodd_read(struct file *filp, char __user *buf, size_t count,

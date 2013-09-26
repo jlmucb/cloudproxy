@@ -1,0 +1,7 @@
+A few useful tips when debugging device drivers:
+
+- "dmesg" command shows the syslog entries that might have error (and or debug)
+  messages from the recent kernel activity.
+
+- strace <program name>  lists out the system calls made by the program with
+  its parameters and the return value.

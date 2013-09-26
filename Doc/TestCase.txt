@@ -19,48 +19,56 @@ evidence, privatekey and symkey in jlmcrypt/KvmHost on the Host.
 
 4. You should now start the service in the Host:
     ./tcKvmHostService.exe &
-The Linux version seemed to require a reboot between the init and the service start.
+The Linux version seemed to require a reboot between the init and 
+the service start, so you may have to retoot the Linux KVM Host.
 
 5. You should now be able to start your configured guest partition:
-    ./tcLaunch.exe -KVMLinux Test1 /home/jlm/jlmcrypt/vms/vmlinuz-3.5.0-23-generic /home/jlm/jlmcrypt/vms/initrd.img-3.5.0-23-generic /home/jlm/jlmcrypt/vms/Test1.img
-
-If this worked, and it should, you should have a cert file in jlmcrypt/KvmHost among other
-things.
+    ./tcLaunch.exe -KVMLinux Test1 \
+	/home/jlm/jlmcrypt/vms/vmlinuz-3.5.0-23-generic  \
+	/home/jlm/jlmcrypt/vms/initrd.img-3.5.0-23-generic  \
+	/home/jlm/jlmcrypt/vms/Test1.img
 
 6. Open a console window to the newly started guest.
 
-7. In the guest you'll need to have the right service structure on the v disk.  
-This includes jlmcrypt and the relevant subdirectories KvmHost and OSGuest.  
-Since the measured guests are transitory, maybe the easiest way to do this is to 
-have a script that creates all this stuff and copies it from the Host to the Guest 
-(If you do it that way, please check-in the script and the procedure you use).  
-You will also need to copy the Host certificates, etc from KvmHost in the Host 
-file system to the Guest.
+7. You'll need to have the right service structure on the v disk.  
+This includes jlmcrypt and the relevant subdirectories KvmHost 
+and OSGuest.  Since the measured guests are transitory, maybe the 
+easiest way to do this is to have a script that creates all this 
+stuff and copies it from the Host to the Guest (If you do it that 
+way, please check-in the script and the procedure you use).  
+You will also need to copy the Host certificates, etc from KvmHost 
+in the Host file system to the Guest.
 
 8. Make sure you own or can write to the relevant devices in the guest.
 
-9. A program in the guest (tcKvmGuestOsService.exe) will need to talk to keyNegoServer
-somewhere.  You need to configure this to happen.  You may need my help since this will
-involve changing the default port to KNS.
+9. A program in the guest (tcKvmGuestOsService.exe) will need to talk to 
+keyNegoServer somewhere.  You need to configure this to happen.  You may 
+need my help since this will involve changing the default port to KNS.
 
-10. With a keyNegoserver that tcKvmGuestOsService.exe can communicate with, initialize
-the keys in the guest.
+10. With a keyNegoserver that tcKvmGuestOsService.exe can communicate with, 
+initialize the keys in the guest.
 	tcKvmGuestOsService.exe -initKeys
-If this works, the service MUST have properly called the hypercall interface and 
-tcKvmHostService.exe must have serviced the request so the driver is likely working.
-If it succeeds, you'll see the usual files in OSGuest: cert, evidence, privatekey and symkey.
-Once this works, we should copy the files in jlmcrypt/OSGuest onto a safe place in the 
-host and copy them back when the guest starts again next time.
+If this works, the service MUST have properly called the hypercall interface 
+and tcKvmHostService.exe must have serviced the request so the driver is 
+likely working.  If it succeeds, you'll see the usual files in OSGuest: cert, 
+evidence, privatekey and symkey.  You should copy the files 
+in jlmcrypt/OSGuest on the guest onto a safe place in the host and copy 
+them back when the guest starts again next time.
 
-You can stop here since this is a good test of the device drivers.  
+You can stop here since this is a good test of the hypercall related
+device drivers.  
+
 What's left is:
 
-Testing fileClient and fileServer in the guest.  This requires a new driver I will write (its
-almost identical to tcioDD).  We also need to configure the guest OS so all the right
-stuff is in intiram and all the guest program automatically from the initialization script.
+Testing fileClient and fileServer in the guest.  This requires a 
+new driver I will write (its almost identical to tcioDD).  We also 
+need to configure the guest OS so all the right stuff is in initram 
+and all the guest program automatically from the initialization script.
 
-If you write any tools (like file copy scripts), please document them also document any steps
-like opening the guest console, setting up the guest network, ... that might cause someone
-kvm ignorant (like me) to get stuck or slowed down.
+If you write any tools (like file copy scripts), please document 
+them also document any steps like building the kernel and initram 
+module for the guest, opening the guest console, setting up the guest 
+network.  Dont underestimate how explicit you need to be so a neophite 
+(like me) doesnt get stuck.
 
 

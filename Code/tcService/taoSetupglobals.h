@@ -37,6 +37,7 @@ const char* g_logName= "tcKvmHostService.log";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_hostsubDirectory= "HWRoot";
 const char* g_clientsubDirectory= "KvmHost";
+const char* g_myServiceName= "tcKvmHostService.exe";
 #endif
 
 #ifdef LINUXTCSERVICE 
@@ -50,6 +51,7 @@ const char* g_logName= "tcService.log";
 const char* g_hostsubDirectory= "HWRoot";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_clientsubDirectory= "TrustedOS";
+const char* g_myServiceName= "tcService.exe";
 #endif
 
 #ifdef KVMGUESTOSTCSERVICE 
@@ -63,6 +65,7 @@ const char* g_logName=  "tcKvmGuestOsService.log";
 const char* g_hostsubDirectory= "KvmHost";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_clientsubDirectory= "OSGuest";
+const char* g_myServiceName= "tcKvmGuestOSService.exe";
 #endif
 
 #ifdef HOSTEDLINUXTCSERVICE 
@@ -76,6 +79,7 @@ const char* g_logName= "tcGuestService.log";
 const char* g_hostsubDirectory= "TrustedOS";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_clientsubDirectory= "fileProxy";
+const char* g_myServiceName= "tcGuestService.exe";
 #endif
 
 

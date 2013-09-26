@@ -1315,7 +1315,7 @@ int main(int an, char** av)
     initLog(g_logName);
 
 #ifdef TEST
-    fprintf(g_logFile, "tcService started\n\n");
+    fprintf(g_logFile, "%s started\n\n", g_myServiceName);
 #endif
 
 #ifdef KVMTCSERVICE

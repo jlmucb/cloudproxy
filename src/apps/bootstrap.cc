@@ -32,6 +32,9 @@ DEFINE_string(directory, "/home/jlm/jlmcrypt",
 DEFINE_string(
     subdirectory, "bootstrap_files",
     "The subdirectory to write the files into for the bootstrap application");
+DEFINE_string(host_subdirectory, "TrustedOS",
+              "The subdirectory that contains the certificate information for "
+              "the trusted host");
 DEFINE_string(key_path, "bootstrap_files/bootstrap_key",
               "An encrypted keyczar directory for an encryption key");
 DEFINE_string(pk_key_path, "bootstrap_files/bootstrap_pk_key",
@@ -59,9 +62,9 @@ int main(int argc, char **argv) {
 
   LOG(INFO) << "Measured program starting";
   scoped_ptr<tao::Tao> tao(new legacy_tao::LegacyTao(
-      FLAGS_secret_path, FLAGS_directory, FLAGS_subdirectory, FLAGS_key_path,
-      FLAGS_pk_key_path, FLAGS_whitelist, FLAGS_policy_pk_path,
-      FLAGS_tao_provider));
+      FLAGS_secret_path, FLAGS_directory, FLAGS_subdirectory,
+      FLAGS_host_subdirectory, FLAGS_key_path, FLAGS_pk_key_path,
+      FLAGS_whitelist, FLAGS_policy_pk_path, FLAGS_tao_provider));
 
   CHECK(tao->Init()) << "Could not initialize the Legacy Tao";
   LOG(INFO) << "Finished initializing the Legacy Tao";

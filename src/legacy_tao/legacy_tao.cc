@@ -98,12 +98,14 @@ using std::stringstream;
 namespace legacy_tao {
 
 LegacyTao::LegacyTao(const string &secret_path, const string &directory,
-                     const string &subdirectory, const string &key_path,
+                     const string &subdirectory,
+                     const string &host_subdirectory, const string &key_path,
                      const string &pk_path, const string &whitelist_path,
                      const string &policy_pk_path, const string &tao_provider)
     : secret_path_(secret_path),
       directory_(directory),
       subdirectory_(subdirectory),
+      host_subdirectory_(host_subdirectory),
       key_path_(key_path),
       pk_path_(pk_path),
       policy_pk_path_(policy_pk_path),
@@ -207,7 +209,7 @@ bool LegacyTao::initTao() {
   try {
     // init host
     CHECK(tao_host_->HostInit(PLATFORMTYPELINUX, tao_provider_.c_str(),
-                              directory_.c_str(), subdirectory_.c_str(),
+                              directory_.c_str(), host_subdirectory_.c_str(),
                               parameterCount, parameters))
         << "Can't init the host";
 

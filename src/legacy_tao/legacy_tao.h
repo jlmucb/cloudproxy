@@ -48,9 +48,10 @@ namespace legacy_tao {
 class LegacyTao : public tao::Tao {
  public:
   LegacyTao(const string &secret_path, const string &directory,
-            const string &subdirectory, const string &key_path,
-            const string &pk_path, const string &whitelist_path,
-            const string &policy_pk_path, const string &tao_provider);
+            const string &subdirectory, const string &host_subdirectory,
+            const string &key_path, const string &pk_path,
+            const string &whitelist_path, const string &policy_pk_path,
+            const string &tao_provider);
   virtual ~LegacyTao() {}
   virtual bool Init();
   virtual bool Destroy();
@@ -74,6 +75,9 @@ class LegacyTao : public tao::Tao {
 
   // the subdirectory to write files to
   string subdirectory_;
+
+  // the subdirectory that contains key information for the trusted host
+  string host_subdirectory_;
 
   // the path to the sealed keyczar key
   string key_path_;

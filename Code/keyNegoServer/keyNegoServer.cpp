@@ -243,7 +243,7 @@ bool getValidHashes(const char* szHashFile)
 {
     int             i, j, n;
     char            buf[MAXLINE];
-    const char*     nextp;
+    const char*     nextp = NULL;
     const char*     szPolicyId= NULL;
     const char*     szProgramName= NULL;
     const char*     szBase64Hash= NULL;

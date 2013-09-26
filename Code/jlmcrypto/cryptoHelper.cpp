@@ -805,14 +805,16 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
                                  &size, rgSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: sign fails\n");
-        return false;
+//        return false;
+        return (char *)NULL;
     }
 
     n= 2048;
     if(!base64frombytes(size, rgSigValue, &n, szSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: base64 encode fails\n");
-        return false;
+//        return false;
+        return (char *) NULL;
     }
     return strdup(szSigValue);
 }

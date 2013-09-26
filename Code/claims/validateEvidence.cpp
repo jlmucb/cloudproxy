@@ -119,7 +119,7 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
     }
     if(nodeSignedInfo==NULL) {
         fprintf(g_logFile, "getChainElementSignedInfo: Cant find Validity Period\n");
-        return false;
+        return NULL;
     }
     return nodeSignedInfo;
 }

@@ -42,6 +42,14 @@ notpmobjs=  $(B)/taoEnvironment.o $(B)/taoHostServices.o $(B)/taoInit.o \
 
 # TPMHOSTSUPPORT in
 #     taoEnvironment.cpp, taoHostServices.cpp taoInit.cpp TPMHostsupport.cpp 
+#     Services are:
+#	tcService.exe - original tcService in a Linux host that is booted on HW
+#	tcKvmHostService.exe - this is the tcSevice in the Linux Host that is booted on HW
+#	tcKvmGuestOsService.exe - this is the Guest OS tcSservice.  It talks to OS-processes 
+#		(i.e.-processes acting on behalf of the hosted OS) and used ktciodd to make
+#		hypercalls to the Linux hosting KVM (tcKvmHostService.exe).
+#	tcGuestService.exe - this is the guest tcService.  It talks to guest processes for service
+#		requests and the ktciodd for host services performed by tcKvmGuestOsService.exe.
 
 
 all: $(E)/tcService.exe $(E)/tcKvmGuestOsService.exe $(E)/tcKvmHostService.exe

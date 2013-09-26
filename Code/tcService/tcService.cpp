@@ -602,6 +602,15 @@ const char* g_linuxtemplatexml=
 "    <sound model='ich6'>\n"\
 "      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
 "    </sound>\n"\
+"    <video>\n"\
+"      <model type='cirrus' vram='9216' heads='1'/>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"\
+"    </video>\n"\
+"    <memballoon model='virtio'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"\
+"    </memballoon>\n"\
+"  </devices>\n"\
+"</domain>\n";
 #else
 // template vm xml
 const char* g_linuxtemplatexml=

@@ -550,6 +550,59 @@ const char* g_vmtemplatexml=
  *      <os>
  */
 
+#if 0
+// template vm xml
+const char* g_linuxtemplatexml=
+"<domain type='kvm'>\n"\
+"  <name> %s </name>\n"\
+"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
+"  <memory>1048576</memory>\n"\
+"  <currentMemory>1048576</currentMemory>\n"\
+"  <vcpu>1</vcpu>\n"\
+"  <bootloader>/usr/bin/pygrub</bootloader>\n"\
+"  <os>\n"\
+"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
+"    <kernel> %s </kernel>\n"\
+"    <initrd> %s </initrd>\n"\
+"    <boot dev='hd'/>\n"\
+"  </os>\n"\
+"  <features>\n"\
+"    <acpi/>\n"\
+"    <apic/>\n"\
+"    <pae/>\n"\
+"  </features>\n"\
+"  <clock offset='utc'/>\n"\
+"  <on_poweroff>destroy</on_poweroff>\n"\
+"  <on_reboot>destroy</on_reboot>\n"\
+"  <on_crash>restart</on_crash>\n"\
+"  <devices>\n"\
+"    <emulator>/usr/bin/kvm</emulator>\n"\
+"    <disk type='file' device='disk'>\n"\
+"      <driver name='qemu' type='raw'/>\n"\
+"      <source file='%s'/>\n"\
+"      <target dev='hda' bus='ide'/>\n"\
+"      <address type='drive' controller='0' bus='0' unit='0'/>\n"\
+"    </disk>\n"\
+"    <controller type='ide' index='0'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"\
+"    </controller>\n"\
+"    <interface type='bridge'>\n"\
+"      <mac address='52:54:00:82:22:a8'/>\n"\
+"      <source bridge='virbr0'/>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"\
+"    </interface>\n"\
+"    <serial type='pty'>\n"\
+"      <target port='0'/>\n"\
+"    </serial>\n"\
+"    <console type='pty'>\n"\
+"      <target type='serial' port='0'/>\n"\
+"    </console>\n"\
+"    <input type='mouse' bus='ps2'/>\n"\
+"    <graphics type='vnc' port='-1' autoport='yes'/>\n"\
+"    <sound model='ich6'>\n"\
+"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
+"    </sound>\n"\
+#else
 // template vm xml
 const char* g_linuxtemplatexml=
 "<domain type='kvm'>\n"\
@@ -614,7 +667,7 @@ const char* g_linuxtemplatexml=
 "    </memballoon>\n"\
 "  </devices>\n"\
 "</domain>\n";
-
+#endif
 
 
 #define MAXMLBUF 8192

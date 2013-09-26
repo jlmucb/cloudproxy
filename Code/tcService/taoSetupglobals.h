@@ -64,7 +64,7 @@ const char* g_serviceexecFile= "./tcKvmGuestOsService.exe";
 const char* g_logName=  "tcKvmGuestOsService.log";
 const char* g_hostsubDirectory= "KvmHost";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
-const char* g_clientsubDirectory= "OSGuest";
+const char* g_clientsubDirectory= "GuestOS";
 const char* g_myServiceName= "tcKvmGuestOSService.exe";
 #endif
 
@@ -76,9 +76,9 @@ const u32   g_envplatform= PLATFORMTYPEGUESTLINUX;
 const char* g_progName= "TrustedGuestOS";
 const char* g_serviceexecFile= "./tcGuestService.exe";
 const char* g_logName= "tcGuestService.log";
-const char* g_hostsubDirectory= "TrustedOS";
+const char* g_hostsubDirectory= "GuestOS";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
-const char* g_clientsubDirectory= "fileProxy";
+const char* g_clientsubDirectory= "TrustedOS";
 const char* g_myServiceName= "tcGuestService.exe";
 #endif
 

@@ -32,7 +32,7 @@ the service start, so you may have to retoot the Linux KVM Host.
 
 7. You'll need to have the right service structure on the v disk.  
 This includes jlmcrypt and the relevant subdirectories KvmHost 
-and OSGuest.  Since the measured guests are transitory, maybe the 
+and GuestOS.  Since the measured guests are transitory, maybe the 
 easiest way to do this is to have a script that creates all this 
 stuff and copies it from the Host to the Guest (If you do it that 
 way, please check-in the script and the procedure you use).  
@@ -50,9 +50,9 @@ initialize the keys in the guest.
 	tcKvmGuestOsService.exe -initKeys
 If this works, the service MUST have properly called the hypercall interface 
 and tcKvmHostService.exe must have serviced the request so the driver is 
-likely working.  If it succeeds, you'll see the usual files in OSGuest: cert, 
+likely working.  If it succeeds, you'll see the usual files in GuestOS: cert, 
 evidence, privatekey and symkey.  You should copy the files 
-in jlmcrypt/OSGuest on the guest onto a safe place in the host and copy 
+in jlmcrypt/GuestOS on the guest onto a safe place in the host and copy 
 them back when the guest starts again next time.
 
 You can stop here since this is a good test of the hypercall related

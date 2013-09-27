@@ -18,9 +18,7 @@ sleep 5s
 sudo bash
 /etc/init.d/trousers stop
 chown jlm /dev/tpm0
-mod 0777 /dev/*tcio*
-exit
-chmod 0777 /dev/*tcio
+chmod 0777 /dev/*tcio*
 exit
 cd ~/jlmcrypt
 ./keyNegoServer.exe #in one window

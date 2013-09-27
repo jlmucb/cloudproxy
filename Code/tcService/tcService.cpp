@@ -533,24 +533,7 @@ const char* g_vmtemplatexml=
 "</domain>\n";
 
 
-/*
- *  Todo: template changes
- *      <os>
- *        <type> arch='x86-64' machine='pc'>hvm</type>
- *        <kernel> vmlinuz </kernel>
- *        <initrd> initrd </initrd>
- *        <cmdline> ... </cmdline>
- *        console= ...
- *      </os>
- *
- *      <bootloader>/usr/bin/pygrub</bootloader>
- *      <os>
- *          <type> arch='x86-64' machine='pc'>hvm</type>
- *          <boot dev='hd'/>
- *      <os>
- */
-
-#if 1
+#if 0
 // template vm xml
 const char* g_linuxtemplatexml=
 "<domain type='kvm'>\n"\

@@ -535,6 +535,7 @@ const char* g_vmtemplatexml=
 
 #if 0
 // template vm xml
+//"  <bootloader>/usr/bin/pygrub</bootloader>\n"
 const char* g_linuxtemplatexml=
 "<domain type='kvm'>\n"\
 "  <name> %s </name>\n"\
@@ -542,7 +543,6 @@ const char* g_linuxtemplatexml=
 "  <memory>1048576</memory>\n"\
 "  <currentMemory>1048576</currentMemory>\n"\
 "  <vcpu>1</vcpu>\n"\
-"  <bootloader>/usr/bin/pygrub</bootloader>\n"\
 "  <os>\n"\
 "    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
 "    <kernel> %s </kernel>\n"\
@@ -605,6 +605,7 @@ const char* g_linuxtemplatexml=
 "  <vcpu>1</vcpu>\n"\
 "  <os>\n"\
 "    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
+"--- %s %s\n"\
 "    <boot dev='hd'/>\n"\
 "  </os>\n"\
 "  <features>\n"\

@@ -61,11 +61,10 @@ device drivers.
 
 What's left is:
 
-Testing fileClient and fileServer in the guest.  This requires a 
-new driver I will write (its almost identical to tcioDD --- in fact,
-it may be tcioDD without modification).  We also need to configure 
-the guest OS so all the right stuff is in initram and all the 
-guest program automatically from the initialization script.
+Testing fileClient and fileServer in the guest.  We also need 
+to configure the guest OS so all the right stuff is in initram 
+and all the guest program automatically from the initialization 
+script.
 
 If you write any tools (like file copy scripts), please document 
 them also document any steps like building the kernel and 

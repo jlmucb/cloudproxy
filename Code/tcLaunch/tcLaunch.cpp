@@ -326,7 +326,7 @@ int main(int an, char** av)
         fSucceed= true;
     }
     else if(strcmp(av[1],"-LinuxGuest")==0) {
-        g_tcioDDName= "/dev/hostedtcioDD0";
+        g_tcioDDName= "/dev/tcioDD0";
         fSucceed= true;
     }
     else if(strcmp(av[1],"-LinuxHost")==0) {

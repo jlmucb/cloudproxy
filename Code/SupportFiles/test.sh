@@ -18,12 +18,14 @@ sleep 5s
 sudo bash
 /etc/init.d/trousers stop
 chown jlm /dev/tpm0
+mod 0777 /dev/*tcio*
+exit
 chmod 0777 /dev/*tcio
 exit
 cd ~/jlmcrypt
 ./keyNegoServer.exe #in one window
 ./tcKvmService.exe -initKeys # in another window
 cd ~/jlmcrypt
-./tcKvmService.exe &
+./tcKvmHostService.exe &
 ./tcLaunch.exe -KVMLinux Test1 /home/jlm/jlmcrypt/vms/vmlinuz-3.5.0-23-generic /home/jlm/jlmcrypt/vms/initrd.img-3.5.0-23-generic /home/jlm/jlmcrypt/vms/Test1.img
 

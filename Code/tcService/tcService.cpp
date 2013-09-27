@@ -550,7 +550,7 @@ const char* g_vmtemplatexml=
  *      <os>
  */
 
-#if 0
+#if 1
 // template vm xml
 const char* g_linuxtemplatexml=
 "<domain type='kvm'>\n"\

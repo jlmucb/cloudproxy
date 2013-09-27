@@ -68,7 +68,7 @@ $(E)/tcKvmGuestOsService.exe: $(sobjs) $(B)/tcKvmGuestOsService.o $(notpmobjs)
 
 $(E)/tcKvmHostService.exe: $(sobjs) $(B)/tcKvmHostService.o $(tmpobjs) $(B)/kvmHostsupport.o 
 	@echo "tcKvmHostService"
-	$(LINK) -o $(E)/tcKvmHostService.exe $(sobjs) $(notpmobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
+	$(LINK) -o $(E)/tcKvmHostService.exe $(sobjs) $(tpmobjs) $(B)/tcKvmHostService.o $(B)/kvmHostsupport.o $(LDFLAGS) -lvirt -lpthread
 
 $(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -c -o $(B)/fileHash.o $(SCC)/fileHash.cpp

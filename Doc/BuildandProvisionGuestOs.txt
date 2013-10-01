@@ -3,13 +3,22 @@ Building and provisioning the Guest OS
 
 
 1. Install via virt-manager a fresh VM from a CD.
+    My password is Tori.
 
 2. Download the development tools, source and 
    BuildingTrustedOS.txt and kvm.txt.
 
 3. SSH the jlmcrypt directory into the VM.
+    apt-get install openssh-server
+    sudo service ssh start
+    sudo stop ssh
+    sudo start ssh
+    sudo restart ssh
+    sudo status ssh
+    ssh jlm@192.168.122.244
 
 4. Save the VM Image in virtmanager.
-    You can find the IP address to SSH to by going into the VM
-    and typeing idconfig -a.
+   You can find the IP address to SSH to by going into the VM
+   and typing idconfig -a.
+
 

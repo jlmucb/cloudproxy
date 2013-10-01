@@ -21,6 +21,6 @@ Building and provisioning the Guest OS
 
 4. Save the VM Image in virtmanager.
    You can find the IP address to SSH to by going into the VM
-   and typing idconfig -a.
+   and typing ifconfig -a.
 
 

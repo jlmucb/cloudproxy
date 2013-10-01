@@ -213,7 +213,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
         if(keyType==KEYTYPERSA1024INTERNALSTRUCT)
             quoteType= QUOTETYPESHA256FILEHASHRSA1024;
         else if(keyType==KEYTYPERSA2048INTERNALSTRUCT)
-            quoteType= QUOTETYPETPM12RSA2048;
+            quoteType= QUOTETYPESHA256FILEHASHRSA2048;
         else
             return false;
         break;
@@ -223,7 +223,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
         if(keyType==KEYTYPERSA1024INTERNALSTRUCT)
             quoteType= QUOTETYPESHA256FILEHASHRSA1024;
         else if(keyType==KEYTYPERSA2048INTERNALSTRUCT)
-            quoteType= QUOTETYPETPM12RSA2048;
+            quoteType= QUOTETYPESHA256FILEHASHRSA2048;
         else
             return false;
         break;

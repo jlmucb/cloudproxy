@@ -180,6 +180,10 @@ bool tcChannel::OpenBuf(u32 type, const char* deviceName,
 
 int tcChannel::WriteBuf(byte* buf, int size)
 {
+#ifdef TEST
+    fprintf(g_logFile, "tcChannel::WriteBuf channel is %d\n", m_fd);
+    fflush(g_logFile);
+#endif
 #ifdef TCIODEVICEDRIVERPRESENT
     return write(m_fd, buf, size);
 #else

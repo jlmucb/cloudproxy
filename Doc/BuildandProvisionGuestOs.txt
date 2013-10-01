@@ -2,6 +2,9 @@ Building and provisioning the Guest OS
 ======================================
 
 
+Make sure your VM has at least 20MB of disk
+
+
 1. Install via virt-manager a fresh VM from a CD.
     My password is Tori.
 

@@ -56,7 +56,7 @@ const char* g_myServiceName= "tcService.exe";
 
 #ifdef KVMGUESTOSTCSERVICE 
 const char* g_hostProvider= "/dev/ktciodd0";
-const char* g_serviceProvider= "/dev/tcioDD0";
+const char* g_serviceProvider= "/dev/ktciodd0";
 const u32   g_hostplatform= PLATFORMTYPEKVMHYPERVISOR;
 const u32   g_envplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
 const char* g_progName= "KvmGuest";

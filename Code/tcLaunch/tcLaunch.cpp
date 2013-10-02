@@ -307,7 +307,7 @@ int main(int an, char** av)
 
     if(an<2 ||an>30 || strcmp(av[1],"-help")==0) {
         fprintf(g_logFile, "\ttcLaunch.exe -KVMImage programname image-file \n");
-        fprintf(g_logFile, "\ttcLaunch.exe -KVMLinux programname kernel-file initram-file image-file\n");
+        fprintf(g_logFile, "\ttcLaunch.exe -KVMLinux programname uuid kernel-file initram-file image-file\n");
         fprintf(g_logFile, "\ttcLaunch.exe -KVMGuest program-file remaining arguments\n");
         fprintf(g_logFile, "\ttcLaunch.exe -LinuxGuest program-file remaining-args\n");
         fprintf(g_logFile, "\ttcLaunch.exe -LinuxHost program-file remaining-args\n");

@@ -599,7 +599,7 @@ const char* g_linuxtemplatexml=
 const char* g_linuxtemplatexml=
 "<domain type='kvm'>\n"\
 "  <name>%s</name>\n"\
-"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
+"  <uuid> %s </uuid>\n"\
 "  <memory>1048576</memory>\n"\
 "  <currentMemory>1048576</currentMemory>\n"\
 "  <vcpu>1</vcpu>\n"\
@@ -719,13 +719,13 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
         }
        sprintf(buf, g_vmtemplatexml, av[1], av[0]);
     }
-    else if(an==4) {
-        if(!getcombinedfileHash(2, &av[1], &uType, &size, rgHash)) {
+    else if(an==5) {
+        if(!getcombinedfileHash(2, &av[2], &uType, &size, rgHash)) {
             fprintf(g_logFile, "startLinuxvm error: getcombinedfilehash failed\n");
             return false;
         }
         // programname, kernel file name ramname distimagename
-        sprintf(buf, g_linuxtemplatexml, av[0], av[1], av[2], av[3]);
+        sprintf(buf, g_linuxtemplatexml, av[0], av[1], av[2], av[3], av[4]);
     }
     else {
         fprintf(g_logFile, "StartApp : wrong arguments\n");

@@ -1442,3 +1442,10 @@ add timer.c in Makefile in kvm
 grub-mkconfig
 update-grub
 
+GRUB_TIMEOUT="10" specifies the default timeout. 
+Change to anything you want. Very small values are not recommended. 
+Setting to -1 will make GRUB wait indefinitely until you manually 
+select an entry and hit Enter.
+
+apt-get install grub
+

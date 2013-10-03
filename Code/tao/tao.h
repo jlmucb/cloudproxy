@@ -148,9 +148,8 @@ public:
     byte*       m_hostEvidence;
 #ifdef TPMSUPPORT
     tpmSupport  m_oTpm;
-#else
-    linuxDeviceChannel  m_linuxmyHostChannel;
 #endif
+    linuxDeviceChannel  m_linuxmyHostChannel;
 
 public:
                 taoHostServices();

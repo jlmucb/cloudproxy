@@ -56,7 +56,7 @@ const char* g_myServiceName= "tcService.exe";
 
 #ifdef KVMGUESTOSTCSERVICE 
 const char* g_hostProvider= "/dev/ktciodd0";
-const char* g_serviceProvider= "/dev/ktciodd0";
+const char* g_serviceProvider= "/dev/tcioDD0";
 const u32   g_hostplatform= PLATFORMTYPEKVMHYPERVISOR;
 const u32   g_envplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
 const char* g_progName= "KvmGuest";
@@ -69,7 +69,7 @@ const char* g_myServiceName= "tcKvmGuestOSService.exe";
 #endif
 
 #ifdef HOSTEDLINUXTCSERVICE 
-const char* g_hostProvider= "/dev/ktciodd0";
+const char* g_hostProvider= "/dev/tcioDD0";
 const char* g_serviceProvider= "/dev/tcioDD0";
 const u32   g_hostplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
 const u32   g_envplatform= PLATFORMTYPEGUESTLINUX;
@@ -79,7 +79,7 @@ const char* g_logName= "tcGuestService.log";
 const char* g_hostsubDirectory= "GuestOS";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
 const char* g_clientsubDirectory= "TrustedOS";
-const char* g_myServiceName= "tcGuestService.exe";
+const char* g_myServiceName= "tcKvmGuestOsService.exe";
 #endif
 
 

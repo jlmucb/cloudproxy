@@ -35,10 +35,9 @@
 
 #ifdef TPMSUPPORT
 #include "TPMHostsupport.h"
-#else
+#endif
 extern int            g_szpolicykeySize;
 extern char           g_szXmlPolicyCert[];
-#endif
 
 #include "hashprep.h"
 #include "linuxHostsupport.h"
@@ -239,47 +238,55 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
             m_szPrivateSubjectName, m_szPrivateSubjectId);
 #endif
 
-    switch(type) {
-      default:
-      case PLATFORMTYPEHYPERVISOR:
-        return false;
-
-      case PLATFORMTYPEKVMHYPERVISOR:
-      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
-      case PLATFORMTYPELINUX:
-      case PLATFORMTYPEGUESTLINUX:
-      case PLATFORMTYPELINUXAPP:
-        if(!m_fileNames.initNames(directory, subdirectory)) {
-            fprintf(g_logFile, "taoEnvironment::EnvInit: cant init names\n");
-            return false;
-        }
-#ifdef TEST
-        fprintf(g_logFile, "taoEnvironment::EnvInit, file names\n");
-        m_fileNames.printAll();
-        fflush(g_logFile);
-#endif
-        // open linuxService
-        if(!m_linuxEnvChannel.initLinuxService(serviceProvider)) {
-            fprintf(g_logFile, "taoEnvironment::EnvInit: cant init linuxService\n");
-            return false;
-        }
-    }
-#ifdef TEST1
-    fprintf(g_logFile, "taoEnvironment::EnvInit, linux service initialized\n");
-    fflush(g_logFile);
-#endif
-
+    // Host should already be initialized
     if(host==NULL) {
         fprintf(g_logFile, "taoEnvironment::EnvInit: no host\n");
         return false;
     }
     m_myHost= host;
 
+    // initialize file names
+    if(!m_fileNames.initNames(directory, subdirectory)) {
+        fprintf(g_logFile, "taoEnvironment::EnvInit: cant init names\n");
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "taoEnvironment::EnvInit, file names\n");
+    m_fileNames.printAll();
+    fflush(g_logFile);
+#endif
+
+    switch(type) {
+      default:
+      case PLATFORMTYPEHYPERVISOR:
+        return false;
+
+      case PLATFORMTYPEKVMHYPERVISOR:
+        // service provider is kvmtciodd
+      case PLATFORMTYPELINUX:
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
+        // service provider is tciodd
+        if(!m_linuxEnvChannel.initLinuxService(serviceProvider)) {
+            fprintf(g_logFile, "taoEnvironment::EnvInit: cant init linuxService\n");
+            return false;
+        }
+        break;
+      case PLATFORMTYPELINUXAPP:
+        // direct call, nothing to open
+        break;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "taoEnvironment::EnvInit, linux service initialized %s\n",
+            serviceProvider);
+    fflush(g_logFile);
+#endif
+
+    // get policy key
     if(!GetPolicyKey()) {
         fprintf(g_logFile, "taoEnvironment::EnvInit: cant get policy key\n");
         return false;
     }
-#ifdef TEST1
+#ifdef TEST
         fprintf(g_logFile, "taoEnvironment::EnvInit, policy key initialized\n");
         fflush(g_logFile);
 #endif
@@ -346,6 +353,13 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
             return false;
         }
     }
+#ifdef TEST
+    fprintf(g_logFile, "EnvInit succeeded\n");
+    if(m_linuxEnvChannel.m_fChannelInitialized) {
+        fprintf(g_logFile, "EnvInit channel: %d\n", m_linuxEnvChannel.m_reqChannel.m_fd);
+    }
+    fflush(g_logFile);
+#endif
 
     m_envValid= true;
     return true;
@@ -657,10 +671,9 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
 
 bool taoEnvironment::GetPolicyKey()
 {
-    byte    buf[4096];
-
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::GetPolicyKey()\n");
+    fprintf(g_logFile, "taoEnvironment::GetPolicyKey(), environment: %d\n",
+            m_envType);
     fflush(g_logFile);
 #endif
     switch(m_envType) {
@@ -672,39 +685,21 @@ bool taoEnvironment::GetPolicyKey()
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPELINUX:
       case PLATFORMTYPEGUESTLINUX:
-        m_sizepolicyKey= 4096;
-        if(!m_linuxEnvChannel.getpolicykeyfromDeviceDriver(&m_policyKeyType, &m_sizepolicyKey, buf)) {
-            fprintf(g_logFile, "taoEnvironment::GetPolicyKey, getpolicykeyfromDeviceDriver failed\n");
-            return false;
-        }
-        m_policyKey= (byte*) malloc(m_sizepolicyKey);
-        if(m_policyKey==NULL) {
-            fprintf(g_logFile, "taoEnvironment::GetPolicyKey, malloc failed\n");
-            return false;
-        }
-        memcpy(m_policyKey, buf, m_sizepolicyKey);
-        m_policyKeyValid= true;
-        return true;
-#ifndef TPMSUPPORT
-     case PLATFORMTYPELINUXAPP:
+      case PLATFORMTYPELINUXAPP:
+#ifdef TEST
+        fprintf(g_logFile, "policy key from image %d\n", g_szpolicykeySize);
+        fflush(g_logFile);
+#endif
         m_policyKey= (byte*) malloc(g_szpolicykeySize);
         if(m_policyKey==NULL) {
             fprintf(g_logFile, "taoEnvironment::GetPolicyKey, malloc failed\n");
             return false;
         }
-#ifdef TEST
-        fprintf(g_logFile, "taoEnvironment::GetPolicyKey linux %ld %ld\n",
-                (long int)&g_szpolicykeySize, (long int) g_szXmlPolicyCert);
-        fprintf(g_logFile, "taoEnvironment::GetPolicyKey linux\n%s\n",
-                g_szXmlPolicyCert);
-        fflush(g_logFile);
-#endif
         memcpy(m_policyKey, (byte*)g_szXmlPolicyCert, g_szpolicykeySize);
         m_sizepolicyKey= g_szpolicykeySize;
         m_policyKeyType= EVIDENCECERT;
         m_policyKeyValid= true;
         return true;
-#endif
     }
 }
 

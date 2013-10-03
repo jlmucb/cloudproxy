@@ -1,10 +1,10 @@
 sudo bash
+cd ~/jlmcrypt
 /etc/init.d/trousers stop
 chown jlm /dev/tpm0
-cd ~/jlmcrypt
+chmod 0777 /dev/tcioDD0
 # only do the following if the drivers is not loaded
 insmod tcioDD.ko
-chmod 0777 /dev/tcioDD0
 ./keyNegoServer.exe
 ./tcService.exe -initKeys
 ./tcService.exe &

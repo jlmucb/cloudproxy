@@ -1425,6 +1425,8 @@ int main(int an, char** av)
    
 #ifdef TEST
     fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
+    g_myService.m_procTable.print();
+    fflush(g_logFile);
 #endif
 
     while(!g_fterminateLoop) {
@@ -1443,6 +1445,7 @@ int main(int an, char** av)
 
 #ifdef TEST
     fprintf(g_logFile, "tcService main: tcService ending\n");
+     g_myService.m_procTable.print();
 #endif
 
 cleanup:

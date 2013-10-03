@@ -936,15 +936,15 @@ TCSERVICE_RESULT tcServiceInterface::UnsealFor(int procid, int sizeIn, byte* rgI
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgIn, 
-                            int* psizeOut, byte* rgOut)
+TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, 
+                            byte* rgIn, int* psizeOut, byte* rgOut)
 {
     byte    rgHash[32];
     int     hashSize= 32;
 
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
-#ifdef TCTEST
         fprintf(g_logFile, "tcServiceInterface::AttestFor lookup failed\n");
+#ifdef TEST
         m_procTable.print();
 #endif
         return TCSERVICE_RESULT_FAILED;
@@ -955,10 +955,11 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
 #endif
     if(!m_trustedHome.Attest(hashSize, rgHash, sizeIn, rgIn,
                        psizeOut, rgOut)) {
+        fprintf(g_logFile, "tcServiceInterface::AttestFor trustedHome AtitestFor failed\n");
         return TCSERVICE_RESULT_FAILED;
     }
 #ifdef TEST
-        fprintf(g_logFile, "tcServiceInterface::AttestFor new output buf size\n",
+        fprintf(g_logFile, "tcServiceInterface::AttestFor succeeded new output buf size\n",
                *psizeOut);
 #endif
     return TCSERVICE_RESULT_SUCCESS;

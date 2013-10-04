@@ -51,10 +51,7 @@ void printVirtlibError()
 int startKvmVM(const char* systemname, const char* xmldomainstring, 
                 virConnectPtr* ppvmconnection,
                 virDomainPtr*  ppvmdomain)
-
-
 // returns -1 if error, vmid otherwise
-
 {
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM: %s\n%s\n",
@@ -132,15 +129,14 @@ int startKvmVM(const char* systemname, const char* xmldomainstring,
 #endif
     vmid= (int)virDomainGetID(*ppvmdomain);
     return vmid;
-#else
 
+#else       // KVMTCSERVICE
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM service code NOT included\n");
     fflush(g_logFile);
 #endif
-
     return -1;
-#endif
+#endif      // KVMTCSERVICE
 }
 
 

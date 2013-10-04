@@ -9,22 +9,26 @@
 extern int kvmtciodd_serviceInitialized;
 
 // the kvmtciodd device
-extern struct kvmtciodd_dev *kvmtciodd_device;
+extern struct kvmtciodd_dev*    kvmtciodd_device;
 
 // the request queue and its semaphore
-extern struct semaphore    kvmtciodd_reqserviceqsem; 
-extern struct kvmtciodd_Qent* kvmtciodd_reqserviceq;
+extern struct semaphore         kvmtciodd_reqserviceqsem; 
+extern struct kvmtciodd_Qent*   kvmtciodd_reqserviceq;
 
 // the response queue and its semaphore
-extern struct semaphore    kvmtciodd_resserviceqsem; 
-extern struct kvmtciodd_Qent* kvmtciodd_resserviceq;
+extern struct semaphore         kvmtciodd_resserviceqsem; 
+extern struct kvmtciodd_Qent*   kvmtciodd_resserviceq;
 
 int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
-    struct kvmtciodd_dev*  dev= kvmtciodd_device;
-    ssize_t             retval= 0;
-    // TODO(tmroeder): find a better id, since this might not be unique across virtual machines
-    int                 pid= vcpu->vcpu_id;
-    struct kvmtciodd_Qent* pent= NULL;
+    struct kvmtciodd_dev*   dev= kvmtciodd_device;
+    ssize_t                 retval= 0;
+#if 0
+    // TODO(tmroeder): find a better id
+    int                     pid= vcpu->vcpu_id;
+#else
+    int                     pid= pid_nr(vcpu->pid);
+#endif
+    struct kvmtciodd_Qent*  pent= NULL;
     printk("vmdd: in vmdd_read with pid %d\n", pid);
 
     if (!kvmtciodd_serviceInitialized) {
@@ -38,7 +42,7 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
     // if something is on the response queue, fill buffer, otherwise return
     if (down_interruptible(&kvmtciodd_resserviceqsem) == 0) {
       printk("kvmkvmtciodd: read looking on response queue for %d\n",
-	     pid);
+             pid);
       pent = kvmtciodd_findQentbypid(kvmtciodd_resserviceq, pid);
       up(&kvmtciodd_resserviceqsem);
     }
@@ -58,10 +62,10 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
       struct x86_exception e;
       printk("vmdd_read: trying to write to the guest\n");
       if (kvm_write_guest_virt_system(&vcpu->arch.emulate_ctxt, buf,
-				      pent->m_data, pent->m_sizedata, &e)) {
-	kvm_inject_page_fault(vcpu, &e);
-	printk("vmdd_read: couldn't read; injected page fault\n");
-	return -EFAULT;
+                                      pent->m_data, pent->m_sizedata, &e)) {
+        kvm_inject_page_fault(vcpu, &e);
+        printk("vmdd_read: couldn't read; injected page fault\n");
+        return -EFAULT;
       }
 
       printk("vmdd_read: read %d bytes\n", pent->m_sizedata);
@@ -74,7 +78,7 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
 
     if (down_interruptible(&kvmtciodd_resserviceqsem) == 0) {
         kvmtciodd_removeQent(&kvmtciodd_resserviceq, pent);
-	printk("vmdd_read: deleting read request from the queue\n");
+        printk("vmdd_read: deleting read request from the queue\n");
         // erase and free entry and data
         if(pent->m_data!=NULL) {
             memset(pent->m_data, 0, pent->m_sizedata);
@@ -93,14 +97,17 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
 }
 
 int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
-    struct kvmtciodd_dev*      dev= kvmtciodd_device;
+    struct kvmtciodd_dev*   dev= kvmtciodd_device;
     ssize_t                 retval= -ENOMEM;
     byte*                   databuf= NULL;
-    struct kvmtciodd_Qent*     pent= NULL;
+    struct kvmtciodd_Qent*  pent= NULL;
     tcBuffer*               pCBuf= NULL;
-    // TODO(tmroeder): find out if this is the right representation
-    // for the VM/VCPU combination
+    // TODO: is this the right pid?
+#if 0
     int                     pid= vcpu->vcpu_id;
+#else
+    int                     pid= pid_nr(vcpu->pid);
+#endif
     struct x86_exception    e;
 
     printk("kvmkvmtciodd: write %d for %d\n", (int)count, pid);
@@ -130,7 +137,7 @@ int vmdd_write(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
     printk("vmdd_write: Trying to read from guest memory\n");
     // read the memory from the guest and propagate the fault if there is one
     if (kvm_read_guest_virt(&vcpu->arch.emulate_ctxt, buf, databuf,
-				   count, &e)) {
+                                   count, &e)) {
       kvm_inject_page_fault(vcpu, &e);
       printk("vmdd_write: failed to read from guest memory; injected page fault\n");
       return -EFAULT;

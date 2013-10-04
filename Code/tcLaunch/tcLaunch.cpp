@@ -61,6 +61,73 @@ int         g_myPid;
 
 // ------------------------------------------------------------------------
 
+#define BUFSIZE 2048
+#define NAMESIZE 256
+
+char *nextline(char* start, char* end)
+{
+    while(start<end) {
+        if(*start=='\n') {
+            start++;
+            if(start<end && *start!='\0')
+                return start;
+            else
+                return NULL;
+        } 
+        start++;
+    }
+    return NULL;
+}
+
+
+int  getmysyspid(const char* name)
+{
+    char    buf[BUFSIZE];
+    char    fileName[256];
+    char    line[BUFSIZE];
+    int     mypid= getpid();
+    int     newpid= -1;
+    int     size= -1;
+    char*   beginline= line;
+
+    sprintf(fileName, "/home/jlm/jlmcrypt/KvmHost/tmp%d.tmp", mypid);
+    sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",                                   
+            name, fileName);
+#ifdef TEST
+    fprintf(g_logFile, "getmysyspid command: %s\n", buf);
+    fflush(g_logFile);
+#endif
+    if(system(buf)<0) {
+        fprintf(g_logFile, "getmysyspid: system command failed\n");
+        return -1;
+    }
+    // open the logfile and get the pid
+    int fd= open(fileName, O_RDONLY);
+    if(fd<0) {
+        fprintf(g_logFile, "getmysyspid: cant open file\n");
+        return -1;
+    }
+    if((size=read(fd, line, BUFSIZE))<0) {
+        fprintf(g_logFile, "getmysyspid: read failed\n");
+        return -1;
+    }
+    while(beginline!=NULL) {
+        sscanf(beginline, "%d", &newpid);
+        if(newpid!=mypid)
+            break;
+        newpid= -1;
+        beginline= nextline(beginline, &line[size-1]);
+    }
+    close(fd);
+#ifndef TEST
+    unlink(fileName);
+#endif
+    return newpid;
+}
+
+
+// ------------------------------------------------------------------------
+
 
 void tcBufferprint(tcBuffer* p)
 {
@@ -360,6 +427,10 @@ int main(int an, char** av)
                         handle);
     else
         fprintf(g_logFile, "tcLaunch: program not started due to error\n");
+#ifdef TEST
+    int pid= getmysyspid(av[2]);
+    printf("PID of started process: %d\n", pid);
+#endif
     fflush(g_logFile);
     close(fd);
     closeLog();

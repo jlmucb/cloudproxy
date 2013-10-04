@@ -672,7 +672,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
     u32             uType= 0;
     int             size= SHA256DIGESTBYTESIZE;
     byte            rgHash[SHA256DIGESTBYTESIZE];
-    int             vmid= 0;
+    int             pid= 0;
     int             i;
     int             uid= -1;
     const char*     szsys= "qemu:///system";
@@ -752,21 +752,21 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
        virConnectPtr    vmconnection= NULL;
        virDomainPtr     vmdomain= NULL;
 
-       if((vmid=startKvmVM(av[0], szsys,  buf, &vmconnection, &vmdomain))<0) {
+       if((pid=startKvmVM(av[1], szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "StartApp : cant start VM\n");
            return TCSERVICE_RESULT_FAILED;
        }
 
        // record procid and hash
-      if(!g_myService.m_procTable.addprocEntry(vmid, av[0], 0, (char**) NULL, 
+      if(!g_myService.m_procTable.addprocEntry(pid, av[0], 0, (char**) NULL, 
                                    size, rgHash, &vmconnection, &vmdomain)) {
            fprintf(g_logFile, "StartApp: cant add to proc table\n");
            return TCSERVICE_RESULT_FAILED;
        }
     }
 #ifdef TEST
-    fprintf(g_logFile, "\nProc table after create. vmid: %d, serviceid: %d\n", 
-            vmid, g_servicepid);
+    fprintf(g_logFile, "\nProc table after create. pid: %d, serviceid: %d\n", 
+            pid, g_servicepid);
     g_myService.m_procTable.print();
     fflush(g_logFile);
 #endif
@@ -775,7 +775,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
 #endif
 
     *poutsize= sizeof(int);
-    *((int*)out)= vmid;
+    *((int*)out)= pid;
     return TCSERVICE_RESULT_SUCCESS;
 }
 #endif

@@ -30,9 +30,10 @@
 #define _KVMHOSTSUPPORT__H
 
 
-int startKvmVM(const char* systemname, const char* xmldomainstring,
-                virConnectPtr* ppvmconnection,
-                virDomainPtr*  ppvmdomain);
+int startKvmVM(const char* programname, const char* systemname, 
+               const char* xmldomainstring,
+               virConnectPtr* ppvmconnection,
+               virDomainPtr*  ppvmdomain);
 #endif
 
 

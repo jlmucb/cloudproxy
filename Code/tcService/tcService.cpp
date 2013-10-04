@@ -752,7 +752,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
        virConnectPtr    vmconnection= NULL;
        virDomainPtr     vmdomain= NULL;
 
-       if((vmid=startKvmVM(szsys,  buf, &vmconnection, &vmdomain))<0) {
+       if((vmid=startKvmVM(av[0], szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "StartApp : cant start VM\n");
            return TCSERVICE_RESULT_FAILED;
        }

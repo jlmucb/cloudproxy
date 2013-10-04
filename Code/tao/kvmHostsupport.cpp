@@ -21,11 +21,15 @@
 #include "jlmTypes.h"
 #include "logging.h"
 #include "kvmHostsupport.h"
+
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
+#include <time.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 
 
 //  Config
@@ -38,6 +42,71 @@
 // -------------------------------------------------------------------------
 
 
+#define BUFSIZE 2048
+#define NAMESIZE 256
+
+char *nextline(char* start, char* end)
+{
+    while(start<end) {
+        if(*start=='\n') {
+            start++;
+            if(start<end && *start!='\0')
+                return start;
+            else
+                return NULL;
+        }
+        start++;
+    }
+    return NULL;
+}
+
+
+int  getmysyspid(const char* name)
+{
+    char    buf[BUFSIZE];
+    char    fileName[256];
+    char    line[BUFSIZE];
+    int     mypid= getpid();
+    int     newpid= -1;
+    int     size= -1;
+    char*   beginline= line;
+
+    sprintf(fileName, "/home/jlm/jlmcrypt/KvmHost/tmp%d.tmp", mypid);
+    sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",
+            name, fileName);
+#ifdef TEST
+    fprintf(g_logFile, "getmysyspid command: %s\n", buf);
+    fflush(g_logFile);
+#endif
+    if(system(buf)<0) {
+        fprintf(g_logFile, "getmysyspid: system command failed\n");
+        return -1;
+    }
+    // open the logfile and get the pid
+    int fd= open(fileName, O_RDONLY);
+    if(fd<0) {
+        fprintf(g_logFile, "getmysyspid: cant open file\n");
+        return -1;
+    }
+    if((size=read(fd, line, BUFSIZE))<0) {
+        fprintf(g_logFile, "getmysyspid: read failed\n");
+        return -1;
+    }
+    while(beginline!=NULL) {
+        sscanf(beginline, "%d", &newpid);
+        if(newpid!=mypid)
+            break;
+        newpid= -1;
+        beginline= nextline(beginline, &line[size-1]);
+    }
+    close(fd);
+#ifndef TEST
+    unlink(fileName);
+#endif
+    return newpid;
+}
+
+
 void printVirtlibError()
 {
     virError*    err;
@@ -48,10 +117,10 @@ void printVirtlibError()
 }
 
 
-int startKvmVM(const char* systemname, const char* xmldomainstring, 
+int startKvmVM(const char* programname, const char* systemname, const char* xmldomainstring, 
                 virConnectPtr* ppvmconnection,
                 virDomainPtr*  ppvmdomain)
-// returns -1 if error, vmid otherwise
+// returns -1 if error, pid otherwise
 {
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM: %s\n%s\n",
@@ -60,7 +129,7 @@ int startKvmVM(const char* systemname, const char* xmldomainstring,
 #endif
 
 #ifdef KVMTCSERVICE
-    int     vmid= 0;
+    int     pid= -1;
 
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM service code included\n");
@@ -115,6 +184,7 @@ int startKvmVM(const char* systemname, const char* xmldomainstring,
     fflush(g_logFile);
 #endif
 #ifdef TEST
+    int     vmid= 0;
     int     ndom= virConnectNumOfDomains(*ppvmconnection);
     fprintf(g_logFile, "%d domains\n", ndom);
 
@@ -126,9 +196,15 @@ int startKvmVM(const char* systemname, const char* xmldomainstring,
         fprintf(g_logFile, "\t%d\n", rgactiveDomains[i]);
     }
     fflush(g_logFile);
-#endif
     vmid= (int)virDomainGetID(*ppvmdomain);
-    return vmid;
+    fprintf(g_logFile, "vmid: %d\n", vmid);
+#endif
+    pid= getmysyspid(programname);
+#ifdef TEST
+    fprintf(g_logFile, "startKvm: programname: %s, pid: %d\n", programname, pid);
+    fflush(g_logFile);
+#endif
+    return pid;
 
 #else       // KVMTCSERVICE
 #ifdef TEST

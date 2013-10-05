@@ -1175,7 +1175,10 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         uType= SHA256HASH;
 #if 1
         // TODO: Hack guest service doesn't know its hash
-        pid= origprocid;
+        if(g_myService.m_trustedHome.m_envType==PLATFORMTYPEKVMHYPERVISOR) {
+        	fprintf(g_logFile, "tcService KVMHypervisor Hack\n");
+            pid= origprocid;
+        }
 #endif
         if(!g_myService.m_procTable.gethashfromprocId(pid, &sizehash, hash)) {
 #ifdef TEST

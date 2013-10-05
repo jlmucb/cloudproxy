@@ -122,7 +122,8 @@ int  getmysyspid(const char* name)
 #ifndef TEST
     unlink(fileName);
 #endif
-    return newpid;
+    // TODO:  Another hack, the one we want is the kvm-pit one
+    return newpid+2;
 }
 
 

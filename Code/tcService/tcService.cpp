@@ -1175,7 +1175,9 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         uType= SHA256HASH;
         if(!g_myService.m_procTable.gethashfromprocId(pid, &sizehash, hash)) {
 #ifdef TEST
-            fprintf(g_logFile, "hash not found setting to 0\n");
+            fprintf(g_logFile, 
+                    "hash not found setting to 0; pid: %d, procid: %d, origpid: %d\n",
+                    pid, procid, origprocid);
 #endif
             memset(hash, 0, sizehash);
         }

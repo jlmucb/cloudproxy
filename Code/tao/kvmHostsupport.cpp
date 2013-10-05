@@ -98,6 +98,8 @@ int  getmysyspid(const char* name)
         return -1;
     }
     while(beginline!=NULL) {
+	// the following line is a cludge.  First one is tcLaunch.
+        beginline= nextline(beginline, &line[size-1]);
         sscanf(beginline, "%d", &newpid);
         if(newpid!=mypid)
             break;
@@ -108,7 +110,8 @@ int  getmysyspid(const char* name)
 #ifndef TEST
     unlink(fileName);
 #endif
-    return newpid;
+    // TODO: hack fix later (see tcLaunch)
+    return newpid+2;
 }
 
 

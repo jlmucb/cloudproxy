@@ -3,5 +3,5 @@
 #    and init the service.  TODO: take argumments
 #
 chmod 0777 /dev/*tcio*
-./tcKvmGuestOsService.exe -initKeys
-
+echo "Starting Service"
+./tcKvmGuestOsService.exe 

@@ -1,0 +1,35 @@
+Running all the tests
+=====================
+
+Make the directory structure on the main machine and the guest
+machine.  I assume the device drivers are already in the kernel
+and that all the non-Hv hosted OS's have been tbooted.  In addition,
+I assume the tests are set up as specified elsewhere.
+
+Copy all the executables to the Guest.
+
+For the original fileProxy
+
+1. Run sufpInit.sh as superuser
+
+2. Reboot
+
+3. Run sufpPrep.sh as superuser
+
+4. Run runfp.sh
+
+
+For the hosted fileProxy.
+
+1. Run suInitHost.sh as superuser
+
+2. Reboot
+
+3. Run suHostPrep.sh as superuser
+   This starts virt-manager and the VM.  Open the console
+   to the VM quickly so you can cause the Grub menu to 
+   appear and boot the right OS.
+
+4. Run runguestfp.sh
+
+

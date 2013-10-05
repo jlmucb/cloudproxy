@@ -1171,15 +1171,16 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         g_myService.m_procTable.print();
         fflush(g_logFile);
 #endif
-        sizehash= SHA256DIGESTBYTESIZE;
-        uType= SHA256HASH;
-#if 1
-        // TODO: Hack guest service doesn't know its hash
+        // When the tcService for a guest calls, it doesn't know its
+        // id (the pid of the KVM/QEMU process).  It is known to the
+        // driver that forwards the message so we replace it here
         if(g_myService.m_trustedHome.m_envType==PLATFORMTYPEKVMHYPERVISOR) {
-        	fprintf(g_logFile, "tcService KVMHypervisor Hack\n");
             pid= origprocid;
         }
-#endif
+
+        // get hash
+        sizehash= SHA256DIGESTBYTESIZE;
+        uType= SHA256HASH;
         if(!g_myService.m_procTable.gethashfromprocId(pid, &sizehash, hash)) {
 #ifdef TEST
             fprintf(g_logFile, 
@@ -1280,7 +1281,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, TCSERVICETERMINATE\n");
 #endif
-#if 0
+#if 1
         g_myService.m_procTable.removeprocEntry(origprocid);
 #endif
 #ifdef TEST

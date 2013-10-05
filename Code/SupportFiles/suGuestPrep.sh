@@ -4,4 +4,4 @@
 #
 chmod 0777 /dev/*tcio*
 echo "Starting Service"
-./tcKvmGuestOsService.exe 
+./tcKvmGuestOsService.exe &

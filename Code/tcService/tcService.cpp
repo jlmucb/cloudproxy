@@ -1173,6 +1173,10 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #endif
         sizehash= SHA256DIGESTBYTESIZE;
         uType= SHA256HASH;
+#if 1
+        // TODO: Hack guest service doesn't know its hash
+        pid= origprocid;
+#endif
         if(!g_myService.m_procTable.gethashfromprocId(pid, &sizehash, hash)) {
 #ifdef TEST
             fprintf(g_logFile, 

@@ -199,6 +199,16 @@ bool taoHostServices::StartHostedProgram(int an, char** av, int* phandle)
 
 bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 {
+#ifdef TEST
+    if(m_hostValid)
+        fprintf(g_logFile, "taoHostServices::GetHostedMeasurement, mytype: %d, valid\n",
+            m_hostType);
+    else
+        fprintf(g_logFile, "taoHostServices::GetHostedMeasurement, mytype: %d, invalid\n",
+            m_hostType);
+
+    fflush(g_logFile);
+#endif
     switch(m_hostType) {
       default:
       case PLATFORMTYPENONE:

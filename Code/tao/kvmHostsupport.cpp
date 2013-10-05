@@ -107,7 +107,7 @@ int  getmysyspid(const char* name)
         beginline= nextline(beginline, &line[size-1]);
     }
     close(fd);
-#ifndef TEST
+#ifndef TEST1
     unlink(fileName);
 #endif
     // TODO: hack fix later (see tcLaunch)
@@ -161,7 +161,7 @@ int startKvmVM(const char* programname, const char* systemname, const char* xmld
     fflush(g_logFile);
 #endif
 
-#ifdef TEST
+#ifdef TEST1
     char*   szCap= virConnectGetCapabilities(*ppvmconnection);
     fprintf(g_logFile, "VM Host capabilities:\n%s\n", szCap);
     fflush(g_logFile);

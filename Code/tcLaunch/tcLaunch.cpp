@@ -119,7 +119,7 @@ int  getmysyspid(const char* name)
         beginline= nextline(beginline, &line[size-1]);
     }
     close(fd);
-#ifndef TEST
+#ifndef TEST1
     unlink(fileName);
 #endif
     // TODO:  Another hack, the one we want is the kvm-pit one

@@ -78,10 +78,15 @@ int  getmysyspid(const char* name)
     fprintf(g_logFile, "getmysyspid command: %s\n", buf);
     fflush(g_logFile);
 #endif
+#if 0
     if(system(buf)<0) {
         fprintf(g_logFile, "getmysyspid: system command failed\n");
         return -1;
     }
+#else
+    size= system(buf);
+    size= -1;
+#endif
     // open the logfile and get the pid
     int fd= open(fileName, O_RDONLY);
     if(fd<0) {

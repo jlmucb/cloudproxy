@@ -29,7 +29,7 @@ int vmdd_read(struct kvm_vcpu *vcpu, gva_t buf, ssize_t count) {
     int                     pid= pid_nr(vcpu->pid);
 #endif
     struct kvmtciodd_Qent*  pent= NULL;
-    printk("vmdd: in vmdd_read with pid %d\n", pid);
+    printk("vmdd: in vmdd_read with pid %d, vcpuid: %d\n", pid, vcpu->pid);
 
     if (!kvmtciodd_serviceInitialized) {
       printk("vmdd: kvmtciodd not initialized\n");

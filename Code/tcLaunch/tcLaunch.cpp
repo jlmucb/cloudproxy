@@ -90,7 +90,7 @@ int  getmysyspid(const char* name)
     int     size= -1;
     char*   beginline= line;
 
-    sprintf(fileName, "/home/jlm/jlmcrypt/KvmHost/tmp%d.tmp", mypid);
+    sprintf(fileName, "/home/jlm/jlmcrypt/KvmHost/tmpLaunch%d.tmp", mypid);
     sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",                                   
             name, fileName);
 #ifdef TEST

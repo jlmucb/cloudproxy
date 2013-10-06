@@ -49,7 +49,7 @@ $(E)/fileServer.exe: $(dobjs) $(B)/fileServer.o
 
 $(E)/guestfileServer.exe: $(dobjs) $(B)/guestfileServer.o
 	@echo "guestfileServer"
-	$(LINK) -o $(E)/guestfileServer.exe $(dobjs) $(B)/fileServer.o $(LDFLAGS) -lpthread
+	$(LINK) -o $(E)/guestfileServer.exe $(dobjs) $(B)/guestfileServer.o $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
 	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp

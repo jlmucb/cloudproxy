@@ -363,6 +363,7 @@ int main(int an, char** av)
 {
     int         i;
     bool        fSucceed= false;
+    bool        fKvmCall= false;
 
 #ifdef  TEST
     initLog(NULL);
@@ -383,14 +384,17 @@ int main(int an, char** av)
     }
     if(strcmp(av[1],"-KVMImage")==0) {
         g_tcioDDName= "/dev/kvmtciodd0";
+        fKvmCall= true;
         fSucceed= true;
     }
     if(strcmp(av[1],"-KVMLinux")==0) {
         g_tcioDDName= "/dev/kvmtciodd0";
+        fKvmCall= true;
         fSucceed= true;
     }
     else if(strcmp(av[1],"-KVMGuest")==0) {
         g_tcioDDName= "/dev/ktciodd0";
+        fKvmCall= true;
         fSucceed= true;
     }
     else if(strcmp(av[1],"-LinuxGuest")==0) {
@@ -429,8 +433,10 @@ int main(int an, char** av)
     else
         fprintf(g_logFile, "tcLaunch: program not started due to error\n");
 #ifdef TEST
-    int pid= getmysyspid(av[2]);
-    printf("PID of started process: %d\n", pid);
+    if(fKvmCall) {
+        int pid= getmysyspid(av[2]);
+        printf("PID of started process: %d\n", pid);
+    }
 #endif
     fflush(g_logFile);
     close(fd);

@@ -504,11 +504,19 @@ bool fileServer::initServer(const char* configDirectory)
             throw "fileServer::Init: can't initcrypto\n";
 
         // init Host and Environment
+#ifndef LINUXGUESTSERVICE
         m_taoHostInitializationTimer.Start();
+#endif
         if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
                             g_hostsubDirectory, parameterCount, parameters))
             throw "fileServer::Init: can't init host\n";
+#ifdef LINUXGUESTSERVICE
+        printf("Finished HostInit\n");
+        return false;
+#endif
+#ifndef LINUXGUESTSERVICE
         m_taoHostInitializationTimer.Stop();
+#endif
 
 #ifdef TEST
         fprintf(g_logFile, "fileServer::Init: after HostInit, pid: %d\n",
@@ -516,12 +524,16 @@ bool fileServer::initServer(const char* configDirectory)
 #endif
 
         // init environment
+#ifndef LINUXGUESTSERVICE
         m_taoEnvInitializationTimer.Start();
+#endif
         if(!m_tcHome.EnvInit(g_envplatform, "fileServer", DOMAIN, g_hostDirectory,
                              "fileServer", &m_host, g_serviceProvider, 0, NULL)) {
             throw "fileServer::Init: can't init environment\n";
         }
+#ifndef LINUXGUESTSERVICE
         m_taoEnvInitializationTimer.Stop();
+#endif
 
 #ifdef TEST1
         fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
@@ -755,12 +767,12 @@ int main(int an, char** av)
     oServer.m_encType= DEFAULTENCRYPT;
 #endif
 
-    // JLM: remover initProg.  Replaced by tcLaunch.
+    // JLM: removed initProg.  Replaced by tcLaunch.
     initLog("fileServer.log");
 
 #ifdef TEST
-        fprintf(g_logFile, "fileServer main: measured server about to init server\n");
-        fflush(g_logFile);
+    fprintf(g_logFile, "fileServer main: measured server about to init server\n");
+    fflush(g_logFile);
 #endif
 
     try {

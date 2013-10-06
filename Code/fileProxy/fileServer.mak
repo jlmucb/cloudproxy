@@ -52,10 +52,10 @@ $(E)/guestfileServer.exe: $(dobjs) $(B)/guestfileServer.o
 	$(LINK) -o $(E)/guestfileServer.exe $(dobjs) $(B)/fileServer.o $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
-	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D LINUXTCSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
 
 $(B)/guestfileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
-	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -D HOSTEDTCSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/guestfileServer.o $(S)/fileServer.cpp
+	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/guestfileServer.o $(S)/fileServer.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp

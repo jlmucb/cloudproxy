@@ -41,12 +41,12 @@ const char* g_hostsubDirectory= "TrustedOS";
 #ifdef LINUXGUESTSERVICE
 const u32   g_hostplatform= PLATFORMTYPEGUESTLINUX;
 const u32   g_envplatform= PLATFORMTYPELINUXAPP;
-const char* g_hostProvider= "/dev/ktciodd0";
+const char* g_hostProvider= "/dev/tcioDD0";
 const char* g_serviceProvider= "/dev/tcioDD0";
-const char* g_serviceexecFile= "./tcGuestService.exe";
+const char* g_serviceexecFile= "./tcGuestOsService.exe";
 const char* g_logName= "tcGuestService.log";
 const char* g_hostDirectory= "/home/jlm/jlmcrypt";
-const char* g_hostsubDirectory= "TrustedOS";
+const char* g_hostsubDirectory= "GuestOS";
 #endif
 
 

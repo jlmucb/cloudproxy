@@ -7,6 +7,7 @@
 chown jlm /dev/tpm0
 chmod 0777 /dev/*tcio*
 chown jlm /var/lib/libvirt/images/*.img
+su jlm
 cd ~/jlmcrypt
 echo "Starting keyNegoServer"
 ./keyNegoServer.exe &

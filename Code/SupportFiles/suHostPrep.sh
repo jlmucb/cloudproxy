@@ -8,6 +8,7 @@ echo "Fixing permissions"
 chown jlm /dev/tpm0
 chmod 0777 /dev/*tcio*
 chown jlm /var/lib/libvirt/images/*.img
+su jlm
 virt-manager
 cd ~/jlmcrypt
 echo "Starting Service"

@@ -4,6 +4,7 @@
 #
 echo "Fixing permissions"
 chmod 0777 /dev/*tcio*
+su jlm
 echo "Starting keyNegoServer"
 ./keyNegoServer.exe &
 echo "Starting Service"

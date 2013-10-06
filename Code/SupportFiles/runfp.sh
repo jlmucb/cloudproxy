@@ -6,6 +6,7 @@ echo "fileProxy"
 cd ~/jlmcrypt
 echo "Starting keyNegoServer"
 ./keyNegoServer.exe &
+sleep 2s
 echo "Starting fileServer"
 ./tcLaunch.exe -LinuxHost ./fileServer.exe
 sleep 2s

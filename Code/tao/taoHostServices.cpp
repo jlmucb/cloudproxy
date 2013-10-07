@@ -225,10 +225,14 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
         return false;
 #endif
 
+      case PLATFORMTYPEGUESTLINUX:
+        fprintf(g_logFile, "m_linuxmyHostChannel %d, %d\n", 
+                m_linuxmyHostChannel.m_fChannelInitialized,
+                m_linuxmyHostChannel.m_reqChannel.m_fd);
+        return false;   // DEBUG
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
-      case PLATFORMTYPEGUESTLINUX:
 #ifndef TPMSUPPORT
         return m_linuxmyHostChannel.getHostedMeasurementfromDeviceDriver(getpid(), ptype, 
                                                                          psize, buf);
@@ -244,6 +248,7 @@ bool taoHostServices::GetAncestorCertificates(int* psize, byte** ppbuf)
 {
     int     n= 4096;
     byte    buf[4096];
+        fprintf(g_logFile, "taoHostServices::GetHostedMeasurement: TPM not supported\n");
 
     if(!m_hostEvidenceValid) {
         if(!getBlobfromFile(m_fileNames.m_szAncestorEvidence, buf, &n)) {

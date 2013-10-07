@@ -1281,7 +1281,10 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, TCSERVICETERMINATE\n");
 #endif
+#if 0
+        // should this be proc-id?
         g_myService.m_procTable.removeprocEntry(origprocid);
+#endif
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, removeprocEntry %d\n", origprocid);
         g_myService.m_procTable.print();

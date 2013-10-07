@@ -287,8 +287,8 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         return false;
     }
 #ifdef TEST
-        fprintf(g_logFile, "taoEnvironment::EnvInit, policy key initialized\n");
-        fflush(g_logFile);
+    fprintf(g_logFile, "taoEnvironment::EnvInit, policy key initialized\n");
+    fflush(g_logFile);
 #endif
 
     if(firstRun()) {
@@ -355,9 +355,6 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
     }
 #ifdef TEST
     fprintf(g_logFile, "EnvInit succeeded\n");
-    if(m_linuxEnvChannel.m_fChannelInitialized) {
-        fprintf(g_logFile, "EnvInit channel: %d\n", m_linuxEnvChannel.m_reqChannel.m_fd);
-    }
     fflush(g_logFile);
 #endif
 
@@ -714,6 +711,7 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
     fprintf(g_logFile, 
             "taoEnvironment::initTao, SubjectName: %s, PrivateSubjectId: %s\n",
             m_szPrivateSubjectName, m_szPrivateSubjectId);
+    fflush(g_logFile);
 #endif
     fRet= myInit.initKeys(symType, pubkeyType, m_szPrivateKeyName,
                           m_szPrivateSubjectName, m_szPrivateSubjectId);
@@ -723,6 +721,7 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
     }
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::initTao taoInit.initKeys succeeded\n");
+    fflush(g_logFile);
 #endif
 
     // copy keys

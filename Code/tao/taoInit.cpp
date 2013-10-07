@@ -253,6 +253,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
 #ifdef TEST
     fprintf(g_logFile, "generatequoteandcertifyKey, serialized public key\n%s\n", 
             m_serializedpublicKey);
+    fflush(g_logFile);
 #endif
 
     // get code digest
@@ -272,6 +273,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
 #ifdef TEST
     fprintf(g_logFile, "GenerateQuoteAndCertifyKey\n");
     PrintBytes("Code digest: ", codeDigest, sizeCodeDigest);
+    fflush(g_logFile);
 #endif
 
     switch(quoteType) {
@@ -456,6 +458,7 @@ bool taoInit::initKeys(u32 symType, u32 pubkeyType, const char* szKeyName,
 
 #ifdef TEST
     fprintf(g_logFile, "taoInit::initKeys\n");
+    fflush(g_logFile);
 #endif
     fRet= gensymKey(symType);
     if(!fRet)

@@ -510,10 +510,6 @@ bool fileServer::initServer(const char* configDirectory)
         if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
                             g_hostsubDirectory, parameterCount, parameters))
             throw "fileServer::Init: can't init host\n";
-#ifdef LINUXGUESTSERVICE
-        printf("Finished HostInit\n");
-        return false;
-#endif
 #ifndef LINUXGUESTSERVICE
         m_taoHostInitializationTimer.Stop();
 #endif
@@ -538,6 +534,10 @@ bool fileServer::initServer(const char* configDirectory)
 #ifdef TEST1
         fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
         m_tcHome.printData();
+#endif
+#ifdef LINUXGUESTSERVICE
+        fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
+        return false;
 #endif
 
         // Initialize file encryption keys

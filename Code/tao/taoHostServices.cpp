@@ -235,7 +235,7 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
             fprintf(g_logFile, "taoHostServices::GetHostedMeasurement: getfilehash failed\n");
             return false;
         }
-        return false;    // DEBUG
+        return true; 
 #endif
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:

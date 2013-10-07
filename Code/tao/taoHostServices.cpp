@@ -32,6 +32,7 @@
 #include "cryptoHelper.h"
 #include "trustedKeyNego.h"
 #include "linuxHostsupport.h"
+#include "fileHash.h"
 #ifdef TPMSUPPORT
 #include "TPMHostsupport.h"
 #endif
@@ -226,10 +227,16 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 #endif
 
       case PLATFORMTYPEGUESTLINUX:
+#ifdef JOHNSGUESTTEST
         fprintf(g_logFile, "m_linuxmyHostChannel %d, %d\n", 
                 m_linuxmyHostChannel.m_fChannelInitialized,
                 m_linuxmyHostChannel.m_reqChannel.m_fd);
-        return false;   // DEBUG
+	if(!getfileHash("/home/jlm/jlmcrypt/guestfileServer.exe", ptype, psize, buf)) {
+            fprintf(g_logFile, "taoHostServices::GetHostedMeasurement: getfilehash failed\n");
+            return false;
+        }
+        return false;    // DEBUG
+#endif
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:

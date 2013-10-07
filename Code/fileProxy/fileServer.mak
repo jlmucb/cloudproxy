@@ -39,7 +39,7 @@ dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
-	    $(B)/tcIO.o 
+	    $(B)/tcIO.o $(B)/fileHash.o
 
 all: $(E)/fileServer.exe $(E)/guestfileServer.exe
 
@@ -65,6 +65,9 @@ $(B)/cryptoHelper.o: $(SCC)/cryptoHelper.cpp $(SCC)/cryptoHelper.h
 
 $(B)/modesandpadding.o: $(SCC)/modesandpadding.cpp $(SCC)/modesandpadding.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/modesandpadding.o $(SCC)/modesandpadding.cpp
+
+$(B)/fileHash.o: $(SCC)/fileHash.cpp $(SCC)/fileHash.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -c -o $(B)/fileHash.o $(SCC)/fileHash.cpp
 
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp

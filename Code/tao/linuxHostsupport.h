@@ -37,13 +37,12 @@
 
 // Class supporting request channel to device driver
 
-extern int         g_myPid;
-
 class  linuxDeviceChannel {
 public:
     tcChannel   m_reqChannel;
     bool        m_fChannelInitialized;
     char*       m_driverName;
+    int         m_myPid;
 
     linuxDeviceChannel();
     ~linuxDeviceChannel();

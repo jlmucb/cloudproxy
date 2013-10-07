@@ -5,24 +5,32 @@ Enable measure hashes and add to KeyNegoServer db
 Enable 2048 bit keys, 
 Check timing attack.
 Check for leaks buffer overflows
-
-Hypervisor
-    Management partition
-        schedule, start vm's, montoring, update
-    VM update and keys
+Measurement race when starting app/vm
+VM identity code, check and make robust
+tcService hang after init
 
 keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
+Centralized keyNegoServer
+
+
 KVM:
-    initram
+    Improve cross vm comms perf
+    initram for kvm
     Disable any functions-migrate, etc
     Make sure boot loader is the os element in image.
+    Make sure image measured is image booted (and check race)
     Disable save state for OS
     Minimize Linux and configure policy
 
 KVM Guest:
    Minimize Linux
    Network save of key files, etc.
+
+Hypervisor
+    Management partition
+        schedule, start vm's, montoring, update
+    VM update and keys
 
 Not required (if configuration is perfect and initram is measured) but disireable:
 measure tcService.

@@ -767,6 +767,24 @@ int main(int an, char** av)
     oServer.m_encType= DEFAULTENCRYPT;
 #endif
 
+
+#define JLMTEST
+#ifdef JLMTEST
+    linuxDeviceChannel   chan;
+
+    fprintf(g_logFile, "fileServer main: JLMTEST\n");
+    fflush(g_logFile);
+    if(chan.initLinuxService("/dev/tcioDD0", false)) {
+        fprintf(g_logFile, "JLMTEST passed\n");
+        fflush(g_logFile);
+    }
+    else {
+        fprintf(g_logFile, "JLMTEST failed\n");
+        fflush(g_logFile);
+    }
+    return 0;
+#endif
+
     // JLM: removed initProg.  Replaced by tcLaunch.
     initLog("fileServer.log");
 

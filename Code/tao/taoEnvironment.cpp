@@ -266,20 +266,20 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
       case PLATFORMTYPELINUX:
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
         // service provider is tciodd
-        if(!m_linuxEnvChannel.initLinuxService(serviceProvider)) {
+        if(!m_linuxEnvChannel.initLinuxService(serviceProvider, true)) {
             fprintf(g_logFile, "taoEnvironment::EnvInit: cant init linuxService\n");
             return false;
         }
+#ifdef TEST
+    	fprintf(g_logFile, "taoEnvironment::EnvInit, linux service initialized %s\n",
+            	serviceProvider);
+    	fflush(g_logFile);
+#endif
         break;
       case PLATFORMTYPELINUXAPP:
         // direct call, nothing to open
         break;
     }
-#ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::EnvInit, linux service initialized %s\n",
-            serviceProvider);
-    fflush(g_logFile);
-#endif
 
     // get policy key
     if(!GetPolicyKey()) {

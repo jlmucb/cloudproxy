@@ -6,3 +6,4 @@ chmod 0777 /dev/*tcio*
 su jlm
 echo "Starting Service"
 ./tcKvmGuestOsService.exe &
+tail -f tcKvmGuestOsService.log

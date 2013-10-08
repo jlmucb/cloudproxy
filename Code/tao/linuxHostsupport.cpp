@@ -50,6 +50,7 @@ linuxDeviceChannel::linuxDeviceChannel()
     m_fChannelInitialized= false;
     m_driverName= NULL;
     m_myPid= -1;
+    m_famService= false;
 }
 
 
@@ -60,7 +61,7 @@ linuxDeviceChannel::~linuxDeviceChannel()
 }
 
 
-bool linuxDeviceChannel::initLinuxService(const char* name)
+bool linuxDeviceChannel::initLinuxService(const char* name, bool famService)
 {
 #ifdef TEST
     if(name!=NULL)
@@ -76,9 +77,20 @@ bool linuxDeviceChannel::initLinuxService(const char* name)
     }
     m_driverName= strdup(name);
     m_fChannelInitialized= true;
+    if(famService) {
+        m_famService= true;
+        if(!tcserviceHello()) {
+            m_fChannelInitialized= false;
+            fprintf(g_logFile, "initLinuxService: tcserviceHello failed\n");
+            return false;
+        }
+    }
 
-#ifdef TCTEST
-    fprintf(g_logFile, "initLinuxService returns true\n");
+#ifdef TEST
+    if(m_famService)
+        fprintf(g_logFile, "initLinuxService returns true as a tcService\n");
+    else
+        fprintf(g_logFile, "initLinuxService returns true\n");
 #endif
     return true;
 }
@@ -109,7 +121,41 @@ bool linuxDeviceChannel::getprogramNamefromDeviceDriver(int* pSize, const char* 
 }
 
 
-bool linuxDeviceChannel::getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey)
+bool linuxDeviceChannel::tcserviceGoodbye()
+{
+    return false;
+}
+
+
+bool linuxDeviceChannel::tcserviceHello()
+{
+#if 0
+    u32         ustatus;
+    u32         ureq;
+    int         procid;
+    int         origprocid;
+    int         size= PARAMSIZE;
+    byte        rgBuf[PARAMSIZE];
+
+    if(!m_reqChannel.sendtcBuf(m_myPid, TCSERVICESERVICEHELLO, 0, 
+                               m_myPid, size, rgBuf)) {
+        fprintf(g_logFile, "tcserviceHello: sendtcBuf failed\n");
+        return false;
+    }
+    size= PARAMSIZE;
+    if(!m_reqChannel.gettcBuf(&procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+        fprintf(g_logFile, "tcserviceHello: gettcBuf failed\n");
+        return false;
+    }
+
+    fprintf(g_logFile, "tcserviceHello true\n");
+#endif
+    return true;
+}
+
+
+bool linuxDeviceChannel::getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, 
+                                                      byte* pKey)
 {
     u32         ustatus;
     u32         ureq;
@@ -193,7 +239,8 @@ bool linuxDeviceChannel::getHostedMeasurementfromDeviceDriver(int childproc, u32
     size= encodeTCSERVICEGETPROGHASHFROMAPP(childproc, 1024, rgBuf);
     if(!m_reqChannel.sendtcBuf(m_myPid, TCSERVICEGETPROGHASHFROMAPP,
                         0, m_myPid, size, rgBuf)) {
-        fprintf(g_logFile, "getHostedMeasurementfromDeviceDriver: sendtcBuf for TCSERVICEGETPROGHASHFROMAPP failed\n");
+        fprintf(g_logFile, 
+         "getHostedMeasurementfromDeviceDriver: sendtcBuf for TCSERVICEGETPROGHASHFROMAPP failed\n");
         return false;
     }
     size= PARAMSIZE;
@@ -241,8 +288,9 @@ bool linuxDeviceChannel::startAppfromDeviceDriver(int* ppid, int argc, char **ar
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "startProcessLinuxService: Process created: %d by servicepid %d\n", 
-            *ppid, m_myPid);
+    fprintf(g_logFile, 
+            "startProcessLinuxService: Process created: %d by servicepid %d for %d\n", 
+            *ppid, m_myPid, getpid());
 #endif
     return true;
 }
@@ -358,8 +406,10 @@ bool linuxDeviceChannel::quotefromDeviceDriver(int inSize, byte* inData, int* po
     PrintBytes(" req buffer: ", inData, inSize); 
     fflush(g_logFile);
 #endif
-    if(!m_reqChannel.sendtcBuf(m_myPid, TCSERVICEATTESTFORFROMAPP, 0, procid, size, rgBuf)) {
-        fprintf(g_logFile, "quotewithLinuxService: sendtcBuf for TCSERVICEATTESTFORFROMAPP failed\n");
+    if(!m_reqChannel.sendtcBuf(m_myPid, TCSERVICEATTESTFORFROMAPP, 0, 
+                               m_myPid, size, rgBuf)) {
+        fprintf(g_logFile, 
+            "quotewithLinuxService: sendtcBuf for TCSERVICEATTESTFORFROMAPP failed\n"); 
         return false;
     }
     size= PARAMSIZE;

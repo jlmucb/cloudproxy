@@ -85,9 +85,6 @@ $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 $(B)/tcService.o: $(S)/tcService.cpp
 	$(CC) $(CFLAGS) $(CFLAGSTPM) -I$(S) -I$(SC) -I$(SCC) -I$(TS) -I$(VLT) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D LINUXTCSERVICE -c -o $(B)/tcService.o $(S)/tcService.cpp
 
-$(B)/tcGuestService.o: $(S)/tcGuestService.cpp
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(TS) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D HOSTEDLINUXTCSERVICE -c -o $(B)/tcGuestService.o $(S)/tcGuestService.cpp
-
 $(B)/tcKvmGuestOsService.o: $(S)/tcService.cpp
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(VLT) -I$(TS) -I$(FPX) -I$(BSC) -I$(S) -I$(TH) -I$(CLM) -D KVMGUESTOSTCSERVICE -c -o $(B)/tcKvmGuestOsService.o $(S)/tcService.cpp
 

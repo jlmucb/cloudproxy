@@ -36,7 +36,7 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o $(B)/request.o $(B)/fileServices.o $(B)/validateEvidence.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
-	    $(B)/fileTester.o $(B)/logging.o 
+	    $(B)/fileTester.o $(B)/logging.o $(B)/fileHash.o
 
 all: $(E)/fileClient.exe $(E)/guestfileClient.exe
 
@@ -89,6 +89,9 @@ $(B)/linuxHostsupport.o: $(TAO)/linuxHostsupport.cpp $(TAO)/linuxHostsupport.h
 
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/cert.o $(CLM)/cert.cpp
+
+$(B)/fileHash.o: $(SCD)/fileHash.cpp $(SCD)/fileHash.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -c -o $(B)/fileHash.o $(SCD)/fileHash.cpp
 
 $(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(ACC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
@@ -148,10 +151,10 @@ $(B)/hashprep.o: $(TS)/hashprep.cpp $(TS)/hashprep.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TS) -c -o $(B)/hashprep.o $(TS)/hashprep.cpp
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
-	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D LINUXTCSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
 
 $(B)/guestfileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
-	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -D HOSTEDLINUXTCSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/guestfileClient.o $(S)/fileClient.cpp
+	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/guestfileClient.o $(S)/fileClient.cpp
 
 $(B)/fileTester.o: $(S)/fileTester.cpp $(S)/fileTester.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(CH) -I$(TAO) -I$(VLT) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(S) -c -o $(B)/fileTester.o $(S)/fileTester.cpp

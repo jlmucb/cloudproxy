@@ -587,6 +587,8 @@ bool kvmtciodd_processService(void)
         }
         break;
 
+      case TCSERVICESERVICEHELLO:
+      case TCSERVICESERVICEGOODBYE:
       default:
         fRet= false;
         break;

@@ -39,7 +39,7 @@ const char* g_hostsubDirectory= "TrustedOS";
 #endif
 
 #ifdef LINUXGUESTSERVICE
-const u32   g_hostplatform= PLATFORMTYPEGUESTLINUX;
+const u32   g_hostplatform= PLATFORMTYPEKVMHOSTEDLINUXGUESTOS;
 const u32   g_envplatform= PLATFORMTYPELINUXAPP;
 const char* g_hostProvider= "/dev/tcioDD0";
 const char* g_serviceProvider= "/dev/tcioDD0";

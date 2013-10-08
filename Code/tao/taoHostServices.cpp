@@ -126,7 +126,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
       case PLATFORMTYPELINUX:
         // hostProvider is tciodd 
 #ifndef TPMSUPPORT
-        if(!m_linuxmyHostChannel.initLinuxService(hostProvider)) {
+        if(!m_linuxmyHostChannel.initLinuxService(hostProvider, false)) {
             fprintf(g_logFile, 
                     "taoHostServices::HostInit: cant init my host Linuxservice %s\n",
                     hostProvider);
@@ -226,8 +226,10 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
         return false;
 #endif
 
+      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEGUESTLINUX:
-#ifdef JOHNSGUESTTEST
+#define JLMGUESTTEST
+#ifdef JLMGUESTTEST
         fprintf(g_logFile, "m_linuxmyHostChannel %d, %d\n", 
                 m_linuxmyHostChannel.m_fChannelInitialized,
                 m_linuxmyHostChannel.m_reqChannel.m_fd);
@@ -235,9 +237,8 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
             fprintf(g_logFile, "taoHostServices::GetHostedMeasurement: getfilehash failed\n");
             return false;
         }
-        return true; 
+        return false; 
 #endif
-      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
 #ifndef TPMSUPPORT
@@ -255,7 +256,6 @@ bool taoHostServices::GetAncestorCertificates(int* psize, byte** ppbuf)
 {
     int     n= 4096;
     byte    buf[4096];
-        fprintf(g_logFile, "taoHostServices::GetHostedMeasurement: TPM not supported\n");
 
     if(!m_hostEvidenceValid) {
         if(!getBlobfromFile(m_fileNames.m_szAncestorEvidence, buf, &n)) {

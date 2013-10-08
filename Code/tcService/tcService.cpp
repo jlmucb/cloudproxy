@@ -162,8 +162,8 @@ bool serviceprocTable::initprocTable(int size)
 
 #ifdef KVMTCSERVICE
 bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
-                                     int sizeHash, byte* hash, virConnectPtr* ppvmconnection,
-                                     virDomainPtr*  ppvmdomain)
+                                    int sizeHash, byte* hash, virConnectPtr* ppvmconnection,
+                                    virDomainPtr*  ppvmdomain)
 #else
 bool serviceprocTable::addprocEntry(int procid, const char* file, int an, char** av,
                                     int sizeHash, byte* hash)
@@ -316,8 +316,8 @@ TCSERVICE_RESULT tcServiceInterface::initService(const char* execfile, int an, c
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::GetOsPolicyKey(u32* pType, 
-                                            int* psize, byte* rgBuf)
+TCSERVICE_RESULT tcServiceInterface::GetOsPolicyKey(u32* pType, int* psize, 
+                                                    byte* rgBuf)
 {
     if(!m_trustedHome.m_policyKeyValid)
         return TCSERVICE_RESULT_DATANOTVALID ;
@@ -367,7 +367,7 @@ TCSERVICE_RESULT tcServiceInterface::GetOsEvidence(int* psizeOut, byte* rgOut)
 
 
 TCSERVICE_RESULT tcServiceInterface::GetHostedMeasurement(int pid, u32* phashType, 
-                int* psize, byte* rgBuf)
+                                                        int* psize, byte* rgBuf)
 {
     if(!m_procTable.gethashfromprocId(pid, psize, rgBuf)) {
         return TCSERVICE_RESULT_FAILED;
@@ -377,8 +377,8 @@ TCSERVICE_RESULT tcServiceInterface::GetHostedMeasurement(int pid, u32* phashTyp
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::GetOsHash(u32* phashType, 
-                                        int* psize, byte* rgOut)
+TCSERVICE_RESULT tcServiceInterface::GetOsHash(u32* phashType, int* psize, 
+                                               byte* rgOut)
 {
     if(!m_trustedHome.m_myMeasurementValid)
         return TCSERVICE_RESULT_DATANOTVALID ;
@@ -392,8 +392,8 @@ TCSERVICE_RESULT tcServiceInterface::GetOsHash(u32* phashType,
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::GetServiceHash(u32* phashType, 
-                    int* psize, byte* rgOut)
+TCSERVICE_RESULT tcServiceInterface::GetServiceHash(u32* phashType, int* psize, 
+                                                    byte* rgOut)
 {
     if(!g_fservicehashValid)
         return TCSERVICE_RESULT_FAILED;
@@ -667,7 +667,7 @@ const char* g_linuxtemplatexml=
 
 
 TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** av, 
-                                int* poutsize, byte* out)
+                                              int* poutsize, byte* out)
 {
     u32             uType= 0;
     int             size= SHA256DIGESTBYTESIZE;
@@ -914,7 +914,7 @@ TCSERVICE_RESULT tcServiceInterface::SealFor(int procid, int sizeIn, byte* rgIn,
 
 
 TCSERVICE_RESULT tcServiceInterface::UnsealFor(int procid, int sizeIn, byte* rgIn, 
-                            int* psizeOut, byte* rgOut)
+                                               int* psizeOut, byte* rgOut)
 {
     byte    rgHash[32];
     int     hashSize= 0;
@@ -936,8 +936,8 @@ TCSERVICE_RESULT tcServiceInterface::UnsealFor(int procid, int sizeIn, byte* rgI
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, 
-                            byte* rgIn, int* psizeOut, byte* rgOut)
+TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgIn, 
+                                               int* psizeOut, byte* rgOut)
 {
     byte    rgHash[32];
     int     hashSize= 32;
@@ -1013,6 +1013,19 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #ifdef TEST
     fprintf(g_logFile, "serviceRequest after get procid: %d, req, %d, origprocid %d\n", 
            procid, uReq, origprocid); 
+    fflush(g_logFile);
+#endif
+
+#ifdef KVMGUESTOSTCSERVICE 
+    // DEBUG
+    fprintf(g_logFile, "special serviceRequest\n");
+    fflush(g_logFile);
+    if(uReq!=TCSERVICESTARTAPPFROMTCSERVICE && uReq!=TCSERVICESTARTAPPFROMAPP) {
+    	if(uStatus==TCIOFAILED) {
+        	chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
+        	return false;
+    	}
+    }
 #endif
 
     switch(uReq) {
@@ -1283,7 +1296,8 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #endif
 #if 0
         // should this be proc-id?
-        g_myService.m_procTable.removeprocEntry(origprocid);
+        if(g_servicepid!=origprocid)
+            g_myService.m_procTable.removeprocEntry(origprocid);
 #endif
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, removeprocEntry %d\n", origprocid);
@@ -1353,6 +1367,42 @@ int main(int an, char** av)
         goto cleanup;
     }
 
+    if(!g_myService.m_procTable.initprocTable(NUMPROCENTS)) {
+        fprintf(g_logFile, "tcService main: Cant init proctable\n");
+        iRet= 1;
+        goto cleanup;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "tcService main: proctable init complete\n\n");
+#endif
+
+    ret= g_myService.initService(g_serviceexecFile, 0, NULL);
+    if(ret!=TCSERVICE_RESULT_SUCCESS) {
+        fprintf(g_logFile, "tcService main: initService failed %s\n", g_serviceexecFile);
+        iRet= 1;
+        goto cleanup;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "tcService main: initService succeeds\n\n");
+#endif
+
+    // add self proctable entry
+#ifdef KVMTCSERVICE
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
+                                      g_myService.m_trustedHome.m_myMeasurementSize,
+                                      g_myService.m_trustedHome.m_myMeasurement,
+                                      &vmconnection, &vmdomain);
+#else
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
+                                      g_myService.m_trustedHome.m_myMeasurementSize,
+                                      g_myService.m_trustedHome.m_myMeasurement);
+#endif
+   
+#ifdef TEST
+    fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
+    g_myService.m_procTable.print();
+#endif
+
     // init Host and Environment
     g_myService.m_taoHostInitializationTimer.Start();
     if(!g_myService.m_host.HostInit(g_hostplatform, g_hostProvider,
@@ -1398,48 +1448,6 @@ int main(int an, char** av)
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after EnvInit\n");
     g_myService.m_trustedHome.printData();
-#endif
-
-    if(fInitKeys) {
-        // EnvInit should have initialized keys
-        iRet= 0;
-        goto cleanup;
-    }
-
-    if(!g_myService.m_procTable.initprocTable(NUMPROCENTS)) {
-        fprintf(g_logFile, "tcService main: Cant init proctable\n");
-        iRet= 1;
-        goto cleanup;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "tcService main: proctable init complete\n\n");
-#endif
-
-    ret= g_myService.initService(g_serviceexecFile, 0, NULL);
-    if(ret!=TCSERVICE_RESULT_SUCCESS) {
-        fprintf(g_logFile, "tcService main: initService failed %s\n", g_serviceexecFile);
-        iRet= 1;
-        goto cleanup;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "tcService main: initService succeeds\n\n");
-#endif
-
-    // add self proctable entry
-#ifdef KVMTCSERVICE
-    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
-                                      g_myService.m_trustedHome.m_myMeasurementSize,
-                                      g_myService.m_trustedHome.m_myMeasurement,
-                                      &vmconnection, &vmdomain);
-#else
-    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
-                                      g_myService.m_trustedHome.m_myMeasurementSize,
-                                      g_myService.m_trustedHome.m_myMeasurement);
-#endif
-   
-#ifdef TEST
-    fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
-    g_myService.m_procTable.print();
     fflush(g_logFile);
 #endif
 

@@ -161,7 +161,7 @@ bool taoFiles::putBlobData(const char* file, bool fValid, int size, byte* pData)
 void taoFiles::printAll()
 {
     fprintf(g_logFile, "taoFiles\n");
-    fprintf(g_logFile, "\tType: %04x\n", m_storageType);
+    fprintf(g_logFile, "\tStorage type: %04x\n", m_storageType);
     fprintf(g_logFile, "\tDirectory: %s\n", m_szdirectory);
     fprintf(g_logFile, "\tSym file: %s\n", m_szsymFile);
     fprintf(g_logFile, "\tPrivate file: %s\n", m_szprivateFile);

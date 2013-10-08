@@ -43,12 +43,16 @@ public:
     bool        m_fChannelInitialized;
     char*       m_driverName;
     int         m_myPid;
+    bool        m_famService;
 
     linuxDeviceChannel();
     ~linuxDeviceChannel();
 
-    bool    initLinuxService(const char* name);
+    bool    initLinuxService(const char* name, bool fService);
     bool    closeLinuxService();
+    bool    tcserviceHello();
+    bool    tcserviceGoodbye();
+
     bool    getEntropyfromDeviceDriver(int size, byte* pKey);
     bool    getprogramNamefromDeviceDriver(int* pSize, const char* szName);
     bool    getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey);

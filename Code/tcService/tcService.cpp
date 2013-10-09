@@ -1385,23 +1385,6 @@ int main(int an, char** av)
     fprintf(g_logFile, "tcService main: initService succeeds\n\n");
 #endif
 
-    // add self proctable entry
-#ifdef KVMTCSERVICE
-    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
-                                      g_myService.m_trustedHome.m_myMeasurementSize,
-                                      g_myService.m_trustedHome.m_myMeasurement,
-                                      &vmconnection, &vmdomain);
-#else
-    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
-                                      g_myService.m_trustedHome.m_myMeasurementSize,
-                                      g_myService.m_trustedHome.m_myMeasurement);
-#endif
-   
-#ifdef TEST
-    fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
-    g_myService.m_procTable.print();
-#endif
-
     // init Host and Environment
     g_myService.m_taoHostInitializationTimer.Start();
     if(!g_myService.m_host.HostInit(g_hostplatform, g_hostProvider,
@@ -1443,6 +1426,23 @@ int main(int an, char** av)
         goto cleanup;
     }
     g_myService.m_taoEnvInitializationTimer.Stop();
+
+    // add self proctable entry
+#ifdef KVMTCSERVICE
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
+                                      g_myService.m_trustedHome.m_myMeasurementSize,
+                                      g_myService.m_trustedHome.m_myMeasurement,
+                                      &vmconnection, &vmdomain);
+#else
+    g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
+                                      g_myService.m_trustedHome.m_myMeasurementSize,
+                                      g_myService.m_trustedHome.m_myMeasurement);
+#endif
+   
+#ifdef TEST
+    fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
+    g_myService.m_procTable.print();
+#endif
 
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after EnvInit\n");

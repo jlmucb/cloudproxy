@@ -86,24 +86,6 @@ bool linuxDeviceChannel::initLinuxService(const char* name, bool famService)
         }
     }
 
-#define JLMTEST
-#ifdef JLMTEST
-    u32     type;
-    int     size= 2048;
-    byte    buf[2048];
-
-    fprintf(g_logFile, "initLinuxService: Channel test\n");
-    fflush(g_logFile);
-    if(getpolicykeyfromDeviceDriver(&type, &size, buf)) {
-        fprintf(g_logFile, "channel test got key\n");
-        PrintBytes((char*) "Key: ", buf, size);
-        fflush(g_logFile);
-    }
-    else {
-        fprintf(g_logFile, "channel test failed\n");
-    }
-#endif
-
 #ifdef TEST
     if(m_famService)
         fprintf(g_logFile, "initLinuxService returns true as a tcService\n");

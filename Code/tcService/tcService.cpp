@@ -600,7 +600,7 @@ const char* g_linuxtemplatexml=
 "<domain type='kvm'>\n"\
 "  <name>%s</name>\n"\
 "  <uuid> %s </uuid>\n"\
-"  <memory>1048576</memory>\n"\
+"  <memory>2097152</memory>\n"\
 "  <currentMemory>1048576</currentMemory>\n"\
 "  <vcpu>1</vcpu>\n"\
 "  <os>\n"\

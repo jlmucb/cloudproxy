@@ -83,6 +83,157 @@ void printResources(objectManager<resource>* pRM);
 // ------------------------------------------------------------------------
 
 
+#define JLMTEST
+#ifdef JLMTEST
+#include "tcServiceCodes.h"
+
+const char* g_tcioDDName= NULL;
+int         g_myPid;
+
+
+bool newgettcBuf(int fd, int* procid, u32* puReq, u32* pstatus, int* porigprocid,
+                         int* paramsize, byte* params)
+{
+    byte            rgBuf[PADDEDREQ];
+    tcBuffer*       pReq= (tcBuffer*) rgBuf;
+    int             i;
+    int             n;
+
+#ifdef TEST
+    fprintf(g_logFile, "gettcBuf outstanding %d\n", fd);
+#endif
+    n= *paramsize+sizeof(tcBuffer);
+    if(n>PADDEDREQ) {
+        fprintf(g_logFile, "Buffer too small\n");
+        return false;
+    }
+    i= read(fd, rgBuf, n);
+    if(i<0) {
+        fprintf(g_logFile, "ReadBufRequest failed in gettcBuf %d %d\n", i, n);
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "gettcBuf succeeds %d\n", i);
+    tcBufferprint((tcBuffer*) rgBuf);
+    PrintBytes("Buffer: ", rgBuf, i);
+#endif
+
+#ifdef HEADERTEST
+    fprintf(g_logFile, "gettcBuf: "); pReq->print();
+#endif
+    *procid= pReq->m_procid;
+    *puReq= pReq->m_reqID;
+    *pstatus= pReq->m_ustatus;
+    *porigprocid= pReq->m_origprocid;
+    i-= sizeof(tcBuffer);
+    if(*paramsize<i)
+        return false;
+    *paramsize= i;
+    memcpy(params, &rgBuf[sizeof(tcBuffer)], i);
+
+    return true;
+}
+
+
+bool newsendtcBuf(int fd, int procid, u32 uReq, u32 status, int origproc,
+                          int paramsize, byte* params)
+{
+#if 1
+    byte            rgBuf[PADDEDREQ];
+    tcBuffer*       pReq= (tcBuffer*) rgBuf;
+    int             i;
+    int             n;
+
+    if(paramsize>(PARAMSIZE)) {
+        fprintf(g_logFile, "newsendtcBuf buffer too small %d\n", paramsize);
+        return false;
+    }
+    pReq->m_procid= procid;
+    pReq->m_reqID= uReq;
+    pReq->m_ustatus= status;
+    pReq->m_origprocid= origproc;
+    pReq->m_reqSize= paramsize;
+#ifdef TEST
+    fprintf(g_logFile, "newsendtcBuf: "); tcBufferprint(pReq);
+#endif
+    n= paramsize+sizeof(tcBuffer);
+    memcpy(&rgBuf[sizeof(tcBuffer)], params, paramsize);
+    i= write(fd, rgBuf, n);
+    if(i<0) {
+        fprintf(g_logFile, "newsendtcBuf: Write failed %d\n", i);
+        return false;
+    }
+#endif
+    return true;
+}
+
+
+int initLinuxService()
+{
+#ifdef TEST
+        fprintf(g_logFile, "initLinuxService device %s\n", g_tcioDDName);
+#endif
+
+    int fd= open(g_tcioDDName, O_RDWR);
+        if(fd<0) {
+            fprintf(g_logFile, "Can't open device driver %s\n", g_tcioDDName);
+            return -1;
+        }
+
+#ifdef TEST
+    fprintf(g_logFile, "initLinuxService returns %d\n", fd);
+#endif
+    return fd;
+}
+
+
+bool GetPolicyKey()
+{
+    u32         ustatus;
+    u32         ureq;
+    u32         type= 0;
+    int         procid= g_myPid;
+    int         origprocid= g_myPid;
+    int         size= PARAMSIZE;
+    byte        rgBuf[PARAMSIZE];
+    byte        pKey[PARAMSIZE];
+
+#ifdef  TEST
+    fprintf(g_logFile, "GetPolicyKey\n");
+    fflush(g_logFile);
+#endif
+
+    int fd= initLinuxService();
+    if(fd<0) {
+        fprintf(g_logFile, "tcLaunch: can't open tcio device driver\n");
+        return 1;
+    }
+
+    if(!newsendtcBuf(fd, g_myPid, TCSERVICEGETPOLICYKEYFROMAPP, 0, g_myPid, size, rgBuf)) {
+        fprintf(g_logFile, "GetPolicyKey: newsendtcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
+        return false;
+    }
+    size= PARAMSIZE;
+    if(!newgettcBuf(fd, &procid, &ureq, &ustatus, &origprocid, &size, rgBuf)) {
+        fprintf(g_logFile, "GetPolicyKey: newgettcBuf for TCSERVICESTARTAPPFROMAPP failed\n");
+        return false;
+    }
+    if(!decodeTCSERVICEGETPOLICYKEYFROMOS(&type, &size, pKey, rgBuf)) {
+        fprintf(g_logFile, "GetPolicyKey: cant decode childproc\n");
+        return false;
+    }
+
+    close(fd);
+    fflush(g_logFile);
+    return true;
+}
+#endif
+
+
+// ------------------------------------------------------------------------
+
+
 theServiceChannel::theServiceChannel()
 {
     m_pParent= NULL;
@@ -768,21 +919,12 @@ int main(int an, char** av)
 #endif
 
 
-#define JLMTEST
 #ifdef JLMTEST
-    linuxDeviceChannel   chan;
-
-    fprintf(g_logFile, "fileServer main: JLMTEST\n");
-    fflush(g_logFile);
-    if(chan.initLinuxService("/dev/tcioDD0", false)) {
-        fprintf(g_logFile, "JLMTEST passed\n");
-        fflush(g_logFile);
-    }
-    else {
-        fprintf(g_logFile, "JLMTEST failed\n");
-        fflush(g_logFile);
-    }
+#if 0
+    g_tcioDDName= "/dev/tcioDD0";
+    GetPolicyKey(); 
     return 0;
+#endif
 #endif
 
     // JLM: removed initProg.  Replaced by tcLaunch.

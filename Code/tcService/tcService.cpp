@@ -1,4 +1,3 @@
-//
 //  File: tcService.cpp
 //  Description: tcService implementation
 //
@@ -1021,10 +1020,10 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
     fprintf(g_logFile, "special serviceRequest\n");
     fflush(g_logFile);
     if(uReq!=TCSERVICESTARTAPPFROMTCSERVICE && uReq!=TCSERVICESTARTAPPFROMAPP) {
-    	if(uStatus==TCIOFAILED) {
-        	chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
-        	return false;
-    	}
+        if(uStatus==TCIOFAILED) {
+                chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
+                return false;
+        }
     }
 #endif
 

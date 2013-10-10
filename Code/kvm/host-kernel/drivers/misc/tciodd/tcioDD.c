@@ -647,6 +647,7 @@ int tciodd_close(struct inode *inode, struct file *filp)
 {
     int                 pid= current->pid;
     struct tciodd_Qent* pent= NULL;
+    struct tciodd_dev*  dev= filp->private_data;
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: close called %d\n", current->pid);
@@ -686,6 +687,7 @@ int tciodd_close(struct inode *inode, struct file *filp)
     
     if (tciodd_servicepid != pid) {
       sendTerminate(tciodd_servicepid, pid);
+      wake_up(&(dev->waitq));
     } else {
       tciodd_serviceInitialized = 0;
 
@@ -740,7 +742,7 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
 #ifdef TESTDEVICE
         printk(KERN_DEBUG "tcioDD: read, waiting on responses in %d\n", pid);
 #endif
-#if 0
+#if 1
         wait_event_interruptible(dev->waitq, tciodd_resserviceq!=NULL);
 #else
         wait_event_timeout(dev->waitq, tciodd_resserviceq!=NULL, TIMEOUT);
@@ -848,6 +850,7 @@ ssize_t tciodd_write(struct file *filp, const char __user *buf, size_t count,
     printcmdbuffer(pent->m_data);
 #endif
     tciodd_appendQent(&tciodd_reqserviceq, pent);
+    wake_up(&(dev->waitq));
     up(&tciodd_reqserviceqsem);
     retval= count;
 
@@ -860,11 +863,7 @@ out:
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: about to call wake up in %d\n", pid);
 #endif
-#if 0
-    wake_up_interruptible(&(dev->waitq));
-#else
     wake_up(&(dev->waitq));
-#endif
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "tcioDD: write complete for %d\n", pid);
 #endif

@@ -471,9 +471,9 @@ const char* g_vmtemplatexml=
 "<domain type='kvm'>\n"\
 "  <name>%s</name>\n"\
 "  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
-"  <memory>1048576</memory>\n"\
+"  <memory>2097152</memory>\n"\
 "  <currentMemory>1048576</currentMemory>\n"\
-"  <vcpu>1</vcpu>\n"\
+"  <vcpu>4</vcpu>\n"\
 "  <os>\n"\
 "    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
 "    <boot dev='hd'/>\n"\

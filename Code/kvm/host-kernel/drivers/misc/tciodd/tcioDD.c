@@ -728,6 +728,7 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
 
     // if something is on the response queue, fill buffer, otherwise wait
      for(;;) {
+	int wait_ret = 0;
         if(down_interruptible(&tciodd_resserviceqsem)==0) {
 #ifdef TESTDEVICE
             printk(KERN_DEBUG "tcioDD: read looking on response queue for %d\n",
@@ -738,15 +739,16 @@ ssize_t tciodd_read(struct file *filp, char __user *buf, size_t count,
         }
         if(pent!=NULL)
             break;
+	else
+	    yield();
 
 #ifdef TESTDEVICE
         printk(KERN_DEBUG "tcioDD: read, waiting on responses in %d\n", pid);
 #endif
-#if 1
-        wait_event_interruptible(dev->waitq, tciodd_resserviceq!=NULL);
-#else
-        wait_event_timeout(dev->waitq, tciodd_resserviceq!=NULL, TIMEOUT);
-#endif
+        wait_ret = wait_event_interruptible(dev->waitq, tciodd_resserviceq!=NULL);
+	if (wait_ret < 0) {
+	    return -ERESTARTSYS;
+	}
 #ifdef TESTDEVICE1
         printk(KERN_DEBUG "tcioDD: read, returned from wait in %d\n", pid); 
 #endif

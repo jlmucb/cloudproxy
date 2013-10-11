@@ -228,17 +228,6 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 
       case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
       case PLATFORMTYPEGUESTLINUX:
-#define JLMGUESTTEST
-#ifdef JLMGUESTTEST
-        fprintf(g_logFile, "m_linuxmyHostChannel %d, %d\n", 
-                m_linuxmyHostChannel.m_fChannelInitialized,
-                m_linuxmyHostChannel.m_reqChannel.m_fd);
-	if(!getfileHash("/home/jlm/jlmcrypt/guestfileServer.exe", ptype, psize, buf)) {
-            fprintf(g_logFile, "taoHostServices::GetHostedMeasurement: getfilehash failed\n");
-            return false;
-        }
-        return false; 
-#endif
       case PLATFORMTYPEKVMHYPERVISOR:
       case PLATFORMTYPELINUX:
 #ifndef TPMSUPPORT

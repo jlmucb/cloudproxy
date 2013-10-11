@@ -58,7 +58,7 @@
 
 
 #define TESTDEVICE
-#define TIMEOUT 8000
+#define TIMEOUT 1000
 
 #ifndef SHA256HASHSIZE
 #define SHA256HASHSIZE 32
@@ -635,8 +635,9 @@ int kvmtciodd_open(struct inode *inode, struct file *filp)
 
 int kvmtciodd_close(struct inode *inode, struct file *filp)
 {
-    int                 pid= current->pid;
-    struct kvmtciodd_Qent* pent= NULL;
+    int                     pid= current->pid;
+    struct kvmtciodd_Qent*  pent= NULL;
+    struct kvmtciodd_dev*   dev= filp->private_data;
 
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: close called %d\n", current->pid);
@@ -676,16 +677,17 @@ int kvmtciodd_close(struct inode *inode, struct file *filp)
     
     if (kvmtciodd_servicepid != pid) {
       kvmtcio_sendTerminate(kvmtciodd_servicepid, pid);
+      wake_up(&(dev->waitq));
     } else {
       kvmtciodd_serviceInitialized = 0;
 
       // make sure q's don't have any entries, since kvmtciodd is not initialized
       if(down_interruptible(&kvmtciodd_reqserviceqsem)==0)  {
-	kvmtciodd_clearQent(&kvmtciodd_reqserviceq);
+        kvmtciodd_clearQent(&kvmtciodd_reqserviceq);
         up(&kvmtciodd_reqserviceqsem);
       }
       if(down_interruptible(&kvmtciodd_resserviceqsem)==0)  {
-	kvmtciodd_clearQent(&kvmtciodd_resserviceq);
+        kvmtciodd_clearQent(&kvmtciodd_resserviceq);
         up(&kvmtciodd_resserviceqsem);
       }
     }
@@ -716,6 +718,7 @@ ssize_t kvmtciodd_read(struct file *filp, char __user *buf, size_t count,
 
     // if something is on the response queue, fill buffer, otherwise wait
      for(;;) {
+        int     wait_ret= 0;
         if(down_interruptible(&kvmtciodd_resserviceqsem)==0) {
 #ifdef TESTDEVICE
             printk(KERN_DEBUG "kvmtciodd: read looking on response queue for %d\n",
@@ -726,12 +729,17 @@ ssize_t kvmtciodd_read(struct file *filp, char __user *buf, size_t count,
         }
         if(pent!=NULL)
             break;
+        else
+            yield();
 
 #ifdef TESTDEVICE
         printk(KERN_DEBUG "kvmtciodd: read, waiting on responses in %d\n", pid);
 #endif
-#if 0
-        wait_event_interruptible(dev->waitq, kvmtciodd_resserviceq!=NULL);
+#if 1
+        wait_ret= wait_event_timeout(dev->waitq, kvmtciodd_resserviceq!=NULL, TIMEOUT);
+        if(wait_ret<0) {
+            return -ERESTARTSYS;
+        }
 #else
         wait_event_timeout(dev->waitq, kvmtciodd_resserviceq!=NULL, TIMEOUT);
 #endif
@@ -780,10 +788,10 @@ ssize_t kvmtciodd_read(struct file *filp, char __user *buf, size_t count,
 ssize_t kvmtciodd_write(struct file *filp, const char __user *buf, size_t count,
                      loff_t *f_pos)
 {
-    struct kvmtciodd_dev*      dev= kvmtciodd_device;
+    struct kvmtciodd_dev*   dev= kvmtciodd_device;
     ssize_t                 retval= -ENOMEM;
     byte*                   databuf= NULL;
-    struct kvmtciodd_Qent*     pent= NULL;
+    struct kvmtciodd_Qent*  pent= NULL;
     tcBuffer*               pCBuf= NULL;
     int                     pid= current->pid;
 
@@ -838,6 +846,7 @@ ssize_t kvmtciodd_write(struct file *filp, const char __user *buf, size_t count,
     kvmtcio_printcmdbuffer(pent->m_data);
 #endif
     kvmtciodd_appendQent(&kvmtciodd_reqserviceq, pent);
+    wake_up(&(dev->waitq));
     up(&kvmtciodd_reqserviceqsem);
     retval= count;
 
@@ -850,11 +859,7 @@ out:
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: about to call wake up in %d\n", pid);
 #endif
-#if 0
-    wake_up_interruptible(&(dev->waitq));
-#else
     wake_up(&(dev->waitq));
-#endif
 #ifdef TESTDEVICE
     printk(KERN_DEBUG "kvmtciodd: write complete for %d\n", pid);
 #endif

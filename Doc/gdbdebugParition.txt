@@ -1,0 +1,40 @@
+If you want to be able to debug a Linux kernel that’s running as 
+a KVM guest, you need to specify the ‘-s’ parameter for the command 
+line of qemu-kvm. The problem is, there’s no (easy) way to do this 
+when you’re using libvirt and virt-manager to manager your virtual 
+machines, instead of using KVM directly. What you need to do is 
+change the XML configuration of the virtual machine so that the 
+‘-s’ parameter is passed on to qemu-kvm
+
+
+$ virsh edit f14-test
+
+Here, f14-test is the name of the VM that is managed via virt-manager. 
+This will bring up the XML configuration of the VM in your editor. 
+The first line of the XML file should be:
+
+<domain type='kvm'>
+
+This has to be changed to
+
+<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+
+and you also need to add:
+
+<qemu:commandline>
+<qemu:arg value='-s'/>
+</qemu:commandline>
+
+under the <domain> level of the XML. After you save and quit the editor, 
+the new configuration will come into effect. When you start the virtual 
+machine, there will be a local TCP port (1234 by default) that can be 
+used as a remote debugging port from gdb. You can connect to this port 
+by using the command
+
+target remote localhost:1234
+
+from gdb running on the host machine.
+
+gdb /usr/src/linux...  (guest build area)
+
+

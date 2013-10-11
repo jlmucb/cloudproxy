@@ -15,7 +15,9 @@ echo "Starting Service"
 ./tcKvmHostService.exe &
 sleep 3s
 echo "Launching KvmGuest"
-./tcLaunch.exe -KVMLinux KvmTestGuest d051d4f5-c216-1aaf-9d51-320bcfc45124 /home/jlm/jlmcrypt/vms/vmlinuz-3.5.0-23-generic /home/jlm/jlmcrypt/vms/initrd.img-3.5.0-23-generic /var/lib/libvirt/images/KvmTestGuest.img
-
-
+./tcLaunch.exe -KVMLinux KvmTestGuest  \
+  /home/jlm/jlmcrypt/vms/KvmTestGuestMeasuredTemplate.xml \
+  /home/jlm/jlmcrypt/vms/vmlinuz \
+  /home/jlm/jlmcrypt/vms/initrd.img \
+  /var/lib/libvirt/images/KvmTestGuest.img
 

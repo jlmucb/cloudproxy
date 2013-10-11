@@ -310,6 +310,29 @@ bool startApplication(int an, char** av, bool fKvmCall)
     fflush(g_logFile);
 #endif
 
+    if(fKvmCall) {
+        int    size= 0;
+        char   buf[BUFSIZE];
+
+        // replace xml file name with xml
+        int fd= open(av[1], O_RDONLY);
+        if(fd<0) {
+            fprintf(g_logFile, "startApplication cant open xml-file\n");
+            return false;
+        }
+        if((size=read(fd, buf, BUFSIZE))<0) {
+            fprintf(g_logFile, "startApplication: xml read failed\n");
+            return false;
+        }
+        buf[size]= '\0';
+        av[1]= strdup(buf);
+#ifdef  TEST
+    	fprintf(g_logFile, "startApplication, template:\n%s\n", av[1]);
+    	fflush(g_logFile);
+#endif
+        close(fd);
+    }
+
     int fd= initLinuxService();
     if(fd<0) {
         fprintf(g_logFile, "tcLaunch: can't open tcio device driver\n");
@@ -324,8 +347,8 @@ bool startApplication(int an, char** av, bool fKvmCall)
         fprintf(g_logFile, "tcLaunch: program not started due to error\n");
 
     if(fKvmCall) {
-        int pid= getmysyspid(av[2]);
-        printf("PID of started process: %d\n", pid);
+        int pid= getmysyspid(av[0]);
+        printf("PID of started process (%s child): %d\n", av[0], pid);
     }
 
     close(fd);
@@ -391,8 +414,8 @@ int main(int an, char** av)
     fflush(g_logFile);
 
     if(an<2 ||an>30 || strcmp(av[1],"-help")==0) {
-        fprintf(g_logFile, "\ttcLaunch.exe -KVMImage programname image-file \n");
-        fprintf(g_logFile, "\ttcLaunch.exe -KVMLinux programname uuid kernel-file initram-file image-file\n");
+        fprintf(g_logFile, "\ttcLaunch.exe -KVMImage programname xml-file image-file \n");
+        fprintf(g_logFile, "\ttcLaunch.exe -KVMLinux programname xml-file kernel-file initram-file image-file\n");
         fprintf(g_logFile, "\ttcLaunch.exe -KVMGuest program-file remaining arguments\n");
         fprintf(g_logFile, "\ttcLaunch.exe -LinuxGuest program-file remaining-args\n");
         fprintf(g_logFile, "\ttcLaunch.exe -LinuxHost program-file remaining-args\n");

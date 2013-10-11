@@ -466,202 +466,6 @@ char* programNamefromFileName(const char* fileName)
 }
 
 
-// template vm xml
-const char* g_vmtemplatexml=
-"<domain type='kvm'>\n"\
-"  <name>%s</name>\n"\
-"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
-"  <memory>2097152</memory>\n"\
-"  <currentMemory>1048576</currentMemory>\n"\
-"  <vcpu>4</vcpu>\n"\
-"  <os>\n"\
-"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
-"    <boot dev='hd'/>\n"\
-"  </os>\n"\
-"  <features>\n"\
-"    <acpi/>\n"\
-"    <apic/>\n"\
-"    <pae/>\n"\
-"  </features>\n"\
-"  <clock offset='utc'/>\n"\
-"  <on_poweroff>destroy</on_poweroff>\n"\
-"  <on_reboot>restart</on_reboot>\n"\
-"  <on_crash>restart</on_crash>\n"\
-"  <devices>\n"\
-"    <emulator>/usr/bin/kvm</emulator>\n"\
-"    <disk type='file' device='disk'>\n"\
-"      <driver name='qemu' type='raw'/>\n"\
-"      <source file='%s'/>\n"\
-"      <target dev='hda' bus='ide'/>\n"\
-"      <address type='drive' controller='0' bus='0' unit='0'/>\n"\
-"    </disk>\n"\
-"    <disk type='file' device='cdrom'>\n"\
-"      <driver name='qemu' type='raw'/>\n"\
-"      <source file='/home/jlm/tmp/ubuntu-12.04.2-desktop-amd64.iso'/>\n"\
-"      <target dev='hdc' bus='ide'/>\n"\
-"      <readonly/>\n"\
-"      <address type='drive' controller='0' bus='1' unit='0'/>\n"\
-"    </disk>\n"\
-"    <controller type='ide' index='0'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"\
-"    </controller>\n"\
-"    <interface type='bridge'>\n"\
-"      <mac address='52:54:00:82:22:a8'/>\n"\
-"      <source bridge='virbr0'/>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"\
-"    </interface>\n"\
-"    <serial type='pty'>\n"\
-"      <target port='0'/>\n"\
-"    </serial>\n"\
-"    <console type='pty'>\n"\
-"      <target type='serial' port='0'/>\n"\
-"    </console>\n"\
-"    <input type='mouse' bus='ps2'/>\n"\
-"    <graphics type='vnc' port='-1' autoport='yes'/>\n"\
-"    <sound model='ich6'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
-"    </sound>\n"\
-"    <video>\n"\
-"      <model type='cirrus' vram='9216' heads='1'/>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"\
-"    </video>\n"\
-"    <memballoon model='virtio'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"\
-"    </memballoon>\n"\
-"  </devices>\n"\
-"</domain>\n";
-
-
-#if 0
-// template vm xml
-//"  <bootloader>/usr/bin/pygrub</bootloader>\n"
-const char* g_linuxtemplatexml=
-"<domain type='kvm'>\n"\
-"  <name> %s </name>\n"\
-"  <uuid>ee344f89-40bc-47a9-3b53-b911e32c61ff</uuid>\n"\
-"  <memory>1048576</memory>\n"\
-"  <currentMemory>1048576</currentMemory>\n"\
-"  <vcpu>1</vcpu>\n"\
-"  <os>\n"\
-"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
-"    <kernel> %s </kernel>\n"\
-"    <initrd> %s </initrd>\n"\
-"    <boot dev='hd'/>\n"\
-"  </os>\n"\
-"  <features>\n"\
-"    <acpi/>\n"\
-"    <apic/>\n"\
-"    <pae/>\n"\
-"  </features>\n"\
-"  <clock offset='utc'/>\n"\
-"  <on_poweroff>destroy</on_poweroff>\n"\
-"  <on_reboot>destroy</on_reboot>\n"\
-"  <on_crash>restart</on_crash>\n"\
-"  <devices>\n"\
-"    <emulator>/usr/bin/kvm</emulator>\n"\
-"    <disk type='file' device='disk'>\n"\
-"      <driver name='qemu' type='raw'/>\n"\
-"      <source file='%s'/>\n"\
-"      <target dev='hda' bus='ide'/>\n"\
-"      <address type='drive' controller='0' bus='0' unit='0'/>\n"\
-"    </disk>\n"\
-"    <controller type='ide' index='0'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"\
-"    </controller>\n"\
-"    <interface type='bridge'>\n"\
-"      <mac address='52:54:00:82:22:a8'/>\n"\
-"      <source bridge='virbr0'/>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"\
-"    </interface>\n"\
-"    <serial type='pty'>\n"\
-"      <target port='0'/>\n"\
-"    </serial>\n"\
-"    <console type='pty'>\n"\
-"      <target type='serial' port='0'/>\n"\
-"    </console>\n"\
-"    <input type='mouse' bus='ps2'/>\n"\
-"    <graphics type='vnc' port='-1' autoport='yes'/>\n"\
-"    <sound model='ich6'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
-"    </sound>\n"\
-"    <video>\n"\
-"      <model type='cirrus' vram='9216' heads='1'/>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"\
-"    </video>\n"\
-"    <memballoon model='virtio'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"\
-"    </memballoon>\n"\
-"  </devices>\n"\
-"</domain>\n";
-#else
-// template vm xml
-const char* g_linuxtemplatexml=
-"<domain type='kvm'>\n"\
-"  <name>%s</name>\n"\
-"  <uuid> %s </uuid>\n"\
-"  <memory>2097152</memory>\n"\
-"  <currentMemory>1048576</currentMemory>\n"\
-"  <vcpu>1</vcpu>\n"\
-"  <os>\n"\
-"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"\
-"--- %s %s\n"\
-"    <boot dev='hd'/>\n"\
-"  </os>\n"\
-"  <features>\n"\
-"    <acpi/>\n"\
-"    <apic/>\n"\
-"    <pae/>\n"\
-"  </features>\n"\
-"  <clock offset='utc'/>\n"\
-"  <on_poweroff>destroy</on_poweroff>\n"\
-"  <on_reboot>destroy</on_reboot>\n"\
-"  <on_crash>restart</on_crash>\n"\
-"  <devices>\n"\
-"    <emulator>/usr/bin/kvm</emulator>\n"\
-"    <disk type='file' device='disk'>\n"\
-"      <driver name='qemu' type='raw'/>\n"\
-"      <source file='%s'/>\n"\
-"      <target dev='hda' bus='ide'/>\n"\
-"      <address type='drive' controller='0' bus='0' unit='0'/>\n"\
-"    </disk>\n"\
-"    <disk type='file' device='cdrom'>\n"\
-"      <driver name='qemu' type='raw'/>\n"\
-"      <source file='/home/jlm/tmp/ubuntu-12.04.2-desktop-amd64.iso'/>\n"\
-"      <target dev='hdc' bus='ide'/>\n"\
-"      <readonly/>\n"\
-"      <address type='drive' controller='0' bus='1' unit='0'/>\n"\
-"    </disk>\n"\
-"    <controller type='ide' index='0'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"\
-"    </controller>\n"\
-"    <interface type='bridge'>\n"\
-"      <mac address='52:54:00:82:22:a8'/>\n"\
-"      <source bridge='virbr0'/>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"\
-"    </interface>\n"\
-"    <serial type='pty'>\n"\
-"      <target port='0'/>\n"\
-"    </serial>\n"\
-"    <console type='pty'>\n"\
-"      <target type='serial' port='0'/>\n"\
-"    </console>\n"\
-"    <input type='mouse' bus='ps2'/>\n"\
-"    <graphics type='vnc' port='-1' autoport='yes'/>\n"\
-"    <sound model='ich6'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"\
-"    </sound>\n"\
-"    <video>\n"\
-"      <model type='cirrus' vram='9216' heads='1'/>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"\
-"    </video>\n"\
-"    <memballoon model='virtio'>\n"\
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"\
-"    </memballoon>\n"\
-"  </devices>\n"\
-"</domain>\n";
-#endif
-
-
 #define MAXMLBUF 8192
 
 
@@ -675,16 +479,23 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
     int             i;
     int             uid= -1;
     const char*     szsys= "qemu:///system";
+    const char*     vmName= NULL;
+    const char*     xmlTemplate= NULL;
+    const char*     kernelFile= NULL;
+    const char*     initramFile= NULL;
+    const char*     imageFile= NULL;
     char            buf[MAXMLBUF];
 
-    // if an= 2
+    // if an= 3
     //      av[0] is name of VM
-    //      av[1] is image file
-    // if an=4
+    //      av[1] is xml template
+    //      av[2] is image file
+    // if an=5
     //      av[0] is name of VM
-    //      av[1] is kernel file
-    //      av[2] is initram file
-    //      av[3] is image file
+    //      av[1] is xml (template first)
+    //      av[2] is kernel file
+    //      av[3] is initram file
+    //      av[4] is image file
 #ifdef TEST
     fprintf(g_logFile, "tcServiceInterface::StartApp(VM), %d args\n", an);
     for(i=0;i<an;i++)
@@ -693,7 +504,16 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
 
     // lock file
 
-    if(an==2) {
+    if(an==3) {
+
+        vmName= av[0];
+        xmlTemplate= av[1];
+        imageFile= av[2];
+
+        if((strlen(xmlTemplate)+strlen(imageFile)+strlen(vmName)+4)>MAXMLBUF) {
+            fprintf(g_logFile, "tcServiceInterface::StartApp: resulting XML too large\n");
+            return false;
+        }
 
 #ifdef LOCKFILE
         struct flock    lock;
@@ -708,23 +528,36 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
         ret= fcntl(fd, F_SETLK, &lock);
 #endif
 
-        if(!getfileHash(av[1], &uType, &size, rgHash)) {
-            fprintf(g_logFile, "StartApp : getfilehash failed %s\n", av[0]);
+        sprintf(buf, xmlTemplate, vmName, imageFile);
+        if(!getfileHash(imageFile, &uType, &size, rgHash)) {
+            fprintf(g_logFile, "StartApp : getfilehash failed %s\n", imageFile);
             return TCSERVICE_RESULT_FAILED;
         }
-        if(strlen(av[0])>256) {
-            fprintf(g_logFile, "tcServiceInterface::StartApp: bad arguments\n");
-            return false;
-        }
-       sprintf(buf, g_vmtemplatexml, av[1], av[0]);
     }
     else if(an==5) {
-        if(!getcombinedfileHash(2, &av[2], &uType, &size, rgHash)) {
+
+        vmName= av[0];
+        xmlTemplate= av[1];
+        kernelFile= av[2];
+        initramFile= av[3];
+        imageFile= av[4];
+
+        const char* nav[2];
+
+        if((strlen(xmlTemplate)+strlen(imageFile)+strlen(vmName)+
+                                strlen(kernelFile)+strlen(initramFile)+4)>MAXMLBUF) {
+            fprintf(g_logFile, "tcServiceInterface::StartApp: resulting XML too large\n");
+            return false;
+        }
+
+        nav[0]= kernelFile;
+        nav[1]= initramFile;
+        if(!getcombinedfileHash(2, nav, &uType, &size, rgHash)) {
             fprintf(g_logFile, "startLinuxvm error: getcombinedfilehash failed\n");
             return false;
         }
-        // programname, kernel file name ramname distimagename
-        sprintf(buf, g_linuxtemplatexml, av[0], av[1], av[2], av[3], av[4]);
+        // programname xml kernel-file initram-file-name virtual-disk-image
+        sprintf(buf, xmlTemplate, vmName, kernelFile, initramFile, imageFile);
     }
     else {
         fprintf(g_logFile, "StartApp : wrong arguments\n");
@@ -751,13 +584,13 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
        virConnectPtr    vmconnection= NULL;
        virDomainPtr     vmdomain= NULL;
 
-       if((pid=startKvmVM(av[0], szsys,  buf, &vmconnection, &vmdomain))<0) {
+       if((pid=startKvmVM(vmName, szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "StartApp : cant start VM\n");
            return TCSERVICE_RESULT_FAILED;
        }
 
        // record procid and hash
-      if(!g_myService.m_procTable.addprocEntry(pid, av[0], 0, (char**) NULL, 
+      if(!g_myService.m_procTable.addprocEntry(pid, vmName, 0, (char**) NULL, 
                                    size, rgHash, &vmconnection, &vmdomain)) {
            fprintf(g_logFile, "StartApp: cant add to proc table\n");
            return TCSERVICE_RESULT_FAILED;
@@ -791,6 +624,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     int     child= 0;
     int     i;
     int     uid= -1;
+    const char* execName= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "tcServiceInterface::StartApp, %d args\n", an);
@@ -802,12 +636,13 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     if(an>30 || an<1) {
         return TCSERVICE_RESULT_FAILED;
     }
+    execName= av[0];
     
     // lock file
 #ifdef LOCKFILE
     struct flock lock;
     int     ret;
-    int     fd= open(av[0], O_RDONLY);
+    int     fd= open(execName, O_RDONLY);
 
     // F_UNLCK
     lock.l_type= F_WRLCK;
@@ -817,8 +652,8 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     ret= fcntl(fd, F_SETLK, &lock);
 #endif
 
-    if(!getfileHash(av[0], &uType, &size, rgHash)) {
-        fprintf(g_logFile, "StartApp : getfilehash failed %s\n", av[0]);
+    if(!getfileHash(execName, &uType, &size, rgHash)) {
+        fprintf(g_logFile, "StartApp : getfilehash failed %s\n", execName);
         return TCSERVICE_RESULT_FAILED;
     }
 
@@ -842,7 +677,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         setresuid(uid, uid, uid);
 
         // record procid and hash
-        if(!g_myService.m_procTable.addprocEntry(child, av[0], 0, (char**) NULL, 
+        if(!g_myService.m_procTable.addprocEntry(child, execName, 0, (char**) NULL, 
                                                  size, rgHash)) {
             fprintf(g_logFile, "StartApp: cant add to proc table\n");
             return TCSERVICE_RESULT_FAILED;
@@ -872,7 +707,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
 #endif
 
         // start Linux guest application
-        if(execve((char*)av[0], (char**)av, NULL)<0) {
+        if(execve((char*)execName, (char**)av, NULL)<0) {
             fprintf(g_logFile, "StartApp: execvp %s failed\n", av[0]);
         }
     }

@@ -26,4 +26,41 @@ Make sure your VM has at least 20MB of disk
    You can find the IP address to SSH to by going into the VM
    and typing ifconfig -a.
 
+5. Save the original libvirt xml to a safe place.  For example,
+   virsh dumpxml KvmTestGuest > /home/jlm/jlmcrypt/vms/KvmTestGuestImage.xml
+
+6. Copy the kernel-image file and initram file for the CloudProxy
+   partition to the place you want to save them.  In this example,
+   I use /home/jlm/jlmcrypt/vms/kernel and /home/jlm/jlmcrypt/vms/initram.
+
+7  Change the boot options for your vm (in virt-manager, for example)
+   so that it does the direct kernel/initram boot using the files
+   named in step 6.
+
+8. Save the new libvirt xml to a safe place.  For example,
+   virsh dumpxml KvmTestGuest > /home/jlm/jlmcrypt/vms/KvmTestGuestBoot.xml.
+
+9. Copy the direct boot xml into a template file that you will reference
+   when you tcLaunch the VM.  For example,
+    cp /home/jlm/jlmcrypt/vms/KvmTestGuestBoot.xml /home/jlm/jlmcrypt/vms/KvmTestGuestTemplate.xml
+
+10.Edit the template file.  
+    Replace the value of the name tag (which should have the name of
+    vm originally) with %s.  For example,
+        <name>%s</name>
+    Replace the kernel and image tag values with %s, getting
+        <kernel>%s</kernel>
+        <initrd>%s</initrd>
+    Replace the disk source file value with %s, getting:
+        <disk type='file' device='disk'>
+            <driver name='qemu' type='raw'/>
+            <source file='%s'/>
+            <target dev='hda' bus='ide'/>
+            <address type='drive' controller='0' bus='0' unit='0'/>
+        </disk>
+
+
+
+
+
 

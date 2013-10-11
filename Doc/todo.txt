@@ -16,9 +16,12 @@ Centralized keyNegoServer
 tcService
     Fix hard coded template in kvmstartvm
 
+replace hardcoded path in tcLaunch with designated temp area
+fix pid hack
+
 
 KVM:
-    Improve cross vm comms perf
+    Improve cross vm comms perf (device drivers)
     initram for kvm
     Disable any functions-migrate, etc
     Make sure boot loader is the os element in image.

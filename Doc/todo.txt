@@ -6,32 +6,25 @@ Enable 2048 bit keys,
 Check timing attack.
 Check for leaks buffer overflows
 Measurement race when starting app/vm
-VM identity code, check and make robust
 tcService hang after init
 
 keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
 Centralized keyNegoServer
 
-tcService
-    Fix hard coded template in kvmstartvm
-
-replace hardcoded path in tcLaunch with designated temp area
-fix pid hack
+tcLaunch: replace hardcoded path in tcLaunch with designated temp area
 
 
 KVM:
-    Improve cross vm comms perf (device drivers)
     initram for kvm
     Disable any functions-migrate, etc
-    Make sure boot loader is the os element in image.
-    Make sure image measured is image booted (and check race)
     Disable save state for OS
     Minimize Linux and configure policy
+fix pid hack
 
 KVM Guest:
-   Minimize Linux
-   Network save of key files, etc.
+    Minimize Linux
+    Network save of key files, etc.
 
 Hypervisor
     Management partition

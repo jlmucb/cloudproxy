@@ -1,7 +1,8 @@
 //  File: tcLaunch.cpp
 //      John Manferdelli
 //
-//  Description: Client for fileServer.
+//  Description: Stand alone launch of measured programs
+//               and partitions.
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

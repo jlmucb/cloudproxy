@@ -76,6 +76,8 @@ byte                    g_servicehash[32]= {
 
 #define NUMPROCENTS 200
 
+// reset from environment variable CPProgramDirectory, if defined
+const char*     g_progDirectory= "/home/jlm/jlmcrypt";
 #include "taoSetupglobals.h"
 
 
@@ -1168,6 +1170,12 @@ int main(int an, char** av)
     virConnectPtr       vmconnection= NULL;
     virDomainPtr        vmdomain= NULL;
 #endif
+
+    // set executable path
+    const char*     definedprogDirectory= getenv("CPProgramDirectory");
+    if(definedprogDirectory!=NULL) {
+        g_progDirectory= definedprogDirectory;
+    }
 
     for(i=0; i<an; i++) {
         if(strcmp(av[i], "-help")==0) {

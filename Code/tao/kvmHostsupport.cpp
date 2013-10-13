@@ -39,6 +39,10 @@
 //      mech_list: digest-md5
 
 
+// reset from environment variable CPProgramDirectory, if defined
+extern const char* g_progDirectory;
+
+
 // -------------------------------------------------------------------------
 
 
@@ -71,7 +75,7 @@ int  getmysyspid(const char* name)
     int     size= -1;
     char*   beginline= line;
 
-    sprintf(fileName, "/home/jlm/jlmcrypt/KvmHost/tmp%d.tmp", mypid);
+    sprintf(fileName, "%s/tmp%d.tmp", g_progDirectory, mypid);
     sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",
             name, fileName);
 #ifdef TEST

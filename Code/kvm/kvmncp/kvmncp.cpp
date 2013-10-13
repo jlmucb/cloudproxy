@@ -70,9 +70,15 @@ int main(int an, char** av)
     bool            fImageVms= false;
     bool            fMeasuredVms= false;
     int             numtoStart= 0;
-    const char*     progDirectory= "/home/jlm/jlmcrypt";
     char            buf[BUFSIZE];
     const char**    nav= NULL;
+
+    const char*     progDirectory= "/home/jlm/jlmcrypt";
+    const char*     definedprogDirectory= getenv("CPProgramDirectory");
+
+    if(definedprogDirectory!=NULL) {
+        progDirectory= definedprogDirectory;
+    }
 
     initLog(NULL);
     fprintf(g_logFile, "kvmncp.exe, %d args\n", an);
@@ -130,16 +136,24 @@ int main(int an, char** av)
             sprintf(buf, "%s/tcLaunch.exe -KVMLinux %s %s %s %s %s\n", progDirectory,
                     nav[5*i], nav[5*i+1], nav[5*i+2], nav[5*i+3], nav[5*i+4]);
         }
-        else {
+        else if(fImageVms) {
             // programname xml-file image-file \n");
             sprintf(buf, "%s/tcLaunch.exe -KVMImage %s %s %s\n", progDirectory,
                     nav[3*i], nav[3*i+1], nav[3*i+2]);
+        }
+        else {
+            fprintf(g_logFile, "kvmncp: shouldn't happen\n");
+            return 1;
         }
         if(system(buf)<0) {
             fprintf(g_logFile, "kvmncp: partition %d failed to launch\n");
             return 1;
         }
     }
+
+    //
+    //   Todo:  Programs should now open command channel and wait for
+    //   signed requests from fabric controller
 
     fprintf(g_logFile, "kvmncp: all partitions successfully launched\n");
     closeLog();

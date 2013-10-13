@@ -56,8 +56,9 @@ using std::ofstream;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
-const char* g_tcioDDName;
-int         g_myPid;
+const char*     g_tcioDDName= NULL;
+int             g_myPid= 0;
+const char*     g_progDirectory= "/home/jlm/jlmcrypt";
 
 
 // ------------------------------------------------------------------------
@@ -92,7 +93,7 @@ int  getmysyspid(const char* name)
     int     size= -1;
     char*   beginline= line;
 
-    sprintf(fileName, "/home/jlm/jlmcrypt/KvmHost/tmpLaunch%d.tmp", mypid);
+    sprintf(fileName, "%s/KvmHost/tmpLaunch%d.tmp", g_progDirectory, mypid);
     sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",                                   
             name, fileName);
 #ifdef TEST
@@ -406,6 +407,11 @@ bool GetPolicyKey()
 int main(int an, char** av)
 {
     int         i;
+
+    const char*     definedprogDirectory= getenv("CPProgramDirectory");
+    if(definedprogDirectory!=NULL) {
+        g_progDirectory= definedprogDirectory;
+    }
 
     initLog(NULL);
     fprintf(g_logFile, "tcLaunch.exe, %d args\n", an);

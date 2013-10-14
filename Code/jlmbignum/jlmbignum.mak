@@ -1,6 +1,11 @@
-B=          ~/jlmcrypt
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/jlmbignumobjects
 S=          ../jmbignum
-##MSSDK=      "/cygdrive/c/Program Files/Microsoft SDKs/Windows/v7.1/lib"
 CFLAGS=	    
 RFLAGS=	    -D "UNIXRANDBITS"
 

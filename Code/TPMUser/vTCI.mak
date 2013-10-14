@@ -1,4 +1,9 @@
-E=          ~/jlmcrypt
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
 B=          $(E)/vTCIobjects
 SC=         ../commonCode
 BN=         ../jlmbignum

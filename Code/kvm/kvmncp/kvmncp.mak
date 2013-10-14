@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/kvmncpobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=	$(CPProgramDirectory)
+endif
+
+B=          $(E)/kvmncpobjects
 S=          ../kvmncp
 SC=         ../../commonCode
 

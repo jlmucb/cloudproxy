@@ -1,4 +1,10 @@
-B=          ~/jlmcrypt
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/jlmbignumobjects
 S=          ../jmbignum
 CFLAGS=	    
 RFLAGS=	    -D "UNIXRANDBITS"

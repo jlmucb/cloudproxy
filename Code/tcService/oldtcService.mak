@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/tcServiceobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/tcServiceobjects
 S=          ../tcService
 TH=         ../tao
 SC=         ../commonCode

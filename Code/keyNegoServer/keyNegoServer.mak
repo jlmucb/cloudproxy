@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/keyNegoServerobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/keyNegoServerobjects
 S=          ../keyNegoServer
 SC=         ../commonCode
 FPX=        ../fileProxy

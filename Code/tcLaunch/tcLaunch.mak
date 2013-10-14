@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/tcLaunchobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=	$(CPProgramDirectory)
+endif
+
+B=          $(E)/tcLaunchobjects
 S=          ../tcLaunch
 SC=         ../commonCode
 BN=         ../jlmbignum

@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/aesspeedtestobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/aesspeedtestobjects
 SC=         ../commonCode
 SCC=	    ../jlmcrypto
 SBM=	    ../jlmbignum

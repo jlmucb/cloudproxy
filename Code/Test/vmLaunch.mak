@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/vmLaunchobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/vmLaunchobjects
 S=          ../Test
 SC=         ../commonCode
 SCD=        ../jlmcrypto

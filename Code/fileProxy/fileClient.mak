@@ -1,5 +1,10 @@
-E=          ~/jlmcrypt
-B=          ~/jlmcrypt/fileClientobjects
+ifndef CPProgramDirectory
+E=/home/jlm/jlmcrypt
+else
+E=      $(CPProgramDirectory)
+endif
+
+B=          $(E)/fileClientobjects
 S=          ../fileProxy
 SC=         ../commonCode
 SCD=        ../jlmcrypto

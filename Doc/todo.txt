@@ -8,13 +8,9 @@ Check for leaks buffer overflows
 Measurement race when starting app/vm
 tcService hang after init
 
-get rid of hardcoded paths
-
 keyNegoServer: emergency key recovery program, revocation
             file key escrow and update
 Centralized keyNegoServer
-
-tcLaunch: replace hardcoded path in tcLaunch with designated temp area
 
 
 KVM:

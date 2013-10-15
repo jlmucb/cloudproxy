@@ -44,6 +44,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <errno.h>
 
 
@@ -212,7 +213,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
     char*               szStatus= NULL;
     char*               szErrorCode= NULL;
     char*               szCert= NULL;
-    const char*		szDesignatedKeyNegoAddress= NULL;
+    const char*		szDesignatedKeyNegoAddress= getenv("CPKeyNegoServer");
 
 #ifdef TEST
     fprintf(g_logFile, "KeyNego()\n");
@@ -234,14 +235,12 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
         fprintf(g_logFile, "KeyNego: socket opened\n");
 #endif
         server_addr.sin_family= AF_INET;
-        szDesignatedKeyNegoServer= getenv("CPKeyNegoServer");
-        if(szDesignatedKeyNegoServer==NULL)
+        if(szDesignatedKeyNegoAddress==NULL)
             server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
-#if 1
         else {
-            server_addr.sin_addr.s_addr= inet_addr(szDesignatedKeyNegoServer);
+            server_addr.sin_addr.s_addr= inet_addr(szDesignatedKeyNegoAddress);
         }
-#else
+#if 0
         else {
             struct hostent* host= gethostbyname2(szDesignatedKeyNegoServer, AF_INET);
             if(host==NULL) {

@@ -78,7 +78,7 @@ using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::stringstream;
-const char* szServerHostAddr= "127.0.0.1";
+// const char* szServerHostAddr= "127.0.0.1";
 
 #include "./policyCert.inc"
 #include "./taoSetupglobals.h"

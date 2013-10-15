@@ -1,34 +1,41 @@
 Todo
 ====
 
-Enable measure hashes and add to KeyNegoServer db  
-Enable 2048 bit keys, 
-Check timing attack.
-Check for leaks buffer overflows
-Measurement race when starting app/vm
-tcService hang after init
+Enable 2048 bit keys (jlm)
+Check timing attack (jlm, help from google/intel)
+Check for leaks buffer overflows (jlm c-lang/valgrind)
+Measurement race when starting app/vm (tom?)
+tcService hang after init (jlm started - low priority)
+Rewrite kvmtciodd/ktciodd channel (tom)
+Check on locality for tpm (jlm)
 
 keyNegoServer: emergency key recovery program, revocation
-            file key escrow and update
-Centralized keyNegoServer
+            file key escrow and update (later)
+Centralized keyNegoServer (jlm)
 
 
-KVM:
-    initram for kvm
-    Disable any functions-migrate, etc
-    Disable save state for OS
-    Minimize Linux and configure policy
-fix pid hack
+KVM Host:
+    initram for kvm (rekha?)
+    Disable any functions-migrate, etc (tom to check with kvm guys)
+    Disable save state for OS (tom to check with kvm guys)
+    Minimize Linux and configure policy (rekha?)
+    Fix pid hack (jlm, tom/rekha to ask kvm guys)
 
-KVM Guest:
-    Minimize Linux
-    Network save of key files, etc.
+KVM Guest Partitions:
+    Minimize Linux (rekha?)
+    Network save of key files, etc. (later)
 
 Hypervisor
-    Management partition
+    Management partition (jlm will do initial version, check openstack)
         schedule, start vm's, montoring, update
-    VM update and keys
+    VM update and keys (later)
 
 Not required (if configuration is perfect and initram is measured) but disireable:
 measure tcService.
+
+$ from Raytheon, Lincoln
+set up repository on code.google.com
+
+Scale app (tom/jlm)
+Check out tiny kvm
 

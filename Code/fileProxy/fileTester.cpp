@@ -51,6 +51,12 @@ fileTester::fileTester(const string& path, const string& testFile)
     // parse the xml and construct the default parameters and any required resources
     m_testsDoc.LoadFile();
 
+#if 0
+    const char* szDesignatedKeyNegoServer= getenv("CPFileServerAddress");
+    if(szDesignatedKeyNegoServer!=NULL) {
+        m_serverAddress= strcpy();
+    }
+#endif
     
     const TiXmlElement* curElt = m_testsDoc.RootElement();
     // look at the attributes on the root to see if we are to reuse the connection or 

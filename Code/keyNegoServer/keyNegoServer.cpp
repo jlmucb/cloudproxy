@@ -332,7 +332,7 @@ done:
 
 bool            g_fTerminateProxy= false;
 const int       iQueueSize= 5;
-const char*     szServerHostAddr= "127.0.0.1";
+// const char*     szServerHostAddr= "127.0.0.1";
 
 const char*     g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
 const char*     g_szValidHashFileName= "policy/validHash.txt";

@@ -36,4 +36,9 @@ The instructions are written for executable program structue rooted
 in /home/jlm/jlmcrypt.  To change this define the environment
 variable CPProgramDirectory to point to the right place.
 
+During operation, fileClient assumes keyNegoServer and fileServer are
+at address 127.0.0.1.  To change this default, define the environment
+variable CPKeyNegoAddress with the correct address for keyNegoServer
+and CPFileServerAddress with the correct address of fileServer.
+
 John (jlmucbmath@gmail.com) and Tom (tmroeder@google.com)

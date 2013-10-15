@@ -103,9 +103,9 @@ bool getDatafromServerCertMessage1(const char* response, char** pszstatus,
     TiXmlNode*      pNode;
     TiXmlNode*      pNode1;
     TiXmlElement*   pRootElement= NULL;
-    const char*           szLabel= NULL;
-    const char*           szStatus= NULL;
-    const char*           szErrorCode= NULL;
+    const char*     szLabel= NULL;
+    const char*     szStatus= NULL;
+    const char*     szErrorCode= NULL;
     int             phase;
     bool            fRet= true;
 
@@ -212,6 +212,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
     char*               szStatus= NULL;
     char*               szErrorCode= NULL;
     char*               szCert= NULL;
+    const char*		szDesignatedKeyNegoAddress= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "KeyNego()\n");
@@ -233,7 +234,23 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
         fprintf(g_logFile, "KeyNego: socket opened\n");
 #endif
         server_addr.sin_family= AF_INET;
-        server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
+        szDesignatedKeyNegoServer= getenv("CPKeyNegoServer");
+        if(szDesignatedKeyNegoServer==NULL)
+            server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
+#if 1
+        else {
+            server_addr.sin_addr.s_addr= inet_addr(szDesignatedKeyNegoServer);
+        }
+#else
+        else {
+            struct hostent* host= gethostbyname2(szDesignatedKeyNegoServer, AF_INET);
+            if(host==NULL) {
+                fprintf(g_logFile, "KeyNego: can't get address for %s\n", szDesignatedKeyNegoServer);
+                throw "Can't open keyNegoServer socket";
+            }
+            server_addr.sin_addr.s_addr= inet_addr(host->h_addr);
+        }
+#endif
         server_addr.sin_port= htons(KEYSERVERPORT);
     
 #ifdef  TEST

@@ -1,27 +1,28 @@
 Todo
 ====
 
-Enable 2048 bit keys (jlm)
-Check timing attack (jlm, help from google/intel)
-Check for leaks buffer overflows (jlm, c-lang/valgrind)
-Measurement race when starting app/vm (tom?)
+Enable 2048 bit keys (jlm)                                      (3)
+Check for leaks buffer overflows (jlm, c-lang/valgrind)         (3)
+Measurement race when starting app/vm (tom?)                    (2)
+    Fix pid hack (jlm, tom/rekha to ask kvm guys)               (3?)
+Check on locality for tpm (jlm)                                 (1)
+Check timing attack (jlm, help from google/intel)               (3)
 tcService hang after init (jlm started - low priority)
-Check on locality for tpm (jlm)
 Rewrite kvmtciodd/ktciodd channel (tom)
 
 keyNegoServer: emergency key recovery program, revocation
             file key escrow and update (later)
 
 KVM Host:
-    initram for kvm (rekha?)
+    initram for kvm (rekha)
+    Minimize Linux and configure policy (rekha)
     Disable any functions-migrate, etc (tom to check with kvm guys)
     Disable save state for OS (tom to check with kvm guys)
-    Minimize Linux and configure policy (rekha?)
-    Fix pid hack (jlm, tom/rekha to ask kvm guys)
 
 KVM Guest Partitions:
-    Minimize Linux (rekha?)
-    Network save of key files, etc. (Later)
+    Minimize Linux (rekha)
+
+Network save of key files, etc. (Later)
 
 Hypervisor
     Management partition (jlm will do initial version, check openstack)
@@ -37,4 +38,5 @@ Set up repository on code.google.com
 Scale app (tom/jlm)
 
 John: Check out tiny kvm
+
 

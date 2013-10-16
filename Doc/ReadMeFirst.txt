@@ -26,7 +26,7 @@ on KVM and VirtLib.
 
 There is also additional documentation on the TPM, debugging Linux
 and configuring grub although the documentation here is a "starter"
-and is intended to be authoritative, up-to-date or complete.
+and is not intended to be authoritative, up-to-date or complete.
 
 We welcome comments, suggestions, corrections and questions but
 currently we are a very small group and will often not be able to

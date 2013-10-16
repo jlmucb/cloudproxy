@@ -164,8 +164,23 @@ int main(int an, char** av)
      *      receive message
      *      authenticate
      *      execute directive
+     *
+     *	Directives
+     *	    RunGuest
+     *	    HaltGuest
+     *	    ScheduleGuests
+     *	    ReportGuestUsage
+     *	    RunDiagnostics
+     *	    GetLocalFiles
+     *	    SendLocalFiles
+     *	    UpdateComponents
+     *	    GetMachineStatus
+     *	    GetProgramStatus
+     *	    Halt
+     *	    Configure
+     *	    LogDirective
+     *	    GetLogs
      */
-
 
     fprintf(g_logFile, "kvmncp: all partitions successfully launched\n");
     closeLog();

@@ -154,6 +154,18 @@ int main(int an, char** av)
     //
     //   Todo:  Programs should now open command channel and wait for
     //   signed requests from fabric controller
+    /*
+     *   managerpolicyKey is public key for validating
+     *      messages
+     *
+     *   open channel
+     *   negotiate tao
+     *   loop
+     *      receive message
+     *      authenticate
+     *      execute directive
+     */
+
 
     fprintf(g_logFile, "kvmncp: all partitions successfully launched\n");
     closeLog();

@@ -10,6 +10,8 @@ Check timing attack (jlm, help from google/intel)               (3)
 tcService hang after init (jlm started - low priority)
 Rewrite kvmtciodd/ktciodd channel (tom)
 
+Make sure PCR18 is included in measurement for production use!
+
 keyNegoServer: emergency key recovery program, revocation
             file key escrow and update (later)
 

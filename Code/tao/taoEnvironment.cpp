@@ -524,18 +524,20 @@ bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
     n+= sizeof(int);
     memcpy(&tmpout[n], hostedMeasurement, hostedMeasurementSize);
     n+= hostedMeasurementSize;
+#ifdef TEST
     fprintf(g_logFile, "Sealing data length %d\n", sizetoSeal);
+#endif
     memcpy(&tmpout[n], &sizetoSeal, sizeof(int));
     n+= sizeof(int);
     memcpy(&tmpout[n], toSeal, sizetoSeal);
     n+= sizetoSeal;
 
-//#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "taoEnvironment::Seal, about to encryptBlob, n=%d\n",
             n);
     PrintBytes("To Seal: ", tmpout, n);
     fflush(g_logFile);
-//#endif
+#endif
     if(!AES128CBCHMACSHA256SYMPADEncryptBlob(n, tmpout, psizeSealed, sealed,
                                     m_symKey, &m_symKey[AES128BYTEBLOCKSIZE])) {
         fprintf(g_logFile, "taoEnvironment::seal: AES128CBCHMACSHA256SYMPADEncryptBlob failed\n");
@@ -562,22 +564,28 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
         fprintf(g_logFile, "taoEnvironment::Unseal, seal key invalid\n");
         return false;
     }
+#ifdef TEST
     fprintf(g_logFile, "Attempting decryption\n");
     fflush(g_logFile);
+#endif
     if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeSealed, sealed, &outsize, tmpout, 
                         m_symKey, &m_symKey[AES128BYTEBLOCKSIZE])) {
         fprintf(g_logFile, 
            "taoEnvironment::unseal: AES128CBCHMACSHA256SYMPADDecryptBlob failed\n");
         return false;
     }
+#ifdef TEST
     fprintf(g_logFile, "Decryption succeeded with size %d\n", outsize);
     fflush(g_logFile);
+#endif
 
     // tmpout is hashsize||hash||sealdatasize||sealeddata
     memcpy(&hashsize, &tmpout[n], sizeof(int));
     n+= sizeof(int);
+#ifdef TEST
     fprintf(g_logFile, "Got hashsize = %d\n", hashsize);
     fflush(g_logFile);
+#endif
 
     if(hashsize!=hostedMeasurementSize) {
         fprintf(g_logFile, "Wrong measurement size: %d vs %d\n", hashsize,
@@ -588,24 +596,30 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
         fflush(g_logFile);
     }
     
+#ifdef TEST
     fprintf(g_logFile, "tmpout is %p\n", tmpout);
     fprintf(g_logFile, "Comparing %p with %p of length %d\n", tmpout + n,
             hostedMeasurement, hashsize);
     PrintBytes("left meas:  ", &tmpout[n], hashsize);
     PrintBytes("right meas: ", hostedMeasurement, hashsize);
     fflush(g_logFile);
+#endif
      
     if (memcmp(&tmpout[n], hostedMeasurement, hashsize) != 0) {
         fprintf(g_logFile, "The measurements don't match\n");
         return false;
     }
     n += hashsize;
+#ifdef TEST
     fprintf(g_logFile, "The hashes match. Copying an int into %p\n", psizeunsealed);
     fflush(g_logFile);
+#endif
 
     memcpy(psizeunsealed, &tmpout[n], sizeof(int));
+#ifdef TEST
     fprintf(g_logFile, "Got unsealed size %d\n", *psizeunsealed);
     fflush(g_logFile);
+#endif
     n+= sizeof(int);
     memcpy(unsealed, &tmpout[n], *psizeunsealed);
     return true;
@@ -777,7 +791,7 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
         m_myCertificateSize= myInit.m_myCertificateSize;
         m_myCertificate= (char*) malloc(m_myCertificateSize);
         if(m_myCertificate==NULL) {
-        fprintf(g_logFile, "taoEnvironment::initTao certificate invalid\n");
+            fprintf(g_logFile, "taoEnvironment::initTao certificate invalid\n");
             return false;
         }
         memcpy(m_myCertificate, myInit.m_myCertificate, m_myCertificateSize);

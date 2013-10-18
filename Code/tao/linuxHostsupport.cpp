@@ -180,8 +180,8 @@ bool linuxDeviceChannel::getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize,
     }
 #ifdef TEST1
     PrintBytes("Policy key: ", pKey, *pSize);
-#endif
     fprintf(g_logFile, "getpolicykeyfromDeviceDriverOS parent returns true\n");
+#endif
     return true;
 }
 

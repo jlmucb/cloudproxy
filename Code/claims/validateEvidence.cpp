@@ -411,9 +411,11 @@ int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* p
             throw("VerifySignedEvidence: can't get validity period\n");
         }
         if(!checktimeinInterval(*pt, notBefore, notAfter)) {
-printTime(pt);
-printTime(&notBefore);
-printTime(&notAfter);
+#ifdef TEST
+            printTime(pt);
+            printTime(&notBefore);
+            printTime(&notAfter);
+#endif
             iRet= INVALIDPERIOD;
             throw("VerifySignedEvidence: invalid validity period\n");
         }

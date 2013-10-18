@@ -348,9 +348,14 @@ public:
     bool        genprivateKeyPair(u32 type, const char* szKeyName);
     bool        generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
                                 const char* szSubjectName, const char* szSubjectId);
-    bool        initKeys(u32 symType, u32 pubkeyType, 
-                         const char* szKeyName, const char* szSubjectName, const char* szSubjectId);
+    bool        initKeys(u32 symType, u32 pubkeyType, const char* szKeyName, 
+                         const char* szSubjectName, const char* szSubjectId);
 };
+
+
+#include "quote.h"
+bool VerifyAttestation(const char *attestation,   const char *attestCert,
+                       const char *attestEvidence, RSAKey&  oPolicyKey);
 
 
 #endif

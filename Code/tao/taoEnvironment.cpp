@@ -271,9 +271,9 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
             return false;
         }
 #ifdef TEST
-    	fprintf(g_logFile, "taoEnvironment::EnvInit, linux service initialized %s\n",
-            	serviceProvider);
-    	fflush(g_logFile);
+        fprintf(g_logFile, "taoEnvironment::EnvInit, linux service initialized %s\n",
+                serviceProvider);
+        fflush(g_logFile);
 #endif
         break;
       case PLATFORMTYPELINUXAPP:
@@ -1254,6 +1254,129 @@ bool taoEnvironment::localunsealKey(int sealedSize, byte* sealed,
 cleanup:
     if(rgOut!=NULL)
         free(rgOut);
+    return fRet;
+}
+
+
+// -------------------------------------------------------------------------
+
+
+#include "quote.h"
+#include "validateEvidence.h"
+
+
+bool VerifyAttestation(const char *attestation, const char *attestCert,
+                       const char *attestEvidence, RSAKey& oPolicyKey)
+{
+    PrincipalCert   oattestCert;
+    RSAKey*         pquoteKey= NULL;
+    evidenceList    oEvidence;
+    char*           szQuoteAlg= NULL;
+    char*           szQuoteInfo= NULL;
+    char*           sznonce= NULL;
+    char*           szdigest= NULL;
+    char*           szQuoteValue= NULL;
+    char*           szQuoteKeyInfo= NULL;
+    char*           szQuotedKeyInfo= NULL;
+    char*           szFullEvidenceList= NULL;
+    bool            fRet= false;
+
+    if(attestation==NULL || attestCertificate==NULL) {
+        fprintf(g_logFile, "VerifyAttestation: no attestation\n");
+        return false;
+    }
+
+    // Get the information from attestation
+    if(!decodeXMLQuote(attestation, &szQuoteAlg, &sznonce,
+                    &szdigest, &szQuoteInfo, &szQuoteValue,
+                    &szQuoteKeyInfo, &szQuotedKeyInfo)) {
+        fprintf(g_logFile, "VerifyAttestation: can't decode attest\n");
+        goto done;
+    }
+
+    // parse attest cert
+    if(!oattestCert.init(attestCertificate)) {
+        fprintf(g_logFile, "VerifyAttestation: can't init attest certificate\n");
+        goto done;
+    }
+    if(!oattestCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "VerifyAttestation: can't parse attest certificate\n");
+        goto done;
+    }
+
+    // get quoting key
+    pquoteKey= oAttestCert.getSubjectKeyInfo();
+    if(pquoteKey==NULL) {
+        fprintf(g_logFile, "VerifyAttestation: can't get quoting key from Cert\n");
+        goto done;
+    }
+
+    // Is attest cert signed by verified key?
+    szFullEvidenceList= consttoEvidenceList(attestCertificate, attestEvidence);
+    if(szFullEvidenceList==NULL) {
+        fprintf(g_logFile, "VerifyAttestation: cant build attest chain\n");
+        goto done;
+    }
+
+    // Cert chain
+    if(!oEvidence.m_doc.Parse(szFullEvidenceList)) {
+        fprintf(g_logFile, "VerifyAttestation: can't parse evidence list \n");
+        goto done;
+    }
+
+    oEvidence.m_fDocValid= true;
+    oEvidence.m_pRootElement= oEvidence.m_doc.RootElement();
+    if(!oEvidence.parseEvidenceList(oEvidence.m_pRootElement)) {
+        fprintf(g_logFile, "VerifyAttestation: can't parse evidence list \n");
+        goto done;
+    }
+    if(!oEvidence.validateEvidenceList(&oPolicyKey)) {
+        fprintf(g_logFile, "VerifyAttestation: can't verify evidence list \n");
+        goto done;
+    }
+
+    // finally, check attestation
+    fRet= checkXMLQuote(szQuoteAlg, szCanonicalQuotedBody, sznonce,
+                szdigest, pquoteKey, szQuoteValue);
+
+done:
+    if(szFullEvidenceList!=NULL) {
+        free(szFullEvidenceList);
+        szFullEvidenceList= NULL;
+    }
+    if(szQuoteAlg!=NULL) {
+        free(szQuoteAlg);
+        szQuoteAlg= NULL;
+    }
+    if(sznonce!=NULL) {
+        free(sznonce);
+        sznonce= NULL;
+    }
+    if(szdigest!=NULL) {
+        free(szdigest);
+        szdigest= NULL;
+    }
+    if(szQuoteInfo!=NULL) {
+        free(szQuoteInfo);
+        szQuoteInfo= NULL;
+    }
+    if(szQuoteValue!=NULL) {
+        free(szQuoteValue);
+        szQuoteValue= NULL;
+    }
+    if(szQuoteKeyInfo!=NULL) {
+        free(szQuoteKeyInfo);
+        szQuoteKeyInfo= NULL;
+    }
+    if(szQuotedKeyInfo!=NULL) {
+        free(szQuotedKeyInfo);
+        szQuotedKeyInfo= NULL;
+    }
+    if(pquoteKey!=NULL) {
+        // delete pquoteKey;
+        // this is deleted in cert class
+        pquoteKey= NULL;
+    }
     return fRet;
 }
 

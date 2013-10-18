@@ -81,16 +81,16 @@ $(B)/taoInit.o: $(TAO)/taoInit.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TRS) -c -o $(B)/taoInit.o $(TAO)/taoInit.cpp
 
 $(B)/taoSupport.o: $(TAO)/taoSupport.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TRS) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TRS) -I$(CLM) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp
 
 $(B)/taoEnvironment.o: $(TAO)/taoEnvironment.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TS) -I$(TRS) -c -o $(B)/taoEnvironment.o $(TAO)/taoEnvironment.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TS) -I$(TRS) -I$(CLM) -c -o $(B)/taoEnvironment.o $(TAO)/taoEnvironment.cpp
 
 $(B)/taoHostServices.o: $(TAO)/taoHostServices.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TS) -I$(TAO) -I$(TRS) -c -o $(B)/taoHostServices.o $(TAO)/taoHostServices.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TS) -I$(TAO) -I$(TRS) -I$(CLM) -c -o $(B)/taoHostServices.o $(TAO)/taoHostServices.cpp
 
 $(B)/linuxHostsupport.o: $(TAO)/linuxHostsupport.cpp $(TAO)/linuxHostsupport.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TAO)/linuxHostsupport.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(TAO) -I$(TRS) -I$(CLM) -c -o $(B)/linuxHostsupport.o $(TAO)/linuxHostsupport.cpp
 
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/cert.o $(CLM)/cert.cpp
@@ -144,7 +144,7 @@ $(B)/tcIO.o: $(TRS)/tcIO.cpp $(TRS)/tcIO.h
 	$(CC) $(CFLAGS) -I$(TRS) -I$(SC) -c -o $(B)/tcIO.o $(TRS)/tcIO.cpp
 
 $(B)/buffercoding.o: $(TRS)/buffercoding.cpp $(TRS)/buffercoding.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(TAO) -I$(BSC) -I$(TRS) -c -o $(B)/buffercoding.o $(TRS)/buffercoding.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(TAO) -I$(BSC) -I$(TRS) -I$(CLM) -c -o $(B)/buffercoding.o $(TRS)/buffercoding.cpp
 
 $(B)/channel.o: $(CH)/channel.cpp $(CH)/channel.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/channel.o $(CH)/channel.cpp

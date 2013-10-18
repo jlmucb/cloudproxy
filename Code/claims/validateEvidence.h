@@ -57,6 +57,7 @@
 #define INVALIDPURPOSE       (-9)
 
 
+char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
 int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
                  int npieces, int* rgType, void** rgObject);
 

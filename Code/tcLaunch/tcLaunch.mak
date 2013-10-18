@@ -51,7 +51,7 @@ $(B)/tcIO.o: $(TRS)/tcIO.cpp $(TRS)/tcIO.h
 	$(CC) $(CFLAGS) -I$(TRS) -I$(SC) -c -o $(B)/tcIO.o $(TRS)/tcIO.cpp
 
 $(B)/buffercoding.o: $(TRS)/buffercoding.cpp $(TRS)/buffercoding.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(TAO) -I$(BN) -I$(TRS) -c -o $(B)/buffercoding.o $(TRS)/buffercoding.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(TAO) -I$(BN) -I$(TRS) -I$(CLM) -c -o $(B)/buffercoding.o $(TRS)/buffercoding.cpp
 
 $(B)/tcLaunch.o: $(S)/tcLaunch.cpp
 	$(CC) $(CFLAGS) -I$(BN) -I$(PROTO) -I$(TAO) -I$(SCD) -I$(CLM) -I$(TRS) -I$(SC) -D LINUXTCSERVICE -c -o $(B)/tcLaunch.o $(S)/tcLaunch.cpp

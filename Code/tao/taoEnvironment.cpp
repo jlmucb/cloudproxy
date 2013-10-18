@@ -1261,6 +1261,7 @@ cleanup:
 // -------------------------------------------------------------------------
 
 
+#include "cert.h"
 #include "quote.h"
 #include "validateEvidence.h"
 
@@ -1273,6 +1274,7 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
     evidenceList    oEvidence;
     char*           szQuoteAlg= NULL;
     char*           szQuoteInfo= NULL;
+    char*           szCanonicalQuotedBody= NULL;
     char*           sznonce= NULL;
     char*           szdigest= NULL;
     char*           szQuoteValue= NULL;
@@ -1281,7 +1283,7 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
     char*           szFullEvidenceList= NULL;
     bool            fRet= false;
 
-    if(attestation==NULL || attestCertificate==NULL) {
+    if(attestation==NULL || attestCert==NULL) {
         fprintf(g_logFile, "VerifyAttestation: no attestation\n");
         return false;
     }
@@ -1295,7 +1297,7 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
     }
 
     // parse attest cert
-    if(!oattestCert.init(attestCertificate)) {
+    if(!oattestCert.init(attestCert)) {
         fprintf(g_logFile, "VerifyAttestation: can't init attest certificate\n");
         goto done;
     }
@@ -1305,14 +1307,14 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
     }
 
     // get quoting key
-    pquoteKey= oAttestCert.getSubjectKeyInfo();
+    pquoteKey= (RSAKey*) oattestCert.getSubjectKeyInfo();
     if(pquoteKey==NULL) {
         fprintf(g_logFile, "VerifyAttestation: can't get quoting key from Cert\n");
         goto done;
     }
 
     // Is attest cert signed by verified key?
-    szFullEvidenceList= consttoEvidenceList(attestCertificate, attestEvidence);
+    szFullEvidenceList= consttoEvidenceList(attestCert, attestEvidence);
     if(szFullEvidenceList==NULL) {
         fprintf(g_logFile, "VerifyAttestation: cant build attest chain\n");
         goto done;
@@ -1336,6 +1338,7 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
     }
 
     // finally, check attestation
+    szCanonicalQuotedBody= canonicalizeXML(szQuoteInfo);
     fRet= checkXMLQuote(szQuoteAlg, szCanonicalQuotedBody, sznonce,
                 szdigest, pquoteKey, szQuoteValue);
 
@@ -1343,6 +1346,10 @@ done:
     if(szFullEvidenceList!=NULL) {
         free(szFullEvidenceList);
         szFullEvidenceList= NULL;
+    }
+    if(szCanonicalQuotedBody!=NULL) {
+        free(szCanonicalQuotedBody);
+        szCanonicalQuotedBody= NULL;
     }
     if(szQuoteAlg!=NULL) {
         free(szQuoteAlg);

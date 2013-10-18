@@ -38,7 +38,7 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/taoSupport.o $(B)/linuxHostsupport.o \
 	    $(B)/sha1.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/resource.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/vTCIDirect.o  $(B)/vault.o \
-	    $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o \
+	    $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o $(B)/validateEvidence.o \
 	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
 tpmobjs=    $(B)/taoEnvironmentwithtpm.o $(B)/taoHostServiceswithtpm.o \
 	    $(B)/taoInitwithtpm.o $(B)/TPMHostsupportwithtpm.o 
@@ -102,8 +102,11 @@ $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/cert.o $(CLM)/cert.cpp
 
+$(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
+
 $(B)/buffercoding.o: $(S)/buffercoding.cpp $(S)/buffercoding.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(TH) -I$(BSC) -I$(S) -c -o $(B)/buffercoding.o $(S)/buffercoding.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(TH) -I$(BSC) -I$(S) -I$(CLM) -c -o $(B)/buffercoding.o $(S)/buffercoding.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp

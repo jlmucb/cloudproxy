@@ -33,7 +33,7 @@
 #include "cryptoHelper.h"
 #include "sha256.h"
 
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
 #include "signedAssertion.h"
 #endif
 
@@ -56,7 +56,7 @@ TiXmlNode* getParseRoot(int evidenceType, void* pObject)
     TiXmlNode*          nodeRoot= NULL;
     PrincipalCert*      pCert= (PrincipalCert*) pObject;
     Quote*              pQuote= (Quote*) pObject;
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
     SignedAssertion*    pAssert= (SignedAssertion*) pObject;
 #endif
 
@@ -66,7 +66,7 @@ TiXmlNode* getParseRoot(int evidenceType, void* pObject)
       case EMBEDDEDPOLICYPRINCIPAL:
       case KEYINFO:
         return NULL;
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
       case SIGNEDGRANT:
         nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
         break;
@@ -88,7 +88,7 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
     TiXmlNode*          nodeSignedInfo=  NULL;
     PrincipalCert*      pCert= (PrincipalCert*) pObject;
     Quote*              pQuote= (Quote*) pObject;
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
     SignedAssertion*    pAssert= (SignedAssertion*) pObject;
 #endif
 
@@ -98,7 +98,7 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
       case EMBEDDEDPOLICYPRINCIPAL:
       case KEYINFO:
         return NULL;
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
       case SIGNEDGRANT:
         nodeRoot= (TiXmlNode*) pAssert->m_pRootElement;
         if(nodeRoot==NULL)
@@ -136,7 +136,7 @@ char* getChainElementSignedInfoPurpose(int evidenceType, void* pObject)
       case NOEVIDENCE:
       case KEYINFO:
         return NULL;
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED 
       case SIGNEDGRANT:
 #endif
       case PRINCIPALCERT:
@@ -655,7 +655,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
     int                 n= 0;
     char*               szEvidence= NULL;
     PrincipalCert*      pCert= NULL;
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
     SignedAssertion*    pAssert= NULL;
 #endif
 
@@ -690,7 +690,7 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
         // parse Evidence
         szEvidence= canonicalize(pNode);
         switch(m_rgiEvidenceTypes[n]) {
-#ifndef FILECLIENT
+#ifdef ASSERTIONSALLOWED
           case SIGNEDGRANT:
             pAssert= new SignedAssertion();
             if(!pAssert->init(szEvidence)) {

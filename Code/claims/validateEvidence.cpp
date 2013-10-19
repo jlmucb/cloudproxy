@@ -648,7 +648,7 @@ evidenceList::~evidenceList()
 }
 
 
-bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
+bool evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
 {
     TiXmlNode*          pNode= NULL;
     TiXmlNode*          pNode1= NULL;
@@ -736,7 +736,24 @@ bool    evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
 }
 
 
-bool    evidenceList::validateEvidenceList(RSAKey* pRootKey)
+bool  evidenceList::getSubjectEvidence(int* pType, void** pEvid)
+{
+    if(pType==NULL || pEvid==NULL) {
+        fprintf(g_logFile, "getSubjectEvidence: bad parameters\n");
+        return false;
+    }
+    if(m_iNumPiecesofEvidence<=0) {
+        fprintf(g_logFile, "getSubjectEvidence: no evidence present\n");
+        return false;
+    }
+
+    *pType= m_rgistaticEvidenceTypes[0];
+    *pEvid=  m_rgstaticEvidence[0];
+    return true;
+}
+
+
+bool  evidenceList::validateEvidenceList(RSAKey* pRootKey)
 {
     int             iVerify;
 

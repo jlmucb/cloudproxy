@@ -84,8 +84,9 @@ public:
     evidenceList();
     ~evidenceList();
 
-    bool    parseEvidenceList(TiXmlElement* pRootElement);
-    bool    validateEvidenceList(RSAKey* pRootKey);
+    bool            parseEvidenceList(TiXmlElement* pRootElement);
+    bool            getSubjectEvidence(int* pType, void** pEvid);
+    bool            validateEvidenceList(RSAKey* pRootKey);
 };
 
 

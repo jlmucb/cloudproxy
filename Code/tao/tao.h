@@ -354,7 +354,7 @@ public:
 
 
 #include "quote.h"
-bool VerifyAttestation(const char *attestation,   const char *attestCert,
+bool VerifyAttestation(const char *attestation,
                        const char *attestEvidence, RSAKey&  oPolicyKey);
 
 

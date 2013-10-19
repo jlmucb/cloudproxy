@@ -48,6 +48,7 @@ extern char           g_szXmlPolicyCert[];
 
 
 // -------------------------------------------------------------------------
+#ifndef  VALIDATEATTESTONLY
 
 
 taoEnvironment::taoEnvironment()
@@ -1272,6 +1273,8 @@ cleanup:
 }
 
 
+#endif  // VALIDATEATTESTONLY
+
 // -------------------------------------------------------------------------
 
 
@@ -1280,10 +1283,11 @@ cleanup:
 #include "validateEvidence.h"
 
 
-bool VerifyAttestation(const char *attestation, const char *attestCert,
+bool VerifyAttestation(const char *attestation, 
                        const char *attestEvidence, RSAKey& oPolicyKey)
 {
-    PrincipalCert   oattestCert;
+    int             type= 0;
+    PrincipalCert*  pattestCert= NULL;
     RSAKey*         pquoteKey= NULL;
     evidenceList    oEvidence;
     char*           szQuoteAlg= NULL;
@@ -1294,13 +1298,23 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
     char*           szQuoteValue= NULL;
     char*           szQuoteKeyInfo= NULL;
     char*           szQuotedKeyInfo= NULL;
-    char*           szFullEvidenceList= NULL;
     bool            fRet= false;
 
-    if(attestation==NULL || attestCert==NULL) {
+    if(attestation==NULL) {
         fprintf(g_logFile, "VerifyAttestation: no attestation\n");
         return false;
     }
+    if(attestEvidence==NULL) {
+        fprintf(g_logFile, "VerifyAttestation: no evidence\n");
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "VerifyAttestation, attestation\n%s\nEvidence\n%s\n", 
+            attestation, attestEvidence);
+    fprintf(g_logFile, "Policy Key\n");
+    oPolicyKey.printMe();
+    fflush(g_logFile);
+#endif
 
     // Get the information from attestation
     if(!decodeXMLQuote(attestation, &szQuoteAlg, &sznonce,
@@ -1309,33 +1323,19 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
         fprintf(g_logFile, "VerifyAttestation: can't decode attest\n");
         goto done;
     }
-
-    // parse attest cert
-    if(!oattestCert.init(attestCert)) {
-        fprintf(g_logFile, "VerifyAttestation: can't init attest certificate\n");
-        goto done;
-    }
-    if(!oattestCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "VerifyAttestation: can't parse attest certificate\n");
-        goto done;
-    }
-
-    // get quoting key
-    pquoteKey= (RSAKey*) oattestCert.getSubjectKeyInfo();
-    if(pquoteKey==NULL) {
-        fprintf(g_logFile, "VerifyAttestation: can't get quoting key from Cert\n");
-        goto done;
-    }
-
-    // Is attest cert signed by verified key?
-    szFullEvidenceList= consttoEvidenceList(attestCert, attestEvidence);
-    if(szFullEvidenceList==NULL) {
-        fprintf(g_logFile, "VerifyAttestation: cant build attest chain\n");
-        goto done;
-    }
+#ifdef TEST
+    fprintf(g_logFile, "VerifyAttestation\n");
+    fprintf(g_logFile, "\tszQuoteAlg: %s\n", szQuoteAlg);
+    fprintf(g_logFile, "\tszdigest: %s\n", szdigest);
+    fprintf(g_logFile, "\tszQuoteInfo: %s\n", szQuoteInfo);
+    fprintf(g_logFile, "\tszQuoteValue: %s\n", szQuoteValue);
+    fprintf(g_logFile, "\tszQuoteKeyInfo: %s\n", szQuoteKeyInfo);
+    fprintf(g_logFile, "\tszQuotedKeyInfo: %s\n", szQuotedKeyInfo);
+    fflush(g_logFile);
+#endif
 
     // Cert chain
-    if(!oEvidence.m_doc.Parse(szFullEvidenceList)) {
+    if(!oEvidence.m_doc.Parse(attestEvidence)) {
         fprintf(g_logFile, "VerifyAttestation: can't parse evidence list \n");
         goto done;
     }
@@ -1350,17 +1350,46 @@ bool VerifyAttestation(const char *attestation, const char *attestCert,
         fprintf(g_logFile, "VerifyAttestation: can't verify evidence list \n");
         goto done;
     }
+#ifdef TEST
+    fprintf(g_logFile, "VerifyAttestation: evidence valid\n");
+    fflush(g_logFile);
+#endif
+
+    // get parse attest cert
+    if(!oEvidence.getSubjectEvidence(&type, (void**)&pattestCert)) {
+        fprintf(g_logFile, "VerifyAttestation: can't get attest Cert\n");
+        goto done;
+    }
+    if(type!=PRINCIPALCERT) {
+        fprintf(g_logFile, "VerifyAttestation: attest Cert wrong type\n");
+        goto done;
+    }
+
+    // get quoting key
+    pquoteKey= (RSAKey*) pattestCert->getSubjectKeyInfo();
+    if(pquoteKey==NULL) {
+        fprintf(g_logFile, "VerifyAttestation: can't get quoting key from Cert\n");
+        goto done;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "VerifyAttestation: quote key\n");
+    pquoteKey->printMe();
+    fflush(g_logFile);
+#endif
 
     // finally, check attestation
     szCanonicalQuotedBody= canonicalizeXML(szQuoteInfo);
     fRet= checkXMLQuote(szQuoteAlg, szCanonicalQuotedBody, sznonce,
                 szdigest, pquoteKey, szQuoteValue);
+#ifdef TEST
+    if(fRet)
+        fprintf(g_logFile, "VerifyAttestation passed\n");
+    else
+        fprintf(g_logFile, "VerifyAttestation failed\n");
+    fflush(g_logFile);
+#endif
 
 done:
-    if(szFullEvidenceList!=NULL) {
-        free(szFullEvidenceList);
-        szFullEvidenceList= NULL;
-    }
     if(szCanonicalQuotedBody!=NULL) {
         free(szCanonicalQuotedBody);
         szCanonicalQuotedBody= NULL;

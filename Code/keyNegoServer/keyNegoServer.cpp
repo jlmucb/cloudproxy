@@ -43,6 +43,7 @@
 #include "quote.h"
 #include "validateEvidence.h"
 #include "hashprep.h"
+#include "tao.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -724,9 +725,6 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     char*   szquoteKeyInfo= NULL;
     char*   szquotedKeyInfo= NULL;
 
-    evidenceList oEvid;
-
-    RSAKey* pQuoteKey= NULL;
     RSAKey* pKey= NULL;
     bnum    bnMsg(128);
     bnum    bnOut(128);
@@ -742,12 +740,6 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     else
         fprintf(g_logFile, "Evidence: none\n");
 #endif
-    pKey= getKeyfromID(szPolicyKeyId);
-    if(pKey==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant get Signing key\n");
-        fRet= false;
-        goto cleanup;
-    }
 
     // decode request
     if(!decodeXMLQuote(szXMLQuote, &szAlg, &szNonce, &szDigest, &szQuotedInfo,
@@ -757,67 +749,19 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
         goto cleanup;
     }
 
-    szKeyName= getKeyNamefromQuotedKeyInfo(szquotedKeyInfo);
-#ifdef TEST
-    fprintf(g_logFile, "validateRequestandIssue: quotedkeyinfo\n%s\n", szquotedKeyInfo);
-    if(szKeyName==NULL)
-        fprintf(g_logFile, "validateRequestandIssue:  key name is NULL\n");
-    else
-        fprintf(g_logFile, "validateRequestandIssue:  key name is %s\n", szKeyName);
-#endif
+    // get policy key
+    pKey= getKeyfromID(szPolicyKeyId);
+     if(pKey==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: cant get Signing key\n");
+        fRet= false;
+        goto cleanup;
+    }
 
     // check policy
     if(!validCodeDigest(szPolicyKeyId, szDigest)) {
         fprintf(g_logFile, "validateRequestandIssue: out of policy\n");
         fRet= false;
         goto cleanup;
-    }
-
-    // check quote
-    pQuoteKey= RSAKeyfromkeyInfo(szquoteKeyInfo);
-    if(pQuoteKey==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant get quote keyfromkeyInfo\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "validateRequestandIssue: checkquote alg %s\n", szAlg);
-    fprintf(g_logFile, "validateRequestandIssue: quote key\n");
-    pQuoteKey->printMe();
-#endif
-
-    if(!checkXMLQuote(szAlg, szQuotedInfo, szNonce,
-                      szDigest, pQuoteKey, szQuoteValue)) {
-        fprintf(g_logFile, "validateRequestandIssue: cant verify quote\n");
-        fflush(g_logFile);
-        fRet= false;
-        goto cleanup;
-    }
-
-    // Check evidence chain
-#ifdef  TEST
-    fprintf(g_logFile, "keyNegoServer: checking Evidence List\n");
-    fprintf(g_logFile, "%s\n", szEvidence);
-    fflush(g_logFile);
-#endif
-    if(szEvidence!=NULL) {
-        TiXmlDocument   doc;
-        if(!doc.Parse(szEvidence)) {
-            fprintf(g_logFile, "validateRequestandIssue: can't parse evidence list\n");
-            fRet= false;
-            goto cleanup;
-        }
-        if(!oEvid.parseEvidenceList(doc.RootElement())) {
-            fprintf(g_logFile, "validateRequestandIssue: can't parse evidence list\n");
-            fRet= false;
-            goto cleanup;
-        }
-        if(!oEvid.validateEvidenceList(g_pSigningKey)) {
-            fprintf(g_logFile, "validateRequestandIssue: can't validate evidence list\n");
-            fRet= false;
-            goto cleanup;
-        }
     }
 
 #ifdef  TEST
@@ -830,6 +774,23 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
                           &szIssuerName, &szIssuerID, &szNotBefore, 
                           &szNotAfter, &szSubjName, &szSubjKeyID)) {
         fprintf(g_logFile, "validateRequestandIssue: cant get certificate parameters\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "about to call VerifyAttestation\n");
+    fprintf(g_logFile, "Quote: %s\n", szXMLQuote);
+    fprintf(g_logFile, "Cert: %s\n", szCert);
+    if(szEvidence!=NULL)
+        fprintf(g_logFile, "Evidence: %s\n", szEvidence);
+    else
+        fprintf(g_logFile, "Evidence: none\n");
+#endif
+
+    // check quote
+    if(!VerifyAttestation(szXMLQuote, szEvidence, *pKey)) {
+        fprintf(g_logFile, "validateRequestandIssue: VerifyAttestation fails\n");
         fRet= false;
         goto cleanup;
     }

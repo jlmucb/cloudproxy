@@ -1,0 +1,74 @@
+<Quote format="xml">
+    <CodeDigest alg="SHA256">al5/jR40s+ytNsx3SRTLE67oZV5bSl+EXNRrqI2gxKY=</CodeDigest>
+    <QuotedInfo>
+        <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+        <ds:QuoteMethod Algorithm="Quote-Sha256FileHash-RSA1024" />
+        <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/jlmlinuxhp/Keys/fileClientProgram">
+            <KeyType>RSAKeyType</KeyType>
+            <ds:KeyValue>
+                <ds:RSAKeyValue size="1024">
+                    <ds:M>hGwM+FLbzGTrOhbz6iiKrIdgx+NptyUWHJAqNLUUtppsQcWcbX01pBam74muwqd9Cjc1MXgHLnmthqXtqJ3VLW75mcTAKqtJXlMO3Mb6BeewfFAHBKuVB9yf5qJyGIqLOQy2jGkoo66SSb40xuypcbsSc0acWdhTDL15wPETiT8=</ds:M>
+                    <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+                </ds:RSAKeyValue>
+            </ds:KeyValue>
+        </ds:KeyInfo>
+    </QuotedInfo>
+    <QuoteValue>a0NDX3hYz3OzGvGQlOp87X0oJV00zGQ5YOaeVfW/3NqCdml4EzAWcjZNaFf26kry84hZ9ULOpB7+RiBplhKg9kSinMEPfljkvvJJ+vuVdbmEzu45oi3FAh4PMGyp5hoWTxpnhr+MSBhvs08BUcWe+xxMlerdI17T1Tv6wO9iJMo=</QuoteValue>
+    <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/jlmlinuxhp/Keys/TrustedOSAttest">
+        <KeyType>RSAKeyType</KeyType>
+        <ds:KeyValue>
+            <ds:RSAKeyValue size="1024">
+                <ds:M>rBdxn3Cd7a+X736tzMrIp6yCzfsF9gN+7NdoHYmRBtvy2zWRWtAbeyrxpzzbDyC7zwtZRxVCPem0NbszpP066v7Rw/SeSZvr0dWaBpzkatIhKpJHqRigcAl43RgSH0tSB6+/mEj11a/tTMUidTobi4ZEV1qPX+qauUr8dwM9kEs=</ds:M>
+                <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+            </ds:RSAKeyValue>
+        </ds:KeyValue>
+    </ds:KeyInfo>
+</Quote>
+
+
+Evidence: 
+
+<EvidenceList count="1">
+    <ds:Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id="//www.manferdelli.com/jlmlinuxhp/Programs/TrustedOSAttest">
+        <ds:SignedInfo>
+            <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+            <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+            <Certificate Id="Certid" version="1">
+                <SerialNumber>42</SerialNumber>
+                <PrincipalType>Program</PrincipalType>
+                <IssuerName>www.manferdelli.com</IssuerName>
+                <IssuerID>21463264</IssuerID>
+                <ValidityPeriod>
+                    <NotBefore>2011-01-01Z00:00.00</NotBefore>
+                    <NotAfter>2021-01-01Z00:00.00</NotAfter>
+                </ValidityPeriod>
+                <SubjectName>//www.manferdelli.com/jlmlinuxhp/Programs/TrustedOSAttest</SubjectName>
+                <SubjectKey>
+                    <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/jlmlinuxhp/Keys/TrustedOSAttest">
+                        <KeyType>RSAKeyType</KeyType>
+                        <ds:KeyValue>
+                            <ds:RSAKeyValue size="1024">
+                                <ds:M>rBdxn3Cd7a+X736tzMrIp6yCzfsF9gN+7NdoHYmRBtvy2zWRWtAbeyrxpzzbDyC7zwtZRxVCPem0NbszpP066v7Rw/SeSZvr0dWaBpzkatIhKpJHqRigcAl43RgSH0tSB6+/mEj11a/tTMUidTobi4ZEV1qPX+qauUr8dwM9kEs=</ds:M>
+                                <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+                            </ds:RSAKeyValue>
+                        </ds:KeyValue>
+                    </ds:KeyInfo>
+                    <CodeDigest>9YDGzhlrxKwE8P1H6JhTRHSt5NU=</CodeDigest>
+                </SubjectKey>
+                <SubjectKeyID>//www.manferdelli.com/jlmlinuxhp/Keys/TrustedOSAttest</SubjectKeyID>
+                <RevocationPolicy>Local-check-only</RevocationPolicy>
+            </Certificate>
+        </ds:SignedInfo>
+        <ds:SignatureValue>Ix06pXEKlfCjdzM0zz/Kq/bddIm1qgWn9mCnaGNVLe2wYboaCRuWx8K7u6x5jyxRgh7XT1MpvbkZjAvG/VOYhkPjt31HvMZGlzaZMManc16k3GfEcLtM59r+QL9MuxbS6RqUzvibkPPjK0t/OCo4pbpJMAKvzjQLKEQfxZ5GPik=</ds:SignatureValue>
+        <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="NO NAME">
+            <KeyType>RSAKeyType</KeyType>
+            <ds:KeyValue>
+                <ds:RSAKeyValue size="1024">
+                    <ds:M>8ROJlrwkaYa0HcNRRTqsy8OTM40wLlKO4ZUR3wz4OTidkBqksNTPLSgf5n65Hjnxb2ZAL2g3itvs0F8qXagPnFpYWe66wJdlc8H0kdN4UJMwYlfGtQTu3uCMSL1eAmZhJHNx6fT2Dh9O63CGWW/5v6VK78mTdESR8a7iyEUEs1E=</ds:M>
+                    <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
+                </ds:RSAKeyValue>
+            </ds:KeyValue>
+        </ds:KeyInfo>
+    </ds:Signature>
+</EvidenceList>
+

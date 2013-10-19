@@ -36,6 +36,7 @@
 #ifdef TPMSUPPORT
 #include "TPMHostsupport.h"
 #endif
+
 extern int            g_szpolicykeySize;
 extern char           g_szXmlPolicyCert[];
 

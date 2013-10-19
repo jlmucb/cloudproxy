@@ -45,6 +45,7 @@
 #include "encapsulate.h"
 #include "validateEvidence.h"
 #include "accessControl.h"
+#include "tao.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -1029,66 +1030,55 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
 // --------------------------------------------------------------------- 
 
 
-bool VerifyQuote(const char* szQuoteFile, const char* szCertFile)
+bool VerifyQuote(const char* szQuoteFile, const char* szEvidenceFile,
+                 const char* szRootKeyFile)
 {
     Quote           oQuote;
     PrincipalCert   oCert;
-    char* szCertString= readandstoreString(szCertFile);
+    char* szEvidenceString= readandstoreString(szEvidenceFile);
     char* szQuoteString= readandstoreString(szQuoteFile);
+    char* szRootKeyString= readandstoreString(szRootKeyFile);
 
 #ifdef TEST
-    fprintf(g_logFile, "VerifyQuote: quoteFile: %s, certFile: %s\n",
-            szQuoteFile, szCertFile);
+    fprintf(g_logFile, "VerifyQuote: quoteFile: %s, certFile: %s, key file: %s\n",
+            szQuoteFile, szEvidenceFile, szRootKeyFile);
     fflush(g_logFile);
 #endif
 
-    // get and parse Quote
-    if(szQuoteFile==NULL) {
-        fprintf(g_logFile, "VerifyQuote: Can't cant read quote file %s\n", szQuoteFile);
-        return false;
-    }
-    if(!oQuote.init(szQuoteString)) {
-        fprintf(g_logFile, "VerifyQuote: Can't parse quote\n");
+    // get Quote
+    if(szQuoteString==NULL) {
+        fprintf(g_logFile, "VerifyQuote: Can't cant read quote file %s\n", szQuoteString);
         return false;
     }
 
-    // get and parse Cert
-    if(szCertFile==NULL) {
-        fprintf(g_logFile, "VerifyQuote: Can't cant read cert file %s\n", szCertFile);
-        return false;
-    }
-    if(!oCert.init(szCertString)) {
-        fprintf(g_logFile, "VerifyQuote: Can't parse cert\n");
+    // get Cert
+    if(szEvidenceString==NULL) {
+        fprintf(g_logFile, "VerifyQuote: Can't cant read evidence file %s\n", szEvidenceString);
         return false;
     }
 
-    // decode request
-    char* szAlg= oQuote.getQuoteAlgorithm();
-    char* szQuotedInfo= oQuote.getCanonicalQuoteInfo();
-    char* szQuoteValue= oQuote.getQuoteValue();
-    char* sznonce= oQuote.getnonceValue();
-    char* szDigest= oQuote.getcodeDigest();
-
-    if(!oCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "VerifyQuote: Can't get principal cert elements\n");
+    // get Key
+    if(szRootKeyString==NULL) {
+        fprintf(g_logFile, "VerifyQuote: Can't cant read evidence file %s\n", szRootKeyString);
         return false;
     }
 
-    // check quote
-    RSAKey* pAIKKey= (RSAKey*) oCert.getSubjectKeyInfo();
-    if(pAIKKey==NULL) {
-        fprintf(g_logFile, "VerifyQuote: Cant get quote keyfromkeyInfo\n");
+    RSAKey aikKey;
+    if(!((KeyInfo*)&aikKey)->ParsefromString(szRootKeyString)) {
+        fprintf(g_logFile, "VerifyQuote: Cant parse quoting key\n");
         return false;
     }
 
-    fprintf(g_logFile, "Quote key size: %d\n", pAIKKey->m_iByteSizeM);
-    fprintf(g_logFile, "Quote Algorithm: %s\n", szAlg);
+    if(!aikKey.getDataFromDoc()) {
+        fprintf(g_logFile, "VerifyQuote: Cant interpret quoting key\n");
+        return false;
+    }
+
+    fprintf(g_logFile, "Quote key size: %d\n", aikKey.m_iByteSizeM);
     fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
-    fprintf(g_logFile, "Quoted value:\n%s\n\n", szQuotedInfo);
-    fprintf(g_logFile, "AttestCert:\n%s\n\n", szCertString);
-    
-    return checkXMLQuote(szAlg, szQuotedInfo, sznonce,
-                          szDigest, pAIKKey, szQuoteValue);
+    fprintf(g_logFile, "Evidence :\n%s\n\n", szEvidenceString);
+
+    return VerifyAttestation(szQuoteString, szEvidenceString, aikKey);
 }
 
 bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasurementFile)
@@ -1365,7 +1355,7 @@ bool Decapsulate(const char* szKeyInfo, const char* szMetaDataFile,
     char                 szMetadata[4096];
     int                  sizemetadata= 4096;
     bool                 fRet= true;
-    bool		 fRead;
+    bool                 fRead;
 
     if(szKeyInfo==NULL) {
         fprintf(g_logFile, "Decapsulate: no keyinfo\n");
@@ -1753,7 +1743,8 @@ int main(int an, char** av)
         if(strcmp(av[i], "-VerifyQuote")==0) {
             iAction= VERIFYQUOTE;
             szInFile= av[i+1];
-            szKeyFile= av[i+2];
+            szPrincipalsFile= av[i+2];
+            szKeyFile= av[i+3];
             break;
         }
         if(strcmp(av[i], "-HexquoteTest")==0) {
@@ -2038,7 +2029,7 @@ int main(int an, char** av)
     }
 
     if(iAction==VERIFYQUOTE) {
-        if(VerifyQuote(szInFile, szKeyFile)) {
+        if(VerifyQuote(szInFile, szPrincipalsFile, szKeyFile)) {
             fprintf(g_logFile, "Quote verifies\n");
         }
         else {

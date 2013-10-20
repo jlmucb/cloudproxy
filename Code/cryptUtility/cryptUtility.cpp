@@ -1606,7 +1606,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -makePolicyKeyFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
-            fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-aikcert\n");
+            fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-evidence xml-root-key\n");
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -validateChain rootKeyFile evidenceFile\n");

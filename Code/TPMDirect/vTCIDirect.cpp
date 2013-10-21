@@ -1827,7 +1827,7 @@ bool tpmStatus::getAIKKey(const char* aikBlobFile, const char* aikCertFile)
 {
 #ifdef TEST
     if(aikCertFile==NULL)
-        fprintf(g_logFile, "tpmStatus::getAIKKey(%s), no certfile\n", aikBlobFile);
+        fprintf(g_logFile, "tpmStatus::getAIKKey(%s), no certfile\n", aikCertFile);
     else
         fprintf(g_logFile, "tpmStatus::getAIKKey(%s, %s)\n", aikBlobFile, aikCertFile);
     fflush(g_logFile);

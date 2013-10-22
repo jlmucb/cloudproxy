@@ -7,6 +7,7 @@ Measurement race when starting app/vm (tom?)                    (2)
     Fix pid hack (jlm, tom/rekha to ask kvm guys)               (3?)
 Check on locality for tpm (jlm)                                 (1)
 Check timing attack (jlm, help from google/intel)               (3)
+AIK in persistent memory?
 tcService hang after init (jlm started - low priority)
 Rewrite kvmtciodd/ktciodd channel (tom)
 

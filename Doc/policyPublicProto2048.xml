@@ -1,0 +1,20 @@
+<ds:SignedInfo>
+    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
+    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#" />
+    <Certificate Id="www.manferdelli.com/certs/SERIALNUMBER" version="1">
+        <SerialNumber>SERIALNUMBER</SerialNumber>
+        <PrincipalType>Policy</PrincipalType>
+        <IssuerName>manferdelli.com</IssuerName>
+        <IssuerID>manferdelli.com</IssuerID>
+        <ValidityPeriod>
+            <NotBefore>2011-01-01Z00:00.00</NotBefore>
+            <NotAfter>2021-01-01Z00:00.00</NotAfter>
+        </ValidityPeriod>
+        <SubjectName>//www.manferdelli.com/fileProxyPolicy/0001</SubjectName>
+        <SubjectKey>
+--- put public portion (remove D, P, Q) of the keyinfo of the policy key here
+        </SubjectKey>
+        <SubjectKeyID>fileProxyPolicyKey</SubjectKeyID>
+        <RevocationPolicy>Local-check-only</RevocationPolicy>
+    </Certificate>
+</ds:SignedInfo>

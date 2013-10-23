@@ -711,6 +711,7 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
         // start Linux guest application
         if(execve((char*)execName, (char**)av, NULL)<0) {
             fprintf(g_logFile, "StartApp: execvp %s failed\n", av[0]);
+            exit(1);
         }
     }
 
@@ -795,8 +796,9 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
         return TCSERVICE_RESULT_FAILED;
     }
 #ifdef TEST
-        fprintf(g_logFile, "tcServiceInterface::AttestFor succeeded new output buf size\n",
+        fprintf(g_logFile, "tcServiceInterface::AttestFor succeeded new output buf size %d\n",
                *psizeOut);
+        PrintBytes((char*)"Attest value: ", rgOut, *psizeOut);
 #endif
     return TCSERVICE_RESULT_SUCCESS;
 }

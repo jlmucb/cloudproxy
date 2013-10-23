@@ -516,6 +516,7 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
 
+    // TODO:  replace with getenv
     if(an>1) {
         for(i=0;i<an;i++) {
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {

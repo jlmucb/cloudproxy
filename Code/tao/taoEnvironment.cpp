@@ -666,16 +666,21 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
     memset(bnMsg.m_pValue, 0, m_publicKeyBlockSize);
     memset(bnOut.m_pValue, 0, m_publicKeyBlockSize);
     revmemcpy((byte*)bnMsg.m_pValue, rgToSign, m_publicKeyBlockSize);
-#ifdef TEST1
-    fprintf(g_logFile, "taoEnvironment::Attest about to RSAENC\n");
+#ifdef TEST
+    fprintf(g_logFile, "taoEnvironment::Attest about to RSAENC, blocksize: %d\n", m_publicKeyBlockSize);
+    PrintBytes((char*)"ToSign: ", rgToSign, m_publicKeyBlockSize);
+    pRSA->printMe();
     fflush(g_logFile);
 #endif
-   if(!mpRSAENC(bnMsg, *(pRSA->m_pbnD), *(pRSA->m_pbnM), bnOut)) {
+    // Replace
+    // mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
+    //          bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR)
+    if(!mpRSAENC(bnMsg, *(pRSA->m_pbnD), *(pRSA->m_pbnM), bnOut)) {
         fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
         return false;
     }
 
-#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "taoEnvironment::Attest succeeded, m_publicKeyBlockSize: %d\n",
             m_publicKeyBlockSize);
     fflush(g_logFile);
@@ -867,7 +872,16 @@ bool taoEnvironment::saveTao()
             PrintBytes((char*)"Symmetric key: ", m_symKey, m_symKeySize);
 #endif
             m_serializedprivateKeySize= strlen(m_serializedprivateKey);
-            m_serializedprivateKeyType= KEYTYPERSA1024SERIALIZED;
+            if(m_privateKeyType==KEYTYPERSA2048INTERNALSTRUCT) {
+                m_serializedprivateKeyType= KEYTYPERSA2048SERIALIZED;
+            }
+            else if(m_privateKeyType==KEYTYPERSA1024INTERNALSTRUCT) {
+                m_serializedprivateKeyType= KEYTYPERSA1024SERIALIZED;
+            }
+            else {
+                fprintf(g_logFile, "taoEnvironment::saveTao: shouldn't happen\n");
+                return false;
+            }
             if(!localsealKey(m_serializedprivateKeyType, m_serializedprivateKeySize,
                             (byte*)m_serializedprivateKey, &m_sealedprivateKeySize, 
                             &m_sealedprivateKey)) {

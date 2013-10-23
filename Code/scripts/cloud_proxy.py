@@ -10,10 +10,12 @@ ROOT_DIR = '/home/jlm/jlmcrypt/'
 CRYPT_UTILITY = ROOT_DIR + 'cryptUtility.exe'
 POLICY_KEY = ROOT_DIR + 'policy/policyPrivateKey.xml'
 
+# JLM CHANGE: rsa1024-sha256-pkcspad --> rsa2048-sha256-pkcspad
+# JLM CHANGE: size="1024" --> size="2048"
 policy_key_template = """
 <ds:SignedInfo>
     <ds:CanonicalizationMethod Algorithm='http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#' />
-    <ds:SignatureMethod Algorithm='http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#' />
+    <ds:SignatureMethod Algorithm='http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#' />
     <Certificate Id='www.manferdelli.com/certs/' version='1'>
         <SerialNumber></SerialNumber>
         <PrincipalType>Policy</PrincipalType>
@@ -28,7 +30,7 @@ policy_key_template = """
             <ds:KeyInfo KeyName="//www.manferdelli.com/Keys/">
                 <KeyType>RSAKeyType</KeyType>
                 <ds:KeyValue>
-                    <ds:RSAKeyValue size="1024">
+                    <ds:RSAKeyValue size="2048">
                         <ds:M></ds:M>
                         <ds:E></ds:E>
                     </ds:RSAKeyValue>
@@ -42,10 +44,11 @@ policy_key_template = """
 """
 
 # the public-key template for creating principals
+# JLM CHANGE: rsa1024-sha256-pkcspad --> rsa2048-sha256-pkcspad
 principal_template = """
 <ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
-    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#" />
     <Certificate Id="//www.manferdelli.com/2011/Cert/User/" version="1">
         <SerialNumber></SerialNumber>
         <PrincipalType>User</PrincipalType>
@@ -149,6 +152,7 @@ def _copy_public_portion(private_key, tree):
     pk_exponent_node.text = exponent_node.text
 
 
+# JLM CHANGE rsa1024-sha256-pkcspad --> rsa2048-sha256-pkcspad
 def _sign_tree(tree, output, crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY):
     # write the resulting XML to a temp file and perform the signing operation
     with tempfile.NamedTemporaryFile(delete=False) as temp:
@@ -159,7 +163,7 @@ def _sign_tree(tree, output, crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY
         temp.flush() 
 
         # perform the signing operation using cryptUtility
-        c = [crypt_utility, '-Sign', private_key, 'rsa1024-sha256-pkcspad', temp.name, output];
+        c = [crypt_utility, '-Sign', private_key, 'rsa2048-sha256-pkcspad', temp.name, output];
         check_call(c)
 
 

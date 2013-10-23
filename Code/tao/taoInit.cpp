@@ -328,7 +328,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
       case QUOTETYPESHA256FILEHASHRSA2048:
         // Construct quote body
         sprintf(quotedInfo, g_quotedkeyInfoTemplate, 
-                QUOTEMETHODSHA256FILEHASHRSA1024, m_serializedpublicKey);
+                QUOTEMETHODSHA256FILEHASHRSA2048, m_serializedpublicKey);
         szCanonicalQuotedBody= canonicalizeXML(quotedInfo);
         if(szCanonicalQuotedBody==NULL) {
             fprintf(g_logFile, 

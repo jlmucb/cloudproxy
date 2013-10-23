@@ -280,7 +280,7 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
     fprintf(g_logFile, "checkXMLQuote sig value: %s\nSigner Keyinfo:\n", szQuoteValue);
     ((RSAKey*)pKeyInfo)->printMe();
 #endif
-    UNUSEDVAR(sizefinalHash);	
+    UNUSEDVAR(sizefinalHash);   
 
     if(szQuoteAlg==NULL) {
         fprintf(g_logFile, "checkXMLQuote: empty alg\n");
@@ -426,14 +426,14 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
                      byte* codeDigest, const char* szQuotedInfo, const char* szKeyInfo, 
                      int sizeQuote, byte* quote)
 {
-    char    szB[4096];
-    int     nsize= 512;
-    char    szN[512];
-    char*   szquoteValue= NULL;
-    char*   szQuote= NULL;
-    char*   szNonce= NULL;
-    char*   szCodeDigest= NULL;
-    const char*   szdigestAlg= "SHA256";
+    char            szB[4096];
+    int             nsize= 512;
+    char            szN[512];
+    char*           szquoteValue= NULL;
+    char*           szQuote= NULL;
+    char*           szNonce= NULL;
+    char*           szCodeDigest= NULL;
+    const char*     szdigestAlg= "SHA256";
 
     nsize= 256;
     if(sizenonce>0) {
@@ -538,7 +538,7 @@ char*   formatCert(const char* szSignedInfo, const char* szSig)
 const char* g_szSignedInfo1=
 "<ds:SignedInfo>\n"\
 "    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\" />\n"\
-"    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#\" />\n"\
+"    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa%d-sha256-pkcspad#\" />\n"\
 "    <Certificate Id=\"%s\" version='1'>\n"\
 "        <SerialNumber>%d</SerialNumber>\n"\
 "        <PrincipalType>%s</PrincipalType>\n"\
@@ -576,12 +576,13 @@ char*   formatSignedInfo(RSAKey* pKey,
     int     iLeft= MAXREQUESTSIZE;
     char*   p= rgBuf;
     char*   szSignedInfo= NULL;
+    int     bitkeySize= pKey->m_ikeySize;
 
 #ifdef  TEST
     fprintf(g_logFile, "Format signedInfo\n");
 #endif
 
-    sprintf(szTemp, g_szSignedInfo1, szCertid, serialNo, 
+    sprintf(szTemp, g_szSignedInfo1, bitkeySize, szCertid, serialNo, 
             szPrincipalType, szIssuerName, szIssuerID);
     if(!safeTransfer(&p, &iLeft, szTemp))
         return NULL;

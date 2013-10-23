@@ -805,7 +805,6 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
                                  &size, rgSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: sign fails\n");
-//        return false;
         return (char *)NULL;
     }
 

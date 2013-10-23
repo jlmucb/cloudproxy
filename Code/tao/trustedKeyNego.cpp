@@ -240,16 +240,6 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
         else {
             server_addr.sin_addr.s_addr= inet_addr(szDesignatedKeyNegoAddress);
         }
-#if 0
-        else {
-            struct hostent* host= gethostbyname2(szDesignatedKeyNegoServer, AF_INET);
-            if(host==NULL) {
-                fprintf(g_logFile, "KeyNego: can't get address for %s\n", szDesignatedKeyNegoServer);
-                throw "Can't open keyNegoServer socket";
-            }
-            server_addr.sin_addr.s_addr= inet_addr(host->h_addr);
-        }
-#endif
         server_addr.sin_port= htons(KEYSERVERPORT);
     
 #ifdef  TEST

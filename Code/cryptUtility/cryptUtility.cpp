@@ -878,7 +878,7 @@ int MyConvertFromHexString(const char* szIn, int iSizeOut, byte* rgbBuf)
 const char* g_aikTemplate=
 "<ds:SignedInfo>\n" \
 "    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\" />\n" \
-"    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#\" />\n" \
+"    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa%d-sha256-pkcspad#\" />\n" \
 "    <Certificate Id='%s' version='1'>\n" \
 "        <SerialNumber>20110930001</SerialNumber>\n" \
 "        <PrincipalType>Hardware</PrincipalType>\n" \
@@ -968,16 +968,17 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
         // construct key XML from modulus
         const char*   szCertid= "www.manferdelli.com/certs/000122";
         const char*   szKeyName= "Gauss-AIK-CERT";
-        byte    revmodHex[1024];
+        byte          revmodHex[1024];
+        int           bitkeySize= pRSAKey->m_ikeySize;
 
         revmemcpy(revmodHex, modHex, modSize);
         if(!toBase64(modSize, revmodHex, &size, rgBase64))
             throw "Cant base64 encode modulus value\n";
 
         const char*   szKeyId= "/Gauss/AIK";
-        int     iNumBits= ((size*6)/1024)*1024;
+        int     iNumBits= ((size*6)/bitkeySize)*bitkeySize;
 
-        sprintf(szSignedInfo, g_aikTemplate, szCertid, 
+        sprintf(szSignedInfo, g_aikTemplate, bitkeySize, szCertid, 
                 szKeyName, iNumBits, rgBase64, szKeyId);
 
         // read input file
@@ -1581,16 +1582,17 @@ int main(int an, char** av)
         if(strcmp(av[i], "-help")==0) {
             fprintf(g_logFile, "\nUsage: cryptUtility -GenKey keytype outputfile\n");
             fprintf(g_logFile, "       cryptUtility -GenCertSignedInfo keyfile ");
-                fprintf(g_logFile, " -SerialNumber SN");
-                fprintf(g_logFile, " -PrincipalType [User|Program|Channel]");
-                fprintf(g_logFile, " -IssuerName Name");
-                fprintf(g_logFile, " -IssuerID ID");
-                fprintf(g_logFile, " -SubjectName SN");
-                fprintf(g_logFile, " -Period 2011-01-01Z00:00.00 2011-01-01Z00:00.00");
-                fprintf(g_logFile, " -RevocationPolicy file");
-                fprintf(g_logFile, " -SubjectKeyID ID");
-                fprintf(g_logFile, " outputfile\n");
+            fprintf(g_logFile, " -SerialNumber SN");
+            fprintf(g_logFile, " -PrincipalType [User|Program|Channel]");
+            fprintf(g_logFile, " -IssuerName Name");
+            fprintf(g_logFile, " -IssuerID ID");
+            fprintf(g_logFile, " -SubjectName SN");
+            fprintf(g_logFile, " -Period 2011-01-01Z00:00.00 2011-01-01Z00:00.00");
+            fprintf(g_logFile, " -RevocationPolicy file");
+            fprintf(g_logFile, " -SubjectKeyID ID");
+            fprintf(g_logFile, " outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Sign keyfile rsa1024-sha256-pkcspad inputfile outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -Sign keyfile rsa2048-sha256-pkcspad inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Verify keyfile inputfile\n");
             fprintf(g_logFile, "       cryptUtility -Canonical inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -PolicyCert certfile outputfile programname\n");
@@ -1626,7 +1628,7 @@ int main(int an, char** av)
         }
         if(strcmp(av[i], "-GenKey")==0) {
             if(an<(i+3)) {
-                fprintf(g_logFile, "Too few arguments: [AES128|RSA1024] output-file\n");
+                fprintf(g_logFile, "Too few arguments: [AES128|RSA1024|RSA2048] output-file\n");
                 return 1;
             }
             szKeyType= av[i+1];

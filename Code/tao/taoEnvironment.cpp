@@ -299,8 +299,12 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         m_fileNames.printAll();
 #endif
 
-        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, 
-                    KEYTYPERSA1024INTERNALSTRUCT)) {
+#if TAOUSERSA1024
+        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA1024INTERNALSTRUCT)) {
+#endif
+#if TAOUSERSA2048
+        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA2048INTERNALSTRUCT)) {
+#endif
             fprintf(g_logFile, "taoEnvironment::EnvInit: cant init Tao\n");
             return false;
         }

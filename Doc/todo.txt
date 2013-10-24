@@ -1,7 +1,6 @@
 Todo
 ====
 
-Enable 2048 bit keys (jlm)                                      (3)
 Check for leaks buffer overflows (jlm, c-lang/valgrind)         (3)
 Measurement race when starting app/vm (tom?)                    (2)
     Fix pid hack (jlm, tom/rekha to ask kvm guys)               (3?)

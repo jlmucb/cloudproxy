@@ -51,11 +51,6 @@ byte tpmCapblob[22]= {
 };
 
 
-#ifndef QUOTE2_DEFINED
-#define QUOTE2_DEFINED
-#endif
-
-
 // --------------------------------------------------------------------------
 
 
@@ -1973,7 +1968,7 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
     }
     quoteHash+= sizeof(sha1Header);
 
-#ifndef QUOTE2_DEFINED
+#ifdef NOQUOTE2  // should never happen
     // reconstruct PCR composite and composite hash
     if(!computeTPM12compositepcrDigest(pcrMask, ppcrs, pcrDigest)) {
         fprintf(g_logFile, "verifyQuote: can't compute composite digest\n");

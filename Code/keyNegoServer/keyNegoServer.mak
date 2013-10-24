@@ -24,10 +24,11 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=     -D FILECLIENT -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
-CFLAGS1=    -D FILECLIENT -D LINUX -D QUOTE2_DEFINED -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
-
-# add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
+CFLAGS=     -D FILECLIENT -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
+CFLAGS1=    -D FILECLIENT -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
+# -D NOQUOTE2  -  define this if you want legacy quote
+# -D MACTHENENCRYPT  -  define this if you want MAC then Encrypt, you shouldn't ever
+# add -D PCR18
 
 CC=         g++
 LINK=       g++

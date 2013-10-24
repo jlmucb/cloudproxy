@@ -163,7 +163,7 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
     byte*   pHdr= NULL;
     byte    rgPre[2]= {0x00, 0x01};
 
-#ifdef CRYPTOTEST
+#ifdef TEST
     fprintf(g_logFile, "emsapkcsverify, hash type %d, blocksize %d\n", hashType, sigSize);
     PrintBytes("Padded block\n", rgSig, sigSize);
     PrintBytes("Hash\n", rgHash, 32);
@@ -234,7 +234,7 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
     // Hash
     if(memcmp(&rgSig[n], rgHash, hashLen)!=0) {
         fprintf(g_logFile, "Bad hash\n");
-#ifdef CRYPTOTEST
+#ifdef TEST
     PrintBytes("decoded hash\n", &rgSig[n], hashLen);
     PrintBytes("computed hash\n", rgHash, hashLen);
 #endif
@@ -596,7 +596,7 @@ bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
     inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
     m_oAESEnc.Encrypt(oldX, puOut); 
     memcpy(m_rgLastBlock, puOut, m_iBlockSize);
-#ifndef ENCRYPTTHENMAC
+#ifdef MACTHENENCRYPT   //should never do this
     nextMac(puIn);
 #else
     nextMac(puOut);
@@ -616,7 +616,7 @@ bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
     m_oAESDec.Decrypt(puIn, oldX); 
     inlineXor(puOut, m_rgLastBlock, oldX, m_iBlockSize);
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
-#ifndef ENCRYPTTHENMAC
+#ifdef MACTHENENCRYPT	// should never do this
     nextMac(puOut);
 #else
     nextMac(puIn);
@@ -727,7 +727,7 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
     fflush(g_logFile);
 #endif
 
-#ifndef ENCRYPTTHENMAC
+#ifdef MACTHENENCRYPT  // should never do this
     // decrypt Mac
     byte    oldX[MAXAUTHSIZE];
 

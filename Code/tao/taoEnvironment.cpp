@@ -300,11 +300,12 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
 #endif
 
 #if TAOUSERSA1024
-        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA1024INTERNALSTRUCT)) {
+        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA1024INTERNALSTRUCT)) 
 #endif
 #if TAOUSERSA2048
-        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA2048INTERNALSTRUCT)) {
+        if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA2048INTERNALSTRUCT))
 #endif
+        {
             fprintf(g_logFile, "taoEnvironment::EnvInit: cant init Tao\n");
             return false;
         }
@@ -667,17 +668,24 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
     memset(bnOut.m_pValue, 0, m_publicKeyBlockSize);
     revmemcpy((byte*)bnMsg.m_pValue, rgToSign, m_publicKeyBlockSize);
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::Attest about to RSAENC, blocksize: %d\n", m_publicKeyBlockSize);
+    fprintf(g_logFile, "taoEnvironment::Attest about to decrypt, blocksize: %d\n", m_publicKeyBlockSize);
     PrintBytes((char*)"ToSign: ", rgToSign, m_publicKeyBlockSize);
     pRSA->printMe();
     fflush(g_logFile);
 #endif
-    // Replace
-    // mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, 
-    //          bnum& bnQ, bnum& bnQM1, bnum& bnDQ, bnum& bnM, bnum& bnR)
-    if(!mpRSAENC(bnMsg, *(pRSA->m_pbnD), *(pRSA->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
-        return false;
+    if(pRSA->m_pbnQ!=NULL && pRSA->m_pbnP!=NULL && pRSA->m_pbnDQ!=NULL && pRSA->m_pbnDP!=NULL &&
+                          pRSA->m_pbnQM1!=NULL && pRSA->m_pbnPM1!=NULL) {
+        if(!mpRSADEC(bnMsg, *(pRSA->m_pbnP), *(pRSA->m_pbnPM1), *(pRSA->m_pbnDP), 
+                 *(pRSA->m_pbnQ), *(pRSA->m_pbnQM1), *(pRSA->m_pbnDQ), *(pRSA->m_pbnM), bnOut)) {
+            fprintf(g_logFile, "taoEnvironment::Attest: mpRSADEC returned false\n");
+            return false;
+        }
+    }
+    else {
+        if(!mpRSAENC(bnMsg, *(pRSA->m_pbnD), *(pRSA->m_pbnM), bnOut)) {
+            fprintf(g_logFile, "taoEnvironment::Attest: mpRSAENC returned false\n");
+            return false;
+        }
     }
 
 #ifdef TEST

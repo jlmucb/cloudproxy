@@ -20,13 +20,13 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGS          := ${RELEASE_LDFLAGS}
-CFLAGSTPM=   -D TPMSUPPORT -D QUOTE2_DEFINED 
-CFLAGS=      -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC -D TAOUSERSA2048
-O1CFLAGS=    -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
+CFLAGSTPM=   -D TPMSUPPORT 
+CFLAGS=      -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D TAOUSERSA2048
+O1CFLAGS=    -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) 
 LIBVIRTINCLUDE= /usr/include/libvirt
-
-
-# add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
+# -D NOQUOTE2  -  define this if you want legacy quote
+# -D MACTHENENCRYPT  -  define this if you want MAC then Encrypt, you shouldn't ever
+# add -D PCR18
 
 CC=         g++
 LINK=       g++

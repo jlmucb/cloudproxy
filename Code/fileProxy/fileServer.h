@@ -47,9 +47,6 @@
 
 class fileServer {
 public:
-    char*               m_szPort;
-    char*               m_szAddress;
-
     int                 m_iNumClients;
     bool                m_fthreadValid[MAXNUMCLIENTS];
     pthread_t           m_threadData[MAXNUMCLIENTS];

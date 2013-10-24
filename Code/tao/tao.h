@@ -161,7 +161,7 @@ public:
     bool        HostClose();
     bool        StartHostedProgram(int an, char** av, int* phandle);
     bool        GetHostedMeasurement(int* psize, u32* ptype, byte* buf);
-    bool        GetAncestorCertificates(int* psize, byte** buf);
+    bool        GetEvidence(int* psize, byte** buf);
     bool        GetAttestCertificate(int* psize, u32* pType, byte** buf);
     bool        GetHostPolicyKey(int* psize, u32* pType, byte* buf);
 

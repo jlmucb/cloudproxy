@@ -372,7 +372,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
 #endif
 
     // Get evidence list
-    if(!m_myHost->GetAncestorCertificates(&sizeEvidence, (byte**)&szEvidence)) 
+    if(!m_myHost->GetEvidence(&sizeEvidence, (byte**)&szEvidence)) 
         szEvidence= NULL;
 #ifdef TEST
     fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Host evidence\n%s\n", szEvidence);

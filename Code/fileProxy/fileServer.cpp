@@ -318,10 +318,7 @@ void* channelThread(void* ptr)
 
 fileServer::fileServer()
 {
-    m_szPort= NULL;
-    m_szAddress= NULL;
     m_iNumClients= 0;
-
     m_fEncryptFiles= false;
     m_szSealedKeyFile= NULL;
     m_fKeysValid= false;
@@ -336,14 +333,6 @@ fileServer::fileServer()
 
 fileServer::~fileServer()
 {
-    if(m_szPort!=NULL) {
-        free(m_szPort);
-        m_szPort= NULL;
-    }
-    if(m_szAddress!=NULL) {
-        free(m_szAddress);
-        m_szAddress= NULL;
-    }
     if(m_fKeysValid)
         memset(m_fileKeys, 0, m_sizeKey);
     m_fKeysValid= false;
@@ -721,7 +710,6 @@ int main(int an, char** av)
 // fileServer.exe [-initKeys address-of-managementserver]
 {
     fileServer  oServer;
-    int         i;
     int         iRet= 0;
     const char* directory= NULL;
 
@@ -731,17 +719,15 @@ int main(int an, char** av)
     fprintf(g_logFile, "fileServer main: fileServer started\n");
     fflush(g_logFile);
 #endif
-    // check arguments
-    if(an>1) {
-        for(i=0;i<an;i++) {
-            if(strcmp(av[i],"-address")==0) {
-                oServer.m_szAddress= strdup(av[++i]);
-             }
-            if(strcmp(av[i],"-directory")==0) {
-                directory= strdup(av[++i]);
-            }
-        }
-    }
+
+    const char*     definedprogDirectory= getenv("CPProgramDirectory");
+    const char*     definedKeyNegoAddress= getenv("CPKeyNegoAddress");
+    const char*     definedfileServerAddress= getenv("CPFileServerAddress");
+    UNUSEDVAR(definedprogDirectory);
+    UNUSEDVAR(definedKeyNegoAddress);
+    UNUSEDVAR(definedfileServerAddress);
+    if(definedprogDirectory!=NULL)
+        directory= strdup(definedprogDirectory);
 
 #ifdef DONTENCRYPTFILES
     oServer.m_fEncryptFiles= false;

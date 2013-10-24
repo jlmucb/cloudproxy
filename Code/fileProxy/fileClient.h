@@ -66,8 +66,6 @@ public:
     byte                m_fileKeys[SMALLKEYSIZE];
 
     session             m_clientSession;
-    char*               m_szPort;
-    char*               m_szAddress;
     int                 m_fd;
     safeChannel         m_fc;
 

@@ -93,8 +93,6 @@ const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys
 
 fileClient::fileClient ()
 {
-    m_szPort= NULL;
-    m_szAddress= NULL;
     m_fd= 0;
 
     m_fEncryptFiles= false;
@@ -111,14 +109,6 @@ fileClient::fileClient ()
 
 fileClient::~fileClient ()
 {
-    if(m_szPort!=NULL) {
-        free(m_szPort);
-        m_szPort= NULL;
-    }
-    if(m_szAddress!=NULL) {
-        free(m_szAddress);
-        m_szAddress= NULL;
-    }
     m_sizeKey= SMALLKEYSIZE;
     if(m_fKeysValid)
         memset(m_fileKeys, 0, m_sizeKey);
@@ -505,7 +495,6 @@ int main(int an, char** av)
     fileClient      oFileClient;
     safeChannel     fc;
     int             iRet= 0;
-    int             i;
     const char*     directory= NULL;
     string          testPath("fileClient/tests/");
     string          testFileName("tests.xml");
@@ -516,20 +505,15 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
 
-    // TODO:  replace with getenv
-    if(an>1) {
-        for(i=0;i<an;i++) {
-            if(strcmp(av[i],"-port")==0 && an>(i+1)) {
-                oFileClient.m_szPort= strdup(av[++i]);
-            }
-            if(strcmp(av[i],"-address")==0) {
-                oFileClient.m_szAddress= strdup(av[++i]);
-            }
-            if (strcmp(av[i],"-directory")==0) {
-                directory= strdup(av[++i]);
-            }
-        }
-    }
+    const char*     definedprogDirectory= getenv("CPProgramDirectory");
+    const char*     definedKeyNegoAddress= getenv("CPKeyNegoAddress");
+    const char*     definedfileServerAddress= getenv("CPFileServerAddress");
+    UNUSEDVAR(definedprogDirectory);
+    UNUSEDVAR(definedKeyNegoAddress);
+    UNUSEDVAR(definedfileServerAddress);
+
+    if(definedprogDirectory!=NULL)
+        directory= strdup(definedprogDirectory);
 
 #ifdef DONTENCRYPTFILES
     oFileClient.m_fEncryptFiles= false;

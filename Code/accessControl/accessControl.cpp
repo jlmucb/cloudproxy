@@ -202,7 +202,7 @@ accessGuard::~accessGuard()
 bool accessGuard::includesSubject(const char* szRequested, const char* szGranted)
 {
 #ifdef TEST
-    fprintf(g_logFile, "includesSUbject((%s, %s)\n", szRequested, szGranted);
+    fprintf(g_logFile, "includesSubject((%s, %s)\n", szRequested, szGranted);
     fflush(g_logFile);
 #endif
     if(szRequested==NULL || szGranted==NULL)

@@ -721,7 +721,7 @@ bool evidenceList::parseEvidenceList(TiXmlElement* pRootElement)
             m_rgEvidence[n]= (void*) pCert;
             break;
           default:
-           fprintf(g_logFile, "Unknown Evidence type 1\n");
+            fprintf(g_logFile, "Unknown Evidence type %d\n", m_rgiEvidenceTypes[n]);
             return false;
         }
         free(szEvidence);

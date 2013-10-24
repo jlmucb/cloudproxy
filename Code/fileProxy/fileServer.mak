@@ -22,11 +22,10 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGS          := $(RELEASE_LDFLAGS)
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D ENCRYPTTHENMAC -D TAOUSERSA2048 -D ASSERTIONSALLOWED
-O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) -D ENCRYPTTHENMAC
-
-# add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
-# removed -D NEWANDREORGANIZED 
+CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D TAOUSERSA2048 -D ASSERTIONSALLOWED
+O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) 
+# -D MACTHENENCRYPT  -  define this if you want MAC then Encrypt, you shouldn't ever
+# add -D PCR18
 
 CC=         g++
 LINK=       g++

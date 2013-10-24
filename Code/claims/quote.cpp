@@ -353,7 +353,7 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
 
     // generate final quote hash
     if(strcmp(QUOTEMETHODTPM12RSA2048, szQuoteAlg)==0 || strcmp(QUOTEMETHODTPM12RSA1024, szQuoteAlg)==0) {
-#ifndef QUOTE2_DEFINED 
+#ifdef NOQUOTE
         if(!tpm12quoteHash(0, NULL, sizehashBody, hashBody,
                            sizehashCode, hashCode, hashFinal)) {
             fprintf(g_logFile, "checkXMLQuote: Cant compute TPM12 hash\n");
@@ -395,8 +395,9 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
         return false;
     }
 
-
 #ifdef TEST
+    fprintf(g_logFile, "hashType: %d, method: %s, hashSize: %d\n", 
+            hashType, szQuoteAlg, sizefinalHash);
     PrintBytes((char*)"Hash body: ", hashBody, sizehashBody);
     PrintBytes((char*)"Code digest: ", hashCode, sizehashCode);
     PrintBytes((char*)"final hash: ", hashFinal, sizehashCode);

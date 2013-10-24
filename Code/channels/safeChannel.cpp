@@ -230,12 +230,12 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
             pNext[remaining+i]= 0x00;
     }
 
-    // If this is NOT an ENCRYPTTHENMAC.  The hmac is
+    // If this is MACTHENENCRYPT.  The hmac is
     // computed over plaintext and is placed at end of message in 
     // plainMessageBlock[newMsgSize], increasing message
     // size by the size of the HMAC .
     // otherwise, we need to calculate it after encryption.
-#ifndef ENCRYPTTHENMAC
+#ifdef MACTHENENCRYPT  // dont do this
     if(!hmac_sha256(plainMessageBlock, newMsgSize, sendIntKey, 
                     sizeofIntKey, &plainMessageBlock[newMsgSize])) {
         fprintf(g_logFile, "safesendPacket: bad compute mac error\n");
@@ -257,7 +257,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     //      message to be encrypted.  It included the
     //      HMAC if we ENCRYPTTHENMAC but does not
     //      otherwise.
-#ifndef ENCRYPTTHENMAC
+#ifdef MACTHENENCRYPT
     iLeft= totalSize;
 #else
     iLeft=  newMsgSize;
@@ -274,7 +274,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     // save last cipher block for next message
     memcpy(lastsendBlock, pLastCipher, BLKSIZE);
 
-#ifdef ENCRYPTTHENMAC
+#ifndef MACTHENENCRYPT
     if(!hmac_sha256(encryptedMessageBlock, newMsgSize, sendIntKey, 
                     sizeofIntKey, &encryptedMessageBlock[newMsgSize])) {
         fprintf(g_logFile, "safesendPacket: bad compute mac error\n");
@@ -287,18 +287,14 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
 #endif
 
     int n= write(fd, encryptedMessageBlock, totalSize);
-#if 0
-    if(n<totalSize)
-#else
     if(n<0) {
-#endif
         fprintf(g_logFile, "safesendPacket failure\n");
         return n;
     }
 #ifdef IOTEST
     fprintf(g_logFile, "safesendPacket: bytes gotten %d, bytes sent %d \n", len, totalSize);
     PrintBytes((char*)"input: ", buf, len);
-#ifdef ENCRYPTTHENMAC
+#ifndef MACTHENENCRYPT
     PrintBytes((char*)"ENCRYPTTHENMAC formatted: ", plainMessageBlock, newMsgSize);
     PrintBytes((char*)"ENCRYPTTHENMAC sent: ", encryptedMessageBlock, totalSize);
 #else
@@ -463,7 +459,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
     //      pNextCipher points to where to get next cipher block
     //      iLeft is total number of message bytes remaining 
     //      to be decrypted.
-#ifdef ENCRYPTTHENMAC
+#ifndef MACTHENENCRYPT
     iLeft= sizeEncryptedBuf-BLKSIZE-SHA256_DIGESTSIZE_BYTES;
 #else
     iLeft= sizeEncryptedBuf-BLKSIZE;
@@ -486,7 +482,7 @@ int safeChannel::getFullPacket(byte* buf, int maxSize, int* ptype,
 #endif
 
     // compute HMAC
-#ifdef ENCRYPTTHENMAC
+#ifndef MACTHENENCRYPT
     if(!hmac_sha256(encryptedMessageBlock, fullMsgSize-SHA256_DIGESTSIZE_BYTES, 
                     getIntKey, sizeofIntKey, rguHmacComputed)) {
         fprintf(g_logFile, "getFullPacket: HMAC Compute error 1\n");

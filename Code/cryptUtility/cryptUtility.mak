@@ -22,11 +22,12 @@ TSC=	    ../tcService
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
-CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS) -D TEST -D QUOTE2_DEFINED -D ENCRYPTTHENMAC
-CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1 -D ENCRYPTTHENMAC
+CFLAGS=	    -D TEST  -D NOAESNI $(DEBUG_CFLAGS) -D TEST 
+# -D NOQUOTE2  -  define this if you want legacy quote
+# -D MACTHENENCRYPT  -  define this if you want MAC then Encrypt, you shouldn't ever
+CFLAGS1=    -D TEST -D NOAESNI -Wall -Wno-unknown-pragmas -Wno-format -O1 
 
-# add -D ENCRYPTTHENMAC -D PCR18 -D PERFILEKEYS
-# removed  -D NEWANDREORGANIZED
+# add -D PCR18
 
 CC=         g++
 LINK=       g++

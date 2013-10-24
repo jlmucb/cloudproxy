@@ -241,7 +241,7 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 }
 
 
-bool taoHostServices::GetAncestorCertificates(int* psize, byte** ppbuf)
+bool taoHostServices::GetEvidence(int* psize, byte** ppbuf)
 {
     int     n= 4096;
     byte    buf[4096];

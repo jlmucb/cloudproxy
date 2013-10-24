@@ -188,7 +188,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
                 while(pNode1) {
                     if(strcmp(((TiXmlElement*)pNode1)->Value(),"ds:AESKeyValue")==0) {
                         ((TiXmlElement*) pNode1)->QueryIntAttribute ("size", &keySize);
-                        m_ikeyNameSize= keySize;
+                        m_ikeySize= keySize;
                         pNode2= pNode1->FirstChild();
                         if(pNode2)
                             szBase64KeyValue= strdup( ((TiXmlNode*) pNode2)->Value());
@@ -481,6 +481,9 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
                 return false;
             }
             m_iByteSizeM= iOutLen;
+#ifdef TEST
+            fprintf(g_logFile, "Outlen %d\n%s\n", iOutLen, szRsaKeyM);
+#endif
         }
 
         iOutLen= BIGKEYSIZE;

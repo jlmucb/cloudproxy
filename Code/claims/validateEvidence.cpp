@@ -494,6 +494,10 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
 
 #ifdef TEST
     fprintf(g_logFile, "VerifyChain %d\n", npieces);
+    if(szPurpose==NULL)
+        fprintf(g_logFile, "VerifyChain unspecified purpose\n");
+    else
+        fprintf(g_logFile, "VerifyChain purpose is %s\n", szPurpose);
     fflush(g_logFile);
 #endif
 

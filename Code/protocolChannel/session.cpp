@@ -1150,6 +1150,10 @@ bool session::getClientCert(const char* szXml)
 
 bool session::getServerCert(const char* szXml)
 {
+#ifdef  TEST
+    fprintf(g_logFile, "session::getServerCert\n");
+    fflush(g_logFile);
+#endif
     m_szXmlServerCert= strdup(szXml);
     if(m_szXmlServerCert==NULL)
         return false;
@@ -1171,6 +1175,13 @@ bool session::getServerCert(const char* szXml)
         fprintf(g_logFile, "Cant session::getServerCert: get server Subject Key\n");
         return false;
     }
+#ifdef  TEST
+    fprintf(g_logFile, "session::getServerCert, server cert\n");
+    m_pserverCert->printMe();
+    fprintf(g_logFile, "session::getServerCert, policy key\n");
+    m_policyKey->printMe();
+    fflush(g_logFile);
+#endif
 
     // Validate cert chain
     int     rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};

@@ -710,6 +710,7 @@ bool taoEnvironment::GetPolicyKey()
       case PLATFORMTYPELINUXAPP:
 #ifdef TEST
         fprintf(g_logFile, "policy key from image %d\n", g_szpolicykeySize);
+        fprintf(g_logFile, "policy key from image %s\n", g_szXmlPolicyCert);
         fflush(g_logFile);
 #endif
         m_policyKey= (byte*) malloc(g_szpolicykeySize);

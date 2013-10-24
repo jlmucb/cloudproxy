@@ -212,7 +212,7 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     int     n= 0;
 
 #ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::initserviceChannel(%08x, %08x\n",
+    fprintf(g_logFile, "theServiceChannel::initserviceChannel(%08x, %08x)\n",
             pMetaData, pSafeChannel);
     fflush(g_logFile);
 #endif
@@ -228,6 +228,10 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
         fprintf(g_logFile, "theServiceChannel::serviceChannel: session serverInit failed\n");
         return false;
     }
+#ifdef  TEST
+    fprintf(g_logFile, "theServiceChannel::initserviceChannel, serverInit complete\n");
+    fflush(g_logFile);
+#endif
 
     // copy my public key into server public key
     if(!m_pParent->m_tcHome.m_myCertificateValid ||
@@ -532,10 +536,6 @@ bool fileServer::initServer(const char* configDirectory)
         // Initialize file encryption keys
         if(!initFileKeys())
             throw "fileServer::Init: can't init file keys\n";
-#ifdef TEST
-        fprintf(g_logFile, "fileServer::Init: after initFileKeys\n");
-        m_tcHome.printData();
-#endif
 
         // Init global policy 
         if(!initPolicy())
@@ -571,12 +571,6 @@ bool fileServer::initServer(const char* configDirectory)
             throw "fileServer::Init: Cant init metadata\n";
         if(!m_oMetaData.initFileNames())
             throw "fileServer::Init: Cant init file names\n";
-
-#ifdef TEST1
-        fprintf(g_logFile, "initServer has private key and public key\n");
-        fflush(g_logFile);
-#endif
-
     }
     catch(const char* szError) {
         fRet= false;

@@ -142,12 +142,15 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
         PrintBytes((char*)"RSAVerify hash (sha1): ", hash, 20);
     else if(hashType==SHA256HASH)
         PrintBytes((char*)"RSAVerify hash (sha256): ", hash, 32);
-    PrintBytes((char*)"RSAVerify in: ", in, key.m_iByteSizeM);
 #endif
     if(!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
         fprintf(g_logFile, "RSAVerify: encryption failed\n");
         return false;
     }
+#ifdef TEST1
+    fprintf(g_logFile, "RSAVerify modulus size %d\n", key.m_iByteSizeM);
+    PrintBytes((char*)"RSAVerify decrypted: ", padded, key.m_iByteSizeM);
+#endif
     if(!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded))
         return false;
 #ifdef TEST1
@@ -310,6 +313,10 @@ RSAKey* RSAGenerateKeyPair(int keySize)
         pKey->m_uAlgorithm= RSA2048;
         pKey->m_ikeySize= 2048;
     }
+#ifdef TEST
+    fprintf(g_logFile, "generateRSAKeypair: ikeyByteSize= %d\n", 
+            ikeyByteSize);
+#endif
 
     pKey->m_rgkeyName[0]= 0;
     pKey->m_ikeyNameSize= 0;
@@ -812,7 +819,6 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     if(!base64frombytes(size, rgSigValue, &n, szSigValue)) {
         fprintf(g_logFile, 
              "XMLRSASha256SignaturefromSignedInfoandKey: base64 encode fails\n");
-//        return false;
         return (char *) NULL;
     }
     return strdup(szSigValue);

@@ -352,7 +352,8 @@ const char*   szSigValueEnd= "\n    </ds:SignatureValue>\n";
 const char*   szSigTrailer= "</ds:Signature>\n";
 
 
-bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, const char* szOutFile)
+bool Sign(const char* szKeyFile, const char* szAlgorithm, const char* szInFile, 
+          const char* szOutFile)
 {
     char    szBuf[8192];
     int     bufLen= 8192;

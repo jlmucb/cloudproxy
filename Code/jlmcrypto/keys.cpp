@@ -97,9 +97,9 @@ bool KeyInfo::ParsefromFile(const char* fileName)
 
 int KeyInfo::getKeyTypeFromRoot(TiXmlElement*  pRootElement)
 {
-    TiXmlNode*  pNode;
-    TiXmlNode*  pNode1;
-    const char*       szKeyType= NULL;
+    TiXmlNode*  pNode= NULL;
+    TiXmlNode*  pNode1= NULL;
+    const char* szKeyType= NULL;
 
     pNode= pRootElement->FirstChild();
     while(pNode) {

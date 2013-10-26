@@ -106,12 +106,12 @@
 //
 class taoFiles {
 public:
-    u32                 m_storageType;
-    char*               m_szdirectory;
-    char*               m_szsymFile;
-    char*               m_szprivateFile;
-    char*               m_szcertFile;
-    char*               m_szAncestorEvidence;
+    u32         m_storageType;
+    char*       m_szdirectory;
+    char*       m_szsymFile;
+    char*       m_szprivateFile;
+    char*       m_szcertFile;
+    char*       m_szAncestorEvidence;
 
                 taoFiles();
                 ~taoFiles();
@@ -357,6 +357,44 @@ public:
 
 
 #include "quote.h"
+#include "cert.h"
+#include "validateEvidence.h"
+
+#define NOATTESTATION     0
+#define CPXMLATTESTATION  1
+
+
+//
+//  This is the object does Attest/Quote verification
+//
+class taoAttest {
+public:
+    u32             m_attestType;
+    PrincipalCert*  m_pattestCert;
+    RSAKey*         m_pquoteKey;
+    evidenceList    m_oEvidence;
+    char*           m_szQuoteAlg;
+    char*           m_szQuoteInfo;
+    char*           m_szCanonicalQuotedBody;
+    char*           m_sznonce;
+    char*           m_szdigest;
+    char*           m_szQuoteValue;
+    char*           m_szQuoteKeyInfo;
+    char*           m_szQuotedKeyInfo;
+
+                    taoAttest();
+                    ~taoAttest();
+
+    bool            initAttestation(u32 type, const char *attestation,
+                                    const char* attestEvidence, KeyInfo*  policyKey);
+    bool            parse();
+    bool            verifyAttestation();
+    bool            bytecodeDigest();
+    char*           codeDigest();
+
+};
+
+
 bool VerifyAttestation(const char *attestation,
                        const char *attestEvidence, RSAKey&  oPolicyKey);
 

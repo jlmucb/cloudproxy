@@ -134,7 +134,7 @@ char* constructEvidenceList(const char* szEvidence, const char* szEvidenceSuppor
     if(szEvidenceList==NULL)
         return NULL;
 
-    // Fix: later include evidence support
+    // FIX: later include evidence support
     sprintf(szEvidenceList, g_EvidenceListTemplate, 1, szEvidence);
     szReturn= canonicalizeXML(szEvidenceList);
     if(szEvidenceList!=NULL)
@@ -446,7 +446,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
             m_szserializedPrivateKey);
     fflush(g_logFile);
 #endif
-    // Fix: clean up szHostCert and szEvidence
+    // FIX: clean up szHostCert and szEvidence
     return true;
 }
 

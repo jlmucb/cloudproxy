@@ -1012,7 +1012,7 @@ bool taoEnvironment::restoreTao()
           default:
             break;
         }
-        RSAKey* pKey= new RSAKey(); // FIX
+        RSAKey* pKey= new RSAKey();     // FIX
         if(pKey==NULL || !(KeyInfo*)pKey->ParsefromString(m_serializedprivateKey)) {
             fprintf(g_logFile, "taoEnvironment::restoreTao: cant parse private key\n");
             return false;
@@ -1314,12 +1314,12 @@ cleanup:
 #include "validateEvidence.h"
 
 
-bool VerifyAttestation(const char *attestation, 
-                       const char *attestEvidence, RSAKey& oPolicyKey)  // FIX
+bool VerifyAttestation(const char *attestation, const char *attestEvidence, 
+                       RSAKey& oPolicyKey)  // FIX
 {
     int             type= 0;
     PrincipalCert*  pattestCert= NULL;
-    RSAKey*         pquoteKey= NULL;    // FIX
+    RSAKey*         pquoteKey= NULL;        // FIX
     evidenceList    oEvidence;
     char*           szQuoteAlg= NULL;
     char*           szQuoteInfo= NULL;

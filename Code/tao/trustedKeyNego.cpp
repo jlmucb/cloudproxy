@@ -49,7 +49,6 @@
 
 
 #define MAXTRY 30
-
 #define KEYSERVERPORT  6001
 
 
@@ -101,8 +100,8 @@ bool getDatafromServerCertMessage1(const char* response, char** pszstatus,
         char** pszerrorCode, char** pszCert)
 {
     TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     TiXmlElement*   pRootElement= NULL;
     const char*     szLabel= NULL;
     const char*     szStatus= NULL;

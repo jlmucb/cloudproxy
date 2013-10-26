@@ -58,11 +58,11 @@
 
 
 char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
-int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,
+int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,  // FIX
                  int npieces, int* rgType, void** rgObject);
 
-
-#define STATICNUMLISTELTS 8
+// FIX
+#define STATICNUMLISTELTS 8 
 #define STATICNUMCOLLECTIONELTS  20
 
 
@@ -81,8 +81,8 @@ public:
     int*            m_rgiEvidenceTypes;
     void**          m_rgEvidence;
 
-    evidenceList();
-    ~evidenceList();
+                    evidenceList();
+                    ~evidenceList();
 
     bool            parseEvidenceList(TiXmlElement* pRootElement);
     bool            getSubjectEvidence(int* pType, void** pEvid);
@@ -110,7 +110,7 @@ public:
     ~evidenceCollection();
 
     bool            parseEvidenceCollection(const char* szEvidenceCollection);
-    bool            validateEvidenceCollection(RSAKey* pRootKey);
+    bool            validateEvidenceCollection(RSAKey* pRootKey);   // FIX
 };
 
 

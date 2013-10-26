@@ -74,7 +74,7 @@ int         maxcharsinBase64stringfrombytes(int nb);
 bool        base64frombytes(int nb, byte* in, int* pnc, char* out);
 bool        bytesfrombase64(char* in, int* pnb, byte* out);
 
-char*	    XMLCanonicalizedString(const char* szXML);
+char*       XMLCanonicalizedString(const char* szXML);
 
 
 bool        XMLenclosingtypefromelements(const char* tag, int numAttr, 

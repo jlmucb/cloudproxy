@@ -168,7 +168,8 @@ public:
     bool        GetEntropy(int size, byte* buf);
     bool        Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
     bool        Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byte* toSeal);
-    bool        Attest(int sizetoAttest, byte* toAttest, int* psizeAttested, byte* attested);
+    bool        Attest(int sizetoAttest, byte* toAttest, int* psizeAttested, 
+                       byte* attested);
 
 #ifdef TEST
     void        printData();
@@ -252,48 +253,50 @@ public:
     linuxDeviceChannel  m_linuxEnvChannel;
 
 public:
-                taoEnvironment();
-                ~taoEnvironment();
+                        taoEnvironment();
+                        ~taoEnvironment();
 
-    bool        EnvInit(u32 type, const char* program, const char* domain,
+    bool                EnvInit(u32 type, const char* program, const char* domain,
                              const char* directory, const char* subdirectory,
-                             taoHostServices* host,
-                             const char* serviceProvider, int nArgs, char** rgszParameter);
-    bool        EnvClose();
+                             taoHostServices* host, const char* serviceProvider, 
+                             int nArgs, char** rgszParameter);
+    bool                EnvClose();
 
-    bool        InitMyMeasurement();
-    bool        GetMyMeasurement(int* psize, u32* ptype, byte* buf);
-    bool        GetHostedMeasurement(int handle, int* psize, u32* ptype, byte* buf);
-    bool        StartHostedProgram(const char* name, int nArgs, char** av, int* phandle);
+    bool                InitMyMeasurement();
+    bool                GetMyMeasurement(int* psize, u32* ptype, byte* buf);
+    bool                GetHostedMeasurement(int handle, int* psize, u32* ptype, 
+                                             byte* buf);
+    bool                StartHostedProgram(const char* name, int nArgs, char** av, 
+                                           int* phandle);
 
-    bool        GetEntropy(int size, byte* buf);
-    bool        Seal(int hostedMeasurementSize, byte* hostedMeasurement,
-                  int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
-    bool        Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
-                  int sizeSealed, byte* sealed, int *psizetoSeal, byte* toSeal);
-    bool        Attest(int hostedMeasurementSize, byte* hostedMeasurement,
-                  int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
+    bool                GetEntropy(int size, byte* buf);
+    bool                Seal(int hostedMeasurementSize, byte* hostedMeasurement,
+                            int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
+    bool                Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
+                            int sizeSealed, byte* sealed, int *psizetoSeal, byte* toSeal);
+    bool                Attest(int hostedMeasurementSize, byte* hostedMeasurement,
+                            int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
 
-    bool        initKeyNames();
-    bool        initTao(u32 symType, u32 pubkeyType);
-    bool        restoreTao();
-    bool        saveTao();
+    bool                initKeyNames();
+    bool                initTao(u32 symType, u32 pubkeyType);
+    bool                restoreTao();
+    bool                saveTao();
 
-    bool        GetPolicyKey();
+    bool                GetPolicyKey();
 
-    bool        clearKey(u32* ptype, int* psize, byte** ppkey);
+    bool                clearKey(u32* ptype, int* psize, byte** ppkey);
 
-    bool        hostsealKey(u32 type, int size, byte* key, 
-                            int* psealedSize, byte** ppsealed);
-    bool        hostunsealKey(int sealedSize, byte* psealed,
-                              u32* ptype, int* psize, byte** ppkey);
-    bool        localsealKey(u32 type, int size, byte* key, 
-                             int* psealedSize, byte** ppsealed);
-    bool        localunsealKey(int sealedSize, byte* psealed,
-                              u32* ptype, int* psize, byte** ppkey);
+    bool                hostsealKey(u32 type, int size, byte* key, 
+                                    int* psealedSize, byte** ppsealed);
+    bool                hostunsealKey(int sealedSize, byte* psealed,
+                                    u32* ptype, int* psize, byte** ppkey);
+    bool                localsealKey(u32 type, int size, byte* key, 
+                                    int* psealedSize, byte** ppsealed);
+    bool                localunsealKey(int sealedSize, byte* psealed,
+                                    u32* ptype, int* psize, byte** ppkey);
 
 #ifdef TEST
-    void        printData();
+    void                printData();
 #endif
 };
 
@@ -341,15 +344,15 @@ public:
     int                 m_ancestorEvidenceSize;
     char*               m_ancestorEvidence;
 
-                taoInit(taoHostServices* host);
-                ~taoInit();
+                        taoInit(taoHostServices* host);
+                        ~taoInit();
 
-    bool        gensymKey(u32 symType);
-    bool        genprivateKeyPair(u32 type, const char* szKeyName);
-    bool        generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
+    bool                gensymKey(u32 symType);
+    bool                genprivateKeyPair(u32 type, const char* szKeyName);
+    bool                generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
                                 const char* szSubjectName, const char* szSubjectId);
-    bool        initKeys(u32 symType, u32 pubkeyType, const char* szKeyName, 
-                         const char* szSubjectName, const char* szSubjectId);
+    bool                initKeys(u32 symType, u32 pubkeyType, const char* szKeyName, 
+                                const char* szSubjectName, const char* szSubjectId);
 };
 
 

@@ -144,15 +144,15 @@ symKey::symKey()
     m_iByteSizeKey= 0;
     m_iByteSizeIV= 0;
 
-    memset(m_rgbKey, 0, SMALLKEYSIZE);
-    memset(m_rgbIV, 0, SMALLKEYSIZE);
+    memset(m_rgbKey, 0, SMALLKEYSIZE);  // FIX
+    memset(m_rgbIV, 0, SMALLKEYSIZE);   // FIX
 }
 
 
 symKey:: ~symKey()
 {
-    memset(m_rgbKey, 0, SMALLKEYSIZE);
-    memset(m_rgbIV, 0, SMALLKEYSIZE);
+    memset(m_rgbKey, 0, SMALLKEYSIZE);  // FIX
+    memset(m_rgbIV, 0, SMALLKEYSIZE);   // FIX
 }
 
 
@@ -165,7 +165,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
     int             keySize= 0;
     char*           szBase64KeyValue= NULL;
     char*           szKeyType= NULL;
-    int             iOutLen= 128;
+    int             iOutLen= 128;   // FIX
 
     if(pRootElement==NULL) {
         fprintf(g_logFile, "No root element\n");
@@ -205,7 +205,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
         m_uAlgorithm= NOALG;
         m_ikeySize= keySize;
         m_ikeyNameSize= strlen(szKeyName);
-        if(m_ikeyNameSize<KEYNAMEBUFSIZE) {
+        if(m_ikeyNameSize<KEYNAMEBUFSIZE) { // FIX
             strcpy(m_rgkeyName, szKeyName);
         }
         else {
@@ -297,15 +297,15 @@ RSAKey::RSAKey()
     m_iByteSizePM1= 0;
     m_iByteSizeQM1= 0;
 
-    memset(m_rgbM, 0, BIGKEYSIZE);
-    memset(m_rgbD, 0, BIGKEYSIZE); 
-    memset(m_rgbE, 0, BIGKEYSIZE); 
-    memset(m_rgbP, 0, BIGKEYSIZE);
-    memset(m_rgbQ, 0, BIGKEYSIZE); 
-    memset(m_rgbDP, 0, BIGKEYSIZE);
-    memset(m_rgbDQ, 0, BIGKEYSIZE); 
-    memset(m_rgbPM1, 0, BIGKEYSIZE);
-    memset(m_rgbQM1, 0, BIGKEYSIZE); 
+    memset(m_rgbM, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbD, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbE, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbP, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbQ, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbDP, 0, BIGKEYSIZE); // FIX
+    memset(m_rgbDQ, 0, BIGKEYSIZE);     // FIX
+    memset(m_rgbPM1, 0, BIGKEYSIZE);    // FIX
+    memset(m_rgbQM1, 0, BIGKEYSIZE);    // FIX
 }
 
 
@@ -317,16 +317,15 @@ RSAKey::~RSAKey()
 
 void RSAKey::wipeKeys()
 {
-
-    memset(m_rgbM, 0, BIGKEYSIZE);
-    memset(m_rgbD, 0, BIGKEYSIZE); 
-    memset(m_rgbE, 0, BIGKEYSIZE); 
-    memset(m_rgbP, 0, BIGKEYSIZE);
-    memset(m_rgbQ, 0, BIGKEYSIZE); 
-    memset(m_rgbDP, 0, BIGKEYSIZE);
-    memset(m_rgbDQ, 0, BIGKEYSIZE); 
-    memset(m_rgbPM1, 0, BIGKEYSIZE);
-    memset(m_rgbQM1, 0, BIGKEYSIZE); 
+    memset(m_rgbM, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbD, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbE, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbP, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbQ, 0, BIGKEYSIZE);  // FIX
+    memset(m_rgbDP, 0, BIGKEYSIZE); // FIX
+    memset(m_rgbDQ, 0, BIGKEYSIZE);     // FIX
+    memset(m_rgbPM1, 0, BIGKEYSIZE);    // FIX
+    memset(m_rgbQM1, 0, BIGKEYSIZE);    // FIX
 
     if(m_pbnM!=NULL) {
         memset(m_pbnM->m_pValue, 0, m_pbnM->mpSize()*sizeof(u64));
@@ -378,10 +377,10 @@ void RSAKey::wipeKeys()
 
 bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
 {
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
-    TiXmlNode*      pNode2;
-    TiXmlNode*      pNode3;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
+    TiXmlNode*      pNode2= NULL;
+    TiXmlNode*      pNode3= NULL;
     int             keySize= 0;
     const char*     szKeyName= NULL;
     const char*     szKeyType= NULL;
@@ -392,7 +391,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     const char*     szRsaKeyD= NULL;
     const char*     szRsaKeyDP= NULL;
     const char*     szRsaKeyDQ= NULL;
-    int             iOutLen= 512;
+    int             iOutLen= 512;       // FIX
 
     if(pRootElement==NULL) {
         fprintf(g_logFile, "Cant get root element\n");
@@ -625,8 +624,8 @@ const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>\n";
 
 char*   RSAKey::SerializetoString()
 {
-    char    szStr[MAXSTRLEN];
-    char    szBase64[MAXBASE64];
+    char    szStr[MAXSTRLEN];       // FIX
+    char    szBase64[MAXBASE64];    // FIX
     int     nLeft= MAXSTRLEN;
     char*   p= szStr;
     int     n;
@@ -745,8 +744,8 @@ char*   RSAKey::SerializetoString()
 
 char*   RSAKey::SerializePublictoString()
 {
-    char    szStr[MAXSTRLEN];
-    char    szBase64[MAXSTRLEN];
+    char    szStr[MAXSTRLEN];   // FIX
+    char    szBase64[MAXSTRLEN];    // FIX
     int     nLeft= MAXSTRLEN;
     char*   p= szStr;
     int     n;

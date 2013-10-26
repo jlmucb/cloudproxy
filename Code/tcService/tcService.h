@@ -31,6 +31,7 @@
 #include "tao.h"
 #include "tcIO.h"
 #include "timer.h"
+#include "algs.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -76,7 +77,7 @@ public:
     virDomainPtr        m_vmdomain;
 #endif
     int                 m_sizeHash;
-    byte                m_rgHash[32];
+    byte                m_rgHash[GLOBALMAXDIGESTSIZE];
     char*               m_szexeFile;
     int                 m_nArgs;
     char**              m_Args;

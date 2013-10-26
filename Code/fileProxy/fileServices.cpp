@@ -175,7 +175,7 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
     bool                    fAllowed= false;
     resource*               pResource= NULL;
     accessRequest           oAR;
-    char                    szBuf[MAXNAME];
+    char                    szBuf[MAXNAME];     // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "validateCreatefileServices\n");
@@ -220,11 +220,13 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
     pResource->m_uType= RESOURCEFILE;
     pResource->m_iSize= oReq.m_iResourceLength;
     if(!m_pMetaData->addResource(pResource)) {
-        fprintf(g_logFile, "fileServices::validateCreatefileServices: can't add resource to table\n");
+        fprintf(g_logFile, 
+               "fileServices::validateCreatefileServices: can't add resource to table\n");
         return false;
     }
     if(!translateResourceNametoLocation(oReq.m_szResourceName, szBuf, MAXREQUESTSIZE)) {
-        fprintf(g_logFile, "fileServices::validateCreatefileServices: translateResourceName failed\n");
+        fprintf(g_logFile, 
+               "fileServices::validateCreatefileServices: translateResourceName failed\n");
         return false;
     }
     pResource->m_szLocation= strdup(szBuf);
@@ -234,7 +236,8 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
 }
 
 
-bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile, 
+                                                 resource** ppResource)
 {
     resource*               pResource= NULL;
     accessRequest           oAR;
@@ -268,26 +271,30 @@ bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile, 
 }
 
 
-bool  fileServices::validateAddOwnerRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool  fileServices::validateAddOwnerRequest(Request& oReq, char** pszFile, 
+                                            resource** ppResource)
                     
 {
     return false;
 }
 
 
-bool  fileServices::validateAddPrincipalRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool  fileServices::validateAddPrincipalRequest(Request& oReq, char** pszFile, 
+                                                resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateDeletePrincipalRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool  fileServices::validateDeletePrincipalRequest(Request& oReq, char** pszFile, 
+                                                resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateRemoveOwnerRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool  fileServices::validateRemoveOwnerRequest(Request& oReq, char** pszFile, 
+                                                resource** ppResource)
 {
     return false;
 }
@@ -301,7 +308,8 @@ bool  fileServices::validateRequest(Request& oReq, char** pszFile, resource** pp
 #endif
 
     if(oReq.m_szResourceName==NULL) {
-        fprintf(g_logFile, "fileServices::validatefileServices: validatefileServices returning false\n");
+        fprintf(g_logFile, 
+            "fileServices::validatefileServices: validatefileServices returning false\n");
         fflush(g_logFile);
         return false;
     }
@@ -336,7 +344,7 @@ bool fileServices::translateLocationtoResourceName(const char* szLocation,
                                                    const char* szResourceName, 
                                                    int size)
 {
-    // Fix 
+    // FIX 
     return false;
 }
 
@@ -378,8 +386,8 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     int         iRead= 0;
     int         filesize= 0;
     int         datasize= 0;
-    byte        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
+    byte        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
+    int         iLeft= MAXREQUESTSIZE;  // FIX
     char*       p= (char*)szBuf;
     char*       szFile= NULL;
     const char* szError= NULL;
@@ -449,8 +457,8 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 {
     bool            fAllowed= false;
     bool            fError;
-    char            szBuf[MAXREQUESTSIZEWITHPAD];
-    int             iLeft= MAXREQUESTSIZE;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
+    int             iLeft= MAXREQUESTSIZE;  // FIX
     char*           p= (char*)szBuf;
     char*           szFile= NULL;
     const char*     szError= NULL;
@@ -598,23 +606,22 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 }
 
 
-bool fileServices::servergetResourcefromclient(Request& oReq, 
-                                               timer& accessTimer, 
+bool fileServices::servergetResourcefromclient(Request& oReq, timer& accessTimer, 
                                                timer& encTimer)
 {
-    bool        fError;
-    int         iWrite= 0;
-    int         size= 0;
-    byte        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    const char*       szError= NULL;
-    int         type= CHANNEL_RESPONSE;
-    byte        multi= 0;
-    byte        final= 0;
-    char*       szOutFile= NULL;
-    resource*   pResource= NULL;
-    byte*       key= m_metadataKey;
+    bool            fError;
+    int             iWrite= 0;
+    int             size= 0;
+    byte            szBuf[MAXREQUESTSIZEWITHPAD];       // FIX
+    int             iLeft= MAXREQUESTSIZE;      // FIX
+    char*           p= (char*)szBuf;
+    const char*     szError= NULL;
+    int             type= CHANNEL_RESPONSE;
+    byte            multi= 0;
+    byte            final= 0;
+    char*           szOutFile= NULL;
+    resource*       pResource= NULL;
+    byte*           key= m_metadataKey;
 
 #ifdef  TEST
     fprintf(g_logFile, "servergetResourcefromclient %d\n", size);
@@ -658,7 +665,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
 
 #ifdef  TEST
     fprintf(g_logFile, "servergetResourcefromclient getting file %s, size is %d\n", 
-	    szOutFile, size);
+            szOutFile, size);
     fflush(g_logFile);
 #endif
     // read file
@@ -685,8 +692,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq,
 }
 
 
-bool fileServices::serverchangeownerofResource(Request& oReq, 
-                                               timer& accessTimer)
+bool fileServices::serverchangeownerofResource(Request& oReq, timer& accessTimer)
 // includes delete
 {
     resource*           pResource= NULL;
@@ -720,10 +726,9 @@ bool fileServices::serverchangeownerofResource(Request& oReq,
 }
 
 
-bool fileServices::serverdeleteResource(Request& oReq,
-                                        timer& accessTimer)
+bool fileServices::serverdeleteResource(Request& oReq, timer& accessTimer)
 {
-#if 0
+#if 0       // FIX
     resource*   pResource= NULL;
     char*       szFile= NULL;
     bool        fError;
@@ -806,8 +811,8 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
                                                const char* szOutFile, 
                                                timer& encTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
+    int         iLeft= MAXREQUESTSIZE;  // FIX
     char*       p= szBuf;
     Response    oResponse;
     int         n= 0;
@@ -817,7 +822,8 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
     byte*       key= m_metadataKey;;
 
 #ifdef  TEST
-    fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", szResourceName, szOutFile);
+    fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", 
+            szResourceName, szOutFile);
 #endif
     // send request
     if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
@@ -832,7 +838,8 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
     n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
     if(n<0) {
         fprintf(g_logFile, "clientgetResourcefromserver: getResource error %d\n", n);
-        fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n", szBuf);
+        fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n",
+                szBuf);
         return false;
     }
     szBuf[n]= 0;
@@ -851,7 +858,7 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
         fprintf(g_logFile, "clientgetResourcefromserver: Cant open out file\n");
         return false;
     }
-    // Fix: key
+    // FIX: key
     if(!getFile(*m_pSafeChannel, iWrite, oResponse.m_iResourceLength, 
                 oResponse.m_iResourceLength, 
                 m_encType, key, encTimer)) {
@@ -871,8 +878,8 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
                                                 const char* szSubject, 
                                                 const char* szEvidence)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];       // FIX
+    int         iLeft= MAXREQUESTSIZE;      // FIX
     char*       p= szBuf;
     Response    oResponse;
     int         n= 0;
@@ -940,8 +947,8 @@ bool fileServices::clientsendResourcetoserver(const char* szSubject,
                                               const char* szInFile, 
                                               timer& decTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
+    int         iLeft= MAXREQUESTSIZE;  // FIX
     char*       p= szBuf;
     Response    oResponse;
     int         n= 0;
@@ -1021,8 +1028,8 @@ bool fileServices::clientchangeownerResource(const char* szAction,
                                              const char* szEvidence, 
                                              const char* szOutFile)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
+    int         iLeft= MAXREQUESTSIZE;  // FIX
     char*       p= (char*)szBuf;
     Response    oResponse;
     int         n= 0;
@@ -1031,7 +1038,8 @@ bool fileServices::clientchangeownerResource(const char* szAction,
     byte        final= 0;
 
 #ifdef  TEST
-    fprintf(g_logFile, "clientchangeownerofResource(%s, %s)\n", szResourceName, szOutFile);
+    fprintf(g_logFile, "clientchangeownerofResource(%s, %s)\n", 
+            szResourceName, szOutFile);
     fflush(g_logFile);
 #endif
 
@@ -1068,8 +1076,8 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
                                         const char* szEvidence, 
                                         const char* szFile)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
+    char        szBuf[MAXREQUESTSIZEWITHPAD];       // FIX
+    int         iLeft= MAXREQUESTSIZE;      // FIX
     char*       p= (char*)szBuf;
     Response    oResponse;
     int         n= 0;

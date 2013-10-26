@@ -45,24 +45,27 @@ public:
     int         m_myPid;
     bool        m_famService;
 
-    linuxDeviceChannel();
-    ~linuxDeviceChannel();
+                linuxDeviceChannel();
+                ~linuxDeviceChannel();
 
-    bool    initLinuxService(const char* name, bool fService);
-    bool    closeLinuxService();
-    bool    tcserviceHello();
-    bool    tcserviceGoodbye();
+    bool        initLinuxService(const char* name, bool fService);
+    bool        closeLinuxService();
+    bool        tcserviceHello();
+    bool        tcserviceGoodbye();
 
-    bool    getEntropyfromDeviceDriver(int size, byte* pKey);
-    bool    getprogramNamefromDeviceDriver(int* pSize, const char* szName);
-    bool    getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey);
-    bool    getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash);
-    bool    getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType, 
+    bool        getEntropyfromDeviceDriver(int size, byte* pKey);
+    bool        getprogramNamefromDeviceDriver(int* pSize, const char* szName);
+    bool        getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize, byte* pKey);
+    bool        getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash);
+    bool        getHostedMeasurementfromDeviceDriver(int childproc, u32* phashType, 
                                                  int* pSize, byte* pHash);
-    bool    startAppfromDeviceDriver(int* ppid, int argc, char **argv);
-    bool    sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
-    bool    unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
-    bool    quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData);
+    bool        startAppfromDeviceDriver(int* ppid, int argc, char **argv);
+    bool        sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, 
+                                     byte* outData);
+    bool        unsealfromDeviceDriver(int inSize, byte* inData, int* poutSize, 
+                                       byte* outData);
+    bool        quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, 
+                                      byte* outData);
 };
 
 

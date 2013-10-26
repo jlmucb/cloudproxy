@@ -115,12 +115,14 @@ bool PrincipalCert::parsePrincipalCertElements()
         return false;
     }
     if(!m_doc.Parse(m_szSignature)) {
-        fprintf(g_logFile, "parsePrincipalCertElements: Cant parse document from file string\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElements: Cant parse document from file string\n");
         return false;
     }
     m_pRootElement= m_doc.RootElement();
     if(m_pRootElement==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElements: Cant get root element of PrincipalCert\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElements: Cant get root element of PrincipalCert\n");
         return false;
     }
     return parsePrincipalCertfromRoot(m_pRootElement);
@@ -158,7 +160,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     // fill m_szSignatureMethod;
     pNode= Search(pSignedInfoNode, "ds:SignatureMethod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find SignatureMethod\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant find SignatureMethod\n");
         return false;
     }
     m_szSignatureMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
@@ -166,7 +169,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     // fill m_szCanonicalizationMethod;
     pNode= Search(pSignedInfoNode, "ds:CanonicalizationMethod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find CanonicalizationMethod\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant find CanonicalizationMethod\n");
         return false;
     }
     m_szCanonicalizationMethod= strdup(((TiXmlElement*) pNode)->Attribute("Algorithm"));
@@ -174,7 +178,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     // fill m_szRevocationInfo;
     pNode= Search(pSignedInfoNode, "RevocationPolicy");
     if(pNode==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find RevocationPolicy\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant find RevocationPolicy\n");
         return false;
     }
 
@@ -207,14 +212,16 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         m_szPrincipalName= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get subject name value\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant get subject name value\n");
         return false;
     }
 
     // fill principal type 
     pNode= Search(pSignedInfoNode, "PrincipalType");
     if(pNode==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find principal type\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant find principal type\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
@@ -222,14 +229,16 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         m_szPrincipalType= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get principal type value\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant get principal type value\n");
         return false;
     }
 
     // fill m_ovalidityPeriod;
     pNode= Search((TiXmlNode*) pSignedInfoNode, "ValidityPeriod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find Validity Period\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant find Validity Period\n");
         return false;
     }
     pNode1= Search(pNode, "NotBefore");
@@ -242,7 +251,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         szNotBefore= ((TiXmlElement*)pNode2)->Value();
     }
     else {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get NotBefore value\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant get NotBefore value\n");
         return false;
     }
 
@@ -261,19 +271,22 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
     }
 
     if(!timeInfofromstring(szNotBefore, m_ovalidityPeriod.notBefore)) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant interpret NotBefore value\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant interpret NotBefore value\n");
         return false;
     }
 
     if(!timeInfofromstring(szNotAfter, m_ovalidityPeriod.notAfter)) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant interpret NotAftervalue\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant interpret NotAftervalue\n");
         return false;
     }
 
     // fill m_szSignatureValue;
     pNode= Search((TiXmlNode*) pRootElement, "ds:SignatureValue");
     if(pNode==NULL) {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant find SignatureValue\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant find SignatureValue\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
@@ -281,7 +294,8 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         m_szSignatureValue= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {
-        fprintf(g_logFile, "parsePrincipalCertElementfromRoot: Cant get SignatureValue\n");
+        fprintf(g_logFile, 
+                "parsePrincipalCertElementfromRoot: Cant get SignatureValue\n");
         return false;
     }
 
@@ -365,15 +379,11 @@ char*    PrincipalCert::getSignatureAlgorithm()
 
 bool PrincipalCert::sameAs(PrincipalCert& oPrinc)
 {
-#if 1
     RSAKey* pKey1= (RSAKey*) getSubjectKeyInfo();
     RSAKey* pKey2= (RSAKey*) oPrinc.getSubjectKeyInfo();
     if(pKey1==NULL || pKey2==NULL)
         return false;
     return sameRSAKey(pKey1, pKey2);
-#else
-    return strcmp(getPrincipalName(), oPrinc.getPrincipalName())==0;
-#endif
 }
 
 

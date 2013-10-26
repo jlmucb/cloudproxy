@@ -54,7 +54,6 @@ using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::stringstream;
-//const char* szServerHostAddr= "127.0.0.1";
 
 const char*     g_tcioDDName= NULL;
 int             g_myPid= 0;
@@ -85,17 +84,16 @@ char *nextline(char* start, char* end)
 
 int  getmysyspid(const char* name)
 {
-    char    buf[BUFSIZE];
-    char    fileName[256];
-    char    line[BUFSIZE];
+    char    buf[BUFSIZE];       // FIX
+    char    fileName[256];      // FIX
+    char    line[BUFSIZE];      // FIX
     int     mypid= getpid();
     int     newpid= -1;
     int     size= -1;
     char*   beginline= line;
 
     sprintf(fileName, "%s/KvmHost/tmpLaunch%d.tmp", g_progDirectory, mypid);
-    sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",                                   
-            name, fileName);
+    sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s", name, fileName);
 #ifdef TEST
     fprintf(g_logFile, "getmysyspid command: %s\n", buf);
     fflush(g_logFile);
@@ -145,7 +143,7 @@ void tcBufferprint(tcBuffer* p)
 bool newgettcBuf(int fd, int* procid, u32* puReq, u32* pstatus, int* porigprocid,
                          int* paramsize, byte* params)
 {
-    byte            rgBuf[PADDEDREQ];
+    byte            rgBuf[PADDEDREQ];   // FIX
     tcBuffer*       pReq= (tcBuffer*) rgBuf;
     int             i;
     int             n;
@@ -190,8 +188,7 @@ bool newgettcBuf(int fd, int* procid, u32* puReq, u32* pstatus, int* porigprocid
 bool newsendtcBuf(int fd, int procid, u32 uReq, u32 status, int origproc,
                           int paramsize, byte* params)
 {
-#if 1
-    byte            rgBuf[PADDEDREQ];
+    byte            rgBuf[PADDEDREQ];   // FIX
     tcBuffer*       pReq= (tcBuffer*) rgBuf;
     int             i;
     int             n;
@@ -205,6 +202,7 @@ bool newsendtcBuf(int fd, int procid, u32 uReq, u32 status, int origproc,
     pReq->m_ustatus= status;
     pReq->m_origprocid= origproc;
     pReq->m_reqSize= paramsize;
+
 #ifdef TEST
     fprintf(g_logFile, "newsendtcBuf: "); tcBufferprint(pReq);
 #endif
@@ -215,7 +213,6 @@ bool newsendtcBuf(int fd, int procid, u32 uReq, u32 status, int origproc,
         fprintf(g_logFile, "newsendtcBuf: Write failed %d\n", i);
         return false;
     }
-#endif
     return true;
 }
 
@@ -226,8 +223,8 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
     u32         ureq;
     int         procid= g_myPid;
     int         origprocid= g_myPid;
-    int         size= PARAMSIZE;
-    byte        rgBuf[PARAMSIZE];
+    int         size= PARAMSIZE;    // FIX
+    byte        rgBuf[PARAMSIZE];   // FIX
 
     if(argc<1) {
         fprintf(g_logFile, "startAppfromDeviceDriver: no argument\n");
@@ -250,7 +247,7 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
     }
 #ifdef TEST1
     int     nc= 30;
-    char*   nav[32];
+    char*   nav[32];    // FIX
     if(!decodeTCSERVICESTARTAPPFROMAPP(&nc, nav, rgBuf)) {
         fprintf(g_logFile, "startAppfromDeviceDriver: cant decodebuf\n");
         return false;
@@ -314,7 +311,7 @@ bool startApplication(int an, char** av, bool fKvmCall)
 
     if(fKvmCall) {
         int    size= 0;
-        char   buf[BUFSIZE];
+        char   buf[BUFSIZE];    // FIX
 
         // replace xml file name with xml
         int fd= open(av[1], O_RDONLY);
@@ -366,9 +363,9 @@ bool GetPolicyKey()
     u32         type= 0;
     int         procid= g_myPid;
     int         origprocid= g_myPid;
-    int         size= PARAMSIZE;
-    byte        rgBuf[PARAMSIZE];
-    byte        pKey[PARAMSIZE];
+    int         size= PARAMSIZE;    // FIX
+    byte        rgBuf[PARAMSIZE];   // FIX
+    byte        pKey[PARAMSIZE];    // FIX
 
 #ifdef  TEST
     fprintf(g_logFile, "GetPolicyKey\n");

@@ -14,7 +14,7 @@ S=          .
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
-CFLAGS=     -D UNIXRANDBITS -D TPMTEST -D QUOTE2_DEFINED -D PCR18
+CFLAGS=     -D UNIXRANDBITS -D TPMTEST -D PCR18
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++

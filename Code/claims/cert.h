@@ -70,7 +70,7 @@ public:
     char*       getPrincipalType();
 
     char*       getName() {return getPrincipalName();};
-    int		Serialize(byte* in){return 0;};
+    int         Serialize(byte* in){return 0;};
     bool        Deserialize(const byte* szCert, int* pN) {return true;};
     int         auxSize(){return 0;};
 

@@ -28,9 +28,9 @@
 #include "keys.h"
 #include "aesni.h"
 #include "sha256.h"
-// Get rid of this
 
 // hmac-sha256(msg)= Sha256((secret^opad)||Sha256((secret^ipad)||msg))
+
 class hmacsha256 {
 public:
     Sha256      oHash;

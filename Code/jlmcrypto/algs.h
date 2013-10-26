@@ -83,20 +83,30 @@
 #define SHA512BLOCKBYTESIZE        64
 #define SHA512DIGESTBYTESIZE       64
 
+#define GLOBALMAXDIGESTSIZE       128
+#define GLOBALMAXSYMKEYSIZE       128
+#define GLOBALMAXPUBKEYSIZE       512
+#define GLOBALMAXSEALEDKEYSIZE   1024
 
-#define SMALLKEYSIZE            128
-#define BIGKEYSIZE              512
-#define KEYNAMEBUFSIZE          128
-#define KEYTYPEBUFSIZE          128
-#define BIGSYMKEYSIZE            64
-#define SMALLSYMKEYSIZE          32
-#define BIGBLOCKSIZE             32
+#define SMALLKEYSIZE              128
+#define BIGKEYSIZE                512
+#define KEYNAMEBUFSIZE            128
+#define KEYTYPEBUFSIZE            128
+#define BIGSYMKEYSIZE              64
+#define SMALLSYMKEYSIZE            32
+#define BIGBLOCKSIZE               32
 
 #define AES128CBCSYMPADHMACSHA256  (AES128|(CBCMODE<<8)|(SYMPAD<<16)|(HMACSHA256<<24))
 #define AES128GCM                  (AES128 | (GCMMODE<<8))
 
-#define NOENCRYPT        	  0
-#define DEFAULTENCRYPT   	  1
+#define NOENCRYPT                 0
+#define DEFAULTENCRYPT            1
+
+
+inline int maxGlobalDigestSize() {return GLOBALMAXDIGESTSIZE;}
+inline int maxGlobalSymKeySize() {return GLOBALMAXSYMKEYSIZE;}
+inline int maxGlobalPubKeySize() {return GLOBALMAXPUBKEYSIZE;}
+inline int maxGlobalSealedKeySize() {return GLOBALMAXSEALEDKEYSIZE;}
 
 
 #endif

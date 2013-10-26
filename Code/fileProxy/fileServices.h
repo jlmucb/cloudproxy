@@ -56,77 +56,71 @@ public:
     byte*           m_metadataKey;
     char*           m_szPrefix;
 
-                fileServices();
-                ~fileServices();
+                    fileServices();
+                    ~fileServices();
 
 #ifndef FILECLIENT
-    bool        initFileServices(session* session, PrincipalCert* ppolicyCert,
+    bool            initFileServices(session* session, PrincipalCert* ppolicyCert,
                                  taoEnvironment* pTaoEnv, 
                                  int encType, byte* metakey, 
                                  metaData* pMeta,
                                  safeChannel* pSafeChannel);
 #else
-    bool        initFileServices(session* session, PrincipalCert* ppolicyCert, safeChannel* pSafeChannel);
+    bool            initFileServices(session* session, PrincipalCert* ppolicyCert, 
+                                     safeChannel* pSafeChannel);
 #endif
 
 #ifndef FILECLIENT
-    bool        validateAddPrincipalRequest(Request& oReq,
-                                            char** pszFile, 
+    bool            validateAddPrincipalRequest(Request& oReq, char** pszFile, 
                                             resource** ppResource);
-    bool        validateDeletePrincipalRequest(Request& oReq,
-                                               char** pszFile, 
+    bool            validateDeletePrincipalRequest(Request& oReq, char** pszFile, 
                                                resource** ppResource);
-    bool        validateCreateRequest(Request& oReq,
-                                      char** pszFile, 
-                                      resource** ppResource);
-    bool        validateGetSendDeleteRequest(Request& oReq,
-                                             char** pszFile, 
+    bool            validateCreateRequest(Request& oReq, char** pszFile, 
+                                            resource** ppResource);
+    bool            validateGetSendDeleteRequest(Request& oReq, char** pszFile, 
                                              resource** ppResource);
-    bool        validateAddOwnerRequest(Request& oReq,
-                                        char** pszFile, 
-                                        resource** ppResource);
-    bool        validateRemoveOwnerRequest(Request& oReq,
-                                           char** pszFile, 
+    bool            validateAddOwnerRequest(Request& oReq, char** pszFile, 
+                                            resource** ppResource);
+    bool            validateRemoveOwnerRequest(Request& oReq, char** pszFile, 
                                            resource** ppResource);
-    bool        validateRequest(Request& oReq,
-                                char** pszFile, 
-                                resource** ppResource);
+    bool            validateRequest(Request& oReq, char** pszFile, 
+                                            resource** ppResource);
 
-    bool        translateLocationtoResourceName(const char* szLocation, 
+    bool            translateLocationtoResourceName(const char* szLocation, 
                                                 const char* szResourceName, 
                                                 int size);
-    bool        translateResourceNametoLocation(const char* szResourceName, 
+    bool            translateResourceNametoLocation(const char* szResourceName, 
                                                 const char* szLocation, 
                                                 int size);
 
-    bool        serversendResourcetoclient(Request& oReq, 
+    bool            serversendResourcetoclient(Request& oReq, 
                                            timer& accessTimer, timer& decTimer);
-    bool        servergetResourcefromclient(Request& oReq, 
+    bool            servergetResourcefromclient(Request& oReq, 
                                             timer& accessTimer, timer& encTimer);
 
-    bool        serverchangeownerofResource(Request& oReq, timer& accessTimer);
+    bool            serverchangeownerofResource(Request& oReq, timer& accessTimer);
 
-    bool        servercreateResourceonserver(Request& oReq, timer& accessTimer);
-    bool        serverdeleteResource(Request& oReq, timer& accessTimer);
+    bool            servercreateResourceonserver(Request& oReq, timer& accessTimer);
+    bool            serverdeleteResource(Request& oReq, timer& accessTimer);
 
 #else  // end of server services, beginning of client services
 
-    bool        clientgetResourcefromserver(const char* szResourceName, 
+    bool            clientgetResourcefromserver(const char* szResourceName, 
                                             const char* szEvidence, 
                                             const char* szFile, 
                                             timer& encTimer);
-    bool        clientsendResourcetoserver(const char* szSubject, 
+    bool            clientsendResourcetoserver(const char* szSubject, 
                                            const char* szResourceName, 
                                            const char* szEvidence, 
                                            const char* szFile, timer& decTimer);
-    bool        clientchangeownerResource(const char* szAction, 
+    bool            clientchangeownerResource(const char* szAction, 
                                           const char* szResourceName, 
                                           const char* szEvidence, 
                                           const char* szOutFile);
-    bool        clientcreateResourceonserver(const char* szResourceName, 
+    bool            clientcreateResourceonserver(const char* szResourceName, 
                                              const char* szSubject, 
                                              const char* szEvidence);
-    bool        clientdeleteResource(const char* szResourceName,
+    bool            clientdeleteResource(const char* szResourceName,
                                      const char* szEvidence, 
                                      const char* szFile);
 #endif  //client services
@@ -136,6 +130,6 @@ public:
 #endif
 
 
-// -----------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------
 
 

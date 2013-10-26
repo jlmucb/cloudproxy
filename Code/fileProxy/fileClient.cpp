@@ -102,14 +102,14 @@ fileClient::fileClient ()
     m_uMode= 0;
     m_uPad= 0;
     m_uHmac= 0;
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
     m_fpolicyCertValid= false;
 }
 
 
 fileClient::~fileClient ()
 {
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
     if(m_fKeysValid)
         memset(m_fileKeys, 0, m_sizeKey);
     m_fKeysValid= false;
@@ -141,12 +141,12 @@ bool fileClient::initPolicy()
 bool fileClient::initFileKeys()
 {
     struct stat statBlock;
-    char        szName[256];
+    char        szName[256];        // FIX
     int         size= 0;
-    byte        keyBuf[SMALLKEYSIZE];
+    byte        keyBuf[GLOBALMAXSYMKEYSIZE];
     int         n= 0;
     int         m= 0;
-    byte        sealedkeyBuf[BIGKEYSIZE];
+    byte        sealedkeyBuf[GLOBALMAXSEALEDKEYSIZE];
    
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
@@ -214,7 +214,7 @@ bool fileClient::initFileKeys()
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
-        m= SMALLKEYSIZE;
+        m= GLOBALMAXSYMKEYSIZE;
         m_unsealTimer.Start();
         if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
                         size, sealedkeyBuf, &m, keyBuf)) {
@@ -292,7 +292,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 #ifdef TEST
         fprintf(g_logFile, "fileClient::Init: after HostInit, pid: %d\n",
             getpid());
-    	fflush(g_logFile);
+        fflush(g_logFile);
 #endif
 
         // init environment
@@ -327,7 +327,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
 #ifdef  TEST
         fprintf(g_logFile, "initClient: socket opened\n");
-    	fflush(g_logFile);
+        fflush(g_logFile);
 #endif
 
         server_addr.sin_family= AF_INET;
@@ -346,7 +346,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         if(!m_opolicyCert.parsePrincipalCertElements())
           throw("fileClient::Init:: Can't init policy key 2\n");
 
-    	m_fpolicyCertValid= true;
+        m_fpolicyCertValid= true;
         RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
 
         // m_tcHome.m_policyKeyValid must be true
@@ -520,7 +520,6 @@ int main(int an, char** av)
 #else
     oFileClient.m_fEncryptFiles= true;
 #endif
-    // jlm: removed initProg stuff.  Replaced by tcLaunch
 
     initLog("fileClient.log");
 #ifdef  TEST

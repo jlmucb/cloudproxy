@@ -46,6 +46,7 @@ extern const char* g_progDirectory;
 // -------------------------------------------------------------------------
 
 
+// FIX
 #define BUFSIZE 2048
 #define NAMESIZE 256
 
@@ -67,9 +68,9 @@ char *nextline(char* start, char* end)
 
 int  getmysyspid(const char* name)
 {
-    char    buf[BUFSIZE];
-    char    fileName[256];
-    char    line[BUFSIZE];
+    char    buf[BUFSIZE];       // FIX
+    char    fileName[256];      // FIX
+    char    line[BUFSIZE];      // FIX
     int     mypid= getpid();
     int     newpid= -1;
     int     size= -1;
@@ -129,9 +130,9 @@ void printVirtlibError()
 }
 
 
-int startKvmVM(const char* programname, const char* systemname, const char* xmldomainstring, 
-                virConnectPtr* ppvmconnection,
-                virDomainPtr*  ppvmdomain)
+int startKvmVM(const char* programname, const char* systemname, 
+               const char* xmldomainstring, 
+               virConnectPtr* ppvmconnection, virDomainPtr*  ppvmdomain)
 // returns -1 if error, pid otherwise
 {
 #ifdef TEST

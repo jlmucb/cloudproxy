@@ -36,29 +36,30 @@
 
 class KeyInfo {
 public:
+    enum            {MAXKEYNAMESIZE= KEYNAMEBUFSIZE};
     u32             m_ukeyType;
     u32             m_uAlgorithm;
     i32             m_ikeySize;
     i32             m_ikeyNameSize;
-    char            m_rgkeyName[KEYNAMEBUFSIZE];
+    char            m_rgkeyName[KEYNAMEBUFSIZE];    // FIX
     TiXmlDocument*  m_pDoc;
+
+                    KeyInfo();
+                    ~KeyInfo();
 
     bool            ParsefromString(const char* szXML);
     bool            ParsefromFile(const char* szFileName);
     int             getKeyType(TiXmlDocument*  pDoc);
     int             getKeyTypeFromRoot(TiXmlElement*  pRootElement);
-
-    KeyInfo();
-    ~KeyInfo();
 };
 
 
 class symKey : public KeyInfo {
 public:
     i32             m_iByteSizeKey;
-    byte            m_rgbKey[SMALLKEYSIZE];
+    byte            m_rgbKey[SMALLKEYSIZE];     // FIX
     i32             m_iByteSizeIV;
-    byte            m_rgbIV[SMALLKEYSIZE];
+    byte            m_rgbIV[SMALLKEYSIZE];      // FIX
 
     symKey();
     ~symKey();
@@ -82,19 +83,19 @@ public:
     i32             m_iByteSizeQ;
     i32             m_iByteSizeDP;
     i32             m_iByteSizeDQ;
-    i32	            m_iByteSizePM1;
+    i32             m_iByteSizePM1;
     i32             m_iByteSizeQM1;
 
     //  These should be deleted eventually
-    byte            m_rgbM[BIGKEYSIZE];
-    byte            m_rgbD[BIGKEYSIZE];
-    byte            m_rgbE[BIGKEYSIZE];
-    byte            m_rgbP[BIGKEYSIZE];
-    byte            m_rgbQ[BIGKEYSIZE];
-    byte            m_rgbDP[BIGKEYSIZE];
-    byte            m_rgbDQ[BIGKEYSIZE];
-    byte            m_rgbPM1[BIGKEYSIZE];
-    byte            m_rgbQM1[BIGKEYSIZE];
+    byte            m_rgbM[BIGKEYSIZE];     // FIX
+    byte            m_rgbD[BIGKEYSIZE];     // FIX
+    byte            m_rgbE[BIGKEYSIZE];     // FIX
+    byte            m_rgbP[BIGKEYSIZE];     // FIX
+    byte            m_rgbQ[BIGKEYSIZE];     // FIX
+    byte            m_rgbDP[BIGKEYSIZE];        // FIX
+    byte            m_rgbDQ[BIGKEYSIZE];        // FIX
+    byte            m_rgbPM1[BIGKEYSIZE];       // FIX
+    byte            m_rgbQM1[BIGKEYSIZE];       // FIX
 
     bnum*           m_pbnM;
     bnum*           m_pbnP;
@@ -106,8 +107,8 @@ public:
     bnum*           m_pbnPM1;
     bnum*           m_pbnQM1;
 
-    RSAKey();
-    ~RSAKey();
+                    RSAKey();
+                    ~RSAKey();
 
     bool            getDataFromDoc();
     bool            getDataFromRoot(TiXmlElement*  pRootElement);

@@ -120,15 +120,15 @@ Request::~Request()
 bool  Request::getDatafromDoc(const char* szRequest)
 {
     TiXmlDocument   doc;
-    TiXmlElement*   pRootElement;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
 
-    const char*           szAction= NULL;
-    const char*           szResourceName= NULL;
-    const char*           szResourceLength= NULL;
-    const char*           szSubjectName= NULL;
-    const char*           szEvidence= NULL;
+    const char*     szAction= NULL;
+    const char*     szResourceName= NULL;
+    const char*     szResourceLength= NULL;
+    const char*     szSubjectName= NULL;
+    const char*     szEvidence= NULL;
 
     if(szRequest==NULL)
         return false;
@@ -283,9 +283,9 @@ void Response::printMe()
 bool  Response::getDatafromDoc(char* szResponse)
 {
     TiXmlDocument   doc;
-    TiXmlElement*   pRootElement;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "Response::getDatafromDoc\n%s\n", szResponse);
@@ -378,7 +378,7 @@ bool emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
     int         type= CHANNEL_REQUEST;
     byte        multi=0;
     byte        final= 0;
-    byte        fileBuf[MAXREQUESTSIZEWITHPAD];
+    byte        fileBuf[MAXREQUESTSIZEWITHPAD];     // FIX
 
     while(fc.safegetPacket(fileBuf, MAXREQUESTSIZE, &type, &multi, &final)>0);
     return true;
@@ -391,7 +391,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     int                 type= CHANNEL_RESPONSE;
     byte                multi, final;
     int                 n= 0;
-    byte                fileBuf[MAXREQUESTSIZEWITHPAD];
+    byte                fileBuf[MAXREQUESTSIZEWITHPAD];     // FIX
     encryptedFilewrite  encFile;
 
 #ifdef TEST
@@ -454,7 +454,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     int                 type= CHANNEL_RESPONSE;
     byte                multi, final;
     int                 n= 0;
-    byte                fileBuf[MAXREQUESTSIZEWITHPAD];
+    byte                fileBuf[MAXREQUESTSIZEWITHPAD];     // FIX
     encryptedFileread   encFile;
 
 #ifdef TEST
@@ -575,8 +575,8 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction,
 
 
 bool  constructResponse(bool fError, char** pp, int* piLeft, 
-			const char* szResourceName, int size, 
-			const char* szChannelError)
+                        const char* szResourceName, int size, 
+                        const char* szChannelError)
 {
     bool    fRet= true;
     int     n= 0;

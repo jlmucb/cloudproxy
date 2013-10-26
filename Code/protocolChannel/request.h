@@ -63,15 +63,16 @@
 
 class Request {
 public:
-    char*           m_szAction;
-    char*           m_szResourceName;
-    int             m_iResourceLength;
-    int             m_iResourceType;
-    char*           m_szEvidence;
-    char*           m_szSubjectName;
+    char*       m_szAction;
+    char*       m_szResourceName;
+    int         m_iResourceLength;
+    int         m_iResourceType;
+    char*       m_szEvidence;
+    char*       m_szSubjectName;
 
                 Request();
                 ~Request();
+
     bool        getDatafromDoc(const char* szRequest);
 #ifdef TEST
     void        printMe();
@@ -89,6 +90,7 @@ public:
 
                     Response();
                     ~Response();
+
     bool            getDatafromDoc(char* szResponse);
 #ifdef TEST
     void            printMe();

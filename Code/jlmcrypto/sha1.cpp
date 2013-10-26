@@ -59,10 +59,10 @@ void  Sha1::Init()
 
 void  Sha1::Update(const byte* data, const u32 long size)
 {
-    const byte*   pCurData= data;
-    int     processed= 0;
-    int     left= size;
-    int     n;
+    const byte* pCurData= data;
+    int         processed= 0;
+    int         left= size;
+    int         n;
 
     // partial block?
     if(m_iBLen>0) {

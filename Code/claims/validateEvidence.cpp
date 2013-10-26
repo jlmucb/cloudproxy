@@ -217,7 +217,8 @@ char* getChainElementCanonicalizationAlgorithm(TiXmlNode* node, int evidenceType
         return NULL;
     }
     if(((TiXmlElement*)nodeCanonical)->Attribute("Algorithm")==NULL) {
-        fprintf(g_logFile, "getChainElementCanonicalizationAlgorithm: Cant algorithm value\n");
+        fprintf(g_logFile, 
+                "getChainElementCanonicalizationAlgorithm: Cant algorithm value\n");
         return NULL;
     }
     // <ds:CanonicalizationMethod 
@@ -481,7 +482,7 @@ bool  includesPurpose(const char* szIntended, const char* szGranted)
 }
 
 
-int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, 
+int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, // FIX
                  int npieces, int* rgType, void** rgObject)
 
 //  Only RSA is supported for now.
@@ -620,7 +621,7 @@ bool evidenceCollection::parseEvidenceCollection(const char* szEvidenceCollectio
 }
 
 
-bool evidenceCollection::validateEvidenceCollection(RSAKey* pRootKey)
+bool evidenceCollection::validateEvidenceCollection(RSAKey* pRootKey)   // FIX
 {
     int     i;
 
@@ -757,7 +758,7 @@ bool  evidenceList::getSubjectEvidence(int* pType, void** pEvid)
 }
 
 
-bool  evidenceList::validateEvidenceList(RSAKey* pRootKey)
+bool  evidenceList::validateEvidenceList(RSAKey* pRootKey)  // FIX
 {
     int             iVerify;
 

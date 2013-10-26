@@ -163,7 +163,7 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
     byte*   pHdr= NULL;
     byte    rgPre[2]= {0x00, 0x01};
 
-#ifdef TEST
+#ifdef CRYPTOTEST
     fprintf(g_logFile, "emsapkcsverify, hash type %d, blocksize %d\n", hashType, sigSize);
     PrintBytes("Padded block\n", rgSig, sigSize);
     PrintBytes("Hash\n", rgHash, 32);
@@ -234,7 +234,7 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig)
     // Hash
     if(memcmp(&rgSig[n], rgHash, hashLen)!=0) {
         fprintf(g_logFile, "Bad hash\n");
-#ifdef TEST
+#ifdef CRYPTOTEST
     PrintBytes("decoded hash\n", &rgSig[n], hashLen);
     PrintBytes("computed hash\n", rgHash, hashLen);
 #endif
@@ -397,7 +397,7 @@ cbc::cbc()
 
 cbc::~cbc()
 {
-#if 0
+#if 0   // FIX
     m_oAESEnc.CleanKeys();
     m_oAESDec.CleanKeys();
     memset(m_rguIntKey, 0, m_iIntKeySize);
@@ -493,8 +493,9 @@ void printCBCState(cbc* pMode)
 #endif
 
 
-bool cbc::initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, int intkeysize, byte* intkey,
-                    int plainLen, int ivSize, byte* iv)
+bool cbc::initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, 
+                  int intkeysize, byte* intkey,
+                  int plainLen, int ivSize, byte* iv)
 {
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::initEnc\n");
@@ -515,7 +516,8 @@ bool cbc::initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key, int int
 }
 
 
-bool cbc::init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key, int intkeysize, byte* intkey)
+bool cbc::init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key, 
+               int intkeysize, byte* intkey)
 {
     m_iNumPlainBytes= 0;
     m_iNumCipherBytes= 0;
@@ -587,7 +589,7 @@ void cbc::nextMac(byte* puA)
 
 bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
 {
-    byte    oldX[MAXAUTHSIZE];
+    byte    oldX[MAXAUTHSIZE];  // FIX
 
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::nextPlainBlockIn\n");
@@ -607,7 +609,7 @@ bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
 
 bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
 {
-    byte    oldX[MAXAUTHSIZE];
+    byte    oldX[MAXAUTHSIZE];  // FIX
 
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::nextCipherBlockIn\n");
@@ -616,7 +618,7 @@ bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
     m_oAESDec.Decrypt(puIn, oldX); 
     inlineXor(puOut, m_rgLastBlock, oldX, m_iBlockSize);
     memcpy(m_rgLastBlock, puIn, m_iBlockSize);
-#ifdef MACTHENENCRYPT	// should never do this
+#ifdef MACTHENENCRYPT   // should never do this
     nextMac(puOut);
 #else
     nextMac(puIn);
@@ -729,7 +731,7 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
 #ifdef MACTHENENCRYPT  // should never do this
     // decrypt Mac
-    byte    oldX[MAXAUTHSIZE];
+    byte    oldX[MAXAUTHSIZE];  // FIX
 
     m_oAESDec.Decrypt(puIn, oldX);
     inlineXor(m_rguHMACReceived, m_rgLastBlock, oldX, m_iBlockSize);

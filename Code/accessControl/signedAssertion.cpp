@@ -106,7 +106,7 @@ void Assertion::printMe()
 
 bool Assertion::parseMe(const char* szAssert)
 {
-    char            szBuf[512];
+    char            szBuf[512];     // FIX
     const char*     szTok= NULL;
     int             n;
 
@@ -473,7 +473,7 @@ bool SignedAssertion::parseSignedAssertionElements()
         fprintf(g_logFile, "parseSignedAssertionElements: Cant find Assertions\n");
         return false;
     }
-#if 0
+#if 0   // FIX
     ((TiXmlElement*)pNodeA)->QueryIntAttribute ("count", &m_iNumAssertions);
 
     int     iAssertions= 0;

@@ -53,8 +53,8 @@
 
 
 struct tssError {
-    int     errCode;
-    const char*   szMsg;
+    int         errCode;
+    const char* szMsg;
 };
 
 
@@ -112,7 +112,7 @@ tpmStatus::tpmStatus()
     m_hSRK= 0;
     m_hSealingData= 0;
     m_hPCRs= 0;
-#ifdef QUOTE2_DEFINED
+#ifndef NOQUOTE2
     m_hPCR2= 0;
 #endif
     m_hSigningKey= 0;
@@ -145,7 +145,7 @@ bool tpmStatus::initTPM()
 {
     TSS_RESULT  ret;
     BYTE        wellKnownSecret[20];
-    TSS_UUID        SRK_UUID= TSS_UUID_SRK;
+    TSS_UUID    SRK_UUID= TSS_UUID_SRK;
 
     memset(wellKnownSecret,0,20);
 
@@ -207,7 +207,7 @@ bool tpmStatus::initTPM()
     // PCRs, TSS_PCRS_STRUCT_INFO_LONG
     ret= Tspi_Context_CreateObject(m_hContext, TSS_OBJECT_TYPE_PCRS, 
                                    0, &m_hPCRs);
-#ifdef QUOTE2_DEFINED
+#ifndef NOQUOTE2
     ret= Tspi_Context_CreateObject(m_hContext, TSS_OBJECT_TYPE_PCRS, 
                                    TSS_PCRS_STRUCT_INFO_SHORT, &m_hPCR2);
     if(TSS_SUCCESS!=ret) {
@@ -308,7 +308,7 @@ bool tpmStatus::initTPM()
 
 bool tpmStatus::getCompositePCR(unsigned* pSize, u8* buf)
 {
-    TSS_RESULT      ret;
+    TSS_RESULT  ret;
     unsigned    pcrLen= 0;
     BYTE*       pcrValue= NULL;
 
@@ -328,7 +328,7 @@ bool tpmStatus::getCompositePCR(unsigned* pSize, u8* buf)
 
 bool tpmStatus::setLocality(u32 in)
 {
-#ifdef QUOTE2_DEFINED
+#ifndef NOQUOTE2
     TSS_RESULT      ret;
 
     ret= Tspi_PcrComposite_SetPcrLocality(m_hPCR2, in);
@@ -346,7 +346,7 @@ bool tpmStatus::setLocality(u32 in)
 
 bool tpmStatus::getLocality(unsigned* pOut)
 {
-#ifdef QUOTE2_DEFINED
+#ifndef NOQUOTE2
     TSS_RESULT      ret;
 
     ret= Tspi_PcrComposite_GetPcrLocality(m_hPCR2, pOut);
@@ -379,7 +379,8 @@ bool tpmStatus::setOwnerauth(const char* ownerSecret)
     
     ret= Tspi_Policy_AssignToObject(m_hTPMPolicy, m_hTPM);
     if(TSS_SUCCESS!=ret) {
-        fprintf(g_logFile, "Tspi_Policy_AssignToObject failed %08x (Owner defined)\n", ret);
+        fprintf(g_logFile, 
+            "Tspi_Policy_AssignToObject failed %08x (Owner defined)\n", ret);
         printErr(ret);
         return false;
     }
@@ -388,7 +389,8 @@ bool tpmStatus::setOwnerauth(const char* ownerSecret)
         ret= Tspi_Policy_SetSecret(m_hTPMPolicy, TSS_SECRET_MODE_PLAIN, 
                                    strlen(ownerSecret)+1, (BYTE*) ownerSecret);
         if(TSS_SUCCESS!=ret) {
-            fprintf(g_logFile, "Tspi_Policy_SetSecret failed %08x (Owner defined)\n", ret);
+            fprintf(g_logFile, 
+                "Tspi_Policy_SetSecret failed %08x (Owner defined)\n", ret);
             printErr(ret);
             return false;
         }
@@ -515,7 +517,7 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
     oValidation.rgbData= NULL;
     oValidation.ulDataLength= 0;
 
-#ifndef QUOTE2_DEFINED
+#ifdef NOQUOTE2
     ret= Tspi_TPM_Quote(m_hTPM, m_hSigningKey, m_hPCRs, &oValidation);
     if(TSS_SUCCESS!=ret) {
         fprintf(g_logFile, "Tspi_TPM_Quote failed %08x\n", ret);
@@ -555,7 +557,7 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
     PrintBytes("\nPCR17\n", m_rgPcr17Value, m_iPcr17Len);
 #endif
 
-#ifndef QUOTE2_DEFINED
+#ifdef NOQUOTE2
     PrintBytes("TPM_QUOTE_INFO\n", (byte*)oValidation.rgbData, 
                (int)oValidation.ulDataLength);
 #else
@@ -575,7 +577,7 @@ bool tpmStatus::quoteData(unsigned sizequoteData, byte* toquoteData,
 #endif
 
     // free sig memory, close signing key object and context 
-#ifdef QUOTE2_DEFINED
+#ifndef NOQUOTE2
     if(versionInfo!=NULL)
         Tspi_Context_FreeMemory(m_hContext, versionInfo);
     versionInfo= NULL;
@@ -1341,7 +1343,7 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
     }
     quoteHash+= sizeof(sha1Header);
 
-#ifndef QUOTE2_DEFINED
+#ifdef NOQUOTE2
     // reconstruct PCR composite and composite hash
     if(!computeTPM12compositepcrDigest(pcrMask, ppcrs, pcrDigest)) {
         fprintf(g_logFile, "verifyQuote: can't compute composite digest\n");
@@ -1392,24 +1394,24 @@ bool tpmStatus::verifyQuote(int dataSize, byte* signedData,
 
 int main(int an, char** av)
 {
-    tpmStatus   oTpm;
-    unsigned    u, v;
-    unsigned    locality;
-    u8          rgtoSeal[BUFSIZE];
-    u8          rgSealed[BUFSIZE];
-    u8          rgunSealed[BUFSIZE];
-    u8          rgtoSign[BUFSIZE];
-    u8          rgSigned[BUFSIZE];
-    u8          rgRandom[BUFSIZE];
-    bool        fInitAIK= false;
-    const char*       reqFile= "HW/requestFile";
-    const char*       aikBlobFile= "HW/aikblob";
-    const char*       pcaFile= "HW/pcaBlobFile";
-    const char*       aikKeyFile= "HW/aikKeyFile.txt";
-    char*       ownerSecret= NULL;
-    const char*       aikCertFile= "HW/aikCert.xml";
-    char*       ekCertFile= NULL;
-    int         i;
+    tpmStatus       oTpm;
+    unsigned        u, v;
+    unsigned        locality;
+    u8              rgtoSeal[BUFSIZE];
+    u8              rgSealed[BUFSIZE];
+    u8              rgunSealed[BUFSIZE];
+    u8              rgtoSign[BUFSIZE];
+    u8              rgSigned[BUFSIZE];
+    u8              rgRandom[BUFSIZE];
+    bool            fInitAIK= false;
+    const char*     reqFile= "HW/requestFile";
+    const char*     aikBlobFile= "HW/aikblob";
+    const char*     pcaFile= "HW/pcaBlobFile";
+    const char*     aikKeyFile= "HW/aikKeyFile.txt";
+    char*           ownerSecret= NULL;
+    const char*     aikCertFile= "HW/aikCert.xml";
+    char*           ekCertFile= NULL;
+    int             i;
 
     for(i=1;i<an;i++) {
         if(strcmp(av[i], "-initAIK")==0)

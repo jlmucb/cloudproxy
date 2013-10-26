@@ -56,16 +56,16 @@ public:
     int     iHMAC;
     int     sizeofEncKey;
     int     sizeofIntKey;
-    byte    sendEncKey[BIGSYMKEYSIZE];
-    byte    sendIntKey[BIGSYMKEYSIZE];
-    byte    getEncKey[BIGSYMKEYSIZE];
-    byte    getIntKey[BIGSYMKEYSIZE];
+    byte    sendEncKey[BIGSYMKEYSIZE];      // FIX
+    byte    sendIntKey[BIGSYMKEYSIZE];      // FIX
+    byte    getEncKey[BIGSYMKEYSIZE];       // FIX
+    byte    getIntKey[BIGSYMKEYSIZE];       // FIX
 
     bool    fsendIVValid;
     bool    fgetIVReceived;
     bool    fsendIVSent;
-    byte    lastgetBlock[BIGSYMKEYSIZE];    // last decrypted cipher block received
-    byte    lastsendBlock[BIGSYMKEYSIZE];   // last cipher block sent
+    byte    lastgetBlock[BIGSYMKEYSIZE];    // last decrypted cipher block received // FIX
+    byte    lastsendBlock[BIGSYMKEYSIZE];   // last cipher block sent // FIX
 
     byte    plainMessageBlock[MAXREQUESTSIZEWITHPAD];
     byte    encryptedMessageBlock[MAXREQUESTSIZEWITHPAD];
@@ -81,8 +81,9 @@ public:
     // put principals here
 
 
-    safeChannel();
-    ~safeChannel();
+            safeChannel();
+            ~safeChannel();
+
     bool    initChannel(int fdIn, int alg, int mode, int hmac,
                         int sizeofEncKeys, int sizeofIntKeys,
                         byte* sendEncKeyIn, byte* sendIntKeyIn,

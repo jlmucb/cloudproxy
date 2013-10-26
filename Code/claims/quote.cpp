@@ -117,7 +117,7 @@ bool  Quote::init(const char* szXMLQuote)
 {
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
-    const char*           szA= NULL;
+    const char*     szA= NULL;
     
 #ifdef QUOTETEST1
     fprintf(g_logFile, "init()\n");
@@ -427,9 +427,9 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
                      byte* codeDigest, const char* szQuotedInfo, const char* szKeyInfo, 
                      int sizeQuote, byte* quote)
 {
-    char            szB[4096];
-    int             nsize= 512;
-    char            szN[512];
+    char            szB[4096];		//FIX
+    int             nsize= 512;		//FIX
+    char            szN[512];		//FIX
     char*           szquoteValue= NULL;
     char*           szQuote= NULL;
     char*           szNonce= NULL;
@@ -527,7 +527,7 @@ const char*   g_szCertTemplate=
 
 char*   formatCert(const char* szSignedInfo, const char* szSig)
 {
-    char    rgBuf[MAXREQUESTSIZE];
+    char    rgBuf[MAXREQUESTSIZE];		//FIX
 
     if(szSignedInfo==NULL || szSig==NULL)
         return NULL;
@@ -572,9 +572,9 @@ char*   formatSignedInfo(RSAKey* pKey,
             const char* szNotAfter, const char* szSubjName, const char* szKeyInfo, 
             const char* szDigest, const char* szSubjKeyID)
 {
-    char    szTemp[MAXREQUESTSIZE];
-    char    rgBuf[MAXREQUESTSIZE];
-    int     iLeft= MAXREQUESTSIZE;
+    char    szTemp[MAXREQUESTSIZE];		//FIX
+    char    rgBuf[MAXREQUESTSIZE];		//FIX
+    int     iLeft= MAXREQUESTSIZE;		//FIX
     char*   p= rgBuf;
     char*   szSignedInfo= NULL;
     int     bitkeySize= pKey->m_ikeySize;

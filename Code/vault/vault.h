@@ -71,10 +71,10 @@ public:
 
 class extResourceEnt {
 public:
-    extString               m_resourceName;
-    u16                     m_type;
-    int                     m_size;
-    int                     m_numOwners;
+    extString   m_resourceName;
+    u16         m_type;
+    int         m_size;
+    int         m_numOwners;
 };
 
 

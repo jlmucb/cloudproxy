@@ -96,13 +96,13 @@ public:
     byte*       m_rgPackageSignature;
     
 
-    encapsulatedMessage();
-    ~encapsulatedMessage();
+                encapsulatedMessage();
+                ~encapsulatedMessage();
 
     char*       serializeMetaData();
     bool        parseMetaData();
-    bool        sealKey(RSAKey* pSealKey);
-    bool        unSealKey(RSAKey* pSealKey);
+    bool        sealKey(RSAKey* pSealKey);      // FIX
+    bool        unSealKey(RSAKey* pSealKey);        // FIX
     bool        encryptMessage();
     bool        decryptMessage();
     bool        getencryptedMessage(byte* out);
@@ -111,8 +111,8 @@ public:
     bool        setplainMessage(int size, byte* in);
     int         encryptedMessageSize();
     int         plainMessageSize();
-    bool        signPackage(RSAKey* pSignKey);
-    bool        verifyPackage(RSAKey* pSignKey);
+    bool        signPackage(RSAKey* pSignKey);      // FIX
+    bool        verifyPackage(RSAKey* pSignKey);        // FIX
 
     char*       getSignerKeyInfo();
     char*       getSubjectKeyInfo();

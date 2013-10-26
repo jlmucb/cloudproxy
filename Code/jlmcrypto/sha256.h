@@ -39,6 +39,7 @@
 
 class Sha256 {
 public:
+    enum                {DIGESTSIZE= 32, BLOCKSIZE= 64};
     u64		        m_uLen;
     const static u32	K[SHA256_BLOCKSIZE_BYTES];
     u32	                m_rgH[SHA256_DIGESTSIZE_BYTES/sizeof(u32)];

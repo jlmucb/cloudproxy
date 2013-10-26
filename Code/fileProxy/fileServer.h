@@ -72,7 +72,7 @@ public:
     // metadata file keys
     int                 m_encType;
     int                 m_sizeKey;
-    byte                m_fileKeys[SMALLKEYSIZE];
+    byte                m_fileKeys[GLOBALMAXSYMKEYSIZE];
 
     // metadata table
     metaData            m_oMetaData;
@@ -89,15 +89,16 @@ public:
     fileServer();
     ~fileServer();
 
-    bool    initServer(const char* configDirectory);
-    bool    closeServer();
-    bool    initPolicy();
-    bool    initFileKeys();
+    int                 maxClients() {return MAXNUMCLIENTS;};
+    bool                initServer(const char* configDirectory);
+    bool                closeServer();
+    bool                initPolicy();
+    bool                initFileKeys();
 
-    bool    server();
+    bool                server();
 
-    void    printTimers(FILE* log);
-    void    resetTimers();	
+    void                printTimers(FILE* log);
+    void                resetTimers();      
 };
 
 
@@ -122,9 +123,9 @@ public:
     theServiceChannel();
     ~theServiceChannel();
 
-    bool    initServiceChannel(metaData* pMetaData, safeChannel* pSafeChannel);
-    int     processRequests();
-    bool    serviceChannel();
+    bool                initServiceChannel(metaData* pMetaData, safeChannel* pSafeChannel);
+    int                 processRequests();
+    bool                serviceChannel();
 };
 
 

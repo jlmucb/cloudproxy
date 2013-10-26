@@ -243,7 +243,7 @@ bool getValidHashes(const char* szHashFile)
 //
 {
     int             i, j, n;
-    char            buf[MAXLINE];
+    char            buf[MAXLINE];   // FIX
     const char*     nextp = NULL;
     const char*     szPolicyId= NULL;
     const char*     szProgramName= NULL;
@@ -333,7 +333,6 @@ done:
 
 bool            g_fTerminateProxy= false;
 const int       iQueueSize= 5;
-// const char*     szServerHostAddr= "127.0.0.1";
 
 const char*     g_szPrivateKeyFileName= "policy/privatePolicyKey.xml";
 const char*     g_szValidHashFileName= "policy/validHash.txt";
@@ -409,12 +408,12 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
                            char** pszAttested, char** pszEvidence)
 {
     TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     TiXmlElement*   pRootElement= NULL;
     const char*     szLabel= NULL;
     const char*     szPolicyId= NULL;
-    char*     szsignedRequest= NULL;
+    char*           szsignedRequest= NULL;
     int             phase, count;
     bool            fRet= true;
 
@@ -537,7 +536,7 @@ char* insertMiddle(const char* szName, const char* pS, const char* pE, const cha
 char* replaceKeywithProgram(const char* szKeyName)
 {
     const char*   p= szKeyName;
-    char*   newstr= NULL;
+    char*         newstr= NULL;
     const char*   replaced= "Keys";
     const char*   replacedBy= "Programs/";
 
@@ -869,21 +868,21 @@ cleanup:
 
 bool certNego(int fd)
 {
-    char    request[MAXREQUESTSIZE];
-    int     type= 0;
-    byte    multi= 0;
-    byte    final= 0;
-    bool    fRet= true;
-    char*   szPolicyKeyId= NULL;
-    char*   szQuote= NULL;
-    char*   szEvidence= NULL;
-    const char*   szStatus= NULL;
-    const char*   szErrorCode= NULL;
-    char*   szCert= NULL;
-    int     n= 0;
-    FILE*   requestLog= NULL;
-    struct tm *current;
-    time_t now;
+    char        request[MAXREQUESTSIZE];    // FIX
+    int         type= 0;
+    byte        multi= 0;
+    byte        final= 0;
+    bool        fRet= true;
+    char*       szPolicyKeyId= NULL;
+    char*       szQuote= NULL;
+    char*       szEvidence= NULL;
+    const char* szStatus= NULL;
+    const char* szErrorCode= NULL;
+    char*       szCert= NULL;
+    int         n= 0;
+    FILE*       requestLog= NULL;
+    struct tm*  current;
+    time_t      now;
 
 #ifdef  TEST
     fprintf(g_logFile, "keyNegoServer(%d)\n", fd);

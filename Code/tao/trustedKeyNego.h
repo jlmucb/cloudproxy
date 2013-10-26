@@ -43,7 +43,7 @@
 // -------------------------------------------------------------------------
 
 
-bool    KeyNego(const char* szQuote, const char* szEvidence, char** pszCert);
+bool KeyNego(const char* szQuote, const char* szEvidence, char** pszCert);
 
 
 // ------------------------------------------------------------------------

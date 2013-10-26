@@ -45,14 +45,14 @@
  */
 
 
-#define  MAYREAD    	0x001
-#define  MAYWRITE   	0x002
-#define  MAYCREATE  	0x004
-#define  MAYDELETE  	0x008
-#define  MAYOWN     	0x010
-#define  SPEAKSFOR  	0x020
-#define  SAYS       	0x400
-#define  MAYDELEGATE	0x40000
+#define  MAYREAD        0x001
+#define  MAYWRITE       0x002
+#define  MAYCREATE      0x004
+#define  MAYDELETE      0x008
+#define  MAYOWN         0x010
+#define  SPEAKSFOR      0x020
+#define  SAYS           0x400
+#define  MAYDELEGATE    0x40000
 
 
 class accessRequest {
@@ -72,32 +72,31 @@ public:
 
 class accessGuard {
 public:
-    bool                    m_fValid;
-    RSAKey*                 m_pPolicy;
-    metaData*               m_pMetaData;
+    bool                m_fValid;
+    RSAKey*             m_pPolicy;
+    metaData*           m_pMetaData;
 
-    int                     m_iNumAssertions;
-    SignedAssertion**       m_rgAssertions;
-    int                     m_numCurrentPrincipals;
-    PrincipalCert**         m_myPrincipals;
+    int                 m_iNumAssertions;
+    SignedAssertion**   m_rgAssertions;
+    int                 m_numCurrentPrincipals;
+    PrincipalCert**     m_myPrincipals;
 
-    accessGuard();
-    ~accessGuard();
+                        accessGuard();
+                        ~accessGuard();
 
-    bool        includesSubject(const char* szRequested, const char* szGranted);
-    bool        includesRight(const char* szRequested, const char* szGranted);
-    bool        includesObject(const char* szRequested, const char* szGranted);
+    bool                includesSubject(const char* szRequested, const char* szGranted);
+    bool                includesRight(const char* szRequested, const char* szGranted);
+    bool                includesObject(const char* szRequested, const char* szGranted);
 
-    bool        initGuard(RSAKey* pPolicy, metaData* pMeta, int numPrincipals, 
-                          PrincipalCert** rgPrinc);
-    bool        permitAccess(accessRequest& req, const char* szEvidence);
-    int         checkPermitChain(resource* pResource, tm& pt,
-                                 SignedAssertion* pAssert1, 
-                                 SignedAssertion* pAssert2);
+    bool                initGuard(RSAKey* pPolicy, metaData* pMeta, int numPrincipals, 
+                          PrincipalCert** rgPrinc);  // FIX
+    bool                permitAccess(accessRequest& req, const char* szEvidence);
+    int                 checkPermitChain(resource* pResource, tm& pt,
+                                 SignedAssertion* pAssert1, SignedAssertion* pAssert2);
 };
 
 
-extern bool isPolicyPrincipal(RSAKey* pKey, RSAKey* pPolicy);
+extern bool isPolicyPrincipal(RSAKey* pKey, RSAKey* pPolicy);  // FIX
 #endif
 
 

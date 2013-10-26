@@ -89,7 +89,7 @@ session::session()
     m_szbase64ClientMessageHash= NULL;
     m_szbase64ServerMessageHash= NULL;
     m_fSignedMessageValid= false;
-    m_sizeSignedMessage= BIGKEYSIZE;
+    m_sizeSignedMessage= BIGKEYSIZE;        // FIX
 
     m_pclientCert= NULL;
     m_pserverCert= NULL;
@@ -362,14 +362,14 @@ bool session::clientNegoMessage4(char* buf, int maxSize, const char* szPrincipal
 bool session::getDatafromServerMessage1(int n, char* request)
 {
     TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     TiXmlElement*   pRootElement= NULL;
     char*           szCipherSuite= NULL;
     const char*     szRandom= NULL;
     char*           szServerCert= NULL;
     const char*     szProposedSuite= NULL;
-    int             iOutLen= 128;
+    int             iOutLen= 128;   // FIX
     int             iIndex= -1;
     bool            fRet= true;
 
@@ -455,10 +455,10 @@ bool session::getDatafromServerMessage1(int n, char* request)
 bool session::getDatafromServerMessage2(int n, char* request)
 {
     TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     TiXmlElement*   pRootElement= NULL;
-    int             iOutLen= 128;
+    int             iOutLen= 128;   // FIX
     bool            fRet= true;
 
 #ifdef  TEST1
@@ -525,8 +525,8 @@ bool session::getDatafromServerMessage2(int n, char* request)
 bool session::getDatafromServerMessage3(int n, char* request)
 {
     TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     TiXmlElement*   pRootElement= NULL;
     bool            fRet= true;
 
@@ -567,9 +567,9 @@ bool session::getDatafromServerMessage3(int n, char* request)
 bool session::getDatafromClientMessage1(int n, char* request)
 {
     TiXmlDocument   doc;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
-    int             iOutLen= 64;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
+    int             iOutLen= 64;    // FIX
 
 #ifdef  TEST1
     fprintf(g_logFile, "Client Message 1\n%s\n", request);
@@ -640,11 +640,11 @@ bool session::getDatafromClientMessage2(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
-    int             iOutLen= BIGSIGNEDSIZE;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
+    int             iOutLen= BIGSIGNEDSIZE;     // FIX
     const char*     szEncryptedPreMasterSecret= NULL;
-    char*     szClientCert= NULL;
+    char*           szClientCert= NULL;
     bool            fRet= true;
 
 #ifdef  TEST1
@@ -712,7 +712,7 @@ bool session::getDatafromClientMessage3(int n, char* request)
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
-    const char*           szSignedChallenge= NULL;
+    const char*     szSignedChallenge= NULL;
     bool            fRet= true;
 
 #ifdef  TEST1
@@ -761,8 +761,8 @@ bool session::getDatafromClientMessage4(int n, char* request)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
 
 #ifdef  TEST1
     fprintf(g_logFile, "Client Message 4\n%s\n", request);
@@ -814,13 +814,13 @@ bool bumpChallenge(int iSize, byte* puChallenge)
 }
 
 
-char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge, 
+char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge, // FIX
                             int sizeChallenge)
 {
-    int     iOut= 1024;
-    byte    rgSealed[1024];
-    int     iBase64= 1024;
-    char    rgBase64[1024];
+    int     iOut= 1024;         // FIX
+    byte    rgSealed[1024];     // FIX
+    int     iBase64= 1024;      // FIX
+    char    rgBase64[1024];     // FIX
 
 #ifdef TEST1
     if(fEncrypt)
@@ -846,7 +846,8 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
     }
     iOut= 1024;
     if(!base64frombytes(rgKey.m_iByteSizeM, rgSealed, &iBase64, rgBase64)) {
-        fprintf(g_logFile, "rsaXmlEncryptandEncodeChallenge: can't base64 encode challenge\n");
+        fprintf(g_logFile,
+                "rsaXmlEncryptandEncodeChallenge: can't base64 encode challenge\n");
         return NULL;
     }
 
@@ -857,6 +858,7 @@ char* rsaXmlEncodeChallenge(bool fEncrypt, RSAKey& rgKey, byte* puChallenge,
 }
 
 
+// FIX
 #define MAXPRINCIPALS 25
 #define BIGSIGNEDSIZE 256
 
@@ -866,20 +868,20 @@ const char* szMsgChallenge3= "\n</SignedChallenge>";
 const char* szMsgChallenge4= "\n</SignedChallenges>\n";
 
 
-char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, 
+char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, // FIX
                              byte* puChallenge, int sizeChallenge) 
 {
     int     i;
-    char*   rgszSignedChallenges[MAXPRINCIPALS];
-    byte    rguCurrentChallenge[BIGSIGNEDSIZE];
+    char*   rgszSignedChallenges[MAXPRINCIPALS];        // FIX
+    byte    rguCurrentChallenge[BIGSIGNEDSIZE];     // FIX
     int     n= 0;
-    char    szMsgHdr[64];
+    char    szMsgHdr[64];                           // Fix
     int     iSC1;
     int     iSC2= strlen(szMsgChallenge2);
     int     iSC3= strlen(szMsgChallenge3);
     int     iSC4= strlen(szMsgChallenge4);
 
-    memset(rguCurrentChallenge, 0, BIGSIGNEDSIZE);
+    memset(rguCurrentChallenge, 0, BIGSIGNEDSIZE);      // FIX
     memcpy(rguCurrentChallenge, puChallenge, sizeChallenge);
 
     sprintf(szMsgHdr, szMsgChallenge1, iNumKeys);
@@ -887,7 +889,7 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     
     for(i=0; i< iNumKeys; i++) {
 #ifdef TEST1
-	if(fEncrypt)
+        if(fEncrypt)
             fprintf(g_logFile, "rsaXmlEncodeChallenges key usepublic\n");
         else
             fprintf(g_logFile, "rsaXmlEncodeChallenges key use private\n");
@@ -940,7 +942,7 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
 }
 
 
-bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rgIn,
+bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rgIn,// FIX
                 int sizeNonce, byte* rgOut)
 
 {
@@ -960,14 +962,14 @@ bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rg
 }
 
 
-bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* szSig,
+bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* szSig,// FIX
                 int sizeChallenge, byte* puOriginal)
 
 {
-    int     sizeunSealed= 1024;
-    byte    rgUnsealed[1024];
-    int     iOut= 1024;
-    byte    rgBase64Decoded[1024];
+    int     sizeunSealed= 1024;     // FIX
+    byte    rgUnsealed[1024];       // FIX
+    int     iOut= 1024;     // FIX
+    byte    rgBase64Decoded[1024];      // FIX
 
 #ifdef TEST1
     fprintf(g_logFile, "rsaXmlDecodeandVerifyChallenge: key\n");
@@ -1003,17 +1005,17 @@ bool rsaXmlDecodeandVerifyChallenge(bool fEncrypt, RSAKey& rgKey, const char* sz
 
 void session::clearKeys()
 {
-    memset(m_rgClientMessageHash, 0, SHA256DIGESTBYTESIZE);
-    memset(m_rgServerMessageHash,0, SHA256DIGESTBYTESIZE);
-    memset(m_rguChallenge,0, SMALLNONCESIZE);  
-    memset(m_rguClientRand,0, SMALLNONCESIZE);
-    memset(m_rguServerRand,0, SMALLNONCESIZE);
-    memset(m_rguPreMasterSecret,0, BIGSYMKEYSIZE);
-    memset(m_rguEncPreMasterSecret,0, BIGSIGNEDSIZE);
-    memset(m_rguEncryptionKey1,0, SMALLSYMKEYSIZE);
-    memset(m_rguIntegrityKey1,0, SMALLSYMKEYSIZE);
-    memset(m_rguEncryptionKey2,0, SMALLSYMKEYSIZE);
-    memset(m_rguIntegrityKey2,0, SMALLSYMKEYSIZE);
+    memset(m_rgClientMessageHash, 0, SHA256DIGESTBYTESIZE);     // FIX
+    memset(m_rgServerMessageHash,0, SHA256DIGESTBYTESIZE);      // FIX
+    memset(m_rguChallenge,0, SMALLNONCESIZE);       // FIX
+    memset(m_rguClientRand,0, SMALLNONCESIZE);      // FIX
+    memset(m_rguServerRand,0, SMALLNONCESIZE);      // FIX
+    memset(m_rguPreMasterSecret,0, BIGSYMKEYSIZE);      // FIX
+    memset(m_rguEncPreMasterSecret,0, BIGSIGNEDSIZE);       // FIX
+    memset(m_rguEncryptionKey1,0, SMALLSYMKEYSIZE);     // FIX
+    memset(m_rguIntegrityKey1,0, SMALLSYMKEYSIZE);      // FIX
+    memset(m_rguEncryptionKey2,0, SMALLSYMKEYSIZE);     // FIX
+    memset(m_rguIntegrityKey2,0, SMALLSYMKEYSIZE);      // FIX
 
     if(m_myCert!=NULL) {
         free(m_myCert);
@@ -1261,17 +1263,19 @@ bool session::initializePrincipalPrivateKeys(const char* szPrincipalPrivateKeys)
 {
     int             iNumKeys= 0;
     TiXmlDocument   doc;
-    TiXmlElement*   pRootElement;
-    TiXmlNode*      pNode;
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode= NULL;
 
     if(!doc.Parse(szPrincipalPrivateKeys)) {
-        fprintf(g_logFile,  "session::initializePrincipalPrivateKeys: Cannot parse Principal Private Keys\n");
+        fprintf(g_logFile,  
+           "session::initializePrincipalPrivateKeys: Cannot parse Principal Private Keys\n");
         return false;
     }
 
     pRootElement= doc.RootElement();
     if(strcmp(pRootElement->Value(),"PrivateKeys")!=0) {
-        fprintf(g_logFile, "session::initializePrincipalPrivateKeys: Should be list of private keys\n");
+        fprintf(g_logFile, 
+            "session::initializePrincipalPrivateKeys: Should be list of private keys\n");
         return false;
     }
     pRootElement->QueryIntAttribute ("count", &iNumKeys);
@@ -1281,7 +1285,8 @@ bool session::initializePrincipalPrivateKeys(const char* szPrincipalPrivateKeys)
 #endif
 
     if(iNumKeys>MAXPRINCIPALS) {
-        fprintf(g_logFile, "session::initializePrincipalPrivateKeys: Too many principal private keys\n");
+        fprintf(g_logFile, 
+          "session::initializePrincipalPrivateKeys: Too many principal private keys\n");
         return false;
     }
 
@@ -1453,8 +1458,8 @@ bool session::computeServerKeys()
 
 bool session::computeClientKeys()
 {
-    byte    rgSeed[2*SMALLNONCESIZE];
-    byte    rgKeys[4*SMALLSYMKEYSIZE];
+    byte    rgSeed[2*SMALLNONCESIZE];       // FIX
+    byte    rgKeys[4*SMALLSYMKEYSIZE];      // FIX
 
     if(!m_fPreMasterSecretValid) {
         fprintf(g_logFile, "session::computeClientKeys: Premaster not valid\n");
@@ -1496,11 +1501,11 @@ bool session::computeClientKeys()
 
 bool session::checkPrincipalChallenges()
 {
-    byte            rguOriginalChallenge[BIGSIGNEDSIZE];
+    byte            rguOriginalChallenge[BIGSIGNEDSIZE];        // FIX
     TiXmlDocument   doc;
-    TiXmlElement*   pRootElement;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     int             iNumChecked= 0;
     bool            fRet= true;
     const char*     szSignedChallenge= NULL;
@@ -1573,7 +1578,7 @@ bool session::checkPrincipalChallenges()
 
 bool session::generatePreMaster()
 {
-    if(!getCryptoRandom(BIGSYMKEYSIZE*NBITSINBYTE, m_rguPreMasterSecret))
+    if(!getCryptoRandom(BIGSYMKEYSIZE*NBITSINBYTE, m_rguPreMasterSecret))  // FIX
         return false;
     m_fPreMasterSecretValid= true;
     return true;
@@ -1587,7 +1592,7 @@ bool session::generatePreMaster()
 void session::printMe()
 {
     int     i;
-    char    szMessage[128];
+    char    szMessage[128];     // FIX
 
     fprintf(g_logFile, "\nSession Data\n");
 
@@ -1750,14 +1755,14 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
                                  const char* szPrincipalKeys, 
                                  const char* szPrincipalCerts)
 {
-    char    request[MAXREQUESTSIZEWITHPAD];
+    char    request[MAXREQUESTSIZEWITHPAD];     // FIX
     int     n;
     int     type= CHANNEL_NEGO;
     byte    multi= 0;
     byte    final= 0;
 
-    int     iOut64= 256;
-    char    rgszBase64[256];
+    int     iOut64= 256;        // FIX
+    char    rgszBase64[256];        // FIX
 
     char*   szSignedNonce= NULL;
     char*   szEncPreMasterSecret= NULL;
@@ -1952,8 +1957,8 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
 }
 
 
-bool session::clientInit(const char* szPolicyCert, RSAKey* policyKey, 
-                         const char* szmyCert, RSAKey* myKey)
+bool session::clientInit(const char* szPolicyCert, RSAKey* policyKey, // FIX
+                         const char* szmyCert, RSAKey* myKey)// FIX
 {
     m_fClient= true;
     m_sessionState= NOSTATE;
@@ -1991,8 +1996,8 @@ bool session::clientInit(const char* szPolicyCert, RSAKey* policyKey,
 // ------------------------------------------------------------------------
 
 
-bool session::serverInit(const char* szPolicyCert, RSAKey* policyKey, 
-                               const char* szmyCert, RSAKey* myKey)
+bool session::serverInit(const char* szPolicyCert, RSAKey* policyKey, // FIX
+                         const char* szmyCert, RSAKey* myKey)// FIX
 {
     m_fClient= false;
     m_sessionState= NOSTATE;
@@ -2029,15 +2034,15 @@ bool session::serverInit(const char* szPolicyCert, RSAKey* policyKey,
 
 bool session::serverprotocolNego(int fd, safeChannel& fc)
 {
-    char    request[MAXREQUESTSIZEWITHPAD];
-    char    rgszBase64[256];
-    char    rgszHashBase64[256];
+    char    request[MAXREQUESTSIZEWITHPAD];     // FIX
+    char    rgszBase64[256];        // FIX
+    char    rgszHashBase64[256];        // FIX
     int     n;
     int     type= CHANNEL_NEGO;
     byte    multi= 0;
     byte    final= 0;
-    int     iOut64= 256;
-    int     iOut= 256;
+    int     iOut64= 256;        // FIX
+    int     iOut= 256;      // FIX
     bool    fRet= true;
 
 #ifdef  TEST

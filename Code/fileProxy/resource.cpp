@@ -50,7 +50,7 @@ resource::resource()
     m_fIsDeleted= false;
     m_fKeyValid= false;
     m_iSize= 0;
-    memset(m_rguKey1, 0, SMALLSYMKEYSIZE);
+    memset(m_rguKey1, 0, SMALLSYMKEYSIZE);  // FIX
 }
 
 
@@ -189,8 +189,8 @@ int resource::Serialize(byte* szObj)
     int                     iTotal= 0;
     int                     n;
     int                     iNumOwners= 0;
-    aNode<PrincipalCert>* pNode= NULL;
-    PrincipalCert*        pPrinc= NULL;
+    aNode<PrincipalCert>*   pNode= NULL;
+    PrincipalCert*          pPrinc= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "resource Serialize\n");
@@ -328,8 +328,8 @@ bool resource::MakeOwnerList(int* pnOwners, PrincipalCert*** pprgpPrincipalCerts
 {
     int                 iNumOwners= 0;
     int                 i;
-    PrincipalCert*    pPrinc= NULL;
-    PrincipalCert**   rgpPrinc= NULL;
+    PrincipalCert*      pPrinc= NULL;
+    PrincipalCert**     rgpPrinc= NULL;
 
     aNode<PrincipalCert>*  pOwnerNode= m_myOwners.pFirst;
     while(pOwnerNode!=NULL) {

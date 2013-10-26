@@ -72,7 +72,7 @@ metaData::~metaData()
 
 bool metaData::initFileNames()
 {
-    char    szName[1024];
+    char    szName[1024];       // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "metaData::initFileNames\n");

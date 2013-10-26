@@ -51,7 +51,7 @@ public:
     bool                    m_fKeyValid;
     int                     m_iSize;
     aList<PrincipalCert>    m_myOwners;
-    byte                    m_rguKey1[SMALLSYMKEYSIZE];
+    byte                    m_rguKey1[GLOBALMAXSYMKEYSIZE];
 
     resource();
     ~resource();
@@ -61,8 +61,8 @@ public:
 #endif
     bool                    addOwner(PrincipalCert* pPrincipal);
     bool                    removeOwner(PrincipalCert* pPrincipal);
-    aNode<PrincipalCert>* getFirstOwnerNode();
-    aNode<PrincipalCert>* getNextOwnerNode(aNode<PrincipalCert>* pNode);
+    aNode<PrincipalCert>*   getFirstOwnerNode();
+    aNode<PrincipalCert>*   getNextOwnerNode(aNode<PrincipalCert>* pNode);
     int                     getSize();
     char*                   getName();
     int                     auxSize();

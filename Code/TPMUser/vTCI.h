@@ -45,7 +45,7 @@ public:
     TSS_HPOLICY     m_hSRKPolicy;
     TSS_HENCDATA    m_hSealingData;
     TSS_HPCRS       m_hPCRs;
-#ifdef QUOTE2_DEFINED
+#ifndef NOQUOTE2
     TSS_HPCRS       m_hPCR2;
 #endif
     TSS_HKEY        m_hSigningKey;
@@ -72,38 +72,38 @@ public:
     char*           m_rgEKCert;
     char*           m_rgAIKCert;
 
-    tpmStatus();
-    ~tpmStatus();
+                    tpmStatus();
+                    ~tpmStatus();
 
-    bool initTPM();
-    bool setOwnerauth(const char* ownerSecret);
+    bool            initTPM();
+    bool            setOwnerauth(const char* ownerSecret);
 
-    bool getRandom(unsigned size, byte* puData);
-    bool getCompositePCR(unsigned* pSize, u8* buf);
+    bool            getRandom(unsigned size, byte* puData);
+    bool            getCompositePCR(unsigned* pSize, u8* buf);
 
-    bool getLocality(unsigned* pOut);
-    bool setLocality(u32 in);
+    bool            getLocality(unsigned* pOut);
+    bool            setLocality(u32 in);
 
-    bool sealData(unsigned toSealSize, byte* toSealData, 
-                  unsigned* pSealedSize, byte* pSealed);
-    bool unsealData(unsigned unsealedSize, byte* unsealedData, 
-                    unsigned* punSealedSize, byte* punSealed);
+    bool            sealData(unsigned toSealSize, byte* toSealData, 
+                            unsigned* pSealedSize, byte* pSealed);
+    bool            unsealData(unsigned unsealedSize, byte* unsealedData, 
+                                unsigned* punSealedSize, byte* punSealed);
 
-    bool makeAIK(int numCerts, byte** rgpCerts, const char* pcaFile, 
-                 const char* reqFile, const char* aikFile, const char* aikPKFile);
-    bool confirmAIK(const char* ownerSecret, const char* aikBlobFile, 
-                    const char* challengeFile, const char* responseFile);
+    bool            makeAIK(int numCerts, byte** rgpCerts, const char* pcaFile, 
+                            const char* reqFile, const char* aikFile, const char* aikPKFile);
+    bool            confirmAIK(const char* ownerSecret, const char* aikBlobFile, 
+                                const char* challengeFile, const char* responseFile);
 
-    bool getAIKKey(const char* aikBlobFile, const char* aikCertFile);
-    bool getEKInfo(const char* fileName, bool fgetKey);
+    bool            getAIKKey(const char* aikBlobFile, const char* aikCertFile);
+    bool            getEKInfo(const char* fileName, bool fgetKey);
 
-    bool quoteData(unsigned sizequoteData, byte* toquoteData,
-                   unsigned* psigSize, byte* signature);
-    bool verifyQuote(int dataSize, byte* signedData, byte pcsMask[3],
-                     byte* ppcrs, byte locality, 
-                     int externalSize, byte* pbExternal,
-                     bool addVer, u32 sizeversion, byte* versionInfo);
-    bool closeTPM();
+    bool            quoteData(unsigned sizequoteData, byte* toquoteData,
+                            unsigned* psigSize, byte* signature);
+    bool            verifyQuote(int dataSize, byte* signedData, byte pcsMask[3],
+                                byte* ppcrs, byte locality, 
+                                int externalSize, byte* pbExternal,
+                                bool addVer, u32 sizeversion, byte* versionInfo);
+    bool            closeTPM();
 };
 #endif
 

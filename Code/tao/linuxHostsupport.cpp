@@ -161,8 +161,8 @@ bool linuxDeviceChannel::getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize,
     u32         ureq;
     int         procid;
     int         origprocid;
-    int         size= PARAMSIZE;
-    byte        rgBuf[PARAMSIZE];
+    int         size= PARAMSIZE;        // FIX
+    byte        rgBuf[PARAMSIZE];       // FIX
 
     if(!m_reqChannel.sendtcBuf(m_myPid, TCSERVICEGETPOLICYKEYFROMAPP, 0, 
                                m_myPid, size, rgBuf)) {
@@ -186,14 +186,15 @@ bool linuxDeviceChannel::getpolicykeyfromDeviceDriver(u32* pkeyType, int* pSize,
 }
 
 
-bool linuxDeviceChannel::getOSMeasurementfromDeviceDriver(u32* phashType, int* pSize, byte* pHash)
+bool linuxDeviceChannel::getOSMeasurementfromDeviceDriver(u32* phashType, 
+                                                  int* pSize, byte* pHash)
 {
     u32         ustatus;
     u32         ureq;
     int         procid;
     int         origprocid;
     int         size= 0;
-    byte        rgBuf[PARAMSIZE];
+    byte        rgBuf[PARAMSIZE];       // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "getOSMeasurementfromDeviceDriver\n");
@@ -229,8 +230,8 @@ bool linuxDeviceChannel::getHostedMeasurementfromDeviceDriver(int childproc, u32
     u32         ureq;
     int         procid;
     int         origprocid;
-    int         size= PARAMSIZE;
-    byte        rgBuf[PARAMSIZE];
+    int         size= PARAMSIZE;        // FIX
+    byte        rgBuf[PARAMSIZE];       // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "getHostedMeasurementfromDeviceDriver\n");
@@ -266,8 +267,8 @@ bool linuxDeviceChannel::startAppfromDeviceDriver(int* ppid, int argc, char **ar
     u32         ureq;
     int         procid;
     int         origprocid;
-    int         size= PARAMSIZE;
-    byte        rgBuf[PARAMSIZE];
+    int         size= PARAMSIZE;        // FIX
+    byte        rgBuf[PARAMSIZE];       // FIX
 
     size= encodeTCSERVICESTARTAPPFROMAPP(argc, argv, PARAMSIZE, rgBuf);
     if(size<0) {
@@ -296,14 +297,15 @@ bool linuxDeviceChannel::startAppfromDeviceDriver(int* ppid, int argc, char **ar
 }
 
 
-bool linuxDeviceChannel::sealfromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
+bool linuxDeviceChannel::sealfromDeviceDriver(int inSize, byte* inData, 
+                                              int* poutSize, byte* outData)
 {
     u32         ustatus;
     u32         ureq;
     int         procid;
     int         origprocid;
     int         size= 0;
-    byte        rgBuf[PARAMSIZE];
+    byte        rgBuf[PARAMSIZE];       // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "sealwithLinuxService(%d)\n", inSize);
@@ -343,7 +345,7 @@ bool linuxDeviceChannel::unsealfromDeviceDriver(int inSize, byte* inData, int* p
     int         procid;
     int         origprocid;
     int         size= 0;
-    byte        rgBuf[PARAMSIZE];
+    byte        rgBuf[PARAMSIZE];       // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "unsealwithLinuxService(%d)\n", inSize);
@@ -383,14 +385,15 @@ bool linuxDeviceChannel::unsealfromDeviceDriver(int inSize, byte* inData, int* p
 }
 
 
-bool linuxDeviceChannel::quotefromDeviceDriver(int inSize, byte* inData, int* poutSize, byte* outData)
+bool linuxDeviceChannel::quotefromDeviceDriver(int inSize, byte* inData, 
+                                               int* poutSize, byte* outData)
 {
     u32         ustatus;
     u32         ureq;
     int         procid;
     int         origprocid;
     int         size= 0;
-    byte        rgBuf[PARAMSIZE];
+    byte        rgBuf[PARAMSIZE];       // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "quotewithLinuxService(%d, %d)\n", inSize, *poutSize);

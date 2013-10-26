@@ -207,8 +207,8 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
                              taoHostServices* host, 
                              const char* serviceProvider, int nArgs, char** rgszParameter)
 {
-    char    szhostName[256];
-    int     n= 256;
+    char    szhostName[256];    // FIX
+    int     n= 256;             // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::EnvInit: %04x, %s, %s, %s, %s, %s\n",
@@ -330,7 +330,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         // get code digest
         int     sizeCodeDigest= 64;
         u32     codeDigestType= 0;
-        byte    codeDigest[64];
+        byte    codeDigest[64];         // FIX
 
         if(!m_myHost->GetHostedMeasurement(&sizeCodeDigest, 
                                 &codeDigestType, codeDigest)) {
@@ -404,8 +404,8 @@ bool taoEnvironment::firstRun()
 
 bool taoEnvironment::InitMyMeasurement()
 {
-    int     size= 256;
-    byte    tbuf[256];
+    int     size= 256;  // FIX
+    byte    tbuf[256];  // FIX
     u32     type;
 
     if(!m_envValid)
@@ -431,7 +431,7 @@ bool taoEnvironment::InitMyMeasurement()
 
 bool taoEnvironment::initKeyNames()
 {
-    char    szName[2048];
+    char    szName[2048];   // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::initKeyNames\n");
@@ -508,7 +508,7 @@ bool taoEnvironment::GetEntropy(int size, byte* buf)
 bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
                         int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed)
 {  
-    byte    tmpout[4096];
+    byte    tmpout[4096];   // FIX
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::Seal, in %d, out %d\n", 
@@ -560,8 +560,8 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
                         int sizeSealed, byte* sealed, int *psizeunsealed, byte* unsealed)
 {
     int     n= 0;
-    int     outsize= 4096;
-    byte    tmpout[4096];
+    int     outsize= 4096;  // FIX
+    byte    tmpout[4096];   // FIX
     int     hashsize= 0;
 
 #ifdef TEST
@@ -647,7 +647,7 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
         return false;
 
     byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
-    byte        rgToSign[512];
+    byte        rgToSign[512];  // FIX
 
     // Compute quote
     if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize, 
@@ -661,22 +661,25 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
         return false;
     }
     // sign
-    RSAKey* pRSA= (RSAKey*) m_privateKey;
+    RSAKey* pRSA= (RSAKey*) m_privateKey;   // FIX
     bnum    bnMsg(m_publicKeyBlockSize/sizeof(u64));
     bnum    bnOut(m_publicKeyBlockSize/sizeof(u64));
     memset(bnMsg.m_pValue, 0, m_publicKeyBlockSize);
     memset(bnOut.m_pValue, 0, m_publicKeyBlockSize);
     revmemcpy((byte*)bnMsg.m_pValue, rgToSign, m_publicKeyBlockSize);
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::Attest about to decrypt, blocksize: %d\n", m_publicKeyBlockSize);
+    fprintf(g_logFile, "taoEnvironment::Attest about to decrypt, blocksize: %d\n", 
+            m_publicKeyBlockSize);
     PrintBytes((char*)"ToSign: ", rgToSign, m_publicKeyBlockSize);
     pRSA->printMe();
     fflush(g_logFile);
 #endif
-    if(pRSA->m_pbnQ!=NULL && pRSA->m_pbnP!=NULL && pRSA->m_pbnDQ!=NULL && pRSA->m_pbnDP!=NULL &&
-                          pRSA->m_pbnQM1!=NULL && pRSA->m_pbnPM1!=NULL) {
+
+    if(pRSA->m_pbnQ!=NULL && pRSA->m_pbnP!=NULL && pRSA->m_pbnDQ!=NULL && 
+       pRSA->m_pbnDP!=NULL && pRSA->m_pbnQM1!=NULL && pRSA->m_pbnPM1!=NULL) {
         if(!mpRSADEC(bnMsg, *(pRSA->m_pbnP), *(pRSA->m_pbnPM1), *(pRSA->m_pbnDP), 
-                 *(pRSA->m_pbnQ), *(pRSA->m_pbnQM1), *(pRSA->m_pbnDQ), *(pRSA->m_pbnM), bnOut)) {
+                     *(pRSA->m_pbnQ), *(pRSA->m_pbnQM1), *(pRSA->m_pbnDQ), 
+                     *(pRSA->m_pbnM), bnOut)) {
             fprintf(g_logFile, "taoEnvironment::Attest: mpRSADEC returned false\n");
             return false;
         }
@@ -902,7 +905,7 @@ bool taoEnvironment::saveTao()
     }
 
 #ifdef TEST1
-    RSAKey* pK= (RSAKey*)m_privateKey;
+    RSAKey* pK= (RSAKey*)m_privateKey;  // FIX
     if(pK->m_pbnM!=NULL) {
         fprintf(g_logFile, "M(%d, %08x): ", pK->m_pbnM->mpSize(), pK->m_pbnM);
         printNum(*(pK->m_pbnM)); fprintf(g_logFile, "\n");
@@ -999,17 +1002,17 @@ bool taoEnvironment::restoreTao()
           case KEYTYPERSA2048SERIALIZED:
           case KEYTYPERSA2048INTERNALSTRUCT:
             m_privateKeyType= KEYTYPERSA2048INTERNALSTRUCT;
-            m_publicKeyBlockSize= 256;
+            m_publicKeyBlockSize= 256;  // FIX
             break;
           case KEYTYPERSA1024SERIALIZED:
           case KEYTYPERSA1024INTERNALSTRUCT:
             m_privateKeyType= KEYTYPERSA1024INTERNALSTRUCT;
-            m_publicKeyBlockSize= 128;
+            m_publicKeyBlockSize= 128;  // FIX
             break;
           default:
             break;
         }
-        RSAKey* pKey= new RSAKey();
+        RSAKey* pKey= new RSAKey(); // FIX
         if(pKey==NULL || !(KeyInfo*)pKey->ParsefromString(m_serializedprivateKey)) {
             fprintf(g_logFile, "taoEnvironment::restoreTao: cant parse private key\n");
             return false;
@@ -1312,11 +1315,11 @@ cleanup:
 
 
 bool VerifyAttestation(const char *attestation, 
-                       const char *attestEvidence, RSAKey& oPolicyKey)
+                       const char *attestEvidence, RSAKey& oPolicyKey)  // FIX
 {
     int             type= 0;
     PrincipalCert*  pattestCert= NULL;
-    RSAKey*         pquoteKey= NULL;
+    RSAKey*         pquoteKey= NULL;    // FIX
     evidenceList    oEvidence;
     char*           szQuoteAlg= NULL;
     char*           szQuoteInfo= NULL;
@@ -1394,7 +1397,7 @@ bool VerifyAttestation(const char *attestation,
     }
 
     // get quoting key
-    pquoteKey= (RSAKey*) pattestCert->getSubjectKeyInfo();
+    pquoteKey= (RSAKey*) pattestCert->getSubjectKeyInfo();  // FIX
     if(pquoteKey==NULL) {
         fprintf(g_logFile, "VerifyAttestation: can't get quoting key from Cert\n");
         goto done;

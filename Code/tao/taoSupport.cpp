@@ -79,7 +79,7 @@ taoFiles::~taoFiles ()
 
 bool  taoFiles::initNames(const char* directory, const char* subdirectory)
 {
-    char   szName[1024];
+    char   szName[1024];        // FIX
 
     m_storageType= STORAGETYPENONE;
     if(directory==NULL)

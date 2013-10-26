@@ -45,8 +45,8 @@
 bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
                  byte* out, bool fFast)
 {
-    bnum    bnMsg(128);
-    bnum    bnOut(128);
+    bnum    bnMsg(128);     // FIX
+    bnum    bnOut(128);     // FIX
 
 #ifdef TEST1
     PrintBytes((char*)"RSADecrypt in: ", in, sizein);
@@ -79,8 +79,8 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout,
 
 bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 {
-    bnum    bnMsg(128);
-    bnum    bnOut(128);
+    bnum    bnMsg(128);     // FIX
+    bnum    bnOut(128);     // FIX
 
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
@@ -104,9 +104,9 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 
 
 bool  RSASign(RSAKey& key, int hashType, byte* hash, 
-                                 int* psizeout, byte* out)
+                           int* psizeout, byte* out)
 {
-    byte    padded[1024];
+    byte    padded[1024];       // FIX
 
 #ifdef TEST1
     PrintBytes((char*)"RSASign in: ", hash, 32);
@@ -134,7 +134,7 @@ bool  RSASign(RSAKey& key, int hashType, byte* hash,
 
 bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 {
-    byte    padded[1024];
+    byte    padded[1024];   // FIX
     int     size= 1024;
 
 #ifdef TEST1
@@ -163,7 +163,7 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in, 
               int* psizeout, byte* out)
 {
-    byte    padded[1024];
+    byte    padded[1024];   // FIX
     
 #ifdef TEST1
     PrintBytes((char*)"RSASeal in: ", in, sizein);
@@ -206,8 +206,8 @@ bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in,
 bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in, 
                 int* psizeout, byte* out)
 {
-    byte    padded[1024];
-    int     size= 1024;
+    byte    padded[1024];   // FIX
+    int     size= 1024; // FIX
     
 #ifdef TEST1
     fprintf(g_logFile, "RSAUnseal direction %d\n", keyuse);
@@ -277,16 +277,16 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     else
         return NULL;
 
-    bnum       bnPhi(128);
-    bnum       bnE(4);
-    bnum       bnP(128);
-    bnum       bnQ(128);
-    bnum       bnD(128);
-    bnum       bnM(128);
-    bnum       bnDP(128);
-    bnum       bnDQ(128);
-    bnum       bnPM1(128);
-    bnum       bnQM1(128);
+    bnum       bnPhi(128);  // FIX
+    bnum       bnE(4);  // FIX
+    bnum       bnP(128);    // FIX
+    bnum       bnQ(128);    // FIX
+    bnum       bnD(128);    // FIX
+    bnum       bnM(128);    // FIX
+    bnum       bnDP(128);   // FIX
+    bnum       bnDQ(128);   // FIX
+    bnum       bnPM1(128);  // FIX
+    bnum       bnQM1(128);  // FIX
 
     bnE.m_pValue[0]= (1ULL<<16)+1ULL;
     while(iTry++<MAXTRY) {
@@ -318,7 +318,7 @@ RSAKey* RSAGenerateKeyPair(int keySize)
             ikeyByteSize);
 #endif
 
-    pKey->m_rgkeyName[0]= 0;
+    pKey->m_rgkeyName[0]= 0;    // FIX
     pKey->m_ikeyNameSize= 0;
     pKey->m_iByteSizeM= ikeyByteSize;
     pKey->m_iByteSizeD= ikeyByteSize;
@@ -728,7 +728,7 @@ bool VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key,
 {
     Sha1        oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
-    byte        rgSigValue[1024];
+    byte        rgSigValue[1024];   // FIX
     int         size;
     int         n;
 
@@ -762,7 +762,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 {
     Sha256      oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
-    byte        rgSigValue[1024];
+    byte        rgSigValue[1024];   // FIX
     int         size;
     int         n;
 
@@ -795,10 +795,10 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 {
     Sha256      oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
-    byte        rgSigValue[1024];
+    byte        rgSigValue[1024];   // FIX
     int         size;
     int         n;
-    char        szSigValue[2048];
+    char        szSigValue[2048];   // FIX
 
     // hash  signedInfo
     n= strlen(szsignedInfo);
@@ -848,9 +848,9 @@ char* constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     const char* attrValue[2]= {"http://www.w3.org/2000/09/xmldsig#", NULL};
     const char* elts[3];
     int         size= 8192;
-    char        szSignature[8192];
+    char        szSignature[8192];  // FIX
     char*       szKeyInfo= NULL;
-    char        szSignatureElement[4096];
+    char        szSignatureElement[4096];   // FIX
     char*       szSig= XMLRSASha256SignaturefromSignedInfoandKey(key,
                                                 szsignedInfo);
     bool        fRet= true;

@@ -63,7 +63,7 @@ public:
     u32                 m_uPad;
     u32                 m_uHmac;
     int                 m_sizeKey;
-    byte                m_fileKeys[SMALLKEYSIZE];
+    byte                m_fileKeys[GLOBALMAXSYMKEYSIZE];
 
     session             m_clientSession;
     int                 m_fd;
@@ -77,32 +77,32 @@ public:
     timer               m_encTimer;
     timer               m_decTimer;
 
-    fileClient();
-    ~fileClient();
+                        fileClient();
+                        ~fileClient();
 
-    bool    initClient(const char* configDirectory, const char* serverAddress, 
-                       u_short serverPort, const char* certFile, 
-                       const char* keyFile);
-    bool    initPolicy();
-    bool    initFileKeys();
-    bool    closeClient();
+    bool                initClient(const char* configDirectory, const char* serverAddress, 
+                                   u_short serverPort, const char* certFile, 
+                                   const char* keyFile);
+    bool                initPolicy();
+    bool                initFileKeys();
+    bool                closeClient();
 
     // testing interfaces
-    void    closeConnection();
-    bool    createResource(const string& subject, 
-                    const string& evidenceFileName, const string& resource);
-    bool    deleteResource(const string& subject, 
-                    const string& evidenceFileName, const string& resource);
-    bool    readResource(const string& subject, const string& evidenceFileName, 
-                    const string& remoteResource, const string& localOutput);
-    bool    writeResource(const string& subject, const string& evidenceFileName, 
-                    const string& remoteResource, const string& fileName);
-    bool    establishConnection(const char* keyFile, const char* certFile, 
-                    const char* directory, const char* serverAddress, 
-                    u_short serverPort);
-    bool    compareFiles(const string& firstFile, const string& secondFile);
-    void    printTimers(FILE* log);
-    void    resetTimers();
+    void                closeConnection();
+    bool                createResource(const string& subject, 
+                                const string& evidenceFileName, const string& resource);
+    bool                deleteResource(const string& subject, 
+                                const string& evidenceFileName, const string& resource);
+    bool                readResource(const string& subject, const string& evidenceFileName, 
+                                const string& remoteResource, const string& localOutput);
+    bool                writeResource(const string& subject, const string& evidenceFileName, 
+                                const string& remoteResource, const string& fileName);
+    bool                establishConnection(const char* keyFile, const char* certFile, 
+                                const char* directory, const char* serverAddress, 
+                                u_short serverPort);
+    bool                compareFiles(const string& firstFile, const string& secondFile);
+    void                printTimers(FILE* log);
+    void                resetTimers();
 };
 
 

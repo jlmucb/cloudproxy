@@ -47,7 +47,7 @@ public:
     u32     m_uPad;
     u32     m_uHmac;
 
-    int     m_fileLeft;	    // total size of encrypted file
+    int     m_fileLeft;     // total size of encrypted file
     int     m_fileSize;
     int     m_dataSize;
 
@@ -59,25 +59,23 @@ public:
     int     m_iBufOut;      // number of decrypted bytes available
     int     m_iOutStart;    // first available decrypted byte
 
-    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];
-    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];
+    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];       // FIX
+    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];      // FIX
 
     u32     m_uCombinedAlgId;
 
-#ifdef GCMENABLED
-    gcm     m_oGCM;
-#endif
     cbc     m_oCBC;
 
-    encryptedFileread();
-    ~encryptedFileread();
+            encryptedFileread();
+            ~encryptedFileread();
 
     bool    AES128GCMDecryptBlocks(int iRead);
     bool    AES128CBCDecryptBlocks(int iRead);
     int     AES128GCMDecrypt(int iRead, int bufsize, byte* buf);
     int     AES128CBCDecrypt(int iRead, int bufsize, byte* buf);
 
-    bool    initDec(int filesize, int datasize, byte* key, int keyBitSize, u32 alg=NOALG, u32 pad=NOPAD, 
+    bool    initDec(int filesize, int datasize, byte* key, int keyBitSize, 
+                    u32 alg=NOALG, u32 pad=NOPAD, 
                     u32 mode=NOMODE, u32 hmac=NOHMAC); 
     int     EncRead(int iRead, byte* buf, int size);
     bool    closeEnc();
@@ -107,8 +105,8 @@ public:
     int     m_iBufOut;                  // number of bytes in output buffer
     int     m_iOutStart;                // first byte of output not yet sent
 
-    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];
-    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];
+    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];   // FIX
+    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];  // FIX
 
     u32     m_uCombinedAlgId;
 
@@ -117,15 +115,16 @@ public:
 #endif
     cbc     m_oCBC;
 
-    encryptedFilewrite();
-    ~encryptedFilewrite();
+            encryptedFilewrite();
+            ~encryptedFilewrite();
 
     int     AES128GCMEncrypt(int iWrite, int bufsize, byte* buf);
     int     AES128CBCEncrypt(int iWrite, int bufsize, byte* buf);
     bool    AES128CBCEncryptBlocks(int iWrite);
     bool    AES128GCMEncryptBlocks(int iWrite);
 
-    bool    initEnc(int datasize, int filesize, byte* key, int keyBitSize, u32 alg=NOALG, u32 pad=NOPAD, 
+    bool    initEnc(int datasize, int filesize, byte* key, 
+                    int keyBitSize, u32 alg=NOALG, u32 pad=NOPAD, 
                     u32 mode=NOMODE, u32 hmac=NOHMAC); 
     int     EncWrite(int file, byte* buf, int size);
 };

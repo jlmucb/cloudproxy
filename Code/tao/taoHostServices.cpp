@@ -180,7 +180,8 @@ bool taoHostServices::StartHostedProgram(int an, char** av, int* phandle)
       case PLATFORMTYPELINUXAPP:
       case PLATFORMTYPEHYPERVISOR:
       case PLATFORMTYPEHW:
-        fprintf(g_logFile, "taoHostServices::HostInit: HW StartHostedProgram not supported\n");
+        fprintf(g_logFile, 
+                "taoHostServices::HostInit: HW StartHostedProgram not supported\n");
         return false;
 
       case PLATFORMTYPEKVMHYPERVISOR:
@@ -203,11 +204,10 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 #ifdef TEST
     if(m_hostValid)
         fprintf(g_logFile, "taoHostServices::GetHostedMeasurement, mytype: %d, valid\n",
-            m_hostType);
+                m_hostType);
     else
         fprintf(g_logFile, "taoHostServices::GetHostedMeasurement, mytype: %d, invalid\n",
-            m_hostType);
-
+                m_hostType);
     fflush(g_logFile);
 #endif
     switch(m_hostType) {
@@ -243,8 +243,8 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 
 bool taoHostServices::GetEvidence(int* psize, byte** ppbuf)
 {
-    int     n= 4096;
-    byte    buf[4096];
+    int     n= 4096;        // FIX
+    byte    buf[4096];      // FIX
 
     if(!m_hostEvidenceValid) {
         if(!getBlobfromFile(m_fileNames.m_szAncestorEvidence, buf, &n)) {
@@ -270,8 +270,8 @@ bool taoHostServices::GetEvidence(int* psize, byte** ppbuf)
 
 bool taoHostServices::GetAttestCertificate(int* psize, u32* ptype, byte** ppbuf)
 {
-    int     n= 4096;
-    byte    buf[4096];
+    int     n= 4096;        // FIX
+    byte    buf[4096];      // FIX
 
     if(!m_hostCertificateValid) {
         if(!getBlobfromFile(m_fileNames.m_szcertFile, buf, &n)) {

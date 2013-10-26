@@ -301,7 +301,7 @@ int accessGuard::checkPermitChain(resource* pResource,
 }
 
 
-bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta, 
+bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta, // FIX
                             int numPrincipals, PrincipalCert** rgPrinc)
 {
     int i;
@@ -330,10 +330,6 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
     RSAKey*             pSubjectKey= NULL;
     SignedAssertion*    pAssert= NULL;
     int                 i;
-#if 0
-    bool                fRet= false;
-    int                 iPermit= 0;
-#endif
     time_t              now;
     tm*                 pt;
 
@@ -469,8 +465,7 @@ bool accessGuard::permitAccess(accessRequest& req, const char* szEvidence)
 
     return true;
 
-#if 0
-    // Fix
+#if 0       // FIX
 #ifdef TEST
     fprintf(g_logFile, "permitAccess: Evaluating assertion chain of length %d\n", 
             m_iNumAssertions);

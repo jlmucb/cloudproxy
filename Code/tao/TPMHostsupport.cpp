@@ -131,7 +131,7 @@ bool tpmSupport::getMeasurementTPM(int* pSize, byte* pHash)
         return false;
     }
 
-#ifndef QUOTE2_DEFINED
+#ifdef NOQUOTE2
     // reconstruct PCR composite and composite hash
     if(!computeTPM12compositepcrDigest(m_oTpm.m_rgpcrMask, pcrs, pHash)) {
         fprintf(g_logFile, "getMeasurementTPM: can't compute composite digest\n");

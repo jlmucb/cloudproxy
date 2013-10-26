@@ -187,7 +187,7 @@ encapsulatedMessage::~encapsulatedMessage()
 
 char*  encapsulatedMessage::serializeMetaData()
 {
-    char    buf[16382];
+    char    buf[16382]; // FIX
     int     start= 0;
 
     if(m_szXMLmetadata!=NULL) 
@@ -305,17 +305,17 @@ bool   encapsulatedMessage::parseMetaData()
 }
 
 
-bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
+bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)     // FIX
 {
-    char    buf[4096];
+    char    buf[4096];  // FIX
     int     outsize= 4096;
-    byte    in[128];
+    byte    in[128];    // FIX
     int     insize= 0;
-    byte    padded[512];
+    byte    padded[512];    // FIX
     int     blocksize;
-    bnum    bnMsg(64);
-    bnum    bnOut(64);
-    byte    sealed[512];
+    bnum    bnMsg(64);  // FIX
+    bnum    bnOut(64);  // FIX
+    byte    sealed[512];    // FIX
 
     if(sealingKey==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::sealKey no sealing key\n");
@@ -384,15 +384,15 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
 }
 
 
-bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
+bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)       // FIX
 {
-    byte    in[128];
-    byte    padded[512];
+    byte    in[128];    // FIX
+    byte    padded[512];    // FIX
     int     blocksize;
-    bnum    bnMsg(64);
-    bnum    bnOut(64);
+    bnum    bnMsg(64);  // FIX
+    bnum    bnOut(64);  // FIX
     int     sizeSealed= 512;
-    byte    sealed[512];
+    byte    sealed[512];    // FIX
 
     if(sealingKey==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey no sealing key\n");
@@ -604,13 +604,13 @@ int    encapsulatedMessage::plainMessageSize()
 }
 
 
-bool   encapsulatedMessage::signPackage(RSAKey* pSignKey)
+bool   encapsulatedMessage::signPackage(RSAKey* pSignKey)       // FIX
 {
     return true;
 }
 
 
-bool   encapsulatedMessage::verifyPackage(RSAKey* pSignKey)
+bool   encapsulatedMessage::verifyPackage(RSAKey* pSignKey)     // FIX
 {
     return true;
 }

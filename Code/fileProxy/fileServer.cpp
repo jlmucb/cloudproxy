@@ -100,7 +100,7 @@ theServiceChannel::~theServiceChannel()
 
 int theServiceChannel::processRequests()
 {
-    byte    request[MAXREQUESTSIZEWITHPAD];
+    byte    request[MAXREQUESTSIZEWITHPAD];     // FIX?
     int     type= 0;
     byte    multi= 0;
     byte    final= 0;
@@ -137,7 +137,8 @@ int theServiceChannel::processRequests()
         Request oReq;
 
         if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: cant parse: %s\n", request);
+            fprintf(g_logFile, "theServiceChannel::processRequests: cant parse: %s\n", 
+                    request);
             return -1;
         }
 
@@ -199,7 +200,8 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else {
-            fprintf(g_logFile, "theServiceChannel::processRequests: invalid request type\n");
+            fprintf(g_logFile, 
+                    "theServiceChannel::processRequests: invalid request type\n");
             return -1;
         }
     }
@@ -326,7 +328,7 @@ fileServer::fileServer()
     m_uMode= 0;
     m_uPad= 0;
     m_uHmac= 0;
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
     m_fpolicyCertValid= false;
 }
 
@@ -369,12 +371,12 @@ bool fileServer::initPolicy()
 bool fileServer::initFileKeys()
 {
     struct stat statBlock;
-    char        szName[256];
+    char        szName[256];    // FIX
     int         size= 0;
-    byte        keyBuf[SMALLKEYSIZE];
+    byte        keyBuf[GLOBALMAXSYMKEYSIZE];
     int         n= 0;
     int         m= 0;
-    byte        sealedkeyBuf[BIGKEYSIZE];
+    byte        sealedkeyBuf[GLOBALMAXSEALEDKEYSIZE];
    
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
@@ -709,10 +711,9 @@ bool fileServer::server()
 int main(int an, char** av)
 // fileServer.exe [-initKeys address-of-managementserver]
 {
-    fileServer  oServer;
-    int         iRet= 0;
-    const char* directory= NULL;
-
+    fileServer      oServer;
+    int             iRet= 0;
+    const char*     directory= NULL;
 
     initLog(NULL);
 #ifdef TEST
@@ -726,6 +727,7 @@ int main(int an, char** av)
     UNUSEDVAR(definedprogDirectory);
     UNUSEDVAR(definedKeyNegoAddress);
     UNUSEDVAR(definedfileServerAddress);
+
     if(definedprogDirectory!=NULL)
         directory= strdup(definedprogDirectory);
 
@@ -736,16 +738,13 @@ int main(int an, char** av)
     oServer.m_encType= DEFAULTENCRYPT;
 #endif
 
-    // JLM: removed initProg.  Replaced by tcLaunch.
     initLog("fileServer.log");
-
 #ifdef TEST
     fprintf(g_logFile, "fileServer main: measured server about to init server\n");
     fflush(g_logFile);
 #endif
 
     try {
-
         if(!oServer.initServer(directory)) 
             throw "fileServer main: cant initServer\n";
 
@@ -775,7 +774,9 @@ int main(int an, char** av)
 #ifdef METADATATEST
 void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
 {
-    int     encType;
+    int         encType;
+    metaData    localVault;
+
     if(fEncrypt) {
         encType= DEFAULTENCRYPT;
     }
@@ -791,7 +792,6 @@ void metadataTest(const char* szDir, bool fEncrypt, byte* keys)
         fprintf(g_logFile, "fileServer::serviceChannel: save fails\n");
         fflush(g_logFile);
     }
-    metaData localVault;
 
     if(!localVault.initMetaData(szDir, "fileServer")) {
         fprintf(g_logFile, "fileServer::localInit: Cant init local metadata\n");

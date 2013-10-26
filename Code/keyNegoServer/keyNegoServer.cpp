@@ -38,6 +38,7 @@
 #include "mpFunctions.h"
 #include "cryptoHelper.h"
 #include "objectManager.h"
+#include "keys.h"
 #include "keyNegoServer.h"
 #include "cert.h"
 #include "quote.h"
@@ -574,8 +575,8 @@ bool getCertParameters(const char* szPolicyKeyId, const char* szDigest, const ch
 
 #ifdef TEST
     fprintf(g_logFile, 
-        "getCertParameters. policy key: %s, digest: %s, keyname: %s\nEvidence: %s\n",
-            szPolicyKeyId, szDigest, szKeyName,szEvidenceCollection);
+        "getCertParameters. policy key: %s, digest: %s, keyname: %s\n",
+            szPolicyKeyId, szDigest, szKeyName);
     fflush(g_logFile);
 #endif
     // www.manferdelli.com/Herstein/Keys/fileClientProgram"
@@ -587,7 +588,12 @@ bool getCertParameters(const char* szPolicyKeyId, const char* szDigest, const ch
         *pszSubjName=  replaceKeywithProgram(szKeyName);
         *pszSubjKeyID= strdup(szKeyName);
     }
-
+#ifdef TEST
+    fprintf(g_logFile, 
+        "getCertParameters, SubjName: %s, SubjKeyId: %s\n",
+            *pszSubjName,  *pszSubjKeyID);
+    fflush(g_logFile);
+#endif
     return true;
 }
 
@@ -725,9 +731,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     char*   szquotedKeyInfo= NULL;
 
     RSAKey* pKey= NULL;
-    bnum    bnMsg(128);
-    bnum    bnOut(128);
-
+    taoAttest  oAttest;
     bool    fRet= true;
 
 #ifdef  TEST
@@ -740,22 +744,53 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
         fprintf(g_logFile, "Evidence: none\n");
 #endif
 
-    // decode request
-    char* szXXX= NULL;
-    if(!decodeXMLQuote(szXMLQuote, &szAlg, &szNonce, &szDigest, &szQuotedInfo,
-                       &szQuoteValue, &szquoteKeyInfo, &szquotedKeyInfo, &szXXX)) {
-        fprintf(g_logFile, "validateRequestandIssue: cant decodeXMLQuote\n");
-        fRet= false;
-        goto cleanup;
-    }
-
     // get policy key
     pKey= getKeyfromID(szPolicyKeyId);
-     if(pKey==NULL) {
+    if(pKey==NULL) {
         fprintf(g_logFile, "validateRequestandIssue: cant get Signing key\n");
         fRet= false;
         goto cleanup;
     }
+
+
+#ifdef  TEST
+    fflush(g_logFile);
+    fprintf(g_logFile, "about to init attestation\n");
+    fprintf(g_logFile, "Quote: %s\n", szXMLQuote);
+    fprintf(g_logFile, "Cert: %s\n", szCert);
+    if(szEvidence!=NULL)
+        fprintf(g_logFile, "Evidence: %s\n", szEvidence);
+    else
+        fprintf(g_logFile, "Evidence: none\n");
+#endif
+
+    // initialize Attest object
+    if(!oAttest.init(CPXMLATTESTATION, szXMLQuote, szEvidence, (KeyInfo*) pKey)) {
+        fprintf(g_logFile, "validateRequestandIssue: cant init attest object\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+    szDigest= oAttest.codeDigest();
+    if(szDigest==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: cant get code digest\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+    szquotedKeyInfo= oAttest.quotedKeyInfo();
+    if(szquotedKeyInfo==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: cant get quoted keyInfo\n");
+        fRet= false;
+        goto cleanup;
+    }
+#ifdef  TEST
+    fprintf(g_logFile, "quotedkeyInfo\n%s\n", szquotedKeyInfo);
+    fflush(g_logFile);
+#endif
+
+    // Key name
+    szKeyName= oAttest.quotedKeyName();
 
     // check policy
     if(!validCodeDigest(szPolicyKeyId, szDigest)) {
@@ -765,7 +800,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     }
 
 #ifdef  TEST
-    fprintf(g_logFile, "\ngetting cert parameters\n");
+    fprintf(g_logFile, "getting cert parameters\n");
     fflush(g_logFile);
 #endif
     // get cert parameters
@@ -778,25 +813,20 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
         goto cleanup;
     }
 
-#ifdef  TEST
-    fprintf(g_logFile, "about to call VerifyAttestation\n");
-    fprintf(g_logFile, "Quote: %s\n", szXMLQuote);
-    fprintf(g_logFile, "Cert: %s\n", szCert);
-    if(szEvidence!=NULL)
-        fprintf(g_logFile, "Evidence: %s\n", szEvidence);
-    else
-        fprintf(g_logFile, "Evidence: none\n");
+#ifdef TEST
+    fprintf(g_logFile, "verifying attestation\n");
+    fflush(g_logFile);
 #endif
-
-    // check quote
-    if(!VerifyAttestation(szXMLQuote, szEvidence, *pKey)) {
-        fprintf(g_logFile, "validateRequestandIssue: VerifyAttestation fails\n");
+    // verify attestation 
+    if(!oAttest.verifyAttestation()) {
+        fprintf(g_logFile, "validateRequestandIssue: attest fails\n");
         fRet= false;
         goto cleanup;
     }
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "encoding signed body\n");
+    fflush(g_logFile);
 #endif
     // encode signed body
     szSignedInfo= formatSignedInfo(pKey, szCertid, serialNo, szPrincipalType, 
@@ -810,6 +840,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 
 #ifdef  TEST
     fprintf(g_logFile, "hashing\n");
+    fflush(g_logFile);
 #endif
     szCert= constructXMLRSASha256SignaturefromSignedInfoandKey(*pKey,
                                                 szSubjName, szSignedInfo);
@@ -821,6 +852,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 
 #ifdef  TEST
     fprintf(g_logFile, "registering\n");
+    fflush(g_logFile);
 #endif
     // register it and return
     if(!registerCertandEvidence(szPolicyKeyId, szCert, szEvidence)) {
@@ -831,6 +863,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 #ifdef  TEST
     fprintf(g_logFile, "returning cert\n");
     fprintf(g_logFile, "\n%s\n", szCert);
+    fflush(g_logFile);
 #endif
 
 cleanup:
@@ -859,6 +892,10 @@ cleanup:
     if(szquoteKeyInfo!=NULL) {
         free(szquoteKeyInfo);
         szquoteKeyInfo= NULL;
+    }
+    if(szKeyName!=NULL) {
+        free(szKeyName);
+        szKeyName= NULL;
     }
     return fRet;
 }

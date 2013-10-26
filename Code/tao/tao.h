@@ -391,6 +391,13 @@ public:
     bool            verifyAttestation();
     bool            bytecodeDigest();
     char*           codeDigest();
+    u32             attestType();
+    char*           quoteAlg();
+    char*           quoteInfo();
+    char*           quoteCanonicalQuotedBody();
+    char*           quoteValue();
+    char*           quoteKeyInfo();
+    char*           quotedKeyInfo();
 
 };
 

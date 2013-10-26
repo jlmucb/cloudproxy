@@ -250,6 +250,60 @@ bool taoAttest::verifyAttestation()
 }
 
 
+u32 taoAttest::attestType()
+{
+    return m_attestType;
+}
+
+
+char* taoAttest::quoteAlg()
+{
+    if(m_szQuoteAlg!=NULL)
+        return NULL;
+    return strdup(m_szQuoteAlg);
+}
+
+
+char* taoAttest::quoteInfo()
+{
+    if(m_szQuoteInfo!=NULL)
+        return NULL;
+    return strdup(m_szQuoteInfo);
+}
+
+
+char* taoAttest::quoteCanonicalQuotedBody()
+{
+    if(m_szCanonicalQuotedBody!=NULL)
+        return NULL;
+    return strdup(m_szCanonicalQuotedBody);
+}
+
+
+char* taoAttest::quoteValue()
+{
+    if(m_szQuoteValue!=NULL)
+        return NULL;
+    return strdup(m_szQuoteValue);
+}
+
+
+char* taoAttest::quoteKeyInfo()
+{
+    if(m_szQuoteKeyInfo!=NULL)
+        return NULL;
+    return strdup(m_szQuoteKeyInfo);
+}
+
+
+char* taoAttest::quotedKeyInfo()
+{
+    if(m_szQuotedKeyInfo!=NULL)
+        return NULL;
+    return strdup(m_szQuotedKeyInfo);
+}
+
+
 // -------------------------------------------------------------------------
 
 

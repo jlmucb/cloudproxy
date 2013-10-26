@@ -372,6 +372,7 @@ public:
     u32             m_attestType;
     PrincipalCert*  m_pattestCert;
     RSAKey*         m_pquoteKey;
+    RSAKey*         m_policyKey;
     evidenceList    m_oEvidence;
     char*           m_szQuoteAlg;
     char*           m_szQuoteInfo;
@@ -385,9 +386,8 @@ public:
                     taoAttest();
                     ~taoAttest();
 
-    bool            initAttestation(u32 type, const char *attestation,
-                                    const char* attestEvidence, KeyInfo*  policyKey);
-    bool            parse();
+    bool            init(u32 type, const char *attestation,
+                                    const char* attestEvidence, KeyInfo* policyKey);
     bool            verifyAttestation();
     bool            bytecodeDigest();
     char*           codeDigest();

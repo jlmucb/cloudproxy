@@ -57,6 +57,7 @@ taoAttest::taoAttest()
     m_szQuoteValue= NULL;
     m_szQuoteKeyInfo= NULL;
     m_szQuotedKeyInfo= NULL;
+    m_policyKey= NULL;
 }
 
 
@@ -104,14 +105,13 @@ taoAttest::~taoAttest()
         free(m_szQuotedKeyInfo);
         m_szQuotedKeyInfo= NULL;
     }
+    m_policyKey= NULL;
 }
 
 
 bool taoAttest::init(u32 type, const char *attestation, const char *attestEvidence, 
                      KeyInfo* policyKey) 
 {
-    u32 type= 0;
-
     if(type!=CPXMLATTESTATION) {
         fprintf(g_logFile, "taoAttest::init: attestation not supported\n");
         return false;
@@ -130,6 +130,7 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
         fprintf(g_logFile, "taoAttest::init: empty policy key\n");
         return false;
     }
+    m_policyKey= (RSAKey*)policyKey;
     if(policyKey->m_ukeyType!=RSAKEYTYPE) {
         fprintf(g_logFile, "taoAttest::init: unsupported policy key type\n");
         return false;
@@ -144,9 +145,9 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
 #endif
 
     // Get the information from attestation
-    if(!decodeXMLQuote(attestation, &szQuoteAlg, &sznonce,
-                    &szdigest, &szQuoteInfo, &szQuoteValue,
-                    &szQuoteKeyInfo, &szQuotedKeyInfo)) {
+    if(!decodeXMLQuote(attestation, &m_szQuoteAlg, &m_sznonce,
+                    &m_szdigest, &m_szQuoteInfo, &m_szQuoteValue,
+                    &m_szQuoteKeyInfo, &m_szQuotedKeyInfo)) {
         fprintf(g_logFile, "taoAttest::init: can't decode attest\n");
         return false;
     }
@@ -174,51 +175,20 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
         fprintf(g_logFile, "taoAttest::init: can't parse evidence list \n");
         return false;
     }
-    if(!m_oEvidence.validateEvidenceList(policyKey)) {
-        fprintf(g_logFile, "taoAttest::init: can't verify evidence list \n");
-        return false;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "taoAttest::init: evidence valid\n");
-    fflush(g_logFile);
-#endif
 
-    // get parse attest cert
-    if(!m_oEvidence.getSubjectEvidence(&type, (void**)&m_pattestCert)) {
-        fprintf(g_logFile, "taoAttest::init: can't get attest Cert\n");
-        return false;
-    }
-    if(type!=PRINCIPALCERT) {
-        fprintf(g_logFile, "taoAttest::init: attest Cert wrong type\n");
-        return false;
-    }
+    m_szCanonicalQuotedBody= canonicalizeXML(m_szQuoteInfo);
 
-    // get quoting key
-    m_pquoteKey= (RSAKey*) m_pattestCert->getSubjectKeyInfo();
-    if(m_pquoteKey==NULL) {
-        fprintf(g_logFile, "taoAttest::init: can't get quoting key from Cert\n");
-        return false;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "taoAttest::init: quote key\n");
-    m_pquoteKey->printMe();
-    fflush(g_logFile);
-#endif
     return true;
-}
-
-
-bool taoAttest::parse()
-{
 }
 
 
 bool taoAttest::bytecodeDigest()
 {
+    return false;
 }
 
 
-bool taoAttest::codeDigest()
+char* taoAttest::codeDigest()
 {
     if(m_szdigest!=NULL)
         return NULL;
@@ -228,26 +198,54 @@ bool taoAttest::codeDigest()
 
 bool taoAttest::verifyAttestation()
 {
-    bool            fRet= false;
+    int     type= 0;
+    bool    fRet= false;
 
 #ifdef TEST
-    fprintf(g_logFile, "verifyAttestation\n");
+    fprintf(g_logFile, "taoAttest::verifyAttestation\n");
+    fflush(g_logFile);
+#endif
+
+    // get parse attest cert
+    if(!m_oEvidence.getSubjectEvidence(&type, (void**)&m_pattestCert)) {
+        fprintf(g_logFile, "taoAttest::verifyAttestation: can't get attest Cert\n");
+        return false;
+    }
+    if(type!=PRINCIPALCERT) {
+        fprintf(g_logFile, "taoAttest::verifyAttestation: attest Cert wrong type\n");
+        return false;
+    }
+
+    // get quoting key
+    m_pquoteKey= (RSAKey*) m_pattestCert->getSubjectKeyInfo();
+    if(m_pquoteKey==NULL) {
+        fprintf(g_logFile, "taoAttest::verifyAttestation: can't get quoting key from Cert\n");
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "taoAttest::verifyAttestation: quote key\n");
+    m_pquoteKey->printMe();
     fflush(g_logFile);
 #endif
 
     // finally, check attestation
-    szCanonicalQuotedBody= canonicalizeXML(szQuoteInfo);
-    fRet= checkXMLQuote(szQuoteAlg, szCanonicalQuotedBody, sznonce,
-                szdigest, pquoteKey, szQuoteValue);
+    fRet= checkXMLQuote(m_szQuoteAlg, m_szCanonicalQuotedBody, m_sznonce,
+                m_szdigest, m_pquoteKey, m_szQuoteValue);
 #ifdef TEST
-    if(fRet)
-        fprintf(g_logFile, "VerifyAttestation passed\n");
-    else
-        fprintf(g_logFile, "VerifyAttestation failed\n");
+    fprintf(g_logFile, "taoAttest::verifyAttestation: checkXMLQuote succeeds\n");
+    m_pquoteKey->printMe();
     fflush(g_logFile);
 #endif
 
-done:
+    if(!m_oEvidence.validateEvidenceList(m_policyKey)) {
+        fprintf(g_logFile, "taoAttest::verifyAttestation: can't verify evidence list \n");
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "taoAttest::verifyAttestation: evidence valid\n");
+    fflush(g_logFile);
+#endif
+
     return fRet;
 }
 

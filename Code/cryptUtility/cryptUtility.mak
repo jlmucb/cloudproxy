@@ -36,7 +36,7 @@ dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o $(B)/encapsulate.o \
 	    $(B)/keys.o $(B)/sha1.o $(B)/hashprep.o $(B)/jlmUtility.o \
 	    $(B)/validateEvidence.o $(B)/cert.o $(B)/quote.o $(B)/vault.o \
-	    $(B)/signedAssertion.o $(B)/accessControl.o $(B)/taoEnvironment.o \
+	    $(B)/signedAssertion.o $(B)/accessControl.o $(B)/taoAttest.o \
 	    $(B)/cryptoHelper.o $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/fileHash.o $(B)/encryptedblockIO.o $(B)/resource.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o 
@@ -56,8 +56,8 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 $(B)/cryptUtility.o: $(S)/cryptUtility.cpp $(S)/cryptUtility.h $(SCD)/jlmcrypto.h $(SCD)/keys.h
 	$(CC) $(CFLAGS) -I$(TSC) -I$(TAO) -I$(SC) -I$(SCD) -I$(ACC) -I$(CLM) -I$(FPX) -I$(PROTO) -I$(VLT) -I$(SBM) -I $(TPM) -c -o $(B)/cryptUtility.o $(S)/cryptUtility.cpp
 
-$(B)/taoEnvironment.o: $(TAO)/taoEnvironment.cpp $(TAO)/tao.h 
-	$(CC) $(CFLAGS) -I$(TSC) -I$(TAO) -I$(SC) -I$(SCD) -I$(ACC) -I$(CLM) -I$(FPX) -I$(PROTO) -I$(VLT) -I$(SBM) -I $(TPM) -D VALIDATEATTESTONLY -c -o $(B)/taoEnvironment.o $(TAO)/taoEnvironment.cpp
+$(B)/taoAttest.o: $(TAO)/taoAttest.cpp $(TAO)/tao.h 
+	$(CC) $(CFLAGS) -I$(TSC) -I$(TAO) -I$(SC) -I$(SCD) -I$(ACC) -I$(CLM) -I$(FPX) -I$(PROTO) -I$(VLT) -I$(SBM) -I $(TPM) -c -o $(B)/taoAttest.o $(TAO)/taoAttest.cpp
 
 $(B)/hashprep.o: $(TPM)/hashprep.cpp $(TPM)/hashprep.h
 	$(CC) $(CFLAGS) -D TEST -I$(SC) -I$(SCD) -I$(TPM) -c -o $(B)/hashprep.o $(TPM)/hashprep.cpp

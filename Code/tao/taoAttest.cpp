@@ -48,7 +48,6 @@ taoAttest::taoAttest()
     m_attestType= 0;
     m_pattestCert= NULL;
     m_pquoteKey= NULL;
-    m_oEvidence;
     m_szQuoteAlg= NULL;
     m_szQuoteInfo= NULL;
     m_szCanonicalQuotedBody= NULL;
@@ -145,7 +144,7 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
     fprintf(g_logFile, "taoAttest::init, attestation\n%s\nEvidence\n%s\n", 
             attestation, attestEvidence);
     fprintf(g_logFile, "Policy Key\n");
-    (RSAKey*)policyKey->printMe();
+    ((RSAKey*)policyKey)->printMe();
     fflush(g_logFile);
 #endif
 

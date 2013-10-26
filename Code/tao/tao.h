@@ -403,10 +403,6 @@ public:
 };
 
 
-bool VerifyAttestation(const char *attestation,
-                       const char *attestEvidence, RSAKey&  oPolicyKey);
-
-
 #endif
 
 

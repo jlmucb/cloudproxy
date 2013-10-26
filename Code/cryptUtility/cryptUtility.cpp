@@ -1035,6 +1035,7 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
 bool VerifyQuote(const char* szQuoteFile, const char* szEvidenceFile,
                  const char* szRootKeyFile)
 {
+    taoAttest       oAttest;
     Quote           oQuote;
     PrincipalCert   oCert;
     char* szEvidenceString= readandstoreString(szEvidenceFile);
@@ -1080,8 +1081,16 @@ bool VerifyQuote(const char* szQuoteFile, const char* szEvidenceFile,
     fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
     fprintf(g_logFile, "Evidence :\n%s\n\n", szEvidenceString);
 
-    return VerifyAttestation(szQuoteString, szEvidenceString, aikKey);
+    // initialize Attest object
+    if(!oAttest.init(CPXMLATTESTATION, szQuoteString, szEvidenceString, (KeyInfo*) &aikKey)) {
+        fprintf(g_logFile, "VerifyQuote:: cant init attest object\n");
+        return false;
+    }
+
+    // verify attestation 
+    return oAttest.verifyAttestation();
 }
+
 
 bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasurementFile)
 {

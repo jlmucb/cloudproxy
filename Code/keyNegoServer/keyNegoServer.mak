@@ -39,7 +39,7 @@ dobjs=      $(B)/keyNegoServer.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility
 	    $(B)/mpNumTheory.o  $(B)/cryptoHelper.o $(B)/quote.o $(B)/cert.o  \
 	    $(B)/resource.o $(B)/modesandpadding.o $(B)/validateEvidence.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
-	    $(B)/fastArith.o $(B)/encryptedblockIO.o $(B)/taoEnvironment.o  $(B)/taoAttest.o
+	    $(B)/fastArith.o $(B)/encryptedblockIO.o $(B)/taoAttest.o
 
 all: $(E)/keyNegoServer.exe
 
@@ -88,9 +88,6 @@ $(B)/cryptoHelper.o: $(SCC)/cryptoHelper.cpp $(SCC)/cryptoHelper.h
 
 $(B)/taoAttest.o: $(TH)/taoAttest.cpp
 	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -I$(SCC) -I$(TH) -I$(CLM) -I$(TRS) -I$(TPD) -c -o $(B)/taoAttest.o $(TH)/taoAttest.cpp
-
-$(B)/taoEnvironment.o: $(TH)/taoEnvironment.cpp
-	$(CC) $(O1CFLAGS) -I$(SC) -I$(BSC) -I$(SCC) -I$(TH) -I$(CLM) -I$(TRS) -I$(TPD) -D VALIDATEATTESTONLY -c -o $(B)/taoEnvironment.o $(TH)/taoEnvironment.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

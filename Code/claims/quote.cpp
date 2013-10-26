@@ -233,6 +233,17 @@ char* Quote::getquotekeyInfo()
 }
 
 
+char* Quote::getquotedkeyName()
+{
+    if(m_pNodequotedKeyInfo==NULL) 
+        return NULL;
+    const char* szA= ((TiXmlElement*) m_pNodequotedKeyInfo)->Attribute ("KeyName");
+    if(szA==NULL)
+        return NULL;
+    return strdup(szA);
+}
+
+
 char* Quote::getquotedkeyInfo()
 {
     if(m_pNodequotedKeyInfo==NULL) {
@@ -496,7 +507,8 @@ cleanup:
 //      quoteValue
 bool decodeXMLQuote(const char* szXMLQuote, char** pszAlg, char** psznonce, 
                     char** pszDigest, char** pszQuotedInfo, char** pszQuoteValue, 
-                    char** pszquoteKeyInfo, char** pszquotedKeyInfo)
+                    char** pszquoteKeyInfo, char** pszquotedKeyInfo,
+                    char** pszquotedKeyName)
 {
     Quote   oQuote;
 
@@ -511,6 +523,7 @@ bool decodeXMLQuote(const char* szXMLQuote, char** pszAlg, char** psznonce,
     *pszquoteKeyInfo= oQuote.getquotekeyInfo();
     *pszDigest= oQuote.getcodeDigest();
     *pszquotedKeyInfo= oQuote.getquotedkeyInfo();
+    *pszquotedKeyName= oQuote.getquotedkeyName();
 
     return true;
 }
@@ -580,7 +593,14 @@ char*   formatSignedInfo(RSAKey* pKey,
     int     bitkeySize= pKey->m_ikeySize;
 
 #ifdef  TEST
-    fprintf(g_logFile, "Format signedInfo\n");
+    fprintf(g_logFile, "Format signedInfo %d\n", bitkeySize);
+    fflush(g_logFile);
+    fprintf(g_logFile, "\tCertid: %s, serialNo: %d\n", szCertid, serialNo);
+    fflush(g_logFile);
+    fprintf(g_logFile, "\tnotBefore: %s, notAfter: %s\n", szNotBefore, szNotAfter);
+    fflush(g_logFile);
+    fprintf(g_logFile, "\tszKeyInfo: %s, digest: %s, subjID\n", szKeyInfo, szDigest, szSubjKeyID);
+    fflush(g_logFile);
 #endif
 
     sprintf(szTemp, g_szSignedInfo1, bitkeySize, szCertid, serialNo, 

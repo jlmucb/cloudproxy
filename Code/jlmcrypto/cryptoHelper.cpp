@@ -73,6 +73,9 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout,
     revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
     *psizeout= key.m_iByteSizeM;
 
+#ifdef TEST1
+    PrintBytes((char*)"RSAEncrypt out: ", out, *psizeout);
+#endif
     return true;
 }
 
@@ -207,7 +210,7 @@ bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in,
                 int* psizeout, byte* out)
 {
     byte    padded[1024];   // FIX
-    int     size= 1024; // FIX
+    int     size= 1024;     // FIX
     
 #ifdef TEST1
     fprintf(g_logFile, "RSAUnseal direction %d\n", keyuse);
@@ -313,7 +316,7 @@ RSAKey* RSAGenerateKeyPair(int keySize)
         pKey->m_uAlgorithm= RSA2048;
         pKey->m_ikeySize= 2048;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "generateRSAKeypair: ikeyByteSize= %d\n", 
             ikeyByteSize);
 #endif

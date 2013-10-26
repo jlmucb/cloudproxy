@@ -72,6 +72,7 @@ public:
     char*       getQuoteAlgorithm();
     char*       getquotekeyInfo();
     char*       getquotedkeyInfo();
+    char*       getquotedkeyName();
 };
 
 
@@ -80,7 +81,7 @@ char*   encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
             int sizeQuote, byte* quote);
 bool    decodeXMLQuote(const char* szXMLQuote, char** pszAlg, char** psznonce, 
             char** pszDigest, char** pszQuotedInfo, char** pszQuoteValue, 
-            char** pszquoteKeyInfo, char** pszquotedKeyInfo);
+            char** pszquoteKeyInfo, char** pszquotedKeyInfo, char** pszquotedKeyName);
 
 bool	sha256quoteHash(int sizenonce, byte* nonce, 
                      int sizetobeSignedHash, byte* tobesignedHash, 

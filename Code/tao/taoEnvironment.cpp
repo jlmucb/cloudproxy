@@ -1329,6 +1329,7 @@ bool VerifyAttestation(const char *attestation, const char *attestEvidence,
     char*           szQuoteValue= NULL;
     char*           szQuoteKeyInfo= NULL;
     char*           szQuotedKeyInfo= NULL;
+    char*           szQuotedKeyName= NULL;
     bool            fRet= false;
 
     if(attestation==NULL) {
@@ -1350,7 +1351,7 @@ bool VerifyAttestation(const char *attestation, const char *attestEvidence,
     // Get the information from attestation
     if(!decodeXMLQuote(attestation, &szQuoteAlg, &sznonce,
                     &szdigest, &szQuoteInfo, &szQuoteValue,
-                    &szQuoteKeyInfo, &szQuotedKeyInfo)) {
+                    &szQuoteKeyInfo, &szQuotedKeyInfo, &szQuotedKeyName)) {
         fprintf(g_logFile, "VerifyAttestation: can't decode attest\n");
         goto done;
     }

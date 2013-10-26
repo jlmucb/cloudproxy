@@ -58,6 +58,7 @@ taoAttest::taoAttest()
     m_szQuoteKeyInfo= NULL;
     m_szQuotedKeyInfo= NULL;
     m_policyKey= NULL;
+    m_szQuotedKeyName= NULL;
 }
 
 
@@ -105,6 +106,10 @@ taoAttest::~taoAttest()
         free(m_szQuotedKeyInfo);
         m_szQuotedKeyInfo= NULL;
     }
+    if(m_szQuotedKeyName!=NULL) {
+        free(m_szQuotedKeyName);
+        m_szQuotedKeyName= NULL;
+    }
     m_policyKey= NULL;
 }
 
@@ -147,7 +152,7 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
     // Get the information from attestation
     if(!decodeXMLQuote(attestation, &m_szQuoteAlg, &m_sznonce,
                     &m_szdigest, &m_szQuoteInfo, &m_szQuoteValue,
-                    &m_szQuoteKeyInfo, &m_szQuotedKeyInfo)) {
+                    &m_szQuoteKeyInfo, &m_szQuotedKeyInfo, &m_szQuotedKeyName)) {
         fprintf(g_logFile, "taoAttest::init: can't decode attest\n");
         return false;
     }
@@ -190,7 +195,7 @@ bool taoAttest::bytecodeDigest()
 
 char* taoAttest::codeDigest()
 {
-    if(m_szdigest!=NULL)
+    if(m_szdigest==NULL)
         return NULL;
     return strdup(m_szdigest);
 }
@@ -258,7 +263,7 @@ u32 taoAttest::attestType()
 
 char* taoAttest::quoteAlg()
 {
-    if(m_szQuoteAlg!=NULL)
+    if(m_szQuoteAlg==NULL)
         return NULL;
     return strdup(m_szQuoteAlg);
 }
@@ -266,7 +271,7 @@ char* taoAttest::quoteAlg()
 
 char* taoAttest::quoteInfo()
 {
-    if(m_szQuoteInfo!=NULL)
+    if(m_szQuoteInfo==NULL)
         return NULL;
     return strdup(m_szQuoteInfo);
 }
@@ -274,7 +279,7 @@ char* taoAttest::quoteInfo()
 
 char* taoAttest::quoteCanonicalQuotedBody()
 {
-    if(m_szCanonicalQuotedBody!=NULL)
+    if(m_szCanonicalQuotedBody==NULL)
         return NULL;
     return strdup(m_szCanonicalQuotedBody);
 }
@@ -282,7 +287,7 @@ char* taoAttest::quoteCanonicalQuotedBody()
 
 char* taoAttest::quoteValue()
 {
-    if(m_szQuoteValue!=NULL)
+    if(m_szQuoteValue==NULL)
         return NULL;
     return strdup(m_szQuoteValue);
 }
@@ -290,7 +295,7 @@ char* taoAttest::quoteValue()
 
 char* taoAttest::quoteKeyInfo()
 {
-    if(m_szQuoteKeyInfo!=NULL)
+    if(m_szQuoteKeyInfo==NULL)
         return NULL;
     return strdup(m_szQuoteKeyInfo);
 }
@@ -298,9 +303,17 @@ char* taoAttest::quoteKeyInfo()
 
 char* taoAttest::quotedKeyInfo()
 {
-    if(m_szQuotedKeyInfo!=NULL)
+    if(m_szQuotedKeyInfo==NULL)
         return NULL;
     return strdup(m_szQuotedKeyInfo);
+}
+
+
+char* taoAttest::quotedKeyName()
+{
+    if(m_szQuotedKeyName==NULL)
+        return NULL;
+    return strdup(m_szQuotedKeyName);
 }
 
 

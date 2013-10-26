@@ -382,12 +382,13 @@ public:
     char*           m_szQuoteValue;
     char*           m_szQuoteKeyInfo;
     char*           m_szQuotedKeyInfo;
+    char*           m_szQuotedKeyName;
 
                     taoAttest();
                     ~taoAttest();
 
     bool            init(u32 type, const char *attestation,
-                                    const char* attestEvidence, KeyInfo* policyKey);
+                         const char* attestEvidence, KeyInfo* policyKey);
     bool            verifyAttestation();
     bool            bytecodeDigest();
     char*           codeDigest();
@@ -398,7 +399,7 @@ public:
     char*           quoteValue();
     char*           quoteKeyInfo();
     char*           quotedKeyInfo();
-
+    char*           quotedKeyName();
 };
 
 

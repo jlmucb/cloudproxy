@@ -942,8 +942,8 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys, // FI
 }
 
 
-bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rgIn,// FIX
-                int sizeNonce, byte* rgOut)
+bool rsaXmlDecryptandGetNonce(bool fEncrypt, RSAKey& rgKey, int sizein, byte* rgIn, 
+                              int sizeNonce, byte* rgOut)       // FIX
 
 {
     int iOut= sizeNonce;
@@ -1449,8 +1449,14 @@ bool session::computeServerKeys()
 
     fRet= rsaXmlDecryptandGetNonce(false, *m_myProgramKey, m_myProgramKey->m_iByteSizeM, 
                         m_rguEncPreMasterSecret, BIGSYMKEYSIZE, m_rguPreMasterSecret);
-     if(!fRet)
-         return false;
+    if(!fRet) {
+        fprintf(g_logFile, 
+                "session::computeServerKeys: rsaXmlDecryptandGetNonce failed\n");
+#ifdef TEST1
+        m_myProgramKey->printMe();
+#endif
+        return false;
+    }
     m_fPreMasterSecretValid= true;
     return computeClientKeys();
 }
@@ -2035,14 +2041,14 @@ bool session::serverInit(const char* szPolicyCert, RSAKey* policyKey, // FIX
 bool session::serverprotocolNego(int fd, safeChannel& fc)
 {
     char    request[MAXREQUESTSIZEWITHPAD];     // FIX
-    char    rgszBase64[256];        // FIX
-    char    rgszHashBase64[256];        // FIX
+    char    rgszBase64[256];                    // FIX
+    char    rgszHashBase64[256];                // FIX
     int     n;
     int     type= CHANNEL_NEGO;
     byte    multi= 0;
     byte    final= 0;
-    int     iOut64= 256;        // FIX
-    int     iOut= 256;      // FIX
+    int     iOut64= 256;                        // FIX
+    int     iOut= 256;                          // FIX
     bool    fRet= true;
 
 #ifdef  TEST

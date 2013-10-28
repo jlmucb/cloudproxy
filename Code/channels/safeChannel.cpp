@@ -173,7 +173,7 @@ int  safeChannel::safesendPacket(byte* buf, int len, int type, byte multipart, b
     byte*       pNextPlain= plainMessageBlock;
     int         i;
     int         iLeft;
-    byte        rguCBCMixer[BLKSIZE];       // FIX
+    byte        rguCBCMixer[GLOBALMAXSYMKEYSIZE];
     byte*       pNext= NULL;
 
     // buffer too big?

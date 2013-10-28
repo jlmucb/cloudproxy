@@ -48,6 +48,9 @@
 #define RSA1024SIGALG  "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
 #define RSA2048SIGALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
 
+// maximum string size of a quote
+#define MAXQUOTEDINFOSIZE  8192
+
 
 class Quote {
 public:

@@ -378,7 +378,7 @@ bool emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
     int         type= CHANNEL_REQUEST;
     byte        multi=0;
     byte        final= 0;
-    byte        fileBuf[MAXREQUESTSIZEWITHPAD];     // FIX
+    byte        fileBuf[MAXREQUESTSIZEWITHPAD];
 
     while(fc.safegetPacket(fileBuf, MAXREQUESTSIZE, &type, &multi, &final)>0);
     return true;
@@ -391,7 +391,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     int                 type= CHANNEL_RESPONSE;
     byte                multi, final;
     int                 n= 0;
-    byte                fileBuf[MAXREQUESTSIZEWITHPAD];     // FIX
+    byte                fileBuf[MAXREQUESTSIZEWITHPAD];
     encryptedFilewrite  encFile;
 
 #ifdef TEST
@@ -454,7 +454,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     int                 type= CHANNEL_RESPONSE;
     byte                multi, final;
     int                 n= 0;
-    byte                fileBuf[MAXREQUESTSIZEWITHPAD];     // FIX
+    byte                fileBuf[MAXREQUESTSIZEWITHPAD];
     encryptedFileread   encFile;
 
 #ifdef TEST

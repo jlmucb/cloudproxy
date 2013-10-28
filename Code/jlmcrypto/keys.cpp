@@ -144,15 +144,15 @@ symKey::symKey()
     m_iByteSizeKey= 0;
     m_iByteSizeIV= 0;
 
-    memset(m_rgbKey, 0, SMALLKEYSIZE);  // FIX
-    memset(m_rgbIV, 0, SMALLKEYSIZE);   // FIX
+    memset(m_rgbKey, 0, GLOBALMAXSYMKEYSIZE);
+    memset(m_rgbIV, 0, GLOBALMAXSYMKEYSIZE);
 }
 
 
 symKey:: ~symKey()
 {
-    memset(m_rgbKey, 0, SMALLKEYSIZE);  // FIX
-    memset(m_rgbIV, 0, SMALLKEYSIZE);   // FIX
+    memset(m_rgbKey, 0, GLOBALMAXSYMKEYSIZE);
+    memset(m_rgbIV, 0, GLOBALMAXSYMKEYSIZE);
 }
 
 
@@ -213,7 +213,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
         }
         m_iByteSizeKey= keySize;
         m_iByteSizeIV= 0;
-        iOutLen= SMALLKEYSIZE;
+        iOutLen= GLOBALMAXSYMKEYSIZE;
         if(!fromBase64(strlen(szBase64KeyValue), szBase64KeyValue, &iOutLen, m_rgbKey)) {
             fprintf(g_logFile, "Cant base64 decode AES key\n");
             return false;
@@ -297,15 +297,15 @@ RSAKey::RSAKey()
     m_iByteSizePM1= 0;
     m_iByteSizeQM1= 0;
 
-    memset(m_rgbM, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbD, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbE, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbP, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbQ, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbDP, 0, BIGKEYSIZE); // FIX
-    memset(m_rgbDQ, 0, BIGKEYSIZE);     // FIX
-    memset(m_rgbPM1, 0, BIGKEYSIZE);    // FIX
-    memset(m_rgbQM1, 0, BIGKEYSIZE);    // FIX
+    memset(m_rgbM, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbD, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbE, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbP, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbQ, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbDP, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbDQ, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbPM1, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbQM1, 0, GLOBALMAXPUBKEYSIZE);
 }
 
 
@@ -317,15 +317,15 @@ RSAKey::~RSAKey()
 
 void RSAKey::wipeKeys()
 {
-    memset(m_rgbM, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbD, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbE, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbP, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbQ, 0, BIGKEYSIZE);  // FIX
-    memset(m_rgbDP, 0, BIGKEYSIZE); // FIX
-    memset(m_rgbDQ, 0, BIGKEYSIZE);     // FIX
-    memset(m_rgbPM1, 0, BIGKEYSIZE);    // FIX
-    memset(m_rgbQM1, 0, BIGKEYSIZE);    // FIX
+    memset(m_rgbM, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbD, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbE, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbP, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbQ, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbDP, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbDQ, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbPM1, 0, GLOBALMAXPUBKEYSIZE);
+    memset(m_rgbQM1, 0, GLOBALMAXPUBKEYSIZE);
 
     if(m_pbnM!=NULL) {
         memset(m_pbnM->m_pValue, 0, m_pbnM->mpSize()*sizeof(u64));
@@ -391,7 +391,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
     const char*     szRsaKeyD= NULL;
     const char*     szRsaKeyDP= NULL;
     const char*     szRsaKeyDQ= NULL;
-    int             iOutLen= 512;       // FIX
+    int             iOutLen= GLOBALMAXPUBKEYSIZE;
 
     if(pRootElement==NULL) {
         fprintf(g_logFile, "Cant get root element\n");
@@ -472,7 +472,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
             m_ikeyNameSize= 0;
         }
 
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeM= 0;
         if(szRsaKeyM) {
             if(!fromBase64(strlen(szRsaKeyM), szRsaKeyM, &iOutLen, m_rgbM)) {
@@ -485,7 +485,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
 #endif
         }
 
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeP= 0;
         if(szRsaKeyP) {
             if(!fromBase64(strlen(szRsaKeyP), szRsaKeyP, &iOutLen, m_rgbP)) {
@@ -496,7 +496,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         }
 
         m_iByteSizeQ= 0;
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         if(szRsaKeyQ) {
             if(!fromBase64(strlen(szRsaKeyQ), szRsaKeyQ, &iOutLen, m_rgbQ)) {
                 fprintf(g_logFile, "Cant base64 decode Q in RSA key\n");
@@ -505,7 +505,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
             m_iByteSizeQ= iOutLen;
         }
 
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeE= 0;
         if(szRsaKeyE) {
             if(!fromBase64(strlen(szRsaKeyE), szRsaKeyE, &iOutLen, m_rgbE)) {
@@ -515,7 +515,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
             m_iByteSizeE= iOutLen;
         }
 
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeD= 0;
         if(szRsaKeyD) {
             if(!fromBase64(strlen(szRsaKeyD), szRsaKeyD, &iOutLen, m_rgbD)) {
@@ -525,7 +525,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
             m_iByteSizeD= iOutLen;
         }
 
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeDP= 0;
         if(szRsaKeyDP) {
             if(!fromBase64(strlen(szRsaKeyDP), szRsaKeyDP, &iOutLen, m_rgbDP)) {
@@ -535,7 +535,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
             m_iByteSizeDP= iOutLen;
         }
 
-        iOutLen= BIGKEYSIZE;
+        iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeDQ= 0;
         if(szRsaKeyDQ) {
             if(!fromBase64(strlen(szRsaKeyDQ), szRsaKeyDQ, &iOutLen, m_rgbDQ)) {

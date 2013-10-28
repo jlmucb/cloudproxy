@@ -589,7 +589,7 @@ void cbc::nextMac(byte* puA)
 
 bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
 {
-    byte    oldX[MAXAUTHSIZE];  // FIX
+    byte    oldX[GLOBALMAXSYMKEYSIZE];
 
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::nextPlainBlockIn\n");
@@ -609,7 +609,7 @@ bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut)
 
 bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut)
 {
-    byte    oldX[MAXAUTHSIZE];  // FIX
+    byte    oldX[GLOBALMAXSYMKEYSIZE];
 
 #ifdef CRYPTOTEST
     fprintf(g_logFile, "cbc::nextCipherBlockIn\n");
@@ -731,7 +731,7 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
 #ifdef MACTHENENCRYPT  // should never do this
     // decrypt Mac
-    byte    oldX[MAXAUTHSIZE];  // FIX
+    byte    oldX[GLOBALMAXSYMKEYSIZE];
 
     m_oAESDec.Decrypt(puIn, oldX);
     inlineXor(m_rguHMACReceived, m_rgLastBlock, oldX, m_iBlockSize);

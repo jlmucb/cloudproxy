@@ -540,7 +540,7 @@ const char*   g_szCertTemplate=
 
 char*   formatCert(const char* szSignedInfo, const char* szSig)
 {
-    char    rgBuf[MAXREQUESTSIZE];		//FIX
+    char    rgBuf[MAXREQUESTSIZE];
 
     if(szSignedInfo==NULL || szSig==NULL)
         return NULL;
@@ -585,9 +585,9 @@ char*   formatSignedInfo(RSAKey* pKey,
             const char* szNotAfter, const char* szSubjName, const char* szKeyInfo, 
             const char* szDigest, const char* szSubjKeyID)
 {
-    char    szTemp[MAXREQUESTSIZE];		//FIX
-    char    rgBuf[MAXREQUESTSIZE];		//FIX
-    int     iLeft= MAXREQUESTSIZE;		//FIX
+    char    szTemp[MAXREQUESTSIZE];
+    char    rgBuf[MAXREQUESTSIZE];
+    int     iLeft= MAXREQUESTSIZE;
     char*   p= rgBuf;
     char*   szSignedInfo= NULL;
     int     bitkeySize= pKey->m_ikeySize;

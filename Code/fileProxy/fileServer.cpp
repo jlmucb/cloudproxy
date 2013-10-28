@@ -100,7 +100,7 @@ theServiceChannel::~theServiceChannel()
 
 int theServiceChannel::processRequests()
 {
-    byte    request[MAXREQUESTSIZEWITHPAD];     // FIX?
+    byte    request[MAXREQUESTSIZEWITHPAD];
     int     type= 0;
     byte    multi= 0;
     byte    final= 0;
@@ -442,7 +442,7 @@ bool fileServer::initFileKeys()
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
-        m= SMALLKEYSIZE;
+        m= GLOBALMAXSYMKEYSIZE;
         if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");

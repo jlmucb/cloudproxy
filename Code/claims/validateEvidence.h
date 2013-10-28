@@ -58,7 +58,7 @@
 
 
 char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
-int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt,  // FIX
+int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt,  // FIX
                  int npieces, int* rgType, void** rgObject);
 
 // FIX
@@ -86,7 +86,7 @@ public:
 
     bool            parseEvidenceList(TiXmlElement* pRootElement);
     bool            getSubjectEvidence(int* pType, void** pEvid);
-    bool            validateEvidenceList(RSAKey* pRootKey);
+    bool            validateEvidenceList(KeyInfo* pRootKey);
 };
 
 
@@ -110,7 +110,7 @@ public:
     ~evidenceCollection();
 
     bool            parseEvidenceCollection(const char* szEvidenceCollection);
-    bool            validateEvidenceCollection(RSAKey* pRootKey);   // FIX
+    bool            validateEvidenceCollection(KeyInfo* pRootKey);
 };
 
 

@@ -124,6 +124,12 @@ bool openclient(int* pfd, const char* szunixPath, struct sockaddr* psrv)
 #endif
 
 
+int tcChannel::maxbufsize()
+{
+    return PARAMSIZE;
+}
+
+
 bool tcChannel::OpenBuf(u32 type, const char* deviceName, 
                         int fd, const char* file, u32 flags)
 {

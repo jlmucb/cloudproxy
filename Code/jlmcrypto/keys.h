@@ -57,9 +57,9 @@ public:
 class symKey : public KeyInfo {
 public:
     i32             m_iByteSizeKey;
-    byte            m_rgbKey[SMALLKEYSIZE];     // FIX
+    byte            m_rgbKey[GLOBALMAXSYMKEYSIZE];
     i32             m_iByteSizeIV;
-    byte            m_rgbIV[SMALLKEYSIZE];      // FIX
+    byte            m_rgbIV[GLOBALMAXSYMKEYSIZE];
 
     symKey();
     ~symKey();
@@ -87,15 +87,15 @@ public:
     i32             m_iByteSizeQM1;
 
     //  These should be deleted eventually
-    byte            m_rgbM[BIGKEYSIZE];     // FIX
-    byte            m_rgbD[BIGKEYSIZE];     // FIX
-    byte            m_rgbE[BIGKEYSIZE];     // FIX
-    byte            m_rgbP[BIGKEYSIZE];     // FIX
-    byte            m_rgbQ[BIGKEYSIZE];     // FIX
-    byte            m_rgbDP[BIGKEYSIZE];        // FIX
-    byte            m_rgbDQ[BIGKEYSIZE];        // FIX
-    byte            m_rgbPM1[BIGKEYSIZE];       // FIX
-    byte            m_rgbQM1[BIGKEYSIZE];       // FIX
+    byte            m_rgbM[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbD[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbE[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbP[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbQ[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbDP[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbDQ[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbPM1[GLOBALMAXPUBKEYSIZE];
+    byte            m_rgbQM1[GLOBALMAXPUBKEYSIZE];
 
     bnum*           m_pbnM;
     bnum*           m_pbnP;

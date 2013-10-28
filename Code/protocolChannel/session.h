@@ -33,13 +33,9 @@
 #include "cert.h"
 #include "safeChannel.h"
 
-#define BIGNONCESIZE     64
-#define BIGHASHSIZE     128
 #define BIGSIGNEDSIZE   256
-
 #define SMALLNONCESIZE   32
-#define SMALLHASHSIZE    32
-#define SMALLSIGNEDSIZE 128
+#define PREMASTERSIZE    64
 
 #define MAXPRINCIPALS    25
 
@@ -102,7 +98,7 @@ public:
 
     bool            m_fSignedMessageValid;
     int             m_sizeSignedMessage;
-    byte            m_rgSignedMessage[BIGKEYSIZE];      // FIX
+    byte            m_rgSignedMessage[GLOBALMAXPUBKEYSIZE];
 
     bool            m_fbase64SignedMessageHashValid;
     char*           m_szbase64SignedMessageHash;
@@ -117,34 +113,36 @@ public:
     char*           m_szChallengeSignAlg;
 
     char*           m_szChallenge;
-    byte            m_rguChallenge[SMALLNONCESIZE];  // FIX
+    byte            m_rguChallenge[SMALLNONCESIZE];
     char*           m_szSignedChallenges;
 
     bool            m_fClientRandValid;
-    byte            m_rguClientRand[SMALLNONCESIZE];// FIX
+    byte            m_rguClientRand[SMALLNONCESIZE];
 
     bool            m_fServerRandValid;
-    byte            m_rguServerRand[SMALLNONCESIZE];// FIX
+    byte            m_rguServerRand[SMALLNONCESIZE];
 
     bool            m_fPreMasterSecretValid;
-    byte            m_rguPreMasterSecret[BIGSYMKEYSIZE];// FIX
+    byte            m_rguPreMasterSecret[PREMASTERSIZE];
 
     bool            m_fEncPreMasterSecretValid;
-    byte            m_rguEncPreMasterSecret[BIGSIGNEDSIZE];// FIX
+    byte            m_rguEncPreMasterSecret[GLOBALMAXPUBKEYSIZE];
 
     char*           m_szSuite;
     int             m_iSuiteIndex;
 
     bool            m_fChannelKeysEstablished;
 
-    byte            m_rguEncryptionKey1[SMALLSYMKEYSIZE];  // Confidentiality key   // FIX
-    byte            m_rguIntegrityKey1[SMALLSYMKEYSIZE];   // HMAC key  // FIX
-    byte            m_rguEncryptionKey2[SMALLSYMKEYSIZE];  // Confidentiality key   // FIX
-    byte            m_rguIntegrityKey2[SMALLSYMKEYSIZE];   // HMAC key  // FIX
+    byte            m_rguEncryptionKey1[GLOBALMAXSYMKEYSIZE];  // Confidentiality key
+    byte            m_rguIntegrityKey1[GLOBALMAXSYMKEYSIZE];   // HMAC key
+    byte            m_rguEncryptionKey2[GLOBALMAXSYMKEYSIZE];  // Confidentiality key
+    byte            m_rguIntegrityKey2[GLOBALMAXSYMKEYSIZE];   // HMAC key
 
 
                     session();
                     ~session();
+
+    int             maxPrincipals(){return MAXPRINCIPALS;};
 
     //      Session setup functions
     bool            serverNegoMessage1(char* buf, int maxSize, int iSessionId, 
@@ -172,14 +170,14 @@ public:
     bool            getDatafromClientMessage3(int n, char* request);
     bool            getDatafromClientMessage4(int n, char* request);
 
-    bool            clientInit(const char* szPolicyCert, RSAKey* policyKey, // FIX
-                               const char* szmyCert, RSAKey* pmyKey);// FIX
+    bool            clientInit(const char* szPolicyCert, KeyInfo* policyKey,
+                               const char* szmyCert, KeyInfo* pmyKey);
     bool            clientprotocolNego(int fd, safeChannel& fc,
                                        const char* szPrincipalKeys, 
                                        const char* szPrincipalCerts);
 
-    bool            serverInit(const char* szPolicyCert, RSAKey* policyKey, // FIX
-                               const char* szmyCert, RSAKey* pmyKey);// FIX
+    bool            serverInit(const char* szPolicyCert, KeyInfo* policyKey,
+                               const char* szmyCert, KeyInfo* pmyKey);
     bool            serverprotocolNego(int fd, safeChannel& fc);
 
     //      Channel negotiation functions

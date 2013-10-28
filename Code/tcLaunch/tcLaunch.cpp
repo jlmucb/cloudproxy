@@ -84,9 +84,9 @@ char *nextline(char* start, char* end)
 
 int  getmysyspid(const char* name)
 {
-    char    buf[BUFSIZE];       // FIX
-    char    fileName[256];      // FIX
-    char    line[BUFSIZE];      // FIX
+    char    buf[BUFSIZE];
+    char    fileName[256];
+    char    line[BUFSIZE];
     int     mypid= getpid();
     int     newpid= -1;
     int     size= -1;
@@ -143,7 +143,7 @@ void tcBufferprint(tcBuffer* p)
 bool newgettcBuf(int fd, int* procid, u32* puReq, u32* pstatus, int* porigprocid,
                          int* paramsize, byte* params)
 {
-    byte            rgBuf[PADDEDREQ];   // FIX
+    byte            rgBuf[PADDEDREQ];
     tcBuffer*       pReq= (tcBuffer*) rgBuf;
     int             i;
     int             n;
@@ -188,7 +188,7 @@ bool newgettcBuf(int fd, int* procid, u32* puReq, u32* pstatus, int* porigprocid
 bool newsendtcBuf(int fd, int procid, u32 uReq, u32 status, int origproc,
                           int paramsize, byte* params)
 {
-    byte            rgBuf[PADDEDREQ];   // FIX
+    byte            rgBuf[PADDEDREQ];
     tcBuffer*       pReq= (tcBuffer*) rgBuf;
     int             i;
     int             n;
@@ -223,8 +223,8 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
     u32         ureq;
     int         procid= g_myPid;
     int         origprocid= g_myPid;
-    int         size= PARAMSIZE;    // FIX
-    byte        rgBuf[PARAMSIZE];   // FIX
+    int         size= PARAMSIZE;
+    byte        rgBuf[PARAMSIZE];
 
     if(argc<1) {
         fprintf(g_logFile, "startAppfromDeviceDriver: no argument\n");
@@ -363,9 +363,9 @@ bool GetPolicyKey()
     u32         type= 0;
     int         procid= g_myPid;
     int         origprocid= g_myPid;
-    int         size= PARAMSIZE;    // FIX
-    byte        rgBuf[PARAMSIZE];   // FIX
-    byte        pKey[PARAMSIZE];    // FIX
+    int         size= PARAMSIZE;
+    byte        rgBuf[PARAMSIZE];
+    byte        pKey[PARAMSIZE];
 
 #ifdef  TEST
     fprintf(g_logFile, "GetPolicyKey\n");

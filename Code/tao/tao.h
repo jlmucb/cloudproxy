@@ -101,6 +101,11 @@
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 
+
+#define MAXHOSTNAMESIZE                      512
+#define MAXSEALSIZE                         4096
+
+
 //
 //   Standard files
 //

@@ -386,8 +386,8 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     int         iRead= 0;
     int         filesize= 0;
     int         datasize= 0;
-    byte        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
-    int         iLeft= MAXREQUESTSIZE;  // FIX
+    byte        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
     char*       szFile= NULL;
     const char* szError= NULL;
@@ -457,8 +457,8 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 {
     bool            fAllowed= false;
     bool            fError;
-    char            szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
-    int             iLeft= MAXREQUESTSIZE;  // FIX
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
     char*           p= (char*)szBuf;
     char*           szFile= NULL;
     const char*     szError= NULL;
@@ -612,8 +612,8 @@ bool fileServices::servergetResourcefromclient(Request& oReq, timer& accessTimer
     bool            fError;
     int             iWrite= 0;
     int             size= 0;
-    byte            szBuf[MAXREQUESTSIZEWITHPAD];       // FIX
-    int             iLeft= MAXREQUESTSIZE;      // FIX
+    byte            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
     char*           p= (char*)szBuf;
     const char*     szError= NULL;
     int             type= CHANNEL_RESPONSE;
@@ -811,8 +811,8 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
                                                const char* szOutFile, 
                                                timer& encTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
-    int         iLeft= MAXREQUESTSIZE;  // FIX
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
     char*       p= szBuf;
     Response    oResponse;
     int         n= 0;
@@ -878,8 +878,8 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
                                                 const char* szSubject, 
                                                 const char* szEvidence)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];       // FIX
-    int         iLeft= MAXREQUESTSIZE;      // FIX
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
     char*       p= szBuf;
     Response    oResponse;
     int         n= 0;
@@ -947,8 +947,8 @@ bool fileServices::clientsendResourcetoserver(const char* szSubject,
                                               const char* szInFile, 
                                               timer& decTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
-    int         iLeft= MAXREQUESTSIZE;  // FIX
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
     char*       p= szBuf;
     Response    oResponse;
     int         n= 0;
@@ -1028,8 +1028,8 @@ bool fileServices::clientchangeownerResource(const char* szAction,
                                              const char* szEvidence, 
                                              const char* szOutFile)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];   // FIX
-    int         iLeft= MAXREQUESTSIZE;  // FIX
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
     Response    oResponse;
     int         n= 0;
@@ -1076,8 +1076,8 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
                                         const char* szEvidence, 
                                         const char* szFile)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];       // FIX
-    int         iLeft= MAXREQUESTSIZE;      // FIX
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
     Response    oResponse;
     int         n= 0;

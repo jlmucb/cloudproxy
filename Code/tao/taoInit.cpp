@@ -158,7 +158,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
     char*           szEvidence= NULL;                   
 
     // this is the Quote XML
-    char            quotedInfo[4096];   // FIX
+    char            quotedInfo[MAXQUOTEDINFOSIZE];
 
     // this is the canonicalize Quote XML
     char*           szCanonicalQuotedBody= NULL;        
@@ -169,8 +169,8 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
     byte            rgHash[SHA256DIGESTBYTESIZE];       
 
     // this is the TPM signed quote value
-    int             sizequoteValue= 512;    // FIX
-    byte            quoteValue[512];        // FIX      
+    int             sizequoteValue= GLOBALMAXPUBKEYSIZE;
+    byte            quoteValue[GLOBALMAXPUBKEYSIZE];
 
     // this is my measurement
     u32             codeDigestType= 0;

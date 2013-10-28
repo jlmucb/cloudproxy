@@ -482,7 +482,7 @@ bool  includesPurpose(const char* szIntended, const char* szGranted)
 }
 
 
-int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, // FIX
+int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt, // FIX
                  int npieces, int* rgType, void** rgObject)
 
 //  Only RSA is supported for now.
@@ -502,6 +502,11 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, // FIX
     fflush(g_logFile);
 #endif
 
+    if(pRootKey->m_ukeyType!=RSAKEYTYPE) {
+        fprintf(g_logFile, "VerifyChain unimplemeted root key typre\n");
+        return -1;
+    }
+
     try {
 
         // now if not specified
@@ -512,7 +517,7 @@ int  VerifyChain(RSAKey& rootKey, const char* szPurpose, tm* pt, // FIX
 
         // root at bottom?
         if(rgType[npieces-1]!= EMBEDDEDPOLICYPRINCIPAL || 
-                          !sameRSAKey((RSAKey*)rgObject[npieces-1], &rootKey)) {
+                          !sameRSAKey((RSAKey*)rgObject[npieces-1], (RSAKey*)pRootKey)) {
             iRet= INVALIDROOT;
             throw("VerifyChain: Chain does not end with root\n");
         }
@@ -621,7 +626,7 @@ bool evidenceCollection::parseEvidenceCollection(const char* szEvidenceCollectio
 }
 
 
-bool evidenceCollection::validateEvidenceCollection(RSAKey* pRootKey)   // FIX
+bool evidenceCollection::validateEvidenceCollection(KeyInfo* pRootKey)
 {
     int     i;
 
@@ -758,7 +763,7 @@ bool  evidenceList::getSubjectEvidence(int* pType, void** pEvid)
 }
 
 
-bool  evidenceList::validateEvidenceList(RSAKey* pRootKey)  // FIX
+bool  evidenceList::validateEvidenceList(KeyInfo* pRootKey)
 {
     int             iVerify;
 
@@ -786,7 +791,7 @@ bool  evidenceList::validateEvidenceList(RSAKey* pRootKey)  // FIX
         return false;
     }
 
-    iVerify= VerifyChain(*pRootKey, NULL, NULL, m_iNumPiecesofEvidence, 
+    iVerify= VerifyChain(pRootKey, NULL, NULL, m_iNumPiecesofEvidence, 
                          m_rgiEvidenceTypes, (void**) m_rgEvidence);
     if(iVerify>0)
         m_fValid= true;

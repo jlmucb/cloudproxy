@@ -73,6 +73,7 @@ public:
     u32                     m_uType;
     int                     m_fd;
 
+    int  maxbufsize();
     bool OpenBuf(u32 type, const char* deviceName, int fd, const char* file, u32 flags);
     int  WriteBuf(byte* buf, int size);
     int  ReadBuf(byte* buf, int size);

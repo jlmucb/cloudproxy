@@ -224,8 +224,8 @@ bool   encapsulatedMessage::parseMetaData()
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
-    TiXmlNode*      pNode;
-    TiXmlNode*      pNode1;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
 
     if(m_szXMLmetadata==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::parseMetaData: XML metadata empty\n");
@@ -307,15 +307,15 @@ bool   encapsulatedMessage::parseMetaData()
 
 bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)     // FIX
 {
-    char    buf[4096];  // FIX
-    int     outsize= 4096;
-    byte    in[128];    // FIX
+    char    buf[2*GLOBALMAXPUBKEYSIZE];
+    int     outsize= 2*GLOBALMAXPUBKEYSIZE;
+    byte    in[2*GLOBALMAXSYMKEYSIZE];
     int     insize= 0;
-    byte    padded[512];    // FIX
+    byte    padded[GLOBALMAXPUBKEYSIZE];
     int     blocksize;
     bnum    bnMsg(64);  // FIX
     bnum    bnOut(64);  // FIX
-    byte    sealed[512];    // FIX
+    byte    sealed[GLOBALMAXPUBKEYSIZE];
 
     if(sealingKey==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::sealKey no sealing key\n");

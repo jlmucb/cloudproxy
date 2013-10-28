@@ -56,16 +56,16 @@ public:
     int     iHMAC;
     int     sizeofEncKey;
     int     sizeofIntKey;
-    byte    sendEncKey[BIGSYMKEYSIZE];      // FIX
-    byte    sendIntKey[BIGSYMKEYSIZE];      // FIX
-    byte    getEncKey[BIGSYMKEYSIZE];       // FIX
-    byte    getIntKey[BIGSYMKEYSIZE];       // FIX
+    byte    sendEncKey[GLOBALMAXSYMKEYSIZE];
+    byte    sendIntKey[GLOBALMAXSYMKEYSIZE];
+    byte    getEncKey[GLOBALMAXSYMKEYSIZE];
+    byte    getIntKey[GLOBALMAXSYMKEYSIZE];
 
     bool    fsendIVValid;
     bool    fgetIVReceived;
     bool    fsendIVSent;
-    byte    lastgetBlock[BIGSYMKEYSIZE];    // last decrypted cipher block received // FIX
-    byte    lastsendBlock[BIGSYMKEYSIZE];   // last cipher block sent // FIX
+    byte    lastgetBlock[GLOBALMAXSYMKEYSIZE];    // last decrypted cipher block received
+    byte    lastsendBlock[GLOBALMAXSYMKEYSIZE];   // last cipher block sent
 
     byte    plainMessageBlock[MAXREQUESTSIZEWITHPAD];
     byte    encryptedMessageBlock[MAXREQUESTSIZEWITHPAD];

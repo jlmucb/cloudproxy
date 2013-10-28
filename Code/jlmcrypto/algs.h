@@ -93,7 +93,6 @@
 #define KEYNAMEBUFSIZE            128
 #define KEYTYPEBUFSIZE            128
 #define BIGSYMKEYSIZE              64
-#define SMALLSYMKEYSIZE            32
 #define BIGBLOCKSIZE               32
 
 #define AES128CBCSYMPADHMACSHA256  (AES128|(CBCMODE<<8)|(SYMPAD<<16)|(HMACSHA256<<24))

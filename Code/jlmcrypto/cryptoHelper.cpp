@@ -109,7 +109,7 @@ bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 bool  RSASign(RSAKey& key, int hashType, byte* hash, 
                            int* psizeout, byte* out)
 {
-    byte    padded[1024];       // FIX
+    byte    padded[GLOBALMAXPUBKEYSIZE];
 
 #ifdef TEST1
     PrintBytes((char*)"RSASign in: ", hash, 32);
@@ -137,8 +137,8 @@ bool  RSASign(RSAKey& key, int hashType, byte* hash,
 
 bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 {
-    byte    padded[1024];   // FIX
-    int     size= 1024;
+    byte    padded[GLOBALMAXPUBKEYSIZE];
+    int     size= GLOBALMAXPUBKEYSIZE;
 
 #ifdef TEST1
     if(hashType==SHA1HASH)
@@ -166,7 +166,7 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
 bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in, 
               int* psizeout, byte* out)
 {
-    byte    padded[1024];   // FIX
+    byte    padded[GLOBALMAXPUBKEYSIZE];
     
 #ifdef TEST1
     PrintBytes((char*)"RSASeal in: ", in, sizein);
@@ -209,8 +209,8 @@ bool  RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in,
 bool  RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in, 
                 int* psizeout, byte* out)
 {
-    byte    padded[1024];   // FIX
-    int     size= 1024;     // FIX
+    byte    padded[GLOBALMAXPUBKEYSIZE];
+    int     size= GLOBALMAXPUBKEYSIZE;
     
 #ifdef TEST1
     fprintf(g_logFile, "RSAUnseal direction %d\n", keyuse);
@@ -731,7 +731,7 @@ bool VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key,
 {
     Sha1        oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
-    byte        rgSigValue[1024];   // FIX
+    byte        rgSigValue[GLOBALMAXPUBKEYSIZE];
     int         size;
     int         n;
 
@@ -743,12 +743,12 @@ bool VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key,
 
     UNUSEDVAR(n);
     n= strlen(szSigValue);
-    if(1024<maxbytesfromBase64string(strlen(szSigValue))) {
+    if(GLOBALMAXPUBKEYSIZE<maxbytesfromBase64string(strlen(szSigValue))) {
         fprintf(g_logFile, 
              "VerifyRSASha1SignaturefromSignedInfoandKey: buffer too small\n");
         return false;
     }
-    size= 1024;
+    size= GLOBALMAXPUBKEYSIZE;
     if(!bytesfrombase64(szSigValue, &size, rgSigValue)) {
         fprintf(g_logFile, 
              "VerifyRSASha1SignaturefromSignedInfoandKey: cant base64 decode\n");
@@ -765,7 +765,7 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 {
     Sha256      oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
-    byte        rgSigValue[1024];   // FIX
+    byte        rgSigValue[GLOBALMAXPUBKEYSIZE];
     int         size;
     int         n;
 
@@ -777,12 +777,12 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 
     UNUSEDVAR(n);
     n= strlen(szSigValue);
-    if(1024<maxbytesfromBase64string(strlen(szSigValue))) {
+    if(GLOBALMAXPUBKEYSIZE<maxbytesfromBase64string(strlen(szSigValue))) {
         fprintf(g_logFile, 
              "VerifyRSASha256SignaturefromSignedInfoandKey: buffer too small\n");
         return false;
     }
-    size= 1024;
+    size= GLOBALMAXPUBKEYSIZE;
     if(!bytesfrombase64(szSigValue, &size, rgSigValue)) {
         fprintf(g_logFile, 
              "VerifyRSASha256SignaturefromSignedInfoandKey: cant base64 decode\n");
@@ -798,7 +798,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 {
     Sha256      oHash;
     byte        rgComputedHash[SHA256_DIGESTSIZE_BYTES];
-    byte        rgSigValue[1024];   // FIX
+    byte        rgSigValue[GLOBALMAXPUBKEYSIZE];
     int         size;
     int         n;
     char        szSigValue[2048];   // FIX
@@ -810,7 +810,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     oHash.Final();
     oHash.GetDigest(rgComputedHash);
 
-    size= 1024;
+    size= GLOBALMAXPUBKEYSIZE;
     if(!RSASign(key, SHA256HASH, rgComputedHash, 
                                  &size, rgSigValue)) {
         fprintf(g_logFile, 

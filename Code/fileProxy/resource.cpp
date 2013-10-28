@@ -50,7 +50,7 @@ resource::resource()
     m_fIsDeleted= false;
     m_fKeyValid= false;
     m_iSize= 0;
-    memset(m_rguKey1, 0, SMALLSYMKEYSIZE);  // FIX
+    memset(m_rguKey1, 0, GLOBALMAXSYMKEYSIZE);
 }
 
 

@@ -206,8 +206,8 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
                              taoHostServices* host, 
                              const char* serviceProvider, int nArgs, char** rgszParameter)
 {
-    char    szhostName[256];    // FIX
-    int     n= 256;             // FIX
+    char    szhostName[MAXHOSTNAMESIZE];
+    int     n= MAXHOSTNAMESIZE;
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::EnvInit: %04x, %s, %s, %s, %s, %s\n",
@@ -327,9 +327,9 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
 #endif
 
         // get code digest
-        int     sizeCodeDigest= 64;
+        int     sizeCodeDigest= GLOBALMAXDIGESTSIZE;
         u32     codeDigestType= 0;
-        byte    codeDigest[64];         // FIX
+        byte    codeDigest[GLOBALMAXDIGESTSIZE];
 
         if(!m_myHost->GetHostedMeasurement(&sizeCodeDigest, 
                                 &codeDigestType, codeDigest)) {
@@ -403,8 +403,8 @@ bool taoEnvironment::firstRun()
 
 bool taoEnvironment::InitMyMeasurement()
 {
-    int     size= 256;  // FIX
-    byte    tbuf[256];  // FIX
+    int     size=  GLOBALMAXDIGESTSIZE;
+    byte    tbuf[GLOBALMAXDIGESTSIZE];
     u32     type;
 
     if(!m_envValid)
@@ -507,7 +507,7 @@ bool taoEnvironment::GetEntropy(int size, byte* buf)
 bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
                         int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed)
 {  
-    byte    tmpout[4096];   // FIX
+    byte    tmpout[MAXSEALSIZE];
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::Seal, in %d, out %d\n", 
@@ -559,8 +559,8 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
                         int sizeSealed, byte* sealed, int *psizeunsealed, byte* unsealed)
 {
     int     n= 0;
-    int     outsize= 4096;  // FIX
-    byte    tmpout[4096];   // FIX
+    int     outsize= MAXSEALSIZE;
+    byte    tmpout[MAXSEALSIZE];
     int     hashsize= 0;
 
 #ifdef TEST
@@ -646,7 +646,7 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
         return false;
 
     byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
-    byte        rgToSign[512];  // FIX
+    byte        rgToSign[GLOBALMAXPUBKEYSIZE];
 
     // Compute quote
     if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize, 
@@ -660,7 +660,7 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
         return false;
     }
     // sign
-    RSAKey* pRSA= (RSAKey*) m_privateKey;   // FIX
+    RSAKey* pRSA= (RSAKey*) m_privateKey;
     bnum    bnMsg(m_publicKeyBlockSize/sizeof(u64));
     bnum    bnOut(m_publicKeyBlockSize/sizeof(u64));
     memset(bnMsg.m_pValue, 0, m_publicKeyBlockSize);
@@ -904,7 +904,7 @@ bool taoEnvironment::saveTao()
     }
 
 #ifdef TEST1
-    RSAKey* pK= (RSAKey*)m_privateKey;  // FIX
+    RSAKey* pK= (RSAKey*)m_privateKey;
     if(pK->m_pbnM!=NULL) {
         fprintf(g_logFile, "M(%d, %08x): ", pK->m_pbnM->mpSize(), pK->m_pbnM);
         printNum(*(pK->m_pbnM)); fprintf(g_logFile, "\n");
@@ -1001,17 +1001,17 @@ bool taoEnvironment::restoreTao()
           case KEYTYPERSA2048SERIALIZED:
           case KEYTYPERSA2048INTERNALSTRUCT:
             m_privateKeyType= KEYTYPERSA2048INTERNALSTRUCT;
-            m_publicKeyBlockSize= 256;  // FIX
+            m_publicKeyBlockSize= 256;
             break;
           case KEYTYPERSA1024SERIALIZED:
           case KEYTYPERSA1024INTERNALSTRUCT:
             m_privateKeyType= KEYTYPERSA1024INTERNALSTRUCT;
-            m_publicKeyBlockSize= 128;  // FIX
+            m_publicKeyBlockSize= 128;
             break;
           default:
             break;
         }
-        RSAKey* pKey= new RSAKey();     // FIX
+        RSAKey* pKey= new RSAKey();
         if(pKey==NULL || !(KeyInfo*)pKey->ParsefromString(m_serializedprivateKey)) {
             fprintf(g_logFile, "taoEnvironment::restoreTao: cant parse private key\n");
             return false;

@@ -175,7 +175,7 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
     bool                    fAllowed= false;
     resource*               pResource= NULL;
     accessRequest           oAR;
-    char                    szBuf[MAXNAME];     // FIX
+    char                    szBuf[MAXNAME];
 
 #ifdef TEST
     fprintf(g_logFile, "validateCreatefileServices\n");

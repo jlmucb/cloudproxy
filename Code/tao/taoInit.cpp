@@ -516,9 +516,9 @@ bool taoInit::genprivateKeyPair(u32 keyType, const char* szKeyName)
         fprintf(g_logFile, "taoEnvironment::genprivateKeyPair: Can't generate RSA key pair\n");
         return false;
     }
-    if(szKeyName!=NULL && strlen(szKeyName)<(KEYNAMEBUFSIZE-1)) {
+    if(szKeyName!=NULL) {
         pKey->m_ikeyNameSize= strlen(szKeyName);
-        memcpy(pKey->m_rgkeyName, szKeyName, pKey->m_ikeyNameSize+1);
+        pKey->m_rgkeyName= strdup(szKeyName);
     }
 
     m_privateKeyType= keyType;

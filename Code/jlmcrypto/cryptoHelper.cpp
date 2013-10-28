@@ -321,7 +321,6 @@ RSAKey* RSAGenerateKeyPair(int keySize)
             ikeyByteSize);
 #endif
 
-    pKey->m_rgkeyName[0]= 0;    // FIX
     pKey->m_ikeyNameSize= 0;
     pKey->m_iByteSizeM= ikeyByteSize;
     pKey->m_iByteSizeD= ikeyByteSize;

@@ -46,6 +46,9 @@ extern char*    g_szXmlPolicyCert;
 #include <time.h>
 
 
+#define MAXEVIDENCESTRING   16384
+
+
 // -------------------------------------------------------------------------
 
 
@@ -243,8 +246,8 @@ bool taoHostServices::GetHostedMeasurement(int* psize, u32* ptype, byte* buf)
 
 bool taoHostServices::GetEvidence(int* psize, byte** ppbuf)
 {
-    int     n= 4096;        // FIX
-    byte    buf[4096];      // FIX
+    int     n= MAXEVIDENCESTRING;
+    byte    buf[MAXEVIDENCESTRING];
 
     if(!m_hostEvidenceValid) {
         if(!getBlobfromFile(m_fileNames.m_szAncestorEvidence, buf, &n)) {
@@ -270,8 +273,8 @@ bool taoHostServices::GetEvidence(int* psize, byte** ppbuf)
 
 bool taoHostServices::GetAttestCertificate(int* psize, u32* ptype, byte** ppbuf)
 {
-    int     n= 4096;        // FIX
-    byte    buf[4096];      // FIX
+    int     n= MAXEVIDENCESTRING;
+    byte    buf[MAXEVIDENCESTRING];
 
     if(!m_hostCertificateValid) {
         if(!getBlobfromFile(m_fileNames.m_szcertFile, buf, &n)) {

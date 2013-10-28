@@ -70,9 +70,12 @@ metaData::~metaData()
 }
 
 
+#define MAXMETADATANAME	1024
+
+
 bool metaData::initFileNames()
 {
-    char    szName[1024];       // FIX
+    char    szName[MAXMETADATANAME];
 
 #ifdef TEST
     fprintf(g_logFile, "metaData::initFileNames\n");
@@ -82,6 +85,11 @@ bool metaData::initFileNames()
         return false;
     if(m_szprogramName==NULL)
         return false;
+
+    if((strlen(m_szdirectoryName)+ strlen(m_szprogramName)+16)>MAXMETADATANAME) {
+        fprintf(g_logFile, "metaData::initFileNames: names too long\n");
+        return false; 
+    }
 
     sprintf(szName, "%s/metadata", m_szdirectoryName, m_szprogramName);
     m_szmetadataFile= strdup(szName);

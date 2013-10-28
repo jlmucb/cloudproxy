@@ -57,6 +57,7 @@ KeyInfo::KeyInfo()
     m_uAlgorithm= NOALG;
     m_ikeySize= 0;
     m_ikeyNameSize= 0;
+    m_rgkeyName= NULL;
     m_pDoc= NULL;
 }
 
@@ -66,7 +67,10 @@ KeyInfo::~KeyInfo()
     if(m_pDoc!=NULL)
          delete m_pDoc;
     m_pDoc= NULL;
-    memset(m_rgkeyName, 0, KEYNAMEBUFSIZE);
+    if(m_rgkeyName!=NULL) {
+        free(m_rgkeyName);
+        m_rgkeyName= NULL;
+    }
 }
 
 
@@ -205,12 +209,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
         m_uAlgorithm= NOALG;
         m_ikeySize= keySize;
         m_ikeyNameSize= strlen(szKeyName);
-        if(m_ikeyNameSize<KEYNAMEBUFSIZE) {           // FIX
-            strcpy(m_rgkeyName, szKeyName);
-        }
-        else {
-            m_ikeyNameSize= 0;
-        }
+        m_rgkeyName= strdup(m_rgkeyName);
         m_iByteSizeKey= keySize;
         m_iByteSizeIV= 0;
         iOutLen= GLOBALMAXSYMKEYSIZE;
@@ -257,7 +256,7 @@ void symKey::printMe()
     }
     else
         fprintf(g_logFile, "Unknown key\n");
-    if(m_ikeyNameSize>0)
+    if(m_rgkeyName!=NULL)
         fprintf(g_logFile, "Key name: %s\n", m_rgkeyName);
     else
         fprintf(g_logFile, "No key name\n");
@@ -465,12 +464,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         m_uAlgorithm= NOALG;
         m_ikeySize= keySize;
         m_ikeyNameSize= strlen(szKeyName);
-        if(m_ikeyNameSize<KEYNAMEBUFSIZE) {
-            strcpy(m_rgkeyName, szKeyName);
-        }
-        else {
-            m_ikeyNameSize= 0;
-        }
+        m_rgkeyName= strdup(szKeyName);
 
         iOutLen= GLOBALMAXPUBKEYSIZE;
         m_iByteSizeM= 0;
@@ -619,19 +613,18 @@ const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>\n";
 
 
 #define MAXSTRLEN 8192
-#define MAXBASE64 1024
 
 
 char*   RSAKey::SerializetoString()
 {
-    char    szStr[MAXSTRLEN];       // FIX
-    char    szBase64[MAXBASE64];    // FIX
+    char    szStr[MAXSTRLEN];
+    char    szBase64[2*GLOBALMAXPUBKEYSIZE]; 
     int     nLeft= MAXSTRLEN;
     char*   p= szStr;
     int     n;
     int     iOutLen;
 
-    if(m_ikeyNameSize>0)
+    if(m_rgkeyName!=NULL)
         sprintf(p, szlocalKeyInfoHeader, m_rgkeyName);
     else
         sprintf(p, szlocalKeyInfoHeader, "NO NAME");
@@ -650,7 +643,7 @@ char*   RSAKey::SerializetoString()
     nLeft-= n;
 
     if(m_iByteSizeM>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeM, (byte*)m_pbnM->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -660,7 +653,7 @@ char*   RSAKey::SerializetoString()
         nLeft-= n;
     }
     if(m_iByteSizeE>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeE, (byte*)m_pbnE->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -671,7 +664,7 @@ char*   RSAKey::SerializetoString()
     }
 
     if(m_iByteSizeD>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeD, (byte*)m_pbnD->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -682,7 +675,7 @@ char*   RSAKey::SerializetoString()
     }
 
     if(m_iByteSizeP>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeP, (byte*)m_pbnP->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -693,7 +686,7 @@ char*   RSAKey::SerializetoString()
     }
 
     if(m_iByteSizeQ>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeQ, (byte*)m_pbnQ->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -704,7 +697,7 @@ char*   RSAKey::SerializetoString()
     }
 
     if(m_iByteSizeDP>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeDP, (byte*)m_pbnDP->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -715,7 +708,7 @@ char*   RSAKey::SerializetoString()
     }
 
     if(m_iByteSizeDQ>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeDQ, (byte*)m_pbnDQ->m_pValue, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -744,14 +737,14 @@ char*   RSAKey::SerializetoString()
 
 char*   RSAKey::SerializePublictoString()
 {
-    char    szStr[MAXSTRLEN];       // FIX
-    char    szBase64[MAXSTRLEN];    // FIX
+    char    szStr[MAXSTRLEN];
+    char    szBase64[2*GLOBALMAXPUBKEYSIZE];
     int     nLeft= MAXSTRLEN;
     char*   p= szStr;
     int     n;
     int     iOutLen;
 
-    if(m_ikeyNameSize>0)
+    if(m_rgkeyName!=NULL)
         sprintf(p, szlocalKeyInfoHeader, m_rgkeyName);
     else
         sprintf(p, szlocalKeyInfoHeader, "NO NAME");
@@ -768,7 +761,7 @@ char*   RSAKey::SerializePublictoString()
     nLeft-= n;
 
     if(m_iByteSizeM>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeM, (byte*)m_rgbM, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -778,7 +771,7 @@ char*   RSAKey::SerializePublictoString()
         nLeft-= n;
     }
     if(m_iByteSizeE>0) {
-        iOutLen= MAXBASE64;
+        iOutLen= 2*GLOBALMAXPUBKEYSIZE;
         if(!toBase64(m_iByteSizeE, (byte*)m_rgbE, &iOutLen, szBase64)) 
             return NULL;
         szBase64[iOutLen]= 0;
@@ -819,7 +812,7 @@ void RSAKey::printMe()
         fprintf(g_logFile, "Unknown key\n");
     fprintf(g_logFile, "Key size: %d\n", m_ikeySize);
     fprintf(g_logFile, "Key name size: %d\n", m_ikeyNameSize);
-    if(m_ikeyNameSize>0)
+    if(m_rgkeyName!=NULL)
         fprintf(g_logFile, "Key name: %s\n", m_rgkeyName);
     else
         fprintf(g_logFile, "No key name\n");

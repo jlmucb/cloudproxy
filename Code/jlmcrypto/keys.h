@@ -36,12 +36,11 @@
 
 class KeyInfo {
 public:
-    enum            {MAXKEYNAMESIZE= KEYNAMEBUFSIZE};
     u32             m_ukeyType;
     u32             m_uAlgorithm;
     i32             m_ikeySize;
     i32             m_ikeyNameSize;
-    char            m_rgkeyName[KEYNAMEBUFSIZE];    // FIX
+    char*           m_rgkeyName;
     TiXmlDocument*  m_pDoc;
 
                     KeyInfo();

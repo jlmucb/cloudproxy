@@ -397,7 +397,6 @@ cbc::cbc()
 
 cbc::~cbc()
 {
-#if 0   // FIX
     m_oAESEnc.CleanKeys();
     m_oAESDec.CleanKeys();
     memset(m_rguIntKey, 0, m_iIntKeySize);
@@ -425,7 +424,6 @@ cbc::~cbc()
         free(m_rguIntKey);
         m_rguIntKey= NULL;
     }
-#endif
 }
 
 

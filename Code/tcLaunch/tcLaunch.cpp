@@ -247,7 +247,7 @@ bool startAppfromDeviceDriver(int fd, int* ppid, int argc, char **argv)
     }
 #ifdef TEST1
     int     nc= 30;
-    char*   nav[32];    // FIX
+    char*   nav[32];
     if(!decodeTCSERVICESTARTAPPFROMAPP(&nc, nav, rgBuf)) {
         fprintf(g_logFile, "startAppfromDeviceDriver: cant decodebuf\n");
         return false;
@@ -311,7 +311,7 @@ bool startApplication(int an, char** av, bool fKvmCall)
 
     if(fKvmCall) {
         int    size= 0;
-        char   buf[BUFSIZE];    // FIX
+        char   buf[BUFSIZE+1];
 
         // replace xml file name with xml
         int fd= open(av[1], O_RDONLY);

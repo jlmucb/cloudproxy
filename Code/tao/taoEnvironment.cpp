@@ -430,7 +430,7 @@ bool taoEnvironment::InitMyMeasurement()
 
 bool taoEnvironment::initKeyNames()
 {
-    char    szName[2048];   // FIX
+    char    szName[2048];
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::initKeyNames\n");
@@ -438,6 +438,11 @@ bool taoEnvironment::initKeyNames()
 #endif
     if(m_domain==NULL || m_machine==NULL) {
         fprintf(g_logFile, "taoEnvironment::initKeyNames domain or directory null\n");
+        return false;
+    }
+
+    if((strlen(m_domain)+strlen(m_machine)+strlen(m_program)+64)>2048) {
+        fprintf(g_logFile, "taoEnvironment::initKeyNames key names too long\n");
         return false;
     }
 

@@ -79,18 +79,19 @@ taoFiles::~taoFiles ()
 
 bool  taoFiles::initNames(const char* directory, const char* subdirectory)
 {
-    char   szName[1024];        // FIX
-
+#ifdef TEST
+    fprintf(g_logFile, "initNames(%s, %s)\n", directory, subdirectory);
+#endif
     m_storageType= STORAGETYPENONE;
     if(directory==NULL)
         return false;
     if(subdirectory==NULL)
         return false;
-    if(1023<(strlen(directory)+strlen(subdirectory)+20))
+
+    int  sizeName= strlen(directory)+strlen(subdirectory)+20;
+    char szName= (char*)malloc(sizeName);
+    if(szName==NULL) 
         return false;
-#ifdef TEST
-    fprintf(g_logFile, "initNames(%s, %s)\n", directory, subdirectory);
-#endif
 
     sprintf(szName,"%s/%s", directory, subdirectory);
     m_szdirectory= strdup(szName);
@@ -107,6 +108,10 @@ bool  taoFiles::initNames(const char* directory, const char* subdirectory)
     sprintf(szName,"%s/%s", m_szdirectory, "evidence");
     m_szAncestorEvidence= strdup(szName);
 
+    if(szName!=NULL) {
+        free((void*)szName);
+        szName= NULL;
+    }
     return true;
 }
 

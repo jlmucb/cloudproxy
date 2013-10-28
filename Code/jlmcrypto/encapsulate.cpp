@@ -313,8 +313,8 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)     // FIX
     int     insize= 0;
     byte    padded[GLOBALMAXPUBKEYSIZE];
     int     blocksize;
-    bnum    bnMsg(64);  // FIX
-    bnum    bnOut(64);  // FIX
+    bnum    bnMsg(2*(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum    bnOut(2*(GLOBALMAXPUBKEYSIZE/sizeof(u64));
     byte    sealed[GLOBALMAXPUBKEYSIZE];
 
     if(sealingKey==NULL) {
@@ -604,13 +604,13 @@ int    encapsulatedMessage::plainMessageSize()
 }
 
 
-bool   encapsulatedMessage::signPackage(RSAKey* pSignKey)       // FIX
+bool   encapsulatedMessage::signPackage(RSAKey* pSignKey)
 {
     return true;
 }
 
 
-bool   encapsulatedMessage::verifyPackage(RSAKey* pSignKey)     // FIX
+bool   encapsulatedMessage::verifyPackage(RSAKey* pSignKey)
 {
     return true;
 }

@@ -441,7 +441,7 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
                      byte* codeDigest, const char* szQuotedInfo, 
                      const char* szKeyInfo, int sizeQuote, byte* quote)
 {
-    char            szB[4096];		        // FIX
+    char            szB[4096];
     int             nsize= 2*GLOBALMAXPUBKEYSIZE;
     char            szN[2*GLOBALMAXPUBKEYSIZE];
     char*           szquoteValue= NULL;
@@ -456,13 +456,17 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
             fprintf(g_logFile, "encodeXMLQuote: cant transform nonce to base64\n");
             goto cleanup;
         }
+        if((strlen(g_szNonceTemplate)+strlen(szN)+16)>4096) {
+            fprintf(g_logFile, "encodeXMLQuote: nonce too large\n");
+            goto cleanup;
+        }
         sprintf(szB, g_szNonceTemplate, szN);
         szNonce= strdup(szB);
     }
     else
         szNonce= strdup("");
 
-    nsize=  2*GLOBALMAXPUBKEYSIZE;
+    nsize=  2*GLOBALMAXPUBKEYSIZE-16;
     if(!toBase64(sizeCodeDigest, codeDigest, &nsize, szN)) {
         fprintf(g_logFile, "encodeXMLQuote: cant transform codeDigest to base64\n");
         goto cleanup;
@@ -471,13 +475,18 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
     if(sizeCodeDigest==20)
         szdigestAlg= "SHA1";
 
-    nsize=  2*GLOBALMAXPUBKEYSIZE;
+    nsize=  2*GLOBALMAXPUBKEYSIZE-16;
     if(!toBase64(sizeQuote, quote, &nsize, szN)) {
         fprintf(g_logFile, "encodeXMLQuote: cant transform quoted value to base64\n");
         goto cleanup;
     }
     szquoteValue= strdup(szN);
 
+    if((strlen(g_szQuoteTemplate)+strlen(szNonce)+strlen(szdigestAlg)+strlen(szCodeDigest)
+         +strlen(szQuotedInfo) +strlen(szquoteValue) +strlen(szKeyInfo) +16)>4096) {
+        fprintf(g_logFile, "encodeXMLQuote: quote too large\n");
+        goto cleanup;
+    }
     sprintf(szB, g_szQuoteTemplate, szNonce, szdigestAlg, szCodeDigest, 
             szQuotedInfo, szquoteValue, szKeyInfo);
     szQuote= strdup(szB);

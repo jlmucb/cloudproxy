@@ -96,7 +96,7 @@ public:
 };
 
 
-extern bool isPolicyPrincipal(RSAKey* pKey, RSAKey* pPolicy);  // FIX
+extern bool isPolicyPrincipal(RSAKey* pKey, RSAKey* pPolicy);
 #endif
 
 

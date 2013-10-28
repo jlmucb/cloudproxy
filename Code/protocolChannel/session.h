@@ -80,7 +80,7 @@ public:
     bool            m_fPrincipalCertsValid;
     char*           m_szPrincipalCerts;
     int             m_iNumPrincipals;
-    PrincipalCert*  m_rgPrincipalCerts[MAXPRINCIPALS];
+    PrincipalCert*  m_rgPrincipalCerts[MAXPRINCIPALS];          // FIX
     RSAKey*         m_rgPrincipalPublicKeys[MAXPRINCIPALS];
 
     bool            m_fPrincipalPrivateKeysValid;   // Principal Private Keys

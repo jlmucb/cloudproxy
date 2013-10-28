@@ -58,10 +58,10 @@
 
 
 char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
-int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt,  // FIX
+int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt,
                  int npieces, int* rgType, void** rgObject);
 
-// FIX
+
 #define STATICNUMLISTELTS 8 
 #define STATICNUMCOLLECTIONELTS  20
 
@@ -83,6 +83,8 @@ public:
 
                     evidenceList();
                     ~evidenceList();
+
+    int             maxEvidenceListelements() {return STATICNUMLISTELTS;};
 
     bool            parseEvidenceList(TiXmlElement* pRootElement);
     bool            getSubjectEvidence(int* pType, void** pEvid);
@@ -108,6 +110,8 @@ public:
 
     evidenceCollection();
     ~evidenceCollection();
+
+    int             maxEvidenceCollectionelements() {return STATICNUMCOLLECTIONELTS;};
 
     bool            parseEvidenceCollection(const char* szEvidenceCollection);
     bool            validateEvidenceCollection(KeyInfo* pRootKey);

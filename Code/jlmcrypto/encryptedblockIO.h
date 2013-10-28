@@ -24,7 +24,7 @@
 
 // this must be a multiple of the block size
 #define  BLOCKBUFSIZE            1024
-#define BIGBLOCKSIZE               32
+#define  BIGBLOCKSIZE               32
 #define  EXTENDEDBLOCKBUFSIZE  (BLOCKBUFSIZE+3*BIGBLOCKSIZE)
 
 

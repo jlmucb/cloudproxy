@@ -46,9 +46,8 @@ extern const char* g_progDirectory;
 // -------------------------------------------------------------------------
 
 
-// FIX
 #define BUFSIZE 2048
-#define NAMESIZE 256
+
 
 char *nextline(char* start, char* end)
 {
@@ -68,13 +67,16 @@ char *nextline(char* start, char* end)
 
 int  getmysyspid(const char* name)
 {
-    char    buf[BUFSIZE];       // FIX
-    char    fileName[256];      // FIX
-    char    line[BUFSIZE];      // FIX
+    char    buf[BUFSIZE];
+    char    fileName[256];
+    char    line[BUFSIZE];
     int     mypid= getpid();
     int     newpid= -1;
     int     size= -1;
     char*   beginline= line;
+
+    if((strlen(g_progDirectory)+20)>BUFSIZE)
+        return -1;
 
     sprintf(fileName, "%s/tmp%d.tmp", g_progDirectory, mypid);
     sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",

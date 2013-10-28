@@ -371,7 +371,7 @@ bool fileServer::initPolicy()
 bool fileServer::initFileKeys()
 {
     struct stat statBlock;
-    char        szName[256];    // FIX
+    char        szName[512];
     int         size= 0;
     byte        keyBuf[GLOBALMAXSYMKEYSIZE];
     int         n= 0;
@@ -380,6 +380,10 @@ bool fileServer::initFileKeys()
    
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
+        return false;
+    }
+    if((strlen(m_tcHome.m_fileNames.m_szdirectory+16)>512) {
+        fprintf(g_logFile, "initFileKeys: key name too long\n");
         return false;
     }
     sprintf(szName, "%s/fileKeys", m_tcHome.m_fileNames.m_szdirectory);

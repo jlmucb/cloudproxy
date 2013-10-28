@@ -88,8 +88,8 @@ bool  taoFiles::initNames(const char* directory, const char* subdirectory)
     if(subdirectory==NULL)
         return false;
 
-    int  sizeName= strlen(directory)+strlen(subdirectory)+20;
-    char szName= (char*)malloc(sizeName);
+    int     sizeName= strlen(directory)+strlen(subdirectory)+20;
+    char*   szName= (char*)malloc(sizeName);
     if(szName==NULL) 
         return false;
 

@@ -382,7 +382,7 @@ bool fileServer::initFileKeys()
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
         return false;
     }
-    if((strlen(m_tcHome.m_fileNames.m_szdirectory+16)>512) {
+    if((strlen(m_tcHome.m_fileNames.m_szdirectory)+16)>512) {
         fprintf(g_logFile, "initFileKeys: key name too long\n");
         return false;
     }

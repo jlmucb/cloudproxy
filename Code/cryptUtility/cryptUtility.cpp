@@ -738,8 +738,8 @@ bool AES128CBCHMACSHA256SYMPADDecryptFile (int filesize, int iRead, int iWrite,
 bool Encrypt(u32 op, const char* szKeyFile, const char* szInFile, const char* szOutFile, u32 mode=CBCMODE, 
              u32 alg=AES128, u32 pad=SYMPAD, u32 mac=HMACSHA256)
 {
-    u8          rguEncKey[BIGSYMKEYSIZE];
-    u8          rguIntKey[BIGSYMKEYSIZE];
+    u8          rguEncKey[GLOBALMAXSYMKEYSIZE];
+    u8          rguIntKey[GLOBALMAXSYMKEYSIZE];
 
     if(op==ENCRYPTFILE)
         fprintf(g_logFile, "Encrypt (%s, %s, %s)\n", szKeyFile, szInFile, szOutFile);
@@ -750,8 +750,8 @@ bool Encrypt(u32 op, const char* szKeyFile, const char* szInFile, const char* sz
     else
         fprintf(g_logFile, "GCM Mode\n");
 
-    memset(rguEncKey , 0, BIGSYMKEYSIZE);
-    memset(rguIntKey , 0, BIGSYMKEYSIZE);
+    memset(rguEncKey , 0, GLOBALMAXSYMKEYSIZE);
+    memset(rguIntKey , 0, GLOBALMAXSYMKEYSIZE);
 
     // Get File size
     struct stat statBlock;
@@ -808,8 +808,8 @@ bool Encrypt(u32 op, const char* szKeyFile, const char* szInFile, const char* sz
     
     close(iRead);
     close(iWrite);
-    memset(rguEncKey , 0, BIGSYMKEYSIZE);
-    memset(rguIntKey , 0, BIGSYMKEYSIZE);
+    memset(rguEncKey , 0, GLOBALMAXSYMKEYSIZE);
+    memset(rguIntKey , 0, GLOBALMAXSYMKEYSIZE);
 
 #ifdef TEST
     if(fRet)

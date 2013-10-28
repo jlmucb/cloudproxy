@@ -92,7 +92,7 @@ public:
     bool                m_metaDataValid;
     bool                m_fEncryptFile;
     int                 m_encType;
-    byte                m_rgKeys[BIGKEYSIZE];
+    byte                m_rgKeys[2*GLOBALMAXSYMKEYSIZE];
     pthread_mutex_t     m_mutex;
 
     char*               m_szprogramName;

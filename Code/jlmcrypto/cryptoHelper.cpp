@@ -45,8 +45,8 @@
 bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, 
                  byte* out, bool fFast)
 {
-    bnum    bnMsg(128);     // FIX
-    bnum    bnOut(128);     // FIX
+    bnum    bnMsg(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum    bnOut(GLOBALMAXPUBKEYSIZE/sizeof(u64));
 
 #ifdef TEST1
     PrintBytes((char*)"RSADecrypt in: ", in, sizein);
@@ -82,8 +82,8 @@ bool  RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout,
 
 bool  RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out)
 {
-    bnum    bnMsg(128);     // FIX
-    bnum    bnOut(128);     // FIX
+    bnum    bnMsg(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum    bnOut(GLOBALMAXPUBKEYSIZE/sizeof(u64));
 
     mpZeroNum(bnMsg);
     mpZeroNum(bnOut);
@@ -280,16 +280,16 @@ RSAKey* RSAGenerateKeyPair(int keySize)
     else
         return NULL;
 
-    bnum       bnPhi(128);  // FIX
-    bnum       bnE(4);  // FIX
-    bnum       bnP(128);    // FIX
-    bnum       bnQ(128);    // FIX
-    bnum       bnD(128);    // FIX
-    bnum       bnM(128);    // FIX
-    bnum       bnDP(128);   // FIX
-    bnum       bnDQ(128);   // FIX
-    bnum       bnPM1(128);  // FIX
-    bnum       bnQM1(128);  // FIX
+    bnum       bnPhi(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnE(4);
+    bnum       bnP(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnQ(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnD(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnM(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnDP(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnDQ(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnPM1(GLOBALMAXPUBKEYSIZE/sizeof(u64));
+    bnum       bnQM1(GLOBALMAXPUBKEYSIZE/sizeof(u64));
 
     bnE.m_pValue[0]= (1ULL<<16)+1ULL;
     while(iTry++<MAXTRY) {
@@ -801,7 +801,7 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     byte        rgSigValue[GLOBALMAXPUBKEYSIZE];
     int         size;
     int         n;
-    char        szSigValue[2048];   // FIX
+    char        szSigValue[4*GLOBALMAXPUBKEYSIZE];
 
     // hash  signedInfo
     n= strlen(szsignedInfo);
@@ -850,10 +850,10 @@ char* constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     const char* attrName[2]= {"xmlns", "Id"};
     const char* attrValue[2]= {"http://www.w3.org/2000/09/xmldsig#", NULL};
     const char* elts[3];
-    int         size= 8192;
-    char        szSignature[8192];  // FIX
+    int         size= 16*GLOBALMAXPUBKEYSIZE;
+    char        szSignature[16*GLOBALMAXPUBKEYSIZE];
     char*       szKeyInfo= NULL;
-    char        szSignatureElement[4096];   // FIX
+    char        szSignatureElement[8*GLOBALMAXPUBKEYSIZE];
     char*       szSig= XMLRSASha256SignaturefromSignedInfoandKey(key,
                                                 szsignedInfo);
     bool        fRet= true;
@@ -872,7 +872,7 @@ char* constructXMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
     elts[1]= szSignatureElement;
     elts[2]= szKeyInfo;
 
-    size= 8192;
+    size= 16*GLOBALMAXPUBKEYSIZE;
     fRet= XMLenclosingtypefromelements("ds:Signature", 2, attrName, attrValue, 
                                    3, elts, &size, szSignature);
 

@@ -165,7 +165,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
     int             keySize= 0;
     char*           szBase64KeyValue= NULL;
     char*           szKeyType= NULL;
-    int             iOutLen= 128;   // FIX
+    int             iOutLen;
 
     if(pRootElement==NULL) {
         fprintf(g_logFile, "No root element\n");
@@ -205,7 +205,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement)
         m_uAlgorithm= NOALG;
         m_ikeySize= keySize;
         m_ikeyNameSize= strlen(szKeyName);
-        if(m_ikeyNameSize<KEYNAMEBUFSIZE) { // FIX
+        if(m_ikeyNameSize<KEYNAMEBUFSIZE) {           // FIX
             strcpy(m_rgkeyName, szKeyName);
         }
         else {
@@ -744,7 +744,7 @@ char*   RSAKey::SerializetoString()
 
 char*   RSAKey::SerializePublictoString()
 {
-    char    szStr[MAXSTRLEN];   // FIX
+    char    szStr[MAXSTRLEN];       // FIX
     char    szBase64[MAXSTRLEN];    // FIX
     int     nLeft= MAXSTRLEN;
     char*   p= szStr;

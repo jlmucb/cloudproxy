@@ -906,7 +906,7 @@ cleanup:
 
 bool certNego(int fd)
 {
-    char        request[MAXREQUESTSIZE];    // FIX
+    char        request[MAXREQUESTSIZE];
     int         type= 0;
     byte        multi= 0;
     byte        final= 0;

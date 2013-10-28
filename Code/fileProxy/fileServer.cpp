@@ -419,7 +419,7 @@ bool fileServer::initFileKeys()
             return false;
         }
         // seal and save
-        size= BIGKEYSIZE;
+        size= GLOBALMAXSEALEDKEYSIZE;
         if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
                         n, keyBuf, &size, sealedkeyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant seal keys\n");
@@ -433,7 +433,7 @@ bool fileServer::initFileKeys()
     }
     else {
         // keys exist, unseal them
-        size= BIGKEYSIZE;
+        size= GLOBALMAXSEALEDKEYSIZE;
         if(!getBlobfromFile(m_szSealedKeyFile, sealedkeyBuf, &size)) {
             fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
             return false;

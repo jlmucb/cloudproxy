@@ -42,7 +42,7 @@
 bool hashfilefromdescriptor(int fd, Sha256& oHash)
 {
     int     n;
-    byte    rgBuf[HASHINBUFSIZE];   // FIX
+    byte    rgBuf[HASHINBUFSIZE];
 
     for(;;) {
         n= read(fd, rgBuf, HASHINBUFSIZE);

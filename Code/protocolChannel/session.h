@@ -36,6 +36,8 @@
 #define BIGSIGNEDSIZE   256
 #define SMALLNONCESIZE   32
 #define PREMASTERSIZE    64
+#define BIGSYMKEYSIZE    64
+
 
 #define MAXPRINCIPALS    25
 

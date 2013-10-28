@@ -42,6 +42,9 @@
 
 
 #define MAXREQUESTSIZE 16384
+#ifndef SMALLNONCESIZE
+#define SMALLNONCESIZE 32
+#endif
 
 
 // ------------------------------------------------------------------------
@@ -435,19 +438,19 @@ bool checkXMLQuote(const char* szQuoteAlg, const char* szCanonicalQuotedBody, co
 //     </QuoteValue>
 // </Quote>
 char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest, 
-                     byte* codeDigest, const char* szQuotedInfo, const char* szKeyInfo, 
-                     int sizeQuote, byte* quote)
+                     byte* codeDigest, const char* szQuotedInfo, 
+                     const char* szKeyInfo, int sizeQuote, byte* quote)
 {
-    char            szB[4096];		//FIX
-    int             nsize= 512;		//FIX
-    char            szN[512];		//FIX
+    char            szB[4096];		        // FIX
+    int             nsize= 2*GLOBALMAXPUBKEYSIZE;
+    char            szN[2*GLOBALMAXPUBKEYSIZE];
     char*           szquoteValue= NULL;
     char*           szQuote= NULL;
     char*           szNonce= NULL;
     char*           szCodeDigest= NULL;
     const char*     szdigestAlg= "SHA256";
 
-    nsize= 256;
+    nsize=  2*GLOBALMAXPUBKEYSIZE;
     if(sizenonce>0) {
         if(!toBase64(sizenonce, nonce, &nsize, szN)) {
             fprintf(g_logFile, "encodeXMLQuote: cant transform nonce to base64\n");
@@ -459,7 +462,7 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
     else
         szNonce= strdup("");
 
-    nsize= 256;
+    nsize=  2*GLOBALMAXPUBKEYSIZE;
     if(!toBase64(sizeCodeDigest, codeDigest, &nsize, szN)) {
         fprintf(g_logFile, "encodeXMLQuote: cant transform codeDigest to base64\n");
         goto cleanup;
@@ -468,7 +471,7 @@ char* encodeXMLQuote(int sizenonce, byte* nonce, int sizeCodeDigest,
     if(sizeCodeDigest==20)
         szdigestAlg= "SHA1";
 
-    nsize= 512;
+    nsize=  2*GLOBALMAXPUBKEYSIZE;
     if(!toBase64(sizeQuote, quote, &nsize, szN)) {
         fprintf(g_logFile, "encodeXMLQuote: cant transform quoted value to base64\n");
         goto cleanup;

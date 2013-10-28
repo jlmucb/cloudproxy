@@ -384,15 +384,15 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)     // FIX
 }
 
 
-bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)       // FIX
+bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
 {
-    byte    in[128];    // FIX
-    byte    padded[512];    // FIX
+    byte    in[2*GLOBALMAXSYMKEYSIZE];
+    byte    padded[GLOBALMAXPUBKEYSIZE];
     int     blocksize;
-    bnum    bnMsg(64);  // FIX
-    bnum    bnOut(64);  // FIX
-    int     sizeSealed= 512;
-    byte    sealed[512];    // FIX
+    bnum    bnMsg(64);
+    bnum    bnOut(64);
+    int     sizeSealed= GLOBALMAXPUBKEYSIZE;
+    byte    sealed[GLOBALMAXPUBKEYSIZE];
 
     if(sealingKey==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey no sealing key\n");

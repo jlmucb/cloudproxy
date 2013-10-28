@@ -482,7 +482,7 @@ bool  includesPurpose(const char* szIntended, const char* szGranted)
 }
 
 
-int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt, // FIX
+int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt,
                  int npieces, int* rgType, void** rgObject)
 
 //  Only RSA is supported for now.

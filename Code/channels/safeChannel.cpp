@@ -98,7 +98,8 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
         fprintf(g_logFile, "Unsupported algorithm\n");
         return false;
     }
-    if(sizeofEncKeys>BIGSYMKEYSIZE || sizeofIntKeys>BIGSYMKEYSIZE) {
+    if(sizeofEncKeys>GLOBALMAXSYMKEYSIZE || 
+       sizeofIntKeys>GLOBALMAXSYMKEYSIZE) {
         fprintf(g_logFile, "Unsupported key lengths\n");
         return false;
     }
@@ -107,12 +108,12 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
     iMode= mode;
     iHMAC= hmac;
 
-    memset(sendEncKey, 0, BIGSYMKEYSIZE);
-    memset(sendIntKey, 0, BIGSYMKEYSIZE);
-    memset(getEncKey, 0, BIGSYMKEYSIZE);
-    memset(getIntKey, 0, BIGSYMKEYSIZE);
-    memset(lastgetBlock, 0, BIGSYMKEYSIZE);
-    memset(lastsendBlock, 0, BIGSYMKEYSIZE);
+    memset(sendEncKey, 0, GLOBALMAXSYMKEYSIZE);
+    memset(sendIntKey, 0,  GLOBALMAXSYMKEYSIZE);
+    memset(getEncKey, 0,  GLOBALMAXSYMKEYSIZE);
+    memset(getIntKey, 0,  GLOBALMAXSYMKEYSIZE);
+    memset(lastgetBlock, 0,  GLOBALMAXSYMKEYSIZE);
+    memset(lastsendBlock, 0,  GLOBALMAXSYMKEYSIZE);
 
     sizeofEncKey= sizeofEncKeys;
     sizeofIntKey= sizeofIntKeys;

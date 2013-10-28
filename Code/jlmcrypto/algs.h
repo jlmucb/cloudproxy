@@ -88,12 +88,8 @@
 #define GLOBALMAXPUBKEYSIZE       512
 #define GLOBALMAXSEALEDKEYSIZE   1024
 
-#define SMALLKEYSIZE              128
-#define BIGKEYSIZE                512
 #define KEYNAMEBUFSIZE            128
 #define KEYTYPEBUFSIZE            128
-#define BIGSYMKEYSIZE              64
-#define BIGBLOCKSIZE               32
 
 #define AES128CBCSYMPADHMACSHA256  (AES128|(CBCMODE<<8)|(SYMPAD<<16)|(HMACSHA256<<24))
 #define AES128GCM                  (AES128 | (GCMMODE<<8))

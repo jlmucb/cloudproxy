@@ -34,6 +34,9 @@
 #define _SIGNEDASSERTION__H
 
 
+#define MAXPRINCIPALNAME  512
+
+
 class Assertion {
 public:
     char*   m_szSubject;

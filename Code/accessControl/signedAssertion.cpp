@@ -106,7 +106,7 @@ void Assertion::printMe()
 
 bool Assertion::parseMe(const char* szAssert)
 {
-    char            szBuf[512];     // FIX
+    char            szBuf[MAXPRINCIPALNAME];
     const char*     szTok= NULL;
     int             n;
 
@@ -115,7 +115,7 @@ bool Assertion::parseMe(const char* szAssert)
     fflush(g_logFile);
 #endif
     n= nextToken(szAssert, &szTok);
-    if(n<0 || n>=512)
+    if(n<0 || n>=MAXPRINCIPALNAME)
         return false;
     memcpy(szBuf, szTok, n); 
     szBuf[n]= '\0';
@@ -123,7 +123,7 @@ bool Assertion::parseMe(const char* szAssert)
     m_szSubject= strdup(szBuf);
 
     n= nextToken(szAssert, &szTok);
-    if(n<0 || n>=512)
+    if(n<0 || n>=MAXPRINCIPALNAME)
         return false;
     memcpy(szBuf, szTok, n); 
     szBuf[n]= '\0';
@@ -131,7 +131,7 @@ bool Assertion::parseMe(const char* szAssert)
     m_szRight= strdup(szBuf);
 
     n= nextToken(szAssert, &szTok);
-    if(n<0 || n>=512)
+    if(n<0 || n>=MAXPRINCIPALNAME)
         return false;
     memcpy(szBuf, szTok, n); 
     szBuf[n]= '\0';

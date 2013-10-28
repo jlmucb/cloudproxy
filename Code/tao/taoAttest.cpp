@@ -186,9 +186,17 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
 }
 
 
-bool taoAttest::bytecodeDigest()
+bool taoAttest::bytecodeDigest(byte* out, int* psizeout)
 {
-    return false;
+    char    szDigest[2*GLOBALMAXDIGESTSIZE];
+    int     size= *psizeout;
+
+    if(m_szdigest==NULL) 
+        return false;
+    if(!fromBase64(strlen(m_szdigest), m_szdigest, &size, out))
+        return false;
+    *psizeout= size;
+    return true;
 }
 
 

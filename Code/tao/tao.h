@@ -395,7 +395,7 @@ public:
     bool            init(u32 type, const char *attestation,
                          const char* attestEvidence, KeyInfo* policyKey);
     bool            verifyAttestation();
-    bool            bytecodeDigest();
+    bool            bytecodeDigest(byte* out, int* psizeout);
     char*           codeDigest();
     u32             attestType();
     char*           quoteAlg();

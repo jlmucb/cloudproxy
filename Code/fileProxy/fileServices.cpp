@@ -154,7 +154,7 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
 
     // init
      if(!m_guard.m_fValid) {
-        if(!m_guard.initGuard(m_pPolicy, pMeta, psession->m_iNumPrincipals, 
+        if(!m_guard.initGuard((KeyInfo*)m_pPolicy, pMeta, psession->m_iNumPrincipals, 
                               psession->m_rgPrincipalCerts)) {
             fprintf(g_logFile,
                     "theServiceChannel::serviceChannel: initAccessGuard returned false\n");

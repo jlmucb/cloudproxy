@@ -321,7 +321,7 @@ bool accessGuard::initGuard(KeyInfo* pPolicy, metaData* pMeta,
         m_myPrincipals[i]= rgPrinc[i];
     }
     // note all principals have been authenticated before they go in
-    m_pPolicy= pPolicy;
+    m_pPolicy= (RSAKey*)pPolicy;
     m_pMetaData= pMeta;
     m_fValid= true;
     return true;

@@ -76,7 +76,7 @@ TPM to the default state, which is unowned, disabled and inactive. That command 
 ownership information from the TPM, invalidates all the keys and data tied to the TPM and 
 even disables and deactivates the TPM.
 
-We must remember that the TPM won’t actually be used to encrypt/decrypt our data on the 
+We must remember that the TPM won't actually be used to encrypt/decrypt our data on the 
 hard drive; it’s just a hardware that contains secret keys that are used by the software 
 component to actually do the encryption and decryption on the fly. The TPM is primarily 
 used to check during boot if the kernel is unmodified, because otherwise an attacker could 

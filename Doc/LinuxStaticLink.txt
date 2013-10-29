@@ -1,3 +1,6 @@
+Static Linking of Linux
+=======================
+
 This document contains instructions (to be updated) on how to statically link
 the Linux kernel for FileProxy.
 

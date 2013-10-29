@@ -1,7 +1,7 @@
 Network Control Program
 =======================
 
-The network control program starts authoried partitions in
+The network control program starts authorized partitions in
 the Linux KVM Host and manages authorization on behalf of
 the KVM Host.  It is currently a very simple program (included
 in the KVM Host's initramfs file along with a script that starts 

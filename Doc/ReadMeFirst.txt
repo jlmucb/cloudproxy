@@ -32,7 +32,7 @@ We welcome comments, suggestions, corrections and questions but
 currently we are a very small group and will often not be able to
 respond quickly to questions.
 
-The instructions are written for executable program structue rooted
+The instructions are written for executable program structure rooted
 in /home/jlm/jlmcrypt.  To change this define the environment
 variable CPProgramDirectory to point to the right place.
 

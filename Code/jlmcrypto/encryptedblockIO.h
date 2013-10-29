@@ -60,8 +60,8 @@ public:
     int     m_iBufOut;      // number of decrypted bytes available
     int     m_iOutStart;    // first available decrypted byte
 
-    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];       // FIX
-    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];      // FIX
+    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];
+    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];
 
     u32     m_uCombinedAlgId;
 
@@ -106,8 +106,8 @@ public:
     int     m_iBufOut;                  // number of bytes in output buffer
     int     m_iOutStart;                // first byte of output not yet sent
 
-    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];   // FIX
-    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];  // FIX
+    byte    m_rguBufIn[EXTENDEDBLOCKBUFSIZE];
+    byte    m_rguBufOut[EXTENDEDBLOCKBUFSIZE];
 
     u32     m_uCombinedAlgId;
 

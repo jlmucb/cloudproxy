@@ -301,7 +301,7 @@ int accessGuard::checkPermitChain(resource* pResource,
 }
 
 
-bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta, // FIX
+bool accessGuard::initGuard(KeyInfo* pPolicy, metaData* pMeta,
                             int numPrincipals, PrincipalCert** rgPrinc)
 {
     int i;
@@ -310,6 +310,11 @@ bool accessGuard::initGuard(RSAKey* pPolicy, metaData* pMeta, // FIX
             pPolicy, pMeta, numPrincipals, rgPrinc);
     fflush(g_logFile);
 #endif
+    if(pPolicy->m_ukeyType!=RSAKEYTYPE) {
+        fprintf(g_logFile, "initGuard: only RSA keys supported\n");
+        return false;
+    }
+
     m_numCurrentPrincipals= numPrincipals;
     m_myPrincipals= new PrincipalCert*[numPrincipals];
     for(i=0; i<numPrincipals; i++) {

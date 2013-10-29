@@ -185,9 +185,12 @@ encapsulatedMessage::~encapsulatedMessage()
 // -------------------------------------------------------------------------------------
 
 
+#define MAXMETADATASIZE 16382
+
+
 char*  encapsulatedMessage::serializeMetaData()
 {
-    char    buf[16382]; // FIX
+    char    buf[MAXMETADATASIZE];
     int     start= 0;
 
     if(m_szXMLmetadata!=NULL) 
@@ -197,7 +200,7 @@ char*  encapsulatedMessage::serializeMetaData()
         fprintf(g_logFile, "encapsulatedMessage::serializeMetaData: Mandatory metadata missing\n");
         return false;
     }
-    if((strlen(m_szSealAlg)+strlen(m_szEncryptAlg)+strlen(m_szSealedKey))> 16000) {
+    if((strlen(m_szSealAlg)+strlen(m_szEncryptAlg)+strlen(m_szSealedKey)+128)>MAXMETADATASIZE) {
         fprintf(g_logFile, "encapsulatedMessage::serializeMetaData: parameters too large\n");
         return false;
     }
@@ -305,7 +308,7 @@ bool   encapsulatedMessage::parseMetaData()
 }
 
 
-bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)     // FIX
+bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
 {
     char    buf[2*GLOBALMAXPUBKEYSIZE];
     int     outsize= 2*GLOBALMAXPUBKEYSIZE;

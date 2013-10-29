@@ -26,23 +26,28 @@ Produce the AIK certificate by typing:
     cd ROOT
     ./cryptUtility.exe -SignHexModulus policyPrivateKey.xml HWRoot/aikhexmod.txt HWRoot/cert
 
-Next produce a self signed cert for the policy key.  Copy
-policyPublicProto.xml from this (Doc) directory into ROOT/HWRoot
+Next produce a self signed cert for the policy key, as follows:
+
+Copy policyPublicProto.xml from this (Doc) directory into ROOT/HWRoot
 (for 1024 bit keys) and policyPublicProto2048.xml (for 2048 bit
 keys).  Edit the file replacing the CAPITALIZED items.  Then insert
 the xml in privatePolicyKey.xml into the indicated place in
-policyPublicProto.xml and delete the <D:>, <P:> and <Q:> 
+policyPublicProto.xml and delete the <D:>, <P:>, <Q:>, <DP:> and <DQ:>
 elements.  Sign this file by typing:
+
+	cd ROOT/HWRoot
+
   ../cryptUtility.exe -Sign policyPrivateKey.xml rsa1024-sha256-pkcspad \
     policyPublicProto.xml policyCert.xml # for 1024 bit keys
 or
   ../cryptUtility.exe -Sign policyPrivateKey.xml rsa2048-sha256-pkcspad \
-    policyPublicProto.xml policyCert.xml # for 2048 bit keys
+    policyPublicProto2048.xml policyCert.xml # for 2048 bit keys
 
-Produce the include file that will be used to insert the policy cert in the
-activity elements.
+Next, produce the include file that will be used to insert the policy cert 
+in the activity elements.
 
 ../cryptUtility.exe -PolicyCert policyCert.xml policyCert.inc FileProxy
 Copy policyCert.inc to Code/fileProxy and Code/tcService.
 
-
+Note that the change in the include file (.inc) does not trigger a rebuild, so
+you may have to manually delete the executables and rebuild.

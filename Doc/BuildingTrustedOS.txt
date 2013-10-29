@@ -12,6 +12,8 @@ kernel the tcioDD will be loaded into. The current
 version is for the stock 3.7.5 kernel, which installs
 the build directory into /lib/modules/3.7.5/build.
 
+The following is now done as part of BuildingTrustedOS and LinuxStaticLink.txt.
+
 Build the tcioDD device driver.
     cd Devices
     make

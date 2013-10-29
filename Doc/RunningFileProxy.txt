@@ -18,6 +18,7 @@ you will have to log out and back in to get the right group permissions.
 3. add tcioDD to the kernel  
   cd ~/jlmcrypt
   insmod tcioDD.ko
+  chown <username> /dev/tcioDD0
   chmod 0777 /dev/tcioDD0
 
 The first time you run tcService, you must run it with the -initKeys flag.  
@@ -44,6 +45,9 @@ you store your executables (usually jlmcrypt); do the following:
     cd ROOT
     CODE/scripts/createSimpleTest.py --scriptPath CODE/scripts
     mv basicTest fileClient/tests/
+
+Note that scripts may have hard coded paths and you may have to change them to
+suit your environment.
 
 createSimpleTest.py creates a new public/private key pair for a user JohnManferdelli/0001,
 generates the public and private key XML files, creates a new test file file.test and a 

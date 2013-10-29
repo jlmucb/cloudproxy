@@ -113,12 +113,17 @@ On the Development Computer or KeyNegoServer Computer (depending on whether
     "DRTMBoot.txt."
 12. Build tcLaunch 
 
-If this is a Development Computer, use the instructions in "RunningFileProxy.txt" 
-to run and test these programs.
+Note you may to create the directories and/or followed the steps a through d,
+described below.
 
-If you are building a deployable FileProxy system, you must setup KeyNegoServer, 
-build a Trusted OS image and FileClient and FileServer Linux images (including 
-a special initramfs) that you can deploy.  To do this, consult:
+If this is a Development Computer, use the instructions in
+"RunningFileProxy.txt" to run and test these programs. 
+
+
+If you are building a deployable FileProxy system, you must setup
+KeyNegoServer, Build a Trusted OS image and FileClient and FileServer Linux
+images (including a special initramfs) that you can deploy.  To do this,
+consult:
 
     a. "OperatingKeyNegoServer.txt" for KeyNegoServer.
     b. "BuildingTrustedOS.txt" for building a trusted OS and configuring GRUB.

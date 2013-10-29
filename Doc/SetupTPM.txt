@@ -112,16 +112,8 @@ that ensures that only the authorized user can access and manage the TPM. This p
 also used when we want to turn off the TPM, disable the TPM, clear the TPM, etc, so we 
 must always remember it and don’t forget it. The TPM is shipped in unowned state.
 
-We must set two passwords. The first password is an administration password, which is 
-used for administering the TPM, and the second password is a SRK (Storage Root Key) 
-password that is needed whenever we will load a key into the TPM. We can set both passwords 
-with the tpm_takeownership command as can be seen below:
-
-# tpm_takeownership
-Enter owner password:
-Confirm password:
-Enter SRK password:
-Confirm password:
+DO NOT SET ANY PASSWORD for the TPM.
+# tpm_takeownership -z -y
 If we later want to change either of the commands, we can do it with the tpm_changeownerauth 
 command. If we pass the –owner argument to the tpm_changeownerauth command we’ll be 
 changing the administration password and if we pass the –srk into the tpm_changeownerauth 

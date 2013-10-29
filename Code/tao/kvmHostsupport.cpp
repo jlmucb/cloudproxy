@@ -118,6 +118,21 @@ int  getmysyspid(const char* name)
     unlink(fileName);
 #endif
     // TODO: hack fix later (see tcLaunch)
+    // added 10/28:
+    //      navigate to /proc/pid/task
+    //      This should have the pid and the pid's of all the
+    //      vcpu's.
+    //
+    //      You can also check /var/lib/libvirt/qemu/
+    //          name.pid (e.g.- KvmTestGuest.pid) will have main pid and
+    //          KvmTestGuest.xml  will have xml like:
+    //      <domstatus state='running' reason='booted' pid='3363'>
+    //      <monitor path='/var/lib/libvirt/qemu/KvmTestGuest.monitor' json='1' type='unix'/>
+    //      <vcpus>
+    //      <vcpu pid='3365'/>
+    //      </vcpus>
+    //      ...
+
     return newpid+2;
 }
 

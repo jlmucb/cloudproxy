@@ -1,5 +1,3 @@
-
-
 Aug 19, 2013
 KVM: How to find a guest VM's process ID (PID)
 There are two ways to find VCPUs' PID.

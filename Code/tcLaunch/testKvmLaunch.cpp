@@ -54,7 +54,7 @@ using std::stringstream;
 
 
 #include <dirent.h>
-#define QEMUPIDIR "/var/lib/libvirt/qemu"
+#define QEMUPIDIR "/var/run/libvirt/qemu"
 #define ENVDEFINEDQEMUDIR "CPQemuDir"
 
 
@@ -180,12 +180,11 @@ bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* r
     bool            fRet= false;
 
 #ifdef TEST
-    printf("getkvmpids(%s)\n", name);
+    printf("getkvmpids(%s), %s\n", name, m_qemudir);
 #endif
 
     // pid file name
-    // sprintf(buf, "%s/%s.pid", m_qemudir, name);
-    sprintf(buf, "/Users/jlm/jlmcrypt/testKvm/%s.pid", name);
+    sprintf(buf, "%s/%s.pid", m_qemudir, name);
     szpidFile= strdup(buf);
 
     // open the logfile and get the pid
@@ -206,8 +205,12 @@ bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* r
     }
     close(fd);
 
-    // sprintf(buf, "/proc/%d/task", mainpid);
-    sprintf(buf, "/Users/jlm/jlmcrypt/testKvm/%d/task", mainpid);
+    if(mainpid<0) {
+        printf("getkvmpids: main pid failed\n");
+        return false;
+    }
+
+    sprintf(buf, "/proc/%d/task", mainpid);
     sztaskDir= strdup(buf);
 
     dent= opendir(sztaskDir);

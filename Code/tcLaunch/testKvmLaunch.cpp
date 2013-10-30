@@ -39,7 +39,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <dirent.h>
 
 #include <string>
 #include <iostream>
@@ -52,6 +51,24 @@ using std::stringstream;
 
 
 // ------------------------------------------------------------------------
+
+
+#include <dirent.h>
+#define QEMUPIDIR "/var/lib/libvirt/qemu"
+#define ENVDEFINEDQEMUDIR "CPQemuDir"
+
+
+bool isnum(const char* p)
+{
+    if(p==NULL)
+        return false;
+    while(*p!='\0') {
+        if(*p<'0' || *p>'9')
+            return false;
+        p++;
+    }
+    return true;
+}
 
 
 #define BUFSIZE 2048
@@ -73,24 +90,35 @@ char *nextline(char* start, char* end)
 }
 
 
-#define MAXPIDS 1000
 class pidMapper {
 public:
-    int     m_numrefpids;
-    int     m_basepid[MAXPIDS];
-    int     m_refpid[MAXPIDS];
+    enum    {MAXPIDS=1000, NUMVCPUS= 64};
 
-            pidMapper();
-            ~pidMapper();
 
-    bool    addbasepid(int mainpid, int numrefs, int* rgrefs);
-    int     getbasepid(int apid);
+    int         m_numrefpids;
+    int         m_basepid[MAXPIDS];
+    int         m_refpid[MAXPIDS];
+    const char* m_qemudir;
+
+                pidMapper();
+                ~pidMapper();
+
+    bool        addbasepid(int mainpid, int numrefs, int* rgrefs);
+    int         getbasepid(int apid);
+    bool        getkvmpids(const char* name, int* pmainpid, 
+                           int* pnvcpus, int* rgpids);
+    bool        initKvm(const char* name);
 };
 
 
 pidMapper::pidMapper()
 {
     m_numrefpids= 0;
+    const char* defDir= getenv(ENVDEFINEDQEMUDIR);
+    if(defDir!=NULL)
+        m_qemudir= defDir;
+    else
+        m_qemudir= QEMUPIDIR;
 }
 
 
@@ -102,7 +130,7 @@ pidMapper::~pidMapper()
 
 bool pidMapper::addbasepid(int mainpid, int numrefs, int* rgrefs)
 {
-    int     k, j;
+    int     j, k;
 
     if(m_numrefpids>=MAXPIDS)
         return false;
@@ -136,23 +164,7 @@ int pidMapper::getbasepid(int apid)
 }
 
 
-bool isnum(const char* p)
-{
-    if(p==NULL)
-        return false;
-    while(*p!='\0') {
-        if(*p<'0' || *p>'9')
-            return false;
-        p++;
-    }
-    return true;
-}
-
-
-#define NUMVCPUS 65
-
-
-bool getmysyspid(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
+bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
 {
     char            buf[BUFSIZE];
     char            line[BUFSIZE];
@@ -168,22 +180,22 @@ bool getmysyspid(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
     bool            fRet= false;
 
 #ifdef TEST
-    printf("getmysyspid vm: %s\n", name);
+    printf("getkvmpids(%s)\n", name);
 #endif
 
     // pid file name
-    // sprintf(buf, "/var/lib/libvirt/qemu/%s.pid", name);
+    // sprintf(buf, "%s/%s.pid", m_qemudir, name);
     sprintf(buf, "/Users/jlm/jlmcrypt/testKvm/%s.pid", name);
     szpidFile= strdup(buf);
 
     // open the logfile and get the pid
     int fd= open(szpidFile, O_RDONLY);
     if(fd<0) {
-        printf("getmysyspid: cant open pid file\n");
+        printf("getkvmpids: cant open pid file %s\n", szpidFile);
         return false;
     }
     if((size=read(fd, line, BUFSIZE))<0) {
-        printf("getmysyspid: read failed\n");
+        printf("getkvmpids: read failed\n");
         close(fd);
         return false;
     }
@@ -200,7 +212,7 @@ bool getmysyspid(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
 
     dent= opendir(sztaskDir);
 
-    while((pent=readdir(dent))!=NULL && numCPUs<NUMVCPUS) {
+    while((pent=readdir(dent))!=NULL && numCPUs<*pnvcpus) {
         if(!isnum(pent->d_name))
             continue;
         rgpids[numCPUs]= atoi(pent->d_name);
@@ -213,7 +225,7 @@ bool getmysyspid(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
     *pnvcpus= numCPUs;
 
 #ifdef TEST
-    printf("\nmain pid: %d\n", mainpid);
+    printf("\ngetkvmpids\nmain pid: %d\n", mainpid);
     printf("num pids: %d\n\t", numCPUs);
     for(int i=0; i<numCPUs; i++) {
         printf("%d ", rgpids[i]);
@@ -234,20 +246,41 @@ bool getmysyspid(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
 }
 
 
+
+bool pidMapper::initKvm(const char* name)
+{
+    int         mainpid= 0;
+    int         nvcpus= NUMVCPUS;
+    int         rgpids[NUMVCPUS];
+
+#ifdef TEST
+    printf("initKvm(%s)\n", name);
+#endif
+
+    if(!getkvmpids(name, &mainpid, &nvcpus, rgpids)) {
+        printf("initKvm: getkvmpids failed\n");
+        return false;
+    }
+
+    if(!addbasepid(mainpid, nvcpus, rgpids)) {
+        printf("initKvm: addbasepid failed\n");
+        return false;
+    }
+    return true;
+}
+
+
 // ------------------------------------------------------------------------
 
 
 int main(int an, char** av)
 {
-    int         i,j,k;
+    int         j,k;
     const char* name= NULL;
-    int         mainpid= 0;
-    int         nvcpus= 100;
-    int         rgpids[100];
     pidMapper   pidMap;
 
     printf("testKvmLaunch.exe, %d args\n", an);
-    for(i=0; i<an; i++) {
+    for(int i=0; i<an; i++) {
         printf("\t%s\n", av[i]);
     }
     name= av[1];
@@ -257,15 +290,10 @@ int main(int an, char** av)
         return 1;
     }
 
-    if(getmysyspid(name, &mainpid, &nvcpus, rgpids))
-        printf("getmysyspid succeeded\n");
-    else
-        printf("getmysyspid failed\n");
-
-    if(!pidMap.addbasepid(mainpid, nvcpus, rgpids)) {
-        printf("addbasepid failed\n");
-        return 1;
+    if(!pidMap.initKvm(name)) {
+        printf("initKvm failed\n");
     }
+    printf("initKvm succeeded\n");
 
     j= 6;
     k= pidMap.getbasepid(j);

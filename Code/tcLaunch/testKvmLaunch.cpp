@@ -72,19 +72,43 @@ char *nextline(char* start, char* end)
     return NULL;
 }
 
-//      navigate to /proc/pid/task
-//      This should have the pid and the pid's of all the
-//      vcpu's.
-//
-//      You can also check /var/lib/libvirt/qemu/
-//          name.pid (e.g.- KvmTestGuest.pid) will have main pid and
-//          KvmTestGuest.xml  will have xml like:
-//      <domstatus state='running' reason='booted' pid='3363'>
-//      <monitor path='/var/lib/libvirt/qemu/KvmTestGuest.monitor' json='1' type='unix'/>
-//      <vcpus>
-//      <vcpu pid='3365'/>
-//      </vcpus>
-//      ...
+
+#define MAXPIDS 1000
+class pidMapper {
+public:
+    int     m_numrefpids;
+    int     m_basepid[MAXPIDS];
+    int     m_refpid[MAXPIDS];
+
+            pidMapper();
+            ~pidMapper();
+
+    int     getbasepid(int apid);
+};
+
+
+pidMapper::pidMapper()
+{
+    m_numrefpids= 0;
+}
+
+
+pidMapper::~pidMapper()
+{
+    m_numrefpids= 0;
+}
+
+
+int pidMapper::getbasepid(int apid)
+{
+    int i;
+
+    for(i=0; i<m_numrefpids; i++) {
+        if(apid==m_refpid[i])
+            return m_basepid[i];
+    }
+    return -1;
+}
 
 
 bool isnum(const char* p)
@@ -190,11 +214,12 @@ bool getmysyspid(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
 
 int main(int an, char** av)
 {
-    int         i;
+    int         i,j,k;
     const char* name= NULL;
-    int mainpid= 0;
-    int nvcpus= 100;
-    int rgpids[100];
+    int         mainpid= 0;
+    int         nvcpus= 100;
+    int         rgpids[100];
+    pidMapper   pidMap;
 
     printf("testKvmLaunch.exe, %d args\n", an);
     for(i=0; i<an; i++) {
@@ -211,6 +236,31 @@ int main(int an, char** av)
         printf("getmysyspid succeeded\n");
     else
         printf("getmysyspid failed\n");
+
+    i= pidMap.m_numrefpids;
+    pidMap.m_basepid[i]= mainpid;
+    pidMap.m_refpid[i]= mainpid;
+    pidMap.m_numrefpids++;
+
+    for(j=0;j<nvcpus;j++) {
+        i= pidMap.m_numrefpids;
+        pidMap.m_basepid[i]= mainpid;
+        pidMap.m_refpid[i]= rgpids[j];
+        pidMap.m_numrefpids++;
+    }
+
+    j= 6;
+    k= pidMap.getbasepid(j);
+    printf("base[%d]: %d\n", j, k);
+    j= 22;
+    k= pidMap.getbasepid(j);
+    printf("base[%d]: %d\n", j, k);
+    j= 26;
+    k= pidMap.getbasepid(j);
+    printf("base[%d]: %d\n", j, k);
+    j= 25;
+    k= pidMap.getbasepid(j);
+    printf("base[%d]: %d\n", j, k);
 
     return 0;
 }

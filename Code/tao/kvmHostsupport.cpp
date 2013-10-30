@@ -31,7 +31,6 @@
 #include <unistd.h>
 
 
-
 //  Config
 //      listen_tls= 0
 //      listen_tcp= 1
@@ -46,8 +45,24 @@ extern const char* g_progDirectory;
 // -------------------------------------------------------------------------
 
 
-#define BUFSIZE 2048
+#include <dirent.h>
 
+
+bool isnum(const char* p)
+{
+    if(p==NULL)
+        return false;
+    while(*p!='\0') {
+        if(*p<'0' || *p>'9')
+            return false;
+        p++;
+    }
+    return true;
+}
+
+
+#define BUFSIZE 2048
+#define NAMESIZE 256
 
 char *nextline(char* start, char* end)
 {
@@ -58,10 +73,172 @@ char *nextline(char* start, char* end)
                 return start;
             else
                 return NULL;
-        }
+        } 
         start++;
     }
     return NULL;
+}
+
+
+pidMapper::pidMapper()
+{
+    m_numrefpids= 0;
+    const char* defDir= getenv(ENVDEFINEDQEMUDIR);
+    if(defDir!=NULL)
+        m_qemudir= defDir;
+    else
+        m_qemudir= QEMUPIDIR;
+}
+
+
+pidMapper::~pidMapper()
+{
+    m_numrefpids= 0;
+}
+
+
+bool pidMapper::addbasepid(int mainpid, int numrefs, int* rgrefs)
+{
+    int     j, k;
+
+    if(m_numrefpids>=MAXPIDS)
+        return false;
+    k= m_numrefpids;
+    m_basepid[k]= mainpid;
+    m_refpid[k]= mainpid;
+    m_numrefpids++;
+
+    for(j=0;j<numrefs;j++) {
+        if(m_numrefpids>=MAXPIDS)
+            return false;
+        k= m_numrefpids;
+        m_basepid[k]= mainpid;
+        m_refpid[k]= rgrefs[j];
+        m_numrefpids++;
+    }
+
+    return true;
+}
+
+
+int pidMapper::getbasepid(int apid)
+{
+    int i;
+
+    for(i=0; i<m_numrefpids; i++) {
+        if(apid==m_refpid[i])
+            return m_basepid[i];
+    }
+    return -1;
+}
+
+
+bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* rgpids)
+{
+    char            buf[BUFSIZE];
+    char            line[BUFSIZE];
+    int             mainpid= -1;
+    char*           beginline= line;
+    char*           szpidFile= NULL;
+    char*           sztaskDir= NULL;
+    int             numlines= 0;
+    int             size= 0;
+    struct dirent*  pent= NULL;
+    DIR*            dent= NULL;
+    int             numCPUs= 0;
+    bool            fRet= false;
+
+#ifdef TEST
+    fprintf(g_logFile, "getkvmpids(%s), %s\n", name, m_qemudir);
+#endif
+
+    // pid file name
+    sprintf(buf, "%s/%s.pid", m_qemudir, name);
+    szpidFile= strdup(buf);
+
+    // open the logfile and get the pid
+    int fd= open(szpidFile, O_RDONLY);
+    if(fd<0) {
+        fprintf(g_logFile, "getkvmpids: cant open pid file %s\n", szpidFile);
+        return false;
+    }
+    if((size=read(fd, line, BUFSIZE))<0) {
+        fprintf(g_logFile, "getkvmpids: read failed\n");
+        close(fd);
+        return false;
+    }
+    while(beginline!=NULL) {
+        sscanf(beginline, "%d", &mainpid);
+        numlines++;
+        beginline= nextline(beginline, &line[size-1]);
+    }
+    close(fd);
+
+    if(mainpid<0) {
+        fprintf(g_logFile, "getkvmpids: main pid failed\n");
+        return false;
+    }
+
+    sprintf(buf, "/proc/%d/task", mainpid);
+    sztaskDir= strdup(buf);
+
+    dent= opendir(sztaskDir);
+
+    while((pent=readdir(dent))!=NULL && numCPUs<*pnvcpus) {
+        if(!isnum(pent->d_name))
+            continue;
+        rgpids[numCPUs]= atoi(pent->d_name);
+        numCPUs++;
+    }
+    closedir(dent);
+    fRet= true;
+
+    *pmainpid= mainpid;
+    *pnvcpus= numCPUs;
+
+#ifdef TEST
+    fprintf(g_logFile, "\ngetkvmpids\nmain pid: %d\n", mainpid);
+    fprintf(g_logFile, "num pids: %d\n\t", numCPUs);
+    for(int i=0; i<numCPUs; i++) {
+        fprintf(g_logFile, "%d ", rgpids[i]);
+    }
+    fprintf(g_logFile, "\n");
+#endif
+
+// done:
+    if(szpidFile!=NULL) {
+        free(szpidFile);
+        szpidFile= NULL;
+    }
+    if(sztaskDir!=NULL) {
+        free(sztaskDir);
+        sztaskDir= NULL;
+    }
+    return fRet;
+}
+
+
+
+bool pidMapper::initKvm(const char* name)
+{
+    int         mainpid= 0;
+    int         nvcpus= NUMVCPUS;
+    int         rgpids[NUMVCPUS];
+
+#ifdef TEST
+    fprintf(g_logFile, "initKvm(%s)\n", name);
+#endif
+
+    if(!getkvmpids(name, &mainpid, &nvcpus, rgpids)) {
+        fprintf(g_logFile, "initKvm: getkvmpids failed\n");
+        return false;
+    }
+
+    if(!addbasepid(mainpid, nvcpus, rgpids)) {
+        fprintf(g_logFile, "initKvm: addbasepid failed\n");
+        return false;
+    }
+    return true;
 }
 
 

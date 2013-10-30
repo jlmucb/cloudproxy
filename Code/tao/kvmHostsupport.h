@@ -34,6 +34,35 @@ int startKvmVM(const char* programname, const char* systemname,
                const char* xmldomainstring,
                virConnectPtr* ppvmconnection,
                virDomainPtr*  ppvmdomain);
+bool isnum(const char* p);
+
+
+#include <dirent.h>
+#define QEMUPIDIR "/var/run/libvirt/qemu"
+#define ENVDEFINEDQEMUDIR "CPQemuDir"
+
+
+class pidMapper {
+public:
+    enum    {MAXPIDS=1000, NUMVCPUS= 64};
+
+
+    int         m_numrefpids;
+    int         m_basepid[MAXPIDS];
+    int         m_refpid[MAXPIDS];
+    const char* m_qemudir;
+
+                pidMapper();
+                ~pidMapper();
+
+    bool        addbasepid(int mainpid, int numrefs, int* rgrefs);
+    int         getbasepid(int apid);
+    bool        getkvmpids(const char* name, int* pmainpid, 
+                           int* pnvcpus, int* rgpids);
+    bool        initKvm(const char* name);
+};
+
+
 #endif
 
 

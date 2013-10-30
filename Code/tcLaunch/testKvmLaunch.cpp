@@ -83,6 +83,7 @@ public:
             pidMapper();
             ~pidMapper();
 
+    bool    addbasepid(int mainpid, int numrefs, int* rgrefs);
     int     getbasepid(int apid);
 };
 
@@ -96,6 +97,30 @@ pidMapper::pidMapper()
 pidMapper::~pidMapper()
 {
     m_numrefpids= 0;
+}
+
+
+bool pidMapper::addbasepid(int mainpid, int numrefs, int* rgrefs)
+{
+    int     k, j;
+
+    if(m_numrefpids>=MAXPIDS)
+        return false;
+    k= m_numrefpids;
+    m_basepid[k]= mainpid;
+    m_refpid[k]= mainpid;
+    m_numrefpids++;
+
+    for(j=0;j<numrefs;j++) {
+        if(m_numrefpids>=MAXPIDS)
+            return false;
+        k= m_numrefpids;
+        m_basepid[k]= mainpid;
+        m_refpid[k]= rgrefs[j];
+        m_numrefpids++;
+    }
+
+    return true;
 }
 
 
@@ -237,16 +262,9 @@ int main(int an, char** av)
     else
         printf("getmysyspid failed\n");
 
-    i= pidMap.m_numrefpids;
-    pidMap.m_basepid[i]= mainpid;
-    pidMap.m_refpid[i]= mainpid;
-    pidMap.m_numrefpids++;
-
-    for(j=0;j<nvcpus;j++) {
-        i= pidMap.m_numrefpids;
-        pidMap.m_basepid[i]= mainpid;
-        pidMap.m_refpid[i]= rgpids[j];
-        pidMap.m_numrefpids++;
+    if(!pidMap.addbasepid(mainpid, nvcpus, rgpids)) {
+        printf("addbasepid failed\n");
+        return 1;
     }
 
     j= 6;

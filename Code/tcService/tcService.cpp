@@ -371,6 +371,13 @@ TCSERVICE_RESULT tcServiceInterface::GetOsEvidence(int* psizeOut, byte* rgOut)
 TCSERVICE_RESULT tcServiceInterface::GetHostedMeasurement(int pid, u32* phashType, 
                                                         int* psize, byte* rgBuf)
 {
+#ifdef KVMTCSERVICE
+    // map procid to KVM main pid
+    int     newpid= m_pidMapper.getbasepid(pid);
+    if(newpid>0) {
+        pid= newpid;
+    }
+#endif
     if(!m_procTable.gethashfromprocId(pid, psize, rgBuf)) {
         return TCSERVICE_RESULT_FAILED;
     }
@@ -856,6 +863,9 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
     byte                rgBuf[PARAMSIZE];
 
     int                 pid;
+#ifdef KVMTCSERVICE
+    int                 newpid;
+#endif
     u32                 uType= 0;
     int                 an;
     char*               av[10];
@@ -1056,6 +1066,13 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
             pid= origprocid;
         }
 
+#ifdef KVMTCSERVICE
+         // map procid to KVM main pid
+        newpid= g_myService.m_pidMapper.getbasepid(pid);
+        if(newpid>0) {
+            pid= newpid;
+        }
+#endif
         // get hash
         sizehash= SHA256DIGESTBYTESIZE;
         uType= SHA256HASH;

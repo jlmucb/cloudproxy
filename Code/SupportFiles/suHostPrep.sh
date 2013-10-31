@@ -13,7 +13,8 @@ su jlm
 virt-manager
 cd ~/jlmcrypt
 echo "Starting Service"
-./tcKvmHostService.exe &
+# Note tcKvmHostService.exe must be run as root because of pid mapping
+sudo ./tcKvmHostService.exe &
 sleep 3s
 echo "Launching KvmGuest"
 ./tcLaunch.exe -KVMLinux KvmTestGuest  \

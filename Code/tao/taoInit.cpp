@@ -191,13 +191,13 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
 #endif
     quotedInfo[0]= 0;
     // quote key valid?
-    if(m_myHost==NULL || !m_myHost->m_hostValid) {
+    if(m_myHost==NULL || !m_myHost->isValid()) {
         fprintf(g_logFile, "GenerateQuoteAndCertifyKey: host invalid\n");
         return false;
     }
 
     // compute quote type from host type and key type
-    switch(m_myHost->m_hostType) {
+    switch(m_myHost->hostType()) {
       default:
       case PLATFORMTYPENONE:
       case PLATFORMTYPEHYPERVISOR:

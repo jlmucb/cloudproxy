@@ -126,7 +126,7 @@ bool fileClient::initPolicy()
     fflush(g_logFile);
 #endif
     // doesn't do much any more
-    if(!m_tcHome.m_envValid) {
+    if(!m_tcHome.isValid()) {
         fprintf(g_logFile, "fileClient::initPolicy(): environment invalid\n");
         return false;
     }

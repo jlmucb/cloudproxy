@@ -1062,7 +1062,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         // When the tcService for a guest calls, it doesn't know its
         // id (the pid of the KVM/QEMU process).  It is known to the
         // driver that forwards the message so we replace it here
-        if(g_myService.m_trustedHome.m_envType==PLATFORMTYPEKVMHYPERVISOR) {
+        if(g_myService.m_trustedHome.envType()==PLATFORMTYPEKVMHYPERVISOR) {
             pid= origprocid;
         }
 

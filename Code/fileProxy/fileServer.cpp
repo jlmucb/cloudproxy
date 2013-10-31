@@ -350,7 +350,7 @@ bool fileServer::initPolicy()
     fprintf(g_logFile, "fileServer::initPolicy\n");
     fflush(g_logFile);
 #endif
-    if(!m_tcHome.m_envValid) {
+    if(!m_tcHome.isValid()) {
         fprintf(g_logFile, "fileServer::initPolicy(): environment invalid\n");
         return false;
     }

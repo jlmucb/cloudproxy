@@ -1,13 +1,14 @@
 #
+rm aesspeedtestobjects/*.o
 rm cryptotestobjects/*.o
-rm speedtestobjects/*.o
 rm cryptUtilityobjects/*.o
-rm tcServiceobjects/*.o
 rm fileClientobjects/*.o
 rm fileServerobjects/*.o
 rm keyNegoServerobjects/*.o
-rm vTCIDirectobjects/*.o
+rm kvmncpobjects/*.o
+rm mptestobjects/*.o
+rm rsaspeedtestobjects/*.o
+rm tcLaunchobjects/*.o
+rm tcServiceobjects/*.o
 rm vTCIobjects/*.o
-rm authServerobjects/*.o
-rm authClientobjects/*.o
 

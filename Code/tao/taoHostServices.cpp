@@ -462,6 +462,12 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 }
 
 
+const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, const char* hint)
+{
+    return NULL;
+}
+
+
 #ifdef TEST
 void taoHostServices::printData()
 {     

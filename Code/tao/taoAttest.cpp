@@ -46,13 +46,17 @@
 taoAttest::taoAttest()
 {
     m_attestType= 0;
-    m_pattestCert= NULL;
+    m_sznonce= NULL;
+    m_szdigest= NULL;
+    m_szAttestAlg= NULL;
+    m_pattestingCert= NULL;
+    m_pattestingKey= NULL;
+
+    // these will be removed
     m_pquoteKey= NULL;
     m_szQuoteAlg= NULL;
     m_szQuoteInfo= NULL;
     m_szCanonicalQuotedBody= NULL;
-    m_sznonce= NULL;
-    m_szdigest= NULL;
     m_szQuoteValue= NULL;
     m_szQuoteKeyInfo= NULL;
     m_szQuotedKeyInfo= NULL;
@@ -64,9 +68,9 @@ taoAttest::taoAttest()
 taoAttest::~taoAttest()
 {
     m_attestType= 0;
-    if(m_pattestCert!=NULL) {
-        free(m_pattestCert);
-        m_pattestCert= NULL;
+    if(m_pattestingCert!=NULL) {
+        free(m_pattestingCert);
+        m_pattestingCert= NULL;
     }
     if(m_pquoteKey!=NULL) {
         // delete pquoteKey;
@@ -219,7 +223,7 @@ bool taoAttest::verifyAttestation()
 #endif
 
     // get parse attest cert
-    if(!m_oEvidence.getSubjectEvidence(&type, (void**)&m_pattestCert)) {
+    if(!m_oEvidence.getSubjectEvidence(&type, (void**)&m_pattestingCert)) {
         fprintf(g_logFile, "taoAttest::verifyAttestation: can't get attest Cert\n");
         return false;
     }
@@ -229,7 +233,7 @@ bool taoAttest::verifyAttestation()
     }
 
     // get quoting key
-    m_pquoteKey= (RSAKey*) m_pattestCert->getSubjectKeyInfo();
+    m_pquoteKey= (RSAKey*) m_pattestingCert->getSubjectKeyInfo();
     if(m_pquoteKey==NULL) {
         fprintf(g_logFile, "taoAttest::verifyAttestation: can't get quoting key from Cert\n");
         return false;
@@ -260,6 +264,22 @@ bool taoAttest::verifyAttestation()
 
     return fRet;
 }
+
+
+bool  taoAttest::init(const char *attestation,
+                         const char* attestEvidence, KeyInfo* policyKey)
+{
+    return false;
+}
+
+
+bool  taoAttest::verifyAttestation(int* psizeattestValue, byte* attestValue,
+                                      const char** pdigestalg, int* sizeCodeDigest,
+                                      byte* codeDigest, const char** phint)
+{
+    return false;
+}
+
 
 
 u32 taoAttest::attestType()

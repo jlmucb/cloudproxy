@@ -136,7 +136,7 @@ public:
 //      primitives.  This reorg from version 1 was suggested by the paper.
 //
 class taoHostServices {
-public:
+private:
     u32         m_hostType;
     bool        m_hostValid;
     int         m_hostHandle;
@@ -157,6 +157,10 @@ public:
     linuxDeviceChannel  m_linuxmyHostChannel;
 
 public:
+    // make this private later
+    bool        Attest(int sizetoAttest, byte* toAttest, int* psizeAttested, 
+                       byte* attested);
+
                 taoHostServices();
                 ~taoHostServices();
 
@@ -164,6 +168,8 @@ public:
                          const char* directory, const char* subdirectory,
                          int nParameters, const char** rgszParameter);
     bool        HostClose();
+    u32         hostType() {return m_hostType;};
+    bool        isValid() {return m_hostValid;};
     bool        StartHostedProgram(int an, char** av, int* phandle);
     bool        GetHostedMeasurement(int* psize, u32* ptype, byte* buf);
     bool        GetEvidence(int* psize, byte** buf);
@@ -173,8 +179,7 @@ public:
     bool        GetEntropy(int size, byte* buf);
     bool        Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
     bool        Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byte* toSeal);
-    bool        Attest(int sizetoAttest, byte* toAttest, int* psizeAttested, 
-                       byte* attested);
+    const char* makeAttestion(int sizetoAttest, byte* toAttest, const char* hint);
 
 #ifdef TEST
     void        printData();
@@ -188,21 +193,15 @@ public:
 //
 class taoEnvironment {
 
-public:
+private:
     u32                 m_envType;
     bool                m_envValid;
-    taoFiles            m_fileNames;
 
     taoHostServices*    m_myHost;
 
     char*               m_program;
     char*               m_domain;
     char*               m_machine;
-
-    bool                m_myMeasurementValid;
-    u32                 m_myMeasurementType;
-    int                 m_myMeasurementSize;
-    byte*               m_myMeasurement;
 
     bool                m_sealedsymKeyValid;
     int                 m_sealedsymKeySize;
@@ -216,6 +215,26 @@ public:
     u32                 m_symKeyType;
     int                 m_symKeySize;
     byte*               m_symKey;
+
+    int                 m_serializedpublicKeySize;
+    char*               m_serializedpublicKey;
+    int                 m_publicKeyBlockSize;
+
+    u32                 m_serializedprivateKeyType;
+    int                 m_serializedprivateKeySize;
+    char*               m_serializedprivateKey;
+
+    char*               m_szPrivateKeyName;
+    char*               m_szPrivateSubjectName;
+    char*               m_szPrivateSubjectId;
+
+public:                 // make these private eventually
+    taoFiles            m_fileNames;
+
+    bool                m_myMeasurementValid;
+    u32                 m_myMeasurementType;
+    int                 m_myMeasurementSize;
+    byte*               m_myMeasurement;
 
     bool                m_policyKeyValid;
     u32                 m_policyKeyType;
@@ -231,14 +250,6 @@ public:
     int                 m_publicKeySize;
     RSAKey*             m_publicKey;
 
-    int                 m_serializedpublicKeySize;
-    char*               m_serializedpublicKey;
-    int                 m_publicKeyBlockSize;
-
-    u32                 m_serializedprivateKeyType;
-    int                 m_serializedprivateKeySize;
-    char*               m_serializedprivateKey;
-
     bool                m_myCertificateValid;
     u32                 m_myCertificateType;
     int                 m_myCertificateSize;
@@ -247,10 +258,6 @@ public:
     bool                m_ancestorEvidenceValid;
     int                 m_ancestorEvidenceSize;
     byte*               m_ancestorEvidence;
-
-    char*               m_szPrivateKeyName;
-    char*               m_szPrivateSubjectName;
-    char*               m_szPrivateSubjectId;
 
     bool                firstRun();
 
@@ -266,6 +273,8 @@ public:
                              taoHostServices* host, const char* serviceProvider, 
                              int nArgs, char** rgszParameter);
     bool                EnvClose();
+    u32                 envType() {return m_envType;};
+    bool                isValid() {return m_envValid;};
 
     bool                InitMyMeasurement();
     bool                GetMyMeasurement(int* psize, u32* ptype, byte* buf);
@@ -274,6 +283,7 @@ public:
     bool                StartHostedProgram(const char* name, int nArgs, char** av, 
                                            int* phandle);
 
+    bool                GetPolicyKey();
     bool                GetEntropy(int size, byte* buf);
     bool                Seal(int hostedMeasurementSize, byte* hostedMeasurement,
                             int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
@@ -287,8 +297,7 @@ public:
     bool                restoreTao();
     bool                saveTao();
 
-    bool                GetPolicyKey();
-
+private:
     bool                clearKey(u32* ptype, int* psize, byte** ppkey);
 
     bool                hostsealKey(u32 type, int size, byte* key, 
@@ -299,7 +308,7 @@ public:
                                     int* psealedSize, byte** ppsealed);
     bool                localunsealKey(int sealedSize, byte* psealed,
                                     u32* ptype, int* psize, byte** ppkey);
-
+public:
 #ifdef TEST
     void                printData();
 #endif
@@ -373,31 +382,43 @@ public:
 //  This is the object does Attest/Quote verification
 //
 class taoAttest {
-public:
+private:
     u32             m_attestType;
-    PrincipalCert*  m_pattestCert;
-    RSAKey*         m_pquoteKey;
+    PrincipalCert*  m_pattestingCert;
+    RSAKey*         m_pattestingKey;
     RSAKey*         m_policyKey;
     evidenceList    m_oEvidence;
-    char*           m_szQuoteAlg;
-    char*           m_szQuoteInfo;
-    char*           m_szCanonicalQuotedBody;
     char*           m_sznonce;
-    char*           m_szdigest;
-    char*           m_szQuoteValue;
-    char*           m_szQuoteKeyInfo;
-    char*           m_szQuotedKeyInfo;
-    char*           m_szQuotedKeyName;
+    char*           m_szAttestAlg;
 
+public:
                     taoAttest();
                     ~taoAttest();
+
+    bool            bytecodeDigest(byte* out, int* psizeout);
+    char*           codeDigest();
+    u32             attestType();
+    char*           attestAlg();
+
+    int             attestCodeDigestSize(){return 128;};
+    int             sizeAttestedValue();
+
+    bool            init(const char *attestation, const char* attestEvidence, 
+                         KeyInfo* policyKey);
+    bool            verifyAttestation(int* psizeattestValue, byte* attestValue,
+                                      const char** pdigestalg, int* sizeCodeDigest, 
+                                      byte* codeDigest, const char** phint);
+
+    //these will be deprecated
+    RSAKey*         m_pquoteKey;
+    char*           m_szQuoteInfo;
+    char*           m_szdigest;
+    char*           m_szQuoteAlg;
+    char*           m_szCanonicalQuotedBody;
 
     bool            init(u32 type, const char *attestation,
                          const char* attestEvidence, KeyInfo* policyKey);
     bool            verifyAttestation();
-    bool            bytecodeDigest(byte* out, int* psizeout);
-    char*           codeDigest();
-    u32             attestType();
     char*           quoteAlg();
     char*           quoteInfo();
     char*           quoteCanonicalQuotedBody();
@@ -405,6 +426,10 @@ public:
     char*           quoteKeyInfo();
     char*           quotedKeyInfo();
     char*           quotedKeyName();
+    char*           m_szQuoteValue;
+    char*           m_szQuoteKeyInfo;
+    char*           m_szQuotedKeyInfo;
+    char*           m_szQuotedKeyName;
 };
 
 

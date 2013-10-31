@@ -43,6 +43,7 @@
 #include "domain.h"
 
 #ifdef KVMTCSERVICE
+#include "kvmHostsupport.h"
 #include <libvirt/libvirt.h>
 #endif
 
@@ -128,6 +129,10 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_trustedHome;
     serviceprocTable    m_procTable;
+
+#ifdef KVMTCSERVICE
+    pidMapper           m_pidMapper;
+#endif
 
     timer               m_taoEnvInitializationTimer;
     timer               m_taoHostInitializationTimer;

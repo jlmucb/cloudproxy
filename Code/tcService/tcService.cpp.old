@@ -198,7 +198,6 @@ serviceprocEnt*  serviceprocTable::getEntfromprocId(int procid)
 {
     serviceprocMap* pMap= m_pMap;
     serviceprocEnt* pEnt;
-
     while(pMap!=NULL) {
         pEnt= pMap->pElement;
         if(pEnt->m_procid==procid) {
@@ -587,13 +586,8 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
        virConnectPtr    vmconnection= NULL;
        virDomainPtr     vmdomain= NULL;
 
-       if(!startKvmVM(vmName, szsys,  buf, &vmconnection, &vmdomain)) {
+       if((pid=startKvmVM(vmName, szsys,  buf, &vmconnection, &vmdomain))<0) {
            fprintf(g_logFile, "StartApp : cant start VM\n");
-           return TCSERVICE_RESULT_FAILED;
-       }
-
-       if((pid=m_pidMapper.initKvm(vmName))<0) {
-           fprintf(g_logFile, "StartApp : cant map pids\n");
            return TCSERVICE_RESULT_FAILED;
        }
 
@@ -735,13 +729,6 @@ TCSERVICE_RESULT tcServiceInterface::SealFor(int procid, int sizeIn, byte* rgIn,
     byte    rgHash[32];
     int     hashSize= 0;
 
-#ifdef KVMTCSERVICE
-    // map procid to KVM main pid
-    int     newprocid= m_pidMapper.getbasepid(procid);
-    if(newprocid>0) {
-        procid= newprocid;
-    }
-#endif
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
         fprintf(g_logFile, "SealFor can't find hash in procTable %ld\n", (long int)procid);
         return TCSERVICE_RESULT_FAILED;
@@ -769,13 +756,6 @@ TCSERVICE_RESULT tcServiceInterface::UnsealFor(int procid, int sizeIn, byte* rgI
     byte    rgHash[32];
     int     hashSize= 0;
 
-#ifdef KVMTCSERVICE
-    // map procid to KVM main pid
-    int     newprocid= m_pidMapper.getbasepid(procid);
-    if(newprocid>0) {
-        procid= newprocid;
-    }
-#endif
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
         fprintf(g_logFile, "UnsealFor can't find hash in procTable %ld\n", (long int)procid);
         return TCSERVICE_RESULT_FAILED;
@@ -799,13 +779,6 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
     byte    rgHash[32];
     int     hashSize= 32;
 
-#ifdef KVMTCSERVICE
-    // map procid to KVM main pid
-    int     newprocid= m_pidMapper.getbasepid(procid);
-    if(newprocid>0) {
-        procid= newprocid;
-    }
-#endif
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
         fprintf(g_logFile, "tcServiceInterface::AttestFor lookup failed\n");
 #ifdef TEST

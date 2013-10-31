@@ -30,7 +30,7 @@
 #define _KVMHOSTSUPPORT__H
 
 
-bool startKvmVM(const char* programname, const char* systemname, 
+int startKvmVM(const char* programname, const char* systemname, 
                const char* xmldomainstring,
                virConnectPtr* ppvmconnection,
                virDomainPtr*  ppvmdomain);
@@ -59,7 +59,7 @@ public:
     int         getbasepid(int apid);
     bool        getkvmpids(const char* name, int* pmainpid, 
                            int* pnvcpus, int* rgpids);
-    int         initKvm(const char* name);
+    bool        initKvm(const char* name);
 };
 
 

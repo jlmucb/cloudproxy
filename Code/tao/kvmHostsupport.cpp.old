@@ -219,7 +219,7 @@ bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* r
 
 
 
-int pidMapper::initKvm(const char* name)
+bool pidMapper::initKvm(const char* name)
 {
     int         mainpid= 0;
     int         nvcpus= NUMVCPUS;
@@ -231,14 +231,86 @@ int pidMapper::initKvm(const char* name)
 
     if(!getkvmpids(name, &mainpid, &nvcpus, rgpids)) {
         fprintf(g_logFile, "initKvm: getkvmpids failed\n");
-        return -1;
+        return false;
     }
 
     if(!addbasepid(mainpid, nvcpus, rgpids)) {
         fprintf(g_logFile, "initKvm: addbasepid failed\n");
+        return false;
+    }
+    return true;
+}
+
+
+int  getmysyspid(const char* name)
+{
+    char    buf[BUFSIZE];
+    char    fileName[256];
+    char    line[BUFSIZE];
+    int     mypid= getpid();
+    int     newpid= -1;
+    int     size= -1;
+    char*   beginline= line;
+
+    if((strlen(g_progDirectory)+20)>BUFSIZE)
+        return -1;
+
+    sprintf(fileName, "%s/tmp%d.tmp", g_progDirectory, mypid);
+    sprintf(buf, "ps ax | grep \"%s\"|awk '{print $1}'>%s",
+            name, fileName);
+#ifdef TEST
+    fprintf(g_logFile, "getmysyspid command: %s\n", buf);
+    fflush(g_logFile);
+#endif
+#if 0
+    if(system(buf)<0) {
+        fprintf(g_logFile, "getmysyspid: system command failed\n");
         return -1;
     }
-    return mainpid;
+#else
+    size= system(buf);
+    size= -1;
+#endif
+    // open the logfile and get the pid
+    int fd= open(fileName, O_RDONLY);
+    if(fd<0) {
+        fprintf(g_logFile, "getmysyspid: cant open file\n");
+        return -1;
+    }
+    if((size=read(fd, line, BUFSIZE))<0) {
+        fprintf(g_logFile, "getmysyspid: read failed\n");
+        return -1;
+    }
+    while(beginline!=NULL) {
+	// the following line is a cludge.  First one is tcLaunch.
+        beginline= nextline(beginline, &line[size-1]);
+        sscanf(beginline, "%d", &newpid);
+        if(newpid!=mypid)
+            break;
+        newpid= -1;
+        beginline= nextline(beginline, &line[size-1]);
+    }
+    close(fd);
+#ifndef TEST1
+    unlink(fileName);
+#endif
+    // TODO: hack fix later (see tcLaunch)
+    // added 10/28:
+    //      navigate to /proc/pid/task
+    //      This should have the pid and the pid's of all the
+    //      vcpu's.
+    //
+    //      You can also check /var/lib/libvirt/qemu/
+    //          name.pid (e.g.- KvmTestGuest.pid) will have main pid and
+    //          KvmTestGuest.xml  will have xml like:
+    //      <domstatus state='running' reason='booted' pid='3363'>
+    //      <monitor path='/var/lib/libvirt/qemu/KvmTestGuest.monitor' json='1' type='unix'/>
+    //      <vcpus>
+    //      <vcpu pid='3365'/>
+    //      </vcpus>
+    //      ...
+
+    return newpid+2;
 }
 
 
@@ -252,9 +324,10 @@ void printVirtlibError()
 }
 
 
-bool startKvmVM(const char* programname, const char* systemname, 
+int startKvmVM(const char* programname, const char* systemname, 
                const char* xmldomainstring, 
                virConnectPtr* ppvmconnection, virDomainPtr*  ppvmdomain)
+// returns -1 if error, pid otherwise
 {
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM: %s\n%s\n",
@@ -263,6 +336,8 @@ bool startKvmVM(const char* programname, const char* systemname,
 #endif
 
 #ifdef KVMTCSERVICE
+    int     pid= -1;
+
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM service code included\n");
     fflush(g_logFile);
@@ -270,15 +345,15 @@ bool startKvmVM(const char* programname, const char* systemname,
 
     if(systemname==NULL || xmldomainstring==NULL) {
         fprintf(g_logFile, "startKvm: Bad input arguments\n");
-        return false;
+        return -1;
     }
 
     // Replace later with virConnectOpenAuth(name, virConnectAuthPtrDefault, 0)
     *ppvmconnection= virConnectOpen(systemname);
     if(*ppvmconnection==NULL) {
         fprintf(g_logFile, "startKvm: couldn't connect\n");
-        printVirtlibError();
-        return false;
+         printVirtlibError();
+        return -1;
     }
 #ifdef TEST
     fprintf(g_logFile, "startKvm: connection succeeded\n");
@@ -309,7 +384,7 @@ bool startKvmVM(const char* programname, const char* systemname,
     if(*ppvmdomain==NULL) {
         fprintf(g_logFile, "startKvm: couldn't start domain\n");
          printVirtlibError();
-        return false;
+        return -1;
     }
 #ifdef TEST
     fprintf(g_logFile, "startKvm: virDomainCreateXML succeeded\n");
@@ -331,18 +406,19 @@ bool startKvmVM(const char* programname, const char* systemname,
     vmid= (int)virDomainGetID(*ppvmdomain);
     fprintf(g_logFile, "vmid: %d\n", vmid);
 #endif
+    pid= getmysyspid(programname);
 #ifdef TEST
-    fprintf(g_logFile, "startKvm: programname: %s\n", programname);
+    fprintf(g_logFile, "startKvm: programname: %s, pid: %d\n", programname, pid);
     fflush(g_logFile);
 #endif
-    return true;
+    return pid;
 
 #else       // KVMTCSERVICE
 #ifdef TEST
     fprintf(g_logFile, "startKvmVM service code NOT included\n");
     fflush(g_logFile);
 #endif
-    return false;
+    return -1;
 #endif      // KVMTCSERVICE
 }
 

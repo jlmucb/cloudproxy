@@ -1,0 +1,222 @@
+#summary safe_iop - a safe integer operation library for C
+
+= Copyright and Licensing =
+See LICENSE in the distribution. This is covered under a BSD license.
+
+(Note, license applied on all work since 0.3 which was originally released into the public domain)
+
+= Introduction =
+
+Unsafe integer operations are a major cause of software defects even in modern
+day software.  C is the underlying language for most high level languages
+(Ruby, Python, Java, etc.) in addition to being in widespread general use.
+C is a preferred language for high performance programming and is
+often used for media file parsing and manipulation. 
+
+Integer overflows occur when the calculated integer requires more storage from
+the computing platform than is available.  If a number is too large, not all of
+its information can be stored.  This has dangerous side effects. For a detailed
+and thorough discussion on integer overflows, please check out CERT's website
+on Secure Coding(1) and even Wikipedia(2).
+
+(1) https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Secure+Coding+Standard
+(2) http://en.wikipedia.org/wiki/Integer_overflow
+
+
+= Requirements =
+
+safe_iop should be compatible with C99 compliant compilers, but your mileage
+may vary.  In particular, safe_iop is known to work with GNU GCC[1] and PCC[2].
+safe_iop supports two different interface sets -- one for GNU C compatible
+compilers and one for the rest (C99).  The generic interface functions in both
+GCC and PCC, while the GCC (GNU C) interface only works with compilers that
+support typeof() and statement blocks as expressions ({}).
+
+In addition, your system must supply limits.h, assert.h, stdint.h, and
+sys/types.h standard headers for safe_iop to function as expected.  It is possible
+to remove the dependence on several of these, but consistent cross-platform
+behavior would be compromised.
+
+If you use safe_iop on a platform, or with a compiler, other than one mentioned
+in the Compatibility Matrix, then please let me know!
+
+[1] http://gcc.gnu.org
+[2] http://pcc.ludd.ltu.se
+
+= Usage =
+
+safe_iop comes in two pieces, safe_iop.h and safe_iop.c.  safe_iop.h provides
+extensive macros for performing safe integer operations quickly and easily.
+safe_iop.c contains some testing code to make sure the package works on your
+system and a preliminary format string interface, sopf.  sopf is not
+for the faint of heart as it is currently under development.  The remainder of
+this document will focus on safe_iop.h.
+
+In order to use safe_iop, you will need to place safe_iop.h in your compiler's
+include path either by copying it somewhere like /usr/include, using an include
+flag -I/opt/safe_iop/include, or whatever other way you prefer. You will then
+need to include the header in the source file you will use the functions from.
+E.g., #include <safe_iop.h>
+
+safe_iop provides macros which check the validity of a given integer operation.
+
+== Generic interface ==
+
+The generic interface is the core of safe_iop and is compatible with C99
+friendly compilers.  It does not make use of any non-standard language
+extensions.  The interface provides the following macros:
+
+  * multiplication: sop_mulx(result, a, b)
+  * division:       sop_divx(...)
+  * addition:       sop_addx(...)
+  * subtraction:    sop_subx(...)
+  * left shift:     sop_shlx(...)
+  * right shift:    sop_shrx(...)
+
+All of these macros take a pointer, or NULL, as the first argument.  If NULL is
+supplied, the safety of the operation on a and b is checked and safety is
+confirmed with a returned 1.  If a pointer is given and the operation can be
+completed safely, the pointer will be populated with the resulting value and
+treated as the type of the first argument, a. (This may change soon.)
+
+The operands, a and b, are not just bare variables.  The operands must be
+labeled with a specific type.  This is done using any number of the supplied
+macros:
+  * signed ints: sop_s[8,16,32,64], sio_si
+  * unsigned ints: sop_u[8,16,32,64], sio_ui
+  * longs: sop_ull, sio_ll, sio_l, sio_l
+  * chars: sop_sc, sio_uc
+  * size_t: sop_sszt, sio_szt
+
+So a call may look like the following:
+{{{
+  if (!sop_addx(sop_u32(&a), sio_u32(a), sio_u8(b))) abort();
+}}}
+
+Please note that these macros are not safe from side effects.  Do _NOT_ pass in
+variables with incrementors or decrementors, for example:
+{{{
+  sop_addx(sop_u32(&a), sio_u32(a++), sio_u32(b))
+}}}
+
+In addition to these macros, several helper macros
+  * sop_incx  (e.g., safe_incx(sop_u32(a)))
+  * sop_decx  (e.g., safe_decx(sop_u32(a)))
+  * sop_<op>x[3-5] (e.g., safe_mulx3(sop_u64(dst), sio_u32(a), sio_s16(b), sio_s8(c)))
+
+It is worth noting that all sop_<*>x functions will automatically determine if
+two variables with different types can be safely cast.  Casting is always done
+to the leftmost type.  This means that if a destination pointer is supplied,
+the values are cast to its type.  If the destination pointer is NULL, then the
+type of the first operand is used for the safe casting tests.
+
+
+== GNU C interface ==
+
+The GNU C interface is a layer on top of the generic interface discussed above.
+It supplies the same operations but protects against side effects and
+alleviates the need for programmer type-markup.  This comes at the cost of a
+few local variables and being able to be compiled only on GNU C compatible
+compilers. In addition, this interface is not compatible with types with
+special attributes, such as 'const'.
+
+The supported operations are as follows:
+  * multiplication: sop_mul()
+  * division:       sop_div()
+  * addition:       sop_add()
+  * subtraction:    sop_sub()
+  * left shift:     sop_shl()
+  * right shift:    sop_shr()
+
+All of these macros take a result pointer, or NULL, as the first argument.  The
+subsequent argument should be the two values to operate on.  They then return
+true or false depending on if the operation is safe or not. (If NULL is given,
+a true or false value will be returned.) 
+{{{
+  uint32_t a = 100, b = 200, c = 0;
+  if (sop_mul(&c, a, b)) printf("c is %u\n", c);
+}}}
+
+In addition, there are versions of these functions for multiple sequential operations:
+{{{
+  uint32_t a = 100, b = 200, c = 300, d = 0;
+  if (sop_mul3(&d, a, b, c)) printf("d is %u\n", d);
+}}}
+
+sop_<op>3-5() are all available.
+
+There are also two helper functions for safe increment/decrement∴
+{{{
+  int a = 0;
+  ...
+  if (!sop_inc(a)) abort();
+  ...
+  if (!sop_dec(a)) abort();
+}}}
+(Available in truck after change r19)
+
+Safe_iop supports automatic type casting to the type of the first operand.
+However, if this cast cannot be performed without losing data, safe_iop will
+fail. The GNU C interface _does NOT_ allow casting to the type of the
+pointer.  (Nb, This may be added later, but expanding the type of the pointer
+using typeof is not friendly!)
+
+For example,
+{{{
+  uint32_t a = 100, c = 0;
+  uint8_t b = 20;
+  if (sop_add(&c, a, b)) /* b is cast up to a uint32_t safely! */
+}}}
+
+
+Examples can be found in the examples/ directory.
+
+== sopf ==
+
+If you'd like to use the format string function, do so at your own peril :-)
+This function should be nearly fully functional, but it needs more testing.
+
+To use, just include the c file in your build, or build the
+shared library and link it to your app:
+{{{
+  make so # or make dylib for OS X 
+  ...
+  gcc yourapp.c ... -lsafe_iop
+}}}
+
+then call it:
+{{{
+  uint32_t a = 10;
+  int16_t b = 20;
+  uint64_t c = 2;
+  if (!sopf(dst, "u32+s16/u64", a, b, c)) abort();
+}}}
+Note, casting is done to the leftmost type, and the order of operations is
+FIFO, not following any other precedence rules. The above example is (a+b)/c.
+
+Note, support for casting to a resultant type that differs from the first
+operand may be added later.  Patches are welcomed :)
+
+More to come!
+
+= Compatibility =
+
+See http://code.google.com/p/safe-iop/wiki/Compatibility
+
+
+= Credit where credit is due =
+
+  * The functions used in this library were largely drawn from the examples provided in CERT's secure coding standard.
+  * Thanks to peter@valchev.net for reviews, comments, enthusiasm, and multiple platform tests!
+  * Thanks to taviso@sdf.lonestar.org for the pointing out stupid API decisions and cross-checking my logic.
+
+= Changes =
+
+The changes and todo list can be found in include/safe_iop.h
+
+= Contributions, corrections, suggestions, flames . . . =
+
+Please drop me an email if I'm doing something completely stupid, you love
+using the library, you have a patch or recommendation, or for whatever other
+reason.  I hope this software helps out a bit!
+

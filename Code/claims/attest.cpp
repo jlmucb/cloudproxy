@@ -116,6 +116,7 @@ const char* g_AttestInfoTemplate=
 
 Attest::Attest()
 {
+    m_fValid= false;
     m_szAttestalg= NULL;
     m_szcodeDigest= NULL;
     m_szattestedValue= NULL;
@@ -289,8 +290,10 @@ bool  Attest::init(const char* attestation)
     m_szattestation= strdup(((TiXmlElement*)pNode1)->Value());
 
     m_pNodeInterpretationHint= Search(m_pNodeAttest, "InterpretationHint");
-    m_pNodeattestingKeyInfo= Search(m_pNodeAttest, "ds:KeyInfo");
+    if(m_pNodeInterpretationHint!=NULL)
+        m_szHint= canonicalize(m_pNodeInterpretationHint);
 
+    m_fValid= true;
     return true;
 }
 
@@ -329,7 +332,9 @@ const char* Attest::getNonce()
 
 const char* Attest::getattestingkeyInfo()
 {
-    return NULL;
+    if(m_pNodeattestingKeyInfo==NULL)
+        return NULL;
+    return canonicalize(m_pNodeattestingKeyInfo);
 }
 
 
@@ -427,26 +432,72 @@ const char* Attest::getHint()
 }
 
 
+#define MAXATTESTSIZE 8192
+
+
 const char* Attest::encodeAttest()
 {
-    char        szAttestation[8192];
+    char        szAttestation[MAXATTESTSIZE];
     const char* szhint= "";
+    int         size= 0;
 
-    // get binary attestedTo
-    // get binary codeDigest
-    // construct composite hash
+    // char attestedTo
+    if(m_sizeattestedTo<=0 || m_attestedTo==NULL) {
+        fprintf(g_logFile, "Attest::encodeAttest: no attestedTo\n");
+        return false;
+    }
+    if(m_szattestedValue==NULL) {
+        size= 8192;
+        if(!toBase64(m_sizeattestedTo, m_attestedTo, &size, szAttestation)) {
+            fprintf(g_logFile, "Attest::encodeAttest: cant convert attestedto to base64\n");
+            return false;
+        }
+        m_szattestedValue= strdup(szAttestation);
+    }
+
+    // char codeDigest
+    if(m_sizecodeDigest<=0 || m_codeDigest==NULL) {
+        fprintf(g_logFile, "Attest::encodeAttest: no code digest\n");
+        return false;
+    }
+    if(m_szcodeDigest==NULL) {
+        size= 8192;
+        if(!toBase64(m_sizecodeDigest, m_codeDigest, &size, szAttestation)) {
+            fprintf(g_logFile, "Attest::encodeAttest: cant convert code digest to base64\n");
+            return false;
+        }
+        m_szcodeDigest= strdup(szAttestation);
+    }
+
+    // char attestation
+    if(m_sizeattestation<=0 || m_attestation==NULL) {
+        fprintf(g_logFile, "Attest::encodeAttest: no attestation\n");
+        return false;
+    }
+    if(m_szattestation==NULL) {
+        size= 8192;
+        if(!toBase64(m_sizeattestation, m_attestation, &size, szAttestation)) {
+            fprintf(g_logFile, "Attest::encodeAttest: cant convert attestedto to base64\n");
+            return false;
+        }
+        m_szattestation= strdup(szAttestation);
+    }
 
     if(m_szHint!=NULL)
         szhint= m_szHint;
-    sprintf(szAttestation, g_AttestTemplate, "CP1", m_szAttestalg,
-            "SHA256", m_szcodeDigest, m_szattestedValue, m_szattestation, szhint);
-    return NULL;
-}
 
+    // buffer big enough?
+    size= strlen(g_AttestTemplate)+strlen("CP1")+strlen("SHA256")+
+          strlen(m_szcodeDigest)+strlen(m_szattestedValue)+strlen(m_szAttestalg)+
+          strlen(m_szattestation)+strlen(szhint);
+    if((size+32)>MAXATTESTSIZE) {
+        fprintf(g_logFile, "Attest::encodeAttest: attestation too large\n");
+        return false;
+    }
 
-bool Attest::checkAttest()
-{
-    return false;
+    sprintf(szAttestation, g_AttestTemplate, "CP1", "SHA256", m_szcodeDigest, 
+            m_szattestedValue, m_szAttestalg, m_szattestation, szhint);
+    return canonicalizeXML(szAttestation);
 }
 
 
@@ -455,6 +506,9 @@ bool Attest::checkAttest()
 
 AttestInfo::AttestInfo()
 {
+    m_fValid= false;
+    m_pNodeAttestInfo= NULL;
+    m_pKeyInfo= NULL;
 }
 
 
@@ -465,19 +519,67 @@ AttestInfo::~AttestInfo()
 
 bool  AttestInfo::init(const char* attestInfo)
 {
-    return false;
+    TiXmlElement*   pRootElement= NULL;
+
+#ifdef TEST
+    fprintf(g_logFile, "AttestInfo::init()\n");
+#endif
+    if(attestInfo==NULL)
+        return false;
+
+    if(!m_doc.Parse(attestInfo)) {
+        fprintf(g_logFile, "AttestInfo::init: Can't parse attestInfo\n");
+        return false;
+    }
+    pRootElement= m_doc.RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "AttestInfo::init: Can't get root of attestInfo\n");
+        return false;
+    }
+
+    m_pNodeAttestInfo= Search((TiXmlNode*) pRootElement, "attestedInfo");
+    if(m_pNodeAttestInfo==NULL) {
+        fprintf(g_logFile, "AttestInfo::init: No attestInfo node\n");
+        return false;
+    }
+    m_pKeyInfo= Search(m_pNodeAttestInfo, "ds:KeyInfo");
+    if(m_pKeyInfo==NULL) {
+        fprintf(g_logFile, "AttestInfo::init: No KeyInfo node\n");
+        return false;
+    }
+
+    m_fValid= true;
+    return true;
 }
 
 
 const char* AttestInfo::getSerializedKey()
 {
-    return NULL;
+    if(m_pKeyInfo==NULL)
+        return NULL;
+    return canonicalize(m_pKeyInfo);
 }
 
 
-bool  AttestInfo::getAttestInfoHash()
+bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
 {
-    return false;
+    Sha256  oHash;
+
+    const char* szCanonical= NULL;
+    if(!m_fValid || m_pNodeAttestInfo!=NULL)
+        return false;
+    if(type!=SHA256DIGESTBYTESIZE)
+        return false;
+    if(*psize<oHash.DIGESTSIZE)
+        return false;
+    szCanonical= canonicalize(m_pNodeAttestInfo);
+    oHash.Init();
+    oHash.Update((const byte*) szCanonical, strlen(szCanonical));
+    oHash.Final();
+    oHash.GetDigest(hash);
+    *psize= oHash.DIGESTSIZE;
+    free((void*)szCanonical);
+    return true;
 }
 
 

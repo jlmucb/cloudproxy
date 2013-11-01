@@ -51,6 +51,7 @@
 
 class Attest {
 private:
+    bool            m_fValid;
     TiXmlDocument   m_doc;
     TiXmlNode*      m_pNodeAttest;
     TiXmlNode*      m_pNodeNonce;
@@ -96,12 +97,12 @@ public:
     const char*     getHint();
 
     const char*     encodeAttest();
-    bool            checkAttest();
 };
 
 
 class AttestInfo {
 private:
+    bool            m_fValid;
     TiXmlDocument   m_doc;
     TiXmlNode*      m_pNodeAttestInfo;
     TiXmlNode*      m_pKeyInfo;
@@ -112,7 +113,7 @@ public:
 
     bool            init(const char* attestInfo);
     const char*     getSerializedKey();
-    bool            getAttestInfoHash();
+    bool            getAttestInfoHash(u32 type, int* psize, byte* hash);
 };
 
 

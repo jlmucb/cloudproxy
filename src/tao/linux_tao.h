@@ -1,8 +1,8 @@
-//  File: legacy_tao.h
+//  File: linux_tao.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: LegacyTao implements the Tao over the original
-//  CloudProxy Tao.
+//  Description: LinuxTao implements the Tao for the Linux
+//  operating system
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -18,22 +18,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LEGACY_TAO_LEGACY_TAO_H_
-#define LEGACY_TAO_LEGACY_TAO_H_
+#ifndef TAO_LINUX_TAO_H_
+#define TAO_LINUX_TAO_H_
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/crypto_factory.h>
 
-// jlm's taoHostServices and taoEnvironment
-// along with startMeAsMeasuredProgram for clients of LegacyTao
-#include <tao.h>
-
-// for PrincipalCert
-#include <cert.h>
-
 #include <tao/tao.h>
 #include <tao/whitelist_authorization_manager.h>
+#include <tao/tao_channel.h>
 
 #include <string>
 #include <map>
@@ -43,16 +37,15 @@ using std::map;
 using std::set;
 using std::string;
 
-namespace legacy_tao {
+namespace tao {
 
-class LegacyTao : public tao::Tao {
+class LinuxTao : public Tao {
  public:
-  LegacyTao(const string &secret_path, const string &directory,
-            const string &subdirectory, const string &host_subdirectory,
+  LinuxTao(const string &secret_path,
             const string &key_path, const string &pk_path,
-            const string &whitelist_path, const string &policy_pk_path,
-            const string &tao_provider);
-  virtual ~LegacyTao() {}
+            const string &whitelist_path, const string &policy_pk_path, 
+	    TaoChannel *host_channel);
+  virtual ~LinuxTao() {}
   virtual bool Init();
   virtual bool Destroy();
   virtual bool StartHostedProgram(const string &path, int argc, char **argv);
@@ -63,21 +56,18 @@ class LegacyTao : public tao::Tao {
   virtual bool VerifyAttestation(const string &data,
                                  const string &attestation) const;
 
+ protected:
+  /// Get an attestation from the host Tao on our key. Note that this
+  /// will get an attestation on #serialized_key for this Tao host; it
+  /// is for use by this Tao and its subclasses.
+  virtual bool AttestToKey(const string &serialized_key, Attestation *attest) const;
+
  private:
-  // 5 minute attestation timeout
-  static const int AttestationTimeout = 300;
+  // create a 128-byte secret
+  static const int SecretSize = 128;
 
-  // the path to the secret sealed by the legacy Tao
+  // the path to the secret sealed by the Tao
   string secret_path_;
-
-  // the directory for legacy Tao initialization
-  string directory_;
-
-  // the subdirectory to write files to
-  string subdirectory_;
-
-  // the subdirectory that contains key information for the trusted host
-  string host_subdirectory_;
 
   // the path to the sealed keyczar key
   string key_path_;
@@ -85,15 +75,8 @@ class LegacyTao : public tao::Tao {
   // the path to the sealed public/private keyczar key
   string pk_path_;
 
-  // the path to the public key
+  // the path to the public policy key
   string policy_pk_path_;
-
-  // the path to the device that the legacy tao uses
-  string tao_provider_;
-
-  // the legacy tao host and environment
-  scoped_ptr<taoHostServices> tao_host_;
-  scoped_ptr<taoEnvironment> tao_env_;
 
   // keys unlocked by the secret
   scoped_ptr<keyczar::Keyczar> crypter_;
@@ -113,37 +96,31 @@ class LegacyTao : public tao::Tao {
   // the path to the whitelist
   string whitelist_path_;
 
-  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
+  /// An attestation to #serialized_pub_key_.
+  Attestation pk_attest_;
+  
+  // the channel to use for host communication
+  scoped_ptr<tao::TaoChannel> host_channel_;
 
-  scoped_ptr<PrincipalCert> legacy_policy_cert_;
+  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
 
   static const int AesBlockSize = 16;
   static const int Sha256Size = 32;
   static const int SecretSize = 64;
-  // until the Tao provides a way to get this info
-  static const int SealedSize = 160;
-
-  // initializes the legacy tao by setting up tao_host_ and tao_env_
-  bool initTao();
 
   // either unseal or create and seal a secret using the legacy tao
   bool getSecret(keyczar::base::ScopedSafeString *secret);
 
-  // create a new keyset with a primary AES key that we will use as the
-  // basis of the bootstrap Tao
+  // create a new keyset with a primary symmetric key that we will use
+  // as the basis of the Tao
   bool createKey(const string &secret);
 
-  // create a new keyset with an ECDSA public/private key pair to use for
+  // create a new keyset with a public/private key pair to use for
   // signing
   bool createPublicKey(keyczar::Encrypter *crypter);
 
-  bool SignWithLegacyKey(RSAKey &key, const string &data,
-                         string *signature) const;
-  bool VerifyWithLegacyKey(RSAKey &key, const string &data,
-                           const string &signature) const;
-
-  DISALLOW_COPY_AND_ASSIGN(LegacyTao);
+  DISALLOW_COPY_AND_ASSIGN(LinuxTao);
 };
-}  // namespace legacy_tao
+}  // namespace tao
 
-#endif  // LEGACY_TAO_LEGACY_TAO_H_
+#endif  // TAO_LINUX_TAO_H_

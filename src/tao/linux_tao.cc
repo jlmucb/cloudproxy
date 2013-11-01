@@ -1,8 +1,8 @@
-//  File: legacy_tao.cc
+//  File: linux_tao.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: An implementation of the Tao over the original
-//  CloudProxy tao
+//  Description: An implementation of the Tao for the Linux
+//  operating system.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -18,7 +18,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "legacy_tao/legacy_tao.h"
+#include "tao/linux_tao.h"
 #include "cloudproxy/util.h"
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
@@ -53,17 +53,6 @@
 using cloudproxy::SerializePublicKey;
 using cloudproxy::DeserializePublicKey;
 
-using tao::Attestation;
-using tao::HostedProgram;
-using tao::KeyczarPublicKey;
-using tao::PipeTaoChannel;
-using tao::SealedData;
-using tao::SignedAttestation;
-using tao::SignedWhitelist;
-using tao::TaoAuthorizationManager;
-using tao::Whitelist;
-using tao::WhitelistAuthorizationManager;
-
 using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
@@ -95,35 +84,28 @@ using std::ofstream;
 using std::ios;
 using std::stringstream;
 
-namespace legacy_tao {
+namespace tao {
 
-LegacyTao::LegacyTao(const string &secret_path, const string &directory,
-                     const string &subdirectory,
-                     const string &host_subdirectory, const string &key_path,
+LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
                      const string &pk_path, const string &whitelist_path,
-                     const string &policy_pk_path, const string &tao_provider)
+                     const string &policy_pk_path, TaoChannel *host_channel)
     : secret_path_(secret_path),
-      directory_(directory),
-      subdirectory_(subdirectory),
-      host_subdirectory_(host_subdirectory),
       key_path_(key_path),
       pk_path_(pk_path),
       policy_pk_path_(policy_pk_path),
-      tao_provider_(tao_provider),
-      tao_host_(new taoHostServices()),
-      tao_env_(new taoEnvironment()),
       crypter_(nullptr),
       signer_(nullptr),
       policy_verifier_(nullptr),
       child_fds_({-1, -1}),
       child_hash_(),
       whitelist_path_(whitelist_path),
-      auth_manager_(new WhitelistAuthorizationManager()),
-      legacy_policy_cert_(nullptr) {
+      serialized_pub_key_(),
+      host_channel_(host_channel),
+      auth_manager_(new WhitelistAuthorizationManager()) {
   // leave setup for Init
 }
 
-bool LegacyTao::Init() {
+bool LinuxTao::Init() {
   // load the public policy key
   policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
   CHECK_NOTNULL(policy_verifier_.get());
@@ -132,12 +114,8 @@ bool LegacyTao::Init() {
   CHECK(auth_manager_->Init(whitelist_path_, *policy_verifier_))
       << "Could not initialize the whitelist manager";
 
-  // initialize jlmcrypto from the legacy tao; this is required to use
-  // any of the original tao
-  CHECK(initAllCrypto()) << "Could not initialize jlmcrypto";
-
-  CHECK(initTao()) << "Could not initialize the Tao";
-  VLOG(1) << "Initialized the Tao";
+  // initialize the host channel
+  CHECK(host_channel_->Init()) << "Could not initialize the host channel";
 
   // only keep the secret for the duration of this method:
   // long enough to unlock or create a sealed encryption key
@@ -189,105 +167,59 @@ bool LegacyTao::Init() {
 
   signer_->set_encoding(Keyczar::NO_ENCODING);
 
-  // set up the legacy policy key
-  legacy_policy_cert_.reset(new PrincipalCert());
-  CHECK(legacy_policy_cert_->init(const_cast<const char *>(
-      reinterpret_cast<char *>(tao_env_->m_policyKey))))
-      << "Could not initialize the legacy policy public key";
-  CHECK(legacy_policy_cert_->parsePrincipalCertElements())
-      << "Could not finish legacy policy public key initialization";
-
-  VLOG(1) << "Finished legacy tao initialization successfully";
-  return true;
-}
-
-bool LegacyTao::initTao() {
-  const char *directory = directory_.c_str();
-  const char **parameters = &directory;
-  int parameterCount = 1;
-
-  try {
-    // init host
-    CHECK(tao_host_->HostInit(PLATFORMTYPELINUX, tao_provider_.c_str(),
-                              directory_.c_str(), host_subdirectory_.c_str(),
-                              parameterCount, parameters))
-        << "Can't init the host";
-
-    // Init the environment.
-    // Note that the provider for the Env and Host is currently the
-    // same. This will change when we start working in a KVM Guest
-    // partition.
-    CHECK(tao_env_->EnvInit(
-        PLATFORMTYPELINUXAPP, "bootstrap_files", "www.manferdelli.com",
-        directory_.c_str(), subdirectory_.c_str(), tao_host_.get(),
-        tao_provider_.c_str(), 0, NULL)) << "Can't init the environment";
-  }
-  catch (const char * err) {
-    LOG(ERROR) << "Error in initializing the legacy tao: " << err;
-    tao_env_->EnvClose();
-    tao_host_->HostClose();
+  KeyczarPublicKey kpk;
+  if (!SerializePublicKey(*signer_, &kpk)) {
+    LOG(ERROR) << "Could not serialize the public key for signing";
     return false;
   }
 
+  if (!kpk.SerializeToString(&serialized_pub_key_)) {
+    LOG(ERROR) << "Could not serialize the KeyczarPublicKey to a string";
+    return false;
+  }
+
+  // Get an attestation for this key. In the chaining version, this
+  // calls to the host for attestation. But in the key server version,
+  // this needs to call to a key. This virtual call can be implemented
+  // to use either version.
+  AttestToKey(serialized_pub_key_, &pk_attest_);
+
+  VLOG(1) << "Finished tao initialization successfully";
   return true;
 }
 
-bool LegacyTao::getSecret(ScopedSafeString *secret) {
+bool LinuxTao::getSecret(ScopedSafeString *secret) {
   CHECK_NOTNULL(secret);
-  CHECK(tao_env_->m_myMeasurementValid)
-      << "Can't create or unseal secrets due to invalid measurement";
-  int size = SecretSize;
   FilePath fp(secret_path_);
   if (!PathExists(fp)) {
     // generate a random value for the key and seal it, writing the result
     // into this file
-    RandImpl *rand = CryptoFactory::Rand();
-    CHECK(rand->RandBytes(SecretSize, secret->get()))
+    CHECK(host_channel_->RandBytes(SecretSize, secret->get()))
         << "Could not generate a random secret to seal";
 
     // seal and save
-    int sealed_size = SealedSize;
-    scoped_array<unsigned char> sealed_secret(new unsigned char[sealed_size]);
-
-    // this is safe, since the 4th argument is only read, despite not having
-    // a const annotation
-    byte *secret_data = reinterpret_cast<unsigned char *>(
-        const_cast<char *>(secret->get()->data()));
-    CHECK(
-        tao_env_->Seal(tao_env_->m_myMeasurementSize, tao_env_->m_myMeasurement,
-                       size, secret_data, &sealed_size, sealed_secret.get()))
+    string sealed_secret;
+    CHECK(host_channel_->Seal(*secret, &sealed_secret))
         << "Can't seal the secret";
-    VLOG(2) << "Got a sealed secret of size " << sealed_size;
+    VLOG(2) << "Got a sealed secret of size " << sealed_secret.size();
 
     ofstream out_file(secret_path_.c_str(), ofstream::out);
-    out_file.write(reinterpret_cast<char *>(sealed_secret.get()), sealed_size);
+    out_file.write(sealed_secret.data()), sealed_secret.size());
     out_file.close();
 
     VLOG(1) << "Sealed the secret";
   } else {
     // get the existing key blob and unseal it using the Tao
-    ifstream in_file(secret_path_.c_str(),
-                     ifstream::in | ios::binary | ios::ate);
-    int sealed_size = in_file.tellg();
+    ifstream in_file(secret_path_.c_str(), ifstream::in | ios::binary);
+    string sealed_secret((istreambuf_iterator<char>(in_file)),
+                         istreambuf_iterator<char>());
 
-    VLOG(2) << "Trying to read a secret of size " << sealed_size;
-    scoped_array<unsigned char> sealed_secret(new unsigned char[sealed_size]);
+    VLOG(2) << "Trying to read a sealed secret of size "
+            << sealed_secret.size();
 
-    // rewind to beginning of the file to read it
-    in_file.seekg(0, ios::beg);
-    in_file.read(reinterpret_cast<char *>(sealed_secret.get()), sealed_size);
-    VLOG(1) << "Read the file";
-    // a temporary ScopedSafeString to hold extra bytes until we know the
-    // actual size of the sealed key
-    scoped_array<unsigned char> temp_secret(new unsigned char[size]);
-    CHECK(tao_env_->Unseal(tao_env_->m_myMeasurementSize,
-                           tao_env_->m_myMeasurement, sealed_size,
-                           sealed_secret.get(), &size, temp_secret.get()))
+    CHECK(host_channel_->Unseal(sealed_secret, secret->get()))
         << "Can't unseal the secret";
-    secret->get()->assign(reinterpret_cast<char *>(temp_secret.get()), size);
-    // TODO(tmroeder): Make this part of the destructor of the scoped_array
-    memset(temp_secret.get(), 0, size);
-    VLOG(2) << "Unsealed a secret of size " << size;
+    VLOG(2) << "Unsealed a secret of size " << secret->get()->size();
   }
 
   return true;
@@ -295,7 +227,7 @@ bool LegacyTao::getSecret(ScopedSafeString *secret) {
 
 // TODO(tmroeder): combine this function and createKey by taking in the key type
 // and purpose and writer.
-bool LegacyTao::createPublicKey(Encrypter *crypter) {
+bool LinuxTao::createPublicKey(Encrypter *crypter) {
   FilePath fp(pk_path_);
   scoped_ptr<KeysetWriter> writer(
       new KeysetEncryptedJSONFileWriter(fp, crypter));
@@ -309,7 +241,7 @@ bool LegacyTao::createPublicKey(Encrypter *crypter) {
   KeyPurpose::Type key_purpose = KeyPurpose::SIGN_AND_VERIFY;
   KeysetMetadata *metadata = nullptr;
   metadata =
-      new KeysetMetadata("legacy_tao_pk", key_type, key_purpose, true, 1);
+      new KeysetMetadata("linux_tao_pk", key_type, key_purpose, true, 1);
   CHECK_NOTNULL(metadata);
   k->set_metadata(metadata);
   k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
@@ -319,7 +251,7 @@ bool LegacyTao::createPublicKey(Encrypter *crypter) {
   return true;
 }
 
-bool LegacyTao::createKey(const string &secret) {
+bool LinuxTao::createKey(const string &secret) {
   FilePath fp(key_path_);
   scoped_ptr<KeysetWriter> writer(new KeysetPBEJSONFileWriter(fp, secret));
   CHECK_NOTNULL(writer.get());
@@ -332,7 +264,7 @@ bool LegacyTao::createKey(const string &secret) {
   KeyType::Type key_type = KeyType::AES;
   KeyPurpose::Type key_purpose = KeyPurpose::DECRYPT_AND_ENCRYPT;
   KeysetMetadata *metadata = nullptr;
-  metadata = new KeysetMetadata("legacy_tao", key_type, key_purpose, true, 1);
+  metadata = new KeysetMetadata("linux_tao", key_type, key_purpose, true, 1);
   CHECK_NOTNULL(metadata);
 
   k->set_metadata(metadata);
@@ -342,12 +274,13 @@ bool LegacyTao::createKey(const string &secret) {
   return true;
 }
 
-bool LegacyTao::Destroy() { return true; }
+bool LinuxTao::Destroy() { return true; }
 
-bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
+bool LinuxTao::StartHostedProgram(const string &path, int argc, char **argv) {
+  // TODO(tmroeder): add support for multiple child programs
   if (!child_hash_.empty()) {
     LOG(ERROR)
-        << "Cannot start a second program under the legacy tao bootstrap";
+        << "Cannot start a second program under the tao bootstrap";
     return false;
   }
 
@@ -378,6 +311,7 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     return false;
   }
 
+  // TODO(tmroeder): allow multiple children
   // create a pipe on which the child can communicate with the Tao
   int pipedown[2];
   int pipeup[2];
@@ -441,6 +375,12 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
     child_fds_[0] = pipeup[0];
     child_fds_[1] = pipedown[1];
     child_hash_.assign(serialized_digest);
+    // TODO(tmroeder): take as input a ChildTaoChannelFactory that can
+    // produce a TaoChannel here for the child. And separate out the
+    // child creation facility into a separate class that can be used
+    // here. Also, generalize the Listen code to spawn a thread that
+    // does a select on the file descriptors for the pipe tao channel,
+    // hence can handle requests from multiple simultaneous clients.
     PipeTaoChannel ptc(child_fds_);
     bool rv = ptc.Listen(this);
     if (!rv) {
@@ -453,18 +393,19 @@ bool LegacyTao::StartHostedProgram(const string &path, int argc, char **argv) {
   return true;
 }
 
-bool LegacyTao::GetRandomBytes(size_t size, string *bytes) const {
+bool LinuxTao::GetRandomBytes(size_t size, string *bytes) const {
   // just ask keyczar for random bytes, which will ask OpenSSL in turn
-  RandImpl *rand = CryptoFactory::Rand();
-  if (!rand->RandBytes(size, bytes)) {
-    LOG(ERROR) << "Could not generate a random secret to seal";
+  if (!host_channel_->GetRandomBytes(size, bytes)) {
+    LOG(ERROR) << "Could not generate random bytes";
     return false;
   }
 
   return true;
 }
 
-bool LegacyTao::Seal(const string &data, string *sealed) const {
+// TODO(tmroeder): the sealing/attestation operations need to take the
+// measurement of the child as input.
+bool LinuxTao::Seal(const string &data, string *sealed) const {
   if (child_hash_.empty()) {
     LOG(ERROR) << "Cannot seal to an empty child";
     return false;
@@ -492,7 +433,7 @@ bool LegacyTao::Seal(const string &data, string *sealed) const {
   return true;
 }
 
-bool LegacyTao::Unseal(const string &sealed, string *data) const {
+bool LinuxTao::Unseal(const string &sealed, string *data) const {
   // decrypt it using our symmetric key
   string temp_decrypted;
   if (!crypter_->Decrypt(sealed, &temp_decrypted)) {
@@ -518,7 +459,7 @@ bool LegacyTao::Unseal(const string &sealed, string *data) const {
   return true;
 }
 
-bool LegacyTao::Attest(const string &data, string *attestation) const {
+bool LinuxTao::Attest(const string &data, string *attestation) const {
   if (child_hash_.empty()) {
     LOG(ERROR) << "Cannot create an attestation when there is no child process";
     return false;
@@ -529,18 +470,19 @@ bool LegacyTao::Attest(const string &data, string *attestation) const {
     return false;
   }
 
-  Attestation a;
+  Statement s;
   time_t cur_time;
   time(&cur_time);
 
-  a.set_time(cur_time);
-  a.set_data(data);
-  a.set_hash_alg("SHA256");
-  a.set_hash(child_hash_);
+  s.set_time(cur_time);
+  s.set_expiration(cur_time + AttestationTimeout);
+  s.set_data(data);
+  s.set_hash_alg("SHA256");
+  s.set_hash(child_hash_);
 
-  string serialized_attestation;
-  if (!a.SerializeToString(&serialized_attestation)) {
-    LOG(ERROR) << "Could not serialize the attestation";
+  string serialized_statement;
+  if (!s.SerializeToString(&serialized_statement)) {
+    LOG(ERROR) << "Could not serialize the statement";
     return false;
   }
 
@@ -550,138 +492,66 @@ bool LegacyTao::Attest(const string &data, string *attestation) const {
     return false;
   }
 
-  SignedAttestation sa;
-  sa.set_serialized_attestation(serialized_attestation);
-  sa.set_signature(signature);
+  Attestation a;
+  a.set_type(INTERMEDIATE);
+  a.set_serialized_statement(serialized_statement);
+  a.set_signature(signature);
 
-  // attach evidence:
-  // 1. public key of the signer
-  // 2. signature on public key of the signer by the legacy tao key
-  // 3. certificate for the legacy tao key
+  // Create an intermediate attestation from our cert by removing the
+  // serialized statement (since it's already in the public_key field.
+  Attestation cert;
+  cert.set_type(pk_attest_.type());
+  cert.set_signature(pk_attest_.signature());
+  cert.set_public_key(pk_attest_.public_key());
+  if (pk_attest_.has_cert()) {
+    cert.set_cert(pk_attest_.cert());
+  }
 
-  KeyczarPublicKey kpk;
-  if (!SerializePublicKey(*signer_, &kpk)) {
-    LOG(ERROR) << "Could not serialize the public key for signing";
+  string *mutable_cert = a.mutable_cert();
+  if (!cert->SerializeToString(mutable_cert)) {
+    LOG(ERROR) << "Could not serialize the certificate for our public key";
     return false;
   }
 
-  string *pub_key = sa.add_evidence();
-  if (!kpk.SerializeToString(pub_key)) {
-    LOG(ERROR) << "Could not serialize the KeyczarPublicKey to a string";
-    return false;
-  }
-
-  // sign this key with our public key
-  string *legacy_sig = sa.add_evidence();
-  if (!SignWithLegacyKey(*reinterpret_cast<RSAKey *>(tao_env_->m_privateKey),
-                         *pub_key, legacy_sig)) {
-    LOG(ERROR) << "Could not sign our public key with the legacy public key";
-    return false;
-  }
-
-  // add the certificate signed by the policy private key
-  string *host_cert = sa.add_evidence();
-  host_cert->assign(tao_env_->m_myCertificate, tao_env_->m_myCertificateSize);
-
-  if (!sa.SerializeToString(attestation)) {
-    LOG(ERROR) << "Could not serialize the SignedAttestation";
+  if (!a.SerializeToString(attestation)) {
+    LOG(ERROR) << "Could not serialize the attestation";
     return false;
   }
 
   return true;
 }
 
-bool LegacyTao::VerifyAttestation(const string &data,
+bool LinuxTao::VerifyAttestation(const string &data,
                                   const string &attestation) const {
-  SignedAttestation sa;
-  if (!sa.ParseFromString(attestation)) {
-    LOG(ERROR) << "Could not deserialize a SignedAttestation";
-    return false;
-  }
-
-  // extract the public key used for signing and verify it
-  int evidence_count = sa.evidence_size();
-  if (evidence_count < 3) {
-    LOG(ERROR) << "Not enough evidence to verify the attestation";
-    return false;
-  }
-
-  if (evidence_count > 3) {
-    LOG(ERROR) << "Too much evidence for the LegacyTao!";
-    return false;
-  }
-
-  const string &serialized_pk = sa.evidence(0);
-  KeyczarPublicKey kpk;
-  if (!kpk.ParseFromString(serialized_pk)) {
-    LOG(ERROR) << "Could not get a public key from the first evidence string";
-    return false;
-  }
-
-  Keyset *keyset = nullptr;
-  if (!DeserializePublicKey(kpk, &keyset)) {
-    LOG(ERROR) << "Could not deserialize the public key from the first "
-                  "evidence string";
-    return false;
-  }
-
-  scoped_ptr<Verifier> verifier(new Verifier(keyset));
-  if (verifier.get() == nullptr) {
-    LOG(ERROR)
-        << "Could not construct a verifier from the deserialized public key";
-    return false;
-  }
-
-  verifier->set_encoding(Keyczar::NO_ENCODING);
-
-  if (!verifier->Verify(sa.serialized_attestation(), sa.signature())) {
-    LOG(ERROR) << "The signature for the serialized attestation did not pass "
-                  "verification";
-    return false;
-  }
-
-  // now check the signature on the serialized verifier
-  const string &legacy_sig = sa.evidence(1);
-  const string &legacy_cert = sa.evidence(2);
-
-  // first check the cert and extract the public key
-  scoped_ptr<PrincipalCert> pc(new PrincipalCert());
-  if (!pc->init(legacy_cert.data())) {
-    LOG(ERROR) << "Could not create a cert from the third evidence string";
-    return false;
-  }
-
-  if (!pc->parsePrincipalCertElements()) {
-    LOG(ERROR) << "Could not finish parsing the certificate";
-    return false;
-  }
-
-  // set up a chain to verify
-  int chain_types[2] = {PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
-  RSAKey *legacy_policy_key =
-      reinterpret_cast<RSAKey *>(legacy_policy_cert_->getSubjectKeyInfo());
-  void *chain_objects[2] = {pc.get(), legacy_policy_key};
-  if (VerifyChain(*legacy_policy_key, "", NULL, 2, chain_types, chain_objects) <
-      0) {
-    LOG(ERROR) << "The certificate in the evidence did not pass verification";
-    return false;
-  }
-
-  // now extract the RSAKey from the certificate and verify the
-  // signature on the serialized keyczar public key
-  RSAKey *inner_key = reinterpret_cast<RSAKey *>(pc->getSubjectKeyInfo());
-  if (!VerifyWithLegacyKey(*inner_key, serialized_pk, legacy_sig)) {
-    LOG(ERROR) << "The legacy signature did not pass verification";
-    return false;
-  }
-
-  // at this point, all the signatures match, so deserialize and check
-  // the Attestation itself
-
   Attestation a;
-  if (!a.ParseFromString(sa.serialized_attestation())) {
-    LOG(ERROR)
-        << "Could not parse an Attestation from the serialized attestation";
+  if (!a.ParseFromString(attestation)) {
+    LOG(ERROR) << "Could not deserialize an Attestation";
+    return false;
+  }
+
+  KeyczarPublicKey kpk;
+  if (!kpk.ParseFromString(a.public_key())) {
+    LOG(ERROR) << "Could not deserialize the public key for this attestation";
+    return false;
+  }
+
+  // Get a Keyset corresponding to this public key
+  Keyset *k = nullptr;
+  if (!DeserializePublicKey(kpk, &k)) {
+    LOG(ERROR) << "Could not deserialize the public key";
+    return false;
+  }
+
+  scoped_ptr<Verifier> v(new Verifier(k));
+  v->set_encoding(Keyczar::NO_ENCODING);
+  if (!v->Verify(a.serialized_statement(), a.signature())) {
+    LOG(ERROR) << "The statement in an attestation did not have a valid signature from its public key";
+    return false;
+  }
+
+  Statement s;
+  if (!s->ParseFromString(s.serialized_statement())) {
+    LOG(ERROR) << "Could not parse the serialized statement in an attestation";
     return false;
   }
 
@@ -689,20 +559,21 @@ bool LegacyTao::VerifyAttestation(const string &data,
   time_t cur_time;
   time(&cur_time);
 
-  time_t past_time = a.time();
+  time_t past_time = s.time();
   if (cur_time - past_time > AttestationTimeout) {
     LOG(ERROR) << "The attestation was too old";
     return false;
   }
 
   // check that this is a whitelisted program
-  if (!auth_manager_->IsAuthorized(a.hash())) {
+  // TODO(tmroeder): make sure this is using the right hash algorithm, too
+  if (!auth_manager_->IsAuthorized(s.hash())) {
     LOG(ERROR) << "The attested program was not a whitelisted program";
     return false;
   }
 
   // and verify that the data matches the data in the attestation
-  if (data.compare(a.data()) != 0) {
+  if (data.compare(s.data()) != 0) {
     LOG(ERROR)
         << "The supplied data does not match the data in the attestation";
     return false;
@@ -710,48 +581,55 @@ bool LegacyTao::VerifyAttestation(const string &data,
 
   VLOG(1) << "The attestation passed verification";
 
+  // If there is an attestation, then recurse to check the attestation
+  // of the public key. Otherwise, this must be the policy key.
+  if (a.has_cert()) {
+    return VerifyAttestation(a.public_key(), a.cert());
+  } else {
+    // Check this public_key to see if it matches the policy
+    // key. TODO(tmroeder): how do I do this? The easy way would be to
+    // insist on a canonical representation of the policy key as a
+    // string (the serialization of a KeyczarPublicKey). But this will
+    // fail when the policy key gets updated.
+    const Key *primary_key = k->primary_key();
+    if (primary_key == nullptr) {
+      LOG(ERROR) << "Could not get a primary key from the purported policy key";
+      return false;
+    }
+
+    Value *val = primary_key->GetValue();
+    if (val == nullptr) {
+      LOG(ERROR) << "Could not get a value from the primary key";
+      return false;
+    }
+
+    Value *policy_val = policy_key_->keyset()->primary_key()->GetValue();
+    if (policy_val == nullptr) {
+      LOG(ERROR) << "Could not get a value from the policy key";
+      return false;
+    }
+    
+    if (!policy_val->Equals(val)) {
+      LOG(ERROR) << "The lowest key in an attestation was not the policy key";
+      return false;
+    }
+  }
+
+  return true;
+
+
   return true;
 }
 
-bool LegacyTao::SignWithLegacyKey(RSAKey &key, const string &data,
-                                  string *signature) const {
-  CHECK_NOTNULL(signature);
-  Sha256 sha;
-  unsigned char hash[SHA256_DIGESTSIZE_BYTES];
-  unsigned char sig_value[1024];
-  int size = 1024;
-
-  sha.Init();
-  sha.Update(reinterpret_cast<const unsigned char *>(data.data()), data.size());
-  sha.Final();
-  sha.GetDigest(hash);
-
-  if (!RSASign(key, SHA256HASH, hash, &size, sig_value)) {
-    LOG(ERROR) << "Could not compute the RSA signature for this hash value";
+bool LinuxTao::AttestToKey(const string &serialized_key, Attestation *attest) const {
+  string serialized_attestation;
+  if (!host_channel_->Attest(serialized_key, &serialized_attestation)) {
+    LOG(ERROR) << "Could not get an attestation to the serialized key";
     return false;
   }
 
-  signature->assign(
-      const_cast<const char *>(reinterpret_cast<char *>(sig_value)),
-      static_cast<size_t>(size));
-  return true;
-}
-
-bool LegacyTao::VerifyWithLegacyKey(RSAKey &key, const string &data,
-                                    const string &signature) const {
-  Sha256 sha;
-  unsigned char hash[SHA256_DIGESTSIZE_BYTES];
-
-  sha.Init();
-  sha.Update(reinterpret_cast<const unsigned char *>(data.data()), data.size());
-  sha.Final();
-  sha.GetDigest(hash);
-
-  if (!RSAVerify(
-          key, SHA256HASH, hash,
-          const_cast<unsigned char *>(
-              reinterpret_cast<const unsigned char *>(signature.data())))) {
-    LOG(ERROR) << "Could not verify an RSA signature";
+  if (!attest->ParseFromString(serialized_attestation)) {
+    LOG(ERROR) << "Could not deserialize the attestation to our key";
     return false;
   }
 

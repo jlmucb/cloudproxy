@@ -11,7 +11,14 @@ parser.add_argument('--private_key', help='The private key file to use. If none 
 parser.add_argument('--crypt_utility', default='./cryptUtility.exe', help='The path to cryptUtility.exe (default ./cryptUtility.exe)')
 parser.add_argument('--policy_private_key', default='policy/privatePolicyKey.xml', help='The path to the private key file to use to sign this policy (default policy/privatePolicyKey.xml)')
 parser.add_argument('--output', help='The name of the signed public key file to output (default <subject>PublicKey.xml)')
+parser.add_argument('--algorithm',
+                    help='The name of the algorithm to use for signing',
+                    default='rsa2048-sha256-pkcspad')
+parser.add_argument('--key_size',
+                    help='The size of key to generate',
+                    default=2048)
 
 args = parser.parse_args()
 
-create_principal(args.id, args.subject, args.private_key, args.crypt_utility, args.policy_private_key, args.output)
+create_principal(args.id, args.subject, args.private_key, args.crypt_utility, args.policy_private_key, args.output,
+                 args.algorithm, args.key_size)

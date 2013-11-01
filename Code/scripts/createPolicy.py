@@ -29,8 +29,13 @@ parser.add_argument('--output',
                     help='The name of the signed authorization file to output'
                          ' (default authorizationRuleSigned.xml)',
                     default='authorizationRuleSigned.xml')
+parser.add_argument('--algorithm',
+                    help='The name of the algorithm to use for signing',
+                    default='rsa2048-sha256-pkcspad')
+
 
 args = parser.parse_args()
 
 create_policy(args.policy_file, args.cert_id, args.authority,
-              args.crypt_utility, args.private_key, args.output)
+              args.crypt_utility, args.private_key, args.output,
+              args.algorithm)

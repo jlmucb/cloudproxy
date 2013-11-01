@@ -48,7 +48,7 @@ class TaoChannel : public Tao {
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
   virtual bool Attest(const string &data, string *attestation) const;
-  virtual bool VerifyAttestation(const string &data, const string &attestation) const;
+  virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
   // subclasses implement these methods for the underlying transport.

@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include <tao/tao_channel.h>
 #include <glog/logging.h>
 
@@ -79,12 +77,13 @@ bool TaoChannel::Listen(Tao *t) const {
         resp.set_data(result_data);
         break;
       case VERIFY_ATTESTATION:
-        if (!rpc.has_data()) {
-          LOG(ERROR) << "Invald RPC: must supply data for VerifyAttest";
+        if (!rpc.has_signature()) {
+          LOG(ERROR) << "Invald RPC: must supply attestation for VerifyAttest";
           break;
         }
 
-        result = t->VerifyAttestation(rpc.data(), rpc.signature());
+        result = t->VerifyAttestation(rpc.signature(), &result_data);
+	resp.set_data(result_data);
         break;
       default:
         LOG(ERROR) << "Unknown RPC " << rpc.rpc();
@@ -198,15 +197,23 @@ bool TaoChannel::Attest(const string &data, string *attestation) const {
   return resp.success();
 }
 
-bool TaoChannel::VerifyAttestation(const string &data, const string &attestation) const {
+bool TaoChannel::VerifyAttestation(const string &attestation, string *data) const {
   TaoChannelRPC rpc;
   rpc.set_rpc(VERIFY_ATTESTATION);
-  rpc.set_data(data);
   rpc.set_signature(attestation);
   SendRPC(rpc);
 
   TaoChannelResponse resp;
   GetResponse(&resp);
+
+  if (resp.success()) {
+    if (!resp.has_data()) {
+      LOG(ERROR) << "A successful VerifyAttestation did not return data";
+      return false;
+    }
+
+    data->assign(resp.data().data(), resp.data().size());
+  }
 
   return resp.success();
 }

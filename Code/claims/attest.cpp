@@ -117,6 +117,7 @@ const char* g_AttestInfoTemplate=
 Attestation::Attestation()
 {
     m_fValid= false;
+    m_szAttestType= NULL;
     m_szAttestalg= NULL;
     m_szcodeDigest= NULL;
     m_szattestedValue= NULL;
@@ -131,8 +132,9 @@ Attestation::Attestation()
     m_attestedTo= NULL;
     m_sizeattestation= 0;
     m_attestation= NULL;
-    m_pNodeAttest= NULL;
     m_szKeyInfo= NULL;
+
+    m_pNodeAttest= NULL;
     m_pNodeNonce= NULL;
     m_pNodeCodeDigest= NULL;
     m_pNodeInterpretationHint= NULL;
@@ -145,6 +147,10 @@ Attestation::Attestation()
 
 Attestation::~Attestation()
 {
+    if(m_szAttestType!=NULL) {
+        free(m_szAttestType);
+        m_szAttestType= NULL;
+    }
     if(m_szAttestalg!=NULL) {
         free(m_szAttestalg);
         m_szAttestalg= NULL;
@@ -207,10 +213,13 @@ bool  Attestation::init(const char* attestation)
     const char*     szA= NULL;
     
 #ifdef TEST
-    fprintf(g_logFile, "Attestation::init()\n");
+    fprintf(g_logFile, "Attestation::init()\n%s\n", attestation);
+    fflush(g_logFile);
 #endif
-    if(attestation==NULL)
+    if(attestation==NULL) {
+        fprintf(g_logFile, "Attestation::init: attestation is null\n");
         return false;
+    }
     
     if(!m_doc.Parse(attestation)) {
         fprintf(g_logFile, "Attestation::init: Can't parse attestation\n");
@@ -227,16 +236,17 @@ bool  Attestation::init(const char* attestation)
         fprintf(g_logFile, "Attestation::init: No Attest node\n");
         return false;
     }
-    szA= ((TiXmlElement*) pNode)->Attribute ("type");
+    szA= ((TiXmlElement*)m_pNodeAttest)->Attribute ("type");
     if(szA==NULL) {
         fprintf(g_logFile, "Attestation::init: No type\n");
         return false;
     }
-    m_typeDigest= strdup(szA);
+    m_szAttestType= strdup(szA);
+    szA= NULL;
 
-    pNode=  Search(m_pNodeAttest, "ds:CanonicalizationMethod Algorithm");
+    pNode=  Search(m_pNodeAttest, "ds:CanonicalizationMethod");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Attestation::init: CanonicalizationMethod node\n");
+        fprintf(g_logFile, "Attestation::init: no CanonicalizationMethod node\n");
         return false;
     }
     szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
@@ -245,6 +255,7 @@ bool  Attestation::init(const char* attestation)
         return false;
     }
     m_szCanonicalizationalg= strdup(szA);
+    szA= NULL;
 
     pNode=  Search(m_pNodeAttest, "CodeDigest");
     if(pNode==NULL) {
@@ -263,6 +274,7 @@ bool  Attestation::init(const char* attestation)
         return false;
     }
     m_szcodeDigest= strdup(((TiXmlElement*)pNode1)->Value());
+    szA= NULL;
 
     pNode=  Search(m_pNodeAttest, "AttestedValue");
     if(pNode==NULL) {
@@ -458,8 +470,9 @@ bool Attestation::setAttestedTo(int size, byte* attestedTo)
 {
     if(size<=0 || attestedTo==NULL)
         return false;
-    if(m_attestedTo!=NULL)
-        free(m_attestedTo);
+    if(m_attestedTo!=NULL) {
+        // free(m_attestedTo);
+    }
     m_attestedTo= (byte*) malloc(size);
     if(m_attestedTo==NULL)
         return false;
@@ -473,7 +486,7 @@ bool Attestation::getAttestedTo(int* psize, byte* attestedTo)
 {
     if(m_sizeattestedTo<=0 || m_attestedTo==NULL)
         return false;
-    memcpy(attestedTo, m_attestedTo, m_sizeattestedTo);;
+    memcpy(attestedTo, m_attestedTo, m_sizeattestedTo);
     *psize= m_sizeattestedTo;
     return true;
 }
@@ -483,8 +496,9 @@ bool Attestation::setAttestation(int size, byte* attestation)
 {
     if(size<=0 || attestation==NULL)
         return false;
-    if(m_attestation!=NULL)
-        free(m_attestation);
+    if(m_attestation!=NULL) {
+        // free(m_attestation);
+    }
     m_attestation= (byte*) malloc(size);
     if(m_attestation==NULL)
         return false;
@@ -508,8 +522,9 @@ bool Attestation::setcodeDigest(int size, byte* codeDigest)
 {
     if(size<=0 || codeDigest==NULL)
         return false;
-    if(m_codeDigest!=NULL)
-        free(m_codeDigest);
+    if(m_codeDigest!=NULL) {
+        // free(m_codeDigest);
+    }
     m_codeDigest= (byte*) malloc(size);
     if(m_codeDigest==NULL)
         return false;
@@ -790,6 +805,8 @@ bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
         return false;
     }
     szCanonical= canonicalize(m_pNodeAttestInfo);
+    if(szCanonical==NULL)
+        return false;
     oHash.Init();
     oHash.Update((const byte*) szCanonical, strlen(szCanonical));
     oHash.Final();

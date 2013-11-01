@@ -2360,10 +2360,10 @@ int main(int an, char** av)
 
     if(iAction==VERIFYATTEST) {
         if(VerifyAttest(szInFile, szPrincipalsFile, szKeyFile)) {
-            fprintf(g_logFile, "Quote verifies\n");
+            fprintf(g_logFile, "Attest verifies\n");
         }
         else {
-            fprintf(g_logFile, "Quote does NOT verify\n");
+            fprintf(g_logFile, "Attest does NOT verify\n");
         }
         return 0;
     }

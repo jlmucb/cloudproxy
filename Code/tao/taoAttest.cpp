@@ -52,6 +52,7 @@ taoAttest::taoAttest()
     m_szAttestAlg= NULL;
     m_pattestingCert= NULL;
     m_pattestingKey= NULL;
+    m_szAttestAlg= NULL;
 
     // these will be removed
     m_pquoteKey= NULL;
@@ -72,11 +73,6 @@ taoAttest::~taoAttest()
     if(m_pattestingCert!=NULL) {
         free(m_pattestingCert);
         m_pattestingCert= NULL;
-    }
-    if(m_pquoteKey!=NULL) {
-        // delete pquoteKey;
-        // this is deleted in cert class
-        m_pquoteKey= NULL;
     }
     if(m_szQuoteAlg!=NULL) {
         free(m_szQuoteAlg);
@@ -105,10 +101,6 @@ taoAttest::~taoAttest()
     if(m_szQuoteKeyInfo!=NULL) {
         free(m_szQuoteKeyInfo);
         m_szQuoteKeyInfo= NULL;
-    }
-    if(m_szQuotedKeyInfo!=NULL) {
-        free(m_szQuotedKeyInfo);
-        m_szQuotedKeyInfo= NULL;
     }
     if(m_szQuotedKeyName!=NULL) {
         free(m_szQuotedKeyName);
@@ -351,8 +343,8 @@ bool  taoAttest::verifyAttestation(int* psizeattestValue, byte* attestValue,
     }
 
     // get attesting key
-    m_pquoteKey= (RSAKey*) m_pattestingCert->getSubjectKeyInfo();
-    if(m_pquoteKey==NULL) {
+    m_pattestingKey= (RSAKey*) m_pattestingCert->getSubjectKeyInfo();
+    if(m_pattestingKey==NULL) {
         fprintf(g_logFile, "taoAttest::verifyAttestation: can't get attest key from Cert\n");
         return false;
     }
@@ -363,7 +355,7 @@ bool  taoAttest::verifyAttestation(int* psizeattestValue, byte* attestValue,
 #endif
 
     // verify 
-    fRet= m_oAttestation.checkAttest((KeyInfo*)&m_pattestingKey);
+    fRet= m_oAttestation.checkAttest((KeyInfo*)m_pattestingKey);
 #ifdef TEST
     fprintf(g_logFile, "taoAttest::verifyAttestation: verify succeeds\n");
     fflush(g_logFile);

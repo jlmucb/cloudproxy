@@ -55,11 +55,12 @@ private:
     TiXmlNode*      m_pNodeAttest;
     TiXmlNode*      m_pNodeNonce;
     TiXmlNode*      m_pNodeCodeDigest;
-    TiXmlNode*      m_pNodeInterpretationHint;
     TiXmlNode*      m_pNodeAttestedValue;
     TiXmlNode*      m_pNodeAttestation;
     TiXmlNode*      m_pNodeattestingKeyInfo;
+    TiXmlNode*      m_pNodeInterpretationHint;
 
+    char*           m_szAttestType;
     char*           m_szAttestalg;
     char*           m_szCanonicalizationalg;
     char*           m_szcodeDigest;

@@ -30,7 +30,7 @@
 #include "jlmTypes.h"
 #include "jlmcrypto.h"
 #include "keys.h"
-#include "quote.h"
+#include "attest.h"
 #include "time.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
@@ -59,21 +59,25 @@ private:
     TiXmlNode*      m_pNodeNonce;
     TiXmlNode*      m_pNodeCodeDigest;
     TiXmlNode*      m_pNodeInterpretationHint;
+    TiXmlNode*      m_pNodeAttestedValue;
     TiXmlNode*      m_pNodeAttestValue;
-    TiXmlNode*      m_pNodeattetingKeyInfo;
+    TiXmlNode*      m_pNodeattestingKeyInfo;
     char*           m_szAttestalg;
 
 public:
-    AttestInfo();
-    ~AttestInfo();
+    Attest();
+    ~Attest();
 
-    bool        init(const char* szXMLAttest);
-    char*       getAttestAlg();
-    char*       getInterpretationHint();
+    bool            init(const char* attestation);
+    const char*     getAttestAlg();
+    const char*     getAttestValue();
+    const char*     getnonceValue();
+    const char*     getattestingkeyInfo();
+    const char*     getInterpretationHint();
 
-    const char* encodeAttest();
-    bool        decodeAttest(); 
-    bool        checkAttest();
+    const char*     encodeAttest();
+    bool            decodeAttest(); 
+    bool            checkAttest();
 };
 
 
@@ -81,18 +85,19 @@ class AttestInfo {
 private:
     TiXmlDocument   m_doc;
     TiXmlNode*      m_pNodeAttestInfo;
+    TiXmlNode*      m_pKeyInfo;
 
 public:
     AttestInfo();
     ~AttestInfo();
 
-    bool        init(const char* szXMLAttest);
-    char*       getSerializedKey();
-    bool        getAttestInfoHash();
+    bool            init(const char* attestInfo);
+    const char*     getSerializedKey();
+    bool            getAttestInfoHash();
 };
 
 
-bool	sha256quoteHash(int sizenonce, byte* nonce, 
+bool    sha256quoteHash(int sizenonce, byte* nonce, 
                      int sizetobeSignedHash, byte* tobesignedHash, 
                      int sizecodeHash, byte* codeHash, byte* outputHash);
 #endif

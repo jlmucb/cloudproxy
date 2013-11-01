@@ -30,7 +30,6 @@
 #include "jlmTypes.h"
 #include "jlmcrypto.h"
 #include "keys.h"
-#include "attest.h"
 #include "time.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
@@ -81,6 +80,7 @@ public:
     Attestation();
     ~Attestation();
 
+    bool            isValid() {return m_fValid;};
     bool            init(const char* attestation);
     const char*     getAttestAlg();
     const char*     getAttestation();
@@ -103,6 +103,7 @@ public:
     bool            convertfromBinary();
 
     const char*     encodeAttest();
+    bool            checkAttest(KeyInfo* pKeyInfo);
 };
 
 
@@ -121,6 +122,7 @@ public:
     AttestInfo();
     ~AttestInfo();
 
+    bool            isValid() {return m_fValid;};
     bool            init(const char* attestInfo);
     const char*     getSerializedKey();
     bool            getAttestInfoHash(u32 type, int* psize, byte* hash);

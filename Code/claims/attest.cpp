@@ -586,6 +586,107 @@ const char* Attestation::encodeAttest()
 }
 
 
+bool Attestation::checkAttest(KeyInfo* pKeyInfo)
+{
+    byte    hashFinal[SHA256DIGESTBYTESIZE];
+    int     hashType= 0;
+    int     sizefinalHash= 0;
+
+    if(!isValid()) {
+        fprintf(g_logFile, "checkAttest: Attestation not valid\n");
+        return false;
+    }
+    if(m_szAttestalg==NULL) {
+        fprintf(g_logFile, "checkAttest: empty alg\n");
+        return false;
+    }
+    if(!converttoBinary()) {
+        fprintf(g_logFile, "checkAttest: cant convert to binary values\n");
+        return false;
+    }
+
+#ifdef TEST
+    fprintf(g_logFile, "checkAttest alg: %s\n", m_szAttestalg);
+    PrintBytes("Code digest: ", m_codeDigest, m_sizecodeDigest);
+    PrintBytes("Attested to: ", m_attestedTo, m_sizeattestedTo);
+    PrintBytes("Attestation value: ", m_attestation, m_sizeattestation);
+    ((RSAKey*)pKeyInfo)->printMe();
+#endif
+
+    if(strcmp(ATTESTMETHODTPM12RSA1024, m_szAttestalg)==0 
+        || strcmp(ATTESTMETHODTPM12RSA2048, m_szAttestalg)==0) {
+        hashType= SHA1HASH;
+    }
+    else if(strcmp(ATTESTMETHODSHA256FILEHASHRSA1024, m_szAttestalg)==0 
+        || strcmp(ATTESTMETHODSHA256FILEHASHRSA2048, m_szAttestalg)==0) {
+        hashType= SHA256HASH;
+    }
+    else {
+        fprintf(g_logFile, "checkAttest: Unsupported attest algorithm %s\n", m_szAttestalg);
+        return false;
+    }
+
+    // get nonce
+
+    // generate final quote hash
+    if(strcmp(ATTESTMETHODTPM12RSA2048, m_szAttestalg)==0 || 
+        strcmp(ATTESTMETHODTPM12RSA1024, m_szAttestalg)==0) {
+#ifdef NOQUOTE2
+        if(!tpm12quoteHash(0, NULL, m_sizeattestedTo, m_attestedTo,
+                           m_sizecodeDigest, m_codeDigest, hashFinal)) {
+            fprintf(g_logFile, "checkAttest: Cant compute TPM12 hash\n");
+            return false;
+        }
+#else
+        byte    locality= 0; 
+        u32     sizeversion= 0;
+        byte*   versionInfo= NULL;
+
+#ifdef PCR18
+        byte pcrMask[3]= {0,0,0x6};  // pcr 17, 18
+#else
+        byte pcrMask[3]= {0,0,0x2};  // pcr 17
+#endif
+
+        // reconstruct PCR composite and composite hash
+        if(!tpm12quote2Hash(0, NULL, pcrMask, locality,
+                            m_sizeattestedTo, m_attestedTo,
+                            m_sizecodeDigest, m_codeDigest,
+                            false, sizeversion, versionInfo, 
+                            hashFinal)) {
+            fprintf(g_logFile, "checkAttest: Cant compute TPM12 hash\n");
+            return false;
+        }
+#endif
+        sizefinalHash= SHA1DIGESTBYTESIZE;
+    }
+    else if(strcmp(ATTESTMETHODSHA256FILEHASHRSA2048, m_szAttestalg)==0 || 
+             strcmp(ATTESTMETHODSHA256FILEHASHRSA1024, m_szAttestalg)==0) {
+        if(!sha256quoteHash(0, NULL, m_sizeattestedTo, m_attestedTo,
+                           m_sizecodeDigest, m_codeDigest, hashFinal)) {
+            fprintf(g_logFile, "checkAttest: Cant compute sha256 hash\n");
+            return false;
+        }
+        sizefinalHash= SHA256DIGESTBYTESIZE;
+    }
+    else {
+        fprintf(g_logFile, "checkAttest: Unsupported attest algorithm %s\n", m_szAttestalg);
+        return false;
+    }
+
+#ifdef TEST
+    PrintBytes((char*)"final hash: ", hashFinal, sizefinalHash);
+    fflush(g_logFile);
+#endif
+
+    bool fRet= RSAVerify(*(RSAKey*)pKeyInfo, hashType, hashFinal,
+                               m_attestation);
+    return fRet;
+}
+
+
+
+
 // ------------------------------------------------------------------
 
 
@@ -602,7 +703,7 @@ AttestInfo::AttestInfo()
 AttestInfo::~AttestInfo()
 {
     if(m_szHash!=NULL) {
-        free((void*)m_szHash);
+        // free((void*)m_szHash);
         m_szHash= NULL;
     }
 }

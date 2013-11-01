@@ -1269,7 +1269,68 @@ bool QuoteTest(const char* szKeyFile, const char* szInFile)
 bool VerifyAttest(const char* szAttestFile, const char* szEvidenceFile,
                  const char* szRootKeyFile)
 {
-    return false;
+    taoAttest       otaoAttest;
+    PrincipalCert   oCert;
+    char* szEvidenceString= readandstoreString(szEvidenceFile);
+    char* szAttestString= readandstoreString(szAttestFile);
+    char* szRootKeyString= readandstoreString(szRootKeyFile);
+
+#ifdef TEST
+    fprintf(g_logFile, "VerifyAttest: attestFile: %s, certFile: %s, key file: %s\n",
+            szAttestFile, szEvidenceFile, szRootKeyFile);
+    fflush(g_logFile);
+#endif
+
+    // get Attest
+    if(szAttestString==NULL) {
+        fprintf(g_logFile,"VerifyAttest: Can't cant read attest file %s\n", szAttestString);
+        return false;
+    }
+
+    // get Cert
+    if(szEvidenceString==NULL) {
+        fprintf(g_logFile, "VerifyAttest: Can't cant read evidence file %s\n", szEvidenceString);
+        return false;
+    }
+
+    // get Key
+    if(szRootKeyString==NULL) {
+        fprintf(g_logFile, "VerifyAttest: Can't cant read evidence file %s\n", szRootKeyString);
+        return false;
+    }
+
+    RSAKey aikKey;
+    if(!((KeyInfo*)&aikKey)->ParsefromString(szRootKeyString)) {
+        fprintf(g_logFile, "VerifyAttest: Cant parse quoting key\n");
+        return false;
+    }
+
+    if(!aikKey.getDataFromDoc()) {
+        fprintf(g_logFile, "VerifyAttest: Cant interpret quoting key\n");
+        return false;
+    }
+
+    fprintf(g_logFile, "Attest key size: %d\n", aikKey.m_iByteSizeM);
+    fprintf(g_logFile, "Attest:\n%s\n\n", szAttestString);
+    fprintf(g_logFile, "Evidence :\n%s\n\n", szEvidenceString);
+
+    // initialize Attest object
+    if(!otaoAttest.init(szAttestString, szEvidenceString, (KeyInfo*) &aikKey)) {
+        fprintf(g_logFile, "VerifyAttest:: cant init attest object\n");
+        return false;
+    }
+
+    int         sizeattestValue= 1024;
+    byte        attestValue[1024];
+    const char* szdigestAlg= NULL;
+    int         sizecodeDigest= 1024;
+    byte        codeDigest[1024];
+    const char* szHint=NULL;
+
+    bool fRet= otaoAttest.verifyAttestation(&sizeattestValue, attestValue,
+                                      &szdigestAlg, &sizecodeDigest,
+                                      codeDigest, &szHint);
+    return fRet;
 }
 
 

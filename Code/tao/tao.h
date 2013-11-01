@@ -371,6 +371,7 @@ public:
 
 
 #include "quote.h"
+#include "attest.h"
 #include "cert.h"
 #include "validateEvidence.h"
 
@@ -390,6 +391,7 @@ private:
     evidenceList    m_oEvidence;
     char*           m_sznonce;
     char*           m_szAttestAlg;
+    Attestation     m_oAttestation;
 
 public:
                     taoAttest();

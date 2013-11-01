@@ -36,7 +36,7 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/cert.o $(B)/quote.o \
-	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
+	    $(B)/attest.o $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o $(B)/request.o $(B)/fileServices.o $(B)/validateEvidence.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
@@ -102,6 +102,9 @@ $(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TRS) -I$(TAO) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
+
+$(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -I$(SCD) -c -o $(B)/attest.o $(CLM)/attest.cpp
 
 $(B)/request.o: $(PROTO)/request.cpp $(PROTO)/request.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(TAO) -I$(BSC) -I$(CLM) -I$(S) -c -o $(B)/request.o $(PROTO)/request.cpp

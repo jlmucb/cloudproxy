@@ -37,7 +37,7 @@ dobjs=      $(B)/keyNegoServer.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility
 	    $(B)/keys.o $(B)/aesni.o $(B)/sha256.o  $(B)/sha1.o $(B)/channel.o \
             $(B)/hmacsha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/hashprep.o \
 	    $(B)/mpNumTheory.o  $(B)/cryptoHelper.o $(B)/quote.o $(B)/cert.o  \
-	    $(B)/resource.o $(B)/modesandpadding.o $(B)/validateEvidence.o \
+	    $(B)/attest.o $(B)/resource.o $(B)/modesandpadding.o $(B)/validateEvidence.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
 	    $(B)/fastArith.o $(B)/encryptedblockIO.o $(B)/taoAttest.o
 
@@ -73,6 +73,9 @@ $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(FPX) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/quote.o $(CLM)/quote.cpp
+
+$(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(FPX) -I$(TPD) -I$(CLM) -I$(TH) -c -o $(B)/attest.o $(CLM)/attest.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp

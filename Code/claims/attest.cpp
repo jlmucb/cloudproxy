@@ -41,15 +41,27 @@
 #include <string.h>
 
 
-#define MAXREQUESTSIZE 16384
-#ifndef SMALLNONCESIZE
-#define SMALLNONCESIZE 32
-#endif
-
-
 // ------------------------------------------------------------------------
 
 
+const char* g_AttestTemplate=
+"<Attest format=\"xml\" type=\"%s\">\n"\
+"  <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\"/>\n"\
+"  <CodeDigest Algorithm=\"%s\">%s</CodeDigest>\n"\
+"  <AttestedValue>%s</AttestedValue>\n"\
+"  <Attestation Algorithm=\"%s\">%s</Attestation>\n"\
+"      %s\n"\
+"  <InterpretationHint>\n"\
+"%s\n"\
+"  </InterpretationHint>\n"\
+"</Attest>\n";
+
+
+const char* g_AttestInfoTemplate=
+"<attestedInfo>\n"\
+"%s\n"\
+"</attestedInfo>\n";
+ 
 
 // ------------------------------------------------------------------
 
@@ -60,10 +72,10 @@
  * 
  *  <Attest format="xml" type="CP1">
  *    <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
- *     <ds:AttestMethod Algorithm="Attest-Sha256FileHash-RSA1024" />
- *     <CodeDigest alg="SHA256">al5/jR40s+ytNsx3SRTLE67oZV5bSl+EXNRrqI2gxKY=</CodeDigest>
- *     <AttestdValue> xxxxxx  </AttestdValue>
- *     <AttestValue>a0NDX3hYz3OzGvGQlOp87X0oJV00zGQ5YOaeVfW/3NqCdml4EzAWcjZNaFf26kry84hZ9ULOpB7+RiBplhKg9kSinMEPfljkvvJJ+vuVdbmEzu45oi3FAh4PMGyp5hoWTxpnhr+MSBhvs08BUcWe+xxMlerdI17T1Tv6wO9iJMo=</AttestValue>
+ *    <ds:AttestMethod Algorithm="Attest-Sha256FileHash-RSA1024" />
+ *    <CodeDigest alg="SHA256">al5/jR40s+ytNsx3SRTLE67oZV5bSl+EXNRrqI2gxKY=</CodeDigest>
+ *    <AttestedValue>xxxx</AttestedValue>
+ *    <Attestation Algorithm="Attest-Sha256FileHash-RSA1024">yyyyy</Attestation>
  *    <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/jlmlinuxhp/Keys/TrustedOSAttest">
  *      <KeyType>RSAKeyType</KeyType>
  *        <ds:KeyValue>
@@ -99,37 +111,103 @@
  */
 
 
-#define MAXATTESTSIZE 16384
-
-
 // ------------------------------------------------------------------
 
 
 Attest::Attest()
 {
+    m_szAttestalg= NULL;
+    m_szcodeDigest= NULL;
+    m_szattestedValue= NULL;
+    m_szattestation= NULL;
+    m_szNonce= NULL;
+    m_typeDigest= NULL;
+    m_szCanonicalizationalg= NULL;
+    m_szHint= NULL;
+    m_sizecodeDigest= 0;
+    m_codeDigest= NULL;
+    m_sizeattestedTo= 0;
+    m_attestedTo= NULL;
+    m_sizeattestation= 0;
+    m_attestation= NULL;
+    m_pNodeAttest= NULL;
+    m_pNodeNonce= NULL;
+    m_pNodeCodeDigest= NULL;
+    m_pNodeInterpretationHint= NULL;
+    m_pNodeAttestedValue= NULL;
+    m_pNodeAttestation= NULL;
+    m_pNodeattestingKeyInfo= NULL;
+    m_pNodeInterpretationHint= NULL;
 }
 
 
 Attest::~Attest()
 {
+    if(m_szAttestalg!=NULL) {
+        free(m_szAttestalg);
+        m_szAttestalg= NULL;
+    }
+    if(m_szCanonicalizationalg!=NULL) {
+        free(m_szCanonicalizationalg);
+        m_szCanonicalizationalg= NULL;
+    }
+    if(m_szcodeDigest!=NULL) {
+        free(m_szcodeDigest);
+        m_szcodeDigest= NULL;
+    }
+    if(m_szattestedValue!=NULL) {
+        free(m_szattestedValue);
+        m_szattestedValue= NULL;
+    }
+    if(m_szattestation!=NULL) {
+        free(m_szattestation);
+        m_szattestation= NULL;
+    }
+    if(m_szNonce!=NULL) {
+        free(m_szNonce);
+        m_szNonce= NULL;
+    }
+    if(m_typeDigest!=NULL) {
+        free(m_typeDigest);
+        m_typeDigest= NULL;
+    }
+    if(m_szHint!=NULL) {
+        free(m_szHint);
+        m_szHint= NULL;
+    }
+    m_sizecodeDigest= 0;
+    if(m_codeDigest!=NULL) {
+        free(m_codeDigest);
+        m_codeDigest= NULL;
+    }
+    m_sizeattestedTo= 0;
+    if(m_attestedTo!=NULL) {
+        free(m_attestedTo);
+        m_attestedTo= NULL;
+    }
+    m_sizeattestation= 0;
+    if(m_attestation!=NULL) {
+        free(m_attestation);
+        m_attestation= NULL;
+    }
 }
 
 
 bool  Attest::init(const char* attestation)
 {
-#if 0
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
     const char*     szA= NULL;
     
-#ifdef QUOTETEST1
-    fprintf(g_logFile, "init()\n");
+#ifdef TEST
+    fprintf(g_logFile, "Attest::init()\n");
 #endif
     if(attestation==NULL)
         return false;
     
     if(!m_doc.Parse(attestation)) {
-        fprintf(g_logFile, "Attest::init: Can't parse attest\n");
+        fprintf(g_logFile, "Attest::init: Can't parse attestation\n");
         return false;
     }   
     pRootElement= m_doc.RootElement();
@@ -137,65 +215,83 @@ bool  Attest::init(const char* attestation)
         fprintf(g_logFile, "Attest::init: Can't get root of attest\n");
         return false;
     }
+
     m_pNodeAttest= Search((TiXmlNode*) pRootElement, "Attest");
     if(m_pNodeAttest==NULL) {
         fprintf(g_logFile, "Attest::init: No Attest node\n");
         return false;
     }
-    // <ds:AttestMethod Algorithm=
-    pNode=  Search(m_pNodeAttest, "ds:AttestMethod");
+    szA= ((TiXmlElement*) pNode)->Attribute ("type");
+    if(szA==NULL) {
+        fprintf(g_logFile, "Attest::init: No type\n");
+        return false;
+    }
+    m_typeDigest= strdup(szA);
+
+    pNode=  Search(m_pNodeAttest, "ds:CanonicalizationMethod Algorithm");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Attest::init: No ds:AttestMethod node\n");
+        fprintf(g_logFile, "Attest::init: CanonicalizationMethod node\n");
         return false;
     }
     szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
     if(szA==NULL) {
-        fprintf(g_logFile, "Attest::init: No ds:AttestMethod Algorithm\n");
+        fprintf(g_logFile, "Attest::init: No CanonicalizationMethod Algorithm\n");
+        return false;
+    }
+    m_szCanonicalizationalg= strdup(szA);
+
+    pNode=  Search(m_pNodeAttest, "CodeDigest");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "Attest::init: No CodeDigest\n");
+        return false;
+    }
+    szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
+    if(szA==NULL) {
+        fprintf(g_logFile, "Attest::init: No CodeDigest Algorithm\n");
+        return false;
+    }
+    m_typeDigest= strdup(szA);
+    pNode1= ((TiXmlElement*)pNode)->FirstChild();
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "Attest::init: No CodeDigest value\n");
+        return false;
+    }
+    m_szcodeDigest= strdup(((TiXmlElement*)pNode1)->Value());
+
+    pNode=  Search(m_pNodeAttest, "AttestedValue");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "Attest::init: No AttestedValue\n");
+        return false;
+    }
+    pNode1= ((TiXmlElement*)pNode)->FirstChild();
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "Attest::init: No Attestaton value\n");
+        return false;
+    }
+    m_szattestedValue= strdup(((TiXmlElement*)pNode1)->Value());
+
+    pNode=  Search(m_pNodeAttest, "Attestation");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "Attest::init: No Attestation\n");
+        return false;
+    }
+    szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
+    if(szA==NULL) {
+        fprintf(g_logFile, "Attest::init: No Attestaton Algorithm\n");
         return false;
     }
     m_szAttestalg= strdup(szA);
-    m_pNodeNonce= Search(m_pNodeAttest, "Nonce");
-    m_pNodeCodeDigest= Search(m_pNodeAttest, "CodeDigest");
-    if(m_pNodeCodeDigest==NULL) {
-        fprintf(g_logFile, "Attest::init: No CodeDigest node\n");
+    pNode1= ((TiXmlElement*)pNode)->FirstChild();
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "Attest::init: No Attestaton value\n");
         return false;
     }
-    m_pNodeAttestedInfo= Search(m_pNodeAttest, "AttestdInfo");
-    if(m_pNodeAttestdInfo==NULL) {
-        fprintf(g_logFile, "Attest::init: No AttestdInfo node\n");
-        return false;
-    }
-    m_pNodeAttestValue= Search(m_pNodeAttestdInfo, "AttestValue");
-    if(m_pNodeAttestValue==NULL) {
-        fprintf(g_logFile, "Attest::init: No AttestValue node\n");
-        return false;
-    }
-    m_pNodeattestdKeyInfo= Search(m_pNodeAttestdInfo, "ds:KeyInfo");
-    pNode= m_pNodeAttestValue->NextSibling();
-    m_pNodeattestKeyInfo= Search(pNode, "ds:KeyInfo");
+    m_szattestation= strdup(((TiXmlElement*)pNode1)->Value());
+
+    m_pNodeInterpretationHint= Search(m_pNodeAttest, "InterpretationHint");
+    m_pNodeattestingKeyInfo= Search(m_pNodeAttest, "ds:KeyInfo");
 
     return true;
-#else
-    return false;
-#endif
-}
-
-
-const char*  Attest::getAttestValue()
-{
-    return NULL;
-}
-
-
-const char* Attest::getnonceValue()
-{
-    return NULL;
-}
-
-
-const char* Attest::getattestingkeyInfo()
-{
-    return NULL;
 }
 
 
@@ -207,21 +303,144 @@ const char* Attest::getAttestAlg()
 }
 
 
+const char* Attest::getAttestation()
+{
+    if(m_szattestation==NULL)
+        return NULL;
+    return strdup(m_szattestation);
+}
 
-const char* Attest::getInterpretationHint()
+
+const char* Attest::getAttestedTo()
+{
+    if(m_szattestedValue==NULL)
+        return NULL;
+    return strdup(m_szattestedValue);
+}
+
+
+const char* Attest::getNonce()
+{
+    if(m_szNonce==NULL)
+        return NULL;
+    return strdup(m_szNonce);
+}
+
+
+const char* Attest::getattestingkeyInfo()
 {
     return NULL;
 }
+
+
+bool Attest::setAttestedTo(int size, byte* attestedTo)
+{
+    if(size<=0 || attestedTo==NULL)
+        return false;
+    if(m_attestedTo!=NULL)
+        free(m_attestedTo);
+    m_attestedTo= (byte*) malloc(size);
+    if(m_attestedTo==NULL)
+        return false;
+    memcpy(m_attestedTo, attestedTo, size);
+    m_sizeattestedTo= size; 
+    return true;
+}
+
+
+bool Attest::getAttestedTo(int* psize, byte* attestedTo)
+{
+    if(m_sizeattestedTo<=0 || m_attestedTo==NULL)
+        return false;
+    memcpy(attestedTo, m_attestedTo, m_sizeattestedTo);;
+    *psize= m_sizeattestedTo;
+    return true;
+}
+
+
+bool Attest::setAttestation(int size, byte* attestation)
+{
+    if(size<=0 || attestation==NULL)
+        return false;
+    if(m_attestation!=NULL)
+        free(m_attestation);
+    m_attestation= (byte*) malloc(size);
+    if(m_attestation==NULL)
+        return false;
+    memcpy(m_attestation, attestation, size);
+    m_sizeattestation= size; 
+    return true;
+}
+
+
+bool Attest::getAttestation(int* psize, byte* attestation)
+{
+    if(m_sizeattestation<=0 || m_attestation==NULL)
+        return false;
+    memcpy(attestation, m_attestation, m_sizeattestation);
+    *psize= m_sizeattestation;
+    return true;
+}
+
+
+bool Attest::setcodeDigest(int size, byte* codeDigest)
+{
+    if(size<=0 || codeDigest==NULL)
+        return false;
+    if(m_codeDigest!=NULL)
+        free(m_codeDigest);
+    m_codeDigest= (byte*) malloc(size);
+    if(m_codeDigest==NULL)
+        return false;
+    memcpy(m_codeDigest, codeDigest, size);
+    m_sizecodeDigest= size; 
+    return true;
+}
+
+
+bool Attest::getcodeDigest(int* psize, byte* codeDigest)
+{
+    if(m_sizecodeDigest<=0 || m_codeDigest==NULL)
+        return false;
+    memcpy(codeDigest, m_codeDigest, m_sizecodeDigest);
+    *psize= m_sizecodeDigest;
+    return true;
+}
+
+
+bool Attest::setHint(const char* hint)
+{
+    if(hint!=NULL)
+        m_szHint= strdup(hint);
+    else
+        m_szHint= NULL;
+
+    return true;
+}
+
+
+const char* Attest::getHint()
+{
+    if(m_szHint==NULL)
+        return NULL;
+    return strdup(m_szHint);
+}
+
 
 const char* Attest::encodeAttest()
 {
+    char        szAttestation[8192];
+    const char* szhint= "";
+
+    // get binary attestedTo
+    // get binary codeDigest
+    // construct composite hash
+
+    if(m_szHint!=NULL)
+        szhint= m_szHint;
+    sprintf(szAttestation, g_AttestTemplate, "CP1", m_szAttestalg,
+            "SHA256", m_szcodeDigest, m_szattestedValue, m_szattestation, szhint);
     return NULL;
-}
-
-
-bool Attest::decodeAttest()
-{
-    return false;
 }
 
 
@@ -229,7 +448,6 @@ bool Attest::checkAttest()
 {
     return false;
 }
-
 
 
 // ------------------------------------------------------------------
@@ -247,6 +465,7 @@ AttestInfo::~AttestInfo()
 
 bool  AttestInfo::init(const char* attestInfo)
 {
+    return false;
 }
 
 
@@ -258,6 +477,7 @@ const char* AttestInfo::getSerializedKey()
 
 bool  AttestInfo::getAttestInfoHash()
 {
+    return false;
 }
 
 

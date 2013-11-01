@@ -48,9 +48,6 @@
 #define RSA1024SIGALG  "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
 #define RSA2048SIGALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
 
-// maximum string size of a quote
-#define MAXATTESTDINFOSIZE  8192
-
 
 class Attest {
 private:
@@ -60,9 +57,23 @@ private:
     TiXmlNode*      m_pNodeCodeDigest;
     TiXmlNode*      m_pNodeInterpretationHint;
     TiXmlNode*      m_pNodeAttestedValue;
-    TiXmlNode*      m_pNodeAttestValue;
+    TiXmlNode*      m_pNodeAttestation;
     TiXmlNode*      m_pNodeattestingKeyInfo;
+
     char*           m_szAttestalg;
+    char*           m_szCanonicalizationalg;
+    char*           m_szcodeDigest;
+    char*           m_szattestedValue;
+    char*           m_szattestation;
+    char*           m_szNonce;
+    char*           m_typeDigest;
+    char*           m_szHint;
+    int             m_sizecodeDigest;
+    byte*           m_codeDigest;
+    int             m_sizeattestedTo;
+    byte*           m_attestedTo;
+    int             m_sizeattestation;
+    byte*           m_attestation;
 
 public:
     Attest();
@@ -70,13 +81,21 @@ public:
 
     bool            init(const char* attestation);
     const char*     getAttestAlg();
-    const char*     getAttestValue();
-    const char*     getnonceValue();
+    const char*     getAttestation();
+    const char*     getAttestedTo();
+    const char*     getNonce();
     const char*     getattestingkeyInfo();
-    const char*     getInterpretationHint();
+
+    bool            setAttestedTo(int size, byte* attestedTo);
+    bool            getAttestedTo(int* psize, byte* attestedTo);
+    bool            setAttestation(int size, byte* attestation);
+    bool            getAttestation(int* psize, byte* attestation);
+    bool            setcodeDigest(int size, byte* codeDigest);
+    bool            getcodeDigest(int* psize, byte* codeDigest);
+    bool            setHint(const char* hint);
+    const char*     getHint();
 
     const char*     encodeAttest();
-    bool            decodeAttest(); 
     bool            checkAttest();
 };
 

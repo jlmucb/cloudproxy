@@ -80,6 +80,8 @@
 #define GENCERT                   22
 #define SEAL                      23
 #define UNSEAL                    24
+#define VERIFYATTEST              25
+#define ATTEST                    26
 
 
 #define MAXREQUESTSIZE          2048
@@ -1032,6 +1034,8 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
 // --------------------------------------------------------------------- 
 
 
+// to be replaced by Attest below
+
 bool VerifyQuote(const char* szQuoteFile, const char* szEvidenceFile,
                  const char* szRootKeyFile)
 {
@@ -1254,6 +1258,28 @@ bool QuoteTest(const char* szKeyFile, const char* szInFile)
     fprintf(g_logFile, "\n\nreturning\n");
     
     return true;
+}
+
+
+// --------------------------------------------------------------------- 
+
+
+bool VerifyAttest(const char* szQuoteFile, const char* szEvidenceFile,
+                 const char* szRootKeyFile)
+{
+    return false;
+}
+
+
+bool Attest(const char* szKeyFile, const char* sztoAttestFile, const char* szMeasurementFile)
+{
+    return false;
+}
+
+
+bool AttestTest(const char* szKeyFile, const char* szInFile)
+{
+    return false;
 }
 
 
@@ -1619,6 +1645,8 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
             fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-evidence xml-root-key\n");
+            fprintf(g_logFile, "       cryptUtility -Attest attest-priv-key attest measurement\n");
+            fprintf(g_logFile, "       cryptUtility -VerifyAttest xml-attest xml-evidence xml-root-key\n");
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -validateChain rootKeyFile evidenceFile\n");
@@ -1754,6 +1782,24 @@ int main(int an, char** av)
         }
         if(strcmp(av[i], "-VerifyQuote")==0) {
             iAction= VERIFYQUOTE;
+            szInFile= av[i+1];
+            szPrincipalsFile= av[i+2];
+            szKeyFile= av[i+3];
+            break;
+        }
+        if(strcmp(av[i], "-Attest")==0) {
+            if(an<(i+3)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file measurement-file\n");
+                return 1;
+            }
+            iAction= ATTEST;
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            szMeasurementFile= av[i+3];
+            break;
+        }
+        if(strcmp(av[i], "-VerifyAttest")==0) {
+            iAction= VERIFYATTEST;
             szInFile= av[i+1];
             szPrincipalsFile= av[i+2];
             szKeyFile= av[i+3];
@@ -2049,6 +2095,28 @@ int main(int an, char** av)
         }
         return 0;
     }
+
+    if(iAction==ATTEST) {
+        initCryptoRand();
+        initBigNum();
+        fRet= Attest(szKeyFile, szInFile, szMeasurementFile);
+        if(fRet)
+            fprintf(g_logFile, "Signature generated\n");
+        else
+            fprintf(g_logFile, "Signature failed\n");
+        closeCryptoRand();
+    }
+
+    if(iAction==VERIFYATTEST) {
+        if(VerifyAttest(szInFile, szPrincipalsFile, szKeyFile)) {
+            fprintf(g_logFile, "Quote verifies\n");
+        }
+        else {
+            fprintf(g_logFile, "Quote does NOT verify\n");
+        }
+        return 0;
+    }
+
     if(iAction==ENCAPSULATE) {
         initCryptoRand();
         initBigNum();

@@ -40,6 +40,7 @@
 #include "modesandpadding.h"
 #include "cert.h"
 #include "quote.h"
+#include "attest.h"
 #include "cryptoHelper.h"
 #include "hashprep.h"
 #include "encapsulate.h"
@@ -82,6 +83,7 @@
 #define UNSEAL                    24
 #define VERIFYATTEST              25
 #define ATTEST                    26
+#define ATTESTSIGNEDINFO          27
 
 
 #define MAXREQUESTSIZE          2048
@@ -1264,21 +1266,67 @@ bool QuoteTest(const char* szKeyFile, const char* szInFile)
 // --------------------------------------------------------------------- 
 
 
-bool VerifyAttest(const char* szQuoteFile, const char* szEvidenceFile,
+bool VerifyAttest(const char* szAttestFile, const char* szEvidenceFile,
                  const char* szRootKeyFile)
 {
     return false;
 }
 
 
-bool Attest(const char* szKeyFile, const char* sztoAttestFile, const char* szMeasurementFile)
+bool AttestSignedInfo(const char* szKeyFile, const char* szCodeDigest, const char* szsignedInfo)
 {
+    RSAKey*     pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
+    Attestation oAttest;
+
+#ifdef TEST
+    fprintf(g_logFile, "AttestSignedInfo\n");
+    pKey->printMe();
+    fflush(g_logFile);
+#endif
     return false;
+}
+
+
+bool Attest(const char* szKeyFile, const char* szCodeDigest, const char* szattestValue)
+{
+    RSAKey*     pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
+    Attestation oAttest;
+    int         size= 8192;
+    byte        attestedTo[128];
+    byte        attestation[1024];
+    byte        codeDigest[1024];
+
+#ifdef TEST
+    fprintf(g_logFile, "Attest\n");
+    pKey->printMe();
+    fflush(g_logFile);
+#endif
+
+    if(!oAttest.setAttestedTo(size, attestedTo)) {
+        return false;
+    }
+    if(!oAttest.setAttestation(size, attestation)) {
+        return false;
+    }
+    if(!oAttest.setcodeDigest(size, codeDigest)) {
+        return false;
+    }
+
+    const char* szAttest= oAttest.encodeAttest();
+    printf("\nAttest:\n%s\n", szAttest);
+    return true;
 }
 
 
 bool AttestTest(const char* szKeyFile, const char* szInFile)
 {
+    RSAKey* pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
+
+#ifdef TEST
+    fprintf(g_logFile, "AttestTest\n");
+    pKey->printMe();
+    fflush(g_logFile);
+#endif
     return false;
 }
 
@@ -1645,7 +1693,8 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
             fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-evidence xml-root-key\n");
-            fprintf(g_logFile, "       cryptUtility -Attest attest-priv-key attest measurement\n");
+            fprintf(g_logFile, "       cryptUtility -Attest attest-priv-key code-digest attestedvalue\n");
+            fprintf(g_logFile, "       cryptUtility -AttestSignedInfo attest-priv-key code-digest signedInfo\n");
             fprintf(g_logFile, "       cryptUtility -VerifyAttest xml-attest xml-evidence xml-root-key\n");
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
@@ -1793,6 +1842,17 @@ int main(int an, char** av)
                 return 1;
             }
             iAction= ATTEST;
+            szKeyFile= av[i+1];
+            szInFile= av[i+2];
+            szMeasurementFile= av[i+3];
+            break;
+        }
+        if(strcmp(av[i], "-AttestSignedInfo")==0) {
+            if(an<(i+3)) {
+                fprintf(g_logFile, "Too few arguments: key-file input-file measurement-file\n");
+                return 1;
+            }
+            iAction= ATTESTSIGNEDINFO;
             szKeyFile= av[i+1];
             szInFile= av[i+2];
             szMeasurementFile= av[i+3];
@@ -2101,9 +2161,20 @@ int main(int an, char** av)
         initBigNum();
         fRet= Attest(szKeyFile, szInFile, szMeasurementFile);
         if(fRet)
-            fprintf(g_logFile, "Signature generated\n");
+            fprintf(g_logFile, "Attest generated\n");
         else
-            fprintf(g_logFile, "Signature failed\n");
+            fprintf(g_logFile, "Attest failed\n");
+        closeCryptoRand();
+    }
+
+    if(iAction==ATTESTSIGNEDINFO) {
+        initCryptoRand();
+        initBigNum();
+        fRet= AttestSignedInfo(szKeyFile, szInFile, szMeasurementFile);
+        if(fRet)
+            fprintf(g_logFile, "Attest signedInfo generated\n");
+        else
+            fprintf(g_logFile, "Attest  signedInfo failed\n");
         closeCryptoRand();
     }
 

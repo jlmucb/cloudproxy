@@ -49,7 +49,7 @@
 #define RSA2048SIGALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
 
 
-class Attest {
+class Attestation {
 private:
     bool            m_fValid;
     TiXmlDocument   m_doc;
@@ -77,8 +77,8 @@ private:
     byte*           m_attestation;
 
 public:
-    Attest();
-    ~Attest();
+    Attestation();
+    ~Attestation();
 
     bool            init(const char* attestation);
     const char*     getAttestAlg();

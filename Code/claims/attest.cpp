@@ -114,7 +114,7 @@ const char* g_AttestInfoTemplate=
 // ------------------------------------------------------------------
 
 
-Attest::Attest()
+Attestation::Attestation()
 {
     m_fValid= false;
     m_szAttestalg= NULL;
@@ -142,7 +142,7 @@ Attest::Attest()
 }
 
 
-Attest::~Attest()
+Attestation::~Attestation()
 {
     if(m_szAttestalg!=NULL) {
         free(m_szAttestalg);
@@ -194,7 +194,7 @@ Attest::~Attest()
 }
 
 
-bool  Attest::init(const char* attestation)
+bool  Attestation::init(const char* attestation)
 {
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
@@ -202,89 +202,89 @@ bool  Attest::init(const char* attestation)
     const char*     szA= NULL;
     
 #ifdef TEST
-    fprintf(g_logFile, "Attest::init()\n");
+    fprintf(g_logFile, "Attestation::init()\n");
 #endif
     if(attestation==NULL)
         return false;
     
     if(!m_doc.Parse(attestation)) {
-        fprintf(g_logFile, "Attest::init: Can't parse attestation\n");
+        fprintf(g_logFile, "Attestation::init: Can't parse attestation\n");
         return false;
     }   
     pRootElement= m_doc.RootElement();
     if(pRootElement==NULL) {
-        fprintf(g_logFile, "Attest::init: Can't get root of attest\n");
+        fprintf(g_logFile, "Attestation::init: Can't get root of attest\n");
         return false;
     }
 
     m_pNodeAttest= Search((TiXmlNode*) pRootElement, "Attest");
     if(m_pNodeAttest==NULL) {
-        fprintf(g_logFile, "Attest::init: No Attest node\n");
+        fprintf(g_logFile, "Attestation::init: No Attest node\n");
         return false;
     }
     szA= ((TiXmlElement*) pNode)->Attribute ("type");
     if(szA==NULL) {
-        fprintf(g_logFile, "Attest::init: No type\n");
+        fprintf(g_logFile, "Attestation::init: No type\n");
         return false;
     }
     m_typeDigest= strdup(szA);
 
     pNode=  Search(m_pNodeAttest, "ds:CanonicalizationMethod Algorithm");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Attest::init: CanonicalizationMethod node\n");
+        fprintf(g_logFile, "Attestation::init: CanonicalizationMethod node\n");
         return false;
     }
     szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
     if(szA==NULL) {
-        fprintf(g_logFile, "Attest::init: No CanonicalizationMethod Algorithm\n");
+        fprintf(g_logFile, "Attestation::init: No CanonicalizationMethod Algorithm\n");
         return false;
     }
     m_szCanonicalizationalg= strdup(szA);
 
     pNode=  Search(m_pNodeAttest, "CodeDigest");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Attest::init: No CodeDigest\n");
+        fprintf(g_logFile, "Attestation::init: No CodeDigest\n");
         return false;
     }
     szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
     if(szA==NULL) {
-        fprintf(g_logFile, "Attest::init: No CodeDigest Algorithm\n");
+        fprintf(g_logFile, "Attestation::init: No CodeDigest Algorithm\n");
         return false;
     }
     m_typeDigest= strdup(szA);
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1==NULL) {
-        fprintf(g_logFile, "Attest::init: No CodeDigest value\n");
+        fprintf(g_logFile, "Attestation::init: No CodeDigest value\n");
         return false;
     }
     m_szcodeDigest= strdup(((TiXmlElement*)pNode1)->Value());
 
     pNode=  Search(m_pNodeAttest, "AttestedValue");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Attest::init: No AttestedValue\n");
+        fprintf(g_logFile, "Attestation::init: No AttestedValue\n");
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1==NULL) {
-        fprintf(g_logFile, "Attest::init: No Attestaton value\n");
+        fprintf(g_logFile, "Attestation::init: No Attestaton value\n");
         return false;
     }
     m_szattestedValue= strdup(((TiXmlElement*)pNode1)->Value());
 
     pNode=  Search(m_pNodeAttest, "Attestation");
     if(pNode==NULL) {
-        fprintf(g_logFile, "Attest::init: No Attestation\n");
+        fprintf(g_logFile, "Attestation::init: No Attestation\n");
         return false;
     }
     szA= ((TiXmlElement*) pNode)->Attribute ("Algorithm");
     if(szA==NULL) {
-        fprintf(g_logFile, "Attest::init: No Attestaton Algorithm\n");
+        fprintf(g_logFile, "Attestation::init: No Attestaton Algorithm\n");
         return false;
     }
     m_szAttestalg= strdup(szA);
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1==NULL) {
-        fprintf(g_logFile, "Attest::init: No Attestaton value\n");
+        fprintf(g_logFile, "Attestation::init: No Attestaton value\n");
         return false;
     }
     m_szattestation= strdup(((TiXmlElement*)pNode1)->Value());
@@ -298,7 +298,7 @@ bool  Attest::init(const char* attestation)
 }
 
 
-const char* Attest::getAttestAlg()
+const char* Attestation::getAttestAlg()
 {
     if(m_szAttestalg==NULL)
         return NULL;
@@ -306,7 +306,7 @@ const char* Attest::getAttestAlg()
 }
 
 
-const char* Attest::getAttestation()
+const char* Attestation::getAttestation()
 {
     if(m_szattestation==NULL)
         return NULL;
@@ -314,7 +314,7 @@ const char* Attest::getAttestation()
 }
 
 
-const char* Attest::getAttestedTo()
+const char* Attestation::getAttestedTo()
 {
     if(m_szattestedValue==NULL)
         return NULL;
@@ -322,7 +322,7 @@ const char* Attest::getAttestedTo()
 }
 
 
-const char* Attest::getNonce()
+const char* Attestation::getNonce()
 {
     if(m_szNonce==NULL)
         return NULL;
@@ -330,7 +330,7 @@ const char* Attest::getNonce()
 }
 
 
-const char* Attest::getattestingkeyInfo()
+const char* Attestation::getattestingkeyInfo()
 {
     if(m_pNodeattestingKeyInfo==NULL)
         return NULL;
@@ -338,7 +338,7 @@ const char* Attest::getattestingkeyInfo()
 }
 
 
-bool Attest::setAttestedTo(int size, byte* attestedTo)
+bool Attestation::setAttestedTo(int size, byte* attestedTo)
 {
     if(size<=0 || attestedTo==NULL)
         return false;
@@ -353,7 +353,7 @@ bool Attest::setAttestedTo(int size, byte* attestedTo)
 }
 
 
-bool Attest::getAttestedTo(int* psize, byte* attestedTo)
+bool Attestation::getAttestedTo(int* psize, byte* attestedTo)
 {
     if(m_sizeattestedTo<=0 || m_attestedTo==NULL)
         return false;
@@ -363,7 +363,7 @@ bool Attest::getAttestedTo(int* psize, byte* attestedTo)
 }
 
 
-bool Attest::setAttestation(int size, byte* attestation)
+bool Attestation::setAttestation(int size, byte* attestation)
 {
     if(size<=0 || attestation==NULL)
         return false;
@@ -378,7 +378,7 @@ bool Attest::setAttestation(int size, byte* attestation)
 }
 
 
-bool Attest::getAttestation(int* psize, byte* attestation)
+bool Attestation::getAttestation(int* psize, byte* attestation)
 {
     if(m_sizeattestation<=0 || m_attestation==NULL)
         return false;
@@ -388,7 +388,7 @@ bool Attest::getAttestation(int* psize, byte* attestation)
 }
 
 
-bool Attest::setcodeDigest(int size, byte* codeDigest)
+bool Attestation::setcodeDigest(int size, byte* codeDigest)
 {
     if(size<=0 || codeDigest==NULL)
         return false;
@@ -403,7 +403,7 @@ bool Attest::setcodeDigest(int size, byte* codeDigest)
 }
 
 
-bool Attest::getcodeDigest(int* psize, byte* codeDigest)
+bool Attestation::getcodeDigest(int* psize, byte* codeDigest)
 {
     if(m_sizecodeDigest<=0 || m_codeDigest==NULL)
         return false;
@@ -413,7 +413,7 @@ bool Attest::getcodeDigest(int* psize, byte* codeDigest)
 }
 
 
-bool Attest::setHint(const char* hint)
+bool Attestation::setHint(const char* hint)
 {
     if(hint!=NULL)
         m_szHint= strdup(hint);
@@ -424,7 +424,7 @@ bool Attest::setHint(const char* hint)
 }
 
 
-const char* Attest::getHint()
+const char* Attestation::getHint()
 {
     if(m_szHint==NULL)
         return NULL;
@@ -435,7 +435,7 @@ const char* Attest::getHint()
 #define MAXATTESTSIZE 8192
 
 
-const char* Attest::encodeAttest()
+const char* Attestation::encodeAttest()
 {
     char        szAttestation[MAXATTESTSIZE];
     const char* szhint= "";
@@ -443,13 +443,13 @@ const char* Attest::encodeAttest()
 
     // char attestedTo
     if(m_sizeattestedTo<=0 || m_attestedTo==NULL) {
-        fprintf(g_logFile, "Attest::encodeAttest: no attestedTo\n");
+        fprintf(g_logFile, "Attestation::encodeAttest: no attestedTo\n");
         return false;
     }
     if(m_szattestedValue==NULL) {
         size= 8192;
         if(!toBase64(m_sizeattestedTo, m_attestedTo, &size, szAttestation)) {
-            fprintf(g_logFile, "Attest::encodeAttest: cant convert attestedto to base64\n");
+            fprintf(g_logFile, "Attestation::encodeAttest: cant convert attestedto to base64\n");
             return false;
         }
         m_szattestedValue= strdup(szAttestation);
@@ -457,13 +457,13 @@ const char* Attest::encodeAttest()
 
     // char codeDigest
     if(m_sizecodeDigest<=0 || m_codeDigest==NULL) {
-        fprintf(g_logFile, "Attest::encodeAttest: no code digest\n");
+        fprintf(g_logFile, "Attestation::encodeAttest: no code digest\n");
         return false;
     }
     if(m_szcodeDigest==NULL) {
         size= 8192;
         if(!toBase64(m_sizecodeDigest, m_codeDigest, &size, szAttestation)) {
-            fprintf(g_logFile, "Attest::encodeAttest: cant convert code digest to base64\n");
+            fprintf(g_logFile, "Attestation::encodeAttest: cant convert code digest to base64\n");
             return false;
         }
         m_szcodeDigest= strdup(szAttestation);
@@ -471,13 +471,13 @@ const char* Attest::encodeAttest()
 
     // char attestation
     if(m_sizeattestation<=0 || m_attestation==NULL) {
-        fprintf(g_logFile, "Attest::encodeAttest: no attestation\n");
+        fprintf(g_logFile, "Attestation::encodeAttest: no attestation\n");
         return false;
     }
     if(m_szattestation==NULL) {
         size= 8192;
         if(!toBase64(m_sizeattestation, m_attestation, &size, szAttestation)) {
-            fprintf(g_logFile, "Attest::encodeAttest: cant convert attestedto to base64\n");
+            fprintf(g_logFile, "Attestation::encodeAttest: cant convert attestedto to base64\n");
             return false;
         }
         m_szattestation= strdup(szAttestation);
@@ -491,7 +491,7 @@ const char* Attest::encodeAttest()
           strlen(m_szcodeDigest)+strlen(m_szattestedValue)+strlen(m_szAttestalg)+
           strlen(m_szattestation)+strlen(szhint);
     if((size+32)>MAXATTESTSIZE) {
-        fprintf(g_logFile, "Attest::encodeAttest: attestation too large\n");
+        fprintf(g_logFile, "Attestation::encodeAttest: attestation too large\n");
         return false;
     }
 

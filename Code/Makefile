@@ -1,6 +1,6 @@
 OBJROOT=~/jlmcrypt
 
-BUILD_TARGETS=keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest
+BUILD_TARGETS=keyNegoServer tcService fileServer fileClient cryptUtility cryptotest aesspeed rsaspeedtest tcLaunch
 TARGETS=$(BUILD_TARGETS) clean
 .PHONY: $(TARGETS)
 
@@ -17,6 +17,9 @@ fileClient:
 
 keyNegoServer:
 	$(MAKE) -C keyNegoServer -f keyNegoServer.mak
+
+tcLaunch:
+	$(MAKE) -C tcLaunch -f tcLaunch.mak
 
 cryptUtility:
 	$(MAKE) -C cryptUtility -f cryptUtility.mak

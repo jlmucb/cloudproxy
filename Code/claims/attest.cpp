@@ -303,6 +303,99 @@ bool  Attestation::init(const char* attestation)
 }
 
 
+bool Attestation::converttoBinary()
+{
+    int         size= 0;
+
+    // char attestedTo
+    if(m_attestedTo==NULL && m_szattestedValue!=NULL) {
+        size= strlen(m_szattestedValue);
+        m_attestedTo= (byte*) malloc(((size+8)*6)/8);
+        if(m_attestedTo==NULL) {
+            fprintf(g_logFile, "Attestation::converttoBinary: cant malloc in attestedto\n");
+            return false;
+        }
+        if(!fromBase64(strlen(m_szattestedValue), m_szattestedValue, &size, m_attestedTo)) {
+            fprintf(g_logFile, "Attestation::converttoBinary: cant convert attestedto to base64\n");
+            return false;
+        }
+        m_sizeattestedTo= size;
+    }
+
+    // char codeDigest
+    if(m_codeDigest==NULL && m_szcodeDigest!=NULL) {
+        size= strlen(m_szcodeDigest);
+        m_codeDigest= (byte*) malloc(((size+8)*6)/8);
+        if(m_codeDigest==NULL) {
+            fprintf(g_logFile, "Attestation::converttoBinary: cant malloc in code digest\n");
+            return false;
+        }
+        if(!fromBase64(strlen(m_szcodeDigest), m_szcodeDigest, &size, m_codeDigest)) {
+            fprintf(g_logFile, "Attestation::converttoBinary: cant convert code digest to base64\n");
+            return false;
+        }
+        m_sizecodeDigest= size;
+    }
+
+    // char attestation
+    if(m_attestation==NULL && m_szattestation!=NULL) {
+        size= strlen(m_szattestation);
+        m_attestation= (byte*) malloc(((size+8)*6)/8);
+        if(m_attestation==NULL) {
+            fprintf(g_logFile, "Attestation::converttoBinary: cant malloc in attestation\n");
+            return false;
+        }
+        if(!fromBase64(strlen(m_szattestation), m_szattestation, &size, m_attestation)) {
+            fprintf(g_logFile, "Attestation::converttoBinary: cant convert attestation to base64\n");
+            return false;
+        }
+        m_sizeattestation= size;
+    }
+    return true;
+}
+
+
+#define MAXATTESTDATACHAR 1024
+
+
+bool Attestation::convertfromBinary()
+{
+    char        szBuf[MAXATTESTDATACHAR];
+    int         size= 0;
+
+    // char attestedTo
+    if(m_sizeattestedTo>0 && m_attestedTo!=NULL && m_szattestedValue==NULL) {
+        size= MAXATTESTDATACHAR;
+        if(!toBase64(m_sizeattestedTo, m_attestedTo, &size, szBuf)) {
+            fprintf(g_logFile, "Attestation::convertfromBinary: cant convert attestedto to base64\n");
+            return false;
+        }
+        m_szattestedValue= strdup(szBuf);
+    }
+
+    // char codeDigest
+    if(m_sizecodeDigest>0 && m_codeDigest!=NULL && m_szcodeDigest==NULL) {
+        size= MAXATTESTDATACHAR;
+        if(!toBase64(m_sizecodeDigest, m_codeDigest, &size, szBuf)) {
+            fprintf(g_logFile, "Attestation::convertfromBinary:: cant convert code digest to base64\n");
+            return false;
+        }
+        m_szcodeDigest= strdup(szBuf);
+    }
+
+    // char attestation
+    if(m_sizeattestation>0 && m_attestation!=NULL && m_szattestation==NULL) {
+        size= MAXATTESTDATACHAR;
+        if(!toBase64(m_sizeattestation, m_attestation, &size, szBuf)) {
+            fprintf(g_logFile, "Attestation::convertfromBinary:: cant convert attestation to base64\n");
+            return false;
+        }
+        m_szattestation= strdup(szBuf);
+    }
+    return true;
+}
+
+
 const char* Attestation::getAttestAlg()
 {
     if(m_szAttestalg==NULL)
@@ -464,46 +557,9 @@ const char* Attestation::encodeAttest()
     const char* szhint= "";
     int         size= 0;
 
-    // char attestedTo
-    if(m_sizeattestedTo<=0 || m_attestedTo==NULL) {
+    if(!convertfromBinary()) {
         fprintf(g_logFile, "Attestation::encodeAttest: no attestedTo\n");
         return false;
-    }
-    if(m_szattestedValue==NULL) {
-        size= 8192;
-        if(!toBase64(m_sizeattestedTo, m_attestedTo, &size, szAttestation)) {
-            fprintf(g_logFile, "Attestation::encodeAttest: cant convert attestedto to base64\n");
-            return false;
-        }
-        m_szattestedValue= strdup(szAttestation);
-    }
-
-    // char codeDigest
-    if(m_sizecodeDigest<=0 || m_codeDigest==NULL) {
-        fprintf(g_logFile, "Attestation::encodeAttest: no code digest\n");
-        return false;
-    }
-    if(m_szcodeDigest==NULL) {
-        size= 8192;
-        if(!toBase64(m_sizecodeDigest, m_codeDigest, &size, szAttestation)) {
-            fprintf(g_logFile, "Attestation::encodeAttest: cant convert code digest to base64\n");
-            return false;
-        }
-        m_szcodeDigest= strdup(szAttestation);
-    }
-
-    // char attestation
-    if(m_sizeattestation<=0 || m_attestation==NULL) {
-        fprintf(g_logFile, "Attestation::encodeAttest: no attestation\n");
-        return false;
-    }
-    if(m_szattestation==NULL) {
-        size= 8192;
-        if(!toBase64(m_sizeattestation, m_attestation, &size, szAttestation)) {
-            fprintf(g_logFile, "Attestation::encodeAttest: cant convert attestedto to base64\n");
-            return false;
-        }
-        m_szattestation= strdup(szAttestation);
     }
 
     if(m_szHint!=NULL)
@@ -537,12 +593,18 @@ AttestInfo::AttestInfo()
 {
     m_fValid= false;
     m_pNodeAttestInfo= NULL;
+    m_sizeHash= 0;
     m_pKeyInfo= NULL;
+    m_szHash= NULL;
 }
 
 
 AttestInfo::~AttestInfo()
 {
+    if(m_szHash!=NULL) {
+        free((void*)m_szHash);
+        m_szHash= NULL;
+    }
 }
 
 
@@ -592,32 +654,55 @@ const char* AttestInfo::getSerializedKey()
 
 bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
 {
-    Sha256  oHash;
+    if(m_sizeHash>0) {
+        if(*psize<m_sizeHash)
+            return false;
+        memcpy(hash, m_hash, m_sizeHash);
+        *psize= m_sizeHash;
+        return true; 
+    }
 
+    Sha256  oHash;
+    char    szBuf[2*GLOBALMAXDIGESTSIZE];
+    int     size= 2*GLOBALMAXDIGESTSIZE;
+
+    if(type!=SHA256HASH) {
+        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: unsupported hash\n");
+        return false;
+    }
+    m_hashType= type;
     const char* szCanonical= NULL;
     if(!m_fValid) {
-        printf("not valid\n");
+        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: not valid\n");
         return false;
     }
     if(m_pNodeAttestInfo==NULL) {
-        printf("no attest info\n");
+        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: no attest info\n");
         return false;
     }
     if(type!=SHA256HASH) {
-        printf("wrong type\n");
+        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: wrong type\n");
         return false;
     }
     if(*psize<oHash.DIGESTSIZE) {
-        printf("digest size too small\n");
+        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: digest size too small\n");
         return false;
     }
     szCanonical= canonicalize(m_pNodeAttestInfo);
     oHash.Init();
     oHash.Update((const byte*) szCanonical, strlen(szCanonical));
     oHash.Final();
-    oHash.GetDigest(hash);
-    *psize= oHash.DIGESTSIZE;
+    oHash.GetDigest(m_hash);
+    m_sizeHash= oHash.DIGESTSIZE;
+    memcpy(hash, m_hash, m_sizeHash);
+    *psize= m_sizeHash;
     free((void*)szCanonical);
+    if(m_szHash==NULL) {
+        if(!toBase64(m_sizeHash, m_hash, &size, szBuf)) {
+            fprintf(g_logFile, "Attestation::getAttestInfoHash: cant convert attestedto to base64\n");
+        }
+        m_szHash= strdup(szBuf);
+    }
     return true;
 }
 

@@ -99,6 +99,9 @@ public:
     bool            setHint(const char* hint);
     const char*     getHint();
 
+    bool            converttoBinary();
+    bool            convertfromBinary();
+
     const char*     encodeAttest();
 };
 
@@ -109,6 +112,10 @@ private:
     TiXmlDocument   m_doc;
     TiXmlNode*      m_pNodeAttestInfo;
     TiXmlNode*      m_pKeyInfo;
+    int             m_sizeHash;
+    u32             m_hashType;
+    byte            m_hash[GLOBALMAXDIGESTSIZE];
+    const char*     m_szHash;
 
 public:
     AttestInfo();

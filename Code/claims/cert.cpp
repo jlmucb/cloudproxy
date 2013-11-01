@@ -387,6 +387,23 @@ bool PrincipalCert::sameAs(PrincipalCert& oPrinc)
 }
 
 
+const char* getSubjectKeyfromCert(const char* szCert)
+{
+    PrincipalCert cert;
+
+    if(!cert.init(szCert)) {
+        fprintf(g_logFile, "getSubjectKeyfromCert: cant init cert\n");
+        return NULL;
+    }
+    KeyInfo*    pKey= cert.getSubjectKeyInfo();
+    if(pKey==NULL) {
+        fprintf(g_logFile, "getSubjectKeyfromCert: cant get key\n");
+        return NULL;
+    }
+    return ((RSAKey*)pKey)->SerializePublictoString();
+}
+
+
 // ---------------------------------------------------------------------------
 
 

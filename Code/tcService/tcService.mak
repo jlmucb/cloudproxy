@@ -39,7 +39,7 @@ sobjs=      $(B)/tcIO.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/sha1.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/resource.o \
 	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/vTCIDirect.o  $(B)/vault.o \
 	    $(B)/hmacsha1.o $(B)/cert.o $(B)/trustedKeyNego.o $(B)/validateEvidence.o \
-	    $(B)/quote.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
+	    $(B)/quote.o $(B)/attest.o $(B)/channel.o $(B)/hashprep.o $(B)/encryptedblockIO.o
 tpmobjs=    $(B)/taoEnvironmentwithtpm.o $(B)/taoHostServiceswithtpm.o \
 	    $(B)/taoInitwithtpm.o $(B)/TPMHostsupportwithtpm.o 
 notpmobjs=  $(B)/taoEnvironment.o $(B)/taoHostServices.o $(B)/taoInit.o \
@@ -98,6 +98,9 @@ $(B)/tcKvmHostService.o: $(S)/tcService.cpp
 
 $(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/quote.o $(CLM)/quote.cpp
+
+$(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/attest.o $(CLM)/attest.cpp
 
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TH) -I$(CLM) -c -o $(B)/cert.o $(CLM)/cert.cpp

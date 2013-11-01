@@ -41,6 +41,7 @@
 extern int      g_policykeySize;
 extern char*    g_szXmlPolicyCert;
 #endif
+#include "attest.h"
 
 #include <string.h>
 #include <time.h>
@@ -464,7 +465,70 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 
 const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, const char* hint)
 {
-    return NULL;
+    Attestation     oAttestation;
+
+    if(!oAttestation.setAttestedTo(sizetoAttest, toAttest)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion\n");
+        return NULL;
+    }
+
+    // Attest
+    int     sizeAttestation= GLOBALMAXPUBKEYSIZE;
+    byte    attestation[GLOBALMAXPUBKEYSIZE];
+    if(!Attest(sizetoAttest, toAttest, &sizeAttestation, attestation)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: Attest failed\n");
+        return NULL;
+    }
+
+    // set up data
+    if(!oAttestation.setAttestAlg((const char*)ATTESTMETHODSHA256FILEHASHRSA2048)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant set attest alg\n");
+        return NULL;
+    }
+
+    u32     type= 0;
+    int     sizecodeDigest= GLOBALMAXDIGESTSIZE;
+    byte    codeDigest[GLOBALMAXDIGESTSIZE];
+    if(!GetHostedMeasurement(&sizecodeDigest, &type, codeDigest)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant get code digest\n");
+        return NULL;
+    }
+    if(!oAttestation.setcodeDigest(sizecodeDigest, codeDigest)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant set code digest\n");
+        return NULL;
+    }
+    if(!oAttestation.setHint(hint)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant setHint\n");
+        return NULL;
+    }
+
+    if(!oAttestation.setAttestation(sizeAttestation, attestation)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant set attestation\n");
+        return NULL;
+    }
+
+    // set key
+    if(!m_hostCertificateValid) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: host cert not valid\n");
+        return NULL;
+    }
+    const char* szSubjKeyInfo= getSubjectKeyfromCert((const char*)m_hostCertificate);
+    if(szSubjKeyInfo==NULL) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant get attesting keyInfo\n");
+        return NULL;
+    }
+    if(!oAttestation.setKeyInfo(szSubjKeyInfo)) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: cant set attesting keyInfo\n");
+        return NULL;
+    }
+
+    const char* szAttest= oAttestation.encodeAttest();
+#ifdef TEST
+    fprintf(g_logFile, "taoHostServices::makeAttestion, constructed attest\n%s\n", szAttest);
+    fflush(g_logFile);
+#endif
+
+    return szAttest;
 }
 
 

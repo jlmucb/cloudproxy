@@ -1273,17 +1273,135 @@ bool VerifyAttest(const char* szAttestFile, const char* szEvidenceFile,
 }
 
 
-bool AttestSignedInfo(const char* szKeyFile, const char* szCodeDigest, const char* szsignedInfo)
+bool AttestSignedInfo(const char* szKeyFile, const char* szDigestFile, const char* szsignedInfoFile)
 {
     RSAKey*     pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
     Attestation oAttest;
+    AttestInfo  oAttestInfo;
+    char        szCodeDigest[256];
+    char        szSignedInfo[2048];
+    int         size= 8192;
 
 #ifdef TEST
-    fprintf(g_logFile, "AttestSignedInfo\n");
-    pKey->printMe();
+    fprintf(g_logFile, "AttestSignedInfo %s %s %s\n", szKeyFile, szDigestFile, szsignedInfoFile);
     fflush(g_logFile);
 #endif
-    return false;
+
+    if(pKey==NULL) {
+        fprintf(g_logFile, "AttestSignedInfo: cant get key\n");
+        return false;
+    }
+    size= 8192;
+    if(!getBlobfromFile(szDigestFile, (byte*)szCodeDigest, &size)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant read digest file\n");
+        return false;
+    }
+    for(int i=0; i<size;i++) {
+        if(szCodeDigest[i]=='\n') {
+            szCodeDigest[i]= 0;
+            break;
+        }
+    }
+    size= 8192;
+    if(!getBlobfromFile(szsignedInfoFile, (byte*)szSignedInfo, &size)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant read signedInfo file\n");
+        return false;
+    }
+
+    fprintf(g_logFile, "\ndigest: %s\n", szCodeDigest);
+    fprintf(g_logFile, "signedinfo: %s\n", szSignedInfo);
+    fprintf(g_logFile, "\n");
+
+    if(!oAttestInfo.init(szSignedInfo)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant read attestInfo file\n");
+        return false;
+    }
+
+    int     sizehash=64;
+    byte    hash[64];
+    if(!oAttestInfo.getAttestInfoHash(SHA256HASH, &sizehash, hash)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant get info hash\n");
+        return false;
+    }
+
+    if(!oAttest.setAttestedTo(sizehash, hash)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant setAttestedTo\n");
+        return false;
+    }
+
+    int     sizecodedigest= 128;
+    byte    codedigest[128];
+
+    if(!fromBase64(strlen(szCodeDigest), szCodeDigest, &sizecodedigest, codedigest)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant convert code digest from base 64\n");
+        return false;
+    }
+    if(!oAttest.setAttestAlg((const char*)ATTESTMETHODSHA256FILEHASHRSA2048)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant set attest alg\n");
+        return false;
+    }
+    if(!oAttest.setKeyInfo(pKey->SerializePublictoString())) {
+        fprintf(g_logFile, "AttestSignedInfo: cant set key alg\n");
+        return false;
+    }
+    if(!oAttest.setcodeDigest(sizecodedigest, codedigest)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant setAttestedTo\n");
+        return false;
+    }
+    if(!oAttest.setHint(szSignedInfo)) {
+        fprintf(g_logFile, "AttestSignedInfo: cant setHint\n");
+        return false;
+    }
+
+    PrintBytes("To attest: ", hash, sizehash);
+    PrintBytes("Code hash: ", codedigest, sizecodedigest);
+
+    int     sizecombinedhash= SHA256DIGESTBYTESIZE;
+    byte    combinedhash[64];
+    if(!sha256quoteHash(0, NULL, sizehash, hash, sizecodedigest,
+                        codedigest, combinedhash)) {
+            fprintf(g_logFile, "Cant compute sha256 quote hash\n");
+            return false;
+        }
+    PrintBytes("Code hash: ", combinedhash, sizecombinedhash);
+
+    int     sizepadded= pKey->m_iByteSizeM;
+    byte    padded[1024];
+    // pad
+    if(!emsapkcspad(SHA256HASH, combinedhash, pKey->m_iByteSizeM, padded)) {
+        fprintf(g_logFile, "emsapkcspad returned false\n");
+        return false;
+    }
+    PrintBytes("Padded: ", padded, sizepadded);
+
+    // sign attest
+    int     sizeattest= 2048;
+    byte    attest[2048];
+
+    // sign
+    bnum    bnMsg(pKey->m_iByteSizeM/sizeof(u64)+2);
+    bnum    bnOut(pKey->m_iByteSizeM/sizeof(u64)+2);
+    memset(bnMsg.m_pValue, 0, pKey->m_iByteSizeM);
+    memset(bnOut.m_pValue, 0, pKey->m_iByteSizeM);
+    revmemcpy((byte*)bnMsg.m_pValue, padded, pKey->m_iByteSizeM);
+
+    if(!mpRSAENC(bnMsg, *(pKey->m_pbnD), *(pKey->m_pbnM), bnOut)) {
+        fprintf(g_logFile, "mpRSAENC returned false\n");
+        return false;
+    }
+
+    revmemcpy(attest, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
+    sizeattest= pKey->m_iByteSizeM;
+    PrintBytes("attest value: ", attest, sizeattest);
+
+    if(!oAttest.setAttestation(pKey->m_iByteSizeM, attest)) {
+        fprintf(g_logFile, "cant set attestation\n");
+        return false;
+    }
+
+    const char* szAttest= oAttest.encodeAttest();
+    printf("\nAttest:\n%s\n", szAttest);
+    return true;
 }
 
 
@@ -1291,6 +1409,7 @@ bool Attest(const char* szKeyFile, const char* szCodeDigest, const char* szattes
 {
     RSAKey*     pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
     Attestation oAttest;
+    AttestInfo  oAttestInfo;
     int         size= 8192;
     byte        attestedTo[128];
     byte        attestation[1024];

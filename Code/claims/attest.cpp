@@ -132,6 +132,7 @@ Attestation::Attestation()
     m_sizeattestation= 0;
     m_attestation= NULL;
     m_pNodeAttest= NULL;
+    m_szKeyInfo= NULL;
     m_pNodeNonce= NULL;
     m_pNodeCodeDigest= NULL;
     m_pNodeInterpretationHint= NULL;
@@ -190,6 +191,10 @@ Attestation::~Attestation()
     if(m_attestation!=NULL) {
         free(m_attestation);
         m_attestation= NULL;
+    }
+    if(m_szKeyInfo!=NULL) {
+        free(m_szKeyInfo);
+        m_szKeyInfo= NULL;
     }
 }
 
@@ -303,6 +308,24 @@ const char* Attestation::getAttestAlg()
     if(m_szAttestalg==NULL)
         return NULL;
     return strdup(m_szAttestalg);
+}
+
+
+bool Attestation::setAttestAlg(const char* alg)
+{
+    if(alg==NULL)
+        return false;
+    m_szAttestalg= strdup(alg); 
+    return true;
+}
+
+
+bool Attestation::setKeyInfo(const char* szKeyInfo)
+{
+    if(szKeyInfo==NULL)
+        return false;
+    m_szKeyInfo= strdup(szKeyInfo); 
+    return true;
 }
 
 
@@ -487,6 +510,10 @@ const char* Attestation::encodeAttest()
         szhint= m_szHint;
 
     // buffer big enough?
+    if(m_szcodeDigest==NULL || m_szattestedValue==NULL || m_szAttestalg==NULL || m_szattestation==NULL ) {
+        fprintf(g_logFile, "Attestation::encodeAttest: missing value\n");
+        return false;
+    }
     size= strlen(g_AttestTemplate)+strlen("CP1")+strlen("SHA256")+
           strlen(m_szcodeDigest)+strlen(m_szattestedValue)+strlen(m_szAttestalg)+
           strlen(m_szattestation)+strlen(szhint);
@@ -495,8 +522,10 @@ const char* Attestation::encodeAttest()
         return false;
     }
 
+    if(szhint==NULL)
+        szhint= " ";
     sprintf(szAttestation, g_AttestTemplate, "CP1", "SHA256", m_szcodeDigest, 
-            m_szattestedValue, m_szAttestalg, m_szattestation, szhint);
+            m_szattestedValue, m_szAttestalg, m_szattestation, m_szKeyInfo, szhint);
     return canonicalizeXML(szAttestation);
 }
 
@@ -537,7 +566,7 @@ bool  AttestInfo::init(const char* attestInfo)
         return false;
     }
 
-    m_pNodeAttestInfo= Search((TiXmlNode*) pRootElement, "attestedInfo");
+    m_pNodeAttestInfo= Search((TiXmlNode*) pRootElement, "attestInfo");
     if(m_pNodeAttestInfo==NULL) {
         fprintf(g_logFile, "AttestInfo::init: No attestInfo node\n");
         return false;
@@ -566,12 +595,22 @@ bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
     Sha256  oHash;
 
     const char* szCanonical= NULL;
-    if(!m_fValid || m_pNodeAttestInfo!=NULL)
+    if(!m_fValid) {
+        printf("not valid\n");
         return false;
-    if(type!=SHA256DIGESTBYTESIZE)
+    }
+    if(m_pNodeAttestInfo==NULL) {
+        printf("no attest info\n");
         return false;
-    if(*psize<oHash.DIGESTSIZE)
+    }
+    if(type!=SHA256HASH) {
+        printf("wrong type\n");
         return false;
+    }
+    if(*psize<oHash.DIGESTSIZE) {
+        printf("digest size too small\n");
+        return false;
+    }
     szCanonical= canonicalize(m_pNodeAttestInfo);
     oHash.Init();
     oHash.Update((const byte*) szCanonical, strlen(szCanonical));

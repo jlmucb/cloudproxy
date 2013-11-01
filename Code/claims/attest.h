@@ -68,6 +68,7 @@ private:
     char*           m_szattestation;
     char*           m_szNonce;
     char*           m_typeDigest;
+    char*           m_szKeyInfo;
     char*           m_szHint;
     int             m_sizecodeDigest;
     byte*           m_codeDigest;
@@ -87,6 +88,8 @@ public:
     const char*     getNonce();
     const char*     getattestingkeyInfo();
 
+    bool            setAttestAlg(const char* alg);
+    bool            setKeyInfo(const char* szKeyInfo);
     bool            setAttestedTo(int size, byte* attestedTo);
     bool            getAttestedTo(int* psize, byte* attestedTo);
     bool            setAttestation(int size, byte* attestation);

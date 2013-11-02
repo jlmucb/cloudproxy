@@ -151,6 +151,8 @@ private:
     u32         m_hostEvidenceType;
     int         m_hostEvidenceSize;
     byte*       m_hostEvidence;
+
+    KeyInfo*    m_attestingPublicKey;
 #ifdef TPMSUPPORT
     tpmSupport  m_oTpm;
 #endif

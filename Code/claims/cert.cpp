@@ -400,7 +400,8 @@ const char* getSubjectKeyfromCert(const char* szCert)
         fprintf(g_logFile, "getSubjectKeyfromCert: cant get key\n");
         return NULL;
     }
-    return ((RSAKey*)pKey)->SerializePublictoString();
+    const char* szKey= ((RSAKey*)pKey)->SerializePublictoString();
+    return szKey;
 }
 
 

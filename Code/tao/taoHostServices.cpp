@@ -59,9 +59,12 @@ taoHostServices::taoHostServices()
     m_hostValid= false;
     m_hostHandle= 0;
     m_hostCertificateValid= false;
+    m_hostEvidenceValid= false;
     m_hostCertificateType= EVIDENCENONE;
     m_hostCertificateSize= 0;
     m_hostCertificate= NULL;
+    m_hostEvidence= NULL;
+    m_attestingPublicKey= NULL;
 }
 
 
@@ -70,6 +73,19 @@ taoHostServices::~taoHostServices()
     m_hostType= PLATFORMTYPENONE;
     m_hostValid= false;
     m_hostHandle= 0;
+    m_hostCertificateValid= false;
+    m_hostEvidenceValid= false;
+    if(m_hostCertificate!=NULL) {
+        free(m_hostCertificate);
+        m_hostCertificate= NULL;
+    }
+    if(m_hostEvidence!=NULL) {
+        free(m_hostEvidence);
+        m_hostEvidence= NULL;
+    }
+    if(m_attestingPublicKey!=NULL) {
+        m_attestingPublicKey= NULL;
+    }
 }
 
 
@@ -145,7 +161,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
         break;
     }
 
-    // get host certs and evidence
+    // get host cert
     if(!m_fileNames.getBlobData(m_fileNames.m_szcertFile, &m_hostCertificateValid, 
                                 &m_hostCertificateSize, &m_hostCertificate)) {
         fprintf(g_logFile, "taoHostServices::HostInit: cant get host cert\n");
@@ -154,6 +170,40 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
     m_hostCertificateType= EVIDENCECERT;
     m_hostCertificateValid= true;
 
+    // Get attesting key info from cert
+    const char* szattestingkey= getSubjectKeyfromCert((const char*)m_hostCertificate);
+    if(szattestingkey==NULL) {
+        fprintf(g_logFile, "taoHostServices::HostInit: cant get attesting key from cert\n");
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "taoHostServices::Hostinit, attesting key\n%s\n", szattestingkey);
+    fflush(g_logFile);
+#endif
+    m_attestingPublicKey= (KeyInfo*) new RSAKey();
+    if(m_attestingPublicKey==NULL) {
+        fprintf(g_logFile, "taoHostServices::HostInit: cant new attesting key\n");
+        return false;
+    }
+    if(!m_attestingPublicKey->ParsefromString(szattestingkey)) {
+        fprintf(g_logFile, "taoHostServices::HostInit: cant parse attesting key\n");
+        return false;
+    }
+    int iKeyType= m_attestingPublicKey->getKeyType(m_attestingPublicKey->m_pDoc);
+    if(iKeyType!=RSAKEYTYPE) {
+        fprintf(g_logFile, "taoHostServices::HostInit: only RSA key types supported\n");
+        return false;
+    }
+    if(!((RSAKey*)m_attestingPublicKey)->getDataFromDoc()) {
+        fprintf(g_logFile, "taoHostServices::HostInit: can't get data from doc\n");
+        return false;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "taoHostServices::Hostinit, retrieved attesting key\n");
+    fflush(g_logFile);
+#endif
+
+    // get evidence
     m_hostEvidenceValid= m_fileNames.getBlobData(m_fileNames.m_szAncestorEvidence, 
                             &m_hostEvidenceValid, &m_hostEvidenceSize, &m_hostEvidence);
     m_hostEvidenceType= EVIDENCECERTLIST;
@@ -481,11 +531,23 @@ const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, con
     }
 
     // set up data
+    if(m_attestingPublicKey==NULL) {
+        fprintf(g_logFile, "taoHostServices::makeAttestion: host attesting key empty\n");
+        return NULL;
+    }
     const char* szAttestalg= NULL;
     if(hostType()==PLATFORMTYPEHW)
         szAttestalg= (const char*)ATTESTMETHODTPM12RSA2048;
-    else
-        szAttestalg= (const char*)ATTESTMETHODSHA256FILEHASHRSA2048;
+    else {
+        if(m_attestingPublicKey->m_ukeyType!=RSAKEYTYPE) {
+            fprintf(g_logFile, "taoHostServices::makeAttestion: only RSAKey type supported\n");
+            return NULL;
+        }
+        if(((RSAKey*)m_attestingPublicKey)->m_iByteSizeM==128)
+            szAttestalg= (const char*)ATTESTMETHODSHA256FILEHASHRSA1024;
+        else
+            szAttestalg= (const char*)ATTESTMETHODSHA256FILEHASHRSA2048;
+    }
     if(!oAttestation.setAttestAlg(szAttestalg)) {
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant set attest alg\n");
         return NULL;
@@ -513,16 +575,15 @@ const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, con
     }
 
     // set key
-    if(!m_hostCertificateValid) {
-        fprintf(g_logFile, "taoHostServices::makeAttestion: host cert not valid\n");
-        return NULL;
-    }
-    const char* szSubjKeyInfo= getSubjectKeyfromCert((const char*)m_hostCertificate);
+    char* szSubjKeyInfo=  ((RSAKey*)m_attestingPublicKey)->SerializePublictoString();
     if(szSubjKeyInfo==NULL) {
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant get attesting keyInfo\n");
         return NULL;
     }
-    if(!oAttestation.setKeyInfo(szSubjKeyInfo)) {
+    bool    fSuccess= oAttestation.setKeyInfo(szSubjKeyInfo);
+    free(szSubjKeyInfo);
+    szSubjKeyInfo= NULL;
+    if(!fSuccess) {
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant set attesting keyInfo\n");
         return NULL;
     }

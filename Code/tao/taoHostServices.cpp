@@ -134,6 +134,10 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
             fprintf(g_logFile, "taoHostServices::HostInit: cant init TPM\n");
             return false;
         }
+#ifdef TEST
+        fprintf(g_logFile, "taoHostServices::Hostinit, TPM initialized\n");
+        fflush(g_logFile);
+#endif
         break;
 #else
         fprintf(g_logFile, "taoHostServices::HostInit: HW platform not supported\n");
@@ -223,16 +227,6 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
     if(m_linuxmyHostChannel.m_fChannelInitialized) {
         fprintf(g_logFile, "HostInit  channel: %d\n", m_linuxmyHostChannel.m_reqChannel.m_fd);
     }
-    byte    toAttest[32]= {
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    };
-    int size= 32;
-    char* hint= (char*)"<Hello></Hello>\n";
-    const char* szMadeAttest= makeAttestion(size, toAttest, hint);
-    fprintf(g_logFile, "MadeAttest\n%s\n", szMadeAttest);
     fflush(g_logFile);
 #endif
     return true;

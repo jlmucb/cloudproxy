@@ -1217,6 +1217,17 @@ int main(int an, char** av)
     virDomainPtr        vmdomain= NULL;
 #endif
 
+#ifdef TEST1
+    byte    toAttest[32]= {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+    char* hint= (char*)"<Hello></Hello>\n";
+    const char* szMadeAttest= NULL;
+#endif
+
     // set executable path
     const char*     definedprogDirectory= getenv("CPProgramDirectory");
     if(definedprogDirectory!=NULL) {
@@ -1336,6 +1347,11 @@ int main(int an, char** av)
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after EnvInit\n");
     g_myService.m_trustedHome.printData();
+    fflush(g_logFile);
+#endif
+#ifdef TEST1
+    szMadeAttest= g_myService.m_host.makeAttestion(20, toAttest, hint);
+    fprintf(g_logFile, "MadeAttest\n%s\n", szMadeAttest);
     fflush(g_logFile);
 #endif
 

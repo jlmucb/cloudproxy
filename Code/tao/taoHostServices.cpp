@@ -185,7 +185,10 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
         fprintf(g_logFile, "taoHostServices::HostInit: cant new attesting key\n");
         return false;
     }
-    if(!m_attestingPublicKey->ParsefromString(szattestingkey)) {
+    bool fSuccess= m_attestingPublicKey->ParsefromString(szattestingkey);
+    free((char*)szattestingkey);
+    szattestingkey= NULL;
+    if(!fSuccess) {
         fprintf(g_logFile, "taoHostServices::HostInit: cant parse attesting key\n");
         return false;
     }

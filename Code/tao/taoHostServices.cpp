@@ -206,6 +206,11 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
     fprintf(g_logFile, "taoHostServices::Hostinit, retrieved attesting key\n");
     fflush(g_logFile);
 #endif
+#ifdef TEST1
+    const char* szKeyTest= ((RSAKey*)m_attestingPublicKey)->SerializePublictoString();
+    fprintf(g_logFile, "attesting key info\n%s\n", szKeyTest);
+    fflush(g_logFile);
+#endif
 
     // get evidence
     m_hostEvidenceValid= m_fileNames.getBlobData(m_fileNames.m_szAncestorEvidence, 

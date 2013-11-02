@@ -391,7 +391,7 @@ const char* getSubjectKeyfromCert(const char* szCert)
 {
     PrincipalCert cert;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "getSubjectKeyfromCert cert\n%s\n", szCert);
     fflush(g_logFile);
 #endif

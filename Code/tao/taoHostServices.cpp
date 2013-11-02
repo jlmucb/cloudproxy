@@ -481,7 +481,12 @@ const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, con
     }
 
     // set up data
-    if(!oAttestation.setAttestAlg((const char*)ATTESTMETHODSHA256FILEHASHRSA2048)) {
+    const char* szAttestalg= NULL;
+    if(hostType()==PLATFORMTYPEHW)
+        szAttestalg= (const char*)ATTESTMETHODTPM12RSA2048;
+    else
+        szAttestalg= (const char*)ATTESTMETHODSHA256FILEHASHRSA2048;
+    if(!oAttestation.setAttestAlg(szAttestalg)) {
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant set attest alg\n");
         return NULL;
     }
@@ -493,7 +498,7 @@ const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, con
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant get code digest\n");
         return NULL;
     }
-    if(!oAttestation.setcodeDigest(sizecodeDigest, codeDigest)) {
+    if(!oAttestation.setcodeDigest(sizecodeDigest, codeDigest)) {TTESTMETHODTPM12RSA2048
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant set code digest\n");
         return NULL;
     }

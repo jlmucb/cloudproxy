@@ -498,7 +498,7 @@ const char* taoHostServices::makeAttestion(int sizetoAttest, byte* toAttest, con
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant get code digest\n");
         return NULL;
     }
-    if(!oAttestation.setcodeDigest(sizecodeDigest, codeDigest)) {TTESTMETHODTPM12RSA2048
+    if(!oAttestation.setcodeDigest(sizecodeDigest, codeDigest)) {
         fprintf(g_logFile, "taoHostServices::makeAttestion: cant set code digest\n");
         return NULL;
     }

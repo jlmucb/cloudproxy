@@ -391,10 +391,20 @@ const char* getSubjectKeyfromCert(const char* szCert)
 {
     PrincipalCert cert;
 
+#ifdef TEST
+    fprintf(g_logFile, "getSubjectKeyfromCert cert\n%s\n", szCert);
+    fflush(g_logFile);
+#endif
     if(!cert.init(szCert)) {
         fprintf(g_logFile, "getSubjectKeyfromCert: cant init cert\n");
         return NULL;
     }
+
+    if(!cert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "getSubjectKeyfromCert: cant parse cert\n");
+        return NULL;
+    }
+
     KeyInfo*    pKey= cert.getSubjectKeyInfo();
     if(pKey==NULL) {
         fprintf(g_logFile, "getSubjectKeyfromCert: cant get key\n");

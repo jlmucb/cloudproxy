@@ -180,6 +180,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
     fprintf(g_logFile, "taoHostServices::Hostinit, attesting key\n%s\n", szattestingkey);
     fflush(g_logFile);
 #endif
+
     m_attestingPublicKey= (KeyInfo*) new RSAKey();
     if(m_attestingPublicKey==NULL) {
         fprintf(g_logFile, "taoHostServices::HostInit: cant new attesting key\n");

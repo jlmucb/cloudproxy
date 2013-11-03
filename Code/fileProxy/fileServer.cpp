@@ -291,6 +291,7 @@ void* channelThread(void* ptr)
                     poSc->m_fdChannel, poSc->m_pParent);
         fflush(g_logFile);
 #endif
+        // pthread_detatch(pthread_self());
         if(!poSc->initServiceChannel(poSc->m_pMetaData,
                                      &poSc->m_oSafeChannel))
             throw("channelThread: initServiceChannel failed\n");

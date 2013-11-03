@@ -42,7 +42,6 @@ using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
-using tao::SignedAttestation;
 using tao::Tao;
 using tao::WhitelistAuthorizationManager;
 
@@ -118,14 +117,11 @@ bool CloudClient::Connect(const Tao &t) {
   string serialized_client_cert;
   CHECK(SerializeX509(self_cert.get(), &serialized_client_cert))
       << "Could not serialize the client certificate";
-  string signature;
-  CHECK(t.Attest(serialized_client_cert, &signature))
-      << "Could not get a SignedAttestation for our client certificate";
 
   ClientMessage cm;
-  SignedAttestation *sa = cm.mutable_attestation();
-  CHECK(sa->ParseFromString(signature))
-      << "Could not parse a SignedAttestation from the Tao attestation";
+  string *signature = cm.mutable_attestation();
+  CHECK(t.Attest(serialized_client_cert, signature))
+      << "Could not get a SignedAttestation for our client certificate";
 
   string serialized_cm;
   CHECK(cm.SerializeToString(&serialized_cm))
@@ -144,18 +140,17 @@ bool CloudClient::Connect(const Tao &t) {
 
   CHECK(sm.has_attestation()) << "The server did not reply with an attestation";
 
-  // check the attestation from the server
-  string serialized_server_attestation;
-  CHECK(sm.attestation().SerializeToString(&serialized_server_attestation))
-      << "Could not serialize the server's SignedAttestation";
-
   string serialized_peer_cert;
   CHECK(SerializeX509(peer_cert.get(), &serialized_peer_cert))
       << "Could not serialize the server's X.509 certificate";
 
   // this step also checks to see if the program hash is authorized
-  CHECK(t.VerifyAttestation(serialized_peer_cert, serialized_server_attestation))
-      << "The SignedAttestation from the server did not pass verification";
+  string data;
+  CHECK(t.VerifyAttestation(sm.attestation(), &data))
+    << "The Attestation from the server did not pass verification";
+
+  CHECK_EQ(data.compare(serialized_peer_cert), 0)
+    << "The Attestation passed verification, but the data didn't match";
 
   // once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.

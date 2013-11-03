@@ -16,7 +16,7 @@
   'target_defaults': {
     'cflags': [
       '-Wall',
-      #'-Werror',
+      '-Werror',
       '-std=c++0x',
     ],
     'product_dir': 'bin',
@@ -83,6 +83,29 @@
           '.',
         ],
       },
+    },
+    {
+      'target_name': 'cloudproxy_test',
+      'type': 'executable',
+      'variables': {
+        'src': 'cloudproxy',
+      },
+      'sources': [
+        '<(src)/util_unittests.cc',
+      ],
+      'include_dirs': [
+        '.',
+      ],
+      'dependencies': [
+        'tao',
+        'cloudproxy',
+	'third_party/gflags/gflags.gyp:gflags',
+	'third_party/google-glog/glog.gyp:glog',
+	'third_party/keyczar/keyczar.gyp:keyczar',
+	'third_party/protobuf/protobuf.gyp:protobuf',
+        'third_party/googlemock/gmock.gyp:gmock',
+        'third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
     },
     {
       'target_name': 'tao',
@@ -258,7 +281,7 @@
       'dependencies': [ 'tao', ],
     },
     {
-        'target_name': 'legacy_tao',
+        'target_name': 'legacy_tao_channel',
         'type': 'static_library',
         'variables': {
             'src': 'legacy_tao',
@@ -311,8 +334,8 @@
             '<(vt)',
         ],
         'sources': [
-            '<(src)/legacy_tao.h',
-            '<(src)/legacy_tao.cc',
+            '<(src)/legacy_tao_channel.h',
+            '<(src)/legacy_tao_channel.cc',
             '<(cm)/jlmUtility.cpp',
             '<(jc)/keys.cpp',
             '<(jc)/cryptoHelper.cpp',
@@ -323,6 +346,7 @@
             '<(jc)/hmacsha256.cpp',
             '<(jc)/encryptedblockIO.cpp',
             '<(jc)/modesandpadding.cpp',
+	    '<(ta)/taoAttest.cpp',
             '<(ta)/taoSupport.cpp',
             '<(ta)/taoEnvironment.cpp',
             '<(ta)/taoHostServices.cpp',
@@ -395,7 +419,7 @@
       'sources': [ '<(src)/bootstrap.cc', ],
       'include_dirs': [ '.', ],
       'dependencies': [
-        'legacy_tao',
+        'legacy_tao_channel',
       ],
     },
     

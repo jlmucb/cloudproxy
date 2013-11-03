@@ -41,7 +41,6 @@ using keyczar::base::PathExists;
 
 using tao::Attestation;
 using tao::Tao;
-using tao::SignedAttestation;
 using tao::WhitelistAuthorizationManager;
 
 namespace cloudproxy {
@@ -229,7 +228,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
 
   if (!cstd.GetCertValidated() && !message.has_attestation()) {
     LOG(ERROR)
-        << "Client did not provide a SignedAttestation before sending other messages";
+        << "Client did not provide a Attestation before sending other messages";
     return false;
   }
 
@@ -508,21 +507,21 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleAttestation(const SignedAttestation &attestation, BIO *bio,
+bool CloudServer::HandleAttestation(const string &attestation, BIO *bio,
 				    string *reason, bool *reply,
 				    CloudServerThreadData &cstd, const Tao &t) {
-  string serialized_attestation;
-  if (!attestation.SerializeToString(&serialized_attestation)) {
-    LOG(ERROR) << "Could not serialize the attestation to pass it to the Tao";
-    return false;
-  }
-
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.VerifyAttestation(cstd.GetPeerCert(), serialized_attestation)) {
-      LOG(ERROR) << "The SignedAttestation did not pass Tao verification";
+    string data;
+    if (!t.VerifyAttestation(attestation, &data)) {
+      LOG(ERROR) << "The Attestation did not pass Tao verification";
+      return false;
+    }
+
+    if (data.compare(cstd.GetPeerCert()) != 0) {
+      LOG(ERROR) << "The Attestation passed validation, but the data didn't match";
       return false;
     }
   }
@@ -530,20 +529,14 @@ bool CloudServer::HandleAttestation(const SignedAttestation &attestation, BIO *b
   cstd.SetCertValidated();
 
   // quote it to send it to the client
-  string signature;
+  ServerMessage sm;
+  string* signature = sm.mutable_attestation();
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.Attest(cstd.GetSelfCert(), &signature)) {
+    if (!t.Attest(cstd.GetSelfCert(), signature)) {
       LOG(ERROR) << "Could not get a signed attestation for our own X.509 certificate";
       return false;
     }
-  }
-
-  ServerMessage sm;
-  SignedAttestation *sa = sm.mutable_attestation();
-  if (!sa->ParseFromString(signature)) {
-    LOG(ERROR) << "Could not parse the SignedAttestation provided by the Tao";
-    return false;
   }
 
   string serialized_sm;

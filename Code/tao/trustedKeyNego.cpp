@@ -109,7 +109,7 @@ bool getDatafromServerCertMessage1(const char* response, char** pszstatus,
     int             phase;
     bool            fRet= true;
 
-#ifdef  TEST1
+#ifdef  TEST
     fprintf(g_logFile, "getDatafromServerkeyMessage1\n%s\n", response);
 #endif
     try {
@@ -212,7 +212,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
     char*               szStatus= NULL;
     char*               szErrorCode= NULL;
     char*               szCert= NULL;
-    const char*		szDesignatedKeyNegoAddress= getenv("CPKeyNegoServer");
+    const char*         szDesignatedKeyNegoAddress= getenv("CPKeyNegoServer");
 
 #ifdef TEST
     fprintf(g_logFile, "KeyNego()\n");
@@ -220,6 +220,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
 #ifdef TEST1
     fprintf(g_logFile, "Quote:\n%s\n", szQuote);
     fprintf(g_logFile, "EvidenceList:\n%s\n", szEvidenceList);
+    fflush(g_logFile);
 #endif
 
     try {
@@ -232,6 +233,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
 
 #ifdef  TEST
         fprintf(g_logFile, "KeyNego: socket opened\n");
+        fflush(g_logFile);
 #endif
         server_addr.sin_family= AF_INET;
         if(szDesignatedKeyNegoAddress==NULL)
@@ -243,29 +245,39 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
     
 #ifdef  TEST
         fprintf(g_logFile, "KeyNego: about to connect\n");
+        fflush(g_logFile);
 #endif
 
         iError= connect(fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
         if(iError<0)
-            throw  "initializeKeys: can't connect";
+            throw  "KeyNego: initializeKeys: can't connect";
 
         szpolicyKeyId= "Key1";
 #ifdef  TEST
-        fprintf(g_logFile, "initialize keys connect completed\n");
+        fprintf(g_logFile, "KeyNego: initialize keys connect completed\n");
+        fflush(g_logFile);
 #endif
 
         // construct and send request
         if(!clientCertNegoMessage1(rgBuf, MAXREQUESTSIZE, szpolicyKeyId,
                            szQuote, szEvidenceList))
-            throw  "Can't construct request";
+            throw  "KeyNego: Can't construct request";
         if((n=sendPacket(fd, (byte*)rgBuf, strlen(rgBuf)+1, CHANNEL_NEGO, 0, 1))<0)
-            throw  "Can't send Packet 1 in certNego\n";
+            throw  "KeyNego: Can't send Packet 1 in certNego\n";
 
+#ifdef  TEST
+        fprintf(g_logFile, "KeyNego: sent request\n");
+        fflush(g_logFile);
+#endif
         // get and interpret response
          if((n=getPacket(fd, (byte*)rgBuf, MAXREQUESTSIZE, &type, &multi, &final))<0)
-            throw  "Can't get packet 1 certNego\n";
+            throw  "KeyNego: Can't get packet 1 certNego\n";
         if(!getDatafromServerCertMessage1(rgBuf, &szStatus, &szErrorCode, &szCert))
-            throw  "server response invalid\n";
+            throw  "KeyNego: server response invalid\n";
+#ifdef  TEST
+        fprintf(g_logFile, "KeyNego: got response\n");
+        fflush(g_logFile);
+#endif
 
         // everything OK?
         if(!validateResponse(szStatus, szErrorCode, szCert))
@@ -273,7 +285,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
 
         // cert
         *pszCert= szCert;
-#ifdef TEST1
+#ifdef TEST
         fprintf(g_logFile, "Cert: %s\n", szCert);
 #endif
     }

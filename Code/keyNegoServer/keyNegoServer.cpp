@@ -964,12 +964,14 @@ bool certNego(int fd)
 
 #ifdef  TEST
         fprintf(g_logFile, "validateRequestandIssue complete %d\n", (int) fIssue);
+        fflush(g_logFile);
 #endif
         // Phase 1, response
         if(!serverCertNegoMessage1(MAXREQUESTSIZE, request, szStatus, szErrorCode, szCert))
             throw  "Can't construct response in keyNegoServer\n";
 #ifdef  TEST
         fprintf(g_logFile, "Server response:\n%s\n", request);
+        fflush(g_logFile);
 #endif
         if((n=sendPacket(fd, (byte*)request, strlen(request)+1, CHANNEL_REQUEST, 0, 1)) <0)
              throw  "Can't send packet 1 in keyNegoServer\n";

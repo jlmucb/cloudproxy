@@ -99,9 +99,6 @@
 #define MAXTPMSEALSIZE                       128
 #define TPMSEALEDSIZE                        313
 
-#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
-
-
 #define MAXHOSTNAMESIZE                      512
 #define MAXSEALSIZE                         4096
 
@@ -181,7 +178,7 @@ public:
     bool        GetEntropy(int size, byte* buf);
     bool        Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
     bool        Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byte* toSeal);
-    const char* makeAttestion(int sizetoAttest, byte* toAttest, const char* hint);
+    const char* makeAttestation(int sizetoAttest, byte* toAttest, const char* hint);
 
 #ifdef TEST
     void        printData();

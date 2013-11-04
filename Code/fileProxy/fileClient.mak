@@ -42,11 +42,23 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
 	    $(B)/fileTester.o $(B)/logging.o $(B)/fileHash.o
 
-all: $(E)/fileClient.exe $(E)/guestfileClient.exe
-
+all: $(E)/fileClient.exe $(E)/guestfileClient.exe $(E)/fileClienta.exe $(E)/fileClientb.exe $(E)/fileClientc.exe
+ 
 $(E)/fileClient.exe: $(dobjs) $(B)/fileClient.o 
 	@echo "fileClient"
 	$(LINK) -o $(E)/fileClient.exe $(dobjs) $(B)/fileClient.o $(LDFLAGS) -lpthread
+
+$(E)/fileClienta.exe: $(dobjs) $(B)/fileClienta.o 
+	@echo "fileClienta"
+	$(LINK) -o $(E)/fileClienta.exe $(dobjs) $(B)/fileClienta.o $(LDFLAGS) -lpthread
+
+$(E)/fileClientb.exe: $(dobjs) $(B)/fileClientb.o 
+	@echo "fileClientb"
+	$(LINK) -o $(E)/fileClientb.exe $(dobjs) $(B)/fileClientb.o $(LDFLAGS) -lpthread
+
+$(E)/fileClientc.exe: $(dobjs) $(B)/fileClientc.o 
+	@echo "fileClientc"
+	$(LINK) -o $(E)/fileClientc.exe $(dobjs) $(B)/fileClientc.o $(LDFLAGS) -lpthread
 
 $(E)/guestfileClient.exe: $(dobjs) $(B)/guestfileClient.o 
 	@echo "guestfileClient"
@@ -159,6 +171,15 @@ $(B)/hashprep.o: $(TS)/hashprep.cpp $(TS)/hashprep.h
 
 $(B)/fileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
 	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClient.o $(S)/fileClient.cpp
+
+$(B)/fileClienta.o: $(S)/fileClient.cpp $(S)/fileClient.h
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D CLIENTA -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClienta.o $(S)/fileClient.cpp
+
+$(B)/fileClientb.o: $(S)/fileClient.cpp $(S)/fileClient.h
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D CLIENTB -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClientb.o $(S)/fileClient.cpp
+
+$(B)/fileClientc.o: $(S)/fileClient.cpp $(S)/fileClient.h
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D CLIENTC -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/fileClientc.o $(S)/fileClient.cpp
 
 $(B)/guestfileClient.o: $(S)/fileClient.cpp $(S)/fileClient.h
 	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -I$(SCD) -I$(PROTO) -I$(CH) -I$(TAO) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TS) -I$(TRS) -I$(SC) -c -o $(B)/guestfileClient.o $(S)/fileClient.cpp

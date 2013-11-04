@@ -87,6 +87,22 @@ extern const char*  g_szTerm;
 const char* g_szClientPrincipalCertsFile= "fileClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "fileClient/principalPrivateKeys.xml";
 
+#ifdef CLIENTA
+#include "defaultNamesa.h"
+#endif
+#ifdef CLIENTB
+#include "defaultNamesb.h"
+#endif
+#ifdef CLIENTC
+#include "defaultNamesb.h"
+#endif
+#ifndef DEFAULTPROGRAMNAMES
+#define DEFAULTDIRECTORY        "/home/jlm/jlmcrypt"
+#define FILECLIENTSUBDIRECTORY  "fileClient"
+#define TESTPATH                "fileClient/tests/"
+#define LOGFILE                 "fileClient.log"
+#endif
+
 
 // ------------------------------------------------------------------------
 
@@ -303,7 +319,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         // init environment
         m_taoEnvInitializationTimer.Start();
         if(!m_tcHome.EnvInit(g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
-                             "fileClient", &m_host, g_serviceProvider, 0, NULL))
+                             FILECLIENTSUBDIRECTORY, &m_host, g_serviceProvider, 0, NULL))
             throw("fileClient::Init: can't init environment\n");
         m_taoEnvInitializationTimer.Stop();
 
@@ -501,7 +517,7 @@ int main(int an, char** av)
     safeChannel     fc;
     int             iRet= 0;
     const char*     directory= NULL;
-    string          testPath("fileClient/tests/");
+    string          testPath(TESTPATH);
     string          testFileName("tests.xml");
     initLog(NULL);
 
@@ -526,7 +542,7 @@ int main(int an, char** av)
     oFileClient.m_fEncryptFiles= true;
 #endif
 
-    initLog("fileClient.log");
+    initLog(LOGFILE);
 #ifdef  TEST
     fprintf(g_logFile, "fileClient main in measured loop\n");
     fflush(g_logFile);

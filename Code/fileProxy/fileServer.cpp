@@ -74,6 +74,8 @@ int      iQueueSize= 5;
 
 #include "./policyCert.inc"
 #include "./taoSetupglobals.h"
+#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+
 
 #ifdef TEST
 void printResources(objectManager<resource>* pRM);

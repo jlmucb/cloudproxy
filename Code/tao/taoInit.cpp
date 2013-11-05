@@ -111,7 +111,7 @@ const char* g_quotedkeyInfoTemplate=
 #endif
 
 
-bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
+bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName, 
                                          const char* szSubjectName, const char* szSubjectId)
 {
     Attestation     oAttestation;
@@ -156,14 +156,14 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
     }
     m_serializedpublicKeySize= strlen(m_serializedpublicKey)+1;
 #ifdef TEST
-    fprintf(g_logFile, "generatequoteandcertifyKey, serialized public key\n%s\n", 
+    fprintf(g_logFile, "generateandcertifyKey, serialized public key\n%s\n", 
             m_serializedpublicKey);
     fflush(g_logFile);
 #endif
 
     // get my measurement
     if(!m_myHost->GetHostedMeasurement(&m_myMeasurementSize, &m_myMeasurementType, m_myMeasurement)) {
-        fprintf(g_logFile, "generatequoteandcertifyKey: Can't get code digest\n");
+        fprintf(g_logFile, "generateandcertifyKey: Can't get code digest\n");
         return false;
     }
     m_myMeasurementValid= true;
@@ -181,7 +181,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "generatequoteandcertifyKey, attestInfo\n%s\n", szAttestInfo);
+    fprintf(g_logFile, "generateandcertifyKey, attestInfo\n%s\n", szAttestInfo);
     fflush(g_logFile);
 #endif
 
@@ -298,7 +298,7 @@ bool taoInit::initKeys(u32 symType, u32 pubkeyType, const char* szKeyName,
     if(!fRet)
         return false;
 
-    fRet= generatequoteandcertifyKey(pubkeyType, szKeyName, 
+    fRet= generateandcertifyKey(pubkeyType, szKeyName, 
                                      szSubjectName, szSubjectId);
     if(!fRet)
         goto cleanup;

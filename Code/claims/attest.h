@@ -89,6 +89,7 @@ public:
     const char*     getNonce();
     const char*     getattestingkeyInfo();
 
+    bool            setTypeDigest(const char* szTypeDigest);
     bool            setAttestAlg(const char* alg);
     bool            setKeyInfo(const char* szKeyInfo);
     bool            setAttestedTo(int size, byte* attestedTo);
@@ -99,6 +100,8 @@ public:
     bool            getcodeDigest(int* psize, byte* codeDigest);
     bool            setHint(const char* hint);
     const char*     getHint();
+    const char*     getbase64codeDigest();
+
 
     bool            converttoBinary();
     bool            convertfromBinary();
@@ -124,8 +127,10 @@ public:
     ~AttestInfo();
 
     bool            isValid() {return m_fValid;};
+    const char*     makeKeyAttestInfo(const char* szSerializedKey);
     bool            init(const char* attestInfo);
     const char*     getSerializedKey();
+    const char*     getKeyName();
     bool            getAttestInfoHash(u32 type, int* psize, byte* hash);
 };
 

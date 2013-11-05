@@ -579,7 +579,6 @@ bool getCertParameters(const char* szPolicyKeyId, const char* szDigest, const ch
             szPolicyKeyId, szDigest, szKeyName);
     fflush(g_logFile);
 #endif
-    // www.manferdelli.com/Herstein/Keys/fileClientProgram"
     if(szKeyName==NULL) {
         *pszSubjName= strdup("//www.manferdelli.com/Programs/Unknown");
         *pszSubjKeyID= strdup("UnknownKey");
@@ -589,8 +588,7 @@ bool getCertParameters(const char* szPolicyKeyId, const char* szDigest, const ch
         *pszSubjKeyID= strdup(szKeyName);
     }
 #ifdef TEST
-    fprintf(g_logFile, 
-        "getCertParameters, SubjName: %s, SubjKeyId: %s\n",
+    fprintf(g_logFile, "getCertParameters, SubjName: %s, SubjKeyId: %s\n",
             *pszSubjName,  *pszSubjKeyID);
     fflush(g_logFile);
 #endif
@@ -705,39 +703,40 @@ bool validCodeDigest(const char* szPolicyKeyId, const char* szCodeDigest)
 }
 
 
-bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote, 
+bool validateRequestandIssue(const char* szPolicyKeyId, const char* szAttest, 
                              const char* szEvidence, char**  pszCert)
 {
-    char*   szAlg= NULL;
-    char*   szNonce= NULL;
-    char*   szDigest= NULL;
-    char*   szQuotedInfo= NULL;
-    char*   szQuoteValue= NULL;
-    char*   szSignedInfo= NULL;
-    char*   szCert= NULL;
+    RSAKey* 	pKey= NULL;
+    taoAttest  	oAttest;
+    AttestInfo	oAttestInfo;
 
-    char*   szCertid= NULL;
-    int     serialNo= 0;
-    char*   szPrincipalType= NULL;
-    char*   szIssuerName= NULL;
-    char*   szIssuerID= NULL;
-    char*   szNotBefore= NULL;
-    char*   szNotAfter= NULL;
-    char*   szSubjName= NULL;
-    char*   szKeyName= NULL;
-    char*   szSubjKeyID= NULL;
-
-    char*   szquoteKeyInfo= NULL;
-    char*   szquotedKeyInfo= NULL;
-
-    RSAKey* pKey= NULL;
-    taoAttest  oAttest;
-    bool    fRet= true;
+    bool    	fRet= false;
+    int         sizeattestValue= 1024;
+    byte        attestValue[1024];
+    const char* szdigestAlg= NULL;
+    int         sizecodeDigest= 1024;
+    byte        codeDigest[1024];
+    const char* szHint=NULL;
+    char*	szCert= NULL;
+    int		sizeStringDigest= GLOBALMAXDIGESTSIZE;
+    char	szDigest[2*GLOBALMAXDIGESTSIZE];
+    char*	szSignedInfo= NULL;
+    const char*	szKeyName= NULL;
+    char*	szCertid= NULL;
+    int		serialNo= -1;
+    char*	szPrincipalType= NULL;
+    char*	szIssuerName= NULL;
+    char*	szIssuerID= NULL;
+    char*	szNotBefore= NULL;
+    char*	szNotAfter= NULL;
+    char*	szSubjName= NULL;
+    char*	szSubjKeyID= NULL;
+    const char*	szKeyInfo= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "validateRequestandIssue\n");
     fprintf(g_logFile, "Policy key: %s\n", szPolicyKeyId);
-    fprintf(g_logFile, "Quote: %s\n", szXMLQuote);
+    fprintf(g_logFile, "Attest: %s\n", szAttest);
     if(szEvidence!=NULL)
         fprintf(g_logFile, "Evidence: %s\n", szEvidence);
     else
@@ -756,8 +755,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 #ifdef  TEST
     fflush(g_logFile);
     fprintf(g_logFile, "about to init attestation\n");
-    fprintf(g_logFile, "Quote: %s\n", szXMLQuote);
-    fprintf(g_logFile, "Cert: %s\n", szCert);
+    fprintf(g_logFile, "Attest: %s\n", szAttest);
     if(szEvidence!=NULL)
         fprintf(g_logFile, "Evidence: %s\n", szEvidence);
     else
@@ -765,36 +763,64 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 #endif
 
     // initialize Attest object
-    if(!oAttest.init(CPXMLATTESTATION, szXMLQuote, szEvidence, (KeyInfo*) pKey)) {
-        fprintf(g_logFile, "validateRequestandIssue: cant init attest object\n");
-        fRet= false;
-        goto cleanup;
+    if(!oAttest.init(szAttest, szEvidence, (KeyInfo*) pKey)) {
+        fprintf(g_logFile, "validateRequestandIssue:: cant init attest object\n");
+        return false;
     }
 
-    szDigest= oAttest.codeDigest();
-    if(szDigest==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant get code digest\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-    szquotedKeyInfo= oAttest.quotedKeyInfo();
-    if(szquotedKeyInfo==NULL) {
-        fprintf(g_logFile, "validateRequestandIssue: cant get quoted keyInfo\n");
-        fRet= false;
-        goto cleanup;
-    }
-#ifdef  TEST
-    fprintf(g_logFile, "quotedkeyInfo\n%s\n", szquotedKeyInfo);
+#ifdef TEST
+    fprintf(g_logFile, "verifying attestation\n");
     fflush(g_logFile);
 #endif
 
-    // Key name
-    szKeyName= oAttest.quotedKeyName();
+    // verify attestation 
+    fRet= oAttest.verifyAttestation(&sizeattestValue, attestValue,
+                                      &szdigestAlg, &sizecodeDigest,
+                                      codeDigest, &szHint);
+
+#ifdef TEST
+    PrintBytes("attestation: ", attestValue, sizeattestValue);
+    fflush(g_logFile);
+#endif
+
+    if(!fRet) {
+        fprintf(g_logFile, "validateRequestandIssue:: verifyAttestation failed\n");
+        return false;
+    }
+
+    // convert to char szDigest
+    if(!toBase64(sizecodeDigest, codeDigest, &sizeStringDigest, szDigest)) {
+        fprintf(g_logFile, "validateRequestandIssue:: can't convert code digest\n");
+        return false;
+    }
 
     // check policy
     if(!validCodeDigest(szPolicyKeyId, szDigest)) {
         fprintf(g_logFile, "validateRequestandIssue: out of policy\n");
+        fRet= false;
+        goto cleanup;
+    }
+
+    // szKeyName from attestInfo
+    if(szHint==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: no attestInfo\n");
+        fRet= false;
+        goto cleanup;
+    }
+    if(!oAttestInfo.init(szHint)) {
+        fprintf(g_logFile, "validateRequestandIssue: can't init AttestInfo\n");
+        fRet= false;
+        goto cleanup;
+    }
+    szKeyInfo= oAttestInfo.getSerializedKey();
+    if(szKeyInfo==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: empty key name\n");
+        fRet= false;
+        goto cleanup;
+    }
+    szKeyName= oAttestInfo.getKeyName();
+    if(szKeyName==NULL) {
+        fprintf(g_logFile, "validateRequestandIssue: no attestInfo\n");
         fRet= false;
         goto cleanup;
     }
@@ -814,24 +840,13 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "verifying attestation\n");
-    fflush(g_logFile);
-#endif
-    // verify attestation 
-    if(!oAttest.verifyAttestation()) {
-        fprintf(g_logFile, "validateRequestandIssue: attest fails\n");
-        fRet= false;
-        goto cleanup;
-    }
-
-#ifdef TEST
     fprintf(g_logFile, "encoding signed body\n");
     fflush(g_logFile);
 #endif
     // encode signed body
     szSignedInfo= formatSignedInfo(pKey, szCertid, serialNo, szPrincipalType, 
             szIssuerName, szIssuerID, szNotBefore, szNotAfter,
-            szSubjName, szquotedKeyInfo, szDigest, szSubjKeyID);
+            szSubjName, szKeyInfo, szDigest, szSubjKeyID);
     if(szSignedInfo==NULL) {
         fprintf(g_logFile, "validateRequestandIssue: cant generate SignedInfo\n");
         fRet= false;
@@ -867,36 +882,23 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szXMLQuote,
 #endif
 
 cleanup:
-    if(szAlg!=NULL) {
-        szAlg= NULL;
-    }
-    if(szNonce!=NULL) {
-        szNonce= NULL;
-    }
-    if(szDigest!=NULL) {
-        free(szDigest);
-        szDigest= NULL;
-    }
-    if(szQuotedInfo!=NULL) {
-        free(szQuotedInfo);
-        szQuotedInfo= NULL;
-    }
-    if(szQuoteValue!=NULL) {
-        free(szQuoteValue);
-        szQuoteValue= NULL;
-    }
-    if(szquotedKeyInfo!=NULL) {
-        free(szquotedKeyInfo);
-        szquotedKeyInfo= NULL;
-    }
-    if(szquoteKeyInfo!=NULL) {
-        free(szquoteKeyInfo);
-        szquoteKeyInfo= NULL;
-    }
-    if(szKeyName!=NULL) {
-        free(szKeyName);
-        szKeyName= NULL;
-    }
+    // char*       szSignedInfo= NULL;
+    // char*       szKeyName= NULL;
+    // char*       szCertid= NULL;
+    // int         serialNo= -1;
+    // char*       szPrincipalType= NULL;
+    // char*       szIssuerName= NULL;
+    // char*       szIssuerID= NULL;
+    // char*       szNotBefore= NULL;
+    // char*       szNotAfter= NULL;
+    // char*       szSubjName= NULL;
+    // char*       szSubjKeyID= NULL;
+    // char*       szKeyInfo= NULL;
+
+    // if(szAlg!=NULL) {
+         // szAlg= NULL;
+    // }
+
     return fRet;
 }
 
@@ -912,7 +914,7 @@ bool certNego(int fd)
     byte        final= 0;
     bool        fRet= true;
     char*       szPolicyKeyId= NULL;
-    char*       szQuote= NULL;
+    char*       szAssert= NULL;
     char*       szEvidence= NULL;
     const char* szStatus= NULL;
     const char* szErrorCode= NULL;
@@ -936,8 +938,12 @@ bool certNego(int fd)
         // Phase 1, receive
         if((n=getPacket(fd, (byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "Can't get packet 1 in keyNegoServer\n";
+#ifdef  TEST
+        fprintf(g_logFile, "keyNegoServer, got request\n%s\n", request);
+        fflush(g_logFile);
+#endif
 
-        if(!getDatafromClientCertMessage1(request, &szPolicyKeyId, &szQuote, &szEvidence))
+        if(!getDatafromClientCertMessage1(request, &szPolicyKeyId, &szAssert, &szEvidence))
             throw  "Can't decode client packet in keyNegoServer\n";
 
         // log request
@@ -951,7 +957,7 @@ bool certNego(int fd)
         }
 
         // check request, sign and register
-        bool fIssue= validateRequestandIssue(szPolicyKeyId, szQuote, szEvidence, &szCert);
+        bool fIssue= validateRequestandIssue(szPolicyKeyId, szAssert, szEvidence, &szCert);
         if(fIssue) {
             szStatus= "accept";
             szErrorCode= NULL;

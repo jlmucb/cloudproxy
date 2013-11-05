@@ -319,10 +319,11 @@ bool taoHostServices::GetEvidence(int* psize, byte** ppbuf)
         }
         m_hostEvidenceType= EVIDENCECERTLIST;
         m_hostEvidenceSize= n;
-        m_hostEvidence= (byte*)malloc(n);
+        m_hostEvidence= (byte*)malloc(n+1);
         if(m_hostEvidence==NULL)
             return false;
         memcpy(m_hostEvidence, buf, m_hostEvidenceSize);
+        m_hostEvidence[n]= 0;   // zero pad
         m_hostEvidenceValid= true;
     }
 
@@ -348,12 +349,13 @@ bool taoHostServices::GetAttestCertificate(int* psize, u32* ptype, byte** ppbuf)
         }
         m_hostCertificateType= EVIDENCECERT;
         m_hostCertificateSize= n;
-        m_hostCertificate= (byte*)malloc(n);
+        m_hostCertificate= (byte*)malloc(n+1);
         if(m_hostCertificate==NULL) {
             fprintf(g_logFile, "GetAttestCertificate: bad malloc\n");
             return false;
         }
         memcpy(m_hostCertificate, buf, n);
+        m_hostCertificate[n]= 0;    // zero pad
         m_hostCertificateValid= true;
     }
     *ptype= m_hostCertificateType;
@@ -363,6 +365,26 @@ bool taoHostServices::GetAttestCertificate(int* psize, u32* ptype, byte** ppbuf)
         return false;
     memcpy(*ppbuf, m_hostCertificate, m_hostCertificateSize);
     return true;
+}
+
+
+const char* taoHostServices::GetCertificateString()
+{
+    if(m_hostCertificate==NULL) {
+        fprintf(g_logFile, "GetCertificateString: Host certificate empty\n");
+        return NULL;
+    }
+    return strdup((const char*) m_hostCertificate);
+}
+
+
+const char* taoHostServices::GetEvidenceString()
+{
+    if(m_hostEvidence==NULL) {
+        fprintf(g_logFile, "GetCertificateString: Host evidence empty\n");
+        return NULL;
+    }
+    return strdup((const char*) m_hostEvidence);
 }
 
 
@@ -526,7 +548,8 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 }
 
 
-const char* taoHostServices::makeAttestation(int sizetoAttest, byte* toAttest, const char* hint)
+const char* taoHostServices::makeAttestation(int sizetoAttest, byte* toAttest, 
+                                             const char* hint)
 {
     Attestation     oAttestation;
 
@@ -537,11 +560,22 @@ const char* taoHostServices::makeAttestation(int sizetoAttest, byte* toAttest, c
 
     // Attest
     int     sizeAttestation= GLOBALMAXPUBKEYSIZE;
+    byte    revattestation[GLOBALMAXPUBKEYSIZE];
     byte    attestation[GLOBALMAXPUBKEYSIZE];
-    if(!Attest(sizetoAttest, toAttest, &sizeAttestation, attestation)) {
+    if(!Attest(sizetoAttest, toAttest, &sizeAttestation, revattestation)) {
         fprintf(g_logFile, "taoHostServices::makeAttestation: Attest failed\n");
         return NULL;
     }
+    revmemcpy(attestation, revattestation, sizeAttestation);
+
+#ifdef TEST
+    int   sized= 1024;
+    byte  deAttest[1024];
+    ((RSAKey*)m_attestingPublicKey)->printMe();
+    PrintBytes("Attested\n", attestation, sizeAttestation);
+    RSAEncrypt(*(RSAKey*)m_attestingPublicKey, sizeAttestation, attestation, &sized, deAttest);
+    PrintBytes("deAttested\n", deAttest, sized);
+#endif
 
     // set up data
     if(m_attestingPublicKey==NULL) {
@@ -549,9 +583,12 @@ const char* taoHostServices::makeAttestation(int sizetoAttest, byte* toAttest, c
         return NULL;
     }
     const char* szAttestalg= NULL;
-    if(hostType()==PLATFORMTYPEHW)
+    if(hostType()==PLATFORMTYPEHW) {
+        oAttestation.setTypeDigest("TPM12Digest");
         szAttestalg= (const char*)ATTESTMETHODTPM12RSA2048;
+    }
     else {
+        oAttestation.setTypeDigest("Sha256FileHash");
         if(m_attestingPublicKey->m_ukeyType!=RSAKEYTYPE) {
             fprintf(g_logFile, "taoHostServices::makeAttestation: only RSAKey type supported\n");
             return NULL;

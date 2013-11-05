@@ -1334,7 +1334,8 @@ bool VerifyAttest(const char* szAttestFile, const char* szEvidenceFile,
 }
 
 
-bool AttestSignedInfo(const char* szKeyFile, const char* szDigestFile, const char* szsignedInfoFile)
+bool AttestSignedInfo(const char* szKeyFile, const char* szDigestFile, 
+                      const char* szsignedInfoFile)
 {
     RSAKey*     pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
     Attestation oAttest;
@@ -1377,6 +1378,8 @@ bool AttestSignedInfo(const char* szKeyFile, const char* szDigestFile, const cha
         fprintf(g_logFile, "AttestSignedInfo: cant read attestInfo file\n");
         return false;
     }
+
+    oAttest.setTypeDigest("Sha256FileHash");
 
     int     sizehash=64;
     byte    hash[64];

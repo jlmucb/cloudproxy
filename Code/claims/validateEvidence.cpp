@@ -818,6 +818,10 @@ const char* s_EvidenceListStop= "</EvidenceList>\n";
 
 char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
 {
+#ifdef TEST
+    fprintf(g_logFile, "evidence\n%s\nsupport:\n%s\n", szEvidence, szEvidenceSupport);
+    fflush(g_logFile);
+#endif
 
     if(szEvidence==NULL) {
         return NULL;
@@ -826,16 +830,24 @@ char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
     TiXmlDocument   listDoc;
     TiXmlNode*      pNode= NULL;
     int             numpiecesofEvidence= 0;
-    int             len= strlen(szEvidenceSupport)+strlen(szEvidence)+128;
-    char*           buf= (char*) malloc(len);
-    char*           p= buf;
-    int             left= len;
+    int             len= 0;
+    char*           buf= NULL;
+    char*           p;
+    int             left= 0;
     int             n;
     char*           szNode= NULL;
 
+    if(szEvidenceSupport!=NULL)
+        len= strlen(szEvidenceSupport)+strlen(szEvidence)+128;
+    else
+        len= strlen(szEvidence)+128;
+
+    left= len;
+    buf= (char*) malloc(len);
     if(buf==NULL) {
         return NULL;
     }
+    p= buf;
 
     if(szEvidenceSupport==NULL) {
         // append szEvidence
@@ -844,16 +856,19 @@ char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
         p+= n;
         left-= n;
         if(!safeTransfer(&p, &left, szEvidence)) {
+            fprintf(g_logFile, "consttoEvidenceList: transfer 1\n");
             return NULL;
         }
         if(!safeTransfer(&p, &left, s_EvidenceListStop)) {
+            fprintf(g_logFile, "consttoEvidenceList: transfer 2\n");
             return NULL;
         }
         return strdup(buf);
     }
 
 
-    if(listDoc.Parse(szEvidenceSupport)) {
+    if(!listDoc.Parse(szEvidenceSupport)) {
+        fprintf(g_logFile, "consttoEvidenceList: cant parse\n");
         return NULL;
     }
 
@@ -867,6 +882,7 @@ char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
     p+= n;
     left-= n;
     if(!safeTransfer(&p, &left, szEvidence)) {
+        fprintf(g_logFile, "consttoEvidenceList: transfer 3\n");
         return NULL;
     }
 
@@ -888,6 +904,7 @@ char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
         pNode= pNode->NextSibling();
     }
     if(!safeTransfer(&p, &left, s_EvidenceListStop)) {
+        fprintf(g_logFile, "consttoEvidenceList: transfer 4\n");
         return NULL;
     }
     return strdup(buf);

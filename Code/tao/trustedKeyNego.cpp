@@ -75,21 +75,22 @@ const char* g_szRequestSig=
 
 
 bool clientCertNegoMessage1(char* buf, int maxSize, const char* szpolicyKeyId, 
-                           const char* szQuoted, const char* szEvidenceList)
+                           const char* szAsserted, const char* szEvidenceList)
 {
-#ifdef  TEST1
+#ifdef  TEST
     fprintf(g_logFile, "clientCertNegoMessage1 %d %s %s %s\n", maxSize, 
-            szpolicyKeyId, szQuoted, szEvidenceList);
+            szpolicyKeyId, szAsserted, szEvidenceList);
+    fflush(g_logFile);
 #endif
     int iSize= strlen(g_szRequestSig)+ strlen(szpolicyKeyId)+
-               strlen(szQuoted)+strlen(szEvidenceList);
+               strlen(szAsserted)+strlen(szEvidenceList);
 
     if(iSize>=maxSize) {
         fprintf(g_logFile, "Request too large\n");
         return false;
     }
-    sprintf(buf, g_szRequestSig, szpolicyKeyId, szQuoted, szEvidenceList);
-#ifdef  TEST1
+    sprintf(buf, g_szRequestSig, szpolicyKeyId, szAsserted, szEvidenceList);
+#ifdef  TEST
     fprintf(g_logFile, "\n%s\n", buf);
 #endif
     return true;
@@ -192,7 +193,7 @@ bool validateResponse(const char* szStatus, const char* szErrorCode, const char*
 // ------------------------------------------------------------------------
 
 
-bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
+bool KeyNego(const char* szAssert, const char* szEvidenceList, char** pszCert)
 {
     bool                fRet= true;
     int                 iError= 0;
@@ -217,8 +218,8 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
 #ifdef TEST
     fprintf(g_logFile, "KeyNego()\n");
 #endif
-#ifdef TEST1
-    fprintf(g_logFile, "Quote:\n%s\n", szQuote);
+#ifdef TEST
+    fprintf(g_logFile, "Assert:\n%s\n", szAssert);
     fprintf(g_logFile, "EvidenceList:\n%s\n", szEvidenceList);
     fflush(g_logFile);
 #endif
@@ -260,7 +261,7 @@ bool KeyNego(const char* szQuote, const char* szEvidenceList, char** pszCert)
 
         // construct and send request
         if(!clientCertNegoMessage1(rgBuf, MAXREQUESTSIZE, szpolicyKeyId,
-                           szQuote, szEvidenceList))
+                           szAssert, szEvidenceList))
             throw  "KeyNego: Can't construct request";
         if((n=sendPacket(fd, (byte*)rgBuf, strlen(rgBuf)+1, CHANNEL_NEGO, 0, 1))<0)
             throw  "KeyNego: Can't send Packet 1 in certNego\n";

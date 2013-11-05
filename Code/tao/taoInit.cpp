@@ -38,6 +38,7 @@
 #include "linuxHostsupport.h"
 #include "cert.h"
 #include "quote.h"
+#include "attest.h"
 #include "cryptoHelper.h"
 
 #include <string.h>
@@ -110,133 +111,37 @@ const char* g_quotedkeyInfoTemplate=
 #endif
 
 
-const char* g_EvidenceListTemplate= 
-"<EvidenceList count='%d'>\n" \
-"%s\n"
-"</EvidenceList>\n";
-
-
-char* constructEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
-{
-    int     sizeList;
-    char*   szEvidenceList= NULL;
-    char*   szReturn= NULL;
-
-    if(szEvidence==NULL)
-        return NULL;
-
-    if(szEvidenceSupport==NULL)
-        sizeList= strlen(szEvidence)+256;
-    else
-        sizeList= strlen(szEvidence)+strlen(szEvidenceSupport)+256;
-
-    szEvidenceList= (char*) malloc(sizeList);
-    if(szEvidenceList==NULL)
-        return NULL;
-
-    // FIX: later include evidence support
-    sprintf(szEvidenceList, g_EvidenceListTemplate, 1, szEvidence);
-    szReturn= canonicalizeXML(szEvidenceList);
-    if(szEvidenceList!=NULL)
-        free(szEvidenceList);
-    return szReturn;
-}
-
-
 bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName, 
-                                const char* szSubjectName, const char* szSubjectId)
+                                         const char* szSubjectName, const char* szSubjectId)
 {
-    // this is the host certificate
-    int             sizeHostCert= 0;
-    u32             typeHostCert;
-    char*           szHostCert= NULL;
-    char*           szHostKey= NULL;
-    PrincipalCert   hostCert;
-
-    // this is host key evidence
-    int             sizeEvidence= 0;
-    char*           szEvidence= NULL;                   
-
-    // this is the Quote XML
-    char            quotedInfo[MAXQUOTEDINFOSIZE];
-
-    // this is the canonicalize Quote XML
-    char*           szCanonicalQuotedBody= NULL;        
-    Sha256          oHash;
-
-    // this is the hash of the Quote XML
-    int             sizequotedHash= SHA256DIGESTBYTESIZE;
-    byte            rgHash[SHA256DIGESTBYTESIZE];       
-
-    // this is the TPM signed quote value
-    int             sizequoteValue= GLOBALMAXPUBKEYSIZE;
-    byte            quoteValue[GLOBALMAXPUBKEYSIZE];
-
-    // this is my measurement
-    u32             codeDigestType= 0;
-    int             sizeCodeDigest= SHA256DIGESTBYTESIZE;
-    byte            codeDigest[SHA256DIGESTBYTESIZE];   
-    Sha1            oSha1Hash;
-
-    // this is the final formatted Quote
-    u32             quoteType=0;
-    char*           szQuote= NULL;                      
+    Attestation     oAttestation;
+    AttestInfo      oAttestInfo;
+    const char*     szHostCert= NULL;
+    const char*     szHostEvidence= NULL;
+    const char*     szEvidence= NULL;
 
 #ifdef NAMELOCALITY
     u32             locality= 0x1f;
 #endif
 
 #ifdef TEST
-    fprintf(g_logFile, "taoInit::generatequoteandcertifyKey(%d)\n", keyType);
+    fprintf(g_logFile, "taoInit::generateandcertifyKey(%d)\n", keyType);
 #endif
-    quotedInfo[0]= 0;
-    // quote key valid?
+    // attest key valid?
     if(m_myHost==NULL || !m_myHost->isValid()) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: host invalid\n");
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: host invalid\n");
         return false;
-    }
-
-    // compute quote type from host type and key type
-    switch(m_myHost->hostType()) {
-      default:
-      case PLATFORMTYPENONE:
-      case PLATFORMTYPEHYPERVISOR:
-        return false;
-
-      case PLATFORMTYPEHW:
-        quoteType= QUOTETYPETPM12RSA2048;
-        break;
-
-      case PLATFORMTYPEKVMHYPERVISOR:
-      case PLATFORMTYPELINUX:
-      case PLATFORMTYPEGUESTLINUX:
-        if(keyType==KEYTYPERSA1024INTERNALSTRUCT)
-            quoteType= QUOTETYPESHA256FILEHASHRSA1024;
-        else if(keyType==KEYTYPERSA2048INTERNALSTRUCT)
-            quoteType= QUOTETYPESHA256FILEHASHRSA2048;
-        else
-            return false;
-        break;
-
-      case PLATFORMTYPEKVMHOSTEDLINUXGUESTOS:
-      case PLATFORMTYPELINUXAPP:
-        if(keyType==KEYTYPERSA1024INTERNALSTRUCT)
-            quoteType= QUOTETYPESHA256FILEHASHRSA1024;
-        else if(keyType==KEYTYPERSA2048INTERNALSTRUCT)
-            quoteType= QUOTETYPESHA256FILEHASHRSA2048;
-        else
-            return false;
-        break;
     }
 
     // generate key pair
     if(!genprivateKeyPair(keyType, szKeyName)) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't generate keypair\n");
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: Can't generate keypair\n");
         return false;
     }
     RSAKey* pKey= (RSAKey*)m_privateKey;
+
 #ifdef TEST1
-    fprintf(g_logFile, "generatequoteandcertifyKey, RSA key generated\n");
+    fprintf(g_logFile, "generateandcertifyKey, RSA key generated\n");
     fflush(g_logFile);
     pKey->printMe();
     fflush(g_logFile);
@@ -246,7 +151,7 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
     m_serializedpublicKey= pKey->SerializePublictoString();
     m_publicKeyBlockSize= pKey->m_iByteSizeM;
     if(m_serializedpublicKey==NULL) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: can't serialize public key\n");
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: can't serialize public key\n");
         return false;
     }
     m_serializedpublicKeySize= strlen(m_serializedpublicKey)+1;
@@ -256,197 +161,126 @@ bool taoInit::generatequoteandcertifyKey(u32 keyType, const char* szKeyName,
     fflush(g_logFile);
 #endif
 
-    // get code digest
-    if(!m_myHost->GetHostedMeasurement(&sizeCodeDigest, &codeDigestType, codeDigest)) {
+    // get my measurement
+    if(!m_myHost->GetHostedMeasurement(&m_myMeasurementSize, &m_myMeasurementType, m_myMeasurement)) {
         fprintf(g_logFile, "generatequoteandcertifyKey: Can't get code digest\n");
         return false;
     }
-    m_myMeasurementType= codeDigestType;
-    if(sizeCodeDigest>m_myMeasurementSize) {
-        fprintf(g_logFile, "generatequoteandcertifyKey: code digest too big\n");
-        return false;
-    }
-    m_myMeasurementSize= sizeCodeDigest;
-    memcpy(m_myMeasurement, codeDigest, m_myMeasurementSize);
     m_myMeasurementValid= true;
 
+    // make attestInfo
+    const char*   szAttestInfo= oAttestInfo.makeKeyAttestInfo(m_serializedpublicKey);
+    if(szAttestInfo==NULL) {
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: can't make attestInfo\n");
+        return false;
+    }
+
+    // FIX: Locality
+    if(!oAttestInfo.init(szAttestInfo)) {
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: can't initialize attestInfor from string\n");
+        return false;
+    }
 #ifdef TEST
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey\n");
-    PrintBytes("Code digest: ", codeDigest, sizeCodeDigest);
+    fprintf(g_logFile, "generatequoteandcertifyKey, attestInfo\n%s\n", szAttestInfo);
     fflush(g_logFile);
 #endif
 
-    switch(quoteType) {
-
+    int     sizeHash= 32;
+    byte    attestInfoHash[32];
+    switch(m_myHost->hostType()) {
+      case PLATFORMTYPEHW:
+        if(!oAttestInfo.getAttestInfoHash(SHA1HASH, &sizeHash, attestInfoHash)) {
+            fprintf(g_logFile,
+                    "taoInit::generateandcertifyKey: can't get AttestInfo hash\n");
+            return false;
+        }
+        break;
       default:
-      case QUOTETYPENONE:
-      case QUOTETYPETPM12RSA1024:
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: bad quote type\n");
-        return false;
-
-      case QUOTETYPETPM12RSA2048:
-        // Construct quote body
-#ifdef NAMELOCALITY
-        sprintf(quotedInfo, g_quotedkeyInfoTemplate, QUOTEMETHODTPM12RSA2048, 
-                locality, m_serializedpublicKey);
-#else
-        sprintf(quotedInfo, g_quotedkeyInfoTemplate, QUOTEMETHODTPM12RSA2048, 
-                m_serializedpublicKey);
-#endif
-        szCanonicalQuotedBody= canonicalizeXML(quotedInfo);
-        if(szCanonicalQuotedBody==NULL) {
-            fprintf(g_logFile, 
-                "GenerateQuoteAndCertifyKey: Can't canonicalize quoted info\n");
+        if(!oAttestInfo.getAttestInfoHash(SHA256HASH, &sizeHash, attestInfoHash)) {
+            fprintf(g_logFile, "taoInit::generateandcertifyKey: can't get AttestInfo hash\n");
             return false;
         }
-        // hash it
-        oSha1Hash.Init();
-        oSha1Hash.Update((byte*) szCanonicalQuotedBody, strlen(szCanonicalQuotedBody));
-        oSha1Hash.Final();
-        oSha1Hash.getDigest(rgHash);
-        sizequotedHash= SHA1DIGESTBYTESIZE;
-        break;
-
-      case QUOTETYPESHA256FILEHASHRSA1024:
-        // Construct quote body
-        sprintf(quotedInfo, g_quotedkeyInfoTemplate, QUOTEMETHODSHA256FILEHASHRSA1024, 
-                m_serializedpublicKey);
-        szCanonicalQuotedBody= canonicalizeXML(quotedInfo);
-        if(szCanonicalQuotedBody==NULL) {
-            fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't canonicalize quoted info\n");
-            return false;
-        }
-        // hash it
-        oHash.Init();
-        oHash.Update((byte*) szCanonicalQuotedBody, 
-                     strlen(szCanonicalQuotedBody));
-        oHash.Final();
-        oHash.GetDigest(rgHash);
-        sizequotedHash= SHA256DIGESTBYTESIZE;
-        break;
-
-      case QUOTETYPESHA256FILEHASHRSA2048:
-        // Construct quote body
-        sprintf(quotedInfo, g_quotedkeyInfoTemplate, 
-                QUOTEMETHODSHA256FILEHASHRSA2048, m_serializedpublicKey);
-        szCanonicalQuotedBody= canonicalizeXML(quotedInfo);
-        if(szCanonicalQuotedBody==NULL) {
-            fprintf(g_logFile, 
-                "GenerateQuoteAndCertifyKey: Can't canonicalize quoted info\n");
-            return false;
-        }
-        // hash it
-        oHash.Init();
-        oHash.Update((byte*) szCanonicalQuotedBody, 
-                     strlen(szCanonicalQuotedBody));
-        oHash.Final();
-        oHash.GetDigest(rgHash);
-        sizequotedHash= SHA256DIGESTBYTESIZE;
         break;
     }
-
 #ifdef TEST
-    fprintf(g_logFile, "Hash of Quote Body\n");
-    PrintBytes("Quote Body hash: ", rgHash, sizequotedHash);
+    PrintBytes("attestInfo hash: ", attestInfoHash, sizeHash);
     fflush(g_logFile);
 #endif
-    // Do attest
-    if(!m_myHost->Attest(sizequotedHash, rgHash, &sizequoteValue, quoteValue)) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't Attest Key\n");
+
+    // make attest
+    const char* szAttestation= m_myHost->makeAttestation(sizeHash, attestInfoHash, szAttestInfo);
+    if(szAttestation==NULL) {
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: can't attestation from host\n");
         return false;
     }
-#ifdef TEST1
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Quotevalue size %d\n", 
-                       sizequoteValue);
-    PrintBytes("Quotevalue: ", quoteValue, sizequoteValue);
-#endif
 
-    // Get the certificate
-    if(!m_myHost->GetAttestCertificate(&sizeHostCert, &typeHostCert, (byte**)&szHostCert)) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't get Host cert\n");
-        return false;
+    // free szAttestInfo
+    if(szAttestInfo!=NULL) {
+        free((char*)szAttestInfo);
+        szAttestInfo= NULL;
     }
 #ifdef TEST
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Host certificate\n%s\n", 
-                szHostCert);
+    fprintf(g_logFile, "taoInit::generateandcertifyKey: attestation\n%s\n", szAttestation);
+    fflush(g_logFile);
 #endif
 
-    // Get evidence list
-    if(!m_myHost->GetEvidence(&sizeEvidence, (byte**)&szEvidence)) 
-        szEvidence= NULL;
+    // Evidence is concatination of host cert and host evidence
+    szHostCert= m_myHost->GetCertificateString();
+    if(szHostCert==NULL) {
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: no host cert\n");
+        return false;
+    }
+    szHostEvidence= m_myHost->GetEvidenceString();
+    szEvidence= consttoEvidenceList(szHostCert, szHostEvidence);
 #ifdef TEST
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Host evidence\n%s\n", szEvidence);
-#endif
-
-    m_ancestorEvidence= constructEvidenceList(szHostCert, szEvidence);
-    if(m_ancestorEvidence==NULL) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't construct new cert evidence\n");
-        return false;
-    }
-    m_ancestorEvidenceValid= true;
-    m_ancestorEvidenceSize= strlen(m_ancestorEvidence)+1;
-#ifdef TEST1
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Constructed evidence\n%s\n", m_ancestorEvidence);
-#endif
-
-    if(!hostCert.init(szHostCert)) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't init host key\n");
-        return false;
-    }
-    if(!hostCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't parse host key\n");
-        return false;
-    }
-    RSAKey* hostKey= (RSAKey*)  hostCert.getSubjectKeyInfo();
-    if(hostKey==NULL) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't get host subject key\n");
-        return false;
-    }
-    szHostKey= hostKey->SerializePublictoString();
-    if(szHostKey==NULL) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't serialize host subject key\n");
-        return false;
-    }
-#ifdef TEST1
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Host Key\n%s\n", szHostKey);
-#endif
-
-    // Format quote
-    szQuote= encodeXMLQuote(0, NULL, sizeCodeDigest, codeDigest, szCanonicalQuotedBody, 
-                            szHostKey, sizequoteValue, quoteValue);
-    if(szQuote==NULL) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't encode quote\n");
-        return false;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Quote\n%s\n", szQuote);
+    fprintf(g_logFile, "taoInit::generateandcertifyKey: cert\n%s\nHost evidence:\n%s\n", 
+            szHostCert, szHostEvidence);
+    fprintf(g_logFile, "Final evidence:\n%s\n", szEvidence);
+    fflush(g_logFile);
 #endif
 
     // Certify it
-    if(!KeyNego(szQuote, m_ancestorEvidence, (char**)&m_myCertificate)) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: key nego failed\n");
+    bool fRet= KeyNego(szAttestation, szEvidence, (char**)&m_myCertificate);
+    if(szAttestation!=NULL) {
+        free((char*)szAttestation);
+        szAttestation= NULL;
+    }
+    if(szHostCert!=NULL) {
+        free((char*)szHostCert);
+        szHostCert= NULL;
+    }
+    if(szHostEvidence!=NULL) {
+        free((char*)szHostEvidence);
+        szHostEvidence= NULL;
+    }
+    if(szEvidence!=NULL) {
+        free((char*)szEvidence);
+        szEvidence= NULL;
+    }
+    if(!fRet) {
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: key nego failed\n");
         return false;
     }
     m_myCertificateValid= true;
     m_myCertificateType= EVIDENCECERT;
     m_myCertificateSize= strlen(m_myCertificate)+1;
 #ifdef TEST
-    fprintf(g_logFile, "GenerateQuoteAndCertifyKey: my Cert\n%s\n", m_myCertificate);
+    fprintf(g_logFile, "taoInit::generateandcertifyKey: my Cert\n%s\n", m_myCertificate);
+    fflush(g_logFile);
 #endif
 
     // Serialize private key
     m_szserializedPrivateKey= pKey->SerializetoString();
     if(m_szserializedPrivateKey==NULL) {
-        fprintf(g_logFile, "GenerateQuoteAndCertifyKey: Can't serialize private key\n");
+        fprintf(g_logFile, "taoInit::generateandcertifyKey: Can't serialize private key\n");
         return false;
     }
 #ifdef TEST
     fprintf(g_logFile, 
-            "generatequoteandcertifyKey returns true, serialized private key\n%s\n",
+            "generateandcertifyKey returns true, serialized private key\n%s\n",
             m_szserializedPrivateKey);
     fflush(g_logFile);
 #endif
-    // FIX: clean up szHostCert and szEvidence
     return true;
 }
 

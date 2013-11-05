@@ -58,9 +58,9 @@ const char* g_AttestTemplate=
 
 
 const char* g_AttestInfoTemplate=
-"<attestedInfo>\n"\
-"%s\n"\
-"</attestedInfo>\n";
+"<attestInfo>\n"\
+"%s"\
+"</attestInfo>\n";
  
 
 // ------------------------------------------------------------------
@@ -202,6 +202,13 @@ Attestation::~Attestation()
         free(m_szKeyInfo);
         m_szKeyInfo= NULL;
     }
+}
+
+
+bool Attestation::setTypeDigest(char const* szDigest)
+{
+    m_typeDigest= strdup(szDigest);
+    return true;
 }
 
 
@@ -364,6 +371,14 @@ bool Attestation::converttoBinary()
         m_sizeattestation= size;
     }
     return true;
+}
+
+
+const char* Attestation::getbase64codeDigest()
+{
+    if(m_szcodeDigest==NULL)
+        return NULL;
+    return strdup(m_szcodeDigest);
 }
 
 
@@ -581,7 +596,8 @@ const char* Attestation::encodeAttest()
         szhint= m_szHint;
 
     // buffer big enough?
-    if(m_szcodeDigest==NULL || m_szattestedValue==NULL || m_szAttestalg==NULL || m_szattestation==NULL ) {
+    if(m_szcodeDigest==NULL || m_szattestedValue==NULL || 
+       m_szAttestalg==NULL || m_szattestation==NULL ) {
         fprintf(g_logFile, "Attestation::encodeAttest: missing value\n");
         return false;
     }
@@ -595,7 +611,8 @@ const char* Attestation::encodeAttest()
 
     if(szhint==NULL)
         szhint= " ";
-    sprintf(szAttestation, g_AttestTemplate, "CP1", "SHA256", m_szcodeDigest, 
+
+    sprintf(szAttestation, g_AttestTemplate, "CP1", m_typeDigest, m_szcodeDigest, 
             m_szattestedValue, m_szAttestalg, m_szattestation, m_szKeyInfo, szhint);
     return canonicalizeXML(szAttestation);
 }
@@ -689,13 +706,17 @@ bool Attestation::checkAttest(KeyInfo* pKeyInfo)
         return false;
     }
 
-#ifdef TEST
-    PrintBytes((char*)"final hash: ", hashFinal, sizefinalHash);
-    fflush(g_logFile);
-#endif
-
     bool fRet= RSAVerify(*(RSAKey*)pKeyInfo, hashType, hashFinal,
                                m_attestation);
+
+#ifdef TEST
+    PrintBytes((char*)"final hash: ", hashFinal, sizefinalHash);
+    if(fRet)
+        fprintf(g_logFile, "checkAttest returns true\n");
+    else
+        fprintf(g_logFile, "checkAttest returns false\n");
+    fflush(g_logFile);
+#endif
     return fRet;
 }
 
@@ -721,6 +742,26 @@ AttestInfo::~AttestInfo()
         // free((void*)m_szHash);
         m_szHash= NULL;
     }
+}
+
+
+#define MAXATTESINFO 4096
+
+
+const char* AttestInfo::makeKeyAttestInfo(const char* szSerializedKey)
+{
+    char   szAttestInfo[MAXATTESINFO];
+
+    if(szSerializedKey==NULL) {
+        fprintf(g_logFile, "AttestInfo::makeKeyAttestInfo: serialized ke is empty\n");
+        return NULL;
+    }
+    if((strlen(szSerializedKey)+strlen(g_AttestInfoTemplate)+32)>MAXATTESINFO) {
+        fprintf(g_logFile, "AttestInfo::makeKeyAttestInfo: attestInfo too large\n");
+        return NULL;
+    }
+    sprintf(szAttestInfo, g_AttestInfoTemplate, szSerializedKey);
+    return strdup(szAttestInfo);
 }
 
 
@@ -768,6 +809,22 @@ const char* AttestInfo::getSerializedKey()
 }
 
 
+const char* AttestInfo::getKeyName()
+{
+    const char*   szName= NULL;
+
+    if(m_pKeyInfo==NULL) {
+        return NULL;
+    }
+    szName= ((TiXmlElement*)m_pKeyInfo)->Attribute ("KeyName");
+    if(szName==NULL) {
+        fprintf(g_logFile, "AttestKeyInfo::getKeyName: no key name\n");
+        return NULL;
+    }
+    return strdup(szName);
+}
+
+
 bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
 {
     if(m_sizeHash>0) {
@@ -778,11 +835,12 @@ bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
         return true; 
     }
 
-    Sha256  oHash;
+    Sha1    oHashsha1;
+    Sha256  oHashsha256;
     char    szBuf[2*GLOBALMAXDIGESTSIZE];
     int     size= 2*GLOBALMAXDIGESTSIZE;
 
-    if(type!=SHA256HASH) {
+    if(type!=SHA256HASH && type!=SHA1HASH) {
         fprintf(g_logFile, "AttestInfo::getAttestInfoHash: unsupported hash\n");
         return false;
     }
@@ -796,25 +854,45 @@ bool  AttestInfo::getAttestInfoHash(u32 type, int* psize, byte* hash)
         fprintf(g_logFile, "AttestInfo::getAttestInfoHash: no attest info\n");
         return false;
     }
-    if(type!=SHA256HASH) {
-        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: wrong type\n");
-        return false;
-    }
-    if(*psize<oHash.DIGESTSIZE) {
-        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: digest size too small\n");
-        return false;
-    }
     szCanonical= canonicalize(m_pNodeAttestInfo);
-    if(szCanonical==NULL)
+    if(szCanonical==NULL) {
+        fprintf(g_logFile, "AttestInfo::getAttestInfoHash: can't canonicalize\n");
         return false;
-    oHash.Init();
-    oHash.Update((const byte*) szCanonical, strlen(szCanonical));
-    oHash.Final();
-    oHash.GetDigest(m_hash);
-    m_sizeHash= oHash.DIGESTSIZE;
-    memcpy(hash, m_hash, m_sizeHash);
-    *psize= m_sizeHash;
+    }
+    if(type==SHA256HASH) {
+        if(*psize<oHashsha256.DIGESTSIZE) {
+            fprintf(g_logFile, "AttestInfo::getAttestInfoHash: digest size too small\n");
+            return false;
+        }
+        oHashsha256.Init();
+        oHashsha256.Update((const byte*) szCanonical, strlen(szCanonical));
+        oHashsha256.Final();
+        oHashsha256.GetDigest(m_hash);
+        m_sizeHash= oHashsha256.DIGESTSIZE;
+        memcpy(hash, m_hash, m_sizeHash);
+        *psize= m_sizeHash;
+    }
+    else if(type==SHA1HASH) {
+        if(*psize<oHashsha1.DIGESTSIZE) {
+            fprintf(g_logFile, "AttestInfo::getAttestInfoHash: digest size too small\n");
+            return false;
+        }
+        oHashsha1.Init();
+        oHashsha1.Update((const byte*) szCanonical, strlen(szCanonical));
+        oHashsha1.Final();
+        oHashsha1.getDigest(m_hash);
+        m_sizeHash= oHashsha1.DIGESTSIZE;
+        memcpy(hash, m_hash, m_sizeHash);
+        *psize= m_sizeHash;
+    }
+    else {
+        free((void*)szCanonical);
+        szCanonical= NULL;
+        return false;
+    }
     free((void*)szCanonical);
+    szCanonical= NULL;
+
     if(m_szHash==NULL) {
         if(!toBase64(m_sizeHash, m_hash, &size, szBuf)) {
             fprintf(g_logFile, "Attestation::getAttestInfoHash: cant convert attestedto to base64\n");

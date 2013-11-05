@@ -175,6 +175,9 @@ public:
     bool        GetAttestCertificate(int* psize, u32* pType, byte** buf);
     bool        GetHostPolicyKey(int* psize, u32* pType, byte* buf);
 
+    const char* GetCertificateString();
+    const char* GetEvidenceString();
+
     bool        GetEntropy(int size, byte* buf);
     bool        Seal(int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);
     bool        Unseal(int sizeSealed, byte* sealed, int *psizetoSeal, byte* toSeal);

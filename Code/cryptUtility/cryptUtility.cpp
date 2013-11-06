@@ -39,7 +39,7 @@
 #include "mpFunctions.h"
 #include "modesandpadding.h"
 #include "cert.h"
-#include "quote.h"
+//#include "quote.h"
 #include "attest.h"
 #include "cryptoHelper.h"
 #include "hashprep.h"
@@ -72,8 +72,8 @@
 #define HASHFILE                  13
 #define MAKEPOLICYKEYFILE         14
 #define MAKESERVICEHASHFILE       15
-#define VERIFYQUOTE               16
-#define QUOTE                     17
+// #define VERIFYQUOTE               16
+// #define QUOTE                     17
 #define ENCAPSULATE               18
 #define DECAPSULATE               19
 #define VALIDATECHAIN             20
@@ -1036,236 +1036,6 @@ bool SignHexModulus(const char* szKeyFile, const char* szInFile, const char* szO
 // --------------------------------------------------------------------- 
 
 
-// to be replaced by Attest below
-
-bool VerifyQuote(const char* szQuoteFile, const char* szEvidenceFile,
-                 const char* szRootKeyFile)
-{
-    taoAttest       oAttest;
-    Quote           oQuote;
-    PrincipalCert   oCert;
-    char* szEvidenceString= readandstoreString(szEvidenceFile);
-    char* szQuoteString= readandstoreString(szQuoteFile);
-    char* szRootKeyString= readandstoreString(szRootKeyFile);
-
-#ifdef TEST
-    fprintf(g_logFile, "VerifyQuote: quoteFile: %s, certFile: %s, key file: %s\n",
-            szQuoteFile, szEvidenceFile, szRootKeyFile);
-    fflush(g_logFile);
-#endif
-
-    // get Quote
-    if(szQuoteString==NULL) {
-        fprintf(g_logFile, "VerifyQuote: Can't cant read quote file %s\n", szQuoteString);
-        return false;
-    }
-
-    // get Cert
-    if(szEvidenceString==NULL) {
-        fprintf(g_logFile, "VerifyQuote: Can't cant read evidence file %s\n", szEvidenceString);
-        return false;
-    }
-
-    // get Key
-    if(szRootKeyString==NULL) {
-        fprintf(g_logFile, "VerifyQuote: Can't cant read evidence file %s\n", szRootKeyString);
-        return false;
-    }
-
-    RSAKey aikKey;
-    if(!((KeyInfo*)&aikKey)->ParsefromString(szRootKeyString)) {
-        fprintf(g_logFile, "VerifyQuote: Cant parse quoting key\n");
-        return false;
-    }
-
-    if(!aikKey.getDataFromDoc()) {
-        fprintf(g_logFile, "VerifyQuote: Cant interpret quoting key\n");
-        return false;
-    }
-
-    fprintf(g_logFile, "Quote key size: %d\n", aikKey.m_iByteSizeM);
-    fprintf(g_logFile, "Quote:\n%s\n\n", szQuoteString);
-    fprintf(g_logFile, "Evidence :\n%s\n\n", szEvidenceString);
-
-    // initialize Attest object
-    if(!oAttest.init(CPXMLATTESTATION, szQuoteString, szEvidenceString, (KeyInfo*) &aikKey)) {
-        fprintf(g_logFile, "VerifyQuote:: cant init attest object\n");
-        return false;
-    }
-
-    // verify attestation 
-    return oAttest.verifyAttestation();
-}
-
-
-bool Quote(const char* szKeyFile, const char* sztoQuoteFile, const char* szMeasurementFile)
-{
-    int     hostedMeasurementSize;
-    byte    hostedMeasurement[64];
-    int     sizetoAttest;
-    byte    toAttest[64];
-    int     sizeAttested;
-    byte    attest[4096];
-    int     sizenewattest= 2048;
-    char    newattest[2048];
-
-    char*   szToQuote= readandstoreString(sztoQuoteFile);
-    char*   szMeasurement= readandstoreString(szMeasurementFile);
-    RSAKey* pKey= (RSAKey*) ReadKeyfromFile(szKeyFile);
-
-#ifdef TEST
-    fprintf(g_logFile, "Quote\n");
-    fflush(g_logFile);
-#endif
-
-    if(szToQuote==NULL) {
-        fprintf(g_logFile, "Cant read quote file %s\n", szToQuote);
-        return false;
-    }
-    if(szMeasurement==NULL) {
-        fprintf(g_logFile, "Cant read measurement file %s\n", szMeasurement);
-        return false;
-    }
-    if(pKey==NULL) {
-        fprintf(g_logFile, "Couldn't get private key from %s\n", szKeyFile);
-        return false;
-    }
-
-    fprintf(g_logFile, "Quote: %s\n", szToQuote);
-    fprintf(g_logFile, "Measurement: %s\n", szMeasurement);
-    szMeasurement[strlen(szMeasurement)-1]= 0;
-    PrintBytes("string: ", (byte*)szMeasurement, strlen(szMeasurement));
-
-    hostedMeasurementSize= 64;
-    if(!fromBase64(strlen(szMeasurement), szMeasurement, &hostedMeasurementSize, hostedMeasurement)) {
-        fprintf(g_logFile, "Cant base64 decode measurement\n");
-        return false;
-    }
-    PrintBytes("Code Digest: ", hostedMeasurement, hostedMeasurementSize);
-
-    byte        rgQuotedHash[SHA256DIGESTBYTESIZE];
-    byte        rgToSign[512];
-    Sha256      oHash;
-
-    // compute quote hash
-    oHash.Init();
-    oHash.Update((byte*) szToQuote, strlen(szToQuote));
-    oHash.Final();
-    oHash.GetDigest(toAttest);
-
-    // Compute quote
-    sizetoAttest= SHA256_DIGESTSIZE_BYTES;
-    PrintBytes("To attest: ", toAttest, sizetoAttest);
-    if(!sha256quoteHash(0, NULL, sizetoAttest, toAttest, hostedMeasurementSize,
-                        hostedMeasurement, rgQuotedHash)) {
-            fprintf(g_logFile, "Cant compute sha256 quote hash\n");
-            return false;
-        }
-    // pad
-    if(!emsapkcspad(SHA256HASH, rgQuotedHash, pKey->m_iByteSizeM, rgToSign)) {
-        fprintf(g_logFile, "emsapkcspad returned false\n");
-        return false;
-    }
-    PrintBytes("Padded: ", rgToSign, pKey->m_iByteSizeM);
-
-    // sign
-    bnum    bnMsg(pKey->m_iByteSizeM/sizeof(u64)+2);
-    bnum    bnOut(pKey->m_iByteSizeM/sizeof(u64)+2);
-    memset(bnMsg.m_pValue, 0, pKey->m_iByteSizeM);
-    memset(bnOut.m_pValue, 0, pKey->m_iByteSizeM);
-    revmemcpy((byte*)bnMsg.m_pValue, rgToSign, pKey->m_iByteSizeM);
-
-   if(!mpRSAENC(bnMsg, *(pKey->m_pbnD), *(pKey->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "mpRSAENC returned false\n");
-        return false;
-    }
-
-    revmemcpy(attest, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    sizeAttested= pKey->m_iByteSizeM;
-    PrintBytes("Quote value: ", attest, sizeAttested);
-    if(!toBase64(sizeAttested, attest, &sizenewattest, newattest)) {
-        fprintf(g_logFile, "can't base64 encode attest\n");
-        return false;
-    }
-    fprintf(g_logFile, "Quote string\n%s\n", newattest);
-
-    mpZeroNum(bnMsg);
-    mpZeroNum(bnOut);
-    byte rgdecrypted[4096];
-    revmemcpy((byte*)bnMsg.m_pValue, attest, pKey->m_iByteSizeM);
-
-   if(!mpRSAENC(bnMsg, *(pKey->m_pbnE), *(pKey->m_pbnM), bnOut)) {
-        fprintf(g_logFile, "mpRSAENC returned false\n");
-        return false;
-    }
-    revmemcpy(rgdecrypted, (byte*)bnOut.m_pValue, pKey->m_iByteSizeM);
-    PrintBytes("Decrypted\n", rgdecrypted, pKey->m_iByteSizeM);
-
-    return true;
-}
-
-bool QuoteTest(const char* szKeyFile, const char* szInFile)
-{
-    char* keyString= readandstoreString(szKeyFile); 
-    char* quoteString= readandstoreString(szInFile); 
-    if(keyString==NULL) {
-        fprintf(g_logFile, "Couldn't open key file %s\n", szKeyFile);
-        return false;
-    }
-    if(quoteString==NULL) {
-        fprintf(g_logFile, "Couldn't open quote file %s\n", szInFile);
-        return false;
-    }
-    byte    keyHex[1024];
-    int     keySize=   MyConvertFromHexString(keyString, 1024, keyHex);
-    byte    quoteHex[1024];
-    int     quoteSize=  MyConvertFromHexString(quoteString, 1024, quoteHex);
-
-    fprintf(g_logFile, "keySize: %d, quoteSize: %d\n\n", keySize, quoteSize);
-    PrintBytes("\nkey", keyHex, keySize);
-    PrintBytes("\nquote", quoteHex, quoteSize);
-
-    bnum  bnM(32);
-    bnum  bnC(32);
-    bnum  bnE(2);
-    bnum  bnR(32);
-
-    int     i;
-    byte*   pB; 
-    byte*   pA;
-
-    pA= (byte*) bnM.m_pValue;
-    for(i=(keySize-1); i>=0; i--) {
-        pB= &keyHex[i];
-        *(pA++)= *pB;
-    }
-
-    pA= (byte*) bnC.m_pValue;
-    for(i=(quoteSize-1); i>=0; i--) {
-        pB= &quoteHex[i];
-        *(pA++)= *pB;
-    }
-    bnE.m_pValue[0]= 0x10001ULL;
-
-    fprintf(g_logFile, "\nM: "); printNum(bnM); printf("\n");
-    fprintf(g_logFile, "\nC: "); printNum(bnC); printf("\n");
-    fprintf(g_logFile, "\nE: "); printNum(bnE); printf("\n");
-
-    if(!mpRSAENC(bnC, bnE, bnM, bnR))
-        fprintf(g_logFile, "\nENC fails\n");
-    else
-        fprintf(g_logFile, "\nENC succeeds\n");
-    fprintf(g_logFile, "\nR: "); printNum(bnR); printf("\n");
-
-    fprintf(g_logFile, "\n\nreturning\n");
-    
-    return true;
-}
-
-
-// --------------------------------------------------------------------- 
-
-
 bool VerifyAttest(const char* szAttestFile, const char* szEvidenceFile,
                  const char* szRootKeyFile)
 {
@@ -1874,8 +1644,6 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -HashFile input-file [alg]\n");
             fprintf(g_logFile, "       cryptUtility -makePolicyKeyFile input-file outputfile\n");
             fprintf(g_logFile, "       cryptUtility -makeServiceHashFile input-file outputfile\n");
-            fprintf(g_logFile, "       cryptUtility -Quote quote-priv-key quote measurement\n");
-            fprintf(g_logFile, "       cryptUtility -VerifyQuote xml-quote xml-evidence xml-root-key\n");
             fprintf(g_logFile, "       cryptUtility -Attest attest-priv-key code-digest attestedvalue\n");
             fprintf(g_logFile, "       cryptUtility -AttestSignedInfo attest-priv-key code-digest signedInfo\n");
             fprintf(g_logFile, "       cryptUtility -VerifyAttest xml-attest xml-evidence xml-root-key\n");
@@ -1999,24 +1767,6 @@ int main(int an, char** av)
             szInFile= av[i+1];
             szOutFile= av[i+2];
             szAlgorithm= "SHA256";
-            break;
-        }
-        if(strcmp(av[i], "-Quote")==0) {
-            if(an<(i+3)) {
-                fprintf(g_logFile, "Too few arguments: key-file input-file measurement-file\n");
-                return 1;
-            }
-            iAction= QUOTE;
-            szKeyFile= av[i+1];
-            szInFile= av[i+2];
-            szMeasurementFile= av[i+3];
-            break;
-        }
-        if(strcmp(av[i], "-VerifyQuote")==0) {
-            iAction= VERIFYQUOTE;
-            szInFile= av[i+1];
-            szPrincipalsFile= av[i+2];
-            szKeyFile= av[i+3];
             break;
         }
         if(strcmp(av[i], "-Attest")==0) {
@@ -2242,13 +1992,6 @@ int main(int an, char** av)
         GetTime();
     }
 
-    if(iAction==HEXQUOTETEST) {
-        initCryptoRand();
-        initBigNum();
-        fRet= QuoteTest(szKeyFile, szInFile);
-        closeCryptoRand();
-    }
-
     if(iAction==SIGNHEXMODULUS) {
         initCryptoRand();
         initBigNum();
@@ -2316,27 +2059,6 @@ int main(int an, char** av)
 
         fprintf(g_logFile, "Hash of file %s is: ", szInFile);
         PrintBytes("", rgHash, size);
-    }
-
-    if(iAction==QUOTE) {
-        initCryptoRand();
-        initBigNum();
-        fRet= Quote(szKeyFile, szInFile, szMeasurementFile);
-        if(fRet)
-            fprintf(g_logFile, "Signature generated\n");
-        else
-            fprintf(g_logFile, "Signature failed\n");
-        closeCryptoRand();
-    }
-
-    if(iAction==VERIFYQUOTE) {
-        if(VerifyQuote(szInFile, szPrincipalsFile, szKeyFile)) {
-            fprintf(g_logFile, "Quote verifies\n");
-        }
-        else {
-            fprintf(g_logFile, "Quote does NOT verify\n");
-        }
-        return 0;
     }
 
     if(iAction==ATTEST) {

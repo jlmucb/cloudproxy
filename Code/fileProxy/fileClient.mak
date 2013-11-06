@@ -35,7 +35,7 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/aesni.o $(B)/sha256.o $(B)/sha1.o $(B)/hmacsha256.o \
 	    $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
-	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/cert.o $(B)/quote.o \
+	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/cert.o \
 	    $(B)/attest.o $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o $(B)/request.o $(B)/fileServices.o $(B)/validateEvidence.o \
@@ -111,9 +111,6 @@ $(B)/fileHash.o: $(SCD)/fileHash.cpp $(SCD)/fileHash.h
 
 $(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(BSC) -I$(ACC) -I$(CLM) -I$(TAO) -I$(TS) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
-
-$(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCD) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TRS) -I$(TAO) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -I$(SCD) -c -o $(B)/attest.o $(CLM)/attest.cpp

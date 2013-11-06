@@ -37,7 +37,7 @@
 #endif
 #include "linuxHostsupport.h"
 #include "cert.h"
-#include "quote.h"
+// #include "quote.h"
 #include "attest.h"
 #include "cryptoHelper.h"
 

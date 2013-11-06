@@ -41,7 +41,7 @@
 #include "keys.h"
 #include "keyNegoServer.h"
 #include "cert.h"
-#include "quote.h"
+// #include "quote.h"
 #include "validateEvidence.h"
 #include "hashprep.h"
 #include "tao.h"

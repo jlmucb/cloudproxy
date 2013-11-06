@@ -372,7 +372,7 @@ public:
 };
 
 
-#include "quote.h"
+// #include "quote.h"
 #include "attest.h"
 #include "cert.h"
 #include "validateEvidence.h"
@@ -394,6 +394,7 @@ private:
     char*           m_sznonce;
     char*           m_szAttestAlg;
     Attestation     m_oAttestation;
+    char*           m_szdigest;
 
 public:
                     taoAttest();
@@ -412,11 +413,10 @@ public:
     bool            verifyAttestation(int* psizeattestValue, byte* attestValue,
                                       const char** pdigestalg, int* sizeCodeDigest, 
                                       byte* codeDigest, const char** phint);
-
+#if 0
     //these will be deprecated
     RSAKey*         m_pquoteKey;
     char*           m_szQuoteInfo;
-    char*           m_szdigest;
     char*           m_szQuoteAlg;
     char*           m_szCanonicalQuotedBody;
 
@@ -434,6 +434,7 @@ public:
     char*           m_szQuoteKeyInfo;
     char*           m_szQuotedKeyInfo;
     char*           m_szQuotedKeyName;
+#endif
 };
 
 

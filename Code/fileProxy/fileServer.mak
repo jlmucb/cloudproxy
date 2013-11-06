@@ -34,7 +34,7 @@ dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/session.o $(B)/request.o $(B)/jlmUtility.o $(B)/keys.o \
 	    $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/cryptoHelper.o \
-            $(B)/cert.o  $(B)/attest.o $(B)/quote.o $(B)/validateEvidence.o \
+            $(B)/cert.o  $(B)/attest.o $(B)/validateEvidence.o \
             $(B)/resource.o $(B)/accessControl.o $(B)/signedAssertion.o \
 	    $(B)/encryptedblockIO.o $(B)/fileServices.o \
 	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/trustedKeyNego.o \
@@ -123,9 +123,6 @@ $(B)/trustedKeyNego.o: $(TAO)/trustedKeyNego.cpp $(TAO)/trustedKeyNego.h
 
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(CLM) -c -o $(B)/cert.o $(CLM)/cert.cpp
-
-$(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -I$(SCC) -c -o $(B)/attest.o $(CLM)/attest.cpp

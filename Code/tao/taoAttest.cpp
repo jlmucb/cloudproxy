@@ -32,7 +32,7 @@
 #include "cryptoHelper.h"
 #include "hashprep.h"
 #include "cert.h"
-#include "quote.h"
+// #include "quote.h"
 #include "attest.h"
 #include "validateEvidence.h"
 
@@ -48,13 +48,14 @@ taoAttest::taoAttest()
 {
     m_attestType= 0;
     m_sznonce= NULL;
-    m_szdigest= NULL;
     m_szAttestAlg= NULL;
     m_pattestingCert= NULL;
     m_pattestingKey= NULL;
     m_szAttestAlg= NULL;
 
+#if 0
     // these will be removed
+    m_szdigest= NULL;
     m_pquoteKey= NULL;
     m_szQuoteAlg= NULL;
     m_szQuoteInfo= NULL;
@@ -64,6 +65,7 @@ taoAttest::taoAttest()
     m_szQuotedKeyInfo= NULL;
     m_policyKey= NULL;
     m_szQuotedKeyName= NULL;
+#endif
 }
 
 
@@ -74,6 +76,7 @@ taoAttest::~taoAttest()
         free(m_pattestingCert);
         m_pattestingCert= NULL;
     }
+#if 0
     if(m_szQuoteAlg!=NULL) {
         free(m_szQuoteAlg);
         m_szQuoteAlg= NULL;
@@ -107,9 +110,11 @@ taoAttest::~taoAttest()
         m_szQuotedKeyName= NULL;
     }
     m_policyKey= NULL;
+#endif
 }
 
 
+#if 0
 bool taoAttest::init(u32 type, const char *attestation, const char *attestEvidence, 
                      KeyInfo* policyKey) 
 {
@@ -180,6 +185,7 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
 
     return true;
 }
+#endif
 
 
 bool taoAttest::bytecodeDigest(byte* out, int* psizeout)
@@ -204,6 +210,7 @@ char* taoAttest::codeDigest()
 }
 
 
+#if 0
 bool taoAttest::verifyAttestation()
 {
     int     type= 0;
@@ -256,10 +263,11 @@ bool taoAttest::verifyAttestation()
 
     return fRet;
 }
+#endif
 
 
-bool  taoAttest::init(const char *attestation,
-                      const char* attestEvidence, KeyInfo* policyKey)
+bool  taoAttest::init(const char *attestation, const char* attestEvidence, 
+                      KeyInfo* policyKey)
 {
     if(attestation==NULL) {
         fprintf(g_logFile, "taoAttest::init: no attestation\n");
@@ -392,6 +400,8 @@ u32 taoAttest::attestType()
 }
 
 
+#if 0
+
 char* taoAttest::quoteAlg()
 {
     if(m_szQuoteAlg==NULL)
@@ -446,6 +456,7 @@ char* taoAttest::quotedKeyName()
         return NULL;
     return strdup(m_szQuotedKeyName);
 }
+#endif
 
 
 // -------------------------------------------------------------------------

@@ -82,7 +82,7 @@ public:
 
 
 const char* getSubjectKeyfromCert(const char* szCert);
-char*   formatCert(const char* szSignedInfo, const char* szSig);
+// char*   formatCert(const char* szSignedInfo, const char* szSig);
 char*   formatSignedInfo(RSAKey* pKey, 
             const char* szCertid, int serialNo, const char* szPrincipalType, 
             const char* szIssuerName, const char* szIssuerID, const char* szNotBefore, 

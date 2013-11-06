@@ -418,3 +418,98 @@ const char* getSubjectKeyfromCert(const char* szCert)
 // ---------------------------------------------------------------------------
 
 
+#define MAXQUOTEDINFOSIZE   8192
+#define MAXREQUESTSIZE     16384
+
+
+const char* g_szSignedInfo1=
+"<ds:SignedInfo>\n"\
+"    <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\" />\n"\
+"    <ds:SignatureMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/algorithms/rsa%d-sha256-pkcspad#\" />\n"\
+"    <Certificate Id=\"%s\" version='1'>\n"\
+"        <SerialNumber>%d</SerialNumber>\n"\
+"        <PrincipalType>%s</PrincipalType>\n"\
+"        <IssuerName>%s</IssuerName>\n"\
+"        <IssuerID>%d</IssuerID>\n";
+
+const char* g_szValidity=
+"        <ValidityPeriod>\n"\
+"            <NotBefore>%s</NotBefore>\n"\
+"            <NotAfter>%s</NotAfter>\n"\
+"        </ValidityPeriod>\n";
+
+const char* g_szSignedInfoDigest=
+"        <CodeDigest>%s</CodeDigest>\n";
+
+const char* g_szSignedInfo2=
+"        <SubjectName>%s</SubjectName>\n"\
+"        <SubjectKey>\n";
+const char* g_szSignedInfo3=
+" </SubjectKey>\n"\
+"        <SubjectKeyID>%s</SubjectKeyID>\n"\
+"        <RevocationPolicy>Local-check-only</RevocationPolicy>\n"\
+"    </Certificate>\n"\
+"</ds:SignedInfo>\n";
+
+
+char*   formatSignedInfo(RSAKey* pKey, 
+            const char* szCertid, int serialNo, const char* szPrincipalType, 
+            const char* szIssuerName, const char* szIssuerID, const char* szNotBefore, 
+            const char* szNotAfter, const char* szSubjName, const char* szKeyInfo, 
+            const char* szDigest, const char* szSubjKeyID)
+{
+    char    szTemp[MAXREQUESTSIZE];
+    char    rgBuf[MAXREQUESTSIZE];
+    int     iLeft= MAXREQUESTSIZE;
+    char*   p= rgBuf;
+    char*   szSignedInfo= NULL;
+    int     bitkeySize= pKey->m_ikeySize;
+
+#ifdef  TEST
+    fprintf(g_logFile, "Format signedInfo %d\n", bitkeySize);
+    fflush(g_logFile);
+    fprintf(g_logFile, "\tCertid: %s, serialNo: %d\n", szCertid, serialNo);
+    fflush(g_logFile);
+    fprintf(g_logFile, "\tnotBefore: %s, notAfter: %s\n", szNotBefore, szNotAfter);
+    fflush(g_logFile);
+    fprintf(g_logFile, "\tszKeyInfo: %s, digest: %s, subjID\n", szKeyInfo, szDigest, szSubjKeyID);
+    fflush(g_logFile);
+#endif
+
+    sprintf(szTemp, g_szSignedInfo1, bitkeySize, szCertid, serialNo, 
+            szPrincipalType, szIssuerName, szIssuerID);
+    if(!safeTransfer(&p, &iLeft, szTemp))
+        return NULL;
+
+    sprintf(szTemp, g_szValidity, szNotBefore, szNotAfter);
+    if(!safeTransfer(&p, &iLeft, szTemp))
+        return NULL;
+
+    sprintf(szTemp, g_szSignedInfo2, szSubjName);
+    if(!safeTransfer(&p, &iLeft, szTemp))
+        return NULL;
+
+    if(!safeTransfer(&p, &iLeft, szKeyInfo))
+        return NULL;
+
+    sprintf(szTemp, g_szSignedInfoDigest, szDigest);
+    if(!safeTransfer(&p, &iLeft, szTemp))
+        return NULL;
+
+    sprintf(szTemp, g_szSignedInfo3, szSubjKeyID);
+    if(!safeTransfer(&p, &iLeft, szTemp))
+        return NULL;
+
+    szSignedInfo= XMLCanonicalizedString(rgBuf);
+
+#ifdef  QUOTETEST
+    fprintf(g_logFile, "formatSignedInfo, Canonicalized: %s\n", szSignedInfo);
+#endif
+    return szSignedInfo;
+}
+
+
+
+// ---------------------------------------------------------------------------
+
+

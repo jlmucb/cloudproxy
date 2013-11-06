@@ -35,7 +35,7 @@ LINK=       g++
 dobjs=      $(B)/cryptUtility.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/aes.o \
 	    $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o $(B)/encapsulate.o \
 	    $(B)/keys.o $(B)/sha1.o $(B)/hashprep.o $(B)/jlmUtility.o \
-	    $(B)/validateEvidence.o $(B)/cert.o $(B)/quote.o $(B)/attest.o $(B)/vault.o \
+	    $(B)/validateEvidence.o $(B)/cert.o $(B)/attest.o $(B)/vault.o \
 	    $(B)/signedAssertion.o $(B)/accessControl.o $(B)/taoAttest.o \
 	    $(B)/cryptoHelper.o $(B)/fastArith.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/fileHash.o $(B)/encryptedblockIO.o $(B)/resource.o \
@@ -125,9 +125,6 @@ $(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
 
 $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(CLM) -I$(SCD) -I$(ACC) -I$(SBM) -c -o $(B)/cert.o $(CLM)/cert.cpp
-
-$(B)/quote.o: $(CLM)/quote.cpp $(CLM)/quote.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CLM) -I$(TAO) -I$(TSC) -I$(TPM) -I$(SBM) -c -o $(B)/quote.o $(CLM)/quote.cpp
 
 $(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CLM) -I$(TAO) -I$(TSC) -I$(TPM) -I$(SBM) -c -o $(B)/attest.o $(CLM)/attest.cpp

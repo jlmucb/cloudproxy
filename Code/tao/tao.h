@@ -285,6 +285,10 @@ public:
     bool                StartHostedProgram(const char* name, int nArgs, char** av, 
                                            int* phandle);
 
+    const char*         GetCertificateString();
+    const char*         GetEvidenceString();
+
+
     bool                GetPolicyKey();
     bool                GetEntropy(int size, byte* buf);
     bool                Seal(int hostedMeasurementSize, byte* hostedMeasurement,

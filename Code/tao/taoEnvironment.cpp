@@ -852,6 +852,26 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
 }
 
 
+const char* taoEnvironment::GetCertificateString()
+{
+    if(m_myCertificate==NULL) {
+        fprintf(g_logFile, "GetCertificateString: Host certificate empty\n");
+        return NULL;
+    }
+    return strdup((const char*) m_myCertificate);
+}
+
+
+const char* taoEnvironment::GetEvidenceString()
+{
+    if(m_ancestorEvidence==NULL) {
+        fprintf(g_logFile, "GetCertificateString: Host evidence empty\n");
+        return NULL;
+    }
+    return strdup((const char*) m_ancestorEvidence);
+}
+
+
 // -------------------------------------------------------------------------
 
 

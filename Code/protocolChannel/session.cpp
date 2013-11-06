@@ -1123,7 +1123,7 @@ bool session::getClientCert(const char* szXml)
         fprintf(g_logFile, "session::getClientCert: invalid policy key\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "session::getClientCert: Validating cert chain\n");
     fflush(g_logFile);
 #endif
@@ -1487,7 +1487,7 @@ bool session::computeClientKeys()
         return false;
    }
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile,"session::computeClientKeys()\n");
     PrintBytes("client rand: ",  m_rguClientRand, SMALLNONCESIZE);
     PrintBytes("server rand: ",  m_rguServerRand, SMALLNONCESIZE);
@@ -1870,7 +1870,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
             throw "session::clientprotocolNego: Cant send IV\n";
         fc.fsendIVSent= true;
 
-#ifdef  TEST
+#ifdef  TEST1
         fprintf(g_logFile, "session::clientprotocolNego: Encrypted mode on\n");
         PrintBytes((char*)"Received IV: ", fc.lastgetBlock, AES128BYTEBLOCKSIZE);
         PrintBytes((char*)"Sent     IV: ", fc.lastsendBlock, AES128BYTEBLOCKSIZE);
@@ -1886,7 +1886,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
             throw  "session::clientprotocolNego: Can't decode server message 2";
 
         // do hashes match?
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "session::clientprotocolNego: server hashes\n");
         PrintBytes("Computed: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
         PrintBytes("Received: ", m_rgDecodedServerMessageHash, SHA256DIGESTBYTESIZE);
@@ -2201,7 +2201,6 @@ bool session::serverprotocolNego(int fd, safeChannel& fc)
 
 #ifdef TEST
         fprintf(g_logFile, "session::serverprotocolNego: protocol negotiation complete\n");
-        printMe();
         fflush(g_logFile);
 #endif
 

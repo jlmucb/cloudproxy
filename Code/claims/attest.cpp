@@ -47,7 +47,7 @@
 const char* g_AttestTemplate=
 "<Attest format=\"xml\" type=\"%s\">\n"\
 "  <ds:CanonicalizationMethod Algorithm=\"http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#\"/>\n"\
-"  <CodeDigest Algorithm=\"%s\">%s</CodeDigest>\n"\
+"%s"\
 "  <AttestedValue>%s</AttestedValue>\n"\
 "  <Attestation Algorithm=\"%s\">%s</Attestation>\n"\
 "      %s\n"\
@@ -55,6 +55,13 @@ const char* g_AttestTemplate=
 "%s\n"\
 "  </InterpretationHint>\n"\
 "</Attest>\n";
+
+
+const char* g_sha256codeDigestTemplate=
+"<CodeDigest Algorithm=\"%s\">%s</CodeDigest>\n";
+
+const char* g_TpmcodeDigestTemplate=
+"<CodeDigest Algorithm=\"%s\" locality=\"%d\" pcrMask= \"%d\">%s</CodeDigest>\n";
 
 
 const char* g_AttestInfoTemplate=
@@ -142,6 +149,13 @@ Attestation::Attestation()
     m_pNodeAttestation= NULL;
     m_pNodeattestingKeyInfo= NULL;
     m_pNodeInterpretationHint= NULL;
+    m_locality= 0x1f;
+#ifdef PCR18
+    m_pcrMask= 0x060000;
+#else
+    m_pcrMask= 0x020000;
+#endif
+
 }
 
 
@@ -212,6 +226,32 @@ bool Attestation::setTypeDigest(char const* szDigest)
 }
 
 
+bool Attestation::setLocality(int loc)
+{
+    m_locality= loc;
+    return true; 
+}
+
+
+int  Attestation::getLocality()
+{
+    return m_locality;
+}
+
+
+bool Attestation::setpcrMask(u32 loc)
+{
+    m_pcrMask= loc;
+    return true; 
+}
+
+
+u32  Attestation::getpcrMask()
+{
+    return m_pcrMask;
+}
+
+
 bool  Attestation::init(const char* attestation)
 {
     TiXmlElement*   pRootElement= NULL;
@@ -220,7 +260,7 @@ bool  Attestation::init(const char* attestation)
     const char*     szA= NULL;
     
 #ifdef TEST
-    fprintf(g_logFile, "Attestation::init()\n%s\n", attestation);
+    fprintf(g_logFile, "Attestation::init()\n");
     fflush(g_logFile);
 #endif
     if(attestation==NULL) {
@@ -275,6 +315,16 @@ bool  Attestation::init(const char* attestation)
         return false;
     }
     m_typeDigest= strdup(szA);
+    if(strcmp(szA, "TPM12Digest")==0) {
+        szA= ((TiXmlElement*) pNode)->Attribute ("locality");
+        if(szA!=NULL) {
+            m_locality= atoi(szA);
+        }
+        szA= ((TiXmlElement*) pNode)->Attribute ("pcrMask");
+        if(szA!=NULL) {
+            m_pcrMask= atoi(szA);
+        }
+    }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
     if(pNode1==NULL) {
         fprintf(g_logFile, "Attestation::init: No CodeDigest value\n");
@@ -579,13 +629,16 @@ const char* Attestation::getHint()
 
 
 #define MAXATTESTSIZE 8192
+#define MAXDIGESTELEMENTSIZE 256
 
 
 const char* Attestation::encodeAttest()
 {
     char        szAttestation[MAXATTESTSIZE];
+    char        szDigestElement[MAXDIGESTELEMENTSIZE];
     const char* szhint= "";
     int         size= 0;
+    int         sizeD= 0;
 
     if(!convertfromBinary()) {
         fprintf(g_logFile, "Attestation::encodeAttest: no attestedTo\n");
@@ -601,8 +654,36 @@ const char* Attestation::encodeAttest()
         fprintf(g_logFile, "Attestation::encodeAttest: missing value\n");
         return false;
     }
-    size= strlen(g_AttestTemplate)+strlen("CP1")+strlen("SHA256")+
-          strlen(m_szcodeDigest)+strlen(m_szattestedValue)+strlen(m_szAttestalg)+
+    if(m_typeDigest==NULL) {
+        fprintf(g_logFile, "Attestation::encodeAttest: missing digest type\n");
+        return false;
+    }
+
+    if(strcmp(m_typeDigest, "Sha256FileHash")==0) {
+        sizeD= strlen(g_sha256codeDigestTemplate)+strlen(m_szcodeDigest)+16;
+        if(sizeD>=MAXDIGESTELEMENTSIZE) {
+            fprintf(g_logFile, "Attestation::encodeAttest: digest size too large\n");
+            return false;
+        }
+        sprintf(szDigestElement, g_sha256codeDigestTemplate, 
+                    "Sha256FileHash", m_szcodeDigest);
+    }
+    else if(strcmp(m_typeDigest, "TPM12Digest")==0) {
+        sizeD= strlen(g_TpmcodeDigestTemplate)+strlen(m_szcodeDigest)+24;
+        if(sizeD>=MAXDIGESTELEMENTSIZE) {
+            fprintf(g_logFile, "Attestation::encodeAttest: digest size too large\n");
+            return false;
+        }
+        sprintf(szDigestElement, g_TpmcodeDigestTemplate,
+                    "TPM12Digest", m_locality, m_pcrMask, m_szcodeDigest);
+    }
+    else {
+        fprintf(g_logFile, "Attestation::encodeAttest: unknown digest type\n");
+        return false;
+    }
+
+    size= strlen(g_AttestTemplate)+strlen("CP1")+strlen(szDigestElement)+
+          strlen(m_szattestedValue)+strlen(m_szAttestalg)+
           strlen(m_szattestation)+strlen(szhint);
     if((size+32)>MAXATTESTSIZE) {
         fprintf(g_logFile, "Attestation::encodeAttest: attestation too large\n");
@@ -612,7 +693,7 @@ const char* Attestation::encodeAttest()
     if(szhint==NULL)
         szhint= " ";
 
-    sprintf(szAttestation, g_AttestTemplate, "CP1", m_typeDigest, m_szcodeDigest, 
+    sprintf(szAttestation, g_AttestTemplate, "CP1", szDigestElement,
             m_szattestedValue, m_szAttestalg, m_szattestation, m_szKeyInfo, szhint);
     return canonicalizeXML(szAttestation);
 }
@@ -637,7 +718,7 @@ bool Attestation::checkAttest(KeyInfo* pKeyInfo)
         return false;
     }
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "checkAttest alg: %s\n", m_szAttestalg);
     PrintBytes("Code digest: ", m_codeDigest, m_sizecodeDigest);
     PrintBytes("Attested to: ", m_attestedTo, m_sizeattestedTo);

@@ -235,8 +235,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
     }
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::EnvInit, host: %s\n\tkeynames: %s, %s, %s\n",
-            m_machine, m_szPrivateKeyName, 
-            m_szPrivateSubjectName, m_szPrivateSubjectId);
+            m_machine, m_szPrivateKeyName, m_szPrivateSubjectName, m_szPrivateSubjectId);
 #endif
 
     // Host should already be initialized
@@ -346,7 +345,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         }
         memcpy(m_myMeasurement, codeDigest, m_myMeasurementSize);
         m_myMeasurementValid= true;
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "taoEnvironment::EnvInit, got measurement %d %d\n",
                 codeDigestType, sizeCodeDigest);
         PrintBytes("        Measurement:\n", m_myMeasurement, 
@@ -535,7 +534,7 @@ bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
     n+= sizeof(int);
     memcpy(&tmpout[n], hostedMeasurement, hostedMeasurementSize);
     n+= hostedMeasurementSize;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Sealing data length %d\n", sizetoSeal);
 #endif
     memcpy(&tmpout[n], &sizetoSeal, sizeof(int));
@@ -555,7 +554,10 @@ bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
         return false;
     }
 
+#ifdef TEST1
     PrintBytes("Encrypted Blob: ", sealed, *psizeSealed);
+    fflush(g_logFile);
+#endif
     return true;
 }
 
@@ -575,7 +577,7 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
         fprintf(g_logFile, "taoEnvironment::Unseal, seal key invalid\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Attempting decryption\n");
     fflush(g_logFile);
 #endif
@@ -593,10 +595,6 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
     // tmpout is hashsize||hash||sealdatasize||sealeddata
     memcpy(&hashsize, &tmpout[n], sizeof(int));
     n+= sizeof(int);
-#ifdef TEST
-    fprintf(g_logFile, "Got hashsize = %d\n", hashsize);
-    fflush(g_logFile);
-#endif
 
     if(hashsize!=hostedMeasurementSize) {
         fprintf(g_logFile, "Wrong measurement size: %d vs %d\n", hashsize,
@@ -607,7 +605,7 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
         fflush(g_logFile);
     }
     
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "tmpout is %p\n", tmpout);
     fprintf(g_logFile, "Comparing %p with %p of length %d\n", tmpout + n,
             hostedMeasurement, hashsize);
@@ -671,7 +669,7 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
     memset(bnMsg.m_pValue, 0, m_publicKeyBlockSize);
     memset(bnOut.m_pValue, 0, m_publicKeyBlockSize);
     revmemcpy((byte*)bnMsg.m_pValue, rgToSign, m_publicKeyBlockSize);
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::Attest about to decrypt, blocksize: %d\n", 
             m_publicKeyBlockSize);
     PrintBytes((char*)"ToSign: ", rgToSign, m_publicKeyBlockSize);

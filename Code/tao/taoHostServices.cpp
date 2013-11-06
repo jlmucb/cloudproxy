@@ -180,7 +180,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
         fprintf(g_logFile, "taoHostServices::HostInit: cant get attesting key from cert\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoHostServices::Hostinit, attesting key\n%s\n", szattestingkey);
     fflush(g_logFile);
 #endif
@@ -568,15 +568,6 @@ const char* taoHostServices::makeAttestation(int sizetoAttest, byte* toAttest,
     }
     revmemcpy(attestation, revattestation, sizeAttestation);
 
-#ifdef TEST
-    int   sized= 1024;
-    byte  deAttest[1024];
-    ((RSAKey*)m_attestingPublicKey)->printMe();
-    PrintBytes("Attested\n", attestation, sizeAttestation);
-    RSAEncrypt(*(RSAKey*)m_attestingPublicKey, sizeAttestation, attestation, &sized, deAttest);
-    PrintBytes("deAttested\n", deAttest, sized);
-#endif
-
     // set up data
     if(m_attestingPublicKey==NULL) {
         fprintf(g_logFile, "taoHostServices::makeAttestation: host attesting key empty\n");
@@ -639,7 +630,7 @@ const char* taoHostServices::makeAttestation(int sizetoAttest, byte* toAttest,
     }
 
     const char* szAttest= oAttestation.encodeAttest();
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoHostServices::makeAttestation, constructed attest\n%s\n", szAttest);
     fflush(g_logFile);
 #endif

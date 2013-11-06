@@ -377,7 +377,7 @@ const char* g_szResponse=
 bool serverCertNegoMessage1(int maxSize, char* buf, const char* szStatus,
                            const char* szErrorCode, const char* szCert)
 {
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "serverCertNegoMessage1(%s %s %s\n", szStatus, szErrorCode, szCert);
 #endif
     int iSize= strlen(g_szResponse);
@@ -418,7 +418,7 @@ bool getDatafromClientCertMessage1(char* buf, char** pszpolicyKeyId,
     int             phase, count;
     bool            fRet= true;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "getDatafromClientCertMessage1\n%s\n", buf);
 #endif
     try {
@@ -510,7 +510,7 @@ char* insertMiddle(const char* szName, const char* pS, const char* pE, const cha
     const char*   p= szName;
     char*   q= szNewName;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "insertMiddle: %s, %s, %s, %s\n",
             szName,  pS, pE, newStr);
     fflush(g_logFile);
@@ -526,7 +526,7 @@ char* insertMiddle(const char* szName, const char* pS, const char* pE, const cha
         *(q++)= *(p++);
     *q= 0;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "insertMiddlereturns %s\n", newStr);
     fflush(g_logFile);
 #endif
@@ -541,7 +541,7 @@ char* replaceKeywithProgram(const char* szKeyName)
     const char*   replaced= "Keys";
     const char*   replacedBy= "Programs/";
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "replaceKeywithProgram(%s)\n", szKeyName);
     fflush(g_logFile);
 #endif
@@ -735,12 +735,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szAttest,
 
 #ifdef  TEST
     fprintf(g_logFile, "validateRequestandIssue\n");
-    fprintf(g_logFile, "Policy key: %s\n", szPolicyKeyId);
-    fprintf(g_logFile, "Attest: %s\n", szAttest);
-    if(szEvidence!=NULL)
-        fprintf(g_logFile, "Evidence: %s\n", szEvidence);
-    else
-        fprintf(g_logFile, "Evidence: none\n");
+    fflush(g_logFile);
 #endif
 
     // get policy key
@@ -750,17 +745,6 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szAttest,
         fRet= false;
         goto cleanup;
     }
-
-
-#ifdef  TEST
-    fflush(g_logFile);
-    fprintf(g_logFile, "about to init attestation\n");
-    fprintf(g_logFile, "Attest: %s\n", szAttest);
-    if(szEvidence!=NULL)
-        fprintf(g_logFile, "Evidence: %s\n", szEvidence);
-    else
-        fprintf(g_logFile, "Evidence: none\n");
-#endif
 
     // initialize Attest object
     if(!oAttest.init(szAttest, szEvidence, (KeyInfo*) pKey)) {
@@ -778,7 +762,7 @@ bool validateRequestandIssue(const char* szPolicyKeyId, const char* szAttest,
                                       &szdigestAlg, &sizecodeDigest,
                                       codeDigest, &szHint);
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes("attestation: ", attestValue, sizeattestValue);
     fflush(g_logFile);
 #endif

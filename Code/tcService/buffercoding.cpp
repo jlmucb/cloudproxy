@@ -355,9 +355,6 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(int* pnargs, char** args, const byte* buf)
     fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP: starting\n");
 #endif 
     memcpy(&m, &buf[n], sizeof(int));
-#ifdef TEST
-    fprintf(g_logFile, "Got argc %d\n", m);
-#endif 
     if(m>*pnargs) {
         fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP too few args avail\n");
         return false;

@@ -137,11 +137,10 @@ bool taoAttest::init(u32 type, const char *attestation, const char *attestEviden
         return false;
     }
     
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoAttest::init, attestation\n%s\nEvidence\n%s\n", 
             attestation, attestEvidence);
     fprintf(g_logFile, "Policy Key\n");
-    ((RSAKey*)policyKey)->printMe();
     fflush(g_logFile);
 #endif
 
@@ -231,7 +230,7 @@ bool taoAttest::verifyAttestation()
         fprintf(g_logFile, "taoAttest::verifyAttestation: can't get quoting key from Cert\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoAttest::verifyAttestation: quote key\n");
     m_pquoteKey->printMe();
     fflush(g_logFile);
@@ -240,7 +239,7 @@ bool taoAttest::verifyAttestation()
     // finally, check attestation
     fRet= checkXMLQuote(m_szQuoteAlg, m_szCanonicalQuotedBody, m_sznonce,
                 m_szdigest, m_pquoteKey, m_szQuoteValue);
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoAttest::verifyAttestation: checkXMLQuote succeeds\n");
     m_pquoteKey->printMe();
     fflush(g_logFile);
@@ -250,7 +249,7 @@ bool taoAttest::verifyAttestation()
         fprintf(g_logFile, "taoAttest::verifyAttestation: can't verify evidence list \n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoAttest::verifyAttestation: evidence valid\n");
     fflush(g_logFile);
 #endif
@@ -280,11 +279,10 @@ bool  taoAttest::init(const char *attestation,
         return false;
     }
     
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoAttest::init, attestation\n%s\nEvidence\n%s\n", 
             attestation, attestEvidence);
     fprintf(g_logFile, "Policy Key\n");
-    ((RSAKey*)policyKey)->printMe();
     fflush(g_logFile);
 #endif
 
@@ -348,7 +346,7 @@ bool  taoAttest::verifyAttestation(int* psizeattestValue, byte* attestValue,
         fprintf(g_logFile, "taoAttest::verifyAttestation: can't get attest key from Cert\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoAttest::verifyAttestation: attest key\n");
     m_pattestingKey->printMe();
     fflush(g_logFile);

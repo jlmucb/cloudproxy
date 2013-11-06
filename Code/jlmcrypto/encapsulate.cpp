@@ -433,7 +433,7 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         m_intKey= (byte*) malloc(m_sizeIntKey);
     }
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"\nEncapsulatedMessage::unSealKey, sealed key\n", sealed, sizeSealed);
     fprintf(g_logFile, "PrivateKey:\n");
     sealingKey->printMe();
@@ -446,7 +446,7 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         return false;
     }
     revmemcpy(padded, (byte*)bnOut.m_pValue, blocksize);
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"EncapsulatedMessage::unSealKey, padded\n", padded, blocksize);
 #endif
 

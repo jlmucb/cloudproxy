@@ -474,9 +474,6 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
                 return false;
             }
             m_iByteSizeM= iOutLen;
-#ifdef TEST
-            fprintf(g_logFile, "Outlen %d\n%s\n", iOutLen, szRsaKeyM);
-#endif
         }
 
         iOutLen= GLOBALMAXPUBKEYSIZE;

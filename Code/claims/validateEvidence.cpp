@@ -412,7 +412,7 @@ int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* p
             throw("VerifySignedEvidence: can't get validity period\n");
         }
         if(!checktimeinInterval(*pt, notBefore, notAfter)) {
-#ifdef TEST
+#ifdef TEST1
             printTime(pt);
             printTime(&notBefore);
             printTime(&notAfter);
@@ -818,11 +818,6 @@ const char* s_EvidenceListStop= "</EvidenceList>\n";
 
 char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport)
 {
-#ifdef TEST
-    fprintf(g_logFile, "evidence\n%s\nsupport:\n%s\n", szEvidence, szEvidenceSupport);
-    fflush(g_logFile);
-#endif
-
     if(szEvidence==NULL) {
         return NULL;
     }

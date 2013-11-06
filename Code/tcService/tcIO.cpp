@@ -150,26 +150,17 @@ bool tcChannel::OpenBuf(u32 type, const char* deviceName,
       case SERVERSIDEUNIXSTREAMMASTER:
         if(file==NULL)
             return false;
-#ifdef TEST
-        fprintf(g_logFile, "OpenBuf %s, master server\n", file);
-#endif
         if(!openserver(&m_fd, file, (struct sockaddr*)&m_serveraddr)) {
             fprintf(g_logFile, "Can't open server\n");
             return false;
         }
         return true;
       case SERVERSIDEUNIXSTREAMSLAVE:
-#ifdef TEST
-        fprintf(g_logFile, "OpenBuf slave server\n");
-#endif
         m_fd= fd;
         return true;
       case CLIENTSIDEUNIXSTREAM:
         if(file==NULL)
             return false;
-#ifdef TEST
-        fprintf(g_logFile, "OpenBuf %s, client\n", file);
-#endif
         if(!openclient(&m_fd, file, (struct sockaddr*)&m_serveraddr)) {
             fprintf(g_logFile, "Can't open client\n");
             return false;
@@ -186,10 +177,6 @@ bool tcChannel::OpenBuf(u32 type, const char* deviceName,
 
 int tcChannel::WriteBuf(byte* buf, int size)
 {
-#ifdef TEST
-    fprintf(g_logFile, "tcChannel::WriteBuf channel is %d\n", m_fd);
-    fflush(g_logFile);
-#endif
 #ifdef TCIODEVICEDRIVERPRESENT
     return write(m_fd, buf, size);
 #else

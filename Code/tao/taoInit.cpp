@@ -155,7 +155,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
         return false;
     }
     m_serializedpublicKeySize= strlen(m_serializedpublicKey)+1;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "generateandcertifyKey, serialized public key\n%s\n", 
             m_serializedpublicKey);
     fflush(g_logFile);
@@ -180,7 +180,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
         fprintf(g_logFile, "taoInit::generateandcertifyKey: can't initialize attestInfor from string\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "generateandcertifyKey, attestInfo\n%s\n", szAttestInfo);
     fflush(g_logFile);
 #endif
@@ -202,7 +202,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
         }
         break;
     }
-#ifdef TEST
+#ifdef TEST1
     PrintBytes("attestInfo hash: ", attestInfoHash, sizeHash);
     fflush(g_logFile);
 #endif
@@ -219,7 +219,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
         free((char*)szAttestInfo);
         szAttestInfo= NULL;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoInit::generateandcertifyKey: attestation\n%s\n", szAttestation);
     fflush(g_logFile);
 #endif
@@ -232,7 +232,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
     }
     szHostEvidence= m_myHost->GetEvidenceString();
     szEvidence= consttoEvidenceList(szHostCert, szHostEvidence);
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoInit::generateandcertifyKey: cert\n%s\nHost evidence:\n%s\n", 
             szHostCert, szHostEvidence);
     fprintf(g_logFile, "Final evidence:\n%s\n", szEvidence);
@@ -264,10 +264,6 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
     m_myCertificateValid= true;
     m_myCertificateType= EVIDENCECERT;
     m_myCertificateSize= strlen(m_myCertificate)+1;
-#ifdef TEST
-    fprintf(g_logFile, "taoInit::generateandcertifyKey: my Cert\n%s\n", m_myCertificate);
-    fflush(g_logFile);
-#endif
 
     // Serialize private key
     m_szserializedPrivateKey= pKey->SerializetoString();
@@ -275,7 +271,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
         fprintf(g_logFile, "taoInit::generateandcertifyKey: Can't serialize private key\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, 
             "generateandcertifyKey returns true, serialized private key\n%s\n",
             m_szserializedPrivateKey);
@@ -303,10 +299,6 @@ bool taoInit::initKeys(u32 symType, u32 pubkeyType, const char* szKeyName,
     if(!fRet)
         goto cleanup;
 
-#ifdef TEST
-    fprintf(g_logFile, "taoInit::initKeys succeeded, public key\n%s\n", 
-            m_serializedpublicKey);
-#endif
 cleanup:
     // if false clean up private key and cert
     return fRet;

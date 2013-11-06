@@ -76,6 +76,8 @@ private:
     byte*           m_attestedTo;
     int             m_sizeattestation;
     byte*           m_attestation;
+    int             m_locality;
+    u32             m_pcrMask;
 
 public:
     Attestation();
@@ -101,6 +103,10 @@ public:
     bool            setHint(const char* hint);
     const char*     getHint();
     const char*     getbase64codeDigest();
+    bool            setLocality(int loc);
+    int             getLocality();
+    bool            setpcrMask(u32 loc);
+    u32             getpcrMask();
 
 
     bool            converttoBinary();

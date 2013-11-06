@@ -144,10 +144,6 @@ int theServiceChannel::processRequests()
             return -1;
         }
 
-#ifdef TEST
-        fprintf(g_logFile, "parsed oReq from request: %s\n", request);
-#endif
-
         if(oReq.m_szResourceName==NULL) {
             fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");
             return -1;
@@ -349,10 +345,6 @@ fileServer::~fileServer()
 
 bool fileServer::initPolicy()
 {
-#ifdef TEST1
-    fprintf(g_logFile, "fileServer::initPolicy\n");
-    fflush(g_logFile);
-#endif
     if(!m_tcHome.isValid()) {
         fprintf(g_logFile, "fileServer::initPolicy(): environment invalid\n");
         return false;
@@ -475,8 +467,7 @@ bool fileServer::initFileKeys()
     }
 
 #ifdef  TEST
-    fprintf(g_logFile, "initFileKeys\n");
-    PrintBytes("fileKeys\n", m_fileKeys, m_sizeKey);
+    fprintf(g_logFile, "initFileKeyscomplete\n");
     fflush(g_logFile);
 #endif
     return true;

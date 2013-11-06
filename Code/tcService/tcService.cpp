@@ -469,9 +469,6 @@ char* programNamefromFileName(const char* fileName)
         *(p++)= *(r++);
     *p= '\0';
     q= strdup(progNameBuf);
-#ifdef TEST
-    fprintf(g_logFile, "fileName: %s, progname: %s\n", fileName, q);
-#endif
     return q;
 }
 
@@ -486,7 +483,6 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
     int             size= SHA256DIGESTBYTESIZE;
     byte            rgHash[SHA256DIGESTBYTESIZE];
     int             pid= 0;
-    int             i;
     int             uid= -1;
     const char*     szsys= "qemu:///system";
     const char*     vmName= NULL;
@@ -508,8 +504,6 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
     //      av[4] is image file
 #ifdef TEST
     fprintf(g_logFile, "tcServiceInterface::StartApp(VM), %d args\n", an);
-    for(i=0;i<an;i++)
-       fprintf(g_logFile, "\tav[%d]: %s\n", i, av[i]);
 #endif
 
     // lock file
@@ -580,15 +574,6 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(int procid, int an, const char** a
         return TCSERVICE_RESULT_FAILED;
     }
 
-#ifdef TEST
-        fprintf(g_logFile, "uid of VM is %d\n", uid);
-        PrintBytes((char*)"Hash of image is: ", rgHash, 32);
-        fprintf(g_logFile, "\n");
-        fflush(g_logFile);
-        fprintf(g_logFile, "xml to start vm:\n%s\n", buf);
-        fflush(g_logFile);
-#endif
-
     {
 
        virConnectPtr    vmconnection= NULL;
@@ -637,14 +622,12 @@ TCSERVICE_RESULT tcServiceInterface::StartApp(tcChannel& chan,
     int     size= SHA256DIGESTBYTESIZE;
     byte    rgHash[SHA256DIGESTBYTESIZE];
     int     child= 0;
-    int     i;
     int     uid= -1;
     const char* execName= NULL;
 
 #ifdef TEST
     fprintf(g_logFile, "tcServiceInterface::StartApp, %d args\n", an);
-    for(i=0;i<an;i++)
-       fprintf(g_logFile, "\tav[%d]: %s\n", i, av[i]);
+    fflush(g_logFile);
 #endif
 
     // av[0] is file to execute
@@ -815,9 +798,6 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
 #endif
     if(!m_procTable.gethashfromprocId(procid, &hashSize, rgHash)) {
         fprintf(g_logFile, "tcServiceInterface::AttestFor lookup failed\n");
-#ifdef TEST
-        m_procTable.print();
-#endif
         return TCSERVICE_RESULT_FAILED;
     }
 #ifdef TEST
@@ -829,8 +809,9 @@ TCSERVICE_RESULT tcServiceInterface::AttestFor(int procid, int sizeIn, byte* rgI
         fprintf(g_logFile, "tcServiceInterface::AttestFor trustedHome AtitestFor failed\n");
         return TCSERVICE_RESULT_FAILED;
     }
-#ifdef TEST
-        fprintf(g_logFile, "tcServiceInterface::AttestFor succeeded new output buf size %d\n",
+#ifdef TEST1
+        fprintf(g_logFile, 
+                "tcServiceInterface::AttestFor succeeded new output buf size %d\n",
                *psizeOut);
         PrintBytes((char*)"Attest value: ", rgOut, *psizeOut);
 #endif
@@ -872,6 +853,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 
 #ifdef TEST
     fprintf(g_logFile, "Entering serviceRequest\n");
+    fflush(g_logFile);
 #endif
 
     // get request
@@ -934,11 +916,6 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
             chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
             return false;
         }
-#ifdef TEST
-       fprintf(g_logFile, "serviceRequest: TCSERVICEGETOSHASHFROMTCSERVICE type %d, size %d\n",
-        uType, size);
-        PrintBytes("OsHash in tc service ", rgBuf, size);
-#endif
         outparamsize= encodeTCSERVICEGETOSHASHFROMTCSERVICE(uType, size, rgBuf, 
                                       PARAMSIZE, outparams);
         if(outparamsize<0) {
@@ -1077,14 +1054,12 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
         sizehash= SHA256DIGESTBYTESIZE;
         uType= SHA256HASH;
         if(!g_myService.m_procTable.gethashfromprocId(pid, &sizehash, hash)) {
-#ifdef TEST
             fprintf(g_logFile, 
                     "hash not found setting to 0; pid: %d, procid: %d, origpid: %d\n",
                     pid, procid, origprocid);
-#endif
             memset(hash, 0, sizehash);
         }
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "program hash for pid found\n");
         PrintBytes("Hash: ", hash, sizehash);
         fflush(g_logFile);
@@ -1175,13 +1150,6 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
       case TCSERVICETERMINATE:  // no reply required
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, TCSERVICETERMINATE\n");
-#endif
-#if 0
-        // should this be proc-id?
-        if(g_servicepid!=origprocid)
-            g_myService.m_procTable.removeprocEntry(origprocid);
-#endif
-#ifdef TEST
         fprintf(g_logFile, "serviceRequest, removeprocEntry %d\n", origprocid);
         g_myService.m_procTable.print();
 #endif
@@ -1215,17 +1183,6 @@ int main(int an, char** av)
 #ifdef KVMTCSERVICE
     virConnectPtr       vmconnection= NULL;
     virDomainPtr        vmdomain= NULL;
-#endif
-
-#ifdef TEST
-    byte    toAttest[32]= {
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    };
-    char* hint= (char*)"<Hello></Hello>\n";
-    const char* szMadeAttest= NULL;
 #endif
 
     // set executable path
@@ -1299,12 +1256,6 @@ int main(int an, char** av)
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after HostInit, pid: %d\n",
             g_servicepid);
-    g_myService.m_host.printData();
-#endif
-#ifdef TEST
-    szMadeAttest= g_myService.m_host.makeAttestation(20, toAttest, hint);
-    fprintf(g_logFile, "MadeAttest\n%s\n", szMadeAttest);
-    fflush(g_logFile);
 #endif
 
     if(fInitKeys) {
@@ -1345,13 +1296,9 @@ int main(int an, char** av)
 #endif
    
 #ifdef TEST
+    fprintf(g_logFile, "tcService main: after EnvInit\n");
     fprintf(g_logFile, "\ntcService main: initprocEntry succeeds\n");
     g_myService.m_procTable.print();
-#endif
-
-#ifdef TEST
-    fprintf(g_logFile, "tcService main: after EnvInit\n");
-    g_myService.m_trustedHome.printData();
     fflush(g_logFile);
 #endif
 
@@ -1371,7 +1318,7 @@ int main(int an, char** av)
 
 #ifdef TEST
     fprintf(g_logFile, "tcService main: tcService ending\n");
-     g_myService.m_procTable.print();
+    g_myService.m_procTable.print();
 #endif
 
 cleanup:

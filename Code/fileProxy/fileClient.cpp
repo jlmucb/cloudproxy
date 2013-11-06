@@ -263,7 +263,7 @@ bool fileClient::initFileKeys()
         m_fKeysValid= true;
     }
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "initFileKeys\n");
     PrintBytes("fileKeys\n", m_fileKeys, m_sizeKey);
     fflush(g_logFile);
@@ -413,11 +413,6 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
 bool fileClient::closeClient()
 {
-#ifdef TEST
-    fprintf(g_logFile,"in closeClient()\n");
-    fflush(g_logFile);
-#endif
-
     if(m_fd>0) {
         close(m_fd);
         m_fd= 0;
@@ -566,9 +561,6 @@ int main(int an, char** av)
                 parentDir.compare(entry->d_name) == 0) {
                 continue;
             }
-#ifdef TEST
-            fprintf(g_logFile, "Got entry with name %s\n", entry->d_name);
-#endif
             if (DT_DIR == entry->d_type) {
                 string path = testPath + string(entry->d_name) + string("/");
                 fileTester ft(path, testFileName);

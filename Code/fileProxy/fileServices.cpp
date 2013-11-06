@@ -142,7 +142,8 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
 
     // add channel principals to table
 #ifdef TEST
-        fprintf(g_logFile, "fileServices::initFileServices, initializing %d channel principals\n",
+        fprintf(g_logFile, 
+                "fileServices::initFileServices, initializing %d channel principals\n",
                 psession->m_iNumPrincipals);
         fflush(g_logFile);
 #endif
@@ -356,9 +357,6 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName,
     int             n;
     const char*     p= szResourceName;
 
-#ifdef TEST
-    fprintf(g_logFile, "translate %s\n", p);
-#endif
     // strip prefix
     n= strlen(m_szPrefix);
    if(strncmp(p, m_szPrefix, n)!=0) {
@@ -371,9 +369,6 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName,
     }
 
     strcpy((char*)szLocation, p);
-#ifdef TEST
-    fprintf(g_logFile, "size: %d %s\n", size, szLocation);
-#endif
     return true;
 }
 
@@ -903,7 +898,7 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
         return false;
     }
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "clientcreateResourceonserver just sent\n%s\n", szBuf);
     fflush(g_logFile);
 #endif

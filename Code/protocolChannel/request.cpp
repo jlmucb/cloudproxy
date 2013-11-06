@@ -193,7 +193,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
         sscanf(szResourceLength, "%d", &m_iResourceLength);
 
 #ifdef TEST
-    fprintf(g_logFile, "Response getdata\n");
+    fprintf(g_logFile, "Request getdata\n");
     printMe();
     fflush(g_logFile);
 #endif
@@ -337,7 +337,7 @@ bool  Response::getDatafromDoc(char* szResponse)
         pNode= pNode->NextSibling();
     }
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Response getdata\n");
     printMe();
     fflush(g_logFile);
@@ -428,10 +428,6 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
 #endif
     for(;;) {
         n= fc.safegetPacket(fileBuf, MAXREQUESTSIZE, &type, &multi, &final);
-#ifdef TEST
-        fprintf(g_logFile, "getFile: received %d bytes\n", n);
-        fflush(g_logFile);
-#endif
         encTimer.Start();
         if(encFile.EncWrite(iWrite, fileBuf, n)<0) {
             fprintf(g_logFile, "getFile: bad write in fileTransfer\n");
@@ -496,10 +492,6 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
         datasize-= n;
         if(datasize<=0)
             final= 1;
-#ifdef  TEST
-        fprintf(g_logFile, "sendFile: safesend %d bytes\n", n);
-        fflush(g_logFile);
-#endif
         fc.safesendPacket(fileBuf, n, type, multi, final);
         if(final>0)
             break;

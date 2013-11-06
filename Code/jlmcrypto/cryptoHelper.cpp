@@ -140,7 +140,7 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
     byte    padded[GLOBALMAXPUBKEYSIZE];
     int     size= GLOBALMAXPUBKEYSIZE;
 
-#ifdef TEST
+#ifdef TEST1
     if(hashType==SHA1HASH)
         PrintBytes((char*)"RSAVerify hash (sha1): ", hash, 20);
     else if(hashType==SHA256HASH)
@@ -150,13 +150,13 @@ bool  RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in)
         fprintf(g_logFile, "RSAVerify: encryption failed\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "RSAVerify modulus size %d\n", key.m_iByteSizeM);
     PrintBytes((char*)"RSAVerify decrypted: ", padded, key.m_iByteSizeM);
 #endif
     if(!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded))
         return false;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "RSAVerify returns true\n");
 #endif
     return true;

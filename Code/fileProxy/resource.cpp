@@ -126,10 +126,6 @@ bool resource::Deserialize(const byte* szObj, int* pi)
     int                     iNumOwners= 0;
     char*                   p= NULL;
 
-#ifdef TEST
-    fprintf(g_logFile, "resource Deserialize\n");
-    fflush(g_logFile);
-#endif
     m_szResourceName= strdup(sz);
     n= strlen(m_szResourceName)+1;
     sz+= n;
@@ -295,7 +291,7 @@ void  resource::printMe()
 
 bool resource::isAnOwner(PrincipalCert* pSubject)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "resource::isAnOwner(%08x)\n", pSubject);
     fflush(g_logFile);
 #endif
@@ -306,19 +302,11 @@ bool resource::isAnOwner(PrincipalCert* pSubject)
         pOwnerPrincipal= pOwnerNode->pElement;
         // Fix: Should check key?
         if(strcmp(pSubject->m_szPrincipalName, pOwnerPrincipal->m_szPrincipalName)==0) {
-#ifdef TEST
-            fprintf(g_logFile, "resource::isAnOwner returns false\n");
-            fflush(g_logFile);
-#endif
             return true;
         }
         pOwnerNode= pOwnerNode->pNext;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "resource::isAnOwner returns false\n");
-    fflush(g_logFile);
-#endif
     return false;
 }
 

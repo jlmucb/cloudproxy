@@ -372,7 +372,6 @@ public:
 };
 
 
-// #include "quote.h"
 #include "attest.h"
 #include "cert.h"
 #include "validateEvidence.h"
@@ -413,28 +412,6 @@ public:
     bool            verifyAttestation(int* psizeattestValue, byte* attestValue,
                                       const char** pdigestalg, int* sizeCodeDigest, 
                                       byte* codeDigest, const char** phint);
-#if 0
-    //these will be deprecated
-    RSAKey*         m_pquoteKey;
-    char*           m_szQuoteInfo;
-    char*           m_szQuoteAlg;
-    char*           m_szCanonicalQuotedBody;
-
-    bool            init(u32 type, const char *attestation,
-                         const char* attestEvidence, KeyInfo* policyKey);
-    bool            verifyAttestation();
-    char*           quoteAlg();
-    char*           quoteInfo();
-    char*           quoteCanonicalQuotedBody();
-    char*           quoteValue();
-    char*           quoteKeyInfo();
-    char*           quotedKeyInfo();
-    char*           quotedKeyName();
-    char*           m_szQuoteValue;
-    char*           m_szQuoteKeyInfo;
-    char*           m_szQuotedKeyInfo;
-    char*           m_szQuotedKeyName;
-#endif
 };
 
 

@@ -28,7 +28,6 @@
 #include "jlmcrypto.h"
 #include "tinyxml.h"
 #include "cert.h"
-#include "quote.h"
 #include "validateEvidence.h"
 #include "cryptoHelper.h"
 #include "sha256.h"
@@ -55,7 +54,6 @@ TiXmlNode* getParseRoot(int evidenceType, void* pObject)
 {
     TiXmlNode*          nodeRoot= NULL;
     PrincipalCert*      pCert= (PrincipalCert*) pObject;
-    Quote*              pQuote= (Quote*) pObject;
 #ifdef ASSERTIONSALLOWED
     SignedAssertion*    pAssert= (SignedAssertion*) pObject;
 #endif
@@ -73,9 +71,6 @@ TiXmlNode* getParseRoot(int evidenceType, void* pObject)
 #endif
       case PRINCIPALCERT:
         nodeRoot= (TiXmlNode*) pCert->m_pRootElement;
-        break;
-      case QUOTECERTIFICATE:
-        nodeRoot= pQuote->m_doc.RootElement();
         break;
     }
     return nodeRoot;
@@ -87,7 +82,6 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
     TiXmlNode*          nodeRoot= NULL;
     TiXmlNode*          nodeSignedInfo=  NULL;
     PrincipalCert*      pCert= (PrincipalCert*) pObject;
-    Quote*              pQuote= (Quote*) pObject;
 #ifdef ASSERTIONSALLOWED
     SignedAssertion*    pAssert= (SignedAssertion*) pObject;
 #endif
@@ -111,10 +105,6 @@ TiXmlNode* getChainElementSignedInfo(int evidenceType, void* pObject)
         if(nodeRoot==NULL)
             return NULL;
         nodeSignedInfo= Search(nodeRoot, "ds:SignedInfo");
-        break;
-      case QUOTECERTIFICATE:
-        nodeRoot= pQuote->m_doc.RootElement();
-        nodeSignedInfo= Search(nodeRoot, "QuotedInfo");
         break;
     }
     if(nodeSignedInfo==NULL) {
@@ -188,8 +178,6 @@ char* getChainElementSignatureAlgorithm(TiXmlNode* node, int evidenceType)
     // <ds:SignatureMethod 
     //   Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
     // <ds:SignatureMethod 
-    //   Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#" />
-    // <ds:QuoteMethod Algorithm="Quote-Sha256FileHash-RSA1024" />
     return strdup(((TiXmlElement*)nodeSigAlg)->Attribute("Algorithm"));
 }
 
@@ -295,12 +283,6 @@ char* getChainElementSignatureValue(int evidenceType, void* pObject)
             return NULL;
         nodeSignatureValue= Search(nodeSignedInfo, "ds:SignatureValue");
         break;
-      case QUOTECERTIFICATE:
-        nodeSignedInfo= getChainElementSignedInfo(evidenceType, pObject);
-        if(nodeSignedInfo==NULL)
-            return NULL;
-        nodeSignatureValue= Search(nodeSignedInfo, "QuoteValue");
-        break;
     }
     if(nodeSignatureValue==NULL) {
         fprintf(g_logFile, "Cant find SignatureValue\n");
@@ -365,7 +347,7 @@ KeyInfo* getChainElementSubjectKey(int evidenceType, void* pObject)
  *      PrincipalName, PrincipalType and Purpose, in addition to the other
  *      items.
  *
- *      The topmost certificate can be a PrincipalCert, Quote or
+ *      The topmost certificate can be a PrincipalCert or
  *      SignedGrant.
  *
  *      VerifyChain confirms the key chain, verifies the ValidityPeriod,

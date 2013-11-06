@@ -39,7 +39,6 @@
 #include "mpFunctions.h"
 #include "modesandpadding.h"
 #include "cert.h"
-//#include "quote.h"
 #include "attest.h"
 #include "cryptoHelper.h"
 #include "hashprep.h"
@@ -72,8 +71,6 @@
 #define HASHFILE                  13
 #define MAKEPOLICYKEYFILE         14
 #define MAKESERVICEHASHFILE       15
-// #define VERIFYQUOTE               16
-// #define QUOTE                     17
 #define ENCAPSULATE               18
 #define DECAPSULATE               19
 #define VALIDATECHAIN             20

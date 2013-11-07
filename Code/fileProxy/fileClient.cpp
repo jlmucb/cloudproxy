@@ -146,7 +146,7 @@ bool fileClient::initPolicy()
         fprintf(g_logFile, "fileClient::initPolicy(): environment invalid\n");
         return false;
     }
-    if(!m_tcHome.m_policyKeyValid)  {
+    if(!m_tcHome.m_policyCertValid)  {
         fprintf(g_logFile, "fileClient::initPolicy(): policyKey invalid\n");
         return false;
     }
@@ -368,7 +368,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
             throw( "fileClient::Init: Can't connect");
 
         // this section should move to the tao
-        if(!m_opolicyCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) 
+        if(!m_opolicyCert.init(m_tcHome.m_szpolicyCert))
           throw("fileClient::Init:: Can't init policy cert 1\n");
         if(!m_opolicyCert.parsePrincipalCertElements())
           throw("fileClient::Init:: Can't init policy key 2\n");
@@ -377,7 +377,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
 
         // m_tcHome.m_policyKeyValid must be true
-        if(!m_clientSession.clientInit(reinterpret_cast<char*>(m_tcHome.m_policyKey), 
+        if(!m_clientSession.clientInit(m_tcHome.m_szpolicyCert, 
                                    ppolicyKey, m_tcHome.m_myCertificate, 
                                    (RSAKey*)m_tcHome.m_privateKey)) 
             throw("fileClient::Init: Can't init policy key 3\n");

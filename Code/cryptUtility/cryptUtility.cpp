@@ -605,7 +605,7 @@ bool MakePolicyFile(const char* szKeyFile, const char* szOutFile, const char* sz
         }
     }
     fprintf(out, "0x00\n};\n\n");
-    fprintf(out, "\nint    g_szpolicykeySize= %d;\n\n", iFileSize+1);
+    fprintf(out, "\nint    g_policyCertSize= %d;\n\n", iFileSize+1);
     fprintf(out, "\nint    g_szProgramNameSize= %d;\n", (int) strlen(szProgramName)+1);
     fprintf(out, "\nconst char*  g_szProgramName= \"%s\";\n\n", szProgramName);
     

@@ -37,7 +37,7 @@
 #include "TPMHostsupport.h"
 #endif
 
-extern int            g_szpolicykeySize;
+extern int            g_policyCertSize;
 extern char           g_szXmlPolicyCert[];
 
 #include "hashprep.h"
@@ -59,6 +59,11 @@ taoEnvironment::taoEnvironment()
     m_domain= NULL;
     m_program= NULL;
     m_machine= NULL;
+
+    m_policyCertValid= false;
+    m_policyCertType= 0;
+    m_sizepolicyCert= 0;
+    m_szpolicyCert= NULL;
 
     m_sealedsymKeyValid= false;
     m_sealedsymKeySize= 0;
@@ -86,9 +91,9 @@ taoEnvironment::taoEnvironment()
     m_myCertificateSize= 0;
     m_myCertificate= NULL;
 
-    m_ancestorEvidenceValid= false;
-    m_ancestorEvidenceSize= 0;
-    m_ancestorEvidence= NULL;
+    m_evidenceValid= false;
+    m_evidenceSize= 0;
+    m_szevidence= NULL;
 
     m_publicKeyValid= false;
     m_publicKeySize= 0;
@@ -156,12 +161,13 @@ void taoEnvironment::printData()
     }
     else
         fprintf(g_logFile, "\tSym key invalid\n");
-    if(m_policyKeyValid) {
+    if(m_policyCertValid) {
         fprintf(g_logFile, "\tPolicy key valid\n");
         fprintf(g_logFile, "\tPolicy key type: %08x, size: %d\n",
-                        m_policyKeyType, m_sizepolicyKey);
+                        m_policyCertType, m_sizepolicyCert);
 #ifdef TEST1
-        PrintBytes("Policy: ", m_policyKey, m_sizepolicyKey);
+        fprintf(g_logFile,"Policy: %s\n", m_szpolicyCert);
+        fflush(g_logFile);
 #endif
     }
     else
@@ -189,10 +195,10 @@ void taoEnvironment::printData()
     }
     else
         fprintf(g_logFile, "\tCertificate invalid\n");
-    if(m_ancestorEvidenceValid) {
+    if(m_evidenceValid) {
         fprintf(g_logFile, "\tEvidence valid\n");
-        fprintf(g_logFile, "\tEvidence size: %d\n", m_ancestorEvidenceSize);
-        fprintf(g_logFile, "\tEvidence:\n%s\n", m_ancestorEvidence);
+        fprintf(g_logFile, "\tEvidence size: %d\n", m_evidenceSize);
+        fprintf(g_logFile, "\tEvidence:\n%s\n", m_szevidence);
     }
     else
         fprintf(g_logFile, "\tEvidence invalid\n");
@@ -722,19 +728,18 @@ bool taoEnvironment::GetPolicyKey()
       case PLATFORMTYPEGUESTLINUX:
       case PLATFORMTYPELINUXAPP:
 #ifdef TEST
-        fprintf(g_logFile, "policy key from image %d\n", g_szpolicykeySize);
+        fprintf(g_logFile, "policy key from image %d\n", g_policyCertSize);
         fprintf(g_logFile, "policy key from image %s\n", g_szXmlPolicyCert);
         fflush(g_logFile);
 #endif
-        m_policyKey= (byte*) malloc(g_szpolicykeySize);
-        if(m_policyKey==NULL) {
+        m_szpolicyCert= strdup((char*)g_szXmlPolicyCert);
+        if(m_szpolicyCert==NULL) {
             fprintf(g_logFile, "taoEnvironment::GetPolicyKey, malloc failed\n");
             return false;
         }
-        memcpy(m_policyKey, (byte*)g_szXmlPolicyCert, g_szpolicykeySize);
-        m_sizepolicyKey= g_szpolicykeySize;
-        m_policyKeyType= EVIDENCECERT;
-        m_policyKeyValid= true;
+        m_sizepolicyCert= g_policyCertSize;
+        m_policyCertType= EVIDENCECERT;
+        m_policyCertValid= true;
         return true;
     }
 }
@@ -822,15 +827,15 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
         memcpy(m_myCertificate, myInit.m_myCertificate, m_myCertificateSize);
     }
 
-    if(myInit.m_ancestorEvidenceValid) {
-        m_ancestorEvidenceValid= myInit.m_ancestorEvidenceValid;
-        m_ancestorEvidenceSize= myInit.m_ancestorEvidenceSize;
-        m_ancestorEvidence= (byte*) malloc(myInit.m_ancestorEvidenceSize);
-        if(m_ancestorEvidence==NULL) {
+    if(myInit.m_evidenceValid) {
+        m_evidenceValid= myInit.m_evidenceValid;
+        m_evidenceSize= myInit.m_evidenceSize;
+        m_szevidence= (char*) malloc(myInit.m_evidenceSize);
+        if(m_szevidence==NULL) {
             fprintf(g_logFile, "taoEnvironment::initTao no ancestor evidence\n");
             return false;
         }
-        memcpy(m_ancestorEvidence, myInit.m_ancestorEvidence, m_ancestorEvidenceSize);
+        memcpy(m_szevidence, myInit.m_szevidence, m_evidenceSize);
     }
 
     if(myInit.m_myMeasurementValid) {
@@ -864,11 +869,11 @@ const char* taoEnvironment::GetCertificateString()
 
 const char* taoEnvironment::GetEvidenceString()
 {
-    if(m_ancestorEvidence==NULL) {
+    if(m_szevidence==NULL) {
         fprintf(g_logFile, "GetCertificateString: Host evidence empty\n");
         return NULL;
     }
-    return strdup((const char*) m_ancestorEvidence);
+    return strdup((const char*) m_szevidence);
 }
 
 
@@ -967,8 +972,8 @@ bool taoEnvironment::saveTao()
     }
     m_myCertificateType= EVIDENCECERT;
     if(!m_fileNames.putBlobData(m_fileNames.m_szAncestorEvidence, 
-                                m_ancestorEvidenceValid, 
-                                m_ancestorEvidenceSize, m_ancestorEvidence)) {
+                                m_evidenceValid, 
+                                m_evidenceSize, (byte*)m_szevidence)) {
         fprintf(g_logFile, "taoEnvironment::saveTao: cant save evidence\n");
     }
 #ifdef TEST
@@ -1000,8 +1005,8 @@ bool taoEnvironment::restoreTao()
         return false;
     }
     m_myCertificateType= EVIDENCECERT;
-    if(!m_fileNames.getBlobData(m_fileNames.m_szAncestorEvidence, &m_ancestorEvidenceValid, 
-                                &m_ancestorEvidenceSize, &m_ancestorEvidence)) {
+    if(!m_fileNames.getBlobData(m_fileNames.m_szAncestorEvidence, &m_evidenceValid, 
+                                &m_evidenceSize, (byte**)&m_szevidence)) {
         fprintf(g_logFile, "taoEnvironment::restoreTao: cant retrieve evidence\n");
     }
 

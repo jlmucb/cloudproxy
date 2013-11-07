@@ -225,7 +225,7 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     RSAKey* ppolicyKey= (RSAKey*)m_pParent->m_opolicyCert.getSubjectKeyInfo();
 
     // Initialize program private key and certificate for session
-    if(!m_serverSession.serverInit(reinterpret_cast<char*>(m_pParent->m_tcHome.m_policyKey),
+    if(!m_serverSession.serverInit(m_pParent->m_tcHome.m_szpolicyCert,
                                    ppolicyKey, m_pParent->m_tcHome.m_myCertificate,
                                    (RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: session serverInit failed\n");
@@ -353,7 +353,7 @@ bool fileServer::initPolicy()
         return false;
     }
 
-    if(!m_tcHome.m_policyKeyValid)  {
+    if(!m_tcHome.m_policyCertValid)  {
         fprintf(g_logFile, "fileServer::initPolicy(): policyKey invalid\n");
         return false;
     }
@@ -547,7 +547,7 @@ bool fileServer::initServer(const char* configDirectory)
         }
 
         // this section should move to the tao?
-        if(!m_opolicyCert.init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
+        if(!m_opolicyCert.init(m_tcHome.m_szpolicyCert)) {
             fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
             return false;
         }

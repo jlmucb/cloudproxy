@@ -321,13 +321,13 @@ TCSERVICE_RESULT tcServiceInterface::initService(const char* execfile, int an, c
 TCSERVICE_RESULT tcServiceInterface::GetOsPolicyKey(u32* pType, int* psize, 
                                                     byte* rgBuf)
 {
-    if(!m_trustedHome.m_policyKeyValid)
+    if(!m_trustedHome.m_policyCertValid)
         return TCSERVICE_RESULT_DATANOTVALID ;
-    if(*psize<m_trustedHome.m_sizepolicyKey)
+    if(*psize<m_trustedHome.m_sizepolicyCert)
         return TCSERVICE_RESULT_BUFFERTOOSMALL;
-    memcpy(rgBuf, m_trustedHome.m_policyKey, m_trustedHome.m_sizepolicyKey);
-    *pType= m_trustedHome.m_policyKeyType;
-    *psize= m_trustedHome.m_sizepolicyKey;
+    memcpy(rgBuf, m_trustedHome.m_szpolicyCert, m_trustedHome.m_sizepolicyCert);
+    *pType= m_trustedHome.m_policyCertType;
+    *psize= m_trustedHome.m_sizepolicyCert;
 
     return TCSERVICE_RESULT_SUCCESS;
 }
@@ -357,12 +357,12 @@ TCSERVICE_RESULT tcServiceInterface::tcServiceInterface::GetOsCert(u32* pType,
 
 TCSERVICE_RESULT tcServiceInterface::GetOsEvidence(int* psizeOut, byte* rgOut)
 {
-    if(!m_trustedHome.m_ancestorEvidenceValid)
+    if(!m_trustedHome.m_evidenceValid)
         return TCSERVICE_RESULT_DATANOTVALID ;
-    if(*psizeOut<m_trustedHome.m_ancestorEvidenceSize)
+    if(*psizeOut<m_trustedHome.m_evidenceSize)
         return TCSERVICE_RESULT_BUFFERTOOSMALL;
-    *psizeOut= m_trustedHome.m_ancestorEvidenceSize;
-    memcpy(rgOut, m_trustedHome.m_ancestorEvidence, *psizeOut);
+    *psizeOut= m_trustedHome.m_evidenceSize;
+    memcpy(rgOut, m_trustedHome.m_szevidence, *psizeOut);
 
     return TCSERVICE_RESULT_SUCCESS;
 }

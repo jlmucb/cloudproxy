@@ -231,17 +231,15 @@ private:
     char*               m_szPrivateSubjectId;
 
 public:                 // make these private eventually
-    taoFiles            m_fileNames;
-
     bool                m_myMeasurementValid;
     u32                 m_myMeasurementType;
     int                 m_myMeasurementSize;
     byte*               m_myMeasurement;
 
-    bool                m_policyKeyValid;
-    u32                 m_policyKeyType;
-    int                 m_sizepolicyKey;
-    byte*               m_policyKey;
+    bool                m_policyCertValid;
+    u32                 m_policyCertType;
+    int                 m_sizepolicyCert;
+    char*               m_szpolicyCert;
 
     bool                m_privateKeyValid;
     u32                 m_privateKeyType;
@@ -257,12 +255,13 @@ public:                 // make these private eventually
     int                 m_myCertificateSize;
     char*               m_myCertificate;
 
-    bool                m_ancestorEvidenceValid;
-    int                 m_ancestorEvidenceSize;
-    byte*               m_ancestorEvidence;
+    bool                m_evidenceValid;
+    int                 m_evidenceSize;
+    char*               m_szevidence;
 
 public:
     linuxDeviceChannel  m_linuxEnvChannel;
+    taoFiles            m_fileNames;
 
 public:
                         taoEnvironment();
@@ -360,9 +359,9 @@ public:
     int                 m_myCertificateSize;
     char*               m_myCertificate;
 
-    bool                m_ancestorEvidenceValid;
-    int                 m_ancestorEvidenceSize;
-    char*               m_ancestorEvidence;
+    bool                m_evidenceValid;
+    int                 m_evidenceSize;
+    char*               m_szevidence;
 
                         taoInit(taoHostServices* host);
                         ~taoInit();

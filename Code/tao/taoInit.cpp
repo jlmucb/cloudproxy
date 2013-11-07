@@ -71,9 +71,9 @@ taoInit::taoInit(taoHostServices* host)
     m_myMeasurementType= 0;
     m_myMeasurementSize= 32;
 
-    m_ancestorEvidenceValid= false;
-    m_ancestorEvidenceSize= 0;
-    m_ancestorEvidence= NULL;
+    m_evidenceValid= false;
+    m_evidenceSize= 0;
+    m_szevidence= NULL;
 
     m_sizeserializedPrivateKey= 0;
     m_szserializedPrivateKey= NULL;

@@ -21,8 +21,7 @@ VLT=	    ../vault
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
-#CFLAGS=     -D LINUX -D FILECLIENT -D TAOUSERSA2048 -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS) 
-CFLAGS=     -D FILECLIENT -D TAOUSERSA2048 -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS) 
+CFLAGS=     -D LINUX -D FILECLIENT -D TAOUSERSA2048 -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS) 
 LDFLAGS          := $(RELEASE_LDFLAGS)
 O1CFLAGS=    -D LINUX -D FILECLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 # -D MACTHENENCRYPT  -  define this if you want MAC then Encrypt, you shouldn't ever

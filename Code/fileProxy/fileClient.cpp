@@ -126,7 +126,7 @@ fileClient::fileClient ()
 fileClient::~fileClient ()
 {
     m_sizeKey= GLOBALMAXSYMKEYSIZE;
-    if(m_fKeysValid)
+    if(m_fKeysValid) 
         memset(m_fileKeys, 0, m_sizeKey);
     m_fKeysValid= false;
     if(m_szSealedKeyFile!=NULL)
@@ -154,25 +154,31 @@ bool fileClient::initPolicy()
 }
 
 
+#define MAXFILENAME 512
+
+
 bool fileClient::initFileKeys()
 {
     struct stat statBlock;
-    char        szName[512];
+    char        szName[MAXFILENAME];
     int         size= 0;
     byte        keyBuf[GLOBALMAXSYMKEYSIZE];
     int         n= 0;
     int         m= 0;
     byte        sealedkeyBuf[GLOBALMAXSEALEDKEYSIZE];
    
+#ifdef TEST
+    fprintf(g_logFile, "fileClient::initFileKeys\n");
+    fflush(g_logFile);
+#endif
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
         return false;
     }
-    if((strlen(m_tcHome.m_fileNames.m_szdirectory)+16)>512) {
+    if((strlen(m_tcHome.m_fileNames.m_szdirectory)+16)>=MAXFILENAME) {
         fprintf(g_logFile, "initFileKeys: keys name too long\n");
         return false;
     }
-
     sprintf(szName, "%s/fileKeys", m_tcHome.m_fileNames.m_szdirectory);
     m_szSealedKeyFile= strdup(szName);
     if(stat(m_szSealedKeyFile, &statBlock)<0) {
@@ -440,11 +446,9 @@ void fileClient::closeConnection()
 // ------------------------------------------------------------------------
 
 
-bool fileClient::establishConnection(const char* keyFile, 
-                                    const char* certFile, 
-                                    const char* directory,
-                                    const char* serverAddress,
-                                    u_short serverPort) 
+bool fileClient::establishConnection(const char* keyFile, const char* certFile, 
+                                     const char* directory, const char* serverAddress,
+                                     u_short serverPort) 
 {
     try {
 
@@ -652,7 +656,6 @@ bool fileClient::createResource(const string& subject,
         fflush(g_logFile);
         return false;
     }
-
     return true;
 }
 
@@ -718,7 +721,6 @@ bool fileClient::writeResource(const string& subject,
         fflush(g_logFile);
         return false;
     }
-
     return true;
 }
 

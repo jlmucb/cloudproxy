@@ -261,14 +261,14 @@ public:                 // make these private eventually
     int                 m_ancestorEvidenceSize;
     byte*               m_ancestorEvidence;
 
-    bool                firstRun();
-
 public:
     linuxDeviceChannel  m_linuxEnvChannel;
 
 public:
                         taoEnvironment();
                         ~taoEnvironment();
+
+    bool                firstRun();
 
     bool                EnvInit(u32 type, const char* program, const char* domain,
                              const char* directory, const char* subdirectory,

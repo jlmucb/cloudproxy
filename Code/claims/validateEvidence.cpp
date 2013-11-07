@@ -337,7 +337,7 @@ KeyInfo* getChainElementSubjectKey(int evidenceType, void* pObject)
  *      key is at the highest numbered position and must be the same as the
  *      supplied root key.
  *      
- *      Except for the root key each piece of evidence, each object is 
+ *      Except for the root key, each object is 
  *      a parsed credential.  The SignedInfo in each piece of evidence 
  *      (except the root) must include must expose an EvidenceType, Purpose, 
  *      signature algorithm, canonicalization algorithm, a ValidityPeriod 

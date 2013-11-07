@@ -97,6 +97,7 @@ theServiceChannel::theServiceChannel()
 
 theServiceChannel::~theServiceChannel()
 {
+    //FIX: delete metadata?
 }
 
 
@@ -121,11 +122,13 @@ int theServiceChannel::processRequests()
 #ifdef TEST
     fprintf(g_logFile, "theServiceChannel::processRequests: packetType %d, serverstate %d\n", 
             type, m_serverState);
+    fflush(g_logFile);
 #endif
     if(type==CHANNEL_TERMINATE) {
         fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from theServiceChannel::processRequests\n");
 #ifdef TEST
         tcBufferprint((tcBuffer*) request);
+        fflush(g_logFile);
 #endif
         fflush(g_logFile);
         return 0;
@@ -467,7 +470,7 @@ bool fileServer::initFileKeys()
     }
 
 #ifdef  TEST
-    fprintf(g_logFile, "initFileKeyscomplete\n");
+    fprintf(g_logFile, "fileServer:initFileKeys complete\n");
     fflush(g_logFile);
 #endif
     return true;

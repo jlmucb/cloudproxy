@@ -198,8 +198,9 @@ const char* szMsg4d= "\n</ClientNego>\n";
 // ------------------------------------------------------------------------
 
 
-bool session::serverNegoMessage1(char* buf, int maxSize, int iSessionId, const char* szAlg, 
-                        const char* szRand, const char* szServerCert)
+bool session::serverNegoMessage1(char* buf, int maxSize, int iSessionId, 
+                                 const char* szAlg, const char* szRand, 
+                                 const char* szServerCert)
 //  server phase 1  server-->client:
 //      serverMsg1(rand, ciphersuite, server-cert)
 {
@@ -207,6 +208,10 @@ bool session::serverNegoMessage1(char* buf, int maxSize, int iSessionId, const c
     char*   p= buf;
     int     i= 0;
 
+    if(((int)(strlen(szMsg1a)+strlen(szRand)+strlen(szAlg)+8))>maxSize) {
+        fprintf(g_logFile, "serverNegoMessage1: message too large\n");
+        return false;
+    }
     sprintf(buf, szMsg1a, iSessionId, szRand, szAlg);
     i= strlen(buf);
     p+= i;
@@ -228,11 +233,15 @@ bool session::serverNegoMessage2(char* buf, int maxSize, const char* szAlg,
 //  server phase 2  server-->client: serverMsg2(Principal cert requests, challenge)
 //         --Encrypted after this
 {
-    sprintf(buf, szMsg2, szAlg, szChallenge, szHash);
-
 #ifdef TEST1
     fprintf(g_logFile, "serverNegoMessage2: %s\n", buf);
 #endif
+    if(((int)(strlen(szMsg2)+strlen(szChallenge)+strlen(szAlg)+strlen(szHash)+4))
+            >maxSize) {
+        fprintf(g_logFile, "serverNegoMessage2: message too large\n");
+        return false;
+    }
+    sprintf(buf, szMsg2, szAlg, szChallenge, szHash);
     return true;
 }
 
@@ -251,7 +260,6 @@ bool session::serverNegoMessage3(char* buf, int maxSize, bool fSucceed)
         if(!safeTransfer(&p, &iLeft, szMsg3Fail))
             return false;
     }
-
 #ifdef TEST1
     fprintf(g_logFile, "serverNegoMessage3: %s\n", buf);
 #endif
@@ -262,8 +270,11 @@ bool session::serverNegoMessage3(char* buf, int maxSize, bool fSucceed)
 bool session::clientNegoMessage1(char* buf, int maxSize, const char* szAlg, const char* szRand)
 //  client phase 1  client-->server: clientMsg1(rand, ciphersuites)
 {
+    if(((int)(strlen(szMsg1)+strlen(szRand)+strlen(szAlg)+4))>maxSize) {
+        fprintf(g_logFile, "clientNegoMessage1: message too large\n");
+        return false;
+    }
     sprintf(buf,szMsg1, szRand, szAlg);
-
 #ifdef TEST1
     fprintf(g_logFile, "clientNegoMessage1: %s\n", buf);
 #endif
@@ -279,6 +290,10 @@ bool session::clientNegoMessage2(char* buf, int maxSize, const char* szEncPreMas
     char*   p= buf;
     int     i= 0;
 
+    if(((int)(strlen(szMsg2a)+8))>maxSize) {
+        fprintf(g_logFile, "clientNegoMessage1: message too large\n");
+        return false;
+    }
     sprintf(buf, szMsg2a, iSessionId);
     i= strlen(buf);
     p+= i;
@@ -867,6 +882,9 @@ const char* szMsgChallenge3= "\n</SignedChallenge>";
 const char* szMsgChallenge4= "\n</SignedChallenges>\n";
 
 
+#define MAXMSGHDR 128
+
+
 char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
                              byte* puChallenge, int sizeChallenge) 
 {
@@ -874,7 +892,7 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     char*   rgszSignedChallenges[MAXPRINCIPALS];
     byte    rguCurrentChallenge[GLOBALMAXPUBKEYSIZE];
     int     n= 0;
-    char    szMsgHdr[64];                               // FIX
+    char    szMsgHdr[MAXMSGHDR];
     int     iSC1;
     int     iSC2= strlen(szMsgChallenge2);
     int     iSC3= strlen(szMsgChallenge3);
@@ -883,6 +901,10 @@ char* rsaXmlEncodeChallenges(bool fEncrypt, int iNumKeys, RSAKey** rgKeys,
     memset(rguCurrentChallenge, 0, GLOBALMAXPUBKEYSIZE);
     memcpy(rguCurrentChallenge, puChallenge, sizeChallenge);
 
+    if((strlen(szMsgHdr)+strlen(szMsgChallenge1)+8)>MAXMSGHDR) {
+        fprintf(g_logFile, "rsaXmlEncodeChallenges: message too large\n");
+        return false;
+    }
     sprintf(szMsgHdr, szMsgChallenge1, iNumKeys);
     iSC1= strlen(szMsgHdr);
     
@@ -1211,6 +1233,7 @@ bool session::initializePrincipalCerts(const char* szPrincipalCerts)
     evidenceCollection  oEvidenceCollection;
 
     m_szPrincipalCerts= strdup(szPrincipalCerts);
+
 #ifdef TEST1
     if(m_szPrincipalCerts==NULL)
         fprintf(g_logFile, "initializePrincipalCerts is NULL\n");
@@ -1218,9 +1241,8 @@ bool session::initializePrincipalCerts(const char* szPrincipalCerts)
         fprintf(g_logFile, "initializePrincipalCerts:\n%s\n", m_szPrincipalCerts);
     fflush(g_logFile);
 #endif
-
     if(!oEvidenceCollection.parseEvidenceCollection(szPrincipalCerts)) {
-        fprintf(g_logFile, "session::initializePrincipalCerts: Cannot parse Principal Public Keys\n");
+        fprintf(g_logFile, "session::initializePrincipalCerts: Cant parse Principal Public Keys\n");
         return false;
     }
 

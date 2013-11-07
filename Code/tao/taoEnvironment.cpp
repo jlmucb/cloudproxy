@@ -76,6 +76,7 @@ taoEnvironment::taoEnvironment()
     m_sealedprivateKeyValid= false;
     m_sealedprivateKeySize= 0;
     m_sealedprivateKey= NULL;
+
     m_privateKeyValid= false;
     m_privateKeyType= KEYTYPENONE;
     m_privateKeySize= 0;
@@ -96,6 +97,7 @@ taoEnvironment::taoEnvironment()
     m_szevidence= NULL;
 
     m_publicKeyValid= false;
+    m_publicKeyType= 0;
     m_publicKeySize= 0;
     m_publicKey= NULL;
 
@@ -273,6 +275,81 @@ bool taoEnvironment::copyMeasurement(byte* out)
 byte* taoEnvironment::measurementPtr()
 {
     return m_myMeasurement;
+}
+
+
+bool taoEnvironment::privateKeyValid()
+
+{
+    return m_privateKeyValid;
+}
+
+
+u32 taoEnvironment::privateKeyType()
+
+{
+    return m_privateKeyType;
+}
+
+
+int taoEnvironment::privateKeySize()
+
+{
+    return m_privateKeySize;
+}
+
+
+byte* taoEnvironment::privateKeyPtr()
+{
+    if(!m_privateKeyValid|| m_privateKey==NULL)
+        return NULL;
+    return m_privateKey;
+}
+
+
+bool taoEnvironment::myCertValid()
+{
+    return m_myCertificateValid;
+}
+
+        
+int    taoEnvironment::myCertSize()
+{   
+    return m_myCertificateSize;
+}   
+
+
+u32    taoEnvironment::myCertType()
+{
+    return m_myCertificateType;
+}
+
+
+char*  taoEnvironment::myCertPtr()
+{
+    if(!m_myCertificateValid || m_myCertificate==NULL)
+        return NULL;
+    return m_myCertificate;
+}
+
+
+bool taoEnvironment::myEvidenceValid()
+{
+    return m_evidenceValid;
+}
+
+        
+int    taoEnvironment::myEvidenceSize()
+{   
+    return m_evidenceSize;
+}   
+
+
+char*  taoEnvironment::myEvidencePtr()
+{
+    if(!m_evidenceValid || m_szevidence==NULL)
+        return NULL;
+    return m_szevidence;
 }
 
 

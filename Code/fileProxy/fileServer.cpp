@@ -226,8 +226,8 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
 
     // Initialize program private key and certificate for session
     if(!m_serverSession.serverInit(m_pParent->m_tcHome.policyCertPtr(),
-                                   ppolicyKey, m_pParent->m_tcHome.m_myCertificate,
-                                   (RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
+                                   ppolicyKey, m_pParent->m_tcHome.myCertPtr(),
+                                   (RSAKey*)m_pParent->m_tcHome.privateKeyPtr())) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: session serverInit failed\n");
         return false;
     }
@@ -237,8 +237,8 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
 #endif
 
     // copy my public key into server public key
-    if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_serverSession.getServerCert(m_pParent->m_tcHome.m_myCertificate)) {
+    if(!m_pParent->m_tcHome.myCertValid() ||
+           !m_serverSession.getServerCert(m_pParent->m_tcHome.myCertPtr())) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant load client public key structures\n");
         return false;
     }

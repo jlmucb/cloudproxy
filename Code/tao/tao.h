@@ -234,13 +234,13 @@ private:
     int                 m_myMeasurementSize;
     byte*               m_myMeasurement;
 
-public:                 // make these private eventually
     bool                m_privateKeyValid;
     u32                 m_privateKeyType;
     int                 m_privateKeySize;
     byte*               m_privateKey;
 
     bool                m_publicKeyValid;
+    u32                 m_publicKeyType;
     int                 m_publicKeySize;
     RSAKey*             m_publicKey;
 
@@ -273,6 +273,20 @@ public:
     int                 measurementSize();
     bool                copyMeasurement(byte* out);
     byte*               measurementPtr();
+
+    bool                privateKeyValid();
+    u32                 privateKeyType();
+    int                 privateKeySize();
+    byte*               privateKeyPtr();
+
+    bool                myCertValid();
+    int                 myCertSize();
+    u32                 myCertType();
+    char*               myCertPtr();
+
+    bool                myEvidenceValid();
+    int                 myEvidenceSize();
+    char*               myEvidencePtr();
 
 
     // init

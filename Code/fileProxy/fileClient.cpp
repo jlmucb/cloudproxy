@@ -378,8 +378,8 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
 
         // m_tcHome.m_policyKeyValid must be true
         if(!m_clientSession.clientInit(m_tcHome.policyCertPtr(), 
-                                   ppolicyKey, m_tcHome.m_myCertificate, 
-                                   (RSAKey*)m_tcHome.m_privateKey)) 
+                                   ppolicyKey, m_tcHome.myCertPtr(), 
+                                   (RSAKey*)m_tcHome.privateKeyPtr())) 
             throw("fileClient::Init: Can't init policy key 3\n");
 
         // get principal certs

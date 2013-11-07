@@ -338,19 +338,19 @@ TCSERVICE_RESULT tcServiceInterface::GetOsPolicyKey(u32* pType, int* psize,
 TCSERVICE_RESULT tcServiceInterface::tcServiceInterface::GetOsCert(u32* pType,
                         int* psizeOut, byte* rgOut)
 {
-    if(!m_trustedHome.m_myCertificateValid)
+    if(!m_trustedHome.myCertValid())
         return TCSERVICE_RESULT_DATANOTVALID ;
-    if(*psizeOut<m_trustedHome.m_myCertificateSize)
+    if(*psizeOut<m_trustedHome.myCertSize())
         return TCSERVICE_RESULT_BUFFERTOOSMALL;
-    memcpy(rgOut, m_trustedHome.m_myCertificate, 
-           m_trustedHome.m_myCertificateSize);
-    *psizeOut= m_trustedHome.m_myCertificateSize;
-    if(m_trustedHome.m_myCertificateType==KEYTYPERSA1024INTERNALSTRUCT)
+    memcpy(rgOut, m_trustedHome.myCertPtr(), 
+           m_trustedHome.myCertSize());
+    *psizeOut= m_trustedHome.myCertSize();
+    if(m_trustedHome.myCertType()==KEYTYPERSA1024INTERNALSTRUCT)
         *pType= KEYTYPERSA1024SERIALIZED;
-    else if(m_trustedHome.m_myCertificateType==KEYTYPERSA2048INTERNALSTRUCT)
+    else if(m_trustedHome.myCertType()==KEYTYPERSA2048INTERNALSTRUCT)
         *pType= KEYTYPERSA2048SERIALIZED;
     else
-        *pType= m_trustedHome.m_myCertificateType;
+        *pType= m_trustedHome.myCertType();
 
     return TCSERVICE_RESULT_SUCCESS;
 }
@@ -359,12 +359,12 @@ TCSERVICE_RESULT tcServiceInterface::tcServiceInterface::GetOsCert(u32* pType,
 
 TCSERVICE_RESULT tcServiceInterface::GetOsEvidence(int* psizeOut, byte* rgOut)
 {
-    if(!m_trustedHome.m_evidenceValid)
+    if(!m_trustedHome.myEvidenceValid())
         return TCSERVICE_RESULT_DATANOTVALID ;
-    if(*psizeOut<m_trustedHome.m_evidenceSize)
+    if(*psizeOut<m_trustedHome.myEvidenceSize())
         return TCSERVICE_RESULT_BUFFERTOOSMALL;
-    *psizeOut= m_trustedHome.m_evidenceSize;
-    memcpy(rgOut, m_trustedHome.m_szevidence, *psizeOut);
+    memcpy(rgOut, m_trustedHome.myEvidencePtr(), *psizeOut);
+    *psizeOut= m_trustedHome.myEvidenceSize();
 
     return TCSERVICE_RESULT_SUCCESS;
 }

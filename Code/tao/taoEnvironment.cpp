@@ -207,6 +207,79 @@ void taoEnvironment::printData()
 #endif
 
 
+bool taoEnvironment::policyCertValid()
+{
+    return m_policyCertValid;
+}
+
+        
+        
+int    taoEnvironment::policyCertSize()
+{   
+    return m_sizepolicyCert;
+}   
+
+
+u32    taoEnvironment::policyCertType()
+{
+    return m_policyCertType;
+}
+
+
+bool taoEnvironment::copyPolicyCert(byte* out)
+{
+    if(!m_policyCertValid)
+        return false;
+    memcpy(out, m_szpolicyCert, m_sizepolicyCert);
+    return true;
+}
+
+
+char* taoEnvironment::policyCertPtr()
+{
+    if(!m_policyCertValid)
+        return NULL;
+    return m_szpolicyCert;
+}
+
+
+bool taoEnvironment::measurementValid()
+{
+    return m_myMeasurementValid;
+}
+
+
+u32    taoEnvironment::measurementType()
+{
+    return m_myMeasurementType;
+}
+
+
+int    taoEnvironment::measurementSize()
+{
+    return m_myMeasurementSize;
+}
+
+
+bool taoEnvironment::copyMeasurement(byte* out)
+{
+    if(!m_myMeasurementValid || m_myMeasurement==NULL)
+        return false;
+    memcpy(out, m_myMeasurement, m_myMeasurementSize);
+    return true;
+}
+
+
+byte* taoEnvironment::measurementPtr()
+{
+    return m_myMeasurement;
+}
+
+
+// -------------------------------------------------------------------------
+
+
+
 bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain, 
                              const char* directory, const char* subdirectory, 
                              taoHostServices* host, 
@@ -288,12 +361,12 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
     }
 
     // get policy key
-    if(!GetPolicyKey()) {
-        fprintf(g_logFile, "taoEnvironment::EnvInit: cant get policy key\n");
+    if(!GetPolicyCert()) {
+        fprintf(g_logFile, "taoEnvironment::EnvInit: cant get policy cert\n");
         return false;
     }
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::EnvInit, policy key initialized\n");
+    fprintf(g_logFile, "taoEnvironment::EnvInit, policy cert initialized\n");
     fflush(g_logFile);
 #endif
 
@@ -710,16 +783,16 @@ bool taoEnvironment::Attest(int hostedMeasurementSize, byte* hostedMeasurement,
 }
 
 
-bool taoEnvironment::GetPolicyKey()
+bool taoEnvironment::GetPolicyCert()
 {
 #ifdef TEST
-    fprintf(g_logFile, "taoEnvironment::GetPolicyKey(), environment: %d\n",
+    fprintf(g_logFile, "taoEnvironment::GetPolicyCert(), environment: %d\n",
             m_envType);
     fflush(g_logFile);
 #endif
     switch(m_envType) {
       default:
-        fprintf(g_logFile, "taoEnvironment::GetPolicyKey, unsupported environment\n");
+        fprintf(g_logFile, "taoEnvironment::GetPolicyCert, unsupported environment\n");
         return false;
 
       case PLATFORMTYPEKVMHYPERVISOR:
@@ -734,7 +807,7 @@ bool taoEnvironment::GetPolicyKey()
 #endif
         m_szpolicyCert= strdup((char*)g_szXmlPolicyCert);
         if(m_szpolicyCert==NULL) {
-            fprintf(g_logFile, "taoEnvironment::GetPolicyKey, malloc failed\n");
+            fprintf(g_logFile, "taoEnvironment::GetPolicyCert, malloc failed\n");
             return false;
         }
         m_sizepolicyCert= g_policyCertSize;
@@ -856,6 +929,13 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
     return true;
 }
 
+
+const char* taoEnvironment::GetPolicyCertString()
+{
+    if(!m_policyCertValid || m_szpolicyCert==NULL)
+        return NULL;
+    return (const char*)strdup(m_szpolicyCert);
+}
 
 const char* taoEnvironment::GetCertificateString()
 {

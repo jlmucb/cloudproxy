@@ -84,12 +84,6 @@
 #define HASHTYPEJLMPROGRAM                     2
 #define HASHTYPEHARDWARE              0xffffffff
 
-#define QUOTETYPENONE                          0 
-#define QUOTETYPETPM12RSA2048                  1
-#define QUOTETYPETPM12RSA1024                  2 
-#define QUOTETYPESHA256FILEHASHRSA1024         3
-#define QUOTETYPESHA256FILEHASHRSA2048         4
-
 #define STORAGEPROVIDERTYPENONE                0
 #define STORAGEPROVIDERTYPEFILE                1
 #define STORAGEPROVIDERTYPETPM                 2
@@ -230,17 +224,17 @@ private:
     char*               m_szPrivateSubjectName;
     char*               m_szPrivateSubjectId;
 
-public:                 // make these private eventually
-    bool                m_myMeasurementValid;
-    u32                 m_myMeasurementType;
-    int                 m_myMeasurementSize;
-    byte*               m_myMeasurement;
-
     bool                m_policyCertValid;
     u32                 m_policyCertType;
     int                 m_sizepolicyCert;
     char*               m_szpolicyCert;
 
+    bool                m_myMeasurementValid;
+    u32                 m_myMeasurementType;
+    int                 m_myMeasurementSize;
+    byte*               m_myMeasurement;
+
+public:                 // make these private eventually
     bool                m_privateKeyValid;
     u32                 m_privateKeyType;
     int                 m_privateKeySize;
@@ -267,8 +261,25 @@ public:
                         taoEnvironment();
                         ~taoEnvironment();
 
+    // accessors
+    bool                policyCertValid();
+    int                 policyCertSize();
+    u32                 policyCertType();
+    bool                copyPolicyCert(byte* out);
+    char*               policyCertPtr();
+
+    bool                measurementValid();
+    u32                 measurementType();
+    int                 measurementSize();
+    bool                copyMeasurement(byte* out);
+    byte*               measurementPtr();
+
+
+    // init
     bool                firstRun();
 
+
+    // runtime
     bool                EnvInit(u32 type, const char* program, const char* domain,
                              const char* directory, const char* subdirectory,
                              taoHostServices* host, const char* serviceProvider, 
@@ -284,11 +295,12 @@ public:
     bool                StartHostedProgram(const char* name, int nArgs, char** av, 
                                            int* phandle);
 
+    const char*         GetPolicyCertString();
     const char*         GetCertificateString();
     const char*         GetEvidenceString();
 
 
-    bool                GetPolicyKey();
+    bool                GetPolicyCert();
     bool                GetEntropy(int size, byte* buf);
     bool                Seal(int hostedMeasurementSize, byte* hostedMeasurement,
                             int sizetoSeal, byte* toSeal, int* psizeSealed, byte* sealed);

@@ -225,7 +225,7 @@ bool theServiceChannel::initServiceChannel(metaData* pMetaData,
     RSAKey* ppolicyKey= (RSAKey*)m_pParent->m_opolicyCert.getSubjectKeyInfo();
 
     // Initialize program private key and certificate for session
-    if(!m_serverSession.serverInit(m_pParent->m_tcHome.m_szpolicyCert,
+    if(!m_serverSession.serverInit(m_pParent->m_tcHome.policyCertPtr(),
                                    ppolicyKey, m_pParent->m_tcHome.m_myCertificate,
                                    (RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
         fprintf(g_logFile, "theServiceChannel::serviceChannel: session serverInit failed\n");
@@ -353,7 +353,7 @@ bool fileServer::initPolicy()
         return false;
     }
 
-    if(!m_tcHome.m_policyCertValid)  {
+    if(!m_tcHome.policyCertValid())  {
         fprintf(g_logFile, "fileServer::initPolicy(): policyKey invalid\n");
         return false;
     }
@@ -416,13 +416,13 @@ bool fileServer::initFileKeys()
         memcpy(&keyBuf[n], m_fileKeys, m_sizeKey);
         n+= m_sizeKey;
 
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
         // seal and save
         size= GLOBALMAXSEALEDKEYSIZE;
-        if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        if(!m_tcHome.Seal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         n, keyBuf, &size, sealedkeyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant seal keys\n");
             return false;
@@ -440,12 +440,12 @@ bool fileServer::initFileKeys()
             fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
             return false;
         }
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
         m= GLOBALMAXSYMKEYSIZE;
-        if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        if(!m_tcHome.Unseal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
             return false;
@@ -547,7 +547,7 @@ bool fileServer::initServer(const char* configDirectory)
         }
 
         // this section should move to the tao?
-        if(!m_opolicyCert.init(m_tcHome.m_szpolicyCert)) {
+        if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
             fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
             return false;
         }

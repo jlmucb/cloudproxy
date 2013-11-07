@@ -146,7 +146,7 @@ bool fileClient::initPolicy()
         fprintf(g_logFile, "fileClient::initPolicy(): environment invalid\n");
         return false;
     }
-    if(!m_tcHome.m_policyCertValid)  {
+    if(!m_tcHome.policyCertValid())  {
         fprintf(g_logFile, "fileClient::initPolicy(): policyKey invalid\n");
         return false;
     }
@@ -211,14 +211,14 @@ bool fileClient::initFileKeys()
         memcpy(&keyBuf[n], m_fileKeys, m_sizeKey);
         n+= m_sizeKey;
 
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
         // seal and save
         size= GLOBALMAXSEALEDKEYSIZE;
         m_sealTimer.Start();
-        if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        if(!m_tcHome.Seal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         n, keyBuf, &size, sealedkeyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant seal keys\n");
             return false;
@@ -237,13 +237,13 @@ bool fileClient::initFileKeys()
             fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
             return false;
         }
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
         m= GLOBALMAXSYMKEYSIZE;
         m_unsealTimer.Start();
-        if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        if(!m_tcHome.Unseal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
             return false;
@@ -368,7 +368,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
             throw( "fileClient::Init: Can't connect");
 
         // this section should move to the tao
-        if(!m_opolicyCert.init(m_tcHome.m_szpolicyCert))
+        if(!m_opolicyCert.init(m_tcHome.policyCertPtr()))
           throw("fileClient::Init:: Can't init policy cert 1\n");
         if(!m_opolicyCert.parsePrincipalCertElements())
           throw("fileClient::Init:: Can't init policy key 2\n");
@@ -377,7 +377,7 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
         RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
 
         // m_tcHome.m_policyKeyValid must be true
-        if(!m_clientSession.clientInit(m_tcHome.m_szpolicyCert, 
+        if(!m_clientSession.clientInit(m_tcHome.policyCertPtr(), 
                                    ppolicyKey, m_tcHome.m_myCertificate, 
                                    (RSAKey*)m_tcHome.m_privateKey)) 
             throw("fileClient::Init: Can't init policy key 3\n");

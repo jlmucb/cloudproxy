@@ -321,13 +321,15 @@ TCSERVICE_RESULT tcServiceInterface::initService(const char* execfile, int an, c
 TCSERVICE_RESULT tcServiceInterface::GetOsPolicyKey(u32* pType, int* psize, 
                                                     byte* rgBuf)
 {
-    if(!m_trustedHome.m_policyCertValid)
+    if(!m_trustedHome.policyCertValid())
         return TCSERVICE_RESULT_DATANOTVALID ;
-    if(*psize<m_trustedHome.m_sizepolicyCert)
+    if(*psize<m_trustedHome.policyCertSize())
         return TCSERVICE_RESULT_BUFFERTOOSMALL;
-    memcpy(rgBuf, m_trustedHome.m_szpolicyCert, m_trustedHome.m_sizepolicyCert);
-    *pType= m_trustedHome.m_policyCertType;
-    *psize= m_trustedHome.m_sizepolicyCert;
+    if(!m_trustedHome.copyPolicyCert(rgBuf)) {
+        return TCSERVICE_RESULT_FAILED;
+    }
+    *pType= m_trustedHome.policyCertType();
+    *psize= m_trustedHome.policyCertSize();
 
     return TCSERVICE_RESULT_SUCCESS;
 }
@@ -389,13 +391,15 @@ TCSERVICE_RESULT tcServiceInterface::GetHostedMeasurement(int pid, u32* phashTyp
 TCSERVICE_RESULT tcServiceInterface::GetOsHash(u32* phashType, int* psize, 
                                                byte* rgOut)
 {
-    if(!m_trustedHome.m_myMeasurementValid)
+    if(!m_trustedHome.measurementValid())
         return TCSERVICE_RESULT_DATANOTVALID ;
-    if(*psize<m_trustedHome.m_myMeasurementSize)
+    if(*psize<m_trustedHome.measurementSize())
         return TCSERVICE_RESULT_BUFFERTOOSMALL;
-    *psize= m_trustedHome.m_myMeasurementSize;
-    memcpy(rgOut, m_trustedHome.m_myMeasurement, *psize);
-    *phashType= m_trustedHome.m_myMeasurementType;
+    if(!m_trustedHome.copyMeasurement(rgOut)) {
+        return TCSERVICE_RESULT_FAILED;
+    }
+    *psize= m_trustedHome.measurementSize();
+    *phashType= m_trustedHome.measurementType();
 
     return TCSERVICE_RESULT_SUCCESS;
 }
@@ -1286,13 +1290,13 @@ int main(int an, char** av)
     // add self proctable entry
 #ifdef KVMTCSERVICE
     g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
-                                      g_myService.m_trustedHome.m_myMeasurementSize,
-                                      g_myService.m_trustedHome.m_myMeasurement,
+                                      g_myService.m_trustedHome.measurementSize(),
+                                      g_myService.m_trustedHome.measurementPtr(),
                                       &vmconnection, &vmdomain);
 #else
     g_myService.m_procTable.addprocEntry(g_servicepid, strdup(g_serviceexecFile), 0, NULL,
-                                      g_myService.m_trustedHome.m_myMeasurementSize,
-                                      g_myService.m_trustedHome.m_myMeasurement);
+                                      g_myService.m_trustedHome.measurementSize(),
+                                      g_myService.m_trustedHome.measurementPtr());
 #endif
    
 #ifdef TEST

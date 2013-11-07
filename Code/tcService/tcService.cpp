@@ -318,7 +318,7 @@ TCSERVICE_RESULT tcServiceInterface::initService(const char* execfile, int an, c
 }
 
 
-TCSERVICE_RESULT tcServiceInterface::GetOsPolicyKey(u32* pType, int* psize, 
+TCSERVICE_RESULT tcServiceInterface::GetOsPolicyCert(u32* pType, int* psize, 
                                                     byte* rgBuf)
 {
     if(!m_trustedHome.policyCertValid())
@@ -893,7 +893,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 
       case TCSERVICEGETPOLICYKEYFROMTCSERVICE:
         size= PARAMSIZE;
-        if(g_myService.GetOsPolicyKey(&uType, &size, rgBuf)!=TCSERVICE_RESULT_SUCCESS) {
+        if(g_myService.GetOsPolicyCert(&uType, &size, rgBuf)!=TCSERVICE_RESULT_SUCCESS) {
             fprintf(g_logFile, "serviceRequest: getpolicyKey failed\n");
             chan.sendtcBuf(procid, uReq, TCIOFAILED, origprocid, 0, NULL);
             return false;

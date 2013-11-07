@@ -142,7 +142,7 @@ public:
 
     TCSERVICE_RESULT    initService(const char* execfile, int an, char** av);
 
-    TCSERVICE_RESULT    GetOsPolicyKey(u32* pType, int* psize, byte* rgBuf);
+    TCSERVICE_RESULT    GetOsPolicyCert(u32* pType, int* psize, byte* rgBuf);
     TCSERVICE_RESULT    GetOsCert(u32* credType, int* psizeOut, byte* rgOut);
     TCSERVICE_RESULT    GetOsEvidence(int* psizeOut, byte* rgOut);
     TCSERVICE_RESULT    GetOsHash(u32* phashType,int* psizeOut, byte* rgOut);

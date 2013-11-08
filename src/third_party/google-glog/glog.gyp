@@ -64,6 +64,9 @@
         'include_dirs': [
           'src',
         ],
+	'libraries': [
+	  '-lpthread',
+	],
       },
     },
   ]

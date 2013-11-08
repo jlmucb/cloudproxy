@@ -50,6 +50,9 @@
         'include_dirs': [
           'include',  # So that gtest headers can find themselves.
         ],
+	'libraries': [
+	  '-lpthread',
+	],
         'target_conditions': [
           ['_type=="executable"', {
             'test': 1,

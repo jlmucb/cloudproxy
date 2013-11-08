@@ -43,6 +43,9 @@
         'include_dirs': [
           'include',  # So that gmock headers can find themselves.
         ],
+	'libraries': [
+	  '-lpthread',
+	],
       },
       'export_dependent_settings': [
         'gtest/gtest.gyp:gtest',

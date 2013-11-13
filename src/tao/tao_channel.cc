@@ -98,16 +98,15 @@ bool TaoChannel::Listen(Tao *t) const {
   return true;
 }
 
-bool TaoChannel::StartHostedProgram(const string &path, int argc, char **argv) {
+bool TaoChannel::StartHostedProgram(const string &path, const list<string> &args) {
   TaoChannelRPC rpc;
   rpc.set_rpc(START_HOSTED_PROGRAM);
 
   StartHostedProgramArgs *shpa = rpc.mutable_start();
   shpa->set_path(path);
-  shpa->set_argc(argc);
-  for (int i = 0; i < argc; i++) {
-    string *cur = shpa->add_argv();
-    cur->assign(argv[i], strlen(argv[i]) + 1);
+  for (const string &arg : args) {
+    string *cur = shpa->add_args();
+    cur->assign(arg);    
   }
 
   SendRPC(rpc);

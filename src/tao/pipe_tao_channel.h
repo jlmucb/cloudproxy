@@ -37,16 +37,30 @@ class PipeTaoChannel : public TaoChannel {
   // file descriptors from the arguments.
   static bool ExtractPipes(int *argc, char ***argv, int fds[2]);
 
+  // The parent constructor with its descriptors and the child descriptors.
+  PipeTaoChannel(int fds[2], int child_fds[2]);
+
+  // The child constructor with its descriptors
   PipeTaoChannel(int fds[2]);
   virtual ~PipeTaoChannel();
+
+  // Serializes the child_fds into a PipeTaoChannelParams protobuf.
+  virtual bool GetChildParams(string *params) const;
+  virtual bool ChildCleanup();
+  virtual bool ParentCleanup();
 
  protected:
   virtual bool ReceiveMessage(google::protobuf::Message *m) const;
   virtual bool SendMessage(const google::protobuf::Message &m) const;
 
  private:
+  bool has_child_params;
+
   int readfd_;
   int writefd_;
+
+  int child_readfd_;
+  int child_writefd_;
 
   DISALLOW_COPY_AND_ASSIGN(PipeTaoChannel);
 };

@@ -43,7 +43,7 @@ using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
 using tao::Tao;
-using tao::WhitelistAuthorizationManager;
+using tao::WhitelistAuth;
 
 namespace cloudproxy {
 
@@ -58,7 +58,7 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       context_(SSL_CTX_new(TLSv1_2_client_method())),
       users_(new CloudUserManager()),
-      auth_manager_(new WhitelistAuthorizationManager()) {
+      auth_manager_(new WhitelistAuth()) {
 
   // set the policy_key to handle bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);

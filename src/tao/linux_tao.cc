@@ -18,14 +18,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tao/linux_tao.h"
-#include "cloudproxy/util.h"
-#include "tao/attestation.pb.h"
-#include "tao/hosted_programs.pb.h"
-#include "tao/keyczar_public_key.pb.h"
-#include "tao/sealed_data.pb.h"
-#include "tao/pipe_tao_channel.h"
-#include "tao/whitelist_authorization_manager.h"
+#include <tao/linux_tao.h>
+#include <cloudproxy/util.h>
+#include <tao/attestation.pb.h>
+#include <tao/hosted_programs.pb.h>
+#include <tao/keyczar_public_key.pb.h>
+#include <tao/sealed_data.pb.h>
+#include <tao/pipe_tao_channel.h>
+#include <tao/whitelist_auth.h>
 
 #include <keyczar/base/base64w.h>
 #include <keyczar/rw/keyset_file_reader.h>
@@ -35,15 +35,6 @@
 #include <keyczar/base/file_path.h>
 #include <keyczar/base/file_util.h>
 #include <glog/logging.h>
-
-// minimal amount of code needed from the old CloudProxy implementation to
-// bootstrap into a new one
-#include <jlmcrypto.h>
-#include <cert.h>
-#include <keys.h>
-#include <logging.h>
-#include <policyCert.inc>
-#include <validateEvidence.h>
 
 #include <time.h>
 
@@ -80,6 +71,7 @@ using keyczar::rw::KeysetEncryptedJSONFileReader;
 using keyczar::rw::KeysetEncryptedJSONFileWriter;
 
 using std::ifstream;
+using std::istreambuf_iterator;
 using std::ofstream;
 using std::ios;
 using std::stringstream;
@@ -88,7 +80,8 @@ namespace tao {
 
 LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
                      const string &pk_path, const string &whitelist_path,
-                     const string &policy_pk_path, TaoChannel *host_channel)
+		   const string &policy_pk_path, TaoChannel *host_channel,
+		   TaoChannelFactory *channel_factory, HostedProgramFactory *program_factory)
     : secret_path_(secret_path),
       key_path_(key_path),
       pk_path_(pk_path),
@@ -96,12 +89,16 @@ LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
       crypter_(nullptr),
       signer_(nullptr),
       policy_verifier_(nullptr),
-      child_fds_({-1, -1}),
+      child_fds_{-1, -1},
       child_hash_(),
       whitelist_path_(whitelist_path),
       serialized_pub_key_(),
+      pk_attest_(),
       host_channel_(host_channel),
-      auth_manager_(new WhitelistAuthorizationManager()) {
+      channel_factory_(channel_factory),
+      program_factory_(program_factory),
+      auth_manager_(nullptr),
+      child_channel_(nullptr) {
   // leave setup for Init
 }
 
@@ -111,8 +108,10 @@ bool LinuxTao::Init() {
   CHECK_NOTNULL(policy_verifier_.get());
   policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
 
-  CHECK(auth_manager_->Init(whitelist_path_, *policy_verifier_))
-      << "Could not initialize the whitelist manager";
+  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth());
+  CHECK(whitelist_auth->Init(whitelist_path_, *policy_verifier_))
+    << "Could not initialize the whitelist manager";
+  auth_manager_.reset(whitelist_auth.release());
 
   // initialize the host channel
   CHECK(host_channel_->Init()) << "Could not initialize the host channel";
@@ -180,8 +179,8 @@ bool LinuxTao::Init() {
 
   // Get an attestation for this key. In the chaining version, this
   // calls to the host for attestation. But in the key server version,
-  // this needs to call to a key. This virtual call can be implemented
-  // to use either version.
+  // this needs to call to a key server. This virtual call can be
+  // implemented to use either version.
   AttestToKey(serialized_pub_key_, &pk_attest_);
 
   VLOG(1) << "Finished tao initialization successfully";
@@ -194,17 +193,17 @@ bool LinuxTao::getSecret(ScopedSafeString *secret) {
   if (!PathExists(fp)) {
     // generate a random value for the key and seal it, writing the result
     // into this file
-    CHECK(host_channel_->RandBytes(SecretSize, secret->get()))
+    CHECK(host_channel_->GetRandomBytes(SecretSize, secret->get()))
         << "Could not generate a random secret to seal";
 
     // seal and save
     string sealed_secret;
-    CHECK(host_channel_->Seal(*secret, &sealed_secret))
+    CHECK(host_channel_->Seal(*(secret->get()), &sealed_secret))
         << "Can't seal the secret";
-    VLOG(2) << "Got a sealed secret of size " << sealed_secret.size();
+    VLOG(2) << "Got a sealed secret of size " << static_cast<int>(sealed_secret.size());
 
     ofstream out_file(secret_path_.c_str(), ofstream::out);
-    out_file.write(sealed_secret.data()), sealed_secret.size());
+    out_file.write(sealed_secret.data(), sealed_secret.size());
     out_file.close();
 
     VLOG(1) << "Sealed the secret";
@@ -215,11 +214,11 @@ bool LinuxTao::getSecret(ScopedSafeString *secret) {
                          istreambuf_iterator<char>());
 
     VLOG(2) << "Trying to read a sealed secret of size "
-            << sealed_secret.size();
+            << static_cast<int>(sealed_secret.size());
 
     CHECK(host_channel_->Unseal(sealed_secret, secret->get()))
         << "Can't unseal the secret";
-    VLOG(2) << "Unsealed a secret of size " << secret->get()->size();
+    VLOG(2) << "Unsealed a secret of size " << static_cast<int>(secret->get()->size());
   }
 
   return true;
@@ -276,7 +275,7 @@ bool LinuxTao::createKey(const string &secret) {
 
 bool LinuxTao::Destroy() { return true; }
 
-bool LinuxTao::StartHostedProgram(const string &path, int argc, char **argv) {
+bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args) {
   // TODO(tmroeder): add support for multiple child programs
   if (!child_hash_.empty()) {
     LOG(ERROR)
@@ -311,83 +310,18 @@ bool LinuxTao::StartHostedProgram(const string &path, int argc, char **argv) {
     return false;
   }
 
-  // TODO(tmroeder): allow multiple children
-  // create a pipe on which the child can communicate with the Tao
-  int pipedown[2];
-  int pipeup[2];
-
-  if (pipe(pipedown) != 0) {
-    LOG(ERROR) << "Could not create the downward pipe";
+  // TODO(tmroeder): for now, we only start a single child
+  child_channel_.reset(channel_factory_->CreateTaoChannel());
+  if (!program_factory_->CreateHostedProgram(path, args, *child_channel_)) {
+    LOG(ERROR) << "Could not start the hosted program";
     return false;
   }
 
-  if (pipe(pipeup) != 0) {
-    LOG(ERROR) << "Could not create the upward pipe";
+  // TODO(tmroeder): add this to the MultiplexTaoChannel when we have that implemented
+  bool rv = child_channel_->Listen(this);
+  if (!rv) {
+    LOG(ERROR) << "Server listening failed";
     return false;
-  }
-
-  // TODO(tmroeder): replace fork with clone
-  int child_pid = fork();
-  if (child_pid == -1) {
-    LOG(ERROR) << "Could not fork";
-    return false;
-  }
-
-  if (child_pid == 0) {
-    // child process; exec with the read end of pipedown and the write end of
-    // pipeup
-    close(pipedown[1]);
-    close(pipeup[0]);
-
-    scoped_array<char *> new_argv(new char *[argc + 3]);
-
-    for (int i = 0; i < argc; i++) {
-      new_argv[i] = argv[i];
-    }
-
-    stringstream pread_buf;
-    pread_buf << pipedown[0];
-    string pread = pread_buf.str();
-    scoped_array<char> pr(new char[pread.size() + 1]);
-    size_t len = pread.copy(pr.get(), pread.size());
-    pr[len] = '\0';
-
-    stringstream pwrite_buf;
-    pwrite_buf << pipeup[1];
-    string pwrite = pwrite_buf.str();
-    scoped_array<char> pw(new char[pwrite.size() + 1]);
-    len = pwrite.copy(pw.get(), pwrite.size());
-    pw[len] = '\0';
-
-    new_argv[argc] = pr.get();
-    new_argv[argc + 1] = pw.get();
-    new_argv[argc + 2] = NULL;
-
-    int rv = execv(path.c_str(), new_argv.get());
-    if (rv == -1) {
-      LOG(ERROR) << "Could not exec " << path;
-      return false;
-    }
-  } else {
-    close(pipedown[0]);
-    close(pipeup[1]);
-
-    child_fds_[0] = pipeup[0];
-    child_fds_[1] = pipedown[1];
-    child_hash_.assign(serialized_digest);
-    // TODO(tmroeder): take as input a ChildTaoChannelFactory that can
-    // produce a TaoChannel here for the child. And separate out the
-    // child creation facility into a separate class that can be used
-    // here. Also, generalize the Listen code to spawn a thread that
-    // does a select on the file descriptors for the pipe tao channel,
-    // hence can handle requests from multiple simultaneous clients.
-    PipeTaoChannel ptc(child_fds_);
-    bool rv = ptc.Listen(this);
-    if (!rv) {
-      LOG(ERROR) << "Listening failed";
-    }
-
-    return rv;
   }
 
   return true;
@@ -487,7 +421,7 @@ bool LinuxTao::Attest(const string &data, string *attestation) const {
   }
 
   string signature;
-  if (!signer_->Sign(serialized_attestation, &signature)) {
+  if (!signer_->Sign(serialized_statement, &signature)) {
     LOG(ERROR) << "Could not sign the attestation";
     return false;
   }
@@ -497,18 +431,8 @@ bool LinuxTao::Attest(const string &data, string *attestation) const {
   a.set_serialized_statement(serialized_statement);
   a.set_signature(signature);
 
-  // Create an intermediate attestation from our cert by removing the
-  // serialized statement (since it's already in the public_key field.
-  Attestation cert;
-  cert.set_type(pk_attest_.type());
-  cert.set_signature(pk_attest_.signature());
-  cert.set_public_key(pk_attest_.public_key());
-  if (pk_attest_.has_cert()) {
-    cert.set_cert(pk_attest_.cert());
-  }
-
   string *mutable_cert = a.mutable_cert();
-  if (!cert->SerializeToString(mutable_cert)) {
+  if (!pk_attest_.SerializeToString(mutable_cert)) {
     LOG(ERROR) << "Could not serialize the certificate for our public key";
     return false;
   }
@@ -521,36 +445,65 @@ bool LinuxTao::Attest(const string &data, string *attestation) const {
   return true;
 }
 
-bool LinuxTao::VerifyAttestation(const string &data,
-                                  const string &attestation) const {
+bool LinuxTao::VerifyAttestation(const string &attestation,
+                                 string *data) const {
   Attestation a;
   if (!a.ParseFromString(attestation)) {
     LOG(ERROR) << "Could not deserialize an Attestation";
     return false;
   }
 
-  KeyczarPublicKey kpk;
-  if (!kpk.ParseFromString(a.public_key())) {
-    LOG(ERROR) << "Could not deserialize the public key for this attestation";
-    return false;
-  }
+  // Verify the cert to get the data back.
+  // If there is an attestation, then recurse to check the attestation
+  // of the public key. Otherwise, this must be the policy key.
+  if (a.has_cert()) {
+    // Make sure we're supposed to recurse here.
+    if (a.type() != INTERMEDIATE) {
+      LOG(ERROR) << "Expected this Attestation to be INTERMEDIATE, but it was not";
+      return false;
+    }
 
-  // Get a Keyset corresponding to this public key
-  Keyset *k = nullptr;
-  if (!DeserializePublicKey(kpk, &k)) {
-    LOG(ERROR) << "Could not deserialize the public key";
-    return false;
-  }
+    // Recurse on the cert Attestation and get the serialized key back
+    string key_data;
+    if (!VerifyAttestation(a.cert(), &key_data)) {
+      LOG(ERROR) << "Could not verify the public_key attestation";
+      return false;
+    }
 
-  scoped_ptr<Verifier> v(new Verifier(k));
-  v->set_encoding(Keyczar::NO_ENCODING);
-  if (!v->Verify(a.serialized_statement(), a.signature())) {
-    LOG(ERROR) << "The statement in an attestation did not have a valid signature from its public key";
-    return false;
+    KeyczarPublicKey kpk;
+    if (!kpk.ParseFromString(key_data)) {
+      LOG(ERROR) << "Could not deserialize the public key for this attestation";
+      return false;
+    }
+
+    // Get a Keyset corresponding to this public key
+    Keyset *k = nullptr;
+    if (!DeserializePublicKey(kpk, &k)) {
+      LOG(ERROR) << "Could not deserialize the public key";
+      return false;
+    }
+
+    scoped_ptr<Verifier> v(new Verifier(k));
+    v->set_encoding(Keyczar::NO_ENCODING);
+    if (!v->Verify(a.serialized_statement(), a.signature())) {
+      LOG(ERROR) << "The statement in an attestation did not have a valid signature from its public key";
+      return false;
+    }
+  } else {
+    if (a.type() != ROOT) {
+      LOG(ERROR) << "This is not a ROOT attestation, but it claims to be signed with the public key";
+      return false;
+    }
+
+    // Verify against the policy key.
+    if (!policy_verifier_->Verify(a.serialized_statement(), a.signature())) {
+      LOG(ERROR) << "Verification failed with the policy key";
+      return false;
+    }
   }
 
   Statement s;
-  if (!s->ParseFromString(s.serialized_statement())) {
+  if (!s.ParseFromString(a.serialized_statement())) {
     LOG(ERROR) << "Could not parse the serialized statement in an attestation";
     return false;
   }
@@ -572,51 +525,9 @@ bool LinuxTao::VerifyAttestation(const string &data,
     return false;
   }
 
-  // and verify that the data matches the data in the attestation
-  if (data.compare(s.data()) != 0) {
-    LOG(ERROR)
-        << "The supplied data does not match the data in the attestation";
-    return false;
-  }
+  data->assign(s.data().data(), s.data().size());
 
   VLOG(1) << "The attestation passed verification";
-
-  // If there is an attestation, then recurse to check the attestation
-  // of the public key. Otherwise, this must be the policy key.
-  if (a.has_cert()) {
-    return VerifyAttestation(a.public_key(), a.cert());
-  } else {
-    // Check this public_key to see if it matches the policy
-    // key. TODO(tmroeder): how do I do this? The easy way would be to
-    // insist on a canonical representation of the policy key as a
-    // string (the serialization of a KeyczarPublicKey). But this will
-    // fail when the policy key gets updated.
-    const Key *primary_key = k->primary_key();
-    if (primary_key == nullptr) {
-      LOG(ERROR) << "Could not get a primary key from the purported policy key";
-      return false;
-    }
-
-    Value *val = primary_key->GetValue();
-    if (val == nullptr) {
-      LOG(ERROR) << "Could not get a value from the primary key";
-      return false;
-    }
-
-    Value *policy_val = policy_key_->keyset()->primary_key()->GetValue();
-    if (policy_val == nullptr) {
-      LOG(ERROR) << "Could not get a value from the policy key";
-      return false;
-    }
-    
-    if (!policy_val->Equals(val)) {
-      LOG(ERROR) << "The lowest key in an attestation was not the policy key";
-      return false;
-    }
-  }
-
-  return true;
-
 
   return true;
 }

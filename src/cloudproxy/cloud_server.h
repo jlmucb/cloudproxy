@@ -31,7 +31,7 @@
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
 #include "tao/tao.h"
-#include "tao/whitelist_authorization_manager.h"
+#include "tao/whitelist_auth.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -149,7 +149,7 @@ class CloudServer {
   set<string> objects_;
 
   // authorized hashes of programs
-  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
+  scoped_ptr<tao::WhitelistAuth> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };

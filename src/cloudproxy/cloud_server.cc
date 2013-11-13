@@ -24,6 +24,8 @@
 #include "cloudproxy/cloud_server.h"
 #include "cloudproxy/util.h"
 
+#include "tao/attestation.pb.h"
+
 #include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
@@ -41,7 +43,7 @@ using keyczar::base::PathExists;
 
 using tao::Attestation;
 using tao::Tao;
-using tao::WhitelistAuthorizationManager;
+using tao::WhitelistAuth;
 
 namespace cloudproxy {
 
@@ -61,7 +63,7 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
       auth_(),
       users_(new CloudUserManager()),
       objects_(),
-      auth_manager_(new WhitelistAuthorizationManager()) {
+      auth_manager_(new WhitelistAuth()) {
 
   // set up the policy key to verify bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);

@@ -18,11 +18,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
-import "tao/attestation.proto";
-import "tao/keyczar_public_key.proto";
-
 package cloudproxy;
 
 // The types of permissions allowed in ACLs.
@@ -170,7 +165,8 @@ message SpeaksFor {
     // The name to bind to this key
     required string subject = 1;
 
-    required tao.KeyczarPublicKey pub_key = 2;
+    // a serialized tao.KeyczarPublicKey
+    required bytes pub_key = 2;
 }
 
 // A signed SpeaksFor message

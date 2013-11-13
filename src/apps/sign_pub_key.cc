@@ -35,6 +35,7 @@
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/keyczar_public_key.pb.h"
 
 using std::string;
 using std::stringstream;
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
 
   SpeaksFor sf;
   sf.set_subject(FLAGS_subject);
-  KeyczarPublicKey *kpk = sf.mutable_pub_key();
+  KeyczarPublicKey kpk;
 
   // load the meta file
   string dir_name(FLAGS_pub_key_loc);
@@ -69,7 +70,7 @@ int main(int argc, char** argv) {
   stringstream meta_buf;
   meta_buf << meta.rdbuf();
 
-  kpk->set_metadata(meta_buf.str());
+  kpk.set_metadata(meta_buf.str());
 
   DIR *dir = opendir(FLAGS_pub_key_loc.c_str());
   CHECK_NOTNULL(dir);
@@ -84,7 +85,7 @@ int main(int argc, char** argv) {
 	long n = strtol(d->d_name, nullptr, 0);
 	if (errno == 0) {
 	  // parse this data and add to the KeyczarPublicKey
-	  KeyczarPublicKey::KeyFile *kf = kpk->add_files();
+	  KeyczarPublicKey::KeyFile *kf = kpk.add_files();
 	  kf->set_name(n);
 	  stringstream file_name_stream;
 	  file_name_stream << dir_name << "/" << n;
@@ -99,6 +100,9 @@ int main(int argc, char** argv) {
     d = readdir(dir);
   }
   
+  string *mutable_pub_key = sf.mutable_pub_key();
+  CHECK(kpk.SerializeToString(mutable_pub_key))
+    << "Could not serialize the KeyczarPublicKey to a string";
 
   // decrypt the private policy key so we can construct a signer
   keyczar::base::ScopedSafeString password(new string(FLAGS_pass));

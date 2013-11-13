@@ -1,7 +1,7 @@
-//  File: tao.h
+//  File: tao_auth.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: The Tao interface for Trusted Computing
+//  Description: An interface for hosted-program authorization mechanisms
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -19,30 +19,21 @@
 
 
 
-#ifndef TAO_TAO_H_
-#define TAO_TAO_H_
+#ifndef TAO_TAO_AUTH_H_
+#define TAO_TAO_AUTH_H_
 
-#include <list>
 #include <string>
 
-using std::list;
 using std::string;
 
 namespace tao {
-
-// The Tao interface
-class Tao {
+class TaoAuth {
  public:
-  virtual ~Tao() {}
-  virtual bool Init() = 0;
-  virtual bool Destroy() = 0;
-  virtual bool StartHostedProgram(const string &path, const list<string> &args) = 0;
-  virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
-  virtual bool Seal(const string &data, string *sealed) const = 0;
-  virtual bool Unseal(const string &sealed, string *data) const = 0;
-  virtual bool Attest(const string &data, string *attestation) const = 0;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const = 0;
+  virtual ~TaoAuth() {}
+  virtual bool IsAuthorized(const string &program_hash) const = 0;
+  virtual bool IsAuthorized(const string &program_name,
+                            const string &program_hash) const = 0;
 };
-}
+}  // namespace tao
 
-#endif  // TAO_TAO_H_
+#endif  // TAO_TAO_AUTH_H_

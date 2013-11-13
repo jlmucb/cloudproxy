@@ -1,7 +1,7 @@
-//  File: tao.h
+//  File: hosted_program_factory.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: The Tao interface for Trusted Computing
+//  Description: An interface for code that starts hosted programs
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,10 +17,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
-#ifndef TAO_TAO_H_
-#define TAO_TAO_H_
+#ifndef TAO_HOSTED_PROGRAM_FACTORY_H_
+#define TAO_HOSTED_PROGRAM_FACTORY_H_
 
 #include <list>
 #include <string>
@@ -29,20 +27,15 @@ using std::list;
 using std::string;
 
 namespace tao {
+class TaoChannel;
 
-// The Tao interface
-class Tao {
+class HostedProgramFactory {
  public:
-  virtual ~Tao() {}
-  virtual bool Init() = 0;
-  virtual bool Destroy() = 0;
-  virtual bool StartHostedProgram(const string &path, const list<string> &args) = 0;
-  virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
-  virtual bool Seal(const string &data, string *sealed) const = 0;
-  virtual bool Unseal(const string &sealed, string *data) const = 0;
-  virtual bool Attest(const string &data, string *attestation) const = 0;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const = 0;
+  virtual ~HostedProgramFactory() {}
+  virtual bool CreateHostedProgram(const string &name, const list<string> &args,
+                                   TaoChannel &parent_channel) const = 0;
+  virtual string GetFactoryName() const = 0;
 };
-}
+} // namespace tao
 
-#endif  // TAO_TAO_H_
+#endif // TAO_HOSTED_PROGRAM_FACTORY_H_

@@ -30,7 +30,7 @@
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloud_user_manager.h"
 #include "tao/tao.h"
-#include "tao/whitelist_authorization_manager.h"
+#include "tao/whitelist_auth.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -112,7 +112,7 @@ class CloudClient {
   scoped_ptr<CloudUserManager> users_;
 
   // a way to check that a given hash corresponds to an authorized program
-  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
+  scoped_ptr<tao::WhitelistAuth> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };

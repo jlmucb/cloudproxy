@@ -1,4 +1,4 @@
-//  File: whitelist_authorization_manager.cc
+//  File: whitelist_auth.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: An implementation of the whitelist manager that handles
@@ -20,7 +20,7 @@
 
 
 
-#include "tao/whitelist_authorization_manager.h"
+#include "tao/whitelist_auth.h"
 #include "tao/hosted_programs.pb.h"
 
 #include <fstream>
@@ -30,7 +30,7 @@ using std::ifstream;
 
 namespace tao {
 
-bool WhitelistAuthorizationManager::Init(const string &whitelist_path,
+bool WhitelistAuth::Init(const string &whitelist_path,
                                          const Keyczar &public_policy_key) {
   // load the whitelist file and check its signature
   ifstream whitelist(whitelist_path);
@@ -64,12 +64,12 @@ bool WhitelistAuthorizationManager::Init(const string &whitelist_path,
   return true;
 }
 
-bool WhitelistAuthorizationManager::IsAuthorized(
+bool WhitelistAuth::IsAuthorized(
     const string &program_hash) const {
   return hash_whitelist_.find(program_hash) != hash_whitelist_.end();
 }
 
-bool WhitelistAuthorizationManager::IsAuthorized(
+bool WhitelistAuth::IsAuthorized(
     const string &program_name, const string &program_hash) const {
   auto it = whitelist_.find(program_name);
   if (it == whitelist_.end()) {

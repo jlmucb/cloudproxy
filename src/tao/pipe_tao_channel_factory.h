@@ -1,7 +1,8 @@
-//  File: tao.h
+//  File: pipe_tao_channel_factory.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: The Tao interface for Trusted Computing
+//  Description: An implementation of the Tao channel factory that creates a
+//  pair of pipes.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,32 +18,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef TAO_PIPE_TAO_CHANNEL_FACTORY_H_
+#define TAO_PIPE_TAO_CHANNEL_FACTORY_H_
 
-
-#ifndef TAO_TAO_H_
-#define TAO_TAO_H_
-
-#include <list>
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
 #include <string>
 
-using std::list;
 using std::string;
 
 namespace tao {
+class TaoChannel;
 
-// The Tao interface
-class Tao {
+class PipeTaoChannelFactory {
  public:
-  virtual ~Tao() {}
-  virtual bool Init() = 0;
-  virtual bool Destroy() = 0;
-  virtual bool StartHostedProgram(const string &path, const list<string> &args) = 0;
-  virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
-  virtual bool Seal(const string &data, string *sealed) const = 0;
-  virtual bool Unseal(const string &sealed, string *data) const = 0;
-  virtual bool Attest(const string &data, string *attestation) const = 0;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const = 0;
+  PipeTaoChannelFactory();
+  virtual ~PipeTaoChannelFactory() {}
+  virtual TaoChannel *CreateTaoChannel() const;
+  virtual string GetFactoryName() const { return "PipeTaoChannelFactory"; }
+ private:
+  DISALLOW_COPY_AND_ASSIGN(PipeTaoChannelFactory);
 };
-}
+} // namespace tao
 
-#endif  // TAO_TAO_H_
+#endif // TAO_PIPE_TAO_CHANNEL_FACTORY_H_

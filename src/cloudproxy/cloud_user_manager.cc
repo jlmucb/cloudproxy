@@ -68,7 +68,13 @@ bool CloudUserManager::AddSigningKey(const string &user, const string &path,
   return true;
 }
 
-bool CloudUserManager::AddKey(const string &user, const KeyczarPublicKey &kpk) {
+bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
+  KeyczarPublicKey kpk;
+  if (!kpk.ParseFromString(pub_key)) {
+    LOG(ERROR) << "Could not deserialize the KeyczarPublicKey";
+    return false;
+  }
+
   keyczar::Keyset *keyset = nullptr;
   if (!DeserializePublicKey(kpk, &keyset)) {
     LOG(ERROR) << "Could not deserialize the keyset";

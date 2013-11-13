@@ -1,4 +1,4 @@
-//  File: whitelist_authorization_manager.h
+//  File: whitelist_auth.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: The whitelist manager handles whitelist files signed
@@ -20,10 +20,10 @@
 
 
 
-#ifndef TAO_WHITELIST_AUTHORIZATION_MANAGER_H_
-#define TAO_WHITELIST_AUTHORIZATION_MANAGER_H_
+#ifndef TAO_WHITELIST_AUTH_H_
+#define TAO_WHITELIST_AUTH_H_
 
-#include "tao/tao_authorization_manager.h"
+#include "tao/tao_auth.h"
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
@@ -35,10 +35,10 @@ using std::map;
 using std::set;
 
 namespace tao {
-class WhitelistAuthorizationManager : public TaoAuthorizationManager {
+class WhitelistAuth : public TaoAuth {
  public:
-  WhitelistAuthorizationManager() : whitelist_(), hash_whitelist_() {}
-  virtual ~WhitelistAuthorizationManager() {}
+  WhitelistAuth() : whitelist_(), hash_whitelist_() {}
+  virtual ~WhitelistAuth() {}
   bool Init(const string &whitelist_path,
             const keyczar::Keyczar &public_policy_key);
   virtual bool IsAuthorized(const string &program_hash) const;
@@ -49,8 +49,8 @@ class WhitelistAuthorizationManager : public TaoAuthorizationManager {
   map<string, string> whitelist_;
   set<string> hash_whitelist_;
 
-  DISALLOW_COPY_AND_ASSIGN(WhitelistAuthorizationManager);
+  DISALLOW_COPY_AND_ASSIGN(WhitelistAuth);
 };
 }  // namespace tao
 
-#endif  // TAO_WHITELIST_AUTHORIZATION_MANAGER_H_
+#endif  // TAO_WHITELIST_AUTH_H_

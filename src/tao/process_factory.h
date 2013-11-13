@@ -1,7 +1,7 @@
-//  File: tao_authorization_manager.h
+//  File: process_factory.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: An interface for hosted-program authorization mechanisms
+//  Description: A factory that creates child processes.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,23 +17,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef TAO_PROCESS_FACTORY_H_
+#define TAO_PROCESS_FACTORY_H_
 
+#include "tao/hosted_program_factory.h"
 
-#ifndef TAO_AUTHORIZATION_MANAGER_H_
-#define TAO_AUTHORIZATION_MANAGER_H_
-
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+#include <list>
 #include <string>
 
+using std::list;
 using std::string;
 
 namespace tao {
-class TaoAuthorizationManager {
+class ProcessFactory : public HostedProgramFactory {
  public:
-  virtual ~TaoAuthorizationManager() {}
-  virtual bool IsAuthorized(const string &program_hash) const = 0;
-  virtual bool IsAuthorized(const string &program_name,
-                            const string &program_hash) const = 0;
+  virtual ~ProcessFactory() {}
+  virtual bool CreateHostedProgram(const string &name, const list<string> &args,
+                                   TaoChannel &parent_channel) const;
+  virtual string GetFactoryName() const;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ProcessFactory);
 };
-}  // namespace tao
+} // namespace tao
 
-#endif  // TAO_AUTHORIZATION_MANAGER_H_
+#endif // TAO_PROCESS_FACTORY_H_

@@ -18,9 +18,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
-#include "tao/pipe_tao_channel.h"
+#include <tao/pipe_tao_channel.h>
+#include <tao/pipe_tao_channel_params.pb.h>
 
 #include <keyczar/base/scoped_ptr.h>
 
@@ -41,34 +40,72 @@ bool PipeTaoChannel::ExtractPipes(int *argc, char ***argv, int fds[2]) {
     return false;
   }
 
-  errno = 0;
-  fds[0] = strtol((*argv)[*argc - 2], NULL, 0);
-  if (errno != 0) {
-    LOG(ERROR) << "Could not convert the second-to-last argument to an integer";
-    return false;
+  // The last argument should be a serialized PipeTaoChannelParams
+  PipeTaoChannelParams params;
+  if (!params.ParseFromString((*argv)[*argc - 1])) {
+      LOG(ERROR) << "Could not extract the descriptors from the last argument";
+      return false;
   }
 
-  errno = 0;
-  fds[1] = strtol((*argv)[*argc - 1], NULL, 0);
-  if (errno != 0) {
-    LOG(ERROR) << "Could not convert the last argument to an integer";
-    return false;
-  }
+  fds[0] = params.readfd();
+  fds[1] = params.writefd();
 
   // clean up argc and argv
   // TODO(tmroeder): do I need to free the memory here?
-  *argc = *argc - 2;
+  *argc = *argc - 1;
   (*argv)[*argc] = NULL;
   return true;
 }
 
-PipeTaoChannel::PipeTaoChannel(int fds[2]) : readfd_(fds[0]), writefd_(fds[1]) {
+PipeTaoChannel::PipeTaoChannel(int fds[2]) :
+  has_child_params(false),
+  readfd_(fds[0]), writefd_(fds[1]),
+  child_readfd_(0), child_writefd_(0) {
+  // the file descriptors are assumed to be open already
+}
+
+PipeTaoChannel::PipeTaoChannel(int fds[2], int child_fds[2]) :
+  has_child_params(true),
+  readfd_(fds[0]), writefd_(fds[1]),
+  child_readfd_(child_fds[0]), child_writefd_(child_fds[1]) {
   // the file descriptors are assumed to be open already
 }
 
 PipeTaoChannel::~PipeTaoChannel() {
   close(readfd_);
   close(writefd_);
+}
+
+bool PipeTaoChannel::GetChildParams(string *params) const {
+  CHECK_NOTNULL(params);
+
+  if (!has_child_params) {
+    LOG(ERROR) << "No child params available";
+    return false;
+  }
+
+  PipeTaoChannelParams pipe_params;
+  pipe_params.set_readfd(child_readfd_);
+  pipe_params.set_writefd(child_writefd_);
+
+  if (!pipe_params.SerializeToString(params)) {
+    LOG(ERROR) << "Could not serialize the pipe params to a string";
+    return false;
+  }
+
+  return true;
+}
+
+bool PipeTaoChannel::ChildCleanup() {
+  close(child_readfd_);
+  close(child_writefd_);
+  return true;
+}
+
+bool PipeTaoChannel::ParentCleanup() {
+  close(readfd_);
+  close(writefd_);
+  return true;
 }
 
 bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m) const {

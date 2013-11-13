@@ -58,7 +58,7 @@ bool FakeTao::Init() {
   return true;
 }
 
-bool FakeTao::StartHostedProgram(const string &path, int argc, char **argv) {
+bool FakeTao::StartHostedProgram(const string &path, const list<string> &args) {
   // to be implemented after the pipe process code has been refactored
   return false;
 }

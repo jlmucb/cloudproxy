@@ -25,9 +25,12 @@
 #include <keyczar/keyczar.h>
 #include <keyczar/crypto_factory.h>
 
+#include <tao/attestation.pb.h>
+#include <tao/hosted_program_factory.h>
 #include <tao/tao.h>
-#include <tao/whitelist_authorization_manager.h>
+#include <tao/tao_auth.h>
 #include <tao/tao_channel.h>
+#include <tao/tao_channel_factory.h>
 
 #include <string>
 #include <map>
@@ -39,22 +42,25 @@ using std::string;
 
 namespace tao {
 
+  // IAH: finish getting this to compile and try it out with the FakeTao, if that's possible yet
+
 class LinuxTao : public Tao {
  public:
   LinuxTao(const string &secret_path,
             const string &key_path, const string &pk_path,
             const string &whitelist_path, const string &policy_pk_path, 
-	    TaoChannel *host_channel);
+	   TaoChannel *host_channel, TaoChannelFactory *channel_factory,
+	   HostedProgramFactory *program_factory);
   virtual ~LinuxTao() {}
   virtual bool Init();
   virtual bool Destroy();
-  virtual bool StartHostedProgram(const string &path, int argc, char **argv);
+  virtual bool StartHostedProgram(const string &program, const list<string> &args);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
   virtual bool Attest(const string &data, string *attestation) const;
-  virtual bool VerifyAttestation(const string &data,
-                                 const string &attestation) const;
+  virtual bool VerifyAttestation(const string &attestation,
+                                 string *data) const;
 
  protected:
   /// Get an attestation from the host Tao on our key. Note that this
@@ -65,6 +71,9 @@ class LinuxTao : public Tao {
  private:
   // create a 128-byte secret
   static const int SecretSize = 128;
+  
+  // the timeout for an Attestation (= 1 year in seconds)
+  static const int AttestationTimeout = 31556926;
 
   // the path to the secret sealed by the Tao
   string secret_path_;
@@ -96,17 +105,29 @@ class LinuxTao : public Tao {
   // the path to the whitelist
   string whitelist_path_;
 
+  // A serialization of the public key of this Tao.
+  string serialized_pub_key_;
+
   /// An attestation to #serialized_pub_key_.
   Attestation pk_attest_;
   
-  // the channel to use for host communication
-  scoped_ptr<tao::TaoChannel> host_channel_;
+  // The channel to use for host communication.
+  scoped_ptr<TaoChannel> host_channel_;
+  
+  // A factory that creates tao channel objects to communicate with hosted programs
+  scoped_ptr<TaoChannelFactory> channel_factory_;
 
-  scoped_ptr<tao::WhitelistAuthorizationManager> auth_manager_;
+  // A factory that can be used to start hosted programs
+  scoped_ptr<HostedProgramFactory> program_factory_;
+
+  // A class that decides whether or not a give hosted program is authorized.
+  scoped_ptr<TaoAuth> auth_manager_;
+
+  // The sole channel to the sole child (to be generalized)
+  scoped_ptr<TaoChannel> child_channel_;
 
   static const int AesBlockSize = 16;
   static const int Sha256Size = 32;
-  static const int SecretSize = 64;
 
   // either unseal or create and seal a secret using the legacy tao
   bool getSecret(keyczar::base::ScopedSafeString *secret);

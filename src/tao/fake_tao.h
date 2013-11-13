@@ -37,8 +37,7 @@ class FakeTao : public Tao {
   virtual ~FakeTao() {}
   virtual bool Init();
   virtual bool Destroy() { return true; }
-  virtual bool StartHostedProgram(const string &path, int argc,
-                                  char **argv);
+  virtual bool StartHostedProgram(const string &path, const list<string> &args);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;

@@ -49,8 +49,7 @@ message TaoChannelResponse {
 
 message StartHostedProgramArgs {
   required string path = 1;
-  required int32 argc = 2;
-  repeated string argv = 3;
+  repeated string args = 2;
 }
 
 message GetRandomBytesArgs {

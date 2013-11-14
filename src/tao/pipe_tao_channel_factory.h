@@ -23,6 +23,8 @@
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
+#include "tao/tao_channel_factory.h"
+
 #include <string>
 
 using std::string;
@@ -30,7 +32,7 @@ using std::string;
 namespace tao {
 class TaoChannel;
 
-class PipeTaoChannelFactory {
+ class PipeTaoChannelFactory : public TaoChannelFactory {
  public:
   PipeTaoChannelFactory();
   virtual ~PipeTaoChannelFactory() {}

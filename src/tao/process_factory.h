@@ -33,6 +33,7 @@ using std::string;
 namespace tao {
 class ProcessFactory : public HostedProgramFactory {
  public:
+  ProcessFactory() {}
   virtual ~ProcessFactory() {}
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    TaoChannel &parent_channel) const;

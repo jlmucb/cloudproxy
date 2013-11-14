@@ -20,6 +20,10 @@
 #ifndef TAO_TAO_CHANNEL_FACTORY_H_
 #define TAO_TAO_CHANNEL_FACTORY_H_
 
+#include <string>
+
+using std::string;
+
 namespace tao {
 class TaoChannel;
 

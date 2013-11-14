@@ -28,7 +28,7 @@
 
 namespace tao {
 
-  bool CreateKey(keyczar::rw::KeysetWriter *writer, keyczar::KeyType::Type key_type, keyczar::KeyPurpose::Type key_purpose, const string &key_name, scoped_ptr<keyczar::Keyczar> *key);
+bool CreateKey(keyczar::rw::KeysetWriter *writer, keyczar::KeyType::Type key_type, keyczar::KeyPurpose::Type key_purpose, const string &key_name, scoped_ptr<keyczar::Keyczar> *key);
 
 bool DeserializePublicKey(const KeyczarPublicKey &kpk,
 			  keyczar::Keyset **keyset);

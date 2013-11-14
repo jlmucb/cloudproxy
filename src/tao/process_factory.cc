@@ -74,4 +74,8 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
 
   return true;
 }
+
+string ProcessFactory::GetFactoryName() const {
+  return "ProcessFactory";
+}
 } // namespace tao

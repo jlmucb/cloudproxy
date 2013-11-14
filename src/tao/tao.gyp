@@ -48,6 +48,8 @@
       'type': 'static_library',
       'sources': [
         'attestation.proto',
+	'direct_tao_channel.cc',
+	'direct_tao_channel.h',
         'hosted_programs.proto',
         'hosted_program_factory.h',
 	'keyczar_public_key.proto',

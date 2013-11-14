@@ -17,16 +17,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tao/fake_tao.h"
-#include "tao/linux_tao.h"
 #include "tao/direct_tao_channel.h"
+#include "tao/fake_tao.h"
+#include "tao/hosted_programs.pb.h"
+#include "tao/hosted_program_factory.h"
+#include "tao/linux_tao.h"
+#include "tao/pipe_tao_channel.h"
+#include "tao/pipe_tao_channel_factory.h"
+#include "tao/process_factory.h"
+#include "tao/util.h"
 #include "gtest/gtest.h"
+
+#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/rw/keyset_file_reader.h>
 
 #include <stdlib.h>
 
-using tao::FakeTao;
-using tao::LinuxTao;
+#include <fstream>
+
+using keyczar::Keyczar;
+using keyczar::KeyPurpose;
+using keyczar::KeyType;
+using keyczar::Signer;
+using keyczar::rw::KeysetJSONFileWriter;
+using keyczar::rw::KeysetWriter;
+
+using std::ofstream;
+
+using tao::CreateKey;
 using tao::DirectTaoChannel;
+using tao::FakeTao;
+using tao::HostedProgramFactory;
+using tao::LinuxTao;
+using tao::PipeTaoChannelFactory;
+using tao::ProcessFactory;
+using tao::SignedWhitelist;
+using tao::Tao;
+using tao::TaoChannelFactory;
+using tao::Whitelist;
+
 
 class LinuxTaoTest : public ::testing::Test {
 protected:
@@ -35,9 +64,9 @@ protected:
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
 
     scoped_ptr<DirectTaoChannel> channel(new DirectTaoChannel(ft.release()));
-    ASSERT_TRUE(channel_->Init()) << "Could not init the channel";
+    ASSERT_TRUE(channel->Init()) << "Could not init the channel";
 
-    scoped_ptr<HostedProgramFactory> process_factory(new ProcessFactory());
+    scoped_ptr<HostedProgramFactory> program_factory(new ProcessFactory());
     scoped_ptr<TaoChannelFactory> channel_factory(new PipeTaoChannelFactory());
 
     // get a temporary directory to use for the files
@@ -48,67 +77,47 @@ protected:
     ASSERT_TRUE(mkdtemp(temp_name.get()));
     dir_ = temp_name.get();
       
-
     string secret_path = dir_ + "/linux_tao_secret";
     string key_path = dir_ + "/linux_tao_secret_key";
     string pk_path = dir_ + "/linux_tao_pk";
     string whitelist_path = dir_ + "/whitelist";
     string policy_pk_path = dir_ + "/policy_pk";
     
-    // create the whitelist and the policy key
+    // create the policy key
+    FilePath fp(policy_pk_path);
+    scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
+    ASSERT_TRUE(CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key_));
+    
+    // Create an empty whitelist, since we don't want the LinuxTao to
+    // start any hosted programs during this test. Then write it to
+    // the temp filename above.
+    Whitelist w;
+    SignedWhitelist sw;
+    string *serialized_whitelist = sw.mutable_serialized_whitelist();
+    ASSERT_TRUE(w.SerializeToString(serialized_whitelist));
 
-    //tao_.reset(new LinuxTao(
+    string *signature = sw.mutable_signature();
+    ASSERT_TRUE(policy_key_->Sign(*serialized_whitelist, signature));
+
+    ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
+    ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
+
+    tao_.reset(new LinuxTao(secret_path, key_path, pk_path, whitelist_path, policy_pk_path,
+			    channel.release(), channel_factory.release(), program_factory.release()));
+    ASSERT_TRUE(tao_->Init());
   }
 
-  virtual 
+  // TODO(tmroeder): clean up the temporary directory of keys and
+  // secrets. Use TearDown and recursively delete all the files.
 
   string dir_;
   scoped_ptr<LinuxTao> tao_;
+  scoped_ptr<Keyczar> policy_key_;
 };
 
-TEST_F(FakeTaoTest, RandomBytesTest) {
+TEST_F(LinuxTaoTest, RandomBytesTest) {
   string bytes;
 
-  EXPECT_TRUE(tao_.GetRandomBytes(10, &bytes));
-  EXPECT_TRUE(tao_.GetRandomBytes(0, &bytes));
-}
-
-TEST_F(FakeTaoTest, SealTest) {
-  string bytes;
-  EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-  string sealed;
-  EXPECT_TRUE(tao_.Seal(bytes, &sealed));
-}
-
-TEST_F(FakeTaoTest, UnsealTest) {
-  string bytes;
-  EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-  string sealed;
-  EXPECT_TRUE(tao_.Seal(bytes, &sealed));
-
-  string unsealed;
-  EXPECT_TRUE(tao_.Unseal(sealed, &unsealed));
-
-  EXPECT_EQ(bytes, unsealed);
-}  
-
-TEST_F(FakeTaoTest, AttestTest) {
-  string bytes;
-  EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-  
-  string attestation;
-  EXPECT_TRUE(tao_.Attest(bytes, &attestation));
-}
-
-TEST_F(FakeTaoTest, VerifyAttestTest) {
-  string bytes;
-  EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-  
-  string attestation;
-  EXPECT_TRUE(tao_.Attest(bytes, &attestation));
-
-  string data;
-  EXPECT_TRUE(tao_.VerifyAttestation(attestation, &data));
-
-  EXPECT_EQ(data, bytes);
+  EXPECT_TRUE(tao_->GetRandomBytes(10, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes(0, &bytes));
 }

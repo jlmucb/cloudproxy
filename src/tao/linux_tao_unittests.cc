@@ -62,7 +62,6 @@ using tao::Whitelist;
 class LinuxTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    LOG(INFO) << "here";
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
 
@@ -142,6 +141,36 @@ TEST_F(LinuxTaoTest, RandomBytesTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(0, &bytes));
 }
 
+TEST_F(LinuxTaoTest, FailSealTest) {
+  string bytes;
+  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  string sealed;
+  EXPECT_FALSE(tao_->Seal(bytes, &sealed));
+}
+
+TEST_F(LinuxTaoTest, FailUnsealTest) {
+  string bytes;
+  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+
+  string unsealed;
+  EXPECT_FALSE(tao_->Unseal(bytes, &unsealed));
+}
+
+TEST_F(LinuxTaoTest, FailAttestTest) {
+  string bytes;
+  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+
+  string attestation;
+  EXPECT_FALSE(tao_->Attest(bytes, &attestation));
+}
+
+TEST_F(LinuxTaoTest, FailVerifyAttestTest) {
+  string bytes;
+  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+
+  string data;
+  EXPECT_FALSE(tao_->VerifyAttestation(bytes, &data));
+}
 
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

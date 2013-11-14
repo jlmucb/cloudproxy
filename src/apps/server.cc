@@ -17,8 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -94,7 +92,7 @@ int main(int argc, char **argv) {
   // get a secret from the Tao
   ScopedSafeString secret(new string());
   CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
-    << "Could not get the secret";
+      << "Could not get the secret";
 
   // initialize OpenSSL
   SSL_load_error_strings();
@@ -111,9 +109,9 @@ int main(int argc, char **argv) {
   }
   CRYPTO_set_locking_callback(locking_function);
 
-  CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret,
-                 FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
-                 FLAGS_whitelist_path, FLAGS_address, FLAGS_port);
+  CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret, FLAGS_policy_key,
+                 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_whitelist_path,
+                 FLAGS_address, FLAGS_port);
 
   CHECK(cs.Listen(*channel)) << "Could not listen for client connections";
   return 0;

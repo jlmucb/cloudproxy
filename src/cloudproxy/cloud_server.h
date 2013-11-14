@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef CLOUDPROXY_CLOUD_SERVER_H_
 #define CLOUDPROXY_CLOUD_SERVER_H_
 
@@ -122,7 +120,8 @@ class CloudServer {
   bool HandleResponse(const Response &response, BIO *bio, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
   bool HandleAttestation(const string &attestation, BIO *bio, string *reason,
-			 bool *reply, CloudServerThreadData &cstd, const tao::Tao &t);
+                         bool *reply, CloudServerThreadData &cstd,
+                         const tao::Tao &t);
 
   // the public policy key, used to check signatures
   scoped_ptr<keyczar::Keyczar> public_policy_key_;

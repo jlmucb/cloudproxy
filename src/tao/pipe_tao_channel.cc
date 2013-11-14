@@ -43,8 +43,8 @@ bool PipeTaoChannel::ExtractPipes(int *argc, char ***argv, int fds[2]) {
   // The last argument should be a serialized PipeTaoChannelParams
   PipeTaoChannelParams params;
   if (!params.ParseFromString((*argv)[*argc - 1])) {
-      LOG(ERROR) << "Could not extract the descriptors from the last argument";
-      return false;
+    LOG(ERROR) << "Could not extract the descriptors from the last argument";
+    return false;
   }
 
   fds[0] = params.readfd();
@@ -57,17 +57,21 @@ bool PipeTaoChannel::ExtractPipes(int *argc, char ***argv, int fds[2]) {
   return true;
 }
 
-PipeTaoChannel::PipeTaoChannel(int fds[2]) :
-  has_child_params(false),
-  readfd_(fds[0]), writefd_(fds[1]),
-  child_readfd_(0), child_writefd_(0) {
+PipeTaoChannel::PipeTaoChannel(int fds[2])
+    : has_child_params(false),
+      readfd_(fds[0]),
+      writefd_(fds[1]),
+      child_readfd_(0),
+      child_writefd_(0) {
   // the file descriptors are assumed to be open already
 }
 
-PipeTaoChannel::PipeTaoChannel(int fds[2], int child_fds[2]) :
-  has_child_params(true),
-  readfd_(fds[0]), writefd_(fds[1]),
-  child_readfd_(child_fds[0]), child_writefd_(child_fds[1]) {
+PipeTaoChannel::PipeTaoChannel(int fds[2], int child_fds[2])
+    : has_child_params(true),
+      readfd_(fds[0]),
+      writefd_(fds[1]),
+      child_readfd_(child_fds[0]),
+      child_writefd_(child_fds[1]) {
   // the file descriptors are assumed to be open already
 }
 

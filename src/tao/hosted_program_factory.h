@@ -36,6 +36,6 @@ class HostedProgramFactory {
                                    TaoChannel &parent_channel) const = 0;
   virtual string GetFactoryName() const = 0;
 };
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_HOSTED_PROGRAM_FACTORY_H_
+#endif  // TAO_HOSTED_PROGRAM_FACTORY_H_

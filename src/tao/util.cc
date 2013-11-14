@@ -50,7 +50,9 @@ using std::ofstream;
 using std::stringstream;
 
 namespace tao {
-bool CreateKey(KeysetWriter *writer, KeyType::Type key_type, KeyPurpose::Type key_purpose, const string &key_name, scoped_ptr<Keyczar> *key) {
+bool CreateKey(KeysetWriter *writer, KeyType::Type key_type,
+               KeyPurpose::Type key_purpose, const string &key_name,
+               scoped_ptr<Keyczar> *key) {
   CHECK_NOTNULL(writer);
   CHECK_NOTNULL(key);
 
@@ -59,29 +61,27 @@ bool CreateKey(KeysetWriter *writer, KeyType::Type key_type, KeyPurpose::Type ke
   k->set_encrypted(true);
 
   KeysetMetadata *metadata = nullptr;
-  metadata =
-      new KeysetMetadata(key_name, key_type, key_purpose, true, 1);
+  metadata = new KeysetMetadata(key_name, key_type, key_purpose, true, 1);
   CHECK_NOTNULL(metadata);
   k->set_metadata(metadata);
   k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
-  switch(key_purpose) {
-  case KeyPurpose::SIGN_AND_VERIFY:
-    key->reset(new Signer(k.release()));
-    break;
-  case KeyPurpose::DECRYPT_AND_ENCRYPT:
-    key->reset(new Crypter(k.release()));
-    break;
-  default:
-    LOG(ERROR) << "Unsupported key type " << key_purpose;
-    return false;
+  switch (key_purpose) {
+    case KeyPurpose::SIGN_AND_VERIFY:
+      key->reset(new Signer(k.release()));
+      break;
+    case KeyPurpose::DECRYPT_AND_ENCRYPT:
+      key->reset(new Crypter(k.release()));
+      break;
+    default:
+      LOG(ERROR) << "Unsupported key type " << key_purpose;
+      return false;
   }
 
   return true;
 }
 
-bool DeserializePublicKey(const KeyczarPublicKey &kpk,
-			  Keyset **keyset) {
+bool DeserializePublicKey(const KeyczarPublicKey &kpk, Keyset **keyset) {
   if (keyset == nullptr) {
     LOG(ERROR) << "null keyset";
     return false;
@@ -104,7 +104,7 @@ bool DeserializePublicKey(const KeyczarPublicKey &kpk,
 
     // iterate over the public keys and write each one to disk
     int key_count = kpk.files_size();
-    for(int i = 0; i < key_count; i++) {
+    for (int i = 0; i < key_count; i++) {
       const KeyczarPublicKey::KeyFile &kf = kpk.files(i);
       stringstream ss;
       ss << destination << "/" << kf.name();
@@ -157,7 +157,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
   stringstream meta_stream;
   meta_stream << meta_file.rdbuf();
   kpk->set_metadata(meta_stream.str());
-  
+
   KeysetMetadata::const_iterator version_iterator = keyset->metadata()->Begin();
   for (; version_iterator != keyset->metadata()->End(); ++version_iterator) {
     int v = version_iterator->first;
@@ -166,7 +166,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
     ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
     stringstream file_buf;
     file_buf << file.rdbuf();
-    
+
     KeyczarPublicKey::KeyFile *kf = kpk->add_files();
     kf->set_name(v);
     kf->set_data(file_buf.str());
@@ -195,7 +195,7 @@ bool VerifySignature(const string &data, const string &signature,
 }
 
 bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
-                         keyczar::Keyset **keyset) {
+                      keyczar::Keyset **keyset) {
   CHECK(keyset) << "null keyset";
 
   KeyczarPublicKey kpk;
@@ -212,9 +212,8 @@ bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
   return true;
 }
 
-
 bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
-			string *secret) {
+                        string *secret) {
   // create or unseal a secret from the Tao
   FilePath fp(sealed_path);
   if (PathExists(fp)) {
@@ -249,4 +248,4 @@ bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
 
   return true;
 }
-} // namespace tao
+}  // namespace tao

@@ -18,8 +18,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef TAO_WHITELIST_AUTH_H_
 #define TAO_WHITELIST_AUTH_H_
 

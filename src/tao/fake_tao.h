@@ -18,8 +18,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef TAO_FAKE_TAO_H_
 #define TAO_FAKE_TAO_H_
 
@@ -56,6 +54,6 @@ class FakeTao : public Tao {
 
   DISALLOW_COPY_AND_ASSIGN(FakeTao);
 };
-} // namespace tao
+}  // namespace tao
 
 #endif  // TAO_FAKE_TAO_H_

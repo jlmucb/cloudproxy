@@ -38,9 +38,10 @@ class ProcessFactory : public HostedProgramFactory {
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    TaoChannel &parent_channel) const;
   virtual string GetFactoryName() const;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ProcessFactory);
 };
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_PROCESS_FACTORY_H_
+#endif  // TAO_PROCESS_FACTORY_H_

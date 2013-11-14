@@ -28,10 +28,13 @@
 
 namespace tao {
 
-bool CreateKey(keyczar::rw::KeysetWriter *writer, keyczar::KeyType::Type key_type, keyczar::KeyPurpose::Type key_purpose, const string &key_name, scoped_ptr<keyczar::Keyczar> *key);
+bool CreateKey(keyczar::rw::KeysetWriter *writer,
+               keyczar::KeyType::Type key_type,
+               keyczar::KeyPurpose::Type key_purpose, const string &key_name,
+               scoped_ptr<keyczar::Keyczar> *key);
 
 bool DeserializePublicKey(const KeyczarPublicKey &kpk,
-			  keyczar::Keyset **keyset);
+                          keyczar::Keyset **keyset);
 bool SerializePublicKey(const keyczar::Keyczar &key, KeyczarPublicKey *kpk);
 
 bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
@@ -39,10 +42,12 @@ bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
 bool VerifySignature(const string &data, const string &signature,
                      keyczar::Keyczar *key);
 
-bool CopyPublicKeyset(const keyczar::Keyczar &public_key, keyczar::Keyset **keyset);
+bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
+                      keyczar::Keyset **keyset);
 
-bool SealOrUnsealSecret(const Tao &t, const string &sealed_path, string *secret);
+bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
+                        string *secret);
 
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_UTIL_TAO_H_
+#endif  // TAO_UTIL_TAO_H_

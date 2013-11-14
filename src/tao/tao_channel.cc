@@ -83,7 +83,7 @@ bool TaoChannel::Listen(Tao *t) const {
         }
 
         result = t->VerifyAttestation(rpc.signature(), &result_data);
-	resp.set_data(result_data);
+        resp.set_data(result_data);
         break;
       default:
         LOG(ERROR) << "Unknown RPC " << rpc.rpc();
@@ -98,7 +98,8 @@ bool TaoChannel::Listen(Tao *t) const {
   return true;
 }
 
-bool TaoChannel::StartHostedProgram(const string &path, const list<string> &args) {
+bool TaoChannel::StartHostedProgram(const string &path,
+                                    const list<string> &args) {
   TaoChannelRPC rpc;
   rpc.set_rpc(START_HOSTED_PROGRAM);
 
@@ -106,7 +107,7 @@ bool TaoChannel::StartHostedProgram(const string &path, const list<string> &args
   shpa->set_path(path);
   for (const string &arg : args) {
     string *cur = shpa->add_args();
-    cur->assign(arg);    
+    cur->assign(arg);
   }
 
   SendRPC(rpc);
@@ -196,7 +197,8 @@ bool TaoChannel::Attest(const string &data, string *attestation) const {
   return resp.success();
 }
 
-bool TaoChannel::VerifyAttestation(const string &attestation, string *data) const {
+bool TaoChannel::VerifyAttestation(const string &attestation,
+                                   string *data) const {
   TaoChannelRPC rpc;
   rpc.set_rpc(VERIFY_ATTESTATION);
   rpc.set_signature(attestation);

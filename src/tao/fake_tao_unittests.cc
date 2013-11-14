@@ -23,10 +23,8 @@
 using tao::FakeTao;
 
 class FakeTaoTest : public ::testing::Test {
-protected:
-  virtual void SetUp() {
-    ASSERT_TRUE(tao_.Init());
-  }
+ protected:
+  virtual void SetUp() { ASSERT_TRUE(tao_.Init()); }
 
   FakeTao tao_;
 };
@@ -55,12 +53,12 @@ TEST_F(FakeTaoTest, UnsealTest) {
   EXPECT_TRUE(tao_.Unseal(sealed, &unsealed));
 
   EXPECT_EQ(bytes, unsealed);
-}  
+}
 
 TEST_F(FakeTaoTest, AttestTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-  
+
   string attestation;
   EXPECT_TRUE(tao_.Attest(bytes, &attestation));
 }
@@ -68,7 +66,7 @@ TEST_F(FakeTaoTest, AttestTest) {
 TEST_F(FakeTaoTest, VerifyAttestTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-  
+
   string attestation;
   EXPECT_TRUE(tao_.Attest(bytes, &attestation));
 

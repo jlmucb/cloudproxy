@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_server.h"
 #include "cloudproxy/util.h"
 
@@ -76,14 +74,14 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
-    << "Could not encode the secret as a Base64W string";
+      << "Could not encode the secret as a Base64W string";
 
   // check to see if the public/private keys exist. If not, create them
   FilePath fp(tls_cert);
   if (!PathExists(fp)) {
     CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
-  			"server"))
-      << "Could not create new keys for OpenSSL for the client";
+                         "server"))
+        << "Could not create new keys for OpenSSL for the client";
   }
 
   // set up the SSL context and BIOs for getting client connections
@@ -131,9 +129,10 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
   keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
-    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(ERR_get_error(), NULL);
+    LOG(ERROR)
+        << "The OpenSSL error was: " << ERR_error_string(ERR_get_error(), NULL);
     return;
-  } 
+  }
 
   SSL *cur_ssl = nullptr;
   BIO_get_ssl(bio.get(), &cur_ssl);
@@ -429,7 +428,7 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
 
     // check the signature on the serialized_challenge
     if (!VerifySignature(response.serialized_chall(), response.signature(),
-			 user_key)) {
+                         user_key)) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");
       return false;
@@ -512,8 +511,8 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
 }
 
 bool CloudServer::HandleAttestation(const string &attestation, BIO *bio,
-				    string *reason, bool *reply,
-				    CloudServerThreadData &cstd, const Tao &t) {
+                                    string *reason, bool *reply,
+                                    CloudServerThreadData &cstd, const Tao &t) {
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {
@@ -525,7 +524,8 @@ bool CloudServer::HandleAttestation(const string &attestation, BIO *bio,
     }
 
     if (data.compare(cstd.GetPeerCert()) != 0) {
-      LOG(ERROR) << "The Attestation passed validation, but the data didn't match";
+      LOG(ERROR)
+          << "The Attestation passed validation, but the data didn't match";
       return false;
     }
   }
@@ -534,11 +534,12 @@ bool CloudServer::HandleAttestation(const string &attestation, BIO *bio,
 
   // quote it to send it to the client
   ServerMessage sm;
-  string* signature = sm.mutable_attestation();
+  string *signature = sm.mutable_attestation();
   {
     lock_guard<mutex> l(tao_m_);
     if (!t.Attest(cstd.GetSelfCert(), signature)) {
-      LOG(ERROR) << "Could not get a signed attestation for our own X.509 certificate";
+      LOG(ERROR)
+          << "Could not get a signed attestation for our own X.509 certificate";
       return false;
     }
   }

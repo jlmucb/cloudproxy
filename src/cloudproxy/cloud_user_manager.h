@@ -19,11 +19,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef CLOUDPROXY_CLOUD_USER_MANAGER_H_
 #define CLOUDPROXY_CLOUD_USER_MANAGER_H_
-
 
 #include "cloudproxy/cloudproxy.pb.h"
 

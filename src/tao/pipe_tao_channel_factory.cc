@@ -22,7 +22,7 @@
 #include <tao/pipe_tao_channel.h>
 
 namespace tao {
-PipeTaoChannelFactory::PipeTaoChannelFactory() { }
+PipeTaoChannelFactory::PipeTaoChannelFactory() {}
 
 TaoChannel *PipeTaoChannelFactory::CreateTaoChannel() const {
   // create a pipe on which the child can communicate with the Tao
@@ -49,5 +49,4 @@ TaoChannel *PipeTaoChannelFactory::CreateTaoChannel() const {
 
   return new PipeTaoChannel(parent_fds, child_fds);
 }
-} // nanespace tao
-
+}  // nanespace tao

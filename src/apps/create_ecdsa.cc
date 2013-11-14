@@ -17,7 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include "cloudproxy/util.h"
@@ -39,8 +38,8 @@ int main(int argc, char** argv) {
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
   SSL_library_init();
-  CHECK(cloudproxy::CreateECDSAKey(FLAGS_private_path, FLAGS_public_path, FLAGS_password,
-                       FLAGS_country_code, FLAGS_org, FLAGS_cn))
-      << "Could not create the ECDSA key";
+  CHECK(cloudproxy::CreateECDSAKey(
+      FLAGS_private_path, FLAGS_public_path, FLAGS_password, FLAGS_country_code,
+      FLAGS_org, FLAGS_cn)) << "Could not create the ECDSA key";
   return 0;
 }

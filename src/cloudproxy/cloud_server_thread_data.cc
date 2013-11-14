@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_server_thread_data.h"
 
 namespace cloudproxy {

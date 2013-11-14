@@ -32,15 +32,16 @@ using std::string;
 namespace tao {
 class TaoChannel;
 
- class PipeTaoChannelFactory : public TaoChannelFactory {
+class PipeTaoChannelFactory : public TaoChannelFactory {
  public:
   PipeTaoChannelFactory();
   virtual ~PipeTaoChannelFactory() {}
   virtual TaoChannel *CreateTaoChannel() const;
   virtual string GetFactoryName() const { return "PipeTaoChannelFactory"; }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(PipeTaoChannelFactory);
 };
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_PIPE_TAO_CHANNEL_FACTORY_H_
+#endif  // TAO_PIPE_TAO_CHANNEL_FACTORY_H_

@@ -48,13 +48,14 @@ using cloudproxy::SignedSpeaksFor;
 using tao::KeyczarPublicKey;
 
 DEFINE_string(subject, "tmroeder", "The subject to bind to this key");
-DEFINE_string(pub_key_loc, "keys/tmroeder_pub", "The directory containing this public key");
+DEFINE_string(pub_key_loc, "keys/tmroeder_pub",
+              "The directory containing this public key");
 DEFINE_string(key_loc, "./policy_key", "The location of the private key");
 DEFINE_string(pass, "cppolicy", "The password to use for this private key");
 DEFINE_string(signed_speaks_for, "keys/tmroeder_pub_signed",
               "The location to write the SignedSpeaksFor file");
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -80,29 +81,30 @@ int main(int argc, char** argv) {
     if (d->d_type == DT_REG) {
       string name(d->d_name);
       if (name.compare("meta") != 0) {
-	// try to interpret this name as an integer
-	errno = 0;
-	long n = strtol(d->d_name, nullptr, 0);
-	if (errno == 0) {
-	  // parse this data and add to the KeyczarPublicKey
-	  KeyczarPublicKey::KeyFile *kf = kpk.add_files();
-	  kf->set_name(n);
-	  stringstream file_name_stream;
-	  file_name_stream << dir_name << "/" << n;
-	  ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
-	  stringstream file_stream;
-	  file_stream << file.rdbuf();
-	  kf->set_data(file_stream.str());
-	}
+        // try to interpret this name as an integer
+        errno = 0;
+        long n = strtol(d->d_name, nullptr, 0);
+        if (errno == 0) {
+          // parse this data and add to the KeyczarPublicKey
+          KeyczarPublicKey::KeyFile *kf = kpk.add_files();
+          kf->set_name(n);
+          stringstream file_name_stream;
+          file_name_stream << dir_name << "/" << n;
+          ifstream file(file_name_stream.str().c_str(),
+                        ifstream::in | ios::binary);
+          stringstream file_stream;
+          file_stream << file.rdbuf();
+          kf->set_data(file_stream.str());
+        }
       }
     }
-    
+
     d = readdir(dir);
   }
-  
+
   string *mutable_pub_key = sf.mutable_pub_key();
   CHECK(kpk.SerializeToString(mutable_pub_key))
-    << "Could not serialize the KeyczarPublicKey to a string";
+      << "Could not serialize the KeyczarPublicKey to a string";
 
   // decrypt the private policy key so we can construct a signer
   keyczar::base::ScopedSafeString password(new string(FLAGS_pass));
@@ -115,7 +117,6 @@ int main(int argc, char** argv) {
   CHECK(signer.get()) << "Could not initialize the signer from "
                       << FLAGS_key_loc;
   signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
-
 
   string sf_serialized;
   CHECK(sf.SerializeToString(&sf_serialized)) << "Could not serialize"

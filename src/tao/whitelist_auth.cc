@@ -18,8 +18,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "tao/whitelist_auth.h"
 #include "tao/hosted_programs.pb.h"
 
@@ -31,7 +29,7 @@ using std::ifstream;
 namespace tao {
 
 bool WhitelistAuth::Init(const string &whitelist_path,
-                                         const Keyczar &public_policy_key) {
+                         const Keyczar &public_policy_key) {
   // load the whitelist file and check its signature
   ifstream whitelist(whitelist_path);
 
@@ -64,13 +62,12 @@ bool WhitelistAuth::Init(const string &whitelist_path,
   return true;
 }
 
-bool WhitelistAuth::IsAuthorized(
-    const string &program_hash) const {
+bool WhitelistAuth::IsAuthorized(const string &program_hash) const {
   return hash_whitelist_.find(program_hash) != hash_whitelist_.end();
 }
 
-bool WhitelistAuth::IsAuthorized(
-    const string &program_name, const string &program_hash) const {
+bool WhitelistAuth::IsAuthorized(const string &program_name,
+                                 const string &program_hash) const {
   auto it = whitelist_.find(program_name);
   if (it == whitelist_.end()) {
     return false;

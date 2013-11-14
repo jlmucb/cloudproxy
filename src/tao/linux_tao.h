@@ -44,32 +44,33 @@ namespace tao {
 
 class LinuxTao : public Tao {
  public:
-  LinuxTao(const string &secret_path,
-            const string &key_path, const string &pk_path,
-            const string &whitelist_path, const string &policy_pk_path, 
-	   TaoChannel *host_channel, TaoChannelFactory *channel_factory,
-	   HostedProgramFactory *program_factory);
+  LinuxTao(const string &secret_path, const string &key_path,
+           const string &pk_path, const string &whitelist_path,
+           const string &policy_pk_path, TaoChannel *host_channel,
+           TaoChannelFactory *channel_factory,
+           HostedProgramFactory *program_factory);
   virtual ~LinuxTao() {}
   virtual bool Init();
   virtual bool Destroy();
-  virtual bool StartHostedProgram(const string &program, const list<string> &args);
+  virtual bool StartHostedProgram(const string &program,
+                                  const list<string> &args);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
   virtual bool Attest(const string &data, string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation,
-                                 string *data) const;
+  virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
   /// Get an attestation from the host Tao on our key. Note that this
   /// will get an attestation on #serialized_key for this Tao host; it
   /// is for use by this Tao and its subclasses.
-  virtual bool AttestToKey(const string &serialized_key, Attestation *attest) const;
+  virtual bool AttestToKey(const string &serialized_key,
+                           Attestation *attest) const;
 
  private:
   // create a 128-byte secret
   static const int SecretSize = 128;
-  
+
   // the timeout for an Attestation (= 1 year in seconds)
   static const int AttestationTimeout = 31556926;
 
@@ -108,11 +109,12 @@ class LinuxTao : public Tao {
 
   /// An attestation to #serialized_pub_key_.
   Attestation pk_attest_;
-  
+
   // The channel to use for host communication.
   scoped_ptr<TaoChannel> host_channel_;
-  
-  // A factory that creates tao channel objects to communicate with hosted programs
+
+  // A factory that creates tao channel objects to communicate with hosted
+  // programs
   scoped_ptr<TaoChannelFactory> channel_factory_;
 
   // A factory that can be used to start hosted programs

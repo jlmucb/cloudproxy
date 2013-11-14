@@ -75,9 +75,10 @@ using std::stringstream;
 namespace tao {
 
 LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
-                     const string &pk_path, const string &whitelist_path,
-		   const string &policy_pk_path, TaoChannel *host_channel,
-		   TaoChannelFactory *channel_factory, HostedProgramFactory *program_factory)
+                   const string &pk_path, const string &whitelist_path,
+                   const string &policy_pk_path, TaoChannel *host_channel,
+                   TaoChannelFactory *channel_factory,
+                   HostedProgramFactory *program_factory)
     : secret_path_(secret_path),
       key_path_(key_path),
       pk_path_(pk_path),
@@ -106,7 +107,7 @@ bool LinuxTao::Init() {
 
   scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth());
   CHECK(whitelist_auth->Init(whitelist_path_, *policy_verifier_))
-    << "Could not initialize the whitelist manager";
+      << "Could not initialize the whitelist manager";
   auth_manager_.reset(whitelist_auth.release());
 
   // initialize the host channel
@@ -196,7 +197,8 @@ bool LinuxTao::getSecret(ScopedSafeString *secret) {
     string sealed_secret;
     CHECK(host_channel_->Seal(*(secret->get()), &sealed_secret))
         << "Can't seal the secret";
-    VLOG(2) << "Got a sealed secret of size " << static_cast<int>(sealed_secret.size());
+    VLOG(2) << "Got a sealed secret of size "
+            << static_cast<int>(sealed_secret.size());
 
     ofstream out_file(secret_path_.c_str(), ofstream::out);
     out_file.write(sealed_secret.data(), sealed_secret.size());
@@ -214,7 +216,8 @@ bool LinuxTao::getSecret(ScopedSafeString *secret) {
 
     CHECK(host_channel_->Unseal(sealed_secret, secret->get()))
         << "Can't unseal the secret";
-    VLOG(2) << "Unsealed a secret of size " << static_cast<int>(secret->get()->size());
+    VLOG(2) << "Unsealed a secret of size "
+            << static_cast<int>(secret->get()->size());
   }
 
   return true;
@@ -226,23 +229,25 @@ bool LinuxTao::createPublicKey(Encrypter *crypter) {
       new KeysetEncryptedJSONFileWriter(fp, crypter));
 
   CHECK_NOTNULL(writer.get());
-  return CreateKey(writer.get(), KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, "linux_tao_pk", &signer_);
+  return CreateKey(writer.get(), KeyType::ECDSA_PRIV,
+                   KeyPurpose::SIGN_AND_VERIFY, "linux_tao_pk", &signer_);
 }
 
 bool LinuxTao::createKey(const string &secret) {
   FilePath fp(key_path_);
   scoped_ptr<KeysetWriter> writer(new KeysetPBEJSONFileWriter(fp, secret));
   CHECK_NOTNULL(writer.get());
-  return CreateKey(writer.get(), KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, "linux_tao", &crypter_);
+  return CreateKey(writer.get(), KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT,
+                   "linux_tao", &crypter_);
 }
 
 bool LinuxTao::Destroy() { return true; }
 
-bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args) {
+bool LinuxTao::StartHostedProgram(const string &path,
+                                  const list<string> &args) {
   // TODO(tmroeder): add support for multiple child programs
   if (!child_hash_.empty()) {
-    LOG(ERROR)
-        << "Cannot start a second program under the tao bootstrap";
+    LOG(ERROR) << "Cannot start a second program under the tao bootstrap";
     return false;
   }
 
@@ -282,8 +287,8 @@ bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args) 
     return false;
   }
 
-
-  // TODO(tmroeder): add this to the MultiplexTaoChannel when we have that implemented
+  // TODO(tmroeder): add this to the MultiplexTaoChannel when we have that
+  // implemented
   bool rv = child_channel_->Listen(this);
   if (!rv) {
     LOG(ERROR) << "Server listening failed";
@@ -425,7 +430,8 @@ bool LinuxTao::VerifyAttestation(const string &attestation,
   if (a.has_cert()) {
     // Make sure we're supposed to recurse here.
     if (a.type() != INTERMEDIATE) {
-      LOG(ERROR) << "Expected this Attestation to be INTERMEDIATE, but it was not";
+      LOG(ERROR)
+          << "Expected this Attestation to be INTERMEDIATE, but it was not";
       return false;
     }
 
@@ -452,12 +458,14 @@ bool LinuxTao::VerifyAttestation(const string &attestation,
     scoped_ptr<Verifier> v(new Verifier(k));
     v->set_encoding(Keyczar::NO_ENCODING);
     if (!v->Verify(a.serialized_statement(), a.signature())) {
-      LOG(ERROR) << "The statement in an attestation did not have a valid signature from its public key";
+      LOG(ERROR) << "The statement in an attestation did not have a valid "
+                    "signature from its public key";
       return false;
     }
   } else {
     if (a.type() != ROOT) {
-      LOG(ERROR) << "This is not a ROOT attestation, but it claims to be signed with the public key";
+      LOG(ERROR) << "This is not a ROOT attestation, but it claims to be "
+                    "signed with the public key";
       return false;
     }
 
@@ -498,7 +506,8 @@ bool LinuxTao::VerifyAttestation(const string &attestation,
   return true;
 }
 
-bool LinuxTao::AttestToKey(const string &serialized_key, Attestation *attest) const {
+bool LinuxTao::AttestToKey(const string &serialized_key,
+                           Attestation *attest) const {
   string serialized_attestation;
   if (!host_channel_->Attest(serialized_key, &serialized_attestation)) {
     LOG(ERROR) << "Could not get an attestation to the serialized key";

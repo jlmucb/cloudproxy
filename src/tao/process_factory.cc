@@ -27,7 +27,7 @@ using std::vector;
 namespace tao {
 bool ProcessFactory::CreateHostedProgram(const string &name,
                                          const list<string> &args,
-					 TaoChannel &parent_channel) const {
+                                         TaoChannel &parent_channel) const {
   int child_pid = fork();
   if (child_pid == -1) {
     LOG(ERROR) << "Could not fork";
@@ -37,7 +37,8 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
   if (child_pid == 0) {
     string child_channel_info;
     if (!parent_channel.GetChildParams(&child_channel_info)) {
-      LOG(ERROR) << "Could not get the child parameters for this parent channel";
+      LOG(ERROR)
+          << "Could not get the child parameters for this parent channel";
       return false;
     }
 
@@ -52,7 +53,8 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
       new_args.push_back(v);
     }
 
-    vector<char> child_vec(child_channel_info.begin(), child_channel_info.end());
+    vector<char> child_vec(child_channel_info.begin(),
+                           child_channel_info.end());
     new_args.push_back(child_vec);
 
     scoped_array<char *> argv(new char *[args.size() + 2]);
@@ -75,7 +77,5 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
   return true;
 }
 
-string ProcessFactory::GetFactoryName() const {
-  return "ProcessFactory";
-}
-} // namespace tao
+string ProcessFactory::GetFactoryName() const { return "ProcessFactory"; }
+}  // namespace tao

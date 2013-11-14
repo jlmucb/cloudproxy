@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 #define CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 
@@ -45,7 +43,7 @@ namespace cloudproxy {
 // authentication information
 class CloudServerThreadData {
  public:
- CloudServerThreadData(const string &peer_cert, const string &self_cert)
+  CloudServerThreadData(const string &peer_cert, const string &self_cert)
       : serialized_peer_cert_(peer_cert),
         serialized_self_cert_(self_cert),
         cert_validated_(false),

@@ -873,10 +873,10 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
     return false;
   }
 
-  if (!X509_NAME_add_entry_by_txt(name, "ST", MBSTRING_ASC,
-                                  reinterpret_cast<unsigned char *>(
-								    const_cast<char *>("Washington")),
-                                  -1, -1, 0)) {
+  if (!X509_NAME_add_entry_by_txt(
+          name, "ST", MBSTRING_ASC,
+          reinterpret_cast<unsigned char *>(const_cast<char *>("Washington")),
+          -1, -1, 0)) {
     LOG(ERROR) << "Could not add an Organization";
     return false;
   }

@@ -48,8 +48,12 @@ class DirectTaoChannel : public TaoChannel {
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const { return false; }
-  virtual bool SendMessage(const google::protobuf::Message &m) const { return false; }
+  virtual bool ReceiveMessage(google::protobuf::Message *m) const {
+    return false;
+  }
+  virtual bool SendMessage(const google::protobuf::Message &m) const {
+    return false;
+  }
 
  private:
   scoped_ptr<Tao> tao_;

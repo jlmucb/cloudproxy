@@ -17,8 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef TAO_TAO_H_
 #define TAO_TAO_H_
 
@@ -36,12 +34,14 @@ class Tao {
   virtual ~Tao() {}
   virtual bool Init() = 0;
   virtual bool Destroy() = 0;
-  virtual bool StartHostedProgram(const string &path, const list<string> &args) = 0;
+  virtual bool StartHostedProgram(const string &path,
+                                  const list<string> &args) = 0;
   virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
   virtual bool Seal(const string &data, string *sealed) const = 0;
   virtual bool Unseal(const string &sealed, string *data) const = 0;
   virtual bool Attest(const string &data, string *attestation) const = 0;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const = 0;
+  virtual bool VerifyAttestation(const string &attestation,
+                                 string *data) const = 0;
 };
 }
 

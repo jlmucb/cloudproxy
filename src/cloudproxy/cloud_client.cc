@@ -18,8 +18,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_client.h"
 
 #include <glog/logging.h>
@@ -70,14 +68,14 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
-    << "Could not encode the secret as a Base64W string";
+      << "Could not encode the secret as a Base64W string";
 
   // check to see if the public/private keys exist. If not, create them
   FilePath fp(tls_cert);
   if (!PathExists(fp)) {
     CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
-			"client"))
-      << "Could not create new keys for OpenSSL for the client";
+                         "client"))
+        << "Could not create new keys for OpenSSL for the client";
   }
 
   // set up the TLS connection with the cert and keys and trust DB
@@ -149,10 +147,10 @@ bool CloudClient::Connect(const Tao &t) {
   // this step also checks to see if the program hash is authorized
   string data;
   CHECK(t.VerifyAttestation(sm.attestation(), &data))
-    << "The Attestation from the server did not pass verification";
+      << "The Attestation from the server did not pass verification";
 
   CHECK_EQ(data.compare(serialized_peer_cert), 0)
-    << "The Attestation passed verification, but the data didn't match";
+      << "The Attestation passed verification, but the data didn't match";
 
   // once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.
@@ -227,7 +225,7 @@ bool CloudClient::Authenticate(const string &subject,
 
   string sig;
   CHECK(SignData(serialized_chall, &sig, signer)) << "Could not sign the"
-                                                           " challenge";
+                                                     " challenge";
 
   ClientMessage cm2;
   Response *r = cm2.mutable_response();

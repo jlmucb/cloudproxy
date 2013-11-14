@@ -17,7 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <openssl/ssl.h>
@@ -49,7 +48,8 @@ DEFINE_string(client_cert, "./openssl_keys/client/client.crt",
               "The PEM certificate for the client to use for TLS");
 DEFINE_string(client_key, "./openssl_keys/client/client.key",
               "The private key file for the client for TLS");
-DEFINE_string(sealed_secret, "client_secret", "The sealed secret for the client");
+DEFINE_string(sealed_secret, "client_secret",
+              "The sealed secret for the client");
 DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
                                                  " policy key");
 DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
@@ -89,13 +89,12 @@ int main(int argc, char** argv) {
   // get a secret from the Tao
   ScopedSafeString secret(new string());
   CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
-    << "Could not get the secret";
-
+      << "Could not get the secret";
 
   LOG(INFO) << "About to create a client";
-  CloudClient cc(FLAGS_client_cert, FLAGS_client_key, *secret,
-                 FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_whitelist_path,
-                 FLAGS_address, FLAGS_port);
+  CloudClient cc(FLAGS_client_cert, FLAGS_client_key, *secret, FLAGS_policy_key,
+                 FLAGS_pem_policy_key, FLAGS_whitelist_path, FLAGS_address,
+                 FLAGS_port);
 
   LOG(INFO) << "Created a client";
   CHECK(cc.Connect(*channel)) << "Could not connect to the server at "

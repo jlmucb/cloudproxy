@@ -20,12 +20,12 @@
 #include "tao/direct_tao_channel.h"
 
 namespace tao {
-DirectTaoChannel::DirectTaoChannel(Tao *tao)
-  : tao_(tao) {
+DirectTaoChannel::DirectTaoChannel(Tao *tao) : tao_(tao) {
   // no other initialization needed
 }
 
-bool DirectTaoChannel::StartHostedProgram(const string &path, const list<string> &args) {
+bool DirectTaoChannel::StartHostedProgram(const string &path,
+                                          const list<string> &args) {
   return tao_->StartHostedProgram(path, args);
 }
 
@@ -45,7 +45,8 @@ bool DirectTaoChannel::Attest(const string &data, string *attestation) const {
   return tao_->Attest(data, attestation);
 }
 
-bool DirectTaoChannel::VerifyAttestation(const string &attestation, string *data) const {
+bool DirectTaoChannel::VerifyAttestation(const string &attestation,
+                                         string *data) const {
   return tao_->VerifyAttestation(attestation, data);
 }
-} // namespace tao
+}  // namespace tao

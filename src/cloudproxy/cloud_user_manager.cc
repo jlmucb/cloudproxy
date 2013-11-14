@@ -19,8 +19,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloudproxy.pb.h"
@@ -41,8 +39,7 @@ bool CloudUserManager::HasKey(const string &user) const {
   return users_.end() != users_.find(user);
 }
 
-bool CloudUserManager::GetKey(const string &user,
-                              keyczar::Keyczar **key) {
+bool CloudUserManager::GetKey(const string &user, keyczar::Keyczar **key) {
   CHECK_NOTNULL(key);
   auto user_it = users_.find(user);
   if (users_.end() == user_it) {
@@ -85,8 +82,7 @@ bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
     return false;
   }
 
-  shared_ptr<keyczar::Keyczar> verifier(
-      new keyczar::Verifier(keyset));
+  shared_ptr<keyczar::Keyczar> verifier(new keyczar::Verifier(keyset));
 
   // handle bytes instead of Base64w-encoded strings
   verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);

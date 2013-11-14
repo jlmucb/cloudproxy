@@ -33,6 +33,6 @@ class TaoChannelFactory {
   virtual TaoChannel *CreateTaoChannel() const = 0;
   virtual string GetFactoryName() const = 0;
 };
-} // namespace tao
+}  // namespace tao
 
-#endif // TAO_TAO_CHANNEL_FACTORY_H_
+#endif  // TAO_TAO_CHANNEL_FACTORY_H_

@@ -13,11 +13,8 @@ using keyczar::RandImpl;
 using keyczar::Signer;
 
 namespace tao {
-FakeTao::FakeTao() 
-  : crypter_(nullptr),
-    signer_(nullptr),
-    policy_verifier_(nullptr)
-{
+FakeTao::FakeTao()
+    : crypter_(nullptr), signer_(nullptr), policy_verifier_(nullptr) {
   // The actual initialization happens in Init().
 }
 
@@ -25,14 +22,15 @@ bool FakeTao::Init() {
   scoped_ptr<Keyset> k(new Keyset());
   KeyType::Type crypter_key_type = KeyType::AES;
   KeyPurpose::Type crypter_key_purpose = KeyPurpose::DECRYPT_AND_ENCRYPT;
-  KeysetMetadata *crypter_metadata = new KeysetMetadata("fake_tao", crypter_key_type, crypter_key_purpose, true, 1);
+  KeysetMetadata *crypter_metadata = new KeysetMetadata(
+      "fake_tao", crypter_key_type, crypter_key_purpose, true, 1);
   CHECK_NOTNULL(crypter_metadata);
 
   k->set_metadata(crypter_metadata);
   k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
   crypter_.reset(new Crypter(k.release()));
-  
+
   scoped_ptr<Keyset> pk(new Keyset());
   KeyType::Type pk_key_type = KeyType::ECDSA_PRIV;
   KeyPurpose::Type pk_key_purpose = KeyPurpose::SIGN_AND_VERIFY;
@@ -43,16 +41,16 @@ bool FakeTao::Init() {
   pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
   signer_.reset(new Signer(pk.release()));
-  
+
   scoped_ptr<Keyset> public_pk(new Keyset());
   KeyType::Type public_pk_key_type = KeyType::ECDSA_PRIV;
   KeyPurpose::Type public_pk_key_purpose = KeyPurpose::SIGN_AND_VERIFY;
-  KeysetMetadata *public_pk_metadata =
-      new KeysetMetadata("fake_tao_public_pk", public_pk_key_type, public_pk_key_purpose, true, 1);
+  KeysetMetadata *public_pk_metadata = new KeysetMetadata(
+      "fake_tao_public_pk", public_pk_key_type, public_pk_key_purpose, true, 1);
   CHECK_NOTNULL(public_pk_metadata);
   public_pk->set_metadata(public_pk_metadata);
   public_pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-  
+
   policy_verifier_.reset(new Signer(public_pk.release()));
 
   return true;
@@ -116,7 +114,8 @@ bool FakeTao::VerifyAttestation(const string &attestation, string *data) const {
     return false;
   }
 
-  data->assign(a.serialized_statement().data(), a.serialized_statement().size());
+  data->assign(a.serialized_statement().data(),
+               a.serialized_statement().size());
   return signer_->Verify(a.serialized_statement(), a.signature());
 }
-} // namespace tao
+}  // namespace tao

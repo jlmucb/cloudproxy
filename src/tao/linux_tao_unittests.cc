@@ -56,9 +56,8 @@ using tao::Tao;
 using tao::TaoChannelFactory;
 using tao::Whitelist;
 
-
 class LinuxTaoTest : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
@@ -76,18 +75,20 @@ protected:
 
     ASSERT_TRUE(mkdtemp(temp_name.get()));
     dir_ = temp_name.get();
-      
+
     string secret_path = dir_ + "/linux_tao_secret";
     string key_path = dir_ + "/linux_tao_secret_key";
     string pk_path = dir_ + "/linux_tao_pk";
     string whitelist_path = dir_ + "/whitelist";
     string policy_pk_path = dir_ + "/policy_pk";
-    
+
     // create the policy key
     FilePath fp(policy_pk_path);
     scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
-    ASSERT_TRUE(CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key_));
-    
+    ASSERT_TRUE(
+        CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
+                  KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key_));
+
     // Create an empty whitelist, since we don't want the LinuxTao to
     // start any hosted programs during this test. Then write it to
     // the temp filename above.
@@ -102,8 +103,10 @@ protected:
     ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
 
-    tao_.reset(new LinuxTao(secret_path, key_path, pk_path, whitelist_path, policy_pk_path,
-			    channel.release(), channel_factory.release(), program_factory.release()));
+    tao_.reset(
+        new LinuxTao(secret_path, key_path, pk_path, whitelist_path,
+                     policy_pk_path, channel.release(),
+                     channel_factory.release(), program_factory.release()));
     ASSERT_TRUE(tao_->Init());
   }
 

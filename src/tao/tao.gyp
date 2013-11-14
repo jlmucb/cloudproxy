@@ -26,13 +26,10 @@
   },
   'targets': [
     {
-      'target_name': 'tao_test',
+      'target_name': 'fake_tao_unittests',
       'type': 'executable',
       'sources': [
         'fake_tao_unittests.cc',
-	'fake_tao.h',
-	'fake_tao.cc',
-	'linux_tao_unittests.cc',
       ],
       'include_dirs': [
         '..',
@@ -40,7 +37,22 @@
       'dependencies': [
         'tao',
         '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest_main',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
+    },
+    {
+      'target_name': 'linux_tao_unittests',
+      'type': 'executable',
+      'sources': [
+	    'linux_tao_unittests.cc',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'dependencies': [
+        'tao',
+        '../third_party/googlemock/gmock.gyp:gmock',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest',
       ],
     },
     {
@@ -50,6 +62,8 @@
         'attestation.proto',
 	'direct_tao_channel.cc',
 	'direct_tao_channel.h',
+	'fake_tao.h',
+	'fake_tao.cc',
         'hosted_programs.proto',
         'hosted_program_factory.h',
 	'keyczar_public_key.proto',

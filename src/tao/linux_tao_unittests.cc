@@ -32,6 +32,8 @@
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <fstream>
 
@@ -47,6 +49,7 @@ using std::ofstream;
 using tao::CreateKey;
 using tao::DirectTaoChannel;
 using tao::FakeTao;
+using tao::HostedProgram;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
 using tao::PipeTaoChannelFactory;
@@ -59,6 +62,7 @@ using tao::Whitelist;
 class LinuxTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
+    LOG(INFO) << "here";
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
 
@@ -82,17 +86,29 @@ class LinuxTaoTest : public ::testing::Test {
     string whitelist_path = dir_ + "/whitelist";
     string policy_pk_path = dir_ + "/policy_pk";
 
+    // Create the policy key directory so it can be filled by keyczar.
+    ASSERT_EQ(mkdir(policy_pk_path.c_str(), 0700), 0);
+    
+    LOG(INFO) << "Created directories in " << dir_;
+
+
     // create the policy key
     FilePath fp(policy_pk_path);
     scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
     ASSERT_TRUE(
         CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
                   KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key_));
+    policy_key_->set_encoding(Keyczar::NO_ENCODING);
 
-    // Create an empty whitelist, since we don't want the LinuxTao to
-    // start any hosted programs during this test. Then write it to
-    // the temp filename above.
+    // Create a whitelist with a dummy hosted program, since we don't
+    // want the LinuxTao to start any hosted programs during this
+    // test. Then write it to the temp filename above.
     Whitelist w;
+    HostedProgram *hp = w.add_programs();
+    hp->set_name("dummy program");
+    hp->set_hash_alg("SHA256");
+    hp->set_hash("This is not really a hash.");
+
     SignedWhitelist sw;
     string *serialized_whitelist = sw.mutable_serialized_whitelist();
     ASSERT_TRUE(w.SerializeToString(serialized_whitelist));
@@ -102,6 +118,7 @@ class LinuxTaoTest : public ::testing::Test {
 
     ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
+    whitelist_file.close();
 
     tao_.reset(
         new LinuxTao(secret_path, key_path, pk_path, whitelist_path,
@@ -123,4 +140,10 @@ TEST_F(LinuxTaoTest, RandomBytesTest) {
 
   EXPECT_TRUE(tao_->GetRandomBytes(10, &bytes));
   EXPECT_TRUE(tao_->GetRandomBytes(0, &bytes));
+}
+
+
+GTEST_API_ int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }

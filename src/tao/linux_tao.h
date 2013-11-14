@@ -42,8 +42,6 @@ using std::string;
 
 namespace tao {
 
-  // IAH: finish getting this to compile and try it out with the FakeTao, if that's possible yet
-
 class LinuxTao : public Tao {
  public:
   LinuxTao(const string &secret_path,

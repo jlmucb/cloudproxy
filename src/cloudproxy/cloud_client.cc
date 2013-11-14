@@ -30,6 +30,7 @@
 
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 #include <sstream>
 #include <fstream>
@@ -42,6 +43,7 @@ using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
+using tao::SignData;
 using tao::Tao;
 using tao::WhitelistAuth;
 

@@ -17,8 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/util.h"
 
 #include <fstream>
@@ -46,6 +44,7 @@
 
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/keyczar_public_key.pb.h"
+#include "tao/util.h"
 
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
@@ -61,9 +60,9 @@ using keyczar::rw::KeysetJSONFileReader;
 
 using tao::Tao;
 using tao::KeyczarPublicKey;
+using tao::VerifySignature;
 
 using std::ifstream;
-using std::ios;
 using std::ofstream;
 using std::stringstream;
 
@@ -152,129 +151,6 @@ bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
   return true;
 }
 
-bool VerifySignature(const string &data, const string &signature,
-                     keyczar::Keyczar *key) {
-  if (!key->Verify(data, signature)) {
-    LOG(ERROR) << "Verify failed";
-    return false;
-  }
-
-  return true;
-}
-
-bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
-                         keyczar::Keyset **keyset) {
-  CHECK(keyset) << "null keyset";
-
-  KeyczarPublicKey kpk;
-  if (!SerializePublicKey(public_key, &kpk)) {
-    LOG(ERROR) << "Could not serialize the public key";
-    return false;
-  }
-
-  if (!DeserializePublicKey(kpk, keyset)) {
-    LOG(ERROR) << "Could not deserialize the public key";
-    return false;
-  }
-
-  return true;
-}
-
-bool DeserializePublicKey(const KeyczarPublicKey &kpk,
-			  keyczar::Keyset **keyset) {
-  if (keyset == nullptr) {
-    LOG(ERROR) << "null keyset";
-    return false;
-  }
-
-  char tempdir[] = "/tmp/public_key_XXXXXX";
-  if (mkdtemp(tempdir) == nullptr) {
-    LOG(ERROR) << "Could not create a temp directory for public key export";
-    return false;
-  }
-
-  string destination(tempdir);
-
-  // write the files to the temp directory and make sure they close
-  {
-    // write the metadata
-    string metadata_file_name = destination + string("/meta");
-    ofstream meta_file(metadata_file_name.c_str(), ofstream::out | ios::binary);
-    meta_file.write(kpk.metadata().data(), kpk.metadata().size());
-
-    // iterate over the public keys and write each one to disk
-    int key_count = kpk.files_size();
-    for(int i = 0; i < key_count; i++) {
-      const KeyczarPublicKey::KeyFile &kf = kpk.files(i);
-      stringstream ss;
-      ss << destination << "/" << kf.name();
-      ofstream file(ss.str().c_str(), ofstream::out | ios::binary);
-      file.write(kf.data().data(), kf.data().size());
-    }
-  }
-
-  // read the data from the directory
-  scoped_ptr<KeysetReader> reader(new KeysetJSONFileReader(destination));
-  if (reader.get() == NULL) {
-    return false;
-  }
-
-  *keyset = Keyset::Read(*reader, true);
-
-  return true;
-}
-
-bool SerializePublicKey(const keyczar::Keyczar &key, KeyczarPublicKey *kpk) {
-  char tempdir[] = "/tmp/public_key_XXXXXX";
-  if (kpk == nullptr) {
-    LOG(ERROR) << "Could not serialize to a null public key structure";
-    return false;
-  }
-
-  if (mkdtemp(tempdir) == nullptr) {
-    LOG(ERROR) << "Could not create a temp directory for public key export";
-    return false;
-  }
-
-  string destination(tempdir);
-
-  scoped_ptr<KeysetWriter> writer(new KeysetJSONFileWriter(destination));
-  if (writer.get() == NULL) {
-    return false;
-  }
-
-  const Keyset *keyset = key.keyset();
-  if (!keyset->PublicKeyExport(*writer)) {
-    LOG(ERROR) << "Could not export the public key";
-    return false;
-  }
-
-  LOG(INFO) << "Exported the public key to " << destination;
-
-  // now iterate over the files in the directory and add them to the public key
-  string meta_file_name = destination + string("/meta");
-  ifstream meta_file(meta_file_name.c_str(), ifstream::in | ios::binary);
-  stringstream meta_stream;
-  meta_stream << meta_file.rdbuf();
-  kpk->set_metadata(meta_stream.str());
-  
-  KeysetMetadata::const_iterator version_iterator = keyset->metadata()->Begin();
-  for (; version_iterator != keyset->metadata()->End(); ++version_iterator) {
-    int v = version_iterator->first;
-    stringstream file_name_stream;
-    file_name_stream << destination << "/" << v;
-    ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
-    stringstream file_buf;
-    file_buf << file.rdbuf();
-    
-    KeyczarPublicKey::KeyFile *kf = kpk->add_files();
-    kf->set_name(v);
-    kf->set_data(file_buf.str());
-  }
-
-  return true;
-}
-
 bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len) {
   CHECK(bio) << "null bio";
   CHECK(buffer) << "null buffer";
@@ -337,15 +213,6 @@ bool SendData(BIO *bio, const string &data) {
 
   if (!SendData(bio, data.data(), data.length())) {
     LOG(ERROR) << "Could not send the data";
-    return false;
-  }
-
-  return true;
-}
-
-bool SignData(const string &data, string *signature, keyczar::Keyczar *key) {
-  if (!key->Sign(data, signature)) {
-    LOG(ERROR) << "Could not sign the data";
     return false;
   }
 
@@ -1067,42 +934,4 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
 
   return true;
 }
-
-bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
-			string *secret) {
-  // create or unseal a secret from the Tao
-  FilePath fp(sealed_path);
-  if (PathExists(fp)) {
-    // Unseal it
-    ifstream sealed_file(sealed_path.c_str(), ifstream::in | ios::binary);
-    stringstream sealed_buf;
-    sealed_buf << sealed_file.rdbuf();
-
-    if (!t.Unseal(sealed_buf.str(), secret)) {
-      LOG(ERROR) << "Could not unseal the secret from " << sealed_path;
-      return false;
-    }
-
-  } else {
-    // create and seal the secret
-    const int SecretSize = 16;
-    if (!t.GetRandomBytes(SecretSize, secret)) {
-      LOG(ERROR) << "Could not get a random secret from the Tao";
-      return false;
-    }
-
-    // seal it and write the result to the specified file
-    string sealed_secret;
-    if (!t.Seal(*secret, &sealed_secret)) {
-      LOG(ERROR) << "Could not seal the secret";
-      return false;
-    }
-
-    ofstream sealed_file(sealed_path.c_str(), ofstream::out | ios::binary);
-    sealed_file.write(sealed_secret.data(), sealed_secret.size());
-  }
-
-  return true;
-}
-
 }  // namespace cloudproxy

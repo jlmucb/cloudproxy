@@ -86,15 +86,6 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
 bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
                 string *acls);
 
-bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
-bool VerifySignature(const string &data, const string &signature,
-                     keyczar::Keyczar *key);
-
-bool CopyPublicKeyset(const keyczar::Keyczar &public_key, keyczar::Keyset **keyset);
-bool DeserializePublicKey(const tao::KeyczarPublicKey &kpk,
-			  keyczar::Keyset **keyset);
-bool SerializePublicKey(const keyczar::Keyczar &key, tao::KeyczarPublicKey *kpk);
-
 // methods to send a receive data on a TLS BIO
 bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);
 bool ReceiveData(BIO *bio, string *data);
@@ -143,7 +134,6 @@ bool SerializeX509(X509 *x509, string *serialized_x509);
 bool CreateECDSAKey(const string &private_path, const string &public_path,
                     const string &secret, const string &country_code,
                     const string &org_code, const string &cn);
-bool SealOrUnsealSecret(const tao::Tao &t, const string &sealed_path, string *secret);
 }
 
 #endif  // CLOUDPROXY_UTIL_H_

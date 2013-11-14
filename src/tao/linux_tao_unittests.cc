@@ -1,7 +1,7 @@
-//  File: fake_tao_unittests.cc
+//  File: linux_tao_unittests.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Tests the basic FakeTao functionality
+//  Description: Tests the basic LinuxTao functionality
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -18,17 +18,52 @@
 // limitations under the License.
 
 #include "tao/fake_tao.h"
+#include "tao/linux_tao.h"
+#include "tao/direct_tao_channel.h"
 #include "gtest/gtest.h"
 
-using tao::FakeTao;
+#include <stdlib.h>
 
-class FakeTaoTest : public ::testing::Test {
+using tao::FakeTao;
+using tao::LinuxTao;
+using tao::DirectTaoChannel;
+
+class LinuxTaoTest : public ::testing::Test {
 protected:
   virtual void SetUp() {
-    ASSERT_TRUE(tao_.Init());
+    scoped_ptr<FakeTao> ft(new FakeTao());
+    ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
+
+    scoped_ptr<DirectTaoChannel> channel(new DirectTaoChannel(ft.release()));
+    ASSERT_TRUE(channel_->Init()) << "Could not init the channel";
+
+    scoped_ptr<HostedProgramFactory> process_factory(new ProcessFactory());
+    scoped_ptr<TaoChannelFactory> channel_factory(new PipeTaoChannelFactory());
+
+    // get a temporary directory to use for the files
+    string dir_template("/tmp/linux_tao_test_XXXXXX");
+    scoped_array<char> temp_name(new char[dir_template.size() + 1]);
+    memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
+
+    ASSERT_TRUE(mkdtemp(temp_name.get()));
+    dir_ = temp_name.get();
+      
+
+    string secret_path = dir_ + "/linux_tao_secret";
+    string key_path = dir_ + "/linux_tao_secret_key";
+    string pk_path = dir_ + "/linux_tao_pk";
+    string whitelist_path = dir_ + "/whitelist";
+    string policy_pk_path = dir_ + "/policy_pk";
+    
+    // create the whitelist and the policy key
+
+    //tao_.reset(new LinuxTao(
   }
 
-  FakeTao tao_;
+  virtual 
+
+  string dir_;
+  scoped_ptr<LinuxTao> tao_;
 };
 
 TEST_F(FakeTaoTest, RandomBytesTest) {

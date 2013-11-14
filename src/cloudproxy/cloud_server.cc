@@ -25,6 +25,7 @@
 #include "cloudproxy/util.h"
 
 #include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 #include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
@@ -43,6 +44,7 @@ using keyczar::base::PathExists;
 
 using tao::Attestation;
 using tao::Tao;
+using tao::VerifySignature;
 using tao::WhitelistAuth;
 
 namespace cloudproxy {

@@ -27,6 +27,7 @@
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/pipe_tao_channel.h"
+#include "tao/util.h"
 
 #include <fstream>
 #include <sstream>
@@ -37,7 +38,7 @@ using std::string;
 using std::stringstream;
 
 using cloudproxy::CloudClient;
-using cloudproxy::SealOrUnsealSecret;
+using tao::SealOrUnsealSecret;
 
 using keyczar::base::ScopedSafeString;
 

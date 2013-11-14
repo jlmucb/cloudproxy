@@ -27,7 +27,8 @@
 #include <openssl/err.h>
 #include "cloudproxy/cloud_server.h"
 #include "cloudproxy/util.h"
-#include <tao/pipe_tao_channel.h>
+#include "tao/pipe_tao_channel.h"
+#include "tao/util.h"
 
 #include <mutex>
 #include <string>
@@ -38,7 +39,7 @@ using std::string;
 using std::vector;
 
 using cloudproxy::CloudServer;
-using cloudproxy::SealOrUnsealSecret;
+using tao::SealOrUnsealSecret;
 
 using keyczar::base::ScopedSafeString;
 

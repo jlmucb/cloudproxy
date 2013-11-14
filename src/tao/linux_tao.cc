@@ -19,12 +19,11 @@
 // limitations under the License.
 
 #include <tao/linux_tao.h>
-#include <cloudproxy/util.h>
 #include <tao/attestation.pb.h>
 #include <tao/hosted_programs.pb.h>
 #include <tao/keyczar_public_key.pb.h>
 #include <tao/sealed_data.pb.h>
-#include <tao/pipe_tao_channel.h>
+#include <tao/util.h>
 #include <tao/whitelist_auth.h>
 
 #include <keyczar/base/base64w.h>
@@ -40,9 +39,6 @@
 
 #include <fstream>
 #include <sstream>
-
-using cloudproxy::SerializePublicKey;
-using cloudproxy::DeserializePublicKey;
 
 using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
@@ -224,53 +220,20 @@ bool LinuxTao::getSecret(ScopedSafeString *secret) {
   return true;
 }
 
-// TODO(tmroeder): combine this function and createKey by taking in the key type
-// and purpose and writer.
 bool LinuxTao::createPublicKey(Encrypter *crypter) {
   FilePath fp(pk_path_);
   scoped_ptr<KeysetWriter> writer(
       new KeysetEncryptedJSONFileWriter(fp, crypter));
 
   CHECK_NOTNULL(writer.get());
-  scoped_ptr<Keyset> k(new Keyset());
-  k->AddObserver(writer.get());
-  k->set_encrypted(true);
-
-  KeyType::Type key_type = KeyType::ECDSA_PRIV;
-  KeyPurpose::Type key_purpose = KeyPurpose::SIGN_AND_VERIFY;
-  KeysetMetadata *metadata = nullptr;
-  metadata =
-      new KeysetMetadata("linux_tao_pk", key_type, key_purpose, true, 1);
-  CHECK_NOTNULL(metadata);
-  k->set_metadata(metadata);
-  k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-
-  signer_.reset(new Signer(k.release()));
-
-  return true;
+  return CreateKey(writer.get(), KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, "linux_tao_pk", &signer_);
 }
 
 bool LinuxTao::createKey(const string &secret) {
   FilePath fp(key_path_);
   scoped_ptr<KeysetWriter> writer(new KeysetPBEJSONFileWriter(fp, secret));
   CHECK_NOTNULL(writer.get());
-
-  scoped_ptr<Keyset> k(new Keyset());
-
-  k->AddObserver(writer.get());
-  k->set_encrypted(true);
-
-  KeyType::Type key_type = KeyType::AES;
-  KeyPurpose::Type key_purpose = KeyPurpose::DECRYPT_AND_ENCRYPT;
-  KeysetMetadata *metadata = nullptr;
-  metadata = new KeysetMetadata("linux_tao", key_type, key_purpose, true, 1);
-  CHECK_NOTNULL(metadata);
-
-  k->set_metadata(metadata);
-  k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-
-  crypter_.reset(new Crypter(k.release()));
-  return true;
+  return CreateKey(writer.get(), KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, "linux_tao", &crypter_);
 }
 
 bool LinuxTao::Destroy() { return true; }
@@ -310,12 +273,15 @@ bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args) 
     return false;
   }
 
+  child_hash_ = digest;
+
   // TODO(tmroeder): for now, we only start a single child
   child_channel_.reset(channel_factory_->CreateTaoChannel());
   if (!program_factory_->CreateHostedProgram(path, args, *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }
+
 
   // TODO(tmroeder): add this to the MultiplexTaoChannel when we have that implemented
   bool rv = child_channel_->Listen(this);

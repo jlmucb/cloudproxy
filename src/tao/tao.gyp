@@ -32,6 +32,7 @@
         'fake_tao_unittests.cc',
 	'fake_tao.h',
 	'fake_tao.cc',
+	'linux_tao_unittests.cc',
       ],
       'include_dirs': [
         '..',
@@ -39,7 +40,7 @@
       'dependencies': [
         'tao',
         '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest_main',
       ],
     },
     {
@@ -67,6 +68,8 @@
         'tao_channel_rpc.proto',
         'tao_binary_cache.h',
         'tao.h',
+	'util.cc',
+	'util.h',
 	'whitelist_auth.h',
 	'whitelist_auth.cc',
       ],

@@ -60,5 +60,15 @@
         ],
       },
     },
+    {
+      'target_name': 'gtest_main',
+      'type': 'static_library',
+      'sources': [
+	'src/gtest_main.cc',
+      ],
+      'dependencies': [
+	'gtest',
+      ],
+    },
   ],
 }

@@ -29,7 +29,11 @@
 
 #include <glog/logging.h>
 
+#include "tao/util.h"
+
 using tao::KeyczarPublicKey;
+using tao::DeserializePublicKey;
+using tao::VerifySignature;
 
 namespace cloudproxy {
 

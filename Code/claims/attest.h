@@ -1,7 +1,5 @@
 //
-//  attest.h
-//      John Manferdelli
-//
+//  File: attest.h
 //  Description: attest interfaces
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

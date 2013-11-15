@@ -1,9 +1,6 @@
 //
-//  validateEvidence.cpp
-//      John Manferdelli
-//
+//  File: validateEvidence.cpp
 //  Description: evidence validation implementation
-//
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

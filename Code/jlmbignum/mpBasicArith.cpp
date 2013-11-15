@@ -1,7 +1,8 @@
 //
 //  File: mpBasicArith.cpp
-//      Basic Multiple Precision Arithmetic for jmbignum
+//  Description: Basic Multiple Precision Arithmetic for jmbignum
 //      including Add, Subtract, Multiply, Divide
+//
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some contributions may be (c) Intel Corporation
 //

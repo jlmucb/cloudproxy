@@ -1,7 +1,5 @@
 //
-//  jlmTypes.h
-//      John Manferdelli
-//
+//  File: jlmTypes.h
 //  Description: common type definitions
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.

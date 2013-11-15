@@ -1,7 +1,6 @@
 //
 //  File: cryptUtility.cpp
-//
-//  Description: cryptoUtility
+//  Description: command line utilities for cloudProxy
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.
 //  Incorporates contributions  (c) John Manferdelli.  All rights reserved.

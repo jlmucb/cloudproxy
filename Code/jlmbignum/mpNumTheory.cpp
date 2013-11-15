@@ -1,7 +1,6 @@
 //
 //  File: mpNumTheory.cpp
-//      Multiple Precision Arithmetic jmbignum
-//      Number theoretic algorithms
+//  Description: Number theoretic algorithms
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //

@@ -1,7 +1,6 @@
 //  File: fileTester.h
-//      Tom Roeder
-//
 //  Description: tester for fileClient
+//      Tom Roeder
 //
 //  Copyright (c) 2013, Google Inc. All rights reserved
 //

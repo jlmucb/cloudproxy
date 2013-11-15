@@ -1,6 +1,6 @@
 //
-//  fileServices.h
-//      John Manferdelli
+//  File: fileServices.h
+//  Desciption: File utilities for fileServer
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

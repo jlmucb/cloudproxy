@@ -1,6 +1,6 @@
 //
 //  File: fileServer.h
-//      John Manferdelli
+//  Description: fileServer defines
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

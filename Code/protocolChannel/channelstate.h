@@ -1,7 +1,5 @@
 //
 //  File: channelstate.h
-//      John Manferdelli
-//
 //  Description: channel state definitions
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

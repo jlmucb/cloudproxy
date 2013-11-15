@@ -1,7 +1,5 @@
 //
-//  resource.h
-//      John Manferdelli
-//
+//  File: resource.h
 //  Description: resource classes
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

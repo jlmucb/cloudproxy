@@ -1,6 +1,5 @@
-//  File: tcLaunch.cpp
-//      John Manferdelli
 //
+//  File: tcLaunch.cpp
 //  Description: Stand alone launch of measured programs
 //               and partitions.
 //

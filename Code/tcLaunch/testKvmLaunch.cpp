@@ -1,6 +1,4 @@
 //  File: testKvmLaunch.cpp
-//      John Manferdelli
-//
 //  Description: Stand alone launch of measured programs
 //               and partitions.
 //

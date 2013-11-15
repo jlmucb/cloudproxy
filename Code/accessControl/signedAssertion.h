@@ -1,7 +1,5 @@
 //
-//  signedAssertion.h
-//      John Manferdelli
-//
+//  File: signedAssertion.h
 //  Description: Signed Assertion classes
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

@@ -1,7 +1,6 @@
 //
 //  File: mpModArith.cpp
-//  Multiple Precision Arithmetic for bignum
-//      Modular arithmetic
+//  Description: Modular arithmetic for bignum
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some modifications may be (c) Intel Corporation

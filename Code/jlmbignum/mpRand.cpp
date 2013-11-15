@@ -1,6 +1,6 @@
 //
 //  File: mpRand.cpp
-//      Random number support for jmbignum
+//  Description: Random number support for jmbignum
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

@@ -1,7 +1,5 @@
 //  File: request.cpp
-//      John Manferdelli
-//
-//  Description: file action request object
+//  Description: cloudProxy request response objects
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

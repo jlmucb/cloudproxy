@@ -1,7 +1,5 @@
 //
 //  File: channel.cpp
-//      John Manferdelli
-//
 //  Description: common channel implementation
 //
 //

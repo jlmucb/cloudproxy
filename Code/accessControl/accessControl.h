@@ -1,7 +1,5 @@
 //
-//  accessControl.h
-//      John Manferdelli
-//
+//  File: accessControl.h
 //  Description: Access control classes
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

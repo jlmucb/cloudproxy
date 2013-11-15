@@ -1,7 +1,5 @@
 //
-//  jlmUtility.h
-//      John Manferdelli
-//
+//  File: jlmUtility.h
 //  Description: support classes (lists, etc)
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.

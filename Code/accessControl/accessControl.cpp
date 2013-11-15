@@ -1,7 +1,5 @@
 //
-//  accessControl.cpp
-//      John Manferdelli
-//
+//  File: accessControl.cpp
 //  Description: Access control implementation
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

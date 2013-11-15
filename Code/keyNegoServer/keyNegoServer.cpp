@@ -1,8 +1,6 @@
 //
 //  File: keyNegoServer.cpp
-//      John Manferdelli
-//
-//  Description: Sever for keyNegoServer
+//  Description: keyNegoServer implementation
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

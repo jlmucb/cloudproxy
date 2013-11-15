@@ -1,8 +1,6 @@
 //
 //  File: cryptUtility.h
-//      John Manferdelli
-//
-//  Description:
+//  Description: Command line cryptographic utilities for cloudProxy
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.
 //  Incorporates contributions  (c) John Manferdelli.  All rights reserved.

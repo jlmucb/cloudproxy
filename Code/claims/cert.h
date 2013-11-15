@@ -1,7 +1,5 @@
 //
-//  cert.h
-//      John Manferdelli
-//
+//  File: cert.h
 //  Description: certificate principal classes
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

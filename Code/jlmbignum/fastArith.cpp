@@ -1,5 +1,5 @@
 //  File: fastArith.cpp
-//      fast arithmetic for jmbignum
+//  Description: fast arithmetic for jmbignum
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some contributions may be (c) Intel Corporation

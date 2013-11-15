@@ -1,7 +1,5 @@
 //
-//  signedAssertion.cpp
-//      John Manferdelli
-//
+//  File: signedAssertion.cpp
 //  Description: Signed Assertion support for access control
 //
 //

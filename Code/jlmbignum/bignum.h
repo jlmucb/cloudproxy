@@ -1,6 +1,6 @@
 //
 //  File: bignum.h:
-//     Multiprecision arithmetic data structures
+//  Description: Multiprecision arithmetic data structures
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //

@@ -1,8 +1,6 @@
 //
-//  objectManager.h
-//      John Manferdelli
-//
-//  Description: objectManager
+//  File: objectManager.h
+//  Description: primitive objectManager
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

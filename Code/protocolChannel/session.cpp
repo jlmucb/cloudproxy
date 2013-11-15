@@ -1,7 +1,5 @@
 //  File: session.cpp
-//      John Manferdelli
-//
-//  Description: Channel session for a client and server
+//  Description: cloudProxy channel for client and server
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

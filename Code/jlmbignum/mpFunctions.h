@@ -1,6 +1,6 @@
 //
 //  File: mpFunctions.h
-//      Function definitions for jmbignum
+//  Description: Function definitions for jmbignum
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //

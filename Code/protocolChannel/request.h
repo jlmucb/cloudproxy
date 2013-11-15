@@ -1,7 +1,6 @@
 //
-//  request.h
-//      John Manferdelli
-//
+//  File: request.h
+//  Description: cloudProxy channel request-response channel defines
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.
 //

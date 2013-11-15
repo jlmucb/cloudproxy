@@ -1,9 +1,6 @@
 //
-//  cert.cpp
-//      John Manferdelli
-//
+//  File: cert.cpp
 //  Description: certificate class implementation
-//
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

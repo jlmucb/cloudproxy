@@ -1,7 +1,5 @@
 //
 //  File: safeChannel.h
-//      John Manferdelli
-//
 //  Description: common channel definitions
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

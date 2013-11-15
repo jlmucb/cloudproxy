@@ -1,7 +1,5 @@
 //
 //  File: fileClient.h
-//      John Manferdelli
-//
 //  Description: Symbol and class definitions for fileClient
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

@@ -1,8 +1,6 @@
 //
-//  session.h
-//      John Manferdelli
-//
-//  Description: channel session for server and client
+//  File: session.h
+//  Description: channel session defines for server and client
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

@@ -1,7 +1,5 @@
 //
 //  File: safeChannel.cpp
-//      John Manferdelli
-//
 //  Description: common channel implementation
 //
 //

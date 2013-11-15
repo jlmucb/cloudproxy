@@ -1,8 +1,7 @@
 //
-//  timer.h
-//      Tom Roeder
-//
+//  File: timer.h
 //  Description: a class for performing timing measurements
+//      Tom Roeder
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //

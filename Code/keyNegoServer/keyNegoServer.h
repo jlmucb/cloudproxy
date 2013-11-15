@@ -1,6 +1,6 @@
 //
 //  File: keyNegoServer.h
-//      John Manferdelli
+//  Desciption: keyNegoServer defines
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

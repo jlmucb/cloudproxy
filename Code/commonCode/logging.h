@@ -1,8 +1,6 @@
 //
 //  File: logging.h
-//      John Manferdelli
-//
-//  Description: Debugging
+//  Description: Debugging support
 //
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

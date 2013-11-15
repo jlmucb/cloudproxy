@@ -1,8 +1,6 @@
 //
-//  validateEvidence.h
-//      John Manferdelli
-//
-//  Description: evidence validation classes
+//  File: validateEvidence.h
+//  Description: evidence validation classes including cert chaining
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

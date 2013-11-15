@@ -1,6 +1,4 @@
 //  File: kvmncp.h
-//      John Manferdelli
-//
 //  Description: header file for kvm node control program
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

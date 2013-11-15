@@ -1,6 +1,4 @@
 //  File: kvmncp.cpp
-//      John Manferdelli
-//
 //  Description: Node control program for KVM host
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

@@ -1,7 +1,5 @@
-//
-//      File: hmactest.cpp 
-//      Description: hmacsha1 test
-//      TPM interface.
+//  File: hmactest.cpp 
+//  Description: hmacsha1 test
 //
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.
 //    Some contributions (c) 2012, Intel Corporation

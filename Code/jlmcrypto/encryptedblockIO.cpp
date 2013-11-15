@@ -1,5 +1,6 @@
 //
-//  File: encryptedblockIO.cpp, encrypted IO
+//  File: encryptedblockIO.cpp
+//  Description: encrypted file IO
 //
 //  Copyright (c) 2012, John Manferdelli.  All rights reserved.
 //      Some contributions (c) Intel Corporation

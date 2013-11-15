@@ -1,8 +1,6 @@
 //
 //  File: jlmcrypto.h
-//      John Manferdelli
-//
-//  Description: common crypto definitions
+//  Description: common crypto definitions and helpers
 //
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

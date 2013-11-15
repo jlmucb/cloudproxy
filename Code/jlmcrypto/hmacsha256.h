@@ -1,5 +1,5 @@
 
-//  File: hmacsha256.h, hmac sha256
+//  File: hmacsha256.h
 //
 //  Copyright (c) 2012, John Manferdelli.  All rights reserved.
 //      Some contributions (c) Intel Corporation

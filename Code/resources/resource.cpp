@@ -63,6 +63,7 @@ resource::~resource()
         free(m_szLocation);
         m_szLocation= NULL;
     }
+    memset(m_rguKey1, 0, SMALLSYMKEYSIZE);
 
     // remove owner list
 }

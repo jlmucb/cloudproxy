@@ -1,7 +1,5 @@
 //  File: taoEnvironment.cpp
-//      John Manferdelli
 //  Description: trusted primitives for this code identity (seal, unseal, attest)
-//               This is the revised version after the paper
 //
 //  Copyright (c) 2012, John Manferdelli
 //  Some contributions copyright (c) 2012, Intel Corporation

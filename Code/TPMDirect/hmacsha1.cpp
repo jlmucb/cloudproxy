@@ -1,4 +1,5 @@
-//  File: hmacsha1.cpp, hmac sha1
+//  File: hmacsha1.cpp
+//  Description: hmac sha1
 //
 //  Copyright (c) 2012, John Manferdelli.  All rights reserved.
 //      Some contributions (c) Intel Corporation

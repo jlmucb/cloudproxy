@@ -1,5 +1,4 @@
-//  File: newTPMHostsupport.h
-//      John Manferdelli
+//  File: TPMHostsupport.h
 //  Description:  TPM interface for trusted services
 //
 //  Copyright (c) 2012, John Manferdelli

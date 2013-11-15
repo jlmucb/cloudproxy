@@ -1,5 +1,4 @@
 //  File: kvmHostsupport.h
-//      John Manferdelli
 //  Description:  Support for kvm host
 //
 //  Copyright (c) 2012, John Manferdelli

@@ -1,6 +1,4 @@
 //  File: taoSetupglobals.h
-//      John Manferdelli
-//
 //  Description: globals to init tao host and environment
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

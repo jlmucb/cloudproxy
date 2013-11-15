@@ -1,7 +1,5 @@
 //
 //  File: encapsulate.h
-//      John Manferdelli
-//
 //  Description: Seal key with PK, encrypt file
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.
@@ -101,7 +99,7 @@ public:
 
     char*       serializeMetaData();
     bool        parseMetaData();
-    bool        sealKey(RSAKey* pSealKey);      // FIX
+    bool        sealKey(RSAKey* pSealKey);          // FIX (non-RSA key types)
     bool        unSealKey(RSAKey* pSealKey);        // FIX
     bool        encryptMessage();
     bool        decryptMessage();
@@ -112,7 +110,7 @@ public:
     int         encryptedMessageSize();
     int         plainMessageSize();
     bool        signPackage(RSAKey* pSignKey);      // FIX
-    bool        verifyPackage(RSAKey* pSignKey);        // FIX
+    bool        verifyPackage(RSAKey* pSignKey);    // FIX
 
     char*       getSignerKeyInfo();
     char*       getSubjectKeyInfo();

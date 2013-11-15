@@ -1,6 +1,6 @@
 //
 //  File: fileHash.h
-//  Description: getfilehashdefines 
+//  Description: filehash defines 
 //
 //  Copyright (c) 2012, John Manferdelli.  All rights reserved.
 //     Some contributions Copyright (c) 2012, Intel Corporation. 

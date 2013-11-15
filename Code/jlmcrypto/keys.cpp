@@ -1,7 +1,5 @@
 //
 //  File: keys.cpp
-//      John Manferdelli
-//
 //  Description:  Key formats
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.

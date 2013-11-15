@@ -1,6 +1,5 @@
-//
 // File: vTCI.cpp 
-// Description: virtual Trusted Computing Interface
+// Description: Trusted Computing Interface
 //
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.
 //    Some contributions (c) 2012, Intel Corporation

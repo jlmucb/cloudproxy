@@ -1,4 +1,5 @@
-//  File: hmacsha256.cpp, hmac sha256
+//  File: hmacsha256.cpp
+//  Description: hmac sha256 and prf_sha256
 //
 //  Copyright (c) 2012, John Manferdelli.  All rights reserved.
 //      Some contributions (c) Intel Corporation

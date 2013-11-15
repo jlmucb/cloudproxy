@@ -1,5 +1,6 @@
 //
-//  Module Name: aesni.h
+//  File: aesni.h
+//  Descriptin: aesni defines
 //
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.

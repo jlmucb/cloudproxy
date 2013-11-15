@@ -1,7 +1,5 @@
 //
 //  File: algs.h
-//      John Manferdelli
-//
 //  Description:  algorithm definitions
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

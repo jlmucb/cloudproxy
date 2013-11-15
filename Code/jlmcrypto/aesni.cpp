@@ -1,5 +1,6 @@
 //
 //  File: aesni.cpp
+//  Description: aes via Intel aes ni instructions
 //
 //  This module contains the low-level AES encryption routines
 //      using aesni.

@@ -1,6 +1,6 @@
 //
-//      File: sha1.cpp
-//      Description: sha-1 implementation
+//  File: sha1.cpp
+//  Description: sha-1 implementation
 //
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.
 //    Some contributions (c) 2012, Intel Corporation

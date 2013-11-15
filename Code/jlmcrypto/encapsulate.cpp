@@ -1,7 +1,5 @@
 //
 //  File: encapsulate.cpp
-//      John Manferdelli
-//
 //  Description: Seal key with PK, encrypt file
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.

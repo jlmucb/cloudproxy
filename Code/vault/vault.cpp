@@ -2,7 +2,7 @@
 //  File: vault.cpp
 //      John Manferdelli
 //
-//  Description:  tcInterface
+//  Description:  vault functions
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

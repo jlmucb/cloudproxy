@@ -1,6 +1,5 @@
 //
 //  File: rsaspeedtest.cpp
-//
 //  Description: rsa speed test
 //
 //  Copyright (c) John Manferdelli.  All rights reserved.

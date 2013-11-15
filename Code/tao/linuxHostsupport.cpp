@@ -1,6 +1,5 @@
 //  File: linuxHostsupport.cpp
-//      John Manferdelli
-//  Description:  Support for Linux host as trusted OS
+//  Description:  Support for Linux host as trusted OS via device driver
 //
 //  Copyright (c) 2012, John Manferdelli
 //  Some contributions copyright (c) 2012, Intel Corporation

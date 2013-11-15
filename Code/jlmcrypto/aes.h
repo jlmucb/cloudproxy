@@ -1,5 +1,6 @@
 //
-//  Module Name: aes.h
+//  File: aes.h
+//  Desciption: aes object defines
 //
 //
 // @author Vincent Rijmen <vincent.rijmen@esat.kuleuven.ac.be>

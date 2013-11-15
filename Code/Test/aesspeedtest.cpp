@@ -1,6 +1,5 @@
 //
 //  File: aesspeedtest.cpp
-//
 //  Description: aesspeedtest
 //
 //  Copyright (c) John Manferdelli.  All rights reserved.

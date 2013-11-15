@@ -1,6 +1,5 @@
 //
 //  File: sha256speedtest.cpp
-//
 //  Description: sha256speedtest
 //
 //  Copyright (c) John Manferdelli.  All rights reserved.

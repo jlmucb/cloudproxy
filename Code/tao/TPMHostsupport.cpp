@@ -1,5 +1,4 @@
 //  File: TPMHostsupport.cpp
-//      John Manferdelli
 //  Description:  TPM interface for trusted services
 //
 //  Copyright (c) 2012, John Manferdelli

@@ -13,8 +13,6 @@ const char* szX= "0388dace60b6a392f328c2b971b2fe78";
 typedef unsigned char u8;
 
 //  File: gcmtest.cpp
-//      John Manferdelli
-//
 //  Description: gcmtest code
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions

@@ -1,8 +1,6 @@
 //
 //  File: trustedKeyNego.cpp
-//      John Manferdelli
-//
-//  Description: trusted key negotiation and key storage
+//  Description: trusted key negotiation
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

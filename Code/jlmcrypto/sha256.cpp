@@ -1,9 +1,10 @@
 //  File: sha256.cpp
+//  Description: sha256 implementation
 //
 //  Derived from public domain version (sha.cpp) written by Wei Dai (see
 //  notice below).  Downloaded from http://www.cryptopp.com/  1/23/2102
 //
-//  Modifications and work as a hold is
+//  Modifications and work as a whole is
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //
 // Use, duplication and disclosure of this file and derived works of

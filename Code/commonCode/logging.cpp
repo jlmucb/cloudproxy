@@ -2,7 +2,7 @@
 //  logging.cpp
 //      John Manferdelli
 //
-//  Description: PrintBytes
+//  Description: PrintBytes, initLog, closeLog, flushIO
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.
 //  Some contributions (c) John Manferdelli.  All rights reserved.

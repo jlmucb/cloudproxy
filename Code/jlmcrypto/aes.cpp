@@ -1,5 +1,6 @@
 //
 //  File: aes.cpp
+//  Description: software optimized aes implementation (with timing channel!)
 //
 //  This module contains the low-level AES encryption routines.
 //

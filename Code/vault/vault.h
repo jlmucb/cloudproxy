@@ -2,7 +2,7 @@
 //  File: vault.h
 //      John Manferdelli
 //
-//  Description:  vault for key management
+//  Description:  vault defines for key management
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

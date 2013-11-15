@@ -1,8 +1,6 @@
 //
 //  File: sha256.h
-//      John Manferdelli
-//
-//  Description:
+//  Description: sha256 implementation
 //
 //  Copyright (c) 2007,2011,  John Manferdelli
 //  All rights reserved.

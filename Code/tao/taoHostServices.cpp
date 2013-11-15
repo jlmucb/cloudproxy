@@ -1,7 +1,5 @@
 //  File: taoHostServices.cpp
-//      John Manferdelli
 //  Description: Host interface to Tao primitives
-//               This is the revised version after the paper
 //
 //  Copyright (c) 2012, John Manferdelli
 //  Some contributions copyright (c) 2012, Intel Corporation

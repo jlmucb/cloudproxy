@@ -1,6 +1,4 @@
 //  File: modesandpadding.h
-//      John Manferdelli
-//
 //  Description:  Modes and Padding
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

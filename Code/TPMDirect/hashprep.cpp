@@ -1,6 +1,6 @@
 //
-//  File: hashprep.cpp - hash prep for TPM
-//
+//  File: hashprep.cpp 
+//  Description: attest measurments (special hashes)
 //
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.
 //    Some contributions (c) 2012, Intel Corporation

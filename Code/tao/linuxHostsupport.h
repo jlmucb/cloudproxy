@@ -1,5 +1,4 @@
 //  File: linuxHostsupport.h
-//      John Manferdelli
 //  Description:  Support for Linux host as trusted OS
 //
 //  Copyright (c) 2012, John Manferdelli

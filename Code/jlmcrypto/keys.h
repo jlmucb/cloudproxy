@@ -1,7 +1,5 @@
 //
 //  File: keys.h
-//      John Manferdelli
-//
 //  Description:  Key formats
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

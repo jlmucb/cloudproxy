@@ -1,8 +1,9 @@
 //
+//  File: sha1.h
+//  Description: sha-1
+//
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.
 //    Some contributions (c) 2012, Intel Corporation
-//
-//      Description: sha-1
 //
 // Use, duplication and disclosure of this file and derived works of
 // this file are subject to and licensed under the Apache License dated

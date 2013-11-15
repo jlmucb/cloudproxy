@@ -1,7 +1,5 @@
 //
-//  jlmcrypto.cpp
-//      John Manferdelli
-//
+//  File: jlmcrypto.cpp
 //  Description: common crypto interface
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.

@@ -1,7 +1,5 @@
 //
 //  policyGlobals.h
-//      John Manferdelli
-//
 //  Description: global values for policy 
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

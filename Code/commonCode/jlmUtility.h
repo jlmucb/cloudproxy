@@ -188,10 +188,8 @@ aList<T>::aList()
 }
 
 void        revmemcpy(byte* pTo, byte* pFrom, int len);
-bool        SafeStringAppend(char** pszCur, const char* szToAppend, int* piLeft);
 char*       canonicalize(TiXmlNode* pNode);
 void        printIndent(const char* szItem, int indent, bool fEnd=false);
-void        Explore(TiXmlNode* pNode, int indent);
 TiXmlNode*  Search(TiXmlNode* pNode, const char* szElementName);
 bool        testCanonical(const char* szInFile, const char* szElementName);
 int         ConvertToHexString(int iSizeBuf, byte* rgbBuf, int iSizeOut, const char* szOut);
@@ -201,6 +199,10 @@ char*       readandstoreString(const char* szFile);
 bool        saveBlobtoFile(const char* szFile, byte* buf, int size);
 bool        getBlobfromFile(const char* szFile, byte* buf, int* psize);
 char*       canonicalizeXML(const char* szXML);
+
+//  not used elsewhere
+bool        SafeStringAppend(char** pszCur, const char* szToAppend, int* piLeft);
+void        Explore(TiXmlNode* pNode, int indent);
 
 
 inline bool safeTransfer(char** pp, int* piLeft, const char* pFrom)

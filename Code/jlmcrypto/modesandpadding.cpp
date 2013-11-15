@@ -1,8 +1,6 @@
 //
 //  File: modesandpadding.cpp
-//      John Manferdelli
-//
-//  Description:  Padding functions
+//  Description:  modes and padding functions
 //
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.
 //  Some contributions (c) John Manferdelli.  All rights reserved.

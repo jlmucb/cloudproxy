@@ -1,5 +1,6 @@
 //
-//  File: hashprep.h - hash prep for TPM
+//  File: hashprep.h
+//  Description: code measurement hashes
 //
 //
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.

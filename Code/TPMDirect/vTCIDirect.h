@@ -1,6 +1,6 @@
 //
-//      File: vTCIDirect.h - virtual Trusted Computing Interface
-//
+//  File: vTCIDirect.h
+//  Description: defines for direct TPM interface
 //
 //  Copyright (c) 2012 John Manferdelli.  All rights reserved.
 //    Some contributions (c) 2012, Intel Corporation

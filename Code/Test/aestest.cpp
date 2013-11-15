@@ -1,6 +1,5 @@
 //
 //  File: aestest.cpp
-//
 //  Description: aes sanity check
 //
 //  Copyright (c) John Manferdelli.  All rights reserved.

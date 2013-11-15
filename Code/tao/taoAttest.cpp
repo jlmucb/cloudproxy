@@ -1,5 +1,4 @@
 //  File: taoAttest.cpp
-//      John Manferdelli
 //  Description: Verify attest object
 //
 //  Copyright (c) 2012, John Manferdelli

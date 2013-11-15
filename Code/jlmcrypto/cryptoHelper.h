@@ -1,7 +1,5 @@
 //
 //  File: cryptoHelper.h
-//      John Manferdelli
-//
 //  Description:  crypto helper function definitions
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

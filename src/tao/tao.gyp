@@ -36,6 +36,7 @@
       ],
       'dependencies': [
         'tao',
+        'tao_test_utilities',
         '../third_party/googlemock/gmock.gyp:gmock',
         '../third_party/googlemock/gtest/gtest.gyp:gtest',
       ],
@@ -51,8 +52,24 @@
       ],
       'dependencies': [
         'tao',
+        'tao_test_utilities',
         '../third_party/googlemock/gmock.gyp:gmock',
         '../third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
+    },
+    {
+      'target_name': 'tao_test_utilities',
+      'type': 'static_library',
+      'sources': [
+	'fake_tao.h',
+	'fake_tao.cc',
+        'fake_program_factory.h',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'dependencies': [
+        'tao',
       ],
     },
     {
@@ -62,8 +79,6 @@
         'attestation.proto',
 	'direct_tao_channel.cc',
 	'direct_tao_channel.h',
-	'fake_tao.h',
-	'fake_tao.cc',
         'hosted_programs.proto',
         'hosted_program_factory.h',
 	'keyczar_public_key.proto',

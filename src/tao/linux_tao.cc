@@ -278,6 +278,8 @@ bool LinuxTao::StartHostedProgram(const string &path,
     return false;
   }
 
+  LOG(INFO) << "The program " << path << " with digest " << serialized_digest << " is authorized";
+
   child_hash_ = digest;
 
   // TODO(tmroeder): for now, we only start a single child
@@ -289,11 +291,11 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   // TODO(tmroeder): add this to the MultiplexTaoChannel when we have that
   // implemented
-  bool rv = child_channel_->Listen(this);
-  if (!rv) {
-    LOG(ERROR) << "Server listening failed";
-    return false;
-  }
+  // bool rv = child_channel_->Listen(this);
+  // if (!rv) {
+  //   LOG(ERROR) << "Server listening failed";
+  //   return false;
+  // }
 
   return true;
 }

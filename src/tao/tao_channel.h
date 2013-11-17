@@ -36,7 +36,7 @@ class TaoChannel : public Tao {
 
   // listen on the channel and handle incoming messages by passing them to the
   // Tao
-  bool Listen(Tao *t) const;
+  virtual bool Listen(Tao *t) const;
 
   // Gets a serialized representation of the parameters the child needs to
   // communicate with the parent.

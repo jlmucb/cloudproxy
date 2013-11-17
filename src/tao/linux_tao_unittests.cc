@@ -18,16 +18,18 @@
 // limitations under the License.
 
 #include "tao/direct_tao_channel.h"
+#include "tao/fake_program_factory.h"
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/hosted_program_factory.h"
 #include "tao/linux_tao.h"
-#include "tao/pipe_tao_channel.h"
-#include "tao/pipe_tao_channel_factory.h"
-#include "tao/process_factory.h"
+#include "tao/fake_tao_channel.h"
+#include "tao/fake_tao_channel_factory.h"
 #include "tao/util.h"
 #include "gtest/gtest.h"
 
+#include <keyczar/base/base64w.h>
+#include <keyczar/crypto_factory.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
@@ -48,12 +50,13 @@ using std::ofstream;
 
 using tao::CreateKey;
 using tao::DirectTaoChannel;
+using tao::FakeProgramFactory;
 using tao::FakeTao;
 using tao::HostedProgram;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
-using tao::PipeTaoChannelFactory;
-using tao::ProcessFactory;
+using tao::FakeTaoChannel;
+using tao::FakeTaoChannelFactory;
 using tao::SignedWhitelist;
 using tao::Tao;
 using tao::TaoChannelFactory;
@@ -68,7 +71,7 @@ class LinuxTaoTest : public ::testing::Test {
     scoped_ptr<DirectTaoChannel> channel(new DirectTaoChannel(ft.release()));
     ASSERT_TRUE(channel->Init()) << "Could not init the channel";
 
-    scoped_ptr<HostedProgramFactory> program_factory(new ProcessFactory());
+    scoped_ptr<HostedProgramFactory> program_factory(new FakeProgramFactory());
     scoped_ptr<TaoChannelFactory> channel_factory(new PipeTaoChannelFactory());
 
     // get a temporary directory to use for the files
@@ -85,11 +88,26 @@ class LinuxTaoTest : public ::testing::Test {
     string whitelist_path = dir_ + "/whitelist";
     string policy_pk_path = dir_ + "/policy_pk";
 
+    string test_binary_contents = "This is a fake test binary to be hashed";
+    test_binary_path_ = dir_ + "/test_binary";
+
+    string test_binary_digest;
+    keyczar::MessageDigestImpl *sha256 = keyczar::CryptoFactory::SHA256();
+    CHECK(sha256->Digest(test_binary_contents, &test_binary_digest))
+      << "Could not compute a SHA-256 hash over the file " << test_binary_path_;
+
+    string child_hash;
+    CHECK(keyczar::base::Base64WEncode(test_binary_digest, &child_hash))
+      << " Could not encode the digest under base64w";
+
+    ofstream test_binary_file(test_binary_path_.c_str(), ofstream::out);
+    test_binary_file << test_binary_contents;
+    test_binary_file.close();
+
     // Create the policy key directory so it can be filled by keyczar.
     ASSERT_EQ(mkdir(policy_pk_path.c_str(), 0700), 0);
     
     LOG(INFO) << "Created directories in " << dir_;
-
 
     // create the policy key
     FilePath fp(policy_pk_path);
@@ -104,9 +122,9 @@ class LinuxTaoTest : public ::testing::Test {
     // test. Then write it to the temp filename above.
     Whitelist w;
     HostedProgram *hp = w.add_programs();
-    hp->set_name("dummy program");
+    hp->set_name(test_binary_path_);
     hp->set_hash_alg("SHA256");
-    hp->set_hash("This is not really a hash.");
+    hp->set_hash(child_hash);
 
     SignedWhitelist sw;
     string *serialized_whitelist = sw.mutable_serialized_whitelist();
@@ -130,6 +148,7 @@ class LinuxTaoTest : public ::testing::Test {
   // secrets. Use TearDown and recursively delete all the files.
 
   string dir_;
+  string test_binary_path_;
   scoped_ptr<LinuxTao> tao_;
   scoped_ptr<Keyczar> policy_key_;
 };
@@ -171,6 +190,18 @@ TEST_F(LinuxTaoTest, FailVerifyAttestTest) {
   string data;
   EXPECT_FALSE(tao_->VerifyAttestation(bytes, &data));
 }
+
+TEST_F(LinuxTaoTest, SealTest) {
+  string bytes;
+  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  
+  list<string> args;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
+
+  string sealed;
+  EXPECT_TRUE(tao_->Seal(bytes, &sealed));
+}
+
 
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

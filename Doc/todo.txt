@@ -11,6 +11,9 @@ AIK in persistent memory?
 tcService hang after init (jlm started - low priority)
 Rewrite kvmtciodd/ktciodd channel (tom)
 
+Add key escrow key
+Re-port AuthProxy and BidProxy.
+
 Make sure PCR18 is included in measurement for production use!
 
 keyNegoServer: emergency key recovery program, revocation

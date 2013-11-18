@@ -200,6 +200,11 @@ int theServiceChannel::processRequests()
             }
             return 1;
         }
+        else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
+            fprintf(g_logFile, 
+                    "theServiceChannel::processRequests: getProtectedKey not implemented\n");
+            return -1;
+        }
         else {
             fprintf(g_logFile, 
                     "theServiceChannel::processRequests: invalid request type\n");

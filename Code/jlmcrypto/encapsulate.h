@@ -55,7 +55,7 @@
 #define RSA2048SIGNALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
 #define RSA1024SEALALG  "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
 #define RSA2048SEALALG "http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#"
-#define AESCBCENCRYPTALG  "http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#"
+#define AESCBCENCRYPTALG  "http://www.manferdelli.com/2011/Xml/algorithms/aes128-sha256-pkcspad#"
 
 //
 //  Metadata format

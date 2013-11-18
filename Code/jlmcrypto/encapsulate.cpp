@@ -96,8 +96,10 @@ bool emsapkcssanity(int sigsize, byte* padded, int sizeout, byte* out)
 
 encapsulatedMessage::encapsulatedMessage()
 {
-    m_szSignAlg= strdup(RSA1024SIGNALG);
-    m_szSealAlg= strdup(RSA1024SEALALG);
+    // m_szSignAlg= strdup(RSA1024SIGNALG);
+    // m_szSealAlg= strdup(RSA1024SEALALG);
+    m_szSignAlg= NULL;
+    m_szSealAlg= NULL;
     m_szEncryptAlg= strdup(AESCBCENCRYPTALG);
     m_szSignerKeyInfo= NULL;
     m_szSubjectKeyInfo= NULL;
@@ -323,6 +325,27 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
         return false;
     }
 
+    if(sealingKey->m_ukeyType==RSAKEYTYPE) {
+        if(m_szSealAlg==NULL) {
+            if(sealingKey->m_ikeySize==1024) {
+                m_szSignAlg= strdup(RSA1024SIGNALG);
+                m_szSealAlg= strdup(RSA1024SEALALG);
+            }
+            else if(sealingKey->m_ikeySize==2048) {
+                m_szSignAlg= strdup(RSA2048SIGNALG);
+                m_szSealAlg= strdup(RSA2048SEALALG);
+            }
+            else {
+                fprintf(g_logFile, "encapsulatedMessage::sealKey unsupported key size\n");
+                return false;
+            }
+        }
+    }
+    else {
+        fprintf(g_logFile, "encapsulatedMessage::sealKey unsupported key type\n");
+        return false;
+    }
+
     blocksize= sealingKey->m_iByteSizeM;
 
     if((m_sizeEncKey+m_sizeIntKey)>128) {
@@ -330,7 +353,7 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
         return false;
     }
 
-    if(strcmp(m_szSealAlg, RSA1024SEALALG)!=0) {
+    if(strcmp(m_szSealAlg, RSA1024SEALALG)!=0 && strcmp(m_szSealAlg, RSA2048SEALALG)!=0) {
         fprintf(g_logFile, "encapsulatedMessage::sealKey unsupported sealing algorithm\n");
         return false;
     }
@@ -407,7 +430,7 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
         return false;
     }
 
-    if(strcmp(m_szSealAlg, RSA1024SEALALG)!=0) {
+    if(strcmp(m_szSealAlg, RSA1024SEALALG)!=0 && strcmp(m_szSealAlg, RSA2048SEALALG)!=0) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey unsupported sealing algorithm\n");
         return false;
     }
@@ -666,8 +689,6 @@ char*  encapsulatedMessage::getSubjectKeyInfo()
 void   encapsulatedMessage::printMe()
 {
     fprintf(g_logFile, "encapsulatedMessage data\n");
-    if(m_szSignerKeyInfo!=NULL)
-        fprintf(g_logFile, "\tm_szSignerKeyInfo: %s\n", m_szSignerKeyInfo);
     if(m_szSignerKeyInfo!=NULL)
         fprintf(g_logFile, "\tm_szSignerKeyInfo: %s\n", m_szSignerKeyInfo);
     if(m_szSubjectKeyInfo!=NULL)

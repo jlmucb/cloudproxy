@@ -25,7 +25,7 @@
 #include <openssl/err.h>
 #include "cloudproxy/cloud_server.h"
 #include "cloudproxy/util.h"
-#include "tao/pipe_tao_channel.h"
+#include "tao/pipe_tao_child_channel.h"
 #include "tao/util.h"
 
 #include <mutex>
@@ -41,8 +41,8 @@ using tao::SealOrUnsealSecret;
 
 using keyczar::base::ScopedSafeString;
 
-using tao::PipeTaoChannel;
-using tao::TaoChannel;
+using tao::PipeTaoChildChannel;
+using tao::TaoChildChannel;
 
 DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
               "The PEM certificate for the server to use for TLS");
@@ -80,12 +80,18 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
-  // try to establish a channel with the Tao
-  int fds[2];
-  CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
-      << "Could not extract pipes from the end of the argument list";
-  scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
-  CHECK_NOTNULL(channel.get());
+
+  // the last argument should be the parameters for channel establishment
+  if (argc < 2) {
+    LOG(ERROR) << "Too few arguments to server";
+    return 1;
+  }
+
+  string params(argv[argc - 1]);
+  
+  // TODO(tmroeder): generalize this to arbitrary channel strings
+  scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
+  CHECK(channel->Init()) << "Could not initialize the child channel";
 
   LOG(INFO) << "Successfully established communication with the Tao";
 

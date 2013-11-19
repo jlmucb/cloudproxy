@@ -25,40 +25,45 @@
 #include <keyczar/keyczar.h>
 #include <tao/tao_channel.h>
 
+#include <map>
+#include <mutex>
+
+using std::lock_guard;
+using std::map;
+using std::mutex;
+using std::pair;
+
 namespace tao {
-// a TaoChannel that communicates over a pair of file descriptors
-// set up with pipe(2)
+// a TaoChannel that communicates over file descriptors
+// set up with pipe(2) and listens to multiple connections with select.
 class PipeTaoChannel : public TaoChannel {
  public:
-  // the PipeTaoChannel expects its pipe file descriptors as the
-  // last two arguments. It modifies argc and argv to remove these
-  // file descriptors from the arguments.
-  static bool ExtractPipes(int *argc, char ***argv, int fds[2]);
-
-  // The parent constructor with its descriptors and the child descriptors.
-  PipeTaoChannel(int fds[2], int child_fds[2]);
-
-  // The child constructor with its descriptors
-  PipeTaoChannel(int fds[2]);
+  // The parent constructor
+  PipeTaoChannel();
   virtual ~PipeTaoChannel();
 
+  virtual bool Listen(Tao *tao, const string &child_hash);
+
   // Serializes the child_fds into a PipeTaoChannelParams protobuf.
-  virtual bool GetChildParams(string *params) const;
-  virtual bool ChildCleanup();
-  virtual bool ParentCleanup();
+  virtual bool AddChildChannel(const string &child_hash, string *params);
+  virtual bool ChildCleanup(const string &child_hash);
+  virtual bool ParentCleanup(const string &child_hash);
 
  protected:
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const;
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
+  virtual bool ReceiveMessage(google::protobuf::Message *m,
+                              const string &child_hash) const;
+  virtual bool SendMessage(const google::protobuf::Message &m,
+                           const string &child_hash) const;
 
  private:
-  bool has_child_params;
+  mutable mutex data_m_;
+  map<string, pair<int, int>> hash_to_descriptors_;
+  map<string, pair<int, int>> child_descriptors_;
 
-  int readfd_;
-  int writefd_;
-
-  int child_readfd_;
-  int child_writefd_;
+  // A loop that listens for messages on a given file descriptor.
+  // TODO(tmroeder): Convert this into a set of threads that spin up when a new
+  // Listen comes in and merge their select() operations whenever possible.
+  bool MessageHandler(Tao *tao, const string &child_hash);
 
   DISALLOW_COPY_AND_ASSIGN(PipeTaoChannel);
 };

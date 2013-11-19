@@ -76,8 +76,8 @@ namespace tao {
 
 LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
                    const string &pk_path, const string &whitelist_path,
-                   const string &policy_pk_path, TaoChannel *host_channel,
-                   TaoChannelFactory *channel_factory,
+                   const string &policy_pk_path, TaoChildChannel *host_channel,
+                   TaoChannel *child_channel,
                    HostedProgramFactory *program_factory)
     : secret_path_(secret_path),
       key_path_(key_path),
@@ -86,16 +86,14 @@ LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
       crypter_(nullptr),
       signer_(nullptr),
       policy_verifier_(nullptr),
-      child_fds_{-1, -1},
-      child_hash_(),
       whitelist_path_(whitelist_path),
       serialized_pub_key_(),
       pk_attest_(),
       host_channel_(host_channel),
-      channel_factory_(channel_factory),
+      child_channel_(child_channel),
       program_factory_(program_factory),
       auth_manager_(nullptr),
-      child_channel_(nullptr) {
+      running_children_() {
   // leave setup for Init
 }
 
@@ -245,14 +243,7 @@ bool LinuxTao::Destroy() { return true; }
 
 bool LinuxTao::StartHostedProgram(const string &path,
                                   const list<string> &args) {
-  // TODO(tmroeder): add support for multiple child programs
-  if (!child_hash_.empty()) {
-    LOG(ERROR) << "Cannot start a second program under the tao bootstrap";
-    return false;
-  }
-
   // first check to make sure that this program is authorized
-
   ifstream program_stream(path.c_str());
   stringstream program_buf;
   program_buf << program_stream.rdbuf();
@@ -272,30 +263,51 @@ bool LinuxTao::StartHostedProgram(const string &path,
     return false;
   }
 
-  if (!auth_manager_->IsAuthorized(path, serialized_digest)) {
-    LOG(ERROR) << "Program " << path << " with digest " << serialized_digest
-               << " is not authorized";
-    return false;
+  {
+    lock_guard<mutex> l(auth_m_);
+    if (!auth_manager_->IsAuthorized(path, serialized_digest)) {
+      LOG(ERROR) << "Program " << path << " with digest " << serialized_digest
+                << " is not authorized";
+      return false;
+    }
   }
 
-  LOG(INFO) << "The program " << path << " with digest " << serialized_digest << " is authorized";
+  LOG(INFO) << "The program " << path << " with digest "
+            << serialized_digest << " is authorized";
 
-  child_hash_ = digest;
+  {
+    lock_guard<mutex> l(data_m_);
+    auto child_it = running_children_.find(serialized_digest);
+    if (running_children_.end() != child_it) {
+      LOG(ERROR) << "An instance of the program " << path << " with digest "
+                 << serialized_digest << " is already running";
+      return false;
+    }
 
-  // TODO(tmroeder): for now, we only start a single child
-  child_channel_.reset(channel_factory_->CreateTaoChannel());
-  if (!program_factory_->CreateHostedProgram(path, args, *child_channel_)) {
+    running_children_.insert(serialized_digest);
+  }
+
+
+  string child_params;
+  if (!child_channel_->AddChildChannel(serialized_digest, &child_params)) {
+    LOG(ERROR) << "Could not add a channel to connect to a child with hash "
+               << serialized_digest;
+  }
+
+  list<string> program_args(args.begin(), args.end());
+  program_args.push_back(child_params);
+
+  if (!program_factory_->CreateHostedProgram(path, program_args,
+                                             *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }
 
-  // TODO(tmroeder): add this to the MultiplexTaoChannel when we have that
-  // implemented
-  // bool rv = child_channel_->Listen(this);
-  // if (!rv) {
-  //   LOG(ERROR) << "Server listening failed";
-  //   return false;
-  // }
+  bool rv = child_channel_->Listen(this, serialized_digest);
+  if (!rv) {
+    LOG(ERROR) << "Server listening failed";
+    return false;
+  }
 
   return true;
 }
@@ -310,16 +322,20 @@ bool LinuxTao::GetRandomBytes(size_t size, string *bytes) const {
   return true;
 }
 
-// TODO(tmroeder): the sealing/attestation operations need to take the
-// measurement of the child as input.
-bool LinuxTao::Seal(const string &data, string *sealed) const {
-  if (child_hash_.empty()) {
-    LOG(ERROR) << "Cannot seal to an empty child";
-    return false;
+bool LinuxTao::Seal(const string &child_hash, const string &data,
+                    string *sealed) const {
+  {
+    lock_guard<mutex> l(data_m_);
+    auto child_it = running_children_.find(child_hash);
+    if (running_children_.end() == child_it) {
+      LOG(ERROR) << "The program with digest " << child_hash << " was not a "
+                 << "program that was executing";
+     return false;
+    }
   }
 
   SealedData sd;
-  sd.set_hash(child_hash_);
+  sd.set_hash(child_hash);
 
   // TODO(tmroeder): generalize to other hash algorithms
   sd.set_hash_alg("SHA256");
@@ -340,7 +356,18 @@ bool LinuxTao::Seal(const string &data, string *sealed) const {
   return true;
 }
 
-bool LinuxTao::Unseal(const string &sealed, string *data) const {
+bool LinuxTao::Unseal(const string &child_hash, const string &sealed,
+                      string *data) const {
+  {
+    lock_guard<mutex> l(data_m_);
+    auto child_it = running_children_.find(child_hash);
+    if (running_children_.end() == child_it) {
+      LOG(ERROR) << "The program with digest " << child_hash << " was not a "
+                 << "program that was executing";
+      return false;
+    }
+  }
+
   // decrypt it using our symmetric key
   string temp_decrypted;
   if (!crypter_->Decrypt(sealed, &temp_decrypted)) {
@@ -356,7 +383,7 @@ bool LinuxTao::Unseal(const string &sealed, string *data) const {
     return false;
   }
 
-  if (child_hash_.compare(sd.hash()) != 0) {
+  if (child_hash.compare(sd.hash()) != 0) {
     LOG(ERROR) << "This data was not sealed to this program";
     return false;
   }
@@ -366,10 +393,16 @@ bool LinuxTao::Unseal(const string &sealed, string *data) const {
   return true;
 }
 
-bool LinuxTao::Attest(const string &data, string *attestation) const {
-  if (child_hash_.empty()) {
-    LOG(ERROR) << "Cannot create an attestation when there is no child process";
-    return false;
+bool LinuxTao::Attest(const string &child_hash, const string &data,
+                      string *attestation) const {
+  {
+    lock_guard<mutex> l(data_m_);
+    auto child_it = running_children_.find(child_hash);
+    if (running_children_.end() == child_it) {
+      LOG(ERROR) << "The program with digest " << child_hash << " was not a "
+                 << "program that was executing";
+      return false;
+    }
   }
 
   if (!attestation) {
@@ -385,7 +418,7 @@ bool LinuxTao::Attest(const string &data, string *attestation) const {
   s.set_expiration(cur_time + AttestationTimeout);
   s.set_data(data);
   s.set_hash_alg("SHA256");
-  s.set_hash(child_hash_);
+  s.set_hash(child_hash);
 
   string serialized_statement;
   if (!s.SerializeToString(&serialized_statement)) {

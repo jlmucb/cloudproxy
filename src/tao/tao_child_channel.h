@@ -1,7 +1,7 @@
-//  File: direct_tao_channel.h
+//  File: tao_child_channel.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A TaoChannel that calls directly to another Tao object
+//  Description: A class for communication from hosted program to the host
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,27 +17,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TAO_DIRECT_TAO_CHANNEL_H_
-#define TAO_DIRECT_TAO_CHANNEL_H_
+#ifndef TAO_TAO_CHILD_CHANNEL_H_
+#define TAO_TAO_CHILD_CHANNEL_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <tao/tao_channel.h>
+#include "tao/tao_channel_rpc.pb.h"
+
+#include <list>
+#include <string>
+
+using std::list;
+using std::string;
 
 namespace tao {
-// a TaoChannel that interacts directly with an underlying Tao object
-class DirectTaoChannel : public TaoChannel {
+class TaoChildChannel {
  public:
-  // The parent constructor with its descriptors and the child descriptors.
-  DirectTaoChannel(Tao *tao);
-  virtual ~DirectTaoChannel() {}
+  virtual ~TaoChildChannel() {}
 
-  // Serializes the child_fds into a PipeTaoChannelParams protobuf.
-  virtual bool GetChildParams(string *params) const { return false; }
-  virtual bool ChildCleanup() { return true; }
-  virtual bool ParentCleanup() { return true; }
-
-  // Tao interface methods
+  // Tao interface methods without the child hash parameter
   virtual bool Init() { return true; }
   virtual bool Destroy() { return true; }
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
@@ -48,17 +44,15 @@ class DirectTaoChannel : public TaoChannel {
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const {
-    return false;
-  }
-  virtual bool SendMessage(const google::protobuf::Message &m) const {
-    return false;
-  }
+  // subclasses implement these methods for the underlying transport.
+  virtual bool ReceiveMessage(google::protobuf::Message *m) const = 0;
+  virtual bool SendMessage(const google::protobuf::Message &m) const = 0;
 
  private:
-  scoped_ptr<Tao> tao_;
-  DISALLOW_COPY_AND_ASSIGN(DirectTaoChannel);
+  virtual bool SendRPC(const TaoChannelRPC &rpc) const;
+  virtual bool GetResponse(TaoChannelResponse *resp) const;
+  bool SendAndReceiveData(const string &in, string *out, RPC rpc_type) const;
 };
-}
+}  // namespace tao
 
-#endif  // TAO_DIRECT_TAO_CHANNEL_H_
+#endif  // TAO_TAO_CHILD_CHANNEL_H_

@@ -1,7 +1,7 @@
-//  File: direct_tao_channel.cc
+//  File: direct_tao_child_channel.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A TaoChannel that calls directly to another Tao object
+//  Description: A TaoChildChannel that calls directly to another Tao object
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,35 +17,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tao/direct_tao_channel.h"
+#include "tao/direct_tao_child_channel.h"
 
 namespace tao {
-DirectTaoChannel::DirectTaoChannel(Tao *tao) : tao_(tao) {
+  DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao,
+					       const string &child_hash)
+    : tao_(tao),
+      child_hash_(child_hash) {
   // no other initialization needed
 }
 
-bool DirectTaoChannel::StartHostedProgram(const string &path,
+bool DirectTaoChildChannel::StartHostedProgram(const string &path,
                                           const list<string> &args) {
   return tao_->StartHostedProgram(path, args);
 }
 
-bool DirectTaoChannel::GetRandomBytes(size_t size, string *bytes) const {
+bool DirectTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
   return tao_->GetRandomBytes(size, bytes);
 }
 
-bool DirectTaoChannel::Seal(const string &data, string *sealed) const {
-  return tao_->Seal(data, sealed);
+bool DirectTaoChildChannel::Seal(const string &data, string *sealed) const {
+  return tao_->Seal(child_hash_, data, sealed);
 }
 
-bool DirectTaoChannel::Unseal(const string &sealed, string *data) const {
-  return tao_->Unseal(sealed, data);
+bool DirectTaoChildChannel::Unseal(const string &sealed, string *data) const {
+  return tao_->Unseal(child_hash_, sealed, data);
 }
 
-bool DirectTaoChannel::Attest(const string &data, string *attestation) const {
-  return tao_->Attest(data, attestation);
+bool DirectTaoChildChannel::Attest(const string &data, string *attestation) const {
+  return tao_->Attest(child_hash_, data, attestation);
 }
 
-bool DirectTaoChannel::VerifyAttestation(const string &attestation,
+bool DirectTaoChildChannel::VerifyAttestation(const string &attestation,
                                          string *data) const {
   return tao_->VerifyAttestation(attestation, data);
 }

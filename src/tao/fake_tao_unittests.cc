@@ -40,17 +40,17 @@ TEST_F(FakeTaoTest, SealTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_TRUE(tao_.Seal(bytes, &sealed));
+  EXPECT_TRUE(tao_.Seal(bytes, bytes, &sealed));
 }
 
 TEST_F(FakeTaoTest, UnsealTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_TRUE(tao_.Seal(bytes, &sealed));
+  EXPECT_TRUE(tao_.Seal(bytes, bytes, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(tao_.Unseal(sealed, &unsealed));
+  EXPECT_TRUE(tao_.Unseal(bytes, sealed, &unsealed));
 
   EXPECT_EQ(bytes, unsealed);
 }
@@ -60,7 +60,7 @@ TEST_F(FakeTaoTest, AttestTest) {
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
 
   string attestation;
-  EXPECT_TRUE(tao_.Attest(bytes, &attestation));
+  EXPECT_TRUE(tao_.Attest(bytes, bytes, &attestation));
 }
 
 TEST_F(FakeTaoTest, VerifyAttestTest) {
@@ -68,7 +68,7 @@ TEST_F(FakeTaoTest, VerifyAttestTest) {
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
 
   string attestation;
-  EXPECT_TRUE(tao_.Attest(bytes, &attestation));
+  EXPECT_TRUE(tao_.Attest(bytes, bytes, &attestation));
 
   string data;
   EXPECT_TRUE(tao_.VerifyAttestation(attestation, &data));

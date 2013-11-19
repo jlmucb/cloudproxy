@@ -212,7 +212,7 @@ bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
   return true;
 }
 
-bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
+bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret) {
   // create or unseal a secret from the Tao
   FilePath fp(sealed_path);

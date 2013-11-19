@@ -29,42 +29,37 @@
 namespace tao {
 // an RPC class that communicates with a remote Tao server. It takes the input
 // parameters, bundles them up, and sends them along a channel (details of the
-// channel depend on the implementation)
-class TaoChannel : public Tao {
+// channel depend on the implementation). The difference between the Tao and the
+// TaoChannel is that the Tao takes information about the child hash making the
+// request, whereas the TaoChannel is the interface the child uses to
+// communicate with the Tao, and the child program is not allowed to choose an
+// arbitrary hash to use. So, this hash is added by the channel infrastructure.
+class TaoChannel {
  public:
   virtual ~TaoChannel() {}
 
-  // listen on the channel and handle incoming messages by passing them to the
-  // Tao
-  virtual bool Listen(Tao *t) const;
+  // Start listening for messages from this child.
+  virtual bool Listen(Tao *tao, const string &child_hash) = 0;
 
-  // Gets a serialized representation of the parameters the child needs to
-  // communicate with the parent.
-  virtual bool GetChildParams(string *params) const = 0;
-  virtual bool ChildCleanup() = 0;
-  virtual bool ParentCleanup() = 0;
-
-  // Tao interface methods
-  virtual bool Init() { return true; }
-  virtual bool Destroy() { return true; }
-  virtual bool StartHostedProgram(const string &path, const list<string> &args);
-  virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Seal(const string &data, string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data) const;
-  virtual bool Attest(const string &data, string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const;
+  // Add a child to this channel and return the string that will let the child
+  // connect using the same type.
+  virtual bool AddChildChannel(const string &child_hash, string *params) = 0;
+  virtual bool ChildCleanup(const string &child_hash) = 0;
+  virtual bool ParentCleanup(const string &child_hash) = 0;
 
  protected:
   // subclasses implement these methods for the underlying transport.
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const = 0;
-  virtual bool SendMessage(const google::protobuf::Message &m) const = 0;
+  virtual bool ReceiveMessage(google::protobuf::Message *m,
+                              const string &child_hash) const = 0;
+  virtual bool SendMessage(const google::protobuf::Message &m,
+                           const string &child_hash) const = 0;
 
- private:
-  virtual bool GetRPC(TaoChannelRPC *rpc) const;
-  virtual bool SendRPC(const TaoChannelRPC &rpc) const;
-  virtual bool GetResponse(TaoChannelResponse *resp) const;
-  virtual bool SendResponse(const TaoChannelResponse &resp) const;
-  bool SendAndReceiveData(const string &in, string *out, RPC rpc_type) const;
+  // handle incoming messages on the channel
+  virtual bool HandleRPC(Tao& tao, const string &hash,
+                         const TaoChannelRPC &rpc) const;
+  virtual bool GetRPC(TaoChannelRPC *rpc, const string &child_hash) const;
+  virtual bool SendResponse(const TaoChannelResponse &resp,
+                            const string &child_hash) const;
 };
 }  // namespace tao
 

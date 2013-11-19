@@ -1,7 +1,7 @@
-//  File: tao_channel_factory.cc
+//  File: tao_channel_child_params.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: An interface for code that creates parent Tao channels
+//  Description: Protocol buffers for TaoChannel parameters
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -16,23 +16,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+package tao;
 
-#ifndef TAO_TAO_CHANNEL_FACTORY_H_
-#define TAO_TAO_CHANNEL_FACTORY_H_
-
-#include <string>
-
-using std::string;
-
-namespace tao {
-class TaoChannel;
-
-class TaoChannelFactory {
- public:
-  virtual ~TaoChannelFactory() {}
-  virtual TaoChannel *CreateTaoChannel() const = 0;
-  virtual string GetFactoryName() const = 0;
-};
-}  // namespace tao
-
-#endif  // TAO_TAO_CHANNEL_FACTORY_H_
+message TaoChildChannelParams {
+  required string channel_type = 1;
+  required bytes params = 2;
+}

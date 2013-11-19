@@ -30,13 +30,16 @@
 #include <tao/tao.h>
 #include <tao/tao_auth.h>
 #include <tao/tao_channel.h>
-#include <tao/tao_channel_factory.h>
+#include <tao/tao_child_channel.h>
 
-#include <string>
 #include <map>
+#include <mutex>
 #include <set>
+#include <string>
 
+using std::lock_guard;
 using std::map;
+using std::mutex;
 using std::set;
 using std::string;
 
@@ -46,8 +49,8 @@ class LinuxTao : public Tao {
  public:
   LinuxTao(const string &secret_path, const string &key_path,
            const string &pk_path, const string &whitelist_path,
-           const string &policy_pk_path, TaoChannel *host_channel,
-           TaoChannelFactory *channel_factory,
+           const string &policy_pk_path, TaoChildChannel *host_channel,
+           TaoChannel *child_channel,
            HostedProgramFactory *program_factory);
   virtual ~LinuxTao() {}
   virtual bool Init();
@@ -55,9 +58,12 @@ class LinuxTao : public Tao {
   virtual bool StartHostedProgram(const string &program,
                                   const list<string> &args);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Seal(const string &data, string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data) const;
-  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool Seal(const string &child_hash, const string &data,
+                    string *sealed) const;
+  virtual bool Unseal(const string &child_hash, const string &sealed,
+                      string *data) const;
+  virtual bool Attest(const string &child_hash, const string &data,
+                      string *attestation) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
@@ -95,12 +101,6 @@ class LinuxTao : public Tao {
   // the public policy key
   scoped_ptr<keyczar::Keyczar> policy_verifier_;
 
-  // File descriptors used to communicate with the child process
-  int child_fds_[2];
-
-  // the hash of the child program, for use in quotes or attestation
-  string child_hash_;
-
   // the path to the whitelist
   string whitelist_path_;
 
@@ -111,11 +111,10 @@ class LinuxTao : public Tao {
   Attestation pk_attest_;
 
   // The channel to use for host communication.
-  scoped_ptr<TaoChannel> host_channel_;
+  scoped_ptr<TaoChildChannel> host_channel_;
 
-  // A factory that creates tao channel objects to communicate with hosted
-  // programs
-  scoped_ptr<TaoChannelFactory> channel_factory_;
+  // A channel that handles all child connections
+  scoped_ptr<TaoChannel> child_channel_;
 
   // A factory that can be used to start hosted programs
   scoped_ptr<HostedProgramFactory> program_factory_;
@@ -123,8 +122,14 @@ class LinuxTao : public Tao {
   // A class that decides whether or not a give hosted program is authorized.
   scoped_ptr<TaoAuth> auth_manager_;
 
-  // The sole channel to the sole child (to be generalized)
-  scoped_ptr<TaoChannel> child_channel_;
+  // The set of hosted programs that the LinuxTao has started
+  set<string> running_children_;
+
+  // a mutex for accessing the auth manager
+  mutable mutex auth_m_;
+
+  // A mutex for accessing and modifying running_children_
+  mutable mutex data_m_;
 
   static const int AesBlockSize = 16;
   static const int Sha256Size = 32;

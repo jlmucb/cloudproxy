@@ -37,9 +37,12 @@ class FakeTao : public Tao {
   virtual bool Destroy() { return true; }
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Seal(const string &data, string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data) const;
-  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool Seal(const string &child_hash, const string &data,
+                    string *sealed) const;
+  virtual bool Unseal(const string &child_hash, const string &sealed,
+                      string *data) const;
+  virtual bool Attest(const string &child_hash, const string &data,
+                      string *attestation) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  private:

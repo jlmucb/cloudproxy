@@ -17,14 +17,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tao/direct_tao_channel.h"
+#include "tao/direct_tao_child_channel.h"
 #include "tao/fake_program_factory.h"
 #include "tao/fake_tao.h"
+#include "tao/fake_tao_channel.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/hosted_program_factory.h"
 #include "tao/linux_tao.h"
-#include "tao/fake_tao_channel.h"
-#include "tao/fake_tao_channel_factory.h"
+#include "tao/pipe_tao_channel.h"
 #include "tao/util.h"
 #include "gtest/gtest.h"
 
@@ -49,17 +49,18 @@ using keyczar::rw::KeysetWriter;
 using std::ofstream;
 
 using tao::CreateKey;
-using tao::DirectTaoChannel;
+using tao::DirectTaoChildChannel;
 using tao::FakeProgramFactory;
 using tao::FakeTao;
+using tao::FakeTaoChannel;
 using tao::HostedProgram;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
-using tao::FakeTaoChannel;
-using tao::FakeTaoChannelFactory;
+using tao::PipeTaoChannel;
 using tao::SignedWhitelist;
 using tao::Tao;
-using tao::TaoChannelFactory;
+using tao::TaoChannel;
+using tao::TaoChildChannel;
 using tao::Whitelist;
 
 class LinuxTaoTest : public ::testing::Test {
@@ -68,11 +69,13 @@ class LinuxTaoTest : public ::testing::Test {
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
 
-    scoped_ptr<DirectTaoChannel> channel(new DirectTaoChannel(ft.release()));
+    string fake_linux_tao_hash("This is not a real hash");
+    scoped_ptr<DirectTaoChildChannel>
+      channel(new DirectTaoChildChannel(ft.release(), fake_linux_tao_hash));
     ASSERT_TRUE(channel->Init()) << "Could not init the channel";
 
     scoped_ptr<HostedProgramFactory> program_factory(new FakeProgramFactory());
-    scoped_ptr<TaoChannelFactory> channel_factory(new PipeTaoChannelFactory());
+    scoped_ptr<TaoChannel> pipe_channel(new PipeTaoChannel());
 
     // get a temporary directory to use for the files
     string dir_template("/tmp/linux_tao_test_XXXXXX");
@@ -96,8 +99,7 @@ class LinuxTaoTest : public ::testing::Test {
     CHECK(sha256->Digest(test_binary_contents, &test_binary_digest))
       << "Could not compute a SHA-256 hash over the file " << test_binary_path_;
 
-    string child_hash;
-    CHECK(keyczar::base::Base64WEncode(test_binary_digest, &child_hash))
+    CHECK(keyczar::base::Base64WEncode(test_binary_digest, &child_hash_))
       << " Could not encode the digest under base64w";
 
     ofstream test_binary_file(test_binary_path_.c_str(), ofstream::out);
@@ -106,7 +108,7 @@ class LinuxTaoTest : public ::testing::Test {
 
     // Create the policy key directory so it can be filled by keyczar.
     ASSERT_EQ(mkdir(policy_pk_path.c_str(), 0700), 0);
-    
+
     LOG(INFO) << "Created directories in " << dir_;
 
     // create the policy key
@@ -124,7 +126,7 @@ class LinuxTaoTest : public ::testing::Test {
     HostedProgram *hp = w.add_programs();
     hp->set_name(test_binary_path_);
     hp->set_hash_alg("SHA256");
-    hp->set_hash(child_hash);
+    hp->set_hash(child_hash_);
 
     SignedWhitelist sw;
     string *serialized_whitelist = sw.mutable_serialized_whitelist();
@@ -140,7 +142,7 @@ class LinuxTaoTest : public ::testing::Test {
     tao_.reset(
         new LinuxTao(secret_path, key_path, pk_path, whitelist_path,
                      policy_pk_path, channel.release(),
-                     channel_factory.release(), program_factory.release()));
+                     pipe_channel.release(), program_factory.release()));
     ASSERT_TRUE(tao_->Init());
   }
 
@@ -149,6 +151,7 @@ class LinuxTaoTest : public ::testing::Test {
 
   string dir_;
   string test_binary_path_;
+  string child_hash_;
   scoped_ptr<LinuxTao> tao_;
   scoped_ptr<Keyczar> policy_key_;
 };
@@ -164,7 +167,7 @@ TEST_F(LinuxTaoTest, FailSealTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_FALSE(tao_->Seal(bytes, &sealed));
+  EXPECT_FALSE(tao_->Seal(bytes, bytes, &sealed));
 }
 
 TEST_F(LinuxTaoTest, FailUnsealTest) {
@@ -172,7 +175,7 @@ TEST_F(LinuxTaoTest, FailUnsealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   string unsealed;
-  EXPECT_FALSE(tao_->Unseal(bytes, &unsealed));
+  EXPECT_FALSE(tao_->Unseal(bytes, bytes, &unsealed));
 }
 
 TEST_F(LinuxTaoTest, FailAttestTest) {
@@ -180,7 +183,7 @@ TEST_F(LinuxTaoTest, FailAttestTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   string attestation;
-  EXPECT_FALSE(tao_->Attest(bytes, &attestation));
+  EXPECT_FALSE(tao_->Attest(bytes, bytes, &attestation));
 }
 
 TEST_F(LinuxTaoTest, FailVerifyAttestTest) {
@@ -199,7 +202,7 @@ TEST_F(LinuxTaoTest, SealTest) {
   EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
 
   string sealed;
-  EXPECT_TRUE(tao_->Seal(bytes, &sealed));
+  EXPECT_TRUE(tao_->Seal(child_hash_, bytes, &sealed));
 }
 
 

@@ -1,8 +1,7 @@
-//  File: pipe_tao_channel_factory.h
+//  File: pipe_tao_child_channel.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: An implementation of the Tao channel factory that creates a
-//  pair of pipes.
+//  Description: The hosted program interface for the PipeTaoChannel
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -18,30 +17,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TAO_PIPE_TAO_CHANNEL_FACTORY_H_
-#define TAO_PIPE_TAO_CHANNEL_FACTORY_H_
+#ifndef TAO_PIPE_TAO_CHILD_CHANNEL_H_
+#define TAO_PIPE_TAO_CHILD_CHANNEL_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include "tao/tao_channel_factory.h"
-
-#include <string>
-
-using std::string;
+#include "tao/tao_child_channel.h"
 
 namespace tao {
-class TaoChannel;
-
-class PipeTaoChannelFactory : public TaoChannelFactory {
+class PipeTaoChildChannel : public TaoChildChannel {
  public:
-  PipeTaoChannelFactory();
-  virtual ~PipeTaoChannelFactory() {}
-  virtual TaoChannel *CreateTaoChannel() const;
-  virtual string GetFactoryName() const { return "PipeTaoChannelFactory"; }
+  PipeTaoChildChannel(const string &params);
+  virtual ~PipeTaoChildChannel() {}
+
+  virtual bool Init();
+
+ protected:
+  // subclasses implement these methods for the underlying transport.
+  virtual bool ReceiveMessage(google::protobuf::Message *m) const;
+  virtual bool SendMessage(const google::protobuf::Message &m) const;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(PipeTaoChannelFactory);
+  int readfd_;
+  int writefd_;
+  string params_;
 };
 }  // namespace tao
 
-#endif  // TAO_PIPE_TAO_CHANNEL_FACTORY_H_
+#endif  // TAO_PIPE_TAO_CHILD_CHANNEL_H_

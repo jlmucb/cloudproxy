@@ -25,6 +25,7 @@
 
 #include <tao/keyczar_public_key.pb.h>
 #include <tao/tao.h>
+#include <tao/tao_child_channel.h>
 
 namespace tao {
 
@@ -45,7 +46,7 @@ bool VerifySignature(const string &data, const string &signature,
 bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
                       keyczar::Keyset **keyset);
 
-bool SealOrUnsealSecret(const Tao &t, const string &sealed_path,
+bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret);
 
 }  // namespace tao

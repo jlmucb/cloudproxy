@@ -23,7 +23,7 @@
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include "cloudproxy/file_server.h"
-#include "tao/pipe_tao_channel.h"
+#include "tao/pipe_tao_child_channel.h"
 
 #include <mutex>
 #include <string>
@@ -33,8 +33,8 @@ using std::mutex;
 using std::string;
 using std::vector;
 
-using tao::PipeTaoChannel;
-using tao::TaoChannel;
+using tao::PipeTaoChildChannel;
+using tao::TaoChildChannel;
 
 DEFINE_string(file_path, "file_server_files",
               "The path used by the file server to store files");
@@ -78,12 +78,17 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
-  // try to establish a channel with the Tao
-  int fds[2];
-  CHECK(PipeTaoChannel::ExtractPipes(&argc, &argv, fds))
-      << "Could not extract pipes from the end of the argument list";
-  scoped_ptr<TaoChannel> channel(new PipeTaoChannel(fds));
-  CHECK_NOTNULL(channel.get());
+  // the last argument should be the parameters for channel establishment
+  if (argc < 2) {
+    LOG(ERROR) << "Too few arguments to server";
+    return 1;
+  }
+
+  string params(argv[argc - 1]);
+  
+  // TODO(tmroeder): generalize this to arbitrary channel strings
+  scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
+  CHECK(channel->Init()) << "Could not initialize the child channel";
 
   // initialize OpenSSL
   SSL_load_error_strings();

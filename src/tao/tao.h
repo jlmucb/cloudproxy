@@ -37,9 +37,12 @@ class Tao {
   virtual bool StartHostedProgram(const string &path,
                                   const list<string> &args) = 0;
   virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
-  virtual bool Seal(const string &data, string *sealed) const = 0;
-  virtual bool Unseal(const string &sealed, string *data) const = 0;
-  virtual bool Attest(const string &data, string *attestation) const = 0;
+  virtual bool Seal(const string &child_hash, const string &data,
+                    string *sealed) const = 0;
+  virtual bool Unseal(const string &child_hash, const string &sealed,
+                      string *data) const = 0;
+  virtual bool Attest(const string &child_hash, const string &data,
+                      string *attestation) const = 0;
   virtual bool VerifyAttestation(const string &attestation,
                                  string *data) const = 0;
 };

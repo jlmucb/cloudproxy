@@ -42,7 +42,7 @@ using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
 using tao::SignData;
-using tao::Tao;
+using tao::TaoChildChannel;
 using tao::WhitelistAuth;
 
 namespace cloudproxy {
@@ -97,7 +97,7 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   BIO_set_conn_hostname(bio_.get(), const_cast<char *>(host_and_port.c_str()));
 }
 
-bool CloudClient::Connect(const Tao &t) {
+bool CloudClient::Connect(const TaoChildChannel &t) {
   int r = BIO_do_connect(bio_.get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";

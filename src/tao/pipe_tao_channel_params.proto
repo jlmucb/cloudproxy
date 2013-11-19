@@ -1,4 +1,4 @@
-//  File: tao_channel_params.proto
+//  File: pipe_tao_channel_params.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: Protocol buffers for PipeTaoChannel parameters

@@ -72,17 +72,20 @@ bool FakeTao::GetRandomBytes(size_t size, string *bytes) const {
   return r->RandBytes(size, bytes);
 }
 
-bool FakeTao::Seal(const string &data, string *sealed) const {
+bool FakeTao::Seal(const string &child_hash, const string &data,
+                   string *sealed) const {
   // just encrypt it with our crypter
   return crypter_->Encrypt(data, sealed);
 }
 
-bool FakeTao::Unseal(const string &sealed, string *data) const {
+bool FakeTao::Unseal(const string &child_hash, const string &sealed,
+                     string *data) const {
   // decrypt it with our crypter
   return crypter_->Decrypt(sealed, data);
 }
 
-bool FakeTao::Attest(const string &data, string *attestation) const {
+bool FakeTao::Attest(const string &child_hash, const string &data,
+                     string *attestation) const {
   // For the fake tao, the statement is just the data.
   Attestation a;
   a.set_type(ROOT);

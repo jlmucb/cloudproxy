@@ -41,7 +41,7 @@ using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
 
 using tao::Attestation;
-using tao::Tao;
+using tao::TaoChildChannel;
 using tao::VerifySignature;
 using tao::WhitelistAuth;
 
@@ -111,7 +111,7 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                                           << host_and_port;
 }
 
-bool CloudServer::Listen(const Tao &quote_tao) {
+bool CloudServer::Listen(const TaoChildChannel &quote_tao) {
   while (true) {
     LOG(INFO) << "About to listen for a client message";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
@@ -125,7 +125,7 @@ bool CloudServer::Listen(const Tao &quote_tao) {
   return true;
 }
 
-void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
+void CloudServer::HandleConnection(BIO *sbio, const TaoChildChannel *t) {
   keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
@@ -224,7 +224,7 @@ bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
 }
 bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
                                 string *reason, bool *reply, bool *close,
-                                CloudServerThreadData &cstd, const Tao &t) {
+                                CloudServerThreadData &cstd, const TaoChildChannel &t) {
   CHECK(bio) << "null bio";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
@@ -512,7 +512,7 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
 
 bool CloudServer::HandleAttestation(const string &attestation, BIO *bio,
                                     string *reason, bool *reply,
-                                    CloudServerThreadData &cstd, const Tao &t) {
+                                    CloudServerThreadData &cstd, const TaoChildChannel &t) {
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {

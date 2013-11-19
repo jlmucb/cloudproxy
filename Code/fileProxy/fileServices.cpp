@@ -489,7 +489,6 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     byte                buf[MAXREQUESTSIZEWITHPAD];
     int                 iLeft= MAXREQUESTSIZE;
     char*               p= (char*)buf;
-    const char*         szError= NULL;
     int                 type= CHANNEL_RESPONSE;
     byte                multi= 0;
     byte                final= 0;
@@ -500,8 +499,9 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     char*               szEncapsulateKeyInfo= NULL;
     RSAKey*             sealingKey= NULL;
     const char*         szProtectedElement= NULL;
+    const char*         szError= NULL;
 
-#ifdef  TEST
+#ifdef TEST
     fprintf(g_logFile, "fileServices::getProtectedFileKey\n");
     oReq.printMe();
     fflush(g_logFile);
@@ -509,7 +509,8 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
 
     // oReq.m_szResourceName should be key name but we don't look at it now
     if(g_szFileKeyEscrowCert==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: This app does not support excrow\n");
+        fprintf(g_logFile, 
+              "fileServices::getProtectedFileKey: This app does not support excrow\n");
         fError= true;
         goto done;
     }
@@ -521,7 +522,8 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     // get key from Cert
     szEncapsulateKeyInfo= oM.getSubjectKeyInfo();
     if(szEncapsulateKeyInfo==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant extract sealing key from %s\n", 
+        fprintf(g_logFile, 
+                "fileServices::getProtectedFileKey: cant extract sealing key from %s\n", 
                 oM.m_szCert);
         fError= true;
         goto done;
@@ -581,7 +583,8 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     szProtectedElement= constructProtectedElement(oM.m_szXMLmetadata, 
                                         (const char*) szbase64encryptedKey);
     if(szProtectedElement==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant construct protected element\n");
+        fprintf(g_logFile, 
+              "fileServices::getProtectedFileKey: cant construct protected element\n");
         fError= true;
     }
     fError= false;

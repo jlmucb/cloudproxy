@@ -34,9 +34,9 @@ dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/session.o $(B)/request.o $(B)/jlmUtility.o $(B)/keys.o \
 	    $(B)/aesni.o $(B)/sha256.o $(B)/mpBasicArith.o $(B)/mpModArith.o \
 	    $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/cryptoHelper.o \
-            $(B)/cert.o  $(B)/attest.o $(B)/validateEvidence.o \
+            $(B)/cert.o $(B)/attest.o $(B)/validateEvidence.o \
             $(B)/resource.o $(B)/accessControl.o $(B)/signedAssertion.o \
-	    $(B)/encryptedblockIO.o $(B)/fileServices.o \
+	    $(B)/encapsulate.o $(B)/encryptedblockIO.o $(B)/fileServices.o \
 	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/trustedKeyNego.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o \
@@ -97,14 +97,17 @@ $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
 
-$(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
+#$(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
+	#$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
 
 $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(ACC) -I$(CLM) -I$(TRS) -I$(TAO) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp
 
 $(B)/taoInit.o: $(TAO)/taoInit.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TRS) -c -o $(B)/taoInit.o $(TAO)/taoInit.cpp
+
+$(B)/encapsulate.o: $(SCC)/encapsulate.cpp $(SCC)/encapsulate.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encapsulate.o $(SCC)/encapsulate.cpp
 
 $(B)/taoSupport.o: $(TAO)/taoSupport.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(TAO) -I$(CLM) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp

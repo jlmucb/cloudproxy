@@ -41,6 +41,7 @@
 #include "request.h"
 
 #ifndef FILECLIENT
+#include "encapsulate.h"
 #include "vault.h"
 #endif
 
@@ -484,35 +485,15 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 
 bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
 {
-    bool        fError= true;
-#if 0
-    byte        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    const char* szError= NULL;
-    int         type= CHANNEL_RESPONSE;
-    byte        multi= 0;
-    byte        final= 0;
-#endif
-
-#ifdef  TEST
-    fprintf(g_logFile, "fileServices::getProtectedFileKey\n");
-    oReq.printMe();
-    fflush(g_logFile);
-#endif
-
-    // encapsulate and produce metadata
-
-#if 0
-    // oReq.m_szResourceName should be key name
-
-    if(g_szFileKeyEscrowCert==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: This app does not support excrow\n");
-        fError= true;
-        goto done;
-    }
-
-    encapsulateMessage  oM;
+    bool                fError= true;
+    byte                buf[MAXREQUESTSIZEWITHPAD];
+    int                 iLeft= MAXREQUESTSIZE;
+    char*               p= (char*)buf;
+    const char*         szError= NULL;
+    int                 type= CHANNEL_RESPONSE;
+    byte                multi= 0;
+    byte                final= 0;
+    encapsulatedMessage oM;
     int                 plainKeyBlobsize;
     char                szbase64encryptedKey[8192];
     int                 base64encryptedKeysize= 8192;
@@ -520,14 +501,28 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     RSAKey*             sealingKey= NULL;
     const char*         szProtectedElement= NULL;
 
+#ifdef  TEST
+    fprintf(g_logFile, "fileServices::getProtectedFileKey\n");
+    oReq.printMe();
+    fflush(g_logFile);
+#endif
 
+    // oReq.m_szResourceName should be key name but we don't look at it now
+    if(g_szFileKeyEscrowCert==NULL) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: This app does not support excrow\n");
+        fError= true;
+        goto done;
+    }
+
+    // encapsulate and produce metadata
     // get embedded encapsulating key certificate
     oM.m_szCert= strdup(g_szFileKeyEscrowCert);
 
     // get key from Cert
     szEncapsulateKeyInfo= oM.getSubjectKeyInfo();
     if(szEncapsulateKeyInfo==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant extract sealing key from %s\n", oM.m_szCert);
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant extract sealing key from %s\n", 
+                oM.m_szCert);
         fError= true;
         goto done;
     }
@@ -549,7 +544,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
         fError= true;
         goto done;
     }
-    if(!oM.setplainMessage(plainsize, m_metadataKey)) {
+    if(!oM.setplainMessage(plainKeyBlobsize, m_metadataKey)) {
         fprintf(g_logFile, "fileServices::getProtectedFileKey: cant set plaintext\n");
         fError= true;
         goto done;
@@ -577,13 +572,12 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     }
 
     // base64 encode encrypted key
-    if(!toBase64(oM.m_rgEncrypted, oM.m_sizeEncrypted, 
+    if(!toBase64(oM.m_sizeEncrypted, oM.m_rgEncrypted, 
                  &base64encryptedKeysize, szbase64encryptedKey)) {
         fprintf(g_logFile, "fileServices::getProtectedFileKey: cant base64 encode blob\n");
         fError= true;
         goto done;
     }
-
     szProtectedElement= constructProtectedElement(oM.m_szXMLmetadata, 
                                         (const char*) szbase64encryptedKey);
     if(szProtectedElement==NULL) {
@@ -594,14 +588,18 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
 
 done: 
     // send response
-    p= (char*)szBuf;
+    p= (char*)buf;
     if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
         fprintf(g_logFile, "fileServices::getProtectedFileKey: constructResponse failed\n");
         return false;
     }
-    m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, type, multi, final);
+    m_pSafeChannel->safesendPacket(buf, strlen((char*)buf)+1, type, multi, final);
 
-#endif
+    if(szProtectedElement!=NULL) {
+        free((void*)szProtectedElement);
+        szProtectedElement= NULL;
+    }
+
     return !fError;
 }
 

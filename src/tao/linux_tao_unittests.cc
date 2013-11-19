@@ -167,7 +167,8 @@ TEST_F(LinuxTaoTest, FailSealTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_FALSE(tao_->Seal(bytes, bytes, &sealed));
+  string fake_hash("This is also not a hash");
+  EXPECT_FALSE(tao_->Seal(fake_hash, bytes, &sealed));
 }
 
 TEST_F(LinuxTaoTest, FailUnsealTest) {
@@ -175,15 +176,17 @@ TEST_F(LinuxTaoTest, FailUnsealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   string unsealed;
-  EXPECT_FALSE(tao_->Unseal(bytes, bytes, &unsealed));
+  string fake_hash("This is also not a hash");
+  EXPECT_FALSE(tao_->Unseal(fake_hash, bytes, &unsealed));
 }
 
 TEST_F(LinuxTaoTest, FailAttestTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
-  string attestation;
-  EXPECT_FALSE(tao_->Attest(bytes, bytes, &attestation));
+  string attestation; 
+  string fake_hash("This is also not a hash");
+  EXPECT_FALSE(tao_->Attest(fake_hash, bytes, &attestation));
 }
 
 TEST_F(LinuxTaoTest, FailVerifyAttestTest) {

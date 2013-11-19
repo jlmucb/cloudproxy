@@ -44,6 +44,12 @@
 #include "vault.h"
 #endif
 
+#ifdef ESCROWKEYPRESENT
+#include "escrow.inc"
+#else
+const char* g_szFileKeyEscrowCert= NULL;
+#endif
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -59,6 +65,35 @@
 
 
 // ------------------------------------------------------------------------
+
+
+
+#define MAXPROTECTEDELEMENT 4096
+
+
+const char* s_szProtectedElement=
+"<ProtectedElement>\n"\
+"%s"\
+"<EncryptedBlob>\n"\
+"%s"\
+"</EncryptedBlob>\n"\
+"</ProtectedElement>\n";
+
+
+const char*  constructProtectedElement(const char* szMeta, const char* szEncryptedBlob)
+{
+    if(szMeta==NULL || szEncryptedBlob==NULL) {
+        return NULL;
+    }
+    char    buf[MAXPROTECTEDELEMENT];
+
+    if((strlen(s_szProtectedElement)+strlen(szMeta)+strlen(szEncryptedBlob)+32)>
+            MAXPROTECTEDELEMENT)
+        return NULL;
+
+    sprintf(buf, s_szProtectedElement, szMeta, szEncryptedBlob);
+    return canonicalizeXML(buf);
+}
 
 
 fileServices::fileServices()
@@ -415,7 +450,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     }
 
     // construct response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, datasize, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, datasize, NULL, szError)) {
         fprintf(g_logFile, "serversendResourcetoclient: constructResponse error\n");
         return false;
     }
@@ -444,6 +479,130 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 #endif
     close(iRead);
     return true;
+}
+
+
+bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
+{
+    bool        fError= true;
+#if 0
+    byte        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= (char*)szBuf;
+    const char* szError= NULL;
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
+#endif
+
+#ifdef  TEST
+    fprintf(g_logFile, "fileServices::getProtectedFileKey\n");
+    oReq.printMe();
+    fflush(g_logFile);
+#endif
+
+    // encapsulate and produce metadata
+
+#if 0
+    // oReq.m_szResourceName should be key name
+
+    if(g_szFileKeyEscrowCert==NULL) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: This app does not support excrow\n");
+        fError= true;
+        goto done;
+    }
+
+    encapsulateMessage  oM;
+    int                 plainKeyBlobsize;
+    char                szbase64encryptedKey[8192];
+    int                 base64encryptedKeysize= 8192;
+    char*               szEncapsulateKeyInfo= NULL;
+    RSAKey*             sealingKey= NULL;
+    const char*         szProtectedElement= NULL;
+
+
+    // get embedded encapsulating key certificate
+    oM.m_szCert= strdup(g_szFileKeyEscrowCert);
+
+    // get key from Cert
+    szEncapsulateKeyInfo= oM.getSubjectKeyInfo();
+    if(szEncapsulateKeyInfo==NULL) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant extract sealing key from %s\n", oM.m_szCert);
+        fError= true;
+        goto done;
+    }
+
+    // Make RSAKey
+    sealingKey= (RSAKey*)RSAKeyfromkeyInfo(szEncapsulateKeyInfo);
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant parse key\n");
+        fError= true;
+        goto done;
+    }
+
+    // get key and encrypt
+    if(m_encType==DEFAULTENCRYPT) {
+        plainKeyBlobsize= 16;  // AES128
+    }
+    else {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: unsupported file encryption key\n");
+        fError= true;
+        goto done;
+    }
+    if(!oM.setplainMessage(plainsize, m_metadataKey)) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant set plaintext\n");
+        fError= true;
+        goto done;
+    }
+
+    // seal key
+    if(!oM.sealKey(sealingKey)) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant seal key\n");
+        fError= true;
+        goto done;
+    }
+
+    if(!oM.encryptMessage()) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant encrypt message\n");
+        fError= true;
+        goto done;
+    }
+
+    // serialize metadata
+    oM.m_szXMLmetadata= oM.serializeMetaData();
+    if(oM.m_szXMLmetadata==NULL) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant serialize metadata\n");
+        fError= true;
+        goto done;
+    }
+
+    // base64 encode encrypted key
+    if(!toBase64(oM.m_rgEncrypted, oM.m_sizeEncrypted, 
+                 &base64encryptedKeysize, szbase64encryptedKey)) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant base64 encode blob\n");
+        fError= true;
+        goto done;
+    }
+
+    szProtectedElement= constructProtectedElement(oM.m_szXMLmetadata, 
+                                        (const char*) szbase64encryptedKey);
+    if(szProtectedElement==NULL) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant construct protected element\n");
+        fError= true;
+    }
+    fError= false;
+
+done: 
+    // send response
+    p= (char*)szBuf;
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
+        fprintf(g_logFile, "fileServices::getProtectedFileKey: constructResponse failed\n");
+        return false;
+    }
+    m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, type, multi, final);
+
+#endif
+    return !fError;
 }
 
 
@@ -586,7 +745,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 
     // send response
     p= (char*)szBuf;
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, NULL, szError)) {
         fprintf(g_logFile, "servercreateResourceonserver: constructResponse failed\n");
         return false;
     }
@@ -646,7 +805,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq, timer& accessTimer
     }
 
     // send response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, NULL, szError)) {
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
     } else {
@@ -758,7 +917,7 @@ bool fileServices::serverdeleteResource(Request& oReq, timer& accessTimer)
         szError= (char*)"serverDeleteResource: authorization error";
     }
     // send response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, szError)) {
+    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, NULL, szError)) {
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
     }

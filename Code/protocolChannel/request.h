@@ -102,6 +102,7 @@ bool    constructRequest(char** pp, int* piLeft, const char* szAction,
                        int size, const char* szEvidence);
 bool    constructResponse(bool fError, char** pp, int* piLeft, 
                         const char* szResourceName, int size, 
+                        const char* szExtraResponseElements,
                         const char* szChannelError);
 int     openFile(const char* szInFile, int* psize);
 bool    getFile(safeChannel& fc, int iWrite, int filesize, int datasize,

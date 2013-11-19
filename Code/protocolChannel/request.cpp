@@ -566,6 +566,7 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction,
 
 bool  constructResponse(bool fError, char** pp, int* piLeft, 
                         const char* szResourceName, int size, 
+                        const char* szExtraResponseElements,
                         const char* szChannelError)
 {
     bool    fRet= true;

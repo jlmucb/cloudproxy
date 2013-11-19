@@ -201,9 +201,13 @@ int theServiceChannel::processRequests()
             return 1;
         }
         else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-            fprintf(g_logFile, 
-                    "theServiceChannel::processRequests: getProtectedKey not implemented\n");
-            return -1;
+            if(!m_fileServices.getProtectedFileKey(oReq,
+                        m_pParent->m_accessCheckTimer)) {
+                fprintf(g_logFile, 
+                    "theServiceChannel::processRequests: getProtectedKey failed\n");
+                return -1;
+            }
+            return 1;
         }
         else {
             fprintf(g_logFile, 

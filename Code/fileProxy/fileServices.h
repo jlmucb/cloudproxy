@@ -103,6 +103,9 @@ public:
     bool            servercreateResourceonserver(Request& oReq, timer& accessTimer);
     bool            serverdeleteResource(Request& oReq, timer& accessTimer);
 
+    // send protected key file key 
+    bool            getProtectedFileKey(Request& oReq, timer& accessTimer);
+
 #else  // end of server services, beginning of client services
 
     bool            clientgetResourcefromserver(const char* szResourceName, 

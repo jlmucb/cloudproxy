@@ -73,6 +73,10 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
     hash_to_descriptors_[child_hash].second = down_pipe[1];
   }
 
+  LOG(INFO) << "Adding program with digest " << child_hash;
+  LOG(INFO) << "Pipes for child: " << down_pipe[0] << ", " << up_pipe[1];
+  LOG(INFO) << "Pipes for parent: " << up_pipe[0] << ", " << down_pipe[1];
+
   // the child reads on the down pipe and writes on the up pipe
   PipeTaoChannelParams ptcp;
   ptcp.set_readfd(down_pipe[0]);
@@ -103,18 +107,20 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
 
 bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
   {
-    // Look up this hash to see if this child has any params to clean up.
+    // Look up this hash to see if the parent has fds to clean up
     lock_guard<mutex> l(data_m_);
-    auto child_it = child_descriptors_.find(child_hash);
-    if (child_it == child_descriptors_.end()) {
-      LOG(ERROR) << "No child " << child_hash << " to clean up";
+    auto child_it = hash_to_descriptors_.find(child_hash);
+    if (child_it == hash_to_descriptors_.end()) {
+      LOG(ERROR) << "No parent descriptors to clean up";
       return false;
     }
 
+    LOG(INFO) << "Closed " << child_it->second.first << " and "
+              << child_it->second.second << " in ChildCleanup";
     close(child_it->second.first);
     close(child_it->second.second);
     
-    child_descriptors_.erase(child_it);
+    hash_to_descriptors_.erase(child_it);
   }
     
   return true;
@@ -124,16 +130,18 @@ bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
   {
     lock_guard<mutex> l(data_m_);
     // Look up this hash to see if this child has any params to clean up.
-    auto child_it = hash_to_descriptors_.find(child_hash);
-    if (child_it == hash_to_descriptors_.end()) {
+    auto child_it = child_descriptors_.find(child_hash);
+    if (child_it == child_descriptors_.end()) {
       LOG(ERROR) << "No child " << child_hash << " for parent clean up";
       return false;
     }
 
+    LOG(INFO) << "Closed " << child_it->second.first << " and "
+              << child_it->second.second << " in ParentCleanup";
     close(child_it->second.first);
     close(child_it->second.second);
 
-    hash_to_descriptors_.erase(child_it);
+    child_descriptors_.erase(child_it);
   }
 
   return true;
@@ -198,15 +206,13 @@ bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m,
       return false;
     }
 
-    writefd = child_it->second.first;
+    writefd = child_it->second.second;
   }
-
-
 
   size_t len = serialized.size();
   ssize_t bytes_written = write(writefd, &len, sizeof(size_t));
   if (bytes_written != sizeof(size_t)) {
-    LOG(ERROR) << "Could not write the length to the fd";
+    LOG(ERROR) << "Could not write the length to the fd " << writefd;
     return false;
   }
 

@@ -298,7 +298,8 @@ bool LinuxTao::StartHostedProgram(const string &path,
   program_args.push_back(child_params);
 
   if (!program_factory_->CreateHostedProgram(path, program_args,
-                                             *child_channel_)) {
+                                             serialized_digest,
+					     *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }

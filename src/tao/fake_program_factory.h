@@ -31,7 +31,7 @@ class FakeProgramFactory : public HostedProgramFactory {
   FakeProgramFactory() {}
   virtual ~FakeProgramFactory() {}
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
-                                   TaoChannel &parent_channel) const { return true; }
+                                   const string &child_hash, TaoChannel &parent_channel) const { return true; }
   virtual string GetFactoryName() const { return "FakeProgramFactory"; }
 
  private:

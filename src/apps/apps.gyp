@@ -88,6 +88,17 @@
       ],
     },
     {
+      'target_name': 'server_test',
+      'type': 'executable',
+      'sources': [ 'server_test.cc', ],
+      'include_dirs': [ '..', ],
+      'dependencies': [
+         '../cloudproxy/cloudproxy.gyp:cloudproxy',
+         '../tao/tao.gyp:tao',
+	 '../tao/tao.gyp:tao_test_utilities',
+      ],
+    },
+    {
       'target_name': 'fserver',
       'type': 'executable',
       'sources': [ 'fserver.cc', ],

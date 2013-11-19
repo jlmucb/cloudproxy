@@ -47,6 +47,9 @@ bool PipeTaoChildChannel::Init() {
   readfd_ = ptcp.readfd();
   writefd_ = ptcp.writefd();
 
+  LOG(INFO) << "Got readfd = " << readfd_;
+  LOG(INFO) << "Got writefd = " << writefd_;
+
   return true;
 }
 
@@ -87,7 +90,7 @@ bool PipeTaoChildChannel::SendMessage(const google::protobuf::Message &m) const 
   size_t len = serialized.size();
   ssize_t bytes_written = write(writefd_, &len, sizeof(size_t));
   if (bytes_written != sizeof(size_t)) {
-    LOG(ERROR) << "Could not write the length to the fd";
+    LOG(ERROR) << "Could not write the length to the fd " << writefd_;
     return false;
   }
 

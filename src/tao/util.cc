@@ -214,9 +214,11 @@ bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
 
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret) {
+  LOG(INFO) << "In SealOrUnsealSecret, with path " << sealed_path;
   // create or unseal a secret from the Tao
   FilePath fp(sealed_path);
   if (PathExists(fp)) {
+    LOG(INFO) << "Found the path";
     // Unseal it
     ifstream sealed_file(sealed_path.c_str(), ifstream::in | ios::binary);
     stringstream sealed_buf;
@@ -228,6 +230,7 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
     }
 
   } else {
+    LOG(INFO) << "Didn't find the path";
     // create and seal the secret
     const int SecretSize = 16;
     if (!t.GetRandomBytes(SecretSize, secret)) {
@@ -235,6 +238,7 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
       return false;
     }
 
+    LOG(INFO) << "Got random bytes";
     // seal it and write the result to the specified file
     string sealed_secret;
     if (!t.Seal(*secret, &sealed_secret)) {

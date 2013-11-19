@@ -38,26 +38,24 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
   if (child_pid == 0) {
     parent_channel.ChildCleanup(child_hash);
 
-    vector<char> name_vec(name.begin(), name.end());
-    list<vector<char>> new_args(args.size());
-    new_args.push_back(name_vec);
+    // one more for the name of the program in argv[0]
+    int argc = (int)args.size() + 1;
 
-    for (const string &s : args) {
-      vector<char> v(s.begin(), s.end());
-      new_args.push_back(v);
+    // one more for the NULL at the end
+    char **argv = new char *[argc + 1];
+    LOG(INFO) << "Created argv of size " << (argc + 1);
+    argv[0] = strdup(name.c_str());
+    int i = 1;
+    for (const string &v : args) {
+      argv[i++] = strdup(v.c_str());
     }
 
-    scoped_array<char *> argv(new char *[args.size() + 2]);
-    int i = 0;
-    for (vector<char> &v : new_args) {
-      argv[i++] = v.data();
-    }
+    argv[i] = NULL;
 
-    argv[i] = nullptr;
-
-    int rv = execv(name.c_str(), argv.get());
+    int rv = execv(name.c_str(), argv);
     if (rv == -1) {
       LOG(ERROR) << "Could not exec " << name;
+      perror("The error was: ");
       return false;
     }
   } else {

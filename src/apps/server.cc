@@ -100,6 +100,7 @@ int main(int argc, char **argv) {
   CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
       << "Could not get the secret";
 
+  LOG(INFO) << "Got a secret from the Tao";
   // initialize OpenSSL
   SSL_load_error_strings();
   ERR_load_BIO_strings();
@@ -115,10 +116,12 @@ int main(int argc, char **argv) {
   }
   CRYPTO_set_locking_callback(locking_function);
 
+  LOG(INFO) << "Starting CloudServer";
+
   CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret, FLAGS_policy_key,
                  FLAGS_pem_policy_key, FLAGS_acls, FLAGS_whitelist_path,
                  FLAGS_address, FLAGS_port);
-
+  LOG(INFO) << "Started CloudServer. About to listen";
   CHECK(cs.Listen(*channel)) << "Could not listen for client connections";
   return 0;
 }

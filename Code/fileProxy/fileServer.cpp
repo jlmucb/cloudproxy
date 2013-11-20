@@ -107,14 +107,22 @@ int theServiceChannel::processRequests()
     int     type= 0;
     byte    multi= 0;
     byte    final= 0;
+    int     len= 0;
 
 #ifdef TEST
     fprintf(g_logFile, "\n\ntheServiceChannel: processRequest\n");
 #endif
     m_serverState= REQUESTSTATE;
 
-    if(m_oSafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final)<
-                    (int)sizeof(packetHdr)) {
+    len= m_oSafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final);
+    if(len==0) {
+#ifdef TEST
+        fprintf(g_logFile, "theServiceChannel::processRequests: 0 return, channel close\n");
+        fflush(g_logFile);
+#endif
+        return 0;
+    }
+    if(len<(int)sizeof(packetHdr)) {
         fprintf(g_logFile, "theServiceChannel::processRequests: Can't get ProcessRequest packet\n");
         return -1;
     }

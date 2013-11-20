@@ -979,35 +979,50 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
 #ifdef  TEST
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", 
             szResourceName, szOutFile);
+    fflush(g_logFile);
 #endif
     // send request
     if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
+    	fprintf(g_logFile, "getResource constructRequest returns false\n");
+        fflush(g_logFile);
         return false;
     }
+fprintf(g_logFile, "clientgetResourcefromserver: request constructed\n");
+fflush(g_logFile);
     if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, 
                                          strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
+        fprintf(g_logFile, "clientgetResourcefromserver: send error\n");
+        fflush(g_logFile);
         return false;
     }
 
+fprintf(g_logFile, "clientgetResourcefromserver: packet sent\n");
+fflush(g_logFile);
     // should be a CHANNEL_RESPONSE, not multipart
     n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+fprintf(g_logFile, "clientgetResourcefromserver: got response\n");
+fflush(g_logFile);
     if(n<0) {
         fprintf(g_logFile, "clientgetResourcefromserver: getResource error %d\n", n);
         fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n",
                 szBuf);
+        fflush(g_logFile);
         return false;
     }
     szBuf[n]= 0;
     oResponse.getDatafromDoc(szBuf);
+fprintf(g_logFile, "clientgetResourcefromserver: gotDatafromDoc\n");
+fflush(g_logFile);
 
     // check response
     if(strcmp(oResponse.m_szAction, "accept")!=0) {
         fprintf(g_logFile, "Error: %s\n", oResponse.m_szErrorCode);
+        fflush(g_logFile);
         return false;
     }
 
     // read and write file
-    int         iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    int iWrite= open(szOutFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if(iWrite<0) {
         emptyChannel(*m_pSafeChannel, oResponse.m_iResourceLength, 0, NULL, 0, NULL);
         fprintf(g_logFile, "clientgetResourcefromserver: Cant open out file\n");

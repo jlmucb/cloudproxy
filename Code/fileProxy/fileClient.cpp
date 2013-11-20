@@ -683,6 +683,10 @@ bool fileClient::readResource(const string& subject,
             const string& evidenceFileName, const string& remoteResource, 
             const string& localOutput) 
 {
+#ifdef TEST
+    fprintf(g_logFile, "fileClient::readResource, entered\n");
+    fflush(g_logFile);
+#endif
     char* szEvidence= readandstoreString(evidenceFileName.c_str());
  
     if(m_oServices.clientgetResourcefromserver(

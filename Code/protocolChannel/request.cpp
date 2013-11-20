@@ -56,7 +56,7 @@ const char*   s_szRequestTemplate=
 "%s"\
 "    <ResourceName> %s </ResourceName>\n"\
 "    <ResourceLength> %d </ResourceLength>\n"\
-"    <SubjectName> %s </SubjectName>\n"\
+"%s"\
 "</Request>\n";
 
 
@@ -499,24 +499,45 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction,
 {
 #ifdef  TEST1
     char* p= *pp;
+    fprintf(g_logFile, "constructRequest started %s %s %s %d %s\n",
+             szAction, szSubjectName, szResourceName, resSize, szEvidence);
+    fflush(g_logFile);
 #endif
     const char*   szNoEvidence= "  <EvidenceCollection count='0'/>\n";
-    int size= strlen(s_szRequestTemplate)+strlen(szAction)+strlen(szResourceName)+
-              strlen(szSubjectName)+16;
+    const char*   szSubjTemplate= "    <SubjectName> %s </SubjectName>\n";
+    char          szSubjectElement[512];
+    int           size= strlen(s_szRequestTemplate)+strlen(szAction)+strlen(szResourceName);
+
     if(szEvidence==NULL) {
         szEvidence= szNoEvidence;
     }
     size+= strlen(szEvidence);
+    if(szSubjectName!=NULL) {
+        if((strlen(szSubjTemplate)+strlen(szSubjectName)+4)>512) {
+            fprintf(g_logFile, "constructRequest: subject name too large\n");
+            fflush(g_logFile);
+            return false;
+        }
+        sprintf(szSubjectElement, szSubjTemplate, szSubjectName);
+    }
+    else {
+        szSubjectElement[0]= 0;
+    }
+    size+= strlen(szSubjectElement);
 
-    if(size>*piLeft) {
-        fprintf(g_logFile, "constructRequest: request too large\n");
+    if((size+8)>*piLeft) {
+        fprintf(g_logFile, "constructRequest: request too large %d %d\n", size, *piLeft);
+        fflush(g_logFile);
         return false;
-    }    sprintf(*pp, s_szRequestTemplate, szAction, szEvidence, szResourceName, resSize, szSubjectName);
+    }    
+    sprintf(*pp, s_szRequestTemplate, szAction, szEvidence, szResourceName, 
+            resSize, szSubjectElement);
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
 #ifdef  TEST1
     fprintf(g_logFile, "constructRequest completed\n%s\n", p);
+    fflush(g_logFile);
 #endif
     return true;
 }

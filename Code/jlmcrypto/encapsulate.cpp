@@ -78,22 +78,6 @@ static char* s_szEncapsulateEndTemplate= (char*)
 // -------------------------------------------------------------------------------------
 
 
-//
-//   Todo:  This uses the wrong padding algorithm
-//          Replace emsapkcspad and emsapkcssanity with the right ones later
-bool emsapkcssanity(int sigsize, byte* padded, int sizeout, byte* out)
-{
-    if(padded[0]!=0x00 || padded[1]!=0x01)
-        return false;
-    for(int i=3; i<20; i++)
-        if(padded[i]!=0xff)
-            return false;
-    memcpy(out, padded+sigsize-sizeout, sizeout);
-    return true;
-}
-
-
-
 encapsulatedMessage::encapsulatedMessage()
 {
     // m_szSignAlg= strdup(RSA1024SIGNALG);
@@ -386,7 +370,7 @@ bool   encapsulatedMessage::sealKey(RSAKey* sealingKey)
     insize+= m_sizeIntKey;
 
     // pad
-    if(!emsapkcspad(SHA256HASH, in, blocksize, padded)) {
+    if(!pkcsmessagepad(insize, in, blocksize, padded)) {
         fprintf(g_logFile, "encapsulatedMessage::sealKey can't pad %d\n", blocksize);
         return false;
     }
@@ -417,6 +401,7 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
     bnum    bnOut(64);
     int     sizeSealed= GLOBALMAXPUBKEYSIZE;
     byte    sealed[GLOBALMAXPUBKEYSIZE];
+    int     sizeOut= 32;
 
     if(sealingKey==NULL) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey no sealing key\n");
@@ -471,7 +456,7 @@ bool   encapsulatedMessage::unSealKey(RSAKey* sealingKey)
     PrintBytes((char*)"EncapsulatedMessage::unSealKey, padded\n", padded, blocksize);
 #endif
 
-    if(!emsapkcssanity(blocksize, padded, 32, in)) {
+    if(!pkcsmessageextract(&sizeOut, in, blocksize, padded)) {
         fprintf(g_logFile, "encapsulatedMessage::unSealKey failed padding verification\n");
         return false;
     }

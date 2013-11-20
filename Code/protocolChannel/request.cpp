@@ -53,8 +53,7 @@
 const char*   s_szRequestTemplate=
 "<Request>\n"\
 "  <Action> %s </Action>\n"\
-"    <EvidenceCollection count='%d'>\n%s"\
-"    </EvidenceCollection>\n"\
+"%s"\
 "    <ResourceName> %s </ResourceName>\n"\
 "    <ResourceLength> %d </ResourceLength>\n"\
 "    <SubjectName> %s </SubjectName>\n"\
@@ -64,7 +63,7 @@ const char*   s_szRequestTemplate=
 const char*   s_szResponseTemplate=
 "<Response>\n"\
 "  <Action> %s </Action>\n"\
-"  <ErrorCode> %s </ErrorCode>\n"\
+"  %s"\
 "  <ResourceName> %s </ResourceName>\n"\
 "  <ResourceLength> %d </ResourceLength>\n"\
 "%s"\
@@ -317,6 +316,8 @@ bool  Response::getDatafromDoc(char* szResponse)
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());
+                else
+                    m_szErrorCode= NULL;
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
                 m_szEvidence= canonicalize(pNode);
@@ -491,6 +492,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
 }
 
 
+#define TEST1
 bool  constructRequest(char** pp, int* piLeft, const char* szAction, 
                        const char* szSubjectName, const char* szResourceName, 
                        int resSize, const char* szEvidence)
@@ -502,18 +504,14 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction,
     int size= strlen(s_szRequestTemplate)+strlen(szAction)+strlen(szResourceName)+
               strlen(szSubjectName)+16;
     if(szEvidence==NULL) {
-        szEvidence==NULL) {
+        szEvidence= szNoEvidence;
     }
-    else {
-    
-    }
-        size+= strlen(szEvidence);
+    size+= strlen(szEvidence);
 
     if(size>*piLeft) {
         fprintf(g_logFile, "constructRequest: request too large\n");
         return false;
-    }
-    sprintf(*pp,s_szRequestTemplate,szAction,nEvid,szResourceName,resSize,szSubjectName);
+    }    sprintf(*pp, s_szRequestTemplate, szAction, szEvidence, szResourceName, resSize, szSubjectName);
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
@@ -531,7 +529,6 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
 {
 /*
  * <Response>
- *   <Action> %s </Action>
  *   %s
  *   <ResourceName> %s </ResourceName>
  *   <ResourceLength> %d </ResourceLength>
@@ -545,7 +542,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
     char          szErrorElement[256];
     const char*   szRes= NULL;
 
-    int size= strlen(s_szResponseTemplate)+strlen(szAction)+strlen(szResourceName);
+    int size= strlen(s_szResponseTemplate)+strlen(szResourceName);
     if(fError)
         szRes= "reject";
     else
@@ -569,12 +566,12 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
         fprintf(g_logFile, "constructResponse: response too large\n");
         return false;
     }
-    sprintf(*pp, s_szResponseTemplate, szAction, szErrorElement, szResourceName, 
+    sprintf(*pp, s_szResponseTemplate,  szRes, szErrorElement, szResourceName, 
             resSize, szExtraResponseElements);
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "constructResponse completed\n%s\n", p);
 #endif
     return true;

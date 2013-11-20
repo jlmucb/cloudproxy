@@ -31,7 +31,11 @@ namespace tao {
 // in-memory keys, including a fake policy key.
 class FakeTao : public Tao {
  public:
+  // This constructor creates an in-memory policy key
   FakeTao();
+
+  // This constructor uses an existing (unencrypted, complete) policy key path
+  FakeTao(const string &policy_key_path);
   virtual ~FakeTao() {}
   virtual bool Init();
   virtual bool Destroy() { return true; }
@@ -46,14 +50,13 @@ class FakeTao : public Tao {
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  private:
+  string policy_key_path_;
+
   // An in-memory, temporary symmetric key
   scoped_ptr<keyczar::Keyczar> crypter_;
 
-  // An in-memory, temporary asymmetric key pair
-  scoped_ptr<keyczar::Keyczar> signer_;
-
   // A fake public policy key
-  scoped_ptr<keyczar::Keyczar> policy_verifier_;
+  scoped_ptr<keyczar::Keyczar> policy_key_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeTao);
 };

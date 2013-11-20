@@ -4,6 +4,7 @@
 
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
+using keyczar::Keyczar;
 using keyczar::Keyset;
 using keyczar::KeysetMetadata;
 using keyczar::KeyType;
@@ -14,11 +15,34 @@ using keyczar::Signer;
 
 namespace tao {
 FakeTao::FakeTao()
-    : crypter_(nullptr), signer_(nullptr), policy_verifier_(nullptr) {
+    : policy_key_path_(),
+    crypter_(nullptr),
+    policy_key_(nullptr) { }
+
+FakeTao::FakeTao(const string &policy_key_path)
+    : policy_key_path_(policy_key_path),
+    crypter_(nullptr),
+    policy_key_(nullptr) {
   // The actual initialization happens in Init().
 }
 
 bool FakeTao::Init() {
+  if (!policy_key_path_.empty()) {
+    policy_key_.reset(Signer::Read(policy_key_path_.c_str()));
+    policy_key_->set_encoding(Keyczar::NO_ENCODING);
+  } else {
+    scoped_ptr<Keyset> public_pk(new Keyset());
+    KeyType::Type public_pk_key_type = KeyType::ECDSA_PRIV;
+    KeyPurpose::Type public_pk_key_purpose = KeyPurpose::SIGN_AND_VERIFY;
+    KeysetMetadata *public_pk_metadata = new KeysetMetadata(
+        "fake_tao_public_pk", public_pk_key_type, public_pk_key_purpose, true, 1);
+    CHECK_NOTNULL(public_pk_metadata);
+    public_pk->set_metadata(public_pk_metadata);
+    public_pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+
+    policy_key_.reset(new Signer(public_pk.release()));
+  }
+
   scoped_ptr<Keyset> k(new Keyset());
   KeyType::Type crypter_key_type = KeyType::AES;
   KeyPurpose::Type crypter_key_purpose = KeyPurpose::DECRYPT_AND_ENCRYPT;
@@ -30,29 +54,7 @@ bool FakeTao::Init() {
   k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
   crypter_.reset(new Crypter(k.release()));
-
-  scoped_ptr<Keyset> pk(new Keyset());
-  KeyType::Type pk_key_type = KeyType::ECDSA_PRIV;
-  KeyPurpose::Type pk_key_purpose = KeyPurpose::SIGN_AND_VERIFY;
-  KeysetMetadata *pk_metadata =
-      new KeysetMetadata("fake_tao_pk", pk_key_type, pk_key_purpose, true, 1);
-  CHECK_NOTNULL(pk_metadata);
-  pk->set_metadata(pk_metadata);
-  pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-
-  signer_.reset(new Signer(pk.release()));
-
-  scoped_ptr<Keyset> public_pk(new Keyset());
-  KeyType::Type public_pk_key_type = KeyType::ECDSA_PRIV;
-  KeyPurpose::Type public_pk_key_purpose = KeyPurpose::SIGN_AND_VERIFY;
-  KeysetMetadata *public_pk_metadata = new KeysetMetadata(
-      "fake_tao_public_pk", public_pk_key_type, public_pk_key_purpose, true, 1);
-  CHECK_NOTNULL(public_pk_metadata);
-  public_pk->set_metadata(public_pk_metadata);
-  public_pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-
-  policy_verifier_.reset(new Signer(public_pk.release()));
-
+  crypter_->set_encoding(Keyczar::NO_ENCODING);
   return true;
 }
 
@@ -87,11 +89,27 @@ bool FakeTao::Unseal(const string &child_hash, const string &sealed,
 bool FakeTao::Attest(const string &child_hash, const string &data,
                      string *attestation) const {
   // For the fake tao, the statement is just the data.
+  Statement s;
+  time_t cur_time;
+  time(&cur_time);
+
+  s.set_time(cur_time);
+  s.set_expiration(cur_time + 10000);
+  s.set_data(data);
+  s.set_hash_alg("SHA256");
+  s.set_hash(child_hash);
+
+  string serialized_statement;
+  if (!s.SerializeToString(&serialized_statement)) {
+    LOG(ERROR) << "Could not serialize the statement";
+    return false;
+  }
+
   Attestation a;
   a.set_type(ROOT);
-  a.set_serialized_statement(data);
+  a.set_serialized_statement(serialized_statement);
   string *sig = a.mutable_signature();
-  if (!signer_->Sign(data, sig)) {
+  if (!policy_key_->Sign(serialized_statement, sig)) {
     LOG(ERROR) << "Could not sign the data";
     return false;
   }
@@ -119,6 +137,6 @@ bool FakeTao::VerifyAttestation(const string &attestation, string *data) const {
 
   data->assign(a.serialized_statement().data(),
                a.serialized_statement().size());
-  return signer_->Verify(a.serialized_statement(), a.signature());
+  return policy_key_->Verify(a.serialized_statement(), a.signature());
 }
 }  // namespace tao

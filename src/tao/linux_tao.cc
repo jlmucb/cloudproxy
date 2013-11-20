@@ -272,7 +272,7 @@ bool LinuxTao::StartHostedProgram(const string &path,
     }
   }
 
-  LOG(INFO) << "The program " << path << " with digest "
+  VLOG(2) << "The program " << path << " with digest "
             << serialized_digest << " is authorized";
 
   {
@@ -299,7 +299,7 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   if (!program_factory_->CreateHostedProgram(path, program_args,
                                              serialized_digest,
-					     *child_channel_)) {
+                                             *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }
@@ -505,6 +505,11 @@ bool LinuxTao::VerifyAttestation(const string &attestation,
       return false;
     }
 
+    VLOG(2) << "About to verify the signature against the policy key";
+    VLOG(2) << "a.serialized_statement().size = "
+              << (int)a.serialized_statement().size();
+    VLOG(2) << "a.signature().size = "
+              << (int)a.signature().size();
     // Verify against the policy key.
     if (!policy_verifier_->Verify(a.serialized_statement(), a.signature())) {
       LOG(ERROR) << "Verification failed with the policy key";

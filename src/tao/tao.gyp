@@ -18,6 +18,7 @@
       '-Wall',
       '-Werror',
       '-std=c++0x',
+      '-g',
     ],
     'product_dir': 'bin',
   },

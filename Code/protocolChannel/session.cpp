@@ -1111,7 +1111,7 @@ void session::clearKeys()
 
 bool session::getClientCert(const char* szXml)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "getClientCert\n");
     fflush(g_logFile);
 #endif
@@ -1171,7 +1171,7 @@ bool session::getClientCert(const char* szXml)
 
 bool session::getServerCert(const char* szXml)
 {
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "session::getServerCert\n");
     fflush(g_logFile);
 #endif
@@ -1196,7 +1196,7 @@ bool session::getServerCert(const char* szXml)
         fprintf(g_logFile, "Cant session::getServerCert: get server Subject Key\n");
         return false;
     }
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "session::getServerCert, server cert\n");
     m_pserverCert->printMe();
     fprintf(g_logFile, "session::getServerCert, policy key\n");
@@ -1263,7 +1263,7 @@ bool session::initializePrincipalCerts(const char* szPrincipalCerts)
         m_rgPrincipalPublicKeys[i]= (RSAKey*) (m_rgPrincipalCerts[i]->getSubjectKeyInfo());
     }
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "%d Principal Certs\n", m_iNumPrincipals);
     fflush(g_logFile);
 #endif
@@ -1549,7 +1549,7 @@ bool session::checkPrincipalChallenges()
     }
     pRootElement->QueryIntAttribute ("count", &iNumSignedChallenges);
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "checkPrincipalChallenges %d signed challenges\n", iNumSignedChallenges);
 #endif
 

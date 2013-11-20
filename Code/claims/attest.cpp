@@ -702,6 +702,7 @@ bool Attestation::checkAttest(KeyInfo* pKeyInfo)
     byte    hashFinal[SHA256DIGESTBYTESIZE];
     int     hashType= 0;
     int     sizefinalHash= 0;
+    UNUSEDVAR(sizefinalHash);
 
     if(!isValid()) {
         fprintf(g_logFile, "checkAttest: Attestation not valid\n");
@@ -788,7 +789,7 @@ bool Attestation::checkAttest(KeyInfo* pKeyInfo)
     bool fRet= RSAVerify(*(RSAKey*)pKeyInfo, hashType, hashFinal,
                                m_attestation);
 
-#ifdef TEST
+#ifdef TEST1
     PrintBytes((char*)"final hash: ", hashFinal, sizefinalHash);
     if(fRet)
         fprintf(g_logFile, "checkAttest returns true\n");
@@ -850,6 +851,7 @@ bool  AttestInfo::init(const char* attestInfo)
 
 #ifdef TEST
     fprintf(g_logFile, "AttestInfo::init()\n");
+    fflush(g_logFile);
 #endif
     if(attestInfo==NULL)
         return false;

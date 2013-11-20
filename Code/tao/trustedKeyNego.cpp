@@ -215,8 +215,9 @@ bool KeyNego(const char* szAssert, const char* szEvidenceList, char** pszCert)
 
 #ifdef TEST
     fprintf(g_logFile, "KeyNego()\n");
+    fflush(g_logFile);
 #endif
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Assert:\n%s\n", szAssert);
     fprintf(g_logFile, "EvidenceList:\n%s\n", szEvidenceList);
     fflush(g_logFile);
@@ -284,8 +285,9 @@ bool KeyNego(const char* szAssert, const char* szEvidenceList, char** pszCert)
 
         // cert
         *pszCert= szCert;
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "Cert: %s\n", szCert);
+        fflush(g_logFile);
 #endif
     }
     catch(const char* szError) {

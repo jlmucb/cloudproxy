@@ -281,6 +281,7 @@ bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile,
 
 #ifdef TEST
     fprintf(g_logFile, "looking for resource %s\n", oReq.m_szResourceName);
+    fflush(g_logFile);
 #endif
     pResource= m_pMetaData->findResource(oReq.m_szResourceName);
     if(pResource==NULL) {
@@ -987,8 +988,6 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
         fflush(g_logFile);
         return false;
     }
-fprintf(g_logFile, "clientgetResourcefromserver: request constructed\n");
-fflush(g_logFile);
     if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, 
                                          strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0)) <0) {
         fprintf(g_logFile, "clientgetResourcefromserver: send error\n");
@@ -996,12 +995,8 @@ fflush(g_logFile);
         return false;
     }
 
-fprintf(g_logFile, "clientgetResourcefromserver: packet sent\n");
-fflush(g_logFile);
     // should be a CHANNEL_RESPONSE, not multipart
     n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
-fprintf(g_logFile, "clientgetResourcefromserver: got response\n");
-fflush(g_logFile);
     if(n<0) {
         fprintf(g_logFile, "clientgetResourcefromserver: getResource error %d\n", n);
         fprintf(g_logFile, "clientgetResourcefromserver: clientgetResourcefromserver %s\n",
@@ -1011,8 +1006,6 @@ fflush(g_logFile);
     }
     szBuf[n]= 0;
     oResponse.getDatafromDoc(szBuf);
-fprintf(g_logFile, "clientgetResourcefromserver: gotDatafromDoc\n");
-fflush(g_logFile);
 
     // check response
     if(strcmp(oResponse.m_szAction, "accept")!=0) {
@@ -1039,6 +1032,7 @@ fflush(g_logFile);
     close(iWrite);
 #ifdef  TEST
     fprintf(g_logFile, "clientgetResourcefromserver returns true\n");
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -1103,6 +1097,7 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
             success = true;
 #ifdef TEST
             fprintf(g_logFile, "Success in creation because the resource already exists\n");
+            fflush(g_logFile);
 #endif
         }
     }

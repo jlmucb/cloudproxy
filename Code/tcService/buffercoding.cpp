@@ -321,7 +321,7 @@ int encodeTCSERVICESTARTAPPFROMAPP(int nargs, char** args,
     int k= 0;
     int i;
 
-#ifdef TEST 
+#ifdef TEST1
     fprintf(g_logFile, "encodeTCSERVICESTARTAPPFROMAPP, nargs: %d\n", nargs);
     for(i=0;i<nargs; i++)
         fprintf(g_logFile, "\targ[%d]: %s\n", i, args[i]);
@@ -351,7 +351,7 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(int* pnargs, char** args, const byte* buf)
     int     n= 0;
     int     i, m, k;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP: starting\n");
 #endif 
     memcpy(&m, &buf[n], sizeof(int));
@@ -369,7 +369,7 @@ bool  decodeTCSERVICESTARTAPPFROMAPP(int* pnargs, char** args, const byte* buf)
         n+= k;
     }
    
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "decodeTCSERVICESTARTAPPFROMAPP %d args\n",  m);
     for(i=1; i<m;i++)
         fprintf(g_logFile, "\targ[%d]: %s\n", i, args[i]);

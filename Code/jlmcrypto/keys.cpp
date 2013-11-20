@@ -576,7 +576,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement*  pRootElement)
         mpSub(*m_pbnQ, g_bnOne, *m_pbnQM1);
     }
  
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "RSAKey::getDatafromDoc, leaving\n"); fflush(stdout);
 #endif
 

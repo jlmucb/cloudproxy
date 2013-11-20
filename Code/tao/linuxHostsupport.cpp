@@ -62,7 +62,7 @@ linuxDeviceChannel::~linuxDeviceChannel()
 
 bool linuxDeviceChannel::initLinuxService(const char* name, bool famService)
 {
-#ifdef TEST
+#ifdef TEST1
     if(name!=NULL)
         fprintf(g_logFile, "initLinuxService started %s\n", name);
     else
@@ -195,7 +195,7 @@ bool linuxDeviceChannel::getOSMeasurementfromDeviceDriver(u32* phashType,
     int         size= 0;
     byte        rgBuf[PARAMSIZE];
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "getOSMeasurementfromDeviceDriver\n");
     fflush(g_logFile);
 #endif
@@ -232,8 +232,9 @@ bool linuxDeviceChannel::getHostedMeasurementfromDeviceDriver(int childproc, u32
     int         size= PARAMSIZE;
     byte        rgBuf[PARAMSIZE];
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "getHostedMeasurementfromDeviceDriver\n");
+    fflush(g_logFile);
 #endif
     // Does my pid have valid hash?
     size= encodeTCSERVICEGETPROGHASHFROMAPP(childproc, 1024, rgBuf);
@@ -255,6 +256,7 @@ bool linuxDeviceChannel::getHostedMeasurementfromDeviceDriver(int childproc, u32
 
 #ifdef TEST
     PrintBytes("getHostedMeasurementfromDeviceDriver prog hash: ", pHash, *pSize);
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -291,6 +293,7 @@ bool linuxDeviceChannel::startAppfromDeviceDriver(int* ppid, int argc, char **ar
     fprintf(g_logFile, 
             "startProcessLinuxService: Process created: %d by servicepid %d for %d\n", 
             *ppid, m_myPid, getpid());
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -308,6 +311,7 @@ bool linuxDeviceChannel::sealfromDeviceDriver(int inSize, byte* inData,
 
 #ifdef TEST
     fprintf(g_logFile, "sealwithLinuxService(%d)\n", inSize);
+    fflush(g_logFile);
 #endif
     memset(outData, 0, *poutSize);
     size= encodeTCSERVICESEALFORFROMAPP(inSize, inData, PARAMSIZE, rgBuf);
@@ -346,7 +350,7 @@ bool linuxDeviceChannel::unsealfromDeviceDriver(int inSize, byte* inData, int* p
     int         size= 0;
     byte        rgBuf[PARAMSIZE];
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "unsealwithLinuxService(%d)\n", inSize);
     fflush(g_logFile);
 #endif
@@ -396,6 +400,7 @@ bool linuxDeviceChannel::quotefromDeviceDriver(int inSize, byte* inData,
 
 #ifdef TEST
     fprintf(g_logFile, "quotewithLinuxService(%d, %d)\n", inSize, *poutSize);
+    fflush(g_logFile);
 #endif
     memset(outData, 0, *poutSize);
     size= encodeTCSERVICEATTESTFORFROMAPP(inSize, inData, PARAMSIZE, rgBuf);

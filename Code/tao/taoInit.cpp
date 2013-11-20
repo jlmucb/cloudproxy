@@ -124,6 +124,7 @@ bool taoInit::generateandcertifyKey(u32 keyType, const char* szKeyName,
 
 #ifdef TEST
     fprintf(g_logFile, "taoInit::generateandcertifyKey(%d)\n", keyType);
+    fflush(g_logFile);
 #endif
     // attest key valid?
     if(m_myHost==NULL || !m_myHost->isValid()) {
@@ -325,6 +326,7 @@ bool taoInit::genprivateKeyPair(u32 keyType, const char* szKeyName)
 
 #ifdef TEST
     fprintf(g_logFile, "genprivateKeyPair(%d)\n", (int) keyType);
+    fflush(g_logFile);
 #endif
     if(keyType==KEYTYPERSA1024INTERNALSTRUCT) {
         ikeySize= 1024;

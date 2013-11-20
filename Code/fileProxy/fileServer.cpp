@@ -111,6 +111,7 @@ int theServiceChannel::processRequests()
 
 #ifdef TEST
     fprintf(g_logFile, "\n\ntheServiceChannel: processRequest\n");
+    fflush(g_logFile);
 #endif
     m_serverState= REQUESTSTATE;
 
@@ -134,7 +135,7 @@ int theServiceChannel::processRequests()
 #endif
     if(type==CHANNEL_TERMINATE) {
         fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from theServiceChannel::processRequests\n");
-#ifdef TEST
+#ifdef TEST1
         tcBufferprint((tcBuffer*) request);
         fflush(g_logFile);
 #endif
@@ -526,6 +527,7 @@ bool fileServer::initServer(const char* configDirectory)
 #ifdef TEST
         fprintf(g_logFile, "fileServer::Init: after HostInit, pid: %d\n",
             getpid());
+        fflush(g_logFile);
 #endif
 
         // init environment

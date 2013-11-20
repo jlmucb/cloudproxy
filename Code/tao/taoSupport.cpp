@@ -79,6 +79,7 @@ bool  taoFiles::initNames(const char* directory, const char* subdirectory)
 {
 #ifdef TEST
     fprintf(g_logFile, "initNames(%s, %s)\n", directory, subdirectory);
+    fflush(g_logFile);
 #endif
     m_storageType= STORAGETYPENONE;
     if(directory==NULL)

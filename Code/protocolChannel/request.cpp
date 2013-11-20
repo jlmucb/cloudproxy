@@ -179,7 +179,7 @@ bool  Request::getDatafromDoc(const char* szRequest)
     if(szResourceLength!=NULL)
         sscanf(szResourceLength, "%d", &m_iResourceLength);
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Request getdata\n");
     printMe();
     fflush(g_logFile);
@@ -274,7 +274,7 @@ bool  Response::getDatafromDoc(char* szResponse)
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "Response::getDatafromDoc\n%s\n", szResponse);
     fflush(g_logFile);
 #endif
@@ -383,7 +383,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     byte                fileBuf[MAXREQUESTSIZEWITHPAD];
     encryptedFilewrite  encFile;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "getFile %d %d, enc is %d\n", filesize, datasize, encType);
     fflush(g_logFile);
 #endif
@@ -411,7 +411,7 @@ bool getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
     type= CHANNEL_TRANSFER;
     multi= 1;
     final= 0;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "getFile: receiving encrypted file \n");
     fflush(g_logFile);
 #endif
@@ -468,7 +468,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
     type= CHANNEL_TRANSFER;
     multi= 1;
     final= 0;
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "sendFile: sending file\n"); 
     fflush(g_logFile);
 #endif
@@ -492,7 +492,6 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
 }
 
 
-#define TEST1
 bool  constructRequest(char** pp, int* piLeft, const char* szAction, 
                        const char* szSubjectName, const char* szResourceName, 
                        int resSize, const char* szEvidence)

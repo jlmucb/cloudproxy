@@ -47,6 +47,7 @@ int sendPacket(int fd, byte* buf, int len, int type, byte multi, byte final)
 
 #ifdef IOTEST
     fprintf(g_logFile, "sendPacket %d len %d type %d\n", fd, len, type);
+    fflush(g_logFile);
 #endif
     oHdr.packetType= type;
     oHdr.len= len;
@@ -84,6 +85,7 @@ int getPacket(int fd, byte* buf, int maxSize, int* ptype, byte* pmulti, byte* pf
 
 #ifdef IOTEST
     fprintf(g_logFile, "getPacket %d len %d type %d\n", fd, maxSize, *ptype);
+    fflush(g_logFile);
 #endif
     oHdr.error= 0;
     if(read(fd, &oHdr, sizeof(packetHdr)) < (ssize_t)sizeof(packetHdr)) {

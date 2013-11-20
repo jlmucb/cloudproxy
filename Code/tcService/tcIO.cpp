@@ -214,6 +214,7 @@ bool tcChannel::gettcBuf(int* procid, u32* puReq, u32* pstatus, int* porigprocid
 
 #ifdef TEST
     fprintf(g_logFile, "gettcBuf outstanding %d\n", m_fd);
+    fflush(g_logFile);
 #endif
     n= *paramsize+sizeof(tcBuffer);
     if(n>PADDEDREQ) {
@@ -232,7 +233,7 @@ bool tcChannel::gettcBuf(int* procid, u32* puReq, u32* pstatus, int* porigprocid
         return false;
     }
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "gettcBuf succeeds %d\n", i);
     tcBufferprint((tcBuffer*) rgBuf);
     PrintBytes("Buffer: ", rgBuf, i);

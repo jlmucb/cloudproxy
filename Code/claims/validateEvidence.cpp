@@ -748,6 +748,7 @@ bool  evidenceList::validateEvidenceList(KeyInfo* pRootKey)
 
 #ifdef TEST
     fprintf(g_logFile, "evidenceList::validateEvidenceList()\n");
+    fflush(g_logFile);
 #endif
 
     if(!m_fParsed) {

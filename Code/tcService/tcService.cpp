@@ -1123,6 +1123,7 @@ bool  serviceRequest(tcChannel& chan, bool* pfTerminate)
 #ifdef TEST
         fprintf(g_logFile, "serviceRequest, about to StartHostedProgram %s, for %d\n",
                 av[0], origprocid);
+        fflush(g_logFile);
 #endif
 #ifdef KVMTCSERVICE
         if(g_myService.StartApp(origprocid, an, (const char**) av,
@@ -1182,6 +1183,7 @@ int main(int an, char** av)
 
 #ifdef TEST
     fprintf(g_logFile, "%s started\n\n", g_myServiceName);
+    fflush(g_logFile);
 #endif
 
 #ifdef KVMTCSERVICE
@@ -1260,6 +1262,7 @@ int main(int an, char** av)
 #ifdef TEST
     fprintf(g_logFile, "tcService main: after HostInit, pid: %d\n",
             g_servicepid);
+    fflush(g_logFile);
 #endif
 
     if(fInitKeys) {

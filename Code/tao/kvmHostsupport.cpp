@@ -149,6 +149,7 @@ bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* r
 
 #ifdef TEST
     fprintf(g_logFile, "getkvmpids(%s), %s\n", name, m_qemudir);
+    fflush(g_logFile);
 #endif
 
     // pid file name
@@ -195,7 +196,7 @@ bool pidMapper::getkvmpids(const char* name, int* pmainpid, int* pnvcpus, int* r
     *pmainpid= mainpid;
     *pnvcpus= numCPUs;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "\ngetkvmpids\nmain pid: %d\n", mainpid);
     fprintf(g_logFile, "num pids: %d\n\t", numCPUs);
     for(int i=0; i<numCPUs; i++) {
@@ -314,7 +315,7 @@ bool startKvmVM(const char* programname, const char* systemname,
     fprintf(g_logFile, "startKvm: virDomainCreateXML succeeded\n");
     fflush(g_logFile);
 #endif
-#ifdef TEST
+#ifdef TEST1
     int     vmid= 0;
     int     ndom= virConnectNumOfDomains(*ppvmconnection);
     fprintf(g_logFile, "%d domains\n", ndom);

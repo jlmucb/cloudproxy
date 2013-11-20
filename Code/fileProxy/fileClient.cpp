@@ -482,6 +482,7 @@ bool fileClient::compareFiles(const string& firstFile, const string& secondFile)
         if (co != cn) {
 #ifdef TEST
             fprintf(g_logFile, "The file returned by the server failed to match the file sent at byte %d\n", pos);
+            fflush(g_logFile);
 #endif
             failed = true;
             break;
@@ -495,6 +496,7 @@ bool fileClient::compareFiles(const string& firstFile, const string& secondFile)
     if (!failed && (origFile.good() || newFile.good())) {
 #ifdef TEST
         fprintf(g_logFile, "The file returned by the server was not the same length as the file sent to the server\n");
+        fflush(g_logFile);
 #endif
         failed = true;
     } 
@@ -502,6 +504,7 @@ bool fileClient::compareFiles(const string& firstFile, const string& secondFile)
 #ifdef TEST
     if (!failed) {
         fprintf(g_logFile, "The file returned by the server is identical to the one sent to the server\n");
+        fflush(g_logFile);
     }
 #endif
 
@@ -555,6 +558,7 @@ int main(int an, char** av)
 
 #ifdef TEST
         fprintf(g_logFile, "reading directory %s\n", testPath.c_str());    
+        fflush(g_logFile);
 #endif
         // each child directory is a test
         struct dirent* entry = NULL;

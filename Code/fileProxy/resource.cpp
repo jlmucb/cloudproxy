@@ -190,6 +190,7 @@ int resource::Serialize(byte* szObj)
 
 #ifdef TEST
     fprintf(g_logFile, "resource Serialize\n");
+    fflush(g_logFile);
 #endif
     pNode=  m_myOwners.pFirst;
     while(pNode!=NULL) {

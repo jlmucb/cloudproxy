@@ -90,6 +90,7 @@ bool safeChannel::initChannel(int fdIn, int alg, int mode, int hmac,
 #ifdef IOTEST
     fprintf(g_logFile, "initChannel. alg: %d, mode: %d, hmac: %d, sizeofIntKeys: %d, sizeofEncKeys: %d\n",
             alg, mode, hmac, sizeofIntKeys, sizeofEncKeys);
+    fflush(g_logFile);
 #endif
 
     if(alg!=AES128 || mode!=CBCMODE || hmac!=HMACSHA256) {

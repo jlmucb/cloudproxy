@@ -154,6 +154,7 @@ bool tpmSupport::sealwithTPM(int inSize, byte* inData, int* poutSize, byte* outD
 {
 #ifdef TEST
     fprintf(g_logFile, "sealwithTPM\n");
+    fflush(g_logFile);
 #endif
     return m_oTpm.sealData(inSize, inData, (unsigned*) poutSize, outData);
 }

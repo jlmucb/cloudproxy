@@ -514,7 +514,6 @@ bool taoHostServices::Attest(int sizetoAttest, byte* toAttest,
 {
 #ifdef TEST
     fprintf(g_logFile, "taoHostServices::Attest\n");
-    PrintBytes("Attest this string:\n", toAttest, sizetoAttest);
     fflush(g_logFile);
 #endif
     switch(m_hostType) {

@@ -366,6 +366,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::EnvInit: %04x, %s, %s, %s, %s, %s\n",
             type, program, domain, directory, directory, serviceProvider);
+    fflush(g_logFile);
 #endif
     m_envValid= false;
     m_envType= type;
@@ -387,9 +388,10 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         fprintf(g_logFile, "taoEnvironment::EnvInit: cant init key names\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::EnvInit, host: %s\n\tkeynames: %s, %s, %s\n",
             m_machine, m_szPrivateKeyName, m_szPrivateSubjectName, m_szPrivateSubjectId);
+    fflush(g_logFile);
 #endif
 
     // Host should already be initialized
@@ -463,6 +465,7 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         }
 #ifdef TEST
         fprintf(g_logFile, "taoEnvironment::initTao succeeded\n");
+        fflush(g_logFile);
 #endif
         if(!saveTao()) {
             fprintf(g_logFile, "taoEnvironment::EnvInit: cant save Tao\n");
@@ -585,7 +588,7 @@ bool taoEnvironment::initKeyNames()
 {
     char    szName[2048];
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::initKeyNames\n");
     fflush(g_logFile);
 #endif
@@ -696,7 +699,7 @@ bool taoEnvironment::Seal(int hostedMeasurementSize, byte* hostedMeasurement,
     memcpy(&tmpout[n], toSeal, sizetoSeal);
     n+= sizetoSeal;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::Seal, about to encryptBlob, n=%d\n",
             n);
     PrintBytes("To Seal: ", tmpout, n);
@@ -726,6 +729,7 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::Unseal\n");
+    fflush(g_logFile);
 #endif
     if(!m_symKeyValid) {
         fprintf(g_logFile, "taoEnvironment::Unseal, seal key invalid\n");
@@ -773,7 +777,7 @@ bool taoEnvironment::Unseal(int hostedMeasurementSize, byte* hostedMeasurement,
         return false;
     }
     n += hashsize;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "The hashes match. Copying an int into %p\n", psizeunsealed);
     fflush(g_logFile);
 #endif
@@ -875,7 +879,7 @@ bool taoEnvironment::GetPolicyCert()
       case PLATFORMTYPELINUX:
       case PLATFORMTYPEGUESTLINUX:
       case PLATFORMTYPELINUXAPP:
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "policy key from image %d\n", g_policyCertSize);
         fprintf(g_logFile, "policy key from image %s\n", g_szXmlPolicyCert);
         fflush(g_logFile);
@@ -961,6 +965,7 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
     memcpy(m_serializedpublicKey, myInit.m_serializedpublicKey, m_serializedpublicKeySize);
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::initTao serialized keys initialized\n");
+    fflush(g_logFile);
 #endif
 
     if(myInit.m_myCertificateValid) {
@@ -1000,6 +1005,7 @@ bool taoEnvironment::initTao(u32 symType, u32 pubkeyType)
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::initTao returning true\n");
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -1039,6 +1045,7 @@ bool taoEnvironment::saveTao()
 {
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::saveTao\n");
+    fflush(g_logFile);
 #endif
     if(!m_sealedsymKeyValid) {
         if(!hostsealKey(m_symKeyType, m_symKeySize, m_symKey,
@@ -1129,10 +1136,13 @@ bool taoEnvironment::saveTao()
     if(!m_fileNames.putBlobData(m_fileNames.m_szAncestorEvidence, 
                                 m_evidenceValid, 
                                 m_evidenceSize, (byte*)m_szevidence)) {
-        fprintf(g_logFile, "taoEnvironment::saveTao: cant save evidence\n");
+        fprintf(g_logFile, "taoEnvironment::saveTao: cant save evidence %s\n",
+               m_fileNames.m_szAncestorEvidence);
+        fprintf(g_logFile, "evidence: %s\n", m_szevidence);
     }
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::saveTao returns true\n");
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -1224,6 +1234,7 @@ bool taoEnvironment::restoreTao()
 
 #ifdef TEST
     fprintf(g_logFile, "taoEnvironment::restoreTao returns true\n");
+    fflush(g_logFile);
 #endif
     return true;
 }
@@ -1244,8 +1255,9 @@ bool taoEnvironment::clearKey(u32* ptype, int* psize, byte** ppkey)
 bool taoEnvironment::hostsealKey(u32 type, int size, byte* key, 
                             int* psealedSize, byte** ppsealed)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::hostsealKey\n");
+    fflush(g_logFile);
 #endif
 
     int         insize= size+sizeof(int)+sizeof(u32);
@@ -1299,7 +1311,7 @@ cleanup:
 bool taoEnvironment::hostunsealKey(int sealedSize, byte* sealed,
                               u32* ptype, int* psize, byte** ppkey)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::hostunsealKey %d, %d\n",
             sealedSize, *psize);
     fflush(g_logFile);
@@ -1338,7 +1350,7 @@ bool taoEnvironment::hostunsealKey(int sealedSize, byte* sealed,
         goto cleanup;
     }
     memcpy(*ppkey, &rgOut[m], *psize);
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::hostunsealKey, succeeds\n");
     fflush(g_logFile);
 #endif
@@ -1360,9 +1372,10 @@ bool taoEnvironment::localsealKey(u32 type, int size, byte* key,
     int         m= 0;
     bool        fRet= true;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::localsealKey %d, %d\n",
             type, size);
+    fflush(g_logFile);
 #endif
 
     if(rgIn==NULL) {
@@ -1423,8 +1436,9 @@ cleanup:
 bool taoEnvironment::localunsealKey(int sealedSize, byte* sealed,
                                     u32* ptype, int* psize, byte** ppkey)
 {
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "taoEnvironment::localunsealKey\n");
+    fflush(g_logFile);
 #endif
 
     int         outsize= sealedSize+4096;

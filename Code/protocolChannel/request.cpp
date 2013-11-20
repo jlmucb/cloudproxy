@@ -33,7 +33,6 @@
 #include "channel.h"
 #include "safeChannel.h"
 #include "jlmUtility.h"
-// #include "vault.h"
 #include "request.h"
 #include "encryptedblockIO.h"
 
@@ -51,34 +50,25 @@
 #include <errno.h>
 
 
-#define DEBUGPRINT
+const char*   s_szRequestTemplate=
+"<Request>\n"\
+"  <Action> %s </Action>\n"\
+"    <EvidenceCollection count='%d'>\n%s"\
+"    </EvidenceCollection>\n"\
+"    <ResourceName> %s </ResourceName>\n"\
+"    <ResourceLength> %d </ResourceLength>\n"\
+"    <SubjectName> %s </SubjectName>\n"\
+"</Request>\n";
 
 
-const char*   szRequest1a= "<Request>\n";
-const char*   szRequest1b=  "</Request>\n";
-
-const char*   szRequest2a= "     <Action>";
-const char*   szRequest2b= "</Action>\n";
-
-const char*   szRequest3= "    <EvidenceCollection count='0'/>\n";
-const char*   szRequest3a= "    <EvidenceCollection count='%d'>\n";
-const char*   szRequest3b= "    </EvidenceCollection>\n";
-
-const char*   szRequest4a= "     <ResourceName>";
-const char*   szRequest4b= "</ResourceName>\n";
-
-const char*   szRequest5a= "    <ResourceLength>";
-const char*   szRequest5b=  "</ResourceLength>\n";
-
-const char*   szRequest6a= "    <SubjectName>";
-const char*   szRequest6b=  "</SubjectName>\n";
-
-
-const char*   szResponse1= "<Response>\n  <Action>";
-const char*   szResponse2= "</Action>\n  <ErrorCode>";
-const char*   szResponse3= "</ErrorCode>\n  <ResourceName>";
-const char*   szResponse4= "</ResourceName>\n <ResourceLength>";
-const char*   szResponse5= "</ResourceLength>\n </Response>\n";
+const char*   s_szResponseTemplate=
+"<Response>\n"\
+"  <Action> %s </Action>\n"\
+"  <ErrorCode> %s </ErrorCode>\n"\
+"  <ResourceName> %s </ResourceName>\n"\
+"  <ResourceLength> %d </ResourceLength>\n"\
+"%s"\
+"</Response>\n";
 
 
 // ------------------------------------------------------------------------
@@ -503,60 +493,30 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
 
 bool  constructRequest(char** pp, int* piLeft, const char* szAction, 
                        const char* szSubjectName, const char* szResourceName, 
-                       int size, const char* szEvidence)
+                       int resSize, const char* szEvidence)
 {
 #ifdef  TEST1
-    char*p= *pp;
+    char* p= *pp;
 #endif
-
-    if(!safeTransfer(pp, piLeft, szRequest1a))
-        return false;
-    if(!safeTransfer(pp, piLeft, szRequest2a))
-        return false;
-    if(!safeTransfer(pp, piLeft, szAction))
-        return false;
-    if(!safeTransfer(pp, piLeft, szRequest2b))
-        return false;
-
+    const char*   szNoEvidence= "  <EvidenceCollection count='0'/>\n";
+    int size= strlen(s_szRequestTemplate)+strlen(szAction)+strlen(szResourceName)+
+              strlen(szSubjectName)+16;
     if(szEvidence==NULL) {
-        if(!safeTransfer(pp, piLeft, szRequest3))
-            return false;
+        szEvidence==NULL) {
     }
     else {
-        if(!safeTransfer(pp, piLeft, szEvidence))
-            return false;
+    
     }
+        size+= strlen(szEvidence);
 
-    if(!safeTransfer(pp, piLeft, szRequest4a))
+    if(size>*piLeft) {
+        fprintf(g_logFile, "constructRequest: request too large\n");
         return false;
-    if(!safeTransfer(pp, piLeft, szResourceName))
-        return false;
-    if(!safeTransfer(pp, piLeft, szRequest4b))
-        return false;
-
-    if(!safeTransfer(pp, piLeft, szRequest5a))
-        return false;
-    if(size>0) {
-        sprintf(*pp,"%d", size);
-        int k= strlen(*pp);
-        *pp+= k;
-        *piLeft-= k;
     }
-    if(!safeTransfer(pp, piLeft, szRequest5b))
-        return false;
-
-    if(szSubjectName!=NULL) {
-        if(!safeTransfer(pp, piLeft, szRequest6a))
-            return false;
-        if(!safeTransfer(pp, piLeft, szSubjectName))
-            return false;
-        if(!safeTransfer(pp, piLeft, szRequest6b))
-            return false;
-    }
-
-    if(!safeTransfer(pp, piLeft, szRequest1b))
-        return false;
-
+    sprintf(*pp,s_szRequestTemplate,szAction,nEvid,szResourceName,resSize,szSubjectName);
+    int len= strlen(*pp);
+    *piLeft-= len;
+    *pp+= len;
 #ifdef  TEST1
     fprintf(g_logFile, "constructRequest completed\n%s\n", p);
 #endif
@@ -565,61 +525,59 @@ bool  constructRequest(char** pp, int* piLeft, const char* szAction,
 
 
 bool  constructResponse(bool fError, char** pp, int* piLeft, 
-                        const char* szResourceName, int size, 
+                        const char* szResourceName, int resSize, 
                         const char* szExtraResponseElements,
                         const char* szChannelError)
 {
-    bool    fRet= true;
-    int     n= 0;
-
-#ifdef  TEST
-    char*   p= *pp;
+/*
+ * <Response>
+ *   <Action> %s </Action>
+ *   %s
+ *   <ResourceName> %s </ResourceName>
+ *   <ResourceLength> %d </ResourceLength>
+ * %s        Extra
+ * </Response>
+ */
+#ifdef  TEST1
+    char* p= *pp;
 #endif
-    try {
-        if(!safeTransfer(pp, piLeft, szResponse1))
-            throw "constructResponse: Can't construct response\n";
-        if(fError) {
-            if(!safeTransfer(pp, piLeft, "reject"))
-                throw "constructResponse: Can't construct response\n";
-        }
-        else {
-            if(!safeTransfer(pp, piLeft, "accept"))
-                throw "constructResponse: Can't construct response\n";
-        }
-        if(!safeTransfer(pp, piLeft, szResponse2))
-            throw "Can't construct response\n";
-        if(szChannelError!=NULL) {
-            if(!safeTransfer(pp, piLeft, szChannelError))
-                throw "constructResponse: Can't construct response\n";
-        }
-        if(!safeTransfer(pp, piLeft, szResponse3))
-            throw "constructResponse: Can't construct response\n";
-        if(szResourceName!=NULL) {
-            if(!safeTransfer(pp, piLeft, szResourceName))
-                throw "Can't construct response\n";
-        }
-        if(!safeTransfer(pp, piLeft, szResponse4))
-            throw "constructResponse: Can't construct response\n";
-        if(!fError) {
-            if(*piLeft<10)
-                throw "constructResponse: Can't construct response\n";
-            sprintf(*pp, "%d", size);
-            n= strlen(*pp);
-            *piLeft-= n;
-            *pp+= n;
-        }
-        if(!safeTransfer(pp, piLeft, szResponse5))
-            throw "constructResponse: Can't construct response\n";
-    }
-    catch(const char* szConstructError) {
-        fRet= false;
-        fprintf(g_logFile, "%s", szConstructError);
-    }
+    const char*   szErrorFormat= " <ErrorCode> %s </ErrorCode>\n";
+    char          szErrorElement[256];
+    const char*   szRes= NULL;
 
+    int size= strlen(s_szResponseTemplate)+strlen(szAction)+strlen(szResourceName);
+    if(fError)
+        szRes= "reject";
+    else
+        szRes= "accept";
+    size+= strlen(szRes);
+    if(szExtraResponseElements!=NULL)
+        size+= strlen(szExtraResponseElements);
+    else
+        szExtraResponseElements= "";
+    if(szChannelError!=NULL) {
+        if((strlen(szErrorFormat)+strlen(szChannelError)+8)>256) {
+            return false;
+        }
+        sprintf(szErrorElement, szErrorFormat, szChannelError);
+        size+= strlen(szErrorElement);
+    }
+    else {
+        szErrorElement[0]= 0;
+    }
+    if((size+16)>*piLeft) {
+        fprintf(g_logFile, "constructResponse: response too large\n");
+        return false;
+    }
+    sprintf(*pp, s_szResponseTemplate, szAction, szErrorElement, szResourceName, 
+            resSize, szExtraResponseElements);
+    int len= strlen(*pp);
+    *piLeft-= len;
+    *pp+= len;
 #ifdef  TEST
     fprintf(g_logFile, "constructResponse completed\n%s\n", p);
 #endif
-    return fRet;
+    return true;
 }
 
 

@@ -36,6 +36,7 @@ namespace tao {
 // arbitrary hash to use. So, this hash is added by the channel infrastructure.
 class TaoChannel {
  public:
+  TaoChannel() {}
   virtual ~TaoChannel() {}
 
   // Start listening for messages from this child.
@@ -60,6 +61,8 @@ class TaoChannel {
   virtual bool GetRPC(TaoChannelRPC *rpc, const string &child_hash) const;
   virtual bool SendResponse(const TaoChannelResponse &resp,
                             const string &child_hash) const;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TaoChannel);
 };
 }  // namespace tao
 

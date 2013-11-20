@@ -135,8 +135,15 @@ bool FakeTao::VerifyAttestation(const string &attestation, string *data) const {
     return false;
   }
 
-  data->assign(a.serialized_statement().data(),
-               a.serialized_statement().size());
+  // The serialized_statement is a Statement, so extract the data from that.
+  Statement s;
+  if (!s.ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse the serialized statement";
+    return false;
+  }
+
+  data->assign(s.data().data(),
+               s.data().size());
   return policy_key_->Verify(a.serialized_statement(), a.signature());
 }
 }  // namespace tao

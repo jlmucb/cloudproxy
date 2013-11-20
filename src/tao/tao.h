@@ -20,6 +20,9 @@
 #ifndef TAO_TAO_H_
 #define TAO_TAO_H_
 
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
 #include <list>
 #include <string>
 
@@ -31,6 +34,7 @@ namespace tao {
 // The Tao interface
 class Tao {
  public:
+  Tao() { }
   virtual ~Tao() {}
   virtual bool Init() = 0;
   virtual bool Destroy() = 0;
@@ -45,6 +49,8 @@ class Tao {
                       string *attestation) const = 0;
   virtual bool VerifyAttestation(const string &attestation,
                                  string *data) const = 0;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Tao);
 };
 }
 

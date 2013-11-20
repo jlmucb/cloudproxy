@@ -1,7 +1,8 @@
-//  File: tao_child_channel.h
+//  File: tpm_tao_child_channel.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A class for communication from hosted program to the host
+//  Description: A channel that communicates with tpmd in the Linux kernel to
+//  implement the Tao over TPM hardware.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,29 +18,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TAO_TAO_CHILD_CHANNEL_H_
-#define TAO_TAO_CHILD_CHANNEL_H_
+#ifndef TAO_TPM_TAO_CHILD_CHANNEL_H_
+#define TAO_TPM_TAO_CHILD_CHANNEL_H_
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
-#include "tao/tao_channel_rpc.pb.h"
-
-#include <list>
-#include <string>
-
-using std::list;
-using std::string;
+#include "tao/tao_child_channel.h"
 
 namespace tao {
-class TaoChildChannel {
+class TPMTaoChildChannel : public TaoChildChannel {
  public:
-  TaoChildChannel() {}
-  virtual ~TaoChildChannel() {}
+  TPMTaoChildChannel();
+  virtual ~TPMTaoChildChannel() {}
 
   // Tao interface methods without the child hash parameter
-  virtual bool Init() { return true; }
-  virtual bool Destroy() { return true; }
-  virtual bool StartHostedProgram(const string &path, const list<string> &args);
+  virtual bool Init();
+  virtual bool Destroy();
+  virtual bool StartHostedProgram(const string &path,
+                                  const list<string> &args) {
+    // In the case of the TPM, this would mean to start an OS, and that is
+    // accomplished by other means.
+    return false;
+  }
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
@@ -48,16 +48,17 @@ class TaoChildChannel {
 
  protected:
   // subclasses implement these methods for the underlying transport.
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const = 0;
-  virtual bool SendMessage(const google::protobuf::Message &m) const = 0;
+  virtual bool ReceiveMessage(google::protobuf::Message *m) const {
+    return false;
+  }
+
+  virtual bool SendMessage(const google::protobuf::Message &m) const {
+    return false;
+  }
 
  private:
-  virtual bool SendRPC(const TaoChannelRPC &rpc) const;
-  virtual bool GetResponse(TaoChannelResponse *resp) const;
-  bool SendAndReceiveData(const string &in, string *out, RPC rpc_type) const;
-
-  DISALLOW_COPY_AND_ASSIGN(TaoChildChannel);
+  DISALLOW_COPY_AND_ASSIGN(TPMTaoChildChannel);
 };
 }  // namespace tao
 
-#endif  // TAO_TAO_CHILD_CHANNEL_H_
+#endif  // TAO_TPM_TAO_CHILD_CHANNEL_H_

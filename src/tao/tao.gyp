@@ -102,6 +102,8 @@
         'tao_child_channel.h',
 	'tao_child_channel_params.proto',
         'tao.h',
+        'tpm_tao_child_channel.cc',
+        'tpm_tao_child_channel.h',
 	    'util.cc',
 	    'util.h',
 	    'whitelist_auth.h',

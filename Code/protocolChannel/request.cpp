@@ -219,6 +219,7 @@ Response::Response()
     m_szErrorCode= NULL;
     m_szResourceName= NULL;
     m_szEvidence= NULL;
+    m_szProtectedElement= NULL;
 }
 
 
@@ -239,6 +240,10 @@ Response::~Response()
     if(m_szResourceName!=NULL) {
         free(m_szResourceName);
         m_szResourceName= NULL;
+    }
+    if(m_szProtectedElement!=NULL) {
+        free(m_szProtectedElement);
+        m_szProtectedElement= NULL;
     }
 }
 
@@ -321,6 +326,9 @@ bool  Response::getDatafromDoc(char* szResponse)
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
                 m_szEvidence= canonicalize(pNode);
+            }
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"ProtectedElement")==0) {
+                m_szProtectedElement= canonicalize(pNode);
             }
         }
         pNode= pNode->NextSibling();

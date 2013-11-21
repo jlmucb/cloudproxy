@@ -357,7 +357,20 @@ bool fileTester::runTest(fileClient& client,
             fflush(g_logFile);
 #endif
             if (params.timed) testTimer.Stop();
-        } else if (params.action.compare("read") == 0) {
+        } 
+#if 0
+        else if (params.action.compare("getserverfilekey") == 0) {
+#ifdef TEST
+            fprintf(g_logFile, "fileTester::runTest get key %s\n", params.subject.c_str());
+            fflush(g_logFile);
+#endif
+            if (params.timed) testTimer.Start();
+            result = client.getserverfilekey(params.subject);
+            if (params.timed) testTimer.Stop();
+            if (!result) return result;
+        } 
+#endif
+        else if (params.action.compare("read") == 0) {
 #ifdef TEST
         fprintf(g_logFile, "fileTester::runTest read %s %s\n", 
                   params.subject.c_str(), params.authFile.c_str());

@@ -22,10 +22,11 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGS          := $(RELEASE_LDFLAGS)
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D TAOUSERSA2048 -D ASSERTIONSALLOWED
+CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS) -D TAOUSERSA2048 -D ASSERTIONSALLOWED 
 O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS) 
+# -D ESCROWKEYPRESENT
+# -D PCR18
 # -D MACTHENENCRYPT  -  define this if you want MAC then Encrypt, you shouldn't ever
-# add -D PCR18
 
 CC=         g++
 LINK=       g++
@@ -96,9 +97,6 @@ $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
-
-#$(B)/rsaHelper.o: $(SCC)/rsaHelper.cpp $(SCC)/rsaHelper.h
-	#$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/rsaHelper.o $(SCC)/rsaHelper.cpp
 
 $(B)/vault.o: $(VLT)/vault.cpp $(VLT)/vault.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CH) -I$(ACC) -I$(CLM) -I$(TRS) -I$(TAO) -I$(VLT) -c -o $(B)/vault.o $(VLT)/vault.cpp

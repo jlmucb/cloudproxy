@@ -68,6 +68,7 @@ public:
     int         m_iResourceType;
     char*       m_szEvidence;
     char*       m_szSubjectName;
+    char*       m_szProtectedElement;
 
                 Request();
                 ~Request();

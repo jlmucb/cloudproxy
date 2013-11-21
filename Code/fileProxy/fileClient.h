@@ -98,6 +98,7 @@ public:
     bool                establishConnection(const char* keyFile, const char* certFile, 
                                 const char* directory, const char* serverAddress, 
                                 u_short serverPort);
+    bool                getserverfilekey(const string& fileName);
     bool                compareFiles(const string& firstFile, const string& secondFile);
     void                printTimers(FILE* log);
     void                resetTimers();

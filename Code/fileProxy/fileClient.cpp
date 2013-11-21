@@ -683,6 +683,26 @@ bool fileClient::deleteResource(const string& subject, const string& evidenceFil
 }
 
 
+bool fileClient::getserverfilekey(const string& fileName) 
+{
+#ifdef TEST
+    fprintf(g_logFile, "fileClient::getserverfilekey, entered\n");
+    fflush(g_logFile);
+#endif
+ 
+    if(m_oServices.clientgetProtectedKey(fileName.c_str(), m_encTimer)) {
+        fprintf(g_logFile, "fileClient fileTest: getserverfilekey file successful\n");
+        fflush(g_logFile);
+    } else {
+        fprintf(g_logFile, "fileClient fileTest: getserverfilekey file unsuccessful\n");
+        fflush(g_logFile);
+        return false;
+    }
+
+    return true;
+}
+
+
 bool fileClient::readResource(const string& subject, 
             const string& evidenceFileName, const string& remoteResource, 
             const string& localOutput) 

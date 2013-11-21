@@ -484,7 +484,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 }
 
 
-bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
+bool fileServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
 {
     bool                fError= true;
     byte                buf[MAXREQUESTSIZEWITHPAD];
@@ -503,7 +503,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     const char*         szError= NULL;
 
 #ifdef TEST
-    fprintf(g_logFile, "fileServices::getProtectedFileKey\n");
+    fprintf(g_logFile, "fileServices::servergetProtectedFileKey\n");
     oReq.printMe();
     fflush(g_logFile);
 #endif
@@ -511,7 +511,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     // oReq.m_szResourceName should be key name but we don't look at it now
     if(g_szFileKeyEscrowCert==NULL) {
         fprintf(g_logFile, 
-              "fileServices::getProtectedFileKey: This app does not support excrow\n");
+              "fileServices::servergetProtectedFileKey: This app does not support excrow\n");
         fError= true;
         goto done;
     }
@@ -524,7 +524,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     szEncapsulateKeyInfo= oM.getSubjectKeyInfo();
     if(szEncapsulateKeyInfo==NULL) {
         fprintf(g_logFile, 
-                "fileServices::getProtectedFileKey: cant extract sealing key from %s\n", 
+                "fileServices::servergetProtectedFileKey: cant extract sealing key from %s\n", 
                 oM.m_szCert);
         fError= true;
         goto done;
@@ -533,7 +533,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     // Make RSAKey
     sealingKey= (RSAKey*)RSAKeyfromkeyInfo(szEncapsulateKeyInfo);
     if(sealingKey==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant parse key\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant parse key\n");
         fError= true;
         goto done;
     }
@@ -543,25 +543,25 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
         plainKeyBlobsize= 16;  // AES128
     }
     else {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: unsupported file encryption key\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: unsupported file encryption key\n");
         fError= true;
         goto done;
     }
     if(!oM.setplainMessage(plainKeyBlobsize, m_metadataKey)) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant set plaintext\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant set plaintext\n");
         fError= true;
         goto done;
     }
 
     // seal key
     if(!oM.sealKey(sealingKey)) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant seal key\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant seal key\n");
         fError= true;
         goto done;
     }
 
     if(!oM.encryptMessage()) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant encrypt message\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant encrypt message\n");
         fError= true;
         goto done;
     }
@@ -569,7 +569,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     // serialize metadata
     oM.m_szXMLmetadata= oM.serializeMetaData();
     if(oM.m_szXMLmetadata==NULL) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant serialize metadata\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant serialize metadata\n");
         fError= true;
         goto done;
     }
@@ -577,7 +577,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
     // base64 encode encrypted key
     if(!toBase64(oM.m_sizeEncrypted, oM.m_rgEncrypted, 
                  &base64encryptedKeysize, szbase64encryptedKey)) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: cant base64 encode blob\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant base64 encode blob\n");
         fError= true;
         goto done;
     }
@@ -585,7 +585,7 @@ bool fileServices::getProtectedFileKey(Request& oReq, timer& accessTimer)
                                         (const char*) szbase64encryptedKey);
     if(szProtectedElement==NULL) {
         fprintf(g_logFile, 
-              "fileServices::getProtectedFileKey: cant construct protected element\n");
+              "fileServices::servergetProtectedFileKey: cant construct protected element\n");
         fError= true;
     }
     fError= false;
@@ -594,7 +594,7 @@ done:
     // send response
     p= (char*)buf;
     if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
-        fprintf(g_logFile, "fileServices::getProtectedFileKey: constructResponse failed\n");
+        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: constructResponse failed\n");
         return false;
     }
     m_pSafeChannel->safesendPacket(buf, strlen((char*)buf)+1, type, multi, final);
@@ -1286,6 +1286,67 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
 #endif
     return false;
 }
+
+
+bool fileServices::clientgetProtectedFileKey(const char* file, timer& accessTimer)
+{
+#if 0
+    char        szBuf[MAXREQUESTSIZEWITHPAD];
+    int         iLeft= MAXREQUESTSIZE;
+    char*       p= (char*)szBuf;
+    Response    oResponse;
+    int         n= 0;
+    int         type= CHANNEL_REQUEST;
+    byte        multi=0;
+    byte        final= 0;
+
+#ifdef  TEST
+    fprintf(g_logFile, "clientgetProtectedFileKey()\n");
+    fflush(g_logFile);
+#endif
+    // send request
+    if(!constructRequest(&p, &iLeft, "getProtectedKey", NULL, "ServerFileKey", 0, NULL)) {
+        fprintf(g_logFile, "clientgetProtectedFileKey: constructRequest returns false\n");
+        return false;
+    }
+#ifdef  TEST1
+    fprintf(g_logFile, "clientgetProtectedFileKey request\n%s\n", szBuf);
+    fflush(g_logFile);
+#endif
+    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0))<0) {
+        return false;
+    }
+
+    // should be a CHANNEL_RESPONSE, not multipart
+    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
+    if(n<0) {
+        fprintf(g_logFile, "clientgetProtectedFileKey: sendResource error %d\n", n);
+        return false;
+    }
+    szBuf[n]= 0;
+    oResponse.getDatafromDoc(szBuf);
+    if(strcmp(oResponse.m_szAction, "accept")!=0) {
+        fprintf(g_logFile, "clientgetProtectedFileKey: rejected request\n");
+        return false;
+    }
+
+    if(oResponse.m_szProtectedElement==NULL) {
+        fprintf(g_logFile, "clientgetProtectedFileKey: no protected element in response\n");
+        return false;
+    }
+
+    // save to file
+    if(!saveBlobtoFile(file, (byte*) oResponse.m_szProtectedElement),
+                       strlen(oResponse.m_szProtectedElement)+1) {
+        fprintf(g_logFile, "clientgetProtectedFileKey: can't write blob file\n");
+        return false;
+    }
+
+    return true;
+#endif
+    return false;
+}
+
 
 #endif // client interfaces
 

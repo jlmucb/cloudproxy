@@ -690,7 +690,7 @@ bool fileClient::getserverfilekey(const string& fileName)
     fflush(g_logFile);
 #endif
  
-    if(m_oServices.clientgetProtectedKey(fileName.c_str(), m_encTimer)) {
+    if(m_oServices.clientgetProtectedFileKey(fileName.c_str(), m_encTimer)) {
         fprintf(g_logFile, "fileClient fileTest: getserverfilekey file successful\n");
         fflush(g_logFile);
     } else {

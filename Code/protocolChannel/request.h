@@ -68,7 +68,6 @@ public:
     int         m_iResourceType;
     char*       m_szEvidence;
     char*       m_szSubjectName;
-    char*       m_szProtectedElement;
 
                 Request();
                 ~Request();
@@ -87,6 +86,7 @@ public:
     char*           m_szResourceName;
     char*           m_szEvidence;
     int             m_iResourceLength;
+    char*           m_szProtectedElement;
 
                     Response();
                     ~Response();

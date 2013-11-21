@@ -23,6 +23,19 @@
   },
   'targets': [
     {
+      'target_name': 'tpm_seal',
+      'type': 'executable',
+      'sources': [ 'tpm_seal.cc', ],
+      'include_dirs': [ '.', ],
+      'libraries': [
+	'-ltspi',
+      ],
+      'dependencies': [
+	'../third_party/gflags/gflags.gyp:gflags',
+	'../third_party/google-glog/glog.gyp:glog',
+      ],
+    },
+    {
       'target_name': 'test',
       'type': 'executable',
       'sources': [ 'main.cc', ],

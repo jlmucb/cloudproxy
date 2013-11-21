@@ -1290,7 +1290,6 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
 
 bool fileServices::clientgetProtectedFileKey(const char* file, timer& accessTimer)
 {
-#if 0
     char        szBuf[MAXREQUESTSIZEWITHPAD];
     int         iLeft= MAXREQUESTSIZE;
     char*       p= (char*)szBuf;
@@ -1336,15 +1335,13 @@ bool fileServices::clientgetProtectedFileKey(const char* file, timer& accessTime
     }
 
     // save to file
-    if(!saveBlobtoFile(file, (byte*) oResponse.m_szProtectedElement),
-                       strlen(oResponse.m_szProtectedElement)+1) {
+    if(!saveBlobtoFile(file, (byte*) oResponse.m_szProtectedElement,
+                       strlen(oResponse.m_szProtectedElement)+1)) {
         fprintf(g_logFile, "clientgetProtectedFileKey: can't write blob file\n");
         return false;
     }
 
     return true;
-#endif
-    return false;
 }
 
 

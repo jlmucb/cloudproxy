@@ -80,6 +80,7 @@
 #define VERIFYATTEST              25
 #define ATTEST                    26
 #define ATTESTSIGNEDINFO          27
+#define DECAPSULATEBASE64         28
 
 
 #define MAXREQUESTSIZE          2048
@@ -1467,6 +1468,107 @@ done:
 }
 
 
+bool DecapsulateBase64(const char* szKeyInfo, const char* szMetaDataFile, 
+                 const char* szInFile, const char* szOutFile)
+{
+    encapsulatedMessage  oM;
+    byte                 cipher[4096];   // stat and allocate later
+    int                  ciphersize= 4096;
+    char                 szBase64cipher[4096];
+    int                  base64ciphersize= 4096;
+    RSAKey*              sealingKey= NULL;
+    char                 szMetadata[8192];
+    int                  sizemetadata= 8192;
+    bool                 fRet= true;
+    bool                 fRead;
+
+    if(szKeyInfo==NULL) {
+        fprintf(g_logFile, "DecapsulateBase64: no keyinfo\n");
+        fRet= false;
+        goto done;
+    }
+
+    // Make RSAKey
+    sealingKey= (RSAKey*)RSAKeyfromkeyInfo(szKeyInfo);
+    if(sealingKey==NULL) {
+        fprintf(g_logFile, "DecapsulateBase64: cant parse key\n");
+        fRet= false;
+        goto done;
+    }
+
+    // get metadata
+    if(!getBlobfromFile(szMetaDataFile, (byte*)szMetadata, &sizemetadata)) {
+        fprintf(g_logFile, "DecapsulateBase64: cant read metadata: %s\n", szMetaDataFile);
+        fRet= false;
+        goto done;
+    }
+    szMetadata[sizemetadata]= 0;
+    oM.m_szXMLmetadata= strdup(szMetadata);
+
+    // get ciphertext and decrypt
+    fRead= getBlobfromFile(szInFile, (byte*)szBase64cipher, &base64ciphersize);
+    if(!fRead) {
+        fprintf(g_logFile, "DecapsulateBase64: cant read: %s\n", szInFile);
+        fRet= false;
+        goto done;
+    }
+    for(int i=0; i<base64ciphersize;i++) {
+        if(szBase64cipher[i]=='\n' || szBase64cipher[i]=='\0') {
+            szBase64cipher[i]= '\0';
+            break;
+        }
+    }
+    if(!fromBase64(strlen(szBase64cipher), szBase64cipher, &ciphersize, cipher)) {
+        fprintf(g_logFile, "DecapsulateBase64: cant read: %s\n", szInFile);
+        fRet= false;
+        goto done;
+    }
+
+    if(!oM.setencryptedMessage(ciphersize, cipher)) {
+        fprintf(g_logFile, "DecapsulateBase64: cant set ciphertext\n");
+        fRet= false;
+        goto done;
+    }
+
+    // parse metadata
+    if(!oM.parseMetaData()) {
+        fprintf(g_logFile, "DecapsulateBase64: cant parse metadata\n");
+        fRet= false;
+        goto done;
+    }
+
+    // unseal key
+    if(!oM.unSealKey(sealingKey)) {
+        fprintf(g_logFile, "DecapsulateBase64: cant unseal key\n");
+        fRet= false;
+        goto done;
+    }
+
+    if(!oM.decryptMessage()) {
+        fprintf(g_logFile, "DecapsulateBase64: cant decrypt message\n");
+        fRet= false;
+        goto done;
+    }
+
+    // write plain data
+    if(!saveBlobtoFile(szOutFile, oM.m_rgPlain, oM.m_sizePlain)) {
+        fprintf(g_logFile, "DecapsulateBase64: cant write decrypted data to %s\n", szOutFile);
+        fRet= false;
+        goto done;
+    }
+
+done:
+#ifdef TEST
+    oM.printMe();
+#endif
+    if(sealingKey!=NULL) {
+        delete sealingKey;
+        sealingKey= NULL;
+    }
+    return fRet;
+}
+
+
 bool validateChain(const char* szKeyString, const char* szInFile)
 {
     evidenceList    oEvidence;
@@ -1645,6 +1747,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "       cryptUtility -VerifyAttest xml-attest xml-evidence xml-root-key\n");
             fprintf(g_logFile, "       cryptUtility -EncapsulateMessage xml-cert metadatafile inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -DecapsulateMessage xml-key metadata-file inputfile outputfile\n");
+            fprintf(g_logFile, "       cryptUtility -DecapsulateBase64Message xml-key metadata-file inputfile outputfile\n");
             fprintf(g_logFile, "       cryptUtility -validateChain rootKeyFile evidenceFile\n");
             fprintf(g_logFile, "       cryptUtility -Seal key-file -Public|-Private base64in\n");
             fprintf(g_logFile, "       cryptUtility -Unseal key-file -Public|-Private base64in\n");
@@ -1837,6 +1940,18 @@ int main(int an, char** av)
             szInFile= av[i+3];
             szOutFile= av[i+4];
             iAction= DECAPSULATE;
+            break;
+        }
+        if(strcmp(av[i], "-DecapsulateBase64Message")==0) {
+            if(an<(i+5)) {
+                fprintf(g_logFile, "Too few arguments: key-file metadata-file input-file output-file\n");
+                return 1;
+            }
+            szKeyFile= av[i+1];
+            szMetaDataFile= av[i+2];
+            szInFile= av[i+3];
+            szOutFile= av[i+4];
+            iAction= DECAPSULATEBASE64;
             break;
         }
         if(strcmp(av[i], "-validateChain")==0) {
@@ -2111,6 +2226,19 @@ int main(int an, char** av)
         initBigNum();
         char* szKeyInfoString= readandstoreString(szKeyFile);
         if(Decapsulate(szKeyInfoString, szMetaDataFile, szInFile, szOutFile)) {
+            fprintf(g_logFile, "Decapsulate succeeds\n");
+        }
+        else {
+            fprintf(g_logFile, "Decapsulate fails\n");
+        }
+        free(szKeyInfoString);
+        return 0;
+    }
+    if(iAction==DECAPSULATEBASE64) {
+        initCryptoRand();
+        initBigNum();
+        char* szKeyInfoString= readandstoreString(szKeyFile);
+        if(DecapsulateBase64(szKeyInfoString, szMetaDataFile, szInFile, szOutFile)) {
             fprintf(g_logFile, "Decapsulate succeeds\n");
         }
         else {

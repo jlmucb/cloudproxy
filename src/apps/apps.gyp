@@ -28,7 +28,8 @@
       'sources': [ 'tpm_seal.cc', ],
       'include_dirs': [ '.', ],
       'libraries': [
-	'-ltspi',
+	    '-ltspi',
+        '-lcrypto',
       ],
       'dependencies': [
 	'../third_party/gflags/gflags.gyp:gflags',

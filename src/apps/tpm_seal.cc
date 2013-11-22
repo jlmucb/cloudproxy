@@ -54,7 +54,8 @@ int main(int argc, char **argv) {
   TSS_RESULT result;
   TSS_HKEY srk = 0;
   TSS_HPOLICY srk_policy = 0;
-  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00, {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
+  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
+                       {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 
   // Use the well-known secret of 20 zeroes.
@@ -64,36 +65,25 @@ int main(int argc, char **argv) {
   result = Tspi_Context_Create(&tss_ctx);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
-  result = Tspi_Context_Connect(tss_ctx,
-                                NULL /* Default TPM */);
+  result = Tspi_Context_Connect(tss_ctx, NULL /* Default TPM */);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
 
   result = Tspi_Context_GetTpmObject(tss_ctx, &tpm);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get a handle to the TPM";
 
-  result = Tspi_Context_LoadKeyByUUID(tss_ctx,
-                                      TSS_PS_TYPE_SYSTEM,
-                                      srk_uuid,
-                                      &srk);
+  result =
+      Tspi_Context_LoadKeyByUUID(tss_ctx, TSS_PS_TYPE_SYSTEM, srk_uuid, &srk);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the SRK handle";
 
-  result = Tspi_GetPolicyObject(srk,
-                                        TSS_POLICY_USAGE,
-                                        &srk_policy);
+  result = Tspi_GetPolicyObject(srk, TSS_POLICY_USAGE, &srk_policy);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get the SRK policy handle";
 
-  result = Tspi_Policy_SetSecret(srk_policy,
-                                 TSS_SECRET_MODE_SHA1,
-                                 20,
-                                 secret);
+  result = Tspi_Policy_SetSecret(srk_policy, TSS_SECRET_MODE_SHA1, 20, secret);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not set the well-known secret";
 
   // Create and fill the PCR information.
   TSS_HPCRS pcrs;
-  result = Tspi_Context_CreateObject(tss_ctx,
-                                     TSS_OBJECT_TYPE_PCRS,
-                                     0,
-                                     &pcrs);
+  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_PCRS, 0, &pcrs);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a PCRs object";
 
   // This seal operation is meant to be used with DRTM, so the only PCRs that it
@@ -101,20 +91,18 @@ int main(int argc, char **argv) {
   list<UINT32> pcrs_to_seal{17, 18};
   BYTE *pcr_value = NULL;
   UINT32 pcr_value_len = 0;
-  for(UINT32 ui : pcrs_to_seal) {
+  for (UINT32 ui : pcrs_to_seal) {
     result = Tspi_TPM_PcrRead(tpm, ui, &pcr_value_len, &pcr_value);
     CHECK_EQ(result, TSS_SUCCESS) << "Could not read the value of PCR " << ui;
 
     result = Tspi_PcrComposite_SetPcrValue(pcrs, ui, pcr_value_len, pcr_value);
-    CHECK_EQ(result, TSS_SUCCESS) << "Could not set the PCR value"
-                                  << ui << " for sealing";
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not set the PCR value" << ui
+                                  << " for sealing";
   }
 
   TSS_HENCDATA enc_data;
-  result = Tspi_Context_CreateObject(tss_ctx,
-                                     TSS_OBJECT_TYPE_ENCDATA,
-                                     TSS_ENCDATA_SEAL,
-                                     &enc_data);
+  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_ENCDATA,
+                                     TSS_ENCDATA_SEAL, &enc_data);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create the data for sealing";
 
   BYTE data[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
@@ -124,10 +112,8 @@ int main(int argc, char **argv) {
   // Extract the sealed data, then try to unseal it.
   BYTE *sealed_data;
   UINT32 sealed_data_len;
-  result = Tspi_GetAttribData(enc_data,
-                              TSS_TSPATTRIB_ENCDATA_BLOB,
-                              TSS_TSPATTRIB_ENCDATABLOB_BLOB,
-                              &sealed_data_len,
+  result = Tspi_GetAttribData(enc_data, TSS_TSPATTRIB_ENCDATA_BLOB,
+                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, &sealed_data_len,
                               &sealed_data);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get the sealed bits";
 
@@ -149,10 +135,20 @@ int main(int argc, char **argv) {
   string blob = blob_buf.str();
   UINT32 blob_len = (UINT32)blob.size();
   TSS_HKEY aik;
-  result = Tspi_Context_LoadKeyByBlob(tss_ctx, srk, blob_len,
-reinterpret_cast<BYTE *>(const_cast<char
-*>(blob.data())), &aik);
+  result = Tspi_Context_LoadKeyByBlob(
+      tss_ctx, srk, blob_len,
+      reinterpret_cast<BYTE *>(const_cast<char *>(blob.data())), &aik);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
+
+  // Generate a Quote using this AIK.
+  TSS_VALIDATION valid;
+  BYTE hash_to_sign[20];
+  memset(hash_to_sign, 0, sizeof(hash_to_sign));
+  
+  valid.ulExternalDataLength = sizeof(hash_to_sign);
+  valid.rgbExternalData = hash_to_sign;
+  result = Tspi_TPM_Quote(tpm, aik, pcrs, &valid);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not quote data with the AIK";
 
   // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);

@@ -42,16 +42,16 @@ int main(int argc, char **argv) {
   TSS_HCONTEXT tss_ctx;
   TSS_HTPM tpm;
   TSS_RESULT result;
-  TSS_HKEY srk;
-  TSS_HPOLICY srk_policy;
-  TSS_UUID srk_uuid = TSS_UUID_SRK;
+  TSS_HKEY srk = 0;
+  TSS_HPOLICY srk_policy = 0;
+  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00, {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 
   // Use the well-known secret of 20 zeroes.
   memset(secret, 0, 20);
 
   result = Tspi_Context_Create(&tss_ctx);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context";
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
   result = Tspi_Context_Connect(tss_ctx,
                                 NULL /* Default TPM */);
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
                                       &srk);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the SRK handle";
 
-  result = Tspi_GetPolicyObject(tss_ctx,
+  result = Tspi_GetPolicyObject(srk,
                                         TSS_POLICY_USAGE,
                                         &srk_policy);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get the SRK policy handle";
@@ -77,11 +77,11 @@ int main(int argc, char **argv) {
                                  secret);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not set the well-known secret";
 
-  result = Tspi_Context_Close(tss_ctx);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not clean up the context";
-
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not free the context";
+
+  result = Tspi_Context_Close(tss_ctx);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not clean up the context";
 
   return 0;
 }

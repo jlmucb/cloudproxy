@@ -19,6 +19,13 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
+#include <netinet/in.h>
+
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/sha.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -43,6 +50,8 @@ using std::ifstream;
 using std::list;
 using std::string;
 using std::stringstream;
+
+#define PCR_LEN 20
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -140,15 +149,111 @@ int main(int argc, char **argv) {
       reinterpret_cast<BYTE *>(const_cast<char *>(blob.data())), &aik);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
 
+
   // Generate a Quote using this AIK.
-  TSS_VALIDATION valid;
   BYTE hash_to_sign[20];
   memset(hash_to_sign, 0, sizeof(hash_to_sign));
-  
+
+  // First get the max number of PCRs in the TPM
+  UINT32 tpm_property = TSS_TPMCAP_PROP_PCR;
+  UINT32 npcrs_len;
+  BYTE *npcrs;
+  result =
+      Tspi_TPM_GetCapability(tpm, TSS_TPMCAP_PROPERTY, sizeof(tpm_property),
+                             (BYTE *)&tpm_property, &npcrs_len, &npcrs);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not get the number of PCRs";
+
+  UINT32 pcr_max = *(UINT32 *)npcrs;
+  Tspi_Context_FreeMemory(tss_ctx, npcrs);
+
+  // The total number of bytes needed to store the PCR mask
+  UINT32 pcr_mask_len = (pcr_max + 7) / 8;
+
+  TSS_HPCRS quote_pcrs;
+  result =
+      Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_PCRS,
+        TSS_PCRS_STRUCT_INFO, &quote_pcrs);
+  CHECK_EQ(result, TSS_SUCCESS)
+      << "Could not create a PCRs object for the Quote";
+
+  // The following code for setting up the composite hash is based on
+  // aikquote.c, the sample AIK quote code.
+  scoped_array<BYTE> serialized_pcrs(new BYTE[
+      sizeof(UINT16) + pcr_mask_len + sizeof(UINT32) + PCR_LEN * pcr_max]);
+
+  // So, the format is:
+  // UINT16: size of pcr mask (in network byte order)
+  // pcr mask
+  // UINT32: size of serialized pcrs
+  // serialized pcrs
+
+  BYTE *pcr_buf = serialized_pcrs.get();
+  UINT32 index = 0;
+
+  // size of pcr mask
+  *(UINT16 *)(pcr_buf + index) = htons(pcr_mask_len);
+  index += sizeof(UINT16);
+  memset(pcr_buf + index, 0, pcr_mask_len);
+
+  // Set the appropriate bits for the PCRs
+  for (UINT32 pcr_val : pcrs_to_seal) {
+    result = Tspi_PcrComposite_SelectPcrIndex(quote_pcrs, pcr_val);
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not select PCR " << (int)pcr_val;
+    pcr_buf[index + (pcr_val / 8)] |= 1 << (pcr_val % 8);
+  }
+  index += pcr_mask_len;
+
+  // Write the length of the set of PCRs
+  *(UINT32 *)(pcr_buf + index) = htonl(PCR_LEN * pcrs_to_seal.size());
+  index += sizeof(UINT32);
+
+  TSS_VALIDATION valid;
   valid.ulExternalDataLength = sizeof(hash_to_sign);
   valid.rgbExternalData = hash_to_sign;
-  result = Tspi_TPM_Quote(tpm, aik, pcrs, &valid);
+
+  result = Tspi_TPM_Quote(tpm, aik, quote_pcrs, &valid);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not quote data with the AIK";
+
+  // Check the hash from the quote
+  TPM_QUOTE_INFO *quote_info = (TPM_QUOTE_INFO *)valid.rgbData;
+
+  BYTE *temp_pcr;
+  UINT32 temp_pcr_len;
+  for (UINT32 pcr_val : pcrs_to_seal) {
+    result = Tspi_PcrComposite_GetPcrValue(quote_pcrs, pcr_val, &temp_pcr_len,
+                                           &temp_pcr);
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not get PCR " << (int)pcr_val;
+
+    memcpy(pcr_buf + index, temp_pcr, temp_pcr_len);
+    index += temp_pcr_len;
+
+    Tspi_Context_FreeMemory(tss_ctx, temp_pcr);
+  }
+
+  // Compute the composite hash to check against the hash in the quote info.
+  BYTE pcr_digest[20];
+  SHA1(pcr_buf, index, pcr_digest);
+
+  if (memcmp(pcr_digest, quote_info->compositeHash.digest,
+             sizeof(pcr_digest)) !=
+      0) {
+    // aikquote.c here says "Try with a smaller digest length". I don't know
+    // why. This code removes one of the bytes in the pcr mask and shifts
+    // everything over to account for the difference, then hashes and tries
+    // again.
+    *(UINT16 *)pcr_buf = htons(pcr_mask_len - 1);
+    memmove(pcr_buf + sizeof(UINT16) + pcr_mask_len - 1,
+            pcr_buf + sizeof(UINT16) + pcr_mask_len,
+            index - (sizeof(UINT16) + pcr_mask_len));
+    index -= 1;
+    SHA1(pcr_buf, index, pcr_digest);
+    if (memcmp(pcr_digest, quote_info->compositeHash.digest,
+               sizeof(pcr_digest)) !=
+        0) {
+      LOG(FATAL) << "Neither size of hash input worked";
+      return 1;
+    }
+  }
 
   // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);

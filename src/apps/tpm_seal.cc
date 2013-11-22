@@ -34,6 +34,10 @@
 #include <tss/tspi.h>
 #include <trousers/trousers.h>
 
+#include <list>
+
+using std::list;
+
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
@@ -50,6 +54,7 @@ int main(int argc, char **argv) {
   // Use the well-known secret of 20 zeroes.
   memset(secret, 0, 20);
 
+  // Set up the TSS context and the SRK + policy (with the right secret).
   result = Tspi_Context_Create(&tss_ctx);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
@@ -77,6 +82,60 @@ int main(int argc, char **argv) {
                                  secret);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not set the well-known secret";
 
+  // Create and fill the PCR information.
+  TSS_HPCRS pcrs;
+  result = Tspi_Context_CreateObject(tss_ctx,
+                                     TSS_OBJECT_TYPE_PCRS,
+                                     0,
+                                     &pcrs);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a PCRs object";
+
+  // This seal operation is meant to be used with DRTM, so the only PCRs that it
+  // reads are 17 and 18. This is where you can set other PCRs to use.
+  list<UINT32> pcrs_to_seal{17, 18};
+  BYTE *pcr_value = NULL;
+  UINT32 pcr_value_len = 0;
+  for(UINT32 ui : pcrs_to_seal) {
+    result = Tspi_TPM_PcrRead(tpm, ui, &pcr_value_len, &pcr_value);
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not read the value of PCR " << ui;
+
+    result = Tspi_PcrComposite_SetPcrValue(pcrs, ui, pcr_value_len, pcr_value);
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not set the PCR value"
+                                  << ui << " for sealing";
+  }
+
+  TSS_HENCDATA enc_data;
+  result = Tspi_Context_CreateObject(tss_ctx,
+                                     TSS_OBJECT_TYPE_ENCDATA,
+                                     TSS_ENCDATA_SEAL,
+                                     &enc_data);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not create the data for sealing";
+
+  BYTE data[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  result = Tspi_Data_Seal(enc_data, srk, 16, data, pcrs);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not seal the test data";
+
+  // Extract the sealed data, then try to unseal it.
+  BYTE *sealed_data;
+  UINT32 sealed_data_len;
+  result = Tspi_GetAttribData(enc_data,
+                              TSS_TSPATTRIB_ENCDATA_BLOB,
+                              TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+                              &sealed_data_len,
+                              &sealed_data);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not get the sealed bits";
+
+  BYTE *unsealed_data;
+  UINT32 unsealed_data_len;
+  result = Tspi_Data_Unseal(enc_data, srk, &unsealed_data_len, &unsealed_data);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not unseal the data";
+
+  // Check that the data was unsealed correctly.
+  CHECK_EQ(unsealed_data_len, 16U) << "The unsealed data was the wrong length";
+  CHECK_EQ(memcmp(unsealed_data, data, 16), 0)
+      << "The unsealed data did not match the original data";
+
+  // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not free the context";
 

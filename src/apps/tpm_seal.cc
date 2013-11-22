@@ -34,9 +34,15 @@
 #include <tss/tspi.h>
 #include <trousers/trousers.h>
 
+#include <fstream>
 #include <list>
+#include <sstream>
+#include <string>
 
+using std::ifstream;
 using std::list;
+using std::string;
+using std::stringstream;
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -134,6 +140,19 @@ int main(int argc, char **argv) {
   CHECK_EQ(unsealed_data_len, 16U) << "The unsealed data was the wrong length";
   CHECK_EQ(memcmp(unsealed_data, data, 16), 0)
       << "The unsealed data did not match the original data";
+
+  // Get the public key blob from the AIK.
+  // Load the blob and try to load the AIK
+  ifstream blob_stream("aikblob", ifstream::in);
+  stringstream blob_buf;
+  blob_buf << blob_stream.rdbuf();
+  string blob = blob_buf.str();
+  UINT32 blob_len = (UINT32)blob.size();
+  TSS_HKEY aik;
+  result = Tspi_Context_LoadKeyByBlob(tss_ctx, srk, blob_len,
+reinterpret_cast<BYTE *>(const_cast<char
+*>(blob.data())), &aik);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
 
   // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);

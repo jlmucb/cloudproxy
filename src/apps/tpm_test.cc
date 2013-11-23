@@ -53,6 +53,10 @@ using std::stringstream;
 
 #define PCR_LEN 20
 
+DEFINE_string(
+    aikblobfile, "aikblob",
+    "A file containing an AIK blob that has been loaded into the TPM");
+
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
@@ -138,7 +142,7 @@ int main(int argc, char **argv) {
 
   // Get the public key blob from the AIK.
   // Load the blob and try to load the AIK
-  ifstream blob_stream("aikblob", ifstream::in);
+  ifstream blob_stream(FLAGS_aikblobfile, ifstream::in);
   stringstream blob_buf;
   blob_buf << blob_stream.rdbuf();
   string blob = blob_buf.str();
@@ -148,7 +152,6 @@ int main(int argc, char **argv) {
       tss_ctx, srk, blob_len,
       reinterpret_cast<BYTE *>(const_cast<char *>(blob.data())), &aik);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
-
 
   // Generate a Quote using this AIK.
   BYTE hash_to_sign[20];
@@ -170,9 +173,8 @@ int main(int argc, char **argv) {
   UINT32 pcr_mask_len = (pcr_max + 7) / 8;
 
   TSS_HPCRS quote_pcrs;
-  result =
-      Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_PCRS,
-        TSS_PCRS_STRUCT_INFO, &quote_pcrs);
+  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_PCRS,
+                                     TSS_PCRS_STRUCT_INFO, &quote_pcrs);
   CHECK_EQ(result, TSS_SUCCESS)
       << "Could not create a PCRs object for the Quote";
 
@@ -260,7 +262,9 @@ int main(int argc, char **argv) {
   // Extract the modulus from the AIK
   UINT32 aik_mod_len;
   BYTE *aik_mod;
-  result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_RSAKEY_INFO, TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, &aik_mod_len, &aik_mod);
+  result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_RSAKEY_INFO,
+                              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, &aik_mod_len,
+                              &aik_mod);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not extract the RSA modulus";
 
   // Set up an OpenSSL RSA public key to use to verify the Quote
@@ -272,9 +276,12 @@ int main(int argc, char **argv) {
   // Try hashing and verifying the TPM_QUOTE_INFO itself
   BYTE quote_hash[20];
 
-  // The quote can be verified in a qinfo, which has a header of 8 bytes, and two hashes.
-  // The first hash is the hash of the external data, and the second is the hash of the
-  // quote itself (pcr_buf above with length in index). This can be hashed and verified
+  // The quote can be verified in a qinfo, which has a header of 8 bytes, and
+  // two hashes.
+  // The first hash is the hash of the external data, and the second is the hash
+  // of the
+  // quote itself (pcr_buf above with length in index). This can be hashed and
+  // verified
   // directly by OpenSSL.
 
   BYTE qinfo[8 + 2 * 20];
@@ -292,9 +299,9 @@ int main(int argc, char **argv) {
   SHA1(qinfo, sizeof(qinfo), quote_hash);
   BYTE *sig = valid.rgbValidationData;
   UINT32 sig_len = valid.ulValidationDataLength;
-  CHECK_EQ(RSA_verify(NID_sha1, quote_hash, sizeof(quote_hash), sig, sig_len, aik_rsa), 1)
-    << "The RSA signature did not pass verification";
-  
+  CHECK_EQ(RSA_verify(NID_sha1, quote_hash, sizeof(quote_hash), sig, sig_len,
+                      aik_rsa),
+           1) << "The RSA signature did not pass verification";
 
   // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);

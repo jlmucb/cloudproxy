@@ -23,9 +23,9 @@
   },
   'targets': [
     {
-      'target_name': 'tpm_seal',
+      'target_name': 'tpm_test',
       'type': 'executable',
-      'sources': [ 'tpm_seal.cc', ],
+      'sources': [ 'tpm_test.cc', ],
       'include_dirs': [ '.', ],
       'libraries': [
 	    '-ltspi',

@@ -255,6 +255,47 @@ int main(int argc, char **argv) {
     }
   }
 
+  // At this point, the quote is in pcr_buf with length index.
+
+  // Extract the modulus from the AIK
+  UINT32 aik_mod_len;
+  BYTE *aik_mod;
+  result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_RSAKEY_INFO, TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, &aik_mod_len, &aik_mod);
+  CHECK_EQ(result, TSS_SUCCESS) << "Could not extract the RSA modulus";
+
+  // Set up an OpenSSL RSA public key to use to verify the Quote
+  RSA *aik_rsa = RSA_new();
+  aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, NULL);
+  aik_rsa->e = BN_new();
+  BN_set_word(aik_rsa->e, 0x10001);
+
+  // Try hashing and verifying the TPM_QUOTE_INFO itself
+  BYTE quote_hash[20];
+
+  // The quote can be verified in a qinfo, which has a header of 8 bytes, and two hashes.
+  // The first hash is the hash of the external data, and the second is the hash of the
+  // quote itself (pcr_buf above with length in index). This can be hashed and verified
+  // directly by OpenSSL.
+
+  BYTE qinfo[8 + 2 * 20];
+  qinfo[0] = 1;
+  qinfo[1] = 1;
+  qinfo[2] = 0;
+  qinfo[3] = 0;
+  qinfo[4] = 'Q';
+  qinfo[5] = 'U';
+  qinfo[6] = 'O';
+  qinfo[7] = 'T';
+  SHA1(pcr_buf, index, qinfo + 8);
+  memcpy(qinfo + 8 + 20, hash_to_sign, 20);
+
+  SHA1(qinfo, sizeof(qinfo), quote_hash);
+  BYTE *sig = valid.rgbValidationData;
+  UINT32 sig_len = valid.ulValidationDataLength;
+  CHECK_EQ(RSA_verify(NID_sha1, quote_hash, sizeof(quote_hash), sig, sig_len, aik_rsa), 1)
+    << "The RSA signature did not pass verification";
+  
+
   // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, NULL);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not free the context";

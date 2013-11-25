@@ -1,4 +1,4 @@
-//  File: tpm_seal.cc
+//  File: tpm_test.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: A test of the TrouSerS API

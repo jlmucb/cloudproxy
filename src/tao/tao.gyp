@@ -59,6 +59,20 @@
       ],
     },
     {
+      'target_name': 'tpm_tao_child_channel_unittests',
+      'type': 'executable',
+      'sources': [
+	      'tpm_tao_child_channel_unittests.cc',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'dependencies': [
+        'tao',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
+    },
+    {
       'target_name': 'tao_test_utilities',
       'type': 'static_library',
       'sources': [
@@ -112,6 +126,7 @@
       'libraries': [
         '-lcrypto',
         '-lssl',
+        '-ltspi',
       ],
       'include_dirs': [
         '<(SHARED_INTERMEDIATE_DIR)',
@@ -130,6 +145,7 @@
         'libraries': [
           '-lcrypto',
           '-lssl',
+          '-ltspi',
         ],
         'include_dirs': [
           '<(SHARED_INTERMEDIATE_DIR)',

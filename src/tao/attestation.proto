@@ -28,7 +28,7 @@ message Statement {
 
   // the data to attest to
   required bytes data = 3;
-  
+
   // the name of the algorithm used to hash the program
   required string hash_alg = 4;
 
@@ -37,9 +37,11 @@ message Statement {
 }
 
 enum AttestationType {
-  ROOT = 0;
-  INTERMEDIATE = 1;
-  LEGACY = 2;
+  UNKNOWN = 0;
+  ROOT = 1;
+  INTERMEDIATE = 2;
+  TPM_1_2_QUOTE = 3;
+  LEGACY = 4;
 }
 
 message Attestation {
@@ -53,8 +55,11 @@ message Attestation {
   // A signature on the serialized statement
   required bytes signature = 3;
 
-  // A serialized Attestation attesting to public_key and signed by
-  // the next Tao level down. If this is empty, then the public_key
-  // must be the policy key.
-  optional bytes cert = 4;
+  // A TPM 1.2 Quote, if needed
+  optional bytes quote = 4;
+
+  // A serialized Attestation attesting to the key used to create the signature
+  // and signed by the next Tao level down. If this is empty, then
+  // the key must be the policy key.
+  optional bytes cert = 5;
 }

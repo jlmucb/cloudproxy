@@ -22,12 +22,17 @@
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
+#include <keyczar/openssl/util.h>
+#include <openssl/x509.h>
 
 #include <tao/keyczar_public_key.pb.h>
 #include <tao/tao.h>
 #include <tao/tao_child_channel.h>
 
 namespace tao {
+
+typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<
+                                        RSA, RSA_free> > ScopedRsa;
 
 bool CreateKey(keyczar::rw::KeysetWriter *writer,
                keyczar::KeyType::Type key_type,

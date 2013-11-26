@@ -45,13 +45,38 @@ using std::string;
 
 namespace tao {
 
+// An implementation of the Tao for Linux. This implementation can take
+// different HostedProgramFactory implementations, different TaoChannel
+// implementations for communicating with its hosted programs, and different
+// TaoChildChannel implementations for communicating with its parent Tao. The
+// only assumptions LinuxTao makes are basic: it has the normal filesystem API
+// to which it can write files, and it is an intermediate Tao rather than the
+// root Tao.
 class LinuxTao : public Tao {
  public:
+  // The LinuxTao is constructed with paths to keys and implementations of
+  // factories and channels.
+  // @param secret_path The location at which it stores a secret sealed by the
+  // Tao
+  // @param key_path The location of its symmetric key, encrypted to the secret
+  // @param pk_path The location of its public/private key pair, encrypted to
+  // the symmetric key
+  // @param whitelist_path The location of a whitelist signed by the policy key.
+  // This whitelist allows it to decide if programs it is asked to start are
+  // authorized.
+  // @param policy_pk_path The path to the public policy key
+  // @param host_channel A channel implementation it takes ownership of and uses
+  // to communicate with its parent Tao
+  // @param child_channel A channel implementation it uses to communicat with
+  // hosted programs it starts
+  // @param program_factory A factory that creates hosted programs in the OS.
   LinuxTao(const string &secret_path, const string &key_path,
            const string &pk_path, const string &whitelist_path,
            const string &policy_pk_path, TaoChildChannel *host_channel,
            TaoChannel *child_channel, HostedProgramFactory *program_factory);
   virtual ~LinuxTao() {}
+
+  // LinuxTao follows the normal semantics of the Tao for these methods
   virtual bool Init();
   virtual bool Destroy();
   virtual bool StartHostedProgram(const string &program,
@@ -65,9 +90,9 @@ class LinuxTao : public Tao {
                       string *attestation) const;
 
  protected:
-  /// Get an attestation from the host Tao on our key. Note that this
-  /// will get an attestation on #serialized_key for this Tao host; it
-  /// is for use by this Tao and its subclasses.
+  // Get an attestation from the host Tao on our key. Note that this
+  // will get an attestation on serialized_key for this Tao host; it
+  // is for use by this Tao and its subclasses.
   virtual bool AttestToKey(const string &serialized_key,
                            Attestation *attest) const;
 
@@ -132,14 +157,14 @@ class LinuxTao : public Tao {
   static const int AesBlockSize = 16;
   static const int Sha256Size = 32;
 
-  // either unseal or create and seal a secret using the legacy tao
+  // Either unseal or create and seal a secret using the legacy tao
   bool getSecret(keyczar::base::ScopedSafeString *secret);
 
-  // create a new keyset with a primary symmetric key that we will use
+  // Create a new keyset with a primary symmetric key that we will use
   // as the basis of the Tao
   bool createKey(const string &secret);
 
-  // create a new keyset with a public/private key pair to use for
+  // Create a new keyset with a public/private key pair to use for
   // signing
   bool createPublicKey(keyczar::Encrypter *crypter);
 

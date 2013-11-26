@@ -33,6 +33,7 @@ using std::map;
 using std::mutex;
 using std::pair;
 
+// IAH: continue writing the documentation
 namespace tao {
 // a TaoChannel that communicates over file descriptors
 // set up with pipe(2) and listens to multiple connections with select.

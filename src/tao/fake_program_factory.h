@@ -26,10 +26,13 @@
 #include <keyczar/keyczar.h>
 
 namespace tao {
+// A fake factory that doesn't really create programs
 class FakeProgramFactory : public HostedProgramFactory {
  public:
   FakeProgramFactory() {}
   virtual ~FakeProgramFactory() {}
+
+  // Instead of creating a program, it returns true and ignores the arguments
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel) const {

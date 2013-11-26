@@ -26,16 +26,23 @@
 #include <tao/tao.h>
 
 namespace tao {
-// a TaoChannel that interacts directly with an underlying Tao object
+// A TaoChannel that interacts directly with an underlying Tao object.
 class DirectTaoChildChannel : public TaoChildChannel {
  public:
   // The parent constructor with its descriptors and the child descriptors.
+  // @param tao The tao to use as the underlying object
+  // @param child_hash The hash to pass to the tao in each call that needs it
   DirectTaoChildChannel(Tao *tao, const string &child_hash);
   virtual ~DirectTaoChildChannel() {}
 
   // Tao interface methods
+
+  // Init and Destroy do nothing for this class
   virtual bool Init() { return true; }
   virtual bool Destroy() { return true; }
+
+  // The remainder of the operations pass their arguments down to the tao object
+  // and return its reply
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
@@ -43,6 +50,9 @@ class DirectTaoChildChannel : public TaoChildChannel {
   virtual bool Attest(const string &data, string *attestation) const;
 
  protected:
+  // Since DirectTaoChildChannel doesn't communicate with a remote Tao object,
+  // it doesn't implement ReceiveMessage or SendMessage, and it returns false if
+  // they are called.
   virtual bool ReceiveMessage(google::protobuf::Message *m) const {
     return false;
   }
@@ -51,8 +61,12 @@ class DirectTaoChildChannel : public TaoChildChannel {
   }
 
  private:
+  // The underlying Tao object to call
   scoped_ptr<Tao> tao_;
+
+  // The hash to pass to each call that needs it
   string child_hash_;
+
   DISALLOW_COPY_AND_ASSIGN(DirectTaoChildChannel);
 };
 }

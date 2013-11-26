@@ -26,7 +26,6 @@
 #include "tao/tao.h"
 
 namespace tao {
-
 // A fake Tao implementation that performs crypto operations using
 // in-memory keys, including a fake policy key.
 class FakeTao : public Tao {
@@ -37,9 +36,16 @@ class FakeTao : public Tao {
   // This constructor uses an existing (unencrypted, complete) policy key path
   FakeTao(const string &policy_key_path);
   virtual ~FakeTao() {}
+
+  // Init initializes the keys and sets everything up.
   virtual bool Init();
   virtual bool Destroy() { return true; }
+
+  // The FakeTao doesn't start hosted programs
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
+
+  // The other Tao methods are implemented using the generated keys just like a
+  // normal hardware mechanism would.
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &child_hash, const string &data,
                     string *sealed) const;
@@ -49,6 +55,7 @@ class FakeTao : public Tao {
                       string *attestation) const;
 
  private:
+  // The path to the policy key, if the object was constructed this way.
   string policy_key_path_;
 
   // An in-memory, temporary symmetric key

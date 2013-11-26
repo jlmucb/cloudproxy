@@ -24,12 +24,14 @@
 #include <tao/tao_channel.h>
 
 namespace tao {
-// a TaoChannel that doesn't actually do any communication
+// A TaoChannel that doesn't actually do any communication.
 class FakeTaoChannel : public TaoChannel {
  public:
   FakeTaoChannel() {}
   virtual ~FakeTaoChannel() {}
 
+  // The communication and cleanup methods all succeed immediately and ignore
+  // their parameters.
   virtual bool Listen(Tao *t, const string &child_hash) { return true; }
 
   virtual bool AddChildChannel(const string &child_hash, string *params) {
@@ -39,6 +41,7 @@ class FakeTaoChannel : public TaoChannel {
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 
  protected:
+  // Since this is a fake, the message sending operations fail.
   virtual bool ReceiveMessage(google::protobuf::Message *m,
                               const string &child_hash) const {
     return false;

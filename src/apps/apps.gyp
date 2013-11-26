@@ -38,10 +38,11 @@
       ],
     },
     {
-      'target_name': 'convert_aik_to_pem',
+      'target_name': 'attest_to_aik',
       'type': 'executable',
-      'sources': [ 'convert_aik_to_pem.cc', ],
+      'sources': [ 'attest_to_aik.cc', ],
       'dependencies': [ 
+        '../tao/tao.gyp:tao',
         '../third_party/gflags/gflags.gyp:gflags',
         '../third_party/google-glog/glog.gyp:glog',
         '../third_party/keyczar/keyczar.gyp:keyczar'

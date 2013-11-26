@@ -21,6 +21,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
+#include <keyczar/rw/keyset_file_reader.h>
 
 #include <openssl/pem.h>
 #include <openssl/x509.h>
@@ -31,6 +32,9 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 #include <tss/tss_error.h>
 #include <tss/platform.h>
@@ -45,23 +49,30 @@
 #include <sstream>
 #include <string>
 
+using keyczar::Keyczar;
+
 using std::ifstream;
+using std::ofstream;
 using std::list;
 using std::string;
 using std::stringstream;
 
-#define PCR_LEN 20
+using tao::Attestation;
+using tao::Statement;
 
 DEFINE_string(
-    aikblobfile, "aikblob",
+    aik_blob_file, "aikblob",
     "A file containing an AIK blob that has been loaded into the TPM");
-DEFINE_string(aikkeyfile, "aik.key", "The OpenSSL public key file to create");
+DEFINE_string(aik_attest_file, "aik.attest", "A serialized attestation to the AIK, signed by the policy private key");
+DEFINE_string(policy_key, "policy_key", "The path to the policy private key");
+DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
+  const int AttestationTimeout = 31556926;
   TSS_HCONTEXT tss_ctx;
   TSS_HTPM tpm;
   TSS_RESULT result;
@@ -96,7 +107,7 @@ int main(int argc, char **argv) {
 
   // Get the public key blob from the AIK.
   // Load the blob and try to load the AIK
-  ifstream blob_stream(FLAGS_aikblobfile, ifstream::in);
+  ifstream blob_stream(FLAGS_aik_blob_file, ifstream::in);
   stringstream blob_buf;
   blob_buf << blob_stream.rdbuf();
   string blob = blob_buf.str();
@@ -121,16 +132,56 @@ int main(int argc, char **argv) {
   aik_rsa->e = BN_new();
   BN_set_word(aik_rsa->e, 0x10001);
 
-  FILE *out_key = fopen(FLAGS_aikkeyfile.c_str(), "w");
-  if (out_key == NULL) {
-    PLOG(ERROR) << "Could not open the aikkeyfile " << FLAGS_aikkeyfile << " for writing";
-    return 1;
-  }
+  // Write to a memory-based BIO for signing
+  BIO *mem = BIO_new(BIO_s_mem());
 
-  if (!PEM_write_RSAPublicKey(out_key, aik_rsa)) {
+  if (!PEM_write_bio_RSAPublicKey(mem, aik_rsa)) {
     LOG(ERROR) << "Could not write the AIK to a PEM file";
     return 1;
   }
 
+  BUF_MEM *buf;
+  BIO_get_mem_ptr(mem, &buf);
+
+  string pem(buf->data, buf->length);
+  BIO_free(mem);
+
+  // decrypt the private policy key so we can construct a signer
+  keyczar::base::ScopedSafeString password(new string(FLAGS_policy_pass));
+  scoped_ptr<keyczar::rw::KeysetReader> reader(
+      new keyczar::rw::KeysetPBEJSONFileReader(FLAGS_policy_key.c_str(),
+                                               *password));
+
+  // sign this serialized data with the keyset in FLAGS_policy_key
+  scoped_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
+  CHECK(signer.get()) << "Could not initialize the signer from "
+                      << FLAGS_policy_key;
+  signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
+  Attestation a;
+  Statement s;
+  time_t cur_time;
+  time(&cur_time);
+
+  s.set_time(cur_time);
+  s.set_expiration(cur_time + AttestationTimeout);
+  s.set_data(pem);
+  s.set_hash_alg("None");
+  s.set_hash("");
+
+  string serialized_statement;
+  CHECK(s.SerializeToString(&serialized_statement)) << "Could not serialize";
+  string sig;
+  CHECK(signer->Sign(serialized_statement, &sig))
+    << "Could not sign the key";
+
+  // There's no cert, since this is signed by the root key
+  a.set_type(tao::ROOT);
+  a.set_serialized_statement(serialized_statement);
+  a.set_signature(sig);
+
+  ofstream attest_file(FLAGS_aik_attest_file, ofstream::out);
+  CHECK(a.SerializeToOstream(&attest_file))
+    << "Could not serialize the attestation to a file";
   return 0;
 }

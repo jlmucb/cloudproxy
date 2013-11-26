@@ -76,6 +76,9 @@ class LinuxTao : public Tao {
            TaoChannel *child_channel, HostedProgramFactory *program_factory);
   virtual ~LinuxTao() {}
 
+  // Start listening for Tao messages on channels
+  bool Listen();
+
   // LinuxTao follows the normal semantics of the Tao for these methods
   virtual bool Init();
   virtual bool Destroy();

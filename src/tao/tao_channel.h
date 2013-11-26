@@ -40,7 +40,7 @@ class TaoChannel {
   virtual ~TaoChannel() {}
 
   // Start listening for messages from this child.
-  virtual bool Listen(Tao *tao, const string &child_hash) = 0;
+  virtual bool Listen(Tao *tao) = 0;
 
   // Add a child to this channel and return the string that will let the child
   // connect using the same type.

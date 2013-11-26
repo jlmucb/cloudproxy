@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
   CHECK(channel->Init()) << "Could not init the channel";
 
   scoped_ptr<HostedProgramFactory> program_factory(new ProcessFactory());
-  scoped_ptr<TaoChannel> pipe_channel(new PipeTaoChannel());
+  scoped_ptr<TaoChannel> pipe_channel(new PipeTaoChannel("/tmp/.server_test_socket"));
 
   // get a temporary directory to use for the files
   string dir_template("/tmp/server_test_XXXXXX");

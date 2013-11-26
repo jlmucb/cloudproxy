@@ -302,12 +302,6 @@ bool LinuxTao::StartHostedProgram(const string &path,
     return false;
   }
 
-  bool rv = child_channel_->Listen(this, serialized_digest);
-  if (!rv) {
-    LOG(ERROR) << "Server listening failed";
-    return false;
-  }
-
   return true;
 }
 
@@ -464,5 +458,11 @@ bool LinuxTao::AttestToKey(const string &serialized_key,
   }
 
   return true;
+}
+
+bool LinuxTao::Listen() {
+  // All the work of listening and calling the LinuxTao is done in the
+  // TaoChannel implementation. See, e.g., PipeTaoChannel
+  return child_channel_->Listen(this);
 }
 }  // namespace cloudproxy

@@ -32,7 +32,7 @@ class FakeTaoChannel : public TaoChannel {
 
   // The communication and cleanup methods all succeed immediately and ignore
   // their parameters.
-  virtual bool Listen(Tao *t, const string &child_hash) { return true; }
+  virtual bool Listen(Tao *t) { return true; }
 
   virtual bool AddChildChannel(const string &child_hash, string *params) {
     return true;

@@ -24,19 +24,20 @@
 
 #include <keyczar/base/scoped_ptr.h>
 
+#include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <thread>
 
 using std::thread;
 
-extern int errno;
-
 namespace tao {
-
-PipeTaoChannel::PipeTaoChannel() {}
-PipeTaoChannel::~PipeTaoChannel() {}
+PipeTaoChannel::PipeTaoChannel(const string &socket_path)
+  : domain_socket_path_(socket_path) { }
+PipeTaoChannel::~PipeTaoChannel() { }
 
 bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   if (params == nullptr) {
@@ -223,26 +224,119 @@ bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m,
   return true;
 }
 
-bool PipeTaoChannel::Listen(Tao *tao, const string &child_hash) {
-  thread t(&PipeTaoChannel::MessageHandler, this, tao, child_hash);
-  t.detach();
-  return true;
-}
+bool PipeTaoChannel::Listen(Tao *tao) {
+  // The unix domain socket is used to listen for CreateHostedProgram requests.
+  int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (sock == -1) {
+    LOG(ERROR) << "Could not create unix domain socket to listen for messages";
+    return false;
+  }
 
-bool PipeTaoChannel::MessageHandler(Tao *tao, const string &child_hash) {
+  struct sockaddr_un addr;
+  addr.sun_family = AF_UNIX;
+  if (domain_socket_path_.size() + 1 > sizeof(addr.sun_path)) {
+    LOG(ERROR) << "The path " << domain_socket_path_ << " was too long to use";
+    return false;
+  }
+
+  strncpy(addr.sun_path, domain_socket_path_.c_str(), sizeof(addr.sun_path));
+  int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+  int bind_err = bind(sock, (struct sockaddr *)&addr, len);
+  if (bind_err == -1) {
+    PLOG(ERROR) << "Could not bind the address " << domain_socket_path_
+                << " to the socket";
+  }
+
+  LOG(INFO) << "Bound the unix socket to " << domain_socket_path_;
+
+
   while (true) {
-    TaoChannelRPC rpc;
-    if (!GetRPC(&rpc, child_hash)) {
-      LOG(ERROR) << "Could not get an RPC";
+    // set up the select operation with the current fds and the unix socket
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    int max = sock;
+    FD_SET(sock, &read_fds);
+
+    for (pair<const string, pair<int, int>> &descriptor : hash_to_descriptors_) {
+      int d = descriptor.second.first;
+      FD_SET(d, &read_fds);
+      if (d > max) {
+        max = d;
+      }
+    }
+
+    int err = select(max + 1, &read_fds, NULL, NULL, NULL);
+    if (err == -1) {
+      PLOG(ERROR) << "Error in calling select";
       return false;
     }
 
-    if (!HandleRPC(*tao, child_hash, rpc)) {
-      LOG(ERROR) << "Could not handle the RPC";
-      return false;
+    // Check for messages to handle
+    if (FD_ISSET(sock, &read_fds)) {
+      if (!HandleProgramCreation(tao, sock)) {
+        LOG(ERROR) << "Could not handle the program creation request";
+      }
+    }
+
+    for (pair<const string, pair<int, int>> &descriptor : hash_to_descriptors_) {
+      int d = descriptor.second.first;
+      const string &child_hash = descriptor.first;
+
+      if (FD_ISSET(d, &read_fds)) {
+        TaoChannelRPC rpc;
+        if (!GetRPC(&rpc, child_hash)) {
+          LOG(ERROR) << "Could not get an RPC";
+        }
+
+        if (!HandleRPC(*tao, child_hash, rpc)) {
+          LOG(ERROR) << "Could not handle the RPC";
+        }
+      }
     }
   }
 
   return true;
+}
+
+bool PipeTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
+  // Try to receive a message on the socket. This message has a size prefix and
+  // the data itself.
+  size_t len;
+  ssize_t bytes_received = recvfrom(sock, &len, sizeof(len), MSG_DONTWAIT,
+                                    NULL /* src_addr */, NULL /* addrlen */);
+  if (bytes_received == -1) {
+    PLOG(ERROR) << "Could not receive a length on the socket";
+    return false;
+  }
+
+  scoped_array<char> bytes(new char[len]);
+  bytes_received = recvfrom(sock, bytes.get(), len, MSG_DONTWAIT,
+                            NULL /* src_addr */, NULL /* addrlen */);
+  if (bytes_received == -1) {
+    PLOG(ERROR) << "Could not receive the protocol buffer bytes from the socket";
+    return false;
+  }
+
+  // This message must be a TaoChannelRPC message, and it must be have the type
+  // START_HOSTED_PROGRAM
+  TaoChannelRPC rpc;
+  string rpc_data(bytes.get(), len);
+  if (!rpc.ParseFromString(rpc_data)) {
+    LOG(ERROR) << "Could not parse the data as a TaoChannelRPC";
+    return false;
+  }
+
+  if ((rpc.rpc() != START_HOSTED_PROGRAM) || !rpc.has_start()) {
+    LOG(ERROR) << "This RPC was not START_HOSTED_PROGRAM";
+    return false;
+  }
+
+  const StartHostedProgramArgs &shpa = rpc.start();
+  list<string> args;
+  for(int i = 0; i < shpa.args_size(); i++) {
+    args.push_back(shpa.args(i));
+  }
+
+  return tao->StartHostedProgram(shpa.path(), args);
 }
 }  // namespace tao

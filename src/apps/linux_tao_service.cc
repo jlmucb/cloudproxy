@@ -47,6 +47,8 @@ DEFINE_string(whitelist, "signed_whitelist", "A signed whitelist file");
 DEFINE_string(policy_pk_path, "./policy_public_key",
               "The path to the public policy key");
 DEFINE_string(program, "server", "The program to start under the Tao");
+DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
+              "The name of a file to use as the socket for incoming program creation requests");
 
 using std::ifstream;
 using std::shared_ptr;
@@ -103,7 +105,7 @@ int main(int argc, char **argv) {
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
-  scoped_ptr<PipeTaoChannel> pipe_channel(new PipeTaoChannel());
+  scoped_ptr<PipeTaoChannel> pipe_channel(new PipeTaoChannel(FLAGS_program_socket));
   scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
 
   scoped_ptr<LinuxTao> tao(
@@ -121,10 +123,9 @@ int main(int argc, char **argv) {
   CHECK(tao->StartHostedProgram(FLAGS_program, args))
       << "Could not start " << FLAGS_program << " as a hosted program";
 
-  // TODO(tmroeder): remove this while loop once we fix the thread handling in
-  // the LinuxTao so it doesn't depend on this thread to hold its memory
-  while (true)
-    ;
+  // Listen for program creation requests and for messages from hosted programs
+  // that have been created.
+  CHECK(tao->Listen());
 
   return 0;
 }

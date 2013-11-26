@@ -40,7 +40,8 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,
       result = tao.Destroy();
       break;
     case START_HOSTED_PROGRAM:
-      // TODO(tmroeder): unpack the arguments and set this up
+      // This is not processed by this channel; See e.g., HandleProgramCreation
+      // for how it can be processed by the child channel types.
       break;
     case GET_RANDOM_BYTES:
       if (!rpc.has_random()) {

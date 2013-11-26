@@ -38,6 +38,20 @@
       ],
     },
     {
+      'target_name': 'convert_aik_to_pem',
+      'type': 'executable',
+      'sources': [ 'convert_aik_to_pem.cc', ],
+      'dependencies': [ 
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
+        '../third_party/keyczar/keyczar.gyp:keyczar'
+      ],
+      'libraries': [
+        '-ltspi',
+        '-lcrypto',
+      ],
+    },
+    {
       'target_name': 'linux_tao_service',
       'type': 'executable',
       'sources': [ 'linux_tao_service.cc', ],

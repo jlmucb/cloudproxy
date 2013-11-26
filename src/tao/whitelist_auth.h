@@ -42,6 +42,7 @@ class WhitelistAuth : public TaoAuth {
   virtual bool IsAuthorized(const string &program_hash) const;
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const;
+  virtual bool IsAuthorized(const Attestation &attestation) const;
 
  private:
   map<string, string> whitelist_;

@@ -20,15 +20,13 @@
 #include "tao/direct_tao_child_channel.h"
 
 namespace tao {
-  DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao,
-					       const string &child_hash)
-    : tao_(tao),
-      child_hash_(child_hash) {
+DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
+    : tao_(tao), child_hash_(child_hash) {
   // no other initialization needed
 }
 
 bool DirectTaoChildChannel::StartHostedProgram(const string &path,
-                                          const list<string> &args) {
+                                               const list<string> &args) {
   return tao_->StartHostedProgram(path, args);
 }
 
@@ -44,12 +42,8 @@ bool DirectTaoChildChannel::Unseal(const string &sealed, string *data) const {
   return tao_->Unseal(child_hash_, sealed, data);
 }
 
-bool DirectTaoChildChannel::Attest(const string &data, string *attestation) const {
+bool DirectTaoChildChannel::Attest(const string &data,
+                                   string *attestation) const {
   return tao_->Attest(child_hash_, data, attestation);
-}
-
-bool DirectTaoChildChannel::VerifyAttestation(const string &attestation,
-                                         string *data) const {
-  return tao_->VerifyAttestation(attestation, data);
 }
 }  // namespace tao

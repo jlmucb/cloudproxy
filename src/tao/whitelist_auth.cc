@@ -26,6 +26,9 @@
 using keyczar::Keyczar;
 using std::ifstream;
 
+typedef unsigned int UINT32;
+typedef unsigned short UINT16;
+
 namespace tao {
 
 bool WhitelistAuth::Init(const string &whitelist_path,
@@ -76,4 +79,57 @@ bool WhitelistAuth::IsAuthorized(const string &program_name,
   return (it->second.compare(program_hash) == 0);
 }
 
+bool WhitelistAuth::IsAuthorized(const Attestation &attestation) const {
+  Statement s;
+  if (!s.ParseFromString(attestation.serialized_statement())) {
+    LOG(ERROR) << "Could not parse the statement from an attestation";
+    return false;
+  }
+
+  if (s.hash_alg().compare("SHA256")) {
+    // This is a normal program-like hash, so check the whitelist directly
+    return IsAuthorized(s.hash());
+  }
+
+  if (attestation.has_quote()) {
+    // Extract the PCRs as a single string and look for them in the whitelist.
+    string quote(attestation.quote());
+    size_t quote_len = quote.size();
+    if (quote_len < sizeof(UINT16)) {
+      LOG(ERROR) << "The quote was not long enough to contain a mask length";
+      return false;
+    }
+
+    const char *quote_bytes = quote.c_str();
+    UINT32 index = 0;
+    UINT16 mask_len = *(UINT16 *)(quote_bytes + index);
+    index += sizeof(UINT16);
+
+    // skip the mask bytes
+    if ((quote_len < index) || (quote_len - index < mask_len)) {
+      LOG(ERROR) << "The quote was not long enough to contain the mask";
+      return false;
+    }
+
+    index += mask_len;
+
+    if ((quote_len < index) || (quote_len - index < sizeof(UINT32))) {
+      LOG(ERROR) << "The quote was not long enough to contain the pcr length";
+      return false;
+    }
+
+    UINT32 pcr_len = *(UINT32 *)(quote_bytes + index);
+    index += sizeof(UINT32);
+
+    if ((quote_len < index) || (quote_len - index < pcr_len)) {
+      LOG(ERROR) << "The quote was not long enough to contain the PCRs";
+      return false;
+    }
+
+    string pcrs(quote_bytes + index, pcr_len);
+    return IsAuthorized(pcrs);
+  }
+
+  return false;
+}
 }  // namespace tao

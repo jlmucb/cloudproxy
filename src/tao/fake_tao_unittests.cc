@@ -63,19 +63,6 @@ TEST_F(FakeTaoTest, AttestTest) {
   EXPECT_TRUE(tao_.Attest(bytes, bytes, &attestation));
 }
 
-TEST_F(FakeTaoTest, VerifyAttestTest) {
-  string bytes;
-  EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
-
-  string attestation;
-  EXPECT_TRUE(tao_.Attest(bytes, bytes, &attestation));
-
-  string data;
-  EXPECT_TRUE(tao_.VerifyAttestation(attestation, &data));
-
-  EXPECT_EQ(data, bytes);
-}
-
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

@@ -267,13 +267,13 @@ bool LinuxTao::StartHostedProgram(const string &path,
     lock_guard<mutex> l(auth_m_);
     if (!auth_manager_->IsAuthorized(path, serialized_digest)) {
       LOG(ERROR) << "Program " << path << " with digest " << serialized_digest
-                << " is not authorized";
+                 << " is not authorized";
       return false;
     }
   }
 
-  VLOG(2) << "The program " << path << " with digest "
-            << serialized_digest << " is authorized";
+  VLOG(2) << "The program " << path << " with digest " << serialized_digest
+          << " is authorized";
 
   {
     lock_guard<mutex> l(data_m_);
@@ -287,7 +287,6 @@ bool LinuxTao::StartHostedProgram(const string &path,
     running_children_.insert(serialized_digest);
   }
 
-
   string child_params;
   if (!child_channel_->AddChildChannel(serialized_digest, &child_params)) {
     LOG(ERROR) << "Could not add a channel to connect to a child with hash "
@@ -297,9 +296,8 @@ bool LinuxTao::StartHostedProgram(const string &path,
   list<string> program_args(args.begin(), args.end());
   program_args.push_back(child_params);
 
-  if (!program_factory_->CreateHostedProgram(path, program_args,
-                                             serialized_digest,
-                                             *child_channel_)) {
+  if (!program_factory_->CreateHostedProgram(
+          path, program_args, serialized_digest, *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }
@@ -331,7 +329,7 @@ bool LinuxTao::Seal(const string &child_hash, const string &data,
     if (running_children_.end() == child_it) {
       LOG(ERROR) << "The program with digest " << child_hash << " was not a "
                  << "program that was executing";
-     return false;
+      return false;
     }
   }
 
@@ -448,101 +446,6 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
     LOG(ERROR) << "Could not serialize the attestation";
     return false;
   }
-
-  return true;
-}
-
-bool LinuxTao::VerifyAttestation(const string &attestation,
-                                 string *data) const {
-  Attestation a;
-  if (!a.ParseFromString(attestation)) {
-    LOG(ERROR) << "Could not deserialize an Attestation";
-    return false;
-  }
-
-  // Verify the cert to get the data back.
-  // If there is an attestation, then recurse to check the attestation
-  // of the public key. Otherwise, this must be the policy key.
-  if (a.has_cert()) {
-    // Make sure we're supposed to recurse here.
-    if (a.type() != INTERMEDIATE) {
-      LOG(ERROR)
-          << "Expected this Attestation to be INTERMEDIATE, but it was not";
-      return false;
-    }
-
-    // Recurse on the cert Attestation and get the serialized key back
-    string key_data;
-    if (!VerifyAttestation(a.cert(), &key_data)) {
-      LOG(ERROR) << "Could not verify the public_key attestation";
-      return false;
-    }
-
-    KeyczarPublicKey kpk;
-    if (!kpk.ParseFromString(key_data)) {
-      LOG(ERROR) << "Could not deserialize the public key for this attestation";
-      return false;
-    }
-
-    // Get a Keyset corresponding to this public key
-    Keyset *k = nullptr;
-    if (!DeserializePublicKey(kpk, &k)) {
-      LOG(ERROR) << "Could not deserialize the public key";
-      return false;
-    }
-
-    scoped_ptr<Verifier> v(new Verifier(k));
-    v->set_encoding(Keyczar::NO_ENCODING);
-    if (!v->Verify(a.serialized_statement(), a.signature())) {
-      LOG(ERROR) << "The statement in an attestation did not have a valid "
-                    "signature from its public key";
-      return false;
-    }
-  } else {
-    if (a.type() != ROOT) {
-      LOG(ERROR) << "This is not a ROOT attestation, but it claims to be "
-                    "signed with the public key";
-      return false;
-    }
-
-    VLOG(2) << "About to verify the signature against the policy key";
-    VLOG(2) << "a.serialized_statement().size = "
-              << (int)a.serialized_statement().size();
-    VLOG(2) << "a.signature().size = "
-              << (int)a.signature().size();
-    // Verify against the policy key.
-    if (!policy_verifier_->Verify(a.serialized_statement(), a.signature())) {
-      LOG(ERROR) << "Verification failed with the policy key";
-      return false;
-    }
-  }
-
-  Statement s;
-  if (!s.ParseFromString(a.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the serialized statement in an attestation";
-    return false;
-  }
-
-  // check that the time isn't too far in the past
-  time_t cur_time;
-  time(&cur_time);
-
-  time_t past_time = s.time();
-  if (cur_time - past_time > AttestationTimeout) {
-    LOG(ERROR) << "The attestation was too old";
-    return false;
-  }
-
-  // check that this is a whitelisted program
-  // TODO(tmroeder): make sure this is using the right hash algorithm, too
-  if (!auth_manager_->IsAuthorized(s.hash())) {
-    LOG(ERROR) << "The attested program was not a whitelisted program";
-    return false;
-  }
-
-  data->assign(s.data().data(), s.data().size());
-
-  VLOG(1) << "The attestation passed verification";
 
   return true;
 }

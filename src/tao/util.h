@@ -31,8 +31,8 @@
 
 namespace tao {
 
-typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<
-                                        RSA, RSA_free> > ScopedRsa;
+typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
+    ScopedRsa;
 
 bool CreateKey(keyczar::rw::KeysetWriter *writer,
                keyczar::KeyType::Type key_type,

@@ -92,6 +92,8 @@
       'type': 'static_library',
       'sources': [
         'attestation.proto',
+        'attestation_verifier.cc',
+        'attestation_verifier.h',
 	    'direct_tao_child_channel.cc',
 	    'direct_tao_child_channel.h',
         'hosted_programs.proto',

@@ -56,11 +56,12 @@ class TaoChannel {
                            const string &child_hash) const = 0;
 
   // handle incoming messages on the channel
-  virtual bool HandleRPC(Tao& tao, const string &hash,
+  virtual bool HandleRPC(Tao &tao, const string &hash,
                          const TaoChannelRPC &rpc) const;
   virtual bool GetRPC(TaoChannelRPC *rpc, const string &child_hash) const;
   virtual bool SendResponse(const TaoChannelResponse &resp,
                             const string &child_hash) const;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TaoChannel);
 };

@@ -15,14 +15,12 @@ using keyczar::Signer;
 
 namespace tao {
 FakeTao::FakeTao()
-    : policy_key_path_(),
-    crypter_(nullptr),
-    policy_key_(nullptr) { }
+    : policy_key_path_(), crypter_(nullptr), policy_key_(nullptr) {}
 
 FakeTao::FakeTao(const string &policy_key_path)
     : policy_key_path_(policy_key_path),
-    crypter_(nullptr),
-    policy_key_(nullptr) {
+      crypter_(nullptr),
+      policy_key_(nullptr) {
   // The actual initialization happens in Init().
 }
 
@@ -34,8 +32,9 @@ bool FakeTao::Init() {
     scoped_ptr<Keyset> public_pk(new Keyset());
     KeyType::Type public_pk_key_type = KeyType::ECDSA_PRIV;
     KeyPurpose::Type public_pk_key_purpose = KeyPurpose::SIGN_AND_VERIFY;
-    KeysetMetadata *public_pk_metadata = new KeysetMetadata(
-        "fake_tao_public_pk", public_pk_key_type, public_pk_key_purpose, true, 1);
+    KeysetMetadata *public_pk_metadata =
+        new KeysetMetadata("fake_tao_public_pk", public_pk_key_type,
+                           public_pk_key_purpose, true, 1);
     CHECK_NOTNULL(public_pk_metadata);
     public_pk->set_metadata(public_pk_metadata);
     public_pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
@@ -115,35 +114,5 @@ bool FakeTao::Attest(const string &child_hash, const string &data,
   }
 
   return a.SerializeToString(attestation);
-}
-
-bool FakeTao::VerifyAttestation(const string &attestation, string *data) const {
-  // Check the signature directly over the serialized_statement.
-  Attestation a;
-  if (a.type() != ROOT) {
-    LOG(ERROR) << "Wrong type of fake Attestation";
-    return false;
-  }
-
-  if (a.has_cert()) {
-    LOG(ERROR) << "A fake Attestation should not have a cert";
-    return false;
-  }
-
-  if (!a.ParseFromString(attestation)) {
-    LOG(ERROR) << "Could not deserialize the Attestation";
-    return false;
-  }
-
-  // The serialized_statement is a Statement, so extract the data from that.
-  Statement s;
-  if (!s.ParseFromString(a.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the serialized statement";
-    return false;
-  }
-
-  data->assign(s.data().data(),
-               s.data().size());
-  return policy_key_->Verify(a.serialized_statement(), a.signature());
 }
 }  // namespace tao

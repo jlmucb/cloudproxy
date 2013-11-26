@@ -47,7 +47,6 @@ class FakeTao : public Tao {
                       string *data) const;
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  private:
   string policy_key_path_;

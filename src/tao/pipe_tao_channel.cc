@@ -35,8 +35,8 @@ extern int errno;
 
 namespace tao {
 
-PipeTaoChannel::PipeTaoChannel() { }
-PipeTaoChannel::~PipeTaoChannel() { }
+PipeTaoChannel::PipeTaoChannel() {}
+PipeTaoChannel::~PipeTaoChannel() {}
 
 bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   if (params == nullptr) {
@@ -104,7 +104,6 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   return true;
 }
 
-
 bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
   {
     // Look up this hash to see if the parent has fds to clean up
@@ -119,10 +118,10 @@ bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
               << child_it->second.second << " in ChildCleanup";
     close(child_it->second.first);
     close(child_it->second.second);
-    
+
     hash_to_descriptors_.erase(child_it);
   }
-    
+
   return true;
 }
 
@@ -164,7 +163,6 @@ bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m,
 
     readfd = child_it->second.first;
   }
-
 
   size_t len;
   ssize_t bytes_read = read(readfd, &len, sizeof(size_t));
@@ -232,7 +230,7 @@ bool PipeTaoChannel::Listen(Tao *tao, const string &child_hash) {
 }
 
 bool PipeTaoChannel::MessageHandler(Tao *tao, const string &child_hash) {
-  while(true) {
+  while (true) {
     TaoChannelRPC rpc;
     if (!GetRPC(&rpc, child_hash)) {
       LOG(ERROR) << "Could not get an RPC";

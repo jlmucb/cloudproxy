@@ -33,7 +33,8 @@ class HostedProgramFactory {
  public:
   virtual ~HostedProgramFactory() {}
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
-                                   const string &child_hash, TaoChannel &parent_channel) const = 0;
+                                   const string &child_hash,
+                                   TaoChannel &parent_channel) const = 0;
   virtual string GetFactoryName() const = 0;
 };
 }  // namespace tao

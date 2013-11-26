@@ -25,9 +25,7 @@
 
 namespace tao {
 PipeTaoChildChannel::PipeTaoChildChannel(const string &params)
-    : readfd_(0),
-    writefd_(0),
-    params_(params) { }
+    : readfd_(0), writefd_(0), params_(params) {}
 
 bool PipeTaoChildChannel::Init() {
 
@@ -78,14 +76,14 @@ bool PipeTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
   return m->ParseFromString(serialized);
 }
 
-bool PipeTaoChildChannel::SendMessage(const google::protobuf::Message &m) const {
+bool PipeTaoChildChannel::SendMessage(
+    const google::protobuf::Message &m) const {
   // send the length then the serialized message
   string serialized;
   if (!m.SerializeToString(&serialized)) {
     LOG(ERROR) << "Could not serialize the Message to a string";
     return false;
   }
-
 
   size_t len = serialized.size();
   ssize_t bytes_written = write(writefd_, &len, sizeof(size_t));

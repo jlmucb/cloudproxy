@@ -95,7 +95,6 @@ void locking_function(int mode, int n, const char *file, int line) {
   }
 }
 
-
 int main(int argc, char **argv) {
 
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -122,8 +121,8 @@ int main(int argc, char **argv) {
   CHECK(ft->Init()) << "Could not init the FakeTao";
 
   string fake_linux_tao_hash("This is not a real hash");
-  scoped_ptr<DirectTaoChildChannel>
-    channel(new DirectTaoChildChannel(ft.release(), fake_linux_tao_hash));
+  scoped_ptr<DirectTaoChildChannel> channel(
+      new DirectTaoChildChannel(ft.release(), fake_linux_tao_hash));
   CHECK(channel->Init()) << "Could not init the channel";
 
   scoped_ptr<HostedProgramFactory> program_factory(new ProcessFactory());
@@ -168,9 +167,8 @@ int main(int argc, char **argv) {
   FilePath fp(policy_pk_path);
   scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
   scoped_ptr<Keyczar> policy_key;
-  CHECK(
-      CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key));
+  CHECK(CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
+                  KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key));
   policy_key->set_encoding(Keyczar::NO_ENCODING);
 
   // Create a whitelist with a dummy hosted program, since we don't
@@ -193,10 +191,9 @@ int main(int argc, char **argv) {
   CHECK(sw.SerializeToOstream(&whitelist_file));
   whitelist_file.close();
 
-  scoped_ptr<Tao> tao(
-      new LinuxTao(secret_path, key_path, pk_path, whitelist_path,
-                   policy_pk_path, channel.release(),
-                   pipe_channel.release(), program_factory.release()));
+  scoped_ptr<Tao> tao(new LinuxTao(
+      secret_path, key_path, pk_path, whitelist_path, policy_pk_path,
+      channel.release(), pipe_channel.release(), program_factory.release()));
   CHECK(tao->Init());
 
   list<string> args;
@@ -204,7 +201,7 @@ int main(int argc, char **argv) {
       << "Could not start the server under LinuxTao";
   // TODO(tmroeder): set this to wait for the listening threads. Or have it
   // listen for incoming StartHostedProgram messages
-  while(true)
+  while (true)
     ;
   return 0;
 }

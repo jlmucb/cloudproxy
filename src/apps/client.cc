@@ -25,8 +25,10 @@
 #include "cloudproxy/cloud_client.h"
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/attestation_verifier.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/util.h"
+#include "tao/whitelist_auth.h"
 
 #include <fstream>
 #include <sstream>
@@ -41,8 +43,10 @@ using tao::SealOrUnsealSecret;
 
 using keyczar::base::ScopedSafeString;
 
+using tao::AttestationVerifier;
 using tao::PipeTaoChildChannel;
 using tao::TaoChildChannel;
+using tao::WhitelistAuth;
 
 DEFINE_string(client_cert, "./openssl_keys/client/client.crt",
               "The PEM certificate for the client to use for TLS");
@@ -58,6 +62,8 @@ DEFINE_string(whitelist_path, "./signed_whitelist",
               "The path to the whitelist");
 DEFINE_string(address, "localhost", "The address of the local server");
 DEFINE_int32(port, 11235, "The server port to connect to");
+DEFINE_string(aik_cert, "./HW/aik.crt",
+              "A certificate for the AIK, signed by the public policy key");
 
 int main(int argc, char** argv) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -80,10 +86,19 @@ int main(int argc, char** argv) {
   }
 
   string params(argv[argc - 1]);
-  
+
   // TODO(tmroeder): generalize this to arbitrary channel strings
   scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
+
+  scoped_ptr<keyczar::Keyczar> policy_key(
+      keyczar::Verifier::Read(FLAGS_policy_key.c_str()));
+  policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
+  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth());
+  whitelist_auth->Init(FLAGS_whitelist_path, *policy_key);
+  scoped_ptr<AttestationVerifier> verifier(new AttestationVerifier(
+      FLAGS_aik_cert, FLAGS_policy_key, whitelist_auth.release()));
 
   LOG(INFO) << "Client successfully established communication with the Tao";
   int size = 6;
@@ -102,8 +117,9 @@ int main(int argc, char** argv) {
                  FLAGS_port);
 
   LOG(INFO) << "Created a client";
-  CHECK(cc.Connect(*channel)) << "Could not connect to the server at "
-                              << FLAGS_address << ":" << FLAGS_port;
+  CHECK(cc.Connect(*channel, *verifier))
+      << "Could not connect to the server at " << FLAGS_address << ":"
+      << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write, getting randomness from the Tao

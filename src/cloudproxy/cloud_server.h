@@ -28,6 +28,7 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
+#include "tao/attestation_verifier.h"
 #include "tao/tao_child_channel.h"
 #include "tao/whitelist_auth.h"
 #include <openssl/ssl.h>
@@ -74,7 +75,7 @@ class CloudServer {
   // The Tao implementation allows the server to check that programs
   // that connect to it are allowed by the Tao and to get a
   // Attestation for its key
-  bool Listen(const tao::TaoChildChannel &t);
+  bool Listen(const tao::TaoChildChannel &t, const tao::AttestationVerifier &v);
 
  protected:
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers
@@ -111,17 +112,20 @@ class CloudServer {
 
   // handles an incoming message from a client
   bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
-  void HandleConnection(BIO *bio, const tao::TaoChildChannel *t);
+  void HandleConnection(BIO *bio, const tao::TaoChildChannel *t,
+                        const tao::AttestationVerifier *v);
   bool HandleMessage(const ClientMessage &message, BIO *bio, string *reason,
                      bool *reply, bool *close, CloudServerThreadData &cstd,
-                     const tao::TaoChildChannel &t);
+                     const tao::TaoChildChannel &t,
+                     const tao::AttestationVerifier &v);
   bool HandleAuth(const Auth &auth, BIO *bio, string *reason, bool *reply,
                   CloudServerThreadData &cstd);
   bool HandleResponse(const Response &response, BIO *bio, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
   bool HandleAttestation(const string &attestation, BIO *bio, string *reason,
                          bool *reply, CloudServerThreadData &cstd,
-                         const tao::TaoChildChannel &t);
+                         const tao::TaoChildChannel &t,
+                         const tao::AttestationVerifier &v);
 
   // the public policy key, used to check signatures
   scoped_ptr<keyczar::Keyczar> public_policy_key_;

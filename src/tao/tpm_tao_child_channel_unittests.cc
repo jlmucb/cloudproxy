@@ -30,23 +30,22 @@ using std::stringstream;
 
 using tao::TPMTaoChildChannel;
 
-DEFINE_string(aik_blob_file,
-    "/home/tmroeder/src/fileProxy/src/apps/aikblob",
-    "The blob for an AIK loaded in the TPM");
+DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
+              "The blob for an AIK loaded in the TPM");
 
 class TPMTaoChildChannelTest : public ::testing::Test {
-  protected:
-    virtual void SetUp() {
-      ifstream aik_blob_file(FLAGS_aik_blob_file, ifstream::in);
-      stringstream aik_blob_stream;
-      aik_blob_stream << aik_blob_file.rdbuf();
-      list<UINT32> pcrs_to_seal{17, 18};
-      // TODO(tmroeder): add a real attestation for the aik blob
-      tao_.reset(new TPMTaoChildChannel(aik_blob_stream.str(), "", pcrs_to_seal));
-      ASSERT_TRUE(tao_->Init());
-    }
+ protected:
+  virtual void SetUp() {
+    ifstream aik_blob_file(FLAGS_aik_blob_file, ifstream::in);
+    stringstream aik_blob_stream;
+    aik_blob_stream << aik_blob_file.rdbuf();
+    list<UINT32> pcrs_to_seal{17, 18};
+    // TODO(tmroeder): add a real attestation for the aik blob
+    tao_.reset(new TPMTaoChildChannel(aik_blob_stream.str(), "", pcrs_to_seal));
+    ASSERT_TRUE(tao_->Init());
+  }
 
-    scoped_ptr<TPMTaoChildChannel> tao_;
+  scoped_ptr<TPMTaoChildChannel> tao_;
 };
 
 TEST_F(TPMTaoChildChannelTest, SealTest) {
@@ -68,16 +67,6 @@ TEST_F(TPMTaoChildChannelTest, AttestTest) {
   string bytes("Data to attest to");
   string attestation;
   EXPECT_TRUE(tao_->Attest(bytes, &attestation));
-}
-
-TEST_F(TPMTaoChildChannelTest, VerifyAttestTest) {
-  string bytes("Data to attest to");
-  string attestation;
-  EXPECT_TRUE(tao_->Attest(bytes, &attestation));
-
-  string data;
-  EXPECT_TRUE(tao_->VerifyAttestation(attestation, &data));
-  EXPECT_EQ(data, bytes);
 }
 
 GTEST_API_ int main(int argc, char **argv) {

@@ -50,8 +50,7 @@ class LinuxTao : public Tao {
   LinuxTao(const string &secret_path, const string &key_path,
            const string &pk_path, const string &whitelist_path,
            const string &policy_pk_path, TaoChildChannel *host_channel,
-           TaoChannel *child_channel,
-           HostedProgramFactory *program_factory);
+           TaoChannel *child_channel, HostedProgramFactory *program_factory);
   virtual ~LinuxTao() {}
   virtual bool Init();
   virtual bool Destroy();
@@ -64,7 +63,6 @@ class LinuxTao : public Tao {
                       string *data) const;
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
   /// Get an attestation from the host Tao on our key. Note that this

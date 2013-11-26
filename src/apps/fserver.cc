@@ -23,7 +23,9 @@
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include "cloudproxy/file_server.h"
+#include "tao/attestation_verifier.h"
 #include "tao/pipe_tao_child_channel.h"
+#include "tao/whitelist_auth.h"
 
 #include <mutex>
 #include <string>
@@ -33,8 +35,10 @@ using std::mutex;
 using std::string;
 using std::vector;
 
+using tao::AttestationVerifier;
 using tao::PipeTaoChildChannel;
 using tao::TaoChildChannel;
+using tao::WhitelistAuth;
 
 DEFINE_string(file_path, "file_server_files",
               "The path used by the file server to store files");
@@ -58,6 +62,9 @@ DEFINE_string(whitelist_path, "./signed_whitelist",
               "The path to the signed whitelist");
 DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_int32(port, 11235, "The port to listen on");
+
+DEFINE_string(aik_cert, "./HW/aik.crt",
+              "A certificate for the AIK, signed by the public policy key");
 
 vector<shared_ptr<mutex> > locks;
 
@@ -85,7 +92,7 @@ int main(int argc, char **argv) {
   }
 
   string params(argv[argc - 1]);
-  
+
   // TODO(tmroeder): generalize this to arbitrary channel strings
   scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
@@ -95,6 +102,16 @@ int main(int argc, char **argv) {
   ERR_load_BIO_strings();
   OpenSSL_add_all_algorithms();
   SSL_library_init();
+
+  scoped_ptr<keyczar::Keyczar> policy_key(
+      keyczar::Verifier::Read(FLAGS_policy_key.c_str()));
+  policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
+
+  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth());
+  whitelist_auth->Init(FLAGS_whitelist_path, *policy_key);
+
+  scoped_ptr<AttestationVerifier> verifier(new AttestationVerifier(
+      FLAGS_aik_cert, FLAGS_policy_key, whitelist_auth.release()));
 
   // set up locking in OpenSSL
   int lock_count = CRYPTO_num_locks();
@@ -109,6 +126,7 @@ int main(int argc, char **argv) {
       FLAGS_server_password, FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
       FLAGS_whitelist_path, FLAGS_server_enc_key, FLAGS_address, FLAGS_port);
 
-  CHECK(fs.Listen(*channel)) << "Could not listen for client connections";
+  CHECK(fs.Listen(*channel, *verifier))
+      << "Could not listen for client connections";
   return 0;
 }

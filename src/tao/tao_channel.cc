@@ -73,15 +73,6 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,
       result = tao.Attest(hash, rpc.data(), &result_data);
       resp.set_data(result_data);
       break;
-    case VERIFY_ATTESTATION:
-      if (!rpc.has_signature()) {
-        LOG(ERROR) << "Invald RPC: must supply attestation for VerifyAttest";
-        break;
-      }
-
-      result = tao.VerifyAttestation(rpc.signature(), &result_data);
-      resp.set_data(result_data);
-      break;
     default:
       LOG(ERROR) << "Unknown RPC " << rpc.rpc();
       break;
@@ -93,8 +84,7 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,
   return true;
 }
 
-bool TaoChannel::GetRPC(TaoChannelRPC *rpc,
-                        const string &child_hash) const {
+bool TaoChannel::GetRPC(TaoChannelRPC *rpc, const string &child_hash) const {
   CHECK_NOTNULL(rpc);
   return ReceiveMessage(rpc, child_hash);
 }

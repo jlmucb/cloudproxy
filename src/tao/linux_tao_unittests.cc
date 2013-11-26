@@ -99,8 +99,8 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
 
     string fake_linux_tao_hash("This is not a real hash");
-    scoped_ptr<DirectTaoChildChannel>
-      channel(new DirectTaoChildChannel(ft.release(), fake_linux_tao_hash));
+    scoped_ptr<DirectTaoChildChannel> channel(
+        new DirectTaoChildChannel(ft.release(), fake_linux_tao_hash));
     ASSERT_TRUE(channel->Init()) << "Could not init the channel";
 
     scoped_ptr<HostedProgramFactory> program_factory(new FakeProgramFactory());
@@ -109,10 +109,11 @@ class LinuxTaoTest : public ::testing::Test {
     string test_binary_digest;
     keyczar::MessageDigestImpl *sha256 = keyczar::CryptoFactory::SHA256();
     CHECK(sha256->Digest(test_binary_contents, &test_binary_digest))
-      << "Could not compute a SHA-256 hash over the file " << test_binary_path_;
+        << "Could not compute a SHA-256 hash over the file "
+        << test_binary_path_;
 
     CHECK(keyczar::base::Base64WEncode(test_binary_digest, &child_hash_))
-      << " Could not encode the digest under base64w";
+        << " Could not encode the digest under base64w";
 
     ofstream test_binary_file(test_binary_path_.c_str(), ofstream::out);
     test_binary_file << test_binary_contents;
@@ -143,10 +144,9 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
     whitelist_file.close();
 
-    tao_.reset(
-        new LinuxTao(secret_path, key_path, pk_path, whitelist_path,
-                     policy_pk_path, channel.release(),
-                     child_channel.release(), program_factory.release()));
+    tao_.reset(new LinuxTao(
+        secret_path, key_path, pk_path, whitelist_path, policy_pk_path,
+        channel.release(), child_channel.release(), program_factory.release()));
     ASSERT_TRUE(tao_->Init());
   }
 
@@ -188,17 +188,9 @@ TEST_F(LinuxTaoTest, FailAttestTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
-  string attestation; 
+  string attestation;
   string fake_hash("This is also not a hash");
   EXPECT_FALSE(tao_->Attest(fake_hash, bytes, &attestation));
-}
-
-TEST_F(LinuxTaoTest, FailVerifyAttestTest) {
-  string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
-
-  string data;
-  EXPECT_FALSE(tao_->VerifyAttestation(bytes, &data));
 }
 
 TEST_F(LinuxTaoTest, SealTest) {
@@ -236,23 +228,6 @@ TEST_F(LinuxTaoTest, AttestTest) {
 
   string attestation;
   EXPECT_TRUE(tao_->Attest(child_hash_, bytes, &attestation));
-}
-
-TEST_F(LinuxTaoTest, VerifyAttestTest) {
-  string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
-
-  list<string> args;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
-
-  string attestation;
-  EXPECT_TRUE(tao_->Attest(child_hash_, bytes, &attestation));
-
-  string data;
-  // TODO(tmroeder): shouldn't the verification then also return the child hash
-  // to make sure that it can check the child hash in any way it wants?
-  EXPECT_TRUE(tao_->VerifyAttestation(attestation, &data));
-  EXPECT_EQ(data, bytes);
 }
 
 GTEST_API_ int main(int argc, char **argv) {

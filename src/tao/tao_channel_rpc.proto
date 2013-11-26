@@ -30,7 +30,6 @@ enum RPC {
   SEAL = 4;
   UNSEAL = 5;
   ATTEST = 6;
-  VERIFY_ATTESTATION = 7;
 }
 
 message TaoChannelRPC {

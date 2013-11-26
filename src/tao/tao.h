@@ -34,7 +34,7 @@ namespace tao {
 // The Tao interface
 class Tao {
  public:
-  Tao() { }
+  Tao() {}
   virtual ~Tao() {}
   virtual bool Init() = 0;
   virtual bool Destroy() = 0;
@@ -47,8 +47,7 @@ class Tao {
                       string *data) const = 0;
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const = 0;
-  virtual bool VerifyAttestation(const string &attestation,
-                                 string *data) const = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(Tao);
 };

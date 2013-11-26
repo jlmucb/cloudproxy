@@ -20,6 +20,7 @@
 #ifndef TAO_TAO_AUTH_H_
 #define TAO_TAO_AUTH_H_
 
+#include "tao/attestation.pb.h"
 #include <string>
 
 using std::string;
@@ -31,6 +32,7 @@ class TaoAuth {
   virtual bool IsAuthorized(const string &program_hash) const = 0;
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const = 0;
+  virtual bool IsAuthorized(const Attestation &attestation) const = 0;
 };
 }  // namespace tao
 

@@ -23,7 +23,7 @@
 
 namespace tao {
 bool TaoChildChannel::StartHostedProgram(const string &path,
-                                    const list<string> &args) {
+                                         const list<string> &args) {
   TaoChannelRPC rpc;
   rpc.set_rpc(START_HOSTED_PROGRAM);
 
@@ -68,7 +68,7 @@ bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
 }
 
 bool TaoChildChannel::SendAndReceiveData(const string &in, string *out,
-                                    RPC rpc_type) const {
+                                         RPC rpc_type) const {
   CHECK_NOTNULL(out);
 
   TaoChannelRPC rpc;
@@ -116,28 +116,6 @@ bool TaoChildChannel::Attest(const string &data, string *attestation) const {
     }
 
     attestation->assign(resp.data().data(), resp.data().size());
-  }
-
-  return resp.success();
-}
-
-bool TaoChildChannel::VerifyAttestation(const string &attestation,
-                                   string *data) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(VERIFY_ATTESTATION);
-  rpc.set_signature(attestation);
-  SendRPC(rpc);
-
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "A successful VerifyAttestation did not return data";
-      return false;
-    }
-
-    data->assign(resp.data().data(), resp.data().size());
   }
 
   return resp.success();

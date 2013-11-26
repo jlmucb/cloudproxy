@@ -41,6 +41,7 @@ using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
+using tao::AttestationVerifier;
 using tao::SignData;
 using tao::TaoChildChannel;
 using tao::WhitelistAuth;
@@ -97,7 +98,8 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   BIO_set_conn_hostname(bio_.get(), const_cast<char *>(host_and_port.c_str()));
 }
 
-bool CloudClient::Connect(const TaoChildChannel &t) {
+bool CloudClient::Connect(const TaoChildChannel &t,
+                          const AttestationVerifier &v) {
   int r = BIO_do_connect(bio_.get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
@@ -146,7 +148,7 @@ bool CloudClient::Connect(const TaoChildChannel &t) {
 
   // this step also checks to see if the program hash is authorized
   string data;
-  CHECK(t.VerifyAttestation(sm.attestation(), &data))
+  CHECK(v.VerifyAttestation(sm.attestation(), &data))
       << "The Attestation from the server did not pass verification";
 
   CHECK_EQ(data.compare(serialized_peer_cert), 0)

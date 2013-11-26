@@ -41,7 +41,6 @@ class DirectTaoChildChannel : public TaoChildChannel {
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
   virtual bool Attest(const string &data, string *attestation) const;
-  virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  protected:
   virtual bool ReceiveMessage(google::protobuf::Message *m) const {

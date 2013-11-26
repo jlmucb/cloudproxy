@@ -78,6 +78,22 @@ void printResources(objectManager<resource>* pRM);
 // ------------------------------------------------------------------------
 
 
+serviceThread::serviceThread() 
+{
+    m_fthreadValid;
+    m_threadData= NULL;
+    m_threadID= -1;
+}
+
+
+serviceThread::~serviceThread() 
+{
+}
+
+
+// ------------------------------------------------------------------------
+
+
 serviceChannel::serviceChannel()
 {
     m_serverState= NOSTATE;
@@ -150,79 +166,12 @@ int serviceChannel::processRequests()
             return -1;
         }
 
-        if(oReq.m_szResourceName==NULL) {
-            fprintf(g_logFile, "serviceChannel::processRequests: Empty resource name\n");
-            return -1;
-        }
-
-        if(strcmp(oReq.m_szAction, "getResource")==0) {
-            if(!m_fileServices.serversendResourcetoclient(oReq,
-                        m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
-                fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
-                return -1;
-            }
-            return 1;
-        }
-        else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-            if(!m_fileServices.servergetResourcefromclient(oReq,  
-                        m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
-                fprintf(g_logFile, "servercreateResourceonserver failed\n");
-                return -1;
-            }
-            return 1;
-        }
-        else if(strcmp(oReq.m_szAction, "createResource")==0) {
-            if(!m_fileServices.servercreateResourceonserver(oReq,
-                        m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "servercreateResourceonserver failed\n");
-                return -1;
-            }
-            return 1;
-        }
-        else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-            if(!m_fileServices.serverchangeownerofResource(oReq,
-                        m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "serveraddownertoResourcefailed\n");
-                return -1;
-            }
-            return 1;
-        }
-        else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-            if(!m_fileServices.serverchangeownerofResource(oReq,
-                        m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "serverremoveownerfromResource failed\n");
-                return -1;
-            }
-            return 1;
-        }
-        else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-            if(!m_fileServices.serverdeleteResource(oReq,
-                        m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, "serverdeleteResource failed\n");
-                return -1;
-            }
-            return 1;
-        }
-        else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-            if(!m_fileServices.servergetProtectedFileKey(oReq,
-                        m_pParent->m_accessCheckTimer)) {
-                fprintf(g_logFile, 
-                    "serviceChannel::processRequests: servergetProtectedKey failed\n");
-                return -1;
-            }
-            return 1;
-        }
-        else {
-            fprintf(g_logFile, 
-                    "serviceChannel::processRequests: invalid request type\n");
-            return -1;
-        }
+        return *m_requestService(oReq, this);
     }
 }
 
 
-bool serviceChannel::initServiceChannel(metaData* pMetaData, 
-                                           safeChannel* pSafeChannel)
+bool serviceChannel::initServiceChannel(safeChannel* pSafeChannel)
 {
     int     n= 0;
 

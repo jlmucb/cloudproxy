@@ -85,6 +85,85 @@ void printResources(objectManager<resource>* pRM);
 // ------------------------------------------------------------------------
 
 
+// request loop for fileServer
+#if 0
+int requestService(Request& oReq, serviceChannel* service)
+{
+    if(oReq.m_szResourceName==NULL) {
+        fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");
+        return -1;
+    }
+
+    if(strcmp(oReq.m_szAction, "getResource")==0) {
+        if(!m_fileServices.serversendResourcetoclient(oReq,
+                    m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
+            fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "sendResource")==0) {
+        if(!m_fileServices.servergetResourcefromclient(oReq,  
+                    m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
+            fprintf(g_logFile, "servercreateResourceonserver failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "createResource")==0) {
+        if(!m_fileServices.servercreateResourceonserver(oReq,
+                    m_pParent->m_accessCheckTimer)) {
+            fprintf(g_logFile, "servercreateResourceonserver failed\n");
+            return -1;
+        }
+            return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "addOwner")==0) {
+        if(!m_fileServices.serverchangeownerofResource(oReq,
+                    m_pParent->m_accessCheckTimer)) {
+            fprintf(g_logFile, "serveraddownertoResourcefailed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
+        if(!m_fileServices.serverchangeownerofResource(oReq,
+                    m_pParent->m_accessCheckTimer)) {
+            fprintf(g_logFile, "serverremoveownerfromResource failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
+        if(!m_fileServices.serverdeleteResource(oReq,
+                    m_pParent->m_accessCheckTimer)) {
+            fprintf(g_logFile, "serverdeleteResource failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
+        if(!m_fileServices.servergetProtectedFileKey(oReq,
+                    m_pParent->m_accessCheckTimer)) {
+            fprintf(g_logFile, 
+                "theServiceChannel::processRequests: servergetProtectedKey failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else {
+        fprintf(g_logFile, 
+                    "theServiceChannel::processRequests: invalid request type\n");
+        return -1;
+    }
+}
+
+#endif
+
+
+// ------------------------------------------------------------------------
+
+
 theServiceChannel::theServiceChannel()
 {
     m_pParent= NULL;

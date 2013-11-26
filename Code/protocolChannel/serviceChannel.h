@@ -42,17 +42,26 @@
 #define  MAXNUMCLIENTS  50
 
 
+// Thread management for clients
+class serviceThread {
+public:
+    bool                m_fthreadValid;
+    pthread_t           m_threadData;
+    int                 m_threadID;
 
-//  thread for client channel
+    serviceThread();
+    ~serviceThread();
+};
+
+
 void* channelThread(void* ptr);
 
 
 class serviceChannel {
 public:
-    bool                m_fThreadValid;
     int                 m_serverState;
-
     session             m_serverSession;
+
     bool                m_fChannelAuthenticated;
     int                 m_fdChannel;
     safeChannel         m_oSafeChannel;
@@ -60,8 +69,11 @@ public:
     taoHostServices*    m_ptaoHost;
     taoEnvironment*     m_ptaoEnvironment;
 
-    fileServices        m_fileServices;
-    metaData*           m_pMetaData;
+    serviceThead*       m_pmyThread;
+    void*               m_sharedServices;
+
+    // custom loop for service requests
+    int (*m_requestService)(Request&, serviceChannel* service); 
 
     serviceChannel();
     ~serviceChannel();
@@ -72,7 +84,6 @@ public:
     int                 processRequests();
     bool                serviceChannel();
 };
-
 
 #endif
 

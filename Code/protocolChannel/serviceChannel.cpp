@@ -97,17 +97,29 @@ serviceThread::~serviceThread()
 serviceChannel::serviceChannel()
 {
     m_serverState= NOSTATE;
+    m_serverType= 0;
     m_fdChannel= -1;
-    m_fChannelAuthenticated= false;
+    m_pPolicyCert= NULL;
     m_ptaoHost= NULL;
-    m_ptaoEnvironment= NULL;
-    m_fThreadValid= false;
+    m_ptaoEnv= NULL;
+    m_pmyThread= NULL;
+    m_sharedServices= NULL;
+    m_requestService= NULL;
 }
 
 
 serviceChannel::~serviceChannel()
 {
-    //FIX: delete metadata?
+    // No deletions required
+    m_serverState= NOSTATE;
+    m_serverType= 0;
+    m_fdChannel= -1;
+    m_pPolicyCert= NULL;
+    m_ptaoHost= NULL;
+    m_ptaoEnv= NULL;
+    m_pmyThread= NULL;
+    m_sharedServices= NULL;
+    m_requestService= NULL;
 }
 
 
@@ -171,65 +183,63 @@ int serviceChannel::processRequests()
 }
 
 
-bool serviceChannel::initServiceChannel(safeChannel* pSafeChannel)
+bool serviceChannel::runServiceChannel()
 {
     int     n= 0;
+    bool    fRet= true;
 
 #ifdef  TEST
-    fprintf(g_logFile, "serviceChannel::initserviceChannel(%08x, %08x)\n",
-            pMetaData, pSafeChannel);
+    fprintf(g_logFile, "serviceChannel::runServiceChannel\n");
     fflush(g_logFile);
 #endif
 
-    m_serverState= INITSTATE;
+    try {
+        m_serverState= INITSTATE;
 
-    RSAKey* ppolicyKey= (RSAKey*)m_pParent->m_opolicyCert.getSubjectKeyInfo();
+        // Initialize program private key and certificate for session
+        if(!m_serverSession.serverInit(ptaoEnv->policyCertPtr(),
+                                   m_pPolicyCert, ptaoEnv->myCertPtr(),
+                                   (RSAKey*)ptaoEnv->privateKeyPtr())) 
+            throw "serviceChannel::runServiceChannel: session serverInit failed\n";
 
-    // Initialize program private key and certificate for session
-    if(!m_serverSession.serverInit(m_pParent->m_tcHome.policyCertPtr(),
-                                   ppolicyKey, m_pParent->m_tcHome.myCertPtr(),
-                                   (RSAKey*)m_pParent->m_tcHome.privateKeyPtr())) {
-        fprintf(g_logFile, "serviceChannel::serviceChannel: session serverInit failed\n");
-        return false;
-    }
 #ifdef  TEST
-    fprintf(g_logFile, "serviceChannel::initserviceChannel, serverInit complete\n");
-    fflush(g_logFile);
-#endif
-
-    // copy my public key into server public key
-    if(!m_pParent->m_tcHome.myCertValid() ||
-           !m_serverSession.getServerCert(m_pParent->m_tcHome.myCertPtr())) {
-        fprintf(g_logFile, "serviceChannel::serviceChannel: Cant load client public key structures\n");
-        return false;
-    }
-
-    // negotiate channel
-    m_pParent->m_protocolNegoTimer.Start();
-    if(!m_serverSession.serverprotocolNego(m_fdChannel, m_oSafeChannel))
-        throw("fileServer::Init: protocolNego failed\n");
-    m_pParent->m_protocolNegoTimer.Stop();
-
-    if(!m_fileServices.initFileServices(&m_serverSession, 
-                                        &(m_pParent->m_opolicyCert),
-                                        &(m_pParent->m_tcHome), 
-                                        m_pParent->m_encType, m_pParent->m_fileKeys, 
-                                        pMetaData, pSafeChannel)) {
-        throw("serviceChannel::serviceChannel: can't init fileServices\n");
-    }
-
-    m_serverState= REQUESTSTATE;
-    while((n=processRequests())!=0) {
-        if(n<0)
-            fprintf(g_logFile, "serviceChannel::serviceChannel: processRequest error\n");
+        fprintf(g_logFile, "serviceChannel::runServiceChannel, serverInit complete\n");
         fflush(g_logFile);
-        m_pParent->printTimers(g_logFile);
-        m_pParent->resetTimers();
+#endif
+
+        // copy my public key into server public key
+        if(!ptaoEnv->myCertValid() || !m_serverSession.getServerCert(ptaoEnv->myCertPtr())) 
+            throw "serviceChannel::runServiceChannel: Cant load client public key structures\n";
+
+        // negotiate channel
+#if 0
+        m_pParent->m_protocolNegoTimer.Start();
+#endif
+        if(!m_serverSession.serverprotocolNego(m_fdChannel, m_oSafeChannel)) 
+            throw "serviceChannel::runServiceChannel: protocolNego failed\n";
+#if 0
+    m_pParent->m_protocolNegoTimer.Stop();
+#endif
+
+
+        m_serverState= REQUESTSTATE;
+        while((n=processRequests())!=0) {
+            if(n<0)
+                fprintf(g_logFile, "serviceChannel::runServiceChannel: processRequest error\n");
+#if 0
+            m_pParent->printTimers(g_logFile);
+            m_pParent->resetTimers();
+#endif
+        }
+        m_serverState= SERVICETERMINATESTATE;
     }
-    m_serverState= SERVICETERMINATESTATE;
+    catch(const char* szErr) {
+        fprintf(g_logFile, "serviceChannel::runServiceChannelerror: %s\n", szErr);
+        fRet= false;
+    }
 
 #ifdef TEST
-    fprintf(g_logFile, "serviceChannel: serviceChannel terminating\n");
+    fprintf(g_logFile, "serviceChannel: runServiceChannel terminating\n");
     fflush(g_logFile);
 #endif
 
@@ -237,31 +247,96 @@ bool serviceChannel::initServiceChannel(safeChannel* pSafeChannel)
         close(m_fdChannel);
         m_fdChannel= -1;
     }
+    return fRet;
+}
+
+
+bool serviceChannel::initServiceChannel(u32 serverType, int newfd, 
+                                        PrincipalCert* pPolicyCert,
+                                        taoHostServices* ptaoHost,
+                                        taoEnvironment * ptaoEnv, serviceThread* pmyThread,
+                                        int (*requestService)(Request&, serviceChannel*),
+                                        void* pmySharedServices)
+{
+#ifdef  TEST
+    fprintf(g_logFile, "serviceChannel::initserviceChannel\n");
+    fflush(g_logFile);
+#endif
+
+    m_serverType= serverType;
+    if(newfd<0) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad channel\n");
+        return false;
+    }
+    m_fdChannel= newfd;
+
+    if(pPolicyCert==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad policy cert\n");
+        return false;
+    }
+    m_pPolicyCert= pPolicyCert;
+
+    if(ptaoHost==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad tao Host\n");
+        return false;
+    }
+    m_ptaoHost= ptaoHost;
+
+    if(ptaoEnv==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad tao Environment\n");
+        return false;
+    }
+    m_ptaoEnv= ptaoEnv;
+
+    if(pmyThread==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad thread structure\n");
+        return false;
+    }
+    m_pmyThread= pmyThread;
+
+    if(requestService==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad service request function\n");
+        return false;
+    }
+    m_requestService= requestService;
+
+    if(pmySharedServices==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad shared services pointer\n");
+        return false;
+    }
+    m_pmySharedServices= pmySharedServices;
+
+#if 0
+    // this gets done before runloop in app
+    if(!m_fileServices.initFileServices(&m_serverSession, 
+                                        &(m_pParent->m_opolicyCert),
+                                        &(m_pParent->m_tcHome), 
+                                        m_pParent->m_encType, m_pParent->m_fileKeys, 
+                                        pMetaData, pSafeChannel)) {
+        throw("serviceChannel::runServiceChannel: can't init fileServices\n");
+    }
+#endif
+
     return true;
 }
 
 
 void* channelThread(void* ptr)
 {
+
+    pthread_detatch(pthread_self());
     try {
         serviceChannel*  poSc= (serviceChannel*) ptr;
 
 #ifdef TEST
         fprintf(g_logFile, "channelThread activated\n");
-        fprintf(g_logFile, "\tptr: %08x\n", ptr);
-        fprintf(g_logFile, "\tchannel: %d, parent: %08x\n",
-                    poSc->m_fdChannel, poSc->m_pParent);
         fflush(g_logFile);
 #endif
-        // pthread_detatch(pthread_self());
-        if(!poSc->initServiceChannel(poSc->m_pMetaData,
-                                     &poSc->m_oSafeChannel))
+        if(!poSc->runServiceChannel())
             throw("channelThread: initServiceChannel failed\n");
 
         // delete enty in thread table in parent
-        if(poSc->m_myPositionInParent>=0) 
-            poSc->m_pParent->m_fthreadValid[poSc->m_myPositionInParent]= false;
-        poSc->m_myPositionInParent= -1;
+        poSc->m_pmyThread->m_fthreadValid= false;
 #ifdef TEST
         fprintf(g_logFile, "channelThread exiting\n");
         fflush(g_logFile);

@@ -59,15 +59,17 @@ void* channelThread(void* ptr);
 
 class serviceChannel {
 public:
+    u32                 m_serverType;
     int                 m_serverState;
     session             m_serverSession;
 
-    bool                m_fChannelAuthenticated;
     int                 m_fdChannel;
     safeChannel         m_oSafeChannel;
 
+    PrincipalCert       m_pPolicyCert;
+
     taoHostServices*    m_ptaoHost;
-    taoEnvironment*     m_ptaoEnvironment;
+    taoEnvironment*     m_ptaoEnv;
 
     serviceThead*       m_pmyThread;
     void*               m_sharedServices;
@@ -78,9 +80,12 @@ public:
     serviceChannel();
     ~serviceChannel();
 
-    bool                initServiceChannel(safeChannel* pSafeChannel, 
-                                           taoHostServices* ptaoHost, 
-                                           taoEnvironment * ptaoEnv);
+    bool                initServiceChannel(u32 serverType, int newfd, 
+                                           PrincipalCert* pPolicyCert, taoHostServices* ptaoHost,
+                                           taoEnvironment * ptaoEnv, serviceThread* pmyThread,
+                                           int (*requestService)(Request&, serviceChannel*),
+                                           void* pmySharedServices);
+    bool                runServiceChannel();
     int                 processRequests();
     bool                serviceChannel();
 };

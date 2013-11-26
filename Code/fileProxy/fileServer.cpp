@@ -87,73 +87,90 @@ void printResources(objectManager<resource>* pRM);
 
 // request loop for fileServer
 #if 0
-int requestService(Request& oReq, serviceChannel* service)
+
+class fileServerLocals{
+public:
+    fileServer*     m_pServerObj;
+    metaData*       m_pMetaData;
+    fileServices*   m_pFileServices;
+};
+
+
+int fileServerrequestService(Request& oReq, serviceChannel* service)
 {
     if(oReq.m_szResourceName==NULL) {
-        fprintf(g_logFile, "theServiceChannel::processRequests: Empty resource name\n");
+        fprintf(g_logFile, "fileServerrequestService: Empty resource name\n");
         return -1;
     }
 
     if(strcmp(oReq.m_szAction, "getResource")==0) {
-        if(!m_fileServices.serversendResourcetoclient(oReq,
-                    m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
-            fprintf(g_logFile, "serversendResourcetoclient failed 1\n");
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices
+             ->serversendResourcetoclient(oReq,
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer, 
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_decTimer)) {
+            fprintf(g_logFile, "fileServerrequestService: serversendResourcetoclient failed 1\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-        if(!m_fileServices.servergetResourcefromclient(oReq,  
-                    m_pParent->m_accessCheckTimer, m_pParent->m_encTimer)) {
-            fprintf(g_logFile, "servercreateResourceonserver failed\n");
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
+              servergetResourcefromclient(oReq,  
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer, 
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_encTimer)) {
+            fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "createResource")==0) {
-        if(!m_fileServices.servercreateResourceonserver(oReq,
-                    m_pParent->m_accessCheckTimer)) {
-            fprintf(g_logFile, "servercreateResourceonserver failed\n");
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
+             servercreateResourceonserver(oReq,
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+            fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
         }
             return 1;
     }
     else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-        if(!m_fileServices.serverchangeownerofResource(oReq,
-                    m_pParent->m_accessCheckTimer)) {
-            fprintf(g_logFile, "serveraddownertoResourcefailed\n");
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
+             serverchangeownerofResource(oReq,
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+            fprintf(g_logFile, "fileServerrequestService: serveraddownertoResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-        if(!m_fileServices.serverchangeownerofResource(oReq,
-                    m_pParent->m_accessCheckTimer)) {
-            fprintf(g_logFile, "serverremoveownerfromResource failed\n");
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
+             serverchangeownerofResource(oReq,
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+            fprintf(g_logFile, "fileServerrequestService: serverremoveownerfromResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-        if(!m_fileServices.serverdeleteResource(oReq,
-                    m_pParent->m_accessCheckTimer)) {
-            fprintf(g_logFile, "serverdeleteResource failed\n");
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
+             serverdeleteResource(oReq,
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+            fprintf(g_logFile, "fileServerrequestService:serverdeleteResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-        if(!m_fileServices.servergetProtectedFileKey(oReq,
-                    m_pParent->m_accessCheckTimer)) {
+        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
+             servergetProtectedFileKey(oReq,
+                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
             fprintf(g_logFile, 
-                "theServiceChannel::processRequests: servergetProtectedKey failed\n");
+                "fileServerrequestService:: servergetProtectedKey failed\n");
             return -1;
         }
         return 1;
     }
     else {
-        fprintf(g_logFile, 
-                    "theServiceChannel::processRequests: invalid request type\n");
+        fprintf(g_logFile, "fileServerrequestService: invalid request type\n");
         return -1;
     }
 }
@@ -162,6 +179,9 @@ int requestService(Request& oReq, serviceChannel* service)
 
 
 // ------------------------------------------------------------------------
+
+
+#if 1
 
 
 theServiceChannel::theServiceChannel()
@@ -412,6 +432,7 @@ void* channelThread(void* ptr)
     pthread_exit(NULL);
     return NULL;
 }
+#endif
     
 
 // ----------------------------------------------------------------------------
@@ -732,7 +753,11 @@ bool fileServer::server()
         fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
     }
 
+#if 1
     theServiceChannel*  poSc= NULL;
+#else
+    serviceChannel*  poSc= NULL;
+#endif
     int                 i;
     for(;;) {
 #ifdef TEST
@@ -749,6 +774,7 @@ bool fileServer::server()
         fflush(g_logFile);
 #endif
 
+#if 1
         poSc= new theServiceChannel();
 
         if(poSc!=NULL) {
@@ -791,6 +817,55 @@ bool fileServer::server()
         else {
             fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
         }
+#else
+        poSc= new serviceChannel();
+
+        if(poSc!=NULL) {
+
+            for(i=0; i<m_iNumClients; i++) {
+                if(!m_serverThreads[i].m_fthreadValid)
+                    break;
+            }
+
+            if(i==m_iNumClients) {
+                if(m_iNumClients>=MAXNUMCLIENTS) {
+                    fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
+                    return false;
+                }
+                i= m_iNumClients++;
+            }
+
+            pmySharedServices->m_pServerObj= this;
+            pmySharedServices->m_pFileServices;
+            pmySharedServices->m_pMetaData= &m_oMetaData;
+            if(!poSc->initServiceChannel(FILESERVER, newfd, &m_oPolicyCert, &m_host, &m_tcHome,
+                                         &m_serverThreads[i], fileServerrequestService
+                                         (void*)pmySharedServices)) {
+            }
+
+#ifdef TEST
+            fprintf(g_logFile, "fileServer: slot %d, about to pthread_create\n", i);
+            fprintf(g_logFile, "\tnewfd: %d\n", newfd);
+            fflush(g_logFile);
+#endif
+
+            memset(&m_threadData[i], 0, sizeof(pthread_t));
+            m_serverThreads[i].m_threadID= pthread_create(&m_serverThreads[i].m_threadData, NULL, 
+                                    channelThread, poSc);
+#ifdef TEST
+            fprintf(g_logFile, "fileServer: pthread create returns: %d\n", 
+                    m_serverThreads[i].m_threadIDs);
+            fflush(g_logFile);
+#endif
+            if(m_serverThreads[i].m_threadID>=0)
+                m_serverThreads[i].m_fthreadValid= true;
+            else
+                m_serverThreads[i].m_fthreadValid= false;
+        }
+        else {
+            fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
+        }
+#endif
 
         poSc= NULL;
         newfd= -1;

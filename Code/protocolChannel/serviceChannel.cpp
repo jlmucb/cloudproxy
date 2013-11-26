@@ -80,7 +80,7 @@ void printResources(objectManager<resource>* pRM);
 
 serviceThread::serviceThread() 
 {
-    m_fthreadValid;
+    m_fthreadValid= false;
     m_threadData= NULL;
     m_threadID= -1;
 }

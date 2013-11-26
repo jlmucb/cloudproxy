@@ -38,6 +38,20 @@
       ],
     },
     {
+      'target_name': 'linux_tao_service',
+      'type': 'executable',
+      'sources': [ 'linux_tao_service.cc', ],
+      'dependencies': [ 
+        '../tao/tao.gyp:tao',
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
+      ],
+      'libraries': [
+        '-lcrypto',
+        '-lssl',
+      ],
+    },
+    {
       'target_name': 'test',
       'type': 'executable',
       'sources': [ 'main.cc', ],

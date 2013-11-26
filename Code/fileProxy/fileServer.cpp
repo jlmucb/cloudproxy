@@ -2,7 +2,7 @@
 //  File: fileServer.cpp
 //      John Manferdelli
 //
-//  Description: Sever for fileServer
+//  Description: Server for fileServer
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 
 //    (c) John Manferdelli.  All rights reserved.

@@ -44,8 +44,9 @@
 #include "tao.h"
 
 #include "objectManager.h"
-#include "secPrincipal.h"
-#include "claims.h"
+#include "cert.h"
+#include "validateEvidence.h"
+#include "attest.h"
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
 #include "domain.h"
@@ -74,10 +75,6 @@ bool             g_fTerminateServer= false;
 int              iQueueSize= 5;
 
 bool             g_globalpolicyValid= false;
-// metaData         g_theVault;
-PrincipalCert*   g_policyPrincipalCert= NULL;
-RSAKey*          g_policyKey= NULL;
-accessPrincipal* g_policyAccessPrincipal= NULL;
 
 #include "./policyCert.inc"
 

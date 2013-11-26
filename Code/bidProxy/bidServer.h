@@ -63,7 +63,7 @@ public:
     u32                 m_uPad;
     u32                 m_uHmac;
     int                 m_sizeKey;
-    byte                m_bidKeys[SMALLKEYSIZE];
+    byte                m_bidKeys[GLOBALMAXSYMKEYSIZE];
 
     char*               m_szSigningCertFile;
     char*               m_szSealingCertFile;

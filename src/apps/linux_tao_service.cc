@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
                    FLAGS_policy_pk_path, tpm.release(),
                    pipe_channel.release(), process_factory.release(),
 		   whitelist_auth.release()));
-
+  CHECK(tao->Init()) << "Could not initialize the LinuxTao";
   // The remain command-line flags are passed to the program it starts.
   list<string> args;
   for (int i = 1; i < argc; i++) {

@@ -89,7 +89,8 @@ int main(int argc, char** argv) {
   scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
+  scoped_ptr<WhitelistAuth> whitelist_auth(
+      new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
 
   LOG(INFO) << "Client successfully established communication with the Tao";
   int size = 6;
@@ -104,13 +105,12 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "About to create a client";
   CloudClient cc(FLAGS_client_cert, FLAGS_client_key, *secret, FLAGS_policy_key,
-                 FLAGS_pem_policy_key, FLAGS_address,
-                 FLAGS_port, whitelist_auth.release());
+                 FLAGS_pem_policy_key, FLAGS_address, FLAGS_port,
+                 whitelist_auth.release());
 
   LOG(INFO) << "Created a client";
-  CHECK(cc.Connect(*channel))
-      << "Could not connect to the server at " << FLAGS_address << ":"
-      << FLAGS_port;
+  CHECK(cc.Connect(*channel)) << "Could not connect to the server at "
+                              << FLAGS_address << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write, getting randomness from the Tao

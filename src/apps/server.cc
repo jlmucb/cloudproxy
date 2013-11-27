@@ -115,7 +115,8 @@ int main(int argc, char **argv) {
       keyczar::Verifier::Read(FLAGS_policy_key.c_str()));
   policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
+  scoped_ptr<WhitelistAuth> whitelist_auth(
+      new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
   CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist auth";
 
   // set up locking in OpenSSL
@@ -129,10 +130,9 @@ int main(int argc, char **argv) {
   LOG(INFO) << "Starting CloudServer";
 
   CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret, FLAGS_policy_key,
-                 FLAGS_pem_policy_key, FLAGS_acls,
-                 FLAGS_address, FLAGS_port, whitelist_auth.release());
+                 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address, FLAGS_port,
+                 whitelist_auth.release());
   LOG(INFO) << "Started CloudServer. About to listen";
-  CHECK(cs.Listen(*channel))
-      << "Could not listen for client connections";
+  CHECK(cs.Listen(*channel)) << "Could not listen for client connections";
   return 0;
 }

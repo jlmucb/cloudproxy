@@ -35,12 +35,15 @@ using std::set;
 namespace tao {
 class RootAuth : public TaoAuth {
  public:
-  RootAuth(const string &policy_public_key) : policy_public_key_(policy_public_key), policy_key_(NULL) {}
+  RootAuth(const string &policy_public_key)
+      : policy_public_key_(policy_public_key), policy_key_(NULL) {}
   virtual ~RootAuth() {}
   virtual bool Init();
   virtual bool IsAuthorized(const string &program_hash) const { return false; }
   virtual bool IsAuthorized(const string &program_name,
-                            const string &program_hash) const { return false; }
+                            const string &program_hash) const {
+    return false;
+  }
   virtual bool IsAuthorized(const Attestation &attestation) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 

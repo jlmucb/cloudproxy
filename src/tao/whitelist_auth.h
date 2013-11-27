@@ -35,7 +35,12 @@ using std::set;
 namespace tao {
 class WhitelistAuth : public TaoAuth {
  public:
-  WhitelistAuth(const string &whitelist_path, const string &policy_public_key) : whitelist_path_(whitelist_path), policy_public_key_(policy_public_key), policy_key_(NULL), whitelist_(), hash_whitelist_() {}
+  WhitelistAuth(const string &whitelist_path, const string &policy_public_key)
+      : whitelist_path_(whitelist_path),
+        policy_public_key_(policy_public_key),
+        policy_key_(NULL),
+        whitelist_(),
+        hash_whitelist_() {}
   virtual ~WhitelistAuth() {}
   virtual bool Init();
   virtual bool IsAuthorized(const string &program_hash) const;

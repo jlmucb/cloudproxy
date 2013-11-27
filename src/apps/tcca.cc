@@ -47,8 +47,10 @@ using tao::WhitelistAuth;
 DEFINE_int32(port, 11235, "The listening port for tcca");
 DEFINE_string(policy_key_path, "policy_key", "The path to the policy key");
 DEFINE_string(policy_key_pass, "cppolicy", "The password for the policy key");
-DEFINE_string(policy_pk_path, "policy_public_key", "The path to the policy public key");
-DEFINE_string(whitelist, "signed_whitelist", "The whitelist of hashes to accept");
+DEFINE_string(policy_pk_path, "policy_public_key",
+              "The path to the policy public key");
+DEFINE_string(whitelist, "signed_whitelist",
+              "The whitelist of hashes to accept");
 
 vector<shared_ptr<mutex> > locks;
 
@@ -93,11 +95,12 @@ int main(int argc, char **argv) {
 
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(struct sockaddr_in));
-  addr.sin_family= AF_INET;
-  addr.sin_addr.s_addr= htonl(INADDR_ANY);
-  addr.sin_port= htons((short)FLAGS_port);
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  addr.sin_port = htons((short)FLAGS_port);
 
-  int bind_err = bind(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+  int bind_err =
+      bind(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
   if (bind_err == -1) {
     PLOG(ERROR) << "Could not bind the socket";
     return 1;
@@ -109,8 +112,10 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
-  CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist authorization mechanism";
+  scoped_ptr<WhitelistAuth> whitelist_auth(
+      new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
+  CHECK(whitelist_auth->Init())
+      << "Could not initialize the whitelist authorization mechanism";
 
   // decrypt the private policy key so we can construct a signer
   keyczar::base::ScopedSafeString password(new string(FLAGS_policy_key_pass));
@@ -121,7 +126,7 @@ int main(int argc, char **argv) {
   // sign this serialized data with the keyset in FLAGS_key_loc
   scoped_ptr<keyczar::Keyczar> policy_key(keyczar::Signer::Read(*reader));
   CHECK(policy_key.get()) << "Could not initialize the signer from "
-                      << FLAGS_policy_key_path;
+                          << FLAGS_policy_key_path;
   policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
   while (true) {
@@ -151,7 +156,8 @@ int main(int argc, char **argv) {
 
     Statement orig_statement;
     if (!orig_statement.ParseFromString(a.serialized_statement())) {
-      LOG(ERROR) << "Could not parse the original statment from the attestation";
+      LOG(ERROR)
+          << "Could not parse the original statment from the attestation";
       continue;
     }
 
@@ -160,7 +166,8 @@ int main(int argc, char **argv) {
     policy_statement.CopyFrom(orig_statement);
 
     Attestation policy_attest;
-    string *serialized_policy_statement = policy_attest.mutable_serialized_statement();
+    string *serialized_policy_statement =
+        policy_attest.mutable_serialized_statement();
     if (!policy_statement.SerializeToString(serialized_policy_statement)) {
       LOG(ERROR) << "Could not serialize the policy statement";
       continue;
@@ -225,4 +232,3 @@ bool send_message(int sock, const Attestation &a) {
 
   return true;
 }
-

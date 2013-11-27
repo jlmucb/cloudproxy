@@ -58,9 +58,8 @@ class CloudClient {
   // well as with the addr:port of a CloudServer.
   CloudClient(const string &tls_cert, const string &tls_key,
               const string &secret, const string &public_policy_keyczar,
-              const string &public_policy_pem,
-              const string &server_addr, ushort server_port,
-	      tao::TaoAuth *auth_manager);
+              const string &public_policy_pem, const string &server_addr,
+              ushort server_port, tao::TaoAuth *auth_manager);
 
   virtual ~CloudClient() {}
 

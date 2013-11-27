@@ -63,7 +63,9 @@ using tao::Statement;
 DEFINE_string(
     aik_blob_file, "aikblob",
     "A file containing an AIK blob that has been loaded into the TPM");
-DEFINE_string(aik_attest_file, "aik.attest", "A serialized attestation to the AIK, signed by the policy private key");
+DEFINE_string(
+    aik_attest_file, "aik.attest",
+    "A serialized attestation to the AIK, signed by the policy private key");
 DEFINE_string(policy_key, "policy_key", "The path to the policy private key");
 DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 
@@ -172,8 +174,7 @@ int main(int argc, char **argv) {
   string serialized_statement;
   CHECK(s.SerializeToString(&serialized_statement)) << "Could not serialize";
   string sig;
-  CHECK(signer->Sign(serialized_statement, &sig))
-    << "Could not sign the key";
+  CHECK(signer->Sign(serialized_statement, &sig)) << "Could not sign the key";
 
   // There's no cert, since this is signed by the root key
   a.set_type(tao::ROOT);
@@ -182,6 +183,6 @@ int main(int argc, char **argv) {
 
   ofstream attest_file(FLAGS_aik_attest_file, ofstream::out);
   CHECK(a.SerializeToOstream(&attest_file))
-    << "Could not serialize the attestation to a file";
+      << "Could not serialize the attestation to a file";
   return 0;
 }

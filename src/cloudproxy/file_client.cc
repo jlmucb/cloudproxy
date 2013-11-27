@@ -28,10 +28,9 @@ FileClient::FileClient(const string &file_path, const string &tls_cert,
                        const string &public_policy_keyczar,
                        const string &public_policy_pem,
                        const string &server_addr, ushort server_port,
-		       tao::TaoAuth *auth_manager)
+                       tao::TaoAuth *auth_manager)
     : CloudClient(tls_cert, tls_key, tls_password, public_policy_keyczar,
-                  public_policy_pem, server_addr,
-                  server_port, auth_manager),
+                  public_policy_pem, server_addr, server_port, auth_manager),
       file_path_(file_path) {
   struct stat st;
   CHECK_EQ(stat(file_path.c_str(), &st), 0) << file_path << " does not exist";

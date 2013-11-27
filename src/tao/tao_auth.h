@@ -40,7 +40,8 @@ class TaoAuth {
   // @param attestation An Attestation produced by tao::Tao::Attest()
   // @param[out] data The extracted data from the Statement in the Attestation
   // @returns true if the attestation passes verification
-  virtual bool VerifyAttestation(const string &attestation, string *data) const = 0;
+  virtual bool VerifyAttestation(const string &attestation,
+                                 string *data) const = 0;
 };
 }  // namespace tao
 

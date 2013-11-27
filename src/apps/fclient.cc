@@ -84,18 +84,18 @@ int main(int argc, char** argv) {
   OpenSSL_add_all_algorithms();
   SSL_library_init();
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
+  scoped_ptr<WhitelistAuth> whitelist_auth(
+      new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
 
   LOG(INFO) << "About to create a client";
-  cloudproxy::FileClient fc(FLAGS_file_path, FLAGS_client_cert,
-                            FLAGS_client_key, FLAGS_client_password,
-                            FLAGS_policy_key, FLAGS_pem_policy_key,
-                            FLAGS_address, FLAGS_port, whitelist_auth.release());
+  cloudproxy::FileClient fc(
+      FLAGS_file_path, FLAGS_client_cert, FLAGS_client_key,
+      FLAGS_client_password, FLAGS_policy_key, FLAGS_pem_policy_key,
+      FLAGS_address, FLAGS_port, whitelist_auth.release());
 
   LOG(INFO) << "Created a client";
-  CHECK(fc.Connect(*channel))
-      << "Could not connect to the server at " << FLAGS_address << ":"
-      << FLAGS_port;
+  CHECK(fc.Connect(*channel)) << "Could not connect to the server at "
+                              << FLAGS_address << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write

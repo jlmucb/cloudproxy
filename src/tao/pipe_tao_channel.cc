@@ -36,8 +36,8 @@ using std::thread;
 
 namespace tao {
 PipeTaoChannel::PipeTaoChannel(const string &socket_path)
-  : domain_socket_path_(socket_path) { }
-PipeTaoChannel::~PipeTaoChannel() { }
+    : domain_socket_path_(socket_path) {}
+PipeTaoChannel::~PipeTaoChannel() {}
 
 bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   if (params == nullptr) {
@@ -249,7 +249,6 @@ bool PipeTaoChannel::Listen(Tao *tao) {
 
   LOG(INFO) << "Bound the unix socket to " << domain_socket_path_;
 
-
   while (true) {
     // set up the select operation with the current fds and the unix socket
     fd_set read_fds;
@@ -257,7 +256,8 @@ bool PipeTaoChannel::Listen(Tao *tao) {
     int max = sock;
     FD_SET(sock, &read_fds);
 
-    for (pair<const string, pair<int, int>> &descriptor : hash_to_descriptors_) {
+    for (pair<const string, pair<int, int>> &descriptor :
+         hash_to_descriptors_) {
       int d = descriptor.second.first;
       FD_SET(d, &read_fds);
       if (d > max) {
@@ -278,7 +278,8 @@ bool PipeTaoChannel::Listen(Tao *tao) {
       }
     }
 
-    for (pair<const string, pair<int, int>> &descriptor : hash_to_descriptors_) {
+    for (pair<const string, pair<int, int>> &descriptor :
+         hash_to_descriptors_) {
       int d = descriptor.second.first;
       const string &child_hash = descriptor.first;
 
@@ -313,7 +314,8 @@ bool PipeTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
   bytes_received = recvfrom(sock, bytes.get(), len, MSG_DONTWAIT,
                             NULL /* src_addr */, NULL /* addrlen */);
   if (bytes_received == -1) {
-    PLOG(ERROR) << "Could not receive the protocol buffer bytes from the socket";
+    PLOG(ERROR)
+        << "Could not receive the protocol buffer bytes from the socket";
     return false;
   }
 
@@ -333,7 +335,7 @@ bool PipeTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
 
   const StartHostedProgramArgs &shpa = rpc.start();
   list<string> args;
-  for(int i = 0; i < shpa.args_size(); i++) {
+  for (int i = 0; i < shpa.args_size(); i++) {
     args.push_back(shpa.args(i));
   }
 

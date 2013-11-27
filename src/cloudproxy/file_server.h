@@ -31,8 +31,8 @@ class FileServer : public CloudServer {
              const string &tls_cert, const string &tls_key,
              const string &tls_password, const string &public_policy_keyczar,
              const string &public_policy_pem, const string &acl_location,
-             const string &server_key_location, const string &host,
-             ushort port, tao::TaoAuth *auth_manager);
+             const string &server_key_location, const string &host, ushort port,
+             tao::TaoAuth *auth_manager);
 
   virtual ~FileServer() {}
 

@@ -128,7 +128,8 @@ int main(int argc, char **argv) {
   CHECK(channel->Init()) << "Could not init the channel";
 
   scoped_ptr<HostedProgramFactory> program_factory(new ProcessFactory());
-  scoped_ptr<TaoChannel> pipe_channel(new PipeTaoChannel("/tmp/.server_test_socket"));
+  scoped_ptr<TaoChannel> pipe_channel(
+      new PipeTaoChannel("/tmp/.server_test_socket"));
 
   // get a temporary directory to use for the files
   string dir_template("/tmp/server_test_XXXXXX");
@@ -193,14 +194,14 @@ int main(int argc, char **argv) {
   CHECK(sw.SerializeToOstream(&whitelist_file));
   whitelist_file.close();
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(whitelist_path, policy_pk_path));
+  scoped_ptr<WhitelistAuth> whitelist_auth(
+      new WhitelistAuth(whitelist_path, policy_pk_path));
   CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist";
 
-
-  scoped_ptr<Tao> tao(new LinuxTao(
-      secret_path, key_path, pk_path, policy_pk_path,
-      channel.release(), pipe_channel.release(), program_factory.release(),
-      whitelist_auth.release()));
+  scoped_ptr<Tao> tao(
+      new LinuxTao(secret_path, key_path, pk_path, policy_pk_path,
+                   channel.release(), pipe_channel.release(),
+                   program_factory.release(), whitelist_auth.release()));
   CHECK(tao->Init());
 
   list<string> args;

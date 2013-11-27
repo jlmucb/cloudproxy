@@ -53,7 +53,7 @@ bool RootAuth::IsAuthorized(const Attestation &attestation) const {
 }
 
 bool RootAuth::VerifyAttestation(const string &attestation,
-                                            string *data) const {
+                                 string *data) const {
   Attestation a;
   if (!a.ParseFromString(attestation)) {
     LOG(ERROR) << "Could not deserialize an Attestation";

@@ -32,16 +32,16 @@ using std::mutex;
 
 namespace cloudproxy {
 
-FileServer::FileServer(
-    const string &file_path, const string &meta_path, const string &tls_cert,
-    const string &tls_key, const string &tls_password,
-    const string &public_policy_keyczar, const string &public_policy_pem,
-    const string &acl_location,
-    const string &server_key_location, const string &host, ushort port,
-    tao::TaoAuth *auth_manager)
+FileServer::FileServer(const string &file_path, const string &meta_path,
+                       const string &tls_cert, const string &tls_key,
+                       const string &tls_password,
+                       const string &public_policy_keyczar,
+                       const string &public_policy_pem,
+                       const string &acl_location,
+                       const string &server_key_location, const string &host,
+                       ushort port, tao::TaoAuth *auth_manager)
     : CloudServer(tls_cert, tls_key, tls_password, public_policy_keyczar,
-                  public_policy_pem, acl_location, host,
-                  port, auth_manager),
+                  public_policy_pem, acl_location, host, port, auth_manager),
       main_key_(keyczar::Signer::Read(server_key_location.c_str())),
       enc_key_(new string()),
       hmac_key_(new string()),

@@ -51,9 +51,8 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                          const string &secret,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
-                         const string &acl_location,
-                         const string &host, ushort port,
-			 TaoAuth *auth_manager)
+                         const string &acl_location, const string &host,
+                         ushort port, TaoAuth *auth_manager)
     : public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       rand_(keyczar::CryptoFactory::Rand()),

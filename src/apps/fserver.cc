@@ -101,7 +101,8 @@ int main(int argc, char **argv) {
   OpenSSL_add_all_algorithms();
   SSL_library_init();
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
+  scoped_ptr<WhitelistAuth> whitelist_auth(
+      new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
   CHECK(whitelist_auth->Init()) << "Could not initialize the auth manager";
 
   // set up locking in OpenSSL
@@ -112,12 +113,12 @@ int main(int argc, char **argv) {
   }
   CRYPTO_set_locking_callback(locking_function);
 
-  cloudproxy::FileServer fs(
-      FLAGS_file_path, FLAGS_meta_path, FLAGS_server_cert, FLAGS_server_key,
-      FLAGS_server_password, FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
-      FLAGS_server_enc_key, FLAGS_address, FLAGS_port, whitelist_auth.release());
+  cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_cert,
+                            FLAGS_server_key, FLAGS_server_password,
+                            FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
+                            FLAGS_server_enc_key, FLAGS_address, FLAGS_port,
+                            whitelist_auth.release());
 
-  CHECK(fs.Listen(*channel))
-      << "Could not listen for client connections";
+  CHECK(fs.Listen(*channel)) << "Could not listen for client connections";
   return 0;
 }

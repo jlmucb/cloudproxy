@@ -67,12 +67,12 @@ class LinuxTao : public Tao {
   // @param child_channel A channel implementation it uses to communicat with
   // hosted programs it starts
   // @param program_factory A factory that creates hosted programs in the OS.
-  // @param auth_manager Handles authorization checks, including VerifyAttestation
+  // @param auth_manager Handles authorization checks, including
+  // VerifyAttestation
   LinuxTao(const string &secret_path, const string &key_path,
-           const string &pk_path,
-           const string &policy_pk_path, TaoChildChannel *host_channel,
-           TaoChannel *child_channel, HostedProgramFactory *program_factory,
-           TaoAuth *auth_manager);
+           const string &pk_path, const string &policy_pk_path,
+           TaoChildChannel *host_channel, TaoChannel *child_channel,
+           HostedProgramFactory *program_factory, TaoAuth *auth_manager);
   virtual ~LinuxTao() {}
 
   // Start listening for Tao messages on channels

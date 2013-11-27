@@ -148,7 +148,7 @@ bool WhitelistAuth::IsAuthorized(const Attestation &attestation) const {
 }
 
 bool WhitelistAuth::VerifyAttestation(const string &attestation,
-                                            string *data) const {
+                                      string *data) const {
   Attestation a;
   if (!a.ParseFromString(attestation)) {
     LOG(ERROR) << "Could not deserialize an Attestation";
@@ -221,8 +221,7 @@ bool WhitelistAuth::CheckRootSignature(const Attestation &a) const {
   return true;
 }
 
-bool WhitelistAuth::CheckIntermediateSignature(
-    const Attestation &a) const {
+bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
   if (a.type() != INTERMEDIATE) {
     LOG(ERROR)
         << "Expected this Attestation to be INTERMEDIATE, but it was not";
@@ -267,7 +266,8 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   }
 
   if (!a.has_cert()) {
-    LOG(ERROR) << "A TPM 1.2 Quote attestation must have a certificate that signs the AIK with the public policy key";
+    LOG(ERROR) << "A TPM 1.2 Quote attestation must have a certificate that "
+                  "signs the AIK with the public policy key";
     return false;
   }
 

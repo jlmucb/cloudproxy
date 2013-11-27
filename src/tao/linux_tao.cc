@@ -74,9 +74,8 @@ using std::stringstream;
 namespace tao {
 
 LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
-                   const string &pk_path,
-                   const string &policy_pk_path, TaoChildChannel *host_channel,
-                   TaoChannel *child_channel,
+                   const string &pk_path, const string &policy_pk_path,
+                   TaoChildChannel *host_channel, TaoChannel *child_channel,
                    HostedProgramFactory *program_factory, TaoAuth *auth_manager)
     : secret_path_(secret_path),
       key_path_(key_path),

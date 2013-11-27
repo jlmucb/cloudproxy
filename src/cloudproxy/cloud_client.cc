@@ -52,7 +52,7 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
                          const string &server_addr, ushort server_port,
-			 TaoAuth *auth_manager)
+                         TaoAuth *auth_manager)
     : bio_(nullptr),
       public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),

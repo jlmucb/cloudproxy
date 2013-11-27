@@ -72,7 +72,8 @@ class LinuxTao : public Tao {
   LinuxTao(const string &secret_path, const string &key_path,
            const string &pk_path, const string &policy_pk_path,
            TaoChildChannel *host_channel, TaoChannel *child_channel,
-           HostedProgramFactory *program_factory, TaoAuth *auth_manager);
+           HostedProgramFactory *program_factory, TaoAuth *auth_manager,
+	   const string &ca_host, const string &ca_port);
   virtual ~LinuxTao() {}
 
   // Start listening for Tao messages on channels
@@ -90,13 +91,6 @@ class LinuxTao : public Tao {
                       string *data) const;
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const;
-
- protected:
-  // Get an attestation from the host Tao on our key. Note that this
-  // will get an attestation on serialized_key for this Tao host; it
-  // is for use by this Tao and its subclasses.
-  virtual bool AttestToKey(const string &serialized_key,
-                           Attestation *attest) const;
 
  private:
   // create a 128-byte secret
@@ -132,7 +126,7 @@ class LinuxTao : public Tao {
   // A serialization of the public key of this Tao.
   string serialized_pub_key_;
 
-  /// An attestation to #serialized_pub_key_.
+  // An attestation to #serialized_pub_key_.
   Attestation pk_attest_;
 
   // The channel to use for host communication.
@@ -149,6 +143,10 @@ class LinuxTao : public Tao {
 
   // The set of hosted programs that the LinuxTao has started
   set<string> running_children_;
+
+  // The address:port for the TCCA. If empty, then this code won't call the CA.
+  string ca_host_;
+  string ca_port_;
 
   // a mutex for accessing the auth manager
   mutable mutex auth_m_;
@@ -169,6 +167,16 @@ class LinuxTao : public Tao {
   // Create a new keyset with a public/private key pair to use for
   // signing
   bool createPublicKey(keyczar::Encrypter *crypter);
+
+  // Get an attestation from the host Tao on our key. Note that this
+  // will get an attestation on serialized_key for this Tao host; it
+  // is for use by this Tao and its subclasses.
+  bool attestToKey(const string &serialized_key,
+                           Attestation *attest);
+
+  // Sends the attestation to the TCCA on a port/address supplied at
+  // initialization and uses the returned attestation as its attestation.
+  bool getCertFromCA(Attestation *attest);
 
   DISALLOW_COPY_AND_ASSIGN(LinuxTao);
 };

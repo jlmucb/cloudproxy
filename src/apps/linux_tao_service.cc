@@ -49,10 +49,11 @@ DEFINE_string(pk_key_path, "linux_tao_service_files/public_key",
 DEFINE_string(whitelist, "signed_whitelist", "A signed whitelist file");
 DEFINE_string(policy_pk_path, "./policy_public_key",
               "The path to the public policy key");
-DEFINE_string(program, "server", "The program to start under the Tao");
 DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
               "The name of a file to use as the socket for incoming program "
               "creation requests");
+DEFINE_string(ca_host, "", "The hostname of the TCCA server, if any");
+DEFINE_string(ca_port, "", "The port for the TCCA server, if any");
 
 using std::ifstream;
 using std::shared_ptr;
@@ -102,10 +103,14 @@ int main(int argc, char **argv) {
   stringstream aik_blob_stream;
   aik_blob_stream << aik_blob_file.rdbuf();
 
+  ifstream aik_attest_file(FLAGS_aik_attestation.c_str(), ifstream::in);
+  stringstream aik_attest_stream;
+  aik_attest_stream << aik_attest_file.rdbuf();
+
   // The TPM to use for the parent Tao
   // TODO(tmroeder): add a proper AIK attestation from the public key
   scoped_ptr<TPMTaoChildChannel> tpm(new TPMTaoChildChannel(
-      aik_blob_stream.str(), FLAGS_aik_attestation, list<UINT32>{17, 18}));
+      aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
   CHECK(tpm->Init()) << "Could not init the TPM";
 
   scoped_ptr<WhitelistAuth> whitelist_auth(
@@ -122,17 +127,11 @@ int main(int argc, char **argv) {
   scoped_ptr<LinuxTao> tao(
       new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
                    FLAGS_policy_pk_path, tpm.release(), pipe_channel.release(),
-                   process_factory.release(), whitelist_auth.release()));
+                   process_factory.release(), whitelist_auth.release(),
+		   FLAGS_ca_host, FLAGS_ca_port));
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
-  // The remain command-line flags are passed to the program it starts.
-  list<string> args;
-  for (int i = 1; i < argc; i++) {
-    string arg(argv[i]);
-    args.push_back(arg);
-  }
 
-  CHECK(tao->StartHostedProgram(FLAGS_program, args))
-      << "Could not start " << FLAGS_program << " as a hosted program";
+  LOG(INFO) << "Linux Tao Service started and waiting for requests";
 
   // Listen for program creation requests and for messages from hosted programs
   // that have been created.

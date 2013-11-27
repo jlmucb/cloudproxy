@@ -46,7 +46,6 @@ class WhitelistAuth : public TaoAuth {
   virtual bool IsAuthorized(const string &program_hash) const;
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const;
-  virtual bool IsAuthorized(const Attestation &attestation) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  private:
@@ -55,6 +54,10 @@ class WhitelistAuth : public TaoAuth {
   scoped_ptr<keyczar::Keyczar> policy_key_;
   map<string, string> whitelist_;
   set<string> hash_whitelist_;
+
+  // Checks to see if the attestation has expired. If it's not a ROOT
+  // attestation, then it checks to see if the hash is in the whitelist.
+  bool CheckAuthorization(const Attestation &attestation) const;
 
   // Checks a signature made by the public policy key
   bool CheckRootSignature(const Attestation &a) const;

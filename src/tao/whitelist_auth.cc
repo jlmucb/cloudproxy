@@ -20,6 +20,8 @@
 
 #include "tao/whitelist_auth.h"
 
+#include <keyczar/base/base64w.h>
+
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -29,6 +31,7 @@
 #include "tao/keyczar_public_key.pb.h"
 #include "tao/util.h"
 
+#include <arpa/inet.h>
 #include <fstream>
 
 using keyczar::Keyczar;
@@ -93,21 +96,29 @@ bool WhitelistAuth::IsAuthorized(const string &program_name,
   return (it->second.compare(program_hash) == 0);
 }
 
-bool WhitelistAuth::IsAuthorized(const Attestation &attestation) const {
+bool WhitelistAuth::CheckAuthorization(const Attestation &attestation) const {
   Statement s;
   if (!s.ParseFromString(attestation.serialized_statement())) {
     LOG(ERROR) << "Could not parse the statement from an attestation";
     return false;
   }
 
-  if (s.hash_alg().compare("SHA256")) {
+  // check the time to make sure it hasn't expired
+  time_t cur_time;
+  time(&cur_time);
+  if (cur_time > s.expiration()) {
+    LOG(ERROR) << "This attestation has expired";
+    return false;
+  }
+
+  if (s.hash_alg().compare("SHA256") == 0) {
     // This is a normal program-like hash, so check the whitelist directly
     return IsAuthorized(s.hash());
   }
 
   if (attestation.has_quote()) {
     // Extract the PCRs as a single string and look for them in the whitelist.
-    string quote(attestation.quote());
+    string quote(attestation.quote().data(), attestation.quote().size());
     size_t quote_len = quote.size();
     if (quote_len < sizeof(UINT16)) {
       LOG(ERROR) << "The quote was not long enough to contain a mask length";
@@ -116,7 +127,7 @@ bool WhitelistAuth::IsAuthorized(const Attestation &attestation) const {
 
     const char *quote_bytes = quote.c_str();
     UINT32 index = 0;
-    UINT16 mask_len = *(UINT16 *)(quote_bytes + index);
+    UINT16 mask_len = ntohs(*(UINT16 *)(quote_bytes + index));
     index += sizeof(UINT16);
 
     // skip the mask bytes
@@ -132,7 +143,7 @@ bool WhitelistAuth::IsAuthorized(const Attestation &attestation) const {
       return false;
     }
 
-    UINT32 pcr_len = *(UINT32 *)(quote_bytes + index);
+    UINT32 pcr_len = ntohl(*(UINT32 *)(quote_bytes + index));
     index += sizeof(UINT32);
 
     if ((quote_len < index) || (quote_len - index < pcr_len)) {
@@ -141,10 +152,18 @@ bool WhitelistAuth::IsAuthorized(const Attestation &attestation) const {
     }
 
     string pcrs(quote_bytes + index, pcr_len);
-    return IsAuthorized(pcrs);
+
+    // The whitelist uses Base64W encoding for hashes
+    string serialized;
+    if (!keyczar::base::Base64WEncode(pcrs, &serialized)) {
+      LOG(ERROR) << "Can't serialize the PCRs";
+      return false;
+    }
+
+    return IsAuthorized(serialized);
   }
 
-  return false;
+  return (attestation.type() == ROOT);
 }
 
 bool WhitelistAuth::VerifyAttestation(const string &attestation,
@@ -182,7 +201,7 @@ bool WhitelistAuth::VerifyAttestation(const string &attestation,
   }
 
   // Check that this attestation is authorized.
-  if (!IsAuthorized(a)) {
+  if (!CheckAuthorization(a)) {
     LOG(ERROR) << "The attested program was not authorized";
     return false;
   }
@@ -279,8 +298,14 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
     return false;
   }
 
-  RSA *aik_rsa = nullptr;
   BIO *mem = BIO_new(BIO_s_mem());
+  int bio_bytes_written = BIO_write(mem, reinterpret_cast<const void *>(data.data()), static_cast<int>(data.size()));
+  if (bio_bytes_written != static_cast<int>(data.size())) {
+    LOG(ERROR) << "Could not write the data to the BIO";
+    return false;
+  }
+
+  RSA *aik_rsa = nullptr;
   if (!PEM_read_bio_RSAPublicKey(mem, &aik_rsa, NULL, NULL)) {
     LOG(ERROR) << "Could not read the RSA public key from the attestation";
     return false;

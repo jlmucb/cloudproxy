@@ -34,6 +34,10 @@ namespace tao {
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
     ScopedRsa;
 
+bool InitializeOpenSSL();
+
+bool OpenTCPSocket(short port, int *sock);
+
 bool CreateKey(keyczar::rw::KeysetWriter *writer,
                keyczar::KeyType::Type key_type,
                keyczar::KeyPurpose::Type key_purpose, const string &key_name,
@@ -54,6 +58,9 @@ bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret);
 
+bool ReceiveMessage(int fd, google::protobuf::Message *m);
+
+bool SendMessage(int fd, const google::protobuf::Message &m);
 }  // namespace tao
 
 #endif  // TAO_UTIL_TAO_H_

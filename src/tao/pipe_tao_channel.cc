@@ -21,14 +21,17 @@
 #include <tao/pipe_tao_channel.h>
 #include <tao/pipe_tao_channel_params.pb.h>
 #include <tao/tao_child_channel_params.pb.h>
+#include <tao/util.h>
 
 #include <keyczar/base/scoped_ptr.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/fcntl.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/unistd.h>
 
 #include <thread>
 
@@ -165,25 +168,7 @@ bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m,
     readfd = child_it->second.first;
   }
 
-  size_t len;
-  ssize_t bytes_read = read(readfd, &len, sizeof(size_t));
-  if (bytes_read != sizeof(size_t)) {
-    LOG(ERROR) << "Could not receive a size on the channel";
-    return false;
-  }
-
-  // then read this many bytes as the message
-  scoped_array<char> bytes(new char[len]);
-  bytes_read = read(readfd, bytes.get(), len);
-
-  // TODO(tmroeder): add safe integer library
-  if (bytes_read != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not read the right number of bytes from the fd";
-    return false;
-  }
-
-  string serialized(bytes.get(), len);
-  return m->ParseFromString(serialized);
+  return tao::ReceiveMessage(readfd, m);
 }
 
 bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m,
@@ -208,20 +193,7 @@ bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m,
     writefd = child_it->second.second;
   }
 
-  size_t len = serialized.size();
-  ssize_t bytes_written = write(writefd, &len, sizeof(size_t));
-  if (bytes_written != sizeof(size_t)) {
-    LOG(ERROR) << "Could not write the length to the fd " << writefd;
-    return false;
-  }
-
-  bytes_written = write(writefd, serialized.data(), len);
-  if (bytes_written != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not wire the serialized message to the fd";
-    return false;
-  }
-
-  return true;
+  return tao::SendMessage(writefd, m);
 }
 
 bool PipeTaoChannel::Listen(Tao *tao) {
@@ -229,6 +201,14 @@ bool PipeTaoChannel::Listen(Tao *tao) {
   int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
   if (sock == -1) {
     LOG(ERROR) << "Could not create unix domain socket to listen for messages";
+    return false;
+  }
+
+  // Make sure the socket won't block if there's no data available, or not
+  // enough data available.
+  int fcntl_err = fcntl(sock, F_SETFL, O_NONBLOCK);
+  if (fcntl_err == -1) {
+    PLOG(ERROR) << "Could not set the socket to be non-blocking";
     return false;
   }
 
@@ -284,7 +264,9 @@ bool PipeTaoChannel::Listen(Tao *tao) {
       const string &child_hash = descriptor.first;
 
       if (FD_ISSET(d, &read_fds)) {
-        TaoChannelRPC rpc;
+	// TODO(tmroeder): if this read fails, then remove the descriptor from
+	// the set
+	TaoChannelRPC rpc;
         if (!GetRPC(&rpc, child_hash)) {
           LOG(ERROR) << "Could not get an RPC";
         }
@@ -300,34 +282,14 @@ bool PipeTaoChannel::Listen(Tao *tao) {
 }
 
 bool PipeTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
-  // Try to receive a message on the socket. This message has a size prefix and
-  // the data itself.
-  size_t len;
-  ssize_t bytes_received = recvfrom(sock, &len, sizeof(len), MSG_DONTWAIT,
-                                    NULL /* src_addr */, NULL /* addrlen */);
-  if (bytes_received == -1) {
-    PLOG(ERROR) << "Could not receive a length on the socket";
-    return false;
-  }
-
-  scoped_array<char> bytes(new char[len]);
-  bytes_received = recvfrom(sock, bytes.get(), len, MSG_DONTWAIT,
-                            NULL /* src_addr */, NULL /* addrlen */);
-  if (bytes_received == -1) {
-    PLOG(ERROR)
-        << "Could not receive the protocol buffer bytes from the socket";
+  TaoChannelRPC rpc;
+  if (!tao::ReceiveMessage(sock, &rpc)) {
+    LOG(ERROR) << "Could not receive an rpc on the channel";
     return false;
   }
 
   // This message must be a TaoChannelRPC message, and it must be have the type
   // START_HOSTED_PROGRAM
-  TaoChannelRPC rpc;
-  string rpc_data(bytes.get(), len);
-  if (!rpc.ParseFromString(rpc_data)) {
-    LOG(ERROR) << "Could not parse the data as a TaoChannelRPC";
-    return false;
-  }
-
   if ((rpc.rpc() != START_HOSTED_PROGRAM) || !rpc.has_start()) {
     LOG(ERROR) << "This RPC was not START_HOSTED_PROGRAM";
     return false;

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+rm -fr /tmp/.linux_tao_socket
 cp -r run test
 cd test
 mkdir linux_tao_service_files
@@ -22,7 +23,12 @@ cp ../src/scripts/getHash.sh .
 rm openssl_keys/server/*
 rm openssl_keys/client/*
 rm *.a
-cat sample_whitelist.pb2 | sed "s/REPLACE_ME_SERVER/`cat server | ./getHash.sh`/g" | sed "s/REPLACE_ME_CLIENT/`cat client | ./getHash.sh`/g" | sed "s/REPLACE_ME_FSERVER/`cat fserver | ./getHash.sh`/g" | sed "s/REPLACE_ME_FCLIENT/`cat fclient | ./getHash.sh`/g" > whitelist.pb2
+cat sample_whitelist.pb2 |
+  sed "s/REPLACE_ME_SERVER/`cat server | ./getHash.sh`/g" |
+  sed "s/REPLACE_ME_CLIENT/`cat client | ./getHash.sh`/g" |
+  sed "s/REPLACE_ME_FSERVER/`cat fserver | ./getHash.sh`/g" |
+  sed "s/REPLACE_ME_FCLIENT/`cat fclient | ./getHash.sh`/g" |
+  sed "s/REPLACE_ME_PCRS/`./get_pcrs`/g" > whitelist.pb2
 cat whitelist.pb2 | protoc -I../src/tao/ --encode=tao.Whitelist ../src/tao/hosted_programs.proto > whitelist
 ./sign_whitelist
 cat acls.ascii | protoc -I../src/cloudproxy --encode=cloudproxy.ACL ../src/cloudproxy/cloudproxy.proto > acls

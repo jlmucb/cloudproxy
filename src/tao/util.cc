@@ -19,8 +19,15 @@
 
 #include "tao/util.h"
 
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <fstream>
+#include <memory>
+#include <mutex>
 #include <sstream>
+#include <vector>
 
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
@@ -28,6 +35,10 @@
 #include <keyczar/rw/keyset_writer.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
+
+#include <openssl/ssl.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
 
 using keyczar::Crypter;
 using keyczar::Keyczar;
@@ -46,10 +57,75 @@ using keyczar::rw::KeysetWriter;
 
 using std::ifstream;
 using std::ios;
+using std::mutex;
 using std::ofstream;
+using std::shared_ptr;
 using std::stringstream;
+using std::vector;
 
 namespace tao {
+vector<shared_ptr<mutex> > locks;
+
+void locking_function(int mode, int n, const char *file, int line) {
+  if (mode & CRYPTO_LOCK) {
+    locks[n]->lock();
+  } else {
+    locks[n]->unlock();
+  }
+}
+
+bool InitializeOpenSSL() {
+  SSL_load_error_strings();
+  ERR_load_BIO_strings();
+  ERR_load_crypto_strings();
+  OpenSSL_add_all_algorithms();
+  SSL_library_init();
+
+  // set up locking in OpenSSL
+  int lock_count = CRYPTO_num_locks();
+  locks.resize(lock_count);
+  for (int i = 0; i < lock_count; i++) {
+    locks[i].reset(new mutex());
+  }
+  CRYPTO_set_locking_callback(locking_function);
+  return true;
+}
+
+bool OpenTCPSocket(short port, int *sock) {
+  if (sock == NULL) {
+    LOG(ERROR) << "null socket parameter";
+    return false;
+  }
+
+  *sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (*sock == -1) {
+    PLOG(ERROR) << "Could not create a socket for tcca to listen on";
+    return false;
+  }
+
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(struct sockaddr_in));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  addr.sin_port = htons(port);
+
+  int bind_err =
+      bind(*sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+  if (bind_err == -1) {
+    PLOG(ERROR) << "Could not bind the socket";
+    return false;
+  }
+
+  int listen_err = listen(*sock, 128 /* max completed connections */);
+  if (listen_err == -1) {
+    PLOG(ERROR) << "Could not set the socket up for listening";
+    return false;
+  }
+
+  return true;
+}
+
+
 bool CreateKey(KeysetWriter *writer, KeyType::Type key_type,
                KeyPurpose::Type key_purpose, const string &key_name,
                scoped_ptr<Keyczar> *key) {
@@ -251,5 +327,58 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
   }
 
   return true;
+}
+
+bool SendMessage(int fd, const google::protobuf::Message &m) {
+  // send the length then the serialized message
+  string serialized;
+  if (!m.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the Message to a string";
+    return false;
+  }
+
+  size_t len = serialized.size();
+  ssize_t bytes_written = write(fd, &len, sizeof(size_t));
+  if (bytes_written != sizeof(size_t)) {
+    LOG(ERROR) << "Could not write the length to the fd " << fd;
+    return false;
+  }
+
+  bytes_written = write(fd, serialized.data(), len);
+  if (bytes_written != static_cast<ssize_t>(len)) {
+    LOG(ERROR) << "Could not write the serialized message to the fd";
+    return false;
+  }
+
+  return true;
+}
+
+bool ReceiveMessage(int fd, google::protobuf::Message *m) {
+  if (m == NULL) {
+    LOG(ERROR) << "null message";
+    return false;
+  }
+
+  size_t len;
+  ssize_t bytes_read = read(fd, &len, sizeof(size_t));
+  if (bytes_read != sizeof(size_t)) {
+    LOG(ERROR) << "Could not receive a size on the channel";
+    return false;
+  }
+  LOG(INFO) << "Got a message of length " << (int)len;
+
+  // then read this many bytes as the message
+  scoped_array<char> bytes(new char[len]);
+  bytes_read = read(fd, bytes.get(), len);
+
+  // TODO(tmroeder): add safe integer library
+  if (bytes_read != static_cast<ssize_t>(len)) {
+    LOG(ERROR) << "Could not read the right number of bytes from the fd";
+    return false;
+  }
+
+  string serialized(bytes.get(), len);
+  return m->ParseFromString(serialized);
+
 }
 }  // namespace tao

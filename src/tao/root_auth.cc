@@ -40,18 +40,6 @@ bool RootAuth::Init() {
   return true;
 }
 
-bool RootAuth::IsAuthorized(const Attestation &attestation) const {
-  // Just check the attestation directly to see if it passes verification.
-  string serialized;
-  if (!attestation.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the attestation";
-    return false;
-  }
-
-  string data;
-  return VerifyAttestation(serialized, &data);
-}
-
 bool RootAuth::VerifyAttestation(const string &attestation,
                                  string *data) const {
   Attestation a;

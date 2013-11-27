@@ -44,7 +44,6 @@ class RootAuth : public TaoAuth {
                             const string &program_hash) const {
     return false;
   }
-  virtual bool IsAuthorized(const Attestation &attestation) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  private:

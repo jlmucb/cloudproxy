@@ -21,3 +21,9 @@ programs {
     hash_alg: "SHA256"
     hash: "REPLACE_ME_FCLIENT"
 }
+
+programs {
+    name: "Linux"
+    hash_alg: "None"
+    hash: "REPLACE_ME_PCRS"
+}

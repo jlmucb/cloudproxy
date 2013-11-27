@@ -33,7 +33,6 @@ class TaoAuth {
   virtual bool IsAuthorized(const string &program_hash) const = 0;
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const = 0;
-  virtual bool IsAuthorized(const Attestation &attestation) const = 0;
 
   // VerifyAttestation checks an attestation produced by the Tao method Attest
   // for a given data string.

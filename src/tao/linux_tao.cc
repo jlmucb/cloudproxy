@@ -34,6 +34,10 @@
 #include <keyczar/base/file_util.h>
 #include <glog/logging.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <time.h>
 
 #include <fstream>
@@ -76,7 +80,8 @@ namespace tao {
 LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
                    const string &pk_path, const string &policy_pk_path,
                    TaoChildChannel *host_channel, TaoChannel *child_channel,
-                   HostedProgramFactory *program_factory, TaoAuth *auth_manager)
+                   HostedProgramFactory *program_factory, TaoAuth *auth_manager,
+                   const string &ca_host, const string &ca_port)
     : secret_path_(secret_path),
       key_path_(key_path),
       pk_path_(pk_path),
@@ -90,7 +95,9 @@ LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
       child_channel_(child_channel),
       program_factory_(program_factory),
       auth_manager_(auth_manager),
-      running_children_() {
+      running_children_(),
+      ca_host_(ca_host),
+      ca_port_(ca_port) {
   // leave setup for Init
 }
 
@@ -164,11 +171,20 @@ bool LinuxTao::Init() {
     return false;
   }
 
-  // Get an attestation for this key. In the chaining version, this
-  // calls to the host for attestation. But in the key server version,
-  // this needs to call to a key server. This virtual call can be
-  // implemented to use either version.
-  AttestToKey(serialized_pub_key_, &pk_attest_);
+  if (!attestToKey(serialized_pub_key_, &pk_attest_)) {
+    LOG(ERROR) << "Could not get an attestation for the LinuxTao public key";
+    return false;
+  }
+
+  // The Trusted Computing Certificate Authority can take a cert chain and
+  // produce a shortened form that consists of a single attestation by the
+  // policy key. Use it if requested.
+  if (!ca_host_.empty()) {
+    if (!getCertFromCA(&pk_attest_)) {
+      LOG(ERROR) << "Could not get a new certificate from the TCCA";
+      return false;
+    }
+  }
 
   VLOG(1) << "Finished tao initialization successfully";
   return true;
@@ -436,8 +452,8 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
   return true;
 }
 
-bool LinuxTao::AttestToKey(const string &serialized_key,
-                           Attestation *attest) const {
+bool LinuxTao::attestToKey(const string &serialized_key,
+                           Attestation *attest) {
   string serialized_attestation;
   if (!host_channel_->Attest(serialized_key, &serialized_attestation)) {
     LOG(ERROR) << "Could not get an attestation to the serialized key";
@@ -456,5 +472,76 @@ bool LinuxTao::Listen() {
   // All the work of listening and calling the LinuxTao is done in the
   // TaoChannel implementation. See, e.g., PipeTaoChannel
   return child_channel_->Listen(this);
+}
+
+bool LinuxTao::getCertFromCA(Attestation *attest) {
+  // Set up a socket to communicate with the TCCA.
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  
+  struct addrinfo *addrs = nullptr;
+  int info_err = getaddrinfo(ca_host_.c_str(), ca_port_.c_str(), &hints, &addrs);
+  if (info_err == -1) {
+    PLOG(ERROR) << "Could not get address information for " << ca_host_ << ":"
+                << ca_port_;
+    return false;
+  }
+
+  int connect_err = connect(sock, addrs->ai_addr, addrs->ai_addrlen);
+  if (connect_err == -1) {
+    PLOG(ERROR) << "Could not connect to the TCCA";
+    freeaddrinfo(addrs);
+    return false;
+  }
+
+  freeaddrinfo(addrs);
+
+  // The TCCA will convert our attestation into a new attestation signed by the
+  // policy key.
+  if (!tao::SendMessage(sock, *attest)) {
+    LOG(ERROR) << "Could not send our attestation to the TCCA";
+    close(sock);
+    return false;
+  }
+
+  Attestation new_attest;
+  if (!tao::ReceiveMessage(sock, &new_attest)) {
+    LOG(ERROR) << "Could not get the new attestation from the TCCA";
+    close(sock);
+    return false;
+  }
+
+  close(sock);
+
+  // Check the attestation to make sure it passes verification.
+  if (new_attest.type() != ROOT) {
+    LOG(ERROR) << "Expected a Root attestation from TCCA";
+    return false;
+  }
+
+  string serialized;
+  if (!new_attest.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the new attestation";
+    return false;
+  }
+
+  string dummy_data;
+  if (!auth_manager_->VerifyAttestation(serialized, &dummy_data)) {
+    LOG(ERROR) << "The attestation did not pass verification";
+    return false;
+  }
+
+  if (new_attest.serialized_statement().compare(attest->serialized_statement()) != 0) {
+    LOG(ERROR) << "The statement in the new attestation doesn't match our original statement";
+    return false;
+  }
+
+  attest->Clear();
+  attest->CopyFrom(new_attest);
+  return true;
 }
 }  // namespace cloudproxy

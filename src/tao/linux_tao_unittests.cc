@@ -153,7 +153,8 @@ class LinuxTaoTest : public ::testing::Test {
     tao_.reset(
         new LinuxTao(secret_path, key_path, pk_path, policy_pk_path,
                      channel.release(), child_channel.release(),
-                     program_factory.release(), whitelist_auth.release()));
+                     program_factory.release(), whitelist_auth.release(),
+		     "" /* no tcca host */, "" /* no tcca port */));
     ASSERT_TRUE(tao_->Init());
   }
 

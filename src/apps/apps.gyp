@@ -23,6 +23,20 @@
   },
   'targets': [
     {
+      'target_name': 'get_pcrs',
+      'type': 'executable',
+      'sources': [ 'get_pcrs.cc', ],
+      'include_dirs': [ '.', ],
+      'libraries': [
+	      '-ltspi',
+      ],
+      'dependencies': [
+	      '../third_party/gflags/gflags.gyp:gflags',
+	      '../third_party/google-glog/glog.gyp:glog',
+        '../third_party/keyczar/keyczar.gyp:keyczar'
+      ],
+    },
+    {
       'target_name': 'tpm_test',
       'type': 'executable',
       'sources': [ 'tpm_test.cc', ],
@@ -34,6 +48,17 @@
       'dependencies': [
 	'../third_party/gflags/gflags.gyp:gflags',
 	'../third_party/google-glog/glog.gyp:glog',
+        '../third_party/keyczar/keyczar.gyp:keyczar'
+      ],
+    },
+    {
+      'target_name': 'start_hosted_program',
+      'type': 'executable',
+      'sources': [ 'start_hosted_program.cc', ],
+      'dependencies': [ 
+        '../tao/tao.gyp:tao',
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
         '../third_party/keyczar/keyczar.gyp:keyczar'
       ],
     },

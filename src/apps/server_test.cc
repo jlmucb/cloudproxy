@@ -201,7 +201,8 @@ int main(int argc, char **argv) {
   scoped_ptr<Tao> tao(
       new LinuxTao(secret_path, key_path, pk_path, policy_pk_path,
                    channel.release(), pipe_channel.release(),
-                   program_factory.release(), whitelist_auth.release()));
+                   program_factory.release(), whitelist_auth.release(),
+		   "" /* no tcca server */, "" /* no tcca server port */));
   CHECK(tao->Init());
 
   list<string> args;

@@ -30,6 +30,7 @@
 #include "jlmcrypto.h"
 #include "channel.h"
 #include "safeChannel.h"
+#include "serviceChannel.h"
 #include "channelstate.h"
 #include "jlmUtility.h"
 #include "tinyxml.h"
@@ -84,29 +85,80 @@ PrincipalCert  g_sealingPrincipal;
 // ------------------------------------------------------------------------
 
 
-theServiceChannel::theServiceChannel()
+class bidServerLocals{
+public:
+};
+
+#if 0
+// request loop for bidServer
+#define TIMER(x) ((fileServerLocals*)(service->m_sharedServices))->m_pServerObj->x
+
+
+int bidServerrequestService(Request& oReq, serviceChannel* service)
 {
-    m_pParent= NULL;
-    m_fdChannel= -1;
+    if(oReq.m_szResourceName==NULL) {
+        fprintf(g_logFile, "fileServerrequestService: Empty resource name\n");
+        return -1;
+    }
 
-    m_serverState= NOSTATE;
-    m_fChannelAuthenticated= false;
+    if(strcmp(oReq.m_szAction, "getResource")==0) {
+        if(!service->m_ofileServices.serversendResourcetoclient(oReq, TIMER(m_accessCheckTimer), 
+                    TIMER(m_decTimer))) {
+            fprintf(g_logFile, 
+                   "fileServerrequestService: serversendResourcetoclient failed 1\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "sendResource")==0) {
+        if(!service->m_ofileServices.servergetResourcefromclient(oReq,  TIMER(m_accessCheckTimer), 
+                    TIMER(m_encTimer))) {
+            fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "createResource")==0) {
+        if(!service->m_ofileServices.servercreateResourceonserver(oReq, TIMER(m_accessCheckTimer))) {
+            fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "addOwner")==0) {
+        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
+            fprintf(g_logFile, "fileServerrequestService: serveraddownertoResource failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
+        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
+            fprintf(g_logFile, "fileServerrequestService: serverremoveownerfromResource failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
+        if(!service->m_ofileServices.serverdeleteResource(oReq, TIMER(m_accessCheckTimer))) {
+            fprintf(g_logFile, "fileServerrequestService:serverdeleteResource failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
+        if(!service->m_ofileServices.servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
+            fprintf(g_logFile, 
+                "fileServerrequestService:: servergetProtectedKey failed\n");
+            return -1;
+        }
+        return 1;
+    }
+    else {
+        fprintf(g_logFile, "fileServerrequestService: invalid request type\n");
+        return -1;
+    }
 }
-
-
-theServiceChannel::~theServiceChannel()
-{
-}
-
-
-bool theServiceChannel::initSafeChannel()
-{
-    return m_osafeChannel.initChannel(m_fdChannel, AES128, CBCMODE, HMACSHA256, 
-                          AES128BYTEKEYSIZE, AES128BYTEKEYSIZE,
-                          m_oKeys.m_rguEncryptionKey2, m_oKeys.m_rguIntegrityKey2, 
-                          m_oKeys.m_rguEncryptionKey1, m_oKeys.m_rguIntegrityKey1);
-}
-
 
 
 int theServiceChannel::processRequests()
@@ -180,108 +232,8 @@ int theServiceChannel::processRequests()
         }
     }
 }
-
-
-bool theServiceChannel::initServiceChannel()
-{
-    int     n= 0;
-
-#ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::initserviceChannel\n");
-    fflush(g_logFile);
 #endif
 
-    m_serverState= INITSTATE;
-
-    // Initialize program private key and certificate for session
-    if(!m_pParent->m_tcHome.m_privateKeyValid ||
-           !m_oKeys.getMyProgramKey((RSAKey*)m_pParent->m_tcHome.m_privateKey)) {
-        fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant get my private key\n");
-        return false;
-    }
-#ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel: program key set\n");
-    fflush(g_logFile);
-#endif
-    if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_oKeys.getMyProgramCert(m_pParent->m_tcHome.m_myCertificate)) {
-        fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant get my Cert\n");
-        return false;
-    }
-
-    // copy my public key into server public key
-    if(!m_pParent->m_tcHome.m_myCertificateValid ||
-           !m_oKeys.getServerCert(m_pParent->m_tcHome.m_myCertificate)) {
-        fprintf(g_logFile, "theServiceChannel::serviceChannel: Cant load client public key structures\n");
-        return false;
-    }
-
-    m_pParent->m_protocolNegoTimer.Start();
-    if(!protocolNego())
-        return false;
-    m_pParent->m_protocolNegoTimer.Stop();
-
-#ifdef  TEST
-    fprintf(g_logFile, "theServiceChannel::serviceChannel, about to init guard\n");
-    fflush(g_logFile);
-#endif
-
-    m_serverState= REQUESTSTATE;
-    while((n=processRequests())!=0) {
-        if(n<0)
-            fprintf(g_logFile, "theServiceChannel::serviceChannel: processRequest error\n");
-        fflush(g_logFile);
-        m_pParent->printTimers(g_logFile);
-        m_pParent->resetTimers();
-    }
-    m_serverState= SERVICETERMINATESTATE;
-
-#ifdef TEST
-    fprintf(g_logFile, "theServiceChannel: serviceChannel terminating\n");
-#endif
-    if(m_fdChannel>0) {
-        close(m_fdChannel);
-        m_fdChannel= -1;
-    }
-    return true;
-}
-
-
-void* channelThread(void* ptr)
-{
-    try {
-        theServiceChannel*  poSc= (theServiceChannel*) ptr;
-
-#ifdef TEST
-        fprintf(g_logFile, "channelThread activated\n");
-        fprintf(g_logFile, "\tptr: %08x\n", ptr);
-        fprintf(g_logFile, "\tchannel: %d, parent: %08x\n",
-                poSc->m_fdChannel, poSc->m_pParent);
-
-        fflush(g_logFile);
-#endif
-        if(!poSc->initServiceChannel()) {
-            fprintf(g_logFile, "channelThread: initServiceChannel failed\n");
-        }
-
-        // delete enty in thread table in parent
-        if(poSc->m_myPositionInParent>=0) 
-            poSc->m_pParent->m_fthreadValid[poSc->m_myPositionInParent]= false;
-        poSc->m_myPositionInParent= -1;
-#ifdef TEST
-        fprintf(g_logFile, "channelThread exiting\n");
-        fflush(g_logFile);
-#endif
-        delete  poSc;
-    } catch (const char* err) {
-        fprintf(g_logFile, "Server thread exited with error: %s\n", err);
-        fflush(g_logFile);
-    }
-
-    pthread_exit(NULL);
-    return NULL;
-}
-    
 
 // ----------------------------------------------------------------------------
 

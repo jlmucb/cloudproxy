@@ -11,6 +11,9 @@ TRS=	    ../tcService
 TS=	    ../TPMDirect
 CH=	    ../channels
 CLM=	    ../claims
+FSR=	    ../fileProxy
+ACC=	    ../accessControl
+VLT=	    ../vault
 
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
@@ -31,7 +34,7 @@ dobjs=      $(B)/bidServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
-	    $(B)/cert.o $(B)/claims.o $(B)/encapsulate.o \
+	    $(B)/cert.o $(B)/claims.o $(B)/encapsulate.o $(B)/serviceChannel.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/buffercoding.o $(B)/tcIO.o 
 
 all: $(E)/bidServer.exe
@@ -41,7 +44,7 @@ $(E)/bidServer.exe: $(dobjs)
 	$(LINK) -o $(E)/bidServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/bidServer.o: $(S)/bidServer.cpp $(S)/bidServer.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServer.o $(S)/bidServer.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServer.o $(S)/bidServer.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp
@@ -60,6 +63,9 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 
 $(B)/session.o: $(S)/session.cpp $(S)/session.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(PROTO) -I$(CLM) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
+
+$(B)/serviceChannel.o: $(PROTO)/serviceChannel.cpp $(PROTO)/serviceChannel.h
+	$(CC) $(CFLAGS) -I$(ACC) -I$(S) -I$(VLT) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TRS) -I$(TAO) -c -o $(B)/serviceChannel.o $(PROTO)/serviceChannel.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp

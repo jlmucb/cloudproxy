@@ -85,14 +85,13 @@ void printResources(objectManager<resource>* pRM);
 // ------------------------------------------------------------------------
 
 
-// request loop for fileServer
-
 class fileServerLocals{
 public:
     fileServer*     m_pServerObj;
 };
 
 
+// request loop for fileServer
 #define TIMER(x) ((fileServerLocals*)(service->m_sharedServices))->m_pServerObj->x
 
 

@@ -212,7 +212,7 @@ bool serviceChannel::runServiceChannel()
 
         // negotiate channel
 #if 0
-        m_pParent->m_protocolNegoTimer.Start();
+        TIMER(m_protocolNegoTimer).Start();
 #endif
         if(!m_serverSession.serverprotocolNego(m_fdChannel, m_oSafeChannel)) 
             throw "serviceChannel::runServiceChannel: protocolNego failed\n";

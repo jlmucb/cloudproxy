@@ -29,8 +29,9 @@ class FileClient : public CloudClient {
   FileClient(const string &file_path, const string &tls_cert,
              const string &tls_key, const string &tls_password,
              const string &public_policy_keyczar,
-             const string &public_policy_pem, const string &whitelist_location,
-             const string &server_addr, ushort server_port);
+             const string &public_policy_pem,
+             const string &server_addr, ushort server_port,
+	     tao::TaoAuth *auth_manager);
 
   virtual ~FileClient() {}
 

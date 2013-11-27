@@ -29,10 +29,18 @@ namespace tao {
 class TaoAuth {
  public:
   virtual ~TaoAuth() {}
+  virtual bool Init() = 0;
   virtual bool IsAuthorized(const string &program_hash) const = 0;
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const = 0;
   virtual bool IsAuthorized(const Attestation &attestation) const = 0;
+
+  // VerifyAttestation checks an attestation produced by the Tao method Attest
+  // for a given data string.
+  // @param attestation An Attestation produced by tao::Tao::Attest()
+  // @param[out] data The extracted data from the Statement in the Attestation
+  // @returns true if the attestation passes verification
+  virtual bool VerifyAttestation(const string &attestation, string *data) const = 0;
 };
 }  // namespace tao
 

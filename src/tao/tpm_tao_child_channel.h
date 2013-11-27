@@ -78,7 +78,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
   // An OpenSSL RSA public-key version of the AIK.
   ScopedRsa aik_rsa_;
 
-  // An attestation to #aik_blob_ using the policy key.
+  // An attestation to aik_blob_ using the policy key.
   string aik_attestation_;
 
   // The list of PCRs to use for Seal and Quote.

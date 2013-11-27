@@ -41,10 +41,9 @@ using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
-using tao::AttestationVerifier;
 using tao::SignData;
 using tao::TaoChildChannel;
-using tao::WhitelistAuth;
+using tao::TaoAuth;
 
 namespace cloudproxy {
 
@@ -52,20 +51,17 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
                          const string &secret,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
-                         const string &whitelist_path,
-                         const string &server_addr, ushort server_port)
+                         const string &server_addr, ushort server_port,
+			 TaoAuth *auth_manager)
     : bio_(nullptr),
       public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       context_(SSL_CTX_new(TLSv1_2_client_method())),
       users_(new CloudUserManager()),
-      auth_manager_(new WhitelistAuth()) {
+      auth_manager_(auth_manager) {
 
   // set the policy_key to handle bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
-
-  CHECK(auth_manager_->Init(whitelist_path, *public_policy_key_))
-      << "Could not initialize the whitelist authorization manager";
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
@@ -98,8 +94,7 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   BIO_set_conn_hostname(bio_.get(), const_cast<char *>(host_and_port.c_str()));
 }
 
-bool CloudClient::Connect(const TaoChildChannel &t,
-                          const AttestationVerifier &v) {
+bool CloudClient::Connect(const TaoChildChannel &t) {
   int r = BIO_do_connect(bio_.get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
@@ -148,7 +143,7 @@ bool CloudClient::Connect(const TaoChildChannel &t,
 
   // this step also checks to see if the program hash is authorized
   string data;
-  CHECK(v.VerifyAttestation(sm.attestation(), &data))
+  CHECK(auth_manager_->VerifyAttestation(sm.attestation(), &data))
       << "The Attestation from the server did not pass verification";
 
   CHECK_EQ(data.compare(serialized_peer_cert), 0)

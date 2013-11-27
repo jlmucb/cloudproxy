@@ -25,7 +25,6 @@
 #include <openssl/err.h>
 #include "cloudproxy/cloud_server.h"
 #include "cloudproxy/util.h"
-#include "tao/attestation_verifier.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/util.h"
 
@@ -42,7 +41,6 @@ using tao::SealOrUnsealSecret;
 
 using keyczar::base::ScopedSafeString;
 
-using tao::AttestationVerifier;
 using tao::PipeTaoChildChannel;
 using tao::TaoAuth;
 using tao::TaoChildChannel;
@@ -117,10 +115,8 @@ int main(int argc, char **argv) {
       keyczar::Verifier::Read(FLAGS_policy_key.c_str()));
   policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth());
-  whitelist_auth->Init(FLAGS_whitelist_path, *policy_key);
-  scoped_ptr<AttestationVerifier> verifier(new AttestationVerifier(
-      FLAGS_aik_cert, FLAGS_policy_key, whitelist_auth.release()));
+  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
+  CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist auth";
 
   // set up locking in OpenSSL
   int lock_count = CRYPTO_num_locks();
@@ -133,10 +129,10 @@ int main(int argc, char **argv) {
   LOG(INFO) << "Starting CloudServer";
 
   CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret, FLAGS_policy_key,
-                 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_whitelist_path,
-                 FLAGS_address, FLAGS_port);
+                 FLAGS_pem_policy_key, FLAGS_acls,
+                 FLAGS_address, FLAGS_port, whitelist_auth.release());
   LOG(INFO) << "Started CloudServer. About to listen";
-  CHECK(cs.Listen(*channel, *verifier))
+  CHECK(cs.Listen(*channel))
       << "Could not listen for client connections";
   return 0;
 }

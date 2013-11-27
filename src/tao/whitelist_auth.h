@@ -35,18 +35,30 @@ using std::set;
 namespace tao {
 class WhitelistAuth : public TaoAuth {
  public:
-  WhitelistAuth() : whitelist_(), hash_whitelist_() {}
+  WhitelistAuth(const string &whitelist_path, const string &policy_public_key) : whitelist_path_(whitelist_path), policy_public_key_(policy_public_key), policy_key_(NULL), whitelist_(), hash_whitelist_() {}
   virtual ~WhitelistAuth() {}
-  bool Init(const string &whitelist_path,
-            const keyczar::Keyczar &public_policy_key);
+  virtual bool Init();
   virtual bool IsAuthorized(const string &program_hash) const;
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const;
   virtual bool IsAuthorized(const Attestation &attestation) const;
+  virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
  private:
+  string whitelist_path_;
+  string policy_public_key_;
+  scoped_ptr<keyczar::Keyczar> policy_key_;
   map<string, string> whitelist_;
   set<string> hash_whitelist_;
+
+  // Checks a signature made by the public policy key
+  bool CheckRootSignature(const Attestation &a) const;
+
+  // Checks a signature made by an intermediate Tao
+  bool CheckIntermediateSignature(const Attestation &a) const;
+
+  // Checks a signature in the TPM 1.2 Quote format
+  bool CheckTPM12Quote(const Attestation &a) const;
 
   DISALLOW_COPY_AND_ASSIGN(WhitelistAuth);
 };

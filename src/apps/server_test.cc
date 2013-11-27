@@ -29,6 +29,7 @@
 #include "tao/pipe_tao_channel.h"
 #include "tao/process_factory.h"
 #include "tao/util.h"
+#include "tao/whitelist_auth.h"
 
 #include <keyczar/base/base64w.h>
 #include <keyczar/crypto_factory.h>
@@ -82,6 +83,7 @@ using tao::Tao;
 using tao::TaoChannel;
 using tao::TaoChildChannel;
 using tao::Whitelist;
+using tao::WhitelistAuth;
 
 DEFINE_string(program, "server", "The program to run");
 
@@ -191,9 +193,14 @@ int main(int argc, char **argv) {
   CHECK(sw.SerializeToOstream(&whitelist_file));
   whitelist_file.close();
 
+  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(whitelist_path, policy_pk_path));
+  CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist";
+
+
   scoped_ptr<Tao> tao(new LinuxTao(
-      secret_path, key_path, pk_path, whitelist_path, policy_pk_path,
-      channel.release(), pipe_channel.release(), program_factory.release()));
+      secret_path, key_path, pk_path, policy_pk_path,
+      channel.release(), pipe_channel.release(), program_factory.release(),
+      whitelist_auth.release()));
   CHECK(tao->Init());
 
   list<string> args;

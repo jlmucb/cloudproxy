@@ -25,6 +25,7 @@
 #include "tao/hosted_program_factory.h"
 #include "tao/linux_tao.h"
 #include "tao/util.h"
+#include "tao/whitelist_auth.h"
 #include "gtest/gtest.h"
 
 #include <keyczar/base/base64w.h>
@@ -60,6 +61,7 @@ using tao::Tao;
 using tao::TaoChannel;
 using tao::TaoChildChannel;
 using tao::Whitelist;
+using tao::WhitelistAuth;
 
 class LinuxTaoTest : public ::testing::Test {
  protected:
@@ -144,9 +146,13 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
     whitelist_file.close();
 
+    scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(whitelist_path, policy_pk_path));
+    ASSERT_TRUE(whitelist_auth->Init());
+
     tao_.reset(new LinuxTao(
-        secret_path, key_path, pk_path, whitelist_path, policy_pk_path,
-        channel.release(), child_channel.release(), program_factory.release()));
+        secret_path, key_path, pk_path, policy_pk_path,
+        channel.release(), child_channel.release(), program_factory.release(),
+	    whitelist_auth.release()));
     ASSERT_TRUE(tao_->Init());
   }
 

@@ -27,7 +27,7 @@
 
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloud_user_manager.h"
-#include "tao/attestation_verifier.h"
+#include "tao/tao_auth.h"
 #include "tao/tao_child_channel.h"
 #include "tao/whitelist_auth.h"
 
@@ -58,14 +58,14 @@ class CloudClient {
   // well as with the addr:port of a CloudServer.
   CloudClient(const string &tls_cert, const string &tls_key,
               const string &secret, const string &public_policy_keyczar,
-              const string &public_policy_pem, const string &whitelist_path,
-              const string &server_addr, ushort server_port);
+              const string &public_policy_pem,
+              const string &server_addr, ushort server_port,
+	      tao::TaoAuth *auth_manager);
 
   virtual ~CloudClient() {}
 
   // Connects to the specified server using the keys
-  bool Connect(const tao::TaoChildChannel &t,
-               const tao::AttestationVerifier &v);
+  bool Connect(const tao::TaoChildChannel &t);
 
   bool AddUser(const string &user, const string &key_path,
                const string &password);
@@ -112,7 +112,7 @@ class CloudClient {
   scoped_ptr<CloudUserManager> users_;
 
   // a way to check that a given hash corresponds to an authorized program
-  scoped_ptr<tao::WhitelistAuth> auth_manager_;
+  scoped_ptr<tao::TaoAuth> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };

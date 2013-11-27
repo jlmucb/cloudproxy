@@ -24,6 +24,7 @@
 #include "tao/pipe_tao_channel.h"
 #include "tao/process_factory.h"
 #include "tao/tpm_tao_child_channel.h"
+#include "tao/whitelist_auth.h"
 
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
@@ -39,6 +40,7 @@
 DEFINE_string(secret_path, "linux_tao_service_secret",
               "The path to the TPM-sealed key for this binary");
 DEFINE_string(aik_blob, "HW/aikblob", "The AIK blob from the TPM");
+DEFINE_string(aik_attestation, "HW/aik.attest", "The attestation to the AIK by the policy key");
 DEFINE_string(key_path, "linux_tao_service_files/key",
               "An encrypted keyczar directory for an encryption key");
 DEFINE_string(pk_key_path, "linux_tao_service_files/public_key",
@@ -60,6 +62,7 @@ using tao::LinuxTao;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
 using tao::TPMTaoChildChannel;
+using tao::WhitelistAuth;
 
 vector<shared_ptr<mutex> > locks;
 
@@ -100,8 +103,11 @@ int main(int argc, char **argv) {
   // The TPM to use for the parent Tao
   // TODO(tmroeder): add a proper AIK attestation from the public key
   scoped_ptr<TPMTaoChildChannel> tpm(
-      new TPMTaoChildChannel(aik_blob_stream.str(), "", list<UINT32>{17, 18}));
-  tpm->Init();
+      new TPMTaoChildChannel(aik_blob_stream.str(), FLAGS_aik_attestation, list<UINT32>{17, 18}));
+  CHECK(tpm->Init()) << "Could not init the TPM";
+
+  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
+  CHECK(whitelist_auth->Init()) << "Could not initialize the authorization manager";
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
@@ -110,8 +116,9 @@ int main(int argc, char **argv) {
 
   scoped_ptr<LinuxTao> tao(
       new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
-                   FLAGS_whitelist, FLAGS_policy_pk_path, tpm.release(),
-                   pipe_channel.release(), process_factory.release()));
+                   FLAGS_policy_pk_path, tpm.release(),
+                   pipe_channel.release(), process_factory.release(),
+		   whitelist_auth.release()));
 
   // The remain command-line flags are passed to the program it starts.
   list<string> args;

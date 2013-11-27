@@ -61,19 +61,18 @@ class LinuxTao : public Tao {
   // @param key_path The location of its symmetric key, encrypted to the secret
   // @param pk_path The location of its public/private key pair, encrypted to
   // the symmetric key
-  // @param whitelist_path The location of a whitelist signed by the policy key.
-  // This whitelist allows it to decide if programs it is asked to start are
-  // authorized.
   // @param policy_pk_path The path to the public policy key
   // @param host_channel A channel implementation it takes ownership of and uses
   // to communicate with its parent Tao
   // @param child_channel A channel implementation it uses to communicat with
   // hosted programs it starts
   // @param program_factory A factory that creates hosted programs in the OS.
+  // @param auth_manager Handles authorization checks, including VerifyAttestation
   LinuxTao(const string &secret_path, const string &key_path,
-           const string &pk_path, const string &whitelist_path,
+           const string &pk_path,
            const string &policy_pk_path, TaoChildChannel *host_channel,
-           TaoChannel *child_channel, HostedProgramFactory *program_factory);
+           TaoChannel *child_channel, HostedProgramFactory *program_factory,
+           TaoAuth *auth_manager);
   virtual ~LinuxTao() {}
 
   // Start listening for Tao messages on channels

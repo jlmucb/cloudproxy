@@ -28,7 +28,7 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
-#include "tao/attestation_verifier.h"
+#include "tao/tao_auth.h"
 #include "tao/tao_child_channel.h"
 #include "tao/whitelist_auth.h"
 #include <openssl/ssl.h>
@@ -50,6 +50,8 @@ using std::thread;
 using std::set;
 using std::string;
 
+using tao::TaoAuth;
+
 namespace cloudproxy {
 
 // A server that handles requests from a CloudClient (and a base class for all
@@ -66,8 +68,8 @@ class CloudServer {
   CloudServer(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &acl_location,
-              const string &whitelist_location, const string &host,
-              ushort port);
+              const string &host, ushort port,
+	      TaoAuth *auth_manager);
 
   virtual ~CloudServer() {}
 
@@ -75,7 +77,7 @@ class CloudServer {
   // The Tao implementation allows the server to check that programs
   // that connect to it are allowed by the Tao and to get a
   // Attestation for its key
-  bool Listen(const tao::TaoChildChannel &t, const tao::AttestationVerifier &v);
+  bool Listen(const tao::TaoChildChannel &t);
 
  protected:
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers
@@ -112,20 +114,17 @@ class CloudServer {
 
   // handles an incoming message from a client
   bool ListenAndHandle(BIO *bio, string *reason, bool *reply);
-  void HandleConnection(BIO *bio, const tao::TaoChildChannel *t,
-                        const tao::AttestationVerifier *v);
+  void HandleConnection(BIO *bio, const tao::TaoChildChannel *t);
   bool HandleMessage(const ClientMessage &message, BIO *bio, string *reason,
                      bool *reply, bool *close, CloudServerThreadData &cstd,
-                     const tao::TaoChildChannel &t,
-                     const tao::AttestationVerifier &v);
+                     const tao::TaoChildChannel &t);
   bool HandleAuth(const Auth &auth, BIO *bio, string *reason, bool *reply,
                   CloudServerThreadData &cstd);
   bool HandleResponse(const Response &response, BIO *bio, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
   bool HandleAttestation(const string &attestation, BIO *bio, string *reason,
                          bool *reply, CloudServerThreadData &cstd,
-                         const tao::TaoChildChannel &t,
-                         const tao::AttestationVerifier &v);
+                         const tao::TaoChildChannel &t);
 
   // the public policy key, used to check signatures
   scoped_ptr<keyczar::Keyczar> public_policy_key_;
@@ -151,8 +150,8 @@ class CloudServer {
   // a simple object management tool: a set of object names
   set<string> objects_;
 
-  // authorized hashes of programs
-  scoped_ptr<tao::WhitelistAuth> auth_manager_;
+  // authorized hashes of programs and VerifyAttestation
+  scoped_ptr<tao::TaoAuth> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };

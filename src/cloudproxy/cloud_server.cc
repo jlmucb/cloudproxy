@@ -41,7 +41,6 @@ using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
 
 using tao::Attestation;
-using tao::AttestationVerifier;
 using tao::TaoChildChannel;
 using tao::VerifySignature;
 using tao::WhitelistAuth;
@@ -53,8 +52,8 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
                          const string &acl_location,
-                         const string &whitelist_location, const string &host,
-                         ushort port)
+                         const string &host, ushort port,
+			 TaoAuth *auth_manager)
     : public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       rand_(keyczar::CryptoFactory::Rand()),
@@ -64,14 +63,11 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
       auth_(),
       users_(new CloudUserManager()),
       objects_(),
-      auth_manager_(new WhitelistAuth()) {
+      auth_manager_(auth_manager) {
 
   // set up the policy key to verify bytes, not strings
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
   auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
-
-  CHECK(auth_manager_->Init(whitelist_location, *public_policy_key_))
-      << "Could not initialize the whitelist";
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
@@ -114,23 +110,21 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
 
 // TODO(tmroeder): this memory usage is unsafe: it should be a shared_ptr so
 // that the memory won't go away when the parent thread does.
-bool CloudServer::Listen(const TaoChildChannel &quote_tao,
-                         const AttestationVerifier &verifier) {
+bool CloudServer::Listen(const TaoChildChannel &quote_tao) {
   while (true) {
     LOG(INFO) << "About to listen for a client message";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
                                                " connection";
 
     BIO *out = BIO_pop(abio_.get());
-    thread t(&CloudServer::HandleConnection, this, out, &quote_tao, &verifier);
+    thread t(&CloudServer::HandleConnection, this, out, &quote_tao);
     t.detach();
   }
 
   return true;
 }
 
-void CloudServer::HandleConnection(BIO *sbio, const TaoChildChannel *t,
-                                   const AttestationVerifier *v) {
+void CloudServer::HandleConnection(BIO *sbio, const TaoChildChannel *t) {
   keyczar::openssl::ScopedBIO bio(sbio);
   if (BIO_do_handshake(bio.get()) <= 0) {
     LOG(ERROR) << "Could not perform a TLS handshake with the client";
@@ -184,7 +178,7 @@ void CloudServer::HandleConnection(BIO *sbio, const TaoChildChannel *t,
     string reason;
     bool reply = true;
     bool close = false;
-    rv = HandleMessage(cm, bio.get(), &reason, &reply, &close, cstd, *t, *v);
+    rv = HandleMessage(cm, bio.get(), &reason, &reply, &close, cstd, *t);
 
     if (close) {
       break;
@@ -230,8 +224,7 @@ bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
 bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
                                 string *reason, bool *reply, bool *close,
                                 CloudServerThreadData &cstd,
-                                const TaoChildChannel &t,
-                                const AttestationVerifier &v) {
+                                const TaoChildChannel &t) {
   CHECK(bio) << "null bio";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
@@ -304,8 +297,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
     *reply = false;
     return rv;
   } else if (message.has_attestation()) {
-    rv = HandleAttestation(message.attestation(), bio, reason, reply, cstd, t,
-                           v);
+    rv = HandleAttestation(message.attestation(), bio, reason, reply, cstd, t);
     if (!rv) {
       LOG(ERROR) << "Attestation verification failed. Closing connection";
       *close = true;
@@ -521,14 +513,13 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
 bool CloudServer::HandleAttestation(const string &attestation, BIO *bio,
                                     string *reason, bool *reply,
                                     CloudServerThreadData &cstd,
-                                    const TaoChildChannel &t,
-                                    const AttestationVerifier &v) {
+                                    const TaoChildChannel &t) {
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {
     lock_guard<mutex> l(tao_m_);
     string data;
-    if (!v.VerifyAttestation(attestation, &data)) {
+    if (!auth_manager_->VerifyAttestation(attestation, &data)) {
       LOG(ERROR) << "The Attestation did not pass Tao verification";
       return false;
     }

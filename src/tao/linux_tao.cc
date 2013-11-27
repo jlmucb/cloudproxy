@@ -24,7 +24,6 @@
 #include <tao/keyczar_public_key.pb.h>
 #include <tao/sealed_data.pb.h>
 #include <tao/util.h>
-#include <tao/whitelist_auth.h>
 
 #include <keyczar/base/base64w.h>
 #include <keyczar/rw/keyset_file_reader.h>
@@ -75,10 +74,10 @@ using std::stringstream;
 namespace tao {
 
 LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
-                   const string &pk_path, const string &whitelist_path,
+                   const string &pk_path,
                    const string &policy_pk_path, TaoChildChannel *host_channel,
                    TaoChannel *child_channel,
-                   HostedProgramFactory *program_factory)
+                   HostedProgramFactory *program_factory, TaoAuth *auth_manager)
     : secret_path_(secret_path),
       key_path_(key_path),
       pk_path_(pk_path),
@@ -86,13 +85,12 @@ LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
       crypter_(nullptr),
       signer_(nullptr),
       policy_verifier_(nullptr),
-      whitelist_path_(whitelist_path),
       serialized_pub_key_(),
       pk_attest_(),
       host_channel_(host_channel),
       child_channel_(child_channel),
       program_factory_(program_factory),
-      auth_manager_(nullptr),
+      auth_manager_(auth_manager),
       running_children_() {
   // leave setup for Init
 }
@@ -102,11 +100,6 @@ bool LinuxTao::Init() {
   policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
   CHECK_NOTNULL(policy_verifier_.get());
   policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
-
-  scoped_ptr<WhitelistAuth> whitelist_auth(new WhitelistAuth());
-  CHECK(whitelist_auth->Init(whitelist_path_, *policy_verifier_))
-      << "Could not initialize the whitelist manager";
-  auth_manager_.reset(whitelist_auth.release());
 
   // initialize the host channel
   CHECK(host_channel_->Init()) << "Could not initialize the host channel";

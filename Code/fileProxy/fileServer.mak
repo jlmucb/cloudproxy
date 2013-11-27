@@ -40,13 +40,13 @@ dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/encapsulate.o $(B)/encryptedblockIO.o $(B)/fileServices.o \
 	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/trustedKeyNego.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
-	    $(B)/taoInit.o $(B)/linuxHostsupport.o \
+	    $(B)/taoInit.o $(B)/linuxHostsupport.o  $(B)/serviceChannel.o \
 	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
 	    $(B)/tcIO.o $(B)/fileHash.o
 
-all: $(E)/fileServer.exe $(E)/guestfileServer.exe
+all: $(E)/fileServer.exe #  $(E)/guestfileServer.exe
 
 $(E)/fileServer.exe: $(dobjs) $(B)/fileServer.o
 	@echo "fileServer"
@@ -57,7 +57,7 @@ $(E)/guestfileServer.exe: $(dobjs) $(B)/guestfileServer.o
 	$(LINK) -o $(E)/guestfileServer.exe $(dobjs) $(B)/guestfileServer.o $(LDFLAGS) -lpthread
 
 $(B)/fileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
-	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -D NEWCODE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/fileServer.o $(S)/fileServer.cpp
 
 $(B)/guestfileServer.o: $(S)/fileServer.cpp $(S)/fileServer.h
 	$(CC) $(CFLAGS) -D LINUXGUESTSERVICE -I$(S) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TRS) -I$(ACC) -I$(PROTO) -I$(TAO) -I$(VLT) -c -o $(B)/guestfileServer.o $(S)/fileServer.cpp
@@ -67,6 +67,9 @@ $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 
 $(B)/cryptoHelper.o: $(SCC)/cryptoHelper.cpp $(SCC)/cryptoHelper.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/cryptoHelper.o $(SCC)/cryptoHelper.cpp
+
+$(B)/serviceChannel.o: $(PROTO)/serviceChannel.cpp $(PROTO)/serviceChannel.h
+	$(CC) $(CFLAGS) -I$(ACC) -I$(S) -I$(VLT) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TRS) -I$(TAO) -c -o $(B)/serviceChannel.o $(PROTO)/serviceChannel.cpp
 
 $(B)/modesandpadding.o: $(SCC)/modesandpadding.cpp $(SCC)/modesandpadding.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/modesandpadding.o $(SCC)/modesandpadding.cpp

@@ -69,8 +69,13 @@
 #endif
 
 
+#ifndef NEWCODE
 bool     g_fTerminateServer= false;
-int      iQueueSize= 5;
+int      g_iQueueSize= 5;
+#else
+extern bool  g_fTerminateServer;
+int      g_iQueueSize;
+#endif
 
 #include "./policyCert.inc"
 #include "./taoSetupglobals.h"
@@ -86,19 +91,16 @@ void printResources(objectManager<resource>* pRM);
 
 
 // request loop for fileServer
-#if 0
-
-
-#define TIMER(x) (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->x
-#define FILESERVICES fileServerLocals*)(service->m_sharedServices)->m_pFileServices
+#ifdef NEWCODE
 
 
 class fileServerLocals{
 public:
     fileServer*     m_pServerObj;
-    metaData*       m_pMetaData;
-    fileServices*   m_pFileServices;
 };
+
+
+#define TIMER(x) ((fileServerLocals*)(service->m_sharedServices))->m_pServerObj->x
 
 
 int fileServerrequestService(Request& oReq, serviceChannel* service)
@@ -109,7 +111,7 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
     }
 
     if(strcmp(oReq.m_szAction, "getResource")==0) {
-        if(!FILESERVICES->serversendResourcetoclient(oReq, TIMER(m_accessCheckTimer), 
+        if(!service->m_ofileServices.serversendResourcetoclient(oReq, TIMER(m_accessCheckTimer), 
                     TIMER(m_decTimer))) {
             fprintf(g_logFile, 
                    "fileServerrequestService: serversendResourcetoclient failed 1\n");
@@ -118,7 +120,7 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-        if(!FILESERVICES->servergetResourcefromclient(oReq,  TIMER(m_accessCheckTimer), 
+        if(!service->m_ofileServices.servergetResourcefromclient(oReq,  TIMER(m_accessCheckTimer), 
                     TIMER(m_encTimer))) {
             fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
@@ -126,35 +128,35 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "createResource")==0) {
-        if(!FILESERVICES-> servercreateResourceonserver(oReq, TIMER(m_accessCheckTimer))) {
+        if(!service->m_ofileServices.servercreateResourceonserver(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-        if(!FILESERVICES->serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
+        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: serveraddownertoResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-        if(!FILESERVICES->serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
+        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: serverremoveownerfromResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-        if(!FILESERVICES->serverdeleteResource(oReq, TIMER(m_accessCheckTimer))) {
+        if(!service->m_ofileServices.serverdeleteResource(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService:serverdeleteResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-        if(!FILESERVICES->servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
+        if(!service->m_ofileServices.servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, 
                 "fileServerrequestService:: servergetProtectedKey failed\n");
             return -1;
@@ -173,7 +175,7 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
 // ------------------------------------------------------------------------
 
 
-#if 1
+#ifndef NEWCODE
 
 
 theServiceChannel::theServiceChannel()
@@ -730,7 +732,7 @@ bool fileServer::server()
     fflush(g_logFile);
 #endif
 
-    listen(fd, iQueueSize);
+    listen(fd, g_iQueueSize);
 
     // set the signal disposition of SIGCHLD to not create zombies
     struct sigaction sigAct;
@@ -745,12 +747,13 @@ bool fileServer::server()
         fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
     }
 
-#if 1
+#ifndef NEWCODE
     theServiceChannel*  poSc= NULL;
 #else
     serviceChannel*  poSc= NULL;
 #endif
-    int                 i;
+    int              i;
+
     for(;;) {
 #ifdef TEST
         fprintf(g_logFile, "fileServer: top of accept loop\n");
@@ -766,7 +769,7 @@ bool fileServer::server()
         fflush(g_logFile);
 #endif
 
-#if 1
+#ifndef NEWCODE
         poSc= new theServiceChannel();
 
         if(poSc!=NULL) {
@@ -827,21 +830,21 @@ bool fileServer::server()
                 i= m_iNumClients++;
             }
 
+            // TODO: delete this object
             fileServerLocals* pmySharedServices= new fileServerLocals();
+
             pmySharedServices->m_pServerObj= this;
-            pmySharedServices->m_pFileServices= new fileServices();
-            pmySharedServices->m_pMetaData= &m_oMetaData;
-            if(!poSc->initServiceChannel("fileServer", newfd, &m_oPolicyCert, &m_host, 
+            if(!poSc->initServiceChannel("fileServer", newfd, &m_opolicyCert, &m_host, 
                                          &m_tcHome, &m_serverThreads[i], 
-                                         fileServerrequestService
+                                         fileServerrequestService,
                                          (void*)pmySharedServices)) {
+                fprintf(g_logFile, "fileServer::server: Can't initServiceChannel\n");
+                return false;
             }
 
-            if(!pmySharedServices->m_pFileServices->initFileServices(&poSc->m_serverSession, 
-                                        &m_opolicyCert,
-                                        &m_tcHome, 
-                                        m_encType, m_fileKeys, 
-                                        &m_oMetaData, &poSc->m_oSafeChannel)) {
+            if(!poSc->enableFileServices(m_encType, m_fileKeys, &m_oMetaData)) {
+                fprintf(g_logFile, "fileServer::server: Can't initFileServices\n");
+                return false;
             }
 
 #ifdef TEST
@@ -850,12 +853,12 @@ bool fileServer::server()
             fflush(g_logFile);
 #endif
 
-            memset(&m_threadData[i], 0, sizeof(pthread_t));
+            memset(&m_serverThreads[i].m_threadData, 0, sizeof(pthread_t));
             m_serverThreads[i].m_threadID= pthread_create(&m_serverThreads[i].m_threadData, NULL, 
                                     channelThread, poSc);
 #ifdef TEST
             fprintf(g_logFile, "fileServer: pthread create returns: %d\n", 
-                    m_serverThreads[i].m_threadIDs);
+                    m_serverThreads[i].m_threadID);
             fflush(g_logFile);
 #endif
             if(m_serverThreads[i].m_threadID>=0)

@@ -34,6 +34,7 @@
 #include "resource.h"
 #include "cert.h"
 #include "accessControl.h"
+#include "serviceChannel.h"
 #include "fileServices.h"
 #include "algs.h"
 #include "timer.h"
@@ -48,7 +49,7 @@
 class fileServer {
 public:
     int                 m_iNumClients;
-#if 1
+#ifndef NEWCODE
     bool                m_fthreadValid[MAXNUMCLIENTS];
     pthread_t           m_threadData[MAXNUMCLIENTS];
     int                 m_threadIDs[MAXNUMCLIENTS];

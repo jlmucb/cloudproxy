@@ -26,7 +26,6 @@
 
 #include "jlmTypes.h"
 #include "logging.h"
-#include "fileServer.h"
 #include "jlmcrypto.h"
 #include "channel.h"
 #include "safeChannel.h"
@@ -40,7 +39,7 @@
 #include "tao.h"
 
 #include "serviceChannel.h"
-#include "resource.h"
+#include "fileServices.h"
 #include "cert.h"
 #include "domain.h"
 
@@ -63,16 +62,6 @@
 
 
 bool     g_fTerminateServer= false;
-int      iQueueSize= 5;
-
-#include "./policyCert.inc"
-#include "./taoSetupglobals.h"
-#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
-
-
-#ifdef TEST
-void printResources(objectManager<resource>* pRM);
-#endif
 
 
 // ------------------------------------------------------------------------
@@ -81,7 +70,7 @@ void printResources(objectManager<resource>* pRM);
 serviceThread::serviceThread() 
 {
     m_fthreadValid= false;
-    m_threadData= NULL;
+    m_threadData= 0;
     m_threadID= -1;
 }
 
@@ -105,6 +94,11 @@ serviceChannel::serviceChannel()
     m_pmyThread= NULL;
     m_sharedServices= NULL;
     m_requestService= NULL;
+    m_policyKey= NULL;
+    m_encType= 0;
+    m_fileKeys= NULL;     
+    m_pMetaData= NULL;    
+    m_fFileServicesPresent= false;
 }
 
 
@@ -182,15 +176,15 @@ int serviceChannel::processRequests()
             return -1;
         }
 
-        return *m_requestService(oReq, this);
+        return m_requestService(oReq, this);
     }
 }
 
 
 bool serviceChannel::runServiceChannel()
 {
-    int     n= 0;
     bool    fRet= true;
+    int     n= 0;
 
 #ifdef  TEST
     fprintf(g_logFile, "serviceChannel::runServiceChannel\n");
@@ -201,9 +195,10 @@ bool serviceChannel::runServiceChannel()
         m_serverState= INITSTATE;
 
         // Initialize program private key and certificate for session
-        if(!m_serverSession.serverInit(ptaoEnv->policyCertPtr(),
-                                   m_pPolicyCert, ptaoEnv->myCertPtr(),
-                                   (RSAKey*)ptaoEnv->privateKeyPtr())) 
+        if(!m_serverSession.serverInit(m_ptaoEnv->policyCertPtr(),
+                                   m_policyKey, 
+                                   m_ptaoEnv->myCertPtr(),
+                                   (KeyInfo*)m_ptaoEnv->privateKeyPtr())) 
             throw "serviceChannel::runServiceChannel: session serverInit failed\n";
 
 #ifdef  TEST
@@ -212,7 +207,7 @@ bool serviceChannel::runServiceChannel()
 #endif
 
         // copy my public key into server public key
-        if(!ptaoEnv->myCertValid() || !m_serverSession.getServerCert(ptaoEnv->myCertPtr())) 
+        if(!m_ptaoEnv->myCertValid() || !m_serverSession.getServerCert(m_ptaoEnv->myCertPtr())) 
             throw "serviceChannel::runServiceChannel: Cant load client public key structures\n";
 
         // negotiate channel
@@ -225,20 +220,31 @@ bool serviceChannel::runServiceChannel()
     m_pParent->m_protocolNegoTimer.Stop();
 #endif
 
-
+        if(m_fFileServicesPresent) {
+            if(!m_ofileServices.initFileServices(&m_serverSession, m_pPolicyCert, 
+                                        m_ptaoEnv, m_encType, m_fileKeys,
+                                        m_pMetaData, &m_oSafeChannel))
+            throw("serviceChannel::runServiceChannel: can't initFileServices\n");
+        }
+    
         m_serverState= REQUESTSTATE;
         while((n=processRequests())!=0) {
             if(n<0)
-                fprintf(g_logFile, "serviceChannel::runServiceChannel: processRequest error\n");
+                fprintf(g_logFile, "serviceChannel::runServiceChannel processRequest error\n");
 #if 0
             m_pParent->printTimers(g_logFile);
             m_pParent->resetTimers();
 #endif
         }
         m_serverState= SERVICETERMINATESTATE;
+
+#ifdef TEST
+        fprintf(g_logFile, "serviceChannel::runServiceChannel terminating\n");
+        fflush(g_logFile);
+#endif
     }
     catch(const char* szErr) {
-        fprintf(g_logFile, "serviceChannel::runServiceChannelerror: %s\n", szErr);
+        fprintf(g_logFile, "serviceChannel::runServiceChannel error: %s\n", szErr);
         fRet= false;
     }
 
@@ -251,7 +257,18 @@ bool serviceChannel::runServiceChannel()
         close(m_fdChannel);
         m_fdChannel= -1;
     }
+
     return fRet;
+}
+
+
+bool serviceChannel::enableFileServices(u32 encType, byte* fileKeys, metaData* pMetaData)
+{
+    m_fFileServicesPresent= true;
+    m_encType= encType;
+    m_fileKeys= fileKeys;     
+    m_pMetaData= pMetaData;    
+    return true;
 }
 
 
@@ -268,7 +285,7 @@ bool serviceChannel::initServiceChannel(const char* serverType, int newfd,
 #endif
 
     if(serverType!=NULL)
-	m_serverType= strdup(serverType);
+        m_serverType= strdup(serverType);
     if(newfd<0) {
         fprintf(g_logFile, "serviceChannel::initserviceChannel bad channel\n");
         return false;
@@ -280,6 +297,8 @@ bool serviceChannel::initServiceChannel(const char* serverType, int newfd,
         return false;
     }
     m_pPolicyCert= pPolicyCert;
+
+    m_policyKey= (KeyInfo*)m_pPolicyCert->getSubjectKeyInfo();
 
     if(ptaoHost==NULL) {
         fprintf(g_logFile, "serviceChannel::initserviceChannel bad tao Host\n");
@@ -318,7 +337,7 @@ bool serviceChannel::initServiceChannel(const char* serverType, int newfd,
 void* channelThread(void* ptr)
 {
 
-    pthread_detatch(pthread_self());
+    // pthread_detatch(pthread_self());
     try {
         serviceChannel*  poSc= (serviceChannel*) ptr;
 
@@ -327,7 +346,8 @@ void* channelThread(void* ptr)
         fflush(g_logFile);
 #endif
         if(!poSc->runServiceChannel())
-            throw("channelThread: initServiceChannel failed\n");
+            throw("channelThread: startServiceChannel failed\n");
+
 
         // delete enty in thread table in parent
         poSc->m_pmyThread->m_fthreadValid= false;

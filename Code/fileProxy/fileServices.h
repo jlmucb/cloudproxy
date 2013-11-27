@@ -41,7 +41,7 @@
 #endif
 
 
-class fileServices{
+class fileServices {
 public:
     PrincipalCert*  m_ppolicyCert;
     RSAKey*         m_pPolicy;

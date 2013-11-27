@@ -30,11 +30,10 @@
 #include "session.h"
 #include "channel.h"
 #include "safeChannel.h"
-#include "resource.h"
 #include "request.h"
 #include "cert.h"
-#include "accessControl.h"
 #include "algs.h"
+#include "fileServices.h"
 #include "timer.h"
 #include <pthread.h>
 
@@ -66,12 +65,19 @@ public:
     int                 m_fdChannel;
     safeChannel         m_oSafeChannel;
 
-    PrincipalCert       m_pPolicyCert;
+    PrincipalCert*      m_pPolicyCert;
+    KeyInfo*		m_policyKey;
+
+    bool                m_fFileServicesPresent;
+    fileServices        m_ofileServices;
+    u32                 m_encType;
+    byte*               m_fileKeys;
+    metaData*           m_pMetaData;
 
     taoHostServices*    m_ptaoHost;
     taoEnvironment*     m_ptaoEnv;
 
-    serviceThead*       m_pmyThread;
+    serviceThread*      m_pmyThread;
     void*               m_sharedServices;
 
     // custom loop for service requests
@@ -81,13 +87,14 @@ public:
     ~serviceChannel();
 
     bool                initServiceChannel(const char* serverType, int newfd, 
-                                           PrincipalCert* pPolicyCert, taoHostServices* ptaoHost,
-                                           taoEnvironment * ptaoEnv, serviceThread* pmyThread,
-                                           int (*requestService)(Request&, serviceChannel*),
-                                           void* pmySharedServices);
+                                PrincipalCert* pPolicyCert, taoHostServices* ptaoHost,
+                                taoEnvironment * ptaoEnv, serviceThread* pmyThread,
+                                int (*requestService)(Request&, serviceChannel*),
+                                void* pmySharedServices);
+    bool                enableFileServices(u32 encType, byte* fileKeys, 
+                                           metaData* pMetaData);
     bool                runServiceChannel();
     int                 processRequests();
-    bool                serviceChannel();
 };
 
 #endif

@@ -563,7 +563,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
  * %s        Extra
  * </Response>
  */
-#ifdef  TEST1
+#ifdef  TEST
     char* p= *pp;
 #endif
     const char*   szErrorFormat= " <ErrorCode> %s </ErrorCode>\n";
@@ -582,6 +582,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
         szExtraResponseElements= "";
     if(szChannelError!=NULL) {
         if((strlen(szErrorFormat)+strlen(szChannelError)+8)>256) {
+            fprintf(g_logFile, "constructResponse: too large\n");
             return false;
         }
         sprintf(szErrorElement, szErrorFormat, szChannelError);
@@ -599,8 +600,9 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
-#ifdef  TEST1
+#ifdef TEST
     fprintf(g_logFile, "constructResponse completed\n%s\n", p);
+    fflush(g_logFile);
 #endif
     return true;
 }

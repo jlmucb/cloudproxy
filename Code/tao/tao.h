@@ -377,7 +377,7 @@ public:
     bool                m_myMeasurementValid;
     u32                 m_myMeasurementType;
     int                 m_myMeasurementSize;
-    byte                m_myMeasurement[32];
+    byte                m_myMeasurement[GLOBALMAXDIGESTSIZE];
 
     bool                m_myCertificateValid;
     u32                 m_myCertificateType;

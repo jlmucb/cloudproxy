@@ -185,7 +185,7 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
 #endif
     for(i=0; i<psession->m_iNumPrincipals; i++) {
         if(!m_pMetaData->addPrincipal(psession->m_rgPrincipalCerts[i])) {
-            fprintf(g_logFile, "fileServices::initFileServices: cant add principalssafeChannel\n");
+            fprintf(g_logFile, "fileServices::initFileServices: cant add principals\n");
         }
     }
 
@@ -511,7 +511,8 @@ bool fileServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
     // oReq.m_szResourceName should be key name but we don't look at it now
     if(g_szFileKeyEscrowCert==NULL) {
         fprintf(g_logFile, 
-              "fileServices::servergetProtectedFileKey: This app does not support excrow\n");
+              "fileServices::servergetProtectedFileKey: This app does not support escrow\n");
+        fflush(g_logFile);
         fError= true;
         goto done;
     }
@@ -591,18 +592,36 @@ bool fileServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
     fError= false;
 
 done: 
+#ifdef TEST
+    fprintf(g_logFile, "fileServices::servergetProtectedFileKey at done\n");
+    fflush(g_logFile);
+#endif
     // send response
     p= (char*)buf;
     if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
         fprintf(g_logFile, "fileServices::servergetProtectedFileKey: constructResponse failed\n");
+        fflush(g_logFile);
         return false;
     }
+#ifdef TEST
+    fprintf(g_logFile, "HERE\n");
+    fflush(g_logFile);
+#endif
     m_pSafeChannel->safesendPacket(buf, strlen((char*)buf)+1, type, multi, final);
+#ifdef TEST
+    fprintf(g_logFile, "HERE\n");
+    fflush(g_logFile);
+#endif
 
     if(szProtectedElement!=NULL) {
         free((void*)szProtectedElement);
         szProtectedElement= NULL;
     }
+
+#ifdef TEST
+    fprintf(g_logFile, "fileServices::servergetProtectedFileKey returns %d\n", !fError);
+    fflush(g_logFile);
+#endif
 
     return !fError;
 }

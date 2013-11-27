@@ -49,13 +49,7 @@
 class fileServer {
 public:
     int                 m_iNumClients;
-#ifndef NEWCODE
-    bool                m_fthreadValid[MAXNUMCLIENTS];
-    pthread_t           m_threadData[MAXNUMCLIENTS];
-    int                 m_threadIDs[MAXNUMCLIENTS];
-#else
     serviceThread       m_serverThreads[MAXNUMCLIENTS];
-#endif
 
     // the Tap
     taoHostServices     m_host;

@@ -150,7 +150,17 @@ bool TPMTaoChildChannel::Destroy() {
 }
 
 bool TPMTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
-  return false;
+  TSS_RESULT result;
+  BYTE *random;
+  result = Tspi_TPM_GetRandom(tpm_, size, &random);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not get random bytes from the TPM";
+    return false;
+  }
+
+  bytes->assign(reinterpret_cast<char *>(random), size);
+  Tspi_Context_FreeMemory(tss_ctx_, random);
+  return true;
 }
 
 bool TPMTaoChildChannel::Seal(const string &data, string *sealed) const {

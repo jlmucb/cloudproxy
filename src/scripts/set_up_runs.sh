@@ -18,6 +18,7 @@ cp -r run test
 cd test
 mkdir linux_tao_service_files
 cp ../src/out/Default/bin/* .
+cp ../src/scripts/getHash.sh .
 rm *.a
 cat sample_whitelist.pb2 | sed "s/REPLACE_ME_SERVER/`cat server | ./getHash.sh`/g" | sed "s/REPLACE_ME_CLIENT/`cat client | ./getHash.sh`/g" | sed "s/REPLACE_ME_FSERVER/`cat fserver | ./getHash.sh`/g" | sed "s/REPLACE_ME_FCLIENT/`cat fclient | ./getHash.sh`/g" > whitelist.pb2
 cat whitelist.pb2 | protoc -I../src/tao/ --encode=tao.Whitelist ../src/tao/hosted_programs.proto > whitelist

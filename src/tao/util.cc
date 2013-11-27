@@ -365,7 +365,6 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     LOG(ERROR) << "Could not receive a size on the channel";
     return false;
   }
-  LOG(INFO) << "Got a message of length " << (int)len;
 
   // then read this many bytes as the message
   scoped_array<char> bytes(new char[len]);

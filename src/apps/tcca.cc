@@ -38,7 +38,7 @@ using tao::SendMessage;
 using tao::Statement;
 using tao::WhitelistAuth;
 
-DEFINE_int32(port, 11235, "The listening port for tcca");
+DEFINE_int32(port, 11238, "The listening port for tcca");
 DEFINE_string(policy_key_path, "policy_key", "The path to the policy key");
 DEFINE_string(policy_key_pass, "cppolicy", "The password for the policy key");
 DEFINE_string(policy_pk_path, "policy_public_key",

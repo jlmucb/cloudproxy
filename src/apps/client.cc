@@ -91,6 +91,7 @@ int main(int argc, char** argv) {
 
   scoped_ptr<WhitelistAuth> whitelist_auth(
       new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
+  CHECK(whitelist_auth->Init()) << "Could not initialize the WhitelistAuth";
 
   LOG(INFO) << "Client successfully established communication with the Tao";
   int size = 6;

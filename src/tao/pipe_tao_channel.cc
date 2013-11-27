@@ -37,6 +37,7 @@
 
 using std::thread;
 
+// TODO(tmroeder): catch SIGPIPE so that dying subprocesses don't kill us.
 namespace tao {
 PipeTaoChannel::PipeTaoChannel(const string &socket_path)
     : domain_socket_path_(socket_path) {}

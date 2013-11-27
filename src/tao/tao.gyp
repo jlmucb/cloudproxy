@@ -106,6 +106,8 @@
         'pipe_tao_child_channel.h',
         'process_factory.cc',
         'process_factory.h',
+	'root_auth.cc',
+	'root_auth.h',
 	      'sealed_data.proto',
     	  'tao_auth.h',
         'tao_channel.cc',

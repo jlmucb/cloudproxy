@@ -97,7 +97,7 @@ serviceThread::~serviceThread()
 serviceChannel::serviceChannel()
 {
     m_serverState= NOSTATE;
-    m_serverType= 0;
+    m_serverType= NULL;
     m_fdChannel= -1;
     m_pPolicyCert= NULL;
     m_ptaoHost= NULL;
@@ -120,6 +120,10 @@ serviceChannel::~serviceChannel()
     m_pmyThread= NULL;
     m_sharedServices= NULL;
     m_requestService= NULL;
+    if(m_serverType!=NULL) {
+        free(m_serverType);
+        m_serverType= NULL;
+    }
 }
 
 
@@ -251,7 +255,7 @@ bool serviceChannel::runServiceChannel()
 }
 
 
-bool serviceChannel::initServiceChannel(u32 serverType, int newfd, 
+bool serviceChannel::initServiceChannel(const char* serverType, int newfd, 
                                         PrincipalCert* pPolicyCert,
                                         taoHostServices* ptaoHost,
                                         taoEnvironment * ptaoEnv, serviceThread* pmyThread,
@@ -263,7 +267,8 @@ bool serviceChannel::initServiceChannel(u32 serverType, int newfd,
     fflush(g_logFile);
 #endif
 
-    m_serverType= serverType;
+    if(serverType!=NULL)
+	m_serverType= strdup(serverType);
     if(newfd<0) {
         fprintf(g_logFile, "serviceChannel::initserviceChannel bad channel\n");
         return false;
@@ -304,18 +309,7 @@ bool serviceChannel::initServiceChannel(u32 serverType, int newfd,
         fprintf(g_logFile, "serviceChannel::initserviceChannel bad shared services pointer\n");
         return false;
     }
-    m_pmySharedServices= pmySharedServices;
-
-#if 0
-    // this gets done before runloop in app
-    if(!m_fileServices.initFileServices(&m_serverSession, 
-                                        &(m_pParent->m_opolicyCert),
-                                        &(m_pParent->m_tcHome), 
-                                        m_pParent->m_encType, m_pParent->m_fileKeys, 
-                                        pMetaData, pSafeChannel)) {
-        throw("serviceChannel::runServiceChannel: can't init fileServices\n");
-    }
-#endif
+    m_sharedServices= pmySharedServices;
 
     return true;
 }

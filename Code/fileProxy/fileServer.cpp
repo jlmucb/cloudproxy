@@ -88,6 +88,11 @@ void printResources(objectManager<resource>* pRM);
 // request loop for fileServer
 #if 0
 
+
+#define TIMER(x) (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->x
+#define FILESERVICES fileServerLocals*)(service->m_sharedServices)->m_pFileServices
+
+
 class fileServerLocals{
 public:
     fileServer*     m_pServerObj;
@@ -104,65 +109,52 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
     }
 
     if(strcmp(oReq.m_szAction, "getResource")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices
-             ->serversendResourcetoclient(oReq,
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer, 
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_decTimer)) {
-            fprintf(g_logFile, "fileServerrequestService: serversendResourcetoclient failed 1\n");
+        if(!FILESERVICES->serversendResourcetoclient(oReq, TIMER(m_accessCheckTimer), 
+                    TIMER(m_decTimer))) {
+            fprintf(g_logFile, 
+                   "fileServerrequestService: serversendResourcetoclient failed 1\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
-              servergetResourcefromclient(oReq,  
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer, 
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_encTimer)) {
+        if(!FILESERVICES->servergetResourcefromclient(oReq,  TIMER(m_accessCheckTimer), 
+                    TIMER(m_encTimer))) {
             fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "createResource")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
-             servercreateResourceonserver(oReq,
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+        if(!FILESERVICES-> servercreateResourceonserver(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
         }
-            return 1;
+        return 1;
     }
     else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
-             serverchangeownerofResource(oReq,
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+        if(!FILESERVICES->serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: serveraddownertoResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
-             serverchangeownerofResource(oReq,
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+        if(!FILESERVICES->serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: serverremoveownerfromResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
-             serverdeleteResource(oReq,
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+        if(!FILESERVICES->serverdeleteResource(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService:serverdeleteResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-        if(!((fileServerLocals*)(service->m_sharedServices)->m_pFileServices->
-             servergetProtectedFileKey(oReq,
-                    (fileServerLocals*)(service->m_sharedServices)->m_pServerObj->m_accessCheckTimer)) {
+        if(!FILESERVICES->servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, 
                 "fileServerrequestService:: servergetProtectedKey failed\n");
             return -1;
@@ -835,12 +827,21 @@ bool fileServer::server()
                 i= m_iNumClients++;
             }
 
+            fileServerLocals* pmySharedServices= new fileServerLocals();
             pmySharedServices->m_pServerObj= this;
-            pmySharedServices->m_pFileServices;
+            pmySharedServices->m_pFileServices= new fileServices();
             pmySharedServices->m_pMetaData= &m_oMetaData;
-            if(!poSc->initServiceChannel(FILESERVER, newfd, &m_oPolicyCert, &m_host, &m_tcHome,
-                                         &m_serverThreads[i], fileServerrequestService
+            if(!poSc->initServiceChannel("fileServer", newfd, &m_oPolicyCert, &m_host, 
+                                         &m_tcHome, &m_serverThreads[i], 
+                                         fileServerrequestService
                                          (void*)pmySharedServices)) {
+            }
+
+            if(!pmySharedServices->m_pFileServices->initFileServices(&poSc->m_serverSession, 
+                                        &m_opolicyCert,
+                                        &m_tcHome, 
+                                        m_encType, m_fileKeys, 
+                                        &m_oMetaData, &poSc->m_oSafeChannel)) {
             }
 
 #ifdef TEST

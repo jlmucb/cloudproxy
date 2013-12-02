@@ -21,21 +21,17 @@
 #ifndef TAO_LINUX_TAO_H_
 #define TAO_LINUX_TAO_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/crypto_factory.h>
-
-#include <tao/attestation.pb.h>
-#include <tao/hosted_program_factory.h>
-#include <tao/tao.h>
-#include <tao/tao_auth.h>
-#include <tao/tao_channel.h>
-#include <tao/tao_child_channel.h>
-
 #include <map>
 #include <mutex>
 #include <set>
 #include <string>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/scoped_ptr.h>
+#include <keyczar/base/stl_util-inl.h> // ScopedSafeString
+
+#include "tao/attestation.pb.h"
+#include "tao/tao.h"
 
 using std::lock_guard;
 using std::map;
@@ -43,7 +39,20 @@ using std::mutex;
 using std::set;
 using std::string;
 
+namespace keyczar {
+
+class Encrypter;
+class Keyczar;
+
+} // namespace keyczar
+
+
 namespace tao {
+
+class HostedProgramFactory;
+class TaoAuth;
+class TaoChannel;
+class TaoChildChannel;
 
 // An implementation of the Tao for Linux. This implementation can take
 // different HostedProgramFactory implementations, different TaoChannel

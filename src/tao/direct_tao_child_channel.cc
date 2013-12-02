@@ -19,6 +19,8 @@
 
 #include "tao/direct_tao_child_channel.h"
 
+#include "tao/tao.h"
+
 namespace tao {
 DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
     : tao_(tao), child_hash_(child_hash) {

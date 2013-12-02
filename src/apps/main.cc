@@ -22,9 +22,9 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/scoped_ptr.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 

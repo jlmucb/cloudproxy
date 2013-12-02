@@ -18,21 +18,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <tao/linux_tao.h>
-#include <tao/attestation.pb.h>
-#include <tao/hosted_programs.pb.h>
-#include <tao/keyczar_public_key.pb.h>
-#include <tao/sealed_data.pb.h>
-#include <tao/util.h>
-
-#include <keyczar/base/base64w.h>
-#include <keyczar/rw/keyset_file_reader.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/rw/keyset_encrypted_file_reader.h>
-#include <keyczar/rw/keyset_encrypted_file_writer.h>
-#include <keyczar/base/file_path.h>
-#include <keyczar/base/file_util.h>
-#include <glog/logging.h>
+#include "tao/linux_tao.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -43,7 +29,27 @@
 #include <fstream>
 #include <sstream>
 
-using keyczar::base::Base64WEncode;
+#include <glog/logging.h>
+#include <keyczar/base/file_path.h>
+#include <keyczar/base/file_util.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/keyczar.h>
+#include <keyczar/rw/keyset_encrypted_file_reader.h>
+#include <keyczar/rw/keyset_encrypted_file_writer.h>
+#include <keyczar/rw/keyset_file_reader.h>
+#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/crypto_factory.h>
+
+#include "tao/attestation.pb.h"
+#include "tao/hosted_programs.pb.h"
+#include "tao/hosted_program_factory.h"
+#include "tao/keyczar_public_key.pb.h"
+#include "tao/sealed_data.pb.h"
+#include "tao/tao_auth.h"
+#include "tao/tao_channel.h"
+#include "tao/tao_child_channel.h"
+#include "tao/util.h"
+
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
 using keyczar::Encrypter;
@@ -57,11 +63,10 @@ using keyczar::MessageDigestImpl;
 using keyczar::RandImpl;
 using keyczar::Signer;
 using keyczar::Verifier;
-
+using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
-
 using keyczar::rw::KeysetReader;
 using keyczar::rw::KeysetWriter;
 using keyczar::rw::KeysetPBEJSONFileReader;

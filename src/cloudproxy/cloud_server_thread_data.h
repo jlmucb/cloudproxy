@@ -22,16 +22,12 @@
 #ifndef CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 #define CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 
-#include "cloudproxy/cloud_server_thread_data.h"
-#include "cloudproxy/util.h"
-
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <openssl/ssl.h>
-
 #include <set>
 #include <string>
 #include <map>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <openssl/ssl.h>
 
 using std::set;
 using std::string;

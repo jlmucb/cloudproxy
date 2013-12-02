@@ -1,5 +1,6 @@
+#include <gtest/gtest.h>
+
 #include "cloudproxy/util.h"
-#include "gtest/gtest.h"
 
 TEST(DummyTest, dummy) {
   printf("The test succeeded\n");

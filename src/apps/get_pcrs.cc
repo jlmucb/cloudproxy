@@ -18,19 +18,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <list>
+#include <string>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
-
-#include <netinet/in.h>
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include <tss/tss_error.h>
 #include <tss/platform.h>
 #include <tss/tss_defines.h>
@@ -38,9 +39,6 @@
 #include <tss/tss_structs.h>
 #include <tss/tspi.h>
 #include <trousers/trousers.h>
-
-#include <list>
-#include <string>
 
 using std::list;
 using std::string;

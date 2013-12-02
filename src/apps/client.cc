@@ -16,22 +16,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <fstream>
+#include <sstream>
+#include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <openssl/ssl.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/keyczar.h>
+
+#include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_client.h"
 #include "cloudproxy/util.h"
-#include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
-
-#include <fstream>
-#include <sstream>
-#include <string>
 
 using std::ifstream;
 using std::string;

@@ -32,13 +32,12 @@
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
 #include <keyczar/base/file_util.h>
-#include <keyczar/rw/keyset_writer.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
-
-#include <openssl/ssl.h>
+#include <keyczar/rw/keyset_writer.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 
 using keyczar::Crypter;
 using keyczar::Keyczar;

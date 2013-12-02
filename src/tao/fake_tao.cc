@@ -1,6 +1,10 @@
 #include "tao/fake_tao.h"
-#include "tao/attestation.pb.h"
+
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/crypto_factory.h>
+
+#include "tao/attestation.pb.h"
 
 using keyczar::Crypter;
 using keyczar::CryptoFactory;

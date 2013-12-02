@@ -20,18 +20,21 @@
 
 #include "cloudproxy/cloud_client.h"
 
-#include <glog/logging.h>
+#include <sstream>
+#include <fstream>
 
+#include <glog/logging.h>
 #include <keyczar/base/file_path.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "tao/attestation.pb.h"
+#include "tao/tao_auth.h"
 #include "tao/util.h"
-
-#include <sstream>
-#include <fstream>
 
 using std::ifstream;
 using std::stringstream;

@@ -58,6 +58,8 @@ class FileServer : public CloudServer {
 
   // the path to which we write file metadata
   string meta_path_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileServer);
 };
 
 }  // namespace cloudproxy

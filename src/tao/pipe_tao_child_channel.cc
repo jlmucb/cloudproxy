@@ -17,11 +17,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <tao/pipe_tao_child_channel.h>
-#include <tao/pipe_tao_channel_params.pb.h>
-#include <tao/tao_child_channel_params.pb.h>
+#include "tao/pipe_tao_child_channel.h"
+
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
+
+#include "tao/pipe_tao_channel_params.pb.h"
+#include "tao/tao_child_channel_params.pb.h"
 
 namespace tao {
 PipeTaoChildChannel::PipeTaoChildChannel(const string &params)

@@ -17,8 +17,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
+
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
 #include "tao/fake_tao.h"
-#include "gtest/gtest.h"
 
 using tao::FakeTao;
 

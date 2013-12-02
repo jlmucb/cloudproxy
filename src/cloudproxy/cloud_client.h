@@ -21,16 +21,6 @@
 #ifndef CLOUDPROXY_CLOUD_CLIENT_H_
 #define CLOUDPROXY_CLOUD_CLIENT_H_
 
-#include <glog/logging.h>
-#include <openssl/ssl.h>
-#include <keyczar/keyczar.h>
-
-#include "cloudproxy/util.h"
-#include "cloudproxy/cloud_user_manager.h"
-#include "tao/tao_auth.h"
-#include "tao/tao_child_channel.h"
-#include "tao/whitelist_auth.h"
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -38,10 +28,30 @@
 #include <set>
 #include <string>
 
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <openssl/ssl.h>
+
+#include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/util.h"
+#include "tao/tao_child_channel.h"
+#include "tao/whitelist_auth.h"
+
 using std::set;
 using std::string;
 
+namespace keyczar {
+class Keyczar;
+} // namespace keyczar
+
+namespace tao {
+class TaoAuth;
+class TaoChildChannel;
+} // namespace tao
+
+
 namespace cloudproxy {
+
+class CloudUserManager;
 
 // A client that can establish a secure connection with a CloudServer and manage
 // simple operations between the client and the server. See cloudproxy.proto for

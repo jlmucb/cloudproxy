@@ -26,9 +26,9 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/stl_util-inl.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include "cloudproxy/cloudproxy.pb.h"

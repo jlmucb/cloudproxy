@@ -25,7 +25,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #include <mutex>
+
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "tao/tao_auth.h"
 
 using std::lock_guard;
 using std::mutex;

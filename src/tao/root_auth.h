@@ -21,16 +21,23 @@
 #ifndef TAO_ROOT_AUTH_H_
 #define TAO_ROOT_AUTH_H_
 
-#include "tao/tao_auth.h"
-
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-
 #include <map>
 #include <set>
 
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/scoped_ptr.h>
+
+#include "tao/attestation.pb.h"
+#include "tao/tao_auth.h"
+
 using std::map;
 using std::set;
+
+namespace keyczar {
+
+class Keyczar;
+
+} // namespace keyczar
 
 namespace tao {
 class RootAuth : public TaoAuth {

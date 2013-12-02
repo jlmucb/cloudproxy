@@ -20,18 +20,25 @@
 // limitations under the License.
 
 #include "cloudproxy/cloud_server.h"
-#include "cloudproxy/util.h"
-
-#include "tao/attestation.pb.h"
-#include "tao/util.h"
-
-#include <keyczar/keyczar.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
 
 #include <arpa/inet.h>
 
 #include <sstream>
+
+#include <glog/logging.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
+
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/cloud_server_thread_data.h"
+#include "cloudproxy/util.h"
+#include "tao/attestation.pb.h"
+#include "tao/tao_auth.h"
+#include "tao/util.h"
+#include "tao/whitelist_auth.h"
 
 using std::lock_guard;
 using std::stringstream;
@@ -52,7 +59,7 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
                          const string &public_policy_keyczar,
                          const string &public_policy_pem,
                          const string &acl_location, const string &host,
-                         ushort port, TaoAuth *auth_manager)
+                         ushort port, tao::TaoAuth *auth_manager)
     : public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       rand_(keyczar::CryptoFactory::Rand()),

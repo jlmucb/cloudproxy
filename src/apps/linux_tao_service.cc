@@ -18,24 +18,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-#include "tao/linux_tao.h"
-#include "tao/pipe_tao_channel.h"
-#include "tao/process_factory.h"
-#include "tao/tpm_tao_child_channel.h"
-#include "tao/whitelist_auth.h"
-
-#include <openssl/ssl.h>
-#include <openssl/crypto.h>
-#include <openssl/err.h>
-
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+#include <keyczar/keyczar.h>
+#include <openssl/ssl.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
+
+#include "tao/linux_tao.h"
+#include "tao/pipe_tao_channel.h"
+#include "tao/process_factory.h"
+#include "tao/tpm_tao_child_channel.h"
+#include "tao/whitelist_auth.h"
+
+using std::ifstream;
+using std::shared_ptr;
+using std::string;
+using std::stringstream;
+using std::vector;
+
+using tao::LinuxTao;
+using tao::PipeTaoChannel;
+using tao::ProcessFactory;
+using tao::TPMTaoChildChannel;
+using tao::WhitelistAuth;
+
 
 DEFINE_string(secret_path, "linux_tao_service_secret",
               "The path to the TPM-sealed key for this binary");
@@ -54,18 +68,6 @@ DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
               "creation requests");
 DEFINE_string(ca_host, "", "The hostname of the TCCA server, if any");
 DEFINE_string(ca_port, "", "The port for the TCCA server, if any");
-
-using std::ifstream;
-using std::shared_ptr;
-using std::string;
-using std::stringstream;
-using std::vector;
-
-using tao::LinuxTao;
-using tao::PipeTaoChannel;
-using tao::ProcessFactory;
-using tao::TPMTaoChildChannel;
-using tao::WhitelistAuth;
 
 vector<shared_ptr<mutex> > locks;
 

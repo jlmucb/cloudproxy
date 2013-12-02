@@ -52,6 +52,8 @@ class FileClient : public CloudClient {
 
   // the base path for files that are read from and written to the server
   string file_path_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileClient);
 };
 }
 

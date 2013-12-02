@@ -18,16 +18,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/crypto_factory.h>
-#include <gflags/gflags.h>
-
 #include <fstream>
 #include <streambuf>
 #include <sstream>
 #include <string>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
 
 using std::ifstream;
 using std::string;

@@ -18,11 +18,12 @@
 // limitations under the License.
 
 #include "tao/tpm_tao_child_channel.h"
-#include <gtest/gtest.h>
-#include <gflags/gflags.h>
 
 #include <fstream>
 #include <sstream>
+
+#include <gtest/gtest.h>
+#include <gflags/gflags.h>
 
 using std::ifstream;
 using std::string;

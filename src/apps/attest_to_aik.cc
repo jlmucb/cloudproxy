@@ -17,25 +17,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_reader.h>
-
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <openssl/sha.h>
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "tao/attestation.pb.h"
-#include "tao/util.h"
+#include <fstream>
+#include <list>
+#include <sstream>
+#include <string>
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+#include <keyczar/rw/keyset_file_reader.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/sha.h>
 #include <tss/tss_error.h>
 #include <tss/platform.h>
 #include <tss/tss_defines.h>
@@ -44,10 +43,8 @@
 #include <tss/tspi.h>
 #include <trousers/trousers.h>
 
-#include <fstream>
-#include <list>
-#include <sstream>
-#include <string>
+#include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 using keyczar::Keyczar;
 

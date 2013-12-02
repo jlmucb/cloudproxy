@@ -17,34 +17,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-
 #include <netinet/in.h>
-
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <openssl/sha.h>
-
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <tss/tss_error.h>
-#include <tss/platform.h>
-#include <tss/tss_defines.h>
-#include <tss/tss_typedef.h>
-#include <tss/tss_structs.h>
-#include <tss/tspi.h>
-#include <trousers/trousers.h>
 
 #include <fstream>
 #include <list>
 #include <sstream>
 #include <string>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+#include <openssl/pem.h>
+#include <openssl/sha.h>
+#include <openssl/x509.h>
+#include <tss/tspi.h>
+#include <tss/platform.h>
+#include <tss/tss_defines.h>
+#include <tss/tss_error.h>
+#include <tss/tss_typedef.h>
+#include <tss/tss_structs.h>
+#include <trousers/trousers.h>
 
 using std::ifstream;
 using std::list;

@@ -20,7 +20,6 @@
 
 #include <string>
 
-#include <keyczar/base/logging.h>
 #include <keyczar/base/scoped_ptr.h>
 
 namespace keyczar {

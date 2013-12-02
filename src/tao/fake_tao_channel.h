@@ -21,7 +21,9 @@
 #ifndef TAO_FAKE_TAO_CHANNEL_H_
 #define TAO_FAKE_TAO_CHANNEL_H_
 
-#include <tao/tao_channel.h>
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "tao/tao_channel.h"
 
 namespace tao {
 // A TaoChannel that doesn't actually do any communication.

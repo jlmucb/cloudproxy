@@ -18,9 +18,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <tao/process_factory.h>
-#include <tao/tao_channel.h>
+#include "tao/process_factory.h"
+
 #include <vector>
+
+#include <glog/logging.h>
+
+#include "tao/tao_channel.h"
 
 using std::vector;
 

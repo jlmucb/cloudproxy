@@ -20,12 +20,15 @@
 #ifndef TAO_DIRECT_TAO_CHILD_CHANNEL_H_
 #define TAO_DIRECT_TAO_CHILD_CHANNEL_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <tao/tao_child_channel.h>
-#include <tao/tao.h>
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/scoped_ptr.h>
+
+#include "tao/tao_child_channel.h"
 
 namespace tao {
+
+class Tao;
+
 // A TaoChannel that interacts directly with an underlying Tao object.
 class DirectTaoChildChannel : public TaoChildChannel {
  public:

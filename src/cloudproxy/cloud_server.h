@@ -22,15 +22,13 @@
 #ifndef CLOUDPROXY_CLOUD_SERVER_H_
 #define CLOUDPROXY_CLOUD_SERVER_H_
 
+#include <map>
+#include <mutex>
+#include <set>
+#include <string>
+#include <thread>
+
 #include <glog/logging.h>
-#include "cloudproxy/cloudproxy.pb.h"
-#include "cloudproxy/cloud_auth.h"
-#include "cloudproxy/cloud_user_manager.h"
-#include "cloudproxy/cloud_server_thread_data.h"
-#include "cloudproxy/util.h"
-#include "tao/tao_auth.h"
-#include "tao/tao_child_channel.h"
-#include "tao/whitelist_auth.h"
 #include <openssl/ssl.h>
 #include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -38,11 +36,8 @@
 #include <keyczar/keyczar.h>
 #include <pthread.h>
 
-#include <map>
-#include <mutex>
-#include <thread>
-#include <string>
-#include <set>
+#include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/util.h"
 
 using std::map;
 using std::mutex;
@@ -50,9 +45,21 @@ using std::thread;
 using std::set;
 using std::string;
 
-using tao::TaoAuth;
+namespace keyczar {
+class Keyczar;
+} // namespace keyczar
+
+namespace tao {
+class TaoAuth;
+class TaoChildChannel;
+} // namespace tao
+
 
 namespace cloudproxy {
+
+class CloudAuth;
+class CloudServerThreadData;
+class CloudUserManager;
 
 // A server that handles requests from a CloudClient (and a base class for all
 // such servers). This class handles requests from a CloudClient and checks its
@@ -68,7 +75,7 @@ class CloudServer {
   CloudServer(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &acl_location,
-              const string &host, ushort port, TaoAuth *auth_manager);
+              const string &host, ushort port, tao::TaoAuth *auth_manager);
 
   virtual ~CloudServer() {}
 

@@ -17,13 +17,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_reader.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+
 #include "tao/attestation.pb.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"

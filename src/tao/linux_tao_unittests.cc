@@ -17,6 +17,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <fstream>
+
+#include <gtest/gtest.h>
+#include <glog/logging.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/rw/keyset_file_reader.h>
+
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_program_factory.h"
 #include "tao/fake_tao.h"
@@ -26,18 +39,6 @@
 #include "tao/linux_tao.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
-#include "gtest/gtest.h"
-
-#include <keyczar/base/base64w.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/rw/keyset_file_reader.h>
-
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <fstream>
 
 using keyczar::Keyczar;
 using keyczar::KeyPurpose;

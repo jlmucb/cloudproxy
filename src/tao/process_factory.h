@@ -20,12 +20,12 @@
 #ifndef TAO_PROCESS_FACTORY_H_
 #define TAO_PROCESS_FACTORY_H_
 
-#include "tao/hosted_program_factory.h"
-
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <list>
 #include <string>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "tao/hosted_program_factory.h"
 
 using std::list;
 using std::string;

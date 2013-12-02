@@ -18,12 +18,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <tao/pipe_tao_channel.h>
-#include <tao/pipe_tao_channel_params.pb.h>
-#include <tao/tao_child_channel_params.pb.h>
-#include <tao/util.h>
-
-#include <keyczar/base/scoped_ptr.h>
+#include "tao/pipe_tao_channel.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +29,12 @@
 #include <sys/unistd.h>
 
 #include <thread>
+
+#include <keyczar/base/scoped_ptr.h>
+
+#include "tao/pipe_tao_channel_params.pb.h"
+#include "tao/tao_child_channel_params.pb.h"
+#include "tao/util.h"
 
 using std::thread;
 

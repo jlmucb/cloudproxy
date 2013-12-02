@@ -17,20 +17,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/file_server.h"
 #include "tao/pipe_tao_child_channel.h"
+#include "tao/tao_auth.h"
 #include "tao/whitelist_auth.h"
 
-#include <mutex>
-#include <string>
-#include <vector>
-
 using std::mutex;
+using std::shared_ptr;
 using std::string;
 using std::vector;
 

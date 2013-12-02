@@ -20,7 +20,6 @@
 #ifndef TAO_TAO_AUTH_H_
 #define TAO_TAO_AUTH_H_
 
-#include "tao/attestation.pb.h"
 #include <string>
 
 using std::string;

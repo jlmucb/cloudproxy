@@ -17,8 +17,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <fstream>
+#include <memory>
+#include <streambuf>
+#include <sstream>
+#include <string>
+
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/rw/keyset_file_reader.h>
+#include <keyczar/rw/keyset_file_writer.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_program_factory.h"
 #include "tao/fake_tao.h"
@@ -31,26 +49,10 @@
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
-#include <keyczar/base/base64w.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/rw/keyset_file_reader.h>
-#include <openssl/ssl.h>
-#include <openssl/crypto.h>
-#include <openssl/err.h>
-
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <fstream>
-#include <memory>
-#include <streambuf>
-#include <sstream>
-#include <string>
-
 using std::ifstream;
 using std::mutex;
+using std::ofstream;
+using std::shared_ptr;
 using std::string;
 using std::stringstream;
 using std::vector;
@@ -61,13 +63,6 @@ using keyczar::KeyType;
 using keyczar::Signer;
 using keyczar::rw::KeysetJSONFileWriter;
 using keyczar::rw::KeysetWriter;
-
-using std::ifstream;
-using std::ofstream;
-using std::shared_ptr;
-using std::string;
-using std::stringstream;
-
 using tao::CreateKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeProgramFactory;

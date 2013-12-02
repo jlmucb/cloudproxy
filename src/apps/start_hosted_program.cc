@@ -18,12 +18,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
 #include "tao/tao_channel_rpc.pb.h"
 #include "tao/util.h"
 

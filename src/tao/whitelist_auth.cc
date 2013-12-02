@@ -20,8 +20,11 @@
 
 #include "tao/whitelist_auth.h"
 
-#include <keyczar/base/base64w.h>
+#include <arpa/inet.h>
 
+#include <fstream>
+
+#include <keyczar/base/base64w.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -30,9 +33,6 @@
 #include "tao/attestation.pb.h"
 #include "tao/keyczar_public_key.pb.h"
 #include "tao/util.h"
-
-#include <arpa/inet.h>
-#include <fstream>
 
 using keyczar::Keyczar;
 using keyczar::Keyset;

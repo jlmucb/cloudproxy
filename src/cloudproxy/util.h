@@ -20,23 +20,25 @@
 #ifndef CLOUDPROXY_UTIL_H_
 #define CLOUDPROXY_UTIL_H_
 
-#include <glog/logging.h>
-#include <openssl/ssl.h>
-#include <openssl/crypto.h>
-#include <openssl/evp.h>
-#include <openssl/x509.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/base/basictypes.h>
-#include <keyczar/base/scoped_ptr.h>
-#include <keyczar/openssl/util.h>
-
-#include "tao/tao.h"
-#include "tao/keyczar_public_key.pb.h"
-
 #include <stdio.h>
 #include <string>
 
+#include <openssl/evp.h>
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <keyczar/base/basictypes.h>
+#include <keyczar/base/scoped_ptr.h>
+#include <keyczar/base/stl_util-inl.h>
+#include <keyczar/openssl/util.h>
+
+#include "tao/keyczar_public_key.pb.h"
+
 using std::string;
+
+namespace keyczar {
+class Keyczar;
+} // namespace keyczar
 
 namespace cloudproxy {
 

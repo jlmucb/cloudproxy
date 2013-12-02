@@ -21,6 +21,8 @@
 
 #include "cloudproxy/cloud_server_thread_data.h"
 
+#include <glog/logging.h>
+
 namespace cloudproxy {
 bool CloudServerThreadData::GetChallenge(const string &user, string *chall) {
   CHECK(chall) << "null challenge pointer";

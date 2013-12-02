@@ -21,18 +21,22 @@
 #ifndef TAO_TPM_TAO_CHILD_CHANNEL_H_
 #define TAO_TPM_TAO_CHILD_CHANNEL_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include "tao/tao_child_channel.h"
-#include "tao/util.h"
+#include <string>
 
-#include <tss/tss_error.h>
 #include <tss/platform.h>
+#include <tss/tspi.h>
+#include <tss/tss_error.h>
 #include <tss/tss_defines.h>
 #include <tss/tss_typedef.h>
 #include <tss/tss_structs.h>
-#include <tss/tspi.h>
 #include <trousers/trousers.h>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "tao/tao_child_channel.h"
+#include "tao/util.h"
+
+using std::string;
 
 namespace tao {
 class TPMTaoChildChannel : public TaoChildChannel {

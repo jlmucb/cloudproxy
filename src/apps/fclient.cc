@@ -17,17 +17,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <openssl/ssl.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/base/base64w.h>
-#include "cloudproxy/file_client.h"
+
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/file_client.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/whitelist_auth.h"
-
-#include <string>
 
 using std::string;
 

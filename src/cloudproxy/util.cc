@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
+#include <glog/logging.h>
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
 #include <keyczar/crypto_factory.h>
@@ -39,8 +40,6 @@
 #include <keyczar/rw/keyset_writer.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
-
-#include <glog/logging.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/keyczar_public_key.pb.h"

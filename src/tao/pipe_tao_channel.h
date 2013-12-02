@@ -21,12 +21,12 @@
 #ifndef TAO_PIPE_TAO_CHANNEL_H_
 #define TAO_PIPE_TAO_CHANNEL_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <tao/tao_channel.h>
-
 #include <map>
 #include <mutex>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "tao/tao_channel.h"
 
 using std::lock_guard;
 using std::map;

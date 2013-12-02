@@ -19,9 +19,11 @@
 // limitations under the License.
 
 #include "cloudproxy/cloud_auth.h"
-#include <glog/logging.h>
 
-#include "util.h"
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
+#include "cloudproxy/util.h"
 
 namespace cloudproxy {
 

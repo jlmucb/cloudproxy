@@ -19,6 +19,7 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
 #include "cloudproxy/util.h"
 
 DEFINE_string(private_path, "private", "The name for the private key file");

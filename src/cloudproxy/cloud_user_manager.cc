@@ -20,13 +20,13 @@
 // limitations under the License.
 
 #include "cloudproxy/cloud_user_manager.h"
-#include "cloudproxy/util.h"
-#include "cloudproxy/cloudproxy.pb.h"
-
-#include <keyczar/rw/keyset_file_reader.h>
 
 #include <glog/logging.h>
+#include <keyczar/keyczar.h>
+#include <keyczar/rw/keyset_file_reader.h>
 
+#include "cloudproxy/util.h"
+#include "cloudproxy/cloudproxy.pb.h"
 #include "tao/util.h"
 
 using tao::KeyczarPublicKey;

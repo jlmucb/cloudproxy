@@ -20,10 +20,9 @@
 #ifndef TAO_FAKE_PROGRAM_FACTORY_H_
 #define TAO_FAKE_PROGRAM_FACTORY_H_
 
-#include "tao/hosted_program_factory.h"
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
+#include "tao/hosted_program_factory.h"
 
 namespace tao {
 // A fake factory that doesn't really create programs

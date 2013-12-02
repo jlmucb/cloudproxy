@@ -20,11 +20,10 @@
 #ifndef TAO_TAO_H_
 #define TAO_TAO_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-
 #include <list>
 #include <string>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
 
 using std::list;
 using std::string;

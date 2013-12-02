@@ -19,11 +19,11 @@
 
 #include "tao/root_auth.h"
 
-#include "tao/hosted_programs.pb.h"
-#include "tao/attestation.pb.h"
-#include "tao/util.h"
-
 #include <fstream>
+
+#include "tao/attestation.pb.h"
+#include "tao/hosted_programs.pb.h"
+#include "tao/util.h"
 
 using keyczar::Keyczar;
 using keyczar::Keyset;

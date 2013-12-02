@@ -22,20 +22,23 @@
 #ifndef CLOUDPROXY_CLOUD_USER_MANAGER_H_
 #define CLOUDPROXY_CLOUD_USER_MANAGER_H_
 
-#include "cloudproxy/cloudproxy.pb.h"
-
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "cloudproxy/cloudproxy.pb.h"
+
 using std::set;
 using std::shared_ptr;
 using std::string;
 using std::map;
+
+namespace keyczar {
+class Keyczar;
+} // namespace keyczar
 
 namespace cloudproxy {
 class CloudUserManager {

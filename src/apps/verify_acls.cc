@@ -17,17 +17,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
 #include <fstream>
+#include <memory>
 #include <streambuf>
 #include <sstream>
+#include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/stl_util-inl.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_reader.h>
 #include <google/protobuf/text_format.h>
 

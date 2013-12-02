@@ -20,12 +20,12 @@
 #ifndef TAO_TAO_CHILD_CHANNEL_H_
 #define TAO_TAO_CHILD_CHANNEL_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include "tao/tao_channel_rpc.pb.h"
-
 #include <list>
 #include <string>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "tao/tao_channel_rpc.pb.h"
 
 using std::list;
 using std::string;

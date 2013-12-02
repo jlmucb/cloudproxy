@@ -21,17 +21,21 @@
 #ifndef CLOUDPROXY_CLOUD_AUTH_H_
 #define CLOUDPROXY_CLOUD_AUTH_H_
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include "cloudproxy/cloudproxy.pb.h"
-
 #include <map>
 #include <set>
 #include <string>
 
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
+#include "cloudproxy/cloudproxy.pb.h"
+
 using std::map;
 using std::set;
 using std::string;
+
+namespace keyczar {
+class Keyczar;
+} // namespace keyczar
 
 namespace cloudproxy {
 class CloudAuth {

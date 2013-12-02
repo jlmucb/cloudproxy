@@ -16,6 +16,7 @@
 #include <openssl/pem.h>
 
 #include <keyczar/base/file_util.h>
+#include <keyczar/base/logging.h>
 
 namespace keyczar {
 

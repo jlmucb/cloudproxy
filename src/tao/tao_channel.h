@@ -23,10 +23,17 @@
 #ifndef TAO_TAO_CHANNEL_H_
 #define TAO_TAO_CHANNEL_H_
 
+#include <string>
+
+#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+
 #include "tao/tao.h"
 #include "tao/tao_channel_rpc.pb.h"
 
+using std::string;
+
 namespace tao {
+
 // an RPC class that communicates with a remote Tao server. It takes the input
 // parameters, bundles them up, and sends them along a channel (details of the
 // channel depend on the implementation). The difference between the Tao and the

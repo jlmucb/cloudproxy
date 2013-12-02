@@ -20,9 +20,10 @@
 #include "tao/tpm_tao_child_channel.h"
 
 #include <netinet/in.h>
-#include <openssl/sha.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"
 

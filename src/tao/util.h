@@ -25,9 +25,9 @@
 #include <keyczar/openssl/util.h>
 #include <openssl/x509.h>
 
-#include <tao/keyczar_public_key.pb.h>
-#include <tao/tao.h>
-#include <tao/tao_child_channel.h>
+#include "tao/keyczar_public_key.pb.h"
+#include "tao/tao.h"
+#include "tao/tao_child_channel.h"
 
 namespace tao {
 
@@ -61,6 +61,7 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
 bool ReceiveMessage(int fd, google::protobuf::Message *m);
 
 bool SendMessage(int fd, const google::protobuf::Message &m);
+
 }  // namespace tao
 
 #endif  // TAO_UTIL_TAO_H_

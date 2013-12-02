@@ -44,7 +44,7 @@ $(E)/bidServer.exe: $(dobjs)
 	$(LINK) -o $(E)/bidServer.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/bidServer.o: $(S)/bidServer.cpp $(S)/bidServer.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServer.o $(S)/bidServer.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServer.o $(S)/bidServer.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp

@@ -27,6 +27,7 @@
 #include "jlmTypes.h"
 #include "logging.h"
 #include "bidServer.h"
+#include "serviceChannel.h"
 #include "jlmcrypto.h"
 #include "channel.h"
 #include "safeChannel.h"
@@ -53,6 +54,7 @@
 #include "domain.h"
 
 #include "encapsulate.h"
+#include "taoSetupglobals.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -79,73 +81,37 @@ bool             g_globalpolicyValid= false;
 
 #include "./policyCert.inc"
 
-PrincipalCert  g_sealingPrincipal;
-
 
 // ------------------------------------------------------------------------
 
 
 class bidServerLocals{
 public:
+    bidServer*      m_pServerObj;
+    RSAKey*         m_sealingKey;
+    RSAKey*         m_signingKey;
+    u32             m_encType;
+    u32             m_key;
 };
 
-#if 0
 // request loop for bidServer
-#define TIMER(x) ((fileServerLocals*)(service->m_sharedServices))->m_pServerObj->x
+#define TIMER(x) ((bidServerLocals*)(service->m_sharedServices))->m_pServerObj->x
+#define LOCALOBJ(x) ((bidServerLocals*)(service->m_sharedServices))->m_pServerObj->x
 
 
 int bidServerrequestService(Request& oReq, serviceChannel* service)
 {
-    if(oReq.m_szResourceName==NULL) {
-        fprintf(g_logFile, "fileServerrequestService: Empty resource name\n");
-        return -1;
-    }
 
-    if(strcmp(oReq.m_szAction, "getResource")==0) {
-        if(!service->m_ofileServices.serversendResourcetoclient(oReq, TIMER(m_accessCheckTimer), 
-                    TIMER(m_decTimer))) {
-            fprintf(g_logFile, 
-                   "fileServerrequestService: serversendResourcetoclient failed 1\n");
-            return -1;
-        }
-        return 1;
-    }
-    else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-        if(!service->m_ofileServices.servergetResourcefromclient(oReq,  TIMER(m_accessCheckTimer), 
-                    TIMER(m_encTimer))) {
-            fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
-            return -1;
-        }
-        return 1;
-    }
-    else if(strcmp(oReq.m_szAction, "createResource")==0) {
-        if(!service->m_ofileServices.servercreateResourceonserver(oReq, TIMER(m_accessCheckTimer))) {
-            fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
-            return -1;
-        }
-        return 1;
-    }
-    else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
-            fprintf(g_logFile, "fileServerrequestService: serveraddownertoResource failed\n");
-            return -1;
-        }
-        return 1;
-    }
-    else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
-            fprintf(g_logFile, "fileServerrequestService: serverremoveownerfromResource failed\n");
-            return -1;
-        }
-        return 1;
-    }
-    else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-        if(!service->m_ofileServices.serverdeleteResource(oReq, TIMER(m_accessCheckTimer))) {
-            fprintf(g_logFile, "fileServerrequestService:serverdeleteResource failed\n");
-            return -1;
-        }
-        return 1;
-    }
+    if(strcmp(oReq.m_szAction, "submitBid")==0) {
+         if(!serversendresponsetoclient(LOCALOBJ(m_sealingKey), LOCALOBJ(m_signingKey),
+                                    m_osafeChannel, oReq,  NULL, NULL, NULL,
+                                    // m_osafeChannel, oReq,  m_oKeys, encType, key, 
+                                    TIMER(m_accessCheckTimer), TIMER(m_decTimer))) {
+             fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
+             return -1;
+         }
+         return 1;
+     }
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
         if(!service->m_ofileServices.servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, 
@@ -159,80 +125,6 @@ int bidServerrequestService(Request& oReq, serviceChannel* service)
         return -1;
     }
 }
-
-
-int theServiceChannel::processRequests()
-{
-    byte    request[MAXREQUESTSIZEWITHPAD];
-    int     type= 0;
-    byte    multi= 0;
-    byte    final= 0;
-    int     encType= NOENCRYPT;
-    byte*   key= NULL;
-
-#ifdef TEST
-    fprintf(g_logFile, "\n\ntheServiceChannel: processRequest\n");
-#endif
-    m_serverState= REQUESTSTATE;
-
-    if(m_osafeChannel.safegetPacket(request, MAXREQUESTSIZE, &type, &multi, &final)<(int)sizeof(packetHdr)) {
-        fprintf(g_logFile, "theServiceChannel::processRequests: Can't get ProcessRequest packet\n");
-        return -1;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "theServiceChannel::processRequests: packetType %d, serverstate %d\n", type, m_serverState);
-#endif
-    if(type==CHANNEL_TERMINATE) {
-        fprintf(g_logFile, "Received CHANNEL_TERMINATE; returning 0 from theServiceChannel::processRequests\n");
-        fflush(g_logFile);
-        return 0;
-    }
-    if(type!=CHANNEL_REQUEST) {
-        fprintf(g_logFile, "theServiceChannel::processRequests: Not a channel request\n");
-        return -1;
-    }
-
-    if(m_pParent->m_fEncryptFiles) {
-        if(!m_pParent->m_fKeysValid) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: Encryption enabled but key invalid\n");
-            return -1;
-        }
-        encType= DEFAULTENCRYPT;
-        key= m_pParent->m_bidKeys;
-    }
-
-    int     iRequestType= 0;
-    {
-        Request oReq;
-
-        if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
-            fprintf(g_logFile, "theServiceChannel::processRequests: cant parse: %s\n", request);
-            return -1;
-        }
-
-#ifdef TEST
-        fprintf(g_logFile, "parsed oReq from request: %s\n", request);
-#endif
-
-
-        iRequestType= oReq.m_iRequestType;
-        switch(iRequestType) {
-          case SUBMITBID:
-            if(!serversendresponsetoclient(m_sealingKey, m_signingKey,
-                                    m_osafeChannel, oReq,  m_oKeys, encType, key, 
-                                    m_pParent->m_accessCheckTimer, m_pParent->m_decTimer)) {
-                fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
-                return -1;
-            }
-            return 1;
-          default:
-            fprintf(g_logFile, "theServiceChannel::processRequests: invalid request type\n");
-            return -1;
-        }
-    }
-}
-#endif
 
 
 // ----------------------------------------------------------------------------
@@ -251,7 +143,7 @@ bidServer::bidServer()
     m_uMode= 0;
     m_uPad= 0;
     m_uHmac= 0;
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
     m_szSigningCertFile= NULL;
     m_szSealingCertFile= NULL;
     m_szsigningCert= NULL;
@@ -299,49 +191,27 @@ bool bidServer::initPolicy()
     fprintf(g_logFile, "bidServer::initPolicy\n");
     fflush(g_logFile);
 #endif
-    if(!m_tcHome.m_envValid) {
+    if(!m_tcHome.isValid()) {
         fprintf(g_logFile, "bidServer::initPolicy(): environment invalid\n");
         return false;
     }
 
-    if(!m_tcHome.m_policyKeyValid)  {
-        fprintf(g_logFile, "bidServer::initPolicy(): policyKey invalid\n");
+    if(!m_tcHome.policyCertValid())  {
+        fprintf(g_logFile, "fileServer::initPolicy(): policyKey invalid\n");
         return false;
     }
 
-#ifdef TEST
-    fprintf(g_logFile, "bidServer::initPolicy: about to initpolicy Cert\n",
-            m_tcHome.m_policyKey);
-    fflush(g_logFile);
-#endif
-    if(!g_policyPrincipalCert->init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
-        fprintf(g_logFile, "bidServer::initPolicy: Can't init policy cert 1\n");
-        fflush(g_logFile);
+    // initialize cert
+    if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
         return false;
     }
-
-#ifdef TEST
-    fprintf(g_logFile, "bidServer::initPolicy, about to parse policy Cert\n");
-    fprintf(g_logFile, "bidServer::initPolicy, policy Cert\n%s\n",
-            m_tcHome.m_policyKey);
-    fflush(g_logFile);
-#endif
-    if(!g_policyPrincipalCert->parsePrincipalCertElements()) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 2\n");
+    if(!m_opolicyCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
         return false;
     }
+    m_fpolicyCertValid= true;
 
-#ifdef TEST
-    fprintf(g_logFile, "bidServer::initPolicy, about to get policy key\n");
-    fflush(g_logFile);
-#endif
-    g_policyKey= (RSAKey*)g_policyPrincipalCert->getSubjectKeyInfo();
-    if(g_policyKey==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-
-    g_globalpolicyValid= true;
 #ifdef TEST
     fprintf(g_logFile, "bidServer::initPolicy, returning true\n");
     fflush(g_logFile);
@@ -352,14 +222,17 @@ bool bidServer::initPolicy()
 
 bool bidServer::initSigningandSealingKeys()
 {
+    if(!m_tcHome.privateKeyValid()) {
+        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key not valid\n");
+        return false;
+    }
+
+    // FIX
+#if 0
     int     size= 4096;
     int     bufSize= 4096;
     byte    buf[4096];
 
-    if(!m_tcHome.m_privateKeyValid) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key not valid\n");
-        return false;
-    }
     m_signingKey= (RSAKey*)m_tcHome.m_privateKey;
     if(m_signingKey==NULL) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key empty\n");
@@ -372,13 +245,15 @@ bool bidServer::initSigningandSealingKeys()
 
     m_szSigningCertFile= strdup("./bidServer/cert");
     if(!getBlobfromFile(m_szSigningCertFile, buf, &size)) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read signing cert, %s\n", m_szsigningCert);
+        fprintf(g_logFile, 
+                "bidServer::initSigningandSealingKeys: Can't read signing cert, %s\n", 
+                m_szsigningCert);
         return false;
     }
     m_szsigningCert= strdup((char *)buf);
 
     m_szsealingCert= strdup("./bidServer/sealingCert");
-    size= bufSize;	
+    size= bufSize;      
     if(!getBlobfromFile(m_szsealingCert, buf, &size)) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read sealing cert, %s\n", m_szsealingCert);
         return false;
@@ -405,12 +280,13 @@ bool bidServer::initSigningandSealingKeys()
         return false;
     }
 
-    m_sealingKey= (RSAKey*)g_sealingPrincipal.getSubjectKeyInfo();
+    m_sealingKey= NULL;  // FIX (RSAKey*)g_sealingPrincipal.getSubjectKeyInfo();
     if(m_sealingKey==NULL) {
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't get keyinfo from seal Cert\n");
         fflush(g_logFile);
         return false;
     }
+#endif
 
     return true;
 }
@@ -421,10 +297,10 @@ bool bidServer::initFileKeys()
     struct stat statBlock;
     char        szName[256];
     int         size= 0;
-    byte        keyBuf[SMALLKEYSIZE];
+    byte        keyBuf[GLOBALMAXSYMKEYSIZE];
     int         n= 0;
     int         m= 0;
-    byte        sealedkeyBuf[BIGKEYSIZE];
+    byte        sealedkeyBuf[GLOBALMAXSEALEDKEYSIZE];
    
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
@@ -462,13 +338,13 @@ bool bidServer::initFileKeys()
         memcpy(&keyBuf[n], m_bidKeys, m_sizeKey);
         n+= m_sizeKey;
 
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
         // seal and save
-        size= BIGKEYSIZE;
-        if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        size= GLOBALMAXSEALEDKEYSIZE;
+        if(!m_tcHome.Seal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         n, keyBuf, &size, sealedkeyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant seal keys\n");
             return false;
@@ -481,17 +357,17 @@ bool bidServer::initFileKeys()
     }
     else {
         // keys exist, unseal them
-        size= BIGKEYSIZE;
+        size= GLOBALMAXSEALEDKEYSIZE;
         if(!getBlobfromFile(m_szSealedKeyFile, sealedkeyBuf, &size)) {
             fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
             return false;
         }
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
-        m= SMALLKEYSIZE;
-        if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        m= GLOBALMAXSYMKEYSIZE;
+        if(!m_tcHome.Unseal(m_tcHome.measurementValid(), m_tcHome.measurementPtr(),
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
             return false;
@@ -524,6 +400,9 @@ bool bidServer::initFileKeys()
 }
 
 
+#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+
+
 bool bidServer::initServer(const char* configDirectory)
 {
     bool            fRet= true;
@@ -548,7 +427,8 @@ bool bidServer::initServer(const char* configDirectory)
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
+        if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
+                            g_hostsubDirectory, parameterCount, parameters)) {
             throw "bidServer::Init: can't init host\n";
         }
         m_taoHostInitializationTimer.Stop();
@@ -559,15 +439,22 @@ bool bidServer::initServer(const char* configDirectory)
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "bidServer",
-                             DOMAIN, directory,
-                             &m_host, 0, NULL)) {
+        if(!m_tcHome.EnvInit(g_envplatform, "bidServer", DOMAIN, g_hostDirectory,
+                             "fileServer", &m_host, g_serviceProvider, 0, NULL)) {
             throw "bidServer::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();
 #ifdef TEST
         fprintf(g_logFile, "bidServer::Init: after EnvInit\n");
         m_tcHome.printData();
+#endif
+
+        // Init global policy 
+        if(!initPolicy())
+            throw "bidServer::Init: Cant init policy objects\n";
+#ifdef TEST
+        fprintf(g_logFile, "initServer has private key and public key\n");
+        fflush(g_logFile);
 #endif
 
         // Initialize file encryption keys
@@ -585,14 +472,6 @@ bool bidServer::initServer(const char* configDirectory)
         fprintf(g_logFile, "initServer about to initPolicy();\n");
         fflush(g_logFile);
 #endif
-        // Init global policy 
-        if(!initPolicy())
-            throw "bidServer::Init: Cant init policy objects\n";
-#ifdef TEST
-        fprintf(g_logFile, "initServer has private key and public key\n");
-        fflush(g_logFile);
-#endif
-
     }
     catch(const char* szError) {
         fRet= false;
@@ -665,7 +544,7 @@ bool bidServer::server()
     }
 
 
-    theServiceChannel*  poSc= NULL;
+    serviceChannel*     poSc= NULL;
     int                 i;
     for(;;) {
 #ifdef TEST
@@ -682,53 +561,63 @@ bool bidServer::server()
         fflush(g_logFile);
 #endif
 
-        poSc= new theServiceChannel();
+        poSc= new serviceChannel();
 
         if(poSc!=NULL) {
 
             for(i=0; i<m_iNumClients; i++) {
-                if(!m_fthreadValid[i])
+                if(!m_serverThreads[i].m_fthreadValid)
                     break;
             }
 
             if(i==m_iNumClients) {
                 if(m_iNumClients>=MAXNUMCLIENTS) {
-                    fprintf(g_logFile, "bidServer::server: Can't allocate theServiceChannel\n");
+                    fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
                     return false;
                 }
                 i= m_iNumClients++;
             }
-                    
-            poSc->m_pParent= this;
-            poSc->m_fdChannel= newfd;
-            poSc->m_myPositionInParent= i;
-            poSc->m_signingKey=  m_signingKey;
-            poSc->m_sealingKey=  m_sealingKey;
+
+            // TODO: delete this object
+            bidServerLocals* pmySharedServices= new bidServerLocals();
+
+            // pmySharedServices->m_pServerObj= this;
+            if(!poSc->initServiceChannel("bidServer", newfd, &m_opolicyCert, &m_host,
+                                         &m_tcHome, &m_serverThreads[i],
+                                         bidServerrequestService,
+                                         (void*)pmySharedServices)) {
+                fprintf(g_logFile, "fileServer::server: Can't initServiceChannel\n");
+                return false;
+            }
+
+            // poSc->m_signingKey=  m_signingKey;
+            // poSc->m_sealingKey=  m_sealingKey;
 #ifdef TEST
             fprintf(g_logFile, "Signing key\n");
-            poSc->m_signingKey->printMe();
+            pmySharedServices->m_signingKey->printMe();
             fprintf(g_logFile, "Sealing key\n");
-            poSc->m_sealingKey->printMe();
+            pmySharedServices->m_sealingKey->printMe();
             fprintf(g_logFile, "bidServer: slot %d, about to pthread_create\n", i);
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);
             fflush(g_logFile);
 #endif
-
-            memset(&m_threadData[i], 0, sizeof(pthread_t));
-            m_threadIDs[i]= pthread_create(&m_threadData[i], NULL, 
+            memset(&m_serverThreads[i].m_threadData, 0, sizeof(pthread_t));
+            m_serverThreads[i].m_threadID= pthread_create(&m_serverThreads[i].m_threadData, NULL,
                                     channelThread, poSc);
 #ifdef TEST
-            fprintf(g_logFile, "bidServer: pthread create returns: %d\n", m_threadIDs[i]);
+            fprintf(g_logFile, "fileServer: pthread create returns: %d\n",
+                    m_serverThreads[i].m_threadID);
             fflush(g_logFile);
 #endif
-            if(m_threadIDs[i]>=0)
-                m_fthreadValid[i]= true;
+            if(m_serverThreads[i].m_threadID>=0)
+                m_serverThreads[i].m_fthreadValid= true;
             else
-                m_fthreadValid[i]= false;
+                m_serverThreads[i].m_fthreadValid= false;
         }
         else {
-            fprintf(g_logFile, "bidServer::server: Can't allocate theServiceChannel\n");
+            fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
         }
+
 
         poSc= NULL;
         newfd= -1;
@@ -781,23 +670,6 @@ int main(int an, char** av)
     oServer.m_fEncryptFiles= true;
 #endif
 
-    // am I alread measured?
-    if(fInitProg) {
-#ifdef TEST
-        fprintf(g_logFile, "bidServer main: start measured program %s\n", av[0]);
-#endif
-        if(!startMeAsMeasuredProgram(an, av)) {
-#ifdef TEST
-            fprintf(g_logFile, "bidServer main: measured program failed, exiting\n");
-#endif
-            return 1;
-        }
-#ifdef TEST
-        fprintf(g_logFile, "bidServer main: measured program started\n");
-#endif
-        return 0;
-    }
-
     initLog("bidServer.log");
 #ifdef TEST
         fprintf(g_logFile, "bidServer main: measured server about to init server\n");
@@ -805,10 +677,6 @@ int main(int an, char** av)
 #endif
 
     try {
-        g_policyPrincipalCert= new PrincipalCert();
-        if(g_policyPrincipalCert==NULL)
-            throw "bidServer main: failed to new Principal\n";
-
         if(!oServer.initServer(directory)) 
             throw "bidServer main: cant initServer\n";
 

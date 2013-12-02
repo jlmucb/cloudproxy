@@ -29,6 +29,7 @@
 
 #include "session.h"
 #include "channel.h"
+#include "serviceChannel.h"
 #include "safeChannel.h"
 #include "objectManager.h"
 #include "cert.h"
@@ -47,9 +48,10 @@ public:
     char*               m_szAddress;
 
     int                 m_iNumClients;
-    bool                m_fthreadValid[MAXNUMCLIENTS];
-    pthread_t           m_threadData[MAXNUMCLIENTS];
-    int                 m_threadIDs[MAXNUMCLIENTS];
+    serviceThread       m_serverThreads[MAXNUMCLIENTS];
+
+    bool                m_fpolicyCertValid;
+    PrincipalCert       m_opolicyCert;
 
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;

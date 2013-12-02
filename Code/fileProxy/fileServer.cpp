@@ -203,6 +203,17 @@ bool fileServer::initPolicy()
         return false;
     }
 
+    // initialize cert
+    if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
+        return false;
+    }
+    if(!m_opolicyCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
+        return false;
+    }
+    m_fpolicyCertValid= true;
+
 #ifdef TEST
     fprintf(g_logFile, "fileServer::initPolicy, returning true\n");
     fflush(g_logFile);
@@ -392,18 +403,7 @@ bool fileServer::initServer(const char* configDirectory)
             m_encType= NOENCRYPT;
         }
 
-        // this section should move to the tao?
-        if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
-            fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
-            return false;
-        }
-        if(!m_opolicyCert.parsePrincipalCertElements()) {
-            fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
-            return false;
-        }
-        m_fpolicyCertValid= true;
-
-        // Initialize resource and principal tables
+        // Initialize metadata resource and principal tables
         if(!m_oMetaData.initMetaData(m_tcHome.m_fileNames.m_szdirectory, 
             "fileServer", m_encType, m_fileKeys))
             throw "fileServer::Init: Cant init metadata\n";

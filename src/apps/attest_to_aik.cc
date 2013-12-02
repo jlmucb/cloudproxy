@@ -107,6 +107,11 @@ int main(int argc, char **argv) {
   // Get the public key blob from the AIK.
   // Load the blob and try to load the AIK
   ifstream blob_stream(FLAGS_aik_blob_file, ifstream::in);
+  if (!blob_stream) {
+    LOG(ERROR) << "Could not load the blob file " << FLAGS_aik_blob_file;
+    return 1;
+  }
+
   stringstream blob_buf;
   blob_buf << blob_stream.rdbuf();
   string blob = blob_buf.str();
@@ -179,6 +184,12 @@ int main(int argc, char **argv) {
   a.set_signature(sig);
 
   ofstream attest_file(FLAGS_aik_attest_file, ofstream::out);
+  if (!attest_file) {
+    LOG(ERROR) << "Could not open the attest file " << FLAGS_aik_attest_file
+      << " for writing";
+    return 1;
+  }
+
   CHECK(a.SerializeToOstream(&attest_file))
       << "Could not serialize the attestation to a file";
   return 0;

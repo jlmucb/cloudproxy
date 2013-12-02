@@ -23,11 +23,13 @@
 # 4. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM and set up an AIK.
 # 5. changed the following variables to suit your directory choices:
-RUN=~/run
-TEST=~/test
+RUN=~/testing/run
+TEST=~/testing/test
 ROOT=~/src/fileProxy
 BUILD_DIR=${ROOT}/src/out/Default/bin
 AIKBLOB=/home/jlm/jlmcrypt/HW/aikblob
+SAMPLE_WHITELIST=${ROOT}/run/sample_whitelist.pb2
+SAMPLE_ACLS=${ROOT}/run/acls.ascii
 KEYCZAR_PASS=cppolicy
 PASS=cppolicy
 
@@ -42,11 +44,10 @@ mkdir -p ${RUN}/openssl_keys/policy ${RUN}/openssl_keys/server \
 
 # An openssl form.
 cd ${RUN}/openssl_keys/policy
-openssl ecparam -out policy_params.pem -name secp256k1 -genkey
+openssl ecparam -out policy_pub.pem -name prime256v1
 echo "Encrypting the policy private key"
-openssl ec -in policy_params.pem -aes256 -out policy.key
-openssl ec -in policy_params.pem -pubout -out policy_pub.key
-rm policy_params.pem
+openssl ecparam -in policy_pub.pem -genkey |
+  openssl ec -aes256 -out policy.pem
 
 # Two forms for keyczar: one encrypted private/public key pair for tcca
 # and one public key for all other programs.
@@ -54,7 +55,7 @@ cd ${RUN}
 mkdir policy_key
 keyczart create --location=policy_key --purpose=sign --asymmetric=ecdsa
 keyczart importkey --location=policy_key --status=primary \
-  --key=openssl_keys/policy/policy.key --passphrase=$PASS
+  --key=openssl_keys/policy/policy.pem --passphrase=$PASS \
   --pass=$KEYCZAR_PASS
 mkdir policy_public_key
 keyczart pubkey --location=policy_key --destination=policy_public_key \
@@ -87,18 +88,19 @@ keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
 
 # These commands rely on the sign_pub_key command in src/apps/sign_pub_key.cc
 ${BUILD_DIR}/sign_pub_key --key_loc ./policy_key \
-    --meta_file keys/tmroeder_pub/meta \
-    --pass ${KEYCZAR_PASS} --pub_key_file keys/tmroeder_pub/1 \
+    --pub_key_loc keys/tmroeder_pub \
+    --pass ${KEYCZAR_PASS} \
     --signed_speaks_for keys/tmroeder_pub_signed --subject tmroeder
-${BUILD_DIR}/sign_pub_key --key_loc ./policy_key --meta_file keys/jlm_pub/meta \
-    --pass ${KEYCZAR_PASS} --pub_key_file keys/jlm_pub/1 \
+${BUILD_DIR}/sign_pub_key --key_loc ./policy_key \
+    --pass ${KEYCZAR_PASS} --pub_key_loc keys/jlm_pub \
     --signed_speaks_for keys/jlm_pub_signed --subject jlm
 
 
 # This command relies on the attest_to_aik command in src/apps/attest_to_aik.cc,
 # and it depends on the aikblob being the AIK stored in the TPM, and the TPM
 # having the well-known 0 password.
-${BUILD_DIR}/attest_to_aik --aik_blob_file HW/aikblob \
+mkdir -p HW
+${BUILD_DIR}/attest_to_aik --aik_blob_file $AIKBLOB \
   --aik_attest_file HW/aik.attest --policy_pass $KEYCZAR_PASS
 
 # Set up a test directory to use for tests. This copies over the run directory
@@ -115,7 +117,7 @@ cp ${ROOT}/src/scripts/getHash.sh .
 rm *.a
 
 # populate the whitelist (for tcca) with the current hashes
-cat sample_whitelist.pb2 |
+cat $SAMPLE_WHITELIST |
   sed "s/REPLACE_ME_SERVER/`cat server | ./getHash.sh`/g" |
   sed "s/REPLACE_ME_CLIENT/`cat client | ./getHash.sh`/g" |
   sed "s/REPLACE_ME_FSERVER/`cat fserver | ./getHash.sh`/g" |
@@ -124,12 +126,12 @@ cat sample_whitelist.pb2 |
 
 # Create a signed version of the whitelist and the ACL for CloudServer
 cat whitelist.pb2 |
-  protoc -I../src/tao/ --encode=tao.Whitelist \
-    ../src/tao/hosted_programs.proto > whitelist
+  protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
+    ${ROOT}/src/tao/hosted_programs.proto > whitelist
 ./sign_whitelist --pass $KEYCZAR_PASS
-cat acls.ascii |
-  protoc -I../src/cloudproxy --encode=cloudproxy.ACL \
-    ../src/cloudproxy/cloudproxy.proto > acls
+cat $SAMPLE_ACLS |
+  protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
+    ${ROOT}/src/cloudproxy/cloudproxy.proto > acls
 ./sign_acls --pass $KEYCZAR_PASS
 
 # Now start the relevant pieces of code:
@@ -137,7 +139,8 @@ cat acls.ascii |
 ./tcca &
 sleep 1
 # The LinuxTao
-./linux_tao_service --ca_host localhost --ca_port 11238 &
+./linux_tao_service --ca_host localhost --ca_port 11238 --aik_blob $AIKBLOB \
+    --aik_attestation HW/aik.attest &
 sleep 5
 # Request that the LinuxTao start the CloudServer program
 ./start_hosted_program --program server

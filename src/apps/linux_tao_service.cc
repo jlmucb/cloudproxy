@@ -102,10 +102,20 @@ int main(int argc, char **argv) {
   CRYPTO_set_locking_callback(locking_function);
 
   ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
+  if (!aik_blob_file) {
+    LOG(ERROR) << "Could not open the file " << FLAGS_aik_blob;
+    return 1;
+  }
+
   stringstream aik_blob_stream;
   aik_blob_stream << aik_blob_file.rdbuf();
 
   ifstream aik_attest_file(FLAGS_aik_attestation.c_str(), ifstream::in);
+  if (!aik_attest_file) {
+    LOG(ERROR) << "Could not open the file " << FLAGS_aik_attestation;
+    return 1;
+  }
+
   stringstream aik_attest_stream;
   aik_attest_stream << aik_attest_file.rdbuf();
 

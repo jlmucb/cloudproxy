@@ -79,9 +79,9 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
     hash_to_descriptors_[child_hash].second = down_pipe[1];
   }
 
-  LOG(INFO) << "Adding program with digest " << child_hash;
-  LOG(INFO) << "Pipes for child: " << down_pipe[0] << ", " << up_pipe[1];
-  LOG(INFO) << "Pipes for parent: " << up_pipe[0] << ", " << down_pipe[1];
+  VLOG(2) << "Adding program with digest " << child_hash;
+  VLOG(2) << "Pipes for child: " << down_pipe[0] << ", " << up_pipe[1];
+  VLOG(2) << "Pipes for parent: " << up_pipe[0] << ", " << down_pipe[1];
 
   // the child reads on the down pipe and writes on the up pipe
   PipeTaoChannelParams ptcp;
@@ -120,7 +120,7 @@ bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
       return false;
     }
 
-    LOG(INFO) << "Closed " << child_it->second.first << " and "
+    VLOG(2) << "Closed " << child_it->second.first << " and "
               << child_it->second.second << " in ChildCleanup";
     close(child_it->second.first);
     close(child_it->second.second);
@@ -141,7 +141,7 @@ bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
       return false;
     }
 
-    LOG(INFO) << "Closed " << child_it->second.first << " and "
+    VLOG(2) << "Closed " << child_it->second.first << " and "
               << child_it->second.second << " in ParentCleanup";
     close(child_it->second.first);
     close(child_it->second.second);

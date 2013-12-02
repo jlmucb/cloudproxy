@@ -104,7 +104,6 @@ bool CloudClient::Connect(const TaoChildChannel &t) {
     return false;
   }
 
-  LOG(INFO) << "a";
   // get an attestation for our X.509 cert and send it to the server,
   // then check the server's reply
   SSL *cur_ssl = nullptr;
@@ -112,57 +111,46 @@ bool CloudClient::Connect(const TaoChildChannel &t) {
   ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
   CHECK_NOTNULL(self_cert.get());
 
-  LOG(INFO) << "b";
   ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
   CHECK_NOTNULL(peer_cert.get());
 
-  LOG(INFO) << "c";
   string serialized_client_cert;
   CHECK(SerializeX509(self_cert.get(), &serialized_client_cert))
       << "Could not serialize the client certificate";
 
-  LOG(INFO) << "d";
   ClientMessage cm;
   string *signature = cm.mutable_attestation();
   CHECK(t.Attest(serialized_client_cert, signature))
       << "Could not get a SignedAttestation for our client certificate";
 
-  LOG(INFO) << "e";
   string serialized_cm;
   CHECK(cm.SerializeToString(&serialized_cm))
       << "Could not serialize the ClientMessage(Attestation)";
 
-  LOG(INFO) << "f";
   CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send attestation";
 
-  LOG(INFO) << "g";
   // now listen for the connection
   string serialized_sm;
   CHECK(ReceiveData(bio_.get(), &serialized_sm))
       << "Could not get a reply from the server";
 
-  LOG(INFO) << "h";
   ServerMessage sm;
   CHECK(sm.ParseFromString(serialized_sm))
       << "Could not deserialize the message from the server";
 
-  LOG(INFO) << "i";
   CHECK(sm.has_attestation()) << "The server did not reply with an attestation";
 
   string serialized_peer_cert;
   CHECK(SerializeX509(peer_cert.get(), &serialized_peer_cert))
       << "Could not serialize the server's X.509 certificate";
-  LOG(INFO) << "j";
 
   // this step also checks to see if the program hash is authorized
   string data;
   CHECK(auth_manager_->VerifyAttestation(sm.attestation(), &data))
       << "The Attestation from the server did not pass verification";
 
-  LOG(INFO) << "k";
   CHECK_EQ(data.compare(serialized_peer_cert), 0)
       << "The Attestation passed verification, but the data didn't match";
-  LOG(INFO) << "l";
 
   // once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.

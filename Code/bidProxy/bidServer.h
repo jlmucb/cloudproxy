@@ -56,6 +56,9 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
+    channelServices*    m_pchannelServices;
+
+
     //    Keys for bid encryption
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
@@ -95,7 +98,7 @@ public:
     bool    server();
 
     void    printTimers(FILE* log);
-    void    resetTimers();	
+    void    resetTimers();      
 };
 
 

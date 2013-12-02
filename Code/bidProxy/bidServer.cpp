@@ -135,6 +135,7 @@ bidServer::bidServer()
     m_szPort= NULL;
     m_szAddress= NULL;
     m_iNumClients= 0;
+    m_pchannelServices= NULL;
 
     m_fEncryptFiles= false;
     m_szSealedKeyFile= NULL;

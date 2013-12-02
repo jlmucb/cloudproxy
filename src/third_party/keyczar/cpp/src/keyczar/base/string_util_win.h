@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <keyczar/base/logging.h>
-
 namespace base {
 
 inline int vsnprintf(char* buffer, size_t size,

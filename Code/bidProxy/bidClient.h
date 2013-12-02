@@ -55,10 +55,10 @@ public:
     u32                 m_uPad;
     u32                 m_uHmac;
     int                 m_sizeKey;
-    byte                m_bidKeys[SMALLKEYSIZE];
+    byte                m_bidKeys[GLOBALMAXSYMKEYSIZE];
 
     int	                m_fd;
-    session             m_osession;
+    session             m_clientSession;
     char*               m_szPort;
     char*               m_szAddress;
 

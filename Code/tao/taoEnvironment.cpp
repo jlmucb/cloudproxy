@@ -453,10 +453,10 @@ bool taoEnvironment::EnvInit(u32 type, const char* program, const char* domain,
         m_fileNames.printAll();
 #endif
 
-#if TAOUSERSA1024
+#ifdef TAOUSERSA1024
         if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA1024INTERNALSTRUCT)) 
 #endif
-#if TAOUSERSA2048
+#ifdef TAOUSERSA2048
         if(!initTao(KEYTYPEAES128PAIREDENCRYPTINTEGRITY, KEYTYPERSA2048INTERNALSTRUCT))
 #endif
         {

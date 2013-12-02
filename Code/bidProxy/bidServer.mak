@@ -19,7 +19,7 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -g
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 LDFLAGS          := $(RELEASE_LDFLAGS)
-CFLAGS=     -D LINUX -D TEST -D __FLUSHIO__ $(RELEASE_CFLAGS)
+CFLAGS=     -D LINUX -D TEST -D TAOUSERSA2048 -D __FLUSHIO__ $(RELEASE_CFLAGS)
 O1CFLAGS=    -D LINUX -D TEST -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
 CC=         g++

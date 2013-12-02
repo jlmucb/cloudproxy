@@ -44,6 +44,7 @@
 
 #include "objectManager.h"
 #include "tao.h"
+#include "taoSetupglobals.h"
 
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
@@ -77,16 +78,20 @@ using std::istreambuf_iterator;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
+#if 0
 bool             g_globalpolicyValid= false;
 // metaData         g_theVault;
 PrincipalCert*   g_policyPrincipalCert= NULL;
 RSAKey*          g_policyKey= NULL;
 accessPrincipal* g_policyAccessPrincipal= NULL;
+#endif
 
 #include "./policyCert.inc"
 
 const char* g_szClientPrincipalCertsFile= "bidClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "bidClient/principalPrivateKeys.xml";
+
+#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 
 
 // ------------------------------------------------------------------------
@@ -107,7 +112,7 @@ bidClient::bidClient ()
     m_uMode= 0;
     m_uPad= 0;
     m_uHmac= 0;
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
 }
 
 
@@ -124,7 +129,7 @@ bidClient::~bidClient ()
         free(m_szAddress);
         m_szAddress= NULL;
     }
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
     if(m_fKeysValid)
         memset(m_bidKeys, 0, m_sizeKey);
     m_fKeysValid= false;
@@ -140,16 +145,18 @@ bool bidClient::initPolicy()
     fprintf(g_logFile, "bidClient::initPolicy\n");
     fflush(g_logFile);
 #endif
-    if(!m_tcHome.m_envValid) {
+    if(!m_tcHome.isValid()) {
         fprintf(g_logFile, "bidClient::initPolicy(): environment invalid\n");
         return false;
     }
 
-    if(!m_tcHome.m_policyKeyValid)  {
+    if(!m_tcHome.policyCertValid())  {
         fprintf(g_logFile, "bidClient::initPolicy(): policyKey invalid\n");
         return false;
     }
 
+// FIX
+#if 0
 #ifdef TEST1
     fprintf(g_logFile, "bidClient::initPolicy, about to initpolicy Cert\n%s\n",
             m_tcHome.m_policyKey);
@@ -170,7 +177,6 @@ bool bidClient::initPolicy()
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
         return false;
     }
-#if 0
     g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
     if(g_policyAccessPrincipal==NULL) {
         fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
@@ -188,10 +194,10 @@ bool bidClient::initFileKeys()
     struct stat statBlock;
     char        szName[256];
     int         size= 0;
-    byte        keyBuf[SMALLKEYSIZE];
+    byte        keyBuf[GLOBALMAXSYMKEYSIZE];
     int         n= 0;
     int         m= 0;
-    byte        sealedkeyBuf[BIGKEYSIZE];
+    byte        sealedkeyBuf[GLOBALMAXSEALEDKEYSIZE];
    
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
@@ -234,9 +240,9 @@ bool bidClient::initFileKeys()
             return false;
         }
         // seal and save
-        size= BIGKEYSIZE;
+        size= GLOBALMAXSEALEDKEYSIZE;
         m_sealTimer.Start();
-        if(!m_tcHome.Seal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        if(!m_tcHome.Seal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         n, keyBuf, &size, sealedkeyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant seal keys\n");
             return false;
@@ -250,7 +256,7 @@ bool bidClient::initFileKeys()
     }
     else {
         // keys exist, unseal them
-        size= BIGKEYSIZE;
+        size= GLOBALMAXSEALEDKEYSIZE;
         if(!getBlobfromFile(m_szSealedKeyFile, sealedkeyBuf, &size)) {
             fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
             return false;
@@ -259,9 +265,9 @@ bool bidClient::initFileKeys()
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
-        m= SMALLKEYSIZE;
+        m= GLOBALMAXSYMKEYSIZE;
         m_unsealTimer.Start();
-        if(!m_tcHome.Unseal(m_tcHome.m_myMeasurementSize, m_tcHome.m_myMeasurement,
+        if(!m_tcHome.Unseal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
             return false;
@@ -326,7 +332,8 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
+        if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
+                            g_hostsubDirectory, parameterCount, parameters)) {
             throw "bidClient::Init: can't init host\n";
         }
         m_taoHostInitializationTimer.Stop();
@@ -337,9 +344,8 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "bidClient",
-                                DOMAIN, directory, 
-                                &m_host, 0, NULL)) {
+        if(!m_tcHome.EnvInit((g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
+                             BIDCLIENTSUBDIRECTORY, &m_host, g_serviceProvider, 0, NULL)) {
             throw "bidClient::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();
@@ -357,11 +363,11 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
 #endif
 
         // Initialize program private key and certificate for session
-        if(!m_tcHome.m_privateKeyValid || 
-               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.m_privateKey))
+        if(!m_tcHome.privateKeyValid()|| 
+               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.privateKeyPtr()))
             throw "bidClient::Init: Cant get my private key\n";
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getMyProgramCert(m_tcHome.m_myCertificate))
+        if(!m_tcHome.myCertValid()|| 
+               !m_oKeys.getMyProgramCert(m_tcHome.myCertPtr()))
             throw "bidClient::Init: Cant get my Cert\n";
     
         // Init global policy 
@@ -454,12 +460,6 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
                                     const char* serverAddress, u_short serverPort) 
 {
     try {
-        if (g_policyPrincipalCert==NULL) {
-            g_policyPrincipalCert= new PrincipalCert();
-            if(g_policyPrincipalCert==NULL)
-                throw "bidClient main: failed to new Principal\n";
-        }
-
 #ifdef  TEST
         fprintf(g_logFile, "bidClient main: inited g_policyPrincipalCert\n");
         fflush(g_logFile);
@@ -469,8 +469,8 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
             throw "bidClient main: initClient() failed\n";
 
         // copy my public key into client public key
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getClientCert(m_tcHome.m_myCertificate))
+        if(!m_tcHome.policyCertValid()|| 
+               !m_oKeys.getClientCert(m_tcHome.policyCertValid()))
             throw "bidClient main: Cant load client public key structures\n";
 
 #ifdef  TEST
@@ -479,7 +479,8 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
 #endif
         // protocol Nego
         m_protocolNegoTimer.Start();
-        if(!protocolNego(m_fd, fc, keyFile, certFile))
+        // FIX: szPrincipalKeys, szPrincipalCerts
+        if(!!m_clientSession.clientprotocolNego(m_fd, m_fc, NULL, NULL))
             throw "bidClient main: Cant negotiate channel\n";
         m_protocolNegoTimer.Stop();
 
@@ -606,24 +607,6 @@ int main(int an, char** av)
         }
     }
     UNUSEDVAR(directory);
-
-    if(fInitProg) {
-#ifdef  TEST
-        fprintf(g_logFile, "bidClient main starting measured %s\n", av[0]);
-#endif
-        if(!startMeAsMeasuredProgram(an, av)) {
-#ifdef TEST
-            fprintf(g_logFile, "main: measured program failed, exiting\n");
-            fflush(g_logFile);
-#endif
-            return 1;
-        }
-#ifdef TEST
-        fprintf(g_logFile, "main: measured program started, exiting\n");
-        fflush(g_logFile);
-#endif
-        return 0;
-    }
 
     initLog("bidClient.log");
 #ifdef  TEST

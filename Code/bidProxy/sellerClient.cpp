@@ -41,15 +41,17 @@
 #include "domain.h"
 #include "tcIO.h"
 #include "timer.h"
-#include "claims.h"
+#include "validateEvidence.h"
 #include "bidTester.h"
+#include "taoSetupglobals.h"
 
 #include "objectManager.h"
 #include "tao.h"
 
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
-#include "secPrincipal.h"
+#include "cert.h"
+#include "validateEvidence.h"
 #include "hashprep.h"
 #include "sellerClient.h"
 #include "encapsulate.h"
@@ -85,7 +87,7 @@ bool             g_globalpolicyValid= false;
 // metaData         g_theVault;
 PrincipalCert*   g_policyPrincipalCert= NULL;
 RSAKey*          g_policyKey= NULL;
-accessPrincipal* g_policyAccessPrincipal= NULL;
+// accessPrincipal* g_policyAccessPrincipal= NULL;
 
 #include "./policyCert.inc"
 
@@ -93,7 +95,9 @@ const char* g_szClientPrincipalCertsFile= "sellerClient/principalPublicKeys.xml"
 const char* g_szClientPrincipalPrivateKeysFile= "sellerClient/principalPrivateKeys.xml";
 
 
-accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
+// accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
+
+#define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 
 
 // ------------------------------------------------------------------------
@@ -160,7 +164,7 @@ sellerClient::sellerClient ()
     m_uMode= 0;
     m_uPad= 0;
     m_uHmac= 0;
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
 
     m_szAuctionID= NULL;
     m_fWinningBidValid= false;
@@ -182,7 +186,7 @@ sellerClient::~sellerClient ()
         free(m_szAddress);
         m_szAddress= NULL;
     }
-    m_sizeKey= SMALLKEYSIZE;
+    m_sizeKey= GLOBALMAXSYMKEYSIZE;
     m_fKeysValid= false;
     if(m_szSealedKeyFile!=NULL)
         free(m_szSealedKeyFile);
@@ -205,16 +209,18 @@ bool sellerClient::initPolicy()
     fprintf(g_logFile, "sellerClient::initPolicy\n");
     fflush(g_logFile);
 #endif
-    if(!m_tcHome.m_envValid) {
+    if(!m_tcHome.isValid()) {
         fprintf(g_logFile, "sellerClient::initPolicy(): environment invalid\n");
         return false;
     }
 
-    if(!m_tcHome.m_policyKeyValid)  {
+    if(!m_tcHome.myCertValid())  {
         fprintf(g_logFile, "sellerClient::initPolicy(): policyKey invalid\n");
         return false;
     }
 
+// FIX
+#if 0
 #ifdef TEST1
     fprintf(g_logFile, "sellerClient::initPolicy, about to initpolicy Cert\n%s\n",
             m_tcHome.m_policyKey);
@@ -237,6 +243,7 @@ bool sellerClient::initPolicy()
     }
 
     g_globalpolicyValid= true;
+#endif
     return true;
 }
 
@@ -272,7 +279,8 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
-        if(!m_host.HostInit(PLATFORMTYPELINUX, parameterCount, parameters)) {
+        if(!m_host.HostInit(g_hostplatform, g_hostProvider, g_hostDirectory,
+                            g_hostsubDirectory, parameterCount, parameters)) {
             throw "sellerClient::Init: can't init host\n";
         }
         m_taoHostInitializationTimer.Stop();
@@ -283,9 +291,8 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(PLATFORMTYPELINUXAPP, "sellerClient",
-                                DOMAIN, directory, 
-                                &m_host, 0, NULL)) {
+        if(!m_tcHome.EnvInit(g_envplatform, "sellerClient", DOMAIN, g_hostDirectory,
+                             SELLERCLIENTSUBDIRECTORY, &m_host, g_serviceProvider, 0, NULL)) {
             throw "sellerClient::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();
@@ -295,11 +302,11 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
 #endif
 
         // Initialize program private key and certificate for session
-        if(!m_tcHome.m_privateKeyValid || 
-               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.m_privateKey))
+        if(!m_tcHome.privateKeyValid()|| 
+               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.privateKeyValid()))
             throw "sellerClient::Init: Cant get my private key\n";
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getMyProgramCert(m_tcHome.m_myCertificate))
+        if(!m_tcHome.myCertPtr() || 
+               !m_oKeys.getMyProgramCert(m_tcHome.myCertPtr()))
             throw "sellerClient::Init: Cant get my Cert\n";
     
         // Init global policy 
@@ -379,15 +386,6 @@ bool sellerClient::closeClient()
 }
 
 
-bool sellerClient::initSafeChannel(safeChannel& fc)
-{
-    return fc.initChannel(m_fd, AES128, CBCMODE, HMACSHA256, 
-                          AES128BYTEKEYSIZE, AES128BYTEKEYSIZE,
-                          m_oKeys.m_rguEncryptionKey1, m_oKeys.m_rguIntegrityKey1, 
-                          m_oKeys.m_rguEncryptionKey2, m_oKeys.m_rguIntegrityKey2);
-}
-
-
 // ------------------------------------------------------------------------
 
 
@@ -416,8 +414,8 @@ bool sellerClient::establishConnection(safeChannel& fc,
             throw "sellerClient main: initClient() failed\n";
 
         // copy my public key into client public key
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getClientCert(m_tcHome.m_myCertificate))
+        if(!m_tcHome.myCertValid() || 
+               !m_oKeys.getClientCert(m_tcHome.myCertPtr()))
             throw "sellerClient main: Cant load client public key structures\n";
 
 #ifdef  TEST
@@ -426,7 +424,7 @@ bool sellerClient::establishConnection(safeChannel& fc,
 #endif
         // protocol Nego
         m_protocolNegoTimer.Start();
-        if(!protocolNego(m_fd, fc, keyFile, certFile))
+        if(!m_clientSession.clientprotocolNego(m_fd, fc, keyFile, certFile))
             throw "sellerClient main: Cant negotiate channel\n";
         m_protocolNegoTimer.Stop();
 
@@ -467,8 +465,8 @@ bool sellerClient::loadKeys(const char* keyFile, const char* certFile,
             throw "sellerClient main: initClient() failed\n";
 
         // copy my public key into client public key
-        if(!m_tcHome.m_myCertificateValid || 
-               !m_oKeys.getClientCert(m_tcHome.m_myCertificate))
+        if(!m_tcHome.myCertValid() || 
+               !m_oKeys.getClientCert(m_tcHome.myCertValid()))
             throw "sellerClient main: Cant load client public key structures\n";
     }
     catch(const char* szError) {
@@ -893,7 +891,8 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
         goto done;
     }
 
-    signingKey= keyfromkeyInfo(szKey);
+    // FIX
+    signingKey= NULL; // keyfromkeyInfo(szKey);
     if(signingKey==NULL) {
         fprintf(g_logFile, "bidInfo::getBidInfo: signing key invalid\n");
         fRet= false;
@@ -971,7 +970,7 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     }
 
     rgObject[0]= (void*) &oPrincipal;
-    iChain= VerifyEvidenceList(NULL, 2, rgType, rgObject, g_policyKey, signingKey);
+    iChain= VerifyEvidence(NULL, 2, rgType, rgObject, g_policyKey, signingKey);
     if(iChain<0) {
         fprintf(g_logFile, "bidServer::getBidInfo: Invalid bidServer certificate chain\n");
         return false;
@@ -1238,12 +1237,13 @@ bool sellerClient::resolveAuction(int numbids, char* bidFiles[])
     fflush(g_logFile);
 #endif
 #else
-    if(!m_tcHome.m_privateKeyValid) {
+    if(!m_tcHome.privateKeyValid()) {
         fprintf(g_logFile, 
                 "sellerClient::resolveAuction: seller private key invalid\n");
         return false;
     }
-    sealingKey= (RSAKey*)m_tcHome.m_privateKey;
+    // FIX
+    sealingKey= NULL; // (RSAKey*)m_tcHome.m_privateKey;
 #endif
 
     if(sealingKey==NULL) {
@@ -1389,24 +1389,6 @@ int main(int an, char** av)
         }
     }
     UNUSEDVAR(directory);
-
-    if(fInitProg) {
-#ifdef  TEST
-        fprintf(g_logFile, "sellerClient main starting measured %s\n", av[0]);
-#endif
-        if(!startMeAsMeasuredProgram(an, av)) {
-#ifdef TEST
-            fprintf(g_logFile, "main: measured program failed, exiting\n");
-            fflush(g_logFile);
-#endif
-            return 1;
-        }
-#ifdef TEST
-        fprintf(g_logFile, "main: measured program started, exiting\n");
-        fflush(g_logFile);
-#endif
-        return 0;
-    }
 
     initLog("sellerClient.log");
 #ifdef  TEST

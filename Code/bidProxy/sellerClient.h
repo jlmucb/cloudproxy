@@ -32,7 +32,7 @@
 #include "safeChannel.h"
 #include "session.h"
 #include "objectManager.h"
-#include "secPrincipal.h"
+#include "cert.h"
 #include "tao.h"
 #include "timer.h"
 
@@ -55,10 +55,10 @@ public:
     u32                 m_uPad;
     u32                 m_uHmac;
     int                 m_sizeKey;
-    byte                m_sellerKeys[SMALLKEYSIZE];
+    byte                m_sellerKeys[GLOBALMAXSYMKEYSIZE];
 
     int	                m_fd;
-    session             m_osession;
+    session             m_clientSession;
     char*               m_szPort;
     char*               m_szAddress;
 

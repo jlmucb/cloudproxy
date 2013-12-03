@@ -30,9 +30,11 @@
 #include "session.h"
 #include "channel.h"
 #include "safeChannel.h"
-#include "serviceChannel.h"
 #include "request.h"
 #include "timer.h"
+
+
+class serviceChannel;
 
 
 class channelServices {
@@ -43,7 +45,8 @@ public:
 
     channelServices(u32 type);
     ~channelServices();
-    bool        enablechannelServices();
+    bool        enablechannelServices(serviceChannel* service, void* pLocal);
+    bool        initchannelServices(serviceChannel* service, void* pLocal);
     bool        dispatchchannelServices(Request& oReq, serviceChannel* service,
                                         timer& myTimer);
     bool        closechannelServices();

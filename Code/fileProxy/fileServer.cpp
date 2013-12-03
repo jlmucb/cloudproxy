@@ -50,6 +50,7 @@
 #include "trustedKeyNego.h"
 #include "encryptedblockIO.h"
 #include "domain.h"
+#include "fileServices.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -85,14 +86,9 @@ void printResources(objectManager<resource>* pRM);
 // ------------------------------------------------------------------------
 
 
-class fileServerLocals{
-public:
-    fileServer*     m_pServerObj;
-};
-
-
 // request loop for fileServer
-#define TIMER(x) ((fileServerLocals*)(service->m_sharedServices))->m_pServerObj->x
+#define TIMER(x) ((fileServerLocals*)(service->m_pchannelLocals))->m_pServerObj->x
+#define FILESERVICES(x) ((filechannelServices*)(service->m_pchannelServices))->m_oFileServices.x
 
 
 int fileServerrequestService(Request& oReq, serviceChannel* service)
@@ -103,7 +99,7 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
     }
 
     if(strcmp(oReq.m_szAction, "getResource")==0) {
-        if(!service->m_ofileServices.serversendResourcetoclient(oReq, TIMER(m_accessCheckTimer), 
+        if(!FILESERVICES(serversendResourcetoclient)(oReq, TIMER(m_accessCheckTimer), 
                     TIMER(m_decTimer))) {
             fprintf(g_logFile, 
                    "fileServerrequestService: serversendResourcetoclient failed 1\n");
@@ -112,7 +108,7 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "sendResource")==0) {
-        if(!service->m_ofileServices.servergetResourcefromclient(oReq,  TIMER(m_accessCheckTimer), 
+        if(!FILESERVICES(servergetResourcefromclient)(oReq,  TIMER(m_accessCheckTimer), 
                     TIMER(m_encTimer))) {
             fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
@@ -120,35 +116,35 @@ int fileServerrequestService(Request& oReq, serviceChannel* service)
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "createResource")==0) {
-        if(!service->m_ofileServices.servercreateResourceonserver(oReq, TIMER(m_accessCheckTimer))) {
+        if(!FILESERVICES(servercreateResourceonserver)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: servercreateResourceonserver failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "addOwner")==0) {
-        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
+        if(!FILESERVICES(serverchangeownerofResource)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: serveraddownertoResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "removeOwner")==0) {
-        if(!service->m_ofileServices.serverchangeownerofResource(oReq, TIMER(m_accessCheckTimer))) {
+        if(!FILESERVICES(serverchangeownerofResource)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService: serverremoveownerfromResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "deleteResource")==0) {
-        if(!service->m_ofileServices.serverdeleteResource(oReq, TIMER(m_accessCheckTimer))) {
+        if(!FILESERVICES(serverdeleteResource)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, "fileServerrequestService:serverdeleteResource failed\n");
             return -1;
         }
         return 1;
     }
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-        if(!service->m_ofileServices.servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
+        if(!FILESERVICES(servergetProtectedFileKey)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, 
                 "fileServerrequestService:: servergetProtectedKey failed\n");
             return -1;
@@ -339,12 +335,10 @@ bool fileServer::initServer(const char* configDirectory)
     const char*     directory= NULL;
 
     try {
-
         const char** parameters = NULL;
         int parameterCount = 0;
         if(configDirectory==NULL) {
             directory= DEFAULTDIRECTORY;
-            
         } 
         else {
             directory= configDirectory;
@@ -380,15 +374,14 @@ bool fileServer::initServer(const char* configDirectory)
         fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
         m_tcHome.printData();
 #endif
-        fprintf(g_logFile, "fileServer::Init: after EnvInit\n");
-
-        // Initialize file encryption keys
-        if(!initFileKeys())
-            throw "fileServer::Init: can't init file keys\n";
 
         // Init global policy 
         if(!initPolicy())
             throw("fileServer::Init: Cant init policy objects\n");
+
+        // Initialize file encryption keys
+        if(!initFileKeys())
+            throw "fileServer::Init: can't init file keys\n";
 
         // Metadata keys
         if(m_fEncryptFiles) {
@@ -516,18 +509,20 @@ bool fileServer::server()
             }
 
             // TODO: delete this object
-            fileServerLocals* pmySharedServices= new fileServerLocals();
+            fileServerLocals* pmyLocals= new fileServerLocals();
+            filechannelServices* pmyServices= new filechannelServices((u32)0);
+            pmyLocals->m_pServerObj= this;
 
-            pmySharedServices->m_pServerObj= this;
             if(!poSc->initServiceChannel("fileServer", newfd, &m_opolicyCert, &m_host, 
                                          &m_tcHome, &m_serverThreads[i], 
                                          fileServerrequestService,
-                                         (void*)pmySharedServices)) {
+                                         pmyServices, pmyLocals)) {
                 fprintf(g_logFile, "fileServer::server: Can't initServiceChannel\n");
                 return false;
             }
 
-            if(!poSc->enableFileServices(m_encType, m_fileKeys, &m_oMetaData)) {
+            // if(!poSc->enableServices(m_encType, m_fileKeys, &m_oMetaData)) {
+            if(!poSc->m_pchannelServices->enablechannelServices(poSc, (void*)pmyLocals)) {
                 fprintf(g_logFile, "fileServer::server: Can't initFileServices\n");
                 return false;
             }

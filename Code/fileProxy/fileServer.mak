@@ -41,7 +41,7 @@ dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/hmacsha256.o $(B)/modesandpadding.o $(B)/trustedKeyNego.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
 	    $(B)/taoInit.o $(B)/linuxHostsupport.o  $(B)/serviceChannel.o \
-	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
+	    $(B)/channelServices.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
 	    $(B)/tcIO.o $(B)/fileHash.o
@@ -70,6 +70,9 @@ $(B)/cryptoHelper.o: $(SCC)/cryptoHelper.cpp $(SCC)/cryptoHelper.h
 
 $(B)/serviceChannel.o: $(PROTO)/serviceChannel.cpp $(PROTO)/serviceChannel.h
 	$(CC) $(CFLAGS) -I$(ACC) -I$(S) -I$(VLT) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TRS) -I$(TAO) -c -o $(B)/serviceChannel.o $(PROTO)/serviceChannel.cpp
+
+$(B)/channelServices.o: $(PROTO)/channelServices.cpp $(PROTO)/channelServices.h
+	$(CC) $(CFLAGS) -I$(ACC) -I$(S) -I$(VLT) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TRS) -I$(TAO) -c -o $(B)/channelServices.o $(PROTO)/channelServices.cpp
 
 $(B)/modesandpadding.o: $(SCC)/modesandpadding.cpp $(SCC)/modesandpadding.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/modesandpadding.o $(SCC)/modesandpadding.cpp

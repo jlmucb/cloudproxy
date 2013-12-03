@@ -93,13 +93,10 @@ serviceChannel::serviceChannel()
     m_ptaoHost= NULL;
     m_ptaoEnv= NULL;
     m_pmyThread= NULL;
-    m_sharedServices= NULL;
     m_requestService= NULL;
     m_policyKey= NULL;
-    m_encType= 0;
-    m_fileKeys= NULL;     
-    m_pMetaData= NULL;    
-    m_fFileServicesPresent= false;
+    m_fServicesPresent= false;
+    m_pchannelServices= NULL;
 }
 
 
@@ -113,8 +110,8 @@ serviceChannel::~serviceChannel()
     m_ptaoHost= NULL;
     m_ptaoEnv= NULL;
     m_pmyThread= NULL;
-    m_sharedServices= NULL;
-    m_requestService= NULL;
+    m_fServicesPresent= false;
+    m_pchannelServices= NULL;
     if(m_serverType!=NULL) {
         free(m_serverType);
         m_serverType= NULL;
@@ -221,11 +218,9 @@ bool serviceChannel::runServiceChannel()
     m_pParent->m_protocolNegoTimer.Stop();
 #endif
 
-        if(m_fFileServicesPresent) {
-            if(!m_ofileServices.initFileServices(&m_serverSession, m_pPolicyCert, 
-                                        m_ptaoEnv, m_encType, m_fileKeys,
-                                        m_pMetaData, &m_oSafeChannel))
-            throw("serviceChannel::runServiceChannel: can't initFileServices\n");
+        if(m_fServicesPresent) {
+            if(!m_pchannelServices->initchannelServices(this, m_pchannelLocals))
+                throw("serviceChannel::runServiceChannel: can't initchannelServices\n");
         }
     
         m_serverState= REQUESTSTATE;
@@ -263,6 +258,7 @@ bool serviceChannel::runServiceChannel()
 }
 
 
+#if 0
 bool serviceChannel::enableFileServices(u32 encType, byte* fileKeys, metaData* pMetaData)
 {
     m_fFileServicesPresent= true;
@@ -271,6 +267,7 @@ bool serviceChannel::enableFileServices(u32 encType, byte* fileKeys, metaData* p
     m_pMetaData= pMetaData;    
     return true;
 }
+#endif
 
 
 bool serviceChannel::initServiceChannel(const char* serverType, int newfd, 
@@ -278,7 +275,7 @@ bool serviceChannel::initServiceChannel(const char* serverType, int newfd,
                                         taoHostServices* ptaoHost,
                                         taoEnvironment * ptaoEnv, serviceThread* pmyThread,
                                         int (*requestService)(Request&, serviceChannel*),
-                                        void* pmySharedServices)
+                                        channelServices* pmyServices, void* pmyLocals)
 {
 #ifdef  TEST
     fprintf(g_logFile, "serviceChannel::initserviceChannel\n");
@@ -325,11 +322,17 @@ bool serviceChannel::initServiceChannel(const char* serverType, int newfd,
     }
     m_requestService= requestService;
 
-    if(pmySharedServices==NULL) {
-        fprintf(g_logFile, "serviceChannel::initserviceChannel bad shared services pointer\n");
+    if(pmyServices==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad services pointer\n");
         return false;
     }
-    m_sharedServices= pmySharedServices;
+    m_pchannelServices= pmyServices;
+
+    if(pmyLocals==NULL) {
+        fprintf(g_logFile, "serviceChannel::initserviceChannel bad localspointer\n");
+        return false;
+    }
+    m_pchannelLocals= pmyLocals;
 
     return true;
 }

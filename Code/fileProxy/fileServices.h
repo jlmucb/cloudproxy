@@ -33,6 +33,7 @@
 #include "safeChannel.h"
 #include "timer.h"
 #include "request.h"
+#include "channelServices.h"
 
 #ifndef FILECLIENT
 #include "accessControl.h"
@@ -131,7 +132,34 @@ public:
 };
 
 
+#ifndef FILECLIENT
+
+
+class filechannelServices : public channelServices {
+public:
+    fileServices    m_oFileServices;
+
+    filechannelServices(u32);
+    ~filechannelServices();
+
+#ifndef FILECLIENT
+    bool servergetProtectedFileKey(Request& oReq, timer& accessTimer);
+#else
+    bool clientgetProtectedFileKey(const char* file, timer& accessTimer);
 #endif
+};
+
+
+class fileServer;
+class fileServerLocals{
+public:
+    fileServer*     m_pServerObj;
+};
+
+#endif
+
+
+#endif  // FILESERVICES_H
 
 
 // --------------------------------------------------------------------------------------

@@ -34,6 +34,7 @@
 #include "cert.h"
 #include "algs.h"
 #include "fileServices.h"
+#include "channelServices.h"
 #include "timer.h"
 #include <pthread.h>
 
@@ -66,15 +67,12 @@ public:
     safeChannel         m_oSafeChannel;
 
     PrincipalCert*      m_pPolicyCert;
-    KeyInfo*		m_policyKey;
+    KeyInfo*            m_policyKey;
 
     // these will be replaced by generic services
-    bool                m_fFileServicesPresent;
-    fileServices        m_ofileServices;
-    u32                 m_encType;
-    byte*               m_fileKeys;
-    metaData*           m_pMetaData;
-    void*               m_sharedServices;
+    bool                m_fServicesPresent;
+    channelServices*    m_pchannelServices;
+    void*               m_pchannelLocals;
 
     taoHostServices*    m_ptaoHost;
     taoEnvironment*     m_ptaoEnv;
@@ -91,9 +89,7 @@ public:
                                 PrincipalCert* pPolicyCert, taoHostServices* ptaoHost,
                                 taoEnvironment * ptaoEnv, serviceThread* pmyThread,
                                 int (*requestService)(Request&, serviceChannel*),
-                                void* pmySharedServices);
-    bool                enableFileServices(u32 encType, byte* fileKeys, 
-                                           metaData* pMetaData);
+                                channelServices* pmyServices, void* pmyLocals);
     bool                runServiceChannel();
     int                 processRequests();
 };

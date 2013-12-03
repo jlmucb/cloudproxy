@@ -36,9 +36,12 @@
 #include "safeChannel.h"
 #include "jlmUtility.h"
 #include "fileServices.h"
+#include "serviceChannel.h"
+#include "channelServices.h"
 #include "sha256.h"
 #include "encryptedblockIO.h"
 #include "request.h"
+#include "fileServer.h"
 
 #ifndef FILECLIENT
 #include "encapsulate.h"
@@ -117,6 +120,75 @@ fileServices::~fileServices()
 {
     // DO NOT delete Tao or metadata
 }
+
+ 
+// ------------------------------------------------------------------------
+
+#ifndef FILECLIENT
+
+
+#define SERVEROBJ(x) ((fileServerLocals*)(service->m_pchannelLocals))->m_pServerObj->x
+
+
+bool channelServices::enablechannelServices(serviceChannel* service, void* pLocals)
+{
+    service->m_fServicesPresent= true; 
+    return true;
+}
+
+
+bool channelServices::initchannelServices(serviceChannel* service, void* pLocals)
+{
+    filechannelServices* pService= (filechannelServices*) service->m_pchannelServices;
+
+    service->m_fServicesPresent= true; 
+    return pService->m_oFileServices.initFileServices(
+                            &service->m_serverSession, service->m_pPolicyCert,
+                            service->m_ptaoEnv, SERVEROBJ(m_encType),
+                            SERVEROBJ(m_fileKeys), &SERVEROBJ(m_oMetaData),
+                            &service->m_oSafeChannel);
+}
+
+
+bool channelServices::dispatchchannelServices(Request& oReq, serviceChannel* service,
+                                        timer& myTimer)
+{
+    return true;
+}
+
+
+bool channelServices::closechannelServices()
+{
+    return true;
+}
+
+
+filechannelServices::filechannelServices(u32 type) : channelServices(type)
+{
+}
+
+
+filechannelServices::~filechannelServices() 
+{
+}
+
+
+#ifndef FILECLIENT
+bool filechannelServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
+{
+    return m_oFileServices.servergetProtectedFileKey(oReq, accessTimer);
+}
+
+#else
+
+bool filechannelServices::clientgetProtectedFileKey(const char* file, timer& accessTimer)
+{
+    return m_oFileServices.clientgetProtectedFileKey(file, accessTimer);
+}
+#endif
+
+#endif
+
 
 // ------------------------------------------------------------------------
 

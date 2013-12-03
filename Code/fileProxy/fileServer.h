@@ -45,7 +45,6 @@
 #define  MAXNUMCLIENTS  50
 
 
-
 class fileServer {
 public:
     int                 m_iNumClients;
@@ -59,7 +58,7 @@ public:
     PrincipalCert       m_opolicyCert;    
 
 
-    //    Keys for file encryption 
+    // Keys for file encryption 
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
     bool                m_fKeysValid;

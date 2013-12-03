@@ -194,5 +194,5 @@ $(B)/trustedKeyNego.o: $(TAO)/trustedKeyNego.cpp $(TAO)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/trustedKeyNego.o $(TAO)/trustedKeyNego.cpp
 
 $(B)/fileServices.o: $(S)/fileServices.cpp $(S)/fileServices.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(S) -I$(BSC) -I$(VLT) -I$(TRS) -I$(ACC) -I$(CLM) -I$(PROTO) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(CH) -I$(S) -I$(BSC) -I$(VLT) -I$(TRS) -I$(ACC) -I$(TAO) -I$(CLM) -I$(PROTO) -c -o $(B)/fileServices.o $(S)/fileServices.cpp
 

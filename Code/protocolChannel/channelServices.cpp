@@ -26,7 +26,6 @@
 #include "keys.h"
 #include "session.h"
 #include "channel.h"
-#include "channelService.h"
 #include "channelServices.h"
 #include "safeChannel.h"
 #include "request.h"

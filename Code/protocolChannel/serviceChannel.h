@@ -68,17 +68,18 @@ public:
     PrincipalCert*      m_pPolicyCert;
     KeyInfo*		m_policyKey;
 
+    // these will be replaced by generic services
     bool                m_fFileServicesPresent;
     fileServices        m_ofileServices;
     u32                 m_encType;
     byte*               m_fileKeys;
     metaData*           m_pMetaData;
+    void*               m_sharedServices;
 
     taoHostServices*    m_ptaoHost;
     taoEnvironment*     m_ptaoEnv;
 
     serviceThread*      m_pmyThread;
-    void*               m_sharedServices;
 
     // custom loop for service requests
     int (*m_requestService)(Request&, serviceChannel* service); 

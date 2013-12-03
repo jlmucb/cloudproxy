@@ -50,25 +50,6 @@ channelServices::~channelServices()
 }
 
 
-bool        channelServices::enablechannelServices()
-{
-    return true;
-}
-
-
-bool        channelServices::dispatchchannelServices(Request& oReq, serviceChannel* service,
-                                        timer& myTimer)
-{
-    return true;
-}
-
-
-bool        channelServices::closechannelServices()
-{
-    return true;
-}
-
-
 // ------------------------------------------------------------------------------
 
 

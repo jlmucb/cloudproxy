@@ -21,16 +21,16 @@
 // -----------------------------------------------------------------------------
 
 
-#ifndef _CHANELSERVICES__H
-#define _CHANELSERVICES__H
+#ifndef _CHANNELSERVICES__H
+#define _CHANNELSERVICES__H
 
 #include "jlmTypes.h"
 #include "jlmUtility.h"
 #include "keys.h"
 #include "session.h"
 #include "channel.h"
-#include "channelService.h"
 #include "safeChannel.h"
+#include "serviceChannel.h"
 #include "request.h"
 #include "timer.h"
 

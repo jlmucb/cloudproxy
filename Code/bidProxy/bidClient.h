@@ -47,6 +47,9 @@ public:
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
+    bool                m_fpolicyCertValid;
+    PrincipalCert       m_opolicyCert;
+
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
     bool                m_fKeysValid;

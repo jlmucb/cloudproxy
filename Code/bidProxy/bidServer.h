@@ -30,6 +30,7 @@
 #include "session.h"
 #include "channel.h"
 #include "serviceChannel.h"
+#include "channelServices.h"
 #include "safeChannel.h"
 #include "objectManager.h"
 #include "cert.h"

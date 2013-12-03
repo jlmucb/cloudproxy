@@ -509,7 +509,7 @@ bool fileServer::server()
 
             if(i==m_iNumClients) {
                 if(m_iNumClients>=MAXNUMCLIENTS) {
-                    fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
+                    fprintf(g_logFile, "fileServer::server: Can't allocate serviceChannel\n");
                     return false;
                 }
                 i= m_iNumClients++;
@@ -552,7 +552,7 @@ bool fileServer::server()
                 m_serverThreads[i].m_fthreadValid= false;
         }
         else {
-            fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
+            fprintf(g_logFile, "fileServer::server: Can't allocate serviceChannel\n");
         }
 
         poSc= NULL;

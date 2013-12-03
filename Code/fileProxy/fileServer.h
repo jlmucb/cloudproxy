@@ -101,39 +101,11 @@ public:
 };
 
 
-//  thread for client channel
-void* channelThread(void* ptr);
-
-
-class theServiceChannel {
-public:
-    fileServer*         m_pParent;
-    int                 m_myPositionInParent;
-    int                 m_serverState;
-
-    session             m_serverSession;
-    bool                m_fChannelAuthenticated;
-    int                 m_fdChannel;
-    safeChannel         m_oSafeChannel;
-
-    fileServices        m_fileServices;
-    metaData*           m_pMetaData;
-
-    theServiceChannel();
-    ~theServiceChannel();
-
-    bool                initServiceChannel(metaData* pMetaData, safeChannel* pSafeChannel);
-    int                 processRequests();
-    bool                serviceChannel();
-};
-
-
 #define SERVICENAME             "fileServer"
 #define SERVICE_PORT            6000
 
-
+ 
 #endif
-
 
 //-------------------------------------------------------------------------
 

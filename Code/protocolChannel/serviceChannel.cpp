@@ -39,6 +39,7 @@
 #include "tao.h"
 
 #include "serviceChannel.h"
+#include "channelServices.h"
 #include "fileServices.h"
 #include "cert.h"
 #include "domain.h"

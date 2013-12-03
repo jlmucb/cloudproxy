@@ -104,6 +104,7 @@ bidClient::bidClient ()
     m_szPort= NULL;
     m_szAddress= NULL;
     m_fd= 0;
+    m_fpolicyCertValid= false;
 
     m_fEncryptFiles= false;
     m_szSealedKeyFile= NULL;
@@ -155,36 +156,17 @@ bool bidClient::initPolicy()
         return false;
     }
 
-// FIX
-#if 0
-#ifdef TEST1
-    fprintf(g_logFile, "bidClient::initPolicy, about to initpolicy Cert\n%s\n",
-            m_tcHome.m_policyKey);
-    fflush(g_logFile);
-    if(g_policyPrincipalCert==NULL)
-        g_policyPrincipalCert= new PrincipalCert();
-#endif
-    if(!g_policyPrincipalCert->init(reinterpret_cast<char*>(m_tcHome.m_policyKey))) {
-        fprintf(g_logFile, "initPolicy: Can't init policy cert 1\n");
+    // initialize policy cert
+    if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
         return false;
     }
-    if(!g_policyPrincipalCert->parsePrincipalCertElements()) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 2\n");
+    if(!m_opolicyCert.parsePrincipalCertElements()) {
+        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
         return false;
     }
-    g_policyKey= (RSAKey*)g_policyPrincipalCert->getSubjectKeyInfo();
-    if(g_policyKey==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-    g_policyAccessPrincipal= registerPrincipalfromCert(g_policyPrincipalCert);
-    if(g_policyAccessPrincipal==NULL) {
-        fprintf(g_logFile, "initPolicy: Can't init policy key 3\n");
-        return false;
-    }
-#endif
+    m_fpolicyCertValid= true;
 
-    g_globalpolicyValid= true;
     return true;
 }
 

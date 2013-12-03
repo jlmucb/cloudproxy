@@ -75,7 +75,7 @@
 #endif
 
 
-bool             g_fTerminateServer= false;
+extern bool g_fTerminateServer;
 int              iQueueSize= 5;
 
 #include "./policyCert.inc"

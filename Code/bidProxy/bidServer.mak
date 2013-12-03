@@ -31,10 +31,10 @@ dobjs=      $(B)/bidServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/encryptedblockIO.o \
 	    $(B)/cryptoHelper.o $(B)/hmacsha256.o $(B)/modesandpadding.o \
 	    $(B)/trustedKeyNego.o $(B)/taoSupport.o $(B)/taoEnvironment.o \
-	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
+	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/channelServices.o \
 	    $(B)/bidServices.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
-	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
-	    $(B)/cert.o $(B)/encapsulate.o $(B)/serviceChannel.o \
+	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o $(B)/taoAttest.o \
+	    $(B)/attest.o $(B)/validateEvidence.o $(B)/cert.o $(B)/encapsulate.o $(B)/serviceChannel.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/buffercoding.o $(B)/tcIO.o 
 
 all: $(E)/bidServer.exe
@@ -70,6 +70,9 @@ $(B)/session.o: $(PROTO)/session.cpp $(PROTO)/session.h
 $(B)/serviceChannel.o: $(PROTO)/serviceChannel.cpp $(PROTO)/serviceChannel.h
 	$(CC) $(CFLAGS) -I$(ACC) -I$(S) -I$(VLT) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TRS) -I$(TAO) -I$(FSR) -c -o $(B)/serviceChannel.o $(PROTO)/serviceChannel.cpp
 
+$(B)/channelServices.o: $(PROTO)/channelServices.cpp $(PROTO)/channelServices.h
+	$(CC) $(CFLAGS) -I$(ACC) -I$(S) -I$(VLT) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TRS) -I$(TAO) -c -o $(B)/channelServices.o $(PROTO)/channelServices.cpp
+
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp
 
@@ -86,7 +89,7 @@ $(B)/taoInit.o: $(TAO)/taoInit.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(CLM) -I$(TRS) -c -o $(B)/taoInit.o $(TAO)/taoInit.cpp
 
 $(B)/taoAttest.o: $(TAO)/taoAttest.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/taoAttest.o $(TAO)/taoAttest.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(TS) -I$(CLM) -I$(TAO) -c -o $(B)/taoAttest.o $(TAO)/taoAttest.cpp
 
 $(B)/taoSupport.o: $(TAO)/taoSupport.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp
@@ -109,8 +112,11 @@ $(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
 $(B)/request.o: $(PROTO)/request.cpp $(PROTO)/request.h 
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(CLM) -I$(CH) -c -o $(B)/request.o $(PROTO)/request.cpp
 
-#$(B)/claims.o: $(S)/claims.cpp $(S)/claims.h
-#	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(TAO) -I$(CLM) -c -o $(B)/claims.o $(S)/claims.cpp
+$(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -I$(SCC) -c -o $(B)/attest.o $(CLM)/attest.cpp
+
+$(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(ACC) -I$(CLM) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp

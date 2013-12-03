@@ -53,7 +53,6 @@ public:
     bidchannelServices(u32 type);
     ~bidchannelServices();
 
-
 #ifndef BIDCLIENT
     bool        servergetProtectedFileKey(Request& oReq, timer& accessTimer);
     bool        acceptBid(Request& oReq, serviceChannel* service, timer& myTimer);

@@ -114,6 +114,12 @@ bool channelServices::closechannelServices()
 }
 
 
+bool bidchannelServices::acceptBid(Request& oReq, serviceChannel* service, timer& myTimer)
+{
+    return true;
+}
+
+
 #ifndef BIDCLIENT
 bool bidchannelServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
 {

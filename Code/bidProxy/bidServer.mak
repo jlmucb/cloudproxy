@@ -32,7 +32,7 @@ dobjs=      $(B)/bidServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/cryptoHelper.o $(B)/hmacsha256.o $(B)/modesandpadding.o \
 	    $(B)/trustedKeyNego.o $(B)/taoSupport.o $(B)/taoEnvironment.o \
 	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
-	    $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
+	    $(B)/bidServices.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
 	    $(B)/cert.o $(B)/encapsulate.o $(B)/serviceChannel.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/buffercoding.o $(B)/tcIO.o 
@@ -45,6 +45,9 @@ $(E)/bidServer.exe: $(dobjs)
 
 $(B)/bidServer.o: $(S)/bidServer.cpp $(S)/bidServer.h
 	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServer.o $(S)/bidServer.cpp
+
+$(B)/bidServices.o: $(S)/bidServices.cpp $(S)/bidServices.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServices.o $(S)/bidServices.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp
@@ -81,6 +84,9 @@ $(B)/cryptoHelper.o: $(SCC)/cryptoHelper.cpp $(SCC)/cryptoHelper.h
 
 $(B)/taoInit.o: $(TAO)/taoInit.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(CLM) -I$(TRS) -c -o $(B)/taoInit.o $(TAO)/taoInit.cpp
+
+$(B)/taoAttest.o: $(TAO)/taoAttest.cpp $(TAO)/tao.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/taoAttest.o $(TAO)/taoAttest.cpp
 
 $(B)/taoSupport.o: $(TAO)/taoSupport.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp

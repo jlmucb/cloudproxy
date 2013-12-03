@@ -55,6 +55,7 @@
 
 #include "encapsulate.h"
 #include "taoSetupglobals.h"
+#include "bidServices.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -77,22 +78,25 @@
 // ------------------------------------------------------------------------
 
 
-
-class bidchannelServices : public channelServices {
-public:
-#ifndef BIDCLIENT
-    bool        servergetProtectedFileKey(Request& oReq, timer& accessTimer);
-    bool        acceptBid(Request& oReq, serviceChannel* service, timer& myTimer);
-#else
-    bool        submitBid(Request& oReq, serviceChannel* service, timer& myTimer);
-    bool        clientgetProtectedFileKey(Request& oReq, timer& accessTimer);
-#endif
-    bool        closechannelServices();
-};
-
-
-bool channelServices::enablechannelServices()
+bidchannelServices::bidchannelServices(u32 type) : channelServices(type)
 {
+}
+
+
+bidchannelServices::~bidchannelServices() 
+{
+}
+
+
+bool channelServices::enablechannelServices(serviceChannel* service, void* pLocal)
+{
+    return true;
+}
+
+
+bool channelServices::initchannelServices(serviceChannel* service, void* pLocals)
+{
+    service->m_fServicesPresent= true; 
     return true;
 }
 
@@ -323,34 +327,24 @@ bool bidchannelServices::clientgetProtectedFileKey(const char* file, timer& acce
 // ------------------------------------------------------------------------
 
 
-class bidServerLocals{
-public:
-    bidServer*          m_pServerObj;
-    bidchannelServices* m_pServices;
-    RSAKey*             m_sealingKey;
-    RSAKey*             m_signingKey;
-    u32                 m_encType;
-    byte*               m_bidKeys;
-};
-
 // request loop for bidServer
-#define TIMER(x) ((bidServerLocals*)(service->m_sharedServices))->m_pServerObj->x
-#define LOCALOBJ(x) ((bidServerLocals*)(service->m_sharedServices))->m_pServerObj->x
-#define SERVICESOBJ ((bidServerLocals*)(service->m_sharedServices))->m_pServices
+#define TIMER(x) ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->x
+#define LOCALOBJ(x) ((bidServerLocals*)(service->pchannelLocals))->m_pServerObj->x
+#define SERVICESOBJ(x) ((bidchannelServices*)(service->m_pchannelServices))->x
 
 
 int bidServerrequestService(Request& oReq, serviceChannel* service)
 {
 
     if(strcmp(oReq.m_szAction, "submitBid")==0) {
-         if(!SERVICESOBJ->acceptBid(oReq, service, TIMER(m_decTimer))) {
+         if(!SERVICESOBJ(acceptBid)(oReq, service, TIMER(m_decTimer))) {
              fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
              return -1;
          }
          return 1;
      }
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
-        if(!SERVICESOBJ->servergetProtectedFileKey(oReq, TIMER(m_accessCheckTimer))) {
+        if(!SERVICESOBJ(servergetProtectedFileKey)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, 
                 "fileServerrequestService:: servergetProtectedKey failed\n");
             return -1;

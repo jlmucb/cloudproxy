@@ -48,6 +48,22 @@ public:
 };
 
 
+class bidchannelServices : public channelServices {
+public:
+    bidchannelServices(u32 type);
+    ~bidchannelServices();
+
+
+#ifndef BIDCLIENT
+    bool        servergetProtectedFileKey(Request& oReq, timer& accessTimer);
+    bool        acceptBid(Request& oReq, serviceChannel* service, timer& myTimer);
+#else
+    bool        submitBid(Request& oReq, serviceChannel* service, timer& myTimer);
+    bool        clientgetProtectedFileKey(Request& oReq, timer& accessTimer);
+#endif
+    bool        closechannelServices();
+};
+
 
 #endif
 

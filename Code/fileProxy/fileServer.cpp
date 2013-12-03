@@ -210,7 +210,7 @@ bool fileServer::initPolicy()
     }
     m_fpolicyCertValid= true;
 
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "fileServer::initPolicy, returning true\n");
     fflush(g_logFile);
 #endif
@@ -527,7 +527,7 @@ bool fileServer::server()
                 return false;
             }
 
-#ifdef TEST
+#ifdef TEST1
             fprintf(g_logFile, "fileServer: slot %d, about to pthread_create\n", i);
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);
             fflush(g_logFile);

@@ -563,7 +563,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
  * %s        Extra
  * </Response>
  */
-#ifdef  TEST
+#ifdef  TEST1
     char* p= *pp;
 #endif
     const char*   szErrorFormat= " <ErrorCode> %s </ErrorCode>\n";
@@ -600,7 +600,7 @@ bool  constructResponse(bool fError, char** pp, int* piLeft,
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "constructResponse completed\n%s\n", p);
     fflush(g_logFile);
 #endif

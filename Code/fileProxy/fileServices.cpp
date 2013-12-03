@@ -207,9 +207,6 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
 
 #ifdef TEST
     fprintf(g_logFile, "fileServices::initFileServices for Server\n");
-    fprintf(g_logFile, 
-      "session: %08x, policyCert: %08x, tao: %08x, encType: %d, meta: %08x, channel: %08x\n",
-      psession, ppolicyCert, pTaoEnv, encType, pMeta, pSafeChannel);
     fflush(g_logFile);
 #endif
 
@@ -675,15 +672,7 @@ done:
         fflush(g_logFile);
         return false;
     }
-#ifdef TEST
-    fprintf(g_logFile, "HERE\n");
-    fflush(g_logFile);
-#endif
     m_pSafeChannel->safesendPacket(buf, strlen((char*)buf)+1, type, multi, final);
-#ifdef TEST
-    fprintf(g_logFile, "HERE\n");
-    fflush(g_logFile);
-#endif
 
     if(szProtectedElement!=NULL) {
         free((void*)szProtectedElement);
@@ -720,7 +709,6 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 
 #ifdef  TEST
     fprintf(g_logFile, "servercreateResourceonserver\n");
-    oReq.printMe();
     fflush(g_logFile);
 #endif
     // Does owner resource exist?

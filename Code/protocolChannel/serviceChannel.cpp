@@ -258,18 +258,6 @@ bool serviceChannel::runServiceChannel()
 }
 
 
-#if 0
-bool serviceChannel::enableFileServices(u32 encType, byte* fileKeys, metaData* pMetaData)
-{
-    m_fFileServicesPresent= true;
-    m_encType= encType;
-    m_fileKeys= fileKeys;     
-    m_pMetaData= pMetaData;    
-    return true;
-}
-#endif
-
-
 bool serviceChannel::initServiceChannel(const char* serverType, int newfd, 
                                         PrincipalCert* pPolicyCert,
                                         taoHostServices* ptaoHost,

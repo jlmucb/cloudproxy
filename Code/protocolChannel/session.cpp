@@ -1196,7 +1196,7 @@ bool session::getServerCert(const char* szXml)
         fprintf(g_logFile, "Cant session::getServerCert: get server Subject Key\n");
         return false;
     }
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "session::getServerCert, server cert\n");
     m_pserverCert->printMe();
     fprintf(g_logFile, "session::getServerCert, policy key\n");

@@ -33,7 +33,6 @@
 #include "request.h"
 #include "cert.h"
 #include "algs.h"
-#include "fileServices.h"
 #include "channelServices.h"
 #include "timer.h"
 #include <pthread.h>

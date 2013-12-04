@@ -43,12 +43,16 @@ class bidClient {
 public:
     int                 m_clientState;
     bool                m_fChannelAuthenticated;
+    session		m_clientSession;
 
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
 
     bool                m_fpolicyCertValid;
     PrincipalCert       m_opolicyCert;
+
+    RSAKey*             m_myPrivateKey;
+    const char*         m_szmyCert;
 
     bool                m_fEncryptFiles;
     char*               m_szSealedKeyFile;
@@ -61,7 +65,7 @@ public:
     byte                m_bidKeys[GLOBALMAXSYMKEYSIZE];
 
     int	                m_fd;
-    session             m_clientSession;
+    safeChannel         m_fc;
     char*               m_szPort;
     char*               m_szAddress;
 
@@ -76,15 +80,16 @@ public:
     bidClient();
     ~bidClient();
 
-    bool    initClient(const char* configDirectory, const char* serverAddress, u_short serverPort);
+    bool    initClient(const char* configDirectory, const char* serverAddress, 
+                        u_short serverPort);
     bool    initPolicy();
     bool    initFileKeys();
     bool    closeClient();
     bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
-                        const char* directory, const char* serverAddress, u_short serverPort);
-    void    closeConnection(safeChannel& fc);
-    bool    readBid(safeChannel& fc, const string& auctionID,
-                    const string& user, const string& bid, const string& userCert);
+                     const char* directory, const char* serverAddress, u_short serverPort);
+    void    closeConnection();
+    bool    readBid(safeChannel& fc, const string& auctionID, const string& user, 
+                    const string& bid, const string& userCert);
     bool    compareFiles(const string& firstFile, const string& secondFile);
 
     void    printTimers(FILE* log);

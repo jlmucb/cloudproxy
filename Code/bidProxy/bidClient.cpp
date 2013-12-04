@@ -92,6 +92,7 @@ const char* g_szClientPrincipalCertsFile= "bidClient/principalPublicKeys.xml";
 const char* g_szClientPrincipalPrivateKeysFile= "bidClient/principalPrivateKeys.xml";
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+#define BIDCLIENTSUBDIRECTORY "bidClient"
 
 
 // ------------------------------------------------------------------------
@@ -105,6 +106,8 @@ bidClient::bidClient ()
     m_szAddress= NULL;
     m_fd= 0;
     m_fpolicyCertValid= false;
+    m_myPrivateKey= NULL;
+    m_szmyCert= NULL;
 
     m_fEncryptFiles= false;
     m_szSealedKeyFile= NULL;
@@ -114,6 +117,7 @@ bidClient::bidClient ()
     m_uPad= 0;
     m_uHmac= 0;
     m_sizeKey= GLOBALMAXSYMKEYSIZE;
+    m_fpolicyCertValid= false;
 }
 
 
@@ -217,7 +221,7 @@ bool bidClient::initFileKeys()
         memcpy(&keyBuf[n], m_bidKeys, m_sizeKey);
         n+= m_sizeKey;
 
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
@@ -243,7 +247,7 @@ bool bidClient::initFileKeys()
             fprintf(g_logFile, "initFileKeys: cant get sealed keys\n");
             return false;
         }
-        if(!m_tcHome.m_myMeasurementValid) {
+        if(!m_tcHome.measurementValid()) {
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
@@ -284,7 +288,8 @@ bool bidClient::initFileKeys()
 }
 
 
-bool bidClient::initClient(const char* configDirectory, const char* serverAddress, u_short serverPort)
+bool bidClient::initClient(const char* configDirectory, const char* serverAddress, 
+                           u_short serverPort)
 {
     struct sockaddr_in  server_addr;
     int                 slen= sizeof(struct sockaddr_in);
@@ -310,7 +315,6 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
         if(!initAllCrypto()) {
             throw "bidClient::Init: can't initcrypto\n";
         }
-        m_oKeys.m_fClient= true;
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
@@ -326,7 +330,7 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit((g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
+        if(!m_tcHome.EnvInit(g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
                              BIDCLIENTSUBDIRECTORY, &m_host, g_serviceProvider, 0, NULL)) {
             throw "bidClient::Init: can't init environment\n";
         }
@@ -343,14 +347,6 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
         fprintf(g_logFile, "bidClient::Init: after initFileKeys\n");
         m_tcHome.printData();
 #endif
-
-        // Initialize program private key and certificate for session
-        if(!m_tcHome.privateKeyValid()|| 
-               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.privateKeyPtr()))
-            throw "bidClient::Init: Cant get my private key\n";
-        if(!m_tcHome.myCertValid()|| 
-               !m_oKeys.getMyProgramCert(m_tcHome.myCertPtr()))
-            throw "bidClient::Init: Cant get my Cert\n";
     
         // Init global policy 
         if(!initPolicy())
@@ -379,8 +375,33 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
         if(iError!=0)
             throw  "bidClient::Init: Can't connect";
 
+        // m_tcHome.m_policyKeyValid must be true
+        if(!m_tcHome.policyCertValid()) {
+            throw "bidClient::Init: Cant get policy Cert\n";
+        }
+        if(!m_opolicyCert.init(m_tcHome.policyCertPtr()))
+          throw("fileClient::Init:: Can't init policy cert 1\n");
+        if(!m_opolicyCert.parsePrincipalCertElements())
+          throw("fileClient::Init:: Can't init policy key 2\n");
+        m_fpolicyCertValid= true;
+        if(!m_tcHome.myCertValid()) {
+            throw "bidClient::Init: Cant get my Cert\n";
+        }
+        RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
+        if(!m_clientSession.clientInit(m_tcHome.policyCertPtr(),
+                                   ppolicyKey, m_tcHome.myCertPtr(),
+                                   (RSAKey*)m_tcHome.privateKeyPtr()))
+            throw("fileClient::Init: Can't init policy key 3\n");
+
+        // negotiate channel
+        m_protocolNegoTimer.Start();
+        if(!m_clientSession.clientprotocolNego(m_fd, m_fc,
+                                    NULL, NULL))
+            throw("fileClient::Init: protocolNego failed\n");
+        m_protocolNegoTimer.Stop();
+
 #ifdef TEST
-        fprintf(g_logFile, "initClient: connect completed\n");
+        fprintf(g_logFile, "initClient completed\n");
         fflush(g_logFile);
 #endif
     }
@@ -419,23 +440,14 @@ bool bidClient::closeClient()
 }
 
 
-bool bidClient::initSafeChannel(safeChannel& fc)
-{
-    return fc.initChannel(m_fd, AES128, CBCMODE, HMACSHA256, 
-                          AES128BYTEKEYSIZE, AES128BYTEKEYSIZE,
-                          m_oKeys.m_rguEncryptionKey1, m_oKeys.m_rguIntegrityKey1, 
-                          m_oKeys.m_rguEncryptionKey2, m_oKeys.m_rguIntegrityKey2);
-}
-
-
 // ------------------------------------------------------------------------
 
 
-const char*  g_szTerm= "terminate channel\n";
+extern const char*  g_szTerm;
 
 
 #define BIDCLIENTTEST
-#ifdef  BIDCLIENTTEST
+#ifdef BIDCLIENTTEST
 
 bool bidClient::establishConnection(safeChannel& fc, const char* keyFile, 
                                     const char* certFile, const char* directory,
@@ -450,11 +462,6 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
         if(!initClient(directory, serverAddress, serverPort))
             throw "bidClient main: initClient() failed\n";
 
-        // copy my public key into client public key
-        if(!m_tcHome.policyCertValid()|| 
-               !m_oKeys.getClientCert(m_tcHome.policyCertValid()))
-            throw "bidClient main: Cant load client public key structures\n";
-
 #ifdef  TEST
         fprintf(g_logFile, "bidClient main: protocol nego\n");
         fflush(g_logFile);
@@ -462,14 +469,9 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
         // protocol Nego
         m_protocolNegoTimer.Start();
         // FIX: szPrincipalKeys, szPrincipalCerts
-        if(!!m_clientSession.clientprotocolNego(m_fd, m_fc, NULL, NULL))
+        if(!m_clientSession.clientprotocolNego(m_fd, m_fc, NULL, NULL))
             throw "bidClient main: Cant negotiate channel\n";
         m_protocolNegoTimer.Stop();
-
-#ifdef TEST
-        m_oKeys.printMe();
-        fflush(g_logFile);
-#endif
     }
     catch(const char* szError) {
         fprintf(g_logFile, "Error: %s\n", szError);
@@ -480,10 +482,15 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
   return true;
 }
 
-void bidClient::closeConnection(safeChannel& fc) {
-        if(fc.fd>0) {
-                fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
-        }
+
+void bidClient::closeConnection()
+{
+    if(m_fc.fd>0)
+        m_fc.safesendPacket((byte*) g_szTerm, strlen(g_szTerm)+1, CHANNEL_TERMINATE, 0, 1);
+#ifdef TEST
+    fprintf(g_logFile,"closeConnection returning\n");
+    fflush(g_logFile);
+#endif
 }
 
 
@@ -497,6 +504,8 @@ bool bidClient::readBid(safeChannel& fc, const string& auctionID,
                                const string& user, const string& bid, 
                                const string& userCert)
 {
+    // FIX
+#if 0
     int     encType= NOENCRYPT;
 
     if(clientsendbidtoserver(fc, m_oKeys, auctionID.c_str(),  user.c_str(),
@@ -510,6 +519,7 @@ bool bidClient::readBid(safeChannel& fc, const string& auctionID,
         fflush(g_logFile);
         return false;
     }
+#endif
 
     return true;
 }
@@ -564,7 +574,6 @@ int main(int an, char** av)
 {
     int             iRet= 0;
     int             i;
-    bool            fInitProg= false;
     const char*     directory= NULL;
     string          testPath("bidClient/tests/");
     string          testFileName("tests.xml");
@@ -580,9 +589,6 @@ int main(int an, char** av)
     UNUSEDVAR(result);
     if(an>1) {
         for(i=0;i<an;i++) {
-            if(strcmp(av[i],"-initProg")==0) {
-                fInitProg= true;
-            }
             if (strcmp(av[i],"-directory")==0) {
                 directory= strdup(av[++i]);
             }

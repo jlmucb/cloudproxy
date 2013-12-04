@@ -1,7 +1,6 @@
 E=          ~/jlmcrypt
 B=          ~/jlmcrypt/bidClientobjects
 S=          ../bidProxy
-T=	    ../bidProxyTester
 SC=         ../commonCode
 SCC=        ../jlmcrypto
 BSC=        ../jlmbignum
@@ -24,14 +23,14 @@ LINK=       g++
 
 dobjs=      $(B)/bidClient.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.o \
 	    $(B)/keys.o $(B)/aesni.o $(B)/sha256.o $(B)/cryptoHelper.o \
+	    $(B)/validateEvidence.o  $(B)/attest.o $(B)/fastArith.o \
             $(B)/mpBasicArith.o $(B)/mpModArith.o $(B)/mpNumTheory.o \
             $(B)/hmacsha256.o $(B)/encryptedblockIO.o $(B)/modesandpadding.o \
 	    $(B)/taoSupport.o $(B)/taoEnvironment.o $(B)/taoHostServices.o \
-	    $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/claims.o \
-	    $(B)/tinyxml.o $(B)/tinyxmlparser.o $(B)/tinystr.o \
-	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
-	    $(B)/session.o  $(B)/cert.o $(B)/request.o $(B)/encapsulate.o \
-	    $(B)/trustedKeyNego.o $(B)/sha1.o \
+	    $(B)/taoInit.o $(B)/taoAttest.o $(B)/linuxHostsupport.o $(B)/tinyxml.o \
+            $(B)/tinyxmlparser.o $(B)/tinystr.o $(B)/tinyxmlerror.o \
+            $(B)/channel.o $(B)/safeChannel.o $(B)/session.o  $(B)/cert.o \
+            $(B)/request.o $(B)/encapsulate.o $(B)/trustedKeyNego.o $(B)/sha1.o \
 	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o $(B)/bidTester.o
 
 all: $(E)/bidClient.exe
@@ -41,10 +40,10 @@ $(E)/bidClient.exe: $(dobjs)
 	$(LINK) -o $(E)/bidClient.exe $(dobjs) $(LDFLAGS) -lpthread
 
 $(B)/bidClient.o: $(S)/bidClient.cpp $(S)/bidClient.h
-	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(SC) -I$(SCC) -I$(CLM) -I$(PROTO) -I$(BSC) -I$(T) -I$(TS) -I$(CH) -I$(TAO) -I$(TRS) -c -o $(B)/bidClient.o $(S)/bidClient.cpp
+	$(CC) $(CFLAGS) -D LINUXHOSTSERVICE -I$(SC) -I$(SCC) -I$(CLM) -I$(PROTO) -I$(BSC) -I$(TS) -I$(CH) -I$(TAO) -I$(TRS) -c -o $(B)/bidClient.o $(S)/bidClient.cpp
 
 $(B)/bidTester.o: $(S)/bidTester.cpp $(S)/bidTester.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(T) -I$(TS) -I$(CH) -I$(TAO) -I$(TRS) -c -o $(B)/bidTester.o $(S)/bidTester.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TAO) -I$(TRS) -c -o $(B)/bidTester.o $(S)/bidTester.cpp
 
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
@@ -64,6 +63,9 @@ $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 $(B)/encryptedblockIO.o: $(SCC)/encryptedblockIO.cpp $(SCC)/encryptedblockIO.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encryptedblockIO.o $(SCC)/encryptedblockIO.cpp
 
+$(B)/validateEvidence.o: $(CLM)/validateEvidence.cpp $(CLM)/validateEvidence.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(ACC) -I$(CLM) -c -o $(B)/validateEvidence.o $(CLM)/validateEvidence.cpp
+
 $(B)/modesandpadding.o: $(SCC)/modesandpadding.cpp $(SCC)/modesandpadding.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/modesandpadding.o $(SCC)/modesandpadding.cpp
 
@@ -80,31 +82,34 @@ $(B)/taoInit.o: $(TAO)/taoInit.cpp $(TAO)/tao.h
 	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TRS) -c -o $(B)/taoInit.o $(TAO)/taoInit.cpp
 
 $(B)/taoSupport.o: $(TAO)/taoSupport.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(TRS) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TRS) -c -o $(B)/taoSupport.o $(TAO)/taoSupport.cpp
 
 $(B)/taoEnvironment.o: $(TAO)/taoEnvironment.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(TS) -I$(TRS) -c -o $(B)/taoEnvironment.o $(TAO)/taoEnvironment.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TAO) -I$(TS) -I$(TRS) -c -o $(B)/taoEnvironment.o $(TAO)/taoEnvironment.cpp
 
 $(B)/taoHostServices.o: $(TAO)/taoHostServices.cpp $(TAO)/tao.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TS) -I$(TAO) -I$(TRS) -c -o $(B)/taoHostServices.o $(TAO)/taoHostServices.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TS) -I$(TAO) -I$(TRS) -c -o $(B)/taoHostServices.o $(TAO)/taoHostServices.cpp
 
 $(B)/linuxHostsupport.o: $(TAO)/linuxHostsupport.cpp $(TAO)/linuxHostsupport.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TAO)/linuxHostsupport.cpp
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(CLM) -I$(BSC) -I$(TAO) -I$(TRS) -c -o $(B)/linuxHostsupport.o $(TAO)/linuxHostsupport.cpp
 
-$(B)/cert.o: $(S)/cert.cpp $(S)/cert.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(S) -c -o $(B)/cert.o $(S)/cert.cpp
+$(B)/taoAttest.o: $(TAO)/taoAttest.cpp $(TAO)/tao.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(TRS) -I$(BSC) -I$(TS) -I$(CLM) -I$(TAO) -c -o $(B)/taoAttest.o $(TAO)/taoAttest.cpp
 
-$(B)/claims.o: $(S)/claims.cpp $(S)/claims.h
-	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(S) -I$(TAO) -I$(TS) -c -o $(B)/claims.o $(S)/claims.cpp
+$(B)/attest.o: $(CLM)/attest.cpp $(CLM)/attest.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(BSC) -I$(TRS) -I$(VLT) -I$(TRS) -I$(TAO) -I$(CLM) -I$(TS) -I$(SCC) -c -o $(B)/attest.o $(CLM)/attest.cpp
 
-$(B)/session.o: $(S)/session.cpp $(S)/session.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(TAO) -I$(CLM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(S)/session.cpp
+$(B)/cert.o: $(CLM)/cert.cpp $(CLM)/cert.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(BSC) -I$(VLT) -I$(TAO) -I$(S) -c -o $(B)/cert.o $(CLM)/cert.cpp
+
+$(B)/session.o: $(PROTO)/session.cpp $(PROTO)/session.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(CH) -I$(SCC) -I$(BSC) -I$(TAO) -I$(CLM) -I$(VLT) -I$(TRS) -c -o $(B)/session.o $(PROTO)/session.cpp
 
 $(B)/trustedKeyNego.o: $(TAO)/trustedKeyNego.cpp $(TAO)/trustedKeyNego.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(CLM) -I$(TAO) -c -o $(B)/trustedKeyNego.o $(TAO)/trustedKeyNego.cpp
 
-$(B)/request.o: $(S)/request.cpp $(S)/request.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(TAO) -I$(BSC) -I$(CLM) -I$(VLT) -c -o $(B)/request.o $(S)/request.cpp
+$(B)/request.o: $(PROTO)/request.cpp $(PROTO)/request.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(TAO) -I$(BSC) -I$(CLM) -c -o $(B)/request.o $(PROTO)/request.cpp
 
 $(B)/tinyxml.o : $(SC)/tinyxml.cpp $(SC)/tinyxml.h $(SC)/tinystr.h
 	$(CC) $(CFLAGS) $(RELEASECFLAGS) -I$(SC) -c -o $(B)/tinyxml.o $(SC)/tinyxml.cpp
@@ -143,7 +148,7 @@ $(B)/tcIO.o: $(TRS)/tcIO.cpp $(TRS)/tcIO.h
 	$(CC) $(CFLAGS) -I$(TRS) -I$(SC) -c -o $(B)/tcIO.o $(TRS)/tcIO.cpp
 
 $(B)/buffercoding.o: $(TRS)/buffercoding.cpp $(TRS)/buffercoding.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(TAO) -I$(BSC) -I$(TRS) -c -o $(B)/buffercoding.o $(TRS)/buffercoding.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CLM) -I$(TAO) -I$(BSC) -I$(TRS) -c -o $(B)/buffercoding.o $(TRS)/buffercoding.cpp
 
 $(B)/channel.o: $(CH)/channel.cpp $(CH)/channel.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/channel.o $(CH)/channel.cpp

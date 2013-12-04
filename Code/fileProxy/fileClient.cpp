@@ -372,7 +372,6 @@ bool fileClient::initClient(const char* configDirectory, const char* serverAddre
           throw("fileClient::Init:: Can't init policy cert 1\n");
         if(!m_opolicyCert.parsePrincipalCertElements())
           throw("fileClient::Init:: Can't init policy key 2\n");
-
         m_fpolicyCertValid= true;
         RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
 

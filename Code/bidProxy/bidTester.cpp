@@ -301,7 +301,7 @@ bool bidTester::runTest(const char* directory,
                         client.resetTimers();
                     }
                     
-                    client.closeConnection(channel);                    
+                    client.closeConnection();                    
 
                     ++it;
                 }

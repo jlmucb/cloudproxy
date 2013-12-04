@@ -61,6 +61,7 @@ public:
     byte                m_sellerKeys[GLOBALMAXSYMKEYSIZE];
 
     int	                m_fd;
+    safeChannel         m_fc;
     session             m_clientSession;
     char*               m_szPort;
     char*               m_szAddress;

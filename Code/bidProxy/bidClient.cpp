@@ -162,11 +162,11 @@ bool bidClient::initPolicy()
 
     // initialize policy cert
     if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
-        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
+        fprintf(g_logFile, "bidClient::Init:: Can't init policy cert 1\n");
         return false;
     }
     if(!m_opolicyCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
+        fprintf(g_logFile, "bidClient::Init:: Can't init policy key 2\n");
         return false;
     }
     m_fpolicyCertValid= true;

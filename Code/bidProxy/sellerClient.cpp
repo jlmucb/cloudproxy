@@ -98,6 +98,7 @@ const char* g_szClientPrincipalPrivateKeysFile= "sellerClient/principalPrivateKe
 // accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
+#define SELLERCLIENTSUBDIRECTORY "sellerClient"
 
 
 // ------------------------------------------------------------------------
@@ -262,7 +263,6 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
         if(!initAllCrypto()) {
             throw "sellerClient::Init: can't initcrypto\n";
         }
-        m_oKeys.m_fClient= true;
 
         // init Host and Environment
         m_taoHostInitializationTimer.Start();
@@ -287,18 +287,16 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
         fprintf(g_logFile, "sellerClient::Init: after EnvInit\n");
         m_tcHome.printData();
 #endif
-
-        // Initialize program private key and certificate for session
-        if(!m_tcHome.privateKeyValid()|| 
-               !m_oKeys.getMyProgramKey((RSAKey*)m_tcHome.privateKeyValid()))
-            throw "sellerClient::Init: Cant get my private key\n";
-        if(!m_tcHome.myCertPtr() || 
-               !m_oKeys.getMyProgramCert(m_tcHome.myCertPtr()))
-            throw "sellerClient::Init: Cant get my Cert\n";
     
         // Init global policy 
         if(!initPolicy())
             throw "sellerClient::Init: Cant init policy objects\n";
+
+        // Initialize program private key and certificate for session
+        if(!m_tcHome.privateKeyValid())
+            throw "sellerClient::Init: Cant get my private key\n";
+        if(!m_tcHome.myCertPtr())
+            throw "sellerClient::Init: Cant get my Cert\n";
 
         if(fInitChannel) {
             // open sockets
@@ -323,6 +321,31 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
             iError= connect(m_fd, (const struct sockaddr*) &server_addr, (socklen_t) slen);
             if(iError!=0)
                 throw  "sellerClient::Init: Can't connect";
+
+            // this section should move to the tao
+            if(!m_opolicyCert.init(m_tcHome.policyCertPtr()))
+                throw("sellerClient::Init:: Can't init policy cert 1\n");
+            if(!m_opolicyCert.parsePrincipalCertElements())
+                throw("sellerClient::Init:: Can't init policy key 2\n");
+            m_fpolicyCertValid= true;
+            RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
+
+            // m_tcHome.m_policyKeyValid must be true
+            if(!m_clientSession.clientInit(m_tcHome.policyCertPtr(),
+                                   ppolicyKey, m_tcHome.myCertPtr(),
+                                   (RSAKey*)m_tcHome.privateKeyPtr()))
+                throw("sellerClient::Init: Can't init policy key 3\n");
+
+            // get principal certs
+            const char* szPrincipalKeys= NULL; // readandstoreString(keyFile);
+            const char* szPrincipalCerts= NULL; // readandstoreString(certFile);
+
+            // negotiate channel
+            m_protocolNegoTimer.Start();
+            if(!m_clientSession.clientprotocolNego(m_fd, m_fc,
+                                    szPrincipalKeys, szPrincipalCerts))
+                throw("sellerClient::Init: protocolNego failed\n");
+            m_protocolNegoTimer.Stop();
 
 #ifdef TEST
             fprintf(g_logFile, "initClient: connect completed\n");
@@ -376,7 +399,7 @@ bool sellerClient::closeClient()
 // ------------------------------------------------------------------------
 
 
-const char*  g_szTerm= "terminate channel\n";
+extern const char*  g_szTerm;
 
 
 bool sellerClient::establishConnection(safeChannel& fc, 
@@ -401,8 +424,7 @@ bool sellerClient::establishConnection(safeChannel& fc,
             throw "sellerClient main: initClient() failed\n";
 
         // copy my public key into client public key
-        if(!m_tcHome.myCertValid() || 
-               !m_oKeys.getClientCert(m_tcHome.myCertPtr()))
+        if(!m_tcHome.myCertValid())
             throw "sellerClient main: Cant load client public key structures\n";
 
 #ifdef  TEST
@@ -414,11 +436,6 @@ bool sellerClient::establishConnection(safeChannel& fc,
         if(!m_clientSession.clientprotocolNego(m_fd, fc, keyFile, certFile))
             throw "sellerClient main: Cant negotiate channel\n";
         m_protocolNegoTimer.Stop();
-
-#ifdef TEST
-        m_oKeys.printMe();
-        fflush(g_logFile);
-#endif
     }
     catch(const char* szError) {
         fprintf(g_logFile, "Error: %s\n", szError);
@@ -452,8 +469,7 @@ bool sellerClient::loadKeys(const char* keyFile, const char* certFile,
             throw "sellerClient main: initClient() failed\n";
 
         // copy my public key into client public key
-        if(!m_tcHome.myCertValid() || 
-               !m_oKeys.getClientCert(m_tcHome.myCertValid()))
+        if(!m_tcHome.myCertValid())
             throw "sellerClient main: Cant load client public key structures\n";
     }
     catch(const char* szError) {
@@ -478,39 +494,6 @@ void sellerClient::closeConnection(safeChannel& fc) {
 //
 //  Application specific logic
 // 
-
-// ------------------------------------------------------------------------
-
-
-int timeCompare(struct tm& time1, struct tm& time2)
-{
-    if(time1.tm_year>time2.tm_year)
-        return 1;
-    if(time1.tm_year<time2.tm_year)
-        return -1;
-    if(time1.tm_mon>time2.tm_mon)
-        return 1;
-    if(time1.tm_mon<time2.tm_mon)
-        return -1;
-    if(time1.tm_mday>time2.tm_mday)
-        return 1;
-    if(time1.tm_mday<time2.tm_mday)
-        return -1;
-    if(time1.tm_hour>time2.tm_hour)
-        return 1;
-    if(time1.tm_hour<time2.tm_hour)
-        return -1;
-    if(time1.tm_min>time2.tm_min)
-        return 1;
-    if(time1.tm_min<time2.tm_min)
-        return -1;
-    if(time1.tm_sec>time2.tm_sec)
-        return 1;
-    if(time1.tm_sec<time2.tm_sec)
-        return -1;
-
-    return 0;
-}
 
 
 /*
@@ -957,7 +940,7 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     }
 
     rgObject[0]= (void*) &oPrincipal;
-    iChain= VerifyEvidence(NULL, 2, rgType, rgObject, g_policyKey, signingKey);
+    iChain= VerifyChain(g_policyKey, "", NULL, 2, rgType, rgObject);
     if(iChain<0) {
         fprintf(g_logFile, "bidServer::getBidInfo: Invalid bidServer certificate chain\n");
         return false;
@@ -1342,7 +1325,6 @@ int main(int an, char** av)
     safeChannel     fc;
     int             iRet= 0;
     int             i;
-    bool            fInitProg= false;
     const char*     directory= NULL;
     string          testPath("sellerClient/tests/");
     string          testFileName("tests.xml");
@@ -1361,9 +1343,6 @@ int main(int an, char** av)
     UNUSEDVAR(result);
     if(an>1) {
         for(i=0;i<an;i++) {
-            if(strcmp(av[i],"-initProg")==0) {
-                fInitProg= true;
-            }
             if(strcmp(av[i],"-port")==0 && an>(i+1)) {
                 oSellerClient.m_szPort= strdup(av[++i]);
             }

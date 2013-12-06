@@ -17,6 +17,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ftw.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -161,6 +162,11 @@ class LinuxTaoTest : public ::testing::Test {
 
   // TODO(tmroeder): clean up the temporary directory of keys and
   // secrets. Use TearDown and recursively delete all the files.
+  virtual void TearDown() {
+    if (nftw(dir_.c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+      PLOG(ERROR) << "Could not recursively delete the temp directory";
+    }
+  }
 
   string dir_;
   string test_binary_path_;

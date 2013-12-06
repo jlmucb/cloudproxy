@@ -29,6 +29,8 @@
 #include "tao/tao.h"
 #include "tao/tao_child_channel.h"
 
+int remove_entry(const char *path, const struct stat *sb,
+                 int tflag, struct FTW *ftwbuf);
 namespace tao {
 
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >

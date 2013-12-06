@@ -19,6 +19,8 @@
 
 #include "tao/util.h"
 
+#include <dirent.h>
+#include <ftw.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -62,6 +64,31 @@ using std::shared_ptr;
 using std::stringstream;
 using std::vector;
 
+int remove_entry(const char *path, const struct stat *sb,
+                 int tflag, struct FTW *ftwbuf) {
+  switch (tflag) {
+    case FTW_DP:
+      // DP means the directory's children have all been processed.
+      if (rmdir(path) < 0) {
+        PLOG(ERROR) << "Could not remove the directory " << path;
+        return 1;
+      }
+      break;
+    case FTW_F:
+    case FTW_SL:
+      if (unlink(path) < 0) {
+        PLOG(ERROR) << "Could not unlink the file " << path;
+        return 1;
+      }
+      break;
+    default:
+      LOG(ERROR) << "Error in handling directory or file. Could not completely "
+                 << "delete the directory";
+  }
+
+  return 0;
+}
+
 namespace tao {
 vector<shared_ptr<mutex> > locks;
 
@@ -72,6 +99,7 @@ void locking_function(int mode, int n, const char *file, int line) {
     locks[n]->unlock();
   }
 }
+
 
 bool InitializeOpenSSL() {
   SSL_load_error_strings();
@@ -196,6 +224,12 @@ bool DeserializePublicKey(const KeyczarPublicKey &kpk, Keyset **keyset) {
 
   *keyset = Keyset::Read(*reader, true);
 
+  // clean up the directory
+  if (nftw(tempdir, remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+    PLOG(ERROR) << "Could not remove the directory";
+    return false;
+  }
+
   return true;
 }
 
@@ -246,6 +280,13 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
     kf->set_name(v);
     kf->set_data(file_buf.str());
   }
+
+  // clean up the directory
+  if (nftw(tempdir, remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+    PLOG(ERROR) << "Could not remove the directory";
+    return false;
+  }
+
 
   return true;
 }

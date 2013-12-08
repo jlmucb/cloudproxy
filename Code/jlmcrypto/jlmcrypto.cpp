@@ -101,10 +101,11 @@ bool closeAllCrypto()
 }
 
 
-// -------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 // pad character is '='
-static const char* s_transChar= "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char* s_transChar= 
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const byte s_revTrans[80]= {
     62,  0,  0,  0, 63,
     52, 53, 54, 55, 56,
@@ -131,7 +132,7 @@ inline bool whitespace(char b)
 }
 
 
-// ----------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
 
 
 bool toBase64(int inLen, const byte* pbIn, int* poutLen, char* szOut, bool fDirFwd)

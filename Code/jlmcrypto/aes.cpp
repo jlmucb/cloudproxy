@@ -736,6 +736,12 @@ aes::aes()
     m_Nr= 10;   // AES128 only, 10 rounds
 }
 
+
+aes::aes(int nr) 
+{
+    m_Nr= nr; 
+}
+
 aes::~aes()
 {
     memset(m_rk,0, 4*(MAXNR+1));

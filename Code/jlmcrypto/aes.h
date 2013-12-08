@@ -78,6 +78,7 @@ private:
     u32     m_rk[4*(MAXNR+1)+1];    // round keys
 public:
     aes();
+    aes(int nr);
     ~aes();
 
     int     KeySetupEnc(const byte key[16], int nbits);

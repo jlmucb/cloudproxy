@@ -1,6 +1,6 @@
 //
 //  File: jlmTypes.h
-//  Description: common type definitions
+//  Description: commonly used data types
 //
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some contributions may be (c) Intel Corporation
@@ -33,25 +33,21 @@
 
 #ifndef _TYPES__H
 #define _TYPES__H
-
-typedef	long long unsigned u64;
-typedef	long long int i64;
-typedef	unsigned u32;
-typedef	int i32;
-typedef	short unsigned u16;
-typedef	short int i16;
-typedef	unsigned char u8;
-typedef	char i8;
-
+typedef long long int i64;
+typedef long long unsigned u64;
+typedef int i32; 
+typedef unsigned u32; 
+typedef short int i16;
+typedef short unsigned u16;
+typedef char i8;
+typedef unsigned char u8;
 #ifndef byte
-typedef	unsigned char byte;
+typedef unsigned char byte;
 #endif
-
 #ifndef NULL
 #define NULL 0
 #endif
-
-#endif
+#endif // _TYPES__H
 
 
 // -------------------------------------------------------------------------------------

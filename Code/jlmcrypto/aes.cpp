@@ -45,11 +45,7 @@
 
 
 #include <stdlib.h>  // for _lrotl and _lrotr
-
 #include "aes.h"
-#ifdef MSC
-#include "disable.h"
-#endif
 
 
 static const u32 Te0[256]= {
@@ -735,10 +731,19 @@ static const u32 rcon[]= {
 // ------------------------------------------------------------------------
 
 
+aes::aes() 
+{
+    m_Nr= 10;   // AES128 only, 10 rounds
+}
+
+aes::~aes()
+{
+    memset(m_rk,0, 4*(MAXNR+1));
+}
+
 void aes::CleanKeys()
 {
-    for(int i=0; i<4*(MAXNR+1); i++)
-        m_rk[i]= 0;
+    memset(m_rk,0, 4*(MAXNR+1));
 }
 
 

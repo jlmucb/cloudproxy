@@ -26,31 +26,29 @@
 #define __AESNI_H
 
 #include "jlmTypes.h"
-#include <string.h>
+#include "string.h"
 
-#define MAXKC   (256/32)
-#define MAXKB   (256/8)
-#define MAXNR   14
-
-
-bool	supportsni();
+#define  MAXKC  (256/32)
+#define  MAXKB  (256/8)
+#define  MAXNR  14
 
 
 class aesni {
+private:
+    int     m_Nr;                   // number of rounds (10 only for now)
+    u32     m_rk[4*(MAXNR+1)+1];    // round keys
 public:
-        int      m_Nr;
-        u32      m_rk[4*(MAXNR+1)];
+    aesni();
+    ~aesni();
 
-public:
-        aesni() {m_Nr= 0;};
-        ~aesni() {memset(m_rk, 0,4*(MAXNR+1));};
+    int     KeySetupEnc(const byte key[16], int nbits);
+    int     KeySetupDec(const byte key[16], int nbits);
+    void    Encrypt(const byte pt[16], byte ct[16]);
+    void    Decrypt(const byte ct[16], byte pt[16]);
+    void    CleanKeys();
+};
 
-        int     KeySetupEnc(const byte cipherKey[], int keyBits);
-        int     KeySetupDec(const byte cipherKey[], int keyBits);
-        void    Encrypt(const byte pt[16], byte ct[16]);
-        void    Decrypt(const byte ct[16], byte pt[16]);
-        void    CleanKeys();
-        };
+bool	supportsni();
 
 #endif
 

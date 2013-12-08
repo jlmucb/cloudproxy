@@ -137,10 +137,19 @@ bool    supportsni()
 }
 
 
+aesni::aesni() 
+{
+    m_Nr= 10;   // AES128 only, 10 rounds
+}
+
+aesni::~aesni()
+{
+    memset(m_rk,0, 4*(MAXNR+1));
+}
+
 void aesni::CleanKeys()
 {
-    for(int i=0; i<4*(MAXNR+1); i++)
-        m_rk[i]= 0;
+    memset(m_rk,0, 4*(MAXNR+1));
 }
 
 

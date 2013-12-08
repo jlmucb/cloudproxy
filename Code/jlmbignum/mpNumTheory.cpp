@@ -636,7 +636,7 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
 //              Data: First 512 primes
 //
 const i32   s_iSizeofFirstPrimes= 512;
-u32         rgFirstPrimes[s_iSizeofFirstPrimes]= {
+u32         s_rgFirstPrimes[s_iSizeofFirstPrimes]= {
                    2,    3,    5,    7,   11,   13,   17,   19,
                   23,   29,   31,   37,   41,   43,   47,   53,
                   59,   61,   67,   71,   73,   79,   83,   89,
@@ -738,9 +738,12 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum&
     
 #ifdef ARITHTEST
     fprintf(g_logFile, "MRPrimeTestLoop\n");
+    fflush(g_logFile);
 #endif
-    if(!mpModExp(bnA, bnR, bnN, bnY))
+    if(!mpModExp(bnA, bnR, bnN, bnY)) {
         fprintf(g_logFile, "MRPrimeTestLoop: Bad Exponent\n");
+        return false;
+    }
     if(mpCompare(bnY, g_bnOne)!=s_isEqualTo && mpCompare(bnY, bnNM1)!=s_isEqualTo) {
         while(j<iS && mpCompare(bnY, g_bnOne)!=s_isEqualTo) {
             // square y mod N
@@ -754,10 +757,6 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum&
             j++;
         }
         if(mpCompare(bnY, bnNM1)!=s_isEqualTo) {
-#ifdef ARITHTEST3
-            fprintf(g_logFile, "\tY: "); printNum(bnY); printf("\n");
-            fprintf(g_logFile, "\tNM1: "); printNum(bnNM1); printf("\n");
-#endif
             return false;
         }
     }
@@ -787,7 +786,8 @@ bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[])
     bnum*   pbNum;
 
 #ifdef ARITHTEST
-    fprintf(g_logFile, "MRPrimeTest\n");
+    fprintf(glogFile, "MRPrimeTest\n");
+    fflush(g_logFile);
 #endif
     bnN.mpCopyNum(bnNM1);
     mpDec(bnNM1);
@@ -819,7 +819,8 @@ bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases, bnum* rgbnBases[
     bnum*   pbNum;
 
 #ifdef ARITHTEST
-    fprintf(g_logFile, "MakeRandBasisForMR\n");
+    fprintf(g_logFile, "MakeRandBasisforMR\n");
+    fflush(g_logFile);
 #endif
     // first one is always 2
     pbNum= rgbnBases[0];
@@ -864,7 +865,8 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
     bool    fRet= false;
 
 #ifdef TEST
-    fprintf(g_logFile, "mpGenPrime(%d), WordSize= %d\n", iBitSize, iWordSize);
+    fprintf(g_logFile, "mpGenPrime %d prime, %d words\n", iBitSize, iWordSize);
+    fflush(g_logFile);
 #endif
     if(iConfid>MAXBASE)
         iConfid= MAXBASE;
@@ -887,16 +889,12 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
         j--;
         rguA[iWordSize-1]|= 1ULL<<j;
 
-#ifdef ARITHTEST3
-        fprintf(g_logFile, "mpGenPrime trial prime %016lx %016lx\n", 
-                (long unsigned int)rguA[1], (long unsigned int)rguA[0]);
-#endif
         while(!fIsPrime) {
             iNumTries++;
 
             // Check for small divisors
             for(i=0; i<s_iSizeofFirstPrimes; i++) {
-                uPossibleDivisor= (u64)rgFirstPrimes[i];
+                uPossibleDivisor= (u64)s_rgFirstPrimes[i];
                 uCarry= 0;                      
                 mpSingleUDiv(bnA, uPossibleDivisor, bnQ, &uCarry);
                 if(uCarry==0)
@@ -926,12 +924,6 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
                 fprintf(g_logFile, "Prime interval exceeded\n");
                 return false;
             }
-#ifdef ARITHTEST3
-            if((iNumTries%100)==0) {
-                fprintf(g_logFile, "mpGenPrime try %d %016lx %016lx\n", iNumTries,
-                    (long unsigned int)rguA[1], (long unsigned int)rguA[0]);
-            }
-#endif
         }
 
         if(fIsPrime)

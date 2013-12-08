@@ -61,34 +61,32 @@
 // ------------------------------------------------------------------------
 
 
-#ifndef __AES_H
-#define __AES_H
+#ifndef _AES_H_
+#define _AES_H_
 
 #include "jlmTypes.h"
 #include "string.h"
 
-#define MAXKC   (256/32)
-#define MAXKB   (256/8)
-#define MAXNR   14
+#define  MAXKC  (256/32)
+#define  MAXKB  (256/8)
+#define  MAXNR  14
 
 
 class aes {
 private:
-        int      m_Nr;
-        u32      m_rk[4*(MAXNR+1)];
-
+    int     m_Nr;                   // number of rounds (10 only for now)
+    u32     m_rk[4*(MAXNR+1)+1];    // round keys
 public:
-        aes() {m_Nr= 0;};
-        ~aes() {memset(m_rk, 0,4*(MAXNR+1));};
+    aes();
+    ~aes();
 
-        int     KeySetupEnc(const byte cipherKey[], int keyBits);
-        int     KeySetupDec(const byte cipherKey[], int keyBits);
-        void    Encrypt(const byte pt[16], byte ct[16]);
-        void    Decrypt(const byte ct[16], byte pt[16]);
-        void    CleanKeys();
-        };
-
-#endif
+    int     KeySetupEnc(const byte key[16], int nbits);
+    int     KeySetupDec(const byte key[16], int nbits);
+    void    Encrypt(const byte pt[16], byte ct[16]);
+    void    Decrypt(const byte ct[16], byte pt[16]);
+    void    CleanKeys();
+};
+#endif  // _AES_H_
 
 
 // ------------------------------------------------------------------------

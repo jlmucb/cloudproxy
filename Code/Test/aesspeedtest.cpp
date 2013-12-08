@@ -275,6 +275,7 @@ void initest()
     oAesDec.Decrypt(bufOut, bufCheck);
     PrintBytes("Check " ,  bufCheck, 16);
 
+#if 0
     printf("\nEncrypt Key schedule\n");
     PrintBytes("\tRound  0" ,  (u8*)&oAesEnc.m_rk[0], 16);
     PrintBytes("\tRound  1" ,  (u8*)&oAesEnc.m_rk[4], 16);
@@ -300,6 +301,7 @@ void initest()
     PrintBytes("\tRound  9" ,  (u8*)&oAesDec.m_rk[36], 16);
     PrintBytes("\tRound 10" ,  (u8*)&oAesDec.m_rk[40], 16);
     printf("\n\nDone\n");
+#endif
 }
 
 // --------------------------------------------------------------------- 

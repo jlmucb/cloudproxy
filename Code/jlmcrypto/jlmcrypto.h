@@ -41,10 +41,8 @@ extern int  iRandDev;
 bool        getCryptoRandom(int iNumBits, byte* buf);
 bool        initCryptoRand();
 bool        closeCryptoRand();
-bool        toBase64(int iInLen, const unsigned char* puIn, int* piOutLen, char* rgszOut, 
-                     bool fDirFwd=true);
-bool        fromBase64(int iInLen, const char* pszIn, int* piOutLen, unsigned char* puOut, 
-                       bool fDirFwd=true);
+bool        toBase64(int inlen, const byte* in, int* poutlen, char* szout, bool dir=true);
+bool        fromBase64(int inlen, const char* szin, int* poutlen, byte* out, bool dir=true);
 bool        getBase64Rand(int iBytes, byte* puR, int* pOutSize, char* szOut);
 bool        initAllCrypto();
 bool        closeallCrypto();

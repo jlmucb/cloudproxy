@@ -24,20 +24,7 @@
 #ifndef _BIGNUM_H
 #define _BIGNUM_H
 
-typedef unsigned char           u8;
-typedef char                    i8;
-typedef short unsigned          u16;
-typedef short int               i16;
-typedef unsigned                u32;
-typedef int                     i32;
-typedef long long unsigned      u64;
-typedef long long int           i64;
-typedef long unsigned int       up64;
-
-#ifndef byte
-typedef unsigned char           byte;
-#endif
-
+#include "jlmTypes.h"
 
 #ifndef __MPGLOBALDEFINES_
 #define __MPGLOBALDEFINES_
@@ -62,12 +49,13 @@ const u32       s_signMask= 0x7fffffff;
 //      In earlier versions, a number with no digits was treated as 0.
 //      That is now an error.  Every number must have at least one digit.
 
+
 class bnum {
 public:
     u32             m_signandSize;
-    u64*            m_pValue;       //  __attribute__((aligned(64)));
+    u64*            m_pValue;       //  __attribute__((aligned(64)));?
 
-    bnum(int iSize);
+    bnum(int size);
     ~bnum();
 
     inline bool     mpSign();
@@ -76,7 +64,7 @@ public:
     inline void     mpDumpSign();
     inline int      mpBitSize();
     inline bool     mpIsZero();
-    bool            mpCopyNum(bnum& bnC);
+    bool            mpCopyNum(bnum&);
 };
 
 
@@ -129,12 +117,6 @@ inline bool bnum::mpIsZero()
 
 #define NUMBITSINU64        64
 #define NUMBITSINU64MINUS1  63
-
-
-#ifndef NULL
-#define NULL 0
-#endif
-
 
 extern bnum g_bnZero;
 extern bnum g_bnOne;

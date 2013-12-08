@@ -901,8 +901,9 @@ void TwoDigitEstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi, u
     }
 
 #ifdef ARITHTEST
-    printf("Estimate quotient new u/v: %016lx %016lx %016lx, shift: %d, maxBit: %d\n", 
-        newuHi, newuLo, newv, shift, maxBit);
+    fprintf(g_logFile,
+            "Estimate quotient new u/v: %016lx %016lx %016lx, shift: %d, maxBit: %d\n", 
+            newuHi, newuLo, newv, shift, maxBit);
 #endif
     if(newuHi>=newv) {
         *pqE= (u64)-1;

@@ -23,6 +23,19 @@
   },
   'targets': [
     {
+      'target_name': 'make_aik',
+      'type': 'executable',
+      'sources': [ 'make_aik.cc', ],
+      'include_dirs': [ '.', ],
+      'libraries': [
+	      '-ltspi',
+      ],
+      'dependencies': [
+	      '../third_party/gflags/gflags.gyp:gflags',
+	      '../third_party/google-glog/glog.gyp:glog',
+      ],
+    },
+    {
       'target_name': 'get_pcrs',
       'type': 'executable',
       'sources': [ 'get_pcrs.cc', ],

@@ -272,6 +272,7 @@ bool PipeTaoChannel::Listen(Tao *tao) {
       }
     }
 
+    list<string> programs_to_erase;
     for (pair<const string, pair<int, int>> &descriptor :
          hash_to_descriptors_) {
       int d = descriptor.second.first;
@@ -282,13 +283,23 @@ bool PipeTaoChannel::Listen(Tao *tao) {
         // the set
         TaoChannelRPC rpc;
         if (!GetRPC(&rpc, child_hash)) {
-          LOG(ERROR) << "Could not get an RPC";
+          LOG(ERROR) << "Could not get an RPC. Removing child " << child_hash;
+          programs_to_erase.push_back(child_hash);
+          continue;
         }
 
         if (!HandleRPC(*tao, child_hash, rpc)) {
-          LOG(ERROR) << "Could not handle the RPC";
+          LOG(ERROR) << "Could not handle the RPC. Removing child "
+            << child_hash;
+          programs_to_erase.push_back(child_hash);
+          continue;
         }
       }
+    }
+
+    auto pit = programs_to_erase.begin();
+    for (; pit != programs_to_erase.end(); ++pit) {
+      hash_to_descriptors_.erase(*pit);    
     }
   }
 

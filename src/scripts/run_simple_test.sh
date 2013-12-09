@@ -9,7 +9,7 @@
 ./tcca &
 sleep 1
 # The LinuxTao
-./linux_tao_service --ca_host localhost --ca_port 11238 --aik_blob $AIKBLOB \
+./linux_tao_service --ca_host localhost --ca_port 11238 --aik_blob HW/aikblob \
     --aik_attestation HW/aik.attest &
 sleep 5
 # Request that the LinuxTao start the CloudServer program

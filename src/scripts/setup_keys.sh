@@ -99,7 +99,7 @@ ${BUILD_DIR}/sign_pub_key --key_loc ./policy_key \
 # These commands rely on the attest_to_aik and make_aik commands in
 # src/apps and they depend on the TPM having the well-known 0 password.
 mkdir -p HW
-${BUILD_DIR}/make_aik --aikblob $AIKBLOB
+${BUILD_DIR}/make_aik --aik_blob_file $AIKBLOB
 ${BUILD_DIR}/attest_to_aik --aik_blob_file $AIKBLOB \
   --aik_attest_file HW/aik.attest --policy_pass $KEYCZAR_PASS
 
@@ -127,11 +127,11 @@ cat $SAMPLE_WHITELIST |
 
 # Create a signed version of the whitelist and the ACL for CloudServer
 cat whitelist.pb2 |
-  ${BUILD_DIR}/protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
+  ${BUILD_DIR}/../protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
     ${ROOT}/src/tao/hosted_programs.proto > whitelist
 ./sign_whitelist --pass $KEYCZAR_PASS
 cat $SAMPLE_ACLS |
-  ${BUILD_DIR}/protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
+  ${BUILD_DIR}/../protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
     ${ROOT}/src/cloudproxy/cloudproxy.proto > acls
 ./sign_acls --pass $KEYCZAR_PASS
 

@@ -20,6 +20,7 @@
 
 #include "tao/pipe_tao_channel.h"
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fcntl.h>
@@ -199,6 +200,17 @@ bool PipeTaoChannel::SendMessage(const google::protobuf::Message &m,
 }
 
 bool PipeTaoChannel::Listen(Tao *tao) {
+
+  // Keep SIGPIPE from killing this program when a child dies.
+  struct sigaction act;
+  memset(&act, 0, sizeof(struct sigaction));
+  act.sa_handler = SIG_IGN;
+  struct sigaction old_act;
+  if (sigaction(SIGPIPE, &act, &old_act) < 0) {
+    PLOG(ERROR) << "Could not set up the handler to block SIGPIPE";
+    return false;
+  } 
+
   // The unix domain socket is used to listen for CreateHostedProgram requests.
   int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
   if (sock == -1) {
@@ -266,9 +278,9 @@ bool PipeTaoChannel::Listen(Tao *tao) {
       const string &child_hash = descriptor.first;
 
       if (FD_ISSET(d, &read_fds)) {
-	// TODO(tmroeder): if this read fails, then remove the descriptor from
-	// the set
-	TaoChannelRPC rpc;
+        // TODO(tmroeder): if this read fails, then remove the descriptor from
+        // the set
+        TaoChannelRPC rpc;
         if (!GetRPC(&rpc, child_hash)) {
           LOG(ERROR) << "Could not get an RPC";
         }
@@ -279,6 +291,12 @@ bool PipeTaoChannel::Listen(Tao *tao) {
       }
     }
   }
+
+  // Restore the old SIGPIPE signal handler.
+  if (sigaction(SIGPIPE, &old_act, NULL) < 0) {
+    PLOG(ERROR) << "Could not restore the old signal handler.";
+    return false;
+  } 
 
   return true;
 }

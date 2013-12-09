@@ -822,7 +822,7 @@ int aes::KeySetupEnc(const byte* pbKey, int iNumKeyBits)
             rk+= 8;
         }
     }
-    return(m_Nr=0);
+    return(m_Nr);
 }
 
 

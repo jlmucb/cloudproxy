@@ -320,6 +320,7 @@ int main(int an, char** av)
             return 0;
         }
         if(strcmp(av[i], "-Simple")==0) {
+            mode= ECBMODE;
             if(an>(i+1)) {
                 numBlocks= atoi(av[++i]);
             }

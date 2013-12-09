@@ -56,9 +56,13 @@ public:
 #ifndef BIDCLIENT
     bool        servergetProtectedFileKey(Request& oReq, timer& accessTimer);
     bool        acceptBid(Request& oReq, serviceChannel* service, timer& myTimer);
+    bool        saveBid(RSAKey* sealingKey, RSAKey* signingKey, 
+                        const char* bidBody, char* szMyCert);
 #else
     bool        submitBid(Request& oReq, serviceChannel* service, timer& myTimer);
+    char*       constructBidRequest();
     bool        clientgetProtectedFileKey(Request& oReq, timer& accessTimer);
+    char*       constructBid(Request& oReq);
 #endif
     bool        closechannelServices();
 };

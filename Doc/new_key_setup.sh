@@ -16,18 +16,16 @@
 # BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
 # 1. built everything in ROOT/src (using ./bootstrap.sh &&
 # third_party/ninja/ninja -C out/Default);
-# 2. have a version of protoc in $PATH (after building, there's one in
-# ${BUILD_DIR}/protoc);
-# 3. have a version of keyczart in $PATH (either install keyczar or build the
+# 2. have a version of keyczart in $PATH (either install keyczar or build the
 # one in third_party/keyczar);
-# 4. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
-# TPM and set up an AIK.
-# 5. changed the following variables to suit your directory choices:
+# 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
+# TPM
+# 4. changed the following variables to suit your directory choices:
 RUN=~/testing/run
 TEST=~/testing/test
 ROOT=~/src/fileProxy
 BUILD_DIR=${ROOT}/src/out/Default/bin
-AIKBLOB=/home/jlm/jlmcrypt/HW/aikblob
+AIKBLOB=~/testing/run/HW/aikblob
 SAMPLE_WHITELIST=${ROOT}/run/sample_whitelist.pb2
 SAMPLE_ACLS=${ROOT}/run/acls.ascii
 KEYCZAR_PASS=cppolicy
@@ -95,11 +93,13 @@ ${BUILD_DIR}/sign_pub_key --key_loc ./policy_key \
     --pass ${KEYCZAR_PASS} --pub_key_loc keys/jlm_pub \
     --signed_speaks_for keys/jlm_pub_signed --subject jlm
 
+# Create an AIK for certification
 
-# This command relies on the attest_to_aik command in src/apps/attest_to_aik.cc,
-# and it depends on the aikblob being the AIK stored in the TPM, and the TPM
-# having the well-known 0 password.
+
+# These commands rely on the attest_to_aik and make_aik commands in
+# src/apps and they depend on the TPM having the well-known 0 password.
 mkdir -p HW
+${BUILD_DIR}/make_aik --aikblob $AIKBLOB
 ${BUILD_DIR}/attest_to_aik --aik_blob_file $AIKBLOB \
   --aik_attest_file HW/aik.attest --policy_pass $KEYCZAR_PASS
 
@@ -126,24 +126,10 @@ cat $SAMPLE_WHITELIST |
 
 # Create a signed version of the whitelist and the ACL for CloudServer
 cat whitelist.pb2 |
-  protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
+  ${BUILD_DIR}/protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
     ${ROOT}/src/tao/hosted_programs.proto > whitelist
 ./sign_whitelist --pass $KEYCZAR_PASS
 cat $SAMPLE_ACLS |
-  protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
+  ${BUILD_DIR}/protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
     ${ROOT}/src/cloudproxy/cloudproxy.proto > acls
 ./sign_acls --pass $KEYCZAR_PASS
-
-# Now start the relevant pieces of code:
-# The Trusted Computing Certificate Authority
-./tcca &
-sleep 1
-# The LinuxTao
-./linux_tao_service --ca_host localhost --ca_port 11238 --aik_blob $AIKBLOB \
-    --aik_attestation HW/aik.attest &
-sleep 5
-# Request that the LinuxTao start the CloudServer program
-./start_hosted_program --program server
-sleep 2
-# Request that the LinuxTao start the CloudClient program
-./start_hosted_program --program client

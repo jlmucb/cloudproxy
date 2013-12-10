@@ -300,40 +300,6 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR)
 }
 
 
-#ifdef MPMODOVERFLOWTEST
-void sizeUDiv(int pos, bnum& bnA, bnum& bnB, bnum& bnC, bnum& bnD)
-{
-    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    int     lC= mpWordsinNum(bnC.mpSize(), bnC.m_pValue);
-    int     lD= mpWordsinNum(bnD.mpSize(), bnD.m_pValue);
-
-    fprintf(g_logFile, "Udiv reduction, position %d: %d %d %d %d\n", 
-              pos, lA, lB, lC, lD);
-    if(lD>lB) {
-        fprintf(g_logFile, "A: "); printNum(bnA); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "B: "); printNum(bnB); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "D: "); printNum(bnD); fprintf(g_logFile, "\n");
-    }
-}
-
-
-void sizeMultArgs(int pos, bnum& bnA, bnum& bnB, bnum& bnC)
-{
-    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    int     lB= mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
-    int     sizeC= bnC.mpSize();
-
-    if((lA+lB)>sizeC) {
-        fprintf(g_logFile, "\nUMult monitor, position %d, lA: %d, lB: %d, sizeC: %d\n",
-                  pos, lA, lB, sizeC);
-        fprintf(g_logFile, "A: "); printNum(bnA); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "B: "); printNum(bnB); fprintf(g_logFile, "\n\n");
-    }
-}
-#endif
-
-
 //  Function: bool mpModExp
 //  Arguments:
 //      IN bnum bnBase
@@ -728,51 +694,6 @@ bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut, int r,
 
 
 // ---------------------------------------------------------------------------------
-
-
-bool mpTestFermatCondition(bnum& bnBase, bnum& bnM)
-{
-    extern bnum g_bnOne;
-    int         sizeM= bnM.mpSize();
-    bnum        bnE(sizeM);
-    bnum        bnR(sizeM);
-    bool        fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
-
-    if(!fRet)
-        return false;
-    fRet= mpModExp(bnBase, bnE, bnM, bnR);
-    if(!fRet)
-        return false;
-    if(s_isEqualTo== mpUCompare(bnR, g_bnOne))
-        return true;
-    return false;
-}
-
-
-bool mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR)
-{
-    extern bnum g_bnOne;
-    bool        fRet= true;
-    int         maxSize= mpWordsinNum(bnBase.mpSize(), bnBase.m_pValue);
-    int         lM= mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
-
-    if(lM>maxSize)
-        maxSize= lM;
-
-    try {
-        bnum     bnE(lM);
-        bool     fRet= mpModSub(bnM, g_bnOne, bnM, bnE);
-
-        if(!fRet)
-            throw("mpModSub failed");
-        fRet= mpModExp(bnBase, bnE, bnM, bnR);
-    }
-    catch(const char* sz) {
-        sz= NULL;
-        fRet= false;
-    }
-    return fRet;
-}
 
 
 bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ, 

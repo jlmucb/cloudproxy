@@ -26,12 +26,10 @@
 
 
 bool            mpCopyWords(int iSizeA, u64* puA, int iSizeB, u64* puB);
-bnum*           mpDuplicateNum(bnum& bnA);
 void            mpZeroNum(bnum& bnN);
 int             mpWordsinNum(i32 iLen, u64* puN);
 void            ZeroWords(i32 iLen, u64* puN);
 void            mpNormalizeZero(bnum& bnA);
-i32             mpWordsinNum(i32 iLen, u64* puN);
 void            mpTrimNum(bnum& bnA);
 i32             mpUCompare(bnum& bnA, bnum& bnB);
 i32             mpCompare(bnum& bnA, bnum& bnB);
@@ -57,8 +55,6 @@ bool            mpUSingleMultAndShift(bnum& bnA, u64 uB, i32 iShift, bnum& bnR);
 bool            mpShift(bnum& bnA, i32 iShiftNumBits, bnum& bnR);
 bool            mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero=true);
 bool            mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR);
-bool            ConvertToDecimalString(bnum& bnA, i32 iStringSize, char* szNumber);
-bool            ConvertFromDecimalString(bnum& bnA, const char* szNumber);
 bool            mpAdd(bnum& bnA, bnum& bnB, bnum& bnR);
 bool            mpSub(bnum& bnA, bnum& bnB, bnum& bnR);
 bool            mpMult(bnum& bnA, bnum& bnB, bnum& bnR);
@@ -78,16 +74,11 @@ bool            mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR,
 bool            mpShiftInPlace(bnum& bnA, int iShiftNumBits);
 bool            mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, 
                                     bnum& bnY, bnum& bnG);
-bool            mpBinaryExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, 
-                                    bnum& bnY, bnum& bnG);
 bool            mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR);
 
 bool            mpUSquare(bnum& bnA,bnum& bnR);
 
-bool            mpTestFermatCondition(bnum& bnBase, bnum& bnM);
 bool            mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid=20);
-bool            mpFermatTest(bnum& bnBase, bnum& bnM, bnum& bnR);
-
 bool            mpRSAGen(int iNumBits, bnum& bnE, bnum& bnP, bnum& bnQ, 
                          bnum& bnM, bnum& bnD, bnum& bnOrder);
 bool            mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ, 
@@ -104,6 +95,9 @@ bool            mpMontInit(int r, bnum& bnM, bnum& bnMPrime, bnum& bnRmodM,
                                   bnum& bnRsqmodM);
 bool            mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut,
                              int r, bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM);
+
+bool            ConvertToDecimalString(bnum& bnA, i32 iStringSize, char* szNumber);
+bool            ConvertFromDecimalString(bnum& bnA, const char* szNumber);
 #endif
 
 

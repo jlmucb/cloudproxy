@@ -1364,10 +1364,12 @@ bool gcdtests()
             printf("gcdtests: gcd failed\n");
             return false;
         }
+#ifdef BINARYEXTENDEDGCD
         if(!mpBinaryExtendedGCD(bnE, bnOrder, bnXBinary, bnYBinary, bnGBinary)) {
             printf("gcdtests: gcd failed\n");
             return false;
         }
+#endif
         // mpZeroNum(bnX);
         // mpZeroNum(bnY);
         // mpZeroNum(bnG);

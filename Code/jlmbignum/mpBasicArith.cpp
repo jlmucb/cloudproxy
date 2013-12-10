@@ -82,20 +82,20 @@ void mpNormalizeZero(bnum& bnA)
 
 //  Function: inline int mpWordsinNum
 //  Arguments:
-//      IN      i32 iLen
+//      IN      i32 len
 //      IN      u64* puN
 //  Description:
 //      Returns minumum number of words 
 //      to represent number
-int mpWordsinNum(i32 iLen, u64* puN)
+int mpWordsinNum(i32 len, u64* puN)
 {
-    puN+= iLen-1;
-    while(iLen>1) {
+    puN+= len-1;
+    while(len>1) {
         if((*(puN--))!=0ULL)
-            return(iLen);
-        iLen--;
+            return(len);
+        len--;
     }
-    return(iLen);
+    return(len);
 }
 
 
@@ -205,23 +205,6 @@ bool mpCopyWords(int sizeA, u64* puA, int sizeB, u64* puB)
             *(puB++)= 0;
     }
     return true;
-}
-
-
-//  Function: bnum mpDuplicateNum
-//  Arguments:
-//      IN bnum bnA
-//  Description:
-//      Duplicate bnA and allocate an additional iPad (zero filled) words 
-bnum* mpDuplicateNum(bnum& bnA)
-{
-    i32     sizeA=  bnA.mpSize();
-    bnum*   bn= new bnum(sizeA);
-
-    bn->m_signandSize= bnA.m_signandSize;
-    for(int i=0; i<sizeA; i++)
-        bn->m_pValue[i]=bnA.m_pValue[i];
-    return(bn);
 }
 
 

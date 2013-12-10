@@ -77,7 +77,6 @@ const u64 longradixminus1= 0xffffffffffffffffULL;
 
 u64 longsubstep(u64* puOut, u64 uIn1, u64 uIn2, u64 uBorrowIn)
 {
-
     if(uBorrowIn==0) {
         if(uIn1 >= uIn2) {
             *puOut= uIn1-uIn2;

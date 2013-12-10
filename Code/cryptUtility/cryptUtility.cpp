@@ -454,6 +454,8 @@ bool Verify(const char* szKeyFile, const char* szInFile)
 #ifdef TEST
     fprintf(g_logFile, 
             "Verify: about to VerifyRSASha256SignaturefromSignedInfoandKey\n"); 
+#endif
+#ifdef TEST1
     pKey->printMe();
     fprintf(g_logFile, "SigValue: %s\n", szSigValue);
     int  tn= 4096;

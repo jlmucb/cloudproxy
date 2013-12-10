@@ -37,6 +37,9 @@ class HostedProgramFactory {
  public:
   virtual ~HostedProgramFactory() {}
 
+  virtual bool Init() { return true; }
+  virtual bool Destroy() { return true; }
+
   // Create a hosted program and pass it channel information. The meaning of
   // each argument depends on the factory implementation.
   //

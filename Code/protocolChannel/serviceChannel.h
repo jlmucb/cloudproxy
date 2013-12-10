@@ -79,7 +79,7 @@ public:
     serviceThread*      m_pmyThread;
 
     // custom loop for service requests
-    int (*m_requestService)(Request&, serviceChannel* service); 
+    int (*m_requestService)(const char*, serviceChannel* service); 
 
     serviceChannel();
     ~serviceChannel();
@@ -87,7 +87,7 @@ public:
     bool                initServiceChannel(const char* serverType, int newfd, 
                                 PrincipalCert* pPolicyCert, taoHostServices* ptaoHost,
                                 taoEnvironment * ptaoEnv, serviceThread* pmyThread,
-                                int (*requestService)(Request&, serviceChannel*),
+                                int (*requestService)(const char*, serviceChannel*),
                                 channelServices* pmyServices, void* pmyLocals);
     bool                runServiceChannel();
     int                 processRequests();

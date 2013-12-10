@@ -51,6 +51,7 @@
 #include "encryptedblockIO.h"
 #include "domain.h"
 #include "fileServices.h"
+#include "fileRequest.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -91,8 +92,16 @@ void printResources(objectManager<resource>* pRM);
 #define FILESERVICES(x) ((filechannelServices*)(service->m_pchannelServices))->m_oFileServices.x
 
 
-int fileServerrequestService(Request& oReq, serviceChannel* service)
+int fileServerrequestService(const char* request, serviceChannel* service)
 {
+    fileRequest     oReq;
+
+     if(!oReq.getDatafromDoc(request)) {
+        fprintf(g_logFile, "fileServerrequestService: cant parse: %s\n",
+                request);
+            return -1;
+     }
+
     if(oReq.m_szResourceName==NULL) {
         fprintf(g_logFile, "fileServerrequestService: Empty resource name\n");
         return -1;

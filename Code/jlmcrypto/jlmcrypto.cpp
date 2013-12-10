@@ -116,7 +116,8 @@ inline int numbytesfromBase64string(int nc)
 
 inline int numbase64charsfrombytes(int nb)
 {
-    return (NBITSINBYTE*nb+5)/6;
+    int k= (NBITSINBYTE*nb+5)/6;
+    return ((k+3)/4)*4;
 }
 
 
@@ -264,7 +265,7 @@ bool fromBase64(int inlen, const char* szin, int* poutlen, byte* out, bool dir)
                     c= b64value(*p++);
                     if(c==0xff)
                         return false;
-                    *pb--= b<<4|c;
+                    *pb--= b<<4|(c>>2);
                 }
                 break;
             }

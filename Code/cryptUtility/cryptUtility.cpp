@@ -452,7 +452,22 @@ bool Verify(const char* szKeyFile, const char* szInFile)
     }
 
 #ifdef TEST
-    fprintf(g_logFile, "Verify: about to VerifyRSASha256SignaturefromSignedInfoandKey\n"); 
+    fprintf(g_logFile, 
+            "Verify: about to VerifyRSASha256SignaturefromSignedInfoandKey\n"); 
+    pKey->printMe();
+    fprintf(g_logFile, "SigValue: %s\n", szSigValue);
+    int  tn= 4096;
+    int  cn= 4096;
+    byte tbuf[4096];
+    char cbuf[4096];
+    if(!fromBase64(strlen(szSigValue), szSigValue, &tn, tbuf, true)) {
+        fprintf(g_logFile, "fromBase64 fails\n");
+    }
+    PrintBytes((char*) "value: ", tbuf, tn);
+    if(!toBase64(tn, tbuf, &cn, cbuf, true)) {
+        fprintf(g_logFile, "toBase64 fails\n");
+    }
+    fprintf(g_logFile, "newstr: %s\n", cbuf);
     fflush(g_logFile);
 #endif
 

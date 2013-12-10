@@ -35,6 +35,7 @@
 #include "cert.h"
 #include "accessControl.h"
 #include "serviceChannel.h"
+#include "fileRequest.h"
 #include "fileServices.h"
 #include "algs.h"
 #include "timer.h"

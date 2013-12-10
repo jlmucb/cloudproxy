@@ -47,8 +47,6 @@ public:
     ~channelServices();
     bool        enablechannelServices(serviceChannel* service, void* pLocal);
     bool        initchannelServices(serviceChannel* service, void* pLocal);
-    bool        dispatchchannelServices(Request& oReq, serviceChannel* service,
-                                        timer& myTimer);
     bool        closechannelServices();
 };
 

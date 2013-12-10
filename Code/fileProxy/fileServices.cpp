@@ -150,13 +150,6 @@ bool channelServices::initchannelServices(serviceChannel* service, void* pLocals
 }
 
 
-bool channelServices::dispatchchannelServices(Request& oReq, serviceChannel* service,
-                                        timer& myTimer)
-{
-    return true;
-}
-
-
 bool channelServices::closechannelServices()
 {
     return true;
@@ -174,7 +167,7 @@ filechannelServices::~filechannelServices()
 
 
 #ifndef FILECLIENT
-bool filechannelServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
+bool filechannelServices::servergetProtectedFileKey(fileRequest& oReq, timer& accessTimer)
 {
     return m_oFileServices.servergetProtectedFileKey(oReq, accessTimer);
 }
@@ -276,7 +269,7 @@ bool fileServices::initFileServices(session* psession, PrincipalCert* ppolicyCer
 }
 
 
-bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool fileServices::validateCreateRequest(fileRequest& oReq, char** pszFile, resource** ppResource)
 {
     bool                    fAllowed= false;
     resource*               pResource= NULL;
@@ -342,7 +335,7 @@ bool fileServices::validateCreateRequest(Request& oReq, char** pszFile, resource
 }
 
 
-bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile, 
+bool  fileServices::validateGetSendDeleteRequest(fileRequest& oReq, char** pszFile, 
                                                  resource** ppResource)
 {
     resource*               pResource= NULL;
@@ -378,7 +371,7 @@ bool  fileServices::validateGetSendDeleteRequest(Request& oReq, char** pszFile,
 }
 
 
-bool  fileServices::validateAddOwnerRequest(Request& oReq, char** pszFile, 
+bool  fileServices::validateAddOwnerRequest(fileRequest& oReq, char** pszFile, 
                                             resource** ppResource)
                     
 {
@@ -386,28 +379,28 @@ bool  fileServices::validateAddOwnerRequest(Request& oReq, char** pszFile,
 }
 
 
-bool  fileServices::validateAddPrincipalRequest(Request& oReq, char** pszFile, 
+bool  fileServices::validateAddPrincipalRequest(fileRequest& oReq, char** pszFile, 
                                                 resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateDeletePrincipalRequest(Request& oReq, char** pszFile, 
+bool  fileServices::validateDeletePrincipalRequest(fileRequest& oReq, char** pszFile, 
                                                 resource** ppResource)
 {
     return false;
 }
 
 
-bool  fileServices::validateRemoveOwnerRequest(Request& oReq, char** pszFile, 
+bool  fileServices::validateRemoveOwnerRequest(fileRequest& oReq, char** pszFile, 
                                                 resource** ppResource)
 {
     return false;
 }
 
  
-bool  fileServices::validateRequest(Request& oReq, char** pszFile, resource** ppResource)
+bool  fileServices::validateRequest(fileRequest& oReq, char** pszFile, resource** ppResource)
 {
 #ifdef TEST
     fprintf(g_logFile, "\nvalidateRequest\n");
@@ -479,7 +472,7 @@ bool fileServices::translateResourceNametoLocation(const char* szResourceName,
 }
 
 
-bool fileServices::serversendResourcetoclient(Request& oReq, 
+bool fileServices::serversendResourcetoclient(fileRequest& oReq, 
                                               timer& accessTimer, 
                                               timer& decTimer)
 {
@@ -521,7 +514,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
     }
 
     // construct response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, datasize, NULL, szError)) {
+    if(!constructfileResponse(fError, &p, &iLeft, oReq.m_szResourceName, datasize, NULL, szError)) {
         fprintf(g_logFile, "serversendResourcetoclient: constructResponse error\n");
         return false;
     }
@@ -553,7 +546,7 @@ bool fileServices::serversendResourcetoclient(Request& oReq,
 }
 
 
-bool fileServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
+bool fileServices::servergetProtectedFileKey(fileRequest& oReq, timer& accessTimer)
 {
     bool                fError= true;
     byte                buf[MAXREQUESTSIZEWITHPAD];
@@ -667,7 +660,7 @@ done:
 #endif
     // send response
     p= (char*)buf;
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
+    if(!constructfileResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
         fprintf(g_logFile, "fileServices::servergetProtectedFileKey: constructResponse failed\n");
         fflush(g_logFile);
         return false;
@@ -688,7 +681,7 @@ done:
 }
 
 
-bool fileServices::servercreateResourceonserver(Request& oReq,
+bool fileServices::servercreateResourceonserver(fileRequest& oReq,
                                                 timer& accessTimer)
 {
     bool            fAllowed= false;
@@ -826,7 +819,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 
     // send response
     p= (char*)szBuf;
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, NULL, szError)) {
+    if(!constructfileResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, NULL, szError)) {
         fprintf(g_logFile, "servercreateResourceonserver: constructResponse failed\n");
         return false;
     }
@@ -841,7 +834,7 @@ bool fileServices::servercreateResourceonserver(Request& oReq,
 }
 
 
-bool fileServices::servergetResourcefromclient(Request& oReq, timer& accessTimer, 
+bool fileServices::servergetResourcefromclient(fileRequest& oReq, timer& accessTimer, 
                                                timer& encTimer)
 {
     bool            fError;
@@ -886,7 +879,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq, timer& accessTimer
     }
 
     // send response
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, NULL, szError)) {
+    if(!constructfileResponse(fError, &p, &iLeft, oReq.m_szResourceName, size, NULL, szError)) {
         fprintf(g_logFile, "servergetResourcefromclient: constructResponse failed\n");
         return false;
     } else {
@@ -927,7 +920,7 @@ bool fileServices::servergetResourcefromclient(Request& oReq, timer& accessTimer
 }
 
 
-bool fileServices::serverchangeownerofResource(Request& oReq, timer& accessTimer)
+bool fileServices::serverchangeownerofResource(fileRequest& oReq, timer& accessTimer)
 // includes delete
 {
     resource*           pResource= NULL;
@@ -961,7 +954,7 @@ bool fileServices::serverchangeownerofResource(Request& oReq, timer& accessTimer
 }
 
 
-bool fileServices::serverdeleteResource(Request& oReq, timer& accessTimer)
+bool fileServices::serverdeleteResource(fileRequest& oReq, timer& accessTimer)
 {
 #if 0       // FIX
     resource*   pResource= NULL;
@@ -1046,15 +1039,15 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
                                                const char* szOutFile, 
                                                timer& encTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
-    byte*       key= m_metadataKey;;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
+    char*           p= szBuf;
+    fileResponse    oResponse;
+    int             n= 0;
+    int             type= CHANNEL_REQUEST;
+    byte            multi=0;
+    byte            final= 0;
+    byte*           key= m_metadataKey;;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientgetResourcefromserver(%s, %s)\n", 
@@ -1062,8 +1055,8 @@ bool fileServices::clientgetResourcefromserver(const char* szResourceName,
     fflush(g_logFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
-    	fprintf(g_logFile, "getResource constructRequest returns false\n");
+    if(!constructfileRequest(&p, &iLeft, "getResource", NULL, szResourceName, 0, szEvidence)) {
+        fprintf(g_logFile, "getResource constructRequest returns false\n");
         fflush(g_logFile);
         return false;
     }
@@ -1121,21 +1114,21 @@ bool fileServices::clientcreateResourceonserver(const char* szResourceName,
                                                 const char* szSubject, 
                                                 const char* szEvidence)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
+    char*           p= szBuf;
+    fileResponse    oResponse;
+    int             n= 0;
+    int             type= CHANNEL_REQUEST;
+    byte            multi=0;
+    byte            final= 0;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientcreateResourceonserver(%s)\n", szResourceName);
     fflush(g_logFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, "createResource", szSubject, 
+    if(!constructfileRequest(&p, &iLeft, "createResource", szSubject, 
                                     szResourceName, 0, szEvidence)) {
         fprintf(g_logFile, "clientcreateResourceonserver: constructRequest returns false\n");
         return false;
@@ -1191,18 +1184,18 @@ bool fileServices::clientsendResourcetoserver(const char* szSubject,
                                               const char* szInFile, 
                                               timer& decTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         filesize= 0;
-    int         datasize= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
-    int         iRead= 0;
-    byte*       key= m_metadataKey;;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
+    char*           p= szBuf;
+    fileResponse    oResponse;
+    int             n= 0;
+    int             filesize= 0;
+    int             datasize= 0;
+    int             type= CHANNEL_REQUEST;
+    byte            multi=0;
+    byte            final= 0;
+    int             iRead= 0;
+    byte*           key= m_metadataKey;;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientsendResourcetoserver(%s, %s)\n", szResourceName, szInFile);
@@ -1222,7 +1215,7 @@ bool fileServices::clientsendResourcetoserver(const char* szSubject,
     datasize= filesize;
 
     // send request
-    if(!constructRequest(&p, &iLeft, "sendResource", szSubject, szResourceName, 
+    if(!constructfileRequest(&p, &iLeft, "sendResource", szSubject, szResourceName, 
                          filesize, szEvidence)) {
         fprintf(g_logFile, "clientsendResourcetoserver: constructRequest returns false\n");
         return false;
@@ -1272,14 +1265,14 @@ bool fileServices::clientchangeownerResource(const char* szAction,
                                              const char* szEvidence, 
                                              const char* szOutFile)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
+    char*           p= (char*)szBuf;
+    fileResponse    oResponse;
+    int             n= 0;
+    int             type= CHANNEL_REQUEST;
+    byte            multi=0;
+    byte            final= 0;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientchangeownerofResource(%s, %s)\n", 
@@ -1288,7 +1281,7 @@ bool fileServices::clientchangeownerResource(const char* szAction,
 #endif
 
     // send request
-    if(!constructRequest(&p, &iLeft, szAction, NULL, szResourceName, 0, szEvidence)) {
+    if(!constructfileRequest(&p, &iLeft, szAction, NULL, szResourceName, 0, szEvidence)) {
         fprintf(g_logFile, "clientchangeownerResource: constructRequest returns false\n");
         return false;
     }
@@ -1320,21 +1313,21 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
                                         const char* szEvidence, 
                                         const char* szFile)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
+    char*           p= (char*)szBuf;
+    fileResponse    oResponse;
+    int             n= 0;
+    int             type= CHANNEL_REQUEST;
+    byte            multi=0;
+    byte            final= 0;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientdeleteResource(%s, %s)\n", szResourceName, szFile);
     fflush(g_logFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, "deleteResource", NULL, szResourceName, 0, szEvidence)) {
+    if(!constructfileRequest(&p, &iLeft, "deleteResource", NULL, szResourceName, 0, szEvidence)) {
         fprintf(g_logFile, "clientdeleteResource: constructRequest returns false\n");
         return false;
     }
@@ -1369,22 +1362,22 @@ bool fileServices::clientdeleteResource(const char* szResourceName,
 
 bool fileServices::clientgetProtectedFileKey(const char* file, timer& accessTimer)
 {
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
+    char            szBuf[MAXREQUESTSIZEWITHPAD];
+    int             iLeft= MAXREQUESTSIZE;
+    char*           p= (char*)szBuf;
+    fileResponse    oResponse;
+    int             n= 0;
+    int             type= CHANNEL_REQUEST;
+    byte            multi=0;
+    byte            final= 0;
 
 #ifdef  TEST
     fprintf(g_logFile, "clientgetProtectedFileKey()\n");
     fflush(g_logFile);
 #endif
     // send request
-    if(!constructRequest(&p, &iLeft, "getProtectedKey", NULL, "ServerFileKey", 0, NULL)) {
-        fprintf(g_logFile, "clientgetProtectedFileKey: constructRequest returns false\n");
+    if(!constructfileRequest(&p, &iLeft, "getProtectedKey", NULL, "ServerFileKey", 0, NULL)) {
+        fprintf(g_logFile, "clientgetProtectedFileKey: constructfileRequest returns false\n");
         return false;
     }
 #ifdef  TEST1

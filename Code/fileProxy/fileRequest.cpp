@@ -34,6 +34,7 @@
 #include "safeChannel.h"
 #include "jlmUtility.h"
 #include "request.h"
+#include "fileRequest.h"
 #include "encryptedblockIO.h"
 
 #include <stdio.h>
@@ -73,29 +74,19 @@ const char*   s_szResponseTemplate=
 // ------------------------------------------------------------------------
 
 
-Request::Request()
+fileRequest::fileRequest() : Request()
 {
     m_iResourceLength= 0;
     m_szSubjectName= NULL;
-    m_szAction= NULL;
     m_szResourceName= NULL;
-    m_szEvidence= NULL;
 }
 
 
-Request::~Request()
+fileRequest::~fileRequest()
 {
     if(m_szResourceName!=NULL) {
         free(m_szResourceName);
         m_szResourceName= NULL;
-    }
-    if(m_szEvidence!=NULL) {
-        free(m_szEvidence);
-        m_szEvidence= NULL;
-    }
-    if(m_szAction!=NULL) {
-        free(m_szAction);
-        m_szAction= NULL;
     }
     if(m_szSubjectName!=NULL) {
         free(m_szSubjectName);
@@ -104,7 +95,7 @@ Request::~Request()
 }
 
 
-bool  Request::getDatafromDoc(const char* szRequest)
+bool  fileRequest::getDatafromDoc(const char* szRequest)
 {
     TiXmlDocument   doc;
     TiXmlElement*   pRootElement= NULL;
@@ -215,10 +206,8 @@ void fileRequest::printMe()
 fileResponse::fileResponse()
 {
     m_iResourceLength= 0;
-    m_szAction= NULL;
     m_szErrorCode= NULL;
     m_szResourceName= NULL;
-    m_szEvidence= NULL;
     m_szProtectedElement= NULL;
 }
 
@@ -232,18 +221,6 @@ fileResponse::~fileResponse()
     if(m_szErrorCode!=NULL) {
         free(m_szErrorCode);
         m_szErrorCode= NULL;
-    }
-    if(m_szEvidence!=NULL) {
-        free(m_szEvidence);
-        m_szEvidence= NULL;
-    }
-    if(m_szResourceName!=NULL) {
-        free(m_szResourceName);
-        m_szResourceName= NULL;
-    }
-    if(m_szProtectedElement!=NULL) {
-        free(m_szProtectedElement);
-        m_szProtectedElement= NULL;
     }
 }
 
@@ -263,10 +240,6 @@ void fileResponse::printMe()
         fprintf(g_logFile, "\tm_szErrorCode is NULL\n");
     else
         fprintf(g_logFile, "\tm_szErrorCode: %s \n", m_szErrorCode);
-    if(m_szEvidence==NULL)
-        fprintf(g_logFile, "\tm_szEvidence is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
     fprintf(g_logFile, "\tresourcelength: %d\n", m_iResourceLength);
 }
 #endif
@@ -324,9 +297,11 @@ bool  fileResponse::getDatafromDoc(char* szResponse)
                 else
                     m_szErrorCode= NULL;
             }
+#if 0
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
                 m_szEvidence= canonicalize(pNode);
             }
+#endif
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ProtectedElement")==0) {
                 m_szProtectedElement= canonicalize(pNode);
             }
@@ -500,7 +475,7 @@ bool sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
 }
 
 
-bool  fileconstructRequest(char** pp, int* piLeft, const char* szAction, 
+bool  constructfileRequest(char** pp, int* piLeft, const char* szAction, 
                        const char* szSubjectName, const char* szResourceName, 
                        int resSize, const char* szEvidence)
 {
@@ -550,7 +525,7 @@ bool  fileconstructRequest(char** pp, int* piLeft, const char* szAction,
 }
 
 
-bool  fileconstructResponse(bool fError, char** pp, int* piLeft, 
+bool  constructfileResponse(bool fError, char** pp, int* piLeft, 
                         const char* szResourceName, int resSize, 
                         const char* szExtraResponseElements,
                         const char* szChannelError)

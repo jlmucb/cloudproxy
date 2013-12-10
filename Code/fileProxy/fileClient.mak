@@ -40,7 +40,7 @@ dobjs=      $(B)/jlmUtility.o $(B)/keys.o $(B)/cryptoHelper.o $(B)/jlmcrypto.o \
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o $(B)/request.o $(B)/fileServices.o $(B)/validateEvidence.o \
 	    $(B)/trustedKeyNego.o $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
-	    $(B)/fileTester.o $(B)/logging.o $(B)/fileHash.o
+	    $(B)/fileTester.o $(B)/logging.o $(B)/fileHash.o $(B)/fileRequest.o
 
 all: $(E)/fileClient.exe $(E)/guestfileClient.exe $(E)/fileClienta.exe $(E)/fileClientb.exe $(E)/fileClientc.exe
  
@@ -69,6 +69,9 @@ $(B)/jlmcrypto.o: $(SCD)/jlmcrypto.cpp $(SCD)/jlmcrypto.h
 
 $(B)/logging.o: $(SC)/logging.cpp $(SC)/logging.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/logging.o $(SC)/logging.cpp
+
+$(B)/fileRequest.o: $(S)/fileRequest.cpp $(S)/fileRequest.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(BSC) -I$(CLM) -I$(TRS) -I$(S) -I$(CH) -I$(PROTO) -I$(TAO) -I$(ACC) -I$(VLT) -c -o $(B)/fileRequest.o $(S)/fileRequest.cpp
 
 $(B)/keys.o: $(SCD)/keys.cpp $(SCD)/keys.h
 	$(CC) $(CFLAGS) -I$(SCD) -I$(BSC) -I$(SC) -c -o $(B)/keys.o $(SCD)/keys.cpp

@@ -40,20 +40,19 @@
 /*
  *  <Request>
  *      <Action> 
- *      createResource, getResource, sendResource, deleteResource, 
- *      addOwner, removeOwner, addPrincipal, removePrincpal
+ *         app dependent
  *      </Action>
  *      <EvidenceCollection count='2'>
  *          <EvidenceList count='1'>
  *          </EvidenceList>
  *      </EvidenceCollection>
- *      <ResourceName> </ResourceName>
- *      <ResourceLength> </ResourceLength>
+ *      additional fields are app dependent
  *  </Request>
  *
  *  <Response>
  *      <Action> accept, reject</Action>
  *      <ErrorCode> </ErrorCode>
+ *	additional fileds are app dependent
  *      <ResoureName> </ResoureName>
  *      <ResoureLength> </ResoureLength>
  *  </Response>
@@ -63,19 +62,12 @@
 class Request {
 public:
     char*       m_szAction;
-    char*       m_szResourceName;
-    int         m_iResourceLength;
-    int         m_iResourceType;
     char*       m_szEvidence;
-    char*       m_szSubjectName;
 
                 Request();
                 ~Request();
 
     bool        getDatafromDoc(const char* szRequest);
-#ifdef TEST
-    void        printMe();
-#endif
 };
 
 
@@ -83,35 +75,13 @@ class Response {
 public:
     char*           m_szAction;
     char*           m_szErrorCode;
-    char*           m_szResourceName;
-    char*           m_szEvidence;
-    int             m_iResourceLength;
-    char*           m_szProtectedElement;
 
                     Response();
                     ~Response();
 
-    bool            getDatafromDoc(char* szResponse);
-#ifdef TEST
-    void            printMe();
-#endif
+    bool        getDatafromDoc(const char* szRequest);
 };
 
-
-bool    constructRequest(char** pp, int* piLeft, const char* szAction, 
-                       const char* szSubjectName, const char* szResourceName, 
-                       int size, const char* szEvidence);
-bool    constructResponse(bool fError, char** pp, int* piLeft, 
-                        const char* szResourceName, int size, 
-                        const char* szExtraResponseElements,
-                        const char* szChannelError);
-int     openFile(const char* szInFile, int* psize);
-bool    getFile(safeChannel& fc, int iWrite, int filesize, int datasize,
-             int encType, byte* enckey, timer& encTimer);
-bool    emptyChannel(safeChannel& fc, int size, int enckeyType, byte* enckey,
-             int intkeyType, byte* intkey);
-bool    sendFile(safeChannel& fc, int iRead, int filesize, int datasize,
-              int encType, byte* enckey, timer& decTimer);
 
 #endif
 

@@ -607,7 +607,7 @@ const char* szlocalKeyInfoBody5= "    </ds:KeyValue>\n";
 const char* szlocalKeyInfoTrailer= "</ds:KeyInfo>\n";
 
 
-#define MAXSTRLEN 8192
+#define MAXSTRLEN 16384
 
 
 char*   RSAKey::SerializetoString()

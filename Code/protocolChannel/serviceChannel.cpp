@@ -165,17 +165,7 @@ int serviceChannel::processRequests()
         return -1;
     }
 
-    {
-        Request oReq;
-
-        if(!oReq.getDatafromDoc(reinterpret_cast<char*>(request))) {
-            fprintf(g_logFile, "serviceChannel::processRequests: cant parse: %s\n", 
-                    request);
-            return -1;
-        }
-
-        return m_requestService(oReq, this);
-    }
+    return m_requestService((const char*)request, this);
 }
 
 
@@ -262,7 +252,7 @@ bool serviceChannel::initServiceChannel(const char* serverType, int newfd,
                                         PrincipalCert* pPolicyCert,
                                         taoHostServices* ptaoHost,
                                         taoEnvironment * ptaoEnv, serviceThread* pmyThread,
-                                        int (*requestService)(Request&, serviceChannel*),
+                                        int (*requestService)(const char*, serviceChannel*),
                                         channelServices* pmyServices, void* pmyLocals)
 {
 #ifdef  TEST

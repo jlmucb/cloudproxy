@@ -104,7 +104,7 @@ char* PrincipalCert::getCanonicalizationMethod()
 
 bool PrincipalCert::parsePrincipalCertElements()
 {
-#ifdef CERTTEST
+#ifdef CERTTEST2
     fprintf(g_logFile, "parsePrincipalCertElements\n%s\n", m_szSignature);
 #endif
     if(m_szSignature==NULL) {
@@ -462,7 +462,7 @@ char*   formatSignedInfo(RSAKey* pKey,
     char*   szSignedInfo= NULL;
     int     bitkeySize= pKey->m_ikeySize;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "Format signedInfo %d\n", bitkeySize);
     fflush(g_logFile);
     fprintf(g_logFile, "\tCertid: %s, serialNo: %d\n", szCertid, serialNo);

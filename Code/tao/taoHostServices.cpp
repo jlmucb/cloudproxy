@@ -178,7 +178,7 @@ bool taoHostServices::HostInit(u32 hostType, const char* hostProvider,
         fprintf(g_logFile, "taoHostServices::HostInit: cant get attesting key from cert\n");
         return false;
     }
-#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "taoHostServices::Hostinit, attesting key\n%s\n", szattestingkey);
     fflush(g_logFile);
 #endif

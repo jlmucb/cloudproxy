@@ -33,6 +33,7 @@
 #include "safeChannel.h"
 #include "timer.h"
 #include "request.h"
+#include "fileRequest.h"
 #include "channelServices.h"
 
 #ifndef FILECLIENT
@@ -72,19 +73,19 @@ public:
 #endif
 
 #ifndef FILECLIENT
-    bool            validateAddPrincipalRequest(Request& oReq, char** pszFile, 
+    bool            validateAddPrincipalRequest(fileRequest& oReq, char** pszFile, 
                                             resource** ppResource);
-    bool            validateDeletePrincipalRequest(Request& oReq, char** pszFile, 
+    bool            validateDeletePrincipalRequest(fileRequest& oReq, char** pszFile, 
                                                resource** ppResource);
-    bool            validateCreateRequest(Request& oReq, char** pszFile, 
+    bool            validateCreateRequest(fileRequest& oReq, char** pszFile, 
                                             resource** ppResource);
-    bool            validateGetSendDeleteRequest(Request& oReq, char** pszFile, 
+    bool            validateGetSendDeleteRequest(fileRequest& oReq, char** pszFile, 
                                              resource** ppResource);
-    bool            validateAddOwnerRequest(Request& oReq, char** pszFile, 
+    bool            validateAddOwnerRequest(fileRequest& oReq, char** pszFile, 
                                             resource** ppResource);
-    bool            validateRemoveOwnerRequest(Request& oReq, char** pszFile, 
+    bool            validateRemoveOwnerRequest(fileRequest& oReq, char** pszFile, 
                                            resource** ppResource);
-    bool            validateRequest(Request& oReq, char** pszFile, 
+    bool            validateRequest(fileRequest& oReq, char** pszFile, 
                                             resource** ppResource);
 
     bool            translateLocationtoResourceName(const char* szLocation, 
@@ -94,17 +95,17 @@ public:
                                                 const char* szLocation, 
                                                 int size);
 
-    bool            serversendResourcetoclient(Request& oReq, 
+    bool            serversendResourcetoclient(fileRequest& oReq, 
                                            timer& accessTimer, timer& decTimer);
-    bool            servergetResourcefromclient(Request& oReq, 
+    bool            servergetResourcefromclient(fileRequest& oReq, 
                                             timer& accessTimer, timer& encTimer);
 
-    bool            serverchangeownerofResource(Request& oReq, timer& accessTimer);
+    bool            serverchangeownerofResource(fileRequest& oReq, timer& accessTimer);
 
-    bool            servercreateResourceonserver(Request& oReq, timer& accessTimer);
-    bool            serverdeleteResource(Request& oReq, timer& accessTimer);
+    bool            servercreateResourceonserver(fileRequest& oReq, timer& accessTimer);
+    bool            serverdeleteResource(fileRequest& oReq, timer& accessTimer);
 
-    bool            servergetProtectedFileKey(Request& oReq, timer& accessTimer);
+    bool            servergetProtectedFileKey(fileRequest& oReq, timer& accessTimer);
 
 #else  // end of server services, beginning of client services
 
@@ -143,7 +144,7 @@ public:
     ~filechannelServices();
 
 #ifndef FILECLIENT
-    bool servergetProtectedFileKey(Request& oReq, timer& accessTimer);
+    bool servergetProtectedFileKey(fileRequest& oReq, timer& accessTimer);
 #else
     bool clientgetProtectedFileKey(const char* file, timer& accessTimer);
 #endif

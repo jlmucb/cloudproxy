@@ -67,6 +67,7 @@ public:
     int         m_iResourceLength;
     int         m_iResourceType;
     char*       m_szSubjectName;
+    char*       m_szProtectedElement;
 
                 fileRequest();
                 ~fileRequest();
@@ -82,6 +83,7 @@ class fileResponse : public Response {
 public:
     char*           m_szResourceName;
     int             m_iResourceLength;
+    char*           m_szProtectedElement;
 
                     fileResponse();
                     ~fileResponse();

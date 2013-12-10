@@ -44,7 +44,7 @@ dobjs=      $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/channelServices.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o \
 	    $(B)/sha1.o $(B)/logging.o $(B)/vault.o $(B)/buffercoding.o \
-	    $(B)/tcIO.o $(B)/fileHash.o
+	    $(B)/tcIO.o $(B)/fileHash.o $(B)/fileRequest.o
 
 all: $(E)/fileServer.exe $(E)/guestfileServer.exe
 
@@ -91,6 +91,9 @@ $(B)/jlmUtility.o: $(SC)/jlmUtility.cpp $(SC)/jlmUtility.h
 
 $(B)/resource.o: $(S)/resource.cpp $(S)/resource.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(S) -c -o $(B)/resource.o $(S)/resource.cpp
+
+$(B)/fileRequest.o: $(S)/fileRequest.cpp $(S)/fileRequest.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TRS) -I$(S) -I$(CH) -I$(PROTO) -I$(TAO) -I$(ACC) -I$(VLT) -c -o $(B)/fileRequest.o $(S)/fileRequest.cpp
 
 $(B)/fileServices.o: $(S)/fileServices.cpp $(S)/fileServices.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -I$(CLM) -I$(TRS) -I$(S) -I$(CH) -I$(PROTO) -I$(TAO) -I$(ACC) -I$(VLT) -c -o $(B)/fileServices.o $(S)/fileServices.cpp

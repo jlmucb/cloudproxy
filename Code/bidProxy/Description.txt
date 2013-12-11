@@ -1,0 +1,30 @@
+Signing Key:  Server Program Key
+
+
+BidClient:
+    submit bids
+
+
+BidServer:
+    init
+        get (or initialize) bid list into rgBids[]
+    for(;;) 
+        if(submitBid)
+            check it
+            sign it
+            append to list
+            save list (encrypt with filekeys) to file (AuctionID.Bids.enc)
+        if(getBids)
+            check this is sellerClient
+            sendBids
+
+
+sellerClient:
+    getBids
+    if resolveBid file is present
+        determine winner
+        sign winning bid
+        save it to file
+
+
+

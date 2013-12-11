@@ -51,6 +51,12 @@ public:
 
 
 class bidchannelServices : public channelServices {
+private:
+    bool        m_fBidListValid;
+    int         m_maxnBids;
+    int         m_nBids;
+    char**      m_Bids;
+
 public:
     bidchannelServices(u32 type);
     ~bidchannelServices();
@@ -58,11 +64,14 @@ public:
 #ifndef BIDCLIENT
     bool        servergetProtectedFileKey(bidRequest& oReq, timer& accessTimer);
     bool        acceptBid(bidRequest& oReq, serviceChannel* service, timer& myTimer);
-    bool        saveBid(RSAKey* sealingKey, RSAKey* signingKey, 
-                        const char* bidBody, char* szMyCert);
+    bool        appendBid(const char* bid);
+    const char* serializeList();
+    bool        deserializeList(const char* list);
+    bool        getBids(bidRequest& oReq, serviceChannel* service, timer& myTimer);
+    bool        saveBids(u32 enctype, byte* keys, const char* file);
+    bool        retrieveBids(u32 enctype, byte* keys, const char* file);
 #else
     bool        submitBid(bidRequest& oReq, serviceChannel* service, timer& myTimer);
-    char*       constructBidRequest();
     bool        clientgetProtectedFileKey(bidRequest& oReq, timer& accessTimer);
 #endif
     bool        closechannelServices();

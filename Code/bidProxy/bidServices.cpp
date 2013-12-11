@@ -81,6 +81,9 @@
 
 bidchannelServices::bidchannelServices(u32 type) : channelServices(type)
 {
+    m_fBidListValid= false;
+    m_nBids= 0;
+    m_Bids= NULL;
 }
 
 
@@ -110,11 +113,106 @@ bool channelServices::closechannelServices()
 
 bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, timer& myTimer)
 {
+    // construct Bid
+
+    // const char* bidBody= NULL;
+
+    // sign it and put it on list
+
+    // save bids
+    if(!saveBids(u32 enctype, byte* keys, const char* file)) {
+        return false;
+    }
+
+    // construct response
+
+    return true;
+}
+
+
+bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, timer& myTimer)
+{
+    // authenticate requestor
+
+    // serialize bids
+    const char*  allbids= serialize();
+    if(*allbids==NULL) {
+        return false;
+    }
+
+    // construct response and transmit
+
     return true;
 }
 
 
 #ifndef BIDCLIENT
+
+
+const char* bidchannelServices::serializeList()
+{
+    char    buf[16384];
+    // int  size= 16384;
+    p= buf;
+
+    sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
+    sprintf(p, "</Bids>\n");
+    return strdup(buf);
+}
+
+
+bool bidchannelServices::deserializeList(const char* list)
+{
+    // TiXmlDocument   doc;
+    return true;
+}
+
+
+bool  bidchannelServices::appendBid(const char* bid)
+{
+    if(m_maxnBids<=m_nBids)
+        return false;
+    m_Bids[m_nBids++]= bid;
+    return true;
+}
+
+
+
+bool  bidchannelServices::saveBids(u32 enctype, byte* keys, const char* file)
+{
+    byte*   encrypted= NULL;
+    int     sizeencrypted= 0;
+
+    // serialize bids
+
+    // encrypt bids
+
+    // save it to file
+    if(!saveBlobtoFile(file, encrypted, sizeencrypted)) {
+        return false;
+    }
+    return true;
+}
+
+
+bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file)
+{
+    byte*   encrypted= NULL;
+    int     sizeencrypted= 0;
+
+    // read file
+    if(!getBlobfromFile(file, encrypted, &sizeencrypted)) {
+        return false;
+    }
+
+    // decrypt it
+
+    // deserialize bid list
+
+    return true;
+}
+
+
 bool bidchannelServices::servergetProtectedFileKey(bidRequest& oReq, timer& accessTimer)
 {
 #if 0

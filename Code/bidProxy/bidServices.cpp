@@ -120,9 +120,11 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     // sign it and put it on list
 
     // save bids
+#if 0
     if(!saveBids(u32 enctype, byte* keys, const char* file)) {
         return false;
     }
+#endif
 
     // construct response
 
@@ -135,8 +137,8 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
     // authenticate requestor
 
     // serialize bids
-    const char*  allbids= serialize();
-    if(*allbids==NULL) {
+    const char*  allbids= serializeList();
+    if(allbids==NULL) {
         return false;
     }
 
@@ -153,7 +155,7 @@ const char* bidchannelServices::serializeList()
 {
     char    buf[16384];
     // int  size= 16384;
-    p= buf;
+    char*   p= buf;
 
     sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
     sprintf(p, "</Bids>\n");
@@ -172,7 +174,7 @@ bool  bidchannelServices::appendBid(const char* bid)
 {
     if(m_maxnBids<=m_nBids)
         return false;
-    m_Bids[m_nBids++]= bid;
+    m_Bids[m_nBids++]= (char*) bid;
     return true;
 }
 

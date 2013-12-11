@@ -256,61 +256,47 @@ bool LinuxTao::Destroy() { return true; }
 
 bool LinuxTao::StartHostedProgram(const string &path,
                                   const list<string> &args) {
-  // first check to make sure that this program is authorized
-  ifstream program_stream(path.c_str());
-  stringstream program_buf;
-  program_buf << program_stream.rdbuf();
-
-  // TODO(tmroeder): take in the right hash type and use it here. For
-  // now, we just assume that it's SHA256
-  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
-  string digest;
-  if (!sha256->Digest(program_buf.str(), &digest)) {
-    LOG(ERROR) << "Could not compute the digest over the file";
-    return false;
-  }
-
-  string serialized_digest;
-  if (!Base64WEncode(digest, &serialized_digest)) {
-    LOG(ERROR) << "Could not encode the digest as Base64W";
+  string child_hash;
+  if (!program_factory_->HashHostedProgram(path, args, &child_hash)) {
+    LOG(ERROR) << "Could not hash the hosted program";
     return false;
   }
 
   {
     lock_guard<mutex> l(auth_m_);
-    if (!auth_manager_->IsAuthorized(path, serialized_digest)) {
-      LOG(ERROR) << "Program " << path << " with digest " << serialized_digest
+    if (!auth_manager_->IsAuthorized(path, child_hash)) {
+      LOG(ERROR) << "Program " << path << " with digest " << child_hash
                  << " is not authorized";
       return false;
     }
   }
 
-  VLOG(2) << "The program " << path << " with digest " << serialized_digest
+  VLOG(2) << "The program " << path << " with digest " << child_hash
           << " is authorized";
 
   {
     lock_guard<mutex> l(data_m_);
-    auto child_it = running_children_.find(serialized_digest);
+    auto child_it = running_children_.find(child_hash);
     if (running_children_.end() != child_it) {
       LOG(ERROR) << "An instance of the program " << path << " with digest "
-                 << serialized_digest << " is already running";
+                 << child_hash << " is already running";
       return false;
     }
 
-    running_children_.insert(serialized_digest);
+    running_children_.insert(child_hash);
   }
 
   string child_params;
-  if (!child_channel_->AddChildChannel(serialized_digest, &child_params)) {
+  if (!child_channel_->AddChildChannel(child_hash, &child_params)) {
     LOG(ERROR) << "Could not add a channel to connect to a child with hash "
-               << serialized_digest;
+               << child_hash;
   }
 
   list<string> program_args(args.begin(), args.end());
   program_args.push_back(child_params);
 
   if (!program_factory_->CreateHostedProgram(
-          path, program_args, serialized_digest, *child_channel_)) {
+          path, program_args, child_hash, *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }

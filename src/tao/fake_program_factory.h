@@ -31,6 +31,15 @@ class FakeProgramFactory : public HostedProgramFactory {
   FakeProgramFactory() {}
   virtual ~FakeProgramFactory() {}
 
+  // The fake version of HashHostedProgram just sets the child hash to be empty.
+  virtual bool HashHostedProgram(const string &name, const list<string> &args,
+                                 string *child_hash) const {
+    string empty;
+    child_hash->assign(empty);
+    return true;
+  }
+
+
   // Instead of creating a program, it returns true and ignores the arguments
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,

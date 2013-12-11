@@ -126,16 +126,17 @@ class LinuxTaoTest : public ::testing::Test {
     // Create a whitelist with a dummy hosted program, since we don't
     // want the LinuxTao to start any hosted programs during this
     // test. Then write it to the temp filename above.
+    string empty;
     Whitelist w;
     HostedProgram *hp = w.add_programs();
     hp->set_name(test_binary_path_);
     hp->set_hash_alg("SHA256");
-    hp->set_hash(child_hash_);
+    hp->set_hash(empty);
 
     HostedProgram *linux_tao_hp = w.add_programs();
     linux_tao_hp->set_name("LinuxTao");
     linux_tao_hp->set_hash_alg("SHA256");
-    linux_tao_hp->set_hash(fake_linux_tao_hash);
+    linux_tao_hp->set_hash(empty);
 
     SignedWhitelist sw;
     string *serialized_whitelist = sw.mutable_serialized_whitelist();

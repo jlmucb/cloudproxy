@@ -35,6 +35,8 @@ class ProcessFactory : public HostedProgramFactory {
  public:
   ProcessFactory() {}
   virtual ~ProcessFactory() {}
+  virtual bool HashHostedProgram(const string &name, const list<string> &args,
+                                 string *child_hash) const;
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel) const;

@@ -20,12 +20,25 @@
 
 #include "tao/kvm_vm_factory.h"
 
+#include <fstream>
+#include <sstream>
+
 #include <glog/logging.h>
-#include <libvirt/virterror.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/base/scoped_ptr.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
+#include <libvirt/virterror.h>
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
 #include "tao/tao_channel.h"
+
+using keyczar::base::Base64WEncode;
+using keyczar::CryptoFactory;
+using keyczar::MessageDigestImpl;
+
+using std::ifstream;
+using std::stringstream;
 
 namespace {
 const char *vm_template =
@@ -106,6 +119,88 @@ bool KvmVmFactory::Init() {
       LOG(ERROR) << "The error from libvirt was " << err->message;
     }
 
+    return false;
+  }
+
+  return true;
+}
+
+// The hash of the VM is Base64(H(H(template) || H(name) || H(kernel) ||
+//                                H(initrd)))
+bool KvmVmFactory::HashHostedProgram(const string &name,
+                                     const list<string> &args,
+                                     string *child_hash) const {
+  // As in CreateHostedProgram, we have to make sure that we have the right
+  // number of arguments for our operations to make sense
+  if (args.size() != 3) {
+    LOG(ERROR) << "Wrong number of arguments";
+    return false;
+  }
+
+  // TODO(tmroeder): take in the right hash type and use it here. For
+  // now, we just assume that it's SHA256
+  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
+
+  string template_hash;
+  if (!sha256->Digest(vm_template, &template_hash)) {
+    LOG(ERROR) << "Could not compute the hash of the template";
+    return false;
+  }
+
+  string name_hash;
+  if (!sha256->Digest(name, &name_hash)) {
+    LOG(ERROR) << "Could not compute the has of the name";
+    return false;
+  }
+
+  auto it = args.begin();
+  string kernel(*(it++));
+  string initrd(*(it++));
+  // The last argument is the disk, but it is ignored, since it's untrusted.
+
+  ifstream kernel_file(kernel.c_str());
+  if (!kernel_file) {
+    LOG(ERROR) << "Could not open the kernel file " << kernel;
+    return false;
+  }
+
+  stringstream kernel_stream;
+  kernel_stream << kernel_file.rdbuf();
+  string kernel_hash;
+  if (!sha256->Digest(kernel_stream.str(), &kernel_hash)) {
+    LOG(ERROR) << "Could not compute the hash of " << kernel;
+    return false;
+  }
+
+  ifstream initrd_file(initrd.c_str());
+  if (!initrd_file) {
+    LOG(ERROR) << "Could not open the initrd file " << initrd;
+    return false;
+  }
+
+  stringstream initrd_stream;
+  initrd_stream << initrd_file.rdbuf();
+  string initrd_hash;
+  if (!sha256->Digest(initrd_stream.str(), &initrd_hash)) {
+    LOG(ERROR) << "Could not compute the hash of " << initrd;
+    return false;
+  }
+
+  // Concatenate the hashes
+  string hash_input;
+  hash_input.append(template_hash);
+  hash_input.append(name_hash);
+  hash_input.append(kernel_hash);
+  hash_input.append(initrd_hash);
+
+  string composite_hash;
+  if (!sha256->Digest(hash_input, &composite_hash)) {
+    LOG(ERROR) << "Could not compute the composite hash";
+    return false;
+  }
+
+  if (!Base64WEncode(composite_hash, child_hash)) {
+    LOG(ERROR) << "Could not encode the digest as Base64W";
     return false;
   }
 

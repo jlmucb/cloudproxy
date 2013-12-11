@@ -40,6 +40,9 @@ class HostedProgramFactory {
   virtual bool Init() { return true; }
   virtual bool Destroy() { return true; }
 
+  virtual bool HashHostedProgram(const string &name, const list<string> &args,
+                                 string *child_hash) const = 0;
+
   // Create a hosted program and pass it channel information. The meaning of
   // each argument depends on the factory implementation.
   //

@@ -20,15 +20,50 @@
 
 #include "tao/process_factory.h"
 
+#include <fstream>
+#include <sstream>
 #include <vector>
 
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
 
 #include "tao/tao_channel.h"
 
+using keyczar::base::Base64WEncode;
+using keyczar::CryptoFactory;
+using keyczar::MessageDigestImpl;
+
+using std::ifstream;
+using std::stringstream;
 using std::vector;
 
 namespace tao {
+bool ProcessFactory::HashHostedProgram(const string &name,
+                                       const list<string> &args,
+                                       string *child_hash) const {
+  ifstream program_stream(name.c_str());
+  stringstream program_buf;
+  program_buf << program_stream.rdbuf();
+
+  // TODO(tmroeder): take in the right hash type and use it here. For
+  // now, we just assume that it's SHA256
+  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
+  string digest;
+  if (!sha256->Digest(program_buf.str(), &digest)) {
+    LOG(ERROR) << "Could not compute the digest over the file";
+    return false;
+  }
+
+  if (!Base64WEncode(digest, child_hash)) {
+    LOG(ERROR) << "Could not encode the digest as Base64W";
+    return false;
+  }
+
+  return true;
+}
+
 bool ProcessFactory::CreateHostedProgram(const string &name,
                                          const list<string> &args,
                                          const string &child_hash,

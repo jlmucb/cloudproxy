@@ -1,4 +1,3 @@
-
 //  File: kvm_vm_factory.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
@@ -38,6 +37,9 @@ class KvmVmFactory : public HostedProgramFactory {
   KvmVmFactory() {}
   virtual ~KvmVmFactory() {}
   virtual bool Init();
+
+  virtual bool HashHostedProgram(const string &name, const list<string> &args,
+                                 string *child_hash) const;
 
   // @param name The name of the VM to create
   // @param args The arguments for VM creation. These must have the following

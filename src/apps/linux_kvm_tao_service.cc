@@ -1,8 +1,8 @@
-//  File: linux_tao_service.cc
+//  File: linux_kvm_tao_service.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: The Tao for Linux, implemented over a TPM and creating child
-//  processes.
+//  Description: The Tao for Linux, implemented over a TPM and creating guest
+//  virtual machines.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -33,8 +33,8 @@
 #include <openssl/err.h>
 
 #include "tao/linux_tao.h"
-#include "tao/pipe_tao_channel.h"
-#include "tao/process_factory.h"
+#include "tao/kvm_unix_tao_channel.h"
+#include "tao/kvm_vm_factory.h"
 #include "tao/tpm_tao_child_channel.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
@@ -46,11 +46,10 @@ using std::stringstream;
 using std::vector;
 
 using tao::LinuxTao;
-using tao::PipeTaoChannel;
-using tao::ProcessFactory;
+using tao::KvmUnixTaoChannel;
+using tao::KvmVmFactory;
 using tao::TPMTaoChildChannel;
 using tao::WhitelistAuth;
-
 
 DEFINE_string(secret_path, "linux_tao_service_secret",
               "The path to the TPM-sealed key for this binary");
@@ -109,15 +108,15 @@ int main(int argc, char **argv) {
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
-  scoped_ptr<PipeTaoChannel> pipe_channel(
-      new PipeTaoChannel(FLAGS_program_socket));
-  scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
-  CHECK(process_factory->Init()) << "Could not initialize the process factory";
+  scoped_ptr<KvmUnixTaoChannel> kvm_channel(
+      new KvmUnixTaoChannel(FLAGS_program_socket));
+  scoped_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
+  CHECK(vm_factory->Init()) << "Could not initialize the VM factory";
 
   scoped_ptr<LinuxTao> tao(
       new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
-                   FLAGS_policy_pk_path, tpm.release(), pipe_channel.release(),
-                   process_factory.release(), whitelist_auth.release(),
+                   FLAGS_policy_pk_path, tpm.release(), kvm_channel.release(),
+                   vm_factory.release(), whitelist_auth.release(),
                    FLAGS_ca_host, FLAGS_ca_port));
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
 

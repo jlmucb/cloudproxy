@@ -106,6 +106,21 @@
       ],
     },
     {
+      'target_name': 'linux_kvm_tao_service',
+      'type': 'executable',
+      'sources': [ 'linux_kvm_tao_service.cc', ],
+      'dependencies': [ 
+        '../tao/tao.gyp:tao',
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
+        '../third_party/keyczar/keyczar.gyp:keyczar'
+      ],
+      'libraries': [
+        '-lcrypto',
+        '-lssl',
+      ],
+    },
+    {
       'target_name': 'linux_tao_service',
       'type': 'executable',
       'sources': [ 'linux_tao_service.cc', ],

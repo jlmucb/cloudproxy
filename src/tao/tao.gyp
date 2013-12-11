@@ -134,6 +134,7 @@
         '-lcrypto',
         '-lssl',
         '-ltspi',
+	'-lvirt',
       ],
       'include_dirs': [
         '<(SHARED_INTERMEDIATE_DIR)',
@@ -153,6 +154,7 @@
           '-lcrypto',
           '-lssl',
           '-ltspi',
+	  '-lvirt',
         ],
         'include_dirs': [
           '<(SHARED_INTERMEDIATE_DIR)',

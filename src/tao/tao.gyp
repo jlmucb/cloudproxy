@@ -100,6 +100,8 @@
         'kvm_unix_tao_channel.h',
         'kvm_unix_tao_channel.cc',
         'kvm_unix_tao_channel_params.proto',
+        'kvm_unix_tao_child_channel.cc',
+        'kvm_unix_tao_child_channel.h'
         'kvm_vm_factory.h',
         'kvm_vm_factory.cc',
         'linux_tao.cc',

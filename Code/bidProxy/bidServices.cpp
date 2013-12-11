@@ -345,7 +345,7 @@ int bidServerrequestService(const char* request, serviceChannel* service)
 
     if(strcmp(oReq.m_szAction, "submitBid")==0) {
          if(!SERVICESOBJ(acceptBid)(oReq, service, TIMER(m_decTimer))) {
-             fprintf(g_logFile, "serversendCredentialtoclient failed 1\n");
+             fprintf(g_logFile, "acceptBid failed 1\n");
              return -1;
          }
          return 1;

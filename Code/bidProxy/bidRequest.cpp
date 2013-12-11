@@ -34,6 +34,7 @@
 #include "safeChannel.h"
 #include "jlmUtility.h"
 #include "request.h"
+#include "bidRequest.h"
 #include "encryptedblockIO.h"
 
 #include <stdio.h>
@@ -56,7 +57,7 @@ const char*   s_szRequestTemplate=
 "  <AuctionID> %s </AuctionID>\n"\
 "  <UserName> %s </UserName>\n"\
 "  <Bid> %s </Bid>\n"\
-"  <Cert> %s </Cert>\n"\
+"  <EvidenceList> %s </EvidenceList>\n"\
 "%s"\
 "</Request>\n";
 
@@ -71,33 +72,34 @@ const char*   s_szResponseTemplate=
 // ------------------------------------------------------------------------
 
 
-bidRequest::bidRequest()
+bidRequest::bidRequest() : Request()
 {
-    m_iResourceLength= 0;
-    m_szSubjectName= NULL;
     m_szAction= NULL;
-    m_szResourceName= NULL;
     m_szEvidence= NULL;
 }
 
 
-bidRequest::~bidRequest()
+bidRequest::~bidRequest() 
 {
-    if(m_szResourceName!=NULL) {
-        free(m_szResourceName);
-        m_szResourceName= NULL;
-    }
     if(m_szEvidence!=NULL) {
-        free(m_szEvidence);
+        free((void*)m_szEvidence);
         m_szEvidence= NULL;
     }
     if(m_szAction!=NULL) {
         free(m_szAction);
         m_szAction= NULL;
     }
-    if(m_szSubjectName!=NULL) {
-        free(m_szSubjectName);
-        m_szSubjectName= NULL;
+    if(m_szBid!=NULL) {
+        free((void*)m_szBid);
+	m_szBid= NULL;
+    }
+    if(m_szUserName!=NULL) {
+        free((void*)m_szUserName);
+	m_szUserName= NULL;
+    }
+    if(m_szAuctionId!=NULL) {
+        free((void*)m_szAuctionId);
+        m_szAuctionId= NULL;
     }
 }
 
@@ -110,9 +112,9 @@ bool  bidRequest::getDatafromDoc(const char* szRequest)
     TiXmlNode*      pNode1= NULL;
 
     const char*     szAction= NULL;
-    const char*     szResourceName= NULL;
-    const char*     szResourceLength= NULL;
-    const char*     szSubjectName= NULL;
+    const char*     szAuctionID= NULL;
+    const char*     szUserName= NULL;
+    const char*     szBid= NULL;
     const char*     szEvidence= NULL;
 
     if(szRequest==NULL)
@@ -138,22 +140,22 @@ bool  bidRequest::getDatafromDoc(const char* szRequest)
                     szAction= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceName")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"UserName")==0) {
                 pNode1= pNode->FirstChild();
-                if(pNode1!=NULL) {
-                    szResourceName= pNode1->Value();
+                if(pNode1) {
+                    szUserName= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"SubjectName")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"AuctionID")==0) {
                 pNode1= pNode->FirstChild();
-                if(pNode1!=NULL) {
-                    szSubjectName= pNode1->Value();
+                if(pNode1) {
+                    szAuctionID= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceLength")==0) {
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"Bid")==0) {
                 pNode1= pNode->FirstChild();
-                if(pNode1!=NULL) {
-                    szResourceLength= pNode1->Value();
+                if(pNode1) {
+                    szBid= pNode1->Value();
                 }
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
@@ -163,22 +165,22 @@ bool  bidRequest::getDatafromDoc(const char* szRequest)
         pNode= pNode->NextSibling();
     }
 
-    if(szAction==NULL || szResourceName==NULL)
+    if(szAction==NULL)
         return false;
-
-    if(szAction!=NULL)
+    else
         m_szAction= strdup(szAction);
-    if(szResourceName!=NULL)
-        m_szResourceName= strdup(szResourceName);
-    if(szSubjectName!=NULL)
-        m_szSubjectName= strdup(szSubjectName);
+
     if(szEvidence!=NULL)
         m_szEvidence= strdup(szEvidence);
-    if(szResourceLength!=NULL)
-        sscanf(szResourceLength, "%d", &m_iResourceLength);
+    if(szBid!=NULL)
+        m_szBid= strdup(szBid);
+    if(szUserName!=NULL)
+        m_szUserName= strdup(szUserName);
+    if(szAuctionID!=NULL)
+        m_szAuctionId= strdup(szAuctionID);
 
 #ifdef TEST1
-    fprintf(g_logFile, "Request getdata\n");
+    fprintf(g_logFile, "bidRequest getdata\n");
     printMe();
     fflush(g_logFile);
 #endif
@@ -189,20 +191,23 @@ bool  bidRequest::getDatafromDoc(const char* szRequest)
 #ifdef TEST
 void bidRequest::printMe()
 {
-    fprintf(g_logFile, "\n\tRequest action: %s\n", m_szAction);
-    if(m_szResourceName==NULL)
-        fprintf(g_logFile, "\tm_szResourceName is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szResourceName: %s \n", m_szResourceName);
-    if(m_szSubjectName==NULL)
-        fprintf(g_logFile, "\tm_szSubjectName is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szSubjectName: %s \n", m_szSubjectName);
+    fprintf(g_logFile, "\n\tbidRequest action: %s\n", m_szAction);
     if(m_szEvidence==NULL)
         fprintf(g_logFile, "\tm_szEvidence is NULL\n");
     else
         fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    fprintf(g_logFile, "\tResourcelength: %d\n", m_iResourceLength);
+    if(m_szAuctionId==NULL)
+        fprintf(g_logFile, "\tm_szAuctionId is NULL\n");
+    else
+        fprintf(g_logFile, "\tm_szAuctionId: %s \n", m_szAuctionId);
+    if(m_szUserName==NULL)
+        fprintf(g_logFile, "\tm_szUserName is NULL\n");
+    else
+        fprintf(g_logFile, "\tm_szUserName: %s \n", m_szEvidence);
+    if(m_szBid==NULL)
+        fprintf(g_logFile, "\tm_szBid is NULL\n");
+    else
+        fprintf(g_logFile, "\tm_szBid: %s \n", m_szBid);
 }
 #endif
 
@@ -212,12 +217,8 @@ void bidRequest::printMe()
 
 bidResponse::bidResponse()
 {
-    m_iResourceLength= 0;
     m_szAction= NULL;
     m_szErrorCode= NULL;
-    m_szResourceName= NULL;
-    m_szEvidence= NULL;
-    m_szProtectedElement= NULL;
 }
 
 
@@ -231,18 +232,6 @@ bidResponse::~bidResponse()
         free(m_szErrorCode);
         m_szErrorCode= NULL;
     }
-    if(m_szEvidence!=NULL) {
-        free(m_szEvidence);
-        m_szEvidence= NULL;
-    }
-    if(m_szResourceName!=NULL) {
-        free(m_szResourceName);
-        m_szResourceName= NULL;
-    }
-    if(m_szProtectedElement!=NULL) {
-        free(m_szProtectedElement);
-        m_szProtectedElement= NULL;
-    }
 }
 
 
@@ -253,19 +242,10 @@ void bidResponse::printMe()
         fprintf(g_logFile, "\tm_szAction is NULL\n");
     else
         fprintf(g_logFile, "\tm_szAction: %s \n", m_szAction);
-    if(m_szResourceName==NULL)
-        fprintf(g_logFile, "\tm_szResourceName is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szResourceName: %s \n", m_szResourceName);
     if(m_szErrorCode==NULL)
         fprintf(g_logFile, "\tm_szErrorCode is NULL\n");
     else
         fprintf(g_logFile, "\tm_szErrorCode: %s \n", m_szErrorCode);
-    if(m_szEvidence==NULL)
-        fprintf(g_logFile, "\tm_szEvidence is NULL\n");
-    else
-        fprintf(g_logFile, "\tm_szEvidence: %s \n", m_szEvidence);
-    fprintf(g_logFile, "\tresourcelength: %d\n", m_iResourceLength);
 }
 #endif
 
@@ -292,8 +272,6 @@ bool  bidResponse::getDatafromDoc(char* szResponse)
         return false;
     }
 
-    m_iResourceLength= 0;
-    
     pNode= pRootElement->FirstChild();
     while(pNode) {
         if(pNode->Type()==TiXmlNode::TINYXML_ELEMENT) {
@@ -302,31 +280,12 @@ bool  bidResponse::getDatafromDoc(char* szResponse)
                 if(pNode1!=NULL)
                     m_szAction= strdup(pNode1->Value());
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceName")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL)
-                    m_szResourceName= strdup(pNode1->Value());
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceLength")==0) {
-                pNode1= pNode->FirstChild();
-                if(pNode1!=NULL) {
-                    const char* szResourceLength= pNode1->Value();
-                    if(szResourceLength!=NULL)
-                        sscanf(szResourceLength,"%d", &m_iResourceLength);
-                }
-            }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ErrorCode")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());
                 else
                     m_szErrorCode= NULL;
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
-                m_szEvidence= canonicalize(pNode);
-            }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"ProtectedElement")==0) {
-                m_szProtectedElement= canonicalize(pNode);
             }
         }
         pNode= pNode->NextSibling();
@@ -345,37 +304,23 @@ bool  bidResponse::getDatafromDoc(char* szResponse)
 
 
 bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction, 
-                       const char* szSubjectName, const char* szResourceName, 
-                       int resSize, const char* szEvidence)
+                       const char* szAuctionID, const char* szUserName,
+                       const char* szBid, const char* szEvidence)
 {
 #ifdef  TEST1
     char* p= *pp;
-    fprintf(g_logFile, "bidconstructRequest started %s %s %s %d %s\n",
-             szAction, szSubjectName, szResourceName, resSize, szEvidence);
+    fprintf(g_logFile, "bidconstructRequest started %s %s %s %s %s\n",
+            szAction, szAuctionID, szUserName, szBid, szEvidence);
     fflush(g_logFile);
 #endif
     const char*   szNoEvidence= "  <EvidenceCollection count='0'/>\n";
-    const char*   szSubjTemplate= "    <SubjectName> %s </SubjectName>\n";
-    char          szSubjectElement[512];
-    int           size= strlen(s_szRequestTemplate)+strlen(szAction)+strlen(szResourceName);
+    int           size= strlen(s_szRequestTemplate)+strlen(szAction);
 
     if(szEvidence==NULL) {
         szEvidence= szNoEvidence;
     }
     size+= strlen(szEvidence);
-    if(szSubjectName!=NULL) {
-        if((strlen(szSubjTemplate)+strlen(szSubjectName)+4)>512) {
-            fprintf(g_logFile, "bidconstructRequest: subject name too large\n");
-            fflush(g_logFile);
-            return false;
-        }
-        sprintf(szSubjectElement, szSubjTemplate, szSubjectName);
-    }
-    else {
-        szSubjectElement[0]= 0;
-    }
-    size+= strlen(szSubjectElement);
-
+#if 0
     if((size+8)>*piLeft) {
         fprintf(g_logFile, "bidconstructRequest: request too large %d %d\n", size, *piLeft);
         fflush(g_logFile);
@@ -383,6 +328,7 @@ bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction,
     }    
     sprintf(*pp, s_szRequestTemplate, szAction, szEvidence, szResourceName, 
             resSize, szSubjectElement);
+#endif
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
@@ -395,7 +341,6 @@ bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction,
 
 
 bool  bidconstructResponse(bool fError, char** pp, int* piLeft, 
-                        const char* szResourceName, int resSize, 
                         const char* szExtraResponseElements,
                         const char* szChannelError)
 {
@@ -414,7 +359,7 @@ bool  bidconstructResponse(bool fError, char** pp, int* piLeft,
     char          szErrorElement[256];
     const char*   szRes= NULL;
 
-    int size= strlen(s_szResponseTemplate)+strlen(szResourceName);
+    int size= strlen(s_szResponseTemplate);
     if(fError)
         szRes= "reject";
     else
@@ -439,8 +384,10 @@ bool  bidconstructResponse(bool fError, char** pp, int* piLeft,
         fprintf(g_logFile, "bidconstructResponse: response too large\n");
         return false;
     }
+#if 0
     sprintf(*pp, s_szResponseTemplate,  szRes, szErrorElement, szResourceName, 
             resSize, szExtraResponseElements);
+#endif
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;

@@ -75,13 +75,13 @@
 #endif
 
 
-extern bool g_fTerminateServer;
+extern bool      g_fTerminateServer;
 int              iQueueSize= 5;
 
 #include "./policyCert.inc"
 
 
-int bidServerrequestService(Request& oReq, serviceChannel* service);
+int bidServerrequestService(const char* request, serviceChannel* service);
 
 
 // ----------------------------------------------------------------------------

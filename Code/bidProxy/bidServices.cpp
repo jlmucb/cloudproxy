@@ -41,6 +41,7 @@
 #include "mpFunctions.h"
 #include "cryptoHelper.h"
 #include "request.h"
+#include "bidRequest.h"
 #include "tcIO.h"
 
 #include "tao.h"
@@ -101,27 +102,20 @@ bool channelServices::initchannelServices(serviceChannel* service, void* pLocals
 }
 
 
-bool channelServices::dispatchchannelServices(Request& oReq, serviceChannel* service,
-                                        timer& myTimer)
-{
-    return true;
-}
-
-
 bool channelServices::closechannelServices()
 {
     return true;
 }
 
 
-bool bidchannelServices::acceptBid(Request& oReq, serviceChannel* service, timer& myTimer)
+bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, timer& myTimer)
 {
     return true;
 }
 
 
 #ifndef BIDCLIENT
-bool bidchannelServices::servergetProtectedFileKey(Request& oReq, timer& accessTimer)
+bool bidchannelServices::servergetProtectedFileKey(bidRequest& oReq, timer& accessTimer)
 {
 #if 0
     bool                fError= true;
@@ -236,7 +230,7 @@ done:
 #endif
     // send response
     p= (char*)buf;
-    if(!constructResponse(fError, &p, &iLeft, oReq.m_szResourceName, 0, szProtectedElement, szError)) {
+    if(!bidconstructResponse(fError, &p, &iLeft,  szProtectedElement, szError)) {
         fprintf(g_logFile, "fileServices::servergetProtectedFileKey: constructResponse failed\n");
         fflush(g_logFile);
         return false;
@@ -339,8 +333,15 @@ bool bidchannelServices::clientgetProtectedFileKey(const char* file, timer& acce
 #define SERVICESOBJ(x) ((bidchannelServices*)(service->m_pchannelServices))->x
 
 
-int bidServerrequestService(Request& oReq, serviceChannel* service)
+int bidServerrequestService(const char* request, serviceChannel* service)
 {
+     bidRequest     oReq;
+
+     if(!oReq.getDatafromDoc(request)) {
+        fprintf(g_logFile, "fileServerrequestService: cant parse: %s\n",
+                request);
+            return -1;
+     }
 
     if(strcmp(oReq.m_szAction, "submitBid")==0) {
          if(!SERVICESOBJ(acceptBid)(oReq, service, TIMER(m_decTimer))) {

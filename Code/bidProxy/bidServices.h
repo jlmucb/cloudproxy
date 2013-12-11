@@ -35,6 +35,8 @@
 #include "objectManager.h"
 #include "cert.h"
 #include "algs.h"
+#include "request.h"
+#include "bidRequest.h"
 #include "timer.h"
 #include <pthread.h>
 
@@ -54,15 +56,14 @@ public:
     ~bidchannelServices();
 
 #ifndef BIDCLIENT
-    bool        servergetProtectedFileKey(Request& oReq, timer& accessTimer);
-    bool        acceptBid(Request& oReq, serviceChannel* service, timer& myTimer);
+    bool        servergetProtectedFileKey(bidRequest& oReq, timer& accessTimer);
+    bool        acceptBid(bidRequest& oReq, serviceChannel* service, timer& myTimer);
     bool        saveBid(RSAKey* sealingKey, RSAKey* signingKey, 
                         const char* bidBody, char* szMyCert);
 #else
-    bool        submitBid(Request& oReq, serviceChannel* service, timer& myTimer);
+    bool        submitBid(bidRequest& oReq, serviceChannel* service, timer& myTimer);
     char*       constructBidRequest();
-    bool        clientgetProtectedFileKey(Request& oReq, timer& accessTimer);
-    char*       constructBid(Request& oReq);
+    bool        clientgetProtectedFileKey(bidRequest& oReq, timer& accessTimer);
 #endif
     bool        closechannelServices();
 };

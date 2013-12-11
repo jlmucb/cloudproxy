@@ -31,7 +31,8 @@ dobjs=      $(B)/bidServer.o $(B)/jlmcrypto.o $(B)/hashprep.o \
 	    $(B)/mpNumTheory.o $(B)/fastArith.o $(B)/encryptedblockIO.o \
 	    $(B)/cryptoHelper.o $(B)/hmacsha256.o $(B)/modesandpadding.o \
 	    $(B)/trustedKeyNego.o $(B)/taoSupport.o $(B)/taoEnvironment.o \
-	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o $(B)/channelServices.o \
+	    $(B)/taoHostServices.o $(B)/taoInit.o $(B)/linuxHostsupport.o \
+	    $(B)/bidRequest.o $(B)/channelServices.o \
 	    $(B)/bidServices.o $(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o \
 	    $(B)/channel.o $(B)/safeChannel.o $(B)/tinyxmlparser.o $(B)/taoAttest.o \
 	    $(B)/attest.o $(B)/validateEvidence.o $(B)/cert.o $(B)/encapsulate.o $(B)/serviceChannel.o \
@@ -48,6 +49,9 @@ $(B)/bidServer.o: $(S)/bidServer.cpp $(S)/bidServer.h
 
 $(B)/bidServices.o: $(S)/bidServices.cpp $(S)/bidServices.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServices.o $(S)/bidServices.cpp
+
+$(B)/bidRequest.o: $(S)/bidRequest.cpp $(S)/bidRequest.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(ACC) -I$(SCC) -I$(CH) -I$(VLT) -I$(FSR) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidRequest.o $(S)/bidRequest.cpp
 
 $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/keys.o $(SCC)/keys.cpp

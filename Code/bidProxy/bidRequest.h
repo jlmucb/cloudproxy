@@ -62,7 +62,7 @@ public:
     const char* m_szAuctionId;
     const char* m_szUserName;
     const char* m_szBid;
-    const char* m_szBidderCert;
+    const char* m_szEvidence;
 
     bool        getDatafromDoc(const char* szRequest);
 #ifdef TEST
@@ -88,8 +88,7 @@ public:
 
 bool    bidconstructRequest(char** pp, int* piLeft, const char* szAction, 
                             const char*  szAuctionID, const char* szUserName, 
-                            const char* szBid, const char* szBidderCert
-                            const char* szEvidence);
+                            const char* szBid, const char* szEvidence);
 bool    bidconstructResponse(bool fError, char** pp, int* piLeft, 
                         const char* szExtraResponseElements,
                         const char* szChannelError);

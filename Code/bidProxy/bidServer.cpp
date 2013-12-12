@@ -170,68 +170,14 @@ bool bidServer::initSigningandSealingKeys()
         fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key not valid\n");
         return false;
     }
+    m_signingKey= (RSAKey*)m_tcHome.privateKeyPtr();
 
-    // FIX
-#if 0
-    int     size= 4096;
-    int     bufSize= 4096;
-    byte    buf[4096];
-
-    m_signingKey= (RSAKey*)m_tcHome.m_privateKey;
-    if(m_signingKey==NULL) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: private key empty\n");
-        return false;
-    }
 #ifdef TEST
     fprintf(g_logFile, "bidServer::initSigningandSealingKeys: signingKey\n");
     m_signingKey->printMe();
 #endif
 
-    m_szSigningCertFile= strdup("./bidServer/cert");
-    if(!getBlobfromFile(m_szSigningCertFile, buf, &size)) {
-        fprintf(g_logFile, 
-                "bidServer::initSigningandSealingKeys: Can't read signing cert, %s\n", 
-                m_szsigningCert);
-        return false;
-    }
-    m_szsigningCert= strdup((char *)buf);
-
-    m_szsealingCert= strdup("./bidServer/sealingCert");
-    size= bufSize;      
-    if(!getBlobfromFile(m_szsealingCert, buf, &size)) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: Can't read sealing cert, %s\n", m_szsealingCert);
-        return false;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "Got a sealing cert of length %d\n", size);
-    fflush(g_logFile);
-#endif
-    
-    m_szsealingCert= strdup((char *)buf);
-
-    // Fix: validate sealing principal
-
-    // get keyinfo from sealing Cert and initialize key
-    if(!g_sealingPrincipal.init(m_szsealingCert)) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't init seal Cert\n");
-        return false;
-    }
-
-    if(!g_sealingPrincipal.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't parse seal Cert\n%s\n",
-                m_szsealingCert);
-        return false;
-    }
-
-    m_sealingKey= NULL;  // FIX (RSAKey*)g_sealingPrincipal.getSubjectKeyInfo();
-    if(m_sealingKey==NULL) {
-        fprintf(g_logFile, "bidServer::initSigningandSealingKeys: can't get keyinfo from seal Cert\n");
-        fflush(g_logFile);
-        return false;
-    }
-#endif
-
+    m_szsigningCert= strdup(m_tcHome.myCertPtr());
     return true;
 }
 

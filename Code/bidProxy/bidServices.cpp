@@ -258,6 +258,7 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
 #endif
 
     // authenticate requestor
+    // This should be the sellerClient program
 
     // serialize bids
     const char*  allbids= serializeList();
@@ -536,7 +537,6 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* au
 {
     return false;
 }
-
 
 #endif
 

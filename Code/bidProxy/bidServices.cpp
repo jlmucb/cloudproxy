@@ -234,6 +234,11 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
     int     nLeft= BIGBUFSIZE;
     char*   channelError= NULL;
 
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::getBids\n");
+    fflush(g_logFile);
+#endif
+
     // authenticate requestor
 
     // serialize bids
@@ -267,6 +272,11 @@ const char* bidchannelServices::serializeList()
     char*   p= buf;
     int     i, n;
 
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::serializeList\n");
+    fflush(g_logFile);
+#endif
+
     sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
     for(i=0; i<m_nBids; i++) {
         if(m_Bids[i]==NULL) {
@@ -292,6 +302,11 @@ bool bidchannelServices::deserializeList(const char* list)
     TiXmlDocument   doc;
     char*           pbid= NULL;
     int             n= 0;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::deserializeList\n");
+    fflush(g_logFile);
+#endif
 
     if(!doc.Parse(list)) {
         return false;
@@ -322,6 +337,11 @@ bool bidchannelServices::deserializeList(const char* list)
 
 bool  bidchannelServices::appendBid(const char* bid)
 {
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::appendBid\n");
+    fflush(g_logFile);
+#endif
     if(m_maxnBids<=m_nBids)
         return false;
     m_Bids[m_nBids++]= (char*) bid;
@@ -334,6 +354,11 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
 {
     byte*   encrypted= NULL;
     int     sizeencrypted= 0;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::saveBids\n");
+    fflush(g_logFile);
+#endif
 
     // serialize bids
     const char* bids= serializeList();
@@ -367,6 +392,11 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
     int     sizeout= 256;
     byte*   outbuf;
 
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::retrieveBids\n");
+    fflush(g_logFile);
+#endif
+
     // read file
     if(!getBlobfromFile(file, encrypted, &sizeencrypted)) {
         return false;
@@ -390,148 +420,7 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
 
 bool bidchannelServices::servergetProtectedFileKey(bidRequest& oReq, timer& accessTimer)
 {
-#if 0
-    bool                fError= true;
-    byte                buf[MAXREQUESTSIZEWITHPAD];
-    int                 iLeft= MAXREQUESTSIZE;
-    char*               p= (char*)buf;
-    int                 type= CHANNEL_RESPONSE;
-    byte                multi= 0;
-    byte                final= 0;
-    encapsulatedMessage oM;
-    int                 plainKeyBlobsize;
-    char                szbase64encryptedKey[8192];
-    int                 base64encryptedKeysize= 8192;
-    char*               szEncapsulateKeyInfo= NULL;
-    RSAKey*             sealingKey= NULL;
-    const char*         szProtectedElement= NULL;
-    const char*         szError= NULL;
-
-#ifdef TEST
-    fprintf(g_logFile, "fileServices::servergetProtectedFileKey\n");
-    oReq.printMe();
-    fflush(g_logFile);
-#endif
-
-    // oReq.m_szResourceName should be key name but we don't look at it now
-    if(g_szFileKeyEscrowCert==NULL) {
-        fprintf(g_logFile, 
-              "fileServices::servergetProtectedFileKey: This app does not support escrow\n");
-        fflush(g_logFile);
-        fError= true;
-        goto done;
-    }
-
-    // encapsulate and produce metadata
-    // get embedded encapsulating key certificate
-    oM.m_szCert= strdup(g_szFileKeyEscrowCert);
-
-    // get key from Cert
-    szEncapsulateKeyInfo= oM.getSubjectKeyInfo();
-    if(szEncapsulateKeyInfo==NULL) {
-        fprintf(g_logFile, 
-                "fileServices::servergetProtectedFileKey: cant extract sealing key from %s\n", 
-                oM.m_szCert);
-        fError= true;
-        goto done;
-    }
-
-    // Make RSAKey
-    sealingKey= (RSAKey*)RSAKeyfromkeyInfo(szEncapsulateKeyInfo);
-    if(sealingKey==NULL) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant parse key\n");
-        fError= true;
-        goto done;
-    }
-
-    // get key and encrypt
-    if(m_encType==DEFAULTENCRYPT) {
-        plainKeyBlobsize= 16;  // AES128
-    }
-    else {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: unsupported file encryption key\n");
-        fError= true;
-        goto done;
-    }
-    if(!oM.setplainMessage(plainKeyBlobsize, m_metadataKey)) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant set plaintext\n");
-        fError= true;
-        goto done;
-    }
-
-    // seal key
-    if(!oM.sealKey(sealingKey)) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant seal key\n");
-        fError= true;
-        goto done;
-    }
-
-    if(!oM.encryptMessage()) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant encrypt message\n");
-        fError= true;
-        goto done;
-    }
-
-    // serialize metadata
-    oM.m_szXMLmetadata= oM.serializeMetaData();
-    if(oM.m_szXMLmetadata==NULL) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant serialize metadata\n");
-        fError= true;
-        goto done;
-    }
-
-    // base64 encode encrypted key
-    if(!toBase64(oM.m_sizeEncrypted, oM.m_rgEncrypted, 
-                 &base64encryptedKeysize, szbase64encryptedKey)) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: cant base64 encode blob\n");
-        fError= true;
-        goto done;
-    }
-    szProtectedElement= constructProtectedElement(oM.m_szXMLmetadata, 
-                                        (const char*) szbase64encryptedKey);
-    if(szProtectedElement==NULL) {
-        fprintf(g_logFile, 
-              "fileServices::servergetProtectedFileKey: cant construct protected element\n");
-        fError= true;
-    }
-    fError= false;
-
-done: 
-#ifdef TEST
-    fprintf(g_logFile, "fileServices::servergetProtectedFileKey at done\n");
-    fflush(g_logFile);
-#endif
-    // send response
-    p= (char*)buf;
-    if(!bidconstructResponse(fError, &p, &iLeft,  szProtectedElement, szError)) {
-        fprintf(g_logFile, "fileServices::servergetProtectedFileKey: constructResponse failed\n");
-        fflush(g_logFile);
-        return false;
-    }
-#ifdef TEST
-    fprintf(g_logFile, "HERE\n");
-    fflush(g_logFile);
-#endif
-    m_pSafeChannel->safesendPacket(buf, strlen((char*)buf)+1, type, multi, final);
-#ifdef TEST
-    fprintf(g_logFile, "HERE\n");
-    fflush(g_logFile);
-#endif
-
-    if(szProtectedElement!=NULL) {
-        free((void*)szProtectedElement);
-        szProtectedElement= NULL;
-    }
-
-#ifdef TEST
-    fprintf(g_logFile, "fileServices::servergetProtectedFileKey returns %d\n", !fError);
-    fflush(g_logFile);
-#endif
-
-    return !fError;
-#else
-    return true;
-#endif
+    return false;
 }
 
 #else
@@ -539,60 +428,7 @@ done:
 
 bool bidchannelServices::clientgetProtectedFileKey(const char* file, timer& accessTimer)
 {
-#if 0
-    char        szBuf[MAXREQUESTSIZEWITHPAD];
-    int         iLeft= MAXREQUESTSIZE;
-    char*       p= (char*)szBuf;
-    Response    oResponse;
-    int         n= 0;
-    int         type= CHANNEL_REQUEST;
-    byte        multi=0;
-    byte        final= 0;
-
-#ifdef  TEST
-    fprintf(g_logFile, "clientgetProtectedFileKey()\n");
-    fflush(g_logFile);
-#endif
-    // send request
-    if(!constructRequest(&p, &iLeft, "getProtectedKey", NULL, "ServerFileKey", 0, NULL)) {
-        fprintf(g_logFile, "clientgetProtectedFileKey: constructRequest returns false\n");
-        return false;
-    }
-#ifdef  TEST1
-    fprintf(g_logFile, "clientgetProtectedFileKey request\n%s\n", szBuf);
-    fflush(g_logFile);
-#endif
-    if((n=m_pSafeChannel->safesendPacket((byte*)szBuf, strlen(szBuf)+1, CHANNEL_REQUEST, 0, 0))<0) {
-        return false;
-    }
-
-    // should be a CHANNEL_RESPONSE, not multipart
-    n= m_pSafeChannel->safegetPacket((byte*)szBuf, MAXREQUESTSIZE, &type, &multi, &final);
-    if(n<0) {
-        fprintf(g_logFile, "clientgetProtectedFileKey: sendResource error %d\n", n);
-        return false;
-    }
-    szBuf[n]= 0;
-    oResponse.getDatafromDoc(szBuf);
-    if(strcmp(oResponse.m_szAction, "accept")!=0) {
-        fprintf(g_logFile, "clientgetProtectedFileKey: rejected request\n");
-        return false;
-    }
-
-    if(oResponse.m_szProtectedElement==NULL) {
-        fprintf(g_logFile, "clientgetProtectedFileKey: no protected element in response\n");
-        return false;
-    }
-
-    // save to file
-    if(!saveBlobtoFile(file, (byte*) oResponse.m_szProtectedElement,
-                       strlen(oResponse.m_szProtectedElement)+1)) {
-        fprintf(g_logFile, "clientgetProtectedFileKey: can't write blob file\n");
-        return false;
-    }
-#endif
-
-    return true;
+    return false;
 }
 
 

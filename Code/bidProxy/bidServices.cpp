@@ -76,6 +76,9 @@
 #endif
 
 
+#define BIGBUFSIZE  16384
+
+
 // ------------------------------------------------------------------------
 
 
@@ -107,10 +110,10 @@ static const char* s_szBidTemplate= (char*)
 char*  constructBid(bidRequest& oReq)
 {
     char            rgbid[8192];
-    char*           szBidderCert= NULL;
-    char*           szAuctionID= NULL;
-    char*           szBidAmount= NULL;
-    char*           szUserName= NULL;
+    const char*     szBidderCert= NULL;
+    const char*     szAuctionID= NULL;
+    const char*     szBidAmount= NULL;
+    const char*     szUserName= NULL;
     char            szTimeNow[256];
     time_t          now;
     struct tm *     timeinfo;
@@ -134,9 +137,9 @@ char*  constructBid(bidRequest& oReq)
                 timeinfo->tm_min, timeinfo->tm_sec);
     }
 
-    szAuctionID= oReq.m_szAuctionID;
+    szAuctionID= oReq.m_szAuctionId;
     szBidAmount= oReq.m_szBid;
-    szBidderCert= oReq.m_szBidderCert;
+    szBidderCert= oReq.m_szEvidence;
     szUserName= oReq.m_szUserName;
     if(szUserName==NULL)
         szUserName= (char*)"Anonymous";
@@ -188,9 +191,11 @@ bool channelServices::closechannelServices()
 }
 
 
+#ifndef BIDCLIENT
+
 bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, timer& myTimer)
 {
-    const char* file= "bidServer/bidssofar.enc
+    char*       file= (char*)"bidServer/bidssofar.enc";
     bool        fError= false;
     char        buf[BIGBUFSIZE];
     char*       p= buf;
@@ -198,6 +203,7 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     char*       channelError= NULL;
 
     // construct Bid
+    const char* signedbid= NULL;
     const char* bidsigninfoBody= constructBid(oReq);
     if(bidsigninfoBody==NULL) {
         fError= true;
@@ -206,7 +212,9 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     }
 
     // sign it and put it on list
-    const char* signedbid= XMLRSASha256SignaturefromSignedInfoandKey(signingKey, bidsigninfoBody);
+    signedbid= XMLRSASha256SignaturefromSignedInfoandKey(
+       *(((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey), 
+                            bidsigninfoBody);
     if(signedbid==NULL) {
         fError= true;
         channelError= (char*) "can't sign bid";
@@ -214,14 +222,18 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     }
 
     // save bids
-    if(!saveBids(DEFAULTENCRYPT, service->m_pServerObj->m_bidKeys, file)) {
+    if(!saveBids(service,
+        (u32)DEFAULTENCRYPT, 
+        (byte*)((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_bidKeys,
+             file)) {
         fError= true;
         channelError= (char*) "can't save bid";
         goto done;
     }
 
 done:
-    char* response= bidconstructResponse(fError, &p, &nLeft, NULL, channelError);
+    if(!bidconstructResponse(fError, &p, &nLeft, NULL, channelError)) {
+    }
     return true;
 }
 
@@ -251,18 +263,13 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
 
 done:
     // construct response and transmit
-    char* response= bidconstructResponse(fError, &p, &nLeft, NULL, channelError);
+    if(!bidconstructResponse(fError, &p, &nLeft, NULL, channelError)) {
+    }
     // send bids if no error
     if(!fError) {
     }
     return true;
 }
-
-
-#ifndef BIDCLIENT
-
-
-#define BIGBUFSIZE  16384
 
 
 const char* bidchannelServices::serializeList()
@@ -282,12 +289,13 @@ const char* bidchannelServices::serializeList()
         if(m_Bids[i]==NULL) {
             return NULL;
         }
-        n= strlen(m_Bids[i])
+        n= strlen(m_Bids[i]);
         if(((p-buf)+n)>(BIGBUFSIZE-2)) {
             return NULL;
         }
         memcpy(p, m_Bids[i], n+1);
         p+= n;
+        size-= n;
     }
     if(((p-buf)+8)>(BIGBUFSIZE-2)) {
         return NULL;
@@ -368,12 +376,12 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
 
     // encrypt bids
     sizeencrypted= strlen(bids)+128;
-    encrypted= malloc(sizeencrypted);
+    encrypted= (byte*)malloc(sizeencrypted);
     if(encrypted==NULL) {
         return false;
     }
-    if(!AES128CBCHMACSHA256SYMPADEncryptBlob(strlen(bids)+1 (byte*)bids, &sizeencrypted, encrypted,
-                                                &keys[0], &keys[16])) {
+    if(!AES128CBCHMACSHA256SYMPADEncryptBlob(strlen(bids)+1, (byte*)bids, 
+                        &sizeencrypted, encrypted, &keys[0], &keys[16])) {
         return false;
     }
 
@@ -388,7 +396,7 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
 bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file)
 {
     byte*   encrypted= NULL;
-    int     sizeencrypted= 0;
+    int     sizeEncrypted= 0;
     int     sizeout= 256;
     byte*   outbuf;
 
@@ -398,9 +406,11 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
 #endif
 
     // read file
-    if(!getBlobfromFile(file, encrypted, &sizeencrypted)) {
+    if(!getBlobfromFile(file, encrypted, &sizeEncrypted)) {
         return false;
     }
+    sizeout= sizeEncrypted;
+    outbuf= (byte*)malloc(sizeout);
 
     // decrypt it
     if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeEncrypted, encrypted, &sizeout, outbuf,
@@ -423,6 +433,7 @@ bool bidchannelServices::servergetProtectedFileKey(bidRequest& oReq, timer& acce
     return false;
 }
 
+
 #else
 
 
@@ -433,16 +444,17 @@ bool bidchannelServices::clientgetProtectedFileKey(const char* file, timer& acce
 
 
 bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* request,
-        timer& accessTimer)
+                              timer& accessTimer)
 {
     // send and get response
-
+   return true;
 }
 
 
 bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* auctionID,
         timer& accessTimer)
 {
+    return false;
 }
 
 
@@ -451,6 +463,8 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* au
 
 // ------------------------------------------------------------------------
 
+
+#ifndef BIDCLIENT
 
 // request loop for bidServer
 #define TIMER(x) ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->x
@@ -495,6 +509,7 @@ int bidServerrequestService(const char* request, serviceChannel* service)
         return -1;
     }
 }
+#endif
 
 
 // ----------------------------------------------------------------------------

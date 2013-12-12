@@ -43,6 +43,8 @@
 
 #define  MAXNUMCLIENTS  50
 
+class bidServer;
+
 
 class bidServerLocals{
 public:
@@ -72,7 +74,11 @@ public:
     bool        retrieveBids(u32 enctype, byte* keys, const char* file);
 #else
     bool        submitBid(bidRequest& oReq, serviceChannel* service, timer& myTimer);
-    bool        clientgetProtectedFileKey(bidRequest& oReq, timer& accessTimer);
+    bool        clientgetProtectedFileKey(const char* file, timer& accessTimer);
+    bool        clientsendBid(safeChannel& fc, byte* keys, const char* request,
+                              timer& accessTimer);
+    bool        requestbids(safeChannel& fc, byte* keys, const char* auctionID,
+                            timer& accessTimer);
 #endif
     bool        closechannelServices();
 };

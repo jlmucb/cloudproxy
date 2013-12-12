@@ -67,6 +67,7 @@ public:
     u32                 m_uMode;
     u32                 m_uPad;
     u32                 m_uHmac;
+    char*               m_szSealedKeyFile;
     int                 m_sizeKey;
     byte                m_bidKeys[GLOBALMAXSYMKEYSIZE];
 

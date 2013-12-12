@@ -96,19 +96,16 @@ bidServer::bidServer()
     m_fpolicyCertValid= false;
 
     m_fEncryptFiles= false;
-    m_szSealedKeyFile= NULL;
     m_fKeysValid= false;
     m_uAlg= 0;
     m_uMode= 0;
     m_uPad= 0;
     m_uHmac= 0;
+    m_szSealedKeyFile= NULL;
     m_sizeKey= GLOBALMAXSYMKEYSIZE;
     m_szSigningCertFile= NULL;
-    m_szSealingCertFile= NULL;
     m_szsigningCert= NULL;
-    m_szsealingCert= NULL;
     m_signingKey= NULL;
-    m_sealingKey= NULL;
 }
 
 
@@ -125,21 +122,9 @@ bidServer::~bidServer()
     if(m_fKeysValid)
         memset(m_bidKeys, 0, m_sizeKey);
     m_fKeysValid= false;
-    if(m_szSealedKeyFile!=NULL)
-        free(m_szSealedKeyFile);
-    m_szSealedKeyFile= NULL;
-
     if(m_szsigningCert!=NULL) {
         free(m_szsigningCert);
         m_szsigningCert= NULL;
-    }
-    if(m_sealingKey!=NULL) {
-        delete m_sealingKey;
-        m_sealingKey= NULL;
-    }
-    if(m_szsealingCert!=NULL) {
-        free(m_szsealingCert);
-        m_szsealingCert= NULL;
     }
 }
 

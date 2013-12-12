@@ -35,6 +35,7 @@
 #include "cert.h"
 #include "tao.h"
 #include "timer.h"
+#include "bidServices.h"
 
 #include <string>
 using std::string;
@@ -43,7 +44,7 @@ class bidClient {
 public:
     int                 m_clientState;
     bool                m_fChannelAuthenticated;
-    session		m_clientSession;
+    session             m_clientSession;
 
     taoHostServices     m_host;
     taoEnvironment      m_tcHome;
@@ -64,10 +65,12 @@ public:
     int                 m_sizeKey;
     byte                m_bidKeys[GLOBALMAXSYMKEYSIZE];
 
-    int	                m_fd;
+    int                 m_fd;
     safeChannel         m_fc;
     char*               m_szPort;
     char*               m_szAddress;
+
+    bidchannelServices* m_Services;
 
     timer               m_sealTimer;
     timer               m_unsealTimer;

@@ -35,6 +35,8 @@
 #include "mpFunctions.h"
 #include "jlmUtility.h"
 #include "request.h"
+#include "bidRequest.h"
+#include "bidServices.h"
 #include "sha256.h"
 #include "tinyxml.h"
 #include "domain.h"
@@ -141,6 +143,7 @@ bidClient::~bidClient ()
     if(m_szSealedKeyFile!=NULL)
         free(m_szSealedKeyFile);
     m_szSealedKeyFile= NULL;
+    m_Services= new bidchannelServices(2);
 }
 
 
@@ -500,19 +503,24 @@ void bidClient::closeConnection()
 //  Application specific logic
 // 
 
+
+#define SMALLBUFSIZE 1024
+
+
 bool bidClient::readBid(safeChannel& fc, const string& auctionID, 
                                const string& user, const string& bid, 
                                const string& userCert)
 {
-    char    buf[512];
-    int     size= 512;
-    char*   p= buf;
+    char  	buf[SMALLBUFSIZE];
+    int         size= SMALLBUFSIZE;
+    char*       p= buf;
 
-    if(!bidconstructRequest(&p, &size, "submitBid", auctionID, user, bid, userCert)) {
+    if(!bidconstructRequest(&p, &size, "submitBid", auctionID.c_str(), user.c_str(), 
+                            bid.c_str(), userCert.c_str())) {
         return false;
     }
 
-    if(clientsendBid(fc, m_oKeys, buf, m_encTimer)) {
+    if(m_Services->clientsendBid(fc, m_bidKeys, (const char*)buf, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
         fflush(g_logFile);
     } 

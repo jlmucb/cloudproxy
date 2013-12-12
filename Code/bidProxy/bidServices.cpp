@@ -109,7 +109,7 @@ static const char* s_szBidTemplate= (char*)
 
 char*  constructBid(bidRequest& oReq)
 {
-    char            rgbid[8192];
+    char            rgbid[BIGBUFSIZE];
     const char*     szBidderCert= NULL;
     const char*     szAuctionID= NULL;
     const char*     szBidAmount= NULL;
@@ -126,7 +126,6 @@ char*  constructBid(bidRequest& oReq)
     timeinfo= gmtime(&now);
     if(timeinfo==NULL) {
         fprintf(g_logFile, "constructBid: can't get current time\n");
-        fflush(g_logFile);
         szTimeNow[0]= 0;
     }
     else {
@@ -144,6 +143,11 @@ char*  constructBid(bidRequest& oReq)
     if(szUserName==NULL)
         szUserName= (char*)"Anonymous";
 
+    if((strlen(s_szBidTemplate)+strlen(szAuctionID)+strlen(szBidAmount)+strlen(szUserName)+
+        strlen(szTimeNow)+strlen(szBidderCert))>(BIGBUFSIZE-8)) {
+        fprintf(g_logFile, "constructBid: bid too large\n");
+        return NULL;
+    }
     sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount,
                   szUserName, szTimeNow, szBidderCert);
 
@@ -233,6 +237,8 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
 
 done:
     if(!bidconstructResponse(fError, &p, &nLeft, NULL, channelError)) {
+        fprintf(g_logFile, "bidchannelServices::bidconstructResponse failed\n");
+        return false;
     }
     return true;
 }
@@ -264,6 +270,8 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
 done:
     // construct response and transmit
     if(!bidconstructResponse(fError, &p, &nLeft, NULL, channelError)) {
+        fprintf(g_logFile, "bidchannelServices::bidconstructResponse failed\n");
+        return false;
     }
     // send bids if no error
     if(!fError) {
@@ -317,12 +325,14 @@ bool bidchannelServices::deserializeList(const char* list)
 #endif
 
     if(!doc.Parse(list)) {
+        fprintf(g_logFile, "bidchannelServices::deserializeList cant parse list\n");
         return false;
     }
 
     TiXmlElement*   pRootElement= doc.RootElement();
     TiXmlNode*      pNode= NULL;
     if(strcmp(pRootElement->Value(),"Bids")!=0) {
+        fprintf(g_logFile, "bidchannelServices::deserializeList no Bids element\n");
         return false;
     }
     pRootElement->QueryIntAttribute ("nbids", &m_nBids);
@@ -371,6 +381,7 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
     // serialize bids
     const char* bids= serializeList();
     if(bids==NULL) {
+        fprintf(g_logFile, "bidchannelServices::saveBids cant serialize\n");
         return false;
     }
 
@@ -378,15 +389,18 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
     sizeencrypted= strlen(bids)+128;
     encrypted= (byte*)malloc(sizeencrypted);
     if(encrypted==NULL) {
+        fprintf(g_logFile, "bidchannelServices::saveBids cant alloc\n");
         return false;
     }
     if(!AES128CBCHMACSHA256SYMPADEncryptBlob(strlen(bids)+1, (byte*)bids, 
                         &sizeencrypted, encrypted, &keys[0], &keys[16])) {
+        fprintf(g_logFile, "bidchannelServices::saveBids cant decrypt\n");
         return false;
     }
 
     // save it to file
     if(!saveBlobtoFile(file, encrypted, sizeencrypted)) {
+        fprintf(g_logFile, "bidchannelServices::saveBids cant save\n");
         return false;
     }
     return true;
@@ -407,6 +421,7 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
 
     // read file
     if(!getBlobfromFile(file, encrypted, &sizeEncrypted)) {
+        fprintf(g_logFile, "bidchannelServices::retrieveBids cant getBlob\n");
         return false;
     }
     sizeout= sizeEncrypted;
@@ -415,11 +430,13 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
     // decrypt it
     if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeEncrypted, encrypted, &sizeout, outbuf,
                                                 &keys[0], &keys[16])) {
+        fprintf(g_logFile, "bidchannelServices::retrieveBids cant decrypt\n");
         return false;
     }
 
     // deserialize bid list
     if(!deserializeList((const char*) outbuf)) {
+        fprintf(g_logFile, "bidchannelServices::retrieveBids cant deserialize\n");
         return false;
     }
 
@@ -443,10 +460,73 @@ bool bidchannelServices::clientgetProtectedFileKey(const char* file, timer& acce
 }
 
 
+bool sendBlob(safeChannel& fc, byte* blob, int blobsize)
+{
+    int         type= CHANNEL_TRANSFER;
+    byte        multi= 1;
+    byte        final= 0;
+    int         n;
+
+    for(;;) {
+        n= (blobsize>MAXREQUESTSIZE)?MAXREQUESTSIZE:blobsize;
+        blobsize-= n;
+        if(blobsize<=0)
+            final= 1;
+        fc.safesendPacket(blob, n, type, multi, final);
+        if(final>0)
+            break;
+    }
+    return true;
+}
+
+
 bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* request,
                               timer& accessTimer)
 {
+    int         n;
+    char        buf[BIGBUFSIZE];
+    bidResponse oResponse;
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
+
     // send and get response
+    if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_REQUEST, 
+                            0, 0))<0) {
+        fprintf(g_logFile, 
+                "clientsendBid: safesendPacket after constructRequest returns false\n");
+        return false;
+    }
+
+    // should be a CHANNEL_RESPONSE, not multipart
+    n= fc.safegetPacket((byte*)buf, MAXREQUESTSIZE, &type, &multi, &final);
+    if(n<0) {
+        fprintf(g_logFile, "clientsendBid: transmit error %d\n", n);
+        return false;
+    }
+    buf[n]= 0;
+    oResponse.getDatafromDoc(buf);
+
+    // check response
+    if(oResponse.m_szAction==NULL || strcmp(oResponse.m_szAction, "accept")!=0) {
+        fprintf(g_logFile, "clientsendBid: response is false\n");
+        return false;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "clientsendBid sending file\n");
+    fflush(g_logFile);
+#endif
+    // send blob
+    if(!sendBlob(fc, (byte*) request, n)) {
+        fprintf(g_logFile, "clientsendBid cant send blob\n");
+        return false;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "clientsendBid returns true\n");
+    fflush(g_logFile);
+#endif
    return true;
 }
 
@@ -481,7 +561,6 @@ int bidServerrequestService(const char* request, serviceChannel* service)
                 request);
             return -1;
      }
-
     if(strcmp(oReq.m_szAction, "submitBid")==0) {
          if(!SERVICESOBJ(acceptBid)(oReq, service, TIMER(m_decTimer))) {
              fprintf(g_logFile, "acceptBid failed 1\n");
@@ -499,13 +578,13 @@ int bidServerrequestService(const char* request, serviceChannel* service)
     else if(strcmp(oReq.m_szAction, "getProtectedKey")==0) {
         if(!SERVICESOBJ(servergetProtectedFileKey)(oReq, TIMER(m_accessCheckTimer))) {
             fprintf(g_logFile, 
-                "fileServerrequestService:: servergetProtectedKey failed\n");
+                "bidServerrequestService:: servergetProtectedKey failed\n");
             return -1;
         }
         return 1;
     }
     else {
-        fprintf(g_logFile, "fileServerrequestService: invalid request type\n");
+        fprintf(g_logFile, "bidServerrequestService: invalid request type\n");
         return -1;
     }
 }

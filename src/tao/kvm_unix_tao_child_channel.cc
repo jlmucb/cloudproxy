@@ -28,6 +28,7 @@
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
 #include "tao/tao_child_channel_params.pb.h"
+#include "tao/util.h"
 
 namespace tao {
 KvmUnixTaoChildChannel::KvmUnixTaoChildChannel(const string &params)
@@ -62,49 +63,11 @@ bool KvmUnixTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const 
   // try to receive an integer
   CHECK(m) << "m was null";
 
-  size_t len;
-  ssize_t bytes_read = read(fd_, &len, sizeof(size_t));
-  if (bytes_read != sizeof(size_t)) {
-    LOG(ERROR) << "Could not receive a size on the channel";
-    return false;
-  }
-
-  // then read this many bytes as the message
-  scoped_array<char> bytes(new char[len]);
-  bytes_read = read(fd_, bytes.get(), len);
-
-  // TODO(tmroeder): add safe integer library
-  if (bytes_read != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not read the right number of bytes from the fd";
-    return false;
-  }
-
-  string serialized(bytes.get(), len);
-  return m->ParseFromString(serialized);
+  return tao::ReceiveMessage(fd_, m);
 }
 
 bool KvmUnixTaoChildChannel::SendMessage(
     const google::protobuf::Message &m) const {
-  // send the length then the serialized message
-  string serialized;
-  if (!m.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the Message to a string";
-    return false;
-  }
-
-  size_t len = serialized.size();
-  ssize_t bytes_written = write(fd_, &len, sizeof(size_t));
-  if (bytes_written != sizeof(size_t)) {
-    LOG(ERROR) << "Could not write the length to the fd " << fd_;
-    return false;
-  }
-
-  bytes_written = write(fd_, serialized.data(), len);
-  if (bytes_written != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not wire the serialized message to the fd";
-    return false;
-  }
-
-  return true;
+  return tao::SendMessage(fd_, m);
 }
 }  // namespace tao

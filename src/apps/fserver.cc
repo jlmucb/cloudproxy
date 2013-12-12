@@ -32,6 +32,7 @@
 #include "cloudproxy/file_server.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/tao_auth.h"
+#include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
 using std::mutex;
@@ -69,16 +70,6 @@ DEFINE_int32(port, 11235, "The port to listen on");
 DEFINE_string(aik_cert, "./HW/aik.crt",
               "A certificate for the AIK, signed by the public policy key");
 
-vector<shared_ptr<mutex> > locks;
-
-void locking_function(int mode, int n, const char *file, int line) {
-  if (mode & CRYPTO_LOCK) {
-    locks[n]->lock();
-  } else {
-    locks[n]->unlock();
-  }
-}
-
 int main(int argc, char **argv) {
   // make sure protocol buffers is using the right version
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -87,6 +78,7 @@ int main(int argc, char **argv) {
 
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
+  tao::InitializeOpenSSL();
 
   // the last argument should be the parameters for channel establishment
   if (argc < 2) {
@@ -100,23 +92,9 @@ int main(int argc, char **argv) {
   scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  // initialize OpenSSL
-  SSL_load_error_strings();
-  ERR_load_BIO_strings();
-  OpenSSL_add_all_algorithms();
-  SSL_library_init();
-
   scoped_ptr<WhitelistAuth> whitelist_auth(
       new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
   CHECK(whitelist_auth->Init()) << "Could not initialize the auth manager";
-
-  // set up locking in OpenSSL
-  int lock_count = CRYPTO_num_locks();
-  locks.resize(lock_count);
-  for (int i = 0; i < lock_count; i++) {
-    locks[i].reset(new mutex());
-  }
-  CRYPTO_set_locking_callback(locking_function);
 
   cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_cert,
                             FLAGS_server_key, FLAGS_server_password,

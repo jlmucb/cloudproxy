@@ -504,13 +504,15 @@ bool bidClient::readBid(safeChannel& fc, const string& auctionID,
                                const string& user, const string& bid, 
                                const string& userCert)
 {
-    // FIX
-#if 0
-    int     encType= NOENCRYPT;
+    char    buf[512];
+    int     size= 512;
+    char*   p= buf;
 
-    if(clientsendbidtoserver(fc, m_oKeys, auctionID.c_str(),  user.c_str(),
-                              bid.c_str(), userCert.c_str(),
-                              encType, m_bidKeys, m_encTimer)) {
+    if(!bidconstructRequest(&p, &size, "submitBid", auctionID, user, bid, userCert)) {
+        return false;
+    }
+
+    if(clientsendBid(fc, m_oKeys, buf, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
         fflush(g_logFile);
     } 
@@ -519,7 +521,6 @@ bool bidClient::readBid(safeChannel& fc, const string& auctionID,
         fflush(g_logFile);
         return false;
     }
-#endif
 
     return true;
 }

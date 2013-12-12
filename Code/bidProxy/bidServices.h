@@ -68,7 +68,7 @@ public:
     const char* serializeList();
     bool        deserializeList(const char* list);
     bool        getBids(bidRequest& oReq, serviceChannel* service, timer& myTimer);
-    bool        saveBids(u32 enctype, byte* keys, const char* file);
+    bool        saveBids(serviceChannel* service, u32 enctype, byte* keys, const char* file);
     bool        retrieveBids(u32 enctype, byte* keys, const char* file);
 #else
     bool        submitBid(bidRequest& oReq, serviceChannel* service, timer& myTimer);

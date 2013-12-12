@@ -62,7 +62,6 @@ public:
 
     //    Keys for bid encryption
     bool                m_fEncryptFiles;
-    char*               m_szSealedKeyFile;
     bool                m_fKeysValid;
     u32                 m_uAlg;
     u32                 m_uMode;
@@ -71,13 +70,9 @@ public:
     int                 m_sizeKey;
     byte                m_bidKeys[GLOBALMAXSYMKEYSIZE];
 
-    char*               m_szSigningCertFile;
-    char*               m_szSealingCertFile;
-    RSAKey*             m_signingKey;
     char*               m_szsigningCert;
-    RSAKey*             m_sealingKey;
-    char*               m_szsealingCert;
-
+    char*               m_szSigningCertFile;
+    RSAKey*             m_signingKey;
     timer               m_sealTimer;
     timer               m_unsealTimer;
     timer               m_taoEnvInitializationTimer;

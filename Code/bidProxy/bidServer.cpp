@@ -299,7 +299,6 @@ bool bidServer::initServer(const char* configDirectory)
     const char*     directory= NULL;
 
     try {
-
         const char** parameters = NULL;
         int parameterCount = 0;
         if(configDirectory==NULL) {
@@ -433,7 +432,6 @@ bool bidServer::server()
         fprintf(g_logFile, "Set SIGCHLD to avoid zombies\n");
     }
 
-
     serviceChannel*     poSc= NULL;
     int                 i;
     for(;;) {
@@ -452,7 +450,6 @@ bool bidServer::server()
 #endif
 
         poSc= new serviceChannel();
-
         if(poSc!=NULL) {
 
             for(i=0; i<m_iNumClients; i++) {
@@ -480,8 +477,7 @@ bool bidServer::server()
                 return false;
             }
 
-            // poSc->m_signingKey=  m_signingKey;
-            // poSc->m_sealingKey=  m_sealingKey;
+            poSc->m_signingKey=  m_signingKey;
 #ifdef TEST
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);
             fflush(g_logFile);
@@ -623,6 +619,7 @@ void bidServer::printTimers(FILE* log) {
         m_decTimer.print(log);
     }
 }
+
 
 void bidServer::resetTimers() {
     m_sealTimer.Clear();

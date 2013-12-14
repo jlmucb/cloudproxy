@@ -25,8 +25,6 @@
 #include "bidClient.h"
 #include "safeChannel.h"
 #include "bidServer.h"
-//#include "sellerClient.h"
-
 #include "bidTester.h"
 
 #include <sys/types.h>
@@ -114,7 +112,8 @@ void bidTester::getClientParams(const TiXmlNode* parent,
     }
 }
 
-void bidTester::getParams(const TiXmlNode* parent, const string& parentPath, bidTestParams& params) {
+void bidTester::getParams(const TiXmlNode* parent, const string& parentPath, 
+                            bidTestParams& params) {
     // check for the 'timed', 'repetitions', and 'name' attributes
     bool timed = false;
     const TiXmlElement* elt = parent->ToElement();
@@ -273,20 +272,15 @@ bool bidTester::runTest(const char* directory,
                 while(params.bids.end() != it) {
                     // set up a bid client and get a channel for it to talk to the server
                     bidClient client;
-                    safeChannel channel;
-                    result = client.establishConnection(channel,
-                            it->first.keyFile.c_str(),
-                            it->first.certFile.c_str(),
-                            directory,
-                            m_serverAddress.c_str(),
-                            m_serverPort);
+                    result = client.establishConnection(it->first.keyFile.c_str(),
+                            it->first.certFile.c_str(), directory,
+                            m_serverAddress.c_str(), m_serverPort);
 
                     try {
                         // send the bid to the server
                         stringstream ss;
                         ss << it->second;
-                        result = client.readBid(channel,
-                                            "1",
+                        result = client.readBid("1",
                                             it->first.subject,
                                             ss.str(),
                                             it->first.authFile);

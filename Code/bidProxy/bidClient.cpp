@@ -456,9 +456,9 @@ extern const char*  g_szTerm;
 #define BIDCLIENTTEST
 #ifdef BIDCLIENTTEST
 
-bool bidClient::establishConnection(safeChannel& fc, const char* keyFile, 
-                                    const char* certFile, const char* directory,
-                                    const char* serverAddress, u_short serverPort) 
+bool bidClient::establishConnection(const char* keyFile, const char* certFile, 
+                                    const char* directory, const char* serverAddress, 
+                                    u_short serverPort) 
 {
     try {
 #ifdef  TEST
@@ -513,9 +513,8 @@ void bidClient::closeConnection()
 #define SMALLBUFSIZE 1024
 
 
-bool bidClient::readBid(safeChannel& fc, const string& auctionID, 
-                               const string& user, const string& bid, 
-                               const string& userCert)
+bool bidClient::readBid(const string& auctionID, const string& user, 
+                        const string& bid, const string& userCert)
 {
     char  	buf[SMALLBUFSIZE];
     int         size= SMALLBUFSIZE;
@@ -526,7 +525,7 @@ bool bidClient::readBid(safeChannel& fc, const string& auctionID,
         return false;
     }
 
-    if(m_Services->clientsendBid(fc, m_bidKeys, (const char*)buf, m_encTimer)) {
+    if(m_Services->clientsendBid(m_fc, m_bidKeys, (const char*)buf, m_encTimer)) {
         fprintf(g_logFile, "bidClient bidTest: read file successful\n");
         fflush(g_logFile);
     } 

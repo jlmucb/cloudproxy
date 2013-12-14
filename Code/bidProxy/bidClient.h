@@ -88,10 +88,11 @@ public:
     bool    initPolicy();
     bool    initFileKeys();
     bool    closeClient();
-    bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
-                     const char* directory, const char* serverAddress, u_short serverPort);
+    bool    establishConnection(const char* keyFile, const char* certFile, 
+                     const char* directory, const char* serverAddress, 
+                     u_short serverPort);
     void    closeConnection();
-    bool    readBid(safeChannel& fc, const string& auctionID, const string& user, 
+    bool    readBid(const string& auctionID, const string& user, 
                     const string& bid, const string& userCert);
     bool    compareFiles(const string& firstFile, const string& secondFile);
 

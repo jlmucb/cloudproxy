@@ -333,7 +333,7 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
 
         // init environment
         m_taoEnvInitializationTimer.Start();
-        if(!m_tcHome.EnvInit(g_envplatform, "fileClient", DOMAIN, g_hostDirectory,
+        if(!m_tcHome.EnvInit(g_envplatform, "bidClient", DOMAIN, g_hostDirectory,
                              BIDCLIENTSUBDIRECTORY, &m_host, g_serviceProvider, 0, NULL)) {
             throw "bidClient::Init: can't init environment\n";
         }
@@ -398,8 +398,12 @@ bool bidClient::initClient(const char* configDirectory, const char* serverAddres
 
         // negotiate channel
         m_protocolNegoTimer.Start();
+        const char* keyFile="/home/jlm/jlmcrypt/bidClient/tests/basicBidTest/principalPrivateKeys.xml";
+        const char* certFile="/home/jlm/jlmcrypt/bidClient/tests/basicBidTest/principalPublicKeys.xml";
+        const char* szPrincipalKeys= readandstoreString(keyFile);
+        const char* szPrincipalCerts= readandstoreString(certFile);
         if(!m_clientSession.clientprotocolNego(m_fd, m_fc,
-                                    NULL, NULL))
+                                    szPrincipalKeys, szPrincipalCerts))
             throw("fileClient::Init: protocolNego failed\n");
         m_protocolNegoTimer.Stop();
 
@@ -469,12 +473,14 @@ bool bidClient::establishConnection(safeChannel& fc, const char* keyFile,
         fprintf(g_logFile, "bidClient main: protocol nego\n");
         fflush(g_logFile);
 #endif
+#if 0
         // protocol Nego
         m_protocolNegoTimer.Start();
         // FIX: szPrincipalKeys, szPrincipalCerts
         if(!m_clientSession.clientprotocolNego(m_fd, m_fc, NULL, NULL))
             throw "bidClient main: Cant negotiate channel\n";
         m_protocolNegoTimer.Stop();
+#endif
     }
     catch(const char* szError) {
         fprintf(g_logFile, "Error: %s\n", szError);
@@ -608,6 +614,7 @@ int main(int an, char** av)
     initLog("bidClient.log");
 #ifdef  TEST
     fprintf(g_logFile, "bidClient main in measured loop\n");
+    fprintf(g_logFile, "testDir: %s\n", testPath.c_str());
     fflush(g_logFile);
 #endif
     try {

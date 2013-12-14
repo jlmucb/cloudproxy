@@ -1285,6 +1285,10 @@ bool session::initializePrincipalPrivateKeys(const char* szPrincipalPrivateKeys)
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
 
+#ifdef TEST1
+    fprintf(g_logFile, "Principal private keys\n%s\n", szPrincipalPrivateKeys);
+    fflush(g_logFile);
+#endif
     if(!doc.Parse(szPrincipalPrivateKeys)) {
         fprintf(g_logFile,  
            "session::initializePrincipalPrivateKeys: Cannot parse Principal Private Keys\n");
@@ -1798,7 +1802,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
     m_sessionState= KEYNEGOSTATE;
     request[0]= '\0';
 #ifdef TEST
-    fprintf(g_logFile, "fileClient: protocol negotiation\n");
+    fprintf(g_logFile, "clientprotocolNego: protocol negotiation\n");
     fflush(g_logFile);
 #endif
 

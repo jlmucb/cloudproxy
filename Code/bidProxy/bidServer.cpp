@@ -141,17 +141,17 @@ bool bidServer::initPolicy()
     }
 
     if(!m_tcHome.policyCertValid())  {
-        fprintf(g_logFile, "fileServer::initPolicy(): policyKey invalid\n");
+        fprintf(g_logFile, "bidServer::initPolicy(): policyKey invalid\n");
         return false;
     }
 
     // initialize policy cert
     if(!m_opolicyCert.init(m_tcHome.policyCertPtr())) {
-        fprintf(g_logFile, "fileServer::Init:: Can't init policy cert 1\n");
+        fprintf(g_logFile, "bidServer::Init:: Can't init policy cert 1\n");
         return false;
     }
     if(!m_opolicyCert.parsePrincipalCertElements()) {
-        fprintf(g_logFile, "fileServer::Init:: Can't init policy key 2\n");
+        fprintf(g_logFile, "bidServer::Init:: Can't init policy key 2\n");
         return false;
     }
     m_fpolicyCertValid= true;
@@ -329,7 +329,7 @@ bool bidServer::initServer(const char* configDirectory)
         // init environment
         m_taoEnvInitializationTimer.Start();
         if(!m_tcHome.EnvInit(g_envplatform, "bidServer", DOMAIN, g_hostDirectory,
-                             "fileServer", &m_host, g_serviceProvider, 0, NULL)) {
+                             "bidServer", &m_host, g_serviceProvider, 0, NULL)) {
             throw "bidServer::Init: can't init environment\n";
         }
         m_taoEnvInitializationTimer.Stop();
@@ -459,7 +459,7 @@ bool bidServer::server()
 
             if(i==m_iNumClients) {
                 if(m_iNumClients>=MAXNUMCLIENTS) {
-                    fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
+                    fprintf(g_logFile, "bidServer::server: Can't allocate theServiceChannel\n");
                     return false;
                 }
                 i= m_iNumClients++;
@@ -473,11 +473,10 @@ bool bidServer::server()
             if(!poSc->initServiceChannel("bidServer", newfd, &m_opolicyCert, &m_host,
                                          &m_tcHome, &m_serverThreads[i],
                                          bidServerrequestService, pmyServices, pmyLocals)) {
-                fprintf(g_logFile, "fileServer::server: Can't initServiceChannel\n");
+                fprintf(g_logFile, "bidServer::server: Can't initServiceChannel\n");
                 return false;
             }
 
-            poSc->m_signingKey=  m_signingKey;
 #ifdef TEST
             fprintf(g_logFile, "\tnewfd: %d\n", newfd);
             fflush(g_logFile);
@@ -486,7 +485,7 @@ bool bidServer::server()
             m_serverThreads[i].m_threadID= pthread_create(&m_serverThreads[i].m_threadData, NULL,
                                     channelThread, poSc);
 #ifdef TEST
-            fprintf(g_logFile, "fileServer: pthread create returns: %d\n",
+            fprintf(g_logFile, "bidServer: pthread create returns: %d\n",
                     m_serverThreads[i].m_threadID);
             fflush(g_logFile);
 #endif
@@ -496,7 +495,7 @@ bool bidServer::server()
                 m_serverThreads[i].m_fthreadValid= false;
         }
         else {
-            fprintf(g_logFile, "fileServer::server: Can't allocate theServiceChannel\n");
+            fprintf(g_logFile, "bidServer::server: Can't allocate theServiceChannel\n");
         }
 
 

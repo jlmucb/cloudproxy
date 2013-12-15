@@ -117,8 +117,9 @@ char*  constructBid(bidRequest& oReq)
     char            szTimeNow[256];
     time_t          now;
     struct tm *     timeinfo;
+    int             keysize= 1024; 
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "constructBid\n");
     fflush(g_logFile);
 #endif
@@ -135,10 +136,6 @@ char*  constructBid(bidRequest& oReq)
                 timeinfo->tm_mday, timeinfo->tm_hour,
                 timeinfo->tm_min, timeinfo->tm_sec);
     }
-#ifdef  TEST
-    fprintf(g_logFile, "constructBid: %s\n", szTimeNow);
-    fflush(g_logFile);
-#endif
 
     szAuctionID= oReq.m_szAuctionId;
     szBidAmount= oReq.m_szBid;
@@ -149,22 +146,17 @@ char*  constructBid(bidRequest& oReq)
     if(szUserName==NULL)
         szUserName= (char*)"Anonymous";
 
-#ifdef  TEST
-    fprintf(g_logFile, "constructBid: auctionID %s, amount %s, cert %s, name %s, time %s\n",
-        szAuctionID, szBidAmount, szBidderCert, szUserName, szTimeNow);
-    fflush(g_logFile);
-#endif
-
     if((strlen(s_szBidTemplate)+strlen(szAuctionID)+strlen(szBidAmount)+strlen(szUserName)+
         strlen(szTimeNow)+strlen(szBidderCert))>(BIGBUFSIZE-8)) {
         fprintf(g_logFile, "constructBid: bid too large\n");
+        fflush(g_logFile);
         return NULL;
     }
 
-    sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount,
+    sprintf(rgbid, s_szBidTemplate, keysize, szAuctionID, szBidAmount,
                   szUserName, szTimeNow, szBidderCert);
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "constructBid returning %s\n", rgbid);
     fflush(g_logFile);
 #endif
@@ -222,11 +214,29 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     // construct Bid
     const char* signedbid= NULL;
     const char* bidsigninfoBody= constructBid(oReq);
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::acceptBid, signed bid prototype\n%s\n", 
+            bidsigninfoBody);
+    fflush(g_logFile);
+#endif
     if(bidsigninfoBody==NULL) {
         fError= true;
         channelError= (char*) "can't construct bid";
         goto done;
     }
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::acceptBid start\n");
+    fflush(g_logFile);
+    fprintf(g_logFile, "bidchannelServices::acceptBid, signing key %08x  %08x  %08x\n",
+            service->m_pchannelLocals,
+            ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj,
+            ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj);
+            // ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey);
+    fflush(g_logFile);
+    (((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey)->printMe();
+    fflush(g_logFile);
+#endif
 
     // sign it and put it on list
     signedbid= XMLRSASha256SignaturefromSignedInfoandKey(
@@ -237,6 +247,11 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
         channelError= (char*) "can't sign bid";
         goto done;
     }
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::bidconstructResponse\n%s\n", signedbid);
+    fflush(g_logFile);
+#endif
 
     // save bids
     if(!saveBids(service,

@@ -1,4 +1,4 @@
-//  File: request.cpp
+//  File: bidRequest.cpp
 //  Description: cloudProxy request response objects
 //
 //  Copyright (c) 2011, Intel Corporation. Some contributions 

@@ -277,8 +277,9 @@ done:
         fprintf(g_logFile, "bidchannelServices::bidconstructResponse failed\n");
         return false;
     }
+
     // send response
-    SERVICESOBJ(m_oSafeChannel)->safesendPacket(buf, (int)strlen(reinterpret_cast<char*>(buf))+1,
+    service->m_oSafeChannel.safesendPacket((byte*)buf, (int)strlen(reinterpret_cast<char*>(buf))+1,
                                    type, multi, final);
     return true;
 }

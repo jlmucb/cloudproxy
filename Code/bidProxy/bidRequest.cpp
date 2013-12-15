@@ -91,11 +91,11 @@ bidRequest::~bidRequest()
     }
     if(m_szBid!=NULL) {
         free((void*)m_szBid);
-	m_szBid= NULL;
+        m_szBid= NULL;
     }
     if(m_szUserName!=NULL) {
         free((void*)m_szUserName);
-	m_szUserName= NULL;
+        m_szUserName= NULL;
     }
     if(m_szAuctionId!=NULL) {
         free((void*)m_szAuctionId);
@@ -307,12 +307,6 @@ bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction,
                        const char* szAuctionID, const char* szUserName,
                        const char* szBid, const char* szEvidence)
 {
-#ifdef  TEST1
-    char* p= *pp;
-    fprintf(g_logFile, "bidconstructRequest started %s %s %s %s %s\n",
-            szAction, szAuctionID, szUserName, szBid, szEvidence);
-    fflush(g_logFile);
-#endif
     const char*   szNoEvidence= "  <EvidenceCollection count='0'/>\n";
     int           size= strlen(s_szRequestTemplate)+strlen(szAction);
 
@@ -320,15 +314,27 @@ bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction,
         szEvidence= szNoEvidence;
     }
     size+= strlen(szEvidence);
-#if 0
+    if(szAuctionID==NULL) {
+        fprintf(g_logFile, "bidconstructRequest: no auctionid\n");
+        return false;
+    }
+    size+= strlen(szAuctionID);
+    if(szBid==NULL) {
+        fprintf(g_logFile, "bidconstructRequest: no bid\n");
+        return false;
+    }
+    size+= strlen(szBid);
+    if(szUserName==NULL) {
+        fprintf(g_logFile, "bidconstructRequest: no user name\n");
+        return false;
+    }
+    size+= strlen(szUserName);
+
     if((size+8)>*piLeft) {
         fprintf(g_logFile, "bidconstructRequest: request too large %d %d\n", size, *piLeft);
-        fflush(g_logFile);
         return false;
     }    
-    sprintf(*pp, s_szRequestTemplate, szAction, szEvidence, szResourceName, 
-            resSize, szSubjectElement);
-#endif
+    sprintf(*pp, s_szRequestTemplate, szAction, szAuctionID, szUserName, szBid, szEvidence, "");
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
@@ -384,10 +390,9 @@ bool  bidconstructResponse(bool fError, char** pp, int* piLeft,
         fprintf(g_logFile, "bidconstructResponse: response too large\n");
         return false;
     }
-#if 0
-    sprintf(*pp, s_szResponseTemplate,  szRes, szErrorElement, szResourceName, 
-            resSize, szExtraResponseElements);
-#endif
+
+    sprintf(*pp, s_szResponseTemplate,  szRes, szErrorElement, szExtraResponseElements);
+
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;

@@ -491,6 +491,10 @@ bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* 
     byte        multi= 0;
     byte        final= 0;
 
+#ifdef TEST
+    fprintf(g_logFile, "bidClient::clientsendBid\n%s\n", request);
+    fflush(g_logFile);
+#endif
     // send and get response
     if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_REQUEST, 
                             0, 0))<0) {
@@ -506,6 +510,11 @@ bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* 
         return false;
     }
     buf[n]= 0;
+
+#ifdef TEST
+    fprintf(g_logFile, "bidClient::clientsendBid response\n%s\n", buf);
+    fflush(g_logFile);
+#endif
     oResponse.getDatafromDoc(buf);
 
     // check response

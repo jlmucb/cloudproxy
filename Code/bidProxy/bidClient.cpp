@@ -462,7 +462,8 @@ bool bidClient::establishConnection(const char* keyFile, const char* certFile,
 {
     try {
 #ifdef  TEST
-        fprintf(g_logFile, "bidClient main: inited g_policyPrincipalCert\n");
+        fprintf(g_logFile, "bidClient::establishConnection: %s %s %s %s\n", keyFile,
+		certFile, directory, serverAddress);
         fflush(g_logFile);
 #endif
         // init logfile, crypto, etc
@@ -472,14 +473,6 @@ bool bidClient::establishConnection(const char* keyFile, const char* certFile,
 #ifdef  TEST
         fprintf(g_logFile, "bidClient main: protocol nego\n");
         fflush(g_logFile);
-#endif
-#if 0
-        // protocol Nego
-        m_protocolNegoTimer.Start();
-        // FIX: szPrincipalKeys, szPrincipalCerts
-        if(!m_clientSession.clientprotocolNego(m_fd, m_fc, NULL, NULL))
-            throw "bidClient main: Cant negotiate channel\n";
-        m_protocolNegoTimer.Stop();
 #endif
     }
     catch(const char* szError) {
@@ -520,8 +513,14 @@ bool bidClient::readBid(const string& auctionID, const string& user,
     int         size= SMALLBUFSIZE;
     char*       p= buf;
 
+#ifdef TEST
+    fprintf(g_logFile, "bidClient::readBid: %s %s %s\n%s\n", auctionID.c_str(), user.c_str(),
+                        bid.c_str(), userCert.c_str());
+    fflush(g_logFile);
+#endif
     if(!bidconstructRequest(&p, &size, "submitBid", auctionID.c_str(), user.c_str(), 
                             bid.c_str(), userCert.c_str())) {
+    	fprintf(g_logFile, "bidClient::readBid: bad bidconstructRequest\n");
         return false;
     }
 

@@ -191,13 +191,19 @@ bool bidServer::initFileKeys()
     int         n= 0;
     int         m= 0;
     byte        sealedkeyBuf[GLOBALMAXSEALEDKEYSIZE];
-   
+
     if(m_tcHome.m_fileNames.m_szdirectory==NULL) {
         fprintf(g_logFile, "initFileKeys: No home directory for keys\n");
         return false;
     }
     sprintf(szName, "%s/fileKeys", m_tcHome.m_fileNames.m_szdirectory);
     m_szSealedKeyFile= strdup(szName);
+   
+#ifdef  TEST
+    fprintf(g_logFile, "initFileKeys %s\n", m_szSealedKeyFile);
+    fflush(g_logFile);
+#endif
+
     if(stat(m_szSealedKeyFile, &statBlock)<0) {
         // Keys don't exist, generate and save them
         m_uAlg= AES128;

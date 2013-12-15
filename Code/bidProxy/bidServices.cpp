@@ -135,19 +135,32 @@ char*  constructBid(bidRequest& oReq)
                 timeinfo->tm_mday, timeinfo->tm_hour,
                 timeinfo->tm_min, timeinfo->tm_sec);
     }
+#ifdef  TEST
+    fprintf(g_logFile, "constructBid: %s\n", szTimeNow);
+    fflush(g_logFile);
+#endif
 
     szAuctionID= oReq.m_szAuctionId;
     szBidAmount= oReq.m_szBid;
     szBidderCert= oReq.m_szEvidence;
     szUserName= oReq.m_szUserName;
+    if(szBidderCert==NULL)
+        szBidderCert= (char*)"";
     if(szUserName==NULL)
         szUserName= (char*)"Anonymous";
+
+#ifdef  TEST
+    fprintf(g_logFile, "constructBid: auctionID %s, amount %s, cert %s, name %s, time %s\n",
+        szAuctionID, szBidAmount, szBidderCert, szUserName, szTimeNow);
+    fflush(g_logFile);
+#endif
 
     if((strlen(s_szBidTemplate)+strlen(szAuctionID)+strlen(szBidAmount)+strlen(szUserName)+
         strlen(szTimeNow)+strlen(szBidderCert))>(BIGBUFSIZE-8)) {
         fprintf(g_logFile, "constructBid: bid too large\n");
         return NULL;
     }
+
     sprintf(rgbid, s_szBidTemplate, szAuctionID, szBidAmount,
                   szUserName, szTimeNow, szBidderCert);
 
@@ -512,7 +525,7 @@ bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* 
     buf[n]= 0;
 
 #ifdef TEST
-    fprintf(g_logFile, "bidClient::clientsendBid response\n%s\n", buf);
+    fprintf(g_logFile, "bidClient::clientsendBid response %d\n%s\n", n, buf);
     fflush(g_logFile);
 #endif
     oResponse.getDatafromDoc(buf);

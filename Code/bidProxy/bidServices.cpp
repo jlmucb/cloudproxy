@@ -79,6 +79,14 @@
 #define BIGBUFSIZE  16384
 
 
+#ifndef BIDCLIENT
+// request loop for bidServer
+#define TIMER(x) ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->x
+#define LOCALOBJ(x) ((bidServerLocals*)(service->pchannelLocals))->m_pServerObj->x
+#define SERVICESOBJ(x) ((bidchannelServices*)(service->m_pchannelServices))->x
+#endif
+
+
 // ------------------------------------------------------------------------
 
 
@@ -210,6 +218,9 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     char*       p= buf;
     int         nLeft= BIGBUFSIZE;
     char*       channelError= NULL;
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
 
     // construct Bid
     const char* signedbid= NULL;
@@ -266,6 +277,9 @@ done:
         fprintf(g_logFile, "bidchannelServices::bidconstructResponse failed\n");
         return false;
     }
+    // send response
+    SERVICESOBJ(m_oSafeChannel)->safesendPacket(buf, (int)strlen(reinterpret_cast<char*>(buf))+1,
+                                   type, multi, final);
     return true;
 }
 
@@ -582,9 +596,6 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* au
 #ifndef BIDCLIENT
 
 // request loop for bidServer
-#define TIMER(x) ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->x
-#define LOCALOBJ(x) ((bidServerLocals*)(service->pchannelLocals))->m_pServerObj->x
-#define SERVICESOBJ(x) ((bidchannelServices*)(service->m_pchannelServices))->x
 
 
 int bidServerrequestService(const char* request, serviceChannel* service)

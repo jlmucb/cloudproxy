@@ -42,6 +42,7 @@
 
 
 #define  MAXNUMCLIENTS  50
+#define  MAXBIDS        1000
 
 class bidServer;
 
@@ -57,7 +58,7 @@ private:
     bool        m_fBidListValid;
     int         m_maxnBids;
     int         m_nBids;
-    char**      m_Bids;
+    char*       m_Bids[MAXBIDS];
 
 public:
     bidchannelServices(u32 type);

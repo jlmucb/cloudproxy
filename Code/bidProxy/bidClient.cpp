@@ -503,23 +503,26 @@ void bidClient::closeConnection()
 // 
 
 
-#define SMALLBUFSIZE 1024
+#define REQBUFSIZE 8192
 
 
 bool bidClient::readBid(const string& auctionID, const string& user, 
                         const string& bid, const string& userCert)
 {
-    char  	buf[SMALLBUFSIZE];
-    int         size= SMALLBUFSIZE;
+    char  	buf[REQBUFSIZE];
+    int         size= REQBUFSIZE;
     char*       p= buf;
+    char*       szCert= readandstoreString(userCert.c_str());
 
 #ifdef TEST
     fprintf(g_logFile, "bidClient::readBid: %s %s %s\n%s\n", auctionID.c_str(), user.c_str(),
                         bid.c_str(), userCert.c_str());
+    fprintf(g_logFile, "Cert:\n%s\n", szCert);
     fflush(g_logFile);
 #endif
+
     if(!bidconstructRequest(&p, &size, "submitBid", auctionID.c_str(), user.c_str(), 
-                            bid.c_str(), userCert.c_str())) {
+                            bid.c_str(), szCert)) {
     	fprintf(g_logFile, "bidClient::readBid: bad bidconstructRequest\n");
         return false;
     }
@@ -648,7 +651,7 @@ int main(int an, char** av)
 
 #ifdef TEST
         if (0 != errno) {
-            fprintf(g_logFile, "Got error %d\n", errno);
+            fprintf(g_logFile, "Got error %d, %s\n", errno, strerror(errno));
         } 
         else {
             fprintf(g_logFile, "Finished reading test directory without error\n");

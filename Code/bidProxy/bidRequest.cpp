@@ -57,7 +57,7 @@ const char*   s_szRequestTemplate=
 "  <AuctionID> %s </AuctionID>\n"\
 "  <UserName> %s </UserName>\n"\
 "  <Bid> %s </Bid>\n"\
-"  <EvidenceList> %s </EvidenceList>\n"\
+"  <BidderCert> %s </BidderCert>\n"\
 "%s"\
 "</Request>\n";
 
@@ -158,8 +158,12 @@ bool  bidRequest::getDatafromDoc(const char* szRequest)
                     szBid= pNode1->Value();
                 }
             }
-            if(strcmp(((TiXmlElement*)pNode)->Value(),"EvidenceCollection")==0) {
-                szEvidence= canonicalize(pNode);
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"BidderCert")==0) {
+                pNode1= pNode->FirstChild();
+                if(pNode1!=NULL)
+                    szEvidence= canonicalize(pNode1);
+                else
+                    szEvidence= NULL;
             }
         }
         pNode= pNode->NextSibling();

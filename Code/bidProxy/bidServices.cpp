@@ -180,7 +180,7 @@ bidchannelServices::bidchannelServices(u32 type) : channelServices(type)
 {
     m_fBidListValid= false;
     m_nBids= 0;
-    m_Bids= NULL;
+    m_maxnBids= MAXBIDS;
 }
 
 
@@ -256,6 +256,7 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
         channelError= (char*) "can't sign bid";
         goto done;
     }
+
     appendBid(signedbid);
     // free(signedbid); signedbid= NULL;
 
@@ -407,8 +408,10 @@ bool  bidchannelServices::appendBid(const char* bid)
     fprintf(g_logFile, "bidchannelServices::appendBid\n%s\n", bid);
     fflush(g_logFile);
 #endif
-    if(m_maxnBids<=m_nBids)
+    if(m_maxnBids<=m_nBids) {
+        fprintf(g_logFile, "bidchannelServices::appendBid table too large\n");
         return false;
+    }
     m_Bids[m_nBids++]= (char*) bid;
     return true;
 }
@@ -471,6 +474,13 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
     fflush(g_logFile);
 #endif
 
+    struct stat statBlock;
+
+    if(stat(file, &statBlock)<0) {
+        m_fBidListValid= true;
+        m_nBids= 0;
+        return true;
+    }
     // read file
     if(!getBlobfromFile(file, encrypted, &sizeEncrypted)) {
         fprintf(g_logFile, "bidchannelServices::retrieveBids cant getBlob\n");

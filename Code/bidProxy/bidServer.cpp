@@ -198,10 +198,17 @@ bool bidServer::initFileKeys()
     }
     sprintf(szName, "%s/fileKeys", m_tcHome.m_fileNames.m_szdirectory);
     m_szSealedKeyFile= strdup(szName);
+    if(m_sizeKey<32) {
+        fprintf(g_logFile, "initFileKeys: key size too small\n");
+        return false;
+    }
+    m_sizeKey= 32;
    
 #ifdef  TEST
     fprintf(g_logFile, "initFileKeys %s\n", m_szSealedKeyFile);
     fflush(g_logFile);
+    fprintf(g_logFile, "initFileKeys: measurement size %d\n", m_tcHome.measurementSize());
+    PrintBytes((char*)"measurement: ", m_tcHome.measurementPtr(), m_tcHome.measurementSize());
 #endif
 
     if(stat(m_szSealedKeyFile, &statBlock)<0) {
@@ -210,11 +217,6 @@ bool bidServer::initFileKeys()
         m_uMode= CBCMODE;
         m_uPad= SYMPAD;
         m_uHmac= HMACSHA256;
-        if(m_sizeKey<32) {
-            fprintf(g_logFile, "initFileKeys: key size too small\n");
-            return false;
-        }
-        m_sizeKey= 32;
         if(!getCryptoRandom(m_sizeKey*NBITSINBYTE, m_bidKeys)) {
             fprintf(g_logFile, "initFileKeys: cant generate keys\n");
             return false;
@@ -238,6 +240,11 @@ bool bidServer::initFileKeys()
             fprintf(g_logFile, "initFileKeys: measurement invalid\n");
             return false;
         }
+#ifdef  TEST
+        PrintBytes((char*)"to seal file keys: ", keyBuf, n);
+        PrintBytes((char*)"bidKeys: ", m_bidKeys, m_sizeKey);
+        fflush(g_logFile);
+#endif
         // seal and save
         size= GLOBALMAXSEALEDKEYSIZE;
         if(!m_tcHome.Seal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
@@ -263,11 +270,15 @@ bool bidServer::initFileKeys()
             return false;
         }
         m= GLOBALMAXSYMKEYSIZE;
-        if(!m_tcHome.Unseal(m_tcHome.measurementValid(), m_tcHome.measurementPtr(),
+        if(!m_tcHome.Unseal(m_tcHome.measurementSize(), m_tcHome.measurementPtr(),
                         size, sealedkeyBuf, &m, keyBuf)) {
             fprintf(g_logFile, "initFileKeys: cant unseal keys\n");
             return false;
         }
+#ifdef  TEST
+        PrintBytes((char*)"unsealed file keys: ", keyBuf, n);
+        fflush(g_logFile);
+#endif
         memcpy(&m_sizeKey, &keyBuf[n], sizeof(int));
         n+= sizeof(int);
         memcpy(&m_uAlg, &keyBuf[n], sizeof(u32));

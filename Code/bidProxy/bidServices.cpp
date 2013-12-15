@@ -117,7 +117,7 @@ char*  constructBid(bidRequest& oReq)
     char            szTimeNow[256];
     time_t          now;
     struct tm *     timeinfo;
-    int             keysize= 1024; 
+    int             keysize= 2048; 
 
 #ifdef  TEST1
     fprintf(g_logFile, "constructBid\n");
@@ -231,17 +231,15 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     fprintf(g_logFile, "bidchannelServices::acceptBid, signing key %08x  %08x  %08x\n",
             service->m_pchannelLocals,
             ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj,
-            ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj);
-            // ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey);
-    fflush(g_logFile);
-    (((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey)->printMe();
+            ((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey);
     fflush(g_logFile);
 #endif
 
     // sign it and put it on list
-    signedbid= XMLRSASha256SignaturefromSignedInfoandKey(
-       *(((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey), 
-                            bidsigninfoBody);
+    signedbid= constructXMLRSASha256SignaturefromSignedInfoandKey(
+           *(((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey), 
+           "Bid",
+           bidsigninfoBody);
     if(signedbid==NULL) {
         fError= true;
         channelError= (char*) "can't sign bid";
@@ -249,7 +247,7 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     }
 
 #ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::bidconstructResponse\n%s\n", signedbid);
+    fprintf(g_logFile, "bidchannelServices::acceptBid signed\n%s\n", signedbid);
     fflush(g_logFile);
 #endif
 

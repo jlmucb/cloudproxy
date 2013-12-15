@@ -475,7 +475,7 @@ bool bidServer::server()
             bidchannelServices* pmyServices= new bidchannelServices(0);
             bidServerLocals* pmyLocals= new bidServerLocals();
 
-            // pmySharedServices->m_pServerObj= this;
+            pmyLocals->m_pServerObj= this;
             if(!poSc->initServiceChannel("bidServer", newfd, &m_opolicyCert, &m_host,
                                          &m_tcHome, &m_serverThreads[i],
                                          bidServerrequestService, pmyServices, pmyLocals)) {

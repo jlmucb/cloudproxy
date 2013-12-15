@@ -358,7 +358,7 @@ bool  bidconstructResponse(bool fError, char** pp, int* piLeft,
  * %s        Extra
  * </Response>
  */
-#ifdef  TEST1
+#ifdef  TEST
     char* p= *pp;
 #endif
     const char*   szErrorFormat= " <ErrorCode> %s </ErrorCode>\n";
@@ -396,7 +396,7 @@ bool  bidconstructResponse(bool fError, char** pp, int* piLeft,
     int len= strlen(*pp);
     *piLeft-= len;
     *pp+= len;
-#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "bidconstructResponse completed\n%s\n", p);
     fflush(g_logFile);
 #endif

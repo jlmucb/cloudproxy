@@ -256,6 +256,8 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
         channelError= (char*) "can't sign bid";
         goto done;
     }
+    appendBid(signedbid);
+    // free(signedbid); signedbid= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "bidchannelServices::acceptBid signed\n%s\n", signedbid);
@@ -330,24 +332,27 @@ const char* bidchannelServices::serializeList()
     int     i, n;
 
 #ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::serializeList\n");
+    fprintf(g_logFile, "bidchannelServices::serializeList\n%d bids\n", m_nBids);
     fflush(g_logFile);
 #endif
 
     sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
+    n= strlen(buf);
+    p+= n;
+    size-= n;
     for(i=0; i<m_nBids; i++) {
         if(m_Bids[i]==NULL) {
             return NULL;
         }
         n= strlen(m_Bids[i]);
-        if(((p-buf)+n)>(BIGBUFSIZE-2)) {
+        if(n>(size-16)) {
             return NULL;
         }
         memcpy(p, m_Bids[i], n+1);
         p+= n;
         size-= n;
     }
-    if(((p-buf)+8)>(BIGBUFSIZE-2)) {
+    if(size<16) {
         return NULL;
     }
     sprintf(p, "</Bids>\n");
@@ -399,7 +404,7 @@ bool  bidchannelServices::appendBid(const char* bid)
 {
 
 #ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::appendBid\n");
+    fprintf(g_logFile, "bidchannelServices::appendBid\n%s\n", bid);
     fflush(g_logFile);
 #endif
     if(m_maxnBids<=m_nBids)
@@ -426,6 +431,11 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
         fprintf(g_logFile, "bidchannelServices::saveBids cant serialize\n");
         return false;
     }
+
+#ifdef  TEST
+    fprintf(g_logFile, "serialized bids\n%s\n", bids);
+    fflush(g_logFile);
+#endif
 
     // encrypt bids
     sizeencrypted= strlen(bids)+128;

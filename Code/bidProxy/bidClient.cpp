@@ -80,18 +80,10 @@ using std::istreambuf_iterator;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
-#if 0
-bool             g_globalpolicyValid= false;
-// metaData         g_theVault;
-PrincipalCert*   g_policyPrincipalCert= NULL;
-RSAKey*          g_policyKey= NULL;
-accessPrincipal* g_policyAccessPrincipal= NULL;
-#endif
-
 #include "./policyCert.inc"
 
-const char* g_szClientPrincipalCertsFile= "bidClient/principalPublicKeys.xml";
-const char* g_szClientPrincipalPrivateKeysFile= "bidClient/principalPrivateKeys.xml";
+// const char* g_szClientPrincipalCertsFile= "bidClient/principalPublicKeys.xml";
+// const char* g_szClientPrincipalPrivateKeysFile= "bidClient/principalPrivateKeys.xml";
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 #define BIDCLIENTSUBDIRECTORY "bidClient"

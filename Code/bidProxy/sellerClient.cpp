@@ -919,7 +919,7 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     }
 
     rgObject[0]= (void*) &oPrincipal;
-    // FIX iChain= VerifyChain(g_policyKey, "", NULL, 2, rgType, rgObject);
+    // FIX iChain= VerifyChain(oSellerClient.m_clientSession.m_policy
     iChain= VerifyChain(NULL, "", NULL, 2, rgType, rgObject);
     if(iChain<0) {
         fprintf(g_logFile, "bidServer::getBidInfo: Invalid bidServer certificate chain\n");

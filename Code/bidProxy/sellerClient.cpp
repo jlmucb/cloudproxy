@@ -84,19 +84,7 @@ using std::istreambuf_iterator;
 using std::stringstream;
 const char* szServerHostAddr= "127.0.0.1";
 
-bool             g_globalpolicyValid= false;
-// metaData         g_theVault;
-PrincipalCert*   g_policyPrincipalCert= NULL;
-RSAKey*          g_policyKey= NULL;
-// accessPrincipal* g_policyAccessPrincipal= NULL;
-
 #include "./policyCert.inc"
-
-const char* g_szClientPrincipalCertsFile= "sellerClient/principalPublicKeys.xml";
-const char* g_szClientPrincipalPrivateKeysFile= "sellerClient/principalPrivateKeys.xml";
-
-
-// accessPrincipal* registerPrincipalfromCert(PrincipalCert* pSig);
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 #define SELLERCLIENTSUBDIRECTORY "sellerClient"
@@ -411,12 +399,6 @@ bool sellerClient::establishConnection(safeChannel& fc,
                                     const char* serverAddress,
                                     u_short serverPort) {
     try {
-        if (g_policyPrincipalCert==NULL) {
-            g_policyPrincipalCert= new PrincipalCert();
-            if(g_policyPrincipalCert==NULL)
-                throw "sellerClient main: failed to new Principal\n";
-        }
-
 #ifdef  TEST
         fprintf(g_logFile, "sellerClient main: inited g_policyPrincipalCert\n");
         fflush(g_logFile);
@@ -456,11 +438,6 @@ bool sellerClient::loadKeys(const char* keyFile, const char* certFile,
     const char* serverAddress= NULL;
 
     try {
-        if (g_policyPrincipalCert==NULL) {
-            g_policyPrincipalCert= new PrincipalCert();
-            if(g_policyPrincipalCert==NULL)
-                throw "sellerClient main: failed to new Principal\n";
-        }
 
 #ifdef  TEST
         fprintf(g_logFile, "sellerClient main: inited g_policyPrincipalCert\n");
@@ -741,7 +718,7 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     char*               szKey= NULL;
     PrincipalCert       oPrincipal;
     int                 rgType[2]={PRINCIPALCERT, EMBEDDEDPOLICYPRINCIPAL};
-    void*               rgObject[2]={NULL, g_policyKey};
+    void*               rgObject[2]={NULL, NULL}; //g_policyKey};
     int                 iChain= 0;
 
     // construct Blob Name
@@ -942,7 +919,8 @@ bool  bidInfo::getBidInfo(RSAKey* sealingKey, const char* szBid)
     }
 
     rgObject[0]= (void*) &oPrincipal;
-    iChain= VerifyChain(g_policyKey, "", NULL, 2, rgType, rgObject);
+    // FIX iChain= VerifyChain(g_policyKey, "", NULL, 2, rgType, rgObject);
+    iChain= VerifyChain(NULL, "", NULL, 2, rgType, rgObject);
     if(iChain<0) {
         fprintf(g_logFile, "bidServer::getBidInfo: Invalid bidServer certificate chain\n");
         return false;

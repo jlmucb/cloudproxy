@@ -219,6 +219,80 @@ void bidRequest::printMe()
 // ------------------------------------------------------------------------
 
 
+#ifdef BIDCLIENT
+
+
+bool getchannelBlob(safeChannel& fc, byte* buf, int* pdatasize)
+{
+    int                 type= CHANNEL_RESPONSE;
+    byte                multi, final;
+    int                 n= 0;
+    int                 total= 0;
+
+#ifdef TEST
+    fprintf(g_logFile, "getchannelBlob %d\n", *pdatasize);
+    fflush(g_logFile);
+#endif
+
+    // read channel
+    type= CHANNEL_TRANSFER;
+    multi= 1;
+    final= 0;
+    for(;;) {
+	if(total>=*pdatasize) { // fix
+	    fprintf(g_logFile, "getchannelBlob: list too big\n");
+	    return false;
+	}
+        n= fc.safegetPacket(buf, MAXREQUESTSIZE, &type, &multi, &final);
+	total+= n;
+	buf+= n;
+        if(final>0)
+            break;
+    }
+#ifdef TEST
+    fprintf(g_logFile, "getchannelBlob returns true, %d bytes\n", total);
+    fflush(g_logFile);
+#endif
+    *pdatasize= total;
+    return true;
+}
+
+
+#else
+
+bool sendchannelBlob(safeChannel& fc, byte* buf, int size)
+{
+    int                 type= CHANNEL_RESPONSE;
+    byte                multi, final;
+    int                 n= 0;
+
+#ifdef TEST
+    fprintf(g_logFile, "sendchannelBlob %d bytes\b", size);
+    fflush(g_logFile);
+#endif
+
+    // write channel
+    type= CHANNEL_TRANSFER;
+    multi= 1;
+    final= 0;
+    for(;;) {
+	n= (size>MAXREQUESTSIZE)?MAXREQUESTSIZE:size;
+        size-= n;
+        if(size<=0)
+            final= 1;
+        fc.safesendPacket(buf, n, type, multi, final);
+        if(final>0)
+            break;
+	buf+= n;
+    }
+#ifdef  TEST
+    fprintf(g_logFile, "endchannelBlob returns true\n");
+#endif
+    return true;
+}
+#endif    // BIDCLIENT
+
+
 bidResponse::bidResponse()
 {
     m_szAction= NULL;
@@ -285,6 +359,20 @@ bool  bidResponse::getDatafromDoc(char* szResponse)
                     m_szAction= strdup(pNode1->Value());
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ErrorCode")==0) {
+                pNode1= pNode->FirstChild();
+                if(pNode1!=NULL)
+                    m_szErrorCode= strdup(pNode1->Value());
+                else
+                    m_szErrorCode= NULL;
+            }
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceName")==0) {
+                pNode1= pNode->FirstChild();
+                if(pNode1!=NULL)
+                    m_szErrorCode= strdup(pNode1->Value());
+                else
+                    m_szErrorCode= NULL;
+            }
+            if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceLength")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
                     m_szErrorCode= strdup(pNode1->Value());

@@ -76,7 +76,8 @@
 #endif
 
 
-#define BIGBUFSIZE  16384
+#define BIGBUFSIZE    16384
+#define SMALLBUFSIZE   4096
 
 
 #ifndef BIDCLIENT
@@ -288,6 +289,11 @@ done:
 }
 
 
+const char* s_fileTemplate= 
+"  <ResourceName> %s </ResourceName>\n"\
+"  <ResourceLength> %d </ResourceLength>\n";
+
+
 bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, timer& myTimer)
 {
     bool    fError= false;
@@ -295,6 +301,9 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
     char*   p= buf;
     int     nLeft= BIGBUFSIZE;
     char*   channelError= NULL;
+    int     type= CHANNEL_RESPONSE;
+    byte    multi= 0;
+    byte    final= 0;
 
 #ifdef  TEST
     fprintf(g_logFile, "bidchannelServices::getBids\n");
@@ -313,13 +322,33 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
     }
 
 done:
+    int     resourcesize= strlen(allbids)+1;
+    char    extraBuf[SMALLBUFSIZE];
+    int     size= SMALLBUFSIZE;
+    char*   extra= NULL;
+
+    if(!fError) {
+        if((strlen(s_fileTemplate)+32)>=size) {
+            sprintf(extraBuf, s_fileTemplate, "Bids", resourcesize);
+            extra= extraBuf;
+        }
+        else
+            fError= true;
+    }
+
     // construct response and transmit
-    if(!bidconstructResponse(fError, &p, &nLeft, NULL, channelError)) {
+    if(!bidconstructResponse(fError, &p, &nLeft, extra, channelError)) {
         fprintf(g_logFile, "bidchannelServices::bidconstructResponse failed\n");
         return false;
     }
+
+    // send response
+    service->m_oSafeChannel.safesendPacket((byte*)buf, (int)strlen(reinterpret_cast<char*>(buf))+1,
+                                   type, multi, final);
+
     // send bids if no error
     if(!fError) {
+        sendchannelBlob(service->m_oSafeChannel, (byte*) allbids, resourcesize);
     }
     return true;
 }

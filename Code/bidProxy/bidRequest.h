@@ -75,6 +75,8 @@ class bidResponse : public Response {
 public:
     char*           m_szAction;
     char*           m_szErrorCode;
+    char*           m_ResourceName;
+    int             m_ResourceLength;
 
                     bidResponse();
                     ~bidResponse();

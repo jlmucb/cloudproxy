@@ -297,6 +297,8 @@ bidResponse::bidResponse()
 {
     m_szAction= NULL;
     m_szErrorCode= NULL;
+    m_ResourceName= NULL;
+    m_ResourceLength= 0;
 }
 
 
@@ -309,6 +311,10 @@ bidResponse::~bidResponse()
     if(m_szErrorCode!=NULL) {
         free(m_szErrorCode);
         m_szErrorCode= NULL;
+    }
+    if(m_ResourceName!=NULL) {
+        free(m_ResourceName);
+        m_ResourceName= NULL;
     }
 }
 
@@ -368,16 +374,14 @@ bool  bidResponse::getDatafromDoc(char* szResponse)
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceName")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
-                    m_szErrorCode= strdup(pNode1->Value());
+                    m_ResourceName= strdup(pNode1->Value());
                 else
-                    m_szErrorCode= NULL;
+                    m_ResourceName= NULL;
             }
             if(strcmp(((TiXmlElement*)pNode)->Value(),"ResourceLength")==0) {
                 pNode1= pNode->FirstChild();
                 if(pNode1!=NULL)
-                    m_szErrorCode= strdup(pNode1->Value());
-                else
-                    m_szErrorCode= NULL;
+                    sscanf((char*)pNode1, "%d", &m_ResourceLength);
             }
         }
         pNode= pNode->NextSibling();

@@ -14,9 +14,9 @@ CH=	    ../channels
 DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
-CFLAGS=     -D LINUX -D AUTAOCLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS)
+CFLAGS=     -D LINUX -D BIDCLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS)
 LDFLAGS          := $(RELEASE_LDFLAGS)
-O1CFLAGS=    -D LINUX -D AUTAOCLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
+O1CFLAGS=    -D LINUX -D BIDCLIENT -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
 
 CC=         g++
 LINK=       g++
@@ -31,7 +31,8 @@ dobjs=      $(B)/sellerClient.o $(B)/logging.o $(B)/jlmcrypto.o $(B)/jlmUtility.
 	    $(B)/tinyxmlerror.o $(B)/channel.o $(B)/safeChannel.o \
 	    $(B)/session.o  $(B)/cert.o $(B)/request.o $(B)/validateEvidence.o \
 	    $(B)/trustedKeyNego.o $(B)/sha1.o $(B)/encapsulate.o \
-	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o
+	    $(B)/buffercoding.o $(B)/tcIO.o $(B)/hashprep.o \
+	    $(B)/bidServices.o $(B)/channelServices.o $(B)/bidRequest.o 
 
 all: $(E)/sellerClient.exe
 
@@ -45,6 +46,9 @@ $(B)/sellerClient.o: $(S)/sellerClient.cpp $(S)/sellerClient.h
 $(B)/jlmcrypto.o: $(SCC)/jlmcrypto.cpp $(SCC)/jlmcrypto.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/jlmcrypto.o $(SCC)/jlmcrypto.cpp
 
+$(B)/bidServices.o: $(S)/bidServices.cpp $(S)/bidServices.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidServices.o $(S)/bidServices.cpp
+
 $(B)/encapsulate.o: $(SCC)/encapsulate.cpp $(SCC)/encapsulate.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encapsulate.o $(SCC)/encapsulate.cpp
 
@@ -56,6 +60,12 @@ $(B)/keys.o: $(SCC)/keys.cpp $(SCC)/keys.h
 
 $(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp $(SCC)/hmacsha256.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
+
+$(B)/bidRequest.o: $(S)/bidRequest.cpp $(S)/bidRequest.h
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(CH) -I$(BSC) -I$(TRS) -I$(PROTO) -I$(TAO) -I$(CLM) -c -o $(B)/bidRequest.o $(S)/bidRequest.cpp
+
+$(B)/channelServices.o: $(PROTO)/channelServices.cpp $(PROTO)/channelServices.h
+	$(CC) $(CFLAGS) -I$(S) -I$(SC) -I$(SCC) -I$(PROTO) -I$(BSC) -I$(CLM) -I$(CH) -I$(TAO) -c -o $(B)/channelServices.o $(PROTO)/channelServices.cpp
 
 $(B)/encryptedblockIO.o: $(SCC)/encryptedblockIO.cpp $(SCC)/encryptedblockIO.h
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(BSC) -c -o $(B)/encryptedblockIO.o $(SCC)/encryptedblockIO.cpp

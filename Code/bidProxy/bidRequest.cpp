@@ -219,8 +219,6 @@ void bidRequest::printMe()
 // ------------------------------------------------------------------------
 
 
-#ifdef BIDCLIENT
-
 
 bool getchannelBlob(safeChannel& fc, byte* buf, int* pdatasize)
 {
@@ -258,8 +256,6 @@ bool getchannelBlob(safeChannel& fc, byte* buf, int* pdatasize)
 }
 
 
-#else
-
 bool sendchannelBlob(safeChannel& fc, byte* buf, int size)
 {
     int                 type= CHANNEL_RESPONSE;
@@ -290,7 +286,6 @@ bool sendchannelBlob(safeChannel& fc, byte* buf, int size)
 #endif
     return true;
 }
-#endif    // BIDCLIENT
 
 
 bidResponse::bidResponse()

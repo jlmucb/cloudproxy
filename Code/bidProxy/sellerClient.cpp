@@ -35,6 +35,7 @@
 #include "mpFunctions.h"
 #include "jlmUtility.h"
 #include "request.h"
+#include "bidRequest.h"
 #include "sha256.h"
 #include "tinyxml.h"
 #include "cryptoHelper.h"
@@ -99,6 +100,7 @@ const char* g_szClientPrincipalPrivateKeysFile= "sellerClient/principalPrivateKe
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 #define SELLERCLIENTSUBDIRECTORY "sellerClient"
+#define BIGBUFSIZE  16384
 
 
 // ------------------------------------------------------------------------
@@ -1331,29 +1333,17 @@ int main(int an, char** av)
     bool            result;
     string          userKeyFile("bidClient/tests/basicBidTest/UserPublicKey.xml");
     string          userCertFile("bidClient/tests/basicBidTest/UserCert.xml");
+    timer           aTimer;
 
 
     initLog(NULL);
 
 #ifdef  TEST
-    //fprintf(g_logFile, "sellerClient test\n");
-    //fflush(g_logFile);
+    fprintf(g_logFile, "sellerClient test\n");
+    fflush(g_logFile);
 #endif
 
     UNUSEDVAR(result);
-    if(an>1) {
-        for(i=0;i<an;i++) {
-            if(strcmp(av[i],"-port")==0 && an>(i+1)) {
-                oSellerClient.m_szPort= strdup(av[++i]);
-            }
-            if(strcmp(av[i],"-address")==0) {
-                oSellerClient.m_szAddress= strdup(av[++i]);
-            }
-            if (strcmp(av[i],"-directory")==0) {
-                directory= strdup(av[++i]);
-            }
-        }
-    }
     UNUSEDVAR(directory);
 
     initLog("sellerClient.log");
@@ -1362,7 +1352,9 @@ int main(int an, char** av)
     fflush(g_logFile);
 #endif
     try {
-        if(!filePresent("sellerClient/privatekey")) {
+        if(filePresent("sellerClient/getBids")) {
+            bidchannelServices mychannelServices(2);
+            char* auctionID= readandstoreString("./sellerClient/getBids");
 #ifdef  TEST
             fprintf(g_logFile, "sellerClient no private file, initializing\n");
             fflush(g_logFile);
@@ -1378,11 +1370,29 @@ int main(int an, char** av)
                 fprintf(g_logFile, "sellerClient initialization complete\n");
             else
                 fprintf(g_logFile, "sellerClient initialization failed\n");
+
+            // get Bids
+            char    buf[BIGBUFSIZE];
+            int     size= BIGBUFSIZE;
+            char*   p= buf;
+
+            if(!bidconstructRequest(&p, &size, "getBids", auctionID, NULL, NULL, NULL)) {
+                fprintf(g_logFile, "sellerClient::readBid: bad sellerconstructRequest\n");
+                return false;
+            }
+
+            if(!mychannelServices.requestbids(oSellerClient.m_fc, NULL, buf)) {
+            }
             closeLog();
             return 0;
         }
         if(!filePresent("sellerClient/resolve")) {
             fprintf(g_logFile, "sellerClient not time to resolve auction\n");
+            closeLog();
+            return 0;
+        }
+
+        if(filePresent("sellerClient/getBids")) {
             closeLog();
             return 0;
         }

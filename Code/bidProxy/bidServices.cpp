@@ -631,11 +631,65 @@ bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* 
 }
 
 
-bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* auctionID,
-        timer& accessTimer)
+bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* request)
 {
-    return false;
+    int         n;
+    char        buf[BIGBUFSIZE];
+    bidResponse oResponse;
+    int         type= CHANNEL_RESPONSE;
+    byte        multi= 0;
+    byte        final= 0;
+
+#ifdef TEST
+    fprintf(g_logFile, "bidClient::requestbids\n%s\n", request);
+    fflush(g_logFile);
+#endif
+    // send and get response
+    if((n=fc.safesendPacket((byte*)request, strlen(request)+1, CHANNEL_REQUEST, 
+                            0, 0))<0) {
+        fprintf(g_logFile, 
+                "requestbids: safesendPacket after constructRequest returns false\n");
+        return false;
+    }
+
+    // should be a CHANNEL_RESPONSE, not multipart
+    n= fc.safegetPacket((byte*)buf, MAXREQUESTSIZE, &type, &multi, &final);
+    if(n<0) {
+        fprintf(g_logFile, "requestbids: transmit error %d\n", n);
+        return false;
+    }
+    buf[n]= 0;
+
+#ifdef TEST
+    fprintf(g_logFile, "bidClient::clientsendBid response %d\n%s\n", n, buf);
+    fflush(g_logFile);
+#endif
+    oResponse.getDatafromDoc(buf);
+
+    // check response
+    if(oResponse.m_szAction==NULL || strcmp(oResponse.m_szAction, "accept")!=0) {
+        fprintf(g_logFile, "requestbids: response is false\n");
+        return false;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "requestbids sending file\n");
+    fflush(g_logFile);
+#endif
+    // send blob
+    n=  BIGBUFSIZE;
+    if(!getchannelBlob(fc, (byte*) request, &n)) {
+        fprintf(g_logFile, "requestbids cant send blob\n");
+        return false;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "requestbids returns true\n");
+    fflush(g_logFile);
+#endif
+   return true;
 }
+
 
 #endif
 

@@ -95,15 +95,8 @@ bool    bidconstructResponse(bool fError, char** pp, int* piLeft,
                         const char* szExtraResponseElements,
                         const char* szChannelError);
 
-#ifdef SELLERCLIENT
-
 bool getchannelBlob(safeChannel& fc, byte* buf, int* pdatasize);
-
-#else
-
 bool sendchannelBlob(safeChannel& fc, byte* buf, int size);
-
-#endif   // SELLERCLIENT
 
 #endif
 

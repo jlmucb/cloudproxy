@@ -78,8 +78,7 @@ public:
     bool        clientgetProtectedFileKey(const char* file, timer& accessTimer);
     bool        clientsendBid(safeChannel& fc, byte* keys, const char* request,
                               timer& accessTimer);
-    bool        requestbids(safeChannel& fc, byte* keys, const char* auctionID,
-                            timer& accessTimer);
+    bool        requestbids(safeChannel& fc, byte* keys, const char* request);
 #endif
     bool        closechannelServices();
 };

@@ -62,6 +62,13 @@ const char*   s_szRequestTemplate=
 "</Request>\n";
 
 
+const char*   s_szgetBidRequestTemplate=
+"<Request>\n"\
+"  <Action> %s </Action>\n"\
+"  <AuctionID> %s </AuctionID>\n"\
+"</Request>\n";
+
+
 const char*   s_szResponseTemplate=
 "<Response>\n"\
 "  <Action> %s </Action>\n"\
@@ -237,13 +244,13 @@ bool getchannelBlob(safeChannel& fc, byte* buf, int* pdatasize)
     multi= 1;
     final= 0;
     for(;;) {
-	if(total>=*pdatasize) { // fix
-	    fprintf(g_logFile, "getchannelBlob: list too big\n");
-	    return false;
-	}
+        if(total>=*pdatasize) { // fix
+            fprintf(g_logFile, "getchannelBlob: list too big\n");
+            return false;
+        }
         n= fc.safegetPacket(buf, MAXREQUESTSIZE, &type, &multi, &final);
-	total+= n;
-	buf+= n;
+        total+= n;
+        buf+= n;
         if(final>0)
             break;
     }
@@ -272,14 +279,14 @@ bool sendchannelBlob(safeChannel& fc, byte* buf, int size)
     multi= 1;
     final= 0;
     for(;;) {
-	n= (size>MAXREQUESTSIZE)?MAXREQUESTSIZE:size;
+        n= (size>MAXREQUESTSIZE)?MAXREQUESTSIZE:size;
         size-= n;
         if(size<=0)
             final= 1;
         fc.safesendPacket(buf, n, type, multi, final);
         if(final>0)
             break;
-	buf+= n;
+        buf+= n;
     }
 #ifdef  TEST
     fprintf(g_logFile, "endchannelBlob returns true\n");
@@ -399,7 +406,7 @@ bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction,
                        const char* szBid, const char* szEvidence)
 {
     const char*   szNoEvidence= "  <EvidenceCollection count='0'/>\n";
-    int           size= strlen(s_szRequestTemplate)+strlen(szAction);
+    int           size= strlen(szAction);
 
     if(szEvidence==NULL) {
         szEvidence= szNoEvidence;
@@ -410,25 +417,43 @@ bool  bidconstructRequest(char** pp, int* piLeft, const char* szAction,
         return false;
     }
     size+= strlen(szAuctionID);
-    if(szBid==NULL) {
-        fprintf(g_logFile, "bidconstructRequest: no bid\n");
-        return false;
-    }
-    size+= strlen(szBid);
-    if(szUserName==NULL) {
-        fprintf(g_logFile, "bidconstructRequest: no user name\n");
-        return false;
-    }
-    size+= strlen(szUserName);
 
-    if((size+8)>*piLeft) {
-        fprintf(g_logFile, "bidconstructRequest: request too large %d %d\n", size, *piLeft);
+    if(strcmp(szAction, "submitBid")==0) {
+        size+= strlen(s_szRequestTemplate);
+        if(szBid==NULL) {
+            fprintf(g_logFile, "bidconstructRequest: no bid\n");
+            return false;
+        }
+        size+= strlen(szBid);
+        if(szUserName==NULL) {
+            fprintf(g_logFile, "bidconstructRequest: no user name\n");
+            return false;
+        }
+        size+= strlen(szUserName);
+        if((size+8)>*piLeft) {
+            fprintf(g_logFile, "bidconstructRequest: request too large %d %d\n", size, *piLeft);
+            return false;
+        }    
+        sprintf(*pp, s_szRequestTemplate, szAction, szAuctionID, szUserName, szBid, szEvidence, "");
+        int len= strlen(*pp);
+        *piLeft-= len;
+        *pp+= len;
+    }
+    else if(strcmp(szAction, "getBids")==0) {
+        size+= strlen(s_szgetBidRequestTemplate);
+        if((size+8)>*piLeft) {
+            fprintf(g_logFile, "bidconstructRequest: request too large %d %d\n", size, *piLeft);
+            return false;
+        }    
+        sprintf(*pp, s_szgetBidRequestTemplate, szAction, szAuctionID);
+        int len= strlen(*pp);
+        *piLeft-= len;
+        *pp+= len;
+    }
+    else {
+        fprintf(g_logFile, "bidconstructRequest: unknown request %s\n", szAction);
         return false;
-    }    
-    sprintf(*pp, s_szRequestTemplate, szAction, szAuctionID, szUserName, szBid, szEvidence, "");
-    int len= strlen(*pp);
-    *piLeft-= len;
-    *pp+= len;
+    }
 #ifdef  TEST1
     fprintf(g_logFile, "bidconstructRequest completed\n%s\n", p);
     fflush(g_logFile);

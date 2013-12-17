@@ -188,7 +188,10 @@ const char* szMsg3a= "<ClientNego phase='3'>\n<SignedChallenge>\n";
 const char* szMsg3b= "</SignedChallenge>\n";
 const char* szMsg3c= "\n</ClientNego>\n"; 
 
-const char* szMsg4aa= "<ClientNego phase='4'>\n<EvidenceCollection count='0'/>\n";
+const char* szMsg4aa= 
+"<ClientNego phase='4'>\n"\
+"  <EvidenceCollection count='0'/>\n"\
+"  <SignedChallenges count='0'/>";
 const char* szMsg4a= "<ClientNego phase='4'>\n";
 const char* szMsg4d= "\n</ClientNego>\n"; 
 
@@ -777,7 +780,7 @@ bool session::getDatafromClientMessage4(int n, char* request)
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
 
-#ifdef  TEST1
+#ifdef TEST1
     fprintf(g_logFile, "Client Message 4\n%s\n", request);
     fflush(g_logFile);
 #endif
@@ -1230,6 +1233,12 @@ bool session::initializePrincipalCerts(const char* szPrincipalCerts)
     int                 i;
     evidenceCollection  oEvidenceCollection;
 
+    if(szPrincipalCerts==NULL) {
+        m_iNumPrincipals= 0;
+        m_fPrincipalCertsValid= true;
+        return true;
+    }
+
     m_szPrincipalCerts= strdup(szPrincipalCerts);
 
 #ifdef TEST1
@@ -1285,10 +1294,17 @@ bool session::initializePrincipalPrivateKeys(const char* szPrincipalPrivateKeys)
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
 
+    if(szPrincipalPrivateKeys==NULL) {
+        m_iNumPrincipalPrivateKeys= 0;
+        m_fPrincipalPrivateKeysValid= true;
+        return true;
+    }
+
 #ifdef TEST1
     fprintf(g_logFile, "Principal private keys\n%s\n", szPrincipalPrivateKeys);
     fflush(g_logFile);
 #endif
+
     if(!doc.Parse(szPrincipalPrivateKeys)) {
         fprintf(g_logFile,  
            "session::initializePrincipalPrivateKeys: Cannot parse Principal Private Keys\n");
@@ -1541,7 +1557,8 @@ bool session::checkPrincipalChallenges()
     int             iNumSignedChallenges= 0;
 
     if(!doc.Parse(m_szSignedChallenges)) {
-        fprintf(g_logFile,  "session::checkPrincipalChallenges: Can't parse SignedChallenges\n");
+        fprintf(g_logFile, "session::checkPrincipalChallenges: Can't parse SignedChallenges\n%s\n",
+                m_szSignedChallenges);
         return false;
     }
 
@@ -1553,9 +1570,13 @@ bool session::checkPrincipalChallenges()
     }
     pRootElement->QueryIntAttribute ("count", &iNumSignedChallenges);
 
-#ifdef TEST1
+#ifdef TEST
     fprintf(g_logFile, "checkPrincipalChallenges %d signed challenges\n", iNumSignedChallenges);
+    fflush(g_logFile);
 #endif
+
+    if(iNumSignedChallenges==0)
+        return true;
 
     if(m_iNumPrincipals!=iNumSignedChallenges) {
         fprintf(g_logFile, "session::checkPrincipalChallenges: Number of challenges is not number of principals\n");
@@ -1910,7 +1931,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
             throw  "session::clientprotocolNego: Can't decode server message 2";
 
         // do hashes match?
-#ifdef TEST1
+#ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: server hashes\n");
         PrintBytes("Computed: ", m_rgServerMessageHash, SHA256DIGESTBYTESIZE);
         PrintBytes("Received: ", m_rgDecodedServerMessageHash, SHA256DIGESTBYTESIZE);
@@ -1926,6 +1947,7 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
             throw  "session::clientprotocolNego: Cant initialize principal private keys";
 #ifdef TEST
         fprintf(g_logFile, "session::clientprotocolNego: got principal private keys\n");
+        fflush(g_logFile);
 #endif
         if(!initializePrincipalCerts(szPrincipalCerts))
             throw  "session::clientprotocolNego: Cant initialize principal certs\n";
@@ -1938,7 +1960,9 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
                                                  m_rgPrincipalPrivateKeys,
                                                  m_rguChallenge, SMALLNONCESIZE);
 #ifdef TEST
-        fprintf(g_logFile, "session::clientprotocolNego: challenges encoded\n");
+        fprintf(g_logFile, "session::clientprotocolNego: challenges encoded\n%s\n",
+            szSignedChallenges);
+        fflush(g_logFile);
 #endif
 
         if(szSignedChallenges==NULL)
@@ -1953,8 +1977,13 @@ bool session::clientprotocolNego(int fd, safeChannel& fc,
         if((n=fc.safegetPacket((byte*)request, MAXREQUESTSIZE, &type, &multi, &final))<0)
             throw  "session::clientprotocolNego: Can't get packet 3";
 
-        if(!getDatafromServerMessage3(n, request))
+        if(!getDatafromServerMessage3(n, request)) {
+#ifdef TEST1
+            fprintf(g_logFile, "session::clientprotocolNego request\n%s\n", request);
+            fflush(g_logFile);
+#endif
             throw  "session::clientprotocolNego: Can't decode client message 3";
+        }
 
         m_sessionState= REQUESTSTATE;
 #ifdef TEST

@@ -424,8 +424,7 @@ bool bidchannelServices::deserializeList(const char* list)
         pNode= pNode->NextSibling();
     }
 
-    if(n!=m_nBids)
-        m_nBids= n;
+    m_nBids= n;
     return true;
 }
 
@@ -531,6 +530,10 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
         return false;
     }
 
+#ifdef  TEST
+    fprintf(g_logFile, "%d bids retrieved\n", m_nBids); 
+    fflush(g_logFile);
+#endif
     m_fBidListValid= true;
     return true;
 }
@@ -661,7 +664,7 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* re
     buf[n]= 0;
 
 #ifdef TEST
-    fprintf(g_logFile, "bidClient::clientsendBid response %d\n%s\n", n, buf);
+    fprintf(g_logFile, "bidClient::requestbids response %d\n%s\n", n, buf);
     fflush(g_logFile);
 #endif
     oResponse.getDatafromDoc(buf);

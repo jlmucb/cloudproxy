@@ -326,6 +326,7 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
                                    (RSAKey*)m_tcHome.privateKeyPtr()))
                 throw("sellerClient::Init: Can't init policy key 3\n");
 
+#if 0
             // get principal certs
             const char* szPrincipalKeys= NULL; // readandstoreString(keyFile);
             const char* szPrincipalCerts= NULL; // readandstoreString(certFile);
@@ -336,6 +337,7 @@ bool sellerClient::initClient(const char* configDirectory, const char* serverAdd
                                     szPrincipalKeys, szPrincipalCerts))
                 throw("sellerClient::Init: protocolNego failed\n");
             m_protocolNegoTimer.Stop();
+#endif
 
 #ifdef TEST
             fprintf(g_logFile, "initClient: connect completed\n");
@@ -1337,10 +1339,13 @@ int main(int an, char** av)
             fprintf(g_logFile, "sellerClient no private file, initializing\n");
             fflush(g_logFile);
 #endif
-            safeChannel channel;
-            result = oSellerClient.establishConnection(channel,
+            result = oSellerClient.establishConnection(oSellerClient.m_fc,
+#if 0
                         userKeyFile.c_str(),
                         userCertFile.c_str(),
+#else
+                        NULL, NULL,
+#endif
                         directory,
                         "127.0.0.1",
                         SERVICE_PORT);

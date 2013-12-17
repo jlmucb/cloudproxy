@@ -51,7 +51,7 @@ const char *vm_template =
 "    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"
 "    <kernel>%s</kernel>\n"
 "    <initrd>%s</initrd>\n"
-"    <boot dev='hd'/>\n"
+"    <cmdline>root=/dev/sda1 ro quiet</cmdline>\n"
 "  </os>\n"
 "  <features>\n"
 "    <acpi/>\n"
@@ -78,7 +78,9 @@ const char *vm_template =
 "    </controller>\n"
 "    <interface type='network'>\n"
 "      <mac address='52:54:00:82:22:a8'/>\n"
-"      <source bridge='default'/>\n"
+"      <source network='default'/>\n"
+"      <target dev='vnet0'/>\n"
+"      <alias name='net0'/>\n"
 "      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"
 "    </interface>\n"
 "    <serial type='unix'>\n"
@@ -102,9 +104,6 @@ const char *vm_template =
 "      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"
 "    </memballoon>\n"
 "  </devices>\n"
-"  <qemu:commandline>\n"
-"    <qemu:arg value='-s'/>\n"
-"  </qemu:commandline>\n"
 "</domain>\n";
 }
 

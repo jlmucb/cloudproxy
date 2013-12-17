@@ -123,7 +123,8 @@ cat $SAMPLE_WHITELIST |
   sed "s/REPLACE_ME_CLIENT/`cat client | ./getHash.sh`/g" |
   sed "s/REPLACE_ME_FSERVER/`cat fserver | ./getHash.sh`/g" |
   sed "s/REPLACE_ME_FCLIENT/`cat fclient | ./getHash.sh`/g" |
-  sed "s/REPLACE_ME_PCRS/`./get_pcrs`/g" > whitelist.pb2
+  sed "s/REPLACE_ME_PCRS/`./get_pcrs`/g" |
+  sed "s/REPLACE_ME_GUEST_VM/`./get_guest_hash`/g" > whitelist.pb2
 
 # Create a signed version of the whitelist and the ACL for CloudServer
 cat whitelist.pb2 |

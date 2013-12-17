@@ -34,6 +34,7 @@
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
 #include <keyczar/base/file_util.h>
+#include <keyczar/crypto_factory.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
 #include <keyczar/rw/keyset_writer.h>
@@ -42,12 +43,14 @@
 #include <openssl/ssl.h>
 
 using keyczar::Crypter;
+using keyczar::CryptoFactory;
 using keyczar::Keyczar;
 using keyczar::KeyPurpose;
 using keyczar::KeyType;
 using keyczar::Keyset;
 using keyczar::KeysetMetadata;
 using keyczar::KeyStatus;
+using keyczar::MessageDigestImpl;
 using keyczar::Signer;
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
@@ -98,6 +101,47 @@ void locking_function(int mode, int n, const char *file, int line) {
   } else {
     locks[n]->unlock();
   }
+}
+
+bool HashVM(const string &vm_template, const string &name,
+	    const string &kernel_file, const string &initrd_file,
+	    string *hash) {
+  // TODO(tmroeder): take in the right hash type and use it here. For
+  // now, we just assume that it's SHA256
+  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
+
+  string template_hash;
+  if (!sha256->Digest(vm_template, &template_hash)) {
+    LOG(ERROR) << "Could not compute the hash of the template";
+    return false;
+  }
+
+  string name_hash;
+  if (!sha256->Digest(name, &name_hash)) {
+    LOG(ERROR) << "Could not compute the has of the name";
+    return false;
+  }
+
+  string kernel_hash;
+  if (!sha256->Digest(kernel_file, &kernel_hash)) {
+    LOG(ERROR) << "Could not compute the hash of the kernel";
+    return false;
+  }
+
+  string initrd_hash;
+  if (!sha256->Digest(initrd_file, &initrd_hash)) {
+    LOG(ERROR) << "Could not compute the hash of initrd";
+    return false;
+  }
+
+  // Concatenate the hashes
+  string hash_input;
+  hash_input.append(template_hash);
+  hash_input.append(name_hash);
+  hash_input.append(kernel_hash);
+  hash_input.append(initrd_hash);
+
+  return sha256->Digest(hash_input, hash);
 }
 
 

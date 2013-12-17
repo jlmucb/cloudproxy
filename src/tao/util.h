@@ -36,6 +36,9 @@ namespace tao {
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
     ScopedRsa;
 
+bool HashVM(const string &vm_template, const string &name,
+	    const string &kernel, const string &initrd, string *hash);
+
 bool InitializeOpenSSL();
 
 bool OpenTCPSocket(short port, int *sock);

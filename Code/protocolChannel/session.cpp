@@ -389,7 +389,7 @@ bool session::getDatafromServerMessage1(int n, char* request)
     int             iIndex= -1;
     bool            fRet= true;
 
-#ifdef  TEST1
+#ifdef TEST1
     fprintf(g_logFile, "ServerMessage 1\n%s\n", request);
     fprintf(g_logFile, "MAXREQUESTSIZE = %d\n", MAXREQUESTSIZE);
     fflush(g_logFile);

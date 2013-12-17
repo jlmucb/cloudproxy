@@ -83,6 +83,10 @@ bidRequest::bidRequest() : Request()
 {
     m_szAction= NULL;
     m_szEvidence= NULL;
+    m_szAuctionId= NULL;
+    m_szUserName= NULL;
+    m_szBid= NULL;
+    m_szEvidence= NULL;
 }
 
 

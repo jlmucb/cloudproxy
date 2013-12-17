@@ -487,7 +487,7 @@ bool bidServer::server()
             bidServerLocals* pmyLocals= new bidServerLocals();
 
             pmyLocals->m_pServerObj= this;
-            if(!pmyServices->retrieveBids(DEFAULTENCRYPT, m_bidKeys, "./bidssofar.enc")) {
+            if(!pmyServices->retrieveBids(DEFAULTENCRYPT, m_bidKeys, "./bidServer/bidssofar.enc")) {
                 fprintf(g_logFile, "bidServer::server: Can't retrieveBids\n");
                 return false;
             }

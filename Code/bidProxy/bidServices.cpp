@@ -321,6 +321,11 @@ bool bidchannelServices::getBids(bidRequest& oReq, serviceChannel* service, time
         goto done;
     }
 
+#ifdef  TEST
+    fprintf(g_logFile, "serialized bids %d\n%s\n", fError, allbids);
+    fflush(g_logFile);
+#endif
+
 done:
     int     resourcesize= strlen(allbids)+1;
     char    extraBuf[SMALLBUFSIZE];
@@ -328,29 +333,42 @@ done:
     char*   extra= NULL;
 
     if(!fError) {
-        if((strlen(s_fileTemplate)+32)>=size) {
+        if((strlen(s_fileTemplate)+32)<size) {
             sprintf(extraBuf, s_fileTemplate, "Bids", resourcesize);
             extra= extraBuf;
+#ifdef  TEST
+            fprintf(g_logFile, "extra\n%s\n\n", extra);
+            fflush(g_logFile);
+#endif
         }
-        else
-            fError= true;
+    	else
+        	fError= true;
     }
 
     // construct response and transmit
     if(!bidconstructResponse(fError, &p, &nLeft, extra, channelError)) {
-        fprintf(g_logFile, "bidchannelServices::bidconstructResponse failed\n");
+        fprintf(g_logFile, "bidchannelServices::getBids, bidconstructResponse failed\n");
         return false;
     }
 
     // send response
-    service->m_oSafeChannel.safesendPacket((byte*)buf, (int)strlen(reinterpret_cast<char*>(buf))+1,
+    service->m_oSafeChannel.safesendPacket((byte*)buf, 
+                                   (int)strlen(reinterpret_cast<char*>(buf))+1,
                                    type, multi, final);
 
     // send bids if no error
     if(!fError) {
+#ifdef  TEST
+        fprintf(g_logFile, "calling sendchannelblob\n");
+        fflush(g_logFile);
+#endif
         sendchannelBlob(service->m_oSafeChannel, (byte*) allbids, resourcesize);
     }
-    return true;
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::getBids returning %d\n", !fError);
+    fflush(g_logFile);
+#endif
+    return !fError;
 }
 
 
@@ -492,13 +510,13 @@ bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* k
 
 bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file)
 {
-    byte*   encrypted= NULL;
-    int     sizeEncrypted= 0;
-    int     sizeout= 256;
-    byte*   outbuf;
+    byte    encrypted[BIGBUFSIZE];
+    int     sizeEncrypted= BIGBUFSIZE;
+    int     sizeout= BIGBUFSIZE;
+    byte    outbuf[BIGBUFSIZE];;
 
 #ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::retrieveBids\n");
+    fprintf(g_logFile, "bidchannelServices::retrieveBids %s\n", file);
     fflush(g_logFile);
 #endif
 
@@ -507,6 +525,10 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
     if(stat(file, &statBlock)<0) {
         m_fBidListValid= true;
         m_nBids= 0;
+#ifdef  TEST
+        fprintf(g_logFile, "bidchannelServices::retrieveBids no files 0 bids\n");
+        fflush(g_logFile);
+#endif
         return true;
     }
     // read file
@@ -514,8 +536,6 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
         fprintf(g_logFile, "bidchannelServices::retrieveBids cant getBlob\n");
         return false;
     }
-    sizeout= sizeEncrypted;
-    outbuf= (byte*)malloc(sizeout);
 
     // decrypt it
     if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeEncrypted, encrypted, &sizeout, outbuf,
@@ -671,7 +691,7 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* re
 
     // check response
     if(oResponse.m_szAction==NULL || strcmp(oResponse.m_szAction, "accept")!=0) {
-        fprintf(g_logFile, "requestbids: response is false\n");
+        fprintf(g_logFile, "requestbids response is false\n");
         return false;
     }
 
@@ -723,7 +743,7 @@ int bidServerrequestService(const char* request, serviceChannel* service)
      }
     else if(strcmp(oReq.m_szAction, "getBids")==0) {
          if(!SERVICESOBJ(getBids)(oReq, service, TIMER(m_decTimer))) {
-             fprintf(g_logFile, "acceptBid failed 1\n");
+             fprintf(g_logFile, "getBids failed 1\n");
              return -1;
          }
          return 1;

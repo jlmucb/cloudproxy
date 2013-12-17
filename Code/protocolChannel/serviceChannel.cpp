@@ -217,6 +217,7 @@ bool serviceChannel::runServiceChannel()
         while((n=processRequests())!=0) {
             if(n<0)
                 fprintf(g_logFile, "serviceChannel::runServiceChannel processRequest error\n");
+                fflush(g_logFile);
 #if 0
             m_pParent->printTimers(g_logFile);
             m_pParent->resetTimers();

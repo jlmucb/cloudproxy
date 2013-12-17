@@ -684,7 +684,7 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* re
     buf[n]= 0;
 
 #ifdef TEST
-    fprintf(g_logFile, "bidClient::requestbids response %d\n%s\n", n, buf);
+    fprintf(g_logFile, "requestbids response %d\n%s\n", n, buf);
     fflush(g_logFile);
 #endif
     oResponse.getDatafromDoc(buf);
@@ -705,6 +705,12 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* re
         fprintf(g_logFile, "requestbids cant send blob\n");
         return false;
     }
+
+    if(!saveBlobtoFile("sellerClient/savedBids", (byte*)request, n))  {
+        fprintf(g_logFile, "requestbids save failed\n");
+    }
+    else
+        fprintf(g_logFile, "requestbids succeeds\n");
 
 #ifdef  TEST
     fprintf(g_logFile, "requestbids returns true\n");

@@ -62,12 +62,13 @@ bool KvmUnixTaoChildChannel::Init() {
 bool KvmUnixTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
   // try to receive an integer
   CHECK(m) << "m was null";
-
+  LOG(INFO) << "About to receive a message on fd " << fd_;
   return tao::ReceiveMessage(fd_, m);
 }
 
 bool KvmUnixTaoChildChannel::SendMessage(
     const google::protobuf::Message &m) const {
+  LOG(INFO) << "About to send a message on fd " << fd_;
   return tao::SendMessage(fd_, m);
 }
 }  // namespace tao

@@ -107,20 +107,22 @@ LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
 }
 
 bool LinuxTao::Init() {
+  LOG(INFO) << "Loading the public policy key";
   // load the public policy key
   policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
   CHECK_NOTNULL(policy_verifier_.get());
   policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
 
+  LOG(INFO) << "Initializing the host channel";
   // initialize the host channel
   CHECK(host_channel_->Init()) << "Could not initialize the host channel";
-
+  LOG(INFO) << "Initialized the host channel";
   // only keep the secret for the duration of this method:
   // long enough to unlock or create a sealed encryption key
   ScopedSafeString secret(new string());
   CHECK(getSecret(&secret))
       << "Could not generate (and seal) or unseal the secret using the Tao";
-  VLOG(1) << "Got the secret";
+  LOG(INFO) << "Got the secret";
 
   // now get our Crypter that was encrypted using this
   // secret or generate and encrypt a new one
@@ -139,7 +141,7 @@ bool LinuxTao::Init() {
   }
 
   crypter_->set_encoding(Keyczar::NO_ENCODING);
-
+  LOG(INFO) << "Got a crypter";
   // get a public-private key pair from the Tao key (either create and seal or
   // just unseal it).
 
@@ -199,10 +201,12 @@ bool LinuxTao::getSecret(ScopedSafeString *secret) {
   CHECK_NOTNULL(secret);
   FilePath fp(secret_path_);
   if (!PathExists(fp)) {
+    LOG(INFO) << "Getting a new secret from the host tao";
     // generate a random value for the key and seal it, writing the result
     // into this file
     CHECK(host_channel_->GetRandomBytes(SecretSize, secret->get()))
         << "Could not generate a random secret to seal";
+    LOG(INFO) << "Got a secret from the Tao";
 
     // seal and save
     string sealed_secret;

@@ -457,7 +457,9 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
   }
 
   size_t len = serialized.size();
+  LOG(INFO) << "Serialized the message of length " << (int)len;
   ssize_t bytes_written = write(fd, &len, sizeof(size_t));
+  LOG(INFO) << "The write succeeded";
   if (bytes_written != sizeof(size_t)) {
     PLOG(ERROR) << "Could not write the length to the fd " << fd;
     return false;
@@ -469,6 +471,7 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
     return false;
   }
 
+  LOG(INFO) << "Sent the message";
   return true;
 }
 

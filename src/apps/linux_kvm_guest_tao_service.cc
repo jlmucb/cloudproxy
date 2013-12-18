@@ -115,13 +115,14 @@ int main(int argc, char **argv) {
   TaoChildChannelRegistry registry;
   tao::RegisterKnownChannels(&registry);
 
+  LOG(INFO) << "Getting registered channel for these params";
   scoped_ptr<TaoChildChannel> child_channel(registry.Create(params));
-  CHECK(child_channel->Init()) << "Could not initialize the child channel";
 
   scoped_ptr<WhitelistAuth> whitelist_auth(
       new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
   CHECK(whitelist_auth->Init())
       << "Could not initialize the authorization manager";
+  LOG(INFO) << "Initialized the authorization manager";
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
@@ -130,11 +131,13 @@ int main(int argc, char **argv) {
   scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
   CHECK(process_factory->Init()) << "Could not initialize the process factory";
 
+  LOG(INFO) << "Set up the channels and factories for local hosted programs";
   scoped_ptr<LinuxTao> tao(
       new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
                    FLAGS_policy_pk_path, child_channel.release(),
                    pipe_channel.release(), process_factory.release(),
                    whitelist_auth.release(), FLAGS_ca_host, FLAGS_ca_port));
+  LOG(INFO) << "Created the LinuxTao; about to initialize";
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
 
   LOG(INFO) << "Linux Tao Service started and waiting for requests";

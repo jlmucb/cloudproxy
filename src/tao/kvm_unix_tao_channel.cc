@@ -161,18 +161,14 @@ bool KvmUnixTaoChannel::ConnectToUnixSocket(const string &path, int *s) const {
     return false;
   }
 
-  *s = socket(AF_UNIX, SOCK_DGRAM, 0);
+  *s = socket(AF_UNIX, SOCK_STREAM, 0);
   if (*s == -1) {
     PLOG(ERROR) << "Could not create a Unix domain socket for " << path;
     return false;
   }
 
-  int fcntl_err = fcntl(*s, F_SETFL, O_NONBLOCK);
-  if (fcntl_err == -1) {
-    PLOG(ERROR) << "Could not set O_NONBLOCK on the socket";
-    return false;
-  }
-
+  // TODO(tmroeder): add timeout here so that malicious clients can't cause
+  // denial of service.
   struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
   if (path.size() + 1 > sizeof(addr.sun_path)) {
@@ -181,8 +177,8 @@ bool KvmUnixTaoChannel::ConnectToUnixSocket(const string &path, int *s) const {
   }
 
   strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path));
-  int len = sizeof(addr.sun_family) + strlen(addr.sun_path);
-  int connect_err = connect(*s, (struct sockaddr *)&addr, len);
+  //int len = sizeof(addr.sun_family) + strlen(addr.sun_path);
+  int connect_err = connect(*s, (struct sockaddr *)&addr, sizeof(addr));
   if (connect_err == -1) {
     PLOG(ERROR) << "Could not connect to the socket " << path;
     return false;
@@ -215,8 +211,8 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
   }
 
   strncpy(addr.sun_path, domain_socket_path_.c_str(), sizeof(addr.sun_path));
-  int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
-  int bind_err = bind(sock, (struct sockaddr *)&addr, len);
+  //int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+  int bind_err = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
   if (bind_err == -1) {
     PLOG(ERROR) << "Could not bind the address " << domain_socket_path_
                 << " to the socket";
@@ -250,6 +246,7 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
 
     // Check for messages to handle
     if (FD_ISSET(sock, &read_fds)) {
+      LOG(INFO) << "Handling a program creation request";
       if (!HandleProgramCreation(tao, sock)) {
         LOG(ERROR) << "Could not handle the program creation request";
       }
@@ -260,14 +257,17 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
          child_hash_to_socket_) {
       int d = descriptor.second.second;
       const string &child_hash = descriptor.first;
+      LOG(INFO) << "Got a message from " << child_hash;
 
       if (FD_ISSET(d, &read_fds)) {
         TaoChannelRPC rpc;
+	LOG(INFO) << "Getting RPC";
         if (!GetRPC(&rpc, child_hash)) {
           LOG(ERROR) << "Could not get an RPC. Removing child " << child_hash;
           programs_to_erase.push_back(child_hash);
           continue;
         }
+	LOG(INFO) << "Got RPC, handling it";
 
         if (!HandleRPC(*tao, child_hash, rpc)) {
           LOG(ERROR) << "Could not handle the RPC. Removing child "
@@ -275,11 +275,15 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
           programs_to_erase.push_back(child_hash);
           continue;
         }
+	LOG(INFO) << "Finished handling RPC";
       }
     }
 
+    LOG(INFO) << "Done with loop check";
+
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
+      LOG(INFO) << "Erasing " << *pit;
       child_hash_to_socket_.erase(*pit);
     }
   }

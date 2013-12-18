@@ -459,13 +459,13 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
   size_t len = serialized.size();
   ssize_t bytes_written = write(fd, &len, sizeof(size_t));
   if (bytes_written != sizeof(size_t)) {
-    LOG(ERROR) << "Could not write the length to the fd " << fd;
+    PLOG(ERROR) << "Could not write the length to the fd " << fd;
     return false;
   }
 
   bytes_written = write(fd, serialized.data(), len);
   if (bytes_written != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not write the serialized message to the fd";
+    PLOG(ERROR) << "Could not write the serialized message to the fd";
     return false;
   }
 
@@ -478,23 +478,50 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     return false;
   }
 
-  size_t len;
-  ssize_t bytes_read = read(fd, &len, sizeof(size_t));
-  if (bytes_read != sizeof(size_t)) {
-    LOG(ERROR) << "Could not receive a size on the channel";
-    return false;
+  // Loop in case the channel underlying the fd doesn't guarantee that all bytes
+  // are delivered at once (I'm looking at you, AF_UNIX/SOCK_STREAM).
+  size_t len = 0;
+  ssize_t bytes_read = 0;
+  while(static_cast<size_t>(bytes_read) < sizeof(size_t)) {
+    int rv = read(fd, ((char *)&len) + bytes_read,
+        sizeof(size_t) - bytes_read);
+
+    if (rv < 0) {
+      if ((rv == EAGAIN) || (rv == EWOULDBLOCK)) {
+        LOG(WARNING) << "Got an EAGAIN or EWOULDBLOCK";
+        continue;
+      } else {
+        PLOG(ERROR) << "Could not receive a size on the channel";
+        return false;
+      }
+    }
+
+    bytes_read += rv;
   }
+
+  LOG(INFO) << "Got a length " << (int)len;
 
   // then read this many bytes as the message
   scoped_array<char> bytes(new char[len]);
-  bytes_read = read(fd, bytes.get(), len);
+  bytes_read = 0;
+  while(static_cast<size_t>(bytes_read) < len) {
+    int rv = read(fd, bytes.get() + bytes_read, len - bytes_read);
 
-  // TODO(tmroeder): add safe integer library
-  if (bytes_read != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not read the right number of bytes from the fd";
-    return false;
+    // TODO(tmroeder): add safe integer library
+    if (rv < 0) {
+      if ((rv == EAGAIN) || (rv == EWOULDBLOCK)) {
+        LOG(WARNING) << "Got an EAGAIN or EWOULDBLOCK";
+        continue;
+      } else {
+        PLOG(ERROR) << "Could not read the right number of bytes from the fd";
+        return false;
+      }
+    }
+
+    bytes_read += rv;
   }
 
+  LOG(INFO) << "Received a message of length " << len;
   string serialized(bytes.get(), len);
   return m->ParseFromString(serialized);
 

@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
   string params;
   if (!Base64WDecode(encoded_params, &params)) {
-    LOG(ERROR) << "Could not decoded the encoded params " << encoded_params;
+    LOG(ERROR) << "Could not decode the encoded params " << encoded_params;
     return 1;
   }
 

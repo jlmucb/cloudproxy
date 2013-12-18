@@ -132,6 +132,7 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   // The params have to be a Base64W-encoded KvmUnixTaoChannelParams and must
   // specify a path for the connection to the client.
   string params;
+  LOG(INFO) << "Decoded params " << encoded_params;
   if (!Base64WDecode(encoded_params, &params)) {
     LOG(ERROR) << "Could not decode the encoded params";
     return false;

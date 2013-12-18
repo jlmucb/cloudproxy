@@ -50,6 +50,6 @@ TaoChildChannel *TaoChildChannelRegistry::Create(const string &params) {
     return nullptr;
   }
 
-  return channel_it->second(tccp.params());
+  return channel_it->second(params);
 }
 } // end namespace tao

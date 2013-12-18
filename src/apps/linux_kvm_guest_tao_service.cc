@@ -99,8 +99,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  string encoded_params(cmdline.substr(space_index + 1));
+  // The last character is a newline, so stop before it.
+  LOG(INFO) << "cmdline.size() == " << (int)cmdline.size();
+  LOG(INFO) << "space_index == " << (int)space_index;
+  string encoded_params(cmdline.substr(space_index + 1,
+                        	       cmdline.size() - (space_index + 1) - 1));
 
+  LOG(INFO) << "The length of the encoded string is " << encoded_params.size();
   string params;
   if (!Base64WDecode(encoded_params, &params)) {
     LOG(ERROR) << "Could not decode the encoded params " << encoded_params;

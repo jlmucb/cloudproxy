@@ -120,7 +120,8 @@ bool KvmUnixTaoChannel::ReceiveMessage(google::protobuf::Message *m,
                << " has not been set yet";
     return false;
   }
-
+  
+  LOG(INFO) << "Got fd " << readfd << " for child " << child_hash;
   return tao::ReceiveMessage(readfd, m);
 }
 
@@ -152,6 +153,7 @@ bool KvmUnixTaoChannel::SendMessage(const google::protobuf::Message &m,
     return false;
   }
 
+  LOG(INFO) << "Got fd " << writefd << " for child " << child_hash;
   return tao::SendMessage(writefd, m);
 }
 
@@ -219,9 +221,11 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
   }
 
   LOG(INFO) << "Bound the unix socket to " << domain_socket_path_;
+  LOG(INFO) << "The file descriptor is " << sock;
 
   while (true) {
     // set up the select operation with the current fds and the unix socket
+    LOG(INFO) << "zeroing read_fds";
     fd_set read_fds;
     FD_ZERO(&read_fds);
     int max = sock;
@@ -238,7 +242,9 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
       }
     }
 
+    LOG(INFO) << "Waiting on select with max " << (int)max;
     int err = select(max + 1, &read_fds, NULL, NULL, NULL);
+    LOG(INFO) << "select returned";
     if (err == -1) {
       PLOG(ERROR) << "Error in calling select";
       return false;
@@ -257,7 +263,7 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
          child_hash_to_socket_) {
       int d = descriptor.second.second;
       const string &child_hash = descriptor.first;
-      LOG(INFO) << "Got a message from " << child_hash;
+      LOG(INFO) << "Considering descriptor " << d;
 
       if (FD_ISSET(d, &read_fds)) {
         TaoChannelRPC rpc;
@@ -276,6 +282,8 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
           continue;
         }
 	LOG(INFO) << "Finished handling RPC";
+      } else {
+        LOG(INFO) << "It's not set";
       }
     }
 

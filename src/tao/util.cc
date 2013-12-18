@@ -478,47 +478,27 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     return false;
   }
 
-  // Loop in case the channel underlying the fd doesn't guarantee that all bytes
-  // are delivered at once (I'm looking at you, AF_UNIX/SOCK_STREAM).
   size_t len = 0;
-  ssize_t bytes_read = 0;
-  while(static_cast<size_t>(bytes_read) < sizeof(size_t)) {
-    int rv = read(fd, ((char *)&len) + bytes_read,
-        sizeof(size_t) - bytes_read);
+  ssize_t bytes_read = read(fd, &len, sizeof(size_t));
+  if (bytes_read != static_cast<ssize_t>(sizeof(size_t))) {
+    PLOG(ERROR) << "Could not read an integer length";
+    return false;
+  }
 
-    if (rv < 0) {
-      if ((rv == EAGAIN) || (rv == EWOULDBLOCK)) {
-        LOG(WARNING) << "Got an EAGAIN or EWOULDBLOCK";
-        continue;
-      } else {
-        PLOG(ERROR) << "Could not receive a size on the channel";
-        return false;
-      }
-    }
-
-    bytes_read += rv;
+  // TODO(tmroeder): figure out why this is happening
+  if ((len < 0) || (len > 1024 * 1024)) {
+    LOG(ERROR) << "The length was too large to be reasonable: " << len;
+    return false;
   }
 
   LOG(INFO) << "Got a length " << (int)len;
 
   // then read this many bytes as the message
   scoped_array<char> bytes(new char[len]);
-  bytes_read = 0;
-  while(static_cast<size_t>(bytes_read) < len) {
-    int rv = read(fd, bytes.get() + bytes_read, len - bytes_read);
-
-    // TODO(tmroeder): add safe integer library
-    if (rv < 0) {
-      if ((rv == EAGAIN) || (rv == EWOULDBLOCK)) {
-        LOG(WARNING) << "Got an EAGAIN or EWOULDBLOCK";
-        continue;
-      } else {
-        PLOG(ERROR) << "Could not read the right number of bytes from the fd";
-        return false;
-      }
-    }
-
-    bytes_read += rv;
+  bytes_read = read(fd, bytes.get(), len);
+  if (bytes_read != static_cast<ssize_t>(len)) {
+    PLOG(ERROR) << "Could not receive a message of length " << len;
+    return false;
   }
 
   LOG(INFO) << "Received a message of length " << len;

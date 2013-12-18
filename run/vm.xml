@@ -7,7 +7,7 @@
     <type arch='x86_64' machine='pc-1.0'>hvm</type>
     <kernel>%s</kernel>
     <initrd>%s</initrd>
-    <cmdline>root=/dev/sda1 ro quiet</cmdline>
+    <cmdline>root=/dev/sda1 ro quiet %s</cmdline>
   </os>
   <features>
     <acpi/>

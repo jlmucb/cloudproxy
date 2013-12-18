@@ -82,7 +82,7 @@ class LinuxTao : public Tao {
            const string &pk_path, const string &policy_pk_path,
            TaoChildChannel *host_channel, TaoChannel *child_channel,
            HostedProgramFactory *program_factory, TaoAuth *auth_manager,
-	   const string &ca_host, const string &ca_port);
+           const string &ca_host, const string &ca_port);
   virtual ~LinuxTao() {}
 
   // Start listening for Tao messages on channels

@@ -26,6 +26,7 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/keyczar.h>
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
@@ -35,6 +36,8 @@
 #include "tao/kvm_unix_tao_child_channel.h"
 #include "tao/pipe_tao_channel.h"
 #include "tao/process_factory.h"
+#include "tao/tao_child_channel.h"
+#include "tao/tao_child_channel_registry.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
@@ -44,10 +47,14 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+using keyczar::base::Base64WDecode;
+
 using tao::LinuxTao;
 using tao::KvmUnixTaoChildChannel;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
+using tao::TaoChildChannel;
+using tao::TaoChildChannelRegistry;
 using tao::WhitelistAuth;
 
 DEFINE_string(secret_path, "linux_tao_service_secret",
@@ -73,11 +80,37 @@ int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
   tao::InitializeOpenSSL();
 
-  // By convention, the params are the last argument in argv.
-  string params(argv[argc - 1]);
+  // In the guest, the params are the last element in /proc/cmdline, as
+  // delimited by space.
+  ifstream proc_cmd("/proc/cmdline");
+  if (!proc_cmd) {
+    LOG(ERROR) << "Could not open /proc/cmdline to get the command line";
+    return 1;
+  }
 
-  scoped_ptr<KvmUnixTaoChildChannel> child_channel(
-      new KvmUnixTaoChildChannel(params));
+  stringstream proc_stream;
+  proc_stream << proc_cmd.rdbuf();
+
+  // Split on space and take the last element.
+  string cmdline(proc_stream.str());
+  size_t space_index = cmdline.find_last_of(' ');
+  if (space_index == string::npos) {
+    LOG(ERROR) << "Could not find any characters in the kernel boot params";
+    return 1;
+  }
+
+  string encoded_params(cmdline.substr(space_index + 1));
+
+  string params;
+  if (!Base64WDecode(encoded_params, &params)) {
+    LOG(ERROR) << "Could not decoded the encoded params " << encoded_params;
+    return 1;
+  }
+
+  TaoChildChannelRegistry registry;
+  tao::RegisterKnownChannels(&registry);
+
+  scoped_ptr<TaoChildChannel> child_channel(registry.Create(params));
   CHECK(child_channel->Init()) << "Could not initialize the child channel";
 
   scoped_ptr<WhitelistAuth> whitelist_auth(

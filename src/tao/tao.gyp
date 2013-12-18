@@ -46,7 +46,7 @@
       'target_name': 'linux_tao_unittests',
       'type': 'executable',
       'sources': [
-	    'linux_tao_unittests.cc',
+        'linux_tao_unittests.cc',
       ],
       'include_dirs': [
         '..',
@@ -62,7 +62,7 @@
       'target_name': 'tpm_tao_child_channel_unittests',
       'type': 'executable',
       'sources': [
-	      'tpm_tao_child_channel_unittests.cc',
+        'tpm_tao_child_channel_unittests.cc',
       ],
       'include_dirs': [
         '..',
@@ -78,6 +78,8 @@
       'sources': [
         'fake_tao.h',
         'fake_tao.cc',
+        'fake_tao_channel.h',
+        'fake_tao_channel.cc',
         'fake_program_factory.h',
       ],
       'include_dirs': [
@@ -123,6 +125,8 @@
         'tao_channel_rpc.proto',
         'tao_child_channel.cc',
         'tao_child_channel.h',
+        'tao_child_channel_registry.cc',
+        'tao_child_channel_registry.h',
         'tao_child_channel_params.proto',
         'tao.h',
         'tpm_tao_child_channel.cc',
@@ -136,7 +140,7 @@
         '-lcrypto',
         '-lssl',
         '-ltspi',
-	'-lvirt',
+        '-lvirt',
       ],
       'include_dirs': [
         '<(SHARED_INTERMEDIATE_DIR)',

@@ -43,6 +43,9 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include "tao/pipe_tao_child_channel.h"
+#include "tao/kvm_unix_tao_child_channel.h"
+
 using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
@@ -160,6 +163,22 @@ bool HashVM(const string &vm_template, const string &name,
   return Base64WEncode(composite_hash, hash);
 }
 
+bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
+  if (registry == nullptr) {
+    LOG(ERROR) << "Could not register channels with a null registry";
+    return false;
+  }
+
+  registry->Register(
+      KvmUnixTaoChildChannel::ChannelType(),
+      TaoChildChannelRegistry::CallConstructor<KvmUnixTaoChildChannel>);
+
+  registry->Register(
+      PipeTaoChildChannel::ChannelType(),
+      TaoChildChannelRegistry::CallConstructor<PipeTaoChildChannel>);
+
+  return true;
+}
 
 bool InitializeOpenSSL() {
   SSL_load_error_strings();

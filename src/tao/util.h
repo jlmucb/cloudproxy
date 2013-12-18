@@ -28,6 +28,7 @@
 #include "tao/keyczar_public_key.pb.h"
 #include "tao/tao.h"
 #include "tao/tao_child_channel.h"
+#include "tao/tao_child_channel_registry.h"
 
 int remove_entry(const char *path, const struct stat *sb,
                  int tflag, struct FTW *ftwbuf);
@@ -37,7 +38,9 @@ typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
     ScopedRsa;
 
 bool HashVM(const string &vm_template, const string &name,
-	    const string &kernel, const string &initrd, string *hash);
+            const string &kernel, const string &initrd, string *hash);
+
+bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 
 bool InitializeOpenSSL();
 

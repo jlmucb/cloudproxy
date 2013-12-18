@@ -32,6 +32,8 @@
 #include "cloudproxy/util.h"
 #include "cloudproxy/cloud_user_manager.h"
 #include "tao/pipe_tao_child_channel.h"
+#include "tao/tao_child_channel.h"
+#include "tao/tao_child_channel_registry.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
@@ -40,12 +42,14 @@ using std::string;
 using std::stringstream;
 
 using cloudproxy::CloudClient;
-using tao::SealOrUnsealSecret;
 
+using keyczar::base::Base64WDecode;
 using keyczar::base::ScopedSafeString;
 
 using tao::PipeTaoChildChannel;
+using tao::SealOrUnsealSecret;
 using tao::TaoChildChannel;
+using tao::TaoChildChannelRegistry;
 using tao::WhitelistAuth;
 
 DEFINE_string(client_cert, "./openssl_keys/client/client.crt",
@@ -85,10 +89,19 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  string params(argv[argc - 1]);
+  // The convention is that the last argument in a process-based hosted program
+  // is the child channel params encoded as Base64W.
+  string encoded_params(argv[argc - 1]);
+  string params;
+  if (!Base64WDecode(encoded_params, &params)) {
+    LOG(ERROR) << "Could not decode the encoded params " << encoded_params;
+    return 1;
+  }
 
-  // TODO(tmroeder): generalize this to arbitrary channel strings
-  scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
+  TaoChildChannelRegistry registry;
+  tao::RegisterKnownChannels(&registry);
+
+  scoped_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
   scoped_ptr<WhitelistAuth> whitelist_auth(

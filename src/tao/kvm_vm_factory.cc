@@ -31,11 +31,12 @@
 #include <libvirt/virterror.h>
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
+#include "tao/kvm_unix_tao_child_channel.h"
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/tao_channel.h"
 #include "tao/util.h"
 
-using keyczar::base::Base64WEncode;
+using keyczar::base::Base64WDecode;
 using keyczar::CryptoFactory;
 using keyczar::MessageDigestImpl;
 
@@ -126,18 +127,26 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   string kernel(*(it++));
   string initrd(*(it++));
   string disk(*(it++));
-  string params(*(it++));
+  string encoded_params(*(it++));
 
-  // The params have to be a KvmUnixTaoChannelParams and must specify a path for
-  // the connection to the client.
+  // The params have to be a Base64W-encoded KvmUnixTaoChannelParams and must
+  // specify a path for the connection to the client.
+  string params;
+  if (!Base64WDecode(encoded_params, &params)) {
+    LOG(ERROR) << "Could not decode the encoded params";
+    return false;
+  }
+
   TaoChildChannelParams tccp;
   if (!tccp.ParseFromString(params)) {
     LOG(ERROR) << "Could not parse the TaoChildChannelParams from the params";
     return false;
   }
 
-  if (tccp.channel_type().compare("KvmUnixTaoChannel")) {
-    LOG(ERROR) << "Invalid params type: expected KvmUnixTaoChannel but got " << tccp.channel_type();
+  if (tccp.channel_type().compare(KvmUnixTaoChildChannel::ChannelType())) {
+    LOG(ERROR) << "Invalid params type: expected "
+               << KvmUnixTaoChildChannel::ChannelType()
+               << " but got " << tccp.channel_type();
     return false;
   }
 
@@ -162,20 +171,14 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   // The final + 1 is due to the final null byte. This is larger than needed,
   // since snprintf removes the %s that gets replaced each time.
   size_t formatted_size = vmspec.size() + name.size() +
-      kernel.size() + initrd.size() + disk.size() +
+      kernel.size() + initrd.size() + encoded_params.size() + disk.size() +
       2 * path.size() + 1;
 
-  LOG(INFO) << "vmspec " << (int)vmspec.size();
-  LOG(INFO) << "name " << (int)name.size();
-  LOG(INFO) << "kernel " << (int)kernel.size();
-  LOG(INFO) << "initrd " << (int)initrd.size();
-  LOG(INFO) << "disk " << (int)disk.size();
-  LOG(INFO) << "path " << (int)path.size();
-  LOG(INFO) << "formatted " << (int)formatted_size;
   scoped_array<char> buf(new char[formatted_size]);
   int count = snprintf(buf.get(), formatted_size, vmspec.c_str(),
                        name.c_str(), kernel.c_str(), initrd.c_str(),
-                       disk.c_str(), path.c_str(), path.c_str());
+                       encoded_params.c_str(), disk.c_str(), path.c_str(),
+                       path.c_str());
 
   if (count < 0) {
     PLOG(ERROR) << "Could not snprintf into the buffer";

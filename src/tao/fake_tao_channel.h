@@ -36,9 +36,7 @@ class FakeTaoChannel : public TaoChannel {
   // their parameters.
   virtual bool Listen(Tao *t) { return true; }
 
-  virtual bool AddChildChannel(const string &child_hash, string *params) {
-    return true;
-  }
+  virtual bool AddChildChannel(const string &child_hash, string *params);
   virtual bool ChildCleanup(const string &child_hash) { return true; }
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 

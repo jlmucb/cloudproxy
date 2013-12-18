@@ -290,10 +290,22 @@ bool LinuxTao::StartHostedProgram(const string &path,
   if (!child_channel_->AddChildChannel(child_hash, &child_params)) {
     LOG(ERROR) << "Could not add a channel to connect to a child with hash "
                << child_hash;
+    return false;
   }
 
   list<string> program_args(args.begin(), args.end());
-  program_args.push_back(child_params);
+
+  // The convention is that the arguments are Base64W encoded as the last
+  // argument in the list. The factory chooses how to handle the params.
+  // TODO(tmroeder): Change the convention to add an argument to
+  // CreateHostedProgram.
+  string encoded_params;
+  if (!Base64WEncode(child_params, &encoded_params)) {
+    LOG(ERROR) << "Could not encode the child params for the program";
+    return false;
+  }
+
+  program_args.push_back(encoded_params);
 
   if (!program_factory_->CreateHostedProgram(
           path, program_args, child_hash, *child_channel_)) {

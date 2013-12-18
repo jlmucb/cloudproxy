@@ -217,7 +217,8 @@ TEST_F(LinuxTaoTest, SealTest) {
   EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
 
   string sealed;
-  EXPECT_TRUE(tao_->Seal(child_hash_, bytes, &sealed));
+  string empty;
+  EXPECT_TRUE(tao_->Seal(empty, bytes, &sealed));
 }
 
 TEST_F(LinuxTaoTest, UnsealTest) {
@@ -228,10 +229,11 @@ TEST_F(LinuxTaoTest, UnsealTest) {
   EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
 
   string sealed;
-  EXPECT_TRUE(tao_->Seal(child_hash_, bytes, &sealed));
+  string empty;
+  EXPECT_TRUE(tao_->Seal(empty, bytes, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(tao_->Unseal(child_hash_, sealed, &unsealed));
+  EXPECT_TRUE(tao_->Unseal(empty, sealed, &unsealed));
   EXPECT_EQ(unsealed, bytes);
 }
 
@@ -243,7 +245,8 @@ TEST_F(LinuxTaoTest, AttestTest) {
   EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
 
   string attestation;
-  EXPECT_TRUE(tao_->Attest(child_hash_, bytes, &attestation));
+  string empty;
+  EXPECT_TRUE(tao_->Attest(empty, bytes, &attestation));
 }
 
 GTEST_API_ int main(int argc, char **argv) {

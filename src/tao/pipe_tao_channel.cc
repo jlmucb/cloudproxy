@@ -90,7 +90,7 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   ptcp.set_writefd(up_pipe[1]);
 
   TaoChildChannelParams tccp;
-  tccp.set_channel_type("PipeTaoChannel");
+  tccp.set_channel_type("PipeTaoChildChannel");
   string *child_params = tccp.mutable_params();
   if (!ptcp.SerializeToString(child_params)) {
     LOG(ERROR) << "Could not serialize the child params to a string";

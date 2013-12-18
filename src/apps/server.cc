@@ -23,6 +23,7 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -33,6 +34,7 @@
 #include "cloudproxy/util.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/tao_auth.h"
+#include "tao/tao_child_channel_registry.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
@@ -43,11 +45,13 @@ using std::vector;
 using cloudproxy::CloudServer;
 using tao::SealOrUnsealSecret;
 
+using keyczar::base::Base64WDecode;
 using keyczar::base::ScopedSafeString;
 
 using tao::PipeTaoChildChannel;
 using tao::TaoAuth;
 using tao::TaoChildChannel;
+using tao::TaoChildChannelRegistry;
 using tao::WhitelistAuth;
 
 DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
@@ -85,10 +89,17 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  string params(argv[argc - 1]);
+  string encoded_params(argv[argc - 1]);
+  string params;
+  if (!Base64WDecode(encoded_params, &params)) {
+    LOG(ERROR) << "Could not decode the encoded params " << encoded_params;
+    return 1;
+  }
 
-  // TODO(tmroeder): generalize this to arbitrary channel strings
-  scoped_ptr<TaoChildChannel> channel(new PipeTaoChildChannel(params));
+  TaoChildChannelRegistry registry;
+  tao::RegisterKnownChannels(&registry);
+
+  scoped_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
   LOG(INFO) << "Successfully established communication with the Tao";

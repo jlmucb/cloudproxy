@@ -15,8 +15,8 @@ DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
 RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
 O1RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O1
 CFLAGS=     -D LINUX -D BIDCLIENT -D TAOUSERSA2048 -D TEST -D TIXML_USE_STL -D __FLUSHIO__ $(RELEASE_CFLAGS)
-LDFLAGS          := $(RELEASE_LDFLAGS)
 O1CFLAGS=    -D LINUX -D BIDCLIENT -D TEST -D TAOUSERSA2048 -D TIXML_USE_STL -D __FLUSHIO__ $(O1RELEASE_CFLAGS)
+LDFLAGS          := $(RELEASE_LDFLAGS)
 
 CC=         g++
 LINK=       g++

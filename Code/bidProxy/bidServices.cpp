@@ -95,7 +95,7 @@
  *  <Bid>
  *      <AuctionID> </AuctionID>
  *      <BidAmount> </BidAmount>
- *      <SubjectName> </SubjectName>
+ *      <UserName> </UserName>
  *      <DateTime> </DateTime>
  *      <BidderCert> </BidderCert>
  *  <Bid>
@@ -205,6 +205,81 @@ bool channelServices::initchannelServices(serviceChannel* service, void* pLocals
 
 bool channelServices::closechannelServices()
 {
+    return true;
+}
+
+
+const char* bidchannelServices::serializeList()
+{
+    char    buf[BIGBUFSIZE];
+    int     size= BIGBUFSIZE;
+    char*   p= buf;
+    int     i, n;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::serializeList\n%d bids\n", m_nBids);
+    fflush(g_logFile);
+#endif
+
+    sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
+    n= strlen(buf);
+    p+= n;
+    size-= n;
+    for(i=0; i<m_nBids; i++) {
+        if(m_Bids[i]==NULL) {
+            return NULL;
+        }
+        n= strlen(m_Bids[i]);
+        if(n>(size-16)) {
+            return NULL;
+        }
+        memcpy(p, m_Bids[i], n+1);
+        p+= n;
+        size-= n;
+    }
+    if(size<16) {
+        return NULL;
+    }
+    sprintf(p, "</Bids>\n");
+    return strdup(buf);
+}
+
+
+bool bidchannelServices::deserializeList(const char* list)
+{
+    TiXmlDocument   doc;
+    char*           pbid= NULL;
+    int             n= 0;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::deserializeList\n");
+    fflush(g_logFile);
+#endif
+
+    if(!doc.Parse(list)) {
+        fprintf(g_logFile, "bidchannelServices::deserializeList cant parse list\n");
+        return false;
+    }
+
+    TiXmlElement*   pRootElement= doc.RootElement();
+    TiXmlNode*      pNode= NULL;
+    if(strcmp(pRootElement->Value(),"Bids")!=0) {
+        fprintf(g_logFile, "bidchannelServices::deserializeList no Bids element\n");
+        return false;
+    }
+    pRootElement->QueryIntAttribute ("nbids", &m_nBids);
+
+    pNode= pRootElement->FirstChild();
+    while(pNode!=NULL) {
+        pbid= canonicalize(pNode);
+        if(n>=(m_maxnBids-1)) {
+            return false;
+        }
+        m_Bids[n++]= pbid;
+        pNode= pNode->NextSibling();
+    }
+
+    m_nBids= n;
     return true;
 }
 
@@ -369,81 +444,6 @@ done:
     fflush(g_logFile);
 #endif
     return !fError;
-}
-
-
-const char* bidchannelServices::serializeList()
-{
-    char    buf[BIGBUFSIZE];
-    int     size= BIGBUFSIZE;
-    char*   p= buf;
-    int     i, n;
-
-#ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::serializeList\n%d bids\n", m_nBids);
-    fflush(g_logFile);
-#endif
-
-    sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
-    n= strlen(buf);
-    p+= n;
-    size-= n;
-    for(i=0; i<m_nBids; i++) {
-        if(m_Bids[i]==NULL) {
-            return NULL;
-        }
-        n= strlen(m_Bids[i]);
-        if(n>(size-16)) {
-            return NULL;
-        }
-        memcpy(p, m_Bids[i], n+1);
-        p+= n;
-        size-= n;
-    }
-    if(size<16) {
-        return NULL;
-    }
-    sprintf(p, "</Bids>\n");
-    return strdup(buf);
-}
-
-
-bool bidchannelServices::deserializeList(const char* list)
-{
-    TiXmlDocument   doc;
-    char*           pbid= NULL;
-    int             n= 0;
-
-#ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::deserializeList\n");
-    fflush(g_logFile);
-#endif
-
-    if(!doc.Parse(list)) {
-        fprintf(g_logFile, "bidchannelServices::deserializeList cant parse list\n");
-        return false;
-    }
-
-    TiXmlElement*   pRootElement= doc.RootElement();
-    TiXmlNode*      pNode= NULL;
-    if(strcmp(pRootElement->Value(),"Bids")!=0) {
-        fprintf(g_logFile, "bidchannelServices::deserializeList no Bids element\n");
-        return false;
-    }
-    pRootElement->QueryIntAttribute ("nbids", &m_nBids);
-
-    pNode= pRootElement->FirstChild();
-    while(pNode!=NULL) {
-        pbid= canonicalize(pNode);
-        if(n>=(m_maxnBids-1)) {
-            return false;
-        }
-        m_Bids[n++]= pbid;
-        pNode= pNode->NextSibling();
-    }
-
-    m_nBids= n;
-    return true;
 }
 
 

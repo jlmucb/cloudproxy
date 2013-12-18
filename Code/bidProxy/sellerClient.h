@@ -39,6 +39,7 @@
 #include <string>
 using std::string;
 
+
 class sellerClient {
 public:
     int                 m_clientState;
@@ -88,11 +89,9 @@ public:
     bool    closeClient();
     bool    establishConnection(safeChannel& fc, const char* keyFile, const char* certFile, 
                         const char* directory, const char* serverAddress, u_short serverPort);
-    bool    loadKeys(const char* keyFile, const char* certFile, 
-                            const char* directory);
     void    closeConnection(safeChannel& fc);
-    bool    resolveAuction(int numbids, char* bidFiles[]);
-    char*   signWinner(RSAKey* sealingKey, const char* auctionID,
+    bool    resolveAuction(int nbids, const char** bids);
+    char*   signWinner(RSAKey* key, const char* auctionID, const char* now,
                        int winningBidAmount, const char* szWinnerCert);
 
     bool    readBidResolution(safeChannel& fc, const string& subject,

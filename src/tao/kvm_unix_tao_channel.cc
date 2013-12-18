@@ -192,20 +192,6 @@ bool KvmUnixTaoChannel::ConnectToUnixSocket(const string &path, int *s) const {
 }
 
 bool KvmUnixTaoChannel::Listen(Tao *tao) {
-  for (pair<const string, pair<string, int>> &child : child_hash_to_socket_) {
-    // Connect to all the sockets so far
-    string path = child.second.first;
-    int s = -1;
-    // If we can't connect, then go on. We'll try again when another child is
-    // added, if ever
-    if (!ConnectToUnixSocket(path, &s)) {
-      LOG(ERROR) << "Could not connect to child " << child.first
-                 << " using socket " << child.second.first;
-    } else {
-      child.second.second = s;
-    }
-  }
-
   // The unix domain socket is used to listen for CreateHostedProgram requests.
   int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
   if (sock == -1) {
@@ -321,6 +307,40 @@ bool KvmUnixTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
     args.push_back(shpa.args(i));
   }
 
-  return tao->StartHostedProgram(shpa.path(), args);
+  for (pair<const string, pair<string, int>> &child : child_hash_to_socket_) {
+    // Connect to all the sockets so far
+    string path = child.second.first;
+    int s = -1;
+    // If we can't connect, then go on. We'll try again when another child is
+    // added, if ever
+    if (!ConnectToUnixSocket(path, &s)) {
+      LOG(ERROR) << "Could not connect to child " << child.first
+                 << " using socket " << child.second.first;
+    } else {
+      child.second.second = s;
+    }
+  }
+
+  if (!tao->StartHostedProgram(shpa.path(), args)) {
+    LOG(ERROR) << "Could not start the program";
+    return false;
+  }
+
+  // attach to any channels that have been added
+  for (pair<const string, pair<string, int>> &descriptor :
+       child_hash_to_socket_) {
+    if (descriptor.second.second == -1) {
+      string path(descriptor.second.first);
+      int s = -1;
+      if (!ConnectToUnixSocket(path, &s)) {
+	LOG(ERROR) << "Could not connect to the unix socket associated with the path " << path;
+	continue;
+      }
+
+      descriptor.second.second = s;
+    }
+  }
+
+  return true;
 }
 }  // namespace tao

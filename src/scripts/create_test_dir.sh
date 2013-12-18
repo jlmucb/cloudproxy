@@ -1,0 +1,40 @@
+#!/bin/bash
+# Copyright (c) 2013, Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
+# 1. built everything in ROOT/src (using ./bootstrap.sh &&
+# third_party/ninja/ninja -C out/Default);
+# 2. have a version of keyczart in $PATH (either install keyczar or build the
+# one in third_party/keyczar);
+# 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
+# TPM
+# 4. changed the following variables to suit your directory choices:
+RUN=~/testing/run
+TEST=~/testing/test
+ROOT=~/src/fileProxy
+BUILD_DIR=${ROOT}/src/out/Default/bin
+
+# Set up a test directory to use for tests. This copies over the run directory
+# into an adjacent test directory
+rm -fr /tmp/.linux_tao_socket
+cp -r ${RUN} ${TEST}
+cd $TEST
+mkdir linux_tao_service_files
+
+# Get all the code and an extra script
+cp ${BUILD_DIR}/* .
+cp ${ROOT}/src/scripts/run_simple_test.sh .
+
+rm *.a

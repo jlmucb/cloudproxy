@@ -36,6 +36,12 @@ using tao::TaoChannelRPC;
 DEFINE_string(socket, "/tmp/.linux_tao_socket",
               "The unix domain socket to use to contact the LinuxTaoService");
 DEFINE_string(program, "server", "The program to start");
+DEFINE_bool(kvm, false, "Whether or not to start a VM for the hosted program");
+DEFINE_string(vm_template, "./vm.xml", "The VM template to use");
+DEFINE_string(kernel, "/tmp/vmlinuz-3.7.5", "A linux kernel to inject into KVM");
+DEFINE_string(initrd, "/tmp/initrd.img-3.7.5", "An initrd to inject into KVM");
+DEFINE_string(disk, "/var/lib/libvirt/images/cloudproxy-server.img",
+    "A disk image to use in the KVM guest");
 
 // Call this program with the arguments to the program after the "--":
 //
@@ -55,9 +61,24 @@ int main(int argc, char **argv) {
   rpc.set_rpc(tao::START_HOSTED_PROGRAM);
   StartHostedProgramArgs *shpa = rpc.mutable_start();
   shpa->set_path(FLAGS_program);
-  for (int i = 1; i < argc; i++) {
-    string *arg = shpa->add_args();
-    arg->assign(argv[0], strlen(argv[0]) + 1);
+  if (FLAGS_kvm) {
+    string *vm_template_arg = shpa->add_args();
+    vm_template_arg->assign(FLAGS_vm_template);
+
+    string *kernel_arg = shpa->add_args();
+    kernel_arg->assign(FLAGS_kernel);
+
+    string *initrd_arg = shpa->add_args();
+    initrd_arg->assign(FLAGS_initrd);
+
+    string *disk_arg = shpa->add_args();
+    disk_arg->assign(FLAGS_disk);
+  } else {
+    // Pass the remaining arguments to the program that will be started. 
+    for (int i = 1; i < argc; i++) {
+      string *arg = shpa->add_args();
+      arg->assign(argv[i], strlen(argv[i]) + 1);
+    }
   }
 
   string serialized;

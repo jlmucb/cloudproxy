@@ -76,12 +76,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  string digest;
-  if (!keyczar::base::Base64WEncode(hash, &digest)) {
-    LOG(ERROR) << "Could not encode the digest";
-    return 1;
-  }
-
-  cout << digest;
+  cout << hash;
   return 0;
 }

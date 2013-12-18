@@ -27,3 +27,9 @@ programs {
     hash_alg: "None"
     hash: "REPLACE_ME_PCRS"
 }
+
+programs {
+    name: "REPLACE_ME_GUEST_VM_NAME"
+    hash_alg: "SHA256"
+    hash: "REPLACE_ME_GUEST_VM"
+}

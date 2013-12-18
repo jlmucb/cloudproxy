@@ -31,7 +31,9 @@
 #include <libvirt/virterror.h>
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
+#include "tao/tao_child_channel_params.pb.h"
 #include "tao/tao_channel.h"
+#include "tao/util.h"
 
 using keyczar::base::Base64WEncode;
 using keyczar::CryptoFactory;
@@ -39,73 +41,6 @@ using keyczar::MessageDigestImpl;
 
 using std::ifstream;
 using std::stringstream;
-
-namespace {
-const char *vm_template =
-"<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>\n"
-"  <name>%s</name>\n"
-"  <memory>1048576</memory>\n"
-"  <currentMemory>1048576</currentMemory>\n"
-"  <vcpu>1</vcpu>\n"
-"  <os>\n"
-"    <type arch='x86_64' machine='pc-1.0'>hvm</type>\n"
-"    <kernel>%s</kernel>\n"
-"    <initrd>%s</initrd>\n"
-"    <cmdline>root=/dev/sda1 ro quiet</cmdline>\n"
-"  </os>\n"
-"  <features>\n"
-"    <acpi/>\n"
-"    <apic/>\n"
-"    <pae/>\n"
-"  </features>\n"
-"  <clock offset='utc'/>\n"
-"  <on_poweroff>destroy</on_poweroff>\n"
-"  <on_reboot>destroy</on_reboot>\n"
-"  <on_crash>restart</on_crash>\n"
-"  <devices>\n"
-"    <emulator>/usr/bin/kvm</emulator>\n"
-"    <disk type='file' device='disk'>\n"
-"      <driver name='qemu' type='raw'/>\n"
-"      <source file='%s'/>\n"
-"      <target dev='sda' bus='sata'/>\n"
-"      <address type='drive' controller='0' bus='0' unit='0'/>\n"
-"    </disk>\n"
-"    <controller type='ide' index='0'>\n"
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>\n"
-"    </controller>\n"
-"    <controller type='sata' index='0'>\n"
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>\n"
-"    </controller>\n"
-"    <interface type='network'>\n"
-"      <mac address='52:54:00:82:22:a8'/>\n"
-"      <source network='default'/>\n"
-"      <target dev='vnet0'/>\n"
-"      <alias name='net0'/>\n"
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>\n"
-"    </interface>\n"
-"    <serial type='unix'>\n"
-"      <source mode='bind' path='%s'/>\n"
-"      <target port='0'/>\n"
-"    </serial>\n"
-"    <console type='unix'>\n"
-"      <source mode='bind' path='%s'/>\n"
-"      <target type='serial' port='0'/>\n"
-"    </console>\n"
-"    <input type='mouse' bus='ps2'/>\n"
-"    <graphics type='vnc' port='-1' autoport='yes'/>\n"
-"    <sound model='ac97'>\n"
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>\n"
-"    </sound>\n"
-"    <video>\n"
-"      <model type='cirrus' vram='9216' heads='1'/>\n"
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>\n"
-"    </video>\n"
-"    <memballoon model='virtio'>\n"
-"      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>\n"
-"    </memballoon>\n"
-"  </devices>\n"
-"</domain>\n";
-}
 
 namespace tao {
 bool KvmVmFactory::Init() {
@@ -130,32 +65,28 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
                                      const list<string> &args,
                                      string *child_hash) const {
   // As in CreateHostedProgram, we have to make sure that we have the right
-  // number of arguments for our operations to make sense
-  if (args.size() != 3) {
-    LOG(ERROR) << "Wrong number of arguments";
-    return false;
-  }
-
-  // TODO(tmroeder): take in the right hash type and use it here. For
-  // now, we just assume that it's SHA256
-  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
-
-  string template_hash;
-  if (!sha256->Digest(vm_template, &template_hash)) {
-    LOG(ERROR) << "Could not compute the hash of the template";
-    return false;
-  }
-
-  string name_hash;
-  if (!sha256->Digest(name, &name_hash)) {
-    LOG(ERROR) << "Could not compute the has of the name";
+  // number of arguments for our operations to make sense.
+  // The extra argument in this case is the child channel creation parameters
+  // passed from the Tao.
+  if (args.size() != 4) {
+    LOG(ERROR) << "Wrong number of arguments. Expected 5 arguments, but got " << (int)args.size();
     return false;
   }
 
   auto it = args.begin();
+  string vm_template(*(it++));
   string kernel(*(it++));
   string initrd(*(it++));
-  // The last argument is the disk, but it is ignored, since it's untrusted.
+  // The next argument is the disk, but it is ignored, since it's untrusted.
+
+  ifstream vm_template_file(vm_template.c_str());
+  if (!vm_template_file) {
+    LOG(ERROR) << "Could not open the VM template file " << vm_template_file;
+    return false;
+  }
+
+  stringstream vm_template_stream;
+  vm_template_stream << vm_template_file.rdbuf();
 
   ifstream kernel_file(kernel.c_str());
   if (!kernel_file) {
@@ -165,11 +96,6 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
 
   stringstream kernel_stream;
   kernel_stream << kernel_file.rdbuf();
-  string kernel_hash;
-  if (!sha256->Digest(kernel_stream.str(), &kernel_hash)) {
-    LOG(ERROR) << "Could not compute the hash of " << kernel;
-    return false;
-  }
 
   ifstream initrd_file(initrd.c_str());
   if (!initrd_file) {
@@ -179,71 +105,75 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
 
   stringstream initrd_stream;
   initrd_stream << initrd_file.rdbuf();
-  string initrd_hash;
-  if (!sha256->Digest(initrd_stream.str(), &initrd_hash)) {
-    LOG(ERROR) << "Could not compute the hash of " << initrd;
-    return false;
-  }
 
-  // Concatenate the hashes
-  string hash_input;
-  hash_input.append(template_hash);
-  hash_input.append(name_hash);
-  hash_input.append(kernel_hash);
-  hash_input.append(initrd_hash);
-
-  string composite_hash;
-  if (!sha256->Digest(hash_input, &composite_hash)) {
-    LOG(ERROR) << "Could not compute the composite hash";
-    return false;
-  }
-
-  if (!Base64WEncode(composite_hash, child_hash)) {
-    LOG(ERROR) << "Could not encode the digest as Base64W";
-    return false;
-  }
-
-  return true;
+  return HashVM(vm_template_stream.str(), name, kernel_stream.str(),
+                initrd_stream.str(), child_hash);
 }
 
 bool KvmVmFactory::CreateHostedProgram(const string &name,
                                        const list<string> &args,
                                        const string &child_hash,
                                        TaoChannel &parent_channel) const {
-  if (args.size() != 3) {
+  if (args.size() != 5) {
     LOG(ERROR) << "Invalid parameters to KvmVmFactory::CreateHostedProgram";
     return false;
   }
 
-  string params;
-  if (!parent_channel.AddChildChannel(child_hash, &params)) {
-    LOG(ERROR) << "Could not add the child channel for this VM";
-    return false;
-  }
+
+
+  auto it = args.begin();
+  string vm_template(*(it++));
+  string kernel(*(it++));
+  string initrd(*(it++));
+  string disk(*(it++));
+  string params(*(it++));
 
   // The params have to be a KvmUnixTaoChannelParams and must specify a path for
   // the connection to the client.
+  TaoChildChannelParams tccp;
+  if (!tccp.ParseFromString(params)) {
+    LOG(ERROR) << "Could not parse the TaoChildChannelParams from the params";
+    return false;
+  }
+
+  if (tccp.channel_type().compare("KvmUnixTaoChannel")) {
+    LOG(ERROR) << "Invalid params type: expected KvmUnixTaoChannel but got " << tccp.channel_type();
+    return false;
+  }
+
   KvmUnixTaoChannelParams kutcp;
-  if (!kutcp.ParseFromString(params)) {
+  if (!kutcp.ParseFromString(tccp.params())) {
     LOG(ERROR) << "Could not parse the params as a KvmUnixTaoChannelParams";
     return false;
   }
 
   string path(kutcp.unix_socket_path());
 
-  auto it = args.begin();
-  string kernel(*(it++));
-  string initrd(*(it++));
-  string disk(*(it++));
+  ifstream vm_template_file(vm_template.c_str());
+  if (!vm_template_file) {
+    LOG(ERROR) << "Could not open the VM template file " << vm_template_file;
+    return false;
+  }
 
-  // Each parameter replaces a string of the form '%s', so the contribution of
-  // each is .size() - 2. The final + 1 is due to the final null byte.
-  size_t formatted_size = strlen(vm_template) + name.size() - 2 +
-      kernel.size() - 2 + initrd.size() - 2 + disk.size() - 2 +
-      2 * (path.size() - 2) + 1;
+  stringstream vm_template_stream;
+  vm_template_stream << vm_template_file.rdbuf();
+  string vmspec(vm_template_stream.str());
 
+  // The final + 1 is due to the final null byte. This is larger than needed,
+  // since snprintf removes the %s that gets replaced each time.
+  size_t formatted_size = vmspec.size() + name.size() +
+      kernel.size() + initrd.size() + disk.size() +
+      2 * path.size() + 1;
+
+  LOG(INFO) << "vmspec " << (int)vmspec.size();
+  LOG(INFO) << "name " << (int)name.size();
+  LOG(INFO) << "kernel " << (int)kernel.size();
+  LOG(INFO) << "initrd " << (int)initrd.size();
+  LOG(INFO) << "disk " << (int)disk.size();
+  LOG(INFO) << "path " << (int)path.size();
+  LOG(INFO) << "formatted " << (int)formatted_size;
   scoped_array<char> buf(new char[formatted_size]);
-  int count = snprintf(buf.get(), formatted_size, vm_template,
+  int count = snprintf(buf.get(), formatted_size, vmspec.c_str(),
                        name.c_str(), kernel.c_str(), initrd.c_str(),
                        disk.c_str(), path.c_str(), path.c_str());
 
@@ -253,12 +183,15 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   }
 
   // This cast is safe, since we know that count >= 0
-  if (static_cast<size_t>(count) != formatted_size) {
+  if (static_cast<size_t>(count) > formatted_size) {
     LOG(ERROR) << "Could not print the right number of characters into the "
                << "buffer. Expected " << (int)formatted_size << " and "
                << "printed " << count;
     return false;
   }
+
+  LOG(INFO) << "The XML is ";
+  LOG(INFO) << buf.get();
 
   virDomainPtr vm_domain_ = virDomainCreateXML(vm_connection_, buf.get(), 0);
   if (!vm_domain_) {

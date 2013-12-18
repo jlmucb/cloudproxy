@@ -59,7 +59,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params
 
   // Create a random temp file name to use as the socket.
   char tempfile[] = "/tmp/kvm_unix_tao_channel_XXXXXX";
-  if (mkdtemp(tempfile) == nullptr) {
+  if (mktemp(tempfile) == nullptr) {
     PLOG(ERROR) << "Could not create a temporary filename for the KVM channel";
     return false;
   }
@@ -79,7 +79,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params
 
   KvmUnixTaoChannelParams kutcp;
   kutcp.set_unix_socket_path(tempfile);
-  kutcp.set_target_port(0);
+  kutcp.set_target_port(1);
 
   TaoChildChannelParams tccp;
   tccp.set_channel_type("KvmUnixTaoChannel");

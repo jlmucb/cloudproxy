@@ -31,6 +31,7 @@
 #include <sstream>
 #include <vector>
 
+#include <keyczar/base/base64w.h>
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
 #include <keyczar/base/file_util.h>
@@ -42,6 +43,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
 using keyczar::Keyczar;
@@ -116,6 +118,14 @@ bool HashVM(const string &vm_template, const string &name,
     return false;
   }
 
+  string template_digest;
+  if (!Base64WEncode(template_hash, &template_digest)) {
+    LOG(ERROR) << "Could not encode the template digest";
+    return false;
+  }
+
+  LOG(INFO) << "The template had hash: " << template_digest;
+
   string name_hash;
   if (!sha256->Digest(name, &name_hash)) {
     LOG(ERROR) << "Could not compute the has of the name";
@@ -141,7 +151,13 @@ bool HashVM(const string &vm_template, const string &name,
   hash_input.append(kernel_hash);
   hash_input.append(initrd_hash);
 
-  return sha256->Digest(hash_input, hash);
+  string composite_hash;
+  if (!sha256->Digest(hash_input, &composite_hash)) {
+    LOG(ERROR) << "Could not compute the composite hash\n";
+    return false;
+  }
+
+  return Base64WEncode(composite_hash, hash);
 }
 
 

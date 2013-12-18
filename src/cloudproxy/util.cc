@@ -158,7 +158,7 @@ bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len) {
   // Note: this assumes that BIO_read doesn't get partial data from the SSL
   // connection but instead blocks until it has enough data.
   int x = 0;
-  while ((x = BIO_read(bio, buffer, buffer_len)) != buffer_len) {
+  while ((x = BIO_read(bio, buffer, buffer_len)) != static_cast<int>(buffer_len)) {
     if (x == 0) return false;
     if ((x < 0) && !BIO_should_retry(bio)) return false;
   }
@@ -192,7 +192,7 @@ bool ReceiveData(BIO *bio, string *data) {
 
 bool SendData(BIO *bio, const void *buffer, size_t buffer_len) {
   int x = 0;
-  while ((x = BIO_write(bio, buffer, buffer_len)) != buffer_len) {
+  while ((x = BIO_write(bio, buffer, buffer_len)) != static_cast<int>(buffer_len)) {
     if (x == 0) return false;
     if ((x < 0) && !BIO_should_retry(bio)) return false;
   }

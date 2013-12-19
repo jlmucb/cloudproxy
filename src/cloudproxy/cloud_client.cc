@@ -101,6 +101,7 @@ bool CloudClient::Connect(const TaoChildChannel &t) {
   int r = BIO_do_connect(bio_.get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
+    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(r, NULL);
     return false;
   }
 

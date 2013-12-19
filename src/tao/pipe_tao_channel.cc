@@ -34,6 +34,7 @@
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/pipe_tao_channel_params.pb.h"
+#include "tao/pipe_tao_child_channel.h"
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/util.h"
 
@@ -89,7 +90,7 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   ptcp.set_writefd(up_pipe[1]);
 
   TaoChildChannelParams tccp;
-  tccp.set_channel_type("PipeTaoChildChannel");
+  tccp.set_channel_type(PipeTaoChildChannel::ChannelType());
   string *child_params = tccp.mutable_params();
   if (!ptcp.SerializeToString(child_params)) {
     LOG(ERROR) << "Could not serialize the child params to a string";

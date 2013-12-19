@@ -44,9 +44,7 @@ using std::list;
 using std::string;
 using std::stringstream;
 
-DEFINE_string(
-    aik_blob_file, "aikblob",
-    "A file to receive the AIK blob");
+DEFINE_string(aik_blob_file, "aikblob", "A file to receive the AIK blob");
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -88,32 +86,39 @@ int main(int argc, char **argv) {
 
   // Create the AIK and a fake PCAKey
   TSS_HKEY aik;
-  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_RSAKEY,
-      TSS_KEY_TYPE_IDENTITY | TSS_KEY_SIZE_2048 | TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE,
-      &aik);
+  result =
+      Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_RSAKEY,
+                                TSS_KEY_TYPE_IDENTITY | TSS_KEY_SIZE_2048 |
+                                    TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE,
+                                &aik);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create an AIK";
 
   TSS_HKEY pca_key;
   result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_RSAKEY,
-		  TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048, &pca_key);
+                                     TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048,
+                                     &pca_key);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a fake PCAKey";
 
   result = Tspi_SetAttribUint32(pca_key, TSS_TSPATTRIB_KEY_INFO,
-		  TSS_TSPATTRIB_KEYINFO_ENCSCHEME, TSS_ES_RSAESPKCSV15);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not set the encryption scheme to PKCS v1.5";
+                                TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                                TSS_ES_RSAESPKCSV15);
+  CHECK_EQ(result, TSS_SUCCESS)
+      << "Could not set the encryption scheme to PKCS v1.5";
 
   // The fake key has a modulus that is all 1s
-  BYTE pca_modulus_bytes[2048/8];
+  BYTE pca_modulus_bytes[2048 / 8];
   memset(pca_modulus_bytes, 0xff, sizeof(pca_modulus_bytes));
   result = Tspi_SetAttribData(pca_key, TSS_TSPATTRIB_RSAKEY_INFO,
-		  TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, sizeof(pca_modulus_bytes), pca_modulus_bytes);
+                              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+                              sizeof(pca_modulus_bytes), pca_modulus_bytes);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not add a fake modulus to the PCAKey";
 
   BYTE *id_req = NULL;
   UINT32 id_req_len = 0;
-  result = Tspi_TPM_CollateIdentityRequest(tpm, srk, pca_key, 0, NULL, aik, TSS_ALG_AES,
-		  &id_req_len, &id_req);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not set up a fake identity request for the AIK";
+  result = Tspi_TPM_CollateIdentityRequest(tpm, srk, pca_key, 0, NULL, aik,
+                                           TSS_ALG_AES, &id_req_len, &id_req);
+  CHECK_EQ(result, TSS_SUCCESS)
+      << "Could not set up a fake identity request for the AIK";
 
   result = Tspi_Key_LoadKey(aik, srk);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
@@ -121,7 +126,7 @@ int main(int argc, char **argv) {
   BYTE *blob = NULL;
   UINT32 blob_len = 0;
   result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_KEY_BLOB,
-      TSS_TSPATTRIB_KEYBLOB_BLOB, &blob_len, &blob);
+                              TSS_TSPATTRIB_KEYBLOB_BLOB, &blob_len, &blob);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get the blob data";
 
   ofstream aik_blob_file(FLAGS_aik_blob_file.c_str());

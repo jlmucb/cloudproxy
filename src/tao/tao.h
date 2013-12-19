@@ -23,7 +23,7 @@
 #include <list>
 #include <string>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 using std::list;
 using std::string;
@@ -63,7 +63,7 @@ namespace tao {
 class Tao {
  public:
   Tao() {}
-  virtual ~Tao() { }
+  virtual ~Tao() {}
   virtual bool Init() = 0;
   virtual bool Destroy() = 0;
   virtual bool StartHostedProgram(const string &path,

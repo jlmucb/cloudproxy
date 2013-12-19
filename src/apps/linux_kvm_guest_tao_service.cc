@@ -102,8 +102,8 @@ int main(int argc, char **argv) {
   // The last character is a newline, so stop before it.
   LOG(INFO) << "cmdline.size() == " << (int)cmdline.size();
   LOG(INFO) << "space_index == " << (int)space_index;
-  string encoded_params(cmdline.substr(space_index + 1,
-                        	       cmdline.size() - (space_index + 1) - 1));
+  string encoded_params(
+      cmdline.substr(space_index + 1, cmdline.size() - (space_index + 1) - 1));
 
   LOG(INFO) << "The length of the encoded string is " << encoded_params.size();
   string params;

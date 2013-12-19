@@ -30,15 +30,15 @@
 #include "tao/tao_child_channel.h"
 #include "tao/tao_child_channel_registry.h"
 
-int remove_entry(const char *path, const struct stat *sb,
-                 int tflag, struct FTW *ftwbuf);
+int remove_entry(const char *path, const struct stat *sb, int tflag,
+                 struct FTW *ftwbuf);
 namespace tao {
 
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
     ScopedRsa;
 
-bool HashVM(const string &vm_template, const string &name,
-            const string &kernel, const string &initrd, string *hash);
+bool HashVM(const string &vm_template, const string &name, const string &kernel,
+            const string &initrd, string *hash);
 
 bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 

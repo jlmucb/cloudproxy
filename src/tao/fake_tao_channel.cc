@@ -35,4 +35,4 @@ bool FakeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
 
   return true;
 }
-} // end namespace tao
+}  // end namespace tao

@@ -20,7 +20,7 @@
 #ifndef TAO_DIRECT_TAO_CHILD_CHANNEL_H_
 #define TAO_DIRECT_TAO_CHILD_CHANNEL_H_
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/tao_child_channel.h"

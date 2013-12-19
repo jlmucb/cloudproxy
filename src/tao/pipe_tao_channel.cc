@@ -123,7 +123,7 @@ bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
     }
 
     VLOG(2) << "Closed " << child_it->second.first << " and "
-              << child_it->second.second << " in ChildCleanup";
+            << child_it->second.second << " in ChildCleanup";
     close(child_it->second.first);
     close(child_it->second.second);
 
@@ -144,7 +144,7 @@ bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
     }
 
     VLOG(2) << "Closed " << child_it->second.first << " and "
-              << child_it->second.second << " in ParentCleanup";
+            << child_it->second.second << " in ParentCleanup";
     close(child_it->second.first);
     close(child_it->second.second);
 
@@ -155,7 +155,8 @@ bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
 }
 
 // Pipe channels don't support this kind of update.
-bool PipeTaoChannel::UpdateChildParams(const string &child_hash, const string &params) {
+bool PipeTaoChannel::UpdateChildParams(const string &child_hash,
+                                       const string &params) {
   return false;
 }
 
@@ -215,7 +216,7 @@ bool PipeTaoChannel::Listen(Tao *tao) {
   if (sigaction(SIGPIPE, &act, &old_act) < 0) {
     PLOG(ERROR) << "Could not set up the handler to block SIGPIPE";
     return false;
-  } 
+  }
 
   // The unix domain socket is used to listen for CreateHostedProgram requests.
   int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
@@ -296,7 +297,7 @@ bool PipeTaoChannel::Listen(Tao *tao) {
 
         if (!HandleRPC(*tao, child_hash, rpc)) {
           LOG(ERROR) << "Could not handle the RPC. Removing child "
-            << child_hash;
+                     << child_hash;
           programs_to_erase.push_back(child_hash);
           continue;
         }
@@ -305,7 +306,7 @@ bool PipeTaoChannel::Listen(Tao *tao) {
 
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
-      hash_to_descriptors_.erase(*pit);    
+      hash_to_descriptors_.erase(*pit);
     }
   }
 
@@ -313,7 +314,7 @@ bool PipeTaoChannel::Listen(Tao *tao) {
   if (sigaction(SIGPIPE, &old_act, NULL) < 0) {
     PLOG(ERROR) << "Could not restore the old signal handler.";
     return false;
-  } 
+  }
 
   return true;
 }

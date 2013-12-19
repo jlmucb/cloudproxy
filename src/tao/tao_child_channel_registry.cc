@@ -52,4 +52,4 @@ TaoChildChannel *TaoChildChannelRegistry::Create(const string &params) {
 
   return channel_it->second(params);
 }
-} // end namespace tao
+}  // end namespace tao

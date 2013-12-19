@@ -25,7 +25,7 @@
 
 #include <string>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao.h"
 #include "tao/tao_channel_rpc.pb.h"
@@ -55,7 +55,8 @@ class TaoChannel {
   virtual bool ChildCleanup(const string &child_hash) = 0;
   virtual bool ParentCleanup(const string &child_hash) = 0;
 
-  virtual bool UpdateChildParams(const string &child_hash, const string &params) = 0;
+  virtual bool UpdateChildParams(const string &child_hash,
+                                 const string &params) = 0;
 
  protected:
   // subclasses implement these methods for the underlying transport.

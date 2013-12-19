@@ -28,7 +28,7 @@
 #include <set>
 #include <string>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <openssl/ssl.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
@@ -41,13 +41,12 @@ using std::string;
 
 namespace keyczar {
 class Keyczar;
-} // namespace keyczar
+}  // namespace keyczar
 
 namespace tao {
 class TaoAuth;
 class TaoChildChannel;
-} // namespace tao
-
+}  // namespace tao
 
 namespace cloudproxy {
 

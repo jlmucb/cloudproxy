@@ -21,7 +21,7 @@
 #ifndef TAO_FAKE_TAO_CHANNEL_H_
 #define TAO_FAKE_TAO_CHANNEL_H_
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_channel.h"
 
@@ -40,7 +40,11 @@ class FakeTaoChannel : public TaoChannel {
   virtual bool ChildCleanup(const string &child_hash) { return true; }
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 
-  virtual bool UpdateChildParams(const string &child_hash, const string &params) { return true; }
+  virtual bool UpdateChildParams(const string &child_hash,
+                                 const string &params) {
+    return true;
+  }
+
  protected:
   // Since this is a fake, the message sending operations fail.
   virtual bool ReceiveMessage(google::protobuf::Message *m,

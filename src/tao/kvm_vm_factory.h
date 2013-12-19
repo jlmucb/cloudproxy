@@ -23,7 +23,7 @@
 #include <list>
 #include <string>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <libvirt/libvirt.h>
 
 #include "tao/hosted_program_factory.h"

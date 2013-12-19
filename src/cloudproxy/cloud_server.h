@@ -47,13 +47,12 @@ using std::string;
 
 namespace keyczar {
 class Keyczar;
-} // namespace keyczar
+}  // namespace keyczar
 
 namespace tao {
 class TaoAuth;
 class TaoChildChannel;
-} // namespace tao
-
+}  // namespace tao
 
 namespace cloudproxy {
 

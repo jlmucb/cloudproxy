@@ -299,7 +299,9 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   }
 
   BIO *mem = BIO_new(BIO_s_mem());
-  int bio_bytes_written = BIO_write(mem, reinterpret_cast<const void *>(data.data()), static_cast<int>(data.size()));
+  int bio_bytes_written =
+      BIO_write(mem, reinterpret_cast<const void *>(data.data()),
+                static_cast<int>(data.size()));
   if (bio_bytes_written != static_cast<int>(data.size())) {
     LOG(ERROR) << "Could not write the data to the BIO";
     return false;

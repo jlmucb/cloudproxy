@@ -112,11 +112,11 @@ int main(int argc, char **argv) {
 
   // Create a fresh key for the sealing operation
   TSS_HKEY seal_key;
-  UINT32 key_flags = TSS_KEY_TYPE_STORAGE | TSS_KEY_SIZE_2048 |
-      TSS_KEY_VOLATILE | TSS_KEY_AUTHORIZATION |
-      TSS_KEY_NOT_MIGRATABLE;
-  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_RSAKEY,
-              key_flags, &seal_key);
+  UINT32 key_flags =
+      TSS_KEY_TYPE_STORAGE | TSS_KEY_SIZE_2048 | TSS_KEY_VOLATILE |
+      TSS_KEY_AUTHORIZATION | TSS_KEY_NOT_MIGRATABLE;
+  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_RSAKEY, key_flags,
+                                     &seal_key);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a new sealing key object";
 
   result = Tspi_Key_CreateKey(seal_key, srk, 0 /* empty PCRs */);
@@ -132,8 +132,8 @@ int main(int argc, char **argv) {
 
   BYTE data[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   result = Tspi_Data_Seal(enc_data, seal_key, 16, data, pcrs);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not seal the test data: "
-    << Trspi_Error_String(result);
+  CHECK_EQ(result, TSS_SUCCESS)
+      << "Could not seal the test data: " << Trspi_Error_String(result);
 
   // Extract the sealed data, then try to unseal it.
   BYTE *sealed_data;
@@ -145,7 +145,8 @@ int main(int argc, char **argv) {
 
   BYTE *unsealed_data;
   UINT32 unsealed_data_len;
-  result = Tspi_Data_Unseal(enc_data, seal_key, &unsealed_data_len, &unsealed_data);
+  result =
+      Tspi_Data_Unseal(enc_data, seal_key, &unsealed_data_len, &unsealed_data);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not unseal the data";
 
   // Check that the data was unsealed correctly.

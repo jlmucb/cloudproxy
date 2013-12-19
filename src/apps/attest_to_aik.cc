@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
   ofstream attest_file(FLAGS_aik_attest_file, ofstream::out);
   if (!attest_file) {
     LOG(ERROR) << "Could not open the attest file " << FLAGS_aik_attest_file
-      << " for writing";
+               << " for writing";
     return 1;
   }
 

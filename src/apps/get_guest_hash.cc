@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 
   string hash;
   if (!tao::HashVM(template_stream.str(), FLAGS_name, kernel_stream.str(),
-        initrd_stream.str(), &hash)) {
+                   initrd_stream.str(), &hash)) {
     LOG(ERROR) << "Could not compute the hash of the vm parameters";
     return 1;
   }

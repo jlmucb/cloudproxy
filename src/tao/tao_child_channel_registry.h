@@ -38,26 +38,27 @@ class TaoChildChannel;
 /// is a Base64W-encoded TaoChildChannelParams message that can be passed to a
 /// registry object to get the appropriate communication channel.
 class TaoChildChannelRegistry {
-  public:
-   /// A function that can create a channel from parameters.
-   typedef TaoChildChannel *(*CreateChannel)(const string &params);
+ public:
+  /// A function that can create a channel from parameters.
+  typedef TaoChildChannel *(*CreateChannel)(const string &params);
 
-   TaoChildChannelRegistry() : channel_types_() { }
+  TaoChildChannelRegistry() : channel_types_() {}
 
-   /// Register a Create function under a name.
-   bool Register(const string &name, CreateChannel channel_creator);
+  /// Register a Create function under a name.
+  bool Register(const string &name, CreateChannel channel_creator);
 
-   /// Create a TaoChildChannel from a given serialized TaoChildChannelParams.
-   TaoChildChannel *Create(const string &params);
+  /// Create a TaoChildChannel from a given serialized TaoChildChannelParams.
+  TaoChildChannel *Create(const string &params);
 
-   template<class T>
-   static TaoChildChannel *CallConstructor(const string &params) {
-     return new T(params);
-   }
-  private:
-    map<string, CreateChannel> channel_types_;
-    DISALLOW_COPY_AND_ASSIGN(TaoChildChannelRegistry);
+  template <class T>
+  static TaoChildChannel *CallConstructor(const string &params) {
+    return new T(params);
+  }
+
+ private:
+  map<string, CreateChannel> channel_types_;
+  DISALLOW_COPY_AND_ASSIGN(TaoChildChannelRegistry);
 };
-} // end namespace tao
+}  // end namespace tao
 
-#endif // TAO_TAO_CHILD_CHANNEL_REGISTRY_H_
+#endif  // TAO_TAO_CHILD_CHANNEL_REGISTRY_H_

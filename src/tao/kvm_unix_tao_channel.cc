@@ -41,7 +41,8 @@ KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path)
     : domain_socket_path_(socket_path) {}
 KvmUnixTaoChannel::~KvmUnixTaoChannel() {}
 
-bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params) {
+bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
+                                        string *params) {
   if (params == nullptr) {
     LOG(ERROR) << "Could not write the params to a null string";
     return false;
@@ -56,7 +57,6 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params
       return false;
     }
   }
-
 
   // Add an empty string until we find out which /dev/pts was set up for this.
   {
@@ -95,7 +95,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params
 }
 
 bool KvmUnixTaoChannel::UpdateChildParams(const string &child_hash,
-    const string &params) {
+                                          const string &params) {
   // In this case, the params are just the device name rather than a serialized
   // protobuf, since this is only made as a call from KvmVmFactory directly.
 
@@ -128,7 +128,7 @@ bool KvmUnixTaoChannel::UpdateChildParams(const string &child_hash,
 }
 
 bool KvmUnixTaoChannel::ReceiveMessage(google::protobuf::Message *m,
-                                    const string &child_hash) const {
+                                       const string &child_hash) const {
   // try to receive an integer
   CHECK(m) << "m was null";
 
@@ -150,14 +150,12 @@ bool KvmUnixTaoChannel::ReceiveMessage(google::protobuf::Message *m,
                << " has not been set yet";
     return false;
   }
-  
-  LOG(INFO) << "Got fd " << readfd << " for child " << child_hash;
 
   return tao::ReceiveMessage(readfd, m);
 }
 
 bool KvmUnixTaoChannel::SendMessage(const google::protobuf::Message &m,
-                                 const string &child_hash) const {
+                                    const string &child_hash) const {
   // send the length then the serialized message
   string serialized;
   if (!m.SerializeToString(&serialized)) {
@@ -183,8 +181,6 @@ bool KvmUnixTaoChannel::SendMessage(const google::protobuf::Message &m,
                << " has not been set yet";
     return false;
   }
-
-  LOG(INFO) << "Got fd " << writefd << " for child " << child_hash;
 
   return tao::SendMessage(writefd, m);
 }
@@ -221,11 +217,9 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
   }
 
   LOG(INFO) << "Bound the unix socket to " << domain_socket_path_;
-  LOG(INFO) << "The file descriptor is " << sock;
 
   while (true) {
     // set up the select operation with the current fds and the unix socket
-    LOG(INFO) << "zeroing read_fds";
     fd_set read_fds;
     FD_ZERO(&read_fds);
     int max = sock;
@@ -242,9 +236,7 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
       }
     }
 
-    LOG(INFO) << "Waiting on select with max " << (int)max;
     int err = select(max + 1, &read_fds, NULL, NULL, NULL);
-    LOG(INFO) << "select returned";
     if (err == -1) {
       PLOG(ERROR) << "Error in calling select";
       return false;
@@ -252,7 +244,6 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
 
     // Check for messages to handle
     if (FD_ISSET(sock, &read_fds)) {
-      LOG(INFO) << "Handling a program creation request";
       if (!HandleProgramCreation(tao, sock)) {
         LOG(ERROR) << "Could not handle the program creation request";
       }
@@ -263,37 +254,29 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
          child_hash_to_descriptor_) {
       int d = descriptor.second.second;
       const string &child_hash = descriptor.first;
-      LOG(INFO) << "Considering descriptor " << d;
 
       if (FD_ISSET(d, &read_fds)) {
         TaoChannelRPC rpc;
-	LOG(INFO) << "Getting RPC";
         if (!GetRPC(&rpc, child_hash)) {
           LOG(ERROR) << "Could not get an RPC for " << child_hash;
-	  LOG(ERROR) << "Removing hosted program " << child_hash;
-	  programs_to_erase.push_back(child_hash);
+          LOG(ERROR) << "Removing hosted program " << child_hash;
+          programs_to_erase.push_back(child_hash);
           continue;
         }
-	LOG(INFO) << "Got RPC, handling it";
 
         if (!HandleRPC(*tao, child_hash, rpc)) {
           LOG(ERROR) << "Could not get an RPC for " << child_hash;
-	  LOG(ERROR) << "Removing hosted program " << child_hash;
-	  programs_to_erase.push_back(child_hash);
+          LOG(ERROR) << "Removing hosted program " << child_hash;
+          programs_to_erase.push_back(child_hash);
           continue;
         }
-	LOG(INFO) << "Finished handling RPC";
-      } else {
-        LOG(INFO) << "It's not set";
       }
     }
 
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
-      child_hash_to_descriptor_.erase(*pit);    
+      child_hash_to_descriptor_.erase(*pit);
     }
-
-    LOG(INFO) << "Done with loop check";
   }
 
   return true;

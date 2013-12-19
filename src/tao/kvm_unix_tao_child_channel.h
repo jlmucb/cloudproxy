@@ -31,6 +31,7 @@ class KvmUnixTaoChildChannel : public TaoChildChannel {
   virtual bool Init();
 
   static string ChannelType() { return "KvmUnixTaoChannel"; }
+
  protected:
   // subclasses implement these methods for the underlying transport.
   virtual bool ReceiveMessage(google::protobuf::Message *m) const;

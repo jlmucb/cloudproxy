@@ -21,7 +21,7 @@
 #ifndef TAO_FAKE_TAO_H_
 #define TAO_FAKE_TAO_H_
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/tao.h"
@@ -30,7 +30,7 @@ namespace keyczar {
 
 class Keyczar;
 
-} // namespace keyczar
+}  // namespace keyczar
 
 namespace tao {
 // A fake Tao implementation that performs crypto operations using

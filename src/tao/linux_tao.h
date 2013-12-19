@@ -26,9 +26,9 @@
 #include <set>
 #include <string>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
-#include <keyczar/base/stl_util-inl.h> // ScopedSafeString
+#include <keyczar/base/stl_util-inl.h>  // ScopedSafeString
 
 #include "tao/attestation.pb.h"
 #include "tao/tao.h"
@@ -44,8 +44,7 @@ namespace keyczar {
 class Encrypter;
 class Keyczar;
 
-} // namespace keyczar
-
+}  // namespace keyczar
 
 namespace tao {
 
@@ -180,8 +179,7 @@ class LinuxTao : public Tao {
   // Get an attestation from the host Tao on our key. Note that this
   // will get an attestation on serialized_key for this Tao host; it
   // is for use by this Tao and its subclasses.
-  bool attestToKey(const string &serialized_key,
-                           Attestation *attest);
+  bool attestToKey(const string &serialized_key, Attestation *attest);
 
   // Sends the attestation to the TCCA on a port/address supplied at
   // initialization and uses the returned attestation as its attestation.

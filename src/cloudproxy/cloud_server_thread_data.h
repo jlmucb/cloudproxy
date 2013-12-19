@@ -26,7 +26,7 @@
 #include <string>
 #include <map>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <openssl/ssl.h>
 
 using std::set;

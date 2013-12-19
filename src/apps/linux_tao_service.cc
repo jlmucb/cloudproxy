@@ -51,7 +51,6 @@ using tao::ProcessFactory;
 using tao::TPMTaoChildChannel;
 using tao::WhitelistAuth;
 
-
 DEFINE_string(secret_path, "linux_tao_service_secret",
               "The path to the TPM-sealed key for this binary");
 DEFINE_string(aik_blob, "HW/aikblob", "The AIK blob from the TPM");

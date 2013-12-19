@@ -72,8 +72,8 @@ using std::shared_ptr;
 using std::stringstream;
 using std::vector;
 
-int remove_entry(const char *path, const struct stat *sb,
-                 int tflag, struct FTW *ftwbuf) {
+int remove_entry(const char *path, const struct stat *sb, int tflag,
+                 struct FTW *ftwbuf) {
   switch (tflag) {
     case FTW_DP:
       // DP means the directory's children have all been processed.
@@ -109,8 +109,8 @@ void locking_function(int mode, int n, const char *file, int line) {
 }
 
 bool HashVM(const string &vm_template, const string &name,
-	    const string &kernel_file, const string &initrd_file,
-	    string *hash) {
+            const string &kernel_file, const string &initrd_file,
+            string *hash) {
   // TODO(tmroeder): take in the right hash type and use it here. For
   // now, we just assume that it's SHA256
   MessageDigestImpl *sha256 = CryptoFactory::SHA256();
@@ -230,7 +230,6 @@ bool OpenTCPSocket(short port, int *sock) {
 
   return true;
 }
-
 
 bool CreateKey(KeysetWriter *writer, KeyType::Type key_type,
                KeyPurpose::Type key_purpose, const string &key_name,
@@ -366,7 +365,6 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
     return false;
   }
 
-
   return true;
 }
 
@@ -482,21 +480,21 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   }
 
   // Some channels don't return all the bytes you request when you request them.
-  // TODO(tmroeder): change this implementation to support select better so it 
+  // TODO(tmroeder): change this implementation to support select better so it
   // isn't subject to denial of service attacks by parties sending messages.
   size_t len = 0;
   ssize_t bytes_read = 0;
-  while(static_cast<size_t>(bytes_read) < sizeof(len)) {
-    ssize_t rv = read(fd, ((char *)&len) + bytes_read, sizeof(len) - bytes_read);
+  while (static_cast<size_t>(bytes_read) < sizeof(len)) {
+    ssize_t rv =
+        read(fd, ((char *)&len) + bytes_read, sizeof(len) - bytes_read);
     if (rv < 0) {
       if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
         LOG(INFO) << "Continuing";
-	    continue;
+        continue;
       } else {
-	    PLOG(ERROR) << "Could not get an integer: expected "
-	      << sizeof(size_t) << " bytes but only received "
-	      << bytes_read;
-	      return false;
+        PLOG(ERROR) << "Could not get an integer: expected " << sizeof(size_t)
+                    << " bytes but only received " << bytes_read;
+        return false;
       }
     }
 
@@ -515,16 +513,17 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   // Read this many bytes as the message.
   bytes_read = 0;
   scoped_array<char> bytes(new char[len]);
-  while(bytes_read < static_cast<ssize_t>(len)) {
-    int rv = read(fd, bytes.get() + bytes_read, len - static_cast<size_t>(bytes_read));
+  while (bytes_read < static_cast<ssize_t>(len)) {
+    int rv = read(fd, bytes.get() + bytes_read,
+                  len - static_cast<size_t>(bytes_read));
     if (rv < 0) {
       if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-	continue;
+        continue;
       } else {
-	PLOG(ERROR) << "Could not read enough bytes from the stream: "
-	  << "expected " << (int)len << " but received only "
-	  << bytes_read;
-	return false;
+        PLOG(ERROR) << "Could not read enough bytes from the stream: "
+                    << "expected " << (int)len << " but received only "
+                    << bytes_read;
+        return false;
       }
     }
 
@@ -534,6 +533,5 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   LOG(INFO) << "Received a message of length " << len;
   string serialized(bytes.get(), len);
   return m->ParseFromString(serialized);
-
 }
 }  // namespace tao

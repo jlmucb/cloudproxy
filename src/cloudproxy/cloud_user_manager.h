@@ -27,7 +27,7 @@
 #include <set>
 #include <string>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "cloudproxy/cloudproxy.pb.h"
 
@@ -38,7 +38,7 @@ using std::map;
 
 namespace keyczar {
 class Keyczar;
-} // namespace keyczar
+}  // namespace keyczar
 
 namespace cloudproxy {
 class CloudUserManager {

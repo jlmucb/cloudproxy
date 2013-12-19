@@ -70,7 +70,8 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
   // The extra argument in this case is the child channel creation parameters
   // passed from the Tao.
   if (args.size() != 4) {
-    LOG(ERROR) << "Wrong number of arguments. Expected 5 arguments, but got " << (int)args.size();
+    LOG(ERROR) << "Wrong number of arguments. Expected 5 arguments, but got "
+               << (int)args.size();
     return false;
   }
 
@@ -144,8 +145,8 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
 
   if (tccp.channel_type().compare(KvmUnixTaoChildChannel::ChannelType())) {
     LOG(ERROR) << "Invalid params type: expected "
-               << KvmUnixTaoChildChannel::ChannelType()
-               << " but got " << tccp.channel_type();
+               << KvmUnixTaoChildChannel::ChannelType() << " but got "
+               << tccp.channel_type();
     return false;
   }
 
@@ -169,14 +170,14 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
 
   // The final + 1 is due to the final null byte. This is larger than needed,
   // since snprintf removes the %s that gets replaced each time.
-  size_t formatted_size = vmspec.size() + name.size() +
-      kernel.size() + initrd.size() + encoded_params.size() + disk.size() +
-      path.size() + 1;
+  size_t formatted_size =
+      vmspec.size() + name.size() + kernel.size() + initrd.size() +
+      encoded_params.size() + disk.size() + path.size() + 1;
 
   scoped_array<char> buf(new char[formatted_size]);
-  int count = snprintf(buf.get(), formatted_size, vmspec.c_str(),
-                       name.c_str(), kernel.c_str(), initrd.c_str(),
-                       encoded_params.c_str(), disk.c_str(), path.c_str());
+  int count = snprintf(buf.get(), formatted_size, vmspec.c_str(), name.c_str(),
+                       kernel.c_str(), initrd.c_str(), encoded_params.c_str(),
+                       disk.c_str(), path.c_str());
 
   if (count < 0) {
     PLOG(ERROR) << "Could not snprintf into the buffer";

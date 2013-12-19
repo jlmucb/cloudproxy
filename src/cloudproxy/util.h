@@ -38,7 +38,7 @@ using std::string;
 
 namespace keyczar {
 class Keyczar;
-} // namespace keyczar
+}  // namespace keyczar
 
 namespace cloudproxy {
 

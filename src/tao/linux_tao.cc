@@ -311,8 +311,8 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   program_args.push_back(encoded_params);
 
-  if (!program_factory_->CreateHostedProgram(
-          path, program_args, child_hash, *child_channel_)) {
+  if (!program_factory_->CreateHostedProgram(path, program_args, child_hash,
+                                             *child_channel_)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }
@@ -459,8 +459,7 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
   return true;
 }
 
-bool LinuxTao::attestToKey(const string &serialized_key,
-                           Attestation *attest) {
+bool LinuxTao::attestToKey(const string &serialized_key, Attestation *attest) {
   string serialized_attestation;
   if (!host_channel_->Attest(serialized_key, &serialized_attestation)) {
     LOG(ERROR) << "Could not get an attestation to the serialized key";
@@ -489,9 +488,10 @@ bool LinuxTao::getCertFromCA(Attestation *attest) {
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
-  
+
   struct addrinfo *addrs = nullptr;
-  int info_err = getaddrinfo(ca_host_.c_str(), ca_port_.c_str(), &hints, &addrs);
+  int info_err =
+      getaddrinfo(ca_host_.c_str(), ca_port_.c_str(), &hints, &addrs);
   if (info_err == -1) {
     PLOG(ERROR) << "Could not get address information for " << ca_host_ << ":"
                 << ca_port_;
@@ -542,8 +542,11 @@ bool LinuxTao::getCertFromCA(Attestation *attest) {
     return false;
   }
 
-  if (new_attest.serialized_statement().compare(attest->serialized_statement()) != 0) {
-    LOG(ERROR) << "The statement in the new attestation doesn't match our original statement";
+  if (new_attest.serialized_statement().compare(
+          attest->serialized_statement()) !=
+      0) {
+    LOG(ERROR) << "The statement in the new attestation doesn't match our "
+                  "original statement";
     return false;
   }
 

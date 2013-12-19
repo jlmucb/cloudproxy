@@ -59,7 +59,8 @@ bool KvmUnixTaoChildChannel::Init() {
   return true;
 }
 
-bool KvmUnixTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
+bool KvmUnixTaoChildChannel::ReceiveMessage(
+    google::protobuf::Message *m) const {
   // try to receive an integer
   CHECK(m) << "m was null";
   if (fd_ < 0) {

@@ -31,7 +31,7 @@
 #include <tss/tss_structs.h>
 #include <trousers/trousers.h>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_child_channel.h"
 #include "tao/util.h"

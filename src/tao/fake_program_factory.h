@@ -20,7 +20,7 @@
 #ifndef TAO_FAKE_PROGRAM_FACTORY_H_
 #define TAO_FAKE_PROGRAM_FACTORY_H_
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/hosted_program_factory.h"
 
@@ -38,7 +38,6 @@ class FakeProgramFactory : public HostedProgramFactory {
     child_hash->assign(empty);
     return true;
   }
-
 
   // Instead of creating a program, it returns true and ignores the arguments
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,

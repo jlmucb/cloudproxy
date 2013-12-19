@@ -23,12 +23,10 @@
 #include "tao/pipe_tao_channel.h"
 #include "tao/process_factory.h"
 
-
 using tao::PipeTaoChannel;
 class PipeTaoChannelTest : public ::testing::Test {
-  protected:
-   virtual void SetUp() {
+ protected:
+  virtual void SetUp() {
     // Create a fake program that can be called with pipes
-    
-   }
+  }
 };

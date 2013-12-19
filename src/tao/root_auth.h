@@ -24,7 +24,7 @@
 #include <map>
 #include <set>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/attestation.pb.h"
@@ -37,7 +37,7 @@ namespace keyczar {
 
 class Keyczar;
 
-} // namespace keyczar
+}  // namespace keyczar
 
 namespace tao {
 class RootAuth : public TaoAuth {

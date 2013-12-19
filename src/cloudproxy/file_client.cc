@@ -28,7 +28,6 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "tao/tao_auth.h"
 
-
 namespace cloudproxy {
 
 FileClient::FileClient(const string &file_path, const string &tls_cert,

@@ -25,7 +25,7 @@
 #include <map>
 #include <mutex>
 
-#include <keyczar/base/basictypes.h> // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_channel.h"
 
@@ -52,7 +52,9 @@ class KvmUnixTaoChannel : public TaoChannel {
   virtual bool ChildCleanup(const string &child_hash) { return true; }
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 
-  virtual bool UpdateChildParams(const string &child_hash, const string &params);
+  virtual bool UpdateChildParams(const string &child_hash,
+                                 const string &params);
+
  protected:
   virtual bool ReceiveMessage(google::protobuf::Message *m,
                               const string &child_hash) const;

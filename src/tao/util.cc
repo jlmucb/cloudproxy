@@ -481,11 +481,25 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     return false;
   }
 
+  // Some channels don't return all the bytes you request when you request them.
+  // TODO(tmroeder): change this implementation to support select better so it 
+  // isn't subject to denial of service attacks by parties sending messages.
   size_t len = 0;
-  ssize_t bytes_read = read(fd, &len, sizeof(size_t));
-  if (bytes_read != static_cast<ssize_t>(sizeof(size_t))) {
-    PLOG(ERROR) << "Could not read an integer length";
-    return false;
+  ssize_t bytes_read = 0;
+  while(bytes_read < static_cast<ssize_t>(sizeof(size_t))) {
+    int rv = read(fd, ((char *)&len) + bytes_read, sizeof(size_t) - bytes_read);
+    if (rv < 0) {
+      if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+	continue;
+      } else {
+	PLOG(ERROR) << "Could not get an integer: expected "
+	  << sizeof(size_t) << " bytes but only received "
+	  << bytes_read;
+	return false;
+      }
+
+      bytes_read += rv;
+    }
   }
 
   // TODO(tmroeder): figure out why this is happening
@@ -496,12 +510,23 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
 
   LOG(INFO) << "Got a length " << (int)len;
 
-  // then read this many bytes as the message
+  // Read this many bytes as the message.
+  bytes_read = 0;
   scoped_array<char> bytes(new char[len]);
-  bytes_read = read(fd, bytes.get(), len);
-  if (bytes_read != static_cast<ssize_t>(len)) {
-    PLOG(ERROR) << "Could not receive a message of length " << len;
-    return false;
+  while(bytes_read < static_cast<ssize_t>(len)) {
+    int rv = read(fd, bytes.get() + bytes_read, len - static_cast<size_t>(bytes_read));
+    if (rv < 0) {
+      if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+	continue;
+      } else {
+	PLOG(ERROR) << "Could not read enough bytes from the stream: "
+	  << "expected " << (int)len << " but received only "
+	  << bytes_read;
+	return false;
+      }
+    }
+
+    bytes_read += rv;
   }
 
   LOG(INFO) << "Received a message of length " << len;

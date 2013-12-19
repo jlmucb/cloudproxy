@@ -32,7 +32,7 @@
 
 namespace tao {
 KvmUnixTaoChildChannel::KvmUnixTaoChildChannel(const string &params)
-    : fd_(0), params_(params) {}
+    : fd_(-1), params_(params) {}
 
 bool KvmUnixTaoChildChannel::Init() {
 
@@ -62,12 +62,22 @@ bool KvmUnixTaoChildChannel::Init() {
 bool KvmUnixTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
   // try to receive an integer
   CHECK(m) << "m was null";
+  if (fd_ < 0) {
+    LOG(ERROR) << "Can't send with an empty fd";
+    return false;
+  }
+
   LOG(INFO) << "About to receive a message on fd " << fd_;
   return tao::ReceiveMessage(fd_, m);
 }
 
 bool KvmUnixTaoChildChannel::SendMessage(
     const google::protobuf::Message &m) const {
+  if (fd_ < 0) {
+    LOG(ERROR) << "Can't send with an empty fd";
+    return false;
+  }
+
   LOG(INFO) << "About to send a message on fd " << fd_;
   return tao::SendMessage(fd_, m);
 }

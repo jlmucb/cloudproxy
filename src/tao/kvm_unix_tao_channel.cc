@@ -122,6 +122,7 @@ bool KvmUnixTaoChannel::ReceiveMessage(google::protobuf::Message *m,
   }
   
   LOG(INFO) << "Got fd " << readfd << " for child " << child_hash;
+
   return tao::ReceiveMessage(readfd, m);
 }
 
@@ -154,6 +155,7 @@ bool KvmUnixTaoChannel::SendMessage(const google::protobuf::Message &m,
   }
 
   LOG(INFO) << "Got fd " << writefd << " for child " << child_hash;
+
   return tao::SendMessage(writefd, m);
 }
 
@@ -179,12 +181,14 @@ bool KvmUnixTaoChannel::ConnectToUnixSocket(const string &path, int *s) const {
   }
 
   strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path));
-  //int len = sizeof(addr.sun_family) + strlen(addr.sun_path);
-  int connect_err = connect(*s, (struct sockaddr *)&addr, sizeof(addr));
-  if (connect_err == -1) {
+  int len = sizeof(addr.sun_family) + strlen(addr.sun_path);
+  int connect_err = connect(*s, (struct sockaddr *)&addr, len);
+  if (connect_err < 0) {
     PLOG(ERROR) << "Could not connect to the socket " << path;
     return false;
   }
+
+  LOG(INFO) << "Connected to unix domain socket " << path << " with fd " << *s;
 
   return true;
 }
@@ -213,8 +217,8 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
   }
 
   strncpy(addr.sun_path, domain_socket_path_.c_str(), sizeof(addr.sun_path));
-  //int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
-  int bind_err = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+  int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+  int bind_err = bind(sock, (struct sockaddr *)&addr, len);
   if (bind_err == -1) {
     PLOG(ERROR) << "Could not bind the address " << domain_socket_path_
                 << " to the socket";
@@ -269,16 +273,13 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
         TaoChannelRPC rpc;
 	LOG(INFO) << "Getting RPC";
         if (!GetRPC(&rpc, child_hash)) {
-          LOG(ERROR) << "Could not get an RPC. Removing child " << child_hash;
-          programs_to_erase.push_back(child_hash);
+          LOG(ERROR) << "Could not get an RPC for " << child_hash;
           continue;
         }
 	LOG(INFO) << "Got RPC, handling it";
 
         if (!HandleRPC(*tao, child_hash, rpc)) {
-          LOG(ERROR) << "Could not handle the RPC. Removing child "
-            << child_hash;
-          programs_to_erase.push_back(child_hash);
+          LOG(ERROR) << "Could not get an RPC for " << child_hash;
           continue;
         }
 	LOG(INFO) << "Finished handling RPC";
@@ -288,12 +289,6 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
     }
 
     LOG(INFO) << "Done with loop check";
-
-    auto pit = programs_to_erase.begin();
-    for (; pit != programs_to_erase.end(); ++pit) {
-      LOG(INFO) << "Erasing " << *pit;
-      child_hash_to_socket_.erase(*pit);
-    }
   }
 
   return true;
@@ -319,20 +314,6 @@ bool KvmUnixTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
     args.push_back(shpa.args(i));
   }
 
-  for (pair<const string, pair<string, int>> &child : child_hash_to_socket_) {
-    // Connect to all the sockets so far
-    string path = child.second.first;
-    int s = -1;
-    // If we can't connect, then go on. We'll try again when another child is
-    // added, if ever
-    if (!ConnectToUnixSocket(path, &s)) {
-      LOG(ERROR) << "Could not connect to child " << child.first
-                 << " using socket " << child.second.first;
-    } else {
-      child.second.second = s;
-    }
-  }
-
   if (!tao->StartHostedProgram(shpa.path(), args)) {
     LOG(ERROR) << "Could not start the program";
     return false;
@@ -349,6 +330,7 @@ bool KvmUnixTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
 	continue;
       }
 
+      LOG(INFO) << "Connected child with hash " << descriptor.first << " with path " << descriptor.second.first << " and fd " << s;
       descriptor.second.second = s;
     }
   }

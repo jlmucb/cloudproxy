@@ -131,7 +131,6 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   // The params have to be a Base64W-encoded KvmUnixTaoChannelParams and must
   // specify a path for the connection to the client.
   string params;
-  LOG(INFO) << "Decoded params " << encoded_params;
   if (!Base64WDecode(encoded_params, &params)) {
     LOG(ERROR) << "Could not decode the encoded params";
     return false;
@@ -192,9 +191,6 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
     return false;
   }
 
-  LOG(INFO) << "The XML is ";
-  LOG(INFO) << buf.get();
-
   virDomainPtr vm_domain = virDomainCreateXML(vm_connection_, buf.get(), 0);
   if (!vm_domain) {
     LOG(ERROR) << "Could not create a VM using the supplied parameters";
@@ -229,7 +225,6 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   }
 
   string local_device(new_xml_str.substr(pts_start, pts_end - pts_start));
-  LOG(INFO) << "Found the device '" << local_device << "'";
   LOG(INFO) << "Created a VM with name " << name;
 
   // The parent channel will connect to the local device now.

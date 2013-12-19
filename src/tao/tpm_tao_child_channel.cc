@@ -36,7 +36,6 @@ TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
       pcrs_to_seal_(pcrs_to_seal.begin(), pcrs_to_seal.end()) {
   // nothing to do yet. But this should be get the information needed for Init
   // to connect to the TPM
-  LOG(INFO) << "The aik attestation has length " << (int)aik_attestation.size();
 }
 
 bool TPMTaoChildChannel::Init() {

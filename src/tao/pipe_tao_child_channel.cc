@@ -47,9 +47,6 @@ bool PipeTaoChildChannel::Init() {
   readfd_ = ptcp.readfd();
   writefd_ = ptcp.writefd();
 
-  LOG(INFO) << "Got readfd = " << readfd_;
-  LOG(INFO) << "Got writefd = " << writefd_;
-
   return true;
 }
 

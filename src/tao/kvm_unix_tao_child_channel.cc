@@ -68,7 +68,6 @@ bool KvmUnixTaoChildChannel::ReceiveMessage(
     return false;
   }
 
-  LOG(INFO) << "About to receive a message on fd " << fd_;
   return tao::ReceiveMessage(fd_, m);
 }
 
@@ -79,7 +78,6 @@ bool KvmUnixTaoChildChannel::SendMessage(
     return false;
   }
 
-  LOG(INFO) << "About to send a message on fd " << fd_;
   return tao::SendMessage(fd_, m);
 }
 }  // namespace tao

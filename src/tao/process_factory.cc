@@ -82,7 +82,6 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
 
     // one more for the NULL at the end
     char **argv = new char *[argc + 1];
-    LOG(INFO) << "Created argv of size " << (argc + 1);
     argv[0] = strdup(name.c_str());
     int i = 1;
     for (const string &v : args) {

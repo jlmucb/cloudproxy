@@ -89,8 +89,6 @@ class LinuxTaoTest : public ::testing::Test {
     // Create the policy key directory so it can be filled by keyczar.
     ASSERT_EQ(mkdir(policy_pk_path.c_str(), 0700), 0);
 
-    LOG(INFO) << "Created directories in " << dir_;
-
     // create the policy key
     FilePath fp(policy_pk_path);
     scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));

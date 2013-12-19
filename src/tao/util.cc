@@ -127,8 +127,6 @@ bool HashVM(const string &vm_template, const string &name,
     return false;
   }
 
-  LOG(INFO) << "The template had hash: " << template_digest;
-
   string name_hash;
   if (!sha256->Digest(name, &name_hash)) {
     LOG(ERROR) << "Could not compute the has of the name";
@@ -336,8 +334,6 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
     return false;
   }
 
-  LOG(INFO) << "Exported the public key to " << destination;
-
   // now iterate over the files in the directory and add them to the public key
   string meta_file_name = destination + string("/meta");
   ifstream meta_file(meta_file_name.c_str(), ifstream::in | ios::binary);
@@ -407,11 +403,9 @@ bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
 
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret) {
-  LOG(INFO) << "In SealOrUnsealSecret, with path " << sealed_path;
   // create or unseal a secret from the Tao
   FilePath fp(sealed_path);
   if (PathExists(fp)) {
-    LOG(INFO) << "Found the path";
     // Unseal it
     ifstream sealed_file(sealed_path.c_str(), ifstream::in | ios::binary);
     stringstream sealed_buf;
@@ -423,7 +417,6 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
     }
 
   } else {
-    LOG(INFO) << "Didn't find the path";
     // create and seal the secret
     const int SecretSize = 16;
     if (!t.GetRandomBytes(SecretSize, secret)) {
@@ -431,7 +424,6 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
       return false;
     }
 
-    LOG(INFO) << "Got random bytes";
     // seal it and write the result to the specified file
     string sealed_secret;
     if (!t.Seal(*secret, &sealed_secret)) {
@@ -455,9 +447,7 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
   }
 
   size_t len = serialized.size();
-  LOG(INFO) << "Serialized the message of length " << (int)len;
   ssize_t bytes_written = write(fd, &len, sizeof(size_t));
-  LOG(INFO) << "The write succeeded";
   if (bytes_written != sizeof(size_t)) {
     PLOG(ERROR) << "Could not write the length to the fd " << fd;
     return false;
@@ -469,7 +459,6 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
     return false;
   }
 
-  LOG(INFO) << "Sent the message";
   return true;
 }
 
@@ -489,7 +478,6 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
         read(fd, ((char *)&len) + bytes_read, sizeof(len) - bytes_read);
     if (rv < 0) {
       if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-        LOG(INFO) << "Continuing";
         continue;
       } else {
         PLOG(ERROR) << "Could not get an integer: expected " << sizeof(size_t)
@@ -499,7 +487,6 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     }
 
     bytes_read += rv;
-    LOG(INFO) << "bytes_read is now " << (int)bytes_read;
   }
 
   // TODO(tmroeder): figure out why this is happening
@@ -508,7 +495,6 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     return false;
   }
 
-  LOG(INFO) << "Got a length " << (int)len;
 
   // Read this many bytes as the message.
   bytes_read = 0;
@@ -530,7 +516,6 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     bytes_read += rv;
   }
 
-  LOG(INFO) << "Received a message of length " << len;
   string serialized(bytes.get(), len);
   return m->ParseFromString(serialized);
 }

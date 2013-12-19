@@ -100,12 +100,9 @@ int main(int argc, char **argv) {
   }
 
   // The last character is a newline, so stop before it.
-  LOG(INFO) << "cmdline.size() == " << (int)cmdline.size();
-  LOG(INFO) << "space_index == " << (int)space_index;
   string encoded_params(
       cmdline.substr(space_index + 1, cmdline.size() - (space_index + 1) - 1));
 
-  LOG(INFO) << "The length of the encoded string is " << encoded_params.size();
   string params;
   if (!Base64WDecode(encoded_params, &params)) {
     LOG(ERROR) << "Could not decode the encoded params " << encoded_params;
@@ -115,14 +112,12 @@ int main(int argc, char **argv) {
   TaoChildChannelRegistry registry;
   tao::RegisterKnownChannels(&registry);
 
-  LOG(INFO) << "Getting registered channel for these params";
   scoped_ptr<TaoChildChannel> child_channel(registry.Create(params));
 
   scoped_ptr<WhitelistAuth> whitelist_auth(
       new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
   CHECK(whitelist_auth->Init())
       << "Could not initialize the authorization manager";
-  LOG(INFO) << "Initialized the authorization manager";
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
@@ -131,16 +126,14 @@ int main(int argc, char **argv) {
   scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
   CHECK(process_factory->Init()) << "Could not initialize the process factory";
 
-  LOG(INFO) << "Set up the channels and factories for local hosted programs";
   scoped_ptr<LinuxTao> tao(
       new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
                    FLAGS_policy_pk_path, child_channel.release(),
                    pipe_channel.release(), process_factory.release(),
                    whitelist_auth.release(), FLAGS_ca_host, FLAGS_ca_port));
-  LOG(INFO) << "Created the LinuxTao; about to initialize";
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
 
-  LOG(INFO) << "Linux Tao Service started and waiting for requests";
+  LOG(INFO) << "Linux Guest Tao Service started and waiting for requests";
 
   // Listen for program creation requests and for messages from hosted programs
   // that have been created.

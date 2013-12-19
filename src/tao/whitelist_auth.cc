@@ -83,13 +83,21 @@ bool WhitelistAuth::Init() {
 }
 
 bool WhitelistAuth::IsAuthorized(const string &program_hash) const {
-  return hash_whitelist_.find(program_hash) != hash_whitelist_.end();
+  bool authorized = (hash_whitelist_.find(program_hash) != hash_whitelist_.end());
+  if (!authorized) {
+    LOG(ERROR) << "Could not find the hash " << program_hash
+               << " on the whitelist";
+  }
+
+  return authorized;
 }
 
 bool WhitelistAuth::IsAuthorized(const string &program_name,
                                  const string &program_hash) const {
   auto it = whitelist_.find(program_name);
   if (it == whitelist_.end()) {
+    LOG(ERROR) << "The program " << program_name << " with hash "
+               << program_hash << " was not found on the whitelist";
     return false;
   }
 

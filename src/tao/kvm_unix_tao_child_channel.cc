@@ -49,7 +49,7 @@ bool KvmUnixTaoChildChannel::Init() {
     return false;
   }
 
-  string file = string("/dev/virtio-ports/") + tccp.params();
+  string file = string("/dev/virtio-ports/") + kutcp.guest_device();
   fd_ = open(file.c_str(), O_RDWR | O_APPEND);
   if (fd_ == -1) {
     PLOG(ERROR) << "Could not open " << file << " for read-write";

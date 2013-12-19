@@ -39,14 +39,10 @@
       <alias name='net0'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
-    <serial type='unix'>
-      <source mode='bind' path='/tmp/cp-server-socket'/>
-      <target port='0'/>
-    </serial>
-    <console type='unix'>
-      <source mode='bind' path='/tmp/cp-server-socket'/>
-      <target type='serial' port='0'/>
-    </console>
+    <channel type='pty'>
+      <target type='virtio' name='hostchannel'/>
+      <address type='virtio-serial' controller='0' bus='0' port='1'/>
+    </channel>
     <input type='mouse' bus='ps2'/>
     <graphics type='vnc' port='-1' autoport='yes'/>
     <sound model='ac97'>

@@ -34,7 +34,7 @@ using std::string;
 
 namespace tao {
 
-// an RPC class that communicates with a remote Tao server. It takes the input
+// An RPC class that communicates with a remote Tao server. It takes the input
 // parameters, bundles them up, and sends them along a channel (details of the
 // channel depend on the implementation). The difference between the Tao and the
 // TaoChannel is that the Tao takes information about the child hash making the
@@ -54,6 +54,8 @@ class TaoChannel {
   virtual bool AddChildChannel(const string &child_hash, string *params) = 0;
   virtual bool ChildCleanup(const string &child_hash) = 0;
   virtual bool ParentCleanup(const string &child_hash) = 0;
+
+  virtual bool UpdateChildParams(const string &child_hash, const string &params) = 0;
 
  protected:
   // subclasses implement these methods for the underlying transport.

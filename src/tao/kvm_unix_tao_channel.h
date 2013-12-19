@@ -52,6 +52,7 @@ class KvmUnixTaoChannel : public TaoChannel {
   virtual bool ChildCleanup(const string &child_hash) { return true; }
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 
+  virtual bool UpdateChildParams(const string &child_hash, const string &params);
  protected:
   virtual bool ReceiveMessage(google::protobuf::Message *m,
                               const string &child_hash) const;
@@ -61,9 +62,7 @@ class KvmUnixTaoChannel : public TaoChannel {
  private:
   string domain_socket_path_;
   mutable mutex data_m_;
-  map<string, pair<string, int>> child_hash_to_socket_;
-
-  bool ConnectToUnixSocket(const string &path, int *s) const;
+  map<string, pair<string, int>> child_hash_to_descriptor_;
 
   // Receives a datagram message on a unix socket and uses this information to
   // create a hosted program through the Tao.

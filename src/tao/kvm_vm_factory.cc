@@ -120,8 +120,6 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
     return false;
   }
 
-
-
   auto it = args.begin();
   string vm_template(*(it++));
   string kernel(*(it++));
@@ -157,7 +155,7 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
     return false;
   }
 
-  string path(kutcp.unix_socket_path());
+  string path(kutcp.guest_device());
 
   ifstream vm_template_file(vm_template.c_str());
   if (!vm_template_file) {
@@ -173,13 +171,12 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   // since snprintf removes the %s that gets replaced each time.
   size_t formatted_size = vmspec.size() + name.size() +
       kernel.size() + initrd.size() + encoded_params.size() + disk.size() +
-      2 * path.size() + 1;
+      path.size() + 1;
 
   scoped_array<char> buf(new char[formatted_size]);
   int count = snprintf(buf.get(), formatted_size, vmspec.c_str(),
                        name.c_str(), kernel.c_str(), initrd.c_str(),
-                       encoded_params.c_str(), disk.c_str(), path.c_str(),
-                       path.c_str());
+                       encoded_params.c_str(), disk.c_str(), path.c_str());
 
   if (count < 0) {
     PLOG(ERROR) << "Could not snprintf into the buffer";
@@ -197,8 +194,8 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   LOG(INFO) << "The XML is ";
   LOG(INFO) << buf.get();
 
-  virDomainPtr vm_domain_ = virDomainCreateXML(vm_connection_, buf.get(), 0);
-  if (!vm_domain_) {
+  virDomainPtr vm_domain = virDomainCreateXML(vm_connection_, buf.get(), 0);
+  if (!vm_domain) {
     LOG(ERROR) << "Could not create a VM using the supplied parameters";
     virError *err = virGetLastError();
     if (err) {
@@ -208,7 +205,38 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
     return false;
   }
 
+  // Find out which /dev/pts entry was used in the host.
+  char *new_xml = virDomainGetXMLDesc(vm_domain, 0);
+  if (!new_xml) {
+    LOG(ERROR) << "Could not get the XML for the newly created domain";
+    return false;
+  }
+
+  string new_xml_str(new_xml);
+  free(new_xml);
+
+  size_t pts_start = new_xml_str.find("/dev/pts/");
+  if (pts_start == string::npos) {
+    LOG(ERROR) << "Could not find a /dev/pts entry in the domain XML";
+    return false;
+  }
+
+  size_t pts_end = new_xml_str.find_first_of("'", pts_start);
+  if (pts_end == string::npos) {
+    LOG(ERROR) << "Invalid XML";
+    return false;
+  }
+
+  string local_device(new_xml_str.substr(pts_start, pts_end - pts_start));
+  LOG(INFO) << "Found the device '" << local_device << "'";
   LOG(INFO) << "Created a VM with name " << name;
+
+  // The parent channel will connect to the local device now.
+  if (!parent_channel.UpdateChildParams(child_hash, local_device)) {
+    LOG(ERROR) << "Could not update the child parameters";
+    return false;
+  }
+
   return true;
 }
 

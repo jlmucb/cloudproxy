@@ -32,10 +32,10 @@
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
+#include "tao/kvm_unix_tao_child_channel.h"
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/util.h"
 
-// TODO(tmroeder): catch SIGPIPE so that dying subprocesses don't kill us.
 namespace tao {
 KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path)
     : domain_socket_path_(socket_path) {}
@@ -50,39 +50,36 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params
   // Check to make sure this hash isn't already instantiated.
   {
     lock_guard<mutex> l(data_m_);
-    auto hash_it = child_hash_to_socket_.find(child_hash);
-    if (hash_it != child_hash_to_socket_.end()) {
+    auto hash_it = child_hash_to_descriptor_.find(child_hash);
+    if (hash_it != child_hash_to_descriptor_.end()) {
       LOG(ERROR) << "This child has already been instantiated with a channel";
       return false;
     }
   }
 
-  // Create a random temp file name to use as the socket.
-  char tempfile[] = "/tmp/kvm_unix_tao_channel_XXXXXX";
-  if (mktemp(tempfile) == nullptr) {
-    PLOG(ERROR) << "Could not create a temporary filename for the KVM channel";
-    return false;
-  }
 
-  string file(tempfile);
-
+  // Add an empty string until we find out which /dev/pts was set up for this.
   {
+    string empty;
     lock_guard<mutex> l(data_m_);
     pair<string, int> socket_pair;
-    socket_pair.first = file;
+    socket_pair.first = empty;
     socket_pair.second = -1;
-    child_hash_to_socket_[child_hash] = socket_pair;
+    child_hash_to_descriptor_[child_hash] = socket_pair;
   }
 
-  VLOG(2) << "Adding program with digest " << child_hash << " and path "
-          << file;
-
+  // The name of the channel will always be /dev/vport0p1 on the guest. And the
+  // host will have to find out which /dev/pts entry is being used by asking
+  // libvirt.
+  string file("host_channel");
   KvmUnixTaoChannelParams kutcp;
-  kutcp.set_unix_socket_path(tempfile);
-  kutcp.set_target_port(1);
+  kutcp.set_guest_device(file);
+
+  VLOG(2) << "Adding program with digest " << child_hash << " and guest path "
+          << "/dev/virtio-ports/" << file;
 
   TaoChildChannelParams tccp;
-  tccp.set_channel_type("KvmUnixTaoChannel");
+  tccp.set_channel_type(KvmUnixTaoChildChannel::ChannelType());
   string *child_params = tccp.mutable_params();
   if (!kutcp.SerializeToString(child_params)) {
     LOG(ERROR) << "Could not serialize the child params to a string";
@@ -97,6 +94,39 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash, string *params
   return true;
 }
 
+bool KvmUnixTaoChannel::UpdateChildParams(const string &child_hash,
+    const string &params) {
+  // In this case, the params are just the device name rather than a serialized
+  // protobuf, since this is only made as a call from KvmVmFactory directly.
+
+  {
+    lock_guard<mutex> l(data_m_);
+    // Look up the hash to see if we have descriptors associated with it.
+    auto child_it = child_hash_to_descriptor_.find(child_hash);
+    if ((child_it != child_hash_to_descriptor_.end()) &&
+        (!child_it->second.first.empty())) {
+      LOG(ERROR) << "Could not replace an existing channel for " << child_hash;
+      return false;
+    }
+
+    // Open the file channel to the VM
+    int fd = open(params.c_str(), O_RDWR | O_APPEND);
+    if (fd < 0) {
+      PLOG(ERROR) << "Could not open the local file '" << params << "'";
+      return false;
+    }
+
+    child_it->second.first = params;
+    child_it->second.second = fd;
+
+    // This call from KvmVmFactory happens while the KvmUnixTaoChannel is
+    // handling a call to create a hosted program. So, it will pick up this new
+    // channel when it loops back to the select statement in Listen.
+  }
+
+  return true;
+}
+
 bool KvmUnixTaoChannel::ReceiveMessage(google::protobuf::Message *m,
                                     const string &child_hash) const {
   // try to receive an integer
@@ -106,8 +136,8 @@ bool KvmUnixTaoChannel::ReceiveMessage(google::protobuf::Message *m,
   {
     lock_guard<mutex> l(data_m_);
     // Look up the hash to see if we have descriptors associated with it.
-    auto child_it = child_hash_to_socket_.find(child_hash);
-    if (child_it == child_hash_to_socket_.end()) {
+    auto child_it = child_hash_to_descriptor_.find(child_hash);
+    if (child_it == child_hash_to_descriptor_.end()) {
       LOG(ERROR) << "Could not find any file descriptors for " << child_hash;
       return false;
     }
@@ -139,8 +169,8 @@ bool KvmUnixTaoChannel::SendMessage(const google::protobuf::Message &m,
   {
     lock_guard<mutex> l(data_m_);
     // Look up the hash to see if we have descriptors associated with it.
-    auto child_it = child_hash_to_socket_.find(child_hash);
-    if (child_it == child_hash_to_socket_.end()) {
+    auto child_it = child_hash_to_descriptor_.find(child_hash);
+    if (child_it == child_hash_to_descriptor_.end()) {
       LOG(ERROR) << "Could not find any file descriptors for " << child_hash;
       return false;
     }
@@ -159,43 +189,9 @@ bool KvmUnixTaoChannel::SendMessage(const google::protobuf::Message &m,
   return tao::SendMessage(writefd, m);
 }
 
-bool KvmUnixTaoChannel::ConnectToUnixSocket(const string &path, int *s) const {
-  if (s == nullptr) {
-    LOG(ERROR) << "Parameter s was null";
-    return false;
-  }
-
-  *s = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (*s == -1) {
-    PLOG(ERROR) << "Could not create a Unix domain socket for " << path;
-    return false;
-  }
-
-  // TODO(tmroeder): add timeout here so that malicious clients can't cause
-  // denial of service.
-  struct sockaddr_un addr;
-  addr.sun_family = AF_UNIX;
-  if (path.size() + 1 > sizeof(addr.sun_path)) {
-    LOG(ERROR) << "The path " << path << " was too long to use";
-    return false;
-  }
-
-  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path));
-  int len = sizeof(addr.sun_family) + strlen(addr.sun_path);
-  int connect_err = connect(*s, (struct sockaddr *)&addr, len);
-  if (connect_err < 0) {
-    PLOG(ERROR) << "Could not connect to the socket " << path;
-    return false;
-  }
-
-  LOG(INFO) << "Connected to unix domain socket " << path << " with fd " << *s;
-
-  return true;
-}
-
 bool KvmUnixTaoChannel::Listen(Tao *tao) {
   // The unix domain socket is used to listen for CreateHostedProgram requests.
-  int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  int sock = socket(PF_UNIX, SOCK_DGRAM, 0);
   if (sock == -1) {
     LOG(ERROR) << "Could not create unix domain socket to listen for messages";
     return false;
@@ -236,7 +232,7 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
     FD_SET(sock, &read_fds);
 
     for (pair<const string, pair<string, int>> &descriptor :
-         child_hash_to_socket_) {
+         child_hash_to_descriptor_) {
       int d = descriptor.second.second;
       if (d >= 0) {
         FD_SET(d, &read_fds);
@@ -264,7 +260,7 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
 
     list<string> programs_to_erase;
     for (pair<const string, pair<string, int>> &descriptor :
-         child_hash_to_socket_) {
+         child_hash_to_descriptor_) {
       int d = descriptor.second.second;
       const string &child_hash = descriptor.first;
       LOG(INFO) << "Considering descriptor " << d;
@@ -274,18 +270,27 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
 	LOG(INFO) << "Getting RPC";
         if (!GetRPC(&rpc, child_hash)) {
           LOG(ERROR) << "Could not get an RPC for " << child_hash;
+	  LOG(ERROR) << "Removing hosted program " << child_hash;
+	  programs_to_erase.push_back(child_hash);
           continue;
         }
 	LOG(INFO) << "Got RPC, handling it";
 
         if (!HandleRPC(*tao, child_hash, rpc)) {
           LOG(ERROR) << "Could not get an RPC for " << child_hash;
+	  LOG(ERROR) << "Removing hosted program " << child_hash;
+	  programs_to_erase.push_back(child_hash);
           continue;
         }
 	LOG(INFO) << "Finished handling RPC";
       } else {
         LOG(INFO) << "It's not set";
       }
+    }
+
+    auto pit = programs_to_erase.begin();
+    for (; pit != programs_to_erase.end(); ++pit) {
+      child_hash_to_descriptor_.erase(*pit);    
     }
 
     LOG(INFO) << "Done with loop check";
@@ -317,22 +322,6 @@ bool KvmUnixTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
   if (!tao->StartHostedProgram(shpa.path(), args)) {
     LOG(ERROR) << "Could not start the program";
     return false;
-  }
-
-  // attach to any channels that have been added
-  for (pair<const string, pair<string, int>> &descriptor :
-       child_hash_to_socket_) {
-    if (descriptor.second.second == -1) {
-      string path(descriptor.second.first);
-      int s = -1;
-      if (!ConnectToUnixSocket(path, &s)) {
-	LOG(ERROR) << "Could not connect to the unix socket associated with the path " << path;
-	continue;
-      }
-
-      LOG(INFO) << "Connected child with hash " << descriptor.first << " with path " << descriptor.second.first << " and fd " << s;
-      descriptor.second.second = s;
-    }
   }
 
   return true;

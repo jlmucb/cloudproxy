@@ -154,6 +154,11 @@ bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
   return true;
 }
 
+// Pipe channels don't support this kind of update.
+bool PipeTaoChannel::UpdateChildParams(const string &child_hash, const string &params) {
+  return false;
+}
+
 bool PipeTaoChannel::ReceiveMessage(google::protobuf::Message *m,
                                     const string &child_hash) const {
   // try to receive an integer

@@ -486,20 +486,22 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   // isn't subject to denial of service attacks by parties sending messages.
   size_t len = 0;
   ssize_t bytes_read = 0;
-  while(bytes_read < static_cast<ssize_t>(sizeof(size_t))) {
-    int rv = read(fd, ((char *)&len) + bytes_read, sizeof(size_t) - bytes_read);
+  while(static_cast<size_t>(bytes_read) < sizeof(len)) {
+    ssize_t rv = read(fd, ((char *)&len) + bytes_read, sizeof(len) - bytes_read);
     if (rv < 0) {
       if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-	continue;
+        LOG(INFO) << "Continuing";
+	    continue;
       } else {
-	PLOG(ERROR) << "Could not get an integer: expected "
-	  << sizeof(size_t) << " bytes but only received "
-	  << bytes_read;
-	return false;
+	    PLOG(ERROR) << "Could not get an integer: expected "
+	      << sizeof(size_t) << " bytes but only received "
+	      << bytes_read;
+	      return false;
       }
-
-      bytes_read += rv;
     }
+
+    bytes_read += rv;
+    LOG(INFO) << "bytes_read is now " << (int)bytes_read;
   }
 
   // TODO(tmroeder): figure out why this is happening

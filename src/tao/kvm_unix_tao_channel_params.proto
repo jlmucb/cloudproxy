@@ -19,6 +19,6 @@
 package tao;
 
 message KvmUnixTaoChannelParams {
-  required string unix_socket_path = 1;
-  required int32 target_port = 2;
+  required string guest_device = 1;
+  optional string host_device = 2;
 }

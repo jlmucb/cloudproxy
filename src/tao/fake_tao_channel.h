@@ -40,6 +40,7 @@ class FakeTaoChannel : public TaoChannel {
   virtual bool ChildCleanup(const string &child_hash) { return true; }
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 
+  virtual bool UpdateChildParams(const string &child_hash, const string &params) { return true; }
  protected:
   // Since this is a fake, the message sending operations fail.
   virtual bool ReceiveMessage(google::protobuf::Message *m,

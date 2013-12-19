@@ -49,10 +49,10 @@ bool KvmUnixTaoChildChannel::Init() {
     return false;
   }
 
-  // This channel always uses /dev/ttyS0 for now.
-  fd_ = open("/dev/ttyS0", O_RDWR | O_EXCL);
+  string file = string("/dev/virtio-ports/") + tccp.params();
+  fd_ = open(file.c_str(), O_RDWR | O_APPEND);
   if (fd_ == -1) {
-    PLOG(ERROR) << "Could not open /dev/ttyS0 in exclusive mode for read-write";
+    PLOG(ERROR) << "Could not open " << file << " for read-write";
     return false;
   }
 

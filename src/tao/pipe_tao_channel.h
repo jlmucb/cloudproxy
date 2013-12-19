@@ -49,6 +49,7 @@ class PipeTaoChannel : public TaoChannel {
   virtual bool ChildCleanup(const string &child_hash);
   virtual bool ParentCleanup(const string &child_hash);
 
+  virtual bool UpdateChildParams(const string &child_hash, const string &params);
  protected:
   virtual bool ReceiveMessage(google::protobuf::Message *m,
                               const string &child_hash) const;

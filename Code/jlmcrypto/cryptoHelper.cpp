@@ -668,7 +668,7 @@ bool bytesfrombase64(char* in, int* pnb, byte* out)
         return false;
     }
     if(!fromBase64(n, in, &size, out)) {
-        fprintf(g_logFile, "bytesfrombase64: conversion failed\n");
+        fprintf(g_logFile, "bytesfrombase64: conversion failed\n%s\n", in);
         return false;
     }
     *pnb= size;
@@ -711,7 +711,7 @@ bool  XMLenclosingtypefromelements(const char* tag, int numAttr,
     sprintf(&buf[n], "</%s>\n", tag);
     size= strlen(buf);
     if(size>*psize) {
-        fprintf(g_logFile, "bytesfrombase64: conversion failed\n");
+        fprintf(g_logFile, "XMLenclosingtypefromelements: conversion failed\n");
         return false;
     }
     *psize= size;

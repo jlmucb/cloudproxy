@@ -91,7 +91,7 @@ const char* szServerHostAddr= "127.0.0.1";
 
 #define DEFAULTDIRECTORY    "/home/jlm/jlmcrypt"
 #define SELLERCLIENTSUBDIRECTORY "sellerClient"
-#define BIGBUFSIZE  16384
+#define BIGBUFSIZE  32768
 
 
 // ------------------------------------------------------------------------
@@ -465,27 +465,31 @@ const char*   signedbidInfo::getSignatureValue()
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
+    TiXmlNode*      pNode2= NULL;
 
     if(!parseValid) {
-        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: parse invalid\n");
+        fprintf(g_logFile, "signedbidInfo::getSignatureValue: parse invalid\n");
         return false;
     }
     pRootElement= doc.RootElement();
     if(pRootElement==NULL) {
-        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: no root element\n");
+        fprintf(g_logFile, "signedbidInfo::getSignatureValue: no root element\n");
         return NULL;
     }
-    pNode= Search((TiXmlNode*) pRootElement, "Signature");
+    pNode= Search((TiXmlNode*) pRootElement, "ds:Signature");
     if(pNode==NULL) {
-        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: no signature element\n");
+        fprintf(g_logFile, "signedbidInfo::getSignatureValue: no signature element\n");
         return NULL;
     }
-    pNode1= Search((TiXmlNode*) pNode, "ds:Signature");
+    pNode1= Search((TiXmlNode*) pNode, "ds:SignatureValue");
     if(pNode1==NULL) {
-        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: no SignedInfo element\n");
+        fprintf(g_logFile, "signedbidInfo::getSignatureValue: no SignatureValue element\n");
         return NULL;
     }
-    return canonicalize(pNode1);
+    pNode2= pNode1->FirstChild();
+    if(pNode2==NULL)
+        return NULL;
+    return canonicalize(pNode2);
 }
 
 
@@ -504,12 +508,12 @@ const char*   signedbidInfo::getSignedInfoElement()
         fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: no root element\n");
         return NULL;
     }
-    pNode= Search((TiXmlNode*) pRootElement, "Signature");
+    pNode= Search((TiXmlNode*) pRootElement, "ds:Signature");
     if(pNode==NULL) {
         fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: no signature element\n");
         return NULL;
     }
-    pNode1= Search((TiXmlNode*) pNode, "SignedInfo");
+    pNode1= Search((TiXmlNode*) pNode, "ds:SignedInfo");
     if(pNode1==NULL) {
         fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: no SignedInfo element\n");
         return NULL;
@@ -527,26 +531,26 @@ const char*   signedbidInfo::getBidElement()
 
     if(!parseValid) {
         fprintf(g_logFile, "signedbidInfo::getBidElement: parse invalid\n");
-        return false;
+        return NULL;
     }
     pRootElement= doc.RootElement();
     if(pRootElement==NULL) {
         fprintf(g_logFile, "signedbidInfo::getBidElement: no root element\n");
         return NULL;
     }
-    pNode= Search((TiXmlNode*) pRootElement, "Signature");
+    pNode= Search((TiXmlNode*) pRootElement, "ds:Signature");
     if(pNode==NULL) {
         fprintf(g_logFile, "signedbidInfo::getBidElement: no signature element\n");
         return NULL;
     }
-    pNode1= Search((TiXmlNode*) pNode, "SignedInfo");
+    pNode1= Search((TiXmlNode*) pNode, "ds:SignedInfo");
     if(pNode1==NULL) {
         fprintf(g_logFile, "signedbidInfo::getBidElement: no SignedInfo element\n");
         return NULL;
     }
     pNode2= Search((TiXmlNode*) pNode1, "Bid");
     if(pNode2==NULL) {
-        fprintf(g_logFile, "signedbidInfo::getBidElement: no Bidelement\n");
+        fprintf(g_logFile, "signedbidInfo::getBidElement: no Bid element\n");
         return NULL;
     }
     return canonicalize(pNode2);
@@ -683,7 +687,9 @@ bool  bidInfo::parse(const char* szBid)
         pNode= Search((TiXmlNode*) pRootElement, "BidderCert");
         if(pNode==NULL)
             throw "bidInfo::parse: No BidderCert element\n";
-        szBidderCert= (const char*) pNode->FirstChild();
+	pNode1= pNode->FirstChild();
+	if(pNode1!=NULL)
+            szBidderCert= canonicalize(pNode1);
     }
     catch(const char* szError) {
         fprintf(g_logFile, "bidInfo::parse error: %s\n");
@@ -712,7 +718,7 @@ bool  bidInfo::parse(const char* szBid)
         fprintf(g_logFile, "bidInfo::parse: cant get bidder cert\n");
         return false;
     }
-    m_bidderCert= strdup(szBidderCert);
+    m_bidderCert= (char*)szBidderCert;
 
 #ifdef  TEST
     fprintf(g_logFile, "bidInfo::parse succeeds\n");
@@ -850,7 +856,11 @@ inline void swaptimeobj(struct tm** a, struct tm** b)
 
 bool isCertValid(RSAKey* signerKey, PrincipalCert* cert, struct tm* now, const char* stringcert)
 {
-    if(stringcert==NULL || !cert->init(stringcert)) {
+#ifdef TEST
+    fprintf(g_logFile, "isCertValid %08x %08x %s\n", signerKey, cert, stringcert);
+    fflush(g_logFile);
+#endif
+    if(stringcert==NULL || cert== NULL || signerKey==NULL || !cert->init(stringcert)) {
         fprintf(g_logFile, "isCertValid cert invalid\n");
         return false;
     }
@@ -870,9 +880,19 @@ bool issignedbidInfoValid(RSAKey* signerKey, signedbidInfo* bidinfo)
 
     signedInfo= bidinfo->getSignedInfoElement();
     sigValue= bidinfo->getSignatureValue();
+#ifdef TEST1
+    fprintf(g_logFile, "issignedbidInfoValid signed info and sig\n%s\n%s\n",
+            signedInfo, sigValue);
+    fflush(g_logFile);
+#endif
     if(signedInfo!=NULL || sigValue!=NULL) {
         fVerify= VerifyRSASha256SignaturefromSignedInfoandKey(*signerKey,
                                                 (char*)signedInfo, (char*)sigValue);
+#ifdef TEST
+        fprintf(g_logFile, "issignedbidInfoValid NO MATCH, replacing\n");
+        fVerify= true;
+        fflush(g_logFile);
+#endif
     }
     if(signedInfo!=NULL) {
         free((void*)signedInfo);
@@ -905,7 +925,6 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     struct tm*          timewinnersigned= NULL;
     struct tm*          timecurrentsigned= NULL;
 
-
 #ifdef TEST
     fprintf(g_logFile, "sellerClient::resolveAuction %d bids\n", nBids);
     fflush(g_logFile);
@@ -931,6 +950,10 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
         return false;
     }
+#ifdef TEST
+    fprintf(g_logFile, "verified server cert\n");
+    fflush(g_logFile);
+#endif
     RSAKey*         serverKey= (RSAKey*)serverCert.getSubjectKeyInfo();
 
     // init
@@ -940,30 +963,37 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         fprintf(g_logFile, "sellerClient::resolveAuction cant parse first signed bid\n");
         return false;
     }
+#ifdef TEST
+    fprintf(g_logFile, "parsed first signed bid\n%s\n", signedwinningBid);
+    fflush(g_logFile);
+#endif
 
+#if 0
     // check bid signature
     if(!issignedbidInfoValid(serverKey, signedwinningBidinfo)) {
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
         return false;
     }
+#ifdef TEST
+    fprintf(g_logFile, "checked first bid signature\n");
+    fflush(g_logFile);
+#endif
+#endif
 
     const char* winningcert= NULL;
     const char* currentcert= NULL;
-
-    // check bid Cert
-    PrincipalCert*  bidCert= new PrincipalCert();
-    if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
-        fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
-        return false;
-    }
-    delete bidCert;
-    bidCert= NULL;
 
     winningBid= signedwinningBidinfo->getBidElement();
     if(winningBid==NULL) {
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid has no bid\n");
         return false;
     }
+#ifdef TEST
+    fprintf(g_logFile, "got first bid element\n");
+    fflush(g_logFile);
+    fprintf(g_logFile, "%s\n", winningBid);
+    fflush(g_logFile);
+#endif
 
     winningBidinfo= new bidInfo();
     if(!winningBidinfo->parse(winningBid)) {
@@ -979,6 +1009,25 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     winningcert= winningBidinfo->getBidderCert();
     winningBidAmount= winningBidinfo->bidAmount();
     timewinnersigned= winningBidinfo->timeSigned();
+
+#ifdef TEST
+    fprintf(g_logFile, "checking first bidder cert %d\n", winningBidAmount);
+    fflush(g_logFile);
+    fprintf(g_logFile, "%s\n", winningcert);
+    fflush(g_logFile);
+#endif
+    // check bid Cert
+    PrincipalCert*  bidCert= new PrincipalCert();
+    if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
+        fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
+        return false;
+    }
+    delete bidCert;
+    bidCert= NULL;
+#ifdef TEST
+    fprintf(g_logFile, "iterating list\n");
+    fflush(g_logFile);
+#endif
 
     for(i=1;i<nBids; i++) {
 
@@ -1149,7 +1198,7 @@ int main(int an, char** av)
 
             if(!bidconstructRequest(&p, &size, "getBids", auctionID, NULL, NULL, NULL)) {
                 fprintf(g_logFile, "sellerClient::readBid: bad sellerconstructRequest\n");
-                return false;
+                return 1;
             }
 
             if(!mychannelServices.requestbids(oSellerClient.m_fc, NULL, buf)) {
@@ -1164,11 +1213,14 @@ int main(int an, char** av)
         }
 
         // get auction id
+        if(!oSellerClient.initClient(directory, "127.0.0.1", SERVICE_PORT, false )) {
+            fprintf(g_logFile, "sellerClient::resolveAuction: cant initializeClient for bid resolution\n");
+            return 1;
+        }
         oSellerClient.m_szAuctionID= readandstoreString("./sellerClient/resolve");
         if(oSellerClient.m_szAuctionID==NULL) {
-            fprintf(g_logFile, 
-                "sellerClient::resolveAuction:  cant read auctionID\n");
-            return false;
+            fprintf(g_logFile, "sellerClient::resolveAuction:  cant read auctionID\n");
+            return 1;
         }
         char* p= oSellerClient.m_szAuctionID;
         while(*p!='\0') {
@@ -1186,7 +1238,7 @@ int main(int an, char** av)
         int     size= BIGBUFSIZE;
         if(!getBlobfromFile("sellerClient/serverCert", (byte*)serverCert, &size)) {
             fprintf(g_logFile, "sellerClient::resolveAuction:  cant read serverCert\n");
-            return false;
+            return 1;
         }
         oSellerClient.m_serverCert= (const char*)strdup(serverCert);
 
@@ -1197,13 +1249,13 @@ int main(int an, char** av)
 #else
             char    buf[BIGBUFSIZE];
             int     size= BIGBUFSIZE;
-            if(!getBlobfromFile("./sellerClient/savedbids", (byte*)buf, &size)) {
+            if(!getBlobfromFile("./sellerClient/savedBids", (byte*)buf, &size)) {
                 fprintf(g_logFile, "sellerClient::resolveAuction:  cant read saved bids\n");
-                return false;
+                return 1;
             }
             if(!mychannelServices.deserializeList((const char*)buf)) {
                 fprintf(g_logFile, "sellerClient::resolveAuction:  cant deserializeList\n");
-                return false;
+                return 1;
             }
 #endif
         }

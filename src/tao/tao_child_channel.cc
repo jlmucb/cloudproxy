@@ -44,6 +44,19 @@ bool TaoChildChannel::StartHostedProgram(const string &path,
   return resp.success();
 }
 
+bool TaoChildChannel::RemoveHostedProgram(const string &child_hash) {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(REMOVE_HOSTED_PROGRAM);
+  rpc.set_data(child_hash);
+
+  SendRPC(rpc);
+
+  TaoChannelResponse resp;
+  GetResponse(&resp);
+
+  return resp.success();
+}
+
 bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
   TaoChannelRPC rpc;
   rpc.set_rpc(GET_RANDOM_BYTES);

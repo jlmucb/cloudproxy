@@ -48,8 +48,9 @@ class FakeTao : public Tao {
   virtual bool Init();
   virtual bool Destroy() { return true; }
 
-  // The FakeTao doesn't start hosted programs
+  // The FakeTao doesn't start hosted programs or remove them
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
+  virtual bool RemoveHostedProgram(const string &child_hash) { return true; }
 
   // The other Tao methods are implemented using the generated keys just like a
   // normal hardware mechanism would.

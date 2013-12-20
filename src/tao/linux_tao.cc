@@ -315,6 +315,22 @@ bool LinuxTao::StartHostedProgram(const string &path,
   return true;
 }
 
+bool LinuxTao::RemoveHostedProgram(const string &child_hash) {
+  {
+    lock_guard<mutex> l(data_m_);
+    auto child_it = running_children_.find(child_hash);
+    if (running_children_.end() == child_it) {
+      LOG(ERROR) << "An instance of the program  with digest "
+                 << child_hash << " is not running";
+      return false;
+    }
+
+    running_children_.erase(child_it);
+  }
+
+  return true;
+}
+
 bool LinuxTao::GetRandomBytes(size_t size, string *bytes) const {
   // just ask keyczar for random bytes, which will ask OpenSSL in turn
   if (!host_channel_->GetRandomBytes(size, bytes)) {

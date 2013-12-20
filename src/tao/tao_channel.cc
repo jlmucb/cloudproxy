@@ -44,6 +44,9 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,
       // This is not processed by this channel; See e.g., HandleProgramCreation
       // for how it can be processed by the child channel types.
       break;
+    case REMOVE_HOSTED_PROGRAM:
+      // This is not meant to be sent on TaoChannels for now.
+      break;
     case GET_RANDOM_BYTES:
       if (!rpc.has_random()) {
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";

@@ -40,6 +40,7 @@ class TaoChildChannel {
   virtual bool Init() { return true; }
   virtual bool Destroy() { return true; }
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
+  virtual bool RemoveHostedProgram(const string &child_hash);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;

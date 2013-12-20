@@ -68,6 +68,7 @@ class Tao {
   virtual bool Destroy() = 0;
   virtual bool StartHostedProgram(const string &path,
                                   const list<string> &args) = 0;
+  virtual bool RemoveHostedProgram(const string &child_hash) = 0;
   virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
   virtual bool Seal(const string &child_hash, const string &data,
                     string *sealed) const = 0;

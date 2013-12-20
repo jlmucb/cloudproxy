@@ -306,6 +306,11 @@ bool PipeTaoChannel::Listen(Tao *tao) {
 
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
+      if (!tao->RemoveHostedProgram(*pit)) {
+	LOG(ERROR) << "Could not remove the hosted program from the list of programs";
+      }
+
+      // We still remove the program from the map so it doesn't get handled by select.
       hash_to_descriptors_.erase(*pit);
     }
   }

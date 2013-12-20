@@ -275,6 +275,10 @@ bool KvmUnixTaoChannel::Listen(Tao *tao) {
 
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
+      if (!tao->RemoveHostedProgram(*pit)) {
+        LOG(ERROR) << "Could not remove the hosted program " << *pit;
+      }
+
       child_hash_to_descriptor_.erase(*pit);
     }
   }

@@ -26,10 +26,11 @@ enum RPC {
   INIT = 0;
   DESTROY = 1;
   START_HOSTED_PROGRAM = 2;
-  GET_RANDOM_BYTES = 3;
-  SEAL = 4;
-  UNSEAL = 5;
-  ATTEST = 6;
+  REMOVE_HOSTED_PROGRAM = 3;
+  GET_RANDOM_BYTES = 4;
+  SEAL = 5;
+  UNSEAL = 6;
+  ATTEST = 7;
 }
 
 message TaoChannelRPC {

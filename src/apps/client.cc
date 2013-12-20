@@ -77,11 +77,7 @@ int main(int argc, char** argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
-  // initialize OpenSSL
-  SSL_load_error_strings();
-  ERR_load_BIO_strings();
-  OpenSSL_add_all_algorithms();
-  SSL_library_init();
+  tao::InitializeOpenSSL();
 
   // the last argument should be the parameters for channel establishment
   if (argc < 2) {

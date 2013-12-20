@@ -73,6 +73,7 @@ int main(int argc, char** argv) {
 
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
+  tao::InitializeOpenSSL();
 
   // the last argument should be the parameters for channel establishment
   if (argc < 2) {
@@ -94,12 +95,6 @@ int main(int argc, char** argv) {
 
   scoped_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
-
-  // initialize OpenSSL
-  SSL_load_error_strings();
-  ERR_load_BIO_strings();
-  OpenSSL_add_all_algorithms();
-  SSL_library_init();
 
   scoped_ptr<WhitelistAuth> whitelist_auth(
       new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));

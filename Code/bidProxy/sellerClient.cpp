@@ -24,6 +24,7 @@
 
 
 #include "jlmTypes.h"
+#include "jlmUtility.h"
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "bidClient.h"
@@ -1180,6 +1181,15 @@ int main(int an, char** av)
 
         fprintf(g_logFile, "sellerClient resolving auction %s\n", oSellerClient.m_szAuctionID);
 
+        // get server cert
+        char    serverCert[BIGBUFSIZE];
+        int     size= BIGBUFSIZE;
+        if(!getBlobfromFile("sellerClient/serverCert", (byte*)serverCert, &size)) {
+            fprintf(g_logFile, "sellerClient::resolveAuction:  cant read serverCert\n");
+            return false;
+        }
+        oSellerClient.m_serverCert= (const char*)strdup(serverCert);
+
         // read bids if not present
         if(!mychannelServices.m_fBidListValid) {
 #if 0
@@ -1188,8 +1198,12 @@ int main(int an, char** av)
             char    buf[BIGBUFSIZE];
             int     size= BIGBUFSIZE;
             if(!getBlobfromFile("./sellerClient/savedbids", (byte*)buf, &size)) {
+                fprintf(g_logFile, "sellerClient::resolveAuction:  cant read saved bids\n");
+                return false;
             }
             if(!mychannelServices.deserializeList((const char*)buf)) {
+                fprintf(g_logFile, "sellerClient::resolveAuction:  cant deserializeList\n");
+                return false;
             }
 #endif
         }

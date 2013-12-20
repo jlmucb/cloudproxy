@@ -649,7 +649,7 @@ bool  bidInfo::parse(const char* szBid)
     const char*     szBidTime= NULL;
     const char*     szBidderCert= NULL;
 
-#ifdef  TEST
+#ifdef  TEST1
     fprintf(g_logFile, "bidInfo::parse\n%s\n", szBid);
     fflush(g_logFile);
 #endif
@@ -731,7 +731,7 @@ bool  bidInfo::parse(const char* szBid)
     }
     m_bidderCert= (char*)szBidderCert;
 
-#ifdef  TEST
+#ifdef TEST1
     fprintf(g_logFile, "bidInfo::parse succeeds\n");
     printMe();
     fflush(g_logFile);
@@ -887,25 +887,9 @@ bool issignedbidInfoValid(RSAKey* signerKey, signedbidInfo* bidinfo)
 
     signedInfo= bidinfo->getSignedInfoElement();
     sigValue= bidinfo->getSignatureValue();
-#ifdef TEST
-    fprintf(g_logFile, "SIGVAL: %s\n", sigValue);
-    byte    val[BIGBUFSIZE];
-    int     size= BIGBUFSIZE;
-    if(!fromBase64(strlen(sigValue), (const char*) sigValue, &size, val, true)) {
-        fprintf(g_logFile, "fromBase64 failed %d\n", size);
-    }
-    else
-        PrintBytes((char*)"translated: ", val, size);
-    fflush(g_logFile);
-#endif
     if(signedInfo!=NULL || sigValue!=NULL) {
         fVerify= VerifyRSASha256SignaturefromSignedInfoandKey(*signerKey,
                                                 (char*)signedInfo, (char*)sigValue);
-#ifdef TEST1
-        fprintf(g_logFile, "issignedbidInfoValid NO MATCH, replacing\n");
-        fVerify= true;
-        fflush(g_logFile);
-#endif
     }
     if(signedInfo!=NULL) {
         free((void*)signedInfo);
@@ -972,7 +956,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         fprintf(g_logFile, "sellerClient::resolveAuction cant parse first signed bid\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "parsed first signed bid\n%s\n", signedwinningBid);
     fflush(g_logFile);
 #endif
@@ -982,7 +966,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "checked first bid signature\n");
     fflush(g_logFile);
 #endif
@@ -995,7 +979,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid has no bid\n");
         return false;
     }
-#ifdef TEST
+#ifdef TEST1
     fprintf(g_logFile, "got first bid element\n");
     fflush(g_logFile);
     fprintf(g_logFile, "%s\n", winningBid);

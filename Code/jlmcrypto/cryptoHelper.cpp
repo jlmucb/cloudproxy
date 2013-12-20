@@ -668,7 +668,7 @@ bool bytesfrombase64(char* in, int* pnb, byte* out)
         return false;
     }
     if(!fromBase64(n, in, &size, out)) {
-        fprintf(g_logFile, "bytesfrombase64: conversion failed\n%s\n", in);
+        fprintf(g_logFile, "bytesfrombase64: conversion failed\n");
         return false;
     }
     *pnb= size;

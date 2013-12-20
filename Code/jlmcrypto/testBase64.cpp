@@ -12,7 +12,7 @@ const char* szA= "jf7LKELNZbwta1xSMZCzAjp7WNH9cwIV5LbjLS0kSo8R0QwTSeM4itUiSmLD8R
 
 //const char* szB= "0MqarK6b41IXgoBmGzfhjFtPABBvsEtw4E5pEpggOkEzx5np+GB4MnFj63T7FmlKkhoT1KrfD7HW/8pY+rqKS1lojQNZVuQcAjLtFqbByoVfJ3d5V7wJ6z9mbqGBGZtVYDqkmr29SRK1I+M+i4FHwtozDEMtYjUXickmUWb8AGxPB3ftBnIM9fDdN2kWLZFXLsSEzzt1gGP5IVIBUWq5n9+m5SIerzzwkAzB/SwQPI9Nci07B+aIvFe5I01jx/lKSGId5GNgwKDqLkLcr3JiiPTDkznNR4HOqfl/B0N1f4yl186NJeRkcPYfGNyczmMZHtJ/tlkN05I9u8MLei8MYQ==";
 
-const char* szB= "bp4o495zO4UD5LSxtxnrTl8hK8r8s/Vj1ThKmEipM4uL8PU8/ybcbM8yHH86h7rHvdqhPZmKAfcQdfvnPDjcXmSLfKaIzmH+gtuqg17j0/xhHxIHoIC8l8bPMAspyhPatCAB1m4iusmT3XycsGLALgRALe4WW5/gs03UIV1iFeiuhAgUwAi7FUmZRjSWSkCSKuELygjtud3nVBey4ELZ2MIJyo7ys0bZXErzbEQqfBC1fXfWSj9076CcY0IOzDLf71ZsBackDdQWFntnQ/82cEy5dQpW83K7v7bHrm9VLiHf569/wbNuTFzwMr0yGsYyqr99blDUaYw1RfVcutW/Kg==";
+const char* szB= "L5X0f5gsfWWUIObqG2jv1+i4XKXUeL+gixdhy8dOCpLAQQdf3WooRxbQKgCsJlrTsLD0BbrQkhkex0uQgQ0dN5/e3e8PldebesGUSqasyxj2WgmQnY06m/HUYUkrOLP7Nb+seAOkq5SiabqFe3kYcPqRE9bVtai37K5vqQz8W5waTPx9b7XYyec4UHplDvcjEsRMax/rehPa96cNAix+Kf77LXHX4+D7gVluSK021Rog0SNzP6RglrAAYFDnitAcAwX+iEKcgSaviRzPZEs/5tyKnPo0PLLFHQn75lbJPnh2b3S3CNIWczJ39c2BiWG3rgx4UihuNFZLXJZQH2pIYg==";
 
 
 // -----------------------------------------------------------------------------

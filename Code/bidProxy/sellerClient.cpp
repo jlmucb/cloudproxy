@@ -466,6 +466,7 @@ const char*   signedbidInfo::getSignatureValue()
     TiXmlNode*      pNode= NULL;
     TiXmlNode*      pNode1= NULL;
     TiXmlNode*      pNode2= NULL;
+    TiXmlNode*      pNodesignedInfo= NULL;
 
     if(!parseValid) {
         fprintf(g_logFile, "signedbidInfo::getSignatureValue: parse invalid\n");
@@ -481,6 +482,16 @@ const char*   signedbidInfo::getSignatureValue()
         fprintf(g_logFile, "signedbidInfo::getSignatureValue: no signature element\n");
         return NULL;
     }
+    pNodesignedInfo= Search((TiXmlNode*) pRootElement, "ds:SignedInfo");
+    if(pNodesignedInfo==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignatureValue: no signedInfo\n");
+        return NULL;
+    }
+    pNode= pNodesignedInfo->NextSibling();
+    if(pNode==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignatureValue: no sibling\n");
+        return NULL;
+    }
     pNode1= Search((TiXmlNode*) pNode, "ds:SignatureValue");
     if(pNode1==NULL) {
         fprintf(g_logFile, "signedbidInfo::getSignatureValue: no SignatureValue element\n");
@@ -489,7 +500,7 @@ const char*   signedbidInfo::getSignatureValue()
     pNode2= pNode1->FirstChild();
     if(pNode2==NULL)
         return NULL;
-    return canonicalize(pNode2);
+    return strdup((const char*)pNode2->Value());
 }
 
 
@@ -856,10 +867,6 @@ inline void swaptimeobj(struct tm** a, struct tm** b)
 
 bool isCertValid(RSAKey* signerKey, PrincipalCert* cert, struct tm* now, const char* stringcert)
 {
-#ifdef TEST
-    fprintf(g_logFile, "isCertValid %08x %08x %s\n", signerKey, cert, stringcert);
-    fflush(g_logFile);
-#endif
     if(stringcert==NULL || cert== NULL || signerKey==NULL || !cert->init(stringcert)) {
         fprintf(g_logFile, "isCertValid cert invalid\n");
         return false;
@@ -880,15 +887,21 @@ bool issignedbidInfoValid(RSAKey* signerKey, signedbidInfo* bidinfo)
 
     signedInfo= bidinfo->getSignedInfoElement();
     sigValue= bidinfo->getSignatureValue();
-#ifdef TEST1
-    fprintf(g_logFile, "issignedbidInfoValid signed info and sig\n%s\n%s\n",
-            signedInfo, sigValue);
+#ifdef TEST
+    fprintf(g_logFile, "SIGVAL: %s\n", sigValue);
+    byte    val[BIGBUFSIZE];
+    int     size= BIGBUFSIZE;
+    if(!fromBase64(strlen(sigValue), (const char*) sigValue, &size, val, true)) {
+        fprintf(g_logFile, "fromBase64 failed %d\n", size);
+    }
+    else
+        PrintBytes((char*)"translated: ", val, size);
     fflush(g_logFile);
 #endif
     if(signedInfo!=NULL || sigValue!=NULL) {
         fVerify= VerifyRSASha256SignaturefromSignedInfoandKey(*signerKey,
                                                 (char*)signedInfo, (char*)sigValue);
-#ifdef TEST
+#ifdef TEST1
         fprintf(g_logFile, "issignedbidInfoValid NO MATCH, replacing\n");
         fVerify= true;
         fflush(g_logFile);
@@ -950,10 +963,6 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
         return false;
     }
-#ifdef TEST
-    fprintf(g_logFile, "verified server cert\n");
-    fflush(g_logFile);
-#endif
     RSAKey*         serverKey= (RSAKey*)serverCert.getSubjectKeyInfo();
 
     // init
@@ -968,7 +977,6 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     fflush(g_logFile);
 #endif
 
-#if 0
     // check bid signature
     if(!issignedbidInfoValid(serverKey, signedwinningBidinfo)) {
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
@@ -977,7 +985,6 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
 #ifdef TEST
     fprintf(g_logFile, "checked first bid signature\n");
     fflush(g_logFile);
-#endif
 #endif
 
     const char* winningcert= NULL;
@@ -1010,12 +1017,6 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     winningBidAmount= winningBidinfo->bidAmount();
     timewinnersigned= winningBidinfo->timeSigned();
 
-#ifdef TEST
-    fprintf(g_logFile, "checking first bidder cert %d\n", winningBidAmount);
-    fflush(g_logFile);
-    fprintf(g_logFile, "%s\n", winningcert);
-    fflush(g_logFile);
-#endif
     // check bid Cert
     PrincipalCert*  bidCert= new PrincipalCert();
     if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
@@ -1024,10 +1025,6 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     }
     delete bidCert;
     bidCert= NULL;
-#ifdef TEST
-    fprintf(g_logFile, "iterating list\n");
-    fflush(g_logFile);
-#endif
 
     for(i=1;i<nBids; i++) {
 

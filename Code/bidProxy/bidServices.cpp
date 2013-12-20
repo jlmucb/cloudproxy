@@ -297,6 +297,7 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
     byte        final= 0;
+    char*       canonicalSignedInfo= NULL;
 
     // construct Bid
     const char* signedbid= NULL;
@@ -312,6 +313,8 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
         goto done;
     }
 
+    canonicalSignedInfo= canonicalizeXML(bidsigninfoBody);
+
 #ifdef  TEST
     fprintf(g_logFile, "bidchannelServices::acceptBid start\n");
     fflush(g_logFile);
@@ -326,7 +329,11 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     signedbid= constructXMLRSASha256SignaturefromSignedInfoandKey(
            *(((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_signingKey), 
            "Bid",
-           bidsigninfoBody);
+           canonicalSignedInfo);
+    if(canonicalSignedInfo!=NULL) {
+        free((void*)canonicalSignedInfo);
+        canonicalSignedInfo= NULL;
+    }
     if(signedbid==NULL) {
         fError= true;
         channelError= (char*) "can't sign bid";

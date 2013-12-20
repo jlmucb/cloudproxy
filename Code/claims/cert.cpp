@@ -287,7 +287,7 @@ bool PrincipalCert::parsePrincipalCertfromRoot(TiXmlElement*  pRootElement)
         return false;
     }
     pNode1= ((TiXmlElement*)pNode)->FirstChild();
-    if(pNode1) {
+    if(pNode1!=NULL) {
         m_szSignatureValue= strdup(((TiXmlElement*)pNode1)->Value());
     }
     else {

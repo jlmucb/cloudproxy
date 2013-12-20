@@ -45,6 +45,8 @@
 #include "validateEvidence.h"
 #include "bidTester.h"
 #include "taoSetupglobals.h"
+#include "cert.h"
+#include "validateEvidence.h"
 
 #include "objectManager.h"
 #include "tao.h"
@@ -111,6 +113,8 @@ sellerClient::sellerClient ()
     m_szPort= NULL;
     m_szAddress= NULL;
     m_fd= 0;
+
+    m_serverCert= NULL;
 
     m_fEncryptFiles= false;
     m_szSealedKeyFile= NULL;
@@ -430,8 +434,10 @@ public:
     signedbidInfo();
     ~signedbidInfo();
 
-    bool    parse(const char* signedBid);
-    char*   getBidElement();
+    bool          parse(const char* signedBid);
+    const char*   getBidElement();
+    const char*   getSignedInfoElement();
+    const char*   getSignatureValue();
 };
 
 
@@ -453,7 +459,65 @@ bool signedbidInfo::parse(const char* signedBid)
 }
 
 
-char*   signedbidInfo::getBidElement()
+const char*   signedbidInfo::getSignatureValue()
+{
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
+
+    if(!parseValid) {
+        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: parse invalid\n");
+        return false;
+    }
+    pRootElement= doc.RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: no root element\n");
+        return NULL;
+    }
+    pNode= Search((TiXmlNode*) pRootElement, "Signature");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: no signature element\n");
+        return NULL;
+    }
+    pNode1= Search((TiXmlNode*) pNode, "ds:Signature");
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignatureValuet: no SignedInfo element\n");
+        return NULL;
+    }
+    return canonicalize(pNode1);
+}
+
+
+const char*   signedbidInfo::getSignedInfoElement()
+{
+    TiXmlElement*   pRootElement= NULL;
+    TiXmlNode*      pNode= NULL;
+    TiXmlNode*      pNode1= NULL;
+
+    if(!parseValid) {
+        fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: parse invalid\n");
+        return false;
+    }
+    pRootElement= doc.RootElement();
+    if(pRootElement==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: no root element\n");
+        return NULL;
+    }
+    pNode= Search((TiXmlNode*) pRootElement, "Signature");
+    if(pNode==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: no signature element\n");
+        return NULL;
+    }
+    pNode1= Search((TiXmlNode*) pNode, "SignedInfo");
+    if(pNode1==NULL) {
+        fprintf(g_logFile, "signedbidInfo::getSignedInfoElement: no SignedInfo element\n");
+        return NULL;
+    }
+    return canonicalize(pNode1);
+}
+
+
+const char*   signedbidInfo::getBidElement()
 {
     TiXmlElement*   pRootElement= NULL;
     TiXmlNode*      pNode= NULL;
@@ -783,6 +847,43 @@ inline void swaptimeobj(struct tm** a, struct tm** b)
 }
 
 
+bool isCertValid(RSAKey* signerKey, PrincipalCert* cert, struct tm* now, const char* stringcert)
+{
+    if(stringcert==NULL || !cert->init(stringcert)) {
+        fprintf(g_logFile, "isCertValid cert invalid\n");
+        return false;
+    }
+    if(!cert->parsePrincipalCertElements()) {
+        fprintf(g_logFile, "isCertValid: Can't parse PrincipalCertElements\n");
+        return false;
+    }
+    return VerifySignedEvidence(signerKey, now, PRINCIPALCERT, (void*) cert)>0;
+}
+
+
+bool issignedbidInfoValid(RSAKey* signerKey, signedbidInfo* bidinfo)
+{
+    const char*         signedInfo= NULL;
+    const char*         sigValue=  NULL;
+    bool                fVerify= false;
+
+    signedInfo= bidinfo->getSignedInfoElement();
+    sigValue= bidinfo->getSignatureValue();
+    if(signedInfo!=NULL || sigValue!=NULL) {
+        fVerify= VerifyRSASha256SignaturefromSignedInfoandKey(*signerKey,
+                                                (char*)signedInfo, (char*)sigValue);
+    }
+    if(signedInfo!=NULL) {
+        free((void*)signedInfo);
+        signedInfo= NULL;
+    }
+    if(sigValue!=NULL) {
+        free((void*)sigValue);
+        sigValue= NULL;
+    }
+    return fVerify;
+}
+
 
 bool sellerClient::resolveAuction(int nBids, const char** bids)
 {
@@ -803,6 +904,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     struct tm*          timewinnersigned= NULL;
     struct tm*          timecurrentsigned= NULL;
 
+
 #ifdef TEST
     fprintf(g_logFile, "sellerClient::resolveAuction %d bids\n", nBids);
     fflush(g_logFile);
@@ -819,6 +921,17 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     }
     signingKey= (RSAKey*)m_tcHome.privateKeyPtr();
 
+    // get policy key
+    RSAKey* ppolicyKey= (RSAKey*)m_opolicyCert.getSubjectKeyInfo();
+
+    // check server cert
+    PrincipalCert   serverCert;
+    if(!isCertValid(ppolicyKey, &serverCert, now, m_serverCert)) {
+        fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
+        return false;
+    }
+    RSAKey*         serverKey= (RSAKey*)serverCert.getSubjectKeyInfo();
+
     // init
     signedwinningBid= bids[0];
     signedwinningBidinfo= new signedbidInfo();
@@ -827,14 +940,30 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         return false;
     }
 
+    // check bid signature
+    if(!issignedbidInfoValid(serverKey, signedwinningBidinfo)) {
+        fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
+        return false;
+    }
+
     const char* winningcert= NULL;
     const char* currentcert= NULL;
+
+    // check bid Cert
+    PrincipalCert*  bidCert= new PrincipalCert();
+    if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
+        fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
+        return false;
+    }
+    delete bidCert;
+    bidCert= NULL;
 
     winningBid= signedwinningBidinfo->getBidElement();
     if(winningBid==NULL) {
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid has no bid\n");
         return false;
     }
+
     winningBidinfo= new bidInfo();
     if(!winningBidinfo->parse(winningBid)) {
         fprintf(g_logFile, "sellerClient::resolveAuction cant parse first bid\n");
@@ -860,20 +989,35 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
             return false;
         }
 
-        // get bid info
-        currentBidinfo= new bidInfo();
-        if(!currentBidinfo->parse(currentBid)) {
-            fprintf(g_logFile, "sellerClient::resolveAuction cant parse bid %d\n", i+1);
+        // check bidder cert
+        if(!issignedbidInfoValid(serverKey, signedcurrentBidinfo)) {
+            fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
             return false;
         }
+
+        // get bid info
+        currentBidinfo= new bidInfo();
         currentBid= signedcurrentBidinfo->getBidElement();
         if(currentBid==NULL) {
             fprintf(g_logFile, "sellerClient::resolveAuction signed bid %d has no Bid\n", i+1);
             return false;
         }
+        if(!currentBidinfo->parse(currentBid)) {
+            fprintf(g_logFile, "sellerClient::resolveAuction cant parse bid %d\n", i+1);
+            return false;
+        }
 
-        // check cert?
+        // check bidder cert
         currentcert= currentBidinfo->getBidderCert();
+
+        // check bid Cert
+        PrincipalCert*  bidCert= new PrincipalCert();
+        if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
+            fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
+            return false;
+        }
+        delete bidCert;
+        bidCert= NULL;
 
         // right auction?
         auctionid= winningBidinfo->auctionId();

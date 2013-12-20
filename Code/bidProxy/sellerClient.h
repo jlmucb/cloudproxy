@@ -67,6 +67,8 @@ public:
     char*               m_szPort;
     char*               m_szAddress;
 
+    const char*         m_serverCert;
+
     char*               m_szAuctionID;
     bool                m_fWinningBidValid;
     int                 m_WinningBidAmount;

@@ -55,6 +55,7 @@
 #define INVALIDPURPOSE       (-9)
 
 
+int  VerifySignedEvidence(KeyInfo* pSignerKey, tm* pt, int evidenceType, void* pObject);
 char* consttoEvidenceList(const char* szEvidence, const char* szEvidenceSupport);
 int  VerifyChain(KeyInfo* pRootKey, const char* szPurpose, tm* pt,
                  int npieces, int* rgType, void** rgObject);

@@ -1225,8 +1225,12 @@ int main(int an, char** av)
 
         // read bids if not present
         if(!mychannelServices.m_fBidListValid) {
-#if 0
-            oSellerClient.mychannelServices.retrieveBids();
+#if 1
+            if(!mychannelServices.retrieveBids((u32)NOENCRYPT, NULL, 
+                        "./sellerClient/savedBids")) {
+                fprintf(g_logFile, "sellerClient::resolveAuction:  cant retrieve bids\n");
+                return 1;
+            } 
 #else
             char    buf[BIGBUFSIZE];
             int     size= BIGBUFSIZE;
@@ -1234,6 +1238,7 @@ int main(int an, char** av)
                 fprintf(g_logFile, "sellerClient::resolveAuction:  cant read saved bids\n");
                 return 1;
             }
+
             if(!mychannelServices.deserializeList((const char*)buf)) {
                 fprintf(g_logFile, "sellerClient::resolveAuction:  cant deserializeList\n");
                 return 1;
@@ -1245,7 +1250,7 @@ int main(int an, char** av)
             fprintf(g_logFile, "sellerClient: auction successfully concluded\n");
         else
             fprintf(g_logFile, "sellerClient: auction resolution unsuccessful\n");
-    
+
         // save to ./sellerClient/winningbid.xml
         saveBlobtoFile("./sellerClient/winningbid.xml", (byte*)oSellerClient.m_szSignedWinner, 
                         strlen(oSellerClient.m_szSignedWinner)+1);

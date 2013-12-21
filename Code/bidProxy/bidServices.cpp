@@ -209,17 +209,34 @@ bool channelServices::closechannelServices()
 }
 
 
+static const char* s_bidHeader= "<Bids nbids='%5d'>\n";
+static const char* s_bidFooter= "</Bids>\n";
+
+
 const char* bidchannelServices::serializeList()
 {
-    char    buf[BIGBUFSIZE];
-    int     size= BIGBUFSIZE;
-    char*   p= buf;
-    int     i, n;
+    char*       buf= NULL;
+    int         size;
+    char*       p= buf;
+    int         i, n;
+    const char* result= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "bidchannelServices::serializeList\n%d bids\n", m_nBids);
     fflush(g_logFile);
 #endif
+
+    // get bufsize
+    size= strlen(s_bidHeader)+strlen(s_bidFooter);
+    for(i=0; i<m_nBids; i++) {
+        size+= strlen(m_Bids[i]);
+    }
+    size+= 32;
+    buf= (char*) malloc(size);
+    if(buf==NULL) {
+        fprintf(g_logFile, "serializeList: can't malloc serialized buf\n");
+        return NULL;
+    }
 
     sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
     n= strlen(buf);
@@ -227,21 +244,28 @@ const char* bidchannelServices::serializeList()
     size-= n;
     for(i=0; i<m_nBids; i++) {
         if(m_Bids[i]==NULL) {
-            return NULL;
+            goto done;
         }
         n= strlen(m_Bids[i]);
         if(n>(size-16)) {
-            return NULL;
+            goto done;
         }
         memcpy(p, m_Bids[i], n+1);
         p+= n;
         size-= n;
     }
     if(size<16) {
-        return NULL;
+        goto done;
     }
     sprintf(p, "</Bids>\n");
-    return strdup(buf);
+    result= strdup(buf);
+
+done:
+    if(buf!=NULL) {
+        free(buf);
+        buf= NULL;
+    }
+    return result;
 }
 
 
@@ -281,6 +305,149 @@ bool bidchannelServices::deserializeList(const char* list)
 
     m_nBids= n;
     return true;
+}
+
+
+bool  bidchannelServices::saveBids(u32 enctype, byte* keys, const char* file)
+{
+    byte*   encrypted= NULL;
+    int     sizeencrypted= 0;
+    byte*   out= NULL;
+    int     sizeout= 0;
+    bool    fRet= false;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::saveBids\n");
+    fflush(g_logFile);
+#endif
+
+    // serialize bids
+    const char* bids= serializeList();
+    if(bids==NULL) {
+        fprintf(g_logFile, "bidchannelServices::saveBids cant serialize\n");
+        return false;
+    }
+
+#ifdef  TEST
+    fprintf(g_logFile, "serialized bids\n%s\n", bids);
+    fflush(g_logFile);
+#endif
+
+    // encrypt bids
+    if(enctype==DEFAULTENCRYPT && keys!=NULL) {
+        sizeencrypted= strlen(bids)+128;
+        encrypted= (byte*)malloc(sizeencrypted);
+        if(encrypted==NULL) {
+            fprintf(g_logFile, "bidchannelServices::saveBids cant alloc\n");
+            return false;
+        }
+        if(!AES128CBCHMACSHA256SYMPADEncryptBlob(strlen(bids)+1, (byte*)bids, 
+                        &sizeencrypted, encrypted, &keys[0], &keys[16])) {
+            fprintf(g_logFile, "bidchannelServices::saveBids cant decrypt\n");
+            goto done;
+        }
+        out= encrypted;
+        sizeout= sizeencrypted;
+    }
+    else {
+        out= (byte*)bids;
+        sizeout= strlen(bids)+1;
+    }
+
+    // save it to file
+    if(!saveBlobtoFile(file, out, sizeout)) {
+        fprintf(g_logFile, "bidchannelServices::saveBids cant save\n");
+        goto done;
+    }
+    fRet= true;
+
+done:
+    if(encrypted!=NULL) {
+        free(encrypted);
+        encrypted= NULL;
+    }
+    return fRet;
+}
+
+
+bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file)
+{
+    byte*   encrypted= NULL;
+    int     sizeEncrypted;
+    int     sizeout= BIGBUFSIZE;
+    byte*   outbuf= NULL;
+    bool    fRet= false;
+
+#ifdef  TEST
+    fprintf(g_logFile, "bidchannelServices::retrieveBids %s\n", file);
+    fflush(g_logFile);
+#endif
+
+    struct stat statBlock;
+
+    if(stat(file, &statBlock)<0) {
+        m_fBidListValid= true;
+        m_nBids= 0;
+#ifdef  TEST
+        fprintf(g_logFile, "bidchannelServices::retrieveBids no files 0 bids\n");
+        fflush(g_logFile);
+#endif
+        return true;
+    }
+    sizeEncrypted= (int)statBlock.st_size;
+    encrypted= (byte*) malloc(sizeEncrypted);
+    if(encrypted==NULL) {
+        fprintf(g_logFile, "bidchannelServices::retrieveBids cant malloc encrypted buf\n");
+        goto done;
+    }
+    // read file
+    if(!getBlobfromFile(file, encrypted, &sizeEncrypted)) {
+        fprintf(g_logFile, "bidchannelServices::retrieveBids cant getBlob\n");
+        goto done;
+    }
+
+    // decrypt it
+    if(enctype!=NOENCRYPT && keys!=NULL) {
+        sizeout= sizeEncrypted;
+        outbuf= (byte*) malloc(sizeEncrypted);
+        if(outbuf==NULL) {
+            fprintf(g_logFile, "bidchannelServices::retrieveBids cant malloc plain buf\n");
+            goto done;
+        }
+        if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeEncrypted, encrypted, &sizeout, outbuf,
+                                                &keys[0], &keys[16])) {
+            fprintf(g_logFile, "bidchannelServices::retrieveBids cant decrypt\n");
+            goto done;
+        }
+    }
+    else {
+        outbuf= encrypted;
+        sizeout= sizeEncrypted;
+        encrypted= NULL;
+    }
+
+    // deserialize bid list
+    if(!deserializeList((const char*) outbuf)) {
+        fprintf(g_logFile, "bidchannelServices::retrieveBids cant deserialize\n");
+        goto done;
+    }
+#ifdef  TEST
+    fprintf(g_logFile, "%d bids retrieved\n", m_nBids); 
+    fflush(g_logFile);
+#endif
+    m_fBidListValid= true;
+    fRet= true;
+
+done:
+    if(encrypted!=NULL) {
+        free(encrypted);
+        encrypted= NULL;
+    }
+    if(outbuf!=NULL) {
+        free(outbuf);
+        outbuf= NULL;
+    }
+    return fRet;
 }
 
 
@@ -341,7 +508,8 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     }
 
     appendBid(signedbid);
-    // free(signedbid); signedbid= NULL;
+    free(signedbid); 
+    signedbid= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "bidchannelServices::acceptBid signed\n%s\n", signedbid);
@@ -349,10 +517,13 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
 #endif
 
     // save bids
-    if(!saveBids(service,
-        (u32)DEFAULTENCRYPT, 
+#if 0
+    if(!saveBids( (u32)DEFAULTENCRYPT, 
         (byte*)((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_bidKeys,
              file)) {
+#else
+    if(!saveBids((u32)NOENCRYPT, NULL, file)) {
+#endif
         fError= true;
         channelError= (char*) "can't save bid";
         goto done;
@@ -423,8 +594,8 @@ done:
             fflush(g_logFile);
 #endif
         }
-    	else
-        	fError= true;
+        else
+                fError= true;
     }
 
     // construct response and transmit
@@ -466,102 +637,6 @@ bool  bidchannelServices::appendBid(const char* bid)
         return false;
     }
     m_Bids[m_nBids++]= (char*) bid;
-    return true;
-}
-
-
-
-bool  bidchannelServices::saveBids(serviceChannel* service, u32 enctype, byte* keys, const char* file)
-{
-    byte*   encrypted= NULL;
-    int     sizeencrypted= 0;
-
-#ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::saveBids\n");
-    fflush(g_logFile);
-#endif
-
-    // serialize bids
-    const char* bids= serializeList();
-    if(bids==NULL) {
-        fprintf(g_logFile, "bidchannelServices::saveBids cant serialize\n");
-        return false;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "serialized bids\n%s\n", bids);
-    fflush(g_logFile);
-#endif
-
-    // encrypt bids
-    sizeencrypted= strlen(bids)+128;
-    encrypted= (byte*)malloc(sizeencrypted);
-    if(encrypted==NULL) {
-        fprintf(g_logFile, "bidchannelServices::saveBids cant alloc\n");
-        return false;
-    }
-    if(!AES128CBCHMACSHA256SYMPADEncryptBlob(strlen(bids)+1, (byte*)bids, 
-                        &sizeencrypted, encrypted, &keys[0], &keys[16])) {
-        fprintf(g_logFile, "bidchannelServices::saveBids cant decrypt\n");
-        return false;
-    }
-
-    // save it to file
-    if(!saveBlobtoFile(file, encrypted, sizeencrypted)) {
-        fprintf(g_logFile, "bidchannelServices::saveBids cant save\n");
-        return false;
-    }
-    return true;
-}
-
-
-bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file)
-{
-    byte    encrypted[BIGBUFSIZE];
-    int     sizeEncrypted= BIGBUFSIZE;
-    int     sizeout= BIGBUFSIZE;
-    byte    outbuf[BIGBUFSIZE];;
-
-#ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::retrieveBids %s\n", file);
-    fflush(g_logFile);
-#endif
-
-    struct stat statBlock;
-
-    if(stat(file, &statBlock)<0) {
-        m_fBidListValid= true;
-        m_nBids= 0;
-#ifdef  TEST
-        fprintf(g_logFile, "bidchannelServices::retrieveBids no files 0 bids\n");
-        fflush(g_logFile);
-#endif
-        return true;
-    }
-    // read file
-    if(!getBlobfromFile(file, encrypted, &sizeEncrypted)) {
-        fprintf(g_logFile, "bidchannelServices::retrieveBids cant getBlob\n");
-        return false;
-    }
-
-    // decrypt it
-    if(!AES128CBCHMACSHA256SYMPADDecryptBlob(sizeEncrypted, encrypted, &sizeout, outbuf,
-                                                &keys[0], &keys[16])) {
-        fprintf(g_logFile, "bidchannelServices::retrieveBids cant decrypt\n");
-        return false;
-    }
-
-    // deserialize bid list
-    if(!deserializeList((const char*) outbuf)) {
-        fprintf(g_logFile, "bidchannelServices::retrieveBids cant deserialize\n");
-        return false;
-    }
-
-#ifdef  TEST
-    fprintf(g_logFile, "%d bids retrieved\n", m_nBids); 
-    fflush(g_logFile);
-#endif
-    m_fBidListValid= true;
     return true;
 }
 

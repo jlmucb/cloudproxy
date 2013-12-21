@@ -37,6 +37,9 @@ namespace tao {
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
     ScopedRsa;
 
+// A method that sets the disposition of SIGCHLD to prevent child zombification.
+bool LetChildProcsDie();
+
 bool HashVM(const string &vm_template, const string &name, const string &kernel,
             const string &initrd, string *hash);
 

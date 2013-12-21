@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include <ftw.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -106,6 +107,20 @@ void locking_function(int mode, int n, const char *file, int line) {
   } else {
     locks[n]->unlock();
   }
+}
+
+bool LetChildProcsDie() {
+  struct sigaction sig_act;
+  memset(&sig_act, 0, sizeof(sig_act));
+  sig_act.sa_handler = SIG_DFL;
+  sig_act.sa_flags = SA_NOCLDWAIT; // don't zombify child processes
+  int sig_rv = sigaction(SIGCHLD, &sig_act, NULL);
+  if (sig_rv < 0) {
+    LOG(ERROR) << "Could not set the disposition of SIGCHLD";
+    return false;
+  } 
+
+  return true;
 }
 
 bool HashVM(const string &vm_template, const string &name,
@@ -486,6 +501,12 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
       }
     }
 
+    if (rv == 0) {
+      // end of file, which can happen on some fds
+      LOG(ERROR) << "Got an end-of-file message on the fd";
+      return false;
+    }
+
     bytes_read += rv;
   }
 
@@ -511,6 +532,12 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
                     << bytes_read;
         return false;
       }
+    }
+
+    if (rv == 0) {
+      // end of file, which can happen on some fds
+      LOG(ERROR) << "Got an end-of-file message on the fd";
+      return false;
     }
 
     bytes_read += rv;

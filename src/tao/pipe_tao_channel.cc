@@ -26,6 +26,8 @@
 #include <sys/fcntl.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/unistd.h>
 
@@ -259,10 +261,11 @@ bool PipeTaoChannel::Listen(Tao *tao) {
 
     for (pair<const string, pair<int, int>> &descriptor :
          hash_to_descriptors_) {
-      int d = descriptor.second.first;
-      FD_SET(d, &read_fds);
-      if (d > max) {
-        max = d;
+      int read_fd = descriptor.second.first;
+      FD_SET(read_fd, &read_fds);
+
+      if (read_fd > max) {
+        max = read_fd;
       }
     }
 
@@ -282,10 +285,10 @@ bool PipeTaoChannel::Listen(Tao *tao) {
     list<string> programs_to_erase;
     for (pair<const string, pair<int, int>> &descriptor :
          hash_to_descriptors_) {
-      int d = descriptor.second.first;
+      int read_fd = descriptor.second.first;
       const string &child_hash = descriptor.first;
 
-      if (FD_ISSET(d, &read_fds)) {
+      if (FD_ISSET(read_fd, &read_fds)) {
         // TODO(tmroeder): if this read fails, then remove the descriptor from
         // the set
         TaoChannelRPC rpc;
@@ -307,7 +310,7 @@ bool PipeTaoChannel::Listen(Tao *tao) {
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
       if (!tao->RemoveHostedProgram(*pit)) {
-	LOG(ERROR) << "Could not remove the hosted program from the list of programs";
+        LOG(ERROR) << "Could not remove the hosted program from the list of programs";
       }
 
       // We still remove the program from the map so it doesn't get handled by select.

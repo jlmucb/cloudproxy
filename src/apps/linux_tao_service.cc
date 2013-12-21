@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   tao::InitializeOpenSSL();
+  tao::LetChildProcsDie();
 
   ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
   if (!aik_blob_file) {

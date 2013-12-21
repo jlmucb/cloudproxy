@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   tao::InitializeOpenSSL();
+  tao::LetChildProcsDie();
 
   // In the guest, the params are the last element in /proc/cmdline, as
   // delimited by space.

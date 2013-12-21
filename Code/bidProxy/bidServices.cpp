@@ -508,7 +508,7 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     }
 
     appendBid(signedbid);
-    free(signedbid); 
+    free((void*)signedbid); 
     signedbid= NULL;
 
 #ifdef  TEST

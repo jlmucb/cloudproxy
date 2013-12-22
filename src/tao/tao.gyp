@@ -131,6 +131,8 @@
         'tao.h',
         'tpm_tao_child_channel.cc',
         'tpm_tao_child_channel.h',
+        'unix_fd_tao_channel.cc',
+        'unix_fd_tao_channel.h',
         'util.cc',
         'util.h',
         'whitelist_auth.h',

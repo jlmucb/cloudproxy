@@ -217,7 +217,6 @@ const char* bidchannelServices::serializeList()
 {
     char*       buf= NULL;
     int         size;
-    char*       p= buf;
     int         i, n;
     const char* result= NULL;
 
@@ -238,6 +237,7 @@ const char* bidchannelServices::serializeList()
         return NULL;
     }
 
+    char*       p= buf;
     sprintf(p, "<Bids nbids='%d'>\n", m_nBids);
     n= strlen(buf);
     p+= n;
@@ -265,6 +265,14 @@ done:
         free(buf);
         buf= NULL;
     }
+#ifdef  TEST
+    if(result==NULL)
+        fprintf(g_logFile, "bidchannelServices::serializeList failed\n");
+    else
+        fprintf(g_logFile, "bidchannelServices::serializeList succeeds\n%s\n",
+                result);
+    fflush(g_logFile);
+#endif
     return result;
 }
 
@@ -317,7 +325,7 @@ bool  bidchannelServices::saveBids(u32 enctype, byte* keys, const char* file)
     bool    fRet= false;
 
 #ifdef  TEST
-    fprintf(g_logFile, "bidchannelServices::saveBids\n");
+    fprintf(g_logFile, "bidchannelServices::saveBids %d\n", m_nBids);
     fflush(g_logFile);
 #endif
 
@@ -395,6 +403,10 @@ bool  bidchannelServices::retrieveBids(u32 enctype, byte* keys, const char* file
         return true;
     }
     sizeEncrypted= (int)statBlock.st_size;
+    if(sizeEncrypted==0) {
+        m_fBidListValid= true;
+        m_nBids= 0;
+    }
     encrypted= (byte*) malloc(sizeEncrypted);
     if(encrypted==NULL) {
         fprintf(g_logFile, "bidchannelServices::retrieveBids cant malloc encrypted buf\n");
@@ -508,8 +520,6 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
     }
 
     appendBid(signedbid);
-    free((void*)signedbid); 
-    signedbid= NULL;
 
 #ifdef  TEST
     fprintf(g_logFile, "bidchannelServices::acceptBid signed\n%s\n", signedbid);

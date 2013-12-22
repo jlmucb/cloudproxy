@@ -527,13 +527,9 @@ bool bidchannelServices::acceptBid(bidRequest& oReq, serviceChannel* service, ti
 #endif
 
     // save bids
-#if 0
     if(!saveBids( (u32)DEFAULTENCRYPT, 
         (byte*)((bidServerLocals*)(service->m_pchannelLocals))->m_pServerObj->m_bidKeys,
              file)) {
-#else
-    if(!saveBids((u32)NOENCRYPT, NULL, file)) {
-#endif
         fError= true;
         channelError= (char*) "can't save bid";
         goto done;
@@ -746,10 +742,13 @@ bool bidchannelServices::clientsendBid(safeChannel& fc, byte* keys, const char* 
 }
 
 
+#define GIGANTICBUF 64000
+
+
 bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* request)
 {
     int         n;
-    char        buf[BIGBUFSIZE];
+    char        buf[GIGANTICBUF];
     bidResponse oResponse;
     int         type= CHANNEL_RESPONSE;
     byte        multi= 0;
@@ -792,17 +791,28 @@ bool bidchannelServices::requestbids(safeChannel& fc, byte* keys, const char* re
     fflush(g_logFile);
 #endif
     // send blob
-    n=  BIGBUFSIZE;
+    n=  GIGANTICBUF;
     if(!getchannelBlob(fc, (byte*) request, &n)) {
         fprintf(g_logFile, "requestbids cant send blob\n");
         return false;
     }
 
+#if 1
+    if(!deserializeList(request)) {
+        fprintf(g_logFile, "requestbids: deserializeList failed \n");
+        return false;
+    }
+    if(!saveBids(DEFAULTENCRYPT, keys, "./sellerClient/savedBids")) {
+        fprintf(g_logFile, "requestbids: saveBids failed\n");
+        return false;
+    }
+#else
     if(!saveBlobtoFile("sellerClient/savedBids", (byte*)request, n))  {
         fprintf(g_logFile, "requestbids save failed\n");
     }
     else
         fprintf(g_logFile, "requestbids succeeds\n");
+#endif
 
 #ifdef  TEST
     fprintf(g_logFile, "requestbids returns true\n");

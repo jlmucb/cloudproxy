@@ -485,19 +485,12 @@ bool bidServer::server()
             // TODO: delete this object
             bidchannelServices* pmyServices= new bidchannelServices(2);
             bidServerLocals* pmyLocals= new bidServerLocals();
-
             pmyLocals->m_pServerObj= this;
-#if 0
             if(!pmyServices->retrieveBids(DEFAULTENCRYPT, m_bidKeys, "./bidServer/bidssofar.enc")) {
                 fprintf(g_logFile, "bidServer::server: Can't retrieveBids\n");
                 return false;
             }
-#else
-            if(!pmyServices->retrieveBids(NOENCRYPT, NULL, "./bidServer/bidssofar.enc")) {
-                fprintf(g_logFile, "bidServer::server: Can't retrieveBids\n");
-                return false;
-            }
-#endif
+
             if(!poSc->initServiceChannel("bidServer", newfd, &m_opolicyCert, &m_host,
                                          &m_tcHome, &m_serverThreads[i],
                                          bidServerrequestService, pmyServices, pmyLocals)) {

@@ -274,7 +274,7 @@ bool sendchannelBlob(safeChannel& fc, byte* buf, int size)
     int                 n= 0;
 
 #ifdef TEST
-    fprintf(g_logFile, "sendchannelBlob %d bytes\b", size);
+    fprintf(g_logFile, "sendchannelBlob %d bytes\n", size);
     fflush(g_logFile);
 #endif
 
@@ -293,7 +293,7 @@ bool sendchannelBlob(safeChannel& fc, byte* buf, int size)
         buf+= n;
     }
 #ifdef  TEST
-    fprintf(g_logFile, "endchannelBlob returns true\n");
+    fprintf(g_logFile, "sendchannelBlob returns true\n");
 #endif
     return true;
 }

@@ -954,6 +954,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     signedwinningBidinfo= new signedbidInfo();
     if(!signedwinningBidinfo->parse(signedwinningBid)) {
         fprintf(g_logFile, "sellerClient::resolveAuction cant parse first signed bid\n");
+        fflush(g_logFile);
         return false;
     }
 #ifdef TEST1
@@ -964,6 +965,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     // check bid signature
     if(!issignedbidInfoValid(serverKey, signedwinningBidinfo)) {
         fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
+        fflush(g_logFile);
         return false;
     }
 #ifdef TEST1
@@ -989,12 +991,14 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     winningBidinfo= new bidInfo();
     if(!winningBidinfo->parse(winningBid)) {
         fprintf(g_logFile, "sellerClient::resolveAuction cant parse first bid\n");
+        fflush(g_logFile);
         return false;
     }
     // right auction?
     const char* auctionid= winningBidinfo->auctionId();
     if(strcmp(m_szAuctionID, auctionid)!=0) {
         fprintf(g_logFile, "sellerClient::resolveAuction first bid from wrong auction\n");
+        fflush(g_logFile);
         return false;
     }
     winningcert= winningBidinfo->getBidderCert();
@@ -1005,6 +1009,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
     PrincipalCert*  bidCert= new PrincipalCert();
     if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
         fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
+        fflush(g_logFile);
         return false;
     }
     delete bidCert;
@@ -1017,12 +1022,14 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         signedcurrentBidinfo= new signedbidInfo();
         if(!signedcurrentBidinfo->parse(signedcurrentBid)) {
             fprintf(g_logFile, "sellerClient::resolveAuction cant parse signed bid %d\n", i+1);
+            fflush(g_logFile);
             return false;
         }
 
         // check bidder cert
         if(!issignedbidInfoValid(serverKey, signedcurrentBidinfo)) {
             fprintf(g_logFile, "sellerClient::resolveAuction first signed bid invalid\n");
+            fflush(g_logFile);
             return false;
         }
 
@@ -1031,10 +1038,12 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         currentBid= signedcurrentBidinfo->getBidElement();
         if(currentBid==NULL) {
             fprintf(g_logFile, "sellerClient::resolveAuction signed bid %d has no Bid\n", i+1);
+            fflush(g_logFile);
             return false;
         }
         if(!currentBidinfo->parse(currentBid)) {
             fprintf(g_logFile, "sellerClient::resolveAuction cant parse bid %d\n", i+1);
+            fflush(g_logFile);
             return false;
         }
 
@@ -1045,6 +1054,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         PrincipalCert*  bidCert= new PrincipalCert();
         if(!isCertValid(ppolicyKey, bidCert, now, winningcert)) {
             fprintf(g_logFile, "sellerClient::resolveAuction server cert invalid\n");
+            fflush(g_logFile);
             return false;
         }
         delete bidCert;
@@ -1054,6 +1064,7 @@ bool sellerClient::resolveAuction(int nBids, const char** bids)
         auctionid= winningBidinfo->auctionId();
         if(strcmp(m_szAuctionID, auctionid)!=0) {
             fprintf(g_logFile, "sellerClient::resolveAuction bid %d from wrong auction\n", i+1);
+            fflush(g_logFile);
             return false;
         }
         currentBidAmount= currentBidinfo->bidAmount();
@@ -1182,7 +1193,9 @@ int main(int an, char** av)
                 return 1;
             }
 
-            if(!mychannelServices.requestbids(oSellerClient.m_fc, NULL, buf)) {
+            if(!mychannelServices.requestbids(oSellerClient.m_fc, oSellerClient.m_sellerKeys, buf)) {
+                fprintf(g_logFile, "sellerClient requestbids failed\n");
+                return 1;
             }
             closeLog();
             return 0;
@@ -1225,25 +1238,11 @@ int main(int an, char** av)
 
         // read bids if not present
         if(!mychannelServices.m_fBidListValid) {
-#if 1
-            if(!mychannelServices.retrieveBids((u32)NOENCRYPT, NULL, 
+            if(!mychannelServices.retrieveBids((u32)DEFAULTENCRYPT, oSellerClient.m_sellerKeys, 
                         "./sellerClient/savedBids")) {
                 fprintf(g_logFile, "sellerClient::resolveAuction:  cant retrieve bids\n");
                 return 1;
             } 
-#else
-            char    buf[BIGBUFSIZE];
-            int     size= BIGBUFSIZE;
-            if(!getBlobfromFile("./sellerClient/savedBids", (byte*)buf, &size)) {
-                fprintf(g_logFile, "sellerClient::resolveAuction:  cant read saved bids\n");
-                return 1;
-            }
-
-            if(!mychannelServices.deserializeList((const char*)buf)) {
-                fprintf(g_logFile, "sellerClient::resolveAuction:  cant deserializeList\n");
-                return 1;
-            }
-#endif
         }
 
         if(oSellerClient.resolveAuction(mychannelServices.m_nBids, (const char**)mychannelServices.m_Bids))

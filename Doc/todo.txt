@@ -8,7 +8,6 @@ Check on locality for tpm (jlm)                                 (1)
 Check timing attack (jlm, help from google/intel)               (3)
 Check XML syntax for errors
 AIK in persistent memory?
-tcService hang after init (jlm started - low priority)
 Rewrite kvmtciodd/ktciodd channel (tom)
 
 Add key escrow key
@@ -44,5 +43,28 @@ Set up repository on code.google.com
 Scale app (tom/jlm)
 
 John: Check out tiny kvm
+
+
+12/22/2013
+
+I rewrote most of cloudproxy and ported the two applications fileProxy and bidProxy.
+I think the structure is right now with one exception I mention below.  The fundemental
+elements are the Tao, the session (channel), the services (for example, file services
+and bid services) and application logic including authentication and authorization.
+The new version allows changing the kinds of requests pertinent to the application and
+services by chhanging the "xxxRequest" and "xxxServices" files in the application 
+directories (bidProxy and fileProxy) and little else.  The one relatively minor thing
+I would change is the fact that the Services and session object are unneccessaily tangled.
+All keyNego is accomplished by the Tao.  The intialization of the channel is accomplished
+by the session object.  The Services objects should contain the session and processRequests
+should be part of the Services.  Now the processRequest and associated processing is
+partly done in the session object and partly done in the channel object.   This would be
+easy to clean up but I'd just as soon do it in the new code base.  With this change, all
+the code could be "rewritten in place" more hygienically.  Anyway, the new code base is 
+probably a much better starting point (modulo my concerns about the credential format).
+There's still stuff in this code base we should be sure works in the new code base and
+perhaps rewriting fileProxy and bidProxy would ensure coverage.
+
+
 
 

@@ -59,6 +59,8 @@ class UnixFdTaoChannel : public TaoChannel {
   // The path to the Unix domain socket that manages program creation requests.
   string domain_socket_path_;
 
+  int domain_socket_;
+
   // A map from a child hash to a pair of file descriptors. The first file
   // descriptor is the read descriptor, and the second descriptor is the write
   // descriptor. These can be the same descriptor.

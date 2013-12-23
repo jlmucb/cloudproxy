@@ -31,6 +31,7 @@
 #include <sys/un.h>
 #include <sys/unistd.h>
 
+#include <mutex>
 #include <thread>
 
 #include <keyczar/base/scoped_ptr.h>
@@ -110,15 +111,15 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
   }
 
   // The unix domain socket is used to listen for CreateHostedProgram requests.
-  int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-  if (sock == -1) {
+  domain_socket_ = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (domain_socket_ == -1) {
     LOG(ERROR) << "Could not create unix domain socket to listen for messages";
     return false;
   }
 
   // Make sure the socket won't block if there's no data available, or not
   // enough data available.
-  int fcntl_err = fcntl(sock, F_SETFL, O_NONBLOCK);
+  int fcntl_err = fcntl(domain_socket_, F_SETFL, O_NONBLOCK);
   if (fcntl_err == -1) {
     PLOG(ERROR) << "Could not set the socket to be non-blocking";
     return false;
@@ -133,7 +134,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
 
   strncpy(addr.sun_path, domain_socket_path_.c_str(), sizeof(addr.sun_path));
   int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
-  int bind_err = bind(sock, (struct sockaddr *)&addr, len);
+  int bind_err = bind(domain_socket_, (struct sockaddr *)&addr, len);
   if (bind_err == -1) {
     PLOG(ERROR) << "Could not bind the address " << domain_socket_path_
                 << " to the socket";
@@ -145,8 +146,8 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     // set up the select operation with the current fds and the unix socket
     fd_set read_fds;
     FD_ZERO(&read_fds);
-    int max = sock;
-    FD_SET(sock, &read_fds);
+    int max = domain_socket_;
+    FD_SET(domain_socket_, &read_fds);
 
     for (pair<const string, pair<int, int>> &descriptor :
          descriptors_) {
@@ -165,8 +166,8 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     }
 
     // Check for messages to handle
-    if (FD_ISSET(sock, &read_fds)) {
-      if (!HandleProgramCreation(tao, sock)) {
+    if (FD_ISSET(domain_socket_, &read_fds)) {
+      if (!HandleProgramCreation(tao, domain_socket_)) {
         LOG(ERROR) << "Could not handle the program creation request";
       }
     }

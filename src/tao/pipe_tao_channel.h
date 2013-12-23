@@ -27,22 +27,16 @@
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_channel.h"
-
-using std::lock_guard;
-using std::map;
-using std::mutex;
-using std::pair;
+#include "tao/unix_fd_tao_channel.h"
 
 namespace tao {
 // a TaoChannel that communicates over file descriptors
 // set up with pipe(2) and listens to multiple connections with select.
-class PipeTaoChannel : public TaoChannel {
+class PipeTaoChannel : public UnixFdTaoChannel {
  public:
   // Constructs a PipeTaoChannel with a process creation socket at a given path
   PipeTaoChannel(const string &socket_path);
   virtual ~PipeTaoChannel();
-
-  virtual bool Listen(Tao *tao);
 
   // Serializes the child_fds into a PipeTaoChannelParams protobuf.
   virtual bool AddChildChannel(const string &child_hash, string *params);
@@ -52,26 +46,8 @@ class PipeTaoChannel : public TaoChannel {
   virtual bool UpdateChildParams(const string &child_hash,
                                  const string &params);
 
- protected:
-  virtual bool ReceiveMessage(google::protobuf::Message *m,
-                              const string &child_hash) const;
-  virtual bool SendMessage(const google::protobuf::Message &m,
-                           const string &child_hash) const;
-
  private:
-  string domain_socket_path_;
-  mutable mutex data_m_;
-  map<string, pair<int, int>> hash_to_descriptors_;
   map<string, pair<int, int>> child_descriptors_;
-
-  // Receives a datagram message on a unix socket and uses this information to
-  // create a hosted program through the Tao.
-  bool HandleProgramCreation(Tao *tao, int sock);
-
-  // A loop that listens for messages on a given file descriptor.
-  // TODO(tmroeder): Convert this into a set of threads that spin up when a new
-  // Listen comes in and merge their select() operations whenever possible.
-  bool MessageHandler(Tao *tao, const string &child_hash);
 
   DISALLOW_COPY_AND_ASSIGN(PipeTaoChannel);
 };

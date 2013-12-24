@@ -23,11 +23,16 @@
 #include "tao/tao_child_channel.h"
 
 namespace tao {
+/// The channel a hosted program running as a process uses to communicate with
+/// its host Tao. The params in the constructor specify a pair of pipes that are
+/// connected to the host.
 class PipeTaoChildChannel : public TaoChildChannel {
  public:
   PipeTaoChildChannel(const string &params);
   virtual ~PipeTaoChildChannel() {}
 
+  /// Parse the params from the constructor and try to open the pipes for host
+  /// Tao communication.
   virtual bool Init();
 
   static string ChannelType() { return "PipeTaoChannel"; }
@@ -38,8 +43,13 @@ class PipeTaoChildChannel : public TaoChildChannel {
   virtual bool SendMessage(const google::protobuf::Message &m) const;
 
  private:
+  // The down pipe from the host Tao.
   int readfd_;
+
+  // The up pipe from the host Tao.
   int writefd_;
+
+  // A Base64W-encoded representation of the two pipes.
   string params_;
 };
 }  // namespace tao

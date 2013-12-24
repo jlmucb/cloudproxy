@@ -32,30 +32,42 @@ using std::list;
 using std::string;
 
 namespace tao {
+/// A class that creates virtual machine guest OSes using KVM, libvirt, and
+/// qemu. It needs to be passed a template XML file like the one in run/vm.xml,
+/// and it expects the template it gets to have the same number of slots (%s) as
+/// the one currently checked in to run/vm.xml.
 class KvmVmFactory : public HostedProgramFactory {
  public:
   KvmVmFactory() {}
   virtual ~KvmVmFactory() {}
   virtual bool Init();
 
+  /// Compute the hash of a hosted program. The arguments are the same as the
+  /// first three arguments of CreateHostedProgram.
   virtual bool HashHostedProgram(const string &name, const list<string> &args,
                                  string *child_hash) const;
 
-  // @param name The name of the VM to create
-  // @param args The arguments for VM creation. These must have the following
-  // values:
-  //   1. path to the kernel to boot
-  //   2. path to the initrd for this kernel
-  //   3. path to the disk image
-  // @param child_hash The hash of the hosted program
-  // @param parent_channel The channel to use for establishing communication
-  // with the hosted program.
+  /// Start a virtual machine, using libvirt, from a set of arguments.
+  /// @param name The name of the VM to create.
+  /// @param args The arguments for VM creation. These must have the following
+  /// values:
+  ///   1. a path to a template file like run/vm.xml
+  ///   2. path to the kernel to boot
+  ///   3. path to the initrd for this kernel
+  ///   4. path to the disk image
+  /// All of these arguments must be readable by libvirt-kvm.
+  /// @param child_hash The hash of the hosted program.
+  /// @param parent_channel The channel to use for establishing communication
+  /// with the hosted program.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel) const;
+
+  /// Get the name of this factory type: KvmVmFactory.
   virtual string GetFactoryName() const;
 
  private:
+  // A libvirt-supplied connection used to start and connect to VMs.
   virConnectPtr vm_connection_;
   DISALLOW_COPY_AND_ASSIGN(KvmVmFactory);
 };

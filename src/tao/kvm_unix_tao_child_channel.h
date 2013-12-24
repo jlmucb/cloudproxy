@@ -23,11 +23,20 @@
 #include "tao/tao_child_channel.h"
 
 namespace tao {
+/// The channel a guest VM uses to communicate with the hypervisor Tao. It does
+/// this by running an service (like apps/linux_kvm_guest_tao_service.cc) that 
+/// takes in the params from the hypervisor and uses them to find the right
+/// device to connect to for hypervisor Tao communication. In the current
+/// implementation, this is done by passing a Baes64W-encoded string as the last
+/// boot parameter. This can be found in /proc/cmdline.
 class KvmUnixTaoChildChannel : public TaoChildChannel {
  public:
+  /// This constructor stores the parameters but doesn't parse them or try to
+  /// connect to the hypervisor Tao.
   KvmUnixTaoChildChannel(const string &params);
   virtual ~KvmUnixTaoChildChannel() {}
 
+  /// Parse the params from the constructor and connect to the file they name.
   virtual bool Init();
 
   static string ChannelType() { return "KvmUnixTaoChannel"; }
@@ -38,7 +47,10 @@ class KvmUnixTaoChildChannel : public TaoChildChannel {
   virtual bool SendMessage(const google::protobuf::Message &m) const;
 
  private:
+  // The opened file descriptor for the file specified in params_.
   int fd_;
+
+  // A Base64W-serialized TaoChildChannelParams.
   string params_;
 };
 }  // namespace tao

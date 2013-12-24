@@ -31,21 +31,32 @@
 #include "tao/unix_fd_tao_channel.h"
 
 namespace tao {
-// A TaoChannel that communicates over UNIX pipes with KVM guest machines.
+/// A TaoChannel that communicates over UNIX file descriptors with KVM guest
+/// machines. It uses a <channel/> set up by libvirt and virtio_console in the
+/// guest.
 class KvmUnixTaoChannel : public UnixFdTaoChannel {
  public:
-  // Constructs a KvmUnixTaoChannel with a process creation socket at a given
-  // path.
+  /// Construct a KvmUnixTaoChannel with a process creation socket at a given
+  /// path.
+  /// @param socket_path the filename that will be used as a Unix domain socket.
   KvmUnixTaoChannel(const string &socket_path);
   virtual ~KvmUnixTaoChannel();
 
-  // Creates a fresh name for another unix domain socket for a new vm
+  /// Add a new child and gets back the parameters
+  /// @param child_hash The hash of a child program that is not currently
+  /// running.
+  /// @param[out] params A serialization of a TaoChildChannelParams that
+  /// specifies the connection information for the child.
   virtual bool AddChildChannel(const string &child_hash, string *params);
 
   // No cleanup needed for either the client or the parent.
   virtual bool ChildCleanup(const string &child_hash) { return true; }
   virtual bool ParentCleanup(const string &child_hash) { return true; }
 
+  /// Provide new parameters for the connection to the hosted program.
+  /// @param child_hash The identity of an existing hosted program.
+  /// @param params The new params. In this case, it must be the path to a file
+  /// that can be used
   virtual bool UpdateChildParams(const string &child_hash,
                                  const string &params);
 

@@ -25,19 +25,28 @@
 using std::string;
 
 namespace tao {
+/// An interface that is used to answer authorization questions for hosts and
+/// hosted programs under the Tao.
 class TaoAuth {
  public:
   virtual ~TaoAuth() {}
   virtual bool Init() = 0;
+
+  /// Check that a given program hash is authorized.
+  /// @param program_hash The hash to check.
   virtual bool IsAuthorized(const string &program_hash) const = 0;
+  
+  /// Check that a given name/hash pair is authorized.
+  /// @param program_name The name to check.
+  /// @param program_hash The hash to check.
   virtual bool IsAuthorized(const string &program_name,
                             const string &program_hash) const = 0;
 
-  // VerifyAttestation checks an attestation produced by the Tao method Attest
-  // for a given data string.
-  // @param attestation An Attestation produced by tao::Tao::Attest()
-  // @param[out] data The extracted data from the Statement in the Attestation
-  // @returns true if the attestation passes verification
+  /// Check an attestation produced by the Tao method Attest
+  /// for a given data string.
+  /// @param attestation An Attestation produced by Tao::Attest()
+  /// @param[out] data The extracted data from the Statement in the Attestation
+  /// @return true if the attestation passes verification
   virtual bool VerifyAttestation(const string &attestation,
                                  string *data) const = 0;
 };

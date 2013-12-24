@@ -25,13 +25,13 @@
 #include "tao/hosted_program_factory.h"
 
 namespace tao {
-// A fake factory that doesn't really create programs
+/// A fake factory that doesn't really create programs.
 class FakeProgramFactory : public HostedProgramFactory {
  public:
   FakeProgramFactory() {}
   virtual ~FakeProgramFactory() {}
 
-  // The fake version of HashHostedProgram just sets the child hash to be empty.
+  /// Set the child hash to be empty.
   virtual bool HashHostedProgram(const string &name, const list<string> &args,
                                  string *child_hash) const {
     string empty;
@@ -39,12 +39,14 @@ class FakeProgramFactory : public HostedProgramFactory {
     return true;
   }
 
-  // Instead of creating a program, it returns true and ignores the arguments
+  /// Instead of creating a program, return true and ignore the arguments.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel) const {
     return true;
   }
+
+  /// The factory name is FakeProgramFactory.
   virtual string GetFactoryName() const { return "FakeProgramFactory"; }
 
  private:

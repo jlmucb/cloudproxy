@@ -45,17 +45,27 @@ class TaoChildChannelRegistry {
   TaoChildChannelRegistry() : channel_types_() {}
 
   /// Register a Create function under a name.
+  /// @param name The name of the type of channel, like KvmUnixTaoChannel.
+  /// @param channel_creator A function pointer for a function that can create
+  /// channels of this type.
   bool Register(const string &name, CreateChannel channel_creator);
 
   /// Create a TaoChildChannel from a given serialized TaoChildChannelParams.
+  /// @param params A Base64W-serialized TaoChildChannelParams that contains the
+  /// information needed to access the registry and create a TaoChildChannel of
+  /// the appropriate type.
   TaoChildChannel *Create(const string &params);
 
+  /// A utility method for calling a constructor with a single string method.
+  /// @param params The only argument to the constructor.
   template <class T>
   static TaoChildChannel *CallConstructor(const string &params) {
     return new T(params);
   }
 
  private:
+  // The registry data: a map from channel type names to functions that can
+  // create a channel of this type.
   map<string, CreateChannel> channel_types_;
   DISALLOW_COPY_AND_ASSIGN(TaoChildChannelRegistry);
 };

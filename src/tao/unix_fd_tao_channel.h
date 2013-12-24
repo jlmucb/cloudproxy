@@ -33,24 +33,23 @@ using std::mutex;
 using std::pair;
 
 namespace tao {
-// A TaoChannel that communicates over file descriptors
-// set up with pipe(2) and listens to multiple connections with select.
+/// A TaoChannel that communicates over file descriptors
+/// set up with pipe(2) and listens to multiple connections with select. This
+/// class does not implementation all the TaoChannel methods; it contains all
+/// the file descriptor listening logic, and subclasses add methods for creating
+/// and managing specific kinds of channels.
 class UnixFdTaoChannel : public TaoChannel {
  public:
-  // Constructs a UnixFdTaoChannel with a process creation socket at a given
-  // path.
+  /// Construct a UnixFdTaoChannel with a process creation socket at a given
+  /// path.
+  /// @param socket_path A path at which to create a Unix domain socket.
   UnixFdTaoChannel(const string &socket_path);
   virtual ~UnixFdTaoChannel();
 
+  /// Listen on all open channels and the Unix domain socket for hosted-program
+  /// creation requests and RPCs from hosted programs.
+  /// @param tao The Tao to handle RPCs.
   virtual bool Listen(Tao *tao);
-
-  // Serializes the child_fds into a UnixFdTaoChannelParams protobuf.
-  virtual bool AddChildChannel(const string &child_hash, string *params) = 0;
-  virtual bool ChildCleanup(const string &child_hash) = 0;
-  virtual bool ParentCleanup(const string &child_hash) = 0;
-
-  virtual bool UpdateChildParams(const string &child_hash,
-                                 const string &params) = 0;
 
  protected:
   // A mutex for protecting access to descriptors_.
@@ -59,6 +58,8 @@ class UnixFdTaoChannel : public TaoChannel {
   // The path to the Unix domain socket that manages program creation requests.
   string domain_socket_path_;
 
+  // The open file descriptor for the Unix domain socket that receives
+  // hosted-program creation requests.
   int domain_socket_;
 
   // A map from a child hash to a pair of file descriptors. The first file
@@ -66,19 +67,29 @@ class UnixFdTaoChannel : public TaoChannel {
   // descriptor. These can be the same descriptor.
   map<string, pair<int, int>> descriptors_;
 
+  /// Receive a message by performing a read() on a file descriptor.
+  /// @param[out] m The received message
+  /// @param child_hash The hash of the child to receive the message from. This
+  /// is used to decide which descriptor to use.
   virtual bool ReceiveMessage(google::protobuf::Message *m,
                               const string &child_hash) const;
+  
+  /// Send a message to a hosted program by performing a write() on a file
+  /// descriptor.
+  /// @param m The message to send.
+  /// @param child_hash The hash of the child to send the message to. This is
+  /// used to decide which descriptor to use.
   virtual bool SendMessage(const google::protobuf::Message &m,
                            const string &child_hash) const;
 
  private:
-  // Receives a datagram message on a unix socket and uses this information to
-  // create a hosted program through the Tao.
+  /// Receive a datagram message on a unix socket and uses this information to
+  /// create a hosted program through the Tao.
   bool HandleProgramCreation(Tao *tao, int sock);
 
-  // A loop that listens for messages on a given file descriptor.
-  // TODO(tmroeder): Convert this into a set of threads that spin up when a new
-  // Listen comes in and merge their select() operations whenever possible.
+  /// Handle messages from a hosted program.
+  /// @param tao The Tao implementation that will handle the message.
+  /// @param child_hash The hosted program that send the message.
   bool MessageHandler(Tao *tao, const string &child_hash);
 
   DISALLOW_COPY_AND_ASSIGN(UnixFdTaoChannel);
@@ -86,3 +97,4 @@ class UnixFdTaoChannel : public TaoChannel {
 }
 
 #endif  // TAO_UNIX_FD_TAO_CHANNEL_H_
+

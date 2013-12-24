@@ -39,15 +39,21 @@
 using std::string;
 
 namespace tao {
+/// A TaoChildChannel implementation that wraps a TPM and presents the Tao
+/// interface. This allows OS or hypervisor Tao implementations to treat the TPM
+/// like an implementation of the Tao. This implementation uses the TrouSerS
+/// library (hence implicitly the tcsd service) to access the TPM.
 class TPMTaoChildChannel : public TaoChildChannel {
  public:
-  // Initializes the TPMTaoChildChannel with the public key of the AIK as a blob
-  // in the form of a TSS TPM_KEY.
+  /// Initializes the TPMTaoChildChannel
+  /// @param aik_blob A public AIK blob produced by the TPM.
+  /// @param aik_attestation An attestation to the AIK, signed by the public
+  /// policy key.
+  /// @param pcrs_to_seal A list of PCRs to seal against.
   TPMTaoChildChannel(const string &aik_blob, const string &aik_attestation,
                      const list<UINT32> &pcrs_to_seal);
   virtual ~TPMTaoChildChannel() {}
 
-  // Tao interface methods without the child hash parameter
   virtual bool Init();
   virtual bool Destroy();
   virtual bool StartHostedProgram(const string &path,

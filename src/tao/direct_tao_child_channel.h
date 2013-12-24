@@ -29,10 +29,10 @@ namespace tao {
 
 class Tao;
 
-// A TaoChannel that interacts directly with an underlying Tao object.
+/// A TaoChannel that interacts directly with an underlying Tao object.
 class DirectTaoChildChannel : public TaoChildChannel {
  public:
-  // The parent constructor with its descriptors and the child descriptors.
+  /// The parent constructor with its descriptors and the child descriptors.
   // @param tao The tao to use as the underlying object
   // @param child_hash The hash to pass to the tao in each call that needs it
   DirectTaoChildChannel(Tao *tao, const string &child_hash);
@@ -40,8 +40,10 @@ class DirectTaoChildChannel : public TaoChildChannel {
 
   // Tao interface methods
 
-  // Init and Destroy do nothing for this class
+  /// Init does nothing in this class.
   virtual bool Init() { return true; }
+
+  /// Destroy does nothing in the class.
   virtual bool Destroy() { return true; }
 
   // The remainder of the operations pass their arguments down to the tao object

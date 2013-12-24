@@ -33,23 +33,27 @@ class Keyczar;
 }  // namespace keyczar
 
 namespace tao {
-// A fake Tao implementation that performs crypto operations using
-// in-memory keys, including a fake policy key.
+/// A fake Tao implementation that performs crypto operations using
+/// in-memory keys, including a fake policy key.
 class FakeTao : public Tao {
  public:
-  // This constructor creates an in-memory policy key
+  /// Create an in-memory policy key.
   FakeTao();
 
-  // This constructor uses an existing (unencrypted, complete) policy key path
+  /// Use an existing (unencrypted, complete) policy key path.
   FakeTao(const string &policy_key_path);
   virtual ~FakeTao() {}
 
-  // Init initializes the keys and sets everything up.
+  /// Init initializes the keys and sets everything up.
   virtual bool Init();
+
+  /// Destroy does nothing for this class.
   virtual bool Destroy() { return true; }
 
-  // The FakeTao doesn't start hosted programs or remove them
+  /// The FakeTao doesn't start hosted programs.
   virtual bool StartHostedProgram(const string &path, const list<string> &args);
+
+  /// The FakeTao doesn't remove hosted programs.
   virtual bool RemoveHostedProgram(const string &child_hash) { return true; }
 
   // The other Tao methods are implemented using the generated keys just like a

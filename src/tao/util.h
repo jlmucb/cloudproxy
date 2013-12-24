@@ -30,47 +30,108 @@
 #include "tao/tao_child_channel.h"
 #include "tao/tao_child_channel_registry.h"
 
+/// Handle a remove message from ntfw(). This deletes the current file or empty
+/// directory.
+/// @param path The path of the current file or directory to delete.
+/// @param sb A stat structure for the path.
+/// @param tflag A flag specifying more information about the state of
+/// directories (e.g., whether or not all its children have been handled).
+/// @param ftwbuf Extra information provided by nftw().
 int remove_entry(const char *path, const struct stat *sb, int tflag,
                  struct FTW *ftwbuf);
+
 namespace tao {
 
+/// A pointer to an OpenSSL RSA object.
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
     ScopedRsa;
 
-// A method that sets the disposition of SIGCHLD to prevent child zombification.
+/// Set the disposition of SIGCHLD to prevent child zombification.
 bool LetChildProcsDie();
 
+/// Hash a set of virtual machine parameters in a composite structure: hash each
+/// one, then concatenate them and hash them together.
+/// @param vm_template The template string to use to create the VM.
+/// @param name The name of the virtual machine.
+/// @param kernel The kernel to use (not the filename; the bytes).
+/// @param initrd The initrd to use (not the filename; the bytes).
+/// @param[out] hash The resulting hash.
 bool HashVM(const string &vm_template, const string &name, const string &kernel,
             const string &initrd, string *hash);
 
+/// Register some well-known TaoChannels with the registry. The list of
+/// registered TaoChannels is:
+/// - KvmUnixTaoChannel
+/// - PipeTaoChannel
 bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 
+/// Call the OpenSSL initialization routines and set up locking for
+/// multi-threaded access.
 bool InitializeOpenSSL();
 
+/// Open a listening TCP socket on the given port (and 0.0.0.0).
+/// @param port The port to listen on.
+/// @param[out] sock The socket opened for this port.
 bool OpenTCPSocket(short port, int *sock);
 
+/// Create a Keyczar key with the given parameters.
+/// @param writer The writer to use to write this key to disk.
+/// @param key_type The type of key, like ECDSA_PRIV.
+/// @param key_purpose The purpose the key will be used for, like
+/// SIGN_AND_VERIFY.
+/// @param key_name A name for this key.
+/// @param[out] key A scoped Keyczar to fill with the key.
 bool CreateKey(keyczar::rw::KeysetWriter *writer,
                keyczar::KeyType::Type key_type,
                keyczar::KeyPurpose::Type key_purpose, const string &key_name,
                scoped_ptr<keyczar::Keyczar> *key);
 
+/// Convert a serialized KeyczarPublicKey representation to an in-memory keyset.
+/// @param kpk The public key to deserialize.
+/// @param[out] keyset A keyset created from this public key.
 bool DeserializePublicKey(const KeyczarPublicKey &kpk,
                           keyczar::Keyset **keyset);
+
+/// Convert a Keyczar public key to a serialized KeyczarPublicKey structure.
+/// @param key The public key to serialize.
+/// @param[out] kpk The serialized public key.
 bool SerializePublicKey(const keyczar::Keyczar &key, KeyczarPublicKey *kpk);
 
+/// Sign data with a key using Keyczar.
+/// @param data The data to sign.
+/// @param[out] signature the resulting signature.
+/// @param key The key to use for signing.
 bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
 
+/// Verify a signature using Keyczar.
+/// @param data The data that was signed.
+/// @param signature The signature on the data.
+/// @param key The key to use for verification.
 bool VerifySignature(const string &data, const string &signature,
                      keyczar::Keyczar *key);
 
+/// Copy the value of a public key into anoter keyset.
+/// @param public_key The key to copy.
+/// @param[out] keyset The key to fill with the copy.
 bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
                       keyczar::Keyset **keyset);
 
+/// If sealed_path is a file, then try to unseal it. Otherwise, create a new
+/// secret and seal it at sealed_path.
+/// @param t The channel to access the host Tao.
+/// @param sealed_path The file name to use.
+/// @param[out] secret The secret to generate or unseal.
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret);
 
+/// Receive a protobuf message on a file descriptor.
+/// @param fd The file descriptor to read.
+/// @param[out] m The received message.
 bool ReceiveMessage(int fd, google::protobuf::Message *m);
 
+/// Send a protobuf message on a file descriptor.
+/// @param fd The file descriptor to write.
+/// @param m The message to send.
 bool SendMessage(int fd, const google::protobuf::Message &m);
 
 }  // namespace tao

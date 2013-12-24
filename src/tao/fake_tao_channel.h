@@ -26,7 +26,7 @@
 #include "tao/tao_channel.h"
 
 namespace tao {
-// A TaoChannel that doesn't actually do any communication.
+/// A TaoChannel that doesn't actually do any communication.
 class FakeTaoChannel : public TaoChannel {
  public:
   FakeTaoChannel() {}

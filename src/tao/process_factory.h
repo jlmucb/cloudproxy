@@ -31,12 +31,27 @@ using std::list;
 using std::string;
 
 namespace tao {
+/// A factory that creates hosted programs as processes. It forks and execs the
+/// hosted program, making sure to clean up host state before exec.
 class ProcessFactory : public HostedProgramFactory {
  public:
   ProcessFactory() {}
   virtual ~ProcessFactory() {}
+
+  /// Compute the hash of a hosted program. The arguments are the same as the
+  /// first three arguments of CreateHostedProgram.
   virtual bool HashHostedProgram(const string &name, const list<string> &args,
                                  string *child_hash) const;
+
+  /// Start a process, using fork/exec, and pass it the params it needs to
+  /// communicate with the host Tao.
+  /// @param name The name of the file to execute.
+  /// @param args The arguments for the process. CreateHostedProgram will add a
+  /// final argument: the Base64W-encoding of a TaoChildChannelParams that
+  /// specifies the file descriptors to use for Tao communication.
+  /// @param child_hash The hash of the hosted program.
+  /// @param parent_channel The channel to use for establishing communication
+  /// with the hosted program.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel) const;

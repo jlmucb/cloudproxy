@@ -30,23 +30,33 @@
 #include "tao/unix_fd_tao_channel.h"
 
 namespace tao {
-// a TaoChannel that communicates over file descriptors
-// set up with pipe(2) and listens to multiple connections with select.
+/// A TaoChannel that communicates over file descriptors
+/// set up with pipe(2) and listens to multiple connections with select.
 class PipeTaoChannel : public UnixFdTaoChannel {
  public:
-  // Constructs a PipeTaoChannel with a process creation socket at a given path
+  /// Create a PipeTaoChannel with a process creation socket at a given path.
   PipeTaoChannel(const string &socket_path);
   virtual ~PipeTaoChannel();
 
-  // Serializes the child_fds into a PipeTaoChannelParams protobuf.
+  /// Serialize the child_fds into a PipeTaoChannelParams protobuf.
   virtual bool AddChildChannel(const string &child_hash, string *params);
+
+  /// Close all the file descriptors that don't belong to the child. This is
+  /// used, e.g., after a fork() in ProcessFactory.
   virtual bool ChildCleanup(const string &child_hash);
+  
+  /// Close all the file descriptors that don't belong to the parent. This is
+  /// used, e.g., after a fork() in ProcessFactory.
   virtual bool ParentCleanup(const string &child_hash);
 
+  /// This method isn't used by PipeTaoChannel, since the params for the channel
+  /// are already known when the pipes are created.
+  /// @return true
   virtual bool UpdateChildParams(const string &child_hash,
                                  const string &params);
 
  private:
+  // A set of child descriptors that haven't been cleaned up yet.
   map<string, pair<int, int>> child_descriptors_;
 
   DISALLOW_COPY_AND_ASSIGN(PipeTaoChannel);

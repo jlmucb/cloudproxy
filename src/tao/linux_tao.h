@@ -53,30 +53,34 @@ class TaoAuth;
 class TaoChannel;
 class TaoChildChannel;
 
-// An implementation of the Tao for Linux. This implementation can take
-// different HostedProgramFactory implementations, different TaoChannel
-// implementations for communicating with its hosted programs, and different
-// TaoChildChannel implementations for communicating with its parent Tao. The
-// only assumptions LinuxTao makes are basic: it has the normal filesystem API
-// to which it can write files, and it is an intermediate Tao rather than the
-// root Tao.
+/// An implementation of the Tao for Linux. This implementation can take
+/// different HostedProgramFactory implementations, different TaoChannel
+/// implementations for communicating with its hosted programs, and different
+/// TaoChildChannel implementations for communicating with its parent Tao. The
+/// only assumptions LinuxTao makes are basic: it has the normal filesystem API
+/// to which it can write files, and it is an intermediate Tao rather than the
+/// root Tao.
 class LinuxTao : public Tao {
  public:
-  // The LinuxTao is constructed with paths to keys and implementations of
-  // factories and channels.
-  // @param secret_path The location at which it stores a secret sealed by the
-  // Tao
-  // @param key_path The location of its symmetric key, encrypted to the secret
-  // @param pk_path The location of its public/private key pair, encrypted to
-  // the symmetric key
-  // @param policy_pk_path The path to the public policy key
-  // @param host_channel A channel implementation it takes ownership of and uses
-  // to communicate with its parent Tao
-  // @param child_channel A channel implementation it uses to communicat with
-  // hosted programs it starts
-  // @param program_factory A factory that creates hosted programs in the OS.
-  // @param auth_manager Handles authorization checks, including
-  // VerifyAttestation
+  /// The LinuxTao is constructed with paths to keys and implementations of
+  /// factories and channels.
+  /// @param secret_path The location at which it stores a secret sealed by the
+  /// Tao
+  /// @param key_path The location of its symmetric key, encrypted to the secret
+  /// @param pk_path The location of its public/private key pair, encrypted to
+  /// the symmetric key
+  /// @param policy_pk_path The path to the public policy key
+  /// @param host_channel A channel implementation it takes ownership of and uses
+  /// to communicate with its parent Tao
+  /// @param child_channel A channel implementation it uses to communicat with
+  /// hosted programs it starts
+  /// @param program_factory A factory that creates hosted programs in the OS.
+  /// @param auth_manager Handles authorization checks, including
+  /// VerifyAttestation
+  /// @param ca_host The name or IP address of a machine that is running tcca.
+  /// If this string is empty, then the LinuxTao won't try to shorten its
+  /// certification chain by communicating with tcca.
+  /// @param ca_port The port to use to communicate with tcca on ca_host.
   LinuxTao(const string &secret_path, const string &key_path,
            const string &pk_path, const string &policy_pk_path,
            TaoChildChannel *host_channel, TaoChannel *child_channel,
@@ -84,7 +88,7 @@ class LinuxTao : public Tao {
            const string &ca_host, const string &ca_port);
   virtual ~LinuxTao() {}
 
-  // Start listening for Tao messages on channels
+  /// Start listening for Tao messages on channels
   bool Listen();
 
   // LinuxTao follows the normal semantics of the Tao for these methods
@@ -166,24 +170,24 @@ class LinuxTao : public Tao {
   static const int AesBlockSize = 16;
   static const int Sha256Size = 32;
 
-  // Either unseal or create and seal a secret using the legacy tao
+  /// Either unseal or create and seal a secret using the TaoChildChannel.
   bool getSecret(keyczar::base::ScopedSafeString *secret);
 
-  // Create a new keyset with a primary symmetric key that we will use
-  // as the basis of the Tao
+  /// Create a new keyset with a primary symmetric key that we will use
+  /// as the basis of the Tao
   bool createKey(const string &secret);
 
-  // Create a new keyset with a public/private key pair to use for
-  // signing
+  /// Create a new keyset with a public/private key pair to use for
+  /// signing
   bool createPublicKey(keyczar::Encrypter *crypter);
 
-  // Get an attestation from the host Tao on our key. Note that this
-  // will get an attestation on serialized_key for this Tao host; it
-  // is for use by this Tao and its subclasses.
+  /// Get an attestation from the host Tao on our key. Note that this
+  /// will get an attestation on serialized_key for this Tao host; it
+  /// is for use by this Tao and its subclasses.
   bool attestToKey(const string &serialized_key, Attestation *attest);
 
-  // Sends the attestation to the TCCA on a port/address supplied at
-  // initialization and uses the returned attestation as its attestation.
+  /// Send the attestation to the TCCA on a port/address supplied at
+  /// initialization and uses the returned attestation as its attestation.
   bool getCertFromCA(Attestation *attest);
 
   DISALLOW_COPY_AND_ASSIGN(LinuxTao);

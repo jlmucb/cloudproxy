@@ -52,7 +52,7 @@ CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
   }
 }
 
-bool CloudAuth::findPermissions(const string &subject, const string &object,
+bool CloudAuth::FindPermissions(const string &subject, const string &object,
                                 set<Op> **perms) {
   CHECK(perms) << "null perms parameter";
 
@@ -75,7 +75,7 @@ bool CloudAuth::Permitted(const string &subject, Op op, const string &object) {
   if (admins_.find(subject) != admins_.end()) return true;
 
   set<Op> *perms = nullptr;
-  if (!findPermissions(subject, object, &perms)) return false;
+  if (!FindPermissions(subject, object, &perms)) return false;
 
   // check first to see if the specified permission exists
   auto op_it = perms->find(op);
@@ -88,7 +88,7 @@ bool CloudAuth::Permitted(const string &subject, Op op, const string &object) {
 
 bool CloudAuth::Delete(const string &subject, Op op, const string &object) {
   set<Op> *perms = nullptr;
-  if (!findPermissions(subject, object, &perms)) return false;
+  if (!FindPermissions(subject, object, &perms)) return false;
 
   // look for the operation in the set for this subject/object pair
   auto op_it = perms->find(op);

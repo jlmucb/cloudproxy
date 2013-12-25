@@ -24,9 +24,28 @@
 #include "cloudproxy/cloud_server.h"
 
 namespace cloudproxy {
-
+/// An implementation of CloudServer that manages files for remote FileClients.
+/// It keeps each file encrypted and with integrity protection.
 class FileServer : public CloudServer {
  public:
+  /// Create a FileServer. All the parameters after the first two have the same
+  /// semantics as for CloudServer.
+  /// @param file_path The path at which to keep files sent from FileClients.
+  /// @param meta_path The path at which to keep metadata about files sent from
+  /// FileClients.
+  /// @param tls_cert The path to use for an OpenSSL TLS certificate.
+  /// @param tls_key The path to use for an OpenSSL TLS private key.
+  /// @param tls_password The file to use for a Tao-sealed TLS password to use
+  /// to encrypt the private key.
+  /// @param public_policy_keyczar The path to the public policy key.
+  /// @param public_policy_pem The path to an OpenSSL representation of the
+  /// public policy key.
+  /// @param acl_location The path to a signed ACL giving permissions for
+  /// operations on the server.
+  /// @param host The name or IP address of the host to bind the server to.
+  /// @param port The port to bind the server to.
+  /// @param auth_manager An authorization manager to use to verify Tao
+  /// attestations.
   FileServer(const string &file_path, const string &meta_path,
              const string &tls_cert, const string &tls_key,
              const string &tls_password, const string &public_policy_keyczar,
@@ -37,6 +56,15 @@ class FileServer : public CloudServer {
   virtual ~FileServer() {}
 
  protected:
+  /// @{
+  /// Check a file action and perform the operation it requests.
+  /// @param action The action requested by a FileClient.
+  /// @param bio A channel for communication with the requesting client.
+  /// @param[out] reason A string to fill with an error message if the action is
+  /// not authorized.
+  /// @param[out] reply Indicates success or failure of the action.
+  /// @return A value that indicates whether or not the action was performed
+  /// without errors.
   virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,
                             bool *reply, CloudServerThreadData &cstd);
   virtual bool HandleDestroy(const Action &action, BIO *bio, string *reason,
@@ -45,23 +73,26 @@ class FileServer : public CloudServer {
                            bool *reply, CloudServerThreadData &cstd);
   virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
                           bool *reply, CloudServerThreadData &cstd);
+  /// @}
 
  private:
-  // a key for deriving keys for encryption
+  // A key for deriving keys for encryption.
   scoped_ptr<keyczar::Keyczar> main_key_;
 
+  // A key to use for file encryption.
   keyczar::base::ScopedSafeString enc_key_;
+
+  // A key to use for integrity protection.
   keyczar::base::ScopedSafeString hmac_key_;
 
-  // the path to which we write incoming files
+  // The path to which we write incoming files.
   string file_path_;
 
-  // the path to which we write file metadata
+  // The path to which we write file metadata.
   string meta_path_;
 
   DISALLOW_COPY_AND_ASSIGN(FileServer);
 };
-
 }  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_FILE_SERVER_H_

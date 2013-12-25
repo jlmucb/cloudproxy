@@ -38,33 +38,51 @@ class Keyczar;
 }  // namespace keyczar
 
 namespace cloudproxy {
+/// A class that answers authorization requests about actions, using an ACL.
 class CloudAuth {
  public:
-  // Instantiates the Auth class with a serialized representation of a
-  // cloudproxy::ACL object.
+  /// Create the authorization instance.
+  /// @param acl_path The path to a signed ACL of form SignedACL.
+  /// @param key The public key to use to check the signature on the ACL. 
   CloudAuth(const string &acl_path, keyczar::Keyczar *key);
 
   virtual ~CloudAuth() {}
 
-  // Checks to see if this operation is permitted by the ACL
+  /// Check to see if this operation is permitted by the ACL.
+  /// @param subject The subject requesting the operation. The client must have
+  /// already been authenticated by the caller.
+  /// @param object The operation to check.
+  /// @return A value indicating whether or not the subject is permitted to
+  /// perform this operation.
   virtual bool Permitted(const string &subject, Op op, const string &object);
 
-  // Removes a given entry from the ACL if it exists
+  /// Remove a given entry from the ACL if it exists.
+  /// @param subject The subject of the entry to delete.
+  /// @param op The operation of the entry to delete.
+  /// @param object The operation of the entry to delete.
   virtual bool Delete(const string &subject, Op op, const string &object);
 
-  // Adds a given entry to the ACL
+  /// Insert an entry into the ACL.
+  /// @param subject The subject of the entry to insert.
+  /// @param op The operation of the entry to insert.
+  /// @param object The operation of the entry to insert.
   virtual bool Insert(const string &subect, Op op, const string &object);
 
-  // serializes the ACL into a given string
+  /// Serialize the ACL.
+  /// @param[out] data A string to fill with the serialized representation.
   virtual bool Serialize(string *data);
 
  protected:
-  bool findPermissions(const string &subject, const string &object,
+  /// Look up a set of permissions for a subject/object pair.
+  /// @param subject The subject to look for.
+  /// @param object The object to look for.
+  /// @param[out] perms The set of permissions found in the ACL.
+  bool FindPermissions(const string &subject, const string &object,
                        set<Op> **perms);
 
  private:
   // a map from subject->(object, permission set)
-  map<string, map<string, set<Op> > > permissions_;
+  map<string, map<string, set<Op>>> permissions_;
 
   // a list of users with admin privilege (able to perform any action)
   set<string> admins_;

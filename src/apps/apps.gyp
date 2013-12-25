@@ -267,14 +267,5 @@
       'include_dirs': [ '..', ],
       'dependencies': [ '../tao/tao.gyp:tao', ],
     },
-   # {
-   #    'target_name': 'bootstrap',
-   #    'type': 'executable',
-   #    'sources': [ 'bootstrap.cc', ],
-   #    'include_dirs': [ '..', ],
-   #    'dependencies': [
-   #      '../legacy_tao/legacy_tao.gyp:legacy_tao_channel',
-   #    ],
-   #  },
   ]
 }

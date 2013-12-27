@@ -37,7 +37,7 @@
 #############################################################################
 
 This readme covers how to setup the build environment and instructions 
-on how to build eVMM binaries. 
+on how to build eVMM binaries for the Cloudproxy version.
 
 =============================================================================
 Build environment

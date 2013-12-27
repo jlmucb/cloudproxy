@@ -1,6 +1,8 @@
 #############################################################################
 # Copyright (c) 2013 Intel Corporation
 #
+#  Author:    John Manferdelli from a VSS make by Victor Umansky
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,198 +16,68 @@
 # limitations under the License.
 #############################################################################
 
-#############################################################################
-# INTEL CONFIDENTIAL
-# Copyright 2001-2013 Intel Corporation All Rights Reserved.
-#
-# The source code contained or described herein and all documents related to
-# the source code ("Material") are owned by Intel Corporation or its
-# suppliers or licensors.  Title to the Material remains with Intel
-# Corporation or its suppliers and licensors.  The Material contains trade
-# secrets and proprietary and confidential information of Intel or its
-# suppliers and licensors.  The Material is protected by worldwide copyright
-# and trade secret laws and treaty provisions.  No part of the Material may
-# be used, copied, reproduced, modified, published, uploaded, posted,
-# transmitted, distributed, or disclosed in any way without Intel's prior
-# express written permission.
-#
-# No license under any patent, copyright, trade secret or other intellectual
-# property right is granted to or conferred upon you by disclosure or
-# delivery of the Materials, either expressly, by implication, inducement,
-# estoppel or otherwise.  Any license under such intellectual property rights
-# must be express and approved by Intel in writing.
-#############################################################################
-#  Author:    Victor Umansky
-#
-#  User-specific makefile:
-#
-#  Notes:
-#
-#  1. This makefile automatically builds executable targets upon
-#     C/C++ files declared in $SOURCE variable. Source files reside
-#     in directories declared in $SOURCE_DIR variable.
-#
-#  2. This makefile should be customized for specific component or
-#     subsystem (or entire system) by means of the following
-#     variables: IMAGE_DBG, IMAGE_REL, LIB_DBG, LIB_REL, INCLUDE_DIR,
-#     CFLAGS_DBG, CFLAGS_REL, LDFLAGS, LD_LIBDIR, LD_LIBS, MAIN_SRC.
-#     Detailed description - see below in the code.
-#
-#  3. In addition, it is possible to build temporary targets for testing
-#     in debug mode. Up to 5 alternative configurations are available.
-#     In order to define a configuration, define IMAGE_DBG<num>
-#     and list of configuration-specific source files (including
-#     that with "main" function) in TEST_SRC<num>.
-#
-#  4. Every instance of this makefile may also invoke other makefiles
-#     as a prerequisite. The list and order of these files may be specified
-#     in OTHER_MAKEFILES variable, those of them which tools and options
-#     must be overriden, should appear also in OVERRIDE_OPTIONS list. In
-#     addition, a user may specify list of tools which must be enforced
-#     in these files.
-#
-#  5. Optional customization:
-#
-#     DBGCONF=file with macro config for debug mode (default dbgConf.macros)
-#     RELCONF=file with macro config for release mode (default relConf.macros)
-#
-#     PRECOND=csh script which checks pre-condition for Makefile invocation.
-#     By default, no precondition check at all.
-#
-#  6. IMPORTANT: There are assumptions that makefile's name is "Makefile"
-#                and template makefile resides in the same directory.
-#                Otherwise set THIS_MAKEFILE and PROJS variables to proper
-#                values.
-#
-#
 
-#----------------------------------------------------------------------------
-#          P R O J E C T   S O U R C E   B A S E
-#----------------------------------------------------------------------------
-# SOURCE      = Put here list of all project source files less MAIN_SRC
-#               (file names only)
-#
-# MAIN_SRC    = name of source file(s) with main function and accompanying
-#               stuff
-#
-# SOURCE_DIR  = Put here list of all directories where reside files
-#               .c, .cpp, and .cxx. Use $(ROOT) variable as a root
-#               of a directory path.
-#----------------------------------------------------------------------------
-SOURCE     = x32_init64.c                                                      \
-			 ap_procs_init.c                                                   \
-			 ia32_low_level.c                                                  \
-			 common_libc.c
-
-ifeq ($(TARGET_MACHINE_TYPE),x86)
-	HW_DIR 	= ia32
-	HW_COMMON_LIBC_DIR = ../common/libc/$(HW_DIR)
-	ASM_SRC = $(HW_COMMON_LIBC_DIR)/ia32_mem.asm
+ifndef CPProgramDirectory
+E=		/home/jlm/jlmcrypt
 else
-	HW_DIR 	= em64t
-	HW_COMMON_LIBC_DIR = ../common/libc/$(HW_DIR)
-	ASM_SRC = $(HW_COMMON_LIBC_DIR)/em64t_mem.asm
+E=      	$(CPProgramDirectory)
+endif
+ifndef VMSourceDirectory
+S=		/home/jlm/fpDev/fileProxy/cpvmm
+else
+S=      	$(VMSourceDirectory)
+endif
+ifndef TARGET_MACHINE_TYPE
+TARGET_MACHINE_TYPE= x64
 endif
 
-MAIN_SRC   = startap.c
-ROOT       = $(PROJS)/startap
+B=		$(E)/vmmobjects
+BINARYDIR=	$(B)/startap
+INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/include/arch
+HW_DIR = 	em64t
+HW_COMMON_LIBC_DIR = $(S)/common/libc/$(HW_DIR)
+ASM_SRC = 	$(HW_COMMON_LIBC_DIR)/em64t_mem.asm
+DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
+RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS=     	-D TIXML_USE_STL $(RELEASE_CFLAGS) 
+LDFLAGS= 	/ENTRY:startap_main
 
-EXTERN_DIR =
-SOURCE_DIR = . ../common/libc $(HW_COMMON_LIBC_DIR)
+COMMONSRC=	$(S)/common
+STARTAPSRC=	$(S)/startap
 
-#-----------------------------------------------------------------
-#   MACROS    User MUST define these definitions
-#             (or intentionally leave some of them undefined)
-#-----------------------------------------------------------------
-# Destinations: images
-# IMAGE_DBG = full path name of executable with debug information
-# IMAGE_REL = full path name of executable w/o debug information
-#
-# Destinations: object libraries
-# LIB_DBG = full path name of object library with debug information
-# LIB_REL = full path name of object library w/o debug information
-#
-# Vars
-# INCLUDE_DIR   = list of include directories
-# CFLAGS_DBG    = component-specific compilation flags for debug mode
-# CFLAGS_REL    = component-specific compilation flags for release mode
-# LDFLAGS       = component-specific linker flags
-# LD_LIBDIR     = list of library dirs for linker (if the SAME for debug and release)
-# LD_LIBDIR_DBG = list of DEBUG library dirs for linker
-# LD_LIBDIR_REL = list of RELEASE library dirs for linker
-# LD_LIBS       = libraries for linker in format [-l]<lib>... (if the SAME for debug and release)
-# LD_LIBS_DBG   = DEBUG libraries for linker in format [-l]<lib>...
-# LD_LIBS_REL   = RELEASE libraries for linker in format [-l]<lib>...
-#
-# Object directories
-# DEBUG   = intermediate directory for object and dependency files (debug mode)
-# RELEASE = intermediate directory for object and dependency files (release mode)
-#-----------------------------------------------------------------
-IMAGE		  = startap.efi
-TARGET_IMAGE  = startap.bin
-LIBS		  =
+IMAGE= 		startap.efi
 
-INCLUDE_DIR   = ./                                                             \
-				../common/include                                              \
-				../vmm/include           
-CFLAGS_DBG    = -D$(UNIPROC)
-CFLAGS_REL    = -D$(UNIPROC)
-LDFLAGS       = /ENTRY:startap_main
-LD_LIBDIR     =
-LD_LIBDIR_DBG =
-LD_LIBDIR_REL =
-LD_LIBS       =
+CC=         gcc
+LINK=       gcc
 
-LD_EXTERN_LIBS_DBG =
-LD_EXTERN_LIBS_REL =
+dobjs=      $(BINARYDIR)/x32_init64.o $(BINARYDIR)/ap_procs_init.o \
+	    $(BINARYDIR)/ia32_low_level.o $(BINARYDIR)/common_libc.o
 
-#--------------------------------------------------------------
-#   C O N F I G U R A T I O N   M A N A G E M E N T
-#--------------------------------------------------------------
+all: $(E)/startap.bin
+ 
+$(E)/startap.bin: $(dobjs)
+	@echo "startap"
+	$(LINK) -o $(E)/startap.exe $(dobjs)
 
-# Other makefiles to be processed before this one
-OTHER_MAKEFILES  =
+#ap_procs_init.c ia32_low_level.c common_libc.c
 
+$(BINARYDIR)/x32_init64.o: $(STARTAPSRC)/x32_init64.c $(S)/common/include/vmm_defs.h \
+		$(S)/common/include/arch/ia32_low_level.h $(S)/startap/x32_init64.h
+	echo "x32_init64.c" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINARYDIR)/x32_init64.o $(STARTAPSRC)/x32_init64.c
 
-# Force the same tools and options on following sub-makes
-OVERRIDE_OPTIONS =
-# Tools to be enforced on these sub-makes
-ENFORCE_TOOLS    = AR CC LD
+$(BINARYDIR)/ap_procs_init.o: $(STARTAPSRC)/ap_procs_init.c $(S)/common/include/vmm_defs.h \
+		$(S)/common/include/arch/ia32_low_level.h $(S)/startap/ap_procs_init.h
+	echo "ap_procs_init.c" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINARYDIR)/ap_procs_init.o $(STARTAPSRC)/ap_procs_init.c
 
-# Project-wide configuration macros
+$(BINARYDIR)/ia32_low_level.o: $(STARTAPSRC)/ia32_low_level.c $(S)/common/include/vmm_defs.h \
+		$(S)/common/include/arch/ia32_low_level.h $(S)/startap/ia32_low_level.h
+	echo "ia32_low_level.c" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINARYDIR)/ia32_low_level.o $(STARTAPSRC)/ia32_low_level.c
 
-# Pre-condition csh script name
-# Spec for pre-condition csh script:
-#  - if error it should print error message to stdout,
-#  - if pre-conditions are met, it should print OK.
-PRECOND =
-
-# Delivery csh script name
-DELIVER =
-
-debug :
-	if ! [ -e $(PROJS)/bin/ms/debug ]; then \mkdir -p $(PROJS)/bin/ms/debug; fi
-	cp $(ROOT)/build/ms/x86/debug/$(IMAGE) $(PROJS)/bin/ms/debug/$(TARGET_IMAGE)
-
-release :
-	@if ! [ -e $(PROJS)/bin/ms/release ]; then \mkdir -p $(PROJS)/bin/ms/release; fi
-	cp $(ROOT)/build/ms/x86/release/$(IMAGE) $(PROJS)/bin/ms/release/$(TARGET_IMAGE)
-
-# This makefile name (must be set to actual name if it is not "Makefile")
-THIS_MAKEFILE = startap.mak
-
-#-------------------------------------------------------------------
-# include makefile template (PROJS variable should be set correctly)
-#
-#--------------------------------------------------------------------
-ifdef PROJS
-INCLUDED_MAKEFILES=$(PROJS)/tools/tools32.mak $(PROJS)/tools/rules.mak
-include $(INCLUDED_MAKEFILES)
-else
-$(warning Please define the PROJS environment variable)
-$(warning e.g., set PROJS=c:/work)
-$(error The PROJS enivornment variable is undefined)
-endif
-
-
+$(BINARYDIR)/common_libc.o: $(STARTAPSRC)/common_libc.c $(S)/common/include/vmm_defs.h \
+		$(S)/common/include/arch/ia32_low_level.h $(S)/startap/common_libc.h
+	echo "common_libc.c" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINARYDIR)/common_libc.o $(STARTAPSRC)/common_libc.c
 

@@ -1,0 +1,111 @@
+/****************************************************************************
+* Copyright (c) 2013 Intel Corporation
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+****************************************************************************/
+
+/****************************************************************************
+* INTEL CONFIDENTIAL
+* Copyright 2001-2013 Intel Corporation All Rights Reserved.
+*
+* The source code contained or described herein and all documents related to
+* the source code ("Material") are owned by Intel Corporation or its
+* suppliers or licensors.  Title to the Material remains with Intel
+* Corporation or its suppliers and licensors.  The Material contains trade
+* secrets and proprietary and confidential information of Intel or its
+* suppliers and licensors.  The Material is protected by worldwide copyright
+* and trade secret laws and treaty provisions.  No part of the Material may
+* be used, copied, reproduced, modified, published, uploaded, posted,
+* transmitted, distributed, or disclosed in any way without Intel's prior
+* express written permission.
+*
+* No license under any patent, copyright, trade secret or other intellectual
+* property right is granted to or conferred upon you by disclosure or
+* delivery of the Materials, either expressly, by implication, inducement,
+* estoppel or otherwise.  Any license under such intellectual property rights
+* must be express and approved by Intel in writing.
+****************************************************************************/
+
+#ifndef _AP_PROCS_INIT_H_
+#define _AP_PROCS_INIT_H_
+
+/*
+    Perform application processors init
+*/
+
+#include "vmm_defs.h"
+#include "vmm_startup.h"
+
+extern unsigned __int64 __rdtsc(void);
+
+// typedefs
+typedef void *  (CDECL *FUNC_4K_PAGE_ALLOC)( UINT32 page_count );
+
+//------------------------------------------------------------------------------
+// this is a callback that should be used to continue AP bootstrap
+// this function MUST not return or return in the protected 32 mode.
+// If it returns APs enter wait state once more.
+//
+// parameters:
+//   Local Apic ID of the current processor (processor ID)
+//   Any data to be passed to the function
+//
+//------------------------------------------------------------------------------
+typedef void  (CDECL *FUNC_CONTINUE_AP_BOOT)( UINT32 local_apic_id,
+                                                     void*  any_data );
+
+
+//----------------------------------------------------------------------------
+// Start all APs in pre-os launch and only active APs in post-os launch and bring them to protected non-paged mode.
+//
+// Processors are left in the state were they wait for continuation signal
+//
+// Input:
+//    p_init32_data - contains pointer to the free low memory page to be used
+//                                 for bootstap. After the return this memory is free
+//
+//    p_startup - contains local apic ids of active cpus to be used in post-os launch
+//
+//  Return:
+//    number of processors that were init (not including BSP)
+//    or -1 on errors
+//
+//----------------------------------------------------------------------------
+UINT32 ap_procs_startup(
+	struct _INIT32_STRUCT *p_init32_data, 
+	VMM_STARTUP_STRUCT  *p_startup
+    );
+
+
+//----------------------------------------------------------------------------
+// Run user specified function on all APs.
+// If user function returns it should return in the protected 32bit mode. In this
+// case APs enter the wait state once more.
+//
+// Input:
+//  continue_ap_boot_func       - user given function to continue AP boot
+//
+//  any_data                    - data to be passed to the function
+//
+//  Return:
+//    void or never returns - depending on continue_ap_boot_func
+//
+//----------------------------------------------------------------------------
+void ap_procs_run(
+    FUNC_CONTINUE_AP_BOOT   continue_ap_boot_func,
+    void*                   any_data
+    );
+
+
+#endif // _AP_PROCS_INIT_H_
+

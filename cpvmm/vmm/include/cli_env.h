@@ -1,0 +1,112 @@
+/****************************************************************************
+* Copyright (c) 2013 Intel Corporation
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+****************************************************************************/
+
+/****************************************************************************
+* INTEL CONFIDENTIAL
+* Copyright 2001-2013 Intel Corporation All Rights Reserved.
+*
+* The source code contained or described herein and all documents related to
+* the source code ("Material") are owned by Intel Corporation or its
+* suppliers or licensors.  Title to the Material remains with Intel
+* Corporation or its suppliers and licensors.  The Material contains trade
+* secrets and proprietary and confidential information of Intel or its
+* suppliers and licensors.  The Material is protected by worldwide copyright
+* and trade secret laws and treaty provisions.  No part of the Material may
+* be used, copied, reproduced, modified, published, uploaded, posted,
+* transmitted, distributed, or disclosed in any way without Intel's prior
+* express written permission.
+*
+* No license under any patent, copyright, trade secret or other intellectual
+* property right is granted to or conferred upon you by disclosure or
+* delivery of the Materials, either expressly, by implication, inducement,
+* estoppel or otherwise.  Any license under such intellectual property rights
+* must be express and approved by Intel in writing.
+****************************************************************************/
+
+#ifndef _CLI_ENV_H_
+#define _CLI_ENV_H_
+
+#ifdef CLI_INCLUDE
+#define CLI_CODE(__xxx) __xxx
+#else
+#define CLI_CODE(__xxx)
+#endif
+
+#include "vmm_defs.h"
+#include "cli_libc.h"
+#include "memory_allocator.h"
+#include "lock.h"
+#include "hw_utils.h"
+#include "vt100.h"
+
+#define STRING_PRINT_FORMAT                         "s"
+#define CLI_MEMFREE(__buffer)
+#define CLI_MEMALLOC(__bytes)                       vmm_malloc(__bytes)
+
+#define CLI_READ_CHAR   vt100_getch
+#define CLI_PRINT_CHAR  vt100_putch
+#define CLI_FLUSH_INPUT vt100_flush_input
+
+
+#define CLI_PRINT(...)                              VMM_LOG(mask_cli, level_print_always, __VA_ARGS__)
+#define CLI_STRLEN(__string)                        vmm_strlen(__string)
+#define CLI_STRCMP(__string1, __string2)            CLI_strcmp(__string1, __string2)
+#define CLI_STRNCMP(__string1, __string2, __n)      CLI_strncmp(__string1, __string2, __n)
+#define CLI_MEMSET(__buffer, __filler, __size)      vmm_memset(__buffer, __filler, __size)
+#define CLI_MEMCPY(__dst, __src, __size)            vmm_memcpy(__dst, __src, __size)
+
+#define CLI_ATOL(__string)                                                     \
+    ((__string[0] == '0' && (__string[1] == 'x' || __string[1] == 'X')) ?      \
+    CLI_atol32(__string + 2, 16, NULL) :                                       \
+    CLI_atol32(__string, 10, NULL))
+
+#define CLI_ATOL64(__string)                                                   \
+    ((__string[0] == '0' && (__string[1] == 'x' || __string[1] == 'X')) ?      \
+    CLI_atol64(__string + 2, 16, NULL) :                                       \
+    CLI_atol64(__string, 10, NULL))
+#define CLI_GET_CPU_ID()                            hw_cpu_id()
+#define CLI_IS_SUBSTR(__bigstring, __smallstring)   CLI_is_substr(__bigstring, __smallstring)
+
+
+typedef enum  {
+    LED_KEY_CR      = VT100_KEY_CR,
+    LED_KEY_LN      = VT100_KEY_LN,
+    LED_KEY_ABORT   = VT100_KEY_ABORT,
+    LED_KEY_UP      = VT100_KEY_UP,
+    LED_KEY_DOWN    = VT100_KEY_DOWN,
+    LED_KEY_LEFT    = VT100_KEY_LEFT,
+    LED_KEY_RIGHT   = VT100_KEY_RIGHT,
+    LED_KEY_HOME    = VT100_KEY_HOME,
+    LED_KEY_END     = VT100_KEY_END,
+    LED_KEY_DELETE  = VT100_KEY_DELETE,
+    LED_KEY_RUBOUT  = VT100_KEY_RUBOUT,
+    LED_KEY_INSERT  = VT100_KEY_INSERT
+} CTRL_KEY;
+
+
+
+// locks
+#define CLI_LOCK                                    VMM_LOCK
+#define CLI_LOCK_INIT                               lock_initialize
+#define CLI_LOCK_ACQUIRE                            interruptible_lock_acquire
+#define CLI_LOCK_RELEASE                            lock_release
+
+
+// Note, CLI_ACCESS_LEVELs must be powers of 2
+#define CLI_ACCESS_LEVEL_SYSTEM     0x00000001
+#define CLI_ACCESS_LEVEL_USER       0x00000002
+
+#endif // _CLI_ENV_H_

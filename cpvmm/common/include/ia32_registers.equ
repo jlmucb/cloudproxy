@@ -1,0 +1,203 @@
+;       page    60,132
+;       TITLE   Equates, Structures, etc. used in uVMM Loader
+;****************************************************************************
+; Copyright (c) 2013 Intel Corporation
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+;***************************************************************************/
+
+;****************************************************************************
+; INTEL CONFIDENTIAL
+; Copyright 2001-2013 Intel Corporation All Rights Reserved.
+;
+; The source code contained or described herein and all documents related to
+; the source code ("Material") are owned by Intel Corporation or its
+; suppliers or licensors.  Title to the Material remains with Intel
+; Corporation or its suppliers and licensors.  The Material contains trade
+; secrets and proprietary and confidential information of Intel or its
+; suppliers and licensors.  The Material is protected by worldwide copyright
+; and trade secret laws and treaty provisions.  No part of the Material may
+; be used, copied, reproduced, modified, published, uploaded, posted,
+; transmitted, distributed, or disclosed in any way without Intel's prior
+; express written permission.
+;
+; No license under any patent, copyright, trade secret or other intellectual
+; property right is granted to or conferred upon you by disclosure or
+; delivery of the Materials, either expressly, by implication, inducement,
+; estoppel or otherwise.  Any license under such intellectual property rights
+; must be express and approved by Intel in writing.
+;***************************************************************************/
+;
+; $Header:  $
+; $Log:  $
+; 
+; 
+;****************************************************************************
+UINT8   typedef byte
+UINT16  typedef word
+UINT32  typedef dword
+UINT48  typedef fword
+UINT64  typedef qword
+
+UINT128 struc
+    low_part    UINT64  00h
+    high_part   UINT64  00h
+UINT128 ends    
+
+; copy of VMM_SEGMENT_STRUCT struct
+VMM_SEGMENT_STRUCT  struc
+    base        UINT64  00h
+    limit       UINT32  00h
+    attributes  UINT32  00h
+    selector    UINT16  00h  
+    reserved    UINT48  00h
+VMM_SEGMENT_STRUCT  ends
+
+; copy of VMM_IA32_GDT_REGISTER struct
+VMM_IA32_GDT_REGISTER   struc
+    base        UINT64  00h
+    limit       UINT32  00h
+VMM_IA32_GDT_REGISTER   ends
+
+VMM_IA32_IDT_REGISTER typedef VMM_IA32_GDT_REGISTER 
+
+
+GP_REG      typedef UINT64
+XMM_REG     typedef UINT128
+CONTROL_REG typedef UINT64
+
+; copy of VMM_IA32_GP_REGISTERS enum
+IA32_REG_RAX        equ     0  * size GP_REG
+IA32_REG_RBX        equ     1  * size GP_REG
+IA32_REG_RCX        equ     2  * size GP_REG
+IA32_REG_RDX        equ     3  * size GP_REG
+IA32_REG_RDI        equ     4  * size GP_REG
+IA32_REG_RSI        equ     5  * size GP_REG
+IA32_REG_RBP        equ     6  * size GP_REG
+IA32_REG_RSP        equ     7  * size GP_REG
+IA32_REG_R8         equ     8  * size GP_REG
+IA32_REG_R9         equ     9  * size GP_REG
+IA32_REG_R10        equ     10 * size GP_REG
+IA32_REG_R11        equ     11 * size GP_REG
+IA32_REG_R12        equ     12 * size GP_REG
+IA32_REG_R13        equ     13 * size GP_REG
+IA32_REG_R14        equ     14 * size GP_REG
+IA32_REG_R15        equ     15 * size GP_REG
+IA32_REG_RIP        equ     16 * size GP_REG
+IA32_REG_RFLAGS     equ     17 * size GP_REG
+IA32_REG_GP_COUNT   equ     18
+
+
+; copy of VMM_IA32_XMM_REGISTERS enum
+IA32_REG_XMM0       equ     0  * size XMM_REG
+IA32_REG_XMM1       equ     1  * size XMM_REG
+IA32_REG_XMM2       equ     2  * size XMM_REG
+IA32_REG_XMM3       equ     3  * size XMM_REG
+IA32_REG_XMM4       equ     4  * size XMM_REG
+IA32_REG_XMM5       equ     5  * size XMM_REG
+IA32_REG_XMM6       equ     6  * size XMM_REG
+IA32_REG_XMM7       equ     7  * size XMM_REG
+IA32_REG_XMM8       equ     8  * size XMM_REG
+IA32_REG_XMM9       equ     9  * size XMM_REG
+IA32_REG_XMM10      equ     10 * size XMM_REG
+IA32_REG_XMM11      equ     11 * size XMM_REG
+IA32_REG_XMM12      equ     12 * size XMM_REG
+IA32_REG_XMM13      equ     13 * size XMM_REG
+IA32_REG_XMM14      equ     14 * size XMM_REG
+IA32_REG_XMM15      equ     15 * size XMM_REG
+IA32_REG_XMM_COUNT  equ     16
+
+
+; copy of VMM_IA32_CONTROL_REGISTERS enum
+IA32_CTRL_CR0       equ     0 * size CONTROL_REG   
+IA32_CTRL_CR2       equ     1 * size CONTROL_REG   
+IA32_CTRL_CR3       equ     2 * size CONTROL_REG      
+IA32_CTRL_CR4       equ     3 * size CONTROL_REG      
+IA32_CTRL_CR8       equ     4 * size CONTROL_REG      
+IA32_CTRL_COUNT     equ     5
+
+
+; copy of VMM_IA32_SEGMENT_REGISTERS enum
+IA32_SEG_CS         equ     0 * size VMM_SEGMENT_STRUCT            
+IA32_SEG_DS         equ     1 * size VMM_SEGMENT_STRUCT   
+IA32_SEG_SS         equ     2 * size VMM_SEGMENT_STRUCT   
+IA32_SEG_ES         equ     3 * size VMM_SEGMENT_STRUCT   
+IA32_SEG_FS         equ     4 * size VMM_SEGMENT_STRUCT   
+IA32_SEG_GS         equ     5 * size VMM_SEGMENT_STRUCT                  
+IA32_SEG_LDTR       equ     6 * size VMM_SEGMENT_STRUCT
+IA32_SEG_TR         equ     7 * size VMM_SEGMENT_STRUCT
+IA32_SEG_COUNT      equ     8
+
+; copy of VMM_GP_REGISTERS struct
+VMM_GP_REGISTERS struc
+    reg    GP_REG IA32_REG_GP_COUNT DUP (00h)
+VMM_GP_REGISTERS ends
+
+; copy of VMM_GP_REGISTERS struct
+VMM_XMM_REGISTERS struc
+    reg    XMM_REG IA32_REG_XMM_COUNT DUP ({})
+VMM_XMM_REGISTERS ends
+
+; copy of VMM_IA32_CONTROL_REGISTERS struct
+VMM_IA32_CONTROL_REGISTERS  struc
+    reg     CONTROL_REG IA32_CTRL_COUNT dup (00h)      
+VMM_IA32_CONTROL_REGISTERS  ends
+
+; copy of VMM_SEGMENTS struct
+VMM_SEGMENTS    struc
+    reg     VMM_SEGMENT_STRUCT  IA32_SEG_COUNT dup ({})
+VMM_SEGMENTS    ends
+
+; copy of VMM_CONTROL_REGISTERS struct
+VMM_CONTROL_REGISTERS   struc
+    cr          VMM_IA32_CONTROL_REGISTERS  {}
+    gdtr        VMM_IA32_GDT_REGISTER       {00h}
+    reserved_1  UINT32                      00h
+    idtr        VMM_IA32_IDT_REGISTER       {00h}
+    reserved_2  UINT32                      00h
+VMM_CONTROL_REGISTERS   ends
+
+; copy of VMM_MODEL_SPECIFIC_REGISTERS struct
+VMM_MODEL_SPECIFIC_REGISTERS    struc
+    msr_debugctl            UINT64 00h;
+    msr_efer                UINT64 00h;
+    msr_pat                 UINT64 00h;
+                            
+    msr_sysenter_esp        UINT64 00h;
+    msr_sysenter_eip        UINT64 00h;
+                            
+    pending_exceptions      UINT64 00h;
+                            
+    msr_sysenter_cs         UINT32 00h;
+                            
+    interruptibility_state  UINT32 00h;
+    activity_state          UINT32 00h;
+    smbase                  UINT32 00h;
+VMM_MODEL_SPECIFIC_REGISTERS    ends
+
+; copy of VMM_GUEST_CPU_STARTUP_STATE struct, must update when the C
+; definition is updated!
+
+VMM_GUEST_CPU_STARTUP_STATE_VERSION equ 1
+
+VMM_GUEST_CPU_STARTUP_STATE struc
+    size_of_this_struct     UINT16                          00h   
+    version_of_this_struct  UINT16                          00h   
+    reserved_1              UINT32                          00h   
+    gp_regs                 VMM_GP_REGISTERS                {}  
+    xmm_regs                VMM_XMM_REGISTERS               {}  
+    segment_regs            VMM_SEGMENTS                    {}  
+    control_regs            VMM_CONTROL_REGISTERS           {}
+    msr                     VMM_MODEL_SPECIFIC_REGISTERS    {}
+VMM_GUEST_CPU_STARTUP_STATE ends
+

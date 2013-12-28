@@ -31,71 +31,83 @@
 
 
 // void __cdecl start_64bit_mode(
-void __attribute__((cdecl)) start_64bit_mode(
-    UINT32 address,
-    UINT32 segment, // MUST BE 32-bit wide, because it delivered to 64-bit code using 32-bit push/retf commands
-    UINT32 * arg1,
-    UINT32 * arg2,
-    UINT32 * arg3,
-    UINT32 * arg4)
+//      address MUST BE 32-bit wide, because it delivered to 64-bit code 
+//      using 32-bit push/retf commands
+//      __attribute__((cdecl)) 
+void start_64bit_mode(UINT32 address, UINT32 segment, UINT32* arg1, 
+                        UINT32* arg2, UINT32* arg3, UINT32* arg4)
 {
-    __asm
-    {
-        ;; prepare arguments for 64-bit mode
-        ;; there are 3 arguments
-        ;; align stack and push them on 8-byte alignment
-        xor eax, eax
-        and esp, ~7
-        push eax
-        push arg4
-        push eax
-        push arg3
-        push eax
-        push arg2
-        push eax
-        push arg1
+#if 0
+    asm volatile (
+        // prepare arguments for 64-bit mode
+        // there are 3 arguments
+        // align stack and push them on 8-byte alignment
+        "\txor      %%eax, %%eax\n"\
+        "\tand      $7, %%esp\n"\
+        "\tpush     %%eax\n"\
+        "\tpush     %[arg4]\n"\
+        "\tpush     %%eax\n"\
+        "\tpush     %[arg3]\n"\
+        "\tpush     %%eax\n"\
+        "\tpush     %[arg2]\n"\
+        "\tpush     %%eax\n"\
+        "\tpush     %[arg1]\n"\
 
-        cli
+        "\tcli\n"\
+        // push segment and offset
+        "\tpush   %[segment]\n"\
 
-        push   segment    ;; push segment and offset
-        push   START64    ;; for following retf
-        mov ebx, address
+        // for following retf
+        "\tpush  START64\n"\
+        "\tmov   %[address], %%ebx\n"\
 
         // initialize CR3 with PML4 base
         // mov   eax, [esp+4]
         // mov   cr3, eax
-        ;; enable 64-bit mode
-        mov ecx, 0C0000080h     ; EFER MSR register
-        rdmsr                   ; read EFER into EAX
-        bts eax, 8                ; set EFER.LME=1
-        wrmsr                   ; write EFER
-        ;; enable paging CR0.PG=1
-        mov eax, cr0
+        // enable 64-bit mode
+        // EFER MSR register
+        "\tmov      0x0C0000080, %%ecx\n"\
+        // read EFER into EAX
+        "\trdmsr\n"\
+        // set EFER.LME=1
+        "\tbts     $8, %%eax\n"\
+        // write EFER
+        "\twrmsr\n"
 
-        bts eax, 31                ; set PG=1
-        mov cr0, eax
+        // enable paging CR0.PG=1
+        "\tmov     cr0, %%eax\n"\
+        "\tbts     $31, %%eax\n"\
+        "\tmov     %%eax, cr0\n"\
 
-        ;; at this point we are in 32-bit compatibility mode
-        ;; LMA=1, CS.L=0, CS.D=1
-        ;; jump from 32bit compatibility mode into 64bit mode.
+        // at this point we are in 32-bit compatibility mode
+        // LMA=1, CS.L=0, CS.D=1
+        // jump from 32bit compatibility mode into 64bit mode.
+        "\tret\n"\
+"START64:\n"\
+        // in 64bit this is actually pop rcx
+        "\tpop    %%ecx\n"\
+        // in 64bit this is actually pop rdx
+        "\tpop    %%edx\n"\
 
-        retf
-START64:
-        pop    ecx              ;; in 64bit this is actually pop rcx
-        pop    edx              ;; in 64bit this is actually pop rdx
+        "\t_emit  0x41\n"\
+        // pop r8
+        "\t_emit  0x58\n"\
+        "\t_emit  0x41\n"\
+        // pop r9
+        "\t_emit  0x59\n"\
+        // in 64bit this is actually
+        "\t_emit 0x48\n"\
 
-        _emit  0x41
-        _emit  0x58             ;; pop r8
+        // sub  rsp, 0x18
+        "\tsub    0x18, %%esp\n"\
+        // in 64bit this is actually
+        "\tcall   %%ebx\n"
 
-        _emit  0x41
-        _emit  0x59             ;; pop r9
-
-        _emit 0x48              ;; in 64bit this is actually
-        sub    esp,0x18         ;;   sub  rsp, 0x18
-
-        call   ebx              ;; in 64bit this is actually
-                                ;;    call rbx
-    }
+        : // [carryout] "=m"(uCarryOut)
+        : [arg1] "m" (arg1), [arg2] "m" (arg2), [arg3] "m" (arg3), [arg4] "m" (arg4), 
+          [address] "m" (address), [segment] "m" (segment)
+        : "%eax", "%ebx", "%ecx", "%edx");
+#endif
 }
 
 

@@ -39,8 +39,8 @@ typedef void *  (CDECL *FUNC_4K_PAGE_ALLOC)( UINT32 page_count );
 //   Any data to be passed to the function
 //
 //------------------------------------------------------------------------------
-typedef void  (CDECL *FUNC_CONTINUE_AP_BOOT)( UINT32 local_apic_id,
-                                                     void*  any_data );
+typedef void  (CDECL *FUNC_CONTINUE_AP_BOOT)(UINT32 local_apic_id,
+                                             void*  any_data);
 
 
 //----------------------------------------------------------------------------
@@ -51,18 +51,16 @@ typedef void  (CDECL *FUNC_CONTINUE_AP_BOOT)( UINT32 local_apic_id,
 // Input:
 //    p_init32_data - contains pointer to the free low memory page to be used
 //                                 for bootstap. After the return this memory is free
-//
 //    p_startup - contains local apic ids of active cpus to be used in post-os launch
 //
 //  Return:
 //    number of processors that were init (not including BSP)
 //    or -1 on errors
 //
-//----------------------------------------------------------------------------
-UINT32 ap_procs_startup(
-	struct _INIT32_STRUCT *p_init32_data, 
-	VMM_STARTUP_STRUCT  *p_startup
-    );
+struct _INIT32_STRUCT           *p_init32_data; 
+struct VMM_STARTUP_STRUCT       *p_startup;
+UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, 
+			struct VMM_STARTUP_STRUCT  *p_startup);
 
 
 //----------------------------------------------------------------------------
@@ -72,7 +70,6 @@ UINT32 ap_procs_startup(
 //
 // Input:
 //  continue_ap_boot_func       - user given function to continue AP boot
-//
 //  any_data                    - data to be passed to the function
 //
 //  Return:

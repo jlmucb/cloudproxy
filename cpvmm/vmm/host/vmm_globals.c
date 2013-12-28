@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_globals.h"
 #include "vmm_version_struct.h"
@@ -24,11 +24,9 @@
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_GLOBALS_C, __condition)
 
 
-//*****************************************************************************
 //
 // Just instaniation of global variables
 //
-//*****************************************************************************
 
 VMM_STATE g_vmm_state = VMM_STATE_UNINITIALIZED;
 
@@ -49,13 +47,9 @@ void vmm_version_print( void )
     UINT32 header_len, trailer_len;
     UINT32 cur;
 
-    //
     // Version string is surrounded with VMM_VERSION_START and VMM_VERSION_END
     // VMM_VERSION_END must be followed with NULL
-    //
-
-    if (NULL == g_vmm_version_string)
-    {
+    if (NULL == g_vmm_version_string) {
         return;
     }
 
@@ -67,26 +61,21 @@ void vmm_version_print( void )
 
     global_string_length = (UINT32)vmm_strlen(g_vmm_version_string);
 
-    if (global_string_length <= (header_len + trailer_len))
-    {
+    if (global_string_length <= (header_len + trailer_len)) {
         // nothing between header and trailer
         return;
     }
 
     // check that header and trailer match
-    for (cur = 0; cur < header_len; ++cur)
-    {
-        if (g_vmm_version_string[cur] != VMM_VERSION_START[cur])
-        {
+    for (cur = 0; cur < header_len; ++cur) {
+        if (g_vmm_version_string[cur] != VMM_VERSION_START[cur]) {
             // header does not match
             return;
         }
     }
 
-    for (cur = 0; cur < trailer_len; ++cur)
-    {
-        if (g_vmm_version_string[global_string_length-trailer_len+cur] != VMM_VERSION_END[cur])
-        {
+    for (cur = 0; cur < trailer_len; ++cur) {
+        if (g_vmm_version_string[global_string_length-trailer_len+cur] != VMM_VERSION_END[cur]) {
             // trailer does not match
             return;
         }

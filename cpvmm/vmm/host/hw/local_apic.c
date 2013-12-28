@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "local_apic.h"
 #include "em64t_defs.h"
@@ -29,9 +29,9 @@
 
 #define STRINGIFY(x)     #x
 
-/*******************************************************************************
-*                       Local Macros and Types
-*******************************************************************************/
+/*
+ *                       Local Macros and Types
+ */
 typedef struct _LOCAL_APIC_PER_CPU_DATA {
     ADDRESS                 lapic_base_address_hpa;
     ADDRESS                 lapic_base_address_hva;
@@ -80,9 +80,9 @@ typedef struct _LOCAL_APIC_REGISTER {
 #define GET_OTHER_LAPIC(__cpu_id)  (lapic_cpu_data + (__cpu_id))
 #define GET_CPU_LAPIC()         GET_OTHER_LAPIC(hw_cpu_id())
 
-/*******************************************************************************
-*               Forward Declarations for Local Functions
-*******************************************************************************/
+/*
+ *               Forward Declarations for Local Functions
+ */
 #ifdef INCLUDE_UNUSED_CODE
 static void lapic_mode_disable(void);
 static void lapic_mode_enable_from_disabled(void);
@@ -110,9 +110,9 @@ local_apic_ipi_verify_params(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
 
 #ifdef INCLUDE_UNUSED_CODE
 
-/*******************************************************************************
-*                       Local Variables
-*******************************************************************************/
+/*
+ *                       Local Variables
+ */
 static const LOCAL_APIC_REGISTER lapic_registers[] =
 {
     { 0x00, NO_ACCESS, MODE_NO,   0, NULL },
@@ -191,15 +191,12 @@ void (*lapic_mode_switch_transitions[3][3])(void) =
 #endif
 
 
-/*******************************************************************************
-*                       Code
-*******************************************************************************/
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : local_apic_is_x2apic_supported()
-*  PURPOSE  : Checks if x2APIC mode is supported by CPU
-*  ARGUMENTS: void
-*  RETURNS  : TRUE if supported, FALSE otherwise
-*-----------------------------------------------------------------------------*/
+/*
+ *  FUNCTION : local_apic_is_x2apic_supported()
+ *  PURPOSE  : Checks if x2APIC mode is supported by CPU
+ *  ARGUMENTS: void
+ *  RETURNS  : TRUE if supported, FALSE otherwise
+ */
 BOOLEAN local_apic_is_x2apic_supported(void)
 {
     CPUID_PARAMS    cpuid_params;
@@ -208,12 +205,12 @@ BOOLEAN local_apic_is_x2apic_supported(void)
     return BIT_GET64(cpuid_params.m_rcx, CPUID_X2APIC_SUPPORTED_BIT) != 0;
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : local_apic_discover_mode()
-*  PURPOSE  : Checks Local APIC current mode
-*  ARGUMENTS: void
-*  RETURNS  : LOCAL_APIC_MODE mode discovered
-*-----------------------------------------------------------------------------*/
+/*
+ *  FUNCTION : local_apic_discover_mode()
+ *  PURPOSE  : Checks Local APIC current mode
+ *  ARGUMENTS: void
+ *  RETURNS  : LOCAL_APIC_MODE mode discovered
+ */
 LOCAL_APIC_MODE local_apic_discover_mode(void)
 {
     UINT64 value = hw_read_msr(IA32_MSR_APIC_BASE);
@@ -271,12 +268,12 @@ void lapic_mode_x2_from_enabled(void)
     hw_write_msr(IA32_MSR_APIC_BASE, value);
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : local_apic_set_mode()
-*  PURPOSE  : Set one of 3 possible modes
-*  ARGUMENTS: LOCAL_APIC_MODE mode - mode to set
-*  RETURNS  : LOCAL_APIC_NOERROR if OK, error code otherwise
-*-----------------------------------------------------------------------------*/
+/*
+ *  FUNCTION : local_apic_set_mode()
+ *  PURPOSE  : Set one of 3 possible modes
+ *  ARGUMENTS: LOCAL_APIC_MODE mode - mode to set
+ *  RETURNS  : LOCAL_APIC_NOERROR if OK, error code otherwise
+ */
 LOCAL_APIC_ERRNO local_apic_set_mode(LOCAL_APIC_MODE new_mode)
 {
     LOCAL_APIC_ERRNO error    = LOCAL_APIC_NOERROR;
@@ -353,12 +350,10 @@ void lapic_read_reg_msr(const LOCAL_APIC_PER_CPU_DATA* data UNUSED,
     UINT64 value;
 
     value = hw_read_msr(LOCAL_APIC_REG_MSR(reg_id));
-    if (4 == bytes)
-    {
+    if (4 == bytes) {
         *(UINT32 *) p_data = (UINT32) value;
     }
-    else
-    {
+    else {
         *(UINT64 *) p_data = value;
     }
 
@@ -367,19 +362,16 @@ void lapic_read_reg_msr(const LOCAL_APIC_PER_CPU_DATA* data UNUSED,
 void lapic_write_reg_msr(const LOCAL_APIC_PER_CPU_DATA* data UNUSED,
                          LOCAL_APIC_REG_ID reg_id, void *p_data, unsigned bytes)
 {
-    if (4 == bytes)
-    {
+    if (4 == bytes) {
         hw_write_msr(LOCAL_APIC_REG_MSR(reg_id), *(UINT32 *) p_data);
     }
-    else
-    {
+    else {
         hw_write_msr(LOCAL_APIC_REG_MSR(reg_id), *(UINT64 *) p_data);
     }
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-LOCAL_APIC_ERRNO local_apic_access
-    (
+LOCAL_APIC_ERRNO local_apic_access(
     LOCAL_APIC_REG_ID    reg_id,
     RW_ACCESS       rw_access,
     void           *data,
@@ -397,44 +389,36 @@ LOCAL_APIC_ERRNO local_apic_access
 
 
     // validate arguments
-    if (reg_id >= NELEMENTS(lapic_registers))
-    {
+    if (reg_id >= NELEMENTS(lapic_registers)) {
         return LOCAL_APIC_INVALID_REGISTER_ERROR;
     }
 
-    if (0 == (lapic_registers[reg_id].access & ACCESS_RW))
-    {
+    if (0 == (lapic_registers[reg_id].access & ACCESS_RW)) {
         return LOCAL_APIC_RESERVED_REGISTER_ERROR;
     }
 
-    if (0 == (lapic_registers[reg_id].access & rw_access))
-    {
+    if (0 == (lapic_registers[reg_id].access & rw_access)) {
         return LOCAL_APIC_INVALID_RW_ACCESS_ERROR;
     }
 
-    switch (lapic_data->lapic_mode)
-    {
+    switch (lapic_data->lapic_mode) {
     case LOCAL_APIC_ENABLED:
-        if (0 == BITMAP_GET(lapic_registers[reg_id].modes, MODE_MMIO))
-        {
+        if (0 == BITMAP_GET(lapic_registers[reg_id].modes, MODE_MMIO)) {
             return LOCAL_APIC_REGISTER_MMIO_ACCESS_DISABLED_ERROR;
         }
 
-        if (bytes_to_deliver < (INT32)sizeof(UINT32))
-        {
+        if (bytes_to_deliver < (INT32)sizeof(UINT32)) {
             return LOCAL_APIC_REGISTER_ACCESS_LENGTH_ERROR;
         }
         bytes_to_deliver = sizeof(UINT32);
         break;
 
     case LOCAL_APIC_X2_ENABLED:
-        if (0 == BITMAP_GET(lapic_registers[reg_id].modes, MODE_MSR))
-        {
+        if (0 == BITMAP_GET(lapic_registers[reg_id].modes, MODE_MSR)) {
             return LOCAL_APIC_REGISTER_MSR_ACCESS_DISABLED_ERROR;
         }
 
-        if (bytes_to_deliver < lapic_registers[reg_id].x2_size)
-        {
+        if (bytes_to_deliver < lapic_registers[reg_id].x2_size) {
             return LOCAL_APIC_REGISTER_ACCESS_LENGTH_ERROR;
         }
         bytes_to_deliver = lapic_registers[reg_id].x2_size;
@@ -492,15 +476,13 @@ BOOLEAN validate_APIC_BASE_change(UINT64 msr_value)
 
 	//if the current mode is x2APIC, the legal target modes are x2APIC and disabled state.
 	//let's reject any change to disabled state for the same reason
-	if( lapic_data->lapic_mode == LOCAL_APIC_X2_ENABLED )
-	{
+	if( lapic_data->lapic_mode == LOCAL_APIC_X2_ENABLED ) {
 		if( !(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_X2APIC_ENABLE)) ||
 			!(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_GLOBAL_ENABLE)) )
 			//VMM_DEADLOOP();
 			return FALSE; //inject gp instead of deadloop--recommended by validation guys
 	}
-	else
-	{
+	else {
 		if( lapic_data->lapic_mode != LOCAL_APIC_ENABLED )
 			//VMM_DEADLOOP();
 			return FALSE; //inject gp instead of deadloop--recommended by validation guys
@@ -578,8 +560,7 @@ BOOLEAN local_apic_cpu_init(void)
 BOOLEAN local_apic_init( UINT16 num_of_cpus )
 {
     UINT32 chunk_size = num_of_cpus * sizeof( LOCAL_APIC_PER_CPU_DATA );
-    if (lapic_cpu_data == 0)
-    {
+    if (lapic_cpu_data == 0) {
         lapic_cpu_data = vmm_page_alloc( PAGE_ROUNDUP( chunk_size ));
 
         // BEFORE_VMLAUNCH
@@ -591,72 +572,58 @@ BOOLEAN local_apic_init( UINT16 num_of_cpus )
     return TRUE;
 }
 
-/*******************************************************************************
-*                       Specific IPI support
-*******************************************************************************/
+/*
+ *                       Specific IPI support
+ */
 
 static void local_apic_wait_for_ipi_delivery( LOCAL_APIC_PER_CPU_DATA* lapic_data )
 {
     LOCAL_APIC_INTERRUPT_COMMAND_REGISTER_LOW  icr_low;
 
-	//delivery status bit does not exist for x2APIC mode
-	if( lapic_data->lapic_mode != LOCAL_APIC_X2_ENABLED )
-    while(TRUE)
-    {
+    //delivery status bit does not exist for x2APIC mode
+    if( lapic_data->lapic_mode != LOCAL_APIC_X2_ENABLED )
+    while(TRUE) {
         lapic_data->lapic_read_reg( lapic_data,
                                     LOCAL_APIC_INTERRUPT_COMMAND_REG,
                                     &icr_low.uint32,
                                     sizeof(icr_low.uint32) );
 
-        if(IPI_DELIVERY_STATUS_IDLE == icr_low.bits.delivery_status)
-        {
+        if(IPI_DELIVERY_STATUS_IDLE == icr_low.bits.delivery_status) {
             break;
         }
     }
 }
 
-BOOLEAN
-local_apic_ipi_verify_params(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
+BOOLEAN local_apic_ipi_verify_params(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
                              LOCAL_APIC_IPI_DELIVERY_MODE delivery_mode,
-                             UINT8  vector,
-                             LOCAL_APIC_IPI_LEVEL level,
+                             UINT8  vector, LOCAL_APIC_IPI_LEVEL level,
                              LOCAL_APIC_IPI_TRIGGER_MODE trigger_mode)
 {
     BOOLEAN success = TRUE;
 
-    if(dst_shorthand == IPI_DST_SELF &&
-       (delivery_mode == IPI_DELIVERY_MODE_LOWEST_PRIORITY
-        || delivery_mode == IPI_DELIVERY_MODE_NMI
-        || delivery_mode == IPI_DELIVERY_MODE_INIT
-        || delivery_mode == IPI_DELIVERY_MODE_SMI
-        || delivery_mode == IPI_DELIVERY_MODE_START_UP))
-    {
+    if(dst_shorthand == IPI_DST_SELF && (delivery_mode == IPI_DELIVERY_MODE_LOWEST_PRIORITY
+        || delivery_mode == IPI_DELIVERY_MODE_NMI || delivery_mode == IPI_DELIVERY_MODE_INIT
+        || delivery_mode == IPI_DELIVERY_MODE_SMI || delivery_mode == IPI_DELIVERY_MODE_START_UP)) {
         success = FALSE;
         VMM_LOG(mask_anonymous, level_trace,"IPI params verification failed: dst_shorthand == IPI_DST_SELF && delivery_mode==" STRINGIFY(delivery_mode)"\r\n");
     }
 
     if(dst_shorthand == IPI_DST_ALL_INCLUDING_SELF &&
        (delivery_mode == IPI_DELIVERY_MODE_LOWEST_PRIORITY
-        || delivery_mode == IPI_DELIVERY_MODE_NMI
-        || delivery_mode == IPI_DELIVERY_MODE_INIT
-        || delivery_mode == IPI_DELIVERY_MODE_SMI
-        || delivery_mode == IPI_DELIVERY_MODE_START_UP))
-    {
+        || delivery_mode == IPI_DELIVERY_MODE_NMI || delivery_mode == IPI_DELIVERY_MODE_INIT
+        || delivery_mode == IPI_DELIVERY_MODE_SMI || delivery_mode == IPI_DELIVERY_MODE_START_UP)) {
         success = FALSE;
         VMM_LOG(mask_anonymous, level_trace,"IPI params verification failed: dst_shorthand == IPI_DST_ALL_INCLUDING_SELF && delivery_mode==" STRINGIFY(delivery_mode)"\r\n");
     }
 
     if(trigger_mode == IPI_DELIVERY_TRIGGER_MODE_LEVEL &&
-       (delivery_mode == IPI_DELIVERY_MODE_SMI
-        || delivery_mode == IPI_DELIVERY_MODE_START_UP))
-    {
+       (delivery_mode == IPI_DELIVERY_MODE_SMI || delivery_mode == IPI_DELIVERY_MODE_START_UP)) {
         success = FALSE;
         VMM_LOG(mask_anonymous, level_trace,"IPI params verification failed: trigger_mode == IPI_DELIVERY_TRIGGER_MODE_LEVEL && delivery_mode==" STRINGIFY(delivery_mode)"\r\n");
     }
 
     if((delivery_mode == IPI_DELIVERY_MODE_SMI || delivery_mode == IPI_DELIVERY_MODE_INIT)
-        && vector != 0)
-    {
+        && vector != 0) {
         success = FALSE;
         VMM_LOG(mask_anonymous, level_trace,"IPI params verification failed: delivery_mode == " STRINGIFY(delivery_mode)", vector must be zero\r\n");
     }
@@ -696,8 +663,7 @@ local_apic_send_ipi(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
 
     params_valid = local_apic_ipi_verify_params(dst_shorthand, delivery_mode , vector, level, trigger_mode);
 
-    if(! params_valid)
-    {
+    if(! params_valid) {
         return FALSE;
     }
 
@@ -706,17 +672,14 @@ local_apic_send_ipi(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
 
     icr.hi_dword.uint32 = 0;
 
-    if (IPI_DST_NO_SHORTHAND == dst_shorthand)
-    {
+    if (IPI_DST_NO_SHORTHAND == dst_shorthand) {
         LOCAL_APIC_PER_CPU_DATA *dst_lapic_data = GET_OTHER_LAPIC(dst);
         icr.hi_dword.bits.destination = dst_lapic_data->lapic_cpu_id;
     }
-    else if (IPI_DST_SELF == dst_shorthand)
-    {
+    else if (IPI_DST_SELF == dst_shorthand) {
         icr.hi_dword.bits.destination = lapic_data->lapic_cpu_id;
     }
-    else
-    {
+    else {
         icr.hi_dword.bits.destination = dst;
     }
 
@@ -731,8 +694,7 @@ local_apic_send_ipi(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
     icr.lo_dword.bits.level = level;
     icr.lo_dword.bits.trigger_mode = trigger_mode;
 
-    if (LOCAL_APIC_X2_ENABLED == lapic_data->lapic_mode)
-    {
+    if (LOCAL_APIC_X2_ENABLED == lapic_data->lapic_mode) {
         lapic_data->lapic_write_reg( lapic_data,
                                      LOCAL_APIC_INTERRUPT_COMMAND_REG,
                                      &icr,
@@ -741,35 +703,26 @@ local_apic_send_ipi(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
         // wait for IPI in progress to finish
         local_apic_wait_for_ipi_delivery(lapic_data);
     }
-    else
-    {
+    else {
         // save previous uint32: if guest is switched in the middle of IPI setup,
         // need to restore the guest IPI destination uint32
-        lapic_data->lapic_read_reg(  lapic_data,
-                                     LOCAL_APIC_INTERRUPT_COMMAND_HI_REG,
-                                     &icr_high_save,
-                                     sizeof(icr_high_save));
+        lapic_data->lapic_read_reg(lapic_data, LOCAL_APIC_INTERRUPT_COMMAND_HI_REG,
+                                   &icr_high_save, sizeof(icr_high_save));
 
         // write new destination
-        lapic_data->lapic_write_reg( lapic_data,
-                                     LOCAL_APIC_INTERRUPT_COMMAND_HI_REG,
-                                     &icr.hi_dword.uint32,
-                                     sizeof(icr.hi_dword.uint32));
+        lapic_data->lapic_write_reg(lapic_data, LOCAL_APIC_INTERRUPT_COMMAND_HI_REG,
+                                    &icr.hi_dword.uint32, sizeof(icr.hi_dword.uint32));
 
         // send IPI
-        lapic_data->lapic_write_reg( lapic_data,
-                                     LOCAL_APIC_INTERRUPT_COMMAND_REG,
-                                     &icr.lo_dword.uint32,
-                                     sizeof(icr.lo_dword.uint32));
+        lapic_data->lapic_write_reg(lapic_data, LOCAL_APIC_INTERRUPT_COMMAND_REG,
+                                     &icr.lo_dword.uint32, sizeof(icr.lo_dword.uint32));
 
         // wait for IPI in progress to finish
         local_apic_wait_for_ipi_delivery(lapic_data);
 
         // restore guest IPI destination
-        lapic_data->lapic_write_reg( lapic_data,
-                                     LOCAL_APIC_INTERRUPT_COMMAND_HI_REG,
-                                     &icr_high_save,
-                                     sizeof(icr_high_save));
+        lapic_data->lapic_write_reg( lapic_data, LOCAL_APIC_INTERRUPT_COMMAND_HI_REG,
+                                     &icr_high_save, sizeof(icr_high_save));
     }
 
     return TRUE;
@@ -825,8 +778,7 @@ BOOLEAN local_apic_is_sw_enabled(void)
     LOCAL_APIC_PER_CPU_DATA* lapic_data = GET_CPU_LAPIC();
     UINT32                   spurious_vector_reg_value = 0;
 
-    if (LOCAL_APIC_DISABLED == lapic_data->lapic_mode)
-    {
+    if (LOCAL_APIC_DISABLED == lapic_data->lapic_mode) {
         return FALSE;
     }
 
@@ -835,28 +787,23 @@ BOOLEAN local_apic_is_sw_enabled(void)
                                 LOCAL_APIC_SPURIOUS_INTR_VECTOR_REG,
                                 &spurious_vector_reg_value,
                                 sizeof(spurious_vector_reg_value));
-
     return BIT_GET(spurious_vector_reg_value, IA32_APIC_SW_ENABLE_BIT_IDX) ? TRUE : FALSE;
 }
 
-// find highest set bit in 256bit reg (8 sequential regs 32bit each). Return UINT32_ALL_ONES if no 1s found.
-static UINT32 find_highest_bit_in_reg( LOCAL_APIC_PER_CPU_DATA* lapic_data,
-                                       LOCAL_APIC_REG_ID reg_id,
+// find highest set bit in 256bit reg (8 sequential regs 32bit each). 
+// Return UINT32_ALL_ONES if no 1s found.
+static UINT32 find_highest_bit_in_reg(LOCAL_APIC_PER_CPU_DATA* lapic_data, LOCAL_APIC_REG_ID reg_id,
                                        UINT32 reg_size_32bit_units )
 {
     UINT32 subreg_idx;
     UINT32 subreg_value;
     UINT32 bit_idx;
 
-    for (subreg_idx = reg_size_32bit_units; subreg_idx > 0; --subreg_idx)
-    {
-        lapic_data->lapic_read_reg( lapic_data,
-                                    reg_id + subreg_idx - 1,
-                                    &subreg_value,
-                                    sizeof(subreg_value));
+    for (subreg_idx = reg_size_32bit_units; subreg_idx > 0; --subreg_idx) {
+        lapic_data->lapic_read_reg( lapic_data, reg_id + subreg_idx - 1,
+                                    &subreg_value, sizeof(subreg_value));
 
-        if (0 == subreg_value)
-        {
+        if (0 == subreg_value) {
             continue;
         }
 
@@ -888,11 +835,8 @@ static UINT32 local_apic_get_processor_priority( LOCAL_APIC_PER_CPU_DATA* lapic_
 {
     UINT32 ppr_value;
 
-    lapic_data->lapic_read_reg( lapic_data,
-                                LOCAL_APIC_PROCESSOR_PRIORITY_REG,
-                                &ppr_value,
-                                sizeof(ppr_value));
-
+    lapic_data->lapic_read_reg( lapic_data, LOCAL_APIC_PROCESSOR_PRIORITY_REG,
+                                &ppr_value, sizeof(ppr_value));
     return ((ppr_value >> 4) & 0xF);
 }
 
@@ -907,7 +851,6 @@ BOOLEAN local_apic_is_ready_interrupt_exist(void)
     LOCAL_APIC_PER_CPU_DATA* lapic_data = GET_CPU_LAPIC();
 
     VMM_ASSERT( local_apic_is_sw_enabled() == TRUE );
-
     return local_apic_get_irr_priority(lapic_data) > local_apic_get_processor_priority(lapic_data);
 }
 #endif

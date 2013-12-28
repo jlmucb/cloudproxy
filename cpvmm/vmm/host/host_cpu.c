@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "host_cpu.h"
 #include "guest_cpu.h"
@@ -34,13 +34,11 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HOST_CPU_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HOST_CPU_C, __condition)
 
-//******************************************************************************
 //
 // Host CPU model for VMCS
 //
-//******************************************************************************
 
-//---------------------------- types ------------------------------------------
+//          types
 
 #pragma PACK_ON
 
@@ -88,12 +86,12 @@ typedef enum _HOST_CPU_FLAGS {
 #define CLR_VMX_IS_ON_FLAG( hcpu )  BIT_CLR( (hcpu)->state_flags, HCPU_VMX_IS_ON_FLAG)
 #define GET_VMX_IS_ON_FLAG( hcpu )  BIT_GET( (hcpu)->state_flags, HCPU_VMX_IS_ON_FLAG)
 
-//---------------------------------- globals ----------------------------------
+//          globals
 static HOST_CPU_SAVE_AREA*   g_host_cpus = NULL;
 static UINT16                g_max_host_cpus = 0;
 
 #ifdef USE_SYSENTER_STACK
-//--------------------------------- internal funcs ----------------------------
+//          internal funcs
 static void sysenter_func( void )
 {
     VMM_LOG(mask_anonymous, level_trace,"sysenter_func CALLED!!!!!!");
@@ -126,8 +124,7 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
     UINT32               i = 0;
 
     // Check if MSR is already in the list.
-    if (hcpu->vmexit_msr_load_list != NULL)
-    {
+    if (hcpu->vmexit_msr_load_list != NULL) {
         for (i = 0, new_msr_ptr = hcpu->vmexit_msr_load_list; i < hcpu->vmexit_msr_load_count; i++, new_msr_ptr++)
             if (new_msr_ptr->MsrIndex == msr_index)
                 break;
@@ -135,8 +132,7 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
     else
         i = hcpu->vmexit_msr_load_count;
 
-    if (i >= hcpu->vmexit_msr_load_count)
-    {
+    if (i >= hcpu->vmexit_msr_load_count) {
         if  (hcpu->vmexit_msr_load_list == NULL || hcpu->vmexit_msr_load_count >= hcpu->max_vmexit_msr_load_count)
         {
             // The list is full or not allocated, expand it
@@ -145,16 +141,14 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
             IA32_VMX_MSR_ENTRY*  new_list = vmm_malloc_aligned(new_size, sizeof(IA32_VMX_MSR_ENTRY));
             UINT32               i;
 
-            if (new_list == NULL)
-            {
+            if (new_list == NULL) {
                 VMM_LOG(mask_anonymous, level_trace,"%s: Memory allocation failed\n", __FUNCTION__);
                 // BEFORE_VMLAUNCH. MALLOC should not fail.
                 VMM_DEADLOOP();
             }
 
             // Copy the old list.
-            for (i = 0; i < hcpu->vmexit_msr_load_count; i++)
-            {
+            for (i = 0; i < hcpu->vmexit_msr_load_count; i++) {
                 new_list[i] = hcpu->vmexit_msr_load_list[i];
             }
 
@@ -177,8 +171,7 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
     new_msr_ptr->Reserved = 0;
     new_msr_ptr->MsrData = msr_value;
 
-    if (update_gcpus)
-    {
+    if (update_gcpus) {
         SCHEDULER_GCPU_ITERATOR iter;
         GUEST_CPU_HANDLE gcpu;
 
@@ -210,6 +203,7 @@ void host_cpu_add_msr_to_level0_autoswap(CPU_ID cpu, UINT32 msr_index) {
     host_cpu_add_msr_to_vmexit_load_list(cpu, msr_index, msr_value);
 }
 
+
 void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
 {
     HOST_CPU_SAVE_AREA*  hcpu = &g_host_cpus[cpu];
@@ -219,12 +213,10 @@ void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
     UINT32               msrs_to_copy;
 
     // Check if MSR is in the list.
-    if (hcpu->vmexit_msr_load_list != NULL && hcpu->vmexit_msr_load_count != 0)
-    {
+    if (hcpu->vmexit_msr_load_list != NULL && hcpu->vmexit_msr_load_count != 0) {
         for (i = 0, msr_ptr = hcpu->vmexit_msr_load_list; i < hcpu->vmexit_msr_load_count; i++, msr_ptr++)
         {
-            if (msr_ptr->MsrIndex == msr_index)
-            {
+            if (msr_ptr->MsrIndex == msr_index) {
                 // New list size.
                 hcpu->vmexit_msr_load_count--;
 
@@ -241,15 +233,13 @@ void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
         }
     }
 
-    if (update_gcpus)
-    {
+    if (update_gcpus) {
         SCHEDULER_GCPU_ITERATOR  iter;
         GUEST_CPU_HANDLE         gcpu;
 
         gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu);
 
-        while (gcpu != NULL)
-        {
+        while (gcpu != NULL) {
             gcpu_change_level0_vmexit_msr_load_list(gcpu, hcpu->vmexit_msr_load_list, hcpu->vmexit_msr_load_count);
 
             gcpu = scheduler_same_host_cpu_gcpu_next(&iter);
@@ -265,8 +255,7 @@ void host_cpu_delete_msr_from_level0_autoswap(CPU_ID cpu, UINT32 msr_index)
 
     gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu);
 
-    while (gcpu != NULL)
-    {
+    while (gcpu != NULL) {
         VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy( gcpu ), VMCS_LEVEL_0);
 
         vmcs_delete_msr_from_vmexit_store_and_vmenter_load_lists(vmcs, msr_index);
@@ -278,7 +267,8 @@ void host_cpu_delete_msr_from_level0_autoswap(CPU_ID cpu, UINT32 msr_index)
 }
 #endif
 
-void host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list(GUEST_CPU_HANDLE gcpu) {
+void host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list(
+            GUEST_CPU_HANDLE gcpu) {
     CPU_ID cpu = hw_cpu_id();
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     UINT32 i;
@@ -286,7 +276,7 @@ void host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_l
     vmcs_clear_vmexit_store_list(vmcs);
     vmcs_clear_vmenter_load_list(vmcs);
 
-//    VMM_ASSERT(g_host_cpus[cpu].vmexit_msr_load_count > 0);
+    //    VMM_ASSERT(g_host_cpus[cpu].vmexit_msr_load_count > 0);
     VMM_ASSERT(g_host_cpus);
     for (i = 0; i < g_host_cpus[cpu].vmexit_msr_load_count; i++) {
         vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists(vmcs, g_host_cpus[cpu].vmexit_msr_load_list[i].MsrIndex,
@@ -447,20 +437,17 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
      *  MSRS
      */
 
-	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadSysEnterMsrs == 1)
-	{
+	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadSysEnterMsrs == 1) {
 		vmcs_write(vmcs, VMCS_HOST_SYSENTER_CS, hw_read_msr(IA32_MSR_SYSENTER_CS));
 		vmcs_write(vmcs, VMCS_HOST_SYSENTER_ESP, hw_read_msr(IA32_MSR_SYSENTER_ESP));
 		vmcs_write(vmcs, VMCS_HOST_SYSENTER_EIP, hw_read_msr(IA32_MSR_SYSENTER_EIP));
 	}
 
-	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadEfer == 1)
-	{
+	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadEfer == 1) {
 		vmcs_write(vmcs, VMCS_HOST_EFER, hw_read_msr(IA32_MSR_EFER));
 	}
 
-	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadPat == 1)
-	{
+	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadPat == 1) {
 		vmcs_write(vmcs, VMCS_HOST_PAT, hw_read_msr(IA32_MSR_PAT));
 	}
 
@@ -487,11 +474,9 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
 	vmcs_assign_vmexit_msr_load_list(vmcs, host_msr_load_addr, g_host_cpus[cpu].vmexit_msr_load_count);
 }
 
-//------------------------------------------------------------------------------
 //
 // Set/Get VMXON Region pointer for the current CPU
 //
-//------------------------------------------------------------------------------
 void host_cpu_set_vmxon_region( HVA hva, HPA hpa, CPU_ID my_cpu_id)
 {
     HOST_CPU_SAVE_AREA* hcpu = NULL;
@@ -585,35 +570,31 @@ GUEST_CPU_HANDLE host_cpu_get_vmexit_gcpu(CPU_ID cpu_id)
 {
     GUEST_CPU_HANDLE gcpu = NULL;
 
-    if (cpu_id < g_max_host_cpus)
-    {
+    if (cpu_id < g_max_host_cpus) {
         gcpu = g_host_cpus[cpu_id].last_vmexit_gcpu;
     }
     return gcpu;
 }
 
 /*
-*  Purpose: At VMEXIT DR7 is always overwrittern with 400h. This prevents to set
-*           hardware breakponits in host-running code across VMEXIT/VMENTER transitions.
-*           Two functions below allow to keep DR7, set by external debugger in cpu context,
-*           and apply it to hardware upon VMEXIT.
-*/
+ *  Purpose: At VMEXIT DR7 is always overwrittern with 400h. This prevents to set
+ *           hardware breakponits in host-running code across VMEXIT/VMENTER transitions.
+ *           Two functions below allow to keep DR7, set by external debugger in cpu context,
+ *           and apply it to hardware upon VMEXIT.
+ */
 
 void host_cpu_save_dr7(CPU_ID cpu_id)
 {
     VMM_ASSERT(g_host_cpus);
-    if (cpu_id < g_max_host_cpus)
-    {
+    if (cpu_id < g_max_host_cpus) {
         g_host_cpus[cpu_id].host_dr7 = hw_read_dr(7);
     }
 }
 
 void host_cpu_restore_dr7(CPU_ID cpu_id)
 {
-    if (cpu_id < g_max_host_cpus)
-    {
-        if (0 != g_host_cpus[cpu_id].host_dr7)
-        {
+    if (cpu_id < g_max_host_cpus) {
+        if (0 != g_host_cpus[cpu_id].host_dr7) {
             hw_write_dr(7, g_host_cpus[cpu_id].host_dr7);
         }
     }

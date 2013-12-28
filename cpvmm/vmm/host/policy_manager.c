@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "policy_manager.h"
 //#include "libc.h"
@@ -21,9 +21,6 @@
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(POLICY_MANAGER_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(POLICY_MANAGER_C, __condition)
-
-// do not report warning on unused params
-#pragma warning (disable: 4100)
 
 #define FIELD_MASK(size, offset) ((BIT_VALUE64((size)) - 1) << (offset))
 
@@ -43,21 +40,18 @@ static BOOLEAN    g_init_done = FALSE;
 extern VMM_PAGING_POLICY g_pg_policy;
 
 
-//******************************************************************************
 //
 // Policy Manager
 //
-//******************************************************************************
 
 // ---------------------------- Global Policy APIs  --------------------------
 
-//----------------------------------------------------------------------------
 //
 // Setup the global policy.
 //
 // Called by BSP main() before any initializations to setup the uVMM policy.
 //
-//----------------------------------------------------------------------------
+
 POL_RETVAL global_policy_setup(const VMM_POLICY  *policy)
 {
     if (!g_init_done)
@@ -106,7 +100,7 @@ BOOLEAN global_policy_is_cache_dis_virtualized(void)
 }
 
 
-// -------------------------- Policy Manipulation APIs  -----------------------
+//      Policy Manipulation APIs 
 
 
 POL_RETVAL clear_policy(VMM_POLICY  *policy)

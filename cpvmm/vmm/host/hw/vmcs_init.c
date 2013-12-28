@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmcs_init.h"
 #include "vmx_ctrl_msrs.h"
@@ -34,14 +34,10 @@
 #define MAX_32BIT_NUMBER 0x0FFFFFFFF
 #define MASK_PE_PG_OFF_UNRESTRICTED_GUEST 0xFFFFFFFF7FFFFFFE
 
-//******************************************************************************
 //
 // Initialization of the VMCS
 //
-//******************************************************************************
 
-//------------------------------ types -----------------------------------------
-//------------------------------ globals ---------------------------------------
 
 static IA32_VMX_CAPABILITIES g_vmx_capabilities;
 static VMCS_HW_CONSTRAINTS   g_vmx_constraints;
@@ -459,12 +455,12 @@ static void print_vmx_capabilities( void )
 }
 #endif //DEBUG
 
-//------------------------------ interface functions----------------------------
+
+//      interface functions
 
 void vmcs_hw_init( void )
 {
-    if (g_init_done)
-    {
+    if (g_init_done) {
         return;
     }
 
@@ -556,19 +552,17 @@ BOOLEAN vmcs_hw_allocate_vmxon_regions( UINT16 max_host_cpus )
 //
 const VMCS_HW_CONSTRAINTS* vmcs_hw_get_vmx_constraints( void )
 {
-    if (! g_init_done)
-    {
+    if (! g_init_done) {
         vmcs_hw_init();
     }
 
     return &g_vmx_constraints;
 }
 
-//------------------------------------------------------------------------------
+
 //
 // Check that current CPU is VMX-capable
 //
-//------------------------------------------------------------------------------
 BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
 {
     CPUID_INFO_STRUCT cpuid_info;
@@ -582,8 +576,7 @@ BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
 
     cpuid( &cpuid_info, 1 );
 
-    if ((CPUID_VALUE_ECX( cpuid_info ) & IA32_CPUID_ECX_VMX) == 0)
-    {
+    if ((CPUID_VALUE_ECX( cpuid_info ) & IA32_CPUID_ECX_VMX) == 0) {
         VMM_LOG(mask_anonymous, level_trace,"ASSERT: CPUID[EAX=1] indicates that Host CPU #%d does not support VMX!\n",
                  hw_cpu_id());
         return FALSE;
@@ -605,11 +598,11 @@ BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
 
 }
 
-//------------------------------------------------------------------------------
+
 //
 // Enable VT on the current CPU
 //
-//------------------------------------------------------------------------------
+
 void vmcs_hw_vmx_on( void )
 {
     IA32_MSR_OPT_IN   opt_in;
@@ -629,8 +622,7 @@ void vmcs_hw_vmx_on( void )
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( (opt_in.Bits.Lock == 0) || (opt_in.Bits.EnableVmxonOutsideSmx == 1) );
 
-    if (opt_in.Bits.Lock == 0)
-    {
+    if (opt_in.Bits.Lock == 0) {
         opt_in.Bits.EnableVmxonOutsideSmx = 1;
         opt_in.Bits.Lock = 1;
 
@@ -638,8 +630,7 @@ void vmcs_hw_vmx_on( void )
     }
 
     vmxon_region_hva = host_cpu_get_vmxon_region(&vmxon_region_hpa);
-    if(!vmxon_region_hva || !vmxon_region_hpa)
-    {
+    if(!vmxon_region_hva || !vmxon_region_hpa) {
         VMM_LOG(mask_anonymous, level_trace,"ASSERT: VMXON failed with getting vmxon_region address\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
@@ -647,8 +638,7 @@ void vmcs_hw_vmx_on( void )
 
     vmx_ret = hw_vmx_on( &vmxon_region_hpa );
 
-    switch (vmx_ret)
-    {
+    switch (vmx_ret) {
         case HW_VMX_SUCCESS:
             host_cpu_set_vmx_state( TRUE );
             break;
@@ -668,15 +658,14 @@ void vmcs_hw_vmx_on( void )
     }
 }
 
-//------------------------------------------------------------------------------
+
 //
 // Disable VT on the current CPU
 //
-//------------------------------------------------------------------------------
+
 void vmcs_hw_vmx_off( void )
 {
-    if (host_cpu_get_vmx_state() == FALSE)
-    {
+    if (host_cpu_get_vmx_state() == FALSE) {
         return;
     }
 

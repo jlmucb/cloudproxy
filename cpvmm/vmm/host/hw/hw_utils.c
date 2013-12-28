@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "hw_utils.h"
@@ -86,15 +86,11 @@ void hw_stall_using_tsc(UINT32 stall_usec)
 
 {
     UINT64   end_tsc;
-    
 
     VMM_ASSERT(hw_tsc_ticks_per_second != 0);
-    
     end_tsc = hw_rdtsc() + 
               ((UINT64)stall_usec * hw_tsc_ticks_per_second / (UINT64)1000000);
-
-    while (hw_rdtsc() < end_tsc)
-    {
+    while (hw_rdtsc() < end_tsc) {
         hw_pause();
     }
 }
@@ -148,8 +144,7 @@ BOOLEAN hw_wrmsr_safe(UINT32 msr_id, UINT64 value, VECTOR_ID *fault_vector, UINT
     }
     CATCH(p_trial) {
         ret = FALSE;
-        if (NULL != p_trial)
-        {
+        if (NULL != p_trial) {
             VMM_LOG(mask_anonymous, level_error,"WRMSR(%P) Failed. FaultVector=%P ErrCode=%P\n",
                     msr_id, p_trial->fault_vector, p_trial->error_code);
             if (NULL != fault_vector) *fault_vector = p_trial->fault_vector;
@@ -171,8 +166,7 @@ BOOLEAN hw_rdmsr_safe(UINT32 msr_id, UINT64 *value, VECTOR_ID *fault_vector, UIN
     }
     CATCH(p_trial) {
         ret = FALSE;
-        if (NULL != p_trial)
-        {
+        if (NULL != p_trial) {
             VMM_LOG(mask_anonymous, level_error,"RDMSR[%P] failed. FaultVector=%P ErrCode=%P\n",
                     msr_id, p_trial->fault_vector, p_trial->error_code);
             if (NULL != fault_vector) *fault_vector = p_trial->fault_vector;

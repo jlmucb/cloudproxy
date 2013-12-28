@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "host_pci_configuration.h"
 #include "hw_utils.h"
@@ -139,12 +139,10 @@ HOST_PCI_DEVICE *get_host_pci_device(UINT8 bus, UINT8 device, UINT8 function)
     SET_PCI_FUNCTION(lookup_table_index, function);
     pci_dev_index = pci_devices_lookup_table[lookup_table_index];
 
-    if(PCI_DEV_INDEX_INVALID == pci_dev_index)
-    {
+    if(PCI_DEV_INDEX_INVALID == pci_dev_index) {
         pci_dev = NULL;
     }
-    else
-    {
+    else {
         pci_dev = &pci_devices[pci_dev_index];
     }
     return pci_dev;
@@ -157,8 +155,7 @@ BOOLEAN pci_read_secondary_bus_reg(UINT8 bus, UINT8 device, UINT8 func, OUT UINT
     *secondary_bus = 0;
     if(NULL == pci_bridge
        || FALSE == pci_bridge->is_pci_2_pci_bridge
-       || PCI_CONFIG_HEADER_TYPE_PCI2PCI_BRIDGE != pci_bridge->header_type)
-    {
+       || PCI_CONFIG_HEADER_TYPE_PCI2PCI_BRIDGE != pci_bridge->header_type) {
         return FALSE;
     }
 
@@ -201,8 +198,7 @@ host_pci_decode_bar(
         // valid only for mmio
         address_type = (UINT32)(bar_value_low & PCI_CONFIG_HEADER_BAR_ADDRESS_TYPE_MASK) >> 1;
 
-        if(bar->type == PCI_BAR_MMIO_REGION && address_type == PCI_CONFIG_HEADER_BAR_ADDRESS_64)
-        {
+        if(bar->type == PCI_BAR_MMIO_REGION && address_type == PCI_CONFIG_HEADER_BAR_ADDRESS_64) {
             // issue size determination command
             bar_value_high = pci_read32(bus, device, function, bar_offset + 4);
             pci_write32(bus, device, function, bar_offset + 4, PCI_CONFIG_HEADER_BAR_SIZING_COMMAND);
@@ -215,8 +211,7 @@ host_pci_decode_bar(
             pci_write32(bus, device, function, bar_offset, bar_value_low); // restore original value
             pci_write32(bus, device, function, bar_offset + 4, bar_value_high); // restore original value
         }
-        else
-        {
+        else {
             bar->addr = ((UINT64)bar_value_low & 0x00000000FFFFFFFF) & mask;
             encoded_size = 0xFFFFFFFF00000000 | ((UINT64)encoded_size_low & 0x00000000FFFFFFFF);
             encoded_size &= mask;
@@ -224,13 +219,11 @@ host_pci_decode_bar(
             pci_write32(bus, device, function, bar_offset, bar_value_low); // restore original value
         }
 
-        if (PCI_BAR_IO_REGION == bar->type)
-        {
+        if (PCI_BAR_IO_REGION == bar->type) {
             bar->length &= 0xFFFF; // IO space in Intel  arch can't exceed 64K bytes
         }
     }
-    else
-    {
+    else {
         bar->type = PCI_BAR_UNUSED;
     }
     return (address_type == PCI_CONFIG_HEADER_BAR_ADDRESS_64) ? 8 : 4;
@@ -253,30 +246,25 @@ static void host_pci_decode_pci_bridge(
     UINT64 io_limit;
 
     // mmio
-    if (memory_limit < memory_base)
-    {
+    if (memory_limit < memory_base) {
         bar_mmio->type = PCI_BAR_UNUSED;
     }
-    else
-    {
+    else {
         bar_mmio->type = PCI_BAR_MMIO_REGION;
         bar_mmio->addr = (UINT64)memory_base & 0x00000000FFFFFFFF;
         bar_mmio->length = (UINT64)(memory_limit - memory_base +1) & 0x00000000FFFFFFFF;
     }
 
     // io
-    if (io_base_low == 0 || io_limit_low == 0 || io_limit_low < io_base_low)
-    {
+    if (io_base_low == 0 || io_limit_low == 0 || io_limit_low < io_base_low) {
         bar_io->type = PCI_BAR_UNUSED;
     }
-    else if ((io_base_low & 0xF) > 1)
-    {
+    else if ((io_base_low & 0xF) > 1) {
         bar_io->type = PCI_BAR_UNUSED;
         VMM_LOG(mask_anonymous, level_print_always,"%s Warning: reserved IO address capability in bridge (%d:%d:%d) detected, io_base_low=0x%x\r\n",
                     __FUNCTION__, bus, device, function, io_base_low);
     }
-    else
-    {
+    else {
         if ((io_base_low & 0xF) == 1) // 32 bit IO address
         {
             // update the high 16 bits
@@ -310,8 +298,7 @@ static void pci_init_device(PCI_DEVICE_ADDRESS device_addr,
 
     pci_dev_index = pci_devices_lookup_table[device_addr];
 
-    if(PCI_DEV_INDEX_INVALID != pci_dev_index)
-    {// already initialized
+    if(PCI_DEV_INDEX_INVALID != pci_dev_index) {// already initialized
         return;
     }
 
@@ -336,22 +323,18 @@ static void pci_init_device(PCI_DEVICE_ADDRESS device_addr,
     pci_dev->is_pci_2_pci_bridge = PCI_IS_PCI_2_PCI_BRIDGE(pci_dev->base_class, pci_dev->sub_class);
     pci_dev->interrupt_pin = pci_read8(bus, device, function, PCI_CONFIG_INTERRUPT_PIN_OFFSET);
     pci_dev->interrupt_line = pci_read8(bus, device, function, PCI_CONFIG_INTERRUPT_LINE_OFFSET);
-    if(parent_addr_valid)
-    {
+    if(parent_addr_valid) {
         pci_dev->parent = get_host_pci_device(GET_PCI_BUS(parent_addr), GET_PCI_DEVICE(parent_addr), GET_PCI_FUNCTION(parent_addr));
     }
-    else
-    {
+    else {
         pci_dev->parent = NULL;
     }
 
-    if(pci_dev->parent == NULL)
-    {
+    if(pci_dev->parent == NULL) {
         pci_dev->depth = 1;
         pci_dev->path.start_bus = bus;
     }
-    else
-    {
+    else {
         pci_dev->depth = pci_dev->parent->depth + 1;
         pci_dev->path.start_bus = pci_dev->parent->path.start_bus;
         for(i = 0; i < pci_dev->parent->depth; i++)
@@ -364,10 +347,8 @@ static void pci_init_device(PCI_DEVICE_ADDRESS device_addr,
     pci_dev->path.path[pci_dev->depth - 1].function = function;
 
     bar_offset = PCI_CONFIG_BAR_OFFSET;
-    if (is_bridge)
-    {
-        for(i = 0; i < PCI_MAX_BAR_NUMBER_IN_BRIDGE; i++)
-        {
+    if (is_bridge) {
+        for(i = 0; i < PCI_MAX_BAR_NUMBER_IN_BRIDGE; i++) {
             // Assumption: according to PCI bridge spec 1.2, host_pci_decode_bar() will only return 4 (as 32 bit) for bridge
             // 64 bit mapping is not supported in bridge
             bar_offset = bar_offset + host_pci_decode_bar(bus, device, function, bar_offset, &pci_dev->bars[i]);
@@ -378,8 +359,7 @@ static void pci_init_device(PCI_DEVICE_ADDRESS device_addr,
         for (; i < PCI_MAX_BAR_NUMBER; i++)
             pci_dev->bars[i].type = PCI_BAR_UNUSED;
     }
-    else
-    {
+    else {
         for(i = 0; i < PCI_MAX_BAR_NUMBER; i++)
         {
             if (bar_offset > PCI_CONFIG_BAR_LAST_OFFSET) // total bar size is 0x10~0x24
@@ -406,20 +386,17 @@ static void pci_scan_bus(UINT8 bus, PCI_DEVICE_ADDRESS parent_addr, BOOLEAN pare
     PCI_DEVICE_ADDRESS this_device_address = 0;
     BOOLEAN is_bridge;
 
-    for(device = 0; device < PCI_MAX_NUM_DEVICES_ON_BUS; device++)
-    {
+    for(device = 0; device < PCI_MAX_NUM_DEVICES_ON_BUS; device++) {
         header_type = pci_read8(bus, device, 0, PCI_CONFIG_HEADER_TYPE_OFFSET);
         is_multifunction = PCI_IS_MULTIFUNCTION_DEVICE(header_type); // bit 7: =0 single function, =1 multi-function
         max_functions = is_multifunction ? PCI_MAX_NUM_FUNCTIONS_ON_DEVICE: 1;
         header_type = header_type & ~0x80; // clear multifunction bit
 
-        for(function = 0; function < max_functions; function++)
-        {
+        for(function = 0; function < max_functions; function++) {
             vendor_id = pci_read16(bus, device, function, PCI_CONFIG_VENDOR_ID_OFFSET);
             device_id = pci_read16(bus, device, function, PCI_CONFIG_DEVICE_ID_OFFSET);
 
-            if(PCI_INVALID_VENDOR_ID == vendor_id || PCI_INVALID_DEVICE_ID == device_id)
-            {
+            if(PCI_INVALID_VENDOR_ID == vendor_id || PCI_INVALID_DEVICE_ID == device_id) {
                 continue;
             }
 
@@ -436,10 +413,8 @@ static void pci_scan_bus(UINT8 bus, PCI_DEVICE_ADDRESS parent_addr, BOOLEAN pare
             pci_init_device(this_device_address, parent_addr, parent_addr_valid, is_bridge);
 
             // check if it is needed to go downstream the bridge
-            if(is_bridge)
-            {
-                if (header_type == 1) // PCI Bridge header type. it should be 1. Skip misconfigured devices
-                {
+            if(is_bridge) {
+                if (header_type == 1) // PCI Bridge header type. it should be 1. Skip misconfigured devices {
                     secondary_bus = pci_read8(bus, device, function, PCI_CONFIG_SECONDARY_BUS_OFFSET);
                     pci_scan_bus(secondary_bus, this_device_address, TRUE);
                 }
@@ -457,17 +432,14 @@ static void host_pci_print_bar(PCI_BASE_ADDRESS_REGISTER *bar)
 {
     static char* bar_type_string = NULL;
 
-    if(PCI_BAR_UNUSED == bar->type)
-    {
+    if(PCI_BAR_UNUSED == bar->type) {
         //bar_type_string = "unused";
         return;
     }
-    else if(PCI_BAR_IO_REGION == bar->type)
-    {
+    else if(PCI_BAR_IO_REGION == bar->type) {
         bar_type_string = "io";
     }
-    else if(PCI_BAR_MMIO_REGION == bar->type)
-    {
+    else if(PCI_BAR_MMIO_REGION == bar->type) {
         bar_type_string = "mmio";
     }
 
@@ -479,17 +451,14 @@ static void host_pci_print_bar_screen(PCI_BASE_ADDRESS_REGISTER *bar)
 {
     static char* bar_type_string = NULL;
 
-    if(PCI_BAR_UNUSED == bar->type)
-    {
+    if(PCI_BAR_UNUSED == bar->type) {
         //bar_type_string = "unused";
         return;
     }
-    else if(PCI_BAR_IO_REGION == bar->type)
-    {
+    else if(PCI_BAR_IO_REGION == bar->type) {
         bar_type_string = "io";
     }
-    else if(PCI_BAR_MMIO_REGION == bar->type)
-    {
+    else if(PCI_BAR_MMIO_REGION == bar->type) {
         bar_type_string = "mmio";
     }
 
@@ -506,8 +475,7 @@ static void host_pci_print(void)
 
     VMM_LOG(mask_anonymous, level_trace,"[Bus]    [Dev]    [Func]    [Vendor ID]    [Dev ID]   [PCI-PCI Bridge]\r\n");
     //vmm_clear_screen();
-    for(i = 0; i < PCI_MAX_NUM_FUNCTIONS; i++)
-    {
+    for(i = 0; i < PCI_MAX_NUM_FUNCTIONS; i++) {
         if(PCI_DEV_INDEX_INVALID == pci_devices_lookup_table[i])
         {
             continue;
@@ -520,13 +488,11 @@ static void host_pci_print(void)
         VMM_LOG(mask_anonymous, level_trace,"%5d    %5d    %6d    %#11x    %#8x    ",
              GET_PCI_BUS(device_addr), GET_PCI_DEVICE(device_addr), GET_PCI_FUNCTION(device_addr), pci_dev->vendor_id, pci_dev->device_id);
 
-        if(pci_dev->is_pci_2_pci_bridge)
-        {
+        if(pci_dev->is_pci_2_pci_bridge) {
             VMM_LOG(mask_anonymous, level_trace,"%16c    ", 'X');
         }
         VMM_LOG(mask_anonymous, level_trace,"\r\n BARs: ");
-        for(j = 0; j < PCI_MAX_BAR_NUMBER; j++)
-        {
+        for(j = 0; j < PCI_MAX_BAR_NUMBER; j++) {
             host_pci_print_bar(&(pci_dev->bars[j]));
         }
         VMM_LOG(mask_anonymous, level_trace,"\r\n");
@@ -542,8 +508,7 @@ void host_pci_initialize(void)
     vmm_zeromem(pci_devices_lookup_table, sizeof(pci_devices_lookup_table));
 
     VMM_LOG(mask_anonymous, level_trace,"\r\nSTART Host PCI scan\r\n");
-    for(bus = 0; bus < PCI_MAX_NUM_BUSES; bus++)
-    {
+    for(bus = 0; bus < PCI_MAX_NUM_BUSES; bus++) {
         pci_scan_bus((UINT8) bus, addr, FALSE);
     }
     

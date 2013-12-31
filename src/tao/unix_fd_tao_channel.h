@@ -52,9 +52,18 @@ class UnixFdTaoChannel : public TaoChannel {
   /// @param tao The Tao to handle RPCs.
   virtual bool Listen(Tao *tao);
 
+  /// Create the sockets specified by the constructor.
+  virtual bool Init();
+
+  /// Remove the sockets created in init.
+  virtual bool Destroy();
+
  protected:
-  // A mutex for protecting access to descriptors_.
+  // A mutex for protecting access to descriptors.
   mutable mutex data_m_;
+
+  // A mutex for setting up and removing the sockets.
+  mutex socket_m_;
 
   // The path to the Unix domain socket that manages requests to stop.
   string stop_socket_path_;

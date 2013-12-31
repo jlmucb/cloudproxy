@@ -53,6 +53,12 @@ class TaoChannel {
   /// @param tao The Tao implementation that will handle received messages.
   virtual bool Listen(Tao *tao) = 0;
 
+  /// Initialize the channel.
+  virtual bool Init() = 0;
+
+  /// Release any resources used by the channel.
+  virtual bool Destroy() = 0;
+
   /// Add a child to this channel and return the string that will let the child
   /// connect using the same type.
   /// @param child_hash The hash of the child to add.

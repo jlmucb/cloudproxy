@@ -99,14 +99,10 @@ bool UnixFdTaoChannel::SendMessage(const google::protobuf::Message &m,
 
 
 bool UnixFdTaoChannel::Listen(Tao *tao) {
+  LOG(INFO) << "In Listen";
 
-  if (!OpenUnixDomainSocket(domain_socket_path_, domain_socket_.get())) {
-    LOG(ERROR) << "Could not open a domain socket to accept creation requests";
-    return false;
-  }
-
-  if (!OpenUnixDomainSocket(stop_socket_path_, stop_socket_.get())) {
-    LOG(ERROR) << "Could not open a socket to accept program stop requests";
+  if (!domain_socket_.get() || !stop_socket_.get()) {
+    LOG(ERROR) << "The UnixFdTaoChannel must be initialized with Init";
     return false;
   }
 
@@ -128,11 +124,23 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     // set up the select operation with the current fds and the unix socket
     fd_set read_fds;
     FD_ZERO(&read_fds);
-    int max = *domain_socket_;
-    FD_SET(*domain_socket_, &read_fds);
-    FD_SET(*stop_socket_, &read_fds);
-    if (*stop_socket_ > max) {
-      max = *stop_socket_;
+    int max = 0;
+    
+    {
+      lock_guard<mutex> l(socket_m_);
+      if (domain_socket_.get()) {
+        if (*domain_socket_ > max) {
+          max = *domain_socket_;
+        }
+        FD_SET(*domain_socket_, &read_fds);
+      }
+
+      if (stop_socket_.get()) {
+        FD_SET(*stop_socket_, &read_fds);
+        if (*stop_socket_ > max) {
+          max = *stop_socket_;
+        }
+      }
     }
 
     for (pair<const string, pair<int, int>> &descriptor :
@@ -153,13 +161,13 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     }
 
     // Check for stop messages.
-    if (FD_ISSET(*stop_socket_, &read_fds)) {
+    if (stop_socket_.get() && FD_ISSET(*stop_socket_, &read_fds)) {
       LOG(INFO) << "Stopping due to a stop request on the socket";
       break;
     }
 
     // Check for messages to handle
-    if (FD_ISSET(*domain_socket_, &read_fds)) {
+    if (domain_socket_.get() && FD_ISSET(*domain_socket_, &read_fds)) {
       if (!HandleProgramCreation(tao, *domain_socket_)) {
         LOG(ERROR) << "Could not handle the program creation request";
       }
@@ -231,5 +239,34 @@ bool UnixFdTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
   }
 
   return tao->StartHostedProgram(shpa.path(), args);
+}
+
+bool UnixFdTaoChannel::Init() {
+  {
+    lock_guard<mutex> l(socket_m_);
+    if (!OpenUnixDomainSocket(domain_socket_path_, domain_socket_.get())) {
+      LOG(ERROR) << "Could not open a domain socket to accept creation requests";
+      return false;
+    }
+
+    if (!OpenUnixDomainSocket(stop_socket_path_, stop_socket_.get())) {
+      LOG(ERROR) << "Could not open a socket to accept program stop requests";
+      return false;
+    }
+  }
+
+  LOG(INFO) << "Done opening unix domain sockets";
+
+  return true;
+}
+
+bool UnixFdTaoChannel::Destroy() {
+  {
+    lock_guard<mutex> l(socket_m_);
+    domain_socket_.reset(nullptr);
+    stop_socket_.reset(nullptr);
+  }
+
+  return true;
 }
 }  // namespace tao

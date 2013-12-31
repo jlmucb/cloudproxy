@@ -31,6 +31,7 @@
 #include "tao/fake_tao.h"
 #include "tao/kvm_unix_tao_channel.h"
 #include "tao/tao.h"
+#include "tao/tao_channel_rpc.pb.h"
 #include "tao/util.h"
 
 using std::thread;
@@ -39,10 +40,13 @@ using tao::ConnectToUnixDomainSocket;
 using tao::FakeTao;
 using tao::KvmUnixTaoChannel;
 using tao::ScopedFd;
+using tao::StartHostedProgramArgs;
 using tao::Tao;
 using tao::TaoChannel;
+using tao::TaoChannelRPC;
 
 class KvmUnixTaoChannelTest : public ::testing::Test {
+ protected:
   virtual void SetUp() {
     // Get a temporary directory to use for the files.
     string dir_template("/tmp/kvm_unix_tao_test_XXXXXX");
@@ -57,7 +61,7 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
 
     // Pass the channel a /dev/pts entry that you can talk to and pretend to be
     // the Tao communicating with it.
-    
+    master_fd_.reset(new int(-1));
     *master_fd_ = open("/dev/ptmx", O_RDWR);
     ASSERT_NE(*master_fd_, -1) << "Could not open a new psuedo-terminal";
 
@@ -67,10 +71,12 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     
     char *child_path = ptsname(*master_fd_);
     ASSERT_NE(child_path, nullptr) << "Could not get the name of the child pts";
+    LOG(INFO) << "Got a child path " << child_path;
 
     string child_pts(child_path);
 
     tao_channel_.reset(new KvmUnixTaoChannel(creation_socket_, stop_socket_));
+    ASSERT_TRUE(tao_channel_->Init()) << "Could not set up the sockets";
 
     tao_.reset(new FakeTao());
 
@@ -84,6 +90,9 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     // The listening thread will continue until sent a stop message.
     listener_.reset(new thread(&KvmUnixTaoChannel::Listen, tao_channel_.get(),
       tao_.get()));
+
+    LOG(INFO) << "Set up a channel listening on " << creation_socket_ << " and "
+              << stop_socket_;
   }
 
   virtual void TearDown() {
@@ -112,6 +121,20 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
   string creation_socket_;
   string stop_socket_;
 };
+
+TEST_F(KvmUnixTaoChannelTest, CreationTest) {
+  // Pass a process creation message to the channel.
+  ScopedFd sock(new int(-1));
+  EXPECT_TRUE(ConnectToUnixDomainSocket(creation_socket_, sock.get()))
+    << "Could not connect to the socket " << creation_socket_;
+
+  TaoChannelRPC rpc;
+  rpc.set_rpc(tao::START_HOSTED_PROGRAM);
+  StartHostedProgramArgs *shpa = rpc.mutable_start();
+  shpa->set_path("Fake Program");
+  EXPECT_TRUE(SendMessage(*sock, rpc))
+    << "Could not send the message to the socket";
+}
 
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

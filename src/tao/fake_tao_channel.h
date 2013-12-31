@@ -45,6 +45,8 @@ class FakeTaoChannel : public TaoChannel {
     return true;
   }
 
+  virtual bool Init() { return true; }
+  virtual bool Destroy() { return true; }
  protected:
   // Since this is a fake, the message sending operations fail.
   virtual bool ReceiveMessage(google::protobuf::Message *m,

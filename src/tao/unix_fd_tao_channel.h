@@ -27,6 +27,7 @@
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_channel.h"
+#include "tao/util.h"
 
 using std::map;
 using std::mutex;
@@ -43,7 +44,7 @@ class UnixFdTaoChannel : public TaoChannel {
   /// Construct a UnixFdTaoChannel with a process creation socket at a given
   /// path.
   /// @param socket_path A path at which to create a Unix domain socket.
-  UnixFdTaoChannel(const string &socket_path);
+  UnixFdTaoChannel(const string &socket_path, const string &stop_socket_path);
   virtual ~UnixFdTaoChannel();
 
   /// Listen on all open channels and the Unix domain socket for hosted-program
@@ -55,12 +56,19 @@ class UnixFdTaoChannel : public TaoChannel {
   // A mutex for protecting access to descriptors_.
   mutable mutex data_m_;
 
+  // The path to the Unix domain socket that manages requests to stop.
+  string stop_socket_path_;
+
+  // The open file descriptor for the Unix domain socket that receives
+  // requests to stop the listen operation.
+  ScopedFd stop_socket_;
+
   // The path to the Unix domain socket that manages program creation requests.
   string domain_socket_path_;
 
   // The open file descriptor for the Unix domain socket that receives
   // hosted-program creation requests.
-  int domain_socket_;
+  ScopedFd domain_socket_;
 
   // A map from a child hash to a pair of file descriptors. The first file
   // descriptor is the read descriptor, and the second descriptor is the write

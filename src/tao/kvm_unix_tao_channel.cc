@@ -36,8 +36,9 @@
 using std::lock_guard;
 
 namespace tao {
-KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path)
-    : UnixFdTaoChannel(socket_path) { }
+KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path,
+                                     const string &stop_socket_path)
+    : UnixFdTaoChannel(socket_path, stop_socket_path) { }
 KvmUnixTaoChannel::~KvmUnixTaoChannel() {}
 
 bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,

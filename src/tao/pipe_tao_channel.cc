@@ -39,8 +39,9 @@ using std::lock_guard;
 using std::thread;
 
 namespace tao {
-PipeTaoChannel::PipeTaoChannel(const string &socket_path)
-    : UnixFdTaoChannel(socket_path) { }
+PipeTaoChannel::PipeTaoChannel(const string &socket_path,
+                               const string &stop_socket_path)
+    : UnixFdTaoChannel(socket_path, stop_socket_path) { }
 PipeTaoChannel::~PipeTaoChannel() {}
 
 bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
@@ -116,7 +117,8 @@ bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
     lock_guard<mutex> l(data_m_);
     // The child shouldn't have any of the open pipe descriptors from the
     // parent, including the socket
-    close(domain_socket_);
+    close(*domain_socket_);
+    close(*stop_socket_);
     for(pair<const string, pair<int, int>> desc : descriptors_) {
       close(desc.second.first);
       close(desc.second.second);

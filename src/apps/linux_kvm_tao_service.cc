@@ -66,6 +66,8 @@ DEFINE_string(policy_pk_path, "./policy_public_key",
 DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
               "The name of a file to use as the socket for incoming program "
               "creation requests");
+DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
+              "The name of a file to use as the socket for stopping the server");
 DEFINE_string(ca_host, "", "The hostname of the TCCA server, if any");
 DEFINE_string(ca_port, "", "The port for the TCCA server, if any");
 
@@ -109,7 +111,7 @@ int main(int argc, char **argv) {
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
   scoped_ptr<KvmUnixTaoChannel> kvm_channel(
-      new KvmUnixTaoChannel(FLAGS_program_socket));
+      new KvmUnixTaoChannel(FLAGS_program_socket, FLAGS_stop_socket));
   scoped_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
   CHECK(vm_factory->Init()) << "Could not initialize the VM factory";
 

@@ -43,8 +43,17 @@ int remove_entry(const char *path, const struct stat *sb, int tflag,
 namespace tao {
 
 /// A pointer to an OpenSSL RSA object.
-typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free> >
+typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
     ScopedRsa;
+
+/// Close a file descriptor and ignore the return value. This is used by the
+/// definition of ScopedFd.
+void fd_close(int *fd);
+
+/// A pointer to a managed file descriptor that gets closed when this wrapper is
+/// deleted.
+typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<int, fd_close>>
+    ScopedFd;
 
 /// Set the disposition of SIGCHLD to prevent child zombification.
 bool LetChildProcsDie();
@@ -133,6 +142,16 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m);
 /// @param fd The file descriptor to write.
 /// @param m The message to send.
 bool SendMessage(int fd, const google::protobuf::Message &m);
+
+/// Opens a Unix domain socket at a given path.
+/// @param path The path for the new Unix domain socket.
+/// @param[out] The file descriptor for this socket.
+bool OpenUnixDomainSocket(const string &path, int *sock);
+
+/// Connect as a client to a Unix domain socket.
+/// @param path The path to the existing socket.
+/// @param[out] sock The connected socket.
+bool ConnectToUnixDomainSocket(const string &path, int *sock);
 
 }  // namespace tao
 

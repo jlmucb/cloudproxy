@@ -39,7 +39,7 @@ class KvmUnixTaoChannel : public UnixFdTaoChannel {
   /// Construct a KvmUnixTaoChannel with a process creation socket at a given
   /// path.
   /// @param socket_path the filename that will be used as a Unix domain socket.
-  KvmUnixTaoChannel(const string &socket_path);
+  KvmUnixTaoChannel(const string &socket_path, const string &stop_socket_path);
   virtual ~KvmUnixTaoChannel();
 
   /// Add a new child and gets back the parameters

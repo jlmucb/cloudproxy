@@ -20,11 +20,14 @@
 #include "tao/util.h"
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <ftw.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/unistd.h>
 
 #include <fstream>
 #include <memory>
@@ -99,6 +102,18 @@ int remove_entry(const char *path, const struct stat *sb, int tflag,
 }
 
 namespace tao {
+void fd_close(int *fd) {
+  if (fd != NULL) {
+    if (*fd >= 0) {
+      close(*fd);
+    }
+
+    delete fd;
+  }
+
+  return;
+}
+
 vector<shared_ptr<mutex> > locks;
 
 void locking_function(int mode, int n, const char *file, int line) {
@@ -511,7 +526,7 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   }
 
   // TODO(tmroeder): figure out why this is happening
-  if ((len < 0) || (len > 1024 * 1024)) {
+  if (len > 1024 * 1024) {
     LOG(ERROR) << "The length was too large to be reasonable: " << len;
     return false;
   }
@@ -545,5 +560,73 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
 
   string serialized(bytes.get(), len);
   return m->ParseFromString(serialized);
+}
+
+bool OpenUnixDomainSocket(const string &path, int *sock) {
+  // The unix domain socket is used to listen for CreateHostedProgram requests.
+  *sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (*sock == -1) {
+    LOG(ERROR) << "Could not create unix domain socket to listen for messages";
+    return false;
+  }
+
+  // Make sure the socket won't block if there's no data available, or not
+  // enough data available.
+  int fcntl_err = fcntl(*sock, F_SETFL, O_NONBLOCK);
+  if (fcntl_err == -1) {
+    PLOG(ERROR) << "Could not set the socket to be non-blocking";
+    return false;
+  }
+
+  struct sockaddr_un addr;
+  addr.sun_family = AF_UNIX;
+  if (path.size() + 1 > sizeof(addr.sun_path)) {
+    LOG(ERROR) << "The path " << path << " was too long to use";
+    return false;
+  }
+
+  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path));
+  int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+  int bind_err = bind(*sock, (struct sockaddr *)&addr, len);
+  if (bind_err == -1) {
+    PLOG(ERROR) << "Could not bind the address " << path
+                << " to the socket";
+    return false;
+  }
+
+  LOG(INFO) << "Bound the unix socket to " << path;
+
+  return true;
+}
+
+bool ConnectToUnixDomainSocket(const string &path, int *sock) {
+  if (!sock) {
+    LOG(ERROR) << "Null sock parameter";
+    return false;
+  }
+
+  *sock = socket(PF_UNIX, SOCK_DGRAM, 0);
+  if (*sock == -1) {
+    PLOG(ERROR) << "Could not create a unix domain socket";
+    return false;
+  }
+
+  struct sockaddr_un addr;
+  addr.sun_family = AF_UNIX;
+  if (path.size() + 1 > sizeof(addr.sun_path)) {
+    LOG(ERROR) << "This socket name is too large to use";
+    close(*sock);
+    return false;
+  }
+
+  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path));
+  int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+  int conn_err = connect(*sock, (struct sockaddr *)&addr, len);
+  if (conn_err == -1) {
+    PLOG(ERROR) << "Could not connect to the socket";
+    return false;
+  }
+
+  return true;
 }
 }  // namespace tao

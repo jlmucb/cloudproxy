@@ -45,8 +45,10 @@ using std::lock_guard;
 using std::thread;
 
 namespace tao {
-UnixFdTaoChannel::UnixFdTaoChannel(const string &socket_path)
-    : domain_socket_path_(socket_path) {}
+UnixFdTaoChannel::UnixFdTaoChannel(const string &socket_path,
+                                   const string &stop_socket_path)
+    : stop_socket_path_(stop_socket_path), stop_socket_(new int(-1)),
+    domain_socket_path_(socket_path), domain_socket_(new int(-1)) { }
 UnixFdTaoChannel::~UnixFdTaoChannel() {}
 
 bool UnixFdTaoChannel::ReceiveMessage(google::protobuf::Message *m,
@@ -95,12 +97,23 @@ bool UnixFdTaoChannel::SendMessage(const google::protobuf::Message &m,
   return tao::SendMessage(writefd, m);
 }
 
+
 bool UnixFdTaoChannel::Listen(Tao *tao) {
+
+  if (!OpenUnixDomainSocket(domain_socket_path_, domain_socket_.get())) {
+    LOG(ERROR) << "Could not open a domain socket to accept creation requests";
+    return false;
+  }
+
+  if (!OpenUnixDomainSocket(stop_socket_path_, stop_socket_.get())) {
+    LOG(ERROR) << "Could not open a socket to accept program stop requests";
+    return false;
+  }
 
   // Keep SIGPIPE from killing this program when a child dies and is connected
   // over a pipe.
-  // TODO(tmroeder): this maybe should be generalized and put in the apps/ code
-  // rather than in the library.
+  // TODO(tmroeder): maybe this step should be generalized and put in the apps/
+  // code rather than in the library.
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
@@ -110,44 +123,17 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     return false;
   }
 
-  // The unix domain socket is used to listen for CreateHostedProgram requests.
-  domain_socket_ = socket(AF_UNIX, SOCK_DGRAM, 0);
-  if (domain_socket_ == -1) {
-    LOG(ERROR) << "Could not create unix domain socket to listen for messages";
-    return false;
-  }
-
-  // Make sure the socket won't block if there's no data available, or not
-  // enough data available.
-  int fcntl_err = fcntl(domain_socket_, F_SETFL, O_NONBLOCK);
-  if (fcntl_err == -1) {
-    PLOG(ERROR) << "Could not set the socket to be non-blocking";
-    return false;
-  }
-
-  struct sockaddr_un addr;
-  addr.sun_family = AF_UNIX;
-  if (domain_socket_path_.size() + 1 > sizeof(addr.sun_path)) {
-    LOG(ERROR) << "The path " << domain_socket_path_ << " was too long to use";
-    return false;
-  }
-
-  strncpy(addr.sun_path, domain_socket_path_.c_str(), sizeof(addr.sun_path));
-  int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
-  int bind_err = bind(domain_socket_, (struct sockaddr *)&addr, len);
-  if (bind_err == -1) {
-    PLOG(ERROR) << "Could not bind the address " << domain_socket_path_
-                << " to the socket";
-  }
-
-  LOG(INFO) << "Bound the unix socket to " << domain_socket_path_;
-
+  bool ret = true;
   while (true) {
     // set up the select operation with the current fds and the unix socket
     fd_set read_fds;
     FD_ZERO(&read_fds);
-    int max = domain_socket_;
-    FD_SET(domain_socket_, &read_fds);
+    int max = *domain_socket_;
+    FD_SET(*domain_socket_, &read_fds);
+    FD_SET(*stop_socket_, &read_fds);
+    if (*stop_socket_ > max) {
+      max = *stop_socket_;
+    }
 
     for (pair<const string, pair<int, int>> &descriptor :
          descriptors_) {
@@ -162,12 +148,19 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     int err = select(max + 1, &read_fds, NULL, NULL, NULL);
     if (err == -1) {
       PLOG(ERROR) << "Error in calling select";
-      return false;
+      ret = false;
+      break;
+    }
+
+    // Check for stop messages.
+    if (FD_ISSET(*stop_socket_, &read_fds)) {
+      LOG(INFO) << "Stopping due to a stop request on the socket";
+      break;
     }
 
     // Check for messages to handle
-    if (FD_ISSET(domain_socket_, &read_fds)) {
-      if (!HandleProgramCreation(tao, domain_socket_)) {
+    if (FD_ISSET(*domain_socket_, &read_fds)) {
+      if (!HandleProgramCreation(tao, *domain_socket_)) {
         LOG(ERROR) << "Could not handle the program creation request";
       }
     }
@@ -211,10 +204,10 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
   // Restore the old SIGPIPE signal handler.
   if (sigaction(SIGPIPE, &old_act, NULL) < 0) {
     PLOG(ERROR) << "Could not restore the old signal handler.";
-    return false;
+    ret = false;
   }
 
-  return true;
+  return ret;
 }
 
 bool UnixFdTaoChannel::HandleProgramCreation(Tao *tao, int sock) {

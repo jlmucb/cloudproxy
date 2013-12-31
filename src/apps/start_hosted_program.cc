@@ -29,7 +29,10 @@
 #include "tao/tao_channel_rpc.pb.h"
 #include "tao/util.h"
 
+using tao::ConnectToUnixDomainSocket;
 using tao::InitializeOpenSSL;
+using tao::ScopedFd;
+using tao::SendMessage;
 using tao::StartHostedProgramArgs;
 using tao::TaoChannelRPC;
 
@@ -82,46 +85,12 @@ int main(int argc, char **argv) {
     }
   }
 
-  string serialized;
-  if (!rpc.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the RPC to a string";
-    return 1;
-  }
+  ScopedFd sock(new int(-1));
+  CHECK(ConnectToUnixDomainSocket(FLAGS_socket, sock.get()))
+    << "Could not connect to the socket " << FLAGS_socket;
 
-  int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-  if (sock == -1) {
-    PLOG(ERROR) << "Could not create a unix domain socket";
-    return 1;
-  }
+  CHECK(SendMessage(*sock, rpc))
+    << "Could not send the message to the socket";
 
-  struct sockaddr_un addr;
-  addr.sun_family = AF_UNIX;
-  if (FLAGS_socket.size() + 1 > sizeof(addr.sun_path)) {
-    LOG(ERROR) << "This socket name is too large to use";
-    close(sock);
-    return 1;
-  }
-
-  strncpy(addr.sun_path, FLAGS_socket.c_str(), sizeof(addr.sun_path));
-
-  size_t len = serialized.size();
-  ssize_t bytes_sent =
-      sendto(sock, &len, sizeof(len), 0, (struct sockaddr *)&addr,
-             sizeof(struct sockaddr_un));
-  if (bytes_sent != sizeof(len)) {
-    PLOG(ERROR) << "Could not send the size";
-    close(sock);
-    return 1;
-  }
-
-  bytes_sent = sendto(sock, serialized.c_str(), len, 0,
-                      (struct sockaddr *)&addr, sizeof(struct sockaddr_un));
-  if (bytes_sent != static_cast<ssize_t>(len)) {
-    PLOG(ERROR) << "Could not send the RPC itself";
-    close(sock);
-    return 1;
-  }
-
-  close(sock);
   return 0;
 }

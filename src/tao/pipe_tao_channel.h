@@ -35,7 +35,7 @@ namespace tao {
 class PipeTaoChannel : public UnixFdTaoChannel {
  public:
   /// Create a PipeTaoChannel with a process creation socket at a given path.
-  PipeTaoChannel(const string &socket_path);
+  PipeTaoChannel(const string &socket_path, const string &stop_socket_path);
   virtual ~PipeTaoChannel();
 
   /// Serialize the child_fds into a PipeTaoChannelParams protobuf.

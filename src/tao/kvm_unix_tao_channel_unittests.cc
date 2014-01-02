@@ -88,6 +88,7 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     ASSERT_TRUE(tao_channel_->Init()) << "Could not set up the sockets";
 
     tao_.reset(new FakeTao());
+    ASSERT_TRUE(tao_->Init()) << "Could not initialize the Tao";
 
     string child_hash("Fake hash");
     string params;
@@ -149,6 +150,32 @@ TEST_F(KvmUnixTaoChannelTest, RandomTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(16, &bytes))
     << "Could not get random bytes from the host tao";
+}
+
+TEST_F(KvmUnixTaoChannelTest, SealTest) {
+  string bytes;
+  EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
+  string sealed;
+  EXPECT_TRUE(child_channel_->Seal(bytes, &sealed));
+}
+
+TEST_F(KvmUnixTaoChannelTest, UnsealTest) {
+  string bytes;
+  EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
+  string sealed;
+  EXPECT_TRUE(child_channel_->Seal(bytes, &sealed));
+
+  string unsealed;
+  EXPECT_TRUE(child_channel_->Unseal(sealed, &unsealed));
+
+  EXPECT_EQ(bytes, unsealed);
+}
+
+TEST_F(KvmUnixTaoChannelTest, AttestTest) {
+  string bytes;
+  EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
+  string attestation;
+  EXPECT_TRUE(child_channel_->Attest(bytes, &attestation));
 }
 
 GTEST_API_ int main(int argc, char **argv) {

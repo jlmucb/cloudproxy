@@ -25,7 +25,7 @@ flags = [
 '-I',
 './third_party/protobuf/src',
 '-I',
-'./out/Default/gen',
+'./out/Release/gen',
 ]
 
 

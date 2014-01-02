@@ -71,7 +71,7 @@ typedef struct _SCHEDULER_CPU_STATE {
 } SCHEDULER_CPU_STATE;
 
 
-static
+//static
 SCHEDULER_VCPU_OBJECT* scheduler_get_current_vcpu_for_guest( GUEST_ID guest_id );
 
 static UINT16 g_host_cpus_count         = 0;

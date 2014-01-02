@@ -39,7 +39,7 @@
 #include "lock.h"
 #include "scheduler.h"
 #include "page_walker.h"
-#include "..\..\guest\guest_cpu\guest_cpu_internal.h"
+#include "guest_cpu_internal.h"
 #include "unrestricted_guest.h"
 #include "fvs.h"
 #include "ve.h"

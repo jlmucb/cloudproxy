@@ -69,7 +69,7 @@ BOOLEAN gpm_get_range_details_and_advance_mam_iterator(IN MAM_HANDLE mam_handle,
     return FALSE;
 }
 
-static
+// static
 BOOLEAN gpm_remove_all_relevant_hpa_to_gpa_mapping(GPM* gpm, GPA gpa, UINT64 size) {
 	MAM_HANDLE gpa_to_hpa;
 	MAM_HANDLE hpa_to_gpa;

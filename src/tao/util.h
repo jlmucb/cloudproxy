@@ -30,7 +30,7 @@
 #include "tao/tao_child_channel.h"
 #include "tao/tao_child_channel_registry.h"
 
-/// Handle a remove message from ntfw(). This deletes the current file or empty
+/// Handle a remove message from nftw(). This deletes the current file or empty
 /// directory.
 /// @param path The path of the current file or directory to delete.
 /// @param sb A stat structure for the path.
@@ -48,12 +48,21 @@ typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
 
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
+/// @param fd A pointer to the file descriptor to close and free.
 void fd_close(int *fd);
+
+/// Remove a directory and all its subfiles and subdirectories. This is used by
+/// the definition of ScopedTempDir.
+/// @param dir The path to the directory.
+void temp_file_cleaner(string *dir);
 
 /// A pointer to a managed file descriptor that gets closed when this wrapper is
 /// deleted.
 typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<int, fd_close>>
     ScopedFd;
+
+typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<string, temp_file_cleaner>>
+  ScopedTempDir;
 
 /// Set the disposition of SIGCHLD to prevent child zombification.
 bool LetChildProcsDie();

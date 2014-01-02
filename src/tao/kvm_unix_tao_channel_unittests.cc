@@ -40,6 +40,7 @@ using tao::ConnectToUnixDomainSocket;
 using tao::FakeTao;
 using tao::KvmUnixTaoChannel;
 using tao::ScopedFd;
+using tao::ScopedTempDir;
 using tao::StartHostedProgramArgs;
 using tao::Tao;
 using tao::TaoChannel;
@@ -54,10 +55,10 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
 
     ASSERT_TRUE(mkdtemp(temp_name.get()));
-    dir_ = temp_name.get();
+    temp_dir_.reset(new string(temp_name.get()));
 
-    creation_socket_ = dir_ + string("/creation_socket");
-    stop_socket_ = dir_ + string("/stop_socket");
+    creation_socket_ = *temp_dir_ + string("/creation_socket");
+    stop_socket_ = *temp_dir_ + string("/stop_socket");
 
     // Pass the channel a /dev/pts entry that you can talk to and pretend to be
     // the Tao communicating with it.
@@ -71,7 +72,6 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     
     char *child_path = ptsname(*master_fd_);
     ASSERT_NE(child_path, nullptr) << "Could not get the name of the child pts";
-    LOG(INFO) << "Got a child path " << child_path;
 
     string child_pts(child_path);
 
@@ -90,9 +90,6 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     // The listening thread will continue until sent a stop message.
     listener_.reset(new thread(&KvmUnixTaoChannel::Listen, tao_channel_.get(),
       tao_.get()));
-
-    LOG(INFO) << "Set up a channel listening on " << creation_socket_ << " and "
-              << stop_socket_;
   }
 
   virtual void TearDown() {
@@ -114,10 +111,10 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
   }
 
   ScopedFd master_fd_;
+  ScopedTempDir temp_dir_;
   scoped_ptr<Tao> tao_;
   scoped_ptr<KvmUnixTaoChannel> tao_channel_;
   scoped_ptr<thread> listener_;
-  string dir_;
   string creation_socket_;
   string stop_socket_;
 };

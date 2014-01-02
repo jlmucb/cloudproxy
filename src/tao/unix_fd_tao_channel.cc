@@ -99,8 +99,6 @@ bool UnixFdTaoChannel::SendMessage(const google::protobuf::Message &m,
 
 
 bool UnixFdTaoChannel::Listen(Tao *tao) {
-  LOG(INFO) << "In Listen";
-
   if (!domain_socket_.get() || !stop_socket_.get()) {
     LOG(ERROR) << "The UnixFdTaoChannel must be initialized with Init";
     return false;
@@ -162,7 +160,6 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
 
     // Check for stop messages.
     if (stop_socket_.get() && FD_ISSET(*stop_socket_, &read_fds)) {
-      LOG(INFO) << "Stopping due to a stop request on the socket";
       break;
     }
 
@@ -254,8 +251,6 @@ bool UnixFdTaoChannel::Init() {
       return false;
     }
   }
-
-  LOG(INFO) << "Done opening unix domain sockets";
 
   return true;
 }

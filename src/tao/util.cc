@@ -103,7 +103,7 @@ int remove_entry(const char *path, const struct stat *sb, int tflag,
 
 namespace tao {
 void fd_close(int *fd) {
-  if (fd != NULL) {
+  if (fd) {
     if (*fd >= 0) {
       close(*fd);
     }
@@ -112,6 +112,16 @@ void fd_close(int *fd) {
   }
 
   return;
+}
+
+void temp_file_cleaner(string *dir) {
+ if (dir) { 
+   if (nftw(dir->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+     PLOG(ERROR) << "Could not remove temp directory " << *dir;
+   }
+
+   delete dir;
+ }
 }
 
 vector<shared_ptr<mutex> > locks;
@@ -593,8 +603,6 @@ bool OpenUnixDomainSocket(const string &path, int *sock) {
                 << " to the socket";
     return false;
   }
-
-  LOG(INFO) << "Bound the unix socket to " << path;
 
   return true;
 }

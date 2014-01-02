@@ -69,8 +69,9 @@ DEFINE_string(policy_pk_path, "./policy_public_key",
 DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
               "The name of a file to use as the socket for incoming program "
               "creation requests");
-DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
-              "The name of a file to use as the socket for stopping the server");
+DEFINE_string(
+    stop_socket, "/tmp/.linux_tao_stop_socket",
+    "The name of a file to use as the socket for stopping the server");
 DEFINE_string(ca_host, "", "The hostname of the TCCA server, if any");
 DEFINE_string(ca_port, "", "The port for the TCCA server, if any");
 

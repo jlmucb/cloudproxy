@@ -87,10 +87,9 @@ int main(int argc, char **argv) {
 
   ScopedFd sock(new int(-1));
   CHECK(ConnectToUnixDomainSocket(FLAGS_socket, sock.get()))
-    << "Could not connect to the socket " << FLAGS_socket;
+      << "Could not connect to the socket " << FLAGS_socket;
 
-  CHECK(SendMessage(*sock, rpc))
-    << "Could not send the message to the socket";
+  CHECK(SendMessage(*sock, rpc)) << "Could not send the message to the socket";
 
   return 0;
 }

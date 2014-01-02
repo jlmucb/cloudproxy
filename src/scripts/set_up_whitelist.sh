@@ -15,7 +15,7 @@
 
 # BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
 # 1. built everything in ROOT/src (using ./bootstrap.sh &&
-# third_party/ninja/ninja -C out/Default);
+# third_party/ninja/ninja -C out/Release);
 # 2. have a version of keyczart in $PATH (either install keyczar or build the
 # one in third_party/keyczar);
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
@@ -23,7 +23,7 @@
 # 4. changed the following variables to suit your directory choices:
 TEST=~/testing/test
 ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Default/bin
+BUILD_DIR=${ROOT}/src/out/Release/bin
 SAMPLE_WHITELIST=${ROOT}/run/sample_whitelist.pb2
 KERNEL=/tmp/vmlinuz-3.7.5
 INITRD=/tmp/initrd.img-3.7.5
@@ -47,7 +47,7 @@ cat $SAMPLE_WHITELIST |
 
 # Create a signed version of the whitelist and the ACL for CloudServer
 cat whitelist.pb2 |
-  ${BUILD_DIR}/../protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
+  ${BUILD_DIR}/protoc -I${ROOT}/src/tao/ --encode=tao.Whitelist \
     ${ROOT}/src/tao/hosted_programs.proto > whitelist
 ./sign_whitelist --pass $KEYCZAR_PASS
 

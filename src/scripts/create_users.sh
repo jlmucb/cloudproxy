@@ -15,7 +15,7 @@
 
 # BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
 # 1. built everything in ROOT/src (using ./bootstrap.sh &&
-# third_party/ninja/ninja -C out/Default);
+# third_party/ninja/ninja -C out/Release);
 # 2. have a version of keyczart in $PATH (either install keyczar or build the
 # one in third_party/keyczar);
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
@@ -23,7 +23,7 @@
 # 4. changed the following variables to suit your directory choices:
 RUN=~/testing/run
 ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Default/bin
+BUILD_DIR=${ROOT}/src/out/Release/bin
 KEYCZAR_PASS=cppolicy
 
 # The CloudServer and CloudClient tests rely on there being users tmroeder and

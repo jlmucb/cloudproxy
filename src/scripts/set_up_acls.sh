@@ -15,13 +15,13 @@
 
 TEST=~/testing/test
 ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Default/bin
+BUILD_DIR=${ROOT}/src/out/Release/bin
 SAMPLE_ACLS=${ROOT}/run/acls.ascii
 KEYCZAR_PASS=cppolicy
 
 cd $TEST
 cat $SAMPLE_ACLS |
-  ${BUILD_DIR}/../protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
+  ${BUILD_DIR}/protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
     ${ROOT}/src/cloudproxy/cloudproxy.proto > acls
 ./sign_acls --pass $KEYCZAR_PASS
 

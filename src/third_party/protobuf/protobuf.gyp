@@ -12,6 +12,9 @@
     'cflags': [
       '-Wno-deprecated',
     ],
+    'includes': [
+      '../../build/third_party_common.gypi',
+    ],
   },
   'targets': [
     # The "lite" lib is about 1/7th the size of the heavy lib,

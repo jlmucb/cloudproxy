@@ -25,7 +25,7 @@
 
 {
   'variables': {
-    'protoc': '<(PRODUCT_DIR)/protoc',
+    'protoc': '<(PRODUCT_DIR)/bin/protoc',
   },
   'rules': [
     {

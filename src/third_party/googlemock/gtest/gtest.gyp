@@ -6,6 +6,11 @@
 # are unnecessary for CloudProxy.
 
 {
+  'target_defaults': {
+    'includes': [
+      '../../../build/third_party_common.gypi',
+    ],
+  },
   'targets': [
     {
       'target_name': 'gtest',

@@ -15,7 +15,7 @@
 
 RUN=~/testing/run
 ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Default/bin
+BUILD_DIR=${ROOT}/src/out/Release/bin
 AIKBLOB=~/testing/run/HW/aikblob
 KEYCZAR_PASS=cppolicy
 

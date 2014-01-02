@@ -13,6 +13,11 @@
 # limitations under the License.
 
 {
+  'target_defaults': {
+    'includes': [
+      '../../build/third_party_common.gypi',
+    ],
+  },
   'targets': [
     {
       'target_name': 'safe-iop',

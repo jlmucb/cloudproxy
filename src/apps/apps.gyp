@@ -14,12 +14,9 @@
 
 {
   'target_defaults': {
-    'cflags': [
-      '-Wall',
-      '-Werror',
-      '-std=c++0x',
+    'includes': [
+      '../build/common.gypi',
     ],
-    'product_dir': 'bin',
   },
   'targets': [
     {

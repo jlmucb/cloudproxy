@@ -14,10 +14,9 @@
 
 {
   'target_defaults': {
-    'cflags': [
-      '-O2',
+    'includes': [
+      '../../build/third_party_common.gypi',
     ],
-    'product_dir': 'bin',
   },
   'variables': {
     'src': 'cpp/src/keyczar',

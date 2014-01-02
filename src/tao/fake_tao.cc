@@ -62,8 +62,8 @@ bool FakeTao::Init() {
 }
 
 bool FakeTao::StartHostedProgram(const string &path, const list<string> &args) {
-  // to be implemented after the pipe process code has been refactored
-  return false;
+  // Just pretend to start the hosted program.
+  return true;
 }
 
 bool FakeTao::GetRandomBytes(size_t size, string *bytes) const {

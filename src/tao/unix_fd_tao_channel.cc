@@ -236,6 +236,7 @@ bool UnixFdTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
     args.push_back(shpa.args(i));
   }
 
+  LOG(INFO) << "Calling StartHostedProgram on the Tao";
   return tao->StartHostedProgram(shpa.path(), args);
 }
 

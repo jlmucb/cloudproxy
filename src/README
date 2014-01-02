@@ -28,7 +28,7 @@ Then in the $SRC directory, you can call gyp to fix up the build files
 And if you have ninja in your path, then you can build directly from the $SRC
 directory.
 
-> ninja -C out/Default
+> ninja -C out/Release
 
 The C++ sources in $SRC are formatted in accordance with Google style
 guidelines. One easy way to make any changes match this format is to

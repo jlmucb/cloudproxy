@@ -70,7 +70,8 @@ class LinuxTao : public Tao {
   /// @param pk_path The location of its public/private key pair, encrypted to
   /// the symmetric key
   /// @param policy_pk_path The path to the public policy key
-  /// @param host_channel A channel implementation it takes ownership of and uses
+  /// @param host_channel A channel implementation it takes ownership of and
+  /// uses
   /// to communicate with its parent Tao
   /// @param child_channel A channel implementation it uses to communicat with
   /// hosted programs it starts

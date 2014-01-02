@@ -35,7 +35,7 @@ class TaoAuth {
   /// Check that a given program hash is authorized.
   /// @param program_hash The hash to check.
   virtual bool IsAuthorized(const string &program_hash) const = 0;
-  
+
   /// Check that a given name/hash pair is authorized.
   /// @param program_name The name to check.
   /// @param program_hash The hash to check.

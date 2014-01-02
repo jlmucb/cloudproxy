@@ -44,7 +44,7 @@ class PipeTaoChannel : public UnixFdTaoChannel {
   /// Close all the file descriptors that don't belong to the child. This is
   /// used, e.g., after a fork() in ProcessFactory.
   virtual bool ChildCleanup(const string &child_hash);
-  
+
   /// Close all the file descriptors that don't belong to the parent. This is
   /// used, e.g., after a fork() in ProcessFactory.
   virtual bool ParentCleanup(const string &child_hash);

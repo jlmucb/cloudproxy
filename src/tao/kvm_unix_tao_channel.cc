@@ -38,7 +38,7 @@ using std::lock_guard;
 namespace tao {
 KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path,
                                      const string &stop_socket_path)
-    : UnixFdTaoChannel(socket_path, stop_socket_path) { }
+    : UnixFdTaoChannel(socket_path, stop_socket_path) {}
 KvmUnixTaoChannel::~KvmUnixTaoChannel() {}
 
 bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
@@ -103,8 +103,7 @@ bool KvmUnixTaoChannel::UpdateChildParams(const string &child_hash,
     lock_guard<mutex> l(data_m_);
     // Look up the hash to see if we have descriptors associated with it.
     auto child_it = descriptors_.find(child_hash);
-    if ((child_it != descriptors_.end()) &&
-        (child_it->second.first >= 0)) {
+    if ((child_it != descriptors_.end()) && (child_it->second.first >= 0)) {
       LOG(ERROR) << "Could not replace an existing channel for " << child_hash;
       return false;
     }

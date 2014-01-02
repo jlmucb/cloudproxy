@@ -61,8 +61,8 @@ void temp_file_cleaner(string *dir);
 typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<int, fd_close>>
     ScopedFd;
 
-typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<string, temp_file_cleaner>>
-  ScopedTempDir;
+typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<
+                                      string, temp_file_cleaner>> ScopedTempDir;
 
 /// Set the disposition of SIGCHLD to prevent child zombification.
 bool LetChildProcsDie();

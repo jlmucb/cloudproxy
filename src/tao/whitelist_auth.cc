@@ -83,7 +83,8 @@ bool WhitelistAuth::Init() {
 }
 
 bool WhitelistAuth::IsAuthorized(const string &program_hash) const {
-  bool authorized = (hash_whitelist_.find(program_hash) != hash_whitelist_.end());
+  bool authorized =
+      (hash_whitelist_.find(program_hash) != hash_whitelist_.end());
   if (!authorized) {
     LOG(ERROR) << "Could not find the hash " << program_hash
                << " on the whitelist";

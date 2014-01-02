@@ -47,12 +47,14 @@ using std::thread;
 namespace tao {
 UnixFdTaoChannel::UnixFdTaoChannel(const string &socket_path,
                                    const string &stop_socket_path)
-    : stop_socket_path_(stop_socket_path), stop_socket_(new int(-1)),
-    domain_socket_path_(socket_path), domain_socket_(new int(-1)) { }
+    : stop_socket_path_(stop_socket_path),
+      stop_socket_(new int(-1)),
+      domain_socket_path_(socket_path),
+      domain_socket_(new int(-1)) {}
 UnixFdTaoChannel::~UnixFdTaoChannel() {}
 
 bool UnixFdTaoChannel::ReceiveMessage(google::protobuf::Message *m,
-                                    const string &child_hash) const {
+                                      const string &child_hash) const {
   // try to receive an integer
   CHECK(m) << "m was null";
 
@@ -73,7 +75,7 @@ bool UnixFdTaoChannel::ReceiveMessage(google::protobuf::Message *m,
 }
 
 bool UnixFdTaoChannel::SendMessage(const google::protobuf::Message &m,
-                                 const string &child_hash) const {
+                                   const string &child_hash) const {
   // send the length then the serialized message
   string serialized;
   if (!m.SerializeToString(&serialized)) {
@@ -96,7 +98,6 @@ bool UnixFdTaoChannel::SendMessage(const google::protobuf::Message &m,
 
   return tao::SendMessage(writefd, m);
 }
-
 
 bool UnixFdTaoChannel::Listen(Tao *tao) {
   if (!domain_socket_.get() || !stop_socket_.get()) {
@@ -123,7 +124,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     fd_set read_fds;
     FD_ZERO(&read_fds);
     int max = 0;
-    
+
     {
       lock_guard<mutex> l(socket_m_);
       if (domain_socket_.get()) {
@@ -141,8 +142,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       }
     }
 
-    for (pair<const string, pair<int, int>> &descriptor :
-         descriptors_) {
+    for (pair<const string, pair<int, int>> &descriptor : descriptors_) {
       int read_fd = descriptor.second.first;
       FD_SET(read_fd, &read_fds);
 
@@ -171,8 +171,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     }
 
     list<string> programs_to_erase;
-    for (pair<const string, pair<int, int>> &descriptor :
-         descriptors_) {
+    for (pair<const string, pair<int, int>> &descriptor : descriptors_) {
       int read_fd = descriptor.second.first;
       const string &child_hash = descriptor.first;
 
@@ -198,10 +197,12 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     auto pit = programs_to_erase.begin();
     for (; pit != programs_to_erase.end(); ++pit) {
       if (!tao->RemoveHostedProgram(*pit)) {
-        LOG(ERROR) << "Could not remove the hosted program from the list of programs";
+        LOG(ERROR)
+            << "Could not remove the hosted program from the list of programs";
       }
 
-      // We still remove the program from the map so it doesn't get handled by select.
+      // We still remove the program from the map so it doesn't get handled by
+      // select.
       descriptors_.erase(*pit);
     }
   }
@@ -242,7 +243,8 @@ bool UnixFdTaoChannel::Init() {
   {
     lock_guard<mutex> l(socket_m_);
     if (!OpenUnixDomainSocket(domain_socket_path_, domain_socket_.get())) {
-      LOG(ERROR) << "Could not open a domain socket to accept creation requests";
+      LOG(ERROR)
+          << "Could not open a domain socket to accept creation requests";
       return false;
     }
 

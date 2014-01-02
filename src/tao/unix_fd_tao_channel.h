@@ -90,7 +90,7 @@ class UnixFdTaoChannel : public TaoChannel {
   /// is used to decide which descriptor to use.
   virtual bool ReceiveMessage(google::protobuf::Message *m,
                               const string &child_hash) const;
-  
+
   /// Send a message to a hosted program by performing a write() on a file
   /// descriptor.
   /// @param m The message to send.
@@ -114,4 +114,3 @@ class UnixFdTaoChannel : public TaoChannel {
 }
 
 #endif  // TAO_UNIX_FD_TAO_CHANNEL_H_
-

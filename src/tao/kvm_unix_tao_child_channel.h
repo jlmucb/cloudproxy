@@ -24,7 +24,7 @@
 
 namespace tao {
 /// The channel a guest VM uses to communicate with the hypervisor Tao. It does
-/// this by running an service (like apps/linux_kvm_guest_tao_service.cc) that 
+/// this by running an service (like apps/linux_kvm_guest_tao_service.cc) that
 /// takes in the params from the hypervisor and uses them to find the right
 /// device to connect to for hypervisor Tao communication. In the current
 /// implementation, this is done by passing a Baes64W-encoded string as the last

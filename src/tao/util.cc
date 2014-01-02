@@ -115,13 +115,13 @@ void fd_close(int *fd) {
 }
 
 void temp_file_cleaner(string *dir) {
- if (dir) { 
-   if (nftw(dir->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
-     PLOG(ERROR) << "Could not remove temp directory " << *dir;
-   }
+  if (dir) {
+    if (nftw(dir->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+      PLOG(ERROR) << "Could not remove temp directory " << *dir;
+    }
 
-   delete dir;
- }
+    delete dir;
+  }
 }
 
 vector<shared_ptr<mutex> > locks;
@@ -138,12 +138,12 @@ bool LetChildProcsDie() {
   struct sigaction sig_act;
   memset(&sig_act, 0, sizeof(sig_act));
   sig_act.sa_handler = SIG_DFL;
-  sig_act.sa_flags = SA_NOCLDWAIT; // don't zombify child processes
+  sig_act.sa_flags = SA_NOCLDWAIT;  // don't zombify child processes
   int sig_rv = sigaction(SIGCHLD, &sig_act, NULL);
   if (sig_rv < 0) {
     LOG(ERROR) << "Could not set the disposition of SIGCHLD";
     return false;
-  } 
+  }
 
   return true;
 }
@@ -541,7 +541,6 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     return false;
   }
 
-
   // Read this many bytes as the message.
   bytes_read = 0;
   scoped_array<char> bytes(new char[len]);
@@ -599,8 +598,7 @@ bool OpenUnixDomainSocket(const string &path, int *sock) {
   int len = strlen(addr.sun_path) + sizeof(addr.sun_family);
   int bind_err = bind(*sock, (struct sockaddr *)&addr, len);
   if (bind_err == -1) {
-    PLOG(ERROR) << "Could not bind the address " << path
-                << " to the socket";
+    PLOG(ERROR) << "Could not bind the address " << path << " to the socket";
     return false;
   }
 

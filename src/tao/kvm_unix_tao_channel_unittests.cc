@@ -69,7 +69,7 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     // Prepare the child pts to be opened.
     ASSERT_EQ(grantpt(*master_fd_), 0) << "Could not grant permissions for pts";
     ASSERT_EQ(unlockpt(*master_fd_), 0) << "Could not unlock the pts";
-    
+
     char *child_path = ptsname(*master_fd_);
     ASSERT_NE(child_path, nullptr) << "Could not get the name of the child pts";
 
@@ -83,13 +83,13 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     string child_hash("Fake hash");
     string params;
     ASSERT_TRUE(tao_channel_->AddChildChannel(child_hash, &params))
-      << "Could not add a child to the channel";
+        << "Could not add a child to the channel";
     ASSERT_TRUE(tao_channel_->UpdateChildParams(child_hash, child_path))
-      << "Could not update the channel with the new child parameters";
+        << "Could not update the channel with the new child parameters";
 
     // The listening thread will continue until sent a stop message.
-    listener_.reset(new thread(&KvmUnixTaoChannel::Listen, tao_channel_.get(),
-      tao_.get()));
+    listener_.reset(
+        new thread(&KvmUnixTaoChannel::Listen, tao_channel_.get(), tao_.get()));
   }
 
   virtual void TearDown() {
@@ -123,14 +123,14 @@ TEST_F(KvmUnixTaoChannelTest, CreationTest) {
   // Pass a process creation message to the channel.
   ScopedFd sock(new int(-1));
   EXPECT_TRUE(ConnectToUnixDomainSocket(creation_socket_, sock.get()))
-    << "Could not connect to the socket " << creation_socket_;
+      << "Could not connect to the socket " << creation_socket_;
 
   TaoChannelRPC rpc;
   rpc.set_rpc(tao::START_HOSTED_PROGRAM);
   StartHostedProgramArgs *shpa = rpc.mutable_start();
   shpa->set_path("Fake Program");
   EXPECT_TRUE(SendMessage(*sock, rpc))
-    << "Could not send the message to the socket";
+      << "Could not send the message to the socket";
 }
 
 GTEST_API_ int main(int argc, char **argv) {

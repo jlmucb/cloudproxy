@@ -41,7 +41,7 @@ using std::thread;
 namespace tao {
 PipeTaoChannel::PipeTaoChannel(const string &socket_path,
                                const string &stop_socket_path)
-    : UnixFdTaoChannel(socket_path, stop_socket_path) { }
+    : UnixFdTaoChannel(socket_path, stop_socket_path) {}
 PipeTaoChannel::~PipeTaoChannel() {}
 
 bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
@@ -119,7 +119,7 @@ bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
     // parent, including the socket
     close(*domain_socket_);
     close(*stop_socket_);
-    for(pair<const string, pair<int, int>> desc : descriptors_) {
+    for (pair<const string, pair<int, int>> desc : descriptors_) {
       close(desc.second.first);
       close(desc.second.second);
     }

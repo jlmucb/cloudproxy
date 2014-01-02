@@ -58,6 +58,7 @@ using tao::FakeTaoChannel;
 using tao::HostedProgram;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
+using tao::ScopedTempDir;
 using tao::SignedWhitelist;
 using tao::Tao;
 using tao::TaoChannel;
@@ -74,17 +75,17 @@ class LinuxTaoTest : public ::testing::Test {
     memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
 
     ASSERT_TRUE(mkdtemp(temp_name.get()));
-    dir_ = temp_name.get();
+    temp_dir_.reset(new string(temp_name.get()));
 
     // Set up the files for the test.
-    string secret_path = dir_ + "/linux_tao_secret";
-    string key_path = dir_ + "/linux_tao_secret_key";
-    string pk_path = dir_ + "/linux_tao_pk";
-    string whitelist_path = dir_ + "/whitelist";
-    string policy_pk_path = dir_ + "/policy_pk";
+    string secret_path = *temp_dir_ + "/linux_tao_secret";
+    string key_path = *temp_dir_ + "/linux_tao_secret_key";
+    string pk_path = *temp_dir_ + "/linux_tao_pk";
+    string whitelist_path = *temp_dir_ + "/whitelist";
+    string policy_pk_path = *temp_dir_ + "/policy_pk";
 
     string test_binary_contents = "This is a fake test binary to be hashed";
-    test_binary_path_ = dir_ + "/test_binary";
+    test_binary_path_ = *temp_dir_ + "/test_binary";
 
     // Create the policy key directory so it can be filled by keyczar.
     ASSERT_EQ(mkdir(policy_pk_path.c_str(), 0700), 0);
@@ -161,12 +162,12 @@ class LinuxTaoTest : public ::testing::Test {
   // TODO(tmroeder): clean up the temporary directory of keys and
   // secrets. Use TearDown and recursively delete all the files.
   virtual void TearDown() {
-    if (nftw(dir_.c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+    if (nftw(temp_dir_->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
       PLOG(ERROR) << "Could not recursively delete the temp directory";
     }
   }
 
-  string dir_;
+  ScopedTempDir temp_dir_;
   string test_binary_path_;
   string child_hash_;
   scoped_ptr<LinuxTao> tao_;

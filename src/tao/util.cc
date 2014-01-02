@@ -312,12 +312,12 @@ bool DeserializePublicKey(const KeyczarPublicKey &kpk, Keyset **keyset) {
     return false;
   }
 
-  string destination(tempdir);
+  ScopedTempDir temp_dir(new string(tempdir));
 
   // write the files to the temp directory and make sure they close
   {
     // write the metadata
-    string metadata_file_name = destination + string("/meta");
+    string metadata_file_name = *temp_dir + string("/meta");
     ofstream meta_file(metadata_file_name.c_str(), ofstream::out | ios::binary);
     meta_file.write(kpk.metadata().data(), kpk.metadata().size());
 
@@ -326,44 +326,38 @@ bool DeserializePublicKey(const KeyczarPublicKey &kpk, Keyset **keyset) {
     for (int i = 0; i < key_count; i++) {
       const KeyczarPublicKey::KeyFile &kf = kpk.files(i);
       stringstream ss;
-      ss << destination << "/" << kf.name();
+      ss << *temp_dir << "/" << kf.name();
       ofstream file(ss.str().c_str(), ofstream::out | ios::binary);
       file.write(kf.data().data(), kf.data().size());
     }
   }
 
   // read the data from the directory
-  scoped_ptr<KeysetReader> reader(new KeysetJSONFileReader(destination));
+  scoped_ptr<KeysetReader> reader(new KeysetJSONFileReader(*temp_dir));
   if (reader.get() == NULL) {
     return false;
   }
 
   *keyset = Keyset::Read(*reader, true);
 
-  // clean up the directory
-  if (nftw(tempdir, remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
-    PLOG(ERROR) << "Could not remove the directory";
-    return false;
-  }
-
   return true;
 }
 
 bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
-  char tempdir[] = "/tmp/public_key_XXXXXX";
   if (kpk == nullptr) {
     LOG(ERROR) << "Could not serialize to a null public key structure";
     return false;
   }
 
+  char tempdir[] = "/tmp/public_key_XXXXXX";
   if (mkdtemp(tempdir) == nullptr) {
     LOG(ERROR) << "Could not create a temp directory for public key export";
     return false;
   }
 
-  string destination(tempdir);
+  ScopedTempDir temp_dir(new string(tempdir));
 
-  scoped_ptr<KeysetWriter> writer(new KeysetJSONFileWriter(destination));
+  scoped_ptr<KeysetWriter> writer(new KeysetJSONFileWriter(*temp_dir));
   if (writer.get() == NULL) {
     return false;
   }
@@ -375,7 +369,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
   }
 
   // now iterate over the files in the directory and add them to the public key
-  string meta_file_name = destination + string("/meta");
+  string meta_file_name = *temp_dir + string("/meta");
   ifstream meta_file(meta_file_name.c_str(), ifstream::in | ios::binary);
   stringstream meta_stream;
   meta_stream << meta_file.rdbuf();
@@ -385,7 +379,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
   for (; version_iterator != keyset->metadata()->End(); ++version_iterator) {
     int v = version_iterator->first;
     stringstream file_name_stream;
-    file_name_stream << destination << "/" << v;
+    file_name_stream << *temp_dir << "/" << v;
     ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
     stringstream file_buf;
     file_buf << file.rdbuf();
@@ -393,12 +387,6 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
     KeyczarPublicKey::KeyFile *kf = kpk->add_files();
     kf->set_name(v);
     kf->set_data(file_buf.str());
-  }
-
-  // clean up the directory
-  if (nftw(tempdir, remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
-    PLOG(ERROR) << "Could not remove the directory";
-    return false;
   }
 
   return true;

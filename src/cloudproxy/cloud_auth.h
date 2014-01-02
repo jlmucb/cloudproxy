@@ -43,7 +43,7 @@ class CloudAuth {
  public:
   /// Create the authorization instance.
   /// @param acl_path The path to a signed ACL of form SignedACL.
-  /// @param key The public key to use to check the signature on the ACL. 
+  /// @param key The public key to use to check the signature on the ACL.
   CloudAuth(const string &acl_path, keyczar::Keyczar *key);
 
   virtual ~CloudAuth() {}

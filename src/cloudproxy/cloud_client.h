@@ -52,9 +52,12 @@ namespace cloudproxy {
 
 class CloudUserManager;
 
-/// A client that can establish a secure connection with a CloudServer and manage
-/// simple operations between the client and the server. See cloudproxy.proto for
-/// the details of the messages exchanged between CloudClient and CloudServer, as
+/// A client that can establish a secure connection with a CloudServer and
+/// manage
+/// simple operations between the client and the server. See cloudproxy.proto
+/// for
+/// the details of the messages exchanged between CloudClient and CloudServer,
+/// as
 /// well as the (related) format of ACLs stored on the server. These ACLs are
 /// used by CloudServer to check if actions requested by the CloudClient are
 /// authorized by CloudProxy policy.
@@ -66,9 +69,9 @@ class CloudClient {
   /// client will try to open these files and decrypt them with the secret.
   /// Otherwise, it will generate and seal a new secret and use this secret to
   /// encrypt a new TLS public/private key pair.
-  /// @param tls_cert The path to a TLS certificate (or the location to write 
+  /// @param tls_cert The path to a TLS certificate (or the location to write
   /// one).
-  /// @param tls_key The path to a TLS private key (or the location to write 
+  /// @param tls_key The path to a TLS private key (or the location to write
   /// one).
   /// @param secret The path to a Tao-sealed secret (or the location to write
   /// one).

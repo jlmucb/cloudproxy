@@ -1,2 +1,17 @@
 Replace loader with grub (this means we don't have to do PE format changes).
 
+Makefiles:
+    vmm/libc/libc.mak (done)
+    ept
+    vmm
+    vmx
+    vmexit
+    utils
+    memory_manager
+    ipc
+    host
+    guest
+    arch
+    acpi
+
+

@@ -18,7 +18,7 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GUEST_C, __condition)
 #include "guest_internal.h"
-#include "guest_cpu\guest_cpu_internal.h"
+#include "guest_cpu_internal.h"
 #include "guest_cpu.h"
 #include "vmcall.h"
 #include "gpm_api.h"
@@ -34,7 +34,7 @@
 #include "scheduler.h"
 #include "host_cpu.h"
 #include <pat_manager.h>
-#include "..\memory\ept\ept.h"
+#include "ept.h"
 
 #define MIN_ANONYMOUS_GUEST_ID  30000
 

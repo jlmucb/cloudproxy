@@ -91,7 +91,6 @@ bool FakeTao::Unseal(const string &child_hash, const string &sealed,
 
 bool FakeTao::Attest(const string &child_hash, const string &data,
                      string *attestation) const {
-  // For the fake tao, the statement is just the data.
   Statement s;
   time_t cur_time;
   time(&cur_time);

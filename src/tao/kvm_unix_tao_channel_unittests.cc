@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <termios.h>
 
 #include <thread>
 
@@ -32,6 +33,7 @@
 #include "tao/kvm_unix_tao_channel.h"
 #include "tao/tao.h"
 #include "tao/tao_channel_rpc.pb.h"
+#include "tao/unix_fd_tao_child_channel.h"
 #include "tao/util.h"
 
 using std::thread;
@@ -45,6 +47,7 @@ using tao::StartHostedProgramArgs;
 using tao::Tao;
 using tao::TaoChannel;
 using tao::TaoChannelRPC;
+using tao::UnixFdTaoChildChannel;
 
 class KvmUnixTaoChannelTest : public ::testing::Test {
  protected:
@@ -63,12 +66,18 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     // Pass the channel a /dev/pts entry that you can talk to and pretend to be
     // the Tao communicating with it.
     master_fd_.reset(new int(-1));
-    *master_fd_ = open("/dev/ptmx", O_RDWR);
+    *master_fd_ = open("/dev/ptmx", O_RDWR | O_NOCTTY);
     ASSERT_NE(*master_fd_, -1) << "Could not open a new psuedo-terminal";
 
     // Prepare the child pts to be opened.
     ASSERT_EQ(grantpt(*master_fd_), 0) << "Could not grant permissions for pts";
     ASSERT_EQ(unlockpt(*master_fd_), 0) << "Could not unlock the pts";
+
+    // Set the pty into raw mode so it doesn't echo the characters.
+    struct termios t;
+    tcgetattr(*master_fd_, &t);
+    cfmakeraw(&t);
+    tcsetattr(*master_fd_, TCSANOW, &t);
 
     char *child_path = ptsname(*master_fd_);
     ASSERT_NE(child_path, nullptr) << "Could not get the name of the child pts";
@@ -90,6 +99,8 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
     // The listening thread will continue until sent a stop message.
     listener_.reset(
         new thread(&KvmUnixTaoChannel::Listen, tao_channel_.get(), tao_.get()));
+
+    child_channel_.reset(new UnixFdTaoChildChannel(*master_fd_, *master_fd_));
   }
 
   virtual void TearDown() {
@@ -117,6 +128,7 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
   scoped_ptr<thread> listener_;
   string creation_socket_;
   string stop_socket_;
+  scoped_ptr<UnixFdTaoChildChannel> child_channel_;
 };
 
 TEST_F(KvmUnixTaoChannelTest, CreationTest) {
@@ -133,7 +145,14 @@ TEST_F(KvmUnixTaoChannelTest, CreationTest) {
       << "Could not send the message to the socket";
 }
 
+TEST_F(KvmUnixTaoChannelTest, RandomTest) {
+  string bytes;
+  EXPECT_TRUE(child_channel_->GetRandomBytes(16, &bytes))
+    << "Could not get random bytes from the host tao";
+}
+
 GTEST_API_ int main(int argc, char **argv) {
+  FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

@@ -481,6 +481,7 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
     return false;
   }
 
+
   bytes_written = write(fd, serialized.data(), len);
   if (bytes_written != static_cast<ssize_t>(len)) {
     PLOG(ERROR) << "Could not write the serialized message to the fd";
@@ -525,7 +526,8 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
 
   // TODO(tmroeder): figure out why this is happening
   if (len > 1024 * 1024) {
-    LOG(ERROR) << "The length was too large to be reasonable: " << len;
+    LOG(ERROR) << "The length of the message on fd " << fd
+               << " was too large to be reasonable: " << len;
     return false;
   }
 

@@ -38,6 +38,7 @@ class TPMTaoChildChannelTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     ifstream aik_blob_file(FLAGS_aik_blob_file, ifstream::in);
+    ASSERT_TRUE(aik_blob_file) << "Could not load the aik blob";
     stringstream aik_blob_stream;
     aik_blob_stream << aik_blob_file.rdbuf();
     list<UINT32> pcrs_to_seal{17, 18};

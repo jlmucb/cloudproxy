@@ -159,14 +159,6 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(tao_->Init());
   }
 
-  // TODO(tmroeder): clean up the temporary directory of keys and
-  // secrets. Use TearDown and recursively delete all the files.
-  virtual void TearDown() {
-    if (nftw(temp_dir_->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
-      PLOG(ERROR) << "Could not recursively delete the temp directory";
-    }
-  }
-
   ScopedTempDir temp_dir_;
   string test_binary_path_;
   string child_hash_;

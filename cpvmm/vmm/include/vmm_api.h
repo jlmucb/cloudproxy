@@ -26,8 +26,8 @@
 #endif
 #include "vmm_dbg.h"
 #include "lock.h"
-#include "..\memory\ept\fvs.h"
-#include "..\memory\ept\ve.h"
+#include "fvs.h"
+#include "ve.h"
 #include "msr_defs.h"
 #include "ipc.h"
 

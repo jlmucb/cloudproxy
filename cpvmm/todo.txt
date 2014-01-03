@@ -5,9 +5,10 @@ Makefiles:
     vmm/utils/utils.mak  (done, except asm)
     vmm/guest/guest.mak (done, except asm)
     vmm/guest/scheduler (done, except asm)
-    vmm/guest/guest_cpu
+    vmm/guest/guest_cpu (done, except asm)
     vmm/host/host.mak (done, except asm)
-    vmm/host/hw/hw.mak
+    vmm/host/hw/hw.mak (done, except asm)
+    vmm/host/hw/em64t/em64t.mak (done, except asm)
     vmm/memory/ept/ept.mak (done, except asm and compile error)
     vmm/memory_manager/memory_manager.mak (done, except asm)
     vmm/vmx/vmx.mak

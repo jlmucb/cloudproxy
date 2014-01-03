@@ -409,8 +409,8 @@ static void vmcs_print_group(const struct _VMCS_OBJECT *obj, const VMCS_FIELD *f
 )
 static void enable_vmcs_2_0_fields(const VMCS_HW_CONSTRAINTS* constraints);
 static void init_enc_2_field_tables(void);
-static BOOLEAN string_is_substring(const char *bigstring, const char *smallstring);
-static BOOLEAN strings_are_substrings(const char *bigstring, UINT32 num_of_smallstrings, char *smallstring[]);
+BOOLEAN string_is_substring(const char *bigstring, const char *smallstring);
+BOOLEAN strings_are_substrings(const char *bigstring, UINT32 num_of_smallstrings, char *smallstring[]);
 
 /*------------------------------ Code ----------------------------------------*/
 

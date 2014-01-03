@@ -47,7 +47,7 @@ UINT64 g_vmx_fixed_1_cr0_save;
 
 static BOOLEAN g_init_done = FALSE;
 
-static void print_vmx_capabilities( void );
+void print_vmx_capabilities( void );
 
 //------------------------------ macros            -----------------------------
 #define VMCS_REGION_SIZE                                                        \

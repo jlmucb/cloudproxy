@@ -27,7 +27,7 @@
 #include "vmm_dbg.h"
 #include "policy_manager.h"
 #include "vmm_api.h"
-#include "..\..\guest\guest_cpu\unrestricted_guest.h"
+#include "unrestricted_guest.h"
 #include "file_codes.h"
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_CONTROL_C)
@@ -78,8 +78,8 @@ typedef enum _EXCEPTIONS_POLICY_TYPE {
 #define MAY_BE_SET1( fixed, defaul, bit ) (!(fixed.Bits.bit) || defaul.Bits.bit)
 
 // get final field settings
-////#define GET_FINAL_SETTINGS( gcpu, field, final_mask )                           \
-////    (((UINT64)(final_mask) | (gcpu)->vmexit_setup.field.enforce_1_settings)     \
+////#define GET_FINAL_SETTINGS( gcpu, field, final_mask )                           
+////    (((UINT64)(final_mask) | (gcpu)->vmexit_setup.field.enforce_1_settings)    
 ////                           & (gcpu)->vmexit_setup.field.enforce_0_settings)
 
 

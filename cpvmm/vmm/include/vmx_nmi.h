@@ -20,9 +20,9 @@
 
 BOOLEAN nmi_manager_initialize(CPU_ID num_of_cores);
 
-static void    nmi_raise(CPU_ID cpu_id);
-static void    nmi_clear(CPU_ID cpu_id);
-static BOOLEAN nmi_is_pending(CPU_ID cpu_id);
+void    nmi_raise(CPU_ID cpu_id);
+void    nmi_clear(CPU_ID cpu_id);
+BOOLEAN nmi_is_pending(CPU_ID cpu_id);
 void    nmi_raise_this(void);
 void    nmi_clear_this(void);
 BOOLEAN nmi_is_pending_this(void);

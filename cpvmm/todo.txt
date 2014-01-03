@@ -34,3 +34,18 @@ Assembly files to port
     vmm/utils/utils_asm.asm
     vmm/vmexit/teardown_thunk.asm
 
+     406     931    8134 vmm/utils/utils_asm.asm
+     189     930    7558 vmm/vmexit/teardown_thunk.asm
+     146     656    5244 common/libc/em64t/em64t_mem.asm
+      52     294    2212 loader/pre_os/starter/starter.asm
+      96     435    3435 vmm/memory/ept/invept.asm
+     136     629    4912 vmm/host/hw/em64t/em64t_fpu.asm
+     201     917    8578 vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.asm
+     140     642    5107 vmm/host/hw/em64t/em64t_interlocked.asm
+    1227    2515   26003 vmm/host/hw/em64t/em64t_isr.asm
+     148     750    6158 vmm/host/hw/em64t/em64t_setjmp.asm
+     734    2253   22083 vmm/host/hw/em64t/em64t_utils.asm
+     319    1056    9915 vmm/host/hw/em64t/em64t_vmx.asm
+     107     437    3688 common/libc/ia32/ia32_mem.asm
+     105     440    3170 loader/pre_os/starter/chain_load.asm
+    4006   12885  116197 total

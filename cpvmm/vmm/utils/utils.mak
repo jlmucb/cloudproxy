@@ -41,6 +41,7 @@ CFLAGS=     	$(RELEASE_CFLAGS)
 LDFLAGS= 	
 
 CC=         gcc
+AS=	    as
 LINK=       gcc
 LIBMAKER=   libtool
 
@@ -52,15 +53,20 @@ LIBMAKER=   libtool
 
 mainsrc=    $(S)/vmm/utils
 dobjs=      $(BINDIR)/heap.o $(BINDIR)/address.o $(BINDIR)/lock.o \
-	    $(BINDIR)/hash64.o $(BINDIR)/array_list.o $(BINDIR)/event_mgr.o \
+	    $(BINDIR)/hash64.o $(BINDIR)/array_list.o \
+            $(BINDIR)/cache64.o $(BINDIR)/utils_asm.o \
 	    $(BINDIR)/memory_allocator.o $(BINDIR)/math_utils.o \
-            $(BINDIR)/cache64.o
+	    $(BINDIR)/event_mgr.o 
 
 all: $(E)/libutils.a
  
 $(E)/libutils.a: $(dobjs)
 	@echo "libutils.a"
 	$(LIBMAKER) -static -o $(E)/libutils.a $(dobjs)
+
+$(BINDIR)/utils_asm.o: $(mainsrc)/utils_asm.s
+	echo "utils_asm.o" 
+	$(AS) -o $(BINDIR)/utils_asm.o $(mainsrc)/utils_asm.s
 
 $(BINDIR)/heap.o: $(mainsrc)/heap.c
 	echo "heap.o" 

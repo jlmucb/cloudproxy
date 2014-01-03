@@ -55,6 +55,22 @@
       ],
     },
     {
+      'target_name': 'process_factory_unittests',
+      'type': 'executable',
+      'sources': [
+        'process_factory_unittests.cc',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'dependencies': [
+        'tao',
+        'tao_test_utilities',
+        '../third_party/googlemock/gmock.gyp:gmock',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
+    },
+    {
       'target_name': 'kvm_vm_factory_unittests',
       'type': 'executable',
       'sources': [

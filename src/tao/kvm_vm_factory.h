@@ -38,8 +38,8 @@ namespace tao {
 /// the one currently checked in to run/vm.xml.
 class KvmVmFactory : public HostedProgramFactory {
  public:
-  KvmVmFactory() {}
-  virtual ~KvmVmFactory() {}
+  KvmVmFactory() : vm_connection_(nullptr) { }
+  virtual ~KvmVmFactory();
   virtual bool Init();
 
   /// Compute the hash of a hosted program. The arguments are the same as the

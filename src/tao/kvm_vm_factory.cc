@@ -20,6 +20,8 @@
 
 #include "tao/kvm_vm_factory.h"
 
+#include <unistd.h>
+
 #include <fstream>
 #include <sstream>
 
@@ -44,6 +46,12 @@ using std::ifstream;
 using std::stringstream;
 
 namespace tao {
+KvmVmFactory::~KvmVmFactory() {
+  if (vm_connection_ != nullptr) {
+    virConnectClose(vm_connection_);
+  }
+}
+
 bool KvmVmFactory::Init() {
   // KvmVmFactory needs a QEMU connection
   vm_connection_ = virConnectOpen("qemu:///system");
@@ -70,7 +78,7 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
   // The extra argument in this case is the child channel creation parameters
   // passed from the Tao.
   if (args.size() != 4) {
-    LOG(ERROR) << "Wrong number of arguments. Expected 5 arguments, but got "
+    LOG(ERROR) << "Wrong number of arguments. Expected 4 arguments, but got "
                << (int)args.size();
     return false;
   }
@@ -188,6 +196,23 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
     LOG(ERROR) << "Could not print the right number of characters into the "
                << "buffer. Expected " << (int)formatted_size << " and "
                << "printed " << count;
+    return false;
+  }
+
+  // Sanity check the files to make sure they exist before trying to start the
+  // domain, since libvirt crashes when passed invalid files this way.
+  if (access(kernel.c_str(), F_OK)) {
+    PLOG(ERROR) << "Could not access the kernel file " << kernel;
+    return false;
+  }
+
+  if (access(initrd.c_str(), F_OK)) {
+    PLOG(ERROR) << "Could not access the initrd file " << initrd;
+    return false;
+  }
+
+  if (access(disk.c_str(), F_OK)) {
+    PLOG(ERROR) << "Could not access the disk file " << disk;
     return false;
   }
 

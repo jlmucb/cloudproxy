@@ -37,7 +37,7 @@
 #include "vmexit_analysis.h"
 #include "guest_cpu_vmenter_event.h"
 #include "host_cpu.h"
-#include "..\..\guest\guest_cpu\guest_cpu_internal.h"
+#include "guest_cpu_internal.h"
 #include "vmenter_checks.h"
 #include "vmm_callback.h"
 #ifdef FAST_VIEW_SWITCH
@@ -562,8 +562,8 @@ void vmentry_failure_function(ADDRESS flags)
 #endif
 }
 
-extern void _stdcall vmm_write_xcr(UINT64,UINT64,UINT64);
-extern void _stdcall vmm_read_xcr(UINT32*,UINT32*,UINT32);
+extern void /* __attribute((_stdcall)) */ vmm_write_xcr(UINT64,UINT64,UINT64);
+extern void /* __attribute((_stdcall)) */ vmm_read_xcr(UINT32*,UINT32*,UINT32);
 /*-----------------------------------------------------------------------------*
 *  FUNCTION : vmexit_xsetbv()
 *  PURPOSE  : Handler for xsetbv instruction
@@ -776,8 +776,8 @@ VMM_STATUS vmexit_install_handler(
     return status;
 }
 
-extern UINT32 _stdcall vmexit_reason(void);
-UINT64 _stdcall gcpu_read_guestrip(void);
+extern UINT32 /* __attribute((stdcall)) */ vmexit_reason(void);
+UINT64 /* __attribute((stdcall)) */ gcpu_read_guestrip(void);
 
 /*-----------------------------------------------------------------------------*
 *  FUNCTION : vmexit_common_handler()

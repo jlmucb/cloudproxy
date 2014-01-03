@@ -100,6 +100,7 @@ typedef struct _REPORT_FAST_VIEW_SWITCH_DATA {
  * This enumeration specify the supported events reported by uVMM to the
  * supporting modules.
  */
+#ifndef UVMM_EVENT
 typedef enum {
     // Initialization before the APs have started
     UVMM_EVENT_INITIALIZATION_BEFORE_APS_STARTED,
@@ -169,6 +170,7 @@ typedef enum {
 
     UVMM_EVENT_MAX_COUNT
 } UVMM_EVENT;
+#endif
 
 extern BOOLEAN report_uvmm_event(UVMM_EVENT event, VMM_IDENTIFICATION_DATA gcpu, const GUEST_VCPU *vcpu_id, void *event_specific_data);
 

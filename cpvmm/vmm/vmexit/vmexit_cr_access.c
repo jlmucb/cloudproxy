@@ -25,7 +25,7 @@
 #include "vmcs_hierarchy.h"
 #include "page_walker.h"
 #include "ept.h"
-#include "..\..\guest\guest_cpu\unrestricted_guest.h"
+#include "unrestricted_guest.h"
 #include "vmm_callback.h"
 #include "file_codes.h"
 

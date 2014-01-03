@@ -23,6 +23,8 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_VMX_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_VMX_C, __condition)
 
+extern BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu);
+
 #pragma warning( push )
 #pragma warning (disable : 4100)  // Supress warnings about unreferenced formal parameter
 

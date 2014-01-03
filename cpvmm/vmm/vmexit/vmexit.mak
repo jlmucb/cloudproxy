@@ -1,12 +1,14 @@
 #############################################################################
 # Copyright (c) 2013 Intel Corporation
 #
+#  Author:    John Manferdelli from previous eVMM makefiles
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,194 +16,143 @@
 # limitations under the License.
 #############################################################################
 
-#############################################################################
-# INTEL CONFIDENTIAL
-# Copyright 2001-2013 Intel Corporation All Rights Reserved.
-#
-# The source code contained or described herein and all documents related to
-# the source code ("Material") are owned by Intel Corporation or its
-# suppliers or licensors.  Title to the Material remains with Intel
-# Corporation or its suppliers and licensors.  The Material contains trade
-# secrets and proprietary and confidential information of Intel or its
-# suppliers and licensors.  The Material is protected by worldwide copyright
-# and trade secret laws and treaty provisions.  No part of the Material may
-# be used, copied, reproduced, modified, published, uploaded, posted,
-# transmitted, distributed, or disclosed in any way without Intel's prior
-# express written permission.
-#
-# No license under any patent, copyright, trade secret or other intellectual
-# property right is granted to or conferred upon you by disclosure or
-# delivery of the Materials, either expressly, by implication, inducement,
-# estoppel or otherwise.  Any license under such intellectual property rights
-# must be express and approved by Intel in writing.
-#############################################################################
-#  Author:    Victor Umansky
-#
-#  User-specific makefile:
-#
-#  Notes:
-#
-#  1. This makefile automatically builds executable targets upon
-#     C/C++ files declared in $SOURCE variable. Source files reside
-#     in directories declared in $SOURCE_DIR variable.
-#
-#  2. This makefile should be customized for specific component or
-#     subsystem (or entire system) by means of the following
-#     variables: IMAGE_DBG, IMAGE_REL, LIB_DBG, LIB_REL, INCLUDE_DIR,
-#     CFLAGS_DBG, CFLAGS_REL, LDFLAGS, LD_LIBDIR, LD_LIBS, MAIN_SRC.
-#     Detailed description - see below in the code.
-#
-#  3. In addition, it is possible to build temporary targets for testing
-#     in debug mode. Up to 5 alternative configurations are available.
-#     In order to define a configuration, define IMAGE_DBG<num>
-#     and list of configuration-specific source files (including
-#     that with "main" function) in TEST_SRC<num>.
-#
-#  4. Every instance of this makefile may also invoke other makefiles
-#     as a prerequisite. The list and order of these files may be specified
-#     in OTHER_MAKEFILES variable, those of them which tools and options
-#     must be overriden, should appear also in OVERRIDE_OPTIONS list. In
-#     addition, a user may specify list of tools which must be enforced
-#     in these files.
-#
-#  5. Optional customization:
-#
-#     DBGCONF=file with macro config for debug mode (default dbgConf.macros)
-#     RELCONF=file with macro config for release mode (default relConf.macros)
-#
-#     PRECOND=csh script which checks pre-condition for Makefile invocation.
-#     By default, no precondition check at all.
-#
-#  6. IMPORTANT: There are assumptions that makefile's name is "Makefile"
-#                and template makefile resides in the same directory.
-#                Otherwise set THIS_MAKEFILE and PROJS variables to proper
-#                values.
-#
-#
-
-#----------------------------------------------------------------------------
-#          P R O J E C T   S O U R C E   B A S E
-#----------------------------------------------------------------------------
-# SOURCE      = Put here list of all project source files less MAIN_SRC
-#               (file names only)
-#
-# MAIN_SRC    = name of source file(s) with main function and accompanying
-#               stuff
-#
-# SOURCE_DIR  = Put here list of all directories where reside files
-#               .c, .cpp, and .cxx. Use $(ROOT) variable as a root
-#               of a directory path.
-#----------------------------------------------------------------------------
-SOURCE     = vmexit.c                                                          \
-			 vmexit_io.c 												       \
-			 vmexit_cr_access.c                                                \
-			 vmexit_msr.c                                                      \
-			 vmexit_interrupt_exception_nmi.c                                  \
-			 vmexit_cpuid                                                      \
-			 vmexit_triple_fault.c                                             \
-			 vmexit_ud.c                                                       \
-			 vmexit_task_switch.c                                              \
-			 vmexit_sipi.c                                                     \
-			 vmexit_init.c                                                     \
-			 vmcall.c                                                          \
-			 vmexit_invlpg.c                                                   \
-			 vmexit_invd.c                                                     \
-			 vmexit_dbg.c                                                      \
-			 vmexit_ept.c                                                      \
-			 vmexit_analysis.c                                                 \
-			 vmexit_dtr_tr_access.c                                            \
-			 vmexit_vmx.c                                                      \
-			 vmx_teardown.c
-
-ASM_SRC    = teardown_thunk.asm
-
-MAIN_SRC   =
-ROOT       = $(PROJS)/vmm
-SOURCE_DIR = .
-
-#-----------------------------------------------------------------
-#   MACROS    User MUST define these definitions
-#             (or intentionally leave some of them undefined)
-#-----------------------------------------------------------------
-# Destinations: images
-# IMAGE_DBG = full path name of executable with debug information
-# IMAGE_REL = full path name of executable w/o debug information
-#
-# Destinations: object libraries
-# LIB_DBG = full path name of object library with debug information
-# LIB_REL = full path name of object library w/o debug information
-#
-# Vars
-# INCLUDE_DIR   = list of include directories
-# CFLAGS_DBG    = component-specific compilation flags for debug mode
-# CFLAGS_REL    = component-specific compilation flags for release mode
-# LDFLAGS       = component-specific linker flags
-# LD_LIBDIR     = list of library dirs for linker (if the SAME for debug and release)
-# LD_LIBDIR_DBG = list of DEBUG library dirs for linker
-# LD_LIBDIR_REL = list of RELEASE library dirs for linker
-# LD_LIBS       = libraries for linker in format [-l]<lib>... (if the SAME for debug and release)
-# LD_LIBS_DBG   = DEBUG libraries for linker in format [-l]<lib>...
-# LD_LIBS_REL   = RELEASE libraries for linker in format [-l]<lib>...
-#
-# Object directories
-# DEBUG   = intermediate directory for object and dependency files (debug mode)
-# RELEASE = intermediate directory for object and dependency files (release mode)
-#-----------------------------------------------------------------
-IMAGE		  =
-LIBS		  = libvmexit.a
-
-INCLUDE_DIR   = . $(ROOT)/include $(ROOT)/include/hw $(ROOT)/ipc $(ROOT)/memory/ept
-CFLAGS_DBG    =
-CFLAGS_REL    =
-LDFLAGS       =
-LD_LIBDIR     =
-LD_LIBDIR_DBG =
-LD_LIBDIR_REL =
-LD_LIBS       =
-LD_LIBS_DBG   =
-LD_LIBS_REL   =
-
-
-#--------------------------------------------------------------
-#   C O N F I G U R A T I O N   M A N A G E M E N T
-#--------------------------------------------------------------
-
-# Other makefiles to be processed before this one
-OTHER_MAKEFILES  =
-
-# Force the same tools and options on following sub-makes
-OVERRIDE_OPTIONS =
-# Tools to be enforced on these sub-makes
-ENFORCE_TOOLS    = AR CC LD
-
-# Project-wide configuration macros
-
-# Pre-condition csh script name
-# Spec for pre-condition csh script:
-#  - if error it should print error message to stdout,
-#  - if pre-conditions are met, it should print OK.
-PRECOND =
-
-# Delivery csh script name
-DELIVER =
-
-# This makefile name (must be set to actual name if it is not "Makefile")
-THIS_MAKEFILE = vmexit.mak
-
-#-------------------------------------------------------------------
-# include makefile template (PROJS variable should be set correctly)
-#
-#--------------------------------------------------------------------
-ifdef PROJS
-INCLUDED_MAKEFILES=$(PROJS)/tools/$(MAKE_TOOLS_FILE) $(PROJS)/tools/rules.mak
-INCLUDED_MAKEFILES+=$(PROJS)/common/evmm_cmpl_flag_option.mak
-include $(INCLUDED_MAKEFILES)
+ifndef CPProgramDirectory
+E=		/home/jlm/jlmcrypt
 else
-$(warning Please define the PROJS environment variable)
-$(warning e.g., set PROJS=c:/work)
-$(error The PROJS enivornment variable is undefined)
+E=      	$(CPProgramDirectory)
+endif
+ifndef VMSourceDirectory
+S=		/home/jlm/fpDev/fileProxy/cpvmm
+else
+S=      	$(VMSourceDirectory)
+endif
+ifndef TARGET_MACHINE_TYPE
+TARGET_MACHINE_TYPE= x64
 endif
 
+# compile vmexit library
+#   vmexit.c vmexit_io.c vmexit_cr_access.c vmexit_msr.c
+#   vmexit_interrupt_exception_nmi.c vmexit_cpuid vmexit_triple_fault.c
+#   vmexit_ud.c vmexit_task_switch.c vmexit_sipi.c vmexit_init.c
+#   vmcall.c vmexit_invlpg.c vmexit_invd.c vmexit_dbg.c vmexit_ept.c
+#   vmexit_analysis.c vmexit_dtr_tr_access.c vmexit_vmx.c vmx_teardown.c
+#   teardown_thunk.asm
+#   output: libvmexit.a
 
+mainsrc=    $(S)/vmm/vmexit
 
+B=		$(E)/vmmobjects
+BINDIR=	        $(B)/vmexit
+INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
+    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+     -I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+
+DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
+RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs
+CFLAGS=     	$(RELEASE_CFLAGS) 
+LDFLAGS= 	
+
+CC=         gcc
+LINK=       gcc
+LIBMAKER=   libtool
+
+dobjs=      $(BINDIR)/vmexit.o $(BINDIR)/vmexit_io.o \
+	    $(BINDIR)/vmexit_interrupt_exception_nmi.o \
+	    $(BINDIR)/vmexit_cpuid.o $(BINDIR)/vmexit_triple_fault.o \
+	    $(BINDIR)/vmexit_ud.o $(BINDIR)/vmexit_task_switch.o \
+	    $(BINDIR)/vmexit_sipi.o $(BINDIR)/vmexit_init.o \
+	    $(BINDIR)/vmcall.o $(BINDIR)/vmexit_invlpg.o \
+	    $(BINDIR)/vmexit_invd.o $(BINDIR)/vmexit_dbg.o \
+	    $(BINDIR)/vmexit_dtr_tr_access.o $(BINDIR)/vmexit_vmx.o \
+	    $(BINDIR)/vmexit_vmx.o $(BINDIR)/vmx_teardown.o \
+	    $(BINDIR)/vmexit_analysis.o \
+	    $(BINDIR)/vmexit_cr_access.o \
+	    $(BINDIR)/vmexit_msr.o \
+	    $(BINDIR)/vmexit_ept.o 
+
+all: $(E)/libvmexit.a
+ 
+$(E)/libvmexit.a: $(dobjs)
+	@echo "libvmexit.a"
+	$(LIBMAKER) -static -o $(E)/libvmexit.a $(dobjs)
+
+$(BINDIR)/vmexit.o: $(mainsrc)/vmexit.c
+	echo "vmexit.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit.o $(mainsrc)/vmexit.c
+
+$(BINDIR)/vmexit_io.o: $(mainsrc)/vmexit_io.c
+	echo "vmexit_io.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_io.o $(mainsrc)/vmexit_io.c
+
+$(BINDIR)/vmexit_cr_access.o: $(mainsrc)/vmexit_cr_access.c
+	echo "vmexit_cr_access.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_cr_access.o $(mainsrc)/vmexit_cr_access.c
+
+$(BINDIR)/vmexit_msr.o: $(mainsrc)/vmexit_msr.c
+	echo "vmexit_msr.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_msr.o $(mainsrc)/vmexit_msr.c
+
+$(BINDIR)/vmexit_interrupt_exception_nmi.o: $(mainsrc)/vmexit_interrupt_exception_nmi.c
+	echo "vmexit_interrupt_exception_nmi.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_interrupt_exception_nmi.o $(mainsrc)/vmexit_interrupt_exception_nmi.c
+
+$(BINDIR)/vmexit_cpuid.o: $(mainsrc)/vmexit_cpuid.c
+	echo "vmexit_cpuid.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_cpuid.o $(mainsrc)/vmexit_cpuid.c
+
+$(BINDIR)/vmexit_triple_fault.o: $(mainsrc)/vmexit_triple_fault.c
+	echo "vmexit_triple_fault.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_triple_fault.o $(mainsrc)/vmexit_triple_fault.c
+
+$(BINDIR)/vmexit_ud.o: $(mainsrc)/vmexit_ud.c
+	echo "vmexit_ud.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_ud.o $(mainsrc)/vmexit_ud.c
+
+$(BINDIR)/vmexit_task_switch.o: $(mainsrc)/vmexit_task_switch.c
+	echo "vmexit_task_switch.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_task_switch.o $(mainsrc)/vmexit_task_switch.c
+
+$(BINDIR)/vmexit_sipi.o: $(mainsrc)/vmexit_sipi.c
+	echo "vmexit_sipi.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_sipi.o $(mainsrc)/vmexit_sipi.c
+
+$(BINDIR)/vmexit_init.o: $(mainsrc)/vmexit_init.c
+	echo "vmexit_init.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_init.o $(mainsrc)/vmexit_init.c
+
+$(BINDIR)/vmcall.o: $(mainsrc)/vmcall.c
+	echo "vmcall.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcall.o $(mainsrc)/vmcall.c
+
+$(BINDIR)/vmexit_invlpg.o: $(mainsrc)/vmexit_invlpg.c
+	echo "vmexit_invlpg.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_invlpg.o $(mainsrc)/vmexit_invlpg.c
+
+$(BINDIR)/vmexit_invd.o: $(mainsrc)/vmexit_invd.c
+	echo "vmexit_invd.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_invd.o $(mainsrc)/vmexit_invd.c
+
+$(BINDIR)/vmexit_dbg.o: $(mainsrc)/vmexit_dbg.c
+	echo "vmexit_dbg.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_dbg.o $(mainsrc)/vmexit_dbg.c
+
+$(BINDIR)/vmexit_ept.o: $(mainsrc)/vmexit_ept.c
+	echo "vmexit_ept.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_ept.o $(mainsrc)/vmexit_ept.c
+
+$(BINDIR)/vmexit_analysis.o: $(mainsrc)/vmexit_analysis.c
+	echo "vmexit_analysis.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_analysis.o $(mainsrc)/vmexit_analysis.c
+
+$(BINDIR)/vmexit_dtr_tr_access.o: $(mainsrc)/vmexit_dtr_tr_access.c
+	echo "vmexit_dtr_tr_access.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_dtr_tr_access.o $(mainsrc)/vmexit_dtr_tr_access.c
+
+$(BINDIR)/vmexit_vmx.o: $(mainsrc)/vmexit_vmx.c
+	echo "vmexit_vmx.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmexit_vmx.o $(mainsrc)/vmexit_vmx.c
+
+$(BINDIR)/vmx_teardown.o: $(mainsrc)/vmx_teardown.c
+	echo "vmx_teardown.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmx_teardown.o $(mainsrc)/vmx_teardown.c
 

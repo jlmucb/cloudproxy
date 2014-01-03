@@ -11,10 +11,10 @@ Makefiles:
     vmm/host/hw/em64t/em64t.mak (done, except asm)
     vmm/memory/ept/ept.mak (done, except asm and compile error)
     vmm/memory_manager/memory_manager.mak (done, except asm)
-    vmm/vmx/vmx.mak
+    vmm/vmx/vmx.mak  (compile error --- fix later)
     vmm/vmexit/vmexit.mak
     vmm/ipc/ipc.mak
-    vmm/vmm.mak
+    vmm/vmm.mak	(link, waiting for assembler changes)
     vmm/arch/arch.mak
     vmm/acpi/acpi.mak
 

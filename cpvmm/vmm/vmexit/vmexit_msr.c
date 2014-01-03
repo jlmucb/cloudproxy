@@ -35,7 +35,7 @@
 #include "vmm_events_data.h"
 #include "pat_manager.h"
 #include "local_apic.h"
-#include "..\..\guest\guest_cpu\unrestricted_guest.h"
+#include "unrestricted_guest.h"
 #include "vmm_callback.h"
 #include "memory_dump.h"
 

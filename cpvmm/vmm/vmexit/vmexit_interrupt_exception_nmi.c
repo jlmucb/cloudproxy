@@ -34,7 +34,7 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_INTERRUPT_EXCEPTION_NMI_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_INTERRUPT_EXCEPTION_NMI_C, __condition)
 
-static VMEXIT_HANDLING_STATUS vmexit_nmi_window(GUEST_CPU_HANDLE gcpu);
+VMEXIT_HANDLING_STATUS vmexit_nmi_window(GUEST_CPU_HANDLE gcpu);
 static VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE gcpu);
 
 static

@@ -64,7 +64,7 @@ typedef struct {
 static VMCALL_GLOBAL_STATE         vmcall_global_state;  // for all guests
 
 static VMM_STATUS vmcall_unimplemented(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1, ADDRESS *arg2, ADDRESS *arg3);
-static VMM_STATUS vmcall_print_string(GUEST_CPU_HANDLE gcpu, ADDRESS * p_string, ADDRESS *is_real_guest, ADDRESS *arg3);
+VMM_STATUS vmcall_print_string(GUEST_CPU_HANDLE gcpu, ADDRESS * p_string, ADDRESS *is_real_guest, ADDRESS *arg3);
 
 static VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu);
 

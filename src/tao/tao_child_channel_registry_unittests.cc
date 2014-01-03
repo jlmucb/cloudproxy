@@ -17,7 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/base64w.h>
@@ -34,8 +33,6 @@ using tao::TaoChildChannel;
 using tao::TaoChildChannelParams;
 using tao::TaoChildChannelRegistry;
 using tao::UnixFdTaoChildChannel;
-
-using ::testing::_;
 
 class TaoChildChannelRegistryTest : public ::testing::Test {
  public:
@@ -65,11 +62,7 @@ TEST_F(TaoChildChannelRegistryTest, CreateTest) {
   EXPECT_TRUE(tccp.SerializeToString(&serialized))
     << "Could not serialize the params";
 
-  string encoded;
-  EXPECT_TRUE(Base64WEncode(serialized, &encoded))
-    << "Could not encode the params";
-
-  TaoChildChannel *child = registry_->Create(encoded);
+  TaoChildChannel *child = registry_->Create(serialized);
   EXPECT_TRUE(child == nullptr);
 }
 TEST(TaoChildChannelRegistryStaticTest, ConstructorTest) {

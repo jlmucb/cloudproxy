@@ -35,8 +35,8 @@ class TaoChildChannel;
 
 /// A registry class that takes a serialized TaoChildChannelParams and produces
 /// a TaoChildChannel. The convention is that the last argument of a hosted
-/// is a Base64W-encoded TaoChildChannelParams message that can be passed to a
-/// registry object to get the appropriate communication channel.
+/// is a Base64W-encoded TaoChildChannelParams message that can be decoded then
+/// passed to a registry object to get the appropriate communication channel.
 class TaoChildChannelRegistry {
  public:
   /// A function that can create a channel from parameters.
@@ -51,7 +51,7 @@ class TaoChildChannelRegistry {
   bool Register(const string &name, CreateChannel channel_creator);
 
   /// Create a TaoChildChannel from a given serialized TaoChildChannelParams.
-  /// @param params A Base64W-serialized TaoChildChannelParams that contains the
+  /// @param params A serialized TaoChildChannelParams that contains the
   /// information needed to access the registry and create a TaoChildChannel of
   /// the appropriate type.
   TaoChildChannel *Create(const string &params);

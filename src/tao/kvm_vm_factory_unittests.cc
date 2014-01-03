@@ -66,6 +66,7 @@ class KvmVmFactoryTest : public ::testing::Test {
       << "Could not encode the parameters";
 
     factory_.reset(new KvmVmFactory());
+    ASSERT_TRUE(factory_->Init()) << "Could not initialize the factory";
   }
 
   scoped_ptr<KvmUnixTaoChannel> channel_;
@@ -100,17 +101,21 @@ TEST_F(KvmVmFactoryTest, CreationTest) {
                                             *channel_))
     << "Could not create a vm";
 
-  virConnectPtr conn = virConnectOpen("qemu://system");
+  virConnectPtr conn = virConnectOpen("qemu:///system");
   ASSERT_TRUE(conn) << "Could not connect to QEMU";
 
   virDomainPtr dom = virDomainLookupByName(conn, "test");
   ASSERT_TRUE(dom) << "Could not find the domain named 'test'";
   EXPECT_EQ(virDomainDestroy(dom), 0) << "Could not shut down the VM";
 
-  EXPECT_EQ(virConnectClose(conn), 0) << "Could not close the QEMU connection";
+  // The value 1 is expected here because virConnectClose returns the remaining
+  // reference count on this connection, and the KvmVmFactory is holding another
+  // connection.
+  EXPECT_EQ(virConnectClose(conn), 1) << "Could not close the QEMU connection";
 }
 
 GTEST_API_ int main(int argc, char **argv) {
+  google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   testing::InitGoogleTest(&argc, argv);

@@ -5,9 +5,10 @@
   <vcpu>1</vcpu>
   <os>
     <type arch='x86_64' machine='pc-1.0'>hvm</type>
-    <kernel>/tmp/vmlinuz-3.7.5</kernel>
-    <initrd>/tmp/initrd.img-3.7.5</initrd>
-    <cmdline>root=/dev/sda1 ro quiet</cmdline>
+    <kernel>/home/tmroeder/src/fileProxy/run/sample_vm/vmlinuz-3.7.5</kernel>
+    <initrd>/home/tmroeder/src/fileProxy/run/sample_vm/initrd.img-3.7.5</initrd>
+    <cmdline>ro quiet</cmdline>
+    <!-- <cmdline>root=/dev/sda1 ro quiet</cmdline> -->
   </os>
   <features>
     <acpi/>
@@ -20,12 +21,12 @@
   <on_crash>restart</on_crash>
   <devices>
     <emulator>/usr/bin/kvm</emulator>
-    <disk type='file' device='disk'>
+    <!--    <disk type='file' device='disk'>
       <driver name='qemu' type='raw'/>
       <source file='/var/lib/libvirt/images/cloudproxy-server.img'/>
       <target dev='sda' bus='sata'/>
       <address type='drive' controller='0' bus='0' unit='0'/>
-    </disk>
+    </disk> -->
     <controller type='ide' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
     </controller>

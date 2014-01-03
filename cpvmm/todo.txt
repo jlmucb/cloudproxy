@@ -12,10 +12,25 @@ Makefiles:
     vmm/memory/ept/ept.mak (done, except asm and compile error)
     vmm/memory_manager/memory_manager.mak (done, except asm)
     vmm/vmx/vmx.mak  (compile error --- fix later)
-    vmm/vmexit/vmexit.mak
-    vmm/ipc/ipc.mak
+    vmm/vmexit/vmexit.mak (done, some errors)
+    vmm/ipc/ipc.mak (done, some errors)
     vmm/vmm.mak	(link, waiting for assembler changes)
-    vmm/arch/arch.mak
-    vmm/acpi/acpi.mak
+    vmm/arch/arch.mak (done, some errors)
+    vmm/acpi/acpi.mak (done, some errors)
 
+Assembly files to port
+    common/libc/em64t/em64t_mem.asm
+    common/libc/ia32/ia32_mem.asm
+    loader/pre_os/starter/chain_load.asm
+    loader/pre_os/starter/starter.asm
+    vmm/host/hw/em64t/em64t_fpu.asm
+    vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.asm
+    vmm/host/hw/em64t/em64t_interlocked.asm
+    vmm/host/hw/em64t/em64t_isr.asm
+    vmm/host/hw/em64t/em64t_setjmp.asm
+    vmm/host/hw/em64t/em64t_utils.asm
+    vmm/host/hw/em64t/em64t_vmx.asm
+    vmm/memory/ept/invept.asm
+    vmm/utils/utils_asm.asm
+    vmm/vmexit/teardown_thunk.asm
 

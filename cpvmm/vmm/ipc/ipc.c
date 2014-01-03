@@ -17,6 +17,7 @@
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(IPC_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(IPC_C, __condition)
+#include "hw_interlocked.h"
 #include "vmm_defs.h"
 #include "ipc_impl.h"
 #include "scheduler.h"

@@ -39,7 +39,8 @@ E820MAP_STATE 			*g_emap;
 
 static INT15_E820_MEMORY_MAP* g_e820_map = NULL;
 
-static const char* g_int15_e820_type_name[] = {
+// static 
+const char* g_int15_e820_type_name[] = {
     "UNKNOWN", // 0
     "MEMORY",  // 1
     "RESERVED",// 2

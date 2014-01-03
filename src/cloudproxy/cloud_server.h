@@ -122,6 +122,7 @@ class CloudServer {
   /// @param[out] reason A string to fill with an error message if the action is
   /// not authorized.
   /// @param[out] reply Indicates success or failure of the action.
+  /// @param cstd A context parameter for the thread.
   /// @return A value that indicates whether or not the action was performed
   /// without errors.
   virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,

@@ -42,6 +42,7 @@ class FileServer : public CloudServer {
   /// public policy key.
   /// @param acl_location The path to a signed ACL giving permissions for
   /// operations on the server.
+  /// @param server_key_location The path to store or find the server key.
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
   /// @param auth_manager An authorization manager to use to verify Tao
@@ -63,6 +64,7 @@ class FileServer : public CloudServer {
   /// @param[out] reason A string to fill with an error message if the action is
   /// not authorized.
   /// @param[out] reply Indicates success or failure of the action.
+  /// @param cstd A context parameter for the thread.
   /// @return A value that indicates whether or not the action was performed
   /// without errors.
   virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,

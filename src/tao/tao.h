@@ -96,7 +96,7 @@ class Tao {
   /// @param child_hash The identity of the hosted program that should be able
   /// to access the data.
   /// @param data The data to seal.
-  /// @param[out] The result of the sealing operation.
+  /// @param[out] sealed The result of the sealing operation.
   virtual bool Seal(const string &child_hash, const string &data,
                     string *sealed) const = 0;
 
@@ -115,7 +115,7 @@ class Tao {
   /// must ensure that this is the identity of the program making the request.
   /// See subclasses of TaoChannel for an implementation.
   /// @param data The data produced by the hosted program.
-  /// @param[out] The resulting signed message. For verification see
+  /// @param[out] attestation The resulting signed message. For verification see
   /// TaoAuth and its implementations.
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const = 0;

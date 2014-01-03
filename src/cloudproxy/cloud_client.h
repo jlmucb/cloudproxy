@@ -133,6 +133,7 @@ class CloudClient {
   /// @param input_name A name representing input. The interpretation of this
   /// name depends on the implementation. The basic CloudClient writes this
   /// string to the object.
+  /// @param object_name The name of the remote object to write to.
   virtual bool Write(const string &requestor, const string &input_name,
                      const string &object_name);
 

@@ -81,6 +81,7 @@ bool HashVM(const string &vm_template, const string &name, const string &kernel,
 /// registered TaoChannels is:
 /// - KvmUnixTaoChannel
 /// - PipeTaoChannel
+/// @param registry The registry to fill with the channels
 bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 
 /// Call the OpenSSL initialization routines and set up locking for
@@ -117,7 +118,7 @@ bool SerializePublicKey(const keyczar::Keyczar &key, KeyczarPublicKey *kpk);
 
 /// Sign data with a key using Keyczar.
 /// @param data The data to sign.
-/// @param[out] signature the resulting signature.
+/// @param[out] signature The resulting signature.
 /// @param key The key to use for signing.
 bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
 
@@ -154,7 +155,7 @@ bool SendMessage(int fd, const google::protobuf::Message &m);
 
 /// Opens a Unix domain socket at a given path.
 /// @param path The path for the new Unix domain socket.
-/// @param[out] The file descriptor for this socket.
+/// @param[out] sock The file descriptor for this socket.
 bool OpenUnixDomainSocket(const string &path, int *sock);
 
 /// Connect as a client to a Unix domain socket.

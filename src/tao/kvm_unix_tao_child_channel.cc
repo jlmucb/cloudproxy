@@ -32,7 +32,7 @@
 
 namespace tao {
 KvmUnixTaoChildChannel::KvmUnixTaoChildChannel(const string &params)
-    : fd_(-1), params_(params) {}
+    : UnixFdTaoChildChannel(), params_(params) {}
 
 bool KvmUnixTaoChildChannel::Init() {
 
@@ -50,34 +50,13 @@ bool KvmUnixTaoChildChannel::Init() {
   }
 
   string file = string("/dev/virtio-ports/") + kutcp.guest_device();
-  fd_ = open(file.c_str(), O_RDWR | O_APPEND);
-  if (fd_ == -1) {
+  readfd_ = open(file.c_str(), O_RDWR | O_APPEND);
+  if (readfd_ == -1) {
     PLOG(ERROR) << "Could not open " << file << " for read-write";
     return false;
   }
 
+  writefd_ = readfd_;
   return true;
-}
-
-bool KvmUnixTaoChildChannel::ReceiveMessage(
-    google::protobuf::Message *m) const {
-  // try to receive an integer
-  CHECK(m) << "m was null";
-  if (fd_ < 0) {
-    LOG(ERROR) << "Can't send with an empty fd";
-    return false;
-  }
-
-  return tao::ReceiveMessage(fd_, m);
-}
-
-bool KvmUnixTaoChildChannel::SendMessage(
-    const google::protobuf::Message &m) const {
-  if (fd_ < 0) {
-    LOG(ERROR) << "Can't send with an empty fd";
-    return false;
-  }
-
-  return tao::SendMessage(fd_, m);
 }
 }  // namespace tao

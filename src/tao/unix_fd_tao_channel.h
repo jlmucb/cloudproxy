@@ -44,6 +44,8 @@ class UnixFdTaoChannel : public TaoChannel {
   /// Construct a UnixFdTaoChannel with a process creation socket at a given
   /// path.
   /// @param socket_path A path at which to create a Unix domain socket.
+  /// @param stop_socket_path A path at which to create a Unix domain socket
+  /// used to stop the channel.
   UnixFdTaoChannel(const string &socket_path, const string &stop_socket_path);
   virtual ~UnixFdTaoChannel();
 

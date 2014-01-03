@@ -51,7 +51,8 @@ class CloudAuth {
   /// Check to see if this operation is permitted by the ACL.
   /// @param subject The subject requesting the operation. The client must have
   /// already been authenticated by the caller.
-  /// @param object The operation to check.
+  /// @param op The operation to check.
+  /// @param object The object of the operation.
   /// @return A value indicating whether or not the subject is permitted to
   /// perform this operation.
   virtual bool Permitted(const string &subject, Op op, const string &object);
@@ -66,7 +67,7 @@ class CloudAuth {
   /// @param subject The subject of the entry to insert.
   /// @param op The operation of the entry to insert.
   /// @param object The operation of the entry to insert.
-  virtual bool Insert(const string &subect, Op op, const string &object);
+  virtual bool Insert(const string &subject, Op op, const string &object);
 
   /// Serialize the ACL.
   /// @param[out] data A string to fill with the serialized representation.

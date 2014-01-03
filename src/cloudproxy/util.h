@@ -183,8 +183,8 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
 
 /// Derive keys from a main key.
 /// @param main_key The key to use for key derivation.
-/// @param[out] The encryption key derived from main_key.
-/// @param[out] The HMAC key derived from main_key.
+/// @param[out] enc_key The encryption key derived from main_key.
+/// @param[out] hmac_key The HMAC key derived from main_key.
 bool DeriveKeys(keyczar::Keyczar *main_key,
                 keyczar::base::ScopedSafeString *enc_key,
                 keyczar::base::ScopedSafeString *hmac_key);
@@ -223,9 +223,9 @@ bool DecryptBlock(const unsigned char *buffer, int size, unsigned char *out,
 /// Encrypt a single block in an encryption stream.
 /// @param buffer The bytes to encrypt.
 /// @param size The length of the bytes to encrypt.
-/// @param[out] The encrypted bytes.
-/// @param[in,out] On input, this is the length of the out buffer. It is
-/// replaced with the total count of encrypted bytes.
+/// @param[out] out The encrypted bytes.
+/// @param[in,out] out_size On input, this is the length of the out buffer. It
+/// is replaced with the total count of encrypted bytes.
 /// @param aes The encryption context.
 /// @param hmac The HMAC context.
 bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out,
@@ -233,27 +233,28 @@ bool EncryptBlock(const unsigned char *buffer, int size, unsigned char *out,
 
 /// Perform final decryption operations and return any extra data that results
 /// from these operations.
-/// @param[out] The decrypted bytes.
-/// @param[in,out] The length of the out buffer, then the total number of
-/// decrypted bytes in out.
+/// @param[out] out The decrypted bytes.
+/// @param[in,out] out_size The length of the out buffer, then the total number
+/// of decrypted bytes in out.
 /// @param aes The decryption context.
 bool GetFinalDecryptedBytes(unsigned char *out, int *out_size,
                             EVP_CIPHER_CTX *aes);
 
 /// Perform final encryption operations and return any extra data that results
 /// from these operations.
-/// @param[out] The encrypted bytes.
-/// @param[in,out] The length of the out buffer, then the total number of
-/// encrypted bytes in out.
+/// @param[out] out The encrypted bytes.
+/// @param[in,out] out_size The length of the out buffer, then the total number
+/// of encrypted bytes in out.
 /// @param aes The encryption context.
+/// @param hmac The HMAC context.
 bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
                             EVP_CIPHER_CTX *aes, HMAC_CTX *hmac);
 
 /// Get the final output from an HMAC being computed over a stream.
-/// @param[out] The hmac value.
-/// @param[in,out] The size of the out buffer, then the total number of bytes
-/// written for the HMAC.
-/// @param The HMAC context to use for the operation.
+/// @param[out] out The hmac value.
+/// @param[in,out] out_size The size of the out buffer, then the total number of
+/// bytes written for the HMAC.
+/// @param hmac The HMAC context to use for the operation.
 bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
 
 /// Serialize an X.509 certificate.

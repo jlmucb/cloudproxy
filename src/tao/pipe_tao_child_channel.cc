@@ -27,7 +27,7 @@
 
 namespace tao {
 PipeTaoChildChannel::PipeTaoChildChannel(const string &params)
-    : readfd_(0), writefd_(0), params_(params) {}
+    : UnixFdTaoChildChannel(), params_(params) {}
 
 bool PipeTaoChildChannel::Init() {
 
@@ -46,56 +46,6 @@ bool PipeTaoChildChannel::Init() {
 
   readfd_ = ptcp.readfd();
   writefd_ = ptcp.writefd();
-
-  return true;
-}
-
-bool PipeTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
-  // try to receive an integer
-  CHECK(m) << "m was null";
-
-  size_t len;
-  ssize_t bytes_read = read(readfd_, &len, sizeof(size_t));
-  if (bytes_read != sizeof(size_t)) {
-    LOG(ERROR) << "Could not receive a size on the channel";
-    return false;
-  }
-
-  // then read this many bytes as the message
-  scoped_array<char> bytes(new char[len]);
-  bytes_read = read(readfd_, bytes.get(), len);
-
-  // TODO(tmroeder): add safe integer library
-  if (bytes_read != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not read the right number of bytes from the fd";
-    return false;
-  }
-
-  string serialized(bytes.get(), len);
-  return m->ParseFromString(serialized);
-}
-
-bool PipeTaoChildChannel::SendMessage(
-    const google::protobuf::Message &m) const {
-  // send the length then the serialized message
-  string serialized;
-  if (!m.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the Message to a string";
-    return false;
-  }
-
-  size_t len = serialized.size();
-  ssize_t bytes_written = write(writefd_, &len, sizeof(size_t));
-  if (bytes_written != sizeof(size_t)) {
-    LOG(ERROR) << "Could not write the length to the fd " << writefd_;
-    return false;
-  }
-
-  bytes_written = write(writefd_, serialized.data(), len);
-  if (bytes_written != static_cast<ssize_t>(len)) {
-    LOG(ERROR) << "Could not wire the serialized message to the fd";
-    return false;
-  }
 
   return true;
 }

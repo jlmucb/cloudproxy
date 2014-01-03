@@ -20,7 +20,13 @@
 #ifndef TAO_KVM_UNIX_TAO_CHILD_CHANNEL_H_
 #define TAO_KVM_UNIX_TAO_CHILD_CHANNEL_H_
 
-#include "tao/tao_child_channel.h"
+#include <string>
+
+#include <keyczar/base/basictypes.h>
+
+#include "tao/unix_fd_tao_child_channel.h"
+
+using std::string;
 
 namespace tao {
 /// The channel a guest VM uses to communicate with the hypervisor Tao. It does
@@ -29,7 +35,7 @@ namespace tao {
 /// device to connect to for hypervisor Tao communication. In the current
 /// implementation, this is done by passing a Baes64W-encoded string as the last
 /// boot parameter. This can be found in /proc/cmdline.
-class KvmUnixTaoChildChannel : public TaoChildChannel {
+class KvmUnixTaoChildChannel : public UnixFdTaoChildChannel {
  public:
   /// This constructor stores the parameters but doesn't parse them or try to
   /// connect to the hypervisor Tao.
@@ -41,17 +47,10 @@ class KvmUnixTaoChildChannel : public TaoChildChannel {
 
   static string ChannelType() { return "KvmUnixTaoChannel"; }
 
- protected:
-  // subclasses implement these methods for the underlying transport.
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const;
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
-
  private:
-  // The opened file descriptor for the file specified in params_.
-  int fd_;
-
-  // A Base64W-serialized TaoChildChannelParams.
   string params_;
+
+  DISALLOW_COPY_AND_ASSIGN(KvmUnixTaoChildChannel);
 };
 }  // namespace tao
 

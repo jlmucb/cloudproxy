@@ -32,13 +32,15 @@
 
 namespace tao {
 /// A TaoChannel that communicates over UNIX file descriptors with KVM guest
-/// machines. It uses a <channel/> set up by libvirt and virtio_console in the
+/// machines. It uses a channel set up by libvirt and virtio_console in the
 /// guest.
 class KvmUnixTaoChannel : public UnixFdTaoChannel {
  public:
   /// Construct a KvmUnixTaoChannel with a process creation socket at a given
   /// path.
-  /// @param socket_path the filename that will be used as a Unix domain socket.
+  /// @param socket_path The filename that will be used as a Unix domain socket.
+  /// @param stop_socket_path The filename that will be used for a socket that
+  /// takes messages to stop the channel.
   KvmUnixTaoChannel(const string &socket_path, const string &stop_socket_path);
   virtual ~KvmUnixTaoChannel();
 

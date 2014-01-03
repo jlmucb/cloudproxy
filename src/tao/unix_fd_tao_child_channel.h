@@ -18,8 +18,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TAO_KVM_UNIX_TAO_CHILD_CHANNEL_H_
-#define TAO_KVM_UNIX_TAO_CHILD_CHANNEL_H_
+#ifndef TAO_UNIX_FD_TAO_CHILD_CHANNEL_H_
+#define TAO_UNIX_FD_TAO_CHILD_CHANNEL_H_
 
 #include "tao/tao_child_channel.h"
 
@@ -54,4 +54,4 @@ class UnixFdTaoChildChannel : public TaoChildChannel {
 };
 }  // namespace tao
 
-#endif  // TAO_KVM_UNIX_TAO_CHILD_CHANNEL_H_
+#endif  // TAO_UNIX_FD_TAO_CHILD_CHANNEL_H_

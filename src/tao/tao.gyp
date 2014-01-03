@@ -33,6 +33,7 @@
         'pipe_tao_channel_unittests.cc',
         'process_factory_unittests.cc',
         'root_auth_unittests.cc',
+        'tao_child_channel_registry_unittests.cc',
         'tao_test.cc',
         'tpm_tao_child_channel_unittests.cc',
       ],

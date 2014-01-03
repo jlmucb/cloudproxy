@@ -23,121 +23,17 @@
   },
   'targets': [
     {
-      'target_name': 'fake_tao_unittests',
+      'target_name': 'tao_test',
       'type': 'executable',
       'sources': [
         'fake_tao_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'root_auth_unittests',
-      'type': 'executable',
-      'sources': [
-        'root_auth_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'pipe_tao_channel_unittests',
-      'type': 'executable',
-      'sources': [
-        'pipe_tao_channel_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'process_factory_unittests',
-      'type': 'executable',
-      'sources': [
-        'process_factory_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'kvm_vm_factory_unittests',
-      'type': 'executable',
-      'sources': [
         'kvm_vm_factory_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'kvm_unix_tao_channel_unittests',
-      'type': 'executable',
-      'sources': [
         'kvm_unix_tao_channel_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'linux_tao_unittests',
-      'type': 'executable',
-      'sources': [
         'linux_tao_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'tao',
-        'tao_test_utilities',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
-    },
-    {
-      'target_name': 'tpm_tao_child_channel_unittests',
-      'type': 'executable',
-      'sources': [
+        'pipe_tao_channel_unittests.cc',
+        'process_factory_unittests.cc',
+        'root_auth_unittests.cc',
+        'tao_test.cc',
         'tpm_tao_child_channel_unittests.cc',
       ],
       'include_dirs': [
@@ -145,6 +41,8 @@
       ],
       'dependencies': [
         'tao',
+        'tao_test_utilities',
+        '../third_party/googlemock/gmock.gyp:gmock',
         '../third_party/googlemock/gtest/gtest.gyp:gtest',
       ],
     },
@@ -240,7 +138,7 @@
           '-lcrypto',
           '-lssl',
           '-ltspi',
-	  '-lvirt',
+          '-lvirt',
         ],
         'include_dirs': [
           '<(SHARED_INTERMEDIATE_DIR)',

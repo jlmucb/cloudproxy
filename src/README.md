@@ -66,3 +66,17 @@ well. Once these are installed, you can build the documentation as follows:
 
 This will produce html documentation in ${ROOT}/doc/html. See the file
 index.html to get started.
+
+
+Testing
+-------
+
+CloudProxy uses the Google Test framework for testing. Each library has a test
+suite. Some tests will work only if certain conditions are met. For example, the
+TPM tests require access to a TPM and an AIK in that TPM, and the KvmVmFactory
+tests require KVM to be set up and certain files to be prepared. To run the
+libtao test suite without these tests, you can specify a negative filter on the
+command line. For example, to run all but the TPM and KvmVmFactory tests:
+
+    ./out/Release/bin/tao_test --gtest_filter=-TPM*:KvmVmFactory*
+

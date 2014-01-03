@@ -113,11 +113,3 @@ TEST_F(KvmVmFactoryTest, CreationTest) {
   // connection.
   EXPECT_EQ(virConnectClose(conn), 1) << "Could not close the QEMU connection";
 }
-
-GTEST_API_ int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

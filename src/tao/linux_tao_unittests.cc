@@ -238,9 +238,3 @@ TEST_F(LinuxTaoTest, AttestTest) {
   string empty;
   EXPECT_TRUE(tao_->Attest(empty, bytes, &attestation));
 }
-
-GTEST_API_ int main(int argc, char **argv) {
-  google::InitGoogleLogging(argv[0]);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

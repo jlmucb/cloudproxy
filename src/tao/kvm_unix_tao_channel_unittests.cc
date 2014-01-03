@@ -177,10 +177,3 @@ TEST_F(KvmUnixTaoChannelTest, AttestTest) {
   string attestation;
   EXPECT_TRUE(child_channel_->Attest(bytes, &attestation));
 }
-
-GTEST_API_ int main(int argc, char **argv) {
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

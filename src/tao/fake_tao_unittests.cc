@@ -66,9 +66,3 @@ TEST_F(FakeTaoTest, AttestTest) {
   string attestation;
   EXPECT_TRUE(tao_.Attest(bytes, bytes, &attestation));
 }
-
-GTEST_API_ int main(int argc, char **argv) {
-  google::InitGoogleLogging(argv[0]);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

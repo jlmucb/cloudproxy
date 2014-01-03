@@ -98,7 +98,7 @@ bool OpenTCPSocket(short port, int *sock);
 /// @param key_purpose The purpose the key will be used for, like
 /// SIGN_AND_VERIFY.
 /// @param key_name A name for this key.
-/// @param[out] key A scoped Keyczar to fill with the key.
+/// @param[in,out] key A scoped Keyczar to fill with the key.
 bool CreateKey(keyczar::rw::KeysetWriter *writer,
                keyczar::KeyType::Type key_type,
                keyczar::KeyPurpose::Type key_purpose, const string &key_name,

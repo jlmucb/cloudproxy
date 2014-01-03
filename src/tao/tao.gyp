@@ -39,6 +39,22 @@
       ],
     },
     {
+      'target_name': 'root_auth_unittests',
+      'type': 'executable',
+      'sources': [
+        'root_auth_unittests.cc',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'dependencies': [
+        'tao',
+        'tao_test_utilities',
+        '../third_party/googlemock/gmock.gyp:gmock',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
+    },
+    {
       'target_name': 'pipe_tao_channel_unittests',
       'type': 'executable',
       'sources': [

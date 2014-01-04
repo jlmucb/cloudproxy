@@ -53,6 +53,7 @@ CFLAGS=     	$(RELEASE_CFLAGS)
 LDFLAGS= 	
 
 CC=         gcc
+AS=         as
 LINK=       gcc
 LIBMAKER=   libtool
 
@@ -65,7 +66,7 @@ dobjs=      $(BINDIR)/vmexit.o $(BINDIR)/vmexit_io.o \
 	    $(BINDIR)/vmexit_invd.o $(BINDIR)/vmexit_dbg.o \
 	    $(BINDIR)/vmexit_dtr_tr_access.o $(BINDIR)/vmexit_vmx.o \
 	    $(BINDIR)/vmexit_vmx.o $(BINDIR)/vmx_teardown.o \
-	    $(BINDIR)/vmexit_analysis.o \
+	    $(BINDIR)/teardown_thunk.o $(BINDIR)/vmexit_analysis.o \
 	    $(BINDIR)/vmexit_cr_access.o \
 	    $(BINDIR)/vmexit_msr.o \
 	    $(BINDIR)/vmexit_ept.o 
@@ -75,6 +76,10 @@ all: $(E)/libvmexit.a
 $(E)/libvmexit.a: $(dobjs)
 	@echo "libvmexit.a"
 	$(LIBMAKER) -static -o $(E)/libvmexit.a $(dobjs)
+
+$(BINDIR)/teardown_thunk.o: $(mainsrc)/teardown_thunk.s
+	echo "teardown_thunk.o"
+	$(AS) -o $(BINDIR)/teardown_thunk.o $(mainsrc)/teardown_thunk.s
 
 $(BINDIR)/vmexit.o: $(mainsrc)/vmexit.c
 	echo "vmexit.o" 

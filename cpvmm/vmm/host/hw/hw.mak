@@ -30,7 +30,7 @@ ifndef TARGET_MACHINE_TYPE
 TARGET_MACHINE_TYPE= x64
 endif
 
-# compile host library
+# compile hw library
 #  vmcs_init.c reset.c local_apic.c host_pci_configuration.c hw_utils.c 
 # output: libhwcommon.a
 

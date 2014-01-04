@@ -48,17 +48,22 @@ CFLAGS=     	$(RELEASE_CFLAGS)
 LDFLAGS= 	
 
 CC=         gcc
+AS=         as
 LINK=       gcc
 LIBMAKER=   libtool
 
 dobjs=      $(BINDIR)/ept.o $(BINDIR)/ept_hw_layer.o $(BINDIR)/fvs.o \
-	    $(BINDIR)/ve.o
+	    $(BINDIR)/ve.o $(BINDIR)/invept.o
 
 all: $(E)/libept.a
  
 $(E)/libept.a: $(dobjs)
 	@echo "libept.a"
 	$(LIBMAKER) -static -o $(E)/libept.a $(dobjs)
+
+$(BINDIR)/invept.o: $(mainsrc)/invept.s
+	echo "invept.o"
+	$(AS) -o $(BINDIR)/invept.o $(mainsrc)/invept.s
 
 $(BINDIR)/ept.o: $(mainsrc)/ept.c
 	echo "ept.o" 

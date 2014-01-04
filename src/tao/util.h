@@ -163,6 +163,17 @@ bool OpenUnixDomainSocket(const string &path, int *sock);
 /// @param[out] sock The connected socket.
 bool ConnectToUnixDomainSocket(const string &path, int *sock);
 
+/// Create a public ECDSA key with the default security parameters.
+/// @param path The path to create the key at. This path must already exist.
+/// @param[out] key A pointer to an existing scoped_ptr that will take
+/// ownership of the newly created key.
+bool CreatePubECDSAKey(const string &path, scoped_ptr<keyczar::Keyczar> *key);
+
+/// Create a temporary directory.
+/// @param prefix The path of the directory to create.
+/// @param[out] temp_dir A pointer to an object that will take ownership of the
+/// new temporary directory.
+bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 }  // namespace tao
 
 #endif  // TAO_UTIL_TAO_H_

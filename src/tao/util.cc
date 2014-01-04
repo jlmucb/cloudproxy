@@ -161,12 +161,6 @@ bool HashVM(const string &vm_template, const string &name,
     return false;
   }
 
-  string template_digest;
-  if (!Base64WEncode(template_hash, &template_digest)) {
-    LOG(ERROR) << "Could not encode the template digest";
-    return false;
-  }
-
   string name_hash;
   if (!sha256->Digest(name, &name_hash)) {
     LOG(ERROR) << "Could not compute the has of the name";
@@ -625,4 +619,33 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock) {
 
   return true;
 }
+
+bool CreatePubECDSAKey(const string &path, scoped_ptr<Keyczar> *key) {
+  FilePath fp(path);
+  scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
+  if (!CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
+                KeyPurpose::SIGN_AND_VERIFY, "policy_pk", key)) {
+    LOG(ERROR) << "Could not create the public key";
+    return false;
+  }
+  (*key)->set_encoding(Keyczar::NO_ENCODING);
+
+  return true;
+}
+
+bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
+  // Get a temporary directory to use for the files.
+  string dir_template = string("/tmp/") + prefix + string("_XXXXXX");
+  scoped_array<char> temp_name(new char[dir_template.size() + 1]);
+  memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
+
+  if (!mkdtemp(temp_name.get())) {
+    LOG(ERROR) << "Could not create the temporary directory";
+    return false;
+  }
+
+  dir->reset(new string(temp_name.get()));
+  return true;
+}
+
 }  // namespace tao

@@ -36,6 +36,7 @@
         'tao_child_channel_registry_unittests.cc',
         'tao_test.cc',
         'tpm_tao_child_channel_unittests.cc',
+        'util_unittests.cc',
       ],
       'include_dirs': [
         '..',

@@ -41,7 +41,6 @@ enum AttestationType {
   ROOT = 1;
   INTERMEDIATE = 2;
   TPM_1_2_QUOTE = 3;
-  LEGACY = 4;
 }
 
 message Attestation {

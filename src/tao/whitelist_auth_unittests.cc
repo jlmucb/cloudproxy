@@ -17,7 +17,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <arpa/inet.h>
 #include <stdlib.h>
+#include <openssl/bio.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include <fstream>
 
@@ -26,6 +31,7 @@
 #include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_writer.h>
 
+#include "tao/attestation.pb.h"
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/whitelist_auth.h"
@@ -39,6 +45,7 @@ using keyczar::rw::KeysetJSONFileWriter;
 
 using std::ofstream;
 
+using tao::Attestation;
 using tao::CreateKey;
 using tao::CreatePubECDSAKey;
 using tao::CreateTempDir;
@@ -46,8 +53,10 @@ using tao::CreateTempPubKey;
 using tao::FakeTao;
 using tao::HostedProgram;
 using tao::WhitelistAuth;
+using tao::ScopedRsa;
 using tao::ScopedTempDir;
 using tao::SignedWhitelist;
+using tao::Statement;
 using tao::Tao;
 using tao::Whitelist;
 
@@ -133,15 +142,119 @@ TEST_F(WhitelistAuthTest, VerifyRootFailTest) {
 
 TEST_F(WhitelistAuthTest, VerifyRootTest) {
   // Create an attestation for a program, and check that it passes verification.
-  FakeTao ft(policy_pk_path_);
-  EXPECT_TRUE(ft.Init()) << "Could not init the FakeTao";
   string hash("Test hash 2");
 
   string data("test data");
   string attestation;
-  EXPECT_TRUE(ft.Attest(hash, data, &attestation)) << "Could not attest";
+  EXPECT_TRUE(fake_tao_->Attest(hash, data, &attestation)) << "Could not attest";
 
   string output_data;
   EXPECT_TRUE(whitelist_auth_->VerifyAttestation(attestation, &output_data))
     << "The generated attestation did not pass verification";
 }
+
+// Some OpenSSL types for convenience
+typedef unsigned char BYTE;
+typedef unsigned int UINT32;
+typedef unsigned short UINT16;
+
+TEST_F(WhitelistAuthTest, TPMQuoteTest) {
+  // Create a fake TPM 1.2 attestation.
+
+  tao::InitializeOpenSSL();
+
+  // Create a fresh OpenSSL RSA key that can be used to sign the quote.
+  ScopedRsa rsa(RSA_new());
+  BIGNUM *e = BN_new();
+  int exp = htonl(65537);
+  ASSERT_EQ(BN_bin2bn((BYTE *)&exp, sizeof(exp), e), e)
+    << "Could not create an exponent for the RSA key";
+
+  ASSERT_GE(RSA_generate_key_ex(rsa.get(), 2048, e, NULL), 0)
+    << "Could not generate a new RSA key";
+
+  BIO *mem = BIO_new(BIO_s_mem());
+  ASSERT_EQ(PEM_write_bio_RSAPublicKey(mem, rsa.get()), 1)
+    << "Could not write the RSA to a bio";
+
+  // The key should take up less than 8k in size.
+  int len = 8 * 1024;
+  scoped_array<char> key_bytes(new char[len]);
+  int result = BIO_read(mem, key_bytes.get(), len);
+  ASSERT_GE(result, 0) << "Could not read the bytes from the array";
+  string data(key_bytes.get(), result);
+
+  // This key must be signed by the root. And "Test hash 1" takes the place of
+  // the PCRs in this case.
+  string attestation;
+  ASSERT_TRUE(fake_tao_->Attest("Test hash 1", data, &attestation))
+    << "Could not attest to the key";
+
+  Attestation a;
+  a.set_type(tao::TPM_1_2_QUOTE);
+  a.set_cert(attestation);
+
+  Statement s;
+  time_t cur_time;
+  time(&cur_time);
+
+  s.set_time(cur_time);
+  s.set_expiration(cur_time + 10000);
+  s.set_data("Test data");
+  s.set_hash_alg("SHA256");
+  s.set_hash("Test hash 2");
+
+  string *serialized_statement = a.mutable_serialized_statement();
+  ASSERT_TRUE(s.SerializeToString(serialized_statement))
+    << "Could not serialize the statement";
+
+  // Hash the statement with SHA1 for the external data part of the quote.
+  BYTE statement_hash[20];
+  SHA1(reinterpret_cast<const BYTE *>(a.serialized_statement().data()),
+       a.serialized_statement().size(), statement_hash);
+
+  // The quote can be created using a qinfo, which has a header of 8 bytes, and
+  // two hashes.  The first hash is the hash of the external data, and the
+  // second is the hash of the quote itself. This can be hashed and signed
+  // directly by OpenSSL.
+
+  BYTE qinfo[8 + 2 * 20];
+  qinfo[0] = 1;
+  qinfo[1] = 1;
+  qinfo[2] = 0;
+  qinfo[3] = 0;
+  qinfo[4] = 'Q';
+  qinfo[5] = 'U';
+  qinfo[6] = 'O';
+  qinfo[7] = 'T';
+
+  a.set_quote("Fake quote data");
+
+  SHA1(reinterpret_cast<const BYTE *>(a.quote().data()), a.quote().size(),
+       qinfo + 8);
+  memcpy(qinfo + 8 + 20, statement_hash, sizeof(statement_hash));
+
+  BYTE quote_hash[20];
+  SHA1(qinfo, sizeof(qinfo), quote_hash);
+  UINT32 sig_len = 512; // far more bytes than are actually needed.
+  scoped_array<BYTE> sig(new BYTE[sig_len]);
+  ASSERT_EQ(RSA_sign(NID_sha1, quote_hash, sizeof(quote_hash),
+                     sig.get(), &sig_len, rsa.get()), 1)
+    << "Could not sign the message";
+
+  string signature(reinterpret_cast<char *>(sig.get()), sig_len);
+  a.set_signature(signature);
+
+  string top_attestation;
+  EXPECT_TRUE(a.SerializeToString(&top_attestation))
+    << "Could not serialize the attestation";
+
+  string top_data;
+  EXPECT_TRUE(whitelist_auth_->VerifyAttestation(top_attestation, &top_data))
+    << "The constructed TPM 1.2 Quote did not pass verification";
+
+  string original_data("Test data");
+  EXPECT_EQ(top_data, original_data)
+    << "The extracted data from the attestation did not match the original";
+}
+

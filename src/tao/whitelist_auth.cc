@@ -195,9 +195,6 @@ bool WhitelistAuth::VerifyAttestation(const string &attestation,
     case TPM_1_2_QUOTE:
       verified = CheckTPM12Quote(a);
       break;
-    case LEGACY:
-      LOG(ERROR) << "Legacy attestations are not currently supported";
-      return false;
     case UNKNOWN:
     default:
       LOG(ERROR) << "Unknown attestation type";
@@ -331,8 +328,8 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
 
   // The quote can be verified in a qinfo, which has a header of 8 bytes, and
   // two hashes.  The first hash is the hash of the external data, and the
-  // second is the hash of the quote itself (pcr_buf above with length in
-  // index). This can be hashed and verified directly by OpenSSL.
+  // second is the hash of the quote itself. This can be hashed and verified
+  // directly by OpenSSL.
 
   BYTE qinfo[8 + 2 * 20];
   qinfo[0] = 1;

@@ -117,5 +117,22 @@ TEST_F(CloudAuthTest, AddPermissionsTest) {
   EXPECT_FALSE(cloud_auth_->Permitted("unknown_user", cloudproxy::CREATE, "/files"));
   EXPECT_TRUE(cloud_auth_->Insert("jlm", cloudproxy::DESTROY, "/files"));
   EXPECT_TRUE(cloud_auth_->Permitted("jlm", cloudproxy::DESTROY, "/files"));
-  
+}
+
+TEST_F(CloudAuthTest, DeletePermissionsTest) {
+  EXPECT_TRUE(cloud_auth_->Permitted("jlm", cloudproxy::CREATE, "/files"));
+  EXPECT_TRUE(cloud_auth_->Delete("jlm", cloudproxy::CREATE, "/files"));
+  EXPECT_FALSE(cloud_auth_->Permitted("jlm", cloudproxy::CREATE, "/files"));
+}
+
+TEST_F(CloudAuthTest, DeletePermissionsFailTest) {
+  // You can't delete permissions that aren't there.
+  EXPECT_FALSE(cloud_auth_->Delete("jlm", cloudproxy::READ, "/files"));
+  EXPECT_FALSE(cloud_auth_->Delete("jlm", cloudproxy::CREATE, "/files_2"));
+  EXPECT_FALSE(cloud_auth_->Delete("tmroeder", cloudproxy::CREATE, "/files"));
+}
+
+TEST_F(CloudAuthTest, SerializeTest) {
+  string serialized_auth;
+  EXPECT_TRUE(cloud_auth_->Serialize(&serialized_auth));
 }

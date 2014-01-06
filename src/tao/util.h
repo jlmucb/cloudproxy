@@ -174,6 +174,12 @@ bool CreatePubECDSAKey(const string &path, scoped_ptr<keyczar::Keyczar> *key);
 /// @param[out] temp_dir A pointer to an object that will take ownership of the
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
+
+/// Create a temporary directory and a temporary public key in this directory.
+/// @param[out] temp_dir The new directory.
+/// @param[out] key The new key.
+bool CreateTempPubKey(ScopedTempDir *temp_dir,
+                      scoped_ptr<keyczar::Keyczar> *key);
 }  // namespace tao
 
 #endif  // TAO_UTIL_TAO_H_

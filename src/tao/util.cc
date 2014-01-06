@@ -648,4 +648,28 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
+bool CreateTempPubKey(ScopedTempDir *temp_dir, scoped_ptr<Keyczar> *key) {
+  if (!CreateTempDir("create_key_test", temp_dir)) {
+    LOG(ERROR) << "Could not create a temp dir";
+    return false;
+  }
+
+  // Set up the files for the test.
+  string policy_pk_path = **temp_dir + "/policy_pk";
+
+  // Create the policy key directory so it can be filled by keyczar.
+  if (mkdir(policy_pk_path.c_str(), 0700)) {
+    LOG(ERROR) << "Could not create the key directory";
+    return false;
+  }
+
+  // create the policy key
+  if (!CreatePubECDSAKey(policy_pk_path, key)) {
+    LOG(ERROR) << "Could not create a public key";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace tao

@@ -48,6 +48,7 @@ using tao::CopyPublicKeyset;
 using tao::CreateKey;
 using tao::CreatePubECDSAKey;
 using tao::CreateTempDir;
+using tao::CreateTempPubKey;
 using tao::DeserializePublicKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
@@ -141,30 +142,6 @@ TEST(TaoUtilTest, SocketTest) {
   // Passing 0 as the port means you get an auto-assigned port.
   EXPECT_TRUE(OpenTCPSocket(0, sock.get()))
     << "Could not create and bind a TCP socket";
-}
-
-bool CreateTempPubKey(ScopedTempDir *temp_dir, scoped_ptr<Keyczar> *key) {
-  if (!CreateTempDir("create_key_test", temp_dir)) {
-    LOG(ERROR) << "Could not create a temp dir";
-    return false;
-  }
-
-  // Set up the files for the test.
-  string policy_pk_path = **temp_dir + "/policy_pk";
-
-  // Create the policy key directory so it can be filled by keyczar.
-  if (mkdir(policy_pk_path.c_str(), 0700)) {
-    LOG(ERROR) << "Could not create the key directory";
-    return false;
-  }
-
-  // create the policy key
-  if (!CreatePubECDSAKey(policy_pk_path, key)) {
-    LOG(ERROR) << "Could not create a public key";
-    return false;
-  }
-
-  return true;
 }
 
 TEST(TaoUtilTest, CreateKeyTest) {

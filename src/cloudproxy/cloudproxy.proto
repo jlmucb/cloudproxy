@@ -133,7 +133,7 @@ message ClientMessage {
 
     // a Attestation of the X.509 certificate used to establish this connection
     optional bytes attestation = 4;
-    
+
     // Close the connection, potentially with an error
     optional CloseConnection close = 5;
 }

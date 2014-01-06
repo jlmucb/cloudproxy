@@ -23,6 +23,25 @@
   },
   'targets': [
     {
+      'target_name': 'cloudproxy_test',
+      'type': 'executable',
+      'sources': [
+        'cloud_auth_unittests.cc',
+        'cloudproxy_test.cc',
+        'util_unittests.cc',
+      ],
+      'include_dirs': [
+        '..',
+      ],
+      'dependencies': [
+        'cloudproxy',
+        '../tao/tao.gyp:tao',
+        '../tao/tao.gyp:tao_test_utilities',
+        '../third_party/googlemock/gmock.gyp:gmock',
+        '../third_party/googlemock/gtest/gtest.gyp:gtest',
+      ],
+    },
+    {
       'target_name': 'cloudproxy',
       'type': 'static_library',
       'sources': [
@@ -55,16 +74,16 @@
       ],
       'dependencies': [
         '../tao/tao.gyp:tao',
-	'../third_party/gflags/gflags.gyp:gflags',
-	'../third_party/google-glog/glog.gyp:glog',
-	'../third_party/keyczar/keyczar.gyp:keyczar',
-	'../third_party/protobuf/protobuf.gyp:protobuf',
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
+        '../third_party/keyczar/keyczar.gyp:keyczar',
+        '../third_party/protobuf/protobuf.gyp:protobuf',
       ],
       'export_dependent_settings': [
-	'../third_party/gflags/gflags.gyp:gflags',
-	'../third_party/google-glog/glog.gyp:glog',
-	'../third_party/keyczar/keyczar.gyp:keyczar',
-	'../third_party/protobuf/protobuf.gyp:protobuf',
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
+        '../third_party/keyczar/keyczar.gyp:keyczar',
+        '../third_party/protobuf/protobuf.gyp:protobuf',
       ],
       'includes': [
         '../build/protoc.gypi',
@@ -80,26 +99,6 @@
           '..',
         ],
       },
-    },
-    {
-      'target_name': 'cloudproxy_test',
-      'type': 'executable',
-      'sources': [
-        'util_unittests.cc',
-      ],
-      'include_dirs': [
-        '..',
-      ],
-      'dependencies': [
-        'cloudproxy',
-        '../tao/tao.gyp:tao',
-	'../third_party/gflags/gflags.gyp:gflags',
-	'../third_party/google-glog/glog.gyp:glog',
-	'../third_party/keyczar/keyczar.gyp:keyczar',
-	'../third_party/protobuf/protobuf.gyp:protobuf',
-        '../third_party/googlemock/gmock.gyp:gmock',
-        '../third_party/googlemock/gtest/gtest.gyp:gtest',
-      ],
     },
   ]
 }

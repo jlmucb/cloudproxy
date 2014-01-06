@@ -24,7 +24,7 @@ command:
     ${SRC}/build/bootstrap.sh.
 
 To update the build after any change to a .gyp file, call gyp from the src
-directory. To get this to work, you have to have gyp in your path: 
+directory. To get this to work, you have to have gyp in your path:
 
     cd $SRC
     export PATH=${PATH}:`pwd`/third_party/gyp
@@ -80,3 +80,5 @@ command line. For example, to run all but the TPM and KvmVmFactory tests:
 
     ./out/Release/bin/tao_test --gtest_filter=-TPM*:KvmVmFactory*
 
+All tests run using this filter should work on any machine that can build
+CloudProxy.

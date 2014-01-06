@@ -1,4 +1,4 @@
-//  File: tao_test.cc
+//  File: cloudproxy_test.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: A main file for tests.

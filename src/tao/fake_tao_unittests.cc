@@ -20,10 +20,12 @@
 #include <gtest/gtest.h>
 
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/keyczar.h>
 
 #include "tao/fake_tao.h"
 
+using keyczar::base::Base64WEncode;
 using tao::FakeTao;
 
 class FakeTaoTest : public ::testing::Test {
@@ -43,18 +45,24 @@ TEST_F(FakeTaoTest, RandomBytesTest) {
 TEST_F(FakeTaoTest, SealTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
+
+  string encoded_hash;
+  EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   string sealed;
-  EXPECT_TRUE(tao_.Seal(bytes, bytes, &sealed));
+  EXPECT_TRUE(tao_.Seal(encoded_hash, bytes, &sealed));
 }
 
 TEST_F(FakeTaoTest, UnsealTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
+
+  string encoded_hash;
+  EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   string sealed;
-  EXPECT_TRUE(tao_.Seal(bytes, bytes, &sealed));
+  EXPECT_TRUE(tao_.Seal(encoded_hash, bytes, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(tao_.Unseal(bytes, sealed, &unsealed));
+  EXPECT_TRUE(tao_.Unseal(encoded_hash, sealed, &unsealed));
 
   EXPECT_EQ(bytes, unsealed);
 }
@@ -63,6 +71,8 @@ TEST_F(FakeTaoTest, AttestTest) {
   string bytes;
   EXPECT_TRUE(tao_.GetRandomBytes(128, &bytes));
 
+  string encoded_hash;
+  EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   string attestation;
-  EXPECT_TRUE(tao_.Attest(bytes, bytes, &attestation));
+  EXPECT_TRUE(tao_.Attest(encoded_hash, bytes, &attestation));
 }

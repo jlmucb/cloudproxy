@@ -633,6 +633,20 @@ bool CreatePubECDSAKey(const string &path, scoped_ptr<Keyczar> *key) {
   return true;
 }
 
+bool CreateECDSAKey(const string &path, const string &key_name,
+                    scoped_ptr<Keyczar> *key) {
+  FilePath fp(path);
+  scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
+  if (!CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
+                KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
+    LOG(ERROR) << "Could not create the public key";
+    return false;
+  }
+  (*key)->set_encoding(Keyczar::NO_ENCODING);
+
+  return true;
+}
+
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   // Get a temporary directory to use for the files.
   string dir_template = string("/tmp/") + prefix + string("_XXXXXX");

@@ -19,10 +19,8 @@
 
 #include <arpa/inet.h>
 #include <stdlib.h>
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/rsa.h>
-#include <openssl/sha.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <fstream>
 
@@ -30,6 +28,10 @@
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_writer.h>
+#include <openssl/bio.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/fake_tao.h"
@@ -48,17 +50,20 @@ using std::ofstream;
 using tao::Attestation;
 using tao::CreateKey;
 using tao::CreatePubECDSAKey;
+using tao::CreateECDSAKey;
 using tao::CreateTempDir;
 using tao::CreateTempPubKey;
 using tao::FakeTao;
 using tao::HostedProgram;
-using tao::WhitelistAuth;
+using tao::KeyczarPublicKey;
 using tao::ScopedRsa;
 using tao::ScopedTempDir;
+using tao::SignData;
 using tao::SignedWhitelist;
 using tao::Statement;
 using tao::Tao;
 using tao::Whitelist;
+using tao::WhitelistAuth;
 
 class WhitelistAuthTest : public ::testing::Test {
  protected:
@@ -258,3 +263,89 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
     << "The extracted data from the attestation did not match the original";
 }
 
+TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
+  // make a chain 3 deep of INTERMEDIATE->INTERMEDIATE->ROOT signatures
+  string key_1_path = *temp_dir_ + string("/key1");
+  string key_2_path = *temp_dir_ + string("/key2");
+
+  EXPECT_EQ(mkdir(key_1_path.c_str(), 0700), 0)
+    << "Could not create the first path";
+  EXPECT_EQ(mkdir(key_2_path.c_str(), 0700), 0)
+    << "Could not create the second path";
+
+  scoped_ptr<Keyczar> key_1;
+  scoped_ptr<Keyczar> key_2;
+  EXPECT_TRUE(CreateECDSAKey(key_1_path, "key_1", &key_1))
+    << "Could not create key 1";
+  EXPECT_TRUE(CreateECDSAKey(key_2_path, "key_2", &key_2))
+    << "Could not create key 2";
+
+  KeyczarPublicKey kpk_1;
+  KeyczarPublicKey kpk_2;
+
+  EXPECT_TRUE(SerializePublicKey(*key_1, &kpk_1)) << "Could not serialize 1";
+  EXPECT_TRUE(SerializePublicKey(*key_2, &kpk_2)) << "Could not serialize 2";
+
+  string kpk_1_str;
+  string kpk_2_str;
+  EXPECT_TRUE(kpk_1.SerializeToString(&kpk_1_str))
+    << "Could not serialize kpk 1 to a string";
+
+  EXPECT_TRUE(kpk_2.SerializeToString(&kpk_2_str))
+    << "Could not serialize kpk 2 to a string";
+
+  string root_cert;
+  EXPECT_TRUE(fake_tao_->Attest("Test hash 1", kpk_1_str, &root_cert))
+    << "Could not attest to key 2";
+
+  Attestation a1;
+  a1.set_type(tao::INTERMEDIATE);
+  a1.set_cert(root_cert);
+  Statement s1;
+  time_t cur_time;
+  time(&cur_time);
+  s1.set_time(cur_time);
+  s1.set_expiration(cur_time + 10000);
+  s1.set_data(kpk_2_str);
+  s1.set_hash_alg("SHA256");
+  s1.set_hash("Test hash 2");
+
+  string *ser_1 = a1.mutable_serialized_statement();
+  EXPECT_TRUE(s1.SerializeToString(ser_1)) << "Could not serialized stat 1";
+
+  string *sig_1 = a1.mutable_signature();
+  EXPECT_TRUE(SignData(*ser_1, sig_1, key_1.get())) << "Could not sign key 2";
+
+  string level_2_cert;
+  EXPECT_TRUE(a1.SerializeToString(&level_2_cert))
+    << "Could not serialize the attestation to key 1";
+
+  string data("Test data");
+  Attestation a2;
+  a2.set_type(tao::INTERMEDIATE);
+  a2.set_cert(level_2_cert);
+  Statement s2;
+  s2.set_time(cur_time);
+  s2.set_expiration(cur_time + 10000);
+  s2.set_data(data);
+  s2.set_hash_alg("SHA256");
+  s2.set_hash("Test hash 1");
+
+  string *ser_2 = a2.mutable_serialized_statement();
+  EXPECT_TRUE(s2.SerializeToString(ser_2)) << "Could not serialize stat 2";
+
+  string *sig_2 = a2.mutable_signature();
+  EXPECT_TRUE(SignData(*ser_2, sig_2, key_2.get())) << "Could not sign data";
+
+  string top_attestation;
+  EXPECT_TRUE(a2.SerializeToString(&top_attestation))
+    << "Could not serialize the top attestation";
+
+  string extracted_data;
+  EXPECT_TRUE(whitelist_auth_->VerifyAttestation(top_attestation,
+                                                 &extracted_data))
+    << "The top-level attestation did not pass verification";
+
+  EXPECT_EQ(extracted_data, data)
+    << "The extracted data did not match the original";
+}

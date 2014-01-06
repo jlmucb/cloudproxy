@@ -163,7 +163,15 @@ bool OpenUnixDomainSocket(const string &path, int *sock);
 /// @param[out] sock The connected socket.
 bool ConnectToUnixDomainSocket(const string &path, int *sock);
 
-/// Create a public ECDSA key with the default security parameters.
+/// Create a ECDSA key with the default security parameters.
+/// @param path The path to create the key at. This path must already exist.
+/// @param key_name The name of the key. It will be stored at path/key_name.
+/// @param[out] key A pointer to an existing scoped_ptr that will take
+/// ownership of the newly created key.
+bool CreateECDSAKey(const string &path, const string &key_name,
+                    scoped_ptr<keyczar::Keyczar> *key);
+
+/// Create a policy ECDSA key with the default security parameters.
 /// @param path The path to create the key at. This path must already exist.
 /// @param[out] key A pointer to an existing scoped_ptr that will take
 /// ownership of the newly created key.

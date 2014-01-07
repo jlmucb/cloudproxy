@@ -32,6 +32,7 @@
 #include <openssl/ssl.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
 #include "tao/tao_child_channel.h"
 #include "tao/whitelist_auth.h"
@@ -50,18 +51,12 @@ class TaoChildChannel;
 
 namespace cloudproxy {
 
-class CloudUserManager;
-
 /// A client that can establish a secure connection with a CloudServer and
-/// manage
-/// simple operations between the client and the server. See cloudproxy.proto
-/// for
-/// the details of the messages exchanged between CloudClient and CloudServer,
-/// as
-/// well as the (related) format of ACLs stored on the server. These ACLs are
-/// used by CloudServer to check if actions requested by the CloudClient are
-/// authorized by CloudProxy policy.
-///
+/// manage simple operations between the client and the server. See
+/// cloudproxy.proto for the details of the messages exchanged between
+/// CloudClient and CloudServer, as well as the (related) format of ACLs stored
+/// on the server. These ACLs are used by CloudServer to check if actions
+/// requested by the CloudClient are authorized by CloudProxy policy.
 /// Sample usage: see apps/client.cc
 class CloudClient {
  public:

@@ -129,7 +129,7 @@ bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
 bool VerifySignature(const string &data, const string &signature,
                      keyczar::Keyczar *key);
 
-/// Copy the value of a public key into anoter keyset.
+/// Copy the value of a public key into another keyset.
 /// @param public_key The key to copy.
 /// @param[out] keyset The key to fill with the copy.
 bool CopyPublicKeyset(const keyczar::Keyczar &public_key,

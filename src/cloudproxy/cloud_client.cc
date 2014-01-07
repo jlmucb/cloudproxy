@@ -62,15 +62,14 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
       context_(SSL_CTX_new(TLSv1_2_client_method())),
       users_(new CloudUserManager()),
       auth_manager_(auth_manager) {
-
-  // set the policy_key to handle bytes, not strings
+  // Set the policy_key to handle bytes, not strings.
   public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
       << "Could not encode the secret as a Base64W string";
 
-  // check to see if the public/private keys exist. If not, create them
+  // Check to see if the public/private keys exist. If not, create them.
   FilePath fp(tls_cert);
   if (!PathExists(fp)) {
     CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
@@ -238,6 +237,7 @@ bool CloudClient::Authenticate(const string &subject,
   // now create a SignedSpeaksFor annotation from the corresponding signed file
   // for this user
   ifstream ssf_file(binding_file.c_str());
+  CHECK(ssf_file) << "Could not open " << binding_file;
   ssf->ParseFromIstream(&ssf_file);
 
   CHECK(cm2.SerializeToString(&serialized_cm))

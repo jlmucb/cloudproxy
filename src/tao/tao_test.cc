@@ -20,9 +20,12 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "tao/util.h"
+
 GTEST_API_ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   testing::InitGoogleTest(&argc, argv);
+  tao::InitializeOpenSSL();
   return RUN_ALL_TESTS();
 }

@@ -73,8 +73,6 @@ void ecleanup(EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_cleanup(ctx); }
 
 void hcleanup(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
 
-// TODO(tmroeder): change this callback will change to get the
-// password from the Tao/TPM
 int PasswordCallback(char *buf, int size, int rwflag, void *password) {
   strncpy(buf, (char *)(password), size);
   buf[size - 1] = '\0';
@@ -136,6 +134,11 @@ bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
 
   // load the signature
   ifstream sig(signed_acls_file.c_str());
+  if (!sig) {
+    LOG(ERROR) << "Could not open the signed acls file " << signed_acls_file;
+    return false;
+  }
+
   stringstream sig_buf;
   sig_buf << sig.rdbuf();
 
@@ -600,6 +603,12 @@ bool ReceiveAndEncryptStreamData(
   hom.set_hmac(metadata_hmac);
 
   ofstream meta(meta_path.c_str(), ofstream::out);
+  if (!meta) {
+    LOG(ERROR) << "Could not open the meta file " << meta_path
+               << " for writing";
+    return false;
+  }
+
   hom.SerializeToOstream(&meta);
 
   return true;
@@ -620,6 +629,11 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
 
   // recover the metadata
   ifstream mf(meta_path.c_str());
+  if (!mf) {
+    LOG(ERROR) << "Could not open the meta file " << meta_path;
+    return false;
+  }
+
   HmacdObjectMetadata hom;
   hom.ParseFromIstream(&mf);
 
@@ -800,12 +814,8 @@ bool SerializeX509(X509 *x509, string *serialized_x509) {
   return true;
 }
 
-bool CreateECDSAKey(const string &private_path, const string &public_path,
-                    const string &secret, const string &country_code,
-                    const string &org_code, const string &cn) {
-  // this function assumes that private_path and public_path do not exist as
-  // files. If they do, then they'll get overwritten.
-  ScopedEvpPkey key(EVP_PKEY_new());
+bool CreateECDSAPrivateKey(ScopedEvpPkey *key) {
+  key->reset(EVP_PKEY_new());
 
   // generate a new ECDSA key
   EC_KEY *ec_key = EC_KEY_new();
@@ -830,11 +840,18 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
     return false;
   }
 
-  if (!EVP_PKEY_assign_EC_KEY(key.get(), ec_key)) {
+  if (!EVP_PKEY_assign_EC_KEY(key->get(), ec_key)) {
     LOG(ERROR) << "Could not assign the key";
     return false;
   }
 
+  return true;
+}
+
+bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
+                   const string &public_path,
+                   const string &secret, const string &country_code,
+                   const string &org_code, const string &cn) {
   ScopedX509Ctx x509(X509_new());
 
   // set up properties of the x509 object
@@ -934,5 +951,20 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
   }
 
   return true;
+}
+
+bool CreateECDSAKey(const string &private_path, const string &public_path,
+                    const string &secret, const string &country_code,
+                    const string &org_code, const string &cn) {
+  // this function assumes that private_path and public_path do not exist as
+  // files. If they do, then they'll get overwritten.
+  ScopedEvpPkey key(nullptr);
+  if (!CreateECDSAPrivateKey(&key)) {
+    LOG(ERROR) << "Could not create a private ECDSA key";
+    return false;
+  }
+
+  return WriteECDSAKey(key, private_path, public_path, secret, country_code,
+                       org_code, cn);
 }
 }  // namespace cloudproxy

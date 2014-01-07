@@ -262,6 +262,27 @@ bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
 /// @param[out] serialized_x509 The serialized form of the certificate.
 bool SerializeX509(X509 *x509, string *serialized_x509);
 
+/// Create a fresh ECDSA private key.
+/// @param[out] key The key that was created.
+bool CreateECDSAPrivateKey(ScopedEvpPkey *key);
+
+/// Write an OpenSSL ECDSA key as a private PEM file and a self-certified X.509
+/// certificate.
+/// @param key The key to write.
+/// @param private_path The path at which to write the private key.
+/// @param public_path The path at which to write the public key.
+/// @param secret A secret to use to encrypt the private part of the key. The
+/// security of the input bytes must be managed by the caller. This method
+/// copies the secret into a keyczar ScopedSafeString to ensure that none of the
+/// bytes of the secret are leaked.
+/// @param country_code A country code to use for the X.509 certificate.
+/// @param org_code The organization information for the X.509 certificate.
+/// @param cn The common name for the entity that will use the key.
+bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
+                   const string &public_path,
+                   const string &secret, const string &country_code,
+                   const string &org_code, const string &cn);
+
 /// Create an OpenSSL ECDSA key.
 /// @param private_path The path at which to write the private key.
 /// @param public_path The path at which to write the public key.

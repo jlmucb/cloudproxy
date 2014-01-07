@@ -42,14 +42,15 @@ BINDIR=	        $(B)/libmem
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/common/include/platform -I$(mainsrc)
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/host_memory_manager.o $(BINDIR)/vmm_stack.o $(BINDIR)/gpm.o \
 	    $(BINDIR)/pool.o $(BINDIR)/memory_address_mapper.o \
@@ -59,7 +60,8 @@ all: $(E)/libmem.a
  
 $(E)/libmem.a: $(dobjs)
 	@echo "libmem.a"
-	$(LIBMAKER) -static -o $(E)/libmem.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libmem.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libmem.a $(dobjs)
 
 $(BINDIR)/host_memory_manager.o: $(mainsrc)/host_memory_manager.c
 	echo "host_memory_manager.o" 

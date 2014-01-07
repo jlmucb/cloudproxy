@@ -42,15 +42,16 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
 		-I$(S)/common/include/platform -I$(mainsrc)
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 AS=         as
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/ept.o $(BINDIR)/ept_hw_layer.o $(BINDIR)/fvs.o \
 	    $(BINDIR)/ve.o $(BINDIR)/invept.o
@@ -59,7 +60,8 @@ all: $(E)/libept.a
  
 $(E)/libept.a: $(dobjs)
 	@echo "libept.a"
-	$(LIBMAKER) -static -o $(E)/libept.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libept.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libept.a $(dobjs)
 
 $(BINDIR)/invept.o: $(mainsrc)/invept.s
 	echo "invept.o"

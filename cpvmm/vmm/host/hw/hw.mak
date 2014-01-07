@@ -49,7 +49,8 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/vmcs_init.o $(BINDIR)/reset.o $(BINDIR)/local_apic.o \
 	    $(BINDIR)/host_pci_configuration.o $(BINDIR)/hw_utils.o
@@ -58,7 +59,8 @@ all: $(E)/libhwcommon.a
  
 $(E)/libhwcommon.a: $(dobjs)
 	@echo "libhwcommon.a"
-	$(LIBMAKER) -static -o $(E)/libhwcommon.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libhwcommon.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libhwcommon.a $(dobjs)
 
 $(BINDIR)/vmcs_init.o: $(mainsrc)/vmcs_init.c
 	echo "vmcs_init.o" 

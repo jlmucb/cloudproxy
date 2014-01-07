@@ -42,14 +42,15 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(S)/vmm/guest/guest_cpu -I$(S)/vmm/guest -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 ASM_SRC = 	
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+LIBMAKER=   ar
+#LIBMAKER=   libtool
 
 dobjs=      $(BINDIR)/ipc.o $(BINDIR)/ipc_api.o
 
@@ -57,7 +58,8 @@ all: $(E)/libipc.a
  
 $(E)/libipc.a: $(dobjs)
 	@echo "libipc.a"
-	$(LIBMAKER) -static -o $(E)/libipc.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libipc.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libipc.a $(dobjs)
 
 $(BINDIR)/ipc.o: $(mainsrc)/ipc.c
 	echo "ipc.o" 

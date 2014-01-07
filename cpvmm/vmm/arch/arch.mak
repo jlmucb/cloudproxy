@@ -41,14 +41,16 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 ASM_SRC = 	
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+BINDIR=	        $(B)/arch
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/e820_abstraction.o $(BINDIR)/efer_msr_abstraction.o \
 	    $(BINDIR)/mtrrs_abstraction.o $(BINDIR)/pat_manager.o
@@ -57,7 +59,8 @@ all: $(E)/libarch.a
  
 $(E)/libarch.a: $(dobjs)
 	@echo "libarch.a"
-	$(LIBMAKER) -static -o $(E)/libarch.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libarch.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libarch.a $(dobjs)
 
 $(BINDIR)/e820_abstraction.o: $(mainsrc)/e820_abstraction.c
 	echo "e820_abstraction.o" 

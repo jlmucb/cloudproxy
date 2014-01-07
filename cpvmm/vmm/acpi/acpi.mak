@@ -40,7 +40,8 @@ B=		$(E)/vmmobjects
 BINDIR=	        $(B)/acpi
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    -I$(S)/vmm/guest/guest_cpu -I$(S)/vmm/guest -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+    -I$(S)/vmm/guest/guest_cpu -I$(S)/vmm/guest -I$(mainsrc)/hw \
+		-I$(S)/vmm/memory/ept -I$(S)/startap
 ASM_SRC = 	
 DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs

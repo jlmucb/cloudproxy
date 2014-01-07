@@ -49,7 +49,8 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/guest.o $(BINDIR)/guest_control.o $(BINDIR)/guest_pci_configuration.o
 
@@ -57,7 +58,8 @@ all: $(E)/libguest.a
  
 $(E)/libguest.a: $(dobjs)
 	@echo "libguest.a"
-	$(LIBMAKER) -static -o $(E)/libguest.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libguest.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libguest.a $(dobjs)
 
 $(BINDIR)/guest.o: $(mainsrc)/guest.c
 	echo "guest.o" 

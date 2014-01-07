@@ -47,15 +47,16 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
      -I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 AS=         as
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/vmexit.o $(BINDIR)/vmexit_io.o \
 	    $(BINDIR)/vmexit_interrupt_exception_nmi.o \
@@ -75,7 +76,8 @@ all: $(E)/libvmexit.a
  
 $(E)/libvmexit.a: $(dobjs)
 	@echo "libvmexit.a"
-	$(LIBMAKER) -static -o $(E)/libvmexit.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libvmexit.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libvmexit.a $(dobjs)
 
 $(BINDIR)/teardown_thunk.o: $(mainsrc)/teardown_thunk.s
 	echo "teardown_thunk.o"

@@ -129,18 +129,21 @@ BOOLEAN nmi_manager_initialize(CPU_ID num_of_cores)
 /*-----------------------------------------------------------------------------*
 **                           Accessors
 *-----------------------------------------------------------------------------*/
-static void nmi_raise(CPU_ID cpu_id)
+//static void nmi_raise(CPU_ID cpu_id)
+void nmi_raise(CPU_ID cpu_id)
 {
     VMM_LOG(mask_anonymous, level_trace,"[nmi] Platform NMI on CPU%d\n", cpu_id);
     nmi_array[cpu_id] = TRUE;
 }
 
-static void nmi_clear(CPU_ID cpu_id)
+//static void nmi_clear(CPU_ID cpu_id)
+void nmi_clear(CPU_ID cpu_id)
 {
     nmi_array[cpu_id] = FALSE;
 }
 
-static BOOLEAN nmi_is_pending(CPU_ID cpu_id)
+//static BOOLEAN nmi_is_pending(CPU_ID cpu_id)
+BOOLEAN nmi_is_pending(CPU_ID cpu_id)
 {
     return nmi_array[cpu_id];
 }

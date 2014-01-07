@@ -41,14 +41,15 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 ASM_SRC = 	
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/isr.o $(BINDIR)/host_cpu.o $(BINDIR)/vmm_globals.o \
 	    $(BINDIR)/policy_manager.o $(BINDIR)/trial_exec.o
@@ -57,7 +58,8 @@ all: $(E)/libhost.a
  
 $(E)/libhost.a: $(dobjs)
 	@echo "libhost.a"
-	$(LIBMAKER) -static -o $(E)/libhost.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libhost.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libhost.a $(dobjs)
 
 $(BINDIR)/host_cpu.o: $(mainsrc)/host_cpu.c
 	echo "host_cpu.o" 

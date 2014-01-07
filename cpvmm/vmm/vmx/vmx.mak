@@ -43,23 +43,26 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 ASM_SRC = 	
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/vmcs.o $(BINDIR)/vmcs_sw_object.o $(BINDIR)/vmcs_merge_split.o \
-	    $(BINDIR)/vmcs_actual.o $(BINDIR)/vmcs_hierarchy.o $(BINDIR)/vmx_nmi.o \
-	    $(BINDIR)/vmx_timer.o
+	    $(BINDIR)/vmcs_actual.o $(BINDIR)/vmcs_hierarchy.o $(BINDIR)/vmx_nmi.o
+#	    $(BINDIR)/vmx_timer.o
 
 all: $(E)/libvmx.a
  
 $(E)/libvmx.a: $(dobjs)
 	@echo "libvmx.a"
+	#$(LIBMAKER) -static -o $(E)/libutils.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libvmx.a $(dobjs)
 
 $(BINDIR)/vmcs.o: $(mainsrc)/vmcs.c
 	echo "vmcs.o" 
@@ -84,8 +87,3 @@ $(BINDIR)/vmcs_hierarchy.o: $(mainsrc)/vmcs_hierarchy.c
 $(BINDIR)/vmx_nmi.o: $(mainsrc)/vmx_nmi.c
 	echo "vmx_nmi.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmx_nmi.o $(mainsrc)/vmx_nmi.c
-
-$(BINDIR)/vmx_timer.o: $(mainsrc)/vmx_timer.c
-	echo "vmx_timer.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmx_timer.o $(mainsrc)/vmx_timer.c
-

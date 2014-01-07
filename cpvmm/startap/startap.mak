@@ -37,8 +37,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/include/arch
 HW_DIR = 	em64t
 HW_COMMON_LIBC_DIR = $(S)/common/libc/$(HW_DIR)
 ASM_SRC = 	$(HW_COMMON_LIBC_DIR)/em64t_mem.asm
-DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG
-RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3
+DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
+RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
 CFLAGS=     	-D TIXML_USE_STL $(RELEASE_CFLAGS) 
 LDFLAGS= 	/ENTRY:startap_main
 

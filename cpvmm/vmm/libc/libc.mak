@@ -38,8 +38,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 HW_DIR = 	em64t
 HW_COMMON_LIBC_DIR = $(S)/common/libc/$(HW_DIR)
 ASM_SRC = 	
-DEBUG_CFLAGS     := -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS   := -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 libcsrc=	$(S)/common/libc
@@ -50,7 +50,8 @@ mainsrc=	$(S)/vmm/libc
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/libc.o $(BINDIR)/vmm_io.o $(BINDIR)/vmm_serial.o \
 	    $(BINDIR)/common_libc.o $(BINDIR)/sprintf.o $(BINDIR)/bitarray_utilities.o
@@ -59,7 +60,8 @@ all: $(E)/libc.a
  
 $(E)/libc.a: $(dobjs)
 	@echo "libc.a"
-	$(LIBMAKER) -static -o $(E)/libc.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libc.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libc.a $(dobjs)
 
 $(BINDIR)/libc.o: $(mainsrc)/libc.c
 	echo "libc.o" 

@@ -49,7 +49,8 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/scheduler.o
 
@@ -57,7 +58,8 @@ all: $(E)/libscheduler.a
  
 $(E)/libscheduler.a: $(dobjs)
 	@echo "libscheduler.a"
-	$(LIBMAKER) -static -o $(E)/libscheduler.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libscheduler.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libscheduler.a $(dobjs)
 
 $(BINDIR)/scheduler.o: $(mainsrc)/scheduler.c
 	echo "scheduler.o" 

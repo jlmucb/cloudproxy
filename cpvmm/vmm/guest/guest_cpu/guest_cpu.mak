@@ -44,14 +44,15 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 		-I$(S)/vmm/memory/ept \
 		-I$(S)/common/include/platform $(mainsrc) -I$(S)/vmm/guest
 
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wunused-but-set-variable -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -Wunused-but-set-variable
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/guest_cpu.o $(BINDIR)/guest_cpu_switch.o \
 	    $(BINDIR)/guest_cpu_vmenter_event.o $(BINDIR)/guest_cpu_control.o \
@@ -61,7 +62,8 @@ all: $(E)/libguest_cpu.a
  
 $(E)/libguest_cpu.a: $(dobjs)
 	@echo "libguest_cpu.a"
-	$(LIBMAKER) -static -o $(E)/libguest_cpu.a $(dobjs)
+	#$(LIBMAKER) -static -o $(E)/libguest_cpu.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libguest_cpu.a $(dobjs)
 
 $(BINDIR)/guest_cpu.o: $(mainsrc)/guest_cpu.c
 	echo "guest_cpu.o" 

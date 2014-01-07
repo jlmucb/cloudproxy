@@ -46,6 +46,7 @@ using cloudproxy::Action;
 using cloudproxy::CloudAuth;
 using cloudproxy::CloudClient;
 using cloudproxy::CloudServer;
+using cloudproxy::CreateUserECDSAKey;
 using cloudproxy::ScopedEvpPkey;
 using cloudproxy::SignedACL;
 using cloudproxy::SpeaksFor;
@@ -105,7 +106,6 @@ class CloudClientTest : public ::testing::Test {
     BIO_free(ec_file);
     ScopedEvpPkey pk_evp(EVP_PKEY_new());
     ASSERT_TRUE(EVP_PKEY_assign_EC_KEY(pk_evp.get(), pk));
-    LOG(INFO) << "here";
 
     // This call from tao/util.h creates a self-signed X.509 certificate for the
     // key. It also writes a version of the private key, which we will put in a
@@ -113,7 +113,6 @@ class CloudClientTest : public ::testing::Test {
     string dummy_private = *temp_dir_ + string("/dummy_private.key");
     ASSERT_TRUE(WriteECDSAKey(pk_evp, dummy_private, policy_pub_key_pem,
                               dummy_password, "US", "Google", "Policy Key"));
-    LOG(INFO) << "Finished writing key";
 
     string whitelist_path = *temp_dir_ + string("/whitelist");
 
@@ -139,7 +138,6 @@ class CloudClientTest : public ::testing::Test {
     ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
     whitelist_file.close();
-    LOG(INFO) << "Wrote to " << whitelist_path;
 
     string client_dir = *temp_dir_ + string("/client");
     ASSERT_EQ(mkdir(client_dir.c_str(), 0700), 0);
@@ -160,6 +158,7 @@ class CloudClientTest : public ::testing::Test {
 
     whitelist_auth_.reset(new WhitelistAuth(whitelist_path,
                                             policy_pub_key_path));
+    ASSERT_TRUE(whitelist_auth_->Init());
 
     cloud_client_.reset(new CloudClient(client_tls_cert, client_tls_key,
                                         *client_secret,
@@ -174,8 +173,58 @@ class CloudClientTest : public ::testing::Test {
     string server_tls_cert = server_dir + string("/cert");
     string server_tls_key = server_dir + string("/key");
     string server_secret_path = server_dir + string("/secret");
+    ScopedSafeString server_secret(new string());
+    ASSERT_TRUE(SealOrUnsealSecret(*direct_channel_, server_secret_path,
+                                   server_secret.get()));
+
+    // ACL for the server.
+    ACL acl;
+    Action *a1 = acl.add_permissions();
+    a1->set_subject("tmroeder");
+    a1->set_verb(cloudproxy::ADMIN);
+
+    Action *a2 = acl.add_permissions();
+    a2->set_subject("jlm");
+    a2->set_verb(cloudproxy::CREATE);
+    a2->set_object("/files");
+
+    SignedACL sacl;
+    string *ser = sacl.mutable_serialized_acls();
+    EXPECT_TRUE(acl.SerializeToString(ser)) << "Could not serialize ACL";
+
+    string *sig = sacl.mutable_signature();
+    EXPECT_TRUE(SignData(*ser, sig, policy_key_.get()))
+      << "Could not sign the serialized ACL with the policy key";
+
+    string signed_acl_path = *temp_dir_ + string("/signed_acl");
+    ofstream acl_file(signed_acl_path.c_str(), ofstream::out);
+    ASSERT_TRUE(acl_file) << "Could not open " << signed_acl_path;
+
+    EXPECT_TRUE(sacl.SerializeToOstream(&acl_file))
+      << "Could not write the signed ACL to a file";
+
+    acl_file.close();
+
     // Start a server to listen for client connections.
-    //EXPECT_TRUE(cloud_client_->Connect(*direct_channel_));
+    server_whitelist_auth_.reset(new WhitelistAuth(whitelist_path,
+                                            policy_pub_key_path));
+    ASSERT_TRUE(server_whitelist_auth_->Init());
+
+    cloud_server_.reset(new CloudServer(server_tls_cert, server_tls_key,
+                                        *server_secret, policy_pub_key_path,
+                                        policy_pub_key_pem,
+                                        signed_acl_path, server_addr,
+                                        server_port,
+                                        server_whitelist_auth_.release()));
+
+    scoped_ptr<FakeTao> server_fake_tao(new FakeTao(policy_key_path));
+    EXPECT_TRUE(server_fake_tao->Init());
+    server_direct_channel_.reset(new DirectTaoChildChannel(server_fake_tao.release(), "Test hash 2"));
+
+    server_thread_.reset(new thread(&CloudServer::Listen, cloud_server_.get(),
+                                    direct_channel_.get()));
+
+    EXPECT_TRUE(cloud_client_->Connect(*direct_channel_));
 
     // Create a user and set up the SignedSpeaksFor for this user.
     string username = "tmroeder";
@@ -184,7 +233,9 @@ class CloudClientTest : public ::testing::Test {
     ASSERT_EQ(mkdir(tmroeder_key_path_.c_str(), 0700), 0);
     SpeaksFor sf;
     sf.set_subject(username);
-    EXPECT_TRUE(CreateECDSAKey(tmroeder_key_path_, username, &tmroeder_key));
+    // For these simple tests, we use the username as the password. Very secure.
+    EXPECT_TRUE(CreateUserECDSAKey(tmroeder_key_path_, username, username,
+                               &tmroeder_key));
 
     KeyczarPublicKey kpk;
     EXPECT_TRUE(SerializePublicKey(*tmroeder_key, &kpk));
@@ -200,10 +251,22 @@ class CloudClientTest : public ::testing::Test {
     EXPECT_TRUE(ssf.SerializeToString(&ser_ssf_));
   }
 
+  virtual void TearDown() {
+    if (cloud_client_.get()) {
+      EXPECT_TRUE(cloud_client_->Close(false));
+    }
+
+    // TODO(tmroeder): The server doesn't currently have a way to stop.
+    server_thread_.reset(nullptr);
+  }
+
+  scoped_ptr<thread> server_thread_;
   scoped_ptr<CloudClient> cloud_client_;
   scoped_ptr<CloudServer> cloud_server_;
+  scoped_ptr<TaoAuth> server_whitelist_auth_;
   scoped_ptr<TaoAuth> whitelist_auth_;
   scoped_ptr<Tao> fake_tao_;
+  scoped_ptr<TaoChildChannel> server_direct_channel_;
   scoped_ptr<TaoChildChannel> direct_channel_;
   scoped_ptr<Keyczar> policy_key_;
   scoped_ptr<Keyczar> policy_pub_key_;
@@ -214,7 +277,6 @@ class CloudClientTest : public ::testing::Test {
 };
 
 TEST_F(CloudClientTest, UserTest) {
-  // string empty;
-  // EXPECT_TRUE(cloud_client_->AddUser("tmroeder", tmroeder_key_path_,
-                                     // empty));
+  EXPECT_TRUE(cloud_client_->AddUser("tmroeder", tmroeder_key_path_,
+                                     "tmroeder"));
 }

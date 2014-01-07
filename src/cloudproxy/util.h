@@ -296,6 +296,15 @@ bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
 bool CreateECDSAKey(const string &private_path, const string &public_path,
                     const string &secret, const string &country_code,
                     const string &org_code, const string &cn);
+
+/// Create a Keyczar key for a CloudProxy user.
+/// @param path The directory path for the key (must already exist).
+/// @param key_name The name of the key.
+/// @param password The password to use for PBE for this key.
+/// @param[out] key The key that was created.
+bool CreateUserECDSAKey(const string &path, const string &key_name,
+                        const string &password,
+                        scoped_ptr<keyczar::Keyczar> *key);
 }
 
 #endif  // CLOUDPROXY_UTIL_H_

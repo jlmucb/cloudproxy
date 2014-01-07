@@ -91,9 +91,9 @@ class CloudServer {
   /// Start listening to the port and handle connections as they arrive.
   /// The Tao implementation allows the server to check that programs
   /// that connect to it are allowed by the Tao and to get a
-  /// Attestation for its key
+  /// Attestation for its key.
   /// @param t A connection to a host Tao.
-  bool Listen(const tao::TaoChildChannel &t);
+  bool Listen(const tao::TaoChildChannel *t);
 
  protected:
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers

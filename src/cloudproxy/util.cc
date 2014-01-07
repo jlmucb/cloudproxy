@@ -48,6 +48,9 @@
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 using keyczar::Key;
+using keyczar::Keyczar;
+using keyczar::KeyPurpose;
+using keyczar::KeyType;
 using keyczar::Keyset;
 using keyczar::KeysetMetadata;
 using keyczar::rw::KeysetReader;
@@ -56,6 +59,7 @@ using keyczar::base::JSONWriter;
 using keyczar::rw::KeysetWriter;
 using keyczar::rw::KeysetJSONFileWriter;
 using keyczar::rw::KeysetJSONFileReader;
+using keyczar::rw::KeysetPBEJSONFileWriter;
 
 using tao::Tao;
 using tao::KeyczarPublicKey;
@@ -966,5 +970,19 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
 
   return WriteECDSAKey(key, private_path, public_path, secret, country_code,
                        org_code, cn);
+}
+
+bool CreateUserECDSAKey(const string &path, const string &key_name,
+                        const string &password, scoped_ptr<Keyczar> *key) {
+  FilePath fp(path);
+  scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetPBEJSONFileWriter(fp, password));
+  if (!tao::CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
+                KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
+    LOG(ERROR) << "Could not create the public key";
+    return false;
+  }
+  (*key)->set_encoding(Keyczar::NO_ENCODING);
+
+  return true;
 }
 }  // namespace cloudproxy

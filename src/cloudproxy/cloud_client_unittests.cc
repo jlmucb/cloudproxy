@@ -249,7 +249,11 @@ class CloudClientTest : public ::testing::Test {
     string *sf_sig = ssf.mutable_signature();
     EXPECT_TRUE(SignData(*sf_serialized, sf_sig, policy_key_.get()));
 
-    EXPECT_TRUE(ssf.SerializeToString(&ser_ssf_));
+    tmroeder_ssf_path_ = *temp_dir_ + string("/tmroeder_ssf");
+    ofstream ssf_file(tmroeder_ssf_path_.c_str());
+    ASSERT_TRUE(ssf_file);
+    EXPECT_TRUE(ssf.SerializeToOstream(&ssf_file));
+    ssf_file.close();
   }
 
   virtual void TearDown() {
@@ -278,9 +282,11 @@ class CloudClientTest : public ::testing::Test {
   SignedSpeaksFor ssf;
   string ser_ssf_;
   string tmroeder_key_path_;
+  string tmroeder_ssf_path_;
 };
 
 TEST_F(CloudClientTest, UserTest) {
   EXPECT_TRUE(cloud_client_->AddUser("tmroeder", tmroeder_key_path_,
                                      "tmroeder"));
+  EXPECT_TRUE(cloud_client_->Authenticate("tmroeder", tmroeder_ssf_path_));
 }

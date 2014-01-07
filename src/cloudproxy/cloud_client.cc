@@ -82,10 +82,10 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
                     *encoded_secret))
       << "Could not set up the client TLS connection";
 
-  bio_.reset(BIO_new_ssl_connect(context_.get()));
+  bio_ = BIO_new_ssl_connect(context_.get());
   SSL *ssl = nullptr;
 
-  BIO_get_ssl(bio_.get(), &ssl);
+  BIO_get_ssl(bio_, &ssl);
   CHECK(ssl) << "Could not get the SSL pointer for the TLS bio";
   SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
@@ -93,21 +93,22 @@ CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
   ss << server_port;
   string host_and_port = server_addr + string(":") + ss.str();
 
-  BIO_set_conn_hostname(bio_.get(), const_cast<char *>(host_and_port.c_str()));
+  BIO_set_conn_hostname(bio_, const_cast<char *>(host_and_port.c_str()));
 }
 
 bool CloudClient::Connect(const TaoChildChannel &t) {
-  int r = BIO_do_connect(bio_.get());
+  int r = BIO_do_connect(bio_);
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
     LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(r, NULL);
     return false;
   }
 
+  LOG(INFO) << "Connected to the server";
   // get an attestation for our X.509 cert and send it to the server,
   // then check the server's reply
   SSL *cur_ssl = nullptr;
-  BIO_get_ssl(bio_.get(), &cur_ssl);
+  BIO_get_ssl(bio_, &cur_ssl);
   ScopedX509Ctx self_cert(SSL_get_certificate(cur_ssl));
   CHECK_NOTNULL(self_cert.get());
 
@@ -127,11 +128,11 @@ bool CloudClient::Connect(const TaoChildChannel &t) {
   CHECK(cm.SerializeToString(&serialized_cm))
       << "Could not serialize the ClientMessage(Attestation)";
 
-  CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send attestation";
+  CHECK(SendData(bio_, serialized_cm)) << "Could not send attestation";
 
   // now listen for the connection
   string serialized_sm;
-  CHECK(ReceiveData(bio_.get(), &serialized_sm))
+  CHECK(ReceiveData(bio_, &serialized_sm))
       << "Could not get a reply from the server";
 
   ServerMessage sm;
@@ -152,6 +153,7 @@ bool CloudClient::Connect(const TaoChildChannel &t) {
   CHECK_EQ(data.compare(serialized_peer_cert), 0)
       << "The Attestation passed verification, but the data didn't match";
 
+  LOG(INFO) << "Channel authentication complete";
   // once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.
   return true;
@@ -192,11 +194,11 @@ bool CloudClient::Authenticate(const string &subject,
   CHECK(cm.SerializeToString(&serialized_cm)) << "Could not serialize the"
                                                  " ClientMessage(Auth)";
 
-  CHECK(SendData(bio_.get(), serialized_cm)) << "Could not request auth";
+  CHECK(SendData(bio_, serialized_cm)) << "Could not request auth";
 
   // now listen for the connection
   string serialized_sm;
-  CHECK(ReceiveData(bio_.get(), &serialized_sm)) << "Could not get a"
+  CHECK(ReceiveData(bio_, &serialized_sm)) << "Could not get a"
                                                     " reply from the server";
 
   ServerMessage sm;
@@ -244,7 +246,7 @@ bool CloudClient::Authenticate(const string &subject,
       << "Could not serialize"
          " the Response to the Challenge";
 
-  CHECK(SendData(bio_.get(), serialized_cm)) << "Could not send"
+  CHECK(SendData(bio_, serialized_cm)) << "Could not send"
                                                 " Response";
 
   LOG(INFO) << "Auth successful: waiting for reply";
@@ -261,7 +263,7 @@ bool CloudClient::SendAction(const string &owner, const string &object_name,
 
   string s;
   CHECK(cm.SerializeToString(&s)) << "Could not serialize Action";
-  CHECK(SendData(bio_.get(), s)) << "Could not send the Action to CloudServer";
+  CHECK(SendData(bio_, s)) << "Could not send the Action to CloudServer";
   if (handle_reply) {
     return HandleReply();
   } else {
@@ -293,7 +295,7 @@ bool CloudClient::Write(const string &requestor, const string &input_name,
 
 bool CloudClient::HandleReply() {
   string s;
-  if (!ReceiveData(bio_.get(), &s)) {
+  if (!ReceiveData(bio_, &s)) {
     LOG(ERROR) << "Could not receive a reply from the server";
     return false;
   }
@@ -332,8 +334,15 @@ bool CloudClient::Close(bool error) {
   CHECK(cm.SerializeToString(&s)) << "Could not serialize the CloseConnection"
                                      " message";
 
-  CHECK(SendData(bio_.get(), s)) << "Could not send a CloseConnection to the"
+  CHECK(SendData(bio_, s)) << "Could not send a CloseConnection to the"
                                     " server";
+  SSL *cur_ssl = nullptr;
+  BIO_get_ssl(bio_, &cur_ssl);
+  if (SSL_shutdown(cur_ssl) == 0) {
+    // Then we need to call it again to really shut down the connection.
+    SSL_shutdown(cur_ssl);
+  }
+
   return true;
 }
 }  // namespace cloudproxy

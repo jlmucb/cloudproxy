@@ -222,7 +222,8 @@ class CloudClientTest : public ::testing::Test {
     server_direct_channel_.reset(new DirectTaoChildChannel(server_fake_tao.release(), "Test hash 2"));
 
     server_thread_.reset(new thread(&CloudServer::Listen, cloud_server_.get(),
-                                    direct_channel_.get()));
+                                    direct_channel_.get(),
+                                    true /* stop after one connection */));
 
     EXPECT_TRUE(cloud_client_->Connect(*direct_channel_));
 
@@ -256,8 +257,11 @@ class CloudClientTest : public ::testing::Test {
       EXPECT_TRUE(cloud_client_->Close(false));
     }
 
-    // TODO(tmroeder): The server doesn't currently have a way to stop.
-    server_thread_.reset(nullptr);
+    if (server_thread_->joinable()) {
+      server_thread_->join();
+    }
+
+    cloud_client_.reset(nullptr);
   }
 
   scoped_ptr<thread> server_thread_;

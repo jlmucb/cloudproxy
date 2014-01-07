@@ -93,7 +93,8 @@ class CloudServer {
   /// that connect to it are allowed by the Tao and to get a
   /// Attestation for its key.
   /// @param t A connection to a host Tao.
-  bool Listen(const tao::TaoChildChannel *t);
+  /// @param single_channel Whether or not to stop after a single connection.
+  bool Listen(const tao::TaoChildChannel *t, bool single_channel);
 
  protected:
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers
@@ -198,7 +199,7 @@ class CloudServer {
   ScopedSSLCtx context_;
 
   // The main BIO set up for this connection.
-  keyczar::openssl::ScopedBIO bio_;
+  ScopedSSLBIO bio_;
 
   // An accept BIO that listens on the TLS connection.
   keyczar::openssl::ScopedBIO abio_;

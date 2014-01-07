@@ -23,9 +23,9 @@
 #include "tao/util.h"
 
 GTEST_API_ int main(int argc, char **argv) {
+  tao::InitializeOpenSSL();
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   testing::InitGoogleTest(&argc, argv);
-  tao::InitializeOpenSSL();
   return RUN_ALL_TESTS();
 }

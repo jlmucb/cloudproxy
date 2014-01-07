@@ -116,15 +116,21 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
 
 // TODO(tmroeder): this memory usage is unsafe: it should be a shared_ptr so
 // that the memory won't go away when the parent thread does.
-bool CloudServer::Listen(const TaoChildChannel *quote_tao) {
+bool CloudServer::Listen(const TaoChildChannel *quote_tao, bool single_channel) {
   while (true) {
     LOG(INFO) << "About to listen for a client message";
     CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
                                                " connection";
 
     BIO *out = BIO_pop(abio_.get());
-    thread t(&CloudServer::HandleConnection, this, out, quote_tao);
-    t.detach();
+    if (single_channel) {
+      HandleConnection(out, quote_tao);
+      LOG(INFO) << "Leaving Listen successfully";
+      return true;
+    } else {
+      thread t(&CloudServer::HandleConnection, this, out, quote_tao);
+      t.detach();
+    }
   }
 
   return true;

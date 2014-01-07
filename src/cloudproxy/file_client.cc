@@ -65,7 +65,7 @@ bool FileClient::Read(const string &requestor, const string &object_name,
       << "Could not get permission to READ " << object_name;
 
   string path = file_path_ + string("/") + output_name;
-  CHECK(ReceiveStreamData(bio_.get(), path)) << "Error while reading the"
+  CHECK(ReceiveStreamData(bio_, path)) << "Error while reading the"
                                              << " file and writing it to disk";
   return HandleReply();
 }
@@ -86,7 +86,7 @@ bool FileClient::Write(const string &requestor, const string &input_name,
 
   LOG(INFO) << "Got permission to write the file " << path;
 
-  CHECK(SendStreamData(path, st.st_size, bio_.get()))
+  CHECK(SendStreamData(path, st.st_size, bio_))
       << "Could not send the file data to the server";
   return HandleReply();
 }

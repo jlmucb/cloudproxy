@@ -93,6 +93,10 @@ typedef scoped_ptr_malloc<
 // A smart pointer wrapping a FILE pointer.
 typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
+// A smart pointer wrapping an SSL BIO
+typedef scoped_ptr_malloc<
+    BIO, keyczar::openssl::OSSLDestroyer<BIO, BIO_free_all> > ScopedSSLBIO;
+
 /// Handle OpenSSL password callbacks.
 /// @param buf A buffer to receive the password.
 /// @param size The size of the buffer to fill.

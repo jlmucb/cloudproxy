@@ -83,7 +83,7 @@ class CloudClient {
               const string &public_policy_pem, const string &server_addr,
               ushort server_port, tao::TaoAuth *auth_manager);
 
-  virtual ~CloudClient() {}
+  virtual ~CloudClient() { }
 
   /// Connect to a server.
   /// @param t The host Tao connection (used to generate attestations).
@@ -150,8 +150,9 @@ class CloudClient {
   /// Wait for a reply and handle it.
   bool HandleReply();
 
-  // The BIO used to communicate over the TLS channel
-  keyczar::openssl::ScopedBIO bio_;
+  // The BIO used to communicate over the TLS channel. This BIO gets freed when
+  // the SSL connection is closed, so we don't free it explicitly.
+  BIO *bio_;
 
  private:
   /// Handle the client side of a challenge-response protocol with a server.

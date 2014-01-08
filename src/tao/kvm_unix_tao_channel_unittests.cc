@@ -149,7 +149,7 @@ TEST_F(KvmUnixTaoChannelTest, CreationTest) {
 TEST_F(KvmUnixTaoChannelTest, RandomTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(16, &bytes))
-    << "Could not get random bytes from the host tao";
+      << "Could not get random bytes from the host tao";
 }
 
 TEST_F(KvmUnixTaoChannelTest, SealTest) {

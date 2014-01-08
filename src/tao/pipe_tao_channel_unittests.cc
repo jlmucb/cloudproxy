@@ -84,7 +84,7 @@ class PipeTaoChannelTest : public ::testing::Test {
     ASSERT_TRUE(tccp.ParseFromString(params)) << "Could not parse the params";
     PipeTaoChannelParams ptcp;
     ASSERT_TRUE(ptcp.ParseFromString(tccp.params()))
-      << "Could not get the pipes";
+        << "Could not get the pipes";
 
     readfd_.reset(new int(ptcp.readfd()));
     writefd_.reset(new int(ptcp.writefd()));
@@ -142,7 +142,7 @@ TEST_F(PipeTaoChannelTest, CreationTest) {
 TEST_F(PipeTaoChannelTest, RandomTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(16, &bytes))
-    << "Could not get random bytes from the host tao";
+      << "Could not get random bytes from the host tao";
 }
 
 TEST_F(PipeTaoChannelTest, SealTest) {

@@ -69,12 +69,11 @@ class WhitelistAuthTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempPubKey(&temp_dir_, &policy_key_))
-      << "Could not create a temporary public key";
+        << "Could not create a temporary public key";
 
     policy_pk_path_ = *temp_dir_ + string("/policy_pk");
     fake_tao_.reset(new FakeTao(policy_pk_path_));
-    ASSERT_TRUE(fake_tao_->Init())
-      << "Could not initialize the fake tao";
+    ASSERT_TRUE(fake_tao_->Init()) << "Could not initialize the fake tao";
 
     string whitelist_path = *temp_dir_ + string("/whitelist");
 
@@ -142,7 +141,7 @@ TEST_F(WhitelistAuthTest, VerifyRootFailTest) {
 
   string output_data;
   EXPECT_FALSE(whitelist_auth_->VerifyAttestation(attestation, &output_data))
-    << "The generated attestation did not pass verification";
+      << "The generated attestation did not pass verification";
 }
 
 TEST_F(WhitelistAuthTest, VerifyRootTest) {
@@ -151,11 +150,12 @@ TEST_F(WhitelistAuthTest, VerifyRootTest) {
 
   string data("test data");
   string attestation;
-  EXPECT_TRUE(fake_tao_->Attest(hash, data, &attestation)) << "Could not attest";
+  EXPECT_TRUE(fake_tao_->Attest(hash, data, &attestation))
+      << "Could not attest";
 
   string output_data;
   EXPECT_TRUE(whitelist_auth_->VerifyAttestation(attestation, &output_data))
-    << "The generated attestation did not pass verification";
+      << "The generated attestation did not pass verification";
 }
 
 // Some OpenSSL types for convenience
@@ -173,14 +173,14 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
   BIGNUM *e = BN_new();
   int exp = htonl(65537);
   ASSERT_EQ(BN_bin2bn((BYTE *)&exp, sizeof(exp), e), e)
-    << "Could not create an exponent for the RSA key";
+      << "Could not create an exponent for the RSA key";
 
   ASSERT_GE(RSA_generate_key_ex(rsa.get(), 2048, e, NULL), 0)
-    << "Could not generate a new RSA key";
+      << "Could not generate a new RSA key";
 
   BIO *mem = BIO_new(BIO_s_mem());
   ASSERT_EQ(PEM_write_bio_RSAPublicKey(mem, rsa.get()), 1)
-    << "Could not write the RSA to a bio";
+      << "Could not write the RSA to a bio";
 
   // The key should take up less than 8k in size.
   int len = 8 * 1024;
@@ -193,7 +193,7 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
   // the PCRs in this case.
   string attestation;
   ASSERT_TRUE(fake_tao_->Attest("Test hash 1", data, &attestation))
-    << "Could not attest to the key";
+      << "Could not attest to the key";
 
   Attestation a;
   a.set_type(tao::TPM_1_2_QUOTE);
@@ -211,7 +211,7 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
 
   string *serialized_statement = a.mutable_serialized_statement();
   ASSERT_TRUE(s.SerializeToString(serialized_statement))
-    << "Could not serialize the statement";
+      << "Could not serialize the statement";
 
   // Hash the statement with SHA1 for the external data part of the quote.
   BYTE statement_hash[20];
@@ -241,26 +241,26 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
 
   BYTE quote_hash[20];
   SHA1(qinfo, sizeof(qinfo), quote_hash);
-  UINT32 sig_len = 512; // far more bytes than are actually needed.
+  UINT32 sig_len = 512;  // far more bytes than are actually needed.
   scoped_array<BYTE> sig(new BYTE[sig_len]);
-  ASSERT_EQ(RSA_sign(NID_sha1, quote_hash, sizeof(quote_hash),
-                     sig.get(), &sig_len, rsa.get()), 1)
-    << "Could not sign the message";
+  ASSERT_EQ(RSA_sign(NID_sha1, quote_hash, sizeof(quote_hash), sig.get(),
+                     &sig_len, rsa.get()),
+            1) << "Could not sign the message";
 
   string signature(reinterpret_cast<char *>(sig.get()), sig_len);
   a.set_signature(signature);
 
   string top_attestation;
   EXPECT_TRUE(a.SerializeToString(&top_attestation))
-    << "Could not serialize the attestation";
+      << "Could not serialize the attestation";
 
   string top_data;
   EXPECT_TRUE(whitelist_auth_->VerifyAttestation(top_attestation, &top_data))
-    << "The constructed TPM 1.2 Quote did not pass verification";
+      << "The constructed TPM 1.2 Quote did not pass verification";
 
   string original_data("Test data");
   EXPECT_EQ(top_data, original_data)
-    << "The extracted data from the attestation did not match the original";
+      << "The extracted data from the attestation did not match the original";
 }
 
 TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
@@ -269,16 +269,16 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
   string key_2_path = *temp_dir_ + string("/key2");
 
   EXPECT_EQ(mkdir(key_1_path.c_str(), 0700), 0)
-    << "Could not create the first path";
+      << "Could not create the first path";
   EXPECT_EQ(mkdir(key_2_path.c_str(), 0700), 0)
-    << "Could not create the second path";
+      << "Could not create the second path";
 
   scoped_ptr<Keyczar> key_1;
   scoped_ptr<Keyczar> key_2;
   EXPECT_TRUE(CreateECDSAKey(key_1_path, "key_1", &key_1))
-    << "Could not create key 1";
+      << "Could not create key 1";
   EXPECT_TRUE(CreateECDSAKey(key_2_path, "key_2", &key_2))
-    << "Could not create key 2";
+      << "Could not create key 2";
 
   KeyczarPublicKey kpk_1;
   KeyczarPublicKey kpk_2;
@@ -289,14 +289,14 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
   string kpk_1_str;
   string kpk_2_str;
   EXPECT_TRUE(kpk_1.SerializeToString(&kpk_1_str))
-    << "Could not serialize kpk 1 to a string";
+      << "Could not serialize kpk 1 to a string";
 
   EXPECT_TRUE(kpk_2.SerializeToString(&kpk_2_str))
-    << "Could not serialize kpk 2 to a string";
+      << "Could not serialize kpk 2 to a string";
 
   string root_cert;
   EXPECT_TRUE(fake_tao_->Attest("Test hash 1", kpk_1_str, &root_cert))
-    << "Could not attest to key 2";
+      << "Could not attest to key 2";
 
   Attestation a1;
   a1.set_type(tao::INTERMEDIATE);
@@ -318,7 +318,7 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
 
   string level_2_cert;
   EXPECT_TRUE(a1.SerializeToString(&level_2_cert))
-    << "Could not serialize the attestation to key 1";
+      << "Could not serialize the attestation to key 1";
 
   string data("Test data");
   Attestation a2;
@@ -339,13 +339,13 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
 
   string top_attestation;
   EXPECT_TRUE(a2.SerializeToString(&top_attestation))
-    << "Could not serialize the top attestation";
+      << "Could not serialize the top attestation";
 
   string extracted_data;
-  EXPECT_TRUE(whitelist_auth_->VerifyAttestation(top_attestation,
-                                                 &extracted_data))
-    << "The top-level attestation did not pass verification";
+  EXPECT_TRUE(
+      whitelist_auth_->VerifyAttestation(top_attestation, &extracted_data))
+      << "The top-level attestation did not pass verification";
 
   EXPECT_EQ(extracted_data, data)
-    << "The extracted data did not match the original";
+      << "The extracted data did not match the original";
 }

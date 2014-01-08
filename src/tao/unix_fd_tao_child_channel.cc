@@ -29,14 +29,12 @@
 #include "tao/util.h"
 
 namespace tao {
-UnixFdTaoChildChannel::UnixFdTaoChildChannel()
-    : readfd_(-1), writefd_(-1) { }
+UnixFdTaoChildChannel::UnixFdTaoChildChannel() : readfd_(-1), writefd_(-1) {}
 
 UnixFdTaoChildChannel::UnixFdTaoChildChannel(int readfd, int writefd)
-    : readfd_(readfd), writefd_(writefd) { }
+    : readfd_(readfd), writefd_(writefd) {}
 
-bool UnixFdTaoChildChannel::ReceiveMessage(
-    google::protobuf::Message *m) const {
+bool UnixFdTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
   // try to receive an integer
   CHECK(m) << "m was null";
   if (readfd_ < 0) {

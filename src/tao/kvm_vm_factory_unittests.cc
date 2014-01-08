@@ -60,10 +60,10 @@ class KvmVmFactoryTest : public ::testing::Test {
 
     child_hash_ = "Fake hash";
     ASSERT_TRUE(channel_->AddChildChannel(child_hash_, &params_))
-      << "Could not create the channel for the child";
+        << "Could not create the channel for the child";
 
     ASSERT_TRUE(Base64WEncode(params_, &encoded_params_))
-      << "Could not encode the parameters";
+        << "Could not encode the parameters";
 
     factory_.reset(new KvmVmFactory());
     ASSERT_TRUE(factory_->Init()) << "Could not initialize the factory";
@@ -87,7 +87,7 @@ TEST_F(KvmVmFactoryTest, HashTest) {
   args.push_back(FLAGS_disk_file);
   string new_hash;
   EXPECT_TRUE(factory_->HashHostedProgram("test", args, &new_hash))
-    << "Could not hash the program";
+      << "Could not hash the program";
 }
 
 TEST_F(KvmVmFactoryTest, CreationTest) {
@@ -97,9 +97,8 @@ TEST_F(KvmVmFactoryTest, CreationTest) {
   args.push_back(FLAGS_initrd_file);
   args.push_back(FLAGS_disk_file);
   args.push_back(encoded_params_);
-  EXPECT_TRUE(factory_->CreateHostedProgram("test", args, child_hash_,
-                                            *channel_))
-    << "Could not create a vm";
+  EXPECT_TRUE(factory_->CreateHostedProgram(
+      "test", args, child_hash_, *channel_)) << "Could not create a vm";
 
   virConnectPtr conn = virConnectOpen("qemu:///system");
   ASSERT_TRUE(conn) << "Could not connect to QEMU";

@@ -38,7 +38,7 @@ namespace tao {
 /// the one currently checked in to run/vm.xml.
 class KvmVmFactory : public HostedProgramFactory {
  public:
-  KvmVmFactory() : vm_connection_(nullptr) { }
+  KvmVmFactory() : vm_connection_(nullptr) {}
   virtual ~KvmVmFactory();
   virtual bool Init();
 

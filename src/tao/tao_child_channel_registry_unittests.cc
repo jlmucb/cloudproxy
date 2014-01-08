@@ -36,23 +36,22 @@ using tao::UnixFdTaoChildChannel;
 
 class TaoChildChannelRegistryTest : public ::testing::Test {
  public:
-  TaoChildChannelRegistryTest() : registry_(new TaoChildChannelRegistry()) { }
+  TaoChildChannelRegistryTest() : registry_(new TaoChildChannelRegistry()) {}
+
  protected:
   scoped_ptr<TaoChildChannelRegistry> registry_;
 };
 
-TaoChildChannel *DummyCreator(const string &params) {
-  return nullptr;
-}
+TaoChildChannel *DummyCreator(const string &params) { return nullptr; }
 
 TEST_F(TaoChildChannelRegistryTest, DummyCreatorTest) {
   EXPECT_TRUE(registry_->Register("DummyCreator", DummyCreator))
-    << "Could not register a dummy creator function with the registry";
+      << "Could not register a dummy creator function with the registry";
 }
 
 TEST_F(TaoChildChannelRegistryTest, CreateTest) {
   EXPECT_TRUE(registry_->Register("DummyCreator", DummyCreator))
-    << "Could not register a dummy creator function";
+      << "Could not register a dummy creator function";
 
   TaoChildChannelParams tccp;
   tccp.set_channel_type("DummyCreator");
@@ -60,13 +59,13 @@ TEST_F(TaoChildChannelRegistryTest, CreateTest) {
 
   string serialized;
   EXPECT_TRUE(tccp.SerializeToString(&serialized))
-    << "Could not serialize the params";
+      << "Could not serialize the params";
 
   TaoChildChannel *child = registry_->Create(serialized);
   EXPECT_TRUE(child == nullptr);
 }
 TEST(TaoChildChannelRegistryStaticTest, ConstructorTest) {
   TaoChildChannel *child =
-    TaoChildChannelRegistry::CallConstructor<PipeTaoChildChannel>("");
+      TaoChildChannelRegistry::CallConstructor<PipeTaoChildChannel>("");
   EXPECT_TRUE(child != nullptr) << "Could not create a child from the registry";
 }

@@ -32,7 +32,8 @@ using tao::PipeTaoChannel;
 using tao::ProcessFactory;
 using tao::ScopedTempDir;
 
-DEFINE_string(program, "out/Release/bin/protoc", "The program to execute, "
+DEFINE_string(program, "out/Release/bin/protoc",
+              "The program to execute, "
               "preferably one that will stop on its own");
 
 class ProcessFactoryTest : public ::testing::Test {
@@ -53,10 +54,10 @@ class ProcessFactoryTest : public ::testing::Test {
 
     child_hash_ = "Fake hash";
     ASSERT_TRUE(channel_->AddChildChannel(child_hash_, &params_))
-      << "Could not create the channel for the child";
+        << "Could not create the channel for the child";
 
     ASSERT_TRUE(Base64WEncode(params_, &encoded_params_))
-      << "Could not encode the parameters";
+        << "Could not encode the parameters";
 
     factory_.reset(new ProcessFactory());
   }
@@ -75,12 +76,11 @@ TEST_F(ProcessFactoryTest, HashTest) {
   list<string> args;
   string new_hash;
   EXPECT_TRUE(factory_->HashHostedProgram(FLAGS_program, args, &new_hash))
-    << "Could not hash the program";
+      << "Could not hash the program";
 }
 
 TEST_F(ProcessFactoryTest, CreationTest) {
   list<string> args;
-  EXPECT_TRUE(factory_->CreateHostedProgram(FLAGS_program, args, child_hash_,
-                                            *channel_))
-    << "Could not create a vm";
+  EXPECT_TRUE(factory_->CreateHostedProgram(
+      FLAGS_program, args, child_hash_, *channel_)) << "Could not create a vm";
 }

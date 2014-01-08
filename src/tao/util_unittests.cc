@@ -75,7 +75,7 @@ TEST(TaoUtilTest, HashVMTest) {
   string dummy_initrd("dummy_initrd");
   string hash;
   ASSERT_TRUE(HashVM(dummy_template, name, dummy_kernel, dummy_initrd, &hash))
-    << "Could not hash the parameters";
+      << "Could not hash the parameters";
 
   MessageDigestImpl *sha256 = CryptoFactory::SHA256();
   EXPECT_TRUE(sha256 != nullptr) << "Could not get SHA-256";
@@ -83,19 +83,18 @@ TEST(TaoUtilTest, HashVMTest) {
   // Recompute the hash here to make sure it's computed correctly.
   string template_hash;
   EXPECT_TRUE(sha256->Digest(dummy_template, &template_hash))
-    << "Could not hash the template";
+      << "Could not hash the template";
 
   string name_hash;
-  EXPECT_TRUE(sha256->Digest(name, &name_hash))
-    << "Could not hash the name";
+  EXPECT_TRUE(sha256->Digest(name, &name_hash)) << "Could not hash the name";
 
   string kernel_hash;
   EXPECT_TRUE(sha256->Digest(dummy_kernel, &kernel_hash))
-    << "Could not hash the kernel";
+      << "Could not hash the kernel";
 
   string initrd_hash;
   EXPECT_TRUE(sha256->Digest(dummy_initrd, &initrd_hash))
-    << "Could not hash the initrd";
+      << "Could not hash the initrd";
 
   string hash_input;
   hash_input.append(template_hash);
@@ -105,20 +104,20 @@ TEST(TaoUtilTest, HashVMTest) {
 
   string composite_hash;
   EXPECT_TRUE(sha256->Digest(hash_input, &composite_hash))
-    << "Could not compute the composite hash";
+      << "Could not compute the composite hash";
 
   string encoded_hash;
   EXPECT_TRUE(Base64WEncode(composite_hash, &encoded_hash))
-    << "Could not encode the hash";
+      << "Could not encode the hash";
 
   EXPECT_EQ(encoded_hash, hash)
-    << "The computed hash value did not match the value computed by HashVM";
+      << "The computed hash value did not match the value computed by HashVM";
 }
 
 TEST(TaoUtilTest, RegistryTest) {
   TaoChildChannelRegistry registry;
   EXPECT_TRUE(RegisterKnownChannels(&registry))
-    << "Could not register known channels with the registry";
+      << "Could not register known channels with the registry";
 
   // Make sure you can instantiate at least one of them.
   TaoChildChannelParams tccp;
@@ -127,7 +126,7 @@ TEST(TaoUtilTest, RegistryTest) {
 
   string serialized;
   EXPECT_TRUE(tccp.SerializeToString(&serialized))
-    << "Could not serialize the params";
+      << "Could not serialize the params";
 
   // This works because the constructor of PipeTaoChildChannel doesn't try to
   // interpret the parameter it gets. That happens in Init(), which we don't
@@ -141,40 +140,40 @@ TEST(TaoUtilTest, SocketTest) {
 
   // Passing 0 as the port means you get an auto-assigned port.
   EXPECT_TRUE(OpenTCPSocket("localhost", "0", sock.get()))
-    << "Could not create and bind a TCP socket";
+      << "Could not create and bind a TCP socket";
 }
 
 TEST(TaoUtilTest, CreateKeyTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<Keyczar> policy_key;
   EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-    << "Could not create a key";
+      << "Could not create a key";
 }
 
 TEST(TaoUtilTest, SerializeKeyTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<Keyczar> policy_key;
   EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-    << "Could not create a key";
+      << "Could not create a key";
 
   KeyczarPublicKey kpk;
   EXPECT_TRUE(SerializePublicKey(*policy_key, &kpk))
-    << "Could not serialize the public key";
+      << "Could not serialize the public key";
 }
 
 TEST(TaoUtilTest, DeserializeKeyTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<Keyczar> policy_key;
   EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-    << "Could not create a key";
+      << "Could not create a key";
 
   KeyczarPublicKey kpk;
   EXPECT_TRUE(SerializePublicKey(*policy_key, &kpk))
-    << "Could not serialize the public key";
+      << "Could not serialize the public key";
 
   Keyset *keyset = nullptr;
   EXPECT_TRUE(DeserializePublicKey(kpk, &keyset))
-    << "Could not deserialize the public policy key";
+      << "Could not deserialize the public policy key";
   scoped_ptr<Keyczar> public_policy_key(new Verifier(keyset));
   public_policy_key->set_encoding(Keyczar::NO_ENCODING);
 
@@ -184,48 +183,48 @@ TEST(TaoUtilTest, DeserializeKeyTest) {
   string message("Test message");
   string signature;
   EXPECT_TRUE(policy_key->Sign(message, &signature))
-    << "Could not sign the message";
+      << "Could not sign the message";
 
   EXPECT_TRUE(public_policy_key->Verify(message, signature))
-    << "The signature did not pass verification";
+      << "The signature did not pass verification";
 }
 
 TEST(TaoUtilTest, SignDataTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<Keyczar> policy_key;
   EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-    << "Could not create a key";
+      << "Could not create a key";
 
   string message("Test message");
   string signature;
   EXPECT_TRUE(SignData(message, &signature, policy_key.get()))
-    << "Could not sign the test message";
+      << "Could not sign the test message";
 }
 
 TEST(TaoUtilTest, VerifyDataTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<Keyczar> policy_key;
   EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-    << "Could not create a key";
+      << "Could not create a key";
 
   string message("Test message");
   string signature;
   EXPECT_TRUE(SignData(message, &signature, policy_key.get()))
-    << "Could not sign the test message";
+      << "Could not sign the test message";
 
   EXPECT_TRUE(VerifySignature(message, signature, policy_key.get()))
-    << "The signature did not pass verification";
+      << "The signature did not pass verification";
 }
 
 TEST(TaoUtilTest, CopyPublicKeysetTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<Keyczar> policy_key;
   EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-    << "Could not create a key";
+      << "Could not create a key";
 
   Keyset *keyset = nullptr;
   EXPECT_TRUE(CopyPublicKeyset(*policy_key, &keyset))
-    << "Could not copy the keyset";
+      << "Could not copy the keyset";
 
   scoped_ptr<Keyczar> pub_key(new Verifier(keyset));
   pub_key->set_encoding(Keyczar::NO_ENCODING);
@@ -234,16 +233,16 @@ TEST(TaoUtilTest, CopyPublicKeysetTest) {
   string message("Test message");
   string signature;
   EXPECT_TRUE(SignData(message, &signature, policy_key.get()))
-    << "Could not sign the test message";
+      << "Could not sign the test message";
 
   EXPECT_TRUE(VerifySignature(message, signature, pub_key.get()))
-    << "The signature did not pass verification";
+      << "The signature did not pass verification";
 }
 
 TEST(TaoUtilTest, SealOrUnsealSecretTest) {
   ScopedTempDir temp_dir;
   EXPECT_TRUE(CreateTempDir("seal_or_unseal_test", &temp_dir))
-    << "Could not create the temp directory";
+      << "Could not create the temp directory";
   string seal_path = *temp_dir + string("/sealed_secret");
   scoped_ptr<Tao> ft(new FakeTao());
   EXPECT_TRUE(ft->Init()) << "Could not Init the tao";
@@ -252,14 +251,14 @@ TEST(TaoUtilTest, SealOrUnsealSecretTest) {
 
   string secret("Fake secret");
   EXPECT_TRUE(SealOrUnsealSecret(channel, seal_path, &secret))
-    << "Could not seal the secret";
+      << "Could not seal the secret";
 
   string unsealed_secret;
   EXPECT_TRUE(SealOrUnsealSecret(channel, seal_path, &unsealed_secret))
-    << "Could not unseal the secret";
+      << "Could not unseal the secret";
 
   EXPECT_EQ(secret, unsealed_secret)
-    << "The unsealed secret did not match the original secret";
+      << "The unsealed secret did not match the original secret";
 }
 
 TEST(TaoUtilTest, SendAndReceiveMessageTest) {
@@ -273,19 +272,19 @@ TEST(TaoUtilTest, SendAndReceiveMessageTest) {
 
   TaoChildChannelParams received_tccp;
   EXPECT_TRUE(ReceiveMessage(fd[0], &received_tccp))
-    << "Could not receive the message";
+      << "Could not receive the message";
 
   EXPECT_EQ(received_tccp.params(), tccp.params())
-    << "The received params don't match the original params";
+      << "The received params don't match the original params";
 
   EXPECT_EQ(received_tccp.channel_type(), tccp.channel_type())
-    << "The received channel type doesn't match the original channel type";
+      << "The received channel type doesn't match the original channel type";
 }
 
 TEST(TaoUtilTest, SocketUtilTest) {
   ScopedTempDir temp_dir;
   EXPECT_TRUE(CreateTempDir("socket_util_test", &temp_dir))
-    << "Could not create a temporary directory";
+      << "Could not create a temporary directory";
 
   string socket_path = *temp_dir + string("/socket");
   {
@@ -293,9 +292,9 @@ TEST(TaoUtilTest, SocketUtilTest) {
     // directory is deleted.
     ScopedFd sock(new int(-1));
     EXPECT_TRUE(OpenUnixDomainSocket(socket_path, sock.get()))
-      << "Could not open a Unix domain socket";
+        << "Could not open a Unix domain socket";
     ScopedFd client_sock(new int(-1));
     EXPECT_TRUE(ConnectToUnixDomainSocket(socket_path, client_sock.get()))
-      << "Could not connect to the Unix domain socket";
+        << "Could not connect to the Unix domain socket";
   }
 }

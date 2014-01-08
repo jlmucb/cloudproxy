@@ -94,7 +94,7 @@ TEST_F(RootAuthTest, VerifyTest) {
 
   string output_data;
   EXPECT_TRUE(root_auth_->VerifyAttestation(attestation, &output_data))
-    << "The generated attestation did not pass verification";
+      << "The generated attestation did not pass verification";
 
   EXPECT_EQ(output_data, data) << "The extracted data did not match";
 }

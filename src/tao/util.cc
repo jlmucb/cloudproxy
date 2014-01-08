@@ -249,8 +249,8 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   // another bound socket in TIME_WAIT.
   int val = 1;
   if (setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) != 0) {
-    PLOG(ERROR) << "Could not set SO_REUSEADDR on the socket for "
-                << host << ":" << port;
+    PLOG(ERROR) << "Could not set SO_REUSEADDR on the socket for " << host
+                << ":" << port;
     return false;
   }
 
@@ -260,16 +260,14 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   hints.ai_socktype = SOCK_STREAM;
 
   struct addrinfo *addrs = nullptr;
-  int info_err =
-      getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
+  int info_err = getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
   if (info_err == -1) {
     PLOG(ERROR) << "Could not get address information for " << host << ":"
                 << port;
     return false;
   }
 
-  int bind_err =
-      bind(*sock, addrs->ai_addr, addrs->ai_addrlen);
+  int bind_err = bind(*sock, addrs->ai_addr, addrs->ai_addrlen);
   if (bind_err == -1) {
     PLOG(ERROR) << "Could not bind the socket";
     return false;
@@ -496,7 +494,6 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
     return false;
   }
 
-
   bytes_written = write(fd, serialized.data(), len);
   if (bytes_written != static_cast<ssize_t>(len)) {
     PLOG(ERROR) << "Could not write the serialized message to the fd";
@@ -645,7 +642,7 @@ bool CreatePubECDSAKey(const string &path, scoped_ptr<Keyczar> *key) {
   FilePath fp(path);
   scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
   if (!CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                KeyPurpose::SIGN_AND_VERIFY, "policy_pk", key)) {
+                 KeyPurpose::SIGN_AND_VERIFY, "policy_pk", key)) {
     LOG(ERROR) << "Could not create the public key";
     return false;
   }
@@ -659,7 +656,7 @@ bool CreateECDSAKey(const string &path, const string &key_name,
   FilePath fp(path);
   scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
   if (!CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
+                 KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
     LOG(ERROR) << "Could not create the public key";
     return false;
   }
@@ -717,8 +714,7 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
   hints.ai_socktype = SOCK_STREAM;
 
   struct addrinfo *addrs = nullptr;
-  int info_err =
-      getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
+  int info_err = getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
   if (info_err == -1) {
     PLOG(ERROR) << "Could not get address information for " << host << ":"
                 << port;

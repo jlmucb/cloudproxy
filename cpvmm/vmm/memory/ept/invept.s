@@ -24,15 +24,18 @@
 # The Intel Software Development Emulator XED was used to decode the hardcoded opcode
 # TODO: Replace macro with this instruction in VS2010
 #   invept ecx, xmmword ptr [eax]
-_INVEPT macro
-    .byte	0x66, 0x48, 0x0f, 0x38, 0x80, 0x08
-endm
+#_INVEPT macro
+#.byte	0x66, 0x48, 0x0f, 0x38, 0x80, 0x08
+#endm
+.macro _INVEPT 
+.byte	0x66, 0x48, 0x0f, 0x38, 0x80, 0x08
+.endm
 
 # TODO: Replace macro with this instruction in VS2010
 #   invvpid ecx, xmmword ptr [eax]
-_INVVPID macro
-    .byte	0x66, 0x48, 0x0f, 0x38, 0x81, 0x08
-endm
+.macro _INVVPID macro
+.byte	0x66, 0x48, 0x0f, 0x38, 0x81, 0x08
+.endm
 
 #
 #  VOID
@@ -45,8 +48,8 @@ endm
 
 .globl	vmm_asm_invept
 vmm_asm_invept:
-	mov rax, rcx
-	mov rcx, rdx
+	mov %rax, %rcx
+	mov %rcx, %rdx
 	_INVEPT
 	pushfq
 	pop [r8]
@@ -63,8 +66,8 @@ vmm_asm_invept:
 #
 .globl  vmm_asm_invvpid
 vmm_asm_invvpid:
-	mov rax, rcx
-	mov rcx, rdx
+	mov %rax, %rcx
+	mov %rcx, %rdx
 	_INVVPID
 	pushfq
 	pop [r8]

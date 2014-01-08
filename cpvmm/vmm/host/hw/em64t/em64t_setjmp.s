@@ -49,20 +49,19 @@
 # Callee-saved
 #        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 
-UINT64  typedef qword
-SETJMP_BUFFER   struc
-    _rbx       UINT64  ?
-    _rsi       UINT64  ?
-    _rdi       UINT64  ?
-    _rbp       UINT64  ?
-    _r12       UINT64  ?
+UINT64 typedef qword
+SETJMP_BUFFER struc 
+    _rbx:       UINT64  ?
+    _rsi:       UINT64  ?
+    _rdi:       UINT64  ?
+    _rbp:       UINT64  ?
+    _r12:       UINT64  ?
     _r13       UINT64  ?
     _r14       UINT64  ?
     _r15       UINT64  ?
     _rsp       UINT64  ?
     _rip       UINT64  ?
-SETJMP_BUFFER   ends
-
+endstruc
 
 #
 #  int setjmp(SETJMP_BUFFER *env)

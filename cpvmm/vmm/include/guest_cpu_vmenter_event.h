@@ -171,7 +171,7 @@ void gcpu_update_current_exception_error_code(
 *  FUNCTION : gcpu_inject_invalid_opcode_exception
 *  PURPOSE  : Inject invalid opcode exception
 *  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : TRUE if event was injected, FALSE if event was not injected.
+*  RETURNS  : TRUE if event was injected, FALSE if event was not injected.
 *-----------------------------------------------------------------------------*/
 BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu);
 #endif

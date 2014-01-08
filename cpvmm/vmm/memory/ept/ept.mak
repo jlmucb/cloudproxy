@@ -53,8 +53,8 @@ LINK=       gcc
 #LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/ept.o $(BINDIR)/ept_hw_layer.o $(BINDIR)/fvs.o \
-	    $(BINDIR)/ve.o $(BINDIR)/invept.o
+dobjs= $(BINDIR)/invept.o $(BINDIR)/ept.o $(BINDIR)/invept.o \
+	$(BINDIR)/ept_hw_layer.o $(BINDIR)/fvs.o $(BINDIR)/ve.o 
 
 all: $(E)/libept.a
  

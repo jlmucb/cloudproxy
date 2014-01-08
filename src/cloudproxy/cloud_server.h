@@ -84,7 +84,8 @@ class CloudServer {
   CloudServer(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &acl_location,
-              const string &host, const string &port, tao::TaoAuth *auth_manager);
+              const string &host, const string &port,
+              tao::TaoAuth *auth_manager);
 
   virtual ~CloudServer() {}
 
@@ -196,7 +197,7 @@ class CloudServer {
   keyczar::RandImpl *rand_;
 
   // The host and port to serve from.
-  string host_; // currently ignored: we listen on any interface
+  string host_;  // currently ignored: we listen on any interface
   string port_;
 
   // A context object that stores all the TLS parameters for the connection.

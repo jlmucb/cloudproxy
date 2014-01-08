@@ -44,20 +44,22 @@ FileClient::FileClient(const string &file_path, const string &tls_cert,
   CHECK(S_ISDIR(st.st_mode)) << file_path << " is not a directory";
 }
 
-bool FileClient::Create(SSL *ssl, const string &owner, const string &object_name) {
+bool FileClient::Create(SSL *ssl, const string &owner,
+                        const string &object_name) {
   // defer to the CloudClient implementation to get this created, since there's
   // nothing else to do with the file
   return CloudClient::Create(ssl, owner, object_name);
 }
 
-bool FileClient::Destroy(SSL *ssl, const string &owner, const string &object_name) {
+bool FileClient::Destroy(SSL *ssl, const string &owner,
+                         const string &object_name) {
   // defer to the CloudClient implementation to get this destroyed, since
   // there's nothing else to do with the file
   return CloudClient::Destroy(ssl, owner, object_name);
 }
 
-bool FileClient::Read(SSL *ssl, const string &requestor, const string &object_name,
-                      const string &output_name) {
+bool FileClient::Read(SSL *ssl, const string &requestor,
+                      const string &object_name, const string &output_name) {
   // make the call to get permission for the operation, and it that succeeds,
   // start to receive the bits
   CHECK(CloudClient::Read(ssl, requestor, object_name, output_name))
@@ -65,12 +67,12 @@ bool FileClient::Read(SSL *ssl, const string &requestor, const string &object_na
 
   string path = file_path_ + string("/") + output_name;
   CHECK(ReceiveStreamData(ssl, path)) << "Error while reading the"
-                                             << " file and writing it to disk";
+                                      << " file and writing it to disk";
   return HandleReply(ssl);
 }
 
-bool FileClient::Write(SSL *ssl, const string &requestor, const string &input_name,
-                       const string &object_name) {
+bool FileClient::Write(SSL *ssl, const string &requestor,
+                       const string &input_name, const string &object_name) {
   // look up the file to get its length and make sure there is such a file
   string path = file_path_ + string("/") + input_name;
   struct stat st;

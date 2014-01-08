@@ -57,21 +57,22 @@ class FileClient : public CloudClient {
   /// Delete a file on a FileServer.
   /// @param owner The name of a user that has permission to delete this file.
   /// @param object_name The filename for the file to delete.
-  virtual bool Destroy(SSL *ssl, const string &owner, const string &object_name);
+  virtual bool Destroy(SSL *ssl, const string &owner,
+                       const string &object_name);
 
   /// Read a file stored on a FileServer.
   /// @param requestor The name of the user requesting the file.
   /// @param object_name The path of the file to read.
   /// @param output_name A file that will receive the bytes from the server.
-  virtual bool Read(SSL *ssl, const string &requestor, const string &object_name,
-                    const string &output_name);
+  virtual bool Read(SSL *ssl, const string &requestor,
+                    const string &object_name, const string &output_name);
 
   /// Write to a file stored on a FileServer.
   /// @param requestor The name of the user writing to the file.
   /// @param input_name The name of the local file to read.
   /// @param object_name The name of the remote file that receives the data.
-  virtual bool Write(SSL *ssl, const string &requestor, const string &input_name,
-                     const string &object_name);
+  virtual bool Write(SSL *ssl, const string &requestor,
+                     const string &input_name, const string &object_name);
 
  private:
   // The base path for files that are read from and written to the server.

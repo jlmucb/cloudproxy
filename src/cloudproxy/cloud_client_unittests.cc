@@ -79,7 +79,7 @@ class CloudClientTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempPubKey(&temp_dir_, &policy_key_))
-      << "Could not create a policy key";
+        << "Could not create a policy key";
 
     // Export a public version of the keyset to policy_pub_key_path
     string policy_key_path = *temp_dir_ + string("/policy_pk");
@@ -102,7 +102,7 @@ class CloudClientTest : public ::testing::Test {
     const char *dp = "dummy_password";
     BIO *ec_file = BIO_new(BIO_s_file());
     BIO_read_filename(ec_file, policy_key_pem.c_str());
-    EC_KEY *pk = PEM_read_bio_ECPrivateKey(ec_file, NULL, NULL, (void*)dp);
+    EC_KEY *pk = PEM_read_bio_ECPrivateKey(ec_file, NULL, NULL, (void *)dp);
     ASSERT_TRUE(pk != nullptr);
     BIO_free(ec_file);
     ScopedEvpPkey pk_evp(EVP_PKEY_new());
@@ -151,21 +151,19 @@ class CloudClientTest : public ::testing::Test {
 
     fake_tao_.reset(new FakeTao(policy_key_path));
     EXPECT_TRUE(fake_tao_->Init());
-    direct_channel_.reset(new DirectTaoChildChannel(fake_tao_.release(),
-                                                    "Test hash 1"));
+    direct_channel_.reset(
+        new DirectTaoChildChannel(fake_tao_.release(), "Test hash 1"));
     ScopedSafeString client_secret(new string());
     ASSERT_TRUE(SealOrUnsealSecret(*direct_channel_, client_secret_path,
                                    client_secret.get()));
 
-    whitelist_auth_.reset(new WhitelistAuth(whitelist_path,
-                                            policy_pub_key_path));
+    whitelist_auth_.reset(
+        new WhitelistAuth(whitelist_path, policy_pub_key_path));
     ASSERT_TRUE(whitelist_auth_->Init());
 
-    cloud_client_.reset(new CloudClient(client_tls_cert, client_tls_key,
-                                        *client_secret,
-                                        policy_pub_key_path,
-                                        policy_pub_key_pem, 
-                                        whitelist_auth_.release()));
+    cloud_client_.reset(new CloudClient(
+        client_tls_cert, client_tls_key, *client_secret, policy_pub_key_path,
+        policy_pub_key_pem, whitelist_auth_.release()));
 
     string server_dir = *temp_dir_ + string("/server");
     ASSERT_EQ(mkdir(server_dir.c_str(), 0700), 0);
@@ -194,32 +192,31 @@ class CloudClientTest : public ::testing::Test {
 
     string *sig = sacl.mutable_signature();
     EXPECT_TRUE(SignData(*ser, sig, policy_key_.get()))
-      << "Could not sign the serialized ACL with the policy key";
+        << "Could not sign the serialized ACL with the policy key";
 
     string signed_acl_path = *temp_dir_ + string("/signed_acl");
     ofstream acl_file(signed_acl_path.c_str(), ofstream::out);
     ASSERT_TRUE(acl_file) << "Could not open " << signed_acl_path;
 
     EXPECT_TRUE(sacl.SerializeToOstream(&acl_file))
-      << "Could not write the signed ACL to a file";
+        << "Could not write the signed ACL to a file";
 
     acl_file.close();
 
     // Start a server to listen for client connections.
-    server_whitelist_auth_.reset(new WhitelistAuth(whitelist_path,
-                                            policy_pub_key_path));
+    server_whitelist_auth_.reset(
+        new WhitelistAuth(whitelist_path, policy_pub_key_path));
     ASSERT_TRUE(server_whitelist_auth_->Init());
 
-    cloud_server_.reset(new CloudServer(server_tls_cert, server_tls_key,
-                                        *server_secret, policy_pub_key_path,
-                                        policy_pub_key_pem,
-                                        signed_acl_path, server_addr,
-                                        server_port,
-                                        server_whitelist_auth_.release()));
+    cloud_server_.reset(new CloudServer(
+        server_tls_cert, server_tls_key, *server_secret, policy_pub_key_path,
+        policy_pub_key_pem, signed_acl_path, server_addr, server_port,
+        server_whitelist_auth_.release()));
 
     scoped_ptr<FakeTao> server_fake_tao(new FakeTao(policy_key_path));
     EXPECT_TRUE(server_fake_tao->Init());
-    server_direct_channel_.reset(new DirectTaoChildChannel(server_fake_tao.release(), "Test hash 2"));
+    server_direct_channel_.reset(
+        new DirectTaoChildChannel(server_fake_tao.release(), "Test hash 2"));
 
     server_thread_.reset(new thread(&CloudServer::Listen, cloud_server_.get(),
                                     direct_channel_.get(),
@@ -234,7 +231,7 @@ class CloudClientTest : public ::testing::Test {
     sf.set_subject(username);
     // For these simple tests, we use the username as the password. Very secure.
     EXPECT_TRUE(CreateUserECDSAKey(tmroeder_key_path_, username, username,
-                               &tmroeder_key));
+                                   &tmroeder_key));
 
     KeyczarPublicKey kpk;
     EXPECT_TRUE(SerializePublicKey(*tmroeder_key, &kpk));
@@ -287,26 +284,26 @@ class CloudClientTest : public ::testing::Test {
 
 TEST_F(CloudClientTest, UserTest) {
   string username("tmroeder");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
-                                     username));
-  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
 }
 
 TEST_F(CloudClientTest, CreateTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
-                                     username));
-  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }
 
 TEST_F(CloudClientTest, DestroyTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
-                                     username));
-  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
@@ -314,12 +311,11 @@ TEST_F(CloudClientTest, DestroyTest) {
 TEST_F(CloudClientTest, WriteTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
-                                     username));
-  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Write(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
-

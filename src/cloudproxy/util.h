@@ -285,9 +285,9 @@ bool CreateECDSAPrivateKey(ScopedEvpPkey *key);
 /// @param org_code The organization information for the X.509 certificate.
 /// @param cn The common name for the entity that will use the key.
 bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
-                   const string &public_path,
-                   const string &secret, const string &country_code,
-                   const string &org_code, const string &cn);
+                   const string &public_path, const string &secret,
+                   const string &country_code, const string &org_code,
+                   const string &cn);
 
 /// Create an OpenSSL ECDSA key.
 /// @param private_path The path at which to write the private key.

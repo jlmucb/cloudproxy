@@ -54,8 +54,7 @@ namespace cloudproxy {
 CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
                          const string &secret,
                          const string &public_policy_keyczar,
-                         const string &public_policy_pem,
-                         TaoAuth *auth_manager)
+                         const string &public_policy_pem, TaoAuth *auth_manager)
     : public_policy_key_(
           keyczar::Verifier::Read(public_policy_keyczar.c_str())),
       context_(SSL_CTX_new(TLSv1_2_client_method())),
@@ -91,7 +90,8 @@ bool CloudClient::Connect(const TaoChildChannel &t, const string &server,
 
   int sock = -1;
   if (!ConnectToTCPServer(server, port, &sock)) {
-    LOG(ERROR) << "Could not connect to the server at " << server << ":" << port;
+    LOG(ERROR) << "Could not connect to the server at " << server << ":"
+               << port;
     return false;
   }
 
@@ -197,7 +197,7 @@ bool CloudClient::Authenticate(SSL *ssl, const string &subject,
   // now listen for the connection
   string serialized_sm;
   CHECK(ReceiveData(ssl, &serialized_sm)) << "Could not get a"
-                                                    " reply from the server";
+                                             " reply from the server";
 
   ServerMessage sm;
   CHECK(sm.ParseFromString(serialized_sm)) << "Could not deserialize the"
@@ -245,13 +245,14 @@ bool CloudClient::Authenticate(SSL *ssl, const string &subject,
          " the Response to the Challenge";
 
   CHECK(SendData(ssl, serialized_cm)) << "Could not send"
-                                                " Response";
+                                         " Response";
 
   return HandleReply(ssl);
 }
 
 bool CloudClient::SendAction(SSL *ssl, const string &owner,
-                             const string &object_name, Op op, bool handle_reply) {
+                             const string &object_name, Op op,
+                             bool handle_reply) {
   ClientMessage cm;
   Action *a = cm.mutable_action();
   a->set_subject(owner);
@@ -268,23 +269,25 @@ bool CloudClient::SendAction(SSL *ssl, const string &owner,
   }
 }
 
-bool CloudClient::Create(SSL *ssl, const string &owner, const string &object_name) {
+bool CloudClient::Create(SSL *ssl, const string &owner,
+                         const string &object_name) {
   return SendAction(ssl, owner, object_name, CREATE, true);
 }
 
-bool CloudClient::Destroy(SSL *ssl, const string &requestor, const string &object_name) {
+bool CloudClient::Destroy(SSL *ssl, const string &requestor,
+                          const string &object_name) {
   return SendAction(ssl, requestor, object_name, DESTROY, true);
 }
 
-bool CloudClient::Read(SSL *ssl, const string &requestor, const string &object_name,
-                       const string &output_name) {
+bool CloudClient::Read(SSL *ssl, const string &requestor,
+                       const string &object_name, const string &output_name) {
   // cloud client ignores the output name, since it's not reading any data from
   // the server
   return SendAction(ssl, requestor, object_name, READ, true);
 }
 
-bool CloudClient::Write(SSL *ssl, const string &requestor, const string &input_name,
-                        const string &object_name) {
+bool CloudClient::Write(SSL *ssl, const string &requestor,
+                        const string &input_name, const string &object_name) {
   // cloud client ignores the input name, since it's not writing any data to
   // the server
   return SendAction(ssl, requestor, object_name, WRITE, true);
@@ -331,7 +334,7 @@ bool CloudClient::Close(SSL *ssl, bool error) {
                                      " message";
 
   CHECK(SendData(ssl, s)) << "Could not send a CloseConnection to the"
-                                    " server";
+                             " server";
   return true;
 }
 }  // namespace cloudproxy

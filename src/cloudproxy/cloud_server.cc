@@ -98,12 +98,13 @@ CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
 
 // TODO(tmroeder): this memory usage is unsafe: it should be a shared_ptr so
 // that the memory won't go away when the parent thread does.
-bool CloudServer::Listen(const TaoChildChannel *quote_tao, bool single_channel) {
+bool CloudServer::Listen(const TaoChildChannel *quote_tao,
+                         bool single_channel) {
   // Set up a TCP connection for the given host and port.
   ScopedFd sock(new int(-1));
   if (!OpenTCPSocket(host_, port_, sock.get())) {
-    LOG(ERROR) << "Could not open a TCP socket on port "
-               << host_ << ":" << port_;
+    LOG(ERROR) << "Could not open a TCP socket on port " << host_ << ":"
+               << port_;
     return false;
   }
 
@@ -425,7 +426,7 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
   }
 
   VLOG(2) << "Challenge passed. Adding user " << c.subject()
-            << " as authenticated";
+          << " as authenticated";
 
   cstd.SetAuthenticated(c.subject());
 

@@ -265,8 +265,7 @@ bool ReceiveStreamData(SSL *ssl, const string &path) {
   while ((total_len < expected_len) &&
          (out_len = SSL_read(ssl, buf.get(), len)) != 0) {
     if (out_len < 0) {
-      LOG(ERROR) << "Write failed after " << total_len
-                 << " bytes were written";
+      LOG(ERROR) << "Write failed after " << total_len << " bytes were written";
       return false;
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
@@ -542,8 +541,7 @@ bool ReceiveAndEncryptStreamData(
   while ((total_len < expected_len) &&
          (out_len = SSL_read(ssl, buf.get(), len)) != 0) {
     if (out_len < 0) {
-      LOG(ERROR) << "Write failed after " << total_len
-                 << " bytes were written";
+      LOG(ERROR) << "Write failed after " << total_len << " bytes were written";
       return false;
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
@@ -853,9 +851,9 @@ bool CreateECDSAPrivateKey(ScopedEvpPkey *key) {
 }
 
 bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
-                   const string &public_path,
-                   const string &secret, const string &country_code,
-                   const string &org_code, const string &cn) {
+                   const string &public_path, const string &secret,
+                   const string &country_code, const string &org_code,
+                   const string &cn) {
   ScopedX509Ctx x509(X509_new());
 
   // set up properties of the x509 object
@@ -975,9 +973,10 @@ bool CreateECDSAKey(const string &private_path, const string &public_path,
 bool CreateUserECDSAKey(const string &path, const string &key_name,
                         const string &password, scoped_ptr<Keyczar> *key) {
   FilePath fp(path);
-  scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetPBEJSONFileWriter(fp, password));
+  scoped_ptr<KeysetWriter> policy_pk_writer(
+      new KeysetPBEJSONFileWriter(fp, password));
   if (!tao::CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
+                      KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
     LOG(ERROR) << "Could not create the public key";
     return false;
   }

@@ -79,7 +79,7 @@ class CloudClient {
               const string &secret, const string &public_policy_keyczar,
               const string &public_policy_pem, tao::TaoAuth *auth_manager);
 
-  virtual ~CloudClient() { }
+  virtual ~CloudClient() {}
 
   /// Connect to a server.
   /// @param t The host Tao connection (used to generate attestations).
@@ -103,7 +103,8 @@ class CloudClient {
   /// been added.
   /// @param binding_file A SignedSpeaksFor file that maps the subject to a
   /// given public key.
-  bool Authenticate(SSL *ssl, const string &subject, const string &binding_file);
+  bool Authenticate(SSL *ssl, const string &subject,
+                    const string &binding_file);
 
   /// Send a CREATE request to the attached CloudServer.
   /// @param ssl The server connection to use.
@@ -115,7 +116,8 @@ class CloudClient {
   /// @param ssl The server connection to use.
   /// @param owner A subject who is allowed to destroy this object.
   /// @param object_name The object to destroy.
-  virtual bool Destroy(SSL *ssl, const string &owner, const string &object_name);
+  virtual bool Destroy(SSL *ssl, const string &owner,
+                       const string &object_name);
 
   /// Send a READ request to a CloudServer.
   /// @param ssl The server connection to use.
@@ -124,8 +126,8 @@ class CloudClient {
   /// @param output_name The name to output to. The interpretation of this name
   /// depends on the implementation of CloudClient. In the basic implementation,
   /// output_name isn't used.
-  virtual bool Read(SSL *ssl, const string &requestor, const string &object_name,
-                    const string &output_name);
+  virtual bool Read(SSL *ssl, const string &requestor,
+                    const string &object_name, const string &output_name);
 
   /// Send a WRITE request to a CloudServer.
   /// @param ssl The server connection to use.
@@ -134,8 +136,8 @@ class CloudClient {
   /// name depends on the implementation. The basic CloudClient writes this
   /// string to the object.
   /// @param object_name The name of the remote object to write to.
-  virtual bool Write(SSL *ssl, const string &requestor, const string &input_name,
-                     const string &object_name);
+  virtual bool Write(SSL *ssl, const string &requestor,
+                     const string &input_name, const string &object_name);
 
   /// Close the connection to the server
   /// @param ssl The server connection to close.

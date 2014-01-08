@@ -47,7 +47,7 @@ class CloudAuthTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     EXPECT_TRUE(CreateTempPubKey(&temp_dir_, &policy_public_key_))
-      << "Could not create a public key";
+        << "Could not create a public key";
 
     // Set up a simple ACL to query.
     ACL acl;
@@ -66,19 +66,19 @@ class CloudAuthTest : public ::testing::Test {
 
     string *sig = sacl.mutable_signature();
     EXPECT_TRUE(SignData(*ser, sig, policy_public_key_.get()))
-      << "Could not sign the serialized ACL with the policy key";
+        << "Could not sign the serialized ACL with the policy key";
 
     string signed_whitelist_path = *temp_dir_ + string("/signed_whitelist");
     ofstream whitelist_file(signed_whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(whitelist_file) << "Could not open " << signed_whitelist_path;
 
     EXPECT_TRUE(sacl.SerializeToOstream(&whitelist_file))
-      << "Could not write the signed whitelist to a file";
+        << "Could not write the signed whitelist to a file";
 
     whitelist_file.close();
 
-    cloud_auth_.reset(new CloudAuth(signed_whitelist_path,
-                                    policy_public_key_.get()));
+    cloud_auth_.reset(
+        new CloudAuth(signed_whitelist_path, policy_public_key_.get()));
   }
 
   scoped_ptr<CloudAuth> cloud_auth_;
@@ -89,32 +89,35 @@ class CloudAuthTest : public ::testing::Test {
 TEST_F(CloudAuthTest, AdminTest) {
   // Admin privileges should allow tmroeder to perform any operation.
   EXPECT_TRUE(cloud_auth_->Permitted("tmroeder", cloudproxy::CREATE, "/files"));
-  EXPECT_TRUE(cloud_auth_->Permitted("tmroeder", cloudproxy::DESTROY,
-                                     "/files"));
+  EXPECT_TRUE(
+      cloud_auth_->Permitted("tmroeder", cloudproxy::DESTROY, "/files"));
   EXPECT_TRUE(cloud_auth_->Permitted("tmroeder", cloudproxy::READ, "/files_2"));
   EXPECT_TRUE(cloud_auth_->Permitted("tmroeder", cloudproxy::WRITE, "/asdf"));
 }
 
 TEST_F(CloudAuthTest, UnknownUserTest) {
-  EXPECT_FALSE(cloud_auth_->Permitted("unknown_user", cloudproxy::CREATE, "/files"));
-  EXPECT_FALSE(cloud_auth_->Permitted("unknown_user", cloudproxy::DESTROY,
-                                     "/files"));
-  EXPECT_FALSE(cloud_auth_->Permitted("unknown_user", cloudproxy::READ, "/files_2"));
-  EXPECT_FALSE(cloud_auth_->Permitted("unknown_user", cloudproxy::WRITE, "/asdf"));
+  EXPECT_FALSE(
+      cloud_auth_->Permitted("unknown_user", cloudproxy::CREATE, "/files"));
+  EXPECT_FALSE(
+      cloud_auth_->Permitted("unknown_user", cloudproxy::DESTROY, "/files"));
+  EXPECT_FALSE(
+      cloud_auth_->Permitted("unknown_user", cloudproxy::READ, "/files_2"));
+  EXPECT_FALSE(
+      cloud_auth_->Permitted("unknown_user", cloudproxy::WRITE, "/asdf"));
 }
 
 TEST_F(CloudAuthTest, LimitedUserTest) {
   // A user with limited permissions should only be allowed those permissions.
   EXPECT_TRUE(cloud_auth_->Permitted("jlm", cloudproxy::CREATE, "/files"));
-  EXPECT_FALSE(cloud_auth_->Permitted("jlm", cloudproxy::DESTROY,
-                                     "/files"));
+  EXPECT_FALSE(cloud_auth_->Permitted("jlm", cloudproxy::DESTROY, "/files"));
   EXPECT_FALSE(cloud_auth_->Permitted("jlm", cloudproxy::READ, "/files"));
   EXPECT_FALSE(cloud_auth_->Permitted("jlm", cloudproxy::WRITE, "/files"));
 }
 
 TEST_F(CloudAuthTest, AddPermissionsTest) {
   // Permissions can be added to the ACL
-  EXPECT_FALSE(cloud_auth_->Permitted("unknown_user", cloudproxy::CREATE, "/files"));
+  EXPECT_FALSE(
+      cloud_auth_->Permitted("unknown_user", cloudproxy::CREATE, "/files"));
   EXPECT_TRUE(cloud_auth_->Insert("jlm", cloudproxy::DESTROY, "/files"));
   EXPECT_TRUE(cloud_auth_->Permitted("jlm", cloudproxy::DESTROY, "/files"));
 }

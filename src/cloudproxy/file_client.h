@@ -39,8 +39,6 @@ class FileClient : public CloudClient {
   /// policy key.
   /// @param public_policy_pem The path to the OpenSSL version of the public
   /// policy key.
-  /// @param server_addr The name or IP address of the server.
-  /// @param server_port The port to use to contact the server.
   /// @param auth_manager A class to use for verifying attestations.
   FileClient(const string &file_path, const string &tls_cert,
              const string &tls_key, const string &tls_password,
@@ -50,17 +48,20 @@ class FileClient : public CloudClient {
   virtual ~FileClient() {}
 
   /// Create a file on a FileServer.
+  /// @param ssl The server connection to use.
   /// @param owner The name of a user that has permission to create this file.
   /// @param object_name The filename for the file to create.
   virtual bool Create(SSL *ssl, const string &owner, const string &object_name);
 
   /// Delete a file on a FileServer.
+  /// @param ssl The server connection to use.
   /// @param owner The name of a user that has permission to delete this file.
   /// @param object_name The filename for the file to delete.
   virtual bool Destroy(SSL *ssl, const string &owner,
                        const string &object_name);
 
   /// Read a file stored on a FileServer.
+  /// @param ssl The server connection to use.
   /// @param requestor The name of the user requesting the file.
   /// @param object_name The path of the file to read.
   /// @param output_name A file that will receive the bytes from the server.
@@ -68,6 +69,7 @@ class FileClient : public CloudClient {
                     const string &object_name, const string &output_name);
 
   /// Write to a file stored on a FileServer.
+  /// @param ssl The server connection to use.
   /// @param requestor The name of the user writing to the file.
   /// @param input_name The name of the local file to read.
   /// @param object_name The name of the remote file that receives the data.

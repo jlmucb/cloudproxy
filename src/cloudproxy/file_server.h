@@ -60,7 +60,7 @@ class FileServer : public CloudServer {
   /// @{
   /// Check a file action and perform the operation it requests.
   /// @param action The action requested by a FileClient.
-  /// @param bio A channel for communication with the requesting client.
+  /// @param ssl A channel for communication with the requesting client.
   /// @param[out] reason A string to fill with an error message if the action is
   /// not authorized.
   /// @param[out] reply Indicates success or failure of the action.

@@ -180,7 +180,7 @@ bool CreatePubECDSAKey(const string &path, scoped_ptr<keyczar::Keyczar> *key);
 
 /// Create a temporary directory.
 /// @param prefix The path of the directory to create.
-/// @param[out] temp_dir A pointer to an object that will take ownership of the
+/// @param[out] dir A pointer to an object that will take ownership of the
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 

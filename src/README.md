@@ -79,6 +79,7 @@ libtao test suite without these tests, you can specify a negative filter on the
 command line. For example, to run all but the TPM and KvmVmFactory tests:
 
     ./out/Release/bin/tao_test --gtest_filter=-TPM*:KvmVmFactory*
+    ./out/Release/bin/cloudproxy_test
 
 All tests run using this filter should work on any machine that can build
 CloudProxy.

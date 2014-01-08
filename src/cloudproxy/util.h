@@ -125,40 +125,40 @@ bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
                 string *acls);
 
 /// Receive data from an OpenSSL SSL.
-/// @param bio The SSL to use to receive the data.
+/// @param ssl The SSL to use to receive the data.
 /// @param[out] buffer The buffer to fill with data.
 /// @param buffer_len The length of buffer.
 bool ReceiveData(SSL *ssl, void *buffer, size_t buffer_len);
 
 /// Receive data from an OpenSSL SSL.
-/// @param bio The SSL to use to receive the data.
+/// @param ssl The SSL to use to receive the data.
 /// @param[out] data The object to receive the data.
 bool ReceiveData(SSL *ssl, string *data);
 
 /// Send data on an OpenSSL SSL.
-/// @param bio The SSL to use to send the data.
+/// @param ssl The SSL to use to send the data.
 /// @param buffer The buffer of data to send.
 /// @param buffer_len The length of the data to send.
 bool SendData(SSL *ssl, const void *buffer, size_t buffer_len);
 
 /// Send data on an OpenSSL SSL.
-/// @param bio The SSL to use to send the data.
+/// @param ssl The SSL to use to send the data.
 /// @param data The data to send.
 bool SendData(SSL *ssl, const string &data);
 
 /// Receive a file on an OpenSSL SSL.
-/// @param bio The SSL to use to receive the data.
+/// @param ssl The SSL to use to receive the data.
 /// @param path The path of the file to write with the received data.
 bool ReceiveStreamData(SSL *ssl, const string &path);
 
 /// Send a file on an OpenSSL SSL.
 /// @param path The path to the file to send.
 /// @param size The amount of data to send.
-/// @param bio The OpenSSL SSL to use to send the data.
+/// @param ssl The OpenSSL SSL to use to send the data.
 bool SendStreamData(const string &path, size_t size, SSL *ssl);
 
 /// Receive a file, encrypt it, and add integrity protection.
-/// @param bio The OpenSSL SSL to use to receive the data.
+/// @param ssl The OpenSSL SSL to use to receive the data.
 /// @param path The path of the file to write with the data.
 /// @param meta_path The path of the file to write with metadata about the file,
 /// including the integrity check.
@@ -177,7 +177,7 @@ bool ReceiveAndEncryptStreamData(SSL *ssl, const string &path,
 /// @param path The path of the file to send.
 /// @param meta_path The path of the metadata associated with the file.
 /// @param object_name The object name associated with the file.
-/// @param bio The OpenSSL SSL to use for communication.
+/// @param ssl The OpenSSL SSL to use for communication.
 /// @param key The key to use for decryption.
 /// @param hmac The HMAC key to use for checking file integrity.
 /// @param main_key The keyczar key to use for the metadata file.

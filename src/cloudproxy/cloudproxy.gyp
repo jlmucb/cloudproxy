@@ -27,7 +27,7 @@
       'type': 'executable',
       'sources': [
         'cloud_auth_unittests.cc',
-        'cloud_client_unittests.cc',
+        'cloud_client_server_unittests.cc',
         'cloudproxy_test.cc',
         'util_unittests.cc',
       ],

@@ -102,16 +102,16 @@ int main(int argc, char** argv) {
   CHECK(whitelist_auth->Init()) << "Could not initialize the WhitelistAuth";
 
   LOG(INFO) << "About to create a client";
-  cloudproxy::FileClient fc(
-      FLAGS_file_path, FLAGS_client_cert, FLAGS_client_key,
-      FLAGS_client_password, FLAGS_policy_key, FLAGS_pem_policy_key,
-      whitelist_auth.release());
+  cloudproxy::FileClient fc(FLAGS_file_path, FLAGS_client_cert,
+                            FLAGS_client_key, FLAGS_client_password,
+                            FLAGS_policy_key, FLAGS_pem_policy_key,
+                            whitelist_auth.release());
 
   LOG(INFO) << "Created a client";
   ScopedSSL ssl;
   CHECK(fc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
-      << "Could not connect to the server at "
-      << FLAGS_address << ":" << FLAGS_port;
+      << "Could not connect to the server at " << FLAGS_address << ":"
+      << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write
@@ -136,7 +136,8 @@ int main(int argc, char** argv) {
          " not authenticate tmroeder with the server";
   LOG(INFO) << "Authenticated to the server for tmroeder";
   CHECK(fc.Create(ssl.get(), "tmroeder", name)) << "Could not create the object"
-                                     << "'" << name << "' on the server";
+                                                << "'" << name
+                                                << "' on the server";
   LOG(INFO) << "Created the object " << name;
   CHECK(fc.Write(ssl.get(), "tmroeder", name, name))
       << "Could not write the file to the server";

@@ -62,8 +62,8 @@ int main(int argc, char **argv) {
 
   int sock = 0;
   if (!OpenTCPSocket(FLAGS_host, FLAGS_port, &sock)) {
-    LOG(ERROR) << "Could not open a TCP socket for listening on "
-               << FLAGS_host << ":" << FLAGS_port;
+    LOG(ERROR) << "Could not open a TCP socket for listening on " << FLAGS_host
+               << ":" << FLAGS_port;
     return 1;
   }
 

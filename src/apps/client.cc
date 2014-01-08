@@ -123,8 +123,8 @@ int main(int argc, char** argv) {
   LOG(INFO) << "Created a client";
   ScopedSSL ssl;
   CHECK(cc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
-      << "Could not connect to the server at "
-      << FLAGS_address << ":" << FLAGS_port;
+      << "Could not connect to the server at " << FLAGS_address << ":"
+      << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write, getting randomness from the Tao
@@ -143,11 +143,14 @@ int main(int argc, char** argv) {
          " not authenticate tmroeder with the server";
   LOG(INFO) << "Authenticated to the server for tmroeder";
   CHECK(cc.Create(ssl.get(), "tmroeder", name)) << "Could not create the object"
-                                     << "'" << name << "' on the server";
+                                                << "'" << name
+                                                << "' on the server";
   LOG(INFO) << "Created the object " << name;
-  CHECK(cc.Read(ssl.get(), "tmroeder", name, name)) << "Could not read the object";
+  CHECK(cc.Read(ssl.get(), "tmroeder", name, name))
+      << "Could not read the object";
   LOG(INFO) << "Read the object " << name;
-  CHECK(cc.Destroy(ssl.get(), "tmroeder", name)) << "Could not destroy the object";
+  CHECK(cc.Destroy(ssl.get(), "tmroeder", name))
+      << "Could not destroy the object";
   LOG(INFO) << "Destroyed the object " << name;
 
   CHECK(cc.Close(ssl.get(), false)) << "Could not close the channel";

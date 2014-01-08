@@ -109,6 +109,7 @@ int main(int argc, char **argv) {
                             FLAGS_server_enc_key, FLAGS_address, FLAGS_port,
                             whitelist_auth.release());
 
-  CHECK(fs.Listen(channel.get(), false /* not single channel */)) << "Could not listen for client connections";
+  CHECK(fs.Listen(channel.get(), false /* not single channel */))
+      << "Could not listen for client connections";
   return 0;
 }

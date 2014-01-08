@@ -124,6 +124,7 @@ int main(int argc, char **argv) {
                  FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address, FLAGS_port,
                  whitelist_auth.release());
   LOG(INFO) << "Started CloudServer. About to listen";
-  CHECK(cs.Listen(channel.get(), false /* not single_channel */)) << "Could not listen for client connections";
+  CHECK(cs.Listen(channel.get(), false /* not single_channel */))
+      << "Could not listen for client connections";
   return 0;
 }

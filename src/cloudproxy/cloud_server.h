@@ -84,7 +84,7 @@ class CloudServer {
   CloudServer(const string &tls_cert, const string &tls_key,
               const string &tls_password, const string &public_policy_keyczar,
               const string &public_policy_pem, const string &acl_location,
-              const string &host, ushort port, tao::TaoAuth *auth_manager);
+              const string &host, const string &port, tao::TaoAuth *auth_manager);
 
   virtual ~CloudServer() {}
 
@@ -119,73 +119,73 @@ class CloudServer {
   /// @{
   /// Check an action and perform the operation it requests.
   /// @param action The action requested by a client
-  /// @param bio A channel for communication with the requesting client.
+  /// @param ssl A channel for communication with the requesting client.
   /// @param[out] reason A string to fill with an error message if the action is
   /// not authorized.
   /// @param[out] reply Indicates success or failure of the action.
   /// @param cstd A context parameter for the thread.
   /// @return A value that indicates whether or not the action was performed
   /// without errors.
-  virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleCreate(const Action &action, SSL *ssl, string *reason,
                             bool *reply, CloudServerThreadData &cstd);
-  virtual bool HandleDestroy(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleDestroy(const Action &action, SSL *ssl, string *reason,
                              bool *reply, CloudServerThreadData &cstd);
-  virtual bool HandleWrite(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleWrite(const Action &action, SSL *ssl, string *reason,
                            bool *reply, CloudServerThreadData &cstd);
-  virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleRead(const Action &action, SSL *ssl, string *reason,
                           bool *reply, CloudServerThreadData &cstd);
   /// @}
 
   /// Send a reply to the client with a given success code and error message
-  /// @param bio A channel for communication with the client.
+  /// @param ssl A channel for communication with the client.
   /// @param success The success value to communicate in the reply.
   /// @param reason The reason for failure, if the action failed.
-  bool SendReply(BIO *bio, bool success, const string &reason);
+  bool SendReply(SSL *ssl, bool success, const string &reason);
 
  private:
 
   /// Listen on a bio and handle an incoming message from a client. Spawn a
   /// thread for each connection.
-  /// @param bio A channel to listen for client requests on.
+  /// @param accept_sock A connected to use to establish an SSL connection.
   /// @param t A connection to a host Tao to use in handling requests
-  void HandleConnection(BIO *bio, const tao::TaoChildChannel *t);
+  void HandleConnection(int accept_sock, const tao::TaoChildChannel *t);
 
   /// Handle a message from a client.
   /// @param message A client message.
-  /// @param bio A channel to use for replies to the client.
+  /// @param ssl A channel to use for replies to the client.
   /// @param[out] reason The reason for failure, if any.
   /// @param[out] reply Whether or not the request succeeded.
   /// @param ctsd Context for this thread.
   /// @param t The Tao host connection to use.
-  bool HandleMessage(const ClientMessage &message, BIO *bio, string *reason,
+  bool HandleMessage(const ClientMessage &message, SSL *ssl, string *reason,
                      bool *reply, bool *close, CloudServerThreadData &cstd,
                      const tao::TaoChildChannel &t);
 
   /// Handle a request to authorize a user.
   /// @param auth An authorization request.
-  /// @param bio A channel to use for replies to the client.
+  /// @param ssl A channel to use for replies to the client.
   /// @param[out] reason The reason for failure, if any.
   /// @param[out] reply Whether or not the request succeeded.
   /// @param ctsd Context for this thread.
-  bool HandleAuth(const Auth &auth, BIO *bio, string *reason, bool *reply,
+  bool HandleAuth(const Auth &auth, SSL *ssl, string *reason, bool *reply,
                   CloudServerThreadData &cstd);
 
   /// Handle a response from a client.
   /// @param auth A response from a client.
-  /// @param bio A channel to use for replies to the client.
+  /// @param ssl A channel to use for replies to the client.
   /// @param[out] reason The reason for failure, if any.
   /// @param[out] reply Whether or not the response was valid.
   /// @param ctsd Context for this thread.
-  bool HandleResponse(const Response &response, BIO *bio, string *reason,
+  bool HandleResponse(const Response &response, SSL *ssl, string *reason,
                       bool *reply, CloudServerThreadData &cstd);
 
   /// Handle an attestation from a client.
   /// @param auth An attestation to check.
-  /// @param bio A channel to use for replies to the client.
+  /// @param ssl A channel to use for replies to the client.
   /// @param[out] reason The reason for failure, if any.
   /// @param[out] reply Whether or not the attestation was valid.
   /// @param ctsd Context for this thread.
-  bool HandleAttestation(const string &attestation, BIO *bio, string *reason,
+  bool HandleAttestation(const string &attestation, SSL *ssl, string *reason,
                          bool *reply, CloudServerThreadData &cstd,
                          const tao::TaoChildChannel &t);
 
@@ -195,14 +195,12 @@ class CloudServer {
   // A (static) random number generator for generating challenges.
   keyczar::RandImpl *rand_;
 
+  // The host and port to serve from.
+  string host_; // currently ignored: we listen on any interface
+  string port_;
+
   // A context object that stores all the TLS parameters for the connection.
   ScopedSSLCtx context_;
-
-  // The main BIO set up for this connection.
-  ScopedSSLBIO bio_;
-
-  // An accept BIO that listens on the TLS connection.
-  keyczar::openssl::ScopedBIO abio_;
 
   // An object for managing authorization policy.
   scoped_ptr<CloudAuth> auth_;

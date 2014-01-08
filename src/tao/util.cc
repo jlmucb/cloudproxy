@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <ftw.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -105,7 +106,9 @@ namespace tao {
 void fd_close(int *fd) {
   if (fd) {
     if (*fd >= 0) {
-      close(*fd);
+      if (close(*fd) < 0) {
+        PLOG(ERROR) << "Could not close file descriptor " << *fd;
+      }
     }
 
     delete fd;
@@ -229,7 +232,7 @@ bool InitializeOpenSSL() {
   return true;
 }
 
-bool OpenTCPSocket(short port, int *sock) {
+bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   if (sock == NULL) {
     LOG(ERROR) << "null socket parameter";
     return false;
@@ -237,18 +240,36 @@ bool OpenTCPSocket(short port, int *sock) {
 
   *sock = socket(AF_INET, SOCK_STREAM, 0);
   if (*sock == -1) {
-    PLOG(ERROR) << "Could not create a socket for tcca to listen on";
+    PLOG(ERROR) << "Could not create a socket to listen on";
     return false;
   }
 
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(struct sockaddr_in));
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  addr.sin_port = htons(port);
+  // Don't allow TIME_WAIT sockets from interfering with bind() below. The
+  // socket option SO_REUSEADDR allows this socket to bind even when there is
+  // another bound socket in TIME_WAIT.
+  int val = 1;
+  if (setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) != 0) {
+    PLOG(ERROR) << "Could not set SO_REUSEADDR on the socket for "
+                << host << ":" << port;
+    return false;
+  }
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+
+  struct addrinfo *addrs = nullptr;
+  int info_err =
+      getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
+  if (info_err == -1) {
+    PLOG(ERROR) << "Could not get address information for " << host << ":"
+                << port;
+    return false;
+  }
 
   int bind_err =
-      bind(*sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+      bind(*sock, addrs->ai_addr, addrs->ai_addrlen);
   if (bind_err == -1) {
     PLOG(ERROR) << "Could not bind the socket";
     return false;
@@ -686,4 +707,33 @@ bool CreateTempPubKey(ScopedTempDir *temp_dir, scoped_ptr<Keyczar> *key) {
   return true;
 }
 
+bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
+  // Set up a socket to communicate with the TCCA.
+  *sock = socket(AF_INET, SOCK_STREAM, 0);
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+
+  struct addrinfo *addrs = nullptr;
+  int info_err =
+      getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
+  if (info_err == -1) {
+    PLOG(ERROR) << "Could not get address information for " << host << ":"
+                << port;
+    return false;
+  }
+
+  int connect_err = connect(*sock, addrs->ai_addr, addrs->ai_addrlen);
+  if (connect_err == -1) {
+    PLOG(ERROR) << "Could not connect to the TCCA";
+    freeaddrinfo(addrs);
+    return false;
+  }
+
+  freeaddrinfo(addrs);
+
+  return true;
+}
 }  // namespace tao

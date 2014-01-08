@@ -40,6 +40,7 @@ using std::string;
 using keyczar::base::Base64WDecode;
 
 using cloudproxy::FileClient;
+using cloudproxy::ScopedSSL;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
 using tao::WhitelistAuth;
@@ -61,7 +62,7 @@ DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
 DEFINE_string(whitelist_path, "./signed_whitelist",
               "The path to the signed whitelist");
 DEFINE_string(address, "localhost", "The address of the local server");
-DEFINE_int32(port, 11235, "The server port to connect to");
+DEFINE_string(port, "11235", "The server port to connect to");
 
 DEFINE_string(aik_cert, "./HW/aik.crt",
               "A certificate for the AIK, signed by the public policy key");
@@ -104,11 +105,13 @@ int main(int argc, char** argv) {
   cloudproxy::FileClient fc(
       FLAGS_file_path, FLAGS_client_cert, FLAGS_client_key,
       FLAGS_client_password, FLAGS_policy_key, FLAGS_pem_policy_key,
-      FLAGS_address, FLAGS_port, whitelist_auth.release());
+      whitelist_auth.release());
 
   LOG(INFO) << "Created a client";
-  CHECK(fc.Connect(*channel)) << "Could not connect to the server at "
-                              << FLAGS_address << ":" << FLAGS_port;
+  ScopedSSL ssl;
+  CHECK(fc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
+      << "Could not connect to the server at "
+      << FLAGS_address << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write
@@ -128,19 +131,19 @@ int main(int argc, char** argv) {
       << "Could not"
          " add the user credential from its keyczar path";
   LOG(INFO) << "Added credentials for the user tmroeder";
-  CHECK(fc.Authenticate("tmroeder", "./keys/tmroeder_pub_signed"))
+  CHECK(fc.Authenticate(ssl.get(), "tmroeder", "./keys/tmroeder_pub_signed"))
       << "Could"
          " not authenticate tmroeder with the server";
   LOG(INFO) << "Authenticated to the server for tmroeder";
-  CHECK(fc.Create("tmroeder", name)) << "Could not create the object"
+  CHECK(fc.Create(ssl.get(), "tmroeder", name)) << "Could not create the object"
                                      << "'" << name << "' on the server";
   LOG(INFO) << "Created the object " << name;
-  CHECK(fc.Write("tmroeder", name, name))
+  CHECK(fc.Write(ssl.get(), "tmroeder", name, name))
       << "Could not write the file to the server";
   LOG(INFO) << "Wrote the object " << name;
 
   string temp_file = name + ".out";
-  CHECK(fc.Read("tmroeder", name, temp_file))
+  CHECK(fc.Read(ssl.get(), "tmroeder", name, temp_file))
       << "Could not read the file from the"
          " server for comparison";
   LOG(INFO) << "Read the file";
@@ -148,7 +151,7 @@ int main(int argc, char** argv) {
   // CHECK(fc.Destroy("tmroeder", name)) << "Could not destroy the object";
   // LOG(INFO) << "Destroyed the object " << name;
 
-  CHECK(fc.Close(false)) << "Could not close the channel";
+  CHECK(fc.Close(ssl.get(), false)) << "Could not close the channel";
 
   LOG(INFO) << "Test succeeded";
 

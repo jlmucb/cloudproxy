@@ -47,7 +47,7 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
                        const string &public_policy_pem,
                        const string &acl_location,
                        const string &server_key_location, const string &host,
-                       ushort port, tao::TaoAuth *auth_manager)
+                       const string &port, tao::TaoAuth *auth_manager)
     : CloudServer(tls_cert, tls_key, tls_password, public_policy_keyczar,
                   public_policy_pem, acl_location, host, port, auth_manager),
       main_key_(keyczar::Signer::Read(server_key_location.c_str())),
@@ -81,7 +81,7 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
       << "Could not derive enc and hmac keys for authenticated encryption";
 }
 
-bool FileServer::HandleCreate(const Action &action, BIO *bio, string *reason,
+bool FileServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
                               bool *reply, CloudServerThreadData &cstd) {
   // check to see if the file exists
   if (!action.has_object()) {
@@ -128,7 +128,7 @@ bool FileServer::HandleCreate(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool FileServer::HandleDestroy(const Action &action, BIO *bio, string *reason,
+bool FileServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
                                bool *reply, CloudServerThreadData &cstd) {
   if (!action.has_object()) {
     LOG(ERROR) << "The DESTROY request did not specify a file";
@@ -172,7 +172,7 @@ bool FileServer::HandleDestroy(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool FileServer::HandleWrite(const Action &action, BIO *bio, string *reason,
+bool FileServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
                              bool *reply, CloudServerThreadData &cstd) {
   string path = file_path_ + string("/") + action.object();
   string meta_path = meta_path_ + string("/") + action.object();
@@ -194,7 +194,7 @@ bool FileServer::HandleWrite(const Action &action, BIO *bio, string *reason,
     // send a reply before receiving the stream data
     // the reply tells the FileClient that it can send the data
     string error;
-    if (!SendReply(bio, true, error)) {
+    if (!SendReply(ssl, true, error)) {
       LOG(ERROR) << "Could not send a message to the client to ask it to write";
 
       // don't try to send another message, since we just failed to send this
@@ -203,7 +203,7 @@ bool FileServer::HandleWrite(const Action &action, BIO *bio, string *reason,
       return false;
     }
 
-    if (!ReceiveAndEncryptStreamData(bio, path, meta_path, action.object(),
+    if (!ReceiveAndEncryptStreamData(ssl, path, meta_path, action.object(),
                                      enc_key_, hmac_key_, main_key_.get())) {
       LOG(ERROR) << "Could not receive data from the client and write it"
                     " encrypted to disk";
@@ -215,7 +215,7 @@ bool FileServer::HandleWrite(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool FileServer::HandleRead(const Action &action, BIO *bio, string *reason,
+bool FileServer::HandleRead(const Action &action, SSL *ssl, string *reason,
                             bool *reply, CloudServerThreadData &cstd) {
   string path = file_path_ + string("/") + action.object();
   string meta_path = meta_path_ + string("/") + action.object();
@@ -237,7 +237,7 @@ bool FileServer::HandleRead(const Action &action, BIO *bio, string *reason,
     // send a reply before sending the stream data
     // the reply tells the FileClient that it should expect the data
     string error;
-    if (!SendReply(bio, true, error)) {
+    if (!SendReply(ssl, true, error)) {
       LOG(ERROR) << "Could not send a message to the client to tell it to read";
 
       // don't try to send another message, since we just failed to send this
@@ -246,7 +246,7 @@ bool FileServer::HandleRead(const Action &action, BIO *bio, string *reason,
       return false;
     }
 
-    if (!DecryptAndSendStreamData(path, meta_path, action.object(), bio,
+    if (!DecryptAndSendStreamData(path, meta_path, action.object(), ssl,
                                   enc_key_, hmac_key_, main_key_.get())) {
       LOG(ERROR) << "Could not stream data from the file to the client";
       reason->assign("Could not stream data to the client");

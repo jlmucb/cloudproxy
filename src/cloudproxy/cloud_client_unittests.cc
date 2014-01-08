@@ -48,6 +48,7 @@ using cloudproxy::CloudClient;
 using cloudproxy::CloudServer;
 using cloudproxy::CreateUserECDSAKey;
 using cloudproxy::ScopedEvpPkey;
+using cloudproxy::ScopedSSL;
 using cloudproxy::SignedACL;
 using cloudproxy::SpeaksFor;
 using cloudproxy::SignedSpeaksFor;
@@ -145,8 +146,8 @@ class CloudClientTest : public ::testing::Test {
     string client_tls_cert = client_dir + string("/cert");
     string client_tls_key = client_dir + string("/key");
     string client_secret_path = client_dir + string("/secret");
-    string server_addr = "localhost";
-    ushort server_port = 11223;
+    string server_addr("localhost");
+    string server_port("11223");
 
     fake_tao_.reset(new FakeTao(policy_key_path));
     EXPECT_TRUE(fake_tao_->Init());
@@ -163,8 +164,7 @@ class CloudClientTest : public ::testing::Test {
     cloud_client_.reset(new CloudClient(client_tls_cert, client_tls_key,
                                         *client_secret,
                                         policy_pub_key_path,
-                                        policy_pub_key_pem, server_addr,
-                                        server_port,
+                                        policy_pub_key_pem, 
                                         whitelist_auth_.release()));
 
     string server_dir = *temp_dir_ + string("/server");
@@ -225,8 +225,6 @@ class CloudClientTest : public ::testing::Test {
                                     direct_channel_.get(),
                                     true /* stop after one connection */));
 
-    EXPECT_TRUE(cloud_client_->Connect(*direct_channel_));
-
     // Create a user and set up the SignedSpeaksFor for this user.
     string username = "tmroeder";
     scoped_ptr<Keyczar> tmroeder_key;
@@ -254,18 +252,19 @@ class CloudClientTest : public ::testing::Test {
     ASSERT_TRUE(ssf_file);
     EXPECT_TRUE(ssf.SerializeToOstream(&ssf_file));
     ssf_file.close();
+
+    ASSERT_TRUE(cloud_client_->Connect(*direct_channel_, server_addr,
+                                       server_port, &ssl_));
   }
 
   virtual void TearDown() {
     if (cloud_client_.get()) {
-      EXPECT_TRUE(cloud_client_->Close(false));
+      EXPECT_TRUE(cloud_client_->Close(ssl_.get(), false));
     }
 
     if (server_thread_->joinable()) {
       server_thread_->join();
     }
-
-    cloud_client_.reset(nullptr);
   }
 
   scoped_ptr<thread> server_thread_;
@@ -279,6 +278,7 @@ class CloudClientTest : public ::testing::Test {
   scoped_ptr<Keyczar> policy_key_;
   scoped_ptr<Keyczar> policy_pub_key_;
   ScopedTempDir temp_dir_;
+  ScopedSSL ssl_;
   SignedSpeaksFor ssf;
   string ser_ssf_;
   string tmroeder_key_path_;
@@ -286,7 +286,40 @@ class CloudClientTest : public ::testing::Test {
 };
 
 TEST_F(CloudClientTest, UserTest) {
-  EXPECT_TRUE(cloud_client_->AddUser("tmroeder", tmroeder_key_path_,
-                                     "tmroeder"));
-  EXPECT_TRUE(cloud_client_->Authenticate("tmroeder", tmroeder_ssf_path_));
+  string username("tmroeder");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
+                                     username));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
 }
+
+TEST_F(CloudClientTest, CreateTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
+                                     username));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
+}
+
+TEST_F(CloudClientTest, DestroyTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
+                                     username));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
+  EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
+}
+
+TEST_F(CloudClientTest, WriteTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_,
+                                     username));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
+  EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
+  EXPECT_TRUE(cloud_client_->Write(ssl_.get(), username, obj, obj));
+  EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
+}
+

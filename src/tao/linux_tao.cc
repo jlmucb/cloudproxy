@@ -22,7 +22,6 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
 
@@ -492,48 +491,24 @@ bool LinuxTao::Listen() {
 }
 
 bool LinuxTao::getCertFromCA(Attestation *attest) {
-  // Set up a socket to communicate with the TCCA.
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-
-  struct addrinfo *addrs = nullptr;
-  int info_err =
-      getaddrinfo(ca_host_.c_str(), ca_port_.c_str(), &hints, &addrs);
-  if (info_err == -1) {
-    PLOG(ERROR) << "Could not get address information for " << ca_host_ << ":"
-                << ca_port_;
+  ScopedFd sock(new int(-1));
+  if (!ConnectToTCPServer(ca_host_, ca_port_, sock.get())) {
+    LOG(ERROR) << "Could not connect to tcca";
     return false;
   }
-
-  int connect_err = connect(sock, addrs->ai_addr, addrs->ai_addrlen);
-  if (connect_err == -1) {
-    PLOG(ERROR) << "Could not connect to the TCCA";
-    freeaddrinfo(addrs);
-    return false;
-  }
-
-  freeaddrinfo(addrs);
 
   // The TCCA will convert our attestation into a new attestation signed by the
   // policy key.
-  if (!tao::SendMessage(sock, *attest)) {
+  if (!tao::SendMessage(*sock, *attest)) {
     LOG(ERROR) << "Could not send our attestation to the TCCA";
-    close(sock);
     return false;
   }
 
   Attestation new_attest;
-  if (!tao::ReceiveMessage(sock, &new_attest)) {
+  if (!tao::ReceiveMessage(*sock, &new_attest)) {
     LOG(ERROR) << "Could not get the new attestation from the TCCA";
-    close(sock);
     return false;
   }
-
-  close(sock);
 
   // Check the attestation to make sure it passes verification.
   if (new_attest.type() != ROOT) {

@@ -73,21 +73,21 @@ class CloudClient {
   /// @param public_policy_keyczar The path to the public policy key.
   /// @param public_policy_pem The path to an OpenSSL representation of the
   /// public policy key.
-  /// @param server_addr The name or IP address of an instance of CloudServer.
-  /// @param server_port The port used by the CloudServer instance at the
-  /// address named in server_addr.
   /// @param auth_manager An instance of TaoAuth that can be used to verify
   /// attestations.
   CloudClient(const string &tls_cert, const string &tls_key,
               const string &secret, const string &public_policy_keyczar,
-              const string &public_policy_pem, const string &server_addr,
-              ushort server_port, tao::TaoAuth *auth_manager);
+              const string &public_policy_pem, tao::TaoAuth *auth_manager);
 
   virtual ~CloudClient() { }
 
   /// Connect to a server.
   /// @param t The host Tao connection (used to generate attestations).
-  bool Connect(const tao::TaoChildChannel &t);
+  /// @param server The server to connect to.
+  /// @param port The port to connect to on the server.
+  /// @param[out] ssl An established SSL connection to the server.
+  bool Connect(const tao::TaoChildChannel &t, const string &server,
+               const string &port, ScopedSSL *ssl);
 
   /// Associate keys with a user name.
   /// @param user The user to add.
@@ -98,71 +98,76 @@ class CloudClient {
 
   /// Authenticate a subject to a connected CloudServer. There must be a
   /// directory under key_location that has a name matching the parameter.
+  /// @param ssl The server connection to use.
   /// @param subject The subject to authenticate. This subject must have already
   /// been added.
   /// @param binding_file A SignedSpeaksFor file that maps the subject to a
   /// given public key.
-  bool Authenticate(const string &subject, const string &binding_file);
+  bool Authenticate(SSL *ssl, const string &subject, const string &binding_file);
 
   /// Send a CREATE request to the attached CloudServer.
+  /// @param ssl The server connection to use.
   /// @param owner A subject who is allowed to create this object.
   /// @param object_name The object to create.
-  virtual bool Create(const string &owner, const string &object_name);
+  virtual bool Create(SSL *ssl, const string &owner, const string &object_name);
 
   /// Send a DESTROY request to the attached CloudServer.
+  /// @param ssl The server connection to use.
   /// @param owner A subject who is allowed to destroy this object.
   /// @param object_name The object to destroy.
-  virtual bool Destroy(const string &owner, const string &object_name);
+  virtual bool Destroy(SSL *ssl, const string &owner, const string &object_name);
 
   /// Send a READ request to a CloudServer.
+  /// @param ssl The server connection to use.
   /// @param requestor A subject who is allowed to read this object.
   /// @param object_name The name of an object to read.
   /// @param output_name The name to output to. The interpretation of this name
   /// depends on the implementation of CloudClient. In the basic implementation,
   /// output_name isn't used.
-  virtual bool Read(const string &requestor, const string &object_name,
+  virtual bool Read(SSL *ssl, const string &requestor, const string &object_name,
                     const string &output_name);
 
   /// Send a WRITE request to a CloudServer.
+  /// @param ssl The server connection to use.
   /// @param requestor A subject who is allowed to write to this object.
   /// @param input_name A name representing input. The interpretation of this
   /// name depends on the implementation. The basic CloudClient writes this
   /// string to the object.
   /// @param object_name The name of the remote object to write to.
-  virtual bool Write(const string &requestor, const string &input_name,
+  virtual bool Write(SSL *ssl, const string &requestor, const string &input_name,
                      const string &object_name);
 
   /// Close the connection to the server
+  /// @param ssl The server connection to close.
   /// @param error Whether or not this close operation is due to an error.
-  bool Close(bool error);
+  bool Close(SSL *ssl, bool error);
 
  protected:
   /// A helper method to send an action to the server and handle the reply, if
   /// necessary.
+  /// @param ssl The server connection to use.
   /// @param subject The subject of the action.
   /// @param object The object of the action.
   /// @param op The operation to perform in the action.
   /// @param handle_reply Whether or not to expect and handle a reply from the
   /// server.
-  bool SendAction(const string &subject, const string &object, Op op,
+  bool SendAction(SSL *ssl, const string &subject, const string &object, Op op,
                   bool handle_reply);
 
   /// Wait for a reply and handle it.
-  bool HandleReply();
-
-  // The BIO used to communicate over the TLS channel. This BIO gets freed when
-  // the SSL connection is closed, so we don't free it explicitly.
-  BIO *bio_;
+  /// @param ssl The server connection to use.
+  bool HandleReply(SSL *ssl);
 
  private:
   /// Handle the client side of a challenge-response protocol with a server.
+  /// @param ssl The server connection to use.
   /// @param chall The challenge to handle.
-  bool HandleChallenge(const Challenge &chall);
+  bool HandleChallenge(SSL *ssl, const Challenge &chall);
 
   // The public policy key for this connection.
   scoped_ptr<keyczar::Keyczar> public_policy_key_;
 
-  // A TLS connection to the server.
+  // A context for TLS connections to servers.
   ScopedSSLCtx context_;
 
   // Principals that have been authenticated on this connection, and the keys

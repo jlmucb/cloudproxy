@@ -88,10 +88,11 @@ bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 /// multi-threaded access.
 bool InitializeOpenSSL();
 
-/// Open a listening TCP socket on the given port (and 0.0.0.0).
+/// Open a listening TCP socket on the given port.
+/// @param host The host to listen on.
 /// @param port The port to listen on.
 /// @param[out] sock The socket opened for this port.
-bool OpenTCPSocket(short port, int *sock);
+bool OpenTCPSocket(const string &host, const string &port, int *sock);
 
 /// Create a Keyczar key with the given parameters.
 /// @param writer The writer to use to write this key to disk.
@@ -188,6 +189,12 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 /// @param[out] key The new key.
 bool CreateTempPubKey(ScopedTempDir *temp_dir,
                       scoped_ptr<keyczar::Keyczar> *key);
+
+/// Connect to a remote server.
+/// @param host The name of the remote host.
+/// @param port The port to connect to.
+/// @param[out] sock The connected client socket.
+bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 }  // namespace tao
 
 #endif  // TAO_UTIL_TAO_H_

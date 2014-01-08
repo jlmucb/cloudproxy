@@ -69,7 +69,7 @@ DEFINE_string(server_enc_key, "./server_key", "A keyczar crypter"
 DEFINE_string(whitelist_path, "./signed_whitelist",
               "The path to the signed whitelist");
 DEFINE_string(address, "localhost", "The address to listen on");
-DEFINE_int32(port, 11235, "The port to listen on");
+DEFINE_string(port, "11235", "The port to listen on");
 
 DEFINE_string(aik_cert, "./HW/aik.crt",
               "A certificate for the AIK, signed by the public policy key");

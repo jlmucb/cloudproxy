@@ -77,6 +77,16 @@ void ecleanup(EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_cleanup(ctx); }
 
 void hcleanup(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
 
+void ssl_cleanup(SSL *ssl) {
+  if (ssl != nullptr) {
+    int fd = SSL_get_fd(ssl);
+    SSL_free(ssl);
+    if (close(fd) < 0) {
+      PLOG(ERROR) << "Could not close socket " << fd;
+    }
+  }
+}
+
 int PasswordCallback(char *buf, int size, int rwflag, void *password) {
   strncpy(buf, (char *)(password), size);
   buf[size - 1] = '\0';
@@ -157,29 +167,29 @@ bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
   return true;
 }
 
-bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len) {
-  CHECK(bio) << "null bio";
+bool ReceiveData(SSL *ssl, void *buffer, size_t buffer_len) {
+  CHECK(ssl) << "null ssl";
   CHECK(buffer) << "null buffer";
 
   // get the data, retrying until we get it.
-  // Note: this assumes that BIO_read doesn't get partial data from the SSL
+  // Note: this assumes that SSL_read doesn't get partial data from the SSL
   // connection but instead blocks until it has enough data.
   int x = 0;
-  while ((x = BIO_read(bio, buffer, buffer_len)) !=
+  while ((x = SSL_read(ssl, buffer, buffer_len)) !=
          static_cast<int>(buffer_len)) {
     if (x == 0) return false;
-    if ((x < 0) && !BIO_should_retry(bio)) return false;
+    if (x < 0) return false;
   }
 
   return true;
 }
 
-bool ReceiveData(BIO *bio, string *data) {
-  CHECK(bio) << "null bio";
+bool ReceiveData(SSL *ssl, string *data) {
+  CHECK(ssl) << "null ssl";
   CHECK(data) << "null data";
 
   uint32_t net_len;
-  if (!ReceiveData(bio, &net_len, sizeof(net_len))) {
+  if (!ReceiveData(ssl, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not get the length of the data";
     return false;
   }
@@ -188,7 +198,7 @@ bool ReceiveData(BIO *bio, string *data) {
   uint32_t len = ntohl(net_len);
   scoped_array<char> temp_data(new char[len]);
 
-  if (!ReceiveData(bio, temp_data.get(), len)) {
+  if (!ReceiveData(ssl, temp_data.get(), len)) {
     LOG(ERROR) << "Could not get the data";
     return false;
   }
@@ -198,28 +208,28 @@ bool ReceiveData(BIO *bio, string *data) {
   return true;
 }
 
-bool SendData(BIO *bio, const void *buffer, size_t buffer_len) {
+bool SendData(SSL *ssl, const void *buffer, size_t buffer_len) {
   int x = 0;
-  while ((x = BIO_write(bio, buffer, buffer_len)) !=
+  while ((x = SSL_write(ssl, buffer, buffer_len)) !=
          static_cast<int>(buffer_len)) {
     if (x == 0) return false;
-    if ((x < 0) && !BIO_should_retry(bio)) return false;
+    if (x < 0) return false;
   }
 
   return true;
 }
 
-bool SendData(BIO *bio, const string &data) {
+bool SendData(SSL *ssl, const string &data) {
   size_t s = data.length();
   uint32_t net_len = htonl(s);
 
   // send the length to the client first
-  if (!SendData(bio, &net_len, sizeof(net_len))) {
+  if (!SendData(ssl, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not send the len";
     return false;
   }
 
-  if (!SendData(bio, data.data(), data.length())) {
+  if (!SendData(ssl, data.data(), data.length())) {
     LOG(ERROR) << "Could not send the data";
     return false;
   }
@@ -227,9 +237,9 @@ bool SendData(BIO *bio, const string &data) {
   return true;
 }
 
-bool ReceiveStreamData(BIO *bio, const string &path) {
+bool ReceiveStreamData(SSL *ssl, const string &path) {
   // open the file
-  CHECK(bio) << "null bio";
+  CHECK(ssl) << "null ssl";
 
   ScopedFile f(fopen(path.c_str(), "w"));
   if (nullptr == f.get()) {
@@ -239,7 +249,7 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
 
   // first receive the length
   uint32_t net_len = 0;
-  if (!ReceiveData(bio, &net_len, sizeof(net_len))) {
+  if (!ReceiveData(ssl, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not get the length of the data";
     return false;
   }
@@ -253,13 +263,11 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
   size_t bytes_written = 0;
   scoped_array<unsigned char> buf(new unsigned char[len]);
   while ((total_len < expected_len) &&
-         (out_len = BIO_read(bio, buf.get(), len)) != 0) {
+         (out_len = SSL_read(ssl, buf.get(), len)) != 0) {
     if (out_len < 0) {
-      if (!BIO_should_retry(bio)) {
-        LOG(ERROR) << "Write failed after " << total_len
-                   << " bytes were written";
-        return false;
-      }
+      LOG(ERROR) << "Write failed after " << total_len
+                 << " bytes were written";
+      return false;
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
       // the final rename step
@@ -279,11 +287,11 @@ bool ReceiveStreamData(BIO *bio, const string &path) {
   return true;
 }
 
-bool SendStreamData(const string &path, size_t size, BIO *bio) {
-  CHECK(bio) << "null bio";
+bool SendStreamData(const string &path, size_t size, SSL *ssl) {
+  CHECK(ssl) << "null ssl";
 
   // open the file
-  CHECK(bio) << "null bio";
+  CHECK(ssl) << "null ssl";
   ScopedFile f(fopen(path.c_str(), "r"));
   if (nullptr == f.get()) {
     LOG(ERROR) << "Could not open the file " << path << " for reading";
@@ -294,7 +302,7 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
   uint32_t net_len = htonl(size);
 
   // send the length to the client
-  if (!SendData(bio, &net_len, sizeof(net_len))) {
+  if (!SendData(ssl, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not send the len";
     return false;
   }
@@ -307,11 +315,9 @@ bool SendStreamData(const string &path, size_t size, BIO *bio) {
   while ((total_bytes < size) &&
          (bytes_read = fread(buf.get(), 1, len, f.get())) != 0) {
     int x = 0;
-    while ((x = BIO_write(bio, buf.get(), bytes_read)) < 0) {
-      if (!BIO_should_retry(bio)) {
-        LOG(ERROR) << "Network write operation failed";
-        return false;
-      }
+    while ((x = SSL_write(ssl, buf.get(), bytes_read)) < 0) {
+      LOG(ERROR) << "Network write operation failed";
+      return false;
     }
 
     if (x == 0) {
@@ -464,11 +470,11 @@ bool GetHmacOutput(unsigned char *out, unsigned int *out_size, HMAC_CTX *hmac) {
 }
 
 bool ReceiveAndEncryptStreamData(
-    BIO *bio, const string &path, const string &meta_path,
+    SSL *ssl, const string &path, const string &meta_path,
     const string &object_name, const keyczar::base::ScopedSafeString &aes_key,
     const keyczar::base::ScopedSafeString &hmac_key,
     keyczar::Keyczar *main_key) {
-  CHECK(bio) << "null bio";
+  CHECK(ssl) << "null ssl";
   CHECK(main_key) << "null main_key";
 
   ScopedFile f(fopen(path.c_str(), "w"));
@@ -515,7 +521,7 @@ bool ReceiveAndEncryptStreamData(
 
   // first receive the length
   uint32_t net_len = 0;
-  if (!ReceiveData(bio, &net_len, sizeof(net_len))) {
+  if (!ReceiveData(ssl, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not get the length of the data";
     return false;
   }
@@ -534,13 +540,11 @@ bool ReceiveAndEncryptStreamData(
   scoped_array<unsigned char> buf(new unsigned char[len]);
   scoped_array<unsigned char> enc_buf(new unsigned char[enc_len]);
   while ((total_len < expected_len) &&
-         (out_len = BIO_read(bio, buf.get(), len)) != 0) {
+         (out_len = SSL_read(ssl, buf.get(), len)) != 0) {
     if (out_len < 0) {
-      if (!BIO_should_retry(bio)) {
-        LOG(ERROR) << "Write failed after " << total_len
-                   << " bytes were written";
-        return false;
-      }
+      LOG(ERROR) << "Write failed after " << total_len
+                 << " bytes were written";
+      return false;
     } else {
       // TODO(tmroeder): write to a temp file first so we only need to lock on
       // the final rename step
@@ -619,12 +623,12 @@ bool ReceiveAndEncryptStreamData(
 }
 
 bool DecryptAndSendStreamData(const string &path, const string &meta_path,
-                              const string &object_name, BIO *bio,
+                              const string &object_name, SSL *ssl,
                               const keyczar::base::ScopedSafeString &aes_key,
                               const keyczar::base::ScopedSafeString &hmac_key,
                               keyczar::Keyczar *main_key) {
   // open the file
-  CHECK(bio) << "null bio";
+  CHECK(ssl) << "null ssl";
   ScopedFile f(fopen(path.c_str(), "r"));
   if (nullptr == f.get()) {
     LOG(ERROR) << "Could not open the file " << path << " for reading";
@@ -700,7 +704,7 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
   uint32_t net_len = htonl(om.size());
 
   // send the length to the client
-  if (!SendData(bio, &net_len, sizeof(net_len))) {
+  if (!SendData(ssl, &net_len, sizeof(net_len))) {
     LOG(ERROR) << "Could not send the len";
     return false;
   }
@@ -728,11 +732,9 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
 
     if (out_dec_len > 0) {
       int x = 0;
-      while ((x = BIO_write(bio, dec_buf.get(), out_dec_len)) < 0) {
-        if (!BIO_should_retry(bio)) {
-          LOG(ERROR) << "Network write operation failed";
-          return false;
-        }
+      while ((x = SSL_write(ssl, dec_buf.get(), out_dec_len)) < 0) {
+        LOG(ERROR) << "Network write operation failed";
+        return false;
       }
 
       if (x == 0) {
@@ -757,11 +759,9 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
 
     // send it to the client
     int x = 0;
-    while ((x = BIO_write(bio, dec_buf.get(), out_dec_len)) < 0) {
-      if (!BIO_should_retry(bio)) {
-        LOG(ERROR) << "Final network operation failed";
-        return false;
-      }
+    while ((x = SSL_write(ssl, dec_buf.get(), out_dec_len)) < 0) {
+      LOG(ERROR) << "Final network operation failed";
+      return false;
     }
 
     total_bytes += out_dec_len;

@@ -42,6 +42,7 @@ using std::string;
 using std::stringstream;
 
 using cloudproxy::CloudClient;
+using cloudproxy::ScopedSSL;
 
 using keyczar::base::Base64WDecode;
 using keyczar::base::ScopedSafeString;
@@ -65,7 +66,7 @@ DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
 DEFINE_string(whitelist_path, "./signed_whitelist",
               "The path to the whitelist");
 DEFINE_string(address, "localhost", "The address of the local server");
-DEFINE_int32(port, 11235, "The server port to connect to");
+DEFINE_string(port, "11235", "The server port to connect to");
 DEFINE_string(aik_cert, "./HW/aik.crt",
               "A certificate for the AIK, signed by the public policy key");
 
@@ -117,12 +118,13 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "About to create a client";
   CloudClient cc(FLAGS_client_cert, FLAGS_client_key, *secret, FLAGS_policy_key,
-                 FLAGS_pem_policy_key, FLAGS_address, FLAGS_port,
-                 whitelist_auth.release());
+                 FLAGS_pem_policy_key, whitelist_auth.release());
 
   LOG(INFO) << "Created a client";
-  CHECK(cc.Connect(*channel)) << "Could not connect to the server at "
-                              << FLAGS_address << ":" << FLAGS_port;
+  ScopedSSL ssl;
+  CHECK(cc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
+      << "Could not connect to the server at "
+      << FLAGS_address << ":" << FLAGS_port;
   LOG(INFO) << "Connected to the server";
 
   // create a random object name to write, getting randomness from the Tao
@@ -136,19 +138,19 @@ int main(int argc, char** argv) {
       << "Could not"
          " add the user credential from its keyczar path";
   LOG(INFO) << "Added credentials for the user tmroeder";
-  CHECK(cc.Authenticate("tmroeder", "./keys/tmroeder_pub_signed"))
+  CHECK(cc.Authenticate(ssl.get(), "tmroeder", "./keys/tmroeder_pub_signed"))
       << "Could"
          " not authenticate tmroeder with the server";
   LOG(INFO) << "Authenticated to the server for tmroeder";
-  CHECK(cc.Create("tmroeder", name)) << "Could not create the object"
+  CHECK(cc.Create(ssl.get(), "tmroeder", name)) << "Could not create the object"
                                      << "'" << name << "' on the server";
   LOG(INFO) << "Created the object " << name;
-  CHECK(cc.Read("tmroeder", name, name)) << "Could not read the object";
+  CHECK(cc.Read(ssl.get(), "tmroeder", name, name)) << "Could not read the object";
   LOG(INFO) << "Read the object " << name;
-  CHECK(cc.Destroy("tmroeder", name)) << "Could not destroy the object";
+  CHECK(cc.Destroy(ssl.get(), "tmroeder", name)) << "Could not destroy the object";
   LOG(INFO) << "Destroyed the object " << name;
 
-  CHECK(cc.Close(false)) << "Could not close the channel";
+  CHECK(cc.Close(ssl.get(), false)) << "Could not close the channel";
 
   LOG(INFO) << "Test succeeded";
 

@@ -140,7 +140,7 @@ TEST(TaoUtilTest, SocketTest) {
   ScopedFd sock(new int(-1));
 
   // Passing 0 as the port means you get an auto-assigned port.
-  EXPECT_TRUE(OpenTCPSocket(0, sock.get()))
+  EXPECT_TRUE(OpenTCPSocket("localhost", "0", sock.get()))
     << "Could not create and bind a TCP socket";
 }
 

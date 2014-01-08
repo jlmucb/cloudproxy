@@ -45,33 +45,32 @@ class FileClient : public CloudClient {
   FileClient(const string &file_path, const string &tls_cert,
              const string &tls_key, const string &tls_password,
              const string &public_policy_keyczar,
-             const string &public_policy_pem, const string &server_addr,
-             ushort server_port, tao::TaoAuth *auth_manager);
+             const string &public_policy_pem, tao::TaoAuth *auth_manager);
 
   virtual ~FileClient() {}
 
   /// Create a file on a FileServer.
   /// @param owner The name of a user that has permission to create this file.
   /// @param object_name The filename for the file to create.
-  virtual bool Create(const string &owner, const string &object_name);
+  virtual bool Create(SSL *ssl, const string &owner, const string &object_name);
 
   /// Delete a file on a FileServer.
   /// @param owner The name of a user that has permission to delete this file.
   /// @param object_name The filename for the file to delete.
-  virtual bool Destroy(const string &owner, const string &object_name);
+  virtual bool Destroy(SSL *ssl, const string &owner, const string &object_name);
 
   /// Read a file stored on a FileServer.
   /// @param requestor The name of the user requesting the file.
   /// @param object_name The path of the file to read.
   /// @param output_name A file that will receive the bytes from the server.
-  virtual bool Read(const string &requestor, const string &object_name,
+  virtual bool Read(SSL *ssl, const string &requestor, const string &object_name,
                     const string &output_name);
 
   /// Write to a file stored on a FileServer.
   /// @param requestor The name of the user writing to the file.
   /// @param input_name The name of the local file to read.
   /// @param object_name The name of the remote file that receives the data.
-  virtual bool Write(const string &requestor, const string &input_name,
+  virtual bool Write(SSL *ssl, const string &requestor, const string &input_name,
                      const string &object_name);
 
  private:

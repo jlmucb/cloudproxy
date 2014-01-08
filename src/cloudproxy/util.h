@@ -67,6 +67,8 @@ void ecleanup(EVP_CIPHER_CTX *ctx);
 /// @param ctx The context to clean up.
 void hcleanup(HMAC_CTX *ctx);
 
+void ssl_cleanup(SSL *ssl);
+
 // Taken from a private definition in keyczar/openssl/aes.h
 // A smart pointer wrapping an OpenSSL EVP_CIPHER_CTX.
 typedef scoped_ptr_malloc<
@@ -85,6 +87,10 @@ typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
 typedef scoped_ptr_malloc<
     X509, keyczar::openssl::OSSLDestroyer<X509, X509_free> > ScopedX509Ctx;
 
+// A smart pointer wrapping an SSL object.
+typedef scoped_ptr_malloc<
+    SSL, keyczar::openssl::OSSLDestroyer<SSL, ssl_cleanup> > ScopedSSL;
+
 // A smart pointer wrapping an OpenSSL EVP_PKEY.
 typedef scoped_ptr_malloc<
     EVP_PKEY, keyczar::openssl::OSSLDestroyer<EVP_PKEY, EVP_PKEY_free> >
@@ -92,10 +98,6 @@ typedef scoped_ptr_malloc<
 
 // A smart pointer wrapping a FILE pointer.
 typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
-
-// A smart pointer wrapping an SSL BIO
-typedef scoped_ptr_malloc<
-    BIO, keyczar::openssl::OSSLDestroyer<BIO, BIO_free_all> > ScopedSSLBIO;
 
 /// Handle OpenSSL password callbacks.
 /// @param buf A buffer to receive the password.
@@ -122,41 +124,41 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
 bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
                 string *acls);
 
-/// Receive data from an OpenSSL BIO.
-/// @param bio The BIO to use to receive the data.
+/// Receive data from an OpenSSL SSL.
+/// @param bio The SSL to use to receive the data.
 /// @param[out] buffer The buffer to fill with data.
 /// @param buffer_len The length of buffer.
-bool ReceiveData(BIO *bio, void *buffer, size_t buffer_len);
+bool ReceiveData(SSL *ssl, void *buffer, size_t buffer_len);
 
-/// Receive data from an OpenSSL BIO.
-/// @param bio The BIO to use to receive the data.
+/// Receive data from an OpenSSL SSL.
+/// @param bio The SSL to use to receive the data.
 /// @param[out] data The object to receive the data.
-bool ReceiveData(BIO *bio, string *data);
+bool ReceiveData(SSL *ssl, string *data);
 
-/// Send data on an OpenSSL BIO.
-/// @param bio The BIO to use to send the data.
+/// Send data on an OpenSSL SSL.
+/// @param bio The SSL to use to send the data.
 /// @param buffer The buffer of data to send.
 /// @param buffer_len The length of the data to send.
-bool SendData(BIO *bio, const void *buffer, size_t buffer_len);
+bool SendData(SSL *ssl, const void *buffer, size_t buffer_len);
 
-/// Send data on an OpenSSL BIO.
-/// @param bio The BIO to use to send the data.
+/// Send data on an OpenSSL SSL.
+/// @param bio The SSL to use to send the data.
 /// @param data The data to send.
-bool SendData(BIO *bio, const string &data);
+bool SendData(SSL *ssl, const string &data);
 
-/// Receive a file on an OpenSSL BIO.
-/// @param bio The BIO to use to receive the data.
+/// Receive a file on an OpenSSL SSL.
+/// @param bio The SSL to use to receive the data.
 /// @param path The path of the file to write with the received data.
-bool ReceiveStreamData(BIO *bio, const string &path);
+bool ReceiveStreamData(SSL *ssl, const string &path);
 
-/// Send a file on an OpenSSL BIO.
+/// Send a file on an OpenSSL SSL.
 /// @param path The path to the file to send.
 /// @param size The amount of data to send.
-/// @param bio The OpenSSL BIO to use to send the data.
-bool SendStreamData(const string &path, size_t size, BIO *bio);
+/// @param bio The OpenSSL SSL to use to send the data.
+bool SendStreamData(const string &path, size_t size, SSL *ssl);
 
 /// Receive a file, encrypt it, and add integrity protection.
-/// @param bio The OpenSSL BIO to use to receive the data.
+/// @param bio The OpenSSL SSL to use to receive the data.
 /// @param path The path of the file to write with the data.
 /// @param meta_path The path of the file to write with metadata about the file,
 /// including the integrity check.
@@ -164,7 +166,7 @@ bool SendStreamData(const string &path, size_t size, BIO *bio);
 /// @param key The key to use for encryption.
 /// @param hmac The HMAC key to use for integrity protection.
 /// @param main_key The keyczar key to use for the metadata file.
-bool ReceiveAndEncryptStreamData(BIO *bio, const string &path,
+bool ReceiveAndEncryptStreamData(SSL *ssl, const string &path,
                                  const string &meta_path,
                                  const string &object_name,
                                  const keyczar::base::ScopedSafeString &key,
@@ -175,12 +177,12 @@ bool ReceiveAndEncryptStreamData(BIO *bio, const string &path,
 /// @param path The path of the file to send.
 /// @param meta_path The path of the metadata associated with the file.
 /// @param object_name The object name associated with the file.
-/// @param bio The OpenSSL BIO to use for communication.
+/// @param bio The OpenSSL SSL to use for communication.
 /// @param key The key to use for decryption.
 /// @param hmac The HMAC key to use for checking file integrity.
 /// @param main_key The keyczar key to use for the metadata file.
 bool DecryptAndSendStreamData(const string &path, const string &meta_path,
-                              const string &object_name, BIO *bio,
+                              const string &object_name, SSL *ssl,
                               const keyczar::base::ScopedSafeString &key,
                               const keyczar::base::ScopedSafeString &hmac,
                               keyczar::Keyczar *main_key);

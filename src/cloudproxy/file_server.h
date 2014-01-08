@@ -51,8 +51,8 @@ class FileServer : public CloudServer {
              const string &tls_cert, const string &tls_key,
              const string &tls_password, const string &public_policy_keyczar,
              const string &public_policy_pem, const string &acl_location,
-             const string &server_key_location, const string &host, ushort port,
-             tao::TaoAuth *auth_manager);
+             const string &server_key_location, const string &host,
+             const string &port, tao::TaoAuth *auth_manager);
 
   virtual ~FileServer() {}
 
@@ -67,13 +67,13 @@ class FileServer : public CloudServer {
   /// @param cstd A context parameter for the thread.
   /// @return A value that indicates whether or not the action was performed
   /// without errors.
-  virtual bool HandleCreate(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleCreate(const Action &action, SSL *ssl, string *reason,
                             bool *reply, CloudServerThreadData &cstd);
-  virtual bool HandleDestroy(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleDestroy(const Action &action, SSL *ssl, string *reason,
                              bool *reply, CloudServerThreadData &cstd);
-  virtual bool HandleWrite(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleWrite(const Action &action, SSL *ssl, string *reason,
                            bool *reply, CloudServerThreadData &cstd);
-  virtual bool HandleRead(const Action &action, BIO *bio, string *reason,
+  virtual bool HandleRead(const Action &action, SSL *ssl, string *reason,
                           bool *reply, CloudServerThreadData &cstd);
   /// @}
 

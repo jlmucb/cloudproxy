@@ -250,6 +250,34 @@ class CloudClientTest : public ::testing::Test {
     EXPECT_TRUE(ssf.SerializeToOstream(&ssf_file));
     ssf_file.close();
 
+    // Create a second user and set up the SignedSpeaksFor for this user.
+    string username2 = "jlm";
+    scoped_ptr<Keyczar> jlm_key;
+    jlm_key_path_ = *temp_dir_ + string("/") + username2;
+    ASSERT_EQ(mkdir(jlm_key_path_.c_str(), 0700), 0);
+    SpeaksFor sf2;
+    sf2.set_subject(username2);
+    // For these simple tests, we use the username as the password. Very secure.
+    EXPECT_TRUE(CreateUserECDSAKey(jlm_key_path_, username2, username2,
+                                   &jlm_key));
+
+    KeyczarPublicKey kpk2;
+    EXPECT_TRUE(SerializePublicKey(*jlm_key, &kpk2));
+    string *sf_key2 = sf2.mutable_pub_key();
+    EXPECT_TRUE(kpk2.SerializeToString(sf_key2));
+
+    string *sf_serialized2 = ssf2.mutable_serialized_speaks_for();
+    EXPECT_TRUE(sf2.SerializeToString(sf_serialized2));
+
+    string *sf_sig2 = ssf2.mutable_signature();
+    EXPECT_TRUE(SignData(*sf_serialized2, sf_sig2, policy_key_.get()));
+
+    jlm_ssf_path_ = *temp_dir_ + string("/jlm_ssf");
+    ofstream ssf_file2(jlm_ssf_path_.c_str());
+    ASSERT_TRUE(ssf_file2);
+    EXPECT_TRUE(ssf2.SerializeToOstream(&ssf_file2));
+    ssf_file2.close();
+
     ASSERT_TRUE(cloud_client_->Connect(*direct_channel_, server_addr,
                                        server_port, &ssl_));
   }
@@ -277,9 +305,12 @@ class CloudClientTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   ScopedSSL ssl_;
   SignedSpeaksFor ssf;
+  SignedSpeaksFor ssf2;
   string ser_ssf_;
   string tmroeder_key_path_;
   string tmroeder_ssf_path_;
+  string jlm_key_path_;
+  string jlm_ssf_path_;
 };
 
 TEST_F(CloudClientTest, UserTest) {
@@ -315,7 +346,7 @@ TEST_F(CloudClientTest, CreateTest) {
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }
 
-TEST_F(CloudClientTest, CreateUnauthFailTest) {
+TEST_F(CloudClientTest, UnauthFailTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_FALSE(cloud_client_->Create(ssl_.get(), username, obj));
@@ -331,6 +362,15 @@ TEST_F(CloudClientTest, DestroyTest) {
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
 
+TEST_F(CloudClientTest, DestroyFailTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_FALSE(cloud_client_->Destroy(ssl_.get(), username, obj));
+}
+
 TEST_F(CloudClientTest, ReadTest) {
   string username("tmroeder");
   string obj("test_obj");
@@ -340,6 +380,24 @@ TEST_F(CloudClientTest, ReadTest) {
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
+}
+
+TEST_F(CloudClientTest, ReadFailTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_FALSE(cloud_client_->Read(ssl_.get(), username, obj, obj));
+}
+
+TEST_F(CloudClientTest, WriteFailTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_FALSE(cloud_client_->Write(ssl_.get(), username, obj, obj));
 }
 
 TEST_F(CloudClientTest, WriteTest) {
@@ -352,4 +410,22 @@ TEST_F(CloudClientTest, WriteTest) {
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Write(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
+}
+
+TEST_F(CloudClientTest, InsufficientPrivilegeTest) {
+  string username("jlm");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, jlm_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, jlm_ssf_path_));
+  EXPECT_FALSE(cloud_client_->Create(ssl_.get(), username, obj));
+}
+
+TEST_F(CloudClientTest, SimplePrivilegeTest) {
+  string username("jlm");
+  string obj("/files");
+  EXPECT_TRUE(cloud_client_->AddUser(username, jlm_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, jlm_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }

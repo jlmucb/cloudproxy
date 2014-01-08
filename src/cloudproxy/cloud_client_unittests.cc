@@ -1,6 +1,6 @@
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Basic tests for the CloudClient class.
+//  Description: Basic tests for the CloudClient and CloudServer classes.
 //
 //  Copyright (c) 2014, Google Inc.  All rights reserved.
 //
@@ -289,6 +289,23 @@ TEST_F(CloudClientTest, UserTest) {
       cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
 }
 
+TEST_F(CloudClientTest, UserFailTest) {
+  string username("unknown user");
+  EXPECT_FALSE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+}
+
+TEST_F(CloudClientTest, UserDirFailTest) {
+  string username("tmroeder");
+  string dir("Not the right directory");
+  EXPECT_FALSE(cloud_client_->AddUser(username, dir, username));
+}
+
+TEST_F(CloudClientTest, UserPwdFailTest) {
+  string username("tmroeder");
+  string password("Wrong password");
+  EXPECT_FALSE(cloud_client_->AddUser(username, tmroeder_key_path_, password));
+}
+
 TEST_F(CloudClientTest, CreateTest) {
   string username("tmroeder");
   string obj("test_obj");
@@ -298,6 +315,12 @@ TEST_F(CloudClientTest, CreateTest) {
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }
 
+TEST_F(CloudClientTest, CreateUnauthFailTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_FALSE(cloud_client_->Create(ssl_.get(), username, obj));
+}
+
 TEST_F(CloudClientTest, DestroyTest) {
   string username("tmroeder");
   string obj("test_obj");
@@ -305,6 +328,17 @@ TEST_F(CloudClientTest, DestroyTest) {
   EXPECT_TRUE(
       cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
+  EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
+}
+
+TEST_F(CloudClientTest, ReadTest) {
+  string username("tmroeder");
+  string obj("test_obj");
+  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
+  EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
 

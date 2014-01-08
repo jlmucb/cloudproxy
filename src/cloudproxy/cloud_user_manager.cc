@@ -22,6 +22,7 @@
 #include "cloudproxy/cloud_user_manager.h"
 
 #include <glog/logging.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
@@ -29,6 +30,7 @@
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/util.h"
 
+using keyczar::base::PathExists;
 using tao::KeyczarPublicKey;
 using tao::DeserializePublicKey;
 using tao::VerifySignature;
@@ -52,6 +54,15 @@ bool CloudUserManager::GetKey(const string &user, keyczar::Keyczar **key) {
 
 bool CloudUserManager::AddSigningKey(const string &user, const string &path,
                                      const string &password) {
+  // keyczar does a CHECK fail if the path does not exist. To avoid that, we
+  // check the existence of the path first.
+  FilePath fp(path);
+  if (!PathExists(fp)) {
+    LOG(ERROR) << "Could not add a signing key, since the path "
+               << path << " does not exist";
+    return false;
+  }
+
   keyczar::base::ScopedSafeString safe_password(new string(password));
   scoped_ptr<keyczar::rw::KeysetReader> reader(
       new keyczar::rw::KeysetPBEJSONFileReader(path.c_str(), *safe_password));

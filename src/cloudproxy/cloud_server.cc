@@ -251,7 +251,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message, SSL *ssl,
     {
       lock_guard<mutex> l(auth_m_);
       if (!auth_->Permitted(a.subject(), a.verb(), a.object())) {
-        LOG(ERROR) << "User " << a.subject() << " not authorized to perform"
+        LOG(ERROR) << "User " << a.subject() << " not authorized to perform "
                    << a.verb() << " on " << a.object();
         reason->assign("Not authorized");
         return false;

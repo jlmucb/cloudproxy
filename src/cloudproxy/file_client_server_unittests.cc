@@ -31,6 +31,7 @@
 #include <keyczar/rw/keyset_file_writer.h>
 #include <openssl/bio.h>
 #include <openssl/pem.h>
+#include <openssl/rand.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/file_client.h"
@@ -311,11 +312,25 @@ class FileClientTest : public ::testing::Test {
     small_file_ = client_file_path_ + string("/") + small_file_obj_name_;
     string small_data;
     RandImpl *rand = CryptoFactory::Rand();
-    ASSERT_TRUE(rand->RandBytes(2*1024, &small_data));
+    // 2 KB file
+    ASSERT_TRUE(rand->RandBytes(2*1000, &small_data));
     ofstream small_file_out(small_file_.c_str());
     ASSERT_TRUE(small_file_out);
     small_file_out << small_data;
     small_file_out.close();
+
+    medium_file_obj_name_ = "medium";
+    medium_file_ = client_file_path_ + string("/") + medium_file_obj_name_;
+
+    // 20 MB file
+    int med_len = 20 * 1000 * 1000;
+    scoped_array<unsigned char> med(new unsigned char[med_len]);
+    ASSERT_EQ(RAND_bytes(med.get(), med_len), 1);
+    string medium_data(reinterpret_cast<char *>(med.get()), med_len);
+    ofstream medium_file_out(medium_file_.c_str());
+    ASSERT_TRUE(medium_file_out);
+    medium_file_out << medium_data;
+    medium_file_out.close();
 
     ASSERT_TRUE(file_client_->Connect(*direct_channel_, server_addr,
                                        server_port, &ssl_));
@@ -353,8 +368,32 @@ class FileClientTest : public ::testing::Test {
   string jlm_ssf_path_;
   string small_file_;
   string small_file_obj_name_;
+  string medium_file_;
+  string medium_file_obj_name_;
   string client_file_path_;
 };
+
+bool CompareFiles(const string &orig_file_name, const string &new_file_name) {
+  // Compare the two files to make sure they're identical.
+  ifstream orig_file(orig_file_name);
+  if (!orig_file) {
+    return false;
+  }
+
+  ifstream new_file(new_file_name);
+  if (!new_file) {
+    return false;
+  }
+
+  stringstream orig_buf;
+  orig_buf << orig_file.rdbuf();
+
+  stringstream new_buf;
+  new_buf << new_file.rdbuf();
+
+  return (orig_buf.str().compare(new_buf.str()) == 0);
+
+}
 
 // All of the user and connection management is handled by the parent classes,
 // so we don't need to test it again here. The differences are in the object
@@ -378,7 +417,7 @@ TEST_F(FileClientTest, DestroyTest) {
   EXPECT_TRUE(file_client_->Destroy(ssl_.get(), username, small_file_obj_name_));
 }
 
-TEST_F(FileClientTest, WriteTest) {
+TEST_F(FileClientTest, SmallWriteTest) {
   string username("tmroeder");
   string output_obj("small_out");
   EXPECT_TRUE(file_client_->AddUser(username, tmroeder_key_path_, username));
@@ -391,17 +430,23 @@ TEST_F(FileClientTest, WriteTest) {
                                  output_obj));
   EXPECT_TRUE(file_client_->Destroy(ssl_.get(), username, small_file_obj_name_));
 
-  // Compare the two files to make sure they're identical.
-  ifstream orig_file(small_file_);
-  ASSERT_TRUE(orig_file);
-  ifstream new_file(client_file_path_ + string("/") + output_obj);
-  ASSERT_TRUE(new_file);
+  EXPECT_TRUE(CompareFiles(small_file_,
+                           client_file_path_ + string("/") + output_obj));
+}
 
-  stringstream orig_buf;
-  orig_buf << orig_file.rdbuf();
+TEST_F(FileClientTest, MediumWriteTest) {
+  string username("tmroeder");
+  string output_obj("medium_out");
+  EXPECT_TRUE(file_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(
+      file_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+  EXPECT_TRUE(file_client_->Create(ssl_.get(), username, medium_file_obj_name_));
+  EXPECT_TRUE(file_client_->Write(ssl_.get(), username, medium_file_obj_name_,
+                                  medium_file_obj_name_));
+  EXPECT_TRUE(file_client_->Read(ssl_.get(), username, medium_file_obj_name_,
+                                 output_obj));
+  EXPECT_TRUE(file_client_->Destroy(ssl_.get(), username, medium_file_obj_name_));
 
-  stringstream new_buf;
-  new_buf << new_file.rdbuf();
-
-  EXPECT_EQ(orig_buf.str(), new_buf.str());
+  EXPECT_TRUE(CompareFiles(medium_file_,
+                           client_file_path_ + string("/") + output_obj));
 }

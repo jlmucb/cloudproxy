@@ -33,12 +33,16 @@
 #include <google/protobuf/text_format.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "tao/util.h"
 
+using cloudproxy::CloudUserManager;
 using std::string;
 using std::stringstream;
 using std::unique_ptr;
 using std::ifstream;
 using std::ofstream;
+using tao::VerifySignature;
 
 DEFINE_string(signed_pub_key_file, "keys/tmroeder_pub_signed",
               "The name of the signature file");
@@ -55,12 +59,16 @@ int main(int argc, char** argv) {
   ssf.ParseFromIstream(&sig);
 
   // get the public key for verification
-  keyczar::Keyczar* verifier = keyczar::Verifier::Read(FLAGS_key_loc.c_str());
-  CHECK(verifier) << "Could not get the public key for verification";
+  scoped_ptr<keyczar::Keyczar> verifier(
+      keyczar::Verifier::Read(FLAGS_key_loc.c_str()));
+  CHECK(verifier.get()) << "Could not get the public key for verification";
 
   verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  CHECK(verifier->Verify(ssf.serialized_speaks_for(), ssf.signature()))
+  CHECK(VerifySignature(ssf.serialized_speaks_for(),
+                        CloudUserManager::SpeaksForSigningContext,
+                        ssf.signature(),
+                        verifier.get()))
       << "Verify failed";
 
   LOG(INFO) << FLAGS_signed_pub_key_file << " contained a valid signature "

@@ -32,11 +32,16 @@
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_auth.h"
 
+#include "tao/util.h"
+
+using cloudproxy::CloudAuth;
 using std::string;
 using std::stringstream;
 using std::ifstream;
 using std::ofstream;
+using tao::SignData;
 
 DEFINE_string(acl_file, "acls", "The name of the acl protobuf file to sign");
 DEFINE_string(acl_sig_file, "acls_sig", "The name of the signature file");
@@ -70,7 +75,8 @@ int main(int argc, char** argv) {
   size_t len = acl_buf.str().size();
   CHECK(len > 0) << "Could not read any bytes from the acls file";
   string sig;
-  CHECK(signer->Sign(acl_buf.str(), &sig)) << "Could not sign acl file";
+  CHECK(SignData(acl_buf.str(), CloudAuth::ACLSigningContext, &sig,
+                 signer.get())) << "Could not sign acl file";
 
   cloudproxy::SignedACL sacl;
   sacl.set_serialized_acls(acl_buf.str());

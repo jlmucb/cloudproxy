@@ -35,7 +35,9 @@
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "tao/keyczar_public_key.pb.h"
+#include "tao/util.h"
 
 using std::string;
 using std::stringstream;
@@ -43,9 +45,11 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 
+using cloudproxy::CloudUserManager;
 using cloudproxy::SpeaksFor;
 using cloudproxy::SignedSpeaksFor;
 using tao::KeyczarPublicKey;
+using tao::SignData;
 
 DEFINE_string(subject, "tmroeder", "The subject to bind to this key");
 DEFINE_string(pub_key_loc, "keys/tmroeder_pub",
@@ -122,9 +126,9 @@ int main(int argc, char **argv) {
   CHECK(sf.SerializeToString(&sf_serialized)) << "Could not serialize"
                                                  " the key";
 
-  // print out the length of the string representation of the acl file
   string sig;
-  CHECK(signer->Sign(sf_serialized, &sig)) << "Could not sign key";
+  CHECK(SignData(sf_serialized, CloudUserManager::SpeaksForSigningContext, &sig,
+                 signer.get())) << "Could not sign key";
 
   cloudproxy::SignedSpeaksFor ssf;
   ssf.set_serialized_speaks_for(sf_serialized);

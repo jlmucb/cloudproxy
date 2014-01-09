@@ -44,6 +44,7 @@
 #include <trousers/trousers.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/tao.h"
 #include "tao/util.h"
 
 using keyczar::Keyczar;
@@ -55,7 +56,9 @@ using std::string;
 using std::stringstream;
 
 using tao::Attestation;
+using tao::SignData;
 using tao::Statement;
+using tao::Tao;
 
 DEFINE_string(
     aik_blob_file, "aikblob",
@@ -176,7 +179,8 @@ int main(int argc, char **argv) {
   string serialized_statement;
   CHECK(s.SerializeToString(&serialized_statement)) << "Could not serialize";
   string sig;
-  CHECK(signer->Sign(serialized_statement, &sig)) << "Could not sign the key";
+  CHECK(SignData(serialized_statement, Tao::AttestationSigningContext, &sig,
+                 signer.get())) << "Could not sign the key";
 
   // There's no cert, since this is signed by the root key
   a.set_type(tao::ROOT);

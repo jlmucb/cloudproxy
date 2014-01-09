@@ -27,6 +27,7 @@
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/tao.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
@@ -37,7 +38,9 @@ using tao::InitializeOpenSSL;
 using tao::OpenTCPSocket;
 using tao::ReceiveMessage;
 using tao::SendMessage;
+using tao::SignData;
 using tao::Statement;
+using tao::Tao;
 using tao::WhitelistAuth;
 
 DEFINE_string(host, "localhost", "The interface to listen on");
@@ -128,7 +131,8 @@ int main(int argc, char **argv) {
     }
 
     string *sig = policy_attest.mutable_signature();
-    if (!policy_key->Sign(*serialized_policy_statement, sig)) {
+    if (!SignData(*serialized_policy_statement, Tao::AttestationSigningContext,
+                  sig, policy_key.get())) {
       LOG(ERROR) << "Could not sign the policy statement";
       continue;
     }

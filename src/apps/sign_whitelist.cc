@@ -30,11 +30,15 @@
 #include <keyczar/rw/keyset_file_reader.h>
 
 #include "tao/hosted_programs.pb.h"
+#include "tao/util.h"
+#include "tao/whitelist_auth.h"
 
 using std::string;
 using std::stringstream;
 using std::ifstream;
 using std::ofstream;
+using tao::SignData;
+using tao::WhitelistAuth;
 
 DEFINE_string(whitelist_file, "whitelist",
               "The name of the whitelist protobuf file to sign");
@@ -70,8 +74,8 @@ int main(int argc, char** argv) {
   size_t len = whitelist_buf.str().size();
   CHECK(len > 0) << "Could not read any bytes from the whitelist file";
   string sig;
-  CHECK(signer->Sign(whitelist_buf.str(), &sig))
-      << "Could not sign whitelist file";
+  CHECK(SignData(whitelist_buf.str(), WhitelistAuth::WhitelistSigningContext,
+                 &sig, signer.get())) << "Could not sign whitelist file";
 
   tao::SignedWhitelist sw;
   sw.set_serialized_whitelist(whitelist_buf.str());

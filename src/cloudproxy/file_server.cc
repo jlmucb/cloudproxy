@@ -55,7 +55,6 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
       hmac_key_(new string()),
       file_path_(file_path),
       meta_path_(meta_path) {
-  LOG(INFO) << "now in the file server constructor";
   // check to see if these paths actually exist
   struct stat st;
   CHECK_EQ(stat(file_path_.c_str(), &st), 0) << "Could not stat the directory "
@@ -68,15 +67,13 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
   CHECK(S_ISDIR(st.st_mode)) << "The path " << meta_path_
                              << " is not a directory";
 
+  // TODO(tmroeder): this key should be protected with the same Tao-sealed
+  // secret as the OpenSSL keys.
   // get binary data from the hmac
   main_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  LOG(INFO) << "About to derive keys";
 
   // generate keys
-  CHECK(DeriveKeys(main_key_.get(), &enc_key_, &hmac_key_))
-      << "Could not derive keys for authenticated encryption";
-
   CHECK(DeriveKeys(main_key_.get(), &enc_key_, &hmac_key_))
       << "Could not derive enc and hmac keys for authenticated encryption";
 }
@@ -124,7 +121,7 @@ bool FileServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
     }
   }
 
-  LOG(INFO) << "Created the file " << path << " and its metadata " << meta_path;
+  VLOG(2) << "Created the file " << path << " and its metadata " << meta_path;
   return true;
 }
 

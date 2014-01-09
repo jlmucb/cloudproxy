@@ -681,7 +681,7 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
 }
 
 bool CreateTempPubKey(ScopedTempDir *temp_dir, scoped_ptr<Keyczar> *key) {
-  if (!CreateTempDir("create_key_test", temp_dir)) {
+  if (!CreateTempDir("cloudproxy_test_dir", temp_dir)) {
     LOG(ERROR) << "Could not create a temp dir";
     return false;
   }

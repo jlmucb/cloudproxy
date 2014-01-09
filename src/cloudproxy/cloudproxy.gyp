@@ -29,6 +29,7 @@
         'cloud_auth_unittests.cc',
         'cloud_client_server_unittests.cc',
         'cloud_server_thread_data_unittests.cc',
+        'cloud_user_manager_unittests.cc',
         'cloudproxy_test.cc',
         'util_unittests.cc',
       ],

@@ -56,6 +56,8 @@ class FileServer : public CloudServer {
 
   virtual ~FileServer() {}
 
+  constexpr static auto ObjectMetadataSigningContext =
+      "FileServer cloudproxy::HmacObjectMetadata Version 1";
  protected:
   /// @{
   /// Check a file action and perform the operation it requests.

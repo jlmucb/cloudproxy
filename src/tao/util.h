@@ -119,16 +119,21 @@ bool SerializePublicKey(const keyczar::Keyczar &key, KeyczarPublicKey *kpk);
 
 /// Sign data with a key using Keyczar.
 /// @param data The data to sign.
+/// @param context The context string to add to the tao::Signature. WARNING: for
+/// security, this must be unique for each context in which signed messages are
+/// used.
 /// @param[out] signature The resulting signature.
 /// @param key The key to use for signing.
-bool SignData(const string &data, string *signature, keyczar::Keyczar *key);
+bool SignData(const string &data, const string &context, string *signature,
+              keyczar::Keyczar *key);
 
 /// Verify a signature using Keyczar.
 /// @param data The data that was signed.
+/// @param context The context to check in the tao::Signature.
 /// @param signature The signature on the data.
 /// @param key The key to use for verification.
-bool VerifySignature(const string &data, const string &signature,
-                     keyczar::Keyczar *key);
+bool VerifySignature(const string &data, const string &context,
+                     const string &signature, keyczar::Keyczar *key);
 
 /// Copy the value of a public key into another keyset.
 /// @param public_key The key to copy.

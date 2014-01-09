@@ -41,10 +41,16 @@
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
+#include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/file_server.h"
 #include "tao/keyczar_public_key.pb.h"
+#include "tao/tao_auth.h"
 #include "tao/util.h"
 
+
+using cloudproxy::CloudAuth;
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 using keyczar::Key;
@@ -63,6 +69,7 @@ using keyczar::rw::KeysetPBEJSONFileWriter;
 
 using tao::Tao;
 using tao::KeyczarPublicKey;
+using tao::SignData;
 using tao::VerifySignature;
 
 using std::ifstream;
@@ -159,7 +166,8 @@ bool ExtractACL(const string &signed_acls_file, keyczar::Keyczar *key,
   cloudproxy::SignedACL sacl;
   sacl.ParseFromString(sig_buf.str());
 
-  if (!VerifySignature(sacl.serialized_acls(), sacl.signature(), key)) {
+  if (!VerifySignature(sacl.serialized_acls(), CloudAuth::ACLSigningContext,
+                       sacl.signature(), key)) {
     return false;
   }
 
@@ -350,6 +358,8 @@ bool DeriveKeys(keyczar::Keyczar *main_key,
   keyczar::base::ScopedSafeString temp_aes_key(new string());
   keyczar::base::ScopedSafeString temp_hmac_key(new string());
 
+  // Note that this is not an application of a signature in the normal sense, so
+  // it does not need to be transformed into an application of tao::SignData.
   CHECK(main_key->Sign(aes_context, temp_aes_key.get()))
       << "Could not derive the aes key";
   CHECK(main_key->Sign(hmac_context, temp_hmac_key.get()))
@@ -599,7 +609,8 @@ bool ReceiveAndEncryptStreamData(
   om.SerializeToString(&serialized_metadata);
 
   string metadata_hmac;
-  if (!main_key->Sign(serialized_metadata, &metadata_hmac)) {
+  if (!SignData(serialized_metadata, FileServer::ObjectMetadataSigningContext,
+                &metadata_hmac, main_key)) {
     LOG(ERROR) << "Could not compute an HMAC for the metadata for this file";
     return false;
   }
@@ -644,14 +655,11 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
   hom.ParseFromIstream(&mf);
 
   // check the hmac
-  string computed_hmac;
-  if (!main_key->Sign(hom.serialized_metadata(), &computed_hmac)) {
-    LOG(ERROR) << "Could not recompute the HMAC of the object metadata";
-    return false;
-  }
-
-  if (computed_hmac.compare(hom.hmac()) != 0) {
-    LOG(ERROR) << "The HMAC of the data didn't match the computed HMAC";
+  if (!VerifySignature(hom.serialized_metadata(),
+                       FileServer::ObjectMetadataSigningContext,
+                       hom.hmac(),
+                       main_key)) {
+    LOG(ERROR) << "The object HMAC did not pass verification";
     return false;
   }
 
@@ -785,7 +793,7 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
     return false;
   }
 
-  computed_hmac.assign(reinterpret_cast<char *>(dec_buf.get()), out_hmac_len);
+  string computed_hmac(reinterpret_cast<char *>(dec_buf.get()), out_hmac_len);
   if (om.hmac().compare(computed_hmac) != 0) {
     LOG(ERROR)
         << "The computed HMAC for the file did not match the stored hmac";

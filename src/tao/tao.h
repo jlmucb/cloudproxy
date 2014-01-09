@@ -120,6 +120,9 @@ class Tao {
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const = 0;
 
+  constexpr static auto AttestationSigningContext =
+      "tao::Attestation Version 1";
+
  private:
   DISALLOW_COPY_AND_ASSIGN(Tao);
 };

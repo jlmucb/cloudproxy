@@ -65,7 +65,8 @@ class CloudAuthTest : public ::testing::Test {
     EXPECT_TRUE(acl.SerializeToString(ser)) << "Could not serialize ACL";
 
     string *sig = sacl.mutable_signature();
-    EXPECT_TRUE(SignData(*ser, sig, policy_public_key_.get()))
+    EXPECT_TRUE(SignData(*ser, CloudAuth::ACLSigningContext, sig,
+                         policy_public_key_.get()))
         << "Could not sign the serialized ACL with the policy key";
 
     string signed_whitelist_path = *temp_dir_ + string("/signed_whitelist");

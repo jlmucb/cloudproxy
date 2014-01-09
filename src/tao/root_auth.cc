@@ -23,6 +23,7 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
+#include "tao/tao.h"
 #include "tao/util.h"
 
 using keyczar::Keyczar;
@@ -86,7 +87,8 @@ bool RootAuth::CheckRootSignature(const Attestation &a) const {
   VLOG(2) << "a.signature().size = " << (int)a.signature().size();
 
   // Verify against the policy key.
-  if (!policy_key_->Verify(a.serialized_statement(), a.signature())) {
+  if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
+                       a.signature(), policy_key_.get())) {
     LOG(ERROR) << "Verification failed with the policy key";
     return false;
   }

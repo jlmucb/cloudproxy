@@ -69,6 +69,8 @@ class WhitelistAuth : public TaoAuth {
                             const string &program_hash) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
+  constexpr static auto WhitelistSigningContext =
+      "tao::SignedWhitelist Version 1";
  private:
   string whitelist_path_;
 

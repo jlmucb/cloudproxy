@@ -32,6 +32,7 @@
 #include <keyczar/base/file_util.h>
 
 #include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_client.h"
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/util.h"
@@ -417,7 +418,9 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
     CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
 
     // check the signature on the serialized_challenge
-    if (!VerifySignature(response.serialized_chall(), response.signature(),
+    if (!VerifySignature(response.serialized_chall(),
+                         CloudClient::ChallengeSigningContext,
+                         response.signature(),
                          user_key)) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");

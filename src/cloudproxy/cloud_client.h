@@ -144,6 +144,8 @@ class CloudClient {
   /// @param error Whether or not this close operation is due to an error.
   bool Close(SSL *ssl, bool error);
 
+  constexpr static auto ChallengeSigningContext =
+      "CloudClient cloudproxy::Challenge Version 1";
  protected:
   /// A helper method to send an action to the server and handle the reply, if
   /// necessary.

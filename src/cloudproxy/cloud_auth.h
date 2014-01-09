@@ -73,6 +73,8 @@ class CloudAuth {
   /// @param[out] data A string to fill with the serialized representation.
   virtual bool Serialize(string *data);
 
+  constexpr static auto ACLSigningContext =
+      "CloudAuth cloudproxy::SignedACL Version 1";
  protected:
   /// Look up a set of permissions for a subject/object pair.
   /// @param subject The subject to look for.

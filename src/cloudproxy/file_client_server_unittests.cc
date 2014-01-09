@@ -42,12 +42,14 @@
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
+#include "tao/tao_auth.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
 using cloudproxy::ACL;
 using cloudproxy::Action;
 using cloudproxy::CloudAuth;
+using cloudproxy::CloudUserManager;
 using cloudproxy::FileClient;
 using cloudproxy::FileServer;
 using cloudproxy::CreateUserECDSAKey;
@@ -145,7 +147,9 @@ class FileClientTest : public ::testing::Test {
     ASSERT_TRUE(w.SerializeToString(serialized_whitelist));
 
     string *signature = sw.mutable_signature();
-    ASSERT_TRUE(policy_key_->Sign(*serialized_whitelist, signature));
+    ASSERT_TRUE(SignData(*serialized_whitelist,
+                         WhitelistAuth::WhitelistSigningContext,
+                         signature, policy_key_.get()));
 
     ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
@@ -205,7 +209,8 @@ class FileClientTest : public ::testing::Test {
     EXPECT_TRUE(acl.SerializeToString(ser)) << "Could not serialize ACL";
 
     string *sig = sacl.mutable_signature();
-    EXPECT_TRUE(SignData(*ser, sig, policy_key_.get()))
+    EXPECT_TRUE(SignData(*ser, CloudAuth::ACLSigningContext, sig,
+                         policy_key_.get()))
         << "Could not sign the serialized ACL with the policy key";
 
     string signed_acl_path = *temp_dir_ + string("/signed_acl");
@@ -271,7 +276,9 @@ class FileClientTest : public ::testing::Test {
     EXPECT_TRUE(sf.SerializeToString(sf_serialized));
 
     string *sf_sig = ssf.mutable_signature();
-    EXPECT_TRUE(SignData(*sf_serialized, sf_sig, policy_key_.get()));
+    EXPECT_TRUE(SignData(*sf_serialized,
+                         CloudUserManager::SpeaksForSigningContext, sf_sig,
+                         policy_key_.get()));
 
     tmroeder_ssf_path_ = *temp_dir_ + string("/tmroeder_ssf");
     ofstream ssf_file(tmroeder_ssf_path_.c_str());
@@ -299,7 +306,9 @@ class FileClientTest : public ::testing::Test {
     EXPECT_TRUE(sf2.SerializeToString(sf_serialized2));
 
     string *sf_sig2 = ssf2.mutable_signature();
-    EXPECT_TRUE(SignData(*sf_serialized2, sf_sig2, policy_key_.get()));
+    EXPECT_TRUE(SignData(*sf_serialized2,
+                         CloudUserManager::SpeaksForSigningContext, sf_sig2,
+                         policy_key_.get()));
 
     jlm_ssf_path_ = *temp_dir_ + string("/jlm_ssf");
     ofstream ssf_file2(jlm_ssf_path_.c_str());

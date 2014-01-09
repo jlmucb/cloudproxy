@@ -104,8 +104,8 @@ bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
 bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
                               keyczar::Keyczar *verifier) {
   // check the signature for this binding
-  if (!VerifySignature(ssf.serialized_speaks_for(), ssf.signature(),
-                       verifier)) {
+  if (!VerifySignature(ssf.serialized_speaks_for(), SpeaksForSigningContext,
+                       ssf.signature(), verifier)) {
     LOG(ERROR) << "The SignedSpeaksFor was not correctly signed";
     return false;
   }

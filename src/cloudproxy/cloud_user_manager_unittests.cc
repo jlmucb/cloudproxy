@@ -65,7 +65,9 @@ class CloudUserManagerTest : public ::testing::Test {
     EXPECT_TRUE(sf.SerializeToString(sf_serialized));
 
     string *sf_sig = ssf.mutable_signature();
-    EXPECT_TRUE(SignData(*sf_serialized, sf_sig, policy_key_.get()));
+    EXPECT_TRUE(SignData(*sf_serialized,
+                         CloudUserManager::SpeaksForSigningContext, sf_sig,
+                         policy_key_.get()));
 
     tmroeder_ssf_path_ = *temp_dir_ + string("/tmroeder_ssf");
     ofstream ssf_file(tmroeder_ssf_path_.c_str());
@@ -94,7 +96,9 @@ class CloudUserManagerTest : public ::testing::Test {
     EXPECT_TRUE(sf2.SerializeToString(sf_serialized2));
 
     string *sf_sig2 = ssf2.mutable_signature();
-    EXPECT_TRUE(SignData(*sf_serialized2, sf_sig2, policy_key_.get()));
+    EXPECT_TRUE(SignData(*sf_serialized2,
+                         CloudUserManager::SpeaksForSigningContext, sf_sig2,
+                         policy_key_.get()));
 
     jlm_ssf_path_ = *temp_dir_ + string("/jlm_ssf");
     ofstream ssf_file2(jlm_ssf_path_.c_str());

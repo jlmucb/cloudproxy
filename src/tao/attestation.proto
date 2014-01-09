@@ -51,7 +51,8 @@ message Attestation {
   // public_key is the serialized_statement.
   required bytes serialized_statement = 2;
 
-  // A signature on the serialized statement
+  // A signature on the serialized statement; this signature is made using
+  // tao::SignData with a context "tao::Attestation Statement version 1".
   required bytes signature = 3;
 
   // A TPM 1.2 Quote, if needed

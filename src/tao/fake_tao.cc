@@ -5,6 +5,7 @@
 #include <keyczar/crypto_factory.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
@@ -111,7 +112,8 @@ bool FakeTao::Attest(const string &child_hash, const string &data,
   a.set_type(ROOT);
   a.set_serialized_statement(serialized_statement);
   string *sig = a.mutable_signature();
-  if (!policy_key_->Sign(serialized_statement, sig)) {
+  if (!SignData(serialized_statement, AttestationSigningContext, sig,
+                policy_key_.get())) {
     LOG(ERROR) << "Could not sign the data";
     return false;
   }

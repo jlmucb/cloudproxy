@@ -50,6 +50,7 @@
 
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/kvm_unix_tao_child_channel.h"
+#include "tao/signature.pb.h"
 
 using keyczar::base::Base64WEncode;
 using keyczar::Crypter;
@@ -405,8 +406,23 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
   return true;
 }
 
-bool SignData(const string &data, string *signature, Keyczar *key) {
-  if (!key->Sign(data, signature)) {
+bool SignData(const string &data, const string &context, string *signature,
+              Keyczar *key) {
+  if (context.empty()) {
+    LOG(ERROR) << "Cannot sign a message with an empty context";
+    return false;
+  }
+
+  SignedData s;
+  s.set_context(context);
+  s.set_data(data);
+  string serialized;
+  if (!s.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the message and context together";
+    return false;
+  }
+
+  if (!key->Sign(serialized, signature)) {
     LOG(ERROR) << "Could not sign the data";
     return false;
   }
@@ -414,9 +430,23 @@ bool SignData(const string &data, string *signature, Keyczar *key) {
   return true;
 }
 
-bool VerifySignature(const string &data, const string &signature,
-                     keyczar::Keyczar *key) {
-  if (!key->Verify(data, signature)) {
+bool VerifySignature(const string &data, const string &context,
+                     const string &signature, keyczar::Keyczar *key) {
+  if (context.empty()) {
+    LOG(ERROR) << "Cannot sign a message with an empty context";
+    return false;
+  }
+
+  SignedData s;
+  s.set_context(context);
+  s.set_data(data);
+  string serialized;
+  if (!s.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the message and context together";
+    return false;
+  }
+
+  if (!key->Verify(serialized, signature)) {
     LOG(ERROR) << "Verify failed";
     return false;
   }

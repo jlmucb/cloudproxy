@@ -93,6 +93,8 @@ class CloudUserManager {
   /// @param user The user to check.
   bool IsAuthenticated(const string &user);
 
+  constexpr static auto SpeaksForSigningContext =
+      "CloudUserManager cloudproxy::SignedSpeaksFor Version 1";
  private:
   // A set of users and their keys.
   map<string, shared_ptr<keyczar::Keyczar> > users_;

@@ -55,7 +55,8 @@ bool WhitelistAuth::Init() {
 
   SignedWhitelist sw;
   sw.ParseFromIstream(&whitelist);
-  if (!policy_key_->Verify(sw.serialized_whitelist(), sw.signature())) {
+  if (!VerifySignature(sw.serialized_whitelist(), WhitelistSigningContext,
+                       sw.signature(), policy_key_.get())) {
     LOG(ERROR) << "The signature did not verify on the signed whitelist";
     return false;
   }
@@ -238,7 +239,8 @@ bool WhitelistAuth::CheckRootSignature(const Attestation &a) const {
   VLOG(2) << "a.signature().size = " << (int)a.signature().size();
 
   // Verify against the policy key.
-  if (!policy_key_->Verify(a.serialized_statement(), a.signature())) {
+  if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
+                       a.signature(), policy_key_.get())) {
     LOG(ERROR) << "Verification failed with the policy key";
     return false;
   }
@@ -275,7 +277,8 @@ bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
 
   scoped_ptr<Verifier> v(new Verifier(k));
   v->set_encoding(Keyczar::NO_ENCODING);
-  if (!v->Verify(a.serialized_statement(), a.signature())) {
+  if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
+                       a.signature(), v.get())) {
     LOG(ERROR) << "The statement in an attestation did not have a valid "
                   "signature from its public key";
     return false;

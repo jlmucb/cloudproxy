@@ -95,6 +95,7 @@
         'root_auth.cc',
         'root_auth.h',
         'sealed_data.proto',
+        'signature.proto',
         'tao_auth.h',
         'tao_channel.cc',
         'tao_channel_factory.h',

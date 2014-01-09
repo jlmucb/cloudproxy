@@ -59,6 +59,7 @@ using tao::HostedProgram;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
 using tao::ScopedTempDir;
+using tao::SignData;
 using tao::SignedWhitelist;
 using tao::Tao;
 using tao::TaoChannel;
@@ -142,7 +143,9 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(w.SerializeToString(serialized_whitelist));
 
     string *signature = sw.mutable_signature();
-    ASSERT_TRUE(policy_key_->Sign(*serialized_whitelist, signature));
+    ASSERT_TRUE(SignData(*serialized_whitelist,
+                         WhitelistAuth::WhitelistSigningContext,
+                         signature, policy_key_.get()));
 
     ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));

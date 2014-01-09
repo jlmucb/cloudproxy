@@ -94,7 +94,10 @@ class WhitelistAuthTest : public ::testing::Test {
     ASSERT_TRUE(w.SerializeToString(serialized_whitelist));
 
     string *signature = sw.mutable_signature();
-    ASSERT_TRUE(policy_key_->Sign(*serialized_whitelist, signature));
+
+    ASSERT_TRUE(SignData(*serialized_whitelist,
+                         WhitelistAuth::WhitelistSigningContext, signature,
+                         policy_key_.get()));
 
     ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
     ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
@@ -314,7 +317,8 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
   EXPECT_TRUE(s1.SerializeToString(ser_1)) << "Could not serialized stat 1";
 
   string *sig_1 = a1.mutable_signature();
-  EXPECT_TRUE(SignData(*ser_1, sig_1, key_1.get())) << "Could not sign key 2";
+  EXPECT_TRUE(SignData(*ser_1, Tao::AttestationSigningContext, sig_1,
+                       key_1.get())) << "Could not sign key 2";
 
   string level_2_cert;
   EXPECT_TRUE(a1.SerializeToString(&level_2_cert))
@@ -335,7 +339,8 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
   EXPECT_TRUE(s2.SerializeToString(ser_2)) << "Could not serialize stat 2";
 
   string *sig_2 = a2.mutable_signature();
-  EXPECT_TRUE(SignData(*ser_2, sig_2, key_2.get())) << "Could not sign data";
+  EXPECT_TRUE(SignData(*ser_2, Tao::AttestationSigningContext, sig_2,
+                       key_2.get())) << "Could not sign data";
 
   string top_attestation;
   EXPECT_TRUE(a2.SerializeToString(&top_attestation))

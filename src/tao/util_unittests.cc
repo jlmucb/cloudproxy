@@ -181,12 +181,12 @@ TEST(TaoUtilTest, DeserializeKeyTest) {
   // the original key and verifying it with the deserialized version.
 
   string message("Test message");
+  string context("Test context");
   string signature;
-  EXPECT_TRUE(policy_key->Sign(message, &signature))
-      << "Could not sign the message";
+  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()));
 
-  EXPECT_TRUE(public_policy_key->Verify(message, signature))
-      << "The signature did not pass verification";
+  EXPECT_TRUE(VerifySignature(message, context, signature,
+                              public_policy_key.get()));
 }
 
 TEST(TaoUtilTest, SignDataTest) {
@@ -196,8 +196,9 @@ TEST(TaoUtilTest, SignDataTest) {
       << "Could not create a key";
 
   string message("Test message");
+  string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
       << "Could not sign the test message";
 }
 
@@ -208,12 +209,42 @@ TEST(TaoUtilTest, VerifyDataTest) {
       << "Could not create a key";
 
   string message("Test message");
+  string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
       << "Could not sign the test message";
 
-  EXPECT_TRUE(VerifySignature(message, signature, policy_key.get()))
+  EXPECT_TRUE(VerifySignature(message, context, signature, policy_key.get()))
       << "The signature did not pass verification";
+}
+
+TEST(TaoUtilTest, WrongContextTest) {
+  ScopedTempDir temp_dir;
+  scoped_ptr<Keyczar> policy_key;
+  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
+      << "Could not create a key";
+
+  string message("Test message");
+  string context("Test context");
+  string signature;
+  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
+      << "Could not sign the test message";
+
+  EXPECT_FALSE(VerifySignature(message, "Wrong context", signature,
+                               policy_key.get()));
+}
+
+TEST(TaoUtilTest, NoContextTest) {
+  ScopedTempDir temp_dir;
+  scoped_ptr<Keyczar> policy_key;
+  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key));
+
+  string message("Test message");
+  string context;
+  string signature;
+  EXPECT_FALSE(SignData(message, context, &signature, policy_key.get()));
+  EXPECT_FALSE(VerifySignature(message, context, signature,
+                               policy_key.get()));
 }
 
 TEST(TaoUtilTest, CopyPublicKeysetTest) {
@@ -231,11 +262,12 @@ TEST(TaoUtilTest, CopyPublicKeysetTest) {
 
   // Make sure that the copied keyset can verify a signature.
   string message("Test message");
+  string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
       << "Could not sign the test message";
 
-  EXPECT_TRUE(VerifySignature(message, signature, pub_key.get()))
+  EXPECT_TRUE(VerifySignature(message, context, signature, pub_key.get()))
       << "The signature did not pass verification";
 }
 

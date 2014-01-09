@@ -445,7 +445,8 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
   }
 
   string signature;
-  if (!signer_->Sign(serialized_statement, &signature)) {
+  if (!SignData(serialized_statement, AttestationSigningContext, &signature,
+                signer_.get())) {
     LOG(ERROR) << "Could not sign the attestation";
     return false;
   }

@@ -224,8 +224,8 @@ bool CloudClient::Authenticate(SSL *ssl, const string &subject,
       << "Challenge for the wrong subject";
 
   string sig;
-  CHECK(SignData(serialized_chall, &sig, signer)) << "Could not sign the"
-                                                     " challenge";
+  CHECK(SignData(serialized_chall, ChallengeSigningContext, &sig, signer))
+      << "Could not sign the challenge";
 
   ClientMessage cm2;
   Response *r = cm2.mutable_response();

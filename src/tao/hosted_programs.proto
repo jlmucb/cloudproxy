@@ -42,8 +42,9 @@ message Whitelist {
 message SignedWhitelist {
     // a serialized Whitelist message
     required string serialized_whitelist = 1;
-    
-    // the signature on this message
+
+    // the signature on this message. This is computed using tao::SignData with
+    // a context "tao::SignedWhitelist Version 1"
     required bytes signature = 2;
 }
 

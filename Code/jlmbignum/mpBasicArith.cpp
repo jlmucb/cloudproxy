@@ -169,6 +169,7 @@ void printNum(bnum& bnA, bool fFull=false)
 bnum    g_bnZero(1);
 bnum    g_bnOne(1);
 bnum    g_bnTwo(1);
+bnum    g_bnThree(1);
 
 
 void initBigNum()
@@ -176,6 +177,7 @@ void initBigNum()
     g_bnZero.m_pValue[0]= 0ULL;
     g_bnOne.m_pValue[0]= 1ULL;
     g_bnTwo.m_pValue[0]= 2ULL;
+    g_bnThree.m_pValue[0]= 3ULL;
 }
 
 

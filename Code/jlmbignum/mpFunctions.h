@@ -70,6 +70,9 @@ bool            mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR);
 bool            mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR);
 bool            mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR,
                             int r, bnum& bnMPrime, bnum& bnRmodM, bnum& bnRsqmodM);
+bool            mpModisSquare(bnum& bnX, bnum& bnM);
+bool            mpTonelliShanks(bnum& bnX, bnum& bnP, bnum& bnR);
+bool            mpModSquareRoot(bnum& bnX, bnum& bnM, bnum& R);
 
 bool            mpShiftInPlace(bnum& bnA, int iShiftNumBits);
 bool            mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, 

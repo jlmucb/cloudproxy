@@ -34,6 +34,8 @@
 #include "logging.h"
 #include "cryptoHelper.h"
 #include "fastArith.h"
+#include "ecc.h"
+#include "nist.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -443,6 +445,195 @@ char uCompareSymbol(bnum& bnA, bnum& bnB)
 }
 
 
+// 3 (mod 4)
+//#define TP 19
+// 5 (mod 8)
+//#define TP 13
+// 1 (mod 8)
+#define TP 17
+
+
+bool squareRootTest()
+{
+    bnum    bnA(1);
+    bnum    bnP(1);
+    bnum    bnS(1);
+    bool    fSquare;
+
+    bnP.m_pValue[0]= (u64)TP;
+    for(int i=1; i<TP;i++) {
+        bnA.m_pValue[0]= (u64)i;
+        fSquare= mpModisSquare(bnA, bnP);
+        if(!fSquare) {
+            printf("%d is not a square root mod %d\n", i, TP);
+            continue;
+        }
+        if(!mpModSquareRoot(bnA, bnP, bnS)) {
+            printf("Cant find square root of %d mod %d\n", i, TP);
+        }
+        printf("sqrt(%d) (mod %d)= %d\n", i, TP, (int)bnS.m_pValue[0]);
+    }
+
+    return true;
+}
+
+
+bool eccTest()
+{
+#ifdef SMALLTEST
+    ECurve  smallCurve;
+
+    // E: y^2= x^3+4x+4 (mod 5) (1,2)+(4,3)=(4,2)
+    smallCurve.m_bnM= new bnum(1);
+    smallCurve.m_bnA= new bnum(1);
+    smallCurve.m_bnB= new bnum(1);
+    smallCurve.m_bnDisc= new bnum(1);
+    smallCurve.m_bnM->m_pValue[0]= 5ULL;
+    smallCurve.m_bnA->m_pValue[0]= 4ULL;
+    smallCurve.m_bnB->m_pValue[0]= 4ULL;
+
+    ECPoint     P(&smallCurve,1);
+    ECPoint     Q(&smallCurve,1);
+    ECPoint     R(&smallCurve,1);
+
+    printf("\n\nE: y^2= x^3+4x+4 (mod 5) (1,2)+(4,3)=(4,2)\n");
+    P.m_bnX= new bnum(1);
+    P.m_bnY= new bnum(1);
+    P.m_bnZ= new bnum(1);
+    P.m_bnX->m_pValue[0]= 1ULL;
+    P.m_bnY->m_pValue[0]= 2ULL;
+    P.m_bnZ->m_pValue[0]= 1ULL;
+
+    Q.m_bnX= new bnum(1);
+    Q.m_bnY= new bnum(1);
+    Q.m_bnZ= new bnum(1);
+    Q.m_bnX->m_pValue[0]= 4ULL;
+    Q.m_bnY->m_pValue[0]= 3ULL;
+    Q.m_bnZ->m_pValue[0]= 1ULL;
+
+    R.m_bnX= new bnum(1);
+    R.m_bnY= new bnum(1);
+    R.m_bnZ= new bnum(1);
+    R.m_bnZ->m_pValue[0]= 1ULL;
+
+    ecAdd(P, Q, R);
+    P.printMe();
+    printf("+");
+    Q.printMe();
+    printf("=");
+    R.printMe();
+
+    // E: y^2= x^3+4x+4 (mod 2773) 2(1,3)=(1771,705)
+    printf("\n\nE: y^2= x^3+4x+4 (mod 2773) 2(1,3)=(1771,705)\n");
+    P.m_bnX->m_pValue[0]= 1ULL;
+    P.m_bnY->m_pValue[0]= 3ULL;
+    P.m_bnZ->m_pValue[0]= 1ULL;
+
+    Q.m_bnX->m_pValue[0]= 1ULL;
+    Q.m_bnY->m_pValue[0]= 3ULL;
+    Q.m_bnZ->m_pValue[0]= 1ULL;
+
+    R.m_bnX->m_pValue[0]= 0ULL;
+    R.m_bnY->m_pValue[0]= 0ULL;
+    R.m_bnZ->m_pValue[0]= 1ULL;
+
+    smallCurve.m_bnM->m_pValue[0]= 2773ULL;
+    ecAdd(P, Q, R);
+    P.printMe();
+    printf("+");
+    Q.printMe();
+    printf("=");
+    R.printMe();
+    printf("?=(%d,%d)\n", R.m_bnX->m_pValue[0], R.m_bnY->m_pValue[0]);
+
+    bnum    bnMult(1);
+    bnMult.m_pValue[0]= 1ULL;
+    
+    R.m_bnX->m_pValue[0]= 0ULL;
+    R.m_bnY->m_pValue[0]= 0ULL;
+    R.m_bnZ->m_pValue[0]= 1ULL;
+    ecMult(P, bnMult, R);
+    printf("\n");
+    printNum(bnMult);
+    printf("*");
+    P.printMe();
+    printf("=");
+    R.printMe();
+
+    bnMult.m_pValue[0]= 2ULL;
+    
+    R.m_bnX->m_pValue[0]= 0ULL;
+    R.m_bnY->m_pValue[0]= 0ULL;
+    R.m_bnZ->m_pValue[0]= 1ULL;
+    ecMult(P, bnMult, R);
+    printf("\n");
+    printNum(bnMult);
+    printf("*");
+    P.printMe();
+    printf("=");
+    R.printMe();
+#endif
+
+    // initialize NIST curves
+    if(!initNist()) {
+        printf("eccTest: initnist failed\n");
+        return false;
+    }
+
+#ifdef TEST
+    nist256curve.printMe();
+#endif
+    ECKey  myKey(&nist256curve);
+
+    myKey.m_generator= new ECPoint(&nist256curve, 4);
+    myKey.m_base= new ECPoint(&nist256curve, 4);;
+    myKey.m_secret= new bnum(4);
+    if(!myKey.setGenerator(*nist256curve.m_bnGx, *nist256curve.m_bnGy)) {
+        printf("eccTest: cant setGenerator()\n");
+        return false;
+    }
+    if(!myKey.makePrivateKey()) {
+        printf("eccTest: cant makePrivateKey()\n");
+        return false;
+    }
+    if(!myKey.computePublic()) {
+        printf("eccTest: cant computePublic()\n");
+        return false;
+    }
+#ifdef TEST
+    myKey.printMe();
+#endif
+
+    bnum        Message(6);
+    ECPoint     R1(&nist256curve,6);
+    ECPoint     R2(&nist256curve,6);
+    bnum        decryptedMessage(6);
+
+    Message.m_pValue[0]= 0x01234ULL;
+
+    printf("ECC Test, nist 256 curve, message: ");
+    printNum(Message);
+    printf("\n");
+
+    if(!ecEncrypt(myKey, Message, R1, R2)) {
+        printf("Cant ecEncrypt\n");
+        return false;
+    }
+    printf("Encrypted message: ");
+    R1.printMe();
+    R2.printMe();
+    if(!ecDecrypt(myKey, R1, R2, decryptedMessage)) {
+        printf("Cant ecDecrypt\n");
+        return false;
+    }
+    printf("Decrypted message: ");
+    printNum(decryptedMessage);
+    printf("\n");
+    
+    return true;
+}
+
+
 bool singlersaTest(RSAKey* pKey, int sizein, byte* in, bool fFast=false)
 {
     bool    fRet= true;
@@ -708,7 +899,7 @@ bool monttests()
     memcpy(bnIn.m_pValue, testmessage,32);
 
     for(i=0;i<15;i++) {
-	if(!mpModExp(bnIn, *(pKey->m_pbnE), *(pKey->m_pbnM), bnEncrypted)) {
+        if(!mpModExp(bnIn, *(pKey->m_pbnE), *(pKey->m_pbnM), bnEncrypted)) {
             printf("Can't encrypt\n");
             return false;
         }
@@ -730,7 +921,7 @@ bool monttests()
         }
         mpZeroNum(bnEncrypted);
         mpZeroNum(bnDecrypted);
-	bnIn.m_pValue[0]++;
+        bnIn.m_pValue[0]++;
     }
     return fRet;
 }
@@ -1568,6 +1759,25 @@ int main(int an, char** av)
             throw((char*)"Cant init numbers");
         }
 
+        if(eccTest()) {
+            printf("eccTest succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("eccTest failed\n");
+        }
+        printf("\n");
+
+#if 0
+        if(squareRootTest()) {
+            printf("squareRootTest succeeded\n");
+        }
+        else {
+            fAllTests= false;
+            printf("squareRootTest failed\n");
+        }
+        printf("\n");
+
         if(monttests()) {
             printf("monttests succeeded\n");
         }
@@ -1879,6 +2089,7 @@ int main(int an, char** av)
 
         if(!udividetests()) 
             throw((char*)"special test fails");
+#endif
 
         if(fAllTests)
             printf("\nTests completed, all tests PASSED\n");

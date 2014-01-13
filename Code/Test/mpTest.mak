@@ -8,12 +8,11 @@ B=          $(E)/mptestobjects
 SC=         ../commonCode
 SCD=	    ../jlmcrypto
 SBM=	    ../jlmbignum
+ECC=	    ../ecc
 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-#CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D DEBUGUDIV -D TEST
-#CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O1 -D NOAESNI -D FAST -D DEBUGUDIV -D TEST
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST 
-CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST 
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST -D TEST
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
@@ -23,7 +22,8 @@ tobjs=  $(B)/mpTest.o $(B)/logging.o $(B)/mpBasicArith.o  $(B)/mpModArith.o \
 	$(B)/mpNumTheory.o $(B)/modesandpadding.o $(B)/cryptoHelper.o \
 	$(B)/aes.o $(B)/sha256.o $(B)/jlmcrypto.o $(B)/hmacsha256.o \
 	$(B)/tinystr.o $(B)/tinyxmlerror.o $(B)/tinyxml.o $(B)/tinyxmlparser.o \
-	$(B)/sha1.o $(B)/jlmUtility.o $(B)/keys.o $(B)/fastArith.o
+	$(B)/sha1.o $(B)/jlmUtility.o $(B)/keys.o $(B)/fastArith.o \
+	$(B)/eccops.o $(B)/ecccrypt.o $(B)/nist.o
 
 all: $(E)/mpTest.exe
 
@@ -32,7 +32,7 @@ $(E)/mpTest.exe: $(tobjs)
 	$(LINK) -o $(E)/mpTest.exe $(tobjs)
 
 $(B)/mpTest.o: mpTest.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -D TEST -c -o $(B)/mpTest.o mpTest.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -I$(ECC) -D TEST -c -o $(B)/mpTest.o mpTest.cpp
 
 $(B)/jlmErrors.o: $(SC)/jlmErrors.cpp $(SC)/jlmErrors.h
 	$(CC) $(CFLAGS) -I$(SC) -c -o $(B)/jlmErrors.o $(SC)/jlmErrors.cpp
@@ -88,6 +88,15 @@ $(B)/mpModArith.o: $(SBM)/mpModArith.cpp
 
 $(B)/mpNumTheory.o: $(SBM)/mpNumTheory.cpp
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -c -o $(B)/mpNumTheory.o $(SBM)/mpNumTheory.cpp
+
+$(B)/eccops.o: $(ECC)/eccops.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -I$(ECC) -c -o $(B)/eccops.o $(ECC)/eccops.cpp
+
+$(B)/ecccrypt.o: $(ECC)/ecccrypt.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -I$(ECC) -c -o $(B)/ecccrypt.o $(ECC)/ecccrypt.cpp
+
+$(B)/nist.o: $(ECC)/nist.cpp
+	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -I$(ECC) -c -o $(B)/nist.o $(ECC)/nist.cpp
 
 $(B)/logging.o: $(SC)/logging.cpp 
 	$(CC) $(CFLAGS) -I$(SC) -I$(SCD) -I$(SBM) -c -o $(B)/logging.o $(SC)/logging.cpp

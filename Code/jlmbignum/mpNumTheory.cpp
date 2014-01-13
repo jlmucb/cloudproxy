@@ -714,6 +714,219 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
 }
 
 
+bool  mpModisSquare(bnum& bnX, bnum& bnM)
+{
+    bnum    bnT(bnX.mpSize()+4);
+    bnum    bnE(bnM.mpSize());
+
+    if(!mpModSub(bnM, g_bnOne, bnM, bnE))
+        return false;
+    if(!mpShiftInPlace(bnE, -1))
+        return false;
+    if(!mpModExp(bnX, bnE, bnM, bnT))
+        return false;
+    return mpCompare(bnT,g_bnOne)==0;
+}
+
+
+/*
+ *  Find x: x^2 =a(modp). 
+ *  Caller chould have already checked that a is a QR.
+ *
+ *  Set p−1= (2^e)q and put b=nq (mod p)
+ *  If p=3(mod 4), x= a^(p-1)/4 (mod p);
+ *  If p=5(mod 8), x= a^(p-1)/4 (mod p), put b= a^(p-1)/4.  If b=1, x=a^(p+3)/8,
+ *     otherwise b= -1 and x= (2a)(4a)^(p-5)/8
+ *  That leaves p=1 (mod 8)
+ *
+ * TonelliShanks(int a, int p)
+ *  Ref: Cohen, A Course in Computational Algebraic Number Theory, p32.
+ *
+ *      p-1=2^e q, (q,2)=1
+ *      Pick a quadratic non-residue: n.
+ *      z= n^q (mod p)   --- note z is a generator for the multiplicitive group
+ *      y= z; r=e; x= a^((q-1)/2) (mod p); b= ax^2 (mod p);
+ *      x= ax (mod p); --- note RHS is (a^2x^2)= ab (mod p);
+ *      while(b!=1) {
+ *          --- at this point, ab=x^2 (mod p); y^(2^(r-1))= -1 (mod p); b^(2^(r-1))= 1
+ *          find smallest m: b^(2^m) = 1 (mod p);  --- note m<r, if a is a residue
+ *          t= y^(2^(r-m-1)) (mod p);
+ *          y= t^2 (mod p);
+ *          r= m;
+ *          x= xt (mod p); b= by (mod p);           
+ *      }
+ */
+
+#define MAXNRS 200
+
+bool mpTonelliShanks(bnum& bnA, bnum& bnP, bnum& bnSqrt)
+{
+    if(bnA.mpIsZero())
+        g_bnZero.mpCopyNum(bnSqrt);
+
+    bnum    bnN(bnP.mpSize());
+    int     i;
+
+    for(i=2; i<MAXNRS; i++) {
+        bnN.m_pValue[0]= (u64) i;
+        if(!mpModisSquare(bnN, bnP))
+            break;
+    }
+    if(i>=MAXNRS)
+        return false;
+
+    // bnN is now a non-square mod bnP
+    int     e= 0; 
+    int     r= 0; 
+    int     m= 0; 
+    bnum    bnX(bnP.mpSize()+1);
+    bnum    bnY(bnP.mpSize()+1);
+    bnum    bnE(bnP.mpSize()+1);
+    bnum    bnQ(bnP.mpSize()+1);
+    bnum    bnB(bnP.mpSize()+1);
+    bnum    bnT1(bnP.mpSize()+1);
+    bnum    bnT2(bnP.mpSize()+1);
+
+    mpSub(bnP, g_bnOne, bnQ);
+    while((bnQ.m_pValue[0]&0x1ULL)==0) {
+        e++;
+        mpShiftInPlace(bnQ, -1);
+    }
+    // now P-1= 2^e Q
+    mpModExp(bnN, bnQ, bnP, bnY);
+    // now Y= N^Q (mod P)
+    r= e;
+    mpSub(bnQ, g_bnOne, bnT1);
+    mpShiftInPlace(bnT1, -1);
+    mpModExp(bnA, bnT1, bnP, bnX);
+    // now X= A^((Q-1)/2)
+    mpModMult(bnX, bnX, bnP, bnT2);
+    mpModMult(bnA, bnT2, bnP, bnB);
+    // now B= AX^2 (mod P)
+    mpZeroNum(bnT1);
+    mpModMult(bnA, bnX, bnP, bnT1);
+    bnT1.mpCopyNum(bnX);    // X=AX (mod P)
+    mpZeroNum(bnT1);
+    mpZeroNum(bnT2);
+#ifdef TEST1
+    fprintf(g_logFile,"Step 0, e: %d, r: %d, m: %d\n\tP: ", e,r,m);
+    printNum(bnP);
+    fprintf(g_logFile,"\n\tN: ");
+    printNum(bnN);
+    fprintf(g_logFile,"\n\tA: ");
+    printNum(bnA);
+    fprintf(g_logFile,"\n\tQ: ");
+    printNum(bnQ);
+    fprintf(g_logFile,"\n\tX: ");
+    printNum(bnX);
+    fprintf(g_logFile,"\n\tB: ");
+    printNum(bnB);
+    fprintf(g_logFile,"\n\tY: ");
+    printNum(bnY);
+    fprintf(g_logFile,"\n");
+    fflush(g_logFile);
+#endif
+    while(mpCompare(bnB, g_bnOne)!=0) {
+        m= 1;
+        bnE.m_pValue[0]= 1ULL;
+        for(;;) {
+            if(!mpShiftInPlace(bnE, 1)) {
+                fprintf(g_logFile, "shift in place error\n");
+                return false;
+            }
+            mpModExp(bnB, bnE, bnP, bnT1);
+            if(mpCompare(bnT1, g_bnOne)==0)
+                break;
+            mpZeroNum(bnT1);
+            m++;
+        }
+        mpZeroNum(bnE);
+        mpZeroNum(bnT1);
+        if(m==r)
+            return false;
+        bnE.m_pValue[0]= 1ULL;
+        if(!mpShiftInPlace(bnE, r-m-1)) {
+            fprintf(g_logFile, "shift in place error\n");
+            return false;
+        }
+        mpModExp(bnY, bnE, bnP, bnT1);
+        mpZeroNum(bnE);
+        mpModMult(bnT1, bnT1, bnP, bnY);
+        r= m;
+        mpModMult(bnX, bnT1, bnP, bnT2);
+        bnT2.mpCopyNum(bnX);
+        mpZeroNum(bnT1);
+        mpZeroNum(bnT2);
+        mpModMult(bnB, bnY, bnP, bnT1);
+        bnT1.mpCopyNum(bnB);
+        mpZeroNum(bnT1);
+#ifdef TEST1
+        fprintf(g_logFile,"Step 1, e: %d, r: %d, m: %d\n\tP: ", e,r,m);
+        printNum(bnP);
+        fprintf(g_logFile,"\n\tA: ");
+        printNum(bnA);
+        fprintf(g_logFile,"\n\tQ: ");
+        printNum(bnQ);
+        fprintf(g_logFile,"\n\tX: ");
+        printNum(bnX);
+        fprintf(g_logFile,"\n\tB: ");
+        printNum(bnB);
+        fprintf(g_logFile,"\n\tY: ");
+        printNum(bnY);
+        fprintf(g_logFile,"\n");
+        fflush(g_logFile);
+#endif
+    }
+    bnX.mpCopyNum(bnSqrt);
+    return true;
+}
+
+
+bool  mpModSquareRoot(bnum& bnX, bnum& bnM, bnum& bnR)
+{
+    u64   uL= bnM.m_pValue[0];
+    bnum  bnE(bnM.mpSize()+1);
+    bnum  bnT(bnM.mpSize()+1);
+    bnum  bnT2(bnM.mpSize()+1);
+    bnum  bnT3(bnM.mpSize()+1);
+
+    // If p=3(mod 4), r= x^(p-1)/4 (mod p);
+    if((uL&0x3ULL)==0x3ULL) {
+        mpAdd(bnM, g_bnOne, bnE);
+        mpShiftInPlace(bnE, -2);
+        return mpModExp(bnX, bnE, bnM, bnR);
+    }
+    // If p=5(mod 8), x= a^(p-1)/4 (mod p), put b= a^(p-1)/4.  If b=1, x=a^(p+3)/8,
+    // otherwise b= -1 and x= (2a)(4a)^(p-5)/8
+    if((uL&0x7ULL)==0x5ULL) {
+        mpSub(bnM, g_bnOne, bnE);
+        mpShiftInPlace(bnE, -2);
+        mpModExp(bnX, bnE, bnM, bnT);
+        if(mpCompare(bnT, g_bnOne)==0) {
+            mpZeroNum(bnE);
+            bnE.m_pValue[0]= 0x3ULL;
+            mpUAddTo(bnE, bnM);
+            mpShiftInPlace(bnE, -3);
+            return mpModExp(bnX, bnE, bnM, bnR);
+        }
+        else {
+            mpZeroNum(bnT);
+            bnT.m_pValue[0]= 0x5ULL;
+            mpSub(bnM, bnT, bnE);
+            mpShiftInPlace(bnE, -3);
+            mpZeroNum(bnT);
+            mpModMult(bnX, g_bnTwo, bnM, bnT);
+            mpModMult(bnT, g_bnTwo, bnM, bnT2);
+            mpModExp(bnT2, bnE, bnM, bnT3);
+            return mpModMult(bnT, bnT3, bnM, bnR);
+        }
+    }
+
+    // That leaves p=1 (mod 8) for Tonelli-Shanks
+    return mpTonelliShanks(bnX, bnM, bnR);
+}
+
+
 // ----------------------------------------------------------------------------
 
 

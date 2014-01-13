@@ -29,7 +29,6 @@
 #include "logging.h"
 #include "jlmUtility.h"
 #include "mpFunctions.h"
-#include "rsax.h"
 
 
 #define SLIDINGMONTENABLED

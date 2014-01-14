@@ -585,8 +585,8 @@ bool eccTest()
 #endif
     ECKey  myKey(&nist256curve);
 
-    myKey.m_generator= new ECPoint(&nist256curve, 4);
-    myKey.m_base= new ECPoint(&nist256curve, 4);;
+    myKey.m_G= new ECPoint(&nist256curve, 4);
+    myKey.m_Public= new ECPoint(&nist256curve, 4);;
     myKey.m_secret= new bnum(4);
     if(!myKey.setGenerator(*nist256curve.m_bnGx, *nist256curve.m_bnGy)) {
         printf("eccTest: cant setGenerator()\n");

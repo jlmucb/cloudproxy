@@ -39,6 +39,7 @@ public:
     bnum*   m_bnDisc;
     bnum*   m_bnGx;
     bnum*   m_bnGy;
+    bnum*   m_bnorderG;
 
     ECurve();
     ~ECurve();
@@ -85,8 +86,8 @@ public:
     int       m_sizejunk;
 
     ECurve*   m_myCurve;
-    ECPoint*  m_generator;
-    ECPoint*  m_base;
+    ECPoint*  m_G;
+    ECPoint*  m_Public;
     bnum*     m_secret;
 
     ECKey(ECurve* curve);
@@ -114,11 +115,11 @@ bool ecEvaluatePoint(ECurve& C, bnum& bnX, bnum& Y2);
 bool ecEmbed(int sizejunk, bnum& bnX, ECPoint& R);
 bool ecExtract(int sizejunk, ECPoint& R, bnum& bnX);
 
-bool ecSign(ECKey& K,bnum& bnX, ECPoint& R);
-bool ecVerify(ECKey& K,bnum& bnX, ECPoint& R);
+bool ecSign(ECKey& K, bnum& bnH, bnum& bnR, bnum& bnS);
+bool ecVerify(ECKey& K, bnum& bnH, bnum& bnR, bnum& bnS);
 
-bool ecEncrypt(ECKey& K,bnum& bnX, ECPoint& R1, ECPoint& R2);
-bool ecDecrypt(ECKey& K,ECPoint& P1, ECPoint& P2, bnum& bnX);
+bool ecEncrypt(ECKey& K, bnum& bnX, ECPoint& R1, ECPoint& R2);
+bool ecDecrypt(ECKey& K, ECPoint& P1, ECPoint& P2, bnum& bnX);
 
 
 #endif    // _ECC_H

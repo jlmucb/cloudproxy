@@ -50,6 +50,8 @@
  *  b = 5ac635d8 aa3a93e7 b3ebbd55 769886bc 651d06b0 cc53b0f6 3bce3c3e 27d2604b
  *  xG = 6b17d1f2 e12c4247 f8bce6e5 63a440f2 77037d81 2deb33a0 f4a13945 d898c296
  *  yG = 4fe342e2 fe1a7f9b 8ee7eb4a 7c0f9e16 2bce3357 6b315ece cbb64068 37bf51f5
+ *  orderG= ffffffff 00000000 ffffffff ffffffff bce6faad a7179e84 f3b9cac2 fc632551
+ *   =115792089210356248762697446949407573529996955224135760342 422259061068512044369
  *
  *  P-521
  *  p= 686479766013060971498190079908139321726943530014330540939 
@@ -80,25 +82,31 @@
 
 ECurve  nist256curve;
 u64 tempp256[4] = {
-                0xffffffff00000001UL, 0x0000000000000000UL, 0x00000000ffffffffUL,
-                0xffffffffffffffffUL
+                0xffffffff00000001ULL, 0x0000000000000000ULL, 0x00000000ffffffffULL,
+                0xffffffffffffffffULL
                   };
 u64 tempa256[4] = {
-                0xffffffff00000001UL, 0x0000000000000000UL, 0x00000000ffffffffUL, 
-                0xfffffffffffffffcUL
+                0xffffffff00000001ULL, 0x0000000000000000ULL, 0x00000000ffffffffULL, 
+                0xfffffffffffffffcULL
               };
 u64 tempb256[4]=  {
-                0x5ac635d8aa3a93e7UL, 0xb3ebbd55769886bcUL, 0x651d06b0cc53b0f6UL,
-                0x3bce3c3e27d2604bUL
+                0x5ac635d8aa3a93e7ULL, 0xb3ebbd55769886bcULL, 0x651d06b0cc53b0f6ULL,
+                0x3bce3c3e27d2604bULL
               };
 u64 tempGx256[4]= {
-                0x6b17d1f2e12c4247UL, 0xf8bce6e563a440f2UL, 0x77037d812deb33a0UL,
-                0xf4a13945d898c296UL
+                0x6b17d1f2e12c4247ULL, 0xf8bce6e563a440f2ULL, 0x77037d812deb33a0ULL,
+                0xf4a13945d898c296ULL
               };
 u64 tempGy256[4]= {
-                0x4fe342e2fe1a7f9bUL, 0x8ee7eb4a7c0f9e16UL, 0x2bce33576b315eceUL,
-                0xcbb6406837bf51f5UL
+                0x4fe342e2fe1a7f9bULL, 0x8ee7eb4a7c0f9e16ULL, 0x2bce33576b315eceULL,
+                0xcbb6406837bf51f5ULL
               };
+
+u64 temporderG256[4]= {
+                0xffffffff00000000ULL, 0xffffffffffffffffULL, 0xbce6faada7179e84ULL, 
+                0xf3b9cac2fc632551ULL
+    };
+
 ECurve  nist521curve;
 
 
@@ -122,6 +130,10 @@ bool initNist()
     nist256curve.m_bnGy= new bnum(4);
     for(i=0;i<4; i++)
         nist256curve.m_bnGy->m_pValue[i]= tempGy256[3-i];
+    nist256curve.m_bnorderG= new bnum(4);
+    for(i=0;i<4; i++)
+        nist256curve.m_bnorderG->m_pValue[i]= temporderG256[3-i];
+
     nist256curve.discriminant();
     return true;
 }

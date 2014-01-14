@@ -93,6 +93,7 @@ ECurve::ECurve()
     m_bnGx= NULL;
     m_bnGy= NULL;
     m_bnDisc= NULL;
+    m_bnorderG= NULL;
 }
 
 
@@ -121,6 +122,10 @@ ECurve::~ECurve()
     if(m_bnDisc==NULL) {
         delete m_bnDisc;
         m_bnDisc= NULL; 
+    }
+    if(m_bnorderG==NULL) {
+        delete m_bnorderG;
+        m_bnorderG= NULL; 
     }
 }
 
@@ -300,8 +305,8 @@ ECKey::ECKey(ECurve* curve)
     m_publicValid= false;
     m_privateValid= false;
     m_myCurve= curve;
-    m_generator= NULL;
-    m_base= NULL;
+    m_G= NULL;
+    m_Public= NULL;
     m_secret= NULL;
     m_sizejunk= 10;
 }
@@ -310,13 +315,13 @@ ECKey::ECKey(ECurve* curve)
 ECKey::~ECKey()
 {
     m_myCurve= NULL;
-    if(m_generator==NULL) {
-        delete m_generator;
-        m_generator= NULL;
+    if(m_G==NULL) {
+        delete m_G;
+        m_G= NULL;
     }
-    if(m_base==NULL) {
-        delete m_base;
-        m_base= NULL;
+    if(m_Public==NULL) {
+        delete m_Public;
+        m_Public= NULL;
     }
     if(m_secret==NULL) {
         mpZeroNum(*m_secret);
@@ -343,17 +348,17 @@ void ECKey::printMe()
     }
     else
         fprintf(g_logFile, "secret is not set\n");
-    if(m_base==NULL)
+    if(m_Public==NULL)
         fprintf(g_logFile, "base not set\n");
     else {
         fprintf(g_logFile, "Base:");
-        m_base->printMe();
+        m_Public->printMe();
     }
-    if(m_generator==NULL)
+    if(m_G==NULL)
         fprintf(g_logFile, "Generator not set\n");
     else {
         fprintf(g_logFile, "Generator:");
-        m_generator->printMe();
+        m_G->printMe();
     }
 }
 #endif
@@ -380,28 +385,28 @@ bool ECKey::getSecret(bnum *secret)
 
 bool ECKey::setGenerator(bnum& Gx, bnum& Gy)
 {
-    m_generator= new ECPoint(m_myCurve, m_myCurve->m_bnM->mpSize());
-    m_generator->m_myCurve= m_myCurve;
-    m_generator->m_normalized= true;
-    Gx.mpCopyNum(*(m_generator->m_bnX));
-    Gy.mpCopyNum(*(m_generator->m_bnY));
-    mpZeroNum(*m_generator->m_bnZ);
-    m_generator->m_bnZ->m_pValue[0]= 1ULL;
+    m_G= new ECPoint(m_myCurve, m_myCurve->m_bnM->mpSize());
+    m_G->m_myCurve= m_myCurve;
+    m_G->m_normalized= true;
+    Gx.mpCopyNum(*(m_G->m_bnX));
+    Gy.mpCopyNum(*(m_G->m_bnY));
+    mpZeroNum(*m_G->m_bnZ);
+    m_G->m_bnZ->m_pValue[0]= 1ULL;
     return true;
 }
 
 
 bool ECKey::getGenerator(bnum& Gx, bnum& Gy)
 {
-    Gx.mpCopyNum(*m_generator->m_bnX);
-    Gy.mpCopyNum(*m_generator->m_bnY);
+    Gx.mpCopyNum(*m_G->m_bnX);
+    Gy.mpCopyNum(*m_G->m_bnY);
     return true;
 }
 
 
 bool ECKey::computePublic()
 {
-    if(!ecMult(*m_generator, *m_secret, *m_base))
+    if(!ecMult(*m_G, *m_secret, *m_Public))
         return false;
     m_publicValid= true;
     return true;
@@ -410,7 +415,7 @@ bool ECKey::computePublic()
 
 bool ECKey::getPublic(ECPoint& point)
 {
-    point.copyPoint(*m_base);
+    point.copyPoint(*m_Public);
     return true;
 }
 

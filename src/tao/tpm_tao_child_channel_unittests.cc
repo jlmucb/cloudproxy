@@ -42,8 +42,13 @@ class TPMTaoChildChannelTest : public ::testing::Test {
     stringstream aik_blob_stream;
     aik_blob_stream << aik_blob_file.rdbuf();
     list<UINT32> pcrs_to_seal{17, 18};
-    // TODO(tmroeder): add a real attestation for the aik blob
-    tao_.reset(new TPMTaoChildChannel(aik_blob_stream.str(), "", pcrs_to_seal));
+    // For the purposes of this simple test, we don't need a real attestation.
+    // But if this test is modified to have a hosted program talk to the
+    // channel, then that program will expect the AIK to be certified correctly
+    // by the policy key.
+    tao_.reset(new TPMTaoChildChannel(aik_blob_stream.str(),
+                                      "" /* empty attestation */,
+                                      pcrs_to_seal));
     ASSERT_TRUE(tao_->Init());
   }
 

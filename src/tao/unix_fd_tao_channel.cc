@@ -176,8 +176,6 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       const string &child_hash = descriptor.first;
 
       if (FD_ISSET(read_fd, &read_fds)) {
-        // TODO(tmroeder): if this read fails, then remove the descriptor from
-        // the set
         TaoChannelRPC rpc;
         if (!GetRPC(&rpc, child_hash)) {
           LOG(ERROR) << "Could not get an RPC. Removing child " << child_hash;

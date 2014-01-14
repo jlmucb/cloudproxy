@@ -295,8 +295,6 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   // The convention is that the arguments are Base64W encoded as the last
   // argument in the list. The factory chooses how to handle the params.
-  // TODO(tmroeder): Change the convention to add an argument to
-  // CreateHostedProgram.
   string encoded_params;
   if (!Base64WEncode(child_params, &encoded_params)) {
     LOG(ERROR) << "Could not encode the child params for the program";

@@ -35,3 +35,28 @@ em64t_vmx.s:54:; Define PROF_VMEXIT_TIME structure
 em64t_vmx.s:55:PROF_VMEXIT_TIME struc
 em64t_gcpu_regs_save_restore.s:27:GUEST_CPU_SAVE_AREA_PREFIX STRUCT
 
+Caution:
+  check setjmp/longjmp in Linux
+  check stdcall dependencies
+  macros ok?
+  There are two (different) UVMM_EVENT definitions, make sure we're using the right ones in the right places.
+
+Todo
+  Write a few C programs and compile a few asm files to confirm as does what we expect
+  intel_syntax and other changes produce expected code
+
+Questions:
+	where are the PE dependencies
+	what should prior code have setup before control is passed to VMM
+	do we need to redo SIPI (which is done in TBOOT)
+	suggest a good runtime debugging environmnet?
+	any special "gotchas" in Linux
+
+Can we replace everything prior to VMM with a multiboot of TBOOT and VMM?
+Can we enter vmm in 64bit mode with an identity map?
+vt-d?
+any other GCC dependencies that may not be surfaced by compiler errors?
+
+Test case
+  Boot VMM with a single Linux guest and make sure it works
+

@@ -451,6 +451,7 @@ char uCompareSymbol(bnum& bnA, bnum& bnB)
 //#define TP 13
 // 1 (mod 8)
 #define TP 17
+#define MAXSQR 64
 
 
 bool squareRootTest()
@@ -459,9 +460,10 @@ bool squareRootTest()
     bnum    bnP(1);
     bnum    bnS(1);
     bool    fSquare;
+    int     i;
 
     bnP.m_pValue[0]= (u64)TP;
-    for(int i=1; i<TP;i++) {
+    for(i=1; i<TP;i++) {
         bnA.m_pValue[0]= (u64)i;
         fSquare= mpModisSquare(bnA, bnP);
         if(!fSquare) {
@@ -472,6 +474,48 @@ bool squareRootTest()
             printf("Cant find square root of %d mod %d\n", i, TP);
         }
         printf("sqrt(%d) (mod %d)= %d\n", i, TP, (int)bnS.m_pValue[0]);
+    }
+
+    // generate some squares and use NIST primes to check square roots
+    
+    // initialize NIST curves
+    if(!initNist()) {
+        printf("squareRoot: initnist failed\n");
+        return false;
+    }
+
+    bnum    bnX(6);
+    bnum    bnY(6);
+    bnum    bnZ(6);
+
+    bnX.m_pValue[1]= 0x0f0e0d0c0b0a0900ULL;
+    bnX.m_pValue[2]= 0x0102030405060708ULL;
+    for(i=1; i<MAXSQR;i++) {
+        bnX.m_pValue[0]= (u64) i;
+        fSquare= mpModisSquare(bnX, *nist256curve.m_bnM);
+        if(!fSquare) {
+            printNum(bnX);
+            printf("is not a square root mod nist256 prime\n");
+            continue;
+        }
+        if(!mpModSquareRoot(bnX, *nist256curve.m_bnM, bnY)) {
+            printf("Cant find square root of ");
+            printNum(bnX);
+            printf("mod nist prime\n");
+            return false;
+        }
+        printf("sqrt(%d) (mod %d)= %d\n", i, TP, (int)bnS.m_pValue[0]);
+        printf("sqrt("); printNum(bnX);
+        printf(")= "); printNum(bnY);
+        printf("\n");
+        mpModMult(bnY,bnY,*nist256curve.m_bnM, bnZ);
+        if(mpCompare(bnX, bnZ)==0) {
+            printf("\t**MATCH\n");
+        }
+        else {
+            printf("\t**NO MATCH\n");
+            return false;
+        }
     }
 
     return true;
@@ -629,6 +673,29 @@ bool eccTest()
     printf("Decrypted message: ");
     printNum(decryptedMessage);
     printf("\n");
+
+    bnum    bnH(6);
+    bnum    bnR(6);
+    bnum    bnS(6);
+
+    bnH.m_pValue[0]= 0x1234567890abcdefULL;
+    printf("Message to sign, NIST-256: "); printNum(bnH); printf("\n");
+
+    if(!ecSign(myKey, bnH, bnR, bnS)) {
+        printf("Cant ecSign\n");
+        return false;
+    }
+    printf("Signature, R: "); printNum(bnR); printf("\n");
+    printf("Signature, S: "); printNum(bnS); printf("\n");
+
+    bool fRet= ecVerify(myKey, bnH, bnR, bnS);
+    if(fRet) {
+        printf("Signature verifies\n");
+    }
+    else {
+        printf("Signature DOES NOT verify\n");
+        return false;
+    }
     
     return true;
 }
@@ -1304,7 +1371,7 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX, bnum& bnY)
         return false;
     }
 
-#if 0
+#if 1
     printf("umultdiv succeeded\n");
 #endif
     return true;
@@ -1768,7 +1835,6 @@ int main(int an, char** av)
         }
         printf("\n");
 
-#if 0
         if(squareRootTest()) {
             printf("squareRootTest succeeded\n");
         }
@@ -2089,7 +2155,6 @@ int main(int an, char** av)
 
         if(!udividetests()) 
             throw((char*)"special test fails");
-#endif
 
         if(fAllTests)
             printf("\nTests completed, all tests PASSED\n");

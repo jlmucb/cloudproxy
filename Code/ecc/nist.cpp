@@ -80,6 +80,8 @@
 // ----------------------------------------------------------------------------
 
 
+bool    nistinitialized= false;
+
 ECurve  nist256curve;
 u64 tempp256[4] = {
                 0xffffffff00000001ULL, 0x0000000000000000ULL, 0x00000000ffffffffULL,
@@ -115,6 +117,8 @@ bool initNist()
 {
     int i;
 
+    if(nistinitialized)
+        return true;
     nist256curve.m_bnM= new bnum(4);
     for(i=0;i<4; i++)
         nist256curve.m_bnM->m_pValue[i]= tempp256[3-i];
@@ -135,6 +139,7 @@ bool initNist()
         nist256curve.m_bnorderG->m_pValue[i]= temporderG256[3-i];
 
     nist256curve.discriminant();
+    nistinitialized= true;
     return true;
 }
 

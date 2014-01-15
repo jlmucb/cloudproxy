@@ -1,0 +1,37 @@
+dhcp-39-157:em64t jlm$ wc *.s
+     105     438    2489 em64t_fpu.s
+     159     727    6604 em64t_gcpu_regs_save_restore.s
+     107     461    2772 em64t_interlocked.s
+    1200    2343   22973 em64t_isr.s
+     144     731    4681 em64t_setjmp.s
+     691    2037   15112 em64t_utils.s
+     277     878    7340 em64t_vmx.s
+    2683    7615   61971 total
+
+
+em64t_isr.s:172:#RNB: 
+  TODO the constants should potentially be prefixed with $0x, but waiting
+em64t_setjmp.s:69:#  RNB: 
+  This function has changed significantly, and is heavily based on the
+em64t_setjmp.s:82:#RNB: 
+  linux kernel uses xorl, but gcc doesn't like it, so I changed to xor
+em64t_setjmp.s:102:#  
+  RNB: This function has changed significantly, and is heavily based on the
+em64t_setjmp.s:113:#RNB: 
+   linux kernel uses movl, but gcc doesn't like it, so I changed to mov
+em64t_setjmp.s:122:#RNB: 
+   I have doubt about the jmp  instruction.  linux kernel has jmp *56(%rcx)
+em64t_utils.s:628:#RNB: 
+   The original constant was 0C0000080h
+em64t_vmx.s:53:#RNB: 
+   TODO have to create an equivalent c struct
+
+em64t_setjmp.s:122:#RNB: I have doubt about the jmp  instruction.  linux kernel has jmp *56(%rcx)
+em64t_utils.s:341:SMI_PORT_PARAMS   struc
+em64t_utils.s:366:        lea     %r15,[%rbp + $0x10]     #; set r15 to point to SMI_PORT_PARAMS struct
+em64t_utils.s:566:CPUID_PARAMS   struc
+em64t_vmx.s:53:#RNB: TODO have to create an equivalent c struct
+em64t_vmx.s:54:; Define PROF_VMEXIT_TIME structure
+em64t_vmx.s:55:PROF_VMEXIT_TIME struc
+em64t_gcpu_regs_save_restore.s:27:GUEST_CPU_SAVE_AREA_PREFIX STRUCT
+

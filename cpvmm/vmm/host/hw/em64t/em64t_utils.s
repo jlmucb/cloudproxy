@@ -53,7 +53,7 @@
 .set    ARG2_U16, %dx
 .set    ARG2_U32, %edx
 .set    ARG2_U64, %rdx
-.set    ARG3_U32, %r8l
+.set    ARG3_U32, %r8d
 .set    ARG3_U64, %r8
 
 #

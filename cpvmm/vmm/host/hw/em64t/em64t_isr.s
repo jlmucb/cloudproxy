@@ -42,7 +42,7 @@
 # bits in length.
 #
 #
-       include       ia32_registers.equ
+.include       ia32_registers.equ
 #
 #
 # Register usage
@@ -53,9 +53,9 @@
 #        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 #
 
-extern g_exception_gpr:NEAR
-extern exception_class:NEAR
-extern isr_c_handler : NEAR
+.extern g_exception_gpr:NEAR
+.extern exception_class:NEAR
+.extern isr_c_handler : NEAR
 
 .set	VECTOR_19, 19
 
@@ -77,17 +77,17 @@ extern isr_c_handler : NEAR
 #                                Bits 31-16: Reserved =
 #
 
-isr_entry_macro MACRO vector:REQ
+.macro isr_entry_macro vector
         push vector
         jmp  hw_isr_c_wrapper
-ENDM
+.endm
 
 
 
 .globl	hw_isr_c_wrapper
 hw_isr_c_wrapper:
-        push   %rax	# offset 08h
-        push   %rbx  	# offset 00h
+        push   %rax	# offset 08
+        push   %rbx  	# offset 00
 
         # If an exception fault is detected, save the GPRs
         # for the assertion debug buffer
@@ -106,6 +106,7 @@ hw_isr_c_wrapper:
         # Save GPRs
         mov    %rax, qword ptr [%rsp+$0x08h]             # this is rax
         mov    %rbx, g_exception_gpr
+#RNB: TODO need to fix the struct VMM_GP_REGISTERS
         mov    (VMM_GP_REGISTERS ptr [%rbx]).reg[IA32_REG_RAX], %rax
 
         mov    %rax, qword ptr [%rsp+$0x00h]             # this is rbx
@@ -172,1029 +173,1031 @@ continue:
 #RNB: TODO the constants should potentially be prefixed with $0x, but waiting
 # 	until the proc/macro are fixed
 
-isr_entry_00 PROC
-        isr_entry_macro 000h
-isr_entry_00 ENDP
-
-isr_entry_01 PROC
-        isr_entry_macro 001h
-isr_entry_01 ENDP
-
-isr_entry_02 PROC
-        isr_entry_macro 002h
-isr_entry_02 ENDP
-
-isr_entry_03 PROC
-        isr_entry_macro 003h
-isr_entry_03 ENDP
-
-isr_entry_04 PROC
-        isr_entry_macro 004h
-isr_entry_04 ENDP
-
-isr_entry_05 PROC
-        isr_entry_macro 005h
-isr_entry_05 ENDP
-
-isr_entry_06 PROC
-        isr_entry_macro 006h
-isr_entry_06 ENDP
-
-isr_entry_07 PROC
-        isr_entry_macro 007h
-isr_entry_07 ENDP
-
-isr_entry_08 PROC
-        isr_entry_macro 008h
-isr_entry_08 ENDP
-
-isr_entry_09 PROC
-        isr_entry_macro 009h
-isr_entry_09 ENDP
-
-isr_entry_0a PROC
-        isr_entry_macro 00ah
-isr_entry_0a ENDP
-
-isr_entry_0b PROC
-        isr_entry_macro 00bh
-isr_entry_0b ENDP
-
-isr_entry_0c PROC
-        isr_entry_macro 00ch
-isr_entry_0c ENDP
-
-isr_entry_0d PROC
-        isr_entry_macro 00dh
-isr_entry_0d ENDP
-
-isr_entry_0e PROC
-        isr_entry_macro 00eh
-isr_entry_0e ENDP
-
-isr_entry_0f PROC
-        isr_entry_macro 00fh
-isr_entry_0f ENDP
-
-isr_entry_10 PROC
-        isr_entry_macro 010h
-isr_entry_10 ENDP
-
-isr_entry_11 PROC
-        isr_entry_macro 011h
-isr_entry_11 ENDP
-
-isr_entry_12 PROC
-        isr_entry_macro 012h
-isr_entry_12 ENDP
-
-isr_entry_13 PROC
-        isr_entry_macro 013h
-isr_entry_13 ENDP
-
-isr_entry_14 PROC
-        isr_entry_macro 014h
-isr_entry_14 ENDP
-
-isr_entry_15 PROC
-        isr_entry_macro 015h
-isr_entry_15 ENDP
-
-isr_entry_16 PROC
-        isr_entry_macro 016h
-isr_entry_16 ENDP
-
-isr_entry_17 PROC
-        isr_entry_macro 017h
-isr_entry_17 ENDP
-
-isr_entry_18 PROC
-        isr_entry_macro 018h
-isr_entry_18 ENDP
-
-isr_entry_19 PROC
-        isr_entry_macro 019h
-isr_entry_19 ENDP
-
-isr_entry_1a PROC
-        isr_entry_macro 01ah
-isr_entry_1a ENDP
-
-isr_entry_1b PROC
-        isr_entry_macro 01bh
-isr_entry_1b ENDP
-
-isr_entry_1c PROC
-        isr_entry_macro 01ch
-isr_entry_1c ENDP
-
-isr_entry_1d PROC
-        isr_entry_macro 01dh
-isr_entry_1d ENDP
-
-isr_entry_1e PROC
-        isr_entry_macro 01eh
-isr_entry_1e ENDP
-
-isr_entry_1f PROC
-        isr_entry_macro 01fh
-isr_entry_1f ENDP
-
-isr_entry_20 PROC
-        isr_entry_macro 020h
-isr_entry_20 ENDP
-
-isr_entry_21 PROC
-        isr_entry_macro 021h
-isr_entry_21 ENDP
-
-isr_entry_22 PROC
-        isr_entry_macro 022h
-isr_entry_22 ENDP
-
-isr_entry_23 PROC
-        isr_entry_macro 023h
-isr_entry_23 ENDP
-
-isr_entry_24 PROC
-        isr_entry_macro 024h
-isr_entry_24 ENDP
-
-isr_entry_25 PROC
-        isr_entry_macro 025h
-isr_entry_25 ENDP
-
-isr_entry_26 PROC
-        isr_entry_macro 026h
-isr_entry_26 ENDP
-
-isr_entry_27 PROC
-        isr_entry_macro 027h
-isr_entry_27 ENDP
-
-isr_entry_28 PROC
-        isr_entry_macro 028h
-isr_entry_28 ENDP
-
-isr_entry_29 PROC
-        isr_entry_macro 029h
-isr_entry_29 ENDP
-
-isr_entry_2a PROC
-        isr_entry_macro 02ah
-isr_entry_2a ENDP
-
-isr_entry_2b PROC
-        isr_entry_macro 02bh
-isr_entry_2b ENDP
-
-isr_entry_2c PROC
-        isr_entry_macro 02ch
-isr_entry_2c ENDP
-
-isr_entry_2d PROC
-        isr_entry_macro 02dh
-isr_entry_2d ENDP
-
-isr_entry_2e PROC
-        isr_entry_macro 02eh
-isr_entry_2e ENDP
-
-isr_entry_2f PROC
-        isr_entry_macro 02fh
-isr_entry_2f ENDP
-
-isr_entry_30 PROC
-        isr_entry_macro 030h
-isr_entry_30 ENDP
-
-isr_entry_31 PROC
-        isr_entry_macro 031h
-isr_entry_31 ENDP
-
-isr_entry_32 PROC
-        isr_entry_macro 032h
-isr_entry_32 ENDP
-
-isr_entry_33 PROC
-        isr_entry_macro 033h
-isr_entry_33 ENDP
-
-isr_entry_34 PROC
-        isr_entry_macro 034h
-isr_entry_34 ENDP
-
-isr_entry_35 PROC
-        isr_entry_macro 035h
-isr_entry_35 ENDP
-
-isr_entry_36 PROC
-        isr_entry_macro 036h
-isr_entry_36 ENDP
-
-isr_entry_37 PROC
-        isr_entry_macro 037h
-isr_entry_37 ENDP
-
-isr_entry_38 PROC
-        isr_entry_macro 038h
-isr_entry_38 ENDP
-
-isr_entry_39 PROC
-        isr_entry_macro 039h
-isr_entry_39 ENDP
-
-isr_entry_3a PROC
-        isr_entry_macro 03ah
-isr_entry_3a ENDP
-
-isr_entry_3b PROC
-        isr_entry_macro 03bh
-isr_entry_3b ENDP
-
-isr_entry_3c PROC
-        isr_entry_macro 03ch
-isr_entry_3c ENDP
-
-isr_entry_3d PROC
-        isr_entry_macro 03dh
-isr_entry_3d ENDP
-
-isr_entry_3e PROC
-        isr_entry_macro 03eh
-isr_entry_3e ENDP
-
-isr_entry_3f PROC
-        isr_entry_macro 03fh
-isr_entry_3f ENDP
-
-isr_entry_40 PROC
-        isr_entry_macro 040h
-isr_entry_40 ENDP
-
-isr_entry_41 PROC
-        isr_entry_macro 041h
-isr_entry_41 ENDP
-
-isr_entry_42 PROC
-        isr_entry_macro 042h
-isr_entry_42 ENDP
-
-isr_entry_43 PROC
-        isr_entry_macro 043h
-isr_entry_43 ENDP
-
-isr_entry_44 PROC
-        isr_entry_macro 044h
-isr_entry_44 ENDP
-
-isr_entry_45 PROC
-        isr_entry_macro 045h
-isr_entry_45 ENDP
-
-isr_entry_46 PROC
-        isr_entry_macro 046h
-isr_entry_46 ENDP
-
-isr_entry_47 PROC
-        isr_entry_macro 047h
-isr_entry_47 ENDP
-
-isr_entry_48 PROC
-        isr_entry_macro 048h
-isr_entry_48 ENDP
-
-isr_entry_49 PROC
-        isr_entry_macro 049h
-isr_entry_49 ENDP
-
-isr_entry_4a PROC
-        isr_entry_macro 04ah
-isr_entry_4a ENDP
-
-isr_entry_4b PROC
-        isr_entry_macro 04bh
-isr_entry_4b ENDP
-
-isr_entry_4c PROC
-        isr_entry_macro 04ch
-isr_entry_4c ENDP
-
-isr_entry_4d PROC
-        isr_entry_macro 04dh
-isr_entry_4d ENDP
-
-isr_entry_4e PROC
-        isr_entry_macro 04eh
-isr_entry_4e ENDP
-
-isr_entry_4f PROC
-        isr_entry_macro 04fh
-isr_entry_4f ENDP
-
-isr_entry_50 PROC
-        isr_entry_macro 050h
-isr_entry_50 ENDP
-
-isr_entry_51 PROC
-        isr_entry_macro 051h
-isr_entry_51 ENDP
-
-isr_entry_52 PROC
-        isr_entry_macro 052h
-isr_entry_52 ENDP
-
-isr_entry_53 PROC
-        isr_entry_macro 053h
-isr_entry_53 ENDP
-
-isr_entry_54 PROC
-        isr_entry_macro 054h
-isr_entry_54 ENDP
-
-isr_entry_55 PROC
-        isr_entry_macro 055h
-isr_entry_55 ENDP
-
-isr_entry_56 PROC
-        isr_entry_macro 056h
-isr_entry_56 ENDP
-
-isr_entry_57 PROC
-        isr_entry_macro 057h
-isr_entry_57 ENDP
-
-isr_entry_58 PROC
-        isr_entry_macro 058h
-isr_entry_58 ENDP
-
-isr_entry_59 PROC
-        isr_entry_macro 059h
-isr_entry_59 ENDP
-
-isr_entry_5a PROC
-        isr_entry_macro 05ah
-isr_entry_5a ENDP
-
-isr_entry_5b PROC
-        isr_entry_macro 05bh
-isr_entry_5b ENDP
-
-isr_entry_5c PROC
-        isr_entry_macro 05ch
-isr_entry_5c ENDP
-
-isr_entry_5d PROC
-        isr_entry_macro 05dh
-isr_entry_5d ENDP
-
-isr_entry_5e PROC
-        isr_entry_macro 05eh
-isr_entry_5e ENDP
-
-isr_entry_5f PROC
-        isr_entry_macro 05fh
-isr_entry_5f ENDP
-
-isr_entry_60 PROC
-        isr_entry_macro 060h
-isr_entry_60 ENDP
-
-isr_entry_61 PROC
-        isr_entry_macro 061h
-isr_entry_61 ENDP
-
-isr_entry_62 PROC
-        isr_entry_macro 062h
-isr_entry_62 ENDP
-
-isr_entry_63 PROC
-        isr_entry_macro 063h
-isr_entry_63 ENDP
-
-isr_entry_64 PROC
-        isr_entry_macro 064h
-isr_entry_64 ENDP
-
-isr_entry_65 PROC
-        isr_entry_macro 065h
-isr_entry_65 ENDP
-
-isr_entry_66 PROC
-        isr_entry_macro 066h
-isr_entry_66 ENDP
-
-isr_entry_67 PROC
-        isr_entry_macro 067h
-isr_entry_67 ENDP
-
-isr_entry_68 PROC
-        isr_entry_macro 068h
-isr_entry_68 ENDP
-
-isr_entry_69 PROC
-        isr_entry_macro 069h
-isr_entry_69 ENDP
-
-isr_entry_6a PROC
-        isr_entry_macro 06ah
-isr_entry_6a ENDP
-
-isr_entry_6b PROC
-        isr_entry_macro 06bh
-isr_entry_6b ENDP
-
-isr_entry_6c PROC
-        isr_entry_macro 06ch
-isr_entry_6c ENDP
-
-isr_entry_6d PROC
-        isr_entry_macro 06dh
-isr_entry_6d ENDP
-
-isr_entry_6e PROC
-        isr_entry_macro 06eh
-isr_entry_6e ENDP
-
-isr_entry_6f PROC
-        isr_entry_macro 06fh
-isr_entry_6f ENDP
-
-isr_entry_70 PROC
-        isr_entry_macro 070h
-isr_entry_70 ENDP
-
-isr_entry_71 PROC
-        isr_entry_macro 071h
-isr_entry_71 ENDP
-
-isr_entry_72 PROC
-        isr_entry_macro 072h
-isr_entry_72 ENDP
-
-isr_entry_73 PROC
-        isr_entry_macro 073h
-isr_entry_73 ENDP
-
-isr_entry_74 PROC
-        isr_entry_macro 074h
-isr_entry_74 ENDP
-
-isr_entry_75 PROC
-        isr_entry_macro 075h
-isr_entry_75 ENDP
-
-isr_entry_76 PROC
-        isr_entry_macro 076h
-isr_entry_76 ENDP
-
-isr_entry_77 PROC
-        isr_entry_macro 077h
-isr_entry_77 ENDP
-
-isr_entry_78 PROC
-        isr_entry_macro 078h
-isr_entry_78 ENDP
-
-isr_entry_79 PROC
-        isr_entry_macro 079h
-isr_entry_79 ENDP
-
-isr_entry_7a PROC
-        isr_entry_macro 07ah
-isr_entry_7a ENDP
-
-isr_entry_7b PROC
-        isr_entry_macro 07bh
-isr_entry_7b ENDP
-
-isr_entry_7c PROC
-        isr_entry_macro 07ch
-isr_entry_7c ENDP
-
-isr_entry_7d PROC
-        isr_entry_macro 07dh
-isr_entry_7d ENDP
-
-isr_entry_7e PROC
-        isr_entry_macro 07eh
-isr_entry_7e ENDP
-
-isr_entry_7f PROC
-        isr_entry_macro 07fh
-isr_entry_7f ENDP
-
-isr_entry_80 PROC
-        isr_entry_macro 080h
-isr_entry_80 ENDP
-
-isr_entry_81 PROC
-        isr_entry_macro 081h
-isr_entry_81 ENDP
-
-isr_entry_82 PROC
-        isr_entry_macro 082h
-isr_entry_82 ENDP
-
-isr_entry_83 PROC
-        isr_entry_macro 083h
-isr_entry_83 ENDP
-
-isr_entry_84 PROC
-        isr_entry_macro 084h
-isr_entry_84 ENDP
-
-isr_entry_85 PROC
-        isr_entry_macro 085h
-isr_entry_85 ENDP
-
-isr_entry_86 PROC
-        isr_entry_macro 086h
-isr_entry_86 ENDP
-
-isr_entry_87 PROC
-        isr_entry_macro 087h
-isr_entry_87 ENDP
-
-isr_entry_88 PROC
-        isr_entry_macro 088h
-isr_entry_88 ENDP
-
-isr_entry_89 PROC
-        isr_entry_macro 089h
-isr_entry_89 ENDP
-
-isr_entry_8a PROC
-        isr_entry_macro 08ah
-isr_entry_8a ENDP
-
-isr_entry_8b PROC
-        isr_entry_macro 08bh
-isr_entry_8b ENDP
-
-isr_entry_8c PROC
-        isr_entry_macro 08ch
-isr_entry_8c ENDP
-
-isr_entry_8d PROC
-        isr_entry_macro 08dh
-isr_entry_8d ENDP
-
-isr_entry_8e PROC
-        isr_entry_macro 08eh
-isr_entry_8e ENDP
-
-isr_entry_8f PROC
-        isr_entry_macro 08fh
-isr_entry_8f ENDP
-
-isr_entry_90 PROC
-        isr_entry_macro 090h
-isr_entry_90 ENDP
-
-isr_entry_91 PROC
-        isr_entry_macro 091h
-isr_entry_91 ENDP
-
-isr_entry_92 PROC
-        isr_entry_macro 092h
-isr_entry_92 ENDP
-
-isr_entry_93 PROC
-        isr_entry_macro 093h
-isr_entry_93 ENDP
-
-isr_entry_94 PROC
-        isr_entry_macro 094h
-isr_entry_94 ENDP
-
-isr_entry_95 PROC
-        isr_entry_macro 095h
-isr_entry_95 ENDP
-
-isr_entry_96 PROC
-        isr_entry_macro 096h
-isr_entry_96 ENDP
-
-isr_entry_97 PROC
-        isr_entry_macro 097h
-isr_entry_97 ENDP
-
-isr_entry_98 PROC
-        isr_entry_macro 098h
-isr_entry_98 ENDP
-
-isr_entry_99 PROC
-        isr_entry_macro 099h
-isr_entry_99 ENDP
-
-isr_entry_9a PROC
-        isr_entry_macro 09ah
-isr_entry_9a ENDP
-
-isr_entry_9b PROC
-        isr_entry_macro 09bh
-isr_entry_9b ENDP
-
-isr_entry_9c PROC
-        isr_entry_macro 09ch
-isr_entry_9c ENDP
-
-isr_entry_9d PROC
-        isr_entry_macro 09dh
-isr_entry_9d ENDP
-
-isr_entry_9e PROC
-        isr_entry_macro 09eh
-isr_entry_9e ENDP
-
-isr_entry_9f PROC
-        isr_entry_macro 09fh
-isr_entry_9f ENDP
-
-isr_entry_a0 PROC
-        isr_entry_macro 0a0h
-isr_entry_a0 ENDP
-
-isr_entry_a1 PROC
-        isr_entry_macro 0a1h
-isr_entry_a1 ENDP
-
-isr_entry_a2 PROC
-        isr_entry_macro 0a2h
-isr_entry_a2 ENDP
-
-isr_entry_a3 PROC
-        isr_entry_macro 0a3h
-isr_entry_a3 ENDP
-
-isr_entry_a4 PROC
-        isr_entry_macro 0a4h
-isr_entry_a4 ENDP
-
-isr_entry_a5 PROC
-        isr_entry_macro 0a5h
-isr_entry_a5 ENDP
-
-isr_entry_a6 PROC
-        isr_entry_macro 0a6h
-isr_entry_a6 ENDP
-
-isr_entry_a7 PROC
-        isr_entry_macro 0a7h
-isr_entry_a7 ENDP
-
-isr_entry_a8 PROC
-        isr_entry_macro 0a8h
-isr_entry_a8 ENDP
-
-isr_entry_a9 PROC
-        isr_entry_macro 0a9h
-isr_entry_a9 ENDP
-
-isr_entry_aa PROC
-        isr_entry_macro 0aah
-isr_entry_aa ENDP
-
-isr_entry_ab PROC
-        isr_entry_macro 0abh
-isr_entry_ab ENDP
-
-isr_entry_ac PROC
-        isr_entry_macro 0ach
-isr_entry_ac ENDP
-
-isr_entry_ad PROC
-        isr_entry_macro 0adh
-isr_entry_ad ENDP
-
-isr_entry_ae PROC
-        isr_entry_macro 0aeh
-isr_entry_ae ENDP
-
-isr_entry_af PROC
-        isr_entry_macro 0afh
-isr_entry_af ENDP
-
-isr_entry_b0 PROC
-        isr_entry_macro 0b0h
-isr_entry_b0 ENDP
-
-isr_entry_b1 PROC
-        isr_entry_macro 0b1h
-isr_entry_b1 ENDP
-
-isr_entry_b2 PROC
-        isr_entry_macro 0b2h
-isr_entry_b2 ENDP
-
-isr_entry_b3 PROC
-        isr_entry_macro 0b3h
-isr_entry_b3 ENDP
-
-isr_entry_b4 PROC
-        isr_entry_macro 0b4h
-isr_entry_b4 ENDP
-
-isr_entry_b5 PROC
-        isr_entry_macro 0b5h
-isr_entry_b5 ENDP
-
-isr_entry_b6 PROC
-        isr_entry_macro 0b6h
-isr_entry_b6 ENDP
-
-isr_entry_b7 PROC
-        isr_entry_macro 0b7h
-isr_entry_b7 ENDP
-
-isr_entry_b8 PROC
-        isr_entry_macro 0b8h
-isr_entry_b8 ENDP
-
-isr_entry_b9 PROC
-        isr_entry_macro 0b9h
-isr_entry_b9 ENDP
-
-isr_entry_ba PROC
-        isr_entry_macro 0bah
-isr_entry_ba ENDP
-
-isr_entry_bb PROC
-        isr_entry_macro 0bbh
-isr_entry_bb ENDP
-
-isr_entry_bc PROC
-        isr_entry_macro 0bch
-isr_entry_bc ENDP
-
-isr_entry_bd PROC
-        isr_entry_macro 0bdh
-isr_entry_bd ENDP
-
-isr_entry_be PROC
-        isr_entry_macro 0beh
-isr_entry_be ENDP
-
-isr_entry_bf PROC
-        isr_entry_macro 0bfh
-isr_entry_bf ENDP
-
-isr_entry_c0 PROC
-        isr_entry_macro 0c0h
-isr_entry_c0 ENDP
-
-isr_entry_c1 PROC
-        isr_entry_macro 0c1h
-isr_entry_c1 ENDP
-
-isr_entry_c2 PROC
-        isr_entry_macro 0c2h
-isr_entry_c2 ENDP
-
-isr_entry_c3 PROC
-        isr_entry_macro 0c3h
-isr_entry_c3 ENDP
-
-isr_entry_c4 PROC
-        isr_entry_macro 0c4h
-isr_entry_c4 ENDP
-
-isr_entry_c5 PROC
-        isr_entry_macro 0c5h
-isr_entry_c5 ENDP
-
-isr_entry_c6 PROC
-        isr_entry_macro 0c6h
-isr_entry_c6 ENDP
-
-isr_entry_c7 PROC
-        isr_entry_macro 0c7h
-isr_entry_c7 ENDP
-
-isr_entry_c8 PROC
-        isr_entry_macro 0c8h
-isr_entry_c8 ENDP
-
-isr_entry_c9 PROC
-        isr_entry_macro 0c9h
-isr_entry_c9 ENDP
-
-isr_entry_ca PROC
-        isr_entry_macro 0cah
-isr_entry_ca ENDP
-
-isr_entry_cb PROC
-        isr_entry_macro 0cbh
-isr_entry_cb ENDP
-
-isr_entry_cc PROC
-        isr_entry_macro 0cch
-isr_entry_cc ENDP
-
-isr_entry_cd PROC
-        isr_entry_macro 0cdh
-isr_entry_cd ENDP
-
-isr_entry_ce PROC
-        isr_entry_macro 0ceh
-isr_entry_ce ENDP
-
-isr_entry_cf PROC
-        isr_entry_macro 0cfh
-isr_entry_cf ENDP
-
-isr_entry_d0 PROC
-        isr_entry_macro 0d0h
-isr_entry_d0 ENDP
-
-isr_entry_d1 PROC
-        isr_entry_macro 0d1h
-isr_entry_d1 ENDP
-
-isr_entry_d2 PROC
-        isr_entry_macro 0d2h
-isr_entry_d2 ENDP
-
-isr_entry_d3 PROC
-        isr_entry_macro 0d3h
-isr_entry_d3 ENDP
-
-isr_entry_d4 PROC
-        isr_entry_macro 0d4h
-isr_entry_d4 ENDP
-
-isr_entry_d5 PROC
-        isr_entry_macro 0d5h
-isr_entry_d5 ENDP
-
-isr_entry_d6 PROC
-        isr_entry_macro 0d6h
-isr_entry_d6 ENDP
-
-isr_entry_d7 PROC
-        isr_entry_macro 0d7h
-isr_entry_d7 ENDP
-
-isr_entry_d8 PROC
-        isr_entry_macro 0d8h
-isr_entry_d8 ENDP
-
-isr_entry_d9 PROC
-        isr_entry_macro 0d9h
-isr_entry_d9 ENDP
-
-isr_entry_da PROC
-        isr_entry_macro 0dah
-isr_entry_da ENDP
-
-isr_entry_db PROC
-        isr_entry_macro 0dbh
-isr_entry_db ENDP
-
-isr_entry_dc PROC
-        isr_entry_macro 0dch
-isr_entry_dc ENDP
-
-isr_entry_dd PROC
-        isr_entry_macro 0ddh
-isr_entry_dd ENDP
-
-isr_entry_de PROC
-        isr_entry_macro 0deh
-isr_entry_de ENDP
-
-isr_entry_df PROC
-        isr_entry_macro 0dfh
-isr_entry_df ENDP
-
-isr_entry_e0 PROC
-        isr_entry_macro 0e0h
-isr_entry_e0 ENDP
-
-isr_entry_e1 PROC
-        isr_entry_macro 0e1h
-isr_entry_e1 ENDP
-
-isr_entry_e2 PROC
-        isr_entry_macro 0e2h
-isr_entry_e2 ENDP
-
-isr_entry_e3 PROC
-        isr_entry_macro 0e3h
-isr_entry_e3 ENDP
-
-isr_entry_e4 PROC
-        isr_entry_macro 0e4h
-isr_entry_e4 ENDP
-
-isr_entry_e5 PROC
-        isr_entry_macro 0e5h
-isr_entry_e5 ENDP
-
-isr_entry_e6 PROC
-        isr_entry_macro 0e6h
-isr_entry_e6 ENDP
-
-isr_entry_e7 PROC
-        isr_entry_macro 0e7h
-isr_entry_e7 ENDP
-
-isr_entry_e8 PROC
-        isr_entry_macro 0e8h
-isr_entry_e8 ENDP
-
-isr_entry_e9 PROC
-        isr_entry_macro 0e9h
-isr_entry_e9 ENDP
-
-isr_entry_ea PROC
-        isr_entry_macro 0eah
-isr_entry_ea ENDP
-
-isr_entry_eb PROC
-        isr_entry_macro 0ebh
-isr_entry_eb ENDP
-
-isr_entry_ec PROC
-        isr_entry_macro 0ech
-isr_entry_ec ENDP
-
-isr_entry_ed PROC
-        isr_entry_macro 0edh
-isr_entry_ed ENDP
-
-isr_entry_ee PROC
-        isr_entry_macro 0eeh
-isr_entry_ee ENDP
-
-isr_entry_ef PROC
-        isr_entry_macro 0efh
-isr_entry_ef ENDP
-
-isr_entry_f0 PROC
-        isr_entry_macro 0f0h
-isr_entry_f0 ENDP
-
-isr_entry_f1 PROC
-        isr_entry_macro 0f1h
-isr_entry_f1 ENDP
-
-isr_entry_f2 PROC
-        isr_entry_macro 0f2h
-isr_entry_f2 ENDP
-
-isr_entry_f3 PROC
-        isr_entry_macro 0f3h
-isr_entry_f3 ENDP
-
-isr_entry_f4 PROC
-        isr_entry_macro 0f4h
-isr_entry_f4 ENDP
-
-isr_entry_f5 PROC
-        isr_entry_macro 0f5h
-isr_entry_f5 ENDP
-
-isr_entry_f6 PROC
-        isr_entry_macro 0f6h
-isr_entry_f6 ENDP
-
-isr_entry_f7 PROC
-        isr_entry_macro 0f7h
-isr_entry_f7 ENDP
-
-isr_entry_f8 PROC
-        isr_entry_macro 0f8h
-isr_entry_f8 ENDP
-
-isr_entry_f9 PROC
-        isr_entry_macro 0f9h
-isr_entry_f9 ENDP
-
-isr_entry_fa PROC
-        isr_entry_macro 0fah
-isr_entry_fa ENDP
-
-isr_entry_fb PROC
-        isr_entry_macro 0fbh
-isr_entry_fb ENDP
-
-isr_entry_fc PROC
-        isr_entry_macro 0fch
-isr_entry_fc ENDP
-
-isr_entry_fd PROC
-        isr_entry_macro 0fdh
-isr_entry_fd ENDP
-
-isr_entry_fe PROC
-        isr_entry_macro 0feh
-isr_entry_fe ENDP
-
-isr_entry_ff PROC
-        isr_entry_macro 0ffh
-isr_entry_ff ENDP
+.text
+
+.func isr_entry_00
+        isr_entry_macro $0x000
+.endfunc
+#isr_entry_00 ENDP
+
+.func isr_entry_01
+        isr_entry_macro $0x001
+.endfunc
+
+.func isr_entry_02
+        isr_entry_macro $0x002
+.endfunc
+
+.func isr_entry_03
+        isr_entry_macro $0x003
+.endfunc
+
+.func isr_entry_04
+        isr_entry_macro $0x004
+.endfunc
+
+.func isr_entry_05
+        isr_entry_macro $0x005
+.endfunc
+
+.func isr_entry_06
+        isr_entry_macro $0x006
+.endfunc
+
+.func isr_entry_07
+        isr_entry_macro $0x007
+.endfunc
+
+.func isr_entry_08
+        isr_entry_macro $0x008
+.endfunc
+
+.func isr_entry_09
+        isr_entry_macro $0x009
+.endfunc
+
+.func isr_entry_0a
+        isr_entry_macro $0x00a
+.endfunc
+
+.func isr_entry_0b
+        isr_entry_macro $0x00b
+.endfunc
+
+.func isr_entry_0c
+        isr_entry_macro $0x00c
+.endfunc
+
+.func isr_entry_0d
+        isr_entry_macro $0x00d
+.endfunc
+
+.func isr_entry_0e
+        isr_entry_macro $0x00e
+.endfunc
+
+.func isr_entry_0f
+        isr_entry_macro $0x00f
+.endfunc
+
+.func isr_entry_10
+        isr_entry_macro $0x010
+.endfunc
+
+.func isr_entry_11
+        isr_entry_macro $0x011
+.endfunc
+
+.func isr_entry_12
+        isr_entry_macro $0x012
+.endfunc
+
+.func isr_entry_13
+        isr_entry_macro $0x013
+.endfunc
+
+.func isr_entry_14
+        isr_entry_macro $0x014
+.endfunc
+
+.func isr_entry_15
+        isr_entry_macro $0x015
+.endfunc
+
+.func isr_entry_16
+        isr_entry_macro $0x016
+.endfunc
+
+.func isr_entry_17
+        isr_entry_macro $0x017
+.endfunc
+
+.func isr_entry_18
+        isr_entry_macro $0x018
+.endfunc
+
+.func isr_entry_19
+        isr_entry_macro $0x019
+.endfunc
+
+.func isr_entry_1a
+        isr_entry_macro $0x01a
+.endfunc
+
+.func isr_entry_1b
+        isr_entry_macro $0x01b
+.endfunc
+
+.func isr_entry_1c
+        isr_entry_macro $0x01c
+.endfunc
+
+.func isr_entry_1d
+        isr_entry_macro $0x01d
+.endfunc
+
+.func isr_entry_1e
+        isr_entry_macro $0x01e
+.endfunc
+
+.func isr_entry_1f
+        isr_entry_macro $0x01f
+.endfunc
+
+.func isr_entry_20
+        isr_entry_macro $0x020
+.endfunc
+
+.func isr_entry_21
+        isr_entry_macro $0x021
+.endfunc
+
+.func isr_entry_22
+        isr_entry_macro $0x022
+.endfunc
+
+.func isr_entry_23
+        isr_entry_macro $0x023
+.endfunc
+
+.func isr_entry_24
+        isr_entry_macro $0x024
+.endfunc
+
+.func isr_entry_25
+        isr_entry_macro $0x025
+.endfunc
+
+.func isr_entry_26
+        isr_entry_macro $0x026
+.endfunc
+
+.func isr_entry_27
+        isr_entry_macro $0x027
+.endfunc
+
+.func isr_entry_28
+        isr_entry_macro $0x028
+.endfunc
+
+.func isr_entry_29
+        isr_entry_macro $0x029
+.endfunc
+
+.func isr_entry_2a
+        isr_entry_macro $0x02a
+.endfunc
+
+.func isr_entry_2b
+        isr_entry_macro $0x02b
+.endfunc
+
+.func isr_entry_2c
+        isr_entry_macro $0x02c
+.endfunc
+
+.func isr_entry_2d
+        isr_entry_macro $0x02d
+.endfunc
+
+.func isr_entry_2e
+        isr_entry_macro $0x02e
+.endfunc
+
+.func isr_entry_2f
+        isr_entry_macro $0x02f
+.endfunc
+
+.func isr_entry_30
+        isr_entry_macro $0x030
+.endfunc
+
+.func isr_entry_31
+        isr_entry_macro $0x031
+.endfunc
+
+.func isr_entry_32
+        isr_entry_macro $0x032
+.endfunc
+
+.func isr_entry_33
+        isr_entry_macro $0x033
+.endfunc
+
+.func isr_entry_34
+        isr_entry_macro $0x034
+.endfunc
+
+.func isr_entry_35
+        isr_entry_macro $0x035
+.endfunc
+
+.func isr_entry_36
+        isr_entry_macro $0x036
+.endfunc
+
+.func isr_entry_37
+        isr_entry_macro $0x037
+.endfunc
+
+.func isr_entry_38
+        isr_entry_macro $0x038
+.endfunc
+
+.func isr_entry_39
+        isr_entry_macro $0x039
+.endfunc
+
+.func isr_entry_3a
+        isr_entry_macro $0x03a
+.endfunc
+
+.func isr_entry_3b
+        isr_entry_macro $0x03b
+.endfunc
+
+.func isr_entry_3c
+        isr_entry_macro $0x03c
+.endfunc
+
+.func isr_entry_3d
+        isr_entry_macro $0x03d
+.endfunc
+
+.func isr_entry_3e
+        isr_entry_macro $0x03e
+.endfunc
+
+.func isr_entry_3f
+        isr_entry_macro $0x03f
+.endfunc
+
+.func isr_entry_40
+        isr_entry_macro $0x040
+.endfunc
+
+.func isr_entry_41
+        isr_entry_macro $0x041
+.endfunc
+
+.func isr_entry_42
+        isr_entry_macro $0x042
+.endfunc
+
+.func isr_entry_43
+        isr_entry_macro $0x043
+.endfunc
+
+.func isr_entry_44
+        isr_entry_macro $0x044
+.endfunc
+
+.func isr_entry_45
+        isr_entry_macro $0x045
+.endfunc
+
+.func isr_entry_46
+        isr_entry_macro $0x046
+.endfunc
+
+.func isr_entry_47
+        isr_entry_macro $0x047
+.endfunc
+
+.func isr_entry_48
+        isr_entry_macro $0x048
+.endfunc
+
+.func isr_entry_49
+        isr_entry_macro $0x049
+.endfunc
+
+.func isr_entry_4a
+        isr_entry_macro $0x04a
+.endfunc
+
+.func isr_entry_4b
+        isr_entry_macro $0x04b
+.endfunc
+
+.func isr_entry_4c
+        isr_entry_macro $0x04c
+.endfunc
+
+.func isr_entry_4d
+        isr_entry_macro $0x04d
+.endfunc
+
+.func isr_entry_4e
+        isr_entry_macro $0x04e
+.endfunc
+
+.func isr_entry_4f
+        isr_entry_macro $0x04f
+.endfunc
+
+.func isr_entry_50
+        isr_entry_macro $0x050
+.endfunc
+
+.func isr_entry_51
+        isr_entry_macro $0x051
+.endfunc
+
+.func isr_entry_52
+        isr_entry_macro $0x052
+.endfunc
+
+.func isr_entry_53
+        isr_entry_macro $0x053
+.endfunc
+
+.func isr_entry_54
+        isr_entry_macro $0x054
+.endfunc
+
+.func isr_entry_55
+        isr_entry_macro $0x055
+.endfunc
+
+.func isr_entry_56
+        isr_entry_macro $0x056
+.endfunc
+
+.func isr_entry_57
+        isr_entry_macro $0x057
+.endfunc
+
+.func isr_entry_58
+        isr_entry_macro $0x058
+.endfunc
+
+.func isr_entry_59
+        isr_entry_macro $0x059
+.endfunc
+
+.func isr_entry_5a
+        isr_entry_macro $0x05a
+.endfunc
+
+.func isr_entry_5b
+        isr_entry_macro $0x05b
+.endfunc
+
+.func isr_entry_5c
+        isr_entry_macro $0x05c
+.endfunc
+
+.func isr_entry_5d
+        isr_entry_macro $0x05d
+.endfunc
+
+.func isr_entry_5e
+        isr_entry_macro $0x05e
+.endfunc
+
+.func isr_entry_5f
+        isr_entry_macro $0x05f
+.endfunc
+
+.func isr_entry_60
+        isr_entry_macro $0x060
+.endfunc
+
+.func isr_entry_61
+        isr_entry_macro $0x061
+.endfunc
+
+.func isr_entry_62
+        isr_entry_macro $0x062
+.endfunc
+
+.func isr_entry_63
+        isr_entry_macro $0x063
+.endfunc
+
+.func isr_entry_64
+        isr_entry_macro $0x064
+.endfunc
+
+.func isr_entry_65
+        isr_entry_macro $0x065
+.endfunc
+
+.func isr_entry_66
+        isr_entry_macro $0x066
+.endfunc
+
+.func isr_entry_67
+        isr_entry_macro $0x067
+.endfunc
+
+.func isr_entry_68
+        isr_entry_macro $0x068
+.endfunc
+
+.func isr_entry_69
+        isr_entry_macro $0x069
+.endfunc
+
+.func isr_entry_6a
+        isr_entry_macro $0x06a
+.endfunc
+
+.func isr_entry_6b
+        isr_entry_macro $0x06b
+.endfunc
+
+.func isr_entry_6c
+        isr_entry_macro $0x06c
+.endfunc
+
+.func isr_entry_6d
+        isr_entry_macro $0x06d
+.endfunc
+
+.func isr_entry_6e
+        isr_entry_macro $0x06e
+.endfunc
+
+.func isr_entry_6f
+        isr_entry_macro $0x06f
+.endfunc
+
+.func isr_entry_70
+        isr_entry_macro $0x070
+.endfunc
+
+.func isr_entry_71
+        isr_entry_macro $0x071
+.endfunc
+
+.func isr_entry_72
+        isr_entry_macro $0x072
+.endfunc
+
+.func isr_entry_73
+        isr_entry_macro $0x073
+.endfunc
+
+.func isr_entry_74
+        isr_entry_macro $0x074
+.endfunc
+
+.func isr_entry_75
+        isr_entry_macro $0x075
+.endfunc
+
+.func isr_entry_76
+        isr_entry_macro $0x076
+.endfunc
+
+.func isr_entry_77
+        isr_entry_macro $0x077
+.endfunc
+
+.func isr_entry_78
+        isr_entry_macro $0x078
+.endfunc
+
+.func isr_entry_79
+        isr_entry_macro $0x079
+.endfunc
+
+.func isr_entry_7a
+        isr_entry_macro $0x07a
+.endfunc
+
+.func isr_entry_7b
+        isr_entry_macro $0x07b
+.endfunc
+
+.func isr_entry_7c
+        isr_entry_macro $0x07c
+.endfunc
+
+.func isr_entry_7d
+        isr_entry_macro $0x07d
+.endfunc
+
+.func isr_entry_7e
+        isr_entry_macro $0x07e
+.endfunc
+
+.func isr_entry_7f
+        isr_entry_macro $0x07f
+.endfunc
+
+.func isr_entry_80
+        isr_entry_macro $0x080
+.endfunc
+
+.func isr_entry_81
+        isr_entry_macro $0x081
+.endfunc
+
+.func isr_entry_82
+        isr_entry_macro $0x082
+.endfunc
+
+.func isr_entry_83
+        isr_entry_macro $0x083
+.endfunc
+
+.func isr_entry_84
+        isr_entry_macro $0x084
+.endfunc
+
+.func isr_entry_85
+        isr_entry_macro $0x085
+.endfunc
+
+.func isr_entry_86
+        isr_entry_macro $0x086
+.endfunc
+
+.func isr_entry_87
+        isr_entry_macro $0x087
+.endfunc
+
+.func isr_entry_88
+        isr_entry_macro $0x088
+.endfunc
+
+.func isr_entry_89
+        isr_entry_macro $0x089
+.endfunc
+
+.func isr_entry_8a
+        isr_entry_macro $0x08a
+.endfunc
+
+.func isr_entry_8b
+        isr_entry_macro $0x08b
+.endfunc
+
+.func isr_entry_8c
+        isr_entry_macro $0x08c
+.endfunc
+
+.func isr_entry_8d
+        isr_entry_macro $0x08d
+.endfunc
+
+.func isr_entry_8e
+        isr_entry_macro $0x08e
+.endfunc
+
+.func isr_entry_8f
+        isr_entry_macro $0x08f
+.endfunc
+
+.func isr_entry_90
+        isr_entry_macro $0x090
+.endfunc
+
+.func isr_entry_91
+        isr_entry_macro $0x091
+.endfunc
+
+.func isr_entry_92
+        isr_entry_macro $0x092
+.endfunc
+
+.func isr_entry_93
+        isr_entry_macro $0x093
+.endfunc
+
+.func isr_entry_94
+        isr_entry_macro $0x094
+.endfunc
+
+.func isr_entry_95
+        isr_entry_macro $0x095
+.endfunc
+
+.func isr_entry_96
+        isr_entry_macro $0x096
+.endfunc
+
+.func isr_entry_97
+        isr_entry_macro $0x097
+.endfunc
+
+.func isr_entry_98
+        isr_entry_macro $0x098
+.endfunc
+
+.func isr_entry_99
+        isr_entry_macro $0x099
+.endfunc
+
+.func isr_entry_9a
+        isr_entry_macro $0x09a
+.endfunc
+
+.func isr_entry_9b
+        isr_entry_macro $0x09b
+.endfunc
+
+.func isr_entry_9c
+        isr_entry_macro $0x09c
+.endfunc
+
+.func isr_entry_9d
+        isr_entry_macro $0x09d
+.endfunc
+
+.func isr_entry_9e
+        isr_entry_macro $0x09e
+.endfunc
+
+.func isr_entry_9f
+        isr_entry_macro $0x09f
+.endfunc
+
+.func isr_entry_a0
+        isr_entry_macro $0x0a0
+.endfunc
+
+.func isr_entry_a1
+        isr_entry_macro $0x0a1
+.endfunc
+
+.func isr_entry_a2
+        isr_entry_macro $0x0a2
+.endfunc
+
+.func isr_entry_a3
+        isr_entry_macro $0x0a3
+.endfunc
+
+.func isr_entry_a4
+        isr_entry_macro $0x0a4
+.endfunc
+
+.func isr_entry_a5
+        isr_entry_macro $0x0a5
+.endfunc
+
+.func isr_entry_a6
+        isr_entry_macro $0x0a6
+.endfunc
+
+.func isr_entry_a7
+        isr_entry_macro $0x0a7
+.endfunc
+
+.func isr_entry_a8
+        isr_entry_macro $0x0a8
+.endfunc
+
+.func isr_entry_a9
+        isr_entry_macro $0x0a9
+.endfunc
+
+.func isr_entry_aa
+        isr_entry_macro $0x0aa
+.endfunc
+
+.func isr_entry_ab
+        isr_entry_macro $0x0ab
+.endfunc
+
+.func isr_entry_ac
+        isr_entry_macro $0x0ac
+.endfunc
+
+.func isr_entry_ad
+        isr_entry_macro $0x0ad
+.endfunc
+
+.func isr_entry_ae
+        isr_entry_macro $0x0ae
+.endfunc
+
+.func isr_entry_af
+        isr_entry_macro $0x0af
+.endfunc
+
+.func isr_entry_b0
+        isr_entry_macro $0x0b0
+.endfunc
+
+.func isr_entry_b1
+        isr_entry_macro $0x0b1
+.endfunc
+
+.func isr_entry_b2
+        isr_entry_macro $0x0b2
+.endfunc
+
+.func isr_entry_b3
+        isr_entry_macro $0x0b3
+.endfunc
+
+.func isr_entry_b4
+        isr_entry_macro $0x0b4
+.endfunc
+
+.func isr_entry_b5
+        isr_entry_macro $0x0b5
+.endfunc
+
+.func isr_entry_b6
+        isr_entry_macro $0x0b6
+.endfunc
+
+.func isr_entry_b7
+        isr_entry_macro $0x0b7
+.endfunc
+
+.func isr_entry_b8
+        isr_entry_macro $0x0b8
+.endfunc
+
+.func isr_entry_b9
+        isr_entry_macro $0x0b9
+.endfunc
+
+.func isr_entry_ba
+        isr_entry_macro $0x0ba
+.endfunc
+
+.func isr_entry_bb
+        isr_entry_macro $0x0bb
+.endfunc
+
+.func isr_entry_bc
+        isr_entry_macro $0x0bc
+.endfunc
+
+.func isr_entry_bd
+        isr_entry_macro $0x0bd
+.endfunc
+
+.func isr_entry_be
+        isr_entry_macro $0x0be
+.endfunc
+
+.func isr_entry_bf
+        isr_entry_macro $0x0bf
+.endfunc
+
+.func isr_entry_c0
+        isr_entry_macro $0x0c0
+.endfunc
+
+.func isr_entry_c1
+        isr_entry_macro $0x0c1
+.endfunc
+
+.func isr_entry_c2
+        isr_entry_macro $0x0c2
+.endfunc
+
+.func isr_entry_c3
+        isr_entry_macro $0x0c3
+.endfunc
+
+.func isr_entry_c4
+        isr_entry_macro $0x0c4
+.endfunc
+
+.func isr_entry_c5
+        isr_entry_macro $0x0c5
+.endfunc
+
+.func isr_entry_c6
+        isr_entry_macro $0x0c6
+.endfunc
+
+.func isr_entry_c7
+        isr_entry_macro $0x0c7
+.endfunc
+
+.func isr_entry_c8
+        isr_entry_macro $0x0c8
+.endfunc
+
+.func isr_entry_c9
+        isr_entry_macro $0x0c9
+.endfunc
+
+.func isr_entry_ca
+        isr_entry_macro $0x0ca
+.endfunc
+
+.func isr_entry_cb
+        isr_entry_macro $0x0cb
+.endfunc
+
+.func isr_entry_cc
+        isr_entry_macro $0x0cc
+.endfunc
+
+.func isr_entry_cd
+        isr_entry_macro $0x0cd
+.endfunc
+
+.func isr_entry_ce
+        isr_entry_macro $0x0ce
+.endfunc
+
+.func isr_entry_cf
+        isr_entry_macro $0x0cf
+.endfunc
+
+.func isr_entry_d0
+        isr_entry_macro $0x0d0
+.endfunc
+
+.func isr_entry_d1
+        isr_entry_macro $0x0d1
+.endfunc
+
+.func isr_entry_d2
+        isr_entry_macro $0x0d2
+.endfunc
+
+.func isr_entry_d3
+        isr_entry_macro $0x0d3
+.endfunc
+
+.func isr_entry_d4
+        isr_entry_macro $0x0d4
+.endfunc
+
+.func isr_entry_d5
+        isr_entry_macro $0x0d5
+.endfunc
+
+.func isr_entry_d6
+        isr_entry_macro $0x0d6
+.endfunc
+
+.func isr_entry_d7
+        isr_entry_macro $0x0d7
+.endfunc
+
+.func isr_entry_d8
+        isr_entry_macro $0x0d8
+.endfunc
+
+.func isr_entry_d9
+        isr_entry_macro $0x0d9
+.endfunc
+
+.func isr_entry_da
+        isr_entry_macro $0x0da
+.endfunc
+
+.func isr_entry_db
+        isr_entry_macro $0x0db
+.endfunc
+
+.func isr_entry_dc
+        isr_entry_macro $0x0dc
+.endfunc
+
+.func isr_entry_dd
+        isr_entry_macro $0x0dd
+.endfunc
+
+.func isr_entry_de
+        isr_entry_macro $0x0de
+.endfunc
+
+.func isr_entry_df
+        isr_entry_macro $0x0df
+.endfunc
+
+.func isr_entry_e0
+        isr_entry_macro $0x0e0
+.endfunc
+
+.func isr_entry_e1
+        isr_entry_macro $0x0e1
+.endfunc
+
+.func isr_entry_e2
+        isr_entry_macro $0x0e2
+.endfunc
+
+.func isr_entry_e3
+        isr_entry_macro $0x0e3
+.endfunc
+
+.func isr_entry_e4
+        isr_entry_macro $0x0e4
+.endfunc
+
+.func isr_entry_e5
+        isr_entry_macro $0x0e5
+.endfunc
+
+.func isr_entry_e6
+        isr_entry_macro $0x0e6
+.endfunc
+
+.func isr_entry_e7
+        isr_entry_macro $0x0e7
+.endfunc
+
+.func isr_entry_e8
+        isr_entry_macro $0x0e8
+.endfunc
+
+.func isr_entry_e9
+        isr_entry_macro $0x0e9
+.endfunc
+
+.func isr_entry_ea
+        isr_entry_macro $0x0ea
+.endfunc
+
+.func isr_entry_eb
+        isr_entry_macro $0x0eb
+.endfunc
+
+.func isr_entry_ec
+        isr_entry_macro $0x0ec
+.endfunc
+
+.func isr_entry_ed
+        isr_entry_macro $0x0ed
+.endfunc
+
+.func isr_entry_ee
+        isr_entry_macro $0x0ee
+.endfunc
+
+.func isr_entry_ef
+        isr_entry_macro $0x0ef
+.endfunc
+
+.func isr_entry_f0
+        isr_entry_macro $0x0f0
+.endfunc
+
+.func isr_entry_f1
+        isr_entry_macro $0x0f1
+.endfunc
+
+.func isr_entry_f2
+        isr_entry_macro $0x0f2
+.endfunc
+
+.func isr_entry_f3
+        isr_entry_macro $0x0f3
+.endfunc
+
+.func isr_entry_f4
+        isr_entry_macro $0x0f4
+.endfunc
+
+.func isr_entry_f5
+        isr_entry_macro $0x0f5
+.endfunc
+
+.func isr_entry_f6
+        isr_entry_macro $0x0f6
+.endfunc
+
+.func isr_entry_f7
+        isr_entry_macro $0x0f7
+.endfunc
+
+.func isr_entry_f8
+        isr_entry_macro $0x0f8
+.endfunc
+
+.func isr_entry_f9
+        isr_entry_macro $0x0f9
+.endfunc
+
+.func isr_entry_fa
+        isr_entry_macro $0x0fa
+.endfunc
+
+.func isr_entry_fb
+        isr_entry_macro $0x0fb
+.endfunc
+
+.func isr_entry_fc
+        isr_entry_macro $0x0fc
+.endfunc
+
+.func isr_entry_fd
+        isr_entry_macro $0x0fd
+.endfunc
+
+.func isr_entry_fe
+        isr_entry_macro $0x0fe
+.endfunc
+
+.func isr_entry_ff
+        isr_entry_macro $0x0ff
+.endfunc
 
 END
-

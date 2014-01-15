@@ -52,7 +52,8 @@
 .set	ARG2_U16, %dx
 .set	ARG2_U32, %edx
 .set	ARG2_U64, %rdx
-.set	ARG3_U32, %r8l
+#RNB: GAS wants r8d instead of r8l to access low 32-bits of r8-r15 registers.
+.set	ARG3_U32, %r8d
 .set	ARG3_U64, %r8
 
 #

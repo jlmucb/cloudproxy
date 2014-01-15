@@ -121,6 +121,7 @@ inline bool bnum::mpIsZero()
 extern bnum g_bnZero;
 extern bnum g_bnOne;
 extern bnum g_bnTwo;
+extern bnum g_bnThree;
 
 
 #endif    // _BIGNUM_H

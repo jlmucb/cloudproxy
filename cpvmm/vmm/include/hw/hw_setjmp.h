@@ -31,7 +31,20 @@
                                 //    rsp, rip
 #endif
 
+struct __jmp_buf {
+	unsigned long __rbx;
+	unsigned long __rsp;
+	unsigned long __rbp;
+	unsigned long __r12;
+	unsigned long __r13;
+	unsigned long __r14;
+	unsigned long __r15;
+	unsigned long __rip;
+};
+
+typedef struct __jmp_buf SETJMP_BUFFER;
 typedef UINT8 SETJMP_BUFFER[SETJMP_BUFFER_ITEMS * sizeof(ADDRESS)];
+
 
 extern int  setjmp(SETJMP_BUFFER *env);
 extern void longjmp(SETJMP_BUFFER *env, int errcode);

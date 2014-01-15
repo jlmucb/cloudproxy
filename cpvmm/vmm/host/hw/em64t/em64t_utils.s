@@ -45,16 +45,16 @@
 # types to be returned must be 1, 2, 4, 8, 16, 32, or 64 bits in length.
 #
 
-.set    ARG1_U8, cl
-.set    ARG1_U16, cx
-.set    ARG1_U32, ecx
-.set    ARG1_U64, rcx
-.set    ARG2_U8, dl
-.set    ARG2_U16, dx
-.set    ARG2_U32, edx
-.set    ARG2_U64, rdx
-.set    ARG3_U32, r8l
-.set    ARG3_U64, r8
+.set    ARG1_U8, %cl
+.set    ARG1_U16, % cx
+.set    ARG1_U32, %ecx
+.set    ARG1_U64, %rcx
+.set    ARG2_U8, %dl
+.set    ARG2_U16, %dx
+.set    ARG2_U32, %edx
+.set    ARG2_U64, %rdx
+.set    ARG3_U32, %r8l
+.set    ARG3_U64, %r8
 
 #
 # Register usage
@@ -101,8 +101,8 @@ hw_sgdt:
 #
 .globl  hw_read_cs 
 hw_read_cs:
-        xor     rax, rax
-        mov     ax, cs
+        xor     %rax, %rax
+        mov     %ax, %cs
         ret
 
 #
@@ -117,12 +117,12 @@ hw_read_cs:
 .globl  hw_write_cs 
 hw_write_cs:
         #; push segment selector
-        xor     rax, rax
-        mov     ax, ARG1_U16
-        shl     rax, 32
-        lea     rdx, CONT_WITH_NEW_CS
-        add     rax, rdx
-        push    rax
+        xor     %rax, %rax
+        mov     %ax, ARG1_U16
+        shl     %rax, 32
+        lea     %rdx, CONT_WITH_NEW_CS
+        add     %rax, %rdx
+        push    %rax
         retf                            # brings IP to CONT_WITH_NEW_CS
 CONT_WITH_NEW_CS:
         ret
@@ -142,8 +142,8 @@ CONT_WITH_NEW_CS:
 #
 .globl  hw_read_ds 
 hw_read_ds:
-        xor     rax, rax
-        mov     ax, ds
+        xor     %rax, %rax
+        mov     %ax, %ds
         ret
 
 #
@@ -156,7 +156,7 @@ hw_read_ds:
 #
 .globl  hw_write_ds 
 hw_write_ds:
-        mov     ds, ARG1_U16
+        mov     %ds, ARG1_U16
         ret
 
 
@@ -174,8 +174,8 @@ hw_write_ds:
 #
 .globl  hw_read_es 
 hw_read_es:
-        xor     rax, rax
-        mov     ax, es
+        xor     %rax, %rax
+        mov     %ax, %es
         ret
 
 
@@ -190,7 +190,7 @@ hw_read_es:
 #
 .globl  hw_write_es 
 hw_write_es:
-        mov     es, ARG1_U16
+        mov     %es, ARG1_U16
         ret
 
 
@@ -206,8 +206,8 @@ hw_write_es:
 #
 .globl  hw_read_ss 
 hw_read_ss:
-        xor     rax, rax
-        mov     ax, ss
+        xor     %rax, %rax
+        mov     %ax, %ss
         ret
 
 
@@ -222,7 +222,7 @@ hw_read_ss:
 #
 .globl  hw_write_ss 
 hw_write_ss:
-        mov     ss, ARG1_U16
+        mov     %ss, ARG1_U16
         ret
 
 
@@ -238,8 +238,8 @@ hw_write_ss:
 #
 .globl  hw_read_fs 
 hw_read_fs:
-        xor     rax, rax
-        mov     ax, fs
+        xor     %rax, %rax
+        mov     %ax, %fs
         ret
 
 
@@ -254,7 +254,7 @@ hw_read_fs:
 #
 .global hw_write_fs 
 hw_write_fs:
-        mov     fs, ARG1_U16
+        mov     %fs, ARG1_U16
         ret
 
 #
@@ -269,8 +269,8 @@ hw_write_fs:
 #
 .globl hw_read_gs 
 hw_read_gs:
-        xor     rax, rax
-        mov     ax, gs
+        xor     %rax, %rax
+        mov     %ax, %gs
         ret
 
 
@@ -285,7 +285,7 @@ hw_read_gs:
 #
 .globl  hw_write_gs 
 hw_write_gs:
-        mov     gs, ARG1_U16
+        mov     %gs, ARG1_U16
         ret
 
 
@@ -303,7 +303,7 @@ hw_write_gs:
 hw_set_stack_pointer:
         mov     rsp,    ARG1_U64
                 mov     ARG1_U64, ARG3_U64
-                sub     rsp, 32     # allocate home space for 4 input params
+                sub     %rsp, $32     # allocate home space for 4 input params
                 call    ARG2_U64
                 jmp     $
         ret
@@ -317,8 +317,8 @@ hw_set_stack_pointer:
 #
 .globl  hw_read_rsp 
 hw_read_rsp:
-        mov     rax, rsp
-        add     rax, 8
+        mov     %rax, %rsp
+        add     %rax, $8
         ret
 
 #
@@ -352,75 +352,75 @@ SMI_PORT_PARAMS   ends
 hw_write_to_smi_port:
 
         #; save callee saved registers
-        push    rbp
-        mov     rbp, rsp                #; setup stack frame pointer
+        push    %rbp
+        mov     %rbp, %rsp                #; setup stack frame pointer
 
-        push    rbx
-        push    rdi
-        push    rsi
-        push    r12
-        push    r13
-        push    r14
-        push    r15
+        push    %rbx
+        push    %rdi
+        push    %rsi
+        push    %r12
+        push    %r13
+        push    %r14
+        push    %r15
 
-        lea     r15,[rbp + 0x10]        #; set r15 to point to SMI_PORT_PARAMS struct
+        lea     %r15,[%rbp + $0x10]     #; set r15 to point to SMI_PORT_PARAMS struct
 
         #; normalize stack
-        mov     (SMI_PORT_PARAMS ptr [r15]).P_RAX, rcx
-        mov     (SMI_PORT_PARAMS ptr [r15]).P_RBX, rdx
-        mov     (SMI_PORT_PARAMS ptr [r15]).P_RCX, r8
-        mov     (SMI_PORT_PARAMS ptr [r15]).P_RDX, r9
+        mov     (SMI_PORT_PARAMS ptr [r15]).P_RAX, %rcx
+        mov     (SMI_PORT_PARAMS ptr [r15]).P_RBX, %rdx
+        mov     (SMI_PORT_PARAMS ptr [r15]).P_RCX, %r8
+        mov     (SMI_PORT_PARAMS ptr [r15]).P_RDX, %r9
 
         #; copy emulator registers into CPU
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RAX
-        mov     rax, [r8]
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RBX
-        mov     rbx, [r8]
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RCX
-        mov     rcx, [r8]
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RDX
-        mov     rdx, [r8]
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RSI
-        mov     rsi, [r8]
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RDI
-        mov     rdi, [r8]
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RFLAGS
-        push    qword ptr [r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RAX
+        mov     %rax, [%r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RBX
+        mov     %rbx, [%r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RCX
+        mov     %rcx, [%r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RDX
+        mov     %rdx, [%r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RSI
+        mov     %rsi, [%r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RDI
+        mov     %rdi, [%r8]
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RFLAGS
+        push    qword ptr [%r8]
         popfq                           #; rflags = *p_rflags
 
         #; we assume that sp will not change after SMI
-        push    rbp
-        push    r15
-        out     dx, al
-        pop     r15
-        pop     rbp
+        push    %rbp
+        push    %r15
+        out     %dx, %al
+        pop     %r15
+        pop     %rbp
 
         #; fill emulator registers from CPU
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RAX
-        mov     [r8], rax
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RBX
-        mov     [r8], rbx
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RCX
-        mov     [r8], rcx
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RDX
-        mov     [r8], rdx
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RSI
-        mov     [r8], rsi
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RDI
-        mov     [r8], rdi
-        mov     r8, (SMI_PORT_PARAMS ptr [r15]).P_RFLAGS
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RAX
+        mov     [%r8], rax
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RBX
+        mov     [%r8], %rbx
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RCX
+        mov     [%r8], %rcx
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RDX
+        mov     [%r8], %rdx
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RSI
+        mov     [%r8], %rsi
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RDI
+        mov     [%r8], %rdi
+        mov     %r8, (SMI_PORT_PARAMS ptr [%r15]).P_RFLAGS
         pushfq                          #;
-        pop     [r8]                    #; *p_rflags = rflags
+        pop     [%r8]                    #; *p_rflags = rflags
 
         #; restore callee saved registers
-        pop     r15
-        pop     r14
-        pop     r13
-        pop     r12
-        pop     rsi
-        pop     rdi
-        pop     rbx
-        pop     rbp
+        pop     %r15
+        pop     %r14
+        pop     %r13
+        pop     %r12
+        pop     %rsi
+        pop     %rdi
+        pop     %rbx
+        pop     %rbp
         ret
 
 
@@ -476,7 +476,7 @@ hw_fxrestore:
 #
 .globl  hw_write_cr2 
 hw_write_cr2:
-        mov cr2, ARG1_U64
+        mov %cr2, ARG1_U64
         ret
 
 #
@@ -498,10 +498,10 @@ hw_write_cr2:
 
 .globl  hw_cpu_id 
 hw_cpu_id:
-        xor     rax, rax
-        str     ax
-        sub     ax, CPU_LOCATOR_GDT_ENTRY_OFFSET
-        shr     ax, TSS_ENTRY_SIZE_SHIFT
+        xor     %rax, %rax
+        str     %ax
+        sub     %ax, CPU_LOCATOR_GDT_ENTRY_OFFSET
+        shr     %ax, TSS_ENTRY_SIZE_SHIFT
         ret
 
 #
@@ -516,7 +516,7 @@ hw_cpu_id:
 #
 .globl  hw_read_tr 
 hw_read_tr:
-        str     ax
+        str     %ax
         ret
 
 #
@@ -545,7 +545,7 @@ hw_write_tr:
 #
 .globl  hw_read_ldtr 
 hw_read_ldtr:
-        sldt   ax
+        sldt   %ax
         ret
 
 #
@@ -581,20 +581,20 @@ CPUID_PARAMS ends
 #
 .globl  hw_cpuid
 hw_cpuid:
-        mov r8, rcx     # address of struct
-        mov r9, rbx     # save RBX
+        mov r8, %rcx     # address of struct
+        mov r9, %rbx     # save RBX
         # fill regs for cpuid
-        mov     rax, (CPUID_PARAMS ptr [r8]).M_RAX
-        mov     rbx, (CPUID_PARAMS ptr [r8]).M_RBX
-        mov     rcx, (CPUID_PARAMS ptr [r8]).M_RCX
-        mov     rdx, (CPUID_PARAMS ptr [r8]).M_RDX
+        mov     %rax, (CPUID_PARAMS ptr [r8]).M_RAX
+        mov     %rbx, (CPUID_PARAMS ptr [r8]).M_RBX
+        mov     %rcx, (CPUID_PARAMS ptr [r8]).M_RCX
+        mov     %rdx, (CPUID_PARAMS ptr [r8]).M_RDX
         cpuid
-        mov     (CPUID_PARAMS ptr [r8]).M_RAX, rax
-        mov     (CPUID_PARAMS ptr [r8]).M_RBX, rbx
-        mov     (CPUID_PARAMS ptr [r8]).M_RCX, rcx
-        mov     (CPUID_PARAMS ptr [r8]).M_RDX, rdx
-        mov     rbx, r9
-        mov     rcx, r8
+        mov     (CPUID_PARAMS ptr [r8]).M_RAX, %rax
+        mov     (CPUID_PARAMS ptr [r8]).M_RBX, %rbx
+        mov     (CPUID_PARAMS ptr [r8]).M_RCX, %rcx
+        mov     (CPUID_PARAMS ptr [r8]).M_RDX, %rdx
+        mov     %rbx, %r9
+        mov     %rcx, %r8
         ret
 
 
@@ -609,25 +609,26 @@ hw_cpuid:
 .globl  hw_leave_64bit_mode
 hw_leave_64bit_mode:
         jmp $
-        shl rcx, 32             #; prepare segment:offset pair for retf by shifting
+        shl %rcx, $32             #; prepare segment:offset pair for retf by shifting
                                 #; compatibility segment in high address
-        lea rax, compat_code    #; and
-        add rcx, rax            #; placing offset into low address
-        push rcx                #; push ret address onto stack
-        mov  rsi, rdx           #; rdx will be used during EFER access
-        mov  rdi, r8            #; r8 will be unaccessible, so use rsi instead
-        mov  rbx, r9            #; save CR3 in RBX. this function is the last called, so we have not to save rbx
+        lea %rax, compat_code    #; and
+        add %rcx, %rax            #; placing offset into low address
+        push %rcx                #; push ret address onto stack
+        mov  %rsi, %rdx           #; rdx will be used during EFER access
+        mov  %rdi, %r8            #; r8 will be unaccessible, so use rsi instead
+        mov  %rbx, %r9            #; save CR3 in RBX. this function is the last called, so we have not to save rbx
         retf                    #; jump to compatibility mode
 compat_code:                    #; compatibility mode starts right here
 
-        mov rax, cr0            #; only 32-bit are relevant
-        btc eax, 31             #; disable IA32e paging (64-bits)
-        mov cr0, rax            #;
+        mov %rax, %cr0            #; only 32-bit are relevant
+        btc %eax, $31             #; disable IA32e paging (64-bits)
+        mov %cr0, %rax            #;
 
         #; now in protected mode
-        mov ecx, 0C0000080h     #; EFER MSR register
+#RNB: The original constant was 0C0000080h
+        mov %ecx, $0xC0000080h     #; EFER MSR register
         rdmsr                   #; read EFER into EAX
-        btc eax, 8              #; clear EFER.LME
+        btc %eax, $8              #; clear EFER.LME
         wrmsr                   #; write EFER back
 
 #        mov cr3, rbx            ;; load CR3 for 32-bit mode
@@ -638,9 +639,9 @@ compat_code:                    #; compatibility mode starts right here
 #        jmp @f
 
 #; now in 32-bit paging mode
-        mov rdx, rsi
-        mov rax, rdi
-        out dx, ax              #; write to PM register
+        mov %rdx, %rsi
+        mov %rax, %rdi
+        out %dx, %ax              #; write to PM register
         ret                     #; should never get here
 
 
@@ -662,28 +663,28 @@ compat_code:                    #; compatibility mode starts right here
 #
 .globl  hw_perform_asm_iret
 hw_perform_asm_iret:
-        sub     rsp, 0x020h       # prepare space for "interrupt stack"
-        push    rax             # save scratch registers
-        push    rbx
-        push    rcx
-        push    rdx
-        add     rsp, 0x040       # get rsp back to RIP
-        pop     rax             # RIP -> RAX
-        mov     rbx, cs         # CS  -> RBX
-        mov     rcx, rsp        # good RSP -> RCX
-        mov     rdx, ss         # CS  -> RDX
+        sub     %rsp, $0x020h       # prepare space for "interrupt stack"
+        push    %rax             # save scratch registers
+        push    %rbx
+        push    %rcx
+        push    %rdx
+        add     %rsp, $0x040       # get rsp back to RIP
+        pop     %rax             # RIP -> RAX
+        mov     %rbx, %cs         # CS  -> RBX
+        mov     %rcx, %rsp        # good RSP -> RCX
+        mov     %rdx, %ss         # CS  -> RDX
 
-        push    rdx             # [       SS         ]
-        push    rcx             # [       RSP        ]
+        push    %rdx             # [       SS         ]
+        push    %rcx             # [       RSP        ]
         pushfq                  # [      RFLAGS      ]
-        push    rbx             # [       CS         ]
-        push    rax             # [       RIP        ]
+        push    %rbx             # [       CS         ]
+        push    %rax             # [       RIP        ]
 
-        sub     rsp, 0x020       # restore scratch registers
-        pop     rdx
-        pop     rcx
-        pop     rbx
-        pop     rax             # now RSP is in right position
+        sub     %rsp, $0x020       # restore scratch registers
+        pop     %rdx
+        pop     %rcx
+        pop     %rbx
+        pop     %rax             # now RSP is in right position
 
         iretq                   # perform IRET
 

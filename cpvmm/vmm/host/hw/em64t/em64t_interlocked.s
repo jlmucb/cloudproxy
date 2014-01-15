@@ -41,7 +41,6 @@
 # by the callee in RAX. User defined types to be returned must be 
 # 1, 2, 4, 8, 16, 32, or 64 bits in length.
 #
-
 #
 # Register usage
 #
@@ -51,13 +50,20 @@
 #       RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 #
 
-monitor_instr MACRO
-    db 0Fh,01h,0C8h
-ENDM
+#monitor_instr MACRO
+#    db 0Fh,01h,0C8h
+#ENDM
+#
+#mwait_instr MACRO
+#    db 0Fh,01h,0C9h
+#ENDM
+.macro monitor_instr 
+.byte	0x0Fh, 0x01h, 0x0C8h
+.endm
 
-mwait_instr MACRO
-    db 0Fh,01h,0C9h
-ENDM
+.macro mwait_instr 
+.byte	0x0Fh, 0x01h, 0x0C9h
+.endm
 
 #
 #
@@ -80,9 +86,9 @@ hw_monitor:
     #   RCX contains addr
     #   RDX contains extension
     #   R8  contains hint
-    mov rax, rcx
-    mov rcx, rdx
-    mov rdx, r8
+    mov %rax, %rcx
+    mov %rcx, %rdx
+    mov %rdx, %r8
     monitor_instr
     ret
 
@@ -96,10 +102,6 @@ hw_mwait:
     # on entry
     #   RCX contains extension
     #   RDX  contains hint
-    mov rax, rdx
+    mov %rax, %rdx
     mwait_instr
     ret
-
-
-
-

@@ -24,7 +24,7 @@
 #include "vmm_defs.h"
 #include "vmm_startup.h"
 
-extern unsigned __int64 __rdtsc(void);
+//extern unsigned __int64 __rdtsc(void);
 
 // typedefs
 typedef void *  (CDECL *FUNC_4K_PAGE_ALLOC)( UINT32 page_count );

@@ -49,65 +49,96 @@
 # Callee-saved
 #        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 
-UINT64 typedef qword
-SETJMP_BUFFER struc 
-    _rbx:       UINT64  ?
-    _rsi:       UINT64  ?
-    _rdi:       UINT64  ?
-    _rbp:       UINT64  ?
-    _r12:       UINT64  ?
-    _r13       UINT64  ?
-    _r14       UINT64  ?
-    _r15       UINT64  ?
-    _rsp       UINT64  ?
-    _rip       UINT64  ?
-endstruc
-
+#UINT64 typedef qword
+#.long SETJMP_BUFFER_rbx
+#.long SETJMP_BUFFER_rsi
+#.long SETJMP_BUFFER_rdi
+#.long SETJMP_BUFFER_rbp
+#.long SETJMP_BUFFER_r12
+#.long SETJMP_BUFFER_r13
+#.long SETJMP_BUFFER_r14
+#.long SETJMP_BUFFER_r15
+#.long SETJMP_BUFFER_rsp
+#.long SETJMP_BUFFER_rip
+#
 #
 #  int setjmp(SETJMP_BUFFER *env)
 #
 #  Save context registers in buffer, pointed by RCX
 #
-.globl	setjmp
+#  RNB: This function has changed significantly, and is heavily based on the
+#  longjmp implementation in the linux kernel.  Linux assumes that %rdi
+#  contains the address to the start of the jump buffer, but keeping with the
+#  spirit of the code in this file, the below function assumes that the address
+#  of jump buffer is in %rcx.
+#
+.text
+.align 4
+.globl setjmp
+.type setjmp, @function
+
 setjmp:
-        mov     (SETJMP_BUFFER ptr [rcx])._rbx, rbx
-        mov     (SETJMP_BUFFER ptr [rcx])._rsi, rsi
-        mov     (SETJMP_BUFFER ptr [rcx])._rdi, rdi
-        mov     (SETJMP_BUFFER ptr [rcx])._rbp, rbp
-        mov     (SETJMP_BUFFER ptr [rcx])._r12, r12
-        mov     (SETJMP_BUFFER ptr [rcx])._r13, r13
-        mov     (SETJMP_BUFFER ptr [rcx])._r14, r14
-        mov     (SETJMP_BUFFER ptr [rcx])._r15, r15
-        pop     rax            # now rax contains return rip, rsp got post-return value
-        mov     (SETJMP_BUFFER ptr [rcx])._rsp, rsp
-        mov     (SETJMP_BUFFER ptr [rcx])._rip, rax
-        push    rax            # fix stack back
-        xor     rax, rax       # Return value
-        ret
+	pop  %rsi			# Return address, and adjust the stack
+#RNB: linux kernel uses xorl, but gcc doesn't like it, so I changed to xor
+	xor %eax,%eax			# Return value
+	movq %rbx,[%rcx]
+	movq %rsp,8[%rcx]		# Post-return %rsp!
+	push %rsi			# Make the call/return stack happy
+	movq %rbp,16[%rcx]
+	movq %r12,24[%rcx]
+	movq %r13,32[%rcx]
+	movq %r14,40[%rcx]
+	movq %r15,48[%rcx]
+	movq %rsi,56[%rcx]		# Return address
+	ret
+
+	.size setjmp,.-setjmp
 
 #
 #  void longjmp(SETJMP_BUFFER *env, int errcode);
 #
-#  Save context registers in buffer, pointed by RCX
+#  Save context registers in buffer, pointed by RCX 
 #
-.globl	longjmp 
+#  RNB: This function has changed significantly, and is heavily based on the
+#  longjmp implementation in the linux kernel.  Linux assumes that %rdi
+#  contains the address to the start of the jump buffer, but keeping with the
+#  spirit of the code in this file, the below function assumes that the address
+#  of jump buffer is in %rcx.
+#
+.text
+.align 4
+.globl longjmp
+.type longjmp, @function
 longjmp:
-        mov     rax, rdx        # Return value (int)
-        mov     rbx, (SETJMP_BUFFER ptr [rcx])._rbx
-        mov     rsi, (SETJMP_BUFFER ptr [rcx])._rsi
-        mov     rdi, (SETJMP_BUFFER ptr [rcx])._rdi
-        mov     rbp, (SETJMP_BUFFER ptr [rcx])._rbp
-        mov     r12, (SETJMP_BUFFER ptr [rcx])._r12
-        mov     r13, (SETJMP_BUFFER ptr [rcx])._r13
-        mov     r14, (SETJMP_BUFFER ptr [rcx])._r14
-        mov     rsp, (SETJMP_BUFFER ptr [rcx])._rsp
-        jmp     (SETJMP_BUFFER ptr [rcx])._rip
+#RNB: linux kernel uses movl, but gcc doesn't like it, so I changed to mov
+	mov  %esi,%eax			# Return value (int)
+	movq [%rcx],%rbx
+	movq 8[%rcx],%rsp
+	movq 16[%rcx],%rbp
+	movq 24[%rcx],%r12
+	movq 32[%rcx],%r13
+	movq 40[%rcx],%r14
+	movq 48[%rcx],%r15
+#RNB: I have doubt about the jmp  instruction.  linux kernel has jmp *56(%rcx)
+	jmp 56[%rcx]
 
+	.size longjmp,.-longjmp
+#
+#.globl	longjmp 
+#longjmp:
+#        mov     rax, rdx        # Return value (int)
+#        mov     rbx, (SETJMP_BUFFER ptr [rcx])._rbx
+#        mov     rsi, (SETJMP_BUFFER ptr [rcx])._rsi
+#        mov     rdi, (SETJMP_BUFFER ptr [rcx])._rdi
+#        mov     rbp, (SETJMP_BUFFER ptr [rcx])._rbp
+#        mov     r12, (SETJMP_BUFFER ptr [rcx])._r12
+#        mov     r13, (SETJMP_BUFFER ptr [rcx])._r13
+#        mov     r14, (SETJMP_BUFFER ptr [rcx])._r14
+#        mov     rsp, (SETJMP_BUFFER ptr [rcx])._rsp
+#        jmp     (SETJMP_BUFFER ptr [rcx])._rip
 
 .globl	hw_exception_post_handler
 hw_exception_post_handler:
-        mov     rdx, 1          # err code for longjmp
-        mov     rcx, rsp        # address of SETJMP_BUFFER
+        mov     %rdx, 1          # err code for longjmp
+        mov     %rcx, %rsp        # address of SETJMP_BUFFER
         jmp     longjmp
-
-

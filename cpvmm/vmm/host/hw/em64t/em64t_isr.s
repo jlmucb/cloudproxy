@@ -86,48 +86,48 @@ ENDM
 
 .globl	hw_isr_c_wrapper
 hw_isr_c_wrapper:
-        push   rax	# offset 08h
-        push   rbx  	# offset 00h
+        push   %rax	# offset 08h
+        push   %rbx  	# offset 00h
 
         # If an exception fault is detected, save the GPRs
         # for the assertion debug buffer
 
-        mov    rbx, qword ptr [rsp+10h]	# vector number
+        mov    %rbx, qword ptr [%rsp+$0x10h]	# vector number
         # all exception faults have vector number up to 19
-        cmp    rbx, VECTOR_19
+        cmp    %rbx, VECTOR_19
         jg     continue
 
         # check the exception type
-        lea    rax, qword ptr exception_class
-        movzx  ebx, byte ptr [rbx+rax]
-        cmp    ebx, FAULT_CLASS
+        lea    %rax, qword ptr exception_class
+        movzx  %ebx, byte ptr [%rbx+%rax]
+        cmp    %ebx, FAULT_CLASS
         jne     continue
 
         # Save GPRs
-        mov    rax, qword ptr [rsp+08h]             # this is rax
-        mov    rbx, g_exception_gpr
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RAX], rax
+        mov    %rax, qword ptr [%rsp+$0x08h]             # this is rax
+        mov    %rbx, g_exception_gpr
+        mov    (VMM_GP_REGISTERS ptr [%rbx]).reg[IA32_REG_RAX], %rax
 
-        mov    rax, qword ptr [rsp+00h]             # this is rbx
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RBX], rax
+        mov    %rax, qword ptr [%rsp+$0x00h]             # this is rbx
+        mov    (VMM_GP_REGISTERS ptr [%rbx]).reg[IA32_REG_RBX], %rax
 
         # now save all other GP registers except RIP,RSP,RFLAGS
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RCX], rcx
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RDX], rdx
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RDI], rdi
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RSI], rsi
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RBP], rbp
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R8],  r8
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R9],  r9
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R10], r10
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R11], r11
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R12], r12
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R13], r13
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R14], r14
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R15], r15
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RCX], %rcx
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RDX], %rdx
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RDI], %rdi
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RSI], %rsi
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RBP], %rbp
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R8],  %r8
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R9],  %r9
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R10], %r10
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R11], %r11
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R12], %r12
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R13], %r13
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R14], %r14
+        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R15], %r15
 continue:
-        pop    rbx
-        pop    rax
+        pop    %rbx
+        pop    %rax
 
         #; save context and prepare stack for C-function
         #; at this point stack contains
@@ -139,35 +139,38 @@ continue:
         #; [       RIP        ] <= here RSP should point prior iret
         #; [[   errcode      ]]    optionally
         #; [    vector ID     ] <= RSP
-        push    rcx             # save RCX which used for argument passing
-        mov     rcx, rsp
-        add     rcx, 8         # now RCX points to the location of vector ID
-        push    rdx
-        push    rax
-        push    r8
-        push    r9
-        push    r10
-        push    r11
-        push    r15             # used for saving unaligned stack
-        mov     r15, rsp        # save RSP prior alignment
-        and     rsp, 0FFFFFFFFFFFFFFF0h # align on 16 bytes boundary
-        sub     rsp, 020h       # prepare space for C-function
+        push    %rcx             # save RCX which used for argument passing
+        mov     %rcx, %rsp
+        add     %rcx, $8         # now RCX points to the location of vector ID
+        push    %rdx
+        push    %rax
+        push    %r8
+        push    %r9
+        push    %r10
+        push    %r11
+        push    %r15             # used for saving unaligned stack
+        mov     %r15, %rsp        # save RSP prior alignment
+        and     %rsp, $0x0FFFFFFFFFFFFFFF0h # align on 16 bytes boundary
+        sub     %rsp, $0x020h       # prepare space for C-function
         call    isr_c_handler
-        mov     rsp, r15        # restore unaligned RSP
-        pop     r15
-        pop     r11
-        pop     r10
-        pop     r9
-        pop     r8
-        pop     rax
-        pop     rdx
-        pop     rcx
-        pop     rsp             # isr_c_handler replaces vector ID with pointer to the
+        mov     %rsp, %r15        # restore unaligned RSP
+        pop     %r15
+        pop     %r11
+        pop     %r10
+        pop     %r9
+        pop     %r8
+        pop     %rax
+        pop     %rdx
+        pop     %rcx
+        pop     %rsp             # isr_c_handler replaces vector ID with pointer to the
                                 # RIP. Just pop the pointer to the RIP into RSP.
         iretq
 
 
 #; the functions below instantiate isr_entry_macro for 256 vectors (IDT entries)
+
+#RNB: TODO the constants should potentially be prefixed with $0x, but waiting
+# 	until the proc/macro are fixed
 
 isr_entry_00 PROC
         isr_entry_macro 000h

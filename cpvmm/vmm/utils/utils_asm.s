@@ -1,4 +1,3 @@
-a
 # Copyright (c) 2013 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,9 +60,10 @@ vmm_read_xcr:
         .byte 0x01
         .byte 0x0D0
         pop %rcx
-        mov (%rcx),%eax
+#REK: not sure why (%rcx) doesn't work, while [%rcx] works
+        mov [%rcx], %eax
         pop %rcx
-        mov (%rcx),%edx
+        mov [%rcx], %edx
         ret
 
 .globl  gcpu_read_guestrip 

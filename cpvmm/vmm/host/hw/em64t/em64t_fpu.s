@@ -44,16 +44,16 @@
 #
 #
 
-.set	ARG1_U8, cl
-.set	ARG1_U16, cx
-.set	ARG1_U32, ecx
-.set	ARG1_U64, rcx
-.set	ARG2_U8 , dl
-.set	ARG2_U16, dx
-.set	ARG2_U32, edx
-.set	ARG2_U64, rdx
-.set	ARG3_U32, r8l
-.set	ARG3_U64, r8
+.set	ARG1_U8, %cl
+.set	ARG1_U16, %cx
+.set	ARG1_U32, %ecx
+.set	ARG1_U64, %rcx
+.set	ARG2_U8 , %dl
+.set	ARG2_U16, %dx
+.set	ARG2_U32, %edx
+.set	ARG2_U64, %rdx
+.set	ARG3_U32, %r8l
+.set	ARG3_U64, %r8
 
 #
 # Register usage
@@ -75,7 +75,7 @@
 #
 .globl	hw_fnstsw 
 hw_fnstsw:
-        fnstsw word ptr [rcx]
+        fnstsw word ptr [%rcx]
         ret
 
 #
@@ -88,7 +88,7 @@ hw_fnstsw:
 #
 .globl	hw_fnstcw 
 hw_fnstcw:
-        fnstcw word ptr [rcx]
+        fnstcw word ptr [%rcx]
         ret
 
 #

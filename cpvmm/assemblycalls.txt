@@ -1,0 +1,250 @@
+.h files
+common/include/common_libc.h:97:    vmm_lock_xchg_qword((UINT64*)(x), (UINT64*)(y))
+common/include/common_libc.h:103:   vmm_lock_xchg_dword((UINT32*)(x), (UINT32*)(y))
+common/include/common_libc.h:110:   vmm_lock_xchg_dword((UINT32*)(x), (UINT32*)(y))
+vmm/include/hw/hw_interlocked.h:266:hw_pause( void );
+vmm/include/hw/hw_interlocked.h:274:hw_monitor( void* addr, UINT32 extension, UINT32 hint );
+vmm/include/hw/hw_interlocked.h:282:hw_mwait( UINT32 extension, UINT32 hint );
+vmm/include/hw/hw_utils.h:465:void    ASM_FUNCTION hw_lgdt(void * gdtr);
+vmm/include/hw/hw_utils.h:472:void    ASM_FUNCTION hw_sgdt(void * gdtr);
+vmm/include/hw/hw_utils.h:477:UINT16  ASM_FUNCTION hw_read_cs(void);
+vmm/include/hw/hw_utils.h:480:UINT16  ASM_FUNCTION hw_read_ds(void);
+vmm/include/hw/hw_utils.h:478:void    ASM_FUNCTION hw_write_cs(UINT16);
+vmm/include/hw/hw_utils.h:481:void    ASM_FUNCTION hw_write_ds(UINT16);
+vmm/include/hw/hw_utils.h:483:UINT16  ASM_FUNCTION hw_read_es(void);
+vmm/include/hw/hw_utils.h:486:UINT16  ASM_FUNCTION hw_read_ss(void);
+vmm/include/hw/hw_utils.h:484:void    ASM_FUNCTION hw_write_es(UINT16);
+vmm/include/hw/hw_utils.h:487:void    ASM_FUNCTION hw_write_ss(UINT16);
+vmm/include/hw/hw_utils.h:489:UINT16  ASM_FUNCTION hw_read_fs(void);
+vmm/include/hw/hw_utils.h:513:UINT64 ASM_FUNCTION hw_read_rsp(void);
+vmm/include/hw/hw_utils.h:493:void    ASM_FUNCTION hw_write_gs(UINT16);
+vmm/include/hw/hw_utils.h:509:void    ASM_FUNCTION hw_set_stack_pointer(HVA new_stack_pointer,
+vmm/include/hw/hw_utils.h:492:UINT16  ASM_FUNCTION hw_read_gs(void);
+vmm/include/emulator_if.h:85:    return ((vmm_get_state() == VMM_STATE_RUN) && (0 != hw_read_gs()));
+vmm/include/hw/hw_utils.h:592:void ASM_FUNCTION hw_enable_interrupts(void);
+vmm/include/hw/hw_utils.h:581:void ASM_FUNCTION hw_write_to_smi_port(
+vmm/include/hw/hw_utils.h:603:void ASM_FUNCTION hw_fxsave( void* buffer );
+vmm/include/hw/hw_utils.h:593:void ASM_FUNCTION hw_disable_interrupts(void);
+vmm/include/hw/hw_utils.h:604:void ASM_FUNCTION hw_fxrestore( void* buffer );
+vmm/include/hw/hw_utils.h:530:void ASM_FUNCTION hw_write_cr2( UINT64 _value );
+vmm/include/hw/hw_utils.h:522:CPU_ID ASM_FUNCTION hw_cpu_id(void);
+vmm/memory/ept/ept_hw_layer.h:95:        VMM_ASSERT(host_cpu_id == hw_cpu_id());
+vmm/include/guest_cpu.h:34:        hw_cpu_id()
+vmm/include/hw/hw_utils.h:495:UINT16  ASM_FUNCTION hw_read_tr(void);
+vmm/include/hw/hw_utils.h:496:void    ASM_FUNCTION hw_write_tr(UINT16);
+vmm/include/hw/hw_utils.h:498:UINT16  ASM_FUNCTION hw_read_ldtr(void);
+vmm/include/hw/hw_utils.h:499:void    ASM_FUNCTION hw_write_ldtr(UINT16);
+vmm/include/hw/hw_utils.h:324:void ASM_FUNCTION  hw_cpuid(CPUID_PARAMS *);
+vmm/include/hw/hw_utils.h:368:    hw_cpuid(&__cpuid_params);
+vmm/include/hw/hw_utils.h:398:    hw_cpuid(&cpuid_params);  
+vmm/include/hw/hw_utils.h:415:    hw_cpuid(&cpuid_params);  
+vmm/include/hw/hw_utils.h:432:    hw_cpuid(&cpuid_params);  
+vmm/include/hw/hw_utils.h:448:    hw_cpuid(&cpuid_params);  
+vmm/include/hw/hw_utils.h:458:void ASM_FUNCTION hw_perform_asm_iret(void);
+vmm/include/hw/vmx_asm.h:27:void ASM_FUNCTION vmexit_func(void);
+
+.s files
+vmm/host/hw/em64t/em64t_vmx.s:205:        call    gcpu_save_registers
+vmm/host/hw/em64t/em64t_vmx.s:227:        call    gcpu_restore_registers 
+vmm/host/hw/em64t/em64t_vmx.s:232:        call    gcpu_restore_registers
+vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:83:    call load_save_area_into_rbx
+vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:127:    call load_save_area_into_rbx
+vmm/host/hw/em64t/em64t_isr.s:82:        jmp  hw_isr_c_wrapper
+vmm/host/hw/em64t/em64t_setjmp.s:144:        jmp     longjmp
+vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:41:    call hw_cpu_id
+vmm/host/hw/em64t/em64t_vmx.s:114:    call hw_cpu_id
+vmm/host/hw/em64t/em64t_vmx.s:164:    call hw_cpu_id
+vmm/host/hw/em64t/em64t_utils.s:610:hw_leave_64bit_mode:
+vmm/host/hw/em64t/em64t_utils.s:665:hw_perform_asm_iret:
+vmm/host/hw/em64t/em64t_vmx.s:98:profiling_serialize:
+vmm/host/hw/em64t/em64t_vmx.s:133:    call profiling_serialize
+vmm/host/hw/em64t/em64t_vmx.s:172:    call profiling_serialize
+vmm/vmexit/teardown_thunk.s:52:call_teardown_thunk32:
+
+
+.c files
+common/libc/common_libc.c:291:        vmm_lock_xchg_byte(&((UINT8*) dest)[j], &((UINT8*)src)[j]);
+common/libc/common_libc.c:310:        vmm_lock_xchg_byte(&((UINT8*)d)[count - i - 1],
+common/libc/common_libc.c:291:        vmm_lock_xchg_byte(&((UINT8*) dest)[j], &((UINT8*)src)[j]);
+common/libc/common_libc.c:310:        vmm_lock_xchg_byte(&((UINT8*)d)[count - i - 1],
+vmm/host/hw/hw_utils.c:94:        hw_pause();
+vmm/guest/guest_control.c:135:            hw_pause();
+vmm/ipc/ipc.c:357:                    hw_pause();
+vmm/ipc/ipc_api.c:201:            hw_pause();
+vmm/libc/vmm_io.c:81:        hw_pause();
+vmm/libc/vmm_io.c:101:        hw_pause();
+vmm/libc/vmm_io.c:121:        hw_pause();
+vmm/utils/lock.c:51:        hw_pause();
+vmm/utils/lock.c:76:            hw_pause();
+vmm/utils/lock.c:162:        hw_pause();
+vmm/utils/lock.c:182:            hw_pause();
+vmm/vmm.c:106:    {while (!g_application_procs_may_be_launched) { hw_pause(); }}
+vmm/vmm.c:112:    {while (g_application_procs_launch_the_guest != (UINT32)(count)) { hw_pause(); }}
+vmm/vmm.c:106:    {while (!g_application_procs_may_be_launched) { hw_pause(); }}
+vmm/vmm.c:112:    {while (g_application_procs_launch_the_guest != (UINT32)(count)) { hw_pause(); }}
+vmm/host/isr.c:135:                p_stack->u.errcode_exception.ip = (ADDRESS)hw_exception_post_handler;
+vmm/host/hw/em64t/em64t_gdt.c:222:    hw_lgdt(&gdtr);
+vmm/host/hw/em64t/em64t_gdt.c:189:    hw_sgdt(&gdtr);
+vmm/acpi/vmm_acpi_pm.c:343:    hw_sgdt(&gdtr);
+vmm/acpi/vmm_acpi_pm.c:399:    hw_sgdt(&gdtr);
+vmm/acpi/vmm_acpi_pm.c:711:    hw_sgdt(&gdtr_64);
+vmm/host/host_cpu.c:399:    hw_sgdt(&gdtr);
+vmm/acpi/vmm_acpi_pm.c:715:    init64_data.i64_cs  = hw_read_cs();
+vmm/host/host_cpu.c:298:    hw_write_msr(IA32_MSR_SYSENTER_CS, hw_read_cs());
+vmm/host/host_cpu.c:432:    vmcs_write(vmcs, VMCS_HOST_CS_SELECTOR, hw_read_cs());
+vmm/host/hw/em64t/em64t_gdt.c:228:    hw_write_cs(CODE64_GDT_ENTRY_OFFSET);
+vmm/host/host_cpu.c:434:    vmcs_write(vmcs, VMCS_HOST_DS_SELECTOR, hw_read_ds());
+vmm/host/hw/em64t/em64t_gdt.c:226:    hw_write_ds(DATA32_GDT_ENTRY_OFFSET);
+vmm/host/host_cpu.c:435:    vmcs_write(vmcs, VMCS_HOST_ES_SELECTOR, hw_read_es());
+vmm/host/hw/em64t/em64t_gdt.c:235:    hw_write_es(0);
+vmm/host/host_cpu.c:433:    vmcs_write(vmcs, VMCS_HOST_SS_SELECTOR, hw_read_ss());
+vmm/host/hw/em64t/em64t_gdt.c:227:    hw_write_ss(DATA32_GDT_ENTRY_OFFSET);
+vmm/host/host_cpu.c:408:    status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_fs(), &base, &limit, &attributes);
+vmm/host/host_cpu.c:410:    vmcs_write(vmcs, VMCS_HOST_FS_SELECTOR, hw_read_fs());
+vmm/vmx/vmcs_actual.c:167:    return (0 != hw_read_fs());
+vmm/host/host_cpu.c:416:    status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_gs(), &base, &limit, &attributes);
+vmm/host/host_cpu.c:418:    vmcs_write(vmcs, VMCS_HOST_GS_SELECTOR, hw_read_gs());
+vmm/vmm.c:273:    hw_set_stack_pointer(new_stack_pointer, (main_continue_fn)vmm_main_continue, &input_params);
+vmm/vmm.c:273:    hw_set_stack_pointer(new_stack_pointer, (main_continue_fn)vmm_main_continue, &input_params);
+vmm/guest/guest_cpu/guest_cpu.c:148:    hw_fxsave( vgcpu->save_area.fxsave_area );
+vmm/guest/guest_cpu/guest_cpu.c:162:    hw_fxrestore( gcpu->save_area.fxsave_area );
+vmm/guest/guest_cpu/guest_cpu_switch.c:766:    hw_write_cr2( gcpu->save_area.gp.reg[ CR2_SAVE_AREA ] );
+vmm/guest/guest_cpu/guest_cpu_switch.c:493:    g_guest_regs_save_area[ hw_cpu_id() ] = &(gcpu->save_area);
+vmm/guest/guest_cpu/guest_cpu_switch.c:516:    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
+vmm/guest/guest_cpu/guest_cpu_switch.c:821:    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
+vmm/guest/guest_cpu/guest_cpu_switch.c:824:    vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
+vmm/guest/guest_cpu/guest_cpu_vmenter_event.c:42:        hw_cpu_id(),
+vmm/guest/scheduler/scheduler.c:182:    vcpu_obj = g_scheduler_state[hw_cpu_id()].current_vcpu_obj;
+vmm/guest/scheduler/scheduler.c:248:    CPU_ID host_cpu = hw_cpu_id();
+vmm/guest/scheduler/scheduler.c:267:    CPU_ID host_cpu = hw_cpu_id();
+vmm/guest/scheduler/scheduler.c:303:    CPU_ID host_cpu = hw_cpu_id();
+vmm/guest/scheduler/scheduler.c:332:    for (vcpu_obj = g_scheduler_state[ hw_cpu_id() ].vcpu_obj_list;
+vmm/host/hw/local_apic.c:749:    local_apic_send_ipi( IPI_DST_NO_SHORTHAND, (UINT8) hw_cpu_id(),
+vmm/host/hw/vmcs_init.c:581:                 hw_cpu_id());
+vmm/host/hw/vmcs_init.c:593:                     hw_cpu_id());
+vmm/memory/ept/ept.c:106:    if (ept.lock.owner_cpu_id == hw_cpu_id()) {
+vmm/memory/ept/ept.c:797:        invept_cmd->host_cpu_id != hw_cpu_id()) {
+vmm/memory/ept/ept.c:1033:    if(hw_cpu_id() == scheduler_get_host_cpu_id(gcpu))
+vmm/memory/ept/ept.c:1268:    if(host_cpu_id == hw_cpu_id())
+vmm/memory/ept/ept.c:1286:    if(host_cpu_id == hw_cpu_id())
+vmm/memory/ept/ept.c:1304:    if(host_cpu_id == hw_cpu_id())
+vmm/memory/memory_manager/memory_address_mapper.c:2367:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2446:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2518:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2565:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2610:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2650:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2694:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2843:    mam->update_on_cpu = hw_cpu_id();
+vmm/memory/memory_manager/memory_address_mapper.c:2916:    mam->update_on_cpu = hw_cpu_id();
+vmm/acpi/vmm_acpi_pm.c:577:    CPU_ID                  cpu_id = hw_cpu_id();
+vmm/acpi/vmm_acpi_pm.c:581:     vmm_startup_data.cpu_local_apic_ids[hw_cpu_id()] = local_apic_get_current_id();
+vmm/arch/pat_manager.c:104:                                     hw_cpu_id(), __FUNCTION__, mem_type);
+vmm/dbg/vmdb.c:821:        vcpu.guest_cpu_id = hw_cpu_id();
+vmm/dbg/vmdb.c:971:    vcpu.guest_cpu_id = hw_cpu_id();
+vmm/dbg/vmdb.c:1098:        CLI_PRINT("VMDB is not attached to thread %s,%d\n", args[1], hw_cpu_id());
+vmm/dbg/vmm_dbg.c:70:    cpu_id = hw_cpu_id();
+vmm/guest/guest.c:918:                          hw_cpu_id(),
+vmm/guest/guest.c:931:    CPU_ID this_cpu_id = hw_cpu_id();
+vmm/guest/guest.c:948:    CPU_ID cpu_id = hw_cpu_id();
+vmm/guest/guest_control.c:54:    CPU_ID              this_hcpu_id = hw_cpu_id();
+vmm/guest/guest_control.c:82:    CPU_ID              this_hcpu_id = hw_cpu_id();
+vmm/host/host_cpu.c:272:    CPU_ID cpu = hw_cpu_id();
+vmm/host/host_cpu.c:293:    CPU_ID              cpu_id = hw_cpu_id();
+vmm/host/host_cpu.c:308:                CPU_ID              cpu = hw_cpu_id();
+vmm/host/host_cpu.c:361:    cpu = hw_cpu_id();
+vmm/host/host_cpu.c:497:    CPU_ID              my_cpu_id = hw_cpu_id();
+vmm/host/host_cpu.c:515:    CPU_ID              my_cpu_id = hw_cpu_id();
+vmm/host/host_cpu.c:535:    CPU_ID              my_cpu_id = hw_cpu_id();
+vmm/host/isr.c:199:    CPU_ID cpu_id = hw_cpu_id();
+vmm/host/trial_exec.c:30:    CPU_ID cpu_id = hw_cpu_id();
+vmm/host/trial_exec.c:45:    CPU_ID cpu_id = hw_cpu_id();
+vmm/host/trial_exec.c:68:    CPU_ID cpu_id = hw_cpu_id();
+vmm/startup/create_guests.c:327:    VMM_ASSERT( hw_cpu_id() == 0 );
+vmm/startup/create_guests.c:413:    VMM_ASSERT( current_cpu_id == hw_cpu_id() );
+vmm/utils/cache64.c:112:    if (vmcs_sw_shadow_disable[hw_cpu_id()])
+vmm/utils/cache64.c:135:    if (vmcs_sw_shadow_disable[hw_cpu_id()])
+vmm/utils/lock.c:40:    CPU_ID this_cpu_id = hw_cpu_id();
+vmm/utils/lock.c:60:    CPU_ID this_cpu_id = hw_cpu_id();
+vmm/vmexit/vmcall.c:168:         hw_cpu_id(), __FUNCTION__,
+vmm/vmexit/vmcall.c:257:         hw_cpu_id(), __FUNCTION__);
+vmm/vmexit/vmcall.c:274:         hw_cpu_id(), __FUNCTION__);
+vmm/vmexit/vmexit.c:537:    VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY Failed on ", hw_cpu_id());
+vmm/vmexit/vmexit.c:641:    VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY failed due to machine check\r\n", hw_cpu_id());
+vmm/vmexit/vmexit.c:702:                hw_cpu_id(),
+vmm/vmexit/vmexit.c:770:                hw_cpu_id(), reason);
+vmm/vmexit/vmexit.c:801:    vmcs_sw_shadow_disable[hw_cpu_id()] = TRUE;
+vmm/vmexit/vmexit.c:833:    VMM_ASSERT(hw_cpu_id() < VMM_MAX_CPU_SUPPORTED);
+vmm/vmexit/vmexit.c:837:        vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
+vmm/vmexit/vmexit.c:843:    host_cpu_store_vmexit_gcpu(hw_cpu_id(), gcpu);
+vmm/vmexit/vmexit_dbg.c:96:        if (monitor_requested[hw_cpu_id()] != 0)
+vmm/vmexit/vmexit_dbg.c:98:            monitor_requested[hw_cpu_id()] = 0;
+vmm/vmexit/vmexit_init.c:39:    CPU_ID                cpu_id = hw_cpu_id();
+vmm/vmexit/vmexit_init.c:42:    guest_vcpu(gcpu)->guest_id, guest_vcpu(gcpu)->guest_cpu_id, hw_cpu_id());
+vmm/vmexit/vmexit_sipi.c:82:    "CPU-%d Leave SIPI State: Guest Core Count is %d.\n", hw_cpu_id(),
+vmm/vmexit/vmx_teardown.c:144:    UINT32 cpu_idx = hw_cpu_id();
+vmm/vmx/vmcs.c:1314:    cpu_id = hw_cpu_id();
+vmm/vmx/vmcs.c:1404:            hw_cpu_id(), __FUNCTION__);
+vmm/vmx/vmcs_actual.c:172:    nmi_window[hw_cpu_id()] = TRUE;
+vmm/vmx/vmcs_actual.c:177:    nmi_window[hw_cpu_id()] = FALSE;
+vmm/vmx/vmcs_actual.c:180:        nmi_window[hw_cpu_id()] = TRUE;
+vmm/vmx/vmcs_actual.c:191:    return nmi_is_nmi_occured() || nmi_window[hw_cpu_id()];
+vmm/vmx/vmcs_actual.c:319:    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
+vmm/vmx/vmcs_actual.c:361:            (p_vmcs->owning_host_cpu != hw_cpu_id()))
+vmm/vmx/vmcs_actual.c:419:            (p_vmcs->owning_host_cpu != hw_cpu_id()))
+vmm/vmx/vmcs_actual.c:452:    VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
+vmm/vmx/vmcs_actual.c:539:    VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
+vmm/vmx/vmcs_actual.c:669:    CPU_ID           this_cpu = hw_cpu_id();
+vmm/vmx/vmcs_actual.c:727:    VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
+vmm/vmx/vmx_nmi.c:153:  CPU_ID cpu_id=hw_cpu_id();
+vmm/vmx/vmx_nmi.c:164:  CPU_ID cpu_id=hw_cpu_id();
+vmm/vmx/vmx_nmi.c:175:  CPU_ID cpu_id=hw_cpu_id();
+vmm/host/host_cpu.c:424:    status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_tr(), &base, &limit, &attributes);
+vmm/host/host_cpu.c:426:    vmcs_write(vmcs, VMCS_HOST_TR_SELECTOR, hw_read_tr());
+vmm/host/hw/em64t/em64t_gdt.c:231:    hw_write_tr(TSS_ENTRY_OFFSET(cpu_id));
+vmm/host/hw/em64t/em64t_gdt.c:233:    hw_write_ldtr(0);
+vmm/host/hw/local_apic.c:204:    hw_cpuid(&cpuid_params);
+vmm/vmexit/vmexit.c:581:    hw_cpuid(&cpuid_params);
+vmm/vmexit/vmexit.c:972:    hw_cpuid(&cpuid_params);
+vmm/vmexit/vmexit_cpuid.c:78:    hw_cpuid(&cpuid_params);
+vmm/vmexit/vmexit_cr_access.c:104:    hw_cpuid(&cpuid_params);
+vmm/vmm.c:141:    hw_cpuid(&cpuid_params);
+vmm/vmm.c:141:    hw_cpuid(&cpuid_params);
+vmm/ipc/ipc.c:538:              hw_perform_asm_iret();
+vmm/ipc/ipc.c:545:      hw_perform_asm_iret();
+vmm/guest/guest_cpu/guest_cpu.c:626:void gcpu_install_vmexit_func(GUEST_CPU_HANDLE gcpu, GCPU_VMEXIT_FUNC vmexit_func)
+vmm/guest/guest_cpu/guest_cpu.c:628:    gcpu->vmexit_func = vmexit_func;
+vmm/guest/guest_cpu/guest_cpu.c:632:GUEST_CPU_HANDLE gcpu_call_vmexit_function(GUEST_CPU_HANDLE gcpu, UINT32 reason)
+vmm/guest/guest_cpu/guest_cpu.c:634:    if (gcpu->vmexit_func)
+vmm/guest/guest_cpu/guest_cpu.c:635:        return gcpu->vmexit_func(gcpu, reason);
+vmm/guest/guest_cpu/guest_cpu_internal.h:136:    GCPU_VMEXIT_FUNC            vmexit_func;
+vmm/host/host_cpu.c:391:    vmcs_write(vmcs, VMCS_HOST_RIP, (UINT64)vmexit_func);
+vmm/include/guest_cpu.h:729:void gcpu_install_vmexit_func(GUEST_CPU_HANDLE gcpu, GCPU_VMEXIT_FUNC vmexit_func);
+vmm/include/guest_cpu.h:736:GUEST_CPU_HANDLE gcpu_call_vmexit_function(GUEST_CPU_HANDLE gcpu, UINT32 reason);
+vmm/vmexit/vmexit.c:871:    next_gcpu = gcpu_call_vmexit_function(gcpu, reason.Bits.BasicReason);
+common/include/vmcall_api.h:80:VMM_STATUS ASM_FUNCTION hw_vmcall( VMCALL_ID vmcall_id, void* arg1, void* arg2, void* arg3 );
+common/include/vmcall_api.h:82:VMM_STATUS CDECL hw_vmcall( VMCALL_ID vmcall_id, void* arg1, void* arg2, void* arg3 );
+common/include/vmcall_api.h:102:    hw_vmcall(VMCALL_IS_UVMM_RUNNING, (is_uvmm_running_params_ptr), NULL, NULL)
+common/include/vmcall_api.h:122:    hw_vmcall(VMCALL_REGISTER_DEVICE_DRIVER, (driver_registration_params_ptr), NULL, NULL)
+common/include/vmcall_api.h:141:    hw_vmcall(VMCALL_UNREGISTER_DEVICE_DRIVER, (driver_unregistration_params_ptr), NULL, NULL)
+common/include/vmcall_api.h:165:    hw_vmcall(VMCALL_DEVICE_DRIVER_IOCTL, (driver_ioctl_params_ptr), NULL, NULL)
+common/include/vmcall_api.h:178:*  FUNCTION : hw_vmcall_driver_ack_notification()
+common/include/vmcall_api.h:186:    hw_vmcall(VMCALL_DEVICE_DRIVER_ACK_NOTIFICATION, (driver_ioctl_params_ptr), NULL, NULL)
+common/include/vmcall_api.h:205:    hw_vmcall(VMCALL_PRINT_DEBUG_MESSAGE, (debug_message_params_ptr), NULL, NULL)
+vmm/libc/vmm_io.c:357:        hw_vmcall(VMCALL_EMULATOR_PUTS, (void*)string, 0, 0);
+vmm/memory/ept/ept_hw_layer.c:272:        vmm_asm_invept(&arg, INVEPT_ALL_CONTEXTS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:302:        vmm_asm_invept(&arg, INVEPT_CONTEXT_WIDE, &rflags);
+vmm/memory/ept/ept_hw_layer.c:337:        vmm_asm_invept(&arg, INVEPT_INDIVIDUAL_ADDRESS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:370:        vmm_asm_invvpid(&arg, INVVPID_INDIVIDUAL_ADDRESS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:400:        vmm_asm_invvpid(&arg, INVVPID_ALL_CONTEXTS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:428:        vmm_asm_invvpid(&arg, INVVPID_SINGLE_CONTEXT, &rflags);
+vmm/memory/ept/fvs.c:339:    if (vmexit_reason() != Ia32VmxExitBasicReasonVmcallInstruction)
+vmm/include/vmm_callback.h:82:    UINT32 vmexit_reason;
+vmm/vmexit/vmexit.c:803:        if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) )
+vmm/vmexit/vmexit.c:815:    initial_vmexit_check_data.vmexit_reason = vmexit_reason();
+vmm/vmexit/vmexit.c:836:    if ((vmexit_check_ept_violation() & 7) == 0)
+vmm/include/vmx_teardown.h:156:call_teardown_thunk32( 
+vmm/vmexit/vmx_teardown.c:199:         * call_teardown_thunk32() method below. */
+vmm/vmexit/vmx_teardown.c:219:        call_teardown_thunk32(
+vmm/include/vmx_teardown.h:165:call_teardown_thunk64(
+vmm/vmexit/vmx_teardown.c:186:        call_teardown_thunk64(

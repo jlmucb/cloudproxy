@@ -48,6 +48,8 @@
  *  R= uG+vQ.  Valid if Rx=r.
  */
 
+
+
 bool ecSign(ECKey& K, bnum& bnH, bnum& bnR, bnum& bnS)
 {
     extern bool     getCryptoRandom(i32 numBits, byte* rguBits);
@@ -101,6 +103,30 @@ bool ecVerify(ECKey& K, bnum& bnH, bnum& bnR, bnum& bnS)
         return false;
     return mpCompare(bnR, *R.m_bnX)==0;
 }
+
+#ifdef TEST
+bool ecSignwithgivennonce(ECKey& K, bnum& bnH, bnum& bnK, bnum& bnR, bnum& bnS)
+{
+    bnum            bnKInv(K.m_myCurve->m_bnM->mpSize());
+    bnum            bnT(K.m_myCurve->m_bnM->mpSize()+1);
+    bnum            bnTA(K.m_myCurve->m_bnM->mpSize()+1);
+    ECPoint         Q(K.m_myCurve, K.m_myCurve->m_bnM->mpSize());
+
+    if(!ecMult(*K.m_G, bnK, Q))
+        return false;
+ 
+    // r= Qx (mod orderG)
+    mpMod(*Q.m_bnX, *K.m_myCurve->m_bnorderG, bnR);
+    // s= k^(-1)(h+r(secret)) (mod orderG)
+    if(!mpModInv(bnK, *K.m_myCurve->m_bnorderG, bnKInv))
+        return false;
+    mpModMult(bnR, *K.m_secret, *K.m_myCurve->m_bnorderG, bnT);
+    mpModAdd(bnT, bnH, *K.m_myCurve->m_bnorderG, bnTA);
+    mpModMult(bnTA, bnKInv, *K.m_myCurve->m_bnorderG, bnS);
+
+    return true;
+}
+#endif
 
 
 bool ecEncrypt(ECKey& K, bnum& bnX, ECPoint& R1, ECPoint& R2)

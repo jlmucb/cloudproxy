@@ -420,6 +420,42 @@ bool initNums()
 const char* g_szRandTestfile= "random.bin";
 
 
+// ECC Signature example over P-256
+// Q=dB
+// E is hash
+// K is random int
+// D is private key
+
+
+u64 tmpsig256D[4]={
+    0xC477F9F65C22CCE2ULL, 0x0657FAA5B2D1D812ULL, 0x2336F851A508A1EDULL, 0x04E479C34985BF96ULL
+    };
+u64 tmpsig256Qx[4]= {
+    0xB7E08AFDFE94BAD3ULL, 0xF1DC8C734798BA1CULL, 0x62B3A0AD1E9EA2A3ULL, 0x8201CD0889BC7A19ULL
+    };
+u64 tmpsig256Qy[4]= {
+    0x3603F747959DBF7AULL, 0x4BB226E419287290ULL, 0x63ADC7AE43529E61ULL, 0xB563BBC606CC5E09ULL
+    };
+u64 tmpsig256K[4]= {
+    0x7A1A7E52797FC8CAULL, 0xAA435D2A4DACE391ULL, 0x58504BF204FBE19FULL, 0x14DBB427FAEE50AEULL
+    };
+u64 tmpsig256Rx[4]= {
+    0x2B42F576D07F4165ULL, 0xFF65D1F3B1500F81ULL, 0xE44C316F1F0B3EF5ULL, 0x7325B69ACA46104FULL
+    };
+u64 tmpsig256E[4]= {
+    0xA41A41A12A799548ULL, 0x211C410C65D8133AULL, 0xFDE34D28BDD542E4ULL, 0xB680CF2899C8A8C4ULL
+    };
+u64 tmpsig256Kinv[4]= {
+    0x62159E5BA9E712FBULL, 0x098CCE8FE20F1BEDULL, 0x8346554E98EF3C7CULL, 0x1FC3332BA67D87EFULL
+    };
+u64 tmpsig256R[4]= {
+    0x2B42F576D07F4165ULL, 0xFF65D1F3B1500F81ULL, 0xE44C316F1F0B3EF5ULL, 0x7325B69ACA46104FULL
+    };
+u64 tmpsig256S[4]= {
+    0xDC42C2122D6392CDULL, 0x3E3A993A89502A81ULL, 0x98C1886FE69D262CULL, 0x4B329BDB6B63FAF1ULL
+    };
+
+
 // ---------------------------------------------------------------------------------
 
 
@@ -696,6 +732,55 @@ bool eccTest()
         printf("Signature DOES NOT verify\n");
         return false;
     }
+
+#ifdef TEST
+    extern bool ecSignwithgivennonce(ECKey& K, bnum& bnH, bnum& bnK, 
+                                     bnum& bnR, bnum& bnS);
+    mpZeroNum(bnR);
+    mpZeroNum(bnS);
+    int i;
+    for(i=0;i<4;i++)
+        myKey.m_secret->m_pValue[3-i]= tmpsig256D[i];
+    myKey.computePublic();
+    bnum    bnK(5);
+    bnum    bnRcheck(5);
+    bnum    bnScheck(5);
+    for(i=0;i<4;i++)
+        bnK.m_pValue[3-i]= tmpsig256K[i];
+    for(i=0;i<4;i++)
+        bnRcheck.m_pValue[3-i]= tmpsig256R[i];
+    for(i=0;i<4;i++)
+        bnScheck.m_pValue[3-i]= tmpsig256S[i];
+    for(i=0;i<4;i++)
+        bnH.m_pValue[3-i]= tmpsig256E[i];
+
+    printf("\nTest Message to sign, NIST-256: "); printNum(bnH); printf("\n");
+
+    if(!ecSignwithgivennonce(myKey, bnH, bnK, bnR, bnS)) {
+        printf("Cant ecSign\n");
+        return false;
+    }
+    printf("Signature, R: "); printNum(bnR); printf("\n");
+    printf("Signature, S: "); printNum(bnS); printf("\n");
+
+    fRet= ecVerify(myKey, bnH, bnR, bnS);
+    if(fRet) {
+        printf("Signature verifies\n");
+    }
+    else {
+        printf("Signature DOES NOT verify\n");
+        return false;
+    }
+    if(mpCompare(bnR, bnRcheck)==0 || mpCompare(bnS, bnScheck)==0) {
+        printf("Signature matched standard\n");
+    }
+    else {
+        printf("Signature DID NOT match standard\n");
+        fRet= false;
+    }
+    
+#endif
+
     
     return true;
 }

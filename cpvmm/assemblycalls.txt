@@ -3,7 +3,7 @@ common/include/common_libc.h:97:    vmm_lock_xchg_qword((UINT64*)(x), (UINT64*)(
 common/include/common_libc.h:103:   vmm_lock_xchg_dword((UINT32*)(x), (UINT32*)(y))
 common/include/common_libc.h:110:   vmm_lock_xchg_dword((UINT32*)(x), (UINT32*)(y))
 vmm/include/hw/hw_interlocked.h:266:hw_pause( void );
-vmm/include/hw/hw_interlocked.h:274:hw_monitor( void* addr, UINT32 extension, UINT32 hint );
+vmm/include/hw/hw_interlocked.h:274:hw_monitor(void*addr,UINT32extension,UINT32hint);
 vmm/include/hw/hw_interlocked.h:282:hw_mwait( UINT32 extension, UINT32 hint );
 vmm/include/hw/hw_utils.h:465:void    ASM_FUNCTION hw_lgdt(void * gdtr);
 vmm/include/hw/hw_utils.h:472:void    ASM_FUNCTION hw_sgdt(void * gdtr);
@@ -23,13 +23,13 @@ vmm/include/hw/hw_utils.h:492:UINT16  ASM_FUNCTION hw_read_gs(void);
 vmm/include/emulator_if.h:85:    return ((vmm_get_state() == VMM_STATE_RUN) && (0 != hw_read_gs()));
 vmm/include/hw/hw_utils.h:592:void ASM_FUNCTION hw_enable_interrupts(void);
 vmm/include/hw/hw_utils.h:581:void ASM_FUNCTION hw_write_to_smi_port(
-vmm/include/hw/hw_utils.h:603:void ASM_FUNCTION hw_fxsave( void* buffer );
-vmm/include/hw/hw_utils.h:593:void ASM_FUNCTION hw_disable_interrupts(void);
-vmm/include/hw/hw_utils.h:604:void ASM_FUNCTION hw_fxrestore( void* buffer );
-vmm/include/hw/hw_utils.h:530:void ASM_FUNCTION hw_write_cr2( UINT64 _value );
-vmm/include/hw/hw_utils.h:522:CPU_ID ASM_FUNCTION hw_cpu_id(void);
+vmm/include/hw/hw_utils.h:603:  void ASM_FUNCTION hw_fxsave( void* buffer );
+vmm/include/hw/hw_utils.h:593:  void ASM_FUNCTION hw_disable_interrupts(void);
+vmm/include/hw/hw_utils.h:604:  void ASM_FUNCTION hw_fxrestore( void* buffer );
+vmm/include/hw/hw_utils.h:530:  void ASM_FUNCTION hw_write_cr2( UINT64 _value );
+vmm/include/hw/hw_utils.h:522:  CPU_ID ASM_FUNCTION hw_cpu_id(void);
 vmm/memory/ept/ept_hw_layer.h:95:        VMM_ASSERT(host_cpu_id == hw_cpu_id());
-vmm/include/guest_cpu.h:34:        hw_cpu_id()
+vmm/include/guest_cpu.h:34:     hw_cpu_id()
 vmm/include/hw/hw_utils.h:495:UINT16  ASM_FUNCTION hw_read_tr(void);
 vmm/include/hw/hw_utils.h:496:void    ASM_FUNCTION hw_write_tr(UINT16);
 vmm/include/hw/hw_utils.h:498:UINT16  ASM_FUNCTION hw_read_ldtr(void);
@@ -43,6 +43,7 @@ vmm/include/hw/hw_utils.h:448:    hw_cpuid(&cpuid_params);
 vmm/include/hw/hw_utils.h:458:void ASM_FUNCTION hw_perform_asm_iret(void);
 vmm/include/hw/vmx_asm.h:27:void ASM_FUNCTION vmexit_func(void);
 
+
 .s files
 vmm/host/hw/em64t/em64t_vmx.s:205:        call    gcpu_save_registers
 vmm/host/hw/em64t/em64t_vmx.s:227:        call    gcpu_restore_registers 
@@ -54,15 +55,18 @@ vmm/host/hw/em64t/em64t_setjmp.s:144:        jmp     longjmp
 vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:41:    call hw_cpu_id
 vmm/host/hw/em64t/em64t_vmx.s:114:    call hw_cpu_id
 vmm/host/hw/em64t/em64t_vmx.s:164:    call hw_cpu_id
-vmm/host/hw/em64t/em64t_utils.s:610:hw_leave_64bit_mode:
-vmm/host/hw/em64t/em64t_utils.s:665:hw_perform_asm_iret:
-vmm/host/hw/em64t/em64t_vmx.s:98:profiling_serialize:
 vmm/host/hw/em64t/em64t_vmx.s:133:    call profiling_serialize
 vmm/host/hw/em64t/em64t_vmx.s:172:    call profiling_serialize
-vmm/vmexit/teardown_thunk.s:52:call_teardown_thunk32:
 
 
 .c files
+vmm/memory/ept/ept_hw_layer.c:272:        vmm_asm_invept(&arg, INVEPT_ALL_CONTEXTS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:302:        vmm_asm_invept(&arg, INVEPT_CONTEXT_WIDE, &rflags);
+vmm/memory/ept/ept_hw_layer.c:370:        vmm_asm_invvpid(&arg, INVVPID_INDIVIDUAL_ADDRESS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:400:        vmm_asm_invvpid(&arg, INVVPID_ALL_CONTEXTS, &rflags);
+vmm/memory/ept/ept_hw_layer.c:428:        vmm_asm_invvpid(&arg, INVVPID_SINGLE_CONTEXT, &rflags);
+vmm/memory/ept/ept_hw_layer.c:337:        vmm_asm_invept(&arg, INVEPT_INDIVIDUAL_ADDRESS, &rflags);
+
 common/libc/common_libc.c:291:        vmm_lock_xchg_byte(&((UINT8*) dest)[j], &((UINT8*)src)[j]);
 common/libc/common_libc.c:310:        vmm_lock_xchg_byte(&((UINT8*)d)[count - i - 1],
 common/libc/common_libc.c:291:        vmm_lock_xchg_byte(&((UINT8*) dest)[j], &((UINT8*)src)[j]);
@@ -232,12 +236,6 @@ common/include/vmcall_api.h:178:*  FUNCTION : hw_vmcall_driver_ack_notification(
 common/include/vmcall_api.h:186:    hw_vmcall(VMCALL_DEVICE_DRIVER_ACK_NOTIFICATION, (driver_ioctl_params_ptr), NULL, NULL)
 common/include/vmcall_api.h:205:    hw_vmcall(VMCALL_PRINT_DEBUG_MESSAGE, (debug_message_params_ptr), NULL, NULL)
 vmm/libc/vmm_io.c:357:        hw_vmcall(VMCALL_EMULATOR_PUTS, (void*)string, 0, 0);
-vmm/memory/ept/ept_hw_layer.c:272:        vmm_asm_invept(&arg, INVEPT_ALL_CONTEXTS, &rflags);
-vmm/memory/ept/ept_hw_layer.c:302:        vmm_asm_invept(&arg, INVEPT_CONTEXT_WIDE, &rflags);
-vmm/memory/ept/ept_hw_layer.c:337:        vmm_asm_invept(&arg, INVEPT_INDIVIDUAL_ADDRESS, &rflags);
-vmm/memory/ept/ept_hw_layer.c:370:        vmm_asm_invvpid(&arg, INVVPID_INDIVIDUAL_ADDRESS, &rflags);
-vmm/memory/ept/ept_hw_layer.c:400:        vmm_asm_invvpid(&arg, INVVPID_ALL_CONTEXTS, &rflags);
-vmm/memory/ept/ept_hw_layer.c:428:        vmm_asm_invvpid(&arg, INVVPID_SINGLE_CONTEXT, &rflags);
 vmm/memory/ept/fvs.c:339:    if (vmexit_reason() != Ia32VmxExitBasicReasonVmcallInstruction)
 vmm/include/vmm_callback.h:82:    UINT32 vmexit_reason;
 vmm/vmexit/vmexit.c:803:        if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) )

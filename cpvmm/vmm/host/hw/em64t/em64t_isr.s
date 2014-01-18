@@ -42,7 +42,9 @@
 # bits in length.
 #
 #
-.include       ia32_registers.equ
+#.include       ia32_registers.equ
+#.include "vmm_arch_defs.h"
+.extern VMM_GP_REGISTERS
 #
 #
 # Register usage
@@ -53,9 +55,9 @@
 #        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 #
 
-.extern g_exception_gpr:NEAR
-.extern exception_class:NEAR
-.extern isr_c_handler : NEAR
+.extern g_exception_gpr
+.extern exception_class
+.extern isr_c_handler
 
 .set	VECTOR_19, 19
 
@@ -107,25 +109,25 @@ hw_isr_c_wrapper:
         mov    %rax, qword ptr [%rsp+$0x08h]             # this is rax
         mov    %rbx, g_exception_gpr
 #RNB: TODO need to fix the struct VMM_GP_REGISTERS
-        mov    (VMM_GP_REGISTERS ptr [%rbx]).reg[IA32_REG_RAX], %rax
+        mov    [%rbx], %rax
 
         mov    %rax, qword ptr [%rsp+$0x00h]             # this is rbx
-        mov    (VMM_GP_REGISTERS ptr [%rbx]).reg[IA32_REG_RBX], %rax
+        mov    8[%rbx], %rax
 
         # now save all other GP registers except RIP,RSP,RFLAGS
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RCX], %rcx
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RDX], %rdx
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RDI], %rdi
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RSI], %rsi
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_RBP], %rbp
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R8],  %r8
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R9],  %r9
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R10], %r10
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R11], %r11
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R12], %r12
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R13], %r13
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R14], %r14
-        mov    (VMM_GP_REGISTERS ptr [rbx]).reg[IA32_REG_R15], %r15
+        mov    16[%rbx], %rcx
+        mov    24[%rbx], %rdx
+        mov    32[%rbx], %rdi
+        mov    40[%rbx], %rsi
+        mov    48[%rbx], %rbp
+        mov    64[%rbx],  %r8
+        mov    72[%rbx],  %r9
+        mov    80[%rbx], %r10
+        mov    88[%rbx], %r11
+        mov    96[%rbx], %r12
+        mov    104[%rbx], %r13
+        mov    112[%rbx], %r14
+        mov    120[%rbx], %r15
 continue:
         pop    %rbx
         pop    %rax
@@ -1199,5 +1201,3 @@ continue:
 .func isr_entry_ff
         isr_entry_macro $0x0ff
 .endfunc
-
-END

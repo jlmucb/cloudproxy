@@ -74,7 +74,8 @@
 #
 .globl  hw_lgdt 
 hw_lgdt:
-        lgdt  fword ptr [ARG1_U64]
+#        lgdt  fword ptr [ARG1_U64]
+        lgdt  [ARG1_U64]
         ret
 
 #
@@ -87,7 +88,8 @@ hw_lgdt:
 #
 .globl  hw_sgdt 
 hw_sgdt:
-        sgdt  fword ptr [ARG1_U64]
+#        sgdt  fword ptr [ARG1_U64]
+        sgdt  [ARG1_U64]
         ret
 
 #
@@ -337,6 +339,7 @@ hw_read_rsp:
 #  and fill emulator context registers from HW after the write.
 #
 #
+/*
 UINT64  typedef qword
 SMI_PORT_PARAMS   struc
     P_RAX       UINT64  ?
@@ -423,7 +426,7 @@ hw_write_to_smi_port:
         pop     %rbp
         ret
 
-
+*/
 #
 #  void __stdcall
 #  hw_enable_interrupts (void);
@@ -563,6 +566,7 @@ hw_write_ldtr:
         ret
 
 
+/*
 CPUID_PARAMS   struc
     M_RAX       UINT64  ?
     M_RBX       UINT64  ?
@@ -596,7 +600,7 @@ hw_cpuid:
         mov     %rbx, %r9
         mov     %rcx, %r8
         ret
-
+*/
 
 #
 #  void __stdcall
@@ -609,7 +613,7 @@ hw_cpuid:
 .globl  hw_leave_64bit_mode
 hw_leave_64bit_mode:
         jmp $
-        shl %rcx, $32             #; prepare segment:offset pair for retf by shifting
+        shl %rcx, 32             #; prepare segment:offset pair for retf by shifting
                                 #; compatibility segment in high address
         lea %rax, compat_code    #; and
         add %rcx, %rax            #; placing offset into low address
@@ -621,14 +625,14 @@ hw_leave_64bit_mode:
 compat_code:                    #; compatibility mode starts right here
 
         mov %rax, %cr0            #; only 32-bit are relevant
-        btc %eax, $31             #; disable IA32e paging (64-bits)
+        btc %eax, 31             #; disable IA32e paging (64-bits)
         mov %cr0, %rax            #;
 
         #; now in protected mode
 #RNB: The original constant was 0C0000080h
         mov %ecx, $0xC0000080h     #; EFER MSR register
         rdmsr                   #; read EFER into EAX
-        btc %eax, $8              #; clear EFER.LME
+        btc %eax, 8              #; clear EFER.LME
         wrmsr                   #; write EFER back
 
 #        mov cr3, rbx            ;; load CR3 for 32-bit mode

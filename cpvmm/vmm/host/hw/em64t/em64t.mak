@@ -38,32 +38,40 @@ endif
 mainsrc=    $(S)/vmm/host/hw/em64t
 
 B=              $(E)/vmmobjects
-BINDIR=         $(B)/libhw
+BINDIR=         $(B)/libhw/
 INCLUDES=       -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+    -I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
+#INCLUDES=       -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
+		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
+		-I$(S)/vmm/memory/ept \
+		-I$(S)/common/include/platform $(mainsrc) -I$(S)/vmm/guest
 
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=         $(RELEASE_CFLAGS) 
 LDFLAGS=        
 
 CC=         gcc
 AS=         as
 LINK=       gcc
-LIBMAKER=   libtool
+#LIBMAKER=   libtool
+LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/em64t_idt.o $(BINDIR)/em64t_gdt.o \
+dobjs=      $(BINDIR)/em64t_gcpu_regs_save_restore.o \
+	$(BINDIR)/em64t_idt.o $(BINDIR)/em64t_gdt.o \
             $(BINDIR)/em64t_fpu.o $(BINDIR)/em64t_setjmp.o \
             $(BINDIR)/em64t_gcpu_regs_save_restore.o \
             $(BINDIR)/em64t_interlocked.o $(BINDIR)/em64t_vmx.o \
-            $(BINDIR)/em64t_isr.o $(BINDIR)/em64t_utils.o
+            $(BINDIR)/em64t_isr.o $(BINDIR)/em64t_utils.o \
+						$(BINDIR)/em64t_utils2.o
 
 all: $(E)/libhw.a
  
 $(E)/libhw.a: $(dobjs)
 	@echo "libhw.a"
-	$(LIBMAKER) -static -o $(E)/libhw.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libhw.a $(dobjs)
+
 
 $(BINDIR)/em64t_idt.o: $(mainsrc)/em64t_idt.c
 	echo "em64t_idt.o" 
@@ -77,9 +85,13 @@ $(BINDIR)/em64t_fpu.o: $(mainsrc)/em64t_fpu.s
 	echo "em64t_fpu.o"
 	$(AS) -o $(BINDIR)/em64t_fpu.o $(mainsrc)/em64t_fpu.s
 
-$(BINDIR)/em64t_gcpu_regs_save_restore.o: $(mainsrc)/em64t_gcpu_regs_save_restore.s
-	echo "em64t_gcpu_regs_save_restore.o"
-	$(AS) -o $(BINDIR)/em64t_gcpu_regs_save_restore.o $(mainsrc)/em64t_gcpu_regs_save_restore.s
+$(BINDIR)/em64t_gcpu_regs_save_restore.o: $(mainsrc)/em64t_gcpu_regs_save_restore.c
+	echo "em64t_gcpu_regs_save_restore.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_gcpu_regs_save_restore.o $(mainsrc)/em64t_gcpu_regs_save_restore.c
+
+#$(BINDIR)/em64t_gcpu_regs_save_restore.o: $(mainsrc)/em64t_gcpu_regs_save_restore.s
+#	echo "em64t_gcpu_regs_save_restore.o"
+#	$(AS) -o $(BINDIR)/em64t_gcpu_regs_save_restore.o $(mainsrc)/em64t_gcpu_regs_save_restore.s
 
 $(BINDIR)/em64t_interlocked.o: $(mainsrc)/em64t_interlocked.s
 	echo "em64t_interlocked.o"
@@ -96,6 +108,10 @@ $(BINDIR)/em64t_setjmp.o: $(mainsrc)/em64t_setjmp.s
 $(BINDIR)/em64t_utils.o: $(mainsrc)/em64t_utils.s
 	echo "em64t_utils.o"
 	$(AS) -o $(BINDIR)/em64t_utils.o $(mainsrc)/em64t_utils.s
+
+$(BINDIR)/em64t_utils2.o: $(mainsrc)/em64t_utils2.c
+	echo "em64t_utils.o"
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_utils2.o $(mainsrc)/em64t_utils2.c
 
 $(BINDIR)/em64t_vmx.o: $(mainsrc)/em64t_vmx.s
 	echo "em64t_vmx.o"

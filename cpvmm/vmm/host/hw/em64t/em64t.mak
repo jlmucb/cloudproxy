@@ -59,7 +59,7 @@ LINK=       gcc
 LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/em64t_gcpu_regs_save_restore.o \
-	$(BINDIR)/em64t_idt.o $(BINDIR)/em64t_gdt.o \
+	    $(BINDIR)/em64t_idt.o $(BINDIR)/em64t_gdt.o \
             $(BINDIR)/em64t_fpu.o $(BINDIR)/em64t_setjmp.o \
             $(BINDIR)/em64t_gcpu_regs_save_restore.o \
             $(BINDIR)/em64t_interlocked.o $(BINDIR)/em64t_vmx.o \

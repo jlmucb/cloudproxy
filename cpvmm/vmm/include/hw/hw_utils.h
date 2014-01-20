@@ -455,14 +455,16 @@ BOOLEAN is_pcid_supported(void)
 // Perform IRET instruction.
 //  void ASM_FUNCTION hw_perform_asm_iret(void);
 //------------------------------------------------------------------------------
-void ASM_FUNCTION hw_perform_asm_iret(void);
+//void ASM_FUNCTION hw_perform_asm_iret(void);
+void hw_perform_asm_iret(void);
 
 //------------------------------------------------------------------------------
 // write GDTR register
 //
 // Note: gdtr has to point to the m16:m32 (x86) or m16:m64 (em64t)
 //------------------------------------------------------------------------------
-void    ASM_FUNCTION hw_lgdt(void * gdtr);
+void    hw_lgdt(void * gdtr);
+//void    ASM_FUNCTION hw_lgdt(void * gdtr);
 
 //------------------------------------------------------------------------------
 // read GDTR register
@@ -474,29 +476,53 @@ void    ASM_FUNCTION hw_sgdt(void * gdtr);
 //------------------------------------------------------------------------------
 // read/write segment registers
 //------------------------------------------------------------------------------
-UINT16  ASM_FUNCTION hw_read_cs(void);
-void    ASM_FUNCTION hw_write_cs(UINT16);
+//UINT16  ASM_FUNCTION hw_read_cs(void);
+//void    ASM_FUNCTION hw_write_cs(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_ds(void);
+//void    ASM_FUNCTION hw_write_ds(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_es(void);
+//void    ASM_FUNCTION hw_write_es(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_ss(void);
+//void    ASM_FUNCTION hw_write_ss(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_fs(void);
+//void    ASM_FUNCTION hw_write_fs(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_gs(void);
+//void    ASM_FUNCTION hw_write_gs(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_tr(void);
+//void    ASM_FUNCTION hw_write_tr(UINT16);
+//
+//UINT16  ASM_FUNCTION hw_read_ldtr(void);
+//void    ASM_FUNCTION hw_write_ldtr(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_ds(void);
-void    ASM_FUNCTION hw_write_ds(UINT16);
+UINT16   hw_read_cs(void);
+void     hw_write_cs(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_es(void);
-void    ASM_FUNCTION hw_write_es(UINT16);
+UINT16   hw_read_ds(void);
+void     hw_write_ds(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_ss(void);
-void    ASM_FUNCTION hw_write_ss(UINT16);
+UINT16   hw_read_es(void);
+void     hw_write_es(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_fs(void);
-void    ASM_FUNCTION hw_write_fs(UINT16);
+UINT16   hw_read_ss(void);
+void     hw_write_ss(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_gs(void);
-void    ASM_FUNCTION hw_write_gs(UINT16);
+UINT16   hw_read_fs(void);
+void     hw_write_fs(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_tr(void);
-void    ASM_FUNCTION hw_write_tr(UINT16);
+UINT16   hw_read_gs(void);
+void     hw_write_gs(UINT16);
 
-UINT16  ASM_FUNCTION hw_read_ldtr(void);
-void    ASM_FUNCTION hw_write_ldtr(UINT16);
+UINT16   hw_read_tr(void);
+void     hw_write_tr(UINT16);
+
+UINT16   hw_read_ldtr(void);
+void     hw_write_ldtr(UINT16);
 
 
 //------------------------------------------------------------------------------
@@ -510,7 +536,8 @@ void    ASM_FUNCTION hw_set_stack_pointer(HVA new_stack_pointer,
                                           main_continue_fn func,
                                           void* params);
 
-UINT64 ASM_FUNCTION hw_read_rsp(void);
+//UINT64 ASM_FUNCTION hw_read_rsp(void);
+UINT64 hw_read_rsp(void);
 
 //------------------------------------------------------------------------------
 //
@@ -519,7 +546,8 @@ UINT64 ASM_FUNCTION hw_read_rsp(void);
 // Note: calulations are based on FS register
 //
 //------------------------------------------------------------------------------
-CPU_ID ASM_FUNCTION hw_cpu_id(void);
+//CPU_ID ASM_FUNCTION hw_cpu_id(void);
+CPU_ID hw_cpu_id(void);
 
 
 //------------------------------------------------------------------------------
@@ -527,7 +555,8 @@ CPU_ID ASM_FUNCTION hw_cpu_id(void);
 //
 // void   hw_write_cr2( UINT64 value );
 //------------------------------------------------------------------------------
-void ASM_FUNCTION hw_write_cr2( UINT64 _value );
+//void ASM_FUNCTION hw_write_cr2( UINT64 _value );
+void hw_write_cr2( UINT64 _value );
 
 
 #define hw_flash_tlb()      hw_write_cr3(hw_read_cr3())

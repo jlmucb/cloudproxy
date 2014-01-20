@@ -63,8 +63,8 @@ dobjs=      $(BINDIR)/em64t_gcpu_regs_save_restore.o \
             $(BINDIR)/em64t_fpu.o $(BINDIR)/em64t_setjmp.o \
             $(BINDIR)/em64t_gcpu_regs_save_restore.o \
             $(BINDIR)/em64t_interlocked.o $(BINDIR)/em64t_vmx.o \
-            $(BINDIR)/em64t_isr.o $(BINDIR)/em64t_utils.o \
-						$(BINDIR)/em64t_utils2.o
+            $(BINDIR)/em64t_isr.o $(BINDIR)/em64t_utils2.o
+#						$(BINDIR)/em64t_utils2.o
 
 all: $(E)/libhw.a
  
@@ -105,12 +105,12 @@ $(BINDIR)/em64t_setjmp.o: $(mainsrc)/em64t_setjmp.s
 	echo "em64t_setjmp.o"
 	$(AS) -o $(BINDIR)/em64t_setjmp.o $(mainsrc)/em64t_setjmp.s
 
-$(BINDIR)/em64t_utils.o: $(mainsrc)/em64t_utils.s
-	echo "em64t_utils.o"
-	$(AS) -o $(BINDIR)/em64t_utils.o $(mainsrc)/em64t_utils.s
+#$(BINDIR)/em64t_utils.o: $(mainsrc)/em64t_utils.s
+#	echo "em64t_utils.o"
+#	$(AS) -o $(BINDIR)/em64t_utils.o $(mainsrc)/em64t_utils.s
 
 $(BINDIR)/em64t_utils2.o: $(mainsrc)/em64t_utils2.c
-	echo "em64t_utils.o"
+	echo "em64t_utils2.o"
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_utils2.o $(mainsrc)/em64t_utils2.c
 
 $(BINDIR)/em64t_vmx.o: $(mainsrc)/em64t_vmx.s

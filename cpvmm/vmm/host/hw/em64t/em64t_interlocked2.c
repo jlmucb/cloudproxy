@@ -41,7 +41,7 @@ void hw_monitor( void* addr, UINT32 extension, UINT32 hint )
         "\tmovq %%rcx, %%rax\n" \
         "\tmovq %%rdx, %%rcx\n" \
         "\tmovq %%r8, %%rdx\n"
-        monitor_instr
+        "\tmonitor\n"
     : 
     : [addr] "m" (addr), [extension] "m" (extension), [hint] "m" (hint)
     :"%rax", "%rcx", "%rdx", "%r8");
@@ -53,10 +53,13 @@ void hw_mwait( UINT32 extension, UINT32 hint )
     asm volatile(
         //   RCX contains extension
         //   RDX  contains hint
-        //mov %rax, %rdx
-        // mwait_instr
+        "\tmovq     %[extension], %%rcx\n" \
+        "\tmovq     %[hint], %%rdx\n" \
+        "\tmovq     %%rdx, %%rax\n" \
+        "\tmovq     %%rdx, %%rax\n" \
+        "\tmwait    %%rax, %%rbx\n" \
     :
-    : 
-    :"%rax", "%rdx", "%rdx");
+    : [extension] "m" (extension), [hint] "m" (hint)
+    :"%rax", "%rbx", "%rcx", "%rdx");
 }
 

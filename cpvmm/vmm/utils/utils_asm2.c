@@ -15,315 +15,323 @@
  */
 
 
-void vmm_lock_write (
-        UINT64   *mem_loc,  // rcx
-        UINT64    new_data  // rdx
-        )
+void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
 {
-/*
-        lock xchg (%rcx), rdx
-        ret
- */
+    asm volatile(
+        "\tmovq       %[mem_loc], %%rcx\n" \
+        "\tmovq       %[new_data], %%rdx\n" \
+        "\tlock xchg    (%%rdx),(%%rcx)\n"
+    :
+    : [mem_loc] "m"(mem_loc), [new_data] "m"(new_data)
+    :"%rcx", "%rdx");
 }
 
 
-UINT32 vmm_rdtsc (
-                    UINT32   *upper  // ecx
-)
+UINT32 vmm_rdtsc (UINT32   *upper)
 {
-/*
-    rdtsc
-    mov     (%ecx), %edx
-        ret
- */
+    asm volatile(
+        "\tmovl       %[upper], %%ecx\n" \
+        "\trstsc\n" \
+        "\tmovl    %eds, (%%ecx)\n"
+    :
+    : [mem_loc] "m"(mem_loc), [new_data] "m"(new_data)
+    :"%ecx", "%edx");
 }
 
 
 void vmm_write_xcr(UINT64 xcr)
 {
-/*
-        mov %rax, %r8
-        /* xsetbv */
-        .byte 0x0f
-        .byte 0x01
-        .byte 0x0D1
-        ret
- */
+    asm volatile(
+        "\tmovq       %[xcr], %%rax\n" \
+        "\txsetbv\n"
+    :
+    : [xcr] "g"(xcr)
+    :"%rax");
 }
 
 
 UINT64 vmm_read_xcr()
 {
-/*
-        push %rdx
-        push %rcx
-        mov %rcx,%r8
-        #xgetbv
-        .byte 0x0F
-        .byte 0x01
-        .byte 0x0D0
-        pop %rcx
-#REK: not sure why (%rcx) doesn't work, while [%rcx] works
-        mov [%rcx], %eax
-        pop %rcx
-        mov [%rcx], %edx
-        ret
+    UINT64  result;
 
-.globl  gcpu_read_guestrip 
-gcpu_read_guestrip:
-    mov %rax, 0x681e
-    vmread   %rax, (%rax)
-        ;mov (%rcx), %rax
-        ret
-*/
+    asm volatile(
+        "\txgetbv\n"
+        "movq   %%rcx, %[result]\n"
+    : [result]"=g"(result)
+    : 
+    :"%rcx", "%rdx");
+    return result;
+}
+
+
+UINT64 gcpu_read_guestrip (void)
+{
+    UINT64  result;
+
+    asm volatile(
+        "\tvmread    %%rax,%%rax\n" \
+        "movq   %%rax, %[result]\n"
+    : [result]"=g"(result)
+    : 
+    :"%rax");
+    return result;
 }
 
 
 UINT64 vmexit_reason()
 {
-/*
-    mov %rax,0x4402
-    # 0x4402 is encoding for vmcs field -- exit reason    
-    vmread %rax, %rax
-    ret
- */
+    UINT64  result;
+    asm volatile(
+        "movq   0x4402, %%rax\n" \
+        "vmread %%rax, %%rax\n" \
+        "movq   %%rax, %[result]\n"
+    : [result]"=g"(result)
+    : 
+    :"%rax");
+    return result;
 }
 
 
 UINT32 vmexit_check_ept_violation(void)
-{
 //if it is ept_voilation_vmexit, return exit qualification
 //  in EAX, otherwise, return 0 in EAX
-/*
-
-    mov %rax,0x4402
-    # 4402 is encoding for vmcs field -- exit reason    
-    vmread %rax,%rax
-    cmp %al,48
-    jnz not_ept_vmexit
-    mov %rax,0x6400
-    # 6400 is encoding for vmcs field- exit qualification    
-    vmread %rax,%rax
-    ret
-not_ept_vmexit:
-    mov %rax,0
-    ret
-*/
+{
+    UINT32  result;
+    asm volatile(
+        "movq   0x4402, %%rax\n" \
+        "vmread %%rax, %%rax\n" \
+        "cmpb   %%rax, $48\n" \
+        "jnz    1f\n" \
+        "movq   0x6400, %%rax\n" \
+        "vmread %%rax, %%rax\n" \
+        "movl   %%rax, %[result]\n"
+        "1:\n" \
+        "movq   #0x00, %%rax\n" \
+        "movl   %%rax, %[result]\n"
+    : [result]"=g"(result)
+    : 
+    :"%rax");
+    return result;
+}
 
 
 void vmm_vmcs_guest_state_read(void)
 {
-/*
-    mov %rax,0x681e
-    vmread %rax,%rax
-    mov (%rcx), %rax
-    mov %rax,0x6820
-    vmread %rax,%rax
-    mov [rcx+8],%rax
-    add %rcx,16
-    mov %rax,0x440c
-    vmread %rax,%rax
-    mov (%rcx), %rax
-    mov %rax,0x6800
-    vmread %rax,%rax
-    mov [%rcx+8], %rax
-    mov %rax,0x6802
-    vmread %rax,%rax
-    mov [%rcx+16], %rax
-    mov %rax,0x6804
-    vmread %rax,%rax
-    mov [%rcx+24], %rax
-    mov %rax,0x681a
-    vmread %rax,%rax
-    mov [%rcx+32], %rax
-    mov %rax,0x0800
-    vmread %rax,%rax
-    mov [%rcx+40], %rax
-    mov %rax,0x6806
-    vmread %rax,%rax
-    mov [%rcx+48], %rax
-    mov %rax,0x4800
-    vmread %rax,%rax
-    mov [%rcx+56], %rax
-    mov %rax,0x4814
-    vmread %rax,%rax
-    mov [%rcx+64], %rax
-    mov %rax,0x0802
-    vmread %rax,%rax
-    mov [%rcx+72], %rax
-    mov %rax,0x6808
-    vmread %rax,%rax
-    mov [%rcx+80], %rax
-    mov %rax,0x4802
-    vmread %rax,%rax
-    mov [%rcx+88], %rax
-    mov %rax,0x4816
-    vmread %rax,%rax
-    mov [%rcx+96], %rax
-    mov %rax,0x0804
-    vmread %rax,%rax
-    mov [%rcx+104], %rax
-    mov %rax,0x680a
-    vmread %rax,%rax
-    mov [%rcx+112], %rax
-    mov %rax,0x4804
-    vmread %rax,%rax
-    mov [%rcx+120], %rax
-    mov %rax,0x4818
-    vmread %rax,%rax
-    mov [%rcx+128], %rax
-    mov %rax,0x0806
-    vmread %rax,%rax
-    mov [%rcx+136], %rax
-    mov %rax,0x680c
-    vmread %rax,%rax
-    mov [%rcx+144], %rax
-    mov %rax,0x4806
-    vmread %rax,%rax
-    mov [%rcx+152], %rax
-    mov %rax,0x481a
-    vmread %rax,%rax
-    mov [%rcx+160], %rax
-    mov %rax,0x0808
-    vmread %rax,%rax
-    mov [%rcx+168], %rax
-    mov %rax,0x680e
-    vmread %rax,%rax
-    mov [%rcx+176], %rax
-    mov %rax,0x4808
-    vmread %rax,%rax
-    mov [%rcx+184], %rax
-    mov %rax,0x481c
-    vmread %rax,%rax
-    mov [%rcx+192], %rax
-    mov %rax,0x080a
-    vmread %rax,%rax
-    mov [%rcx+200], %rax
-    mov %rax,0x6810
-    vmread %rax,%rax
-    mov [%rcx+208], %rax
-    mov %rax,0x480a
-    vmread %rax,%rax
-    mov [%rcx+216], %rax
-    mov %rax,0x481e
-    vmread %rax,%rax
-    mov [%rcx+224], %rax
-    mov %rax,0x080c
-    vmread %rax,%rax
-    mov [%rcx+232], %rax
-    mov %rax,0x6812
-    vmread %rax,%rax
-    mov [%rcx+240], %rax
-    mov %rax,0x480c
-    vmread %rax,%rax
-    mov [%rcx+248], %rax
-    mov %rax,0x4820
-    vmread %rax,%rax
-    mov [%rcx+256], %rax
-    mov %rax,0x080e
-    vmread %rax,%rax
-    mov [%rcx+264], %rax
-    mov %rax,0x6814
-    vmread %rax,%rax
-    mov [%rcx+272], %rax
-    mov %rax,0x480e
-    vmread %rax,%rax
-    mov [%rcx+280], %rax
-    mov %rax,0x4822
-    vmread %rax,%rax
-    mov [%rcx+288], %rax
-    mov %rax,0x6816
-    vmread %rax,%rax
-    mov [%rcx+296], %rax
-    mov %rax,0x4810
-    vmread %rax,%rax
-    mov [%rcx+304], %rax
-    mov %rax,0x6818
-    vmread %rax,%rax
-    mov [%rcx+312], %rax
-    mov %rax,0x4812
-    vmread %rax,%rax
-    mov [%rcx+320], %rax
-    mov %rax,0x681c
-    vmread %rax,%rax
-    mov [%rcx+328], %rax
-    mov %rax,0x681e
-    vmread %rax,%rax
-    mov [%rcx+336], %rax
-    mov %rax,0x6820
-    vmread %rax,%rax
-    mov [%rcx+344], %rax
-    mov %rax,0x6822
-    vmread %rax,%rax
-    mov [%rcx+352], %rax
-    mov %rax,0x2800
-    vmread %rax,%rax
-    mov [%rcx+360], %rax
-    mov %rax,0x2802
-    vmread %rax,%rax
-    mov [%rcx+368], %rax
-    mov %rax,0x4824
-    vmread %rax,%rax
-    mov [%rcx+376], %rax
-    mov %rax,0x4826
-    vmread %rax,%rax
-    mov [%rcx+384], %rax
-    mov %rax,0x4828
-    vmread %rax,%rax
-    mov [%rcx+392], %rax
-    mov %rax,0x482a
-    vmread %rax,%rax
-    mov [%rcx+400], %rax
-    mov %rax,0x6824
-    vmread %rax,%rax
-    mov [%rcx+408], %rax
-    mov %rax,0x6826
-    vmread %rax,%rax
-    mov [%rcx+416], %rax
+    UINT64  result;
 
-    mov %eax,%edx
-    cmp %eax,0
-    jz ept_is_not_supported
+    // JLM: note assumes arg is in %rcx, FIX
+    asm volatile(
+        "\tmovq     0x681e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     0x620e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%rcx+8)\n" \
+        "\taddq     $16, %%rcx\n" \
+        "\tmovq     0x440c, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx)\n" \
+        "\tmovq     0x6800, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+8)\n" \
+        "\tmovq     0x6802, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+16)\n" \
+        "\tmovq     0x6804, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+24)\n" \
+        "\tmovq     0x681a, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+32)\n" \
+        "\tmovq     0x0800, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+40)\n" \
+        "\tmovq     0x6806, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+48)\n" \
+        "\tmovq     0x4800, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+56)\n" \
+        "\tmovq     0x4814, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+64)\n" \
+        "\tmovq     0x0802, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+72)\n" \
+        "\tmovq     0x6808, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, 0(%%rcx+8)\n" \
+        "\tmovq     0x4802, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+88)\n" \
+        "\tmovq     0x4816, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+96)\n" \
+        "\tmovq     0x0804, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+104)\n" \
+        "\tmovq     0x680a, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+112)\n" \
+        "\tmovq     0x4804, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+120)\n" \
+        "\tmovq     0x4818, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+128)\n" \
+        "\tmovq     0x0806, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+136)\n" \
+        "\tmovq     0x680c, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+144)\n" \
+        "\tmovq     0x4806, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+152)\n" \
+        "\tmovq     0x481a, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+160)\n" \
+        "\tmovq     0x0808, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+168)\n" \
+        "\tmovq     0x680e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+176)\n" \
+        "\tmovq     0x4808, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+184)\n" \
+        "\tmovq     0x481c, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+192)\n" \
+        "\tmovq     0x080a, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+200)\n" \
+        "\tmovq     0x6810, %%rax\n" \
+        "\tmovq     0x6810, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+208)\n" \
+        "\tmovq     0x480a, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+216)\n" \
+        "\tmovq     0x481e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+224)\n" \
+        "\tmovq     0x080c, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+232)\n" \
+        "\tmovq     0x6812, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+240)\n" \
+        "\tmovq     0x480c, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+248)\n" \
+        "\tmovq     0x4820, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+256)\n" \
+        "\tmovq     0x080e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+264)\n" \
+        "\tmovq     0x6814, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+272)\n" \
+        "\tmovq     0x480e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+280)\n" \
+        "\tmovq     0x4822, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+288)\n" \
+        "\tmovq     0x6816, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+296)\n" \
+        "\tmovq     0x4810, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+304)\n" \
+        "\tmovq     0x6818, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+312)\n" \
+        "\tmovq     0x4812, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+320)\n" \
+        "\tmovq     0x681c, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+328)\n" \
+        "\tmovq     0x681e, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+336)\n" \
+        "\tmovq     0x6820, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+344)\n" \
+        "\tmovq     0x6822, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+352)\n" \
+        "\tmovq     0x2800, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+360)\n" \
+        "\tmovq     0x2802, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+368)\n" \
+        "\tmovq     0x4824, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+376)\n" \
+        "\tmovq     0x4826, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+384)\n" \
+        "\tmovq     0x4828, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+392)\n" \
+        "\tmovq     0x482a, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+400)\n" \
+        "\tmovq     0x6824, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+408)\n" \
+        "\tmovq     0x6826, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+416)\n" \
 
-    mov %rax,0x2804
-    vmread %rax,%rax
-    mov [%rcx+424], %rax
-    mov %rax,0x2806
-    vmread %rax,%rax
-    mov [%rcx+432], %rax
-    mov %rax,0x280a
-    vmread %rax,%rax
-    mov [%rcx+440], %rax
-    mov %rax,0x280c
-    vmread %rax,%rax
-    mov [%rcx+448], %rax
-    mov %rax,0x280e
-    vmread %rax,%rax
-    mov [%rcx+456], %rax
-    mov %rax,0x2810
-    vmread %rax,%rax
-    mov [%rcx+464], %rax
-    mov %rax,0x482e
-    vmread %rax,%rax
-    mov [%rcx+472], %rax
-        ret
-*/
+        "\tmovl     %%edx, %%eax\n" \
+        "\tcmpl     %%eax, $0\n" \
+        "jnz        $1f\n" \
+
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+424)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+432)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+440)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+440)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+448)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+456)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+464)\n" \
+        "\tmovq     0x, %%rax\n" \
+        "\tvmread   %%rax, %%rax\n" \
+        "\tmovq     %%rax, (%%rcx+472)\n" \
+        "\tjmp      2f\n" \
+        
+        "1:\n" \
+        "\tmovq 0x00, %%rax\n" \
+        "\tmovq %%rax, (%%rcx+424)\n" \
+        "\tmovq %%rax, (%%rcx+432)\n" \
+        "\tmovq %%rax, (%%rcx+440)\n" \
+        "\tmovq %%rax, (%%rcx+448)\n" \
+        "\tmovq %%rax, (%%rcx+456)\n" \
+        "\tmovq %%rax, (%%rcx+464)\n" \
+        "\tmovq %%rax, (%%rcx+472)\n" \
+
+        "2:\n" \
+        "\tmovq %%rax, %[result]\n" \
+    : [result]"=g"(result)
+    : 
+    :"%rax", "%rcx");
 }
         
-
-UINT64 ept_is_not_supported ()
-{
-/*
-    mov %rax,0
-    mov [%rcx+424], %rax
-    mov [%rcx+432], %rax
-    mov [%rcx+440], %rax
-    mov [%rcx+448], %rax
-    mov [%rcx+456], %rax
-    mov [%rcx+464], %rax
-    mov [%rcx+472], %rax
-    ret
-*/
-}
-
-

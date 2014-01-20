@@ -20,7 +20,7 @@ void hw_fnstsw (UINT16* loc)
 //   this doesnt seem to be called
 {
     asm volatile(
-        "\tmovq    %[loc], %%rax\n" \
+        "\tmovq       %[loc], %%rax\n" \
         "\tfnstsw     [%%rax]\n"
     :
     : [loc] "m"(loc)
@@ -33,8 +33,8 @@ void hw_fnstcw ( UINT16 * loc )
 // Read FPU control word
 {
     asm volatile(
-        "\tmovq    %[loc], %%rax\n" \
-        "\tfnstcw     [%%rax]\n"
+        "\tmovq       %[loc], %%rax\n" \
+        "\tfnstcw     (%%rax)\n"
     :
     : [loc] "m"(loc)
     :"rax");

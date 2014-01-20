@@ -15,42 +15,31 @@
  */
 
 
-/*
-externdef vmm_memset:NEAR
-externdef vmm_memcpy:NEAR
-externdef vmm_strlen:NEAR
-
-
-PUBLIC vmm_lock_xchg_qword
-PUBLIC vmm_lock_xchg_byte
- */
-
-void vmm_lock_xchg_qword (
-                            UINT64 *dst, //rcx
-                            UINT64 *src  //rdx
-                         )
+void vmm_lock_xchg_qword (UINT64 *dst, //rcx
+                          UINT64 *src)  //rdx
 {
-/*
-    push r8
-    mov r8, [rdx] # copy src to r8
-    lock xchg [rcx], r8
-    pop r8
-    ret
- */
+    asm volatile(
+        "\tmovq         %[src], %%r8\n" \
+        "\tmovq         %[src], %%rdx\n" \
+        "\tmovq         %[dst], %%rcx\n" \
+        "\tmovq         %%r8, (%rdx)\n" \
+        "\tlock xchg    %%r8, (%rcx)\n" \
+    :
+    : [dst] "m" (dst), [src] "m" (src)
+    :"%rcx", "%rdx", "%r8");
 }
 
 
-void vmm_lock_xchg_byte (
-                     UINT8 *dst, //rcx
-                     UINT8 *src  //rdx
-                    )
+void vmm_lock_xchg_byte (UINT8 *dst, //rcx
+                         UINT8 *src)  //rdx
 {
-/*
-    push rbx
-    mov bl, byte ptr [rdx] # copy src to bl
-    lock xchg byte ptr [rcx], bl
-    pop rbx
-    ret
- */
+    asm volatile(
+        "\tmovq         %[src], %%rdx\n" \
+        "\tmovq         %[dst], %%rcx\n" \
+        "\tmovb         (%%rdx), %%rbx\n" \
+        "\tlock xchg    %%rbx, (%rcx)\n" \
+    :
+    : [dst] "m" (dst), [src] "m" (src)
+    :"%rcx", "%rbx", "%rdx");
 }
 

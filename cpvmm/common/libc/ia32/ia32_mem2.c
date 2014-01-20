@@ -22,42 +22,42 @@
 
 externdef vmm_memset:NEAR
 externdef vmm_memcpy:NEAR
-externdef vmm_strlen:NEAR
+%externdef vmm_strlen:NEAR
 
 PUBLIC vmm_lock_xchg_dword
 PUBLIC vmm_lock_xchg_byte
+    push ebx
+
+    mov ebx, [ebp + 12] ; copy src to ebx
+    lock xchg [ebp + 8], ebx
+
+    pop ebx
+    ret
+
 */
 
 
-void
-vmm_lock_xchg_dword (
-                     UINT32 *dst, //ebp + 8
-                     UINT32 *src  //ebp + 12
-                    )
+void vmm_lock_xchg_dword (UINT32 *dst, UINT32 *src)
 {
-/*
-    push    ebx
-    mov     ebx, [ebp + 12] # copy src to ebx
-    lock    xchg [ebp + 8], ebx
-    pop     ebx
-    ret
- */
+    asm volatile(
+        "\tmovl         %[src], %%ebx\n" \
+        "\tmovl         %[dst], %%edx\n" \
+        "\tlock xchg    (%%ebx), (%edx)\n" \
+    :
+    : [dst] "m" (dst), [src] "m" (src)
+    :"%ebx", "%edx");
 }
 
 
-void
-vmm_lock_xchg_byte (
-                     UINT8 *dst, //ebp + 8
-                     UINT8 *src  //ebp + 12
-                    )
+void vmm_lock_xchg_byte (UINT8 *dst, UINT8 *src)
 {
-/*
-    push ebx
-    mov bl, byte ptr [ebp + 12] # copy src to bl
-    lock xchg byte ptr [ebp + 8], bl
-    pop ebx
-    ret
- */
+    asm volatile(
+        "\tmovl         %[src], %%ebx\n" \
+        "\tmovl         %[dst], %%edx\n" \
+        "\tlock xchg    (%%ebx), (%edx)\n" \
+    :
+    : [dst] "m" (dst), [src] "m" (src)
+    :"%ebx");
 }
 
 

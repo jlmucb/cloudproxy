@@ -21,10 +21,14 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
-RUN=~/testing/run
-ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Release/bin
-KEYCZAR_PASS=cppolicy
+if [[ "$#" != "4" ]]; then
+  echo "Usage: $0 <run dir> <git root dir> <build dir> <keyczar pass>"
+fi
+
+RUN=$1
+ROOT=$2
+BUILD_DIR=$3
+KEYCZAR_PASS=$4
 
 # The CloudServer and CloudClient tests rely on there being users tmroeder and
 # jlm.

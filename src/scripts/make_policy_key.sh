@@ -21,10 +21,14 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
-RUN=~/testing/run
-ROOT=~/src/fileProxy
-KEYCZAR_PASS=cppolicy
-PASS=cppolicy
+if [[ "$#" != "4" ]]; then
+  echo "Usage: $0 <run dir> <git root dir> <keyczar pass> <openssl pass>"
+fi
+
+RUN=$1
+ROOT=$2
+KEYCZAR_PASS=$3
+PASS=$4
 
 # Create a directory structure for the openssl keys:
 

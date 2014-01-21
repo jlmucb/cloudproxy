@@ -21,10 +21,14 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
-RUN=~/testing/run
-TEST=~/testing/test
-ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Release/bin
+if [[ "$#" != "4" ]]; then
+  echo "Usage: $0 <run dir> <test dir> <git root dir> <build dir>"
+fi
+
+RUN=$1
+TEST=$2
+ROOT=$3
+BUILD_DIR=$4
 
 # Set up a test directory to use for tests. This copies over the run directory
 # into an adjacent test directory

@@ -21,15 +21,20 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
-TEST=~/testing/test
-ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Release/bin
-SAMPLE_WHITELIST=${ROOT}/run/sample_whitelist.pb2
+if [[ "$#" != "5" ]]; then
+  echo "Usage: $0 <test dir> <git root dir> <build dir> <sample whitelist> <keyczar pass>"
+fi
+
+TEST=$1
+ROOT=$2
+BUILD_DIR=$3
+SAMPLE_WHITELIST=$4
+KEYCZAR_PASS=$5
+
 #KERNEL=/tmp/vmlinuz-3.7.5
 #INITRD=/tmp/initrd.img-3.7.5
 #VMSPEC=${TEST}/vm.xml
 #VMNAME=cp-test
-KEYCZAR_PASS=cppolicy
 
 cd $TEST
 # populate the whitelist (for tcca) with the current hashes

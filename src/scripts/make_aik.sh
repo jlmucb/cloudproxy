@@ -12,12 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+if [[ "$#" != "5" ]]; then
+  echo "Usage: $0 <run dir> <git root dir> <build dir> <aik blob file> <keyczar pass>"
+fi
 
-RUN=~/testing/run
-ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Release/bin
-AIKBLOB=~/testing/run/HW/aikblob
-KEYCZAR_PASS=cppolicy
+RUN=$1
+ROOT=$2
+BUILD_DIR=$3
+AIKBLOB=$4
+KEYCZAR_PASS=$5
 
 # Create an AIK for certification
 

@@ -12,12 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+if [[ "$#" != "5" ]]; then
+  echo "Usage: $0 <test dir> <git root dir> <build dir> <sample acls> <keyczar pass>"
+fi
 
-TEST=~/testing/test
-ROOT=~/src/fileProxy
-BUILD_DIR=${ROOT}/src/out/Release/bin
-SAMPLE_ACLS=${ROOT}/run/acls.ascii
-KEYCZAR_PASS=cppolicy
+TEST=$1
+ROOT=$2
+BUILD_DIR=$3
+SAMPLE_ACLS=$4
+KEYCZAR_PASS=$5
 
 cd $TEST
 cat $SAMPLE_ACLS |

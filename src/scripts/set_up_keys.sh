@@ -21,14 +21,23 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
+ROOT=~/src/fileProxy
+RUN=~/testing/run
+TEST=~/testing/test
+BUILD_DIR=${ROOT}/src/out/Release/bin
+SAMPLE_ACLS=${ROOT}/run/acls.ascii
+SAMPLE_WHITELIST=${ROOT}/run/sample_whitelist.pb2
+AIKBLOB=${RUN}/HW/aikblob
+PASS=cppolicy
+KEYCZAR_PASS=cppolicy
 
 ROOT=~/src/fileProxy
 SCRIPTS=${ROOT}/src/scripts
 
-${SCRIPTS}/make_policy_key.sh
-${SCRIPTS}/create_users.sh
-${SCRIPTS}/make_aik.sh
-${SCRIPTS}/create_test_dir.sh
-${SCRIPTS}/set_up_whitelist.sh
-${SCRIPTS}/set_up_acls.sh
+${SCRIPTS}/make_policy_key.sh $RUN $ROOT $KEYCZAR_PASS $PASS
+${SCRIPTS}/create_users.sh $RUN $ROOT $BUILD_DIR $KEYCZAR_PASS
+${SCRIPTS}/make_aik.sh $RUN $ROOT $BUILD_DIR $AIKBLOB $KEYCZAR_PASS
+${SCRIPTS}/create_test_dir.sh $RUN $TEST $ROOT $BUILD_DIR
+${SCRIPTS}/set_up_whitelist.sh $TEST $ROOT $BUILD_DIR $SAMPLE_WHITELIST $KEYCZAR_PASS
+${SCRIPTS}/set_up_acls.sh $TEST $ROOT $BUILD_DIR $SAMPLE_ACLS $KEYCZAR_PASS
 

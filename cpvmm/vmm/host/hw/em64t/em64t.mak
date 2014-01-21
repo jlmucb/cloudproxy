@@ -38,7 +38,7 @@ endif
 mainsrc=    $(S)/vmm/host/hw/em64t
 
 B=              $(E)/vmmobjects
-BINDIR=         $(B)/libhw/
+BINDIR=         $(B)/libhw
 INCLUDES=       -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(mainsrc)/hw -I$(S)/vmm/memory/ept 

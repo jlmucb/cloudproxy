@@ -58,9 +58,9 @@ $(E)/.a: $(dobjs)
 	@echo ".a"
 	$(LIBMAKER) -static -o $(E)/.a $(dobjs)
 
-$(BINDIR)/.o: $(mainsrc)/.c
+$(BINDIR)/.o: $(mainsrc)/vmm.c
 	echo ".o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/.o $(mainsrc)/.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/.o $(mainsrc)/vmm.c
 
 #  vmm.c
 #  output: evmm.bin,  ENTRY:vmm_main

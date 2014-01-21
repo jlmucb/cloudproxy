@@ -28,9 +28,104 @@ int call_teardown_thunk32( UINT64 current_guest_states_virt_addr,
                  UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
 {
     int result;
+
     asm volatile(
         "\tmovl    %[current_guest_states_virt_addr], %%rcx\n" \
         "\tmovq    %[compatibility_cs], %%rdx\n" \
+        "\tmovq    %[teardown_thunk_entry_virt_addr], %%r8\n" \
+        "\tmovq    %[cr3_td_sm_32], %%r9\n" \
+        "\tmovl    %%r8d, %%ebx\n" \
+        "\tmovq    %%rcx, %%rsi\n" \
+        // save cr3_td_sm_32 to rdi temporarily
+        "\tmovq    %%r9, %%rdi\n" \
+        "\tmovq    %[cr3_td_sm_32], %%rcx\n" \
+        "\tvmxoff\n" \
+        // clear cr4.vmx, must be after vmx off. otherwise #GP fault
+        "\tmovq    %cr4, %%rax\n" \
+        "\tandq    0xFFFFDFFF, %%rax\n" \
+        "\tmovq    %%rax, %cr4\n" \
+        // prepare cs : rip pair for retf by first pushing
+        // 64 bit compatibility segment, then pushing 64 bits return
+        // address
+        "\txorq     %rax, %rax\n" \
+        "\tmovq     %rdx, %rax\n" \
+        "\tpush     %rax\n" \
+        "\txorq     %rax, %rax\n" \
+        // fix this
+        "\tleaq     compat_code, %%rax\n" \
+        "\tpush     %rax\n" \
+        .byte    0x048   
+        // REX.W - opcode prefix to following retf to set the
+        // operand size to 64 bits
+        // brings IP to compat_code
+        // compatibility mode starts right here, below code is running on
+        // 32bit mode.
+        "\tretf\n" \
+compat_code:                   
+        "\tmovq     %cr0, %rax\n" \
+        "\tbtcl     $31, %eax \n" \
+        "\tmovq     %rax, %cr0\n" \
+
+        // rcx is modified below, so save it
+        "\tpush     %rcx\n" \
+        // EFER MSR register
+        "\tmovl     0x0C0000080, %ecx\n" \
+        // read EFER into EAX
+        "\trdmsr\n" \
+        // clear EFER.LME
+        "\tbtcl    $8, %eax\n" \
+        "\twrmsr\n" \
+        "\npop     %rcx\n" \
+
+        // Check whether PAE was on originally in guest or not. If yes, turn ON PAE
+        // Use byte code for CR3 and CR4 operations so they are
+        // translated correctly in 32bit mode (not 64bit opcodes).
+        // Byte code below is equivalent to "mov eax, cr4".
+        .byte    0x0f
+        .byte    0x20
+        .byte    0xe0
+
+        "\tcmpl    0c1, %ecx\n" \
+        "\tjz      1f\n" \
+        // set PSE bit of cr4 - non PAE mode
+        "\torl     0x10,%eax\n" \
+        // clear PAE bit of cr4
+        "\tandl    0xFFFFFFDF, %%eax     
+        "\tjmp     2f\n" \
+        "1:\n" \
+        // pae_mode:
+        // set PSE and PAE bits of cr4
+        "\torl     0x30,%eax\n" \
+        // after_pae_check:
+        "2:\n" \
+        // Use byte code for CR3 and CR4 operations so they are
+        // translated correctly in 32bit mode (not 64bit opcodes).
+        // Below byte code is equivalent to "mov cr4, eax".
+        .byte    0x0f
+        .byte    0x22
+        .byte    0xe0 
+
+        // restore current_guest_states_virt_addr in rcx
+        "\tmovl    %esi, %ecx\n" \
+        "\txorl    %eax, %eax\n" \
+        "\tmovl    %edi, %eax\n" \
+        // load CR3 with cr3_td_sm_32 which has the mapping of
+        // Use byte code for CR3 and CR4 operations so they are
+        // translated correctly in 32bit mode (not 64bit opcodes).
+        // Below byte code is equivalent to "mov cr3, eax"
+        .byte    0x0f
+        .byte    0x22
+        .byte    0xd8
+        // teardown_shared_memory's gva and gpa, except those 3
+        // pages of shared memory, other are 1:1 mapping (va = pa)
+        // for 32-bit mode
+        "\tmovq  %cr0, %rax\n" \
+        //; enable IA32 paging (32-bits)
+        "\tbts  $31, %eax\n" \
+        "\tmov  %rax, %cr0
+        // finally, call teardownthunk entry in guest space. and never returns.  
+        "\tjmp  %%rbx\n" \
+        "\tmovq     %%rax, %[result]\n"
     : [result]"=g" (result)
     : [current_guest_states_virt_addr] "g" (current_guest_states_virt_addr), 
       [compatibility_cs] "g" (compatibility_cs), 
@@ -38,88 +133,7 @@ int call_teardown_thunk32( UINT64 current_guest_states_virt_addr,
       [cr3_td_sm_32] "g" (cr3_td_sm_32), 
       [cr4_pae_is_on] "g" (cr4_pae_is_on)
     :"%rax", "%r8");
-/*
-    mov     %ebx, %r8d   #; save teardown_thunk_entry_address
-    mov     %rsi, %rcx   #; save current_guest_states_virt_addr to rsi temporarily
-    mov     %rdi, %r9        #; save cr3_td_sm_32 to rdi temporarily
-    #; cr4_pae_is_on value is on stack
-    mov     %rcx, 0x28[rsp]
-    vmxoff
-    #; clear cr4.vmx, must be after vmx off. otherwise #GP fault
-    mov      %rax, %cr4
-    and      %rax, $0xFFFFDFFF
-    mov      %cr4, %rax
-
-    #; prepare cs : rip pair for retf by first pushing
-    #; 64 bit compatibility segment, then pushing 64 bits return
-    #; address
-    xor     %rax, %rax
-    mov     %rax,  %rdx             #; rdx holds compatibility_cs
-    push    %rax
-    xor     %rax, %rax
-    lea     %rax, compat_code
-    push    %rax
-    .byte    0x048   #; REX.W - opcode prefix to following retf to set the
-                    #; operand size to 64 bits
-    retf                        #; brings IP to compat_code
-    #; compatibility mode starts right here, below code is running on
-    #; 32bit mode.
-compat_code:                   
-    mov      %rax, %cr0
-    btc      %eax, 31                 #; disable IA32e paging
-    mov      %cr0, %rax
-
-    #; rcx is modified below, so save it
-    push    %rcx
-    mov     %ecx, 0x0C0000080     #; EFER MSR register
-    rdmsr                           #; read EFER into EAX
-    btc     %eax, 8                  #; clear EFER.LME
-    wrmsr                           #; write EFER back
-    pop     %rcx
-
-    #; Check whether PAE was on originally in guest or not. If yes, turn ON PAE
-    #; Use byte code for CR3 and CR4 operations so they are
-    #; translated correctly in 32bit mode (not 64bit opcodes).
-    #; Below byte code is equivalent to "mov eax, cr4".
-    .byte    0x0f
-    .byte    0x20
-    .byte    0xe0
-
-    cmp     %ecx, 0x01
-    jz      pae_mode
-    or      %eax, 0x10           #; set PSE bit of cr4 - non PAE mode
-    and     %eax, 0xFFFFFFDF     #; clear PAE bit of cr4
-    jmp     after_pae_check
-pae_mode:
-    or      %eax, 0x30           #; set PSE and PAE bits of cr4
-after_pae_check:
-    #; Use byte code for CR3 and CR4 operations so they are
-    #; translated correctly in 32bit mode (not 64bit opcodes).
-    #; Below byte code is equivalent to "mov cr4, eax".
-    .byte    0x0f
-    .byte    0x22
-    .byte    0xe0 
-
-    mov     %ecx, %esi            #; restore current_guest_states_virt_addr in rcx
-    xor     %eax, %eax
-    mov     %eax, %edi
-    #; load CR3 with cr3_td_sm_32 which has the mapping of
-    #; Use byte code for CR3 and CR4 operations so they are
-    #; translated correctly in 32bit mode (not 64bit opcodes).
-    #; Below byte code is equivalent to "mov cr3, eax"
-    .byte    0x0f
-    .byte    0x22
-    .byte    0xd8
-    #; teardown_shared_memory's gva and gpa, except those 3
-    #; pages of shared memory, other are 1:1 mapping (va = pa)
-    #; for 32-bit mode
-    mov %rax, %cr0    #; use Rxx notation for compiler, only 32-bit are valuable
-    bts %eax, 31                     #; enable IA32 paging (32-bits)
-    mov %cr0, %rax
-
-    # finally, call teardownthunk entry in guest space. and never returns.  
-    jmp rbx                     #; the same as "jmp ebx" in 32bit code mode.
- */
+    return result;
 }
 
 

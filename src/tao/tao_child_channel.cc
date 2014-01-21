@@ -24,7 +24,8 @@
 
 namespace tao {
 bool TaoChildChannel::StartHostedProgram(const string &path,
-                                         const list<string> &args) {
+                                         const list<string> &args,
+                                         string *identifier) {
   TaoChannelRPC rpc;
   rpc.set_rpc(START_HOSTED_PROGRAM);
 
@@ -40,6 +41,15 @@ bool TaoChildChannel::StartHostedProgram(const string &path,
   // wait for a response to the message
   TaoChannelResponse resp;
   GetResponse(&resp);
+
+  if (resp.success()) {
+    if (!resp.has_data()) {
+      LOG(ERROR) << "A successful StartHostedProgram did not return data";
+      return false;
+    }
+
+    identifier->assign(resp.data().data(), resp.data().size());
+  }
 
   return resp.success();
 }

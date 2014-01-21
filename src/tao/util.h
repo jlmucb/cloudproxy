@@ -19,6 +19,9 @@
 #ifndef TAO_UTIL_TAO_H_
 #define TAO_UTIL_TAO_H_
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
@@ -157,6 +160,23 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m);
 /// @param fd The file descriptor to write.
 /// @param m The message to send.
 bool SendMessage(int fd, const google::protobuf::Message &m);
+
+/// Receive a protobuf message on a file descriptor.
+/// @param fd The file descriptor to read.
+/// @param[out] m The received message.
+/// @param[out] addr The address the message was received from.
+/// @param[out] addr_len The length of the address the message was received
+/// from.
+bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
+			struct sockaddr *addr, socklen_t *addr_len);
+
+/// Send a protobuf message on a file descriptor.
+/// @param fd The file descriptor to write.
+/// @param m The message to send.
+/// @param addr The address to send the message to.
+/// @param addr_len The length of the address to send the message to.
+bool SendMessageTo(int fd, const google::protobuf::Message &m,
+		   struct sockaddr *addr, socklen_t addr_len);
 
 /// Opens a Unix domain socket at a given path.
 /// @param path The path for the new Unix domain socket.

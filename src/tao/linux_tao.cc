@@ -253,7 +253,8 @@ bool LinuxTao::createKey(const string &secret) {
 bool LinuxTao::Destroy() { return true; }
 
 bool LinuxTao::StartHostedProgram(const string &path,
-                                  const list<string> &args) {
+                                  const list<string> &args,
+				  string *identifier) {
   string child_hash;
   if (!program_factory_->HashHostedProgram(path, args, &child_hash)) {
     LOG(ERROR) << "Could not hash the hosted program";
@@ -303,9 +304,8 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   program_args.push_back(encoded_params);
 
-  string identifier;
   if (!program_factory_->CreateHostedProgram(path, program_args, child_hash,
-                                             *child_channel_, &identifier)) {
+                                             *child_channel_, identifier)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }

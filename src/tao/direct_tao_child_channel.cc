@@ -28,8 +28,9 @@ DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
 }
 
 bool DirectTaoChildChannel::StartHostedProgram(const string &path,
-                                               const list<string> &args) {
-  return tao_->StartHostedProgram(path, args);
+                                               const list<string> &args,
+					       string *identifier) {
+  return tao_->StartHostedProgram(path, args, identifier);
 }
 
 bool DirectTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {

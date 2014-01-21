@@ -51,7 +51,8 @@ class FakeTao : public Tao {
   virtual bool Destroy() { return true; }
 
   /// The FakeTao pretends to start hosted programs but does nothing.
-  virtual bool StartHostedProgram(const string &path, const list<string> &args);
+  virtual bool StartHostedProgram(const string &path, const list<string> &args,
+				  string *identifier);
 
   /// The FakeTao doesn't remove hosted programs, but it accepts the call.
   virtual bool RemoveHostedProgram(const string &child_hash) { return true; }

@@ -104,7 +104,8 @@ class UnixFdTaoChannel : public TaoChannel {
  private:
   /// Receive a datagram message on a unix socket and uses this information to
   /// create a hosted program through the Tao.
-  bool HandleProgramCreation(Tao *tao, int sock);
+  bool HandleProgramCreation(Tao *tao, int sock, string *identifier,
+			     struct sockaddr *addr, socklen_t *addr_len);
 
   /// Handle messages from a hosted program.
   /// @param tao The Tao implementation that will handle the message.

@@ -57,7 +57,8 @@ class TPMTaoChildChannel : public TaoChildChannel {
   virtual bool Init();
   virtual bool Destroy();
   virtual bool StartHostedProgram(const string &path,
-                                  const list<string> &args) {
+                                  const list<string> &args,
+                                  string *identifier) {
     // In the case of the TPM, this would mean to start an OS, and that is
     // accomplished by other means.
     return false;

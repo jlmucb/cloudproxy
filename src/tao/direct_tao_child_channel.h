@@ -48,7 +48,8 @@ class DirectTaoChildChannel : public TaoChildChannel {
 
   // The remainder of the operations pass their arguments down to the tao object
   // and return its reply
-  virtual bool StartHostedProgram(const string &path, const list<string> &args);
+  virtual bool StartHostedProgram(const string &path, const list<string> &args,
+                                  string *identifier);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;

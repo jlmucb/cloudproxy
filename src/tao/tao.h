@@ -78,8 +78,10 @@ class Tao {
   /// @param name The name of the hosted program. This can sometimes be a path
   /// to a process, but it is not always.
   /// @param args A list of arguments for starting the hosted program.
+  /// @param identifier An identifier for the started program (e..g, a PID)
   virtual bool StartHostedProgram(const string &name,
-                                  const list<string> &args) = 0;
+                                  const list<string> &args,
+                                  string *identifier) = 0;
 
   /// Remove the hosted program from the running programs. Note that this does
   /// not necessarily stop the hosted program itself.

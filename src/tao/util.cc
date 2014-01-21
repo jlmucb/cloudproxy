@@ -25,6 +25,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -537,6 +538,78 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
   return true;
 }
 
+bool SendMessageTo(int fd, const google::protobuf::Message &m,
+                   struct ::sockaddr *addr, socklen_t addr_len) {
+  // send the length then the serialized message
+  string serialized;
+  if (!m.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the Message to a string";
+    return false;
+  }
+
+  size_t len = serialized.size();
+  ssize_t bytes_written = sendto(fd, &len, sizeof(size_t), 0, addr, addr_len);
+  if (bytes_written != sizeof(size_t)) {
+    PLOG(ERROR) << "Could not write the length to the fd " << fd;
+    return false;
+  }
+
+  bytes_written = sendto(fd, serialized.data(), len, 0, addr, addr_len);
+  if (bytes_written != static_cast<ssize_t>(len)) {
+    PLOG(ERROR) << "Could not write the serialized message to the fd";
+    return false;
+  }
+
+  return true;
+}
+
+bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
+                        struct sockaddr *addr, socklen_t *addr_len) {
+  if (m == NULL) {
+    LOG(ERROR) << "null message";
+    return false;
+  }
+
+  size_t len = 0;
+  struct sockaddr_un first_addr;
+  socklen_t first_addr_len = *addr_len; // whatever size it should be
+  ssize_t bytes_recvd = recvfrom(fd, &len, sizeof(len), 0, 
+                                 (struct sockaddr *)&first_addr,
+                                 &first_addr_len);
+  if (bytes_recvd == -1) {
+    PLOG(ERROR) << "Could not receive any bytes on the channel";
+    return false;
+  }
+
+  if (len > MaxChannelMessage) {
+    LOG(ERROR) << "The length of the message on fd " << fd
+               << " was too large to be reasonable: " << len;
+    return false;
+  }
+
+  // Read this many bytes as the message.
+  scoped_array<char> bytes(new char[len]);
+  bytes_recvd = recvfrom(fd, bytes.get(), len, 0, addr, addr_len);
+  if (bytes_recvd == -1) {
+    PLOG(ERROR) << "Could not receive the actual message on fd " << fd;
+    return false;
+  }
+
+  if (*addr_len != first_addr_len) {
+    LOG(ERROR) << "Sock type mismatch";
+    return false;
+  }
+
+  if (memcmp(&first_addr, addr, *addr_len) != 0) {
+    LOG(ERROR) << "Receive message pieces from two different clients";
+    return false;
+  }
+
+
+  string serialized(bytes.get(), len);
+  return m->ParseFromString(serialized);
+}
+
 bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   if (m == NULL) {
     LOG(ERROR) << "null message";
@@ -620,6 +693,14 @@ bool OpenUnixDomainSocket(const string &path, int *sock) {
   if (fcntl_err == -1) {
     PLOG(ERROR) << "Could not set the socket to be non-blocking";
     return false;
+  }
+
+  // Make sure there isn't already a file there.
+  if (unlink(path.c_str()) == -1) {
+    if (errno != ENOENT) {
+      PLOG(ERROR) << "Could not remove the old socket at " << path;
+      return false;
+    }
   }
 
   struct sockaddr_un addr;

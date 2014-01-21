@@ -105,7 +105,6 @@ int main(int argc, char** argv) {
       new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
   CHECK(whitelist_auth->Init()) << "Could not initialize the WhitelistAuth";
 
-  LOG(INFO) << "Client successfully established communication with the Tao";
   int size = 6;
   string name_bytes;
   CHECK(channel->GetRandomBytes(size, &name_bytes))
@@ -116,16 +115,13 @@ int main(int argc, char** argv) {
   CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
       << "Could not get the secret";
 
-  LOG(INFO) << "About to create a client";
   CloudClient cc(FLAGS_client_cert, FLAGS_client_key, *secret, FLAGS_policy_key,
                  FLAGS_pem_policy_key, whitelist_auth.release());
 
-  LOG(INFO) << "Created a client";
   ScopedSSL ssl;
   CHECK(cc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
       << "Could not connect to the server at " << FLAGS_address << ":"
       << FLAGS_port;
-  LOG(INFO) << "Connected to the server";
 
   // create a random object name to write, getting randomness from the Tao
 
@@ -137,7 +133,6 @@ int main(int argc, char** argv) {
   CHECK(cc.AddUser("tmroeder", "./keys/tmroeder", "tmroeder"))
       << "Could not"
          " add the user credential from its keyczar path";
-  LOG(INFO) << "Added credentials for the user tmroeder";
   CHECK(cc.Authenticate(ssl.get(), "tmroeder", "./keys/tmroeder_pub_signed"))
       << "Could"
          " not authenticate tmroeder with the server";
@@ -145,13 +140,11 @@ int main(int argc, char** argv) {
   CHECK(cc.Create(ssl.get(), "tmroeder", name)) << "Could not create the object"
                                                 << "'" << name
                                                 << "' on the server";
-  LOG(INFO) << "Created the object " << name;
   CHECK(cc.Read(ssl.get(), "tmroeder", name, name))
       << "Could not read the object";
-  LOG(INFO) << "Read the object " << name;
   CHECK(cc.Destroy(ssl.get(), "tmroeder", name))
       << "Could not destroy the object";
-  LOG(INFO) << "Destroyed the object " << name;
+  LOG(INFO) << "Created, Read, and Destroyed the object " << name;
 
   CHECK(cc.Close(ssl.get(), false)) << "Could not close the channel";
 

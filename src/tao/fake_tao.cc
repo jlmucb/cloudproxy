@@ -62,8 +62,10 @@ bool FakeTao::Init() {
   return true;
 }
 
-bool FakeTao::StartHostedProgram(const string &path, const list<string> &args) {
+bool FakeTao::StartHostedProgram(const string &path, const list<string> &args,
+				 string *identifier) {
   // Just pretend to start the hosted program.
+  identifier->assign(path);
   return true;
 }
 

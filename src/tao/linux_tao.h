@@ -96,7 +96,8 @@ class LinuxTao : public Tao {
   virtual bool Init();
   virtual bool Destroy();
   virtual bool StartHostedProgram(const string &program,
-                                  const list<string> &args);
+                                  const list<string> &args,
+				  string *identifier);
   virtual bool RemoveHostedProgram(const string &child_hash);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &child_hash, const string &data,

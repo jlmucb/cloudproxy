@@ -109,6 +109,7 @@ class LinuxTaoTest : public ::testing::Test {
 
     scoped_ptr<HostedProgramFactory> program_factory(new FakeProgramFactory());
     scoped_ptr<TaoChannel> child_channel(new FakeTaoChannel());
+    ASSERT_TRUE(child_channel->Init());
 
     string test_binary_digest;
     keyczar::MessageDigestImpl *sha256 = keyczar::CryptoFactory::SHA256();
@@ -207,7 +208,11 @@ TEST_F(LinuxTaoTest, SealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   list<string> args;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
+  string identifier;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args,
+				       &identifier));
+
+  EXPECT_TRUE(!identifier.empty());
 
   string sealed;
   string empty;
@@ -219,7 +224,11 @@ TEST_F(LinuxTaoTest, UnsealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   list<string> args;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
+  string identifier;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args,
+				       &identifier));
+
+  EXPECT_TRUE(!identifier.empty());
 
   string sealed;
   string empty;
@@ -235,7 +244,10 @@ TEST_F(LinuxTaoTest, AttestTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   list<string> args;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args));
+  string identifier;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args,
+				       &identifier));
+  EXPECT_TRUE(!identifier.empty());
 
   string attestation;
   string empty;

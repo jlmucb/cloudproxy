@@ -165,8 +165,23 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
 
     // Check for messages to handle
     if (domain_socket_.get() && FD_ISSET(*domain_socket_, &read_fds)) {
-      if (!HandleProgramCreation(tao, *domain_socket_)) {
+      string identifier;
+      struct sockaddr_un addr;
+      socklen_t addr_len = sizeof(addr);
+      bool creation_result =
+        HandleProgramCreation(tao, *domain_socket_,&identifier,
+                              (struct sockaddr *)&addr, &addr_len);
+      if (!creation_result) {
         LOG(ERROR) << "Could not handle the program creation request";
+      }
+
+      TaoChannelResponse resp;
+      resp.set_rpc(START_HOSTED_PROGRAM);
+      resp.set_success(creation_result);
+      resp.set_data(identifier);
+      if (!tao::SendMessageTo(*domain_socket_, resp, (struct sockaddr *)&addr,
+                              addr_len)) {
+        LOG(ERROR) << "Could not reply to the program creation request";
       }
     }
 
@@ -214,9 +229,12 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
   return ret;
 }
 
-bool UnixFdTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
+bool UnixFdTaoChannel::HandleProgramCreation(Tao *tao, int sock,
+                                             string *identifier,
+                                             struct sockaddr *addr,
+                                             socklen_t *addr_len) {
   TaoChannelRPC rpc;
-  if (!tao::ReceiveMessage(sock, &rpc)) {
+  if (!tao::ReceiveMessageFrom(sock, &rpc, addr, addr_len)) {
     LOG(ERROR) << "Could not receive an rpc on the channel";
     return false;
   }
@@ -234,7 +252,7 @@ bool UnixFdTaoChannel::HandleProgramCreation(Tao *tao, int sock) {
     args.push_back(shpa.args(i));
   }
 
-  return tao->StartHostedProgram(shpa.path(), args);
+  return tao->StartHostedProgram(shpa.path(), args, identifier);
 }
 
 bool UnixFdTaoChannel::Init() {

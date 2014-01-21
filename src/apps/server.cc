@@ -102,14 +102,11 @@ int main(int argc, char **argv) {
   scoped_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  LOG(INFO) << "Successfully established communication with the Tao";
-
   // get a secret from the Tao
   ScopedSafeString secret(new string());
   CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
       << "Could not get the secret";
 
-  LOG(INFO) << "Got a secret from the Tao";
   scoped_ptr<keyczar::Keyczar> policy_key(
       keyczar::Verifier::Read(FLAGS_policy_key.c_str()));
   policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
@@ -118,12 +115,11 @@ int main(int argc, char **argv) {
       new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
   CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist auth";
 
-  LOG(INFO) << "Starting CloudServer";
 
   CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret, FLAGS_policy_key,
                  FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address, FLAGS_port,
                  whitelist_auth.release());
-  LOG(INFO) << "Started CloudServer. About to listen";
+  LOG(INFO) << "CloudServer listening";
   CHECK(cs.Listen(channel.get(), false /* not single_channel */))
       << "Could not listen for client connections";
   return 0;

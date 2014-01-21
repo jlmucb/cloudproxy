@@ -14,32 +14,55 @@
  * limitations under the License.
  */
 
+#include <types.h>
+#include "vmm_defs.h"
+
+/*
+ *  force compiler intrinsics to use our code
+ */
+
+void memset (void *str, int c, size_t n) {
+	vmm_memset (str, c, n);
+	return;
+}
+
+void memcpy(void *str1, void *str2, size_t n) {
+ 	vmm_memcpy(str1, str2, n);
+	return; 
+}
+
+size_t strlen (const char *str) {
+    return vmm_strlen(str);
+}
 
 void vmm_lock_xchg_qword (UINT64 *dst, //rcx
                           UINT64 *src)  //rdx
 {
-    asm volatile(
-        "\tmovq         %[src], %%r8\n" \
-        "\tmovq         %[src], %%rdx\n" \
-        "\tmovq         %[dst], %%rcx\n" \
-        "\tmovq         %%r8, (%rdx)\n" \
-        "\tlock xchg    %%r8, (%rcx)\n" \
+	asm volatile(
+		"\tmovq %[src], %%r8\n"
+		"\tmovq %[src], %%rdx\n"
+		"\tmovq %[dst], %%rcx\n"
+		"\tmovq %%r8, (%%rdx)\n"
+		"\tlock xchg %%r8, (%%rcx)\n"
     :
     : [dst] "m" (dst), [src] "m" (src)
-    :"%rcx", "%rdx", "%r8");
+    :"rcx", "rdx", "r8"
+	);
 }
 
 
 void vmm_lock_xchg_byte (UINT8 *dst, //rcx
                          UINT8 *src)  //rdx
 {
-    asm volatile(
-        "\tmovq         %[src], %%rdx\n" \
-        "\tmovq         %[dst], %%rcx\n" \
-        "\tmovb         (%%rdx), %%rbx\n" \
-        "\tlock xchg    %%rbx, (%rcx)\n" \
+	asm volatile(
+		"\tmovq %[src], %%rdx\n"
+		"\tmovq %[dst], %%rcx\n"
+		"\tmovb (%%rdx), %%rbx\n"
+//		"\tlock xchg %%rbx, (%%rcx)\n"
+		"\tlock xchg %%bl, (%%rcx)\n" // byte exchange
     :
     : [dst] "m" (dst), [src] "m" (src)
-    :"%rcx", "%rbx", "%rdx");
+    :"rcx", "rbx", "rdx"
+	);
 }
 

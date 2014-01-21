@@ -104,6 +104,10 @@ int remove_entry(const char *path, const struct stat *sb, int tflag,
 }
 
 namespace tao {
+
+// 20 MB is the maximum allowed message on our channel implementations.
+static size_t MaxChannelMessage = 20 * 1024 * 1024;
+
 void fd_close(int *fd) {
   if (fd) {
     if (*fd >= 0) {
@@ -566,8 +570,7 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
     bytes_read += rv;
   }
 
-  // TODO(tmroeder): figure out why this is happening
-  if (len > 1024 * 1024) {
+  if (len > MaxChannelMessage) {
     LOG(ERROR) << "The length of the message on fd " << fd
                << " was too large to be reasonable: " << len;
     return false;

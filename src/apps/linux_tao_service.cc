@@ -100,7 +100,6 @@ int main(int argc, char **argv) {
   aik_attest_stream << aik_attest_file.rdbuf();
 
   // The TPM to use for the parent Tao
-  // TODO(tmroeder): add a proper AIK attestation from the public key
   scoped_ptr<TPMTaoChildChannel> tpm(new TPMTaoChildChannel(
       aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
   CHECK(tpm->Init()) << "Could not init the TPM";

@@ -872,7 +872,8 @@ bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
   X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
   X509_gmtime_adj(X509_get_notAfter(x509.get()), 31536000L);
 
-  // TODO(tmroeder): does x509 get ownership of key here?
+  // This method allocates a new public key for x509, and it doesn't take
+  // ownership of the key passed in the second parameter.
   if (!X509_set_pubkey(x509.get(), key.get())) {
     LOG(ERROR) << "Could not add the public key to the X.509 structure";
     return false;
@@ -944,11 +945,9 @@ bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
     return false;
   }
 
-  // TODO(tmroeder): I'll probably need to create an HMAC on this file
-  // and check it myself rather than trusting OpenSSL to do the Right
-  // Thing. However, I suppose that changes to the private key would
-  // cause it not to match the X.509 cert.  This still makes me
-  // nervous.
+  // TODO(tmroeder): Add an HMAC as a separate file, since
+  // PEM_write_PKCS8PrivateKey does not provide integrity protection, and our
+  // threat model requires it to.
   int err = PEM_write_PKCS8PrivateKey(
       priv_file.get(), key.get(), EVP_aes_256_cbc(),
       const_cast<char *>(secret.c_str()), secret.size(), NULL, NULL);

@@ -166,12 +166,6 @@ void CloudServer::HandleConnection(int accept_sock, const TaoChildChannel *t) {
   // loop on the message handler for this connection with the client
   bool rv = true;
   while (true) {
-    // read a 4-byte integer from the channel to get the length of the
-    // ClientMessage
-    // TODO(tmroeder): the right way to do this would be to
-    // implement something like ParseFromIstream with an istream wrapping the
-    // OpenSSL SSL abstraction. This would then render the first integer otiose,
-    // since protobufs already have length information in their metadata.
     ClientMessage cm;
     string serialized_cm;
     if (!ReceiveData(ssl.get(), &serialized_cm)) {
@@ -383,14 +377,7 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
   }
 
   // compare the length and contents of the nonce
-  // TODO(tmroeder): can you use string compare safely here?
-  if (nonce.length() != c.nonce().length()) {
-    LOG(ERROR) << "Invalid nonce";
-    reason->assign("Invalid nonce");
-    return false;
-  }
-
-  if (memcmp(nonce.data(), c.nonce().data(), c.nonce().length()) != 0) {
+  if (nonce.compare(c.nonce()) != 0) {
     LOG(ERROR) << "Nonces do not match";
     reason->assign("Nonces do not match");
     return false;

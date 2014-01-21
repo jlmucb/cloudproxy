@@ -112,6 +112,7 @@ int main(int argc, char **argv) {
   // programs.
   scoped_ptr<KvmUnixTaoChannel> kvm_channel(
       new KvmUnixTaoChannel(FLAGS_program_socket, FLAGS_stop_socket));
+  CHECK(kvm_channel->Init()) << "Could not init the TaoChannel";
   scoped_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
   CHECK(vm_factory->Init()) << "Could not initialize the VM factory";
 

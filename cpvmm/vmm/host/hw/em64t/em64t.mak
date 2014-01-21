@@ -65,9 +65,7 @@ dobjs=      $(BINDIR)/em64t_gcpu_regs_save_restore.o \
             $(BINDIR)/em64t_gcpu_regs_save_restore.o \
             $(BINDIR)/em64t_interlocked.o $(BINDIR)/em64t_interlocked2.o \
 						$(BINDIR)/em64t_vmx.o \
-            $(BINDIR)/em64t_isr.o $(BINDIR)/em64t_isr2.o  \
-						$(BINDIR)/em64t_utils2.o
-#						$(BINDIR)/em64t_utils2.o
+            $(BINDIR)/em64t_isr2.o  $(BINDIR)/em64t_utils2.o
 
 all: $(E)/libhw.a
  
@@ -107,10 +105,6 @@ $(BINDIR)/em64t_interlocked.o: $(mainsrc)/em64t_interlocked.s
 $(BINDIR)/em64t_interlocked2.o: $(mainsrc)/em64t_interlocked2.c
 	echo "em64t_interlocked.o"
 	 $(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_interlocked2.o $(mainsrc)/em64t_interlocked2.c
-
-$(BINDIR)/em64t_isr.o: $(mainsrc)/em64t_isr.s
-	echo "em64t_isr.o"
-	$(AS) -o $(BINDIR)/em64t_isr.o $(mainsrc)/em64t_isr.s
 
 $(BINDIR)/em64t_isr.o: $(mainsrc)/em64t_isr2.c
 	echo "em64t_isr2.o" 

@@ -303,8 +303,9 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   program_args.push_back(encoded_params);
 
+  string identifier;
   if (!program_factory_->CreateHostedProgram(path, program_args, child_hash,
-                                             *child_channel_)) {
+                                             *child_channel_, &identifier)) {
     LOG(ERROR) << "Could not start the hosted program";
     return false;
   }

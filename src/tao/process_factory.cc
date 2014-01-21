@@ -67,7 +67,8 @@ bool ProcessFactory::HashHostedProgram(const string &name,
 bool ProcessFactory::CreateHostedProgram(const string &name,
                                          const list<string> &args,
                                          const string &child_hash,
-                                         TaoChannel &parent_channel) const {
+                                         TaoChannel &parent_channel,
+					 string *identifier) const {
   int child_pid = fork();
   if (child_pid == -1) {
     LOG(ERROR) << "Could not fork";
@@ -97,6 +98,10 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
       return false;
     }
   } else {
+    // The identifier in this case is the PID.
+    stringstream ss;
+    ss << child_pid;
+    identifier->assign(ss.str());
     parent_channel.ParentCleanup(child_hash);
   }
 

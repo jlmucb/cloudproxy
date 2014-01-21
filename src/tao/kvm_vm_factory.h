@@ -59,9 +59,12 @@ class KvmVmFactory : public HostedProgramFactory {
   /// @param child_hash The hash of the hosted program.
   /// @param parent_channel The channel to use for establishing communication
   /// with the hosted program.
+  /// @param[out] identifier An identifier for the hosted program: in this
+  /// case, it's the name of the VM.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
-                                   TaoChannel &parent_channel) const;
+                                   TaoChannel &parent_channel,
+				   string *identifier) const;
 
   /// Get the name of this factory type: KvmVmFactory.
   virtual string GetFactoryName() const;

@@ -42,7 +42,9 @@ class FakeProgramFactory : public HostedProgramFactory {
   /// Instead of creating a program, return true and ignore the arguments.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
-                                   TaoChannel &parent_channel) const {
+                                   TaoChannel &parent_channel,
+                                   string *identifier) const {
+    identifier->assign(name);
     return true;
   }
 

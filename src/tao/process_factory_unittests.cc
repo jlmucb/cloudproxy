@@ -81,6 +81,10 @@ TEST_F(ProcessFactoryTest, HashTest) {
 
 TEST_F(ProcessFactoryTest, CreationTest) {
   list<string> args;
+  string identifier;
   EXPECT_TRUE(factory_->CreateHostedProgram(
-      FLAGS_program, args, child_hash_, *channel_)) << "Could not create a vm";
+      FLAGS_program, args, child_hash_, *channel_, &identifier)) 
+    << "Could not create a vm";
+  EXPECT_TRUE(!identifier.empty()) 
+    << "Did not get an identifier from the factory";
 }

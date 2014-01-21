@@ -123,7 +123,8 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
 bool KvmVmFactory::CreateHostedProgram(const string &name,
                                        const list<string> &args,
                                        const string &child_hash,
-                                       TaoChannel &parent_channel) const {
+                                       TaoChannel &parent_channel,
+				       string *identifier) const {
   if (args.size() != 5) {
     LOG(ERROR) << "Invalid parameters to KvmVmFactory::CreateHostedProgram";
     return false;
@@ -258,6 +259,7 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
     return false;
   }
 
+  identifier->assign(name);
   return true;
 }
 

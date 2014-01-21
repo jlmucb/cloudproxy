@@ -97,9 +97,12 @@ TEST_F(KvmVmFactoryTest, CreationTest) {
   args.push_back(FLAGS_initrd_file);
   args.push_back(FLAGS_disk_file);
   args.push_back(encoded_params_);
+  string identifier;
   EXPECT_TRUE(factory_->CreateHostedProgram(
-      "test", args, child_hash_, *channel_)) << "Could not create a vm";
+      "test", args, child_hash_, *channel_, &identifier))
+    << "Could not create a vm";
 
+  EXPECT_TRUE(!identifier.empty()) << "Didn't get a valid identifier back";
   virConnectPtr conn = virConnectOpen("qemu:///system");
   ASSERT_TRUE(conn) << "Could not connect to QEMU";
 

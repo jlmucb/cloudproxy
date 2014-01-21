@@ -91,5 +91,6 @@ int main(int argc, char **argv) {
 
   CHECK(SendMessage(*sock, rpc)) << "Could not send the message to the socket";
 
+  // Listen for a reply that gives the PID of the started process.
   return 0;
 }

@@ -50,7 +50,7 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/vmm_acpi.o $(BINDIR)/vmm_acpi_pm.o
 
@@ -58,7 +58,7 @@ all: $(E)/libacpi.a
  
 $(E)/libacpi.a: $(dobjs)
 	@echo "libacpi.a"
-	$(LIBMAKER) -static -o $(E)/libacpi.a $(dobjs)
+	$(LIBMAKER) -r $(E)/libacpi.a $(dobjs)
 
 $(BINDIR)/vmm_acpi.o: $(mainsrc)/vmm_acpi.c
 	echo "vmm_acpi.o" 

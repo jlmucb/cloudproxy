@@ -133,36 +133,36 @@ UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu);
 void event_cleanup_event_manger(void);
 
 BOOLEAN event_global_register(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     event_callback      call    //  in: callback to register on event e
     );
 
 BOOLEAN event_guest_register(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to register on event e
     );
 
 BOOLEAN event_gcpu_register(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     event_callback      call    //  in: callback to register on event e
     );
 
 
 BOOLEAN event_global_unregister(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     event_callback      call    //  in: callback to unregister from event e
     );
 
 BOOLEAN event_guest_unregister(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to unregister from event e
     );
 
 BOOLEAN event_gcpu_unregister(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     event_callback      call    //  in: callback to unregister from event e
     );
@@ -175,13 +175,13 @@ typedef enum {
 
 // returns counter of executed observers
 BOOLEAN event_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void                *p      // in:  pointer to event specific structure
     );
 
 BOOLEAN event_is_registered(
-        UVMM_EVENT          e,      // in:  event
+        UVMM_EVENT_INTERNAL          e,      // in:  event
         GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
         event_callback      call    // in:  callback to check
         );

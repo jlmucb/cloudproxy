@@ -42,7 +42,7 @@ typedef BOOLEAN (*event_callback) (
  *  failing to add entry in EVENT_CHARACTERISTICS triggers assertion at the
  *  event_initialize_event_manger entry point
  */
-#ifndef UVMM_EVENT
+#ifndef UVMM_EVENT_INTERNAL
 typedef enum {
     // emulator
     EVENT_EMULATOR_BEFORE_MEM_WRITE = 0,
@@ -100,7 +100,7 @@ typedef enum {
     EVENT_GUEST_CPU_SINGLE_STEP,
 
 	EVENTS_COUNT
-} UVMM_EVENT;
+} UVMM_EVENT_INTERNAL;
 #endif
 
 typedef enum {

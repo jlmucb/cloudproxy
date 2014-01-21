@@ -53,7 +53,8 @@ LINK=       gcc
 #LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs= $(BINDIR)/invept.o $(BINDIR)/ept.o $(BINDIR)/invept.o \
+#$(BINDIR)/invept.o 
+dobjs= $(BINDIR)/ept.o $(BINDIR)/invept2.o \
 	$(BINDIR)/ept_hw_layer.o $(BINDIR)/fvs.o $(BINDIR)/ve.o 
 
 all: $(E)/libept.a
@@ -66,6 +67,10 @@ $(E)/libept.a: $(dobjs)
 $(BINDIR)/invept.o: $(mainsrc)/invept.s
 	echo "invept.o"
 	$(AS) -o $(BINDIR)/invept.o $(mainsrc)/invept.s
+
+$(BINDIR)/invept2.o: $(mainsrc)/invept2.c
+	echo "invept2.o"
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/invept2.o $(mainsrc)/invept2.c
 
 $(BINDIR)/ept.o: $(mainsrc)/ept.c
 	echo "ept.o" 

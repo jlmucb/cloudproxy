@@ -60,9 +60,11 @@ LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/em64t_gcpu_regs_save_restore.o \
 	    $(BINDIR)/em64t_idt.o $(BINDIR)/em64t_gdt.o \
-            $(BINDIR)/em64t_fpu.o $(BINDIR)/em64t_setjmp.o \
+            $(BINDIR)/em64t_fpu.o $(BINDIR)/em64t_fpu2.o \
+						$(BINDIR)/em64t_setjmp.o \
             $(BINDIR)/em64t_gcpu_regs_save_restore.o \
-            $(BINDIR)/em64t_interlocked.o $(BINDIR)/em64t_vmx.o \
+            $(BINDIR)/em64t_interlocked.o $(BINDIR)/em64t_interlocked2.o \
+						$(BINDIR)/em64t_vmx.o \
             $(BINDIR)/em64t_isr.o $(BINDIR)/em64t_isr2.o  \
 						$(BINDIR)/em64t_utils2.o
 #						$(BINDIR)/em64t_utils2.o
@@ -86,6 +88,10 @@ $(BINDIR)/em64t_fpu.o: $(mainsrc)/em64t_fpu.s
 	echo "em64t_fpu.o"
 	$(AS) -o $(BINDIR)/em64t_fpu.o $(mainsrc)/em64t_fpu.s
 
+$(BINDIR)/em64t_fpu2.o: $(mainsrc)/em64t_fpu2.c
+	echo "em64t_fpu2.o"
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_fpu2.o $(mainsrc)/em64t_fpu2.c
+
 $(BINDIR)/em64t_gcpu_regs_save_restore.o: $(mainsrc)/em64t_gcpu_regs_save_restore.c
 	echo "em64t_gcpu_regs_save_restore.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_gcpu_regs_save_restore.o $(mainsrc)/em64t_gcpu_regs_save_restore.c
@@ -97,6 +103,10 @@ $(BINDIR)/em64t_gcpu_regs_save_restore.o: $(mainsrc)/em64t_gcpu_regs_save_restor
 $(BINDIR)/em64t_interlocked.o: $(mainsrc)/em64t_interlocked.s
 	echo "em64t_interlocked.o"
 	$(AS) -o $(BINDIR)/em64t_interlocked.o $(mainsrc)/em64t_interlocked.s
+
+$(BINDIR)/em64t_interlocked2.o: $(mainsrc)/em64t_interlocked2.c
+	echo "em64t_interlocked.o"
+	 $(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_interlocked2.o $(mainsrc)/em64t_interlocked2.c
 
 $(BINDIR)/em64t_isr.o: $(mainsrc)/em64t_isr.s
 	echo "em64t_isr.o"

@@ -79,7 +79,7 @@ EVENT_MANAGER event_mgr;
  *  EVENT_CHARACTERISTICS:
  *
  *  Specify event specific characteristics, currently: name and observers limits.
- *  This list should be IDENTICAL(!) to UVMM_EVENT enumration.
+ *  This list should be IDENTICAL(!) to UVMM_EVENT_INTERNAL enumration.
  */
 EVENT_CHARACTERISTICS   events_characteristics[] =
 {
@@ -149,37 +149,37 @@ BOOLEAN event_manager_add_gcpu(
 static
 BOOLEAN event_register_internal(
     PEVENT_ENTRY    p_event,
-    UVMM_EVENT      e,      //  in: event
+    UVMM_EVENT_INTERNAL      e,      //  in: event
     event_callback  call    //  in: callback to register on event e
     );
 static
 BOOLEAN event_unregister_internal(
     PEVENT_ENTRY    p_event,
-    UVMM_EVENT      e,      //  in: event
+    UVMM_EVENT_INTERNAL      e,      //  in: event
     event_callback  call    //  in: callback to register on event e
     );
 static
 BOOLEAN event_raise_internal(
     PEVENT_ENTRY        p_event,
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     );
 static
 BOOLEAN event_global_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     );
 static
 BOOLEAN event_guest_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void               *p       // in:  pointer to event specific structure
     );
 static
 BOOLEAN event_gcpu_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void               *p       // in:  pointer to event specific structure
     );
@@ -188,7 +188,7 @@ BOOLEAN event_gcpu_raise(
 /*---------------------------------- Code ------------------------------------*/
 
 static
-EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT e, GUEST_CPU_HANDLE gcpu)
+EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)
 {
     const VIRTUAL_CPU_ID*   p_vcpu;
     PCPU_EVENTS             p_cpu_events = NULL;
@@ -209,7 +209,7 @@ EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT e, GUEST_CPU_HANDLE gcpu)
 }
 
 static
-EVENT_ENTRY * get_guest_observers(UVMM_EVENT e, GUEST_HANDLE guest)
+EVENT_ENTRY * get_guest_observers(UVMM_EVENT_INTERNAL e, GUEST_HANDLE guest)
 {
     EVENT_ENTRY     *p_event = NULL;
     GUEST_ID        guest_id = guest_get_id(guest);
@@ -229,13 +229,13 @@ EVENT_ENTRY * get_guest_observers(UVMM_EVENT e, GUEST_HANDLE guest)
 }
 
 static
-EVENT_ENTRY * get_global_observers(UVMM_EVENT e)
+EVENT_ENTRY * get_global_observers(UVMM_EVENT_INTERNAL e)
 {
     return &(event_mgr.general_event[e]);
 }
 
 static
-UINT32  event_observers_limit (UVMM_EVENT e)
+UINT32  event_observers_limit (UVMM_EVENT_INTERNAL e)
 {
     UINT32  observers_limits = 0;
 
@@ -270,7 +270,7 @@ UINT32 event_manager_initialize(UINT32 num_of_host_cpus)
 
     /*
      *  Assert that all events are registed both in events_characteristics
-     *  and in the events enumeration UVMM_EVENT
+     *  and in the events enumeration UVMM_EVENT_INTERNAL
      */
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(ARRAY_SIZE(events_characteristics) == EVENTS_COUNT);
@@ -382,7 +382,7 @@ void event_cleanup_event_manger(void)
 
 BOOLEAN event_register_internal(
     PEVENT_ENTRY    p_event,
-    UVMM_EVENT      e,      //  in: event
+    UVMM_EVENT_INTERNAL      e,      //  in: event
     event_callback  call    //  in: callback to register on event e
     )
 {
@@ -420,7 +420,7 @@ BOOLEAN event_register_internal(
 
 
 BOOLEAN event_global_register(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     event_callback      call    //  in: callback to register on event e
     )
 {
@@ -435,7 +435,7 @@ BOOLEAN event_global_register(
 }
 #ifdef ENABLE_VTLB
 BOOLEAN event_guest_register(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to register on event e
     )
@@ -458,7 +458,7 @@ BOOLEAN event_guest_register(
 #endif
 
 BOOLEAN event_gcpu_register(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     event_callback      call    //  in: callback to register on event e
     )
@@ -481,7 +481,7 @@ BOOLEAN event_gcpu_register(
 #ifdef INCLUDE_UNUSED_CODE
 BOOLEAN event_unregister_internal(
     PEVENT_ENTRY    p_event,
-    UVMM_EVENT      e,      //  in: event
+    UVMM_EVENT_INTERNAL      e,      //  in: event
     event_callback  call    //  in: callback to register on event e
     )
 {
@@ -520,7 +520,7 @@ BOOLEAN event_unregister_internal(
 }
 
 BOOLEAN event_global_unregister(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     event_callback      call    //  in: callback to unregister from event e
     )
 {
@@ -539,7 +539,7 @@ BOOLEAN event_global_unregister(
 }
 
 BOOLEAN event_guest_unregister(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to unregister from event e
     )
@@ -561,7 +561,7 @@ BOOLEAN event_guest_unregister(
 
 #ifdef ENABLE_VTLB
 BOOLEAN event_gcpu_unregister(
-    UVMM_EVENT          e,      //  in: event
+    UVMM_EVENT_INTERNAL          e,      //  in: event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     event_callback      call    //  in: callback to unregister from event e
     )
@@ -583,7 +583,7 @@ BOOLEAN event_gcpu_unregister(
 
 BOOLEAN event_raise_internal(
     PEVENT_ENTRY        p_event,
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     )
@@ -612,7 +612,7 @@ BOOLEAN event_raise_internal(
 
 
 BOOLEAN event_global_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     )
@@ -624,7 +624,7 @@ BOOLEAN event_global_raise(
 
 
 BOOLEAN event_guest_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void               *p       // in:  pointer to event specific structure
     )
@@ -647,7 +647,7 @@ BOOLEAN event_guest_raise(
 
 
 BOOLEAN event_gcpu_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void               *p       // in:  pointer to event specific structure
     )
@@ -666,7 +666,7 @@ BOOLEAN event_gcpu_raise(
 
 
 BOOLEAN event_raise(
-    UVMM_EVENT          e,      // in:  event
+    UVMM_EVENT_INTERNAL          e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void                *p      // in:  pointer to event specific structure
     )
@@ -690,7 +690,7 @@ BOOLEAN event_raise(
 
 #ifdef ENABLE_VTLB
 BOOLEAN event_is_registered(
-        UVMM_EVENT          e,      // in:  event
+        UVMM_EVENT_INTERNAL          e,      // in:  event
         GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
         event_callback      call    // in:  callback to check
         )

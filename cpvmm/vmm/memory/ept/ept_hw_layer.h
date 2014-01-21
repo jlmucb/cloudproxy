@@ -51,11 +51,27 @@ typedef enum
 
 typedef enum
 {
-    INVVPID_INDIVIDUAL_ADDRESS = 0,
-    INVVPID_SINGLE_CONTEXT,
-    INVVPID_ALL_CONTEXTS,
+	INVVPID_INDIVIDUAL_ADDRESS = 0,
+	INVVPID_SINGLE_CONTEXT,
+	INVVPID_ALL_CONTEXTS,
 	INVVPID_SINGLE_CONTEXT_GLOBAL
 } INVVPID_CMD_TYPE;
+
+typedef struct _INVEPT_ARG
+{
+    UINT64 eptp;
+    UINT64 gpa;
+} INVEPT_ARG;
+
+void vmm_asm_invept(INVEPT_ARG *, UINT32, UINT64 *);
+
+typedef struct _INVVPID_ARG
+{
+	UINT64 vpid;
+	UINT64 gva;
+} INVVPID_ARG;
+
+void vmm_asm_invvpid(INVVPID_ARG *, UINT32, UINT64 *);
 
 BOOLEAN ept_hw_is_ept_supported(void);
 BOOLEAN ept_hw_is_ept_enabled(GUEST_CPU_HANDLE gcpu);

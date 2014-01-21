@@ -20,7 +20,7 @@
 #include "vmcs_init.h"
 #include "host_memory_manager_api.h"
 #include "guest.h"
-#include "..\..\guest\guest_cpu\guest_cpu_internal.h"
+#include "guest_cpu_internal.h"
 #include "isr.h"
 #include "guest_cpu_vmenter_event.h"
 #include "ve.h"

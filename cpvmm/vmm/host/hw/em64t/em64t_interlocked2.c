@@ -14,52 +14,53 @@
  * limitations under the License. 
  */
 
+#include "vmm_defs.h"
 
-void hw_pause( void )
+void hw_pause( void ) {
 // Execute assembler 'pause' instruction
-{
     asm volatile(
-    "pause\n"
-    :
-    : 
-    :);
+    	"pause\n"
+    	:::
+		);
     return;
 }
 
 
-void hw_monitor( void* addr, UINT32 extension, UINT32 hint )
+void hw_monitor( void* addr, UINT32 extension, UINT32 hint) {
 // Execute assembler 'monitor' instruction
-{
-    asm volatile(
+	asm volatile(
         //on entry
         //  RCX contains addr
         //  RDX contains extension
         //  R8  contains hint
-        "\tmovq %[addr], %%rcx\n" \
-        "\tmovq %[extension], %%rdx\n" \
-        "\tmovq %[hint], %%r8\n" \
-        "\tmovq %%rcx, %%rax\n" \
-        "\tmovq %%rdx, %%rcx\n" \
-        "\tmovq %%r8, %%rdx\n"
-        "\tmonitor\n"
-    : 
-    : [addr] "m" (addr), [extension] "m" (extension), [hint] "m" (hint)
-    :"%rax", "%rcx", "%rdx", "%r8");
+		"\tmovq %[addr], %%rcx\n" 
+		"\tmovq %[extension], %%rdx\n" 
+		"\tmovq %[hint], %%r8\n" 
+		"\tmovq %%rcx, %%rax\n" 
+		"\tmovq %%rdx, %%rcx\n"
+		"\tmovq %%r8, %%rdx\n"
+		"\tmonitor\n"
+  	:
+		: [addr] "m" (addr), [extension] "m" (extension), [hint] "m" (hint)
+   	:"rax", "rcx", "rdx", "r8"
+	);
+	return;
 }
 
 // Execute assembler 'mwait' instruction
-void hw_mwait( UINT32 extension, UINT32 hint )
-{
-    asm volatile(
-        //   RCX contains extension
-        //   RDX  contains hint
-        "\tmovq     %[extension], %%rcx\n" \
-        "\tmovq     %[hint], %%rdx\n" \
-        "\tmovq     %%rdx, %%rax\n" \
-        "\tmovq     %%rdx, %%rax\n" \
-        "\tmwait    %%rax, %%rbx\n" \
+void hw_mwait( UINT32 extension, UINT32 hint ) {
+	asm volatile(
+ 		//   RCX contains extension
+		//   RDX  contains hint
+		"\tmovq %[extension], %%rcx\n"
+		"\tmovq %[hint], %%rdx\n"
+		"\tmovq %%rdx, %%rax\n"
+//RNB: changed the macro .byte... to mwait instruction for better portability.
+		"\tmwait %%rax, %%rcx\n"
     :
     : [extension] "m" (extension), [hint] "m" (hint)
-    :"%rax", "%rbx", "%rcx", "%rdx");
+    :"rax", "rbx", "rcx", "rdx"
+	);
+	return;
 }
 

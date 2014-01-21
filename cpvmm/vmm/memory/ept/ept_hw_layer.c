@@ -24,35 +24,14 @@
 #include "vmm_phys_mem_types.h"
 #include "libc.h"
 #include "scheduler.h"
-#include "..\..\guest\guest_cpu\guest_cpu_internal.h"
+//#include "..\..\guest\guest_cpu\guest_cpu_internal.h"
+#include "guest_cpu_internal.h"
 #include "file_codes.h"
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EPT_HW_LAYER_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(EPT_HW_LAYER_C, __condition)
 
 #define ENABLE_VPID
-
-typedef struct _INVEPT_ARG
-{
-    UINT64 eptp;
-    UINT64 gpa;
-} INVEPT_ARG;
-
-void ASM_FUNCTION vmm_asm_invept(
-    INVEPT_ARG   *arg,
-    UINT32       modifier,
-    UINT64       *rflags);
-
-typedef struct _INVVPID_ARG
-{
-    UINT64 vpid;
-    UINT64 gva;
-} INVVPID_ARG;
-
-void ASM_FUNCTION vmm_asm_invvpid(
-    INVVPID_ARG   *arg,
-    UINT32       modifier,
-    UINT64       *rflags);
 
 BOOLEAN ept_hw_is_ept_supported(void)
 {

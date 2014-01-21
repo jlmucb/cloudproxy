@@ -37,24 +37,25 @@ typedef struct {
 */
 void load_save_area_into_rbx(void) {
 
-        int cpuid;
+	int cpuid;
     // save RAX temporary
     // calculate host cpu id and put it into the rax (ax)
-    cpuid = hw_cpu_id();
-        asm("push %rax \n\t"
-            //RNB: mov rax is probably not required, as the rax (cpuid) should do the trick.
-            //      "mov %rax, %0 \n\t"
-            // put pointer to the array of GUEST_CPU_SAVE_AREA_PREFIX* to RBX
-            "mov  %rbx, g_guest_regs_save_area \n\t"
-            "mov  %rbx, (%rbx) \n\t"
-            // put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
-            "mov  %rbx, (%rbx + sizeof qword * %rax) \n\t"
+	cpuid = hw_cpu_id();
+	asm("push %rax \n\t"
+			// put pointer to the array of GUEST_CPU_SAVE_AREA_PREFIX* to RBX
+			"movq  g_guest_regs_save_area, %%rbx \n\t"
+			"movq  (%%rbx), %%rbx \n\t"
+			// put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
+//			"movq  (%%rbx + sizeof qword * %%rax), %%rbx \n\t"
+			"movq  %%rbx (%%rax, sizeof qword), %%rbx \n\t"
             // restore RAX
-            "pop %rax"
-            //RNB: this function has no output, but the below line is to satisfy the compiler
+			"pop %%rax"
+			//RNB: this function has no output, but the below line is 
+			//to satisfy the compiler
         :"=g" (cpuid)
-        :"rax" (cpuid)
-        :"rax", "rbx");
+        :"g" (cpuid)
+        :"rax", "rbx"
+	);
 /*
     // put pointer to the array of GUEST_CPU_SAVE_AREA_PREFIX* to RBX
     asm("mov  %rbx, g_guest_regs_save_area");
@@ -94,89 +95,52 @@ void load_save_area_into_rbx(void) {
 #
 */
 void gcpu_save_registers(void) {
-    // save RAX and RBX temporary on a stack
-                GUEST_CPU_SAVE_AREA_PREFIX *gsap;
+  // save RAX and RBX temporary on a stack
+	GUEST_CPU_SAVE_AREA_PREFIX *gsap;
 //              int gp_count = IA32_REG_GP_COUNT;
 //              int xmm_count = IA32_REG_XMM_REGISTERS;
-    asm("push %rbx");
+    asm volatile("push %%rbx"
+			:::"rbx");
     // put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
     load_save_area_into_rbx();
     // now save rax and rbx first
                 
-                asm("mov %0, %rbx \n\t" // this moves %rbx to gsap
-                                "mov [%rbx], %rax \n\t"
-                                "pop %rax \n\t" // this is %rbx
-                                "mov 8[%rbx], %rax \n\t"
-                                "mov 16[%rbx], %rcx \n\t"
-                                "mov 24[%rbx], %rdx \n\t"
-                                "mov 32[%rbx], %rdi \n\t"
-                                "mov 40[%rbx], %rsi \n\t"
-                                "mov 48[%rbx], %rbp \n\t"
-                                "mov 64[%rbx], %r8 \n\t"
-                                "mov 72[%rbx], %r9 \n\t"
-                                "mov 80[%rbx], %r10 \n\t"
-                                "mov 88[%rbx], %r11 \n\t"
-                                "mov 96[%rbx], %r12 \n\t"
-                                "mov 104[%rbx], %r13 \n\t"
-                                "mov 112[%rbx], %r14 \n\t"
-                                "mov 120[%rbx], %r15 \n\t"
-        /* now save XMM registers
-         * Depending on the compiler used, not all XMMs are needed to save/restore
-         * Before any release, use dumpbin.exe to examine asm code and remove
-         * the unused XMMs.
+		asm volatile(
+			"movq %%rbx, %0 \n\t" // this moves %rbx to gsap
+			"movq (%%rbx), %%rax \n\t"
+			"pop %%rax \n\t" // this is %rbx
+			"movq %%rax, 8(%%rbx) \n\t"
+			"movq %%rcx, 16(%%rbx) \n\t"
+			"movq %%rdx, 24(%%rbx) \n\t"
+			"movq %%rdi, 32(%%rbx) \n\t"
+			"movq %%rsi, 40(%%rbx) \n\t"
+			"movq %%rbp, 48(%%rbx) \n\t"
+			"movq %%r8, 64(%%rbx) \n\t"
+			"movq %%r9, 72(%%rbx) \n\t"
+			"movq %%r10, 80(%%rbx) \n\t"
+			"movq %%r11, 88(%%rbx) \n\t"
+			"movq %%r12, 96(%%rbx) \n\t"
+			"movq %%r13, 104(%%rbx) \n\t"
+			"movq %%r14, 112(%%rbx) \n\t"
+			"movq %%r15, 120(%%rbx) \n\t"
+      /* now save XMM registers
+        * Depending on the compiler used, not all XMMs are needed to save/restore
+        * Before any release, use dumpbin.exe to examine asm code and remove
+        * the unused XMMs.
         */
 //RNB: instead of using 144...182 as offset, it should be IA32_REG_GP_COUNT*8
-                                "movaps 144[%rbx], %%xmm0 \n\t"
-                                "movaps 152[%rbx], %%xmm1 \n\t"
-                                "movaps 160[%rbx], %%xmm2 \n\t"
-                                "movaps 168[%rbx], %%xmm3 \n\t"
-                                "movaps 176[%rbx], %%xmm4 \n\t"
-                                "movaps 182[%rbx], %%xmm5 \n\t"
+			"movaps %%xmm0, 144(%%rbx) \n\t"
+			"movaps %%xmm1, 152(%%rbx) \n\t"
+			"movaps %%xmm2, 160(%%rbx) \n\t"
+			"movaps %%xmm3, 168(%%rbx) \n\t"
+			"movaps %%xmm4, 176(%%rbx) \n\t"
+			"movaps %%xmm5, 182(%%rbx) \n\t"
 //RNB: in the next two  lines (gsap) is to satisfy gcc
-                                :"=r" (gsap)
-                                :"r" (gsap)
-                                :
-                );
+			:"=g" (gsap)
+			:"g" (gsap)
+			:
+		);
 
-        /*
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RAX], %rax");
-    asm("pop  %rax"); //   # this is rbx
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RBX], %rax");
-    // now save all other GP registers except of RIP,RSP,RFLAGS
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RCX], %rcx");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RDX], %rdx");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RDI], %rdi");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RSI], %rsi");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RBP], %rbp");
-    // skip RSP
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R8], %r8");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R9], %r9");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R10], %r10");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R11], %r11");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R12], %r12");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R13], %r13");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R14], %r14");
-    asm("mov  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R15], %r15");
-    // skip RIP
-    // skip RFLAGS
-*/     
-
-        /* now save XMM registers
-         * Depending on the compiler used, not all XMMs are needed to save/restore
-         * Before any release, use dumpbin.exe to examine asm code and remove
-         * the unused XMMs.
-        */
-                
-/*
-    asm("movaps (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM0], %xmm0");
-    asm("movaps (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM1], %xmm1");
-    asm("movaps (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM2], %xmm2");
-    asm("movaps (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM3], %xmm3");
-    asm("movaps (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM4], %xmm4");
-    asm("movaps (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM5], %xmm5");
-        */
-    
-    // done
     return;
 }
 
@@ -186,68 +150,32 @@ void gcpu_save_registers(void) {
 */
 void gcpu_restore_registers(void) { 
     // put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
-                int dummy;
-    load_save_area_into_rbx();
+  load_save_area_into_rbx();
     // restore all XMM first
-                asm("movaps %%xmm0, 144[%rbx] \n\t"
-                                "movaps %%xmm1, 152[%rbx] \n\t"
-                                "movaps %%xmm2, 160[%rbx] \n\t"
-                                "movaps %%xmm3, 168[%rbx] \n\t"
-                                "movaps %%xmm4, 176[%rbx] \n\t"
-                                "movaps %%xmm5, 182[%rbx] \n\t"
-                                "mov [%rbx], %rax \n\t"
-                                // RNB: rbx is restored at the end
-                                "mov 16[%rbx], %rcx \n\t"
-                                "mov 24[%rbx], %rdx \n\t"
-                                "mov 32[%rbx], %rdi \n\t"
-                                "mov 40[%rbx], %rsi \n\t"
-                                "mov 48[%rbx], %rbp \n\t"
-                                // RNB: rsp is not restored
-                                "mov 64[%rbx], %r8 \n\t"
-                                "mov 72[%rbx], %r9 \n\t"
-                                "mov 80[%rbx], %r10 \n\t"
-                                "mov 88[%rbx], %r11 \n\t"
-                                "mov 96[%rbx], %r12 \n\t"
-                                "mov 104[%rbx], %r13 \n\t"
-                                "mov 112[%rbx], %r14 \n\t"
-                                "mov 120[%rbx], %r15 \n\t"
-                                "mov 8[%rbx], %rbx"
-                                :"=r" (dummy)
-                                :"r" (dummy)
-                                :
-                );
-/*
-    asm("movaps %xmm0, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM0]");
-    asm("movaps %xmm1, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM1]");
-    asm("movaps %xmm2, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM2]");
-    asm("movaps %xmm3, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM3]");
-    asm("movaps %xmm4, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM4]");
-    asm("movaps %xmm5, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).xmm.reg[IA32_REG_XMM5]");
-*/
-        /*
-    // restore all GP except of RBX
-    // now save all other GP registers except of RIP,RSP,RFLAGS
-    asm("mov  %rax, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RAX]");
-    // RBX restore later
-    asm("mov  %rcx, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RCX]");
-    asm("mov  %rdx, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RDX]");
-    asm("mov  %rdi, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RDI]");
-    asm("mov  %rsi, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RSI]");
-    asm("mov  %rbp, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RBP]");
-    // skip RSP
-    asm("mov  %r8,  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R8]");
-    asm("mov  %r9,  (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R9]");
-    asm("mov  %r10, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R10]");
-    asm("mov  %r11, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R11]");
-    asm("mov  %r12, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R12]");
-    asm("mov  %r13, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R13]");
-    asm("mov  %r14, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R14]");
-    asm("mov  %r15, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_R15]");
-    // skip RIP
-    // skip RFLAGS
-    // restore RBX
-    asm("mov  %rbx, (GUEST_CPU_SAVE_AREA_PREFIX ptr [%rbx]).gp.reg[IA32_REG_RBX]");
-*/
-    // done
-    return;
+	asm("movaps 144(%%rbx), %%xmm0\n\t"
+			"movaps 152(%%rbx), %%xmm1 \n\t"
+			"movaps 160(%%rbx), %%xmm2 \n\t"
+      "movaps 168(%%rbx), %%xmm3 \n\t"
+      "movaps 176(%%rbx), %%xmm4 \n\t"
+      "movaps 182(%%rbx), %%xmm5 \n\t"
+      "mov %%rax, (%%rbx) \n\t"
+      // RNB: rbx is restored at the end
+      "movq %%rcx, 16(%%rbx) \n\t"
+      "movq %%rdx, 24(%%rbx) \n\t"
+      "movq %%rdi, 32(%%rbx) \n\t"
+      "movq %%rsi, 40(%%rbx) \n\t"
+      "movq %%rbp, 48(%%rbx) \n\t"
+      // RNB: rsp is not restored
+      "movq %%r8, 64(%%rbx) \n\t"
+      "movq %%r9, 72(%%rbx) \n\t"
+      "movq %%r10, 80(%%rbx) \n\t"
+      "movq %%r11, 88(%%rbx) \n\t"
+      "movq %%r12, 96(%%rbx) \n\t"
+      "movq %%r13, 104(%%rbx) \n\t"
+      "movq %%r14, 112(%%rbx) \n\t"
+      "movq %%r15, 120(%%rbx) \n\t"
+      "movq %%rbx, 8(%%rbx) "
+     :::
+   );
+   return;
 }

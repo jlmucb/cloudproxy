@@ -15,14 +15,6 @@
  */
 
 
-int call_teardown_thunk32(
-                 UINT64 current_guest_states_virt_addr,
-                 UINT16 compatibility_cs,
-                 UINT64 teardown_thunk_entry_virt_addr,    // thuk addraddress
-                 UINT64 cr3_td_sm_32, // cr3 with page table compatibale with guest
-                 BOOLEAN cr4_pae_is_on
-                 )
-{
 //     arg1      in RCX
 //     arg2      in RDX
 //     arg3      in R8
@@ -31,6 +23,21 @@ int call_teardown_thunk32(
 // never return: 
 // since this function will not return, all the registers free to use.
 //
+int call_teardown_thunk32( UINT64 current_guest_states_virt_addr,
+                 UINT16 compatibility_cs, UINT64 teardown_thunk_entry_virt_addr,
+                 UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
+{
+    int result;
+    asm volatile(
+        "\tmovl    %[current_guest_states_virt_addr], %%rcx\n" \
+        "\tmovq    %[compatibility_cs], %%rdx\n" \
+    : [result]"=g" (result)
+    : [current_guest_states_virt_addr] "g" (current_guest_states_virt_addr), 
+      [compatibility_cs] "g" (compatibility_cs), 
+      [teardown_thunk_entry_virt_addr] "g" (teardown_thunk_entry_virt_addr), 
+      [cr3_td_sm_32] "g" (cr3_td_sm_32), 
+      [cr4_pae_is_on] "g" (cr4_pae_is_on)
+    :"%rax", "%r8");
 /*
     mov     %ebx, %r8d   #; save teardown_thunk_entry_address
     mov     %rsi, %rcx   #; save current_guest_states_virt_addr to rsi temporarily
@@ -118,21 +125,26 @@ after_pae_check:
 
 
 //   call teardown thunk at 64 bits guest mode
-int call_teardown_thunk64(
-                        UINT32 current_cpu_idx ,        // cpuidx 
-                        UINT64 current_guest_states_hva 
-                        UINT64 teardown_thunk_entry_hva    // address 
-                        )
-{
 //    arg1      in RCX
 //    arg2      in RDX
 //    arg3      in R8
 // never return: 
 // since this function will not return, all the registers free to use.
-/*
-    mov %rbx, %r8                 # save teardown_thunk_entry_address  
-    # call teardownthunk entry in guest space. and never returns.              
-    jmp rbx                  
- */
+int call_teardown_thunk64(UINT32 current_cpu_idx,
+                          UINT64 current_guest_states_hva, UINT64 teardown_thunk_entry_hva)
+{
+    asm volatile(
+        "\tmovl    %[current_cpu_idx], %%rcx\n" \
+        "\tmovq    %[current_guest_states_hvu], %%rdx\n" \
+        "\tmovq    %[teardown_thunk_entry_hva], %%r8\n" \
+        "\tmovq    %%r8, %%rbx\n" \
+        "\tjmp     %%rbx\n"
+        "\tmovq    %%rax, %[result]\n" \
+    : [result]"=g" (result)
+    : [current_cpu_idx] "g" (current_cpu_idx), 
+      [current_guest_states_hvu] "g" (current_guest_states_hva), 
+      [teardown_thunk_entry_hva] "g" (teardown_thunk_entry_hva)
+    :"%rax", "%r8");
+    return result;
 }
 

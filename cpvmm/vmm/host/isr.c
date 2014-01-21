@@ -270,7 +270,7 @@ static void exception_handler_default(ISR_PARAMETERS_ON_STACK *p_stack)
 static void exception_handler_page_fault(ISR_PARAMETERS_ON_STACK *p_stack)
 {
     GUEST_CPU_HANDLE        gcpu;
-    VMCS_OBJECT             *vmcs;
+    VMCS_OBJECT __attribute__ ((unused))            *vmcs;
 
     VMM_DEBUG_CODE(print_exception_header(p_stack->u.errcode_exception.cs,
                    p_stack->u.errcode_exception.ip, (VECTOR_ID) p_stack->a.vector_id,

@@ -114,6 +114,7 @@ int main(int argc, char **argv) {
   // programs.
   scoped_ptr<PipeTaoChannel> pipe_channel(
       new PipeTaoChannel(FLAGS_program_socket, FLAGS_stop_socket));
+  CHECK(pipe_channel->Init()) << "Could not initialize the pipe channel";
   scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
   CHECK(process_factory->Init()) << "Could not initialize the process factory";
 

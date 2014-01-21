@@ -39,8 +39,9 @@ mkdir -p ${RUN}/openssl_keys/policy ${RUN}/openssl_keys/server \
 cd ${RUN}/openssl_keys/policy
 openssl ecparam -out policy_pub.pem -name prime256v1
 echo "Encrypting the policy private key"
+echo $PASS > ${RUN}/pass
 openssl ecparam -in policy_pub.pem -genkey |
-  openssl ec -aes256 -out policy.pem
+  openssl ec -aes256 -out policy.pem -passout file:${RUN}/pass
 
 # Two forms for keyczar: one encrypted private/public key pair for tcca
 # and one public key for all other programs.

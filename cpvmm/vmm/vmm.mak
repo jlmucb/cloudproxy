@@ -44,14 +44,10 @@ DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -no
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
-#VM_LIBS       = $(E)/libacpi.a $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \
-#	        $(E)/libutils.a  $(E)/libhost.a $(E)/libdbg.a $(E)/libmem.a \
-#		$(E)/libarch.a $(E)/libguest.a $(E)/libguest_cpu.a $(E)/libscheduler.a \
-#		$(E)/libstartup.a $(E)/libvmexit.a $(E)/libipc.a $(E)/libept.a 
-LIBS       = libacpi.a libvmx.a libc.a libhwcommon.a libhw.a \
-	        libutils.a  libhost.a libdbg.a libmem.a \
-		libarch.a libguest.a libguest_cpu.a libscheduler.a \
-		libstartup.a libvmexit.a libipc.a libept.a 
+VM_LIBS       = $(E)/acpi $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \
+	        $(E)/libutils.a  $(E)/libhost.a $(E)/libdbg.a $(E)/libmem.a \
+		$(E)/libarch.a $(E)/libguest.a $(E)/libguest_cpu.a $(E)/libscheduler.a \
+		$(E)/libstartup.a $(E)/libvmexit.a $(E)/libipc.a $(E)/libept.a 
 
 CC=         gcc
 LINK=       gcc
@@ -61,60 +57,60 @@ dobjs=      $(BINDIR)/vmm.o
 
 all: $(E)/evmm.bin
  
-$(E)/evmm.bin: $(dobjs)
+$(E)/evmm.bin: $(dobjs) $(VM_LIBS)
 	@echo "evmm.bin"
 	$(LINK) -o $(E)/evmm.bin -nostdlib -evmm_main $(dobjs) -L $(E)
 
-#$(E)/libacpi.a: 
-	#make -f acpi/acpi.mak
-#
-#$(E)/libvmx.a:
-	#make -f vmx/vmx.mak
-#
-#$(E)/libc.a:
-	#make -f libc/libc.mak
-#
-#$(E)/libhwcommon.a:
-	#make -f host/hw/hw.mak
-#
-#$(E)/libhw.a:
-	#make -f host/hw//em64t/em64t.mak
-#
-#$(E)/libutils.a:
-	#make -f utils/utils.mak
-#
-#$(E)/libhost.a:
-	#make -f host/host.mak
-#
-#$(E)/libdbg.a:
-	#make -f dbg/dbg.mak
-#
-#$(E)/libmem.a:
-	#make -f memory/memory_manager/memory_manager.mak
-#
-#$(E)/libarch.a:
-	#make -f arch/arch.mak
-#
-#$(E)/libguest.a:
-	#make -f guest/guest.mak
-#
-#$(E)/libguest_cpu.a:
-	#make -f guest/guest_cpu/guest_cpu.mak
-#
-#$(E)/libscheduler.a:
-	#make -f guest/scheduler/scheduler.mak
-#
-#$(E)/libstartup.a:
-	#make -f startup/startup.mak
+$(E)/libacpi.a: $(S)/vmm/acpi
+	make -f $(S)/vmm/acpi/acpi.mak
 
-#$(E)/libvmexit.a:
-#	make -f vmexit/vmexit.mak
-#
-#$(E)/libipc.a:
-	#make -f ipc/ipc.mak
+$(E)/libvmx.a: $(S)/vmm/vmx
+	make -f $(S)/vmm/vmx/vmx.mak
 
-#$(E)/libept.a:
-	#make -f memory/ept/ept.mak
+$(E)/libc.a: $(S)/vmm/libc
+	make -f $(S)/vmm/libc/libc.mak
+
+$(E)/libhwcommon.a: $(S)/vmm/host/hw
+	make -f $(S)/vmm/host/hw/hw.mak
+
+$(E)/libhw.a: $(S)/vmm/host/hw/em64t/em64t.mak
+	make -f $(S)/vmm/host/hw/em64t/em64t.mak
+
+$(E)/libutils.a: $(S)/vmm/utils
+	make -f $(S)/vmm/utils/utils.mak
+
+$(E)/libhost.a: $(S)/vmm/host
+	make -f $(S)/vmm/host/host.mak
+
+$(E)/libdbg.a: $(S)/vmm/dbg
+	make -f $(S)/vmm/dbg/dbg.mak
+
+$(E)/libmem.a: $(S)/vmm/memory/memory_manager
+	make -f $(S)/vmm/memory/memory_manager/memory_manager.mak
+
+$(E)/libarch.a: $(S)/vmm/arch
+	make -f $(S)/vmm/arch/arch.mak
+
+$(E)/libguest.a: $(S)/vmm/guest
+	make -f $(S)/vmm/guest/guest.mak
+
+$(E)/libguest_cpu.a: $(S)/vmm/guest/guest_cpu
+	make -f $(S)/vmm/guest/guest_cpu/guest_cpu.mak
+
+$(E)/libscheduler.a: $(S)/vmm/guest/scheduler
+	make -f $(S)/vmm/guest/scheduler/scheduler.mak
+
+$(E)/libstartup.a: $(S)/vmm/startup
+	make -f $(S)/vmm/startup/startup.mak
+
+$(E)/libvmexit.a: $(S)/vmm/vmexit
+	make -f $(S)/vmm/vmexit/vmexit.mak
+
+$(E)/libipc.a: $(S)/vmm/ipc
+	make -f $(S)/vmm/ipc/ipc.mak
+
+$(E)/libept.a: $(S)/vmm/memory/ept
+	make -f $(S)/vmm/memory/ept/ept.mak
 
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c

@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include <netinet/in.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -52,9 +53,23 @@ DEFINE_string(policy_pk_path, "policy_public_key",
 DEFINE_string(whitelist, "signed_whitelist",
               "The whitelist of hashes to accept");
 
+static bool StopFlag = false;
+void term_handler(int sig) {
+  StopFlag = true;
+  LOG(INFO) << "Received SIGTERM. Shutting down...";
+}
+
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InstallFailureSignalHandler();
+
+  struct sigaction act;
+  memset(&act, 0, sizeof(struct sigaction));
+  act.sa_handler = term_handler;
+  if (sigaction(SIGTERM, &act, nullptr) < 0) {
+    PLOG(ERROR) << "Could not set up a handler to catch SIGERM";
+    return 1;
+  }
 
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
@@ -85,11 +100,15 @@ int main(int argc, char **argv) {
                           << FLAGS_policy_key_path;
   policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  while (true) {
+  while (!StopFlag) {
     int accept_sock = accept(sock, NULL, NULL);
     if (accept_sock == -1) {
-      PLOG(ERROR) << "Could not accept a connection on the socket";
-      return 1;
+      if (errno != EINTR) {
+        PLOG(ERROR) << "Could not accept a connection on the socket";
+        return 1;
+      }
+
+      continue;
     }
 
     Attestation a;
@@ -143,5 +162,6 @@ int main(int argc, char **argv) {
     }
   }
 
+  VLOG(1) << "Shutting down tcca";
   return 0;
 }

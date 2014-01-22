@@ -85,7 +85,7 @@ VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDL
 VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu);
 #endif
 
-UINT32 ASM_FUNCTION vmexit_check_ept_violation(void);
+UINT32 /* ASM_FUNCTION */ vmexit_check_ept_violation(void);
 
 extern int CLI_active(void);
 

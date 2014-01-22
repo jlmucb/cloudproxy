@@ -44,6 +44,14 @@ DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -no
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
+#VM_LIBS       = $(E)/libacpi.a $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \
+#	        $(E)/libutils.a  $(E)/libhost.a $(E)/libdbg.a $(E)/libmem.a \
+#		$(E)/libarch.a $(E)/libguest.a $(E)/libguest_cpu.a $(E)/libscheduler.a \
+#		$(E)/libstartup.a $(E)/libvmexit.a $(E)/libipc.a $(E)/libept.a 
+LIBS       = libacpi.a libvmx.a libc.a libhwcommon.a libhw.a \
+	        libutils.a  libhost.a libdbg.a libmem.a \
+		libarch.a libguest.a libguest_cpu.a libscheduler.a \
+		libstartup.a libvmexit.a libipc.a libept.a 
 
 CC=         gcc
 LINK=       gcc
@@ -51,15 +59,67 @@ LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/vmm.o 
 
-all: $(E)/libvmm.a
+all: $(E)/evmm.bin
  
-$(E)/libvmm.a: $(dobjs)
-	@echo "libvmm.a"
-	$(LIBMAKER) -r $(E)/libvmm.a $(dobjs)
+$(E)/evmm.bin: $(dobjs)
+	@echo "evmm.bin"
+	$(LINK) -o $(E)/evmm.bin $(dobjs) -L $(E)
+
+#$(E)/libacpi.a: 
+	#make -f acpi/acpi.mak
+#
+#$(E)/libvmx.a:
+	#make -f vmx/vmx.mak
+#
+#$(E)/libc.a:
+	#make -f libc/libc.mak
+#
+#$(E)/libhwcommon.a:
+	#make -f host/hw/hw.mak
+#
+#$(E)/libhw.a:
+	#make -f host/hw//em64t/em64t.mak
+#
+#$(E)/libutils.a:
+	#make -f utils/utils.mak
+#
+#$(E)/libhost.a:
+	#make -f host/host.mak
+#
+#$(E)/libdbg.a:
+	#make -f dbg/dbg.mak
+#
+#$(E)/libmem.a:
+	#make -f memory/memory_manager/memory_manager.mak
+#
+#$(E)/libarch.a:
+	#make -f arch/arch.mak
+#
+#$(E)/libguest.a:
+	#make -f guest/guest.mak
+#
+#$(E)/libguest_cpu.a:
+	#make -f guest/guest_cpu/guest_cpu.mak
+#
+#$(E)/libscheduler.a:
+	#make -f guest/scheduler/scheduler.mak
+#
+#$(E)/libstartup.a:
+	#make -f startup/startup.mak
+
+#$(E)/libvmexit.a:
+#	make -f vmexit/vmexit.mak
+#
+#$(E)/libipc.a:
+	#make -f ipc/ipc.mak
+
+#$(E)/libept.a:
+	#make -f memory/ept/ept.mak
+
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c $(VM_LIBS)
 
 #  vmm.c
 #  output: evmm.bin,  ENTRY:vmm_main

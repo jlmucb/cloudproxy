@@ -126,7 +126,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 static
 void vmm_application_procs_main(UINT32 local_apic_id);
 
-static
+// static
 int cli_show_memory_layout(unsigned argc, char *args[]);
 
 static

@@ -35,7 +35,7 @@ endif
 mainsrc=    $(S)/vmm
 
 B=		$(E)/vmmobjects
-BINDIR=	        $(B)/host
+BINDIR=	        $(B)/vmm
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
@@ -47,20 +47,19 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-LIBMAKER=   libtool
+LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/.o $(BINDIR)/.o $(BINDIR)/.o \
-	    $(BINDIR)/.o $(BINDIR)/.o
+dobjs=      $(BINDIR)/vmm.o 
 
-all: $(E)/.a
+all: $(E)/libvmm.a
  
-$(E)/.a: $(dobjs)
-	@echo ".a"
-	$(LIBMAKER) -static -o $(E)/.a $(dobjs)
+$(E)/libvmm.a: $(dobjs)
+	@echo "libvmm.a"
+	$(LIBMAKER) -r $(E)/libvmm.a $(dobjs)
 
-$(BINDIR)/.o: $(mainsrc)/vmm.c
-	echo ".o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/.o $(mainsrc)/vmm.c
+$(BINDIR)/vmm.o: $(mainsrc)/vmm.c
+	echo "vmm.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c
 
 #  vmm.c
 #  output: evmm.bin,  ENTRY:vmm_main

@@ -388,7 +388,7 @@
 #if defined(__GNUC__) || (_MSC_VER >= 1400)
 // TODO(vladl@google.com): get the implementation rid of vector and list
 // to compile on MSVC 7.1.
-#define GTEST_HAS_PARAM_TEST 1
+//#define GTEST_HAS_PARAM_TEST 1
 #endif  // defined(__GNUC__) || (_MSC_VER >= 1400)
 
 // Determines whether to support type-driven tests.

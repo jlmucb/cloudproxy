@@ -78,8 +78,13 @@ tests require KVM to be set up and certain files to be prepared. To run the
 libtao test suite without these tests, you can specify a negative filter on the
 command line. For example, to run all but the TPM and KvmVmFactory tests:
 
-    ./out/Release/bin/tao_test --gtest_filter=-TPM*:KvmVmFactory*
+    ./out/Release/bin/tao_test -- --gtest_filter=-TPM*:KvmVmFactory*
     ./out/Release/bin/cloudproxy_test
 
 All tests run using this filter should work on any machine that can build
 CloudProxy.
+
+Note that both gflags and gtest consume command line flags. The flags for gflags
+(hence for the libraries themselves) must be passed first, followed by "--",
+then the flags for gtest. So, the extra double dash in the first command above
+is not a typo.

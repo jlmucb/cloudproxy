@@ -68,6 +68,7 @@
 #include "vmm_acpi.h"
 #endif
 
+
 BOOLEAN vmcs_sw_shadow_disable[VMM_MAX_CPU_SUPPORTED];
 #pragma warning( disable : 4100 ) // enables non-referenced formal parameter
 

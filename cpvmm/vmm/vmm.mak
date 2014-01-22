@@ -63,7 +63,7 @@ all: $(E)/evmm.bin
  
 $(E)/evmm.bin: $(dobjs)
 	@echo "evmm.bin"
-	$(LINK) -o $(E)/evmm.bin $(dobjs) -L $(E)
+	$(LINK) -o $(E)/evmm.bin -nostdlib -evmm_main $(dobjs) -L $(E)
 
 #$(E)/libacpi.a: 
 	#make -f acpi/acpi.mak

@@ -12,21 +12,21 @@ sleep 1
 # The LinuxTao
 ./linux_tao_service --ca_host localhost --ca_port 11238 --nouse_tpm &
 service_pid=$!
-sleep 5
+sleep 4
 # Request that the LinuxTao start the CloudServer program
-./start_hosted_program --program server
+server_pid=`./start_hosted_program --program server`
 sleep 2
 # Request that the LinuxTao start the CloudClient program
-./start_hosted_program --program client
+client_pid=`./start_hosted_program --program client`
 
-sleep 5
+sleep 4
 
-# kill the services the painful way
-# TODO(tmroeder): this should really stop the services cleanly
+# This stops tcca cleanly, since tcca has a SIGTERM handler
 kill $tcca_pid
-kill $service_pid
 
-server_pid=`pgrep -l server | sed 's/^\([0-9][0-9]*\) server$/\1/g' | grep -v "[a-zA-Z]"`
+# Send a stop message to the linux service. The default socket works.
+./stop_service
+
 kill $server_pid
 
-rm /tmp/.linux_tao_s*
+rm -f /tmp/.linux_tao_s*

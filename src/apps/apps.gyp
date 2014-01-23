@@ -74,6 +74,16 @@
       ],
     },
     {
+      'target_name': 'stop_service',
+      'type': 'executable',
+      'sources': [ 'stop_service.cc', ],
+      'dependencies': [ 
+        '../tao/tao.gyp:tao',
+        '../third_party/gflags/gflags.gyp:gflags',
+        '../third_party/google-glog/glog.gyp:glog',
+      ],
+    },
+    {
       'target_name': 'start_hosted_program',
       'type': 'executable',
       'sources': [ 'start_hosted_program.cc', ],

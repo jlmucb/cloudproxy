@@ -92,7 +92,6 @@ int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InstallFailureSignalHandler();
 
-  FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   tao::InitializeOpenSSL();
   tao::LetChildProcsDie();

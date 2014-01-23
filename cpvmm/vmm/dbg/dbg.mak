@@ -41,12 +41,11 @@ endif
 
 mainsrc=    $(S)/vmm/dbg
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/dbg
+B=		$(E)/vmmobjects/dbg
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-     -I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept  \
-	-I$(S)/vmm/include/appliances
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+     		-I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept  \
+		-I$(S)/vmm/include/appliances
 
 DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
@@ -56,14 +55,10 @@ LDFLAGS=
 CC=         gcc
 AS=         as
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs= 	$(BINDIR)/vmx_trace.o	\
-	$(BINDIR)/cli_libc.o	\
-	$(BINDIR)/vmdb.o	\
- 	$(BINDIR)/vt100.o	\
-	$(BINDIR)/vmm_dbg.o
+dobjs= 	$(B)/vmx_trace.o	$(B)/trace.o $(B)/cli_libc.o	\
+	$(B)/vmdb.o $(B)/vt100.o $(B)/vmm_dbg.o
 
 all: $(E)/libdbg.a
  
@@ -71,22 +66,26 @@ $(E)/libdbg.a: $(dobjs)
 	@echo "libdbg.a"
 	$(LIBMAKER) -r $(E)/libdbg.a $(dobjs)
 
-$(BINDIR)/vmx_trace.o: $(mainsrc)/vmx_trace.c
+$(B)/trace.o: $(mainsrc)/trace.c
+	echo "trace.o"
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/trace.o $(mainsrc)/trace.c
+
+$(B)/vmx_trace.o: $(mainsrc)/vmx_trace.c
 	echo "vmx_trace.o"
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmx_trace.o $(mainsrc)/vmx_trace.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmx_trace.o $(mainsrc)/vmx_trace.c
 
-$(BINDIR)/cli_libc.o: $(mainsrc)/cli_libc.c
+$(B)/cli_libc.o: $(mainsrc)/cli_libc.c
 	echo "cli_libc.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/cli_libc.o $(mainsrc)/cli_libc.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/cli_libc.o $(mainsrc)/cli_libc.c
 
-$(BINDIR)/vmdb.o: $(mainsrc)/vmdb.c
+$(B)/vmdb.o: $(mainsrc)/vmdb.c
 	echo "vmdb.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmdb.o $(mainsrc)/vmdb.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmdb.o $(mainsrc)/vmdb.c
 
-$(BINDIR)/vt100.o: $(mainsrc)/vt100.c
+$(B)/vt100.o: $(mainsrc)/vt100.c
 	echo "vt100.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vt100.o $(mainsrc)/vt100.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vt100.o $(mainsrc)/vt100.c
 
-$(BINDIR)/vmm_dbg.o: $(mainsrc)/vmm_dbg.c
+$(B)/vmm_dbg.o: $(mainsrc)/vmm_dbg.c
 	echo "vmm_dbg" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm_dbg.o $(mainsrc)/vmm_dbg.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmm_dbg.o $(mainsrc)/vmm_dbg.c

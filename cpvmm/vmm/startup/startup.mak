@@ -41,12 +41,11 @@ endif
 
 mainsrc=    $(S)/vmm/startup
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/startup
+B=		$(E)/vmmobjects/startup
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-     -I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept  \
-	-I$(S)/vmm/include/appliances
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+     		-I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept  \
+		-I$(S)/vmm/include/appliances
 
 DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
@@ -56,14 +55,11 @@ LDFLAGS=
 CC=         gcc
 AS=         as
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=	$(BINDIR)/copy_input_structs.o \
-	$(BINDIR)/create_guests.o \
-	$(BINDIR)/layout_host_memory_for_mbr_loader.o	\
-	$(BINDIR)/parse_pe_image.o		\
-	$(BINDIR)/addons.o    
+dobjs=	$(B)/copy_input_structs.o $(B)/create_guests.o \
+	$(B)/layout_host_memory_for_mbr_loader.o $(B)/parse_pe_image.o \
+	$(B)/addons.o $(B)/vmm_extension.o
 
 #ifeq ($(call find_opt,ENABLE_VMM_EXTENSION),1)
 #SOURCE +=    vmm_extension.c                        
@@ -76,26 +72,26 @@ $(E)/libstartup.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libstartup.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libstartup.a $(dobjs)
 
-$(BINDIR)/copy_input_structs.o: $(mainsrc)/copy_input_structs.c
+$(B)/copy_input_structs.o: $(mainsrc)/copy_input_structs.c
 	echo "copy_input_structs.o"
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/copy_input_structs.o $(mainsrc)/copy_input_structs.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/copy_input_structs.o $(mainsrc)/copy_input_structs.c
 
-$(BINDIR)/create_guests.o: $(mainsrc)/create_guests.c
+$(B)/create_guests.o: $(mainsrc)/create_guests.c
 	echo "create_guests.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/create_guests.o $(mainsrc)/create_guests.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/create_guests.o $(mainsrc)/create_guests.c
 
-$(BINDIR)/layout_host_memory_for_mbr_loader.o: $(mainsrc)/layout_host_memory_for_mbr_loader.c
+$(B)/layout_host_memory_for_mbr_loader.o: $(mainsrc)/layout_host_memory_for_mbr_loader.c
 	echo "layout_host_memory_for_mbr_loader.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/layout_host_memory_for_mbr_loader.o $(mainsrc)/layout_host_memory_for_mbr_loader.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/layout_host_memory_for_mbr_loader.o $(mainsrc)/layout_host_memory_for_mbr_loader.c
 
-$(BINDIR)/parse_pe_image.o: $(mainsrc)/parse_pe_image.c
+$(B)/parse_pe_image.o: $(mainsrc)/parse_pe_image.c
 	echo "parse_pe_image.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/parse_pe_image.o $(mainsrc)/parse_pe_image.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/parse_pe_image.o $(mainsrc)/parse_pe_image.c
 
-$(BINDIR)/vmm_extension.o: $(mainsrc)/vmm_extension.c
+$(B)/vmm_extension.o: $(mainsrc)/vmm_extension.c
 	echo "vmm_extension" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm_extension.o $(mainsrc)/vmm_extension.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmm_extension.o $(mainsrc)/vmm_extension.c
 
-$(BINDIR)/addons.o: $(mainsrc)/addons.c
+$(B)/addons.o: $(mainsrc)/addons.c
 	echo "addons" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/addons.o $(mainsrc)/addons.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/addons.o $(mainsrc)/addons.c

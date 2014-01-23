@@ -40,8 +40,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 
-DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -Wunused-function
+DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INCLUDE_LAYERING
+RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -Wunused-function -D INCLUDE_LAYERING
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 VM_LIBS       = $(E)/libacpi.a $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \
@@ -58,8 +58,8 @@ ACPIOBJ=	$(B)/acpi/vmm_acpi.o  $(B)/acpi/vmm_acpi_pm.o
 ARCHOBJ=	$(B)/arch/e820_abstraction.o  $(B)/arch/efer_msr_abstraction.o  \
 		$(B)/arch/mtrrs_abstraction.o  $(B)/arch/pat_manager.o
 
-DBGOBJ=		$(B)/dbg/cli_libc.o  $(B)/dbg/vmdb.o  $(B)/dbg/vmm_dbg.o  \
-		$(B)/dbg/vmx_trace.o  $(B)/dbg/vt100.o
+DBGOBJ=		$(B)/dbg/cli_libc.o $(B)/dbg/vmdb.o  $(B)/dbg/vmm_dbg.o  \
+		$(B)/dbg/trace.o $(B)/dbg/vmx_trace.o $(B)/dbg/vt100.o
 
 EMTOBJ= 	$(B)/host/hw/em64t/em64t_idt.o $(B)/host/hw/em64t/em64t_setjmp.o \
 		$(B)/host/hw/em64t/em64t_interlocked2.o  \
@@ -108,7 +108,8 @@ MEMMGROBJ=	$(B)/memory/memory_manager/flat_page_tables.o  \
 
 STARTOBJ=	$(B)/startup/addons.o $(B)/startup/create_guests.o \
 		$(B)/startup/parse_pe_image.o $(B)/startup/copy_input_structs.o  \
-		$(B)/startup/layout_host_memory_for_mbr_loader.o
+		$(B)/startup/layout_host_memory_for_mbr_loader.o \
+		$(B)/startup/vmm_extension.o
 
 VMEXITOBJ=	$(B)/vmexit/teardown_thunk.o $(B)/vmexit/vmexit_ept.o \
 		$(B)/vmexit/vmexit.o $(B)/vmexit/vmcall.o \

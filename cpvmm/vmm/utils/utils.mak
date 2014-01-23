@@ -62,7 +62,6 @@ all: $(E)/libutils.a
  
 $(E)/libutils.a: $(dobjs)
 	@echo "libutils.a"
-#	$(LIBMAKER) -static -o $(E)/libutils.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libutils.a $(dobjs)
 
 $(B)/utils_asm.o: $(mainsrc)/utils_asm.s

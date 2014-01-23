@@ -121,6 +121,13 @@ VMXOBJ=		$(B)/vmx/vmcs_actual.o $(B)/vmx/vmcs_merge_split.o  \
 		$(B)/vmx/vmcs_sw_object.o $(B)/vmx/vmcs_hierarchy.o  \
 		$(B)/vmx/vmcs.o $(B)/vmx/vmx_nmi.o
 
+UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
+		$(B)/utils/hash64.o  $(B)/utils/lock.o \
+		$(B)/utils/memory_allocator.o $(B)/utils/array_list.o  \
+		$(B)/utils/event_mgr.o  $(B)/utils/heap.o \
+		$(B)/utils/math_utils.o  $(B)/utils/utils_asm.o
+
+
 
 
 
@@ -151,7 +158,8 @@ $(E)/evmm.bin: $(dobjs)
 		$(ACPIOBJ) $(ARCHOBJ) $(DBGOBJ) $(EMTOBJ) \
 		$(GUESTOBJ) $(GUESTCPUOBJ) $(GUESTSCHEDOBJ) \
 		$(IPCOBJ) $(LIBCOBJ) $(EPTOBJ) $(MEMMGROBJ) \
-		$(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) $(dobjs) 
+		$(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
+		$(UTILOBJ) $(dobjs) 
 
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c

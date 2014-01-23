@@ -1,0 +1,55 @@
+Building the VMM
+================
+
+
+The VMM which is a derivative of eVMM donated by Intel compiles under Linux
+an, like the custom Linux for CloudProxy and the CloudProxy enabled KVM,
+can be Tbooted.
+
+The code is in FILEPROXY/cpvmm, where FILEPROXY is the root of the Cloudproxy
+source repository.
+
+Instructions to compile
+-----------------------
+
+Make a object directory ROOT/vmmobjects.  ROOT is the directory in which executables
+will be placed.  On my machine it is /home/jlm/jlmcrypt.
+
+1. Export the directory names you use for the source and executable
+	export CPProgramDirectory=/home/jlm/jlmcrypt
+	export VMSourceDirectory=/home/jlm/fpDev/fileProxy/cpvmm
+
+2.  Make the object directories.
+	mkdir $(CPProgramDirectory)/vmmoobjects
+	mkdir $(CPProgramDirectory)/vmmoobjects/acpi  
+	mkdir $(CPProgramDirectory)/vmmoobjects/dbg    
+	mkdir $(CPProgramDirectory)/vmmoobjects/host  
+	mkdir $(CPProgramDirectory)/vmmoobjects/host/hw
+	mkdir $(CPProgramDirectory)/vmmoobjects/host/hw/em64t
+	mkdir $(CPProgramDirectory)/vmmoobjects/libc    
+	mkdir $(CPProgramDirectory)/vmmoobjects/startup  
+	mkdir $(CPProgramDirectory)/vmmoobjects/vmexit  
+	mkdir $(CPProgramDirectory)/vmmoobjects/vmx
+	mkdir $(CPProgramDirectory)/vmmoobjects/arch  
+	mkdir $(CPProgramDirectory)/vmmoobjects/guest  
+	mkdir $(CPProgramDirectory)/vmmoobjects/guest/guest_cpu
+	mkdir $(CPProgramDirectory)/vmmoobjects/guest/scheduler
+	mkdir $(CPProgramDirectory)/vmmoobjects/ipc   
+	mkdir $(CPProgramDirectory)/vmmoobjects/memory  
+	mkdir $(CPProgramDirectory)/vmmoobjects/memory/ept
+	mkdir $(CPProgramDirectory)/vmmoobjects/memory/memory_manager
+	mkdir $(CPProgramDirectory)/vmmoobjects/utils    
+	mkdir $(CPProgramDirectory)/vmmoobjects/vmm
+
+3. Build
+	cd $(VMSourceDirectory)/vmm
+	make -f vmm.mak
+
+
+Unlike Linux, which expects to be called by tboot in main on the bootstrap processor,
+evmm expects to be called on all processors by tboot in vmm_main with different argument
+list than main has in Linux so tboot needs to be modified.
+
+
+
+

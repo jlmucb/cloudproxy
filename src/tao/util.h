@@ -190,7 +190,7 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock);
 
 /// Create a ECDSA key with the default security parameters.
 /// @param path The path to create the key at. This path must already exist.
-/// @param key_name The name of the key. It will be stored at path/key_name.
+/// @param key_name The name of the key.
 /// @param[out] key A pointer to an existing scoped_ptr that will take
 /// ownership of the newly created key.
 bool CreateECDSAKey(const string &path, const string &key_name,
@@ -208,7 +208,7 @@ bool CreatePubECDSAKey(const string &path, scoped_ptr<keyczar::Keyczar> *key);
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 
-/// Create a temporary directory and a temporary public key in this directory.
+/// Create a temporary directory and a temporary key in this directory.
 /// @param[out] temp_dir The new directory.
 /// @param[out] key The new key.
 bool CreateTempPubKey(ScopedTempDir *temp_dir,

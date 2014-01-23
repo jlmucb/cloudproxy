@@ -21,6 +21,12 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
+if [[ $# -gt 0 ]]; then
+  USE_FAKE=$1
+else
+  USE_FAKE=NO_FAKE
+fi
+
 ROOT=~/src/fileProxy
 RUN=~/testing/run
 TEST=~/testing/test
@@ -36,8 +42,13 @@ SCRIPTS=${ROOT}/src/scripts
 
 ${SCRIPTS}/make_policy_key.sh $RUN $ROOT $KEYCZAR_PASS $PASS
 ${SCRIPTS}/create_users.sh $RUN $ROOT $BUILD_DIR $KEYCZAR_PASS
-${SCRIPTS}/make_aik.sh $RUN $ROOT $BUILD_DIR $AIKBLOB $KEYCZAR_PASS
+if [[ "$USE_FAKE" = "NO_FAKE" ]]; then
+  ${SCRIPTS}/make_aik.sh $RUN $ROOT $BUILD_DIR $AIKBLOB $KEYCZAR_PASS
+fi
+
 ${SCRIPTS}/create_test_dir.sh $RUN $TEST $ROOT $BUILD_DIR
-${SCRIPTS}/set_up_whitelist.sh $TEST $ROOT $BUILD_DIR $SAMPLE_WHITELIST $KEYCZAR_PASS
+${SCRIPTS}/make_fake_key.sh $TEST
+${SCRIPTS}/set_up_whitelist.sh $TEST $ROOT $BUILD_DIR $SAMPLE_WHITELIST \
+  $KEYCZAR_PASS $USE_FAKE
 ${SCRIPTS}/set_up_acls.sh $TEST $ROOT $BUILD_DIR $SAMPLE_ACLS $KEYCZAR_PASS
 

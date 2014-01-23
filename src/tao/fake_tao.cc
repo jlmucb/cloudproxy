@@ -20,19 +20,27 @@ using keyczar::Signer;
 
 namespace tao {
 FakeTao::FakeTao()
-    : policy_key_path_(), crypter_(nullptr), policy_key_(nullptr) {}
+    : key_path_(), attestation_(), crypter_(nullptr), key_(nullptr) {}
 
-FakeTao::FakeTao(const string &policy_key_path)
-    : policy_key_path_(policy_key_path),
+FakeTao::FakeTao(const string &key_path)
+    : key_path_(key_path),
+      attestation_(),
       crypter_(nullptr),
-      policy_key_(nullptr) {
+      key_(nullptr) {
   // The actual initialization happens in Init().
 }
 
+FakeTao::FakeTao(const string &key_path, const string &attestation)
+    : key_path_(key_path),
+      attestation_(attestation),
+      crypter_(nullptr),
+      key_(nullptr) {
+  // The initialization happens in Init()
+}
 bool FakeTao::Init() {
-  if (!policy_key_path_.empty()) {
-    policy_key_.reset(Signer::Read(policy_key_path_.c_str()));
-    policy_key_->set_encoding(Keyczar::NO_ENCODING);
+  if (!key_path_.empty()) {
+    key_.reset(Signer::Read(key_path_.c_str()));
+    key_->set_encoding(Keyczar::NO_ENCODING);
   } else {
     scoped_ptr<Keyset> public_pk(new Keyset());
     KeyType::Type public_pk_key_type = KeyType::ECDSA_PRIV;
@@ -44,7 +52,7 @@ bool FakeTao::Init() {
     public_pk->set_metadata(public_pk_metadata);
     public_pk->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
-    policy_key_.reset(new Signer(public_pk.release()));
+    key_.reset(new Signer(public_pk.release()));
   }
 
   scoped_ptr<Keyset> k(new Keyset());
@@ -111,11 +119,17 @@ bool FakeTao::Attest(const string &child_hash, const string &data,
   }
 
   Attestation a;
-  a.set_type(ROOT);
+  if (attestation_.empty()) {
+    a.set_type(ROOT);
+  } else {
+    a.set_type(INTERMEDIATE);
+    a.set_cert(attestation_);
+  }
+
   a.set_serialized_statement(serialized_statement);
   string *sig = a.mutable_signature();
   if (!SignData(serialized_statement, AttestationSigningContext, sig,
-                policy_key_.get())) {
+                key_.get())) {
     LOG(ERROR) << "Could not sign the data";
     return false;
   }

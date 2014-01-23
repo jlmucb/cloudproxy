@@ -23,6 +23,7 @@
 # 4. changed the following variables to suit your directory choices:
 if [[ "$#" != "4" ]]; then
   echo "Usage: $0 <run dir> <test dir> <git root dir> <build dir>"
+  exit 1
 fi
 
 RUN=$1
@@ -40,5 +41,6 @@ mkdir linux_tao_service_files
 # Get all the code and an extra script
 cp ${BUILD_DIR}/* .
 cp ${ROOT}/src/scripts/run_simple_test.sh .
+cp ${ROOT}/src/scripts/run_simple_fake_test.sh .
 
 rm *.a

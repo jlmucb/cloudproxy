@@ -41,7 +41,15 @@ class FakeTao : public Tao {
   FakeTao();
 
   /// Use an existing (unencrypted, complete) policy key path.
+  /// This version pretends to be the root with the policy key.
   FakeTao(const string &policy_key_path);
+
+  /// Use an existing (unencrypted, complete) key path and add an
+  /// attestation from a policy key. This version stands in for hardware
+  /// like a TPM.
+  /// @param key_path A path to a key to use.
+  /// @param attestation An attestation to the key (from the policy key)
+  FakeTao(const string &key_path, const string &attestation);
   virtual ~FakeTao() {}
 
   /// Init initializes the keys and sets everything up.
@@ -68,14 +76,17 @@ class FakeTao : public Tao {
                       string *attestation) const;
 
  private:
-  // The path to the policy key, if the object was constructed this way.
-  string policy_key_path_;
+  // The path to the key, if the object was constructed this way.
+  string key_path_;
+
+  // A potentially empty attestation to the key.
+  string attestation_;
 
   // An in-memory, temporary symmetric key
   scoped_ptr<keyczar::Keyczar> crypter_;
 
-  // A fake public policy key
-  scoped_ptr<keyczar::Keyczar> policy_key_;
+  // A fake key
+  scoped_ptr<keyczar::Keyczar> key_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeTao);
 };

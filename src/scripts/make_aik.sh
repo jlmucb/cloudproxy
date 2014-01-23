@@ -14,6 +14,7 @@
 # limitations under the License.
 if [[ "$#" != "5" ]]; then
   echo "Usage: $0 <run dir> <git root dir> <build dir> <aik blob file> <keyczar pass>"
+  exit 1
 fi
 
 RUN=$1

@@ -1,4 +1,5 @@
-# Copyright (c) 2013, Google Inc. All rights reserved.
+#!/bin/bash
+# Copyright (c) 2014, Google Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+if [[ "$#" != "1" ]]; then
+  echo "Usage: $0 <test dir>"
+  exit 1
+fi
 
-{
-  'product_dir': '<(PRODUCT_DIR)/bin',
-  'configurations': {
-    'Release': {
-      'cflags': [
-	      '-O2',
-      ],
-    },
-    'Debug': {
-      'cflags': [
-        '-g',
-      ],
-    },
-  },
-}
+TEST=$1
 
+cd ${TEST}
+mkdir fake_key
+keyczart create --location=fake_key --purpose=sign --asymmetric=ecdsa
+keyczart addkey --location=fake_key --status=primary
+
+# The default flags work in our setup
+${TEST}/attest_to_key

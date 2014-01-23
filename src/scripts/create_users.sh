@@ -23,6 +23,7 @@
 # 4. changed the following variables to suit your directory choices:
 if [[ "$#" != "4" ]]; then
   echo "Usage: $0 <run dir> <git root dir> <build dir> <keyczar pass>"
+  exit 1
 fi
 
 RUN=$1

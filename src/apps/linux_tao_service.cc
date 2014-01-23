@@ -32,6 +32,8 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#include "tao/direct_tao_child_channel.h"
+#include "tao/fake_tao.h"
 #include "tao/linux_tao.h"
 #include "tao/pipe_tao_channel.h"
 #include "tao/process_factory.h"
@@ -45,9 +47,13 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+using tao::DirectTaoChildChannel;
+using tao::FakeTao;
 using tao::LinuxTao;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
+using tao::Tao;
+using tao::TaoChildChannel;
 using tao::TPMTaoChildChannel;
 using tao::WhitelistAuth;
 
@@ -72,6 +78,16 @@ DEFINE_string(
 DEFINE_string(ca_host, "", "The hostname of the TCCA server, if any");
 DEFINE_string(ca_port, "", "The port for the TCCA server, if any");
 
+// Flags that can be used to switch into a testing mode that doesn't need
+// hardware support.
+DEFINE_bool(use_tpm, true, "Whether or not to use the TPM Tao");
+DEFINE_string(fake_key, "./fake_key",
+    "An asymmetric key to use with the fake tao");
+DEFINE_string(linux_hash, "FAKE_PCRS",
+    "The hash of the Linux OS for the DirectTaoChildChannel");
+DEFINE_string(fake_attest, "./fake_key.attest",
+    "An attestation to the fake key");
+
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InstallFailureSignalHandler();
@@ -81,29 +97,46 @@ int main(int argc, char **argv) {
   tao::InitializeOpenSSL();
   tao::LetChildProcsDie();
 
-  ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
-  if (!aik_blob_file) {
-    LOG(ERROR) << "Could not open the file " << FLAGS_aik_blob;
-    return 1;
-  }
+  scoped_ptr<TaoChildChannel> child_channel;
+  if (FLAGS_use_tpm) {
+    ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
+    if (!aik_blob_file) {
+      LOG(ERROR) << "Could not open the file " << FLAGS_aik_blob;
+      return 1;
+    }
 
-  stringstream aik_blob_stream;
-  aik_blob_stream << aik_blob_file.rdbuf();
+    stringstream aik_blob_stream;
+    aik_blob_stream << aik_blob_file.rdbuf();
 
-  ifstream aik_attest_file(FLAGS_aik_attestation.c_str(), ifstream::in);
-  if (!aik_attest_file) {
-    LOG(ERROR) << "Could not open the file " << FLAGS_aik_attestation;
-    return 1;
-  }
+    ifstream aik_attest_file(FLAGS_aik_attestation.c_str(), ifstream::in);
+    if (!aik_attest_file) {
+      LOG(ERROR) << "Could not open the file " << FLAGS_aik_attestation;
+      return 1;
+    }
 
-  stringstream aik_attest_stream;
-  aik_attest_stream << aik_attest_file.rdbuf();
+    stringstream aik_attest_stream;
+    aik_attest_stream << aik_attest_file.rdbuf();
 
-  // The TPM to use for the parent Tao
-  scoped_ptr<TPMTaoChildChannel> tpm(new TPMTaoChildChannel(
+    // The TPM to use for the parent Tao
+    child_channel.reset(new TPMTaoChildChannel(
       aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
-  CHECK(tpm->Init()) << "Could not init the TPM";
+  } else {
+    ifstream fake_attest_file(FLAGS_fake_attest.c_str(), ifstream::in);
+    if (!fake_attest_file) {
+      LOG(ERROR) << "Could not open the file " << FLAGS_fake_attest;
+      return 1;
+    }
 
+    stringstream fake_attest_stream;
+    fake_attest_stream << fake_attest_file.rdbuf();
+
+    scoped_ptr<Tao> tao(new FakeTao(FLAGS_fake_key, fake_attest_stream.str()));
+    CHECK(tao->Init()) << "Could not initialize the FakeTao";
+    child_channel.reset(new DirectTaoChildChannel(tao.release(),
+                                                  FLAGS_linux_hash));
+  }
+
+  CHECK(child_channel->Init()) << "Could not init the TPM";
   scoped_ptr<WhitelistAuth> whitelist_auth(
       new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
   CHECK(whitelist_auth->Init())
@@ -119,9 +152,9 @@ int main(int argc, char **argv) {
 
   scoped_ptr<LinuxTao> tao(
       new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
-                   FLAGS_policy_pk_path, tpm.release(), pipe_channel.release(),
-                   process_factory.release(), whitelist_auth.release(),
-                   FLAGS_ca_host, FLAGS_ca_port));
+                   FLAGS_policy_pk_path, child_channel.release(),
+                   pipe_channel.release(), process_factory.release(),
+                   whitelist_auth.release(), FLAGS_ca_host, FLAGS_ca_port));
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
 
   LOG(INFO) << "Linux Tao Service started and waiting for requests";

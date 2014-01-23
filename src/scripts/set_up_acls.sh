@@ -14,6 +14,7 @@
 # limitations under the License.
 if [[ "$#" != "5" ]]; then
   echo "Usage: $0 <test dir> <git root dir> <build dir> <sample acls> <keyczar pass>"
+  exit 1
 fi
 
 TEST=$1

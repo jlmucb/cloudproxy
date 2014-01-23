@@ -23,6 +23,7 @@
 # 4. changed the following variables to suit your directory choices:
 if [[ "$#" != "4" ]]; then
   echo "Usage: $0 <run dir> <git root dir> <keyczar pass> <openssl pass>"
+  exit 1
 fi
 
 RUN=$1
@@ -58,5 +59,3 @@ keyczart importkey --location=policy_key --status=primary \
 mkdir policy_public_key
 keyczart pubkey --location=policy_key --destination=policy_public_key \
   --pass=$KEYCZAR_PASS
-
-

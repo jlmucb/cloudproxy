@@ -21,8 +21,9 @@
 # 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
 # TPM
 # 4. changed the following variables to suit your directory choices:
-if [[ "$#" != "5" ]]; then
-  echo "Usage: $0 <test dir> <git root dir> <build dir> <sample whitelist> <keyczar pass>"
+if [[ "$#" != "6" ]]; then
+  echo "Usage: $0 <test dir> <git root dir> <build dir> <sample whitelist> <keyczar pass> <use fake>"
+  exit 1
 fi
 
 TEST=$1
@@ -30,6 +31,7 @@ ROOT=$2
 BUILD_DIR=$3
 SAMPLE_WHITELIST=$4
 KEYCZAR_PASS=$5
+USE_FAKE=$6
 
 #KERNEL=/tmp/vmlinuz-3.7.5
 #INITRD=/tmp/initrd.img-3.7.5
@@ -40,11 +42,18 @@ cd $TEST
 # populate the whitelist (for tcca) with the current hashes
 cp ${ROOT}/src/scripts/getHash.sh .
 #cp ${ROOT}/run/vm.xml ${TEST}/vm.xml
+
+# the trusted hash of linux in the fake case is "FAKE_PCRS"
+PCRS=FAKE_PCRS
+if [[ "$USE_FAKE" = "NO_FAKE" ]]; then
+  PCRS=`./get_pcrs`
+fi
+
 cat $SAMPLE_WHITELIST |
   sed "s/REPLACE_ME_SERVER/`cat server | ./getHash.sh`/g" |
   sed "s/REPLACE_ME_CLIENT/`cat client | ./getHash.sh`/g" |
   sed "s/REPLACE_ME_FSERVER/`cat fserver | ./getHash.sh`/g" |
-  sed "s/REPLACE_ME_PCRS/`./get_pcrs`/g" |
+  sed "s/REPLACE_ME_PCRS/$PCRS/g" |
   sed "s/REPLACE_ME_FCLIENT/`cat fclient | ./getHash.sh`/g" > whitelist.pb2
   
 #  sed "s/REPLACE_ME_GUEST_VM_NAME/${VMNAME}/g" |

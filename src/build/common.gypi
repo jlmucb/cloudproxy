@@ -16,7 +16,7 @@
   'cflags': [
     '-Wall',
     '-Werror',
-    '-std=c++0x',
+    '-std=c++11',
   ],
   'product_dir': '<(PRODUCT_DIR)/bin',
   'configurations': {

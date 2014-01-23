@@ -70,11 +70,11 @@
 #  Arguments:   RCX - contains the number of arguments, passed to C-function
 #
 .macro RESTORE_C_STACK
-        cmp     %rcx, $4
+        cmp     %rcx, 0x4
         ja      lr                      #; goto parameters are normalized
-        mov     %rcx, $4                  #; at least 4 arguments must be allocated
+        mov     %rcx, 0x4                  #; at least 4 arguments must be allocated
 lr:                                     #; parameters are normalized
-        shl     %rcx, 3
+        shl     %rcx, 0x3
         add     %rsp, %rcx
 .endm
 
@@ -88,9 +88,9 @@ lr:                                     #; parameters are normalized
 #GAS.
 
 #.macro ALLOCATE_C_STACK
-#        cmp     %rcx, $4
+#        cmp     %rcx, 0x4
 #        ja      @f 										# goto parameters are normalized
-#        mov     %rcx, $4                # at least 4 arguments must be allocated
+#        mov     %rcx, 0x4                # at least 4 arguments must be allocated
 #@@:                                     # parameters are normalized
 #        shl     %rcx, 3
 #        sub     %rsp, %rcx
@@ -231,12 +231,12 @@ vmexit_func:
 #endif
         call    gcpu_save_registers
         xor     %rcx, %rcx
-       	cmp     %rcx, $4
-				ja      vmexit_l1                    # goto parameters are normalized
-				mov     %rcx, $4                # at least 4 arguments must be allocated
+       	cmp     %rcx, 0x4
+	ja      vmexit_l1                    # goto parameters are normalized
+	mov     %rcx, 0x4                # at least 4 arguments must be allocated
 	vmexit_l1:												# parameters are normalized
-				shl     %rcx, 3
-				sub     %rsp, %rcx 
+		shl     %rcx, 0x3
+		sub     %rsp, %rcx 
         call    vmexit_common_handler
         jmp     $                       ## should never return
 
@@ -249,7 +249,7 @@ vmexit_func:
 .globl vmentry_func
 vmentry_func:
         push    %rcx
-        cmp     %rcx, $0
+        cmp     %rcx, 0x0
         jnz     do_launch
 do_resume:
 
@@ -268,17 +268,17 @@ do_launch:
 handle_error:
         pushfq                          # use RFLAGS as argument if VMRESUME failed
         pop     %rdx                     # save RFLAGS in RDX
-        mov     %rcx, $1                  # RCX contains number of argments for vmentry_failure_function
-				cmp     %rcx, $4
-				ja      vmeentry_l1                    # goto parameters are normalized
-				mov     %rcx, $4                # at least 4 arguments must be allocated
+        mov     %rcx, 0x1                  # RCX contains number of argments for vmentry_failure_function
+	cmp     %rcx, 0x4
+	ja      vmeentry_l1                    # goto parameters are normalized
+	mov     %rcx, 0x4                # at least 4 arguments must be allocated
 		vmentry_l1:                        # parameters are normalized
-				shl     %rcx, 3
-				sub     %rsp, %rcx
+	shl     %rcx, 0x3
+	sub     %rsp, %rcx
 
         mov     %rcx, %rdx                # 1st argument (passed via RCX) contains RFLAGS
         call    vmentry_failure_function
-        mov     %rcx, $1                  # RCX contains number of argments for vmentry_failure_function
+        mov     %rcx, 0x1                  # RCX contains number of argments for vmentry_failure_function
         RESTORE_C_STACK
         pop     %rcx                     # restore RCX. stack is expected to be the same as in entry point
         jmp     vmentry_func            # retry

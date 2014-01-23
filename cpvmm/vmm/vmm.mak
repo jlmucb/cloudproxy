@@ -40,8 +40,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 
-DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INCLUDE_LAYERING
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -Wunused-function -D INCLUDE_LAYERING
+DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs
+RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 VM_LIBS       = $(E)/libacpi.a $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \

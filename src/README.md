@@ -88,3 +88,14 @@ Note that both gflags and gtest consume command line flags. The flags for gflags
 (hence for the libraries themselves) must be passed first, followed by "--",
 then the flags for gtest. So, the extra double dash in the first command above
 is not a typo.
+
+The integration testing infrastructure is still under construction. At the
+moment, there are only two tests: a TPM-based test, and a fake test. For the
+former, change the variables in `${SRC}/scripts/run_simple_tests.sh` for your
+directory structure, cd to your testing directory and run the TPM test using:
+
+    rm -fr run test && ~/src/fileProxy/src/scripts/set_up_keys.sh && cd test && ./run_simple_test.sh
+
+Run the fake test using:
+
+    rm -fr run test && ~/src/fileProxy/src/scripts/set_up_keys.sh FAKE && cd test && ./run_simple_fake_test.sh

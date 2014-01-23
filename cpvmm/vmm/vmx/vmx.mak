@@ -52,7 +52,7 @@ LINK=       gcc
 LIBMAKER=   ar
 
 dobjs=      $(B)/vmcs.o $(B)/vmcs_sw_object.o $(B)/vmcs_merge_split.o \
-	    $(B)/vmcs_actual.o $(B)/vmcs_hierarchy.o $(B)/vmx_nmi.o
+	    $(B)/vmcs_actual.o $(B)/vmcs_hierarchy.o $(B)/vmx_nmi.o 
 #	    $(B)/vmx_timer.o
 
 all: $(E)/libvmx.a
@@ -85,3 +85,4 @@ $(B)/vmcs_hierarchy.o: $(mainsrc)/vmcs_hierarchy.c
 $(B)/vmx_nmi.o: $(mainsrc)/vmx_nmi.c
 	echo "vmx_nmi.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmx_nmi.o $(mainsrc)/vmx_nmi.c
+

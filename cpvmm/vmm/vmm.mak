@@ -127,7 +127,7 @@ VMEXITOBJ=	$(B)/vmexit/teardown_thunk.o $(B)/vmexit/vmexit_ept.o \
 
 VMXOBJ=		$(B)/vmx/vmcs_actual.o $(B)/vmx/vmcs_merge_split.o  \
 		$(B)/vmx/vmcs_sw_object.o $(B)/vmx/vmcs_hierarchy.o  \
-		$(B)/vmx/vmcs.o $(B)/vmx/vmx_nmi.o $(B)/vmx/vmcs_init.o
+		$(B)/vmx/vmcs.o $(B)/vmx/vmx_nmi.o
 
 UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 		$(B)/utils/hash64.o  $(B)/utils/lock.o \

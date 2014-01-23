@@ -117,7 +117,7 @@ VMEXITOBJ=	$(B)/vmexit/teardown_thunk.o $(B)/vmexit/vmexit_ept.o \
 		$(B)/vmexit/vmexit_dtr_tr_access.o  $(B)/vmexit/vmexit_msr.o \
 		$(B)/vmexit/vmx_teardown.o
 
-VMSOBJ=		$(B)/vmx/vmcs_actual.o $(B)/vmx/vmcs_merge_split.o  \
+VMXOBJ=		$(B)/vmx/vmcs_actual.o $(B)/vmx/vmcs_merge_split.o  \
 		$(B)/vmx/vmcs_sw_object.o $(B)/vmx/vmcs_hierarchy.o  \
 		$(B)/vmx/vmcs.o $(B)/vmx/vmx_nmi.o
 
@@ -151,7 +151,7 @@ $(E)/evmm.bin: $(dobjs)
 		$(ACPIOBJ) $(ARCHOBJ) $(DBGOBJ) $(EMTOBJ) \
 		$(GUESTOBJ) $(GUESTCPUOBJ) $(GUESTSCHEDOBJ) \
 		$(IPCOBJ) $(LIBCOBJ) $(EPTOBJ) $(MEMMGROBJ) \
-		$(STARTOBJ) $(VMEXITOBJ) $(dobjs) 
+		$(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) $(dobjs) 
 
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c

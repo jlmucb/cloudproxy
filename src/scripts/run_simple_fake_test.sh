@@ -30,3 +30,5 @@ kill $tcca_pid
 kill $server_pid
 
 rm -f /tmp/.linux_tao_s*
+
+echo "Success!"

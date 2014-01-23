@@ -82,6 +82,13 @@ GUESTCPUOBJ=	$(B)/guest/guest_cpu/guest_cpu_control.o  \
 
 GUESTSCHEDOBJ=	$(B)/guest/scheduler/scheduler.o
 
+HOSTOBJ=	$(B)/host/host_cpu.o  $(B)/host/isr.o  $(B)/host/policy_manager.o  \
+		$(B)/host/trial_exec.o  $(B)/host/vmm_globals.o
+
+HOSTHW=		$(B)/host/hw/host_pci_configuration.o  $(B)/host/hw/hw_utils.o  \
+		$(B)/host/hw/local_apic.o  $(B)/host/hw/reset.o  \
+		$(B)/host/hw/vmcs_init.o
+
 IPCOBJ=		$(B)/ipc/ipc_api.o  $(B)/ipc/ipc.o
 
 LIBCOBJ=	$(B)/libc/bitarray_utilities.o  $(B)/libc/common_libc.o  \
@@ -158,8 +165,8 @@ $(E)/evmm.bin: $(dobjs)
 		$(ACPIOBJ) $(ARCHOBJ) $(DBGOBJ) $(EMTOBJ) \
 		$(GUESTOBJ) $(GUESTCPUOBJ) $(GUESTSCHEDOBJ) \
 		$(IPCOBJ) $(LIBCOBJ) $(EPTOBJ) $(MEMMGROBJ) \
-		$(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
-		$(UTILOBJ) $(dobjs) 
+		$(HOSTOBJ) $(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
+		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c

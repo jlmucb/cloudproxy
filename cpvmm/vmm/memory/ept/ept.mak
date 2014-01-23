@@ -36,8 +36,7 @@ endif
 
 mainsrc=    	$(S)/vmm/memory/ept
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/libept
+B=		$(E)/vmmobjects/memory/ept
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
@@ -50,12 +49,10 @@ LDFLAGS=
 CC=         gcc
 AS=         as
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
-#$(BINDIR)/invept.o 
-dobjs= $(BINDIR)/ept.o $(BINDIR)/invept2.o \
-	$(BINDIR)/ept_hw_layer.o $(BINDIR)/fvs.o $(BINDIR)/ve.o 
+dobjs= 	$(B)/ept.o $(B)/invept2.o \
+	$(B)/ept_hw_layer.o $(B)/fvs.o $(B)/ve.o 
 
 all: $(E)/libept.a
  
@@ -64,27 +61,27 @@ $(E)/libept.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libept.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libept.a $(dobjs)
 
-$(BINDIR)/invept.o: $(mainsrc)/invept.s
+$(B)/invept.o: $(mainsrc)/invept.s
 	echo "invept.o"
-	$(AS) -o $(BINDIR)/invept.o $(mainsrc)/invept.s
+	$(AS) -o $(B)/invept.o $(mainsrc)/invept.s
 
-$(BINDIR)/invept2.o: $(mainsrc)/invept2.c
+$(B)/invept2.o: $(mainsrc)/invept2.c
 	echo "invept2.o"
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/invept2.o $(mainsrc)/invept2.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/invept2.o $(mainsrc)/invept2.c
 
-$(BINDIR)/ept.o: $(mainsrc)/ept.c
+$(B)/ept.o: $(mainsrc)/ept.c
 	echo "ept.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/ept.o $(mainsrc)/ept.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/ept.o $(mainsrc)/ept.c
 
-$(BINDIR)/ept_hw_layer.o: $(mainsrc)/ept_hw_layer.c
+$(B)/ept_hw_layer.o: $(mainsrc)/ept_hw_layer.c
 	echo "ept_hw_layer.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/ept_hw_layer.o $(mainsrc)/ept_hw_layer.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/ept_hw_layer.o $(mainsrc)/ept_hw_layer.c
 
-$(BINDIR)/fvs.o: $(mainsrc)/fvs.c
+$(B)/fvs.o: $(mainsrc)/fvs.c
 	echo "fvs.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/fvs.o $(mainsrc)/fvs.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/fvs.o $(mainsrc)/fvs.c
 
-$(BINDIR)/ve.o: $(mainsrc)/ve.c
+$(B)/ve.o: $(mainsrc)/ve.c
 	echo "ve.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/ve.o $(mainsrc)/ve.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/ve.o $(mainsrc)/ve.c
 

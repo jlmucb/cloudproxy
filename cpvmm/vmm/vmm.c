@@ -118,19 +118,15 @@ extern BOOLEAN build_extend_heap_hpa_to_hva(void);
 //      forward declaration
 
 // main for BSP - should never return.  local_apic_id is always 0
-static
 void vmm_bsp_proc_main(UINT32 local_apic_id,
                        const VMM_STARTUP_STRUCT* startup_struct,
                        const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct);
 
 // main for APs - should never return
-static
 void vmm_application_procs_main(UINT32 local_apic_id);
 
-// static
 int cli_show_memory_layout(unsigned argc, char *args[]);
 
-static
 void make_guest_state_compliant(GUEST_CPU_HANDLE gcpu);
 
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
@@ -223,12 +219,10 @@ void vmm_main_continue(VMM_INPUT_PARAMS* vmm_input_params)
 
     UINT32 local_apic_id = (UINT32)(vmm_input_params->local_apic_id);
 
-    if (local_apic_id == 0)
-    {
+    if (local_apic_id == 0) {
         vmm_bsp_proc_main(local_apic_id, startup_struct, application_params_struct);
     }
-    else
-    {
+    else {
         vmm_application_procs_main(local_apic_id);
     }
 
@@ -282,7 +276,7 @@ void CDECL vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 applic
 // Should never return!
 //
 
-static void vmm_bsp_proc_main(UINT32 local_apic_id,
+void vmm_bsp_proc_main(UINT32 local_apic_id,
                        const VMM_STARTUP_STRUCT* startup_struct,
                        const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct)
 {
@@ -833,7 +827,7 @@ static void vmm_bsp_proc_main(UINT32 local_apic_id,
 // Should never return!
 //
 
-static void vmm_application_procs_main(UINT32 local_apic_id)
+void vmm_application_procs_main(UINT32 local_apic_id)
 {
     CPU_ID cpu_id = (CPU_ID)local_apic_id;
     HPA new_cr3 = 0;
@@ -935,7 +929,7 @@ static void vmm_application_procs_main(UINT32 local_apic_id)
     VMM_DEADLOOP();
 }
 
-static void make_guest_state_compliant(GUEST_CPU_HANDLE initial_gcpu)
+void make_guest_state_compliant(GUEST_CPU_HANDLE initial_gcpu)
 {
     UINT16            selector;
     UINT64            base;

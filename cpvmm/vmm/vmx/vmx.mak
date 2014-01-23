@@ -37,11 +37,10 @@ endif
 
 mainsrc=    $(S)/vmm/vmx
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/vmxlib
+B=		$(E)/vmmobjects/vmx
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 ASM_SRC = 	
 DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
@@ -50,12 +49,11 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/vmcs.o $(BINDIR)/vmcs_sw_object.o $(BINDIR)/vmcs_merge_split.o \
-	    $(BINDIR)/vmcs_actual.o $(BINDIR)/vmcs_hierarchy.o $(BINDIR)/vmx_nmi.o
-#	    $(BINDIR)/vmx_timer.o
+dobjs=      $(B)/vmcs.o $(B)/vmcs_sw_object.o $(B)/vmcs_merge_split.o \
+	    $(B)/vmcs_actual.o $(B)/vmcs_hierarchy.o $(B)/vmx_nmi.o
+#	    $(B)/vmx_timer.o
 
 all: $(E)/libvmx.a
  
@@ -64,26 +62,26 @@ $(E)/libvmx.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libutils.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libvmx.a $(dobjs)
 
-$(BINDIR)/vmcs.o: $(mainsrc)/vmcs.c
+$(B)/vmcs.o: $(mainsrc)/vmcs.c
 	echo "vmcs.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcs.o $(mainsrc)/vmcs.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmcs.o $(mainsrc)/vmcs.c
 
-$(BINDIR)/vmcs_sw_object.o: $(mainsrc)/vmcs_sw_object.c
+$(B)/vmcs_sw_object.o: $(mainsrc)/vmcs_sw_object.c
 	echo "vmcs_sw_object.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcs_sw_object.o $(mainsrc)/vmcs_sw_object.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmcs_sw_object.o $(mainsrc)/vmcs_sw_object.c
 
-$(BINDIR)/vmcs_merge_split.o: $(mainsrc)/vmcs_merge_split.c
+$(B)/vmcs_merge_split.o: $(mainsrc)/vmcs_merge_split.c
 	echo "vmcs_merge_split.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcs_merge_split.o $(mainsrc)/vmcs_merge_split.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmcs_merge_split.o $(mainsrc)/vmcs_merge_split.c
 
-$(BINDIR)/vmcs_actual.o: $(mainsrc)/vmcs_actual.c
+$(B)/vmcs_actual.o: $(mainsrc)/vmcs_actual.c
 	echo "vmcs_actual.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcs_actual.o $(mainsrc)/vmcs_actual.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmcs_actual.o $(mainsrc)/vmcs_actual.c
 
-$(BINDIR)/vmcs_hierarchy.o: $(mainsrc)/vmcs_hierarchy.c
+$(B)/vmcs_hierarchy.o: $(mainsrc)/vmcs_hierarchy.c
 	echo "vmcs_hierarchy.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcs_hierarchy.o $(mainsrc)/vmcs_hierarchy.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmcs_hierarchy.o $(mainsrc)/vmcs_hierarchy.c
 
-$(BINDIR)/vmx_nmi.o: $(mainsrc)/vmx_nmi.c
+$(B)/vmx_nmi.o: $(mainsrc)/vmx_nmi.c
 	echo "vmx_nmi.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmx_nmi.o $(mainsrc)/vmx_nmi.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmx_nmi.o $(mainsrc)/vmx_nmi.c

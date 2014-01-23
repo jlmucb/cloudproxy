@@ -36,12 +36,10 @@ endif
 
 mainsrc=    $(S)/vmm/guest
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/guest
+B=		$(E)/vmmobjects/guest
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    -I$(mainsrc)/guest_cpu  -I$(S)/vmm/memory/ept
-ASM_SRC = 	
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+    		-I$(mainsrc)/guest_cpu  -I$(S)/vmm/memory/ept
 DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
@@ -52,7 +50,7 @@ LINK=       gcc
 #LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/guest.o $(BINDIR)/guest_control.o $(BINDIR)/guest_pci_configuration.o
+dobjs=      $(B)/guest.o $(B)/guest_control.o $(B)/guest_pci_configuration.o
 
 all: $(E)/libguest.a
  
@@ -61,15 +59,15 @@ $(E)/libguest.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libguest.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libguest.a $(dobjs)
 
-$(BINDIR)/guest.o: $(mainsrc)/guest.c
+$(B)/guest.o: $(mainsrc)/guest.c
 	echo "guest.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest.o $(mainsrc)/guest.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest.o $(mainsrc)/guest.c
 
-$(BINDIR)/guest_control.o: $(mainsrc)/guest_control.c
+$(B)/guest_control.o: $(mainsrc)/guest_control.c
 	echo "guest_control.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest_control.o $(mainsrc)/guest_control.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_control.o $(mainsrc)/guest_control.c
 
-$(BINDIR)/guest_pci_configuration.o: $(mainsrc)/guest_pci_configuration.c
+$(B)/guest_pci_configuration.o: $(mainsrc)/guest_pci_configuration.c
 	echo "guest_pci_configuration.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest_pci_configuration.o $(mainsrc)/guest_pci_configuration.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_pci_configuration.o $(mainsrc)/guest_pci_configuration.c
 

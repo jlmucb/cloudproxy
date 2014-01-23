@@ -81,7 +81,7 @@ $(BINDIR)/cli_libc.o: $(mainsrc)/cli_libc.c
 
 $(BINDIR)/vmdb.o: $(mainsrc)/vmdb.c
 	echo "vmdb.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmdb.o $(mainsrc)/ vmdb.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmdb.o $(mainsrc)/vmdb.c
 
 $(BINDIR)/vt100.o: $(mainsrc)/vt100.c
 	echo "vt100.o" 

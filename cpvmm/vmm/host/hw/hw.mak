@@ -36,12 +36,10 @@ endif
 
 mainsrc=    $(S)/vmm/host/hw
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/host
+B=		$(E)/vmmobjects/host/hw
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
-ASM_SRC = 	
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
@@ -49,11 +47,10 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/vmcs_init.o $(BINDIR)/reset.o $(BINDIR)/local_apic.o \
-	    $(BINDIR)/host_pci_configuration.o $(BINDIR)/hw_utils.o
+dobjs=      $(B)/vmcs_init.o $(B)/reset.o $(B)/local_apic.o \
+	    $(B)/host_pci_configuration.o $(B)/hw_utils.o
 
 all: $(E)/libhwcommon.a
  
@@ -62,23 +59,23 @@ $(E)/libhwcommon.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libhwcommon.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libhwcommon.a $(dobjs)
 
-$(BINDIR)/vmcs_init.o: $(mainsrc)/vmcs_init.c
+$(B)/vmcs_init.o: $(mainsrc)/vmcs_init.c
 	echo "vmcs_init.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmcs_init.o $(mainsrc)/vmcs_init.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmcs_init.o $(mainsrc)/vmcs_init.c
 
-$(BINDIR)/reset.o: $(mainsrc)/reset.c
+$(B)/reset.o: $(mainsrc)/reset.c
 	echo "reset.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/reset.o $(mainsrc)/reset.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/reset.o $(mainsrc)/reset.c
 
-$(BINDIR)/local_apic.o: $(mainsrc)/local_apic.c
+$(B)/local_apic.o: $(mainsrc)/local_apic.c
 	echo "local_apic.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/local_apic.o $(mainsrc)/local_apic.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/local_apic.o $(mainsrc)/local_apic.c
 
-$(BINDIR)/host_pci_configuration.o: $(mainsrc)/host_pci_configuration.c
+$(B)/host_pci_configuration.o: $(mainsrc)/host_pci_configuration.c
 	echo "host_pci_configuration.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/host_pci_configuration.o $(mainsrc)/host_pci_configuration.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/host_pci_configuration.o $(mainsrc)/host_pci_configuration.c
 
-$(BINDIR)/hw_utils.o: $(mainsrc)/hw_utils.c
+$(B)/hw_utils.o: $(mainsrc)/hw_utils.c
 	echo "hw_utils.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/hw_utils.o $(mainsrc)/hw_utils.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/hw_utils.o $(mainsrc)/hw_utils.c
 

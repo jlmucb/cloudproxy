@@ -32,9 +32,9 @@ TARGET_MACHINE_TYPE= x64
 endif
 
 B=		$(E)/vmmobjects
-BINDIR=	$(B)/libc
+BINDIR=		$(B)/libc
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-	-I$(S)/vmm/include/hw -I$(S)/common/include/platform
+		-I$(S)/vmm/include/hw -I$(S)/common/include/platform
 HW_DIR = 	em64t
 HW_COMMON_LIBC_DIR = $(S)/common/libc/$(HW_DIR)
 ASM_SRC = 	

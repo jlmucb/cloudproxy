@@ -86,7 +86,7 @@ $(BINDIR)/create_guests.o: $(mainsrc)/create_guests.c
 
 $(BINDIR)/layout_host_memory_for_mbr_loader.o: $(mainsrc)/layout_host_memory_for_mbr_loader.c
 	echo "layout_host_memory_for_mbr_loader.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/layout_host_memory_for_mbr_loader.o $(mainsrc)/ layout_host_memory_for_mbr_loader.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/layout_host_memory_for_mbr_loader.o $(mainsrc)/layout_host_memory_for_mbr_loader.c
 
 $(BINDIR)/parse_pe_image.o: $(mainsrc)/parse_pe_image.c
 	echo "parse_pe_image.o" 

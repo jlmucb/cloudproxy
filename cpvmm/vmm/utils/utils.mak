@@ -30,10 +30,9 @@ ifndef TARGET_MACHINE_TYPE
 TARGET_MACHINE_TYPE= x64
 endif
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/libutils
+B=		$(E)/vmmobjects/utils
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform
 
 DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
@@ -53,11 +52,11 @@ LIBMAKER=   ar
 # Output: libutils.a
 
 mainsrc=    $(S)/vmm/utils
-dobjs=      $(BINDIR)/heap.o $(BINDIR)/address.o $(BINDIR)/lock.o \
-	    $(BINDIR)/hash64.o $(BINDIR)/array_list.o \
-            $(BINDIR)/cache64.o $(BINDIR)/utils_asm.o \
-	    $(BINDIR)/memory_allocator.o $(BINDIR)/math_utils.o \
-	    $(BINDIR)/event_mgr.o 
+dobjs=      $(B)/heap.o $(B)/address.o $(B)/lock.o \
+	    $(B)/hash64.o $(B)/array_list.o \
+            $(B)/cache64.o $(B)/utils_asm.o \
+	    $(B)/memory_allocator.o $(B)/math_utils.o \
+	    $(B)/event_mgr.o 
 
 all: $(E)/libutils.a
  
@@ -66,43 +65,43 @@ $(E)/libutils.a: $(dobjs)
 #	$(LIBMAKER) -static -o $(E)/libutils.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libutils.a $(dobjs)
 
-$(BINDIR)/utils_asm.o: $(mainsrc)/utils_asm.s
+$(B)/utils_asm.o: $(mainsrc)/utils_asm.s
 	echo "utils_asm.o" 
-	$(AS) -o $(BINDIR)/utils_asm.o $(mainsrc)/utils_asm.s
+	$(AS) -o $(B)/utils_asm.o $(mainsrc)/utils_asm.s
 
-$(BINDIR)/heap.o: $(mainsrc)/heap.c
+$(B)/heap.o: $(mainsrc)/heap.c
 	echo "heap.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/heap.o $(mainsrc)/heap.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/heap.o $(mainsrc)/heap.c
 
-$(BINDIR)/hash64.o: $(mainsrc)/hash64.c
+$(B)/hash64.o: $(mainsrc)/hash64.c
 	echo "hash64.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/hash64.o $(mainsrc)/hash64.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/hash64.o $(mainsrc)/hash64.c
 
-$(BINDIR)/address.o: $(mainsrc)/address.c
+$(B)/address.o: $(mainsrc)/address.c
 	echo "address.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/address.o $(mainsrc)/address.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/address.o $(mainsrc)/address.c
 
-$(BINDIR)/lock.o: $(mainsrc)/lock.c
+$(B)/lock.o: $(mainsrc)/lock.c
 	echo "lock.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/lock.o $(mainsrc)/lock.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/lock.o $(mainsrc)/lock.c
 
-$(BINDIR)/array_list.o: $(mainsrc)/array_list.c
+$(B)/array_list.o: $(mainsrc)/array_list.c
 	echo "array_list.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/array_list.o $(mainsrc)/array_list.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/array_list.o $(mainsrc)/array_list.c
 
-$(BINDIR)/event_mgr.o: $(mainsrc)/event_mgr.c
+$(B)/event_mgr.o: $(mainsrc)/event_mgr.c
 	echo "event_mgr.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/event_mgr.o $(mainsrc)/event_mgr.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/event_mgr.o $(mainsrc)/event_mgr.c
 
-$(BINDIR)/memory_allocator.o: $(mainsrc)/memory_allocator.c
+$(B)/memory_allocator.o: $(mainsrc)/memory_allocator.c
 	echo "memory_allocator.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/memory_allocator.o $(mainsrc)/memory_allocator.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/memory_allocator.o $(mainsrc)/memory_allocator.c
 
-$(BINDIR)/math_utils.o: $(mainsrc)/math_utils.c
+$(B)/math_utils.o: $(mainsrc)/math_utils.c
 	echo "math_utils.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/math_utils.o $(mainsrc)/math_utils.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/math_utils.o $(mainsrc)/math_utils.c
 
-$(BINDIR)/cache64.o: $(mainsrc)/cache64.c
+$(B)/cache64.o: $(mainsrc)/cache64.c
 	echo "cache64.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/cache64.o $(mainsrc)/cache64.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/cache64.o $(mainsrc)/cache64.c
 

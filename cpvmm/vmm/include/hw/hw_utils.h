@@ -321,7 +321,8 @@ typedef struct {
     UINT64   m_rdx;
 } CPUID_PARAMS;
 
-void ASM_FUNCTION  hw_cpuid(CPUID_PARAMS *);
+//void ASM_FUNCTION  hw_cpuid(CPUID_PARAMS *);
+void hw_cpuid(CPUID_PARAMS *);
 
 //------------------------------------------------------------------------------
 // void ASM_FUNCTION cpuid( CPUID_INFO_STRUCT* p_cpuid_info, UINT32 type);
@@ -547,7 +548,7 @@ UINT64 hw_read_rsp(void);
 //
 //------------------------------------------------------------------------------
 //CPU_ID ASM_FUNCTION hw_cpu_id(void);
-CPU_ID hw_cpu_id(void);
+void hw_cpuid(CPUID_PARAMS *);
 
 
 //------------------------------------------------------------------------------

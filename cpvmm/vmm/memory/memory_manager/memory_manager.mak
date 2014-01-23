@@ -37,8 +37,7 @@ endif
 
 mainsrc=    	$(S)/vmm/memory/memory_manager
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/libmem
+B=		$(E)/vmmobjects/memory/memory_manager
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/common/include/platform -I$(mainsrc)
@@ -52,9 +51,9 @@ LINK=       gcc
 #LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/host_memory_manager.o $(BINDIR)/vmm_stack.o $(BINDIR)/gpm.o \
-	    $(BINDIR)/pool.o $(BINDIR)/memory_address_mapper.o \
-	    $(BINDIR)/page_walker.o $(BINDIR)/flat_page_tables.o
+dobjs=      $(B)/host_memory_manager.o $(B)/vmm_stack.o $(B)/gpm.o \
+	    $(B)/pool.o $(B)/memory_address_mapper.o \
+	    $(B)/page_walker.o $(B)/flat_page_tables.o
 
 all: $(E)/libmem.a
  
@@ -63,31 +62,31 @@ $(E)/libmem.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libmem.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libmem.a $(dobjs)
 
-$(BINDIR)/host_memory_manager.o: $(mainsrc)/host_memory_manager.c
+$(B)/host_memory_manager.o: $(mainsrc)/host_memory_manager.c
 	echo "host_memory_manager.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/host_memory_manager.o $(mainsrc)/host_memory_manager.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/host_memory_manager.o $(mainsrc)/host_memory_manager.c
 
-$(BINDIR)/vmm_stack.o: $(mainsrc)/vmm_stack.c
+$(B)/vmm_stack.o: $(mainsrc)/vmm_stack.c
 	echo "vmm_stack.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm_stack.o $(mainsrc)/vmm_stack.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmm_stack.o $(mainsrc)/vmm_stack.c
 
-$(BINDIR)/gpm.o: $(mainsrc)/gpm.c
+$(B)/gpm.o: $(mainsrc)/gpm.c
 	echo "gpm.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/gpm.o $(mainsrc)/gpm.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/gpm.o $(mainsrc)/gpm.c
 
-$(BINDIR)/pool.o: $(mainsrc)/pool.c
+$(B)/pool.o: $(mainsrc)/pool.c
 	echo "pool.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/pool.o $(mainsrc)/pool.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/pool.o $(mainsrc)/pool.c
 
-$(BINDIR)/memory_address_mapper.o: $(mainsrc)/memory_address_mapper.c
+$(B)/memory_address_mapper.o: $(mainsrc)/memory_address_mapper.c
 	echo "memory_address_mapper.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/memory_address_mapper.o $(mainsrc)/memory_address_mapper.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/memory_address_mapper.o $(mainsrc)/memory_address_mapper.c
 
-$(BINDIR)/page_walker.o: $(mainsrc)/page_walker.c
+$(B)/page_walker.o: $(mainsrc)/page_walker.c
 	echo "page_walker.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/page_walker.o $(mainsrc)/page_walker.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/page_walker.o $(mainsrc)/page_walker.c
 
-$(BINDIR)/flat_page_tables.o: $(mainsrc)/flat_page_tables.c
+$(B)/flat_page_tables.o: $(mainsrc)/flat_page_tables.c
 	echo "flat_page_tables.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/flat_page_tables.o $(mainsrc)/flat_page_tables.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/flat_page_tables.o $(mainsrc)/flat_page_tables.c
 

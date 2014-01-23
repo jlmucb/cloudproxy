@@ -37,8 +37,7 @@ endif
 
 mainsrc=    $(S)/vmm/guest/guest_cpu
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/libguestcpu
+B=		$(E)/vmmobjects/guest/guest_cpu
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/memory/ept \
@@ -54,9 +53,9 @@ LINK=       gcc
 #LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/guest_cpu.o $(BINDIR)/guest_cpu_switch.o \
-	    $(BINDIR)/guest_cpu_vmenter_event.o $(BINDIR)/guest_cpu_control.o \
-	    $(BINDIR)/unrestricted_guest.o
+dobjs=      $(B)/guest_cpu.o $(B)/guest_cpu_switch.o \
+	    $(B)/guest_cpu_vmenter_event.o $(B)/guest_cpu_control.o \
+	    $(B)/unrestricted_guest.o $(B)/guest_cpu_access.o
 
 all: $(E)/libguest_cpu.a
  
@@ -65,23 +64,27 @@ $(E)/libguest_cpu.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libguest_cpu.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libguest_cpu.a $(dobjs)
 
-$(BINDIR)/guest_cpu.o: $(mainsrc)/guest_cpu.c
+$(B)/guest_cpu.o: $(mainsrc)/guest_cpu.c
 	echo "guest_cpu.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest_cpu.o $(mainsrc)/guest_cpu.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_cpu.o $(mainsrc)/guest_cpu.c
 
-$(BINDIR)/guest_cpu_vmenter_event.o: $(mainsrc)/guest_cpu_vmenter_event.c
+$(B)/guest_cpu_vmenter_event.o: $(mainsrc)/guest_cpu_vmenter_event.c
 	echo "guest_cpu_vmenter_event.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest_cpu_vmenter_event.o $(mainsrc)/guest_cpu_vmenter_event.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_cpu_vmenter_event.o $(mainsrc)/guest_cpu_vmenter_event.c
 
-$(BINDIR)/guest_cpu_switch.o: $(mainsrc)/guest_cpu_switch.c
+$(B)/guest_cpu_switch.o: $(mainsrc)/guest_cpu_switch.c
 	echo "guest_cpu_switch.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest_cpu_switch.o $(mainsrc)/guest_cpu_switch.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_cpu_switch.o $(mainsrc)/guest_cpu_switch.c
 
-$(BINDIR)/guest_cpu_control.o: $(mainsrc)/guest_cpu_control.c
+$(B)/guest_cpu_control.o: $(mainsrc)/guest_cpu_control.c
 	echo "guest_cpu_control.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/guest_cpu_control.o $(mainsrc)/guest_cpu_control.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_cpu_control.o $(mainsrc)/guest_cpu_control.c
 
-$(BINDIR)/unrestricted_guest.o: $(mainsrc)/unrestricted_guest.c
+$(B)/unrestricted_guest.o: $(mainsrc)/unrestricted_guest.c
 	echo "unrestricted_guest.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/unrestricted_guest.o $(mainsrc)/unrestricted_guest.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/unrestricted_guest.o $(mainsrc)/unrestricted_guest.c
+
+$(B)/guest_cpu_access.o: $(mainsrc)/guest_cpu_access.c
+	echo "guest_cpu_access.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/guest_cpu_access.o $(mainsrc)/guest_cpu_access.c
 

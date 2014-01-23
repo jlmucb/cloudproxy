@@ -29,7 +29,7 @@
 //  externs
 //
 ////////////////////////////////////////////////////////////
-extern CPU_ID ASM_FUNCTION hw_cpu_id(void);
+extern CPU_ID hw_cpu_id();
 extern void ipc_set_no_resend_flag(BOOLEAN val);
 extern BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params);
 extern VMM_DEBUG_PORT_VIRT_MODE vmm_debug_port_get_virt_mode(void);

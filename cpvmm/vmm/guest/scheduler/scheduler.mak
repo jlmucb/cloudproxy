@@ -36,8 +36,7 @@ endif
 
 mainsrc=    	$(S)/vmm/guest/scheduler
 
-B=		$(E)/vmmobjects
-BINDIR=	        $(B)/libscheduler
+B=		$(E)/vmmobjects/guest/scheduler
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
@@ -52,7 +51,7 @@ LINK=       gcc
 #LIBMAKER=   libtool
 LIBMAKER=   ar
 
-dobjs=      $(BINDIR)/scheduler.o
+dobjs=      $(B)/scheduler.o
 
 all: $(E)/libscheduler.a
  
@@ -61,7 +60,7 @@ $(E)/libscheduler.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libscheduler.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libscheduler.a $(dobjs)
 
-$(BINDIR)/scheduler.o: $(mainsrc)/scheduler.c
+$(B)/scheduler.o: $(mainsrc)/scheduler.c
 	echo "scheduler.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/scheduler.o $(mainsrc)/scheduler.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/scheduler.o $(mainsrc)/scheduler.c
 

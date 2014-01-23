@@ -24,7 +24,8 @@
 
 .globl   vmm_lock_write
 vmm_lock_write:
-        lock xchg (%rcx), rdx
+# JLM: FIX
+        #lock xchg (%rcx), %rdx
         ret
 
 #------------------------------------------------------------------------------
@@ -110,7 +111,7 @@ vmm_vmcs_guest_state_read:
     mov (%rcx), %rax
     mov %rax,0x6820
     vmread %rax,%rax
-    mov [rcx+8],%rax
+    mov [%rcx+8],%rax
     add %rcx,16
     mov %rax,0x440c
     vmread %rax,%rax

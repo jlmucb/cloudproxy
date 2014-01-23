@@ -54,11 +54,11 @@ call_teardown_thunk32:
     mov     %rsi, %rcx   #; save current_guest_states_virt_addr to rsi temporarily
     mov     %rdi, %r9        #; save cr3_td_sm_32 to rdi temporarily
     #; cr4_pae_is_on value is on stack
-    mov     %rcx, 0x28[rsp]
+    mov     %rcx, 0x28[%rsp]
     vmxoff
     #; clear cr4.vmx, must be after vmx off. otherwise #GP fault
     mov      %rax, %cr4
-    and      %rax, $0xFFFFDFFF
+    and      %eax, 0xFFFFDFFF
     mov      %cr4, %rax
 
     #; prepare cs : rip pair for retf by first pushing
@@ -129,7 +129,7 @@ after_pae_check:
     mov %cr0, %rax
 
     # finally, call teardownthunk entry in guest space. and never returns.  
-    jmp rbx                     #; the same as "jmp ebx" in 32bit code mode.
+    jmp %rbx                     #; the same as "jmp ebx" in 32bit code mode.
 
 
 #
@@ -151,5 +151,5 @@ after_pae_check:
 call_teardown_thunk64:
     mov %rbx, %r8                 # save teardown_thunk_entry_address  
     # call teardownthunk entry in guest space. and never returns.              
-    jmp rbx                  
+    jmp %rbx                  
 

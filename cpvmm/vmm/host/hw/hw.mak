@@ -39,7 +39,7 @@ mainsrc=    $(S)/vmm/host/hw
 B=		$(E)/vmmobjects/host/hw
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept -I$(S)/vmm/vmx
 DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 

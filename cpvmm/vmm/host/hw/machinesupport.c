@@ -21,6 +21,7 @@
 #include "host_memory_manager_api.h"
 #include "memory_allocator.h"
 #include "file_codes.h"
+#include "hw_vmx_utils.h"
 
 
 UINT64 hw_rdtsc(void)
@@ -625,5 +626,90 @@ UINT64 hw_interlocked_increment64(INT64* p_counter)
     return 0ULL;
 }
 
+
+void vmx_vmptrst( UINT64 *address )
+{
+}
+
+
+void vmx_vmptrld( UINT64 *address)
+{
+}
+
+
+void vmx_vmclear( UINT64 *address)
+{
+}
+
+
+void vmx_vmlaunch( void )
+{
+}
+
+
+void vmx_vmresume( void )
+{
+}
+
+
+void vmx_vmwrite( size_t index, size_t *buf)
+{
+}
+
+
+void vmx_vmread( size_t index, size_t *buf)
+{
+}
+
+
+int vmx_on( UINT64 *address)
+{
+    return 0;
+}
+
+
+void vmx_off( void )
+{
+}
+
+
+HW_VMX_RET_VALUE hw_vmx_set_current_vmcs( UINT64* vmcs_region_physical_address_ptr)
+{
+    return HW_VMX_FAILED;
+}
+
+
+void  hw_vmx_get_current_vmcs( UINT64* vmcs_region_physical_address_ptr )
+{
+}
+
+
+HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs( UINT64* vmcs_region_physical_address_ptr )
+{
+    return HW_VMX_FAILED;
+}
+
+
+HW_VMX_RET_VALUE hw_vmx_launch_guest()
+{
+    return HW_VMX_FAILED;
+}
+
+
+HW_VMX_RET_VALUE hw_vmx_resume_guest()
+{
+    return HW_VMX_FAILED;
+}
+
+HW_VMX_RET_VALUE hw_vmx_write_current_vmcs( size_t field_id, size_t value  )
+{
+    return HW_VMX_FAILED;
+}
+
+
+HW_VMX_RET_VALUE hw_vmx_read_current_vmcs ( size_t field_id, size_t* value )
+{
+    return HW_VMX_FAILED;
+}
 
 

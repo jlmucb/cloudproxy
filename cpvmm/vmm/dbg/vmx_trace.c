@@ -24,21 +24,20 @@
 #include "vmm_dbg.h"
 #include "file_codes.h"
 
+#define __builtin_va_end(p)
+#define __builtin_stdarg_start(a,b)
+#define __builtin_va_arg(a,p) 0
+
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMX_TRACE_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMX_TRACE_C, __condition)
 
 static VMM_TRACE_STATE vmm_trace_state = VMM_TRACE_DISABLED;
 
-BOOLEAN
-vmm_trace_init(
-               UINT32 max_num_guests,
-               UINT32 max_num_guest_cpus
-               )
+BOOLEAN vmm_trace_init( UINT32 max_num_guests, UINT32 max_num_guest_cpus)
 {
     static BOOLEAN called = FALSE;
 
-    if ( ! called)
-    {
+    if ( ! called) {
         called = trace_init(max_num_guests, max_num_guest_cpus);
     }
 
@@ -61,8 +60,7 @@ void vmm_trace_state_set(VMM_TRACE_STATE state)
 }
 
 
-static size_t
-vmm_trace_print_string(
+static size_t vmm_trace_print_string(
                        const char    *format,
                        va_list		   marker,
                        char    *string
@@ -94,8 +92,7 @@ vmm_trace_print_string(
 }
 
 
-BOOLEAN
-vmm_trace_buffer(
+BOOLEAN vmm_trace_buffer(
                  GUEST_CPU_HANDLE   guest_cpu,
                  UINT8              buffer_index,
                  const char         *format,
@@ -104,7 +101,7 @@ vmm_trace_buffer(
 {
     va_list                    marker;
     TRACE_RECORD_DATA	       data;
-    VMCS_OBJECT*		       vmcs_obj = 0;
+    VMCS_OBJECT*	       vmcs_obj = 0;
     const VIRTUAL_CPU_ID       *virtual_cpu_id = 0;
     GUEST_ID                   guest_id = 0;
     CPU_ID                     gcpu_id = 0;

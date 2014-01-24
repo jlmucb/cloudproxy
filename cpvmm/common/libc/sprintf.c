@@ -20,6 +20,11 @@
 
 #include "common_libc.h"
 
+// fix for builtin_stdarg
+#define __builtin_va_end(p)
+#define __builtin_stdarg_start(a,b)
+#define __builtin_va_arg(a,p) 0
+
 #define LEFT_JUSTIFY    0x01
 #define PREFIX_SIGN     0x02
 #define PREFIX_BLANK    0x04

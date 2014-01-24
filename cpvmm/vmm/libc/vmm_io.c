@@ -26,6 +26,12 @@
 #include "vmm_serial.h"
 
 
+#define __builtin_va_end(p)
+#define __builtin_stdarg_start(a,b)
+#define __builtin_va_arg(a,p) 0
+
+
+
 extern int CLI_active(void);
 ////////////////////////////////////////////////////////////////////////////////
 //

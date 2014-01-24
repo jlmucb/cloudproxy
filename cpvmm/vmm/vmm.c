@@ -68,6 +68,10 @@
 #include "vmm_acpi.h"
 #endif
 
+#define __builtin_va_end(p)
+#define __builtin_stdarg_start(a,b)
+#define __builtin_va_arg(a,p) 0
+
 
 BOOLEAN vmcs_sw_shadow_disable[VMM_MAX_CPU_SUPPORTED];
 #pragma warning( disable : 4100 ) // enables non-referenced formal parameter

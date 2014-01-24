@@ -44,7 +44,7 @@ void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg);
 static
 void fvs_disable_eptp_switching(CPU_ID from UNUSED,void* arg);
 
-extern UINT32 _stdcall vmexit_reason(void);
+extern UINT32 vmexit_reason(void);
 extern BOOLEAN vmcs_sw_shadow_disable[];
 
 void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors)

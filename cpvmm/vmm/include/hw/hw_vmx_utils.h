@@ -27,18 +27,18 @@
 
 #ifdef __GNUC__
 
-extern void          __vmx_vmptrst( UINT64 *VmcsPhysicalAddress );
-extern unsigned char __vmx_vmptrld( UINT64 *VmcsPhysicalAddress );
-extern unsigned char __vmx_vmclear( UINT64 *VmcsPhysicalAddress );
+void vmx_vmptrst( UINT64 *address );
+void vmx_vmptrld( UINT64 *address);
+void vmx_vmclear( UINT64 *address);
 
-extern unsigned char __vmx_vmlaunch( void );
-extern unsigned char __vmx_vmresume( void );
+void vmx_vmlaunch( void );
+void vmx_vmresume( void );
 
-extern unsigned char __vmx_vmwrite( size_t Field, size_t FieldValue );
-extern unsigned char __vmx_vmread( size_t Field, size_t *FieldValue );
+void vmx_vmwrite( size_t index, size_t *buf);
+void vmx_vmread( size_t index, size_t *buf);
 
-extern unsigned char __vmx_on( UINT64 *VmcsPhysicalAddress );
-extern void          __vmx_off( void );
+int vmx_on( UINT64 *address);
+void vmx_off( void );
 
 #else // MS Compiler Intrinsics
 
@@ -85,10 +85,16 @@ typedef enum _HW_VMX_RET_VALUE {
 // region is the same as VMCS region size and may be found in IA32_VMX_BASIC MSR
 //
 //------------------------------------------------------------------------------
+#ifdef __GNUC__
+#define hw_vmx_on( _vmx_on_region_physical_address_ptr )                        \
+                     (HW_VMX_RET_VALUE)vmx_on(_vmx_on_region_physical_address_ptr)
+#define hw_vmx_off() vmx_off()
+#else
+
 #define hw_vmx_on( _vmx_on_region_physical_address_ptr )                        \
                      (HW_VMX_RET_VALUE)__vmx_on(_vmx_on_region_physical_address_ptr)
 #define hw_vmx_off()                   __vmx_off()
-
+#endif
 //------------------------------------------------------------------------------
 //
 // Read/write current VMCS pointer

@@ -20,7 +20,7 @@
 //RNB: we shoudl have a ifdef VT supported and accordingly use 
 //.byte version or the instructions for portability
 
-void vmx_on(UINT64 *address) {
+int vmx_on(UINT64 *address) {
 /*
 	asm volatile ("push %%rbx \n\t"
 		"movq %0, %%rbx \n\t"
@@ -33,7 +33,11 @@ void vmx_on(UINT64 *address) {
 		::"m" (address)
 		:"cc", "memory"
 	);
-	return;
+
+//RNB: Need to figure out where the return value/state after vmxon
+//is saved
+
+	return 0;
 }
 
 void vmx_off() {
@@ -116,6 +120,7 @@ void vmx_vmread(UINT64 index, UINT64 *buf) {
 		:"r"(index)
 		:"cc"
 	);
+	return;
 }
 
 void vmx_vmwrite(UINT64 index, UINT64 *buf) {
@@ -125,4 +130,5 @@ void vmx_vmwrite(UINT64 index, UINT64 *buf) {
 		:"r"(index), "rm"(buf)
 		:"cc", "memory"
 	);
+	return;
 }

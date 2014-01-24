@@ -15,6 +15,8 @@
  */
 
 #include "vmm_defs.h"
+#include "hw_utils.h"
+#include "hw_vmx_utils.h"
 //#include "vmx.h"
 
 //RNB: we shoudl have a ifdef VT supported and accordingly use 
@@ -52,7 +54,7 @@ void vmx_off() {
 	return;
 }
 
-void vmx_vmclear(UINT64 *address) {
+int vmx_vmclear(UINT64 *address) {
 /*
 	asm volatile("mov %0, %%rbx \n\t"
 		".byte 0x66, 0x0f, 0xc7, 0x33 \n\t"
@@ -64,26 +66,27 @@ void vmx_vmclear(UINT64 *address) {
 		::"m"(*address)
 		:"cc", "memory"
 	);
-	return;
+	return 0;
 }
 
-void vmx_vmlaunch() {
+int vmx_vmlaunch() {
 //	asm volatile(".byte 0x0f, 0x01, 0xc2");
 	asm volatile("vmlaunch"
 		::
 		:"cc", "memory"
 	);
-	return;
+	return 0;
 }
-void vmx_vmresume() {
+int vmx_vmresume() {
 //	asm volatile(".byte 0x0f, 0x01, 0xc3");
 	asm volatile("vmresume"
 		::
 		:"cc", "memory"
 	);
+	return 0;
 }
 
-void vmx_vmptrld(UINT64 *address) {
+int vmx_vmptrld(UINT64 *address) {
 /*
 	asm volatile("mov %0, %%rbx \n\t"
 		".byte 0x0f, 0xc7, 0x33"
@@ -95,7 +98,7 @@ void vmx_vmptrld(UINT64 *address) {
 		::"m" (address)
 		:"cc", "memory"
 	);
-	return;
+	return 0;
 }
 
 void vmx_vmptrst(UINT64 *address) {
@@ -113,22 +116,22 @@ void vmx_vmptrst(UINT64 *address) {
 	return;
 }
 
-void vmx_vmread(UINT64 index, UINT64 *buf) {
+int vmx_vmread(UINT64 index, UINT64 *buf) {
 //	asm volatile(".byte 0x0f, 0x78, 0xc2");
 	asm volatile("vmread %1, %0"
 		:"=rm"(buf)
 		:"r"(index)
 		:"cc"
 	);
-	return;
+	return 0;
 }
 
-void vmx_vmwrite(UINT64 index, UINT64 *buf) {
+int vmx_vmwrite(UINT64 index, UINT64 *buf) {
 //	asm volatile(".byte 0x0f, 0x79, 0xc2");
 	asm volatile("vmwrite %1, %0"
 		:
 		:"r"(index), "rm"(buf)
 		:"cc", "memory"
 	);
-	return;
+	return 0;
 }

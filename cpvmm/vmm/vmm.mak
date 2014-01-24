@@ -87,7 +87,7 @@ HOSTOBJ=	$(B)/host/host_cpu.o  $(B)/host/isr.o  $(B)/host/policy_manager.o  \
 
 HOSTHW=		$(B)/host/hw/host_pci_configuration.o  $(B)/host/hw/hw_utils.o  \
 		$(B)/host/hw/local_apic.o  $(B)/host/hw/reset.o  \
-		$(B)/host/hw/vmcs_init.o
+		$(B)/host/hw/vmcs_init.o $(B)/host/hw/machinesupport.o
 
 IPCOBJ=		$(B)/ipc/ipc_api.o  $(B)/ipc/ipc.o
 

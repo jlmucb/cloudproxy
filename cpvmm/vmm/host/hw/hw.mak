@@ -50,7 +50,7 @@ LINK=       gcc
 LIBMAKER=   ar
 
 dobjs=      $(B)/vmcs_init.o $(B)/reset.o $(B)/local_apic.o \
-	    $(B)/host_pci_configuration.o $(B)/hw_utils.o
+	    $(B)/host_pci_configuration.o $(B)/hw_utils.o $(B)/machinesupport.o
 
 all: $(E)/libhwcommon.a
  
@@ -78,4 +78,8 @@ $(B)/host_pci_configuration.o: $(mainsrc)/host_pci_configuration.c
 $(B)/hw_utils.o: $(mainsrc)/hw_utils.c
 	echo "hw_utils.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/hw_utils.o $(mainsrc)/hw_utils.c
+
+$(B)/machinesupport.o: $(mainsrc)/machinesupport.c
+	echo "machinesupport.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/machinesupport.o $(mainsrc)/machinesupport.c
 

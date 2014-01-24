@@ -166,31 +166,27 @@ void hw_sidt(void *Destination)
 }
 
 
-void hw_write_msr( UINT32 msr_id, UINT64 Value )
+void hw_write_msr(UINT32 msr_id, UINT64 val)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\twrmsr\n"
+    ::[val] "A" (val), [msr_id] "c" (msr_id):);
     return;
 }
 
 
-UINT64 hw_read_msr( UINT32 msr_id )
+UINT64 hw_read_msr(UINT32 msr_id)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64 out;
+
+    // RDMSR reads the processor Model-Specific Register (MSR) whose index is stored in ECX, 
+    //   and stores the result in EDX:EAX. 
+
+    asm volatile (
+        "\trdmsr\n"
+    :[out] "=A" (out)
+    :[msr_id] "c" (msr_id):);
+    return out;
 }
 
 

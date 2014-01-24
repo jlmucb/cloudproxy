@@ -176,8 +176,6 @@ endif
 
 #--------------------------------------------------------------
 #   C O N F I G U R A T I O N   M A N A G E M E N T
-#--------------------------------------------------------------
-
 HW_MAK = $(HW_DIR).mak
 
 # Other makefiles to be processed before this one

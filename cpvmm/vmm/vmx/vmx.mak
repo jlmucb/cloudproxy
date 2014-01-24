@@ -51,7 +51,7 @@ CC=         gcc
 LINK=       gcc
 LIBMAKER=   ar
 
-dobjs=      $(B)/vmcs.o $(B)/vmcs_sw_object.o $(B)/vmcs_merge_split.o \
+dobjs=     $(B)/vmx.o $(B)/vmcs.o $(B)/vmcs_sw_object.o $(B)/vmcs_merge_split.o \
 	    $(B)/vmcs_actual.o $(B)/vmcs_hierarchy.o $(B)/vmx_nmi.o 
 #	    $(B)/vmx_timer.o
 
@@ -61,6 +61,10 @@ $(E)/libvmx.a: $(dobjs)
 	@echo "libvmx.a"
 	#$(LIBMAKER) -static -o $(E)/libutils.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libvmx.a $(dobjs)
+
+$(B)/vmx.o: $(mainsrc)/vmx.c
+	echo "vmx.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmx.o $(mainsrc)/vmx.c
 
 $(B)/vmcs.o: $(mainsrc)/vmcs.c
 	echo "vmcs.o" 

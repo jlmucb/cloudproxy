@@ -259,378 +259,255 @@ UINT64 hw_read_cr0(void)
 
 UINT64 hw_read_cr2(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%cr2, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_cr3(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%cr3, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_cr4(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%cr4, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_cr8(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%cr8, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
-void hw_write_cr0(UINT64 Data)
+void hw_write_cr0(UINT64 data)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[data], %%cr0\n"
+    ::[data] "g" (data):); 
     return;
 }
 
 
-void hw_write_cr3(UINT64 Data)
+void hw_write_cr3(UINT64 data)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[data], %%cr3\n"
+    ::[data] "g" (data):); 
     return;
 }
 
 
-void hw_write_cr4(UINT64 Data)
+void hw_write_cr4(UINT64 data)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[data], %%cr4\n"
+    ::[data] "g" (data):); 
     return;
 }
 
 
-void hw_write_cr8(UINT64 Data)
+void hw_write_cr8(UINT64 data)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[data], %%cr8\n"
+    ::[data] "g" (data):); 
     return;
 }
 
 
 UINT64 hw_read_dr0(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr0, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr1(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr1, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr2(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr2, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr3(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr3, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr4(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr4, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr5(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr5, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr6(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr6, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 UINT64 hw_read_dr7(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%dr7, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 
 void hw_write_dr0(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr0\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr1(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr1\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr2(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr2\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr3(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr3\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr4(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr4\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr5(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr5\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr6(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr6\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_write_dr7(UINT64 value)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tmovq     %[value], %%dr7\n"
+    ::[value] "g" (value):); 
     return;
 }
 
 
 void hw_invlpg(void *address)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    asm volatile (
+        "\tinvlpg   %[address]\n"
+    ::[address] "m" (address):); 
     return;
 }
 
 
 void hw_wbinvd(void)
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+        "\twbinvd\n"
+    : : :);
     return;
 }
 
 
 void hw_halt( void )
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+        "\thlt\n"
+    : : :);
     return;
 }
 

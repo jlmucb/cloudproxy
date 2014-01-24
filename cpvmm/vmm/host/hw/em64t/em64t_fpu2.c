@@ -24,7 +24,7 @@ void hw_fnstsw (UINT16* loc) {
         "\tfnstsw (%%rax)\n\t"
 			:
     	: [loc] "m"(loc)
-    	:"rax"
+    	:"%rax"
 		);
     return;
 }
@@ -38,7 +38,7 @@ void hw_fnstcw ( UINT16 * loc )
         "\tfnstcw (%%rax) \n\t"
     	:
     	: [loc] "m"(loc)
-	    :"rax"
+	    :"%rax"
 		);
     return;
 }
@@ -47,9 +47,10 @@ void hw_fnstcw ( UINT16 * loc )
 void hw_fninit()
 // Init FP Unit
 {
-    asm volatile("fninit \n\t"
+    asm volatile(
+	"fninit \n\t"
     	:::
-		);
+	);
     return;
 }
 

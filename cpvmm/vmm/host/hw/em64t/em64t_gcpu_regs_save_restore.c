@@ -54,7 +54,7 @@ void load_save_area_into_rbx(void) {
 			//to satisfy the compiler
         :"=g" (cpuid)
         :"g" (cpuid)
-        :"rax", "rbx"
+        :"%rax", "%rbx"
 	);
 /*
     // put pointer to the array of GUEST_CPU_SAVE_AREA_PREFIX* to RBX

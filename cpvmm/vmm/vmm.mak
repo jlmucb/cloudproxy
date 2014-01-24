@@ -125,7 +125,7 @@ VMEXITOBJ=	$(B)/vmexit/teardown_thunk.o $(B)/vmexit/vmexit_ept.o \
 		$(B)/vmexit/vmexit_dtr_tr_access.o  $(B)/vmexit/vmexit_msr.o \
 		$(B)/vmexit/vmx_teardown.o
 
-VMXOBJ=		$(B)/vmx/vmcs_actual.o $(B)/vmx/vmcs_merge_split.o  \
+VMXOBJ=		$(B)/vmx/vmx.o $(B)/vmx/vmcs_actual.o $(B)/vmx/vmcs_merge_split.o  \
 		$(B)/vmx/vmcs_sw_object.o $(B)/vmx/vmcs_hierarchy.o  \
 		$(B)/vmx/vmcs.o $(B)/vmx/vmx_nmi.o
 
@@ -134,10 +134,6 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 		$(B)/utils/memory_allocator.o $(B)/utils/array_list.o  \
 		$(B)/utils/event_mgr.o  $(B)/utils/heap.o \
 		$(B)/utils/math_utils.o  $(B)/utils/utils_asm.o
-
-
-
-
 
 dobjs=      $(BINDIR)/vmm.o 
 
@@ -180,4 +176,20 @@ $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 # ifdef ENABLE_MULTI_GUEST_SUPPORT
 #         OTHER_MAKEFILE += ./samples/guest_create_addon/guest_create_addon.mak
 # endif
-
+clean:
+	rm -f $(E)/vmmobjects/acpi/*.o
+	rm -f $(E)/vmmobjects/vmx/*.o
+	rm -f $(E)/vmmobjects/libc/*.o
+	rm -f $(E)/vmmobjects/host/hw/*.o
+	rm -f $(E)/vmmobjects/host/hw/em64t/*.o
+	rm -f $(E)/vmmobjects/utils/*.o
+	rm -f $(E)/vmmobjects/host/*.o
+	rm -f $(E)/vmmobjects/dbg/*.o
+	rm -f $(E)/vmmobjects/memory/memory_manager/*.o
+	rm -f $(E)/vmmobjects/arch/*.o
+	rm -f $(E)/vmmobjects/guest/*.o
+	rm -f $(E)/vmmobjects/guest/*.o
+	rm -f $(E)/vmmobjects/guest/scheduler/*.o
+	rm -f $(E)/vmmobjects/startup/*.o
+	rm -f $(E)/vmmobjects/vmexit/*.o
+	rm -f $(E)/vmmobjects/ipc/*.o

@@ -56,7 +56,6 @@ dobjs=      $(B)/em64t_gcpu_regs_save_restore.o \
 	    $(B)/em64t_idt.o $(B)/em64t_gdt.o \
             $(B)/em64t_fpu.o $(B)/em64t_fpu2.o \
 	    $(B)/em64t_setjmp.o $(B)/em64t_vmx.o \
-            $(B)/em64t_gcpu_regs_save_restore.o \
             $(B)/em64t_interlocked.o $(B)/em64t_interlocked2.o \
             $(B)/em64t_isr2.o  $(B)/em64t_utils2.o
 

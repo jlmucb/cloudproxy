@@ -90,3 +90,5 @@ $(B)/vmx_nmi.o: $(mainsrc)/vmx_nmi.c
 	echo "vmx_nmi.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/vmx_nmi.o $(mainsrc)/vmx_nmi.c
 
+clean:
+	rm -f $(E)/vmmobjects/vmx/*.o $(E)/vmmobjects/vmx/libvmx.a $(E)/libvmx.a

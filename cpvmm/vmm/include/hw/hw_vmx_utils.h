@@ -16,6 +16,7 @@
 
 #ifndef _HW_VMX_UTILS_H_
 #define _HW_VMX_UTILS_H_
+#endif
 
 #include "vmm_defs.h"
 
@@ -28,14 +29,14 @@
 #ifdef __GNUC__
 
 void vmx_vmptrst( UINT64 *address );
-void vmx_vmptrld( UINT64 *address);
-void vmx_vmclear( UINT64 *address);
+int vmx_vmptrld( UINT64 *address);
+int vmx_vmclear( UINT64 *address);
 
-void vmx_vmlaunch( void );
-void vmx_vmresume( void );
+int vmx_vmlaunch( void );
+int vmx_vmresume( void );
 
-void vmx_vmwrite( size_t index, size_t *buf);
-void vmx_vmread( size_t index, size_t *buf);
+int vmx_vmwrite( size_t index, size_t *buf);
+int vmx_vmread( size_t index, size_t *buf);
 
 int vmx_on( UINT64 *address);
 void vmx_off( void );
@@ -107,12 +108,19 @@ typedef enum _HW_VMX_RET_VALUE {
 // region is the same as VMCS region size and may be found in IA32_VMX_BASIC MSR
 //
 //------------------------------------------------------------------------------
+#ifdef __GNUC__
+#define hw_vmx_set_current_vmcs( _vmcs_region_physical_address_ptr )            \
+                     (HW_VMX_RET_VALUE)vmx_vmptrld(_vmcs_region_physical_address_ptr)
+
+#define hw_vmx_get_current_vmcs( _vmcs_region_physical_address_ptr )            \
+                     vmx_vmptrst(_vmcs_region_physical_address_ptr)
+#else
+
 #define hw_vmx_set_current_vmcs( _vmcs_region_physical_address_ptr )            \
                      (HW_VMX_RET_VALUE)__vmx_vmptrld(_vmcs_region_physical_address_ptr)
 
 #define hw_vmx_get_current_vmcs( _vmcs_region_physical_address_ptr )            \
-                     __vmx_vmptrst(_vmcs_region_physical_address_ptr)
-
+#endif
 //------------------------------------------------------------------------------
 //
 // Flush current VMCS data + Invalidate current VMCS pointer + Set VMCS launch state
@@ -131,9 +139,17 @@ typedef enum _HW_VMX_RET_VALUE {
 // region is the same as VMCS region size and may be found in IA32_VMX_BASIC MSR
 //
 //------------------------------------------------------------------------------
+
+#ifdef __GNUC__
+#define hw_vmx_flush_current_vmcs( _vmcs_region_physical_address_ptr )            \
+                     (HW_VMX_RET_VALUE)vmx_vmclear(_vmcs_region_physical_address_ptr)
+
+#else
+
 #define hw_vmx_flush_current_vmcs( _vmcs_region_physical_address_ptr )            \
                      (HW_VMX_RET_VALUE)__vmx_vmclear(_vmcs_region_physical_address_ptr)
 
+#endif
 //------------------------------------------------------------------------------
 //
 // Launch/resume guest using "current VMCS pointer".
@@ -145,8 +161,17 @@ typedef enum _HW_VMX_RET_VALUE {
 // Subsequent guest resumes on the current core should be done using hw_vmx_launch()
 //
 //------------------------------------------------------------------------------
+#ifdef __GNUC__
+
+#define hw_vmx_launch_guest()     (HW_VMX_RET_VALUE)vmx_vmlaunch()
+#define hw_vmx_resume_guest()     (HW_VMX_RET_VALUE)vmx_vmresume()
+
+#else
+
 #define hw_vmx_launch_guest()     (HW_VMX_RET_VALUE)__vmx_vmlaunch()
 #define hw_vmx_resume_guest()     (HW_VMX_RET_VALUE)__vmx_vmresume()
+
+#endif
 
 //------------------------------------------------------------------------------
 //
@@ -156,10 +181,20 @@ typedef enum _HW_VMX_RET_VALUE {
 // HW_VMX_RET_VALUE hw_vmx_read_current_vmcs ( size_t field_id, size_t* value )
 //
 //------------------------------------------------------------------------------
+#ifdef __GNUC__
+
+#define hw_vmx_write_current_vmcs( _field_id, _value )                          \
+                     (HW_VMX_RET_VALUE)vmx_vmwrite(_field_id, _value )
+
+#define hw_vmx_read_current_vmcs( _field_id, _value )                           \
+                     (HW_VMX_RET_VALUE)vmx_vmread(_field_id, _value )
+#else
+
 #define hw_vmx_write_current_vmcs( _field_id, _value )                          \
                      (HW_VMX_RET_VALUE)__vmx_vmwrite(_field_id, _value )
 
 #define hw_vmx_read_current_vmcs( _field_id, _value )                           \
                      (HW_VMX_RET_VALUE)__vmx_vmread(_field_id, _value )
+#endif 
 
 #endif // _HW_VMX_UTILS_H_

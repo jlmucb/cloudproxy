@@ -145,14 +145,9 @@ void hw_write_port_32( UINT16 port, UINT32 val)
 
 void hw_lidt(void *Source)
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+        "\tlidt     (%[Source])\n"
+    ::[Source] "p" (Source):);
     return;
 }
 
@@ -258,15 +253,11 @@ BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
 
 UINT64 hw_read_cr0(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
+    UINT64  out;
+    asm volatile (
+        "\tmovq     %%cr0, %[out]\n"
+    :[out] "=r" (out) ::); 
+    return out;
 }
 
 

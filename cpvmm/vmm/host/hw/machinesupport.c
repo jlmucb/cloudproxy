@@ -25,14 +25,13 @@
 
 UINT64 hw_rdtsc(void)
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+    UINT64 out;
+
+    asm volatile (
+        "\trdtsc\n"
+        "\tmovq     %%rax,%[out]\n"
+    :[out] "=g" (out)
+    :: "%rax");
     return 0ULL;
 }
 
@@ -81,84 +80,65 @@ BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
 
 UINT8 hw_read_port_8( UINT16 port )
 {
-#if 0
+    UINT8 out;
+
     asm volatile(
-        "\t\n\t"
-    :
-    : 
+        "\tinb      %[port], %[out]\n"
+    :[out] "=a" (out)
+    :[port] "Nd" (port)
     :
     );
-#endif
-    return 0;
+    return out;
 }
 
 
 UINT16 hw_read_port_16( UINT16 port )
 {
-#if 0
+    UINT16 out;
+
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
+        "\tinw      %[port], %[out]\n"
+    :[out] "=a" (out)
+    :[port] "Nd" (port) :);
+    return out;
 }
 
 
 UINT32 hw_read_port_32( UINT16 port )
 {
-#if 0
+    UINT32 out;
+
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
+        "\tinl      %[port], %[out]\n"
+    :[out] "=a" (out)
+    :[port] "Nd" (port) :);
+    return out;
 }
 
 
-void hw_write_port_8( UINT16 port, UINT8 val8 )
+void hw_write_port_8(UINT16 port, UINT8 val)
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+        "\toutb     %[val], %[port]\n"
+    ::[val] "a" (val), [port] "Nd" (port) :);
     return;
 }
 
 
-void hw_write_port_16( UINT16 port, UINT16 val16 )
+void hw_write_port_16( UINT16 port, UINT16 val)
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+        "\toutw     %[val], %[port]\n"
+    ::[val] "a" (val), [port] "Nd" (port) :);
     return;
 }
 
 
-void hw_write_port_32( UINT16 port, UINT32 val32 )
+void hw_write_port_32( UINT16 port, UINT32 val)
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
+        "\toutl     %[val], %[port]\n"
+    ::[val] "a" (val), [port] "Nd" (port) :);
     return;
 }
 

@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. 
  */
+#include "vmm_defs.h"
+#define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
 
-
-struct VMEXIT_TIME __attribute__(packed) {
+struct VMEXIT_TIME {
     UINT64  last_vmexit;
     UINT64  last_vmentry;
     UINT64  last_reason;
@@ -39,7 +40,6 @@ void zero_exit_time(struct VMEXIT_TIME *p)
     p->this_cpu_id= 0ULL;
 }
 
-
 void vmexit_func()
 // Function:    Called upon VMEXIT. Saves GP registers, allocates stack
 //              for C-function and calls it.
@@ -47,14 +47,14 @@ void vmexit_func()
 {
     gcpu_save_registers();
     asm volatile(
-        "\txor      %rcx, %rcx\n" \
-        "\tcmpq     $4,%rcx\n" \
+        "\txor      %%rcx, %%rcx\n" \
+        "\tcmpq     $4,%%rcx\n" \
         "\tja       1f\n" \
-        "\tmovq     $4, %rcx\n" \
+        "\tmovq     $4, %%rcx\n" \
         // vmexit_l1:      # parameters are normalized
         "1:\n" \
-        "\tshlq     $3, %rcx\n" \
-        "\tsubq     %%rcx, %rsp\n" \
+        "\tshlq     $3, %%rcx\n" \
+        "\tsubq     %%rcx, %%rsp\n" \
         "\tcall    vmexit_common_handler\n" \
         "2:\n" \
         "\tjmp     2b\n"
@@ -63,13 +63,12 @@ void vmexit_func()
     :"%rcx");
 }
 
-
 void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
 {
 
-    if(fisttime==0ULL)
+    if(firsttime==0ULL)
         gcpu_restore_registers();
 
     asm volatile(
@@ -89,12 +88,8 @@ void vmentry_func(UINT32 firsttime)
     : 
     :"%rcx", "%rdx");
     vmentry_failure_function();
-    vmentry_func();
+    vmentry_func(0ULL);
 }
-
-
-#define VMM_NATIVE_VMCALL_SIGNATURE, 0x024694D40
-
 
 UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 // Function:    VMCALL
@@ -108,11 +103,11 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
     UINT64  result;
 
     asm volatile(
-        "\tmovq    %[vmcall_id], %%rcx\n" \
-        "\tmovq    %[arg1], %%rdx\n" \
-        "\tmovq    %[arg2], %%rdi\n" \
-        "\tmovq    %[arg3], %%rsi\n" \
-        "\tmovq     VMM_NATIVE_VMCALL_SIGNATURE, %%rax\n" \
+        "\tmovq %[vmcall_id], %%rcx\n" \
+        "\tmovq %[arg1], %%rdx\n" \
+        "\tmovq %[arg2], %%rdi\n" \
+        "\tmovq %[arg3], %%rsi\n" \
+        "\tmovq 0x024694D40, %%rax\n" \
         "\tvmcall\n" \
         "\tjmp  2f\n" \
         "1:\n" \
@@ -123,5 +118,3 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
     :"%rax", "%rdi", "%rsi", "%r8", "%rcx", "%rdx");
     return result;
 }
-
-

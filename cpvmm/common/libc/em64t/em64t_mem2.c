@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-#include <types.h>
+//#include <types.h>
 #include "vmm_defs.h"
 
 /*
  *  force compiler intrinsics to use our code
  */
 
-void memset (void *str, int c, size_t n) {
+void memset (void *str, int c, int n) {
 	vmm_memset (str, c, n);
 	return;
 }
 
-void memcpy(void *str1, void *str2, size_t n) {
+void memcpy(void *str1, void *str2, int n) {
  	vmm_memcpy(str1, str2, n);
 	return; 
 }
 
-size_t strlen (const char *str) {
+int strlen (const char *str) {
     return vmm_strlen(str);
 }
 
@@ -57,7 +57,7 @@ void vmm_lock_xchg_byte (UINT8 *dst, //rcx
 	asm volatile(
 		"\tmovq %[src], %%rdx\n"
 		"\tmovq %[dst], %%rcx\n"
-		"\tmovb (%%rdx), %%rbx\n"
+		"\tmovb (%%rdx), %%bl\n"
 //		"\tlock xchg %%rbx, (%%rcx)\n"
 		"\tlock xchg %%bl, (%%rcx)\n" // byte exchange
     :

@@ -43,6 +43,7 @@ RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -n
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 libcsrc=	$(S)/common/libc
+libcsubdir=	$(S)/common/libc/em64t
 mainsrc=	$(S)/vmm/libc
 
 # Compile $(mainsrc)/libc.c $(mainsrc)/vmm_io.c $(mainsrc)/vmm_serial.c 
@@ -54,7 +55,7 @@ LINK=       gcc
 LIBMAKER=   ar
 
 dobjs=      $(BINDIR)/libc.o $(BINDIR)/vmm_io.o $(BINDIR)/vmm_serial.o \
-	    $(BINDIR)/common_libc.o $(BINDIR)/sprintf.o $(BINDIR)/bitarray_utilities.o
+	    $(BINDIR)/common_libc.o $(BINDIR)/sprintf.o $(BINDIR)/bitarray_utilities.o $(BINDIR)/em64t_mem2.o
 
 all: $(E)/libc.a
  
@@ -87,3 +88,6 @@ $(BINDIR)/bitarray_utilities.o: $(libcsrc)/bitarray_utilities.c
 	echo "bitarray_utilities.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/bitarray_utilities.o $(libcsrc)/bitarray_utilities.c
 
+$(BINDIR)/em64t_mem2.o: $(libcsubdir)/em64t_mem2.c
+	echo "sprintf.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_mem2.o $(libcsubdir)/em64t_mem2.c

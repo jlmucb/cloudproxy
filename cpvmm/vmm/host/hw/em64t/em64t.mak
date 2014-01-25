@@ -55,7 +55,7 @@ LIBMAKER=   ar
 dobjs=      $(B)/em64t_gcpu_regs_save_restore.o \
 	    $(B)/em64t_idt.o $(B)/em64t_gdt.o \
             $(B)/em64t_fpu.o $(B)/em64t_fpu2.o \
-	    $(B)/em64t_setjmp.o $(B)/em64t_vmx.o \
+	    $(B)/em64t_setjmp.o $(B)/em64t_vmx2.o \
             $(B)/em64t_interlocked.o $(B)/em64t_interlocked2.o \
             $(B)/em64t_isr2.o  $(B)/em64t_utils2.o
 
@@ -106,7 +106,10 @@ $(B)/em64t_utils2.o: $(mainsrc)/em64t_utils2.c
 	echo "em64t_utils2.o"
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/em64t_utils2.o $(mainsrc)/em64t_utils2.c
 
-$(B)/em64t_vmx.o: $(mainsrc)/em64t_vmx.s
-	echo "em64t_vmx.o"
-	$(AS) -o $(B)/em64t_vmx.o $(mainsrc)/em64t_vmx.s
+#$(B)/em64t_vmx.o: $(mainsrc)/em64t_vmx.s
+#	echo "em64t_vmx.o"
+#	$(AS) -o $(B)/em64t_vmx.o $(mainsrc)/em64t_vmx.s
 
+$(B)/em64t_vmx2.o: $(mainsrc)/em64t_vmx2.c
+	echo "em64t_vmx.o"
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/em64t_vmx2.o $(mainsrc)/em64t_vmx2.c

@@ -472,7 +472,8 @@ void    hw_lgdt(void * gdtr);
 //
 // Note: gdtr has to point to the m16:m32 (x86) or m16:m64 (em64t)
 //------------------------------------------------------------------------------
-void    ASM_FUNCTION hw_sgdt(void * gdtr);
+void hw_sgdt(void * gdtr);
+//void    ASM_FUNCTION hw_sgdt(void * gdtr);
 
 //------------------------------------------------------------------------------
 // read/write segment registers
@@ -533,7 +534,8 @@ void     hw_write_ldtr(UINT16);
 //
 //------------------------------------------------------------------------------
 typedef void (*main_continue_fn)(void* params);
-void    ASM_FUNCTION hw_set_stack_pointer(HVA new_stack_pointer,
+//void    ASM_FUNCTION hw_set_stack_pointer(HVA new_stack_pointer,
+void hw_set_stack_pointer(HVA new_stack_pointer,
                                           main_continue_fn func,
                                           void* params);
 
@@ -557,7 +559,7 @@ void hw_cpuid(CPUID_PARAMS *);
 // void   hw_write_cr2( UINT64 value );
 //------------------------------------------------------------------------------
 //void ASM_FUNCTION hw_write_cr2( UINT64 _value );
-void hw_write_cr2( UINT64 _value );
+void hw_write_cr2( UINT64 value );
 
 
 #define hw_flash_tlb()      hw_write_cr3(hw_read_cr3())
@@ -608,7 +610,7 @@ void hw_stall_using_tsc(UINT32 stall_usec);
 // Test for ready-to-be-accepted fixed interrupts.
 BOOLEAN hw_is_ready_interrupt_exist(void);
 
-void ASM_FUNCTION hw_write_to_smi_port(
+void hw_write_to_smi_port(
     UINT64 * p_rax,     // rcx
     UINT64 * p_rbx,     // rdx
     UINT64 * p_rcx,     // r8

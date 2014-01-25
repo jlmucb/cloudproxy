@@ -42,6 +42,9 @@
 	.set    ARG3_U64, %r8
 */
 
+#include "hw_utils.h"
+#include "vmm_defs.h"
+
 typedef struct {
     unsigned long P_RAX;
     unsigned long P_RBX;
@@ -54,13 +57,14 @@ typedef struct {
 
 SMI_PORT_PARAMS spp;
 
+/*
 typedef struct {
     unsigned long M_RAX;
     unsigned long M_RBX;
     unsigned long M_RCX;
     unsigned long M_RDX;
 } CPUID_PARAMS;
-
+*/
 CPUID_PARAMS cp;
 
 void  hw_lgdt (void *gdtr) {
@@ -87,18 +91,19 @@ void hw_sgdt (void * gdtr) {
  *  Stack offsets on entry:
  *  ax register will contain result
 */
-int hw_read_cs () {
+UINT16 hw_read_cs () {
 		
-	int ret = 0;
+	UINT16 ret = 0;
 	 asm volatile("xor %%rax, %%rax \n\t"
        "movw %%ax, %%cs \n\t"
-			:"=ax" (ret)
-			::"rax");
+			:"=rm" (ret)
+			:"rm" (ret)
+			:"cc", "memory");
 	return ret;
 }
 
 //RNB: I am not 100% sure about "jumping to a label" part.
-void hw_write_cs (unsigned short int i) { 
+void hw_write_cs (UINT16 i) { 
         // push segment selector
 		asm volatile("xor %%rax, %%rax \n\t"
         "movw %0, %%ax \n\t"
@@ -126,10 +131,14 @@ void hw_write_cs (unsigned short int i) {
  *
  *  ax register will contain result
  */
-void hw_read_ds () {
+UINT16 hw_read_ds () {
+	UINT16 ret = 0;
 	 asm volatile("xor %%rax, %%rax \n\t"
 			"mov %%ds, %%ax \n\t"
-			:::
+			"mov %%ax, %0 \n\t"
+			:
+			:"rm"(ret)
+			:"cc", "memory"
 	);
 	return;
 }
@@ -141,7 +150,7 @@ void hw_read_ds () {
 //  );
 //
 //  Write to Data Segment Selector
-void hw_write_ds(unsigned int i) {
+void hw_write_ds(UINT16 i) {
 	 asm volatile("mov %0, %%ds \n\t"
 			://"=r" (i)
 			:"g" (i)
@@ -162,7 +171,7 @@ void hw_write_ds(unsigned int i) {
 //
 //  ax register will contain result
 //
-void hw_read_es() {
+UINT16 hw_read_es() {
 
 	 asm volatile("xor %%rax, %%rax \n\t"
 			"mov %%es, %%ax \n\t"
@@ -179,7 +188,7 @@ void hw_read_es() {
 //
 //  Write to ES Segment Selector
 //
-void hw_write_es (unsigned short int i) { 
+void hw_write_es (UINT16 i) { 
 	 asm volatile("mov %0, %%es"
 			:
 			:"r" (i)
@@ -197,10 +206,13 @@ void hw_write_es (unsigned short int i) {
 //
 //  ax register will contain result
 //
-void hw_read_ss() {
+UINT16 hw_read_ss() {
+	UINT16 ret;
 	 asm volatile("xor %%rax, %%rax \n\t"
       "mov %%es, %%ax \n\t"
-			:::
+      "mov %%ax, %0 \n\t"
+			::"rm"(ret)
+			:"cc", "memory"
 	);
 	return;
 }
@@ -213,7 +225,7 @@ void hw_read_ss() {
 //
 //  Write to Stack Segment Selector
 //
-void hw_write_ss (unsigned short int i) { 
+void hw_write_ss (UINT16 i) { 
 	 asm volatile("mov %0, %%ss"
 			:
 			:"r" (i)
@@ -231,7 +243,7 @@ void hw_write_ss (unsigned short int i) {
 //
 //  ax register will contain result
 //
-void hw_read_fs() {
+UINT16 hw_read_fs() {
 	 asm volatile("xor %%rax, %%rax \n\t"
       "mov %%fs, %%ax \n\t"
 			:::
@@ -247,7 +259,7 @@ void hw_read_fs() {
 //
 //  Write to FS
 //
-void hw_write_fs (unsigned short int i) { 
+void hw_write_fs (UINT16 i) { 
 	 asm volatile("mov %0, %%fs"
 			:
 			:"r" (i)
@@ -265,7 +277,7 @@ void hw_write_fs (unsigned short int i) {
 //
 //  ax register will contain result
 //
-void hw_read_gs() {
+UINT16 hw_read_gs() {
 	 asm volatile("xor %%rax, %%rax \n\t"
       "mov %%gs, %%ax \n\t"
 			:::
@@ -281,7 +293,7 @@ void hw_read_gs() {
 //
 //  Write to GS
 //
-void hw_write_gs (unsigned short int i) { 
+void hw_write_gs (UINT16 i) { 
 	 asm volatile("mov %0, %%gs"
 			:
 			:"r" (i)
@@ -293,16 +305,28 @@ void hw_write_gs (unsigned short int i) {
  *  UINT64 __stdcall
  *  hw_read_rsp (void);
 */
-void hw_read_rsp () {
+UINT64 hw_read_rsp () {
 		
-		 asm volatile("mov %%rsp, %%rax \n\t"
+	UINT64 ret = 0;
+		 asm volatile("movq %%rsp, %%rax \n\t"
         "add %%rax, 8 \n\t"
-		:::
+				"movq %%rax, %0 \n\t"
+		::"rm"(ret) 
+		: "cc", "memory"
 		);
-	return;
+	return ret;
 
 }
-void hw_write_to_smi_port() {
+//RNB: TODO the args/offsets need to be double-checked
+void hw_write_to_smi_port(
+    UINT64 * p_rax,     // rcx
+    UINT64 * p_rbx,     // rdx
+    UINT64 * p_rcx,     // r8
+    UINT64 * p_rdx,     // r9
+    UINT64 * p_rsi,     // on the stack
+    UINT64 * p_rdi,     // on the stack
+    UINT64 * p_rflags) // on the stack
+{
         // save callee saved registers
 	 asm volatile("push %%rbp \n\t"
 			"mov %%rbp, %%rsp \n\t" //setup stack frame pointer
@@ -427,11 +451,11 @@ void hw_fxrestore (void *buffer) {
  *  void __stdcall
  *  hw_write_cr2 (UINT64 value);
  */
-void hw_write_cr2 (unsigned long value) {
+void hw_write_cr2 (UINT64 value) {
 	asm volatile("mov %%cr2, %0"
-		:"=r" (value)
-		:"r" (value)
-		:
+		:"=rm" (value)
+		:"rm" (value)
+		:"cc", "memory"
 	);
 		
 	return;
@@ -450,9 +474,9 @@ void hw_write_cr2 (unsigned long value) {
  *                  This assumption is used in gcpu_regs_save_restore.asm
  */
 #define CPU_LOCATOR_GDT_ENTRY_OFFSET 32
-#define TSS_ENTRY_SIZE_SHIFT, 4
-unsigned short int hw_cpu_id () {
-	unsigned short int ret = 0;
+#define TSS_ENTRY_SIZE_SHIFT 4
+UINT16 hw_cpu_id () {
+	UINT16 ret = 0;
 
 	asm volatile("xor %%rax, %%rax \n\t"
         			"str %%ax \n\t"
@@ -474,8 +498,8 @@ unsigned short int hw_cpu_id () {
  *
  *  ax register will contain result
  */
-unsigned short int hw_read_tr() {
-	unsigned short int ret = 0;
+UINT16 hw_read_tr() {
+	UINT16 ret = 0;
 //RNB: Added the movw instruction to move the return value into 'ret'
 	asm volatile("str %%ax \n\t"
 							"movw %%ax, %0 \n\t"
@@ -493,7 +517,7 @@ unsigned short int hw_read_tr() {
  *  Write Task Register
  *
  */
-void hw_write_tr (unsigned short int i) {
+void hw_write_tr (UINT16 i) {
 	asm volatile("ltr %0"
 							:"=r" (i)
 							:"r" (i)
@@ -512,8 +536,8 @@ void hw_write_tr (unsigned short int i) {
  *
  *  ax register will contain result
  */
-unsigned short int hw_read_ldtr () {
-	unsigned int ret = 0;
+UINT16 hw_read_ldtr () {
+	UINT16 ret = 0;
 //RNB: Added the movw instruction to move the return value into 'ret'
 	asm volatile("sldt %%ax \n\t"
 							:"=rax" (ret)
@@ -530,7 +554,7 @@ unsigned short int hw_read_ldtr () {
  *
  *  Write LDT Register
  */
-void hw_write_ldtr (unsigned short int i) {
+void hw_write_ldtr (UINT16 i) {
 	asm volatile("lldt %0"
 							:"=r" (i)
 							:"r" (i)
@@ -665,3 +689,17 @@ void hw_perform_asm_iret () {
 		:::
 	);
 } //hw_perform_asm_iret ENDP
+void hw_set_stack_pointer (HVA new_stack_pointer, 
+													main_continue_fn func, void *params) {
+	asm volatile("L1: \n\t"
+							"movq %0, %%rsp \n\t"
+							"movq %2, %0 \n\t"
+							"subq $32, %%rsp \n\t" // allocate home space for 4 input params
+							"call %1 \n\t" 
+							"jmp L1"
+							:
+							:"r"(new_stack_pointer),"r"(func), "r"(params)
+							:"cc"
+	);
+	return;
+}

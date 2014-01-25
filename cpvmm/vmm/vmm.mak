@@ -66,7 +66,7 @@ EMTOBJ= 	$(B)/host/hw/em64t/em64t_idt.o $(B)/host/hw/em64t/em64t_setjmp.o \
 		$(B)/host/hw/em64t/em64t_utils2.o \
 		$(B)/host/hw/em64t/em64t_fpu2.o \
 		$(B)/host/hw/em64t/em64t_gcpu_regs_save_restore.o  \
-		$(B)/host/hw/em64t/em64t_vmx.o $(B)/host/hw/em64t/em64t_gdt.o \
+		$(B)/host/hw/em64t/em64t_vmx2.o $(B)/host/hw/em64t/em64t_gdt.o \
 		$(B)/host/hw/em64t/em64t_isr2.o
 
 GUESTOBJ=	$(B)/guest/guest_control.o  $(B)/guest/guest.o  \
@@ -92,8 +92,10 @@ HOSTHW=		$(B)/host/hw/host_pci_configuration.o  $(B)/host/hw/hw_utils.o  \
 IPCOBJ=		$(B)/ipc/ipc_api.o  $(B)/ipc/ipc.o
 
 LIBCOBJ=	$(B)/libc/bitarray_utilities.o  $(B)/libc/common_libc.o  \
-		$(B)/libc/libc.o  $(B)/libc/sprintf.o  $(B)/libc/vmm_io.o \
-		$(B)/libc/vmm_serial.o
+		$(B)/libc/libc.o  $(B)/libc/sprintf.o  $(B)/libc/em64t_mem2.o \
+		$(B)/libc/vmm_io.o $(B)/libc/vmm_serial.o 
+#		$(B)/libc/ia32/ia32_mem2.o $(B)/libc/ia32/ia32_low_level.o 
+
 EPTOBJ=		$(B)/memory/ept/ept_hw_layer.o  $(B)/memory/ept/ept.o  \
 		$(B)/memory/ept/fvs.o  $(B)/memory/ept/invept2.o  \
 		$(B)/memory/ept/ve.o

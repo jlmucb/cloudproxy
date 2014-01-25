@@ -69,6 +69,9 @@ int vmx_vmclear(UINT64 *address) {
 	return 0;
 }
 
+int hw_vmx_flush_current_vmcs(UINT64 *address) {
+	return vmx_vmclear(address);
+}
 int vmx_vmlaunch() {
 //	asm volatile(".byte 0x0f, 0x01, 0xc2");
 	asm volatile("vmlaunch"
@@ -116,22 +119,31 @@ void vmx_vmptrst(UINT64 *address) {
 	return;
 }
 
-int vmx_vmread(UINT64 index, UINT64 *buf) {
+int vmx_vmread(UINT64 index, UINT64 *value) {
 //	asm volatile(".byte 0x0f, 0x78, 0xc2");
 	asm volatile("vmread %1, %0"
-		:"=rm"(buf)
+		:"=rm"(value)
 		:"r"(index)
 		:"cc"
 	);
 	return 0;
 }
 
-int vmx_vmwrite(UINT64 index, UINT64 *buf) {
+int vmx_vmwrite(UINT64 index, UINT64 *value) {
 //	asm volatile(".byte 0x0f, 0x79, 0xc2");
 	asm volatile("vmwrite %1, %0"
 		:
-		:"r"(index), "rm"(buf)
+		:"r"(index), "rm"(value)
 		:"cc", "memory"
 	);
 	return 0;
 }
+
+HW_VMX_RET_VALUE hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 *value ) {
+	return vmx_vmwrite(field_id, value);
+}
+
+HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value ) {
+	return vmx_vmread(field_id, value);
+}
+

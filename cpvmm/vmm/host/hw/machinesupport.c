@@ -627,6 +627,7 @@ UINT64 hw_interlocked_increment64(INT64* p_counter)
 }
 
 
+/*
 void vmx_vmptrst( UINT64 *address )
 {
 }
@@ -712,4 +713,4 @@ HW_VMX_RET_VALUE hw_vmx_read_current_vmcs ( size_t field_id, size_t* value )
     return HW_VMX_FAILED;
 }
 
-
+*/

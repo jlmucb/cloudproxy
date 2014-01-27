@@ -405,19 +405,117 @@ void hw_lidt(void *source)
 
 void hw_sidt(void *destination)
 {
-#if 0
     asm volatile(
-        "\t\n\t"
-    :
-    : 
+        "\tsidt (%[destination])\n\t"
+    ::[destination] "p" (destination) 
     :
     );
-#endif
     return;
 }
 
 
-INT32    hw_interlocked_increment(INT32 * addend)
+INT32  hw_interlocked_increment(INT32 *addend)
+{
+    asm volatile(
+      "lock; incl (%[addend]) \n\t"
+    :"=m"(addend)
+//    :"m" (p_counter) 
+    :[addend] "p" (addend)
+    :"memory"
+    );
+    return *addend;
+}
+
+
+UINT64 hw_interlocked_increment64(INT64* p_counter)
+{
+	UINT64 ret = 1ULL;
+    asm volatile(
+			"lock; addq (%[p_counter]), %[ret] \n\t"
+    :"=m" (ret)
+    :[ret] "r" (ret), [p_counter] "p" (p_counter)
+    :"memory"
+    );
+	return ret;
+}
+
+INT32 hw_interlocked_decrement(INT32 * minuend)
+{
+    asm volatile(
+      "lock; decl (%[minuend]) \n\t"
+    :"=m"(minuend)
+    :[minuend] "p" (minuend)
+    :"memory"
+    );
+    return *minuend;
+}
+
+INT32 hw_interlocked_add(INT32 volatile * addend, INT32 value)
+{
+	UINT64 ret = 1ULL;
+    asm volatile(
+			"lock; movl %[value], %%eax \n\t"
+			"add (%[addend]), %%rax \n\t"
+			"movq %%rax, %[ret] \n\t"
+    :"=m" (ret)
+    :[ret] "r" (ret), [addend] "p" (addend), [value] "r" (value)
+    :"memory", "cc"
+    );
+	return ret;
+}
+
+INT32 hw_interlocked_or(INT32 volatile * value, INT32 mask)
+{
+	INT32 ret = 0ULL;
+    asm volatile(
+			"lock; or %[mask], (%[value]) \n\t"
+			"mov (%[value]), %[ret] \n\t"
+    :"=m" (ret)
+    :[ret] "r" (ret), [value] "p" (value), [mask] "r" (mask)
+    :"memory"
+    );
+	return ret;
+}
+
+INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
+{
+	INT32 ret = 0ULL;
+    asm volatile(
+			"lock; xor %[mask], (%[value]) \n\t"
+			"movl (%[value]), %[ret] \n\t"
+    :"=m" (ret)
+    :[ret] "r" (ret), [value] "p" (value), [mask] "r" (mask)
+    :"memory"
+    );
+	return ret;
+}
+
+void hw_store_fence(void)
+{
+    asm volatile(
+        "lock; sfence\n\t"
+    :::
+    );
+    return;
+}
+
+INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
+            INT32 exchange, INT32 comperand)
+{
+	INT32 ret = 0ULL;
+    asm volatile(
+        "lock; cmpxchgl %[exchange], %[comperand] \n\t"
+    :"=a" (ret), "+m" (*destination)
+//    :"r" (exchange), "0"(comperand)
+    :[ret] "r" (ret), [exchange] "r" (exchange), [comperand] "r" (comperand), [destination] "p" (destination)
+    :"memory"
+    );
+    return ret;
+}
+
+
+INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
+            INT64 exchange, INT64 comperand)
 {
 #if 0
     asm volatile(
@@ -430,8 +528,7 @@ INT32    hw_interlocked_increment(INT32 * addend)
     return 0;
 }
 
-
-void    hw_store_fence(void)
+INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 {
 #if 0
     asm volatile(
@@ -441,9 +538,8 @@ void    hw_store_fence(void)
     :
     );
 #endif
-    return;
+    return 0;
 }
-
 
 BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
 {
@@ -514,119 +610,3 @@ BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
 #endif
     return TRUE;
 }
-
-
-INT32    hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-INT32    gcc_interlocked_compare_exchange( INT32 volatile * destination,
-            INT32 exchange, INT32 comperand)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
-            INT64 exchange, INT64 comperand)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-INT32    hw_interlocked_decrement(INT32 * minuend)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-INT32    hw_interlocked_add(INT32 volatile * addend, INT32 value)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-INT32    hw_interlocked_or(INT32 volatile * value, INT32 mask)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-INT32    hw_interlocked_xor(INT32 volatile * value, INT32 mask)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-UINT64 hw_interlocked_increment64(INT64* p_counter)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0ULL;
-}
-
-

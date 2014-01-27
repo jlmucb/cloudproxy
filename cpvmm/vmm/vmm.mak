@@ -179,6 +179,8 @@ $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 #         OTHER_MAKEFILE += ./samples/guest_create_addon/guest_create_addon.mak
 # endif
 clean:
+	rm -f $(E)/evmm.bin
+clobber: 
 	rm -f $(E)/vmmobjects/acpi/*.o
 	rm -f $(E)/vmmobjects/vmx/*.o
 	rm -f $(E)/vmmobjects/libc/*.o
@@ -195,3 +197,4 @@ clean:
 	rm -f $(E)/vmmobjects/startup/*.o
 	rm -f $(E)/vmmobjects/vmexit/*.o
 	rm -f $(E)/vmmobjects/ipc/*.o
+	rm -f $(E)/evmm.bin

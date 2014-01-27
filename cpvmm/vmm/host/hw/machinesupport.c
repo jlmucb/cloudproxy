@@ -26,14 +26,17 @@
 
 UINT64 hw_rdtsc(void)
 {
-    UINT64 out;
+    UINT64      out;
+    UINT64*     pout= &out;
 
     asm volatile (
         "\trdtsc\n"
-        "\tmovq     %%rax,%[out]\n"
+        "\tmovq     %[pout],%%rcx\n"
+        "\tmovl     %%eax, (%%rcx)\n"
+        "\tmovl     %%edx, 4(%%rcx)\n"
     :[out] "=g" (out)
-    :: "%rax");
-    return 0ULL;
+    :[pout] "m" (pout): "%rcx");
+    return out;
 }
 
 
@@ -391,16 +394,16 @@ void hw_halt( void )
 }
 
 
-void hw_lidt(void *Source)
+void hw_lidt(void *source)
 {
     asm volatile(
-        "\tlidt     (%[Source])\n"
-    ::[Source] "p" (Source):);
+        "\tlidt     (%[source])\n"
+    ::[source] "p" (source):);
     return;
 }
 
 
-void hw_sidt(void *Destination)
+void hw_sidt(void *destination)
 {
 #if 0
     asm volatile(

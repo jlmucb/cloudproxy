@@ -37,48 +37,6 @@ UINT64 hw_rdtsc(void)
 }
 
 
-INT32    hw_interlocked_increment(INT32 * addend)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return 0;
-}
-
-
-void    hw_store_fence(void)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return;
-}
-
-
-BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return TRUE;
-}
-
-
 UINT8 hw_read_port_8( UINT16 port )
 {
     UINT8 out;
@@ -144,29 +102,6 @@ void hw_write_port_32( UINT16 port, UINT32 val)
 }
 
 
-void hw_lidt(void *Source)
-{
-    asm volatile(
-        "\tlidt     (%[Source])\n"
-    ::[Source] "p" (Source):);
-    return;
-}
-
-
-void hw_sidt(void *Destination)
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return;
-}
-
-
 void hw_write_msr(UINT32 msr_id, UINT64 val)
 {
     asm volatile (
@@ -188,63 +123,6 @@ UINT64 hw_read_msr(UINT32 msr_id)
     :[out] "=A" (out)
     :[msr_id] "c" (msr_id):);
     return out;
-}
-
-
-//------------------------------------------------------------------------------
-// find first bit set
-//
-//  forward: LSB->MSB
-//  backward: MSB->LSB
-//
-// Return 0 if no bits set
-// Fills "bit_number" with the set bit position zero based
-//
-// BOOLEAN hw_scan_bit_forward( UINT32& bit_number, UINT32 bitset )
-// BOOLEAN hw_scan_bit_backward( UINT32& bit_number, UINT32 bitset )
-//
-// BOOLEAN hw_scan_bit_forward64( UINT32& bit_number, UINT64 bitset )
-// BOOLEAN hw_scan_bit_backward64( UINT32& bit_number, UINT64 bitset )
-//------------------------------------------------------------------------------
-BOOLEAN hw_scan_bit_forward( UINT32 *bit_number_ptr, UINT32 bitset )
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return TRUE;
-}
-
-
-BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return TRUE;
-}
-
-
-BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return TRUE;
 }
 
 
@@ -508,8 +386,130 @@ void hw_halt( void )
 {
     asm volatile(
         "\thlt\n"
-    : : :);
+    :::);
     return;
+}
+
+
+void hw_lidt(void *Source)
+{
+    asm volatile(
+        "\tlidt     (%[Source])\n"
+    ::[Source] "p" (Source):);
+    return;
+}
+
+
+void hw_sidt(void *Destination)
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return;
+}
+
+
+INT32    hw_interlocked_increment(INT32 * addend)
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return 0;
+}
+
+
+void    hw_store_fence(void)
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return;
+}
+
+
+BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return TRUE;
+}
+
+
+//------------------------------------------------------------------------------
+// find first bit set
+//
+//  forward: LSB->MSB
+//  backward: MSB->LSB
+//
+// Return 0 if no bits set
+// Fills "bit_number" with the set bit position zero based
+//
+// BOOLEAN hw_scan_bit_forward( UINT32& bit_number, UINT32 bitset )
+// BOOLEAN hw_scan_bit_backward( UINT32& bit_number, UINT32 bitset )
+//
+// BOOLEAN hw_scan_bit_forward64( UINT32& bit_number, UINT64 bitset )
+// BOOLEAN hw_scan_bit_backward64( UINT32& bit_number, UINT64 bitset )
+//------------------------------------------------------------------------------
+BOOLEAN hw_scan_bit_forward( UINT32 *bit_number_ptr, UINT32 bitset )
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return TRUE;
+}
+
+
+BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return TRUE;
+}
+
+
+BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
+{
+#if 0
+    asm volatile(
+        "\t\n\t"
+    :
+    : 
+    :
+    );
+#endif
+    return TRUE;
 }
 
 
@@ -627,90 +627,3 @@ UINT64 hw_interlocked_increment64(INT64* p_counter)
 }
 
 
-/*
-void vmx_vmptrst( UINT64 *address )
-{
-}
-
-
-void vmx_vmptrld( UINT64 *address)
-{
-}
-
-
-void vmx_vmclear( UINT64 *address)
-{
-}
-
-
-void vmx_vmlaunch( void )
-{
-}
-
-
-void vmx_vmresume( void )
-{
-}
-
-
-void vmx_vmwrite( size_t index, size_t *buf)
-{
-}
-
-
-void vmx_vmread( size_t index, size_t *buf)
-{
-}
-
-
-int vmx_on( UINT64 *address)
-{
-    return 0;
-}
-
-
-void vmx_off( void )
-{
-}
-
-
-HW_VMX_RET_VALUE hw_vmx_set_current_vmcs( UINT64* vmcs_region_physical_address_ptr)
-{
-    return HW_VMX_FAILED;
-}
-
-
-void  hw_vmx_get_current_vmcs( UINT64* vmcs_region_physical_address_ptr )
-{
-}
-
-
-HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs( UINT64* vmcs_region_physical_address_ptr )
-{
-    return HW_VMX_FAILED;
-}
-
-
-HW_VMX_RET_VALUE hw_vmx_launch_guest()
-{
-    return HW_VMX_FAILED;
-}
-
-
-HW_VMX_RET_VALUE hw_vmx_resume_guest()
-{
-    return HW_VMX_FAILED;
-}
-
-HW_VMX_RET_VALUE hw_vmx_write_current_vmcs( size_t field_id, size_t value  )
-{
-    return HW_VMX_FAILED;
-}
-
-
-HW_VMX_RET_VALUE hw_vmx_read_current_vmcs ( size_t field_id, size_t* value )
-{
-    return HW_VMX_FAILED;
-}
-
-*/

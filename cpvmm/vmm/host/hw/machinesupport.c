@@ -514,46 +514,32 @@ INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
 }
 
 
+//RNB: this should probably be interlocked_compare_exchange_64 instead of _8?
 INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
             INT64 exchange, INT64 comperand)
 {
-#if 0
+	INT64 ret = 0ULL;
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
+        "lock; cmpxchgq %[exchange], %[comperand] \n\t"
+    :"=a" (ret), "+m" (*destination)
+//    :"r" (exchange), "0"(comperand)
+    :[ret] "r" (ret), [exchange] "r" (exchange), [comperand] "r" (comperand), [destination] "p" (destination)
+    :"memory"
     );
-#endif
-    return 0;
+    return ret;
 }
 
 INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 {
-#if 0
+	INT64 ret = 0ULL;
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
+        "lock; xchgl (%[target]), %[new_value] \n\t"
+    :"=a" (ret), "+m" (new_value)
+    :[ret] "r" (ret), [target] "p" (target), [new_value] "r" (new_value)
+    :"memory", "cc"
     );
-#endif
-    return 0;
+    return ret;
 }
-
-BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
-{
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
-    );
-#endif
-    return TRUE;
-}
-
 
 //------------------------------------------------------------------------------
 // find first bit set
@@ -572,41 +558,49 @@ BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
 //------------------------------------------------------------------------------
 BOOLEAN hw_scan_bit_forward( UINT32 *bit_number_ptr, UINT32 bitset )
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
+	BOOLEAN ret = FALSE;
+	asm volatile(
+		"bsfl (%[bit_number_ptr]), %[bitset] \n\t"
+		:"=a" (ret), "+m" (bit_number_ptr)
+    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
+    :"memory", "cc"
     );
-#endif
-    return TRUE;
+	return bitset ? TRUE : FALSE;
 }
 
+BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
+{
+	BOOLEAN ret = FALSE;
+    asm volatile(
+        "bsfq (%[bit_number_ptr]), %[bitset] \n\t"
+    :"=a" (ret), "+m" (bit_number_ptr)
+    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
+    :"memory", "cc"
+    );
+	return bitset ? TRUE : FALSE;
+}
 
 BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
 {
-#if 0
-    asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
+	BOOLEAN ret = FALSE;
+	asm volatile(
+		"bsrl (%[bit_number_ptr]), %[bitset] \n\t"
+		:"=a" (ret), "+m" (bit_number_ptr)
+    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
+    :"memory", "cc"
     );
-#endif
-    return TRUE;
+	return bitset ? TRUE : FALSE;
 }
 
 
 BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
 {
-#if 0
+	BOOLEAN ret = FALSE;
     asm volatile(
-        "\t\n\t"
-    :
-    : 
-    :
+        "bsrq (%[bit_number_ptr]), %[bitset] \n\t"
+    :"=a" (ret), "+m" (bit_number_ptr)
+    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
+    :"memory", "cc"
     );
-#endif
-    return TRUE;
+	return bitset ? TRUE : FALSE;
 }

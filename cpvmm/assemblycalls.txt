@@ -28,8 +28,6 @@ vmm/include/hw/hw_utils.h:593:  void ASM_FUNCTION hw_disable_interrupts(void);
 vmm/include/hw/hw_utils.h:604:  void ASM_FUNCTION hw_fxrestore( void* buffer );
 vmm/include/hw/hw_utils.h:530:  void ASM_FUNCTION hw_write_cr2( UINT64 _value );
 vmm/include/hw/hw_utils.h:522:  CPU_ID ASM_FUNCTION hw_cpu_id(void);
-vmm/memory/ept/ept_hw_layer.h:95:        VMM_ASSERT(host_cpu_id == hw_cpu_id());
-vmm/include/guest_cpu.h:34:     hw_cpu_id()
 vmm/include/hw/hw_utils.h:495:UINT16  ASM_FUNCTION hw_read_tr(void);
 vmm/include/hw/hw_utils.h:496:void    ASM_FUNCTION hw_write_tr(UINT16);
 vmm/include/hw/hw_utils.h:498:UINT16  ASM_FUNCTION hw_read_ldtr(void);
@@ -52,9 +50,6 @@ vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:83:    call load_save_area_into
 vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:127:    call load_save_area_into_rbx
 vmm/host/hw/em64t/em64t_isr.s:82:        jmp  hw_isr_c_wrapper
 vmm/host/hw/em64t/em64t_setjmp.s:144:        jmp     longjmp
-vmm/host/hw/em64t/em64t_gcpu_regs_save_restore.s:41:    call hw_cpu_id
-vmm/host/hw/em64t/em64t_vmx.s:114:    call hw_cpu_id
-vmm/host/hw/em64t/em64t_vmx.s:164:    call hw_cpu_id
 vmm/host/hw/em64t/em64t_vmx.s:133:    call profiling_serialize
 vmm/host/hw/em64t/em64t_vmx.s:172:    call profiling_serialize
 
@@ -113,96 +108,6 @@ vmm/vmm.c:273:    hw_set_stack_pointer(new_stack_pointer, (main_continue_fn)vmm_
 vmm/guest/guest_cpu/guest_cpu.c:148:    hw_fxsave( vgcpu->save_area.fxsave_area );
 vmm/guest/guest_cpu/guest_cpu.c:162:    hw_fxrestore( gcpu->save_area.fxsave_area );
 vmm/guest/guest_cpu/guest_cpu_switch.c:766:    hw_write_cr2( gcpu->save_area.gp.reg[ CR2_SAVE_AREA ] );
-vmm/guest/guest_cpu/guest_cpu_switch.c:493:    g_guest_regs_save_area[ hw_cpu_id() ] = &(gcpu->save_area);
-vmm/guest/guest_cpu/guest_cpu_switch.c:516:    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
-vmm/guest/guest_cpu/guest_cpu_switch.c:821:    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
-vmm/guest/guest_cpu/guest_cpu_switch.c:824:    vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
-vmm/guest/guest_cpu/guest_cpu_vmenter_event.c:42:        hw_cpu_id(),
-vmm/guest/scheduler/scheduler.c:182:    vcpu_obj = g_scheduler_state[hw_cpu_id()].current_vcpu_obj;
-vmm/guest/scheduler/scheduler.c:248:    CPU_ID host_cpu = hw_cpu_id();
-vmm/guest/scheduler/scheduler.c:267:    CPU_ID host_cpu = hw_cpu_id();
-vmm/guest/scheduler/scheduler.c:303:    CPU_ID host_cpu = hw_cpu_id();
-vmm/guest/scheduler/scheduler.c:332:    for (vcpu_obj = g_scheduler_state[ hw_cpu_id() ].vcpu_obj_list;
-vmm/host/hw/local_apic.c:749:    local_apic_send_ipi( IPI_DST_NO_SHORTHAND, (UINT8) hw_cpu_id(),
-vmm/host/hw/vmcs_init.c:581:                 hw_cpu_id());
-vmm/host/hw/vmcs_init.c:593:                     hw_cpu_id());
-vmm/memory/ept/ept.c:106:    if (ept.lock.owner_cpu_id == hw_cpu_id()) {
-vmm/memory/ept/ept.c:797:        invept_cmd->host_cpu_id != hw_cpu_id()) {
-vmm/memory/ept/ept.c:1033:    if(hw_cpu_id() == scheduler_get_host_cpu_id(gcpu))
-vmm/memory/ept/ept.c:1268:    if(host_cpu_id == hw_cpu_id())
-vmm/memory/ept/ept.c:1286:    if(host_cpu_id == hw_cpu_id())
-vmm/memory/ept/ept.c:1304:    if(host_cpu_id == hw_cpu_id())
-vmm/memory/memory_manager/memory_address_mapper.c:2367:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2446:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2518:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2565:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2610:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2650:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2694:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2843:    mam->update_on_cpu = hw_cpu_id();
-vmm/memory/memory_manager/memory_address_mapper.c:2916:    mam->update_on_cpu = hw_cpu_id();
-vmm/acpi/vmm_acpi_pm.c:577:    CPU_ID                  cpu_id = hw_cpu_id();
-vmm/acpi/vmm_acpi_pm.c:581:     vmm_startup_data.cpu_local_apic_ids[hw_cpu_id()] = local_apic_get_current_id();
-vmm/arch/pat_manager.c:104:                                     hw_cpu_id(), __FUNCTION__, mem_type);
-vmm/dbg/vmdb.c:821:        vcpu.guest_cpu_id = hw_cpu_id();
-vmm/dbg/vmdb.c:971:    vcpu.guest_cpu_id = hw_cpu_id();
-vmm/dbg/vmdb.c:1098:        CLI_PRINT("VMDB is not attached to thread %s,%d\n", args[1], hw_cpu_id());
-vmm/dbg/vmm_dbg.c:70:    cpu_id = hw_cpu_id();
-vmm/guest/guest.c:918:                          hw_cpu_id(),
-vmm/guest/guest.c:931:    CPU_ID this_cpu_id = hw_cpu_id();
-vmm/guest/guest.c:948:    CPU_ID cpu_id = hw_cpu_id();
-vmm/guest/guest_control.c:54:    CPU_ID              this_hcpu_id = hw_cpu_id();
-vmm/guest/guest_control.c:82:    CPU_ID              this_hcpu_id = hw_cpu_id();
-vmm/host/host_cpu.c:272:    CPU_ID cpu = hw_cpu_id();
-vmm/host/host_cpu.c:293:    CPU_ID              cpu_id = hw_cpu_id();
-vmm/host/host_cpu.c:308:                CPU_ID              cpu = hw_cpu_id();
-vmm/host/host_cpu.c:361:    cpu = hw_cpu_id();
-vmm/host/host_cpu.c:497:    CPU_ID              my_cpu_id = hw_cpu_id();
-vmm/host/host_cpu.c:515:    CPU_ID              my_cpu_id = hw_cpu_id();
-vmm/host/host_cpu.c:535:    CPU_ID              my_cpu_id = hw_cpu_id();
-vmm/host/isr.c:199:    CPU_ID cpu_id = hw_cpu_id();
-vmm/host/trial_exec.c:30:    CPU_ID cpu_id = hw_cpu_id();
-vmm/host/trial_exec.c:45:    CPU_ID cpu_id = hw_cpu_id();
-vmm/host/trial_exec.c:68:    CPU_ID cpu_id = hw_cpu_id();
-vmm/startup/create_guests.c:327:    VMM_ASSERT( hw_cpu_id() == 0 );
-vmm/startup/create_guests.c:413:    VMM_ASSERT( current_cpu_id == hw_cpu_id() );
-vmm/utils/cache64.c:112:    if (vmcs_sw_shadow_disable[hw_cpu_id()])
-vmm/utils/cache64.c:135:    if (vmcs_sw_shadow_disable[hw_cpu_id()])
-vmm/utils/lock.c:40:    CPU_ID this_cpu_id = hw_cpu_id();
-vmm/utils/lock.c:60:    CPU_ID this_cpu_id = hw_cpu_id();
-vmm/vmexit/vmcall.c:168:         hw_cpu_id(), __FUNCTION__,
-vmm/vmexit/vmcall.c:257:         hw_cpu_id(), __FUNCTION__);
-vmm/vmexit/vmcall.c:274:         hw_cpu_id(), __FUNCTION__);
-vmm/vmexit/vmexit.c:537:    VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY Failed on ", hw_cpu_id());
-vmm/vmexit/vmexit.c:641:    VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY failed due to machine check\r\n", hw_cpu_id());
-vmm/vmexit/vmexit.c:702:                hw_cpu_id(),
-vmm/vmexit/vmexit.c:770:                hw_cpu_id(), reason);
-vmm/vmexit/vmexit.c:801:    vmcs_sw_shadow_disable[hw_cpu_id()] = TRUE;
-vmm/vmexit/vmexit.c:833:    VMM_ASSERT(hw_cpu_id() < VMM_MAX_CPU_SUPPORTED);
-vmm/vmexit/vmexit.c:837:        vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
-vmm/vmexit/vmexit.c:843:    host_cpu_store_vmexit_gcpu(hw_cpu_id(), gcpu);
-vmm/vmexit/vmexit_dbg.c:96:        if (monitor_requested[hw_cpu_id()] != 0)
-vmm/vmexit/vmexit_dbg.c:98:            monitor_requested[hw_cpu_id()] = 0;
-vmm/vmexit/vmexit_init.c:39:    CPU_ID                cpu_id = hw_cpu_id();
-vmm/vmexit/vmexit_init.c:42:    guest_vcpu(gcpu)->guest_id, guest_vcpu(gcpu)->guest_cpu_id, hw_cpu_id());
-vmm/vmexit/vmexit_sipi.c:82:    "CPU-%d Leave SIPI State: Guest Core Count is %d.\n", hw_cpu_id(),
-vmm/vmexit/vmx_teardown.c:144:    UINT32 cpu_idx = hw_cpu_id();
-vmm/vmx/vmcs.c:1314:    cpu_id = hw_cpu_id();
-vmm/vmx/vmcs.c:1404:            hw_cpu_id(), __FUNCTION__);
-vmm/vmx/vmcs_actual.c:172:    nmi_window[hw_cpu_id()] = TRUE;
-vmm/vmx/vmcs_actual.c:177:    nmi_window[hw_cpu_id()] = FALSE;
-vmm/vmx/vmcs_actual.c:180:        nmi_window[hw_cpu_id()] = TRUE;
-vmm/vmx/vmcs_actual.c:191:    return nmi_is_nmi_occured() || nmi_window[hw_cpu_id()];
-vmm/vmx/vmcs_actual.c:319:    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
-vmm/vmx/vmcs_actual.c:361:            (p_vmcs->owning_host_cpu != hw_cpu_id()))
-vmm/vmx/vmcs_actual.c:419:            (p_vmcs->owning_host_cpu != hw_cpu_id()))
-vmm/vmx/vmcs_actual.c:452:    VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
-vmm/vmx/vmcs_actual.c:539:    VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
-vmm/vmx/vmcs_actual.c:669:    CPU_ID           this_cpu = hw_cpu_id();
-vmm/vmx/vmcs_actual.c:727:    VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
-vmm/vmx/vmx_nmi.c:153:  CPU_ID cpu_id=hw_cpu_id();
-vmm/vmx/vmx_nmi.c:164:  CPU_ID cpu_id=hw_cpu_id();
-vmm/vmx/vmx_nmi.c:175:  CPU_ID cpu_id=hw_cpu_id();
 vmm/host/host_cpu.c:424:    status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_tr(), &base, &limit, &attributes);
 vmm/host/host_cpu.c:426:    vmcs_write(vmcs, VMCS_HOST_TR_SELECTOR, hw_read_tr());
 vmm/host/hw/em64t/em64t_gdt.c:231:    hw_write_tr(TSS_ENTRY_OFFSET(cpu_id));

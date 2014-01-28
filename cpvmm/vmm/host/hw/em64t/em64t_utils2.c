@@ -461,10 +461,7 @@ void hw_write_cr2 (UINT64 value) {
 	return;
 }
 /*
- * UINT16 __stdcall
- * hw_cpu_id (
- *	void
- *  );
+ * UINT16 * hw_cpu_id ( void * );
  *
  *  Read TR and calculate cpu_id
  *
@@ -478,12 +475,14 @@ void hw_write_cr2 (UINT64 value) {
 UINT16 hw_cpu_id () {
 	UINT16 ret = 0;
 
-	asm volatile("xor %%rax, %%rax \n\t"
+	asm volatile(
+							"xor %%rax, %%rax \n\t"
         			"str %%ax \n\t"
-        			"sub $32 , %%ax \n\t" // CPU_LOCATOR_GDT_ENTRY_OFFSET is 48
+        			"sub $32 , %%ax \n\t" // CPU_LOCATOR_GDT_ENTRY_OFFSET is 32
         			"shrw $4, %%ax \n\t" //TSS_ENTRY_SIZE_SHIFT is 4
-							:"=rax" (ret)
-							:"rax" (ret)
+							"movw %%ax, %[ret] \n"
+							:
+							:[ret] "m" (ret)
 							:"rax"
 	);
 	return ret;

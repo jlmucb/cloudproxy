@@ -16,6 +16,7 @@
 
 #include "vmm_defs.h"
 
+//RNB:If a variable/arg is in memory, what are the effects of indicating "memory" in the clobber list
 void hw_fnstsw (UINT16* loc) {
 // Read FPU status word
 //   this doesnt seem to be called

@@ -12,17 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-if [[ "$#" != "1" ]]; then
-  echo "Usage: $0 <test dir>"
+if [[ "$#" != "2" ]]; then
+  echo "Usage: $0 <test dir> <build dir>"
   exit 1
 fi
 
 TEST=$1
+BUILD_DIR=$2
 
 cd ${TEST}
 mkdir fake_key
-keyczart create --location=fake_key --purpose=sign --asymmetric=ecdsa
-keyczart addkey --location=fake_key --status=primary
+${BUILD_DIR}/keyczart create --location=fake_key --purpose=sign \
+  --asymmetric=ecdsa
+${BUILD_DIR}/keyczart addkey --location=fake_key --status=primary
 
 # The default flags work in our setup
 ${TEST}/attest_to_key

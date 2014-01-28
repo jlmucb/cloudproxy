@@ -13,14 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
-# 1. built everything in ROOT/src (using ./bootstrap.sh &&
-# third_party/ninja/ninja -C out/Release);
-# 2. have a version of keyczart in $PATH (either install keyczar or build the
-# one in third_party/keyczar);
-# 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
-# TPM
-# 4. changed the following variables to suit your directory choices:
 if [[ "$#" != "4" ]]; then
   echo "Usage: $0 <run dir> <test dir> <git root dir> <build dir>"
   exit 1

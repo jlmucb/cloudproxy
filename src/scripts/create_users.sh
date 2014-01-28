@@ -13,14 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
-# 1. built everything in ROOT/src (using ./bootstrap.sh &&
-# third_party/ninja/ninja -C out/Release);
-# 2. have a version of keyczart in $PATH (either install keyczar or build the
-# one in third_party/keyczar);
-# 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
-# TPM
-# 4. changed the following variables to suit your directory choices:
 if [[ "$#" != "4" ]]; then
   echo "Usage: $0 <run dir> <git root dir> <build dir> <keyczar pass>"
   exit 1
@@ -37,22 +29,25 @@ KEYCZAR_PASS=$4
 # Create keys for users tmroeder and jlm with simple passwords.
 cd $RUN
 mkdir -p keys/tmroeder keys/jlm
-keyczart create --location=keys/tmroeder --purpose=sign --asymmetric=rsa
-keyczart addkey --location=keys/tmroeder --status=primary --pass=tmroeder
-
-keyczart create --location=keys/jlm --purpose=sign --asymmetric=rsa
-keyczart addkey --location=keys/jlm --status=primary --pass=jlm
+${BUILD_DIR}/keyczart create --location=keys/tmroeder --purpose=sign \
+    --asymmetric=rsa
+${BUILD_DIR}/keyczart addkey --location=keys/tmroeder --status=primary \
+    --pass=tmroeder
+${BUILD_DIR}/keyczart create --location=keys/jlm --purpose=sign --asymmetric=rsa
+${BUILD_DIR}/keyczart addkey --location=keys/jlm --status=primary --pass=jlm
 
 
 # Extract and sign the public keys for these files using the policy key.
 
 mkdir -p keys/tmroeder_pub keys/jlm_pub
-keyczart create --location=keys/tmroeder_pub --purpose=sign --asymmetric=rsa
-keyczart pubkey --location=keys/tmroeder --destination=keys/tmroeder_pub \
-  --pass=tmroeder
+${BUILD_DIR}/keyczart create --location=keys/tmroeder_pub --purpose=sign \
+  --asymmetric=rsa
+${BUILD_DIR}/keyczart pubkey --location=keys/tmroeder \
+  --destination=keys/tmroeder_pub --pass=tmroeder
 
-keyczart create --location=keys/jlm_pub --purpose=sign --asymmetric=rsa
-keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
+${BUILD_DIR}/keyczart create --location=keys/jlm_pub --purpose=sign \
+  --asymmetric=rsa
+${BUILD_DIR}/keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
   --pass=jlm
 
 # These commands rely on the sign_pub_key command in src/apps/sign_pub_key.cc

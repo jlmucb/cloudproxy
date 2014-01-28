@@ -16,11 +16,9 @@
 # BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
 # 1. built everything in ROOT/src (using ./bootstrap.sh &&
 # third_party/ninja/ninja -C out/Release);
-# 2. have a version of keyczart in $PATH (either install keyczar or build the
-# one in third_party/keyczar);
-# 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
-# TPM
-# 4. changed the following variables to suit your directory choices:
+# 2. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
+# TPM (to use the TPM version. Otherwise, call this script with argument "FAKE")
+# 3. changed the following variables to suit your directory choices:
 if [[ $# -gt 0 ]]; then
   USE_FAKE=$1
 else
@@ -40,14 +38,14 @@ KEYCZAR_PASS=cppolicy
 ROOT=~/src/fileProxy
 SCRIPTS=${ROOT}/src/scripts
 
-${SCRIPTS}/make_policy_key.sh $RUN $ROOT $KEYCZAR_PASS $PASS
+${SCRIPTS}/make_policy_key.sh $RUN $BUILD_DIR $ROOT $KEYCZAR_PASS $PASS
 ${SCRIPTS}/create_users.sh $RUN $ROOT $BUILD_DIR $KEYCZAR_PASS
 if [[ "$USE_FAKE" = "NO_FAKE" ]]; then
   ${SCRIPTS}/make_aik.sh $RUN $ROOT $BUILD_DIR $AIKBLOB $KEYCZAR_PASS
 fi
 
 ${SCRIPTS}/create_test_dir.sh $RUN $TEST $ROOT $BUILD_DIR
-${SCRIPTS}/make_fake_key.sh $TEST
+${SCRIPTS}/make_fake_key.sh $TEST $BUILD_DIR
 ${SCRIPTS}/set_up_whitelist.sh $TEST $ROOT $BUILD_DIR $SAMPLE_WHITELIST \
   $KEYCZAR_PASS $USE_FAKE
 ${SCRIPTS}/set_up_acls.sh $TEST $ROOT $BUILD_DIR $SAMPLE_ACLS $KEYCZAR_PASS

@@ -13,23 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# BEFORE RUNNING THIS SCRIPT, YOU MUST HAVE:
-# 1. built everything in ROOT/src (using ./bootstrap.sh &&
-# third_party/ninja/ninja -C out/Release);
-# 2. have a version of keyczart in $PATH (either install keyczar or build the
-# one in third_party/keyczar);
-# 3. followed the directions in ROOT/Doc/SetupTPM.txt to take ownership of the
-# TPM
-# 4. changed the following variables to suit your directory choices:
-if [[ "$#" != "4" ]]; then
-  echo "Usage: $0 <run dir> <git root dir> <keyczar pass> <openssl pass>"
+if [[ "$#" != "5" ]]; then
+  echo "Usage: $0 <run dir> <build dir> <git root dir> <keyczar pass> <openssl pass>"
   exit 1
 fi
 
 RUN=$1
-ROOT=$2
-KEYCZAR_PASS=$3
-PASS=$4
+BUILD_DIR=$2
+ROOT=$3
+KEYCZAR_PASS=$4
+PASS=$5
 
 # Create a directory structure for the openssl keys:
 
@@ -52,10 +45,11 @@ openssl ecparam -in policy_pub.pem -genkey |
 # and one public key for all other programs.
 cd ${RUN}
 mkdir policy_key
-keyczart create --location=policy_key --purpose=sign --asymmetric=ecdsa
-keyczart importkey --location=policy_key --status=primary \
+${BUILD_DIR}/keyczart create --location=policy_key --purpose=sign \
+  --asymmetric=ecdsa
+${BUILD_DIR}/keyczart importkey --location=policy_key --status=primary \
   --key=openssl_keys/policy/policy.pem --passphrase=$PASS \
   --pass=$KEYCZAR_PASS
 mkdir policy_public_key
-keyczart pubkey --location=policy_key --destination=policy_public_key \
-  --pass=$KEYCZAR_PASS
+${BUILD_DIR}/keyczart pubkey --location=policy_key \
+  --destination=policy_public_key --pass=$KEYCZAR_PASS

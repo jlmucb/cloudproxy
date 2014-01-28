@@ -52,9 +52,6 @@
       'include_dirs': [
         'cpp/src',
       ],
-      'defines': [
-        'COMPAT_KEYCZAR_06B',
-      ],
       'libraries': [
         '-lcrypto',
       ],
@@ -187,18 +184,12 @@
       'dependencies': [
         'keyczar_openssl',
       ],
-      'defines': [
-        'COMPAT_KEYCZAR_06B',
-      ],
       'include_dirs': [
         'cpp/src',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
           'cpp/src',
-        ],
-        'defines': [
-          'COMPAT_KEYCZAR_06B',
         ],
       },
       'export_dependent_settings': [

@@ -75,8 +75,8 @@ vmm_lock_xchg_dword:
 .globl  vmm_lock_xchg_byte
 vmm_lock_xchg_byte:
     push ebx
-    mov bl, byte ptr [ebp + 12] # copy src to bl
-    lock xchg byte ptr [ebp + 8], bl
+    mov bl, byte ptr [%ebp + 12] # copy src to bl
+    lock xchg byte ptr [%ebp + 8], bl
     pop ebx
     ret
 

@@ -52,7 +52,7 @@ vmm_asm_invept:
 	mov %rcx, %rdx
 	_INVEPT
 	pushfq
-	pop [r8]
+	pop [%r8]
 	ret
 
 

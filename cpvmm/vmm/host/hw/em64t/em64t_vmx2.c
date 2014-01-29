@@ -54,7 +54,6 @@ void vmexit_func()
         "\tcmpq     $4,%%rcx\n" \
         "\tja       1f\n" \
         "\tmovq     $4, %%rcx\n" \
-        // vmexit_l1:      # parameters are normalized
         "1:\n" \
         "\tshlq     $3, %%rcx\n" \
         "\tsubq     %%rcx, %%rsp\n" \

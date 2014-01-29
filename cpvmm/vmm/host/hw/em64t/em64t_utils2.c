@@ -466,8 +466,8 @@ void hw_fxsave (void *buffer) {
 void hw_fxrestore (void *buffer) {
 	asm volatile(
 		"fxrstor %[buffer]"
-		:[buffer] "=m" (buffer)
 		:
+		:[buffer] "m" (buffer)
 		:
 	);
 	return;
@@ -722,16 +722,17 @@ void hw_perform_asm_iret () {
 } //hw_perform_asm_iret ENDP
 void hw_set_stack_pointer (HVA new_stack_pointer, 
 													main_continue_fn func, void *params) {
-	asm volatile("L1: \n\t"
-							"movq %[new_stack_pointer], %%rsp \n\t"
-							"movq %[params], %[new_stack_pointer] \n\t"
-							"subq $32, %%rsp \n\t" // allocate home space for 4 input params
-							"call %[func] \n\t" 
-							"jmp L1"
-							:
-							:[new_stack_pointer] "g"(new_stack_pointer),
-							 [func] "g" (func), [params] "p"(params)
-							:"cc"
+	asm volatile(
+		"L1: \n\t"
+		"movq %[new_stack_pointer], %%rsp \n\t"
+		"movq %[params], %[new_stack_pointer] \n\t"
+		"subq $32, %%rsp \n\t" // allocate home space for 4 input params
+		"call %[func] \n\t" 
+		"jmp L1"
+		:
+		:[new_stack_pointer] "g"(new_stack_pointer),
+		[func] "g" (func), [params] "p"(params)
+		:"cc"
 	);
 	return;
 }

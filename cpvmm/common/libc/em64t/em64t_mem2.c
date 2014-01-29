@@ -58,7 +58,6 @@ void vmm_lock_xchg_byte (UINT8 *dst, //rcx
 		"\tmovq %[src], %%rdx\n"
 		"\tmovq %[dst], %%rcx\n"
 		"\tmovb (%%rdx), %%bl\n"
-//		"\tlock xchg %%rbx, (%%rcx)\n"
 		"\tlock xchg %%bl, (%%rcx)\n" // byte exchange
     :
     : [dst] "m" (dst), [src] "m" (src)

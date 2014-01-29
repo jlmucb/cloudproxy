@@ -26,13 +26,11 @@ void vmm_asm_invept (INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 		"\tmov %%rcx, %%rax \n"
 		"\tmov %%rdx, %%rcx \n"
 		"\tinvept (%%rax), %%rcx\n" 
-//		"\t .byte 0x66, 0x48, 0x0f, 0x38, 0x80, 0x08\n" //invept
 		"\tpushfq\n"
 		"\tpop (%%r8) \n"
 		: 
 		: [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
 		: "rax", "rcx", "rdx", "r8"
-    // JLM: is the last push right?
 	);
 	return;
 }
@@ -50,10 +48,9 @@ void vmm_asm_invvpid (INVVPID_ARG *arg, UINT32 modifier, UINT64 *rflags)
 		"\tmovq %[arg], %%rcx\n" 
 		"\tmovq %[modifier], %%rdx\n" 
 		"\tmovq %[rflags], %%r8\n" 
-		"\tmov %%rcx, %%rax \n"
-		"\tmov %%rdx, %%rcx \n"
-		"\t.byte	0x66, 0x48, 0x0f, 0x38, 0x81, 0x08 \n" //invvpid
-//		"\tinvvpid  xmmword ptr (%rax), %%rcx\n" 
+		"\tmovq %%rcx, %%rax \n"
+		"\tmovq %%rdx, %%rcx \n"
+		"\tinvvpid (%%rax), %%rcx\n" 
 		"\tpushfq \n"
 		"\tpop (%%r8) \n"
 		:

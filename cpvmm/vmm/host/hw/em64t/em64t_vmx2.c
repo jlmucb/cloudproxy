@@ -50,11 +50,7 @@ void vmexit_func()
 {
     gcpu_save_registers();
     asm volatile(
-        "\txor      %%rcx, %%rcx\n" \
-        "\tcmpq     $4,%%rcx\n" \
-        "\tja       1f\n" \
-        "\tmovq     $4, %%rcx\n" \
-        "1:\n" \
+        "\txor      %%rcx, %%rcx\n"
         "\tshlq     $3, %%rcx\n" \
         "\tsubq     %%rcx, %%rsp\n" \
         "\tcall    vmexit_common_handler\n" \

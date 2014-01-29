@@ -66,21 +66,6 @@ common/libc/common_libc.c:291:        vmm_lock_xchg_byte(&((UINT8*) dest)[j], &(
 common/libc/common_libc.c:310:        vmm_lock_xchg_byte(&((UINT8*)d)[count - i - 1],
 common/libc/common_libc.c:291:        vmm_lock_xchg_byte(&((UINT8*) dest)[j], &((UINT8*)src)[j]);
 common/libc/common_libc.c:310:        vmm_lock_xchg_byte(&((UINT8*)d)[count - i - 1],
-vmm/host/hw/hw_utils.c:94:        hw_pause();
-vmm/guest/guest_control.c:135:            hw_pause();
-vmm/ipc/ipc.c:357:                    hw_pause();
-vmm/ipc/ipc_api.c:201:            hw_pause();
-vmm/libc/vmm_io.c:81:        hw_pause();
-vmm/libc/vmm_io.c:101:        hw_pause();
-vmm/libc/vmm_io.c:121:        hw_pause();
-vmm/utils/lock.c:51:        hw_pause();
-vmm/utils/lock.c:76:            hw_pause();
-vmm/utils/lock.c:162:        hw_pause();
-vmm/utils/lock.c:182:            hw_pause();
-vmm/vmm.c:106:    {while (!g_application_procs_may_be_launched) { hw_pause(); }}
-vmm/vmm.c:112:    {while (g_application_procs_launch_the_guest != (UINT32)(count)) { hw_pause(); }}
-vmm/vmm.c:106:    {while (!g_application_procs_may_be_launched) { hw_pause(); }}
-vmm/vmm.c:112:    {while (g_application_procs_launch_the_guest != (UINT32)(count)) { hw_pause(); }}
 vmm/host/isr.c:135:                p_stack->u.errcode_exception.ip = (ADDRESS)hw_exception_post_handler;
 vmm/host/hw/em64t/em64t_gdt.c:222:    hw_lgdt(&gdtr);
 vmm/host/hw/em64t/em64t_gdt.c:189:    hw_sgdt(&gdtr);

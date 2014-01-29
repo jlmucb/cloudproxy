@@ -30,16 +30,6 @@
 	*  );
 	*
 	*  Load GDTR (from buffer pointed by RCX)
-	.set    ARG1_U8, %cl
-	.set    ARG1_U16, % cx
-	.set    ARG1_U32, %ecx
-	.set    ARG1_U64, %rcx
-	.set    ARG2_U8, %dl
-	.set    ARG2_U16, %dx
-	.set    ARG2_U32, %edx
-	.set    ARG2_U64, %rdx
-	.set    ARG3_U32, %r8d
-	.set    ARG3_U64, %r8
 */
 
 #include "hw_utils.h"
@@ -57,14 +47,6 @@ typedef struct {
 
 SMI_PORT_PARAMS spp;
 
-/*
-typedef struct {
-    unsigned long M_RAX;
-    unsigned long M_RBX;
-    unsigned long M_RCX;
-    unsigned long M_RDX;
-} CPUID_PARAMS;
-*/
 CPUID_PARAMS cp;
 
 void  hw_lgdt (void *gdtr) {
@@ -602,7 +584,6 @@ void hw_cpuid (CPUID_PARAMS *cp) {
 
 	 asm volatile(
 			"movq %[cp], %%r8 \n\t" 
-			"movq %%rbx, %%r9 \n\t" //    # save RBX
         //# fill regs for cpuid
 			"movq (%%r8), %%rax \n\t"
 			"movq 8(%%r8), %%rbx \n\t"
@@ -613,10 +594,9 @@ void hw_cpuid (CPUID_PARAMS *cp) {
 			"movq %%rbx, 8(%%r8) \n\t"
 			"movq %%rcx, 16(%%r8) \n\t"
 			"movq %%rdx, 24(%%r8) \n\t"
-			"movq %%r9, %%rbx \n\t"
 			:
 			:[cp] "g" (cp)
-			:"rax", "rbx", "rcx", "rdx", "memory"
+			:"r8", "rax", "rbx", "rcx", "rdx", "memory"
 	);
 
 	return;

@@ -319,7 +319,7 @@ typedef struct {
     UINT64   m_rbx;
     UINT64   m_rcx;
     UINT64   m_rdx;
-} CPUID_PARAMS;
+} PACKED CPUID_PARAMS;
 
 //void ASM_FUNCTION  hw_cpuid(CPUID_PARAMS *);
 void hw_cpuid(CPUID_PARAMS *);

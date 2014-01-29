@@ -24,7 +24,7 @@
 	* Callee-saved
 	*        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 	*
-	*  void __stdcall
+	*  void 
 	*  hw_lgdt (
 	*          void * gdtr
 	*  );
@@ -125,7 +125,7 @@ void hw_write_cs (UINT16 i) {
 		);
 }
 
-/*  UINT16 __stdcall
+/*  UINT16 
  *  hw_read_ds (
  *          void
  *  );
@@ -149,7 +149,7 @@ UINT16 hw_read_ds () {
 }
 
 //
-//  void __stdcall
+//  void 
 //  hw_write_ds (
 //          UINT16
 //  );
@@ -166,7 +166,7 @@ void hw_write_ds(UINT16 i) {
 }
 
 //
-//  UINT16 __stdcall
+//  UINT16 
 //  hw_read_es (
 //          void
 //  );
@@ -191,7 +191,7 @@ UINT16 hw_read_es() {
 }
 
 //
-//  void __stdcall
+//  void 
 //  hw_write_es (
 //          UINT16
 //  );
@@ -208,7 +208,7 @@ void hw_write_es (UINT16 i) {
 	return;
 }
 //
-//  UINT16 __stdcall
+//  UINT16 
 //  hw_read_ss (
 //          void
 //  );
@@ -230,7 +230,7 @@ UINT16 hw_read_ss() {
 }
 
 //
-//  void __stdcall
+//  void 
 //  hw_write_ss (
 //          UINT16
 //  );
@@ -247,7 +247,7 @@ void hw_write_ss (UINT16 i) {
 	return;
 }
 //
-//  UINT16 __stdcall
+//  UINT16 
 //  hw_read_fs (
 //          void
 //  );
@@ -270,8 +270,7 @@ UINT16 hw_read_fs() {
 }
 
 //
-//  void __stdcall
-//  hw_write_fs (
+//  void hw_write_fs (
 //          UINT16
 //  );
 //
@@ -287,7 +286,7 @@ void hw_write_fs (UINT16 i) {
 	return;
 }
 //
-//  UINT16 __stdcall
+//  UINT16 
 //  hw_read_gs (
 //          void
 //  );
@@ -309,7 +308,7 @@ UINT16 hw_read_gs() {
 }
 
 //
-//  void __stdcall
+//  void 
 //  hw_write_gs (
 //          UINT16
 //  );
@@ -326,7 +325,7 @@ void hw_write_gs (UINT16 i) {
 	return;
 }
 /* 
- *  UINT64 __stdcall
+ *  UINT64 
  *  hw_read_rsp (void);
 */
 UINT64 hw_read_rsp () {
@@ -429,7 +428,7 @@ void hw_write_to_smi_port(
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_enable_interrupts (void);
  */
 
@@ -439,7 +438,7 @@ void hw_enable_interrupts () {
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_disable_interrupts (void);
  */
 void hw_disable_interrupts () {
@@ -448,7 +447,7 @@ void hw_disable_interrupts () {
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_fxsave (void* buffer);
  */
 void hw_fxsave (void *buffer) {
@@ -461,7 +460,7 @@ void hw_fxsave (void *buffer) {
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_fxrestore (void* buffer);
  */
 void hw_fxrestore (void *buffer) {
@@ -475,7 +474,7 @@ void hw_fxrestore (void *buffer) {
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_write_cr2 (UINT64 value);
  */
 void hw_write_cr2 (UINT64 value) {
@@ -516,7 +515,7 @@ UINT16 hw_cpu_id () {
 	return ret;
 }
 /*
- * UINT16 __stdcall
+ * UINT16 
  * hw_read_tr (
  *          void
  *  );
@@ -538,7 +537,7 @@ UINT16 hw_read_tr() {
 	return ret;
 }
 /*
- *  void __stdcall
+ *  void 
  *  hw_write_tr (
  *          UINT16
  *  );
@@ -556,7 +555,7 @@ void hw_write_tr (UINT16 i) {
 }
 
 /*
- *  UINT16 __stdcall
+ *  UINT16 
  *  hw_read_ldtr (
  *          void
  *  );
@@ -576,7 +575,7 @@ UINT16 hw_read_ldtr () {
 	return ret;
 }
 /*
- *  void __stdcall
+ *  void 
  *  hw_write_ldtr (
  *          UINT16
  *  );
@@ -594,7 +593,7 @@ void hw_write_ldtr (UINT16 i) {
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_cpuid (CPUID_PARAMS *)
  *
  *  Execute cpuid instruction
@@ -624,7 +623,7 @@ void hw_cpuid (CPUID_PARAMS *cp) {
 }
 
 /*
- *  void __stdcall
+ *  void 
  *  hw_leave_64bit_mode ();
  *  Arguments:   UINT32 compatibility_segment  CX
  *               UINT16 port_id                DX

@@ -53,7 +53,7 @@ typedef struct {
     unsigned long P_RSI;
     unsigned long P_RDI;
     unsigned long P_RFLAGS;
-} SMI_PORT_PARAMS;  
+} PACKED SMI_PORT_PARAMS;  
 
 SMI_PORT_PARAMS spp;
 
@@ -69,20 +69,21 @@ CPUID_PARAMS cp;
 
 void  hw_lgdt (void *gdtr) {
 
-	 asm volatile("lgdt (%0)\n"
+	 asm volatile(
+		"lgdt (%[gdtr])\n"
 		:
-		:"rcx" (gdtr)
-	  :"rcx"
+		:[gdtr] "p" (gdtr)
+	  :
 	);
 	return;
 }
 
 void hw_sgdt (void * gdtr) {
 //  Store GDTR (to buffer pointed by RCX)
-	 asm volatile("sgdt (%0)"
+	 asm volatile("sgdt (%[gdtr])"
 		:
-		:"rcx" (gdtr)
-		:"rcx"
+		:[gdtr] "p" (gdtr)
+		:
 	);
 	return;
 }
@@ -94,29 +95,33 @@ void hw_sgdt (void * gdtr) {
 UINT16 hw_read_cs () {
 		
 	UINT16 ret = 0;
-	 asm volatile("xor %%rax, %%rax \n\t"
-       "movw %%ax, %%cs \n\t"
+	 asm volatile(
+			"xor %%rax, %%rax \n\t"
+      "movw %%cs, %%ax \n\t"
+      "movw %%ax, %[ret] \n\t"
 			:"=rm" (ret)
-			:"rm" (ret)
-			:"cc", "memory");
+			:[ret] "rm" (ret)
+			:"cc", "rax", "memory"
+		);
 	return ret;
 }
 
 //RNB: I am not 100% sure about "jumping to a label" part.
 void hw_write_cs (UINT16 i) { 
         // push segment selector
-		asm volatile("xor %%rax, %%rax \n\t"
-        "movw %0, %%ax \n\t"
-        "shlq $32, %%rax \n\t"
-        "lea L_CONT_WITH_NEW_CS, %%rdx \n\t"
-        "add %%rdx, %%rax \n\t"
-        "push %%rax \n\t"
-        "lret \n\t" //brings IP to CONT_WITH_NEW_CS
-				"L_CONT_WITH_NEW_CS: \n\t"
-        "ret"
-				:"=g" (i)
-				:"g" (i)
-				:"rax", "rdx"
+		asm volatile (
+			"xor %%rax, %%rax \n\t"
+      "movw %[i], %%ax \n\t"
+      "shlq $32, %%rax \n\t"
+      "lea L_CONT_WITH_NEW_CS, %%rdx \n\t"
+      "add %%rdx, %%rax \n\t"
+      "push %%rax \n\t"
+      "lret \n\t" //brings IP to CONT_WITH_NEW_CS
+			"L_CONT_WITH_NEW_CS: \n\t"
+      "ret"
+			:
+			:[i] "m" (i)
+			:"rax", "rdx"
 		);
 }
 
@@ -134,13 +139,13 @@ void hw_write_cs (UINT16 i) {
 UINT16 hw_read_ds () {
 	UINT16 ret = 0;
 	 asm volatile("xor %%rax, %%rax \n\t"
-			"mov %%ds, %%ax \n\t"
-			"mov %%ax, %0 \n\t"
+			"movw %%ds, %%ax \n\t"
+			"movw %%ax, %[ret] \n\t"
+			:[ret] "=g" (ret)
 			:
-			:"rm"(ret)
 			:"cc", "memory"
 	);
-	return;
+	return ret;
 }
 
 //
@@ -151,9 +156,10 @@ UINT16 hw_read_ds () {
 //
 //  Write to Data Segment Selector
 void hw_write_ds(UINT16 i) {
-	 asm volatile("mov %0, %%ds \n\t"
-			://"=r" (i)
-			:"g" (i)
+	 asm volatile(
+			"movw %[i], %%ds \n\t"
+			:
+			:[i] "g" (i)
 			:
 	);
 	return;
@@ -173,11 +179,15 @@ void hw_write_ds(UINT16 i) {
 //
 UINT16 hw_read_es() {
 
-	 asm volatile("xor %%rax, %%rax \n\t"
-			"mov %%es, %%ax \n\t"
-			:::
+	UINT16 ret = 0;
+	 asm volatile(
+		"xor %%rax, %%rax \n\t"
+		"movw %%es, %%ax \n\t"
+		"movw %%ax, %[ret] \n\t"
+		:[ret] "=g" (ret)
+		::
 	);
-	return;
+	return ret;
 }
 
 //
@@ -189,10 +199,11 @@ UINT16 hw_read_es() {
 //  Write to ES Segment Selector
 //
 void hw_write_es (UINT16 i) { 
-	 asm volatile("mov %0, %%es"
-			:
-			:"r" (i)
-			:
+	 asm volatile(
+		"movw %[i], %%es"
+		:
+		:[i] "g" (i)
+		:
 	);
 	return;
 }
@@ -207,14 +218,15 @@ void hw_write_es (UINT16 i) {
 //  ax register will contain result
 //
 UINT16 hw_read_ss() {
-	UINT16 ret;
-	 asm volatile("xor %%rax, %%rax \n\t"
-      "mov %%es, %%ax \n\t"
-      "mov %%ax, %0 \n\t"
-			::"rm"(ret)
-			:"cc", "memory"
+	UINT16 ret = 0;
+	 asm volatile(
+		"xor %%rax, %%rax \n\t"
+    "movw %%es, %%ax \n\t"
+    "movw %%ax, %[ret] \n\t"
+		:[ret] "=g" (ret)
+		::
 	);
-	return;
+	return ret;
 }
 
 //
@@ -226,10 +238,11 @@ UINT16 hw_read_ss() {
 //  Write to Stack Segment Selector
 //
 void hw_write_ss (UINT16 i) { 
-	 asm volatile("mov %0, %%ss"
-			:
-			:"r" (i)
-			:
+	 asm volatile(
+		"movw %[i], %%ss"
+		:
+		:[i] "g" (i)
+		:
 	);
 	return;
 }
@@ -244,11 +257,16 @@ void hw_write_ss (UINT16 i) {
 //  ax register will contain result
 //
 UINT16 hw_read_fs() {
-	 asm volatile("xor %%rax, %%rax \n\t"
-      "mov %%fs, %%ax \n\t"
-			:::
+	UINT16 ret = 0;
+	 asm volatile(
+		"xor %%rax, %%rax \n\t"
+    "movw %%fs, %%ax \n\t"
+    "movw %%ax, %[ret] \n\t"
+		:[ret] "=g" (ret)
+		:
+		:"rax"
 	);
-	return;
+	return ret;
 }
 
 //
@@ -260,10 +278,11 @@ UINT16 hw_read_fs() {
 //  Write to FS
 //
 void hw_write_fs (UINT16 i) { 
-	 asm volatile("mov %0, %%fs"
-			:
-			:"r" (i)
-			:
+	 asm volatile(
+		"movw %[i], %%fs"
+		:
+		:[i] "r" (i)
+		:
 	);
 	return;
 }
@@ -278,11 +297,15 @@ void hw_write_fs (UINT16 i) {
 //  ax register will contain result
 //
 UINT16 hw_read_gs() {
-	 asm volatile("xor %%rax, %%rax \n\t"
-      "mov %%gs, %%ax \n\t"
-			:::
+	UINT16 ret = 0;
+	 asm volatile(
+		"xor %%rax, %%rax \n\t"
+    "movw %%gs, %%ax \n\t"
+    "movw %%ax, %[ret] \n\t"
+		:[ret] "=rm" (ret) 
+		::"rax"
 	);
-	return;
+	return ret;
 }
 
 //
@@ -294,10 +317,11 @@ UINT16 hw_read_gs() {
 //  Write to GS
 //
 void hw_write_gs (UINT16 i) { 
-	 asm volatile("mov %0, %%gs"
-			:
-			:"r" (i)
-			:
+	 asm volatile(
+		"movw %[i], %%gs"
+		:
+		:[i] "r" (i)
+		:
 	);
 	return;
 }
@@ -308,11 +332,12 @@ void hw_write_gs (UINT16 i) {
 UINT64 hw_read_rsp () {
 		
 	UINT64 ret = 0;
-		 asm volatile("movq %%rsp, %%rax \n\t"
-        "add %%rax, 8 \n\t"
-				"movq %%rax, %0 \n\t"
-		::"rm"(ret) 
-		: "cc", "memory"
+		 asm volatile(
+			"movq %%rsp, %%rax \n\t"
+      "add %%rax, 8 \n\t"
+			"movq %%rax, %[ret] \n\t"
+			:[ret] "=rm"(ret) 
+			:: "cc", "memory"
 		);
 	return ret;
 
@@ -328,76 +353,77 @@ void hw_write_to_smi_port(
     UINT64 * p_rflags) // on the stack
 {
         // save callee saved registers
-	 asm volatile("push %%rbp \n\t"
-			"mov %%rbp, %%rsp \n\t" //setup stack frame pointer
-			"push %%rbx \n\t"
-			"push %%rdi \n\t"
-			"push %%rsi \n\t"
-			"push %%r12 \n\t"
-			"push %%r13 \n\t"
-			"push %%r14 \n\t"
-			"push %%r15 \n\t"
-			"lea 16(%%rbp), %%r15 \n\t"//set r15 to point to SMI_PORT_PARAMS struct
-			// normalize stack \n\t"
-			"mov %%rcx, (%%r15) \n\t"
-			"mov %%rdx, 8(%%r15) \n\t"
-			"mov %%r8, 16(%%r15) \n\t"
-			"mov %%r9, 24(%%r15) \n\t"
-			//copy emulator registers into CPU
-			/* RNB: this code can be shortened to just 1 mov for each register
-		   * mov (%%r15), %%rax, mov 8(%%r15), %%rbx, and so on
-			 */
-			"mov (%%r15), %%r8 \n\t"
-			"mov (%%r8), %%rax\n\t"
-			"mov 8(%%r15), %%r8 \n\t"
-			"mov (%%r8), %%rbx \n\t"
-			"mov 16(%%r15), %%r8\n\t"
-			"mov (%%r8), %%rcx \n\t"
-			"mov 24(%%r15), %%r8\n\t"
-			"mov (%%r8), %%rdx\n\t"
-			"mov 32(%%r15), %%r8 \n\t"
-			"mov (%%r8), %%rsi \n\t"
-			"mov 40(%%r15), %%r8 \n\t"
-			"mov (%%r8), %%rdi \n\t"
-			"mov 48(%%r15), %%r8 \n\t"
-			"push (%%r8) \n\t"
-			"popfq \n\t" //rflags = *p_rflags
+	 asm volatile(
+		"push %%rbp \n\t"
+		"movq %%rbp, %%rsp \n\t" //setup stack frame pointer
+		"push %%rbx \n\t"
+		"push %%rdi \n\t"
+		"push %%rsi \n\t"
+		"push %%r12 \n\t"
+		"push %%r13 \n\t"
+		"push %%r14 \n\t"
+		"push %%r15 \n\t"
+		"lea 16(%%rbp), %%r15 \n\t"//set r15 to point to SMI_PORT_PARAMS struct
+		// normalize stack \n\t"
+		"movq %%rcx, (%%r15) \n\t"
+		"movq %%rdx, 8(%%r15) \n\t"
+		"movq %%r8, 16(%%r15) \n\t"
+		"movq %%r9, 24(%%r15) \n\t"
+		//copy emulator registers into CPU
+		/* RNB: this code can be shortened to just 1 mov for each register
+	   * mov (%%r15), %%rax, mov 8(%%r15), %%rbx, and so on
+		 */
+		"movq (%%r15), %%r8 \n\t"
+		"movq (%%r8), %%rax\n\t"
+		"movq 8(%%r15), %%r8 \n\t"
+		"movq (%%r8), %%rbx \n\t"
+		"movq 16(%%r15), %%r8\n\t"
+		"movq (%%r8), %%rcx \n\t"
+		"movq 24(%%r15), %%r8\n\t"
+		"movq (%%r8), %%rdx\n\t"
+		"movq 32(%%r15), %%r8 \n\t"
+		"movq (%%r8), %%rsi \n\t"
+		"movq 40(%%r15), %%r8 \n\t"
+		"movq (%%r8), %%rdi \n\t"
+		"movq 48(%%r15), %%r8 \n\t"
+		"push (%%r8) \n\t"
+		"popfq \n\t" //rflags = *p_rflags
 
-			//we assume that sp will not change after SMI
+		//we assume that sp will not change after SMI
 
-			"push %%rbp \n\t"
-			"push %%r15 \n\t"
+		"push %%rbp \n\t"
+		"push %%r15 \n\t"
 //			"out %%dx, %%al \n\t"
-			"out %%al, %%dx \n\t"
-			"pop %%r15 \n\t"
-			"pop %%rbp \n\t"
-			//fill emulator registers from CPU
-			"mov (%%r15), %%r8 \n\t"
-			"mov %%rax, (%%r8) \n\t"
-			"mov 8(%%r15), %%r8 \n\t"
-			"mov %%rbx, (%%r8) \n\t"
-			"mov 16(%%r15), %%r8\n\t"
-			"mov %%rcx, (%%r8) \n\t"
-			"mov 24(%%r15), %%r8 \n\t"
-			"mov %%rdx, (%%r8) \n\t"
-			"mov 32(%%r15), %%r8\n\t"
-			"mov %%rsi, (%%r8) \n\t"
-			"mov 40(%%r15), %%r8 \n\t"
-			"mov %%rdi, (%%r8) \n\t"
-			"mov 48(%%r15), %%r8 \n\t"
-			"pushfq \n\t"
-			"pop (%%r8) \n\t" // *p_rflags = rflags
-			//restore callee saved registers
-			"pop %%r15 \n\t"
-			"pop %%r14 \n\t"
-			"pop %%r13 \n\t"
-			"pop %%r12 \n\t"
-			"pop %%rsi \n\t"
-			"pop %%rdi \n\t"
-			"pop %%rbx \n\t"
-			"pop %%rbp \n\t"
+		"out %%al, %%dx \n\t"
+		"pop %%r15 \n\t"
+		"pop %%rbp \n\t"
+		//fill emulator registers from CPU
+		"movq (%%r15), %%r8 \n\t"
+		"movq %%rax, (%%r8) \n\t"
+		"movq 8(%%r15), %%r8 \n\t"
+		"movq %%rbx, (%%r8) \n\t"
+		"movq 16(%%r15), %%r8\n\t"
+		"movq %%rcx, (%%r8) \n\t"
+		"movq 24(%%r15), %%r8 \n\t"
+		"movq %%rdx, (%%r8) \n\t"
+		"movq 32(%%r15), %%r8\n\t"
+		"movq %%rsi, (%%r8) \n\t"
+		"movq 40(%%r15), %%r8 \n\t"
+		"movq %%rdi, (%%r8) \n\t"
+		"movq 48(%%r15), %%r8 \n\t"
+		"pushfq \n\t"
+		"pop (%%r8) \n\t" // *p_rflags = rflags
+		//restore callee saved registers
+		"pop %%r15 \n\t"
+		"pop %%r14 \n\t"
+		"pop %%r13 \n\t"
+		"pop %%r12 \n\t"
+		"pop %%rsi \n\t"
+		"pop %%rdi \n\t"
+		"pop %%rbx \n\t"
+		"pop %%rbp \n\t"
 //			"ret \n\t"
-			:::
+		:::
 	);
 	return;
 }
@@ -426,9 +452,9 @@ void hw_disable_interrupts () {
  *  hw_fxsave (void* buffer);
  */
 void hw_fxsave (void *buffer) {
-	asm volatile("fxsave %0"
-		:"=m" (buffer)
-		:"m" (buffer)
+	asm volatile("fxsave %[buffer]"
+		:[buffer] "=m" (buffer)
+		:
 		:
 	);
 	return;
@@ -439,9 +465,10 @@ void hw_fxsave (void *buffer) {
  *  hw_fxrestore (void* buffer);
  */
 void hw_fxrestore (void *buffer) {
-	asm volatile("fxrstor %0"
-		:"=m" (buffer)
-		:"m" (buffer)
+	asm volatile(
+		"fxrstor %[buffer]"
+		:[buffer] "=m" (buffer)
+		:
 		:
 	);
 	return;
@@ -452,9 +479,10 @@ void hw_fxrestore (void *buffer) {
  *  hw_write_cr2 (UINT64 value);
  */
 void hw_write_cr2 (UINT64 value) {
-	asm volatile("mov %%cr2, %0"
-		:"=rm" (value)
-		:"rm" (value)
+	asm volatile(
+		"movq %%cr2, %[value]"
+		:[value] "=g" (value)
+		:
 		:"cc", "memory"
 	);
 		
@@ -476,14 +504,14 @@ UINT16 hw_cpu_id () {
 	UINT16 ret = 0;
 
 	asm volatile(
-							"xor %%rax, %%rax \n\t"
-        			"str %%ax \n\t"
-        			"sub $32 , %%ax \n\t" // CPU_LOCATOR_GDT_ENTRY_OFFSET is 32
-        			"shrw $4, %%ax \n\t" //TSS_ENTRY_SIZE_SHIFT is 4
-							"movw %%ax, %[ret] \n"
-							:
-							:[ret] "m" (ret)
-							:"rax"
+		"xor %%rax, %%rax \n\t"
+    "str %%ax \n\t"
+    "subw $32 , %%ax \n\t" // CPU_LOCATOR_GDT_ENTRY_OFFSET is 32
+    "shrw $4, %%ax \n\t" //TSS_ENTRY_SIZE_SHIFT is 4
+		"movw %%ax, %[ret] \n"
+		:[ret] "=g" (ret)
+		:
+		:"rax"
 	);
 	return ret;
 }
@@ -500,11 +528,12 @@ UINT16 hw_cpu_id () {
 UINT16 hw_read_tr() {
 	UINT16 ret = 0;
 //RNB: Added the movw instruction to move the return value into 'ret'
-	asm volatile("str %%ax \n\t"
-							"movw %%ax, %0 \n\t"
-							:"=r" (ret)
-							:"r" (ret)
-							:
+	asm volatile(
+		"str %%ax \n\t"
+		"movw %%ax, %[ret] \n\t"
+		:[ret] "=g" (ret)
+		:
+		:"rax"
 	);
 	return ret;
 }
@@ -517,10 +546,11 @@ UINT16 hw_read_tr() {
  *
  */
 void hw_write_tr (UINT16 i) {
-	asm volatile("ltr %0"
-							:"=r" (i)
-							:"r" (i)
-							:
+	asm volatile(
+		"ltr %[i]"
+		:
+		:[i] "g" (i)
+		:
 	);
 	return;
 }
@@ -537,11 +567,11 @@ void hw_write_tr (UINT16 i) {
  */
 UINT16 hw_read_ldtr () {
 	UINT16 ret = 0;
-//RNB: Added the movw instruction to move the return value into 'ret'
-	asm volatile("sldt %%ax \n\t"
-							:"=rax" (ret)
-							:"rax" (ret)
-							:"rax"
+	asm volatile (
+		"sldt %[ret] \n\t"
+		:[ret] "=g" (ret)
+		:
+		:
 	);
 	return ret;
 }
@@ -554,10 +584,11 @@ UINT16 hw_read_ldtr () {
  *  Write LDT Register
  */
 void hw_write_ldtr (UINT16 i) {
-	asm volatile("lldt %0"
-							:"=r" (i)
-							:"r" (i)
-							:
+	asm volatile(
+		"lldt %[i]"
+		:
+		:[i] "r" (i)
+		:
 	);
 	return;
 }
@@ -570,21 +601,23 @@ void hw_write_ldtr (UINT16 i) {
 */
 void hw_cpuid (CPUID_PARAMS *cp) {
 
-	 asm volatile("mov %%rcx, %%r8 \n\t" //RNB: address of struct is assumed to be in %%rcx
-			"mov %%rbx, %%r9 \n\t" //    # save RBX
+	 asm volatile(
+			"movq %[cp], %%r8 \n\t" 
+			"movq %%rbx, %%r9 \n\t" //    # save RBX
         //# fill regs for cpuid
-			"mov (%%r8), %%rax \n\t"
-			"mov 8(%%r8), %%rbx \n\t"
-			"mov 16(%%r8), %%rcx \n\t"
-			"mov 24(%%r8), %%rdx \n\t"
+			"movq (%%r8), %%rax \n\t"
+			"movq 8(%%r8), %%rbx \n\t"
+			"movq 16(%%r8), %%rcx \n\t"
+			"movq 24(%%r8), %%rdx \n\t"
 			"cpuid \n\t"
-			"mov %%rax, (%%r8) \n\t"
-			"mov %%rbx, 8(%%r8) \n\t"
-			"mov %%rcx, 16(%%r8) \n\t"
-			"mov %%rdx, 24(%%r8) \n\t"
-			"mov %%r9, %%rbx \n\t"
-			"mov %%r8, %%rcx \n\t"
-			:::
+			"movq %%rax, (%%r8) \n\t"
+			"movq %%rbx, 8(%%r8) \n\t"
+			"movq %%rcx, 16(%%r8) \n\t"
+			"movq %%rdx, 24(%%r8) \n\t"
+			"movq %%r9, %%rbx \n\t"
+			:
+			:[cp] "g" (cp)
+			:"rax", "rbx", "rcx", "rdx", "memory"
 	);
 
 	return;
@@ -691,13 +724,14 @@ void hw_perform_asm_iret () {
 void hw_set_stack_pointer (HVA new_stack_pointer, 
 													main_continue_fn func, void *params) {
 	asm volatile("L1: \n\t"
-							"movq %0, %%rsp \n\t"
-							"movq %2, %0 \n\t"
+							"movq %[new_stack_pointer], %%rsp \n\t"
+							"movq %[params], %[new_stack_pointer] \n\t"
 							"subq $32, %%rsp \n\t" // allocate home space for 4 input params
-							"call %1 \n\t" 
+							"call %[func] \n\t" 
 							"jmp L1"
 							:
-							:"r"(new_stack_pointer),"r"(func), "r"(params)
+							:[new_stack_pointer] "g"(new_stack_pointer),
+							 [func] "g" (func), [params] "p"(params)
 							:"cc"
 	);
 	return;

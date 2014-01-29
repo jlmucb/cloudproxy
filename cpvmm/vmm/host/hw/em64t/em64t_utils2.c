@@ -660,7 +660,7 @@ compat_code:                    ;; compatibility mode starts right here
 ;  void
 ;  hw_perform_asm_iret(void);
 ;------------------------------------------------------------------------------
-; Transforms stack from entry to reglar procedure: 
+; Transforms stack from entry to regular procedure: 
 ;
 ; [       RIP        ] <= RSP
 ;
@@ -675,28 +675,28 @@ compat_code:                    ;; compatibility mode starts right here
 
 void hw_perform_asm_iret () {
 	asm volatile(
-			"sub $0x20, %%rsp \n\t" //prepare space for "interrupt stack"
-			"push %%rax \n\t" //save scratch registers
+			"sub 0x20, %%rsp \n\t" 		//prepare space for "interrupt stack"
+			"push %%rax \n\t" 				//save scratch registers
 			"push %%rbx \n\t"
 			"push %%rcx \n\t"
 			"push %%rdx \n\t"
-			"addq $0x40, %%rsp \n\t" // get rsp back to RIP
-			"pop %%rax \n\t" //RIP -> RAX
-			"movq %%cs, %%rbx \n\t" //; CS  -> RBX
-			"movq %%rsp, %%rcx \n\t" // good RSP -> RCX
-			"movq %%ss, %%rdx \n\t" //; CS  -> RDX
-			"push %%rdx \n\t" //[       SS         ]
-			"push %%rcx \n\t" //[       RSP        ]
-			"pushfq \n\t"  //[      RFLAGS      ]
-			"push %%rbx \n\t" //[       CS         ]
-			"push %%rax \n\t"  //[       RIP        ]
+			"addq 0x40, %%rsp \n\t" 	// get rsp back to RIP
+			"pop %%rax \n\t" 					//RIP -> RAX
+			"movq %%cs, %%rbx \n\t" 	//CS  -> RBX
+			"movq %%rsp, %%rcx \n\t" 	//good RSP -> RCX
+			"movq %%ss, %%rdx \n\t" 	//CS  -> RDX
+			"push %%rdx \n\t" 				//[       SS         ]
+			"push %%rcx \n\t" 				//[       RSP        ]
+			"pushfq \n\t"  						//[      RFLAGS      ]
+			"push %%rbx \n\t" 				//[       CS         ]
+			"push %%rax \n\t"  				//[       RIP        ]
 
-			"subq $0x20, %%rsp \n\t" //restore scratch registers
+			"subq 0x20, %%rsp \n\t" 	//restore scratch registers
 			"pop %%rdx \n\t"
 			"pop %%rcx \n\t"
 			"pop %%rbx \n\t"
-			"pop %%rax \n\t" // now RSP is in right position 
-			"iretq " //                   ; perform IRET
+			"pop %%rax \n\t" 					// now RSP is in right position 
+			"iretq " 									//perform IRET
 		:::
 	);
 } //hw_perform_asm_iret ENDP

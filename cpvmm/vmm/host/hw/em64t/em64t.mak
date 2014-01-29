@@ -39,8 +39,9 @@ mainsrc=    	$(S)/vmm/host/hw/em64t
 
 B=              $(E)/vmmobjects/host/hw/em64t
 INCLUDES=       -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
+				    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
+								-I$(S)/common/include/platform  -I$(S)/vmm/guest/guest_cpu\
+    						-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
 
 DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
 RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 

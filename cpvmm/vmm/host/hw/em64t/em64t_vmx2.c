@@ -16,6 +16,9 @@
 #include "vmm_defs.h"
 #define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
 
+extern void gcpu_save_registers();
+extern void gcpu_restore_registers();
+
 struct VMEXIT_TIME {
     UINT64  last_vmexit;
     UINT64  last_vmentry;
@@ -67,27 +70,34 @@ void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
 {
-
-    if(firsttime==0ULL)
-        gcpu_restore_registers();
-
-    asm volatile(
-        // Resume execution of Guest Virtual Machine
-        "\tvmresume\n" \
-        "\tjmp     1f\n" \
-//do_launch:
-        "\tcall    gcpu_restore_registers\n" \
-        // Launch execution of Guest Virtual Machine
-        "\tvmlaunch\n" \
-// handle_error:
-        "1:\n" \
-        // use RFLAGS as argument if VMRESUME failed
-        "\tpushfq\n" \
+	//RNB: Assumption: rflags_arg is still addressable (by %rsp).
+	//RNB: rdx is clobbered after being restore.  Should we restore it even?
+	//RNB: The asm file sets rcx to 1 after the call to vmentry_failure_function?
+		ADDRESS rflags_arg = 0;
+    if(firsttime==0ULL) { //do_launch
+			gcpu_restore_registers();
+			asm volatile (
+        "\tvmlaunch\n"
+        "\tpushfq\n" 
+        "\tpop %%rdx\n" 
+        "\tmovq %%rdx, %[rflags_arg]\n" 
         // JLM FIX:  save arguments for vm_failure function
-    : 
-    : 
-    :"%rcx", "%rdx");
-    vmentry_failure_function();
+		    :[rflags_arg] "=m" (rflags_arg) 
+				: :
+			);
+		} else {  //do_resume
+			gcpu_restore_registers();
+  	  asm volatile(
+        // Resume execution of Guest Virtual Machine
+        "\tvmresume\n" 
+				"\tpushfq \n"
+        "\tpop %%rdx\n" 
+        "\tmovq %%rdx, %[rflags_arg]\n" 
+		    :[rflags_arg] "=m" (rflags_arg) 
+				::
+			);
+		}		
+    vmentry_failure_function(rflags_arg);
     vmentry_func(0ULL);
 }
 

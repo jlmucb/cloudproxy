@@ -16,7 +16,8 @@
  */
 
 //RNB: Adding header for GUEST_CPU_SAVE_AREA and hw_cpu_id().
-#include "../../../guest/guest_cpu/guest_cpu_internal.h"
+#include "guest_cpu_internal.h"
+#include "vmm_defs.h"
 
 // Assumption - hw_cpu_id() uses RAX only and returns host cpu id in ax
 
@@ -29,87 +30,45 @@ extern GUEST_CPU_SAVE_AREA** g_guest_regs_save_area;
 typedef struct {
     VMM_GP_REGISTERS gp; 
     VMM_XMM_REGISTERS xmm;
-} GUEST_CPU_SAVE_AREA_PREFIX; 
+} PACKED GUEST_CPU_SAVE_AREA_PREFIX; 
 
 /*
-* Load pointer to the active GUEST_CPU_SAVE_AREA_PREFIX into rbx
-* No other registers are modified
-*/
-void load_save_area_into_rbx(void) {
-
-	int cpuid;
-    // save RAX temporary
-    // calculate host cpu id and put it into the rax (ax)
-	cpuid = hw_cpu_id();
-	asm("push %rax \n\t"
-			// put pointer to the array of GUEST_CPU_SAVE_AREA_PREFIX* to RBX
-			"movq  g_guest_regs_save_area, %%rbx \n\t"
-			"movq  (%%rbx), %%rbx \n\t"
-			// put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
-//			"movq  (%%rbx + sizeof qword * %%rax), %%rbx \n\t"
-			"movq  %%rbx (%%rax, sizeof qword), %%rbx \n\t"
-            // restore RAX
-			"pop %%rax"
-			//RNB: this function has no output, but the below line is 
-			//to satisfy the compiler
-        :"=g" (cpuid)
-        :"g" (cpuid)
-        :"%rax", "%rbx"
-	);
-/*
-    // put pointer to the array of GUEST_CPU_SAVE_AREA_PREFIX* to RBX
-    asm("mov  %rbx, g_guest_regs_save_area");
-    asm("mov  %rbx, (%rbx)");
-    // put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
-    asm("mov  %rbx, (%rbx + sizeof qword * %rax)");
-    // restore RAX
-    asm("pop %rax");
-*/
-    return;
-}
-
-
-/*
-* This functions are part of the GUEST_CPU class.
-* They are called by assembler-lever VmExit/VmResume functions
-* to save all registers that are not saved in VMCS but may be used immediately
-* by C-language VMM code.
+* This functions are part of the GUEST_CPU class.  They are called by
+* assembler-lever VmExit/VmResume functions to save all registers that are not
+* saved in VMCS but may be used immediately by C-language VMM code.
 # The following registers are NOT saved here
 #
-#   RIP            part of VMCS
-#   RSP            part of VMCS
-#   RFLAGS         part of VMCS
-#   segment regs   part of VMCS
-#   control regs   saved in C-code later
-#   debug regs     saved in C-code later
-#   FP/MMX regs    saved in C-code later
+#   RIP            part of VMCS RSP            part of VMCS RFLAGS         part
+#   of VMCS segment regs   part of VMCS control regs   saved in C-code later
+#   debug regs     saved in C-code later FP/MMX regs    saved in C-code later
 #
-# Assumptions:
-#   No free registers except of RSP/RFLAGS
-#   FS contains host CPU id (should be calculated)
+# Assumptions: No free registers except of RSP/RFLAGS FS contains host CPU id
+# (should be calculated)
 #
+#   RNB: Why FS should have CPU id, and how do those functions ensure.  AFAI
+#   can tell the cpu id is %rax register
 #
-
 #
 # Assumption - no free registers on entry, all are saved on exit
 #
 */
 void gcpu_save_registers(void) {
-  // save RAX and RBX temporary on a stack
-	GUEST_CPU_SAVE_AREA_PREFIX *gsap;
-//              int gp_count = IA32_REG_GP_COUNT;
-//              int xmm_count = IA32_REG_XMM_REGISTERS;
-    asm volatile("push %%rbx"
-			:::"rbx");
-    // put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
-    load_save_area_into_rbx();
-    // now save rax and rbx first
-                
-		asm volatile(
-			"movq %%rbx, %0 \n\t" // this moves %rbx to gsap
-			"movq (%%rbx), %%rax \n\t"
-			"pop %%rax \n\t" // this is %rbx
-			"movq %%rax, 8(%%rbx) \n\t"
+	UINT64 cpuid;
+	UINT64 offset;
+	UINT64 oldrbx = 0, oldrax = 0;
+	UINT64 sizeof_guest_cpu_save_area = sizeof(GUEST_CPU_SAVE_AREA);
+
+	cpuid = hw_cpu_id();
+	offset = cpuid * sizeof_guest_cpu_save_area;
+
+		asm volatile (
+			"movq %%rax, %[oldrax] \n\t"
+			"movq	%%rbx, %[oldrbx] \n\t"
+			"movq	%[g_guest_regs_save_area], %%rbx\n\t"
+			"add 	%[offset], %%rbx\n\t"
+			"movq	%%rax, (%%rbx) \n\t"
+			"movq	%[oldrbx], %%rax \n\t"
+			"movq	%%rax, 8(%%rbx) \n\t"
 			"movq %%rcx, 16(%%rbx) \n\t"
 			"movq %%rdx, 24(%%rbx) \n\t"
 			"movq %%rdi, 32(%%rbx) \n\t"
@@ -123,21 +82,19 @@ void gcpu_save_registers(void) {
 			"movq %%r13, 104(%%rbx) \n\t"
 			"movq %%r14, 112(%%rbx) \n\t"
 			"movq %%r15, 120(%%rbx) \n\t"
-      /* now save XMM registers
-        * Depending on the compiler used, not all XMMs are needed to save/restore
-        * Before any release, use dumpbin.exe to examine asm code and remove
-        * the unused XMMs.
-        */
-//RNB: instead of using 144...182 as offset, it should be IA32_REG_GP_COUNT*8
+			//RNB: instead of using 144...182 as offset, it should be 
+			//IA32_REG_GP_COUNT*8
 			"movaps %%xmm0, 144(%%rbx) \n\t"
 			"movaps %%xmm1, 152(%%rbx) \n\t"
 			"movaps %%xmm2, 160(%%rbx) \n\t"
 			"movaps %%xmm3, 168(%%rbx) \n\t"
 			"movaps %%xmm4, 176(%%rbx) \n\t"
 			"movaps %%xmm5, 182(%%rbx) \n\t"
-//RNB: in the next two  lines (gsap) is to satisfy gcc
-			:"=g" (gsap)
-			:"g" (gsap)
+			"movq %[oldrbx], %%rbx \n\t"
+			"movq %[oldrax], %%rax \n"
+			:[oldrax] "=m" (oldrax), [oldrbx] "=m" (oldrbx)
+			:[cpuid] "m" (cpuid), [g_guest_regs_save_area] "p" (g_guest_regs_save_area),
+			 [offset] "m" (offset)
 			:
 		);
 
@@ -149,33 +106,47 @@ void gcpu_save_registers(void) {
  * Assumption - all free registers on entry, no free registers on exit
 */
 void gcpu_restore_registers(void) { 
-    // put pointer to our GUEST_CPU_SAVE_AREA_PREFIX struct to RBX
-  load_save_area_into_rbx();
+	UINT64 cpuid;
+	UINT64 offset;
+	UINT64 oldrax = 0;
+	UINT64 sizeof_guest_cpu_save_area = sizeof(GUEST_CPU_SAVE_AREA);
+
+	cpuid = hw_cpu_id();
+	offset = cpuid * sizeof_guest_cpu_save_area;
     // restore all XMM first
-	asm("movaps 144(%%rbx), %%xmm0\n\t"
+	asm(
+			"movq	%[g_guest_regs_save_area], %%rbx\n\t"
+			"addq 	%[offset], %%rbx\n\t"
+			"movaps 144(%%rbx), %%xmm0\n\t"
 			"movaps 152(%%rbx), %%xmm1 \n\t"
 			"movaps 160(%%rbx), %%xmm2 \n\t"
       "movaps 168(%%rbx), %%xmm3 \n\t"
       "movaps 176(%%rbx), %%xmm4 \n\t"
       "movaps 182(%%rbx), %%xmm5 \n\t"
-      "mov %%rax, (%%rbx) \n\t"
+//      "mov %%rax, (%%rbx) \n\t"
       // RNB: rbx is restored at the end
-      "movq %%rcx, 16(%%rbx) \n\t"
-      "movq %%rdx, 24(%%rbx) \n\t"
-      "movq %%rdi, 32(%%rbx) \n\t"
-      "movq %%rsi, 40(%%rbx) \n\t"
-      "movq %%rbp, 48(%%rbx) \n\t"
+      "movq 16(%%rbx), %%rcx \n\t"
+      "movq 24(%%rbx), %%rdx \n\t"
+      "movq 32(%%rbx), %%rdi \n\t"
+      "movq 40(%%rbx),%%rsi \n\t"
+      "movq 48(%%rbx), %%rbp \n\t"
       // RNB: rsp is not restored
-      "movq %%r8, 64(%%rbx) \n\t"
-      "movq %%r9, 72(%%rbx) \n\t"
-      "movq %%r10, 80(%%rbx) \n\t"
-      "movq %%r11, 88(%%rbx) \n\t"
-      "movq %%r12, 96(%%rbx) \n\t"
-      "movq %%r13, 104(%%rbx) \n\t"
-      "movq %%r14, 112(%%rbx) \n\t"
-      "movq %%r15, 120(%%rbx) \n\t"
-      "movq %%rbx, 8(%%rbx) "
-     :::
+      "movq 64(%%rbx), %%r8 \n\t"
+      "movq 72(%%rbx), %%r9 \n\t"
+      "movq 80(%%rbx), %%r10 \n\t"
+      "movq 88(%%rbx), %%r11 \n\t"
+      "movq 96(%%rbx), %%r12 \n\t"
+      "movq 104(%%rbx), %%r13 \n\t"
+      "movq 112(%%rbx), %%r14 \n\t"
+      "movq 120(%%rbx), %%r15 \n\t"
+      "movq (%%rbx), %%rax \n\t"
+      "movq %%rax, %[oldrax] \n\t"
+      "movq 8(%%rbx), %%rax \n"
+      "movq %%rax, %%rbx \n"
+      "movq %[oldrax], %%rax \n"
+			:[oldrax] "+m" (oldrax)
+			:[g_guest_regs_save_area] "p" (g_guest_regs_save_area), [offset] "m" (offset)
+			:
    );
    return;
 }

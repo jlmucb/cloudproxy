@@ -1,7 +1,8 @@
+gcpu_save_registers
+gcpu_restore_registers
 vmexit_func
-vmexit_check_ept_violation
-hw_perform_asm_iret
 hw_exception_post_handler
+hw_perform_asm_iret
 call_teardown_thunk32/64
 
 

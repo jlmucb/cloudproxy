@@ -82,9 +82,9 @@ UINT64 vmexit_reason()
 {
     UINT64  result;
     asm volatile(
-        "movq   0x4402, %%rax\n" \
-        "vmread %%rax, %%rax\n" \
-        "movq   %%rax, %[result]\n"
+        "\tmovq   0x4402, %%rax\n"
+        "\tvmread %%rax, %%rax\n"
+        "\tmovq   %%rax, %[result]\n"
     : [result]"=g"(result)
     : 
     :"%rax");
@@ -98,16 +98,18 @@ UINT32 vmexit_check_ept_violation(void)
 {
     UINT32  result;
     asm volatile(
-        "movq   0x4402, %%rax\n" \
-        "vmread %%rax, %%rax\n" \
-        "cmpb   %%rax, $48\n" \
-        "jnz    1f\n" \
-        "movq   0x6400, %%rax\n" \
-        "vmread %%rax, %%rax\n" \
-        "movl   %%rax, %[result]\n"
-        "1:\n" \
-        "movq   #0x00, %%rax\n" \
-        "movl   %%rax, %[result]\n"
+        "\tmovq   0x4402, %%rax\n"
+        "\tvmread %%rax, %%rax\n" 
+        "\tcmpb   %%rax, $48\n" 
+        "\tjnz    1f\n" 
+        "\tmovq   0x6400, %%rax\n" 
+        "\tvmread %%rax, %%rax\n" 
+        "\tmovl   %%rax, %[result]\n"
+        "\tjmp    2f\n" 
+        "1:\n" 
+        "\tmovq   0x00, %%rax\n" 
+        "\tmovl   %%rax, %[result]\n"
+        "2:\n" 
     : [result]"=g"(result)
     : 
     :"%rax");

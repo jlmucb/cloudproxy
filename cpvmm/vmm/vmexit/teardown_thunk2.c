@@ -26,7 +26,7 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
 		UINT16 compatibility_cs, UINT64 teardown_thunk_entry_phy_addr,
 		UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
 {
-    int result = 0;
+    UINT64 result = 0;
 
     asm volatile(
         "\tmovq    %[current_guest_states_phy_addr], %%rcx\n"
@@ -41,7 +41,7 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         "\tvmxoff\n"
         // clear cr4.vmx, must be after vmx off. otherwise #GP fault
         "\tmovq    %%cr4, %%rax\n"
-        "\tandq    0xFFFFDFFF, %%rax\n"
+        "\tandl    $0xFFFFDFFF, %%eax\n"
         "\tmovq    %%rax, %%cr4\n"
         // prepare cs : rip pair for retf by first pushing
         // 64 bit compatibility segment, then pushing 64 bits return
@@ -59,20 +59,19 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         // brings IP to compat_code
         // compatibility mode starts right here, below code is running on
         // 32bit mode.
-        "\tretf \n"
+        "\tlret \n"
 				"1: \n"
         "\tmovq     %%cr0, %%rax\n"
         "\tbtcl     $31, %%eax \n"
         "\tmovq     %%rax, %%cr0\n"
 
-        // rcx is modified below, so save it
         "\tpush     %%rcx\n"
         // EFER MSR register
-        "\tmovl     0x0C0000080, %%ecx\n"
+        "\tmovl $0x0C0000080, %%ecx\n"
         // read EFER into EAX
         "\trdmsr\n"
         // clear EFER.LME
-        "\tbtcl    $8, %%eax\n"
+        "\tbtcl $8, %%eax\n"
         "\twrmsr\n"
         "\npop     %%rcx\n"
 
@@ -80,18 +79,20 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         // Use byte code for CR3 and CR4 operations so they are
         // translated correctly in 32bit mode (not 64bit opcodes).
         // Byte code below is equivalent to "mov eax, cr4".
-        "\t.byte   0x0f 0x20 0xe0 \n"
-        "\tcmpl    0x1, %%ecx\n"
-        "\tjz      2f\n"
+        "\t.byte 0x0f \n"
+				"\t.byte 0x20 \n"
+				"\t.byte 0xe0 \n"
+        "\tcmpl $0x1, %%ecx\n"
+        "\tjz 2f\n"
         // set PSE bit of cr4 - non PAE mode
-        "\torl     0x10,%%eax\n"
+        "\torl $0x10,%%eax\n"
         // clear PAE bit of cr4
-        "\tandl    0xFFFFFFDF, %%eax \n"
+        "\tandl $0xFFFFFFDF, %%eax \n"
         "\tjmp     3f\n"
         "2:\n"
         // pae_mode:
         // set PSE and PAE bits of cr4
-        "\torl     0x30,%%eax\n"
+        "\torl $0x30,%%eax\n"
         // after_pae_check:
         "3:\n"
         // Use byte code for CR3 and CR4 operations so they are
@@ -102,9 +103,9 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         "\t.byte    0xe0 \n"
 
         // restore current_guest_states_virt_addr in rcx
-        "\tmovl    %%esi, %%ecx\n"
-        "\txorl    %%eax, %%eax\n"
-        "\tmovl    %%edi, %%eax\n"
+        "\tmovl %%esi, %%ecx\n"
+        "\txorl %%eax, %%eax\n"
+        "\tmovl %%edi, %%eax\n"
         // load CR3 with cr3_td_sm_32 which has the mapping of
         // Use byte code for CR3 and CR4 operations so they are
         // translated correctly in 32bit mode (not 64bit opcodes).
@@ -115,13 +116,13 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         // teardown_shared_memory's gva and gpa, except those 3
         // pages of shared memory, other are 1:1 mapping (va = pa)
         // for 32-bit mode
-        "\tmovq  %%cr0, %%rax\n"
-        //; enable IA32 paging (32-bits)
-        "\tbts  $31, %%eax\n"
-        "\tmov  %%rax, %%cr0 \n"
-        // finally, call teardownthunk entry in guest space. and never returns.  
-        "\tjmp  %%rbx\n"
-        "\tmovq     %%rax, %[result]\n"
+				"\tmovq  %%cr0, %%rax\n"
+				//; enable IA32 paging (32-bits)
+				"\tbts  $31, %%eax\n"
+				"\tmovq  %%rax, %%cr0 \n"
+				// finally, call teardownthunk entry in guest space. and never returns.  
+				"\tjmp  %%rbx\n"
+				"\tmovq %%rax, %[result]\n"
     : [result]"=g" (result)
     : [current_guest_states_phy_addr] "g" (current_guest_states_phy_addr), 
       [compatibility_cs] "g" (compatibility_cs), 

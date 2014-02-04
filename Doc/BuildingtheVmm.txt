@@ -20,26 +20,26 @@ will be placed.  On my machine it is /home/jlm/jlmcrypt.
 	export VMSourceDirectory=/home/jlm/fpDev/fileProxy/cpvmm
 
 2.  Make the object directories.
-	mkdir $(CPProgramDirectory)/vmmoobjects
-	mkdir $(CPProgramDirectory)/vmmoobjects/acpi  
-	mkdir $(CPProgramDirectory)/vmmoobjects/dbg    
-	mkdir $(CPProgramDirectory)/vmmoobjects/host  
-	mkdir $(CPProgramDirectory)/vmmoobjects/host/hw
-	mkdir $(CPProgramDirectory)/vmmoobjects/host/hw/em64t
-	mkdir $(CPProgramDirectory)/vmmoobjects/libc    
-	mkdir $(CPProgramDirectory)/vmmoobjects/startup  
-	mkdir $(CPProgramDirectory)/vmmoobjects/vmexit  
-	mkdir $(CPProgramDirectory)/vmmoobjects/vmx
-	mkdir $(CPProgramDirectory)/vmmoobjects/arch  
-	mkdir $(CPProgramDirectory)/vmmoobjects/guest  
-	mkdir $(CPProgramDirectory)/vmmoobjects/guest/guest_cpu
-	mkdir $(CPProgramDirectory)/vmmoobjects/guest/scheduler
-	mkdir $(CPProgramDirectory)/vmmoobjects/ipc   
-	mkdir $(CPProgramDirectory)/vmmoobjects/memory  
-	mkdir $(CPProgramDirectory)/vmmoobjects/memory/ept
-	mkdir $(CPProgramDirectory)/vmmoobjects/memory/memory_manager
-	mkdir $(CPProgramDirectory)/vmmoobjects/utils    
-	mkdir $(CPProgramDirectory)/vmmoobjects/vmm
+	mkdir $(CPProgramDirectory)/vmmobjects
+	mkdir $(CPProgramDirectory)/vmmobjects/acpi  
+	mkdir $(CPProgramDirectory)/vmmobjects/dbg    
+	mkdir $(CPProgramDirectory)/vmmobjects/host  
+	mkdir $(CPProgramDirectory)/vmmobjects/host/hw
+	mkdir $(CPProgramDirectory)/vmmobjects/host/hw/em64t
+	mkdir $(CPProgramDirectory)/vmmobjects/libc    
+	mkdir $(CPProgramDirectory)/vmmobjects/startup  
+	mkdir $(CPProgramDirectory)/vmmobjects/vmexit  
+	mkdir $(CPProgramDirectory)/vmmobjects/vmx
+	mkdir $(CPProgramDirectory)/vmmobjects/arch  
+	mkdir $(CPProgramDirectory)/vmmobjects/guest  
+	mkdir $(CPProgramDirectory)/vmmobjects/guest/guest_cpu
+	mkdir $(CPProgramDirectory)/vmmobjects/guest/scheduler
+	mkdir $(CPProgramDirectory)/vmmobjects/ipc   
+	mkdir $(CPProgramDirectory)/vmmobjects/memory  
+	mkdir $(CPProgramDirectory)/vmmobjects/memory/ept
+	mkdir $(CPProgramDirectory)/vmmobjects/memory/memory_manager
+	mkdir $(CPProgramDirectory)/vmmobjects/utils    
+	mkdir $(CPProgramDirectory)/vmmobjects/vmm
 
 3. Build
 	cd $(VMSourceDirectory)/vmm

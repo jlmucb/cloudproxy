@@ -700,8 +700,10 @@ void hw_perform_asm_iret () {
 		:::
 	);
 } //hw_perform_asm_iret ENDP
-void hw_set_stack_pointer (HVA new_stack_pointer, 
-													main_continue_fn func, void *params) {
+
+
+void hw_set_stack_pointer (HVA new_stack_pointer, main_continue_fn func, void *params) 
+{
 	asm volatile(
 		"L1: \n\t"
 		"movq %[new_stack_pointer], %%rsp \n\t"

@@ -45,7 +45,7 @@ void hw_isr_c_wrapper(unsigned long int index)
 		"movq %0, %%rbx \n\t" // qword ptr [%rsp+$0x10h]    # vector number
 //        # all exception faults have vector number up to 19
 		"cmpq $19, %%rbx \n\t"
-		"jg L_continue \n\t"
+		"jg 1f \n\t"
 // # check the exception type
 		"lea exception_class, %%rax \n\t" 
 //RNB: the addl/subl instructions are to derefernce the (%rbx + %rax),
@@ -54,7 +54,7 @@ void hw_isr_c_wrapper(unsigned long int index)
 		"movzbl (%%rbx),  %%ebx \n\t"
 		"subq %%rax, %%rbx \n\t"
 		"cmpl %%ebx, 2 \n\t"
-		"jne L_continue \n\t"
+		"jne 1f\n\t"
 //        # Save GPRs
 		"movq 0x08(%%rsp), %%rax \n\t" //this is rax
 		"movq g_exception_gpr, %%rbx \n\t"
@@ -75,7 +75,7 @@ void hw_isr_c_wrapper(unsigned long int index)
 		"movq %%r13, 104(%%rbx) \n\t"
 		"movq %%r14, 112(%%rbx) \n\t"
 		"movq %%r15, 120(%%rbx) \n\t"
-		"L_continue: \n\t"
+		"1: \n\t"
 		"pop %%rbx \n\t"
 		"pop %%rax \n\t"
 /*
@@ -116,8 +116,8 @@ void hw_isr_c_wrapper(unsigned long int index)
 		"pop %%rsp \n\t"	//isr_c_handler replaces vector ID with pointer to the
 //                                # RIP. Just pop the pointer to the RIP into RSP.
 		"iretq"
-		:"=r" (index)
-		:"r" (index)
+		:[index] "+r" (index)
+		://[index] "r" (index)
 		:
 	);
 }

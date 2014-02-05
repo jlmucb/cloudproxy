@@ -51,13 +51,12 @@ void vmexit_func()
     gcpu_save_registers();
     asm volatile(
         "\txor      %%rcx, %%rcx\n"
-        "\tshlq     $3, %%rcx\n" \
-        "\tsubq     %%rcx, %%rsp\n" \
-        "\tcall    vmexit_common_handler\n" \
-        "2:\n" \
+        "\tshlq     $3, %%rcx\n" 
+        "\tsubq     %%rcx, %%rsp\n"
+        "\tcall     vmexit_common_handler\n"
+        "2:\n"
         "\tjmp     2b\n"
-    : 
-    : 
+    : : 
     :"%rcx");
 }
 
@@ -65,36 +64,37 @@ void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
 {
-	//RNB: Assumption: rflags_arg is still addressable (by %rsp).
-	//RNB: rdx is clobbered after being restore.  Should we restore it even?
-	//RNB: The asm file sets rcx to 1 after the call to vmentry_failure_function?
-		ADDRESS rflags_arg = 0;
+    //RNB: Assumption: rflags_arg is still addressable (by %rsp).
+    //RNB: rdx is clobbered after being restore.  Should we restore it even?
+    //RNB: The asm file sets rcx to 1 after the call to vmentry_failure_function?
+    ADDRESS rflags_arg = 0;
+
     if(firsttime==0ULL) { //do_launch
-			gcpu_restore_registers();
-			asm volatile (
-        "\tvmlaunch\n"
-        "\tpushfq\n" 
-        "\tpop %%rdx\n" 
-        "\tmovq %%rdx, %[rflags_arg]\n" 
-        // JLM FIX:  save arguments for vm_failure function
-		    :[rflags_arg] "=m" (rflags_arg) 
-				: :
-			);
-		} else {  //do_resume
-			gcpu_restore_registers();
-  	  asm volatile(
-        // Resume execution of Guest Virtual Machine
-        "\tvmresume\n" 
-				"\tpushfq \n"
-        "\tpop %%rdx\n" 
-        "\tmovq %%rdx, %[rflags_arg]\n" 
-		    :[rflags_arg] "=m" (rflags_arg) 
-				::
-			);
-		}		
+        gcpu_restore_registers();
+        asm volatile (
+            "\tvmlaunch\n"
+            "\tpushfq\n" 
+            "\tpop      %%rdx\n" 
+            "\tmovq     %%rdx, %[rflags_arg]\n" 
+            // JLM FIX:  save arguments for vm_failure function
+        :[rflags_arg] "=m" (rflags_arg) 
+        : :);
+    } 
+    else {  //do_resume
+        gcpu_restore_registers();
+        asm volatile(
+            // Resume execution of Guest Virtual Machine
+            "\tvmresume\n" 
+            "\tpushfq \n"
+            "\tpop      %%rdx\n" 
+            "\tmovq     %%rdx, %[rflags_arg]\n" 
+        : [rflags_arg] "=m" (rflags_arg) 
+        ::);
+    }               
     vmentry_failure_function(rflags_arg);
     vmentry_func(0ULL);
 }
+
 
 UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 // Function:    VMCALL
@@ -107,7 +107,7 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 {
     UINT64  result;
 
-		//RNB: Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
+    //RNB: Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
     asm volatile(
         "\tmovq %[vmcall_id], %%rcx\n" \
         "\tmovq %[arg1], %%rdx\n" \
@@ -121,6 +121,8 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
         "2:\n" \
     : 
     : [vmcall_id] "g" (vmcall_id), [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3)
-    :"%rax", "%rdi", "%rsi", "%r8", "%rcx", "%rdx");
+    : "%rax", "%rdi", "%rsi", "%r8", "%rcx", "%rdx");
     return result;
 }
+
+

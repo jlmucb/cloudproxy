@@ -32,9 +32,12 @@ void memcpy(void *str1, void *str2, int n) {
 }
 
 int strlen (const char *str) {
-    return vmm_strlen(str);
+	return vmm_strlen(str);
 }
 
+void *memmove(void *dest, const void *src, int n) {
+	return vmm_memmove(dest, src, n);
+}
 void vmm_lock_xchg_qword (UINT64 *dst, //rcx
                           UINT64 *src)  //rdx
 {

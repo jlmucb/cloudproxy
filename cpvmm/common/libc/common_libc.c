@@ -119,6 +119,22 @@ void *  CDECL vmm_memcpy(void *dest, const void* src, size_t count)
     }
 }
 
+void *  CDECL vmm_memmove(void *dest, const void* src, int count)
+{
+	if (dest == src) 
+	{
+		return dest;
+	} 
+	else if (dest >= src) 
+	{
+		return vmm_memcpy_descending(dest, src, count);
+	} 
+	else
+	{
+ 		return vmm_memcpy_ascending(dest, src, count);
+	}
+}
+
 size_t  CDECL vmm_strlen(const char* string)
 {
     size_t len = 0;

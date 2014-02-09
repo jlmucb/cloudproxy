@@ -27,6 +27,7 @@
 
 void *  CDECL vmm_memset(void *dest, int filler, size_t count);
 void *  CDECL vmm_memcpy(void *dest, const void* src, size_t count);
+void *  CDECL vmm_memmove(void *dest, const void* src, int count);
 void *  CDECL vmm_lock_memcpy(void *dest, const void* src, size_t count);
 size_t  CDECL vmm_strlen(const char* string);
 char*   CDECL vmm_strcpy(char* dst, const char* src);

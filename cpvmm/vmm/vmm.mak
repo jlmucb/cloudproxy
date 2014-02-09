@@ -67,7 +67,8 @@ EMTOBJ= 	$(B)/host/hw/em64t/em64t_idt.o $(B)/host/hw/em64t/em64t_setjmp.o \
 		$(B)/host/hw/em64t/em64t_fpu2.o \
 		$(B)/host/hw/em64t/em64t_gcpu_regs_save_restore.o  \
 		$(B)/host/hw/em64t/em64t_vmx2.o $(B)/host/hw/em64t/em64t_gdt.o \
-		$(B)/host/hw/em64t/em64t_isr2.o
+		$(B)/host/hw/em64t/em64t_isr.o
+#		$(B)/host/hw/em64t/em64t_isr2.o
 
 GUESTOBJ=	$(B)/guest/guest_control.o  $(B)/guest/guest.o  \
 		$(B)/guest/guest_pci_configuration.o

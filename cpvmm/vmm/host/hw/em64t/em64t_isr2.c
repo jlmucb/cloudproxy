@@ -38,7 +38,8 @@ UINT8 hw_isr (void)
 extern UINT16 exception_class;
 void hw_isr_c_wrapper(unsigned long int index)
 {
-	asm volatile("push %%rax \n\t" //     # offset 08
+	asm volatile(
+		"push %%rax \n\t" //     # offset 08
 		"push %%rbx \n\t" //    # offset 00
 //        # If an exception fault is detected, save the GPRs
 //        # for the assertion debug buffer

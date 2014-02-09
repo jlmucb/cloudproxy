@@ -64,6 +64,8 @@
 # enum EXCEPTION_CLASS_ENUM in uVmm\vmm\host\isr.c
 .set	FAULT_CLASS, 2
 
+.text
+
 #
 #  UINT8 __stdcall
 #  hw_isr (
@@ -84,8 +86,6 @@
         jmp  hw_isr_c_wrapper
 .endm
 
-
-
 .globl	hw_isr_c_wrapper
 hw_isr_c_wrapper:
         push   %rax	# offset 08
@@ -94,24 +94,23 @@ hw_isr_c_wrapper:
         # If an exception fault is detected, save the GPRs
         # for the assertion debug buffer
 
-        mov    %rbx, qword ptr [%rsp+$0x10h]	# vector number
+        mov    %rbx, qword ptr [%rsp+0x10]	# vector number
         # all exception faults have vector number up to 19
         cmp    %rbx, VECTOR_19
-        jg     continue
+        jg    1f 
 
         # check the exception type
         lea    %rax, qword ptr exception_class
         movzx  %ebx, byte ptr [%rbx+%rax]
         cmp    %ebx, FAULT_CLASS
-        jne     continue
+        jne    1f 
 
         # Save GPRs
-        mov    %rax, qword ptr [%rsp+$0x08h]             # this is rax
+        mov    %rax, qword ptr [%rsp+0x08]             # this is rax
         mov    %rbx, g_exception_gpr
-#RNB: TODO need to fix the struct VMM_GP_REGISTERS
         mov    [%rbx], %rax
 
-        mov    %rax, qword ptr [%rsp+$0x00h]             # this is rbx
+        mov    %rax, qword ptr [%rsp+0x00]             # this is rbx
         mov    8[%rbx], %rax
 
         # now save all other GP registers except RIP,RSP,RFLAGS
@@ -128,7 +127,7 @@ hw_isr_c_wrapper:
         mov    104[%rbx], %r13
         mov    112[%rbx], %r14
         mov    120[%rbx], %r15
-continue:
+			1:
         pop    %rbx
         pop    %rax
 
@@ -144,7 +143,7 @@ continue:
         #; [    vector ID     ] <= RSP
         push    %rcx             # save RCX which used for argument passing
         mov     %rcx, %rsp
-        add     %rcx, $8         # now RCX points to the location of vector ID
+        add     %rcx, 0x8         # now RCX points to the location of vector ID
         push    %rdx
         push    %rax
         push    %r8
@@ -153,8 +152,8 @@ continue:
         push    %r11
         push    %r15             # used for saving unaligned stack
         mov     %r15, %rsp        # save RSP prior alignment
-        and     %rsp, $0x0FFFFFFFFFFFFFFF0h # align on 16 bytes boundary
-        sub     %rsp, $0x020h       # prepare space for C-function
+        and     %rsp, 0x0FFFFFFFFFFFFFFF0 # align on 16 bytes boundary
+        sub     %rsp, 0x020       # prepare space for C-function
         call    isr_c_handler
         mov     %rsp, %r15        # restore unaligned RSP
         pop     %r15
@@ -169,1035 +168,1503 @@ continue:
                                 # RIP. Just pop the pointer to the RIP into RSP.
         iretq
 
-
-#; the functions below instantiate isr_entry_macro for 256 vectors (IDT entries)
-
-#RNB: TODO the constants should potentially be prefixed with $0x, but waiting
-# 	until the proc/macro are fixed
-
-.text
+#; functions below instantiate isr_entry_macro for 256 vectors (IDT entries)
 
 .func isr_entry_00
-        isr_entry_macro $0x000
+        push 0x000
+        jmp  hw_isr_c_wrapper
 .endfunc
 #isr_entry_00 ENDP
 
 .func isr_entry_01
-        isr_entry_macro $0x001
+        push 0x001
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_02
-        isr_entry_macro $0x002
+        push 0x002
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_03
-        isr_entry_macro $0x003
+        push 0x003
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_04
-        isr_entry_macro $0x004
+        push 0x004
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_05
-        isr_entry_macro $0x005
+        push 0x005
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_06
-        isr_entry_macro $0x006
+        push 0x006
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_07
-        isr_entry_macro $0x007
+        push 0x007
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_08
-        isr_entry_macro $0x008
+        push 0x008
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_09
-        isr_entry_macro $0x009
+        push 0x009
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_0a
-        isr_entry_macro $0x00a
+        push 0x00a
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_0b
-        isr_entry_macro $0x00b
+        push 0x00b
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_0c
-        isr_entry_macro $0x00c
+        push 0x00c
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_0d
-        isr_entry_macro $0x00d
+        push 0x00d
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_0e
-        isr_entry_macro $0x00e
+        push 0x00e
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_0f
-        isr_entry_macro $0x00f
+        push 0x00f
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_10
-        isr_entry_macro $0x010
+        push 0x010
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_11
-        isr_entry_macro $0x011
+        push 0x011
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_12
-        isr_entry_macro $0x012
+        push 0x012
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_13
-        isr_entry_macro $0x013
+        push 0x013
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_14
-        isr_entry_macro $0x014
+        push 0x014
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_15
-        isr_entry_macro $0x015
+        push 0x015
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_16
-        isr_entry_macro $0x016
+        push 0x016
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_17
-        isr_entry_macro $0x017
+        push 0x017
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_18
-        isr_entry_macro $0x018
+        push 0x018
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_19
-        isr_entry_macro $0x019
+        push 0x019
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_1a
-        isr_entry_macro $0x01a
+        push 0x01a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_1b
-        isr_entry_macro $0x01b
+        push 0x01b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_1c
-        isr_entry_macro $0x01c
+        push 0x01c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_1d
-        isr_entry_macro $0x01d
+        push 0x01d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_1e
-        isr_entry_macro $0x01e
+        push 0x01e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_1f
-        isr_entry_macro $0x01f
+        push 0x01f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_20
-        isr_entry_macro $0x020
+        push 0x020
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_21
-        isr_entry_macro $0x021
+        push 0x021
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_22
-        isr_entry_macro $0x022
+        push 0x022
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_23
-        isr_entry_macro $0x023
+        push 0x023
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_24
-        isr_entry_macro $0x024
+        
 .endfunc
 
 .func isr_entry_25
-        isr_entry_macro $0x025
+        push 0x025
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_26
-        isr_entry_macro $0x026
+        push 0x026
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_27
-        isr_entry_macro $0x027
+        push 0x027
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_28
-        isr_entry_macro $0x028
+        push 0x028
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_29
-        isr_entry_macro $0x029
+        push 0x029
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_2a
-        isr_entry_macro $0x02a
+        push 0x02a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_2b
-        isr_entry_macro $0x02b
+        push 0x02b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_2c
-        isr_entry_macro $0x02c
+        push 0x02c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_2d
-        isr_entry_macro $0x02d
+        push 0x02d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_2e
-        isr_entry_macro $0x02e
+        push 0x02e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_2f
-        isr_entry_macro $0x02f
+        push 0x02f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_30
-        isr_entry_macro $0x030
+        push 0x030
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_31
-        isr_entry_macro $0x031
+        push 0x031
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_32
-        isr_entry_macro $0x032
+        push 0x032
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_33
-        isr_entry_macro $0x033
+        push 0x033
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_34
-        isr_entry_macro $0x034
+        push 0x034
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_35
-        isr_entry_macro $0x035
+        push 0x035
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_36
-        isr_entry_macro $0x036
+        push 0x036
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_37
-        isr_entry_macro $0x037
+        push 0x037
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_38
-        isr_entry_macro $0x038
+        push 0x038
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_39
-        isr_entry_macro $0x039
+        push 0x039
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_3a
-        isr_entry_macro $0x03a
+        push 0x03a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_3b
-        isr_entry_macro $0x03b
+        push 0x03b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_3c
-        isr_entry_macro $0x03c
+        push 0x03c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_3d
-        isr_entry_macro $0x03d
+        push 0x03d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_3e
-        isr_entry_macro $0x03e
+        push 0x03e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_3f
-        isr_entry_macro $0x03f
+        push 0x03f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_40
-        isr_entry_macro $0x040
+        push 0x040
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_41
-        isr_entry_macro $0x041
+        push 0x041
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_42
-        isr_entry_macro $0x042
+        push 0x042
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_43
-        isr_entry_macro $0x043
+        push 0x043
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_44
-        isr_entry_macro $0x044
+        push 0x044
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_45
-        isr_entry_macro $0x045
+        push 0x045
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_46
-        isr_entry_macro $0x046
+        push 0x046
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_47
-        isr_entry_macro $0x047
+        
 .endfunc
 
 .func isr_entry_48
-        isr_entry_macro $0x048
+        push 0x048
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_49
-        isr_entry_macro $0x049
+        push 0x049
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_4a
-        isr_entry_macro $0x04a
+        push 0x04a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_4b
-        isr_entry_macro $0x04b
+        push 0x04b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_4c
-        isr_entry_macro $0x04c
+        push 0x04c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_4d
-        isr_entry_macro $0x04d
+        push 0x04d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_4e
-        isr_entry_macro $0x04e
+        push 0x04e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_4f
-        isr_entry_macro $0x04f
+        push 0x04f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_50
-        isr_entry_macro $0x050
+        push 0x050
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_51
-        isr_entry_macro $0x051
+        push 0x051
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_52
-        isr_entry_macro $0x052
+        push 0x052
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_53
-        isr_entry_macro $0x053
+        push 0x053
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_54
-        isr_entry_macro $0x054
+        push 0x054
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_55
-        isr_entry_macro $0x055
+        push 0x055
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_56
-        isr_entry_macro $0x056
+        push 0x056
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_57
-        isr_entry_macro $0x057
+        push 0x057
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_58
-        isr_entry_macro $0x058
+        push 0x058
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_59
-        isr_entry_macro $0x059
+        push 0x059
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_5a
-        isr_entry_macro $0x05a
+        push 0x05a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_5b
-        isr_entry_macro $0x05b
+        push 0x05b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_5c
-        isr_entry_macro $0x05c
+        push 0x05c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_5d
-        isr_entry_macro $0x05d
+        push 0x05d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_5e
-        isr_entry_macro $0x05e
+        push 0x05e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_5f
-        isr_entry_macro $0x05f
+        push 0x05f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_60
-        isr_entry_macro $0x060
+        push 0x060
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_61
-        isr_entry_macro $0x061
+        push 0x061
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_62
-        isr_entry_macro $0x062
+        push 0x062
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_63
-        isr_entry_macro $0x063
+        push 0x063
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_64
-        isr_entry_macro $0x064
+        push 0x064
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_65
-        isr_entry_macro $0x065
+        push 0x065
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_66
-        isr_entry_macro $0x066
+        push 0x066
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_67
-        isr_entry_macro $0x067
+        push 0x067
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_68
-        isr_entry_macro $0x068
+        push 0x068
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_69
-        isr_entry_macro $0x069
+        push 0x069
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_6a
-        isr_entry_macro $0x06a
+        push 0x06a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_6b
-        isr_entry_macro $0x06b
+        push 0x06b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_6c
-        isr_entry_macro $0x06c
+        push 0x06c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_6d
-        isr_entry_macro $0x06d
+        push 0x06d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_6e
-        isr_entry_macro $0x06e
+        push 0x06e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_6f
-        isr_entry_macro $0x06f
+        push 0x06f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_70
-        isr_entry_macro $0x070
+        push 0x070
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_71
-        isr_entry_macro $0x071
+        push 0x071
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_72
-        isr_entry_macro $0x072
+        push 0x072
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_73
-        isr_entry_macro $0x073
+        push 0x073
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_74
-        isr_entry_macro $0x074
+        push 0x074
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_75
-        isr_entry_macro $0x075
+        push 0x075
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_76
-        isr_entry_macro $0x076
+        push 0x076
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_77
-        isr_entry_macro $0x077
+        push 0x077
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_78
-        isr_entry_macro $0x078
+        push 0x078
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_79
-        isr_entry_macro $0x079
+        
 .endfunc
 
 .func isr_entry_7a
-        isr_entry_macro $0x07a
+        push 0x07a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_7b
-        isr_entry_macro $0x07b
+        push 0x07b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_7c
-        isr_entry_macro $0x07c
+        push 0x07c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_7d
-        isr_entry_macro $0x07d
+        push 0x07d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_7e
-        isr_entry_macro $0x07e
+        push 0x07e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_7f
-        isr_entry_macro $0x07f
+        push 0x07f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_80
-        isr_entry_macro $0x080
+        push 0x080
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_81
-        isr_entry_macro $0x081
+        push 0x081
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_82
-        isr_entry_macro $0x082
+        push 0x082
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_83
-        isr_entry_macro $0x083
+        push 0x083
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_84
-        isr_entry_macro $0x084
+        push 0x084
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_85
-        isr_entry_macro $0x085
+        push 0x085
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_86
-        isr_entry_macro $0x086
+        push 0x086
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_87
-        isr_entry_macro $0x087
+        push 0x087
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_88
-        isr_entry_macro $0x088
+        push 0x088
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_89
-        isr_entry_macro $0x089
+        push 0x089
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_8a
-        isr_entry_macro $0x08a
+        push 0x08a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_8b
-        isr_entry_macro $0x08b
+        push 0x08b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_8c
-        isr_entry_macro $0x08c
+        push 0x08c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_8d
-        isr_entry_macro $0x08d
+        push 0x08d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_8e
-        isr_entry_macro $0x08e
+        push 0x08e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_8f
-        isr_entry_macro $0x08f
+        push 0x08f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_90
-        isr_entry_macro $0x090
+        push 0x090
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_91
-        isr_entry_macro $0x091
+        push 0x091
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_92
-        isr_entry_macro $0x092
+        push 0x092
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_93
-        isr_entry_macro $0x093
+        push 0x093
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_94
-        isr_entry_macro $0x094
+        push 0x094
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_95
-        isr_entry_macro $0x095
+        push 0x095
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_96
-        isr_entry_macro $0x096
+        push 0x096
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_97
-        isr_entry_macro $0x097
+        push 0x097
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_98
-        isr_entry_macro $0x098
+        push 0x098
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_99
-        isr_entry_macro $0x099
+        push 0x099
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_9a
-        isr_entry_macro $0x09a
+        push 0x09a
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_9b
-        isr_entry_macro $0x09b
+        push 0x09b
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_9c
-        isr_entry_macro $0x09c
+        push 0x09c
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_9d
-        isr_entry_macro $0x09d
+        push 0x09d
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_9e
-        isr_entry_macro $0x09e
+        push 0x09e
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_9f
-        isr_entry_macro $0x09f
+        push 0x09f
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a0
-        isr_entry_macro $0x0a0
+        push 0x0a0
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a1
-        isr_entry_macro $0x0a1
+        push 0x0a1
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a2
-        isr_entry_macro $0x0a2
+        push 0x0a2
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a3
-        isr_entry_macro $0x0a3
+        push 0x0a3
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a4
-        isr_entry_macro $0x0a4
+        push 0x0a4
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a5
-        isr_entry_macro $0x0a5
+        push 0x0a5
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a6
-        isr_entry_macro $0x0a6
+        push 0x0a6
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a7
-        isr_entry_macro $0x0a7
+        push 0x0a7
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a8
-        isr_entry_macro $0x0a8
+        push 0x0a8
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_a9
-        isr_entry_macro $0x0a9
+        push 0x0a9
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_aa
-        isr_entry_macro $0x0aa
+        push 0x0aa
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ab
-        isr_entry_macro $0x0ab
+        push 0x0ab
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ac
-        isr_entry_macro $0x0ac
+        push 0x0ac
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ad
-        isr_entry_macro $0x0ad
+        push 0x0ad
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ae
-        isr_entry_macro $0x0ae
+        push 0x0ae
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_af
-        isr_entry_macro $0x0af
+        
 .endfunc
 
 .func isr_entry_b0
-        isr_entry_macro $0x0b0
+        push 0x0b0
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b1
-        isr_entry_macro $0x0b1
+        push 0x0b1
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b2
-        isr_entry_macro $0x0b2
+        push 0x0b2
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b3
-        isr_entry_macro $0x0b3
+        push 0x0b3
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b4
-        isr_entry_macro $0x0b4
+        push 0x0b4
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b5
-        isr_entry_macro $0x0b5
+        push 0x0b5
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b6
-        isr_entry_macro $0x0b6
+        push 0x0b6
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b7
-        isr_entry_macro $0x0b7
+        push 0x0b7
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b8
-        isr_entry_macro $0x0b8
+        push 0x0b8
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_b9
-        isr_entry_macro $0x0b9
+        push 0x0b9
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ba
-        isr_entry_macro $0x0ba
+        push 0x0ba
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_bb
-        isr_entry_macro $0x0bb
+        push 0x0bb
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_bc
-        isr_entry_macro $0x0bc
+        push 0x0bc
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_bd
-        isr_entry_macro $0x0bd
+        push 0x0bd
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_be
-        isr_entry_macro $0x0be
+        push 0x0be
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_bf
-        isr_entry_macro $0x0bf
+        push 0x0bf
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c0
-        isr_entry_macro $0x0c0
+        push 0x0c0
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c1
-        isr_entry_macro $0x0c1
+        push 0x0c1
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c2
-        isr_entry_macro $0x0c2
+        push 0x0c2
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c3
-        isr_entry_macro $0x0c3
+        push 0x0c3
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c4
-        isr_entry_macro $0x0c4
+        push 0x0c4
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c5
-        isr_entry_macro $0x0c5
+        push 0x0c5
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c6
-        isr_entry_macro $0x0c6
+        push 0x0c6
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c7
-        isr_entry_macro $0x0c7
+        push 0x0c7
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c8
-        isr_entry_macro $0x0c8
+        push 0x0c8
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_c9
-        isr_entry_macro $0x0c9
+        push 0x0c9
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ca
-        isr_entry_macro $0x0ca
+        push 0x0ca
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_cb
-        isr_entry_macro $0x0cb
+        push 0x0cb
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_cc
-        isr_entry_macro $0x0cc
+        push 0x0cc
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_cd
-        isr_entry_macro $0x0cd
+        push 0x0cd
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_ce
-        isr_entry_macro $0x0ce
+        push 0x0ce
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_cf
-        isr_entry_macro $0x0cf
+        push 0x0cf
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_d0
-        isr_entry_macro $0x0d0
+        push 0x0d0
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_d1
-        isr_entry_macro $0x0d1
+        push 0x0d1
+        jmp  hw_isr_c_wrapper
 .endfunc
 
 .func isr_entry_d2
-        isr_entry_macro $0x0d2
+        push 0x0d2
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d3
-        isr_entry_macro $0x0d3
+        push 0x0d3
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d4
-        isr_entry_macro $0x0d4
+        push 0x0d4
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d5
-        isr_entry_macro $0x0d5
+        push 0x0d5
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d6
-        isr_entry_macro $0x0d6
+        push 0x0d6
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d7
-        isr_entry_macro $0x0d7
+        push 0x0d7
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d8
-        isr_entry_macro $0x0d8
+        push 0x0d8
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_d9
-        isr_entry_macro $0x0d9
+        push 0x0d9
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_da
-        isr_entry_macro $0x0da
+        push 0x0da
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_db
-        isr_entry_macro $0x0db
+        push 0x0db
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_dc
-        isr_entry_macro $0x0dc
+        push 0x0dc
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_dd
-        isr_entry_macro $0x0dd
+        push 0x0dd
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_de
-        isr_entry_macro $0x0de
+        push 0x0de
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_df
-        isr_entry_macro $0x0df
+        push 0x0df
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e0
-        isr_entry_macro $0x0e0
+        push 0x0e0
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e1
-        isr_entry_macro $0x0e1
+        push 0x0e1
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e2
-        isr_entry_macro $0x0e2
+        push 0x0e2
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e3
-        isr_entry_macro $0x0e3
+        push 0x0e3
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e4
-        isr_entry_macro $0x0e4
+        push 0x0e4
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e5
-        isr_entry_macro $0x0e5
+        push 0x0e5
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e6
-        isr_entry_macro $0x0e6
+        push 0x0e6
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e7
-        isr_entry_macro $0x0e7
+        push 0x0e7
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e8
-        isr_entry_macro $0x0e8
+        push 0x0e8
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_e9
-        isr_entry_macro $0x0e9
+        push 0x0e9
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ea
-        isr_entry_macro $0x0ea
+        push 0x0ea
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_eb
-        isr_entry_macro $0x0eb
+        push 0x0eb
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ec
-        isr_entry_macro $0x0ec
+        push 0x0ec
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ed
-        isr_entry_macro $0x0ed
+        push 0x0ed
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ee
-        isr_entry_macro $0x0ee
+        push 0x0ee
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ef
-        isr_entry_macro $0x0ef
+        push 0x0ef
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f0
-        isr_entry_macro $0x0f0
+        push 0x0f0
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f1
-        isr_entry_macro $0x0f1
+        push 0x0f1
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f2
-        isr_entry_macro $0x0f2
+        push 0x0f2
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f3
-        isr_entry_macro $0x0f3
+        push 0x0f3
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f4
-        isr_entry_macro $0x0f4
+        push 0x0f4
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f5
-        isr_entry_macro $0x0f5
+        push 0x0f5
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f6
-        isr_entry_macro $0x0f6
+        push 0x0f6
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f7
-        isr_entry_macro $0x0f7
+        push 0x0f7
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f8
-        isr_entry_macro $0x0f8
+        push 0x0f8
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_f9
-        isr_entry_macro $0x0f9
+        push 0x0f9
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_fa
-        isr_entry_macro $0x0fa
+        push 0x0fa
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_fb
-        isr_entry_macro $0x0fb
+        push 0x0fb
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_fc
-        isr_entry_macro $0x0fc
+        push 0x0fc
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_fd
-        isr_entry_macro $0x0fd
+        push 0x0fd
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_fe
-        isr_entry_macro $0x0fe
+        push 0x0fe
+        jmp  hw_isr_c_wrapper
+        
 .endfunc
 
 .func isr_entry_ff
-        isr_entry_macro $0x0ff
+        push 0x0ff
+        jmp  hw_isr_c_wrapper
 .endfunc

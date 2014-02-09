@@ -18,6 +18,7 @@
 
 extern void gcpu_save_registers();
 extern void gcpu_restore_registers();
+extern void vmentry_failure_function(ADDRESS);
 
 struct VMEXIT_TIME {
     UINT64  last_vmexit;
@@ -109,17 +110,18 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 
     //RNB: Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
     asm volatile(
-        "\tmovq %[vmcall_id], %%rcx\n" \
-        "\tmovq %[arg1], %%rdx\n" \
-        "\tmovq %[arg2], %%rdi\n" \
-        "\tmovq %[arg3], %%rsi\n" \
-        "\tmovq 0x024694D40, %%rax\n" \
-        "\tvmcall\n" \
-        "\tjmp  2f\n" \
-        "1:\n" \
-        "\tjmp  1b\n" \
-        "2:\n" \
-    : 
+        "\tmovq %[vmcall_id], %%rcx\n"
+        "\tmovq %[arg1], %%rdx\n"
+        "\tmovq %[arg2], %%rdi\n"
+        "\tmovq %[arg3], %%rsi\n"
+        "\tmovq 0x024694D40, %%rax\n"
+        "\tvmcall\n"
+				"\t movq %%rax, %[result] \n"
+        "\tjmp  2f\n"
+        "1:\n"
+        "\tjmp 1b\n"
+        "2:\n"
+    :[result] "=g" (result) 
     : [vmcall_id] "g" (vmcall_id), [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3)
     : "%rax", "%rdi", "%rsi", "%r8", "%rcx", "%rdx");
     return result;

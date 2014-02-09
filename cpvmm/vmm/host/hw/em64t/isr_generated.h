@@ -17,6 +17,7 @@
 #ifndef _ISR_GEN_HEADERS_H_
 #define _ISR_GEN_HEADERS_H_
 
+typedef void (*intr_handler)();
 void ASM_FUNCTION isr_entry_00(void);
 void ASM_FUNCTION isr_entry_01(void);
 void ASM_FUNCTION isr_entry_02(void);

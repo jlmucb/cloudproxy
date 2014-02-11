@@ -68,6 +68,7 @@ using std::vector;
 
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
+using keyczar::Key;
 using keyczar::KeyPurpose;
 using keyczar::KeyStatus;
 using keyczar::KeyType;
@@ -135,8 +136,7 @@ void fd_close(int *fd) {
 }
 
 void file_close(FILE *file) {
-  if (file)
-    fclose(file);
+  if (file) fclose(file);
 }
 
 // TODO(kwalsh): Use keyczar's file utils instead
@@ -486,21 +486,112 @@ bool VerifySignature(const string &data, const string &context,
   return true;
 }
 
-bool CopyPublicKey(const keyczar::Signer &key,
-                   scoped_ptr<keyczar::Verifier> *copy) {
+// Debug code for dumping a keyczar keyset primary key:
+// {
+//   const Keyset *keyset = key.keyset();
+//   const keyczar::Key *primary_key = keyset->primary_key();
+//   scoped_ptr<Value> v(primary_key->GetValue());
+//   string json;
+//   keyczar::base::JSONWriter::Write(v.get(), true /* pretty print */, &json);
+//   VLOG(0) << "json for keyset is:\n" << json;
+// }
+
+/// Make a (deep) copy of a Keyset.
+/// @param keyset The keyset to be copied.
+/// @param[out] copy The keyset to fill with the copy.
+bool CopyKeyset(const Keyset &keyset, scoped_ptr<Keyset> *copy) {
   if (copy == nullptr) {
-    LOG(ERROR) << "null key";
+    LOG(ERROR) << "null keyset";
     return false;
   }
-  KeyczarPublicKey kpk;
-  if (!SerializePublicKey(key, &kpk)) {
-    LOG(ERROR) << "Could not serialize the public key";
+  scoped_ptr<Value> meta_value(
+      keyset.metadata()->GetValue(true /* "immutable" copy of keyset */));
+  if (meta_value.get() == nullptr) {
+    LOG(ERROR) << "Could not serialize keyset metadata";
     return false;
   }
-  if (!DeserializePublicKey(kpk, copy)) {
-    LOG(ERROR) << "Could not deserialize the public key";
+  scoped_ptr<Keyset> ks(new Keyset());
+  ks->set_metadata(KeysetMetadata::CreateFromValue(meta_value.get()));
+  if (ks->metadata() == nullptr) {
+    LOG(ERROR) << "Could not deserialize keyset metadata";
     return false;
   }
+  KeyType::Type key_type = ks->metadata()->key_type();
+  for (auto it = ks->metadata()->Begin(); it != ks->metadata()->End(); ++it) {
+    int version = it->first;
+    const Key *oldkey = keyset.GetKey(version);
+    if (oldkey == nullptr) {
+      LOG(ERROR) << "Missing key version " << version;
+      return false;
+    }
+    scoped_ptr<Value> key_value(oldkey->GetValue());
+    if (key_value.get() == nullptr) {
+      LOG(ERROR) << "Could not serialize key version " << version;
+      return false;
+    }
+    scoped_ptr<Key> newkey(Key::CreateFromValue(key_type, *key_value));
+    if (!ks->AddKey(newkey.release(), version)) {
+      LOG(ERROR) << "Could not add copied key version " << version;
+      return false;
+    }
+  }
+  // We can't cleanly copy keyset metadata because the primary key status is
+  // tracked in twice: in the metadata (KeysetMetadata::KeyVersion::key_status_)
+  // and also in the keyset (Keyset::primary_key_version_number_). These get out
+  // of sync. Ideally, Keyset::set_metadata() would update
+  // Keyset::primary_key_version_number_.
+  // Workaround: demote the primary key then re-promote it.
+  int primary_key = keyset.primary_key_version_number();
+  if (primary_key > 0) {
+    ks->DemoteKey(primary_key);
+    ks->PromoteKey(primary_key);
+  }
+  copy->reset(ks.release());
+  return true;
+}
+
+bool CopySigningKey(const Signer &key, scoped_ptr<Signer> *copy) {
+  scoped_ptr<Keyset> keyset;
+  if (!CopyKeyset(*key.keyset(), &keyset)) {
+    LOG(ERROR) << "Could not copy Signer keyset";
+    return false;
+  }
+  copy->reset(new Signer(keyset.release()));
+  if (copy->get() == nullptr) {
+    LOG(ERROR) << "Could not construct Signer copy";
+    return false;
+  }
+  (*copy)->set_encoding(Signer::NO_ENCODING);
+  return true;
+}
+
+bool CopyVerifierKey(const Verifier &key, scoped_ptr<Verifier> *copy) {
+  scoped_ptr<Keyset> keyset;
+  if (!CopyKeyset(*key.keyset(), &keyset)) {
+    LOG(ERROR) << "Could not copy Verifier keyset";
+    return false;
+  }
+  copy->reset(new Verifier(keyset.release()));
+  if (copy->get() == nullptr) {
+    LOG(ERROR) << "Could not construct Verifier copy";
+    return false;
+  }
+  (*copy)->set_encoding(Verifier::NO_ENCODING);
+  return true;
+}
+
+bool CopyCryptingKey(const Crypter &key, scoped_ptr<Crypter> *copy) {
+  scoped_ptr<Keyset> keyset;
+  if (!CopyKeyset(*key.keyset(), &keyset)) {
+    LOG(ERROR) << "Could not copy Crypter keyset";
+    return false;
+  }
+  copy->reset(new Crypter(keyset.release()));
+  if (copy->get() == nullptr) {
+    LOG(ERROR) << "Could not construct Crypter copy";
+    return false;
+  }
+  (*copy)->set_encoding(Crypter::NO_ENCODING);
   return true;
 }
 
@@ -1195,13 +1286,14 @@ bool AuthorizeProgram(const string &path, TaoDomain *admin) {
   if (!Sha256FileHash(path, &program_sha)) return false;
 
   string program_hash;
-  if (!keyczar::base::Base64WEncode(program_sha, &program_hash)) return false;
+  if (!Base64WEncode(program_sha, &program_hash)) return false;
 
   return admin->Authorize(program_hash, TaoAuth::Sha256, program_name);
 }
 
-typedef scoped_ptr_malloc<BIGNUM, keyczar::openssl::OSSLDestroyer<BIGNUM,
-            BN_clear_free> > ScopedSecretBIGNUM;
+typedef scoped_ptr_malloc<
+    BIGNUM, keyczar::openssl::OSSLDestroyer<BIGNUM, BN_clear_free> >
+    ScopedSecretBIGNUM;
 
 bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
   // Note: Much of this function is adapted from code in
@@ -1210,7 +1302,7 @@ bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
     LOG(ERROR) << "null key or pem_key";
     return false;
   }
-  // Get raw key data out of keyczar 
+  // Get raw key data out of keyczar
   // see also: GetPublicKeyValue()
   scoped_ptr<Value> value(key->keyset()->primary_key()->GetValue());
   CHECK(value->IsType(Value::TYPE_DICTIONARY));
@@ -1246,7 +1338,7 @@ bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
     return false;
   }
   // check curve name
-  int curve_nid = OBJ_sn2nid(curve_name.c_str()); // txt2nid
+  int curve_nid = OBJ_sn2nid(curve_name.c_str());  // txt2nid
   if (!OpenSSLSuccess() || curve_nid == NID_undef) {
     LOG(ERROR) << "Keyczar key uses unrecognized ec curve " << curve_name;
     return false;
@@ -1256,10 +1348,10 @@ bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
     LOG(ERROR) << "Could not allocate EC_KEY";
     return false;
   }
-  // Make sure the ASN1 will have curve OID should this EC_KEy be exported.
+  // Make sure the ASN1 will have curve OID should this EC_KEY be exported.
   EC_KEY_set_asn1_flag(ec_key.get(), OPENSSL_EC_NAMED_CURVE);
   // public_key
-  EC_KEY* key_tmp = ec_key.get();
+  EC_KEY *key_tmp = ec_key.get();
   const unsigned char *public_key_bytes =
       reinterpret_cast<const unsigned char *>(public_bytes.data());
   if (!o2i_ECPublicKey(&key_tmp, &public_key_bytes, public_bytes.length())) {
@@ -1288,9 +1380,7 @@ bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
     LOG(ERROR) << "Converted OpenSSL key fails checks";
     return false;
   }
-  // 
-
-  // Lets write the ecdsa key to pem
+  // Move EC_KEY into EVP_PKEY
   ScopedEvpPkey evp_key(EVP_PKEY_new());
   if (!OpenSSLSuccess() || evp_key.get() == NULL) {
     LOG(ERROR) << "Could not allocate EVP_PKEY";

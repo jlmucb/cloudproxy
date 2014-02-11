@@ -33,13 +33,13 @@ using keyczar::Verifier;
 using keyczar::base::WriteStringToFile;
 
 using tao::ConnectToUnixDomainSocket;
-using tao::CopyPublicKey;
 using tao::CreateTempDir;
 using tao::CreateTempRootDomain;
 using tao::CreateTempWhitelistDomain;
 using tao::DeserializePublicKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
+using tao::GenerateCryptingKey;
 using tao::HashVM;
 using tao::KeyczarPublicKey;
 using tao::OpenTCPSocket;
@@ -206,24 +206,97 @@ TEST(TaoUtilTest, NoContextTest) {
       VerifySignature(message, context, signature, admin->GetPolicyVerifier()));
 }
 
-TEST(TaoUtilTest, CopyPublicKeyTest) {
+TEST(TaoUtilTest, CopySigningKeyTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<TaoDomain> admin;
   ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
-  scoped_ptr<Verifier> pub_key;
-  EXPECT_TRUE(CopyPublicKey(*admin->GetPolicySigner(), &pub_key))
+  scoped_ptr<keyczar::Signer> key;
+  ASSERT_TRUE(tao::CopySigningKey(*admin->GetPolicySigner(), &key))
       << "Could not copy the key";
 
-  // Make sure that the copied key can verify a signature.
+  // Make sure the two keys can mutually sign and verify signatures.
   string message("Test message");
   string context("Test context");
   string signature;
   EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
       << "Could not sign the test message";
 
-  EXPECT_TRUE(VerifySignature(message, context, signature, pub_key.get()))
+  EXPECT_TRUE(VerifySignature(message, context, signature, key.get()))
       << "The signature did not pass verification";
+
+  EXPECT_TRUE(SignData(message, context, &signature, key.get()))
+      << "Could not sign the test message";
+
+  EXPECT_TRUE(VerifySignature(message, context, signature, admin->GetPolicyVerifier()))
+      << "The signature did not pass verification";
+}
+
+TEST(TaoUtilTest, CopyVerifyingKeyTest) {
+  ScopedTempDir temp_dir;
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
+
+  scoped_ptr<keyczar::Verifier> key;
+  ASSERT_TRUE(tao::CopyVerifierKey(*admin->GetPolicyVerifier(), &key))
+      << "Could not copy the key";
+
+  // Make sure the copied key can verify signatures.
+  string message("Test message");
+  string context("Test context");
+  string signature;
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
+      << "Could not sign the test message";
+
+  EXPECT_TRUE(VerifySignature(message, context, signature, key.get()))
+      << "The signature did not pass verification";
+}
+
+TEST(TaoUtilTest, CopySigningVerifyingKeyTest) {
+  // same as above, but copy Signer to Verifier (i.e. export public)
+  ScopedTempDir temp_dir;
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
+
+  scoped_ptr<keyczar::Verifier> key;
+  ASSERT_TRUE(tao::CopyVerifierKey(*admin->GetPolicySigner(), &key))
+      << "Could not copy the key";
+
+  // Make sure the copied key can verify signatures.
+  string message("Test message");
+  string context("Test context");
+  string signature;
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
+      << "Could not sign the test message";
+
+  EXPECT_TRUE(VerifySignature(message, context, signature, key.get()))
+      << "The signature did not pass verification";
+}
+
+TEST(TaoUtilTest, CopyCryptingKeyTest) {
+  // same as above, but copy Signer to Verifier (i.e. export public)
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(CreateTempDir("copy_crypting_key_test", &temp_dir));
+  scoped_ptr<keyczar::Crypter> crypter;
+  GenerateCryptingKey(*temp_dir + "/test.key", "test", "testpass", &crypter);
+
+  scoped_ptr<keyczar::Crypter> key;
+  ASSERT_TRUE(tao::CopyCryptingKey(*crypter, &key))
+      << "Could not copy the key";
+
+  // Make sure the two keys can mutually encrypt and decrypt data.
+  string plaintext("Test message");
+  string ciphertext, decrypted;
+
+  EXPECT_TRUE(crypter->Encrypt(plaintext, &ciphertext));
+  EXPECT_TRUE(key->Decrypt(ciphertext, &decrypted));
+  EXPECT_EQ(plaintext, decrypted)
+    << "Crypter copy did not decrypt properly";
+
+  EXPECT_TRUE(key->Encrypt(plaintext, &ciphertext));
+  EXPECT_TRUE(crypter->Decrypt(ciphertext, &decrypted));
+  EXPECT_EQ(plaintext, decrypted)
+    << "Crypter copy did not encrypt properly";
 }
 
 TEST(TaoUtilTest, SealOrUnsealSecretTest) {

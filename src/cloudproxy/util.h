@@ -85,6 +85,7 @@ typedef scoped_ptr_malloc<
 /// @param ctx The OpenSSL context to prepare.
 /// @param tls_cert Path to OpenSSL certificate of the tls_key.
 /// @param tls_key The private key to use for this connection.
+/// TODO(kwalsh) Use const reference for tls_key
 bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert,
                  const keyczar::Signer *tls_key);
 
@@ -94,6 +95,7 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert,
 /// @param key The key to use to verify the signature on the SignedACL.
 /// @param[out] acls The extract ACL.
 /// TODO(kwalsh) Should this be a static method of CloudAuth?
+/// TODO(kwalsh) Use const reference for key
 bool ExtractACL(const string &serialized_signed_acls,
                 const keyczar::Verifier *key, string *acls);
 

@@ -72,7 +72,7 @@ constexpr static auto SealKeySecretSuffix = "sealing/secret";
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
     ScopedRsa;
 
-/// A poitner to an OpenSSL EC_KEY object
+/// A pointer to an OpenSSL EC_KEY object
 typedef scoped_ptr_malloc<
     EC_KEY, keyczar::openssl::OSSLDestroyer<EC_KEY, EC_KEY_free>> ScopedECKey;
 
@@ -306,14 +306,21 @@ bool SignData(const string &data, const string &context, string *signature,
 bool VerifySignature(const string &data, const string &context,
                      const string &signature, const keyczar::Verifier *key);
 
-/// Copy the value of a Signer into a Verifier.
-/// @param key The key to copy.
+/// Make a (deep) copy of a Signer.
+/// @param key The key to be copied.
 /// @param[out] copy The key to fill with the copy.
-/// TODO(kwalsh) This function would be useful if it worked for signers and
-/// crypters. As it is, it is not used anywhere.
-/// TODO(kwalsh) misleading function name
-bool CopyPublicKey(const keyczar::Signer &key,
-                   scoped_ptr<keyczar::Verifier> *copy);
+bool CopySigningKey(const keyczar::Signer &key, scoped_ptr<keyczar::Signer> *copy);
+
+/// Make a (deep) copy of a Verifier or the public half of a Signer.
+/// @param key The key to be copied. If key is actually a Signer, only 
+/// the public half will be copied.
+/// @param[out] copy The key to fill with the copy.
+bool CopyVerifierKey(const keyczar::Verifier &key, scoped_ptr<keyczar::Verifier> *copy);
+
+/// Make a (deep) copy of a Crypter.
+/// @param key The key to be copied.
+/// @param[out] copy The key to fill with the copy.
+bool CopyCryptingKey(const keyczar::Crypter &key, scoped_ptr<keyczar::Crypter> *copy);
 
 /// If sealed_path is a file, then try to unseal it. Otherwise, create a new
 /// secret and seal it at sealed_path.
@@ -407,7 +414,7 @@ bool SerializeX509(X509 *x509, string *serialized_x509);
 /// @param cn The name to use for the x509 CommonName detail.
 /// @param public_cert_path File name to hold the resulting x509 certificate.
 /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-bool CreateSelfSignedX509(const keyczar::Signer *key, const string &coutry,
+bool CreateSelfSignedX509(const keyczar::Signer *key, const string &country,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path);
 

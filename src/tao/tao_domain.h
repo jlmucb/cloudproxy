@@ -128,12 +128,6 @@ class TaoDomain : public TaoAuth {
     return GetConfigPath(JSONPolicyKeysPath, tao::keys::SignPrivateKeySuffix);
   }
 
-  /// Get the path to the policy private key in PKCS8 format.
-  const string GetPolicyPrivateKeyPKCS8Path() const {
-    return GetConfigPath(JSONPolicyKeysPath,
-                         tao::keys::SignPrivateKeyPKCS8Suffix);
-  }
-
   /// Get the path to a self-signed x509 certificate for the policy public key.
   const string GetPolicyX509CertificatePath() const {
     return GetConfigPath(JSONPolicyKeysPath,

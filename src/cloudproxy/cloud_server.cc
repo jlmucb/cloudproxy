@@ -80,7 +80,6 @@ CloudServer::CloudServer(const string &server_config_path, const string &secret,
   FilePath fp(server_config_path);
   FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
   FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
-  FilePath tls_key_path = fp.Append(tao::keys::SignPrivateKeyPKCS8Suffix);
   FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
 
   // Check to see if the keys and cert exist. If not, create them.
@@ -100,9 +99,8 @@ CloudServer::CloudServer(const string &server_config_path, const string &secret,
 
   if (new_cert) {
     // TODO(kwalsh) x509 name details should come from elsewhere
-    CHECK(tao::CreateSelfSignedX509(
-        key.get(), tls_key_path.value(), *encoded_secret, "US", "Washington",
-        "Google", "cloudserver", tls_cert_path.value()));
+    CHECK(tao::CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
+                                    "cloudserver", tls_cert_path.value()));
   }
 
   // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
@@ -113,8 +111,8 @@ CloudServer::CloudServer(const string &server_config_path, const string &secret,
   context_.reset(SSL_CTX_new(TLSv1_2_server_method()));
 
   // set up the SSL context and SSLs for getting client connections
-  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), tls_key_path.value(),
-                    *encoded_secret)) << "Could not set up server TLS";
+  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), key.get()))
+      << "Could not set up server TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 }

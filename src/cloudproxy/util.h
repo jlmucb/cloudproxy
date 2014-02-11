@@ -80,27 +80,20 @@ typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
 typedef scoped_ptr_malloc<
     SSL, keyczar::openssl::OSSLDestroyer<SSL, ssl_cleanup> > ScopedSSL;
 
-/// Handle OpenSSL password callbacks.
-/// @param buf A buffer to receive the password.
-/// @param size The size of the buffer to fill.
-/// @param rwflag A flag for the buffer.
-/// @param password The password to use.
-int PasswordCallback(char *buf, int size, int rwflag, void *password);
-
 /// Prepare an SSL_CTX to connect to a peer. This is used by both the client and
 /// server.
 /// @param ctx The OpenSSL context to prepare.
-/// @param tls_cert Path to OpenSSL certificate of the public policy key.
-/// @param tls_key Path to OpenSSL private key to use for the connection.
-/// @param password The password to use to decrypt the private key.
-bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const string &tls_key,
-                 const string &password);
+/// @param tls_cert Path to OpenSSL certificate of the tls_key.
+/// @param tls_key The private key to use for this connection.
+bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert,
+                 const keyczar::Signer *tls_key);
 
 /// Check the signature on a SignedACL file and get a serialized ACL.
 /// @param serialized_signed_acls A path to a file containing a serialized
 /// SignedACL.
 /// @param key The key to use to verify the signature on the SignedACL.
 /// @param[out] acls The extract ACL.
+/// TODO(kwalsh) Should this be a static method of CloudAuth?
 bool ExtractACL(const string &serialized_signed_acls,
                 const keyczar::Verifier *key, string *acls);
 

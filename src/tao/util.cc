@@ -40,6 +40,7 @@
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
+#include <keyczar/base/values.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/rw/keyset_encrypted_file_reader.h>
 #include <keyczar/rw/keyset_encrypted_file_writer.h>
@@ -75,6 +76,7 @@ using keyczar::KeysetMetadata;
 using keyczar::MessageDigestImpl;
 using keyczar::Signer;
 using keyczar::Verifier;
+using keyczar::base::Base64WDecode;
 using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
 using keyczar::base::PathExists;
@@ -1198,36 +1200,108 @@ bool AuthorizeProgram(const string &path, TaoDomain *admin) {
   return admin->Authorize(program_hash, TaoAuth::Sha256, program_name);
 }
 
-bool ExportKeyToOpenSSL(Signer *key, const string &pem_key_path,
-                        const string &secret, ScopedEvpPkey *pem_key) {
+typedef scoped_ptr_malloc<BIGNUM, keyczar::openssl::OSSLDestroyer<BIGNUM,
+            BN_clear_free> > ScopedSecretBIGNUM;
+
+bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
+  // Note: Much of this function is adapted from code in
+  // keyczar::openssl::ECDSAOpenSSL::Create().
   if (key == nullptr || pem_key == nullptr) {
     LOG(ERROR) << "null key or pem_key";
     return false;
   }
-  // TODO(tmroeder): Add an HMAC as a separate file, since
-  // PEM_write_PKCS8PrivateKey does not provide integrity protection, and our
-  // threat model requires it to.
+  // Get raw key data out of keyczar 
+  // see also: GetPublicKeyValue()
+  scoped_ptr<Value> value(key->keyset()->primary_key()->GetValue());
+  CHECK(value->IsType(Value::TYPE_DICTIONARY));
+  DictionaryValue *dict = static_cast<DictionaryValue *>(value.get());
+  string curve_name, public_curve_name;
+  string private_base64, public_base64, private_bytes, public_bytes;
+  bool has_private = dict->HasKey("privateKey");
+  if (has_private) {
+    if (!dict->GetString("namedCurve", &curve_name) ||
+        !dict->GetString("privateKey", &private_base64) ||
+        !dict->GetString("publicKey.namedCurve", &public_curve_name) ||
+        !dict->GetString("publicKey.publicBytes", &public_base64)) {
+      LOG(ERROR) << "Keyczar key missing expected values";
+      return false;
+    }
+    if (public_curve_name != curve_name) {
+      LOG(ERROR) << "Keyczar key curve mismatch";
+      return false;
+    }
+  } else {
+    if (!dict->GetString("namedCurve", &curve_name) ||
+        !dict->GetString("publicBytes", &public_base64)) {
+      LOG(ERROR) << "Keyczar key missing expected values";
+      return false;
+    }
+  }
+  if (!Base64WDecode(public_base64, &public_bytes)) {
+    LOG(ERROR) << "Could not decode keyczar public key data";
+    return false;
+  }
+  if (has_private && !Base64WDecode(private_base64, &private_bytes)) {
+    LOG(ERROR) << "Could not decode keyczar private key data";
+    return false;
+  }
+  // check curve name
+  int curve_nid = OBJ_sn2nid(curve_name.c_str()); // txt2nid
+  if (!OpenSSLSuccess() || curve_nid == NID_undef) {
+    LOG(ERROR) << "Keyczar key uses unrecognized ec curve " << curve_name;
+    return false;
+  }
+  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  if (!OpenSSLSuccess() || ec_key.get() == NULL) {
+    LOG(ERROR) << "Could not allocate EC_KEY";
+    return false;
+  }
+  // Make sure the ASN1 will have curve OID should this EC_KEy be exported.
+  EC_KEY_set_asn1_flag(ec_key.get(), OPENSSL_EC_NAMED_CURVE);
+  // public_key
+  EC_KEY* key_tmp = ec_key.get();
+  const unsigned char *public_key_bytes =
+      reinterpret_cast<const unsigned char *>(public_bytes.data());
+  if (!o2i_ECPublicKey(&key_tmp, &public_key_bytes, public_bytes.length())) {
+    OpenSSLSuccess();  // print errors
+    LOG(ERROR) << "Could not convert keyczar public key to openssl";
+    return false;
+  }
+  // private_key
+  const unsigned char *private_key_bytes =
+      reinterpret_cast<const unsigned char *>(private_bytes.data());
+  ScopedSecretBIGNUM bn(
+      BN_bin2bn(private_key_bytes, private_bytes.length(), nullptr));
+  if (!OpenSSLSuccess() || bn.get() == NULL) {
+    LOG(ERROR) << "Could not parse keyczar private key data";
+    return false;
+  }
+  if (!EC_KEY_set_private_key(ec_key.get(), bn.get())) {
+    OpenSSLSuccess();  // print errors
+    LOG(ERROR) << "Could not convert keyczar private key to openssl";
+    return false;
+  }
+  bn.reset();
+  // final sanity check
+  if (!EC_KEY_check_key(ec_key.get())) {
+    OpenSSLSuccess();  // print errors
+    LOG(ERROR) << "Converted OpenSSL key fails checks";
+    return false;
+  }
+  // 
 
-  // export private key to openssl format
-  if (!key->keyset()->ExportPrivateKey(pem_key_path, &secret)) {
-    LOG(ERROR) << "Could not export private key to PKCS8 format";
+  // Lets write the ecdsa key to pem
+  ScopedEvpPkey evp_key(EVP_PKEY_new());
+  if (!OpenSSLSuccess() || evp_key.get() == NULL) {
+    LOG(ERROR) << "Could not allocate EVP_PKEY";
+    return false;
+  }
+  if (!EVP_PKEY_set1_EC_KEY(evp_key.get(), ec_key.get())) {
+    LOG(ERROR) << "Could not convert EC_KEY to EVP_PKEY";
     return false;
   }
 
-  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
-  // So, they need to be added again. Typical error is:
-  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
-  OpenSSL_add_all_algorithms();
-
-  // read it back in using openssl
-  BIO *bio = BIO_new(BIO_s_file());
-  BIO_read_filename(bio, pem_key_path.c_str());
-  char *password = const_cast<char *>(secret.c_str());
-  pem_key->reset(PEM_read_bio_PrivateKey(bio, nullptr, 0, password));
-  if (pem_key->get() == nullptr || !OpenSSLSuccess()) {
-    LOG(ERROR) << "Could not load key from PKCS8 format";
-    return false;
-  }
+  pem_key->reset(evp_key.release());
 
   return true;
 }
@@ -1353,13 +1427,12 @@ static bool WriteX509File(X509 *x509, const string &path) {
   return true;
 }
 
-bool CreateSelfSignedX509(Signer *key, const string &pem_key_path,
-                          const string &secret, const string &country,
+bool CreateSelfSignedX509(const Signer *key, const string &country,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path) {
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey pem_key;
-  if (!ExportKeyToOpenSSL(key, pem_key_path, secret, &pem_key)) return false;
+  if (!ExportKeyToOpenSSL(key, &pem_key)) return false;
 
   // create the x509 structure
   ScopedX509Ctx x509(X509_new());

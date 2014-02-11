@@ -42,7 +42,6 @@ using cloudproxy::ACL;
 using cloudproxy::Action;
 using cloudproxy::CloudAuth;
 using cloudproxy::ExtractACL;
-using cloudproxy::PasswordCallback;
 using cloudproxy::ScopedSSLCtx;
 using cloudproxy::SetUpSSLCTX;
 using cloudproxy::SignedACL;
@@ -57,31 +56,18 @@ using tao::SerializeX509;
 using tao::SignData;
 using tao::TaoDomain;
 
-TEST(CloudProxyUtilTest, PasswordCallbackTest) {
-  string password("password");
-  scoped_array<char> buf(new char(password.size() + 1));
-  EXPECT_EQ(
-      PasswordCallback(
-          buf.get(), password.size() + 1, 0,
-          const_cast<void *>(reinterpret_cast<const void *>(password.c_str()))),
-      static_cast<int>(password.size()));
-  EXPECT_STREQ(buf.get(), password.c_str());
-}
-
 TEST(CloudProxyUtilTest, X509Test) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("cloud_proxy_util_test", &temp_dir));
 
   string priv_key_path = *temp_dir + "/cloudclient_private.key";
   string pub_key_path = *temp_dir + "/cloudclient_public.key";
-  string tls_key_path = *temp_dir + "/cloudclient_private.pem";
   string tls_cert_path = *temp_dir + "/cloudclient.cert";
   scoped_ptr<keyczar::Signer> key;
   EXPECT_TRUE(GenerateSigningKey(priv_key_path, pub_key_path, "test client key",
                                  "dummy_password", &key));
-  EXPECT_TRUE(CreateSelfSignedX509(key.get(), tls_key_path, "dummy_password",
-                                   "US", "Washington", "Google", "testclient",
-                                   tls_cert_path));
+  EXPECT_TRUE(CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
+                                   "testclient", tls_cert_path));
 
   ScopedFile x509_file(fopen(tls_cert_path.c_str(), "r"));
   ASSERT_TRUE(x509_file.get() != nullptr);
@@ -99,8 +85,7 @@ TEST(CloudProxyUtilTest, X509Test) {
   OpenSSL_add_all_algorithms();
   ScopedSSLCtx ctx(SSL_CTX_new(TLSv1_2_client_method()));
 
-  EXPECT_TRUE(
-      SetUpSSLCTX(ctx.get(), tls_cert_path, tls_key_path, "dummy_password"));
+  EXPECT_TRUE(SetUpSSLCTX(ctx.get(), tls_cert_path, key.get()));
 }
 
 TEST(CloudProxyUtilTest, ExtractACLTest) {

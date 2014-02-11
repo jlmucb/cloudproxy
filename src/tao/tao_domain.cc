@@ -93,7 +93,6 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
 
   string priv_path = admin->GetPolicyPrivateKeyPath();
   string pub_path = admin->GetPolicyPublicKeyPath();
-  string pem_path = admin->GetPolicyPrivateKeyPKCS8Path();
   string cert_path = admin->GetPolicyX509CertificatePath();
   // Generate and save the policy public and private keys.
   if (!GenerateSigningKey(priv_path, pub_path, "tao_domain_policy_key",
@@ -108,10 +107,9 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
   }
   // Export an openssl copy of the private key.
   if (!CreateSelfSignedX509(
-          admin->GetPolicySigner(), pem_path, password,
-          admin->GetPolicyX509Country(), admin->GetPolicyX509State(),
-          admin->GetPolicyX509Organization(), admin->GetPolicyX509CommonName(),
-          cert_path)) {
+          admin->GetPolicySigner(), admin->GetPolicyX509Country(),
+          admin->GetPolicyX509State(), admin->GetPolicyX509Organization(),
+          admin->GetPolicyX509CommonName(), cert_path)) {
     LOG(ERROR) << "Could not create self-signed x509 for policy key";
     return nullptr;
   }

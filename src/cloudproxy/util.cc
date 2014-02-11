@@ -76,12 +76,6 @@ void ssl_cleanup(SSL *ssl) {
   }
 }
 
-int PasswordCallback(char *buf, int size, int rwflag, void *password) {
-  strncpy(buf, reinterpret_cast<char *>(password), size);
-  buf[size - 1] = '\0';
-  return (strlen(buf));
-}
-
 static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
   // we always let the X.509 cert pass verification because we're
   // going to check it using a SignedQuote in the first message (and
@@ -90,12 +84,21 @@ static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
   return 1;
 }
 
-bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const string &tls_key,
-                 const string &password) {
-  if (ctx == nullptr) {
+bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
+  if (ctx == nullptr || tls_key == nullptr) {
     LOG(ERROR) << "Invalid SetUpSSLCTX parameters";
     return false;
   }
+  tao::ScopedEvpPkey pem_key;
+  if (!tao::ExportKeyToOpenSSL(tls_key, &pem_key)) {
+    LOG(ERROR) << "Could not export key to openssl";
+    return false;
+  }
+  
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  OpenSSL_add_all_algorithms();
 
   // Set up the TLS connection with the list of acceptable ciphers.
   // We only accept ECDH key exchange, with ECDSA signatures and GCM
@@ -127,13 +130,8 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const string &tls_key,
     return false;
   }
 
-  // set up the password callback and the password itself
-  SSL_CTX_set_default_passwd_cb(ctx, PasswordCallback);
-  SSL_CTX_set_default_passwd_cb_userdata(ctx,
-                                         const_cast<char *>(password.c_str()));
-
-  if (!SSL_CTX_use_PrivateKey_file(ctx, tls_key.c_str(), SSL_FILETYPE_PEM)) {
-    LOG(ERROR) << "Could not load the private key for this connection";
+  if (!SSL_CTX_use_PrivateKey(ctx, pem_key.get())) {
+    LOG(ERROR) << "Could not set the private key for this connection";
     return false;
   }
 

@@ -64,7 +64,6 @@ CloudClient::CloudClient(const string &client_config_path, const string &secret,
   FilePath fp(client_config_path);
   FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
   FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
-  FilePath tls_key_path = fp.Append(tao::keys::SignPrivateKeyPKCS8Suffix);
   FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
 
   // Check to see if the keys and cert exist. If not, create them.
@@ -84,9 +83,8 @@ CloudClient::CloudClient(const string &client_config_path, const string &secret,
 
   if (new_cert) {
     // TODO(kwalsh) x509 details should come from elsewhere
-    CHECK(tao::CreateSelfSignedX509(
-        key.get(), tls_key_path.value(), *encoded_secret, "US", "Washington",
-        "Google", "cloudclient", tls_cert_path.value()));
+    CHECK(tao::CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
+                                    "cloudclient", tls_cert_path.value()));
   }
 
   // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
@@ -97,8 +95,7 @@ CloudClient::CloudClient(const string &client_config_path, const string &secret,
   context_.reset(SSL_CTX_new(TLSv1_2_client_method()));
 
   // set up the TLS connection with the cert and keys and trust DB
-  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), tls_key_path.value(),
-                    *encoded_secret))
+  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), key.get()))
       << "Could not set up the client TLS connection";
 }
 

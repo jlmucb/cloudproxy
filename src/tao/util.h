@@ -62,8 +62,6 @@ constexpr static auto SignPrivateKeySuffix = "signing/private.key";
 constexpr static auto SignKeyAttestationSuffix = "signing/attestation";
 /// Suffix for a signing public key x509 certificate in openssl format.
 constexpr static auto SignPublicKeyX509Suffix = "signing/x509cert.pem";
-/// Suffix for a signing private key in openssl format.
-constexpr static auto SignPrivateKeyPKCS8Suffix = "signing/private.pem";
 /// Suffix for a sealing key in keyczar format.
 constexpr static auto SealKeySuffix = "sealing/private.key";
 /// Suffix for a sealed secret used to PBE-encrypt a sealing key
@@ -73,6 +71,10 @@ constexpr static auto SealKeySecretSuffix = "sealing/secret";
 /// A pointer to an OpenSSL RSA object.
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
     ScopedRsa;
+
+/// A poitner to an OpenSSL EC_KEY object
+typedef scoped_ptr_malloc<
+    EC_KEY, keyczar::openssl::OSSLDestroyer<EC_KEY, EC_KEY_free>> ScopedECKey;
 
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
@@ -384,32 +386,28 @@ bool CreateTempRootDomain(ScopedTempDir *temp_dir,
 /// @param[out] sock The connected client socket.
 bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 
-/// Convert a keyczar private signing key to an OpenSSL EVP_PKEY structure. As a
-/// side effect, this writes the key to a password-encrypted PKCS8 file.
-/// @param key The keyczar key to export.
-/// @param pem_key_path Location to store the intermediate PKCS8 file.
-/// @param secret Password to use for encrypting the PKCS8 file.
+/// Convert a keyczar public or private signing key to an OpenSSL EVP_PKEY
+/// structure. Only the primary key from the keyset is exported.
+/// @param key The keyczar key to export. If this is a Signer, the resulting
+/// EVP_PKEY will contain both public and private keys. Otherwise, the 
+/// EVP_PKEY wiil contain only a private key.
 /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-bool ExportKeyToOpenSSL(keyczar::Signer *key, const string &pem_key_path,
-                        const string &secret, ScopedEvpPkey *pem_key);
+bool ExportKeyToOpenSSL(const keyczar::Verifier *key, ScopedEvpPkey *pem_key);
 
 /// Serialize an X.509 certificate.
 /// @param x509 The certificate to serialize.
 /// @param[out] serialized_x509 The serialized form of the certificate.
 bool SerializeX509(X509 *x509, string *serialized_x509);
 
-/// Create a self-signed X509 certificate for a key. As a side effect, this
-/// writes the key to a password-encrypted PKCS8 file.
+/// Create a self-signed X509 certificate for a key. 
 /// @param key The keyczar key to use for both the subject and the issuer.
-/// @param pem_key_path Location to store the intermediate PKCS8 file.
-/// @param secret Password to use for encrypting the PKCS8 file.
+/// @param country The name to use for the x509 Country detail.
+/// @param state The name to use for the x509 State detail.
 /// @param org The name to use for the x509 Organization detail.
 /// @param cn The name to use for the x509 CommonName detail.
 /// @param public_cert_path File name to hold the resulting x509 certificate.
-/// TODO(kwalsh) key should be const reference (but then we can't print name)
 /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-bool CreateSelfSignedX509(keyczar::Signer *key, const string &pem_key_path,
-                          const string &secret, const string &coutry,
+bool CreateSelfSignedX509(const keyczar::Signer *key, const string &coutry,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path);
 

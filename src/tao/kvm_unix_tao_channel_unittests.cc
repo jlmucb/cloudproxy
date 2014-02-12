@@ -39,6 +39,7 @@
 using std::thread;
 
 using tao::ConnectToUnixDomainSocket;
+using tao::CreateTempDir;
 using tao::FakeTao;
 using tao::KvmUnixTaoChannel;
 using tao::ScopedFd;
@@ -52,13 +53,7 @@ using tao::UnixFdTaoChildChannel;
 class KvmUnixTaoChannelTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    // Get a temporary directory to use for the files.
-    string dir_template("/tmp/kvm_unix_tao_test_XXXXXX");
-    scoped_array<char> temp_name(new char[dir_template.size() + 1]);
-    memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
-
-    ASSERT_TRUE(mkdtemp(temp_name.get()));
-    temp_dir_.reset(new string(temp_name.get()));
+    ASSERT_TRUE(CreateTempDir("kvm_unix_tao_test", &temp_dir_));
 
     creation_socket_ = *temp_dir_ + string("/creation_socket");
     stop_socket_ = *temp_dir_ + string("/stop_socket");

@@ -596,7 +596,7 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock) {
 
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   // Get a temporary directory to use for the files.
-  string dir_template = string("/tmp/") + prefix + string("_XXXXXX");
+  string dir_template = string("/tmp/temp_") + prefix + string("_XXXXXX");
   scoped_array<char> temp_name(new char[dir_template.size() + 1]);
   memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
 
@@ -682,7 +682,7 @@ bool GenerateAttestation(const Signer *signer, const string &cert,
 bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,
                                scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
-  if (!CreateTempDir("temp_admin_domain", temp_dir)) return false;
+  if (!CreateTempDir("admin_domain", temp_dir)) return false;
   string path = **temp_dir + "/tao.config";
   string config = TaoDomain::ExampleWhitelistAuthDomain;
   admin->reset(TaoDomain::Create(config, path, "temppass"));
@@ -693,7 +693,7 @@ bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,
 bool CreateTempRootDomain(ScopedTempDir *temp_dir,
                           scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
-  if (!CreateTempDir("temp_admin_domain", temp_dir)) return false;
+  if (!CreateTempDir("admin_domain", temp_dir)) return false;
   string path = **temp_dir + "/tao.config";
   string config = TaoDomain::ExampleRootAuthDomain;
   admin->reset(TaoDomain::Create(config, path, "temppass"));

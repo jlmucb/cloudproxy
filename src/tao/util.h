@@ -221,7 +221,7 @@ bool OpenUnixDomainSocket(const string &path, int *sock);
 bool ConnectToUnixDomainSocket(const string &path, int *sock);
 
 /// Create a temporary directory.
-/// @param prefix The path of the directory to create.
+/// @param prefix The partial path of the directory to create.
 /// @param[out] dir A pointer to an object that will take ownership of the
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);

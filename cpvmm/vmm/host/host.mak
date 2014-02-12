@@ -69,6 +69,7 @@ $(BINDIR)/host_cpu.o: $(mainsrc)/host_cpu.c
 
 $(BINDIR)/isr.o: $(mainsrc)/isr.c
 	echo "isr.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -S -o $(BINDIR)/isr.s $(mainsrc)/isr.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/isr.o $(mainsrc)/isr.c
 
 $(BINDIR)/vmm_globals.o: $(mainsrc)/vmm_globals.c

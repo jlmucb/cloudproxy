@@ -42,7 +42,7 @@ typedef struct __jmp_buf {
 	unsigned long __rip;
 } SETJMP_BUFFER;
 
-typedef struct __jmp_buf SETJMP_BUFFER;
+// typedef struct __jmp_buf SETJMP_BUFFER;
 // typedef UINT8 SETJMP_BUFFER[SETJMP_BUFFER_ITEMS * sizeof(ADDRESS)];
 
 

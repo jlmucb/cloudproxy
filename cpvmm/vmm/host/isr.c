@@ -117,8 +117,7 @@ const UINT8 exception_class[] = {
  *               : as a part of return from interrupt cycle
  *  RETURNS      : void
  */
-void isr_c_handler(
-    IN ISR_PARAMETERS_ON_STACK *p_stack)
+void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack) 
 {
     VECTOR_ID   vector_id = (VECTOR_ID) p_stack->a.vector_id;
     BOOLEAN     interrut_during_emulation;

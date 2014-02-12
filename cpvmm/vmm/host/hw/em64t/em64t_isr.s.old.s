@@ -19,8 +19,6 @@
 
 # Calling conventions
 #
-# THIS IS WRONG FOR GCC FIX
-#
 # Floating : First 4 parameters – XMM0 through XMM3. Others passed on stack.
 #
 # Integer  : First 4 parameters – RCX, RDX, R8, R9. Others passed on stack.
@@ -61,10 +59,10 @@
 .extern exception_class
 .extern isr_c_handler
 
-.set    VECTOR_19, 19
+.set	VECTOR_19, 19
 
 # enum EXCEPTION_CLASS_ENUM in uVmm\vmm\host\isr.c
-.set    FAULT_CLASS, 2
+.set	FAULT_CLASS, 2
 
 .text
 
@@ -88,15 +86,15 @@
         jmp  hw_isr_c_wrapper
 .endm
 
-.globl  hw_isr_c_wrapper
+.globl	hw_isr_c_wrapper
 hw_isr_c_wrapper:
-        push   %rax     # offset 08
-        push   %rbx     # offset 00
+        push   %rax	# offset 08
+        push   %rbx  	# offset 00
 
         # If an exception fault is detected, save the GPRs
         # for the assertion debug buffer
 
-        mov    %rbx, qword ptr [%rsp+0x10]      # vector number
+        mov    %rbx, qword ptr [%rsp+0x10]	# vector number
         # all exception faults have vector number up to 19
         cmp    %rbx, VECTOR_19
         jg    1f 
@@ -129,36 +127,23 @@ hw_isr_c_wrapper:
         mov    104[%rbx], %r13
         mov    112[%rbx], %r14
         mov    120[%rbx], %r15
-                        1:
+			1:
         pop    %rbx
         pop    %rax
 
-        # save context and prepare stack for C-function
-        # at this point stack contains
-        #..................................
-        # [       SS         ]
-        # [       RSP        ]
-        # [      RFLAGS      ]
-        # [       CS         ]
-        # [       RIP        ] <= here RSP should point prior iret
-        # [[   errcode      ]]    optionally
-        # [    vector ID     ] <= RSP
-        #
-        # ---------------------------
-        #   The following code was removed, its is MSVC specific and wrong for gcc
-        # in gcc %rdi is used for parameter passing, not rcx
-        # push    %rcx             # save RCX which used for argument passing
-        # mov     %rcx, %rsp
-        # add     %rcx, 0x8         # now RCX points to the location of vector ID
-        # ---------------------------
-        # the following is the substitute code for gcc, note that %rdi, %rsi and %rcx are pushed
-        # ---------------------------
-        push    %rdi             # save RDI which used for argument passing
-        mov     %rdi, %rsp
-        add     %rdi, 0x8         # now RDI points to the location of vector ID
-        push    %rsi            # just in case
-        push    %rcx            # just in case
-        # ---------------------------
+        #; save context and prepare stack for C-function
+        #; at this point stack contains
+        #;..................................
+        #; [       SS         ]
+        #; [       RSP        ]
+        #; [      RFLAGS      ]
+        #; [       CS         ]
+        #; [       RIP        ] <= here RSP should point prior iret
+        #; [[   errcode      ]]    optionally
+        #; [    vector ID     ] <= RSP
+        push    %rcx             # save RCX which used for argument passing
+        mov     %rcx, %rsp
+        add     %rcx, 0x8         # now RCX points to the location of vector ID
         push    %rdx
         push    %rax
         push    %r8
@@ -178,16 +163,7 @@ hw_isr_c_wrapper:
         pop     %r8
         pop     %rax
         pop     %rdx
-        # ---------------------------
-        # the following is the substitute code for gcc
-        # ---------------------------
-        pop     %rcx    # just in case
-        pop     %rsi    # just in case
-        pop     %rdi    # restored from parameter passing
-        # ---------------------------
-        # this is the old msvc code
-        # pop     %rcx
-        # ---------------------------
+        pop     %rcx
         pop     %rsp             # isr_c_handler replaces vector ID with pointer to the
                                 # RIP. Just pop the pointer to the RIP into RSP.
         iretq

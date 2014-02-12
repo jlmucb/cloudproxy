@@ -51,13 +51,13 @@ class HostedProgramFactory {
   /// @param child_hash The hash of this program (used in the channels).
   /// @param parent_channel A channel that can be used to get information the
   /// child can use to connect to the parent channel.
-  /// @param[out] identifier An identifier for the hosted program: e.g., a PID 
+  /// @param[out] identifier An identifier for the hosted program: e.g., a PID
   /// for a process
   /// @return true if hosted-program creation was successful
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel,
-				   string *identifier) const = 0;
+                                   string *identifier) const = 0;
 
   /// Return a string that represents the factory. This can be
   /// used for implementing a registry of factories, thought it's not currently

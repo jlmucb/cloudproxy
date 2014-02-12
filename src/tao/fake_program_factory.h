@@ -20,24 +20,22 @@
 #ifndef TAO_FAKE_PROGRAM_FACTORY_H_
 #define TAO_FAKE_PROGRAM_FACTORY_H_
 
+#include <list>
+#include <string>
+
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
-#include "tao/hosted_program_factory.h"
+#include "tao/process_factory.h"
+
+using std::list;
+using std::string;
 
 namespace tao {
-/// A fake factory that doesn't really create programs.
-class FakeProgramFactory : public HostedProgramFactory {
+/// A fake factory that hashes programs but doesn't really execute them.
+class FakeProgramFactory : public ProcessFactory {
  public:
   FakeProgramFactory() {}
   virtual ~FakeProgramFactory() {}
-
-  /// Set the child hash to be empty.
-  virtual bool HashHostedProgram(const string &name, const list<string> &args,
-                                 string *child_hash) const {
-    string empty;
-    child_hash->assign(empty);
-    return true;
-  }
 
   /// Instead of creating a program, return true and ignore the arguments.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,

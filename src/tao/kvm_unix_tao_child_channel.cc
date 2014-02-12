@@ -19,9 +19,9 @@
 
 #include "tao/kvm_unix_tao_child_channel.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
@@ -35,7 +35,6 @@ KvmUnixTaoChildChannel::KvmUnixTaoChildChannel(const string &params)
     : UnixFdTaoChildChannel(), params_(params) {}
 
 bool KvmUnixTaoChildChannel::Init() {
-
   // Parse the params into the file descriptors for reading and writing.
   TaoChildChannelParams tccp;
   if (!tccp.ParseFromString(params_)) {

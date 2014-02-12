@@ -25,7 +25,7 @@
 #include <map>
 #include <string>
 
-#include "keyczar/base/basictypes.h"
+#include <keyczar/base/basictypes.h>
 
 using std::map;
 using std::string;

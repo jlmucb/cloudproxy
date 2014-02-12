@@ -22,158 +22,50 @@
 
 #include <arpa/inet.h>
 
-#include <fstream>
-
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/basictypes.h>
+#include <keyczar/base/file_util.h>
+#include <keyczar/keyczar.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
-#include "tao/hosted_programs.pb.h"
 #include "tao/attestation.pb.h"
+#include "tao/hosted_programs.pb.h"
 #include "tao/keyczar_public_key.pb.h"
 #include "tao/util.h"
 
-using keyczar::Keyczar;
-using keyczar::Keyset;
 using keyczar::Verifier;
-
-using std::ifstream;
-
-typedef unsigned char BYTE;
-typedef unsigned int UINT32;
-typedef unsigned short UINT16;
+using keyczar::base::ReadFileToString;
+using keyczar::base::WriteStringToFile;
 
 namespace tao {
-bool WhitelistAuth::Init() {
-  // Load the public policy key
-  policy_key_.reset(keyczar::Verifier::Read(policy_public_key_.c_str()));
-  policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
 
-  // load the whitelist file and check its signature
-  ifstream whitelist(whitelist_path_);
-
-  SignedWhitelist sw;
-  sw.ParseFromIstream(&whitelist);
-  if (!VerifySignature(sw.serialized_whitelist(), WhitelistSigningContext,
-                       sw.signature(), policy_key_.get())) {
-    LOG(ERROR) << "The signature did not verify on the signed whitelist";
-    return false;
+bool WhitelistAuth::IsAuthorized(const string &hash, const string &alg,
+                                 const string &name) const {
+  for (int i = 0; i < whitelist_.programs_size(); i++) {
+    if (whitelist_.programs(i).hash() == hash &&
+        whitelist_.programs(i).hash_alg() == alg &&
+        whitelist_.programs(i).name() == name)
+      return true;
   }
-
-  Whitelist w;
-  const string &serialized_w = sw.serialized_whitelist();
-
-  if (!w.ParseFromString(serialized_w)) {
-    LOG(ERROR) << "Could not parse the serialized whitelist";
-    return false;
-  }
-
-  for (int i = 0; i < w.programs_size(); i++) {
-    const HostedProgram &hp = w.programs(i);
-    if (whitelist_.find(hp.name()) != whitelist_.end()) {
-      LOG(ERROR) << "Can't add " << hp.name() << " to the whitelist twice";
-      return false;
-    }
-
-    whitelist_[hp.name()] = hp.hash();
-    hash_whitelist_.insert(hp.hash());
-  }
-
-  return true;
+  LOG(WARNING) << "The principal " << hash << ":" << alg << ":" << name
+               << " was not found on the whitelist";
+  return false;
 }
 
-bool WhitelistAuth::IsAuthorized(const string &program_hash) const {
-  bool authorized =
-      (hash_whitelist_.find(program_hash) != hash_whitelist_.end());
-  if (!authorized) {
-    LOG(ERROR) << "Could not find the hash " << program_hash
-               << " on the whitelist";
-  }
-
-  return authorized;
-}
-
-bool WhitelistAuth::IsAuthorized(const string &program_name,
-                                 const string &program_hash) const {
-  auto it = whitelist_.find(program_name);
-  if (it == whitelist_.end()) {
-    LOG(ERROR) << "The program " << program_name << " with hash "
-               << program_hash << " was not found on the whitelist";
-    return false;
-  }
-
-  return (it->second.compare(program_hash) == 0);
-}
-
-bool WhitelistAuth::CheckAuthorization(const Attestation &attestation) const {
-  Statement s;
-  if (!s.ParseFromString(attestation.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the statement from an attestation";
-    return false;
-  }
-
-  // check the time to make sure it hasn't expired
-  time_t cur_time;
-  time(&cur_time);
-  if (cur_time > s.expiration()) {
-    LOG(ERROR) << "This attestation has expired";
-    return false;
-  }
-
-  if (s.hash_alg().compare("SHA256") == 0) {
-    // This is a normal program-like hash, so check the whitelist directly
-    return IsAuthorized(s.hash());
-  }
-
-  if (attestation.has_quote()) {
-    // Extract the PCRs as a single string and look for them in the whitelist.
-    string quote(attestation.quote().data(), attestation.quote().size());
-    size_t quote_len = quote.size();
-    if (quote_len < sizeof(UINT16)) {
-      LOG(ERROR) << "The quote was not long enough to contain a mask length";
-      return false;
+bool WhitelistAuth::IsAuthorized(const string &hash, const string &alg,
+                                 string *name) const {
+  for (int i = 0; i < whitelist_.programs_size(); i++) {
+    if (whitelist_.programs(i).hash() == hash &&
+        whitelist_.programs(i).hash_alg() == alg) {
+      if (name != nullptr) name->assign(whitelist_.programs(i).name());
+      return true;
     }
-
-    const char *quote_bytes = quote.c_str();
-    UINT32 index = 0;
-    UINT16 mask_len = ntohs(*(UINT16 *)(quote_bytes + index));
-    index += sizeof(UINT16);
-
-    // skip the mask bytes
-    if ((quote_len < index) || (quote_len - index < mask_len)) {
-      LOG(ERROR) << "The quote was not long enough to contain the mask";
-      return false;
-    }
-
-    index += mask_len;
-
-    if ((quote_len < index) || (quote_len - index < sizeof(UINT32))) {
-      LOG(ERROR) << "The quote was not long enough to contain the pcr length";
-      return false;
-    }
-
-    UINT32 pcr_len = ntohl(*(UINT32 *)(quote_bytes + index));
-    index += sizeof(UINT32);
-
-    if ((quote_len < index) || (quote_len - index < pcr_len)) {
-      LOG(ERROR) << "The quote was not long enough to contain the PCRs";
-      return false;
-    }
-
-    string pcrs(quote_bytes + index, pcr_len);
-
-    // The whitelist uses Base64W encoding for hashes
-    string serialized;
-    if (!keyczar::base::Base64WEncode(pcrs, &serialized)) {
-      LOG(ERROR) << "Can't serialize the PCRs";
-      return false;
-    }
-
-    return IsAuthorized(serialized);
   }
-
-  return (attestation.type() == ROOT);
+  LOG(WARNING) << "The principal " << hash << ":" << alg << ":*"
+               << " was not found on the whitelist";
+  return false;
 }
 
 bool WhitelistAuth::VerifyAttestation(const string &attestation,
@@ -181,6 +73,12 @@ bool WhitelistAuth::VerifyAttestation(const string &attestation,
   Attestation a;
   if (!a.ParseFromString(attestation)) {
     LOG(ERROR) << "Could not deserialize an Attestation";
+    return false;
+  }
+
+  Statement s;
+  if (!s.ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse the statement";
     return false;
   }
 
@@ -213,12 +111,6 @@ bool WhitelistAuth::VerifyAttestation(const string &attestation,
     return false;
   }
 
-  Statement s;
-  if (!s.ParseFromString(a.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the statement";
-    return false;
-  }
-
   data->assign(s.data().data(), s.data().size());
 
   VLOG(1) << "The attestation passed verification";
@@ -226,32 +118,98 @@ bool WhitelistAuth::VerifyAttestation(const string &attestation,
   return true;
 }
 
-bool WhitelistAuth::CheckRootSignature(const Attestation &a) const {
-  if (a.type() != ROOT) {
-    LOG(ERROR) << "This is not a ROOT attestation, but it claims to be "
-                  "signed with the public key";
+bool WhitelistAuth::CheckAuthorization(const Attestation &attestation) const {
+  Statement s;
+  if (!s.ParseFromString(attestation.serialized_statement())) {
+    LOG(ERROR) << "Could not parse the statement from an attestation";
     return false;
   }
 
-  VLOG(2) << "About to verify the signature against the policy key";
-  VLOG(2) << "a.serialized_statement().size = "
-          << (int)a.serialized_statement().size();
-  VLOG(2) << "a.signature().size = " << (int)a.signature().size();
-
-  // Verify against the policy key.
-  if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
-                       a.signature(), policy_key_.get())) {
-    LOG(ERROR) << "Verification failed with the policy key";
+  // Check the time to make sure it hasn't expired.
+  time_t cur_time;
+  time(&cur_time);
+  // TODO(kwalsh) check notbefore as well
+  // if (cur_time < s.time()) {
+  //   LOG(ERROR) << "Signature is not yet valid";
+  //   return false;
+  // }
+  if (cur_time > s.expiration()) {
+    LOG(ERROR) << "This attestation has expired";
     return false;
   }
 
-  return true;
+  if (s.hash_alg().empty()) {
+    // Root attestations need not be on the whitelist.
+    if (attestation.type() != ROOT) {
+      LOG(WARNING) << "Only root may issue attestations without a hash";
+      return false;
+    }
+    return true;
+  } else if (s.hash_alg() == PcrSha1) {
+    // Extract the PCRs as a single string and look for them in the whitelist.
+    string quote(attestation.quote().data(), attestation.quote().size());
+    size_t quote_len = quote.size();
+    if (quote_len < sizeof(uint16)) {
+      LOG(ERROR) << "The quote was not long enough to contain a mask length";
+      return false;
+    }
+
+    const char *quote_bytes = quote.c_str();
+    uint32 index = 0;
+    uint16 mask_len =
+        ntohs(*reinterpret_cast<const uint16 *>(quote_bytes + index));
+    index += sizeof(uint16);
+
+    // Skip the mask bytes.
+    if ((quote_len < index) || (quote_len - index < mask_len)) {
+      LOG(ERROR) << "The quote was not long enough to contain the mask";
+      return false;
+    }
+
+    index += mask_len;
+
+    if ((quote_len < index) || (quote_len - index < sizeof(uint32))) {
+      LOG(ERROR) << "The quote was not long enough to contain the pcr length";
+      return false;
+    }
+
+    uint32 pcr_len = ntohl(*(uint32 *)(quote_bytes + index));
+    index += sizeof(uint32);
+
+    if ((quote_len < index) || (quote_len - index < pcr_len)) {
+      LOG(ERROR) << "The quote was not long enough to contain the PCRs";
+      return false;
+    }
+
+    string pcrs(quote_bytes + index, pcr_len);
+
+    // The whitelist uses Base64W encoding for hashes.
+    string serialized_pcrs;
+    if (!keyczar::base::Base64WEncode(pcrs, &serialized_pcrs)) {
+      LOG(ERROR) << "Can't serialize the PCRs";
+      return false;
+    }
+
+    // TODO(kwalsh): We should really return the name found here to the caller.
+    if (!IsAuthorized(serialized_pcrs, PcrSha1, nullptr)) {
+      LOG(WARNING) << "The TPM1.2 quote was issued by an unauthorized TPM";
+      return false;
+    }
+    return true;
+  } else {
+    // Normal program-like hashes are checked against the whitelist directly.
+    // TODO(kwalsh): We should really return the name found here to the caller.
+    if (!IsAuthorized(s.hash(), s.hash_alg(), nullptr)) {
+      LOG(WARNING) << "The attestation was issued by an unauthorized principal";
+      return false;
+    }
+    return true;
+  }
 }
 
 bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
   if (a.type() != INTERMEDIATE) {
-    LOG(ERROR)
-        << "Expected this Attestation to be INTERMEDIATE, but it was not";
+    LOG(ERROR) << "Expected Attestation to be INTERMEDIATE, but it was not";
     return false;
   }
 
@@ -262,25 +220,24 @@ bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
     return false;
   }
 
+  // TODO(kwalsh): This code assumes that all verified INTERMEDIATE attestations
+  // are of serialized public keys.
   KeyczarPublicKey kpk;
   if (!kpk.ParseFromString(key_data)) {
     LOG(ERROR) << "Could not deserialize the public key for this attestation";
     return false;
   }
 
-  // Get a Keyset corresponding to this public key
-  Keyset *k = nullptr;
-  if (!DeserializePublicKey(kpk, &k)) {
+  // Get a verifier corresponding to this public key.
+  scoped_ptr<Verifier> v;
+  if (!DeserializePublicKey(kpk, &v)) {
     LOG(ERROR) << "Could not deserialize the public key";
     return false;
   }
 
-  scoped_ptr<Verifier> v(new Verifier(k));
-  v->set_encoding(Keyczar::NO_ENCODING);
   if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
                        a.signature(), v.get())) {
-    LOG(ERROR) << "The statement in an attestation did not have a valid "
-                  "signature from its public key";
+    LOG(ERROR) << "The attestation statement was not properly signed";
     return false;
   }
 
@@ -289,7 +246,7 @@ bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
 
 bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   if (a.type() != TPM_1_2_QUOTE) {
-    LOG(ERROR) << "This method can only verify TPM_1_2_QUOTE attestations";
+    LOG(ERROR) << "Expected Attestation to be TPM_1_2_QUOTE, but it was not";
     return false;
   }
 
@@ -299,7 +256,7 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
     return false;
   }
 
-  // The data in the Statement in this Attestation should be the serialization
+  // The data in the Statement in this Attestation should be the serialization.
   // of a PEM OpenSSL public key that we can use to check the signature.
   string data;
   if (!VerifyAttestation(a.cert(), &data)) {
@@ -307,6 +264,7 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
     return false;
   }
 
+  // TODO(kwalsh) Move this type of key handling to util
   BIO *mem = BIO_new(BIO_s_mem());
   int bio_bytes_written =
       BIO_write(mem, reinterpret_cast<const void *>(data.data()),
@@ -317,7 +275,7 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   }
 
   RSA *aik_rsa = nullptr;
-  if (!PEM_read_bio_RSAPublicKey(mem, &aik_rsa, NULL, NULL)) {
+  if (!PEM_read_bio_RSAPublicKey(mem, &aik_rsa, nullptr, nullptr)) {
     LOG(ERROR) << "Could not read the RSA public key from the attestation";
     return false;
   }
@@ -325,8 +283,8 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   ScopedRsa aik(aik_rsa);
 
   // Hash the statement with SHA1 for the external data part of the quote.
-  BYTE statement_hash[20];
-  SHA1(reinterpret_cast<const BYTE *>(a.serialized_statement().data()),
+  uint8 statement_hash[20];
+  SHA1(reinterpret_cast<const uint8 *>(a.serialized_statement().data()),
        a.serialized_statement().size(), statement_hash);
 
   // The quote can be verified in a qinfo, which has a header of 8 bytes, and
@@ -334,7 +292,7 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   // second is the hash of the quote itself. This can be hashed and verified
   // directly by OpenSSL.
 
-  BYTE qinfo[8 + 2 * 20];
+  uint8 qinfo[8 + 2 * 20];
   qinfo[0] = 1;
   qinfo[1] = 1;
   qinfo[2] = 0;
@@ -350,14 +308,14 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
     return false;
   }
 
-  SHA1(reinterpret_cast<const BYTE *>(a.quote().data()), a.quote().size(),
+  SHA1(reinterpret_cast<const uint8 *>(a.quote().data()), a.quote().size(),
        qinfo + 8);
   memcpy(qinfo + 8 + 20, statement_hash, sizeof(statement_hash));
 
-  BYTE quote_hash[20];
+  uint8 quote_hash[20];
   SHA1(qinfo, sizeof(qinfo), quote_hash);
   if (RSA_verify(NID_sha1, quote_hash, sizeof(quote_hash),
-                 reinterpret_cast<const BYTE *>(a.signature().data()),
+                 reinterpret_cast<const uint8 *>(a.signature().data()),
                  a.signature().size(), aik.get()) !=
       1) {
     LOG(ERROR) << "The RSA signature did not pass verification";
@@ -366,4 +324,102 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
 
   return true;
 }
+
+bool WhitelistAuth::Authorize(const string &hash, const string &alg,
+                              const string &name) {
+  HostedProgram *entry = whitelist_.add_programs();
+  entry->set_name(name);
+  entry->set_hash_alg(alg);
+  entry->set_hash(hash);
+  return SaveConfig();
+}
+
+int WhitelistAuth::WhitelistCount() const { return whitelist_.programs_size(); }
+
+bool WhitelistAuth::WhitelistEntry(int i, string *hash, string *alg,
+                                   string *name) const {
+  if (i < 0 || i > whitelist_.programs_size()) {
+    LOG(ERROR) << "Invalid index into whitelist";
+    return false;
+  }
+  const HostedProgram &hp = whitelist_.programs(i);
+  hash->assign(hp.hash());
+  alg->assign(hp.hash_alg());
+  name->assign(hp.name());
+  return true;
+}
+
+bool WhitelistAuth::ParseConfig() {
+  // Load basic configuration.
+  if (!TaoDomain::ParseConfig()) {
+    LOG(ERROR) << "Can't load basic configuration";
+    return false;
+  }
+  // Load the signed whitelist file.
+  string path = GetConfigPath(JSONSignedWhitelistPath);
+  string serialized;
+  if (!ReadFileToString(path, &serialized)) {
+    LOG(ERROR) << "Can't load signed whitelist from " << path;
+    return false;
+  }
+  // Parse the signed whitelist.
+  SignedWhitelist sw;
+  if (!sw.ParseFromString(serialized)) {
+    LOG(ERROR) << "Can't parse signed whitelist from " << path;
+    return false;
+  }
+  // Verify its signature.
+  if (!VerifySignature(sw.serialized_whitelist(), WhitelistSigningContext,
+                       sw.signature(), GetPolicyVerifier())) {
+    LOG(ERROR) << "Signature did not verify on signed whitelist " << path;
+    return false;
+  }
+  // Parse the whitelist.
+  if (!whitelist_.ParseFromString(sw.serialized_whitelist())) {
+    LOG(ERROR) << "Can't parse serialized whitelist from " << path;
+    return false;
+  }
+  return true;
+}
+
+bool WhitelistAuth::SaveConfig() const {
+  if (GetPolicySigner() == nullptr) {
+    LOG(ERROR) << "Can't sign whitelist, admin is currently locked.";
+    return false;
+  }
+  // Save basic configuration.
+  if (!TaoDomain::SaveConfig()) {
+    LOG(ERROR) << "Can't save basic configuration";
+    return false;
+  }
+  // Serialize whitelist.
+  string serialized_whitelist;
+  if (!whitelist_.SerializeToString(&serialized_whitelist)) {
+    LOG(ERROR) << "Could not serialize the whitelist";
+    return false;
+  }
+  string whitelist_signature;
+  if (!SignData(serialized_whitelist, WhitelistSigningContext,
+                &whitelist_signature, GetPolicySigner())) {
+    LOG(ERROR) << "Can't sign whitelist";
+    return false;
+  }
+  // Sign whitelist.
+  SignedWhitelist sw;
+  sw.set_serialized_whitelist(serialized_whitelist);
+  sw.set_signature(whitelist_signature);
+  string serialized;
+  if (!sw.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the signed whitelist";
+    return false;
+  }
+  // Save signed whitelist.
+  string path = GetConfigPath(JSONSignedWhitelistPath);
+  if (!WriteStringToFile(path, serialized)) {
+    LOG(ERROR) << "Can't write signed whitelist to " << path;
+    return false;
+  }
+  return true;
+}
+
 }  // namespace tao

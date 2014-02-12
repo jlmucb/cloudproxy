@@ -17,21 +17,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "cloudproxy/cloud_client.h"
 
-#include <sstream>
 #include <fstream>
+#include <sstream>
 
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/base/file_path.h>
 #include <keyczar/base/file_util.h>
-#include <keyczar/base/base64w.h>
 #include <keyczar/keyczar.h>
 
-#include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/cloudproxy.pb.h"
 #include "tao/attestation.pb.h"
 #include "tao/tao_auth.h"
 #include "tao/util.h"
@@ -45,38 +44,60 @@ using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
 using tao::ConnectToTCPServer;
+using tao::GenerateSigningKey;
+using tao::LoadSigningKey;
+using tao::ScopedX509Ctx;
+using tao::SerializeX509;
 using tao::SignData;
 using tao::TaoChildChannel;
-using tao::TaoAuth;
 
 namespace cloudproxy {
 
-CloudClient::CloudClient(const string &tls_cert, const string &tls_key,
-                         const string &secret,
-                         const string &public_policy_keyczar,
-                         const string &public_policy_pem, TaoAuth *auth_manager)
-    : public_policy_key_(
-          keyczar::Verifier::Read(public_policy_keyczar.c_str())),
-      context_(SSL_CTX_new(TLSv1_2_client_method())),
-      users_(new CloudUserManager()),
-      auth_manager_(auth_manager) {
-  // Set the policy_key to handle bytes, not strings.
-  public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
+CloudClient::CloudClient(const string &client_config_path, const string &secret,
+                         tao::TaoDomain *admin)
+    : admin_(admin), users_(new CloudUserManager()) {
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
       << "Could not encode the secret as a Base64W string";
 
-  // Check to see if the public/private keys exist. If not, create them.
-  FilePath fp(tls_cert);
-  if (!PathExists(fp)) {
-    CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
-                         "client"))
-        << "Could not create new keys for OpenSSL for the client";
+  FilePath fp(client_config_path);
+  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
+  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
+  FilePath tls_key_path = fp.Append(tao::keys::SignPrivateKeyPKCS8Suffix);
+  FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
+
+  // Check to see if the keys and cert exist. If not, create them.
+
+  bool new_key = !PathExists(priv_key_path);
+  bool new_cert = new_key || !PathExists(tls_cert_path);
+
+  scoped_ptr<keyczar::Signer> key;
+  if (new_key) {
+    CHECK(GenerateSigningKey(priv_key_path.value(), pub_key_path.value(),
+                             "cloud_client_key", *encoded_secret, &key))
+        << "Could not create new SSL key for the client";
+  } else {
+    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &key))
+        << "Could not load SSL key for the client";
   }
 
+  if (new_cert) {
+    // TODO(kwalsh) x509 details should come from elsewhere
+    CHECK(tao::CreateSelfSignedX509(
+        key.get(), tls_key_path.value(), *encoded_secret, "US", "Washington",
+        "Google", "cloudclient", tls_cert_path.value()));
+  }
+
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  // This needs to be done as close to SSL_CTX_new as possible.
+  OpenSSL_add_all_algorithms();
+  context_.reset(SSL_CTX_new(TLSv1_2_client_method()));
+
   // set up the TLS connection with the cert and keys and trust DB
-  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
+  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), tls_key_path.value(),
                     *encoded_secret))
       << "Could not set up the client TLS connection";
 }
@@ -101,7 +122,7 @@ bool CloudClient::Connect(const TaoChildChannel &t, const string &server,
   int r = SSL_connect(ssl->get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
-    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(r, NULL);
+    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(r, nullptr);
     return false;
   }
 
@@ -146,7 +167,7 @@ bool CloudClient::Connect(const TaoChildChannel &t, const string &server,
 
   // this step also checks to see if the program hash is authorized
   string data;
-  CHECK(auth_manager_->VerifyAttestation(sm.attestation(), &data))
+  CHECK(admin_->VerifyAttestation(sm.attestation(), &data))
       << "The Attestation from the server did not pass verification";
 
   CHECK_EQ(data.compare(serialized_peer_cert), 0)
@@ -179,7 +200,7 @@ bool CloudClient::Authenticate(SSL *ssl, const string &subject,
   // authenticate
   CHECK(users_->HasKey(subject)) << "No key loaded for user " << subject;
 
-  keyczar::Keyczar *signer = nullptr;
+  keyczar::Signer *signer = nullptr;
   CHECK(users_->GetKey(subject, &signer)) << "Could not get the key for user "
                                           << subject;
 

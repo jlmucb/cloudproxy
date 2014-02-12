@@ -17,9 +17,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mutex>
 #include <string>
-#include <vector>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -33,45 +31,30 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
 #include "tao/pipe_tao_child_channel.h"
-#include "tao/tao_auth.h"
 #include "tao/tao_child_channel_registry.h"
+#include "tao/tao_domain.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
-using std::mutex;
 using std::string;
-using std::vector;
-
-using cloudproxy::CloudServer;
-using tao::SealOrUnsealSecret;
 
 using keyczar::base::Base64WDecode;
 using keyczar::base::ScopedSafeString;
 
-using tao::PipeTaoChildChannel;
-using tao::TaoAuth;
+using cloudproxy::CloudServer;
+using tao::SealOrUnsealSecret;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
-using tao::WhitelistAuth;
+using tao::TaoDomain;
 
-DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
-              "The PEM certificate for the server to use for TLS");
-DEFINE_string(server_key, "./openssl_keys/server/server.key",
-              "The private key file for the server for TLS");
+DEFINE_string(config_path, "tao.config", "Location of tao configuration");
+DEFINE_string(server_keys, "./server_keys",
+              "Directory for server keys and TLS files");
 DEFINE_string(sealed_secret, "server_secret", "A Tao-sealed secret");
-DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
-                                                 " policy key");
-DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
-              "The PEM public policy cert");
 DEFINE_string(acls, "./acls_sig",
               "A file containing a SignedACL signed by"
               " the public policy key (e.g., using sign_acls)");
-DEFINE_string(whitelist_path, "./signed_whitelist",
-              "The path to the signed whitelist");
 DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_string(port, "11235", "The port to listen on");
-DEFINE_string(aik_cert, "./HW/aik.crt",
-              "A certificate for the AIK, signed by the public policy key");
 
 int main(int argc, char **argv) {
   // make sure protocol buffers is using the right version
@@ -82,6 +65,7 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
   tao::InitializeOpenSSL();
+  google::InstallFailureSignalHandler();
 
   // the last argument should be the parameters for channel establishment
   if (argc < 2) {
@@ -107,18 +91,12 @@ int main(int argc, char **argv) {
   CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
       << "Could not get the secret";
 
-  scoped_ptr<keyczar::Keyczar> policy_key(
-      keyczar::Verifier::Read(FLAGS_policy_key.c_str()));
-  policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  CHECK(admin.get() != nullptr) << "Could not load configuration";
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(
-      new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
-  CHECK(whitelist_auth->Init()) << "Could not initialize the whitelist auth";
+  CloudServer cs(FLAGS_server_keys, *secret, FLAGS_acls, FLAGS_address,
+                 FLAGS_port, admin.release());
 
-
-  CloudServer cs(FLAGS_server_cert, FLAGS_server_key, *secret, FLAGS_policy_key,
-                 FLAGS_pem_policy_key, FLAGS_acls, FLAGS_address, FLAGS_port,
-                 whitelist_auth.release());
   LOG(INFO) << "CloudServer listening";
   CHECK(cs.Listen(channel.get(), false /* not single_channel */))
       << "Could not listen for client connections";

@@ -16,7 +16,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "tao/util.h"
 
 #include <dirent.h>
@@ -26,50 +25,37 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <sys/unistd.h>
 
-#include <fstream>
+#include <fstream>  // NOLINT TODO(kwalsh) use keyczar file utils
 #include <memory>
 #include <mutex>
-#include <sstream>
+#include <sstream>  // NOLINT TODO(kwalsh) use keyczar file utils
 #include <vector>
 
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
-#include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
-#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/rw/keyset_encrypted_file_reader.h>
+#include <keyczar/rw/keyset_encrypted_file_writer.h>
 #include <keyczar/rw/keyset_file_reader.h>
+#include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_writer.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
-#include "tao/pipe_tao_child_channel.h"
 #include "tao/kvm_unix_tao_child_channel.h"
+#include "tao/pipe_tao_child_channel.h"
 #include "tao/signature.pb.h"
-
-using keyczar::base::Base64WEncode;
-using keyczar::Crypter;
-using keyczar::CryptoFactory;
-using keyczar::Keyczar;
-using keyczar::KeyPurpose;
-using keyczar::KeyType;
-using keyczar::Keyset;
-using keyczar::KeysetMetadata;
-using keyczar::KeyStatus;
-using keyczar::MessageDigestImpl;
-using keyczar::Signer;
-using keyczar::base::PathExists;
-using keyczar::base::ScopedSafeString;
-using keyczar::rw::KeysetJSONFileReader;
-using keyczar::rw::KeysetJSONFileWriter;
-using keyczar::rw::KeysetReader;
-using keyczar::rw::KeysetWriter;
+#include "tao/tao_domain.h"
 
 using std::ifstream;
 using std::ios;
@@ -78,6 +64,29 @@ using std::ofstream;
 using std::shared_ptr;
 using std::stringstream;
 using std::vector;
+
+using keyczar::Crypter;
+using keyczar::CryptoFactory;
+using keyczar::KeyPurpose;
+using keyczar::KeyStatus;
+using keyczar::KeyType;
+using keyczar::Keyset;
+using keyczar::KeysetMetadata;
+using keyczar::MessageDigestImpl;
+using keyczar::Signer;
+using keyczar::Verifier;
+using keyczar::base::Base64WEncode;
+using keyczar::base::CreateDirectory;
+using keyczar::base::PathExists;
+using keyczar::base::ReadFileToString;
+using keyczar::rw::KeysetEncryptedJSONFileReader;
+using keyczar::rw::KeysetEncryptedJSONFileWriter;
+using keyczar::rw::KeysetJSONFileReader;
+using keyczar::rw::KeysetJSONFileWriter;
+using keyczar::rw::KeysetPBEJSONFileReader;
+using keyczar::rw::KeysetPBEJSONFileWriter;
+using keyczar::rw::KeysetReader;
+using keyczar::rw::KeysetWriter;
 
 int remove_entry(const char *path, const struct stat *sb, int tflag,
                  struct FTW *ftwbuf) {
@@ -106,7 +115,7 @@ int remove_entry(const char *path, const struct stat *sb, int tflag,
 
 namespace tao {
 
-// 20 MB is the maximum allowed message on our channel implementations.
+/// 20 MB is the maximum allowed message on our channel implementations.
 static size_t MaxChannelMessage = 20 * 1024 * 1024;
 
 void fd_close(int *fd) {
@@ -123,6 +132,12 @@ void fd_close(int *fd) {
   return;
 }
 
+void file_close(FILE *file) {
+  if (file)
+    fclose(file);
+}
+
+// TODO(kwalsh): Use keyczar's file utils instead
 void temp_file_cleaner(string *dir) {
   if (dir) {
     if (nftw(dir->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
@@ -148,7 +163,7 @@ bool LetChildProcsDie() {
   memset(&sig_act, 0, sizeof(sig_act));
   sig_act.sa_handler = SIG_DFL;
   sig_act.sa_flags = SA_NOCLDWAIT;  // don't zombify child processes
-  int sig_rv = sigaction(SIGCHLD, &sig_act, NULL);
+  int sig_rv = sigaction(SIGCHLD, &sig_act, nullptr);
   if (sig_rv < 0) {
     LOG(ERROR) << "Could not set the disposition of SIGCHLD";
     return false;
@@ -157,36 +172,41 @@ bool LetChildProcsDie() {
   return true;
 }
 
-bool HashVM(const string &vm_template, const string &name,
-            const string &kernel_file, const string &initrd_file,
-            string *hash) {
-  // TODO(tmroeder): take in the right hash type and use it here. For
-  // now, we just assume that it's SHA256
-  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
-
-  string template_hash;
-  if (!sha256->Digest(vm_template, &template_hash)) {
-    LOG(ERROR) << "Could not compute the hash of the template";
+bool Sha256FileHash(const string &path, string *hash) {
+  string contents;
+  if (!ReadFileToString(path, &contents)) {
+    LOG(ERROR) << "Can't read " << path;
     return false;
   }
 
+  if (!CryptoFactory::SHA256()->Digest(contents, hash)) {
+    LOG(ERROR) << "Can't compute hash of " << path;
+    return false;
+  }
+
+  return true;
+}
+
+bool HashVM(const string &vm_template_path, const string &name,
+            const string &kernel_file_path, const string &initrd_file_path,
+            string *hash) {
+  // TODO(tmroeder): take in the right hash type and use it here. For
+  // now, we just assume that it's SHA256
+
+  string template_hash;
+  if (!Sha256FileHash(vm_template_path, &template_hash)) return false;
+
   string name_hash;
-  if (!sha256->Digest(name, &name_hash)) {
+  if (!CryptoFactory::SHA256()->Digest(name, &name_hash)) {
     LOG(ERROR) << "Could not compute the has of the name";
     return false;
   }
 
   string kernel_hash;
-  if (!sha256->Digest(kernel_file, &kernel_hash)) {
-    LOG(ERROR) << "Could not compute the hash of the kernel";
-    return false;
-  }
+  if (!Sha256FileHash(kernel_file_path, &kernel_hash)) return false;
 
   string initrd_hash;
-  if (!sha256->Digest(initrd_file, &initrd_hash)) {
-    LOG(ERROR) << "Could not compute the hash of initrd";
-    return false;
-  }
+  if (!Sha256FileHash(initrd_file_path, &initrd_hash)) return false;
 
   // Concatenate the hashes
   string hash_input;
@@ -196,7 +216,7 @@ bool HashVM(const string &vm_template, const string &name,
   hash_input.append(initrd_hash);
 
   string composite_hash;
-  if (!sha256->Digest(hash_input, &composite_hash)) {
+  if (!CryptoFactory::SHA256()->Digest(hash_input, &composite_hash)) {
     LOG(ERROR) << "Could not compute the composite hash\n";
     return false;
   }
@@ -221,6 +241,25 @@ bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
   return true;
 }
 
+bool OpenSSLSuccess() {
+  uint32 last_error = ERR_get_error();
+  if (last_error) {
+    LOG(ERROR) << "OpenSSL errors:";
+    while (last_error) {
+      const char *lib = ERR_lib_error_string(last_error);
+      const char *func = ERR_func_error_string(last_error);
+      const char *reason = ERR_reason_error_string(last_error);
+      LOG(ERROR) << " * " << last_error << ":" << (lib ? lib : "unknown") << ":"
+                 << (func ? func : "unknown") << ":"
+                 << (reason ? reason : "unknown");
+      last_error = ERR_get_error();
+    }
+    return false;
+  } else {
+    return true;
+  }
+}
+
 bool InitializeOpenSSL() {
   SSL_load_error_strings();
   ERR_load_BIO_strings();
@@ -239,7 +278,7 @@ bool InitializeOpenSSL() {
 }
 
 bool OpenTCPSocket(const string &host, const string &port, int *sock) {
-  if (sock == NULL) {
+  if (sock == nullptr) {
     LOG(ERROR) << "null socket parameter";
     return false;
   }
@@ -288,40 +327,10 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   return true;
 }
 
-bool CreateKey(KeysetWriter *writer, KeyType::Type key_type,
-               KeyPurpose::Type key_purpose, const string &key_name,
-               scoped_ptr<Keyczar> *key) {
-  CHECK_NOTNULL(writer);
-  CHECK_NOTNULL(key);
-
-  scoped_ptr<Keyset> k(new Keyset());
-  k->AddObserver(writer);
-  k->set_encrypted(true);
-
-  KeysetMetadata *metadata = nullptr;
-  metadata = new KeysetMetadata(key_name, key_type, key_purpose, true, 1);
-  CHECK_NOTNULL(metadata);
-  k->set_metadata(metadata);
-  k->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-
-  switch (key_purpose) {
-    case KeyPurpose::SIGN_AND_VERIFY:
-      key->reset(new Signer(k.release()));
-      break;
-    case KeyPurpose::DECRYPT_AND_ENCRYPT:
-      key->reset(new Crypter(k.release()));
-      break;
-    default:
-      LOG(ERROR) << "Unsupported key type " << key_purpose;
-      return false;
-  }
-
-  return true;
-}
-
-bool DeserializePublicKey(const KeyczarPublicKey &kpk, Keyset **keyset) {
-  if (keyset == nullptr) {
-    LOG(ERROR) << "null keyset";
+bool DeserializePublicKey(const KeyczarPublicKey &kpk,
+                          scoped_ptr<Verifier> *key) {
+  if (key == nullptr) {
+    LOG(ERROR) << "null key";
     return false;
   }
 
@@ -351,18 +360,29 @@ bool DeserializePublicKey(const KeyczarPublicKey &kpk, Keyset **keyset) {
     }
   }
 
-  // read the data from the directory
-  scoped_ptr<KeysetReader> reader(new KeysetJSONFileReader(*temp_dir));
-  if (reader.get() == NULL) {
+  if (!LoadVerifierKey(*temp_dir, key)) {
+    LOG(ERROR) << "Could not deserialize the key";
     return false;
   }
-
-  *keyset = Keyset::Read(*reader, true);
 
   return true;
 }
 
-bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
+string SerializePublicKey(const Signer &key) {
+  KeyczarPublicKey kpk;
+  if (!SerializePublicKey(key, &kpk)) {
+    LOG(ERROR) << "Could not serialize the public key for signing";
+    return "";
+  }
+  string serialized_pub_key;
+  if (!kpk.SerializeToString(&serialized_pub_key)) {
+    LOG(ERROR) << "Could not serialize the key to a string";
+    return "";
+  }
+  return serialized_pub_key;
+}
+
+bool SerializePublicKey(const Signer &key, KeyczarPublicKey *kpk) {
   if (kpk == nullptr) {
     LOG(ERROR) << "Could not serialize to a null public key structure";
     return false;
@@ -377,7 +397,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
   ScopedTempDir temp_dir(new string(tempdir));
 
   scoped_ptr<KeysetWriter> writer(new KeysetJSONFileWriter(*temp_dir));
-  if (writer.get() == NULL) {
+  if (writer.get() == nullptr) {
     return false;
   }
 
@@ -387,8 +407,13 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
     return false;
   }
 
+  return SerializeKeyset(key.keyset(), tempdir, kpk);
+}
+
+bool SerializeKeyset(const Keyset *keyset, const string &path,
+                     KeyczarPublicKey *kpk) {
   // now iterate over the files in the directory and add them to the public key
-  string meta_file_name = *temp_dir + string("/meta");
+  string meta_file_name = path + string("/meta");
   ifstream meta_file(meta_file_name.c_str(), ifstream::in | ios::binary);
   stringstream meta_stream;
   meta_stream << meta_file.rdbuf();
@@ -398,7 +423,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
   for (; version_iterator != keyset->metadata()->End(); ++version_iterator) {
     int v = version_iterator->first;
     stringstream file_name_stream;
-    file_name_stream << *temp_dir << "/" << v;
+    file_name_stream << path << "/" << v;
     ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
     stringstream file_buf;
     file_buf << file.rdbuf();
@@ -412,7 +437,7 @@ bool SerializePublicKey(const Keyczar &key, KeyczarPublicKey *kpk) {
 }
 
 bool SignData(const string &data, const string &context, string *signature,
-              Keyczar *key) {
+              const Signer *key) {
   if (context.empty()) {
     LOG(ERROR) << "Cannot sign a message with an empty context";
     return false;
@@ -436,7 +461,7 @@ bool SignData(const string &data, const string &context, string *signature,
 }
 
 bool VerifySignature(const string &data, const string &context,
-                     const string &signature, keyczar::Keyczar *key) {
+                     const string &signature, const keyczar::Verifier *key) {
   if (context.empty()) {
     LOG(ERROR) << "Cannot sign a message with an empty context";
     return false;
@@ -459,24 +484,25 @@ bool VerifySignature(const string &data, const string &context,
   return true;
 }
 
-bool CopyPublicKeyset(const keyczar::Keyczar &public_key,
-                      keyczar::Keyset **keyset) {
-  CHECK(keyset) << "null keyset";
-
+bool CopyPublicKey(const keyczar::Signer &key,
+                   scoped_ptr<keyczar::Verifier> *copy) {
+  if (copy == nullptr) {
+    LOG(ERROR) << "null key";
+    return false;
+  }
   KeyczarPublicKey kpk;
-  if (!SerializePublicKey(public_key, &kpk)) {
+  if (!SerializePublicKey(key, &kpk)) {
     LOG(ERROR) << "Could not serialize the public key";
     return false;
   }
-
-  if (!DeserializePublicKey(kpk, keyset)) {
+  if (!DeserializePublicKey(kpk, copy)) {
     LOG(ERROR) << "Could not deserialize the public key";
     return false;
   }
-
   return true;
 }
 
+// TODO(kwalsh) dup with linux_tao. Version in linux_tao.cc is better.
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
                         string *secret) {
   // create or unseal a secret from the Tao
@@ -565,17 +591,17 @@ bool SendMessageTo(int fd, const google::protobuf::Message &m,
 
 bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
                         struct sockaddr *addr, socklen_t *addr_len) {
-  if (m == NULL) {
+  if (m == nullptr) {
     LOG(ERROR) << "null message";
     return false;
   }
 
   size_t len = 0;
   struct sockaddr_un first_addr;
-  socklen_t first_addr_len = *addr_len; // whatever size it should be
-  ssize_t bytes_recvd = recvfrom(fd, &len, sizeof(len), 0, 
-                                 (struct sockaddr *)&first_addr,
-                                 &first_addr_len);
+  socklen_t first_addr_len = *addr_len;  // whatever size it should be
+  ssize_t bytes_recvd =
+      recvfrom(fd, &len, sizeof(len), 0, (struct sockaddr *)&first_addr,
+               &first_addr_len);
   if (bytes_recvd == -1) {
     PLOG(ERROR) << "Could not receive any bytes on the channel";
     return false;
@@ -605,13 +631,13 @@ bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
     return false;
   }
 
-
   string serialized(bytes.get(), len);
   return m->ParseFromString(serialized);
 }
 
+// TODO(kwalsh) move cloudproxy ReceivePartialData functions here and use them
 bool ReceiveMessage(int fd, google::protobuf::Message *m) {
-  if (m == NULL) {
+  if (m == nullptr) {
     LOG(ERROR) << "null message";
     return false;
   }
@@ -622,8 +648,8 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
   size_t len = 0;
   ssize_t bytes_read = 0;
   while (static_cast<size_t>(bytes_read) < sizeof(len)) {
-    ssize_t rv =
-        read(fd, ((char *)&len) + bytes_read, sizeof(len) - bytes_read);
+    ssize_t rv = read(fd, (reinterpret_cast<char *>(&len)) + bytes_read,
+                      sizeof(len) - bytes_read);
     if (rv < 0) {
       if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
         continue;
@@ -660,8 +686,8 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
         continue;
       } else {
         PLOG(ERROR) << "Could not read enough bytes from the stream: "
-                    << "expected " << (int)len << " but received only "
-                    << bytes_read;
+                    << "expected " << static_cast<int>(len)
+                    << " but received only " << bytes_read;
         return false;
       }
     }
@@ -752,29 +778,189 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock) {
   return true;
 }
 
-bool CreatePubECDSAKey(const string &path, scoped_ptr<Keyczar> *key) {
-  FilePath fp(path);
-  scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
-  if (!CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                 KeyPurpose::SIGN_AND_VERIFY, "policy_pk", key)) {
-    LOG(ERROR) << "Could not create the public key";
+bool LoadCryptingKey(const string &path, const string &password,
+                     scoped_ptr<Crypter> *key) {
+  scoped_ptr<Crypter> crypter;
+  if (password.empty()) {
+    LOG(ERROR) << "Empty password is not allowed";
     return false;
   }
-  (*key)->set_encoding(Keyczar::NO_ENCODING);
 
+  // keyczar does a CHECK fail if the path does not exist. To avoid that, we
+  // check the existence of the path first.
+  if (!PathExists(FilePath(path))) {
+    LOG(ERROR) << "Could not initialize crypter from " << path
+               << ": directory does not exist";
+    return false;
+  }
+
+  key->reset(Crypter::Read(KeysetPBEJSONFileReader(path, password)));
+  if (key->get() == nullptr) {
+    LOG(ERROR) << "Could not initialize the crypter from " << path;
+    return false;
+  }
+  (*key)->set_encoding(Crypter::NO_ENCODING);
   return true;
 }
 
-bool CreateECDSAKey(const string &path, const string &key_name,
-                    scoped_ptr<Keyczar> *key) {
-  FilePath fp(path);
-  scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
-  if (!CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                 KeyPurpose::SIGN_AND_VERIFY, key_name, key)) {
-    LOG(ERROR) << "Could not create the public key";
+bool LoadSigningKey(const string &path, const string &password,
+                    scoped_ptr<Signer> *key) {
+  if (password.empty()) {
+    LOG(ERROR) << "Empty password is not allowed";
     return false;
   }
-  (*key)->set_encoding(Keyczar::NO_ENCODING);
+
+  // keyczar does a CHECK fail if the path does not exist. To avoid that, we
+  // check the existence of the path first.
+  if (!PathExists(FilePath(path))) {
+    LOG(ERROR) << "Could not initialize signer from " << path
+               << ": directory does not exist";
+    return false;
+  }
+
+  key->reset(Signer::Read(KeysetPBEJSONFileReader(path, password)));
+  if (key->get() == nullptr) {
+    LOG(ERROR) << "Could not initialize the signer from " << path;
+    return false;
+  }
+  (*key)->set_encoding(Signer::NO_ENCODING);
+  return true;
+}
+
+bool LoadEncryptedSigningKey(const string &path, const string &crypter_path,
+                             const string &crypter_password,
+                             scoped_ptr<Signer> *key) {
+  // load the crypting key used for decrypting the private key
+  scoped_ptr<Crypter> crypter;
+  if (!LoadCryptingKey(crypter_path, crypter_password, &crypter)) return false;
+
+  // keyczar does a CHECK fail if the path does not exist. To avoid that, we
+  // check the existence of the path first.
+  if (!PathExists(FilePath(path))) {
+    LOG(ERROR) << "Could not initialize signer from " << path
+               << ": directory does not exist";
+    return false;
+  }
+
+  key->reset(
+      Signer::Read(KeysetEncryptedJSONFileReader(path, crypter.release())));
+  if (key->get() == nullptr) {
+    LOG(ERROR) << "Could not initialize the signer from " << path;
+    return false;
+  }
+  (*key)->set_encoding(Crypter::NO_ENCODING);
+  return true;
+}
+
+bool LoadVerifierKey(const string &path, scoped_ptr<Verifier> *key) {
+  // keyczar does a CHECK fail if the path does not exist. To avoid that, we
+  // check the existence of the path first.
+  if (!PathExists(FilePath(path))) {
+    LOG(ERROR) << "Could not initialize verifier from " << path
+               << ": directory does not exist";
+    return false;
+  }
+
+  key->reset(Verifier::Read(path));
+  if (key->get() == nullptr) {
+    LOG(ERROR) << "Could not initialize the verifier from " << path;
+    return false;
+  }
+  (*key)->set_encoding(Verifier::NO_ENCODING);
+  return true;
+}
+
+/// Prepare a KeysetWriter using either cleartext, PBE, or crypter-encryption.
+/// @param path The location for the writer to write. The directory will be
+/// created if needed.
+/// @param crypter A crypter for crypter-encryption, or nullptr.
+/// @param password A password for PBE, or emptystring.
+/// @return The keyset writer, or nullptr on error.
+static KeysetJSONFileWriter *PrepareKeysetWriter(const string &path,
+                                                 scoped_ptr<Crypter> *crypter,
+                                                 const string &password) {
+  if (!CreateDirectory(FilePath(path))) {
+    LOG(ERROR) << "Can't create key directory " << path;
+    return nullptr;
+  }
+
+  scoped_ptr<KeysetJSONFileWriter> writer;
+  if (crypter)
+    writer.reset(new KeysetEncryptedJSONFileWriter(path, crypter->release()));
+  else if (!password.empty())
+    writer.reset(new KeysetPBEJSONFileWriter(path, password));
+  else
+    writer.reset(new KeysetJSONFileWriter(path));  // used for public keys
+
+  if (writer.get() == nullptr) {
+    LOG(ERROR) << "Can't write to key directory " << path;
+    return nullptr;
+  }
+
+  return writer.release();
+}
+
+/// Generate a signing key using the given writers. This takes ownership of both
+/// writers (if given).
+/// @param private_writer A writer to write the private key, or nullptr.
+/// @param public_writer A writer to write the public key, or nullptr.
+/// @param name A name for the new key.
+/// @param key[out] The new key.
+static bool GenerateSigningKeyWithWriters(KeysetJSONFileWriter *private_writer,
+                                          KeysetJSONFileWriter *public_writer,
+                                          const string &name,
+                                          scoped_ptr<Signer> *key) {
+  if (key == nullptr) {
+    LOG(ERROR) << "null key";
+    return false;
+  }
+
+  scoped_ptr<KeysetJSONFileWriter> priv_writer(private_writer);
+  scoped_ptr<KeysetJSONFileWriter> pub_writer(public_writer);
+  private_writer = public_writer = nullptr;
+
+  scoped_ptr<Keyset> keyset(new Keyset());
+  if (priv_writer.get() != nullptr) keyset->AddObserver(priv_writer.get());
+  keyset->set_encrypted(true);
+
+  keyset->set_metadata(new KeysetMetadata(
+      name, KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, true, 1));
+
+  keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+
+  // We still own the writer, need to RemoveObserver before end of function.
+  if (priv_writer.get() != nullptr) keyset->RemoveObserver(priv_writer.get());
+
+  if (pub_writer.get() != nullptr) {
+    if (!keyset->PublicKeyExport(*pub_writer)) {
+      LOG(ERROR) << "Can't write public key to directory "
+                 << pub_writer->dirname().value();
+      // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+      // So, they need to be added again. Typical error is:
+      // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+      // This needs to be done as close after PBE operations as possible,
+      // and we need to reset anything that might be holding a PBE
+      // object to force it to destruct and EVP_cleanup.
+      keyset.reset();       // reset to force PBE object destruction
+      priv_writer.reset();  // reset to force PBE object destruction
+      pub_writer.reset();   // reset to force PBE object destruction
+      OpenSSL_add_all_algorithms();
+      return false;
+    }
+  }
+
+  key->reset(new Signer(keyset.release()));
+  (*key)->set_encoding(Signer::NO_ENCODING);
+
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  // This needs to be done as close after PBE operations as possible,
+  // and we need to reset anything that might be holding a PBE
+  // object to force it to destruct and EVP_cleanup.
+  priv_writer.reset();  // reset to force PBE object destruction
+  pub_writer.reset();   // reset to force PBE object destruction
+  OpenSSL_add_all_algorithms();
 
   return true;
 }
@@ -794,27 +980,181 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-bool CreateTempPubKey(ScopedTempDir *temp_dir, scoped_ptr<Keyczar> *key) {
-  if (!CreateTempDir("cloudproxy_test_dir", temp_dir)) {
-    LOG(ERROR) << "Could not create a temp dir";
-    return false;
+bool GenerateCryptingKey(const string &path, const string &name,
+                         const string &password, scoped_ptr<Crypter> *key) {
+  scoped_ptr<Keyset> keyset(new Keyset());
+
+  scoped_ptr<KeysetJSONFileWriter> writer;  // retain until end of function
+  if (!path.empty()) {
+    if (password.empty()) {
+      LOG(ERROR) << "Empty password is not allowed";
+      return false;
+    }
+    writer.reset(PrepareKeysetWriter(path, nullptr /* no crypter */, password));
+    if (writer.get() == nullptr) return false;
+    keyset->AddObserver(writer.get());
   }
 
-  // Set up the files for the test.
-  string policy_pk_path = **temp_dir + "/policy_pk";
+  keyset->set_encrypted(true);
+  keyset->set_metadata(new KeysetMetadata(
+      name, KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, true, 1));
 
-  // Create the policy key directory so it can be filled by keyczar.
-  if (mkdir(policy_pk_path.c_str(), 0700)) {
-    LOG(ERROR) << "Could not create the key directory";
-    return false;
+  keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+
+  // We still own the writer, need to RemoveObserver before end of function.
+  if (writer.get() != nullptr) keyset->RemoveObserver(writer.get());
+
+  key->reset(new Crypter(keyset.release()));
+  (*key)->set_encoding(Crypter::NO_ENCODING);
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  // This needs to be done as close after PBE operations as possible,
+  // and we need to reset anything that might be holding a PBE
+  // object to force it to destruct and EVP_cleanup.
+  writer.reset();  // release to force PBE object destruction
+  OpenSSL_add_all_algorithms();
+  return true;
+}
+
+bool GenerateSigningKey(const string &private_path, const string &public_path,
+                        const string &name, const string &password,
+                        scoped_ptr<Signer> *key) {
+  scoped_ptr<KeysetJSONFileWriter> private_writer;
+  if (!private_path.empty()) {
+    if (password.empty()) {
+      LOG(ERROR) << "Empty password is not allowed";
+      return false;
+    }
+    private_writer.reset(
+        PrepareKeysetWriter(private_path, nullptr /* no crypter */, password));
+    if (private_writer.get() == nullptr) return false;
   }
 
-  // create the policy key
-  if (!CreatePubECDSAKey(policy_pk_path, key)) {
-    LOG(ERROR) << "Could not create a public key";
-    return false;
+  scoped_ptr<KeysetJSONFileWriter> public_writer;
+  if (!public_path.empty()) {
+    public_writer.reset(PrepareKeysetWriter(
+        public_path, nullptr /* no crypter */, "" /* no pass */));
+    if (public_writer.get() == nullptr) return false;
   }
 
+  return GenerateSigningKeyWithWriters(private_writer.release(),
+                                       public_writer.release(), name, key);
+}
+
+bool GenerateEncryptedSigningKey(const string &private_path,
+                                 const string &public_path, const string &name,
+                                 const string &crypter_path,
+                                 const string &crypter_password,
+                                 scoped_ptr<Signer> *key) {
+  // load the crypting key used for encrypting the private key
+  scoped_ptr<Crypter> crypter;
+  if (!LoadCryptingKey(crypter_path, crypter_password, &crypter)) return false;
+
+  scoped_ptr<KeysetJSONFileWriter> private_writer;
+  private_writer.reset(
+      PrepareKeysetWriter(private_path, &crypter, "" /* no pass */));
+  if (private_writer.get() == nullptr) return false;
+
+  scoped_ptr<KeysetJSONFileWriter> public_writer;
+  if (!public_path.empty()) {
+    public_writer.reset(PrepareKeysetWriter(
+        public_path, nullptr /* no crypter */, "" /* no pass */));
+    if (public_writer.get() == nullptr) return false;
+  }
+
+  return GenerateSigningKeyWithWriters(private_writer.release(),
+                                       public_writer.release(), name, key);
+}
+
+bool GenerateAttestation(const Signer *signer, const string &cert,
+                         Statement *statement, Attestation *attestation) {
+  if (statement == nullptr) {
+    LOG(ERROR) << "Can't sign null statement";
+    return false;
+  }
+  if (!statement->has_data()) {
+    LOG(ERROR) << "Can't sign empty statement";
+    return false;
+  }
+  if (attestation == nullptr) {
+    LOG(ERROR) << "Can't sign null attestation";
+    return false;
+  }
+  if (statement->hash().empty() != statement->hash_alg().empty()) {
+    LOG(ERROR) << "Statement hash and hash_alg are inconsistent";
+    return false;
+  }
+  // Fill in missing timestamp and expiration
+  if (!statement->has_time()) {
+    time_t cur_time;
+    time(&cur_time);
+    statement->set_time(cur_time);
+  }
+  if (!statement->has_expiration()) {
+    statement->set_expiration(statement->time() +
+                              Tao::DefaultAttestationTimeout);
+  }
+  // Sign the statement.
+  string stmt, sig;
+  if (!statement->SerializeToString(&stmt)) {
+    LOG(ERROR) << "Could not serialize statement";
+    return false;
+  }
+  if (!SignData(stmt, Tao::AttestationSigningContext, &sig, signer)) {
+    LOG(ERROR) << "Could not sign the statement";
+    return false;
+  }
+  attestation->set_type(cert.empty() ? tao::ROOT : tao::INTERMEDIATE);
+  attestation->set_serialized_statement(stmt);
+  attestation->set_signature(sig);
+  if (!cert.empty()) {
+    attestation->set_cert(cert);
+  } else {
+    attestation->clear_cert();
+  }
+
+  VLOG(5) << "Generated " << (cert.empty() ? "ROOT" : "INTERMEDIATE")
+          << "attestation"
+          << "\n  with key named " << signer->keyset()->metadata()->name()
+          << "\n  with Attestation = " << attestation->DebugString()
+          << "\n  with Statement = " << statement->DebugString()
+          << "\n  with cert = " << cert;
+
+  return true;
+}
+
+bool GenerateAttestation(const Signer *signer, const string &cert,
+                         Statement *statement, string *attestation) {
+  Attestation a;
+  if (!GenerateAttestation(signer, cert, statement, &a))
+    return false;  // Plenty of log messages in the above call
+  if (!a.SerializeToString(attestation)) {
+    LOG(ERROR) << "Could not serialize attestation";
+    return false;
+  }
+  return true;
+}
+
+bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,
+                               scoped_ptr<TaoDomain> *admin) {
+  // lax log messages: this is a top level function only used for unit testing
+  if (!CreateTempDir("temp_admin_domain", temp_dir)) return false;
+  string path = **temp_dir + "/tao.config";
+  string config = TaoDomain::ExampleWhitelistAuthDomain;
+  admin->reset(TaoDomain::Create(config, path, "temppass"));
+  if (admin->get() == nullptr) return false;
+  return true;
+}
+
+bool CreateTempRootDomain(ScopedTempDir *temp_dir,
+                          scoped_ptr<TaoDomain> *admin) {
+  // lax log messages: this is a top level function only used for unit testing
+  if (!CreateTempDir("temp_admin_domain", temp_dir)) return false;
+  string path = **temp_dir + "/tao.config";
+  string config = TaoDomain::ExampleRootAuthDomain;
+  admin->reset(TaoDomain::Create(config, path, "temppass"));
+  if (admin->get() == nullptr) return false;
   return true;
 }
 
@@ -845,5 +1185,205 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
   freeaddrinfo(addrs);
 
   return true;
+}
+
+bool AuthorizeProgram(const string &path, TaoDomain *admin) {
+  string program_name = FilePath(path).BaseName().value();
+  string program_sha;
+  if (!Sha256FileHash(path, &program_sha)) return false;
+
+  string program_hash;
+  if (!keyczar::base::Base64WEncode(program_sha, &program_hash)) return false;
+
+  return admin->Authorize(program_hash, TaoAuth::Sha256, program_name);
+}
+
+bool ExportKeyToOpenSSL(Signer *key, const string &pem_key_path,
+                        const string &secret, ScopedEvpPkey *pem_key) {
+  if (key == nullptr || pem_key == nullptr) {
+    LOG(ERROR) << "null key or pem_key";
+    return false;
+  }
+  // TODO(tmroeder): Add an HMAC as a separate file, since
+  // PEM_write_PKCS8PrivateKey does not provide integrity protection, and our
+  // threat model requires it to.
+
+  // export private key to openssl format
+  if (!key->keyset()->ExportPrivateKey(pem_key_path, &secret)) {
+    LOG(ERROR) << "Could not export private key to PKCS8 format";
+    return false;
+  }
+
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  OpenSSL_add_all_algorithms();
+
+  // read it back in using openssl
+  BIO *bio = BIO_new(BIO_s_file());
+  BIO_read_filename(bio, pem_key_path.c_str());
+  char *password = const_cast<char *>(secret.c_str());
+  pem_key->reset(PEM_read_bio_PrivateKey(bio, nullptr, 0, password));
+  if (pem_key->get() == nullptr || !OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not load key from PKCS8 format";
+    return false;
+  }
+
+  return true;
+}
+
+bool SerializeX509(X509 *x509, string *serialized_x509) {
+  if (x509 == nullptr) {
+    LOG(ERROR) << "null x509";
+    return false;
+  }
+
+  int len = i2d_X509(x509, nullptr);
+  if (!OpenSSLSuccess() || len < 0) {
+    LOG(ERROR) << "Could not get the length of an X.509 certificate";
+    return false;
+  }
+
+  unsigned char *serialization = nullptr;
+  len = i2d_X509(x509, &serialization);
+  scoped_ptr_malloc<unsigned char> der_x509(serialization);
+  if (!OpenSSLSuccess() || len < 0) {
+    LOG(ERROR) << "Could not encode an X.509 certificate in DER";
+    return false;
+  }
+
+  serialized_x509->assign(reinterpret_cast<char *>(der_x509.get()), len);
+  return true;
+}
+
+/// Set one detail for an openssl x509 name structure.
+/// @param name The x509 name structure to modify. Must be non-null.
+/// @param key The country code, e.g. "US"
+/// @param id The detail id, e.g. "C" for country or "CN' for common name
+/// @param val The value to be set
+static void SetX509NameDetail(X509_NAME *name, const string &id,
+                              const string &val) {
+  X509_NAME_add_entry_by_txt(
+      name, id.c_str(), MBSTRING_ASC,
+      reinterpret_cast<unsigned char *>(const_cast<char *>(val.c_str())), -1,
+      -1, 0);
+  if (!OpenSSLSuccess())
+    LOG(WARNING) << "Could not set x509 " << id << " detail";
+}
+
+/// Set the details for an openssl x509 name structure.
+/// @param name The x509 name structure to modify. Must be non-null.
+/// @param c The country code, e.g. "US".
+/// @param o The organization code, e.g. "Google"
+/// @param st The state code, e.g. "Washington"
+/// @param cn The common name, e.g. "Example Tao CA Service" or "localhost"
+static void SetX509NameDetails(X509_NAME *name, const string &c,
+                               const string &o, const string &st,
+                               const string &cn) {
+  SetX509NameDetail(name, "C", c);
+  SetX509NameDetail(name, "ST", st);
+  SetX509NameDetail(name, "O", o);
+  SetX509NameDetail(name, "CN", cn);
+}
+
+/// Add an extension to an openssl x509 structure.
+/// @param x509 The certificate to modify. Must be non-null.
+/// @param nid The NID_* constant for this extension.
+/// @param val The string value to be added.
+bool PrepareX509(X509 *x509, int version, int serial, EVP_PKEY *subject_key) {
+  X509_set_version(x509, version);
+
+  ASN1_INTEGER_set(X509_get_serialNumber(x509), serial);
+
+  // set notBefore and notAfter to get a reasonable validity period
+  X509_gmtime_adj(X509_get_notBefore(x509), 0);
+  X509_gmtime_adj(X509_get_notAfter(x509), Tao::DefaultAttestationTimeout);
+
+  // This method allocates a new public key for x509, and it doesn't take
+  // ownership of the key passed in the second parameter.
+  X509_set_pubkey(x509, subject_key);
+  if (!OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not add the public key to the X.509 structure";
+    return false;
+  }
+
+  return true;
+}
+
+/// Add an extension to an openssl x509 structure.
+/// @param x509 The certificate to modify. Must be non-null.
+/// @param nid The NID_* constant for this extension.
+/// @param val The string value to be added.
+static void AddX509Extension(X509 *x509, int nid, const string &val) {
+  X509V3_CTX ctx;
+  X509V3_set_ctx_nodb(&ctx);
+  X509V3_set_ctx(&ctx, x509, x509, nullptr, nullptr, 0);
+
+  char *data = const_cast<char *>(val.c_str());
+  X509_EXTENSION *ex = X509V3_EXT_conf_nid(nullptr, &ctx, nid, data);
+  if (!OpenSSLSuccess() || ex == nullptr) {
+    LOG(WARNING) << "Could not add x509 extension";
+    return;
+  }
+  X509_add_ext(x509, ex, -1);
+  X509_EXTENSION_free(ex);
+}
+
+/// Write an openssl X509 structure to a file in PEM format.
+/// @param x509 The certificate to write. Must be non-null.
+/// @param path The location to write the PEM data.
+static bool WriteX509File(X509 *x509, const string &path) {
+  if (!CreateDirectory(FilePath(path).DirName())) {
+    LOG(ERROR) << "Could not create directory for " << path;
+    return false;
+  }
+
+  ScopedFile cert_file(fopen(path.c_str(), "wb"));
+  if (cert_file.get() == nullptr) {
+    PLOG(ERROR) << "Could not open file " << path << " for writing";
+    return false;
+  }
+
+  PEM_write_X509(cert_file.get(), x509);
+  if (!OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not write the X.509 certificate to " << path;
+    return false;
+  }
+
+  return true;
+}
+
+bool CreateSelfSignedX509(Signer *key, const string &pem_key_path,
+                          const string &secret, const string &country,
+                          const string &state, const string &org,
+                          const string &cn, const string &public_cert_path) {
+  // we need an openssl version of the key to create and sign the x509 cert
+  ScopedEvpPkey pem_key;
+  if (!ExportKeyToOpenSSL(key, pem_key_path, secret, &pem_key)) return false;
+
+  // create the x509 structure
+  ScopedX509Ctx x509(X509_new());
+  int version = 2;  // self sign uses version=2 (which is x509v3)
+  int serial = 1;   // self sign can always use serial 1
+  PrepareX509(x509.get(), version, serial, pem_key.get());
+
+  // set up the subject and issuer details to be the same
+  X509_NAME *subject = X509_get_subject_name(x509.get());
+  SetX509NameDetails(subject, country, org, state, cn);
+
+  X509_NAME *issuer = X509_get_issuer_name(x509.get());
+  SetX509NameDetails(issuer, country, org, state, cn);
+
+  AddX509Extension(x509.get(), NID_basic_constraints, "critical,CA:TRUE");
+  AddX509Extension(x509.get(), NID_subject_key_identifier, "hash");
+  AddX509Extension(x509.get(), NID_authority_key_identifier, "keyid:always");
+
+  X509_sign(x509.get(), pem_key.get(), EVP_sha1());
+  if (!OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not perform self-signing on the X.509 cert";
+    return false;
+  }
+
+  return WriteX509File(x509.get(), public_cert_path);
 }
 }  // namespace tao

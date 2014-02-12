@@ -26,6 +26,7 @@
 #include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/tao_auth.h"
 
 namespace tao {
 TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
@@ -51,7 +52,7 @@ bool TPMTaoChildChannel::Init() {
   result = Tspi_Context_Create(&tss_ctx_);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
-  result = Tspi_Context_Connect(tss_ctx_, NULL /* Default TPM */);
+  result = Tspi_Context_Connect(tss_ctx_, nullptr /* Default TPM */);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
 
   result = Tspi_Context_GetTpmObject(tss_ctx_, &tpm_);
@@ -75,7 +76,7 @@ bool TPMTaoChildChannel::Init() {
   // This seal operation is meant to be used with DRTM, so the only PCRs that it
   // reads are 17 and 18. This is where you can set other PCRs to use.
   list<UINT32> pcrs_to_seal{17, 18};
-  BYTE *pcr_value = NULL;
+  BYTE *pcr_value = nullptr;
   UINT32 pcr_value_len = 0;
   for (UINT32 ui : pcrs_to_seal) {
     result = Tspi_TPM_PcrRead(tpm_, ui, &pcr_value_len, &pcr_value);
@@ -103,7 +104,7 @@ bool TPMTaoChildChannel::Init() {
 
   // Set up an OpenSSL RSA public key to use to verify the Quote
   aik_rsa_.reset(RSA_new());
-  aik_rsa_->n = BN_bin2bn(aik_mod, aik_mod_len, NULL);
+  aik_rsa_->n = BN_bin2bn(aik_mod, aik_mod_len, nullptr);
   aik_rsa_->e = BN_new();
   BN_set_word(aik_rsa_->e, 0x10001);
 
@@ -142,7 +143,7 @@ bool TPMTaoChildChannel::Init() {
 bool TPMTaoChildChannel::Destroy() {
   // Clean-up code.
   TSS_RESULT result;
-  result = Tspi_Context_FreeMemory(tss_ctx_, NULL);
+  result = Tspi_Context_FreeMemory(tss_ctx_, nullptr);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not free the context";
 
   result = Tspi_Context_Close(tss_ctx_);
@@ -268,11 +269,12 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
   time(&cur_time);
 
   s.set_time(cur_time);
-  s.set_expiration(cur_time + AttestationTimeout);
+  s.set_expiration(cur_time + Tao::DefaultAttestationTimeout);
   s.set_data(data);
   // i.e., see Attestation.quote
-  s.set_hash_alg("TPM1.2 Quote");
-  s.set_hash("");
+  s.set_hash_alg(tao::TaoAuth::PcrSha1);
+  s.set_hash("see:quote");  // hash must be computed from pcr info in external
+                            // data
 
   string serialized_statement;
   if (!s.SerializeToString(&serialized_statement)) {

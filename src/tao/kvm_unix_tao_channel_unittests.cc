@@ -16,21 +16,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "tao/kvm_unix_tao_channel.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <termios.h>
 
 #include <thread>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <keyczar/base/base64w.h>
 
 #include "tao/fake_tao.h"
-#include "tao/kvm_unix_tao_channel.h"
 #include "tao/tao.h"
 #include "tao/tao_channel_rpc.pb.h"
 #include "tao/unix_fd_tao_child_channel.h"

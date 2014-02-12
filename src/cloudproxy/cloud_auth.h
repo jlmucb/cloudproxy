@@ -34,7 +34,7 @@ using std::set;
 using std::string;
 
 namespace keyczar {
-class Keyczar;
+class Verifier;
 }  // namespace keyczar
 
 namespace cloudproxy {
@@ -44,7 +44,7 @@ class CloudAuth {
   /// Create the authorization instance.
   /// @param acl_path The path to a signed ACL of form SignedACL.
   /// @param key The public key to use to check the signature on the ACL.
-  CloudAuth(const string &acl_path, keyczar::Keyczar *key);
+  CloudAuth(const string &acl_path, const keyczar::Verifier *key);
 
   virtual ~CloudAuth() {}
 
@@ -75,6 +75,7 @@ class CloudAuth {
 
   constexpr static auto ACLSigningContext =
       "CloudAuth cloudproxy::SignedACL Version 1";
+
  protected:
   /// Look up a set of permissions for a subject/object pair.
   /// @param subject The subject to look for.
@@ -92,6 +93,6 @@ class CloudAuth {
 
   DISALLOW_COPY_AND_ASSIGN(CloudAuth);
 };
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_CLOUD_AUTH_H_

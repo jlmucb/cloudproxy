@@ -26,32 +26,36 @@
 
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
 
 #include "tao/tao_channel.h"
 
-using keyczar::base::Base64WEncode;
-using keyczar::CryptoFactory;
-using keyczar::MessageDigestImpl;
-
 using std::ifstream;
 using std::stringstream;
 using std::vector;
+
+using keyczar::CryptoFactory;
+using keyczar::MessageDigestImpl;
+using keyczar::base::Base64WEncode;
+using keyczar::base::ReadFileToString;
 
 namespace tao {
 bool ProcessFactory::HashHostedProgram(const string &name,
                                        const list<string> &args,
                                        string *child_hash) const {
-  ifstream program_stream(name.c_str());
-  stringstream program_buf;
-  program_buf << program_stream.rdbuf();
+  string program_buf;
+  if (!ReadFileToString(name, &program_buf)) {
+    LOG(ERROR) << "Could not read program " << name;
+    return false;
+  }
 
   // TODO(tmroeder): take in the right hash type and use it here. For
   // now, we just assume that it's SHA256
   MessageDigestImpl *sha256 = CryptoFactory::SHA256();
   string digest;
-  if (!sha256->Digest(program_buf.str(), &digest)) {
+  if (!sha256->Digest(program_buf, &digest)) {
     LOG(ERROR) << "Could not compute the digest over the file";
     return false;
   }
@@ -68,7 +72,7 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
                                          const list<string> &args,
                                          const string &child_hash,
                                          TaoChannel &parent_channel,
-					 string *identifier) const {
+                                         string *identifier) const {
   int child_pid = fork();
   if (child_pid == -1) {
     LOG(ERROR) << "Could not fork";
@@ -81,7 +85,7 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
     // one more for the name of the program in argv[0]
     int argc = (int)args.size() + 1;
 
-    // one more for the NULL at the end
+    // one more for the null at the end
     char **argv = new char *[argc + 1];
     argv[0] = strdup(name.c_str());
     int i = 1;
@@ -89,7 +93,7 @@ bool ProcessFactory::CreateHostedProgram(const string &name,
       argv[i++] = strdup(v.c_str());
     }
 
-    argv[i] = NULL;
+    argv[i] = nullptr;
 
     int rv = execv(name.c_str(), argv);
     if (rv == -1) {

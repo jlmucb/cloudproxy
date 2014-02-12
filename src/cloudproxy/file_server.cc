@@ -21,40 +21,65 @@
 
 #include "cloudproxy/file_server.h"
 
-// for stat(2)
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <mutex>
+#include <string>
 
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"
-#include "tao/tao_auth.h"
+#include "tao/util.h"
 
 using std::lock_guard;
 using std::mutex;
+using std::string;
+
+using keyczar::base::Base64WEncode;
+using keyczar::base::PathExists;
+using keyczar::base::ScopedSafeString;
+using tao::GenerateSigningKey;
+using tao::LoadSigningKey;
+using tao::ScopedFile;
 
 namespace cloudproxy {
 
 FileServer::FileServer(const string &file_path, const string &meta_path,
-                       const string &tls_cert, const string &tls_key,
-                       const string &tls_password,
-                       const string &public_policy_keyczar,
-                       const string &public_policy_pem,
-                       const string &acl_location,
-                       const string &server_key_location, const string &host,
-                       const string &port, tao::TaoAuth *auth_manager)
-    : CloudServer(tls_cert, tls_key, tls_password, public_policy_keyczar,
-                  public_policy_pem, acl_location, host, port, auth_manager),
-      main_key_(keyczar::Signer::Read(server_key_location.c_str())),
+                       const string &server_config_path, const string &secret,
+                       const string &acl_location, const string &host,
+                       const string &port, tao::TaoDomain *admin)
+    : CloudServer(server_config_path, secret, acl_location, host, port, admin),
       enc_key_(new string()),
       hmac_key_(new string()),
       file_path_(file_path),
       meta_path_(meta_path) {
+
+  ScopedSafeString encoded_secret(new string());
+  CHECK(Base64WEncode(secret, encoded_secret.get()))
+      << "Could not encode the secret as a Base64W string";
+
+  FilePath fp(server_config_path);
+  // TODO(kwalsh) It seems FileServer uses a separate signing key than
+  // CloudProxy. For now, put fileserver's keys in a subdirectory to avoid name
+  // clashes with CloudServer. Maybe use the same key?
+  fp = fp.Append("fileserver");
+  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
+  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
+  if (!PathExists(priv_key_path)) {
+    CHECK(GenerateSigningKey(priv_key_path.value(), pub_key_path.value(),
+                             "file server key", *encoded_secret, &main_key_))
+        << "Could not create new signing key for the file server";
+  } else {
+    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &main_key_))
+        << "Could not load signing key for the file server";
+  }
+
   // check to see if these paths actually exist
   struct stat st;
   CHECK_EQ(stat(file_path_.c_str(), &st), 0) << "Could not stat the directory "
@@ -66,12 +91,6 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
                                              << meta_path_;
   CHECK(S_ISDIR(st.st_mode)) << "The path " << meta_path_
                              << " is not a directory";
-
-  // TODO(tmroeder): this key should be protected with the same Tao-sealed
-  // secret as the OpenSSL keys.
-  // get binary data from the hmac
-  main_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
-
 
   // generate keys
   CHECK(DeriveKeys(main_key_.get(), &enc_key_, &hmac_key_))

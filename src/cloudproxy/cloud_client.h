@@ -21,33 +21,22 @@
 #ifndef CLOUDPROXY_CLOUD_CLIENT_H_
 #define CLOUDPROXY_CLOUD_CLIENT_H_
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include <set>
 #include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <openssl/ssl.h>
 
-#include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/util.h"
 #include "tao/tao_child_channel.h"
-#include "tao/whitelist_auth.h"
+#include "tao/tao_domain.h"
 
-using std::set;
 using std::string;
-
-namespace keyczar {
-class Keyczar;
-}  // namespace keyczar
-
-namespace tao {
-class TaoAuth;
-class TaoChildChannel;
-}  // namespace tao
 
 namespace cloudproxy {
 
@@ -60,24 +49,19 @@ namespace cloudproxy {
 /// Sample usage: see apps/client.cc
 class CloudClient {
  public:
-  /// Create a CloudClient. If the TLS paths refer to existing files, then the
-  /// client will try to open these files and decrypt them with the secret.
-  /// Otherwise, it will generate and seal a new secret and use this secret to
-  /// encrypt a new TLS public/private key pair.
-  /// @param tls_cert The path to a TLS certificate (or the location to write
-  /// one).
-  /// @param tls_key The path to a TLS private key (or the location to write
-  /// one).
-  /// @param secret The path to a Tao-sealed secret (or the location to write
-  /// one).
-  /// @param public_policy_keyczar The path to the public policy key.
-  /// @param public_policy_pem The path to an OpenSSL representation of the
-  /// public policy key.
-  /// @param auth_manager An instance of TaoAuth that can be used to verify
-  /// attestations.
-  CloudClient(const string &tls_cert, const string &tls_key,
-              const string &secret, const string &public_policy_keyczar,
-              const string &public_policy_pem, tao::TaoAuth *auth_manager);
+  /// Create a CloudClient. If the directory contains keys and certificates,
+  /// then the client will try to open these files and decrypt them with the
+  /// secret. Otherwise, they keys and certificates will be created and
+  /// encrypted to this directory.
+  /// @param client_config_path A directory to use for keys and TLS files.
+  /// @param secret A string to use for a encrypting private keys.
+  /// @param admin The configuration for this administrative domain. Ownership
+  /// is taken.
+  /// TODO(kwalsh) This description used to say the secret was tao-sealed
+  /// against this client, but the code was not so. External code that
+  /// seals the secret should be moved here.
+  CloudClient(const string &client_config_path, const string &secret,
+              tao::TaoDomain *admin);
 
   virtual ~CloudClient() {}
 
@@ -146,6 +130,7 @@ class CloudClient {
 
   constexpr static auto ChallengeSigningContext =
       "CloudClient cloudproxy::Challenge Version 1";
+
  protected:
   /// A helper method to send an action to the server and handle the reply, if
   /// necessary.
@@ -163,26 +148,23 @@ class CloudClient {
   bool HandleReply(SSL *ssl);
 
  private:
+  /// Configuration for this administrative domain.
+  scoped_ptr<tao::TaoDomain> admin_;
+
   /// Handle the client side of a challenge-response protocol with a server.
   /// @param ssl The server connection to use.
   /// @param chall The challenge to handle.
   bool HandleChallenge(SSL *ssl, const Challenge &chall);
 
-  // The public policy key for this connection.
-  scoped_ptr<keyczar::Keyczar> public_policy_key_;
-
-  // A context for TLS connections to servers.
+  /// A context for TLS connections to servers.
   ScopedSSLCtx context_;
 
-  // Principals that have been authenticated on this connection, and the keys
-  // for each user.
+  /// Principals that have been authenticated on this connection, and the keys
+  /// for each user.
   scoped_ptr<CloudUserManager> users_;
-
-  // A way to check that a given hash corresponds to an authorized program.
-  scoped_ptr<tao::TaoAuth> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_CLOUD_CLIENT_H_

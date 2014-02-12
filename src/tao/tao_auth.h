@@ -29,26 +29,47 @@ namespace tao {
 /// hosted programs under the Tao.
 class TaoAuth {
  public:
+  /// Typical hash algorithm for programs.
+  constexpr static auto Sha256 = "SHA256";
+  /// Typical hash algorithm for TPM pcrs.
+  constexpr static auto PcrSha1 = "PCR_SHA1";
+  /// Typical hash algorithm for testing when no actual hash is available.
+  constexpr static auto FakeHash = "FAKE_HASH";
+
   virtual ~TaoAuth() {}
-  virtual bool Init() = 0;
 
-  /// Check that a given program hash is authorized.
-  /// @param program_hash The hash to check.
-  virtual bool IsAuthorized(const string &program_hash) const = 0;
+  /// Check that a given hash is authorized to execute under and speak for
+  /// the given name.
+  /// @param hash The hash to check
+  /// @param alg The algorithm used to compute the hash
+  /// @param name The name to check
+  virtual bool IsAuthorized(const string &hash, const string &alg,
+                            const string &name) const = 0;
 
-  /// Check that a given name/hash pair is authorized.
-  /// @param program_name The name to check.
-  /// @param program_hash The hash to check.
-  virtual bool IsAuthorized(const string &program_name,
-                            const string &program_hash) const = 0;
+  /// Check that a given hash (e.g. of a program or of some pcrs) is authorized
+  /// to execute in this administrative domain under some name.
+  /// @param hash The hash to check
+  /// @param alg The algorithm used to compute the hash
+  /// @param name[out] If not null, some name under which the hash was
+  /// authorized to execute
+  /// TODO(kwalsh) rename to avoid similarity with other function
+  virtual bool IsAuthorized(const string &hash, const string &alg,
+                            string *name) const = 0;
 
-  /// Check an attestation produced by the Tao method Attest
-  /// for a given data string.
-  /// @param attestation An Attestation produced by Tao::Attest()
+  /// Check an attestation produced by the Tao method Attest for a given data
+  /// string.
+  /// @param attestation A serialized Attestation
   /// @param[out] data The extracted data from the Statement in the Attestation
   /// @return true if the attestation passes verification
   virtual bool VerifyAttestation(const string &attestation,
                                  string *data) const = 0;
+
+  /// Authorize a hash to execute under and speak for the given name.
+  /// @param alg The algorithm used to compute the hash
+  /// @param hash The hash for the binding
+  /// @param name The name that will be bound to this hash
+  virtual bool Authorize(const string &hash, const string &alg,
+                         const string &name) = 0;
 };
 }  // namespace tao
 

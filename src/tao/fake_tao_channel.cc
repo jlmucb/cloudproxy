@@ -19,9 +19,13 @@
 
 #include "tao/fake_tao_channel.h"
 
-#include "tao/tao_child_channel_params.pb.h"
+#include <string>
 
 #include <glog/logging.h>
+
+#include "tao/tao_child_channel_params.pb.h"
+
+using std::string;
 
 namespace tao {
 bool FakeTaoChannel::AddChildChannel(const string &child_hash, string *params) {

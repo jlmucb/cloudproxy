@@ -79,8 +79,7 @@ class Tao {
   /// to a process, but it is not always.
   /// @param args A list of arguments for starting the hosted program.
   /// @param identifier An identifier for the started program (e..g, a PID)
-  virtual bool StartHostedProgram(const string &name,
-                                  const list<string> &args,
+  virtual bool StartHostedProgram(const string &name, const list<string> &args,
                                   string *identifier) = 0;
 
   /// Remove the hosted program from the running programs. Note that this does
@@ -124,6 +123,9 @@ class Tao {
 
   constexpr static auto AttestationSigningContext =
       "tao::Attestation Version 1";
+
+  // the timeout for an Attestation (= 1 year in seconds)
+  const static int DefaultAttestationTimeout = 31556926;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Tao);

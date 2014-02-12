@@ -20,9 +20,12 @@
 
 #include "tao/kvm_unix_tao_channel.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <mutex>
+#include <utility>
 
 #include <keyczar/base/scoped_ptr.h>
 
@@ -31,9 +34,9 @@
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/util.h"
 
-#include <mutex>
-
 using std::lock_guard;
+using std::pair;
+using std::string;
 
 namespace tao {
 KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path,

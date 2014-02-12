@@ -24,34 +24,24 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_reader.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/tao.h"
+#include "tao/tao_domain.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
-
-using keyczar::Keyczar;
 
 using tao::Attestation;
 using tao::InitializeOpenSSL;
 using tao::OpenTCPSocket;
 using tao::ReceiveMessage;
+using tao::ScopedFd;
 using tao::SendMessage;
-using tao::SignData;
 using tao::Statement;
 using tao::Tao;
-using tao::WhitelistAuth;
+using tao::TaoDomain;
 
-DEFINE_string(host, "localhost", "The interface to listen on");
-DEFINE_string(port, "11238", "The listening port for tcca");
-DEFINE_string(policy_key_path, "policy_key", "The path to the policy key");
-DEFINE_string(policy_key_pass, "cppolicy", "The password for the policy key");
-DEFINE_string(policy_pk_path, "policy_public_key",
-              "The path to the policy public key");
-DEFINE_string(whitelist, "signed_whitelist",
-              "The whitelist of hashes to accept");
+DEFINE_string(config_path, "tao.config", "Location of tao configuration");
+DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 
 static bool StopFlag = false;
 void term_handler(int sig) {
@@ -60,7 +50,10 @@ void term_handler(int sig) {
 }
 
 int main(int argc, char **argv) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
   google::ParseCommandLineFlags(&argc, &argv, true);
+  FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
   struct sigaction act;
@@ -71,38 +64,29 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
   if (!InitializeOpenSSL()) {
     LOG(ERROR) << "Could not initialize the OpenSSL library";
     return 1;
   }
 
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  CHECK(admin.get() != nullptr) << "Could not load configuration";
+  CHECK(admin->Unlock(FLAGS_policy_pass)) << "Could not unlock configuration";
+
+  string host = admin->GetTaoCAHost();
+  string port = admin->GetTaoCAPort();
   int sock = 0;
-  if (!OpenTCPSocket(FLAGS_host, FLAGS_port, &sock)) {
-    LOG(ERROR) << "Could not open a TCP socket for listening on " << FLAGS_host
-               << ":" << FLAGS_port;
+  if (!OpenTCPSocket(host, port, &sock)) {
+    LOG(ERROR) << "Could not open a TCP socket for listening on " << host << ":"
+               << port;
     return 1;
   }
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(
-      new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
-  CHECK(whitelist_auth->Init())
-      << "Could not initialize the whitelist authorization mechanism";
-
-  // Set up the policy key for signing.
-  keyczar::base::ScopedSafeString password(new string(FLAGS_policy_key_pass));
-  scoped_ptr<keyczar::rw::KeysetReader> reader(
-      new keyczar::rw::KeysetPBEJSONFileReader(FLAGS_policy_key_path.c_str(),
-                                               *password));
-  scoped_ptr<keyczar::Keyczar> policy_key(keyczar::Signer::Read(*reader));
-  CHECK(policy_key.get()) << "Could not initialize the signer from "
-                          << FLAGS_policy_key_path;
-  policy_key->set_encoding(keyczar::Keyczar::NO_ENCODING);
+  LOG(INFO) << "TCCA Listening for connections on " << host << ":" << port;
 
   while (!StopFlag) {
-    int accept_sock = accept(sock, NULL, NULL);
-    if (accept_sock == -1) {
+    ScopedFd accept_sock(new int(accept(sock, nullptr, nullptr)));
+    if (*accept_sock == -1) {
       if (errno != EINTR) {
         PLOG(ERROR) << "Could not accept a connection on the socket";
         return 1;
@@ -112,7 +96,7 @@ int main(int argc, char **argv) {
     }
 
     Attestation a;
-    if (!ReceiveMessage(accept_sock, &a)) {
+    if (!ReceiveMessage(*accept_sock, &a)) {
       LOG(ERROR) << "Could not receive a message from the socket";
       continue;
     }
@@ -124,7 +108,7 @@ int main(int argc, char **argv) {
     }
 
     string data;
-    if (!whitelist_auth->VerifyAttestation(serialized_attest, &data)) {
+    if (!admin->VerifyAttestation(serialized_attest, &data)) {
       LOG(ERROR) << "The provided attestation did not pass verification";
       continue;
     }
@@ -132,31 +116,21 @@ int main(int argc, char **argv) {
     Statement orig_statement;
     if (!orig_statement.ParseFromString(a.serialized_statement())) {
       LOG(ERROR)
-          << "Could not parse the original statment from the attestation";
+          << "Could not parse the original statement from the attestation";
       continue;
     }
 
     // Create a new attestation to the same statement, but using the policy key
-    Statement policy_statement;
-    policy_statement.CopyFrom(orig_statement);
+    Statement root_statement;
+    root_statement.CopyFrom(orig_statement);
 
-    Attestation policy_attest;
-    policy_attest.set_type(tao::ROOT);
-    string *serialized_policy_statement =
-        policy_attest.mutable_serialized_statement();
-    if (!policy_statement.SerializeToString(serialized_policy_statement)) {
-      LOG(ERROR) << "Could not serialize the policy statement";
+    Attestation root_attestation;
+    if (!admin->AttestByRoot(&root_statement, &root_attestation)) {
+      LOG(ERROR) << "Could not sign a new root attestation";
       continue;
     }
 
-    string *sig = policy_attest.mutable_signature();
-    if (!SignData(*serialized_policy_statement, Tao::AttestationSigningContext,
-                  sig, policy_key.get())) {
-      LOG(ERROR) << "Could not sign the policy statement";
-      continue;
-    }
-
-    if (!SendMessage(accept_sock, policy_attest)) {
+    if (!SendMessage(*accept_sock, root_attestation)) {
       LOG(ERROR) << "Could not send the newly signed attestation in reply";
       continue;
     }

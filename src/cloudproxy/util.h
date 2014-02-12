@@ -21,36 +21,29 @@
 #define CLOUDPROXY_UTIL_H_
 
 #include <stdio.h>
+
 #include <string>
 
-#include <openssl/evp.h>
-#include <openssl/crypto.h>
-#include <openssl/ssl.h>
-#include <openssl/x509.h>
+#include <glog/logging.h>
 #include <keyczar/base/basictypes.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/stl_util-inl.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
+#include <openssl/crypto.h>
+#include <openssl/evp.h>
+#include <openssl/ssl.h>
 
 #include "tao/keyczar_public_key.pb.h"
 
 using std::string;
 
 namespace keyczar {
-class Keyczar;
+class Signer;
+class Verifier;
 }  // namespace keyczar
 
 namespace cloudproxy {
-
-/// A wrapper that manages a FILE pointer and calls fclose on it when it goes
-/// out of scope.
-struct FileDestroyer {
-  void operator()(FILE *ptr) const {
-    if (ptr) {
-      fclose(ptr);
-    }
-  }
-};
 
 static const int AesKeySize = 16;
 static const int AesBlockSize = 16;
@@ -83,21 +76,9 @@ typedef scoped_ptr_malloc<HMAC_CTX, keyczar::openssl::OSSLDestroyer<
 typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
                                        SSL_CTX, SSL_CTX_free> > ScopedSSLCtx;
 
-// A smart pointer wrapping an OpenSSL X509.
-typedef scoped_ptr_malloc<
-    X509, keyczar::openssl::OSSLDestroyer<X509, X509_free> > ScopedX509Ctx;
-
 // A smart pointer wrapping an SSL object.
 typedef scoped_ptr_malloc<
     SSL, keyczar::openssl::OSSLDestroyer<SSL, ssl_cleanup> > ScopedSSL;
-
-// A smart pointer wrapping an OpenSSL EVP_PKEY.
-typedef scoped_ptr_malloc<
-    EVP_PKEY, keyczar::openssl::OSSLDestroyer<EVP_PKEY, EVP_PKEY_free> >
-    ScopedEvpPkey;
-
-// A smart pointer wrapping a FILE pointer.
-typedef scoped_ptr_malloc<FILE, FileDestroyer> ScopedFile;
 
 /// Handle OpenSSL password callbacks.
 /// @param buf A buffer to receive the password.
@@ -109,20 +90,52 @@ int PasswordCallback(char *buf, int size, int rwflag, void *password);
 /// Prepare an SSL_CTX to connect to a peer. This is used by both the client and
 /// server.
 /// @param ctx The OpenSSL context to prepare.
-/// @param public_policy_key The public policy key.
-/// @param cert An OpenSSL certificate of the public policy key.
-/// @param key The private key to use for the connection.
+/// @param tls_cert Path to OpenSSL certificate of the public policy key.
+/// @param tls_key Path to OpenSSL private key to use for the connection.
 /// @param password The password to use to decrypt the private key.
-bool SetUpSSLCTX(SSL_CTX *ctx, const string &public_policy_key,
-                 const string &cert, const string &key, const string &password);
+bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const string &tls_key,
+                 const string &password);
 
 /// Check the signature on a SignedACL file and get a serialized ACL.
 /// @param serialized_signed_acls A path to a file containing a serialized
 /// SignedACL.
 /// @param key The key to use to verify the signature on the SignedACL.
 /// @param[out] acls The extract ACL.
-bool ExtractACL(const string &serialized_signed_acls, keyczar::Keyczar *key,
-                string *acls);
+bool ExtractACL(const string &serialized_signed_acls,
+                const keyczar::Verifier *key, string *acls);
+
+/// Receive partial data from a file descriptor. This will read as
+/// many bytes as possible into buffer[i], where filled_len <= i < buffer_len,
+/// and it returns the number of bytes read, or 0 if end of stream, or negative
+/// on error.
+/// @param fd The file descriptor to use to receive the data.
+/// @param[out] buffer The buffer to fill with data.
+/// @param filed_len The length of buffer that is already filled.
+/// @param buffer_len The total length of buffer.
+int ReceivePartialData(int fd, void *buffer, size_t filled_len,
+                       size_t buffer_len);
+
+/// Receive data from a file descriptor.
+/// @param fd The file descriptor to use to receive the data.
+/// @param[out] buffer The buffer to fill with data.
+/// @param buffer_len The length of buffer.
+bool ReceiveData(int fd, void *buffer, size_t buffer_len);
+
+/// Receive data from a file descriptor.
+/// @param fd The file descriptor to use to receive the data.
+/// @param[out] data The object to receive the data.
+bool ReceiveData(int fd, string *data);
+
+/// Receive partial data from an OpenSSL SSL. This will read as
+/// many bytes as possible into buffer[i], where filled_len <= i < buffer_len,
+/// and it returns the number of bytes read, or 0 if end of stream, or negative
+/// on error.
+/// @param ssl The SSL to use to receive the data.
+/// @param[out] buffer The buffer to fill with data.
+/// @param filed_len The length of buffer that is already filled.
+/// @param buffer_len The total length of buffer.
+int ReceivePartialData(SSL *ssl, void *buffer, size_t filled_len,
+                       size_t buffer_len);
 
 /// Receive data from an OpenSSL SSL.
 /// @param ssl The SSL to use to receive the data.
@@ -171,7 +184,7 @@ bool ReceiveAndEncryptStreamData(SSL *ssl, const string &path,
                                  const string &object_name,
                                  const keyczar::base::ScopedSafeString &key,
                                  const keyczar::base::ScopedSafeString &hmac,
-                                 keyczar::Keyczar *main_key);
+                                 const keyczar::Signer *main_key);
 
 /// Check the integrity of a file, decrypt it, and send it on the network.
 /// @param path The path of the file to send.
@@ -185,13 +198,13 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
                               const string &object_name, SSL *ssl,
                               const keyczar::base::ScopedSafeString &key,
                               const keyczar::base::ScopedSafeString &hmac,
-                              keyczar::Keyczar *main_key);
+                              const keyczar::Verifier *main_key);
 
 /// Derive keys from a main key.
 /// @param main_key The key to use for key derivation.
 /// @param[out] enc_key The encryption key derived from main_key.
 /// @param[out] hmac_key The HMAC key derived from main_key.
-bool DeriveKeys(keyczar::Keyczar *main_key,
+bool DeriveKeys(const keyczar::Signer *main_key,
                 keyczar::base::ScopedSafeString *enc_key,
                 keyczar::base::ScopedSafeString *hmac_key);
 
@@ -263,54 +276,6 @@ bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
 /// @param hmac The HMAC context to use for the operation.
 bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
 
-/// Serialize an X.509 certificate.
-/// @param x509 The certificate to serialize.
-/// @param[out] serialized_x509 The serialized form of the certificate.
-bool SerializeX509(X509 *x509, string *serialized_x509);
-
-/// Create a fresh ECDSA private key.
-/// @param[out] key The key that was created.
-bool CreateECDSAPrivateKey(ScopedEvpPkey *key);
-
-/// Write an OpenSSL ECDSA key as a private PEM file and a self-certified X.509
-/// certificate.
-/// @param key The key to write.
-/// @param private_path The path at which to write the private key.
-/// @param public_path The path at which to write the public key.
-/// @param secret A secret to use to encrypt the private part of the key. The
-/// security of the input bytes must be managed by the caller. This method
-/// copies the secret into a keyczar ScopedSafeString to ensure that none of the
-/// bytes of the secret are leaked.
-/// @param country_code A country code to use for the X.509 certificate.
-/// @param org_code The organization information for the X.509 certificate.
-/// @param cn The common name for the entity that will use the key.
-bool WriteECDSAKey(ScopedEvpPkey &key, const string &private_path,
-                   const string &public_path, const string &secret,
-                   const string &country_code, const string &org_code,
-                   const string &cn);
-
-/// Create an OpenSSL ECDSA key.
-/// @param private_path The path at which to write the private key.
-/// @param public_path The path at which to write the public key.
-/// @param secret A secret to use to encrypt the private part of the key. The
-/// security of the input bytes must be managed by the caller. This method
-/// copies the secret into a keyczar ScopedSafeString to ensure that none of the
-/// bytes of the secret are leaked.
-/// @param country_code A country code to use for the X.509 certificate.
-/// @param org_code The organization information for the X.509 certificate.
-/// @param cn The common name for the entity that will use the key.
-bool CreateECDSAKey(const string &private_path, const string &public_path,
-                    const string &secret, const string &country_code,
-                    const string &org_code, const string &cn);
-
-/// Create a Keyczar key for a CloudProxy user.
-/// @param path The directory path for the key (must already exist).
-/// @param key_name The name of the key.
-/// @param password The password to use for PBE for this key.
-/// @param[out] key The key that was created.
-bool CreateUserECDSAKey(const string &path, const string &key_name,
-                        const string &password,
-                        scoped_ptr<keyczar::Keyczar> *key);
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_UTIL_H_

@@ -16,39 +16,27 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "tao/util.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/base/file_util.h>
 
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_tao.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/tao_child_channel_registry.h"
-#include "tao/util.h"
+#include "tao/tao_domain.h"
 
-using keyczar::base::Base64WEncode;
-using keyczar::CryptoFactory;
-using keyczar::Keyczar;
-using keyczar::KeyPurpose;
-using keyczar::Keyset;
-using keyczar::KeyType;
-using keyczar::MessageDigestImpl;
-using keyczar::rw::KeysetJSONFileWriter;
-using keyczar::rw::KeysetWriter;
-using keyczar::Signer;
 using keyczar::Verifier;
+using keyczar::base::WriteStringToFile;
 
 using tao::ConnectToUnixDomainSocket;
-using tao::CopyPublicKeyset;
-using tao::CreateKey;
-using tao::CreatePubECDSAKey;
+using tao::CopyPublicKey;
 using tao::CreateTempDir;
-using tao::CreateTempPubKey;
+using tao::CreateTempRootDomain;
+using tao::CreateTempWhitelistDomain;
 using tao::DeserializePublicKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
@@ -66,52 +54,25 @@ using tao::Tao;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelParams;
 using tao::TaoChildChannelRegistry;
+using tao::TaoDomain;
 using tao::VerifySignature;
 
 TEST(TaoUtilTest, HashVMTest) {
-  string dummy_template("vm template");
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(CreateTempDir("hashvm_test", &temp_dir));
+  ASSERT_TRUE(WriteStringToFile(*temp_dir + "/vm_template", "vm template"));
   string name("test vm");
-  string dummy_kernel("dummy kernel");
-  string dummy_initrd("dummy_initrd");
+  ASSERT_TRUE(WriteStringToFile(*temp_dir + "/kernel", "dummy kernel"));
+  ASSERT_TRUE(WriteStringToFile(*temp_dir + "/initrd", "dummy initrd"));
   string hash;
-  ASSERT_TRUE(HashVM(dummy_template, name, dummy_kernel, dummy_initrd, &hash))
+  ASSERT_TRUE(HashVM(*temp_dir + "/vm_template", name, *temp_dir + "/kernel",
+                     *temp_dir + "/initrd", &hash))
       << "Could not hash the parameters";
 
-  MessageDigestImpl *sha256 = CryptoFactory::SHA256();
-  EXPECT_TRUE(sha256 != nullptr) << "Could not get SHA-256";
+  string correct_hash = "a-SuzE8aBiekrpc-LnTISYH4WpeSLikaBkCtYMUe5dA";
 
-  // Recompute the hash here to make sure it's computed correctly.
-  string template_hash;
-  EXPECT_TRUE(sha256->Digest(dummy_template, &template_hash))
-      << "Could not hash the template";
-
-  string name_hash;
-  EXPECT_TRUE(sha256->Digest(name, &name_hash)) << "Could not hash the name";
-
-  string kernel_hash;
-  EXPECT_TRUE(sha256->Digest(dummy_kernel, &kernel_hash))
-      << "Could not hash the kernel";
-
-  string initrd_hash;
-  EXPECT_TRUE(sha256->Digest(dummy_initrd, &initrd_hash))
-      << "Could not hash the initrd";
-
-  string hash_input;
-  hash_input.append(template_hash);
-  hash_input.append(name_hash);
-  hash_input.append(kernel_hash);
-  hash_input.append(initrd_hash);
-
-  string composite_hash;
-  EXPECT_TRUE(sha256->Digest(hash_input, &composite_hash))
-      << "Could not compute the composite hash";
-
-  string encoded_hash;
-  EXPECT_TRUE(Base64WEncode(composite_hash, &encoded_hash))
-      << "Could not encode the hash";
-
-  EXPECT_EQ(encoded_hash, hash)
-      << "The computed hash value did not match the value computed by HashVM";
+  EXPECT_EQ(correct_hash, hash)
+      << "The hash value computed by HashVM did not match expectations";
 }
 
 TEST(TaoUtilTest, RegistryTest) {
@@ -143,39 +104,38 @@ TEST(TaoUtilTest, SocketTest) {
       << "Could not create and bind a TCP socket";
 }
 
-TEST(TaoUtilTest, CreateKeyTest) {
+TEST(TaoUtilTest, CreateDomainTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir, &admin));
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 }
 
 TEST(TaoUtilTest, SerializeKeyTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
   KeyczarPublicKey kpk;
-  EXPECT_TRUE(SerializePublicKey(*policy_key, &kpk))
+  EXPECT_TRUE(SerializePublicKey(*admin->GetPolicySigner(), &kpk))
       << "Could not serialize the public key";
+
+  string sk = SerializePublicKey(*admin->GetPolicySigner());
+  EXPECT_TRUE(!sk.empty());
 }
 
 TEST(TaoUtilTest, DeserializeKeyTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
   KeyczarPublicKey kpk;
-  EXPECT_TRUE(SerializePublicKey(*policy_key, &kpk))
+  EXPECT_TRUE(SerializePublicKey(*admin->GetPolicySigner(), &kpk))
       << "Could not serialize the public key";
 
-  Keyset *keyset = nullptr;
-  EXPECT_TRUE(DeserializePublicKey(kpk, &keyset))
+  scoped_ptr<Verifier> public_policy_key;
+  EXPECT_TRUE(DeserializePublicKey(kpk, &public_policy_key))
       << "Could not deserialize the public policy key";
-  scoped_ptr<Keyczar> public_policy_key(new Verifier(keyset));
-  public_policy_key->set_encoding(Keyczar::NO_ENCODING);
 
   // Make sure this is really the public policy key by signing something with
   // the original key and verifying it with the deserialized version.
@@ -183,88 +143,83 @@ TEST(TaoUtilTest, DeserializeKeyTest) {
   string message("Test message");
   string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()));
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()));
 
-  EXPECT_TRUE(VerifySignature(message, context, signature,
-                              public_policy_key.get()));
+  EXPECT_TRUE(
+      VerifySignature(message, context, signature, public_policy_key.get()));
 }
 
 TEST(TaoUtilTest, SignDataTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
   string message("Test message");
   string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
       << "Could not sign the test message";
 }
 
 TEST(TaoUtilTest, VerifyDataTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
   string message("Test message");
   string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
       << "Could not sign the test message";
 
-  EXPECT_TRUE(VerifySignature(message, context, signature, policy_key.get()))
+  EXPECT_TRUE(
+      VerifySignature(message, context, signature, admin->GetPolicyVerifier()))
       << "The signature did not pass verification";
 }
 
 TEST(TaoUtilTest, WrongContextTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
   string message("Test message");
   string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
       << "Could not sign the test message";
 
   EXPECT_FALSE(VerifySignature(message, "Wrong context", signature,
-                               policy_key.get()));
+                               admin->GetPolicyVerifier()));
 }
 
 TEST(TaoUtilTest, NoContextTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key));
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
   string message("Test message");
   string context;
   string signature;
-  EXPECT_FALSE(SignData(message, context, &signature, policy_key.get()));
-  EXPECT_FALSE(VerifySignature(message, context, signature,
-                               policy_key.get()));
+  EXPECT_FALSE(
+      SignData(message, context, &signature, admin->GetPolicySigner()));
+  EXPECT_FALSE(
+      VerifySignature(message, context, signature, admin->GetPolicyVerifier()));
 }
 
-TEST(TaoUtilTest, CopyPublicKeysetTest) {
+TEST(TaoUtilTest, CopyPublicKeyTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<Keyczar> policy_key;
-  EXPECT_TRUE(CreateTempPubKey(&temp_dir, &policy_key))
-      << "Could not create a key";
+  scoped_ptr<TaoDomain> admin;
+  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 
-  Keyset *keyset = nullptr;
-  EXPECT_TRUE(CopyPublicKeyset(*policy_key, &keyset))
-      << "Could not copy the keyset";
+  scoped_ptr<Verifier> pub_key;
+  EXPECT_TRUE(CopyPublicKey(*admin->GetPolicySigner(), &pub_key))
+      << "Could not copy the key";
 
-  scoped_ptr<Keyczar> pub_key(new Verifier(keyset));
-  pub_key->set_encoding(Keyczar::NO_ENCODING);
-
-  // Make sure that the copied keyset can verify a signature.
+  // Make sure that the copied key can verify a signature.
   string message("Test message");
   string context("Test context");
   string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, policy_key.get()))
+  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
       << "Could not sign the test message";
 
   EXPECT_TRUE(VerifySignature(message, context, signature, pub_key.get()))
@@ -273,12 +228,13 @@ TEST(TaoUtilTest, CopyPublicKeysetTest) {
 
 TEST(TaoUtilTest, SealOrUnsealSecretTest) {
   ScopedTempDir temp_dir;
-  EXPECT_TRUE(CreateTempDir("seal_or_unseal_test", &temp_dir))
-      << "Could not create the temp directory";
+  ASSERT_TRUE(CreateTempDir("seal_or_unseal_test", &temp_dir));
   string seal_path = *temp_dir + string("/sealed_secret");
+
   scoped_ptr<Tao> ft(new FakeTao());
   EXPECT_TRUE(ft->Init()) << "Could not Init the tao";
   string fake_hash("fake hash");
+
   DirectTaoChildChannel channel(ft.release(), fake_hash);
 
   string secret("Fake secret");

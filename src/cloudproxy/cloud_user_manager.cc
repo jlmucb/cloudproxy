@@ -26,25 +26,26 @@
 #include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_reader.h>
 
-#include "cloudproxy/util.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "cloudproxy/util.h"
 #include "tao/util.h"
 
 using keyczar::base::PathExists;
-using tao::KeyczarPublicKey;
 using tao::DeserializePublicKey;
+using tao::KeyczarPublicKey;
 using tao::VerifySignature;
 
 namespace cloudproxy {
 
 bool CloudUserManager::HasKey(const string &user) const {
-  return users_.end() != users_.find(user);
+  return user_private_keys_.end() != user_private_keys_.find(user) ||
+         user_public_keys_.end() != user_public_keys_.find(user);
 }
 
-bool CloudUserManager::GetKey(const string &user, keyczar::Keyczar **key) {
+bool CloudUserManager::GetKey(const string &user, keyczar::Signer **key) {
   CHECK_NOTNULL(key);
-  auto user_it = users_.find(user);
-  if (users_.end() == user_it) {
+  auto user_it = user_private_keys_.find(user);
+  if (user_private_keys_.end() == user_it) {
     return false;
   }
 
@@ -52,31 +53,29 @@ bool CloudUserManager::GetKey(const string &user, keyczar::Keyczar **key) {
   return true;
 }
 
+bool CloudUserManager::GetKey(const string &user, keyczar::Verifier **key) {
+  CHECK_NOTNULL(key);
+  auto user_it = user_public_keys_.find(user);
+  if (user_public_keys_.end() == user_it) {
+    // a private key will suffice if we don't have the public
+    auto user_it2 = user_private_keys_.find(user);
+    if (user_private_keys_.end() == user_it2) {
+      return false;
+    }
+    *key = user_it2->second.get();
+    return true;
+  }
+  *key = user_it->second.get();
+  return true;
+}
+
 bool CloudUserManager::AddSigningKey(const string &user, const string &path,
                                      const string &password) {
-  // keyczar does a CHECK fail if the path does not exist. To avoid that, we
-  // check the existence of the path first.
-  FilePath fp(path);
-  if (!PathExists(fp)) {
-    LOG(ERROR) << "Could not add a signing key, since the path "
-               << path << " does not exist";
-    return false;
-  }
+  scoped_ptr<keyczar::Signer> signer;
+  if (!tao::LoadSigningKey(path, password, &signer)) return false;
 
-  keyczar::base::ScopedSafeString safe_password(new string(password));
-  scoped_ptr<keyczar::rw::KeysetReader> reader(
-      new keyczar::rw::KeysetPBEJSONFileReader(path.c_str(), *safe_password));
-
-  shared_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
-  if (signer.get() == nullptr) {
-    LOG(ERROR) << "Could not read the key from " << path;
-    return false;
-  }
-
-  // get bytes from Sign instead of Base64w-encoded strings
-  signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
-
-  users_[user] = signer;
+  shared_ptr<keyczar::Signer> shared_signer(signer.release());
+  user_private_keys_[user] = shared_signer;
   return true;
 }
 
@@ -87,22 +86,20 @@ bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
     return false;
   }
 
-  keyczar::Keyset *keyset = nullptr;
-  if (!DeserializePublicKey(kpk, &keyset)) {
-    LOG(ERROR) << "Could not deserialize the keyset";
+  scoped_ptr<keyczar::Verifier> scoped_verifier;
+  if (!DeserializePublicKey(kpk, &scoped_verifier)) {
+    LOG(ERROR) << "Could not deserialize the key";
     return false;
   }
-
-  shared_ptr<keyczar::Keyczar> verifier(new keyczar::Verifier(keyset));
+  shared_ptr<keyczar::Verifier> verifier(scoped_verifier.release());
 
   // handle bytes instead of Base64w-encoded strings
-  verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
-  users_[user] = verifier;
+  user_public_keys_[user] = verifier;
   return true;
 }
 
 bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
-                              keyczar::Keyczar *verifier) {
+                              keyczar::Verifier *verifier) {
   // check the signature for this binding
   if (!VerifySignature(ssf.serialized_speaks_for(), SpeaksForSigningContext,
                        ssf.signature(), verifier)) {

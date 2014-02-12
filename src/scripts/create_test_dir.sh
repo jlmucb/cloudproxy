@@ -26,13 +26,12 @@ BUILD_DIR=$4
 # Set up a test directory to use for tests. This copies over the run directory
 # into an adjacent test directory
 rm -fr /tmp/.linux_tao_socket
+rm -fr ${TEST}
 cp -r ${RUN} ${TEST}
 cd $TEST
 mkdir linux_tao_service_files
 
-# Get all the code and an extra script
-cp ${BUILD_DIR}/* .
-cp ${ROOT}/src/scripts/run_simple_test.sh .
-cp ${ROOT}/src/scripts/run_simple_fake_test.sh .
+# Link to scripts and program directories
+ln -s ${BUILD_DIR} bin
+ln -s ${ROOT}/src/scripts scripts
 
-rm *.a

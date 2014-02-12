@@ -21,43 +21,38 @@
 #ifndef CLOUDPROXY_FILE_SERVER_H_
 #define CLOUDPROXY_FILE_SERVER_H_
 
+#include <string>
+
 #include "cloudproxy/cloud_server.h"
+
+using std::string;
 
 namespace cloudproxy {
 /// An implementation of CloudServer that manages files for remote FileClients.
 /// It keeps each file encrypted and with integrity protection.
 class FileServer : public CloudServer {
  public:
-  /// Create a FileServer. All the parameters after the first two have the same
+  /// Create a FileServer. All the parameters except the first two have the same
   /// semantics as for CloudServer.
   /// @param file_path The path at which to keep files sent from FileClients.
   /// @param meta_path The path at which to keep metadata about files sent from
   /// FileClients.
-  /// @param tls_cert The path to use for an OpenSSL TLS certificate.
-  /// @param tls_key The path to use for an OpenSSL TLS private key.
-  /// @param tls_password The file to use for a Tao-sealed TLS password to use
-  /// to encrypt the private key.
-  /// @param public_policy_keyczar The path to the public policy key.
-  /// @param public_policy_pem The path to an OpenSSL representation of the
-  /// public policy key.
+  /// @param server_config_path A directory to use for keys and TLS files.
+  /// @param secret A string to use for encrypting private keys.
   /// @param acl_location The path to a signed ACL giving permissions for
   /// operations on the server.
-  /// @param server_key_location The path to store or find the server key.
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
-  /// @param auth_manager An authorization manager to use to verify Tao
-  /// attestations.
+  /// @param admin The configuration for this administrative domain.
   FileServer(const string &file_path, const string &meta_path,
-             const string &tls_cert, const string &tls_key,
-             const string &tls_password, const string &public_policy_keyczar,
-             const string &public_policy_pem, const string &acl_location,
-             const string &server_key_location, const string &host,
-             const string &port, tao::TaoAuth *auth_manager);
-
+             const string &server_config_path, const string &secret,
+             const string &acl_location, const string &host, const string &port,
+             tao::TaoDomain *admin);
   virtual ~FileServer() {}
 
   constexpr static auto ObjectMetadataSigningContext =
       "FileServer cloudproxy::HmacObjectMetadata Version 1";
+
  protected:
   /// @{
   /// Check a file action and perform the operation it requests.
@@ -80,19 +75,19 @@ class FileServer : public CloudServer {
   /// @}
 
  private:
-  // A key for deriving keys for encryption.
-  scoped_ptr<keyczar::Keyczar> main_key_;
+  /// A key for deriving keys for encryption.
+  scoped_ptr<keyczar::Signer> main_key_;
 
-  // A key to use for file encryption.
+  /// A key to use for file encryption.
   keyczar::base::ScopedSafeString enc_key_;
 
-  // A key to use for integrity protection.
+  /// A key to use for integrity protection.
   keyczar::base::ScopedSafeString hmac_key_;
 
-  // The path to which we write incoming files.
+  /// The path to which we write incoming files.
   string file_path_;
 
-  // The path to which we write file metadata.
+  /// The path to which we write file metadata.
   string meta_path_;
 
   DISALLOW_COPY_AND_ASSIGN(FileServer);

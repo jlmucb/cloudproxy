@@ -35,12 +35,13 @@
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
-#include <tss/tspi.h>
 #include <tss/platform.h>
+#include <tss/tspi.h>
 #include <tss/tss_defines.h>
 #include <tss/tss_error.h>
-#include <tss/tss_typedef.h>
 #include <tss/tss_structs.h>
+#include <tss/tss_typedef.h>
+
 #include <trousers/trousers.h>
 
 using std::ifstream;
@@ -75,7 +76,7 @@ int main(int argc, char **argv) {
   result = Tspi_Context_Create(&tss_ctx);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
-  result = Tspi_Context_Connect(tss_ctx, NULL /* Default TPM */);
+  result = Tspi_Context_Connect(tss_ctx, nullptr /* Default TPM */);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
 
   result = Tspi_Context_GetTpmObject(tss_ctx, &tpm);
@@ -283,7 +284,7 @@ int main(int argc, char **argv) {
 
   // Set up an OpenSSL RSA public key to use to verify the Quote
   RSA *aik_rsa = RSA_new();
-  aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, NULL);
+  aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, nullptr);
   aik_rsa->e = BN_new();
   BN_set_word(aik_rsa->e, 0x10001);
 
@@ -318,7 +319,7 @@ int main(int argc, char **argv) {
            1) << "The RSA signature did not pass verification";
 
   // Clean-up code.
-  result = Tspi_Context_FreeMemory(tss_ctx, NULL);
+  result = Tspi_Context_FreeMemory(tss_ctx, nullptr);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not free the context";
 
   result = Tspi_Context_Close(tss_ctx);

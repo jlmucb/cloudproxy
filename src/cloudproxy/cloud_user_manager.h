@@ -31,26 +31,27 @@
 
 #include "cloudproxy/cloudproxy.pb.h"
 
+using std::map;
 using std::set;
 using std::shared_ptr;
 using std::string;
-using std::map;
 
 namespace keyczar {
-class Keyczar;
+class Signer;
+class Verifier;
 }  // namespace keyczar
 
 namespace cloudproxy {
 /// A class that manages information about users: whether they are authenticated
 /// or not, and the keys associated with them. This is used at the server to
-/// keep track of users that have succesfully authenticated on a given client
+/// keep track of users that have successfully authenticated on a given client
 /// channel, and it is also used at the client to keep track of users that have
 /// been loaded into memory and whether or not they have been authenticated with
 /// the server.
 class CloudUserManager {
  public:
   /// Construct an empty manager.
-  CloudUserManager() : users_() {}
+  CloudUserManager() : user_private_keys_(), user_public_keys_() {}
 
   /// Check to see if a user has a key associated with it. This can happen on
   /// the server when a client requests an action associated with a given user
@@ -58,10 +59,15 @@ class CloudUserManager {
   /// @param user The user to check.
   bool HasKey(const string &user) const;
 
-  /// Get the key associated with a user, if any.
+  /// Get the signing key associated with a user, if any.
   /// @param user The user to look up.
   /// @param[out] key The key associated with the user, if any.
-  bool GetKey(const string &user, keyczar::Keyczar **key);
+  bool GetKey(const string &user, keyczar::Signer **key);
+
+  /// Get the verifying or signing key associated with a user, if any.
+  /// @param user The user to look up.
+  /// @param[out] key The key associated with the user, if any.
+  bool GetKey(const string &user, keyczar::Verifier **key);
 
   /// Record a signing key associated with a user. The binding between user and
   /// key must already have been established by the caller.
@@ -83,7 +89,7 @@ class CloudUserManager {
   /// Add a key based on a SignedSpeaksFor statement.
   /// @param ssf A signed statement associating a user with a key.
   /// @param verifier A key used to verify ssf.
-  bool AddKey(const SignedSpeaksFor &ssf, keyczar::Keyczar *verifier);
+  bool AddKey(const SignedSpeaksFor &ssf, keyczar::Verifier *verifier);
 
   /// Record that a user has been authenticated.
   /// @param user The user to record as authenticated.
@@ -95,15 +101,17 @@ class CloudUserManager {
 
   constexpr static auto SpeaksForSigningContext =
       "CloudUserManager cloudproxy::SignedSpeaksFor Version 1";
+
  private:
   // A set of users and their keys.
-  map<string, shared_ptr<keyczar::Keyczar> > users_;
+  map<string, shared_ptr<keyczar::Signer> > user_private_keys_;
+  map<string, shared_ptr<keyczar::Verifier> > user_public_keys_;
 
   // A set of authenticated users.
   set<string> authenticated_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudUserManager);
 };
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_CLOUD_USER_MANAGER_H_

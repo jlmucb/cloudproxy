@@ -17,9 +17,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <keyczar/base/base64w.h>
 #include <libvirt/libvirt.h>
 
@@ -33,8 +33,8 @@ using keyczar::base::Base64WEncode;
 
 using tao::FakeTao;
 using tao::FakeTaoChannel;
-using tao::KvmVmFactory;
 using tao::KvmUnixTaoChannel;
+using tao::KvmVmFactory;
 using tao::ScopedTempDir;
 
 DEFINE_string(vm_template, "../run/vm.xml", "The location of a VM template");
@@ -98,9 +98,9 @@ TEST_F(KvmVmFactoryTest, CreationTest) {
   args.push_back(FLAGS_disk_file);
   args.push_back(encoded_params_);
   string identifier;
-  EXPECT_TRUE(factory_->CreateHostedProgram(
-      "test", args, child_hash_, *channel_, &identifier))
-    << "Could not create a vm";
+  EXPECT_TRUE(factory_->CreateHostedProgram("test", args, child_hash_,
+                                            *channel_, &identifier))
+      << "Could not create a vm";
 
   EXPECT_TRUE(!identifier.empty()) << "Didn't get a valid identifier back";
   virConnectPtr conn = virConnectOpen("qemu:///system");

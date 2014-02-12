@@ -17,31 +17,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "tao/linux_tao.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <time.h>
 
-#include <fstream>
-#include <sstream>
+#include <list>
+#include <mutex>
 
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/base/file_path.h>
 #include <keyczar/base/file_util.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_encrypted_file_reader.h>
-#include <keyczar/rw/keyset_encrypted_file_writer.h>
-#include <keyczar/rw/keyset_file_reader.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/crypto_factory.h>
 
 #include "tao/attestation.pb.h"
-#include "tao/hosted_programs.pb.h"
 #include "tao/hosted_program_factory.h"
+#include "tao/hosted_programs.pb.h"
 #include "tao/keyczar_public_key.pb.h"
 #include "tao/sealed_data.pb.h"
 #include "tao/tao_auth.h"
@@ -49,213 +42,152 @@
 #include "tao/tao_child_channel.h"
 #include "tao/util.h"
 
-using keyczar::Crypter;
-using keyczar::CryptoFactory;
-using keyczar::Encrypter;
-using keyczar::Keyczar;
-using keyczar::Keyset;
-using keyczar::KeysetMetadata;
-using keyczar::KeyType;
-using keyczar::KeyPurpose;
-using keyczar::KeyStatus;
-using keyczar::MessageDigestImpl;
-using keyczar::RandImpl;
-using keyczar::Signer;
-using keyczar::Verifier;
+using std::lock_guard;
+using std::mutex;
+
 using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
 using keyczar::base::PathExists;
+using keyczar::base::ReadFileToString;
 using keyczar::base::ScopedSafeString;
-using keyczar::rw::KeysetReader;
-using keyczar::rw::KeysetWriter;
-using keyczar::rw::KeysetPBEJSONFileReader;
-using keyczar::rw::KeysetPBEJSONFileWriter;
-using keyczar::rw::KeysetEncryptedJSONFileReader;
-using keyczar::rw::KeysetEncryptedJSONFileWriter;
-
-using std::ifstream;
-using std::istreambuf_iterator;
-using std::ofstream;
-using std::ios;
-using std::stringstream;
+using keyczar::base::WriteStringToFile;
 
 namespace tao {
 
-LinuxTao::LinuxTao(const string &secret_path, const string &key_path,
-                   const string &pk_path, const string &policy_pk_path,
-                   TaoChildChannel *host_channel, TaoChannel *child_channel,
-                   HostedProgramFactory *program_factory, TaoAuth *auth_manager,
-                   const string &ca_host, const string &ca_port)
-    : secret_path_(secret_path),
-      key_path_(key_path),
-      pk_path_(pk_path),
-      policy_pk_path_(policy_pk_path),
-      crypter_(nullptr),
-      signer_(nullptr),
-      policy_verifier_(nullptr),
-      serialized_pub_key_(),
-      pk_attest_(),
-      host_channel_(host_channel),
-      child_channel_(child_channel),
-      program_factory_(program_factory),
-      auth_manager_(auth_manager),
-      running_children_(),
-      ca_host_(ca_host),
-      ca_port_(ca_port) {
-  // leave setup for Init
-}
-
 bool LinuxTao::Init() {
-  // load the public policy key
-  policy_verifier_.reset(Verifier::Read(policy_pk_path_.c_str()));
-  CHECK_NOTNULL(policy_verifier_.get());
-  policy_verifier_->set_encoding(Keyczar::NO_ENCODING);
-
   // initialize the host channel
-  CHECK(host_channel_->Init()) << "Could not initialize the host channel";
+  if (!host_channel_->Init()) {
+    LOG(ERROR) << "Could not initialize the host channel";
+    return false;
+  }
+
+  FilePath fp(keys_path_);
+  string secret_path = fp.Append(tao::keys::SealKeySecretSuffix).value();
+  string sealing_key_path = fp.Append(tao::keys::SealKeySuffix).value();
+  string signing_key_path = fp.Append(tao::keys::SignPrivateKeySuffix).value();
+  string attestation_path =
+      fp.Append(tao::keys::SignKeyAttestationSuffix).value();
 
   // only keep the secret for the duration of this method:
-  // long enough to unlock or create a sealed encryption key
+  // long enough to unlock or create sealing and signing keys
   ScopedSafeString secret(new string());
-  CHECK(getSecret(&secret))
-      << "Could not generate (and seal) or unseal the secret using the Tao";
 
-  // now get our Crypter that was encrypted using this
-  // secret or generate and encrypt a new one
-  FilePath fp(key_path_);
-  if (!PathExists(fp)) {
-    CHECK(CreateDirectory(fp)) << "Could not create the key directory "
-                               << key_path_;
-
-    // create a new keyset
-    CHECK(createKey(*secret)) << "Could not create crypter";
+  // The secret, the keys, and the attestation are all bound together,
+  // so we either generate them all anew or we use only the existing ones.
+  if (!PathExists(FilePath(secret_path))) {
+    if (!MakeSecret(&secret)) {
+      LOG(ERROR) << "Could not generate and seal a secret using the Tao";
+      return false;
+    }
+    VLOG(2) << "LinuxTao: Generating sealing key " << sealing_key_path;
+    if (!GenerateCryptingKey(sealing_key_path, "linux_tao_sealing_key", *secret,
+                             &crypter_)) {
+      LOG(ERROR) << "Could not generate a sealing key";
+      return false;
+    }
+    VLOG(2) << "LinuxTao: Generating signing key " << signing_key_path;
+    if (!GenerateEncryptedSigningKey(signing_key_path, "" /* no pub path */,
+                                     "linux_tao_signing_key", sealing_key_path,
+                                     *secret, &signer_)) {
+      LOG(ERROR) << "Could not generate a signing key";
+      return false;
+    }
+    VLOG(2) << "Linux Tao: Obtaining attestation from the Tao";
+    Attestation a;
+    if (!GetTaoAttestation(&a)) {
+      LOG(ERROR) << "Could not get an attestation from the Tao";
+      return false;
+    }
+    // The Tao Certificate Authority can take a cert chain and produce a
+    // shortened form that consists of a single attestation by the policy key.
+    // Use it if available.
+    if (!admin_->GetTaoCAHost().empty()) {
+      VLOG(2) << "LinuxTao: Obtaining condensed attestation from the TCCA";
+      if (!GetTaoCAAttestation(&a)) {
+        LOG(ERROR) << "Could not get a new attestation from the TCCA";
+        return false;
+      }
+    }
+    if (!a.SerializeToString(&attestation_)) {
+      LOG(ERROR) << "Could not serialize the attestation for our signing key";
+      return false;
+    }
+    if (!WriteStringToFile(attestation_path, attestation_)) {
+      LOG(ERROR) << "Could not store the attestation for our signing key";
+      return false;
+    }
   } else {
-    // read the crypter from the encrypted directory
-    scoped_ptr<KeysetReader> reader(new KeysetPBEJSONFileReader(fp, *secret));
-    crypter_.reset(Crypter::Read(*reader));
-    CHECK_NOTNULL(crypter_.get());
-  }
-
-  crypter_->set_encoding(Keyczar::NO_ENCODING);
-
-  // get a public-private key pair from the Tao key (either create and seal or
-  // just unseal it).
-
-  // First we need another copy of the crypter to give to the encrypted file
-  // reader. By this point, however, there should be a copy on disk, so we can
-  // use the secret again to get it.
-  scoped_ptr<KeysetReader> crypter_reader(
-      new KeysetPBEJSONFileReader(fp, *secret));
-  scoped_ptr<Crypter> crypter(Crypter::Read(*crypter_reader));
-
-  FilePath pk_fp(pk_path_);
-  if (!PathExists(pk_fp)) {
-    CHECK(CreateDirectory(pk_fp))
-        << "Could not create the directory for a public-private key pair";
-    CHECK(createPublicKey(crypter.release()))
-        << "Could not create the publick key";
-  } else {
-    scoped_ptr<KeysetReader> reader(
-        new KeysetEncryptedJSONFileReader(pk_fp, crypter.release()));
-    signer_.reset(Signer::Read(*reader));
-    CHECK_NOTNULL(signer_.get());
-  }
-
-  signer_->set_encoding(Keyczar::NO_ENCODING);
-
-  KeyczarPublicKey kpk;
-  if (!SerializePublicKey(*signer_, &kpk)) {
-    LOG(ERROR) << "Could not serialize the public key for signing";
-    return false;
-  }
-
-  if (!kpk.SerializeToString(&serialized_pub_key_)) {
-    LOG(ERROR) << "Could not serialize the KeyczarPublicKey to a string";
-    return false;
-  }
-
-  if (!attestToKey(serialized_pub_key_, &pk_attest_)) {
-    LOG(ERROR) << "Could not get an attestation for the LinuxTao public key";
-    return false;
-  }
-
-  // The Trusted Computing Certificate Authority can take a cert chain and
-  // produce a shortened form that consists of a single attestation by the
-  // policy key. Use it if requested.
-  if (!ca_host_.empty()) {
-    if (!getCertFromCA(&pk_attest_)) {
-      LOG(ERROR) << "Could not get a new certificate from the TCCA";
+    if (!GetSecret(&secret)) {
+      LOG(ERROR) << "Could not unseal a secret using the Tao";
+      return false;
+    }
+    VLOG(2) << "LinuxTao: Using sealing key " << sealing_key_path;
+    if (!LoadCryptingKey(sealing_key_path, *secret, &crypter_)) {
+      LOG(ERROR) << "Could not load the sealing key";
+      return false;
+    }
+    VLOG(2) << "LinuxTao: Using signing key " << signing_key_path;
+    if (!LoadEncryptedSigningKey(signing_key_path, sealing_key_path, *secret,
+                                 &signer_)) {
+      LOG(ERROR) << "Could not load the signing key";
+      return false;
+    }
+    if (!ReadFileToString(attestation_path, &attestation_)) {
+      LOG(ERROR) << "Could not load attestation for signing key";
       return false;
     }
   }
-
-  VLOG(1) << "Finished tao initialization successfully";
+  VLOG(1) << "LinuxTao: Initialization finished successfully";
   return true;
 }
 
-bool LinuxTao::getSecret(ScopedSafeString *secret) {
-  CHECK_NOTNULL(secret);
-  FilePath fp(secret_path_);
-  if (!PathExists(fp)) {
-    // generate a random value for the key and seal it, writing the result
-    // into this file
-    CHECK(host_channel_->GetRandomBytes(SecretSize, secret->get()))
-        << "Could not generate a random secret to seal";
-
-    // seal and save
-    string sealed_secret;
-    CHECK(host_channel_->Seal(*(secret->get()), &sealed_secret))
-        << "Can't seal the secret";
-    VLOG(2) << "Got a sealed secret of size "
-            << static_cast<int>(sealed_secret.size());
-
-    ofstream out_file(secret_path_.c_str(), ofstream::out);
-    out_file.write(sealed_secret.data(), sealed_secret.size());
-    out_file.close();
-
-    VLOG(1) << "Sealed the secret";
-  } else {
-    // get the existing key blob and unseal it using the Tao
-    ifstream in_file(secret_path_.c_str(), ifstream::in | ios::binary);
-    string sealed_secret((istreambuf_iterator<char>(in_file)),
-                         istreambuf_iterator<char>());
-
-    VLOG(2) << "Trying to read a sealed secret of size "
-            << static_cast<int>(sealed_secret.size());
-
-    CHECK(host_channel_->Unseal(sealed_secret, secret->get()))
-        << "Can't unseal the secret";
-    VLOG(2) << "Unsealed a secret of size "
-            << static_cast<int>(secret->get()->size());
+bool LinuxTao::MakeSecret(ScopedSafeString *secret) {
+  if (!host_channel_->GetRandomBytes(SecretSize, secret->get())) {
+    LOG(ERROR) << "Could not generate a random secret to seal";
+    return false;
   }
-
+  string sealed_secret;
+  if (!host_channel_->Seal(*(secret->get()), &sealed_secret)) {
+    LOG(ERROR) << "Can't seal the secret";
+    return false;
+  }
+  FilePath fp(keys_path_);
+  FilePath secret_path(fp.Append(tao::keys::SealKeySecretSuffix));
+  if (!CreateDirectory(secret_path.DirName())) {
+    LOG(ERROR) << "Can't create sealed secret directory ";
+    return false;
+  }
+  if (!WriteStringToFile(secret_path, sealed_secret)) {
+    LOG(ERROR) << "Can't write the sealed secret to " << secret_path.value();
+    return false;
+  }
+  VLOG(2) << "Sealed a secret of size "
+          << static_cast<int>(secret->get()->size());
   return true;
 }
 
-bool LinuxTao::createPublicKey(Encrypter *crypter) {
-  FilePath fp(pk_path_);
-  scoped_ptr<KeysetWriter> writer(
-      new KeysetEncryptedJSONFileWriter(fp, crypter));
-
-  CHECK_NOTNULL(writer.get());
-  return CreateKey(writer.get(), KeyType::ECDSA_PRIV,
-                   KeyPurpose::SIGN_AND_VERIFY, "linux_tao_pk", &signer_);
+bool LinuxTao::GetSecret(ScopedSafeString *secret) {
+  // get the existing key blob and unseal it using the Tao
+  string sealed_secret;
+  FilePath fp(keys_path_);
+  FilePath secret_path(fp.Append(tao::keys::SealKeySecretSuffix));
+  if (!ReadFileToString(secret_path, &sealed_secret)) {
+    LOG(ERROR) << "Can't read the sealed secret";
+    return false;
+  }
+  if (!host_channel_->Unseal(sealed_secret, secret->get())) {
+    LOG(ERROR) << "Can't unseal the secret";
+    return false;
+  }
+  VLOG(2) << "Unsealed a secret of size "
+          << static_cast<int>(secret->get()->size());
+  return true;
 }
 
-bool LinuxTao::createKey(const string &secret) {
-  FilePath fp(key_path_);
-  scoped_ptr<KeysetWriter> writer(new KeysetPBEJSONFileWriter(fp, secret));
-  CHECK_NOTNULL(writer.get());
-  return CreateKey(writer.get(), KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT,
-                   "linux_tao", &crypter_);
-}
-
-bool LinuxTao::Destroy() { return true; }
-
-bool LinuxTao::StartHostedProgram(const string &path,
-                                  const list<string> &args,
-				  string *identifier) {
+bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args,
+                                  string *identifier) {
   string child_hash;
+  string child_name = FilePath(path).BaseName().value();
   if (!program_factory_->HashHostedProgram(path, args, &child_hash)) {
     LOG(ERROR) << "Could not hash the hosted program";
     return false;
@@ -263,7 +195,8 @@ bool LinuxTao::StartHostedProgram(const string &path,
 
   {
     lock_guard<mutex> l(auth_m_);
-    if (!auth_manager_->IsAuthorized(path, child_hash)) {
+    // TODO(kwalsh) hash alg should come from ProgramFactory::HashHostedProgram
+    if (!admin_->IsAuthorized(child_hash, TaoAuth::Sha256, child_name)) {
       LOG(ERROR) << "Program " << path << " with digest " << child_hash
                  << " is not authorized";
       return false;
@@ -355,7 +288,7 @@ bool LinuxTao::Seal(const string &child_hash, const string &data,
   sd.set_hash(child_hash);
 
   // TODO(tmroeder): generalize to other hash algorithms
-  sd.set_hash_alg("SHA256");
+  sd.set_hash_alg(TaoAuth::Sha256);
   sd.set_data(data);
 
   string serialized_sd;
@@ -422,65 +355,29 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
     }
   }
 
-  if (!attestation) {
-    LOG(ERROR) << "attestation was null";
-    return false;
-  }
-
   Statement s;
-  time_t cur_time;
-  time(&cur_time);
-
-  s.set_time(cur_time);
-  s.set_expiration(cur_time + AttestationTimeout);
   s.set_data(data);
-  s.set_hash_alg("SHA256");
+  s.set_hash_alg(TaoAuth::Sha256);
   s.set_hash(child_hash);
 
-  string serialized_statement;
-  if (!s.SerializeToString(&serialized_statement)) {
-    LOG(ERROR) << "Could not serialize the statement";
-    return false;
-  }
-
-  string signature;
-  if (!SignData(serialized_statement, AttestationSigningContext, &signature,
-                signer_.get())) {
-    LOG(ERROR) << "Could not sign the attestation";
-    return false;
-  }
-
-  Attestation a;
-  a.set_type(INTERMEDIATE);
-  a.set_serialized_statement(serialized_statement);
-  a.set_signature(signature);
-
-  string *mutable_cert = a.mutable_cert();
-  if (!pk_attest_.SerializeToString(mutable_cert)) {
-    LOG(ERROR) << "Could not serialize the certificate for our public key";
-    return false;
-  }
-
-  if (!a.SerializeToString(attestation)) {
-    LOG(ERROR) << "Could not serialize the attestation";
-    return false;
-  }
-
-  return true;
+  return GenerateAttestation(signer_.get(), attestation_, &s, attestation);
 }
 
-bool LinuxTao::attestToKey(const string &serialized_key, Attestation *attest) {
+bool LinuxTao::GetTaoAttestation(Attestation *attest) {
+  string serialized_key = SerializePublicKey(*signer_);
+  if (serialized_key.empty()) {
+    LOG(ERROR) << "Could not serialize signing key";
+    return false;
+  }
   string serialized_attestation;
   if (!host_channel_->Attest(serialized_key, &serialized_attestation)) {
     LOG(ERROR) << "Could not get an attestation to the serialized key";
     return false;
   }
-
   if (!attest->ParseFromString(serialized_attestation)) {
     LOG(ERROR) << "Could not deserialize the attestation to our key";
     return false;
   }
-
   return true;
 }
 
@@ -490,9 +387,11 @@ bool LinuxTao::Listen() {
   return child_channel_->Listen(this);
 }
 
-bool LinuxTao::getCertFromCA(Attestation *attest) {
+bool LinuxTao::GetTaoCAAttestation(Attestation *attest) {
+  string host = admin_->GetTaoCAHost();
+  string port = admin_->GetTaoCAPort();
   ScopedFd sock(new int(-1));
-  if (!ConnectToTCPServer(ca_host_, ca_port_, sock.get())) {
+  if (!ConnectToTCPServer(host, port, sock.get())) {
     LOG(ERROR) << "Could not connect to tcca";
     return false;
   }
@@ -523,7 +422,7 @@ bool LinuxTao::getCertFromCA(Attestation *attest) {
   }
 
   string dummy_data;
-  if (!auth_manager_->VerifyAttestation(serialized, &dummy_data)) {
+  if (!admin_->VerifyAttestation(serialized, &dummy_data)) {
     LOG(ERROR) << "The attestation did not pass verification";
     return false;
   }
@@ -540,4 +439,4 @@ bool LinuxTao::getCertFromCA(Attestation *attest) {
   attest->CopyFrom(new_attest);
   return true;
 }
-}  // namespace cloudproxy
+}  // namespace tao

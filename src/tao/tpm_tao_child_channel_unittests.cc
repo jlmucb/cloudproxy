@@ -22,8 +22,8 @@
 #include <fstream>
 #include <sstream>
 
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
 
 using std::ifstream;
 using std::string;
@@ -46,9 +46,8 @@ class TPMTaoChildChannelTest : public ::testing::Test {
     // But if this test is modified to have a hosted program talk to the
     // channel, then that program will expect the AIK to be certified correctly
     // by the policy key.
-    tao_.reset(new TPMTaoChildChannel(aik_blob_stream.str(),
-                                      "" /* empty attestation */,
-                                      pcrs_to_seal));
+    tao_.reset(new TPMTaoChildChannel(
+        aik_blob_stream.str(), "" /* empty attestation */, pcrs_to_seal));
     ASSERT_TRUE(tao_->Init());
   }
 

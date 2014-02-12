@@ -22,16 +22,16 @@
 #ifndef CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 #define CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 
+#include <map>
 #include <set>
 #include <string>
-#include <map>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <openssl/ssl.h>
 
+using std::map;
 using std::set;
 using std::string;
-using std::map;
 
 namespace cloudproxy {
 
@@ -109,6 +109,6 @@ class CloudServerThreadData {
 
   DISALLOW_COPY_AND_ASSIGN(CloudServerThreadData);
 };
-}
+}  // namespace cloudproxy
 
-#endif  // CLOUDOPROXY_CLOUD_SERVER_THREAD_DATA_H_
+#endif  // CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_

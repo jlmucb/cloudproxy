@@ -34,16 +34,16 @@
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
 #include "tao/kvm_unix_tao_child_channel.h"
-#include "tao/tao_child_channel_params.pb.h"
 #include "tao/tao_channel.h"
+#include "tao/tao_child_channel_params.pb.h"
 #include "tao/util.h"
-
-using keyczar::base::Base64WDecode;
-using keyczar::CryptoFactory;
-using keyczar::MessageDigestImpl;
 
 using std::ifstream;
 using std::stringstream;
+
+using keyczar::CryptoFactory;
+using keyczar::MessageDigestImpl;
+using keyczar::base::Base64WDecode;
 
 namespace tao {
 KvmVmFactory::~KvmVmFactory() {
@@ -89,42 +89,14 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
   string initrd(*(it++));
   // The next argument is the disk, but it is ignored, since it's untrusted.
 
-  ifstream vm_template_file(vm_template.c_str());
-  if (!vm_template_file) {
-    LOG(ERROR) << "Could not open the VM template file " << vm_template_file;
-    return false;
-  }
-
-  stringstream vm_template_stream;
-  vm_template_stream << vm_template_file.rdbuf();
-
-  ifstream kernel_file(kernel.c_str());
-  if (!kernel_file) {
-    LOG(ERROR) << "Could not open the kernel file " << kernel;
-    return false;
-  }
-
-  stringstream kernel_stream;
-  kernel_stream << kernel_file.rdbuf();
-
-  ifstream initrd_file(initrd.c_str());
-  if (!initrd_file) {
-    LOG(ERROR) << "Could not open the initrd file " << initrd;
-    return false;
-  }
-
-  stringstream initrd_stream;
-  initrd_stream << initrd_file.rdbuf();
-
-  return HashVM(vm_template_stream.str(), name, kernel_stream.str(),
-                initrd_stream.str(), child_hash);
+  return HashVM(vm_template, name, kernel, initrd, child_hash);
 }
 
 bool KvmVmFactory::CreateHostedProgram(const string &name,
                                        const list<string> &args,
                                        const string &child_hash,
                                        TaoChannel &parent_channel,
-				       string *identifier) const {
+                                       string *identifier) const {
   if (args.size() != 5) {
     LOG(ERROR) << "Invalid parameters to KvmVmFactory::CreateHostedProgram";
     return false;

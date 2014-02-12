@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 
   ScopedFd sock(new int(-1));
   CHECK(ConnectToUnixDomainSocket(FLAGS_socket, sock.get()))
-    << "Could not connect to the stop socket";
+      << "Could not connect to the stop socket";
 
   // It doesn't matter what message we write to the stop socket. Any message
   // on this socket causes it to stop. It doesn't even read the message.

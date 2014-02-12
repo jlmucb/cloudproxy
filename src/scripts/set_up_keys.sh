@@ -28,25 +28,46 @@ fi
 ROOT=~/src/fileProxy
 RUN=~/testing/run
 TEST=~/testing/test
-BUILD_DIR=${ROOT}/src/out/Release/bin
+BUILD_DIR=${ROOT}/src/out/Debug/bin
 SAMPLE_ACLS=${ROOT}/run/acls.ascii
-SAMPLE_WHITELIST=${ROOT}/run/sample_whitelist.pb2
-AIKBLOB=${RUN}/HW/aikblob
-PASS=cppolicy
-KEYCZAR_PASS=cppolicy
+AIKBLOB=${RUN}/tpm/aikblob
+PASS=cppolicy # policy password
+CONFIG=${RUN}/tao.config
 
 ROOT=~/src/fileProxy
 SCRIPTS=${ROOT}/src/scripts
 
-${SCRIPTS}/make_policy_key.sh $RUN $BUILD_DIR $ROOT $KEYCZAR_PASS $PASS
-${SCRIPTS}/create_users.sh $RUN $ROOT $BUILD_DIR $KEYCZAR_PASS
+rm -rf ${RUN} ${TEST}
+
+mkdir -p ${RUN}
+
+${BUILD_DIR}/tao_admin -config_path $CONFIG -policy_pass $PASS \
+	-init ${ROOT}/run/tao-default.config -name testing 
+
 if [[ "$USE_FAKE" = "NO_FAKE" ]]; then
-  ${SCRIPTS}/make_aik.sh $RUN $ROOT $BUILD_DIR $AIKBLOB $KEYCZAR_PASS
+  ${SCRIPTS}/make_aik.sh $RUN $ROOT $BUILD_DIR $AIKBLOB $PASS
+  PCRS=`${BUILD_DIR}/get_pcrs`
+  ${BUILD_DIR}/tao_admin -config_path $CONFIG -policy_pass $PASS \
+	  -whitelist "${PCRS}:PCR_SHA1:Linux"
+else
+  ${BUILD_DIR}/tao_admin -config_path $CONFIG -policy_pass $PASS \
+	  -make_fake_tpm fake_tpm
+  ${BUILD_DIR}/tao_admin -config_path $CONFIG -policy_pass $PASS \
+	  -whitelist "FAKE_TPM:FAKE_HASH:BogusTPM"
+  # TODO(kwalsh): this should be FAKE_HASH, not SHA256, but the channels
+  # don't yet support hash_alg parameter
+  ${BUILD_DIR}/tao_admin -config_path $CONFIG -policy_pass $PASS \
+	  -whitelist "FAKE_PCRS:SHA256:Linux"
 fi
 
+#HOSTED_PROGRAMS=$(echo ${BUILD_DIR}/*)
+HOSTED_PROGRAMS=$(echo ${BUILD_DIR}/{client,server,fclient,fserver})
+HOSTED_PROGRAMS=${HOSTED_PROGRAMS// /,}
+${BUILD_DIR}/tao_admin -config_path $CONFIG -policy_pass $PASS \
+	-whitelist ${HOSTED_PROGRAMS}
+
+${SCRIPTS}/create_users.sh $RUN $ROOT $BUILD_DIR $PASS
+${SCRIPTS}/set_up_acls.sh $RUN $ROOT $BUILD_DIR $SAMPLE_ACLS $PASS
+
 ${SCRIPTS}/create_test_dir.sh $RUN $TEST $ROOT $BUILD_DIR
-${SCRIPTS}/make_fake_key.sh $TEST $BUILD_DIR
-${SCRIPTS}/set_up_whitelist.sh $TEST $ROOT $BUILD_DIR $SAMPLE_WHITELIST \
-  $KEYCZAR_PASS $USE_FAKE
-${SCRIPTS}/set_up_acls.sh $TEST $ROOT $BUILD_DIR $SAMPLE_ACLS $KEYCZAR_PASS
 

@@ -30,14 +30,15 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
-#include <tss/tss_error.h>
+#include <keyczar/keyczar.h>
 #include <tss/platform.h>
-#include <tss/tss_defines.h>
-#include <tss/tss_typedef.h>
-#include <tss/tss_structs.h>
 #include <tss/tspi.h>
+#include <tss/tss_defines.h>
+#include <tss/tss_error.h>
+#include <tss/tss_structs.h>
+#include <tss/tss_typedef.h>
+
 #include <trousers/trousers.h>
 
 using std::list;
@@ -66,7 +67,7 @@ int main(int argc, char **argv) {
   result = Tspi_Context_Create(&tss_ctx);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
-  result = Tspi_Context_Connect(tss_ctx, NULL /* Default TPM */);
+  result = Tspi_Context_Connect(tss_ctx, nullptr /* Default TPM */);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
 
   result = Tspi_Context_GetTpmObject(tss_ctx, &tpm);
@@ -90,7 +91,7 @@ int main(int argc, char **argv) {
   // This seal operation is meant to be used with DRTM, so the only PCRs that it
   // reads are 17 and 18. This is where you can set other PCRs to use.
   list<UINT32> pcrs_to_read{17, 18};
-  BYTE *pcr_value = NULL;
+  BYTE *pcr_value = nullptr;
   UINT32 pcr_value_len = 0;
   scoped_array<char> vals(new char[pcrs_to_read.size() * PCR_LEN]);
   size_t index = 0;

@@ -14,14 +14,14 @@
 # limitations under the License.
 
 if [[ "$#" != "4" ]]; then
-  echo "Usage: $0 <run dir> <git root dir> <build dir> <keyczar pass>"
+  echo "Usage: $0 <run dir> <git root dir> <build dir> <policy pass>"
   exit 1
 fi
 
 RUN=$1
 ROOT=$2
 BUILD_DIR=$3
-KEYCZAR_PASS=$4
+PASS=$4
 
 # The CloudServer and CloudClient tests rely on there being users tmroeder and
 # jlm.
@@ -51,10 +51,9 @@ ${BUILD_DIR}/keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
   --pass=jlm
 
 # These commands rely on the sign_pub_key command in src/apps/sign_pub_key.cc
-${BUILD_DIR}/sign_pub_key --key_loc ./policy_key \
+${BUILD_DIR}/sign_pub_key --policy_pass $PASS  \
     --pub_key_loc keys/tmroeder_pub \
-    --pass ${KEYCZAR_PASS} \
     --signed_speaks_for keys/tmroeder_pub_signed --subject tmroeder
-${BUILD_DIR}/sign_pub_key --key_loc ./policy_key \
-    --pass ${KEYCZAR_PASS} --pub_key_loc keys/jlm_pub \
+${BUILD_DIR}/sign_pub_key --policy_pass $PASS  \
+    --pub_key_loc keys/jlm_pub \
     --signed_speaks_for keys/jlm_pub_signed --subject jlm

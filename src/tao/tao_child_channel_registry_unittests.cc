@@ -18,8 +18,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/scoped_ptr.h>
 
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/tao_child_channel_params.pb.h"

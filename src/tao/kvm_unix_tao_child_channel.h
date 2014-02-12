@@ -33,7 +33,7 @@ namespace tao {
 /// this by running an service (like apps/linux_kvm_guest_tao_service.cc) that
 /// takes in the params from the hypervisor and uses them to find the right
 /// device to connect to for hypervisor Tao communication. In the current
-/// implementation, this is done by passing a Baes64W-encoded string as the last
+/// implementation, this is done by passing a Base64w-encoded string as the last
 /// boot parameter. This can be found in /proc/cmdline.
 class KvmUnixTaoChildChannel : public UnixFdTaoChildChannel {
  public:

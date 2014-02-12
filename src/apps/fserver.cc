@@ -18,61 +18,43 @@
 // limitations under the License.
 
 #include <memory>
-#include <mutex>
 #include <string>
-#include <vector>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
-
-#include <openssl/ssl.h>
 #include <openssl/crypto.h>
+#include <openssl/ssl.h>
+
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/file_server.h"
 #include "tao/tao_child_channel.h"
 #include "tao/tao_child_channel_registry.h"
-#include "tao/tao_auth.h"
+#include "tao/tao_domain.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
-using std::mutex;
-using std::shared_ptr;
 using std::string;
-using std::vector;
 
 using keyczar::base::Base64WDecode;
 
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
-using tao::WhitelistAuth;
+using tao::TaoDomain;
 
+DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(file_path, "file_server_files",
               "The path used by the file server to store files");
 DEFINE_string(meta_path, "file_server_meta",
               "The path used by the file server to store metadata");
-DEFINE_string(server_cert, "./openssl_keys/server/server.crt",
-              "The PEM certificate for the server to use for TLS");
-DEFINE_string(server_key, "./openssl_keys/server/server.key",
-              "The private key file for the server for TLS");
-DEFINE_string(server_password, "cpserver", "The password for the server key");
-DEFINE_string(policy_key, "./policy_public_key", "The keyczar public"
-                                                 " policy key");
-DEFINE_string(pem_policy_key, "./openssl_keys/policy/policy.crt",
-              "The PEM public policy cert");
+DEFINE_string(server_keys, "./fserver_key",
+              "Directory for server keys and TLS files");
+DEFINE_string(server_password, "cpserver", "The password for the server keys");
 DEFINE_string(acls, "./acls_sig",
               "A file containing a SignedACL signed by"
               " the public policy key (e.g., using sign_acls)");
-DEFINE_string(server_enc_key, "./server_key", "A keyczar crypter"
-                                              " directory");
-DEFINE_string(whitelist_path, "./signed_whitelist",
-              "The path to the signed whitelist");
 DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_string(port, "11235", "The port to listen on");
-
-DEFINE_string(aik_cert, "./HW/aik.crt",
-              "A certificate for the AIK, signed by the public policy key");
 
 int main(int argc, char **argv) {
   // make sure protocol buffers is using the right version
@@ -99,15 +81,12 @@ int main(int argc, char **argv) {
   scoped_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(
-      new WhitelistAuth(FLAGS_whitelist_path, FLAGS_policy_key));
-  CHECK(whitelist_auth->Init()) << "Could not initialize the auth manager";
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  CHECK(admin.get() != nullptr) << "Could not load configuration";
 
-  cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_cert,
-                            FLAGS_server_key, FLAGS_server_password,
-                            FLAGS_policy_key, FLAGS_pem_policy_key, FLAGS_acls,
-                            FLAGS_server_enc_key, FLAGS_address, FLAGS_port,
-                            whitelist_auth.release());
+  cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_keys,
+                            FLAGS_server_password, FLAGS_acls, FLAGS_address,
+                            FLAGS_port, admin.release());
 
   LOG(INFO) << "FileServer listening";
   CHECK(fs.Listen(channel.get(), false /* not single channel */))

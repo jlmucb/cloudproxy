@@ -25,10 +25,11 @@
 
 #include <tss/platform.h>
 #include <tss/tspi.h>
-#include <tss/tss_error.h>
 #include <tss/tss_defines.h>
-#include <tss/tss_typedef.h>
+#include <tss/tss_error.h>
 #include <tss/tss_structs.h>
+#include <tss/tss_typedef.h>
+
 #include <trousers/trousers.h>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
@@ -56,8 +57,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
 
   virtual bool Init();
   virtual bool Destroy();
-  virtual bool StartHostedProgram(const string &path,
-                                  const list<string> &args,
+  virtual bool StartHostedProgram(const string &path, const list<string> &args,
                                   string *identifier) {
     // In the case of the TPM, this would mean to start an OS, and that is
     // accomplished by other means.
@@ -79,9 +79,6 @@ class TPMTaoChildChannel : public TaoChildChannel {
 
  private:
   static const int PcrLen = 20;
-
-  // the timeout for an Attestation (= 1 year in seconds)
-  static const int AttestationTimeout = 31556926;
 
   // The public Attestation Identity Key associated with the TPM.
   string aik_blob_;

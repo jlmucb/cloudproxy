@@ -22,6 +22,8 @@
 #ifndef CLOUDPROXY_CLOUD_SERVER_H_
 #define CLOUDPROXY_CLOUD_SERVER_H_
 
+#include <pthread.h>
+
 #include <map>
 #include <mutex>
 #include <set>
@@ -29,28 +31,23 @@
 #include <thread>
 
 #include <glog/logging.h>
-#include <openssl/ssl.h>
-#include <keyczar/openssl/util.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
-#include <pthread.h>
+#include <keyczar/openssl/util.h>
+#include <openssl/ssl.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/util.h"
+#include "tao/tao_domain.h"
 
 using std::map;
 using std::mutex;
-using std::thread;
 using std::set;
 using std::string;
-
-namespace keyczar {
-class Keyczar;
-}  // namespace keyczar
+using std::thread;
 
 namespace tao {
-class TaoAuth;
 class TaoChildChannel;
 }  // namespace tao
 
@@ -68,25 +65,20 @@ class CloudServer {
   static const int NonceSize = 16;
 
   /// Create a CloudServer.
-  /// @param tls_cert The path to use for an OpenSSL TLS certificate.
-  /// @param tls_key The path to use for an OpenSSL TLS private key.
-  /// @param tls_password The file to use for a Tao-sealed TLS password to use
-  /// to encrypt the private key.
-  /// @param public_policy_keyczar The path to the public policy key.
-  /// @param public_policy_pem The path to an OpenSSL representation of the
-  /// public policy key.
+  /// @param server_config_path A directory to use for keys and TLS files.
+  /// @param secret A string to use for encrypting private keys.
   /// @param acl_location The path to a signed ACL giving permissions for
   /// operations on the server.
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
-  /// @param auth_manager An authorization manager to use to verify Tao
-  /// attestations.
-  CloudServer(const string &tls_cert, const string &tls_key,
-              const string &tls_password, const string &public_policy_keyczar,
-              const string &public_policy_pem, const string &acl_location,
-              const string &host, const string &port,
-              tao::TaoAuth *auth_manager);
-
+  /// @param admin The configuration for this administrative domain. Ownership
+  /// is taken.
+  /// TODO(kwalsh) This description used to say the secret was tao-sealed
+  /// against this client, but the code was not so. External code that
+  /// seals a secret should be moved here.
+  CloudServer(const string &server_config_path, const string &secret,
+              const string &acl_location, const string &host,
+              const string &port, tao::TaoDomain *admin);
   virtual ~CloudServer() {}
 
   /// Start listening to the port and handle connections as they arrive.
@@ -101,16 +93,16 @@ class CloudServer {
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers
   // and writers semantics
 
-  // mutex for authorization
+  /// mutex for authorization
   mutex auth_m_;
 
-  // mutex for key management
+  /// mutex for key management
   mutex key_m_;
 
-  // mutex for data operations
+  /// mutex for data operations
   mutex data_m_;
 
-  // mutex for Tao communication
+  /// mutex for Tao communication
   mutex tao_m_;
 
   // Handles specific requests for resources. In this superclass
@@ -144,6 +136,8 @@ class CloudServer {
   bool SendReply(SSL *ssl, bool success, const string &reason);
 
  private:
+  /// Configuration for this administrative domain
+  scoped_ptr<tao::TaoDomain> admin_;
 
   /// Listen on a bio and handle an incoming message from a client. Spawn a
   /// thread for each connection.
@@ -190,33 +184,29 @@ class CloudServer {
                          bool *reply, CloudServerThreadData &cstd,
                          const tao::TaoChildChannel &t);
 
-  // The public policy key, used to check signatures.
-  scoped_ptr<keyczar::Keyczar> public_policy_key_;
-
-  // A (static) random number generator for generating challenges.
+  /// A (static) random number generator for generating challenges.
   keyczar::RandImpl *rand_;
 
-  // The host and port to serve from.
+  /// The host and port to serve from.
+  /// @{
   string host_;  // currently ignored: we listen on any interface
   string port_;
+  /// @}
 
-  // A context object that stores all the TLS parameters for the connection.
+  /// A context object that stores all the TLS parameters for the connection.
   ScopedSSLCtx context_;
 
-  // An object for managing authorization policy.
+  /// An object for managing authorization policy.
   scoped_ptr<CloudAuth> auth_;
 
-  // An object that manages keys for users known to the server.
+  /// An object that manages keys for users known to the server.
   scoped_ptr<CloudUserManager> users_;
 
-  // A simple object management tool: a set of object names.
+  /// A simple object management tool: a set of object names.
   set<string> objects_;
-
-  // Authorized hashes of programs and VerifyAttestation.
-  scoped_ptr<tao::TaoAuth> auth_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_CLOUD_SERVER_H_

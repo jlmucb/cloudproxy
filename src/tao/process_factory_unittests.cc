@@ -17,9 +17,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <keyczar/base/base64w.h>
 
 #include "tao/pipe_tao_channel.h"
@@ -82,9 +82,9 @@ TEST_F(ProcessFactoryTest, HashTest) {
 TEST_F(ProcessFactoryTest, CreationTest) {
   list<string> args;
   string identifier;
-  EXPECT_TRUE(factory_->CreateHostedProgram(
-      FLAGS_program, args, child_hash_, *channel_, &identifier)) 
-    << "Could not create a vm";
-  EXPECT_TRUE(!identifier.empty()) 
-    << "Did not get an identifier from the factory";
+  EXPECT_TRUE(factory_->CreateHostedProgram(FLAGS_program, args, child_hash_,
+                                            *channel_, &identifier))
+      << "Could not create a vm";
+  EXPECT_TRUE(!identifier.empty())
+      << "Did not get an identifier from the factory";
 }

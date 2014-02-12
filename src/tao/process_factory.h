@@ -52,12 +52,12 @@ class ProcessFactory : public HostedProgramFactory {
   /// @param child_hash The hash of the hosted program.
   /// @param parent_channel The channel to use for establishing communication
   /// with the hosted program.
-  /// @param[out] identifier An identifier for the hosted program: e.g., a PID 
+  /// @param[out] identifier An identifier for the hosted program: e.g., a PID
   /// for a process
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
                                    TaoChannel &parent_channel,
-				   string *identifier) const;
+                                   string *identifier) const;
   virtual string GetFactoryName() const;
 
  private:

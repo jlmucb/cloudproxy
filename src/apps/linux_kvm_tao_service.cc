@@ -19,58 +19,42 @@
 // limitations under the License.
 
 #include <fstream>
-#include <memory>
-#include <mutex>
 #include <sstream>
 #include <string>
-#include <vector>
 
-#include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <keyczar/keyczar.h>
-#include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 
-#include "tao/linux_tao.h"
 #include "tao/kvm_unix_tao_channel.h"
 #include "tao/kvm_vm_factory.h"
+#include "tao/linux_tao.h"
+#include "tao/tao_domain.h"
 #include "tao/tpm_tao_child_channel.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
 using std::ifstream;
-using std::shared_ptr;
 using std::string;
 using std::stringstream;
-using std::vector;
 
-using tao::LinuxTao;
 using tao::KvmUnixTaoChannel;
 using tao::KvmVmFactory;
+using tao::LinuxTao;
 using tao::TPMTaoChildChannel;
-using tao::WhitelistAuth;
+using tao::TaoDomain;
 
-DEFINE_string(secret_path, "linux_tao_service_secret",
-              "The path to the TPM-sealed key for this binary");
-DEFINE_string(aik_blob, "HW/aikblob", "The AIK blob from the TPM");
-DEFINE_string(aik_attestation, "HW/aik.attest",
-              "The attestation to the AIK by the policy key");
-DEFINE_string(key_path, "linux_tao_service_files/key",
-              "An encrypted keyczar directory for an encryption key");
-DEFINE_string(pk_key_path, "linux_tao_service_files/public_key",
-              "An encrypted keyczar directory for a signing key");
-DEFINE_string(whitelist, "signed_whitelist", "A signed whitelist file");
-DEFINE_string(policy_pk_path, "./policy_public_key",
-              "The path to the public policy key");
+DEFINE_string(config_path, "tao.config", "Location of tao configuration");
+DEFINE_string(keys_path, "linux_tao_keys", "Location of linux tao keys");
 DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
-              "The name of a file to use as the socket for incoming program "
-              "creation requests");
-DEFINE_string(
-    stop_socket, "/tmp/.linux_tao_stop_socket",
-    "The name of a file to use as the socket for stopping the server");
-DEFINE_string(ca_host, "", "The hostname of the TCCA server, if any");
-DEFINE_string(ca_port, "", "The port for the TCCA server, if any");
+              "File socket for incoming program creation requests");
+DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
+              "File socket for stopping the server");
+DEFINE_string(aik_blob, "tpm/aikblob", "The AIK blob from the TPM");
+DEFINE_string(aik_attestation, "tpm/aik.attest",
+              "The attestation to the AIK by the policy key");
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -103,11 +87,6 @@ int main(int argc, char **argv) {
       aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
   CHECK(tpm->Init()) << "Could not init the TPM";
 
-  scoped_ptr<WhitelistAuth> whitelist_auth(
-      new WhitelistAuth(FLAGS_whitelist, FLAGS_policy_pk_path));
-  CHECK(whitelist_auth->Init())
-      << "Could not initialize the authorization manager";
-
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
   scoped_ptr<KvmUnixTaoChannel> kvm_channel(
@@ -116,11 +95,12 @@ int main(int argc, char **argv) {
   scoped_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
   CHECK(vm_factory->Init()) << "Could not initialize the VM factory";
 
-  scoped_ptr<LinuxTao> tao(
-      new LinuxTao(FLAGS_secret_path, FLAGS_key_path, FLAGS_pk_key_path,
-                   FLAGS_policy_pk_path, tpm.release(), kvm_channel.release(),
-                   vm_factory.release(), whitelist_auth.release(),
-                   FLAGS_ca_host, FLAGS_ca_port));
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  CHECK(admin.get() != nullptr) << "Could not load configuration";
+
+  scoped_ptr<LinuxTao> tao;
+  tao.reset(new LinuxTao(FLAGS_keys_path, tpm.release(), kvm_channel.release(),
+                         vm_factory.release(), admin.release()));
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
 
   LOG(INFO) << "Linux Tao Service started and waiting for requests";

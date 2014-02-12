@@ -28,9 +28,11 @@ KEYCZAR_PASS=$5
 # These commands rely on the attest_to_aik and make_aik commands in
 # src/apps and they depend on the TPM having the well-known 0 password.
 cd $RUN
-mkdir -p HW
-${BUILD_DIR}/make_aik --aik_blob_file $AIKBLOB
+mkdir -p tpm
+${BUILD_DIR}/make_aik --aik_blob_file $AIKBLOB \
+  --policy_pass ${KEYCZAR_PASS}
 ${BUILD_DIR}/attest_to_aik --aik_blob_file $AIKBLOB \
-  --aik_attest_file HW/aik.attest --policy_pass $KEYCZAR_PASS
+  --aik_attest_file tpm/aik.attest  \
+  --policy_pass ${KEYCZAR_PASS}
 
 

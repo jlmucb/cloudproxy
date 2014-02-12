@@ -19,7 +19,13 @@
 
 #include "tao/direct_tao_child_channel.h"
 
+#include <list>
+#include <string>
+
 #include "tao/tao.h"
+
+using std::list;
+using std::string;
 
 namespace tao {
 DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
@@ -29,7 +35,7 @@ DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
 
 bool DirectTaoChildChannel::StartHostedProgram(const string &path,
                                                const list<string> &args,
-					       string *identifier) {
+                                               string *identifier) {
   return tao_->StartHostedProgram(path, args, identifier);
 }
 

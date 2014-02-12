@@ -20,7 +20,11 @@
 #ifndef CLOUDPROXY_FILE_CLIENT_H_
 #define CLOUDPROXY_FILE_CLIENT_H_
 
+#include <string>
+
 #include "cloudproxy/cloud_client.h"
+
+using std::string;
 
 namespace cloudproxy {
 /// An implementation of CloudClient that sends files to be stored remotely by
@@ -28,23 +32,14 @@ namespace cloudproxy {
 /// implementation directly.
 class FileClient : public CloudClient {
  public:
-
   /// Create a new client for communicating with FileServer. All the parameters
-  /// other than the first have the same semantics as in CloudClient.
+  /// other than file_path have the same semantics as in CloudClient.
   /// @param file_path The path to the files managed by this client.
-  /// @param tls_cert The path to a TLS certificate.
-  /// @param tls_key The path to a TLS key.
-  /// @param tls_password The path to a Tao-sealed password string.
-  /// @param public_policy_keyczar The path to the keyczar version of the public
-  /// policy key.
-  /// @param public_policy_pem The path to the OpenSSL version of the public
-  /// policy key.
-  /// @param auth_manager A class to use for verifying attestations.
-  FileClient(const string &file_path, const string &tls_cert,
-             const string &tls_key, const string &tls_password,
-             const string &public_policy_keyczar,
-             const string &public_policy_pem, tao::TaoAuth *auth_manager);
-
+  /// @param client_config_path A directory to use for keys and TLS files.
+  /// @param secret A string to use for a encrypting private keys.
+  /// @param admin The configuration for this administrative domain.
+  FileClient(const string &file_path, const string &client_config_path,
+             const string &secret, tao::TaoDomain *admin);
   virtual ~FileClient() {}
 
   /// Create a file on a FileServer.
@@ -77,11 +72,11 @@ class FileClient : public CloudClient {
                      const string &input_name, const string &object_name);
 
  private:
-  // The base path for files that are read from and written to the server.
+  /// The base path for files that are read from and written to the server.
   string file_path_;
 
   DISALLOW_COPY_AND_ASSIGN(FileClient);
 };
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_FILE_CLIENT_H_

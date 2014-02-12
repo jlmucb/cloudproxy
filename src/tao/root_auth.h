@@ -17,70 +17,54 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef TAO_ROOT_AUTH_H_
 #define TAO_ROOT_AUTH_H_
 
-#include <map>
-#include <set>
+#include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-#include <keyczar/base/scoped_ptr.h>
+#include <keyczar/base/values.h>
 
 #include "tao/attestation.pb.h"
-#include "tao/tao_auth.h"
+#include "tao/tao_domain.h"
 
-using std::map;
-using std::set;
-
-namespace keyczar {
-
-class Keyczar;
-
-}  // namespace keyczar
+using std::string;
 
 namespace tao {
 /// An authorization component that only accepts signatures from the public
 /// policy key.
-class RootAuth : public TaoAuth {
+class RootAuth : public TaoDomain {
  public:
-  /// Stores the location of the public policy but doesn't try to parse it.
-  RootAuth(const string &policy_public_key)
-      : policy_public_key_(policy_public_key), policy_key_(NULL) {}
+  RootAuth(const string &path, DictionaryValue *value, const string &password)
+      : TaoDomain(path, value, password) {}
   virtual ~RootAuth() {}
 
-  /// Load the public policy key from the location specified in the
-  /// constructor.
-  virtual bool Init();
-
-  /// Check to see if a program hash is on the whitelist.
-  /// @return false because the only thing that matters is the policy key
-  /// signature. There is no whitelist.
-  virtual bool IsAuthorized(const string &program_hash) const { return false; }
-
-  /// Check to see if a program name/hash pair is on the whitelist.
-  /// @return false because the only thing that matters is the policy key
-  /// signature. There is no whitelist.
-  virtual bool IsAuthorized(const string &program_name,
-                            const string &program_hash) const {
+  /// Only root attestations are allowed, so IsAuthorized() is always false.
+  virtual bool IsAuthorized(const string &hash, const string &alg,
+                            const string &name) const {
+    return false;
+  }
+  /// Only root attestations are allowed, so IsAuthorized() is always false.
+  virtual bool IsAuthorized(const string &hash, const string &alg,
+                            string *name) const {
     return false;
   }
 
-  /// Verify an attestation and return the data it attests to
-  /// @param attestation The attestation to verify.
-  /// @param[out] data The data in the attestation.
+  /// Checks if an attestation is from root and is well formed.
+  /// @param attestation A serialized Attestation
+  /// @param[out] data The extracted data from the Statement in the Attestation
+  /// @return true if the attestation passes verification
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
 
+  /// Only root attestations are allowed, so disallow Authorize().
+  virtual bool Authorize(const string &hash, const string &alg,
+                         const string &name) {
+    return false;
+  }
+
+  constexpr static auto AuthType = "root";
+
  private:
-  // The location of the public policy key.
-  string policy_public_key_;
-
-  // The public policy key
-  scoped_ptr<keyczar::Keyczar> policy_key_;
-
-  /// Check a signature made by the policy key.
-  bool CheckRootSignature(const Attestation &a) const;
-
   DISALLOW_COPY_AND_ASSIGN(RootAuth);
 };
 }  // namespace tao

@@ -17,8 +17,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "tao/util.h"
@@ -26,6 +26,7 @@
 GTEST_API_ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
   google::ParseCommandLineFlags(&argc, &argv, true);
   testing::InitGoogleTest(&argc, argv);
   tao::InitializeOpenSSL();

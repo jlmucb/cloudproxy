@@ -19,9 +19,9 @@
 
 #include "tao/unix_fd_tao_child_channel.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>

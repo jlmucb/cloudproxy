@@ -30,10 +30,10 @@ message Statement {
   required bytes data = 3;
 
   // the name of the algorithm used to hash the program
-  required string hash_alg = 4;
+  optional string hash_alg = 4;
 
   // the hash of the program
-  required string hash = 5;
+  optional string hash = 5;
 }
 
 enum AttestationType {

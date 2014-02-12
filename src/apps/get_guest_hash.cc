@@ -18,19 +18,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
 #include <iostream>
-#include <sstream>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
 
 #include "tao/util.h"
 
 using std::cout;
-using std::ifstream;
-using std::stringstream;
 
 DEFINE_string(name, "cp-server", "The name of the guest to start");
 DEFINE_string(kernel, "vmlinuz-3.7.5", "The kernel to inject into the guest");
@@ -42,36 +37,9 @@ int main(int argc, char **argv) {
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
-  ifstream template_file(FLAGS_vmspec.c_str());
-  if (!template_file) {
-    LOG(ERROR) << "Could not open the template file " << FLAGS_vmspec;
-    return 1;
-  }
-
-  ifstream kernel_file(FLAGS_kernel.c_str());
-  if (!kernel_file) {
-    LOG(ERROR) << "Could not load the kernel file " << FLAGS_kernel;
-    return 1;
-  }
-
-  ifstream initrd_file(FLAGS_initrd.c_str());
-  if (!initrd_file) {
-    LOG(ERROR) << "Could not load the initrd file " << FLAGS_initrd;
-    return 1;
-  }
-
-  stringstream template_stream;
-  template_stream << template_file.rdbuf();
-
-  stringstream kernel_stream;
-  kernel_stream << kernel_file.rdbuf();
-
-  stringstream initrd_stream;
-  initrd_stream << initrd_file.rdbuf();
-
   string hash;
-  if (!tao::HashVM(template_stream.str(), FLAGS_name, kernel_stream.str(),
-                   initrd_stream.str(), &hash)) {
+  if (!tao::HashVM(FLAGS_vmspec, FLAGS_name, FLAGS_kernel, FLAGS_initrd,
+                   &hash)) {
     LOG(ERROR) << "Could not compute the hash of the vm parameters";
     return 1;
   }

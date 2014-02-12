@@ -17,64 +17,52 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include <fstream>
-#include <list>
 #include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_reader.h>
+#include <keyczar/base/file_util.h>
 #include <openssl/pem.h>
-#include <openssl/x509.h>
 #include <openssl/sha.h>
-#include <tss/tss_error.h>
+#include <openssl/x509.h>
 #include <tss/platform.h>
-#include <tss/tss_defines.h>
-#include <tss/tss_typedef.h>
-#include <tss/tss_structs.h>
 #include <tss/tspi.h>
+#include <tss/tss_defines.h>
+#include <tss/tss_error.h>
+#include <tss/tss_structs.h>
+#include <tss/tss_typedef.h>
+
 #include <trousers/trousers.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/tao.h"
+#include "tao/tao_domain.h"
 #include "tao/util.h"
-
-using keyczar::Keyczar;
 
 using std::ifstream;
 using std::ofstream;
-using std::list;
 using std::string;
 using std::stringstream;
 
-using tao::Attestation;
-using tao::SignData;
 using tao::Statement;
-using tao::Tao;
+using tao::TaoDomain;
 
+DEFINE_string(config_path, "tao.config", "Location of tao configuration");
+DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 DEFINE_string(
     aik_blob_file, "aikblob",
     "A file containing an AIK blob that has been loaded into the TPM");
 DEFINE_string(
     aik_attest_file, "aik.attest",
     "A serialized attestation to the AIK, signed by the policy private key");
-DEFINE_string(policy_key, "policy_key", "The path to the policy private key");
-DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
   google::InitGoogleLogging(argv[0]);
 
-  const int AttestationTimeout = 31556926;
   TSS_HCONTEXT tss_ctx;
   TSS_HTPM tpm;
   TSS_RESULT result;
@@ -91,7 +79,7 @@ int main(int argc, char **argv) {
   result = Tspi_Context_Create(&tss_ctx);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
-  result = Tspi_Context_Connect(tss_ctx, NULL /* Default TPM */);
+  result = Tspi_Context_Connect(tss_ctx, nullptr /* Default TPM */);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
 
   result = Tspi_Context_GetTpmObject(tss_ctx, &tpm);
@@ -135,7 +123,7 @@ int main(int argc, char **argv) {
 
   // Set up an OpenSSL RSA public key to use to verify the Quote
   RSA *aik_rsa = RSA_new();
-  aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, NULL);
+  aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, nullptr);
   aik_rsa->e = BN_new();
   BN_set_word(aik_rsa->e, 0x10001);
 
@@ -153,40 +141,19 @@ int main(int argc, char **argv) {
   string pem(buf->data, buf->length);
   BIO_free(mem);
 
-  // decrypt the private policy key so we can construct a signer
-  keyczar::base::ScopedSafeString password(new string(FLAGS_policy_pass));
-  scoped_ptr<keyczar::rw::KeysetReader> reader(
-      new keyczar::rw::KeysetPBEJSONFileReader(FLAGS_policy_key.c_str(),
-                                               *password));
-
-  // sign this serialized data with the keyset in FLAGS_policy_key
-  scoped_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
-  CHECK(signer.get()) << "Could not initialize the signer from "
-                      << FLAGS_policy_key;
-  signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
-
-  Attestation a;
   Statement s;
-  time_t cur_time;
-  time(&cur_time);
-
-  s.set_time(cur_time);
-  s.set_expiration(cur_time + AttestationTimeout);
   s.set_data(pem);
-  s.set_hash_alg("None");
-  s.set_hash("");
 
-  string serialized_statement;
-  CHECK(s.SerializeToString(&serialized_statement)) << "Could not serialize";
-  string sig;
-  CHECK(SignData(serialized_statement, Tao::AttestationSigningContext, &sig,
-                 signer.get())) << "Could not sign the key";
+  // load policy key
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  CHECK(admin.get() != nullptr) << "Could not load configuration";
+  CHECK(admin->Unlock(FLAGS_policy_pass)) << "Could not unlock configuration";
 
-  // There's no cert, since this is signed by the root key
-  a.set_type(tao::ROOT);
-  a.set_serialized_statement(serialized_statement);
-  a.set_signature(sig);
+  // sign this serialized data with policy key
+  string attestation;
+  if (admin->AttestByRoot(&s, &attestation)) return 1;
 
+  // save to file
   ofstream attest_file(FLAGS_aik_attest_file, ofstream::out);
   if (!attest_file) {
     LOG(ERROR) << "Could not open the attest file " << FLAGS_aik_attest_file
@@ -194,7 +161,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  CHECK(a.SerializeToOstream(&attest_file))
+  CHECK(attest_file << attestation)
       << "Could not serialize the attestation to a file";
   return 0;
 }

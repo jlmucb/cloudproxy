@@ -18,8 +18,8 @@
 // limitations under the License.
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -30,17 +30,18 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <tss/tss_error.h>
 #include <tss/platform.h>
-#include <tss/tss_defines.h>
-#include <tss/tss_typedef.h>
-#include <tss/tss_structs.h>
 #include <tss/tspi.h>
+#include <tss/tss_defines.h>
+#include <tss/tss_error.h>
+#include <tss/tss_structs.h>
+#include <tss/tss_typedef.h>
+
 #include <trousers/trousers.h>
 
 using std::ifstream;
-using std::ofstream;
 using std::list;
+using std::ofstream;
 using std::string;
 using std::stringstream;
 
@@ -68,7 +69,7 @@ int main(int argc, char **argv) {
   result = Tspi_Context_Create(&tss_ctx);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
 
-  result = Tspi_Context_Connect(tss_ctx, NULL /* Default TPM */);
+  result = Tspi_Context_Connect(tss_ctx, nullptr /* Default TPM */);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
 
   result = Tspi_Context_GetTpmObject(tss_ctx, &tpm);
@@ -113,9 +114,9 @@ int main(int argc, char **argv) {
                               sizeof(pca_modulus_bytes), pca_modulus_bytes);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not add a fake modulus to the PCAKey";
 
-  BYTE *id_req = NULL;
+  BYTE *id_req = nullptr;
   UINT32 id_req_len = 0;
-  result = Tspi_TPM_CollateIdentityRequest(tpm, srk, pca_key, 0, NULL, aik,
+  result = Tspi_TPM_CollateIdentityRequest(tpm, srk, pca_key, 0, nullptr, aik,
                                            TSS_ALG_AES, &id_req_len, &id_req);
   CHECK_EQ(result, TSS_SUCCESS)
       << "Could not set up a fake identity request for the AIK";
@@ -123,7 +124,7 @@ int main(int argc, char **argv) {
   result = Tspi_Key_LoadKey(aik, srk);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
 
-  BYTE *blob = NULL;
+  BYTE *blob = nullptr;
   UINT32 blob_len = 0;
   result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_KEY_BLOB,
                               TSS_TSPATTRIB_KEYBLOB_BLOB, &blob_len, &blob);

@@ -21,33 +21,30 @@
 
 #include <fstream>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
+#include <gtest/gtest.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/util.h"
 #include "tao/fake_tao.h"
 #include "tao/util.h"
 
-using cloudproxy::CloudAuth;
-using cloudproxy::ACL;
-using cloudproxy::Action;
-using cloudproxy::SignedACL;
-
-using keyczar::Keyczar;
-
 using std::ofstream;
 
-using tao::CreateTempPubKey;
+using cloudproxy::ACL;
+using cloudproxy::Action;
+using cloudproxy::CloudAuth;
+using cloudproxy::SignedACL;
+
+using tao::CreateTempWhitelistDomain;
 using tao::ScopedTempDir;
 using tao::SignData;
+using tao::TaoDomain;
 
 class CloudAuthTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    EXPECT_TRUE(CreateTempPubKey(&temp_dir_, &policy_public_key_))
-        << "Could not create a public key";
+    ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir_, &admin_));
 
     // Set up a simple ACL to query.
     ACL acl;
@@ -66,7 +63,7 @@ class CloudAuthTest : public ::testing::Test {
 
     string *sig = sacl.mutable_signature();
     EXPECT_TRUE(SignData(*ser, CloudAuth::ACLSigningContext, sig,
-                         policy_public_key_.get()))
+                         admin_->GetPolicySigner()))
         << "Could not sign the serialized ACL with the policy key";
 
     string signed_whitelist_path = *temp_dir_ + string("/signed_whitelist");
@@ -79,11 +76,11 @@ class CloudAuthTest : public ::testing::Test {
     whitelist_file.close();
 
     cloud_auth_.reset(
-        new CloudAuth(signed_whitelist_path, policy_public_key_.get()));
+        new CloudAuth(signed_whitelist_path, admin_->GetPolicyVerifier()));
   }
 
   scoped_ptr<CloudAuth> cloud_auth_;
-  scoped_ptr<Keyczar> policy_public_key_;
+  scoped_ptr<TaoDomain> admin_;
   ScopedTempDir temp_dir_;
 };
 

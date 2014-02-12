@@ -95,20 +95,6 @@
       ],
     },
     {
-      'target_name': 'attest_to_key',
-      'type': 'executable',
-      'sources': [ 'attest_to_key.cc', ],
-      'dependencies': [ 
-        '../tao/tao.gyp:tao',
-        '../third_party/gflags/gflags.gyp:gflags',
-        '../third_party/google-glog/glog.gyp:glog',
-        '../third_party/keyczar/keyczar.gyp:keyczar'
-      ],
-      'libraries': [
-        '-lcrypto',
-      ],
-    },
-    {
       'target_name': 'attest_to_aik',
       'type': 'executable',
       'sources': [ 'attest_to_aik.cc', ],
@@ -260,34 +246,17 @@
       ],
     },
     {
-      'target_name': 'create_ecdsa',
+      'target_name': 'tao_admin',
       'type': 'executable',
-      'sources': [ 'create_ecdsa.cc', ],
+      'sources': [ 'tao_admin.cc', ],
       'include_dirs': [ '..', ],
       'dependencies': [
-         '../cloudproxy/cloudproxy.gyp:cloudproxy',
-      ],
-    },
-    {
-      'target_name': 'hash_file',
-      'type': 'executable',
-      'sources': [ 'hash_file.cc', ],
-      'include_dirs': [ '..', ],
-      'libraries' : [
-        '-lcrypto',
-      ],
-      'dependencies': [
-        '../third_party/google-glog/glog.gyp:glog',
-	'../third_party/gflags/gflags.gyp:gflags',
-	'../third_party/keyczar/keyczar.gyp:keyczar',
-      ],        
-    },
-    {
-      'target_name': 'sign_whitelist',
-      'type': 'executable',
-      'sources': [ 'sign_whitelist.cc', ],
-      'include_dirs': [ '..', ],
-      'dependencies': [ '../tao/tao.gyp:tao', ],
+	     '../tao/tao.gyp:tao',
+         '../tao/tao.gyp:tao_test_utilities',
+		 '../third_party/gflags/gflags.gyp:gflags',
+		 '../third_party/google-glog/glog.gyp:glog',
+		 '../third_party/keyczar/keyczar.gyp:keyczar'
+	  ],
     },
   ]
 }

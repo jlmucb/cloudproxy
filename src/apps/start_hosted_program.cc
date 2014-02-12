@@ -18,8 +18,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 
 #include <iostream>
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
   ScopedFd sock(new int(-1));
   CHECK(OpenUnixDomainSocket(FLAGS_client_socket, sock.get()))
-    << "Could not open a socket for communication";
+      << "Could not open a socket for communication";
 
   struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
   strncpy(addr.sun_path, FLAGS_socket.c_str(), sizeof(addr.sun_path));
   socklen_t addr_len = sizeof(addr);
   CHECK(SendMessageTo(*sock, rpc, (struct sockaddr *)&addr, addr_len))
-    << "Could not send the message to the server";
+      << "Could not send the message to the server";
 
   // Listen for a reply that gives the PID of the started process.
   TaoChannelResponse resp;

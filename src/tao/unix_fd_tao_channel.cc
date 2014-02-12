@@ -26,8 +26,8 @@
 #include <sys/fcntl.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <sys/unistd.h>
 
@@ -151,7 +151,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       }
     }
 
-    int err = select(max + 1, &read_fds, NULL, NULL, NULL);
+    int err = select(max + 1, &read_fds, nullptr, nullptr, nullptr);
     if (err == -1) {
       PLOG(ERROR) << "Error in calling select";
       ret = false;
@@ -169,8 +169,8 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       struct sockaddr_un addr;
       socklen_t addr_len = sizeof(addr);
       bool creation_result =
-        HandleProgramCreation(tao, *domain_socket_,&identifier,
-                              (struct sockaddr *)&addr, &addr_len);
+          HandleProgramCreation(tao, *domain_socket_, &identifier,
+                                (struct sockaddr *)&addr, &addr_len);
       if (!creation_result) {
         LOG(ERROR) << "Could not handle the program creation request";
       }
@@ -221,7 +221,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
   }
 
   // Restore the old SIGPIPE signal handler.
-  if (sigaction(SIGPIPE, &old_act, NULL) < 0) {
+  if (sigaction(SIGPIPE, &old_act, nullptr) < 0) {
     PLOG(ERROR) << "Could not restore the old signal handler.";
     ret = false;
   }

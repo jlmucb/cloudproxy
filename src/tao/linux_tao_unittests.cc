@@ -17,89 +17,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ftw.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <fstream>
-
-#include <gtest/gtest.h>
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/rw/keyset_file_reader.h>
+#include <gtest/gtest.h>
+#include <keyczar/base/file_util.h>
 
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_program_factory.h"
 #include "tao/fake_tao.h"
 #include "tao/fake_tao_channel.h"
-#include "tao/hosted_programs.pb.h"
 #include "tao/hosted_program_factory.h"
+#include "tao/hosted_programs.pb.h"
 #include "tao/linux_tao.h"
+#include "tao/tao_domain.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
-using keyczar::Keyczar;
-using keyczar::KeyPurpose;
-using keyczar::KeyType;
-using keyczar::Signer;
-using keyczar::rw::KeysetJSONFileWriter;
-using keyczar::rw::KeysetWriter;
+using keyczar::base::WriteStringToFile;
 
-using std::ofstream;
-
-using tao::CreateKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeProgramFactory;
 using tao::FakeTao;
 using tao::FakeTaoChannel;
-using tao::HostedProgram;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
 using tao::ScopedTempDir;
-using tao::SignData;
-using tao::SignedWhitelist;
-using tao::Tao;
+using tao::TaoAuth;
 using tao::TaoChannel;
-using tao::TaoChildChannel;
-using tao::Whitelist;
-using tao::WhitelistAuth;
+using tao::TaoDomain;
 
 class LinuxTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    // Get a temporary directory to use for the files.
-    string dir_template("/tmp/linux_tao_test_XXXXXX");
-    scoped_array<char> temp_name(new char[dir_template.size() + 1]);
-    memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
+    scoped_ptr<TaoDomain> admin;
+    ASSERT_TRUE(tao::CreateTempWhitelistDomain(&temp_dir_, &admin));
 
-    ASSERT_TRUE(mkdtemp(temp_name.get()));
-    temp_dir_.reset(new string(temp_name.get()));
+    admin->GetConfig()->SetString(TaoDomain::JSONTaoCAHost, "");
+    admin->SaveConfig();
 
     // Set up the files for the test.
-    string secret_path = *temp_dir_ + "/linux_tao_secret";
-    string key_path = *temp_dir_ + "/linux_tao_secret_key";
-    string pk_path = *temp_dir_ + "/linux_tao_pk";
-    string whitelist_path = *temp_dir_ + "/whitelist";
-    string policy_pk_path = *temp_dir_ + "/policy_pk";
+    string keys_path = *temp_dir_ + "/linux_tao_keys";
 
-    string test_binary_contents = "This is a fake test binary to be hashed";
     test_binary_path_ = *temp_dir_ + "/test_binary";
+    string test_binary_contents = "This is a fake test binary to be hashed\n";
+    test_binary_digest_ = "IMCalSHSXc41HN-roIPa9wIl5vXA1wVxLHRXceb-Scc";
+    ASSERT_TRUE(WriteStringToFile(test_binary_path_, test_binary_contents));
 
-    // Create the policy key directory so it can be filled by keyczar.
-    ASSERT_EQ(mkdir(policy_pk_path.c_str(), 0700), 0);
-
-    // create the policy key
-    FilePath fp(policy_pk_path);
-    scoped_ptr<KeysetWriter> policy_pk_writer(new KeysetJSONFileWriter(fp));
-    ASSERT_TRUE(
-        CreateKey(policy_pk_writer.get(), KeyType::ECDSA_PRIV,
-                  KeyPurpose::SIGN_AND_VERIFY, "policy_pk", &policy_key_));
-    policy_key_->set_encoding(Keyczar::NO_ENCODING);
-
-    scoped_ptr<FakeTao> ft(new FakeTao(policy_pk_path));
+    scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
 
     string fake_linux_tao_hash("This is not a real hash");
@@ -111,63 +73,23 @@ class LinuxTaoTest : public ::testing::Test {
     scoped_ptr<TaoChannel> child_channel(new FakeTaoChannel());
     ASSERT_TRUE(child_channel->Init());
 
-    string test_binary_digest;
-    keyczar::MessageDigestImpl *sha256 = keyczar::CryptoFactory::SHA256();
-    CHECK(sha256->Digest(test_binary_contents, &test_binary_digest))
-        << "Could not compute a SHA-256 hash over the file "
-        << test_binary_path_;
+    // Create a whitelist with a dummy hosted program, since we don't want the
+    // LinuxTao to start any hosted programs during this test.
+    ASSERT_TRUE(admin->AuthorizeProgram(test_binary_path_));
+    ASSERT_TRUE(
+        admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash, "LinuxTao"));
 
-    CHECK(keyczar::base::Base64WEncode(test_binary_digest, &child_hash_))
-        << " Could not encode the digest under base64w";
-
-    ofstream test_binary_file(test_binary_path_.c_str(), ofstream::out);
-    test_binary_file << test_binary_contents;
-    test_binary_file.close();
-
-    // Create a whitelist with a dummy hosted program, since we don't
-    // want the LinuxTao to start any hosted programs during this
-    // test. Then write it to the temp filename above.
-    string empty;
-    Whitelist w;
-    HostedProgram *hp = w.add_programs();
-    hp->set_name(test_binary_path_);
-    hp->set_hash_alg("SHA256");
-    hp->set_hash(empty);
-
-    HostedProgram *linux_tao_hp = w.add_programs();
-    linux_tao_hp->set_name("LinuxTao");
-    linux_tao_hp->set_hash_alg("SHA256");
-    linux_tao_hp->set_hash(empty);
-
-    SignedWhitelist sw;
-    string *serialized_whitelist = sw.mutable_serialized_whitelist();
-    ASSERT_TRUE(w.SerializeToString(serialized_whitelist));
-
-    string *signature = sw.mutable_signature();
-    ASSERT_TRUE(SignData(*serialized_whitelist,
-                         WhitelistAuth::WhitelistSigningContext,
-                         signature, policy_key_.get()));
-
-    ofstream whitelist_file(whitelist_path.c_str(), ofstream::out);
-    ASSERT_TRUE(sw.SerializeToOstream(&whitelist_file));
-    whitelist_file.close();
-
-    scoped_ptr<WhitelistAuth> whitelist_auth(
-        new WhitelistAuth(whitelist_path, policy_pk_path));
-    ASSERT_TRUE(whitelist_auth->Init());
-
-    tao_.reset(new LinuxTao(secret_path, key_path, pk_path, policy_pk_path,
-                            channel.release(), child_channel.release(),
-                            program_factory.release(), whitelist_auth.release(),
-                            "" /* no tcca host */, "" /* no tcca port */));
+    tao_.reset(
+        new LinuxTao(keys_path, channel.release(), child_channel.release(),
+                     program_factory.release(), admin.release()));
     ASSERT_TRUE(tao_->Init());
   }
 
   ScopedTempDir temp_dir_;
   string test_binary_path_;
+  string test_binary_digest_;
   string child_hash_;
   scoped_ptr<LinuxTao> tao_;
-  scoped_ptr<Keyczar> policy_key_;
 };
 
 TEST_F(LinuxTaoTest, RandomBytesTest) {
@@ -181,7 +103,7 @@ TEST_F(LinuxTaoTest, FailSealTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
   string sealed;
-  string fake_hash("This is also not a hash");
+  string fake_hash("[This is also not a hash]");
   EXPECT_FALSE(tao_->Seal(fake_hash, bytes, &sealed));
 }
 
@@ -190,7 +112,7 @@ TEST_F(LinuxTaoTest, FailUnsealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   string unsealed;
-  string fake_hash("This is also not a hash");
+  string fake_hash("[This is also not a hash]");
   EXPECT_FALSE(tao_->Unseal(fake_hash, bytes, &unsealed));
 }
 
@@ -199,7 +121,7 @@ TEST_F(LinuxTaoTest, FailAttestTest) {
   EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
 
   string attestation;
-  string fake_hash("This is also not a hash");
+  string fake_hash("[This is also not a hash]");
   EXPECT_FALSE(tao_->Attest(fake_hash, bytes, &attestation));
 }
 
@@ -209,14 +131,12 @@ TEST_F(LinuxTaoTest, SealTest) {
 
   list<string> args;
   string identifier;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args,
-				       &identifier));
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &identifier));
 
   EXPECT_TRUE(!identifier.empty());
 
   string sealed;
-  string empty;
-  EXPECT_TRUE(tao_->Seal(empty, bytes, &sealed));
+  EXPECT_TRUE(tao_->Seal(test_binary_digest_, bytes, &sealed));
 }
 
 TEST_F(LinuxTaoTest, UnsealTest) {
@@ -225,17 +145,15 @@ TEST_F(LinuxTaoTest, UnsealTest) {
 
   list<string> args;
   string identifier;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args,
-				       &identifier));
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &identifier));
 
   EXPECT_TRUE(!identifier.empty());
 
   string sealed;
-  string empty;
-  EXPECT_TRUE(tao_->Seal(empty, bytes, &sealed));
+  EXPECT_TRUE(tao_->Seal(test_binary_digest_, bytes, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(tao_->Unseal(empty, sealed, &unsealed));
+  EXPECT_TRUE(tao_->Unseal(test_binary_digest_, sealed, &unsealed));
   EXPECT_EQ(unsealed, bytes);
 }
 
@@ -245,11 +163,9 @@ TEST_F(LinuxTaoTest, AttestTest) {
 
   list<string> args;
   string identifier;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args,
-				       &identifier));
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &identifier));
   EXPECT_TRUE(!identifier.empty());
 
   string attestation;
-  string empty;
-  EXPECT_TRUE(tao_->Attest(empty, bytes, &attestation));
+  EXPECT_TRUE(tao_->Attest(test_binary_digest_, bytes, &attestation));
 }

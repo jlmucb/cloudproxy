@@ -25,49 +25,51 @@
 
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
+#include "tao/tao_domain.h"
 #include "tao/util.h"
 
+using std::ofstream;
+
+using keyczar::Signer;
+using keyczar::Verifier;
+
 using cloudproxy::CloudUserManager;
-using cloudproxy::CreateUserECDSAKey;
 using cloudproxy::SignedSpeaksFor;
 using cloudproxy::SpeaksFor;
-using keyczar::Keyczar;
-using std::ofstream;
-using tao::CreateTempPubKey;
+using tao::CreateTempWhitelistDomain;
+using tao::GenerateSigningKey;
 using tao::KeyczarPublicKey;
 using tao::ScopedTempDir;
+using tao::SerializePublicKey;
 using tao::SignData;
+using tao::TaoDomain;
 
 class CloudUserManagerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(CreateTempPubKey(&temp_dir_, &policy_key_))
-        << "Could not create a policy key";
+    ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir_, &admin_));
 
     // Create a user and set up the SignedSpeaksFor for this user.
     string username = "tmroeder";
-    scoped_ptr<Keyczar> tmroeder_key;
+    scoped_ptr<Signer> tmroeder_key;
     tmroeder_key_path_ = *temp_dir_ + string("/") + username;
     ASSERT_EQ(mkdir(tmroeder_key_path_.c_str(), 0700), 0);
     SpeaksFor sf;
     sf.set_subject(username);
     // For these simple tests, we use the username as the password. Very secure.
-    EXPECT_TRUE(CreateUserECDSAKey(tmroeder_key_path_, username, username,
-                                   &tmroeder_key));
-
-    KeyczarPublicKey kpk;
-    EXPECT_TRUE(SerializePublicKey(*tmroeder_key, &kpk));
-    string *sf_key = sf.mutable_pub_key();
-    EXPECT_TRUE(kpk.SerializeToString(sf_key));
-    tmroeder_serialized_key_ = *sf_key;
+    EXPECT_TRUE(
+        GenerateSigningKey(tmroeder_key_path_, "" /* do not save private key */,
+                           username, username, &tmroeder_key));
+    tmroeder_serialized_key_ = SerializePublicKey(*tmroeder_key);
+    sf.set_pub_key(tmroeder_serialized_key_);
 
     string *sf_serialized = ssf.mutable_serialized_speaks_for();
     EXPECT_TRUE(sf.SerializeToString(sf_serialized));
 
     string *sf_sig = ssf.mutable_signature();
-    EXPECT_TRUE(SignData(*sf_serialized,
-                         CloudUserManager::SpeaksForSigningContext, sf_sig,
-                         policy_key_.get()));
+    EXPECT_TRUE(
+        SignData(*sf_serialized, CloudUserManager::SpeaksForSigningContext,
+                 sf_sig, admin_->GetPolicySigner()));
 
     tmroeder_ssf_path_ = *temp_dir_ + string("/tmroeder_ssf");
     ofstream ssf_file(tmroeder_ssf_path_.c_str());
@@ -77,28 +79,25 @@ class CloudUserManagerTest : public ::testing::Test {
 
     // Create a second user and set up the SignedSpeaksFor for this user.
     string username2 = "jlm";
-    scoped_ptr<Keyczar> jlm_key;
+    scoped_ptr<Signer> jlm_key;
     jlm_key_path_ = *temp_dir_ + string("/") + username2;
     ASSERT_EQ(mkdir(jlm_key_path_.c_str(), 0700), 0);
     SpeaksFor sf2;
     sf2.set_subject(username2);
     // For these simple tests, we use the username as the password. Very secure.
-    EXPECT_TRUE(CreateUserECDSAKey(jlm_key_path_, username2, username2,
-                                   &jlm_key));
-
-    KeyczarPublicKey kpk2;
-    EXPECT_TRUE(SerializePublicKey(*jlm_key, &kpk2));
-    string *sf_key2 = sf2.mutable_pub_key();
-    EXPECT_TRUE(kpk2.SerializeToString(sf_key2));
-    jlm_serialized_key_ = *sf_key2;
+    EXPECT_TRUE(
+        GenerateSigningKey(jlm_key_path_, "" /* do not save private key */,
+                           username2, username2, &jlm_key));
+    jlm_serialized_key_ = SerializePublicKey(*jlm_key);
+    sf2.set_pub_key(jlm_serialized_key_);
 
     string *sf_serialized2 = ssf2.mutable_serialized_speaks_for();
     EXPECT_TRUE(sf2.SerializeToString(sf_serialized2));
 
     string *sf_sig2 = ssf2.mutable_signature();
-    EXPECT_TRUE(SignData(*sf_serialized2,
-                         CloudUserManager::SpeaksForSigningContext, sf_sig2,
-                         policy_key_.get()));
+    EXPECT_TRUE(
+        SignData(*sf_serialized2, CloudUserManager::SpeaksForSigningContext,
+                 sf_sig2, admin_->GetPolicySigner()));
 
     jlm_ssf_path_ = *temp_dir_ + string("/jlm_ssf");
     ofstream ssf_file2(jlm_ssf_path_.c_str());
@@ -108,7 +107,7 @@ class CloudUserManagerTest : public ::testing::Test {
   }
 
   ScopedTempDir temp_dir_;
-  scoped_ptr<Keyczar> policy_key_;
+  scoped_ptr<TaoDomain> admin_;
   CloudUserManager manager_;
   SignedSpeaksFor ssf;
   SignedSpeaksFor ssf2;
@@ -123,7 +122,7 @@ class CloudUserManagerTest : public ::testing::Test {
 TEST_F(CloudUserManagerTest, UserKeyTest) {
   string username("tmroeder");
   EXPECT_FALSE(manager_.HasKey(username));
-  Keyczar *k = nullptr;
+  Verifier *k = nullptr;
   EXPECT_FALSE(manager_.GetKey(username, &k));
   EXPECT_TRUE(manager_.AddSigningKey(username, tmroeder_key_path_, username));
   EXPECT_TRUE(manager_.HasKey(username));
@@ -139,15 +138,15 @@ TEST_F(CloudUserManagerTest, SerializedKeyTest) {
   string username("tmroeder");
   EXPECT_TRUE(manager_.AddKey(username, tmroeder_serialized_key_));
   EXPECT_TRUE(manager_.HasKey(username));
-  Keyczar *k = nullptr;
+  Verifier *k = nullptr;
   EXPECT_TRUE(manager_.GetKey(username, &k));
 }
 
 TEST_F(CloudUserManagerTest, SignedSpeaksForTest) {
   string username("tmroeder");
-  EXPECT_TRUE(manager_.AddKey(ssf, policy_key_.get()));
+  EXPECT_TRUE(manager_.AddKey(ssf, admin_->GetPolicyVerifier()));
   EXPECT_TRUE(manager_.HasKey(username));
-  Keyczar *k = nullptr;
+  Verifier *k = nullptr;
   EXPECT_TRUE(manager_.GetKey(username, &k));
 }
 

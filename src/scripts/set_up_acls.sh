@@ -27,6 +27,7 @@ cd $TEST
 cat $SAMPLE_ACLS |
   ${BUILD_DIR}/protoc -I${ROOT}/src/cloudproxy --encode=cloudproxy.ACL \
     ${ROOT}/src/cloudproxy/cloudproxy.proto > acls
-./sign_acls --pass $KEYCZAR_PASS
+${BUILD_DIR}/sign_acls --policy_pass ${KEYCZAR_PASS} \
+	--acl_file acls --acl_sig_file acls_sig
 
 

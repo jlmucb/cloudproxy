@@ -26,15 +26,15 @@
 #include <sstream>
 
 #include <glog/logging.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_client.h"
-#include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloud_server_thread_data.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
 #include "tao/attestation.pb.h"
 #include "tao/tao_auth.h"
@@ -44,55 +44,77 @@
 using std::lock_guard;
 using std::stringstream;
 
-using keyczar::base::ScopedSafeString;
 using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
+using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
+using tao::GenerateSigningKey;
+using tao::LoadSigningKey;
 using tao::OpenTCPSocket;
 using tao::ScopedFd;
+using tao::SerializeX509;
 using tao::TaoChildChannel;
+using tao::TaoDomain;
 using tao::VerifySignature;
-using tao::WhitelistAuth;
 
 namespace cloudproxy {
 
-CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
-                         const string &secret,
-                         const string &public_policy_keyczar,
-                         const string &public_policy_pem,
+CloudServer::CloudServer(const string &server_config_path, const string &secret,
                          const string &acl_location, const string &host,
-                         const string &port, tao::TaoAuth *auth_manager)
-    : public_policy_key_(
-          keyczar::Verifier::Read(public_policy_keyczar.c_str())),
+                         const string &port, TaoDomain *admin)
+    : admin_(admin),
       rand_(keyczar::CryptoFactory::Rand()),
       host_(host),
       port_(port),
-      context_(SSL_CTX_new(TLSv1_2_server_method())),
       auth_(),
       users_(new CloudUserManager()),
-      objects_(),
-      auth_manager_(auth_manager) {
+      objects_() {
 
-  // set up the policy key to verify bytes, not strings
-  public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
-  auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
+  auth_.reset(new CloudAuth(acl_location, admin_->GetPolicyVerifier()));
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
       << "Could not encode the secret as a Base64W string";
 
-  // check to see if the public/private keys exist. If not, create them
-  FilePath fp(tls_cert);
-  if (!PathExists(fp)) {
-    CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
-                         "server"))
-        << "Could not create new keys for OpenSSL for the client";
+  FilePath fp(server_config_path);
+  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
+  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
+  FilePath tls_key_path = fp.Append(tao::keys::SignPrivateKeyPKCS8Suffix);
+  FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
+
+  // Check to see if the keys and cert exist. If not, create them.
+
+  bool new_key = !PathExists(priv_key_path);
+  bool new_cert = new_key || !PathExists(tls_cert_path);
+
+  scoped_ptr<keyczar::Signer> key;
+  if (new_key) {
+    CHECK(GenerateSigningKey(priv_key_path.value(), pub_key_path.value(),
+                             "cloud_server_key", *encoded_secret, &key))
+        << "Could not create new SSL key for the server";
+  } else {
+    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &key))
+        << "Could not load SSL key for the server";
   }
 
+  if (new_cert) {
+    // TODO(kwalsh) x509 name details should come from elsewhere
+    CHECK(tao::CreateSelfSignedX509(
+        key.get(), tls_key_path.value(), *encoded_secret, "US", "Washington",
+        "Google", "cloudserver", tls_cert_path.value()));
+  }
+
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  // This needs to be done as close to SSL_CTX_new as possible.
+  OpenSSL_add_all_algorithms();
+  context_.reset(SSL_CTX_new(TLSv1_2_server_method()));
+
   // set up the SSL context and SSLs for getting client connections
-  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
-                    *encoded_secret)) << "Could not set up TLS";
+  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), tls_key_path.value(),
+                    *encoded_secret)) << "Could not set up server TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 }
@@ -110,7 +132,7 @@ bool CloudServer::Listen(const TaoChildChannel *quote_tao,
   }
 
   while (true) {
-    int accept_sock = accept(*sock, NULL, NULL);
+    int accept_sock = accept(*sock, nullptr, nullptr);
     if (accept_sock == -1) {
       PLOG(ERROR) << "Could not accept a connection on the socket";
       return false;
@@ -143,7 +165,7 @@ void CloudServer::HandleConnection(int accept_sock, const TaoChildChannel *t) {
   // will be deleted there. Putting this cert in a ScopedX509Ctx leads to a
   // double-free error.
   X509 *self_cert = SSL_get_certificate(ssl.get());
-  ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl.get()));
+  tao::ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl.get()));
   if (peer_cert.get() == nullptr) {
     LOG(ERROR) << "No X.509 certificate received from the client";
     return;
@@ -394,21 +416,20 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
         return false;
       }
 
-      if (!users_->AddKey(response.binding(), public_policy_key_.get())) {
+      if (!users_->AddKey(response.binding(), admin_->GetPolicyVerifier())) {
         LOG(ERROR) << "Could not add the binding from the response";
         reason->assign("Invalid binding");
         return false;
       }
     }
 
-    keyczar::Keyczar *user_key = nullptr;
+    keyczar::Verifier *user_key = nullptr;
     CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
 
     // check the signature on the serialized_challenge
     if (!VerifySignature(response.serialized_chall(),
                          CloudClient::ChallengeSigningContext,
-                         response.signature(),
-                         user_key)) {
+                         response.signature(), user_key)) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");
       return false;
@@ -425,7 +446,6 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
 
 bool CloudServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
                                bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   // note that CREATE fails if the object already exists
@@ -443,7 +463,6 @@ bool CloudServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
 
 bool CloudServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
                                 bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   auto object_it = objects_.find(action.object());
@@ -460,7 +479,6 @@ bool CloudServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
 
 bool CloudServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
                               bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
@@ -476,7 +494,6 @@ bool CloudServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
 
 bool CloudServer::HandleRead(const Action &action, SSL *ssl, string *reason,
                              bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
@@ -499,7 +516,7 @@ bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
   {
     lock_guard<mutex> l(tao_m_);
     string data;
-    if (!auth_manager_->VerifyAttestation(attestation, &data)) {
+    if (!admin_->VerifyAttestation(attestation, &data)) {
       LOG(ERROR) << "The Attestation did not pass Tao verification";
       return false;
     }

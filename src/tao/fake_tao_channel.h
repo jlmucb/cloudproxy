@@ -21,9 +21,14 @@
 #ifndef TAO_FAKE_TAO_CHANNEL_H_
 #define TAO_FAKE_TAO_CHANNEL_H_
 
+#include <string>
+
+#include <glog/logging.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_channel.h"
+
+using std::string;
 
 namespace tao {
 /// A TaoChannel that doesn't actually do any communication.
@@ -59,8 +64,9 @@ class FakeTaoChannel : public TaoChannel {
     return false;
   }
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(FakeTaoChannel);
 };
-}
+}  // namespace tao
 
 #endif  // TAO_FAKE_TAO_CHANNEL_H_

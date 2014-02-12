@@ -17,82 +17,74 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef TAO_WHITELIST_AUTH_H_
 #define TAO_WHITELIST_AUTH_H_
 
-#include <map>
-#include <set>
+#include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-#include <keyczar/base/scoped_ptr.h>
+#include <keyczar/base/values.h>
 
 #include "tao/attestation.pb.h"
-#include "tao/tao_auth.h"
+#include "tao/hosted_programs.pb.h"
+#include "tao/tao_domain.h"
 
-using std::map;
-using std::set;
-
-namespace keyczar {
-
-class Keyczar;
-
-}  // namespace keyczar
+using std::string;
 
 namespace tao {
 /// An authorization verifier that uses a signed whitelist to map hosted program
 /// names to hashes. The whitelist is signed by the policy key. This allows
 /// hosted programs to communicate without talking to tcca. This is also used by
 /// tcca itself to decide whether to sign a request or not.
-class WhitelistAuth : public TaoAuth {
+class WhitelistAuth : public TaoDomain {
  public:
-  /// Store information about the whitelist and the public key, but don't
-  /// evaluate it yet.
-  /// @param whitelist_path The path to the whitelist to use.
-  /// @param policy_public_key The path to the policy public key.
-  WhitelistAuth(const string &whitelist_path, const string &policy_public_key)
-      : whitelist_path_(whitelist_path),
-        policy_public_key_(policy_public_key),
-        policy_key_(NULL),
-        whitelist_(),
-        hash_whitelist_() {}
+  /// Name strings for name:value pairs in JSON config.
+  constexpr static auto JSONSignedWhitelistPath = "signed_whitelist_path";
+
+  WhitelistAuth(const string &path, DictionaryValue *value,
+                const string &password)
+      : TaoDomain(path, value, password) {}
   virtual ~WhitelistAuth() {}
 
-  /// Evaluate the information provided in the constructor: load the public
-  /// policy key, check the signature on the whitelist, and import it into a
-  /// local data store.
-  virtual bool Init();
-
   // The following methods have the same semantics as in TaoAuth.
-  virtual bool IsAuthorized(const string &program_hash) const;
-  virtual bool IsAuthorized(const string &program_name,
-                            const string &program_hash) const;
+  virtual bool IsAuthorized(const string &hash, const string &alg,
+                            const string &name) const;
+  virtual bool IsAuthorized(const string &hash, const string &alg,
+                            string *name) const;
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
+  virtual bool Authorize(const string &hash, const string &alg,
+                         const string &name);
+
+  /// Get a count of how many whitelist entries there are.
+  int WhitelistCount() const;
+
+  /// Get information about the i^th whitelist entry.
+  bool WhitelistEntry(int i, string *hash, string *alg, string *name) const;
 
   constexpr static auto WhitelistSigningContext =
       "tao::SignedWhitelist Version 1";
+
+  constexpr static auto AuthType = "whitelist";
+
+ protected:
+  /// Parse all configuration parameters from the configuration file and load
+  /// keys and other state. This loads and checks the signature on the
+  /// whitelist, then imports it into a local data store.
+  virtual bool ParseConfig();
+
+  /// Save all configuration parameters to the configuration file and save all
+  /// other state. This signs and saves the whitelist. This fails if the
+  /// TaoDomain is locked.
+  virtual bool SaveConfig() const;
+
  private:
-  string whitelist_path_;
-
-  // The path to the public policy key.
-  string policy_public_key_;
-
-  // The in-memory representation of the public policy key.
-  scoped_ptr<keyczar::Keyczar> policy_key_;
-
-  // A representation of the whitelist: it maps program names to hashes.
-  map<string, string> whitelist_;
-
-  // All the hashes that are values in the whitelist.
-  set<string> hash_whitelist_;
+  // The policy whitelist, to be verified against the policy public key
+  Whitelist whitelist_;
 
   /// Checks to see if the attestation has expired. If it's not a ROOT
   /// attestation, then it checks to see if the hash is in the whitelist.
   /// @param attestation The attestation to verify.
   bool CheckAuthorization(const Attestation &attestation) const;
-
-  /// Checks a signature made by the public policy key
-  bool CheckRootSignature(const Attestation &a) const;
 
   /// Checks a signature made by an intermediate Tao
   bool CheckIntermediateSignature(const Attestation &a) const;

@@ -27,7 +27,7 @@
 
 namespace cloudproxy {
 
-CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
+CloudAuth::CloudAuth(const string &acl_path, const keyczar::Verifier *key)
     : permissions_(), admins_() {
   string acl;
 
@@ -66,7 +66,7 @@ bool CloudAuth::FindPermissions(const string &subject, const string &object,
   // this is safe in single-threaded code because references to map objects are
   // guaranteed to remain unchanged unless the given item is deleted
   *perms = &object_it->second;
-  ;
+
   return true;
 }
 

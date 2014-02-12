@@ -40,6 +40,7 @@ using std::stringstream;
 
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
+using tao::InitializeApp;
 using tao::LinuxTao;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
@@ -67,10 +68,7 @@ DEFINE_string(fake_keys, "./fake_tpm", "Directory containing signing_key and "
                                        "sealing_key to use with the fake tao");
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::InstallFailureSignalHandler();
-  google::InitGoogleLogging(argv[0]);
-  tao::InitializeOpenSSL();
+  InitializeApp(&argc, &argv, true);
   tao::LetChildProcsDie();
 
   scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));

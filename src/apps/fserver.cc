@@ -38,6 +38,7 @@ using std::string;
 
 using keyczar::base::Base64WDecode;
 
+using tao::InitializeApp;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;
@@ -56,14 +57,7 @@ DEFINE_string(address, "localhost", "The address to listen on");
 DEFINE_string(port, "11235", "The port to listen on");
 
 int main(int argc, char **argv) {
-  // make sure protocol buffers is using the right version
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  google::ParseCommandLineFlags(&argc, &argv, true);
-
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  tao::InitializeOpenSSL();
+  InitializeApp(&argc, &argv, true);
 
   // The convention is that the last argument in a process-based hosted program
   // is the child channel params encoded as Base64W.

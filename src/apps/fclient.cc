@@ -41,6 +41,7 @@ using keyczar::base::Base64WDecode;
 
 using cloudproxy::FileClient;
 using cloudproxy::ScopedSSL;
+using tao::InitializeApp;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;
@@ -55,13 +56,7 @@ DEFINE_string(address, "localhost", "The address of the local server");
 DEFINE_string(port, "11235", "The server port to connect to");
 
 int main(int argc, char** argv) {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  google::ParseCommandLineFlags(&argc, &argv, false);
-
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  tao::InitializeOpenSSL();
+  InitializeApp(&argc, &argv, false);
 
   // the last argument should be the parameters for channel establishment
   if (argc < 2) {

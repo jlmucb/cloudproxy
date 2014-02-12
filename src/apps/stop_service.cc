@@ -26,21 +26,14 @@
 #include "tao/util.h"
 
 using tao::ConnectToUnixDomainSocket;
-using tao::InitializeOpenSSL;
+using tao::InitializeApp;
 using tao::ScopedFd;
 
 DEFINE_string(socket, "/tmp/.linux_tao_stop_socket",
               "The unix domain socket to use to stop the LinuxTaoService");
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::InstallFailureSignalHandler();
-
-  google::InitGoogleLogging(argv[0]);
-  if (!InitializeOpenSSL()) {
-    LOG(ERROR) << "Could not initialize the OpenSSL library";
-    return 1;
-  }
+  InitializeApp(&argc, &argv, true);
 
   ScopedFd sock(new int(-1));
   CHECK(ConnectToUnixDomainSocket(FLAGS_socket, sock.get()))

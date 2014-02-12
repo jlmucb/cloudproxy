@@ -24,11 +24,7 @@
 #include "tao/util.h"
 
 GTEST_API_ int main(int argc, char **argv) {
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  google::InstallFailureSignalHandler();
-  google::ParseCommandLineFlags(&argc, &argv, true);
   testing::InitGoogleTest(&argc, argv);
-  tao::InitializeOpenSSL();
+  tao::InitializeApp(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

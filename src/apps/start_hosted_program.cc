@@ -34,7 +34,7 @@
 using std::cout;
 using std::endl;
 using tao::ConnectToUnixDomainSocket;
-using tao::InitializeOpenSSL;
+using tao::InitializeApp;
 using tao::OpenUnixDomainSocket;
 using tao::ReceiveMessageFrom;
 using tao::ScopedFd;
@@ -60,15 +60,7 @@ DEFINE_string(disk, "/var/lib/libvirt/images/cloudproxy-server.img",
 //
 // start_hosted_program --socket "/my/sock/path" --program "server" -- <args>
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::InstallFailureSignalHandler();
-
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  if (!InitializeOpenSSL()) {
-    LOG(ERROR) << "Could not initialize the OpenSSL library";
-    return 1;
-  }
+  InitializeApp(&argc, &argv, true);
 
   TaoChannelRPC rpc;
   rpc.set_rpc(tao::START_HOSTED_PROGRAM);

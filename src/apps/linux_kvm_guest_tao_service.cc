@@ -44,6 +44,7 @@ using std::stringstream;
 
 using keyczar::base::Base64WDecode;
 
+using tao::InitializeApp;
 using tao::KvmUnixTaoChildChannel;
 using tao::LinuxTao;
 using tao::PipeTaoChannel;
@@ -60,12 +61,7 @@ DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
               "File socket for stopping the server");
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::InstallFailureSignalHandler();
-
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  tao::InitializeOpenSSL();
+  InitializeApp(&argc, &argv, true);
   tao::LetChildProcsDie();
 
   // In the guest, the params are the last element in /proc/cmdline, as

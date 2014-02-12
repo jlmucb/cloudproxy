@@ -31,7 +31,7 @@
 #include "tao/util.h"
 
 using tao::Attestation;
-using tao::InitializeOpenSSL;
+using tao::InitializeApp;
 using tao::OpenTCPSocket;
 using tao::ReceiveMessage;
 using tao::ScopedFd;
@@ -50,22 +50,13 @@ void term_handler(int sig) {
 }
 
 int main(int argc, char **argv) {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  google::InstallFailureSignalHandler();
+  InitializeApp(&argc, &argv, true);
 
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = term_handler;
   if (sigaction(SIGTERM, &act, nullptr) < 0) {
     PLOG(ERROR) << "Could not set up a handler to catch SIGERM";
-    return 1;
-  }
-
-  if (!InitializeOpenSSL()) {
-    LOG(ERROR) << "Could not initialize the OpenSSL library";
     return 1;
   }
 

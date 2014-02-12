@@ -128,9 +128,6 @@ typedef unsigned short UINT16;
 
 TEST_F(WhitelistAuthTest, TPMQuoteTest) {
   // Create a fake TPM 1.2 attestation.
-
-  tao::InitializeOpenSSL();
-
   // Create a fresh OpenSSL RSA key that can be used to sign the quote.
   ScopedRsa rsa(RSA_new());
   BIGNUM *e = BN_new();

@@ -35,6 +35,7 @@
 #include <vector>
 
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/json_reader.h>
@@ -247,6 +248,16 @@ bool InitializeOpenSSL() {
   }
   CRYPTO_set_locking_callback(locking_function);
   return true;
+}
+
+bool InitializeApp(int *argc, char ***argv, bool remove_args)
+{
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+  google::ParseCommandLineFlags(argc, argv, remove_args);
+  // FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging((*argv)[0]);
+  google::InstallFailureSignalHandler();
+  return InitializeOpenSSL();
 }
 
 bool OpenTCPSocket(const string &host, const string &port, int *sock) {

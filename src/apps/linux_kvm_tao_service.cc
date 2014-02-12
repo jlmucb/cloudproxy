@@ -40,6 +40,7 @@ using std::ifstream;
 using std::string;
 using std::stringstream;
 
+using tao::InitializeApp;
 using tao::KvmUnixTaoChannel;
 using tao::KvmVmFactory;
 using tao::LinuxTao;
@@ -57,12 +58,7 @@ DEFINE_string(aik_attestation, "tpm/aik.attest",
               "The attestation to the AIK by the policy key");
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::InstallFailureSignalHandler();
-
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  tao::InitializeOpenSSL();
+  InitializeApp(&argc, &argv, true);
 
   ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
   if (!aik_blob_file) {

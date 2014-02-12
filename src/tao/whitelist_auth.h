@@ -53,6 +53,8 @@ class WhitelistAuth : public TaoDomain {
   virtual bool VerifyAttestation(const string &attestation, string *data) const;
   virtual bool Authorize(const string &hash, const string &alg,
                          const string &name);
+  virtual bool Forbid(const string &name);
+  virtual string DebugString();
 
   /// Get a count of how many whitelist entries there are.
   int WhitelistCount() const;

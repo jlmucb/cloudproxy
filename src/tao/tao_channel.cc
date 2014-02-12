@@ -25,7 +25,7 @@
 
 namespace tao {
 
-bool TaoChannel::HandleRPC(Tao &tao, const string &hash,
+bool TaoChannel::HandleRPC(Tao &tao, const string &hash,  // NOLINT
                            const TaoChannelRPC &rpc) const {
   // switch on the type of RPC and pass it to the tao function
   TaoChannelResponse resp;

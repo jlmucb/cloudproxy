@@ -44,9 +44,7 @@ using tao::Keys;
 using tao::ScopedRsa;
 using tao::ScopedTempDir;
 using tao::SerializePublicKey;
-using tao::SignData;
 using tao::Statement;
-using tao::Tao;
 using tao::TaoAuth;
 using tao::TaoDomain;
 
@@ -122,9 +120,9 @@ TEST_F(WhitelistAuthTest, VerifyRootTest) {
 }
 
 // Some OpenSSL types for convenience
-typedef unsigned char BYTE;
-typedef unsigned int UINT32;
-typedef unsigned short UINT16;
+typedef uint8 BYTE;
+typedef uint32 UINT32;
+typedef uint16 UINT16;
 
 TEST_F(WhitelistAuthTest, TPMQuoteTest) {
   // Create a fake TPM 1.2 attestation.

@@ -16,8 +16,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "tao/pipe_tao_child_channel.h"
+
+#include <string>
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
@@ -30,7 +31,6 @@ PipeTaoChildChannel::PipeTaoChildChannel(const string &params)
     : UnixFdTaoChildChannel(), params_(params) {}
 
 bool PipeTaoChildChannel::Init() {
-
   // Parse the params into the file descriptors for reading and writing.
   TaoChildChannelParams tccp;
   if (!tccp.ParseFromString(params_)) {

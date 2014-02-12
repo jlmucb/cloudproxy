@@ -52,9 +52,9 @@ bool RootAuth::VerifyAttestation(const string &attestation,
   time(&cur_time);
   // TODO(kwalsh) check notbefore as well
   // if (cur_time < s.time()) {
-  //  LOG(ERROR) << "Signature is not yet valid";
-  //  return false;
-  //}
+  //   LOG(ERROR) << "Signature is not yet valid";
+  //   return false;
+  // }
   if (cur_time > s.expiration()) {
     LOG(ERROR) << "Signature is no longer valid";
     return false;

@@ -59,41 +59,17 @@
 #include "tao/signature.pb.h"
 #include "tao/tao_domain.h"
 
-using std::ios;
 using std::mutex;
-using std::ofstream;
 using std::shared_ptr;
 using std::vector;
 
-using keyczar::Crypter;
 using keyczar::CryptoFactory;
-using keyczar::Key;
-using keyczar::KeyPurpose;
-using keyczar::KeyStatus;
-using keyczar::KeyType;
-using keyczar::Keyczar;
-using keyczar::Keyset;
-using keyczar::KeysetMetadata;
-using keyczar::MessageDigestImpl;
 using keyczar::Signer;
-using keyczar::Verifier;
-using keyczar::base::Base64WDecode;
 using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
-using keyczar::base::JSONReader;
-using keyczar::base::JSONWriter;
 using keyczar::base::PathExists;
 using keyczar::base::ReadFileToString;
-using keyczar::base::ScopedSafeString;
 using keyczar::base::WriteStringToFile;
-using keyczar::rw::KeysetEncryptedJSONFileReader;
-using keyczar::rw::KeysetEncryptedJSONFileWriter;
-using keyczar::rw::KeysetJSONFileReader;
-using keyczar::rw::KeysetJSONFileWriter;
-using keyczar::rw::KeysetPBEJSONFileReader;
-using keyczar::rw::KeysetPBEJSONFileWriter;
-using keyczar::rw::KeysetReader;
-using keyczar::rw::KeysetWriter;
 
 namespace tao {
 
@@ -250,11 +226,14 @@ bool InitializeOpenSSL() {
   return true;
 }
 
-bool InitializeApp(int *argc, char ***argv, bool remove_args)
-{
+bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  google::ParseCommandLineFlags(argc, argv, remove_args);
+  // glog bug workaround: stderrthreshold default should come from env
+  char *s = getenv("GLOG_stderrthreshold");
+  if (s && '0' <= s[0] && s[0] <= '9')
+    FLAGS_stderrthreshold = atoi(s);
   // FLAGS_alsologtostderr = true;
+  google::ParseCommandLineFlags(argc, argv, remove_args);
   google::InitGoogleLogging((*argv)[0]);
   google::InstallFailureSignalHandler();
   return InitializeOpenSSL();
@@ -620,7 +599,6 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-
 bool GenerateAttestation(const Signer *signer, const string &cert,
                          Statement *statement, Attestation *attestation) {
   if (statement == nullptr) {
@@ -731,7 +709,7 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
 
   int connect_err = connect(*sock, addrs->ai_addr, addrs->ai_addrlen);
   if (connect_err == -1) {
-    PLOG(ERROR) << "Could not connect to " << host << ":" << port ;
+    PLOG(ERROR) << "Could not connect to TCP server at " << host << ":" << port;
     freeaddrinfo(addrs);
     return false;
   }

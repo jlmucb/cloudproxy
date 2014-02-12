@@ -24,6 +24,7 @@
 
 #include <map>
 #include <mutex>
+#include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
@@ -65,6 +66,6 @@ class KvmUnixTaoChannel : public UnixFdTaoChannel {
  private:
   DISALLOW_COPY_AND_ASSIGN(KvmUnixTaoChannel);
 };
-}
+}  // namespace tao
 
 #endif  // TAO_KVM_UNIX_TAO_CHANNEL_H_

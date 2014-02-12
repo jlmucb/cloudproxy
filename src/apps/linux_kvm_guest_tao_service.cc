@@ -17,13 +17,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -38,14 +37,12 @@
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using std::ifstream;
 using std::string;
-using std::stringstream;
 
 using keyczar::base::Base64WDecode;
+using keyczar::base::ReadFileToString;
 
 using tao::InitializeApp;
-using tao::KvmUnixTaoChildChannel;
 using tao::LinuxTao;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
@@ -55,9 +52,9 @@ using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(keys_path, "linux_tao_keys", "Location of linux tao keys");
-DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
+DEFINE_string(program_socket, "_linux_tao_socket",
               "File socket for incoming program creation requests");
-DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
+DEFINE_string(stop_socket, "_linux_tao_stop_socket",
               "File socket for stopping the server");
 
 int main(int argc, char **argv) {
@@ -66,17 +63,13 @@ int main(int argc, char **argv) {
 
   // In the guest, the params are the last element in /proc/cmdline, as
   // delimited by space.
-  ifstream proc_cmd("/proc/cmdline");
-  if (!proc_cmd) {
+  string cmdline;
+  if (!ReadFileToString("/proc/cmdline", &cmdline)) {
     LOG(ERROR) << "Could not open /proc/cmdline to get the command line";
     return 1;
   }
 
-  stringstream proc_stream;
-  proc_stream << proc_cmd.rdbuf();
-
   // Split on space and take the last element.
-  string cmdline(proc_stream.str());
   size_t space_index = cmdline.find_last_of(' ');
   if (space_index == string::npos) {
     LOG(ERROR) << "Could not find any characters in the kernel boot params";

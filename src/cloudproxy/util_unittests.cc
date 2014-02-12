@@ -18,13 +18,9 @@
 // limitations under the License.
 #include "tao/util.h"
 
-#include <fstream>
-#include <sstream>
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_writer.h>
+#include <keyczar/base/file_util.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
@@ -34,27 +30,23 @@
 #include "cloudproxy/util.h"
 #include "tao/tao_domain.h"
 
-using std::ifstream;
-using std::ofstream;
-using std::stringstream;
+using keyczar::base::WriteStringToFile;
 
 using cloudproxy::ACL;
 using cloudproxy::Action;
 using cloudproxy::CloudAuth;
 using cloudproxy::ExtractACL;
 using cloudproxy::ScopedSSLCtx;
-using cloudproxy::SetUpSSLServerCtx;
 using cloudproxy::SetUpSSLClientCtx;
+using cloudproxy::SetUpSSLServerCtx;
 using cloudproxy::SignedACL;
 using tao::CreateSelfSignedX509;
 using tao::CreateTempDir;
 using tao::CreateTempWhitelistDomain;
-using tao::ScopedFile;
+using tao::Keys;
 using tao::ScopedTempDir;
-using tao::SerializeX509;
 using tao::SignData;
 using tao::TaoDomain;
-using tao::Keys;
 
 TEST(CloudProxyUtilTest, X509SSLTest) {
   ScopedTempDir temp_dir;
@@ -96,13 +88,10 @@ TEST(CloudProxyUtilTest, ExtractACLTest) {
       << "Could not sign the serialized ACL with the policy key";
 
   string signed_acl_path = *temp_dir + string("/signed_acl");
-  ofstream acl_file(signed_acl_path.c_str(), ofstream::out);
-  ASSERT_TRUE(acl_file) << "Could not open " << signed_acl_path;
-
-  EXPECT_TRUE(sacl.SerializeToOstream(&acl_file))
-      << "Could not write the signed acl to a file";
-
-  acl_file.close();
+  string serialized_acl;
+  EXPECT_TRUE(sacl.SerializeToString(&serialized_acl))
+      << "Could not serialized the signed ACL";
+  ASSERT_TRUE(WriteStringToFile(signed_acl_path, serialized_acl));
 
   string acl_out;
   EXPECT_TRUE(

@@ -32,8 +32,6 @@
 using keyczar::base::Base64WEncode;
 
 using tao::CreateTempDir;
-using tao::FakeTao;
-using tao::FakeTaoChannel;
 using tao::KvmUnixTaoChannel;
 using tao::KvmVmFactory;
 using tao::ScopedTempDir;

@@ -17,30 +17,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/file_util.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using std::ofstream;
-
-using keyczar::Signer;
 using keyczar::Verifier;
 using keyczar::base::ReadFileToString;
 
 using cloudproxy::CloudUserManager;
 using cloudproxy::SignedSpeaksFor;
 using tao::CreateTempWhitelistDomain;
+using tao::Keys;
 using tao::ScopedTempDir;
 using tao::TaoDomain;
-using tao::Keys;
 
 class CloudUserManagerTest : public ::testing::Test {
  protected:
@@ -48,68 +43,66 @@ class CloudUserManagerTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir_, &admin_));
 
     // Create two users and matching delegations.
-    scoped_ptr<Keys> key;
-    string u; 
+    string u;
     string users_path = *temp_dir_ + "/users";
 
-    u = "tmroeder";
+    u = "tmr";
     ASSERT_TRUE(CloudUserManager::MakeNewUser(
-        users_path, u, u, *admin_->GetPolicySigner(), &key));
-    tmroeder_key_path_ = key->SigningPrivateKeyPath();
-    string tmroeder_ssf_path = key->GetPath(CloudUserManager::UserDelegationSuffix);
-    ASSERT_TRUE(key->SerializePublicKey(&tmroeder_serialized_key_));
+        users_path, u, u, *admin_->GetPolicySigner(), &tmr_key_));
+    string tmr_ssf_path =
+        tmr_key_->GetPath(CloudUserManager::UserDelegationSuffix);
+    ASSERT_TRUE(tmr_key_->SerializePublicKey(&tmr_serialized_key_));
     string serialized_ssf;
-    ASSERT_TRUE(ReadFileToString(tmroeder_ssf_path, &serialized_ssf));
-    ASSERT_TRUE(tmroeder_ssf_.ParseFromString(serialized_ssf));
+    ASSERT_TRUE(ReadFileToString(tmr_ssf_path, &serialized_ssf));
+    ASSERT_TRUE(tmr_ssf_.ParseFromString(serialized_ssf));
 
     u = "jlm";
     ASSERT_TRUE(CloudUserManager::MakeNewUser(
-        users_path, u, u, *admin_->GetPolicySigner(), &key));
-    jlm_key_path_ = key->SigningPrivateKeyPath();
+        users_path, u, u, *admin_->GetPolicySigner(), &jlm_key_));
   }
 
   ScopedTempDir temp_dir_;
   scoped_ptr<TaoDomain> admin_;
   CloudUserManager manager_;
-  SignedSpeaksFor tmroeder_ssf_;
-  string tmroeder_serialized_key_;
-  string tmroeder_key_path_;
-  string jlm_key_path_;
+  SignedSpeaksFor tmr_ssf_;
+  string tmr_serialized_key_;
+  scoped_ptr<Keys> tmr_key_;
+  scoped_ptr<Keys> jlm_key_;
 };
 
 TEST_F(CloudUserManagerTest, UserKeyTest) {
-  string username("tmroeder");
+  string username("tmr");
   EXPECT_FALSE(manager_.HasKey(username));
   Verifier *k = nullptr;
   EXPECT_FALSE(manager_.GetKey(username, &k));
-  EXPECT_TRUE(manager_.AddSigningKey(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(manager_.AddSigningKey(username, *tmr_key_->Signer()));
   EXPECT_TRUE(manager_.HasKey(username));
   EXPECT_TRUE(manager_.GetKey(username, &k));
 
   string username2("jlm");
   EXPECT_FALSE(manager_.HasKey(username2));
-  EXPECT_TRUE(manager_.AddSigningKey(username2, jlm_key_path_, username2));
+  EXPECT_TRUE(manager_.AddSigningKey(username2, *jlm_key_->Signer()));
   EXPECT_TRUE(manager_.HasKey(username2));
 }
 
 TEST_F(CloudUserManagerTest, SerializedKeyTest) {
-  string username("tmroeder");
-  EXPECT_TRUE(manager_.AddKey(username, tmroeder_serialized_key_));
+  string username("tmr");
+  EXPECT_TRUE(manager_.AddKey(username, tmr_serialized_key_));
   EXPECT_TRUE(manager_.HasKey(username));
   Verifier *k = nullptr;
   EXPECT_TRUE(manager_.GetKey(username, &k));
 }
 
 TEST_F(CloudUserManagerTest, SignedSpeaksForTest) {
-  string username("tmroeder");
-  EXPECT_TRUE(manager_.AddKey(tmroeder_ssf_, admin_->GetPolicyVerifier()));
+  string username("tmr");
+  EXPECT_TRUE(manager_.AddKey(tmr_ssf_, admin_->GetPolicyVerifier()));
   EXPECT_TRUE(manager_.HasKey(username));
   Verifier *k = nullptr;
   EXPECT_TRUE(manager_.GetKey(username, &k));
 }
 
 TEST_F(CloudUserManagerTest, AuthenticatedTest) {
-  string username("tmroeder");
+  string username("tmr");
   EXPECT_FALSE(manager_.IsAuthenticated(username));
   manager_.SetAuthenticated(username);
   EXPECT_TRUE(manager_.IsAuthenticated(username));

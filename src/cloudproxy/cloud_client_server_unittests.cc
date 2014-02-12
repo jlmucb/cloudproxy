@@ -18,11 +18,11 @@
 #include "cloudproxy/cloud_client.h"
 #include "cloudproxy/cloud_server.h"
 
-#include <fstream>
+#include <thread>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/keyczar.h>
+#include <keyczar/base/file_util.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloudproxy.pb.h"
@@ -36,8 +36,9 @@
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using std::ofstream;
+using std::thread;
 
+using keyczar::base::WriteStringToFile;
 
 using cloudproxy::ACL;
 using cloudproxy::Action;
@@ -105,14 +106,11 @@ class CloudClientTest : public ::testing::Test {
         << "Could not sign the serialized ACL with the policy key";
 
     string signed_acl_path = *temp_dir_ + string("/signed_acl");
-    ofstream acl_file(signed_acl_path.c_str(), ofstream::out);
-    ASSERT_TRUE(acl_file) << "Could not open " << signed_acl_path;
+    string serialized_acl;
+    EXPECT_TRUE(sacl.SerializeToString(&serialized_acl))
+        << "Could not serialized the signed ACL";
+    ASSERT_TRUE(WriteStringToFile(signed_acl_path, serialized_acl));
 
-    EXPECT_TRUE(sacl.SerializeToOstream(&acl_file))
-        << "Could not write the signed ACL to a file";
-
-    acl_file.close();
-    
     // Start a server to listen for client connections.
     cloud_server_.reset(new CloudServer(
         server_keys, signed_acl_path, server_addr, server_port,
@@ -123,25 +121,21 @@ class CloudClientTest : public ::testing::Test {
                                     true /* stop after one connection */));
 
     // Create two users and matching delegations.
-    scoped_ptr<Keys> key;
-    string u; 
+    string u;
     string users_path = *temp_dir_ + "/users";
 
     u = "tmroeder";
     ASSERT_TRUE(CloudUserManager::MakeNewUser(
-        users_path, u, u, *admin_->GetPolicySigner(), &key));
-    tmroeder_key_path_ = key->SigningPrivateKeyPath();
-    tmroeder_ssf_path_ = key->GetPath(CloudUserManager::UserDelegationSuffix);
+        users_path, u, u, *admin_->GetPolicySigner(), &tmr_key_));
+    tmr_ssf_path_ = tmr_key_->GetPath(CloudUserManager::UserDelegationSuffix);
 
     u = "jlm";
     ASSERT_TRUE(CloudUserManager::MakeNewUser(
-        users_path, u, u, *admin_->GetPolicySigner(), &key));
-    jlm_key_path_ = key->SigningPrivateKeyPath();
-    jlm_ssf_path_ = key->GetPath(CloudUserManager::UserDelegationSuffix);
+        users_path, u, u, *admin_->GetPolicySigner(), &jlm_key_));
+    jlm_ssf_path_ = jlm_key_->GetPath(CloudUserManager::UserDelegationSuffix);
 
     // Hopefully the CLoudServer thread has had enough time to Listen()
     ASSERT_TRUE(cloud_client_->Connect(server_addr, server_port, &ssl_));
-
   }
 
   virtual void TearDown() {
@@ -160,42 +154,32 @@ class CloudClientTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   scoped_ptr<TaoDomain> admin_;
   ScopedSSL ssl_;
-  string tmroeder_key_path_;
-  string tmroeder_ssf_path_;
-  string jlm_key_path_;
+  string tmr_ssf_path_;
   string jlm_ssf_path_;
+  scoped_ptr<Keys> tmr_key_;
+  scoped_ptr<Keys> jlm_key_;
 };
 
 TEST_F(CloudClientTest, UserTest) {
   string username("tmroeder");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
 }
 
 TEST_F(CloudClientTest, UserFailTest) {
-  string username("unknown user");
-  EXPECT_FALSE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
-}
-
-TEST_F(CloudClientTest, UserDirFailTest) {
-  string username("tmroeder");
-  string dir("Not the right directory");
-  EXPECT_FALSE(cloud_client_->AddUser(username, dir, username));
-}
-
-TEST_F(CloudClientTest, UserPwdFailTest) {
-  string username("tmroeder");
-  string password("Wrong password");
-  EXPECT_FALSE(cloud_client_->AddUser(username, tmroeder_key_path_, password));
+  string username("wrong user");
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
+  EXPECT_FALSE(
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
 }
 
 TEST_F(CloudClientTest, CreateTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }
 
@@ -208,9 +192,9 @@ TEST_F(CloudClientTest, UnauthFailTest) {
 TEST_F(CloudClientTest, DestroyTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
@@ -218,18 +202,18 @@ TEST_F(CloudClientTest, DestroyTest) {
 TEST_F(CloudClientTest, DestroyFailTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_FALSE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
 
 TEST_F(CloudClientTest, ReadTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
@@ -238,27 +222,27 @@ TEST_F(CloudClientTest, ReadTest) {
 TEST_F(CloudClientTest, ReadFailTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_FALSE(cloud_client_->Read(ssl_.get(), username, obj, obj));
 }
 
 TEST_F(CloudClientTest, WriteFailTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_FALSE(cloud_client_->Write(ssl_.get(), username, obj, obj));
 }
 
 TEST_F(CloudClientTest, WriteTest) {
   string username("tmroeder");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Write(ssl_.get(), username, obj, obj));
@@ -268,7 +252,7 @@ TEST_F(CloudClientTest, WriteTest) {
 TEST_F(CloudClientTest, InsufficientPrivilegeTest) {
   string username("jlm");
   string obj("test_obj");
-  EXPECT_TRUE(cloud_client_->AddUser(username, jlm_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *jlm_key_->Signer()));
   EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, jlm_ssf_path_));
   EXPECT_FALSE(cloud_client_->Create(ssl_.get(), username, obj));
 }
@@ -276,7 +260,7 @@ TEST_F(CloudClientTest, InsufficientPrivilegeTest) {
 TEST_F(CloudClientTest, SimplePrivilegeTest) {
   string username("jlm");
   string obj("/files");
-  EXPECT_TRUE(cloud_client_->AddUser(username, jlm_key_path_, username));
+  EXPECT_TRUE(cloud_client_->AddUser(username, *jlm_key_->Signer()));
   EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, jlm_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }

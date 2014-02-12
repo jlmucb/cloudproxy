@@ -37,7 +37,6 @@ using tao::ReceiveMessage;
 using tao::ScopedFd;
 using tao::SendMessage;
 using tao::Statement;
-using tao::Tao;
 using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");

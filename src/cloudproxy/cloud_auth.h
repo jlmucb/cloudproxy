@@ -34,6 +34,7 @@ using std::set;
 using std::string;
 
 namespace keyczar {
+class Signer;
 class Verifier;
 }  // namespace keyczar
 
@@ -72,6 +73,13 @@ class CloudAuth {
   /// Serialize the ACL.
   /// @param[out] data A string to fill with the serialized representation.
   virtual bool Serialize(string *data);
+
+  /// Sign an ACL file.
+  /// @param signer The policy private key used to sign the ACL.
+  /// @param acl_path The location to read the text-based ACL file.
+  /// @param acl_sig_path The locatio to write the signed ACL file.
+  static bool SignACL(const keyczar::Signer *signer, const string &acl_path,
+                      const string &acl_sig_path);
 
   constexpr static auto ACLSigningContext =
       "CloudAuth cloudproxy::SignedACL Version 1";

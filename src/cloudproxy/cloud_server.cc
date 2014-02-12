@@ -23,11 +23,9 @@
 
 #include <arpa/inet.h>
 
-#include <sstream>
+#include <thread>
 
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
 
@@ -43,11 +41,7 @@
 #include "tao/whitelist_auth.h"
 
 using std::lock_guard;
-using std::stringstream;
-
-using keyczar::base::Base64WEncode;
-using keyczar::base::PathExists;
-using keyczar::base::ScopedSafeString;
+using std::thread;
 
 using tao::Keys;
 using tao::OpenTCPSocket;
@@ -85,7 +79,7 @@ CloudServer::CloudServer(const string &server_config_path,
                                       "cloudserver"));
   }
 
-   // set up the SSL context and SSLs for getting client connections
+  // set up the SSL context and SSLs for getting client connections
   CHECK(SetUpSSLServerCtx(*keys_, &context_)) << "Could not set up server TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
@@ -212,7 +206,7 @@ bool CloudServer::SendReply(SSL *ssl, bool success, const string &reason) {
 }
 bool CloudServer::HandleMessage(const ClientMessage &message, SSL *ssl,
                                 string *reason, bool *reply, bool *close,
-                                CloudServerThreadData &cstd) {
+                                CloudServerThreadData &cstd) {  // NOLINT
   CHECK(ssl) << "null ssl";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
@@ -290,7 +284,8 @@ bool CloudServer::HandleMessage(const ClientMessage &message, SSL *ssl,
 }
 
 bool CloudServer::HandleAuth(const Auth &auth, SSL *ssl, string *reason,
-                             bool *reply, CloudServerThreadData &cstd) {
+                             bool *reply,
+                             CloudServerThreadData &cstd) {  // NOLINT
   string subject = auth.subject();
 
   // check to see if this user is already authenticated on some channel
@@ -349,7 +344,7 @@ bool CloudServer::HandleAuth(const Auth &auth, SSL *ssl, string *reason,
 
 bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
                                  string *reason, bool *reply,
-                                 CloudServerThreadData &cstd) {
+                                 CloudServerThreadData &cstd) {  // NOLINT
   // check to see if this is an outstanding challenge
   Challenge c;
   if (!c.ParseFromString(response.serialized_chall())) {
@@ -389,15 +384,23 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
         reason->assign("Invalid binding");
         return false;
       }
+
+      SpeaksFor sf;
+      sf.ParseFromString(response.binding().serialized_speaks_for());
+      VLOG(2) << "Added key for " << sf.subject();
     }
 
     keyczar::Verifier *user_key = nullptr;
-    CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
+    if (!users_->GetKey(c.subject(), &user_key)) {
+      LOG(ERROR) << "No key found for " << c.subject();
+      reason->assign("Missing binding");
+      return false;
+    }
 
     // check the signature on the serialized_challenge
     if (!VerifySignature(response.serialized_chall(),
-                               CloudClient::ChallengeSigningContext,
-                               response.signature(), user_key)) {
+                         CloudClient::ChallengeSigningContext,
+                         response.signature(), user_key)) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");
       return false;
@@ -413,7 +416,8 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
 }
 
 bool CloudServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
-                               bool *reply, CloudServerThreadData &cstd) {
+                               bool *reply,
+                               CloudServerThreadData &cstd) {  // NOLINT
   lock_guard<mutex> l(data_m_);
 
   // note that CREATE fails if the object already exists
@@ -430,7 +434,8 @@ bool CloudServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
 }
 
 bool CloudServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
-                                bool *reply, CloudServerThreadData &cstd) {
+                                bool *reply,
+                                CloudServerThreadData &cstd) {  // NOLINT
   lock_guard<mutex> l(data_m_);
 
   auto object_it = objects_.find(action.object());
@@ -446,7 +451,8 @@ bool CloudServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
 }
 
 bool CloudServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
-                              bool *reply, CloudServerThreadData &cstd) {
+                              bool *reply,
+                              CloudServerThreadData &cstd) {  // NOLINT
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
@@ -461,7 +467,8 @@ bool CloudServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
 }
 
 bool CloudServer::HandleRead(const Action &action, SSL *ssl, string *reason,
-                             bool *reply, CloudServerThreadData &cstd) {
+                             bool *reply,
+                             CloudServerThreadData &cstd) {  // NOLINT
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
@@ -477,7 +484,7 @@ bool CloudServer::HandleRead(const Action &action, SSL *ssl, string *reason,
 
 bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
                                     string *reason, bool *reply,
-                                    CloudServerThreadData &cstd) {
+                                    CloudServerThreadData &cstd) {  // NOLINT
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {

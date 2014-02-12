@@ -24,14 +24,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <fstream>
 #include <list>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
+#include <keyczar/base/file_util.h>
+#include <keyczar/base/scoped_ptr.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
@@ -44,15 +43,15 @@
 
 #include <trousers/trousers.h>
 
-using std::ifstream;
 using std::list;
 using std::string;
-using std::stringstream;
+
+using keyczar::base::ReadFileToString;
 
 #define PCR_LEN 20
 
 DEFINE_string(
-    aikblobfile, "aikblob",
+    aikblobfile, "tpm/aikblob",
     "A file containing an AIK blob that has been loaded into the TPM");
 
 int main(int argc, char **argv) {
@@ -155,12 +154,12 @@ int main(int argc, char **argv) {
   CHECK_EQ(memcmp(unsealed_data, data, 16), 0)
       << "The unsealed data did not match the original data";
 
-  // Get the public key blob from the AIK.
   // Load the blob and try to load the AIK
-  ifstream blob_stream(FLAGS_aikblobfile, ifstream::in);
-  stringstream blob_buf;
-  blob_buf << blob_stream.rdbuf();
-  string blob = blob_buf.str();
+  string blob;
+  if (!ReadFileToString(FLAGS_aikblobfile, &blob)) {
+    LOG(ERROR) << "Could not open the file " << FLAGS_aikblobfile;
+    return 1;
+  }
   UINT32 blob_len = (UINT32)blob.size();
   TSS_HKEY aik;
   result = Tspi_Context_LoadKeyByBlob(

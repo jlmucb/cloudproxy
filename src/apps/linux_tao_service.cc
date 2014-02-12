@@ -18,13 +18,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
+#include <keyczar/base/file_util.h>
 
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_tao.h"
@@ -34,9 +32,7 @@
 #include "tao/tao_domain.h"
 #include "tao/tpm_tao_child_channel.h"
 
-using std::ifstream;
-using std::string;
-using std::stringstream;
+using keyczar::base::ReadFileToString;
 
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
@@ -50,9 +46,9 @@ using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(keys_path, "linux_tao_keys", "Location of linux tao keys");
-DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
+DEFINE_string(program_socket, "_linux_tao_socket",
               "File socket for incoming program creation requests");
-DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
+DEFINE_string(stop_socket, "_linux_tao_stop_socket",
               "File socket for stopping the server");
 
 DEFINE_string(aik_blob, "tpm/aikblob", "The AIK blob from the TPM");
@@ -66,6 +62,8 @@ DEFINE_string(linux_hash, "FAKE_PCRS",
               "The hash of the Linux OS for the DirectTaoChildChannel");
 DEFINE_string(fake_keys, "./fake_tpm", "Directory containing signing_key and "
                                        "sealing_key to use with the fake tao");
+DEFINE_bool(ignore_seal_hashes, false,
+            "Whether or not to ignore hashes during unseal operations");
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, true);
@@ -76,27 +74,21 @@ int main(int argc, char **argv) {
 
   scoped_ptr<TaoChildChannel> child_channel;
   if (FLAGS_use_tpm) {
-    ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
-    if (!aik_blob_file) {
+    string blob;
+    if (!ReadFileToString(FLAGS_aik_blob, &blob)) {
       LOG(ERROR) << "Could not open the file " << FLAGS_aik_blob;
       return 1;
     }
 
-    stringstream aik_blob_stream;
-    aik_blob_stream << aik_blob_file.rdbuf();
-
-    ifstream aik_attest_file(FLAGS_aik_attestation.c_str(), ifstream::in);
-    if (!aik_attest_file) {
+    string attestation;
+    if (!ReadFileToString(FLAGS_aik_attestation, &attestation)) {
       LOG(ERROR) << "Could not open the file " << FLAGS_aik_attestation;
       return 1;
     }
 
-    stringstream aik_attest_stream;
-    aik_attest_stream << aik_attest_file.rdbuf();
-
     // The TPM to use for the parent Tao
-    child_channel.reset(new TPMTaoChildChannel(
-        aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
+    child_channel.reset(
+        new TPMTaoChildChannel(blob, attestation, list<UINT32>{17, 18}));
   } else {
     // The FakeTao to use for the parent Tao
     scoped_ptr<FakeTao> tao(new FakeTao());
@@ -120,6 +112,9 @@ int main(int argc, char **argv) {
       FLAGS_keys_path, child_channel.release(), pipe_channel.release(),
       process_factory.release(), admin.release()));
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
+
+  if (!FLAGS_use_tpm && FLAGS_ignore_seal_hashes)
+    tao->SetIgnoreSealHashesForTesting(true);
 
   LOG(INFO) << "Linux Tao Service started and waiting for requests";
 

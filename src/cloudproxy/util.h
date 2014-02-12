@@ -46,6 +46,13 @@ class Keys;
 }
 
 namespace cloudproxy {
+namespace keys {
+// TODO(kwalsh) Move these constants to a better location
+// FIXME(kwalsh) How to best do global C++ string constants?
+
+/// Suffix for a signed speaks-for delegation file.
+constexpr static auto SignSpeaksForSuffix = "signing/delegation";
+} // namespace keys
 
 static const int AesKeySize = 16;
 static const int AesBlockSize = 16;

@@ -22,14 +22,9 @@
 
 #include <unistd.h>
 
-#include <fstream>
-#include <sstream>
-
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
-#include <keyczar/base/scoped_ptr.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/keyczar.h>
+#include <keyczar/base/file_util.h>
 #include <libvirt/virterror.h>
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"
@@ -38,12 +33,8 @@
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/util.h"
 
-using std::ifstream;
-using std::stringstream;
-
-using keyczar::CryptoFactory;
-using keyczar::MessageDigestImpl;
 using keyczar::base::Base64WDecode;
+using keyczar::base::ReadFileToString;
 
 namespace tao {
 KvmVmFactory::~KvmVmFactory() {
@@ -95,7 +86,7 @@ bool KvmVmFactory::HashHostedProgram(const string &name,
 bool KvmVmFactory::CreateHostedProgram(const string &name,
                                        const list<string> &args,
                                        const string &child_hash,
-                                       TaoChannel &parent_channel,
+                                       TaoChannel &parent_channel,  // NOLINT
                                        string *identifier) const {
   if (args.size() != 5) {
     LOG(ERROR) << "Invalid parameters to KvmVmFactory::CreateHostedProgram";
@@ -138,15 +129,11 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
 
   string path(kutcp.guest_device());
 
-  ifstream vm_template_file(vm_template.c_str());
-  if (!vm_template_file) {
-    LOG(ERROR) << "Could not open the VM template file " << vm_template_file;
+  string vmspec;
+  if (!ReadFileToString(vm_template, &vmspec)) {
+    LOG(ERROR) << "Could not read the VM template file " << vm_template;
     return false;
   }
-
-  stringstream vm_template_stream;
-  vm_template_stream << vm_template_file.rdbuf();
-  string vmspec(vm_template_stream.str());
 
   // The final + 1 is due to the final null byte. This is larger than needed,
   // since snprintf removes the %s that gets replaced each time.

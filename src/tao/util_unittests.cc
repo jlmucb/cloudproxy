@@ -44,7 +44,6 @@ using tao::PipeTaoChildChannel;
 using tao::RegisterKnownChannels;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
-using tao::Tao;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelParams;
 using tao::TaoChildChannelRegistry;

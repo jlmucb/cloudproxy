@@ -48,8 +48,6 @@ using tao::PipeTaoChannelParams;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
 using tao::StartHostedProgramArgs;
-using tao::Tao;
-using tao::TaoChannel;
 using tao::TaoChannelRPC;
 using tao::TaoChildChannelParams;
 using tao::UnixFdTaoChildChannel;

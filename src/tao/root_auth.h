@@ -62,6 +62,16 @@ class RootAuth : public TaoDomain {
     return false;
   }
 
+  /// Only root attestations are allowed, so disallow Forbid().
+  virtual bool Forbid(const string &name) {
+    return false;
+  }
+
+  /// Nothing to show user since we don't hold the attestations.
+  virtual string DebugString() {
+    return "Policy-Root signed authorizations only";
+  }
+
   constexpr static auto AuthType = "root";
 
  private:

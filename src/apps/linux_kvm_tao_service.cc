@@ -18,13 +18,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
+#include <keyczar/base/file_util.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -36,9 +34,7 @@
 #include "tao/tpm_tao_child_channel.h"
 #include "tao/util.h"
 
-using std::ifstream;
-using std::string;
-using std::stringstream;
+using keyczar::base::ReadFileToString;
 
 using tao::InitializeApp;
 using tao::KvmUnixTaoChannel;
@@ -49,9 +45,9 @@ using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(keys_path, "linux_tao_keys", "Location of linux tao keys");
-DEFINE_string(program_socket, "/tmp/.linux_tao_socket",
+DEFINE_string(program_socket, "_linux_tao_socket",
               "File socket for incoming program creation requests");
-DEFINE_string(stop_socket, "/tmp/.linux_tao_stop_socket",
+DEFINE_string(stop_socket, "_linux_tao_stop_socket",
               "File socket for stopping the server");
 DEFINE_string(aik_blob, "tpm/aikblob", "The AIK blob from the TPM");
 DEFINE_string(aik_attestation, "tpm/aik.attest",
@@ -60,27 +56,21 @@ DEFINE_string(aik_attestation, "tpm/aik.attest",
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, true);
 
-  ifstream aik_blob_file(FLAGS_aik_blob.c_str(), ifstream::in);
-  if (!aik_blob_file) {
+  string blob;
+  if (!ReadFileToString(FLAGS_aik_blob, &blob)) {
     LOG(ERROR) << "Could not open the file " << FLAGS_aik_blob;
     return 1;
   }
 
-  stringstream aik_blob_stream;
-  aik_blob_stream << aik_blob_file.rdbuf();
-
-  ifstream aik_attest_file(FLAGS_aik_attestation.c_str(), ifstream::in);
-  if (!aik_attest_file) {
+  string attestation;
+  if (!ReadFileToString(FLAGS_aik_attestation, &attestation)) {
     LOG(ERROR) << "Could not open the file " << FLAGS_aik_attestation;
     return 1;
   }
 
-  stringstream aik_attest_stream;
-  aik_attest_stream << aik_attest_file.rdbuf();
-
   // The TPM to use for the parent Tao
-  scoped_ptr<TPMTaoChildChannel> tpm(new TPMTaoChildChannel(
-      aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
+  scoped_ptr<TPMTaoChildChannel> tpm(
+      new TPMTaoChildChannel(blob, attestation, list<UINT32>{17, 18}));
   CHECK(tpm->Init()) << "Could not init the TPM";
 
   // The Channels to use for hosted programs and the way to create hosted

@@ -63,7 +63,7 @@ class KvmVmFactory : public HostedProgramFactory {
   /// case, it's the name of the VM.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
-                                   TaoChannel &parent_channel,
+                                   TaoChannel &parent_channel,  // NOLINT
                                    string *identifier) const;
 
   /// Get the name of this factory type: KvmVmFactory.

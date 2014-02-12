@@ -99,7 +99,7 @@ class TaoChannel {
   /// @param tao The Tao implementation that handles the message.
   /// @param hash The hash of the hosted program that sent the message.
   /// @param rpc The RPC containing the received message.
-  virtual bool HandleRPC(Tao &tao, const string &hash,
+  virtual bool HandleRPC(Tao &tao, const string &hash,  // NOLINT
                          const TaoChannelRPC &rpc) const;
 
   /// Receive an RPC for a given hosted program.

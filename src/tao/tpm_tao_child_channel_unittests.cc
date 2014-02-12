@@ -19,15 +19,15 @@
 
 #include "tao/tpm_tao_child_channel.h"
 
-#include <fstream>
-#include <sstream>
+#include <list>
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include <keyczar/base/file_util.h>
 
-using std::ifstream;
 using std::string;
-using std::stringstream;
+
+using keyczar::base::ReadFileToString;
 
 using tao::TPMTaoChildChannel;
 
@@ -37,17 +37,15 @@ DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
 class TPMTaoChildChannelTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ifstream aik_blob_file(FLAGS_aik_blob_file, ifstream::in);
-    ASSERT_TRUE(aik_blob_file) << "Could not load the aik blob";
-    stringstream aik_blob_stream;
-    aik_blob_stream << aik_blob_file.rdbuf();
+    string blob;
+    ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
     list<UINT32> pcrs_to_seal{17, 18};
     // For the purposes of this simple test, we don't need a real attestation.
     // But if this test is modified to have a hosted program talk to the
     // channel, then that program will expect the AIK to be certified correctly
     // by the policy key.
-    tao_.reset(new TPMTaoChildChannel(
-        aik_blob_stream.str(), "" /* empty attestation */, pcrs_to_seal));
+    tao_.reset(
+        new TPMTaoChildChannel(blob, "" /* empty attestation */, pcrs_to_seal));
     ASSERT_TRUE(tao_->Init());
   }
 

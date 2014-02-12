@@ -38,7 +38,6 @@
 using std::string;
 
 using keyczar::base::Base64WDecode;
-using keyczar::base::ScopedSafeString;
 
 using cloudproxy::CloudServer;
 using tao::InitializeApp;

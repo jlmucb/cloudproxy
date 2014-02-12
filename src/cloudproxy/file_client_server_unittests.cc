@@ -23,11 +23,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <fstream>
-#include <sstream>
+#include <thread>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
 #include <openssl/rand.h>
@@ -43,12 +43,12 @@
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using std::ifstream;
-using std::ofstream;
-using std::stringstream;
+using std::thread;
 
 using keyczar::CryptoFactory;
 using keyczar::RandImpl;
+using keyczar::base::ReadFileToString;
+using keyczar::base::WriteStringToFile;
 
 using cloudproxy::ACL;
 using cloudproxy::Action;
@@ -62,10 +62,10 @@ using cloudproxy::SignedSpeaksFor;
 using tao::CreateTempWhitelistDomain;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
+using tao::Keys;
 using tao::ScopedTempDir;
 using tao::SignData;
 using tao::TaoDomain;
-using tao::Keys;
 
 class FileClientTest : public ::testing::Test {
  protected:
@@ -118,14 +118,10 @@ class FileClientTest : public ::testing::Test {
                          admin_->GetPolicySigner()))
         << "Could not sign the serialized ACL with the policy key";
 
+    string serialized_acl;
+    EXPECT_TRUE(sacl.SerializeToString(&serialized_acl));
     string signed_acl_path = *temp_dir_ + string("/signed_acl");
-    ofstream acl_file(signed_acl_path.c_str(), ofstream::out);
-    ASSERT_TRUE(acl_file) << "Could not open " << signed_acl_path;
-
-    EXPECT_TRUE(sacl.SerializeToOstream(&acl_file))
-        << "Could not write the signed ACL to a file";
-
-    acl_file.close();
+    ASSERT_TRUE(WriteStringToFile(signed_acl_path, serialized_acl));
 
     // Set up directories for the FileServer to store its files and metadata
     string server_enc_dir = *temp_dir_ + string("/enc_files");
@@ -145,21 +141,18 @@ class FileClientTest : public ::testing::Test {
                                     true /* stop after one connection */));
 
     // Create two users and matching delegations.
-    scoped_ptr<Keys> key;
-    string u; 
+    string u;
     string users_path = *temp_dir_ + "/users";
 
     u = "tmroeder";
     ASSERT_TRUE(CloudUserManager::MakeNewUser(
-        users_path, u, u, *admin_->GetPolicySigner(), &key));
-    tmroeder_key_path_ = key->SigningPrivateKeyPath();
-    tmroeder_ssf_path_ = key->GetPath(CloudUserManager::UserDelegationSuffix);
+        users_path, u, u, *admin_->GetPolicySigner(), &tmr_key_));
+    tmr_ssf_path_ = tmr_key_->GetPath(CloudUserManager::UserDelegationSuffix);
 
     u = "jlm";
     ASSERT_TRUE(CloudUserManager::MakeNewUser(
-        users_path, u, u, *admin_->GetPolicySigner(), &key));
-    jlm_key_path_ = key->SigningPrivateKeyPath();
-    jlm_ssf_path_ = key->GetPath(CloudUserManager::UserDelegationSuffix);
+        users_path, u, u, *admin_->GetPolicySigner(), &jlm_key_));
+    jlm_ssf_path_ = jlm_key_->GetPath(CloudUserManager::UserDelegationSuffix);
 
     // Create files filled with random data.
     small_file_obj_name_ = "small";
@@ -168,10 +161,7 @@ class FileClientTest : public ::testing::Test {
     RandImpl *rand = CryptoFactory::Rand();
     // 2 KB file
     ASSERT_TRUE(rand->RandBytes(2 * 1000, &small_data));
-    ofstream small_file_out(small_file_.c_str());
-    ASSERT_TRUE(small_file_out);
-    small_file_out << small_data;
-    small_file_out.close();
+    ASSERT_TRUE(WriteStringToFile(small_file_, small_data));
 
     medium_file_obj_name_ = "medium";
     medium_file_ = client_file_path_ + string("/") + medium_file_obj_name_;
@@ -181,10 +171,7 @@ class FileClientTest : public ::testing::Test {
     scoped_array<unsigned char> med(new unsigned char[med_len]);
     ASSERT_EQ(RAND_bytes(med.get(), med_len), 1);
     string medium_data(reinterpret_cast<char *>(med.get()), med_len);
-    ofstream medium_file_out(medium_file_.c_str());
-    ASSERT_TRUE(medium_file_out);
-    medium_file_out << medium_data;
-    medium_file_out.close();
+    ASSERT_TRUE(WriteStringToFile(medium_file_, medium_data));
 
     ASSERT_TRUE(file_client_->Connect(server_addr, server_port, &ssl_));
   }
@@ -207,9 +194,9 @@ class FileClientTest : public ::testing::Test {
   ScopedSSL ssl_;
   SignedSpeaksFor ssf;
   SignedSpeaksFor ssf2;
-  string tmroeder_key_path_;
-  string tmroeder_ssf_path_;
-  string jlm_key_path_;
+  scoped_ptr<Keys> tmr_key_;
+  scoped_ptr<Keys> jlm_key_;
+  string tmr_ssf_path_;
   string jlm_ssf_path_;
   string small_file_;
   string small_file_obj_name_;
@@ -220,23 +207,10 @@ class FileClientTest : public ::testing::Test {
 
 bool CompareFiles(const string &orig_file_name, const string &new_file_name) {
   // Compare the two files to make sure they're identical.
-  ifstream orig_file(orig_file_name);
-  if (!orig_file) {
-    return false;
-  }
-
-  ifstream new_file(new_file_name);
-  if (!new_file) {
-    return false;
-  }
-
-  stringstream orig_buf;
-  orig_buf << orig_file.rdbuf();
-
-  stringstream new_buf;
-  new_buf << new_file.rdbuf();
-
-  return (orig_buf.str().compare(new_buf.str()) == 0);
+  string orig_data, new_data;
+  EXPECT_TRUE(ReadFileToString(orig_file_name, &orig_data));
+  EXPECT_TRUE(ReadFileToString(new_file_name, &new_data));
+  return (orig_data.compare(new_data) == 0);
 }
 
 // All of the user and connection management is handled by the parent classes,
@@ -246,17 +220,17 @@ bool CompareFiles(const string &orig_file_name, const string &new_file_name) {
 
 TEST_F(FileClientTest, CreateTest) {
   string username("tmroeder");
-  EXPECT_TRUE(file_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(file_client_->Create(ssl_.get(), username, small_file_obj_name_));
 }
 
 TEST_F(FileClientTest, DestroyTest) {
   string username("tmroeder");
-  EXPECT_TRUE(file_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(file_client_->Create(ssl_.get(), username, small_file_obj_name_));
   EXPECT_TRUE(
       file_client_->Destroy(ssl_.get(), username, small_file_obj_name_));
@@ -265,9 +239,9 @@ TEST_F(FileClientTest, DestroyTest) {
 TEST_F(FileClientTest, SmallWriteTest) {
   string username("tmroeder");
   string output_obj("small_out");
-  EXPECT_TRUE(file_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(file_client_->Create(ssl_.get(), username, small_file_obj_name_));
   EXPECT_TRUE(file_client_->Write(ssl_.get(), username, small_file_obj_name_,
                                   small_file_obj_name_));
@@ -283,9 +257,9 @@ TEST_F(FileClientTest, SmallWriteTest) {
 TEST_F(FileClientTest, MediumWriteTest) {
   string username("tmroeder");
   string output_obj("medium_out");
-  EXPECT_TRUE(file_client_->AddUser(username, tmroeder_key_path_, username));
+  EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
   EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmroeder_ssf_path_));
+      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(
       file_client_->Create(ssl_.get(), username, medium_file_obj_name_));
   EXPECT_TRUE(file_client_->Write(ssl_.get(), username, medium_file_obj_name_,

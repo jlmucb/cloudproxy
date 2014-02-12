@@ -24,11 +24,9 @@
 
 #include <pthread.h>
 
-#include <map>
 #include <mutex>
 #include <set>
 #include <string>
-#include <thread>
 
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
@@ -39,11 +37,9 @@
 #include "cloudproxy/util.h"
 #include "tao/tao_domain.h"
 
-using std::map;
 using std::mutex;
 using std::set;
 using std::string;
-using std::thread;
 
 namespace cloudproxy {
 
@@ -110,14 +106,16 @@ class CloudServer {
   /// @return A value that indicates whether or not the action was performed
   /// without errors.
   virtual bool HandleCreate(const Action &action, SSL *ssl, string *reason,
-                            bool *reply, CloudServerThreadData &cstd);
+                            bool *reply,
+                            CloudServerThreadData &cstd);  // NOLINT
   virtual bool HandleDestroy(const Action &action, SSL *ssl, string *reason,
-                             bool *reply, CloudServerThreadData &cstd);
+                             bool *reply,
+                             CloudServerThreadData &cstd);  // NOLINT
   virtual bool HandleWrite(const Action &action, SSL *ssl, string *reason,
-                           bool *reply, CloudServerThreadData &cstd);
+                           bool *reply, CloudServerThreadData &cstd);  // NOLINT
   virtual bool HandleRead(const Action &action, SSL *ssl, string *reason,
-                          bool *reply, CloudServerThreadData &cstd);
-  /// @}
+                          bool *reply, CloudServerThreadData &cstd);  // NOLINT
+                                                                      /// @}
 
   /// Send a reply to the client with a given success code and error message
   /// @param ssl A channel for communication with the client.
@@ -141,7 +139,8 @@ class CloudServer {
   /// @param[out] reply Whether or not the request succeeded.
   /// @param ctsd Context for this thread.
   bool HandleMessage(const ClientMessage &message, SSL *ssl, string *reason,
-                     bool *reply, bool *close, CloudServerThreadData &cstd);
+                     bool *reply, bool *close,
+                     CloudServerThreadData &cstd);  // NOLINT
 
   /// Handle a request to authorize a user.
   /// @param auth An authorization request.
@@ -150,7 +149,7 @@ class CloudServer {
   /// @param[out] reply Whether or not the request succeeded.
   /// @param ctsd Context for this thread.
   bool HandleAuth(const Auth &auth, SSL *ssl, string *reason, bool *reply,
-                  CloudServerThreadData &cstd);
+                  CloudServerThreadData &cstd);  // NOLINT
 
   /// Handle a response from a client.
   /// @param auth A response from a client.
@@ -159,7 +158,7 @@ class CloudServer {
   /// @param[out] reply Whether or not the response was valid.
   /// @param ctsd Context for this thread.
   bool HandleResponse(const Response &response, SSL *ssl, string *reason,
-                      bool *reply, CloudServerThreadData &cstd);
+                      bool *reply, CloudServerThreadData &cstd);  // NOLINT
 
   /// Handle an attestation from a client.
   /// @param auth An attestation to check.
@@ -168,7 +167,7 @@ class CloudServer {
   /// @param[out] reply Whether or not the attestation was valid.
   /// @param ctsd Context for this thread.
   bool HandleAttestation(const string &attestation, SSL *ssl, string *reason,
-                         bool *reply, CloudServerThreadData &cstd);
+                         bool *reply, CloudServerThreadData &cstd);  // NOLINT
 
   /// A (static) random number generator for generating challenges.
   keyczar::RandImpl *rand_;

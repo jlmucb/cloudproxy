@@ -38,8 +38,6 @@ using std::string;
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
 using keyczar::RandImpl;
-using keyczar::base::DirectoryExists;
-using keyczar::base::PathExists;
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
 
@@ -143,21 +141,21 @@ bool FakeTao::Attest(const string &child_hash, const string &data,
 }
 
 bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
-    string serialized_key;
-    if (!keys_->SerializePublicKey(&serialized_key)) {
-      LOG(ERROR) << "Could not serialize key";
-      return false;
-    }
-    // create a signed, fake tpm attestation
-    Statement s;
-    s.set_data(serialized_key);
-    s.set_hash_alg(TaoDomain::FakeHash);
-    s.set_hash("FAKE_TPM");
-    // sign this serialized data with policy key
-    if (!admin.AttestByRoot(&s, &attestation_)) {
-      LOG(ERROR) << "Could not obtain root attestation";
-      return false;
-    }
-    return true;
+  string serialized_key;
+  if (!keys_->SerializePublicKey(&serialized_key)) {
+    LOG(ERROR) << "Could not serialize key";
+    return false;
+  }
+  // create a signed, fake tpm attestation
+  Statement s;
+  s.set_data(serialized_key);
+  s.set_hash_alg(TaoDomain::FakeHash);
+  s.set_hash("FAKE_TPM");
+  // sign this serialized data with policy key
+  if (!admin.AttestByRoot(&s, &attestation_)) {
+    LOG(ERROR) << "Could not obtain root attestation";
+    return false;
+  }
+  return true;
 }
 }  // namespace tao

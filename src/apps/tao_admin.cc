@@ -23,9 +23,13 @@
 #include <glog/logging.h>
 #include <keyczar/base/file_util.h>
 
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_user_manager.h"
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_domain.h"
+#include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
 using std::getline;
@@ -34,8 +38,9 @@ using std::stringstream;
 
 using keyczar::base::ReadFileToString;
 
+using cloudproxy::CloudAuth;
+using cloudproxy::CloudUserManager;
 using tao::FakeTao;
-using tao::TaoAuth;
 using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
@@ -46,14 +51,22 @@ DEFINE_string(init, "",
 DEFINE_string(name, "test tao", "Name for a new configuration");
 DEFINE_string(commonname, "tao", "x509 Common Name for a new configuration");
 DEFINE_string(country, "US", "x509 Country for a new configuration");
+DEFINE_string(state, "Washington", "x509 State for a new configuration");
 DEFINE_string(org, "Google", "x509 Organization for a new configuration");
 
-DEFINE_string(
-    whitelist, "",
-    "Comma separated list of program or hash:alg:name values to whitelist");
+DEFINE_string(whitelist, "", "Comma separated list of program or "
+                             "hash:alg:name values to whitelist");
+DEFINE_bool(refresh, false,
+            "Remove old whitelist entries before adding new ones");
 
 DEFINE_string(make_fake_tpm, "",
               "Directory to store a new and attested fake tpm");
+
+DEFINE_string(newusers, "", "Comma separated list of user names to create");
+DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
+
+DEFINE_string(signacl, "", "A text-based ACL file to sign");
+DEFINE_string(acl_sig_path, "acls_sig", "Location for storing signed ACL file");
 
 // In-place replacement of all occurrences in s of x with y
 void StringReplaceAll(const string &x, const string &y, string *s) {
@@ -62,9 +75,7 @@ void StringReplaceAll(const string &x, const string &y, string *s) {
 }
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
+  tao::InitializeApp(&argc, &argv, true);
 
   scoped_ptr<TaoDomain> admin;
 
@@ -72,19 +83,20 @@ int main(int argc, char **argv) {
 
   if (!FLAGS_init.empty()) {
     VLOG(0) << "Initializing new configuration in " << FLAGS_config_path;
-    VLOG(0) << "  using template " << FLAGS_init;
+    VLOG(5) << "  using template " << FLAGS_init;
     string initial_config;
     CHECK(ReadFileToString(FLAGS_init, &initial_config));
     StringReplaceAll("<NAME>", FLAGS_name, &initial_config);
     StringReplaceAll("<COMMONNAME>", FLAGS_commonname, &initial_config);
     StringReplaceAll("<COUNTRY>", FLAGS_country, &initial_config);
+    StringReplaceAll("<STATE>", FLAGS_state, &initial_config);
     StringReplaceAll("<ORGANIZATION>", FLAGS_org, &initial_config);
     admin.reset(TaoDomain::Create(initial_config, FLAGS_config_path,
                                   FLAGS_policy_pass));
     CHECK_NOTNULL(admin.get());
     did_work = true;
   } else {
-    VLOG(0) << "Loading configuration from " << FLAGS_config_path;
+    VLOG(5) << "Loading configuration from " << FLAGS_config_path;
     admin.reset(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
     CHECK_NOTNULL(admin.get());
   }
@@ -97,9 +109,14 @@ int main(int argc, char **argv) {
       stringstream ss(principal);
       if (getline(ss, hash, ':') && getline(ss, alg, ':') &&
           getline(ss, name) && ss.eof()) {
+        if (FLAGS_refresh && admin->Forbid(name))
+          VLOG(0) << "Removed principal from whitelist: *:*:" << name;
         VLOG(0) << "Adding principal to whitelist: " << principal;
         CHECK(admin->Authorize(hash, alg, name));
       } else {
+        string basename = FilePath(principal).BaseName().value();
+        if (FLAGS_refresh && admin->Forbid(basename))
+          VLOG(0) << "Removed principal from whitelist: *:*:" << basename;
         VLOG(0) << "Adding program to whitelist: " << principal;
         CHECK(admin->AuthorizeProgram(principal));
       }
@@ -115,6 +132,24 @@ int main(int argc, char **argv) {
     did_work = true;
   }
 
+  if (!FLAGS_newusers.empty()) {
+    stringstream names(FLAGS_newusers);
+    string name;
+    while (getline(names, name, ',')) {  // split on commas
+      string password = name; // such security, wow
+      scoped_ptr<tao::Keys> key;
+      CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
+                                          *admin->GetPolicySigner(), &key));
+    }
+    did_work = true;
+  }
+
+  if (!FLAGS_signacl.empty()) {
+    CHECK(CloudAuth::SignACL(admin->GetPolicySigner(), FLAGS_signacl,
+                             FLAGS_acl_sig_path));
+    did_work = true;
+  }
+
   if (!did_work) {
     VLOG(0) << "  name: " << admin->GetName();
     VLOG(0) << "  policy key: ";
@@ -124,17 +159,7 @@ int main(int argc, char **argv) {
     VLOG(0) << "  tao ca: " << admin->GetTaoCAHost() << ":"
             << admin->GetTaoCAPort();
     VLOG(0) << "  auth type: " << admin->GetAuthType();
-    // TODO(kwalsh) Rewrite without dynamic cast once there is a convention for
-    // objects to print themselves in a user-friendly format. Perhaps each
-    // TaoAuth (or other) object should be able to print itself to an ostream?
-    // WhitelistAuth *w = dynamic_cast<WhitelistAuth *>(admin);
-    // if (w != nullptr) {
-    //   for (int i = 0; i w->WhitelistCount(); i++) {
-    //     string hash, alg, name;
-    //     w->WhitelistEntry(i, &hash, &alg, &name);
-    //     VLOG(0) << "  " << hash << ":" << alg << ":" << name;
-    //   }
-    // }
+    VLOG(0) << admin->DebugString();
   }
 
   return 0;

@@ -27,8 +27,8 @@
 #include <set>
 #include <string>
 
-#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/scoped_ptr.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 
@@ -44,7 +44,7 @@ class Verifier;
 
 namespace tao {
 class Keys;
-}  // namespace keyczar
+}  // namespace tao
 
 namespace cloudproxy {
 /// A class that manages information about users: whether they are authenticated
@@ -83,8 +83,7 @@ class CloudUserManager {
   /// the caller.  This method immediately copies the password into a keyczar
   /// ScopedSafeString, so it does not leave any bytes of the password in memory
   /// after it is called.
-  bool AddSigningKey(const string &user, const string &path,
-                     const string &password);
+  bool AddSigningKey(const string &user, const keyczar::Signer &key);
 
   /// Records an association between a user and a public key.
   /// @param user The user part of the association.
@@ -111,16 +110,25 @@ class CloudUserManager {
   /// @param path The location to store keys and attestations:
   /// @param username The name for the new user.
   /// @param password A password to protect the new user keys.
-  /// @param policy_key The policy key to sign the user delgation.
+  /// @param policy_key The policy key to sign the user delegation.
   /// @param[out] key The new key for the user.
   static bool MakeNewUser(const string &path, const string &username,
                           const string &password,
                           const keyczar::Signer &policy_key,
                           scoped_ptr<tao::Keys> *key);
 
+  /// Load key for an existing user.
+  /// @param path The location to read keys and attestations:
+  /// @param username The name of the user.
+  /// @param password A password to unlock the user keys.
+  /// @param[out] key The key for the user.
+  static bool LoadUser(const string &path, const string &username,
+                          const string &password,
+                          scoped_ptr<tao::Keys> *key);
+
   constexpr static auto SpeaksForSigningContext =
       "CloudUserManager cloudproxy::SignedSpeaksFor Version 1";
-  
+
   /// Suffix for a Tao attestation for a signing key.
   constexpr static auto UserDelegationSuffix = "signing/ssf";
 

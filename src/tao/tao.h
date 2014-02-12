@@ -122,7 +122,7 @@ class Tao {
       "tao::Attestation Version 1";
 
   // the timeout for an Attestation (= 1 year in seconds)
-  const static int DefaultAttestationTimeout = 31556926;
+  static const int DefaultAttestationTimeout = 31556926;
 
   // Default size of secret for protecting crypting and signing keys.
   static const int DefaultRandomSecretSize = 128;
@@ -130,6 +130,6 @@ class Tao {
  private:
   DISALLOW_COPY_AND_ASSIGN(Tao);
 };
-}
+}  // namespace tao
 
 #endif  // TAO_TAO_H_

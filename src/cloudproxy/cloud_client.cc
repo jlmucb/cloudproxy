@@ -19,8 +19,6 @@
 // limitations under the License.
 #include "cloudproxy/cloud_client.h"
 
-#include <fstream>
-
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_path.h>
@@ -35,7 +33,7 @@
 #include "tao/tao_auth.h"
 #include "tao/util.h"
 
-using std::ifstream;
+using keyczar::base::ReadFileToString;
 
 using tao::ConnectToTCPServer;
 using tao::Keys;
@@ -141,14 +139,12 @@ bool CloudClient::Connect(const string &server, const string &port,
   return true;
 }
 
-bool CloudClient::AddUser(const string &user, const string &key_path,
-                          const string &password) {
+bool CloudClient::AddUser(const string &user, const keyczar::Signer &signer) {
   if (users_->HasKey(user)) {
     LOG(ERROR) << "User " << user << " already has a key";
     return false;
   }
-
-  return users_->AddSigningKey(user, key_path, password);
+  return users_->AddSigningKey(user, signer);
 }
 
 bool CloudClient::Authenticate(SSL *ssl, const string &subject,
@@ -220,9 +216,10 @@ bool CloudClient::Authenticate(SSL *ssl, const string &subject,
 
   // now create a SignedSpeaksFor annotation from the corresponding signed file
   // for this user
-  ifstream ssf_file(binding_file.c_str());
-  CHECK(ssf_file) << "Could not open " << binding_file;
-  ssf->ParseFromIstream(&ssf_file);
+  string binding;
+  CHECK(ReadFileToString(binding_file, &binding)) << "Could not open "
+                                                  << binding_file;
+  ssf->ParseFromString(binding);
 
   CHECK(cm2.SerializeToString(&serialized_cm))
       << "Could not serialize"

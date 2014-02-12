@@ -17,49 +17,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 package tao;
 
 message HostedProgram {
-    // the name of the binary
-    required string name = 1;
+  // the name of the binary
+  required string name = 1;
 
-    // the hashing algorithm to use
-    required string hash_alg = 2;
+  // the hashing algorithm to use
+  required string hash_alg = 2;
 
-    // the known hash of the binary
-    required bytes hash = 3;
+  // the known hash of the binary
+  required bytes hash = 3;
 }
 
 // a list of permitted hosted programs
-message Whitelist {
-    repeated HostedProgram programs = 1;
-}
+message Whitelist { repeated HostedProgram programs = 1; }
 
 // This is the message stored on a bulletin board and signed by the policy key.
 // It describes the set of hosted programs that are permitted to run.
 message SignedWhitelist {
-    // a serialized Whitelist message
-    required string serialized_whitelist = 1;
+  // a serialized Whitelist message
+  required string serialized_whitelist = 1;
 
-    // the signature on this message. This is computed using tao::SignData with
-    // a context "tao::SignedWhitelist Version 1"
-    required bytes signature = 2;
+  // the signature on this message. This is computed using tao::SignData with
+  // a context "tao::SignedWhitelist Version 1"
+  required bytes signature = 2;
 }
 
 // This is the map from hosted-program identity to the secret associated with
 // this hosted program at a given level of the Tao.
 message HostedProgramState {
-    // a representation of the hosted program
-    required HostedProgram hp = 1;
+  // a representation of the hosted program
+  required HostedProgram hp = 1;
 
-    // the secret for this hosted program
-    required bytes secret = 2;
+  // the secret for this hosted program
+  required bytes secret = 2;
 }
 
 // This should be kept in a file and sealed to this layer of the Tao using its
 // authenticated encryption key
-message Secrets {
-    repeated HostedProgramState program_secrets = 1;
-}
+message Secrets { repeated HostedProgramState program_secrets = 1; }

@@ -38,6 +38,10 @@
 
 using std::string;
 
+namespace keyczar {
+class Signer;
+}  // namespace keyczar
+
 namespace cloudproxy {
 
 /// A client that can establish a secure connection with a CloudServer and
@@ -49,7 +53,7 @@ namespace cloudproxy {
 /// Sample usage: see apps/client.cc
 class CloudClient {
  public:
-  /// Create a CloudClient. 
+  /// Create a CloudClient.
   /// @param client_config_path A directory to use for keys and TLS files.
   /// @param channel A channel to access the host Tao. Ownership is taken.
   /// @param admin The configuration for this administrative domain. Ownership
@@ -67,13 +71,10 @@ class CloudClient {
 
   /// Associate keys with a user name.
   /// @param user The user to add.
-  /// @param key_path The path to the Keyczar key for this user.
-  /// @param password A password used to unlock the keys.
-  bool AddUser(const string &user, const string &key_path,
-               const string &password);
+  /// @param signer The user signing private key.
+  bool AddUser(const string &user, const keyczar::Signer &signer);
 
-  /// Authenticate a subject to a connected CloudServer. There must be a
-  /// directory under key_location that has a name matching the parameter.
+  /// Authenticate a subject to a connected CloudServer. 
   /// @param ssl The server connection to use.
   /// @param subject The subject to authenticate. This subject must have already
   /// been added.

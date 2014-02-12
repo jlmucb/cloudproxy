@@ -24,17 +24,16 @@
 
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_tao.h"
-#include "tao/keys.h"
 #include "tao/util.h"
 
 using keyczar::Verifier;
 
 using tao::CreateTempDir;
+using tao::DeserializePublicKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
 using tao::Keys;
 using tao::ScopedTempDir;
-using tao::DeserializePublicKey;
 using tao::SerializePublicKey;
 
 class TaoKeysTest : public ::testing::Test {
@@ -95,7 +94,7 @@ TEST_F(TaoKeysTest, SignVerifyDataTest) {
 
 TEST_F(TaoKeysTest, SerializeKeyTest) {
   string s;
-  ASSERT_TRUE(keys_->SerializePublicKey(&s)) // serializes Signer
+  ASSERT_TRUE(keys_->SerializePublicKey(&s))  // serializes Signer
       << "Could not serialize the public key";
 
   scoped_ptr<Verifier> public_key;
@@ -110,7 +109,8 @@ TEST_F(TaoKeysTest, SerializeKeyTest) {
   ASSERT_TRUE(keys_->SignData(message, context, &signature));
   ASSERT_TRUE(keys_->SignData(message, context, &signature))
       << "Could not sign the test message";
-  EXPECT_TRUE(tao::VerifySignature(message, context, signature, public_key.get()))
+  EXPECT_TRUE(
+      tao::VerifySignature(message, context, signature, public_key.get()))
       << "Deserialized key could not verify signature";
 
   // Serialize again to check serialization of Verifier (not Signer)
@@ -149,7 +149,7 @@ TEST_F(TaoKeysTest, LoadKeysTest) {
   string signature;
   ASSERT_TRUE(keys_->SignData(message, context, &signature))
       << "Could not sign the test message";
-  
+
   // crypt something
   string plaintext("Test message");
   string ciphertext, decrypted;
@@ -183,7 +183,7 @@ TEST_F(TaoKeysTest, CopyKeysTest) {
   string signature;
   ASSERT_TRUE(keys_->SignData(message, context, &signature))
       << "Could not sign the test message";
-  
+
   // crypt something
   string plaintext("Test message");
   string ciphertext, decrypted;
@@ -207,4 +207,3 @@ TEST_F(TaoKeysTest, CopyKeysTest) {
   EXPECT_TRUE(keys_->DeriveKey("test", 20, &material2));
   EXPECT_EQ(material, material2) << "Copied key did derive key properly";
 }
-

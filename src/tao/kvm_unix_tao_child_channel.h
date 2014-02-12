@@ -39,7 +39,7 @@ class KvmUnixTaoChildChannel : public UnixFdTaoChildChannel {
  public:
   /// This constructor stores the parameters but doesn't parse them or try to
   /// connect to the hypervisor Tao.
-  KvmUnixTaoChildChannel(const string &params);
+  explicit KvmUnixTaoChildChannel(const string &params);
   virtual ~KvmUnixTaoChildChannel() {}
 
   /// Parse the params from the constructor and connect to the file they name.

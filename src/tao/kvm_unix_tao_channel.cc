@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 #include <mutex>
+#include <string>
 #include <utility>
 
 #include <glog/logging.h>

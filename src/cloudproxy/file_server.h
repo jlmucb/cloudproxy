@@ -66,14 +66,16 @@ class FileServer : public CloudServer {
   /// @return A value that indicates whether or not the action was performed
   /// without errors.
   virtual bool HandleCreate(const Action &action, SSL *ssl, string *reason,
-                            bool *reply, CloudServerThreadData &cstd);
+                            bool *reply,
+                            CloudServerThreadData &cstd);  // NOLINT
   virtual bool HandleDestroy(const Action &action, SSL *ssl, string *reason,
-                             bool *reply, CloudServerThreadData &cstd);
+                             bool *reply,
+                             CloudServerThreadData &cstd);  // NOLINT
   virtual bool HandleWrite(const Action &action, SSL *ssl, string *reason,
-                           bool *reply, CloudServerThreadData &cstd);
+                           bool *reply, CloudServerThreadData &cstd);  // NOLINT
   virtual bool HandleRead(const Action &action, SSL *ssl, string *reason,
-                          bool *reply, CloudServerThreadData &cstd);
-  /// @}
+                          bool *reply, CloudServerThreadData &cstd);  // NOLINT
+                                                                      /// @}
 
  private:
   /// A key for deriving keys for encryption and integrity protection.

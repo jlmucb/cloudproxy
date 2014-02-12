@@ -22,8 +22,14 @@
 
 #include <glog/logging.h>
 #include <keyczar/keyczar.h>
+#include <keyczar/base/file_util.h>
+#include <google/protobuf/text_format.h>
 
 #include "cloudproxy/util.h"
+#include "tao/keys.h"
+#include "tao/util.h"
+
+using google::protobuf::TextFormat;
 
 namespace cloudproxy {
 
@@ -132,4 +138,41 @@ bool CloudAuth::Serialize(string *data) {
   return acl.SerializeToString(data);
 }
 
+bool CloudAuth::SignACL(const keyczar::Signer *signer, const string &acl_path,
+                        const string &acl_sig_path) {
+  string acl_txt;
+  if (!keyczar::base::ReadFileToString(acl_path, &acl_txt)) {
+    LOG(ERROR) << "Could not read ACL from " << acl_path;
+    return false;
+  }
+  // deserialize from pretty text then reserialize as compact binary
+  ACL acl;
+  if (!TextFormat::ParseFromString(acl_txt, &acl)) {
+    LOG(ERROR) << "Could not parse ACL from " << acl_path;
+    return false;
+  }
+  string serialized_acl;
+  if (!acl.SerializeToString(&serialized_acl)) {
+    LOG(ERROR) << "Could not serialize ACL from " << acl_path;
+    return false;
+  }
+  string sig;
+  if (!tao::SignData(serialized_acl, ACLSigningContext, &sig, signer)) {
+    LOG(ERROR) << "Could not sign ACL";
+    return false;
+  }
+  SignedACL sacl;
+  sacl.set_serialized_acls(serialized_acl);
+  sacl.set_signature(sig);
+  string serialized;
+  if (!sacl.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the signed ACL";
+    return false;
+  }
+  if (!keyczar::base::WriteStringToFile(acl_sig_path, serialized)) {
+    LOG(ERROR) << "Could not write signed ACL to " << acl_sig_path;
+    return false;
+  }
+  return true;
+}
 }  // namespace cloudproxy

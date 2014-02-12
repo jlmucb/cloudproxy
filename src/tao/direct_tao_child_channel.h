@@ -20,6 +20,9 @@
 #ifndef TAO_DIRECT_TAO_CHILD_CHANNEL_H_
 #define TAO_DIRECT_TAO_CHILD_CHANNEL_H_
 
+#include <list>
+#include <string>
+
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
 
@@ -75,6 +78,6 @@ class DirectTaoChildChannel : public TaoChildChannel {
 
   DISALLOW_COPY_AND_ASSIGN(DirectTaoChildChannel);
 };
-}
+}  // namespace tao
 
 #endif  // TAO_DIRECT_TAO_CHILD_CHANNEL_H_

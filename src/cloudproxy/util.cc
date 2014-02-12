@@ -18,9 +18,6 @@
 // limitations under the License.
 #include <arpa/inet.h>
 
-#include <fstream>
-#include <sstream>
-
 #include <glog/logging.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/values.h>
@@ -38,21 +35,17 @@
 #include "tao/tao_auth.h"
 #include "tao/util.h"
 
-using std::ifstream;
-using std::ofstream;
-using std::stringstream;
-
 using keyczar::Signer;
-using keyczar::base::CreateDirectory;
 using keyczar::base::PathExists;
+using keyczar::base::ReadFileToString;
 using keyczar::base::ScopedSafeString;
+using keyczar::base::WriteStringToFile;
 
 using cloudproxy::CloudAuth;
 using tao::Keys;
 using tao::OpenSSLSuccess;
 using tao::ScopedFile;
 using tao::SignData;
-using tao::Tao;
 using tao::VerifySignature;
 
 #define READ_BUFFER_LEN 16384
@@ -103,7 +96,7 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
   // So, they need to be added again. Typical error is:
   // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
   OpenSSL_add_all_algorithms();
-  
+
   ctx->reset(SSL_CTX_new(method));
   if (ctx->get() == nullptr) {
     LOG(ERROR) << "Could not create TLS context";
@@ -212,17 +205,16 @@ bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
   }
 
   // load the signature
-  ifstream sig(signed_acls_file.c_str());
-  if (!sig) {
+  string sig;
+  if (!ReadFileToString(signed_acls_file, &sig)) {
     LOG(ERROR) << "Could not open the signed acls file " << signed_acls_file;
     return false;
   }
-
-  stringstream sig_buf;
-  sig_buf << sig.rdbuf();
-
   cloudproxy::SignedACL sacl;
-  sacl.ParseFromString(sig_buf.str());
+  if (!sacl.ParseFromString(sig)) {
+    LOG(ERROR) << "Could not parse the signed acl file " << signed_acls_file;
+    return false;
+  }
 
   if (!VerifySignature(sacl.serialized_acls(), CloudAuth::ACLSigningContext,
                        sacl.signature(), key)) {
@@ -742,14 +734,15 @@ bool ReceiveAndEncryptStreamData(
   hom.set_serialized_metadata(serialized_metadata);
   hom.set_hmac(metadata_hmac);
 
-  ofstream meta(meta_path.c_str(), ofstream::out);
-  if (!meta) {
-    LOG(ERROR) << "Could not open the meta file " << meta_path
-               << " for writing";
+  string hom_serialized;
+  if (!hom.SerializeToString(&hom_serialized)) {
+    LOG(ERROR) << "Could not serialize HMAC meta data";
     return false;
   }
-
-  hom.SerializeToOstream(&meta);
+  if (!WriteStringToFile(meta_path, hom_serialized)) {
+    LOG(ERROR) << "Could not write meta file " << meta_path;
+    return false;
+  }
 
   return true;
 }
@@ -771,14 +764,17 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
   }
 
   // recover the metadata
-  ifstream mf(meta_path.c_str());
-  if (!mf) {
+  string hom_serialized;
+  if (!ReadFileToString(meta_path, &hom_serialized)) {
     LOG(ERROR) << "Could not open the meta file " << meta_path;
     return false;
   }
 
   HmacdObjectMetadata hom;
-  hom.ParseFromIstream(&mf);
+  if (!hom.ParseFromString(hom_serialized)) {
+    LOG(ERROR) << "Could not parse meta file " << meta_path;
+    return false;
+  }
 
   // check the hmac
   if (!VerifySignature(hom.serialized_metadata(),

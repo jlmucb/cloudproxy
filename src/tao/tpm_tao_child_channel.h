@@ -21,6 +21,7 @@
 #ifndef TAO_TPM_TAO_CHILD_CHANNEL_H_
 #define TAO_TPM_TAO_CHILD_CHANNEL_H_
 
+#include <list>
 #include <string>
 
 #include <tss/platform.h>

@@ -56,7 +56,7 @@ class ProcessFactory : public HostedProgramFactory {
   /// for a process
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
-                                   TaoChannel &parent_channel,
+                                   TaoChannel &parent_channel,  // NOLINT
                                    string *identifier) const;
   virtual string GetFactoryName() const;
 

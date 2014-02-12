@@ -78,8 +78,8 @@ int main(int argc, char **argv) {
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
   cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_keys,
-                            FLAGS_acls, FLAGS_address,
-                            FLAGS_port, channel.release(), admin.release());
+                            FLAGS_acls, FLAGS_address, FLAGS_port,
+                            channel.release(), admin.release());
 
   LOG(INFO) << "FileServer listening";
   CHECK(fs.Listen(false /* not single channel */))

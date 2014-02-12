@@ -18,14 +18,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
+#include <cstdio>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include "tao/util.h"
-
-using std::cout;
 
 DEFINE_string(name, "cp-server", "The name of the guest to start");
 DEFINE_string(kernel, "vmlinuz-3.7.5", "The kernel to inject into the guest");
@@ -44,6 +42,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  cout << hash;
+  printf("%s", hash.c_str());
   return 0;
 }

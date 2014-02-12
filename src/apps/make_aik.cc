@@ -23,13 +23,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <fstream>
-#include <list>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <keyczar/base/file_util.h>
 #include <tss/platform.h>
 #include <tss/tspi.h>
 #include <tss/tss_defines.h>
@@ -39,13 +37,11 @@
 
 #include <trousers/trousers.h>
 
-using std::ifstream;
-using std::list;
-using std::ofstream;
 using std::string;
-using std::stringstream;
 
-DEFINE_string(aik_blob_file, "aikblob", "A file to receive the AIK blob");
+using keyczar::base::WriteStringToFile;
+
+DEFINE_string(aik_blob_file, "tpm/aikblob", "A file to receive the AIK blob");
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -130,13 +126,11 @@ int main(int argc, char **argv) {
                               TSS_TSPATTRIB_KEYBLOB_BLOB, &blob_len, &blob);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get the blob data";
 
-  ofstream aik_blob_file(FLAGS_aik_blob_file.c_str());
-  if (!aik_blob_file) {
+  string blob_str(reinterpret_cast<char *>(blob), blob_len);
+  if (!WriteStringToFile(FLAGS_aik_blob_file, blob_str)) {
     LOG(ERROR) << "Could not open the AIK blob file for writing";
     return 1;
   }
 
-  aik_blob_file.write(reinterpret_cast<char *>(blob), blob_len);
-  aik_blob_file.close();
   return 0;
 }

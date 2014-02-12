@@ -326,7 +326,10 @@ bool SerializePublicKey(const Verifier &key, string *s) {
   bool downgrade = (new_key_type != old_key_type);
   if (downgrade) {
     // This relies on keyczar's json format.
-    CHECK(meta_value->IsType(Value::TYPE_DICTIONARY));
+    if (!meta_value->IsType(Value::TYPE_DICTIONARY)) {
+      LOG(ERROR) << "Expecting dictionary from keyczar";
+      return false;
+    }
     DictionaryValue *dict = static_cast<DictionaryValue *>(meta_value.get());
     dict->SetBoolean("encrypted", false);
     dict->SetString("type", KeyType::GetNameFromType(new_key_type));

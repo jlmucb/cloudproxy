@@ -222,7 +222,10 @@ bool LinuxTao::Unseal(const string &child_hash, const string &sealed,
 
   if (child_hash.compare(sd.hash()) != 0) {
     LOG(ERROR) << "This data was not sealed to this program";
-    return false;
+    if (!ignore_seal_hashes_for_testing_)
+      return false;
+    else
+      LOG(ERROR) << "For test/debug purposes, seal hash error will be ignored";
   }
 
   data->assign(sd.data().data(), sd.data().size());
@@ -307,8 +310,7 @@ bool LinuxTao::GetTaoCAAttestation() {
     return false;
   }
 
-  if (new_attest.serialized_statement() !=
-          attest.serialized_statement()) {
+  if (new_attest.serialized_statement() != attest.serialized_statement()) {
     LOG(ERROR) << "The statement in the new attestation doesn't match our "
                   "original statement";
     return false;

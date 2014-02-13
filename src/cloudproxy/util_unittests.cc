@@ -41,6 +41,7 @@ using std::stringstream;
 using cloudproxy::ACL;
 using cloudproxy::Action;
 using cloudproxy::CloudAuth;
+using cloudproxy::DeriveKeys;
 using cloudproxy::ExtractACL;
 using cloudproxy::ScopedSSLCtx;
 using cloudproxy::SetUpSSLCTX;
@@ -64,7 +65,8 @@ TEST(CloudProxyUtilTest, X509Test) {
   string pub_key_path = *temp_dir + "/cloudclient_public.key";
   string tls_cert_path = *temp_dir + "/cloudclient.cert";
   scoped_ptr<keyczar::Signer> key;
-  EXPECT_TRUE(GenerateSigningKey(priv_key_path, pub_key_path, "test client key",
+  EXPECT_TRUE(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, priv_key_path,
+                                 pub_key_path, "test client key",
                                  "dummy_password", &key));
   EXPECT_TRUE(CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
                                    "testclient", tls_cert_path));
@@ -127,4 +129,29 @@ TEST(CloudProxyUtilTest, ExtractACLTest) {
       ExtractACL(signed_acl_path, admin->GetPolicyVerifier(), &acl_out));
   ACL deserialized_acl;
   EXPECT_TRUE(deserialized_acl.ParseFromString(acl_out));
+}
+
+TEST(CloudProxyUtilTest, DeriveKeysTest) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(CreateTempDir("cloud_proxy_util_test", &temp_dir));
+
+  string priv_key_path = *temp_dir + "/cloudclient_private.key";
+  string pub_key_path = "";  // no public key for HMAC
+  scoped_ptr<keyczar::Signer> key;
+  EXPECT_TRUE(
+      GenerateSigningKey(keyczar::KeyType::HMAC, priv_key_path, pub_key_path,
+                         "test client key", "dummy_password", &key));
+
+  keyczar::base::ScopedSafeString enc_key(new string());
+  keyczar::base::ScopedSafeString hmac_key(new string());
+
+  EXPECT_TRUE(DeriveKeys(key.get(), &enc_key, &hmac_key));
+
+  keyczar::base::ScopedSafeString enc_key2(new string());
+  keyczar::base::ScopedSafeString hmac_key2(new string());
+
+  EXPECT_TRUE(DeriveKeys(key.get(), &enc_key2, &hmac_key2));
+
+  EXPECT_EQ(*enc_key, *enc_key2);
+  EXPECT_EQ(*hmac_key, *hmac_key2);
 }

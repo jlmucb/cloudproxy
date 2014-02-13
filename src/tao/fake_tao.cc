@@ -62,12 +62,14 @@ bool FakeTao::Init() {
     LoadSigningKey(signing_key_path, signing_key_password_, &signer_);
   } else if (signing_key_path.empty()) {
     VLOG(2) << "Fake tao: Generating temporary signing key";
-    GenerateSigningKey("" /* no priv path */, "" /* no pub path */, "fake_aik",
-                       "" /* no passwd */, &signer_);
+    GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, "" /* no priv path */,
+                       "" /* no pub path */, "fake_aik", "" /* no passwd */,
+                       &signer_);
   } else if (!DirectoryExists(FilePath(signing_key_path))) {
     VLOG(2) << "Fake tao: Generating signing key " << signing_key_path;
-    GenerateSigningKey(signing_key_path, "" /* no pub path */, "fake_aik",
-                       FakePassword, &signer_);
+    GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, signing_key_path,
+                       "" /* no pub path */, "fake_aik", FakePassword,
+                       &signer_);
   } else {
     VLOG(2) << "Fake tao: Using signing key " << signing_key_path;
     LoadSigningKey(signing_key_path, FakePassword, &signer_);
@@ -79,11 +81,12 @@ bool FakeTao::Init() {
 
   if (sealing_key_path.empty()) {
     VLOG(2) << "Fake tao: Generating temporary sealing key";
-    GenerateCryptingKey("" /* no path */, "fake_srk", "" /* no passwd */,
-                        &crypter_);
+    GenerateCryptingKey(keyczar::KeyType::AES, "" /* no path */, "fake_srk",
+                        "" /* no passwd */, &crypter_);
   } else if (!DirectoryExists(FilePath(sealing_key_path))) {
     VLOG(2) << "Fake tao: Generating sealing key " << sealing_key_path;
-    GenerateCryptingKey(sealing_key_path, "fake_srk", FakePassword, &crypter_);
+    GenerateCryptingKey(keyczar::KeyType::AES, sealing_key_path, "fake_srk",
+                        FakePassword, &crypter_);
   } else {
     VLOG(2) << "Fake tao: Using sealing key " << sealing_key_path;
     LoadCryptingKey(sealing_key_path, FakePassword, &crypter_);

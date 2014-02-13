@@ -80,13 +80,14 @@ bool LinuxTao::Init() {
       return false;
     }
     VLOG(2) << "LinuxTao: Generating sealing key " << sealing_key_path;
-    if (!GenerateCryptingKey(sealing_key_path, "linux_tao_sealing_key", *secret,
-                             &crypter_)) {
+    if (!GenerateCryptingKey(keyczar::KeyType::AES, sealing_key_path,
+                             "linux_tao_sealing_key", *secret, &crypter_)) {
       LOG(ERROR) << "Could not generate a sealing key";
       return false;
     }
     VLOG(2) << "LinuxTao: Generating signing key " << signing_key_path;
-    if (!GenerateEncryptedSigningKey(signing_key_path, "" /* no pub path */,
+    if (!GenerateEncryptedSigningKey(keyczar::KeyType::ECDSA_PRIV,
+                                     signing_key_path, "" /* no public path */,
                                      "linux_tao_signing_key", sealing_key_path,
                                      *secret, &signer_)) {
       LOG(ERROR) << "Could not generate a signing key";

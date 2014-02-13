@@ -208,30 +208,35 @@ bool LoadVerifierKey(const string &path, scoped_ptr<keyczar::Verifier> *key);
 /// Generate and optionally save a crypting key.
 /// @param path The location to save the key. If emptystring, the key will not
 /// be saved on disk.
+/// @param key_type The type of key, e.g. AES.
 /// @param name A name for the key.
 /// @param password A password to encrypt the key. If path is given, then a
 /// non-empty password is required.
 /// @param[in,out] key A scoped Crypter to fill with the key.
-bool GenerateCryptingKey(const string &path, const string &name,
-                         const string &password,
+bool GenerateCryptingKey(keyczar::KeyType::Type key_type, const string &path,
+                         const string &name, const string &password,
                          scoped_ptr<keyczar::Crypter> *key);
 
 /// Generate a signing key, optionally save it using using password-based
-/// encryption, and optionally save the public key in the clear.
+/// encryption, and optionally save the public key, if it exists, in the clear.
+/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC, HMAC_SHA1.
 /// @param private_path The location to save the private key. If emptystring,
 /// the key will not be saved on disk.
 /// @param public_path The location to save the public key. If emptystring, the
-/// public half will not be saved separately on disk.
+/// public half will not be saved separately on disk. If using symmetric keys,
+/// this parameter is ignored.
 /// @param name A name for the key.
 /// @param password A password to encrypt the private key. If private_path is
 /// given, then a non-empty password is required.
 /// @param[in,out] key A scoped Signer to fill with the key.
-bool GenerateSigningKey(const string &private_path, const string &public_path,
+bool GenerateSigningKey(keyczar::KeyType::Type key_type,
+                        const string &private_path, const string &public_path,
                         const string &name, const string &password,
                         scoped_ptr<keyczar::Signer> *key);
 
 /// Generate a signing key and save it using using key-based encryption,
 /// and optionally save save the public key in the clear.
+/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC, HMAC_SHA1.
 /// @param private_path The location to save the private key. Must be non-empty.
 /// @param public_path The location to save the public key. If emptystring, the
 /// public half will not be saved separately on disk.
@@ -241,7 +246,8 @@ bool GenerateSigningKey(const string &private_path, const string &public_path,
 /// @param crypter_password A password to decrypt the crypting key. Must be
 /// non-empty.
 /// @param[in,out] key A scoped Signer to fill with the key.
-bool GenerateEncryptedSigningKey(const string &private_path,
+bool GenerateEncryptedSigningKey(keyczar::KeyType::Type key_type,
+                                 const string &private_path,
                                  const string &public_path, const string &name,
                                  const string &crypter_path,
                                  const string &crypter_password,
@@ -309,18 +315,21 @@ bool VerifySignature(const string &data, const string &context,
 /// Make a (deep) copy of a Signer.
 /// @param key The key to be copied.
 /// @param[out] copy The key to fill with the copy.
-bool CopySigningKey(const keyczar::Signer &key, scoped_ptr<keyczar::Signer> *copy);
+bool CopySigningKey(const keyczar::Signer &key,
+                    scoped_ptr<keyczar::Signer> *copy);
 
 /// Make a (deep) copy of a Verifier or the public half of a Signer.
-/// @param key The key to be copied. If key is actually a Signer, only 
+/// @param key The key to be copied. If key is actually a Signer, only
 /// the public half will be copied.
 /// @param[out] copy The key to fill with the copy.
-bool CopyVerifierKey(const keyczar::Verifier &key, scoped_ptr<keyczar::Verifier> *copy);
+bool CopyVerifierKey(const keyczar::Verifier &key,
+                     scoped_ptr<keyczar::Verifier> *copy);
 
 /// Make a (deep) copy of a Crypter.
 /// @param key The key to be copied.
 /// @param[out] copy The key to fill with the copy.
-bool CopyCryptingKey(const keyczar::Crypter &key, scoped_ptr<keyczar::Crypter> *copy);
+bool CopyCryptingKey(const keyczar::Crypter &key,
+                     scoped_ptr<keyczar::Crypter> *copy);
 
 /// If sealed_path is a file, then try to unseal it. Otherwise, create a new
 /// secret and seal it at sealed_path.
@@ -396,7 +405,7 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 /// Convert a keyczar public or private signing key to an OpenSSL EVP_PKEY
 /// structure. Only the primary key from the keyset is exported.
 /// @param key The keyczar key to export. If this is a Signer, the resulting
-/// EVP_PKEY will contain both public and private keys. Otherwise, the 
+/// EVP_PKEY will contain both public and private keys. Otherwise, the
 /// EVP_PKEY wiil contain only a private key.
 /// @param pem_key[out] The new OpenSSL EVP_PKEY.
 bool ExportKeyToOpenSSL(const keyczar::Verifier *key, ScopedEvpPkey *pem_key);
@@ -406,7 +415,7 @@ bool ExportKeyToOpenSSL(const keyczar::Verifier *key, ScopedEvpPkey *pem_key);
 /// @param[out] serialized_x509 The serialized form of the certificate.
 bool SerializeX509(X509 *x509, string *serialized_x509);
 
-/// Create a self-signed X509 certificate for a key. 
+/// Create a self-signed X509 certificate for a key.
 /// @param key The keyczar key to use for both the subject and the issuer.
 /// @param country The name to use for the x509 Country detail.
 /// @param state The name to use for the x509 State detail.

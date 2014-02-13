@@ -57,9 +57,9 @@ class CloudUserManagerTest : public ::testing::Test {
     SpeaksFor sf;
     sf.set_subject(username);
     // For these simple tests, we use the username as the password. Very secure.
-    EXPECT_TRUE(
-        GenerateSigningKey(tmroeder_key_path_, "" /* do not save private key */,
-                           username, username, &tmroeder_key));
+    EXPECT_TRUE(GenerateSigningKey(
+        keyczar::KeyType::RSA_PRIV, tmroeder_key_path_,
+        "" /* do not save private key */, username, username, &tmroeder_key));
     tmroeder_serialized_key_ = SerializePublicKey(*tmroeder_key);
     sf.set_pub_key(tmroeder_serialized_key_);
 
@@ -85,9 +85,9 @@ class CloudUserManagerTest : public ::testing::Test {
     SpeaksFor sf2;
     sf2.set_subject(username2);
     // For these simple tests, we use the username as the password. Very secure.
-    EXPECT_TRUE(
-        GenerateSigningKey(jlm_key_path_, "" /* do not save private key */,
-                           username2, username2, &jlm_key));
+    EXPECT_TRUE(GenerateSigningKey(keyczar::KeyType::RSA_PRIV, jlm_key_path_,
+                                   "" /* do not save private key */, username2,
+                                   username2, &jlm_key));
     jlm_serialized_key_ = SerializePublicKey(*jlm_key);
     sf2.set_pub_key(jlm_serialized_key_);
 

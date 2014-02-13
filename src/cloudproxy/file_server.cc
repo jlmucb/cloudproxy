@@ -70,10 +70,11 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
   // clashes with CloudServer. Maybe use the same key?
   fp = fp.Append("fileserver");
   FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
-  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
+  string pub_key_path = "";  // no public key to be saved
   if (!PathExists(priv_key_path)) {
-    CHECK(GenerateSigningKey(priv_key_path.value(), pub_key_path.value(),
-                             "file server key", *encoded_secret, &main_key_))
+    CHECK(GenerateSigningKey(keyczar::KeyType::HMAC, priv_key_path.value(),
+                             pub_key_path, "file server key", *encoded_secret,
+                             &main_key_))
         << "Could not create new signing key for the file server";
   } else {
     CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &main_key_))

@@ -95,8 +95,9 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
   string pub_path = admin->GetPolicyPublicKeyPath();
   string cert_path = admin->GetPolicyX509CertificatePath();
   // Generate and save the policy public and private keys.
-  if (!GenerateSigningKey(priv_path, pub_path, "tao_domain_policy_key",
-                          password, &admin->policy_signer_)) {
+  if (!GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, priv_path, pub_path,
+                          "tao_domain_policy_key", password,
+                          &admin->policy_signer_)) {
     LOG(ERROR) << "Could not generate policy signing key";
     return nullptr;
   }

@@ -94,7 +94,7 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
     LOG(ERROR) << "Could not export key to openssl";
     return false;
   }
-  
+
   // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
   // So, they need to be added again. Typical error is:
   // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
@@ -465,6 +465,10 @@ bool DeriveKeys(const keyczar::Signer *main_key,
   if (main_key == nullptr || aes_key == nullptr || aes_key->get() == nullptr ||
       hmac_key == nullptr || hmac_key->get() == nullptr) {
     LOG(ERROR) << "Invalid DeriveKey parameters";
+    return false;
+  }
+  if (main_key->keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
+    LOG(ERROR) << "DeriveKeys requires symmetric main key";
     return false;
   }
 

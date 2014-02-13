@@ -89,7 +89,8 @@ CloudServer::CloudServer(const string &server_config_path, const string &secret,
 
   scoped_ptr<keyczar::Signer> key;
   if (new_key) {
-    CHECK(GenerateSigningKey(priv_key_path.value(), pub_key_path.value(),
+    CHECK(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV,
+                             priv_key_path.value(), pub_key_path.value(),
                              "cloud_server_key", *encoded_secret, &key))
         << "Could not create new SSL key for the server";
   } else {

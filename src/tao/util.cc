@@ -995,11 +995,13 @@ static KeysetJSONFileWriter *PrepareKeysetWriter(const string &path,
 
 /// Generate a signing key using the given writers. This takes ownership of both
 /// writers (if given).
+/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC, HMAC_SHA1.
 /// @param private_writer A writer to write the private key, or nullptr.
 /// @param public_writer A writer to write the public key, or nullptr.
 /// @param name A name for the new key.
 /// @param key[out] The new key.
-static bool GenerateSigningKeyWithWriters(KeysetJSONFileWriter *private_writer,
+static bool GenerateSigningKeyWithWriters(KeyType::Type key_type,
+                                          KeysetJSONFileWriter *private_writer,
                                           KeysetJSONFileWriter *public_writer,
                                           const string &name,
                                           scoped_ptr<Signer> *key) {
@@ -1016,8 +1018,9 @@ static bool GenerateSigningKeyWithWriters(KeysetJSONFileWriter *private_writer,
   if (priv_writer.get() != nullptr) keyset->AddObserver(priv_writer.get());
   keyset->set_encrypted(true);
 
-  keyset->set_metadata(new KeysetMetadata(
-      name, KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, true, 1));
+  keyset->set_metadata(
+      new KeysetMetadata(name, key_type, KeyPurpose::SIGN_AND_VERIFY,
+                         true /*encrypted (unused?)*/, 1 /*next key version*/));
 
   keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
@@ -1073,8 +1076,9 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-bool GenerateCryptingKey(const string &path, const string &name,
-                         const string &password, scoped_ptr<Crypter> *key) {
+bool GenerateCryptingKey(KeyType::Type key_type, const string &path,
+                         const string &name, const string &password,
+                         scoped_ptr<Crypter> *key) {
   scoped_ptr<Keyset> keyset(new Keyset());
 
   scoped_ptr<KeysetJSONFileWriter> writer;  // retain until end of function
@@ -1089,8 +1093,9 @@ bool GenerateCryptingKey(const string &path, const string &name,
   }
 
   keyset->set_encrypted(true);
-  keyset->set_metadata(new KeysetMetadata(
-      name, KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, true, 1));
+  keyset->set_metadata(
+      new KeysetMetadata(name, key_type, KeyPurpose::DECRYPT_AND_ENCRYPT,
+                         true /*encrypted (unused?)*/, 1 /*next key version*/));
 
   keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
 
@@ -1110,9 +1115,9 @@ bool GenerateCryptingKey(const string &path, const string &name,
   return true;
 }
 
-bool GenerateSigningKey(const string &private_path, const string &public_path,
-                        const string &name, const string &password,
-                        scoped_ptr<Signer> *key) {
+bool GenerateSigningKey(KeyType::Type key_type, const string &private_path,
+                        const string &public_path, const string &name,
+                        const string &password, scoped_ptr<Signer> *key) {
   scoped_ptr<KeysetJSONFileWriter> private_writer;
   if (!private_path.empty()) {
     if (password.empty()) {
@@ -1131,11 +1136,12 @@ bool GenerateSigningKey(const string &private_path, const string &public_path,
     if (public_writer.get() == nullptr) return false;
   }
 
-  return GenerateSigningKeyWithWriters(private_writer.release(),
+  return GenerateSigningKeyWithWriters(key_type, private_writer.release(),
                                        public_writer.release(), name, key);
 }
 
-bool GenerateEncryptedSigningKey(const string &private_path,
+bool GenerateEncryptedSigningKey(KeyType::Type key_type,
+                                 const string &private_path,
                                  const string &public_path, const string &name,
                                  const string &crypter_path,
                                  const string &crypter_password,
@@ -1156,7 +1162,7 @@ bool GenerateEncryptedSigningKey(const string &private_path,
     if (public_writer.get() == nullptr) return false;
   }
 
-  return GenerateSigningKeyWithWriters(private_writer.release(),
+  return GenerateSigningKeyWithWriters(key_type, private_writer.release(),
                                        public_writer.release(), name, key);
 }
 
@@ -1300,6 +1306,12 @@ bool ExportKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
   // keyczar::openssl::ECDSAOpenSSL::Create().
   if (key == nullptr || pem_key == nullptr) {
     LOG(ERROR) << "null key or pem_key";
+    return false;
+  }
+  // TODO(kwalsh) Implement this function for RSA, other types
+  KeyType::Type key_type = key->keyset()->metadata()->key_type();
+  if (key_type != KeyType::ECDSA_PUB && key_type != KeyType::ECDSA_PRIV) {
+    LOG(ERROR) << "ExportKeyToOpenSSL only implemented for ECDSA so far";
     return false;
   }
   // Get raw key data out of keyczar

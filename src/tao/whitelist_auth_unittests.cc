@@ -82,8 +82,7 @@ TEST_F(WhitelistAuthTest, IsAuthorizedFailTest) {
 }
 
 TEST_F(WhitelistAuthTest, IsAuthorizedPairTest) {
-  EXPECT_TRUE(
-      admin_->IsAuthorized("Test hash 2", TaoAuth::FakeHash, "Name 2"));
+  EXPECT_TRUE(admin_->IsAuthorized("Test hash 2", TaoAuth::FakeHash, "Name 2"));
 }
 
 TEST_F(WhitelistAuthTest, IsAuthorizedPairFailTest) {
@@ -237,10 +236,12 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
 
   scoped_ptr<Signer> key_1;
   scoped_ptr<Signer> key_2;
-  ASSERT_TRUE(GenerateSigningKey(key_1_path, "" /* do not save private key */,
-                                 "key 1", "unitpass", &key_1));
-  ASSERT_TRUE(GenerateSigningKey(key_1_path, "" /* do not save private key */,
-                                 "key 2", "unitpass", &key_2));
+  ASSERT_TRUE(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, key_1_path,
+                                 "" /* do not save private key */, "key 1",
+                                 "unitpass", &key_1));
+  ASSERT_TRUE(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, key_1_path,
+                                 "" /* do not save private key */, "key 2",
+                                 "unitpass", &key_2));
 
   Statement s0;
   s0.set_data(SerializePublicKey(*key_1));

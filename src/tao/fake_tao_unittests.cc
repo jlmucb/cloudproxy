@@ -39,13 +39,12 @@ class FakeTaoTest : public ::testing::Test {
     ASSERT_TRUE(tao::CreateTempWhitelistDomain(&temp_dir_, &admin_));
 
     // create a fake tao with new keys and an attestation
-    attested_tao_.reset(
-        new FakeTao(*temp_dir_ + "/fake_tpm", admin_.release()));
-    ASSERT_TRUE(attested_tao_->Init());
+    attested_tao_.reset(new FakeTao());
+    ASSERT_TRUE(attested_tao_->InitPseudoTPM(*temp_dir_ + "/fake_tpm", *admin_));
 
     // create a fake tao with temporary keys and no attestation
     tao_.reset(new FakeTao());
-    ASSERT_TRUE(tao_->Init());
+    ASSERT_TRUE(tao_->InitTemporaryTPM());
   }
 
   scoped_ptr<FakeTao> tao_;

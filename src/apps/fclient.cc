@@ -51,8 +51,6 @@ DEFINE_string(file_path, "file_client_files",
 DEFINE_string(client_keys, "./client_key",
               "Directory for client keys and TLS files");
 
-// this will be removed when get this password released by the TPM
-DEFINE_string(client_password, "cpclient", "The password for the client keys");
 DEFINE_string(address, "localhost", "The address of the local server");
 DEFINE_string(port, "11235", "The server port to connect to");
 
@@ -90,10 +88,10 @@ int main(int argc, char** argv) {
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
   cloudproxy::FileClient fc(FLAGS_file_path, FLAGS_client_keys,
-                            FLAGS_client_password, admin.release());
+                            channel.release(), admin.release());
 
   ScopedSSL ssl;
-  CHECK(fc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
+  CHECK(fc.Connect(FLAGS_address, FLAGS_port, &ssl))
       << "Could not connect to the server at " << FLAGS_address << ":"
       << FLAGS_port;
 

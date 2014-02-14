@@ -33,9 +33,9 @@ using std::string;
 namespace cloudproxy {
 
 FileClient::FileClient(const string &file_path,
-                       const string &client_config_path, const string &secret,
-                       tao::TaoDomain *admin)
-    : CloudClient(client_config_path, secret, admin), file_path_(file_path) {
+                       const string &client_config_path,
+                       tao::TaoChildChannel *channel, tao::TaoDomain *admin)
+    : CloudClient(client_config_path, channel, admin), file_path_(file_path) {
   struct stat st;
   CHECK_EQ(stat(file_path.c_str(), &st), 0) << file_path << " does not exist";
   CHECK(S_ISDIR(st.st_mode)) << file_path << " is not a directory";

@@ -49,25 +49,6 @@ int remove_entry(const char *path, const struct stat *sb, int tflag,
 namespace tao {
 class TaoDomain;
 
-namespace keys {
-// TODO(kwalsh) Move these constants to a better location once keyczar
-// load/save issues are resolved, e.g. inside some class.
-// TODO(kwalsh) How to best do global C++ string constants?
-
-/// Suffix for a signing public key in keyczar format.
-constexpr static auto SignPublicKeySuffix = "signing/public.key";
-/// Suffix for a signing private key in keyczar format.
-constexpr static auto SignPrivateKeySuffix = "signing/private.key";
-/// Suffix for a Tao attestation for a signing key.
-constexpr static auto SignKeyAttestationSuffix = "signing/attestation";
-/// Suffix for a signing public key x509 certificate in openssl format.
-constexpr static auto SignPublicKeyX509Suffix = "signing/x509cert.pem";
-/// Suffix for a sealing key in keyczar format.
-constexpr static auto SealKeySuffix = "sealing/private.key";
-/// Suffix for a sealed secret used to PBE-encrypt a sealing key
-constexpr static auto SealKeySecretSuffix = "sealing/secret";
-}  // namespace keys
-
 /// A pointer to an OpenSSL RSA object.
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
     ScopedRsa;
@@ -105,11 +86,6 @@ typedef scoped_ptr_malloc<
 /// when this wrapper is deleted.
 typedef scoped_ptr_malloc<
     X509, keyczar::openssl::OSSLDestroyer<X509, X509_free>> ScopedX509Ctx;
-
-/// A smart pointer wrapping an OpenSSL EVP_PKEY that gets cleaned up when this
-/// wrapper is deleted.
-typedef scoped_ptr_malloc<EVP_PKEY, keyczar::openssl::OSSLDestroyer<
-                                        EVP_PKEY, EVP_PKEY_free>> ScopedEvpPkey;
 
 typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<
                                       string, temp_file_cleaner>> ScopedTempDir;
@@ -174,85 +150,6 @@ bool OpenSSLSuccess();
 /// @param[out] sock The socket opened for this port.
 bool OpenTCPSocket(const string &host, const string &port, int *sock);
 
-/// Load a password-protected crypting key.
-/// @param path The location of the key on disk.
-/// @param password The password used to encrypt the key on disk.
-/// Note: This function will return nullptr if the key could not be read.
-bool LoadCryptingKey(const string &path, const string &password,
-                     scoped_ptr<keyczar::Crypter> *key);
-
-/// Load a password-protected signing key.
-/// @param path The location of the key on disk.
-/// @param password The password used to encrypt the key on disk.
-/// Note: This function will return nullptr if the key could not be read.
-bool LoadSigningKey(const string &path, const string &password,
-                    scoped_ptr<keyczar::Signer> *key);
-
-/// Load a signing key that was saved using key-based encryption.
-/// @param path The location of the signing key on disk.
-/// @param crypter_path The location of the crypting key on disk that was used
-/// to encrypt the signing key.
-/// @param crypter_password The password used to encrypt the crypting key on
-/// disk.
-/// Note: This function will return nullptr if either the crypting key or the
-/// signing key could not be read.
-bool LoadEncryptedSigningKey(const string &path, const string &crypter_path,
-                             const string &crypter_password,
-                             scoped_ptr<keyczar::Signer> *key);
-
-/// Load a clear-text verifier key.
-/// @param path The location of the key on disk.
-/// Note: this function will return nullptr if the key could not be read.
-bool LoadVerifierKey(const string &path, scoped_ptr<keyczar::Verifier> *key);
-
-/// Generate and optionally save a crypting key.
-/// @param path The location to save the key. If emptystring, the key will not
-/// be saved on disk.
-/// @param key_type The type of key, e.g. AES.
-/// @param name A name for the key.
-/// @param password A password to encrypt the key. If path is given, then a
-/// non-empty password is required.
-/// @param[in,out] key A scoped Crypter to fill with the key.
-bool GenerateCryptingKey(keyczar::KeyType::Type key_type, const string &path,
-                         const string &name, const string &password,
-                         scoped_ptr<keyczar::Crypter> *key);
-
-/// Generate a signing key, optionally save it using using password-based
-/// encryption, and optionally save the public key, if it exists, in the clear.
-/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC, HMAC_SHA1.
-/// @param private_path The location to save the private key. If emptystring,
-/// the key will not be saved on disk.
-/// @param public_path The location to save the public key. If emptystring, the
-/// public half will not be saved separately on disk. If using symmetric keys,
-/// this parameter is ignored.
-/// @param name A name for the key.
-/// @param password A password to encrypt the private key. If private_path is
-/// given, then a non-empty password is required.
-/// @param[in,out] key A scoped Signer to fill with the key.
-bool GenerateSigningKey(keyczar::KeyType::Type key_type,
-                        const string &private_path, const string &public_path,
-                        const string &name, const string &password,
-                        scoped_ptr<keyczar::Signer> *key);
-
-/// Generate a signing key and save it using using key-based encryption,
-/// and optionally save save the public key in the clear.
-/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC, HMAC_SHA1.
-/// @param private_path The location to save the private key. Must be non-empty.
-/// @param public_path The location to save the public key. If emptystring, the
-/// public half will not be saved separately on disk.
-/// @param name A name for the key.
-/// @param crypter_path The location to load the crypting key. Must be
-/// non-empty.
-/// @param crypter_password A password to decrypt the crypting key. Must be
-/// non-empty.
-/// @param[in,out] key A scoped Signer to fill with the key.
-bool GenerateEncryptedSigningKey(keyczar::KeyType::Type key_type,
-                                 const string &private_path,
-                                 const string &public_path, const string &name,
-                                 const string &crypter_path,
-                                 const string &crypter_password,
-                                 scoped_ptr<keyczar::Signer> *key);
-
 /// Generate a signed ROOT or INTERMEDIATE attestation.
 /// @param signer The signing key, i.e. the principal attesting to s.
 /// @param cert An attestation for the singer key for INTERMEDIATE, otherwise
@@ -267,76 +164,29 @@ bool GenerateAttestation(const keyczar::Signer *signer, const string &cert,
 bool GenerateAttestation(const keyczar::Signer *signer, const string &cert,
                          Statement *statement, string *attestation);
 
-/// Convert a serialized KeyczarPublicKey representation to an in-memory key.
-/// @param kpk The public key to deserialize.
-/// @param[out] key A verifier key created from this public key.
-bool DeserializePublicKey(const KeyczarPublicKey &kpk,
-                          scoped_ptr<keyczar::Verifier> *key);
-
-/// Convert a Keyczar public key to a serialized string.
-/// @param key The private key to serialize.
-/// @return The serialized key, or emptystring on error.
-/// TODO(kwalsh) misleading function name
-string SerializePublicKey(const keyczar::Signer &key);
-
-/// Convert a Keyczar public key to a serialized KeyczarPublicKey structure.
-/// @param key The private key to serialize.
-/// @param[out] kpk The serialized public key.
-/// TODO(kwalsh) misleading function name
-bool SerializePublicKey(const keyczar::Signer &key, KeyczarPublicKey *kpk);
-
-/// Convert a Keyczar public keyset to a serialized KeyczarPublicKey structure.
-/// @param keyset The keyset listing the key versions to serialize.
-/// @param path The location where the metadata and public keys are stored.
-/// @param[out] kpk The serialized public key.
-bool SerializeKeyset(const keyczar::Keyset *keyset, const string &path,
-                     KeyczarPublicKey *kpk);
-
-/// Sign data with a key using Signer.
-/// @param data The data to sign.
-/// @param context The context string to add to the tao::Signature. WARNING: for
-/// security, this must be unique for each context in which signed messages are
-/// used.
-/// @param[out] signature The resulting signature.
-/// @param key The key to use for signing.
-/// TODO(kwalsh) key should be const reference
-bool SignData(const string &data, const string &context, string *signature,
-              const keyczar::Signer *key);
-
-/// Verify a signature using Verifier.
-/// @param data The data that was signed.
-/// @param context The context to check in the tao::Signature.
-/// @param signature The signature on the data.
-/// @param key The key to use for verification.
-/// TODO(kwalsh) key should be const reference
-bool VerifySignature(const string &data, const string &context,
-                     const string &signature, const keyczar::Verifier *key);
-
-/// Make a (deep) copy of a Signer.
-/// @param key The key to be copied.
-/// @param[out] copy The key to fill with the copy.
-bool CopySigningKey(const keyczar::Signer &key,
-                    scoped_ptr<keyczar::Signer> *copy);
-
-/// Make a (deep) copy of a Verifier or the public half of a Signer.
-/// @param key The key to be copied. If key is actually a Signer, only
-/// the public half will be copied.
-/// @param[out] copy The key to fill with the copy.
-bool CopyVerifierKey(const keyczar::Verifier &key,
-                     scoped_ptr<keyczar::Verifier> *copy);
-
-/// Make a (deep) copy of a Crypter.
-/// @param key The key to be copied.
-/// @param[out] copy The key to fill with the copy.
-bool CopyCryptingKey(const keyczar::Crypter &key,
-                     scoped_ptr<keyczar::Crypter> *copy);
-
-/// If sealed_path is a file, then try to unseal it. Otherwise, create a new
-/// secret and seal it at sealed_path.
+/// Generate and save a random secret, sealed against the host Tao.
 /// @param t The channel to access the host Tao.
-/// @param sealed_path The file name to use.
-/// @param[out] secret The secret to generate or unseal.
-bool SealOrUnsealSecret(const TaoChildChannel &t, const string &sealed_path,
+/// @param path The location to store the sealed secret.
+/// @param secret_size The number of random bytes for the new secret.
+/// @param[out] secret The new random secret.
+bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
+                      int secret_size, string *secret);
+
+/// Read and unseal a secret that is sealed against the host Tao.
+/// @param t The channel to access the host Tao.
+/// @param path The location to store the sealed secret.
+/// @param secret[out] The unsealed secret.
+bool GetSealedSecret(const TaoChildChannel &t, const string &path,
+                     string *secret);
+
+/// Read and unseal a secret that is sealed against the host Tao, if possible.
+/// Otherwise, if the file does not exist, generate and save a new random sealed
+/// secret.
+/// @param t The channel to access the host Tao.
+/// @param path The location to read or store the sealed secret.
+/// @param secret[out] The unsealed or new random secret.
+/// TODO(kwalsh) Delete this: bad semantics, and all existing uses are bugs.
+bool SealOrUnsealSecret(const TaoChildChannel &t, const string &path,
                         string *secret);
 
 /// Receive a protobuf message on a file descriptor.
@@ -402,30 +252,10 @@ bool CreateTempRootDomain(ScopedTempDir *temp_dir,
 /// @param[out] sock The connected client socket.
 bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 
-/// Convert a keyczar public or private signing key to an OpenSSL EVP_PKEY
-/// structure. Only the primary key from the keyset is exported.
-/// @param key The keyczar key to export. If this is a Signer, the resulting
-/// EVP_PKEY will contain both public and private keys. Otherwise, the
-/// EVP_PKEY wiil contain only a private key.
-/// @param pem_key[out] The new OpenSSL EVP_PKEY.
-bool ExportKeyToOpenSSL(const keyczar::Verifier *key, ScopedEvpPkey *pem_key);
-
 /// Serialize an X.509 certificate.
 /// @param x509 The certificate to serialize.
 /// @param[out] serialized_x509 The serialized form of the certificate.
 bool SerializeX509(X509 *x509, string *serialized_x509);
-
-/// Create a self-signed X509 certificate for a key.
-/// @param key The keyczar key to use for both the subject and the issuer.
-/// @param country The name to use for the x509 Country detail.
-/// @param state The name to use for the x509 State detail.
-/// @param org The name to use for the x509 Organization detail.
-/// @param cn The name to use for the x509 CommonName detail.
-/// @param public_cert_path File name to hold the resulting x509 certificate.
-/// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-bool CreateSelfSignedX509(const keyczar::Signer *key, const string &country,
-                          const string &state, const string &org,
-                          const string &cn, const string &public_cert_path);
 
 }  // namespace tao
 

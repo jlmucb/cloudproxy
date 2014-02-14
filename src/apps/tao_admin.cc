@@ -85,11 +85,8 @@ int main(int argc, char **argv) {
     did_work = true;
   } else {
     VLOG(0) << "Loading configuration from " << FLAGS_config_path;
-    admin.reset(TaoDomain::Load(FLAGS_config_path));
+    admin.reset(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
     CHECK_NOTNULL(admin.get());
-    if (!FLAGS_policy_pass.empty()) {
-      CHECK(admin->Unlock(FLAGS_policy_pass));
-    }
   }
 
   if (!FLAGS_whitelist.empty()) {
@@ -111,18 +108,19 @@ int main(int argc, char **argv) {
   }
 
   if (!FLAGS_make_fake_tpm.empty()) {
-    string path = admin->RelativePath(FLAGS_make_fake_tpm);
+    string path = admin->GetPath(FLAGS_make_fake_tpm);
     VLOG(0) << "Initializing fake tpm in " << path;
-    scoped_ptr<FakeTao> ft(new FakeTao(path, admin->DeepCopy()));
-    if (!ft->Init()) return 1;
+    scoped_ptr<FakeTao> ft(new FakeTao());
+    if (!ft->InitPseudoTPM(path, *admin)) return 1;
     did_work = true;
   }
 
   if (!did_work) {
     VLOG(0) << "  name: " << admin->GetName();
     VLOG(0) << "  policy key: ";
-    VLOG(0) << "    public: " << admin->GetPolicyPublicKeyPath();
-    VLOG(0) << "    private: " << admin->GetPolicyPrivateKeyPath();
+    VLOG(0) << "    public: " << admin->GetPolicyKeys()->SigningPublicKeyPath();
+    VLOG(0)
+        << "    private: " << admin->GetPolicyKeys()->SigningPrivateKeyPath();
     VLOG(0) << "  tao ca: " << admin->GetTaoCAHost() << ":"
             << admin->GetTaoCAPort();
     VLOG(0) << "  auth type: " << admin->GetAuthType();

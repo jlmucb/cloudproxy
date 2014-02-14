@@ -29,37 +29,26 @@
 #include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"
 
-using keyczar::KeyType;
-using keyczar::Verifier;
 using keyczar::base::WriteStringToFile;
 
 using tao::ConnectToUnixDomainSocket;
 using tao::CreateTempDir;
 using tao::CreateTempRootDomain;
 using tao::CreateTempWhitelistDomain;
-using tao::DeserializePublicKey;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
-using tao::GenerateCryptingKey;
-using tao::GenerateSigningKey;
 using tao::HashVM;
-using tao::KeyczarPublicKey;
-using tao::LoadSigningKey;
-using tao::LoadVerifierKey;
 using tao::OpenTCPSocket;
 using tao::OpenUnixDomainSocket;
 using tao::PipeTaoChildChannel;
 using tao::RegisterKnownChannels;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
-using tao::SerializePublicKey;
-using tao::SignData;
 using tao::Tao;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelParams;
 using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;
-using tao::VerifySignature;
 
 TEST(TaoUtilTest, HashVMTest) {
   ScopedTempDir temp_dir;
@@ -115,246 +104,13 @@ TEST(TaoUtilTest, CreateDomainTest) {
   ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 }
 
-TEST(TaoUtilTest, SerializeKeyTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  KeyczarPublicKey kpk;
-  EXPECT_TRUE(SerializePublicKey(*admin->GetPolicySigner(), &kpk))
-      << "Could not serialize the public key";
-
-  string sk = SerializePublicKey(*admin->GetPolicySigner());
-  EXPECT_TRUE(!sk.empty());
-}
-
-TEST(TaoUtilTest, DeserializeKeyTest) {
-  KeyType::Type keytypes[] = {KeyType::ECDSA_PRIV, KeyType::RSA_PRIV};
-  string typenames[] = {"ECDSA", "RSA"};
-  for (int i = 0; i < 2; i++) {
-    ScopedTempDir temp_dir;
-    ASSERT_TRUE(CreateTempDir("deserialize_key_test", &temp_dir));
-
-    string private_path = *temp_dir + "/private.key";
-    string public_path = "";
-    scoped_ptr<keyczar::Signer> signer;
-    EXPECT_TRUE(GenerateSigningKey(keytypes[i], private_path, public_path,
-                                   "test", "testpass", &signer));
-
-    KeyczarPublicKey kpk;
-    EXPECT_TRUE(SerializePublicKey(*signer, &kpk))
-        << "Could not serialize the public key " << typenames[i];
-
-    scoped_ptr<Verifier> public_key;
-    EXPECT_TRUE(DeserializePublicKey(kpk, &public_key))
-        << "Could not deserialize the public key " << typenames[i];
-
-    // Make sure this is really the public policy key by signing something with
-    // the original key and verifying it with the deserialized version.
-
-    string message("Test message");
-    string context("Test context");
-    string signature;
-    EXPECT_TRUE(SignData(message, context, &signature, signer.get()));
-    EXPECT_TRUE(VerifySignature(message, context, signature, public_key.get()));
-  }
-}
-
-TEST(TaoUtilTest, SignDataTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
-      << "Could not sign the test message";
-}
-
-TEST(TaoUtilTest, VerifyDataTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
-      << "Could not sign the test message";
-
-  EXPECT_TRUE(
-      VerifySignature(message, context, signature, admin->GetPolicyVerifier()))
-      << "The signature did not pass verification";
-}
-
-TEST(TaoUtilTest, SignVerifyTest) {
-  KeyType::Type keytypes[] = {KeyType::ECDSA_PRIV, KeyType::RSA_PRIV,
-                              KeyType::HMAC};
-  string typenames[] = {"ECDSA", "RSA", "HMAC"};
-  bool symmetric[] = {false, false, true};
-  for (int i = 0; i < 3; i++) {
-    ScopedTempDir temp_dir;
-    ASSERT_TRUE(CreateTempDir("sign_verify_test", &temp_dir));
-    string private_path = *temp_dir + "/private.key";
-    string public_path =
-        (symmetric[i] ? string("") : *temp_dir + "/public.key");
-    scoped_ptr<keyczar::Signer> signer;
-    EXPECT_TRUE(GenerateSigningKey(keytypes[i], private_path, public_path,
-                                   "test", "testpass", &signer));
-
-    string message("Test message");
-    string context("Test context");
-    string signature;
-    EXPECT_TRUE(SignData(message, context, &signature, signer.get()))
-        << "Could not sign the test message " << typenames[i];
-
-    EXPECT_TRUE(VerifySignature(message, context, signature, signer.get()))
-        << "The signature did not pass verification " << typenames[i];
-
-    // check again after reloading key
-    EXPECT_TRUE(LoadSigningKey(private_path, "testpass", &signer));
-    EXPECT_TRUE(VerifySignature(message, context, signature, signer.get()))
-        << "The signature did not pass verification " << typenames[i];
-
-    // check again after loading as a verifier
-    if (!symmetric[i]) {
-      scoped_ptr<keyczar::Verifier> verifier;
-      EXPECT_TRUE(LoadVerifierKey(public_path, &verifier));
-      EXPECT_TRUE(VerifySignature(message, context, signature, verifier.get()))
-          << "The signature did not pass verification " << typenames[i];
-    }
-  }
-}
-
-TEST(TaoUtilTest, WrongContextTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
-      << "Could not sign the test message";
-
-  EXPECT_FALSE(VerifySignature(message, "Wrong context", signature,
-                               admin->GetPolicyVerifier()));
-}
-
-TEST(TaoUtilTest, NoContextTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  string message("Test message");
-  string context;
-  string signature;
-  EXPECT_FALSE(
-      SignData(message, context, &signature, admin->GetPolicySigner()));
-  EXPECT_FALSE(
-      VerifySignature(message, context, signature, admin->GetPolicyVerifier()));
-}
-
-TEST(TaoUtilTest, CopySigningKeyTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  scoped_ptr<keyczar::Signer> key;
-  ASSERT_TRUE(tao::CopySigningKey(*admin->GetPolicySigner(), &key))
-      << "Could not copy the key";
-
-  // Make sure the two keys can mutually sign and verify signatures.
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
-      << "Could not sign the test message";
-
-  EXPECT_TRUE(VerifySignature(message, context, signature, key.get()))
-      << "The signature did not pass verification";
-
-  EXPECT_TRUE(SignData(message, context, &signature, key.get()))
-      << "Could not sign the test message";
-
-  EXPECT_TRUE(
-      VerifySignature(message, context, signature, admin->GetPolicyVerifier()))
-      << "The signature did not pass verification";
-}
-
-TEST(TaoUtilTest, CopyVerifyingKeyTest) {
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  scoped_ptr<keyczar::Verifier> key;
-  ASSERT_TRUE(tao::CopyVerifierKey(*admin->GetPolicyVerifier(), &key))
-      << "Could not copy the key";
-
-  // Make sure the copied key can verify signatures.
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
-      << "Could not sign the test message";
-
-  EXPECT_TRUE(VerifySignature(message, context, signature, key.get()))
-      << "The signature did not pass verification";
-}
-
-TEST(TaoUtilTest, CopySigningVerifyingKeyTest) {
-  // same as above, but copy Signer to Verifier (i.e. export public)
-  ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
-
-  scoped_ptr<keyczar::Verifier> key;
-  ASSERT_TRUE(tao::CopyVerifierKey(*admin->GetPolicySigner(), &key))
-      << "Could not copy the key";
-
-  // Make sure the copied key can verify signatures.
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  EXPECT_TRUE(SignData(message, context, &signature, admin->GetPolicySigner()))
-      << "Could not sign the test message";
-
-  EXPECT_TRUE(VerifySignature(message, context, signature, key.get()))
-      << "The signature did not pass verification";
-}
-
-TEST(TaoUtilTest, CopyCryptingKeyTest) {
-  // same as above, but copy Signer to Verifier (i.e. export public)
-  ScopedTempDir temp_dir;
-  ASSERT_TRUE(CreateTempDir("copy_crypting_key_test", &temp_dir));
-  scoped_ptr<keyczar::Crypter> crypter;
-  ASSERT_TRUE(GenerateCryptingKey(KeyType::AES, *temp_dir + "/test.key", "test",
-                                  "testpass", &crypter));
-
-  scoped_ptr<keyczar::Crypter> key;
-  ASSERT_TRUE(tao::CopyCryptingKey(*crypter, &key)) << "Could not copy the key";
-
-  // Make sure the two keys can mutually encrypt and decrypt data.
-  string plaintext("Test message");
-  string ciphertext, decrypted;
-
-  EXPECT_TRUE(crypter->Encrypt(plaintext, &ciphertext));
-  EXPECT_TRUE(key->Decrypt(ciphertext, &decrypted));
-  EXPECT_EQ(plaintext, decrypted) << "Crypter copy did not decrypt properly";
-
-  EXPECT_TRUE(key->Encrypt(plaintext, &ciphertext));
-  EXPECT_TRUE(crypter->Decrypt(ciphertext, &decrypted));
-  EXPECT_EQ(plaintext, decrypted) << "Crypter copy did not encrypt properly";
-}
-
 TEST(TaoUtilTest, SealOrUnsealSecretTest) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("seal_or_unseal_test", &temp_dir));
   string seal_path = *temp_dir + string("/sealed_secret");
 
-  scoped_ptr<Tao> ft(new FakeTao());
-  EXPECT_TRUE(ft->Init()) << "Could not Init the tao";
+  scoped_ptr<FakeTao> ft(new FakeTao());
+  EXPECT_TRUE(ft->InitTemporaryTPM()) << "Could not Init the tao";
   string fake_hash("fake hash");
 
   DirectTaoChildChannel channel(ft.release(), fake_hash);

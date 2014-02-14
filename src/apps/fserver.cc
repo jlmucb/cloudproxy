@@ -49,7 +49,6 @@ DEFINE_string(meta_path, "file_server_meta",
               "The path used by the file server to store metadata");
 DEFINE_string(server_keys, "./fserver_key",
               "Directory for server keys and TLS files");
-DEFINE_string(server_password, "cpserver", "The password for the server keys");
 DEFINE_string(acls, "./acls_sig",
               "A file containing a SignedACL signed by"
               " the public policy key (e.g., using sign_acls)");
@@ -85,11 +84,11 @@ int main(int argc, char **argv) {
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
   cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_keys,
-                            FLAGS_server_password, FLAGS_acls, FLAGS_address,
-                            FLAGS_port, admin.release());
+                            FLAGS_acls, FLAGS_address,
+                            FLAGS_port, channel.release(), admin.release());
 
   LOG(INFO) << "FileServer listening";
-  CHECK(fs.Listen(channel.get(), false /* not single channel */))
+  CHECK(fs.Listen(false /* not single channel */))
       << "Could not listen for client connections";
   return 0;
 }

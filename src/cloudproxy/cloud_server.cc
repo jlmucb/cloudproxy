@@ -37,6 +37,7 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/util.h"
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_auth.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
@@ -48,9 +49,7 @@ using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
-using tao::Attestation;
-using tao::GenerateSigningKey;
-using tao::LoadSigningKey;
+using tao::Keys;
 using tao::OpenTCPSocket;
 using tao::ScopedFd;
 using tao::SerializeX509;
@@ -60,68 +59,39 @@ using tao::VerifySignature;
 
 namespace cloudproxy {
 
-CloudServer::CloudServer(const string &server_config_path, const string &secret,
+// TODO(kwalsh) move work to Init().
+CloudServer::CloudServer(const string &server_config_path,
                          const string &acl_location, const string &host,
-                         const string &port, TaoDomain *admin)
+                         const string &port, TaoChildChannel *channel,
+                         TaoDomain *admin)
     : admin_(admin),
       rand_(keyczar::CryptoFactory::Rand()),
       host_(host),
       port_(port),
       auth_(),
       users_(new CloudUserManager()),
-      objects_() {
+      objects_(),
+      host_channel_(channel),
+      keys_(new Keys(server_config_path, "cloudserver", Keys::Signing)) {
 
   auth_.reset(new CloudAuth(acl_location, admin_->GetPolicyVerifier()));
 
-  ScopedSafeString encoded_secret(new string());
-  CHECK(Base64WEncode(secret, encoded_secret.get()))
-      << "Could not encode the secret as a Base64W string";
+  CHECK(keys_->InitHosted(*host_channel_))
+      << "Could not initialize CloudServer keys";
 
-  FilePath fp(server_config_path);
-  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
-  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
-  FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
-
-  // Check to see if the keys and cert exist. If not, create them.
-
-  bool new_key = !PathExists(priv_key_path);
-  bool new_cert = new_key || !PathExists(tls_cert_path);
-
-  scoped_ptr<keyczar::Signer> key;
-  if (new_key) {
-    CHECK(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV,
-                             priv_key_path.value(), pub_key_path.value(),
-                             "cloud_server_key", *encoded_secret, &key))
-        << "Could not create new SSL key for the server";
-  } else {
-    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &key))
-        << "Could not load SSL key for the server";
+  // TODO(kwalsh) x509 details should come from elsewhere
+  if (keys_->HasFreshKeys()) {
+    CHECK(keys_->CreateSelfSignedX509("US", "Washington", "Google",
+                                      "cloudserver"));
   }
 
-  if (new_cert) {
-    // TODO(kwalsh) x509 name details should come from elsewhere
-    CHECK(tao::CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
-                                    "cloudserver", tls_cert_path.value()));
-  }
-
-  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
-  // So, they need to be added again. Typical error is:
-  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
-  // This needs to be done as close to SSL_CTX_new as possible.
-  OpenSSL_add_all_algorithms();
-  context_.reset(SSL_CTX_new(TLSv1_2_server_method()));
-
-  // set up the SSL context and SSLs for getting client connections
-  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), key.get()))
-      << "Could not set up server TLS";
+   // set up the SSL context and SSLs for getting client connections
+  CHECK(SetUpSSLServerCtx(*keys_, &context_)) << "Could not set up server TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 }
 
-// TODO(tmroeder): this memory usage is unsafe: it should be a shared_ptr so
-// that the memory won't go away when the parent thread does.
-bool CloudServer::Listen(const TaoChildChannel *quote_tao,
-                         bool single_channel) {
+bool CloudServer::Listen(bool single_channel) {
   // Set up a TCP connection for the given host and port.
   ScopedFd sock(new int(-1));
   if (!OpenTCPSocket(host_, port_, sock.get())) {
@@ -138,10 +108,10 @@ bool CloudServer::Listen(const TaoChildChannel *quote_tao,
     }
 
     if (single_channel) {
-      HandleConnection(accept_sock, quote_tao);
+      HandleConnection(accept_sock);
       return true;
     } else {
-      thread t(&CloudServer::HandleConnection, this, accept_sock, quote_tao);
+      thread t(&CloudServer::HandleConnection, this, accept_sock);
       t.detach();
     }
   }
@@ -149,7 +119,7 @@ bool CloudServer::Listen(const TaoChildChannel *quote_tao,
   return true;
 }
 
-void CloudServer::HandleConnection(int accept_sock, const TaoChildChannel *t) {
+void CloudServer::HandleConnection(int accept_sock) {
   // Create a new SSL context to handle this connection and do a handshake on
   // it. The ScopedSSL will close the fd in its cleanup routine.
   ScopedSSL ssl(SSL_new(context_.get()));
@@ -199,7 +169,7 @@ void CloudServer::HandleConnection(int accept_sock, const TaoChildChannel *t) {
     string reason;
     bool reply = true;
     bool close = false;
-    rv = HandleMessage(cm, ssl.get(), &reason, &reply, &close, cstd, *t);
+    rv = HandleMessage(cm, ssl.get(), &reason, &reply, &close, cstd);
 
     if (close) {
       break;
@@ -242,8 +212,7 @@ bool CloudServer::SendReply(SSL *ssl, bool success, const string &reason) {
 }
 bool CloudServer::HandleMessage(const ClientMessage &message, SSL *ssl,
                                 string *reason, bool *reply, bool *close,
-                                CloudServerThreadData &cstd,
-                                const TaoChildChannel &t) {
+                                CloudServerThreadData &cstd) {
   CHECK(ssl) << "null ssl";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
@@ -306,7 +275,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message, SSL *ssl,
     *reply = false;
     return rv;
   } else if (message.has_attestation()) {
-    rv = HandleAttestation(message.attestation(), ssl, reason, reply, cstd, t);
+    rv = HandleAttestation(message.attestation(), ssl, reason, reply, cstd);
     if (!rv) {
       LOG(ERROR) << "Attestation verification failed. Closing connection";
       *close = true;
@@ -427,8 +396,8 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
 
     // check the signature on the serialized_challenge
     if (!VerifySignature(response.serialized_chall(),
-                         CloudClient::ChallengeSigningContext,
-                         response.signature(), user_key)) {
+                               CloudClient::ChallengeSigningContext,
+                               response.signature(), user_key)) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");
       return false;
@@ -508,8 +477,7 @@ bool CloudServer::HandleRead(const Action &action, SSL *ssl, string *reason,
 
 bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
                                     string *reason, bool *reply,
-                                    CloudServerThreadData &cstd,
-                                    const TaoChildChannel &t) {
+                                    CloudServerThreadData &cstd) {
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {
@@ -534,7 +502,7 @@ bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
   string *signature = sm.mutable_attestation();
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.Attest(cstd.GetSelfCert(), signature)) {
+    if (!host_channel_->Attest(cstd.GetSelfCert(), signature)) {
       LOG(ERROR)
           << "Could not get a signed attestation for our own X.509 certificate";
       return false;

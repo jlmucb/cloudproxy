@@ -47,10 +47,6 @@ using std::set;
 using std::string;
 using std::thread;
 
-namespace tao {
-class TaoChildChannel;
-}  // namespace tao
-
 namespace cloudproxy {
 
 class CloudAuth;
@@ -66,28 +62,24 @@ class CloudServer {
 
   /// Create a CloudServer.
   /// @param server_config_path A directory to use for keys and TLS files.
-  /// @param secret A string to use for encrypting private keys.
   /// @param acl_location The path to a signed ACL giving permissions for
   /// operations on the server.
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
+  /// @param channel A connection to the host Tao. Ownership is taken.
   /// @param admin The configuration for this administrative domain. Ownership
   /// is taken.
-  /// TODO(kwalsh) This description used to say the secret was tao-sealed
-  /// against this client, but the code was not so. External code that
-  /// seals a secret should be moved here.
-  CloudServer(const string &server_config_path, const string &secret,
-              const string &acl_location, const string &host,
-              const string &port, tao::TaoDomain *admin);
+  CloudServer(const string &server_config_path, const string &acl_location,
+              const string &host, const string &port,
+              tao::TaoChildChannel *channel, tao::TaoDomain *admin);
   virtual ~CloudServer() {}
 
   /// Start listening to the port and handle connections as they arrive.
   /// The Tao implementation allows the server to check that programs
   /// that connect to it are allowed by the Tao and to get a
   /// Attestation for its key.
-  /// @param t A connection to a host Tao.
   /// @param single_channel Whether or not to stop after a single connection.
-  bool Listen(const tao::TaoChildChannel *t, bool single_channel);
+  bool Listen(bool single_channel);
 
  protected:
   // TODO(tmroeder): in C++14, make these shared_mutex and support readers
@@ -139,11 +131,10 @@ class CloudServer {
   /// Configuration for this administrative domain
   scoped_ptr<tao::TaoDomain> admin_;
 
-  /// Listen on a bio and handle an incoming message from a client. Spawn a
+  /// Listen on a socket and handle an incoming message from a client. Spawn a
   /// thread for each connection.
   /// @param accept_sock A connected to use to establish an SSL connection.
-  /// @param t A connection to a host Tao to use in handling requests
-  void HandleConnection(int accept_sock, const tao::TaoChildChannel *t);
+  void HandleConnection(int accept_sock);
 
   /// Handle a message from a client.
   /// @param message A client message.
@@ -151,10 +142,8 @@ class CloudServer {
   /// @param[out] reason The reason for failure, if any.
   /// @param[out] reply Whether or not the request succeeded.
   /// @param ctsd Context for this thread.
-  /// @param t The Tao host connection to use.
   bool HandleMessage(const ClientMessage &message, SSL *ssl, string *reason,
-                     bool *reply, bool *close, CloudServerThreadData &cstd,
-                     const tao::TaoChildChannel &t);
+                     bool *reply, bool *close, CloudServerThreadData &cstd);
 
   /// Handle a request to authorize a user.
   /// @param auth An authorization request.
@@ -181,8 +170,7 @@ class CloudServer {
   /// @param[out] reply Whether or not the attestation was valid.
   /// @param ctsd Context for this thread.
   bool HandleAttestation(const string &attestation, SSL *ssl, string *reason,
-                         bool *reply, CloudServerThreadData &cstd,
-                         const tao::TaoChildChannel &t);
+                         bool *reply, CloudServerThreadData &cstd);
 
   /// A (static) random number generator for generating challenges.
   keyczar::RandImpl *rand_;
@@ -204,6 +192,12 @@ class CloudServer {
 
   /// A simple object management tool: a set of object names.
   set<string> objects_;
+
+  /// A connection to the host Tao.
+  scoped_ptr<tao::TaoChildChannel> host_channel_;
+
+  /// A signing key.
+  scoped_ptr<tao::Keys> keys_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudServer);
 };

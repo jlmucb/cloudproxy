@@ -28,6 +28,7 @@
 #include <keyczar/keyczar.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
@@ -44,61 +45,37 @@ using keyczar::base::WriteStringToFile;
 
 namespace tao {
 
-bool FakeTao::Init() {
-  string sealing_key_path;
-  string signing_key_path;
-  string attestation_path;
-  if (!keys_path_.empty()) {
-    FilePath fp(keys_path_);
-    sealing_key_path = fp.Append(tao::keys::SealKeySuffix).value();
-    signing_key_path = fp.Append(tao::keys::SignPrivateKeySuffix).value();
-    attestation_path = fp.Append(tao::keys::SignKeyAttestationSuffix).value();
-  } else {
-    signing_key_path = signing_key_path_;
-  }
-
-  if (!signing_key_password_.empty()) {
-    VLOG(2) << "Fake tao: Using existing signing key " << signing_key_path;
-    LoadSigningKey(signing_key_path, signing_key_password_, &signer_);
-  } else if (signing_key_path.empty()) {
-    VLOG(2) << "Fake tao: Generating temporary signing key";
-    GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, "" /* no priv path */,
-                       "" /* no pub path */, "fake_aik", "" /* no passwd */,
-                       &signer_);
-  } else if (!DirectoryExists(FilePath(signing_key_path))) {
-    VLOG(2) << "Fake tao: Generating signing key " << signing_key_path;
-    GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, signing_key_path,
-                       "" /* no pub path */, "fake_aik", FakePassword,
-                       &signer_);
-  } else {
-    VLOG(2) << "Fake tao: Using signing key " << signing_key_path;
-    LoadSigningKey(signing_key_path, FakePassword, &signer_);
-  }
-  if (signer_.get() == nullptr) {
-    LOG(ERROR) << "Could not load signing key";
+bool FakeTao::InitTemporaryTPM() {
+  VLOG(2) << "Fake tao: Generating temporary signing key";
+  keys_.reset(new Keys("fake_tpm", Keys::Signing | Keys::Crypting));
+  if (!keys_->InitTemporary()) {
+    LOG(ERROR) << "Could not initialize fake tao keys";
     return false;
   }
+  return true;
+}
 
-  if (sealing_key_path.empty()) {
-    VLOG(2) << "Fake tao: Generating temporary sealing key";
-    GenerateCryptingKey(keyczar::KeyType::AES, "" /* no path */, "fake_srk",
-                        "" /* no passwd */, &crypter_);
-  } else if (!DirectoryExists(FilePath(sealing_key_path))) {
-    VLOG(2) << "Fake tao: Generating sealing key " << sealing_key_path;
-    GenerateCryptingKey(keyczar::KeyType::AES, sealing_key_path, "fake_srk",
-                        FakePassword, &crypter_);
-  } else {
-    VLOG(2) << "Fake tao: Using sealing key " << sealing_key_path;
-    LoadCryptingKey(sealing_key_path, FakePassword, &crypter_);
-  }
-  if (crypter_.get() == nullptr) {
-    LOG(ERROR) << "Could not load sealing key";
+bool FakeTao::InitTemporaryTPM(const TaoDomain &admin) {
+  if (!InitTemporaryTPM()) {
+    LOG(ERROR) << "Could not create fake tao keys";
     return false;
   }
+  if (!MakePolicyAttestation(admin)) {
+    LOG(ERROR) << "Could not create temporary attestation";
+    return false;
+  }
+  return true;
+}
 
-  if (admin_.get() == nullptr) {
-    VLOG(2) << "Fake tao: Not using any attestation";
-  } else if (PathExists(FilePath(attestation_path))) {
+bool FakeTao::InitPseudoTPM(const string &keys_path, const TaoDomain &admin) {
+  VLOG(2) << "Fake tao: Generating keys in " << keys_path;
+  keys_.reset(new Keys(keys_path, "fake_tpm", Keys::Signing | Keys::Crypting));
+  if (!keys_->InitNonHosted(FakePassword)) {
+    LOG(ERROR) << "Could not initialize fake tao keys";
+    return false;
+  }
+  string attestation_path = keys_->AttestationPath();
+  if (!keys_->HasFreshKeys()) {
     VLOG(2) << "Fake tao: Using attestation " << attestation_path;
     if (!ReadFileToString(attestation_path, &attestation_)) {
       LOG(ERROR) << "Could not load attestation";
@@ -106,30 +83,23 @@ bool FakeTao::Init() {
     }
   } else {
     VLOG(2) << "Fake tao: Creating attestation " << attestation_path;
-    string serialized_key = SerializePublicKey(*signer_);
-    if (serialized_key.empty()) {
-      LOG(ERROR) << "Could not serialize key";
+    if (!MakePolicyAttestation(admin)) {
+      LOG(ERROR) << "Could not create attestation";
       return false;
     }
-    // create a signed, fake tpm attestation
-    Statement s;
-    s.set_data(serialized_key);
-    s.set_hash_alg(TaoDomain::FakeHash);
-    s.set_hash("FAKE_TPM");
-    // sign this serialized data with policy key
-    string attestation;
-    if (!admin_->AttestByRoot(&s, &attestation)) {
-      LOG(ERROR) << "Could not obtain root attestation";
-      return false;
-    }
-    // save to file
-    if (!WriteStringToFile(attestation_path, attestation)) {
+    if (!WriteStringToFile(attestation_path, attestation_)) {
       LOG(ERROR) << "Could not write attestation";
       return false;
     }
   }
-
   return true;
+}
+
+FakeTao *FakeTao::DeepCopy() const {
+  scoped_ptr<FakeTao> other(new FakeTao());
+  other->keys_.reset(keys_->DeepCopy());
+  other->attestation_ = attestation_;
+  return other.release();
 }
 
 bool FakeTao::StartHostedProgram(const string &path, const list<string> &args,
@@ -153,13 +123,13 @@ bool FakeTao::GetRandomBytes(size_t size, string *bytes) const {
 bool FakeTao::Seal(const string &child_hash, const string &data,
                    string *sealed) const {
   // just encrypt it with our crypter
-  return crypter_->Encrypt(data, sealed);
+  return keys_->Crypter()->Encrypt(data, sealed);
 }
 
 bool FakeTao::Unseal(const string &child_hash, const string &sealed,
                      string *data) const {
   // decrypt it with our crypter
-  return crypter_->Decrypt(sealed, data);
+  return keys_->Crypter()->Decrypt(sealed, data);
 }
 
 bool FakeTao::Attest(const string &child_hash, const string &data,
@@ -169,6 +139,25 @@ bool FakeTao::Attest(const string &child_hash, const string &data,
   s.set_hash_alg(TaoDomain::Sha256);
   s.set_hash(child_hash);
 
-  return GenerateAttestation(signer_.get(), attestation_, &s, attestation);
+  return GenerateAttestation(keys_->Signer(), attestation_, &s, attestation);
+}
+
+bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
+    string serialized_key;
+    if (!keys_->SerializePublicKey(&serialized_key)) {
+      LOG(ERROR) << "Could not serialize key";
+      return false;
+    }
+    // create a signed, fake tpm attestation
+    Statement s;
+    s.set_data(serialized_key);
+    s.set_hash_alg(TaoDomain::FakeHash);
+    s.set_hash("FAKE_TPM");
+    // sign this serialized data with policy key
+    if (!admin.AttestByRoot(&s, &attestation_)) {
+      LOG(ERROR) << "Could not obtain root attestation";
+      return false;
+    }
+    return true;
 }
 }  // namespace tao

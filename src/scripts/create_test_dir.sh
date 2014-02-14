@@ -34,4 +34,3 @@ mkdir linux_tao_service_files
 # Link to scripts and program directories
 ln -s ${BUILD_DIR} bin
 ln -s ${ROOT}/src/scripts scripts
-

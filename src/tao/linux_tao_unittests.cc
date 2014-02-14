@@ -62,7 +62,7 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(WriteStringToFile(test_binary_path_, test_binary_contents));
 
     scoped_ptr<FakeTao> ft(new FakeTao());
-    ASSERT_TRUE(ft->Init()) << "Could not init the FakeTao";
+    ASSERT_TRUE(ft->InitTemporaryTPM()) << "Could not init the FakeTao";
 
     string fake_linux_tao_hash("This is not a real hash");
     scoped_ptr<DirectTaoChildChannel> channel(

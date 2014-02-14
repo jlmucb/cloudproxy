@@ -22,18 +22,17 @@
 #include "cloudproxy/cloud_user_manager.h"
 
 #include <glog/logging.h>
-#include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_reader.h>
+#include <keyczar/base/file_util.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/util.h"
+#include "tao/keys.h"
 #include "tao/util.h"
 
-using keyczar::base::PathExists;
-using tao::DeserializePublicKey;
-using tao::KeyczarPublicKey;
-using tao::VerifySignature;
+using keyczar::base::WriteStringToFile;
+
+using tao::Keys;
 
 namespace cloudproxy {
 
@@ -80,14 +79,8 @@ bool CloudUserManager::AddSigningKey(const string &user, const string &path,
 }
 
 bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
-  KeyczarPublicKey kpk;
-  if (!kpk.ParseFromString(pub_key)) {
-    LOG(ERROR) << "Could not deserialize the KeyczarPublicKey";
-    return false;
-  }
-
   scoped_ptr<keyczar::Verifier> scoped_verifier;
-  if (!DeserializePublicKey(kpk, &scoped_verifier)) {
+  if (!tao::DeserializePublicKey(pub_key, &scoped_verifier)) {
     LOG(ERROR) << "Could not deserialize the key";
     return false;
   }
@@ -101,7 +94,7 @@ bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
 bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
                               keyczar::Verifier *verifier) {
   // check the signature for this binding
-  if (!VerifySignature(ssf.serialized_speaks_for(), SpeaksForSigningContext,
+  if (!tao::VerifySignature(ssf.serialized_speaks_for(), SpeaksForSigningContext,
                        ssf.signature(), verifier)) {
     LOG(ERROR) << "The SignedSpeaksFor was not correctly signed";
     return false;
@@ -122,6 +115,47 @@ void CloudUserManager::SetAuthenticated(const string &user) {
 
 bool CloudUserManager::IsAuthenticated(const string &user) {
   return authenticated_.end() != authenticated_.find(user);
+}
+
+bool CloudUserManager::MakeNewUser(const string &path, const string &username,
+                                   const string &password,
+                                   const keyczar::Signer &policy_key,
+                                   scoped_ptr<Keys> *key) {
+  string keys_path = FilePath(path).Append(username).value();
+  key->reset(new Keys(keys_path, username, Keys::Signing));
+  if (!(*key)->InitNonHosted(password)) {
+    LOG(ERROR) << "Could not create key for user " << username;
+    return false;
+  }
+  string pub_key;
+  SpeaksFor sf;
+  sf.set_subject(username);
+  if (!(*key)->SerializePublicKey(sf.mutable_pub_key())) {
+    LOG(ERROR) << "Could not serialize key for user " << username;
+    return false;
+  }
+  SignedSpeaksFor ssf;
+  if (!sf.SerializeToString(ssf.mutable_serialized_speaks_for())) {
+    LOG(ERROR) << "Could not serialize key for user " << username;
+    return false;
+  }
+  if (!tao::SignData(ssf.serialized_speaks_for(),
+                     CloudUserManager::SpeaksForSigningContext,
+                     ssf.mutable_signature(), &policy_key)) {
+    LOG(ERROR) << "Could not sign delegation for user " << username;
+    return false;
+  }
+  string serialized_ssf;
+  if (!ssf.SerializeToString(&serialized_ssf)) {
+    LOG(ERROR) << "Could not serialize delegation for user " << username;
+    return false;
+  }
+  string ssf_path = (*key)->GetPath(UserDelegationSuffix);
+  if (!WriteStringToFile(ssf_path, serialized_ssf)) {
+    LOG(ERROR) << "Could not write delegation for user " << username;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace cloudproxy

@@ -41,9 +41,8 @@ class WhitelistAuth : public TaoDomain {
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONSignedWhitelistPath = "signed_whitelist_path";
 
-  WhitelistAuth(const string &path, DictionaryValue *value,
-                const string &password)
-      : TaoDomain(path, value, password) {}
+  WhitelistAuth(const string &path, DictionaryValue *value)
+      : TaoDomain(path, value) {}
   virtual ~WhitelistAuth() {}
 
   // The following methods have the same semantics as in TaoAuth.

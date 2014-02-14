@@ -41,53 +41,33 @@ using std::stringstream;
 using cloudproxy::ACL;
 using cloudproxy::Action;
 using cloudproxy::CloudAuth;
-using cloudproxy::DeriveKeys;
 using cloudproxy::ExtractACL;
 using cloudproxy::ScopedSSLCtx;
-using cloudproxy::SetUpSSLCTX;
+using cloudproxy::SetUpSSLServerCtx;
+using cloudproxy::SetUpSSLClientCtx;
 using cloudproxy::SignedACL;
 using tao::CreateSelfSignedX509;
 using tao::CreateTempDir;
 using tao::CreateTempWhitelistDomain;
-using tao::GenerateSigningKey;
-using tao::ScopedEvpPkey;
 using tao::ScopedFile;
 using tao::ScopedTempDir;
 using tao::SerializeX509;
 using tao::SignData;
 using tao::TaoDomain;
+using tao::Keys;
 
-TEST(CloudProxyUtilTest, X509Test) {
+TEST(CloudProxyUtilTest, X509SSLTest) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("cloud_proxy_util_test", &temp_dir));
 
-  string priv_key_path = *temp_dir + "/cloudclient_private.key";
-  string pub_key_path = *temp_dir + "/cloudclient_public.key";
-  string tls_cert_path = *temp_dir + "/cloudclient.cert";
-  scoped_ptr<keyczar::Signer> key;
-  EXPECT_TRUE(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, priv_key_path,
-                                 pub_key_path, "test client key",
-                                 "dummy_password", &key));
-  EXPECT_TRUE(CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
-                                   "testclient", tls_cert_path));
+  scoped_ptr<Keys> key(new Keys(*temp_dir, "test client key", Keys::Signing));
+  ASSERT_TRUE(key->InitNonHosted("dummy_password"));
+  ASSERT_TRUE(
+      key->CreateSelfSignedX509("US", "Washington", "Google", "testclient"));
 
-  ScopedFile x509_file(fopen(tls_cert_path.c_str(), "r"));
-  ASSERT_TRUE(x509_file.get() != nullptr);
-  X509 *x = nullptr;
-  PEM_read_X509(x509_file.get(), &x, nullptr, nullptr);
-  ASSERT_TRUE(x != nullptr);
-
-  string serialized_x509;
-  EXPECT_TRUE(SerializeX509(x, &serialized_x509));
-
-  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
-  // So, they need to be added again. Typical error is:
-  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
-  // This needs to be done as close to SSL_CTX_new as possible.
-  OpenSSL_add_all_algorithms();
-  ScopedSSLCtx ctx(SSL_CTX_new(TLSv1_2_client_method()));
-
-  EXPECT_TRUE(SetUpSSLCTX(ctx.get(), tls_cert_path, key.get()));
+  ScopedSSLCtx ctx;
+  EXPECT_TRUE(SetUpSSLServerCtx(*key, &ctx));
+  EXPECT_TRUE(SetUpSSLClientCtx(*key, &ctx));
 }
 
 TEST(CloudProxyUtilTest, ExtractACLTest) {
@@ -129,29 +109,4 @@ TEST(CloudProxyUtilTest, ExtractACLTest) {
       ExtractACL(signed_acl_path, admin->GetPolicyVerifier(), &acl_out));
   ACL deserialized_acl;
   EXPECT_TRUE(deserialized_acl.ParseFromString(acl_out));
-}
-
-TEST(CloudProxyUtilTest, DeriveKeysTest) {
-  ScopedTempDir temp_dir;
-  ASSERT_TRUE(CreateTempDir("cloud_proxy_util_test", &temp_dir));
-
-  string priv_key_path = *temp_dir + "/cloudclient_private.key";
-  string pub_key_path = "";  // no public key for HMAC
-  scoped_ptr<keyczar::Signer> key;
-  EXPECT_TRUE(
-      GenerateSigningKey(keyczar::KeyType::HMAC, priv_key_path, pub_key_path,
-                         "test client key", "dummy_password", &key));
-
-  keyczar::base::ScopedSafeString enc_key(new string());
-  keyczar::base::ScopedSafeString hmac_key(new string());
-
-  EXPECT_TRUE(DeriveKeys(key.get(), &enc_key, &hmac_key));
-
-  keyczar::base::ScopedSafeString enc_key2(new string());
-  keyczar::base::ScopedSafeString hmac_key2(new string());
-
-  EXPECT_TRUE(DeriveKeys(key.get(), &enc_key2, &hmac_key2));
-
-  EXPECT_EQ(*enc_key, *enc_key2);
-  EXPECT_EQ(*hmac_key, *hmac_key2);
 }

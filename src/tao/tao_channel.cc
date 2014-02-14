@@ -34,9 +34,6 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,
   string result_data;
   bool result = false;
   switch (rpc.rpc()) {
-    case INIT:
-      result = tao.Init();
-      break;
     case DESTROY:
       result = tao.Destroy();
       break;

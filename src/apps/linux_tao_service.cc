@@ -44,7 +44,6 @@ using tao::LinuxTao;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
 using tao::TPMTaoChildChannel;
-using tao::Tao;
 using tao::TaoChildChannel;
 using tao::TaoDomain;
 
@@ -102,8 +101,9 @@ int main(int argc, char **argv) {
         aik_blob_stream.str(), aik_attest_stream.str(), list<UINT32>{17, 18}));
   } else {
     // The FakeTao to use for the parent Tao
-    scoped_ptr<Tao> tao(new FakeTao(FLAGS_fake_keys, admin->DeepCopy()));
-    CHECK(tao->Init()) << "Could not initialize the FakeTao";
+    scoped_ptr<FakeTao> tao(new FakeTao());
+    CHECK(tao->InitPseudoTPM(FLAGS_fake_keys, *admin))
+        << "Could not initialize the FakeTao";
     child_channel.reset(
         new DirectTaoChildChannel(tao.release(), FLAGS_linux_hash));
   }

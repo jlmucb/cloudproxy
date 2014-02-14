@@ -27,6 +27,7 @@
 #include <set>
 #include <string>
 
+#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "cloudproxy/cloudproxy.pb.h"
@@ -39,6 +40,10 @@ using std::string;
 namespace keyczar {
 class Signer;
 class Verifier;
+}  // namespace keyczar
+
+namespace tao {
+class Keys;
 }  // namespace keyczar
 
 namespace cloudproxy {
@@ -99,8 +104,25 @@ class CloudUserManager {
   /// @param user The user to check.
   bool IsAuthenticated(const string &user);
 
+  /// Create keys and attestations necessary for a new user, including:
+  ///   path/username/signing/private.key  - private key
+  ///   path/username/signing/public.key   - public key
+  ///   path/username/signing/ssf          - policy-signed delegation
+  /// @param path The location to store keys and attestations:
+  /// @param username The name for the new user.
+  /// @param password A password to protect the new user keys.
+  /// @param policy_key The policy key to sign the user delgation.
+  /// @param[out] key The new key for the user.
+  static bool MakeNewUser(const string &path, const string &username,
+                          const string &password,
+                          const keyczar::Signer &policy_key,
+                          scoped_ptr<tao::Keys> *key);
+
   constexpr static auto SpeaksForSigningContext =
       "CloudUserManager cloudproxy::SignedSpeaksFor Version 1";
+  
+  /// Suffix for a Tao attestation for a signing key.
+  constexpr static auto UserDelegationSuffix = "signing/ssf";
 
  private:
   // A set of users and their keys.

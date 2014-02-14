@@ -28,6 +28,7 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/keyczar_public_key.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
@@ -38,8 +39,9 @@ using keyczar::base::WriteStringToFile;
 using cloudproxy::CloudUserManager;
 using cloudproxy::SignedSpeaksFor;
 using cloudproxy::SpeaksFor;
-using tao::KeyczarPublicKey;
+using tao::Keys;
 using tao::LoadVerifierKey;
+using tao::SerializePublicKey;
 using tao::SignData;
 using tao::TaoDomain;
 
@@ -59,19 +61,15 @@ int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
-  KeyczarPublicKey kpk;
   scoped_ptr<keyczar::Verifier> key;
   CHECK(LoadVerifierKey(FLAGS_pub_key_loc, &key)) << "Could not load key from "
                                                   << FLAGS_pub_key_loc;
-  CHECK(SerializeKeyset(key->keyset(), FLAGS_pub_key_loc, &kpk))
-      << "Could not serialize the public key";
   string pub_key;
-  CHECK(kpk.SerializeToString(&pub_key))
-      << "Could not serialize the KeyczarPublicKey to a string";
+  CHECK(SerializePublicKey(*key, &pub_key))
+      << "Could not serialize the key";
 
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
-  CHECK(admin->Unlock(FLAGS_policy_pass)) << "Could not unlock configuration";
 
   SpeaksFor sf;
   sf.set_subject(FLAGS_subject);

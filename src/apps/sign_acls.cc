@@ -54,9 +54,8 @@ int main(int argc, char** argv) {
       << "Could not read any bytes from the acls file";
 
   // sign this serialized data with admin policy key
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
-  CHECK(admin->Unlock(FLAGS_policy_pass)) << "Could not unlock configuration";
   string sig;
   CHECK(SignData(acl, CloudAuth::ACLSigningContext, &sig,
                  admin->GetPolicySigner())) << "Could not sign acl file";

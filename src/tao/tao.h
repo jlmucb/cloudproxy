@@ -65,9 +65,6 @@ class Tao {
   Tao() {}
   virtual ~Tao() {}
 
-  /// Initialize the Tao.
-  virtual bool Init() = 0;
-
   /// Clean up an resources that were allocated in Init().
   virtual bool Destroy() = 0;
 
@@ -126,6 +123,9 @@ class Tao {
 
   // the timeout for an Attestation (= 1 year in seconds)
   const static int DefaultAttestationTimeout = 31556926;
+
+  // Default size of secret for protecting crypting and signing keys.
+  static const int DefaultRandomSecretSize = 128;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Tao);

@@ -21,17 +21,21 @@
 
 #include <string>
 
-#include <glog/logging.h>
-#include <keyczar/base/values.h>
-#include <keyczar/keyczar.h>
-
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_auth.h"
-#include "tao/util.h"
 
 using std::string;
 
+namespace keyczar {
+class Signer;
+class Verifier;
+class Crypter;
+class DictionaryValue;
+}  // namespace keyczar
+
 namespace tao {
+class Keys;
 /// A TaoDomain stores and manages a set of configuration parameters for a
 /// single administrative domain, including a policy key pair, the host:port
 /// location to access a Tao CA (if available). Classes that implement TaoDomain
@@ -106,72 +110,62 @@ class TaoDomain : public TaoAuth {
   static TaoDomain *Create(const string &initial_config, const string &path,
                            const string &password);
 
-  /// Initialize a TaoDomain from an existing configuration file. Initially the
-  /// object will be "locked", meaning that the policy private signing key will
-  /// not be available, new whitelists or attestations can not be signed, etc.
+  /// Initialize a TaoDomain from an existing configuration file. The object
+  /// will be "locked", meaning that the policy private signing key will not be
+  /// available, new whitelists or attestations can not be signed, etc.
   /// @param path The location of the existing configuration file.
-  static TaoDomain *Load(const string &path);
+  static TaoDomain *Load(const string &path) { return Load(path, ""); }
 
-  /// Unlock the TaoDomain so that the policy private signing key is available.
-  bool Unlock(const string &password);
+  /// Initialize a TaoDomain from an existing configuration file. 
+  /// @param path The location of the existing configuration file.
+  /// @param password The password to unlock the policy private key. If password
+  /// is emptystring, then the TaoDomain object will be "locked", meaning that
+  /// the policy private signing key will not be available, new whitelists or
+  /// attestations can not be signed, etc.
+  static TaoDomain *Load(const string &path, const string &password);
 
   /// Get the name of this administrative domain.
-  const string GetName() const { return GetConfigString(JSONName); }
-
-  /// Get the path to the policy public key.
-  const string GetPolicyPublicKeyPath() const {
-    return GetConfigPath(JSONPolicyKeysPath, tao::keys::SignPublicKeySuffix);
-  }
-
-  /// Get the path to the policy private key.
-  const string GetPolicyPrivateKeyPath() const {
-    return GetConfigPath(JSONPolicyKeysPath, tao::keys::SignPrivateKeySuffix);
-  }
-
-  /// Get the path to a self-signed x509 certificate for the policy public key.
-  const string GetPolicyX509CertificatePath() const {
-    return GetConfigPath(JSONPolicyKeysPath,
-                         tao::keys::SignPublicKeyX509Suffix);
-  }
+  string GetName() const { return GetConfigString(JSONName); }
 
   /// Get the Country detail for x509 certificates.
-  const string GetPolicyX509Country() const {
+  string GetPolicyX509Country() const {
     return GetConfigString(JSONPolicyX509Country);
   }
 
-  const string GetPolicyX509State() const {
+  string GetPolicyX509State() const {
     return GetConfigString(JSONPolicyX509State);
   }
 
   /// Get the Organization detail for x509 certificates.
-  const string GetPolicyX509Organization() const {
+  string GetPolicyX509Organization() const {
     return GetConfigString(JSONPolicyX509Organization);
   }
 
   /// Get the CommonName detail for x509 certificates.
-  const string GetPolicyX509CommonName() const {
+  string GetPolicyX509CommonName() const {
     return GetConfigString(JSONPolicyX509CommonName);
   }
 
   /// Get the host for the Tao CA. This returns emptystring if there is no Tao
   /// CA for this administrative domain.
-  const string GetTaoCAHost() const { return GetConfigString(JSONTaoCAHost); }
+  string GetTaoCAHost() const { return GetConfigString(JSONTaoCAHost); }
 
   /// Get the port for the Tao CA. This is undefined if there is no Tao CA for
   /// this administrative domain.
-  const string GetTaoCAPort() const { return GetConfigString(JSONTaoCAPort); }
+  string GetTaoCAPort() const { return GetConfigString(JSONTaoCAPort); }
 
   /// Get a string describing the authorization regime governing this
   /// administrative domain.
-  const string GetAuthType() const { return GetConfigString(JSONAuthType); }
+  string GetAuthType() const { return GetConfigString(JSONAuthType); }
 
   /// Get the policy key signer. This returns nullptr if the object is locked.
-  keyczar::Signer *GetPolicySigner() const { return policy_signer_.get(); }
+  keyczar::Signer *GetPolicySigner() const { return keys_->Signer(); }
 
   /// Get the policy key verifier.
-  keyczar::Verifier *GetPolicyVerifier() const {
-    return policy_verifier_.get();
-  }
+  keyczar::Verifier *GetPolicyVerifier() const { return keys_->Verifier(); }
+
+  /// Get the policy keys.
+  Keys *GetPolicyKeys() const { return keys_.get(); }
 
   /// Create a attestation signed by the policy private key.
   /// Typical statements might assert:
@@ -204,10 +198,6 @@ class TaoDomain : public TaoAuth {
   /// other classes that might want ownership of it.
   TaoDomain *DeepCopy();
 
-  /// Get a path relative to the configuration directory.
-  /// @param suffix The suffix to append to the configuration directory
-  const string RelativePath(const string &suffix) const;
-
   // Get the object representing all saved configuration parameters.
   // Subclasses or other classes can store data here before SaveConfig() is
   // called.
@@ -216,21 +206,16 @@ class TaoDomain : public TaoAuth {
   /// Get a string configuration parameter. If the parameter is not found,
   /// this returns emptystring.
   /// @param name The configuration parameter name to look up
-  const string GetConfigString(const string &name) const;
+  string GetConfigString(const string &name) const;
 
   /// Get a path configuration parameter, relative to the config directory.
   /// @param name The configuration parameter name to look up
-  const string GetConfigPath(const string &name) const;
+  string GetConfigPath(const string &name) const {
+    return GetPath(GetConfigString(name));
+  }
 
-  /// Get a path configuration parameter, relative to the config directory,
-  /// with a suffix appended.
-  /// @param name The configuration parameter name to look up
-  /// @param suffix The suffix to append.
-  const string GetConfigPath(const string &name, const string &suffix) const;
-
-  /// Parse all configuration parameters from the configuration file and load
-  /// keys and other state.
-  virtual bool ParseConfig();
+  /// Parse all configuration parameters from the configuration file.
+  virtual bool ParseConfig() { return true; }
 
   /// Save all configuration parameters to the configuration file and save all
   /// other state. Depending on the authorization regime, this may fail if the
@@ -238,18 +223,25 @@ class TaoDomain : public TaoAuth {
   virtual bool SaveConfig() const;
 
   /// Get the path to the configuration directory.
-  const string GetPath() const { return path_; }
+  string GetPath() const { return path_; }
+
+  /// Get a path relative to the configuration directory.
+  /// @param suffix The suffix to append to the configuration directory
+  string GetPath(const string &suffix) const;
 
  protected:
-  TaoDomain(const string &path, DictionaryValue *value, const string &password)
-      : path_(path), config_(value), password_(password) {}
+  TaoDomain(const string &path, DictionaryValue *value)
+      : path_(path), config_(value) {
+    keys_.reset(new Keys(GetConfigPath(JSONPolicyKeysPath), "policy", Keys::Signing));
+  }
 
  private:
   /// Construct an object of the appropriate TaoDomain subclass. The caller
   /// should call either ParseConfig() to load keys and other date, or should
   /// generate keys and other state then call SaveConfig().
-  static TaoDomain *CreateImpl(const string &config, const string &path,
-                               const string &password);
+  /// @param config The json encoded configuration data.
+  /// @param path The location of the configuration file.
+  static TaoDomain *CreateImpl(const string &config, const string &path);
 
   /// The path to the configuration file.
   string path_;
@@ -257,16 +249,8 @@ class TaoDomain : public TaoAuth {
   /// The dictionary of configuration parameters.
   scoped_ptr<DictionaryValue> config_;
 
-  /// The policy private key, or nullptr if locked.
-  scoped_ptr<keyczar::Signer> policy_signer_;
-
-  /// The password for the signing key, if unlocked.
-  /// This is only held for use in the DeepCopy operation to reload the signing
-  /// key, since there seems to be no way to clone keyczar keys.
-  string password_;
-
-  /// The policy public key.
-  scoped_ptr<keyczar::Verifier> policy_verifier_;
+  /// The policy public key. If unlocked, also contains the private key.
+  scoped_ptr<Keys> keys_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TaoDomain);

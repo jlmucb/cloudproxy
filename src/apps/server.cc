@@ -41,7 +41,6 @@ using keyczar::base::Base64WDecode;
 using keyczar::base::ScopedSafeString;
 
 using cloudproxy::CloudServer;
-using tao::SealOrUnsealSecret;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;
@@ -49,7 +48,6 @@ using tao::TaoDomain;
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(server_keys, "./server_keys",
               "Directory for server keys and TLS files");
-DEFINE_string(sealed_secret, "server_secret", "A Tao-sealed secret");
 DEFINE_string(acls, "./acls_sig",
               "A file containing a SignedACL signed by"
               " the public policy key (e.g., using sign_acls)");
@@ -86,19 +84,14 @@ int main(int argc, char **argv) {
   scoped_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  // get a secret from the Tao
-  ScopedSafeString secret(new string());
-  CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
-      << "Could not get the secret";
-
   scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
-  CloudServer cs(FLAGS_server_keys, *secret, FLAGS_acls, FLAGS_address,
-                 FLAGS_port, admin.release());
+  CloudServer cs(FLAGS_server_keys, FLAGS_acls, FLAGS_address, FLAGS_port,
+                 channel.release(), admin.release());
 
   LOG(INFO) << "CloudServer listening";
-  CHECK(cs.Listen(channel.get(), false /* not single_channel */))
+  CHECK(cs.Listen(false /* not single_channel */))
       << "Could not listen for client connections";
   return 0;
 }

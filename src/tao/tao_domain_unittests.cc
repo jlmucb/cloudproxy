@@ -61,10 +61,10 @@ TEST_F(TaoDomainTest, LoadUnlockDomainTest) {
   admin_.reset(TaoDomain::Create(config, path_, "temppass"));
   EXPECT_TRUE(admin_.get() != nullptr);
 
-  admin_.reset(TaoDomain::Load(path_));
+  admin_.reset(TaoDomain::Load(path_, "badpass"));
+  ASSERT_TRUE(admin_.get() == nullptr);
+  admin_.reset(TaoDomain::Load(path_, "temppass"));
   ASSERT_TRUE(admin_.get() != nullptr);
-  EXPECT_FALSE(admin_->Unlock("badpass"));
-  EXPECT_TRUE(admin_->Unlock("temppass"));
 }
 
 TEST_F(TaoDomainTest, DeepCopyTest) {
@@ -86,6 +86,4 @@ TEST_F(TaoDomainTest, DeepCopyTest) {
   ASSERT_TRUE(other_admin.get() != nullptr);
   EXPECT_EQ(other_admin->GetName(), admin_->GetName());
   EXPECT_TRUE(other_admin->GetPolicySigner() == nullptr);
-
-  EXPECT_TRUE(other_admin->Unlock("temppass"));
 }

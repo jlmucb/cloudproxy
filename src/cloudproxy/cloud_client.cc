@@ -20,7 +20,6 @@
 #include "cloudproxy/cloud_client.h"
 
 #include <fstream>
-#include <sstream>
 
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
@@ -32,76 +31,43 @@
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_auth.h"
 #include "tao/util.h"
 
 using std::ifstream;
-using std::stringstream;
 
-using keyczar::base::Base64WEncode;
-using keyczar::base::PathExists;
-using keyczar::base::ScopedSafeString;
-
-using tao::Attestation;
 using tao::ConnectToTCPServer;
-using tao::GenerateSigningKey;
-using tao::LoadSigningKey;
+using tao::Keys;
 using tao::ScopedX509Ctx;
 using tao::SerializeX509;
 using tao::SignData;
-using tao::TaoChildChannel;
 
 namespace cloudproxy {
 
-CloudClient::CloudClient(const string &client_config_path, const string &secret,
-                         tao::TaoDomain *admin)
-    : admin_(admin), users_(new CloudUserManager()) {
+// TODO(kwalsh) move work to Init().
+CloudClient::CloudClient(const string &client_config_path,
+                         tao::TaoChildChannel *channel, tao::TaoDomain *admin)
+    : admin_(admin),
+      users_(new CloudUserManager()),
+      host_channel_(channel),
+      keys_(new Keys(client_config_path, "cloudclient", Keys::Signing)) {
 
-  ScopedSafeString encoded_secret(new string());
-  CHECK(Base64WEncode(secret, encoded_secret.get()))
-      << "Could not encode the secret as a Base64W string";
+  CHECK(keys_->InitHosted(*host_channel_))
+      << "Could not initialize CloudClient keys";
 
-  FilePath fp(client_config_path);
-  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
-  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
-  FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
-
-  // Check to see if the keys and cert exist. If not, create them.
-
-  bool new_key = !PathExists(priv_key_path);
-  bool new_cert = new_key || !PathExists(tls_cert_path);
-
-  scoped_ptr<keyczar::Signer> key;
-  if (new_key) {
-    CHECK(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV,
-                             priv_key_path.value(), pub_key_path.value(),
-                             "cloud_client_key", *encoded_secret, &key))
-        << "Could not create new SSL key for the client";
-  } else {
-    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &key))
-        << "Could not load SSL key for the client";
+  // TODO(kwalsh) x509 details should come from elsewhere
+  if (keys_->HasFreshKeys()) {
+    CHECK(keys_->CreateSelfSignedX509("US", "Washington", "Google",
+                                      "cloudclient"));
   }
-
-  if (new_cert) {
-    // TODO(kwalsh) x509 details should come from elsewhere
-    CHECK(tao::CreateSelfSignedX509(key.get(), "US", "Washington", "Google",
-                                    "cloudclient", tls_cert_path.value()));
-  }
-
-  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
-  // So, they need to be added again. Typical error is:
-  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
-  // This needs to be done as close to SSL_CTX_new as possible.
-  OpenSSL_add_all_algorithms();
-  context_.reset(SSL_CTX_new(TLSv1_2_client_method()));
 
   // set up the TLS connection with the cert and keys and trust DB
-  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), key.get()))
-      << "Could not set up the client TLS connection";
+  CHECK(SetUpSSLClientCtx(*keys_, &context_));
 }
 
-bool CloudClient::Connect(const TaoChildChannel &t, const string &server,
-                          const string &port, ScopedSSL *ssl) {
+bool CloudClient::Connect(const string &server, const string &port,
+                          ScopedSSL *ssl) {
   if (ssl == nullptr) {
     LOG(ERROR) << "Could not fill a null ssl pointer";
     return false;
@@ -120,7 +86,6 @@ bool CloudClient::Connect(const TaoChildChannel &t, const string &server,
   int r = SSL_connect(ssl->get());
   if (r <= 0) {
     LOG(ERROR) << "Could not connect to the server";
-    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(r, nullptr);
     return false;
   }
 
@@ -139,7 +104,7 @@ bool CloudClient::Connect(const TaoChildChannel &t, const string &server,
 
   ClientMessage cm;
   string *signature = cm.mutable_attestation();
-  CHECK(t.Attest(serialized_client_cert, signature))
+  CHECK(host_channel_->Attest(serialized_client_cert, signature))
       << "Could not get a SignedAttestation for our client certificate";
 
   string serialized_cm;

@@ -222,15 +222,9 @@ bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
 
   // TODO(kwalsh): This code assumes that all verified INTERMEDIATE attestations
   // are of serialized public keys.
-  KeyczarPublicKey kpk;
-  if (!kpk.ParseFromString(key_data)) {
-    LOG(ERROR) << "Could not deserialize the public key for this attestation";
-    return false;
-  }
-
   // Get a verifier corresponding to this public key.
   scoped_ptr<Verifier> v;
-  if (!DeserializePublicKey(kpk, &v)) {
+  if (!DeserializePublicKey(key_data, &v)) {
     LOG(ERROR) << "Could not deserialize the public key";
     return false;
   }

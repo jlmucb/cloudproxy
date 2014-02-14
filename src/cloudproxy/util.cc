@@ -34,6 +34,7 @@
 #include "cloudproxy/file_server.h"
 #include "cloudproxy/util.h"
 #include "tao/keyczar_public_key.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_auth.h"
 #include "tao/util.h"
 
@@ -47,6 +48,7 @@ using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
 
 using cloudproxy::CloudAuth;
+using tao::Keys;
 using tao::OpenSSLSuccess;
 using tao::ScopedFile;
 using tao::SignData;
@@ -84,13 +86,15 @@ static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
   return 1;
 }
 
-bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
-  if (ctx == nullptr || tls_key == nullptr) {
+static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
+                        ScopedSSLCtx *ctx) {
+  string tls_cert = key.SigningX509CertificatePath();
+  if (!ctx || !key.Signer() || !PathExists(FilePath(tls_cert))) {
     LOG(ERROR) << "Invalid SetUpSSLCTX parameters";
     return false;
   }
   tao::ScopedEvpPkey pem_key;
-  if (!tao::ExportKeyToOpenSSL(tls_key, &pem_key)) {
+  if (!key.ExportSignerToOpenSSL(&pem_key)) {
     LOG(ERROR) << "Could not export key to openssl";
     return false;
   }
@@ -99,6 +103,12 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
   // So, they need to be added again. Typical error is:
   // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
   OpenSSL_add_all_algorithms();
+  
+  ctx->reset(SSL_CTX_new(method));
+  if (ctx->get() == nullptr) {
+    LOG(ERROR) << "Could not create TLS context";
+    return false;
+  }
 
   // Set up the TLS connection with the list of acceptable ciphers.
   // We only accept ECDH key exchange, with ECDSA signatures and GCM
@@ -106,31 +116,33 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
   // but chrome currently supports only ECDHE-ECDSA-AES128-GCM-SHA256,
   // so we allow both.
   if (!SSL_CTX_set_cipher_list(
-          ctx, "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256")) {
+          ctx->get(),
+          "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256")) {
     LOG(ERROR) << "Could not set up a cipher list on the TLS context";
     return false;
   }
 
   // turn off compression (?)
-  if (!SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION)) {
+  if (!SSL_CTX_set_options(ctx->get(), SSL_OP_NO_COMPRESSION)) {
     LOG(ERROR) << "Could not turn off compression on the TLS connection";
     return false;
   }
 
   // turn on auto-retry for reads and writes
-  if (!SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY)) {
+  if (!SSL_CTX_set_mode(ctx->get(), SSL_MODE_AUTO_RETRY)) {
     LOG(ERROR)
         << "Could not turn on auto-retry for reads and writes on the TLS "
            "connection";
     return false;
   }
 
-  if (!SSL_CTX_use_certificate_file(ctx, tls_cert.c_str(), SSL_FILETYPE_PEM)) {
+  if (!SSL_CTX_use_certificate_file(ctx->get(), tls_cert.c_str(),
+                                    SSL_FILETYPE_PEM)) {
     LOG(ERROR) << "Could not load the certificate for this connection";
     return false;
   }
 
-  if (!SSL_CTX_use_PrivateKey(ctx, pem_key.get())) {
+  if (!SSL_CTX_use_PrivateKey(ctx->get(), pem_key.get())) {
     LOG(ERROR) << "Could not set the private key for this connection";
     return false;
   }
@@ -138,7 +150,7 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
   // set up verification to (optionally) insist on getting a certificate from
   // the peer
   int verify_mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-  SSL_CTX_set_verify(ctx, verify_mode, AlwaysAcceptCert);
+  SSL_CTX_set_verify(ctx->get(), verify_mode, AlwaysAcceptCert);
 
   // set session id context to a unique id to avoid session reuse problems
 
@@ -158,7 +170,7 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
   }
 
   if (!SSL_CTX_set_session_id_context(
-          ctx, reinterpret_cast<const unsigned char *>(sid.c_str()),
+          ctx->get(), reinterpret_cast<const unsigned char *>(sid.c_str()),
           sid.length())) {
     LOG(ERROR) << "Could not set session id";
     return false;
@@ -171,7 +183,7 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
     LOG(ERROR) << "EC curve not found";
     return false;
   }
-  if (!SSL_CTX_set_tmp_ecdh(ctx, ecdh)) {
+  if (!SSL_CTX_set_tmp_ecdh(ctx->get(), ecdh)) {
     LOG(ERROR) << "Could not set up ECDH";
     return false;
   }
@@ -182,6 +194,14 @@ bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert, const Signer *tls_key) {
   }
 
   return true;
+}
+
+bool SetUpSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
+  return SetUpSSLCtx(TLSv1_2_server_method(), key, ctx);
+}
+
+bool SetUpSSLClientCtx(const Keys &key, ScopedSSLCtx *ctx) {
+  return SetUpSSLCtx(TLSv1_2_client_method(), key, ctx);
 }
 
 bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
@@ -455,55 +475,6 @@ bool SendStreamData(const string &path, size_t size, SSL *ssl) {
     LOG(ERROR) << "Did not send all bytes to the server";
     return false;
   }
-
-  return true;
-}
-
-bool DeriveKeys(const keyczar::Signer *main_key,
-                keyczar::base::ScopedSafeString *aes_key,
-                keyczar::base::ScopedSafeString *hmac_key) {
-  if (main_key == nullptr || aes_key == nullptr || aes_key->get() == nullptr ||
-      hmac_key == nullptr || hmac_key->get() == nullptr) {
-    LOG(ERROR) << "Invalid DeriveKey parameters";
-    return false;
-  }
-  if (main_key->keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
-    LOG(ERROR) << "DeriveKeys requires symmetric main key";
-    return false;
-  }
-
-  // derive the keys
-  string aes_context = "1 || encryption";
-  string hmac_context = "1 || hmac";
-
-  keyczar::base::ScopedSafeString temp_aes_key(new string());
-  keyczar::base::ScopedSafeString temp_hmac_key(new string());
-
-  // Note that this is not an application of a signature in the normal sense, so
-  // it does not need to be transformed into an application of tao::SignData.
-  if (!main_key->Sign(aes_context, temp_aes_key.get())) {
-    LOG(ERROR) << "Could not derive the aes key";
-    return false;
-  }
-  if (!main_key->Sign(hmac_context, temp_hmac_key.get())) {
-    LOG(ERROR) << "Could not derive the hmac key";
-    return false;
-  }
-
-  // skip the header to get the bytes
-  size_t header_size = keyczar::Key::GetHeaderSize();
-  if (AesKeySize + header_size > temp_aes_key.get()->size()) {
-    LOG(ERROR) << "There were not enough bytes to get the aes key";
-    return false;
-  }
-  if (HmacKeySize + header_size > temp_hmac_key.get()->size()) {
-    LOG(ERROR) << "There were not enough bytes to get the hmac key";
-    return false;
-  }
-
-  aes_key->get()->assign(temp_aes_key.get()->data() + header_size, AesKeySize);
-  hmac_key->get()
-      ->assign(temp_hmac_key.get()->data() + header_size, HmacKeySize);
 
   return true;
 }

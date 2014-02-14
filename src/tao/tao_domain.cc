@@ -40,8 +40,7 @@ using keyczar::base::WriteStringToFile;
 
 namespace tao {
 
-TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path,
-                                 const string &password) {
+TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
   // Parse the config string.
   string error;
   scoped_ptr<Value> value(JSONReader::ReadAndReturnError(config, true, &error));
@@ -66,9 +65,9 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path,
   }
   scoped_ptr<TaoDomain> admin;
   if (auth_type == WhitelistAuth::AuthType) {
-    admin.reset(new WhitelistAuth(path, dict.release(), password));
+    admin.reset(new WhitelistAuth(path, dict.release()));
   } else if (auth_type == RootAuth::AuthType) {
-    admin.reset(new RootAuth(path, dict.release(), password));
+    admin.reset(new RootAuth(path, dict.release()));
   } else {
     LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " " << auth_type;
     return nullptr;
@@ -85,32 +84,21 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
     return nullptr;
   }
 
-  scoped_ptr<TaoDomain> admin(CreateImpl(initial_config, path, password));
+  scoped_ptr<TaoDomain> admin(CreateImpl(initial_config, path));
   if (admin.get() == nullptr) {
     LOG(ERROR) << "Can't create TaoDomain";
     return nullptr;
   }
 
-  string priv_path = admin->GetPolicyPrivateKeyPath();
-  string pub_path = admin->GetPolicyPublicKeyPath();
-  string cert_path = admin->GetPolicyX509CertificatePath();
-  // Generate and save the policy public and private keys.
-  if (!GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, priv_path, pub_path,
-                          "tao_domain_policy_key", password,
-                          &admin->policy_signer_)) {
-    LOG(ERROR) << "Could not generate policy signing key";
+  if (!admin->keys_->InitNonHosted(password)) {
+    LOG(ERROR) << "Can't create policy keys";
     return nullptr;
   }
-  // Reload the just-created public key as a Verifier.
-  if (!LoadVerifierKey(pub_path, &admin->policy_verifier_)) {
-    LOG(ERROR) << "Could not load policy verifier key";
-    return nullptr;
-  }
-  // Export an openssl copy of the private key.
-  if (!CreateSelfSignedX509(
-          admin->GetPolicySigner(), admin->GetPolicyX509Country(),
-          admin->GetPolicyX509State(), admin->GetPolicyX509Organization(),
-          admin->GetPolicyX509CommonName(), cert_path)) {
+
+  if (!admin->keys_->CreateSelfSignedX509(admin->GetPolicyX509Country(),
+                                          admin->GetPolicyX509State(),
+                                          admin->GetPolicyX509Organization(),
+                                          admin->GetPolicyX509CommonName())) {
     LOG(ERROR) << "Could not create self-signed x509 for policy key";
     return nullptr;
   }
@@ -125,19 +113,23 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
   return admin.release();
 }
 
-TaoDomain *TaoDomain::Load(const string &path) {
+TaoDomain *TaoDomain::Load(const string &path, const string &password) {
   string json;
   if (!ReadFileToString(path, &json)) {
     LOG(ERROR) << "Can't read configuration from " << path;
     return nullptr;
   }
-  scoped_ptr<TaoDomain> admin(CreateImpl(json, path, "" /* no pass */));
+  scoped_ptr<TaoDomain> admin(CreateImpl(json, path));
   if (admin.get() == nullptr) {
     LOG(ERROR) << "Can't create TaoDomain";
     return nullptr;
   }
+  if (!admin->keys_->InitNonHosted(password)) {
+    LOG(ERROR) << "Can't initialize TaoDomain keys";
+    return nullptr;
+  }
   if (!admin->ParseConfig()) {
-    LOG(ERROR) << "Can't load TaoDomain configuration";
+    LOG(ERROR) << "Can't parse configuration file";
     return nullptr;
   }
   return admin.release();
@@ -149,37 +141,18 @@ TaoDomain *TaoDomain::DeepCopy() {
     LOG(ERROR) << "Can't reload TaoDomain configuration";
     return nullptr;
   }
-  if (policy_signer_.get() != nullptr) {
-    if (!other->Unlock(password_)) {
-      LOG(ERROR) << "Can't unlock reloaded TaoDomain configuration";
+  if (keys_->Signer() != nullptr) {
+    other->keys_.reset(keys_->DeepCopy());
+    if (other->keys_.get() == nullptr) {
+      LOG(ERROR) << "Can't copy unlocked TaoDomain keys";
       return nullptr;
     }
   }
   return other.release();
 }
 
-bool TaoDomain::Unlock(const string &password) {
-  if (!LoadSigningKey(GetPolicyPrivateKeyPath(), password, &policy_signer_)) {
-    LOG(ERROR) << "The supplied password does not unlock the policy signer key";
-    return false;
-  }
-  password_ = password;
-  return true;
-}
-
-bool TaoDomain::ParseConfig() {
-  if (!password_.empty()) {
-    if (!LoadSigningKey(GetPolicyPrivateKeyPath(), password_,
-                        &policy_signer_)) {
-      LOG(ERROR) << "Could not load policy signer key";
-      return false;
-    }
-  }
-  if (!LoadVerifierKey(GetPolicyPublicKeyPath(), &policy_verifier_)) {
-    LOG(ERROR) << "Could not load policy verifier key";
-    return false;
-  }
-  return true;
+string TaoDomain::GetPath(const string &suffix) const {
+  return FilePath(path_).DirName().Append(suffix).value();
 }
 
 bool TaoDomain::SaveConfig() const {
@@ -192,33 +165,20 @@ bool TaoDomain::SaveConfig() const {
   return true;
 }
 
-const string TaoDomain::GetConfigString(const string &name) const {
+string TaoDomain::GetConfigString(const string &name) const {
   string value = "";
   if (!config_->GetString(name, &value))
     LOG(WARNING) << "Can't find configuration parameter " << name;
   return value;
 }
 
-const string TaoDomain::GetConfigPath(const string &name) const {
-  return RelativePath(GetConfigString(name));
-}
-
-const string TaoDomain::GetConfigPath(const string &name,
-                                      const string &suffix) const {
-  return FilePath(GetConfigPath(name)).Append(suffix).value();
-}
-
-const string TaoDomain::RelativePath(const string &suffix) const {
-  return FilePath(path_).DirName().Append(suffix).value();
-}
-
 bool TaoDomain::AttestByRoot(Statement *s, Attestation *attestation) const {
-  if (policy_signer_.get() == nullptr) {
+  if (keys_->Signer() == nullptr) {
     LOG(ERROR) << "Can't sign attestation, admin is currently locked";
     return false;
   }
   string emptycert = "";  // empty cert because root
-  if (!GenerateAttestation(policy_signer_.get(), emptycert, s, attestation)) {
+  if (!GenerateAttestation(keys_->Signer(), emptycert, s, attestation)) {
     LOG(ERROR) << "Can't sign attestation";
     return false;
   }
@@ -226,12 +186,12 @@ bool TaoDomain::AttestByRoot(Statement *s, Attestation *attestation) const {
 }
 
 bool TaoDomain::AttestByRoot(Statement *s, string *attestation) const {
-  if (policy_signer_.get() == nullptr) {
+  if (keys_->Signer() == nullptr) {
     LOG(ERROR) << "Can't sign attestation, admin is currently locked.";
     return false;
   }
   string emptycert = "";  // empty cert because root
-  if (!GenerateAttestation(policy_signer_.get(), emptycert, s, attestation)) {
+  if (!GenerateAttestation(keys_->Signer(), emptycert, s, attestation)) {
     LOG(ERROR) << "Can't sign attestation";
     return false;
   }
@@ -245,7 +205,7 @@ bool TaoDomain::CheckRootSignature(const Attestation &a) const {
     return false;
   }
   if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
-                       a.signature(), policy_verifier_.get())) {
+                       a.signature(), keys_->Verifier())) {
     LOG(ERROR) << "Verification failed with the policy key";
     return false;
   }

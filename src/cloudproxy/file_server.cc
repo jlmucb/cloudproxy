@@ -35,51 +35,32 @@
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"
+#include "tao/keys.h"
 #include "tao/util.h"
 
 using std::lock_guard;
 using std::mutex;
 using std::string;
 
-using keyczar::base::Base64WEncode;
-using keyczar::base::PathExists;
-using keyczar::base::ScopedSafeString;
-using tao::GenerateSigningKey;
-using tao::LoadSigningKey;
 using tao::ScopedFile;
+using tao::Keys;
 
 namespace cloudproxy {
 
 FileServer::FileServer(const string &file_path, const string &meta_path,
-                       const string &server_config_path, const string &secret,
+                       const string &server_config_path,
                        const string &acl_location, const string &host,
-                       const string &port, tao::TaoDomain *admin)
-    : CloudServer(server_config_path, secret, acl_location, host, port, admin),
+                       const string &port, tao::TaoChildChannel *channel,
+                       tao::TaoDomain *admin)
+    : CloudServer(server_config_path, acl_location, host, port, channel, admin),
+      main_key_(new Keys(server_config_path, "file_server", Keys::KeyDeriving)),
       enc_key_(new string()),
       hmac_key_(new string()),
       file_path_(file_path),
       meta_path_(meta_path) {
 
-  ScopedSafeString encoded_secret(new string());
-  CHECK(Base64WEncode(secret, encoded_secret.get()))
-      << "Could not encode the secret as a Base64W string";
-
-  FilePath fp(server_config_path);
-  // TODO(kwalsh) It seems FileServer uses a separate signing key than
-  // CloudProxy. For now, put fileserver's keys in a subdirectory to avoid name
-  // clashes with CloudServer. Maybe use the same key?
-  fp = fp.Append("fileserver");
-  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
-  string pub_key_path = "";  // no public key to be saved
-  if (!PathExists(priv_key_path)) {
-    CHECK(GenerateSigningKey(keyczar::KeyType::HMAC, priv_key_path.value(),
-                             pub_key_path, "file server key", *encoded_secret,
-                             &main_key_))
-        << "Could not create new signing key for the file server";
-  } else {
-    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &main_key_))
-        << "Could not load signing key for the file server";
-  }
+  CHECK(main_key_->InitHosted(*channel))
+      << "Could not initialize file server key-deriving key";
 
   // check to see if these paths actually exist
   struct stat st;
@@ -93,8 +74,9 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
   CHECK(S_ISDIR(st.st_mode)) << "The path " << meta_path_
                              << " is not a directory";
 
-  // generate keys
-  CHECK(DeriveKeys(main_key_.get(), &enc_key_, &hmac_key_))
+  // generate derived keys
+  CHECK(main_key_->DeriveKey("encryption", AesKeySize, enc_key_.get()) &&
+      main_key_->DeriveKey("hmac", HmacKeySize, hmac_key_.get()))
       << "Could not derive enc and hmac keys for authenticated encryption";
 }
 
@@ -220,8 +202,10 @@ bool FileServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
       return false;
     }
 
+    // TODO(kwalsh) Key deriver is being used here as a signer key?
     if (!ReceiveAndEncryptStreamData(ssl, path, meta_path, action.object(),
-                                     enc_key_, hmac_key_, main_key_.get())) {
+                                     enc_key_, hmac_key_,
+                                     main_key_->KeyDeriver())) {
       LOG(ERROR) << "Could not receive data from the client and write it"
                     " encrypted to disk";
       reason->assign("Receiving failed");
@@ -263,8 +247,10 @@ bool FileServer::HandleRead(const Action &action, SSL *ssl, string *reason,
       return false;
     }
 
+    // TODO(kwalsh) Key deriver is being used here as a signer key?
     if (!DecryptAndSendStreamData(path, meta_path, action.object(), ssl,
-                                  enc_key_, hmac_key_, main_key_.get())) {
+                                  enc_key_, hmac_key_,
+                                  main_key_->KeyDeriver())) {
       LOG(ERROR) << "Could not stream data from the file to the client";
       reason->assign("Could not stream data to the client");
       return false;

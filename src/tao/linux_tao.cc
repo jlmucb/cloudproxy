@@ -19,11 +19,6 @@
 // limitations under the License.
 #include "tao/linux_tao.h"
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <time.h>
-
 #include <list>
 #include <mutex>
 
@@ -46,10 +41,7 @@ using std::lock_guard;
 using std::mutex;
 
 using keyczar::base::Base64WEncode;
-using keyczar::base::CreateDirectory;
-using keyczar::base::PathExists;
 using keyczar::base::ReadFileToString;
-using keyczar::base::ScopedSafeString;
 using keyczar::base::WriteStringToFile;
 
 namespace tao {
@@ -60,128 +52,21 @@ bool LinuxTao::Init() {
     LOG(ERROR) << "Could not initialize the host channel";
     return false;
   }
-
-  FilePath fp(keys_path_);
-  string secret_path = fp.Append(tao::keys::SealKeySecretSuffix).value();
-  string sealing_key_path = fp.Append(tao::keys::SealKeySuffix).value();
-  string signing_key_path = fp.Append(tao::keys::SignPrivateKeySuffix).value();
-  string attestation_path =
-      fp.Append(tao::keys::SignKeyAttestationSuffix).value();
-
-  // only keep the secret for the duration of this method:
-  // long enough to unlock or create sealing and signing keys
-  ScopedSafeString secret(new string());
-
-  // The secret, the keys, and the attestation are all bound together,
-  // so we either generate them all anew or we use only the existing ones.
-  if (!PathExists(FilePath(secret_path))) {
-    if (!MakeSecret(&secret)) {
-      LOG(ERROR) << "Could not generate and seal a secret using the Tao";
+  if (!keys_->InitHosted(*host_channel_)) {
+    LOG(ERROR) << "Could not initialize keys";
+    return false;
+  }
+  if (keys_->HasFreshKeys() && !admin_->GetTaoCAHost().empty()) {
+    if (!GetTaoCAAttestation()) {
+      LOG(ERROR) << "Could not trade self-signed for Tao CA attestation";
       return false;
     }
-    VLOG(2) << "LinuxTao: Generating sealing key " << sealing_key_path;
-    if (!GenerateCryptingKey(keyczar::KeyType::AES, sealing_key_path,
-                             "linux_tao_sealing_key", *secret, &crypter_)) {
-      LOG(ERROR) << "Could not generate a sealing key";
-      return false;
-    }
-    VLOG(2) << "LinuxTao: Generating signing key " << signing_key_path;
-    if (!GenerateEncryptedSigningKey(keyczar::KeyType::ECDSA_PRIV,
-                                     signing_key_path, "" /* no public path */,
-                                     "linux_tao_signing_key", sealing_key_path,
-                                     *secret, &signer_)) {
-      LOG(ERROR) << "Could not generate a signing key";
-      return false;
-    }
-    VLOG(2) << "Linux Tao: Obtaining attestation from the Tao";
-    Attestation a;
-    if (!GetTaoAttestation(&a)) {
-      LOG(ERROR) << "Could not get an attestation from the Tao";
-      return false;
-    }
-    // The Tao Certificate Authority can take a cert chain and produce a
-    // shortened form that consists of a single attestation by the policy key.
-    // Use it if available.
-    if (!admin_->GetTaoCAHost().empty()) {
-      VLOG(2) << "LinuxTao: Obtaining condensed attestation from the TCCA";
-      if (!GetTaoCAAttestation(&a)) {
-        LOG(ERROR) << "Could not get a new attestation from the TCCA";
-        return false;
-      }
-    }
-    if (!a.SerializeToString(&attestation_)) {
-      LOG(ERROR) << "Could not serialize the attestation for our signing key";
-      return false;
-    }
-    if (!WriteStringToFile(attestation_path, attestation_)) {
-      LOG(ERROR) << "Could not store the attestation for our signing key";
-      return false;
-    }
-  } else {
-    if (!GetSecret(&secret)) {
-      LOG(ERROR) << "Could not unseal a secret using the Tao";
-      return false;
-    }
-    VLOG(2) << "LinuxTao: Using sealing key " << sealing_key_path;
-    if (!LoadCryptingKey(sealing_key_path, *secret, &crypter_)) {
-      LOG(ERROR) << "Could not load the sealing key";
-      return false;
-    }
-    VLOG(2) << "LinuxTao: Using signing key " << signing_key_path;
-    if (!LoadEncryptedSigningKey(signing_key_path, sealing_key_path, *secret,
-                                 &signer_)) {
-      LOG(ERROR) << "Could not load the signing key";
-      return false;
-    }
-    if (!ReadFileToString(attestation_path, &attestation_)) {
-      LOG(ERROR) << "Could not load attestation for signing key";
-      return false;
-    }
+  }
+  if (!ReadFileToString(keys_->AttestationPath(), &attestation_)) {
+    LOG(ERROR) << "Could not load attestation for signing key";
+    return false;
   }
   VLOG(1) << "LinuxTao: Initialization finished successfully";
-  return true;
-}
-
-bool LinuxTao::MakeSecret(ScopedSafeString *secret) {
-  if (!host_channel_->GetRandomBytes(SecretSize, secret->get())) {
-    LOG(ERROR) << "Could not generate a random secret to seal";
-    return false;
-  }
-  string sealed_secret;
-  if (!host_channel_->Seal(*(secret->get()), &sealed_secret)) {
-    LOG(ERROR) << "Can't seal the secret";
-    return false;
-  }
-  FilePath fp(keys_path_);
-  FilePath secret_path(fp.Append(tao::keys::SealKeySecretSuffix));
-  if (!CreateDirectory(secret_path.DirName())) {
-    LOG(ERROR) << "Can't create sealed secret directory ";
-    return false;
-  }
-  if (!WriteStringToFile(secret_path, sealed_secret)) {
-    LOG(ERROR) << "Can't write the sealed secret to " << secret_path.value();
-    return false;
-  }
-  VLOG(2) << "Sealed a secret of size "
-          << static_cast<int>(secret->get()->size());
-  return true;
-}
-
-bool LinuxTao::GetSecret(ScopedSafeString *secret) {
-  // get the existing key blob and unseal it using the Tao
-  string sealed_secret;
-  FilePath fp(keys_path_);
-  FilePath secret_path(fp.Append(tao::keys::SealKeySecretSuffix));
-  if (!ReadFileToString(secret_path, &sealed_secret)) {
-    LOG(ERROR) << "Can't read the sealed secret";
-    return false;
-  }
-  if (!host_channel_->Unseal(sealed_secret, secret->get())) {
-    LOG(ERROR) << "Can't unseal the secret";
-    return false;
-  }
-  VLOG(2) << "Unsealed a secret of size "
-          << static_cast<int>(secret->get()->size());
   return true;
 }
 
@@ -299,7 +184,7 @@ bool LinuxTao::Seal(const string &child_hash, const string &data,
   }
 
   // encrypt it using our symmetric key
-  if (!crypter_->Encrypt(serialized_sd, sealed)) {
+  if (!keys_->Crypter()->Encrypt(serialized_sd, sealed)) {
     LOG(ERROR) << "Could not seal the data";
     return false;
   }
@@ -321,7 +206,7 @@ bool LinuxTao::Unseal(const string &child_hash, const string &sealed,
 
   // decrypt it using our symmetric key
   string temp_decrypted;
-  if (!crypter_->Decrypt(sealed, &temp_decrypted)) {
+  if (!keys_->Crypter()->Decrypt(sealed, &temp_decrypted)) {
     LOG(ERROR) << "Could not decrypt the sealed data";
     return false;
   }
@@ -361,25 +246,7 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
   s.set_hash_alg(TaoAuth::Sha256);
   s.set_hash(child_hash);
 
-  return GenerateAttestation(signer_.get(), attestation_, &s, attestation);
-}
-
-bool LinuxTao::GetTaoAttestation(Attestation *attest) {
-  string serialized_key = SerializePublicKey(*signer_);
-  if (serialized_key.empty()) {
-    LOG(ERROR) << "Could not serialize signing key";
-    return false;
-  }
-  string serialized_attestation;
-  if (!host_channel_->Attest(serialized_key, &serialized_attestation)) {
-    LOG(ERROR) << "Could not get an attestation to the serialized key";
-    return false;
-  }
-  if (!attest->ParseFromString(serialized_attestation)) {
-    LOG(ERROR) << "Could not deserialize the attestation to our key";
-    return false;
-  }
-  return true;
+  return GenerateAttestation(keys_->Signer(), attestation_, &s, attestation);
 }
 
 bool LinuxTao::Listen() {
@@ -388,7 +255,18 @@ bool LinuxTao::Listen() {
   return child_channel_->Listen(this);
 }
 
-bool LinuxTao::GetTaoCAAttestation(Attestation *attest) {
+// TODO(kwalsh) Move this method to tao::Keys or some future TaoCA class
+bool LinuxTao::GetTaoCAAttestation() {
+  string serialized_attestation;
+  if (!ReadFileToString(keys_->AttestationPath(), &serialized_attestation)) {
+    LOG(ERROR) << "Could not load the self-signed attestation";
+    return false;
+  }
+  Attestation attest;
+  if (!attest.ParseFromString(serialized_attestation)) {
+    LOG(ERROR) << "Could not deserialize the attestation to our key";
+    return false;
+  }
   string host = admin_->GetTaoCAHost();
   string port = admin_->GetTaoCAPort();
   ScopedFd sock(new int(-1));
@@ -399,7 +277,7 @@ bool LinuxTao::GetTaoCAAttestation(Attestation *attest) {
 
   // The TCCA will convert our attestation into a new attestation signed by the
   // policy key.
-  if (!tao::SendMessage(*sock, *attest)) {
+  if (!tao::SendMessage(*sock, attest)) {
     LOG(ERROR) << "Could not send our attestation to the TCCA";
     return false;
   }
@@ -428,16 +306,20 @@ bool LinuxTao::GetTaoCAAttestation(Attestation *attest) {
     return false;
   }
 
-  if (new_attest.serialized_statement().compare(
-          attest->serialized_statement()) !=
-      0) {
+  if (new_attest.serialized_statement() !=
+          attest.serialized_statement()) {
     LOG(ERROR) << "The statement in the new attestation doesn't match our "
                   "original statement";
     return false;
   }
-
-  attest->Clear();
-  attest->CopyFrom(new_attest);
+  if (!new_attest.SerializeToString(&serialized_attestation)) {
+    LOG(ERROR) << "Could not serialize the attestation for our signing key";
+    return false;
+  }
+  if (!WriteStringToFile(keys_->AttestationPath(), serialized_attestation)) {
+    LOG(ERROR) << "Could not store the attestation for our signing key";
+    return false;
+  }
   return true;
 }
 }  // namespace tao

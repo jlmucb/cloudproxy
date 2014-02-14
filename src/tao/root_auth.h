@@ -35,8 +35,8 @@ namespace tao {
 /// policy key.
 class RootAuth : public TaoDomain {
  public:
-  RootAuth(const string &path, DictionaryValue *value, const string &password)
-      : TaoDomain(path, value, password) {}
+  RootAuth(const string &path, DictionaryValue *value)
+      : TaoDomain(path, value) {}
   virtual ~RootAuth() {}
 
   /// Only root attestations are allowed, so IsAuthorized() is always false.

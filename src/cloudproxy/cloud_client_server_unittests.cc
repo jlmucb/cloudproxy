@@ -31,14 +31,13 @@
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
+#include "tao/keys.h"
 #include "tao/tao_auth.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
 using std::ofstream;
 
-using keyczar::Signer;
-using keyczar::base::ScopedSafeString;
 
 using cloudproxy::ACL;
 using cloudproxy::Action;
@@ -48,17 +47,12 @@ using cloudproxy::CloudServer;
 using cloudproxy::CloudUserManager;
 using cloudproxy::ScopedSSL;
 using cloudproxy::SignedACL;
-using cloudproxy::SignedSpeaksFor;
-using cloudproxy::SpeaksFor;
 using tao::CreateTempWhitelistDomain;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
-using tao::GenerateSigningKey;
+using tao::Keys;
 using tao::ScopedTempDir;
-using tao::SealOrUnsealSecret;
-using tao::SerializePublicKey;
 using tao::SignData;
-using tao::TaoChildChannel;
 using tao::TaoDomain;
 
 class CloudClientTest : public ::testing::Test {
@@ -69,6 +63,7 @@ class CloudClientTest : public ::testing::Test {
     // Create a whitelist with some test programs.
     ASSERT_TRUE(admin_->Authorize("Test hash 1", TaoDomain::Sha256, "Test 1"));
     ASSERT_TRUE(admin_->Authorize("Test hash 2", TaoDomain::Sha256, "Test 2"));
+    ASSERT_TRUE(admin_->Authorize("FAKE_TPM", TaoDomain::FakeHash, "BogusTPM"));
 
     // set up cloud client
     string client_keys = *temp_dir_ + string("/client_keys");
@@ -77,14 +72,14 @@ class CloudClientTest : public ::testing::Test {
 
     // create a fake tao with new keys, attestation, and a direct channel to it
     scoped_ptr<FakeTao> fake_tao;
-    fake_tao.reset(new FakeTao(admin_->GetPolicyPrivateKeyPath(), "temppass"));
-    ASSERT_TRUE(fake_tao->Init());
-    direct_channel_.reset(
-        new DirectTaoChildChannel(fake_tao.release(), "Test hash 1"));
+    fake_tao.reset(new FakeTao());
+    ASSERT_TRUE(fake_tao->InitTemporaryTPM(*admin_));
 
     // create cloud client
-    cloud_client_.reset(
-        new CloudClient(client_keys, "clientpass", admin_->DeepCopy()));
+    cloud_client_.reset(new CloudClient(
+        client_keys,
+        new DirectTaoChildChannel(fake_tao->DeepCopy(), "Test hash 1"),
+        admin_->DeepCopy()));
 
     // set up cloud server
     string server_keys = *temp_dir_ + string("/server_keys");
@@ -117,73 +112,36 @@ class CloudClientTest : public ::testing::Test {
         << "Could not write the signed ACL to a file";
 
     acl_file.close();
-
+    
     // Start a server to listen for client connections.
-    cloud_server_.reset(
-        new CloudServer(server_keys, "serverpass", signed_acl_path, server_addr,
-                        server_port, admin_->DeepCopy()));
+    cloud_server_.reset(new CloudServer(
+        server_keys, signed_acl_path, server_addr, server_port,
+        new DirectTaoChildChannel(fake_tao.release(), "Test hash 2"),
+        admin_->DeepCopy()));
 
     server_thread_.reset(new thread(&CloudServer::Listen, cloud_server_.get(),
-                                    direct_channel_.get(),
                                     true /* stop after one connection */));
 
-    // Create a user and set up the SignedSpeaksFor for this user.
-    string username = "tmroeder";
-    scoped_ptr<Signer> tmroeder_key;
-    tmroeder_key_path_ = *temp_dir_ + string("/") + username;
-    ASSERT_EQ(mkdir(tmroeder_key_path_.c_str(), 0700), 0);
-    SpeaksFor sf;
-    sf.set_subject(username);
-    // For these simple tests, we use the username as the password. Very secure.
-    EXPECT_TRUE(GenerateSigningKey(
-        keyczar::KeyType::RSA_PRIV, tmroeder_key_path_,
-        "" /* do not save private key */, username, username, &tmroeder_key));
-    EXPECT_TRUE(tmroeder_key.get() != nullptr);
-    sf.set_pub_key(SerializePublicKey(*tmroeder_key));
+    // Create two users and matching delegations.
+    scoped_ptr<Keys> key;
+    string u; 
+    string users_path = *temp_dir_ + "/users";
 
-    string *sf_serialized = ssf.mutable_serialized_speaks_for();
-    EXPECT_TRUE(sf.SerializeToString(sf_serialized));
+    u = "tmroeder";
+    ASSERT_TRUE(CloudUserManager::MakeNewUser(
+        users_path, u, u, *admin_->GetPolicySigner(), &key));
+    tmroeder_key_path_ = key->SigningPrivateKeyPath();
+    tmroeder_ssf_path_ = key->GetPath(CloudUserManager::UserDelegationSuffix);
 
-    string *sf_sig = ssf.mutable_signature();
-    EXPECT_TRUE(
-        SignData(*sf_serialized, CloudUserManager::SpeaksForSigningContext,
-                 sf_sig, admin_->GetPolicySigner()));
+    u = "jlm";
+    ASSERT_TRUE(CloudUserManager::MakeNewUser(
+        users_path, u, u, *admin_->GetPolicySigner(), &key));
+    jlm_key_path_ = key->SigningPrivateKeyPath();
+    jlm_ssf_path_ = key->GetPath(CloudUserManager::UserDelegationSuffix);
 
-    tmroeder_ssf_path_ = *temp_dir_ + string("/tmroeder_ssf");
-    ofstream ssf_file(tmroeder_ssf_path_.c_str());
-    ASSERT_TRUE(ssf_file);
-    EXPECT_TRUE(ssf.SerializeToOstream(&ssf_file));
-    ssf_file.close();
+    // Hopefully the CLoudServer thread has had enough time to Listen()
+    ASSERT_TRUE(cloud_client_->Connect(server_addr, server_port, &ssl_));
 
-    // Create a second user and set up the SignedSpeaksFor for this user.
-    string username2 = "jlm";
-    scoped_ptr<Signer> jlm_key;
-    jlm_key_path_ = *temp_dir_ + string("/") + username2;
-    ASSERT_EQ(mkdir(jlm_key_path_.c_str(), 0700), 0);
-    SpeaksFor sf2;
-    sf2.set_subject(username2);
-    // For these simple tests, we use the username as the password. Very secure.
-    EXPECT_TRUE(GenerateSigningKey(keyczar::KeyType::RSA_PRIV, jlm_key_path_,
-                                   "" /* do not save private key */, username2,
-                                   username2, &jlm_key));
-    sf2.set_pub_key(SerializePublicKey(*jlm_key));
-
-    string *sf_serialized2 = ssf2.mutable_serialized_speaks_for();
-    EXPECT_TRUE(sf2.SerializeToString(sf_serialized2));
-
-    string *sf_sig2 = ssf2.mutable_signature();
-    EXPECT_TRUE(
-        SignData(*sf_serialized2, CloudUserManager::SpeaksForSigningContext,
-                 sf_sig2, admin_->GetPolicySigner()));
-
-    jlm_ssf_path_ = *temp_dir_ + string("/jlm_ssf");
-    ofstream ssf_file2(jlm_ssf_path_.c_str());
-    ASSERT_TRUE(ssf_file2);
-    EXPECT_TRUE(ssf2.SerializeToOstream(&ssf_file2));
-    ssf_file2.close();
-
-    ASSERT_TRUE(cloud_client_->Connect(*direct_channel_, server_addr,
-                                       server_port, &ssl_));
   }
 
   virtual void TearDown() {
@@ -199,12 +157,9 @@ class CloudClientTest : public ::testing::Test {
   scoped_ptr<thread> server_thread_;
   scoped_ptr<CloudClient> cloud_client_;
   scoped_ptr<CloudServer> cloud_server_;
-  scoped_ptr<TaoChildChannel> direct_channel_;
   ScopedTempDir temp_dir_;
   scoped_ptr<TaoDomain> admin_;
   ScopedSSL ssl_;
-  SignedSpeaksFor ssf;
-  SignedSpeaksFor ssf2;
   string tmroeder_key_path_;
   string tmroeder_ssf_path_;
   string jlm_key_path_;

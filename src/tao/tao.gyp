@@ -27,6 +27,7 @@
       'type': 'executable',
       'sources': [
         'fake_tao_unittests.cc',
+        'keys_unittests.cc',
         'kvm_unix_tao_channel_unittests.cc',
         'kvm_vm_factory_unittests.cc',
         'linux_tao_unittests.cc',
@@ -77,6 +78,8 @@
         'hosted_program_factory.h',
         'hosted_programs.proto',
         'keyczar_public_key.proto',
+        'keys.cc',
+        'keys.h',
         'kvm_unix_tao_channel.cc',
         'kvm_unix_tao_channel.h',
         'kvm_unix_tao_channel_params.proto',

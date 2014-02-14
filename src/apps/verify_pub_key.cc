@@ -34,6 +34,7 @@
 
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/keys.h"
 #include "tao/util.h"
 
 using std::ifstream;

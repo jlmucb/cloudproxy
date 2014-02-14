@@ -145,9 +145,8 @@ int main(int argc, char **argv) {
   s.set_data(pem);
 
   // load policy key
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
-  CHECK(admin->Unlock(FLAGS_policy_pass)) << "Could not unlock configuration";
 
   // sign this serialized data with policy key
   string attestation;

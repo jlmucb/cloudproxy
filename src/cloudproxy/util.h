@@ -43,6 +43,10 @@ class Signer;
 class Verifier;
 }  // namespace keyczar
 
+namespace tao {
+class Keys;
+}
+
 namespace cloudproxy {
 
 static const int AesKeySize = 16;
@@ -80,14 +84,15 @@ typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
 typedef scoped_ptr_malloc<
     SSL, keyczar::openssl::OSSLDestroyer<SSL, ssl_cleanup> > ScopedSSL;
 
-/// Prepare an SSL_CTX to connect to a peer. This is used by both the client and
-/// server.
+/// Prepare an SSL_CTX for a server to accepts connections from clients.
+/// @param key The private signing key and x509 certificate to use.
 /// @param ctx The OpenSSL context to prepare.
-/// @param tls_cert Path to OpenSSL certificate of the tls_key.
-/// @param tls_key The private key to use for this connection.
-/// TODO(kwalsh) Use const reference for tls_key
-bool SetUpSSLCTX(SSL_CTX *ctx, const string &tls_cert,
-                 const keyczar::Signer *tls_key);
+bool SetUpSSLServerCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
+
+/// Prepare an SSL_CTX for a client to connect to a server.
+/// @param key The private signing key and x509 certificate to use.
+/// @param ctx The OpenSSL context to prepare.
+bool SetUpSSLClientCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
 
 /// Check the signature on a SignedACL file and get a serialized ACL.
 /// @param serialized_signed_acls A path to a file containing a serialized
@@ -194,14 +199,6 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
                               const keyczar::base::ScopedSafeString &key,
                               const keyczar::base::ScopedSafeString &hmac,
                               const keyczar::Verifier *main_key);
-
-/// Derive keys from a main key.
-/// @param main_key The key to use for key derivation.
-/// @param[out] enc_key The encryption key derived from main_key.
-/// @param[out] hmac_key The HMAC key derived from main_key.
-bool DeriveKeys(const keyczar::Signer *main_key,
-                keyczar::base::ScopedSafeString *enc_key,
-                keyczar::base::ScopedSafeString *hmac_key);
 
 /// Set up an EVP_CIPHER_CTX with an IV and a key.
 /// @param aes_key The encryption key to use.

@@ -27,9 +27,9 @@
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
-#include <keyczar/base/stl_util-inl.h>  // ScopedSafeString
 
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
 #include "tao/tao.h"
 #include "tao/tao_domain.h"
 
@@ -66,7 +66,7 @@ class LinuxTao : public Tao {
            TaoChannel *child_channel, HostedProgramFactory *program_factory,
            TaoDomain *admin)
       : admin_(admin),
-        keys_path_(keys_path),
+        keys_(new Keys(keys_path, "linux_tao", Keys::Signing | Keys::Crypting)),
         host_channel_(host_channel),
         child_channel_(child_channel),
         program_factory_(program_factory) {}
@@ -95,19 +95,10 @@ class LinuxTao : public Tao {
   /// Configuration for this administrative domain.
   scoped_ptr<TaoDomain> admin_;
 
-  // Size of secret for protecting our crypting and signing keys.
-  static const int SecretSize = 128;
+  /// Keys and attestations for signing and sealing.
+  scoped_ptr<Keys> keys_;
 
-  /// Directory to store our keys.
-  string keys_path_;
-
-  /// A crypting key for sealing, protected by a sealed secret.
-  scoped_ptr<keyczar::Crypter> crypter_;
-
-  /// A signing key for signing, protected by crypter_.
-  scoped_ptr<keyczar::Signer> signer_;
-
-  /// An attestation for our signing public key.
+  /// An attestation for our signing key.
   string attestation_;
 
   /// The channel to use for host communication.
@@ -122,36 +113,16 @@ class LinuxTao : public Tao {
   /// The set of hosted programs that the LinuxTao has started.
   set<string> running_children_;
 
-  /// The address:port for the TCCA. If empty, then this code won't call the CA.
-  /// @{
-  string ca_host_;
-  string ca_port_;
-  /// {@
-
   /// A mutex for accessing the auth manager.
   mutable mutex auth_m_;
 
   /// A mutex for accessing and modifying running_children_.
   mutable mutex data_m_;
 
-  /// Unseal a secret using the TaoChildChannel.
-  /// @param secret[out] The unsealed secret.
-  bool GetSecret(keyczar::base::ScopedSafeString *secret);
-
-  /// Create and seal a secret using the TaoChildChannel.
-  /// @param secret[out] The new secret.
-  bool MakeSecret(keyczar::base::ScopedSafeString *secret);
-
-  /// Get an attestation from the host Tao on our key. Note that this
-  /// will get an attestation on serialized_key for this Tao host; it
-  /// is for use by this Tao and its subclasses.
-  /// @param attest[out] The attestation.
-  bool GetTaoAttestation(Attestation *attest);
-
-  /// Send the attestation to the TCCA on a port/address supplied at
-  /// initialization and uses the returned attestation as its attestation.
-  /// @param attest[in,out] Existing attestation to be replaced by a new
-  bool GetTaoCAAttestation(Attestation *attest);
+  /// Send existing attestation to the Tao CA specified in the TaoDomain
+  /// supplied at initialization and use the returned attestation in its place.
+  /// @param attest[in,out] Existing attestation to be replaced by new one.
+  bool GetTaoCAAttestation();
 
   DISALLOW_COPY_AND_ASSIGN(LinuxTao);
 };

@@ -49,29 +49,21 @@ namespace cloudproxy {
 /// Sample usage: see apps/client.cc
 class CloudClient {
  public:
-  /// Create a CloudClient. If the directory contains keys and certificates,
-  /// then the client will try to open these files and decrypt them with the
-  /// secret. Otherwise, they keys and certificates will be created and
-  /// encrypted to this directory.
+  /// Create a CloudClient. 
   /// @param client_config_path A directory to use for keys and TLS files.
-  /// @param secret A string to use for a encrypting private keys.
+  /// @param channel A channel to access the host Tao. Ownership is taken.
   /// @param admin The configuration for this administrative domain. Ownership
   /// is taken.
-  /// TODO(kwalsh) This description used to say the secret was tao-sealed
-  /// against this client, but the code was not so. External code that
-  /// seals the secret should be moved here.
-  CloudClient(const string &client_config_path, const string &secret,
+  CloudClient(const string &client_config_path, tao::TaoChildChannel *channel,
               tao::TaoDomain *admin);
 
   virtual ~CloudClient() {}
 
   /// Connect to a server.
-  /// @param t The host Tao connection (used to generate attestations).
   /// @param server The server to connect to.
   /// @param port The port to connect to on the server.
   /// @param[out] ssl An established SSL connection to the server.
-  bool Connect(const tao::TaoChildChannel &t, const string &server,
-               const string &port, ScopedSSL *ssl);
+  bool Connect(const string &server, const string &port, ScopedSSL *ssl);
 
   /// Associate keys with a user name.
   /// @param user The user to add.
@@ -162,6 +154,12 @@ class CloudClient {
   /// Principals that have been authenticated on this connection, and the keys
   /// for each user.
   scoped_ptr<CloudUserManager> users_;
+
+  /// A connection to the host Tao.
+  scoped_ptr<tao::TaoChildChannel> host_channel_;
+
+  /// A signing key.
+  scoped_ptr<tao::Keys> keys_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };

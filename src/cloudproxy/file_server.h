@@ -38,16 +38,17 @@ class FileServer : public CloudServer {
   /// @param meta_path The path at which to keep metadata about files sent from
   /// FileClients.
   /// @param server_config_path A directory to use for keys and TLS files.
-  /// @param secret A string to use for encrypting private keys.
   /// @param acl_location The path to a signed ACL giving permissions for
   /// operations on the server.
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
-  /// @param admin The configuration for this administrative domain.
+  /// @param channel A connection to the host Tao. Ownership is taken.
+  /// @param admin The configuration for this administrative domain. Ownership
+  /// is taken
   FileServer(const string &file_path, const string &meta_path,
-             const string &server_config_path, const string &secret,
-             const string &acl_location, const string &host, const string &port,
-             tao::TaoDomain *admin);
+             const string &server_config_path, const string &acl_location,
+             const string &host, const string &port,
+             tao::TaoChildChannel *channel, tao::TaoDomain *admin);
   virtual ~FileServer() {}
 
   constexpr static auto ObjectMetadataSigningContext =
@@ -75,8 +76,8 @@ class FileServer : public CloudServer {
   /// @}
 
  private:
-  /// A key for deriving keys for encryption.
-  scoped_ptr<keyczar::Signer> main_key_;
+  /// A key for deriving keys for encryption and integrity protection.
+  scoped_ptr<tao::Keys> main_key_;
 
   /// A key to use for file encryption.
   keyczar::base::ScopedSafeString enc_key_;

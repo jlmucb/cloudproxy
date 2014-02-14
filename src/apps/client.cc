@@ -53,10 +53,8 @@ using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
-DEFINE_string(client_keys, "./client_key",
+DEFINE_string(client_keys, "./client_keys",
               "Directory for client keys and TLS files");
-DEFINE_string(sealed_secret, "client_secret",
-              "The sealed secret for the client");
 DEFINE_string(address, "localhost", "The address of the local server");
 DEFINE_string(port, "11235", "The server port to connect to");
 
@@ -99,15 +97,10 @@ int main(int argc, char** argv) {
   CHECK(channel->GetRandomBytes(size, &name_bytes))
       << "Could not get a random name from the Tao";
 
-  // get a secret from the Tao
-  ScopedSafeString secret(new string());
-  CHECK(SealOrUnsealSecret(*channel, FLAGS_sealed_secret, secret.get()))
-      << "Could not get the secret";
-
-  CloudClient cc(FLAGS_client_keys, *secret, admin.release());
+  CloudClient cc(FLAGS_client_keys, channel.release(), admin.release());
 
   ScopedSSL ssl;
-  CHECK(cc.Connect(*channel, FLAGS_address, FLAGS_port, &ssl))
+  CHECK(cc.Connect(FLAGS_address, FLAGS_port, &ssl))
       << "Could not connect to the server at " << FLAGS_address << ":"
       << FLAGS_port;
 

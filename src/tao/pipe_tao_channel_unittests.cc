@@ -72,7 +72,7 @@ class PipeTaoChannelTest : public ::testing::Test {
     ASSERT_TRUE(tao_channel_->Init()) << "Could not set up the sockets";
 
     tao_.reset(new FakeTao());
-    ASSERT_TRUE(tao_->Init()) << "Could not initialize the Tao";
+    ASSERT_TRUE(tao_->InitTemporaryTPM()) << "Could not initialize the Tao";
 
     string child_hash("Fake hash");
     string params;
@@ -117,7 +117,7 @@ class PipeTaoChannelTest : public ::testing::Test {
   ScopedFd readfd_;
   ScopedFd writefd_;
   ScopedTempDir temp_dir_;
-  scoped_ptr<Tao> tao_;
+  scoped_ptr<FakeTao> tao_;
   scoped_ptr<PipeTaoChannel> tao_channel_;
   scoped_ptr<thread> listener_;
   string creation_socket_;

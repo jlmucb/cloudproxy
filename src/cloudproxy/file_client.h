@@ -39,7 +39,7 @@ class FileClient : public CloudClient {
   /// @param secret A string to use for a encrypting private keys.
   /// @param admin The configuration for this administrative domain.
   FileClient(const string &file_path, const string &client_config_path,
-             const string &secret, tao::TaoDomain *admin);
+             tao::TaoChildChannel *channel, tao::TaoDomain *admin);
   virtual ~FileClient() {}
 
   /// Create a file on a FileServer.

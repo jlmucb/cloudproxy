@@ -33,13 +33,14 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
+#include "tao/keys.h"
 #include "tao/util.h"
 
 using keyczar::Signer;
 
 using tao::Attestation;
 using tao::GenerateAttestation;
-using tao::GenerateSigningKey;
+using tao::Keys;
 using tao::ScopedRsa;
 using tao::ScopedTempDir;
 using tao::SerializePublicKey;
@@ -231,38 +232,32 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
 
 TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
   // make a chain 3 deep of INTERMEDIATE->INTERMEDIATE->ROOT signatures
-  string key_1_path = *temp_dir_ + string("/key1");
-  string key_2_path = *temp_dir_ + string("/key2");
 
-  scoped_ptr<Signer> key_1;
-  scoped_ptr<Signer> key_2;
-  ASSERT_TRUE(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, key_1_path,
-                                 "" /* do not save private key */, "key 1",
-                                 "unitpass", &key_1));
-  ASSERT_TRUE(GenerateSigningKey(keyczar::KeyType::ECDSA_PRIV, key_1_path,
-                                 "" /* do not save private key */, "key 2",
-                                 "unitpass", &key_2));
+  Keys key_1("key 1", Keys::Signing);
+  Keys key_2("key 2", Keys::Signing);
+  ASSERT_TRUE(key_1.InitTemporary());
+  ASSERT_TRUE(key_2.InitTemporary());
 
   Statement s0;
-  s0.set_data(SerializePublicKey(*key_1));
+  ASSERT_TRUE(key_1.SerializePublicKey(s0.mutable_data()));
   s0.set_hash_alg(TaoAuth::FakeHash);
   s0.set_hash("Test hash 1");
   string a0;
   EXPECT_TRUE(admin_->AttestByRoot(&s0, &a0)) << "Could not attest to key 2";
 
   Statement s1;
-  s1.set_data(SerializePublicKey(*key_2));
+  ASSERT_TRUE(key_2.SerializePublicKey(s1.mutable_data()));
   s1.set_hash_alg(TaoAuth::FakeHash);
   s1.set_hash("Test hash 2");
   string a1;
-  EXPECT_TRUE(GenerateAttestation(key_1.get(), a0, &s1, &a1));
+  EXPECT_TRUE(GenerateAttestation(key_1.Signer(), a0, &s1, &a1));
 
   Statement s2;
   s2.set_data("Test data");
   s2.set_hash_alg(TaoAuth::FakeHash);
   s2.set_hash("Test hash 3");
   string a2;
-  EXPECT_TRUE(GenerateAttestation(key_2.get(), a1, &s2, &a2));
+  EXPECT_TRUE(GenerateAttestation(key_2.Signer(), a1, &s2, &a2));
 
   string extracted_data;
   EXPECT_TRUE(admin_->VerifyAttestation(a2, &extracted_data))

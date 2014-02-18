@@ -18,7 +18,7 @@
 // to the location of the License.
 
 
-#include "keys.h"
+#include <stdlib.h>
 #include "aesni.h"
 #include "sha256.h"
 #include "hmacsha256.h"

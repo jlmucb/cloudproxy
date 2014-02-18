@@ -25,7 +25,6 @@
 #define __HMACSHA256_H
 
 #include "common.h"
-#include "keys.h"
 #include "aesni.h"
 #include "sha256.h"
 

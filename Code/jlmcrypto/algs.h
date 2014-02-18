@@ -18,7 +18,8 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-#include "jlmTypes.h"
+
+#include "common.h"
 
 
 // -------------------------------------------------------------------------------

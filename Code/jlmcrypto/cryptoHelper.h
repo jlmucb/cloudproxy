@@ -25,8 +25,7 @@
 #ifndef _CRYPTOHELPER__H
 #define _CRYPTOHELPER__H
 
-#include "jlmTypes.h"
-#include "jlmUtility.h"
+#include "common.h"
 #include "keys.h"
 #include "jlmcrypto.h"
 #include "tinyxml.h"

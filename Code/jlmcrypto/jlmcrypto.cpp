@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "jlmcrypto.h"
 #include "logging.h"
 #include "sha256.h"

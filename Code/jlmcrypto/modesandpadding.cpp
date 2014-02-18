@@ -19,7 +19,7 @@
 // to the location of the License.
 
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "keys.h"

@@ -34,7 +34,7 @@
 #define K4  0xCA62C1D6
 
 
-#include "jlmTypes.h"
+#include "common.h"
 
 #ifndef LITTLE_ENDIAN
 #define LITTLE_ENDIAN

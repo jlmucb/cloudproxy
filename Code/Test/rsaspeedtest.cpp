@@ -856,6 +856,9 @@ bool GCDtest(int num)
 
 bool BinaryGCDtest(int num)
 {
+#if 1
+    return true;
+#else
     u64     i;
     u64     unum= (u64)num;
     time_t  start, finish;
@@ -887,6 +890,7 @@ bool BinaryGCDtest(int num)
         elapsedseconds, num, opspersecond);
 
     return true;
+#endif
 }
 
 

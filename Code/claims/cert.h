@@ -20,6 +20,7 @@
 
 
 #include "jlmTypes.h"
+#include "jlmUtility.h"
 #include "keys.h"
 #include "cryptoHelper.h"
 #include "tinyxml.h"

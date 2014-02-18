@@ -30,10 +30,9 @@
 // ---------------------------------------------------------------------------------
 
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "logging.h"
 #include "jlmcrypto.h"
-#include "jlmUtility.h"
 #include "algs.h"
 #include "keys.h"
 #include "tinyxml.h"

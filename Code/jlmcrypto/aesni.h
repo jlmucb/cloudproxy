@@ -25,7 +25,7 @@
 #ifndef __AESNI_H
 #define __AESNI_H
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "string.h"
 
 #define  MAXKC  (256/32)

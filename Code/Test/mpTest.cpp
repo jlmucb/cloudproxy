@@ -37,6 +37,7 @@
 #include "fastArith.h"
 #include "ecc.h"
 #include "nist.h"
+#include "jlmUtility.h"
 
 
 // ---------------------------------------------------------------------------------

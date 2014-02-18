@@ -26,7 +26,7 @@
 //      Both are in the public domain.
 
 #include "sha256.h"
-#include "jlmTypes.h"
+#include "common.h"
 #include "logging.h"
 #include <string.h>
 #include <stdio.h>

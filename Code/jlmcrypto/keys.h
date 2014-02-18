@@ -25,8 +25,7 @@
 #ifndef _KEYS__H
 #define _KEYS__H
 
-#include "jlmTypes.h"
-#include "jlmUtility.h"
+#include "common.h"
 #include "algs.h"
 #include "bignum.h"
 #include "tinyxml.h"

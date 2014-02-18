@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <time.h>
 
+#include "common.h"
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "logging.h"

@@ -24,7 +24,7 @@
 #ifndef _BIGNUM_H
 #define _BIGNUM_H
 
-#include "jlmTypes.h"
+#include "common.h"
 
 #ifndef __MPGLOBALDEFINES_
 #define __MPGLOBALDEFINES_

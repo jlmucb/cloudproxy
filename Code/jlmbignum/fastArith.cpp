@@ -19,8 +19,7 @@
 
 
 #include "fastArith.h"
-#include "jlmTypes.h"
-#include "stdio.h"
+#include "common.h"
 
 
 // -----------------------------------------------------------------

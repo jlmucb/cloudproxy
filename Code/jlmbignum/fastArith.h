@@ -20,7 +20,7 @@
 
 // -----------------------------------------------------------------
 
-#include "jlmTypes.h"
+#include "common.h"
 
 u64     longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
 u64     longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);

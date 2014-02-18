@@ -1,0 +1,177 @@
+Statement := [ data, hash_alg, hash, time, exp ]
+Attestation := [ type, sstmt, sig, quote, cert ]
+
+Policy signing key = Kroot
+. = missing
+
+I'm assuming the use of WhitelistAuth, not RootAuth.
+
+--------
+
+attest_to_aik calls AttestByRoot which uses Kroot to generate:
+
+  a0 = [type=ROOT,
+        sstmt=ser([data=aik,
+                   hash_alg=.,
+                   hash=.,
+                   time=when,
+                   exp=later]),
+        sig=KeyczarSign(sstmt, Kroot),
+        quote=.,
+        cert=.]
+
+The meaning of ROOT attestation a0 is:
+
+  s0 = "ROOT says _aik_ is a trustworthy system notbefore _when_ notafter _exp_"
+  where: _aik_ = a0.sstmt.data = aik
+         _when_ = a0.sstmt.time
+         _exp_ = a0.sstmt.exp
+
+Note: I say "trustworthy system" here, rather than "trustworthy tpm". See below.
+
+Given a0, before we should believe s0, we should check:
+  KeyczarVerify(a0.sstmt, Kroot) // properly signed by policy key
+  a0.time <= now <= a0.exp // not expired
+
+If those conditions hold, then:
+
+  TaoAuth::VerifyAttestation(a0) returns a0.sstmt.data = aik
+
+--------
+
+LinuxTao w/ signing key Ktao calls TPMTaoChildChannel which uses TPM to create:
+
+  a1 = [type=TPM_1_2_QUOTE,
+        sstmt=ser([data=Ktao,
+                   hash_alg="TPM1.2 Quote",
+                   hash=.,
+                   time=when,
+                   exp=later]),
+        sig=TpmWierdSign([Ktao, pcrs], aik),
+        quote=pcrs,
+        cert=a0]
+
+Note: The timestamps on a1 are taken from LinuxTao. So the TPM isn't limiting
+the attestion, only LinuxTao is putting a time limit on this.
+
+The meaning of TPM_1_2_QUOTE attestation a1 is:
+  s1 = "_aik_ says (_linux_ says its key is _k_ notbefore _when_ notafter _exp_)"
+  where: _aik_ = VerifiyAttestation(a1.cert) = VerifyAttesataion(a0)
+         _linux_ = a1.quote = pcrs
+         _k_ = a1.sstmt.data = Ktao
+         _when_ = a1.sstmt.time
+         _exp_ = a1.sstmt.exp
+
+Given a1, before we should believe s1, we should check:
+  VerifyAttestation(a1.cert=a0) // this tpm is trustworty in this domain
+  TpmWierdVerify([a1.sstmt.data, a1.quote], _aik_) // properly signed by this tpm
+  a1.time <= now <= a1.exp // not expired
+  CheckAuthorization(a1) // checks if pcrs are on the whitelist for this domain
+
+If those conditions hold, then:
+
+  TaoAuth::VerifyAttestation(a1) returns a1.sstmt.data = Ktao
+
+--------
+
+LinuxTao w/ signing key Ktao sends attestations a0 and a1 to TCCA, which does the above
+checks to conclude s0 and s1. Given s0 and s1, TCCA makes a logical deduction
+then produces:
+
+  a1b = [type=ROOT,
+        sstmt=ser([data=Ktao,
+                   hash_alg="TPM1.2 Quote",
+                   hash=.,
+                   time=when,
+                   exp=later]),
+        sig=KeyczarSign(sstmt, Kroot),
+        quote=.,
+        cert=.]
+
+Note: The timestamps on a1b are copied directly from a1. So TCCA isn't limiting
+the attestion, only the original LinuxTao is putting a time limit on this. Seems
+kind of risky that LinuxTao can request arbitrary timestamps and TCCA will
+happily sign them.
+
+Note also that the pcrs are completely omitted.
+
+The meaning of ROOT attestation a1b (following the same pattern as for a0) is:
+  s1b = "ROOT says _k_ is a trustworthy system notbefore _when_ notafter _exp_"
+  where: _k_ = a1b.sstmt.data = Ktao
+         _when_ = a1b.sstmt.time
+         _exp_ = a1b.sstmt.exp
+
+Note: I need to say "trustworthy system" here, not "trustworthy tpm". See above.
+
+Given a1b, before we should believe s1b, we should check:
+  KeyczarVerify(a1b.sstmt, Kroot) // properly signed by policy key
+  a0.time <= now <= a0.exp // not expired
+
+If those conditions hold, then:
+
+  TaoAuth::VerifyAttestation(a1b) returns a1b.sstmt.data = Ktao
+
+--------
+
+CloudServer w/ signing key Ksrv and program hash H calls LinuxTao::Attest(H, S).
+I'm not positive what S is here, I assume it is a self-signed x509 cert
+describing its own public key Ksrv. In any case, LinuxTao checks to make sure H
+is actually one of its own running children, then generates:
+
+  a2 = [type=INTERMEDIATE,
+        sstmt=ser([data=x509(Ksrv),
+                   hash_alg="SHA256",
+                   hash=H,
+                   time=when,
+                   exp=later]),
+        sig=KeyczarSign(sstmt, Ktao),
+        quote=.,
+        cert=a1b (alternatively, a1a if not using tcca)]
+
+The meaning of INTERMEDIATE attestation a2 is:
+
+  s2 = "_linux_ says (_pgm_ says its key is _k_) notbefore _when_ notafter _exp_"
+  where: _linux_ = VerifiyAttestation(a2.cert) = VerifyAttesataion(a1b) = Ktao
+         _pgm_ = a2.sstmt.hash = H
+         _k_ = a2.sstmt.data = x509(srv)
+         _when_ = a2.sstmt.time
+         _exp_ = a2.sstmt.exp
+
+Given a1, before we should believe s2, we should check:
+  VerifyAttestation(a2.cert=a1b) // this linux tao is trustworty in this domain
+  KeyczarVerify(a2.sstmt.data, _linux_) // properly signed by this linux tao
+  a2.time <= now <= a2.exp // not expired
+  CheckAuthorization(a2) // checks if H is on the whitelist for this domain
+
+If those conditions hold, then:
+
+  TaoAuth::VerifyAttestation(a2) returns a2.sstmt.data = x509(Ksrv)
+
+I suppose CloudServer could also go to TCC with a1b and a2 to get a condensed
+cert in the same way that LinuxTao did, but I don't think the code currently
+does that.
+
+--------
+
+Comments:
+
+It seems that the intended meaning of an attestation is always
+
+  "The following key is owned by some trustworthy system and is to be trusted
+  for signing additional attestations"
+
+  Where "some trustworthy system" means 
+  "either a tpm that was OK'ed by the policy, 
+  or a linux system running on such a tpm with pcrs in a state that was OK'ed by the policy,
+  or a hosted program runnning on such a linux system with hash that was OK'ed by the policy"
+
+First issue: The checking and logical deduction seems really liberal. It seems
+that an attested hosted program has exactly the same powers as an attested linux
+tao. For example, I don't see anything that prevents a hosted program from
+issuing the same kinds of attestations that the linux tao does, meaning that a
+hosted program on the whitelist can impersonate any other name on the whitelist.
+Similarly, CloudClients can impersonate CloudServers by just issuing their own
+attestations binding the server hash to their own keys.
+
+Second issue: Actually, it seems to me that program names are *never* used,
+except when LinuxTao wants to decide whether to start a given hosted program.

@@ -19,9 +19,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_server_thread_data.h"
+
+#include <glog/logging.h>
 
 namespace cloudproxy {
 bool CloudServerThreadData::GetChallenge(const string &user, string *chall) {

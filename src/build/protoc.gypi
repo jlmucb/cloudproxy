@@ -20,12 +20,12 @@
 # }
 # If necessary, you may add normal .cc files to the sources list or other gyp
 # dependencies.  The proto headers are guaranteed to be generated before any
-# source files, even within this target, are compiled.
-#
+# source files, even within this target, are compiled. You must specify
+# the target directory under gen with proto_dir
+
 {
   'variables': {
-    'cc_dir': '<(SHARED_INTERMEDIATE_DIR)',
-    'protoc': '<(PRODUCT_DIR)/protoc',
+    'protoc': '<(PRODUCT_DIR)/bin/protoc',
   },
   'rules': [
     {
@@ -35,8 +35,8 @@
         '<(protoc)',
       ],
       'outputs': [
-        '<(cc_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.cc',
-        '<(cc_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.h',
+        '<(proto_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.cc',
+        '<(proto_dir)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).pb.h',
       ],
       'dependencies': [
         '../third_party/protobuf/protobuf.gyp:protoc',
@@ -44,7 +44,7 @@
       'action': [
         '<(protoc)',
         '-I./',
-        '--cpp_out=<(cc_dir)',
+        '--cpp_out=<(proto_dir)',
         './<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_NAME)'
       ],
       'message': 'Generating C++ code from <(RULE_INPUT_PATH)',

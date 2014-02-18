@@ -196,7 +196,7 @@ class Keyset {
   // encrypt the key with PBE algorithm. Its format is PKCS8 and it returns
   // false if there is no primary key, if this is a public key or if it fails.
   bool ExportPrivateKey(const std::string& filename,
-                        const std::string* passphrase);
+                        const std::string* passphrase) const;
 
   // Operations on keys.
 

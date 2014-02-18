@@ -10,7 +10,10 @@
 #include <vector>
 
 #include <keyczar/base/basictypes.h>
+
+#ifndef DCHECK_EQ
 #include <keyczar/base/logging.h>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 //

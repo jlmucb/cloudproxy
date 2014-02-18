@@ -18,29 +18,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
-#include <memory>
-#include <string>
 #include <fstream>
-#include <streambuf>
+#include <memory>
 #include <sstream>
+#include <streambuf>
+#include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
+#include <google/protobuf/text_format.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/stl_util-inl.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/rw/keyset_file_reader.h>
-#include <google/protobuf/text_format.h>
 
+#include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/util.h"
 
+using std::ifstream;
+using std::ofstream;
 using std::string;
 using std::stringstream;
 using std::unique_ptr;
-using std::ifstream;
-using std::ofstream;
+
+using cloudproxy::CloudUserManager;
+using tao::VerifySignature;
 
 DEFINE_string(signed_pub_key_file, "keys/tmroeder_pub_signed",
               "The name of the signature file");
@@ -57,13 +60,15 @@ int main(int argc, char** argv) {
   ssf.ParseFromIstream(&sig);
 
   // get the public key for verification
-  keyczar::Keyczar* verifier = keyczar::Verifier::Read(FLAGS_key_loc.c_str());
-  CHECK(verifier) << "Could not get the public key for verification";
+  scoped_ptr<keyczar::Verifier> verifier(
+      keyczar::Verifier::Read(FLAGS_key_loc.c_str()));
+  CHECK(verifier.get()) << "Could not get the public key for verification";
 
-  verifier->set_encoding(keyczar::Keyczar::NO_ENCODING);
+  verifier->set_encoding(keyczar::Verifier::NO_ENCODING);
 
-  CHECK(verifier->Verify(ssf.serialized_speaks_for(), ssf.signature()))
-      << "Verify failed";
+  CHECK(VerifySignature(ssf.serialized_speaks_for(),
+                        CloudUserManager::SpeaksForSigningContext,
+                        ssf.signature(), verifier.get())) << "Verify failed";
 
   LOG(INFO) << FLAGS_signed_pub_key_file << " contained a valid signature "
             << " under public key in " << FLAGS_key_loc;

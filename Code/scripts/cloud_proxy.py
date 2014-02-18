@@ -9,13 +9,15 @@ from xml.etree import ElementTree as ET
 ROOT_DIR = '/home/jlm/jlmcrypt/'
 CRYPT_UTILITY = ROOT_DIR + 'cryptUtility.exe'
 POLICY_KEY = ROOT_DIR + 'policy/policyPrivateKey.xml'
+ALG_PREFIX = 'http://www.manferdelli.com/2011/Xml/algorithms/'
+KEY_SIZE_DEFAULT = 2048
+ALG_DEFAULT = 'rsa2048-sha256-pkcspad'
 
-# JLM CHANGE: rsa1024-sha256-pkcspad --> rsa2048-sha256-pkcspad
-# JLM CHANGE: size="1024" --> size="2048"
+
 policy_key_template = """
 <ds:SignedInfo>
     <ds:CanonicalizationMethod Algorithm='http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#' />
-    <ds:SignatureMethod Algorithm='http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#' />
+    <ds:SignatureMethod Algorithm='' />
     <Certificate Id='www.manferdelli.com/certs/' version='1'>
         <SerialNumber></SerialNumber>
         <PrincipalType>Policy</PrincipalType>
@@ -30,7 +32,7 @@ policy_key_template = """
             <ds:KeyInfo KeyName="//www.manferdelli.com/Keys/">
                 <KeyType>RSAKeyType</KeyType>
                 <ds:KeyValue>
-                    <ds:RSAKeyValue size="2048">
+                    <ds:RSAKeyValue size="">
                         <ds:M></ds:M>
                         <ds:E></ds:E>
                     </ds:RSAKeyValue>
@@ -44,11 +46,10 @@ policy_key_template = """
 """
 
 # the public-key template for creating principals
-# JLM CHANGE: rsa1024-sha256-pkcspad --> rsa2048-sha256-pkcspad
 principal_template = """
 <ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
-    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa2048-sha256-pkcspad#" />
+    <ds:SignatureMethod Algorithm='' />
     <Certificate Id="//www.manferdelli.com/2011/Cert/User/" version="1">
         <SerialNumber></SerialNumber>
         <PrincipalType>User</PrincipalType>
@@ -63,7 +64,7 @@ principal_template = """
             <ds:KeyInfo KeyName="//www.manferdelli.com/Keys/">
                 <KeyType>RSAKeyType</KeyType>
                 <ds:KeyValue>
-                    <ds:RSAKeyValue size="1024">
+                    <ds:RSAKeyValue size="">
                         <ds:M></ds:M>
                         <ds:E></ds:E>
                     </ds:RSAKeyValue>
@@ -77,7 +78,8 @@ principal_template = """
 """
 
 # the XML DSig namespace used by signed elements
-dsns='{http://www.w3.org/2000/09/xmldsig#}'
+dsns = '{http://www.w3.org/2000/09/xmldsig#}'
+
 
 def _transform_namespace(xml_str):
     # convert the default ns0 from elementtree to ds to compensate for the 
@@ -87,12 +89,15 @@ def _transform_namespace(xml_str):
     return namespace_patt2.sub(':ds=', namespace_patt.sub('ds:', xml_str))
 
 
-def _fill_xml_parameters(tree, subject, cert_num=1, serial_num=1):
+def _fill_xml_parameters(tree, alg, key_size, subject, cert_num=1, serial_num=1):
     # append id to the Id of Certificate and write it as the serial number
     grant_node = tree.find('Certificate')
     cur_cert_id = grant_node.get('Id')
     new_cert_id = cur_cert_id + str(cert_num)
     grant_node.set('Id', new_cert_id)
+
+    sig_method_node = tree.find('{0}SignatureMethod'.format(dsns))
+    sig_method_node.set('Algorithm', ALG_PREFIX + alg + ALG_SUFFIX)
 
     serial_node = grant_node.find('SerialNumber')
     serial_node.text = '{0}'.format(serial_num);
@@ -106,6 +111,9 @@ def _fill_xml_parameters(tree, subject, cert_num=1, serial_num=1):
     key_info_node = grant_node.find('SubjectKey/{0}KeyInfo'.format(dsns))
     key_prefix = key_info_node.get('KeyName')
     key_info_node.set('KeyName', key_prefix + subject)
+
+    rsa_key_value_node = key_info_node.find('{0}KeyInfo/{0}RSAKeyValue'.format(dsns))
+    rsa_key_value_node.set('size', key_size)
 
     subject_key_id_node = grant_node.find('SubjectKeyID')
     subject_key_id_node.text = subject_key_id_node.text + subject
@@ -153,7 +161,7 @@ def _copy_public_portion(private_key, tree):
 
 
 # JLM CHANGE rsa1024-sha256-pkcspad --> rsa2048-sha256-pkcspad
-def _sign_tree(tree, output, crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY):
+def _sign_tree(tree, output, alg, crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY):
     # write the resulting XML to a temp file and perform the signing operation
     with tempfile.NamedTemporaryFile(delete=False) as temp:
         xml_str = _transform_namespace(ET.tostring(tree))
@@ -163,22 +171,24 @@ def _sign_tree(tree, output, crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY
         temp.flush() 
 
         # perform the signing operation using cryptUtility
-        c = [crypt_utility, '-Sign', private_key, 'rsa2048-sha256-pkcspad', temp.name, output];
+        c = [crypt_utility, '-Sign', private_key, alg, temp.name, output];
         check_call(c)
 
 
 def create_policy_key(crypt_utility=CRYPT_UTILITY, 
-                    policy_private_key=POLICY_KEY,
-                    output=(ROOT_DIR + 'policyCert.xml')):
+                      policy_private_key=POLICY_KEY,
+                      output=(ROOT_DIR + 'policyCert.xml'),
+                      alg=ALG_DEFAULT, key_size=KEY_SIZE_DEFAULT):
     tree = ET.fromstring(policy_key_template)
     
-    _fill_xml_parameters(tree, 'CloudProxyPolicy')
+    _fill_xml_parameters(tree, alg, key_size, 'CloudProxyPolicy')
     _copy_public_portion(policy_private_key, tree)
-    _sign_tree(tree, output, crypt_utility, policy_private_key)
+    _sign_tree(tree, output, alg, crypt_utility, policy_private_key)
     
 
 def create_principal(ordinal, subject, private_key=None, crypt_utility=CRYPT_UTILITY,
-                    policy_private_key=POLICY_KEY, output=None):
+                     policy_private_key=POLICY_KEY, output=None,
+                     alg=ALG_DEFAULT, key_size=KEY_SIZE_DEFAULT):
     # set up private_key and output if they weren't specified
     slash_re = re.compile(r'/')
     subject_file_name = slash_re.sub('_', subject)
@@ -189,7 +199,7 @@ def create_principal(ordinal, subject, private_key=None, crypt_utility=CRYPT_UTI
     tree = ET.fromstring(principal_template)
 
     # get the arguments to fill in the XML
-    prefix = _fill_xml_parameters(tree, subject, ordinal, ordinal)
+    prefix = _fill_xml_parameters(tree, alg, key_size, subject, ordinal, ordinal)
 
     # get the old key or generate a new key and get the modulus and exponent
     private_key_file_name = private_key
@@ -206,7 +216,7 @@ def create_principal(ordinal, subject, private_key=None, crypt_utility=CRYPT_UTI
 policy_template = """
 <ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:CanonicalizationMethod Algorithm="http://www.manferdelli.com/2011/Xml/canonicalization/tinyxmlcanonical#" />
-    <ds:SignatureMethod Algorithm="http://www.manferdelli.com/2011/Xml/algorithms/rsa1024-sha256-pkcspad#" />
+    <ds:SignatureMethod Algorithm='' />
     <SignedGrant Id="http://www.manferdelli.com/2011/Cert/Policy/" version="1">
         <SerialNumber></SerialNumber>
         <IssuerName>manferdelli.com</IssuerName>
@@ -224,8 +234,9 @@ policy_template = """
 """
 
 def create_policy(policy_file, cert_id, authority='CloudProxyPolicy', 
-                crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY, 
-                output='authorizationRuleSigned.xml'):
+                  crypt_utility=CRYPT_UTILITY, private_key=POLICY_KEY, 
+                  output='authorizationRuleSigned.xml',
+                  alg=ALG_DEFAULT):
     # parse the policy template as XML
     tree = ET.fromstring(policy_template)
 
@@ -249,6 +260,9 @@ def create_policy(policy_file, cert_id, authority='CloudProxyPolicy',
     cur_cert_id = grant_node.get('Id')
     new_cert_id = cur_cert_id + str(cert_id)
     grant_node.set('Id', new_cert_id)
+
+    sig_method_node = grant_node.find('{0}SignatureMethod'.format(dsns))
+    sig_method_node.set('Algorithm', ALG_PREFIX + alg + ALG_SUFFIX)
 
     serial_node = grant_node.find('SerialNumber')
     serial_node.text = '{0}'.format(cert_id);

@@ -8,7 +8,6 @@
 #include <windows.h>
 
 #include <keyczar/base/basictypes.h>
-#include <keyczar/base/logging.h>
 
 // Used so we always remember to close the handle.
 // The class interface matches that of ScopedStdioHandle in  addition to an

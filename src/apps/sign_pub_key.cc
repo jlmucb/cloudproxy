@@ -18,108 +18,71 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <dirent.h>
-#include <stdlib.h>
-#include <errno.h>
-
 #include <string>
-#include <fstream>
-#include <streambuf>
-#include <sstream>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
-#include <keyczar/base/scoped_ptr.h>
-#include <keyczar/base/stl_util-inl.h>
-#include <keyczar/rw/keyset_file_reader.h>
 
+#include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/keyczar_public_key.pb.h"
+#include "tao/tao_domain.h"
+#include "tao/util.h"
 
 using std::string;
-using std::stringstream;
-using std::ifstream;
-using std::ofstream;
-using std::ios;
 
-using cloudproxy::SpeaksFor;
+using keyczar::base::WriteStringToFile;
+
+using cloudproxy::CloudUserManager;
 using cloudproxy::SignedSpeaksFor;
+using cloudproxy::SpeaksFor;
 using tao::KeyczarPublicKey;
+using tao::LoadVerifierKey;
+using tao::SignData;
+using tao::TaoDomain;
+
+DEFINE_string(config_path, "tao.config", "Location of tao configuration");
+DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 
 DEFINE_string(subject, "tmroeder", "The subject to bind to this key");
-DEFINE_string(pub_key_loc, "keys/tmroeder_pub", "The directory containing this public key");
-DEFINE_string(key_loc, "./policy_key", "The location of the private key");
-DEFINE_string(pass, "cppolicy", "The password to use for this private key");
+DEFINE_string(pub_key_loc, "keys/tmroeder_pub",
+              "The directory containing this public key");
 DEFINE_string(signed_speaks_for, "keys/tmroeder_pub_signed",
               "The location to write the SignedSpeaksFor file");
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-
   google::ParseCommandLineFlags(&argc, &argv, true);
+  FLAGS_alsologtostderr = true;
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
+
+  KeyczarPublicKey kpk;
+  scoped_ptr<keyczar::Verifier> key;
+  CHECK(LoadVerifierKey(FLAGS_pub_key_loc, &key)) << "Could not load key from "
+                                                  << FLAGS_pub_key_loc;
+  CHECK(SerializeKeyset(key->keyset(), FLAGS_pub_key_loc, &kpk))
+      << "Could not serialize the public key";
+  string pub_key;
+  CHECK(kpk.SerializeToString(&pub_key))
+      << "Could not serialize the KeyczarPublicKey to a string";
+
+  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  CHECK(admin.get() != nullptr) << "Could not load configuration";
+  CHECK(admin->Unlock(FLAGS_policy_pass)) << "Could not unlock configuration";
 
   SpeaksFor sf;
   sf.set_subject(FLAGS_subject);
-  KeyczarPublicKey *kpk = sf.mutable_pub_key();
-
-  // load the meta file
-  string dir_name(FLAGS_pub_key_loc);
-  string meta_file_name = dir_name + string("/meta");
-  ifstream meta(meta_file_name.c_str());
-  stringstream meta_buf;
-  meta_buf << meta.rdbuf();
-
-  kpk->set_metadata(meta_buf.str());
-
-  DIR *dir = opendir(FLAGS_pub_key_loc.c_str());
-  CHECK_NOTNULL(dir);
-
-  struct dirent *d = readdir(dir);
-  while (d != nullptr) {
-    if (d->d_type == DT_REG) {
-      string name(d->d_name);
-      if (name.compare("meta") != 0) {
-	// try to interpret this name as an integer
-	errno = 0;
-	long n = strtol(d->d_name, nullptr, 0);
-	if (errno == 0) {
-	  // parse this data and add to the KeyczarPublicKey
-	  KeyczarPublicKey::KeyFile *kf = kpk->add_files();
-	  kf->set_name(n);
-	  stringstream file_name_stream;
-	  file_name_stream << dir_name << "/" << n;
-	  ifstream file(file_name_stream.str().c_str(), ifstream::in | ios::binary);
-	  stringstream file_stream;
-	  file_stream << file.rdbuf();
-	  kf->set_data(file_stream.str());
-	}
-      }
-    }
-    
-    d = readdir(dir);
-  }
-  
-
-  // decrypt the private policy key so we can construct a signer
-  keyczar::base::ScopedSafeString password(new string(FLAGS_pass));
-  scoped_ptr<keyczar::rw::KeysetReader> reader(
-      new keyczar::rw::KeysetPBEJSONFileReader(FLAGS_key_loc.c_str(),
-                                               *password));
-
-  // sign this serialized data with the keyset in FLAGS_key_loc
-  scoped_ptr<keyczar::Keyczar> signer(keyczar::Signer::Read(*reader));
-  CHECK(signer.get()) << "Could not initialize the signer from "
-                      << FLAGS_key_loc;
-  signer->set_encoding(keyczar::Keyczar::NO_ENCODING);
-
-
+  sf.set_pub_key(pub_key);
   string sf_serialized;
-  CHECK(sf.SerializeToString(&sf_serialized)) << "Could not serialize"
-                                                 " the key";
+  CHECK(sf.SerializeToString(&sf_serialized))
+      << "Could not serialize delegation";
 
-  // print out the length of the string representation of the acl file
   string sig;
-  CHECK(signer->Sign(sf_serialized, &sig)) << "Could not sign key";
+  CHECK(SignData(sf_serialized, CloudUserManager::SpeaksForSigningContext, &sig,
+                 admin->GetPolicySigner())) << "Could not sign delegation";
 
   cloudproxy::SignedSpeaksFor ssf;
   ssf.set_serialized_speaks_for(sf_serialized);
@@ -127,9 +90,13 @@ int main(int argc, char** argv) {
 
   string serialized;
   CHECK(ssf.SerializeToString(&serialized)) << "Could not serialize the"
-                                               " signed SpeaksFor";
+                                               " signed delegation";
 
-  ofstream sig_file(FLAGS_signed_speaks_for.c_str());
-  sig_file.write(serialized.data(), serialized.length());
+  if (!WriteStringToFile(FLAGS_signed_speaks_for, serialized)) {
+    LOG(ERROR) << "Could not write signed delegation to "
+               << FLAGS_signed_speaks_for;
+    return 1;
+  }
+
   return 0;
 }

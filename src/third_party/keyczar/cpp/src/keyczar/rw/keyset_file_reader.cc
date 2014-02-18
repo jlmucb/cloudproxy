@@ -15,6 +15,7 @@
 
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/json_value_serializer.h>
+#include <keyczar/base/logging.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/string_util.h>
 #include <keyczar/crypto_factory.h>

@@ -18,16 +18,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_auth.h"
-#include <glog/logging.h>
 
-#include "util.h"
+#include <glog/logging.h>
+#include <keyczar/keyczar.h>
+
+#include "cloudproxy/util.h"
 
 namespace cloudproxy {
 
-CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
+CloudAuth::CloudAuth(const string &acl_path, const keyczar::Verifier *key)
     : permissions_(), admins_() {
   string acl;
 
@@ -52,7 +52,7 @@ CloudAuth::CloudAuth(const string &acl_path, keyczar::Keyczar *key)
   }
 }
 
-bool CloudAuth::findPermissions(const string &subject, const string &object,
+bool CloudAuth::FindPermissions(const string &subject, const string &object,
                                 set<Op> **perms) {
   CHECK(perms) << "null perms parameter";
 
@@ -66,7 +66,7 @@ bool CloudAuth::findPermissions(const string &subject, const string &object,
   // this is safe in single-threaded code because references to map objects are
   // guaranteed to remain unchanged unless the given item is deleted
   *perms = &object_it->second;
-  ;
+
   return true;
 }
 
@@ -75,7 +75,7 @@ bool CloudAuth::Permitted(const string &subject, Op op, const string &object) {
   if (admins_.find(subject) != admins_.end()) return true;
 
   set<Op> *perms = nullptr;
-  if (!findPermissions(subject, object, &perms)) return false;
+  if (!FindPermissions(subject, object, &perms)) return false;
 
   // check first to see if the specified permission exists
   auto op_it = perms->find(op);
@@ -88,7 +88,7 @@ bool CloudAuth::Permitted(const string &subject, Op op, const string &object) {
 
 bool CloudAuth::Delete(const string &subject, Op op, const string &object) {
   set<Op> *perms = nullptr;
-  if (!findPermissions(subject, object, &perms)) return false;
+  if (!FindPermissions(subject, object, &perms)) return false;
 
   // look for the operation in the set for this subject/object pair
   auto op_it = perms->find(op);

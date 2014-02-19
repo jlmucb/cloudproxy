@@ -100,17 +100,12 @@ namespace tao {
 static size_t MaxChannelMessage = 20 * 1024 * 1024;
 
 void fd_close(int *fd) {
-  if (fd) {
-    if (*fd >= 0) {
-      if (close(*fd) < 0) {
-        PLOG(ERROR) << "Could not close file descriptor " << *fd;
-      }
+  if (fd && *fd >= 0) {
+    if (close(*fd) < 0) {
+      PLOG(ERROR) << "Could not close file descriptor " << *fd;
     }
-
     delete fd;
   }
-
-  return;
 }
 
 void file_close(FILE *file) {
@@ -125,7 +120,7 @@ void temp_file_cleaner(string *dir) {
   }
 }
 
-vector<shared_ptr<mutex> > locks;
+vector<shared_ptr<mutex>> locks;
 
 void locking_function(int mode, int n, const char *file, int line) {
   if (mode & CRYPTO_LOCK) {

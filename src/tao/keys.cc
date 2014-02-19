@@ -310,10 +310,6 @@ static KeyType::Type KeyTypeToPublic(KeyType::Type key_type) {
     return key_type;
 }
 
-// TODO(kwalsh) The json strings stored inside a KeyczarPublicKey data
-// structure are not canonical, nor are google protobuffers, so KeyczarPublicKey
-// is really not suitable for signing. But we do it anyway.
-// TODO(kwalsh) Use der/pem format instead? But we lose name and version info.
 bool SerializePublicKey(const Verifier &key, string *s) {
   if (s == nullptr) {
     LOG(ERROR) << "Could not serialize to a null string";

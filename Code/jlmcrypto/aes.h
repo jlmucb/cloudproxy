@@ -63,7 +63,7 @@
 #ifndef _AES_H_
 #define _AES_H_
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "string.h"
 
 #define  MAXKC  (256/32)

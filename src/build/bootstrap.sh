@@ -6,6 +6,6 @@ echo Building ninja
 (cd third_party/ninja && ./bootstrap.py)
 
 echo Configuring ninja build files
-(PATH=${PATH}:`pwd`/third_party/gyp GYP_GENERATORS=ninja gyp cloudproxy.gyp --toplevel-dir=`pwd`)
+(PATH=${PATH}:`pwd`/third_party/gyp GYP_GENERATORS=ninja gyp build/all.gyp --toplevel-dir=`pwd`)
 
 echo To build, execute the command 'third_party/ninja/ninja -C out/Default'

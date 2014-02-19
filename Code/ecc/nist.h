@@ -25,7 +25,7 @@
 #define _NIST_H
 
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "bignum.h"
 #include "ecc.h"
 

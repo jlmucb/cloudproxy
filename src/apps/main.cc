@@ -17,16 +17,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include <memory>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/scoped_ptr.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 
@@ -57,7 +55,7 @@ int main(int argc, char** argv) {
                                                   " Action to a string\n";
 
   // encrypt this serialized data with the keyset in FLAGS_key_loc
-  scoped_ptr<keyczar::Keyczar> crypter(keyczar::Crypter::Read(FLAGS_key_loc));
+  scoped_ptr<keyczar::Crypter> crypter(keyczar::Crypter::Read(FLAGS_key_loc));
   CHECK(crypter.get()) << "Could not initialize the crypter from "
                        << FLAGS_key_loc;
 

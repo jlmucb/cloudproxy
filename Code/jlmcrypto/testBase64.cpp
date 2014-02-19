@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "jlmTypes.h"
+#include "common.h"
 
 #define NBITSINBYTE 8
 

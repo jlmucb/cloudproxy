@@ -17,44 +17,66 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef CLOUDPROXY_FILE_CLIENT_H_
 #define CLOUDPROXY_FILE_CLIENT_H_
 
+#include <string>
+
 #include "cloudproxy/cloud_client.h"
 
+using std::string;
+
 namespace cloudproxy {
+/// An implementation of CloudClient that sends files to be stored remotely by
+/// FileServer. Most of the work of this method is done in the CloudClient
+/// implementation directly.
 class FileClient : public CloudClient {
  public:
-
-  FileClient(const string &file_path, const string &tls_cert,
-             const string &tls_key, const string &tls_password,
-             const string &public_policy_keyczar,
-             const string &public_policy_pem, const string &whitelist_location,
-             const string &server_addr, ushort server_port);
-
+  /// Create a new client for communicating with FileServer. All the parameters
+  /// other than file_path have the same semantics as in CloudClient.
+  /// @param file_path The path to the files managed by this client.
+  /// @param client_config_path A directory to use for keys and TLS files.
+  /// @param secret A string to use for a encrypting private keys.
+  /// @param admin The configuration for this administrative domain.
+  FileClient(const string &file_path, const string &client_config_path,
+             const string &secret, tao::TaoDomain *admin);
   virtual ~FileClient() {}
 
-  // Sends a CREATE request to the attached CloudServer
-  virtual bool Create(const string &owner, const string &object_name);
+  /// Create a file on a FileServer.
+  /// @param ssl The server connection to use.
+  /// @param owner The name of a user that has permission to create this file.
+  /// @param object_name The filename for the file to create.
+  virtual bool Create(SSL *ssl, const string &owner, const string &object_name);
 
-  // Sends a DESTROY request to the attached CloudServer
-  virtual bool Destroy(const string &owner, const string &object_name);
+  /// Delete a file on a FileServer.
+  /// @param ssl The server connection to use.
+  /// @param owner The name of a user that has permission to delete this file.
+  /// @param object_name The filename for the file to delete.
+  virtual bool Destroy(SSL *ssl, const string &owner,
+                       const string &object_name);
 
-  // Send a READ request to a CloudServer
-  virtual bool Read(const string &requestor, const string &object_name,
-                    const string &output_name);
+  /// Read a file stored on a FileServer.
+  /// @param ssl The server connection to use.
+  /// @param requestor The name of the user requesting the file.
+  /// @param object_name The path of the file to read.
+  /// @param output_name A file that will receive the bytes from the server.
+  virtual bool Read(SSL *ssl, const string &requestor,
+                    const string &object_name, const string &output_name);
 
-  // Sends a WRITE request to a CloudServer
-  virtual bool Write(const string &requestor, const string &input_name,
-                     const string &object_name);
+  /// Write to a file stored on a FileServer.
+  /// @param ssl The server connection to use.
+  /// @param requestor The name of the user writing to the file.
+  /// @param input_name The name of the local file to read.
+  /// @param object_name The name of the remote file that receives the data.
+  virtual bool Write(SSL *ssl, const string &requestor,
+                     const string &input_name, const string &object_name);
 
  private:
-
-  // the base path for files that are read from and written to the server
+  /// The base path for files that are read from and written to the server.
   string file_path_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileClient);
 };
-}
+}  // namespace cloudproxy
 
 #endif  // CLOUDPROXY_FILE_CLIENT_H_

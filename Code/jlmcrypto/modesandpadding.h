@@ -17,7 +17,7 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "keys.h"
 #ifdef NOAESNI
 #include "aes.h"

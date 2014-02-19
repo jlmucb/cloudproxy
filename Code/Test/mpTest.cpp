@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "bignum.h"
 #include "jlmcrypto.h"
 #include "mpFunctions.h"
@@ -36,6 +37,7 @@
 #include "fastArith.h"
 #include "ecc.h"
 #include "nist.h"
+#include "jlmUtility.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -1065,10 +1067,10 @@ bool monttests()
         printf("Decrypted: "); printNum(bnDecrypted); printf("\n");
 
         if(mpUCompare(bnIn, bnDecrypted)==s_isEqualTo) {
-            fprintf(g_logFile, "match\n");
+            printf("match\n");
         }
         else {
-            fprintf(g_logFile, "mismatch\n");
+            printf("mismatch\n");
             fRet= false;
         }
         mpZeroNum(bnEncrypted);
@@ -1819,10 +1821,10 @@ bool rsaTests()
 
     for (i=0; i<100; i++) {
         if(singlersaTest(pKey, 32, testmessage, i>75))
-            fprintf(g_logFile, "singlersaTest %d passed\n", i);
+            printf("singlersaTest %d passed\n", i);
         else {
             fRet= false;
-            fprintf(g_logFile, "singlersaTest %d failed\n", i);
+            printf("singlersaTest %d failed\n", i);
         }
         (*pU)++;
     }

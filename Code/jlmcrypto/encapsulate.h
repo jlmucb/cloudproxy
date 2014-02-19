@@ -33,7 +33,7 @@
 #ifndef _ENCAPSULATE__H
 #define _ENCAPSULATE__H
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "logging.h"
 #include "jlmcrypto.h"
 #include "jlmUtility.h"

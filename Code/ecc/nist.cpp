@@ -18,7 +18,7 @@
 // to the location of the License.
 
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "bignum.h"
 #include "ecc.h"
 #include "mpFunctions.h"

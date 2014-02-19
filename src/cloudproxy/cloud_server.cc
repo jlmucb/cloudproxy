@@ -19,123 +19,153 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #include "cloudproxy/cloud_server.h"
-#include "cloudproxy/util.h"
-
-#include <keyczar/keyczar.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
 
 #include <arpa/inet.h>
 
 #include <sstream>
 
+#include <glog/logging.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/file_util.h>
+#include <keyczar/crypto_factory.h>
+#include <keyczar/keyczar.h>
+
+#include "cloudproxy/cloud_auth.h"
+#include "cloudproxy/cloud_client.h"
+#include "cloudproxy/cloud_server_thread_data.h"
+#include "cloudproxy/cloud_user_manager.h"
+#include "cloudproxy/util.h"
+#include "tao/attestation.pb.h"
+#include "tao/tao_auth.h"
+#include "tao/util.h"
+#include "tao/whitelist_auth.h"
+
 using std::lock_guard;
 using std::stringstream;
 
-using keyczar::base::ScopedSafeString;
 using keyczar::base::Base64WEncode;
 using keyczar::base::PathExists;
+using keyczar::base::ScopedSafeString;
 
 using tao::Attestation;
-using tao::Tao;
-using tao::SignedAttestation;
-using tao::WhitelistAuthorizationManager;
+using tao::GenerateSigningKey;
+using tao::LoadSigningKey;
+using tao::OpenTCPSocket;
+using tao::ScopedFd;
+using tao::SerializeX509;
+using tao::TaoChildChannel;
+using tao::TaoDomain;
+using tao::VerifySignature;
 
 namespace cloudproxy {
 
-CloudServer::CloudServer(const string &tls_cert, const string &tls_key,
-                         const string &secret,
-                         const string &public_policy_keyczar,
-                         const string &public_policy_pem,
-                         const string &acl_location,
-                         const string &whitelist_location, const string &host,
-                         ushort port)
-    : public_policy_key_(
-          keyczar::Verifier::Read(public_policy_keyczar.c_str())),
+CloudServer::CloudServer(const string &server_config_path, const string &secret,
+                         const string &acl_location, const string &host,
+                         const string &port, TaoDomain *admin)
+    : admin_(admin),
       rand_(keyczar::CryptoFactory::Rand()),
-      context_(SSL_CTX_new(TLSv1_2_server_method())),
-      bio_(nullptr),
-      abio_(nullptr),
+      host_(host),
+      port_(port),
       auth_(),
       users_(new CloudUserManager()),
-      objects_(),
-      auth_manager_(new WhitelistAuthorizationManager()) {
+      objects_() {
 
-  // set up the policy key to verify bytes, not strings
-  public_policy_key_->set_encoding(keyczar::Keyczar::NO_ENCODING);
-  auth_.reset(new CloudAuth(acl_location, public_policy_key_.get()));
-
-  CHECK(auth_manager_->Init(whitelist_location, *public_policy_key_))
-      << "Could not initialize the whitelist";
+  auth_.reset(new CloudAuth(acl_location, admin_->GetPolicyVerifier()));
 
   ScopedSafeString encoded_secret(new string());
   CHECK(Base64WEncode(secret, encoded_secret.get()))
-    << "Could not encode the secret as a Base64W string";
+      << "Could not encode the secret as a Base64W string";
 
-  // check to see if the public/private keys exist. If not, create them
-  FilePath fp(tls_cert);
-  if (!PathExists(fp)) {
-    CHECK(CreateECDSAKey(tls_key, tls_cert, *encoded_secret, "US", "Google",
-  			"server"))
-      << "Could not create new keys for OpenSSL for the client";
+  FilePath fp(server_config_path);
+  FilePath priv_key_path = fp.Append(tao::keys::SignPrivateKeySuffix);
+  FilePath pub_key_path = fp.Append(tao::keys::SignPublicKeySuffix);
+  FilePath tls_key_path = fp.Append(tao::keys::SignPrivateKeyPKCS8Suffix);
+  FilePath tls_cert_path = fp.Append(tao::keys::SignPublicKeyX509Suffix);
+
+  // Check to see if the keys and cert exist. If not, create them.
+
+  bool new_key = !PathExists(priv_key_path);
+  bool new_cert = new_key || !PathExists(tls_cert_path);
+
+  scoped_ptr<keyczar::Signer> key;
+  if (new_key) {
+    CHECK(GenerateSigningKey(priv_key_path.value(), pub_key_path.value(),
+                             "cloud_server_key", *encoded_secret, &key))
+        << "Could not create new SSL key for the server";
+  } else {
+    CHECK(LoadSigningKey(priv_key_path.value(), *encoded_secret, &key))
+        << "Could not load SSL key for the server";
   }
 
-  // set up the SSL context and BIOs for getting client connections
-  CHECK(SetUpSSLCTX(context_.get(), public_policy_pem, tls_cert, tls_key,
-                    *encoded_secret)) << "Could not set up TLS";
+  if (new_cert) {
+    // TODO(kwalsh) x509 name details should come from elsewhere
+    CHECK(tao::CreateSelfSignedX509(
+        key.get(), tls_key_path.value(), *encoded_secret, "US", "Washington",
+        "Google", "cloudserver", tls_cert_path.value()));
+  }
+
+  // Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
+  // So, they need to be added again. Typical error is:
+  // * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
+  // This needs to be done as close to SSL_CTX_new as possible.
+  OpenSSL_add_all_algorithms();
+  context_.reset(SSL_CTX_new(TLSv1_2_server_method()));
+
+  // set up the SSL context and SSLs for getting client connections
+  CHECK(SetUpSSLCTX(context_.get(), tls_cert_path.value(), tls_key_path.value(),
+                    *encoded_secret)) << "Could not set up server TLS";
 
   CHECK(rand_->Init()) << "Could not initialize the random-number generator";
-
-  bio_.reset(BIO_new_ssl(context_.get(), 0));
-
-  SSL *ssl = nullptr;
-  BIO_get_ssl(bio_.get(), &ssl);
-  CHECK(ssl) << "Could not get an SSL pointer from the BIO";
-  CHECK(SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY)) << "Could not set AUTO_RETRY";
-
-  stringstream ss;
-  ss << port;
-  string host_and_port = host + string(":") + ss.str();
-  abio_.reset(BIO_new_accept(const_cast<char *>(host_and_port.c_str())));
-
-  CHECK(BIO_set_accept_bios(abio_.get(), bio_.get()))
-      << "Could not get an"
-         " accept BIO for the TLS connection";
-
-  CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not set up an accept for"
-                                             " the host and port combination "
-                                          << host_and_port;
 }
 
-bool CloudServer::Listen(const Tao &quote_tao) {
-  while (true) {
-    LOG(INFO) << "About to listen for a client message";
-    CHECK_GT(BIO_do_accept(abio_.get()), 0) << "Could not wait for a client"
-                                               " connection";
+// TODO(tmroeder): this memory usage is unsafe: it should be a shared_ptr so
+// that the memory won't go away when the parent thread does.
+bool CloudServer::Listen(const TaoChildChannel *quote_tao,
+                         bool single_channel) {
+  // Set up a TCP connection for the given host and port.
+  ScopedFd sock(new int(-1));
+  if (!OpenTCPSocket(host_, port_, sock.get())) {
+    LOG(ERROR) << "Could not open a TCP socket on port " << host_ << ":"
+               << port_;
+    return false;
+  }
 
-    BIO *out = BIO_pop(abio_.get());
-    thread t(&CloudServer::HandleConnection, this, out, &quote_tao);
-    t.detach();
+  while (true) {
+    int accept_sock = accept(*sock, nullptr, nullptr);
+    if (accept_sock == -1) {
+      PLOG(ERROR) << "Could not accept a connection on the socket";
+      return false;
+    }
+
+    if (single_channel) {
+      HandleConnection(accept_sock, quote_tao);
+      return true;
+    } else {
+      thread t(&CloudServer::HandleConnection, this, accept_sock, quote_tao);
+      t.detach();
+    }
   }
 
   return true;
 }
 
-void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
-  keyczar::openssl::ScopedBIO bio(sbio);
-  if (BIO_do_handshake(bio.get()) <= 0) {
-    LOG(ERROR) << "Could not perform a TLS handshake with the client";
-    LOG(ERROR) << "The OpenSSL error was: " << ERR_error_string(ERR_get_error(), NULL);
-    return;
-  } 
+void CloudServer::HandleConnection(int accept_sock, const TaoChildChannel *t) {
+  // Create a new SSL context to handle this connection and do a handshake on
+  // it. The ScopedSSL will close the fd in its cleanup routine.
+  ScopedSSL ssl(SSL_new(context_.get()));
+  SSL_set_fd(ssl.get(), accept_sock);
 
-  SSL *cur_ssl = nullptr;
-  BIO_get_ssl(bio.get(), &cur_ssl);
-  X509 *self_cert = SSL_get_certificate(cur_ssl);
-  ScopedX509Ctx peer_cert(SSL_get_peer_certificate(cur_ssl));
+  if (SSL_accept(ssl.get()) == -1) {
+    LOG(ERROR) << "Could not accept an SSL connection on the socket";
+    return;
+  }
+
+  // Don't delete this X.509 certificate, since it is owned by the SSL_CTX and
+  // will be deleted there. Putting this cert in a ScopedX509Ctx leads to a
+  // double-free error.
+  X509 *self_cert = SSL_get_certificate(ssl.get());
+  tao::ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl.get()));
   if (peer_cert.get() == nullptr) {
     LOG(ERROR) << "No X.509 certificate received from the client";
     return;
@@ -158,16 +188,9 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
   // loop on the message handler for this connection with the client
   bool rv = true;
   while (true) {
-    // read a 4-byte integer from the channel to get the length of the
-    // ClientMessage
-    // TODO(tmroeder): the right way to do this would be to
-    // implement something like ParseFromIstream with an istream wrapping the
-    // OpenSSL BIO abstraction. This would then render the first integer otiose,
-    // since protobufs already have length information in their metadata.
-    LOG(INFO) << "Waiting for client message";
     ClientMessage cm;
     string serialized_cm;
-    if (!ReceiveData(bio.get(), &serialized_cm)) {
+    if (!ReceiveData(ssl.get(), &serialized_cm)) {
       LOG(ERROR) << "Could not get the serialized ClientMessage";
       return;
     }
@@ -177,29 +200,27 @@ void CloudServer::HandleConnection(BIO *sbio, const Tao *t) {
     string reason;
     bool reply = true;
     bool close = false;
-    rv = HandleMessage(cm, bio.get(), &reason, &reply, &close, cstd, *t);
+    rv = HandleMessage(cm, ssl.get(), &reason, &reply, &close, cstd, *t);
 
     if (close) {
       break;
     }
 
     if (reply) {
-      if (!SendReply(bio.get(), rv, reason.c_str())) {
+      if (!SendReply(ssl.get(), rv, reason.c_str())) {
         LOG(ERROR) << "Could not send a reply to the client";
       }
     }
   }
 
-  if (rv) {
-    LOG(INFO) << "The channel closed successfully";
-  } else {
+  if (!rv) {
     LOG(ERROR) << "The channel closed with an error";
   }
 
   return;
 }
 
-bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
+bool CloudServer::SendReply(SSL *ssl, bool success, const string &reason) {
   ServerMessage sm;
   Result *r = sm.mutable_result();
   r->set_success(success);
@@ -212,7 +233,7 @@ bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
     LOG(ERROR) << "Could not serialize reply";
     return false;
   } else {
-    if (!SendData(bio, serialized_sm)) {
+    if (!SendData(ssl, serialized_sm)) {
       LOG(ERROR) << "Could not reply";
       return false;
     }
@@ -220,16 +241,17 @@ bool CloudServer::SendReply(BIO *bio, bool success, const string &reason) {
 
   return true;
 }
-bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
+bool CloudServer::HandleMessage(const ClientMessage &message, SSL *ssl,
                                 string *reason, bool *reply, bool *close,
-                                CloudServerThreadData &cstd, const Tao &t) {
-  CHECK(bio) << "null bio";
+                                CloudServerThreadData &cstd,
+                                const TaoChildChannel &t) {
+  CHECK(ssl) << "null ssl";
   CHECK(reason) << "null reason";
   CHECK(reply) << "null reply";
 
   if (!cstd.GetCertValidated() && !message.has_attestation()) {
     LOG(ERROR)
-        << "Client did not provide a SignedAttestation before sending other messages";
+        << "Client did not provide a Attestation before sending other messages";
     return false;
   }
 
@@ -246,7 +268,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
     {
       lock_guard<mutex> l(auth_m_);
       if (!auth_->Permitted(a.subject(), a.verb(), a.object())) {
-        LOG(ERROR) << "User " << a.subject() << " not authorized to perform"
+        LOG(ERROR) << "User " << a.subject() << " not authorized to perform "
                    << a.verb() << " on " << a.object();
         reason->assign("Not authorized");
         return false;
@@ -259,24 +281,16 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
         reason->assign("Invalid request for the ALL action");
         return false;
       case CREATE:
-        LOG(INFO) << "Handling a CREATE request";
-        rv = HandleCreate(a, bio, reason, reply, cstd);
-        LOG(INFO) << "return value: " << rv;
+        rv = HandleCreate(a, ssl, reason, reply, cstd);
         return rv;
       case DESTROY:
-        LOG(INFO) << "Handling a DESTROY request";
-        rv = HandleDestroy(a, bio, reason, reply, cstd);
-        LOG(INFO) << "return value: " << rv;
+        rv = HandleDestroy(a, ssl, reason, reply, cstd);
         return rv;
       case WRITE:
-        LOG(INFO) << "Handling a WRITE request";
-        rv = HandleWrite(a, bio, reason, reply, cstd);
-        LOG(INFO) << "return value: " << rv;
+        rv = HandleWrite(a, ssl, reason, reply, cstd);
         return rv;
       case READ:
-        LOG(INFO) << "Handling a READ request";
-        rv = HandleRead(a, bio, reason, reply, cstd);
-        LOG(INFO) << "return value: " << rv;
+        rv = HandleRead(a, ssl, reason, reply, cstd);
         return rv;
       default:
         LOG(ERROR) << "Request for invalid operation " << a.verb();
@@ -284,18 +298,16 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
         return false;
     }
   } else if (message.has_auth()) {
-    LOG(INFO) << "Received an Auth message";
-    return HandleAuth(message.auth(), bio, reason, reply, cstd);
+    return HandleAuth(message.auth(), ssl, reason, reply, cstd);
   } else if (message.has_response()) {
-    LOG(INFO) << "Received a Response message";
-    return HandleResponse(message.response(), bio, reason, reply, cstd);
+    return HandleResponse(message.response(), ssl, reason, reply, cstd);
   } else if (message.has_close()) {
     rv = !message.close().error();
     *close = true;
     *reply = false;
     return rv;
   } else if (message.has_attestation()) {
-    rv = HandleAttestation(message.attestation(), bio, reason, reply, cstd, t);
+    rv = HandleAttestation(message.attestation(), ssl, reason, reply, cstd, t);
     if (!rv) {
       LOG(ERROR) << "Attestation verification failed. Closing connection";
       *close = true;
@@ -309,7 +321,7 @@ bool CloudServer::HandleMessage(const ClientMessage &message, BIO *bio,
   return false;
 }
 
-bool CloudServer::HandleAuth(const Auth &auth, BIO *bio, string *reason,
+bool CloudServer::HandleAuth(const Auth &auth, SSL *ssl, string *reason,
                              bool *reply, CloudServerThreadData &cstd) {
   string subject = auth.subject();
 
@@ -354,23 +366,20 @@ bool CloudServer::HandleAuth(const Auth &auth, BIO *bio, string *reason,
     return false;
   }
 
-  LOG(INFO) << "Sending a challenge to the client";
-  if (!SendData(bio, serialized_sm)) {
+  if (!SendData(ssl, serialized_sm)) {
     LOG(ERROR) << "Could not send the Challenge to the client";
     reason->assign("Could not send serialized Challenge");
     return false;
   }
 
-  LOG(INFO) << "Successfully processed an Auth message";
-
   *reply = false;
 
-  // now listen again on this BIO for the Response
+  // now listen again on this SSL for the Response
   // TODO(tmroeder): this needs to timeout if we wait for too long
   return true;
 }
 
-bool CloudServer::HandleResponse(const Response &response, BIO *bio,
+bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
                                  string *reason, bool *reply,
                                  CloudServerThreadData &cstd) {
   // check to see if this is an outstanding challenge
@@ -390,14 +399,7 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
   }
 
   // compare the length and contents of the nonce
-  // TODO(tmroeder): can you use string compare safely here?
-  if (nonce.length() != c.nonce().length()) {
-    LOG(ERROR) << "Invalid nonce";
-    reason->assign("Invalid nonce");
-    return false;
-  }
-
-  if (memcmp(nonce.data(), c.nonce().data(), c.nonce().length()) != 0) {
+  if (nonce.compare(c.nonce()) != 0) {
     LOG(ERROR) << "Nonces do not match";
     reason->assign("Nonces do not match");
     return false;
@@ -414,36 +416,36 @@ bool CloudServer::HandleResponse(const Response &response, BIO *bio,
         return false;
       }
 
-      if (!users_->AddKey(response.binding(), public_policy_key_.get())) {
+      if (!users_->AddKey(response.binding(), admin_->GetPolicyVerifier())) {
         LOG(ERROR) << "Could not add the binding from the response";
         reason->assign("Invalid binding");
         return false;
       }
     }
 
-    keyczar::Keyczar *user_key = nullptr;
+    keyczar::Verifier *user_key = nullptr;
     CHECK(users_->GetKey(c.subject(), &user_key)) << "Could not get a key";
 
     // check the signature on the serialized_challenge
-    if (!VerifySignature(response.serialized_chall(), response.signature(),
-			 user_key)) {
+    if (!VerifySignature(response.serialized_chall(),
+                         CloudClient::ChallengeSigningContext,
+                         response.signature(), user_key)) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");
       return false;
     }
   }
 
-  LOG(INFO) << "Challenge passed. Adding user " << c.subject()
-            << " as authenticated";
+  VLOG(2) << "Challenge passed. Adding user " << c.subject()
+          << " as authenticated";
 
   cstd.SetAuthenticated(c.subject());
 
   return true;
 }
 
-bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
+bool CloudServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
                                bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   // note that CREATE fails if the object already exists
@@ -459,9 +461,8 @@ bool CloudServer::HandleCreate(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleDestroy(const Action &action, BIO *bio, string *reason,
+bool CloudServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
                                 bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   auto object_it = objects_.find(action.object());
@@ -476,9 +477,8 @@ bool CloudServer::HandleDestroy(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleWrite(const Action &action, BIO *bio, string *reason,
+bool CloudServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
                               bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
@@ -492,9 +492,8 @@ bool CloudServer::HandleWrite(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
+bool CloudServer::HandleRead(const Action &action, SSL *ssl, string *reason,
                              bool *reply, CloudServerThreadData &cstd) {
-
   lock_guard<mutex> l(data_m_);
 
   // this is mostly a nop; just check to make sure the object exists
@@ -508,21 +507,23 @@ bool CloudServer::HandleRead(const Action &action, BIO *bio, string *reason,
   return true;
 }
 
-bool CloudServer::HandleAttestation(const SignedAttestation &attestation, BIO *bio,
-				    string *reason, bool *reply,
-				    CloudServerThreadData &cstd, const Tao &t) {
-  string serialized_attestation;
-  if (!attestation.SerializeToString(&serialized_attestation)) {
-    LOG(ERROR) << "Could not serialize the attestation to pass it to the Tao";
-    return false;
-  }
-
+bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
+                                    string *reason, bool *reply,
+                                    CloudServerThreadData &cstd,
+                                    const TaoChildChannel &t) {
   // check that this is a valid attestation, including checking that
   // the client hash is authorized.
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.VerifyAttestation(cstd.GetPeerCert(), serialized_attestation)) {
-      LOG(ERROR) << "The SignedAttestation did not pass Tao verification";
+    string data;
+    if (!admin_->VerifyAttestation(attestation, &data)) {
+      LOG(ERROR) << "The Attestation did not pass Tao verification";
+      return false;
+    }
+
+    if (data.compare(cstd.GetPeerCert()) != 0) {
+      LOG(ERROR)
+          << "The Attestation passed validation, but the data didn't match";
       return false;
     }
   }
@@ -530,20 +531,15 @@ bool CloudServer::HandleAttestation(const SignedAttestation &attestation, BIO *b
   cstd.SetCertValidated();
 
   // quote it to send it to the client
-  string signature;
+  ServerMessage sm;
+  string *signature = sm.mutable_attestation();
   {
     lock_guard<mutex> l(tao_m_);
-    if (!t.Attest(cstd.GetSelfCert(), &signature)) {
-      LOG(ERROR) << "Could not get a signed attestation for our own X.509 certificate";
+    if (!t.Attest(cstd.GetSelfCert(), signature)) {
+      LOG(ERROR)
+          << "Could not get a signed attestation for our own X.509 certificate";
       return false;
     }
-  }
-
-  ServerMessage sm;
-  SignedAttestation *sa = sm.mutable_attestation();
-  if (!sa->ParseFromString(signature)) {
-    LOG(ERROR) << "Could not parse the SignedAttestation provided by the Tao";
-    return false;
   }
 
   string serialized_sm;
@@ -552,7 +548,7 @@ bool CloudServer::HandleAttestation(const SignedAttestation &attestation, BIO *b
     return false;
   }
 
-  if (!SendData(bio, serialized_sm)) {
+  if (!SendData(ssl, serialized_sm)) {
     LOG(ERROR) << "Could not send the serialized ServerMessage to the client";
     return false;
   }

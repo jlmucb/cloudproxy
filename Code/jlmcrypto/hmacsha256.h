@@ -24,8 +24,7 @@
 #ifndef __HMACSHA256_H
 #define __HMACSHA256_H
 
-#include "jlmTypes.h"
-#include "keys.h"
+#include "common.h"
 #include "aesni.h"
 #include "sha256.h"
 

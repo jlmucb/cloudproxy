@@ -25,7 +25,7 @@
 #define _ECC_H
 
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "bignum.h"
 
 

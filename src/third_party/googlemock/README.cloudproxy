@@ -1,0 +1,9 @@
+Version r453 from svn repository http://googlemock.googlecode.com/svn/trunk/
+
+LICENSE: BSD (see the file LICENSE)
+
+Nothing was removed from the repository
+
+This version of googlemock also comes bundled with a version of
+gtest. The version of gtest is r663, and it is licensed under the BSD
+license (see file gtest/LICENSE).

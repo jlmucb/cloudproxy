@@ -24,7 +24,7 @@
 #ifndef _FILEHASH__H_
 #define _FILEHASH__H_
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "sha256.h"
 
 #include <stdio.h>

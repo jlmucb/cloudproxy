@@ -18,11 +18,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
-import "tao/attestation.proto";
-import "tao/keyczar_public_key.proto";
-
 package cloudproxy;
 
 // The types of permissions allowed in ACLs.
@@ -136,9 +131,9 @@ message ClientMessage {
     // authentication
     optional Response response = 3;
 
-    // a SignedAttestation of the X.509 certificate used to establish this connection
-    optional tao.SignedAttestation attestation = 4;
-    
+    // a Attestation of the X.509 certificate used to establish this connection
+    optional bytes attestation = 4;
+
     // Close the connection, potentially with an error
     optional CloseConnection close = 5;
 }
@@ -161,8 +156,8 @@ message ServerMessage {
     // The result of a CloudClient-requested Action
     optional Result result = 2;
 
-    // a SignedAttestation of the X.509 certificate used to establish this connection
-    optional tao.SignedAttestation attestation = 3;
+    // a Attestation of the X.509 certificate used to establish this connection
+    optional bytes attestation = 3;
 }
 
 // A message that gives a name to a given keyczar public key structure
@@ -170,7 +165,8 @@ message SpeaksFor {
     // The name to bind to this key
     required string subject = 1;
 
-    required tao.KeyczarPublicKey pub_key = 2;
+    // a serialized tao.KeyczarPublicKey
+    required bytes pub_key = 2;
 }
 
 // A signed SpeaksFor message

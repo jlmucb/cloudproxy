@@ -25,9 +25,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "bignum.h"
 #include "logging.h"
-#include "jlmUtility.h"
 #include "mpFunctions.h"
 
 

@@ -26,7 +26,7 @@
 #ifndef _JLMCRYPTO__H
 #define _JLMCRYPTO__H
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "keys.h"
 #include "aesni.h"
 #include "sha256.h"

@@ -19,69 +19,96 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 #define CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_
 
-#include "cloudproxy/cloud_server_thread_data.h"
-#include "cloudproxy/util.h"
-
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <openssl/ssl.h>
-
+#include <map>
 #include <set>
 #include <string>
-#include <map>
 
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
+#include <openssl/ssl.h>
+
+using std::map;
 using std::set;
 using std::string;
-using std::map;
 
 namespace cloudproxy {
 
-// a class for managing thread data: outstanding challenges and user
-// authentication information
+/// A class for managing thread data: outstanding challenges and user
+/// authentication information.
 class CloudServerThreadData {
  public:
- CloudServerThreadData(const string &peer_cert, const string &self_cert)
+  /// Create a new object.
+  /// @param peer_cert The certificate of the peer in the communication
+  /// (needn't already be authenticated by the caller).
+  /// @param self_cert The certificate of the server.
+  CloudServerThreadData(const string &peer_cert, const string &self_cert)
       : serialized_peer_cert_(peer_cert),
         serialized_self_cert_(self_cert),
         cert_validated_(false),
         auth_() {}
   virtual ~CloudServerThreadData() {}
 
+  /// Gets the challenge associated with a user.
+  /// @param user The user to look up.
+  /// @param[out] chall The challenge associated with this user, if any.
   bool GetChallenge(const string &user, string *chall);
+
+  /// Store a new challenge for a user.
+  /// @param user The user to add this challenge for.
+  /// @param chall The challenge to add.
   bool AddChallenge(const string &user, const string &chall);
+
+  /// Remove all challenges associated with a user.
+  /// @param user The user to remove.
   bool RemoveChallenge(const string &user);
 
+  /// Record that a user has been authenticated by the server.
+  /// @param user The user to record.
   bool SetAuthenticated(const string &user);
+
+  /// Check if a user has been authenticated by the server.
+  /// @param user The user to check.
   bool IsAuthenticated(const string &user);
+
+  /// Set the user as no longer being authenticated.
+  /// @param user The user to set as non-authenticated.
   bool RemoveAuthenticated(const string &user);
 
+  /// Note that the peer certificate has been validated.
   bool SetCertValidated();
+
+  /// Check whether the peer certificate has been validated.
   bool GetCertValidated();
 
+  /// Get the peer certificate. This does not guarantee that the certificate has
+  /// been validated.
+  /// @return A serialized peer certificate.
   string GetPeerCert() { return serialized_peer_cert_; }
+
+  /// Gets the server certificate.
+  /// @return A serialized server certificate.
   string GetSelfCert() { return serialized_self_cert_; }
 
  private:
+  // The peer certificate, stored as serialized X.509.
   string serialized_peer_cert_;
 
+  // The self certificate, stored as serialized X.509.
   string serialized_self_cert_;
 
-  // whether or not the certificate used for this connection has been validated
+  // Whether or not the certificate used for this connection has been validated.
   bool cert_validated_;
 
-  // the set of outstanding challenges on this channel
+  // The set of outstanding challenges on this channel.
   map<string, string> challenges_;
 
-  // the set of users that have successfully authenticated on this channel
+  // The set of users that have successfully authenticated on this channel.
   set<string> auth_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudServerThreadData);
 };
-}
+}  // namespace cloudproxy
 
-#endif  // CLOUDOPROXY_CLOUD_SERVER_THREAD_DATA_H_
+#endif  // CLOUDPROXY_CLOUD_SERVER_THREAD_DATA_H_

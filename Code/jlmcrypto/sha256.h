@@ -25,7 +25,8 @@
 #define LITTLE_ENDIAN
 #endif
 
-#include "jlmTypes.h"
+
+#include "common.h"
 
 
 //------------------------------------------------------------------------------

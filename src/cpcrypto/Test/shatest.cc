@@ -18,21 +18,13 @@
 #include <time.h>
 #include "string.h"
 #include "sha1.h"
+#include "logging.h"
 
 byte b;
 #define BUF_SIZE 1024
 
 // ---------------------------------------------------------------------------------------
 
-void PrintBytes(const char* szMsg, byte* pbData, int iSize) {
-  int i;
-
-  printf("\t%s: ", szMsg);
-  for (i = 0; i < iSize; i++) {
-    printf("%02x", pbData[i]);
-  }
-  printf("\n");
-}
 
 void bigEndian(u8* buf, int size) {
   u8* pU = buf;
@@ -76,6 +68,7 @@ int main(int argc, char** argv) {
   const byte* toHash1 = (const byte*)"abc";
   int sizetoHash1 = strlen((const char*)toHash1);
   u32 answer1[5] = {0xA9993E36, 0x4706816A, 0xBA3E2571, 0x7850C26C, 0x9CD0D89D};
+  initLog("shatest.log");
   bigEndian((byte*)answer1, 20);
   testvector(sizetoHash1, (byte*)toHash1, 20, (byte*)answer1);
 

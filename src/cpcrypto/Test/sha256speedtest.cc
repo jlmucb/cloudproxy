@@ -64,6 +64,7 @@ bool sha256speed(int numBlocks, int blockSize) {
 int main(int an, char** av) {
   int numBlocks = 1024;
 
+  initLog("crypttest.log");
   for (int i = 0; i < an; i++) {
     if (strcmp(av[i], "-help") == 0) {
       printf("\nUsage: sha256speedtest -Blocks blocks\n");

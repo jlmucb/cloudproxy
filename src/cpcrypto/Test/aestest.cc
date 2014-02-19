@@ -173,7 +173,7 @@ int main(int an, char** av) {
   bool fAllTest = true;
 
   // init logging
-  initLog(NULL);
+  initLog("aestest.log");
 
   // Test 1
   PrintBytes("aes128 key: ", (byte*)aes128EncTestKey1, 16);
@@ -189,12 +189,12 @@ int main(int an, char** av) {
 
   if (memcmp(ct, aes128EncTestCipher1, 16) == 0 &&
       memcmp(npt, aes128EncTestPlain1, 16) == 0) {
-    fprintf(g_logFile, "Test 1 Passed\n");
+    printf("Test 1 Passed\n");
   } else {
-    fprintf(g_logFile, "Test 1 Failed\n");
+    printf("Test 1 Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   // Test 2
   PrintBytes("aes128 key: ", (byte*)aes128EncTestKey2, 16);
@@ -209,12 +209,12 @@ int main(int an, char** av) {
   PrintBytes("aes128 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes128EncTestCipher2a, 16) == 0 &&
       memcmp(npt, aes128EncTestPlain2a, 16) == 0) {
-    fprintf(g_logFile, "Test 2a Passed\n");
+    printf("Test 2a Passed\n");
   } else {
-    fprintf(g_logFile, "Test 2a Failed\n");
+    printf("Test 2a Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   memcpy(pt, aes128EncTestPlain2b, 16);
   oAesEnc.Encrypt(pt, ct);
@@ -224,12 +224,12 @@ int main(int an, char** av) {
   PrintBytes("aes128 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes128EncTestCipher2b, 16) == 0 &&
       memcmp(npt, aes128EncTestPlain2b, 16) == 0) {
-    fprintf(g_logFile, "Test 2b Passed\n");
+    printf("Test 2b Passed\n");
   } else {
-    fprintf(g_logFile, "Test 2b Failed\n");
+    printf("Test 2b Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   memcpy(pt, aes128EncTestPlain2c, 16);
   oAesEnc.Encrypt(pt, ct);
@@ -239,12 +239,12 @@ int main(int an, char** av) {
   PrintBytes("aes128 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes128EncTestCipher2c, 16) == 0 &&
       memcmp(npt, aes128EncTestPlain2c, 16) == 0) {
-    fprintf(g_logFile, "Test 2c Passed\n");
+    printf("Test 2c Passed\n");
   } else {
-    fprintf(g_logFile, "Test 2c Failed\n");
+    printf("Test 2c Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   memcpy(pt, aes128EncTestPlain2d, 16);
   oAesEnc.Encrypt(pt, ct);
@@ -254,12 +254,12 @@ int main(int an, char** av) {
   PrintBytes("aes128 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes128EncTestCipher2d, 16) == 0 &&
       memcmp(npt, aes128EncTestPlain2d, 16) == 0) {
-    fprintf(g_logFile, "Test 2d Passed\n");
+    printf("Test 2d Passed\n");
   } else {
-    fprintf(g_logFile, "Test 2d Failed\n");
+    printf("Test 2d Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   // Test 3 (AES256)
   PrintBytes("aes256 key: ", (byte*)aes256EncTestKey1, 32);
@@ -274,12 +274,12 @@ int main(int an, char** av) {
   PrintBytes("aes256 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes256EncTestCipher1a, 16) == 0 &&
       memcmp(npt, aes256EncTestPlain1a, 16) == 0) {
-    fprintf(g_logFile, "Test 1a Passed\n");
+    printf("Test 1a Passed\n");
   } else {
-    fprintf(g_logFile, "Test 1a Failed\n");
+    printf("Test 1a Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   memcpy(pt, aes256EncTestPlain1b, 16);
   oAesEnc.Encrypt(pt, ct);
@@ -289,12 +289,12 @@ int main(int an, char** av) {
   PrintBytes("aes256 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes256EncTestCipher1b, 16) == 0 &&
       memcmp(npt, aes256EncTestPlain1b, 16) == 0) {
-    fprintf(g_logFile, "Test 1b Passed\n");
+    printf("Test 1b Passed\n");
   } else {
-    fprintf(g_logFile, "Test 1b Failed\n");
+    printf("Test 1b Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   memcpy(pt, aes256EncTestPlain1c, 16);
   oAesEnc.Encrypt(pt, ct);
@@ -304,12 +304,12 @@ int main(int an, char** av) {
   PrintBytes("aes256 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes256EncTestCipher1c, 16) == 0 &&
       memcmp(npt, aes256EncTestPlain1c, 16) == 0) {
-    fprintf(g_logFile, "Test 1c Passed\n");
+    printf("Test 1c Passed\n");
   } else {
-    fprintf(g_logFile, "Test 1c Failed\n");
+    printf("Test 1c Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   memcpy(pt, aes256EncTestPlain1d, 16);
   oAesEnc.Encrypt(pt, ct);
@@ -319,12 +319,12 @@ int main(int an, char** av) {
   PrintBytes("aes256 PT : ", (byte*)npt, 16);
   if (memcmp(ct, aes256EncTestCipher1d, 16) == 0 &&
       memcmp(npt, aes256EncTestPlain1d, 16) == 0) {
-    fprintf(g_logFile, "Test 1d Passed\n");
+    printf("Test 1d Passed\n");
   } else {
-    fprintf(g_logFile, "Test 1d Failed\n");
+    printf("Test 1d Failed\n");
     fAllTest = false;
   }
-  fprintf(g_logFile, "\n");
+  printf("\n");
 
   cbc oCBCEnc;
   cbc oCBCDec;
@@ -346,7 +346,7 @@ int main(int an, char** av) {
     PrintBytes("CBC128 Plain   : ", aes128SanityPlain, psize);
     if (!oCBCEnc.initEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1, 16,
                          intKey, psize, 16, aes128CBCTestIV1)) {
-      fprintf(g_logFile, "CBC encrypt init %d bytes failed\n", psize);
+      printf("CBC encrypt init %d bytes failed\n", psize);
       fAllTest = false;
       continue;
     }
@@ -365,13 +365,13 @@ int main(int an, char** av) {
     }
     size = oCBCEnc.lastPlainBlockIn(insize, pin, pout);
     if (size < 0) {
-      fprintf(g_logFile, "CBC encrypt %d bytes failed\n", psize);
+      printf("CBC encrypt %d bytes failed\n", psize);
       fAllTest = false;
       continue;
     }
 
     csize = oCBCEnc.m_iNumCipherBytes;
-    fprintf(g_logFile, "CBC encrypted %d plain bytes produced %d cipherbytes\n",
+    printf("CBC encrypted %d plain bytes produced %d cipherbytes\n",
             oCBCEnc.m_iNumPlainBytes, oCBCEnc.m_iNumCipherBytes);
 
     PrintBytes("CBC128 Plain:   ", aes128SanityPlain, psize);
@@ -379,7 +379,7 @@ int main(int an, char** av) {
 
     if (!oCBCDec.initDec(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1, 16,
                          intKey, csize)) {
-      fprintf(g_logFile, "CBC decrypt init %d bytes failed\n", psize);
+      printf("CBC decrypt init %d bytes failed\n", psize);
       fAllTest = false;
       continue;
     }
@@ -398,27 +398,27 @@ int main(int an, char** av) {
     }
     size = oCBCDec.lastCipherBlockIn(insize, pin, pout);
     if (size < 0) {
-      fprintf(g_logFile, "CBC decrypt %d bytes failed\n", psize);
+      printf("CBC decrypt %d bytes failed\n", psize);
       fAllTest = false;
       continue;
     }
-    fprintf(g_logFile, "CBC decrypt %d cipherbytes produced %d plainbytes\n",
+    printf("CBC decrypt %d cipherbytes produced %d plainbytes\n",
             oCBCDec.m_iNumCipherBytes, oCBCDec.m_iNumPlainBytes);
     PrintBytes("CBC128 Decrypt: ", check, oCBCDec.m_iNumPlainBytes);
     if (psize == oCBCDec.m_iNumPlainBytes &&
         memcmp(check, aes128SanityPlain, psize) == 0) {
-      fprintf(g_logFile, "CBC %d bytes sanity PASSED\n", psize);
+      printf("CBC %d bytes sanity PASSED\n", psize);
     } else {
-      fprintf(g_logFile, "CBC %d bytes sanity FAILED\n", psize);
+      printf("CBC %d bytes sanity FAILED\n", psize);
       fAllTest = false;
     }
-    fprintf(g_logFile, "\n");
+    printf("\n");
   }
 
   if (fAllTest)
-    fprintf(g_logFile, "All tests PASSED\n");
+    printf("All tests PASSED\n");
   else
-    fprintf(g_logFile, "Some test FAILED\n");
+    printf("Some test FAILED\n");
 
   return 0;
 }

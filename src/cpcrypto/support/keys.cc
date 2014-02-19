@@ -214,14 +214,14 @@ bool symKey::SerializetoFile(const char* fileName) { return false; }
 #ifdef TEST
 void symKey::printMe() {
   if (m_ukeyType == AESKEYTYPE) {
-    fprintf(g_logFile, "AES key\n");
+    LOG(INFO)<<"AES key\n";
   } else
-    fprintf(g_logFile, "Unknown key\n");
+    LOG(INFO)<<"Unknown key\n";
   if (m_rgkeyName != NULL)
-    fprintf(g_logFile, "Key name: %s\n", m_rgkeyName);
+    LOG(INFO)<<"Key name: " << m_rgkeyName <<"\n";
   else
-    fprintf(g_logFile, "No key name\n");
-  fprintf(g_logFile, "Key size %d\n", m_ikeySize);
+    LOG(INFO)<<"No key name\n";
+  LOG(INFO)<<"Key size "<< m_ikeySize<<"\n";
   if (m_iByteSizeKey > 0) PrintBytes("Key", m_rgbKey, m_iByteSizeKey);
 }
 #endif
@@ -717,54 +717,54 @@ bool RSAKey::SerializetoFile(const char* fileName) { return false; }
 
 #ifdef TEST
 void RSAKey::printMe() {
-  fprintf(g_logFile, "\n");
+  LOG(INFO)<<"\n";
   if (m_ukeyType == RSAKEYTYPE) {
-    fprintf(g_logFile, "RSA key\n");
+    LOG(INFO)<<"RSA key\n";
   } else
-    fprintf(g_logFile, "Unknown key\n");
-  fprintf(g_logFile, "Key size: %d\n", m_ikeySize);
-  fprintf(g_logFile, "Key name size: %d\n", m_ikeyNameSize);
+    LOG(INFO)<<"Unknown key\n";
+  LOG(INFO)<<"Key size: " << m_ikeySize << "\n";
+  LOG(INFO)<<"Key name size: " << m_ikeyNameSize<<"\n";
   if (m_rgkeyName != NULL)
-    fprintf(g_logFile, "Key name: %s\n", m_rgkeyName);
+    LOG(INFO)<<"Key name: "<< m_rgkeyName << "\n";
   else
-    fprintf(g_logFile, "No key name\n");
+    LOG(INFO)<<"No key name\n";
 
   if (m_pbnM) {
-    fprintf(g_logFile, "M: ");
+    LOG(INFO)<<"M: ";
     printNum(*m_pbnM);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
   if (m_pbnP) {
-    fprintf(g_logFile, "P: ");
+    LOG(INFO)<<"P: ";
     printNum(*m_pbnP);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
   if (m_pbnQ) {
-    fprintf(g_logFile, "Q: ");
+    LOG(INFO)<<"Q: ";
     printNum(*m_pbnQ);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
   if (m_pbnE) {
-    fprintf(g_logFile, "E: ");
+    LOG(INFO)<<"E: ";
     printNum(*m_pbnE);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
   if (m_pbnD) {
-    fprintf(g_logFile, "D: ");
+    LOG(INFO)<<"D: ";
     printNum(*m_pbnD);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
   if (m_pbnDP) {
-    fprintf(g_logFile, "DP: ");
+    LOG(INFO)<<"DP: ";
     printNum(*m_pbnDP);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
   if (m_pbnDQ) {
-    fprintf(g_logFile, "DQ: ");
+    LOG(INFO)<<"DQ: ";
     printNum(*m_pbnDQ);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   }
-  fprintf(g_logFile, "\n");
+  LOG(INFO)<<"\n";
 }
 #endif
 

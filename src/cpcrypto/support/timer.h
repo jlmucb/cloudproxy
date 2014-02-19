@@ -33,6 +33,7 @@
 #define _TIMER__H
 
 #include <sys/time.h>
+#include "logging.h"
 #include <vector>
 #include <cstdio>
 

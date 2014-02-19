@@ -88,19 +88,8 @@ bool mpModNormalize(bnum& bnA, bnum& bnM) {
       bnB.mpDumpSign();
       mpDiv(bnB, bnM, bnQ, bnR);
       if (!bnR.mpIsZero()) mpUAddTo(bnQ, g_bnOne);
-#ifdef ARITHTEST1
-      extern void printNum(bnum & bnA, bool fFull = false);
-      fprintf(g_logFile, "normalize Q: ");
-      printNum(bnQ);
-      printf("\n");
-#endif
       mpZeroNum(bnB);
       mpUMult(bnQ, bnM, bnB);
-#ifdef ARITHTEST1
-      fprintf(g_logFile, "normalize B: ");
-      printNum(bnB);
-      printf("\n");
-#endif
       mpAddTo(bnA, bnB);
     }
     if (mpCompare(bnM, bnA) == s_isGreaterThan) return true;
@@ -293,13 +282,6 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR) {
   if (lM > maxSize) maxSize = lM;
   maxSize *= 4;
 
-#ifdef MPMODOVERFLOWTEST2
-  fprintf(g_logFile, "\nmpModExp %d\n", maxSize);
-  fprintf(g_logFile, "M: ");
-  printNum(bnM);
-  fprintf(g_logFile, "\n\n");
-  fflush(g_logFile);
-#endif
   try {
     bnum bnBasePower(maxSize);  // Base to Power of 2
     bnum bnA(maxSize);          // Accumulated product
@@ -379,9 +361,7 @@ bool mpShiftDownWords(bnum& bnN, int r, bnum& bnOut) {
 
   // FIX
   if (bnOut.mpSize() < (lN - r)) {
-    fprintf(g_logFile,
-            "ShiftDownWords no room: Out: %d, transfer: %d, lN: %d, r: %d\n",
-            bnOut.mpSize(), lN - r, lN, r);
+    LOG(ERROR)<< "mpShiftDownWords no room\n";
     return false;
   }
   for (j = r; j < lN; j++) bnOut.m_pValue[j - r] = bnN.m_pValue[j];
@@ -451,15 +431,6 @@ bool mpMakeMont(bnum& bnN, bnum& bnM, int r, bnum& bnmontN)
     return false;
   }
 
-#ifdef MPMONTTEST
-  fprintf(g_logFile, "\nmpMakeMont, r: %d\n", r);
-  fprintf(g_logFile, "N: ");
-  printNum(bnN);
-  fprintf(g_logFile, "\n");
-  fprintf(g_logFile, "M: ");
-  printNum(bnM);
-  fprintf(g_logFile, "\n");
-#endif
   try {
     bnum bnU(4 * r);
 
@@ -514,13 +485,6 @@ bool mpMontInit(int r, bnum& bnM, bnum& bnMPrime, bnum& bnRmodM,
   bool fRet = true;
   int lM = mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
   int maxSize = 4 * lM;
-
-#ifdef MPMONTTEST
-  fprintf(g_logFile, "\nmpMontInit, r: %d, maxSize: %d\n", lM, maxSize);
-  fprintf(g_logFile, "M: ");
-  printNum(bnM);
-  fprintf(g_logFile, "\n");
-#endif
 
   try {
     bnum bnT(maxSize);
@@ -585,12 +549,6 @@ bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut, int r,
     return false;
   }
 
-#ifdef MPMONTTEST
-  fprintf(g_logFile, "\nmpMontModExp, r: %d, maxSize: %d\n", lM, maxSize);
-  fprintf(g_logFile, "Base: ");
-  printNum(bnBase);
-  fprintf(g_logFile, "\n");
-#endif
   try {
     UNUSEDVAR(maxSize);
     rgbnmontBasePower[0] = new bnum(maxSize);
@@ -798,8 +756,7 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
   int sizeM = bnM.mpSize();
 
 #ifdef TEST
-  fprintf(g_logFile, "mpRSAGen: GenPrime start %d %d %d\n", sizeP, sizeQ,
-          sizeM);
+  LOG(INFO)<< "mpRSAGen: GenPrime start "<<sizeP<<" "<<sizeQ<<" "<<sizeM<<"\n";
 #endif
   // Get two primes
   if (!mpGenPrime(numBits / 2, bnP)) {
@@ -831,9 +788,6 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
   }
 
 // Dec to get bnP-1 and bnQ-1
-#ifdef ARITHTEST
-  fprintf(g_logFile, "mpRSAGen: exponent modulus\n");
-#endif
   try {
     bnum bnPM1(sizeP);
     bnum bnQM1(sizeQ);
@@ -843,16 +797,10 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
     // Compute Order
     mpUMult(bnPM1, bnQM1, bnOrder);
 
-#ifdef ARITHTEST
-    fprintf(g_logFile, "mpRSAGen: computing order\n");
-#endif
     // get bnD
     bnum bnT(sizeM);
     bnum bnG(sizeM);
     if (!mpExtendedGCD(bnE, bnOrder, bnD, bnT, bnG)) throw("Cant find D");
-#ifdef ARITHTEST
-    fprintf(g_logFile, "mpRSAGen: computed order\n");
-#endif
     if (mpCompare(bnG, g_bnOne) != s_isEqualTo)
       throw("Exponent and Order are not coprime");
     while (bnD.mpSign()) {
@@ -876,9 +824,6 @@ void maxBracket(int i, int max, bnum& bnExp, int* pL, int* pV) {
   int u = 1;  // leading 1
   int m = max;
 
-#ifdef MPSLIDINGTEST
-  fprintf(g_logFile, "maxBracket(%d %d)\n", i, max);
-#endif
   if (i < max) {
     *pL = 1;
     *pV = 1;
@@ -893,9 +838,6 @@ void maxBracket(int i, int max, bnum& bnExp, int* pL, int* pV) {
   }
   *pL = l;
   *pV = u >> (max - l);
-#ifdef MPSLIDINGTEST
-  fprintf(g_logFile, "maxBracket: %d %08x\n", l, *pV);
-#endif
   return;
 }
 
@@ -918,19 +860,6 @@ bool mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR, int r,
   bnum* rgTable[16];
   bnum* rgbnmontA[2];  // accum products
 
-#ifdef MPSLIDINGTEST
-  fprintf(g_logFile, "\nmpSlidingModExp %d\n", maxsize);
-  fprintf(g_logFile, "M   : ");
-  printNum(bnM);
-  fprintf(g_logFile, "\n");
-  fprintf(g_logFile, "Base: ");
-  printNum(bnBase);
-  fprintf(g_logFile, "\n");
-  fprintf(g_logFile, "Exp : ");
-  printNum(bnExp);
-  fprintf(g_logFile, "\n\n");
-  fflush(g_logFile);
-#endif
   for (j = 0; j < 16; j++) rgTable[j] = NULL;
   // rgTable[j] is g[j]
   // g[0]= 1, g[1]= Base, g[2]= Base**3,g[3]= Base**3, g[5]= Base**5,...
@@ -959,10 +888,6 @@ bool mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR, int r,
 // Precompute small base exponents
 // g1= g; g2= g*g;
 // for(i=0; i<((1<<k)-1); i++)  g(2i+1)= g(2i-1)*g2;
-#ifdef MPSLIDINGTEST
-    fprintf(g_logFile, "initializing rgTable\n");
-    fflush(g_logFile);
-#endif
     if (!mpMontStep(*rgTable[1], *rgTable[1], bnM, bnMPrime, r, *rgTable[2])) {
       throw("MontStep error 1a");
     }
@@ -972,16 +897,6 @@ bool mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR, int r,
         throw("MontStep error 1b");
       }
     }
-
-#ifdef MPSLIDINGTEST
-    for (j = 0; j < 16; j++) {
-      if (rgTable[j] != NULL) {
-        fprintf(g_logFile, "g[%02d]:", j);
-        printNum(*rgTable[j]);
-        fprintf(g_logFile, "\n");
-      }
-    }
-#endif
 
     // least significant bit is 1
     leadBit = mpBitsinNum(bnExp.mpSize(), bnExp.m_pValue);

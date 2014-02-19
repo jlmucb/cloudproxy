@@ -27,6 +27,7 @@
 #include "modesandpadding.h"
 #include "cryptoHelper.h"
 #include "fastArith.h"
+#include "logging.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -889,6 +890,7 @@ int main(int an, char** av) {
   bool fMontDecrypt = false;
   int file = -1;
 
+  initLog("rsaspeedtest.log");
   UNUSEDVAR(mode);
   for (i = 0; i < an; i++) {
     if (strcmp(av[i], "-help") == 0 || an < 3) {

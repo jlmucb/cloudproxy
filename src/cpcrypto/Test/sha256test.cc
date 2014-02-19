@@ -18,6 +18,7 @@
 #include <time.h>
 #include "string.h"
 #include "sha256.h"
+#include "logging.h"
 
 byte b;
 #define BUF_SIZE 1024
@@ -38,16 +39,6 @@ void bigEndian(u8* buf, int size) {
     size -= sizeof(u32);
     pU += sizeof(u32);
   }
-}
-
-void PrintBytes(const char* szMsg, byte* pbData, int iSize) {
-  int i;
-
-  printf("\t%s: ", szMsg);
-  for (i = 0; i < iSize; i++) {
-    printf("%02x", pbData[i]);
-  }
-  printf("\n");
 }
 
 void testvector(int sizetoHash, byte* toHash, int sizeAns, byte* answer) {
@@ -78,6 +69,8 @@ int main(int argc, char** argv) {
   // ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
   u32 answer1[8] = {0xba7816bf, 0x8f01cfea, 0x414140de, 0x5dae2223, 0xb00361a3,
                     0x96177a9c, 0xb410ff61, 0xf20015ad};
+
+  initLog("sha256test.log");
   bigEndian((byte*)answer1, 20);
   testvector(sizetoHash1, (byte*)toHash1, 20, (byte*)answer1);
 

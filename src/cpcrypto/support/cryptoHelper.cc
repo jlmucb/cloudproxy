@@ -498,19 +498,23 @@ int timeCompare(struct tm& time1, struct tm& time2) {
   return 0;
 }
 
+
+#define MAXTIMELEN 128
 #ifdef TEST
 void printTime(struct tm* timeinfo) {
+  char time_string[MAXTIMELEN];
   if (timeinfo == NULL) {
-    fprintf(g_logFile, "NULL\n");
+    LOG(INFO)<<"NULL\n";
   }
-  fprintf(g_logFile, "%04d-%02d-%02dZ%02d:%02d.%02d\n",
+  sprintf(time_string, "%04d-%02d-%02dZ%02d:%02d.%02d\n",
           1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday,
           timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+  LOG(INFO)<<time_string;
 }
 #endif
 
 char* stringtimefromtimeInfo(struct tm* timeinfo) {
-  char szTime[128];
+  char szTime[MAXTIMELEN];
 
   sprintf(szTime, "%04d-%02d-%02dZ%02d:%02d.%02d", 1900 + timeinfo->tm_year,
           timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour,
@@ -596,8 +600,7 @@ bool XMLenclosingtypefromelements(const char* tag, int numAttr,
     n += strlen(attrName[i]) + strlen(attrValues[i]) + 4;
   for (i = 0; i < numElts; i++) n += strlen(elts[i]) + 3;
   if (n > *psize) {
-    fprintf(g_logFile,
-            "XMLenclosingtypefromelements: output buffer too small\n");
+            LOG(ERROR)<<   "XMLenclosingtypefromelements: output buffer too small\n";
     return false;
   }
 
@@ -643,14 +646,12 @@ bool VerifyRSASha1SignaturefromSignedInfoandKey(RSAKey& key, char* szsignedInfo,
   UNUSEDVAR(n);
   n = strlen(szSigValue);
   if (GLOBALMAXPUBKEYSIZE < maxbytesfromBase64string(strlen(szSigValue))) {
-    fprintf(g_logFile,
-            "VerifyRSASha1SignaturefromSignedInfoandKey: buffer too small\n");
+     LOG(ERROR)<<"VerifyRSASha1SignaturefromSignedInfoandKey: buffer too small\n";
     return false;
   }
   size = GLOBALMAXPUBKEYSIZE;
   if (!bytesfrombase64(szSigValue, &size, rgSigValue)) {
-    fprintf(g_logFile,
-            "VerifyRSASha1SignaturefromSignedInfoandKey: cant base64 decode\n");
+     LOG(ERROR)<< "VerifyRSASha1SignaturefromSignedInfoandKey: cant base64 decode\n";
     return false;
   }
 
@@ -675,15 +676,12 @@ bool VerifyRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
   UNUSEDVAR(n);
   n = strlen(szSigValue);
   if (GLOBALMAXPUBKEYSIZE < maxbytesfromBase64string(strlen(szSigValue))) {
-    fprintf(g_logFile,
-            "VerifyRSASha256SignaturefromSignedInfoandKey: buffer too small\n");
+     LOG(ERROR)<<"VerifyRSASha256SignaturefromSignedInfoandKey: buffer too small\n";
     return false;
   }
   size = GLOBALMAXPUBKEYSIZE;
   if (!bytesfrombase64(szSigValue, &size, rgSigValue)) {
-    fprintf(
-        g_logFile,
-        "VerifyRSASha256SignaturefromSignedInfoandKey: cant base64 decode\n");
+         LOG(ERROR)<<"VerifyRSASha256SignaturefromSignedInfoandKey: cant base64 decode\n";
     return false;
   }
 
@@ -708,15 +706,13 @@ char* XMLRSASha256SignaturefromSignedInfoandKey(RSAKey& key,
 
   size = GLOBALMAXPUBKEYSIZE;
   if (!RSASign(key, SHA256HASH, rgComputedHash, &size, rgSigValue)) {
-    fprintf(g_logFile,
-            "XMLRSASha256SignaturefromSignedInfoandKey: sign fails\n");
+     LOG(ERROR)<< "XMLRSASha256SignaturefromSignedInfoandKey: sign fails\n";
     return (char*)NULL;
   }
 
   n = 2048;
   if (!base64frombytes(size, rgSigValue, &n, szSigValue)) {
-    fprintf(g_logFile,
-            "XMLRSASha256SignaturefromSignedInfoandKey: base64 encode fails\n");
+     LOG(ERROR)<< "XMLRSASha256SignaturefromSignedInfoandKey: base64 encode fails\n";
     return (char*)NULL;
   }
   return strdup(szSigValue);

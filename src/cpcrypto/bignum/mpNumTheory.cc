@@ -230,15 +230,7 @@ bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG) {
   //  Example at r[2]
   //  r[2]    1               -q
   for (;;) {
-// Rprior= Q Rcurrent + Rnext
-#ifdef ARITHTEST
-    fprintf(g_logFile, "mpExtendedGCD, PriorR: ");
-    printNum(*rgbnR[iPrior]);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "mpExtendedGCD, CurrentR: ");
-    printNum(*rgbnR[iCurrent]);
-    fprintf(g_logFile, "\n");
-#endif
+    // Rprior= Q Rcurrent + Rnext
     if (!mpUDiv(*rgbnR[iPrior], *rgbnR[iCurrent], *pbnQ, *rgbnR[iNext])) {
       LOG(ERROR)<<"mpExtendedGCD: bad division\n";
       fRet = false;
@@ -319,26 +311,6 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR) {
     if (mpCompare(bnG, g_bnOne) != s_isEqualTo) throw("mpCRT: GCD is not 1\n");
 
     if (!mpUMult(bnM1, bnM2, bnN)) throw("mpCRT: mpUMult failed\n");
-
-#ifdef ARITHTEST
-    mpMult(bnM1, bnX1, bnT1);
-    mpMult(bnM2, bnX2, bnT2);
-    mpAdd(bnT1, bnT2, bnT3);
-    printNum(bnM1);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " *  \n");
-    printNum(bnX1);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " +  \n");
-    printNum(bnM2);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " *  \n");
-    printNum(bnX2);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, " =  \n");
-    printNum(bnT3);
-    fprintf(g_logFile, "\n");
-#endif
 
     while (bnX1.mpSign()) mpModNormalize(bnX1, bnN);
     while (bnX2.mpSign()) mpModNormalize(bnX2, bnN);
@@ -499,8 +471,7 @@ bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[]) {
   bnum* pbNum;
 
 #ifdef ARITHTEST
-  fprintf(glogFile, "MRPrimeTest\n");
-  fflush(g_logFile);
+  LOG(INFO)<< "MRPrimeTest\n";
 #endif
   bnN.mpCopyNum(bnNM1);
   mpDec(bnNM1);
@@ -571,10 +542,6 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid) {
   int lA;
   bool fRet = false;
 
-#ifdef TEST
-  fprintf(g_logFile, "mpGenPrime %d prime, %d words\n", iBitSize, iWordSize);
-  fflush(g_logFile);
-#endif
   if (iConfid > MAXBASE) iConfid = MAXBASE;
 
   for (i = 0; i < iConfid; i++) rgbnBase[i] = new bnum(iWordSize);
@@ -727,30 +694,13 @@ bool mpTonelliShanks(bnum& bnA, bnum& bnP, bnum& bnSqrt) {
   bnT1.mpCopyNum(bnX);  // X=AX (mod P)
   mpZeroNum(bnT1);
   mpZeroNum(bnT2);
-#ifdef TEST1
-  fprintf(g_logFile, "Step 0, e: %d, r: %d, m: %d\n\tP: ", e, r, m);
-  printNum(bnP);
-  fprintf(g_logFile, "\n\tN: ");
-  printNum(bnN);
-  fprintf(g_logFile, "\n\tA: ");
-  printNum(bnA);
-  fprintf(g_logFile, "\n\tQ: ");
-  printNum(bnQ);
-  fprintf(g_logFile, "\n\tX: ");
-  printNum(bnX);
-  fprintf(g_logFile, "\n\tB: ");
-  printNum(bnB);
-  fprintf(g_logFile, "\n\tY: ");
-  printNum(bnY);
-  fprintf(g_logFile, "\n");
-  fflush(g_logFile);
-#endif
+
   while (mpCompare(bnB, g_bnOne) != 0) {
     m = 1;
     bnE.m_pValue[0] = 1ULL;
     for (;;) {
       if (!mpShiftInPlace(bnE, 1)) {
-        fprintf(g_logFile, "shift in place error\n");
+        LOG(ERROR)<<"shift in place error 1\n";
         return false;
       }
       mpModExp(bnB, bnE, bnP, bnT1);
@@ -763,7 +713,7 @@ bool mpTonelliShanks(bnum& bnA, bnum& bnP, bnum& bnSqrt) {
     if (m == r) return false;
     bnE.m_pValue[0] = 1ULL;
     if (!mpShiftInPlace(bnE, r - m - 1)) {
-      fprintf(g_logFile, "shift in place error\n");
+      LOG(ERROR)<<"shift in place error 2\n";
       return false;
     }
     mpModExp(bnY, bnE, bnP, bnT1);
@@ -777,22 +727,6 @@ bool mpTonelliShanks(bnum& bnA, bnum& bnP, bnum& bnSqrt) {
     mpModMult(bnB, bnY, bnP, bnT1);
     bnT1.mpCopyNum(bnB);
     mpZeroNum(bnT1);
-#ifdef TEST1
-    fprintf(g_logFile, "Step 1, e: %d, r: %d, m: %d\n\tP: ", e, r, m);
-    printNum(bnP);
-    fprintf(g_logFile, "\n\tA: ");
-    printNum(bnA);
-    fprintf(g_logFile, "\n\tQ: ");
-    printNum(bnQ);
-    fprintf(g_logFile, "\n\tX: ");
-    printNum(bnX);
-    fprintf(g_logFile, "\n\tB: ");
-    printNum(bnB);
-    fprintf(g_logFile, "\n\tY: ");
-    printNum(bnY);
-    fprintf(g_logFile, "\n");
-    fflush(g_logFile);
-#endif
   }
   bnX.mpCopyNum(bnSqrt);
   return true;

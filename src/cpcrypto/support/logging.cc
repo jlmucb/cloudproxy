@@ -38,7 +38,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include "common.h"
-#include <fstream>
+#include "logging.h"
 
 // ------------------------------------------------------------------------------
 
@@ -59,7 +59,6 @@ int g_ithread = -1;
 pthread_t g_flushIOthread;
 
 void* flushIO(void* ptr) {
-  fprintf(g_logFile, "flush thread running\n");
   for (;;) {
     sleep(5);
     fflush(g_logFile);
@@ -102,15 +101,25 @@ void closeLog() {
   }
 }
 
-void PrintBytes(const char* szMsg, byte* pbData, int iSize, int col) {
+#define MAXBYTESTRING 2048
+void PrintBytes(const char* message, byte* pbData, int iSize, int col) {
   int i;
+  int n;
+  char byte_string[MAXBYTESTRING];
 
-  fprintf(g_logFile, "%s", szMsg);
+  LOG(INFO)<<message<<"\n";
+  byte_string[0]= 0;
   for (i = 0; i < iSize; i++) {
-    fprintf(g_logFile, "%02x", pbData[i]);
-    if ((i % col) == (col - 1)) fprintf(g_logFile, "\n");
+    n= strlen(byte_string);
+    sprintf(&byte_string[n], "%02x", pbData[i]);
+    if ((i % col) == (col - 1)) {
+      n= strlen(byte_string);
+      sprintf(&byte_string[n], "\n");
+    }
   }
-  fprintf(g_logFile, "\n");
+  n= strlen(byte_string);
+  sprintf(&byte_string[n], "\n");
+  LOG(INFO)<<byte_string;
 }
 
 // ------------------------------------------------------------------------------------

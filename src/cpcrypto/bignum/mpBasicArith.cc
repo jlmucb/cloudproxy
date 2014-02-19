@@ -109,6 +109,7 @@ void printNum(bnum& bnA, bool fFull = false) {
   bool fSignA = bnA.mpSign();
   u64* puN = NULL;
   i32 lA;
+  char byte_string[20];
 
   if (sizeA <= 0) {
     LOG(ERROR)<<"Bad number, no extent\n";
@@ -116,27 +117,29 @@ void printNum(bnum& bnA, bool fFull = false) {
   }
 
   if (fSignA)
-    fprintf(g_logFile, "[-");
+    LOG(INFO)<<"[-";
   else
-    fprintf(g_logFile, "[+");
+    LOG(INFO)<<"[+";
 
   if (fFull) {
     puN = bnA.m_pValue + sizeA - 1;
     while (sizeA-- > 0) {
-      fprintf(g_logFile, " 0x%016lx", *((unsigned long*)puN));
+      sprintf(byte_string, " 0x%016lx", *((unsigned long*)puN));
       puN--;
+      LOG(INFO)<<byte_string;
     }
   } else {
     lA = mpWordsinNum(sizeA, bnA.m_pValue);
     if (lA <= 0) lA = 1;
     puN = bnA.m_pValue + lA - 1;
     while (lA-- > 0) {
-      fprintf(g_logFile, " 0x%016lx", *((unsigned long*)puN));
+      sprintf(byte_string, " 0x%016lx", *((unsigned long*)puN));
       puN--;
+      LOG(INFO)<<byte_string;
     }
   }
 
-  fprintf(g_logFile, "]");
+  LOG(INFO)<<"]";
   return;
 }
 
@@ -368,8 +371,9 @@ void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits) {
   u64 r, s, t;
 
 #ifdef SHIFTTEST
-  fprintf(g_logFile, "shiftup(%d)\n", numShiftBits);
-  fprintf(g_logFile, "wordShift: %d, bitshift: %d\n", wordShift, bitShift);
+  LOG(INFO)<<"shiftup("<< numShiftBits<<")\n";
+  LOG(INFO)<<"wordShift: " <<wordShift;
+  LOG(INFO)<<", bitshift: " << bitShift<<")\n";
 #endif
   if (bitShift == 0)
     bottomShift = 0;
@@ -393,7 +397,7 @@ void shiftup(bnum& bnA, bnum& bnR, i32 numShiftBits) {
   }
   rgR[wordShift] = s;
 #ifdef SHIFTTEST
-  fprintf(g_logFile, "shiftup result %d\n", rgR[0]);
+  LOG(INFO)<<"shiftup result "<< rgR[0]<<"\n";
 #endif
 }
 
@@ -409,7 +413,7 @@ void shiftdown(bnum& bnA, bnum& bnR, i32 numShiftBits) {
   u64 r, s, t;
 
 #ifdef SHIFTTEST
-  fprintf(g_logFile, "shiftdown(%d)\n", numShiftBits);
+  LOG(INFO)<<"shiftdown(" << numShiftBits<<")\n";
 #endif
   if (bitShift == 0)
     bottomShift = 0;
@@ -442,10 +446,10 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR) {
   i32 sizeR = bnR.mpSize();
 
 #ifdef SHIFTTEST
-  fprintf(g_logFile, "mpShift %d bits\n", numShiftBits);
-  fprintf(g_logFile, "bnA: ");
+  LOG(INFO)<<"mpShift "<<  numShiftBits<<"\n";
+  LOG(INFO)<<"bnA: ";
   printNum(bnA);
-  fprintf(g_logFile, "\n");
+  LOG(INFO)<<"\n";
 #endif
   // Enough room?
   if (lA + ((numShiftBits + NUMBITSINU64MINUS1) / NUMBITSINU64) > sizeR)
@@ -464,9 +468,9 @@ bool mpShift(bnum& bnA, i32 numShiftBits, bnum& bnR) {
   }
 
 #ifdef SHIFTTEST
-  fprintf(g_logFile, "bnR: ");
+  LOG(INFO)<<"bnR: ";
   printNum(bnR);
-  fprintf(g_logFile, "\n");
+  LOG(INFO)<<"\n";
 #endif
   return true;
 }
@@ -493,11 +497,11 @@ u64 mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR) {
   u64 uCarry = 0ULL;
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpUAdd: first arg not a number\n");
+    LOG(ERROR)<<"mpUAdd: first arg not a number\n";
     return 0ULL;
   }
   if (lB <= 0) {
-    fprintf(g_logFile, "mpUAdd: second arg not a number\n");
+    LOG(ERROR)<<"mpUAdd: second arg not a number\n";
     return 0ULL;
   }
 
@@ -701,8 +705,7 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR) {
     return 0ULL;
   }
   if (bnR.mpSize() < (lA + lB)) {
-    fprintf(g_logFile, "mpUMult: potential overflow %d, %d, %d\n", bnR.mpSize(),
-            lA, lB);
+    LOG(ERROR)<<"mpUMult: potential overflow\n";
     return false;
   }
   ZeroWords(bnR.mpSize(), bnR.m_pValue);
@@ -795,9 +798,8 @@ void TwoDigitEstimateQuotient(u64* pqE, u64 uHi, u64 uLo, u64 uLower, u64 vHi,
   }
 
 #ifdef ARITHTEST
-  fprintf(g_logFile, "Estimate quotient new u/v: %016lx %016lx %016lx, shift: "
-                     "%d, maxBit: %d\n",
-          newuHi, newuLo, newv, shift, maxBit);
+  LOG(INFO)<<"Estimate quotient new u/v: " << newHi <<" " << newLo << " " << newv<<"\n";
+  LOG(INFO)<<"shift: " << shift<<", maxBit: "<< maxBit<< "\n";
 #endif
   if (newuHi >= newv) {
     *pqE = (u64) - 1;
@@ -897,13 +899,13 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
   int compare;
 
 #ifdef DEBUGUDIV
-  fprintf(g_logFile, "mpUDiv: \n");
-  fprintf(g_logFile, "A: ");
+  LOG(ERROR)<<"mpUDiv: \n";
+  LOG(ERROR)<<"A: ";
   printNum(bnA);
-  printf("\n");
-  fprintf(g_logFile, "B: ");
+  LOG(ERROR)<<"\n";
+  LOG(ERROR)<<"B: ";
   printNum(bnB);
-  printf("\n");
+  LOG(ERROR)<<"B: ";
 #endif
   if (bnB.mpIsZero()) {
     LOG(ERROR)<<"mpUDiv: Division by 0\n";
@@ -970,16 +972,6 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
       posQuotDig = posNZNum - lB + 1;  // position of quotient digit
       EstimateQuotient(&uQ, 0ULL, rgtA[posNZNum], rgtA[posNZNum - 1], uBHi,
                        uBLo);
-#ifdef DEBUGUDIV
-      fprintf(
-          g_logFile,
-          "top lB digits of A>=B, top position: %d, quotient position: %d\n",
-          posNZNum, posQuotDig);
-      fprintf(g_logFile, "top positions of current A: %016lx %016lx\n",
-              rgtA[posNZNum], rgtA[posNZNum - 1]);
-      fprintf(g_logFile, "Quotient digit estimate is rgQ[%d]= %016lx\n",
-              posQuotDig, uQ);
-#endif
       while (uQ > 0) {
         mpZeroNum(bnTempC);
         mpUSingleMultAndShift(bnB, uQ, posQuotDig, bnTempC);
@@ -993,10 +985,10 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
       rgQ[posQuotDig] = uQ;
 
 #ifdef DEBUGUDIV
-      fprintf(g_logFile, "rgQ[%d]= %016lx\n", posQuotDig, uQ);
-      fprintf(g_logFile, "TempA: ");
+      LOG(ERROR)<<"rgQ["<< posQuotDig<<"]= " << uQ <<"\n";
+      LOG(ERROR)<<"TempA: ";
       printNum(bnTempA);
-      fprintf(g_logFile, "\n");
+      LOG(ERROR)<<"\n";
 #endif
       continue;
     }
@@ -1004,13 +996,6 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
     // top lB digits of A<B
     // dividing lB+1 digit number by lB digit number
     posQuotDig = posNZNum - lB;
-#ifdef DEBUGUDIV
-    fprintf(g_logFile,
-            "top lB digits of A<B, top position: %d, quotient digit: %d\n",
-            posNZNum, posQuotDig);
-    fprintf(g_logFile, "top positions of current A: %016lx %016lx\n",
-            rgtA[posNZNum], rgtA[posNZNum - 1]);
-#endif
     if (posQuotDig < 0) break;
     if (posNZNum > lB)
       TwoDigitEstimateQuotient(&uQ, rgtA[posNZNum], rgtA[posNZNum - 1],
@@ -1018,11 +1003,6 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
     else
       TwoDigitEstimateQuotient(&uQ, rgtA[posNZNum], rgtA[posNZNum - 1], 0ULL,
                                uBHi, uBLo);
-#ifdef DEBUGUDIV
-    fprintf(g_logFile, "TwoDigit posNZNum: %d, %016lx %016lx xxx / %016lx "
-                       "%016lx\n  estimate %016lx\n",
-            posNZNum, rgtA[posNZNum], rgtA[posNZNum - 1], uBHi, uBLo, uQ);
-#endif
     mpZeroNum(bnTempC);
     mpUSingleMultAndShift(bnB, uQ, posQuotDig, bnTempC);
     while (mpCompare(bnTempA, bnTempC) == s_isLessThan) {
@@ -1032,19 +1012,8 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
     }
     mpUSubFrom(bnTempA, bnTempC);
     rgQ[posQuotDig] = uQ;
-#ifdef DEBUGUDIV
-    fprintf(g_logFile, "Two digit rgQ[%d]= %016lx\n", posQuotDig, uQ);
-    fprintf(g_logFile, "TempA: ");
-    printNum(bnTempA);
-    fprintf(g_logFile, "\n");
-#endif
   }
 
-#ifdef DEBUGDIV
-  fprintf(g_logFile, "mpUDiv returning %016lx\n", uQ);
-  printNum(bnQ);
-  fprintf(g_logFile, "\n");
-#endif
   bnTempA.mpCopyNum(bnR);
   return true;
 }
@@ -1117,8 +1086,7 @@ bool ConvertFromDecimalString(bnum& bnA, const char* szNumber) {
     pszNum++;
   }
   if ((maxSize * 9) < i) {
-    fprintf(g_logFile,
-            "ConvertFromDecimalString(:Character length too small\n");
+    LOG(ERROR)<<"ConvertFromDecimalString(:Character length too small\n";
     return false;
   }
   ZeroWords(bnA.mpSize(), bnA.m_pValue);

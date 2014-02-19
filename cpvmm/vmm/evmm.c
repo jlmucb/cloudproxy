@@ -34,6 +34,24 @@ typedef unsigned char uint8_t;
 
 multiboot_info_t *g_mbi;
 
+
+void InitializeMemoryManager(UINT64 *HeapBaseAddress, UINT64 * HeapBytes)
+{
+}
+
+
+int get_e820_table(EVMM_DESC* ed, UINT64* e820_addr)
+{
+    return 1;
+}
+
+
+void SetupIDT()
+{
+}
+
+
+
 int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
 {
     //REK:

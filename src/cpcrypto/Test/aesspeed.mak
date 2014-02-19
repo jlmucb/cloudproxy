@@ -33,11 +33,11 @@ $(E)/aesspeedtest.exe: $(dobjs) $(E)/cpcryptolib.a
 	@echo "aesspeedtest"
 	$(LINK) -o $(E)/aesspeedtest.exe $(dobjs) $(E)/cpcryptolib.a
 
-$(B)/aesspeedtest.o: aesspeedtest.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aesspeedtest.o aesspeedtest.cpp
+$(B)/aesspeedtest.o: aesspeedtest.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aesspeedtest.o aesspeedtest.cc
 
-$(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cpp $(S)/support/jlmcrypto.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmcrypto.o $(S)/support/jlmcrypto.cpp
+$(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cc $(S)/support/jlmcrypto.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmcrypto.o $(S)/support/jlmcrypto.cc
 
-$(B)/logging.o: $(S)/support/logging.cpp $(S)/support/logging.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cpp
+$(B)/logging.o: $(S)/support/logging.cc $(S)/support/logging.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc

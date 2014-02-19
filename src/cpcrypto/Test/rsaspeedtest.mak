@@ -36,31 +36,31 @@ $(E)/rsaspeedtest.exe: $(dobjs) $(E)/cpcryptolib.a
 	@echo "rsaspeedtest"
 	$(LINK) -o $(E)/rsaspeedtest.exe $(dobjs) $(E)/cpcryptolib.a
 
-$(B)/rsaspeedtest.o: rsaspeedtest.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/rsaspeedtest.o rsaspeedtest.cpp
+$(B)/rsaspeedtest.o: rsaspeedtest.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/rsaspeedtest.o rsaspeedtest.cc
 
-$(B)/keys.o: $(S)/support/keys.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/keys.o $(S)/support/keys.cpp
+$(B)/keys.o: $(S)/support/keys.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/keys.o $(S)/support/keys.cc
 
-$(B)/jlmErrors.o: $(S)/support/jlmErrors.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmErrors.o $(S)/support/jlmErrors.cpp
+$(B)/jlmErrors.o: $(S)/support/jlmErrors.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmErrors.o $(S)/support/jlmErrors.cc
 
 
-$(B)/tinyxml.o : $(S)/support/tinyxml.cpp
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxml.o $(S)/support/tinyxml.cpp
+$(B)/tinyxml.o : $(S)/support/tinyxml.cc
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxml.o $(S)/support/tinyxml.cc
 
-$(B)/tinyxmlparser.o : $(S)/support/tinyxmlparser.cpp
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlparser.o $(S)/support/tinyxmlparser.cpp
+$(B)/tinyxmlparser.o : $(S)/support/tinyxmlparser.cc
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlparser.o $(S)/support/tinyxmlparser.cc
 
-$(B)/tinyxmlerror.o : $(S)/support/tinyxmlerror.cpp
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlerror.o $(S)/support/tinyxmlerror.cpp
+$(B)/tinyxmlerror.o : $(S)/support/tinyxmlerror.cc
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlerror.o $(S)/support/tinyxmlerror.cc
 
-$(B)/tinystr.o : $(S)/support/tinystr.cpp 
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinystr.o $(S)/support/tinystr.cpp
+$(B)/tinystr.o : $(S)/support/tinystr.cc 
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinystr.o $(S)/support/tinystr.cc
 
-$(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmcrypto.o $(S)/support/jlmcrypto.cpp
+$(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmcrypto.o $(S)/support/jlmcrypto.cc
 
-$(B)/logging.o: $(S)/support/logging.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cpp
+$(B)/logging.o: $(S)/support/logging.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc
 

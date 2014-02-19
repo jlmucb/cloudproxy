@@ -43,16 +43,16 @@ $(E)/sha256test.exe: $(sha256objs) $(E)/cpcryptolib.a
 	@echo "shatest"
 	$(LINK) -o $(E)/sha256test.exe $(sha256objs) $(E)/cpcryptolib.a
 
-$(B)/logging.o: $(S)/support/logging.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cpp
+$(B)/logging.o: $(S)/support/logging.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc
 
-$(B)/aestest.o: aestest.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aestest.o aestest.cpp
+$(B)/aestest.o: aestest.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aestest.o aestest.cc
 
-$(B)/shatest.o: shatest.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/shatest.o shatest.cpp
+$(B)/shatest.o: shatest.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/shatest.o shatest.cc
 
-$(B)/sha256test.o: sha256test.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256test.o sha256test.cpp
+$(B)/sha256test.o: sha256test.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256test.o sha256test.cc
 
 

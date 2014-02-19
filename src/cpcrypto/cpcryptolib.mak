@@ -57,42 +57,42 @@ $(E)/cpcryptolib.a: $(dobjs)
 	@echo "cpcryptolib.a"
 	$(LIBMAKER) -r $(E)/cpcryptolib.a $(dobjs)
 
-$(B)/modesandpadding.o: $(S)/symmetric/modesandpadding.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/modesandpadding.o $(S)/symmetric/modesandpadding.cpp
+$(B)/modesandpadding.o: $(S)/symmetric/modesandpadding.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/modesandpadding.o $(S)/symmetric/modesandpadding.cc
 
-$(B)/aes.o: $(S)/symmetric/aes.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aes.o $(S)/symmetric/aes.cpp
+$(B)/aes.o: $(S)/symmetric/aes.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aes.o $(S)/symmetric/aes.cc
 
-$(B)/aesni.o: $(S)/symmetric/aes.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aesni.o $(S)/symmetric/aesni.cpp
+$(B)/aesni.o: $(S)/symmetric/aes.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aesni.o $(S)/symmetric/aesni.cc
 
-$(B)/hmacsha256.o: $(S)/symmetric/hmacsha256.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/hmacsha256.o $(S)/symmetric/hmacsha256.cpp
+$(B)/hmacsha256.o: $(S)/symmetric/hmacsha256.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/hmacsha256.o $(S)/symmetric/hmacsha256.cc
 
-$(B)/sha1.o: $(S)/symmetric/sha1.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha1.o $(S)/symmetric/sha1.cpp
+$(B)/sha1.o: $(S)/symmetric/sha1.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha1.o $(S)/symmetric/sha1.cc
 
-$(B)/sha256.o: $(S)/symmetric/sha256.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256.o $(S)/symmetric/sha256.cpp
+$(B)/sha256.o: $(S)/symmetric/sha256.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256.o $(S)/symmetric/sha256.cc
 
-$(B)/fastArith.o: $(S)/bignum/fastArith.cpp
-	$(CC) $(CFLAGS1) $(INCLUDES) -c -o $(B)/fastArith.o $(S)/bignum/fastArith.cpp
+$(B)/fastArith.o: $(S)/bignum/fastArith.cc
+	$(CC) $(CFLAGS1) $(INCLUDES) -c -o $(B)/fastArith.o $(S)/bignum/fastArith.cc
 
-$(B)/mpBasicArith.o: $(S)/bignum/mpBasicArith.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/mpBasicArith.o $(S)/bignum/mpBasicArith.cpp
+$(B)/mpBasicArith.o: $(S)/bignum/mpBasicArith.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/mpBasicArith.o $(S)/bignum/mpBasicArith.cc
 
-$(B)/mpModArith.o: $(S)/bignum/mpModArith.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/mpModArith.o $(S)/bignum/mpModArith.cpp
+$(B)/mpModArith.o: $(S)/bignum/mpModArith.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/mpModArith.o $(S)/bignum/mpModArith.cc
 
-$(B)/mpNumTheory.o: $(S)/bignum/mpNumTheory.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/mpNumTheory.o $(S)/bignum/mpNumTheory.cpp
+$(B)/mpNumTheory.o: $(S)/bignum/mpNumTheory.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/mpNumTheory.o $(S)/bignum/mpNumTheory.cc
 
-$(B)/eccops.o: $(S)/ecc/eccops.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/eccops.o $(S)/ecc/eccops.cpp
+$(B)/eccops.o: $(S)/ecc/eccops.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/eccops.o $(S)/ecc/eccops.cc
 
-$(B)/ecccrypt.o: $(S)/ecc/ecccrypt.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/ecccrypt.o $(S)/ecc/ecccrypt.cpp
+$(B)/ecccrypt.o: $(S)/ecc/ecccrypt.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/ecccrypt.o $(S)/ecc/ecccrypt.cc
 
-$(B)/nist.o: $(S)/ecc/nist.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/nist.o $(S)/ecc/nist.cpp
+$(B)/nist.o: $(S)/ecc/nist.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/nist.o $(S)/ecc/nist.cc
 

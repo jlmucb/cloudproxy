@@ -35,6 +35,6 @@ $(E)/sha256speedtest.exe: $(dobjs) $(E)/cpcryptolib.a
 	@echo "sha256speedtest"
 	$(LINK) -o $(E)/sha256speedtest.exe $(dobjs) $(E)/cpcryptolib.a
 
-$(B)/sha256speedtest.o: sha256speedtest.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256speedtest.o sha256speedtest.cpp
+$(B)/sha256speedtest.o: sha256speedtest.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256speedtest.o sha256speedtest.cc
 

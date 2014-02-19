@@ -38,36 +38,36 @@ $(E)/mpTest.exe: $(tobjs) $(E)/cpcryptolib.a
 	@echo "mpTest"
 	$(LINK) -o $(E)/mpTest.exe $(tobjs) $(E)/cpcryptolib.a
 
-$(B)/mpTest.o: mpTest.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -D TEST -c -o $(B)/mpTest.o mpTest.cpp
+$(B)/mpTest.o: mpTest.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -D TEST -c -o $(B)/mpTest.o mpTest.cc
 
-$(B)/jlmErrors.o: $(S)/support/jlmErrors.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmErrors.o $(S)/support/jlmErrors.cpp
+$(B)/jlmErrors.o: $(S)/support/jlmErrors.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmErrors.o $(S)/support/jlmErrors.cc
 
-$(B)/cryptoHelper.o: $(S)/support/cryptoHelper.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/cryptoHelper.o $(S)/support/cryptoHelper.cpp
+$(B)/cryptoHelper.o: $(S)/support/cryptoHelper.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/cryptoHelper.o $(S)/support/cryptoHelper.cc
 
-$(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmcrypto.o $(S)/support/jlmcrypto.cpp
+$(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/jlmcrypto.o $(S)/support/jlmcrypto.cc
 
 
-$(B)/keys.o: $(S)/support/keys.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -D TEST -c -o $(B)/keys.o $(S)/support/keys.cpp
+$(B)/keys.o: $(S)/support/keys.cc
+	$(CC) $(CFLAGS) $(INCLUDES) -D TEST -c -o $(B)/keys.o $(S)/support/keys.cc
 
-$(B)/jlmUtility.o : $(S)/support/jlmUtility.cpp
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/jlmUtility.o $(S)/support/jlmUtility.cpp
+$(B)/jlmUtility.o : $(S)/support/jlmUtility.cc
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/jlmUtility.o $(S)/support/jlmUtility.cc
 
-$(B)/tinyxmlparser.o : $(S)/support/tinyxmlparser.cpp
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlparser.o $(S)/support/tinyxmlparser.cpp
+$(B)/tinyxmlparser.o : $(S)/support/tinyxmlparser.cc
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlparser.o $(S)/support/tinyxmlparser.cc
 
-$(B)/tinyxml.o : $(S)/support/tinyxml.cpp 
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxml.o $(S)/support/tinyxml.cpp
+$(B)/tinyxml.o : $(S)/support/tinyxml.cc 
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxml.o $(S)/support/tinyxml.cc
 
-$(B)/tinyxmlerror.o : $(S)/support/tinyxmlerror.cpp 
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlerror.o $(S)/support/tinyxmlerror.cpp
+$(B)/tinyxmlerror.o : $(S)/support/tinyxmlerror.cc 
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinyxmlerror.o $(S)/support/tinyxmlerror.cc
 
-$(B)/tinystr.o : $(S)/support/tinystr.cpp 
-	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinystr.o $(S)/support/tinystr.cpp
+$(B)/tinystr.o : $(S)/support/tinystr.cc 
+	$(CC) $(CFLAGS) $(RELEASECFLAGS) $(INCLUDES) -c -o $(B)/tinystr.o $(S)/support/tinystr.cc
 
-$(B)/logging.o: $(S)/support/logging.cpp 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cpp
+$(B)/logging.o: $(S)/support/logging.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc

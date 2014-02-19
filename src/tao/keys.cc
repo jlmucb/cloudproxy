@@ -714,10 +714,13 @@ static void SetX509NameDetails(X509_NAME *name, const string &c,
   SetX509NameDetail(name, "CN", cn);
 }
 
-/// Add an extension to an openssl x509 structure.
+/// Prepare an X509 structure for signing by filling in version numbers, serial
+/// numbers, the subject key, and reasonable timestamps.
 /// @param x509 The certificate to modify. Must be non-null.
-/// @param nid The NID_* constant for this extension.
-/// @param val The string value to be added.
+/// @param version The x509 version number to set. Numbers are off-by-1, so for
+/// x509v3 use version=2, etc.
+/// @param serial The x509 serial number to set.
+/// @param The subject key to set.
 static bool PrepareX509(X509 *x509, int version, int serial,
                         EVP_PKEY *subject_key) {
   X509_set_version(x509, version);

@@ -501,11 +501,11 @@ bool eccTest() {
   R.m_bnZ->m_pValue[0] = 1ULL;
 
   ecAdd(P, Q, R);
-  P.printMe();
+  P.printMe(true);
   printf("+");
-  Q.printMe();
+  Q.printMe(true);
   printf("=");
-  R.printMe();
+  R.printMe(true);
 
   // E: y^2= x^3+4x+4 (mod 2773) 2(1,3)=(1771,705)
   printf("\n\nE: y^2= x^3+4x+4 (mod 2773) 2(1,3)=(1771,705)\n");
@@ -523,11 +523,11 @@ bool eccTest() {
 
   smallCurve.m_bnM->m_pValue[0] = 2773ULL;
   ecAdd(P, Q, R);
-  P.printMe();
+  P.printMe(true);
   printf("+");
-  Q.printMe();
+  Q.printMe(true);
   printf("=");
-  R.printMe();
+  R.printMe(true);
   printf("?=(%d,%d)\n", R.m_bnX->m_pValue[0], R.m_bnY->m_pValue[0]);
 
   bnum bnMult(1);
@@ -540,9 +540,9 @@ bool eccTest() {
   printf("\n");
   printNumberToConsole(bnMult);
   printf("*");
-  P.printMe();
+  P.printMe(true);
   printf("=");
-  R.printMe();
+  R.printMe(true);
 
   bnMult.m_pValue[0] = 2ULL;
 
@@ -553,9 +553,9 @@ bool eccTest() {
   printf("\n");
   printNumberToConsole(bnMult);
   printf("*");
-  P.printMe();
+  P.printMe(true);
   printf("=");
-  R.printMe();
+  R.printMe(true);
 #endif
 
   // initialize NIST curves
@@ -565,7 +565,7 @@ bool eccTest() {
   }
 
 #ifdef TEST
-  nist256curve.printMe();
+  nist256curve.printMe(true);
 #endif
   ECKey myKey(&nist256curve);
 
@@ -586,7 +586,7 @@ bool eccTest() {
     return false;
   }
 #ifdef TEST
-  myKey.printMe();
+  myKey.printMe(true);
 #endif
 
   bnum Message(6);
@@ -605,8 +605,8 @@ bool eccTest() {
     return false;
   }
   printf("Encrypted message: ");
-  R1.printMe();
-  R2.printMe();
+  R1.printMe(true);
+  R2.printMe(true);
   if (!ecDecrypt(myKey, R1, R2, decryptedMessage)) {
     printf("Cant ecDecrypt\n");
     return false;
@@ -819,7 +819,7 @@ bool keygenrestoretest() {
   }
 
   printf("keygenrestoretest:\n");
-  pKey->printMe();
+  pKey->printMe(true);
   printf("\n");
 
   char* szKey = pKey->SerializetoString();
@@ -842,7 +842,7 @@ bool keygenrestoretest() {
 
   printf("keygenrestoretest reprinting key:\n");
   fflush(stdout);
-  pKey->printMe();
+  pKey->printMe(true);
   printf("\n");
 
   return fRet;
@@ -930,7 +930,7 @@ bool monttests() {
     return false;
   }
 #ifdef TEST
-  pKey->printMe();
+  pKey->printMe(true);
   printf("\n");
 #endif
 
@@ -1701,7 +1701,7 @@ bool rsaTests() {
     return false;
   }
 #ifdef TEST
-  pKey->printMe();
+  pKey->printMe(true);
   printf("\n");
 #endif
 

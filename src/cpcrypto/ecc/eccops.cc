@@ -59,22 +59,40 @@ ECPoint::~ECPoint() {
 }
 
 #ifdef TEST
-void ECPoint::printMe() {
-  if (m_normalized)
-    LOG(INFO)<<"\nPoint normalized\n";
-  else
-    LOG(INFO)<<"\nPoint not normalized\n";
-  if (m_myCurve == NULL) LOG(INFO)<<"No curve set\n";
+void ECPoint::printMe(bool console) {
+  if(console) {
+    if (m_normalized)
+      printf("\nPoint normalized\n");
+    else
+      printf("\nPoint not normalized\n");
+    if (m_myCurve == NULL) printf("No curve set\n");
 
-  LOG(INFO)<<"X: ";
-  printNum(*m_bnX);
-  LOG(INFO)<<"\n";
-  LOG(INFO)<<"Y: ";
-  printNum(*m_bnY);
-  LOG(INFO)<<"\n";
-  LOG(INFO)<<"Z: ";
-  printNum(*m_bnZ);
-  LOG(INFO)<<"\n";
+    printf("X: ");
+    printNumberToConsole(*m_bnX);
+    printf("\n");
+    printf("Y: ");
+    printNumberToConsole(*m_bnY);
+    printf("\n");
+    printf("Z: ");
+    printNumberToConsole(*m_bnZ);
+    printf("\n");
+  } else {
+    if (m_normalized)
+      LOG(INFO)<<"\nPoint normalized\n";
+    else
+      LOG(INFO)<<"\nPoint not normalized\n";
+    if (m_myCurve == NULL) LOG(INFO)<<"No curve set\n";
+
+    LOG(INFO)<<"X: ";
+    printNum(*m_bnX);
+    LOG(INFO)<<"\n";
+    LOG(INFO)<<"Y: ";
+    printNum(*m_bnY);
+    LOG(INFO)<<"\n";
+    LOG(INFO)<<"Z: ";
+    printNum(*m_bnZ);
+    LOG(INFO)<<"\n";
+  }
   return;
 }
 #endif
@@ -121,44 +139,84 @@ ECurve::~ECurve() {
 }
 
 #ifdef TEST
-void ECurve::printMe() {
-  LOG(INFO)<<"\nCurve\n";
-  if (m_bnM != NULL) {
-    LOG(INFO)<<"M: ";
-    printNum(*m_bnM);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"M is not set\n";
-  if (m_bnA != NULL) {
-    LOG(INFO)<<"A: ";
-    printNum(*m_bnA);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"A is not set\n";
-  if (m_bnB != NULL) {
-    LOG(INFO)<<"B: ";
-    printNum(*m_bnB);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"B is not set\n";
-  if (m_bnDisc != NULL) {
-    LOG(INFO)<<"Disc: ";
-    printNum(*m_bnDisc);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"Disc is not set\n";
-  if (m_bnGx != NULL) {
-    LOG(INFO)<<"Gx: ";
-    printNum(*m_bnGx);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"Gx is not set\n";
-  if (m_bnGy != NULL) {
-    LOG(INFO)<<"Gy: ";
-    printNum(*m_bnGy);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"Gy is not set\n";
+void ECurve::printMe(bool console) {
+  if(console) {
+    printf("\nCurve\n");
+    if (m_bnM != NULL) {
+      printf("M: ");
+      printNumberToConsole(*m_bnM);
+      printf("\n");
+    } else
+      printf("M is not set\n");
+    if (m_bnA != NULL) {
+      printf("A: ");
+      printNumberToConsole(*m_bnA);
+      printf("\n");
+    } else
+      printf("A is not set\n");
+    if (m_bnB != NULL) {
+      printf("B: ");
+      printNumberToConsole(*m_bnB);
+      printf("\n");
+    } else
+      printf("B is not set\n");
+    if (m_bnDisc != NULL) {
+      printf("Disc: ");
+      printNumberToConsole(*m_bnDisc);
+      printf("\n");
+    } else
+      printf("Disc is not set\n");
+    if (m_bnGx != NULL) {
+      printf("Gx: ");
+      printNumberToConsole(*m_bnGx);
+      printf("\n");
+    } else
+      printf("Gx is not set\n");
+    if (m_bnGy != NULL) {
+      printf("Gy: ");
+      printNumberToConsole(*m_bnGy);
+      printf("\n");
+    } else
+      printf("Gy is not set\n");
+  } else {
+    LOG(INFO)<<"\nCurve\n";
+    if (m_bnM != NULL) {
+      LOG(INFO)<<"M: ";
+      printNum(*m_bnM);
+      LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"M is not set\n";
+    if (m_bnA != NULL) {
+      LOG(INFO)<<"A: ";
+      printNum(*m_bnA);
+      LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"A is not set\n";
+    if (m_bnB != NULL) {
+      LOG(INFO)<<"B: ";
+       printNum(*m_bnB);
+       LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"B is not set\n";
+    if (m_bnDisc != NULL) {
+      LOG(INFO)<<"Disc: ";
+      printNum(*m_bnDisc);
+      LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"Disc is not set\n";
+    if (m_bnGx != NULL) {
+      LOG(INFO)<<"Gx: ";
+      printNum(*m_bnGx);
+      LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"Gx is not set\n";
+    if (m_bnGy != NULL) {
+      LOG(INFO)<<"Gy: ";
+      printNum(*m_bnGy);
+      LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"Gy is not set\n";
+  }
 }
 #endif
 
@@ -293,33 +351,63 @@ ECKey::~ECKey() {
 }
 
 #ifdef TEST
-void ECKey::printMe() {
-  if (m_publicValid)
-    LOG(INFO)<<"\nEKey public key valid\n";
-  else
-    LOG(INFO)<<"\nEKey public not valid\n";
-  if (m_myCurve == NULL)
-    LOG(INFO)<<"Curve not set\n";
-  else
-    m_myCurve->printMe();
-  LOG(INFO)<<"sizejunk: " << m_sizejunk <<"\n";
-  if (m_secret != NULL) {
-    LOG(INFO)<<"secret: ";
-    printNum(*m_secret);
-    LOG(INFO)<<"\n";
-  } else
-    LOG(INFO)<<"secret is not set\n";
-  if (m_Public == NULL)
-    LOG(INFO)<<"base not set\n";
-  else {
-    LOG(INFO)<<"Base:";
-    m_Public->printMe();
-  }
-  if (m_G == NULL)
-    LOG(INFO)<<"Generator not set\n";
-  else {
-    LOG(INFO)<<"Generator:";
-    m_G->printMe();
+void ECKey::printMe(bool console) {
+  if(console) {
+    if (m_publicValid)
+      printf("\nEKey public key valid\n");
+    else
+      printf("\nEKey public not valid\n");
+    if (m_myCurve == NULL)
+      printf("Curve not set\n");
+    else
+      m_myCurve->printMe(console);
+    printf("sizejunk: %d\n", m_sizejunk);
+    if (m_secret != NULL) {
+      printf("secret: ");
+      printNumberToConsole(*m_secret);
+      printf("\n");
+    } else
+      printf("secret is not set\n");
+    if (m_Public == NULL)
+      printf("base not set\n");
+    else {
+      printf("Base:");
+      m_Public->printMe(console);
+    }
+    if (m_G == NULL)
+      printf("Generator not set\n");
+    else {
+      printf("Generator:");
+      m_G->printMe(console);
+    }
+  } else {
+    if (m_publicValid)
+      LOG(INFO)<<"\nEKey public key valid\n";
+    else
+      LOG(INFO)<<"\nEKey public not valid\n";
+    if (m_myCurve == NULL)
+      LOG(INFO)<<"Curve not set\n";
+    else
+      m_myCurve->printMe(console);
+    LOG(INFO)<<"sizejunk: " << m_sizejunk <<"\n";
+    if (m_secret != NULL) {
+      LOG(INFO)<<"secret: ";
+      printNum(*m_secret);
+      LOG(INFO)<<"\n";
+    } else
+      LOG(INFO)<<"secret is not set\n";
+    if (m_Public == NULL)
+      LOG(INFO)<<"base not set\n";
+    else {
+      LOG(INFO)<<"Base:";
+      m_Public->printMe(console);
+    }
+    if (m_G == NULL)
+      LOG(INFO)<<"Generator not set\n";
+    else {
+      LOG(INFO)<<"Generator:";
+      m_G->printMe(console);
+    }
   }
 }
 #endif

@@ -41,7 +41,7 @@ class ECurve {
   ~ECurve();
 
 #ifdef TEST
-  void printMe();
+  void printMe(bool console=false);
 #endif
 
   bool isnonSingular();
@@ -63,7 +63,7 @@ class ECPoint {
   ~ECPoint();
 
 #ifdef TEST
-  void printMe();
+  void printMe(bool console=false);
 #endif
 
   bool makeZero();
@@ -88,7 +88,7 @@ class ECKey {
   ~ECKey();
 
 #ifdef TEST
-  void printMe();
+  void printMe(bool console=false);
 #endif
 
   bool makePrivateKey();

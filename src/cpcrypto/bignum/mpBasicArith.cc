@@ -143,6 +143,47 @@ void printNum(bnum& bnA, bool fFull = false) {
   return;
 }
 
+//  Function: void printNumberToConsole
+//  Arguments:
+//      (bNum bnA)
+void printNumberToConsole(bnum& bnA, bool fFull = false) {
+  i32 sizeA = bnA.mpSize();
+  bool fSignA = bnA.mpSign();
+  u64* puN = NULL;
+  i32 lA;
+
+  if (sizeA <= 0) {
+    printf("Bad number, no extent\n");
+    return;
+  }
+
+  if (fSignA)
+    printf("[-");
+  else
+    printf("[+");
+
+  if (fFull) {
+    puN = bnA.m_pValue + sizeA - 1;
+    while (sizeA-- > 0) {
+      printf(" 0x%016lx", *((unsigned long*)puN));
+      puN--;
+    }
+  } else {
+    lA = mpWordsinNum(sizeA, bnA.m_pValue);
+    if (lA <= 0) lA = 1;
+    puN = bnA.m_pValue + lA - 1;
+    while (lA-- > 0) {
+      printf(" 0x%016lx", *((unsigned long*)puN));
+      puN--;
+    }
+  }
+
+  printf("]");
+  return;
+}
+
+// ----------------------------------------------------------------------------
+
 // ----------------------------------------------------------------------------
 
 //  Data:

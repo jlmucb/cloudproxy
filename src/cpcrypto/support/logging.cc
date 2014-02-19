@@ -37,68 +37,33 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
+#include <ostream>
+#include <iostream>
 #include "common.h"
 #include "logging.h"
+using namespace std;
 
 // ------------------------------------------------------------------------------
 
-extern FILE* g_logFile;
 
 #ifndef GLOGENABLED
 std::ostream *logFile= NULL;
 #endif
 
-
-// ------------------------------------------------------------------------------
-
-FILE* g_logFile = stdout;
-
-#ifdef __FLUSHIO__
-
-int g_ithread = -1;
-pthread_t g_flushIOthread;
-
-void* flushIO(void* ptr) {
-  for (;;) {
-    sleep(5);
-    fflush(g_logFile);
-  }
-
-  // unreachable, but eliminates a useless warning
-  return NULL;
-}
-#endif
-
-bool initLog(const char* szLogFile) {
+bool initLog(const char* logfilename) {
 
 #ifndef GLOGENABLED
-  logFile= new std::ofstream((char*)"/tmp/logfile");
-#endif
-
-  if (szLogFile == NULL) {
-    g_logFile = stdout;
+  if (logfilename== NULL) {
+    logFile= &cout;
     return true;
   }
-
-  g_logFile = fopen(szLogFile, "w+");
-  if (g_logFile == NULL) return false;
-
-#ifdef __FLUSHIO__
-  memset(&g_flushIOthread, 0, sizeof(pthread_t));
-  g_ithread = pthread_create(&g_flushIOthread, NULL, flushIO, NULL);
-  if (g_ithread != 0) {
-    LOG(ERROR)<<"initLog: Cant create flush thread\n";
-    LOG(ERROR)<<"errno: "<< errno <<"\n";
-  }
+  else
+    logFile= new std::ofstream((char*)logfilename);
 #endif
   return true;
 }
 
 void closeLog() {
-  if (g_logFile != stdout) {
-    fclose(g_logFile);
-    g_logFile = NULL;
-  }
 }
 
 #define MAXBYTESTRING 2048
@@ -120,6 +85,18 @@ void PrintBytes(const char* message, byte* pbData, int iSize, int col) {
   n= strlen(byte_string);
   sprintf(&byte_string[n], "\n");
   LOG(INFO)<<byte_string;
+}
+
+void PrintBytesToConsole(const char* message, byte* pbData, int iSize, int col) {
+  int i;
+  printf("%s\n", message);
+  for (i = 0; i < iSize; i++) {
+    printf("%02x", pbData[i]);
+    if ((i % col) == (col - 1)) {
+      printf("\n");
+    }
+  }
+  printf("\n");
 }
 
 // ------------------------------------------------------------------------------------

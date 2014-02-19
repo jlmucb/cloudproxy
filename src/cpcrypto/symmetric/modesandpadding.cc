@@ -133,7 +133,6 @@ bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
 
 #ifdef CRYPTOTEST
   PrintBytes("Padded block\n", rgSig, sigSize);
-  fflush(g_logFile);
 #endif
   return true;
 }
@@ -151,7 +150,6 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
   LOG(INFO) << "emsapkcsverify, hash type " << hashType << "blocksize "<< sigSize <<"\n";
   PrintBytes("Padded block\n", rgSig, sigSize);
   PrintBytes("Hash\n", rgHash, 32);
-  fflush(g_logFile);
 #endif
   switch (hashType) {
     case SHA256HASH:
@@ -223,7 +221,6 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
 #ifdef CRYPTOTEST
     PrintBytes("decoded hash\n", &rgSig[n], hashLen);
     PrintBytes("computed hash\n", rgHash, hashLen);
-    fflush(g_logFile);
 #endif
     return false;
   }
@@ -525,7 +522,6 @@ bool cbc::init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key,
 int cbc::getMac(int size, byte* puMac) {
 #ifdef CRYPTOTEST
   LOG(INFO)<<"cbc::getMac\n";
-  fflush(g_logFile);
 #endif
   memcpy(puMac, m_rguHMACComputed, SHA256_DIGESTSIZE_BYTES);
   return SHA256_DIGESTSIZE_BYTES;
@@ -536,7 +532,6 @@ void cbc::nextMac(byte* puA)
     {
 #ifdef CRYPTOTEST
   PrintBytes("cbc::nextMac: ", puA, m_iBlockSize);
-  fflush(g_logFile);
 #endif
   m_ohMac.Update(puA, m_iBlockSize);
 }
@@ -547,7 +542,6 @@ bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut) {
 #ifdef CRYPTOTEST
   LOG(INFO) <<"cbc::nextPlainBlockIn\n";
   PrintBytes("In: ", puIn, 16);
-  fflush(g_logFile);
 #endif
   inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
   m_oAESEnc.Encrypt(oldX, puOut);
@@ -611,7 +605,6 @@ int cbc::lastPlainBlockIn(int size, byte* puIn, byte* puOut) {
 
 #ifdef CRYPTOTEST
   PrintBytes("cbc::lastPlainBlockIn\n", puIn, size);
-  fflush(g_logFile);
 #endif
   memcpy(m_rguLastBlocks, puIn, size);
   // pad
@@ -636,7 +629,6 @@ int cbc::lastPlainBlockIn(int size, byte* puIn, byte* puOut) {
 #ifdef CRYPTOTEST
   PrintBytes("cbc::lastPlainBlockIn, mac: \n", m_rguHMACComputed,
              SHA256_DIGESTSIZE_BYTES);
-  fflush(g_logFile);
 #endif
   // Note that the HMAC (whether encrypted or not) is returned as part of cipher
   // stream
@@ -651,7 +643,6 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
 #ifdef CRYPTOTEST
   PrintBytes("cbc::lastCipherBlockIn: ", puIn, size);
-  fflush(g_logFile);
 #endif
 
   if (!m_fIVValid) {
@@ -671,7 +662,6 @@ int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
 
 #ifdef CRYPTOTEST
   PrintBytes("last cipher block decoded: ", m_rguLastBlocks, m_iBlockSize);
-  fflush(g_logFile);
 #endif
 
 #ifdef MACTHENENCRYPT  // should never do this

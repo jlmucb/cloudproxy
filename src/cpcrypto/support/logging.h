@@ -49,11 +49,10 @@ extern std::ostream *logFile;
 #define LOG(X) (*logFile)
 #endif
 
-extern FILE* g_logFile;
-
-bool initLog(const char* szLogFile);
+bool initLog(const char* );
 void closeLog();
-void PrintBytes(const char* szMsg, byte* pbData, int iSize, int col = 32);
+void PrintBytes(const char* message, byte* pbData, int iSize, int col = 32);
+void PrintBytesToConsole(const char* message, byte* pbData, int iSize, int col);
 
 #endif
 

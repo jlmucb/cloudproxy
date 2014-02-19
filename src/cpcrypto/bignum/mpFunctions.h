@@ -36,6 +36,7 @@ i32 MaxBit(u64 uW);
 i32 mpBitsinNum(i32 iSize, u64* rguN);
 bool IsBitPositionNonZero(bnum& bnN, i32 iPos);
 void printNum(bnum& bnA, bool fFull = false);
+void printNumberToConsole(bnum& bnA, bool fFull = false);
 void initBigNum();
 
 u64 mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR);

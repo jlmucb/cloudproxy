@@ -162,13 +162,13 @@ bool MontEncryptTest(RSAKey* pKey, int numBlocks, bool fEncrypt) {
     }
 #endif
     printf("\nIn       : ");
-    printNum(bnIn);
+    printNumberToConsole(bnIn);
     printf("\n");
     printf("Encrypted: ");
-    printNum(bnEncrypted);
+    printNumberToConsole(bnEncrypted);
     printf("\n");
     printf("Decrypted: ");
-    printNum(bnDecrypted);
+    printNumberToConsole(bnDecrypted);
     printf("\n\n");
   } else if (fEncrypt) {
     for (i = 0; i < numBlocks; i++) {
@@ -387,22 +387,22 @@ bool RSASanityCheck(RSAKey* key, int file, bool fPrint, bool fFast) {
     }
     printf("mpRSACalculateFastRSAParameters\n");
     printf("P  : ");
-    printNum(*(key->m_pbnP));
+    printNumberToConsole(*(key->m_pbnP));
     printf("\n");
     printf("PM1: ");
-    printNum(bnPM1);
+    printNumberToConsole(bnPM1);
     printf("\n");
     printf("DP : ");
-    printNum(bnDP);
+    printNumberToConsole(bnDP);
     printf("\n");
     printf("Q  : ");
-    printNum(*(key->m_pbnQ));
+    printNumberToConsole(*(key->m_pbnQ));
     printf("\n");
     printf("QM1: ");
-    printNum(bnQM1);
+    printNumberToConsole(bnQM1);
     printf("\n");
     printf("DQ : ");
-    printNum(bnDQ);
+    printNumberToConsole(bnDQ);
     printf("\n");
 #ifdef MONTGOMERYENABLED
     if (!mpMontInit(r, *(key->m_pbnP), bnPPrime, bnRmodP, bnRsqmodP)) {
@@ -420,13 +420,13 @@ bool RSASanityCheck(RSAKey* key, int file, bool fPrint, bool fFast) {
 #endif
     printf("RSA sanity check, block size is %d\n", blockSize);
   printf("M  : ");
-  printNum(*(key->m_pbnM));
+  printNumberToConsole(*(key->m_pbnM));
   printf("\n");
   printf("E  : ");
-  printNum(*(key->m_pbnE));
+  printNumberToConsole(*(key->m_pbnE));
   printf("\n");
   printf("D  : ");
-  printNum(*(key->m_pbnD));
+  printNumberToConsole(*(key->m_pbnD));
   printf("\n");
 
   time(&start);
@@ -494,13 +494,13 @@ bool RSASanityCheck(RSAKey* key, int file, bool fPrint, bool fFast) {
         printf("\nPASSED\n");
       }
       printf("Message\n");
-      printNum(bnMsg);
+      printNumberToConsole(bnMsg);
       printf("\n");
       printf("Encrypted\n");
-      printNum(bnEncrypted);
+      printNumberToConsole(bnEncrypted);
       printf("\n");
       printf("Decrypted\n");
-      printNum(bnDecrypted);
+      printNumberToConsole(bnDecrypted);
       printf("\n");
     }
   }

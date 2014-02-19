@@ -21,12 +21,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <iostream>
 
 #include "common.h"
 #include "aes.h"
 #include "algs.h"
 #include "logging.h"
 #include "modesandpadding.h"
+using namespace std;
 
 // ----------------------------------------------------------------------------
 
@@ -174,6 +176,7 @@ int main(int an, char** av) {
 
   // init logging
   initLog("aestest.log");
+  (*logFile)<<"aestest starting\n";
 
   // Test 1
   PrintBytes("aes128 key: ", (byte*)aes128EncTestKey1, 16);

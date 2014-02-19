@@ -12,9 +12,9 @@ ifndef TARGET_MACHINE_TYPE
 TARGET_MACHINE_TYPE= x64
 endif
 
-# compile cloudproxy crypto library
+# compile aesspeedtest
 mainsrc=        $(S)
-B=              $(E)/cpcryptolibobjects
+B=              $(E)/aesspeedtestobjects
 INCLUDES=       -I$(S) -I$(S)/bignum -I$(S)/symmetric -I$(S)/ecc \
                 -I$(S)/support -I$(s)/Test 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG

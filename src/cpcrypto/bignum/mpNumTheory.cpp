@@ -17,7 +17,6 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 //
 //  Multiprecision arithmetic
 //                GCD, Generate Primes, Primality Testing, Strong Primes
@@ -26,9 +25,9 @@
 //              Knuth, SemiNumerical Algorithms
 //              Menzes, Handbook of Applied Cryptography
 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <fcntl.h> 
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
@@ -37,12 +36,11 @@
 #include "bignum.h"
 #include "mpFunctions.h"
 #include "logging.h"
-#ifdef  UNIXRANDBITS
+#ifdef UNIXRANDBITS
 extern bool getCryptoRandom(i32 numBits, byte* rguBits);
 #else
 #include "jlmcrypto.h"
 #endif
-
 
 // ---------------------------------------------------------------------------------
 
@@ -50,110 +48,96 @@ extern bool getCryptoRandom(i32 numBits, byte* rguBits);
 //          Number Theoretic Operations
 //
 
-inline u64 bottomMask64(int numBits)
-{
-    u64 uMask= (u64) (-1);
+inline u64 bottomMask64(int numBits) {
+  u64 uMask = (u64)(-1);
 
-    uMask<<= (NUMBITSINU64-numBits);
-    uMask>>= (NUMBITSINU64-numBits);
-    return uMask;
+  uMask <<= (NUMBITSINU64 - numBits);
+  uMask >>= (NUMBITSINU64 - numBits);
+  return uMask;
 }
 
+void shiftupinplace(bnum& bnA, i32 numShiftBits) {
+  int j;
+  int wordShift = (numShiftBits >> 6);
+  int bitShift = numShiftBits & 0x3f;
+  int bottomShift = NUMBITSINU64 - bitShift;
+  int lA = mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+  u64* rgA = bnA.m_pValue;
+  u64 c;
 
-void shiftupinplace(bnum& bnA, i32 numShiftBits)
-{
-    int     j;
-    int     wordShift= (numShiftBits>>6);
-    int     bitShift= numShiftBits&0x3f;
-    int     bottomShift= NUMBITSINU64-bitShift;
-    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    u64*    rgA= bnA.m_pValue;
-    u64     c;
-
-    // Shift partial word first if necessary
-    if(bitShift>0) {
-        for(j=(lA-1);j>=0;j--) {
-            c= rgA[j];
-            rgA[j+1]|= (c>>bottomShift);
-            rgA[j]= (c<<bitShift);
-        }
-        lA++;
+  // Shift partial word first if necessary
+  if (bitShift > 0) {
+    for (j = (lA - 1); j >= 0; j--) {
+      c = rgA[j];
+      rgA[j + 1] |= (c >> bottomShift);
+      rgA[j] = (c << bitShift);
     }
+    lA++;
+  }
 
-    // Shift words
-    if(wordShift>0) {
-        for(j=(lA-1);j>=0;j--) {
-            rgA[j+wordShift]= rgA[j];
-        }
-        for(j=0;j<wordShift;j++)
-            rgA[j]= 0ULL;
+  // Shift words
+  if (wordShift > 0) {
+    for (j = (lA - 1); j >= 0; j--) {
+      rgA[j + wordShift] = rgA[j];
     }
-    return;
+    for (j = 0; j < wordShift; j++) rgA[j] = 0ULL;
+  }
+  return;
 }
 
+void shiftdowninplace(bnum& bnA, i32 numShiftBits) {
+  int j;
+  int wordShift = (numShiftBits >> 6);
+  int bitShift = numShiftBits & 0x3f;
+  int bottomShift = NUMBITSINU64 - bitShift;
+  int lA = mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+  u64* rgA = bnA.m_pValue;
+  u64 c;
 
-void shiftdowninplace(bnum& bnA, i32 numShiftBits)
-{
-    int     j;
-    int     wordShift= (numShiftBits>>6);
-    int     bitShift= numShiftBits&0x3f;
-    int     bottomShift= NUMBITSINU64-bitShift;
-    int     lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-    u64*    rgA= bnA.m_pValue;
-    u64     c;
-
-    // Shift words
-    if(wordShift>0) {
-        if(wordShift>=lA) {
-            for(j=0;j<lA;j++)
-                rgA[j]= 0ULL;
-            return;
-        }
-        for(j=0;j<(lA-wordShift); j++)
-            rgA[j]= rgA[j+wordShift];
-        for(j=(lA-wordShift);j<lA;j++)
-            rgA[j]= 0ULL;
-        lA-= wordShift;
+  // Shift words
+  if (wordShift > 0) {
+    if (wordShift >= lA) {
+      for (j = 0; j < lA; j++) rgA[j] = 0ULL;
+      return;
     }
+    for (j = 0; j < (lA - wordShift); j++) rgA[j] = rgA[j + wordShift];
+    for (j = (lA - wordShift); j < lA; j++) rgA[j] = 0ULL;
+    lA -= wordShift;
+  }
 
-    // Shift partial words
-    if(bitShift>0) {
-        for(j=0; j<(lA-1); j++) {
-            c= rgA[j+1];
-            rgA[j]>>= bitShift;
-            rgA[j]|= (c<<bottomShift);
-        }
-        rgA[lA-1]>>= bitShift;
+  // Shift partial words
+  if (bitShift > 0) {
+    for (j = 0; j < (lA - 1); j++) {
+      c = rgA[j + 1];
+      rgA[j] >>= bitShift;
+      rgA[j] |= (c << bottomShift);
     }
-    return;
+    rgA[lA - 1] >>= bitShift;
+  }
+  return;
 }
-
 
 //  Function: mpShiftInPlace
 //  Arguments:
 //      bnum bnA
 //      numShiftBits>0 means shift increases value
-bool mpShiftInPlace(bnum& bnA, int numShiftBits)
-{
-    i32     sizeA= bnA.mpSize();
-    i32     lA= mpWordsinNum(sizeA, bnA.m_pValue);
+bool mpShiftInPlace(bnum& bnA, int numShiftBits) {
+  i32 sizeA = bnA.mpSize();
+  i32 lA = mpWordsinNum(sizeA, bnA.m_pValue);
 
-    if(numShiftBits==0)
-        return true;
-    // Enough room?
-    if((lA+((numShiftBits+NUMBITSINU64MINUS1)/NUMBITSINU64))>sizeA)
-        return false;
+  if (numShiftBits == 0) return true;
+  // Enough room?
+  if ((lA + ((numShiftBits + NUMBITSINU64MINUS1) / NUMBITSINU64)) > sizeA)
+    return false;
 
-    if(numShiftBits>0) {
-        shiftupinplace(bnA, numShiftBits);
-    }
-    else {
-        shiftdowninplace(bnA, -numShiftBits);
-    }
+  if (numShiftBits > 0) {
+    shiftupinplace(bnA, numShiftBits);
+  } else {
+    shiftdowninplace(bnA, -numShiftBits);
+  }
 
-    return true;
+  return true;
 }
-
 
 //  Function: bool mpExtendedGCD
 //  Arguments:
@@ -164,149 +148,147 @@ bool mpShiftInPlace(bnum& bnA, int numShiftBits)
 //      OUT bnum bnG
 //  Description:
 //      Compute x, y, g:  ax+by=g=(x,y)
-bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG)
+bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG) {
+  int iPrior = 0;
+  int iCurrent = 1;
+  int iNext = 2;
+  bool fRet = true;
+  int size = 0;
+  int compare;
+  int i;
 
-{
-    int     iPrior= 0;
-    int     iCurrent= 1;
-    int     iNext= 2;
-    bool    fRet= true;
-    int     size= 0;
-    int     compare;
-    int     i;
+  if (bnA.mpSign() || bnB.mpSign()) {
+    fprintf(g_logFile, "mpExtendedGCD: negative arguments forbidden\n");
+    return false;
+  }
 
-    if(bnA.mpSign() || bnB.mpSign()) {
-        fprintf(g_logFile, "mpExtendedGCD: negative arguments forbidden\n");
-        return false;       
-    }
+  bnum* rgbnR[3] = {NULL, NULL, NULL};
+  bnum* rgbnX[3] = {NULL, NULL, NULL};
+  bnum* rgbnY[3] = {NULL, NULL, NULL};
+  bnum* pbnT = NULL;
+  bnum* pbnQ = NULL;
 
-    bnum*   rgbnR[3]= {NULL, NULL, NULL};
-    bnum*   rgbnX[3]= {NULL, NULL, NULL};
-    bnum*   rgbnY[3]= {NULL, NULL, NULL};
-    bnum*   pbnT= NULL;
-    bnum*   pbnQ= NULL;
-
-    size= bnA.mpSize();
-    if(bnB.mpSize()>size)
-        size= bnB.mpSize();
-    size= 2*size+1;
+  size = bnA.mpSize();
+  if (bnB.mpSize() > size) size = bnB.mpSize();
+  size = 2 * size + 1;
 
 #ifdef ARITHTEST
-    fprintf(g_logFile, "mpExtendedGCD: size %d\n", size);
+  fprintf(g_logFile, "mpExtendedGCD: size %d\n", size);
 #endif
 
-    for(i=0; i<3;i++) {
-        rgbnR[i]= new bnum(size);
-        if(rgbnR[i]==NULL) {
-            fRet= false;
-            goto done;
-        }
-        rgbnX[i]= new bnum(size);
-        if(rgbnX[i]==NULL) {
-            fRet= false;
-            goto done;
-        }
-        rgbnY[i]= new bnum(size);
-        if(rgbnY[i]==NULL) {
-            fRet= false;
-            goto done;
-        }
+  for (i = 0; i < 3; i++) {
+    rgbnR[i] = new bnum(size);
+    if (rgbnR[i] == NULL) {
+      fRet = false;
+      goto done;
     }
-    pbnT= new bnum(size);
-    if(pbnT==NULL) {
-        fRet= false;
-        goto done;
+    rgbnX[i] = new bnum(size);
+    if (rgbnX[i] == NULL) {
+      fRet = false;
+      goto done;
     }
-    pbnQ= new bnum(size);
-    if(pbnQ==NULL) {
-        fRet= false;
-        goto done;
+    rgbnY[i] = new bnum(size);
+    if (rgbnY[i] == NULL) {
+      fRet = false;
+      goto done;
     }
+  }
+  pbnT = new bnum(size);
+  if (pbnT == NULL) {
+    fRet = false;
+    goto done;
+  }
+  pbnQ = new bnum(size);
+  if (pbnQ == NULL) {
+    fRet = false;
+    goto done;
+  }
 
-    compare= mpCompare(bnA, bnB);
-    if(compare!=s_isLessThan) {
-        bnA.mpCopyNum(*rgbnR[iPrior]);
-        bnB.mpCopyNum(*rgbnR[iCurrent]);
-        g_bnOne.mpCopyNum(*rgbnX[iPrior]);      // Coeff of A
-        g_bnZero.mpCopyNum(*rgbnY[iPrior]);     // Coeff of B
-        g_bnZero.mpCopyNum(*rgbnX[iCurrent]);
-        g_bnOne.mpCopyNum(*rgbnY[iCurrent]);
-    }
-    else {
-        bnB.mpCopyNum(*rgbnR[iPrior]);
-        bnA.mpCopyNum(*rgbnR[iCurrent]);
-        g_bnZero.mpCopyNum(*rgbnX[iPrior]);      // Coeff of A
-        g_bnOne.mpCopyNum(*rgbnY[iPrior]);       // Coeff of B
-        g_bnOne.mpCopyNum(*rgbnX[iCurrent]);
-        g_bnZero.mpCopyNum(*rgbnY[iCurrent]);
-    }
+  compare = mpCompare(bnA, bnB);
+  if (compare != s_isLessThan) {
+    bnA.mpCopyNum(*rgbnR[iPrior]);
+    bnB.mpCopyNum(*rgbnR[iCurrent]);
+    g_bnOne.mpCopyNum(*rgbnX[iPrior]);   // Coeff of A
+    g_bnZero.mpCopyNum(*rgbnY[iPrior]);  // Coeff of B
+    g_bnZero.mpCopyNum(*rgbnX[iCurrent]);
+    g_bnOne.mpCopyNum(*rgbnY[iCurrent]);
+  } else {
+    bnB.mpCopyNum(*rgbnR[iPrior]);
+    bnA.mpCopyNum(*rgbnR[iCurrent]);
+    g_bnZero.mpCopyNum(*rgbnX[iPrior]);  // Coeff of A
+    g_bnOne.mpCopyNum(*rgbnY[iPrior]);   // Coeff of B
+    g_bnOne.mpCopyNum(*rgbnX[iCurrent]);
+    g_bnZero.mpCopyNum(*rgbnY[iCurrent]);
+  }
 
-    //  If a>=b, a= bq+r, r= a-bq
-    //          aCoeff          bCoeff
-    //  r[0]    1               0           (a)
-    //  r[1]    0               1           (b)
-    //  r[2]    r[0]-qr[1]      r[0]-qr[1]  (r)
-    //  recurse
-    //  Example at r[2]
-    //  r[2]    1               -q
-    for(;;) {
-        // Rprior= Q Rcurrent + Rnext
+  //  If a>=b, a= bq+r, r= a-bq
+  //          aCoeff          bCoeff
+  //  r[0]    1               0           (a)
+  //  r[1]    0               1           (b)
+  //  r[2]    r[0]-qr[1]      r[0]-qr[1]  (r)
+  //  recurse
+  //  Example at r[2]
+  //  r[2]    1               -q
+  for (;;) {
+// Rprior= Q Rcurrent + Rnext
 #ifdef ARITHTEST
-        fprintf(g_logFile, "mpExtendedGCD, PriorR: ");
-        printNum(*rgbnR[iPrior]);fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "mpExtendedGCD, CurrentR: ");
-        printNum(*rgbnR[iCurrent]);fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "mpExtendedGCD, PriorR: ");
+    printNum(*rgbnR[iPrior]);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "mpExtendedGCD, CurrentR: ");
+    printNum(*rgbnR[iCurrent]);
+    fprintf(g_logFile, "\n");
 #endif
-        if(!mpUDiv(*rgbnR[iPrior], *rgbnR[iCurrent], *pbnQ, *rgbnR[iNext])) {
-            fprintf(g_logFile, "mpExtendedGCD: bad division\n");
-            fRet= false;
-            goto done;
-        }
-        if(rgbnR[iNext]->mpIsZero())
-            break;
-        mpMult(*pbnQ,*rgbnX[iCurrent], *pbnT);
-        mpSub(*rgbnX[iPrior], *pbnT, *rgbnX[iNext]);
-        mpMult(*pbnQ,*rgbnY[iCurrent], *pbnT);
-        mpSub(*rgbnY[iPrior], *pbnT, *rgbnY[iNext]);
-        iPrior= (iPrior+1)%3; iCurrent= (iCurrent+1)%3; iNext= (iNext+1)%3;
+    if (!mpUDiv(*rgbnR[iPrior], *rgbnR[iCurrent], *pbnQ, *rgbnR[iNext])) {
+      fprintf(g_logFile, "mpExtendedGCD: bad division\n");
+      fRet = false;
+      goto done;
     }
+    if (rgbnR[iNext]->mpIsZero()) break;
+    mpMult(*pbnQ, *rgbnX[iCurrent], *pbnT);
+    mpSub(*rgbnX[iPrior], *pbnT, *rgbnX[iNext]);
+    mpMult(*pbnQ, *rgbnY[iCurrent], *pbnT);
+    mpSub(*rgbnY[iPrior], *pbnT, *rgbnY[iNext]);
+    iPrior = (iPrior + 1) % 3;
+    iCurrent = (iCurrent + 1) % 3;
+    iNext = (iNext + 1) % 3;
+  }
 
 done:
-    if(fRet) {
-        rgbnX[iCurrent]->mpCopyNum(bnX);
-        rgbnY[iCurrent]->mpCopyNum(bnY);
-        rgbnR[iCurrent]->mpCopyNum(bnG);
-    }
+  if (fRet) {
+    rgbnX[iCurrent]->mpCopyNum(bnX);
+    rgbnY[iCurrent]->mpCopyNum(bnY);
+    rgbnR[iCurrent]->mpCopyNum(bnG);
+  }
 
-    for(i=0; i<3;i++) {
-        if(rgbnR[i]!=NULL) {
-            delete rgbnR[i];
-            rgbnR[i]= NULL;
-        }
-        if(rgbnX[i]!=NULL) {
-            delete rgbnX[i];
-            rgbnX[i]= NULL;
-        }
-        if(rgbnY[i]!=NULL) {
-            delete rgbnY[i];
-            rgbnY[i]= NULL;
-        }
+  for (i = 0; i < 3; i++) {
+    if (rgbnR[i] != NULL) {
+      delete rgbnR[i];
+      rgbnR[i] = NULL;
     }
-    if(pbnT!=NULL) {
-        delete pbnT;
-        pbnT= NULL;
+    if (rgbnX[i] != NULL) {
+      delete rgbnX[i];
+      rgbnX[i] = NULL;
     }
-    if(pbnQ!=NULL) {
-        delete pbnQ;
-        pbnQ= NULL;
+    if (rgbnY[i] != NULL) {
+      delete rgbnY[i];
+      rgbnY[i] = NULL;
     }
-    return fRet;
+  }
+  if (pbnT != NULL) {
+    delete pbnT;
+    pbnT = NULL;
+  }
+  if (pbnQ != NULL) {
+    delete pbnQ;
+    pbnQ = NULL;
+  }
+  return fRet;
 }
-
 
 //  Function: bool mpCRT
 //  Arguments:
-//      IN  bnum  bnA1 
+//      IN  bnum  bnA1
 //      IN  bnum  bnM1
 //      IN  bnum  bnA2
 //      IN  bnum  bnM2
@@ -316,104 +298,124 @@ done:
 //      (bnM1, bnM2)=1, Compute bnR: bnR= bnA1 (mod bnM1), bnR= bnA2 (mod bnM2).
 //      if M1 X1 + M2 X2 = 1, R= A2 A1 X1 + A1 M2 X2
 
-bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
-{
-    bool fRet= true;
-    int size= bnM1.mpSize()+1;
-    if(bnM2.mpSize()>=size)
-        size= bnM2.mpSize()+1;
-    size*= 2;
+bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR) {
+  bool fRet = true;
+  int size = bnM1.mpSize() + 1;
+  if (bnM2.mpSize() >= size) size = bnM2.mpSize() + 1;
+  size *= 2;
 
-    try {
-        bnum    bnX1(size);
-        bnum    bnX2(size);
-        bnum    bnG(size);
-        bnum    bnN(size);
-        bnum    bnT1(size);
-        bnum    bnT2(size);
-        bnum    bnT3(size);
-        bnum    bnT4(size);
+  try {
+    bnum bnX1(size);
+    bnum bnX2(size);
+    bnum bnG(size);
+    bnum bnN(size);
+    bnum bnT1(size);
+    bnum bnT2(size);
+    bnum bnT3(size);
+    bnum bnT4(size);
 
-        fRet= mpExtendedGCD(bnM1, bnM2, bnX1, bnX2, bnG);
-        if(!fRet)
-            throw("mpCRT: mpExtendedGCD failed\n");
-        if(mpCompare(bnG, g_bnOne)!=s_isEqualTo)
-            throw("mpCRT: GCD is not 1\n");
+    fRet = mpExtendedGCD(bnM1, bnM2, bnX1, bnX2, bnG);
+    if (!fRet) throw("mpCRT: mpExtendedGCD failed\n");
+    if (mpCompare(bnG, g_bnOne) != s_isEqualTo) throw("mpCRT: GCD is not 1\n");
 
-        if(!mpUMult(bnM1, bnM2, bnN)) 
-            throw("mpCRT: mpUMult failed\n");
+    if (!mpUMult(bnM1, bnM2, bnN)) throw("mpCRT: mpUMult failed\n");
 
 #ifdef ARITHTEST
-        mpMult(bnM1, bnX1, bnT1);
-        mpMult(bnM2, bnX2, bnT2);
-        mpAdd(bnT1,bnT2, bnT3);
-        printNum(bnM1); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, " *  \n"); 
-        printNum(bnX1); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, " +  \n"); 
-        printNum(bnM2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, " *  \n"); 
-        printNum(bnX2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, " =  \n"); 
-        printNum(bnT3); fprintf(g_logFile, "\n");
+    mpMult(bnM1, bnX1, bnT1);
+    mpMult(bnM2, bnX2, bnT2);
+    mpAdd(bnT1, bnT2, bnT3);
+    printNum(bnM1);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, " *  \n");
+    printNum(bnX1);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, " +  \n");
+    printNum(bnM2);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, " *  \n");
+    printNum(bnX2);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, " =  \n");
+    printNum(bnT3);
+    fprintf(g_logFile, "\n");
 #endif
 
-        while(bnX1.mpSign())
-            mpModNormalize(bnX1, bnN);
-        while(bnX2.mpSign())
-            mpModNormalize(bnX2, bnN);
+    while (bnX1.mpSign()) mpModNormalize(bnX1, bnN);
+    while (bnX2.mpSign()) mpModNormalize(bnX2, bnN);
 
-        //  if M1 X1 + M2 X2 = 1, R= A2 M1 X1 + A1 M2 X2
-        fRet= mpModMult(bnM1, bnX1, bnN, bnT1);
-        if(!fRet)
-            throw("mpCRT: mpModMult failed (1)\n");
+    //  if M1 X1 + M2 X2 = 1, R= A2 M1 X1 + A1 M2 X2
+    fRet = mpModMult(bnM1, bnX1, bnN, bnT1);
+    if (!fRet) throw("mpCRT: mpModMult failed (1)\n");
 
-        fRet= mpModMult(bnA2, bnT1, bnN, bnT3);
-        if(!fRet)
-            throw("mpCRT: mpModMult failed (2)\n");
+    fRet = mpModMult(bnA2, bnT1, bnN, bnT3);
+    if (!fRet) throw("mpCRT: mpModMult failed (2)\n");
 
-        fRet= mpModMult(bnM2, bnX2, bnN, bnT2);
-        if(!fRet)
-            throw("mpCRT: mpModMult failed (3)\n");
+    fRet = mpModMult(bnM2, bnX2, bnN, bnT2);
+    if (!fRet) throw("mpCRT: mpModMult failed (3)\n");
 
-        fRet= mpModMult(bnA1, bnT2, bnN, bnT4);
-        if(!fRet)
-            throw("mpCRT: mpModMult failed (4)\n");
+    fRet = mpModMult(bnA1, bnT2, bnN, bnT4);
+    if (!fRet) throw("mpCRT: mpModMult failed (4)\n");
 
-        fRet= mpModAdd(bnT3, bnT4, bnN, bnR); 
-        if(!fRet) 
-            throw("mpCRT: mpModMult failed (5)\n");
+    fRet = mpModAdd(bnT3, bnT4, bnN, bnR);
+    if (!fRet) throw("mpCRT: mpModMult failed (5)\n");
 
 #ifdef ARITHTEST
-        fprintf(g_logFile, "\nmpCRT at bottom\n");
-        fprintf(g_logFile, "R: "); printNum(bnR); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "M1: "); printNum(bnM1); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "M2: "); printNum(bnM2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "M1*M2: "); printNum(bnN); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "A1: "); printNum(bnA1); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "A2: "); printNum(bnA2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "X1: "); printNum(bnX1); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "X2: "); printNum(bnX2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "T1: "); printNum(bnT1); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "T2: "); printNum(bnT2); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "T3: "); printNum(bnT3); fprintf(g_logFile, "\n");
-        fprintf(g_logFile, "T4: "); printNum(bnT4); fprintf(g_logFile, "\n");
-        mpMod(bnR, bnM1, bnT1);
-        fprintf(g_logFile, "R(mod M1): "); printNum(bnT1); fprintf(g_logFile, "\n");
-        mpMod(bnR, bnM2, bnT2);
-        fprintf(g_logFile, "R(mod M2): "); printNum(bnT2); fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "\nmpCRT at bottom\n");
+    fprintf(g_logFile, "R: ");
+    printNum(bnR);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M1: ");
+    printNum(bnM1);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M2: ");
+    printNum(bnM2);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "M1*M2: ");
+    printNum(bnN);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "A1: ");
+    printNum(bnA1);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "A2: ");
+    printNum(bnA2);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "X1: ");
+    printNum(bnX1);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "X2: ");
+    printNum(bnX2);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "T1: ");
+    printNum(bnT1);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "T2: ");
+    printNum(bnT2);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "T3: ");
+    printNum(bnT3);
+    fprintf(g_logFile, "\n");
+    fprintf(g_logFile, "T4: ");
+    printNum(bnT4);
+    fprintf(g_logFile, "\n");
+    mpMod(bnR, bnM1, bnT1);
+    fprintf(g_logFile, "R(mod M1): ");
+    printNum(bnT1);
+    fprintf(g_logFile, "\n");
+    mpMod(bnR, bnM2, bnT2);
+    fprintf(g_logFile, "R(mod M2): ");
+    printNum(bnT2);
+    fprintf(g_logFile, "\n");
 #endif
-    } 
-    catch(const char* sz) {
-        fprintf(g_logFile, "mpCRT error: %s\n", sz);
-        fRet= false;
-    }
+  }
+  catch (const char * sz) {
+    fprintf(g_logFile, "mpCRT error: %s\n", sz);
+    fRet = false;
+  }
 
-    return fRet;
+  return fRet;
 }
 
 // ----------------------------------------------------------------------------
-
 
 //
 //          Generating Primes and Primality testing
@@ -422,62 +424,47 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR)
 //
 //              Data: First 512 primes
 //
-const i32   s_iSizeofFirstPrimes= 512;
-u32         s_rgFirstPrimes[s_iSizeofFirstPrimes]= {
-      2,     3,     5,     7,    11,    13,    17,    19,    23,    29,
-     31,    37,    41,    43,    47,    53,    59,    61,    67,    71,
-     73,    79,    83,    89,    97,   101,   103,   107,   109,   113,
-    127,   131,   137,   139,   149,   151,   157,   163,   167,   173,
-    179,   181,   191,   193,   197,   199,   211,   223,   227,   229,
-    233,   239,   241,   251,   257,   263,   269,   271,   277,   281,
-    283,   293,   307,   311,   313,   317,   331,   337,   347,   349,
-    353,   359,   367,   373,   379,   383,   389,   397,   401,   409,
-    419,   421,   431,   433,   439,   443,   449,   457,   461,   463,
-    467,   479,   487,   491,   499,   503,   509,   521,   523,   541,
-    547,   557,   563,   569,   571,   577,   587,   593,   599,   601,
-    607,   613,   617,   619,   631,   641,   643,   647,   653,   659,
-    661,   673,   677,   683,   691,   701,   709,   719,   727,   733,
-    739,   743,   751,   757,   761,   769,   773,   787,   797,   809,
-    811,   821,   823,   827,   829,   839,   853,   857,   859,   863,
-    877,   881,   883,   887,   907,   911,   919,   929,   937,   941,
-    947,   953,   967,   971,   977,   983,   991,   997,  1009,  1013,
-   1019,  1021,  1031,  1033,  1039,  1049,  1051,  1061,  1063,  1069,
-   1087,  1091,  1093,  1097,  1103,  1109,  1117,  1123,  1129,  1151,
-   1153,  1163,  1171,  1181,  1187,  1193,  1201,  1213,  1217,  1223,
-   1229,  1231,  1237,  1249,  1259,  1277,  1279,  1283,  1289,  1291,
-   1297,  1301,  1303,  1307,  1319,  1321,  1327,  1361,  1367,  1373,
-   1381,  1399,  1409,  1423,  1427,  1429,  1433,  1439,  1447,  1451,
-   1453,  1459,  1471,  1481,  1483,  1487,  1489,  1493,  1499,  1511,
-   1523,  1531,  1543,  1549,  1553,  1559,  1567,  1571,  1579,  1583,
-   1597,  1601,  1607,  1609,  1613,  1619,  1621,  1627,  1637,  1657,
-   1663,  1667,  1669,  1693,  1697,  1699,  1709,  1721,  1723,  1733,
-   1741,  1747,  1753,  1759,  1777,  1783,  1787,  1789,  1801,  1811,
-   1823,  1831,  1847,  1861,  1867,  1871,  1873,  1877,  1879,  1889,
-   1901,  1907,  1913,  1931,  1933,  1949,  1951,  1973,  1979,  1987,
-   1993,  1997,  1999,  2003,  2011,  2017,  2027,  2029,  2039,  2053,
-   2063,  2069,  2081,  2083,  2087,  2089,  2099,  2111,  2113,  2129,
-   2131,  2137,  2141,  2143,  2153,  2161,  2179,  2203,  2207,  2213,
-   2221,  2237,  2239,  2243,  2251,  2267,  2269,  2273,  2281,  2287,
-   2293,  2297,  2309,  2311,  2333,  2339,  2341,  2347,  2351,  2357,
-   2371,  2377,  2381,  2383,  2389,  2393,  2399,  2411,  2417,  2423,
-   2437,  2441,  2447,  2459,  2467,  2473,  2477,  2503,  2521,  2531,
-   2539,  2543,  2549,  2551,  2557,  2579,  2591,  2593,  2609,  2617,
-   2621,  2633,  2647,  2657,  2659,  2663,  2671,  2677,  2683,  2687,
-   2689,  2693,  2699,  2707,  2711,  2713,  2719,  2729,  2731,  2741,
-   2749,  2753,  2767,  2777,  2789,  2791,  2797,  2801,  2803,  2819,
-   2833,  2837,  2843,  2851,  2857,  2861,  2879,  2887,  2897,  2903,
-   2909,  2917,  2927,  2939,  2953,  2957,  2963,  2969,  2971,  2999,
-   3001,  3011,  3019,  3023,  3037,  3041,  3049,  3061,  3067,  3079,
-   3083,  3089,  3109,  3119,  3121,  3137,  3163,  3167,  3169,  3181,
-   3187,  3191,  3203,  3209,  3217,  3221,  3229,  3251,  3253,  3257,
-   3259,  3271,  3299,  3301,  3307,  3313,  3319,  3323,  3329,  3331,
-   3343,  3347,  3359,  3361,  3371,  3373,  3389,  3391,  3407,  3413,
-   3433,  3449,  3457,  3461,  3463,  3467,  3469,  3491,  3499,  3511,
-   3517,  3527,  3529,  3533,  3539,  3541,  3547,  3557,  3559,  3571,
-   3581,  3583,  3593,  3607,  3613,  3617,  3623,  3631,  3637,  3643,
-   3659,  3671  
-   };
-
+const i32 s_iSizeofFirstPrimes = 512;
+u32 s_rgFirstPrimes[s_iSizeofFirstPrimes] = {
+  2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
+  73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
+  157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233,
+  239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317,
+  331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419,
+  421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503,
+  509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607,
+  613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701,
+  709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811,
+  821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911,
+  919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997, 1009, 1013, 1019,
+  1021, 1031, 1033, 1039, 1049, 1051, 1061, 1063, 1069, 1087, 1091, 1093, 1097,
+  1103, 1109, 1117, 1123, 1129, 1151, 1153, 1163, 1171, 1181, 1187, 1193, 1201,
+  1213, 1217, 1223, 1229, 1231, 1237, 1249, 1259, 1277, 1279, 1283, 1289, 1291,
+  1297, 1301, 1303, 1307, 1319, 1321, 1327, 1361, 1367, 1373, 1381, 1399, 1409,
+  1423, 1427, 1429, 1433, 1439, 1447, 1451, 1453, 1459, 1471, 1481, 1483, 1487,
+  1489, 1493, 1499, 1511, 1523, 1531, 1543, 1549, 1553, 1559, 1567, 1571, 1579,
+  1583, 1597, 1601, 1607, 1609, 1613, 1619, 1621, 1627, 1637, 1657, 1663, 1667,
+  1669, 1693, 1697, 1699, 1709, 1721, 1723, 1733, 1741, 1747, 1753, 1759, 1777,
+  1783, 1787, 1789, 1801, 1811, 1823, 1831, 1847, 1861, 1867, 1871, 1873, 1877,
+  1879, 1889, 1901, 1907, 1913, 1931, 1933, 1949, 1951, 1973, 1979, 1987, 1993,
+  1997, 1999, 2003, 2011, 2017, 2027, 2029, 2039, 2053, 2063, 2069, 2081, 2083,
+  2087, 2089, 2099, 2111, 2113, 2129, 2131, 2137, 2141, 2143, 2153, 2161, 2179,
+  2203, 2207, 2213, 2221, 2237, 2239, 2243, 2251, 2267, 2269, 2273, 2281, 2287,
+  2293, 2297, 2309, 2311, 2333, 2339, 2341, 2347, 2351, 2357, 2371, 2377, 2381,
+  2383, 2389, 2393, 2399, 2411, 2417, 2423, 2437, 2441, 2447, 2459, 2467, 2473,
+  2477, 2503, 2521, 2531, 2539, 2543, 2549, 2551, 2557, 2579, 2591, 2593, 2609,
+  2617, 2621, 2633, 2647, 2657, 2659, 2663, 2671, 2677, 2683, 2687, 2689, 2693,
+  2699, 2707, 2711, 2713, 2719, 2729, 2731, 2741, 2749, 2753, 2767, 2777, 2789,
+  2791, 2797, 2801, 2803, 2819, 2833, 2837, 2843, 2851, 2857, 2861, 2879, 2887,
+  2897, 2903, 2909, 2917, 2927, 2939, 2953, 2957, 2963, 2969, 2971, 2999, 3001,
+  3011, 3019, 3023, 3037, 3041, 3049, 3061, 3067, 3079, 3083, 3089, 3109, 3119,
+  3121, 3137, 3163, 3167, 3169, 3181, 3187, 3191, 3203, 3209, 3217, 3221, 3229,
+  3251, 3253, 3257, 3259, 3271, 3299, 3301, 3307, 3313, 3319, 3323, 3329, 3331,
+  3343, 3347, 3359, 3361, 3371, 3373, 3389, 3391, 3407, 3413, 3433, 3449, 3457,
+  3461, 3463, 3467, 3469, 3491, 3499, 3511, 3517, 3527, 3529, 3533, 3539, 3541,
+  3547, 3557, 3559, 3571, 3581, 3583, 3593, 3607, 3613, 3617, 3623, 3631, 3637,
+  3643, 3659, 3671
+};
 
 //  Function: bool MRPrimeTestLoop
 //  Arguments:
@@ -502,43 +489,43 @@ u32         s_rgFirstPrimes[s_iSizeofFirstPrimes]= {
 //      if(y!=(n-1))
 //          return(composite)
 //      return(prime)
-bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum& bnS)
-{
-    int             maxsize= bnN.mpSize();
-    int             j= 1;
-    bnum            bnY(2*maxsize+1);
-    bnum            bnQ(maxsize);
-    bnum            bnTemp(maxsize);
-    extern bnum     g_bnOne;
-    
+bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS,
+                     bnum& bnS) {
+  int maxsize = bnN.mpSize();
+  int j = 1;
+  bnum bnY(2 * maxsize + 1);
+  bnum bnQ(maxsize);
+  bnum bnTemp(maxsize);
+  extern bnum g_bnOne;
+
 #ifdef ARITHTEST
-    fprintf(g_logFile, "MRPrimeTestLoop\n");
-    fflush(g_logFile);
+  fprintf(g_logFile, "MRPrimeTestLoop\n");
+  fflush(g_logFile);
 #endif
-    if(!mpModExp(bnA, bnR, bnN, bnY)) {
-        fprintf(g_logFile, "MRPrimeTestLoop: Bad Exponent\n");
+  if (!mpModExp(bnA, bnR, bnN, bnY)) {
+    fprintf(g_logFile, "MRPrimeTestLoop: Bad Exponent\n");
+    return false;
+  }
+  if (mpCompare(bnY, g_bnOne) != s_isEqualTo &&
+      mpCompare(bnY, bnNM1) != s_isEqualTo) {
+    while (j < iS && mpCompare(bnY, g_bnOne) != s_isEqualTo) {
+      // square y mod N
+      mpZeroNum(bnTemp);
+      mpUMult(bnY, bnY, bnTemp);
+      mpZeroNum(bnY);
+      mpDiv(bnTemp, bnN, bnQ, bnY);
+      if (mpCompare(bnY, g_bnOne) == s_isEqualTo) {
         return false;
+      }
+      j++;
     }
-    if(mpCompare(bnY, g_bnOne)!=s_isEqualTo && mpCompare(bnY, bnNM1)!=s_isEqualTo) {
-        while(j<iS && mpCompare(bnY, g_bnOne)!=s_isEqualTo) {
-            // square y mod N
-            mpZeroNum(bnTemp);
-            mpUMult(bnY, bnY, bnTemp);
-            mpZeroNum(bnY);
-            mpDiv(bnTemp, bnN, bnQ, bnY);
-            if(mpCompare(bnY, g_bnOne)==s_isEqualTo) {
-                return false;
-            }
-            j++;
-        }
-        if(mpCompare(bnY, bnNM1)!=s_isEqualTo) {
-            return false;
-        }
+    if (mpCompare(bnY, bnNM1) != s_isEqualTo) {
+      return false;
     }
+  }
 
-    return true;
+  return true;
 }
-
 
 //      Function: bool MRPrimeTest
 //      Arguments:
@@ -547,38 +534,37 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS, bnum&
 //          bnum rgbnA[]
 //      Description:
 //          Miller Rabin Primality Test
-//          MR(n, .25, t), n>3, n, odd.  Set n-1= 2sr, r, odd. (t> 3, in practice)
-//          for(i=1, i<=t) 
+//          MR(n, .25, t), n>3, n, odd.  Set n-1= 2sr, r, odd. (t> 3, in
+// practice)
+//          for(i=1, i<=t)
 //              Choose a, 1<a<n-1.  2 is a good choice first time
 //      BUG: incomplete
-bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[])
-{
-    int     i, iS;
-    int     sizeN= bnN.mpSize();
-    bnum    bnR(sizeN);                 // odd
-    bnum    bnS(sizeN);                 // highest power of 2 dividing
-    bnum    bnNM1(sizeN);
-    bnum*   pbNum;
+bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[]) {
+  int i, iS;
+  int sizeN = bnN.mpSize();
+  bnum bnR(sizeN);  // odd
+  bnum bnS(sizeN);  // highest power of 2 dividing
+  bnum bnNM1(sizeN);
+  bnum* pbNum;
 
 #ifdef ARITHTEST
-    fprintf(glogFile, "MRPrimeTest\n");
-    fflush(g_logFile);
+  fprintf(glogFile, "MRPrimeTest\n");
+  fflush(g_logFile);
 #endif
-    bnN.mpCopyNum(bnNM1);
-    mpDec(bnNM1);
-    iS= max2PowerDividing(bnNM1);
-    bnS.m_pValue[0]= 1;
-    mpShiftInPlace(bnS, iS);
-    mpShift(bnNM1, -iS, bnR);
-    for(i=0; i<iT; i++) {
-        pbNum= rgbnA[i];
-        if(!MRPrimeTestLoop(bnN, bnNM1, *pbNum, bnR, iS, bnS)) {
-            return false;
-        }
+  bnN.mpCopyNum(bnNM1);
+  mpDec(bnNM1);
+  iS = max2PowerDividing(bnNM1);
+  bnS.m_pValue[0] = 1;
+  mpShiftInPlace(bnS, iS);
+  mpShift(bnNM1, -iS, bnR);
+  for (i = 0; i < iT; i++) {
+    pbNum = rgbnA[i];
+    if (!MRPrimeTestLoop(bnN, bnNM1, *pbNum, bnR, iS, bnS)) {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
-
 
 //  Function: static bool MakeRandBasisForMR
 //  Arguments:
@@ -588,35 +574,32 @@ bool MRPrimeTest(bnum& bnN, i32 iT, bnum* rgbnA[])
 //      bnum* rgbnBases
 //  Description:
 //      Generate bases for Miller Rabin Test
-bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases, bnum* rgbnBases[])
-{
-    int     i;
-    bnum*   pbNum;
+bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases,
+                        bnum* rgbnBases[]) {
+  int i;
+  bnum* pbNum;
 
 #ifdef ARITHTEST
-    fprintf(g_logFile, "MakeRandBasisforMR\n");
-    fflush(g_logFile);
+  fprintf(g_logFile, "MakeRandBasisforMR\n");
+  fflush(g_logFile);
 #endif
-    // first one is always 2
-    pbNum= rgbnBases[0];
-    mpZeroNum(*pbNum);
-    pbNum->m_pValue[0]= 2;
+  // first one is always 2
+  pbNum = rgbnBases[0];
+  mpZeroNum(*pbNum);
+  pbNum->m_pValue[0] = 2;
 
-    for(i=1; i<iNumBases; i++) {
-        pbNum= rgbnBases[i];
-         mpZeroNum(*pbNum);
-         if(!getCryptoRandom(iBitSize, (byte*)pbNum->m_pValue))
-             fprintf(g_logFile, "MakeRandBasisForMR: No Random Bits\n");
-        // if it's bigger than number, subtract it
-        if(mpUCompare(bnN, *pbNum)==s_isLessThan)
-             mpUSubFrom(*pbNum, bnN);
-    }
-    return true;
+  for (i = 1; i < iNumBases; i++) {
+    pbNum = rgbnBases[i];
+    mpZeroNum(*pbNum);
+    if (!getCryptoRandom(iBitSize, (byte*)pbNum->m_pValue))
+      fprintf(g_logFile, "MakeRandBasisForMR: No Random Bits\n");
+    // if it's bigger than number, subtract it
+    if (mpUCompare(bnN, *pbNum) == s_isLessThan) mpUSubFrom(*pbNum, bnN);
+  }
+  return true;
 }
 
-
 #define MAXBASE 50
-
 
 //  Function: bool mpGenPrime
 //  Arguments:
@@ -625,132 +608,121 @@ bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases, bnum* rgbnBases[
 //      int iConfid=20
 //  Description:
 //      Generate iBitSize Prime, result in bnA
-bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid)
-{
-    extern  bnum   g_bnTwo;
-    int     i, j;
-    int     iNumTries= 0;
-    u64     uPossibleDivisor, uCarry;
-    i32     iWordSize= ((iBitSize+NUMBITSINU64MINUS1)>>6);
-    bool    fIsPrime= false;
-    u64*    rguA= bnA.m_pValue;
-    bnum    bnQ(bnA.mpSize());
-    bnum*   rgbnBase[MAXBASE];
-    int     lA;
-    bool    fRet= false;
+bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid) {
+  extern bnum g_bnTwo;
+  int i, j;
+  int iNumTries = 0;
+  u64 uPossibleDivisor, uCarry;
+  i32 iWordSize = ((iBitSize + NUMBITSINU64MINUS1) >> 6);
+  bool fIsPrime = false;
+  u64* rguA = bnA.m_pValue;
+  bnum bnQ(bnA.mpSize());
+  bnum* rgbnBase[MAXBASE];
+  int lA;
+  bool fRet = false;
 
 #ifdef TEST
-    fprintf(g_logFile, "mpGenPrime %d prime, %d words\n", iBitSize, iWordSize);
-    fflush(g_logFile);
+  fprintf(g_logFile, "mpGenPrime %d prime, %d words\n", iBitSize, iWordSize);
+  fflush(g_logFile);
 #endif
-    if(iConfid>MAXBASE)
-        iConfid= MAXBASE;
+  if (iConfid > MAXBASE) iConfid = MAXBASE;
 
-    for(i=0; i<iConfid; i++)
-        rgbnBase[i]= new bnum(iWordSize);
+  for (i = 0; i < iConfid; i++) rgbnBase[i] = new bnum(iWordSize);
 
-        mpZeroNum(bnA);
-        // Get Candidate prime (bnA)
-        if(!getCryptoRandom(iBitSize, (byte*)rguA)) {
-            fprintf(g_logFile, "No Random Bits\n");
-            return false;
-        }
+  mpZeroNum(bnA);
+  // Get Candidate prime (bnA)
+  if (!getCryptoRandom(iBitSize, (byte*)rguA)) {
+    fprintf(g_logFile, "No Random Bits\n");
+    return false;
+  }
 
-        // Set high and low bits
-        rguA[0]|= 1ULL;
-        j= iBitSize&0x3f;
-        if(j==0)
-            j= NUMBITSINU64;
-        j--;
-        rguA[iWordSize-1]|= 1ULL<<j;
+  // Set high and low bits
+  rguA[0] |= 1ULL;
+  j = iBitSize & 0x3f;
+  if (j == 0) j = NUMBITSINU64;
+  j--;
+  rguA[iWordSize - 1] |= 1ULL << j;
 
-        while(!fIsPrime) {
-            iNumTries++;
+  while (!fIsPrime) {
+    iNumTries++;
 
-            // Check for small divisors
-            for(i=0; i<s_iSizeofFirstPrimes; i++) {
-                uPossibleDivisor= (u64)s_rgFirstPrimes[i];
-                uCarry= 0;                      
-                mpSingleUDiv(bnA, uPossibleDivisor, bnQ, &uCarry);
-                if(uCarry==0)
-                    break;          // uPossibleDivisor is a divisor
-            }
-            if(i>=s_iSizeofFirstPrimes)
-                fIsPrime= true;
-            else
-                fIsPrime= false;
+    // Check for small divisors
+    for (i = 0; i < s_iSizeofFirstPrimes; i++) {
+      uPossibleDivisor = (u64)s_rgFirstPrimes[i];
+      uCarry = 0;
+      mpSingleUDiv(bnA, uPossibleDivisor, bnQ, &uCarry);
+      if (uCarry == 0) break;  // uPossibleDivisor is a divisor
+    }
+    if (i >= s_iSizeofFirstPrimes)
+      fIsPrime = true;
+    else
+      fIsPrime = false;
 
-            // Miller Rabin Test
-            if(fIsPrime) {
-                // Generate bases for RM, first
-                MakeRandBasisForMR(iBitSize, bnA, iConfid, rgbnBase);
-                if(MRPrimeTest(bnA, iConfid, rgbnBase)) {
-                    fIsPrime= true;
-                    break;
-                }
-                else {
-                    fIsPrime= false;
-                }
-            }
-
-            // Number overflows?, subtract instead
-            lA= mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
-            if(mpUAddTo(bnA, g_bnTwo)!=0 || lA*NUMBITSINU64>iBitSize) {
-                fprintf(g_logFile, "Prime interval exceeded\n");
-                return false;
-            }
-        }
-
-        if(fIsPrime)
-            fRet= true;
-
-    // Clean up
-    for(i=0; i<iConfid; i++) {
-        if(rgbnBase[i]!=NULL)
-           delete rgbnBase[i];
-        rgbnBase[i]= NULL;
+    // Miller Rabin Test
+    if (fIsPrime) {
+      // Generate bases for RM, first
+      MakeRandBasisForMR(iBitSize, bnA, iConfid, rgbnBase);
+      if (MRPrimeTest(bnA, iConfid, rgbnBase)) {
+        fIsPrime = true;
+        break;
+      } else {
+        fIsPrime = false;
+      }
     }
 
-    return fRet;
+    // Number overflows?, subtract instead
+    lA = mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
+    if (mpUAddTo(bnA, g_bnTwo) != 0 || lA * NUMBITSINU64 > iBitSize) {
+      fprintf(g_logFile, "Prime interval exceeded\n");
+      return false;
+    }
+  }
+
+  if (fIsPrime) fRet = true;
+
+  // Clean up
+  for (i = 0; i < iConfid; i++) {
+    if (rgbnBase[i] != NULL) delete rgbnBase[i];
+    rgbnBase[i] = NULL;
+  }
+
+  return fRet;
 }
 
+bool mpModisSquare(bnum& bnX, bnum& bnM) {
+  bnum bnT(bnX.mpSize() + 4);
+  bnum bnE(bnM.mpSize());
 
-bool  mpModisSquare(bnum& bnX, bnum& bnM)
-{
-    bnum    bnT(bnX.mpSize()+4);
-    bnum    bnE(bnM.mpSize());
-
-    if(!mpModSub(bnM, g_bnOne, bnM, bnE))
-        return false;
-    if(!mpShiftInPlace(bnE, -1))
-        return false;
-    if(!mpModExp(bnX, bnE, bnM, bnT))
-        return false;
-    return mpCompare(bnT,g_bnOne)==0;
+  if (!mpModSub(bnM, g_bnOne, bnM, bnE)) return false;
+  if (!mpShiftInPlace(bnE, -1)) return false;
+  if (!mpModExp(bnX, bnE, bnM, bnT)) return false;
+  return mpCompare(bnT, g_bnOne) == 0;
 }
-
 
 /*
  *  Find x: x^2 =a(modp). 
  *  Caller chould have already checked that a is a QR.
- *
+* 
  *  Set p−1= (2^e)q and put b=nq (mod p)
  *  If p=3(mod 4), x= a^(p-1)/4 (mod p);
- *  If p=5(mod 8), x= a^(p-1)/4 (mod p), put b= a^(p-1)/4.  If b=1, x=a^(p+3)/8,
+ *  If p=5(mod 8), x= a^(p-1)/4 (mod p), put b= a^(p-1)/4.  If b=1,
+* x=a^(p+3)/8,
  *     otherwise b= -1 and x= (2a)(4a)^(p-5)/8
  *  That leaves p=1 (mod 8)
- *
+* 
  * TonelliShanks(int a, int p)
  *  Ref: Cohen, A Course in Computational Algebraic Number Theory, p32.
- *
+* 
  *      p-1=2^e q, (q,2)=1
  *      Pick a quadratic non-residue: n.
  *      z= n^q (mod p)   --- note z is a generator for the multiplicitive group
  *      y= z; r=e; x= a^((q-1)/2) (mod p); b= ax^2 (mod p);
  *      x= ax (mod p); --- note RHS is (a^2x^2)= ab (mod p);
  *      while(b!=1) {
- *          --- at this point, ab=x^2 (mod p); y^(2^(r-1))= -1 (mod p); b^(2^(r-1))= 1
- *          find smallest m: b^(2^m) = 1 (mod p);  --- note m<r, if a is a residue
+ *          --- at this point, ab=x^2 (mod p); y^(2^(r-1))= -1 (mod p);
+* b^(2^(r-1))= 1
+ *          find smallest m: b^(2^m) = 1 (mod p);  --- note m<r, if a is a
+* residue
  *          t= y^(2^(r-m-1)) (mod p);
  *          y= t^2 (mod p);
  *          r= m;
@@ -760,174 +732,163 @@ bool  mpModisSquare(bnum& bnX, bnum& bnM)
 
 #define MAXNRS 200
 
-bool mpTonelliShanks(bnum& bnA, bnum& bnP, bnum& bnSqrt)
-{
-    if(bnA.mpIsZero())
-        g_bnZero.mpCopyNum(bnSqrt);
+bool mpTonelliShanks(bnum& bnA, bnum& bnP, bnum& bnSqrt) {
+  if (bnA.mpIsZero()) g_bnZero.mpCopyNum(bnSqrt);
 
-    bnum    bnN(bnP.mpSize());
-    int     i;
+  bnum bnN(bnP.mpSize());
+  int i;
 
-    for(i=2; i<MAXNRS; i++) {
-        bnN.m_pValue[0]= (u64) i;
-        if(!mpModisSquare(bnN, bnP))
-            break;
-    }
-    if(i>=MAXNRS)
+  for (i = 2; i < MAXNRS; i++) {
+    bnN.m_pValue[0] = (u64)i;
+    if (!mpModisSquare(bnN, bnP)) break;
+  }
+  if (i >= MAXNRS) return false;
+
+  // bnN is now a non-square mod bnP
+  int e = 0;
+  int r = 0;
+  int m = 0;
+  bnum bnX(bnP.mpSize() + 1);
+  bnum bnY(bnP.mpSize() + 1);
+  bnum bnE(bnP.mpSize() + 1);
+  bnum bnQ(bnP.mpSize() + 1);
+  bnum bnB(bnP.mpSize() + 1);
+  bnum bnT1(bnP.mpSize() + 1);
+  bnum bnT2(bnP.mpSize() + 1);
+
+  mpSub(bnP, g_bnOne, bnQ);
+  while ((bnQ.m_pValue[0] & 0x1ULL) == 0) {
+    e++;
+    mpShiftInPlace(bnQ, -1);
+  }
+  // now P-1= 2^e Q
+  mpModExp(bnN, bnQ, bnP, bnY);
+  // now Y= N^Q (mod P)
+  r = e;
+  mpSub(bnQ, g_bnOne, bnT1);
+  mpShiftInPlace(bnT1, -1);
+  mpModExp(bnA, bnT1, bnP, bnX);
+  // now X= A^((Q-1)/2)
+  mpModMult(bnX, bnX, bnP, bnT2);
+  mpModMult(bnA, bnT2, bnP, bnB);
+  // now B= AX^2 (mod P)
+  mpZeroNum(bnT1);
+  mpModMult(bnA, bnX, bnP, bnT1);
+  bnT1.mpCopyNum(bnX);  // X=AX (mod P)
+  mpZeroNum(bnT1);
+  mpZeroNum(bnT2);
+#ifdef TEST1
+  fprintf(g_logFile, "Step 0, e: %d, r: %d, m: %d\n\tP: ", e, r, m);
+  printNum(bnP);
+  fprintf(g_logFile, "\n\tN: ");
+  printNum(bnN);
+  fprintf(g_logFile, "\n\tA: ");
+  printNum(bnA);
+  fprintf(g_logFile, "\n\tQ: ");
+  printNum(bnQ);
+  fprintf(g_logFile, "\n\tX: ");
+  printNum(bnX);
+  fprintf(g_logFile, "\n\tB: ");
+  printNum(bnB);
+  fprintf(g_logFile, "\n\tY: ");
+  printNum(bnY);
+  fprintf(g_logFile, "\n");
+  fflush(g_logFile);
+#endif
+  while (mpCompare(bnB, g_bnOne) != 0) {
+    m = 1;
+    bnE.m_pValue[0] = 1ULL;
+    for (;;) {
+      if (!mpShiftInPlace(bnE, 1)) {
+        fprintf(g_logFile, "shift in place error\n");
         return false;
-
-    // bnN is now a non-square mod bnP
-    int     e= 0; 
-    int     r= 0; 
-    int     m= 0; 
-    bnum    bnX(bnP.mpSize()+1);
-    bnum    bnY(bnP.mpSize()+1);
-    bnum    bnE(bnP.mpSize()+1);
-    bnum    bnQ(bnP.mpSize()+1);
-    bnum    bnB(bnP.mpSize()+1);
-    bnum    bnT1(bnP.mpSize()+1);
-    bnum    bnT2(bnP.mpSize()+1);
-
-    mpSub(bnP, g_bnOne, bnQ);
-    while((bnQ.m_pValue[0]&0x1ULL)==0) {
-        e++;
-        mpShiftInPlace(bnQ, -1);
+      }
+      mpModExp(bnB, bnE, bnP, bnT1);
+      if (mpCompare(bnT1, g_bnOne) == 0) break;
+      mpZeroNum(bnT1);
+      m++;
     }
-    // now P-1= 2^e Q
-    mpModExp(bnN, bnQ, bnP, bnY);
-    // now Y= N^Q (mod P)
-    r= e;
-    mpSub(bnQ, g_bnOne, bnT1);
-    mpShiftInPlace(bnT1, -1);
-    mpModExp(bnA, bnT1, bnP, bnX);
-    // now X= A^((Q-1)/2)
-    mpModMult(bnX, bnX, bnP, bnT2);
-    mpModMult(bnA, bnT2, bnP, bnB);
-    // now B= AX^2 (mod P)
+    mpZeroNum(bnE);
     mpZeroNum(bnT1);
-    mpModMult(bnA, bnX, bnP, bnT1);
-    bnT1.mpCopyNum(bnX);    // X=AX (mod P)
+    if (m == r) return false;
+    bnE.m_pValue[0] = 1ULL;
+    if (!mpShiftInPlace(bnE, r - m - 1)) {
+      fprintf(g_logFile, "shift in place error\n");
+      return false;
+    }
+    mpModExp(bnY, bnE, bnP, bnT1);
+    mpZeroNum(bnE);
+    mpModMult(bnT1, bnT1, bnP, bnY);
+    r = m;
+    mpModMult(bnX, bnT1, bnP, bnT2);
+    bnT2.mpCopyNum(bnX);
     mpZeroNum(bnT1);
     mpZeroNum(bnT2);
+    mpModMult(bnB, bnY, bnP, bnT1);
+    bnT1.mpCopyNum(bnB);
+    mpZeroNum(bnT1);
 #ifdef TEST1
-    fprintf(g_logFile,"Step 0, e: %d, r: %d, m: %d\n\tP: ", e,r,m);
+    fprintf(g_logFile, "Step 1, e: %d, r: %d, m: %d\n\tP: ", e, r, m);
     printNum(bnP);
-    fprintf(g_logFile,"\n\tN: ");
-    printNum(bnN);
-    fprintf(g_logFile,"\n\tA: ");
+    fprintf(g_logFile, "\n\tA: ");
     printNum(bnA);
-    fprintf(g_logFile,"\n\tQ: ");
+    fprintf(g_logFile, "\n\tQ: ");
     printNum(bnQ);
-    fprintf(g_logFile,"\n\tX: ");
+    fprintf(g_logFile, "\n\tX: ");
     printNum(bnX);
-    fprintf(g_logFile,"\n\tB: ");
+    fprintf(g_logFile, "\n\tB: ");
     printNum(bnB);
-    fprintf(g_logFile,"\n\tY: ");
+    fprintf(g_logFile, "\n\tY: ");
     printNum(bnY);
-    fprintf(g_logFile,"\n");
+    fprintf(g_logFile, "\n");
     fflush(g_logFile);
 #endif
-    while(mpCompare(bnB, g_bnOne)!=0) {
-        m= 1;
-        bnE.m_pValue[0]= 1ULL;
-        for(;;) {
-            if(!mpShiftInPlace(bnE, 1)) {
-                fprintf(g_logFile, "shift in place error\n");
-                return false;
-            }
-            mpModExp(bnB, bnE, bnP, bnT1);
-            if(mpCompare(bnT1, g_bnOne)==0)
-                break;
-            mpZeroNum(bnT1);
-            m++;
-        }
-        mpZeroNum(bnE);
-        mpZeroNum(bnT1);
-        if(m==r)
-            return false;
-        bnE.m_pValue[0]= 1ULL;
-        if(!mpShiftInPlace(bnE, r-m-1)) {
-            fprintf(g_logFile, "shift in place error\n");
-            return false;
-        }
-        mpModExp(bnY, bnE, bnP, bnT1);
-        mpZeroNum(bnE);
-        mpModMult(bnT1, bnT1, bnP, bnY);
-        r= m;
-        mpModMult(bnX, bnT1, bnP, bnT2);
-        bnT2.mpCopyNum(bnX);
-        mpZeroNum(bnT1);
-        mpZeroNum(bnT2);
-        mpModMult(bnB, bnY, bnP, bnT1);
-        bnT1.mpCopyNum(bnB);
-        mpZeroNum(bnT1);
-#ifdef TEST1
-        fprintf(g_logFile,"Step 1, e: %d, r: %d, m: %d\n\tP: ", e,r,m);
-        printNum(bnP);
-        fprintf(g_logFile,"\n\tA: ");
-        printNum(bnA);
-        fprintf(g_logFile,"\n\tQ: ");
-        printNum(bnQ);
-        fprintf(g_logFile,"\n\tX: ");
-        printNum(bnX);
-        fprintf(g_logFile,"\n\tB: ");
-        printNum(bnB);
-        fprintf(g_logFile,"\n\tY: ");
-        printNum(bnY);
-        fprintf(g_logFile,"\n");
-        fflush(g_logFile);
-#endif
-    }
-    bnX.mpCopyNum(bnSqrt);
-    return true;
+  }
+  bnX.mpCopyNum(bnSqrt);
+  return true;
 }
 
+bool mpModSquareRoot(bnum& bnX, bnum& bnM, bnum& bnR) {
+  u64 uL = bnM.m_pValue[0];
+  bnum bnE(bnM.mpSize() + 1);
+  bnum bnT(bnM.mpSize() + 1);
+  bnum bnT2(bnM.mpSize() + 1);
+  bnum bnT3(bnM.mpSize() + 1);
 
-bool  mpModSquareRoot(bnum& bnX, bnum& bnM, bnum& bnR)
-{
-    u64   uL= bnM.m_pValue[0];
-    bnum  bnE(bnM.mpSize()+1);
-    bnum  bnT(bnM.mpSize()+1);
-    bnum  bnT2(bnM.mpSize()+1);
-    bnum  bnT3(bnM.mpSize()+1);
-
-    // If p=3(mod 4), r= x^(p-1)/4 (mod p);
-    if((uL&0x3ULL)==0x3ULL) {
-        mpAdd(bnM, g_bnOne, bnE);
-        mpShiftInPlace(bnE, -2);
-        return mpModExp(bnX, bnE, bnM, bnR);
+  // If p=3(mod 4), r= x^(p-1)/4 (mod p);
+  if ((uL & 0x3ULL) == 0x3ULL) {
+    mpAdd(bnM, g_bnOne, bnE);
+    mpShiftInPlace(bnE, -2);
+    return mpModExp(bnX, bnE, bnM, bnR);
+  }
+  // If p=5(mod 8), x= a^(p-1)/4 (mod p), put b= a^(p-1)/4.  If b=1,
+  // x=a^(p+3)/8,
+  // otherwise b= -1 and x= (2a)(4a)^(p-5)/8
+  if ((uL & 0x7ULL) == 0x5ULL) {
+    mpSub(bnM, g_bnOne, bnE);
+    mpShiftInPlace(bnE, -2);
+    mpModExp(bnX, bnE, bnM, bnT);
+    if (mpCompare(bnT, g_bnOne) == 0) {
+      mpZeroNum(bnE);
+      bnE.m_pValue[0] = 0x3ULL;
+      mpUAddTo(bnE, bnM);
+      mpShiftInPlace(bnE, -3);
+      return mpModExp(bnX, bnE, bnM, bnR);
+    } else {
+      mpZeroNum(bnT);
+      bnT.m_pValue[0] = 0x5ULL;
+      mpSub(bnM, bnT, bnE);
+      mpShiftInPlace(bnE, -3);
+      mpZeroNum(bnT);
+      mpModMult(bnX, g_bnTwo, bnM, bnT);
+      mpModMult(bnT, g_bnTwo, bnM, bnT2);
+      mpModExp(bnT2, bnE, bnM, bnT3);
+      return mpModMult(bnT, bnT3, bnM, bnR);
     }
-    // If p=5(mod 8), x= a^(p-1)/4 (mod p), put b= a^(p-1)/4.  If b=1, x=a^(p+3)/8,
-    // otherwise b= -1 and x= (2a)(4a)^(p-5)/8
-    if((uL&0x7ULL)==0x5ULL) {
-        mpSub(bnM, g_bnOne, bnE);
-        mpShiftInPlace(bnE, -2);
-        mpModExp(bnX, bnE, bnM, bnT);
-        if(mpCompare(bnT, g_bnOne)==0) {
-            mpZeroNum(bnE);
-            bnE.m_pValue[0]= 0x3ULL;
-            mpUAddTo(bnE, bnM);
-            mpShiftInPlace(bnE, -3);
-            return mpModExp(bnX, bnE, bnM, bnR);
-        }
-        else {
-            mpZeroNum(bnT);
-            bnT.m_pValue[0]= 0x5ULL;
-            mpSub(bnM, bnT, bnE);
-            mpShiftInPlace(bnE, -3);
-            mpZeroNum(bnT);
-            mpModMult(bnX, g_bnTwo, bnM, bnT);
-            mpModMult(bnT, g_bnTwo, bnM, bnT2);
-            mpModExp(bnT2, bnE, bnM, bnT3);
-            return mpModMult(bnT, bnT3, bnM, bnR);
-        }
-    }
+  }
 
-    // That leaves p=1 (mod 8) for Tonelli-Shanks
-    return mpTonelliShanks(bnX, bnM, bnR);
+  // That leaves p=1 (mod 8) for Tonelli-Shanks
+  return mpTonelliShanks(bnX, bnM, bnR);
 }
-
 
 // ----------------------------------------------------------------------------
-
-

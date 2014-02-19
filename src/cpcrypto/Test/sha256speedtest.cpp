@@ -17,7 +17,7 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-#include "jlmTypes.h"
+#include "common.h"
 #include "sha256.h"
 
 #include <stdio.h>
@@ -29,70 +29,59 @@
 #include <string.h>
 #include <time.h>
 
-
 #define BLOCKSIZE 1024
 
+// ---------------------------------------------------------------------
 
-// --------------------------------------------------------------------- 
+bool sha256speed(int numBlocks, int blockSize) {
+  byte buf[BLOCKSIZE];
+  time_t start, finish;
+  double bytespersecond = 0.0;
+  double elapsedseconds;
+  int totalbytes = numBlocks * blockSize;
+  int i;
+  Sha256 oHash;
 
+  for (i = 0; i < blockSize; i++) buf[i] = (byte)i;
 
-bool sha256speed(int numBlocks, int blockSize)
-
-{
-    byte    buf[BLOCKSIZE];
-    time_t  start, finish;
-    double  bytespersecond= 0.0;
-    double  elapsedseconds;
-    int     totalbytes= numBlocks*blockSize;
-    int     i;
-    Sha256  oHash;
-
-    for(i=0; i<blockSize; i++)
-        buf[i]= (byte)i;
-
-    oHash.Init();
-    time(&start);
-    for(i=0;i<numBlocks;i++) {
-        oHash.Update((const byte*)buf, blockSize);
-    }
-    oHash.Final();
-    time(&finish);
-    elapsedseconds= difftime(finish, start);
-    bytespersecond= ((double)totalbytes)/elapsedseconds;
-    printf("%10.4lf seconds, %8d bytes, blocksize: %d, %10.4lf bytes per second\n", 
-        elapsedseconds, totalbytes, blockSize, bytespersecond);
-    return true;
+  oHash.Init();
+  time(&start);
+  for (i = 0; i < numBlocks; i++) {
+    oHash.Update((const byte*)buf, blockSize);
+  }
+  oHash.Final();
+  time(&finish);
+  elapsedseconds = difftime(finish, start);
+  bytespersecond = ((double)totalbytes) / elapsedseconds;
+  printf(
+      "%10.4lf seconds, %8d bytes, blocksize: %d, %10.4lf bytes per second\n",
+      elapsedseconds, totalbytes, blockSize, bytespersecond);
+  return true;
 }
 
+// ---------------------------------------------------------------------
 
-// --------------------------------------------------------------------- 
+int main(int an, char** av) {
+  int numBlocks = 1024;
 
-
-int main(int an, char** av)
-{
-    int     numBlocks= 1024;
-
-    for(int i=0; i<an; i++) {
-        if(strcmp(av[i], "-help")==0) {
-            printf("\nUsage: sha256speedtest -Blocks blocks\n");
-            return 0;
-        }
-        if(strcmp(av[i], "-Blocks")==0) {
-            if(an>(i+1)) {
-                numBlocks= atoi(av[++i]);
-            }
-        }
+  for (int i = 0; i < an; i++) {
+    if (strcmp(av[i], "-help") == 0) {
+      printf("\nUsage: sha256speedtest -Blocks blocks\n");
+      return 0;
     }
+    if (strcmp(av[i], "-Blocks") == 0) {
+      if (an > (i + 1)) {
+        numBlocks = atoi(av[++i]);
+      }
+    }
+  }
 
-    if(sha256speed(numBlocks, BLOCKSIZE)) 
-        printf("\nTest completed susessfully\n");
-    else
-        printf("\nTest did NOT completed susessfully\n");
+  if (sha256speed(numBlocks, BLOCKSIZE))
+    printf("\nTest completed susessfully\n");
+  else
+    printf("\nTest did NOT completed susessfully\n");
 
-    return 0;
+  return 0;
 }
-
 
 // -------------------------------------------------------------------------
-
-

@@ -1,31 +1,40 @@
+
 ifndef CPProgramDirectory
-E=/home/jlm/jlmcrypt
+E=              /home/jlm/jlmcrypt
 else
-E=      $(CPProgramDirectory)
+E=              $(CPProgramDirectory)
+endif
+ifndef CryptoSourceDirectory
+S=              /home/jlm/fpDev/fileProxy/src/cpcrypto
+else
+S=              $(CryptoSourceDirectory)
+endif
+ifndef TARGET_MACHINE_TYPE
+TARGET_MACHINE_TYPE= x64
 endif
 
-B=          $(E)/sha256speedtestobjects
-SC=	    ../commonCode
-SCC=	    ../jlmcrypto
-
+# compile cloudproxy crypto library
+mainsrc=        $(S)
+B=              $(E)/sha256speedtestobjects
+INCLUDES=       -I$(S) -I$(S)/bignum -I$(S)/symmetric -I$(S)/ecc \
+                -I$(S)/support -I$(s)/Test 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST -D TEST
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
 LINK=       g++
 
-dobjs=      $(B)/sha256speedtest.o $(B)/sha256.o
+
+dobjs=      $(B)/sha256speedtest.o
 
 all: $(E)/sha256speedtest.exe
 
-$(E)/sha256speedtest.exe: $(dobjs)
+$(E)/sha256speedtest.exe: $(dobjs) $(E)/cpcryptolib.a
 	@echo "sha256speedtest"
-	$(LINK) -o $(E)/sha256speedtest.exe $(dobjs)
+	$(LINK) -o $(E)/sha256speedtest.exe $(dobjs) $(E)/cpcryptolib.a
 
 $(B)/sha256speedtest.o: sha256speedtest.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/sha256speedtest.o sha256speedtest.cpp
-
-$(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256speedtest.o sha256speedtest.cpp
 

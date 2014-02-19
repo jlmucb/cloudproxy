@@ -5,13 +5,13 @@
 //  Copyright (c) 2011, John Manferdelli.  All rights reserved.
 //  Some contributions may be (c) Intel Corporation
 //
-//  Redistribution and use in source and binary forms, with or without 
-//  modification, are permitted provided that the following conditions 
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions
 //  are met:
 //    Redistributions of source code must retain the above copyright notice,
 //      this list of conditions and the disclaimer below.
 //    Redistributions in binary form must reproduce the above copyright
-//      notice, this list of conditions and the disclaimer below in the 
+//      notice, this list of conditions and the disclaimer below in the
 //      documentation and/or other materials provided with the distribution.
 //
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -27,16 +27,14 @@
 //  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-
 // ---------------------------------------------------------------------------------
-
 
 #ifndef _COMMON__H
 #define _COMMON__H
 typedef long long int i64;
 typedef long long unsigned u64;
-typedef int i32; 
-typedef unsigned u32; 
+typedef int i32;
+typedef unsigned u32;
 typedef short int i16;
 typedef short unsigned u16;
 typedef char i8;
@@ -54,13 +52,10 @@ typedef unsigned char byte;
 #ifndef UNUSEDVAR
 // satisfy the compiler and mark a variable as unused
 #define UNUSEDVAR(x) \
-  if (x) \
+  if (x)             \
     ;
 #endif
 
-#endif // _COMMON__H
-
+#endif  // _COMMON__H
 
 // -------------------------------------------------------------------------------------
-
-

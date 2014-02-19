@@ -5,13 +5,13 @@
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
-//  Redistribution and use in source and binary forms, with or without 
-//  modification, are permitted provided that the following conditions 
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions
 //  are met:
 //    Redistributions of source code must retain the above copyright notice,
 //      this list of conditions and the disclaimer below.
 //    Redistributions in binary form must reproduce the above copyright
-//      notice, this list of conditions and the disclaimer below in the 
+//      notice, this list of conditions and the disclaimer below in the
 //      documentation and/or other materials provided with the distribution.
 //
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -27,7 +27,6 @@
 //  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-
 // ----------------------------------------------------------------------------
 
 #ifndef _TIMER__H
@@ -40,7 +39,7 @@
 using std::vector;
 
 // a class for performing timer measurements. The usage is as follows:
-// 
+//
 // timer someTimer;
 // int i = 0;
 // while(i < 10) {
@@ -56,57 +55,55 @@ using std::vector;
 // A timer will throw if Start/Stop are called out of sequence, or if
 // GetMeasurements is called while the timer is started but not stopped.
 class timer {
-  public:
-    timer() : m_start(), m_stop(), 
-        m_started(false), m_stopped(true),
-        m_measurements() 
-    { }
+ public:
+  timer()
+      : m_start(),
+        m_stop(),
+        m_started(false),
+        m_stopped(true),
+        m_measurements() {}
 
-    inline void Start() {
-        m_stopped = false;
-        m_started = gettimeofday(&m_start, NULL) == 0;
-        if (!m_started) throw "Coud not start timer\n";
+  inline void Start() {
+    m_stopped = false;
+    m_started = gettimeofday(&m_start, NULL) == 0;
+    if (!m_started) throw "Coud not start timer\n";
+  }
+
+  inline void Stop() {
+    m_started = false;
+    m_stopped = gettimeofday(&m_stop, NULL) == 0;
+    if (!m_stopped) throw "Coud not stop timer\n";
+
+    struct timeval diff;
+    timersub(&m_stop, &m_start, &diff);
+    m_measurements.push_back(diff.tv_sec * 1000000.0 + diff.tv_usec);
+  }
+
+  inline const vector<double>& GetMeasurements() { return m_measurements; }
+
+  inline void print(FILE* log) {
+    vector<double>::iterator it = m_measurements.begin();
+    fprintf(log, "[");
+    bool first = true;
+    for (; m_measurements.end() != it; ++it) {
+      if (!first) fprintf(log, ", ");
+      first = false;
+      fprintf(log, "%lf", *it);
     }
+    fprintf(log, "]\n");
+  }
 
-    inline void Stop() {
-        m_started = false;
-        m_stopped = gettimeofday(&m_stop, NULL) == 0;
-        if (!m_stopped) throw "Coud not stop timer\n";
+  inline void Clear() { m_measurements.clear(); }
 
-        struct timeval diff;
-        timersub(&m_stop, &m_start, &diff);
-        m_measurements.push_back(diff.tv_sec * 1000000.0 + diff.tv_usec);
-    }
+ private:
+  struct timeval m_start;
+  struct timeval m_stop;
+  bool m_started, m_stopped;
+  vector<double> m_measurements;
 
-    inline const vector<double>& GetMeasurements() { 
-        return m_measurements; 
-    }
-
-    inline void print(FILE* log) {
-        vector<double>::iterator it = m_measurements.begin();
-        fprintf(log, "[");
-        bool first = true;
-        for( ; m_measurements.end() != it; ++it) {
-            if (!first) fprintf(log, ", ");
-            first = false;
-            fprintf(log, "%lf", *it);
-        }
-        fprintf(log, "]\n");
-    }
-
-    inline void Clear() {
-        m_measurements.clear();
-    }
-
-  private:
-    struct timeval m_start;
-    struct timeval m_stop;
-    bool m_started, m_stopped;
-    vector<double> m_measurements;
-
-    // disable copy and assignment
-    timer(const timer&);
-    timer& operator=(const timer&); 
+  // disable copy and assignment
+  timer(const timer&);
+  timer& operator=(const timer&);
 };
 
 #endif /* ndef _TIMER__H */

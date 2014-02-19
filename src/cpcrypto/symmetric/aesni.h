@@ -18,9 +18,7 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 // ------------------------------------------------------------------------
-
 
 #ifndef __AESNI_H
 #define __AESNI_H
@@ -28,30 +26,27 @@
 #include "common.h"
 #include "string.h"
 
-#define  MAXKC  (256/32)
-#define  MAXKB  (256/8)
-#define  MAXNR  14
-
+#define MAXKC (256 / 32)
+#define MAXKB (256 / 8)
+#define MAXNR 14
 
 class aesni {
-private:
-    int     m_Nr;                   // number of rounds (10 only for now)
-    u32     m_rk[4*(MAXNR+1)+1];    // round keys
-public:
-    aesni();
-    ~aesni();
+ private:
+  int m_Nr;                       // number of rounds (10 only for now)
+  u32 m_rk[4 * (MAXNR + 1) + 1];  // round keys
+ public:
+  aesni();
+  ~aesni();
 
-    int     KeySetupEnc(const byte key[16], int nbits);
-    int     KeySetupDec(const byte key[16], int nbits);
-    void    Encrypt(const byte pt[16], byte ct[16]);
-    void    Decrypt(const byte ct[16], byte pt[16]);
-    void    CleanKeys();
+  int KeySetupEnc(const byte key[16], int nbits);
+  int KeySetupDec(const byte key[16], int nbits);
+  void Encrypt(const byte pt[16], byte ct[16]);
+  void Decrypt(const byte ct[16], byte pt[16]);
+  void CleanKeys();
 };
 
-bool	supportsni();
+bool supportsni();
 
 #endif
 
-
 // ------------------------------------------------------------------------
-

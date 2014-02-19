@@ -18,7 +18,6 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 #ifndef __SHA1_H__
 #define __SHA1_H__
 
@@ -28,11 +27,10 @@
 #define IV4 0x10325476
 #define IV5 0xc3d2e1f0
 
-#define K1  0x5A827999 
-#define K2  0x6ED9EBA1
-#define K3  0x8F1BBCDC
-#define K4  0xCA62C1D6
-
+#define K1 0x5A827999
+#define K2 0x6ED9EBA1
+#define K3 0x8F1BBCDC
+#define K4 0xCA62C1D6
 
 #include "common.h"
 
@@ -40,23 +38,25 @@
 #define LITTLE_ENDIAN
 #endif
 
-
 class Sha1 {
-    public:
-    enum            {DIGESTSIZE= 20, BLOCKSIZE= 64};
+ public:
+  enum {
+    DIGESTSIZE = 20,
+    BLOCKSIZE = 64
+  };
 
-    u32             m_rgState[DIGESTSIZE/sizeof(u32)];
-    u64             m_uLen;
-    int             m_iBLen;
-    byte            m_rgB[BLOCKSIZE];
-#ifdef  LITTLE_ENDIAN
-    void            littleEndian(byte* buf, int size);
+  u32 m_rgState[DIGESTSIZE / sizeof(u32)];
+  u64 m_uLen;
+  int m_iBLen;
+  byte m_rgB[BLOCKSIZE];
+#ifdef LITTLE_ENDIAN
+  void littleEndian(byte* buf, int size);
 #endif
-    void            Init();
-    bool            Transform(u32*);
-    void            Update(const byte*, const u32 long);
-    void            Final();
-    void            getDigest(byte* rgOut);
+  void Init();
+  bool Transform(u32*);
+  void Update(const byte*, const u32 long);
+  void Final();
+  void getDigest(byte* rgOut);
 };
 
 #endif

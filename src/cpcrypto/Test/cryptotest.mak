@@ -1,64 +1,58 @@
 ifndef CPProgramDirectory
-E=/home/jlm/jlmcrypt
+E=              /home/jlm/jlmcrypt
 else
-E=      $(CPProgramDirectory)
+E=              $(CPProgramDirectory)
+endif
+ifndef CryptoSourceDirectory
+S=              /home/jlm/fpDev/fileProxy/src/cpcrypto
+else
+S=              $(CryptoSourceDirectory)
+endif
+ifndef TARGET_MACHINE_TYPE
+TARGET_MACHINE_TYPE= x64
 endif
 
-B=	    $(E)/cryptotestobjects
-SC=         ../commonCode
-SCC=	    ../jlmcrypto
-SBM=	    ../jlmbignum
-
+# compile crypto test
+mainsrc=        $(S)
+B=              $(E)/cryptotestobjects
+INCLUDES=       -I$(S) -I$(S)/bignum -I$(S)/symmetric -I$(S)/ecc \
+                -I$(S)/support -I$(s)/Test 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
-CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI
+CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
+CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST -D TEST
 LDFLAGSXML      := ${RELEASE_LDFLAGS}
 
 CC=         g++
 LINK=       g++
 
-aesobjs=      $(B)/aestest.o $(B)/aes.o $(B)/logging.o \
-	      $(B)/sha256.o $(B)/modesandpadding.o $(B)/hmacsha256.o 
-shaobjs=      $(B)/shatest.o $(B)/sha1.o 
-sha256objs=   $(B)/sha256test.o $(B)/sha256.o 
+aesobjs=      $(B)/aestest.o $(B)/logging.o 
+shaobjs=      $(B)/shatest.o $(B)/logging.o 
+sha256objs=   $(B)/sha256test.o $(B)/logging.o 
 
 all: $(E)/aestest.exe $(E)/sha256test.exe $(E)/shatest.exe
 
-$(E)/aestest.exe: $(aesobjs)
+$(E)/aestest.exe: $(aesobjs) $(E)/cpcryptolib.a
 	@echo "aestest"
-	$(LINK) -o $(E)/aestest.exe $(aesobjs)
+	$(LINK) -o $(E)/aestest.exe $(aesobjs) $(E)/cpcryptolib.a
 
-$(E)/shatest.exe: $(shaobjs)
+$(E)/shatest.exe: $(shaobjs) $(E)/cpcryptolib.a
 	@echo "shatest"
-	$(LINK) -o $(E)/shatest.exe $(shaobjs)
+	$(LINK) -o $(E)/shatest.exe $(shaobjs) $(E)/cpcryptolib.a
 
-$(E)/sha256test.exe: $(sha256objs)
+$(E)/sha256test.exe: $(sha256objs) $(E)/cpcryptolib.a
 	@echo "shatest"
-	$(LINK) -o $(E)/sha256test.exe $(sha256objs)
+	$(LINK) -o $(E)/sha256test.exe $(sha256objs) $(E)/cpcryptolib.a
 
-$(B)/logging.o: $(SC)/logging.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/logging.o $(SC)/logging.cpp
+$(B)/logging.o: $(S)/support/logging.cpp 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cpp
 
 $(B)/aestest.o: aestest.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/aestest.o aestest.cpp
-
-$(B)/aes.o: $(SCC)/aes.cpp $(SCC)/aes.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/aes.o $(SCC)/aes.cpp
-
-$(B)/sha1.o: $(SCC)/sha1.cpp $(SCC)/sha1.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/sha1.o $(SCC)/sha1.cpp
-
-$(B)/sha256.o: $(SCC)/sha256.cpp $(SCC)/sha256.h
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -c -o $(B)/sha256.o $(SCC)/sha256.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aestest.o aestest.cpp
 
 $(B)/shatest.o: shatest.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/shatest.o shatest.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/shatest.o shatest.cpp
 
 $(B)/sha256test.o: sha256test.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/sha256test.o sha256test.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256test.o sha256test.cpp
 
-$(B)/modesandpadding.o: $(SCC)/modesandpadding.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/modesandpadding.o $(SCC)/modesandpadding.cpp
-
-$(B)/hmacsha256.o: $(SCC)/hmacsha256.cpp 
-	$(CC) $(CFLAGS) -I$(SC) -I$(SCC) -I$(SBM) -c -o $(B)/hmacsha256.o $(SCC)/hmacsha256.cpp
 

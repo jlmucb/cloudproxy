@@ -17,9 +17,7 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 // ----------------------------------------------------------------------------
-
 
 #ifndef __HMACSHA256_H
 #define __HMACSHA256_H
@@ -31,21 +29,19 @@
 // hmac-sha256(msg)= Sha256((secret^opad)||Sha256((secret^ipad)||msg))
 
 class hmacsha256 {
-public:
-    Sha256      oHash;
-    byte        rguipad[SHA256_DIGESTSIZE_BYTES];
-    byte        rguopad[SHA256_DIGESTSIZE_BYTES];
-    byte        rguNewKey[SHA256_DIGESTSIZE_BYTES];
+ public:
+  Sha256 oHash;
+  byte rguipad[SHA256_DIGESTSIZE_BYTES];
+  byte rguopad[SHA256_DIGESTSIZE_BYTES];
+  byte rguNewKey[SHA256_DIGESTSIZE_BYTES];
 
-                hmacsha256();
-                ~hmacsha256();
-    void        Init(byte* rguKey, int iKeyLen);
-    void        Update(const byte* rguMsg, int iInLen);
-    void        Final(byte* rguDigest);
+  hmacsha256();
+  ~hmacsha256();
+  void Init(byte* rguKey, int iKeyLen);
+  void Update(const byte* rguMsg, int iInLen);
+  void Final(byte* rguDigest);
 };
 
 #endif
 
 // ----------------------------------------------------------------------------
-
-

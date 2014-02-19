@@ -3,7 +3,7 @@
 //  Description: common crypto definitions and helpers
 //
 //
-//  Copyright (c) 2011, Intel Corporation. Some contributions 
+//  Copyright (c) 2011, Intel Corporation. Some contributions
 //    (c) John Manferdelli.  All rights reserved.
 //
 // Use, duplication and disclosure of this file and derived works of
@@ -19,9 +19,7 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 // --------------------------------------------------------------------------
-
 
 #ifndef _JLMCRYPTO__H
 #define _JLMCRYPTO__H
@@ -32,56 +30,46 @@
 #include "sha256.h"
 #include "modesandpadding.h"
 
+extern int iRandDev;
 
-extern int  iRandDev;
+bool getCryptoRandom(int iNumBits, byte* buf);
+bool initCryptoRand();
+bool closeCryptoRand();
+bool toBase64(int inlen, const byte* in, int* poutlen, char* szout,
+              bool dir = true);
+bool fromBase64(int inlen, const char* szin, int* poutlen, byte* out,
+                bool dir = true);
+bool getBase64Rand(int iBytes, byte* puR, int* pOutSize, char* szOut);
+bool initAllCrypto();
+bool closeallCrypto();
 
-bool        getCryptoRandom(int iNumBits, byte* buf);
-bool        initCryptoRand();
-bool        closeCryptoRand();
-bool        toBase64(int inlen, const byte* in, int* poutlen, char* szout, bool dir=true);
-bool        fromBase64(int inlen, const char* szin, int* poutlen, byte* out, bool dir=true);
-bool        getBase64Rand(int iBytes, byte* puR, int* pOutSize, char* szOut);
-bool        initAllCrypto();
-bool        closeallCrypto();
+bool prf_SHA256(int iKeyLen, byte* rguKey, int iSeedSize, byte* rguSeed,
+                const char* label, int iOutSize, byte* rgOut);
+bool hmac_sha256(byte* rguMsg, int iInLen, byte* rguKey, int iKeyLen,
+                 byte* rguDigest);
 
-bool        prf_SHA256(int iKeyLen, byte* rguKey, int iSeedSize, byte* rguSeed,
-                       const char* label, int iOutSize, byte* rgOut);
-bool        hmac_sha256(byte* rguMsg, int iInLen, byte* rguKey, int iKeyLen, byte* rguDigest);
+inline void inlineXor(byte* pTo, byte* pA, byte* pB, int len) {
+  int i;
 
-
-inline void inlineXor(byte* pTo, byte* pA, byte* pB, int len)
-{
-    int i;
-
-    for(i=0;i<len;i++)
-        pTo[i]= pA[i]^pB[i];
+  for (i = 0; i < len; i++) pTo[i] = pA[i] ^ pB[i];
 }
 
-inline void inlineXorto(byte* pTo, byte* pFrom, int len)
-{
-    int i;
+inline void inlineXorto(byte* pTo, byte* pFrom, int len) {
+  int i;
 
-    for(i=0;i<len;i++)
-        *(pTo++)^= *(pFrom++);
+  for (i = 0; i < len; i++) *(pTo++) ^= *(pFrom++);
 }
 
+inline bool isEqual(byte* pu1, byte* pu2, int len) {
+  int i;
 
-inline bool isEqual(byte* pu1, byte* pu2, int len)
-{
-    int     i;
+  for (i = 0; i < len; i++) {
+    if (*(pu1++) != *(pu2++)) return false;
+  }
 
-    for(i=0;i<len;i++) {
-        if(*(pu1++)!=*(pu2++))
-            return false;
-    }
-
-    return true;
+  return true;
 }
-
 
 #endif
 
-
 // --------------------------------------------------------------------
-
-

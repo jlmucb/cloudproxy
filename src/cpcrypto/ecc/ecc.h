@@ -17,94 +17,87 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 // ----------------------------------------------------------------------------
-
 
 #ifndef _ECC_H
 #define _ECC_H
 
-
 #include "common.h"
 #include "bignum.h"
-
 
 //  Curve in Weirestrauss form y^2= x^3+ax+b (mod m)
 //  m is prime (no GF(2) curves)
 class ECurve {
-public:
-    bnum*   m_bnM;
-    bnum*   m_bnA;
-    bnum*   m_bnB;
-    bnum*   m_bnDisc;
-    bnum*   m_bnGx;
-    bnum*   m_bnGy;
-    bnum*   m_bnorderG;
+ public:
+  bnum* m_bnM;
+  bnum* m_bnA;
+  bnum* m_bnB;
+  bnum* m_bnDisc;
+  bnum* m_bnGx;
+  bnum* m_bnGy;
+  bnum* m_bnorderG;
 
-    ECurve();
-    ~ECurve();
+  ECurve();
+  ~ECurve();
 
 #ifdef TEST
-    void printMe();
+  void printMe();
 #endif
 
-    bool    isnonSingular();
-    bnum*   discriminant();
+  bool isnonSingular();
+  bnum* discriminant();
 };
-
 
 // Point in projective coordinates usually normalized
 // O=(0:1:0) and −(X:Y:Z)=(X:−Y :Z).
 class ECPoint {
-public:
-    bool    m_normalized;
-    ECurve* m_myCurve;
-    bnum*   m_bnX;
-    bnum*   m_bnY;
-    bnum*   m_bnZ;
+ public:
+  bool m_normalized;
+  ECurve* m_myCurve;
+  bnum* m_bnX;
+  bnum* m_bnY;
+  bnum* m_bnZ;
 
-    ECPoint(ECurve* curve, int size);
-    ECPoint(ECurve* curve);
-    ~ECPoint();
-
-#ifdef TEST
-    void printMe();
-#endif
-
-    bool    makeZero();
-    bool    copyPoint(ECPoint& P);
-    bool    iszeroPoint();
-    bool    normalize();
-    bool    isNormalized();
-};
-
-
-class  ECKey {
-public:
-    bool      m_publicValid;
-    bool      m_privateValid;
-    int       m_sizejunk;
-
-    ECurve*   m_myCurve;
-    ECPoint*  m_G;
-    ECPoint*  m_Public;
-    bnum*     m_secret;
-
-    ECKey(ECurve* curve);
-    ~ECKey();
+  ECPoint(ECurve* curve, int size);
+  ECPoint(ECurve* curve);
+  ~ECPoint();
 
 #ifdef TEST
-    void printMe();
+  void printMe();
 #endif
 
-    bool makePrivateKey();
-    bool getSecret(bnum *secret);
-    bool setGenerator(bnum& Gx, bnum& Gy);
-    bool getGenerator(bnum& Gx, bnum& Gy);
-    bool computePublic();
-    bool getPublic(ECPoint& point);
+  bool makeZero();
+  bool copyPoint(ECPoint& P);
+  bool iszeroPoint();
+  bool normalize();
+  bool isNormalized();
 };
 
+class ECKey {
+ public:
+  bool m_publicValid;
+  bool m_privateValid;
+  int m_sizejunk;
+
+  ECurve* m_myCurve;
+  ECPoint* m_G;
+  ECPoint* m_Public;
+  bnum* m_secret;
+
+  ECKey(ECurve* curve);
+  ~ECKey();
+
+#ifdef TEST
+  void printMe();
+#endif
+
+  bool makePrivateKey();
+  bool getSecret(bnum* secret);
+  bool setGenerator(bnum& Gx, bnum& Gy);
+  bool getGenerator(bnum& Gx, bnum& Gy);
+  bool computePublic();
+  bool getPublic(ECPoint& point);
+};
 
 bool ecAdd(ECPoint& P, ECPoint& Q, ECPoint& R);
 bool ecSub(ECPoint& P, ECPoint& Q, ECPoint& R);
@@ -121,9 +114,6 @@ bool ecVerify(ECKey& K, bnum& bnH, bnum& bnR, bnum& bnS);
 bool ecEncrypt(ECKey& K, bnum& bnX, ECPoint& R1, ECPoint& R2);
 bool ecDecrypt(ECKey& K, ECPoint& P1, ECPoint& P2, bnum& bnX);
 
-
-#endif    // _ECC_H
-
+#endif  // _ECC_H
 
 // ----------------------------------------------------------------------------
-

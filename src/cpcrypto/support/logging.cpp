@@ -5,13 +5,13 @@
 //  Copyright (c) 2011, Intel Corporation. All rights reserved.
 //  Some contributions (c) John Manferdelli.  All rights reserved.
 //
-//  Redistribution and use in source and binary forms, with or without 
-//  modification, are permitted provided that the following conditions 
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions
 //  are met:
 //    Redistributions of source code must retain the above copyright notice,
 //      this list of conditions and the disclaimer below.
 //    Redistributions in binary form must reproduce the above copyright
-//      notice, this list of conditions and the disclaimer below in the 
+//      notice, this list of conditions and the disclaimer below in the
 //      documentation and/or other materials provided with the distribution.
 //
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -27,7 +27,6 @@
 //  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -41,80 +40,64 @@
 
 #include "common.h"
 
-
 // ------------------------------------------------------------------------------
 
-
-FILE*   g_logFile= stdout;
-
+FILE* g_logFile = stdout;
 
 #ifdef __FLUSHIO__
 
-int         g_ithread= -1;
-pthread_t   g_flushIOthread;
+int g_ithread = -1;
+pthread_t g_flushIOthread;
 
+void* flushIO(void* ptr) {
+  fprintf(g_logFile, "flush thread running\n");
+  for (;;) {
+    sleep(5);
+    fflush(g_logFile);
+  }
 
-void*  flushIO(void* ptr)
-{
-    fprintf(g_logFile, "flush thread running\n");
-    for(;;) {
-        sleep(5);
-        fflush(g_logFile);
-    }
-
-    // unreachable, but eliminates a useless warning
-    return NULL;
+  // unreachable, but eliminates a useless warning
+  return NULL;
 }
 #endif
 
+bool initLog(const char* szLogFile) {
 
-bool initLog(const char* szLogFile)
-{
-
-    if(szLogFile==NULL) {
-        g_logFile= stdout;
-        return true;
-    }
-
-    g_logFile= fopen(szLogFile, "w+");
-    if(g_logFile==NULL)
-        return false;
-
-#ifdef __FLUSHIO__
-    memset(&g_flushIOthread, 0, sizeof(pthread_t));
-    g_ithread= pthread_create(&g_flushIOthread, NULL, flushIO, NULL);
-    if(g_ithread!=0) {
-        fprintf(g_logFile, "initLog: Cant create flush thread\n");
-        fprintf(g_logFile, "errno: %d\n", errno);
-    }
-#endif
+  if (szLogFile == NULL) {
+    g_logFile = stdout;
     return true;
+  }
+
+  g_logFile = fopen(szLogFile, "w+");
+  if (g_logFile == NULL) return false;
+
+#ifdef __FLUSHIO__
+  memset(&g_flushIOthread, 0, sizeof(pthread_t));
+  g_ithread = pthread_create(&g_flushIOthread, NULL, flushIO, NULL);
+  if (g_ithread != 0) {
+    fprintf(g_logFile, "initLog: Cant create flush thread\n");
+    fprintf(g_logFile, "errno: %d\n", errno);
+  }
+#endif
+  return true;
 }
 
-
-void closeLog()
-{
-    if(g_logFile!=stdout) {
-        fclose(g_logFile);
-        g_logFile= NULL;
-    }
+void closeLog() {
+  if (g_logFile != stdout) {
+    fclose(g_logFile);
+    g_logFile = NULL;
+  }
 }
 
+void PrintBytes(const char* szMsg, byte* pbData, int iSize, int col) {
+  int i;
 
-void PrintBytes(const char* szMsg, byte* pbData, int iSize, int col)
-{
-    int i;
-
-    fprintf(g_logFile, "%s", szMsg);
-    for (i= 0; i<iSize; i++) {
-        fprintf(g_logFile, "%02x", pbData[i]);
-        if((i%col)==(col-1))
-            fprintf(g_logFile, "\n");
-        }
-    fprintf(g_logFile, "\n");
+  fprintf(g_logFile, "%s", szMsg);
+  for (i = 0; i < iSize; i++) {
+    fprintf(g_logFile, "%02x", pbData[i]);
+    if ((i % col) == (col - 1)) fprintf(g_logFile, "\n");
+  }
+  fprintf(g_logFile, "\n");
 }
-
 
 // ------------------------------------------------------------------------------------
-
-

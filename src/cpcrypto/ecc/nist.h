@@ -17,26 +17,19 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
-
 // ----------------------------------------------------------------------------
-
 
 #ifndef _NIST_H
 #define _NIST_H
-
 
 #include "common.h"
 #include "bignum.h"
 #include "ecc.h"
 
-
-extern ECurve  nist256curve;
-extern ECurve  nist521curve;
+extern ECurve nist256curve;
+extern ECurve nist521curve;
 extern bool initNist();
 
-
-#endif    // _NIST_H
-
+#endif  // _NIST_H
 
 // ----------------------------------------------------------------------------
-

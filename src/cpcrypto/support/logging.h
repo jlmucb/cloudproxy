@@ -3,16 +3,16 @@
 //  Description: Debugging support
 //
 //
-//  Copyright (c) 2011, Intel Corporation. Some contributions 
+//  Copyright (c) 2011, Intel Corporation. Some contributions
 //    (c) John Manferdelli.  All rights reserved.
 //
-//  Redistribution and use in source and binary forms, with or without 
-//  modification, are permitted provided that the following conditions 
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions
 //  are met:
 //    Redistributions of source code must retain the above copyright notice,
 //      this list of conditions and the disclaimer below.
 //    Redistributions in binary form must reproduce the above copyright
-//      notice, this list of conditions and the disclaimer below in the 
+//      notice, this list of conditions and the disclaimer below in the
 //      documentation and/or other materials provided with the distribution.
 //
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -28,10 +28,7 @@
 //  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-
-
 // --------------------------------------------------------------------------
-
 
 #ifndef _LOGGING__H
 #define _LOGGING__H
@@ -39,16 +36,12 @@
 #include "common.h"
 #include <stdio.h>
 
+extern FILE* g_logFile;
 
-extern FILE*   g_logFile;
-
-
-bool	initLog(const char* szLogFile);
-void	closeLog();
-void	PrintBytes(const char* szMsg, byte* pbData, int iSize, int col=32);
+bool initLog(const char* szLogFile);
+void closeLog();
+void PrintBytes(const char* szMsg, byte* pbData, int iSize, int col = 32);
 
 #endif
 
 // --------------------------------------------------------------------
-
-

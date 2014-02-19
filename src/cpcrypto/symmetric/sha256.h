@@ -25,38 +25,34 @@
 #define LITTLE_ENDIAN
 #endif
 
-
 #include "common.h"
-
 
 //------------------------------------------------------------------------------
 
-
 #define SHA256_DIGESTSIZE_BYTES 32
-#define SHA256_BLOCKSIZE_BYTES  64
-
+#define SHA256_BLOCKSIZE_BYTES 64
 
 class Sha256 {
-public:
-    enum                {DIGESTSIZE= 32, BLOCKSIZE= 64};
-    u64		        m_uLen;
-    const static u32	K[SHA256_BLOCKSIZE_BYTES];
-    u32	                m_rgH[SHA256_DIGESTSIZE_BYTES/sizeof(u32)];
-    byte                m_rgFinalHash[SHA256_DIGESTSIZE_BYTES];
-    int		        m_iBLen;
-    byte                m_rgB[SHA256_BLOCKSIZE_BYTES];
+ public:
+  enum {
+    DIGESTSIZE = 32,
+    BLOCKSIZE = 64
+  };
+  u64 m_uLen;
+  const static u32 K[SHA256_BLOCKSIZE_BYTES];
+  u32 m_rgH[SHA256_DIGESTSIZE_BYTES / sizeof(u32)];
+  byte m_rgFinalHash[SHA256_DIGESTSIZE_BYTES];
+  int m_iBLen;
+  byte m_rgB[SHA256_BLOCKSIZE_BYTES];
 
-    void                Init();
-    void                littleEndian(byte* buf, int size);
-    void                Transform(u32* state, u32* data);
-    void                Update(const byte*, int);
-    void                Final();
-    void                GetDigest(byte*);
-    };
+  void Init();
+  void littleEndian(byte* buf, int size);
+  void Transform(u32* state, u32* data);
+  void Update(const byte*, int);
+  void Final();
+  void GetDigest(byte*);
+};
 
 #endif
 
-
 //------------------------------------------------------------------------------
-
-

@@ -92,7 +92,7 @@ bool getCryptoRandom(i32 numBits, byte* rguBits) {
   byte* rgBuf = (byte*)rguBits;
 
   if (iRand < 0) {
-    fprintf(g_logFile, "Cant open /dev/random");
+    LOG(ERROR)<<"getCryptoRandom: Cant open /dev/random\n";
     return false;
   }
 

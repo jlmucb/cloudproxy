@@ -57,7 +57,7 @@ bool mpMod(bnum& bnA, bnum& bnM, bnum& bnR) {
     if (!mpUDiv(bnA, bnM, bnQ, bnR)) throw("mpUDiv failed");
   }
   catch (const char * szError) {
-    fprintf(g_logFile, "mpMod error\n");
+    LOG(ERROR)<<"mpMod error\n";
     fRet = false;
   }
 
@@ -109,7 +109,7 @@ bool mpModNormalize(bnum& bnA, bnum& bnM) {
     return true;
   }
   catch (const char * szError) {
-    fprintf(g_logFile, "mpModNormalize error\n");
+    LOG(ERROR)<<"mpModNormalize error\n";
     return false;
   }
 }
@@ -163,7 +163,7 @@ bool mpModSub(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR) {
     mpModNormalize(bnR, bnM);
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpModSub error\n");
+    LOG(ERROR)<<"mpModSub error\n";
     fRet = false;
   }
 
@@ -199,7 +199,7 @@ bool mpModMult(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR) {
     mpModNormalize(bnR, bnM);
   }
   catch (const char * szError) {
-    fprintf(g_logFile, "mpModMult error\n");
+    LOG(ERROR)<<"mpModMult error\n";
     fRet = false;
   }
 
@@ -230,7 +230,7 @@ bool mpModInv(bnum& bnA, bnum& bnM, bnum& bnR) {
     mpModNormalize(bnR, bnM);
   }
   catch (const char * szError) {
-    fprintf(g_logFile, "mpModInv error\n");
+    LOG(ERROR)<<"mpModInv error\n";
     fRet = false;
   }
   return fRet;
@@ -267,7 +267,7 @@ bool mpModDiv(bnum& bnA, bnum& bnB, bnum& bnM, bnum& bnR) {
     mpModNormalize(bnR, bnM);
   }
   catch (const char * szError) {
-    fprintf(g_logFile, "mpModDiv error\n");
+    LOG(ERROR)<<"mpModDiv error\n";
     fRet = false;
   }
 
@@ -350,12 +350,12 @@ bool mpModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR) {
     bnA.mpCopyNum(bnR);
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpModExp error\n");
+    LOG(ERROR)<<"mpModExp error\n";
     fRet = false;
   }
 
 #ifdef ARITHTEST
-  fprintf(g_logFile, "mpModExp returning\n");
+  LOG(INFO)<<"mpModExp returning\n";
 #endif
   return fRet;
 }
@@ -408,8 +408,7 @@ bool mpMontRed(bnum& bnN, bnum& bnM, int r, bnum& bnMPrime, bnum& bnmontN)
   int lM = mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
   if (lM > r || lN > 2 * r) {
-    fprintf(g_logFile, "mpMontRed inputs too large lM: %d, lN: %d, r: %d\n", lM,
-            lN, r);
+    LOG(ERROR)<<"mpMontRed inputs too large\n"; 
     return false;
   }
 
@@ -434,7 +433,7 @@ bool mpMontRed(bnum& bnN, bnum& bnM, int r, bnum& bnMPrime, bnum& bnmontN)
     }
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpMontRed error\n");
+    LOG(ERROR)<<"mpMontRed error\n";
     fRet = false;
   }
   return fRet;
@@ -448,8 +447,7 @@ bool mpMakeMont(bnum& bnN, bnum& bnM, int r, bnum& bnmontN)
   int lM = mpWordsinNum(bnM.mpSize(), bnM.m_pValue);
 
   if (lM > r || lN > 2 * r) {
-    fprintf(g_logFile, "mpMakeMont inputs too large lM: %d, lN: %d, r: %d\n",
-            lM, lN, r);
+    LOG(ERROR)<<"mpMakeMont inputs too large\n"; 
     return false;
   }
 
@@ -469,7 +467,7 @@ bool mpMakeMont(bnum& bnN, bnum& bnM, int r, bnum& bnmontN)
     mpMod(bnU, bnM, bnmontN);
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpMakeMont error\n");
+    LOG(ERROR)<<"mpMakeMont error\n";
     fRet = false;
   }
   return fRet;
@@ -496,7 +494,7 @@ bool mpMontStep(bnum& bnmontA, bnum& bnmontB, bnum& bnM, bnum& bnMPrime, int r,
     }
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "montStep error\n");
+    LOG(ERROR)<<"montStep error\n";
     fRet = false;
   }
   return fRet;
@@ -549,7 +547,7 @@ bool mpMontInit(int r, bnum& bnM, bnum& bnMPrime, bnum& bnRmodM,
     if (!mpMakeMont(bnRmodM, bnM, r, bnRsqmodM)) throw("cant get R**2 mod M");
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpMontInit error\n");
+    LOG(ERROR)<<"mpMontInit error\n";
     fRet = false;
   }
   return fRet;
@@ -583,7 +581,7 @@ bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut, int r,
   rgbnmontA[1] = NULL;
 
   if (lM > r) {
-    fprintf(g_logFile, "mpMontModExp: Modulus too large %d %d\n", lM, r);
+    LOG(ERROR)<<"mpMontModExp: Modulus too large\n";
     return false;
   }
 
@@ -637,7 +635,7 @@ bool mpMontModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnOut, int r,
     }
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpMontModExp error\n");
+    LOG(ERROR)<<"mpMontModExp error\n";
     fRet = false;
   }
 
@@ -692,7 +690,7 @@ bool mpRSACalculateFastRSAParameters(bnum& bnE, bnum& bnP, bnum& bnQ,
     while (bnDQ.mpSign()) mpAddTo(bnDQ, bnQM1);
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpRSACalculateFastRSAParameters error: %s", sz);
+    LOG(ERROR)<<"mpRSACalculateFastRSAParameters error: "<< sz << "\n";
     fRet = false;
   }
 
@@ -743,7 +741,7 @@ bool mpRSAMontDEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, bnum& bnQ,
     if (!mpCRT(bnT1, bnP, bnT2, bnQ, bnR)) throw("mpCRT fails");
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpRSAMontDEC error: %s\n", sz);
+    LOG(ERROR)<<"mpRSAMontDEC error: " << sz << "\n";
     fRet = false;
   }
 
@@ -778,7 +776,7 @@ bool mpRSADEC(bnum& bnMsg, bnum& bnP, bnum& bnPM1, bnum& bnDP, bnum& bnQ,
     if (!mpCRT(bnT1, bnP, bnT2, bnQ, bnR)) throw("mpCRT fails");
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpRSADEC error: %s\n", sz);
+    LOG(ERROR)<<"mpRSADEC error: " << sz << "\n";
     fRet = false;
   }
 
@@ -805,30 +803,30 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
 #endif
   // Get two primes
   if (!mpGenPrime(numBits / 2, bnP)) {
-    fprintf(g_logFile, "Cant find P\n");
+    LOG(ERROR)<<"mpRSAGen: Cant find P\n";
     return false;
   }
 
   if (!mpGenPrime(numBits / 2, bnQ)) {
-    fprintf(g_logFile, "Cant find Q\n");
+    LOG(ERROR)<<"mpRSAGen: Cant find Q\n";
     return false;
   }
 
   // Multiply to get bnM
   int lP = mpWordsinNum(sizeP, bnP.m_pValue);
   if ((lP * NUMBITSINU64) > numBits / 2) {
-    fprintf(g_logFile, "P too big\n");
+    LOG(ERROR)<<"mpRSAGen: P too big\n";
     return false;
   }
   int lQ = mpWordsinNum(sizeQ, bnQ.m_pValue);
   if ((lQ * NUMBITSINU64) > numBits / 2) {
-    fprintf(g_logFile, "Q too big\n");
+    LOG(ERROR)<<"mpRSAGen: Q too big\n";
     return false;
   }
   mpUMult(bnP, bnQ, bnM);
   int lM = mpWordsinNum(sizeM, bnM.m_pValue);
   if (lM * NUMBITSINU64 > numBits) {
-    fprintf(g_logFile, "Modulus too big\n");
+    LOG(ERROR)<<"mpRSAGen: Modulus too big\n";
     return false;
   }
 
@@ -863,7 +861,7 @@ bool mpRSAGen(int numBits, bnum& bnE, bnum& bnP, bnum& bnQ, bnum& bnM,
     }
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpRSAGen error: %s", sz);
+    LOG(ERROR)<<"mpRSAGen error: " << sz << "\n";
     fRet = false;
   }
 
@@ -1015,18 +1013,9 @@ bool mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR, int r,
                         *rgbnmontA[even ^ 1])) {
           throw("MontStep error 4");
         }
-#ifdef MPSLIDINGTEST
-        fprintf(g_logFile, "length %d, val %d\n", l, v);
-#endif
         even ^= 1;
         j -= l - 1;
       }
-#ifdef MPSLIDINGTEST1
-      fprintf(g_logFile, "MontA at end, j= %d: ", j);
-      fprintf(g_logFile, "g[%02d]:", j);
-      printNum(*rgbnmontA[even]);
-      fprintf(g_logFile, "\n");
-#endif
     }
 
     if (!mpMontRed(*rgbnmontA[even], bnM, r, bnMPrime, bnR))
@@ -1034,9 +1023,9 @@ bool mpSlidingModExp(bnum& bnBase, bnum& bnExp, bnum& bnM, bnum& bnR, int r,
   }
   catch (const char * sz) {
     if (sz != NULL)
-      fprintf(g_logFile, "mpSlidingModExp: %s \n", sz);
+      LOG(ERROR)<<"mpSlidingModExp: "<< sz << "\n";
     else
-      fprintf(g_logFile, "mpSlidingModExp error\n");
+      LOG(ERROR)<<"mpSlidingModExp error\n";
     fRet = false;
   }
 

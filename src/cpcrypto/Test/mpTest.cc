@@ -1737,6 +1737,7 @@ int main(int an, char** av) {
 
   initBigNum();
   initCryptoRand();
+  initLog("mpTest.log");
 
   printf("mpTests, use genRand option to generate new random tests (often to "
          "random.bin)\n");

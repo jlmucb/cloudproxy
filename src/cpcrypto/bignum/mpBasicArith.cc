@@ -111,7 +111,7 @@ void printNum(bnum& bnA, bool fFull = false) {
   i32 lA;
 
   if (sizeA <= 0) {
-    fprintf(g_logFile, "Bad number, no extent\n");
+    LOG(ERROR)<<"Bad number, no extent\n";
     return;
   }
 
@@ -503,7 +503,7 @@ u64 mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR) {
 
   if (lA >= lB) {
     if (lR < lA) {
-      fprintf(g_logFile, "mpUAdd: Overflow\n");
+      LOG(ERROR)<<"mpUAdd: Overflow\n";
       return 0ULL;
     }
     uCarry = mpUAddLoop(lA, bnA.m_pValue, lB, bnB.m_pValue, bnR.m_pValue);
@@ -513,7 +513,7 @@ u64 mpUAdd(bnum& bnA, bnum& bnB, bnum& bnR) {
     }
   } else {
     if (lR < lB) {
-      fprintf(g_logFile, "mpUAdd: Overflow\n");
+      LOG(ERROR)<<"mpUAdd: Overflow\n";
       return 0ULL;
     }
     uCarry = mpUAddLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnR.m_pValue);
@@ -538,11 +538,11 @@ u64 mpUAddTo(bnum& bnA, bnum& bnB) {
   u64 uCarry = 0ULL;
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpUAddTo: first arg not a number\n");
+    LOG(ERROR)<<"mpUAddTo: first arg not a number\n";
     return 0ULL;
   }
   if (lB <= 0) {
-    fprintf(g_logFile, "mpUAddTo: second arg not a number\n");
+    LOG(ERROR)<<"mpUAddTo: second arg not a number\n";
     return 0ULL;
   }
 
@@ -554,7 +554,7 @@ u64 mpUAddTo(bnum& bnA, bnum& bnB) {
     }
   } else {
     if (bnA.mpSize() < lB) {
-      fprintf(g_logFile, "mpUAddTo: Overflow\n");
+      LOG(ERROR)<<"mpUAddTo: Overflow\n";
       return 0ULL;
     }
     uCarry = mpUAddLoop(lB, bnB.m_pValue, lA, bnA.m_pValue, bnA.m_pValue);
@@ -578,7 +578,7 @@ u64 mpSingleUAddTo(bnum& bnA, u64 uA) {
   u64 uCarry = 0ULL;
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpSingleUAddTo: first arg not a number\n");
+    LOG(ERROR)<<"mpSingleUAddTo: first arg not a number\n";
     return 0ULL;
   }
 
@@ -603,20 +603,20 @@ u64 mpUSub(bnum& bnA, bnum& bnB, bnum& bnR, u64 uBorrow = 0) {
   i32 lB = mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpUSub: first arg not a number\n");
+    LOG(ERROR)<<"mpUSub: first arg not a number\n";
     return 0ULL;
   }
   if (lB <= 0) {
-    fprintf(g_logFile, ": second arg not a number\n");
+    LOG(ERROR)<<": second arg not a number\n";
     return 0ULL;
   }
   if (lA < lB) {
-    fprintf(g_logFile, "mpUSub: second argument is bigger than first\n");
+    LOG(ERROR)<<"mpUSub: second argument is bigger than first\n";
     return 0ULL;
   }
 
   if (lR < lA) {
-    fprintf(g_logFile, "mpUSub: Overflow");
+    LOG(ERROR)<<"mpUSub: Overflow\n";
     return 0ULL;
   }
   uBorrow =
@@ -637,15 +637,15 @@ u64 mpUSubFrom(bnum& bnA, bnum& bnB) {
   u64 uBorrow = 0ULL;
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpUSubFrom: first arg not a number\n");
+    LOG(ERROR)<<"mpUSubFrom: first arg not a number\n";
     return 0ULL;
   }
   if (lB <= 0) {
-    fprintf(g_logFile, "mpUSubFrom: second arg not a number\n");
+    LOG(ERROR)<<"mpUSubFrom: second arg not a number\n";
     return 0ULL;
   }
   if (lA < lB) {
-    fprintf(g_logFile, "mpUSubFrom: second argument is bigger than first\n");
+    LOG(ERROR)<<"mpUSubFrom: second argument is bigger than first\n";
     return 0ULL;
   }
 
@@ -664,7 +664,7 @@ u64 mpUSingleMultBy(bnum& bnA, u64 uB) {
   u64 uCarry = 0ULL;
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpUSingleMultBy: first arg not a number\n");
+    LOG(ERROR)<<"mpUSingleMultBy: first arg not a number\n";
     return 0ULL;
   }
   if (uB == 0) {
@@ -693,11 +693,11 @@ bool mpUMult(bnum& bnA, bnum& bnB, bnum& bnR) {
   i32 lB = mpWordsinNum(bnB.mpSize(), bnB.m_pValue);
 
   if (lA <= 0) {
-    fprintf(g_logFile, "mpUMult: first arg not a number\n");
+    LOG(ERROR)<<"mpUMult: first arg not a number\n";
     return 0ULL;
   }
   if (lB <= 0) {
-    fprintf(g_logFile, "mpUMult: second arg not a number\n");
+    LOG(ERROR)<<"mpUMult: second arg not a number\n";
     return 0ULL;
   }
   if (bnR.mpSize() < (lA + lB)) {
@@ -731,14 +731,14 @@ bool mpUSingleMultAndShift(bnum& bnA, u64 uB, int shift, bnum& bnR) {
   }
 
   if ((lA + shift + 1) > bnR.mpSize()) {
-    fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
+    LOG(ERROR)<<"mpUSingleMultAndShift: overflow\n";
     return false;
   }
   int lR = bnR.mpSize();
   mpCopyWords(lA, bnA.m_pValue, lR - shift, bnR.m_pValue + shift);
   uCarry = mpUMultByLoop(lA + shift + 1, bnR.m_pValue, uB);
   if (uCarry == 0) return true;
-  fprintf(g_logFile, "mpUSingleMultAndShift: overflow\n");
+  LOG(ERROR)<<"mpUSingleMultAndShift: overflow\n";
   return false;
 }
 
@@ -759,11 +759,11 @@ bool mpSingleUDiv(bnum& bnA, u64 uB, bnum& bnQ, u64* puRem, bool fZero = true) {
   u64* rgQ = bnQ.m_pValue;
 
   if (uB == 0L) {
-    fprintf(g_logFile, "mpSingleUDiv: Division by 0\n");
+    LOG(ERROR)<<"mpSingleUDiv: Division by 0\n";
     return false;
   }
   if (sizeQ < lA) {
-    fprintf(g_logFile, "mpSingleUDiv: potential overflow\n");
+    LOG(ERROR)<<"mpSingleUDiv: potential overflow\n";
     return false;
   }
   if (fZero) ZeroWords(sizeQ, bnQ.m_pValue);
@@ -906,12 +906,12 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
   printf("\n");
 #endif
   if (bnB.mpIsZero()) {
-    fprintf(g_logFile, "mpUDiv: Division by 0\n");
+    LOG(ERROR)<<"mpUDiv: Division by 0\n";
     return false;
   }
   int lQ = lA - lB + 1;
   if (lQ > sizeQ) {
-    fprintf(g_logFile, "mpUDiv: Quotient overflow\n");
+    LOG(ERROR)<<"mpUDiv: Quotient overflow\n";
     return false;
   }
   mpZeroNum(bnQ);
@@ -919,14 +919,14 @@ bool mpUDiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR) {
 
   if (mpCompare(bnA, bnB) == s_isLessThan) {
     if (sizeR < lA) {
-      fprintf(g_logFile, "mpUDiv: Remainder overflow\n");
+      LOG(ERROR)<<"mpUDiv: Remainder overflow\n";
       return false;
     }
     bnA.mpCopyNum(bnR);
     return true;
   }
   if (sizeR < lB) {
-    fprintf(g_logFile, "mpUDiv: Remainder overflow\n");
+    LOG(ERROR)<<"mpUDiv: Remainder overflow\n";
     return false;
   }
 
@@ -1082,7 +1082,7 @@ bool ConvertToDecimalString(bnum& bnA, i32 stringSize, char* szNumber) {
   }
   if (i == 0) rgszNum[i] = '0' + uRem;
   if (i >= (stringSize - 1)) {
-    fprintf(g_logFile, "String too small\n");
+    LOG(ERROR)<<"String too small\n";
     return false;
   }
   rgszNum[i] = 0;
@@ -1177,7 +1177,7 @@ bool mpAdd(bnum& bnA, bnum& bnB, bnum& bnR) {
   if (fSignA == fSignB) {
     bnR.mpDumpSign();
     if (mpUAdd(bnA, bnB, bnR) != 0) {
-      fprintf(g_logFile, "mpAdd: Overflow\n");
+      LOG(ERROR)<<"mpAdd: Overflow\n";
       return false;
     }
     if (fSignA) bnR.mpNegate();
@@ -1391,7 +1391,7 @@ bool mpUSquare(bnum& bnA, bnum& bnR) {
   u64* rgR = bnR.m_pValue;
 
   if (2 * lA > bnR.mpSize()) {
-    fprintf(g_logFile, "mpUSquare: output too small\n");
+    LOG(ERROR)<<"mpUSquare: output too small\n";
     return false;
   }
 

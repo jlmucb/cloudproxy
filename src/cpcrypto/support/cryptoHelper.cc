@@ -53,12 +53,12 @@ bool RSADecrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out,
       key.m_pbnPM1 != NULL && key.m_pbnQM1 != NULL) {
     if (!mpRSADEC(bnMsg, *key.m_pbnP, *key.m_pbnPM1, *key.m_pbnDP, *key.m_pbnQ,
                   *key.m_pbnQM1, *key.m_pbnDQ, *key.m_pbnM, bnOut)) {
-      fprintf(g_logFile, "RSADecrypt: can't mpRSADEC\n");
+      LOG(ERROR)<<"RSADecrypt: can't mpRSADEC\n";
       return false;
     }
   } else {
     if (!mpRSAENC(bnMsg, *key.m_pbnD, *key.m_pbnM, bnOut)) {
-      fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
+      LOG(ERROR)<<"RSADecrypt: can't mpRSAENC\n";
       return false;
     }
   }
@@ -83,7 +83,7 @@ bool RSAEncrypt(RSAKey& key, int sizein, byte* in, int* psizeout, byte* out) {
 #endif
   revmemcpy((byte*)bnMsg.m_pValue, in, key.m_iByteSizeM);
   if (!mpRSAENC(bnMsg, *key.m_pbnE, *key.m_pbnM, bnOut)) {
-    fprintf(g_logFile, "RSADecrypt: can't mpRSAENC\n");
+    LOG(ERROR)<<"RSADecrypt: can't mpRSAENC\n";
     return false;
   }
   revmemcpy(out, (byte*)bnOut.m_pValue, key.m_iByteSizeM);
@@ -102,11 +102,11 @@ bool RSASign(RSAKey& key, int hashType, byte* hash, int* psizeout, byte* out) {
   PrintBytes((char*)"RSASign in: ", hash, 32);
 #endif
   if (*psizeout < key.m_iByteSizeM) {
-    fprintf(g_logFile, "RSASign: output buffer too small\n");
+    LOG(ERROR)<<"RSASign: output buffer too small\n";
     return false;
   }
   if (!emsapkcspad(hashType, hash, key.m_iByteSizeM, padded)) {
-    fprintf(g_logFile, "RSASign: padding failed\n");
+    LOG(ERROR)<<"RSASign: padding failed\n";
     return false;
   }
 #ifdef TEST1
@@ -131,16 +131,16 @@ bool RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in) {
     PrintBytes((char*)"RSAVerify hash (sha256): ", hash, 32);
 #endif
   if (!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
-    fprintf(g_logFile, "RSAVerify: encryption failed\n");
+    LOG(ERROR)<<"RSAVerify: encryption failed\n";
     return false;
   }
 #ifdef TEST1
-  fprintf(g_logFile, "RSAVerify modulus size %d\n", key.m_iByteSizeM);
+  LOG(INFO)<<"RSAVerify modulus size "<< key.m_iByteSizeM <<"\n";
   PrintBytes((char*)"RSAVerify decrypted: ", padded, key.m_iByteSizeM);
 #endif
   if (!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded)) return false;
 #ifdef TEST1
-  fprintf(g_logFile, "RSAVerify returns true\n");
+  LOG(INFO)<<"RSAVerify returns true\n";
 #endif
   return true;
 }
@@ -153,7 +153,7 @@ bool RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in, int* psizeout,
   PrintBytes((char*)"RSASeal in: ", in, sizein);
 #endif
   if (!pkcsmessagepad(sizein, in, key.m_iByteSizeM, padded)) {
-    fprintf(g_logFile, "RSASeal: padding failed\n");
+    LOG(ERROR)<<"RSASeal: padding failed\n";
     return false;
   }
 #ifdef TEST1
@@ -163,19 +163,19 @@ bool RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in, int* psizeout,
     default:
     case USEPUBLIC:
       if (!RSAEncrypt(key, key.m_iByteSizeM, padded, psizeout, out)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
+        LOG(ERROR)<<"RSASeal: encryption failed\n";
         return false;
       }
       break;
     case USEPRIVATE:
       if (!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out, false)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
+        LOG(ERROR)<<"RSASeal: encryption failed\n";
         return false;
       }
       break;
     case USEPRIVATEFAST:
       if (!RSADecrypt(key, key.m_iByteSizeM, padded, psizeout, out, true)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
+        LOG(ERROR)<<"RSASeal: encryption failed\n";
         return false;
       }
       break;
@@ -192,26 +192,26 @@ bool RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in, int* psizeout,
   int size = GLOBALMAXPUBKEYSIZE;
 
 #ifdef TEST1
-  fprintf(g_logFile, "RSAUnseal direction %d\n", keyuse);
+  LOG(INFO)<<"RSAUnseal direction " <<  keyuse << "\n";
   PrintBytes((char*)"RSAUnseal in: ", in, sizein);
 #endif
   switch (keyuse) {
     default:
     case USEPUBLIC:
       if (!RSAEncrypt(key, key.m_iByteSizeM, in, &size, padded)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
+        LOG(ERROR)<<"RSASeal: encryption failed\n";
         return false;
       }
       break;
     case USEPRIVATE:
       if (!RSADecrypt(key, key.m_iByteSizeM, in, &size, padded, false)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
+        LOG(ERROR)<<"RSASeal: encryption failed\n";
         return false;
       }
       break;
     case USEPRIVATEFAST:
       if (!RSADecrypt(key, key.m_iByteSizeM, in, &size, padded, true)) {
-        fprintf(g_logFile, "RSASeal: encryption failed\n");
+        LOG(ERROR)<<"RSASeal: encryption failed\n";
         return false;
       }
       break;
@@ -220,7 +220,7 @@ bool RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in, int* psizeout,
   PrintBytes((char*)"RSAUnseal decrypted: ", padded, key.m_iByteSizeM);
 #endif
   if (!pkcsmessageextract(psizeout, out, key.m_iByteSizeM, padded)) {
-    fprintf(g_logFile, "RSAUnseal: padding failed\n");
+    LOG(ERROR)<<"RSAUnseal: padding failed\n";
     return false;
   }
 #ifdef TEST1
@@ -242,7 +242,7 @@ RSAKey* RSAGenerateKeyPair(int keySize) {
   bool fGotKey = false;
 
 #ifdef TEST1
-  fprintf(g_logFile, "generateRSAKeypair(%d)\n", keySize);
+  LOG(INFO)<<"generateRSAKeypair("<< keySize<<")\n";
 #endif
   if (keySize == 1024) {
     ikeyu64Size = 16;
@@ -270,11 +270,11 @@ RSAKey* RSAGenerateKeyPair(int keySize) {
     if (fGotKey) break;
   }
   if (!fGotKey) {
-    fprintf(g_logFile, "Cant generate key\n");
+    LOG(ERROR)<<"Cant generate key\n";
     return NULL;
   }
 #ifdef TEST1
-  fprintf(g_logFile, "generateRSAKeypair: RSA Key generated\n");
+  LOG(INFO)<<"generateRSAKeypair: RSA Key generated\n";
 #endif
 
   RSAKey* pKey = new RSAKey();
@@ -288,7 +288,7 @@ RSAKey* RSAGenerateKeyPair(int keySize) {
     pKey->m_ikeySize = 2048;
   }
 #ifdef TEST1
-  fprintf(g_logFile, "generateRSAKeypair: ikeyByteSize= %d\n", ikeyByteSize);
+  LOG(ERROR)<<"generateRSAKeypair: ikeyByteSize= " << ikeyByteSize <<"\n";
 #endif
 
   pKey->m_ikeyNameSize = 0;
@@ -320,7 +320,7 @@ RSAKey* RSAGenerateKeyPair(int keySize) {
 
   if (!mpRSACalculateFastRSAParameters(bnE, bnP, bnQ, bnPM1, bnDP, bnQM1,
                                        bnDQ)) {
-    fprintf(g_logFile, "Cant generate fast rsa parameters\n");
+    LOG(ERROR)<<"Cant generate fast rsa parameters\n";
   } else {
     pKey->m_iByteSizeDP = ikeyByteSize / 2;
     pKey->m_iByteSizeDQ = ikeyByteSize / 2;
@@ -362,7 +362,7 @@ RSAKey* RSAKeyfromKeyInfoNode(TiXmlNode* pNode) {
     if (!pKey->getDataFromDoc()) throw("Cant get data from KeyInfo\n");
   }
   catch (const char * szError) {
-    fprintf(g_logFile, "RSAKeyFromParsedKeyInfo: %s\n", szError);
+    LOG(ERROR)<<"RSAKeyFromParsedKeyInfo: " <<  szError <<"\n";
     if (pKey != NULL) {
       delete pKey;
       pKey = NULL;
@@ -386,21 +386,18 @@ RSAKey* RSAKeyfromkeyInfo(const char* szKeyInfo) {
   TiXmlElement* pRootElement = NULL;
 
   if (pKey == NULL) return NULL;
-#ifdef QUOTETEST
-  fprintf(g_logFile, "keyfromkeyInfo, Keyinfo\n%s\n", szKeyInfo);
-#endif
   if (!pKey->ParsefromString(szKeyInfo)) {
-    fprintf(g_logFile, "keyfromkeyInfo: cant get key from keyInfo\n");
+    LOG(ERROR)<<"keyfromkeyInfo: cant get key from keyInfo\n";
     goto cleanup;
   }
   pRootElement = pKey->m_pDoc->RootElement();
   if (pRootElement == NULL) {
-    fprintf(g_logFile, "keyfromkeyInfo: cant get root element\n");
+    LOG(ERROR)<<"keyfromkeyInfo: cant get root element\n";
     goto cleanup;
   }
 
   if (!pKey->getDataFromRoot(pRootElement)) {
-    fprintf(g_logFile, "keyfromkeyInfo: cant getDataFromRoot\n");
+    LOG(ERROR)<<"keyfromkeyInfo: cant getDataFromRoot\n";
     goto cleanup;
   }
 
@@ -422,11 +419,11 @@ char* XMLCanonicalizedString(const char* szXML) {
   TiXmlDocument doc;
 
   if (!doc.Parse(szXML)) {
-    fprintf(g_logFile, "XMLCanonicalizedString: Cant parse Xml Document\n");
+    LOG(ERROR)<<"XMLCanonicalizedString: Cant parse Xml Document\n";
     return NULL;
   }
   if (doc.RootElement() == NULL) {
-    fprintf(g_logFile, "XMLCanonicalizedString: Cant get root element\n");
+    LOG(ERROR)<<"XMLCanonicalizedString: Cant get root element\n";
     return NULL;
   }
   return canonicalize((TiXmlNode*)doc.RootElement());
@@ -441,12 +438,12 @@ KeyInfo* ReadKeyfromFile(const char* szKeyFile) {
 
   TiXmlDocument* pDoc = new TiXmlDocument();
   if (pDoc == NULL) {
-    fprintf(g_logFile, "Cant get new an Xml Document\n");
+    LOG(ERROR)<<"Cant get new an Xml Document\n";
     return NULL;
   }
 
   if (!pDoc->LoadFile(szKeyFile)) {
-    fprintf(g_logFile, "Cant load keyfile\n");
+    LOG(ERROR)<<"Cant load keyfile\n";
     return NULL;
   }
   iKeyType = pParseKey->getKeyType(pDoc);
@@ -455,7 +452,7 @@ KeyInfo* ReadKeyfromFile(const char* szKeyFile) {
     case AESKEYTYPE:
       pAESKey = new symKey();
       if (pAESKey == NULL) {
-        fprintf(g_logFile, "Cant new symKey\n");
+        LOG(ERROR)<<"Cant new symKey\n";
         break;
       } else
         pAESKey->m_pDoc = pDoc;
@@ -465,7 +462,7 @@ KeyInfo* ReadKeyfromFile(const char* szKeyFile) {
     case RSAKEYTYPE:
       pRSAKey = new RSAKey();
       if (pRSAKey == NULL) {
-        fprintf(g_logFile, "Cant new RSAKey\n");
+        LOG(ERROR)<<"Cant new RSAKey\n";
         break;
       } else
         pRSAKey->m_pDoc = pDoc;
@@ -473,7 +470,7 @@ KeyInfo* ReadKeyfromFile(const char* szKeyFile) {
       pRetKey = (KeyInfo*)pRSAKey;
       break;
     default:
-      fprintf(g_logFile, "Unknown key type in ReadFromFile\n");
+      LOG(ERROR)<<"Unknown key type in ReadFromFile\n";
       break;
   }
   delete pParseKey;
@@ -558,12 +555,12 @@ bool base64frombytes(int nb, byte* in, int* pnc, char* out) {
   int size = *pnc;
 
   if (size < maxcharsinBase64stringfrombytes(nb)) {
-    fprintf(g_logFile, "base64frombytes: base64 output buffer too small\n");
+    LOG(ERROR)<<"base64frombytes: base64 output buffer too small\n";
     return false;
   }
 
   if (!toBase64(nb, in, &size, out)) {
-    fprintf(g_logFile, "base64frombytes: conversion failed\n");
+    LOG(ERROR)<<"base64frombytes: conversion failed\n";
     return false;
   }
   *pnc = size;
@@ -575,11 +572,11 @@ bool bytesfrombase64(char* in, int* pnb, byte* out) {
   int n = strlen(in);
 
   if (size < maxbytesfromBase64string(n)) {
-    fprintf(g_logFile, "bytesfrombase64: output buffer too small\n");
+    LOG(ERROR)<<"bytesfrombase64: output buffer too small\n";
     return false;
   }
   if (!fromBase64(n, in, &size, out)) {
-    fprintf(g_logFile, "bytesfrombase64: conversion failed\n");
+    LOG(ERROR)<<"bytesfrombase64: conversion failed\n";
     return false;
   }
   *pnb = size;
@@ -620,7 +617,7 @@ bool XMLenclosingtypefromelements(const char* tag, int numAttr,
   sprintf(&buf[n], "</%s>\n", tag);
   size = strlen(buf);
   if (size > *psize) {
-    fprintf(g_logFile, "XMLenclosingtypefromelements: conversion failed\n");
+    LOG(ERROR)<<"XMLenclosingtypefromelements: conversion failed\n";
     return false;
   }
   *psize = size;

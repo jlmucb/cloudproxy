@@ -61,20 +61,20 @@ ECPoint::~ECPoint() {
 #ifdef TEST
 void ECPoint::printMe() {
   if (m_normalized)
-    fprintf(g_logFile, "\nPoint normalized\n");
+    LOG(INFO)<<"\nPoint normalized\n";
   else
-    fprintf(g_logFile, "\nPoint not normalized\n");
-  if (m_myCurve == NULL) fprintf(g_logFile, "No curve set\n");
+    LOG(INFO)<<"\nPoint not normalized\n";
+  if (m_myCurve == NULL) LOG(INFO)<<"No curve set\n";
 
-  fprintf(g_logFile, "X: ");
+  LOG(INFO)<<"X: ";
   printNum(*m_bnX);
-  fprintf(g_logFile, "\n");
-  fprintf(g_logFile, "Y: ");
+  LOG(INFO)<<"\n";
+  LOG(INFO)<<"Y: ";
   printNum(*m_bnY);
-  fprintf(g_logFile, "\n");
-  fprintf(g_logFile, "Z: ");
+  LOG(INFO)<<"\n";
+  LOG(INFO)<<"Z: ";
   printNum(*m_bnZ);
-  fprintf(g_logFile, "\n");
+  LOG(INFO)<<"\n";
   return;
 }
 #endif
@@ -122,43 +122,43 @@ ECurve::~ECurve() {
 
 #ifdef TEST
 void ECurve::printMe() {
-  fprintf(g_logFile, "\nCurve\n");
+  LOG(INFO)<<"\nCurve\n";
   if (m_bnM != NULL) {
-    fprintf(g_logFile, "M: ");
+    LOG(INFO)<<"M: ";
     printNum(*m_bnM);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "M is not set\n");
+    LOG(INFO)<<"M is not set\n";
   if (m_bnA != NULL) {
-    fprintf(g_logFile, "A: ");
+    LOG(INFO)<<"A: ";
     printNum(*m_bnA);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "A is not set\n");
+    LOG(INFO)<<"A is not set\n";
   if (m_bnB != NULL) {
-    fprintf(g_logFile, "B: ");
+    LOG(INFO)<<"B: ";
     printNum(*m_bnB);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "B is not set\n");
+    LOG(INFO)<<"B is not set\n";
   if (m_bnDisc != NULL) {
-    fprintf(g_logFile, "Disc: ");
+    LOG(INFO)<<"Disc: ";
     printNum(*m_bnDisc);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "Disc is not set\n");
+    LOG(INFO)<<"Disc is not set\n";
   if (m_bnGx != NULL) {
-    fprintf(g_logFile, "Gx: ");
+    LOG(INFO)<<"Gx: ";
     printNum(*m_bnGx);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "Gx is not set\n");
+    LOG(INFO)<<"Gx is not set\n";
   if (m_bnGy != NULL) {
-    fprintf(g_logFile, "Gy: ");
+    LOG(INFO)<<"Gy: ";
     printNum(*m_bnGy);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "Gy is not set\n");
+    LOG(INFO)<<"Gy is not set\n";
 }
 #endif
 
@@ -295,30 +295,30 @@ ECKey::~ECKey() {
 #ifdef TEST
 void ECKey::printMe() {
   if (m_publicValid)
-    fprintf(g_logFile, "\nEKey public key valid\n");
+    LOG(INFO)<<"\nEKey public key valid\n";
   else
-    fprintf(g_logFile, "\nEKey public not valid\n");
+    LOG(INFO)<<"\nEKey public not valid\n";
   if (m_myCurve == NULL)
-    fprintf(g_logFile, "Curve not set\n");
+    LOG(INFO)<<"Curve not set\n";
   else
     m_myCurve->printMe();
-  fprintf(g_logFile, "sizejunk: %d\n", m_sizejunk);
+  LOG(INFO)<<"sizejunk: " << m_sizejunk <<"\n";
   if (m_secret != NULL) {
-    fprintf(g_logFile, "secret: ");
+    LOG(INFO)<<"secret: ";
     printNum(*m_secret);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
   } else
-    fprintf(g_logFile, "secret is not set\n");
+    LOG(INFO)<<"secret is not set\n";
   if (m_Public == NULL)
-    fprintf(g_logFile, "base not set\n");
+    LOG(INFO)<<"base not set\n";
   else {
-    fprintf(g_logFile, "Base:");
+    LOG(INFO)<<"Base:";
     m_Public->printMe();
   }
   if (m_G == NULL)
-    fprintf(g_logFile, "Generator not set\n");
+    LOG(INFO)<<"Generator not set\n";
   else {
-    fprintf(g_logFile, "Generator:");
+    LOG(INFO)<<"Generator:";
     m_G->printMe();
   }
 }
@@ -471,24 +471,10 @@ bool ecMult(ECPoint& P, bnum& bnA, ECPoint& R) {
 
   int i;
   int n = mpBitsinNum(bnA.mpSize(), bnA.m_pValue) + 1;
-#ifdef TEST1
-  printf("high bit: %d\ncurrentacc: ", n - 1);
-  currentAcc.printMe();
-  printf("currentDouble: ");
-  currentDouble.printMe();
-#endif
 
   for (i = 0; i < n; i++) {
     if (IsBitPositionNonZero(bnA, i + 1)) {
       ecAdd(currentDouble, currentAcc, newAcc);
-#ifdef TEST1
-      printf("adding bit position %d\n", i + 1);
-      currentAcc.printMe();
-      printf("currentDouble: ");
-      currentDouble.printMe();
-      printf("newAcc: ");
-      newAcc.printMe();
-#endif
       currentAcc.copyPoint(newAcc);
       newAcc.makeZero();
     }
@@ -551,9 +537,9 @@ bool ecEmbed(int sizejunk, bnum& bnX, ECPoint& R) {
     }
     bnT1.mpCopyNum(*R.m_bnX);
 #ifdef TEST
-    fprintf(g_logFile, "Evaluated point:");
+    LOG(INFO)<<"Evaluated point:";
     printNum(bnT2);
-    fprintf(g_logFile, "\n");
+    LOG(INFO)<<"\n";
 #endif
     mpZeroNum(*R.m_bnZ);
     R.m_bnZ->m_pValue[0] = 1ULL;
@@ -569,30 +555,20 @@ bool ecExtract(int sizejunk, ECPoint& P, bnum& bnX) {
   bnum Y1(2 * P.m_myCurve->m_bnM->mpSize() + 4);
   bnum Y2(P.m_myCurve->m_bnM->mpSize() + 4);
 
-#ifdef TEST1
-  fprintf(g_logFile, "exExtract\nX: ");
-  printNum(*P.m_bnX);
-  fprintf(g_logFile, "\nY:");
-  printNum(*P.m_bnY);
-  fprintf(g_logFile, "\nP: ");
-  printNum(*(P.m_myCurve->m_bnM));
-  fprintf(g_logFile, "\n");
-#endif
-
   if (!mpModMult(*P.m_bnY, *P.m_bnY, *(P.m_myCurve->m_bnM), Y1)) {
-    fprintf(g_logFile, "mpModMult failed\n");
+    LOG(ERROR)<<"mpModMult failed\n";
     return false;
   }
   if (!ecEvaluatePoint(*P.m_myCurve, *P.m_bnX, Y2)) {
     return false;
   }
   if (mpCompare(Y1, Y2) != 0) {
-    fprintf(g_logFile, "ecExtract: point not on curve\n");
-    fprintf(g_logFile, "Y1: ");
+    LOG(ERROR)<<"ecExtract: point not on curve\n";
+    LOG(ERROR)<<"Y1: ";
     printNum(Y1);
-    fprintf(g_logFile, "\nY2:");
+    LOG(ERROR)<<"\nY2:";
     printNum(Y2);
-    fprintf(g_logFile, "\n");
+    LOG(ERROR)<<"\n";
     return false;
   }
 

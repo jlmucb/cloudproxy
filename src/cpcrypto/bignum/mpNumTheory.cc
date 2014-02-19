@@ -158,7 +158,7 @@ bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG) {
   int i;
 
   if (bnA.mpSign() || bnB.mpSign()) {
-    fprintf(g_logFile, "mpExtendedGCD: negative arguments forbidden\n");
+    LOG(ERROR)<<"mpExtendedGCD: negative arguments forbidden\n";
     return false;
   }
 
@@ -173,7 +173,7 @@ bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG) {
   size = 2 * size + 1;
 
 #ifdef ARITHTEST
-  fprintf(g_logFile, "mpExtendedGCD: size %d\n", size);
+  LOG(INFO)<<"mpExtendedGCD: size: " << size <<"\n";
 #endif
 
   for (i = 0; i < 3; i++) {
@@ -240,7 +240,7 @@ bool mpExtendedGCD(bnum& bnA, bnum& bnB, bnum& bnX, bnum& bnY, bnum& bnG) {
     fprintf(g_logFile, "\n");
 #endif
     if (!mpUDiv(*rgbnR[iPrior], *rgbnR[iCurrent], *pbnQ, *rgbnR[iNext])) {
-      fprintf(g_logFile, "mpExtendedGCD: bad division\n");
+      LOG(ERROR)<<"mpExtendedGCD: bad division\n";
       fRet = false;
       goto done;
     }
@@ -358,57 +358,9 @@ bool mpCRT(bnum& bnA1, bnum& bnM1, bnum& bnA2, bnum& bnM2, bnum& bnR) {
 
     fRet = mpModAdd(bnT3, bnT4, bnN, bnR);
     if (!fRet) throw("mpCRT: mpModMult failed (5)\n");
-
-#ifdef ARITHTEST
-    fprintf(g_logFile, "\nmpCRT at bottom\n");
-    fprintf(g_logFile, "R: ");
-    printNum(bnR);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M1: ");
-    printNum(bnM1);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M2: ");
-    printNum(bnM2);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "M1*M2: ");
-    printNum(bnN);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "A1: ");
-    printNum(bnA1);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "A2: ");
-    printNum(bnA2);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "X1: ");
-    printNum(bnX1);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "X2: ");
-    printNum(bnX2);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T1: ");
-    printNum(bnT1);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T2: ");
-    printNum(bnT2);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T3: ");
-    printNum(bnT3);
-    fprintf(g_logFile, "\n");
-    fprintf(g_logFile, "T4: ");
-    printNum(bnT4);
-    fprintf(g_logFile, "\n");
-    mpMod(bnR, bnM1, bnT1);
-    fprintf(g_logFile, "R(mod M1): ");
-    printNum(bnT1);
-    fprintf(g_logFile, "\n");
-    mpMod(bnR, bnM2, bnT2);
-    fprintf(g_logFile, "R(mod M2): ");
-    printNum(bnT2);
-    fprintf(g_logFile, "\n");
-#endif
   }
   catch (const char * sz) {
-    fprintf(g_logFile, "mpCRT error: %s\n", sz);
+    LOG(ERROR)<<"mpCRT error: " << sz << "\n";
     fRet = false;
   }
 
@@ -499,11 +451,10 @@ bool MRPrimeTestLoop(bnum& bnN, bnum& bnNM1, bnum& bnA, bnum& bnR, i32 iS,
   extern bnum g_bnOne;
 
 #ifdef ARITHTEST
-  fprintf(g_logFile, "MRPrimeTestLoop\n");
-  fflush(g_logFile);
+  LOG(INFO)<<"MRPrimeTestLoop\n";
 #endif
   if (!mpModExp(bnA, bnR, bnN, bnY)) {
-    fprintf(g_logFile, "MRPrimeTestLoop: Bad Exponent\n");
+    LOG(ERROR)<<"MRPrimeTestLoop: Bad Exponent\n";
     return false;
   }
   if (mpCompare(bnY, g_bnOne) != s_isEqualTo &&
@@ -580,8 +531,7 @@ bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases,
   bnum* pbNum;
 
 #ifdef ARITHTEST
-  fprintf(g_logFile, "MakeRandBasisforMR\n");
-  fflush(g_logFile);
+  LOG(INFO)<<"MakeRandBasisforMR\n");
 #endif
   // first one is always 2
   pbNum = rgbnBases[0];
@@ -592,7 +542,7 @@ bool MakeRandBasisForMR(int iBitSize, bnum& bnN, int iNumBases,
     pbNum = rgbnBases[i];
     mpZeroNum(*pbNum);
     if (!getCryptoRandom(iBitSize, (byte*)pbNum->m_pValue))
-      fprintf(g_logFile, "MakeRandBasisForMR: No Random Bits\n");
+      LOG(ERROR)<<"MakeRandBasisForMR: No Random Bits\n";
     // if it's bigger than number, subtract it
     if (mpUCompare(bnN, *pbNum) == s_isLessThan) mpUSubFrom(*pbNum, bnN);
   }
@@ -632,7 +582,7 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid) {
   mpZeroNum(bnA);
   // Get Candidate prime (bnA)
   if (!getCryptoRandom(iBitSize, (byte*)rguA)) {
-    fprintf(g_logFile, "No Random Bits\n");
+    LOG(ERROR)<<"mpGenPrime: No Random Bits\n";
     return false;
   }
 
@@ -673,7 +623,7 @@ bool mpGenPrime(i32 iBitSize, bnum& bnA, int iConfid) {
     // Number overflows?, subtract instead
     lA = mpWordsinNum(bnA.mpSize(), bnA.m_pValue);
     if (mpUAddTo(bnA, g_bnTwo) != 0 || lA * NUMBITSINU64 > iBitSize) {
-      fprintf(g_logFile, "Prime interval exceeded\n");
+      LOG(ERROR)<<"Prime interval exceeded\n";
       return false;
     }
   }

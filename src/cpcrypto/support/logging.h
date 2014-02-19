@@ -36,6 +36,19 @@
 #include "common.h"
 #include <stdio.h>
 
+#ifdef GLOGENABLED
+#include "glog/logging.h"
+#else
+#include <fstream>
+extern std::ostream *logFile;
+#define INFO 1
+#define WARNING 2
+#define ERROR 3
+#define FATAL 4
+
+#define LOG(X) (*logFile)
+#endif
+
 extern FILE* g_logFile;
 
 bool initLog(const char* szLogFile);

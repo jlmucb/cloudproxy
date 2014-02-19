@@ -43,9 +43,9 @@ void printW(u32* pU, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    fprintf(g_logFile, "%08x ", pU[i]);
+    LOG(WARNING)<<pU[i];
   }
-  fprintf(g_logFile, "\n");
+  LOG(WARNING)<<"\n";
 }
 #endif
 
@@ -123,9 +123,9 @@ h(i) += S0(a(i)) + Maj(a(i), b(i), c(i))
   u32 j;
 
 #ifdef CRYPTOTEST2
-  fprintf(g_logFile, "\nState     in:  ");
+  LOG(INFO)<<"\nState     in:  ";
   printW(m_rgH, 8);
-  fprintf(g_logFile, "Data      in:  ");
+  LOG(INFO)<<"Data      in:  ";
   printW(data, 16);
 #endif
   memcpy((byte*)W, (byte*)data, 64);
@@ -149,7 +149,7 @@ h(i) += S0(a(i)) + Maj(a(i), b(i), c(i))
     R(15);
   }
 #ifdef CRYPTOTEST2
-  fprintf(g_logFile, "W           :  ");
+  LOG(INFO)<<"W:  ";
   printW(W, 16);
 #endif
   m_rgH[0] += a(0);
@@ -161,7 +161,7 @@ h(i) += S0(a(i)) + Maj(a(i), b(i), c(i))
   m_rgH[6] += g(0);
   m_rgH[7] += h(0);
 #ifdef CRYPTOTEST2
-  fprintf(g_logFile, "Transform out: ");
+  LOG(INFO)<<"Transform out: ";
   printW(m_rgH, 8);
 #endif
   memset(W, 0, sizeof(W));

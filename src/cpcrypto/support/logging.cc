@@ -37,8 +37,17 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
-
 #include "common.h"
+#include <fstream>
+
+// ------------------------------------------------------------------------------
+
+extern FILE* g_logFile;
+
+#ifndef GLOGENABLED
+std::ostream *logFile= NULL;
+#endif
+
 
 // ------------------------------------------------------------------------------
 
@@ -63,6 +72,10 @@ void* flushIO(void* ptr) {
 
 bool initLog(const char* szLogFile) {
 
+#ifndef GLOGENABLED
+  logFile= new std::ofstream((char*)"/tmp/logfile");
+#endif
+
   if (szLogFile == NULL) {
     g_logFile = stdout;
     return true;
@@ -75,8 +88,8 @@ bool initLog(const char* szLogFile) {
   memset(&g_flushIOthread, 0, sizeof(pthread_t));
   g_ithread = pthread_create(&g_flushIOthread, NULL, flushIO, NULL);
   if (g_ithread != 0) {
-    fprintf(g_logFile, "initLog: Cant create flush thread\n");
-    fprintf(g_logFile, "errno: %d\n", errno);
+    LOG(ERROR)<<"initLog: Cant create flush thread\n";
+    LOG(ERROR)<<"errno: "<< errno <<"\n";
   }
 #endif
   return true;

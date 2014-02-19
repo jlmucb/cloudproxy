@@ -127,7 +127,7 @@ bool ecEncrypt(ECKey& K, bnum& bnX, ECPoint& R1, ECPoint& R2) {
   // embed message
   if (!ecEmbed(K.m_sizejunk, bnX, M)) return false;
 #ifdef TEST
-  fprintf(g_logFile, "Embedded point: ");
+  LOG(INFO)<<"Embedded point: ";
   M.printMe();
 #endif
 
@@ -154,7 +154,7 @@ bool ecDecrypt(ECKey& K, ECPoint& P1, ECPoint& P2, bnum& bnX) {
     return false;
   }
 #ifdef TEST
-  fprintf(g_logFile, "Recovered message point: ");
+  LOG(INFO)<<"Recovered message point: ";
   M.printMe();
 #endif
   if (!ecExtract(K.m_sizejunk, M, bnX)) return false;

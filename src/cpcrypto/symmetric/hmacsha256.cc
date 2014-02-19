@@ -147,8 +147,7 @@ bool prf_SHA256(int iKeyLen, byte* rguKey, int iSeedSize, byte* rguSeed,
   int iModifiedSize;
 
 #ifdef TEST1
-  fprintf(g_logFile, "prf_SHA256 %s %d %d %d\n", label, iKeyLen, iSeedSize,
-          iOutSize);
+  LOF(INFO)<< "prf_SHA256 \n";
   PrintBytes("Key  ", rguKey, iKeyLen);
   PrintBytes("Seed ", rguSeed, iSeedSize);
 #endif

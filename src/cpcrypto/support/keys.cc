@@ -66,7 +66,7 @@ KeyInfo::~KeyInfo() {
 bool KeyInfo::ParsefromString(const char* szXML) {
   TiXmlDocument* pDoc = new TiXmlDocument();
   if (!pDoc->Parse(szXML)) {
-    fprintf(g_logFile, "Cant parse document from file string\n");
+    LOG(ERROR)<<"Cant parse document from file string\n";
     return false;
   }
   m_pDoc = pDoc;
@@ -77,7 +77,7 @@ bool KeyInfo::ParsefromFile(const char* fileName) {
   TiXmlDocument* pDoc = new TiXmlDocument();
 
   if (!pDoc->LoadFile(fileName)) {
-    fprintf(g_logFile, "Cant load document from file: %s\n", fileName);
+    LOG(ERROR)<<"Cant load document from file: " << fileName <<"\n";
     return false;
   }
   m_pDoc = pDoc;
@@ -146,7 +146,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement) {
   int iOutLen;
 
   if (pRootElement == NULL) {
-    fprintf(g_logFile, "No root element\n");
+    LOG(ERROR)<<"getDataFromRoot: No root element\n";
     return false;
   }
 
@@ -188,11 +188,11 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement) {
     iOutLen = GLOBALMAXSYMKEYSIZE;
     if (!fromBase64(strlen(szBase64KeyValue), szBase64KeyValue, &iOutLen,
                     m_rgbKey)) {
-      fprintf(g_logFile, "Cant base64 decode AES key\n");
+      LOG(ERROR)<<"Cant base64 decode AES key\n";
       return false;
     }
   } else {
-    fprintf(g_logFile, "Unknown key type\n");
+    LOG(ERROR)<<"Unknown key type\n";
     return false;
   }
 
@@ -201,7 +201,7 @@ bool symKey::getDataFromRoot(TiXmlElement* pRootElement) {
 
 bool symKey::getDataFromDoc() {
   if (m_pDoc == NULL) {
-    fprintf(g_logFile, "No Document\n");
+    LOG(ERROR)<<"symKey::getDataFromDoc: No Document\n";
     return false;
   }
   return getDataFromRoot(m_pDoc->RootElement());
@@ -343,7 +343,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
   int iOutLen = GLOBALMAXPUBKEYSIZE;
 
   if (pRootElement == NULL) {
-    fprintf(g_logFile, "Cant get root element\n");
+    LOG(ERROR)<<"RSAKey::getDataFromRoot: Cant get root element\n";
     return false;
   }
 
@@ -414,7 +414,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     m_iByteSizeM = 0;
     if (szRsaKeyM) {
       if (!fromBase64(strlen(szRsaKeyM), szRsaKeyM, &iOutLen, m_rgbM)) {
-        fprintf(g_logFile, "Cant base64 decode M in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode M in RSA key\n";
         return false;
       }
       m_iByteSizeM = iOutLen;
@@ -424,7 +424,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     m_iByteSizeP = 0;
     if (szRsaKeyP) {
       if (!fromBase64(strlen(szRsaKeyP), szRsaKeyP, &iOutLen, m_rgbP)) {
-        fprintf(g_logFile, "Cant base64 decode P in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode P in RSA key\n";
         return false;
       }
       m_iByteSizeP = iOutLen;
@@ -434,7 +434,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     iOutLen = GLOBALMAXPUBKEYSIZE;
     if (szRsaKeyQ) {
       if (!fromBase64(strlen(szRsaKeyQ), szRsaKeyQ, &iOutLen, m_rgbQ)) {
-        fprintf(g_logFile, "Cant base64 decode Q in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode Q in RSA key\n";
         return false;
       }
       m_iByteSizeQ = iOutLen;
@@ -444,7 +444,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     m_iByteSizeE = 0;
     if (szRsaKeyE) {
       if (!fromBase64(strlen(szRsaKeyE), szRsaKeyE, &iOutLen, m_rgbE)) {
-        fprintf(g_logFile, "Cant base64 decode E in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode E in RSA key\n";
         return false;
       }
       m_iByteSizeE = iOutLen;
@@ -454,7 +454,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     m_iByteSizeD = 0;
     if (szRsaKeyD) {
       if (!fromBase64(strlen(szRsaKeyD), szRsaKeyD, &iOutLen, m_rgbD)) {
-        fprintf(g_logFile, "Cant base64 decode D in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode D in RSA key\n";
         return false;
       }
       m_iByteSizeD = iOutLen;
@@ -464,7 +464,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     m_iByteSizeDP = 0;
     if (szRsaKeyDP) {
       if (!fromBase64(strlen(szRsaKeyDP), szRsaKeyDP, &iOutLen, m_rgbDP)) {
-        fprintf(g_logFile, "Cant base64 decode DP in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode DP in RSA key\n";
         return false;
       }
       m_iByteSizeDP = iOutLen;
@@ -474,13 +474,13 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
     m_iByteSizeDQ = 0;
     if (szRsaKeyDQ) {
       if (!fromBase64(strlen(szRsaKeyDQ), szRsaKeyDQ, &iOutLen, m_rgbDQ)) {
-        fprintf(g_logFile, "Cant base64 decode DQ in RSA key\n");
+        LOG(ERROR)<<"Cant base64 decode DQ in RSA key\n";
         return false;
       }
       m_iByteSizeDQ = iOutLen;
     }
   } else {
-    fprintf(g_logFile, "Unknown key type\n");
+    LOG(ERROR)<<"Unknown key type\n";
     return false;
   }
 
@@ -523,8 +523,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
   }
 
 #ifdef TEST1
-  fprintf(g_logFile, "RSAKey::getDatafromDoc, leaving\n");
-  fflush(stdout);
+  LOG(INFO)<<"RSAKey::getDatafromDoc, leaving\n";
 #endif
 
   return true;
@@ -532,7 +531,7 @@ bool RSAKey::getDataFromRoot(TiXmlElement* pRootElement) {
 
 bool RSAKey::getDataFromDoc() {
   if (m_pDoc == NULL) {
-    fprintf(g_logFile, "No Document\n");
+    LOG(ERROR)<<"RSAKey::getDataFromDoc: No Document\n";
     return false;
   }
   return getDataFromRoot(m_pDoc->RootElement());

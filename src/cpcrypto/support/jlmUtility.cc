@@ -80,12 +80,12 @@ void printIndent(const char* szItem, int indent, bool fEnd) {
   int i;
 
   for (i = 0; i < indent; i++) {
-    fprintf(g_logFile, "  ");
+    LOG(INFO)<<"  ";
   }
   if (fEnd)
-    fprintf(g_logFile, "/%s\n", szItem);
+    LOG(INFO)<<"/" << szItem << "\n";
   else
-    fprintf(g_logFile, "%s\n", szItem);
+    LOG(INFO)<< szItem << "\n";
 }
 
 void Explore(TiXmlNode* pNode, int indent) {
@@ -124,26 +124,25 @@ bool testCanonical(const char* szInFile, const char* szElementName) {
   TiXmlDocument doc;
 
   if (szInFile == NULL || szElementName == NULL) {
-    fprintf(g_logFile, "Absent file or element\n");
+    LOG(ERROR)<<"testCanonical: Absent file or element\n";
     return false;
   }
-  fprintf(g_logFile, "testCanonical(%s, %s)\n", szInFile, szElementName);
   if (!doc.LoadFile(szInFile)) {
-    fprintf(g_logFile, "Cannot Load %s\n", szInFile);
+    LOG(ERROR)<<"Cannot Load " << szInFile << "\n";
     return false;
   }
 
   TiXmlNode* pNode = (TiXmlNode*)doc.RootElement();
-  fprintf(g_logFile, "\nTree:\n");
+  LOG(INFO)<<"\nTree:\n";
   Explore(pNode, 0);
-  fprintf(g_logFile, "\n\n");
+  LOG(INFO)<<"\n\n";
   TiXmlNode* pNode1 = Search(pNode, szElementName);
   if (pNode1 != NULL) {
-    fprintf(g_logFile, "Found %s\n\n", szElementName);
+    LOG(INFO)<<"Found " <<  szElementName << "\n\n";
     char* szStr = canonicalize(pNode1);
-    if (szStr) fprintf(g_logFile, "%s\n", szStr);
+    if (szStr) LOG(INFO)<< szStr <<"\n";
   } else {
-    fprintf(g_logFile, "Can't find %s node\n", szElementName);
+    LOG(ERROR)<<"Can't find " << szElementName << " node\n";
   }
   return true;
 }
@@ -263,31 +262,31 @@ char* readandstoreString(const char* szFile) {
   char* szString = NULL;
 
   if (szFile == NULL) {
-    fprintf(g_logFile, "Error: null file namse\n");
+    LOG(ERROR)<<"readandstoreString: null file name\n";
     return NULL;
   }
   int iRead = open(szFile, O_RDONLY);
   if (iRead < 0) {
-    fprintf(g_logFile, "Can't open input file %s\n", szFile);
+    LOG(ERROR)<<"readandstoreString: Can't open input file " << szFile << "\n";
     return NULL;
   }
 
   if (stat(szFile, &statBlock) < 0) {
-    fprintf(g_logFile, "Can't stat input file\n");
+    LOG(ERROR)<<"readandstoreString: Can't stat input file\n";
     return NULL;
   }
 
   int iFileSize = statBlock.st_size;
   szString = (char*)malloc(iFileSize + 1);
   if (szString == NULL) {
-    fprintf(g_logFile, "Can't alloc string in readandstoreString\n");
+    LOG(ERROR)<<"readandstoreString: Can't alloc string in readandstoreString\n";
     return NULL;
   }
   szString[iFileSize] = 0;
 
   n = read(iRead, szString, iFileSize);
   if (n != iFileSize) {
-    fprintf(g_logFile, "File size mismatch in readandstoreString\n");
+    LOG(ERROR)<<"readandstoreString: File size mismatch in readandstoreString\n";
     free(szString);
     return NULL;
   }

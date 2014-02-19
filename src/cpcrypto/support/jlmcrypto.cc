@@ -60,8 +60,8 @@ bool getCryptoRandom(int iNumBits, byte* buf) {
   if (iSize2 == iSize) {
     return true;
   }
-  fprintf(g_logFile, "getCryptoRandom returning false %d bytes instead of %d\n",
-          iSize2, iSize);
+  LOG(ERROR)<<"getCryptoRandom returning false "<< iSize2;
+  LOG(ERROR)<<" bytes instead of " << iSize<<"\n";
   return false;
 }
 
@@ -275,8 +275,7 @@ bool getBase64Rand(int iBytes, byte* puR, int* pOutSize, char* szOut)
     return false;
   }
   if (!toBase64(iBytes, puR, pOutSize, szOut)) {
-    fprintf(g_logFile, "Bytes: %d, base64 outputsize: %d\n", iBytes, *pOutSize);
-    fprintf(g_logFile, "Can't base64 encode generated random number\n");
+    LOG(ERROR)<<"getBase64Rand: Can't base64 encode generated random number\n";
     return false;
   }
   return true;

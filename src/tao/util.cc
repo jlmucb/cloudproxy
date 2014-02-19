@@ -94,31 +94,6 @@ using keyczar::rw::KeysetPBEJSONFileWriter;
 using keyczar::rw::KeysetReader;
 using keyczar::rw::KeysetWriter;
 
-int remove_entry(const char *path, const struct stat *sb, int tflag,
-                 struct FTW *ftwbuf) {
-  switch (tflag) {
-    case FTW_DP:
-      // DP means the directory's children have all been processed.
-      if (rmdir(path) < 0) {
-        PLOG(ERROR) << "Could not remove the directory " << path;
-        return 1;
-      }
-      break;
-    case FTW_F:
-    case FTW_SL:
-      if (unlink(path) < 0) {
-        PLOG(ERROR) << "Could not unlink the file " << path;
-        return 1;
-      }
-      break;
-    default:
-      LOG(ERROR) << "Error in handling directory or file. Could not completely "
-                 << "delete the directory";
-  }
-
-  return 0;
-}
-
 namespace tao {
 
 /// 20 MB is the maximum allowed message on our channel implementations.
@@ -142,13 +117,10 @@ void file_close(FILE *file) {
   if (file) fclose(file);
 }
 
-// TODO(kwalsh): Use keyczar's file utils instead
 void temp_file_cleaner(string *dir) {
   if (dir) {
-    if (nftw(dir->c_str(), remove_entry, 10 /* nopenfd */, FTW_DEPTH) < 0) {
+    if (!keyczar::base::Delete(FilePath(*dir), true /* recursive */))
       PLOG(ERROR) << "Could not remove temp directory " << *dir;
-    }
-
     delete dir;
   }
 }

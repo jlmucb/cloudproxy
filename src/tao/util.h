@@ -40,16 +40,6 @@ class Signer;
 
 struct sockaddr;
 
-/// Handle a remove message from nftw(). This deletes the current file or empty
-/// directory.
-/// @param path The path of the current file or directory to delete.
-/// @param sb A stat structure for the path.
-/// @param tflag A flag specifying more information about the state of
-/// directories (e.g., whether or not all its children have been handled).
-/// @param ftwbuf Extra information provided by nftw().
-int remove_entry(const char *path, const struct stat *sb, int tflag,
-                 struct FTW *ftwbuf);
-
 namespace tao {
 class TaoDomain;
 

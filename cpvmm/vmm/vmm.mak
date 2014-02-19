@@ -38,7 +38,7 @@ B=		$(E)/vmmobjects
 BINDIR=	        $(B)/vmm
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
 
 DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs
 RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs
@@ -138,7 +138,7 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 		$(B)/utils/event_mgr.o  $(B)/utils/heap.o \
 		$(B)/utils/math_utils.o  $(B)/utils/utils_asm.o
 
-dobjs=      $(BINDIR)/vmm.o 
+dobjs=      $(BINDIR)/evmm.o  $(BINDIR)/vmm.o
 
 all: $(E)/evmm.bin
  
@@ -169,10 +169,13 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
 
+$(BINDIR)/evmm.o: $(mainsrc)/evmm.c
+	echo "evmm.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/evmm.o $(mainsrc)/evmm.c 
+
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c 
-
 #  vmm.c
 #  output: evmm.bin,  ENTRY:vmm_main
 

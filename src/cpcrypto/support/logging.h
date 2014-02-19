@@ -52,7 +52,7 @@ extern std::ostream *logFile;
 bool initLog(const char* );
 void closeLog();
 void PrintBytes(const char* message, byte* pbData, int iSize, int col = 32);
-void PrintBytesToConsole(const char* message, byte* pbData, int iSize, int col);
+void PrintBytesToConsole(const char* message, byte* pbData, int iSize, int col=32);
 
 #endif
 

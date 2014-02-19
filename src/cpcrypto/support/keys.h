@@ -61,7 +61,7 @@ class symKey : public KeyInfo {
   char* SerializetoString();
   bool SerializetoFile(const char* fileName);
 #ifdef TEST
-  void printMe();
+  void printMe(bool console=false);
 #endif
 };
 
@@ -107,7 +107,7 @@ class RSAKey : public KeyInfo {
   bool SerializetoFile(const char* fileName);
   char* SerializePublictoString();
 #ifdef TEST
-  void printMe();
+  void printMe(bool console=false);
 #endif
   void wipeKeys();
 };

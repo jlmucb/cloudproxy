@@ -435,21 +435,21 @@ bool squareRootTest() {
     bnX.m_pValue[0] = (u64)i;
     fSquare = mpModisSquare(bnX, *nist256curve.m_bnM);
     if (!fSquare) {
-      printNum(bnX);
+      printNumberToConsole(bnX);
       printf("is not a square root mod nist256 prime\n");
       continue;
     }
     if (!mpModSquareRoot(bnX, *nist256curve.m_bnM, bnY)) {
       printf("Cant find square root of ");
-      printNum(bnX);
+      printNumberToConsole(bnX);
       printf("mod nist prime\n");
       return false;
     }
     printf("sqrt(%d) (mod %d)= %d\n", i, TP, (int)bnS.m_pValue[0]);
     printf("sqrt(");
-    printNum(bnX);
+    printNumberToConsole(bnX);
     printf(")= ");
-    printNum(bnY);
+    printNumberToConsole(bnY);
     printf("\n");
     mpModMult(bnY, bnY, *nist256curve.m_bnM, bnZ);
     if (mpCompare(bnX, bnZ) == 0) {
@@ -538,7 +538,7 @@ bool eccTest() {
   R.m_bnZ->m_pValue[0] = 1ULL;
   ecMult(P, bnMult, R);
   printf("\n");
-  printNum(bnMult);
+  printNumberToConsole(bnMult);
   printf("*");
   P.printMe();
   printf("=");
@@ -551,7 +551,7 @@ bool eccTest() {
   R.m_bnZ->m_pValue[0] = 1ULL;
   ecMult(P, bnMult, R);
   printf("\n");
-  printNum(bnMult);
+  printNumberToConsole(bnMult);
   printf("*");
   P.printMe();
   printf("=");
@@ -597,7 +597,7 @@ bool eccTest() {
   Message.m_pValue[0] = 0x01234ULL;
 
   printf("ECC Test, nist 256 curve, message: ");
-  printNum(Message);
+  printNumberToConsole(Message);
   printf("\n");
 
   if (!ecEncrypt(myKey, Message, R1, R2)) {
@@ -612,7 +612,7 @@ bool eccTest() {
     return false;
   }
   printf("Decrypted message: ");
-  printNum(decryptedMessage);
+  printNumberToConsole(decryptedMessage);
   printf("\n");
 
   bnum bnH(6);
@@ -621,7 +621,7 @@ bool eccTest() {
 
   bnH.m_pValue[0] = 0x1234567890abcdefULL;
   printf("Message to sign, NIST-256: ");
-  printNum(bnH);
+  printNumberToConsole(bnH);
   printf("\n");
 
   if (!ecSign(myKey, bnH, bnR, bnS)) {
@@ -629,10 +629,10 @@ bool eccTest() {
     return false;
   }
   printf("Signature, R: ");
-  printNum(bnR);
+  printNumberToConsole(bnR);
   printf("\n");
   printf("Signature, S: ");
-  printNum(bnS);
+  printNumberToConsole(bnS);
   printf("\n");
 
   bool fRet = ecVerify(myKey, bnH, bnR, bnS);
@@ -660,7 +660,7 @@ bool eccTest() {
   for (i = 0; i < 4; i++) bnH.m_pValue[3 - i] = tmpsig256E[i];
 
   printf("\nTest Message to sign, NIST-256: ");
-  printNum(bnH);
+  printNumberToConsole(bnH);
   printf("\n");
 
   if (!ecSignwithgivennonce(myKey, bnH, bnK, bnR, bnS)) {
@@ -668,10 +668,10 @@ bool eccTest() {
     return false;
   }
   printf("Signature, R: ");
-  printNum(bnR);
+  printNumberToConsole(bnR);
   printf("\n");
   printf("Signature, S: ");
-  printNum(bnS);
+  printNumberToConsole(bnS);
   printf("\n");
 
   fRet = ecVerify(myKey, bnH, bnR, bnS);
@@ -746,13 +746,13 @@ bool squaretests() {
     printf("MISMATCH test 1\n");
     fRet = false;
   }
-  printNum(bnOut1);
+  printNumberToConsole(bnOut1);
   printf("**2= \n");
-  printNum(bnOut2);
+  printNumberToConsole(bnOut2);
   printf("\n");
-  printNum(bnOut1);
+  printNumberToConsole(bnOut1);
   printf("**2= \n");
-  printNum(bnOut3);
+  printNumberToConsole(bnOut3);
   printf("\n");
   mpZeroNum(bnOut1);
   mpZeroNum(bnOut2);
@@ -773,12 +773,12 @@ bool squaretests() {
       printf("MATCH\n");
     }
 
-    printNum(*rgbn[i]);
+    printNumberToConsole(*rgbn[i]);
     printf("**2= \n");
-    printNum(bnOut1);
+    printNumberToConsole(bnOut1);
     printf("\n");
     printf("Normal alg says: ");
-    printNum(bnOut2);
+    printNumberToConsole(bnOut2);
     printf("\n");
     mpZeroNum(bnOut1);
     mpZeroNum(bnOut2);
@@ -801,9 +801,9 @@ bool copytests() {
     i1 = copytestData[i].in1;
     rgbn[i1]->mpCopyNum(bnOut);
     printf("%d Copied ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     printf("\n  to\n  ");
-    printNum(bnOut);
+    printNumberToConsole(bnOut);
     printf("\n");
   }
 
@@ -879,12 +879,12 @@ bool shifttests() {
     param1 = shifttestData[i].iparameter;
     mpShift(*rgbn[i1], param1, bnOut);
     printf("%d ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     if (param1 >= 0)
       printf(" << %02d = ", param1);
     else
       printf(" >> %02d = ", -param1);
-    printNum(bnOut);
+    printNumberToConsole(bnOut);
     printf("\n");
   }
 
@@ -907,9 +907,9 @@ bool usingleaddtests() {
     param2 = usingleaddtestData[i].uparameter;
     mpSingleUAddTo(bnOut, param2);
     printf("%d ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     printf("\n  +  %016lx =\n  ", param2);
-    printNum(bnOut);
+    printNumberToConsole(bnOut);
     printf("\n");
   }
 
@@ -961,13 +961,13 @@ bool monttests() {
       return false;
     }
     printf("In       : ");
-    printNum(bnIn);
+    printNumberToConsole(bnIn);
     printf("\n");
     printf("Encrypted: ");
-    printNum(bnEncrypted);
+    printNumberToConsole(bnEncrypted);
     printf("\n");
     printf("Decrypted: ");
-    printNum(bnDecrypted);
+    printNumberToConsole(bnDecrypted);
     printf("\n");
 
     if (mpUCompare(bnIn, bnDecrypted) == s_isEqualTo) {
@@ -1000,11 +1000,11 @@ bool uaddtests() {
     i2 = uaddtestData[i].in2;
     mpUAdd(*rgbn[i1], *rgbn[i2], bnOut);
     printf("%d   ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     printf("\n  + ");
-    printNum(*rgbn[i2]);
+    printNumberToConsole(*rgbn[i2]);
     printf("\n  = ");
-    printNum(bnOut);
+    printNumberToConsole(bnOut);
     printf("\n");
   }
 
@@ -1025,9 +1025,9 @@ bool usubtracttests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1049,9 +1049,9 @@ bool uaddtotests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1073,9 +1073,9 @@ bool usubfromtests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1099,9 +1099,9 @@ bool usinglemulttests() {
     param2 = usingleaddtestData[i].uparameter;
     mpUSingleMultBy(bnOut, param2);
     printf("%d ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     printf("\n  *  %016lx =\n  ", param2);
-    printNum(bnOut);
+    printNumberToConsole(bnOut);
     printf("\n");
   }
 
@@ -1127,9 +1127,9 @@ bool usinglemultandshifttests() {
     param2 = usinglemultandshifttestData[i].uparameter;
     // mpUSingleMultAndShift(*rgbn[i1], param2, param1, bnOut);
     printf("%d ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     printf("\n  *  %016lx << %d =\n  ", param2, param1);
-    printNum(bnOut);
+    printNumberToConsole(bnOut);
     printf("\n");
   }
 
@@ -1150,9 +1150,9 @@ bool umultiplytests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1174,9 +1174,9 @@ bool ucomparetests() {
     i2 = ucomparetestData[i].in2;
     c = uCompareSymbol(*rgbn[i1], *rgbn[i2]);
     printf("%d ", i + 1);
-    printNum(*rgbn[i1]);
+    printNumberToConsole(*rgbn[i1]);
     printf(" %c  ", c);
-    printNum(*rgbn[i2]);
+    printNumberToConsole(*rgbn[i2]);
     printf("\n");
   }
 
@@ -1203,10 +1203,10 @@ bool udividetests() {
   memcpy((byte*)bnB.m_pValue, (byte*)rgudivbug1B, 32);
 
   printf("A: ");
-  printNum(bnA);
+  printNumberToConsole(bnA);
   printf("\n");
   printf("B: ");
-  printNum(bnB);
+  printNumberToConsole(bnB);
   printf("\n");
 
   if (!mpUDiv(bnA, bnB, bnQ, bnR)) {
@@ -1215,10 +1215,10 @@ bool udividetests() {
   }
 
   printf("quotient\n");
-  printNum(bnQ);
+  printNumberToConsole(bnQ);
   printf("\n");
   printf("remainder\n");
-  printNum(bnR);
+  printNumberToConsole(bnR);
   printf("\n");
 
   if (!mpUMult(bnQ, bnB, bnX)) {
@@ -1240,14 +1240,14 @@ bool udividetests() {
   if (mpUCompare(bnA, bnY) == s_isEqualTo) return true;
 
   printf("X: ");
-  printNum(bnX);
+  printNumberToConsole(bnX);
   printf("\n");
   printf("Y: ");
-  printNum(bnY);
+  printNumberToConsole(bnY);
   printf("\n");
   mpSub(bnA, bnY, bnD);
   printf("Difference\n");
-  printNum(bnD);
+  printNumberToConsole(bnD);
   printf("\n\n");
   return false;
 }
@@ -1266,9 +1266,9 @@ bool usingledivtests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1318,10 +1318,10 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX,
 //      a=bq+r
 #ifdef PRINTNUMS
   printf("umultdiv\n");
-  printNum(bnA);
+  printNumberToConsole(bnA);
   printf("\n");
   printf("divided by\n");
-  printNum(bnB);
+  printNumberToConsole(bnB);
   printf("\n");
 #endif
 
@@ -1332,10 +1332,10 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX,
 
 #ifdef PRINTNUMS
   printf("quotient\n");
-  printNum(bnQ);
+  printNumberToConsole(bnQ);
   printf("\n");
   printf("remainder\n");
-  printNum(bnR);
+  printNumberToConsole(bnR);
   printf("\n");
 #endif
 
@@ -1351,21 +1351,21 @@ bool umultdiv(bnum& bnA, bnum& bnB, bnum& bnQ, bnum& bnR, bnum& bnX,
   if (mpUCompare(bnA, bnY) != s_isEqualTo) {
     printf("umultdiv: a!=bq+r\n");
     printf("A\n");
-    printNum(bnA);
+    printNumberToConsole(bnA);
     printf("\n");
     printf("B\n");
-    printNum(bnB);
+    printNumberToConsole(bnB);
     printf("\n");
     printf("X\n");
-    printNum(bnX);
+    printNumberToConsole(bnX);
     printf("\n");
     printf("Y\n");
-    printNum(bnY);
+    printNumberToConsole(bnY);
     printf("\n\n");
     mpZeroNum(bnD);
     mpSub(bnA, bnY, bnD);
     printf("Difference\n");
-    printNum(bnD);
+    printNumberToConsole(bnD);
     printf("\n\n");
     return false;
   }
@@ -1452,9 +1452,9 @@ bool negatetests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1476,9 +1476,9 @@ bool converttests() {
         i1= copytestData[i].in1;
         rgbn[i1]->mpCopyNum(bnOut);
         printf("%d Copied ", i+1); 
-        printNum(*rgbn[i1]); 
+        printNumberToConsole(*rgbn[i1]); 
         printf("\n  to\n  "); 
-        printNum(bnOut); 
+        printNumberToConsole(bnOut); 
         printf("\n");
     }
 #endif
@@ -1608,29 +1608,29 @@ bool gcdtests() {
   }
 
   printf("E     : ");
-  printNum(bnE);
+  printNumberToConsole(bnE);
   printf("\n");
   printf("Order : ");
-  printNum(bnOrder);
+  printNumberToConsole(bnOrder);
   printf("\n");
   printf("X     : ");
-  printNum(bnX);
+  printNumberToConsole(bnX);
   printf("\n");
   printf("Y     : ");
-  printNum(bnY);
+  printNumberToConsole(bnY);
   printf("\n");
   printf("GCD   : ");
-  printNum(bnG);
+  printNumberToConsole(bnG);
   printf("\n");
 
   printf("XBin  : ");
-  printNum(bnXBinary);
+  printNumberToConsole(bnXBinary);
   printf("\n");
   printf("YBin  : ");
-  printNum(bnYBinary);
+  printNumberToConsole(bnYBinary);
   printf("\n");
   printf("GCDBin: ");
-  printNum(bnGBinary);
+  printNumberToConsole(bnGBinary);
   printf("\n");
   printf("\n");
 
@@ -1642,7 +1642,7 @@ bool gcdtests() {
     mpMult(bnOrder, bnYBinary, bnTest2);
     mpAdd(bnTest1, bnTest2, bnTest3);
     printf("A*X+B*Y: ");
-    printNum(bnTest3);
+    printNumberToConsole(bnTest3);
     printf("\n");
   } else {
     printf("Extended Euclid and Binary extended Euclid agree\n");
@@ -1783,11 +1783,11 @@ int main(int an, char** av) {
         printf("mpBinaryExtendedGCD, failed\n");
     }
 
-    printf("A: "); printNum(bnA); printf("\n");
-    printf("B: "); printNum(bnB); printf("\n");
-    printf("X: "); printNum(bnX); printf("\n");
-    printf("Y: "); printNum(bnY); printf("\n");
-    printf("G: "); printNum(bnG); printf("\n");
+    printf("A: "); printNumberToConsole(bnA); printf("\n");
+    printf("B: "); printNumberToConsole(bnB); printf("\n");
+    printf("X: "); printNumberToConsole(bnX); printf("\n");
+    printf("Y: "); printNumberToConsole(bnY); printf("\n");
+    printf("G: "); printNumberToConsole(bnG); printf("\n");
     return 0;
 #endif
 

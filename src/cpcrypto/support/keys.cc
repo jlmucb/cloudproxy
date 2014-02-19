@@ -212,17 +212,30 @@ char* symKey::SerializetoString() { return NULL; }
 bool symKey::SerializetoFile(const char* fileName) { return false; }
 
 #ifdef TEST
-void symKey::printMe() {
-  if (m_ukeyType == AESKEYTYPE) {
-    LOG(INFO)<<"AES key\n";
-  } else
-    LOG(INFO)<<"Unknown key\n";
-  if (m_rgkeyName != NULL)
-    LOG(INFO)<<"Key name: " << m_rgkeyName <<"\n";
-  else
-    LOG(INFO)<<"No key name\n";
-  LOG(INFO)<<"Key size "<< m_ikeySize<<"\n";
-  if (m_iByteSizeKey > 0) PrintBytes("Key", m_rgbKey, m_iByteSizeKey);
+void symKey::printMe(bool console) {
+  if(console) {
+    if (m_ukeyType == AESKEYTYPE) {
+      printf("AES key\n");
+    } else
+      printf("Unknown key\n");
+    if (m_rgkeyName != NULL)
+      printf("Key name: %s\n", m_rgkeyName);
+    else
+      printf("No key name\n");
+    printf("Key size: %d\n ", m_ikeySize);
+    if (m_iByteSizeKey > 0) PrintBytesToConsole("Key", m_rgbKey, m_iByteSizeKey);
+  } else {
+    if (m_ukeyType == AESKEYTYPE) {
+      LOG(INFO)<<"AES key\n";
+    } else
+      LOG(INFO)<<"Unknown key\n";
+    if (m_rgkeyName != NULL)
+      LOG(INFO)<<"Key name: " << m_rgkeyName <<"\n";
+    else
+      LOG(INFO)<<"No key name\n";
+    LOG(INFO)<<"Key size "<< m_ikeySize<<"\n";
+    if (m_iByteSizeKey > 0) PrintBytes("Key", m_rgbKey, m_iByteSizeKey);
+  }
 }
 #endif
 
@@ -716,58 +729,109 @@ char* RSAKey::SerializePublictoString() {
 bool RSAKey::SerializetoFile(const char* fileName) { return false; }
 
 #ifdef TEST
-void RSAKey::printMe() {
-  LOG(INFO)<<"\n";
-  if (m_ukeyType == RSAKEYTYPE) {
-    LOG(INFO)<<"RSA key\n";
-  } else
-    LOG(INFO)<<"Unknown key\n";
-  LOG(INFO)<<"Key size: " << m_ikeySize << "\n";
-  LOG(INFO)<<"Key name size: " << m_ikeyNameSize<<"\n";
-  if (m_rgkeyName != NULL)
-    LOG(INFO)<<"Key name: "<< m_rgkeyName << "\n";
-  else
-    LOG(INFO)<<"No key name\n";
+void RSAKey::printMe(bool console) {
+  if(console) {
+    if (m_ukeyType == RSAKEYTYPE) 
+      printf("\nRSA key\n");
+    else
+      printf("\nUnknown key\n");
+    printf("Key size: %d\n", m_ikeySize);
+    printf("Key name size: %d\n", m_ikeyNameSize);
+    if (m_rgkeyName != NULL)
+      printf("Key name: %s\n", m_rgkeyName);
+    else
+      printf("No key name\n");
 
-  if (m_pbnM) {
-    LOG(INFO)<<"M: ";
-    printNum(*m_pbnM);
+    if (m_pbnM) {
+      printf("M: ");
+      printNumberToConsole(*m_pbnM);
+      printf("\n");
+    }
+    if (m_pbnP) {
+      printf("P: ");
+      printNumberToConsole(*m_pbnP);
+      printf("\n");
+    }
+    if (m_pbnQ) {
+      printf("Q: ");
+      printNumberToConsole(*m_pbnQ);
+      printf("\n");
+    }
+    if (m_pbnE) {
+      printf("E: ");
+      printNumberToConsole(*m_pbnE);
+      printf("\n");
+    }
+    if (m_pbnD) {
+      printf("D: ");
+      printNumberToConsole(*m_pbnD);
+      printf("\n");
+    }
+    if (m_pbnDP) {
+      printf("DP: ");
+      printNumberToConsole(*m_pbnDP);
+      printf("\n");
+    }
+    if (m_pbnDQ) {
+      printf("DQ: ");
+      printNumberToConsole(*m_pbnDQ);
+      printf("\n");
+    }
+    printf("\n");
+  } else {
+    LOG(INFO)<<"\n";
+    if (m_ukeyType == RSAKEYTYPE) {
+      LOG(INFO)<<"RSA key\n";
+    } else
+      LOG(INFO)<<"Unknown key\n";
+    LOG(INFO)<<"Key size: " << m_ikeySize << "\n";
+    LOG(INFO)<<"Key name size: " << m_ikeyNameSize<<"\n";
+    if (m_rgkeyName != NULL)
+      LOG(INFO)<<"Key name: "<< m_rgkeyName << "\n";
+    else
+      LOG(INFO)<<"No key name\n";
+
+    if (m_pbnM) {
+      LOG(INFO)<<"M: ";
+      printNum(*m_pbnM);
+      LOG(INFO)<<"\n";
+    }
+    if (m_pbnP) {
+      LOG(INFO)<<"P: ";
+      printNum(*m_pbnP);
+      LOG(INFO)<<"\n";
+    }
+    if (m_pbnQ) {
+      LOG(INFO)<<"Q: ";
+      printNum(*m_pbnQ);
+      LOG(INFO)<<"\n";
+    }
+    if (m_pbnE) {
+      LOG(INFO)<<"E: ";
+      printNum(*m_pbnE);
+      LOG(INFO)<<"\n";
+    }
+    if (m_pbnD) {
+      LOG(INFO)<<"D: ";
+      printNum(*m_pbnD);
+      LOG(INFO)<<"\n";
+    }
+    if (m_pbnDP) {
+      LOG(INFO)<<"DP: ";
+      printNum(*m_pbnDP);
+      LOG(INFO)<<"\n";
+    }
+    if (m_pbnDQ) {
+      LOG(INFO)<<"DQ: ";
+      printNum(*m_pbnDQ);
+      LOG(INFO)<<"\n";
+    }
     LOG(INFO)<<"\n";
   }
-  if (m_pbnP) {
-    LOG(INFO)<<"P: ";
-    printNum(*m_pbnP);
-    LOG(INFO)<<"\n";
-  }
-  if (m_pbnQ) {
-    LOG(INFO)<<"Q: ";
-    printNum(*m_pbnQ);
-    LOG(INFO)<<"\n";
-  }
-  if (m_pbnE) {
-    LOG(INFO)<<"E: ";
-    printNum(*m_pbnE);
-    LOG(INFO)<<"\n";
-  }
-  if (m_pbnD) {
-    LOG(INFO)<<"D: ";
-    printNum(*m_pbnD);
-    LOG(INFO)<<"\n";
-  }
-  if (m_pbnDP) {
-    LOG(INFO)<<"DP: ";
-    printNum(*m_pbnDP);
-    LOG(INFO)<<"\n";
-  }
-  if (m_pbnDQ) {
-    LOG(INFO)<<"DQ: ";
-    printNum(*m_pbnDQ);
-    LOG(INFO)<<"\n";
-  }
-  LOG(INFO)<<"\n";
 }
+  
 #endif
-
+ 
 // ------------------------------------------------------------------------
 
 #define NUMSUPPORTEDALGS 2

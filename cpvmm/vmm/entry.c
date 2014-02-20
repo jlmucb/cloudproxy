@@ -36,18 +36,18 @@ multiboot_info_t *g_mbi;
 
 typedef void (*tboot_printk)(const char *fmt, ...);
 // TODO(tmroeder): this should be the real base, but I want it to compile.
-uint64_t tboot_shared_page = 0;
+//uint64_t tboot_shared_page = 0;
 
 int main(int an, char** av) {
 
-    tboot_shared_t *shared_page = (tboot_shared_t *)(tboot_shared_page);
-    tboot_printk tprintk = (tboot_printk*)(shared_page->tboot_base + 0x0d810);
+    //tboot_shared_t *shared_page = (tboot_shared_t *)(tboot_shared_page);
+    tboot_printk tprintk = (tboot_printk)(0x80d7f0);
     tprintk("<3>Testing printf\n");
+    while(1) ;
+
 
     // TODO(tmroeder): remove this debugging while loop: added so we can see the
     // code that we're calling
-    while(1) ;
-
     // get mbi and shared page info
     // flip into 64 bit mode
     // set up stack 

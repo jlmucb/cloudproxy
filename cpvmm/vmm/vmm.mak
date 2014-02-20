@@ -170,7 +170,7 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
 $(E)/bootstrap.bin: $(BINDIR)/entry.o
-	$(LINK) -m32 -o $(E)/bootstrap.bin $(BINDIR)/entry.o
+	$(LINK) -m32 -static -e main -o $(E)/bootstrap.bin $(BINDIR)/entry.o
 
 $(BINDIR)/entry.o: $(mainsrc)/entry.c
 	$(CC) $(INCLUDES) -m32 -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 

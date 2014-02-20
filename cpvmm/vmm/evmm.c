@@ -121,15 +121,10 @@ int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size)
 
     InitializeMemoryManager((UINT64 *)&heap_base, (UINT64 *)&heap_size);
     SetupIDT();
-
-    // (2) Build E820 table.
-
     if (get_e820_table(ed, &e820_addr) != 0)
-    return;
-
+    	return;
     // r = decompress( (void *)((UINT32)ed + ed->evmm_start * 512),
     //					ed->evmm_count * 512, &p_evmm);
-
     vmm_bsp_proc_main(apicbase, startup_struct, application_params_struct);
 }
 

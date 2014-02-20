@@ -21,21 +21,23 @@
 
 #include <string>
 
+#include <keyczar/base/scoped_ptr.h>
+
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/tao_auth.h"
 
 using std::string;
 
+class DictionaryValue;
+
 namespace keyczar {
 class Signer;
 class Verifier;
 class Crypter;
-class DictionaryValue;
 }  // namespace keyczar
 
 namespace tao {
-class Keys;
 /// A TaoDomain stores and manages a set of configuration parameters for a
 /// single administrative domain, including a policy key pair, the host:port
 /// location to access a Tao CA (if available). Classes that implement TaoDomain
@@ -51,7 +53,7 @@ class Keys;
 /// itself.
 class TaoDomain : public TaoAuth {
  public:
-  virtual ~TaoDomain() {}
+  virtual ~TaoDomain();
 
   /// An example json string useful for constructing domains for testing
   constexpr static auto ExampleWhitelistAuthDomain =
@@ -230,10 +232,7 @@ class TaoDomain : public TaoAuth {
   string GetPath(const string &suffix) const;
 
  protected:
-  TaoDomain(const string &path, DictionaryValue *value)
-      : path_(path), config_(value) {
-    keys_.reset(new Keys(GetConfigPath(JSONPolicyKeysPath), "policy", Keys::Signing));
-  }
+  TaoDomain(const string &path, DictionaryValue *value);
 
  private:
   /// Construct an object of the appropriate TaoDomain subclass. The caller

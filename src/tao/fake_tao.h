@@ -23,9 +23,6 @@
 #include <list>
 #include <string>
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-
 #include "tao/tao.h"
 #include "tao/tao_domain.h"
 

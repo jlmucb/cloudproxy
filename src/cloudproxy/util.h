@@ -24,11 +24,9 @@
 
 #include <string>
 
-#include <glog/logging.h>
 #include <keyczar/base/basictypes.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/stl_util-inl.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>

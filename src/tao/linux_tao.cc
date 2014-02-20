@@ -26,6 +26,7 @@
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_path.h>
 #include <keyczar/base/file_util.h>
+#include <keyczar/keyczar.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/hosted_program_factory.h"

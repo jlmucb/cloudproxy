@@ -25,7 +25,6 @@
 #include <map>
 #include <mutex>
 
-#include <glog/logging.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao_channel.h"

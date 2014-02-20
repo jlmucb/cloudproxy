@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <keyczar/keyczar.h>
 
 #include "tao/direct_tao_child_channel.h"
 #include "tao/fake_tao.h"

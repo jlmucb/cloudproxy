@@ -40,6 +40,14 @@ using keyczar::base::WriteStringToFile;
 
 namespace tao {
 
+TaoDomain::TaoDomain(const string &path, DictionaryValue *value)
+    : path_(path), config_(value) {
+  string keys_path = GetConfigPath(JSONPolicyKeysPath);
+  keys_.reset(new Keys(keys_path, "policy", Keys::Signing));
+}
+
+TaoDomain::~TaoDomain() {}
+
 TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
   // Parse the config string.
   string error;

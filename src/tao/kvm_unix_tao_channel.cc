@@ -27,6 +27,7 @@
 #include <mutex>
 #include <utility>
 
+#include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/kvm_unix_tao_channel_params.pb.h"

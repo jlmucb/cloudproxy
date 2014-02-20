@@ -19,6 +19,8 @@
 
 #include "tao/root_auth.h"
 
+#include <glog/logging.h>
+
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/tao.h"

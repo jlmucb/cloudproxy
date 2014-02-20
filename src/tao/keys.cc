@@ -818,6 +818,21 @@ bool CreateSelfSignedX509(const Signer *key, const string &country,
   return WriteX509File(x509.get(), public_cert_path);
 }
 
+Keys::Keys(const string &name, int key_types)
+    : key_types_(key_types), name_(name) {}
+
+Keys::Keys(const string &path, const string &name, int key_types)
+    : key_types_(key_types), path_(path), name_(name) {}
+
+Keys::Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
+           keyczar::Signer *derivation_key, keyczar::Crypter *crypting_key)
+    : verifier_(verifying_key),
+      signer_(signing_key),
+      key_deriver_(derivation_key),
+      crypter_(crypting_key) {}
+
+Keys::~Keys() {}
+
 bool Keys::InitTemporary() {
   // Generate temporary keys.
   if ((key_types_ & Type::Crypting &&
@@ -939,6 +954,53 @@ Keys *Keys::DeepCopy() const {
   }
   other->fresh_ = fresh_;
   return other.release();
+}
+
+Verifier *Keys::Verifier() const {
+  if (verifier_.get() != nullptr)
+    return verifier_.get();
+  else
+    return signer_.get();
+}
+
+bool Keys::SerializePublicKey(string *s) {
+  if (!Verifier()) {
+    LOG(ERROR) << "No managed verifier";
+    return false;
+  }
+  return tao::SerializePublicKey(*Verifier(), s);
+}
+
+bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  return tao::CopySigner(*Signer(), copy);
+}
+
+bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) {
+  if (!KeyDeriver()) {
+    LOG(ERROR) << "No managed key-deriver";
+    return false;
+  }
+  return tao::CopySigner(*KeyDeriver(), copy);
+}
+
+bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) {
+  if (!Verifier()) {
+    LOG(ERROR) << "No managed verifier";
+    return false;
+  }
+  return tao::CopyVerifier(*Verifier(), copy);
+}
+
+bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) {
+  if (!Crypter()) {
+    LOG(ERROR) << "No managed crypter";
+    return false;
+  }
+  return tao::CopyCrypter(*Crypter(), copy);
 }
 
 }  // namespace tao

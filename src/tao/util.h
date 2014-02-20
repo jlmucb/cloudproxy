@@ -19,10 +19,10 @@
 #ifndef TAO_UTIL_H_
 #define TAO_UTIL_H_
 
+#include <sys/socket.h>
+
 #include <string>
 
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
 #include <openssl/x509.h>
 
@@ -33,6 +33,10 @@
 #include "tao/tao_child_channel_registry.h"
 
 using std::string;
+
+namespace keyczar {
+class Signer;
+}  // namespace keyczar
 
 struct sockaddr;
 

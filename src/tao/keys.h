@@ -21,15 +21,19 @@
 
 #include <string>
 
-#include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/tao_child_channel.h"
 
 using std::string;
+
+namespace keyczar {
+class Signer;
+class Crypter;
+class Verifier;
+}  // namespace keyczar
 
 namespace tao {
 
@@ -151,16 +155,14 @@ class Keys {
   /// InitTemporary() should be called before using the object.
   /// @param name The base name for the group of keys.
   /// @param key_type One or more of the Keys::Type flags.
-  Keys(const string &name, int key_types)
-      : key_types_(key_types), name_(name) {}
+  Keys(const string &name, int key_types);
 
   /// Construct a new Keys object to manage a group of on-disk keys.
   /// InitNonHosted() or InitHosted() should be called before using the object.
   /// @param path The directory under which all keys are stored.
   /// @param name The base name for the group of keys.
   /// @param key_type One or more of the Keys::Type flags.
-  Keys(const string &path, const string &name, int key_types)
-      : key_types_(key_types), path_(path), name_(name) {}
+  Keys(const string &path, const string &name, int key_types);
 
   /// Construct a new Keys object to hold the given keys. Ownership is taken
   /// for all keys. It is not necessary to call any of the Init() methods.
@@ -169,11 +171,9 @@ class Keys {
   /// @param derivation_key A signing key.
   /// @param crypting_key A signing key.
   Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
-       keyczar::Signer *derivation_key, keyczar::Crypter *crypting_key)
-      : verifier_(verifying_key),
-        signer_(signing_key),
-        key_deriver_(derivation_key),
-        crypter_(crypting_key) {}
+       keyczar::Signer *derivation_key, keyczar::Crypter *crypting_key);
+
+  virtual ~Keys();
 
   /// Initialize a group of temporary keys. Unit tests use this initializer.
   /// Fresh keys are generated, and none of the keys are stored on disk.
@@ -203,12 +203,7 @@ class Keys {
   /// Get the managed verifier key. If no verifier is available, the signer will
   /// be returned instead if it is available. Otherwise, nullptr will be
   /// returned.
-  keyczar::Verifier *Verifier() const {
-    if (verifier_.get() != nullptr)
-      return verifier_.get();
-    else
-      return signer_.get();
-  }
+  keyczar::Verifier *Verifier() const;
 
   /// Get the managed signing key.
   keyczar::Signer *Signer() const { return signer_.get(); }
@@ -266,13 +261,7 @@ class Keys {
 
   /// Convert the managed signing public key to a serialized string.
   /// @param[out] s The serialized key.
-  bool SerializePublicKey(string *s) {
-    if (!Verifier()) {
-      LOG(ERROR) << "No managed verifier";
-      return false;
-    }
-    return tao::SerializePublicKey(*Verifier(), s);
-  }
+  bool SerializePublicKey(string *s);
 
   /// Sign data with the managed signing private key.
   /// @param data The data to sign.
@@ -300,45 +289,21 @@ class Keys {
 
   /// Make a (deep) copy of the managed signing private key.
   /// @param[out] copy The key to fill with the copy.
-  bool CopySigner(scoped_ptr<keyczar::Signer> *copy) {
-    if (!Signer()) {
-      LOG(ERROR) << "No managed signer";
-      return false;
-    }
-    return tao::CopySigner(*Signer(), copy);
-  }
+  bool CopySigner(scoped_ptr<keyczar::Signer> *copy);
 
   /// Make a (deep) copy of the managed key-derivation key.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) {
-    if (!KeyDeriver()) {
-      LOG(ERROR) << "No managed key-deriver";
-      return false;
-    }
-    return tao::CopySigner(*KeyDeriver(), copy);
-  }
+  bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy);
 
   /// Make a (deep) copy of the managed Verifier or the public half of the
   /// managed Signer.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) {
-    if (!Verifier()) {
-      LOG(ERROR) << "No managed verifier";
-      return false;
-    }
-    return tao::CopyVerifier(*Verifier(), copy);
-  }
+  bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy);
 
   /// Make a (deep) copy of the managed Crypter.
   /// @param key The key to be copied.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) {
-    if (!Crypter()) {
-      LOG(ERROR) << "No managed crypter";
-      return false;
-    }
-    return tao::CopyCrypter(*Crypter(), copy);
-  }
+  bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy);
 
   /// Derive key material from the managed key-derivation key.
   /// @param name A unique name for the derived key.

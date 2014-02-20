@@ -34,6 +34,7 @@
 #include <mutex>
 #include <thread>
 
+#include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/pipe_tao_channel_params.pb.h"

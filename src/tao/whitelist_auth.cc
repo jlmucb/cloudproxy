@@ -22,6 +22,7 @@
 
 #include <arpa/inet.h>
 
+#include <glog/logging.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>
 #include <keyczar/base/file_util.h>

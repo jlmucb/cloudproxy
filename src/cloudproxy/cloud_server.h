@@ -30,10 +30,8 @@
 #include <string>
 #include <thread>
 
-#include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
 #include <openssl/ssl.h>
 

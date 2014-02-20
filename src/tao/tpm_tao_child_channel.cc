@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <glog/logging.h>
 #include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"

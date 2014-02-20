@@ -61,6 +61,12 @@ int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size)
     tboot_shared_t *shared_page = (tboot_shared_t *)(tboot_shared_page);
     tboot_printk tprintk = (tboot_printk*)(shared_page->tboot_base + 0x0d810);
     tprintk("Testing printf\n");
+
+    // TODO(tmroeder): remove this debugging while loop: added so we can see the
+    // code that we're calling
+    while(1)
+      ;
+
     //REK:
     elf_header_t *elf;
     EVMM_DESC *ed;

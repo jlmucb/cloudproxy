@@ -298,7 +298,6 @@ Stage2:
           mov  cl, byte ptr [edx]       ;; now ecx contains AP ordered ID [1..Max]
           mov  eax, ecx
           dec eax                        ; AP starts from 1, so subtract one to get proper index in g_stacks_arr
-
           lea eax, dword ptr [(TYPE UINT32)*eax]     ; eax = 4*eax (8 == sizeof(UINT32))
           mov edx, gp_init32_data
           add edx, 8    ;; now edx points to gp_init32_data->i32_esp

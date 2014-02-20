@@ -1,4 +1,4 @@
-/****************************************************************************
+/*
 * Copyright (c) 2013 Intel Corporation
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
-****************************************************************************/
+*/
 
 
 /*---------------------------------------------------*
@@ -98,7 +98,7 @@ void start_64bit_mode(UINT32 address, UINT32 segment, UINT32* arg1,
         // in 64bit this is actually
         "\t_emit 0x48\n"\
 
-        // sub  rsp, 0x18
+        // sub  %%rsp, 0x18
         "\tsub    0x18, %%esp\n"\
         // in 64bit this is actually
         "\tcall   %%ebx\n"
@@ -111,13 +111,8 @@ void start_64bit_mode(UINT32 address, UINT32 segment, UINT32* arg1,
 }
 
 
-void x32_init64_start(
-    INIT64_STRUCT *p_init64_data,
-    UINT32 address_of_64bit_code,
-    void * arg1,
-    void * arg2,
-    void * arg3,
-    void * arg4)
+void x32_init64_start( INIT64_STRUCT *p_init64_data, UINT32 address_of_64bit_code,
+                      void * arg1, void * arg2, void * arg3, void * arg4)
 {
     UINT32 cr4;
 

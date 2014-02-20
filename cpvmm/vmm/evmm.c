@@ -50,10 +50,14 @@ void SetupIDT()
 {
 }
 
-
+typedef void (*tboot_printk)(const char *fmt, ...);
+// FIXME: this should be the real base, but I want it to compile.
+uint64_t tboot_base = 0;
 
 int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
 {
+    tboot_printk tprintk = (tboot_printk*)(tboot_base + 0x0d810);
+    tprintk("Testing printf\n");
     //REK:
     elf_header_t *elf;
     EVMM_DESC *ed;

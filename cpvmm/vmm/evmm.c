@@ -108,14 +108,13 @@ int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size)
 
     //	REK: need to understand what guest state is needed for proper initialization.
     /*
-	vmem[thunk_image].base_address = THUNK_BASE(ed);
-	vmem[thunk_image].total_size   = THUNK_SIZE;
-	vmem[thunk_image].image_size   = UVMM_PAGE_ALIGN_4K(thunk->load_size);
-	vmem[uvmm_image].base_address  = EVMM_BASE(ed);
-	vmem[uvmm_image].total_size    = EVMM_SIZE(ed);
-	vmem[uvmm_image].image_size    = UVMM_PAGE_ALIGN_4K(uvmm->load_size);
+    vmem[thunk_image].base_address = THUNK_BASE(ed);
+    vmem[thunk_image].total_size   = THUNK_SIZE;
+    vmem[thunk_image].image_size   = UVMM_PAGE_ALIGN_4K(thunk->load_size);
+    vmem[uvmm_image].base_address  = EVMM_BASE(ed);
+    vmem[uvmm_image].total_size    = EVMM_SIZE(ed);
+    vmem[uvmm_image].image_size    = UVMM_PAGE_ALIGN_4K(uvmm->load_size);
     */
-
     heap_base = HEAP_BASE(ed);
     heap_size = HEAP_SIZE;
 
@@ -123,8 +122,8 @@ int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size)
     SetupIDT();
     if (get_e820_table(ed, &e820_addr) != 0)
     	return;
-    // r = decompress( (void *)((UINT32)ed + ed->evmm_start * 512),
-    //					ed->evmm_count * 512, &p_evmm);
+    // r = decompress((void *)((UINT32)ed + ed->evmm_start * 512),
+    //		      ed->evmm_count * 512, &p_evmm);
     vmm_bsp_proc_main(apicbase, startup_struct, application_params_struct);
 }
 

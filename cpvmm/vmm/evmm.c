@@ -25,11 +25,13 @@ typedef long long unsigned uint64_t;
 typedef unsigned uint32_t;
 typedef short unsigned uint16_t;
 typedef unsigned char uint8_t;
+typedef int bool;
 #include "msr.h"
 #include "multiboot.h"
 #include "elf_defns.h"
 #include <evmm_desc.h>
 #include <vmm_startup.h>
+#include "tboot.h"
 
 
 multiboot_info_t *g_mbi;
@@ -51,12 +53,13 @@ void SetupIDT()
 }
 
 typedef void (*tboot_printk)(const char *fmt, ...);
-// FIXME: this should be the real base, but I want it to compile.
-uint64_t tboot_base = 0;
+// TODO(tmroeder): this should be the real base, but I want it to compile.
+uint64_t tboot_shared_page = 0;
 
 int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
 {
-    tboot_printk tprintk = (tboot_printk*)(tboot_base + 0x0d810);
+    tboot_shared_t *shared_page = (tboot_shared_t *)(tboot_shared_page);
+    tboot_printk tprintk = (tboot_printk*)(shared_page->tboot_base + 0x0d810);
     tprintk("Testing printf\n");
     //REK:
     elf_header_t *elf;

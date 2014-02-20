@@ -141,7 +141,7 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 
 dobjs=      $(BINDIR)/evmm.o  $(BINDIR)/vmm.o
 
-all: $(E)/evmm.bin
+all: $(E)/evmm.bin  $(E)/bootstrap.bin
  
 $(E)/evmm.bin: $(dobjs)
 	@echo "evmm.bin"
@@ -169,6 +169,11 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTOBJ) $(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
+$(E)/bootstrap.bin: $(BINDIR)/entry.o
+	$(LINK) -m32 -o $(E)/bootstrap.bin $(BINDIR)/entry.o
+
+$(BINDIR)/entry.o: $(mainsrc)/entry.c
+	$(CC) $(INCLUDES) -m32 -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
 
 $(BINDIR)/evmm.o: $(mainsrc)/evmm.c
 	echo "evmm.o" 
@@ -177,6 +182,7 @@ $(BINDIR)/evmm.o: $(mainsrc)/evmm.c
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c 
+
 #  vmm.c
 #  output: evmm.bin,  ENTRY:vmm_main
 

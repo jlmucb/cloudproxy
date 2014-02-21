@@ -40,14 +40,14 @@ class FakeTao : public Tao {
 
   FakeTao() {}
   virtual ~FakeTao() {}
-  
+
   /// Use temporary keys for signing and sealing. This version stands in for a
   /// hardware TPM, but no attestation will be generated.
   virtual bool InitTemporaryTPM();
 
   /// Use temporary keys for signing and sealing. This version stands in for a
   /// hardware TPM, including an attestation from the policy key.
-  /// @param admin The configuration for this administrative domain. 
+  /// @param admin The configuration for this administrative domain.
   virtual bool InitTemporaryTPM(const TaoDomain &admin);
 
   /// Use fake signing and sealing keys. This version stands in for hardware

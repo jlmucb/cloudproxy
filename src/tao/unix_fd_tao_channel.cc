@@ -31,7 +31,9 @@
 #include <sys/un.h>
 #include <sys/unistd.h>
 
+#include <list>
 #include <mutex>
+#include <string>
 #include <thread>
 
 #include <glog/logging.h>
@@ -43,7 +45,6 @@
 #include "tao/util.h"
 
 using std::lock_guard;
-using std::thread;
 
 namespace tao {
 UnixFdTaoChannel::UnixFdTaoChannel(const string &socket_path,

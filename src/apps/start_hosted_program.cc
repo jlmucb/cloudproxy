@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <iostream>
+#include <cstdio>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -31,29 +31,24 @@
 #include "tao/tao_channel_rpc.pb.h"
 #include "tao/util.h"
 
-using std::cout;
-using std::endl;
-using tao::ConnectToUnixDomainSocket;
 using tao::InitializeApp;
 using tao::OpenUnixDomainSocket;
-using tao::ReceiveMessageFrom;
 using tao::ScopedFd;
 using tao::SendMessageTo;
 using tao::StartHostedProgramArgs;
 using tao::TaoChannelRPC;
 using tao::TaoChannelResponse;
 
-DEFINE_string(socket, "/tmp/.linux_tao_socket",
+DEFINE_string(socket, "_linux_tao_socket",
               "The unix domain socket to use to contact the LinuxTaoService");
-DEFINE_string(client_socket, "/tmp/.start_hosted_program_socket",
+DEFINE_string(client_socket, "_start_hosted_program_socket",
               "The unix domain socket for the client to use");
 DEFINE_string(program, "server", "The program to start");
 DEFINE_bool(kvm, false, "Whether or not to start a VM for the hosted program");
-DEFINE_string(vm_template, "./vm.xml", "The VM template to use");
-DEFINE_string(kernel, "/tmp/vmlinuz-3.7.5",
-              "A linux kernel to inject into KVM");
-DEFINE_string(initrd, "/tmp/initrd.img-3.7.5", "An initrd to inject into KVM");
-DEFINE_string(disk, "/var/lib/libvirt/images/cloudproxy-server.img",
+DEFINE_string(vm_template, "vm.xml", "The VM template to use");
+DEFINE_string(kernel, "vmlinuz", "A linux kernel to inject into KVM");
+DEFINE_string(initrd, "initrd.img", "An initrd to inject into KVM");
+DEFINE_string(disk, "cloudproxy-server.img",
               "A disk image to use in the KVM guest");
 
 // Call this program with the arguments to the program after the "--":
@@ -114,6 +109,6 @@ int main(int argc, char **argv) {
 
   // Print it so callers of start_hosted_program can use this later to send
   // signals to the program.
-  cout << resp.data() << endl;
+  printf("%s\n", resp.data().c_str());
   return 0;
 }

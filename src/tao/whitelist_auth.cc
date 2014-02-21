@@ -22,6 +22,8 @@
 
 #include <arpa/inet.h>
 
+#include <sstream>
+
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>
@@ -327,6 +329,28 @@ bool WhitelistAuth::Authorize(const string &hash, const string &alg,
   entry->set_hash_alg(alg);
   entry->set_hash(hash);
   return SaveConfig();
+}
+
+bool WhitelistAuth::Forbid(const string &name) {
+  bool found = false;
+  for (int i = whitelist_.programs_size() - 1; i >= 0; i--) {
+    if (whitelist_.programs(i).name() == name) {
+      found = true;
+      whitelist_.mutable_programs()->DeleteSubrange(i, 1);
+    }
+  }
+  return found;
+}
+
+string WhitelistAuth::DebugString() {
+  std::stringstream out;
+  out << "Whitelist of " << whitelist_.programs_size() << " authorizations";
+  for (int i = 0; i < whitelist_.programs_size(); i++) {
+    const HostedProgram &hp = whitelist_.programs(i);
+    out << "\n " << i << ". ";
+    out << hp.hash() << ":" << hp.hash_alg() << ":" << hp.name();
+  }
+  return out.str();
 }
 
 int WhitelistAuth::WhitelistCount() const { return whitelist_.programs_size(); }

@@ -113,7 +113,7 @@ bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 /// multi-threaded access.
 bool InitializeOpenSSL();
 
-/// Perform application initialialization routines, including initialization for
+/// Perform application initialization routines, including initialization for
 /// OpenSSL, google logging, google protobuffers, and google flags. The
 /// parameters have the same semantics as google flags.
 /// @param argc Pointer to argc from main.

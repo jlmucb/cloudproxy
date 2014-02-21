@@ -19,26 +19,20 @@
 
 #include <stdlib.h>
 
-#include <fstream>
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <keyczar/base/file_util.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/util.h"
 #include "tao/fake_tao.h"
 #include "tao/util.h"
 
-using std::ofstream;
+using keyczar::base::WriteStringToFile;
 
-using cloudproxy::ACL;
-using cloudproxy::Action;
 using cloudproxy::CloudAuth;
-using cloudproxy::SignedACL;
-
 using tao::CreateTempWhitelistDomain;
 using tao::ScopedTempDir;
-using tao::SignData;
 using tao::TaoDomain;
 
 class CloudAuthTest : public ::testing::Test {
@@ -47,36 +41,18 @@ class CloudAuthTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir_, &admin_));
 
     // Set up a simple ACL to query.
-    ACL acl;
-    Action *a1 = acl.add_permissions();
-    a1->set_subject("tmroeder");
-    a1->set_verb(cloudproxy::ADMIN);
+    string acl =
+        "permissions { subject: \"tmroeder\" verb: ADMIN }\n"
+        "permissions { subject: \"jlm\" verb: CREATE object: \"/files\" }\n";
 
-    Action *a2 = acl.add_permissions();
-    a2->set_subject("jlm");
-    a2->set_verb(cloudproxy::CREATE);
-    a2->set_object("/files");
+    string acl_path = *temp_dir_ + "/acls";
+    string acl_sig_path = *temp_dir_ + "/acls_sig";
+    ASSERT_TRUE(WriteStringToFile(acl_path, acl));
 
-    SignedACL sacl;
-    string *ser = sacl.mutable_serialized_acls();
-    EXPECT_TRUE(acl.SerializeToString(ser)) << "Could not serialize ACL";
+    ASSERT_TRUE(
+        CloudAuth::SignACL(admin_->GetPolicySigner(), acl_path, acl_sig_path));
 
-    string *sig = sacl.mutable_signature();
-    EXPECT_TRUE(SignData(*ser, CloudAuth::ACLSigningContext, sig,
-                         admin_->GetPolicySigner()))
-        << "Could not sign the serialized ACL with the policy key";
-
-    string signed_whitelist_path = *temp_dir_ + string("/signed_whitelist");
-    ofstream whitelist_file(signed_whitelist_path.c_str(), ofstream::out);
-    ASSERT_TRUE(whitelist_file) << "Could not open " << signed_whitelist_path;
-
-    EXPECT_TRUE(sacl.SerializeToOstream(&whitelist_file))
-        << "Could not write the signed whitelist to a file";
-
-    whitelist_file.close();
-
-    cloud_auth_.reset(
-        new CloudAuth(signed_whitelist_path, admin_->GetPolicyVerifier()));
+    cloud_auth_.reset(new CloudAuth(acl_sig_path, admin_->GetPolicyVerifier()));
   }
 
   scoped_ptr<CloudAuth> cloud_auth_;

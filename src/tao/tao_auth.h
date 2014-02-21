@@ -70,6 +70,14 @@ class TaoAuth {
   /// @param name The name that will be bound to this hash
   virtual bool Authorize(const string &hash, const string &alg,
                          const string &name) = 0;
+
+  /// Attempt to revoke all authorizations for any hashes to execute under or
+  /// speak for a given name.
+  /// @param name The name that will be revoked
+  virtual bool Forbid(const string &name) = 0;
+
+  /// Get a string suitable for showing users authorization info.
+  virtual string DebugString() = 0;
 };
 }  // namespace tao
 

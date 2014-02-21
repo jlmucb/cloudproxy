@@ -56,7 +56,7 @@ class HostedProgramFactory {
   /// @return true if hosted-program creation was successful
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
                                    const string &child_hash,
-                                   TaoChannel &parent_channel,
+                                   TaoChannel &parent_channel,  // NOLINT
                                    string *identifier) const = 0;
 
   /// Return a string that represents the factory. This can be

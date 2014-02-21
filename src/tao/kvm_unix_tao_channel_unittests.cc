@@ -45,8 +45,6 @@ using tao::KvmUnixTaoChannel;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
 using tao::StartHostedProgramArgs;
-using tao::Tao;
-using tao::TaoChannel;
 using tao::TaoChannelRPC;
 using tao::UnixFdTaoChildChannel;
 

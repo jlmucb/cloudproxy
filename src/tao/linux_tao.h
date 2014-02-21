@@ -91,6 +91,12 @@ class LinuxTao : public Tao {
                       string *attestation) const;
   /// @}
 
+  /// For purposes of test/debug, disable hash checking on unseal operations.
+  /// @disable Whether or not to ignore hashes for unseal operations.
+  virtual void SetIgnoreSealHashesForTesting(bool disable) {
+    ignore_seal_hashes_for_testing_ = disable;
+  }
+
  private:
   /// Configuration for this administrative domain.
   scoped_ptr<TaoDomain> admin_;
@@ -118,6 +124,9 @@ class LinuxTao : public Tao {
 
   /// A mutex for accessing and modifying running_children_.
   mutable mutex data_m_;
+
+  /// Whether or not to ignore hash check errors on unseal operations.
+  bool ignore_seal_hashes_for_testing_;
 
   /// Send existing attestation to the Tao CA specified in the TaoDomain
   /// supplied at initialization and use the returned attestation in its place.

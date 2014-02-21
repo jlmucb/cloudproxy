@@ -22,14 +22,15 @@
 #include "cloudproxy/cloud_user_manager.h"
 
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/file_util.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/util.h"
 #include "tao/keys.h"
 #include "tao/util.h"
 
+using keyczar::base::PathExists;
 using keyczar::base::WriteStringToFile;
 
 using tao::Keys;
@@ -68,12 +69,14 @@ bool CloudUserManager::GetKey(const string &user, keyczar::Verifier **key) {
   return true;
 }
 
-bool CloudUserManager::AddSigningKey(const string &user, const string &path,
-                                     const string &password) {
-  scoped_ptr<keyczar::Signer> signer;
-  if (!tao::LoadSigningKey(path, password, &signer)) return false;
-
-  shared_ptr<keyczar::Signer> shared_signer(signer.release());
+bool CloudUserManager::AddSigningKey(const string &user,
+                                     const keyczar::Signer &key) {
+  scoped_ptr<keyczar::Signer> key_copy;
+  if (!tao::CopySigner(key, &key_copy)) {
+    LOG(ERROR) << "Could not copy user signing private key";
+    return false;
+  }
+  shared_ptr<keyczar::Signer> shared_signer(key_copy.release());
   user_private_keys_[user] = shared_signer;
   return true;
 }
@@ -94,8 +97,9 @@ bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
 bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
                               keyczar::Verifier *verifier) {
   // check the signature for this binding
-  if (!tao::VerifySignature(ssf.serialized_speaks_for(), SpeaksForSigningContext,
-                       ssf.signature(), verifier)) {
+  if (!tao::VerifySignature(ssf.serialized_speaks_for(),
+                            SpeaksForSigningContext, ssf.signature(),
+                            verifier)) {
     LOG(ERROR) << "The SignedSpeaksFor was not correctly signed";
     return false;
   }
@@ -158,4 +162,19 @@ bool CloudUserManager::MakeNewUser(const string &path, const string &username,
   return true;
 }
 
+bool CloudUserManager::LoadUser(const string &path, const string &username,
+                                const string &password,
+                                scoped_ptr<tao::Keys> *key) {
+  string keys_path = FilePath(path).Append(username).value();
+  if (!PathExists(FilePath(keys_path))) {
+    LOG(ERROR) << "No such user " << username;
+    return false;
+  }
+  key->reset(new Keys(keys_path, username, Keys::Signing));
+  if (!(*key)->InitNonHosted(password)) {
+    LOG(ERROR) << "Could not load key for user " << username;
+    return false;
+  }
+  return true;
+}
 }  // namespace cloudproxy

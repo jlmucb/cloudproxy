@@ -20,6 +20,8 @@
 #ifndef TAO_PIPE_TAO_CHILD_CHANNEL_H_
 #define TAO_PIPE_TAO_CHILD_CHANNEL_H_
 
+#include <string>
+
 #include "tao/unix_fd_tao_child_channel.h"
 
 namespace tao {
@@ -28,7 +30,7 @@ namespace tao {
 /// connected to the host.
 class PipeTaoChildChannel : public UnixFdTaoChildChannel {
  public:
-  PipeTaoChildChannel(const string &params);
+  explicit PipeTaoChildChannel(const string &params);
   virtual ~PipeTaoChildChannel() {}
 
   /// Parse the params from the constructor and try to open the pipes for host
@@ -38,7 +40,6 @@ class PipeTaoChildChannel : public UnixFdTaoChildChannel {
   static string ChannelType() { return "PipeTaoChannel"; }
 
  private:
-
   // A Base64W-encoded representation of the two pipes.
   string params_;
 

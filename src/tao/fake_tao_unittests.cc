@@ -28,7 +28,7 @@
 #include "tao/whitelist_auth.h"
 
 using keyczar::base::Base64WEncode;
-using tao::Attestation;
+
 using tao::FakeTao;
 using tao::ScopedTempDir;
 using tao::TaoDomain;
@@ -40,7 +40,8 @@ class FakeTaoTest : public ::testing::Test {
 
     // create a fake tao with new keys and an attestation
     attested_tao_.reset(new FakeTao());
-    ASSERT_TRUE(attested_tao_->InitPseudoTPM(*temp_dir_ + "/fake_tpm", *admin_));
+    ASSERT_TRUE(
+        attested_tao_->InitPseudoTPM(*temp_dir_ + "/fake_tpm", *admin_));
 
     // create a fake tao with temporary keys and no attestation
     tao_.reset(new FakeTao());

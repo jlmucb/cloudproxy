@@ -37,13 +37,8 @@ message Statement {
 }
 
 enum AttestationType {
-  UNKNOWN = 0;
-  ROOT = 1;
-  INTERMEDIATE = 2;
-  TPM_1_2_QUOTE = 3;
-}
-
-message Attestation {
+  UNKNOWN = 0; ROOT = 1; INTERMEDIATE = 2; TPM_1_2_QUOTE = 3;
+} message Attestation {
   required AttestationType type = 1;
 
   // A serialized Statement message. This can be empty, e.g., when

@@ -26,7 +26,9 @@
 #include <sys/types.h>
 
 #include <mutex>
+#include <string>
 #include <thread>
+#include <utility>
 
 #include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -37,7 +39,6 @@
 #include "tao/util.h"
 
 using std::lock_guard;
-using std::thread;
 
 namespace tao {
 PipeTaoChannel::PipeTaoChannel(const string &socket_path,

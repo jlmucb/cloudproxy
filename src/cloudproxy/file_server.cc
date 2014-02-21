@@ -42,8 +42,8 @@ using std::lock_guard;
 using std::mutex;
 using std::string;
 
-using tao::ScopedFile;
 using tao::Keys;
+using tao::ScopedFile;
 
 namespace cloudproxy {
 
@@ -76,12 +76,13 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
 
   // generate derived keys
   CHECK(main_key_->DeriveKey("encryption", AesKeySize, enc_key_.get()) &&
-      main_key_->DeriveKey("hmac", HmacKeySize, hmac_key_.get()))
+        main_key_->DeriveKey("hmac", HmacKeySize, hmac_key_.get()))
       << "Could not derive enc and hmac keys for authenticated encryption";
 }
 
 bool FileServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
-                              bool *reply, CloudServerThreadData &cstd) {
+                              bool *reply,
+                              CloudServerThreadData &cstd) {  // NOLINT
   // check to see if the file exists
   if (!action.has_object()) {
     LOG(ERROR) << "The CREATE request did not specify a file";
@@ -128,7 +129,8 @@ bool FileServer::HandleCreate(const Action &action, SSL *ssl, string *reason,
 }
 
 bool FileServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
-                               bool *reply, CloudServerThreadData &cstd) {
+                               bool *reply,
+                               CloudServerThreadData &cstd) {  // NOLINT
   if (!action.has_object()) {
     LOG(ERROR) << "The DESTROY request did not specify a file";
     reason->assign("No file given for DESTROY");
@@ -172,7 +174,8 @@ bool FileServer::HandleDestroy(const Action &action, SSL *ssl, string *reason,
 }
 
 bool FileServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
-                             bool *reply, CloudServerThreadData &cstd) {
+                             bool *reply,
+                             CloudServerThreadData &cstd) {  // NOLINT
   string path = file_path_ + string("/") + action.object();
   string meta_path = meta_path_ + string("/") + action.object();
   {
@@ -217,7 +220,8 @@ bool FileServer::HandleWrite(const Action &action, SSL *ssl, string *reason,
 }
 
 bool FileServer::HandleRead(const Action &action, SSL *ssl, string *reason,
-                            bool *reply, CloudServerThreadData &cstd) {
+                            bool *reply,
+                            CloudServerThreadData &cstd) {  // NOLINT
   string path = file_path_ + string("/") + action.object();
   string meta_path = meta_path_ + string("/") + action.object();
   {

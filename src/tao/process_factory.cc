@@ -20,9 +20,7 @@
 
 #include "tao/process_factory.h"
 
-#include <fstream>
 #include <sstream>
-#include <vector>
 
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
@@ -32,9 +30,7 @@
 
 #include "tao/tao_channel.h"
 
-using std::ifstream;
 using std::stringstream;
-using std::vector;
 
 using keyczar::CryptoFactory;
 using keyczar::MessageDigestImpl;
@@ -71,7 +67,7 @@ bool ProcessFactory::HashHostedProgram(const string &name,
 bool ProcessFactory::CreateHostedProgram(const string &name,
                                          const list<string> &args,
                                          const string &child_hash,
-                                         TaoChannel &parent_channel,
+                                         TaoChannel &parent_channel,  // NOLINT
                                          string *identifier) const {
   int child_pid = fork();
   if (child_pid == -1) {

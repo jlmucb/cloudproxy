@@ -28,33 +28,27 @@ PASS=$4
 
 # Create keys for users tmroeder and jlm with simple passwords.
 cd $RUN
-mkdir -p keys/tmroeder keys/jlm
-${BUILD_DIR}/keyczart create --location=keys/tmroeder --purpose=sign \
+mkdir -p user_keys/tmroeder/signing/private.key user_keys/jlm/signing/private.key
+${BUILD_DIR}/keyczart create --location=user_keys/tmroeder/signing/private.key --purpose=sign \
     --asymmetric=ecdsa
-${BUILD_DIR}/keyczart addkey --location=keys/tmroeder --status=primary \
+${BUILD_DIR}/keyczart addkey --location=user_keys/tmroeder/signing/private.key --status=primary \
     --pass=tmroeder
-${BUILD_DIR}/keyczart create --location=keys/jlm --purpose=sign \
+${BUILD_DIR}/keyczart create --location=user_keys/jlm/signing/private.key --purpose=sign \
 	--asymmetric=ecdsa
-${BUILD_DIR}/keyczart addkey --location=keys/jlm --status=primary --pass=jlm
-
+${BUILD_DIR}/keyczart addkey --location=user_keys/jlm/signing/private.key --status=primary --pass=jlm
 
 # Extract and sign the public keys for these files using the policy key.
 
-mkdir -p keys/tmroeder_pub keys/jlm_pub
-${BUILD_DIR}/keyczart create --location=keys/tmroeder_pub --purpose=sign \
-  --asymmetric=ecdsa
-${BUILD_DIR}/keyczart pubkey --location=keys/tmroeder \
-  --destination=keys/tmroeder_pub --pass=tmroeder
-
-${BUILD_DIR}/keyczart create --location=keys/jlm_pub --purpose=sign \
-  --asymmetric=ecdsa
-${BUILD_DIR}/keyczart pubkey --location=keys/jlm --destination=keys/jlm_pub \
-  --pass=jlm
+mkdir -p user_keys/tmroeder/signing/public.key user_keys/jlm/signing/public.key
+${BUILD_DIR}/keyczart pubkey --location=user_keys/tmroeder/signing/private.key \
+  --destination=user_keys/tmroeder/signing/public.key --pass=tmroeder
+${BUILD_DIR}/keyczart pubkey --location=user_keys/jlm/signing/private.key \
+  --destination=user_keys/jlm/signing/public.key --pass=jlm
 
 # These commands rely on the sign_pub_key command in src/apps/sign_pub_key.cc
 ${BUILD_DIR}/sign_pub_key --policy_pass $PASS  \
-    --pub_key_loc keys/tmroeder_pub \
-    --signed_speaks_for keys/tmroeder_pub_signed --subject tmroeder
+    --pub_key_loc user_keys/tmroeder/signing/public.key \
+    --signed_speaks_for user_keys/tmroeder/signing/ssf --subject tmroeder
 ${BUILD_DIR}/sign_pub_key --policy_pass $PASS  \
-    --pub_key_loc keys/jlm_pub \
-    --signed_speaks_for keys/jlm_pub_signed --subject jlm
+    --pub_key_loc user_keys/jlm/signing/public.key \
+    --signed_speaks_for user_keys/jlm/signing/ssf --subject jlm

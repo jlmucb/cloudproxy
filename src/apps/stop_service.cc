@@ -29,7 +29,7 @@ using tao::ConnectToUnixDomainSocket;
 using tao::InitializeApp;
 using tao::ScopedFd;
 
-DEFINE_string(socket, "/tmp/.linux_tao_stop_socket",
+DEFINE_string(socket, "_linux_tao_stop_socket",
               "The unix domain socket to use to stop the LinuxTaoService");
 
 int main(int argc, char **argv) {

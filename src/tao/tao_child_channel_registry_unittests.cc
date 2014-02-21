@@ -18,7 +18,6 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <keyczar/base/base64w.h>
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/pipe_tao_child_channel.h"
@@ -26,13 +25,10 @@
 #include "tao/tao_child_channel_registry.h"
 #include "tao/unix_fd_tao_child_channel.h"
 
-using keyczar::base::Base64WEncode;
-
 using tao::PipeTaoChildChannel;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelParams;
 using tao::TaoChildChannelRegistry;
-using tao::UnixFdTaoChildChannel;
 
 class TaoChildChannelRegistryTest : public ::testing::Test {
  public:

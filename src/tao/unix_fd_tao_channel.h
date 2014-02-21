@@ -23,6 +23,8 @@
 
 #include <map>
 #include <mutex>
+#include <string>
+#include <utility>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
@@ -114,6 +116,6 @@ class UnixFdTaoChannel : public TaoChannel {
 
   DISALLOW_COPY_AND_ASSIGN(UnixFdTaoChannel);
 };
-}
+}  // namespace tao
 
 #endif  // TAO_UNIX_FD_TAO_CHANNEL_H_

@@ -118,7 +118,7 @@ class TaoDomain : public TaoAuth {
   /// @param path The location of the existing configuration file.
   static TaoDomain *Load(const string &path) { return Load(path, ""); }
 
-  /// Initialize a TaoDomain from an existing configuration file. 
+  /// Initialize a TaoDomain from an existing configuration file.
   /// @param path The location of the existing configuration file.
   /// @param password The password to unlock the policy private key. If password
   /// is emptystring, then the TaoDomain object will be "locked", meaning that

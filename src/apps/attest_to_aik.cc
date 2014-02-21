@@ -17,8 +17,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <fstream>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
@@ -41,10 +39,10 @@
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using std::ifstream;
-using std::ofstream;
 using std::string;
-using std::stringstream;
+
+using keyczar::base::ReadFileToString;
+using keyczar::base::WriteStringToFile;
 
 using tao::Statement;
 using tao::TaoDomain;
@@ -52,10 +50,10 @@ using tao::TaoDomain;
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
 DEFINE_string(
-    aik_blob_file, "aikblob",
+    aik_blob_file, "tpm/aikblob",
     "A file containing an AIK blob that has been loaded into the TPM");
 DEFINE_string(
-    aik_attest_file, "aik.attest",
+    aik_attest_file, "tpm/aik.attest",
     "A serialized attestation to the AIK, signed by the policy private key");
 
 int main(int argc, char **argv) {
@@ -95,17 +93,12 @@ int main(int argc, char **argv) {
   result = Tspi_Policy_SetSecret(srk_policy, TSS_SECRET_MODE_SHA1, 20, secret);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not set the well-known secret";
 
-  // Get the public key blob from the AIK.
   // Load the blob and try to load the AIK
-  ifstream blob_stream(FLAGS_aik_blob_file, ifstream::in);
-  if (!blob_stream) {
+  string blob;
+  if (!ReadFileToString(FLAGS_aik_blob_file, &blob)) {
     LOG(ERROR) << "Could not load the blob file " << FLAGS_aik_blob_file;
     return 1;
   }
-
-  stringstream blob_buf;
-  blob_buf << blob_stream.rdbuf();
-  string blob = blob_buf.str();
   UINT32 blob_len = (UINT32)blob.size();
   TSS_HKEY aik;
   result = Tspi_Context_LoadKeyByBlob(
@@ -145,7 +138,8 @@ int main(int argc, char **argv) {
   s.set_data(pem);
 
   // load policy key
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
+  scoped_ptr<TaoDomain> admin(
+      TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
   // sign this serialized data with policy key
@@ -153,14 +147,10 @@ int main(int argc, char **argv) {
   if (admin->AttestByRoot(&s, &attestation)) return 1;
 
   // save to file
-  ofstream attest_file(FLAGS_aik_attest_file, ofstream::out);
-  if (!attest_file) {
-    LOG(ERROR) << "Could not open the attest file " << FLAGS_aik_attest_file
-               << " for writing";
+  if (!WriteStringToFile(FLAGS_aik_attest_file, attestation)) {
+    LOG(ERROR) << "Could not write attestation file " << FLAGS_aik_attest_file;
     return 1;
   }
 
-  CHECK(attest_file << attestation)
-      << "Could not serialize the attestation to a file";
   return 0;
 }

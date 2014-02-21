@@ -1,0 +1,21 @@
+Tboot has to do the following before jumping into the evmm_main
+
+	- Setup e820 tables
+
+		* E820 table has range of address and types The table is part of
+		vmm_memory_layout struct.  
+
+		* Choose a e820 range to use, and use the
+		start address of that slot as the base and perform relocations 
+
+		* We need to block access to the memory that evmm uses from the guest(s).
+
+		* Before vmlaunch, modify e820 to exclude evmm memory to be viewable by
+		guest linux
+
+	- Setup the stack for evmm; not sure of the exact expected size, but 16
+	  pages should be enough.
+
+	- Setup the heap for evmm; not sure of the exact expected size.
+
+	- Tboot has to create initial page tables to enter ievmm in protected mode.		We could have simple flat/identity map page table structure.

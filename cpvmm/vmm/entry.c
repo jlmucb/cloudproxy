@@ -344,8 +344,11 @@ int main(int an, char** av) {
 
     tprintk("<3>Testing printf\n");
     tprintk("<3>evmm entry %d arguments\n", an);
-    for(i=0; i<an; i++) {
-        tprintk("av[%d]= %d\n", av[i]);
+    if(an<10) {
+        // this only works for the lunux type, not elf
+        for(i=0; i<an; i++) {
+            tprintk("av[%d]= %d\n", av[i]);
+        }
     }
     
     // shared page

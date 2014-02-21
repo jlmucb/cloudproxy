@@ -311,22 +311,6 @@ void PrintMbi(const multiboot_info_t *mbi)
               );
     }
 }
-
-
-void print_shared(const tboot_shared_t *tboot_shared)
-{
-    printk("tboot_shared data:\n");
-    printk("\t version: %d\n", tboot_shared->version);
-    printk("\t log_addr: 0x%08x\n", tboot_shared->log_addr);
-    printk("\t shutdown_entry: 0x%08x\n", tboot_shared->shutdown_entry);
-    printk("\t shutdown_type: %d\n", tboot_shared->shutdown_type);
-    printk("\t tboot_base: 0x%08x\n", tboot_shared->tboot_base);
-    printk("\t tboot_size: 0x%x\n", tboot_shared->tboot_size);
-    printk("\t num_in_wfs: %u\n", tboot_shared->num_in_wfs);
-    printk("\t flags: 0x%8.8x\n", tboot_shared->flags);
-    printk("\t ap_wake_addr: 0x%08x\n", (uint32_t)tboot_shared->ap_wake_addr);
-    printk("\t ap_wake_trigger: %u\n", tboot_shared->ap_wake_trigger);
-}
 #endif
 
 
@@ -337,7 +321,9 @@ typedef void (*tboot_printk)(const char *fmt, ...);
 int main(int an, char** av) {
     int i;
 
-    //tboot_shared_t *shared_page = (tboot_shared_t *)(tboot_shared_page);
+    // john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+    tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+
     // toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
     // john's: tboot_printk tprintk = (tboot_printk)(0x80d630);
     tboot_printk tprintk = (tboot_printk)(0x80d630);
@@ -352,6 +338,17 @@ int main(int an, char** av) {
     }
     
     // shared page
+    tprintk("shared_page data:\n");
+    tprintk("\t version: %d\n", shared_page->version);
+    tprintk("\t log_addr: 0x%08x\n", shared_page->log_addr);
+    tprintk("\t shutdown_entry: 0x%08x\n", shared_page->shutdown_entry);
+    tprintk("\t shutdown_type: %d\n", shared_page->shutdown_type);
+    tprintk("\t tboot_base: 0x%08x\n", shared_page->tboot_base);
+    tprintk("\t tboot_size: 0x%x\n", shared_page->tboot_size);
+    tprintk("\t num_in_wfs: %u\n", shared_page->num_in_wfs);
+    tprintk("\t flags: 0x%8.8x\n", shared_page->flags);
+    tprintk("\t ap_wake_addr: 0x%08x\n", (uint32_t)shared_page->ap_wake_addr);
+    tprintk("\t ap_wake_trigger: %u\n", shared_page->ap_wake_trigger);
 
     // mbi
     // mbi pointer is passed in begin_launch in tboot

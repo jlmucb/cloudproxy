@@ -163,8 +163,7 @@ class CloudClientTest : public ::testing::Test {
 TEST_F(CloudClientTest, UserTest) {
   string username("tmroeder");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
 }
 
 TEST_F(CloudClientTest, UserFailTest) {
@@ -178,8 +177,7 @@ TEST_F(CloudClientTest, CreateTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
 }
 
@@ -193,8 +191,7 @@ TEST_F(CloudClientTest, DestroyTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
@@ -203,8 +200,7 @@ TEST_F(CloudClientTest, DestroyFailTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_FALSE(cloud_client_->Destroy(ssl_.get(), username, obj));
 }
 
@@ -212,8 +208,7 @@ TEST_F(CloudClientTest, ReadTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Destroy(ssl_.get(), username, obj));
@@ -223,8 +218,7 @@ TEST_F(CloudClientTest, ReadFailTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_FALSE(cloud_client_->Read(ssl_.get(), username, obj, obj));
 }
 
@@ -232,8 +226,7 @@ TEST_F(CloudClientTest, WriteFailTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_FALSE(cloud_client_->Write(ssl_.get(), username, obj, obj));
 }
 
@@ -241,8 +234,7 @@ TEST_F(CloudClientTest, WriteTest) {
   string username("tmroeder");
   string obj("test_obj");
   EXPECT_TRUE(cloud_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(cloud_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(cloud_client_->Create(ssl_.get(), username, obj));
   EXPECT_TRUE(cloud_client_->Read(ssl_.get(), username, obj, obj));
   EXPECT_TRUE(cloud_client_->Write(ssl_.get(), username, obj, obj));

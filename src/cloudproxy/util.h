@@ -52,7 +52,7 @@ namespace keys {
 
 /// Suffix for a signed speaks-for delegation file.
 constexpr static auto SignSpeaksForSuffix = "signing/delegation";
-} // namespace keys
+}  // namespace keys
 
 static const int AesKeySize = 16;
 static const int AesBlockSize = 16;

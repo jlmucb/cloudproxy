@@ -221,16 +221,14 @@ bool CompareFiles(const string &orig_file_name, const string &new_file_name) {
 TEST_F(FileClientTest, CreateTest) {
   string username("tmroeder");
   EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(file_client_->Create(ssl_.get(), username, small_file_obj_name_));
 }
 
 TEST_F(FileClientTest, DestroyTest) {
   string username("tmroeder");
   EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(file_client_->Create(ssl_.get(), username, small_file_obj_name_));
   EXPECT_TRUE(
       file_client_->Destroy(ssl_.get(), username, small_file_obj_name_));
@@ -240,8 +238,7 @@ TEST_F(FileClientTest, SmallWriteTest) {
   string username("tmroeder");
   string output_obj("small_out");
   EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(file_client_->Create(ssl_.get(), username, small_file_obj_name_));
   EXPECT_TRUE(file_client_->Write(ssl_.get(), username, small_file_obj_name_,
                                   small_file_obj_name_));
@@ -258,8 +255,7 @@ TEST_F(FileClientTest, MediumWriteTest) {
   string username("tmroeder");
   string output_obj("medium_out");
   EXPECT_TRUE(file_client_->AddUser(username, *tmr_key_->Signer()));
-  EXPECT_TRUE(
-      file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
+  EXPECT_TRUE(file_client_->Authenticate(ssl_.get(), username, tmr_ssf_path_));
   EXPECT_TRUE(
       file_client_->Create(ssl_.get(), username, medium_file_obj_name_));
   EXPECT_TRUE(file_client_->Write(ssl_.get(), username, medium_file_obj_name_,

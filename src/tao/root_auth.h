@@ -63,9 +63,7 @@ class RootAuth : public TaoDomain {
   }
 
   /// Only root attestations are allowed, so disallow Forbid().
-  virtual bool Forbid(const string &name) {
-    return false;
-  }
+  virtual bool Forbid(const string &name) { return false; }
 
   /// Nothing to show user since we don't hold the attestations.
   virtual string DebugString() {

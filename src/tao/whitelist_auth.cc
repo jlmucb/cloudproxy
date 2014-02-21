@@ -330,7 +330,7 @@ bool WhitelistAuth::Authorize(const string &hash, const string &alg,
   entry->set_hash(hash);
   return SaveConfig();
 }
-  
+
 bool WhitelistAuth::Forbid(const string &name) {
   bool found = false;
   for (int i = whitelist_.programs_size() - 1; i >= 0; i--) {

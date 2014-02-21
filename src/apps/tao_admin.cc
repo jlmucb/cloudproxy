@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
     stringstream names(FLAGS_newusers);
     string name;
     while (getline(names, name, ',')) {  // split on commas
-      string password = name; // such security, wow
+      string password = name;            // such security, wow
       scoped_ptr<tao::Keys> key;
       CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
                                           *admin->GetPolicySigner(), &key));

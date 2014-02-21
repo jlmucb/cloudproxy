@@ -21,9 +21,9 @@
 #include "cloudproxy/cloud_auth.h"
 
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/base/file_util.h>
 #include <google/protobuf/text_format.h>
+#include <keyczar/base/file_util.h>
+#include <keyczar/keyczar.h>
 
 #include "cloudproxy/util.h"
 #include "tao/keys.h"

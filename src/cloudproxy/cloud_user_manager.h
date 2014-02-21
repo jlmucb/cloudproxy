@@ -123,8 +123,7 @@ class CloudUserManager {
   /// @param password A password to unlock the user keys.
   /// @param[out] key The key for the user.
   static bool LoadUser(const string &path, const string &username,
-                          const string &password,
-                          scoped_ptr<tao::Keys> *key);
+                       const string &password, scoped_ptr<tao::Keys> *key);
 
   constexpr static auto SpeaksForSigningContext =
       "CloudUserManager cloudproxy::SignedSpeaksFor Version 1";

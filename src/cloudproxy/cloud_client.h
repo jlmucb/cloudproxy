@@ -74,7 +74,7 @@ class CloudClient {
   /// @param signer The user signing private key.
   bool AddUser(const string &user, const keyczar::Signer &signer);
 
-  /// Authenticate a subject to a connected CloudServer. 
+  /// Authenticate a subject to a connected CloudServer.
   /// @param ssl The server connection to use.
   /// @param subject The subject to authenticate. This subject must have already
   /// been added.

@@ -30,15 +30,9 @@
 
 using keyczar::base::WriteStringToFile;
 
-using keyczar::base::WriteStringToFile;
-
-using cloudproxy::ACL;
-using cloudproxy::Action;
 using cloudproxy::CloudAuth;
-using cloudproxy::SignedACL;
 using tao::CreateTempWhitelistDomain;
 using tao::ScopedTempDir;
-using tao::SignData;
 using tao::TaoDomain;
 
 class CloudAuthTest : public ::testing::Test {
@@ -55,7 +49,8 @@ class CloudAuthTest : public ::testing::Test {
     string acl_sig_path = *temp_dir_ + "/acls_sig";
     ASSERT_TRUE(WriteStringToFile(acl_path, acl));
 
-    ASSERT_TRUE(CloudAuth::SignACL(admin_->GetPolicySigner(), acl_path, acl_sig_path));
+    ASSERT_TRUE(
+        CloudAuth::SignACL(admin_->GetPolicySigner(), acl_path, acl_sig_path));
 
     cloud_auth_.reset(new CloudAuth(acl_sig_path, admin_->GetPolicyVerifier()));
   }

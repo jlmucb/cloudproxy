@@ -97,7 +97,6 @@ class LinuxTao : public Tao {
     ignore_seal_hashes_for_testing_ = disable;
   }
 
-
  private:
   /// Configuration for this administrative domain.
   scoped_ptr<TaoDomain> admin_;
@@ -125,7 +124,7 @@ class LinuxTao : public Tao {
 
   /// A mutex for accessing and modifying running_children_.
   mutable mutex data_m_;
-  
+
   /// Whether or not to ignore hash check errors on unseal operations.
   bool ignore_seal_hashes_for_testing_;
 

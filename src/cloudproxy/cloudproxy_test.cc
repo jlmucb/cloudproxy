@@ -22,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "tao/util.h"
-#include <iostream>
 
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

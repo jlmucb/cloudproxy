@@ -30,8 +30,8 @@
 #include "tao/keys.h"
 #include "tao/util.h"
 
-using keyczar::base::WriteStringToFile;
 using keyczar::base::PathExists;
+using keyczar::base::WriteStringToFile;
 
 using tao::Keys;
 
@@ -69,7 +69,8 @@ bool CloudUserManager::GetKey(const string &user, keyczar::Verifier **key) {
   return true;
 }
 
-bool CloudUserManager::AddSigningKey(const string &user, const keyczar::Signer &key) {
+bool CloudUserManager::AddSigningKey(const string &user,
+                                     const keyczar::Signer &key) {
   scoped_ptr<keyczar::Signer> key_copy;
   if (!tao::CopySigner(key, &key_copy)) {
     LOG(ERROR) << "Could not copy user signing private key";

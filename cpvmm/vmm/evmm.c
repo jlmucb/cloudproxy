@@ -33,7 +33,10 @@ typedef int bool;
 #include <vmm_startup.h>
 
 
-multiboot_info_t *g_mbi;
+// this is all 64 bit code
+
+
+multiboot_info_t *g_mbi= NULL;
 
 
 void InitializeMemoryManager(UINT64 *HeapBaseAddress, UINT64 * HeapBytes)
@@ -111,18 +114,5 @@ int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size)
     // r = decompress((void *)((UINT32)ed + ed->evmm_start * 512),
     //		      ed->evmm_count * 512, &p_evmm);
     vmm_bsp_proc_main(apicbase, startup_struct, application_params_struct);
-}
-
-
-//REK: need to add code to setup gdt, segment registers and then jump to the
-//entry point.
-int jump_evmm_image(void *entry_point)
-{
-    __asm__ __volatile__ (
-      "    jmp (%%ecx);    "
-      "    ud2;           "
-      :: "a" (MB_MAGIC), "b" (g_mbi), "c" (entry_point));
-
-    return 1;
 }
 

@@ -24,9 +24,8 @@ typedef int bool;
 #include "elf_defns.h"
 #include "tboot.h"
 
-
 // this is all 32 bit code
-
+#define PRINTALL
 
 // implement transition to 64-bit execution mode
 
@@ -95,6 +94,17 @@ void ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         : 
         : [msr_id] "m" (msr_id),  [p_value] "m" (p_value)
         : "%eax", "%ecx", "%edx");
+}
+
+
+int jump_evmm_image(void *entry_point)
+{
+    __asm__ __volatile__ (
+      "    jmp (%%ecx);    "
+      "    ud2;           "
+      :: "a" (MB_MAGIC), "b" (g_mbi), "c" (entry_point));
+
+    return 1;
 }
 
 
@@ -322,24 +332,43 @@ typedef void (*tboot_printk)(const char *fmt, ...);
 //uint64_t tboot_shared_page = 0;
 // tboot jumps in here
 int main(int an, char** av) {
+    int i;
 
     //tboot_shared_t *shared_page = (tboot_shared_t *)(tboot_shared_page);
     // toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
     // john's: tboot_printk tprintk = (tboot_printk)(0x80d630);
     tboot_printk tprintk = (tboot_printk)(0x80d630);
+#ifdef PRINTALL
     tprintk("<3>Testing printf\n");
-    while(1) ;
+    tprintk("<3>evmm entry %d arguments\n", an);
+    for(i=0; i<an; i++) {
+        tprintk("av[%d]= %d\n", av[i]);
+    }
+    
+    // shared page
 
-
-    // TODO(tmroeder): remove this debugging while loop: added so we can see the
-    // code that we're calling
-    // get mbi and shared page info
+    // mbi
     // mbi pointer is passed in begin_launch in tboot
     //     pass address in main arguments?
-    // flip into 64 bit mode
-    // set up stack 
-    // jump to evmm_main
+#endif
 
-   // int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
+    // TODO(tmroeder): remove this debugging while loop later
+    while(1) ;
+
+    // setup gdt?
+
+    // flip into 64 bit mode
+
+    // set up evmm stack 
+
+    // set up evmm heap
+
+    // set up evmm_main call stack
+
+    // get evmm_main entry point
+
+    // jump to evmm_main
+    // int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
+    // jump_evmm_image(void *entry_point)
 }
 

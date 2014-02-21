@@ -196,7 +196,123 @@ void x32_init64_start( INIT64_STRUCT *p_init64_data, UINT32 address_of_64bit_cod
 }
 
 
+void PrintMbi(const multiboot_info_t *mbi)
+{
+    /* print mbi for debug */
+    unsigned int i;
 
+    printk(TBOOT_DETA"print mbi@%p ...\n", mbi);
+    printk(TBOOT_DETA"\t flags: 0x%x\n", mbi->flags);
+    if ( mbi->flags & MBI_MEMLIMITS )
+        printk(TBOOT_DETA"\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
+               mbi->mem_upper);
+    if ( mbi->flags & MBI_BOOTDEV ) {
+        printk(TBOOT_DETA"\t boot_device.bios_driver: 0x%x\n",
+               mbi->boot_device.bios_driver);
+        printk(TBOOT_DETA"\t boot_device.top_level_partition: 0x%x\n",
+               mbi->boot_device.top_level_partition);
+        printk(TBOOT_DETA"\t boot_device.sub_partition: 0x%x\n",
+               mbi->boot_device.sub_partition);
+        printk(TBOOT_DETA"\t boot_device.third_partition: 0x%x\n",
+               mbi->boot_device.third_partition);
+    }
+    if ( mbi->flags & MBI_CMDLINE ) {
+# define CHUNK_SIZE 72 
+        /* Break the command line up into 72 byte chunks */
+        int   cmdlen = strlen(mbi->cmdline);
+        char *cmdptr = (char *)mbi->cmdline;
+        char  chunk[CHUNK_SIZE+1];
+        printk(TBOOT_DETA"\t cmdline@0x%x: ", mbi->cmdline);
+        chunk[CHUNK_SIZE] = '\0';
+        while (cmdlen > 0) {
+            strncpy(chunk, cmdptr, CHUNK_SIZE); 
+            printk(TBOOT_DETA"\n\t\"%s\"", chunk);
+            cmdptr += CHUNK_SIZE;
+            cmdlen -= CHUNK_SIZE;
+        }
+        printk(TBOOT_DETA"\n");
+    }
+
+    if ( mbi->flags & MBI_MODULES ) {
+        printk(TBOOT_DETA"\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
+               mbi->mods_addr);
+        for ( i = 0; i < mbi->mods_count; i++ ) {
+            module_t *p = (module_t *)(mbi->mods_addr + i*sizeof(module_t));
+            printk(TBOOT_DETA"\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
+                   p->mod_start, p->mod_end);
+            printk(TBOOT_DETA"\t         string (@0x%x): \"%s\"\n", p->string,
+                   (char *)p->string);
+        }
+    }
+    if ( mbi->flags & MBI_AOUT ) {
+        const aout_t *p = &(mbi->syms.aout_image);
+        printk(TBOOT_DETA"\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
+               p->tabsize, p->strsize, p->addr);
+    }
+    if ( mbi->flags & MBI_ELF ) {
+        const elf_t *p = &(mbi->syms.elf_image);
+        printk(TBOOT_DETA"\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
+               p->num, p->size, p->addr, p->shndx);
+    }
+    if ( mbi->flags & MBI_MEMMAP ) {
+        memory_map_t *p;
+        printk(TBOOT_DETA"\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
+               mbi->mmap_addr);
+        for ( p = (memory_map_t *)mbi->mmap_addr;
+              (uint32_t)p < mbi->mmap_addr + mbi->mmap_length;
+              p=(memory_map_t *)((uint32_t)p + p->size + sizeof(p->size)) ) {
+	        printk(TBOOT_DETA"\t     size: 0x%x, base_addr: 0x%04x%04x, "
+                   "length: 0x%04x%04x, type: %u\n", p->size,
+                   p->base_addr_high, p->base_addr_low,
+                   p->length_high, p->length_low, p->type);
+        }
+    }
+    if ( mbi->flags & MBI_DRIVES ) {
+        printk(TBOOT_DETA"\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
+               mbi->drives_addr);
+    }
+    if ( mbi->flags & MBI_CONFIG ) {
+        printk(TBOOT_DETA"\t config_table: 0x%x\n", mbi->config_table);
+    }
+    if ( mbi->flags & MBI_BTLDNAME ) {
+        printk(TBOOT_DETA"\t boot_loader_name@0x%x: %s\n",
+               mbi->boot_loader_name, (char *)mbi->boot_loader_name);
+    }
+    if ( mbi->flags & MBI_APM ) {
+        printk(TBOOT_DETA"\t apm_table: 0x%x\n", mbi->apm_table);
+    }
+    if ( mbi->flags & MBI_VBE ) {
+        printk(TBOOT_DETA"\t vbe_control_info: 0x%x\n"
+               "\t vbe_mode_info: 0x%x\n"
+               "\t vbe_mode: 0x%x\n"
+               "\t vbe_interface_seg: 0x%x\n"
+               "\t vbe_interface_off: 0x%x\n"
+               "\t vbe_interface_len: 0x%x\n",
+               mbi->vbe_control_info,
+               mbi->vbe_mode_info,
+               mbi->vbe_mode,
+               mbi->vbe_interface_seg,
+               mbi->vbe_interface_off,
+               mbi->vbe_interface_len
+              );
+    }
+}
+
+
+void print_shared(const tboot_shared_t *tboot_shared)
+{
+    printk("tboot_shared data:\n");
+    printk("\t version: %d\n", tboot_shared->version);
+    printk("\t log_addr: 0x%08x\n", tboot_shared->log_addr);
+    printk("\t shutdown_entry: 0x%08x\n", tboot_shared->shutdown_entry);
+    printk("\t shutdown_type: %d\n", tboot_shared->shutdown_type);
+    printk("\t tboot_base: 0x%08x\n", tboot_shared->tboot_base);
+    printk("\t tboot_size: 0x%x\n", tboot_shared->tboot_size);
+    printk("\t num_in_wfs: %u\n", tboot_shared->num_in_wfs);
+    printk("\t flags: 0x%8.8x\n", tboot_shared->flags);
+    printk("\t ap_wake_addr: 0x%08x\n", (uint32_t)tboot_shared->ap_wake_addr);
+    printk("\t ap_wake_trigger: %u\n", tboot_shared->ap_wake_trigger);
+}
 
 multiboot_info_t *g_mbi;
 
@@ -218,6 +334,8 @@ int main(int an, char** av) {
     // TODO(tmroeder): remove this debugging while loop: added so we can see the
     // code that we're calling
     // get mbi and shared page info
+    // mbi pointer is passed in begin_launch in tboot
+    //     pass address in main arguments?
     // flip into 64 bit mode
     // set up stack 
     // jump to evmm_main

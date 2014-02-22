@@ -600,6 +600,10 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
 
 bool GenerateAttestation(const Signer *signer, const string &cert,
                          Statement *statement, Attestation *attestation) {
+  if (signer == nullptr) {
+    LOG(ERROR) << "Can't sign with null key";
+    return false;
+  }
   if (statement == nullptr) {
     LOG(ERROR) << "Can't sign null statement";
     return false;
@@ -632,7 +636,7 @@ bool GenerateAttestation(const Signer *signer, const string &cert,
     LOG(ERROR) << "Could not serialize statement";
     return false;
   }
-  if (!SignData(stmt, Tao::AttestationSigningContext, &sig, signer)) {
+  if (!SignData(*signer, stmt, Tao::AttestationSigningContext, &sig)) {
     LOG(ERROR) << "Could not sign the statement";
     return false;
   }

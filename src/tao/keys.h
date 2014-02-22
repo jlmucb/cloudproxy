@@ -73,16 +73,16 @@ bool SerializePublicKey(const keyczar::Verifier &key, string *serialized_key);
 /// messages are used.
 /// @param[out] signature The resulting signature.
 /// @param key The key to use for signing.
-bool SignData(const string &data, const string &context, string *signature,
-              const keyczar::Signer *key);
+bool SignData(const keyczar::Signer &key, const string &data,
+              const string &context, string *signature);
 
 /// Verify a signature using Verifier.
 /// @param data The data that was signed.
 /// @param context The context to check in the tao::Signature.
 /// @param signature The signature on the data.
 /// @param key The key to use for verification.
-bool VerifySignature(const string &data, const string &context,
-                     const string &signature, const keyczar::Verifier *key);
+bool VerifySignature(const keyczar::Verifier &key, const string &data,
+                     const string &context, const string &signature);
 
 /// Make a (deep) copy of a Signer, either a signing or a key-derivation key.
 /// @param key The key to be copied.
@@ -271,18 +271,14 @@ class Keys {
   /// are
   /// used.
   /// @param[out] signature The resulting signature.
-  bool SignData(const string &data, const string &context, string *signature) {
-    return tao::SignData(data, context, signature, Signer());
-  }
+  bool SignData(const string &data, const string &context, string *signature);
 
   /// Verify a signature the managed signing public or private key.
   /// @param data The data that was signed.
   /// @param context The context to check in the tao::Signature.
   /// @param signature The signature on the data.
   bool VerifySignature(const string &data, const string &context,
-                       const string &signature) {
-    return tao::VerifySignature(data, context, signature, Verifier());
-  }
+                       const string &signature);
 
   /// Make a (deep) copy of this object.
   Keys *DeepCopy() const;

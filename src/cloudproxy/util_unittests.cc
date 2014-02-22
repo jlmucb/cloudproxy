@@ -83,8 +83,8 @@ TEST(CloudProxyUtilTest, ExtractACLTest) {
   EXPECT_TRUE(acl.SerializeToString(ser)) << "Could not serialize ACL";
 
   string *sig = sacl.mutable_signature();
-  EXPECT_TRUE(SignData(*ser, CloudAuth::ACLSigningContext, sig,
-                       admin->GetPolicySigner()))
+  EXPECT_TRUE(SignData(*admin->GetPolicySigner(), *ser,
+                       CloudAuth::ACLSigningContext, sig))
       << "Could not sign the serialized ACL with the policy key";
 
   string signed_acl_path = *temp_dir + string("/signed_acl");

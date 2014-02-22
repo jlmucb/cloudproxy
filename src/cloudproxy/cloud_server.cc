@@ -398,9 +398,9 @@ bool CloudServer::HandleResponse(const Response &response, SSL *ssl,
     }
 
     // check the signature on the serialized_challenge
-    if (!VerifySignature(response.serialized_chall(),
+    if (!VerifySignature(*user_key, response.serialized_chall(),
                          CloudClient::ChallengeSigningContext,
-                         response.signature(), user_key)) {
+                         response.signature())) {
       LOG(ERROR) << "Challenge signature failed";
       reason->assign("Invalid response signature");
       return false;

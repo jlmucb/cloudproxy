@@ -109,8 +109,7 @@ TEST_F(TaoKeysTest, SerializeKeyTest) {
   ASSERT_TRUE(keys_->SignData(message, context, &signature));
   ASSERT_TRUE(keys_->SignData(message, context, &signature))
       << "Could not sign the test message";
-  EXPECT_TRUE(
-      tao::VerifySignature(message, context, signature, public_key.get()))
+  EXPECT_TRUE(tao::VerifySignature(*public_key, message, context, signature))
       << "Deserialized key could not verify signature";
 
   // Serialize again to check serialization of Verifier (not Signer)

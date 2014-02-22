@@ -212,8 +212,8 @@ bool TaoDomain::CheckRootSignature(const Attestation &a) const {
                   "signed with the policy public key";
     return false;
   }
-  if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
-                       a.signature(), keys_->Verifier())) {
+  if (!keys_->VerifySignature(a.serialized_statement(),
+                              Tao::AttestationSigningContext, a.signature())) {
     LOG(ERROR) << "Verification failed with the policy key";
     return false;
   }

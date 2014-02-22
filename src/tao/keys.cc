@@ -370,8 +370,8 @@ bool SerializePublicKey(const Verifier &key, string *s) {
   return true;
 }
 
-bool SignData(const string &data, const string &context, string *signature,
-              const Signer *key) {
+bool SignData(const Signer &key, const string &data, const string &context,
+              string *signature) {
   if (context.empty()) {
     LOG(ERROR) << "Cannot sign a message with an empty context";
     return false;
@@ -386,7 +386,7 @@ bool SignData(const string &data, const string &context, string *signature,
     return false;
   }
 
-  if (!key->Sign(serialized, signature)) {
+  if (!key.Sign(serialized, signature)) {
     LOG(ERROR) << "Could not sign the data";
     return false;
   }
@@ -394,8 +394,8 @@ bool SignData(const string &data, const string &context, string *signature,
   return true;
 }
 
-bool VerifySignature(const string &data, const string &context,
-                     const string &signature, const Verifier *key) {
+bool VerifySignature(const Verifier &key, const string &data,
+                     const string &context, const string &signature) {
   if (context.empty()) {
     LOG(ERROR) << "Cannot sign a message with an empty context";
     return false;
@@ -410,7 +410,7 @@ bool VerifySignature(const string &data, const string &context,
     return false;
   }
 
-  if (!key->Verify(serialized, signature)) {
+  if (!key.Verify(serialized, signature)) {
     LOG(ERROR) << "Verify failed";
     return false;
   }
@@ -972,6 +972,23 @@ bool Keys::SerializePublicKey(string *s) {
     return false;
   }
   return tao::SerializePublicKey(*Verifier(), s);
+}
+
+bool Keys::SignData(const string &data, const string &context, string *signature) {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  return tao::SignData(*Signer(), data, context, signature);
+}
+
+bool Keys::VerifySignature(const string &data, const string &context,
+                     const string &signature) {
+  if (!Verifier()) {
+    LOG(ERROR) << "No managed verifier";
+    return false;
+  }
+  return tao::VerifySignature(*Verifier(), data, context, signature);
 }
 
 bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {

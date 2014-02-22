@@ -90,9 +90,16 @@ typedef scoped_ptr_malloc<
     SSL, keyczar::openssl::OSSLDestroyer<SSL, ssl_cleanup> > ScopedSSL;
 
 /// Prepare an SSL_CTX for a server to accepts connections from clients.
+/// Peer certificates will be required.
 /// @param key The private signing key and x509 certificate to use.
 /// @param ctx The OpenSSL context to prepare.
 bool SetUpSSLServerCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
+
+/// Prepare an SSL_CTX for a server to accepts connections from clients.
+/// Peer certificates will not be required.
+/// @param key The private signing key and x509 certificate to use.
+/// @param ctx The OpenSSL context to prepare.
+bool SetUpPermissiveSSLServerCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
 
 /// Prepare an SSL_CTX for a client to connect to a server.
 /// @param key The private signing key and x509 certificate to use.

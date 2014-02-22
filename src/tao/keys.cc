@@ -571,7 +571,7 @@ static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
   // TODO(kwalsh) Implement this function for RSA, other types
   KeyType::Type key_type = keyset.metadata()->key_type();
   if (key_type != KeyType::ECDSA_PUB && key_type != KeyType::ECDSA_PRIV) {
-    LOG(ERROR) << "ExportKeyToOpenSSL only implemented for ECDSA so far";
+    LOG(ERROR) << "ExportKeysetToOpenSSL only implemented for ECDSA so far";
     return false;
   }
   // Get raw key data out of keyczar
@@ -684,7 +684,7 @@ bool ExportPrivateKeyToOpenSSL(const Signer &key, ScopedEvpPkey *pem_key) {
 
 bool ExportPublicKeyToOpenSSL(const Verifier &key, ScopedEvpPkey *pem_key) {
   if (pem_key == nullptr) {
-    LOG(ERROR) << "null key or pem_key";
+    LOG(ERROR) << "null pem_key";
     return false;
   }
   return ExportKeysetToOpenSSL(*key.keyset(), false /* only public */, pem_key);

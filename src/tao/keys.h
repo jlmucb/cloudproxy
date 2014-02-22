@@ -127,16 +127,24 @@ bool ExportPublicKeyToOpenSSL(const keyczar::Verifier &key,
                               ScopedEvpPkey *pem_key);
 
 /// Create a self-signed X509 certificate for a key.
-/// @param key The keyczar key to use for both the subject and the issuer.
-/// @param country The name to use for the x509 Country detail.
-/// @param state The name to use for the x509 State detail.
-/// @param org The name to use for the x509 Organization detail.
-/// @param cn The name to use for the x509 CommonName detail.
+/// @param key The key to use for both the subject and the issuer.
+/// @param details The x509 details for the subject.
 /// @param public_cert_path File name to hold the resulting x509 certificate.
-/// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-bool CreateSelfSignedX509(const keyczar::Signer &key, const string &country,
-                          const string &state, const string &org,
-                          const string &cn, const string &public_cert_path);
+bool CreateSelfSignedX509(const keyczar::Signer &key,
+                          const X509Details &details,
+                          const string &public_cert_path);
+
+/// Create a CA-signed X509 certificate for a key.
+/// @param ca_key The key to use for the issuer.
+/// @param ca_cert_path The location of the issuer certificate.
+/// @param cert_serial The serial number to use for the new certificate.
+/// @param subject_key The key to use for the subject.
+/// @param subject_details The x509 details for the subject.
+/// @param[out] pem_cert The signed certificate chain.
+bool CreateCASignedX509(const keyczar::Signer &ca_key,
+                        const string &ca_cert_path, int cert_serial,
+                        const keyczar::Verifier &subject_key,
+                        const X509Details &subject_details, string *pem_cert);
 
 /// Serialize an openssl X509 structure in PEM format.
 /// @param x509 The certificate to serialize.
@@ -256,13 +264,23 @@ class Keys {
   }
 
   /// Create a self-signed X509 certificate for the managed signing key.
-  /// @param country The name to use for the x509 Country detail.
-  /// @param state The name to use for the x509 State detail.
-  /// @param org The name to use for the x509 Organization detail.
-  /// @param cn The name to use for the x509 CommonName detail.
-  /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-  bool CreateSelfSignedX509(const string &country, const string &state,
-                            const string &org, const string &cn) const;
+  /// The certificate will be written to SigningX509CertificatePath().
+  /// @param details Details for the subject.
+  bool CreateSelfSignedX509(const X509Details &details) const;
+
+  /// Create a self-signed X509 certificate for a key.
+  /// The certificate will be written to SigningX509CertificatePath().
+  /// @param details Text-format encoded x509Details for the subject.
+  bool CreateSelfSignedX509(const string &details_text) const;
+
+  /// Create a signed X509 certificate issued by the managed signing key.
+  /// @param cert_serial The serial number to use for the new certificate.
+  /// @param subject_key The key to use for the subject.
+  /// @param subject_details The x509 details for the subject.
+  /// @param[out] pem_cert The signed certificate chain.
+  bool CreateCASignedX509(int cert_serial, const keyczar::Verifier &subject_key,
+                          const X509Details &subject_details,
+                          string *pem_cert) const;
 
   /// Convert the managed signing public key to a serialized string.
   /// @param[out] s The serialized key.
@@ -322,17 +340,6 @@ class Keys {
   /// contain only a public key.
   /// @param pem_key[out] The new OpenSSL EVP_PKEY.
   bool ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const;
-
-  /// Create a self-signed X509 certificate for the managed signing key.
-  /// @param country The name to use for the x509 Country detail.
-  /// @param state The name to use for the x509 State detail.
-  /// @param org The name to use for the x509 Organization detail.
-  /// @param cn The name to use for the x509 CommonName detail.
-  /// @param public_cert_path File name to hold the resulting x509 certificate.
-  /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-  bool CreateSelfSignedX509(const string &country, const string &state,
-                            const string &org, const string &cn,
-                            const string &public_cert_path) const;
 
   /// Keys stores all its files under a single path using these naming
   /// conventions. For consistency, other applications may use these same naming

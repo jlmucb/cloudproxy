@@ -75,8 +75,11 @@ CloudServer::CloudServer(const string &server_config_path,
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    CHECK(keys_->CreateSelfSignedX509("US", "Washington", "Google",
-                                      "cloudserver"));
+    string details = "country: \"US\" "
+                     "state: \"Washington\" "
+                     "organization: \"Google\" "
+                     "commonname: \"cloudserver\"";
+    CHECK(keys_->CreateSelfSignedX509(details));
   }
 
   // set up the SSL context and SSLs for getting client connections

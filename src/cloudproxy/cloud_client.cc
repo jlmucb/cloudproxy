@@ -56,8 +56,11 @@ CloudClient::CloudClient(const string &client_config_path,
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    CHECK(keys_->CreateSelfSignedX509("US", "Washington", "Google",
-                                      "cloudclient"));
+    string details = "country: \"US\" "
+                     "state: \"Washington\" "
+                     "organization: \"Google\" "
+                     "commonname: \"cloudclient\"";
+    CHECK(keys_->CreateSelfSignedX509(details));
   }
 
   // set up the TLS connection with the cert and keys and trust DB

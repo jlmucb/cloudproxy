@@ -103,10 +103,7 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
     return nullptr;
   }
 
-  if (!admin->keys_->CreateSelfSignedX509(admin->GetPolicyX509Country(),
-                                          admin->GetPolicyX509State(),
-                                          admin->GetPolicyX509Organization(),
-                                          admin->GetPolicyX509CommonName())) {
+  if (!admin->keys_->CreateSelfSignedX509(admin->GetPolicyX509Details())) {
     LOG(ERROR) << "Could not create self-signed x509 for policy key";
     return nullptr;
   }
@@ -171,6 +168,24 @@ bool TaoDomain::SaveConfig() const {
     return false;
   }
   return true;
+}
+
+int TaoDomain::GetFreshX509CertificateSerialNumber() {
+  // TODO(kwalsh) thread safety; also, add integrity and reply protection.
+  int ver = 0;
+  config_->GetInteger(JSONPolicyX509LastSerial, &ver);
+  ver++;
+  string json;
+  if (!config_->SetInteger(JSONPolicyX509LastSerial, ver)) {
+    LOG(ERROR) << "Could not save x509 version number";
+    return -1;
+  }
+  JSONWriter::Write(config_.get(), true, &json);
+  if (!WriteStringToFile(path_, json)) {
+    LOG(ERROR) << "Could not save x509 version number";
+    return -1;
+  }
+  return ver;
 }
 
 string TaoDomain::GetConfigString(const string &name) const {

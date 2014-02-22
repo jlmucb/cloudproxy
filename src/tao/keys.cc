@@ -21,6 +21,7 @@
 #include <string>
 
 #include <glog/logging.h>
+#include <google/protobuf/text_format.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/json_reader.h>
@@ -34,10 +35,12 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "tao/attestation.pb.h"
 #include "tao/keyczar_public_key.pb.h"
 #include "tao/signature.pb.h"
 #include "tao/util.h"
 
+using google::protobuf::TextFormat;
 using keyczar::Crypter;
 using keyczar::Key;
 using keyczar::KeyPurpose;
@@ -708,13 +711,13 @@ static void SetX509NameDetail(X509_NAME *name, const string &id,
 /// @param o The organization code, e.g. "Google"
 /// @param st The state code, e.g. "Washington"
 /// @param cn The common name, e.g. "Example Tao CA Service" or "localhost"
-static void SetX509NameDetails(X509_NAME *name, const string &c,
-                               const string &o, const string &st,
-                               const string &cn) {
-  SetX509NameDetail(name, "C", c);
-  SetX509NameDetail(name, "ST", st);
-  SetX509NameDetail(name, "O", o);
-  SetX509NameDetail(name, "CN", cn);
+static void SetX509NameDetails(X509_NAME *name, const X509Details &details) {
+  if (details.has_country()) SetX509NameDetail(name, "C", details.country());
+  if (details.has_state()) SetX509NameDetail(name, "ST", details.state());
+  if (details.has_organization())
+    SetX509NameDetail(name, "O", details.organization());
+  if (details.has_commonname())
+    SetX509NameDetail(name, "CN", details.commonname());
 }
 
 /// Prepare an X509 structure for signing by filling in version numbers, serial
@@ -798,33 +801,8 @@ bool SerializeX509(X509 *x509, string *pem) {
   return true;
 }
 
-/// Write an openssl X509 structure to a file in PEM format.
-/// @param x509 The certificate to write. Must be non-null.
-/// @param path The location to write the PEM data.
-static bool WriteX509File(X509 *x509, const string &path) {
-  if (!CreateDirectory(FilePath(path).DirName())) {
-    LOG(ERROR) << "Could not create directory for " << path;
-    return false;
-  }
-
-  ScopedFile cert_file(fopen(path.c_str(), "wb"));
-  if (cert_file.get() == nullptr) {
-    PLOG(ERROR) << "Could not open file " << path << " for writing";
-    return false;
-  }
-
-  PEM_write_X509(cert_file.get(), x509);
-  if (!OpenSSLSuccess()) {
-    LOG(ERROR) << "Could not write the X.509 certificate to " << path;
-    return false;
-  }
-
-  return true;
-}
-
-bool CreateSelfSignedX509(const Signer &key, const string &country,
-                          const string &state, const string &org,
-                          const string &cn, const string &public_cert_path) {
+bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
+                          const string &public_cert_path) {
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey pem_key;
   if (!ExportPrivateKeyToOpenSSL(key, &pem_key)) return false;
@@ -837,10 +815,10 @@ bool CreateSelfSignedX509(const Signer &key, const string &country,
 
   // set up the subject and issuer details to be the same
   X509_NAME *subject = X509_get_subject_name(x509.get());
-  SetX509NameDetails(subject, country, org, state, cn);
+  SetX509NameDetails(subject, details);
 
   X509_NAME *issuer = X509_get_issuer_name(x509.get());
-  SetX509NameDetails(issuer, country, org, state, cn);
+  SetX509NameDetails(issuer, details);
 
   AddX509Extension(x509.get(), NID_basic_constraints, "critical,CA:TRUE");
   AddX509Extension(x509.get(), NID_subject_key_identifier, "hash");
@@ -852,7 +830,18 @@ bool CreateSelfSignedX509(const Signer &key, const string &country,
     return false;
   }
 
-  return WriteX509File(x509.get(), public_cert_path);
+  string pem;
+  if (!SerializeX509(x509.get(), &pem) ||
+      !CreateDirectory(FilePath(public_cert_path).DirName()) ||
+      !WriteStringToFile(public_cert_path, pem)) {
+    LOG(ERROR) << "Could not write x509 to " << public_cert_path;
+    return false;
+  }
+  return true;
+}
+
+static int no_password_callback(char *buf, int size, int rwflag, void *u) {
+  return 0;  // return error
 }
 
 Keys::Keys(const string &name, int key_types)
@@ -869,6 +858,66 @@ Keys::Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
       crypter_(crypting_key) {}
 
 Keys::~Keys() {}
+
+bool CreateCASignedX509(const Signer &ca_key, const string &ca_cert_path,
+                        int cert_serial, const Verifier &subject_key,
+                        const X509Details &subject_details, string *pem_cert) {
+  if (!pem_cert) {
+    LOG(ERROR) << "null pem";
+    return false;
+  }
+  // we need openssl versions of the keys to create and sign the x509 cert
+  ScopedEvpPkey ca_pem_key;
+  if (!ExportPrivateKeyToOpenSSL(ca_key, &ca_pem_key)) {
+    LOG(ERROR) << "Could not export ca key to openssl";
+    return false;
+  }
+  ScopedEvpPkey subject_pem_key;
+  if (!ExportPublicKeyToOpenSSL(subject_key, &subject_pem_key)) {
+    LOG(ERROR) << "Could not export subject key to openssl";
+    return false;
+  }
+  // load the ca cert and extract ca details
+  ScopedFile ca_cert_file(fopen(ca_cert_path.c_str(), "rb"));
+  if (ca_cert_file.get() == nullptr) {
+    PLOG(ERROR) << "Could not read " << ca_cert_path;
+    return false;
+  }
+  ScopedX509 ca_x509(PEM_read_X509(ca_cert_file.get(), nullptr /* ptr */,
+                                   no_password_callback, nullptr /* cbdata */));
+  if (!OpenSSLSuccess() || ca_x509.get() == nullptr) {
+    LOG(ERROR) << "Could not write the X.509 certificate to " << ca_cert_path;
+    return false;
+  }
+
+  // create the x509 structure
+  ScopedX509 x509(X509_new());
+  int version = 0;  // ca-sign uses version=0 (which is x509v1)
+  PrepareX509(x509.get(), version, cert_serial, subject_pem_key.get());
+
+  // set up the subject details
+  X509_NAME *subject = X509_get_subject_name(x509.get());
+  SetX509NameDetails(subject, subject_details);
+
+  // copy the issuer details from ca_cert
+  X509_NAME *issuer = X509_get_issuer_name(ca_x509.get());
+  X509_set_issuer_name(x509.get(), issuer);
+
+  X509_sign(x509.get(), ca_pem_key.get(), EVP_sha1());
+  if (!OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not perform ca-signing on the X.509 cert";
+    return false;
+  }
+
+  string ca_pem, subject_pem;
+  if (!SerializeX509(x509.get(), &subject_pem) ||
+      !SerializeX509(ca_x509.get(), &ca_pem)) {
+    LOG(ERROR) << "Could not serialize x509 certificates";
+    return false;
+  }
+  pem_cert->assign(subject_pem + ca_pem);
+  return true;
+}
 
 bool Keys::InitTemporary() {
   // Generate temporary keys.
@@ -1082,14 +1131,35 @@ bool Keys::ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const {
   return tao::ExportPublicKeyToOpenSSL(*Verifier(), pem_key);
 }
 
-bool Keys::CreateSelfSignedX509(const string &country, const string &state,
-                                const string &org, const string &cn) const {
+bool Keys::CreateSelfSignedX509(const X509Details &details) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
   }
-  string public_cert_path = SigningX509CertificatePath();
-  return tao::CreateSelfSignedX509(*Signer(), country, state, org, cn,
-                                   public_cert_path);
+  string path = SigningX509CertificatePath();
+  return tao::CreateSelfSignedX509(*Signer(), details, path);
 }
+
+bool Keys::CreateSelfSignedX509(const string &details_text) const {
+  X509Details details;
+  if (!TextFormat::ParseFromString(details_text, &details)) {
+    LOG(ERROR) << "Could not parse x509 details";
+    return false;
+  }
+  return CreateSelfSignedX509(details);
+}
+
+bool Keys::CreateCASignedX509(int cert_serial,
+                              const keyczar::Verifier &subject_key,
+                              const X509Details &subject_details,
+                              string *pem_cert) const {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  string ca_cert_path = SigningX509CertificatePath();
+  return tao::CreateCASignedX509(*Signer(), ca_cert_path, cert_serial,
+                                 subject_key, subject_details, pem_cert);
+}
+
 }  // namespace tao

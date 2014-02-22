@@ -50,8 +50,11 @@ TEST(CloudProxyUtilTest, X509SSLTest) {
 
   scoped_ptr<Keys> key(new Keys(*temp_dir, "test client key", Keys::Signing));
   ASSERT_TRUE(key->InitNonHosted("dummy_password"));
-  ASSERT_TRUE(
-      key->CreateSelfSignedX509("US", "Washington", "Google", "testclient"));
+  string details = "country: \"US\" "
+                   "state: \"Washington\" "
+                   "organization: \"Google\" "
+                   "commonname: \"testclient\"";
+  ASSERT_TRUE(key->CreateSelfSignedX509(details));
 
   ScopedSSLCtx ctx;
   EXPECT_TRUE(SetUpSSLServerCtx(*key, &ctx));
@@ -68,16 +71,15 @@ TEST(CloudProxyUtilTest, ExtractACLTest) {
       "permissions { subject: \"tmroeder\" verb: ADMIN }\n"
       "permissions { subject: \"jlm\" verb: CREATE object: \"/files\" }\n";
 
-  string acl_path = *temp_dir_ + "/acls";
-  string acl_sig_path = *temp_dir_ + "/acls_sig";
+  string acl_path = *temp_dir + "/acls";
+  string acl_sig_path = *temp_dir + "/acls_sig";
   ASSERT_TRUE(WriteStringToFile(acl_path, acl));
 
   ASSERT_TRUE(
-      CloudAuth::SignACL(admin_->GetPolicySigner(), acl_path, acl_sig_path));
+      CloudAuth::SignACL(admin->GetPolicySigner(), acl_path, acl_sig_path));
 
   string acl_out;
-  EXPECT_TRUE(
-      ExtractACL(signed_acl_path, admin->GetPolicyVerifier(), &acl_out));
+  EXPECT_TRUE(ExtractACL(acl_sig_path, admin->GetPolicyVerifier(), &acl_out));
   ACL deserialized_acl;
   EXPECT_TRUE(deserialized_acl.ParseFromString(acl_out));
 }

@@ -103,11 +103,11 @@ bool CopyCrypter(const keyczar::Crypter &key,
                  scoped_ptr<keyczar::Crypter> *copy);
 
 /// Derive a key from a main key.
-/// @param main_key The key to use for key derivation.
+/// @param key The key to use for key derivation.
 /// @param name A unique name for the derived key.
 /// @param size The size of the material to be derived.
 /// @param[out] material The key material derived from main_key.
-bool DeriveKey(const keyczar::Signer *main_key, const string &name, int size,
+bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
                string *material);
 
 /// Convert a keyczar private signing key to an OpenSSL EVP_PKEY structure.
@@ -302,9 +302,7 @@ class Keys {
   /// @param name A unique name for the derived key.
   /// @param size The size of the material to be derived.
   /// @param[out] material The key material derived from main_key.
-  bool DeriveKey(const string &name, int size, string *material) {
-    return tao::DeriveKey(KeyDeriver(), name, size, material);
-  }
+  bool DeriveKey(const string &name, int size, string *material) const;
 
   /// Convert the managed signing private key to an OpenSSL EVP_PKEY structure.
   /// Only the primary key from the keyset is exported. The EVP_PKEY will

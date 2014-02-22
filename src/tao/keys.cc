@@ -527,14 +527,13 @@ bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
   return true;
 }
 
-// name is "hmac" or "encryption"
-bool DeriveKey(const keyczar::Signer *main_key, const string &name, int size,
+bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
                string *material) {
-  if (main_key == nullptr || material == nullptr) {
+  if (material == nullptr) {
     LOG(ERROR) << "Invalid DeriveKey parameters";
     return false;
   }
-  if (main_key->keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
+  if (key.keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
     LOG(ERROR) << "DeriveKey requires symmetric main key";
     return false;
   }
@@ -543,7 +542,7 @@ bool DeriveKey(const keyczar::Signer *main_key, const string &name, int size,
   keyczar::base::ScopedSafeString sig(new string());
   // Note that this is not an application of a signature in the normal sense, so
   // it does not need to be transformed into an application of tao::SignData.
-  if (!main_key->Sign(context, sig.get())) {
+  if (!key.Sign(context, sig.get())) {
     LOG(ERROR) << "Could not derive key material";
     return false;
   }
@@ -1022,6 +1021,14 @@ bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) {
     return false;
   }
   return tao::CopyCrypter(*Crypter(), copy);
+}
+
+bool Keys::DeriveKey(const string &name, int size, string *material) const {
+  if (!KeyDeriver()) {
+    LOG(ERROR) << "No managed key-deriver";
+    return false;
+  }
+  return tao::DeriveKey(*KeyDeriver(), name, size, material);
 }
 
 bool Keys::ExportSignerToOpenSSL(ScopedEvpPkey *pem_key) const {

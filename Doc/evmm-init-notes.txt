@@ -47,12 +47,23 @@ code as is customary in a linux application.
 
 Upon entry, tboot provided bootstrap with:
     1. A protected mode 32 bit environment.
-    2. A Heap of size XXXX.  [JLM will get XXX and YYY]
-    3. A stack of size YYYY.
-    4. An initialized GDT and IDT.
-    5. Information obtained from BIOS including memory size, base address of tboot, size of tboot.
-    6. e20 and apic information.
-    7. multiboot headers.
+    2. In the recommended layout, tboot allocates 4K for stack+heap.
+        Stack+heap at 0x8000-0x8fff
+        Cmd arg at 0x9000
+        Real mode kernel 0x0000-0x7fff
+        real mode size is in real_mode_size
+        protected mode size (linux_size-real_mode_size) is in protected_mode _size.
+        stack base is in bsp_stack
+        idt descriptor is in idt_descr.
+        heap size is in heap_size.
+    3. An initialized GDT and IDT.
+    4. Information obtained from BIOS including memory size, base address of tboot, size of tboot.
+    5. e20 and apic information.
+    6. multiboot headers.
+    7. tboot typically moves the linux protected mode base to 0x100000
+
+Tboot passes mbi address on stack (from %ebx) for begin_launch.  PE memory layout to
+linux is 4GB limit, 4K page size.
 
 The bootstrap program uses this information to call vmm_main (potentially decompressing it)
 in 64-bit protected mode with all the information vmm_main needs to continue the boot.
@@ -110,7 +121,9 @@ Setup of e820 tables by bootstrap
 
 The E820 table has range of address and types. The table is part of
 vmm_memory_layout struct passed to vmm_main by bootstrap. [JLM: Is
-this an exact copy of what tboot provided to bootstrap?  If not REHKA TOCHECK THIS OUT.]
+this an exact copy of what tboot provided to bootstrap?  If not REHKA TO CHECK THIS OUT.]
+bootstrap should modify the e820 table to protect it's memory region.
+[REHKA TO CHECK THIS OUT.]
 
 Choose a e820 range to use, and use the start address of that slot as the base and perform relocations 
 
@@ -160,7 +173,10 @@ they expect to have happened.
 Anything else?
 --------------
 
-Notes: This document should be specific and not vague.  You shouldn't say things like
+Notes
+-----
+
+This document should be specific and not vague.  You shouldn't say things like
 "maybe an identity mapping is OK."  You should say exactly what it should be even if 
 you're not sure and note either what you don't know or what you're unsure of so we can
 find out.  In other words, we should write the document as authoritative and complete and
@@ -173,9 +189,8 @@ Linux Guest initialization
 
 Evmm sets up its Linux guest so that at startup, the Linux wakes up in the call to
 main n 32 bit protected mode just as it would after TBOOT.  [JLM:  I actually 
-don't known, in fact, since evmm hosts windows I think, I doubt it.  
-Anyway, REKHA SHOULD find out.]  Can evmm host WIndow "Out of the box?"
-
+don't know.  Anyway, REKHA SHOULD find out.]  Can evmm host Windows "Out of the box?"
+Linux never accesses BIOS. 
 
 
 Notes 

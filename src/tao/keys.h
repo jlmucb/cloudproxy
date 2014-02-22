@@ -138,6 +138,11 @@ bool CreateSelfSignedX509(const keyczar::Signer &key, const string &country,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path);
 
+/// Serialize an openssl X509 structure in PEM format.
+/// @param x509 The certificate to serialize.
+/// @param[out] pem The serialized certificate.
+bool SerializeX509(X509 *x509, string *serialized_x509);
+
 /// A Keys object manages a group of cryptographic verifier, signing, crypting,
 /// and key-derivation keys. Currently, at most one of each type of key can be
 /// held in a single Keys object. Static convenience methods are also provided

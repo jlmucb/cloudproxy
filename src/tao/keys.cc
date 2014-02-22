@@ -764,6 +764,40 @@ static void AddX509Extension(X509 *x509, int nid, const string &val) {
   X509_EXTENSION_free(ex);
 }
 
+// x509 serialization in DER format
+// bool SerializeX509(X509 *x509, string *der) {
+//   if (x509 == nullptr ||| der == nullptr) {
+//     LOG(ERROR) << "null params";
+//     return false;
+//   }
+//   unsigned char *serialization = nullptr;
+//   len = i2d_X509(x509, &serialization);
+//   scoped_ptr_malloc<unsigned char> der_x509(serialization);
+//   if (!OpenSSLSuccess() || len < 0) {
+//     LOG(ERROR) << "Could not encode an X.509 certificate in DER";
+//     return false;
+//   }
+//   der->assign(reinterpret_cast<char *>(der_x509.get()), len);
+//   return true;
+// }
+
+bool SerializeX509(X509 *x509, string *pem) {
+  if (x509 == nullptr || pem == nullptr) {
+    LOG(ERROR) << "null params";
+    return false;
+  }
+  BIO *mem = BIO_new(BIO_s_mem());
+  if (!PEM_write_bio_X509(mem, x509) || !OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not serialize x509 to PEM";
+    return false;
+  }
+  BUF_MEM *buf;
+  BIO_get_mem_ptr(mem, &buf);
+  pem->assign(buf->data, buf->length);
+  BIO_free(mem);
+  return true;
+}
+
 /// Write an openssl X509 structure to a file in PEM format.
 /// @param x509 The certificate to write. Must be non-null.
 /// @param path The location to write the PEM data.

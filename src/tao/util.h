@@ -255,11 +255,6 @@ bool CreateTempRootDomain(ScopedTempDir *temp_dir,
 /// @param[out] sock The connected client socket.
 bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 
-/// Serialize an X.509 certificate.
-/// @param x509 The certificate to serialize.
-/// @param[out] serialized_x509 The serialized form of the certificate.
-bool SerializeX509(X509 *x509, string *serialized_x509);
-
 }  // namespace tao
 
 #endif  // TAO_UTIL_H_

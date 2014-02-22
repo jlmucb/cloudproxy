@@ -720,29 +720,4 @@ bool AuthorizeProgram(const string &path, TaoDomain *admin) {
 
   return admin->Authorize(program_hash, TaoAuth::Sha256, program_name);
 }
-
-bool SerializeX509(X509 *x509, string *serialized_x509) {
-  if (x509 == nullptr) {
-    LOG(ERROR) << "null x509";
-    return false;
-  }
-
-  int len = i2d_X509(x509, nullptr);
-  if (!OpenSSLSuccess() || len < 0) {
-    LOG(ERROR) << "Could not get the length of an X.509 certificate";
-    return false;
-  }
-
-  unsigned char *serialization = nullptr;
-  len = i2d_X509(x509, &serialization);
-  scoped_ptr_malloc<unsigned char> der_x509(serialization);
-  if (!OpenSSLSuccess() || len < 0) {
-    LOG(ERROR) << "Could not encode an X.509 certificate in DER";
-    return false;
-  }
-
-  serialized_x509->assign(reinterpret_cast<char *>(der_x509.get()), len);
-  return true;
-}
-
 }  // namespace tao

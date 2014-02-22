@@ -24,20 +24,27 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <keyczar/keyczar.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
 #include "tao/tao.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using tao::Attestation;
+using keyczar::Verifier;
+
+using tao::DeserializePublicKey;
 using tao::InitializeApp;
 using tao::OpenTCPSocket;
 using tao::ReceiveMessage;
 using tao::ScopedFd;
 using tao::SendMessage;
 using tao::Statement;
+using tao::TaoCARequest;
+using tao::TaoCAResponse;
 using tao::TaoDomain;
+using tao::X509Details;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
@@ -46,6 +53,85 @@ static bool StopFlag = false;
 void term_handler(int sig) {
   StopFlag = true;
   LOG(INFO) << "Received SIGTERM. Shutting down...";
+}
+
+// FIXME(kwalsh) The TCCA protocol is built into LinuxTao so should be moved
+// into tao/tao_ca.{cc,h} or similar.
+
+bool HandleRequestAttestation(const TaoDomain *admin, const TaoCARequest &req,
+                              TaoCAResponse *resp, string *key_data) {
+  if (!req.has_attestation()) {
+    LOG(ERROR) << "Request is missing attestation";
+    return false;
+  }
+
+  string serialized_attest;
+  if (!req.attestation().SerializeToString(&serialized_attest)) {
+    LOG(ERROR) << "Could not serialize the attestation";
+    return false;
+  }
+
+  if (!admin->VerifyAttestation(serialized_attest, key_data)) {
+    LOG(ERROR) << "The provided attestation did not pass verification";
+    return false;
+  }
+
+  Statement orig_statement;
+  if (!orig_statement.ParseFromString(
+          req.attestation().serialized_statement())) {
+    LOG(ERROR) << "Could not parse the original statement from the attestation";
+    return false;
+  }
+
+  // Create a new attestation to the same statement, but using the policy key
+  Statement root_statement;
+  root_statement.CopyFrom(orig_statement);
+
+  if (!admin->AttestByRoot(&root_statement, resp->mutable_attestation())) {
+    LOG(ERROR) << "Could not sign a new root attestation";
+    return false;
+  }
+
+  return true;
+}
+
+bool HandleRequestX509Chain(TaoDomain *admin, const TaoCARequest &req,
+                            const string &key_data, TaoCAResponse *resp) {
+  if (!req.has_x509details()) {
+    LOG(ERROR) << "Request is missing x509 certificate";
+    return false;
+  }
+  if (!req.has_attestation() || !resp->has_attestation()) {
+    LOG(ERROR) << "Request is missing valid attestation";
+    return false;
+  }
+  // extract public key from the verified attestation
+
+  const X509Details &subject_details = req.x509details();
+
+  // TODO(kwalsh): This code assumes that all verified attestations
+  // sent to tcca are of serialized public keys.
+  scoped_ptr<Verifier> subject_key;
+  if (!DeserializePublicKey(key_data, &subject_key)) {
+    LOG(ERROR) << "Could not deserialize the public key";
+    return false;
+  }
+
+  // Get a version number
+  int cert_serial = admin->GetFreshX509CertificateSerialNumber();
+  if (cert_serial == -1) {
+    LOG(ERROR) << "Could not get fresh x509 serial number";
+    return false;
+  }
+
+  if (!admin->GetPolicyKeys()->CreateCASignedX509(cert_serial, *subject_key,
+                                                  subject_details,
+                                                  resp->mutable_x509chain())) {
+    LOG(ERROR) << "Could not generate x509 chain";
+    return false;
+  }
+
+  return true;
 }
 
 int main(int argc, char **argv) {
@@ -85,43 +171,39 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    Attestation a;
-    if (!ReceiveMessage(*accept_sock, &a)) {
-      LOG(ERROR) << "Could not receive a message from the socket";
+    TaoCARequest req;
+    if (!ReceiveMessage(*accept_sock, &req)) {
+      LOG(ERROR) << "Could not receive a TaoCA request from the socket";
       continue;
     }
 
-    string serialized_attest;
-    if (!a.SerializeToString(&serialized_attest)) {
-      LOG(ERROR) << "Could not serialize the attestation";
-      continue;
+    TaoCAResponse resp;
+    string key_data;
+    bool ok = true;
+    switch (req.type()) {
+      case tao::TAO_CA_REQUEST_ATTESTATION:
+        if (!HandleRequestAttestation(admin.get(), req, &resp, &key_data)) {
+          resp.set_reason("Attestation failed");
+          ok = false;
+        }
+        if (ok && req.has_x509details()) {
+          if (!HandleRequestX509Chain(admin.get(), req, key_data, &resp)) {
+            resp.set_reason("Certificate chain generation failed");
+            ok = false;
+          }
+        }
+        break;
+      default:
+        LOG(ERROR) << "Unknown TaoCA request type";
+        resp.set_reason("Unknown TaoCA request type");
+        ok = false;
+        break;
     }
+    resp.set_type(ok ? tao::TAO_CA_RESPONSE_SUCCESS
+                     : tao::TAO_CA_RESPONSE_FAILURE);
 
-    string data;
-    if (!admin->VerifyAttestation(serialized_attest, &data)) {
-      LOG(ERROR) << "The provided attestation did not pass verification";
-      continue;
-    }
-
-    Statement orig_statement;
-    if (!orig_statement.ParseFromString(a.serialized_statement())) {
-      LOG(ERROR)
-          << "Could not parse the original statement from the attestation";
-      continue;
-    }
-
-    // Create a new attestation to the same statement, but using the policy key
-    Statement root_statement;
-    root_statement.CopyFrom(orig_statement);
-
-    Attestation root_attestation;
-    if (!admin->AttestByRoot(&root_statement, &root_attestation)) {
-      LOG(ERROR) << "Could not sign a new root attestation";
-      continue;
-    }
-
-    if (!SendMessage(*accept_sock, root_attestation)) {
-      LOG(ERROR) << "Could not send the newly signed attestation in reply";
+    if (!SendMessage(*accept_sock, resp)) {
+      LOG(ERROR) << "Could not send a Tao CA response";
       continue;
     }
   }

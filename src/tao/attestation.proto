@@ -72,3 +72,42 @@ message X509Details {
   // Requested x509 Organization detail
   optional bytes organization = 6;
 }
+
+enum TaoCARequestType {
+  TAO_CA_REQUEST_UNKNOWN = 0;
+  TAO_CA_REQUEST_ATTESTATION = 1;  // request Attestation and/or x509 chain
+}
+
+message TaoCARequest {
+  required TaoCARequestType type = 1;
+
+  // An attestation containing a public key. Used when type is
+  // TAO_CA_REQUEST_ATTESTATION. A new ROOT attestation will be returned for the
+  // same public key, but signed by the policy key.
+  optional Attestation attestation = 2;
+
+  // Details for an x509 certificate chain. Optionally used when type is
+  // TAO_CA_REQUEST_ATTESTATION. When included in such requests, a new x509
+  // certificate chain will be returned for the same public key and the same
+  // certificate details, rooted at the policy key.
+  optional X509Details x509details = 3;
+}
+
+enum TaoCAResponseType {
+  TAO_CA_RESPONSE_UNKNOWN = 0;
+  TAO_CA_RESPONSE_SUCCESS = 1;
+  TAO_CA_RESPONSE_FAILURE = 2;
+}
+
+message TaoCAResponse {
+  required TaoCAResponseType type = 1;
+
+  // A root attestation for requests of type TAO_CA_REQUEST_CONDENSED_ATTESTATION
+  optional Attestation attestation = 2;
+
+  // A PEM-encoded x509 certificate chain
+  optional bytes x509chain = 3;
+
+  // An error from the operation
+  optional string reason = 4;
+}

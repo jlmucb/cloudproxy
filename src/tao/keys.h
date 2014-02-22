@@ -258,45 +258,44 @@ class Keys {
 
   /// Convert the managed signing public key to a serialized string.
   /// @param[out] s The serialized key.
-  bool SerializePublicKey(string *s);
+  bool SerializePublicKey(string *s) const;
 
   /// Sign data with the managed signing private key.
   /// @param data The data to sign.
-  /// @param context The context string to add to the tao::Signature. WARNING:
-  /// for
-  /// security, this must be unique for each context in which signed messages
-  /// are
-  /// used.
+  /// @param context The context string to add to the tao::Signature.
+  /// WARNING: for security, this must be unique for each context in which
+  /// signed messages are used.
   /// @param[out] signature The resulting signature.
-  bool SignData(const string &data, const string &context, string *signature);
+  bool SignData(const string &data, const string &context,
+                string *signature) const;
 
   /// Verify a signature the managed signing public or private key.
   /// @param data The data that was signed.
   /// @param context The context to check in the tao::Signature.
   /// @param signature The signature on the data.
   bool VerifySignature(const string &data, const string &context,
-                       const string &signature);
+                       const string &signature) const;
 
   /// Make a (deep) copy of this object.
   Keys *DeepCopy() const;
 
   /// Make a (deep) copy of the managed signing private key.
   /// @param[out] copy The key to fill with the copy.
-  bool CopySigner(scoped_ptr<keyczar::Signer> *copy);
+  bool CopySigner(scoped_ptr<keyczar::Signer> *copy) const;
 
   /// Make a (deep) copy of the managed key-derivation key.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy);
+  bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const;
 
   /// Make a (deep) copy of the managed Verifier or the public half of the
   /// managed Signer.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy);
+  bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const;
 
   /// Make a (deep) copy of the managed Crypter.
   /// @param key The key to be copied.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy);
+  bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const;
 
   /// Derive key material from the managed key-derivation key.
   /// @param name A unique name for the derived key.

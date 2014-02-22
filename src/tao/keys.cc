@@ -965,7 +965,7 @@ Verifier *Keys::Verifier() const {
     return signer_.get();
 }
 
-bool Keys::SerializePublicKey(string *s) {
+bool Keys::SerializePublicKey(string *s) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -974,7 +974,7 @@ bool Keys::SerializePublicKey(string *s) {
 }
 
 bool Keys::SignData(const string &data, const string &context,
-                    string *signature) {
+                    string *signature) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
@@ -983,7 +983,7 @@ bool Keys::SignData(const string &data, const string &context,
 }
 
 bool Keys::VerifySignature(const string &data, const string &context,
-                           const string &signature) {
+                           const string &signature) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -991,7 +991,7 @@ bool Keys::VerifySignature(const string &data, const string &context,
   return tao::VerifySignature(*Verifier(), data, context, signature);
 }
 
-bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {
+bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
@@ -999,7 +999,7 @@ bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {
   return tao::CopySigner(*Signer(), copy);
 }
 
-bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) {
+bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const {
   if (!KeyDeriver()) {
     LOG(ERROR) << "No managed key-deriver";
     return false;
@@ -1007,7 +1007,7 @@ bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) {
   return tao::CopySigner(*KeyDeriver(), copy);
 }
 
-bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) {
+bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -1015,7 +1015,7 @@ bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) {
   return tao::CopyVerifier(*Verifier(), copy);
 }
 
-bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) {
+bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const {
   if (!Crypter()) {
     LOG(ERROR) << "No managed crypter";
     return false;

@@ -134,7 +134,7 @@ bool ExportPublicKeyToOpenSSL(const keyczar::Verifier &key,
 /// @param cn The name to use for the x509 CommonName detail.
 /// @param public_cert_path File name to hold the resulting x509 certificate.
 /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
-bool CreateSelfSignedX509(const keyczar::Signer *key, const string &country,
+bool CreateSelfSignedX509(const keyczar::Signer &key, const string &country,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path);
 
@@ -254,10 +254,7 @@ class Keys {
   /// @param cn The name to use for the x509 CommonName detail.
   /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
   bool CreateSelfSignedX509(const string &country, const string &state,
-                            const string &org, const string &cn) {
-    string path = SigningX509CertificatePath();
-    return tao::CreateSelfSignedX509(Signer(), country, state, org, cn, path);
-  }
+                            const string &org, const string &cn) const;
 
   /// Convert the managed signing public key to a serialized string.
   /// @param[out] s The serialized key.
@@ -330,10 +327,7 @@ class Keys {
   /// TODO(kwalsh) encode x509 name details in a single json string, perhaps?
   bool CreateSelfSignedX509(const string &country, const string &state,
                             const string &org, const string &cn,
-                            const string &public_cert_path) const {
-    return tao::CreateSelfSignedX509(Signer(), country, state, org, cn,
-                                     public_cert_path);
-  }
+                            const string &public_cert_path) const;
 
   /// Keys stores all its files under a single path using these naming
   /// conventions. For consistency, other applications may use these same naming

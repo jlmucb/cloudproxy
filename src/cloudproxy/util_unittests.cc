@@ -40,7 +40,6 @@ using cloudproxy::ScopedSSLCtx;
 using cloudproxy::SetUpSSLClientCtx;
 using cloudproxy::SetUpSSLServerCtx;
 using cloudproxy::SignedACL;
-using tao::CreateSelfSignedX509;
 using tao::CreateTempDir;
 using tao::CreateTempWhitelistDomain;
 using tao::Keys;

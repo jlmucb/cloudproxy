@@ -216,8 +216,8 @@ bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
     return false;
   }
 
-  if (!VerifySignature(*key, sacl.serialized_acls(), CloudAuth::ACLSigningContext,
-                       sacl.signature())) {
+  if (!VerifySignature(*key, sacl.serialized_acls(),
+                       CloudAuth::ACLSigningContext, sacl.signature())) {
     LOG(ERROR) << "ACL signature did not verify";
     return false;
   }
@@ -725,8 +725,8 @@ bool ReceiveAndEncryptStreamData(
   om.SerializeToString(&serialized_metadata);
 
   string metadata_hmac;
-  if (!SignData(*main_key, serialized_metadata, FileServer::ObjectMetadataSigningContext,
-                &metadata_hmac)) {
+  if (!SignData(*main_key, serialized_metadata,
+                FileServer::ObjectMetadataSigningContext, &metadata_hmac)) {
     LOG(ERROR) << "Could not compute an HMAC for the metadata for this file";
     return false;
   }

@@ -788,16 +788,12 @@ static bool WriteX509File(X509 *x509, const string &path) {
   return true;
 }
 
-bool CreateSelfSignedX509(const Signer *key, const string &country,
+bool CreateSelfSignedX509(const Signer &key, const string &country,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path) {
-  if (key == nullptr) {
-    LOG(ERROR) << "null key";
-    return false;
-  }
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey pem_key;
-  if (!ExportPrivateKeyToOpenSSL(*key, &pem_key)) return false;
+  if (!ExportPrivateKeyToOpenSSL(key, &pem_key)) return false;
 
   // create the x509 structure
   ScopedX509Ctx x509(X509_new());
@@ -978,7 +974,8 @@ bool Keys::SerializePublicKey(string *s) {
   return tao::SerializePublicKey(*Verifier(), s);
 }
 
-bool Keys::SignData(const string &data, const string &context, string *signature) {
+bool Keys::SignData(const string &data, const string &context,
+                    string *signature) {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
@@ -987,7 +984,7 @@ bool Keys::SignData(const string &data, const string &context, string *signature
 }
 
 bool Keys::VerifySignature(const string &data, const string &context,
-                     const string &signature) {
+                           const string &signature) {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -1041,5 +1038,16 @@ bool Keys::ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const {
     return false;
   }
   return tao::ExportPublicKeyToOpenSSL(*Verifier(), pem_key);
+}
+
+bool Keys::CreateSelfSignedX509(const string &country, const string &state,
+                                const string &org, const string &cn) const {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  string public_cert_path = SigningX509CertificatePath();
+  return tao::CreateSelfSignedX509(*Signer(), country, state, org, cn,
+                                   public_cert_path);
 }
 }  // namespace tao

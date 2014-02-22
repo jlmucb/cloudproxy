@@ -49,10 +49,12 @@ DEFINE_string(policy_pass, "", "A password for the policy private key");
 DEFINE_string(init, "",
               "Initialize a new configuration using the given template");
 DEFINE_string(name, "test tao", "Name for a new configuration");
-DEFINE_string(commonname, "tao", "x509 Common Name for a new configuration");
+DEFINE_string(commonname, "Linux Tao",
+              "x509 Common Name for a new configuration");
 DEFINE_string(country, "US", "x509 Country for a new configuration");
 DEFINE_string(state, "Washington", "x509 State for a new configuration");
-DEFINE_string(org, "Google", "x509 Organization for a new configuration");
+DEFINE_string(org, "(not really) Google",
+              "x509 Organization for a new configuration");
 
 DEFINE_string(whitelist, "", "Comma separated list of program or "
                              "hash:alg:name values to whitelist");

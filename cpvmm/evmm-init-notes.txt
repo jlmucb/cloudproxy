@@ -1,21 +1,151 @@
-Tboot has to do the following before jumping into the evmm_main
+Tboot of evmm and Linux single guest stack
+===========================================
 
-	- Setup e820 tables
 
-		* E820 table has range of address and types The table is part of
-		vmm_memory_layout struct.  
+Introduction
+------------
 
-		* Choose a e820 range to use, and use the
-		start address of that slot as the base and perform relocations 
+In order to provide authenticated boot, required by cloudProxy, we boot evmm using tboot.
+This document describes that process, which we refer to as "TBooting evmm with a single 
+Linux Guest".
 
-		* We need to block access to the memory that evmm uses from the guest(s).
+TBooting evmm with a single Linux Guest is accomplished using multiboot.  Tboot is the initial
+booted program but it loads four modules as specified below.
+[JLM:  The figure below says "bootstrap.bin" but this will change to evmm.gz, just like linux.]
 
-		* Before vmlaunch, modify e820 to exclude evmm memory to be viewable by
-		guest linux
 
-	- Setup the stack for evmm; not sure of the exact expected size, but 16
-	  pages should be enough.
+   submenu "Evmm bootstrap.bin" "Tboot 1.7.0"{
+    menuentry 'Ubuntu GNU/Linux, with evmm bootstrap.bin, Tboot 1.7.0 and Linux 3.5.7.20' --class ubuntu --class gnu-linux --class gnu --class os {
+            insmod part_msdos
+            insmod ext2
+            set root='(hd0,msdos1)'
+            search --no-floppy --fs-uuid --set=root a1edf4f7-94e1-4c47-8573-0e3f54821ed3
+            echo    'Loading Tboot 1.7.0 ...'
+            multiboot       /boot/tboot.gz /boot/tboot.gz logging=serial,vga,memory
+            echo    'Loading Evmm bootstrap.bin ...'
+            module  /boot/bootstrap.bin /boot/bootstrap.bin placeholder   iommu=force
+            echo    'Loading Linux 3.5.7.20 ...'
+            module  /boot/vmlinuz-3.5.7.20 /boot/vmlinuz-3.5.7.20 placeholder root=UUID=a1edf4f7-94e1-4c47-8573-0e3f54821ed3 ro  quiet splash
+            echo    'Loading initial ramdisk ...'
+            module  /boot/initrd.img-3.5.7.20 /boot/initrd.img-3.5.7.20
+            echo    'Loading sinit SINIT_67.BIN ...'
+            module  /boot/SINIT_67.BIN /boot/SINIT_67.BIN
+    }
 
-	- Setup the heap for evmm; not sure of the exact expected size.
+As is evident, tboot loads 4 modules:
+    SINIT_67.BIN, which authenticates SMM handlers, checks configuration information and prepares the
+        machine for SMX(ENTER).
+    evmm.gz, which is the evmm image.  The evmm image consists of three parts: a 32-bit protected
+        mode loader called bootstrap.bin, a header and the 64-bit evmm image.
+    linux.gz, which is the linux image.  The linux image consists of three parts: a 32-bit protected
+        mode loader, a header and linux image.
+    initrd.gz, which is a small linux file system.  This file system is measured as part of the linux.
 
-	- Tboot has to create initial page tables to enter ievmm in protected mode.		We could have simple flat/identity map page table structure.
+Tboot calls the evmm loader, called bootstrap.bin, in 32 bit protected mode.  To the bootstrap program,
+this appears as a call into main.  Note that the entry point is main and NOT other initialization
+code as is customary in a linux application.
+
+Upon entry, tboot provided bootstrap with:
+    1. A protected mode 32 bit environment.
+    2. A Heap of size XXXX.  [JLM will get XXX and YYY]
+    3. A stack of size YYYY.
+    4. An initialized GDT and IDT.
+    5. Information obtained from BIOS including memory size, base address of tboot, size of tboot.
+    6. e20 and apic information.
+    7. multiboot headers.
+
+The bootstrap program uses this information to call vmm_main (potentially decompressing it)
+in 64-bit protected mode with all the information vmm_main needs to continue the boot.
+It must provide vmm_main with the following:
+    1. A protected mode 64 bit environment.
+    2. A heap of size XXXX.  [JLM: I don't think bootstrap needs to do anything beyond what
+          TBOOT provides EXCEPT for fixing the GDT and IDT and segment registers for 64-bit operation.
+          REHKA TOCHECK THIS OUT.]
+    3. A stack of size YYYY.
+    4. An initialized GDT and IDT.
+    5. Information obtained from BIOS including memory size, base address of tboot, the combined size 
+        of tboot and the bootstrap program so vmm_main can determine what memory is available to it.
+    6. e20 and apic information.
+    7. multiboot header for linux module.
+It must also provide additional information to enable evmm to start the linux guest.
+
+[JLM:  Your current evmm_main, which will either go away or be called by bootstrap, seems
+to indicate bootstrap does initialization of thunks, memory initialization and IDT setting.  
+I have no idea why the memory/stack/heap provided by tboot is not adequate and why the guest 
+initialization is not done entirely in vmm_main.  I pretty sure vmm_main initialized memory, 
+gdts and idts and bootstrap need do nothing beyond what tboot already provides EXCEPT possibly
+forward this information to vmm_main.  REHKA TO CHECK THIS OUT.]
+
+Upon entry into vmm_main, the following environment must be provided by bootstrap:
+[JLM: REHKA TOCHECK THIS OUT.  REHKA SHOULD ALSO NOTE ANY ADDITIONAL INFORMATION REQUIRED.]
+    1. Place the processor in 64 bit mode preparing page tables and the stack with the 
+       arguments required by vmm_main.  bootstrap's 64 bit memory layout will include the 
+       address space of tboot and bootstrap since vmm_main must interact with that data.  
+       However, evmm must ensure that it never corrupts that area and it never maps that area 
+       into a guest VM.
+    2. Ensure that PCR values in the TPM are properly extended. [JLM to check this out.]
+    3. [LATER: SIPI initialization and call of AP's.]
+
+If there is ANYTHING else bootstrap should do before calling vmm_main, REKHA should note it HERE.
+       
+vmm_main ensures intializes evmm's operating heap, stack, the guest area for the Linux guest 
+and may remap memory to ensure condition 1 above holds.  evmm also assigns all interrupts, 
+except for NMI, to the linux guest. [REHKA TO CONFIRM THIS.]
+
+The remainder of this document describes in detail the environment provided to evmm by
+bootstrap.
+
+
+Setup of e820 tables by bootstrap
+---------------------------------
+
+The E820 table has range of address and types. The table is part of
+vmm_memory_layout struct passed to vmm_main by bootstrap. [JLM: Is
+this an exact copy of what tboot provided to bootstrap?  If not REHKA TOCHECK THIS OUT.]
+
+Choose a e820 range to use, and use the start address of that slot as the base and perform relocations 
+
+Memory Initialization
+---------------------
+
+We need to block access to the memory that evmm uses from the guest(s).
+[JLM: Does bootstrap do this or does 64-bit evmm.  Personally, I don't see why this isn't
+vmm_main's job requiring no further mention here.  It would amaze me if the 64-bit
+evmm portion did not do this for Linux guests as it would be a gigantic security hole
+undermining the entire value of the VMM.  REKHA SHOULD CONFIRM. ]
+
+
+Stack setup
+-----------
+
+Setup the stack for evmm; not sure of the exact expected size, but 16 pages should be enough.
+[JLM: For the uniprocessor version, it's not at all clear to me that bootstrap needs to do any
+further stack setup. The stack bootstrap got should be OK and it seems to me, vmm should arrange its own
+stack, heap, descriptors, idt ... but I could be wrong.  REKHA SHOULD CONFIRM. ]
+
+
+Heap setup
+----------
+
+See comment above.
+
+
+64-bit translation
+------------------
+
+Bootstrap has to create initial page tables to enter vmm_main in 64 bit protected mode.
+This initial map is the identity map page table structure which is what tboot provides
+to bootstrap (for 32-bit protected mode).
+[JLM: REKHA SHOULD CONFIRM.]
+
+
+Anything else?
+--------------
+
+
+Notes: This document should be specific and not vague.  You shouldn't say things like
+"maybe an identity mapping is OK."  You should say exactly what it should be even if 
+you're not sure and note either what you don't know or what you're unsure of so we can
+find out.  In other words, we should write the document as authoritative and complete and
+work on updating it as we get better information. Unconclusive statements like
+"maybe an identity mapping is OK," doesn't help the reader.

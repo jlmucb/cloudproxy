@@ -109,7 +109,10 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   keyset->set_encrypted(encrypted);
   keyset->set_metadata(
       new KeysetMetadata(name, key_type, key_purpose, encrypted, next_version));
-  keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  // There is browser TLSv1.2 support for prime256v1 (secp256r1),
+  // but not for keyczar's default secp224r1
+  // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  keyset->GenerateKey(KeyStatus::PRIMARY, 256);
   // We still own the writer, need to RemoveObserver before end of function.
   keyset->RemoveObserver(private_writer.get());
   if (!public_path.empty() &&
@@ -159,7 +162,10 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   keyset->set_encrypted(encrypted);
   keyset->set_metadata(
       new KeysetMetadata(name, key_type, key_purpose, encrypted, next_version));
-  keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  // There is browser TLSv1.2 support for prime256v1 (secp256r1),
+  // but not for keyczar's default secp224r1
+  // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  keyset->GenerateKey(KeyStatus::PRIMARY, 256);
   key->reset(new T(keyset.release()));
   (*key)->set_encoding(Keyczar::NO_ENCODING);
   KeyczarCleanupFix(&keyset, nullptr);

@@ -140,6 +140,10 @@ bool CloudAuth::Serialize(string *data) {
 
 bool CloudAuth::SignACL(const keyczar::Signer *signer, const string &acl_path,
                         const string &acl_sig_path) {
+  if (signer == nullptr) {
+    LOG(ERROR) << "null key";
+    return false;
+  }
   string acl_txt;
   if (!keyczar::base::ReadFileToString(acl_path, &acl_txt)) {
     LOG(ERROR) << "Could not read ACL from " << acl_path;
@@ -157,7 +161,7 @@ bool CloudAuth::SignACL(const keyczar::Signer *signer, const string &acl_path,
     return false;
   }
   string sig;
-  if (!tao::SignData(serialized_acl, ACLSigningContext, &sig, signer)) {
+  if (!tao::SignData(*signer, serialized_acl, ACLSigningContext, &sig)) {
     LOG(ERROR) << "Could not sign ACL";
     return false;
   }

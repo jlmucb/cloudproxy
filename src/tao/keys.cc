@@ -370,8 +370,8 @@ bool SerializePublicKey(const Verifier &key, string *s) {
   return true;
 }
 
-bool SignData(const string &data, const string &context, string *signature,
-              const Signer *key) {
+bool SignData(const Signer &key, const string &data, const string &context,
+              string *signature) {
   if (context.empty()) {
     LOG(ERROR) << "Cannot sign a message with an empty context";
     return false;
@@ -386,7 +386,7 @@ bool SignData(const string &data, const string &context, string *signature,
     return false;
   }
 
-  if (!key->Sign(serialized, signature)) {
+  if (!key.Sign(serialized, signature)) {
     LOG(ERROR) << "Could not sign the data";
     return false;
   }
@@ -394,8 +394,8 @@ bool SignData(const string &data, const string &context, string *signature,
   return true;
 }
 
-bool VerifySignature(const string &data, const string &context,
-                     const string &signature, const Verifier *key) {
+bool VerifySignature(const Verifier &key, const string &data,
+                     const string &context, const string &signature) {
   if (context.empty()) {
     LOG(ERROR) << "Cannot sign a message with an empty context";
     return false;
@@ -410,7 +410,7 @@ bool VerifySignature(const string &data, const string &context,
     return false;
   }
 
-  if (!key->Verify(serialized, signature)) {
+  if (!key.Verify(serialized, signature)) {
     LOG(ERROR) << "Verify failed";
     return false;
   }
@@ -561,19 +561,19 @@ typedef scoped_ptr_malloc<
     BIGNUM, keyczar::openssl::OSSLDestroyer<BIGNUM, BN_clear_free> >
     ScopedSecretBIGNUM;
 
-static bool ExportKeysetToOpenSSL(const Keyset *keyset, bool include_private,
+static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
                                   ScopedEvpPkey *pem_key) {
   // Note: Much of this function is adapted from code in
   // keyczar::openssl::ECDSAOpenSSL::Create().
   // TODO(kwalsh) Implement this function for RSA, other types
-  KeyType::Type key_type = keyset->metadata()->key_type();
+  KeyType::Type key_type = keyset.metadata()->key_type();
   if (key_type != KeyType::ECDSA_PUB && key_type != KeyType::ECDSA_PRIV) {
     LOG(ERROR) << "ExportKeyToOpenSSL only implemented for ECDSA so far";
     return false;
   }
   // Get raw key data out of keyczar
   // see also: GetPublicKeyValue()
-  scoped_ptr<Value> value(keyset->primary_key()->GetValue());
+  scoped_ptr<Value> value(keyset.primary_key()->GetValue());
   CHECK(value->IsType(Value::TYPE_DICTIONARY));
   DictionaryValue *dict = static_cast<DictionaryValue *>(value.get());
   string curve_name, public_curve_name;
@@ -671,20 +671,20 @@ static bool ExportKeysetToOpenSSL(const Keyset *keyset, bool include_private,
   return true;
 }
 
-bool ExportPrivateKeyToOpenSSL(const Signer *key, ScopedEvpPkey *pem_key) {
-  if (key == nullptr || pem_key == nullptr) {
-    LOG(ERROR) << "null key or pem_key";
+bool ExportPrivateKeyToOpenSSL(const Signer &key, ScopedEvpPkey *pem_key) {
+  if (pem_key == nullptr) {
+    LOG(ERROR) << "null pem_key";
     return false;
   }
-  return ExportKeysetToOpenSSL(key->keyset(), true /* private too */, pem_key);
+  return ExportKeysetToOpenSSL(*key.keyset(), true /* private too */, pem_key);
 }
 
-bool ExportPublicKeyToOpenSSL(const Verifier *key, ScopedEvpPkey *pem_key) {
-  if (key == nullptr || pem_key == nullptr) {
+bool ExportPublicKeyToOpenSSL(const Verifier &key, ScopedEvpPkey *pem_key) {
+  if (pem_key == nullptr) {
     LOG(ERROR) << "null key or pem_key";
     return false;
   }
-  return ExportKeysetToOpenSSL(key->keyset(), false /* only public */, pem_key);
+  return ExportKeysetToOpenSSL(*key.keyset(), false /* only public */, pem_key);
 }
 
 /// Set one detail for an openssl x509 name structure.
@@ -791,9 +791,13 @@ static bool WriteX509File(X509 *x509, const string &path) {
 bool CreateSelfSignedX509(const Signer *key, const string &country,
                           const string &state, const string &org,
                           const string &cn, const string &public_cert_path) {
+  if (key == nullptr) {
+    LOG(ERROR) << "null key";
+    return false;
+  }
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey pem_key;
-  if (!ExportPrivateKeyToOpenSSL(key, &pem_key)) return false;
+  if (!ExportPrivateKeyToOpenSSL(*key, &pem_key)) return false;
 
   // create the x509 structure
   ScopedX509Ctx x509(X509_new());
@@ -974,6 +978,23 @@ bool Keys::SerializePublicKey(string *s) {
   return tao::SerializePublicKey(*Verifier(), s);
 }
 
+bool Keys::SignData(const string &data, const string &context, string *signature) {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  return tao::SignData(*Signer(), data, context, signature);
+}
+
+bool Keys::VerifySignature(const string &data, const string &context,
+                     const string &signature) {
+  if (!Verifier()) {
+    LOG(ERROR) << "No managed verifier";
+    return false;
+  }
+  return tao::VerifySignature(*Verifier(), data, context, signature);
+}
+
 bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
@@ -1006,4 +1027,19 @@ bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) {
   return tao::CopyCrypter(*Crypter(), copy);
 }
 
+bool Keys::ExportSignerToOpenSSL(ScopedEvpPkey *pem_key) const {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  return tao::ExportPrivateKeyToOpenSSL(*Signer(), pem_key);
+}
+
+bool Keys::ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const {
+  if (!Verifier()) {
+    LOG(ERROR) << "No managed verifier";
+    return false;
+  }
+  return tao::ExportPublicKeyToOpenSSL(*Verifier(), pem_key);
+}
 }  // namespace tao

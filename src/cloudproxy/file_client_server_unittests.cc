@@ -114,8 +114,8 @@ class FileClientTest : public ::testing::Test {
     EXPECT_TRUE(acl.SerializeToString(ser)) << "Could not serialize ACL";
 
     string *sig = sacl.mutable_signature();
-    EXPECT_TRUE(SignData(*ser, CloudAuth::ACLSigningContext, sig,
-                         admin_->GetPolicySigner()))
+    EXPECT_TRUE(SignData(*admin_->GetPolicySigner(), *ser,
+                         CloudAuth::ACLSigningContext, sig))
         << "Could not sign the serialized ACL with the policy key";
 
     string serialized_acl;

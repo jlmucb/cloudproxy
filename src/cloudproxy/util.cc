@@ -216,8 +216,9 @@ bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
     return false;
   }
 
-  if (!VerifySignature(sacl.serialized_acls(), CloudAuth::ACLSigningContext,
-                       sacl.signature(), key)) {
+  if (!VerifySignature(*key, sacl.serialized_acls(), CloudAuth::ACLSigningContext,
+                       sacl.signature())) {
+    LOG(ERROR) << "ACL signature did not verify";
     return false;
   }
 
@@ -724,8 +725,8 @@ bool ReceiveAndEncryptStreamData(
   om.SerializeToString(&serialized_metadata);
 
   string metadata_hmac;
-  if (!SignData(serialized_metadata, FileServer::ObjectMetadataSigningContext,
-                &metadata_hmac, main_key)) {
+  if (!SignData(*main_key, serialized_metadata, FileServer::ObjectMetadataSigningContext,
+                &metadata_hmac)) {
     LOG(ERROR) << "Could not compute an HMAC for the metadata for this file";
     return false;
   }
@@ -752,7 +753,7 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
                               const keyczar::base::ScopedSafeString &aes_key,
                               const keyczar::base::ScopedSafeString &hmac_key,
                               const keyczar::Verifier *main_key) {
-  if (ssl == nullptr) {
+  if (ssl == nullptr || main_key == nullptr) {
     LOG(ERROR) << "Invalid DecryptAndSendStreamData parameters";
     return false;
   }
@@ -777,9 +778,8 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
   }
 
   // check the hmac
-  if (!VerifySignature(hom.serialized_metadata(),
-                       FileServer::ObjectMetadataSigningContext, hom.hmac(),
-                       main_key)) {
+  if (!VerifySignature(*main_key, hom.serialized_metadata(),
+                       FileServer::ObjectMetadataSigningContext, hom.hmac())) {
     LOG(ERROR) << "The object HMAC did not pass verification";
     return false;
   }

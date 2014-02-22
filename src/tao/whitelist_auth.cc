@@ -232,8 +232,8 @@ bool WhitelistAuth::CheckIntermediateSignature(const Attestation &a) const {
     return false;
   }
 
-  if (!VerifySignature(a.serialized_statement(), Tao::AttestationSigningContext,
-                       a.signature(), v.get())) {
+  if (!VerifySignature(*v, a.serialized_statement(),
+                       Tao::AttestationSigningContext, a.signature())) {
     LOG(ERROR) << "The attestation statement was not properly signed";
     return false;
   }
@@ -388,8 +388,8 @@ bool WhitelistAuth::ParseConfig() {
     return false;
   }
   // Verify its signature.
-  if (!VerifySignature(sw.serialized_whitelist(), WhitelistSigningContext,
-                       sw.signature(), GetPolicyVerifier())) {
+  if (!GetPolicyKeys()->VerifySignature(
+          sw.serialized_whitelist(), WhitelistSigningContext, sw.signature())) {
     LOG(ERROR) << "Signature did not verify on signed whitelist " << path;
     return false;
   }
@@ -418,8 +418,8 @@ bool WhitelistAuth::SaveConfig() const {
     return false;
   }
   string whitelist_signature;
-  if (!SignData(serialized_whitelist, WhitelistSigningContext,
-                &whitelist_signature, GetPolicySigner())) {
+  if (!GetPolicyKeys()->SignData(serialized_whitelist, WhitelistSigningContext,
+                                 &whitelist_signature)) {
     LOG(ERROR) << "Can't sign whitelist";
     return false;
   }

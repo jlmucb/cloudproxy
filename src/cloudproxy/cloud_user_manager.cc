@@ -96,10 +96,13 @@ bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
 
 bool CloudUserManager::AddKey(const SignedSpeaksFor &ssf,
                               keyczar::Verifier *verifier) {
+  if (verifier == nullptr) {
+    LOG(ERROR) << "Could not add null key";
+    return false;
+  }
   // check the signature for this binding
-  if (!tao::VerifySignature(ssf.serialized_speaks_for(),
-                            SpeaksForSigningContext, ssf.signature(),
-                            verifier)) {
+  if (!tao::VerifySignature(*verifier, ssf.serialized_speaks_for(),
+                            SpeaksForSigningContext, ssf.signature())) {
     LOG(ERROR) << "The SignedSpeaksFor was not correctly signed";
     return false;
   }
@@ -143,9 +146,9 @@ bool CloudUserManager::MakeNewUser(const string &path, const string &username,
     LOG(ERROR) << "Could not serialize key for user " << username;
     return false;
   }
-  if (!tao::SignData(ssf.serialized_speaks_for(),
+  if (!tao::SignData(policy_key, ssf.serialized_speaks_for(),
                      CloudUserManager::SpeaksForSigningContext,
-                     ssf.mutable_signature(), &policy_key)) {
+                     ssf.mutable_signature())) {
     LOG(ERROR) << "Could not sign delegation for user " << username;
     return false;
   }

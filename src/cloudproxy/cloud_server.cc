@@ -124,11 +124,11 @@ void CloudServer::HandleConnection(int accept_sock) {
     return;
   }
 
-  // Don't delete this X.509 certificate, since it is owned by the SSL_CTX and
-  // will be deleted there. Putting this cert in a ScopedX509Ctx leads to a
-  // double-free error.
+  // Don't delete our own X.509 certificate, since it is owned by the SSL_CTX
+  // and will be deleted there. Putting our own cert in a ScopedX509 would lead
+  // to a double-free error. By contrast, peer cert should be deleted by us.
   X509 *self_cert = SSL_get_certificate(ssl.get());
-  tao::ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl.get()));
+  tao::ScopedX509 peer_cert(SSL_get_peer_certificate(ssl.get()));
   if (peer_cert.get() == nullptr) {
     LOG(ERROR) << "No X.509 certificate received from the client";
     return;

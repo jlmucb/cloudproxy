@@ -796,7 +796,7 @@ bool CreateSelfSignedX509(const Signer &key, const string &country,
   if (!ExportPrivateKeyToOpenSSL(key, &pem_key)) return false;
 
   // create the x509 structure
-  ScopedX509Ctx x509(X509_new());
+  ScopedX509 x509(X509_new());
   int version = 2;  // self sign uses version=2 (which is x509v3)
   int serial = 1;   // self sign can always use serial 1
   PrepareX509(x509.get(), version, serial, pem_key.get());

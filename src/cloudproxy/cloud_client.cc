@@ -37,7 +37,7 @@ using keyczar::base::ReadFileToString;
 
 using tao::ConnectToTCPServer;
 using tao::Keys;
-using tao::ScopedX509Ctx;
+using tao::ScopedX509;
 using tao::SerializeX509;
 using tao::SignData;
 
@@ -93,7 +93,7 @@ bool CloudClient::Connect(const string &server, const string &port,
   X509 *self_cert = SSL_get_certificate(ssl->get());
   CHECK_NOTNULL(self_cert);
 
-  ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl->get()));
+  ScopedX509 peer_cert(SSL_get_peer_certificate(ssl->get()));
   CHECK_NOTNULL(peer_cert.get());
 
   string serialized_client_cert;

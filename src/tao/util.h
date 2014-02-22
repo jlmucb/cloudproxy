@@ -82,7 +82,7 @@ typedef scoped_ptr_malloc<
 /// A smart pointer wrapping an OpenSSL X509 structure that gets cleaned up
 /// when this wrapper is deleted.
 typedef scoped_ptr_malloc<
-    X509, keyczar::openssl::OSSLDestroyer<X509, X509_free>> ScopedX509Ctx;
+    X509, keyczar::openssl::OSSLDestroyer<X509, X509_free>> ScopedX509;
 
 typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<
                                       string, temp_file_cleaner>> ScopedTempDir;

@@ -115,7 +115,7 @@ bool DeriveKey(const keyczar::Signer *main_key, const string &name, int size,
 /// will contain both public and private keys.
 /// @param key The keyczar key to export.
 /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-bool ExportPrivateKeyToOpenSSL(const keyczar::Signer *key,
+bool ExportPrivateKeyToOpenSSL(const keyczar::Signer &key,
                                ScopedEvpPkey *pem_key);
 
 /// Convert a keyczar public signing key to an OpenSSL EVP_PKEY structure.
@@ -123,7 +123,7 @@ bool ExportPrivateKeyToOpenSSL(const keyczar::Signer *key,
 /// contain only a public key, even if key is actually a keyczar::Signer.
 /// @param key The keyczar key to export.
 /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-bool ExportPublicKeyToOpenSSL(const keyczar::Verifier *key,
+bool ExportPublicKeyToOpenSSL(const keyczar::Verifier &key,
                               ScopedEvpPkey *pem_key);
 
 /// Create a self-signed X509 certificate for a key.
@@ -313,17 +313,13 @@ class Keys {
   /// Only the primary key from the keyset is exported. The EVP_PKEY will
   /// contain both public and private keys.
   /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-  bool ExportSignerToOpenSSL(ScopedEvpPkey *pem_key) const {
-    return tao::ExportPrivateKeyToOpenSSL(Signer(), pem_key);
-  }
+  bool ExportSignerToOpenSSL(ScopedEvpPkey *pem_key) const;
 
   /// Convert the managed signing public key to an OpenSSL EVP_PKEY structure.
   /// Only the primary key from the keyset is exported. The EVP_PKEY will
   /// contain only a public key.
   /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-  bool ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const {
-    return tao::ExportPublicKeyToOpenSSL(Verifier(), pem_key);
-  }
+  bool ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const;
 
   /// Create a self-signed X509 certificate for the managed signing key.
   /// @param country The name to use for the x509 Country detail.

@@ -34,6 +34,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "tao/keyczar_public_key.pb.h"
 #include "tao/signature.pb.h"
 #include "tao/util.h"
 

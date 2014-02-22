@@ -186,7 +186,7 @@ bool TaoDomain::AttestByRoot(Statement *s, Attestation *attestation) const {
     return false;
   }
   string emptycert = "";  // empty cert because root
-  if (!GenerateAttestation(keys_->Signer(), emptycert, s, attestation)) {
+  if (!GenerateAttestation(*keys_, emptycert, s, attestation)) {
     LOG(ERROR) << "Can't sign attestation";
     return false;
   }
@@ -199,7 +199,7 @@ bool TaoDomain::AttestByRoot(Statement *s, string *attestation) const {
     return false;
   }
   string emptycert = "";  // empty cert because root
-  if (!GenerateAttestation(keys_->Signer(), emptycert, s, attestation)) {
+  if (!GenerateAttestation(*keys_, emptycert, s, attestation)) {
     LOG(ERROR) << "Can't sign attestation";
     return false;
   }

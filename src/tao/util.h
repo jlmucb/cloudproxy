@@ -26,21 +26,24 @@
 #include <keyczar/openssl/util.h>
 #include <openssl/x509.h>
 
-#include "tao/attestation.pb.h"
-#include "tao/keyczar_public_key.pb.h"
 #include "tao/tao.h"
-#include "tao/tao_child_channel.h"
-#include "tao/tao_child_channel_registry.h"
 
 using std::string;
 
-namespace keyczar {
-class Signer;
-}  // namespace keyczar
-
 struct sockaddr;
 
+namespace google {
+namespace protobuf {
+class Message;
+}  // namespace protobuf
+}  // namespace google
+
 namespace tao {
+class Attestation;
+class Keys;
+class Statement;
+class TaoChildChannel;
+class TaoChildChannelRegistry;
 class TaoDomain;
 
 /// A pointer to an OpenSSL RSA object.
@@ -153,17 +156,15 @@ bool OpenSSLSuccess();
 bool OpenTCPSocket(const string &host, const string &port, int *sock);
 
 /// Generate a signed ROOT or INTERMEDIATE attestation.
-/// @param signer The signing key, i.e. the principal attesting to s.
+/// @param key The signing key, i.e. the principal attesting to s.
 /// @param cert An attestation for the singer key for INTERMEDIATE, otherwise
 /// emptystring for ROOT attestation.
 /// @param statement[in,out] The statement to attest to. Missing timestamps will
 /// be filled in with default values.
 /// @param attestation[out] The signed attestation.
-/// TODO(kwalsh) signer should be const reference
-/// TODO(kwalsh) signer should be Signer
-bool GenerateAttestation(const keyczar::Signer *signer, const string &cert,
+bool GenerateAttestation(const Keys &key, const string &cert,
                          Statement *statement, Attestation *attestation);
-bool GenerateAttestation(const keyczar::Signer *signer, const string &cert,
+bool GenerateAttestation(const Keys &key, const string &cert,
                          Statement *statement, string *attestation);
 
 /// Generate and save a random secret, sealed against the host Tao.

@@ -20,7 +20,6 @@
 
 #include <dirent.h>
 #include <fcntl.h>
-#include <ftw.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -38,25 +37,18 @@
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
-#include <keyczar/base/json_reader.h>
-#include <keyczar/base/json_writer.h>
-#include <keyczar/base/values.h>
 #include <keyczar/crypto_factory.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_encrypted_file_reader.h>
-#include <keyczar/rw/keyset_encrypted_file_writer.h>
-#include <keyczar/rw/keyset_file_reader.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/rw/keyset_writer.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
+#include "tao/keys.h"
 #include "tao/kvm_unix_tao_child_channel.h"
 #include "tao/pipe_tao_child_channel.h"
 #include "tao/signature.pb.h"
+#include "tao/tao_child_channel.h"
+#include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"
 
 using std::mutex;
@@ -64,9 +56,9 @@ using std::shared_ptr;
 using std::vector;
 
 using keyczar::CryptoFactory;
-using keyczar::Signer;
 using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
+using keyczar::base::Delete;
 using keyczar::base::PathExists;
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
@@ -91,7 +83,7 @@ void file_close(FILE *file) {
 
 void temp_file_cleaner(string *dir) {
   if (dir) {
-    if (!keyczar::base::Delete(FilePath(*dir), true /* recursive */))
+    if (!Delete(FilePath(*dir), true /* recursive */))
       PLOG(ERROR) << "Could not remove temp directory " << *dir;
     delete dir;
   }
@@ -598,12 +590,8 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-bool GenerateAttestation(const Signer *signer, const string &cert,
+bool GenerateAttestation(const Keys &key, const string &cert,
                          Statement *statement, Attestation *attestation) {
-  if (signer == nullptr) {
-    LOG(ERROR) << "Can't sign with null key";
-    return false;
-  }
   if (statement == nullptr) {
     LOG(ERROR) << "Can't sign null statement";
     return false;
@@ -636,7 +624,7 @@ bool GenerateAttestation(const Signer *signer, const string &cert,
     LOG(ERROR) << "Could not serialize statement";
     return false;
   }
-  if (!SignData(*signer, stmt, Tao::AttestationSigningContext, &sig)) {
+  if (!key.SignData(stmt, Tao::AttestationSigningContext, &sig)) {
     LOG(ERROR) << "Could not sign the statement";
     return false;
   }
@@ -650,19 +638,19 @@ bool GenerateAttestation(const Signer *signer, const string &cert,
   }
 
   VLOG(5) << "Generated " << (cert.empty() ? "ROOT" : "INTERMEDIATE")
-          << "attestation"
-          << "\n  with key named " << signer->keyset()->metadata()->name()
-          << "\n  with Attestation = " << attestation->DebugString()
-          << "\n  with Statement = " << statement->DebugString()
-          << "\n  with cert = " << cert;
+          << "attestation\n"
+          << "  with key named " << key.Name() << "\n"
+          << "  with Attestation = " << attestation->DebugString() << "\n"
+          << "  with Statement = " << statement->DebugString() << "\n"
+          << "  with cert = " << cert;
 
   return true;
 }
 
-bool GenerateAttestation(const Signer *signer, const string &cert,
+bool GenerateAttestation(const Keys &key, const string &cert,
                          Statement *statement, string *attestation) {
   Attestation a;
-  if (!GenerateAttestation(signer, cert, statement, &a))
+  if (!GenerateAttestation(key, cert, statement, &a))
     return false;  // Plenty of log messages in the above call
   if (!a.SerializeToString(attestation)) {
     LOG(ERROR) << "Could not serialize attestation";

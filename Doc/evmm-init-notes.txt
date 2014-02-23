@@ -67,11 +67,10 @@ Upon entry, tboot provided bootstrap with:
     3. An initialized GDT and IDT for 32 bit protected mode.
     4. Information obtained from BIOS including memory size, base address of tboot, 
         size of tboot.
-    5. e20 and apic information.
-    6. multiboot headers.
-    7. tboot typically moves the linux protected mode base to 0x100000
-        when booting a linuc.
-
+    5. e820 memory and apic information.
+    6. the multiboot headers.
+    
+tboot typically moves the linux protected mode base to 0x100000 when booting a linux.
 Tboot passes mbi address on stack (from %ebx) for begin_launch.  Memory layout to
 linux is 4GB limit, 4K page size.
 
@@ -80,24 +79,26 @@ Bootstrap.bin
 -------------
 
 The bootstrap program uses information from tboot to call vmm_main 
-after decompressing the evmm image and relocating it to TTTT.
+after decompressing the 64-bit evmm image and relocating it to TTTT.
+
 vmm_main is called in 64-bit protected mode with all the information 
 vmm_main needs to complete 64-bit initialization.
 
 Upon entry, vmm_main has
-    1. A protected mode 64 bit environment with a 64K stack.
+    1. A protected mode 64 bit environment with a 64K stack,
           64-bit gdt and idt, have been initialized, and 64 bit 
 	  identity mapped page tables are present.
-          vmm-main is called with a proper 64-bit call frame with
-          with arguments properly set.
-          bootstrap's 64 bit memory layout will include the address space of 
+          The 64K stack is based at WWWWW.  Boostrap calls
+          vmm-main with a proper 64-bit call frame with
+          with arguments properly set.  These arguments provide
+          the information cited below.
+          Bootstrap's 64 bit memory layout will include the address space of 
           tboot and bootstrap since vmm_main must interact with that data.  
           However, evmm must ensure that it never corrupts that area and it never 
           maps that area into a guest VM.
-          The 64-bit heap is prepared by evmm in 64 bit mode.
+          The 64-bit heap is prepared by evmm in 64 bit mode. [REHKA: right?]
           The initialized 64-bit GDT and IDT should have the following 
-          properties: ZZZZ.
-          [REHKA TO CONFIRM AND CHECK THIS OUT.]
+          properties: ZZZZ.  [REHKA TO CONFIRM AND CHECK THIS OUT.]
     2. Information obtained from BIOS (e820 map) and additional information
            from tboot including memory size, base address of tboot, 
            the combined size of tboot itself along with header information
@@ -105,46 +106,40 @@ Upon entry, vmm_main has
            can determine what memory is available to it.  Apic information?
     4. The multiboot header for linux module and information required to
            obtain the 32 bit linux stub as well as 64 bit linux code.
-    5. The 64 bit evmm image must be loaded at ZZZZ. [REHKA TO CHECK THIS OUT.]
-    6. PCR values in the TPM have been properly extended vor evmm by bootstrap.
+    5. PCR values in the TPM have been properly extended for evmm by bootstrap.
            [JLM to check this out.]
-    7. [LATER: SIPI initialization and call of AP's.]
+    6. [LATER: SIPI initialization and call of AP's.]
 
-Bootstrap must also provide additional information to enable evmm to start the 
-linux guest. [REKHA: Say what this is.]
+[JLM note:  The current evmm_main.c will be replaced by entry.c and should not
+be part of the evmm.bim inage.  I have no idea why the memory/stack/heap 
+provided by tboot is not adequate for 32 bit mode.  Why isn't 64 bit evmm 
+heap initialization done in the 64 bit code?  REHKA TO CHECK THIS OUT.]
 
-[JLM note:  The current evmm_main, which will either go away or be called 
-by bootstrap, I have no idea why the memory/stack/heap provided by tboot is 
-not adequate for 32 bit mode.  Why isn't 64 bit evmm heap initialization done
-in the 64 bit code?  REHKA TO CHECK THIS OUT.]
-
-
-The NMI interrupt trap is set by evmm [REHKA TO CHECK THIS OUT.].
-evmm does not require the fpu to be initialized prior to entry.
-  [REHKA TO CHECK THIS OUT.]
+The NMI interrupt trap is handled by evmm [REHKA TO CHECK THIS OUT.].  All other
+traps are assigned to the Linux guest . (say how) evmm does not require the fpu 
+to be initialized prior to entry.  [REHKA TO CHECK THIS OUT.]
 Evmm does not access BIOS [REHKA TO CHECK THIS OUT.]
 Upon exit, evmm clears all sensitive data [JLM: unsure, low priority for now.]
 
 If there is ANYTHING else bootstrap should do before calling vmm_main, 
 REKHA should note it HERE.
 
-[REKHA: Below is the original set of calls from the loader.  If you can say
-what these functions do you'll be a long way towards completing this section.
-Resolving what these functions do is very specific and should help you ask
-and answer the right questions (see below).]
+[REKHA: Below is the set of calls from the original evmm loader.  If you can 
+say what these functions do in detail, you'll be a long way towards completing 
+this section.  Resolving what these functions do should help you ask the specific 
+you need to.]
 
-Original loader does the following
+The original loader does the following
     (1) Init loader heap, run-time space, and idt.
     (2) Build E820 table. (replace by copy and modify e820 table from tboot)
         [JLM: I think we just have to copy and modify the table we got from
          tboot.  REKHA to check.]
-    (3) Read evmm and thunk header. [[REKHA: What dows the "thunk header" do?]
+    (3) Read evmm and thunk header. [[REKHA: What does the "thunk header" do?]
     (4) Load evmm, thunk, and tee.  (replace 3 and 4 with read 64-bit read 
             elf header)
     (5) Setup init32. [REKHA: What does this do?  Is this already done by tboot?]
     (6) Setup init64. [I plan to do in main of entry.c]
-    (7) Call thunk.  [REKHA: What doed this do?]
-[REKA: Question where does evmm expect to be loaded?]
+    (7) Call thunk.  [REKHA: What does this do? How does it need to be set up?]
 
 
 vmm_main
@@ -152,11 +147,10 @@ vmm_main
 
 vmm_main completes evmm's initialization by allocating its heap 
 and setting up the Linux guest.  The details on how it sets up 
-the Linux guest is below.  [REHKA TO CONFIRM THIS.] It ensures 
-the guest cannot access system memort including bios, tboot,
-bootstrap ore evmm code or data. [REKHA: Explain how.]
-evmm assigns all interrupts, except for NMI, to the 
-linux guest. 
+the Linux guest is below.  It ensures the guest cannot access system 
+memory including bios, tboot, bootstrap ore evmm code or data. 
+evmm assigns all interrupts, except for NMI, to the linux guest. 
+[REKHA: Explain how.]
 
 
 Details of bootstrap initialization
@@ -236,6 +230,8 @@ in the call to main n 32 bit protected mode just as it would after
 TBOOT.  [JLM:  I actually don't know.  Anyway, REKHA SHOULD find out.]  
 Can evmm host Windows "Out of the box?"
 
+[REKHA to write this section.]
+
 Linux never accesses BIOS, right?
 [REKHA: What should be in the vmcs areas for the guest?  ]
 
@@ -247,9 +243,9 @@ This document should be specific and not vague.  You shouldn't say
 things like "maybe an identity mapping is OK."  You should say exactly 
 what it should be even if you're not sure and note either what you 
 don't know or what you're unsure of so we can find out.  A clear incorrect
-statement can be fixed, a vague statement isn't true or false.
-We should write the document as authoritative and complete as quickly
-as possible and work on updating it as we get better information.
+statement can be fixed, a vague statement isn't true or false and can never
+be fixed.  We should write the document as authoritative and complete as 
+quickly as possible and work on updating it as we get better information.
 Having the specific questions evident from the doc will help you get 
 the info out of Ravi and others.
 

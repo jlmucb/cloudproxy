@@ -488,8 +488,8 @@ int main(int an, char** av) {
     // jump_evmm_image(void *entry_point)
 }
 
-#if 0
 
+#if 0
 
 typedef struct
 {

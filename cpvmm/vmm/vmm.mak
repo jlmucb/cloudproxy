@@ -139,7 +139,7 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 		$(B)/utils/event_mgr.o  $(B)/utils/heap.o \
 		$(B)/utils/math_utils.o  $(B)/utils/utils_asm.o
 
-dobjs=      $(BINDIR)/evmm.o  $(BINDIR)/vmm.o
+dobjs=      $(BINDIR)/vmm.o # $(BINDIR)/evmm.o  
 
 all: $(E)/evmm.bin  $(E)/bootstrap.bin
  
@@ -162,7 +162,7 @@ $(E)/evmm.bin: $(dobjs)
 	make -f $(S)/vmm/vmexit/vmexit.mak
 	make -f $(S)/vmm/ipc/ipc.mak
 	make -f $(S)/vmm/memory/ept/ept.mak
-	$(LINK) -o $(E)/evmm.bin -nostdlib -evmm_main \
+	$(LINK) -o $(E)/evmm.bin -nostdlib -e vmm_main \
 		$(ACPIOBJ) $(ARCHOBJ) $(DBGOBJ) $(EMTOBJ) \
 		$(GUESTOBJ) $(GUESTCPUOBJ) $(GUESTSCHEDOBJ) \
 		$(IPCOBJ) $(LIBCOBJ) $(EPTOBJ) $(MEMMGROBJ) \
@@ -175,9 +175,9 @@ $(E)/bootstrap.bin: $(BINDIR)/entry.o
 $(BINDIR)/entry.o: $(mainsrc)/entry.c
 	$(CC) $(INCLUDES) -m32 -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
 
-$(BINDIR)/evmm.o: $(mainsrc)/evmm.c
-	echo "evmm.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/evmm.o $(mainsrc)/evmm.c 
+#$(BINDIR)/evmm.o: $(mainsrc)/evmm.c
+#	echo "evmm.o" 
+#	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/evmm.o $(mainsrc)/evmm.c 
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 

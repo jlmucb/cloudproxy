@@ -20,9 +20,13 @@ typedef unsigned uint32_t;
 typedef short unsigned uint16_t;
 typedef unsigned char uint8_t;
 typedef int bool;
+typedef short unsigned u16;
+typedef unsigned char u8;
 #include "multiboot.h"
 #include "elf_defns.h"
 #include "tboot.h"
+#include "e820.h"
+#include "linux_defns.h"
 
 // this is all 32 bit code
 

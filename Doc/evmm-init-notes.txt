@@ -160,6 +160,17 @@ The remainder of this document describes in detail the environment provided
 to evmm by bootstrap.
 
 
+vmm_main call
+-------------
+
+The call to vmm_main is:
+
+void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 application_params_struct_u, 
+              UINT64 reserved UNUSED)
+[REKHA should describe the arguments whose values must be prepared by bootstrap.bin]
+
+
+
 Setup of e820 tables by bootstrap
 ---------------------------------
 

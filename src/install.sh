@@ -129,6 +129,8 @@ export GLOG_log_dir=${TEST}/logs
 
 #export HOSTED_PROGRAMS=$(echo ${BUILD}/*)
 HOSTED_PROGRAMS=$(echo ${BUILD}/{client,server,fclient,fserver})
+HOSTED_PROGRAMS=$HOSTED_PROGRAMS,${BUILD}/http_echo_server
+HOSTED_PROGRAMS=$HOSTED_PROGRAMS,${BUILD}/https_echo_server
 TAO_PROGRAMS=$(cd $TEST/bin; echo * | grep -v '\.a$')
 
 WATCHFILES="bin/tcca bin/linux_tao_service whitelist tao.config"
@@ -274,36 +276,61 @@ function testpgm()
 			echo "Starting cloudproxy server..."
 			server_pid=`$start_hosted bin/server -- --v=2`
 			sleep 2
+			tail -f $GLOG_log_dir/server.INFO &
+			server_tail_pid=$!
 			echo "Starting cloudproxy client..."
 			client_pid=`$start_hosted  bin/client -- --v=2`
-			sleep 4
+			sleep 2
+			tail -f $GLOG_log_dir/client.INFO &
+			client_tail_pid=$!
+			sleep 2
 			echo "Killing cloudproxy server and client..."
 			kill $server_pid $client_pid 2>/dev/null
-			cat $GLOG_log_dir/client.INFO
+			sleep 2
+			kill $server_tail_pid $client_tail_pid 2>/dev/null
 			;;
 		file|fclient|fserver)
 			echo "Starting cloudproxy file server..."
 			server_pid=`$start_hosted  bin/fserver -- --v=2`
 			sleep 2
+			tail -f $GLOG_log_dir/fserver.INFO &
+			server_tail_pid=$!
 			echo "Starting cloudproxy file client..."
 			client_pid=`$start_hosted  bin/fclient -- --v=2`
-			sleep 4
+			sleep 2
+			tail -f $GLOG_log_dir/fclient.INFO &
+			client_tail_pid=$!
+			sleep 2
 			echo "Killing cloudproxy file server and client..."
 			kill $server_pid $client_pid 2>/dev/null
+			sleep 2
+			kill $server_tail_pid $client_tail_pid 2>/dev/null
 			;;
-		http|heserver)
+		http)
 			echo "Starting cloudproxy http echo server..."
-			server_pid=`$start_hosted  bin/heserver -- --v=2`
-			read -p "Press enter to kill http echo server"
+			server_pid=`$start_hosted  bin/http_echo_server -- --v=2`
+			sleep 2
+			tail -f $GLOG_log_dir/http_echo_server.INFO &
+			tail_pid=$!
+			sleep 1
+			read -p "Press enter to kill http echo server..."
 			echo "Killing cloudproxy http echo server..."
 			kill $server_pid 2>/dev/null
+			sleep 2
+			kill $tail_pid 2>/dev/null
 			;;
-		https|sheserver)
+		https)
 			echo "Starting cloudproxy https echo server..."
-			server_pid=`$start_hosted  bin/sheserver -- --v=2`
-			read -p "Press enter to kill https echo server"
+			server_pid=`$start_hosted  bin/https_echo_server -- --v=2`
+			sleep 2
+			tail -f $GLOG_log_dir/https_echo_server.INFO &
+			tail_pid=$!
+			sleep 1
+			read -p "Press enter to kill https echo server..."
 			echo "Killing cloudproxy https echo server..."
 			kill $server_pid 2>/dev/null
+			sleep 2
+			kill $tail_pid 2>/dev/null
 			;;
 		tao)
 			echo "Running tao unit tests..."

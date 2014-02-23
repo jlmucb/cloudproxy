@@ -55,16 +55,17 @@ class TaoDomain : public TaoAuth {
  public:
   virtual ~TaoDomain();
 
+  // TODO(kwalsh) use protobuf instead of json?
   /// An example json string useful for constructing domains for testing
   constexpr static auto ExampleWhitelistAuthDomain =
       "{\n"
       "   \"name\": \"tao example whitelist domain\",\n"
       "\n"
       "   \"policy_keys_path\":     \"policy_keys\",\n"
-      "   \"policy_x509_country\":  \"US\",\n"
-      "   \"policy_x509_state\":    \"Washington\",\n"
-      "   \"policy_x509_org\":      \"Google\",\n"
-      "   \"policy_x509_cn\":       \"tao example domain\",\n"
+      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
+      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
+      "example domain\\\"\",\n"
+      "   \"policy_x509_last_serial\": 0,\n"
       "\n"
       "   \"auth_type\": \"whitelist\",\n"
       "   \"signed_whitelist_path\": \"whitelist\",\n"
@@ -79,10 +80,10 @@ class TaoDomain : public TaoAuth {
       "   \"name\": \"tao example root domain\",\n"
       "\n"
       "   \"policy_keys_path\":     \"policy_keys\",\n"
-      "   \"policy_x509_country\":  \"US\",\n"
-      "   \"policy_x509_state\":    \"Washington\",\n"
-      "   \"policy_x509_org\":      \"Google\",\n"
-      "   \"policy_x509_cn\":       \"tao example domain\",\n"
+      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
+      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
+      "example domain\\\"\",\n"
+      "   \"policy_x509_last_serial\": 0,\n"
       "\n"
       "   \"auth_type\": \"root\",\n"
       "\n"
@@ -93,10 +94,8 @@ class TaoDomain : public TaoAuth {
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONName = "name";
   constexpr static auto JSONPolicyKeysPath = "policy_keys_path";
-  constexpr static auto JSONPolicyX509Country = "policy_x509_country";
-  constexpr static auto JSONPolicyX509State = "policy_x509_state";
-  constexpr static auto JSONPolicyX509Organization = "policy_x509_org";
-  constexpr static auto JSONPolicyX509CommonName = "policy_x509_cn";
+  constexpr static auto JSONPolicyX509Details = "policy_x509_details";
+  constexpr static auto JSONPolicyX509LastSerial = "policy_x509_last_serial";
   constexpr static auto JSONTaoCAHost = "tao_ca_host";
   constexpr static auto JSONTaoCAPort = "tao_ca_port";
   constexpr static auto JSONAuthType = "auth_type";
@@ -129,23 +128,9 @@ class TaoDomain : public TaoAuth {
   /// Get the name of this administrative domain.
   string GetName() const { return GetConfigString(JSONName); }
 
-  /// Get the Country detail for x509 certificates.
-  string GetPolicyX509Country() const {
-    return GetConfigString(JSONPolicyX509Country);
-  }
-
-  string GetPolicyX509State() const {
-    return GetConfigString(JSONPolicyX509State);
-  }
-
-  /// Get the Organization detail for x509 certificates.
-  string GetPolicyX509Organization() const {
-    return GetConfigString(JSONPolicyX509Organization);
-  }
-
-  /// Get the CommonName detail for x509 certificates.
-  string GetPolicyX509CommonName() const {
-    return GetConfigString(JSONPolicyX509CommonName);
+  /// Get details for x509 policy certificates.
+  string GetPolicyX509Details() const {
+    return GetConfigString(JSONPolicyX509Details);
   }
 
   /// Get the host for the Tao CA. This returns emptystring if there is no Tao
@@ -230,6 +215,9 @@ class TaoDomain : public TaoAuth {
   /// Get a path relative to the configuration directory.
   /// @param suffix The suffix to append to the configuration directory
   string GetPath(const string &suffix) const;
+
+  // Get a fresh serial number for issuing x509 certificates.
+  int GetFreshX509CertificateSerialNumber();
 
  protected:
   TaoDomain(const string &path, DictionaryValue *value);

@@ -21,6 +21,7 @@
 #include <string>
 
 #include <glog/logging.h>
+#include <google/protobuf/text_format.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/json_reader.h>
@@ -34,9 +35,12 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "tao/attestation.pb.h"
+#include "tao/keyczar_public_key.pb.h"
 #include "tao/signature.pb.h"
 #include "tao/util.h"
 
+using google::protobuf::TextFormat;
 using keyczar::Crypter;
 using keyczar::Key;
 using keyczar::KeyPurpose;
@@ -105,7 +109,10 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   keyset->set_encrypted(encrypted);
   keyset->set_metadata(
       new KeysetMetadata(name, key_type, key_purpose, encrypted, next_version));
-  keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  // There is browser TLSv1.2 support for prime256v1 (secp256r1),
+  // but not for keyczar's default secp224r1
+  // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  keyset->GenerateKey(KeyStatus::PRIMARY, 256);
   // We still own the writer, need to RemoveObserver before end of function.
   keyset->RemoveObserver(private_writer.get());
   if (!public_path.empty() &&
@@ -155,7 +162,10 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   keyset->set_encrypted(encrypted);
   keyset->set_metadata(
       new KeysetMetadata(name, key_type, key_purpose, encrypted, next_version));
-  keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  // There is browser TLSv1.2 support for prime256v1 (secp256r1),
+  // but not for keyczar's default secp224r1
+  // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
+  keyset->GenerateKey(KeyStatus::PRIMARY, 256);
   key->reset(new T(keyset.release()));
   (*key)->set_encoding(Keyczar::NO_ENCODING);
   KeyczarCleanupFix(&keyset, nullptr);
@@ -527,14 +537,13 @@ bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
   return true;
 }
 
-// name is "hmac" or "encryption"
-bool DeriveKey(const keyczar::Signer *main_key, const string &name, int size,
+bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
                string *material) {
-  if (main_key == nullptr || material == nullptr) {
+  if (material == nullptr) {
     LOG(ERROR) << "Invalid DeriveKey parameters";
     return false;
   }
-  if (main_key->keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
+  if (key.keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
     LOG(ERROR) << "DeriveKey requires symmetric main key";
     return false;
   }
@@ -543,7 +552,7 @@ bool DeriveKey(const keyczar::Signer *main_key, const string &name, int size,
   keyczar::base::ScopedSafeString sig(new string());
   // Note that this is not an application of a signature in the normal sense, so
   // it does not need to be transformed into an application of tao::SignData.
-  if (!main_key->Sign(context, sig.get())) {
+  if (!key.Sign(context, sig.get())) {
     LOG(ERROR) << "Could not derive key material";
     return false;
   }
@@ -568,7 +577,7 @@ static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
   // TODO(kwalsh) Implement this function for RSA, other types
   KeyType::Type key_type = keyset.metadata()->key_type();
   if (key_type != KeyType::ECDSA_PUB && key_type != KeyType::ECDSA_PRIV) {
-    LOG(ERROR) << "ExportKeyToOpenSSL only implemented for ECDSA so far";
+    LOG(ERROR) << "ExportKeysetToOpenSSL only implemented for ECDSA so far";
     return false;
   }
   // Get raw key data out of keyczar
@@ -681,7 +690,7 @@ bool ExportPrivateKeyToOpenSSL(const Signer &key, ScopedEvpPkey *pem_key) {
 
 bool ExportPublicKeyToOpenSSL(const Verifier &key, ScopedEvpPkey *pem_key) {
   if (pem_key == nullptr) {
-    LOG(ERROR) << "null key or pem_key";
+    LOG(ERROR) << "null pem_key";
     return false;
   }
   return ExportKeysetToOpenSSL(*key.keyset(), false /* only public */, pem_key);
@@ -708,13 +717,13 @@ static void SetX509NameDetail(X509_NAME *name, const string &id,
 /// @param o The organization code, e.g. "Google"
 /// @param st The state code, e.g. "Washington"
 /// @param cn The common name, e.g. "Example Tao CA Service" or "localhost"
-static void SetX509NameDetails(X509_NAME *name, const string &c,
-                               const string &o, const string &st,
-                               const string &cn) {
-  SetX509NameDetail(name, "C", c);
-  SetX509NameDetail(name, "ST", st);
-  SetX509NameDetail(name, "O", o);
-  SetX509NameDetail(name, "CN", cn);
+static void SetX509NameDetails(X509_NAME *name, const X509Details &details) {
+  if (details.has_country()) SetX509NameDetail(name, "C", details.country());
+  if (details.has_state()) SetX509NameDetail(name, "ST", details.state());
+  if (details.has_organization())
+    SetX509NameDetail(name, "O", details.organization());
+  if (details.has_commonname())
+    SetX509NameDetail(name, "CN", details.commonname());
 }
 
 /// Prepare an X509 structure for signing by filling in version numbers, serial
@@ -764,53 +773,58 @@ static void AddX509Extension(X509 *x509, int nid, const string &val) {
   X509_EXTENSION_free(ex);
 }
 
-/// Write an openssl X509 structure to a file in PEM format.
-/// @param x509 The certificate to write. Must be non-null.
-/// @param path The location to write the PEM data.
-static bool WriteX509File(X509 *x509, const string &path) {
-  if (!CreateDirectory(FilePath(path).DirName())) {
-    LOG(ERROR) << "Could not create directory for " << path;
+// x509 serialization in DER format
+// bool SerializeX509(X509 *x509, string *der) {
+//   if (x509 == nullptr ||| der == nullptr) {
+//     LOG(ERROR) << "null params";
+//     return false;
+//   }
+//   unsigned char *serialization = nullptr;
+//   len = i2d_X509(x509, &serialization);
+//   scoped_ptr_malloc<unsigned char> der_x509(serialization);
+//   if (!OpenSSLSuccess() || len < 0) {
+//     LOG(ERROR) << "Could not encode an X.509 certificate in DER";
+//     return false;
+//   }
+//   der->assign(reinterpret_cast<char *>(der_x509.get()), len);
+//   return true;
+// }
+
+bool SerializeX509(X509 *x509, string *pem) {
+  if (x509 == nullptr || pem == nullptr) {
+    LOG(ERROR) << "null params";
     return false;
   }
-
-  ScopedFile cert_file(fopen(path.c_str(), "wb"));
-  if (cert_file.get() == nullptr) {
-    PLOG(ERROR) << "Could not open file " << path << " for writing";
+  BIO *mem = BIO_new(BIO_s_mem());
+  if (!PEM_write_bio_X509(mem, x509) || !OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not serialize x509 to PEM";
     return false;
   }
-
-  PEM_write_X509(cert_file.get(), x509);
-  if (!OpenSSLSuccess()) {
-    LOG(ERROR) << "Could not write the X.509 certificate to " << path;
-    return false;
-  }
-
+  BUF_MEM *buf;
+  BIO_get_mem_ptr(mem, &buf);
+  pem->assign(buf->data, buf->length);
+  BIO_free(mem);
   return true;
 }
 
-bool CreateSelfSignedX509(const Signer *key, const string &country,
-                          const string &state, const string &org,
-                          const string &cn, const string &public_cert_path) {
-  if (key == nullptr) {
-    LOG(ERROR) << "null key";
-    return false;
-  }
+bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
+                          const string &public_cert_path) {
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey pem_key;
-  if (!ExportPrivateKeyToOpenSSL(*key, &pem_key)) return false;
+  if (!ExportPrivateKeyToOpenSSL(key, &pem_key)) return false;
 
   // create the x509 structure
-  ScopedX509Ctx x509(X509_new());
+  ScopedX509 x509(X509_new());
   int version = 2;  // self sign uses version=2 (which is x509v3)
   int serial = 1;   // self sign can always use serial 1
   PrepareX509(x509.get(), version, serial, pem_key.get());
 
   // set up the subject and issuer details to be the same
   X509_NAME *subject = X509_get_subject_name(x509.get());
-  SetX509NameDetails(subject, country, org, state, cn);
+  SetX509NameDetails(subject, details);
 
   X509_NAME *issuer = X509_get_issuer_name(x509.get());
-  SetX509NameDetails(issuer, country, org, state, cn);
+  SetX509NameDetails(issuer, details);
 
   AddX509Extension(x509.get(), NID_basic_constraints, "critical,CA:TRUE");
   AddX509Extension(x509.get(), NID_subject_key_identifier, "hash");
@@ -822,7 +836,18 @@ bool CreateSelfSignedX509(const Signer *key, const string &country,
     return false;
   }
 
-  return WriteX509File(x509.get(), public_cert_path);
+  string pem;
+  if (!SerializeX509(x509.get(), &pem) ||
+      !CreateDirectory(FilePath(public_cert_path).DirName()) ||
+      !WriteStringToFile(public_cert_path, pem)) {
+    LOG(ERROR) << "Could not write x509 to " << public_cert_path;
+    return false;
+  }
+  return true;
+}
+
+static int no_password_callback(char *buf, int size, int rwflag, void *u) {
+  return 0;  // return error
 }
 
 Keys::Keys(const string &name, int key_types)
@@ -839,6 +864,66 @@ Keys::Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
       crypter_(crypting_key) {}
 
 Keys::~Keys() {}
+
+bool CreateCASignedX509(const Signer &ca_key, const string &ca_cert_path,
+                        int cert_serial, const Verifier &subject_key,
+                        const X509Details &subject_details, string *pem_cert) {
+  if (!pem_cert) {
+    LOG(ERROR) << "null pem";
+    return false;
+  }
+  // we need openssl versions of the keys to create and sign the x509 cert
+  ScopedEvpPkey ca_pem_key;
+  if (!ExportPrivateKeyToOpenSSL(ca_key, &ca_pem_key)) {
+    LOG(ERROR) << "Could not export ca key to openssl";
+    return false;
+  }
+  ScopedEvpPkey subject_pem_key;
+  if (!ExportPublicKeyToOpenSSL(subject_key, &subject_pem_key)) {
+    LOG(ERROR) << "Could not export subject key to openssl";
+    return false;
+  }
+  // load the ca cert and extract ca details
+  ScopedFile ca_cert_file(fopen(ca_cert_path.c_str(), "rb"));
+  if (ca_cert_file.get() == nullptr) {
+    PLOG(ERROR) << "Could not read " << ca_cert_path;
+    return false;
+  }
+  ScopedX509 ca_x509(PEM_read_X509(ca_cert_file.get(), nullptr /* ptr */,
+                                   no_password_callback, nullptr /* cbdata */));
+  if (!OpenSSLSuccess() || ca_x509.get() == nullptr) {
+    LOG(ERROR) << "Could not write the X.509 certificate to " << ca_cert_path;
+    return false;
+  }
+
+  // create the x509 structure
+  ScopedX509 x509(X509_new());
+  int version = 0;  // ca-sign uses version=0 (which is x509v1)
+  PrepareX509(x509.get(), version, cert_serial, subject_pem_key.get());
+
+  // set up the subject details
+  X509_NAME *subject = X509_get_subject_name(x509.get());
+  SetX509NameDetails(subject, subject_details);
+
+  // copy the issuer details from ca_cert
+  X509_NAME *issuer = X509_get_issuer_name(ca_x509.get());
+  X509_set_issuer_name(x509.get(), issuer);
+
+  X509_sign(x509.get(), ca_pem_key.get(), EVP_sha1());
+  if (!OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not perform ca-signing on the X.509 cert";
+    return false;
+  }
+
+  string ca_pem, subject_pem;
+  if (!SerializeX509(x509.get(), &subject_pem) ||
+      !SerializeX509(ca_x509.get(), &ca_pem)) {
+    LOG(ERROR) << "Could not serialize x509 certificates";
+    return false;
+  }
+  pem_cert->assign(subject_pem + ca_pem);
+  return true;
+}
 
 bool Keys::InitTemporary() {
   // Generate temporary keys.
@@ -970,7 +1055,7 @@ Verifier *Keys::Verifier() const {
     return signer_.get();
 }
 
-bool Keys::SerializePublicKey(string *s) {
+bool Keys::SerializePublicKey(string *s) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -978,7 +1063,8 @@ bool Keys::SerializePublicKey(string *s) {
   return tao::SerializePublicKey(*Verifier(), s);
 }
 
-bool Keys::SignData(const string &data, const string &context, string *signature) {
+bool Keys::SignData(const string &data, const string &context,
+                    string *signature) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
@@ -987,7 +1073,7 @@ bool Keys::SignData(const string &data, const string &context, string *signature
 }
 
 bool Keys::VerifySignature(const string &data, const string &context,
-                     const string &signature) {
+                           const string &signature) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -995,7 +1081,7 @@ bool Keys::VerifySignature(const string &data, const string &context,
   return tao::VerifySignature(*Verifier(), data, context, signature);
 }
 
-bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {
+bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
@@ -1003,7 +1089,7 @@ bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) {
   return tao::CopySigner(*Signer(), copy);
 }
 
-bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) {
+bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const {
   if (!KeyDeriver()) {
     LOG(ERROR) << "No managed key-deriver";
     return false;
@@ -1011,7 +1097,7 @@ bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) {
   return tao::CopySigner(*KeyDeriver(), copy);
 }
 
-bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) {
+bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
@@ -1019,12 +1105,20 @@ bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) {
   return tao::CopyVerifier(*Verifier(), copy);
 }
 
-bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) {
+bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const {
   if (!Crypter()) {
     LOG(ERROR) << "No managed crypter";
     return false;
   }
   return tao::CopyCrypter(*Crypter(), copy);
+}
+
+bool Keys::DeriveKey(const string &name, int size, string *material) const {
+  if (!KeyDeriver()) {
+    LOG(ERROR) << "No managed key-deriver";
+    return false;
+  }
+  return tao::DeriveKey(*KeyDeriver(), name, size, material);
 }
 
 bool Keys::ExportSignerToOpenSSL(ScopedEvpPkey *pem_key) const {
@@ -1042,4 +1136,36 @@ bool Keys::ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const {
   }
   return tao::ExportPublicKeyToOpenSSL(*Verifier(), pem_key);
 }
+
+bool Keys::CreateSelfSignedX509(const X509Details &details) const {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  string path = SigningX509CertificatePath();
+  return tao::CreateSelfSignedX509(*Signer(), details, path);
+}
+
+bool Keys::CreateSelfSignedX509(const string &details_text) const {
+  X509Details details;
+  if (!TextFormat::ParseFromString(details_text, &details)) {
+    LOG(ERROR) << "Could not parse x509 details";
+    return false;
+  }
+  return CreateSelfSignedX509(details);
+}
+
+bool Keys::CreateCASignedX509(int cert_serial,
+                              const keyczar::Verifier &subject_key,
+                              const X509Details &subject_details,
+                              string *pem_cert) const {
+  if (!Signer()) {
+    LOG(ERROR) << "No managed signer";
+    return false;
+  }
+  string ca_cert_path = SigningX509CertificatePath();
+  return tao::CreateCASignedX509(*Signer(), ca_cert_path, cert_serial,
+                                 subject_key, subject_details, pem_cert);
+}
+
 }  // namespace tao

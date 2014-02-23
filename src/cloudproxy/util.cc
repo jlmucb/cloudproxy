@@ -80,7 +80,7 @@ static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
 }
 
 static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
-                        ScopedSSLCtx *ctx) {
+                        bool require_peer_cert, ScopedSSLCtx *ctx) {
   string tls_cert = key.SigningX509CertificatePath();
   if (!ctx || !key.Signer() || !PathExists(FilePath(tls_cert))) {
     LOG(ERROR) << "Invalid SetUpSSLCTX parameters";
@@ -129,9 +129,8 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
     return false;
   }
 
-  if (!SSL_CTX_use_certificate_file(ctx->get(), tls_cert.c_str(),
-                                    SSL_FILETYPE_PEM)) {
-    LOG(ERROR) << "Could not load the certificate for this connection";
+  if (!SSL_CTX_use_certificate_chain_file(ctx->get(), tls_cert.c_str())) {
+    LOG(ERROR) << "Could not load the certificate chain for this connection";
     return false;
   }
 
@@ -142,7 +141,8 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
 
   // set up verification to (optionally) insist on getting a certificate from
   // the peer
-  int verify_mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+  int verify_mode = SSL_VERIFY_PEER;
+  if (require_peer_cert) verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
   SSL_CTX_set_verify(ctx->get(), verify_mode, AlwaysAcceptCert);
 
   // set session id context to a unique id to avoid session reuse problems
@@ -190,11 +190,15 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
 }
 
 bool SetUpSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
-  return SetUpSSLCtx(TLSv1_2_server_method(), key, ctx);
+  return SetUpSSLCtx(TLSv1_2_server_method(), key, true, ctx);
+}
+
+bool SetUpPermissiveSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
+  return SetUpSSLCtx(TLSv1_2_server_method(), key, false, ctx);
 }
 
 bool SetUpSSLClientCtx(const Keys &key, ScopedSSLCtx *ctx) {
-  return SetUpSSLCtx(TLSv1_2_client_method(), key, ctx);
+  return SetUpSSLCtx(TLSv1_2_client_method(), key, true, ctx);
 }
 
 bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
@@ -216,8 +220,8 @@ bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
     return false;
   }
 
-  if (!VerifySignature(*key, sacl.serialized_acls(), CloudAuth::ACLSigningContext,
-                       sacl.signature())) {
+  if (!VerifySignature(*key, sacl.serialized_acls(),
+                       CloudAuth::ACLSigningContext, sacl.signature())) {
     LOG(ERROR) << "ACL signature did not verify";
     return false;
   }
@@ -725,8 +729,8 @@ bool ReceiveAndEncryptStreamData(
   om.SerializeToString(&serialized_metadata);
 
   string metadata_hmac;
-  if (!SignData(*main_key, serialized_metadata, FileServer::ObjectMetadataSigningContext,
-                &metadata_hmac)) {
+  if (!SignData(*main_key, serialized_metadata,
+                FileServer::ObjectMetadataSigningContext, &metadata_hmac)) {
     LOG(ERROR) << "Could not compute an HMAC for the metadata for this file";
     return false;
   }

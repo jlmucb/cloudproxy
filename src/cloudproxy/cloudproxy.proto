@@ -42,10 +42,10 @@ enum Op {
       READ = 5;
 }
 
-    // An action that can be requested by a client; also the entry type for
-    // ACLs.
-    // Each line in an ACL is an Action, representing a given permission.
-    message Action {
+// An action that can be requested by a client; also the entry type for
+// ACLs.
+// Each line in an ACL is an Action, representing a given permission.
+message Action {
   // The user performing this action. To be useful, the server must have a
   // binding (from a SignedSpeaksFor) between this user and a public key
   required string subject = 1;

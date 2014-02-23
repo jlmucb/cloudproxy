@@ -25,7 +25,6 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/keyczar.h>
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -35,8 +34,6 @@
 #include "tao/hosted_programs.pb.h"
 #include "tao/keys.h"
 #include "tao/util.h"
-
-using keyczar::Signer;
 
 using tao::Attestation;
 using tao::GenerateAttestation;
@@ -245,14 +242,14 @@ TEST_F(WhitelistAuthTest, IntermediateSignatureTest) {
   s1.set_hash_alg(TaoAuth::FakeHash);
   s1.set_hash("Test hash 2");
   string a1;
-  EXPECT_TRUE(GenerateAttestation(key_1.Signer(), a0, &s1, &a1));
+  EXPECT_TRUE(GenerateAttestation(key_1, a0, &s1, &a1));
 
   Statement s2;
   s2.set_data("Test data");
   s2.set_hash_alg(TaoAuth::FakeHash);
   s2.set_hash("Test hash 3");
   string a2;
-  EXPECT_TRUE(GenerateAttestation(key_2.Signer(), a1, &s2, &a2));
+  EXPECT_TRUE(GenerateAttestation(key_2, a1, &s2, &a2));
 
   string extracted_data;
   EXPECT_TRUE(admin_->VerifyAttestation(a2, &extracted_data))

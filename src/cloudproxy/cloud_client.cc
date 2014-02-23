@@ -37,7 +37,7 @@ using keyczar::base::ReadFileToString;
 
 using tao::ConnectToTCPServer;
 using tao::Keys;
-using tao::ScopedX509Ctx;
+using tao::ScopedX509;
 using tao::SerializeX509;
 using tao::SignData;
 
@@ -56,8 +56,11 @@ CloudClient::CloudClient(const string &client_config_path,
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    CHECK(keys_->CreateSelfSignedX509("US", "Washington", "Google",
-                                      "cloudclient"));
+    string details = "country: \"US\" "
+                     "state: \"Washington\" "
+                     "organization: \"Google\" "
+                     "commonname: \"cloudclient\"";
+    CHECK(keys_->CreateSelfSignedX509(details));
   }
 
   // set up the TLS connection with the cert and keys and trust DB
@@ -93,7 +96,7 @@ bool CloudClient::Connect(const string &server, const string &port,
   X509 *self_cert = SSL_get_certificate(ssl->get());
   CHECK_NOTNULL(self_cert);
 
-  ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl->get()));
+  ScopedX509 peer_cert(SSL_get_peer_certificate(ssl->get()));
   CHECK_NOTNULL(peer_cert.get());
 
   string serialized_client_cert;

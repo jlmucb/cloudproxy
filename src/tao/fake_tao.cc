@@ -137,7 +137,7 @@ bool FakeTao::Attest(const string &child_hash, const string &data,
   s.set_hash_alg(TaoDomain::Sha256);
   s.set_hash(child_hash);
 
-  return GenerateAttestation(keys_->Signer(), attestation_, &s, attestation);
+  return GenerateAttestation(*keys_, attestation_, &s, attestation);
 }
 
 bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {

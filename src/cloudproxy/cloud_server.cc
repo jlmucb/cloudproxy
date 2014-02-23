@@ -75,8 +75,11 @@ CloudServer::CloudServer(const string &server_config_path,
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    CHECK(keys_->CreateSelfSignedX509("US", "Washington", "Google",
-                                      "cloudserver"));
+    string details = "country: \"US\" "
+                     "state: \"Washington\" "
+                     "organization: \"Google\" "
+                     "commonname: \"cloudserver\"";
+    CHECK(keys_->CreateSelfSignedX509(details));
   }
 
   // set up the SSL context and SSLs for getting client connections
@@ -124,11 +127,11 @@ void CloudServer::HandleConnection(int accept_sock) {
     return;
   }
 
-  // Don't delete this X.509 certificate, since it is owned by the SSL_CTX and
-  // will be deleted there. Putting this cert in a ScopedX509Ctx leads to a
-  // double-free error.
+  // Don't delete our own X.509 certificate, since it is owned by the SSL_CTX
+  // and will be deleted there. Putting our own cert in a ScopedX509 would lead
+  // to a double-free error. By contrast, peer cert should be deleted by us.
   X509 *self_cert = SSL_get_certificate(ssl.get());
-  tao::ScopedX509Ctx peer_cert(SSL_get_peer_certificate(ssl.get()));
+  tao::ScopedX509 peer_cert(SSL_get_peer_certificate(ssl.get()));
   if (peer_cert.get() == nullptr) {
     LOG(ERROR) << "No X.509 certificate received from the client";
     return;

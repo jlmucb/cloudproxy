@@ -250,7 +250,7 @@ bool LinuxTao::Attest(const string &child_hash, const string &data,
   s.set_hash_alg(TaoAuth::Sha256);
   s.set_hash(child_hash);
 
-  return GenerateAttestation(keys_->Signer(), attestation_, &s, attestation);
+  return GenerateAttestation(*keys_, attestation_, &s, attestation);
 }
 
 bool LinuxTao::Listen() {
@@ -261,13 +261,18 @@ bool LinuxTao::Listen() {
 
 // TODO(kwalsh) Move this method to tao::Keys or some future TaoCA class
 bool LinuxTao::GetTaoCAAttestation() {
+  // The TCCA will convert our attestation into a new attestation signed by the
+  // policy key.
+  TaoCARequest req;
+  req.set_type(TAO_CA_REQUEST_ATTESTATION);
+
   string serialized_attestation;
   if (!ReadFileToString(keys_->AttestationPath(), &serialized_attestation)) {
     LOG(ERROR) << "Could not load the self-signed attestation";
     return false;
   }
-  Attestation attest;
-  if (!attest.ParseFromString(serialized_attestation)) {
+  Attestation *attest = req.mutable_attestation();
+  if (!attest->ParseFromString(serialized_attestation)) {
     LOG(ERROR) << "Could not deserialize the attestation to our key";
     return false;
   }
@@ -279,18 +284,25 @@ bool LinuxTao::GetTaoCAAttestation() {
     return false;
   }
 
-  // The TCCA will convert our attestation into a new attestation signed by the
-  // policy key.
-  if (!tao::SendMessage(*sock, attest)) {
-    LOG(ERROR) << "Could not send our attestation to the TCCA";
+  if (!tao::SendMessage(*sock, req)) {
+    LOG(ERROR) << "Could not send request to the TCCA";
     return false;
   }
 
-  Attestation new_attest;
-  if (!tao::ReceiveMessage(*sock, &new_attest)) {
-    LOG(ERROR) << "Could not get the new attestation from the TCCA";
+  TaoCAResponse resp;
+  if (!tao::ReceiveMessage(*sock, &resp)) {
+    LOG(ERROR) << "Could not get response from the TCCA";
     return false;
   }
+  if (resp.type() != TAO_CA_RESPONSE_SUCCESS) {
+    LOG(ERROR) << "TCCA returned error: " << resp.reason();
+    return false;
+  }
+  if (!resp.has_attestation()) {
+    LOG(ERROR) << "Missing attestation in TCCA response";
+    return false;
+  }
+  const Attestation &new_attest = resp.attestation();
 
   // Check the attestation to make sure it passes verification.
   if (new_attest.type() != ROOT) {
@@ -310,16 +322,12 @@ bool LinuxTao::GetTaoCAAttestation() {
     return false;
   }
 
-  if (new_attest.serialized_statement() != attest.serialized_statement()) {
+  if (new_attest.serialized_statement() != attest->serialized_statement()) {
     LOG(ERROR) << "The statement in the new attestation doesn't match our "
                   "original statement";
     return false;
   }
-  if (!new_attest.SerializeToString(&serialized_attestation)) {
-    LOG(ERROR) << "Could not serialize the attestation for our signing key";
-    return false;
-  }
-  if (!WriteStringToFile(keys_->AttestationPath(), serialized_attestation)) {
+  if (!WriteStringToFile(keys_->AttestationPath(), serialized)) {
     LOG(ERROR) << "Could not store the attestation for our signing key";
     return false;
   }

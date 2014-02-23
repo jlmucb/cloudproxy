@@ -471,6 +471,7 @@ int main(int an, char** av) {
     // mbi
     // mbi pointer is passed in begin_launch in tboot
     //     pass address in main arguments?
+    //     e820 table is in boot_params
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;

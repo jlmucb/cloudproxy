@@ -138,24 +138,26 @@ Original loader does the following
     (1) Init loader heap, run-time space, and idt.
     (2) Build E820 table. (replace by copy and modify e820 table from tboot)
     (3) Read evmm and thunk header. [[REKHA: What dows the "thunk header" do?]
-    (4) Load evmm, thunk, and tee.  (replace 3 and 4 with read 64-bit read elf header)
+    (4) Load evmm, thunk, and tee.  (replace 3 and 4 with read 64-bit read 
+            elf header)
     (5) Setup init32. [REKHA: What does this do?  Is this already done by tboot?]
     (6) Setup init64. [REKHA: This is what I plan to do in main of entry.c]
     (7) Call thunk.  [REKHA: What doed this do?]
 [REKA: Question where does evmm expect to be loaded?]
 
-The remainder of this document describes in detail the environment provided to evmm by
-bootstrap.
+The remainder of this document describes in detail the environment provided 
+to evmm by bootstrap.
 
 
 Setup of e820 tables by bootstrap
 ---------------------------------
 
-The E820 table has range of address and types. The table is part of
-vmm_memory_layout struct passed to vmm_main by bootstrap. [JLM: Is
-this an exact copy of what tboot provided to bootstrap?  If not REHKA TO CHECK THIS OUT.]
-bootstrap should modify the e820 table to protect it's memory region.
-[REHKA TO CHECK THIS OUT.]
+e820 is the facility by which the BIOS reports the memory map to the operating 
+system and boot loader.  The E820 table has range of address and types. The 
+table is part of vmm_memory_layout struct passed to vmm_main by bootstrap. 
+[JLM: Is this an exact copy of what tboot provided to bootstrap?  REHKA TO 
+CHECK THIS OUT.] bootstrap should modify the e820 table to protect it' s 
+memory region.  [REHKA TO CHECK THIS OUT.]
 
 Choose a e820 range to use, and use the start address of that slot as the base and perform relocations 
 

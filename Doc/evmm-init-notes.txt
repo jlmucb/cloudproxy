@@ -74,6 +74,12 @@ tboot typically moves the linux protected mode base to 0x100000 when booting a l
 Tboot passes mbi address on stack (from %ebx) for begin_launch.  Memory layout to
 linux is 4GB limit, 4K page size.
 
+address tboot will load and execute at
+    #define TBOOT_START              0x0804000
+start address of tboot MLE page table, also the beginning of tboot memory
+    #define TBOOT_BASE_ADDR          0x0800000
+
+
 
 Bootstrap.bin
 -------------

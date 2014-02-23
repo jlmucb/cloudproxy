@@ -35,7 +35,6 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
-#include "tao/keyczar_public_key.pb.h"
 #include "tao/util.h"
 
 using keyczar::Verifier;

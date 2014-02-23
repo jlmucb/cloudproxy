@@ -45,6 +45,7 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
+#include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/kvm_unix_tao_child_channel.h"
 #include "tao/pipe_tao_child_channel.h"

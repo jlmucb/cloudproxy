@@ -24,7 +24,7 @@
 #include <keyczar/base/scoped_ptr.h>
 #include <keyczar/openssl/util.h>
 
-#include "tao/attestation.pb.h"
+#include "tao/keys.pb.h"
 #include "tao/tao_child_channel.h"
 
 using std::string;

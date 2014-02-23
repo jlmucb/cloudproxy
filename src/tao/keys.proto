@@ -1,7 +1,7 @@
-//  File: attestation.proto
+//  File: keys.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Protocol buffers for Tao Attestation
+//  Description: Protocol buffers for keys and x509 certificates.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -27,4 +27,18 @@ message KeyczarPublicKey {
 
   required string metadata = 1;
   repeated KeyFile files = 2;
+}
+
+message X509Details {
+  // Requested x509 CommonName detail
+  optional bytes commonname = 3;
+
+  // Requested x509 Country detail
+  optional bytes country = 4;
+
+  // Requested x509 State detail
+  optional bytes state = 5;
+
+  // Requested x509 Organization detail
+  optional bytes organization = 6;
 }

@@ -32,8 +32,6 @@
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 
-#include "tao/keyczar_public_key.pb.h"
-
 using std::string;
 
 namespace keyczar {

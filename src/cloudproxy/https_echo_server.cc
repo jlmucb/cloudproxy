@@ -34,6 +34,7 @@
 #include "cloudproxy/https_echo_server.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
+#include "tao/tao_ca.pb.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 

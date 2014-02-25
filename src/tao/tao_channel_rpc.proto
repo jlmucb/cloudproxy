@@ -21,9 +21,17 @@
 package tao;
 
 enum RPC {
-  INIT = 0; DESTROY = 1; START_HOSTED_PROGRAM = 2; REMOVE_HOSTED_PROGRAM = 3;
-      GET_RANDOM_BYTES = 4; SEAL = 5; UNSEAL = 6; ATTEST = 7;
-} message TaoChannelRPC {
+  INIT = 0;
+  DESTROY = 1;
+  START_HOSTED_PROGRAM = 2;
+  REMOVE_HOSTED_PROGRAM = 3;
+  GET_RANDOM_BYTES = 4;
+  SEAL = 5;
+  UNSEAL = 6;
+  ATTEST = 7;
+}
+
+message TaoChannelRPC {
   required RPC rpc = 1;
   optional bytes data = 2;
   optional bytes signature = 3;
@@ -42,4 +50,6 @@ message StartHostedProgramArgs {
   repeated string args = 2;
 }
 
-message GetRandomBytesArgs { required int32 size = 1; }
+message GetRandomBytesArgs {
+  required int32 size = 1;
+}

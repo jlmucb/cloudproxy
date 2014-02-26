@@ -185,7 +185,8 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
               UINT64 reserved UNUSED)
 On entry, startup_struct_u is cast to VMM_STARTUP_STRUCT* type and
 application_params_struct_u is (eventually) interpreted as a pointer
-to a structure of type VMM_INPUT_PARAMS_S.
+to a structure of type VMM_INPUT_PARAMS_S.  [REHKA3: what is the 
+local_apic_id and what do we get from the shared page to fill it in.]
 
     typedef struct VMM_INPUT_PARAMS_S {
         UINT64 local_apic_id;

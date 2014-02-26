@@ -114,6 +114,9 @@ The initialized 64-bit GDT and IDT should have the following properties:
 REKHA: I am not sure what do you mean by the properties? 
 JLM: Any special location of 64 bit GDT?  What should the IDT handlers be.
 
+REKHA2: I am not sure, I believe it depends on the e820 table slot that is
+chosen for evmm.  Does Linux have a specific location?
+
 2. Information obtained from BIOS (e820 map) and additional information
 from tboot including memory size, base address of tboot, the combined size of
 tboot itself along with header information describing the size and location of
@@ -142,6 +145,9 @@ JLM: I think this is right in the general case but the question is really what
 interrupts MUST evmm handle for the single Linux guest case.  I think the 
 answer is: NMI and timer only.  Evmm must then inject timer interrupts into 
 the guest and everything will work, right?
+
+REKHA2: As mentioned above, the current evmm code handles nmi and timer, and
+rest are injected the code, unless we decide to change it.
 
 Evmm does not access BIOS [REHKA TO CHECK THIS OUT.]
 Upon exit, evmm clears all sensitive data [JLM: unsure, low priority for now.]
@@ -179,6 +185,11 @@ do something, maybe just set the vmm_main address is enough.  What happens
 (and what is supposed to happen) when we return from vmm_main?  Can you describe 
 how the "thunk mechanism" works in the general case?
 
+REKHA2: It is a mechanism to allow "switch back" into evmm, which is applicable
+only in the post launch case, because a)evmm has to work with whatever memory
+it has available; b) handle the case of restoring the native OS if something
+goes wrong and it can't recover.  In the pre os case, we crash and reboot to
+start over again.
 
 vmm_main
 --------
@@ -225,6 +236,9 @@ table is part of vmm_memory_layout struct passed to vmm_main by bootstrap.
 bootstrap should copy and modify the e820 table to protect it's 
 memory region.  [REHKA TO CHECK THIS OUT.]
 
+REKHA2: I am not sure what do I need to check.  I added the above description
+based on what I know/checked and added the e820 code. 
+
 
 Memory Initialization
 ---------------------
@@ -237,6 +251,12 @@ the 64-bit evmm portion did not do this later as part of setting up
 Linux guests as it would be a gigantic security hole
 undermining the entire value of the VMM.  So I think this should go in
 he Linux guest setup below and be clarified.  REKHA SHOULD CONFIRM. ]
+
+REKHA2: we pass the guest state as an argument to vmm_main, and the e820 table
+map is modified during the bootstrap process.  Therefore, I am not sure if it
+makes sense to pass the e820 table to the 64-bit code, and then duplicate the
+code to modify e820 map there.  But that is just an opinion, and we could do it
+in 64-bit code too, though I haven't seen that scenario for type 1 hypervisors.
 
 
 Stack setup
@@ -273,6 +293,7 @@ Call thunk
 ----------
 
 REKHA: Explain what this mechanism does. and how it needs to be set up
+REKHA2: explained above.
 
 
 Linux Guest initialization
@@ -287,6 +308,9 @@ Can evmm host Windows "Out of the box?"
 
 Linux never accesses BIOS, right?
 [REKHA: What should be in the vmcs areas for the guest?  ]
+
+REKHA2: IDT with handlers, memory available, eptp, cpu(register) state from the
+last exit/entry if applicable, and the guest entry point(s) to name a few.
 
 
 Notes 

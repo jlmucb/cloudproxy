@@ -413,7 +413,7 @@ Linux Guest initialization
 Evmm sets up its Linux guest so that at startup, the Linux wakes up 
 in the call to main in 32 bit protected mode just as it would after 
 TBOOT.  All information used to configure the Linux guest is
-passes in the parameters to vmm_main documented above.
+passed in the parameters to vmm_main documented above.
 
 Linux never accesses BIOS, right?
 Can evmm host Windows "Out of the box?"

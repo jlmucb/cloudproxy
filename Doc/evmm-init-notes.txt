@@ -115,17 +115,25 @@ accessbile from the guest.
 
 The initialized 64-bit GDT and IDT should have the following properties:
 REKHA2: I am not sure, I believe it depends on the e820 table slot that is
-chosen for evmm.  Does Linux have a specific location?  [JLM: I'll
-find out.  REKHA3: Meanwhile, just say what we do here.]
+chosen for evmm.  Does Linux have a specific location?  
+JLM: I'll find out.  
+REKHA3: Meanwhile, just say what we do here.
 
 2. Information obtained from BIOS (e820 map) and additional information
 from tboot including memory size, base address of tboot, the combined size of
 tboot itself along with header information describing the size and location of
 the bootstrap program so vmm_main can determine what memory is available to it.
-Apic information?  4. The multiboot header for linux module and information
-required to obtain the 32 bit linux stub as well as 64 bit linux code.  5. PCR
-values in the TPM have been properly extended for evmm by bootstrap.  [JLM to
-check this out.] 6. [LATER: SIPI initialization and call of AP's.]
+
+3. Gets apic information, guest and memory map information in it's calling
+parameters.
+
+4. Gets the multiboot header for linux module and information
+required to obtain the 32 bit linux stub as well as 64 bit linux code.  
+
+5. Enters with correct PCR values in the TPM have been properly extended for 
+evmm by bootstrap.  [JLM to check this out.] 
+
+6. [LATER: SIPI initialization and call of AP's.]
 
 The NMI interrupt trap and the timer trap is handled by evmm.  For single guest
 Linux, the timer trap is injected back into the Linux guest and
@@ -373,7 +381,7 @@ Stack setup
 Bootstrap.bin prepares a 64K stack for 64-bit evmm.  The 64K stack is 
 based at WWWWW.
 [REKHA3: Fill in WWWW (or whatever we need to do to pick WWWW ourselves.
-Should we up the stack allovated?]
+Should we up a larger than 64H stack?]
 
 
 Heap setup
@@ -381,7 +389,7 @@ Heap setup
 
 The 64-bit heap initialization is done in 64 bit evmm.  The heap prepared
 by tboot for 32-bit protected mode needs no further modication.
-REKHA3: Update this when you have the info.
+[REKHA3: Update this when you have the info.]
 
 
 64-bit address translation
@@ -421,22 +429,13 @@ in the call to main in 32 bit protected mode just as it would after
 TBOOT.  All information used to configure the Linux guest is
 passed in the parameters to vmm_main documented above.
 
-Linux never accesses BIOS, right?
-Can evmm host Windows "Out of the box?"
-[REKHA3 to update complete this section.]
+Linux never accesses BIOS.  evmm can host Windows "out of the box."
+[REKHA3: can you confirm these last two statements and, if true,
+can you get (low prioity) the information we need to start windows,
+i.e.- the setup of the parameters to vmm_main that accomplish it.]
 
 
 Notes 
 -----
-
-This document should be specific and not vague.  You shouldn't say 
-things like "maybe an identity mapping is OK."  You should say exactly 
-what it should be even if you're not sure and note either what you 
-don't know or what you're unsure of so we can find out.  A clear incorrect
-statement can be fixed, a vague statement isn't true or false and can never
-be fixed.  We should write the document as authoritative and complete as 
-quickly as possible and work on updating it as we get better information.
-Having the specific questions evident from the doc will help you get 
-the info out of Ravi and others.
 
 TODO: Get interrupt code and vt-d code the evmm team offered.

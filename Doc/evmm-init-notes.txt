@@ -159,6 +159,8 @@ evmm assigns all interrupts, except for NMI, to the linux guest.
 As explained above, evmm should update the e820 map to prevent
 the guest from accessing the tboot/bootstrap and evmm memory regions
 and populate the IDT with the appropriate handlers (in evmm or guest).
+The input arguments which must be prepared by bootstrap are set
+forth below.
 
 JLM: I guess I'm a little confused.  I would have thought that evmm
 protects guests from each other and the evmm from guest usinf EPT.  Do
@@ -186,11 +188,11 @@ On entry, startup_struct_u is cast to VMM_STARTUP_STRUCT* type and
 application_params_struct_u is (eventually) interpreted as a pointer
 to a structure of type VMM_INPUT_PARAMS_S.
 
-typedef struct VMM_INPUT_PARAMS_S {
-    UINT64 local_apic_id;
-    UINT64 startup_struct;
-    UINT64 application_params_struct; // change name
-} VMM_INPUT_PARAMS;
+    typedef struct VMM_INPUT_PARAMS_S {
+        UINT64 local_apic_id;
+        UINT64 startup_struct;
+        UINT64 application_params_struct; // change name
+    } VMM_INPUT_PARAMS;
 
 These structures are used both in 32-bit and 64-bit modes, therefore:
 - Structure sizes are 64-bit aligned
@@ -225,47 +227,47 @@ VMM_APPLICATION_PARAMS_STRUCT
 The structure definitions are:
 
 typedef struct _VMM_STARTUP_STRUCT {
-    UINT16                      size_of_this_struct;
-    UINT16                      version_of_this_struct;
+    UINT16   size_of_this_struct;
+    UINT16   version_of_this_struct;
 
     // number of processors/cores at install time.
     // used to verify correctness of the bootstrap process
-    UINT16                      number_of_processors_at_install_time;
+    UINT16   number_of_processors_at_install_time;
 
     // number of processors/cores as was discovered by vmm loader
     // used to verify correctness of the bootstrap process
-    UINT16                      number_of_processors_at_boot_time;
+    UINT16   number_of_processors_at_boot_time;
 
     /* 64-bit aligned */
 
     // number of secondary Guests
-    UINT16                      number_of_secondary_guests;
+    UINT16   number_of_secondary_guests;
 
     // size of stack for VMM per processor. In 4K pages.
-    UINT16                      size_of_vmm_stack;
+    UINT16   size_of_vmm_stack;
 
     // values to be used by VMM to hide devices if VT-d is not accessable
     // **** THIS FEATURE IS CURRENTLY NOT SUPPORTED ****
-    UINT16                      unsupported_vendor_id;
-    UINT16                      unsupported_device_id;
+    UINT16   unsupported_vendor_id;
+    UINT16   unsupported_device_id;
 
     /* 64-bit aligned */
 
     // set of flags, that define policies for the VMM as a whole
-    UINT32                      flags;
+    UINT32   flags;
 
     // magic number of the guest, that owns all platform devices
     // that were not assigned to any guest
-    UINT32                      default_device_owner;
+    UINT32   default_device_owner;
 
     /* 64-bit aligned */
 
     // magic number of the guest, that serves as OSPM.
     // SMM code is executed in the context of this guest
-    UINT32                      acpi_owner;
+    UINT32   acpi_owner;
 
     // magic number of the guest, that process platform NMIs.
-    UINT32                      nmi_owner;
+    UINT32   nmi_owner;
 
     /* 64-bit aligned */
 
@@ -277,18 +279,18 @@ typedef struct _VMM_STARTUP_STRUCT {
     // Loader must convert the table into the E820 extended format
     // (each entry 24 bytes long). If BIOS-returned entry was 20 bytes long
     // the extended attributes should be set to 0x1.
-    UINT64                      physical_memory_layout_E820;
+    UINT64   physical_memory_layout_E820;
 
     /* 64-bit aligned */
     // pointer to the primary guest state
     //   VMM_GUEST_STARTUP*
-    UINT64                      primary_guest_startup_state;
+    UINT64   primary_guest_startup_state;
 
     /* 64-bit aligned */
     // pointer to the array of secondary guest states
     // size of array is number_of_secondary_guests
     //   VMM_GUEST_STARTUP*
-    UINT64                      secondary_guests_startup_state_array;
+    UINT64   secondary_guests_startup_state_array;
 
     /* 64-bit aligned */
     // Debug parameters
@@ -296,37 +298,47 @@ typedef struct _VMM_STARTUP_STRUCT {
 	
     /* 64-bit aligned */
     // Active cpu local apic ids
-    UINT8						cpu_local_apic_ids[ALIGN_FORWARD(VMM_MAX_CPU_SUPPORTED, 8)];
+    UINT8    cpu_local_apic_ids[ALIGN_FORWARD(VMM_MAX_CPU_SUPPORTED, 8)];
 }PACKED VMM_STARTUP_STRUCT;
 
 
 typedef struct _VMM_APPLICATION_PARAMS_STRUCT {
-	UINT32                      size_of_this_struct; // overall, including all params
-	UINT32                      number_of_params;    // number of params that will follow
+	UINT32   size_of_this_struct; // overall, including all params
+	UINT32   number_of_params;    // number of params that will follow
 
-
-    // random generated id to avoid vmm shutdown by others
-    UINT64                      session_id;
-    // page entry list for the additional heap
-    UINT64                      address_entry_list;
-    UINT64                      entry_number;
-	// this is per parameter
-	// VMM_GUID                 guid_of_param1;
-	// struct                   param1;
-	//
-	// VMM_GUID                 guid_of_param2;
-	// struct                   param2;
-	//
+        // random generated id to avoid vmm shutdown by others
+        UINT64   session_id;
+        // page entry list for the additional heap
+    UINT64       address_entry_list;
+    UINT64       entry_number;
 #ifdef USE_ACPI
-    UINT64                      fadt_gpa;
+    UINT64       fadt_gpa;
 #ifdef ENABLE_VTD
-    UINT64                      dmar_gpa;
+    UINT64       dmar_gpa;
 #endif
 #endif //ifdef USE_ACPI
 } VMM_APPLICATION_PARAMS_STRUCT;
 
-//      globals
-VMM_STARTUP_STRUCT vmm_startup_data
+
+typedef struct _VMM_GUEST_CPU_STARTUP_STATE
+{
+    UINT16       size_of_this_struct;
+    UINT16       version_of_this_struct;
+    UINT32       reserved_1;
+
+    /* 64-bit aligned */
+
+    // there are additional registers in the CPU that are not passed here.
+    // it is assumed that for the new guest the state of such registers is
+    // the same, as it was at the VMM entry point.
+
+    VMM_GP_REGISTERS                gp;
+    VMM_XMM_REGISTERS               xmm;
+    VMM_SEGMENTS                    seg;
+    VMM_CONTROL_REGISTERS           control;
+    VMM_MODEL_SPECIFIC_REGISTERS    msr;
+}PACKED VMM_GUEST_CPU_STARTUP_STATE;
+
 
 REKHA3:  Now what remains is mapping the information from tboot to these data values.  Thats
 what you have to describe since that's what we have to set up.

@@ -118,103 +118,103 @@ static EM64T_CR3 cr3_for_x64 = { 0 };
 
 
 /*---------------------------------------------------------*
-*  FUNCTION		: x32_pt64_setup_paging
-*  PURPOSE		: establish paging tables for x64 -bit mode, 2MB pages
-*   		  		: while running in 32-bit mode.
-*				: It should scope full 32-bit space, i.e. 4G
-*  ARGUMENTS	:
-*  RETURNS		: void
+*  FUNCTION             : x32_pt64_setup_paging
+*  PURPOSE              : establish paging tables for x64 -bit mode, 2MB pages
+*                               : while running in 32-bit mode.
+*                               : It should scope full 32-bit space, i.e. 4G
+*  ARGUMENTS    :
+*  RETURNS              : void
 *---------------------------------------------------------*/
 void x32_pt64_setup_paging(UINT64 memory_size)
 {
-	EM64T_PML4 		*pml4_table;
-	EM64T_PDPE		*pdp_table;
-	EM64T_PDE_2MB	*pd_table;
+        EM64T_PML4              *pml4_table;
+        EM64T_PDPE              *pdp_table;
+        EM64T_PDE_2MB   *pd_table;
 
-	UINT32 pdpt_entry_id;
-	UINT32 pdt_entry_id;
-	UINT32 address = 0;
+        UINT32 pdpt_entry_id;
+        UINT32 pdt_entry_id;
+        UINT32 address = 0;
 
-	if (memory_size >= 0x100000000)
-		memory_size = 0x100000000;
+        if (memory_size >= 0x100000000)
+                memory_size = 0x100000000;
 
-	/*
-		To cover 4G-byte addrerss space the minimum set is
-		PML4	- 1entry
-		PDPT	- 4 entries
-		PDT		- 2048 entries
-	*/
+        /*
+                To cover 4G-byte addrerss space the minimum set is
+                PML4    - 1entry
+                PDPT    - 4 entries
+                PDT             - 2048 entries
+        */
 
-	pml4_table = (EM64T_PML4 *) vmm_page_alloc(1);
-	vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
+        pml4_table = (EM64T_PML4 *) vmm_page_alloc(1);
+        vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
 
-	pdp_table = (EM64T_PDPE *) vmm_page_alloc(1);
-	vmm_memset(pdp_table, 0, PAGE_4KB_SIZE);
-
-
-	// only one  entry is enough in PML4 table
-	pml4_table[0].lo.base_address_lo = (UINT32) pdp_table >> 12;
-	pml4_table[0].lo.present	= 1;
-	pml4_table[0].lo.rw			= 1;
-	pml4_table[0].lo.us			= 0;
-	pml4_table[0].lo.pwt 		= 0;
-	pml4_table[0].lo.pcd		= 0;
-	pml4_table[0].lo.accessed	= 0;
-	pml4_table[0].lo.ignored 	= 0;
-	pml4_table[0].lo.zeroes 	= 0;
-	pml4_table[0].lo.avl		= 0;
-
-	// 4  entries is enough in PDPT
-	for (pdpt_entry_id = 0; pdpt_entry_id < 4; ++pdpt_entry_id)
-	{
-		pdp_table[pdpt_entry_id].lo.present	= 1;
-		pdp_table[pdpt_entry_id].lo.rw 		= 1;
-		pdp_table[pdpt_entry_id].lo.us 		= 0;
-		pdp_table[pdpt_entry_id].lo.pwt		= 0;
-		pdp_table[pdpt_entry_id].lo.pcd		= 0;
-		pdp_table[pdpt_entry_id].lo.accessed= 0;
-		pdp_table[pdpt_entry_id].lo.ignored	= 0;
-		pdp_table[pdpt_entry_id].lo.zeroes	= 0;
-		pdp_table[pdpt_entry_id].lo.avl		= 0;
-
-		pd_table = (EM64T_PDE_2MB *) vmm_page_alloc(1);
-		vmm_memset(pd_table, 0, PAGE_4KB_SIZE);
-		pdp_table[pdpt_entry_id].lo.base_address_lo = (UINT32) pd_table >> 12;
+        pdp_table = (EM64T_PDPE *) vmm_page_alloc(1);
+        vmm_memset(pdp_table, 0, PAGE_4KB_SIZE);
 
 
-		for (pdt_entry_id = 0; pdt_entry_id < 512; ++pdt_entry_id, address += PAGE_2MB_SIZE)
-		{
-			pd_table[pdt_entry_id].lo.present	= 1;
-			pd_table[pdt_entry_id].lo.rw		= 1;
-			pd_table[pdt_entry_id].lo.us		= 0;
-			pd_table[pdt_entry_id].lo.pwt		= 0;
-			pd_table[pdt_entry_id].lo.pcd		= 0;
-			pd_table[pdt_entry_id].lo.accessed  = 0;
-			pd_table[pdt_entry_id].lo.dirty		= 0;
-			pd_table[pdt_entry_id].lo.pse		= 1;
-			pd_table[pdt_entry_id].lo.global	= 0;
-			pd_table[pdt_entry_id].lo.avl		= 0;
-			pd_table[pdt_entry_id].lo.pat		= 0;	 //????
-			pd_table[pdt_entry_id].lo.zeroes	= 0;
-			pd_table[pdt_entry_id].lo.base_address_lo = address >> 21;
-		}
-	}
+        // only one  entry is enough in PML4 table
+        pml4_table[0].lo.base_address_lo = (UINT32) pdp_table >> 12;
+        pml4_table[0].lo.present        = 1;
+        pml4_table[0].lo.rw                     = 1;
+        pml4_table[0].lo.us                     = 0;
+        pml4_table[0].lo.pwt            = 0;
+        pml4_table[0].lo.pcd            = 0;
+        pml4_table[0].lo.accessed       = 0;
+        pml4_table[0].lo.ignored        = 0;
+        pml4_table[0].lo.zeroes         = 0;
+        pml4_table[0].lo.avl            = 0;
 
-	cr3_for_x64.lo.pwt = 0;
-	cr3_for_x64.lo.pcd = 0;
-	cr3_for_x64.lo.base_address_lo = ((UINT32) pml4_table) >> 12;
+        // 4  entries is enough in PDPT
+        for (pdpt_entry_id = 0; pdpt_entry_id < 4; ++pdpt_entry_id)
+        {
+                pdp_table[pdpt_entry_id].lo.present     = 1;
+                pdp_table[pdpt_entry_id].lo.rw          = 1;
+                pdp_table[pdpt_entry_id].lo.us          = 0;
+                pdp_table[pdpt_entry_id].lo.pwt         = 0;
+                pdp_table[pdpt_entry_id].lo.pcd         = 0;
+                pdp_table[pdpt_entry_id].lo.accessed= 0;
+                pdp_table[pdpt_entry_id].lo.ignored     = 0;
+                pdp_table[pdpt_entry_id].lo.zeroes      = 0;
+                pdp_table[pdpt_entry_id].lo.avl         = 0;
+
+                pd_table = (EM64T_PDE_2MB *) vmm_page_alloc(1);
+                vmm_memset(pd_table, 0, PAGE_4KB_SIZE);
+                pdp_table[pdpt_entry_id].lo.base_address_lo = (UINT32) pd_table >> 12;
+
+
+                for (pdt_entry_id = 0; pdt_entry_id < 512; ++pdt_entry_id, address += PAGE_2MB_SIZE)
+                {
+                        pd_table[pdt_entry_id].lo.present       = 1;
+                        pd_table[pdt_entry_id].lo.rw            = 1;
+                        pd_table[pdt_entry_id].lo.us            = 0;
+                        pd_table[pdt_entry_id].lo.pwt           = 0;
+                        pd_table[pdt_entry_id].lo.pcd           = 0;
+                        pd_table[pdt_entry_id].lo.accessed  = 0;
+                        pd_table[pdt_entry_id].lo.dirty         = 0;
+                        pd_table[pdt_entry_id].lo.pse           = 1;
+                        pd_table[pdt_entry_id].lo.global        = 0;
+                        pd_table[pdt_entry_id].lo.avl           = 0;
+                        pd_table[pdt_entry_id].lo.pat           = 0;     //????
+                        pd_table[pdt_entry_id].lo.zeroes        = 0;
+                        pd_table[pdt_entry_id].lo.base_address_lo = address >> 21;
+                }
+        }
+
+        cr3_for_x64.lo.pwt = 0;
+        cr3_for_x64.lo.pcd = 0;
+        cr3_for_x64.lo.base_address_lo = ((UINT32) pml4_table) >> 12;
 
 }
 
 void x32_pt64_load_cr3(void)
 {
-	ia32_write_cr3(*((UINT32*) &(cr3_for_x64.lo)));
+        ia32_write_cr3(*((UINT32*) &(cr3_for_x64.lo)));
 
 }
 
 UINT32 x32_pt64_get_cr3(void)
 {
-	return *((UINT32*) &(cr3_for_x64.lo));
+        return *((UINT32*) &(cr3_for_x64.lo));
 }
 #endif
 
@@ -327,25 +327,28 @@ void x32_init64_start( INIT64_STRUCT *p_init64_data, UINT32 address_of_64bit_cod
 }
 
 
-#ifdef PRINTALL
-void PrintMbi(const multiboot_info_t *mbi)
+typedef void (*tboot_printk)(const char *fmt, ...);
+
+
+
+void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
 {
     /* print mbi for debug */
     unsigned int i;
 
-    printk("print mbi@%p ...\n", mbi);
-    printk("\t flags: 0x%x\n", mbi->flags);
+    myprintk("print mbi@%p ...\n", mbi);
+    myprintk("\t flags: 0x%x\n", mbi->flags);
     if ( mbi->flags & MBI_MEMLIMITS )
-        printk("\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
+        myprintk("\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
                mbi->mem_upper);
     if ( mbi->flags & MBI_BOOTDEV ) {
-        printk("\t boot_device.bios_driver: 0x%x\n",
+        myprintk("\t boot_device.bios_driver: 0x%x\n",
                mbi->boot_device.bios_driver);
-        printk("\t boot_device.top_level_partition: 0x%x\n",
+        myprintk("\t boot_device.top_level_partition: 0x%x\n",
                mbi->boot_device.top_level_partition);
-        printk("\t boot_device.sub_partition: 0x%x\n",
+        myprintk("\t boot_device.sub_partition: 0x%x\n",
                mbi->boot_device.sub_partition);
-        printk("\t boot_device.third_partition: 0x%x\n",
+        myprintk("\t boot_device.third_partition: 0x%x\n",
                mbi->boot_device.third_partition);
     }
     if ( mbi->flags & MBI_CMDLINE ) {
@@ -354,67 +357,67 @@ void PrintMbi(const multiboot_info_t *mbi)
         int   cmdlen = strlen(mbi->cmdline);
         char *cmdptr = (char *)mbi->cmdline;
         char  chunk[CHUNK_SIZE+1];
-        printk("\t cmdline@0x%x: ", mbi->cmdline);
+        myprintk("\t cmdline@0x%x: ", mbi->cmdline);
         chunk[CHUNK_SIZE] = '\0';
         while (cmdlen > 0) {
             strncpy(chunk, cmdptr, CHUNK_SIZE); 
-            printk("\n\t\"%s\"", chunk);
+            myprintk("\n\t\"%s\"", chunk);
             cmdptr += CHUNK_SIZE;
             cmdlen -= CHUNK_SIZE;
         }
-        printk("\n");
+        myprintk("\n");
     }
 
     if ( mbi->flags & MBI_MODULES ) {
-        printk("\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
+        myprintk("\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
                mbi->mods_addr);
         for ( i = 0; i < mbi->mods_count; i++ ) {
             module_t *p = (module_t *)(mbi->mods_addr + i*sizeof(module_t));
-            printk("\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
+            myprintk("\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
                    p->mod_start, p->mod_end);
-            printk("\t         string (@0x%x): \"%s\"\n", p->string,
+            myprintk("\t         string (@0x%x): \"%s\"\n", p->string,
                    (char *)p->string);
         }
     }
     if ( mbi->flags & MBI_AOUT ) {
         const aout_t *p = &(mbi->syms.aout_image);
-        printk("\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
+        myprintk("\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
                p->tabsize, p->strsize, p->addr);
     }
     if ( mbi->flags & MBI_ELF ) {
         const elf_t *p = &(mbi->syms.elf_image);
-        printk("\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
+        myprintk("\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
                p->num, p->size, p->addr, p->shndx);
     }
     if ( mbi->flags & MBI_MEMMAP ) {
         memory_map_t *p;
-        printk("\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
+        myprintk("\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
                mbi->mmap_addr);
         for ( p = (memory_map_t *)mbi->mmap_addr;
               (uint32_t)p < mbi->mmap_addr + mbi->mmap_length;
               p=(memory_map_t *)((uint32_t)p + p->size + sizeof(p->size)) ) {
-	        printk("\t     size: 0x%x, base_addr: 0x%04x%04x, "
+                myprintk("\t     size: 0x%x, base_addr: 0x%04x%04x, "
                    "length: 0x%04x%04x, type: %u\n", p->size,
                    p->base_addr_high, p->base_addr_low,
                    p->length_high, p->length_low, p->type);
         }
     }
     if ( mbi->flags & MBI_DRIVES ) {
-        printk("\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
+        myprintk("\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
                mbi->drives_addr);
     }
     if ( mbi->flags & MBI_CONFIG ) {
-        printk("\t config_table: 0x%x\n", mbi->config_table);
+        myprintk("\t config_table: 0x%x\n", mbi->config_table);
     }
     if ( mbi->flags & MBI_BTLDNAME ) {
-        printk("\t boot_loader_name@0x%x: %s\n",
+        myprintk("\t boot_loader_name@0x%x: %s\n",
                mbi->boot_loader_name, (char *)mbi->boot_loader_name);
     }
     if ( mbi->flags & MBI_APM ) {
-        printk("\t apm_table: 0x%x\n", mbi->apm_table);
+        myprintk("\t apm_table: 0x%x\n", mbi->apm_table);
     }
     if ( mbi->flags & MBI_VBE ) {
-        printk("\t vbe_control_info: 0x%x\n"
+        myprintk("\t vbe_control_info: 0x%x\n"
                "\t vbe_mode_info: 0x%x\n"
                "\t vbe_mode: 0x%x\n"
                "\t vbe_interface_seg: 0x%x\n"
@@ -429,10 +432,8 @@ void PrintMbi(const multiboot_info_t *mbi)
               );
     }
 }
-#endif
 
 
-typedef void (*tboot_printk)(const char *fmt, ...);
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
 // tboot jumps in here
@@ -442,9 +443,16 @@ int main(int an, char** av) {
     // john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
     tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
+    // john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
+    multiboot_info_t * my_mbi= 0x10000;
+
+    // john's boot_params boot_params_t *my_boot_params= 0x94200
+    boot_params_t *my_boot_params= 0x94200;
+
+
     // toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
-    // john's: tboot_printk tprintk = (tboot_printk)(0x80d630);
-    tboot_printk tprintk = (tboot_printk)(0x80d630);
+    // john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
+    tboot_printk tprintk = (tboot_printk)(0x80d660);
 
     tprintk("<3>Testing printf\n");
     tprintk("<3>evmm entry %d arguments\n", an);
@@ -469,9 +477,21 @@ int main(int an, char** av) {
     tprintk("\t ap_wake_trigger: %u\n", shared_page->ap_wake_trigger);
 
     // mbi
-    // mbi pointer is passed in begin_launch in tboot
-    //     pass address in main arguments?
-    //     e820 table is in boot_params
+    PrintMbi(my_mbi, tprintk);
+    // my_mbi->mmap_addr; my_mbi->mmap_length;
+    int l= my_mbi->mmap_length/sizeof(memory_map_t);
+    tprintk("%d e820 entries\n", l);
+    uint32_t entry_offset = 0;
+    i= 0;
+    while ( entry_offset < my_mbi->mmap_length ) {
+        memory_map_t *entry = (memory_map_t *) (my_mbi->mmap_addr + entry_offset);
+        tprintk("entry %02d: size: %08x, addr_low: %08x, addr_high: %08x\n  len_low: %08x, len_high: %08x, type: %08x\n",
+                i, entry->size, entry->base_addr_low, entry->base_addr_high,
+                entry->length_low, entry->length_high, entry->type);
+        i++;
+        entry_offset += entry->size + sizeof(entry->size);
+    }
+    tprintk("%d total\n", l);
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;
@@ -577,7 +597,7 @@ void evmmh(EVMM_DESC *td)
 
     VMM_STARTUP_STRUCT *vmm_env;
     STARTAP_IMAGE_ENTRY_POINT call_thunk_entry;
-	UINT64 call_thunk;
+        UINT64 call_thunk;
     UINT64 call_evmm;
 
     UINT32 heap_base;
@@ -635,17 +655,6 @@ void evmmh(EVMM_DESC *td)
         return;
 
     // (4) Load evmm, thunk, and tee.
-
-    ok = load_PE_image(
-            p_evmm,
-            (void *)EVMM_BASE(td),
-            EVMM_SIZE(td),
-            &call_evmm
-            );
-
-    if (!ok)
-        return;
-
     ok = load_PE_image(
             (void *)((UINT32)td + td->startap_start * 512),
             (void *)THUNK_BASE(td),
@@ -655,7 +664,6 @@ void evmmh(EVMM_DESC *td)
 
     if (!ok)
         return;
-
 
     vmm_env = setup_env(td, &thunk_hdr, &evmm_hdr);
     vmm_env->physical_memory_layout_E820 = e820_addr;
@@ -692,7 +700,7 @@ void evmmh(EVMM_DESC *td)
 
     // (7) Call thunk.
 
-	call_thunk_entry = (STARTAP_IMAGE_ENTRY_POINT)call_thunk;
+        call_thunk_entry = (STARTAP_IMAGE_ENTRY_POINT)call_thunk;
     call_thunk_entry(
         (num_of_aps != 0) ? &init32.s : 0,
         &init64,

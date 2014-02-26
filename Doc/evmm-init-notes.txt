@@ -138,12 +138,10 @@ The original loader does the following
     (4) Load evmm, thunk, and tee.  (replace 3 and 4 with read 64-bit read 
             elf header)
     (5) Setup init32. [REKHA: What does this do?  Is this already done by tboot?]
-REKHA: this is the 32-bit code that runs just before switching to
-64-bit.  It is responsible for translating the machine state (for
-e.g., copying registers from 32-bit to 64-bit) to 64-bit before the
-switch.  JLM: So this is really part of 64-bit initialization, right?  There
-is no further 32-bit PE mode setup we need, right?
-REKHA3:
+        This is the 32-bit code that runs just before switching to
+        64-bit.  It is responsible for translating the machine state (for
+        e.g., copying registers from 32-bit to 64-bit) to 64-bit before the
+        switch.
     (6) Setup init64. [I plan to do in main of entry.c]
     (7) Call thunk.
 
@@ -207,21 +205,22 @@ is used to perform some dedicated tasks on behalf of the primary guest.
 
 Here is the structure hierarchy (---> denotes a pointer) of these
 input structures to vmm_main.
+
 VMM_STARTUP_STRUCT
-+---- VMM_MEMORY_LAYOUT     vmm_memory_layout[]
-+---> INT15_E820_MEMORY_MAP physical_memory_layout_E820
-+---> VMM_GUEST_STARTUP     primary_guest_startup_state
-|     +---> VMM_GUEST_CPU_STARTUP_STATE cpu_states_array[]
-|     |     +---- VMM_GP_REGISTERS             gp
-|     |     +---- VMM_XMM_REGISTERS            xmm
-|     |     +---- VMM_SEGMENTS                 seg
-|     |     +---- VMM_CONTROL_REGISTERS        control
-|     |     +---- VMM_MODEL_SPECIFIC_REGISTERS msr
-|     +---> VMM_GUEST_DEVICE            devices_array[]
-+---> VMM_GUEST_STARTUP     secondary_guests_startup_state_array[]
-|     +... as above
-+---- VMM_DEBUG_PARAMS      debug_params
-      +---- VMM_DEBUG_PORT_PARAMS       port
+    +---- VMM_MEMORY_LAYOUT     vmm_memory_layout[]
+    +---> INT15_E820_MEMORY_MAP physical_memory_layout_E820
+    +---> VMM_GUEST_STARTUP     primary_guest_startup_state
+    |     +---> VMM_GUEST_CPU_STARTUP_STATE cpu_states_array[]
+    |     |     +---- VMM_GP_REGISTERS             gp
+    |     |     +---- VMM_XMM_REGISTERS            xmm
+    |     |     +---- VMM_SEGMENTS                 seg
+    |     |     +---- VMM_CONTROL_REGISTERS        control
+    |     |     +---- VMM_MODEL_SPECIFIC_REGISTERS msr
+    |     +---> VMM_GUEST_DEVICE            devices_array[]
+    +---> VMM_GUEST_STARTUP     secondary_guests_startup_state_array[]
+    |     +... as above
+    +---- VMM_DEBUG_PARAMS      debug_params
+        +---- VMM_DEBUG_PORT_PARAMS       port
 VMM_APPLICATION_PARAMS_STRUCT
 
 The structure definitions are:
@@ -239,7 +238,6 @@ typedef struct _VMM_STARTUP_STRUCT {
     UINT16   number_of_processors_at_boot_time;
 
     /* 64-bit aligned */
-
     // number of secondary Guests
     UINT16   number_of_secondary_guests;
 
@@ -252,7 +250,6 @@ typedef struct _VMM_STARTUP_STRUCT {
     UINT16   unsupported_device_id;
 
     /* 64-bit aligned */
-
     // set of flags, that define policies for the VMM as a whole
     UINT32   flags;
 
@@ -261,7 +258,6 @@ typedef struct _VMM_STARTUP_STRUCT {
     UINT32   default_device_owner;
 
     /* 64-bit aligned */
-
     // magic number of the guest, that serves as OSPM.
     // SMM code is executed in the context of this guest
     UINT32   acpi_owner;
@@ -270,7 +266,6 @@ typedef struct _VMM_STARTUP_STRUCT {
     UINT32   nmi_owner;
 
     /* 64-bit aligned */
-
     // vmm memory layout
     VMM_MEMORY_LAYOUT           vmm_memory_layout[uvmm_images_count];
 
@@ -295,7 +290,7 @@ typedef struct _VMM_STARTUP_STRUCT {
     /* 64-bit aligned */
     // Debug parameters
     VMM_DEBUG_PARAMS            debug_params;
-	
+        
     /* 64-bit aligned */
     // Active cpu local apic ids
     UINT8    cpu_local_apic_ids[ALIGN_FORWARD(VMM_MAX_CPU_SUPPORTED, 8)];
@@ -303,8 +298,8 @@ typedef struct _VMM_STARTUP_STRUCT {
 
 
 typedef struct _VMM_APPLICATION_PARAMS_STRUCT {
-	UINT32   size_of_this_struct; // overall, including all params
-	UINT32   number_of_params;    // number of params that will follow
+        UINT32   size_of_this_struct; // overall, including all params
+        UINT32   number_of_params;    // number of params that will follow
 
         // random generated id to avoid vmm shutdown by others
         UINT64   session_id;
@@ -382,10 +377,9 @@ Should we up the stack allovated?]
 Heap setup
 ----------
 
-REKHA: The 64-bit heap initialization should happen in the bootstrapping code.
-JLM: Then what does vmm_heap_initialize in utils/heap.c (which is in 64 bit code)
-do?
-REKHA3: Comment?
+The 64-bit heap initialization is done in 64 bit evmm.  The heap prepared
+by tboot for 32-bit protected mode needs no further modication.
+REKHA3: Update this when you have the info.
 
 
 64-bit address translation
@@ -422,15 +416,12 @@ Linux Guest initialization
 
 Evmm sets up its Linux guest so that at startup, the Linux wakes up 
 in the call to main in 32 bit protected mode just as it would after 
-TBOOT.  Can evmm host Windows "Out of the box?"
+TBOOT.  All information used to configure the Linux guest is
+passes in the parameters to vmm_main documented above.
 
 Linux never accesses BIOS, right?
-[REKHA: What should be in the vmcs areas for the guest?  ]
-
-REKHA2: IDT with handlers, memory available, eptp, cpu(register) state from the
-last exit/entry if applicable, and the guest entry point(s) to name a few.
-
-[REKHA3 to write this section.]
+Can evmm host Windows "Out of the box?"
+[REKHA3 to update complete this section.]
 
 
 Notes 

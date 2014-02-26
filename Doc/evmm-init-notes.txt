@@ -16,17 +16,23 @@ is the initial booted program but it loads four modules as specified below.
 
 
    submenu "Evmm bootstrap.bin" "Tboot 1.7.0"{
-    menuentry 'Ubuntu GNU/Linux, with evmm bootstrap.bin, Tboot 1.7.0 and Linux 3.5.7.20' --class ubuntu --class gnu-linux --class gnu --class os {
+    menuentry 'Ubuntu GNU/Linux, with evmm bootstrap.bin, Tboot 1.7.0 and 
+               Linux 3.5.7.20' --class ubuntu --class gnu-linux --class gnu 
+               --class os {
             insmod part_msdos
             insmod ext2
             set root='(hd0,msdos1)'
-            search --no-floppy --fs-uuid --set=root a1edf4f7-94e1-4c47-8573-0e3f54821ed3
+            search --no-floppy --fs-uuid --set=root 
+                a1edf4f7-94e1-4c47-8573-0e3f54821ed3
             echo    'Loading Tboot 1.7.0 ...'
-            multiboot       /boot/tboot.gz /boot/tboot.gz logging=serial,vga,memory
+            multiboot       /boot/tboot.gz /boot/tboot.gz 
+                logging=serial,vga,memory
             echo    'Loading Evmm bootstrap.bin ...'
-            module  /boot/bootstrap.bin /boot/bootstrap.bin placeholder   iommu=force
+            module  /boot/bootstrap.bin /boot/bootstrap.bin placeholder   
+                iommu=force
             echo    'Loading Linux 3.5.7.20 ...'
-            module  /boot/vmlinuz-3.5.7.20 /boot/vmlinuz-3.5.7.20 placeholder root=UUID=a1edf4f7-94e1-4c47-8573-0e3f54821ed3 ro  quiet splash
+            module  /boot/vmlinuz-3.5.7.20 /boot/vmlinuz-3.5.7.20 placeholder 
+              root=UUID=a1edf4f7-94e1-4c47-8573-0e3f54821ed3 ro  quiet splash
             echo    'Loading initial ramdisk ...'
             module  /boot/initrd.img-3.5.7.20 /boot/initrd.img-3.5.7.20
             echo    'Loading sinit SINIT_67.BIN ...'
@@ -67,18 +73,18 @@ Upon entry, tboot provided bootstrap with:
         idt descriptor is in idt_descr.
         heap size is in heap_size.
     3. An initialized GDT and IDT for 32 bit protected mode.
-    4. Information obtained from BIOS including memory size, base address of tboot, 
-        size of tboot.
+    4. Information obtained from BIOS including memory size, base address of 
+        tboot, size of tboot.
     5. e820 memory and apic information.
     6. the multiboot headers.
     
-tboot typically moves the linux protected mode base to 0x100000 when booting a linux.
-Tboot passes mbi address on stack (from %ebx) for begin_launch.  Memory layout to
-linux is 4GB limit, 4K page size.
+tboot typically moves the linux protected mode base to 0x100000 when booting 
+a linux.  Tboot passes mbi address on stack (from %ebx) for begin_launch.  
+Memory layout to linux is 4GB limit, 4K page size.
 
-address tboot will load and execute at
+    // address tboot will load and execute at
     #define TBOOT_START              0x0804000
-start address of tboot MLE page table, also the beginning of tboot memory
+    // start address of tboot MLE page table, beginning of tboot memory
     #define TBOOT_BASE_ADDR          0x0800000
 
 

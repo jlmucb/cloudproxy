@@ -369,12 +369,6 @@ REKHA3: I think the only thing remaining is a decription of what you change in
 the e820 table passed by tboot to accomplish this.
 
 
-Memory Initialization
----------------------
-
-We need to block access to the memory that evmm uses from the guest(s).
-
-
 Stack setup
 -----------
 

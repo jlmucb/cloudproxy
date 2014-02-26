@@ -34,15 +34,16 @@ is the initial booted program but it loads four modules as specified below.
     }
 
 As is evident, tboot loads 4 modules:
-    SINIT_67.BIN, which authenticates SMM handlers, checks configuration information 
-        and prepares the machine for SMX(ENTER).
-    evmm.gz, which is the evmm image.  The evmm image consists of three parts: a 
-        32-bit protected mode loader called bootstrap.bin, a header and the 64-bit 
-        evmm image.
-    linux.gz, which is the linux image.  The linux image consists of three parts: 
-        a 32-bit protected mode loader, a header and linux image.
-    initrd.gz, which is a small linux file system.  This file system is measured 
-        as part of the linux.
+    SINIT_67.BIN, which authenticates SMM handlers, checks configuration 
+        information and prepares the machine for SMX(ENTER).
+    evmm.gz, which is the evmm image.  The evmm image consists of three 
+        parts: a 32-bit protected mode loader called bootstrap.bin, a 
+        header and the 64-bit evmm image.
+    linux.gz, which is the linux image.  The linux image consists of 
+        three parts: a 32-bit protected mode loader, a header and linux 
+        image.
+    initrd.gz, which is a small linux file system.  This file system 
+        is measured as part of the linux.
 
 
 Tboot
@@ -60,7 +61,8 @@ Upon entry, tboot provided bootstrap with:
         Cmd arg at 0x9000
         Real mode kernel 0x0000-0x7fff
         real mode size is in real_mode_size
-        protected mode size (linux_size-real_mode_size) is in protected_mode _size.
+        protected mode size (linux_size-real_mode_size) is in 
+           protected_mode _size.
         stack base is in bsp_stack
         idt descriptor is in idt_descr.
         heap size is in heap_size.
@@ -128,7 +130,6 @@ evmm does not require the fpu to be initialized prior to entry.
 Upon exit, evmm clears all sensitive data [JLM: unsure, low priority for now.]
 
 If there is ANYTHING else bootstrap should do before calling vmm_main, 
-REKHA should note it HERE.
 
 The original loader does the following
     (1) Init loader heap, run-time space, and idt.
@@ -137,7 +138,7 @@ The original loader does the following
         image type and image size.
     (4) Load evmm, thunk, and tee.  (replace 3 and 4 with read 64-bit read 
             elf header)
-    (5) Setup init32. [REKHA: What does this do?  Is this already done by tboot?]
+    (5) Setup init32. 
         This is the 32-bit code that runs just before switching to
         64-bit.  It is responsible for translating the machine state (for
         e.g., copying registers from 32-bit to 64-bit) to 64-bit before the
@@ -335,8 +336,10 @@ typedef struct _VMM_GUEST_CPU_STARTUP_STATE
 }PACKED VMM_GUEST_CPU_STARTUP_STATE;
 
 
-REKHA3:  Now what remains is mapping the information from tboot to these data values.  Thats
-what you have to describe since that's what we have to set up.
+REKHA3:  Now what remains is mapping the information from tboot to these data 
+values.  Thats what you have to describe since that's what we have to set up.
+I believe we need to understand this (and document the understanding) before
+checking in code purporting to carry this out.  You should do this if you can.
 
 
 Setup of e820 tables by bootstrap
@@ -355,14 +358,6 @@ Memory Initialization
 ---------------------
 
 We need to block access to the memory that evmm uses from the guest(s).
-
-REKHA2: we pass the guest state as an argument to vmm_main, and the e820 table
-map is modified during the bootstrap process.  Therefore, I am not sure if it
-makes sense to pass the e820 table to the 64-bit code, and then duplicate the
-code to modify e820 map there.  But that is just an opinion, and we could do it
-in 64-bit code too, though I haven't seen that scenario for type 1 hypervisors.
-REKHA3:  I understand. Do you think 64-bit evmm needs it for Linux (or any other 
-OS initialization, later?
 
 
 Stack setup

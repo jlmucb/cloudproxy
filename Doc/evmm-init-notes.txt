@@ -182,10 +182,154 @@ The call to vmm_main is:
 void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
               UINT64 application_params_struct_u, 
               UINT64 reserved UNUSED)
-[REKHA3: Describe the arguments whose values must be prepared by bootstrap.bin
-This is lower priority and included only for completeness as its relatively easy to
-look up.]
+On entry, startup_struct_u is cast to VMM_STARTUP_STRUCT* type and
+application_params_struct_u is (eventually) interpreted as a pointer
+to a structure of type VMM_INPUT_PARAMS_S.
 
+typedef struct VMM_INPUT_PARAMS_S {
+    UINT64 local_apic_id;
+    UINT64 startup_struct;
+    UINT64 application_params_struct; // change name
+} VMM_INPUT_PARAMS;
+
+These structures are used both in 32-bit and 64-bit modes, therefore:
+- Structure sizes are 64-bit aligned
+- All pointers are defined as 64-bit, and must be set so their higher 32 bits
+  are 0 (< 4GB).  This ensures their usability in both 32-bit and 64-bit
+  modes.
+- All pointers are in a loader virtual memory space (if applicable).
+
+The Primary guest is the guest that owns the platform and platform was
+booted originally to run this guest. The secondary guest is a guest that 
+is used to perform some dedicated tasks on behalf of the primary guest.
+
+Here is the structure hierarchy (---> denotes a pointer) of these
+input structures to vmm_main.
+VMM_STARTUP_STRUCT
++---- VMM_MEMORY_LAYOUT     vmm_memory_layout[]
++---> INT15_E820_MEMORY_MAP physical_memory_layout_E820
++---> VMM_GUEST_STARTUP     primary_guest_startup_state
+|     +---> VMM_GUEST_CPU_STARTUP_STATE cpu_states_array[]
+|     |     +---- VMM_GP_REGISTERS             gp
+|     |     +---- VMM_XMM_REGISTERS            xmm
+|     |     +---- VMM_SEGMENTS                 seg
+|     |     +---- VMM_CONTROL_REGISTERS        control
+|     |     +---- VMM_MODEL_SPECIFIC_REGISTERS msr
+|     +---> VMM_GUEST_DEVICE            devices_array[]
++---> VMM_GUEST_STARTUP     secondary_guests_startup_state_array[]
+|     +... as above
++---- VMM_DEBUG_PARAMS      debug_params
+      +---- VMM_DEBUG_PORT_PARAMS       port
+VMM_APPLICATION_PARAMS_STRUCT
+
+The structure definitions are:
+
+typedef struct _VMM_STARTUP_STRUCT {
+    UINT16                      size_of_this_struct;
+    UINT16                      version_of_this_struct;
+
+    // number of processors/cores at install time.
+    // used to verify correctness of the bootstrap process
+    UINT16                      number_of_processors_at_install_time;
+
+    // number of processors/cores as was discovered by vmm loader
+    // used to verify correctness of the bootstrap process
+    UINT16                      number_of_processors_at_boot_time;
+
+    /* 64-bit aligned */
+
+    // number of secondary Guests
+    UINT16                      number_of_secondary_guests;
+
+    // size of stack for VMM per processor. In 4K pages.
+    UINT16                      size_of_vmm_stack;
+
+    // values to be used by VMM to hide devices if VT-d is not accessable
+    // **** THIS FEATURE IS CURRENTLY NOT SUPPORTED ****
+    UINT16                      unsupported_vendor_id;
+    UINT16                      unsupported_device_id;
+
+    /* 64-bit aligned */
+
+    // set of flags, that define policies for the VMM as a whole
+    UINT32                      flags;
+
+    // magic number of the guest, that owns all platform devices
+    // that were not assigned to any guest
+    UINT32                      default_device_owner;
+
+    /* 64-bit aligned */
+
+    // magic number of the guest, that serves as OSPM.
+    // SMM code is executed in the context of this guest
+    UINT32                      acpi_owner;
+
+    // magic number of the guest, that process platform NMIs.
+    UINT32                      nmi_owner;
+
+    /* 64-bit aligned */
+
+    // vmm memory layout
+    VMM_MEMORY_LAYOUT           vmm_memory_layout[uvmm_images_count];
+
+    // pointer to the int 15 E820 BIOS table
+    //  INT15_E820_MEMORY_MAP*
+    // Loader must convert the table into the E820 extended format
+    // (each entry 24 bytes long). If BIOS-returned entry was 20 bytes long
+    // the extended attributes should be set to 0x1.
+    UINT64                      physical_memory_layout_E820;
+
+    /* 64-bit aligned */
+    // pointer to the primary guest state
+    //   VMM_GUEST_STARTUP*
+    UINT64                      primary_guest_startup_state;
+
+    /* 64-bit aligned */
+    // pointer to the array of secondary guest states
+    // size of array is number_of_secondary_guests
+    //   VMM_GUEST_STARTUP*
+    UINT64                      secondary_guests_startup_state_array;
+
+    /* 64-bit aligned */
+    // Debug parameters
+    VMM_DEBUG_PARAMS            debug_params;
+	
+    /* 64-bit aligned */
+    // Active cpu local apic ids
+    UINT8						cpu_local_apic_ids[ALIGN_FORWARD(VMM_MAX_CPU_SUPPORTED, 8)];
+}PACKED VMM_STARTUP_STRUCT;
+
+
+typedef struct _VMM_APPLICATION_PARAMS_STRUCT {
+	UINT32                      size_of_this_struct; // overall, including all params
+	UINT32                      number_of_params;    // number of params that will follow
+
+
+    // random generated id to avoid vmm shutdown by others
+    UINT64                      session_id;
+    // page entry list for the additional heap
+    UINT64                      address_entry_list;
+    UINT64                      entry_number;
+	// this is per parameter
+	// VMM_GUID                 guid_of_param1;
+	// struct                   param1;
+	//
+	// VMM_GUID                 guid_of_param2;
+	// struct                   param2;
+	//
+#ifdef USE_ACPI
+    UINT64                      fadt_gpa;
+#ifdef ENABLE_VTD
+    UINT64                      dmar_gpa;
+#endif
+#endif //ifdef USE_ACPI
+} VMM_APPLICATION_PARAMS_STRUCT;
+
+//      globals
+VMM_STARTUP_STRUCT vmm_startup_data
+
+REKHA3:  Now what remains is mapping the information from tboot to these data values.  Thats
+what you have to describe since that's what we have to set up.
 
 
 Setup of e820 tables by bootstrap
@@ -265,7 +409,7 @@ Linux Guest initialization
 --------------------------
 
 Evmm sets up its Linux guest so that at startup, the Linux wakes up 
-in the call to main n 32 bit protected mode just as it would after 
+in the call to main in 32 bit protected mode just as it would after 
 TBOOT.  Can evmm host Windows "Out of the box?"
 
 Linux never accesses BIOS, right?

@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
 * limitations under the License.
-****************************************************************************/
+ */
 
 #include "vmm_defs.h"
 #include "vmcs_actual.h"
@@ -114,18 +114,15 @@ BOOLEAN gcpu_nmi_injection_allowed(
 
     idt_vectoring_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
 
-    if (1 == idt_vectoring_info.Bits.Valid)
-    {
+    if (1 == idt_vectoring_info.Bits.Valid) {
         injection_allowed = FALSE;
     }
-    else
-    {
+    else {
         IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY guest_interruptibility;
         guest_interruptibility.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_GUEST_INTERRUPTIBILITY);
 
         if (1 == guest_interruptibility.Bits.BlockNmi       ||
-            1 == guest_interruptibility.Bits.BlockStackSegment)
-        {
+            1 == guest_interruptibility.Bits.BlockStackSegment) {
             injection_allowed = FALSE;
         }
     }
@@ -171,12 +168,10 @@ BOOLEAN gcpu_inject_event(
     vmcs = gcpu_get_vmcs(gcpu);
     idt_vectoring_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
 
-    if (1 == idt_vectoring_info.Bits.Valid)
-    {
+    if (1 == idt_vectoring_info.Bits.Valid) {
         injection_allowed = FALSE;
     }
-    else
-    {
+    else {
         IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY guest_interruptibility;
         guest_interruptibility.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_GUEST_INTERRUPTIBILITY);
 
@@ -184,16 +179,14 @@ BOOLEAN gcpu_inject_event(
         {
         case VmEnterInterruptTypeExternalInterrupt:
             if (1 == guest_interruptibility.Bits.BlockNextInstruction ||
-                1 == guest_interruptibility.Bits.BlockStackSegment)
-            {
+                1 == guest_interruptibility.Bits.BlockStackSegment) {
                 injection_allowed = FALSE;
             }
             break;
 
         case VmEnterInterruptTypeNmi:
             if (1 == guest_interruptibility.Bits.BlockNmi       ||
-                1 == guest_interruptibility.Bits.BlockStackSegment)
-            {
+                1 == guest_interruptibility.Bits.BlockStackSegment) {
                 injection_allowed = FALSE;
             }
             break;
@@ -202,11 +195,9 @@ BOOLEAN gcpu_inject_event(
         case VmEnterInterruptTypeSoftwareInterrupt:
         case VmEnterInterruptTypePrivilegedSoftwareInterrupt:
         case VmEnterInterruptTypeSoftwareException:
-            if (1 == guest_interruptibility.Bits.BlockStackSegment)
-            {
+            if (1 == guest_interruptibility.Bits.BlockStackSegment) {
                 if (IA32_EXCEPTION_VECTOR_BREAKPOINT       == p_event->interrupt_info.Bits.Vector ||
-                    IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT == p_event->interrupt_info.Bits.Vector)
-                {
+                    IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT == p_event->interrupt_info.Bits.Vector) {
                     injection_allowed = FALSE;
                 }
             }
@@ -221,13 +212,10 @@ BOOLEAN gcpu_inject_event(
 
     }
 
-
-    if (TRUE == injection_allowed)
-    {
+    if (TRUE == injection_allowed) {
         p_event->interrupt_info.Bits.DeliverCode = 0;   // to be on safe side
 
-        switch (p_event->interrupt_info.Bits.InterruptType)
-        {
+        switch (p_event->interrupt_info.Bits.InterruptType) {
         case VmEnterInterruptTypeSoftwareInterrupt:
         case VmEnterInterruptTypePrivilegedSoftwareInterrupt:
         case VmEnterInterruptTypeSoftwareException:
@@ -239,8 +227,7 @@ BOOLEAN gcpu_inject_event(
 
         case VmEnterInterruptTypeHardwareException:
 
-            if (TRUE == isr_error_code_required((VECTOR_ID) p_event->interrupt_info.Bits.Vector))
-            {
+            if (TRUE == isr_error_code_required((VECTOR_ID) p_event->interrupt_info.Bits.Vector)) {
                 vmcs_write(vmcs, VMCS_ENTER_EXCEPTION_ERROR_CODE, (UINT64 )p_event->error_code);
                 p_event->interrupt_info.Bits.DeliverCode = 1;
             }
@@ -263,21 +250,18 @@ BOOLEAN gcpu_inject_event(
 
         vmcs_write(vmcs, VMCS_ENTER_INTERRUPT_INFO, (UINT64) (p_event->interrupt_info.Uint32));
     }
-    else
-    {
+    else {
         // there are conditions which prevent injection of new event,
         // therefore NMI/interrupt window is established
 
-        if (VmEnterInterruptTypeNmi == p_event->interrupt_info.Bits.InterruptType)
-        {
+        if (VmEnterInterruptTypeNmi == p_event->interrupt_info.Bits.InterruptType) {
             // NMI event cannot be injected, so set NMI-windowing
             gcpu_set_pending_nmi(gcpu, TRUE);   // vmcs_write_nmi_window_bit(vmcs, TRUE);
 
             // notify IPC component about inability to inject NMI
             ipc_mni_injection_failed();
         }
-        else
-        {
+        else {
             // interrupt/exception cannot be injected, set interrupt-windowing
             gcpu_temp_exceptions_setup( gcpu, GCPU_TEMP_EXIT_ON_INTR_UNBLOCK );
         }
@@ -377,8 +361,7 @@ BOOLEAN gcpu_inject_fault(
     e.instruction_length = 
         (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
 
-    if (vec != IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT)
-    {
+    if (vec != IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT) {
         e.interrupt_info.Bits.DeliverCode = 1;
         e.error_code = code;
     }
@@ -565,18 +548,14 @@ void gcpu_reinject_vmexit_exception(
     copy_exception_to_vmenter_exception(&event.interrupt_info, vmexit_exception_info.Uint32);
 
     // some exceptions require error code
-    if (vmexit_exception_info.Bits.ErrorCodeValid)
-    {
+    if (vmexit_exception_info.Bits.ErrorCodeValid) {
         event.error_code = vmcs_read(vmcs, VMCS_EXIT_INFO_EXCEPTION_ERROR_CODE);
     }
 
-    if (VmExitInterruptTypeSoftwareException == vmexit_exception_info.Bits.InterruptType)
-    {
+    if (VmExitInterruptTypeSoftwareException == vmexit_exception_info.Bits.InterruptType) {
         event.instruction_length = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
     }
-
     gcpu_inject_event(gcpu, &event);
-
 }
 
 
@@ -598,14 +577,12 @@ void gcpu_reinject_idt_exception(
     copy_exception_to_vmenter_exception(&event.interrupt_info, idt_vectoring_info.Uint32);
 
     // some exceptions require error code
-    if (idt_vectoring_info.Bits.ErrorCodeValid)
-    {
+    if (idt_vectoring_info.Bits.ErrorCodeValid) {
         event.error_code = vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING_ERROR_CODE);
     }
 
     // SW exceptions and interrupts require instruction length to be injected
-    switch (idt_vectoring_info.Bits.InterruptType)
-    {
+    switch (idt_vectoring_info.Bits.InterruptType) {
     case IdtVectoringInterruptTypeSoftwareInterrupt:
     case IdtVectoringInterruptTypeSoftwareException:
     case IdtVectoringInterruptTypePrivilegedSoftwareInterrupt:
@@ -641,25 +618,20 @@ void gcpu_vmexit_exception_resolve(
     CLR_EXCEPTION_RESOLUTION_REQUIRED_FLAG(gcpu);
 
     idt_vectoring_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
-    if (1 == idt_vectoring_info.Bits.Valid)
-    {
+    if (1 == idt_vectoring_info.Bits.Valid) {
         gcpu_reinject_idt_exception(gcpu, idt_vectoring_info);
     }
-    else
-    {
+    else {
         IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO   vmexit_exception_info;
 
         vmexit_exception_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_EXCEPTION_INFO);
-        if (vmexit_exception_info.Bits.Valid                  == 1 &&
+        if (vmexit_exception_info.Bits.Valid == 1 &&
             vmexit_exception_info.Bits.NmiUnblockingDueToIret == 1 &&
-            vmexit_exception_info.Bits.Vector                 != IA32_EXCEPTION_VECTOR_DOUBLE_FAULT)
-        {
+            vmexit_exception_info.Bits.Vector != IA32_EXCEPTION_VECTOR_DOUBLE_FAULT) {
             IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY guest_interruptibility;
             guest_interruptibility.Uint32 = 0;
             guest_interruptibility.Bits.BlockNmi = 1;
-            vmcs_update(
-                vmcs,
-                VMCS_GUEST_INTERRUPTIBILITY,
+            vmcs_update( vmcs, VMCS_GUEST_INTERRUPTIBILITY,
                 (UINT64) guest_interruptibility.Uint32,
                 (UINT64) guest_interruptibility.Uint32);
         }
@@ -694,8 +666,7 @@ void gcpu_vmexit_exception_reflect(
     idt_vectoring_info.Uint32   = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
     vmexit_exception_info.Uint32= (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_EXCEPTION_INFO);
 
-    if (1 == idt_vectoring_info.Bits.Valid)
-    {
+    if (1 == idt_vectoring_info.Bits.Valid) {
         exception1_class = vector_to_exception_class((VECTOR_ID) idt_vectoring_info.Bits.Vector);
         exception2_class = vector_to_exception_class((VECTOR_ID) vmexit_exception_info.Bits.Vector);
 
@@ -704,8 +675,7 @@ void gcpu_vmexit_exception_reflect(
         // clear IDT valid, for we can re-inject the event
         vmcs_write(vmcs, VMCS_EXIT_INFO_IDT_VECTORING, 0);
 
-        switch (action)
-        {
+        switch (action) {
         case INJECT_2ND_EXCEPTION:
             // inject 2nd exception, by copying VMEXIT exception info into VMENTER
             inject_exception = TRUE;
@@ -721,8 +691,7 @@ void gcpu_vmexit_exception_reflect(
             break;
         }
     }
-    else
-    {
+    else {
         inject_exception = TRUE;
     }
 
@@ -763,8 +732,7 @@ BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu)
     ud_exception.error_code                        = 0;
 
     inject_allowed = gcpu_inject_event(gcpu, &ud_exception);
-    if (inject_allowed)
-    {
+    if (inject_allowed) {
          rflags.Uint64 = gcpu_get_native_gp_reg(gcpu, IA32_REG_RFLAGS);
          rflags.Bits.RF = 1;
          gcpu_set_native_gp_reg(gcpu, IA32_REG_RFLAGS, rflags.Uint64);

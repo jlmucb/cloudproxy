@@ -110,18 +110,13 @@ BOOLEAN nmi_manager_initialize(CPU_ID num_of_cores)
     do {
         nmi_array = vmm_malloc(num_of_cores * sizeof(BOOLEAN));
         nmi_num_of_cores=num_of_cores;
-        if (NULL == nmi_array)
-        {
+        if (NULL == nmi_array) {
             break;
         }
         vmm_memset(nmi_array, 0, num_of_cores * sizeof(BOOLEAN));
-
         success = ipc_initialize(num_of_cores);
-
     } while (0);
-
     // no need to release memory in case of failure, because it is Fatal
-
     return success;
 }
 
@@ -258,7 +253,6 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu)
     VMEXIT_HANDLING_STATUS status;
 
     do {
-
         if (gcpu_is_vmcs_layered(gcpu)) {
             // if upper layer requested NMI VMEXIT, emulate NMI VMEXIT into it
             VMCS_OBJECT *vmcs1 = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_1);
@@ -271,16 +265,13 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu)
                 break;
             }
         }
-
         // here is non-layered case, or level.1 did not request NMI VMEXIT
         if (gcpu_inject_nmi(gcpu)) {
             nmi_clear_this();
         }
-
         // do not deliver to upper level even if NMI was not really injected
         status = VMEXIT_HANDLED;
     } while (0);
-
     return status;
 }
 
@@ -298,7 +289,6 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi_window(GUEST_CPU_HANDLE gcpu)
     VMEXIT_HANDLING_STATUS status;
 
     do {
-
         if (gcpu_is_vmcs_layered(gcpu)) {
             // if upper layer requested NMI VMEXIT, emulate NMI VMEXIT into it
             VMCS_OBJECT *vmcs1 = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_1);
@@ -335,7 +325,6 @@ void nmi_emulate_nmi_vmexit(GUEST_CPU_HANDLE gcpu)
     IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO exception_info;
 
     VMM_CALLTRACE_ENTER();
-
     reason = (UINT32)vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
 
     // change VMEXIT INFO, which is read-only. It is done in cache only
@@ -348,9 +337,7 @@ void nmi_emulate_nmi_vmexit(GUEST_CPU_HANDLE gcpu)
     exception_info.Bits.InterruptType = IA32_EXCEPTION_VECTOR_NMI;
     exception_info.Bits.Valid         = 1;
     vmcs_write_nocheck(vmcs, VMCS_EXIT_INFO_EXCEPTION_INFO, (UINT64)exception_info.Uint32);
-
     COPY_VMCS1_HOST_TO_MERGE_GUEST();
-
     VMM_CALLTRACE_LEAVE();
 }
 

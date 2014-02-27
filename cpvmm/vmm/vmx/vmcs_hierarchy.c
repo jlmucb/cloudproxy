@@ -167,7 +167,6 @@ VMCS_OBJECT * vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
         VMM_ASSERT(0);
         vmcs = NULL;
     }
-
     return vmcs;
 }
 

@@ -89,14 +89,11 @@ GUEST_HANDLE guest_handle( GUEST_ID guest_id )
 {
     GUEST_DESCRIPTOR    *guest;
 
-    if(guest_id >= guests_count)
-    {
+    if(guest_id >= guests_count) {
         return NULL;
     }
-    for(guest = guests; guest != NULL; guest = guest->next_guest)
-    {
-        if(guest->id == guest_id)
-        {
+    for(guest = guests; guest != NULL; guest = guest->next_guest) {
+        if(guest->id == guest_id) {
             return guest;
         }
     }
@@ -361,7 +358,7 @@ BOOLEAN guest_is_nmi_owner(const GUEST_HANDLE  guest )
     return (GET_GUEST_IS_NMI_OWNER_FLAG(guest) != 0);
 }
 
-void    guest_set_acpi_owner(               GUEST_HANDLE        guest )
+void    guest_set_acpi_owner(GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
 #ifdef ENABLE_PM_S3
@@ -372,7 +369,7 @@ void    guest_set_acpi_owner(               GUEST_HANDLE        guest )
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN guest_is_acpi_owner(                const GUEST_HANDLE  guest )
+BOOLEAN guest_is_acpi_owner(const GUEST_HANDLE  guest )
 {
     VMM_ASSERT( guest );
 
@@ -389,7 +386,7 @@ void    guest_set_default_device_owner(GUEST_HANDLE guest )
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN guest_is_default_device_owner(      const GUEST_HANDLE  guest )
+BOOLEAN guest_is_default_device_owner(const GUEST_HANDLE  guest )
 {
     VMM_ASSERT( guest );
 
@@ -537,7 +534,6 @@ GUEST_CPU_HANDLE guest_gcpu_next( GUEST_GCPU_ECONTEXT* context )
     GUEST_CPU_HANDLE* p_gcpu;
 
     p_gcpu = ARRAY_ITERATOR_NEXT( GUEST_CPU_HANDLE, context );
-
     return p_gcpu ? *p_gcpu : NULL;
 }
 
@@ -554,7 +550,6 @@ GUEST_HANDLE guest_first( GUEST_ECONTEXT* context )
 
     guest = guests;
     *context = guest;
-
     return guest;
 }
 
@@ -590,16 +585,13 @@ void    guest_begin_physical_memory_modifications( GUEST_HANDLE guest )
         GUEST_CPU_HANDLE    gcpu;
 
     VMM_ASSERT( guest );
-
     gpm_modification_data.guest_id = guest->id;
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     event_raise(EVENT_BEGIN_GPM_MODIFICATION_BEFORE_CPUS_STOPPED, gcpu, &gpm_modification_data);
     stop_all_cpus();
 
-//event_raise(EVENT_BEGIN_GPM_MODIFICATION_AFTER_CPUS_STOPPED, gcpu, &gpm_modification_data);
+    //event_raise(EVENT_BEGIN_GPM_MODIFICATION_AFTER_CPUS_STOPPED, gcpu, &gpm_modification_data);
 }
 
 #pragma warning( push )
@@ -630,10 +622,8 @@ void guest_abort_physical_memory_modifications( GUEST_HANDLE guest )
     GUEST_CPU_HANDLE    gcpu;
 
     VMM_ASSERT( guest );
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     start_all_cpus(NULL, NULL);
     event_raise(EVENT_END_GPM_MODIFICATION_AFTER_CPUS_RESUMED, gcpu, NULL);
 }
@@ -651,10 +641,8 @@ void guest_end_physical_memory_perm_update( GUEST_HANDLE guest )
     // prepare to raise events
     gpm_modification_data.guest_id = guest->id;
     gpm_modification_data.operation = VMM_MEM_OP_UPDATE;
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     event_raise(EVENT_END_GPM_MODIFICATION_BEFORE_CPUS_RESUMED, gcpu, &gpm_modification_data);
     start_all_cpus(NULL, NULL);
     event_raise(EVENT_END_GPM_MODIFICATION_AFTER_CPUS_RESUMED, gcpu, &gpm_modification_data);

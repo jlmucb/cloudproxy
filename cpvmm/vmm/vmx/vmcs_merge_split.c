@@ -150,17 +150,12 @@ void ms_copy_guest_state_to_level1_vmcs(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN cop
     value = gcpu_get_activity_state_layered(gcpu, VMCS_MERGED);
     gcpu_set_activity_state_layered(gcpu, (IA32_VMX_VMCS_GUEST_SLEEP_STATE)value, VMCS_LEVEL_1);
 
-
-    /*
-    ** Copy IA32e Guest bit is a part of guest state, so copy it here
-    */
+    // Copy IA32e Guest bit is a part of guest state, so copy it here
 #define VMENTER_IA32E_MODE_GUEST 0x200
     vmentry_control = vmcs_read(merged_vmcs, VMCS_ENTER_CONTROL_VECTOR);
     vmcs_update(level1_vmcs, VMCS_ENTER_CONTROL_VECTOR, vmentry_control, VMENTER_IA32E_MODE_GUEST);
 
-
     // TODO VMCS v2 fields
-
 }
 
 static
@@ -257,9 +252,7 @@ void ms_copy_guest_state_flom_level1(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN copy_c
     value = (UINT64)gcpu_get_activity_state_layered(gcpu, VMCS_LEVEL_1);
     gcpu_set_activity_state_layered(gcpu, (IA32_VMX_VMCS_GUEST_SLEEP_STATE)value, VMCS_MERGED);
 
-
     // TODO VMCS v2 fields
-
 }
 
 static
@@ -309,7 +302,6 @@ void ms_copy_data_fields(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from)
     vmcs_write_nocheck(vmcs_to, VMCS_EXIT_INFO_GUEST_LINEAR_ADDRESS, value);
 
     // TODO: Copy VMCS v2 fields
-
 }
 
 static
@@ -495,7 +487,6 @@ void ms_merge_bitmaps(IN void* bitmap0,
     UINT64 merged_bitmap_hva_final = merged_bitmap_hva + PAGE_4KB_SIZE;
 
     VMM_ASSERT((bitmap0 != NULL) || (bitmap1 != NULL));
-
     VMM_ASSERT(merged_bitmap);
 
     while (merged_bitmap_hva < merged_bitmap_hva_final) {

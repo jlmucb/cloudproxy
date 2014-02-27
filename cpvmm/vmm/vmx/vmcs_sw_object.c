@@ -256,13 +256,10 @@ void vmcs_0_destroy(struct _VMCS_OBJECT *vmcs)
 
     page = (void *) vmcs_read(vmcs, VMCS_IO_BITMAP_ADDRESS_A);
     if (NULL != page) vmm_page_free(page);
-
     page = (void *) vmcs_read(vmcs, VMCS_IO_BITMAP_ADDRESS_B);
     if (NULL != page) vmm_page_free(page);
-
     page = (void *) vmcs_read(vmcs, VMCS_MSR_BITMAP_ADDRESS);
     if (NULL != page) vmm_page_free(page);
-
     vmcs_destroy_all_msr_lists_internal(vmcs, FALSE);
     cache64_destroy(p_vmcs->cache);
 }
@@ -286,14 +283,12 @@ struct _VMCS_OBJECT * vmcs_1_create(GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
     guest = gcpu_guest_handle(gcpu);
     VMM_ASSERT(guest);
 
-    if (0 != gpa)   // gpa==0 means that VMCS-1 creation was requested for emulated guest
-    {
+    if (0 != gpa) {  // gpa==0 means that VMCS-1 creation was requested for emulated guest
         // validate alignment
         if (0 != (gpa & PAGE_4KB_MASK)) {
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: GPA is NOT 4K aligned\n", __FUNCTION__);
             return NULL;
         }
-
         // map to host address space
         status = gpm_gpa_to_hva(gcpu_get_current_gpm(guest), gpa, &hva);
 
@@ -301,11 +296,8 @@ struct _VMCS_OBJECT * vmcs_1_create(GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Failed to translate GPA to HVA\n", __FUNCTION__);
             return NULL;
         }
-
         // check memory type TBD
-
     }
-
 
     p_vmcs = vmm_malloc(sizeof(*p_vmcs));
     if (NULL == p_vmcs) {
@@ -411,8 +403,7 @@ UINT64 vmcs_sw_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
     struct _VMCS_SOFTWARE_OBJECT *p_vmcs = (struct _VMCS_SOFTWARE_OBJECT *) vmcs;
     UINT64 value;
     VMM_ASSERT(p_vmcs);
-    if (FALSE == cache64_read(p_vmcs->cache, &value, (UINT32 )field_id))
-    {
+    if (FALSE == cache64_read(p_vmcs->cache, &value, (UINT32 )field_id)) {
         value = 0;
     }
     return value;

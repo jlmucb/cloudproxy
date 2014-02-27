@@ -105,8 +105,6 @@ const UINT8 exception_class[] = {
 };
 
 
-
-
 /*
  *  FUNCTION     : isr_c_handler()
  *  PURPOSE      : Generic ISR handler which calls registered
@@ -252,15 +250,12 @@ static void exception_handler_default_with_errcode(ISR_PARAMETERS_ON_STACK *p_st
 
 static void exception_handler_default(ISR_PARAMETERS_ON_STACK *p_stack)
 {
-    if (isr_error_code_required((VECTOR_ID) p_stack->a.vector_id))
-    {
+    if (isr_error_code_required((VECTOR_ID) p_stack->a.vector_id)) {
         exception_handler_default_with_errcode( p_stack );
     }
-    else
-    {
+    else {
         exception_handler_default_no_errcode( p_stack );
     }
-
     g_exception_stack = p_stack;
     VMM_DEADLOOP();
 }
@@ -299,9 +294,7 @@ static void exception_handler_undefined_opcode(ISR_PARAMETERS_ON_STACK *p_stack)
 #endif
 
     VMM_DEBUG_CODE(print_exception_header(p_stack->u.exception.cs,
-                           p_stack->u.exception.ip,
-                           (VECTOR_ID) p_stack->a.vector_id,
-                           0));
+                           p_stack->u.exception.ip, (VECTOR_ID) p_stack->a.vector_id, 0));
 
     if (p_stack->a.vector_id < NELEMENTS(exception_message)) {
         VMM_LOG_NOLOCK(" Exception type: %s\n", exception_message[p_stack->a.vector_id]);
@@ -321,24 +314,24 @@ static void isr_install_default_handlers(void)
     for (vector_id = 0; vector_id < INTERRUPT_COUNT_VECTORS; ++vector_id) {
         isr_register_handler(exception_handler_default, (UINT8) vector_id);
     }
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_DIVIDE_ERROR);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_NMI);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_BREAKPOINT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_OVERFLOW);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_BOUND_RANGE_EXCEEDED);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_DIVIDE_ERROR);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_NMI);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_BREAKPOINT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_OVERFLOW);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_BOUND_RANGE_EXCEEDED);
     isr_register_handler(exception_handler_undefined_opcode, IA32_EXCEPTION_VECTOR_UNDEFINED_OPCODE);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_NO_MATH_COPROCESSOR);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_DOUBLE_FAULT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_INVALID_TASK_SEGMENT_SELECTOR);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_SEGMENT_NOT_PRESENT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_STACK_SEGMENT_FAULT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT);
-    isr_register_handler(exception_handler_page_fault      , IA32_EXCEPTION_VECTOR_PAGE_FAULT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_MATH_FAULT);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_ALIGNMENT_CHECK);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_MACHINE_CHECK);
-    isr_register_handler(exception_handler_default         , IA32_EXCEPTION_VECTOR_SIMD_FLOATING_POINT_NUMERIC_ERROR);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_NO_MATH_COPROCESSOR);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_DOUBLE_FAULT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_INVALID_TASK_SEGMENT_SELECTOR);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_SEGMENT_NOT_PRESENT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_STACK_SEGMENT_FAULT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT);
+    isr_register_handler(exception_handler_page_fault, IA32_EXCEPTION_VECTOR_PAGE_FAULT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_MATH_FAULT);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_ALIGNMENT_CHECK);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_MACHINE_CHECK);
+    isr_register_handler(exception_handler_default, IA32_EXCEPTION_VECTOR_SIMD_FLOATING_POINT_NUMERIC_ERROR);
 }
 
 
@@ -364,15 +357,15 @@ void isr_handling_start(void)
 BOOLEAN isr_error_code_required(VECTOR_ID vector_id)
 {
     switch (vector_id) {
-    case IA32_EXCEPTION_VECTOR_DOUBLE_FAULT:
-    case IA32_EXCEPTION_VECTOR_PAGE_FAULT:
-    case IA32_EXCEPTION_VECTOR_INVALID_TASK_SEGMENT_SELECTOR:
-    case IA32_EXCEPTION_VECTOR_SEGMENT_NOT_PRESENT:
-    case IA32_EXCEPTION_VECTOR_STACK_SEGMENT_FAULT:
-    case IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT:
-    case IA32_EXCEPTION_VECTOR_ALIGNMENT_CHECK:
+      case IA32_EXCEPTION_VECTOR_DOUBLE_FAULT:
+      case IA32_EXCEPTION_VECTOR_PAGE_FAULT:
+      case IA32_EXCEPTION_VECTOR_INVALID_TASK_SEGMENT_SELECTOR:
+      case IA32_EXCEPTION_VECTOR_SEGMENT_NOT_PRESENT:
+      case IA32_EXCEPTION_VECTOR_STACK_SEGMENT_FAULT:
+      case IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT:
+      case IA32_EXCEPTION_VECTOR_ALIGNMENT_CHECK:
         return TRUE;
-    default:
+      default:
         return FALSE;
     }
 }

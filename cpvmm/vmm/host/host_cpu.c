@@ -214,20 +214,17 @@ void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
 
     // Check if MSR is in the list.
     if (hcpu->vmexit_msr_load_list != NULL && hcpu->vmexit_msr_load_count != 0) {
-        for (i = 0, msr_ptr = hcpu->vmexit_msr_load_list; i < hcpu->vmexit_msr_load_count; i++, msr_ptr++)
-        {
+        for (i = 0, msr_ptr = hcpu->vmexit_msr_load_list; 
+             i < hcpu->vmexit_msr_load_count; i++, msr_ptr++) {
             if (msr_ptr->MsrIndex == msr_index) {
                 // New list size.
                 hcpu->vmexit_msr_load_count--;
-
                 // Shift the rest of a list by one up.
-                for (j = 0, msrs_to_copy = hcpu->vmexit_msr_load_count - i; j < msrs_to_copy; j++)
-                {
+                for (j = 0, msrs_to_copy = hcpu->vmexit_msr_load_count - i; 
+                     j < msrs_to_copy; j++) {
                     msr_ptr[j] = msr_ptr[j + 1];
                 }
-
                 update_gcpus = TRUE;
-
                 break;
             }
         }
@@ -240,8 +237,8 @@ void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
         gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu);
 
         while (gcpu != NULL) {
-            gcpu_change_level0_vmexit_msr_load_list(gcpu, hcpu->vmexit_msr_load_list, hcpu->vmexit_msr_load_count);
-
+            gcpu_change_level0_vmexit_msr_load_list(gcpu, hcpu->vmexit_msr_load_list, 
+                                                    hcpu->vmexit_msr_load_count);
             gcpu = scheduler_same_host_cpu_gcpu_next(&iter);
         }
     }
@@ -257,12 +254,9 @@ void host_cpu_delete_msr_from_level0_autoswap(CPU_ID cpu, UINT32 msr_index)
 
     while (gcpu != NULL) {
         VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy( gcpu ), VMCS_LEVEL_0);
-
         vmcs_delete_msr_from_vmexit_store_and_vmenter_load_lists(vmcs, msr_index);
-
         gcpu = scheduler_same_host_cpu_gcpu_next(&iter);
     }
-
     host_cpu_delete_msr_from_vmexit_load_list(cpu, msr_index);
 }
 #endif
@@ -305,30 +299,30 @@ void host_cpu_init( void )
 #endif
 
     {
-		CPU_ID	            cpu = hw_cpu_id();
+        CPU_ID              cpu = hw_cpu_id();
         HOST_CPU_SAVE_AREA* host_cpu = &(g_host_cpus[cpu]);
 
         host_cpu->vmexit_msr_load_list = NULL;
         host_cpu->vmexit_msr_load_count = 0;
         host_cpu->max_vmexit_msr_load_count = 0;
 
-    	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SaveDebugControls != 1) {
+        if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SaveDebugControls != 1) {
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_DEBUGCTL, hw_read_msr(IA32_MSR_DEBUGCTL));
-    	}
-    	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs != 1) {
+        }
+        if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs != 1) {
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_SYSENTER_ESP, hw_read_msr(IA32_MSR_SYSENTER_ESP));
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_SYSENTER_EIP, hw_read_msr(IA32_MSR_SYSENTER_EIP));
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_SYSENTER_CS, hw_read_msr(IA32_MSR_SYSENTER_CS));
-    	}
-    	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SaveEfer != 1) {
+        }
+        if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SaveEfer != 1) {
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_EFER, hw_read_msr(IA32_MSR_EFER));
-    	}
-    	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SavePat != 1) {
+        }
+        if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.SavePat != 1) {
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_PAT, hw_read_msr(IA32_MSR_PAT));
-    	}
-    	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL != 1) {
+        }
+        if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL != 1) {
             host_cpu_add_msr_to_vmexit_load_list(cpu, IA32_MSR_PERF_GLOBAL_CTRL, hw_read_msr(IA32_MSR_PERF_GLOBAL_CTRL));
-    	}
+        }
     }
 }
 
@@ -375,12 +369,12 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
     vmcs_write(vmcs, VMCS_HOST_CR3, hw_read_cr3());
 
     if(is_cr4_osxsave_supported()){
-    	EM64T_CR4 cr4_mask;
+        EM64T_CR4 cr4_mask;
         cr4_mask.Uint64 = 0;
         cr4_mask.Bits.OSXSAVE = 1;
         vmcs_write(vmcs, VMCS_HOST_CR4, vmcs_hw_make_compliant_cr4(hw_read_cr4()|
             (vmcs_read(vmcs,VMCS_GUEST_CR4) & cr4_mask.Uint64)));
-    }else{
+    } else {
         vmcs_write(vmcs, VMCS_HOST_CR4, vmcs_hw_make_compliant_cr4(hw_read_cr4()));
     }
 
@@ -433,23 +427,23 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
     vmcs_write(vmcs, VMCS_HOST_SS_SELECTOR, hw_read_ss());
     vmcs_write(vmcs, VMCS_HOST_DS_SELECTOR, hw_read_ds());
     vmcs_write(vmcs, VMCS_HOST_ES_SELECTOR, hw_read_es());
+
     /*
      *  MSRS
      */
+    if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadSysEnterMsrs == 1) {
+        vmcs_write(vmcs, VMCS_HOST_SYSENTER_CS, hw_read_msr(IA32_MSR_SYSENTER_CS));
+        vmcs_write(vmcs, VMCS_HOST_SYSENTER_ESP, hw_read_msr(IA32_MSR_SYSENTER_ESP));
+        vmcs_write(vmcs, VMCS_HOST_SYSENTER_EIP, hw_read_msr(IA32_MSR_SYSENTER_EIP));
+    }
 
-	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadSysEnterMsrs == 1) {
-		vmcs_write(vmcs, VMCS_HOST_SYSENTER_CS, hw_read_msr(IA32_MSR_SYSENTER_CS));
-		vmcs_write(vmcs, VMCS_HOST_SYSENTER_ESP, hw_read_msr(IA32_MSR_SYSENTER_ESP));
-		vmcs_write(vmcs, VMCS_HOST_SYSENTER_EIP, hw_read_msr(IA32_MSR_SYSENTER_EIP));
-	}
+    if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadEfer == 1) {
+        vmcs_write(vmcs, VMCS_HOST_EFER, hw_read_msr(IA32_MSR_EFER));
+    }
 
-	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadEfer == 1) {
-		vmcs_write(vmcs, VMCS_HOST_EFER, hw_read_msr(IA32_MSR_EFER));
-	}
-
-	if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadPat == 1) {
-		vmcs_write(vmcs, VMCS_HOST_PAT, hw_read_msr(IA32_MSR_PAT));
-	}
+    if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadPat == 1) {
+        vmcs_write(vmcs, VMCS_HOST_PAT, hw_read_msr(IA32_MSR_PAT));
+    }
 
     exit_controls.Bits.Ia32eModeHost = 1;
     vmexit_control.vm_exit_ctrls.bit_request = exit_controls.Uint32;
@@ -470,8 +464,8 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
         host_msr_load_addr = (UINT64)g_host_cpus[cpu].vmexit_msr_load_list;
     }
 
-	// Assigning VMExit msr-load list
-	vmcs_assign_vmexit_msr_load_list(vmcs, host_msr_load_addr, g_host_cpus[cpu].vmexit_msr_load_count);
+        // Assigning VMExit msr-load list
+        vmcs_assign_vmexit_msr_load_list(vmcs, host_msr_load_addr, g_host_cpus[cpu].vmexit_msr_load_count);
 }
 
 //
@@ -485,9 +479,7 @@ void host_cpu_set_vmxon_region( HVA hva, HPA hpa, CPU_ID my_cpu_id)
     VMM_ASSERT( g_host_cpus );
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( my_cpu_id < g_max_host_cpus );
-
     hcpu = &(g_host_cpus[my_cpu_id]);
-
     hcpu->vmxon_region_hva = hva;
     hcpu->vmxon_region_hpa = hpa;
 }
@@ -519,13 +511,10 @@ void host_cpu_set_vmx_state( BOOLEAN value )
     VMM_ASSERT( my_cpu_id < g_max_host_cpus );
 
     hcpu = &(g_host_cpus[my_cpu_id]);
-
-    if (value)
-    {
+    if (value) {
         SET_VMX_IS_ON_FLAG( hcpu );
     }
-    else
-    {
+    else {
         CLR_VMX_IS_ON_FLAG( hcpu );
     }
 }
@@ -555,14 +544,10 @@ void host_cpu_enable_usage_of_xmm_regs( void )
 
 void host_cpu_store_vmexit_gcpu(CPU_ID cpu_id, GUEST_CPU_HANDLE gcpu)
 {
-	if (cpu_id < g_max_host_cpus)
-    {
+    if (cpu_id < g_max_host_cpus) {
         g_host_cpus[cpu_id].last_vmexit_gcpu = gcpu;
 
-        VMM_DEBUG_CODE(
-		vmm_trace(gcpu, "\n");
-		)
-
+        VMM_DEBUG_CODE( vmm_trace(gcpu, "\n");)
     }
 }
 

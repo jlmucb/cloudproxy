@@ -52,10 +52,10 @@ void start_addons( UINT32 num_of_cpus,
         VMM_DEADLOOP();
     }
 
-    //gdb_stub_addon_initialize(num_of_cpus, &startup_struct->debug_params.aux_port);
+    // gdb_stub_addon_initialize(num_of_cpus, &startup_struct->debug_params.aux_port);
 
-//    tscdte_initialize(TSCDTE_MODE_OFF);
-//    init_guest_create_addon();
+    // tscdte_initialize(TSCDTE_MODE_OFF);
+    // init_guest_create_addon();
 
 #ifdef XUVMM_DEFINED
     xuvmm_initialize(num_of_cpus);

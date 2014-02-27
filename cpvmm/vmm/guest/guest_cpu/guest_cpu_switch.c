@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_SWITCH_C)
@@ -87,10 +87,8 @@ static
 void gcpu_cache_disabled_support( const GUEST_CPU_HANDLE  gcpu,
                                   BOOLEAN   CD_value_requested)
 {
-    if (1 == CD_value_requested) // cache disabled - WSM does not support this!
-    {
-        if (!gcpu_hw_enforcement_is_active(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED))
-        {
+    if (1 == CD_value_requested) { // cache disabled - WSM does not support this!
+        if (!gcpu_hw_enforcement_is_active(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED)) {
             VMM_LOG(mask_anonymous, level_trace,
                             "Guest %d:%d trying to set CD = 1\n",
                             guest_vcpu(gcpu)->guest_id,
@@ -98,14 +96,10 @@ void gcpu_cache_disabled_support( const GUEST_CPU_HANDLE  gcpu,
             gcpu_set_hw_enforcement(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED);
         }
     }
-    else
-    {
-        if (gcpu_hw_enforcement_is_active(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED))
-        {
-            VMM_LOG(mask_anonymous, level_trace,
-                            "Guest %d:%d removing CD = 0 enforcement\n",
-                            guest_vcpu(gcpu)->guest_id,
-                            guest_vcpu(gcpu)->guest_cpu_id);
+    else {
+        if (gcpu_hw_enforcement_is_active(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED)) {
+            VMM_LOG(mask_anonymous, level_trace, "Guest %d:%d removing CD = 0 enforcement\n",
+                            guest_vcpu(gcpu)->guest_id, guest_vcpu(gcpu)->guest_cpu_id);
             gcpu_remove_hw_enforcement(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED);
         }
     }
@@ -131,8 +125,7 @@ BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu,
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( action );
 
-    if (IS_MODE_EMULATOR(gcpu))
-    {
+    if (IS_MODE_EMULATOR(gcpu)) {
         // if we under emulator, emulator will take care for everything
         return FALSE;
     }
@@ -141,9 +134,7 @@ BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu,
     action->flat_pt  = GCPU_RESUME_FLAT_PT_ACTION_DO_NOTHING;
 
     // now we in NATIVE mode only
-
-    if (IS_STATE_INACTIVE(GET_CACHED_ACTIVITY_STATE(gcpu)))
-    {
+    if (IS_STATE_INACTIVE(GET_CACHED_ACTIVITY_STATE(gcpu))) {
         // if we are in the wait-for-SIPI mode - do nothing
         return FALSE;
     }
@@ -156,8 +147,7 @@ BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu,
     CD = (cr0.Bits.CD == 1);
     LME = (efer.Bits.LME == 1);
 
-    if (CD && global_policy_is_cache_dis_virtualized())
-    {
+    if (CD && global_policy_is_cache_dis_virtualized()) {
         EM64T_CR0  real_cr0;
 
         VMM_DEBUG_CODE(
@@ -174,64 +164,56 @@ BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu,
     // Run emulator explicitly
     if( GET_EXPLICIT_EMULATOR_REQUEST_FLAG(gcpu) ) {
         if (IS_MODE_UNRESTRICTED_GUEST(gcpu) ) {
-			gcpu_clr_unrestricted_guest(gcpu);
-		}
+                        gcpu_clr_unrestricted_guest(gcpu);
+                }
         // if we start emulator, emulator will take care for everything
         action->emulator = GCPU_RESUME_EMULATOR_ACTION_START_EMULATOR;
         return TRUE;
     }
     // We have UG on all the time, except during Task Switch
     if (is_unrestricted_guest_supported()) {
-		if (!IS_MODE_UNRESTRICTED_GUEST(gcpu)) {
+        if (!IS_MODE_UNRESTRICTED_GUEST(gcpu)) {
             unrestricted_guest_enable(gcpu);
         }
-   	}
+    }
 
-	if (PE == FALSE)
-    {
+    if (PE == FALSE) {
         if (!is_unrestricted_guest_supported()) {
-			// if we start emulator, emulator will take care for everything
+                        // if we start emulator, emulator will take care for everything
             action->emulator = GCPU_RESUME_EMULATOR_ACTION_START_EMULATOR;
             do_something = TRUE;
-       	}
+        }
         return do_something;
     }
 
     // now PE is 1
-	if (!is_unrestricted_guest_supported()) 
-	{
-		if (PG == FALSE)
-		{
-        	// paging is off -> we need flat page tables.
-			if ((LME == FALSE) && (!GET_FLAT_PAGES_TABLES_32_FLAG(gcpu)))
-			{
-				do_something = TRUE;
-				action->flat_pt = GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT;
-			}
-			
-			// special case - Paging is OFF but Long Mode Enable (LME) is ON
-			// -> switch from 32bit to 64 bit page tables even is 32bit exist
-			if ((LME == TRUE) && (!GET_FLAT_PAGES_TABLES_64_FLAG(gcpu)))
-			{
-				do_something = TRUE;
-				action->flat_pt = GCPU_RESUME_FLAT_PT_ACTION_INSTALL_64_BIT_PT;
-			}
-		}
-		// Paging is ON
-		else
-		{
-			if(IS_FLAT_PT_INSTALLED(gcpu)) {
-				do_something = TRUE;
-				action->flat_pt = GCPU_RESUME_FLAT_PT_ACTION_REMOVE;
-			}
-		}
-	}
-
-    if (global_policy_is_cache_dis_virtualized())
-    {
-        gcpu_cache_disabled_support( gcpu, CD );
+    if (!is_unrestricted_guest_supported()) {
+        if (PG == FALSE) {
+            // paging is off -> we need flat page tables.
+            if ((LME == FALSE) && (!GET_FLAT_PAGES_TABLES_32_FLAG(gcpu))) {
+                do_something = TRUE;
+                action->flat_pt = GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT;
+            }
+                        
+            // special case - Paging is OFF but Long Mode Enable (LME) is ON
+            // -> switch from 32bit to 64 bit page tables even is 32bit exist
+            if ((LME == TRUE) && (!GET_FLAT_PAGES_TABLES_64_FLAG(gcpu))) {
+                do_something = TRUE;
+                action->flat_pt = GCPU_RESUME_FLAT_PT_ACTION_INSTALL_64_BIT_PT;
+            }
+        }
+        // Paging is ON
+        else {
+            if(IS_FLAT_PT_INSTALLED(gcpu)) {
+                do_something = TRUE;
+                action->flat_pt = GCPU_RESUME_FLAT_PT_ACTION_REMOVE;
+            }
+        }
     }
 
+    if (global_policy_is_cache_dis_virtualized()) {
+        gcpu_cache_disabled_support( gcpu, CD );
+    }
     return do_something;
 }
 
@@ -293,8 +275,7 @@ void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_ty
         }
     }
 
-    if (GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT == pt_type)
-    {
+    if (GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT == pt_type) {
         UINT32     cr3_hpa;
 
         //VMM_LOG(mask_anonymous, level_trace,"gcpu_install_32bit_flat_memory()\n");
@@ -308,8 +289,7 @@ void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_ty
         CLR_FLAT_PAGES_TABLES_64_FLAG(gcpu);
         SET_FLAT_PAGES_TABLES_32_FLAG(gcpu);
     }
-    else if (GCPU_RESUME_FLAT_PT_ACTION_INSTALL_64_BIT_PT == pt_type)
-    {
+    else if (GCPU_RESUME_FLAT_PT_ACTION_INSTALL_64_BIT_PT == pt_type) {
         //VMM_LOG(mask_anonymous, level_trace,"gcpu_install_64bit_flat_memory()\n");
 
         gpm_flat_page_tables_ok =
@@ -319,8 +299,7 @@ void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_ty
         CLR_FLAT_PAGES_TABLES_32_FLAG(gcpu);
         SET_FLAT_PAGES_TABLES_64_FLAG(gcpu);
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"Unknown Flat Page Tables type: %d\n", pt_type);
         VMM_DEADLOOP();
     }
@@ -338,8 +317,7 @@ void gcpu_destroy_flat_memory( GUEST_CPU* gcpu )
     RAISE_EVENT_RETVAL event_retval;
 
     //VMM_LOG(mask_anonymous, level_trace,"gcpu_destroy_flat_memory()\n");
-    if (IS_FLAT_PT_INSTALLED(gcpu))
-    {
+    if (IS_FLAT_PT_INSTALLED(gcpu)) {
         fpt_destroy_flat_page_tables( gcpu->active_flat_pt_handle );
         gcpu->active_flat_pt_hpa = 0;
     }
@@ -370,15 +348,13 @@ void gcpu_physical_memory_modified( GUEST_CPU_HANDLE gcpu )
 
     // this function is called after somebody modified guest physical memory
     // renew flat page tables if required
-    if (! IS_FLAT_PT_INSTALLED(gcpu))
-    {
+    if (! IS_FLAT_PT_INSTALLED(gcpu)) {
         return;
     }
 
     fpt_destroy_flat_page_tables( gcpu->active_flat_pt_handle );
 
-    if (GET_FLAT_PAGES_TABLES_32_FLAG(gcpu))
-    {
+    if (GET_FLAT_PAGES_TABLES_32_FLAG(gcpu)) {
         UINT32     cr3_hpa;
 
         gpm_flat_page_tables_ok =
@@ -387,15 +363,13 @@ void gcpu_physical_memory_modified( GUEST_CPU_HANDLE gcpu )
                                                 &cr3_hpa );
         gcpu->active_flat_pt_hpa = cr3_hpa;
     }
-    else if (GET_FLAT_PAGES_TABLES_64_FLAG(gcpu))
-    {
+    else if (GET_FLAT_PAGES_TABLES_64_FLAG(gcpu)) {
         gpm_flat_page_tables_ok =
              fpt_create_64_bit_flat_page_tables(gcpu,
                                                 &(gcpu->active_flat_pt_handle),
                                                 &(gcpu->active_flat_pt_hpa) );
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"Unknown Flat Page Tables type during FPT update after GPM modification\n");
         VMM_DEADLOOP();
     }
@@ -418,8 +392,7 @@ void gcpu_perform_resume_actions( GUEST_CPU* gcpu,
     VMM_ASSERT( action );
 
 #ifdef ENABLE_EMULATOR
-    if (action->emulator == GCPU_RESUME_EMULATOR_ACTION_START_EMULATOR)
-    {
+    if (action->emulator == GCPU_RESUME_EMULATOR_ACTION_START_EMULATOR) {
         emul_start_guest_execution( gcpu_emulator_handle(gcpu) );
 
         gcpu_set_hw_enforcement(gcpu, VMCS_HW_ENFORCE_EMULATOR);
@@ -432,8 +405,7 @@ void gcpu_perform_resume_actions( GUEST_CPU* gcpu,
     }
 #endif
 
-    switch (action->flat_pt)
-    {
+    switch (action->flat_pt) {
         case GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT:
             gcpu_install_flat_memory( gcpu, GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT );
             break;
@@ -471,16 +443,12 @@ void gcpu_swap_out( GUEST_CPU_HANDLE gcpu )
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
 
     // save state that is not saved by default
-    if (!GET_DEBUG_REGS_CACHED_FLAG(gcpu))
-    {
+    if (!GET_DEBUG_REGS_CACHED_FLAG(gcpu)) {
         cache_debug_registers(gcpu);
     }
-
-    if (!GET_FX_STATE_CACHED_FLAG(gcpu))
-    {
+    if (!GET_FX_STATE_CACHED_FLAG(gcpu)) {
         cache_fx_state(gcpu);
     }
-
     vmcs_deactivate( vmcs );
 }
 
@@ -491,9 +459,7 @@ void gcpu_swap_in( const GUEST_CPU_HANDLE gcpu )
 
     // make global assembler save area for this host CPU point to new guest
     g_guest_regs_save_area[ hw_cpu_id() ] = &(gcpu->save_area);
-
     vmcs_activate( vmcs );
-
     SET_ALL_MODIFIED(gcpu);
 }
 
@@ -513,17 +479,14 @@ void gcpu_vmexit_start( const GUEST_CPU_HANDLE gcpu )
     // should be cached by CR3-access handler
     gcpu->save_area.gp.reg[ CR8_SAVE_AREA ] = hw_read_cr8();
 
-    if (!vmcs_sw_shadow_disable[hw_cpu_id()])
-	{
-		CLR_ALL_CACHED(gcpu);
-		vmcs_clear_cache( vmcs );
-	}
+    if (!vmcs_sw_shadow_disable[hw_cpu_id()]) {
+        CLR_ALL_CACHED(gcpu);
+        vmcs_clear_cache( vmcs );
+    }
     // if CR3 is not virtualized, update
     // internal storage with user-visible guest value
-    if (IS_MODE_NATIVE(gcpu) &&
-        !IS_FLAT_PT_INSTALLED (gcpu) &&
-        !gcpu_cr3_virtualized( gcpu ))
-    {
+    if (IS_MODE_NATIVE(gcpu) && !IS_FLAT_PT_INSTALLED (gcpu) &&
+        !gcpu_cr3_virtualized( gcpu )) {
         gcpu_set_guest_visible_control_reg( gcpu, IA32_CTRL_CR3, INVALID_CR3_SAVED_VALUE );
     }
 }
@@ -536,29 +499,25 @@ void gcpu_raise_proper_events_after_level_change(GUEST_CPU_HANDLE gcpu,
     EVENT_GCPU_GUEST_MSR_WRITE_DATA msr_update_data;
 
     value = gcpu_get_guest_visible_control_reg_layered(gcpu, IA32_CTRL_CR0, VMCS_MERGED);
-    if (optional && optional->visible_cr0 == value)
-    {
+    if (optional && optional->visible_cr0 == value) {
         update_event = cr_raise_write_events(gcpu, IA32_CTRL_CR0, value);
         VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
     }
 
     value = gcpu_get_guest_visible_control_reg_layered(gcpu, IA32_CTRL_CR4, VMCS_MERGED);
-    if (optional && optional->visible_cr4 == value)
-    {
+    if (optional && optional->visible_cr4 == value) {
         update_event = cr_raise_write_events(gcpu, IA32_CTRL_CR4, value);
         VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
     }
 
     value = gcpu_get_msr_reg_layered(gcpu, IA32_VMM_MSR_EFER, VMCS_MERGED);
-    if (optional && optional->EFER == value)
-    {
+    if (optional && optional->EFER == value) {
         msr_update_data.msr_index = IA32_MSR_EFER;
         msr_update_data.new_guest_visible_value = value;
         update_event = event_raise(EVENT_GCPU_AFTER_EFER_MSR_WRITE, gcpu, &msr_update_data);
     }
 
-    if (optional && optional->visible_cr3 == value)
-    {
+    if (optional && optional->visible_cr3 == value) {
         value = gcpu_get_guest_visible_control_reg_layered(gcpu, IA32_CTRL_CR3, VMCS_MERGED);
         update_event = cr_raise_write_events(gcpu, IA32_CTRL_CR3, value);
         VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
@@ -584,32 +543,26 @@ GUEST_CPU_HANDLE gcpu_perform_split_merge (GUEST_CPU_HANDLE gcpu)
     level0_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_LEVEL_0);
     level1_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_LEVEL_1);
 
-    if (gcpu->last_guest_level != gcpu->next_guest_level)
-    {
-        if (gcpu->last_guest_level == GUEST_LEVEL_1_SIMPLE)
-        {
+    if (gcpu->last_guest_level != gcpu->next_guest_level) {
+        if (gcpu->last_guest_level == GUEST_LEVEL_1_SIMPLE) {
             VMM_ASSERT(gcpu->next_guest_level == GUEST_LEVEL_1_VMM);
             // TODO: separate "level-0" and "merged" VMCSs
             VMM_LOG(mask_anonymous, level_trace,"%s: Separation of (level-0) and (merged) VMCSs is not implemented yet\n", __FUNCTION__);
             VMM_DEADLOOP();
         }
-        else if (gcpu->last_guest_level == GUEST_LEVEL_1_VMM)
-        {
-            if (gcpu->next_guest_level == GUEST_LEVEL_1_SIMPLE)
-            {
+        else if (gcpu->last_guest_level == GUEST_LEVEL_1_VMM) {
+            if (gcpu->next_guest_level == GUEST_LEVEL_1_SIMPLE) {
                 // TODO: (level-1) --> simple guest mode
                 VMM_LOG(mask_anonymous, level_trace,"%s: Layering switch off is not implemented yet\n", __FUNCTION__);
                 VMM_DEADLOOP();
             }
-            else
-            {
+            else {
                 VMM_ASSERT(gcpu->next_guest_level == GUEST_LEVEL_2);
                 ms_merge_to_level2(gcpu, FALSE /* merge all fields */);
 
             }
         }
-        else
-        {
+        else {
             VMM_ASSERT(gcpu->next_guest_level == GUEST_LEVEL_2);
             VMM_ASSERT(gcpu->next_guest_level == GUEST_LEVEL_1_VMM);
 
@@ -619,8 +572,7 @@ GUEST_CPU_HANDLE gcpu_perform_split_merge (GUEST_CPU_HANDLE gcpu)
 
         gcpu_raise_proper_events_after_level_change(gcpu, NULL);
     }
-    else
-    {
+    else {
         /* gcpu->last_guest_level == gcpu->next_guest_level */
         if (gcpu->last_guest_level == GUEST_LEVEL_1_VMM) {
             BOOLEAN merge_only_dirty = GET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu) ? FALSE : TRUE;
@@ -651,20 +603,17 @@ gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
     event_data.new_state = gcpu_get_activity_state(gcpu);
     event_data.prev_state = GET_CACHED_ACTIVITY_STATE(gcpu);
 
-    if (event_data.new_state != event_data.prev_state)
-    {
+    if (event_data.new_state != event_data.prev_state) {
         event_raise( EVENT_GCPU_ACTIVITY_STATE_CHANGE, gcpu, &event_data );
         SET_CACHED_ACTIVITY_STATE(gcpu, event_data.new_state);
 
-        if (IS_STATE_INACTIVE(event_data.new_state))
-        {
+        if (IS_STATE_INACTIVE(event_data.new_state)) {
             // switched from active to Wait-For-SIPI
             // the HW CPU will not be able to respond to any interrupts
             ipc_change_state_to_sipi( gcpu );
         }
 
-        if (IS_STATE_INACTIVE(event_data.prev_state))
-        {
+        if (IS_STATE_INACTIVE(event_data.prev_state)) {
             // switched from Wait-For-SIPI to active state
 
             //:TODO: Looks like there is not need to apply GCPU control setup to VMCS-LEVEL0
@@ -690,8 +639,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
 {
     VMCS_OBJECT* vmcs;
 
-    if (IS_MODE_NATIVE( gcpu ))
-    {
+    if (IS_MODE_NATIVE( gcpu )) {
         gcpu = gcpu->resume_func(gcpu);    // layered specific resume
         gcpu->last_guest_level = gcpu->next_guest_level;
 
@@ -705,24 +653,18 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     // exception which caused VMEXIT must be handled before resume
     VMM_ASSERT(0 == GET_EXCEPTION_RESOLUTION_REQUIRED_FLAG(gcpu));
 
-    if (GET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu))
-    {
-        if (GET_ACTIVITY_STATE_CHANGED_FLAG(gcpu))
-        {
+    if (GET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu)) {
+        if (GET_ACTIVITY_STATE_CHANGED_FLAG(gcpu)) {
             gcpu_process_activity_state_change(gcpu);
         }
 
         // if we in the emulator, it will take care about all settings
-        if (IS_MODE_NATIVE(gcpu))
-        {
+        if (IS_MODE_NATIVE(gcpu)) {
             GCPU_RESUME_ACTION action;
 
-            if (gcpu_decide_on_resume_actions(
-                    gcpu,
+            if (gcpu_decide_on_resume_actions(gcpu,
                     gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0),
-                    gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER),
-                    &action ))
-            {
+                    gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER), &action )) {
                 // do something
                 gcpu_perform_resume_actions( gcpu, &action );
             }
@@ -735,18 +677,14 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     // support for active CR3
     if (IS_MODE_NATIVE(gcpu))
     {
-        if (IS_FLAT_PT_INSTALLED( gcpu ))
-        {
+        if (IS_FLAT_PT_INSTALLED( gcpu )) {
             // gcpu_enforce_flat_memory_setup( gcpu ); VTDBG
         }
-        else
-        {
-            if (!gcpu_cr3_virtualized( gcpu ))
-            {
+        else {
+            if (!gcpu_cr3_virtualized( gcpu )) {
                 UINT64 visible_cr3 = gcpu->save_area.gp.reg[CR3_SAVE_AREA];
 
-                if (INVALID_CR3_SAVED_VALUE != visible_cr3)
-                {
+                if (INVALID_CR3_SAVED_VALUE != visible_cr3) {
                     // CR3 user-visible value was changed inside vmm or CR3 virtualization
                     // was switched off
                     gcpu_set_control_reg( gcpu, IA32_CTRL_CR3, visible_cr3 );
@@ -756,8 +694,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     }
 
 #ifdef FAST_VIEW_SWITCH
-    if ( fvs_is_eptp_switching_supported() )
-    {
+    if ( fvs_is_eptp_switching_supported() ) {
         fvs_save_resumed_eptp(gcpu);
     }
 #endif
@@ -769,27 +706,24 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     hw_write_cr8( gcpu->save_area.gp.reg[ CR8_SAVE_AREA ] );
 
 
-    if (IS_MODE_NATIVE(gcpu))
-    {
+    if (IS_MODE_NATIVE(gcpu)) {
         vmdb_settings_apply_to_hw(gcpu); // apply GDB settings
     }
 
     //host_cpu_save_dr7(hw_cpu_id());
 
 
-    if (0 != gcpu->hw_enforcements)
-    {
+    if (0 != gcpu->hw_enforcements) {
         gcpu_apply_hw_enforcements(gcpu);
     }
 
     {
         IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
         idt_vectoring_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_EXIT_INFO_IDT_VECTORING);
-		
+                
         if(idt_vectoring_info.Bits.Valid && ((idt_vectoring_info.Bits.InterruptType == 
             IdtVectoringInterruptTypeExternalInterrupt )
-            || (idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi )))
-        {	
+            || (idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi ))) {       
             IA32_VMX_VMCS_VM_ENTER_INTERRUPT_INFO   interrupt_info;
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
@@ -802,7 +736,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
             interrupt_info.Bits.InterruptType = idt_vectoring_info.Bits.InterruptType;
 
             vmcs_write(vmcs,VMCS_ENTER_INTERRUPT_INFO, interrupt_info.Uint32);
-			
+                        
             if(idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi )
                 vmcs_write(vmcs,VMCS_GUEST_INTERRUPTIBILITY,0);
             else
@@ -826,9 +760,8 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     if (!vmcs_launch_required( vmcs ))
         nmi_window_update_before_vmresume(vmcs);
 
-	// check for Launch and resume
-    if (vmcs_launch_required( vmcs ))
-    {
+        // check for Launch and resume
+    if (vmcs_launch_required( vmcs )) {
         vmcs_set_launched( vmcs );
         // call assembler launch
 //VMM_LOG(mask_anonymous, level_trace,"VmLaunch GCPU %d GUEST %d in %s mode\n",
@@ -841,8 +774,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
                         gcpu->vcpu.guest_id,
                         IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
     }
-    else
-    {
+    else {
         // call assembler resume
 //VMM_LOG(mask_anonymous, level_trace,"VmResume GCPU %d GUEST %d in %s mode\n",
 //                gcpu->vcpu.guest_cpu_id,
@@ -852,9 +784,8 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
 
         vmentry_func( FALSE );
         VMM_LOG(mask_anonymous, level_trace,"VmResume failed for GCPU %d GUEST %d in %s mode\n",
-                        gcpu->vcpu.guest_cpu_id,
-                        gcpu->vcpu.guest_id,
-                        IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
+                gcpu->vcpu.guest_cpu_id, gcpu->vcpu.guest_id,
+                IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
     }
 
     VMM_DEADLOOP();
@@ -891,10 +822,8 @@ VMM_STATUS gcpu_return_to_native_execution( GUEST_CPU_HANDLE gcpu,
                                             ADDRESS* arg3 UNUSED)
 {
     // check if emulator finished already
-    if (IS_MODE_EMULATOR(gcpu)          &&
-        (gcpu->emulator_handle != NULL) &&
-        emul_is_running( gcpu->emulator_handle ))
-    {
+    if (IS_MODE_EMULATOR(gcpu) && (gcpu->emulator_handle != NULL) &&
+        emul_is_running( gcpu->emulator_handle )) {
         SET_MODE_NATIVE(gcpu);            // disable redirection of set/get to emulator
         emul_stop_guest_execution( gcpu->emulator_handle );
         gcpu_remove_hw_enforcement(gcpu, VMCS_HW_ENFORCE_EMULATOR);
@@ -918,14 +847,13 @@ VMM_STATUS gcpu_set_hw_enforcement(GUEST_CPU_HANDLE gcpu, VMCS_HW_ENFORCEMENT_ID
 {
     VMM_STATUS  status = VMM_OK;
 
-    switch (enforcement)
-    {
-    case VMCS_HW_ENFORCE_EMULATOR:
-    case VMCS_HW_ENFORCE_FLAT_PT:
-    case VMCS_HW_ENFORCE_CACHE_DISABLED:
+    switch (enforcement) {
+      case VMCS_HW_ENFORCE_EMULATOR:
+      case VMCS_HW_ENFORCE_FLAT_PT:
+      case VMCS_HW_ENFORCE_CACHE_DISABLED:
         gcpu->hw_enforcements |= enforcement;
         break;
-    default:
+      default:
         VMM_ASSERT(0);
         status = VMM_ERROR;
         break;
@@ -937,8 +865,7 @@ VMM_STATUS gcpu_remove_hw_enforcement(GUEST_CPU_HANDLE gcpu, VMCS_HW_ENFORCEMENT
 {
     VMM_STATUS status = VMM_OK;
 
-    switch (enforcement)
-    {
+    switch (enforcement) {
     case VMCS_HW_ENFORCE_EMULATOR:
         gcpu_enforce_settings_on_hardware(gcpu, GCPU_TEMP_EXCEPTIONS_RESTORE_ALL);
         gcpu_enforce_settings_on_hardware(gcpu, GCPU_TEMP_CR0_RESTORE_WP);
@@ -969,23 +896,19 @@ void gcpu_apply_hw_enforcements(GUEST_CPU_HANDLE gcpu)
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( !GET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu) );
 
-    if (gcpu->hw_enforcements & VMCS_HW_ENFORCE_EMULATOR)
-    {
+    if (gcpu->hw_enforcements & VMCS_HW_ENFORCE_EMULATOR) {
         gcpu_enforce_settings_on_hardware(gcpu, GCPU_TEMP_EXCEPTIONS_EXIT_ON_ALL);
         gcpu_enforce_settings_on_hardware(gcpu, GCPU_TEMP_CR0_NO_EXIT_ON_WP);
     }
-    else if (gcpu->hw_enforcements & VMCS_HW_ENFORCE_FLAT_PT)
-    {
+    else if (gcpu->hw_enforcements & VMCS_HW_ENFORCE_FLAT_PT) {
         gcpu_enforce_settings_on_hardware(gcpu, GCPU_TEMP_EXIT_ON_PF_AND_CR3);
         gcpu_enforce_flat_memory_setup(gcpu);
     }
 
-    if (gcpu->hw_enforcements & VMCS_HW_ENFORCE_CACHE_DISABLED)
-    {
+    if (gcpu->hw_enforcements & VMCS_HW_ENFORCE_CACHE_DISABLED) {
         // CD = 1 is not allowed.
         vmcs_update( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, VMCS_MERGED),
                      VMCS_GUEST_CR0, 0, CR0_CD);
-
         // flush HW caches
         hw_wbinvd();
 

@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_ACCESS_C)
@@ -118,13 +118,11 @@ BOOLEAN gcpu_is_native_execution( GUEST_CPU_HANDLE gcpu )
 }
 
 UINT64 gcpu_get_native_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
-                               VMM_IA32_GP_REGISTERS          reg,
-                               VMCS_LEVEL                     level )
+                               VMM_IA32_GP_REGISTERS reg, VMCS_LEVEL level )
 {
     VMM_ASSERT(reg < IA32_REG_GP_COUNT);
 
-    switch (reg)
-    {
+    switch (reg) {
         case IA32_REG_RSP:
             return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RSP );
 
@@ -146,8 +144,7 @@ void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE       gcpu,
 {
     VMM_ASSERT(reg < IA32_REG_GP_COUNT);
 
-    switch (reg)
-    {
+    switch (reg) {
         case IA32_REG_RSP:
             vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RSP, value );
             return;
@@ -172,21 +169,21 @@ void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
 {
     VMM_ASSERT(gcpu);
 
-	*GPreg = gcpu->save_area.gp.reg[IA32_REG_RAX];
-	*(GPreg + 1) = gcpu->save_area.gp.reg[IA32_REG_RBX];
-	*(GPreg + 2) = gcpu->save_area.gp.reg[IA32_REG_RCX];
-	*(GPreg + 3) = gcpu->save_area.gp.reg[IA32_REG_RDX];
-	*(GPreg + 5) = gcpu->save_area.gp.reg[IA32_REG_RBP];
-	*(GPreg + 6) = gcpu->save_area.gp.reg[IA32_REG_RSI];
-	*(GPreg + 7) = gcpu->save_area.gp.reg[IA32_REG_RDI];
-	*(GPreg + 8) = gcpu->save_area.gp.reg[IA32_REG_R8];
-	*(GPreg + 9) = gcpu->save_area.gp.reg[IA32_REG_R9];
-	*(GPreg + 10) = gcpu->save_area.gp.reg[IA32_REG_R10];
-	*(GPreg + 11) = gcpu->save_area.gp.reg[IA32_REG_R11];
-	*(GPreg + 12) = gcpu->save_area.gp.reg[IA32_REG_R12];
-	*(GPreg + 13) = gcpu->save_area.gp.reg[IA32_REG_R13];
-	*(GPreg + 14) = gcpu->save_area.gp.reg[IA32_REG_R14];
-	*(GPreg + 15) = gcpu->save_area.gp.reg[IA32_REG_R15];
+        *GPreg = gcpu->save_area.gp.reg[IA32_REG_RAX];
+        *(GPreg + 1) = gcpu->save_area.gp.reg[IA32_REG_RBX];
+        *(GPreg + 2) = gcpu->save_area.gp.reg[IA32_REG_RCX];
+        *(GPreg + 3) = gcpu->save_area.gp.reg[IA32_REG_RDX];
+        *(GPreg + 5) = gcpu->save_area.gp.reg[IA32_REG_RBP];
+        *(GPreg + 6) = gcpu->save_area.gp.reg[IA32_REG_RSI];
+        *(GPreg + 7) = gcpu->save_area.gp.reg[IA32_REG_RDI];
+        *(GPreg + 8) = gcpu->save_area.gp.reg[IA32_REG_R8];
+        *(GPreg + 9) = gcpu->save_area.gp.reg[IA32_REG_R9];
+        *(GPreg + 10) = gcpu->save_area.gp.reg[IA32_REG_R10];
+        *(GPreg + 11) = gcpu->save_area.gp.reg[IA32_REG_R11];
+        *(GPreg + 12) = gcpu->save_area.gp.reg[IA32_REG_R12];
+        *(GPreg + 13) = gcpu->save_area.gp.reg[IA32_REG_R13];
+        *(GPreg + 14) = gcpu->save_area.gp.reg[IA32_REG_R14];
+        *(GPreg + 15) = gcpu->save_area.gp.reg[IA32_REG_R15];
     // Copy PAT
     *(GPreg + 17) = gcpu->save_area.temporary_cached_msrs.pat;
 }
@@ -204,21 +201,21 @@ UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE         gcpu,
 void gcpu_set_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
                                     UINT64                 *GPReg )
 {
-	gcpu->save_area.gp.reg[IA32_REG_RAX] = *GPReg;
-	gcpu->save_area.gp.reg[IA32_REG_RBX] = *(GPReg + 1);
-	gcpu->save_area.gp.reg[IA32_REG_RCX] = *(GPReg + 2);
-	gcpu->save_area.gp.reg[IA32_REG_RDX] = *(GPReg + 3);
-	gcpu->save_area.gp.reg[IA32_REG_RBP] = *(GPReg + 5);
-	gcpu->save_area.gp.reg[IA32_REG_RSI] = *(GPReg + 6);
-	gcpu->save_area.gp.reg[IA32_REG_RDI] = *(GPReg + 7);
-	gcpu->save_area.gp.reg[IA32_REG_R8]  = *(GPReg + 8);
-	gcpu->save_area.gp.reg[IA32_REG_R9]  = *(GPReg + 9);
-	gcpu->save_area.gp.reg[IA32_REG_R10] = *(GPReg + 10);
-	gcpu->save_area.gp.reg[IA32_REG_R11] = *(GPReg + 11);
-	gcpu->save_area.gp.reg[IA32_REG_R12] = *(GPReg + 12);
-	gcpu->save_area.gp.reg[IA32_REG_R13] = *(GPReg + 13);
-	gcpu->save_area.gp.reg[IA32_REG_R14] = *(GPReg + 14);
-	gcpu->save_area.gp.reg[IA32_REG_R15] = *(GPReg + 15);
+        gcpu->save_area.gp.reg[IA32_REG_RAX] = *GPReg;
+        gcpu->save_area.gp.reg[IA32_REG_RBX] = *(GPReg + 1);
+        gcpu->save_area.gp.reg[IA32_REG_RCX] = *(GPReg + 2);
+        gcpu->save_area.gp.reg[IA32_REG_RDX] = *(GPReg + 3);
+        gcpu->save_area.gp.reg[IA32_REG_RBP] = *(GPReg + 5);
+        gcpu->save_area.gp.reg[IA32_REG_RSI] = *(GPReg + 6);
+        gcpu->save_area.gp.reg[IA32_REG_RDI] = *(GPReg + 7);
+        gcpu->save_area.gp.reg[IA32_REG_R8]  = *(GPReg + 8);
+        gcpu->save_area.gp.reg[IA32_REG_R9]  = *(GPReg + 9);
+        gcpu->save_area.gp.reg[IA32_REG_R10] = *(GPReg + 10);
+        gcpu->save_area.gp.reg[IA32_REG_R11] = *(GPReg + 11);
+        gcpu->save_area.gp.reg[IA32_REG_R12] = *(GPReg + 12);
+        gcpu->save_area.gp.reg[IA32_REG_R13] = *(GPReg + 13);
+        gcpu->save_area.gp.reg[IA32_REG_R14] = *(GPReg + 14);
+        gcpu->save_area.gp.reg[IA32_REG_R15] = *(GPReg + 15);
 }
 
 void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE               gcpu,
@@ -262,45 +259,31 @@ void   gcpu_get_segment_reg_layered(
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
 
-
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( reg < IA32_SEG_COUNT );
-
     vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
 
     seg2vmcs = &g_segment_2_vmcs[reg];
-
-    if (selector)
-    {
+    if (selector) {
         *selector = (UINT16)vmcs_read( vmcs, seg2vmcs->sel );
     }
-
-    if (base)
-    {
+    if (base) {
         *base     = vmcs_read( vmcs, seg2vmcs->base );
     }
-
-    if (limit)
-    {
+    if (limit) {
         *limit    = (UINT32)vmcs_read( vmcs, seg2vmcs->limit );
     }
-
-    if (attributes)
-    {
+    if (attributes) {
         *attributes= (UINT32)vmcs_read( vmcs, seg2vmcs->ar );
     }
 }
 
-void   gcpu_set_segment_reg_layered(
-                              GUEST_CPU_HANDLE             gcpu,
-                              VMM_IA32_SEGMENT_REGISTERS   reg,
-                              UINT16                       selector,
-                              UINT64                       base,
-                              UINT32                       limit,
-                              UINT32                       attributes,
-                              VMCS_LEVEL                   level )
+void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu,
+                              VMM_IA32_SEGMENT_REGISTERS reg,
+                              UINT16  selector, UINT64  base,
+                              UINT32  limit, UINT32  attributes, VMCS_LEVEL level )
 {
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
@@ -313,17 +296,14 @@ void   gcpu_set_segment_reg_layered(
     vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
 
     seg2vmcs = &g_segment_2_vmcs[reg];
-
     vmcs_write( vmcs, seg2vmcs->sel, selector );
     vmcs_write( vmcs, seg2vmcs->base, base );
     vmcs_write( vmcs, seg2vmcs->limit, limit );
     vmcs_write( vmcs, seg2vmcs->ar, attributes );
 }
 
-UINT64 gcpu_get_control_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              VMCS_LEVEL                   level )
+UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
+                              VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level )
 {
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -332,8 +312,7 @@ UINT64 gcpu_get_control_reg_layered(
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( reg < IA32_CTRL_COUNT );
 
-    switch (reg)
-    {
+    switch (reg) {
         case IA32_CTRL_CR0:
             return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_CR0 );
 
@@ -361,11 +340,8 @@ UINT64 gcpu_get_control_reg_layered(
     return 0;
 }
 
-void   gcpu_set_control_reg_layered(
-                              GUEST_CPU_HANDLE              gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              UINT64                        value,
-                              VMCS_LEVEL                    level )
+void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_CONTROL_REGISTERS reg,
+                              UINT64 value, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs;
 
@@ -376,11 +352,9 @@ void   gcpu_set_control_reg_layered(
 
     vmcs = gcpu_get_vmcs_layered(gcpu, level);
 
-    switch (reg)
-    {
+    switch (reg) {
         case IA32_CTRL_CR0:
-            if (vmcs == gcpu_get_vmcs(gcpu))
-            {
+            if (vmcs == gcpu_get_vmcs(gcpu)) {
                 value = vmcs_hw_make_compliant_cr0( value );
             }
             vmcs_write( vmcs, VMCS_GUEST_CR0, value );
@@ -396,8 +370,7 @@ void   gcpu_set_control_reg_layered(
             break;
 
         case IA32_CTRL_CR4:
-            if (vmcs == gcpu_get_vmcs(gcpu))
-            {
+            if (vmcs == gcpu_get_vmcs(gcpu)) {
                 value = vmcs_hw_make_compliant_cr4( value );
             }
             vmcs_write( vmcs, VMCS_GUEST_CR4, value );
@@ -432,32 +405,26 @@ UINT64 gcpu_get_guest_visible_control_reg_layered(
 
     VMM_ASSERT(gcpu);
 
-    if (reg == IA32_CTRL_CR3)
-    {
+    if (reg == IA32_CTRL_CR3) {
         real_value = gcpu->save_area.gp.reg[ CR3_SAVE_AREA ];
 
-        if (INVALID_CR3_SAVED_VALUE == real_value)
-        {
+        if (INVALID_CR3_SAVED_VALUE == real_value) {
             real_value = gcpu_get_control_reg_layered( gcpu, IA32_CTRL_CR3, level );
         }
-
         return real_value;
     }
 
     real_value = gcpu_get_control_reg_layered( gcpu, reg, level );
 
-    if (reg == IA32_CTRL_CR0)
-    {
+    if (reg == IA32_CTRL_CR0) {
         mask    = vmcs_read( vmcs, VMCS_CR0_MASK );
         shadow  = vmcs_read( vmcs, VMCS_CR0_READ_SHADOW );
     }
-    else if (reg == IA32_CTRL_CR4)
-    {
+    else if (reg == IA32_CTRL_CR4) {
         mask    = vmcs_read( vmcs, VMCS_CR4_MASK );
         shadow  = vmcs_read( vmcs, VMCS_CR4_READ_SHADOW );
     }
-    else
-    {
+    else {
         return real_value;
     }
 
@@ -473,22 +440,18 @@ void gcpu_set_guest_visible_control_reg_layered(
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-    if (reg == IA32_CTRL_CR3)
-    {
+    if (reg == IA32_CTRL_CR3) {
         VMM_ASSERT(level == VMCS_MERGED);
         gcpu->save_area.gp.reg[ CR3_SAVE_AREA ] = value;
     }
-    else if (reg == IA32_CTRL_CR0)
-    {
+    else if (reg == IA32_CTRL_CR0) {
         SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
         vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_CR0_READ_SHADOW, value  );
     }
-    else if (reg == IA32_CTRL_CR4)
-    {
+    else if (reg == IA32_CTRL_CR4) {
         vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_CR4_READ_SHADOW, value  );
     }
-    else
-    {
+    else {
         gcpu_set_control_reg_layered(gcpu, reg, value, level); // pass thru
     }
 }
@@ -502,22 +465,16 @@ void   gcpu_get_tr_reg_layered(
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-    if (base)
-    {
+    if (base) {
         *base = vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_TR_BASE );
     }
-
-    if (limit)
-    {
+    if (limit) {
         *limit = (UINT32)vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_TR_LIMIT );
     }
 }
 
-void   gcpu_set_tr_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64                         base,
-                             UINT32                         limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_set_tr_reg_layered(const GUEST_CPU_HANDLE gcpu, UINT64 base,
+                             UINT32 limit, VMCS_LEVEL  level )
 {
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
 
@@ -529,64 +486,45 @@ void   gcpu_set_tr_reg_layered(
 #endif
 
 #ifdef INCLUDE_UNUSED_CODE
-void   gcpu_get_ldt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64*                        base,
-                             UINT32*                        limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_get_ldt_reg_layered(const GUEST_CPU_HANDLE  gcpu, UINT64* base,
+                             UINT32* limit, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-    if (base)
-    {
+    if (base) {
         *base = vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_LDTR_BASE );
     }
-
-    if (limit)
-    {
+    if (limit) {
         *limit = (UINT32)vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_LDTR_LIMIT );
     }
 }
 
-void   gcpu_set_ldt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64                         base,
-                             UINT32                         limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_set_ldt_reg_layered(const GUEST_CPU_HANDLE gcpu, UINT64 base,
+                             UINT32 limit, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
 
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-
     vmcs_write( vmcs, VMCS_GUEST_LDTR_BASE, base );
     vmcs_write( vmcs, VMCS_GUEST_LDTR_LIMIT, limit );
 }
 #endif
 
-void   gcpu_get_gdt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64*                        base,
-                             UINT32*                        limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_get_gdt_reg_layered( const GUEST_CPU_HANDLE gcpu, UINT64* base,
+                                UINT32* limit, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-    if (base)
-    {
+    if (base) {
         *base = vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_GDTR_BASE );
     }
-
-    if (limit)
-    {
+    if (limit) {
         *limit = (UINT32)vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_GDTR_LIMIT );
     }
 }
 
-void   gcpu_set_gdt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64                         base,
-                             UINT32                         limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_set_gdt_reg_layered(const GUEST_CPU_HANDLE gcpu, UINT64 base,
+                                UINT32 limit, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
 
@@ -604,70 +542,52 @@ void   gcpu_get_idt_reg_layered(
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-    if (base)
-    {
+    if (base) {
         *base = vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_IDTR_BASE );
     }
-
-    if (limit)
-    {
+    if (limit) {
         *limit = (UINT32)vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_IDTR_LIMIT );
     }
 }
 
-void   gcpu_set_idt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64                         base,
-                             UINT32                         limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_set_idt_reg_layered(const GUEST_CPU_HANDLE gcpu, UINT64 base,
+                             UINT32  limit, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
 
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-
     vmcs_write( vmcs, VMCS_GUEST_IDTR_BASE, base );
     vmcs_write( vmcs, VMCS_GUEST_IDTR_LIMIT, limit );
 }
 
-UINT64 gcpu_get_debug_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_DEBUG_REGISTERS      reg,
-                              VMCS_LEVEL                    level )
+UINT64 gcpu_get_debug_reg_layered(const GUEST_CPU_HANDLE gcpu,
+                              VMM_IA32_DEBUG_REGISTERS reg, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     VMM_ASSERT( reg < IA32_REG_DEBUG_COUNT );
 
-    if (reg == IA32_REG_DR7)
-    {
+    if (reg == IA32_REG_DR7) {
         return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_DR7 );
     }
-    else
-    {
-        if (!GET_DEBUG_REGS_CACHED_FLAG (gcpu))
-        {
+    else {
+        if (!GET_DEBUG_REGS_CACHED_FLAG (gcpu)) {
             cache_debug_registers( gcpu );
         }
         return gcpu->save_area.debug.reg[ reg ];
     }
 }
 
-void gcpu_set_debug_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_DEBUG_REGISTERS      reg,
-                              UINT64                        value,
-                              VMCS_LEVEL                    level )
+void gcpu_set_debug_reg_layered(const GUEST_CPU_HANDLE gcpu, VMM_IA32_DEBUG_REGISTERS reg,
+                              UINT64 value, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     VMM_ASSERT( reg < IA32_REG_DEBUG_COUNT );
 
-    if (reg == IA32_REG_DR7)
-    {
+    if (reg == IA32_REG_DR7) {
         vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_DR7, value );
     }
-    else
-    {
-        if (!GET_DEBUG_REGS_CACHED_FLAG (gcpu))
-        {
+    else {
+        if (!GET_DEBUG_REGS_CACHED_FLAG (gcpu)) {
             cache_debug_registers( gcpu );
         }
         gcpu->save_area.debug.reg[ reg ] = value;
@@ -675,9 +595,8 @@ void gcpu_set_debug_reg_layered(
     }
 }
 
-UINT32 gcpu_get_interruptibility_state_layered(
-                                const GUEST_CPU_HANDLE        gcpu,
-                                VMCS_LEVEL                    level)
+UINT32 gcpu_get_interruptibility_state_layered(const GUEST_CPU_HANDLE gcpu,
+                                VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -731,43 +650,38 @@ UINT64 gcpu_get_pending_debug_exceptions_layered(
 }
 
 
-void gcpu_set_pending_debug_exceptions_layered(
-                                const GUEST_CPU_HANDLE        gcpu,
-                                UINT64                        value,
-                                VMCS_LEVEL                    level)
+void gcpu_set_pending_debug_exceptions_layered(const GUEST_CPU_HANDLE gcpu,
+                                UINT64 value, VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
     vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_PEND_DBE, value );
 }
 
-void gcpu_set_vmenter_control_layered(
-                                const GUEST_CPU_HANDLE        gcpu,
-                                VMCS_LEVEL                    level)
+void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu,
+                                      VMCS_LEVEL level)
 {
-	VM_ENTRY_CONTROLS  entry_ctrl_mask;
+    VM_ENTRY_CONTROLS  entry_ctrl_mask;
     UINT64 value;
 
-	VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
+    VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-	/*IA Manual 3B Appendix G.6 - On processors that support UG
-	  VM exits store the value of IA32_EFER.LMA into the “IA-32e
-	  mode guest” VM-entry control  
-	*/
-	value = gcpu_get_msr_reg( gcpu, IA32_VMM_MSR_EFER);
+    /*IA Manual 3B Appendix G.6 - On processors that support UG
+      VM exits store the value of IA32_EFER.LMA into the “IA-32e
+      mode guest” VM-entry control  
+    */
+    value = gcpu_get_msr_reg( gcpu, IA32_VMM_MSR_EFER);
     entry_ctrl_mask.Uint32 = 0;
     entry_ctrl_mask.Bits.Ia32eModeGuest = 1;
-	vmcs_update(vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ),
-						VMCS_ENTER_CONTROL_VECTOR,
-						(value & EFER_LMA) ? UINT64_ALL_ONES : 0,
-						(UINT64) entry_ctrl_mask.Uint32);
+    vmcs_update(vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ),
+                                        VMCS_ENTER_CONTROL_VECTOR,
+                                        (value & EFER_LMA) ? UINT64_ALL_ONES : 0,
+                                        (UINT64) entry_ctrl_mask.Uint32);
 }
 
 static
-BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index,
-                                     IN IA32_VMX_MSR_ENTRY* list,
-                                     IN UINT32 count,
-                                     OUT UINT64* value) {
+BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, IN IA32_VMX_MSR_ENTRY* list,
+                                     IN UINT32 count, OUT UINT64* value) {
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
     }
@@ -786,10 +700,8 @@ BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index,
 }
 
 static
-BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index,
-                                   IN UINT64 value,
-                                   IN IA32_VMX_MSR_ENTRY* list,
-                                   IN UINT32 count) {
+BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index, IN UINT64 value,
+                                   IN IA32_VMX_MSR_ENTRY* list, IN UINT32 count) {
 
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
@@ -812,10 +724,8 @@ BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index,
  * The input reg of index value of MSR must be less than the number of element
  * in g_msr_2_vmcs and g_msr_2_index. 
  */
-UINT64 gcpu_get_msr_reg_internal_layered(
-                              const GUEST_CPU_HANDLE            gcpu,
-                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              VMCS_LEVEL                        level ) {
+UINT64 gcpu_get_msr_reg_internal_layered(const GUEST_CPU_HANDLE gcpu,
+                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg, VMCS_LEVEL level ) {
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
     UINT64 vmexit_store_msr_list_addr;
     UINT32 vmexit_store_msr_list_count;
@@ -824,19 +734,18 @@ UINT64 gcpu_get_msr_reg_internal_layered(
     VM_EXIT_CONTROLS may1_vm_exit_ctrl = vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl;
 
     VMM_ASSERT(gcpu);
-	VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs) &&
-	                   reg < NELEMENTS(g_msr_2_index)));
+    VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs) &&
+                       reg < NELEMENTS(g_msr_2_index)));
 
-	if (((g_msr_2_vmcs[reg] == VMCS_GUEST_DEBUG_CONTROL) && (may1_vm_exit_ctrl.Bits.SaveDebugControls == 1)) ||
-			((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_ESP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
-			((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_EIP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
-			((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_CS) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
-			((g_msr_2_vmcs[reg] == VMCS_GUEST_EFER) && (may1_vm_exit_ctrl.Bits.SaveEfer == 1)) ||
-			((g_msr_2_vmcs[reg] == VMCS_GUEST_PAT) && (may1_vm_exit_ctrl.Bits.SavePat == 1)) ||
-			((g_msr_2_vmcs[reg] == VMCS_GUEST_IA32_PERF_GLOBAL_CTRL) && (may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL == 1))) {
-
-		return vmcs_read( vmcs, g_msr_2_vmcs[reg] );
-	}
+    if (((g_msr_2_vmcs[reg] == VMCS_GUEST_DEBUG_CONTROL) && (may1_vm_exit_ctrl.Bits.SaveDebugControls == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_ESP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_EIP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_CS) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_EFER) && (may1_vm_exit_ctrl.Bits.SaveEfer == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_PAT) && (may1_vm_exit_ctrl.Bits.SavePat == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_IA32_PERF_GLOBAL_CTRL) && (may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL == 1))) {
+        return vmcs_read( vmcs, g_msr_2_vmcs[reg] );
+    }
 
     vmexit_store_msr_list_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
     vmexit_store_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_COUNT);
@@ -873,7 +782,7 @@ UINT64 gcpu_get_msr_reg_internal_layered(
 {
     VMM_ASSERT(gcpu);
 
-	VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs)));
+        VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs)));
     if (reg == IA32_VMM_MSR_EFER)
     {
         VMM_ASSERT(level == VMCS_MERGED);
@@ -889,10 +798,9 @@ UINT64 gcpu_get_msr_reg_internal_layered(
     }
 }
 */
-UINT64 gcpu_get_msr_reg_layered(
-                              const GUEST_CPU_HANDLE            gcpu,
+UINT64 gcpu_get_msr_reg_layered(const GUEST_CPU_HANDLE gcpu,
                               VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              VMCS_LEVEL                        level )
+                              VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -900,10 +808,8 @@ UINT64 gcpu_get_msr_reg_layered(
 }
 
 
-UINT64 gcpu_get_msr_reg_by_index_layered(
-                              GUEST_CPU_HANDLE                  gcpu,
-                              UINT32                            msr_index,
-                              VMCS_LEVEL                        level) {
+UINT64 gcpu_get_msr_reg_by_index_layered( GUEST_CPU_HANDLE gcpu,
+                              UINT32 msr_index, VMCS_LEVEL level) {
     UINT32 i;
     UINT64 value = 0;
     BOOLEAN found = FALSE;
@@ -923,71 +829,64 @@ UINT64 gcpu_get_msr_reg_by_index_layered(
         }
     }
 
-	if (!found) {
-		vmenter_load_msr_list_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
-		vmenter_load_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
+    if (!found) {
+        vmenter_load_msr_list_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
+        vmenter_load_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
 
-		VMM_ASSERT(0 == vmenter_load_msr_list_count ||
-			ALIGN_BACKWARD((UINT64)vmenter_load_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmenter_load_msr_list_addr);
-
-
-		if ((level == VMCS_MERGED) ||
-			(gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
-				if ((vmenter_load_msr_list_count != 0) && (!hmm_hpa_to_hva(vmenter_load_msr_list_addr, (HVA*)&vmenter_load_msr_list_ptr))) {
-					VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA (gcpu = %P ; vmcs = %P; msr_index = 0x%X)\n", __FUNCTION__, vmenter_load_msr_list_addr, gcpu, vmcs, msr_index);
-					VMM_DEADLOOP();
-				}
-		}
-		else {
-			vmenter_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmenter_load_msr_list_addr;
-		}
-
-		found = gcpu_get_msr_value_from_list(msr_index, vmenter_load_msr_list_ptr, vmenter_load_msr_list_count, &value);
-		
-		if (!found) {
-			vmexit_store_msr_list_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
-			VMM_ASSERT(0 == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT) ||
-				ALIGN_BACKWARD((UINT64)vmexit_store_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmexit_store_msr_list_addr);
+        VMM_ASSERT(0 == vmenter_load_msr_list_count ||
+        ALIGN_BACKWARD((UINT64)vmenter_load_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmenter_load_msr_list_addr);
 
 
-			if (vmexit_store_msr_list_addr != vmenter_load_msr_list_addr) {
-				IA32_VMX_MSR_ENTRY* vmexit_store_load_msr_list_ptr = NULL;
-				UINT32 vmexit_store_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
+        if ((level == VMCS_MERGED) || (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
+            if ((vmenter_load_msr_list_count != 0) && (!hmm_hpa_to_hva(vmenter_load_msr_list_addr, (HVA*)&vmenter_load_msr_list_ptr))) {
+                VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA (gcpu = %P ; vmcs = %P; msr_index = 0x%X)\n", __FUNCTION__, vmenter_load_msr_list_addr, gcpu, vmcs, msr_index);
+                VMM_DEADLOOP();
+            }
+        }
+        else {
+            vmenter_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmenter_load_msr_list_addr;
+        }
 
-				if ((level == VMCS_MERGED) ||
-					(gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
-						if ((vmexit_store_msr_list_count != 0) && (!hmm_hpa_to_hva(vmexit_store_msr_list_addr, (HVA*)&vmexit_store_load_msr_list_ptr))) {
-							VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA\n", __FUNCTION__, vmexit_store_msr_list_addr);
-							VMM_DEADLOOP();
-						}
-				}
-				else {
-					vmexit_store_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmexit_store_msr_list_addr;
-				}
+        found = gcpu_get_msr_value_from_list(msr_index, vmenter_load_msr_list_ptr, vmenter_load_msr_list_count, &value);
+                
+        if (!found) {
+            vmexit_store_msr_list_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
+            VMM_ASSERT(0 == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT) ||
+            ALIGN_BACKWARD((UINT64)vmexit_store_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmexit_store_msr_list_addr);
 
-				found = gcpu_get_msr_value_from_list(msr_index, vmexit_store_load_msr_list_ptr, vmexit_store_msr_list_count, &value);
-		    }
-		}
-		if (!found) {
+            if (vmexit_store_msr_list_addr != vmenter_load_msr_list_addr) {
+                IA32_VMX_MSR_ENTRY* vmexit_store_load_msr_list_ptr = NULL;
+                UINT32 vmexit_store_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
+
+                if ((level == VMCS_MERGED) ||
+                    (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
+                    if ((vmexit_store_msr_list_count != 0) && (!hmm_hpa_to_hva(vmexit_store_msr_list_addr, (HVA*)&vmexit_store_load_msr_list_ptr))) {
+                        VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA\n", __FUNCTION__, vmexit_store_msr_list_addr);
+                        VMM_DEADLOOP();
+                    }
+                }
+                else {
+                    vmexit_store_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmexit_store_msr_list_addr;
+                }
+                found = gcpu_get_msr_value_from_list(msr_index, vmexit_store_load_msr_list_ptr, vmexit_store_msr_list_count, &value);
+            }
+        }
+        if (!found) {
             if ( msr_index == IA32_MSR_GS_BASE )
-			    return value = vmcs_read(vmcs, VMCS_GUEST_GS_BASE);
+                return value = vmcs_read(vmcs, VMCS_GUEST_GS_BASE);
             else if (msr_index == IA32_MSR_FS_BASE)
-			    return value = vmcs_read(vmcs, VMCS_GUEST_FS_BASE);
+                return value = vmcs_read(vmcs, VMCS_GUEST_FS_BASE);
 
-			value = hw_read_msr(msr_index);
-		}
-	}
-
+            value = hw_read_msr(msr_index);
+        }
+    }
     return value;
 }
 
-void gcpu_set_msr_reg_by_index_layered(
-                              GUEST_CPU_HANDLE                  gcpu,
-                              UINT32                            msr_index,
-                              UINT64                            value,
-                              VMCS_LEVEL                        level) {
+void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
+                              UINT64  value, VMCS_LEVEL level) {
     UINT32 i;
-	BOOLEAN found = FALSE;
+    BOOLEAN found = FALSE;
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
     UINT64 vmexit_store_msr_list_addr;
     UINT64 vmenter_load_msr_list_addr;
@@ -1004,52 +903,48 @@ void gcpu_set_msr_reg_by_index_layered(
         }
     }
 
-	if (!found) {
-		vmenter_load_msr_list_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
-		vmenter_load_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
+    if (!found) {
+        vmenter_load_msr_list_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
+        vmenter_load_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
+        VMM_ASSERT(0 == vmenter_load_msr_list_count ||
+        ALIGN_BACKWARD((UINT64)vmenter_load_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmenter_load_msr_list_addr);
 
+        if ((level == VMCS_MERGED) ||
+            (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
+            if ((vmenter_load_msr_list_count != 0) && (!hmm_hpa_to_hva(vmenter_load_msr_list_addr, (HVA*)&vmenter_load_msr_list_ptr))) {
+                VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA (gcpu = %P ; vmcs = %P; msr_index = 0x%X)\n", __FUNCTION__, vmenter_load_msr_list_addr, gcpu, vmcs, msr_index);
+                VMM_DEADLOOP();
+            }
+        }
+        else {
+            vmenter_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmenter_load_msr_list_addr;
+        }
 
-		VMM_ASSERT(0 == vmenter_load_msr_list_count ||
-			ALIGN_BACKWARD((UINT64)vmenter_load_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmenter_load_msr_list_addr);
+        gcpu_set_msr_value_in_list(msr_index, value, vmenter_load_msr_list_ptr, vmenter_load_msr_list_count);
 
+        vmexit_store_msr_list_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
+        VMM_ASSERT(0 == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT) ||
+        ALIGN_BACKWARD((UINT64)vmexit_store_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmexit_store_msr_list_addr);
 
-		if ((level == VMCS_MERGED) ||
-			(gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
-				if ((vmenter_load_msr_list_count != 0) && (!hmm_hpa_to_hva(vmenter_load_msr_list_addr, (HVA*)&vmenter_load_msr_list_ptr))) {
-					VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA (gcpu = %P ; vmcs = %P; msr_index = 0x%X)\n", __FUNCTION__, vmenter_load_msr_list_addr, gcpu, vmcs, msr_index);
-					VMM_DEADLOOP();
-				}
-		}
-		else {
-			vmenter_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmenter_load_msr_list_addr;
-		}
+        if (vmexit_store_msr_list_addr != vmenter_load_msr_list_addr) {
+            IA32_VMX_MSR_ENTRY* vmexit_store_load_msr_list_ptr = NULL;
+            UINT32 vmexit_store_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
 
-		gcpu_set_msr_value_in_list(msr_index, value, vmenter_load_msr_list_ptr, vmenter_load_msr_list_count);
+            if ((level == VMCS_MERGED) ||
+                (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
+                if ((vmexit_store_msr_list_count != 0) && (!hmm_hpa_to_hva(vmexit_store_msr_list_addr, (HVA*)&vmexit_store_load_msr_list_ptr))) {
+                    VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA\n", __FUNCTION__, vmexit_store_msr_list_addr);
+                    VMM_DEADLOOP();
+                }
+            }
+            else {
+                vmexit_store_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmexit_store_msr_list_addr;
+            }
 
-		vmexit_store_msr_list_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
-		VMM_ASSERT(0 == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT) ||
-			ALIGN_BACKWARD((UINT64)vmexit_store_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmexit_store_msr_list_addr);
-
-		if (vmexit_store_msr_list_addr != vmenter_load_msr_list_addr) {
-			IA32_VMX_MSR_ENTRY* vmexit_store_load_msr_list_ptr = NULL;
-			UINT32 vmexit_store_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
-
-			if ((level == VMCS_MERGED) ||
-				(gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
-					if ((vmexit_store_msr_list_count != 0) && (!hmm_hpa_to_hva(vmexit_store_msr_list_addr, (HVA*)&vmexit_store_load_msr_list_ptr))) {
-						VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA\n", __FUNCTION__, vmexit_store_msr_list_addr);
-						VMM_DEADLOOP();
-					}
-			}
-			else {
-				vmexit_store_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmexit_store_msr_list_addr;
-			}
-
-			gcpu_set_msr_value_in_list(msr_index, value, vmexit_store_load_msr_list_ptr, vmexit_store_msr_list_count);
-		}
-	}
-    if (!found)
-    {
+            gcpu_set_msr_value_in_list(msr_index, value, vmexit_store_load_msr_list_ptr, vmexit_store_msr_list_count);
+        }
+    }
+    if (!found) {
             hw_write_msr(msr_index, value);
     }
 }
@@ -1058,11 +953,8 @@ void gcpu_set_msr_reg_by_index_layered(
  * The input reg of index value of MSR must be less than the number of element
  * in g_msr_2_vmcs and g_msr_2_index. 
  */
-void gcpu_set_msr_reg_layered(
-                              GUEST_CPU_HANDLE                  gcpu,
-                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              UINT64                            value,
-                              VMCS_LEVEL                        level ) {
+void gcpu_set_msr_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
+                              UINT64 value, VMCS_LEVEL level ) {
 
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
     UINT64 vmexit_store_msr_list_addr;
@@ -1072,15 +964,14 @@ void gcpu_set_msr_reg_layered(
     VM_EXIT_CONTROLS may1_vm_exit_ctrl = vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl;
 
     VMM_ASSERT(gcpu);
-	VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs) &&
-	                   reg < NELEMENTS(g_msr_2_index)));
+    VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs) &&
+                   reg < NELEMENTS(g_msr_2_index)));
 
 
     if (reg == IA32_VMM_MSR_EFER) {
         SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
 
-        if (level != VMCS_LEVEL_1)
-        {
+        if (level != VMCS_LEVEL_1) {
             /*
             ** If EFER is changed, update VMCS_ENTER_CONTROL_VECTOR.Ia32eModeGuest
             ** accordingly. It is not done for Lvl-1 in order not to hide
@@ -1091,47 +982,43 @@ void gcpu_set_msr_reg_layered(
             entry_ctrl_mask.Bits.Ia32eModeGuest = 1;
 
             // Update IA32e and LMA based on LME (since PG is always 1)
-			if (!IS_MODE_UNRESTRICTED_GUEST(gcpu)) {
-				vmcs_update(vmcs,
-                        VMCS_ENTER_CONTROL_VECTOR,
+            if (!IS_MODE_UNRESTRICTED_GUEST(gcpu)) {
+                vmcs_update(vmcs, VMCS_ENTER_CONTROL_VECTOR,
                         (value & EFER_LME) ? UINT64_ALL_ONES : 0 ,
                         (UINT64) entry_ctrl_mask.Uint32);
-				/* IA Manual 3B: 27.9.4
-				If the “load IA32_EFER” VM-entry control is 1, the value of 
-				the LME and LMA bits in the IA32_EFER field in the guest-state
-				area must be the value of the “IA-32e-mode guest” VM-exit 
-				control. Otherwise, the VM entry fails. */
-		        if (value & EFER_LME)
-		            value |= EFER_LMA;
-		        else
-		            value &= ~EFER_LMA;
+                /* IA Manual 3B: 27.9.4
+                    If the “load IA32_EFER” VM-entry control is 1, the value of 
+                    the LME and LMA bits in the IA32_EFER field in the guest-state
+                    area must be the value of the “IA-32e-mode guest” VM-exit 
+                    control. Otherwise, the VM entry fails. */
+                if (value & EFER_LME)
+                    value |= EFER_LMA;
+                else
+                    value &= ~EFER_LMA;
 
-			}
+            }
         }
     }
 
     if (((g_msr_2_vmcs[reg] == VMCS_GUEST_DEBUG_CONTROL) && (may1_vm_exit_ctrl.Bits.SaveDebugControls == 1)) ||
-    		((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_ESP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
-    		((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_EIP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
-    		((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_CS) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
-    		((g_msr_2_vmcs[reg] == VMCS_GUEST_EFER) && (may1_vm_exit_ctrl.Bits.SaveEfer == 1)) ||
-    		((g_msr_2_vmcs[reg] == VMCS_GUEST_PAT) && (may1_vm_exit_ctrl.Bits.SavePat == 1)) ||
-    		((g_msr_2_vmcs[reg] == VMCS_GUEST_IA32_PERF_GLOBAL_CTRL) && (may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL == 1))) {
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_ESP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_EIP) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_SYSENTER_CS) && (may1_vm_exit_ctrl.Bits.SaveSysEnterMsrs == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_EFER) && (may1_vm_exit_ctrl.Bits.SaveEfer == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_PAT) && (may1_vm_exit_ctrl.Bits.SavePat == 1)) ||
+        ((g_msr_2_vmcs[reg] == VMCS_GUEST_IA32_PERF_GLOBAL_CTRL) && (may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL == 1))) {
 
-    	vmcs_write( vmcs, g_msr_2_vmcs[reg], value );
-    	return;
+        vmcs_write( vmcs, g_msr_2_vmcs[reg], value );
+        return;
     }
 
     vmenter_load_msr_list_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
     vmenter_load_msr_list_count = (UINT32)vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT);
 
-
     VMM_ASSERT(0 == vmenter_load_msr_list_count ||
-        ALIGN_BACKWARD((UINT64)vmenter_load_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmenter_load_msr_list_addr);
+    ALIGN_BACKWARD((UINT64)vmenter_load_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmenter_load_msr_list_addr);
 
-
-    if ((level == VMCS_MERGED) ||
-        (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
+    if ((level == VMCS_MERGED) || (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE)) {
         if ((vmenter_load_msr_list_count != 0) && (!hmm_hpa_to_hva(vmenter_load_msr_list_addr, (HVA*)&vmenter_load_msr_list_ptr))) {
             VMM_LOG(mask_anonymous, level_trace,"%s: Failed to translate HPA %P to HVA (gcpu = %P ; vmcs = %P; reg = %d)\n", __FUNCTION__, vmenter_load_msr_list_addr, gcpu, vmcs, reg);
             VMM_DEADLOOP();
@@ -1149,7 +1036,7 @@ void gcpu_set_msr_reg_layered(
 
     vmexit_store_msr_list_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
     VMM_ASSERT(0 == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_COUNT) ||
-            ALIGN_BACKWARD((UINT64)vmexit_store_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmexit_store_msr_list_addr);
+    ALIGN_BACKWARD((UINT64)vmexit_store_msr_list_addr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64)vmexit_store_msr_list_addr);
 
     if (vmexit_store_msr_list_addr != vmenter_load_msr_list_addr) {
         IA32_VMX_MSR_ENTRY* vmexit_store_load_msr_list_ptr = NULL;
@@ -1178,7 +1065,7 @@ void gcpu_set_msr_reg_layered(
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
-	VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs)));
+        VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs)));
     if (reg == IA32_VMM_MSR_EFER)
     {
         VMM_ASSERT(level == VMCS_MERGED);
@@ -1199,6 +1086,7 @@ void gcpu_skip_guest_instruction( GUEST_CPU_HANDLE gcpu )
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, VMCS_MERGED );
     UINT64 inst_length = vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
     UINT64 rip         = vmcs_read(vmcs, VMCS_GUEST_RIP);
+
     vmcs_write(vmcs, VMCS_GUEST_RIP, rip + inst_length);
     report_uvmm_event(UVMM_EVENT_SINGLE_STEPPING_CHECK, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
 }
@@ -1277,8 +1165,7 @@ BOOLEAN gcpu_get_32_bit_pdpt(GUEST_CPU_HANDLE gcpu, void* pdpt_ptr) {
     HVA pdpt_hva;
     UINT32 i;
 
-    if (!IS_MODE_UNRESTRICTED_GUEST(gcpu))
-    {
+    if (!IS_MODE_UNRESTRICTED_GUEST(gcpu)) {
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT(gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0) & CR0_PG);
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -1341,7 +1228,7 @@ void gcpu_assign_timer(GUEST_CPU_HANDLE gcpu, void *timer)
 #pragma pack(1)
 /// ARBTYE format
 typedef union arch_arbyte_s {
-	UINT32 as_uint32;
+        UINT32 as_uint32;
     struct {
         UINT32 type:4;                 /* bits 3:0   */
         UINT32 s_bit:1;                /* bit  4     */
@@ -1374,19 +1261,16 @@ static void arch_make_segreg_real_mode_compliant(
     BOOLEAN g_must_be_one = FALSE;
 
     // if LDTR points to NULL entry, mark as unusable
-    if (p_segreg->selector < 8 && IA32_SEG_LDTR == reg_id)
-    {
+    if (p_segreg->selector < 8 && IA32_SEG_LDTR == reg_id) {
         p_segreg->arbyte.bits.null_bit = 1;
     }
 
     // TR and CS must be usable !!!
-    if (IA32_SEG_TR == reg_id || IA32_SEG_CS == reg_id)
-    {
+    if (IA32_SEG_TR == reg_id || IA32_SEG_CS == reg_id) {
         p_segreg->arbyte.bits.null_bit = 0;
     }
 
-    if (1 == p_segreg->arbyte.bits.null_bit)
-    {
+    if (1 == p_segreg->arbyte.bits.null_bit) {
         return;
     }
 
@@ -1418,8 +1302,7 @@ static void arch_make_segreg_real_mode_compliant(
     else
         p_segreg->arbyte.bits.g_bit = 0;
 
-    switch (reg_id)
-    {
+    switch (reg_id) {
     case IA32_SEG_CS:
         p_segreg->arbyte.bits.type = 0xB;   // Execute/Read, accessed
         p_segreg->arbyte.bits.s_bit = 1;
@@ -1427,7 +1310,7 @@ static void arch_make_segreg_real_mode_compliant(
         break;
 
     case IA32_SEG_SS:
-	case IA32_SEG_DS:
+        case IA32_SEG_DS:
     case IA32_SEG_ES:
     case IA32_SEG_FS:
     case IA32_SEG_GS:
@@ -1467,11 +1350,7 @@ void make_segreg_hw_real_mode_compliant(
 
     arch_make_segreg_real_mode_compliant(&segreg, reg_id);
 
-    gcpu_set_segment_reg(gcpu,
-                              reg_id,
-                              segreg.selector,
-                              segreg.base,
-                              segreg.limit,
-                              segreg.arbyte.as_uint32);
+    gcpu_set_segment_reg(gcpu, reg_id, segreg.selector,
+                         segreg.base, segreg.limit, segreg.arbyte.as_uint32);
 }
 #pragma warning( pop )

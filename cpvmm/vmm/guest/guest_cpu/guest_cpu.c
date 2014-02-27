@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_C)
@@ -56,9 +56,7 @@ static GUEST_CPU_HANDLE     g_gcpus       = NULL;// list of all guest cpus
 GUEST_CPU_SAVE_AREA** g_guest_regs_save_area = NULL;
 static UINT32        g_host_cpu_count       = 0;
 
-CLI_CODE(
-    static void gcpu_install_show_service(void);
-)
+CLI_CODE( static void gcpu_install_show_service(void);)
 
 // ---------------------------- internal funcs  -----------------------------
 
@@ -78,8 +76,7 @@ INLINE
 GUEST_CPU_HANDLE global_gcpu_next( GLOBAL_GUEST_CPU_ITERATOR* ctx )
 {
     GUEST_CPU_HANDLE gcpu;
-    if(ctx == NULL || *ctx == NULL)
-    {
+    if(ctx == NULL || *ctx == NULL) {
         return NULL;
     }
     gcpu = *ctx;
@@ -94,8 +91,7 @@ void cache_debug_registers( const GUEST_CPU* gcpu )
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
 
-    if (GET_DEBUG_REGS_CACHED_FLAG( vgcpu ))
-    {
+    if (GET_DEBUG_REGS_CACHED_FLAG( vgcpu )) {
         return;
     }
 
@@ -107,7 +103,6 @@ void cache_debug_registers( const GUEST_CPU* gcpu )
     vgcpu->save_area.debug.reg[IA32_REG_DR3] = hw_read_dr(3);
     // dr4 and dr5 are reserved
     vgcpu->save_area.debug.reg[IA32_REG_DR6] = hw_read_dr(6);
-
 }
 
 #ifdef INCLUDE_UNUSED_CODE
@@ -116,8 +111,7 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu )
     // modified without cached is possible for initial start
     CLR_DEBUG_REGS_MODIFIED_FLAG(gcpu);
 
-    if (! GET_DEBUG_REGS_CACHED_FLAG( gcpu ))
-    {
+    if (! GET_DEBUG_REGS_CACHED_FLAG( gcpu )) {
         return;
     }
 
@@ -138,13 +132,10 @@ void cache_fx_state( const GUEST_CPU* gcpu )
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
 
-    if (GET_FX_STATE_CACHED_FLAG( vgcpu ))
-    {
+    if (GET_FX_STATE_CACHED_FLAG( vgcpu )) {
         return;
     }
-
     SET_FX_STATE_CACHED_FLAG(vgcpu);
-
     hw_fxsave( vgcpu->save_area.fxsave_area );
 }
 
@@ -154,11 +145,9 @@ void restore_fx_state( GUEST_CPU* gcpu )
     // modified without cached is possible for initial start
     CLR_FX_STATE_MODIFIED_FLAG(gcpu);
 
-    if (! GET_FX_STATE_CACHED_FLAG( gcpu ))
-    {
+    if (! GET_FX_STATE_CACHED_FLAG( gcpu )) {
         return;
     }
-
     hw_fxrestore( gcpu->save_area.fxsave_area );
 }
 #endif
@@ -236,9 +225,7 @@ void gcpu_manager_init( UINT16 host_cpu_count )
     vmcs_hw_init();
     vmcs_manager_init();
 
-    CLI_CODE(
-    gcpu_install_show_service();
-    )
+    CLI_CODE( gcpu_install_show_service();)
 }
 
 GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
@@ -248,11 +235,9 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     VMM_STATUS  status;
 
     /* ensure that this vcpu yet not allocated */
-    for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx))
-    {
+    for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx)) {
         if ((gcpu->vcpu.guest_id     == vcpu.guest_id) &&
-            (gcpu->vcpu.guest_cpu_id == vcpu.guest_cpu_id))
-        {
+            (gcpu->vcpu.guest_cpu_id == vcpu.guest_cpu_id)) {
             VMM_LOG(mask_anonymous, level_trace,"The CPU %d for the Guest %d was already allocated.\n",
                      vcpu.guest_cpu_id, vcpu.guest_id);
             VMM_ASSERT(FALSE);
@@ -310,11 +295,9 @@ GUEST_CPU_HANDLE gcpu_state( const VIRTUAL_CPU_ID* vcpu )
     GUEST_CPU_HANDLE gcpu = NULL;
     GLOBAL_GUEST_CPU_ITERATOR ctx;
 
-    for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx))
-    {
+    for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx)) {
         if ((gcpu->vcpu.guest_id     == vcpu->guest_id) &&
-            (gcpu->vcpu.guest_cpu_id == vcpu->guest_cpu_id))
-        {// found guest cpu
+            (gcpu->vcpu.guest_cpu_id == vcpu->guest_cpu_id)) {  // found guest cpu
             return gcpu;
         }
     }
@@ -325,29 +308,24 @@ GUEST_CPU_HANDLE gcpu_state( const VIRTUAL_CPU_ID* vcpu )
 // get VMCS object to work directly
 VMCS_OBJECT* gcpu_get_vmcs( GUEST_CPU_HANDLE  gcpu )
 {
-    if(gcpu == NULL)
-    {
+    if(gcpu == NULL) {
         return NULL;
     }
-
     return vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, VMCS_MERGED);
 //    return gcpu->vmcs;
 }
 
 VMCS_HIERARCHY * gcpu_get_vmcs_hierarchy( GUEST_CPU_HANDLE  gcpu )
 {
-    if(gcpu == NULL)
-    {
+    if(gcpu == NULL) {
         return NULL;
     }
-
     return &gcpu->vmcs_hierarchy;
 }
 
 VMCS_OBJECT* gcpu_get_vmcs_layered( GUEST_CPU_HANDLE  gcpu, VMCS_LEVEL level)
 {
-    if(gcpu == NULL)
-    {
+    if(gcpu == NULL) {
         return NULL;
     }
     return vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level);
@@ -392,11 +370,9 @@ void gcpu_do_use_host_page_tables(GUEST_CPU_HANDLE gcpu, BOOLEAN use)
 //------------------------------------------------------------------------------
 const VIRTUAL_CPU_ID* guest_vcpu( const GUEST_CPU_HANDLE gcpu )
 {
-    if(gcpu == NULL)
-    {
+    if(gcpu == NULL) {
         return NULL;
     }
-
     return &gcpu->vcpu;
 }
 
@@ -407,11 +383,9 @@ const VIRTUAL_CPU_ID* guest_vcpu( const GUEST_CPU_HANDLE gcpu )
 //------------------------------------------------------------------------------
 GUEST_HANDLE gcpu_guest_handle( const GUEST_CPU_HANDLE gcpu )
 {
-    if(gcpu == NULL)
-    {
+    if(gcpu == NULL) {
         return NULL;
     }
-
     return gcpu->guest_handle;
 }
 
@@ -423,18 +397,14 @@ GUEST_HANDLE gcpu_guest_handle( const GUEST_CPU_HANDLE gcpu )
 //------------------------------------------------------------------------------
 EMULATOR_HANDLE gcpu_emulator_handle( GUEST_CPU_HANDLE gcpu )
 {
-    if(gcpu == NULL)
-    {
+    if(gcpu == NULL) {
         return NULL;
     }
-
-    if (gcpu->emulator_handle == NULL)
-    {
+    if (gcpu->emulator_handle == NULL) {
         gcpu->emulator_handle = emul_create_handle( gcpu );
         VMM_ASSERT(gcpu->emulator_handle);
         emul_intialize(gcpu->emulator_handle);
     }
-
     return gcpu->emulator_handle;
 }
 
@@ -442,8 +412,8 @@ EMULATOR_HANDLE gcpu_emulator_handle( GUEST_CPU_HANDLE gcpu )
 BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
 {
     BOOLEAN recognized = emulator_is_running_as_guest();
-    if (recognized)
-    {
+
+    if (recognized) {
         // call emulator handler
         GUEST_CPU_HANDLE gcpu = scheduler_current_gcpu();
         VMM_ASSERT(gcpu && IS_MODE_EMULATOR(gcpu));
@@ -473,21 +443,18 @@ void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
 
     VMM_ASSERT( gcpu );
 
-    if (! initial_state)
-    {
+    if (! initial_state) {
         return;
     }
 
-    if (initial_state->size_of_this_struct != sizeof( VMM_GUEST_CPU_STARTUP_STATE ))
-    {
+    if (initial_state->size_of_this_struct != sizeof( VMM_GUEST_CPU_STARTUP_STATE )) {
         // wrong state
         VMM_LOG(mask_anonymous, level_trace,"gcpu_initialize() called with unknown structure\n");
         VMM_DEADLOOP();
         return;
     }
 
-    if (initial_state->version_of_this_struct != VMM_GUEST_CPU_STARTUP_STATE_VERSION)
-    {
+    if (initial_state->version_of_this_struct != VMM_GUEST_CPU_STARTUP_STATE_VERSION) {
         // wrong version
         VMM_LOG(mask_anonymous, level_trace,
             "gcpu_initialize() called with non-compatible VMM_GUEST_CPU_STARTUP_STATE "
@@ -503,20 +470,17 @@ void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
     vmcs_set_launch_required( gcpu_get_vmcs(gcpu) );
 
     // init gp registers
-    for (idx = IA32_REG_RAX; idx < IA32_REG_GP_COUNT; ++idx)
-    {
+    for (idx = IA32_REG_RAX; idx < IA32_REG_GP_COUNT; ++idx) {
         gcpu_set_gp_reg( gcpu, (VMM_IA32_GP_REGISTERS)idx, initial_state->gp.reg[idx] );
     }
 
     // init xmm registers
-    for (idx = IA32_REG_XMM0; idx < IA32_REG_XMM_COUNT; ++idx)
-    {
+    for (idx = IA32_REG_XMM0; idx < IA32_REG_XMM_COUNT; ++idx) {
         gcpu_set_xmm_reg( gcpu, (VMM_IA32_XMM_REGISTERS)idx, initial_state->xmm.reg[idx] );
     }
 
     // init segment registers
-    for (idx = IA32_SEG_CS; idx < IA32_SEG_COUNT; ++idx)
-    {
+    for (idx = IA32_SEG_CS; idx < IA32_SEG_COUNT; ++idx) {
         gcpu_set_segment_reg( gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx,
                                    initial_state->seg.segment[idx].selector,
                                    initial_state->seg.segment[idx].base,
@@ -526,16 +490,15 @@ void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
     }
 
     // init control registers
-    for (idx = IA32_CTRL_CR0; idx < IA32_CTRL_COUNT; ++idx)
-    {
+    for (idx = IA32_CTRL_CR0; idx < IA32_CTRL_COUNT; ++idx) {
         gcpu_set_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, initial_state->control.cr[idx] );
         gcpu_set_guest_visible_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, initial_state->control.cr[idx] );
     }
 
     gcpu_set_gdt_reg( gcpu, initial_state->control.gdtr.base,
-                                 initial_state->control.gdtr.limit );
+                      initial_state->control.gdtr.limit );
     gcpu_set_idt_reg( gcpu, initial_state->control.idtr.base,
-                                 initial_state->control.idtr.limit );
+                      initial_state->control.idtr.limit );
 
     // init selected model-specific registers
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_DEBUGCTL,     initial_state->msr.msr_debugctl );
@@ -575,13 +538,11 @@ BOOLEAN gcpu_gva_to_gpa(GUEST_CPU_HANDLE gcpu, GVA gva, GPA* gpa)
         return TRUE;
     }
 
-    if (IS_FLAT_PT_INSTALLED(gcpu))
-    {
+    if (IS_FLAT_PT_INSTALLED(gcpu)) {
         *gpa = gva;
         return TRUE;
     }
-    else
-    {
+    else {
         res = pw_perform_page_walk(gcpu, gva, FALSE, FALSE, FALSE, FALSE, &gpa_tmp, &pfec_tmp);
         if (res == PW_RETVAL_SUCCESS) {
             *gpa = gpa_tmp;
@@ -599,8 +560,7 @@ BOOLEAN gcpu_gva_to_hva(GUEST_CPU_HANDLE gcpu, GVA gva, HVA* hva)
     UINT64 gpa;
     UINT64 hva_tmp;
 
-    if (!gcpu_gva_to_gpa(gcpu, gva, &gpa))
-    {
+    if (!gcpu_gva_to_gpa(gcpu, gva, &gpa)) {
         VMM_LOG(mask_uvmm, level_error,"%s: Failed to convert gva=%P to gpa\n", __FUNCTION__, gva);
         return FALSE;
     }

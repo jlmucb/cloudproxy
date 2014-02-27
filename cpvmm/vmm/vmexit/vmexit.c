@@ -333,8 +333,7 @@ void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
     VMM_ASSERT(level0_vmcs != NULL);
     hw_interlocked_increment((INT32*)&(guest_vmexit_control->vmexit_counter[reason]));
 
-    if ((guest_level == GUEST_LEVEL_1_SIMPLE) ||
-        (guest_level == GUEST_LEVEL_1_VMM)    ||
+    if ((guest_level == GUEST_LEVEL_1_SIMPLE) || (guest_level == GUEST_LEVEL_1_VMM) ||
         (vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level0_vmcs, (IA32_VMX_EXIT_BASIC_REASON)reason))) {
 #ifdef DEBUG
         // Check that in GUEST_LEVEL_1_SIMPLE and GUEST_LEVEL_1_VMM modes
@@ -495,13 +494,11 @@ void vmexit_handler_invoke(
 #ifdef API_NOT_USED
     tmsl_vmexit(gcpu);
 #endif
-    if (reason < Ia32VmxExitBasicReasonCount)
-    {
+    if (reason < Ia32VmxExitBasicReasonCount) {
         // Call top-down or bottom-up common handler;
         vmexit_classification_func[reason](gcpu, reason);
     }
-    else
-    {
+    else {
         VMM_LOG(mask_uvmm, level_trace,"Warning: Unknown VMEXIT reason(%d)\n", reason);
         vmexit_handler_default(gcpu);
     }
@@ -592,17 +589,14 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
         (((~((UINT32)cpuid_params.m_rdx)) & XCR0_Mask_high ) !=  (UINT32)(~cpuid_params.m_rdx & 
             gcpu->save_area.gp.reg[IA32_REG_RDX])) ||
         ((gcpu->save_area.gp.reg[IA32_REG_RAX] & 1) == 0) ||
-        ((gcpu->save_area.gp.reg[IA32_REG_RAX] & 0x6) == 0x4))
-    {
+        ((gcpu->save_area.gp.reg[IA32_REG_RAX] & 0x6) == 0x4)) {
         gcpu_inject_gp0(gcpu);
         return VMEXIT_HANDLED;
     }
 
     vmm_write_xcr(gcpu->save_area.gp.reg[IA32_REG_RCX],gcpu->save_area.gp.reg[IA32_REG_RDX],
         gcpu->save_area.gp.reg[IA32_REG_RAX]);
-
     gcpu_skip_guest_instruction(gcpu);
-
     return VMEXIT_HANDLED;
 
 }
@@ -701,8 +695,7 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
 
     VMM_DEBUG_CODE(
         if( reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterGuestState || 
-            reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterMsrLoading )
-        {
+            reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterMsrLoading ) {
             vmenter_failure_check_guest_state();
         }
     )
@@ -711,8 +704,7 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
     VMM_DEADLOOP(); // VTDBG
 #else
     if( reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterGuestState || 
-        reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterMsrLoading )
-    {
+        reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterMsrLoading ) {
         vmm_deadloop_internal(VMEXIT_C, __LINE__, gcpu);
         vmcs_restore_initial(gcpu);
 
@@ -878,9 +870,7 @@ void vmexit_common_handler(void)
 
     // finally process NMI injection
     NMI_DO_PROCESSING();
-
     gcpu_resume(next_gcpu);
-
 }
 
 static

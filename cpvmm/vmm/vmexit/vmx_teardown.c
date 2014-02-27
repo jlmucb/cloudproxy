@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMX_TEARDOWN_C)
@@ -89,48 +89,37 @@ static
 BOOLEAN vmam_hva_to_hpa(IN UINT64 hva, OUT UINT64* hpa);
 
 static
-void vmam_get_indices(IN UINT64 virtual_address,
-                      OUT UINT32* pml4te_index,
-                      OUT UINT32* pdpte_index,
-                      OUT UINT32* pde_index,
+void vmam_get_indices(IN UINT64 virtual_address, OUT UINT32* pml4te_index,
+                      OUT UINT32* pdpte_index, OUT UINT32* pde_index,
                       OUT UINT32* pte_index);
 
 static
-VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa,
-                                                                                     UINT32 entry_index);
+VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa, UINT32 entry_index);
  
 static
-void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val,
-                                                VMAM_PAE_LME_ENTRY* pentry);
+void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val, VMAM_PAE_LME_ENTRY* pentry);
 
 static
 UINT64 vmam_get_phys_addr(IN VMAM_PAE_LME_ENTRY* pentry);
 
 static
-void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry,
-                                                  IN UINT64 entry_hpa);
+void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry, IN UINT64 entry_hpa);
 
 static
-UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, 
-                                                  IN UINT32 pde_index, 
-                                              IN UINT32 pte_index,
-                                              IN UINT64 start_hpa);
+UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, IN UINT32 pde_index, 
+                              IN UINT32 pte_index, IN UINT64 start_hpa);
 
 static
-UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, 
-                                             IN UINT32 pte_index,
-                                             IN UINT64 start_hpa);
+UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, IN UINT32 pte_index,
+                             IN UINT64 start_hpa);
                                              
 static
-UINT64 vmam_create_pt(IN UINT32 pte_index,
-                              IN UINT64 start_hpa);
+UINT64 vmam_create_pt(IN UINT32 pte_index, IN UINT64 start_hpa);
 
 static 
-BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3,
-                                                IN UINT64 host_cr4,
-                                                                        IN UINT64 efer_value,
-                                                IN UINT64 start_hva,
-                                                IN UINT64 start_hpa);
+BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4,
+                                        IN UINT64 efer_value, IN UINT64 start_hva,
+                                        IN UINT64 start_hpa);
 
 // ---- externs ---- //
 extern void ITP_JMP_DEADLOOP(void);
@@ -146,8 +135,7 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
     vmm_teardown_data.nonce = vmm_teardown_params->nonce;
 
     if (!is_params_ok(gcpu, vmm_teardown_params, &state_hva) ||
-        !report_uvmm_event(UVMM_EVENT_VMM_TEARDOWN, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_teardown_data))
-    {
+        !report_uvmm_event(UVMM_EVENT_VMM_TEARDOWN, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_teardown_data)) {
         return FALSE;
     }
 
@@ -691,10 +679,8 @@ BOOLEAN vmam_add_to_host_page_table(IN GUEST_CPU_HANDLE gcpu, IN UINT64 start_gv
         return FALSE;
 
     for(i=0; i < num_pages; i++) {
-
         result = vmam_check_add_one_page_mem_map( host_cr3, host_cr4,
                 efer_value, start_gva + i * PAGE_4KB_SIZE, gpa + i * PAGE_4KB_SIZE);
-
         if(!result) {
             return result;
         }

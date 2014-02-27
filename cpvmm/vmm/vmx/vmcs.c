@@ -441,8 +441,7 @@ void vmcs_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value)
     // BEFORE_VMLAUNCH
     VMM_ASSERT(FIELD_IS_WRITEABLE(field_id));
     if (field_id < VMCS_FIELD_COUNT &&
-        (vmcs->skip_access_checking || FIELD_IS_WRITEABLE(field_id)))
-    {
+        (vmcs->skip_access_checking || FIELD_IS_WRITEABLE(field_id))) {
         vmcs->vmcs_write(vmcs, field_id, value);
     }
 }
@@ -612,21 +611,17 @@ static BOOLEAN get_enc_2_field_entry( UINT32 encoding, ENC_2_FIELD_ENTRY** entry
         VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P contains bits that assumed to be 0\n", encoding);
         return FALSE;
     }
-
     if (enc_type >= NUMBER_OF_ENCODING_TYPES) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P means that need more encoding types %P>=%P\n",
                     encoding, enc_type, NUMBER_OF_ENCODING_TYPES);
         return FALSE;
     }
-
     if (entry_idx >= MAX_ENCODINGS_OF_SAME_TYPE) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P means that need more entries per type %P>=%P\n",
                     encoding, entry_idx, MAX_ENCODINGS_OF_SAME_TYPE);
         return FALSE;
     }
-
     *entry = &(g_enc_2_field[ enc_type ][ entry_idx ]);
-
     return TRUE;
 }
 
@@ -642,21 +637,17 @@ static void init_enc_2_field_tables(void)
     // loop though all supported fields and fill the enc->field table
     for (cur_field = (VMCS_FIELD)0; cur_field < VMCS_FIELD_COUNT; ++cur_field) {
         enc = g_field_data + (UINT32)cur_field;
-
         if (NO_EXIST == enc->access) {
             continue;
         }
-
         ok = get_enc_2_field_entry( enc->encoding, &enc_2_field_entry );
         // BEFORE_VMLAUNCH
         VMM_ASSERT( ok );
         // BEFORE_VMLAUNCH
         VMM_ASSERT( FALSE == enc_2_field_entry->valid );
-
         enc_2_field_entry->valid    = TRUE;
         enc_2_field_entry->field_id = cur_field;
     }
-
 }
 
 VMCS_FIELD vmcs_get_field_id_by_encoding( UINT32 encoding, OPTIONAL BOOLEAN* is_HIGH_part )
@@ -673,8 +664,7 @@ VMCS_FIELD vmcs_get_field_id_by_encoding( UINT32 encoding, OPTIONAL BOOLEAN* is_
     }
 
     field = enc_2_field_entry->field_id;
-if (IS_ENCODING_HIGH_TYPE(encoding))
-    {
+    if (IS_ENCODING_HIGH_TYPE(encoding)) {
         if (SUPP_HIGH_ENC != g_field_data[field].supports_high_encoding) {
             VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P does not map to a known HIGH type encoding\n",
                         encoding);
@@ -752,7 +742,6 @@ void vmcs_print_all_filtered(
         if (field_desc->access == NO_EXIST) {
             continue;
         }
-
         if (strings_are_substrings(field_desc->name, num_of_filters, filters)) {
             value = vmcs_read(obj, (VMCS_FIELD)i);
             CLI_PRINT("%40s (0x%04X) = %P\n", field_desc->name, field_desc->encoding, value );
@@ -971,7 +960,7 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs,
     }
 
     if (new_msr_ptr != NULL) {
-	    new_msr_ptr->MsrIndex = msr_index;
+            new_msr_ptr->MsrIndex = msr_index;
             new_msr_ptr->Reserved = 0;
             new_msr_ptr->MsrData = value;
     }
@@ -1192,118 +1181,118 @@ BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu,
 // Save initial vmcs state for deadloop/asssert handler
 void vmcs_store_initial(GUEST_CPU_HANDLE gcpu, CPU_ID cpu_id)
 {
-	VMCS_FIELD	 field_id;
-	VMCS_OBJECT* vmcs;
-	UINT32       i, j, count;
-	UINT64       *initial_vmcs;
+        VMCS_FIELD       field_id;
+        VMCS_OBJECT* vmcs;
+        UINT32       i, j, count;
+        UINT64       *initial_vmcs;
 
-	count = NELEMENTS(g_control_fields)+NELEMENTS(g_guest_state_fields)+NELEMENTS(g_host_state_fields);
-	vmcs = gcpu_get_vmcs(gcpu);
+        count = NELEMENTS(g_control_fields)+NELEMENTS(g_guest_state_fields)+NELEMENTS(g_host_state_fields);
+        vmcs = gcpu_get_vmcs(gcpu);
 
-	if (g_initial_vmcs[cpu_id] == 0) {
-		g_initial_vmcs[cpu_id] = (UINT64)vmm_malloc(sizeof(UINT64) * count);
-	}
-	initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
-	if (initial_vmcs == NULL) {
+        if (g_initial_vmcs[cpu_id] == 0) {
+                g_initial_vmcs[cpu_id] = (UINT64)vmm_malloc(sizeof(UINT64) * count);
+        }
+        initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
+        if (initial_vmcs == NULL) {
         VMM_LOG(mask_anonymous, level_trace, "%s: Failed to allocate memory\n", __FUNCTION__);
-		return;
-	}
+                return;
+        }
 
-	j = 0;
-	// save control fields
-	for (i = 0; i < NELEMENTS(g_control_fields); i++) {
-		field_id = g_control_fields[i];
-		if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+        j = 0;
+        // save control fields
+        for (i = 0; i < NELEMENTS(g_control_fields); i++) {
+                field_id = g_control_fields[i];
+                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             initial_vmcs[j++] = vmcs_read(vmcs, field_id);
-		}
-	}
-	// save guest fields
-	for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
-		field_id = g_guest_state_fields[i];
-		if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+                }
+        }
+        // save guest fields
+        for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
+                field_id = g_guest_state_fields[i];
+                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             initial_vmcs[j++] = vmcs_read(vmcs, field_id);
-		}
-	}
-	// save host fields
-	for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
-		field_id = g_host_state_fields[i];
-		if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+                }
+        }
+        // save host fields
+        for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
+                field_id = g_host_state_fields[i];
+                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             initial_vmcs[j++] = vmcs_read(vmcs, field_id);
-		}
-	}
+                }
+        }
 }
 
 // Restore initial vmcs state for deadloop/asssert handler
 void vmcs_restore_initial(GUEST_CPU_HANDLE gcpu)
 {
-	VMCS_FIELD	 field_id;
-	VMCS_OBJECT* vmcs;
-	UINT32		 i, j;
-	UINT64		 *initial_vmcs;
-	CPU_ID		 cpu_id;
-	GUEST_HANDLE guest;
-	UINT64		 eptp;
+        VMCS_FIELD       field_id;
+        VMCS_OBJECT* vmcs;
+        UINT32           i, j;
+        UINT64           *initial_vmcs;
+        CPU_ID           cpu_id;
+        GUEST_HANDLE guest;
+        UINT64           eptp;
     UINT64 default_ept_root_table_hpa = 0;
     UINT32 default_ept_gaw = 0;
 
-	cpu_id = hw_cpu_id();
-	if (g_initial_vmcs[cpu_id] == 0)
-		return;
+        cpu_id = hw_cpu_id();
+        if (g_initial_vmcs[cpu_id] == 0)
+                return;
 
-	vmcs = gcpu_get_vmcs(gcpu);
-	initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
+        vmcs = gcpu_get_vmcs(gcpu);
+        initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
 
-	// write vmcs directly to HW
-	vmcs_sw_shadow_disable[cpu_id] = TRUE;
+        // write vmcs directly to HW
+        vmcs_sw_shadow_disable[cpu_id] = TRUE;
 
-	j = 0;
-	// restore control fields
-	for (i = 0; i < NELEMENTS(g_control_fields); i++) {
-		field_id = g_control_fields[i];
-		if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+        j = 0;
+        // restore control fields
+        for (i = 0; i < NELEMENTS(g_control_fields); i++) {
+                field_id = g_control_fields[i];
+                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
-		}
-	}
-	// restore guest fields
-	for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
-		field_id = g_guest_state_fields[i];
-		if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+                }
+        }
+        // restore guest fields
+        for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
+                field_id = g_guest_state_fields[i];
+                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
-		}
-	}
-	// restore host fields
-	for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
-		field_id = g_host_state_fields[i];
-		if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+                }
+        }
+        // restore host fields
+        for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
+                field_id = g_host_state_fields[i];
+                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
-		}
-	}
+                }
+        }
 
-	// Set EPTP to default EPT
-	guest = gcpu_guest_handle(gcpu);
-	ept_get_default_ept(guest, &default_ept_root_table_hpa, &default_ept_gaw);
-	eptp = ept_compute_eptp(guest, default_ept_root_table_hpa, default_ept_gaw);
-	vmcs_write(vmcs, VMCS_EPTP_ADDRESS, eptp);
+        // Set EPTP to default EPT
+        guest = gcpu_guest_handle(gcpu);
+        ept_get_default_ept(guest, &default_ept_root_table_hpa, &default_ept_gaw);
+        eptp = ept_compute_eptp(guest, default_ept_root_table_hpa, default_ept_gaw);
+        vmcs_write(vmcs, VMCS_EPTP_ADDRESS, eptp);
 }
 
 // required buffer byte size for control-532, guest-592, host-222
 // do not use malloc for tmp buffer, corrupted memory will trigger nested assert
 // causing deadloop handler to hang
-#define MAX_VMCS_BUF_SIZE	650
+#define MAX_VMCS_BUF_SIZE       650
 
 // format vmcs info and write to guest buffer
 static 
-void vmcs_dump_group(GUEST_CPU_HANDLE 	gcpu,
-		             const struct _VMCS_OBJECT* vmcs,
+void vmcs_dump_group(GUEST_CPU_HANDLE   gcpu,
+                             const struct _VMCS_OBJECT* vmcs,
                      const VMCS_FIELD* fields_to_print, 
                      UINT32 count,
                      UINT64 debug_gpa)
 {
-	char				buf[MAX_VMCS_BUF_SIZE], *bufptr;
-	UINT32				i;
-    UINT16				entry_count;
+        char                            buf[MAX_VMCS_BUF_SIZE], *bufptr;
+        UINT32                          i;
+    UINT16                              entry_count;
     const VMCS_ENCODING* field_desc;
-    VMCS_ENTRY 			entry;
+    VMCS_ENTRY                  entry;
 
     entry_count = 0;
 
@@ -1337,7 +1326,7 @@ void vmcs_dump_group(GUEST_CPU_HANDLE 	gcpu,
         VMM_LOG(mask_uvmm, level_error,
             "CPU%d: %s: Error: Could not copy vmcs message back to guest\n",
             hw_cpu_id(), __FUNCTION__);
-	}
+        }
 }
 
 
@@ -1357,9 +1346,9 @@ void vmcs_dump_all(GUEST_CPU_HANDLE gcpu)
         VMM_LOG(mask_uvmm, level_error, "%s: Error: Debug info exceeds guest buffer size\n",
             __FUNCTION__);
         return;
-	}
+        }
 
-	vmcs = gcpu_get_vmcs(gcpu);
+        vmcs = gcpu_get_vmcs(gcpu);
 
     // write control fields to guest buffer
     debug_gpa = g_debug_gpa + OFFSET_VMCS;
@@ -1377,106 +1366,106 @@ void vmcs_dump_all(GUEST_CPU_HANDLE gcpu)
 extern BOOLEAN ept_is_ept_supported(void);
 BOOLEAN vmm_get_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, VMM_GUEST_STATE GuestStateId, VMM_GUEST_STATE_VALUE *value)
 {
-	VMCS_OBJECT* vmcs;
-	VMCS_FIELD vmcs_field_id;
-	VM_ENTRY_CONTROLS vmentry_control;
+        VMCS_OBJECT* vmcs;
+        VMCS_FIELD vmcs_field_id;
+        VM_ENTRY_CONTROLS vmentry_control;
 
-	VMM_ASSERT(gcpu);
+        VMM_ASSERT(gcpu);
 
-	vmcs = gcpu_get_vmcs(gcpu);
-	VMM_ASSERT(vmcs);
+        vmcs = gcpu_get_vmcs(gcpu);
+        VMM_ASSERT(vmcs);
 
-	if (((UINT32) GuestStateId) > ((UINT32)(NUM_OF_VMM_GUEST_STATE - 1)))
-			return FALSE;
+        if (((UINT32) GuestStateId) > ((UINT32)(NUM_OF_VMM_GUEST_STATE - 1)))
+                        return FALSE;
 
-	if (GuestStateId < VMM_GUEST_CR0) {
-		value->value = gcpu_get_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)GuestStateId);
-	}
-	else if (GuestStateId == VMM_GUEST_RIP) {
-		value->value = gcpu_get_gp_reg(gcpu, IA32_REG_RIP);
-	}
-	else if (GuestStateId == VMM_GUEST_PAT) {
-		value->value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_PAT);
-	}
-	else if (GuestStateId == VMM_GUEST_EFER) {
-		value->value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER);
-	}
-	else if (GuestStateId == VMM_GUEST_CR8) {
-		value->value = gcpu_get_control_reg(gcpu, IA32_CTRL_CR8);
-	}
-	else if (GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL) {
-		vmentry_control.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_ENTER_CONTROL_VECTOR);
-		if(vmentry_control.Bits.Load_IA32_PERF_GLOBAL_CTRL) {
-			value->value = vmcs_read(vmcs, VMCS_GUEST_IA32_PERF_GLOBAL_CTRL);
-		}
-		else {
-			value->value = UINT64_ALL_ONES;
-		}
-	}
-	else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY) {
-		value->value = gcpu_get_interruptibility_state(gcpu);
-	}
-	else {
-		if ((GuestStateId == VMM_GUEST_PREEMPTION_TIMER) && ept_is_ept_supported())
-			vmcs_field_id = VMCS_PREEMPTION_TIMER;
-		else if ((GuestStateId >= VMM_GUEST_CR0) && (GuestStateId <= VMM_GUEST_SYSENTER_EIP))
-			vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_CR0 + VMCS_GUEST_CR0);
-		else if (ept_is_ept_supported() && (GuestStateId >= VMM_GUEST_PDPTR0) && (GuestStateId <= VMM_GUEST_PDPTR3))
-			vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_PDPTR0 + VMCS_GUEST_PDPTR0);
-		else
-			return FALSE;
-		value->value = vmcs_read(vmcs, vmcs_field_id);
-	}
+        if (GuestStateId < VMM_GUEST_CR0) {
+                value->value = gcpu_get_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)GuestStateId);
+        }
+        else if (GuestStateId == VMM_GUEST_RIP) {
+                value->value = gcpu_get_gp_reg(gcpu, IA32_REG_RIP);
+        }
+        else if (GuestStateId == VMM_GUEST_PAT) {
+                value->value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_PAT);
+        }
+        else if (GuestStateId == VMM_GUEST_EFER) {
+                value->value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER);
+        }
+        else if (GuestStateId == VMM_GUEST_CR8) {
+                value->value = gcpu_get_control_reg(gcpu, IA32_CTRL_CR8);
+        }
+        else if (GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL) {
+                vmentry_control.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_ENTER_CONTROL_VECTOR);
+                if(vmentry_control.Bits.Load_IA32_PERF_GLOBAL_CTRL) {
+                        value->value = vmcs_read(vmcs, VMCS_GUEST_IA32_PERF_GLOBAL_CTRL);
+                }
+                else {
+                        value->value = UINT64_ALL_ONES;
+                }
+        }
+        else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY) {
+                value->value = gcpu_get_interruptibility_state(gcpu);
+        }
+        else {
+                if ((GuestStateId == VMM_GUEST_PREEMPTION_TIMER) && ept_is_ept_supported())
+                        vmcs_field_id = VMCS_PREEMPTION_TIMER;
+                else if ((GuestStateId >= VMM_GUEST_CR0) && (GuestStateId <= VMM_GUEST_SYSENTER_EIP))
+                        vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_CR0 + VMCS_GUEST_CR0);
+                else if (ept_is_ept_supported() && (GuestStateId >= VMM_GUEST_PDPTR0) && (GuestStateId <= VMM_GUEST_PDPTR3))
+                        vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_PDPTR0 + VMCS_GUEST_PDPTR0);
+                else
+                        return FALSE;
+                value->value = vmcs_read(vmcs, vmcs_field_id);
+        }
 
-	return TRUE;
+        return TRUE;
 }
 
 BOOLEAN vmm_set_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, VMM_GUEST_STATE GuestStateId, VMM_GUEST_STATE_VALUE value)
 {
-	VMCS_OBJECT* vmcs;
-	VMCS_FIELD vmcs_field_id;
+        VMCS_OBJECT* vmcs;
+        VMCS_FIELD vmcs_field_id;
 
-	VMM_ASSERT(gcpu);
+        VMM_ASSERT(gcpu);
 
-	vmcs = gcpu_get_vmcs(gcpu);
-	VMM_ASSERT(vmcs);
+        vmcs = gcpu_get_vmcs(gcpu);
+        VMM_ASSERT(vmcs);
 
-	if (((UINT32) GuestStateId) > ((UINT32)(NUM_OF_VMM_GUEST_STATE - 1)))
-			return FALSE;
+        if (((UINT32) GuestStateId) > ((UINT32)(NUM_OF_VMM_GUEST_STATE - 1)))
+                        return FALSE;
 
-	if (GuestStateId < VMM_GUEST_CR0) {
-		gcpu_set_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)GuestStateId, value.value);
-	}
-	else if (GuestStateId == VMM_GUEST_PAT) {
-		gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, value.value);
-	}
-	else if (GuestStateId == VMM_GUEST_EFER) {
-		gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, value.value);
-	}
-	else if (GuestStateId == VMM_GUEST_CR0 || GuestStateId == VMM_GUEST_CR4 || GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL) {
-		//TBD;New functionality,needs to be implemented if required in future
-		return FALSE;
-	}
-	else if(GuestStateId == VMM_GUEST_RIP) {
-		if(TRUE == value.skip_rip)
-			gcpu_skip_guest_instruction(gcpu);
-		else
-			vmcs_write(vmcs, VMCS_GUEST_RIP, value.value);
-	}
-	else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY) {
-		gcpu_set_interruptibility_state(gcpu, (UINT32)value.value);
-	}
-	else {
-		if ((GuestStateId == VMM_GUEST_PREEMPTION_TIMER) && ept_is_ept_supported())
-			vmcs_field_id = VMCS_PREEMPTION_TIMER;
-		else if ((GuestStateId >= VMM_GUEST_CR0) && (GuestStateId <= VMM_GUEST_SYSENTER_EIP))
-			vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_CR0 + VMCS_GUEST_CR0);
-		else if (ept_is_ept_supported() && (GuestStateId >= VMM_GUEST_PDPTR0) && (GuestStateId <= VMM_GUEST_PDPTR3))
-			vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_PDPTR0 + VMCS_GUEST_PDPTR0);
-		else
-			return FALSE;
-		vmcs_write(vmcs, vmcs_field_id, value.value);
-	}
+        if (GuestStateId < VMM_GUEST_CR0) {
+                gcpu_set_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)GuestStateId, value.value);
+        }
+        else if (GuestStateId == VMM_GUEST_PAT) {
+                gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, value.value);
+        }
+        else if (GuestStateId == VMM_GUEST_EFER) {
+                gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, value.value);
+        }
+        else if (GuestStateId == VMM_GUEST_CR0 || GuestStateId == VMM_GUEST_CR4 || GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL) {
+                //TBD;New functionality,needs to be implemented if required in future
+                return FALSE;
+        }
+        else if(GuestStateId == VMM_GUEST_RIP) {
+                if(TRUE == value.skip_rip)
+                        gcpu_skip_guest_instruction(gcpu);
+                else
+                        vmcs_write(vmcs, VMCS_GUEST_RIP, value.value);
+        }
+        else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY) {
+                gcpu_set_interruptibility_state(gcpu, (UINT32)value.value);
+        }
+        else {
+                if ((GuestStateId == VMM_GUEST_PREEMPTION_TIMER) && ept_is_ept_supported())
+                        vmcs_field_id = VMCS_PREEMPTION_TIMER;
+                else if ((GuestStateId >= VMM_GUEST_CR0) && (GuestStateId <= VMM_GUEST_SYSENTER_EIP))
+                        vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_CR0 + VMCS_GUEST_CR0);
+                else if (ept_is_ept_supported() && (GuestStateId >= VMM_GUEST_PDPTR0) && (GuestStateId <= VMM_GUEST_PDPTR3))
+                        vmcs_field_id = (VMCS_FIELD)(GuestStateId - VMM_GUEST_PDPTR0 + VMCS_GUEST_PDPTR0);
+                else
+                        return FALSE;
+                vmcs_write(vmcs, vmcs_field_id, value.value);
+        }
 
-	return TRUE;
+        return TRUE;
 }

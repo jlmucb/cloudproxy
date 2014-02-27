@@ -104,8 +104,7 @@ void vmcall_guest_intialize(
         vmcall_common_handler,
         Ia32VmxExitBasicReasonVmcallInstruction);
 
-    for (id = 0; id < MAX_ACTIVE_VMCALLS_PER_GUEST; ++id)
-    {
+    for (id = 0; id < MAX_ACTIVE_VMCALLS_PER_GUEST; ++id) {
         vmcall_entry = &guest_vmcalls->vmcall_table[id];
         vmcall_entry->vmcall_handler = vmcall_unimplemented;
         vmcall_entry->vmcall_id = UNALLOCATED_VMCALL;
@@ -126,12 +125,10 @@ void vmcall_register(
 
     // if already exists, check that all params are the same
     vmcall_entry = vmcall_get_vmcall_entry(guest_id, vmcall_id);
-    if (NULL != vmcall_entry)
-    {
+    if (NULL != vmcall_entry) {
         if ((vmcall_entry->vmcall_id      == vmcall_id) &&
             (vmcall_entry->vmcall_handler == handler)   &&
-            (vmcall_entry->vmcall_special == special_call))
-        {
+            (vmcall_entry->vmcall_special == special_call)) {
             return;
         }
 
@@ -160,7 +157,7 @@ BOOLEAN vmcall_check_guest_dpl_is_ring0(GUEST_CPU_HANDLE gcpu){
 	VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
 	UINT64 guest_cs_selector= vmcs_read(vmcs, VMCS_GUEST_CS_SELECTOR);
 
-    if (BITMAP_GET(guest_cs_selector, DESCRIPTOR_CPL_BIT) == 0){
+    if (BITMAP_GET(guest_cs_selector, DESCRIPTOR_CPL_BIT) == 0) {
         return TRUE;
     }
     VMM_DEBUG_CODE(VMM_LOG(mask_uvmm, level_error,
@@ -275,8 +272,7 @@ VMM_STATUS vmcall_print_string(
     ADDRESS            *is_real_guest,
     ADDRESS            *arg3 UNUSED)
 {
-    if (TRUE == *is_real_guest)
-    {
+    if (TRUE == *is_real_guest) {
         GUEST_HANDLE    guest_handle;
         GPM_HANDLE      guest_phy_memory;
         HPA             string_gpa;

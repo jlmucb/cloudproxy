@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmcs_init.h"
 #include "ept.h"
@@ -34,7 +34,6 @@ void gcpu_clr_unrestricted_guest(GUEST_CPU_HANDLE gcpu)
     VMM_ASSERT( gcpu );
 	
     CLR_UNRESTRICTED_GUEST_FLAG(gcpu);
-
     unrestricted_guest_disable(gcpu);
 
 }
@@ -78,10 +77,10 @@ void unrestricted_guest_disable(GUEST_CPU_HANDLE gcpu)
 {
 	unrestricted_guest_hw_disable(gcpu);
 }
-/*****************************************************************************************************
+/*
  * Function Name:  unrestricted_guest_enable
  * Arguments: gcpu: the guest cpu handle. Function assumes the input is validated by caller functions.
-*****************************************************************************************************/
+ */
 void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu)
 {
     UINT64 cr4;

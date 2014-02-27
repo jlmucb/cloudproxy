@@ -149,9 +149,7 @@ exec_image_section_first( const void* image, UINT32 image_size,
 
     lock_acquire( &g_section_lock );
     g_is_locked = TRUE;
-
     build_section_info_arr( image, image_size );
-
     info = ARRAY_ITERATOR_FIRST( EXEC_IMAGE_SECTION_INFO, g_section_info_arr,
                                  g_section_info_size, ctx );
     if (! info) {
@@ -166,6 +164,7 @@ const EXEC_IMAGE_SECTION_INFO*
 exec_image_section_next( EXEC_IMAGE_SECTION_ITERATOR* ctx )
 {
     EXEC_IMAGE_SECTION_INFO* info = NULL;
+
     VMM_ASSERT( g_is_locked == TRUE );
     info = ARRAY_ITERATOR_NEXT( EXEC_IMAGE_SECTION_INFO, ctx );
     if (! info) {
@@ -173,7 +172,6 @@ exec_image_section_next( EXEC_IMAGE_SECTION_ITERATOR* ctx )
         g_is_locked = FALSE;
         lock_release( &g_section_lock );
     }
-
     return info;
 }
 

@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "guest_cpu.h"
@@ -21,7 +21,7 @@
 #include "guest_cpu_vmenter_event.h"
 #include "host_memory_manager_api.h"
 
-/////////////////////////////////////////////////////////////////////////////
+
 // This is 32-bit TSS.
 
 #pragma pack(1)
@@ -55,7 +55,7 @@ typedef struct {
 } tss32_t;
 #pragma pack()
 
-/////////////////////////////////////////////////////////////////////////////
+
 // Only three 32-bit registers are used during task switch.  They are not to
 // be shared with VMM.  VMM works with 64-bit values.
 
@@ -134,7 +134,7 @@ typedef union {
     } bits;
 } dr7_t;
 
-/////////////////////////////////////////////////////////////////////////////
+
 // This is 32-bit selector and descriptor.
 
 typedef union {
@@ -205,7 +205,7 @@ typedef union {
 #define SelectorGdt(sel)    (((sel) & 0x0004) == 0)
 #define SelectorRpl(sel)    ((sel) & 0x0003)
 
-/////////////////////////////////////////////////////////////////////////////
+
 
 int
 copy_from_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
@@ -222,8 +222,7 @@ copy_from_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
             return -1;
         }
         /* Copy until end */
-        if(src_gva >(UINT64_ALL_ONES-size_remaining))
-        {
+        if(src_gva >(UINT64_ALL_ONES-size_remaining)) {
             VMM_LOG(mask_uvmm,level_error,"Error: Size bounds exceeded\n");
             return -1;
         }
@@ -264,8 +263,7 @@ copy_to_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
             return -1;
         }
         /* Copy until end */
-        if(dst_gva >(UINT64_ALL_ONES-size_remaining))
-        {
+        if(dst_gva >(UINT64_ALL_ONES-size_remaining)) {
             VMM_LOG(mask_uvmm,level_error,"Error: Size bounds exceeded\n");
             return -1;
         }
@@ -289,7 +287,6 @@ copy_to_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 
 static void parse_desc(desc_t *dsc, seg_reg_t *seg)
 {
@@ -313,7 +310,6 @@ static void parse_desc(desc_t *dsc, seg_reg_t *seg)
     seg->ar.bits.g_bit      = dsc->bits.g_bit;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 
 static void get_task_info(GUEST_CPU_HANDLE gcpu, UINT32 *type, UINT16 *sel, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING vect)
 {
@@ -330,7 +326,6 @@ static void get_task_info(GUEST_CPU_HANDLE gcpu, UINT32 *type, UINT16 *sel, IA32
         *type = TASK_SWITCH_TYPE_CALL;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 
 static void force_ring3_ss(GUEST_CPU_HANDLE gcpu)
 {
@@ -346,29 +341,16 @@ static void force_ring3_ss(GUEST_CPU_HANDLE gcpu)
     if ((cr0.bits.pe == 0) || (flags.bits.v86_mode == 1))
         return;
 
-    gcpu_get_segment_reg(
-        gcpu,
-        IA32_SEG_TR,
-        (UINT16 *)&(ss.selector),
-        (UINT64 *)&(ss.base),
-        (UINT32 *)&(ss.limit),
-        (UINT32 *)&(ss.ar)
-        );
+    gcpu_get_segment_reg( gcpu, IA32_SEG_TR, (UINT16 *)&(ss.selector),
+        (UINT64 *)&(ss.base), (UINT32 *)&(ss.limit), (UINT32 *)&(ss.ar));
 
     ss.ar.bits.dpl = 3;
 
-    gcpu_set_segment_reg(
-        gcpu,
-        IA32_SEG_SS,
-        ss.selector,
-        ss.base,
-        ss.limit,
-        ss.ar.value
-        );
+    gcpu_set_segment_reg( gcpu, IA32_SEG_SS, ss.selector,
+        ss.base, ss.limit, ss.ar.value);
     return;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 // Set guest LDTR according to new tss.
 
 static int
@@ -380,27 +362,21 @@ set_guest_ldtr(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t 
     vmm_memset(ldtr, 0, sizeof(seg_reg_t));
     ldtr->selector = (UINT16)tss->ldtr;
 
-    if (SelectorIdx(ldtr->selector) == 0)
-    {
+    if (SelectorIdx(ldtr->selector) == 0) {
         ldtr->ar.bits.null_bit = 1;
         return 0;
     }
 
-    if (!SelectorGdt(ldtr->selector)) // must be in gdt
-    {
+    if (!SelectorGdt(ldtr->selector)) { // must be in gdt 
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, ldtr->selector);
         return -1;
     }
 
-    r = copy_from_gva(gcpu,
-        (UINT64)(gdtr->base + SelectorIdx(ldtr->selector)),
-        sizeof(desc),
-        (UINT64)(&desc)
-        );
+    r = copy_from_gva(gcpu, (UINT64)(gdtr->base + SelectorIdx(ldtr->selector)),
+        sizeof(desc), (UINT64)(&desc));
 
-    if (r != 0)
-    {
+    if (r != 0) {
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, ldtr->selector);
         return -1;
@@ -410,26 +386,18 @@ set_guest_ldtr(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t 
 
     if ((ldtr->ar.bits.s_bit != 0) ||   // must be sys desc
         !IsLdt(ldtr->ar.bits.type) ||   // must be ldt
-        (ldtr->ar.bits.p_bit != 1))     // must be present
-    {
+        (ldtr->ar.bits.p_bit != 1)) {    // must be present
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, ldtr->selector);
         return -1;
     }
 
-    gcpu_set_segment_reg(
-        gcpu,
-        IA32_SEG_LDTR,
-        ldtr->selector,
-        ldtr->base,
-        ldtr->limit,
-        ldtr->ar.value
-        );
-
+    gcpu_set_segment_reg( gcpu, IA32_SEG_LDTR, ldtr->selector, ldtr->base,
+        ldtr->limit, ldtr->ar.value);
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
+
 // Set guest SS according to new tss.
 
 static int
@@ -445,23 +413,17 @@ set_guest_ss(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
     ss.selector = (UINT16)tss->ss;
     cpl = SelectorRpl(tss->cs);
 
-    if (SelectorIdx(ss.selector) == 0) // must not be null
-    {
+    if (SelectorIdx(ss.selector) == 0) { // must not be null 
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, ss.selector);
         return -1;
     }
 
     dtr = SelectorGdt(ss.selector)? gdtr:ldtr;
+    r = copy_from_gva(gcpu, (UINT64)(dtr->base + SelectorIdx(ss.selector)),
+            sizeof(desc), (UINT64)(&desc));
 
-    r = copy_from_gva(gcpu,
-            (UINT64)(dtr->base + SelectorIdx(ss.selector)),
-            sizeof(desc),
-            (UINT64)(&desc)
-            );
-
-    if (r != 0)
-    {
+    if (r != 0) {
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, ss.selector);
         return -1;
@@ -469,8 +431,7 @@ set_guest_ss(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
 
     parse_desc(&desc, &ss);
 
-    if (ss.ar.bits.p_bit == 0) // must be present
-    {
+    if (ss.ar.bits.p_bit == 0) { // must be present
         force_ring3_ss(gcpu);
         gcpu_inject_ss(gcpu, ss.selector);
         return -1;
@@ -480,8 +441,7 @@ set_guest_ss(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
         IsCode(ss.ar.bits.type) ||      // must not be code
         !IsDataRW(ss.ar.bits.type) ||   // must be data with r/w
         (ss.ar.bits.dpl != cpl) ||
-        ((UINT32)SelectorRpl(ss.selector) != cpl))
-    {
+        ((UINT32)SelectorRpl(ss.selector) != cpl)) {
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, ss.selector);
         return -1;
@@ -491,8 +451,7 @@ set_guest_ss(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
     if (ss.ar.bits.g_bit == 1)
         ss.limit = (ss.limit << 12) | 0xfff;
 
-    if (!IsAssessed(ss.ar.bits.type))
-    {
+    if (!IsAssessed(ss.ar.bits.type)) {
         SetAssessed(ss.ar.bits.type);
         SetAssessed(desc.bits.type);
 
@@ -502,27 +461,20 @@ set_guest_ss(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
             (UINT64)(&desc)
             );
 
-        if (r != 0)
-        {
+        if (r != 0) {
             force_ring3_ss(gcpu);
             gcpu_inject_ts(gcpu, ss.selector);
             return -1;
         }
     }
 
-    gcpu_set_segment_reg(
-        gcpu,
-        IA32_SEG_SS,
-        ss.selector,
-        ss.base,
-        ss.limit,
-        ss.ar.value
-        );
+    gcpu_set_segment_reg( gcpu, IA32_SEG_SS, ss.selector, ss.base,
+        ss.limit, ss.ar.value);
 
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
+
 // Set guest CS according to new tss.
 
 static int
@@ -538,54 +490,43 @@ set_guest_cs(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
     cs.selector = (UINT16)tss->cs;
     cpl = SelectorRpl(tss->cs);
 
-    if (SelectorIdx(cs.selector) == 0) // must not be null
-    {
+    if (SelectorIdx(cs.selector) == 0) { // must not be null 
         gcpu_inject_ts(gcpu, cs.selector);
         return -1;
     }
 
     dtr = SelectorGdt(cs.selector)? gdtr:ldtr;
 
-    r = copy_from_gva(gcpu,
-        (UINT64)(dtr->base + SelectorIdx(cs.selector)),
-        sizeof(desc),
-        (UINT64)(&desc)
-        );
+    r = copy_from_gva(gcpu, (UINT64)(dtr->base + SelectorIdx(cs.selector)),
+        sizeof(desc), (UINT64)(&desc));
 
-    if (r != 0)
-    {
+    if (r != 0) {
         gcpu_inject_ts(gcpu, cs.selector);
         return -1;
     }
 
     parse_desc(&desc, &cs);
 
-    if (cs.ar.bits.p_bit != 1) // must be present
-    {
+    if (cs.ar.bits.p_bit != 1)  { // must be present
         gcpu_inject_np(gcpu, cs.selector);
         return -1;
     }
 
     if ((cs.ar.bits.s_bit == 0) ||  // must be non-sys desc
-        !IsCode(cs.ar.bits.type))   // must be code
-    {
+        !IsCode(cs.ar.bits.type))  {  // must be code
         gcpu_inject_ts(gcpu, cs.selector);
         return -1;
     }
 
     // Priv checks
-    if (IsCodeConform(cs.ar.bits.type))
-    {
-        if (cs.ar.bits.dpl > cpl)
-        {
+    if (IsCodeConform(cs.ar.bits.type)) {
+        if (cs.ar.bits.dpl > cpl) {
             gcpu_inject_ts(gcpu, cs.selector);
             return -1;
         }
     }
-    else
-    {
-        if (cs.ar.bits.dpl != cpl)
-        {
+    else {
+        if (cs.ar.bits.dpl != cpl) {
             gcpu_inject_ts(gcpu, cs.selector);
             return -1;
         }
@@ -595,19 +536,14 @@ set_guest_cs(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
     if (cs.ar.bits.g_bit == 1)
         cs.limit = (cs.limit << 12) | 0xfff;
 
-    if (!IsAssessed(cs.ar.bits.type))
-    {
+    if (!IsAssessed(cs.ar.bits.type)) {
         SetAssessed(cs.ar.bits.type);
         SetAssessed(desc.bits.type);
 
-        r = copy_to_gva(gcpu,
-            (UINT64)(dtr->base + (cs.selector & 0xfff8)),
-            sizeof(desc),
-            (UINT64)(&desc)
-            );
+        r = copy_to_gva(gcpu, (UINT64)(dtr->base + (cs.selector & 0xfff8)),
+            sizeof(desc), (UINT64)(&desc));
 
-        if (r != 0)
-        {
+        if (r != 0) {
             gcpu_inject_ts(gcpu, cs.selector);
             return -1;
         }
@@ -615,17 +551,10 @@ set_guest_cs(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
 
     cs.ar.bits.null_bit = 0;
 
-    gcpu_set_segment_reg(
-        gcpu,
-        IA32_SEG_CS,
-        cs.selector,
-        cs.base,
-        cs.limit,
-        cs.ar.value
-        );
+    gcpu_set_segment_reg( gcpu, IA32_SEG_CS, cs.selector, cs.base,
+        cs.limit, cs.ar.value);
 
-    if (tss->eip > cs.limit)
-    {
+    if (tss->eip > cs.limit) {
         gcpu_inject_ts(gcpu, cs.selector);
         return -1;
     }
@@ -633,12 +562,11 @@ set_guest_cs(GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *t
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
+
 // Set guest ES, DS, FS, or GS, based on register name and new tss.
 
 static int
-set_guest_seg(
-    GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *tss,
+set_guest_seg( GUEST_CPU_HANDLE gcpu, seg_reg_t *gdtr, seg_reg_t *ldtr, tss32_t *tss,
     VMM_IA32_SEGMENT_REGISTERS name)
 {
     desc_t desc;
@@ -664,21 +592,16 @@ set_guest_seg(
 
     dtr = SelectorGdt(seg.selector)? gdtr:ldtr;
 
-    if (SelectorIdx(seg.selector) == 0)
-    {
+    if (SelectorIdx(seg.selector) == 0) {
         seg.selector = 0;
         seg.ar.bits.null_bit = 1;
         goto set_seg_reg;
     }
 
-    r = copy_from_gva(gcpu,
-        (UINT64)(dtr->base + SelectorIdx(seg.selector)),
-        sizeof(desc),
-        (UINT64)(&desc)
-        );
+    r = copy_from_gva(gcpu, (UINT64)(dtr->base + SelectorIdx(seg.selector)),
+        sizeof(desc), (UINT64)(&desc));
 
-    if (r != 0)
-    {
+    if (r != 0) {
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, seg.selector);
         return -1;
@@ -687,16 +610,14 @@ set_guest_seg(
     parse_desc(&desc, &seg);
 
     if ((seg.ar.bits.s_bit == 0) || // must be non-sys desc
-        (IsCode(seg.ar.bits.type) && !IsCodeR(seg.ar.bits.type)))
-    {
+        (IsCode(seg.ar.bits.type) && !IsCodeR(seg.ar.bits.type))) {
         force_ring3_ss(gcpu);
         gcpu_inject_ts(gcpu, seg.selector);
         return -1;
     }
 
     // Must be present.
-    if (seg.ar.bits.p_bit != 1)
-    {
+    if (seg.ar.bits.p_bit != 1) {
         force_ring3_ss(gcpu);
         gcpu_inject_np(gcpu, seg.selector);
         return -1;
@@ -707,13 +628,10 @@ set_guest_seg(
         seg.limit = (seg.limit << 12) | 0xfff;
 
     // Priv checks.
-    if (IsCode(seg.ar.bits.type) && !IsCodeConform(seg.ar.bits.type))
-    {
+    if (IsCode(seg.ar.bits.type) && !IsCodeConform(seg.ar.bits.type)) {
         UINT32 rpl = (UINT32)SelectorRpl(seg.selector);
 
-        if ((seg.ar.bits.dpl < cpl) ||
-            (seg.ar.bits.dpl < rpl))
-        {
+        if ((seg.ar.bits.dpl < cpl) || (seg.ar.bits.dpl < rpl)) {
             force_ring3_ss(gcpu);
             gcpu_inject_ts(gcpu, seg.selector);
             return -1;
@@ -722,19 +640,12 @@ set_guest_seg(
 
 set_seg_reg:
 
-    gcpu_set_segment_reg(
-        gcpu,
-        name,
-        seg.selector,
-        seg.base,
-        seg.limit,
-        seg.ar.value
-        );
-
+    gcpu_set_segment_reg( gcpu, name, seg.selector, seg.base,
+        seg.limit, seg.ar.value);
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
+
 // Copy guest status from VMCS to tss buffer.
 
 static void copy_vmcs_to_tss32(GUEST_CPU_HANDLE gcpu, tss32_t *tss)
@@ -760,7 +671,7 @@ static void copy_vmcs_to_tss32(GUEST_CPU_HANDLE gcpu, tss32_t *tss)
     tss->gs     = (UINT32)vmcs_read(vmcs, VMCS_GUEST_GS_SELECTOR);
 }
 
-/////////////////////////////////////////////////////////////////////////////
+
 // This function does task switch for 32-bit VMM guest.
 
 int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING vec_info)
@@ -792,49 +703,29 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
 
     get_task_info(gcpu, &inst_type, &(new_tr.selector), vec_info);
 
-    ret = copy_from_gva(gcpu,
-        (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
-        sizeof(new_tss_desc),
-        (UINT64)(&new_tss_desc)
-        );
+    ret = copy_from_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
+        sizeof(new_tss_desc), (UINT64)(&new_tss_desc));
 
-    if (ret != 0)
-    {
+    if (ret != 0) {
         gcpu_inject_ts(gcpu, new_tr.selector);
         return -1;
     }
 
     parse_desc(&new_tss_desc, &new_tr);
 
-    if (!IsTss32(new_tr.ar.bits.type))
-    {
+    if (!IsTss32(new_tr.ar.bits.type)) {
         gcpu_inject_ts(gcpu, new_tr.selector);
         return -1;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    // Find old ldtr.
-
-    gcpu_get_segment_reg(
-        gcpu,
-        IA32_SEG_LDTR,
-        (UINT16 *)&(old_ldtr.selector),
-        (UINT64 *)&(old_ldtr.base),
-        (UINT32 *)&(old_ldtr.limit),
-        (UINT32 *)&(old_ldtr.ar)
+    // Find old ldtr.  
+    gcpu_get_segment_reg( gcpu, IA32_SEG_LDTR, (UINT16 *)&(old_ldtr.selector),
+        (UINT64 *)&(old_ldtr.base), (UINT32 *)&(old_ldtr.limit), (UINT32 *)&(old_ldtr.ar)
         );
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Find old tr.
-
-    gcpu_get_segment_reg(
-        gcpu,
-        IA32_SEG_TR,
-        (UINT16 *)&(old_tr.selector),
-        (UINT64 *)&(old_tr.base),
-        (UINT32 *)&(old_tr.limit),
-        (UINT32 *)&(old_tr.ar)
-        );
+    gcpu_get_segment_reg( gcpu, IA32_SEG_TR, (UINT16 *)&(old_tr.selector),
+        (UINT64 *)&(old_tr.base), (UINT32 *)&(old_tr.limit), (UINT32 *)&(old_tr.ar));
 
     if (!IsTss32Busy(old_tr.ar.bits.type))
     {
@@ -842,7 +733,6 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
         return -1;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Save guest status to old tss.
 
     if (inst_type != TASK_SWITCH_TYPE_IDT) // call, jmp or iret
@@ -851,8 +741,7 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     vmm_memset(&tss, 0, sizeof(tss));
     copy_vmcs_to_tss32(gcpu, &tss);
 
-    if (inst_type == TASK_SWITCH_TYPE_IRET)
-    {
+    if (inst_type == TASK_SWITCH_TYPE_IRET) {
         ((eflags_t *)&(tss.eflags))->bits.nested_task = 0;
     }
 
@@ -862,43 +751,29 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
         (UINT64)&(tss.eip)          // hva of old_tss.eip
         );
 
-    if (ret != 0)
-    {
+    if (ret != 0) {
         gcpu_inject_ts(gcpu, old_tr.selector);
         return -1;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Read new tss from memory.
 
     vmm_memset(&tss, 0, sizeof(tss));
 
-    ret = copy_from_gva(gcpu,
-        (UINT64)(new_tr.base),
-        sizeof(tss),
-        (UINT64)&(tss)
-        );
+    ret = copy_from_gva(gcpu, (UINT64)(new_tr.base), sizeof(tss), (UINT64)&(tss));
 
-    if (ret != 0)
-    {
+    if (ret != 0) {
         gcpu_inject_ts(gcpu, new_tr.selector);
         return -1;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Clear busy bit in old tss descriptor.
 
-    if ((inst_type == TASK_SWITCH_TYPE_JMP) ||
-        (inst_type == TASK_SWITCH_TYPE_IRET))
-    {
-        ret = copy_from_gva(gcpu,
-            (UINT64)(gdtr.base + SelectorIdx(old_tr.selector)),
-            sizeof(old_tss_desc),
-            (UINT64)(&old_tss_desc)
-            );
+    if ((inst_type == TASK_SWITCH_TYPE_JMP) || (inst_type == TASK_SWITCH_TYPE_IRET)) {
+        ret = copy_from_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(old_tr.selector)),
+            sizeof(old_tss_desc), (UINT64)(&old_tss_desc));
 
-        if (ret != 0)
-        {
+        if (ret != 0) {
             gcpu_inject_ts(gcpu, old_tr.selector);
             return -1;
         }
@@ -906,24 +781,18 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
         // Clear the B bit, and write it back.
         old_tss_desc.bits.type = Tss32Aval;
 
-        ret = copy_to_gva(gcpu,
-            (UINT64)(gdtr.base + SelectorIdx(old_tr.selector)),
-            sizeof(old_tss_desc),
-            (UINT64)(&old_tss_desc)
-            );
+        ret = copy_to_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(old_tr.selector)),
+            sizeof(old_tss_desc), (UINT64)(&old_tss_desc));
 
-        if (ret != 0)
-        {
+        if (ret != 0) {
             gcpu_inject_ts(gcpu, old_tr.selector);
             return -1;
         }
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Set busy bit in new tss descriptor.
 
-    if (inst_type != TASK_SWITCH_TYPE_IRET)
-    {
+    if (inst_type != TASK_SWITCH_TYPE_IRET) {
         new_tss_desc.bits.type = Tss32Busy;
         new_tr.ar.bits.type = Tss32Busy;
 
@@ -940,66 +809,45 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
             }
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Save old tr in new tss.
-
-    if ((inst_type == TASK_SWITCH_TYPE_CALL) ||
-        (inst_type == TASK_SWITCH_TYPE_IDT))
-    {
+    if ((inst_type == TASK_SWITCH_TYPE_CALL) || (inst_type == TASK_SWITCH_TYPE_IDT)) {
         ret = copy_to_gva(gcpu,
             (UINT64)(new_tr.base + 0),      // gva of new_tss.prev_tr
             sizeof(old_tr.selector),        // two bytes
             (UINT64)(&(old_tr.selector))    // hva
             );
 
-        if (ret != 0)
-        {
+        if (ret != 0) {
             new_tss_desc.bits.type = Tss32Aval;
 
-            copy_to_gva(gcpu,
-                (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
-                sizeof(new_tss_desc),
-                (UINT64)(&new_tss_desc)
-                );
+            copy_to_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
+                sizeof(new_tss_desc), (UINT64)(&new_tss_desc));
 
             gcpu_inject_ts(gcpu, new_tr.selector);
             return -1;
         }
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new tr.
 
-    gcpu_set_segment_reg(
-        gcpu,
-        IA32_SEG_TR,
-        new_tr.selector,
-        new_tr.base,
-        new_tr.limit,
-        new_tr.ar.value
-        );
+    gcpu_set_segment_reg( gcpu, IA32_SEG_TR, new_tr.selector, new_tr.base,
+        new_tr.limit, new_tr.ar.value);
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new cr3.
 
-    if (cr0.bits.pg)
-    {
+    if (cr0.bits.pg) {
         gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR3, tss.cr3);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR3, tss.cr3);
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new flags.
 
-    if ((inst_type == TASK_SWITCH_TYPE_CALL) ||
-        (inst_type == TASK_SWITCH_TYPE_IDT))
-    {
+    if ((inst_type == TASK_SWITCH_TYPE_CALL) || (inst_type == TASK_SWITCH_TYPE_IDT)) {
         ((eflags_t *)&(tss.eflags))->bits.nested_task = 1;
     }
 
     ((eflags_t *)&(tss.eflags))->bits.rsvd_1 = 1;
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load general regs.
 
     gcpu_set_gp_reg(gcpu, IA32_REG_RIP,     (UINT64)tss.eip);
@@ -1013,7 +861,6 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     gcpu_set_gp_reg(gcpu, IA32_REG_RSI,     (UINT64)tss.esi);
     gcpu_set_gp_reg(gcpu, IA32_REG_RDI,     (UINT64)tss.edi);
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Set the TS bit in CR0.
 
     cr0.bits.ts = 1;
@@ -1052,32 +899,26 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
         goto all_done;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new ss.
 
     if (set_guest_ss(gcpu, &gdtr, &new_ldtr, &tss) != 0)
         return -1;
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new es, ds, fs, gs.
 
     if ((set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_ES) != 0) ||
         (set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_DS) != 0) ||
         (set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_FS) != 0) ||
-        (set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_GS) != 0))
-    {
+        (set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_GS) != 0)) {
         return -1;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new cs.
-
     if (set_guest_cs(gcpu, &gdtr, &new_ldtr, &tss) != 0)
         return -1;
 
 all_done:
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Clear the LE bits in DR7.
 
     dr7.value = (UINT32)gcpu_get_debug_reg(gcpu, IA32_REG_DR7);
@@ -1088,11 +929,9 @@ all_done:
     dr7.bits.le = 0;
     gcpu_set_debug_reg(gcpu, IA32_REG_DR7, (UINT64)dr7.value);
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Debug trap in new task?
 
-    if ((tss.io_base_addr & 0x00000001) != 0)
-    {
+    if ((tss.io_base_addr & 0x00000001) != 0) {
         gcpu_inject_db(gcpu);
         return -1;
     }
@@ -1100,7 +939,6 @@ all_done:
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 
 VMEXIT_HANDLING_STATUS vmexit_task_switch(GUEST_CPU_HANDLE gcpu)
 {    
@@ -1125,7 +963,7 @@ VMEXIT_HANDLING_STATUS vmexit_task_switch(GUEST_CPU_HANDLE gcpu)
         
 
         
-        if(idt_vectoring_info.Bits.Valid){
+        if(idt_vectoring_info.Bits.Valid) {
             vector = idt_vectoring_info.Bits.Vector;
         }
 

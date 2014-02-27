@@ -171,16 +171,14 @@ BOOLEAN is_cpu_running_guest(void* arg)
     SCHEDULER_GCPU_ITERATOR iter;
     const VIRTUAL_CPU_ID *vcpu = NULL;
 
-    for(gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu_id); gcpu != NULL; gcpu = scheduler_same_host_cpu_gcpu_next(&iter))
-    {
+    for(gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu_id); gcpu != NULL; 
+          gcpu = scheduler_same_host_cpu_gcpu_next(&iter)) {
         vcpu = guest_vcpu(gcpu);
         VMM_ASSERT(vcpu);
-        if(vcpu->guest_id == stop_guest_id)
-        {
+        if(vcpu->guest_id == stop_guest_id) {
             return TRUE;
         }
     }
-
     return FALSE;
 }
 

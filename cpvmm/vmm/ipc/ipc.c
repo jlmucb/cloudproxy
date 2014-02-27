@@ -110,29 +110,27 @@ static BOOLEAN ipc_cpu_is_destination(IPC_DESTINATION dst, CPU_ID this_cpu_id, C
 {
     BOOLEAN retVal = FALSE;
 
-    switch(dst.addr_shorthand)
-    {
-    case IPI_DST_SELF:
+    switch(dst.addr_shorthand) {
+      case IPI_DST_SELF:
         retVal = (this_cpu_id == dst_cpu_id);
         break;
 
-    case IPI_DST_ALL_INCLUDING_SELF:
+      case IPI_DST_ALL_INCLUDING_SELF:
         retVal = TRUE;
         break;
-
-    case IPI_DST_ALL_EXCLUDING_SELF:
+  
+      case IPI_DST_ALL_EXCLUDING_SELF:
         retVal = (this_cpu_id != dst_cpu_id);
         break;
 
-    case IPI_DST_NO_SHORTHAND:
+      case IPI_DST_NO_SHORTHAND:
         retVal = ((CPU_ID) dst.addr == dst_cpu_id);
         break;
 
-    case IPI_DST_CORE_ID_BITMAP:
+      case IPI_DST_CORE_ID_BITMAP:
         retVal = (BITMAP_ARRAY64_GET(dst.CoreBitMap, dst_cpu_id) != 0);
         break;
     }
-
     return retVal;
 }
 
@@ -179,7 +177,6 @@ static IPC_MESSAGE *ipc_dequeue_message(IPC_CPU_CONTEXT *ipc)
     IPC_MESSAGE  *msg = NULL;
 
     VMM_ASSERT(ipc != NULL);
-
     msg = (IPC_MESSAGE *) array_list_first(ipc->message_queue, NULL);
     if (msg != NULL) {
         array_list_remove(ipc->message_queue, msg);
@@ -274,7 +271,8 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
         // BEFORE_VMLAUNCH
         VMM_ASSERT(hw_get_tsc_ticks_per_second() != 0);
 
-        next_send_tsc = hw_rdtsc() + hw_get_tsc_ticks_per_second(); // Calculate next tsc tick to resend NMI.
+        // Calculate next tsc tick to resend NMI.
+        next_send_tsc = hw_rdtsc() + hw_get_tsc_ticks_per_second(); 
         // Should be one second.
         // signal and wait for acknowledge
         while (num_received_acks != num_required_acks) {
@@ -285,29 +283,33 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
 
                 for (i = 0, num_received_acks = 0; i < num_of_host_processors; i++) {
                     // Send additional IPC signal to stalled cores.
-                    if (BITMAP_ARRAY64_GET(enqueue_flag, i) && !ack_array[i])    // exclude yourself and non active CPUs.
-                    {
-                    single_dst.addr_shorthand = IPI_DST_NO_SHORTHAND;
-                    single_dst.addr = (UINT8) i;
+                    if (BITMAP_ARRAY64_GET(enqueue_flag, i) && !ack_array[i]) {
+                         // exclude yourself and non active CPUs.
+                        single_dst.addr_shorthand = IPI_DST_NO_SHORTHAND;
+                        single_dst.addr = (UINT8) i;
 
-                    // BEFORE_VMLAUNCH
-                    // Check that CPU is still active.
-                    VMM_ASSERT(cpu_activity_state[i] != IPC_CPU_NOT_ACTIVE);
-                    if (!debug_not_resend) {
-                        ipc = &ipc_cpu_contexts[i];
-                        lock_acquire(&ipc->data_lock);
-                        if (cpu_activity_state[i] == IPC_CPU_ACTIVE) {
-                            if (!BITMAP_ARRAY64_GET(nmi_accounted_flag, i)) {
-                                BITMAP_ARRAY64_SET(nmi_accounted_flag, i);
-                                ipc->num_of_sent_ipc_nmi_interrupts++;
+                        // BEFORE_VMLAUNCH
+                        // Check that CPU is still active.
+                        VMM_ASSERT(cpu_activity_state[i] != IPC_CPU_NOT_ACTIVE);
+                        if (!debug_not_resend) {
+                            ipc = &ipc_cpu_contexts[i];
+                            lock_acquire(&ipc->data_lock);
+                            if (cpu_activity_state[i] == IPC_CPU_ACTIVE) {
+                                if (!BITMAP_ARRAY64_GET(nmi_accounted_flag, i)) {
+                                    BITMAP_ARRAY64_SET(nmi_accounted_flag, i);
+                                    ipc->num_of_sent_ipc_nmi_interrupts++;
+                                }
+                                ipc_hw_signal_nmi(single_dst);
+                                VMM_LOG(mask_anonymous, level_trace,
+                                        "[%d] send additional NMI to %d\n", 
+                                         (int) sender_cpu_id, (int) i);
                             }
-                            ipc_hw_signal_nmi(single_dst);
-                            VMM_LOG(mask_anonymous, level_trace,"[%d] send additional NMI to %d\n", (int) sender_cpu_id, (int) i);
-                        }
-                        else {
-                            ipc_hw_signal_sipi(single_dst);
-                            VMM_LOG(mask_anonymous, level_trace,"[%d] send additional SIPI to %d\n", (int) sender_cpu_id, (int) i);
-                        }
+                            else {
+                                ipc_hw_signal_sipi(single_dst);
+                                VMM_LOG(mask_anonymous, level_trace,
+                                        "[%d] send additional SIPI to %d\n", 
+                                        (int) sender_cpu_id, (int) i);
+                            }
                         lock_release(&ipc->data_lock);
                     }
                 }
@@ -414,7 +416,8 @@ static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED
     }
     else if (ipc->num_of_sent_ipc_nmi_interrupts != ipc->num_received_nmi_interrupts &&
              NMIS_WAITING_FOR_PROCESSING(ipc) != IPC_NMIS_WAITING_FOR_PROCESSING(ipc)) {
-     /*   VMM_LOG(mask_anonymous, level_trace,"[%d] - %s: NMI_RCVD = %d NMI_PROCESSED = %d, IPC_NMI_SENT = %d IPC_NMI_PROCESSED = %d\n",
+     /*   VMM_LOG(mask_anonymous, level_trace,
+           "[%d] - %s: NMI_RCVD = %d NMI_PROCESSED = %d, IPC_NMI_SENT = %d IPC_NMI_PROCESSED = %d\n",
                  IPC_CPU_ID(), __FUNCTION__,
                  ipc->num_received_nmi_interrupts, ipc->num_processed_nmi_interrupts,
                  ipc->num_of_sent_ipc_nmi_interrupts, ipc->num_of_processed_ipc_nmi_interrupts);
@@ -443,9 +446,9 @@ static void ipc_nmi_interrupt_handler(const ISR_PARAMETERS_ON_STACK  *p_stack UN
     GUEST_CPU_HANDLE  gcpu = NULL;
 
 #ifdef ENABLE_VTD
-        if (vtd_handle_fault()) {
-            return;
-        }
+    if (vtd_handle_fault()) {
+        return;
+    }
 #endif // ENABLE_VTD
 
     hw_interlocked_increment64((INT64*)(&ipc->num_received_nmi_interrupts));
@@ -612,7 +615,7 @@ UINT32 ipc_send_message(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_
     UINT32  num_of_receivers = 0;
 
     if ((int) type >= IPC_TYPE_NORMAL && (int) type < IPC_TYPE_LAST) {
-                switch (dst.addr_shorthand) {
+        switch (dst.addr_shorthand) {
 //              case IPI_DST_SELF:
 //              case IPI_DST_ALL_INCLUDING_SELF:
                 case IPI_DST_ALL_EXCLUDING_SELF:
@@ -626,12 +629,12 @@ UINT32 ipc_send_message(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_
                 default:
                         VMM_LOG(mask_anonymous, level_trace,"ipc_send_message: Bad message destination shorthand 0x%X\r\n", dst.addr_shorthand);
                         break;
-            }
         }
-    else {
-        VMM_LOG(mask_anonymous, level_trace,"ipc_send_message: Bad message type %d\r\n", type);
     }
-
+    else {
+        VMM_LOG(mask_anonymous, level_trace,
+                "ipc_send_message: Bad message type %d\r\n", type);
+    }
     return num_of_receivers;
 }
 
@@ -744,7 +747,6 @@ void ipc_change_state_to_sipi(GUEST_CPU_HANDLE gcpu)
 
     if (cpu_activity_state[cpu_id] == IPC_CPU_SIPI)
         return;
-
     lock_acquire(&ipc->data_lock);
     cpu_activity_state[cpu_id] = IPC_CPU_SIPI;
     gcpu_set_pending_nmi(gcpu, 0);
@@ -769,13 +771,13 @@ void ipc_mni_injection_failed(void)
 
 BOOLEAN ipc_state_init(UINT16 number_of_host_processors)
 {
-    UINT32           i = 0,
-                     ipc_cpu_context_size = 0,
-                     ipc_msg_array_size = 0,
-                     cpu_state_size = 0,
-                     ipc_ack_array_size = 0,
-                     ipc_data_size = 0,
-                     message_queue_offset = 0;
+    UINT32   i = 0,
+             ipc_cpu_context_size = 0,
+             ipc_msg_array_size = 0,
+             cpu_state_size = 0,
+             ipc_ack_array_size = 0,
+             ipc_data_size = 0,
+             message_queue_offset = 0;
     IPC_CPU_CONTEXT  *ipc = 0;
 
     VMM_LOG(mask_anonymous, level_trace,"IPC state init: #host CPUs = %d\r\n", number_of_host_processors);
@@ -810,9 +812,7 @@ BOOLEAN ipc_state_init(UINT16 number_of_host_processors)
                                              ipc_get_message_array_list_size(number_of_host_processors), 
                                              sizeof(IPC_MESSAGE),
                                              ipc_get_max_pending_messages(number_of_host_processors), 
-                                             IPC_ALIGNMENT
-                                             );
-
+                                             IPC_ALIGNMENT);
         lock_initialize(&ipc->data_lock);
     }
 

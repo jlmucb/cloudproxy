@@ -74,9 +74,9 @@ BOOLEAN init_memory_layout_from_mbr(
     VMM_ASSERT(e820_abstraction_is_initialized());
 
     if (global_policy_uses_vtlb()) {
-	mam_rwx_attrs.uint32 = 0x5;
-	mam_rw_attrs.uint32 = 0x1;
-	mam_ro_attrs.uint32= 0x0;
+        mam_rwx_attrs.uint32 = 0x5;
+        mam_rw_attrs.uint32 = 0x1;
+        mam_ro_attrs.uint32= 0x0;
      }
 
     // 1. first map 0-4G host region to primary guest
@@ -88,85 +88,81 @@ BOOLEAN init_memory_layout_from_mbr(
     // 2. Add real memory to "memory layout object" and to the primary guest
     //    if this memory range is above 4G
     // if in the post launch mode skip it
-	for (e820_iter = e820_abstraction_iterator_get_first(E820_ORIGINAL_MAP);
-	 e820_iter != E820_ABSTRACTION_NULL_ITERATOR;
-	 e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter)) {
-		e820_entry = e820_abstraction_iterator_get_range_details(e820_iter);
+    for (e820_iter = e820_abstraction_iterator_get_first(E820_ORIGINAL_MAP);
+            e820_iter != E820_ABSTRACTION_NULL_ITERATOR;
+            e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter)) {
+        e820_entry = e820_abstraction_iterator_get_range_details(e820_iter);
 
-		range_start = e820_entry->basic_entry.base_address;
-		range_end   = range_start + e820_entry->basic_entry.length;
-		range_type  = e820_entry->basic_entry.address_range_type;
-		range_attr  = e820_entry->extended_attributes;
+        range_start = e820_entry->basic_entry.base_address;
+        range_end   = range_start + e820_entry->basic_entry.length;
+        range_type  = e820_entry->basic_entry.address_range_type;
+        range_attr  = e820_entry->extended_attributes;
 
-		// align ranges and sizes on 4K boundaries
-		range_start = ALIGN_FORWARD(range_start, PAGE_4KB_SIZE);
-		range_end   = ALIGN_BACKWARD(range_end, PAGE_4KB_SIZE);
+        // align ranges and sizes on 4K boundaries
+        range_start = ALIGN_FORWARD(range_start, PAGE_4KB_SIZE);
+        range_end   = ALIGN_BACKWARD(range_end, PAGE_4KB_SIZE);
 
-		VMM_DEBUG_CODE({
-			if (range_start != e820_entry->basic_entry.base_address) {
-				VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: aligning E820 range start from %P to %P\n",
-							e820_entry->basic_entry.base_address, range_start);
-			}
+        VMM_DEBUG_CODE({
+            if (range_start != e820_entry->basic_entry.base_address) {
+                VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: aligning E820 range start from %P to %P\n",
+                    e820_entry->basic_entry.base_address, range_start);
+                }
 
-			if (range_end != e820_entry->basic_entry.base_address + e820_entry->basic_entry.length)
-			{
-				VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: aligning E820 range end from %P to %P\n",
-							e820_entry->basic_entry.base_address + e820_entry->basic_entry.length,
-							range_end);
-			}
-		})
+            if (range_end != e820_entry->basic_entry.base_address + e820_entry->basic_entry.length) {
+                    VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: aligning E820 range end from %P to %P\n",
+                        e820_entry->basic_entry.base_address+e820_entry->basic_entry.length,
+                        range_end);
+                    }
+            })
 
-		if (range_end <= range_start) {
-			// after alignment the range became invalid
-			VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: skipping invalid E820 memory range FROM %P to %P\n",
-					 range_start, range_end);
-			continue;
-		}
+        if (range_end <= range_start) {
+            // after alignment the range became invalid
+            VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: skipping invalid E820 memory range FROM %P to %P\n",
+                 range_start, range_end);
+            continue;
+        }
 
-		// add memory to the "memory layout object" if this is a real memory
-		// lower 4G
-		if (are_secondary_guests_exist && (range_start < FOUR_GIGABYTE) &&
-			range_attr.Bits.enabled && (!range_attr.Bits.non_volatile)) {
-			UINT64 top = (range_end < FOUR_GIGABYTE) ? range_end : FOUR_GIGABYTE;
+        // add memory to the "memory layout object" if this is a real memory
+        // lower 4G
+        if (are_secondary_guests_exist && (range_start < FOUR_GIGABYTE) &&
+            range_attr.Bits.enabled && (!range_attr.Bits.non_volatile)) {
+            UINT64 top = (range_end < FOUR_GIGABYTE) ? range_end : FOUR_GIGABYTE;
 
-			if ((range_type == INT15_E820_ADDRESS_RANGE_TYPE_MEMORY) ||
-				(range_type == INT15_E820_ADDRESS_RANGE_TYPE_ACPI)) {
-				// here we need to all a call to the "memory layout object"
-				// to fill is with the range_start-top range
+            if ((range_type == INT15_E820_ADDRESS_RANGE_TYPE_MEMORY) ||
+                (range_type == INT15_E820_ADDRESS_RANGE_TYPE_ACPI)) {
+                // here we need to all a call to the "memory layout object"
+                // to fill is with the range_start-top range
+                // to make compiler happy
+                top = 0;
+            }
+        }
 
-				// to make compiler happy
-				top = 0;
-			}
-		}
+        // add memory to the primary guest if this is a memory above 4G
+        if (range_end > FOUR_GIGABYTE) {
+            UINT64 bottom = (range_start < FOUR_GIGABYTE) ? FOUR_GIGABYTE : range_start;
 
-		// add memory to the primary guest if this is a memory above 4G
-		if (range_end > FOUR_GIGABYTE) {
-			UINT64 bottom = (range_start < FOUR_GIGABYTE) ? FOUR_GIGABYTE : range_start;
-
-			if (bottom < range_end) {
-				VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: add memory above 4GB base %p size %p\r\n",
-					bottom,
-					range_end - bottom);
-				ok = gpm_add_mapping( primary_guest_gpm, bottom, bottom, range_end - bottom, mam_rwx_attrs );
+            if (bottom < range_end) {
+                VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: add memory above 4GB base %p size %p\r\n",
+                        bottom, range_end - bottom);
+                ok = gpm_add_mapping( primary_guest_gpm, bottom, bottom, range_end - bottom, mam_rwx_attrs );
                 // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-				VMM_ASSERT( ok == TRUE );
-			}
-		}
-	}
+                VMM_ASSERT( ok == TRUE );
+            }
+        }
+    }
 
     // now remove the VMM area from the primary guest
     ok = gpm_remove_mapping( primary_guest_gpm,
                              vmm_memory_layout[uvmm_image].base_address,
                              vmm_memory_layout[uvmm_image].total_size );
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove uvmm image base %p size 0x%x\r\n", 
-        vmm_memory_layout[uvmm_image].base_address,
-        vmm_memory_layout[uvmm_image].total_size);
+    vmm_memory_layout[uvmm_image].base_address,
+    vmm_memory_layout[uvmm_image].total_size);
 
     // and remove thunk area from the primary guest also
-	// if post launch skip it.
+    // if post launch skip it.
 
-    ok = gpm_remove_mapping( primary_guest_gpm,
-                             vmm_memory_layout[thunk_image].base_address,
+    ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[thunk_image].base_address,
                              vmm_memory_layout[thunk_image].total_size );
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove thunk image base %p size 0x%x\r\n", 
         vmm_memory_layout[thunk_image].base_address,

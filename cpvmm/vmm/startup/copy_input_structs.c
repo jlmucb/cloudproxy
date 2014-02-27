@@ -358,8 +358,7 @@ void print_guest_cpu_startup_struct(const VMM_GUEST_CPU_STARTUP_STATE* startup_s
     VMM_LOG(mask_anonymous, level_trace,"     =========> Guest CPU #%d %s\n", gcpu_idx,
                                     (gcpu_idx == 0) ? "(BSP)" : "" );
 
-    if (startup_struct == NULL)
-    {
+    if (startup_struct == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"    VMM_GUEST_CPU_STARTUP_STATE is NULL\n");
         goto end;
     }
@@ -570,8 +569,7 @@ void print_startup_struct(const VMM_STARTUP_STRUCT* startup_struct)
     print_guest_startup_struct( (const VMM_GUEST_STARTUP*)(startup_struct->primary_guest_startup_state ),
                                 (UINT32)-1);
 
-    for (idx = 0; idx < startup_struct->number_of_secondary_guests; ++idx)
-    {
+    for (idx = 0; idx < startup_struct->number_of_secondary_guests; ++idx) {
         const VMM_GUEST_STARTUP* sec = (const VMM_GUEST_STARTUP*)(startup_struct->secondary_guests_startup_state_array );
         print_guest_startup_struct( sec + idx, idx );
     }

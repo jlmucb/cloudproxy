@@ -498,10 +498,8 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     }
 
     VMM_DEBUG_CODE(
-        if (! VMCS_ABOVE_4G_SUPPORTED)
-        {
-            if (*hpa > (HPA)MAX_32BIT_NUMBER)
-            {
+        if (! VMCS_ABOVE_4G_SUPPORTED) {
+            if (*hpa > (HPA)MAX_32BIT_NUMBER) {
                 VMM_LOG(mask_anonymous, level_trace,"Heap allocated VMCS object above 4G. Current CPU does not support this\n");
                 VMM_ASSERT( *hpa < (HPA)MAX_32BIT_NUMBER );
             }
@@ -537,8 +535,7 @@ BOOLEAN vmcs_hw_allocate_vmxon_regions( UINT16 max_host_cpus )
 
     VMM_ASSERT( max_host_cpus );
     
-    for(cpu_idx = 0; cpu_idx < max_host_cpus; cpu_idx ++ )
-    {
+    for(cpu_idx = 0; cpu_idx < max_host_cpus; cpu_idx ++ ) {
         vmxon_region_hva = vmcs_hw_allocate_region( &vmxon_region_hpa );
         host_cpu_set_vmxon_region( vmxon_region_hva, vmxon_region_hpa, cpu_idx );
     }
@@ -587,8 +584,7 @@ BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
     ok = ((opt_in.Bits.EnableVmxonOutsideSmx == 1) || (opt_in.Bits.Lock == 0));
 
     VMM_DEBUG_CODE({
-        if (!ok)
-        {
+        if (!ok) {
             VMM_LOG(mask_anonymous, level_trace,"ASSERT: OPT_IN (FEATURE_CONTROL) MSR indicates that somebody locked-out VMX on Host CPU #%d\n",
                      hw_cpu_id());
         }

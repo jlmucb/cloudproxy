@@ -134,8 +134,7 @@ static POL_RETVAL get_policy(const VMM_POLICY  *policy, void  *policy_enum, UINT
     for (count = 0; (*policy & bit) == 0 && count < size; count++, bit <<= 1)
         ;
 
-    if (count == size)
-    {
+    if (count == size) {
         ret = POL_RETVAL_BAD_VALUE;
         *(UINT32 *) policy_enum = err_val;
     }

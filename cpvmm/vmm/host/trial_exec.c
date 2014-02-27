@@ -46,15 +46,11 @@ TRIAL_DATA *trial_execution_pop(void)
 
     VMM_ASSERT(cpu_id < NELEMENTS(trial_data));
 
-
-
-    if (NULL != trial_data[cpu_id])
-    {
+    if (NULL != trial_data[cpu_id]) {
         p_last_trial = trial_data[cpu_id];
         trial_data[cpu_id] = trial_data[cpu_id]->prev;
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"Error. Attempt to Pop Empty Trial Stack\n");
         p_last_trial = NULL;
     }

@@ -153,8 +153,7 @@ BOOLEAN pci_read_secondary_bus_reg(UINT8 bus, UINT8 device, UINT8 func, OUT UINT
     HOST_PCI_DEVICE *pci_bridge = get_host_pci_device(bus, device, func);
 
     *secondary_bus = 0;
-    if(NULL == pci_bridge
-       || FALSE == pci_bridge->is_pci_2_pci_bridge
+    if(NULL == pci_bridge || FALSE == pci_bridge->is_pci_2_pci_bridge
        || PCI_CONFIG_HEADER_TYPE_PCI2PCI_BRIDGE != pci_bridge->header_type) {
         return FALSE;
     }
@@ -265,8 +264,7 @@ static void host_pci_decode_pci_bridge(
                     __FUNCTION__, bus, device, function, io_base_low);
     }
     else {
-        if ((io_base_low & 0xF) == 1) // 32 bit IO address
-        {
+        if ((io_base_low & 0xF) == 1) // 32 bit IO address {
             // update the high 16 bits
             io_base_high = pci_read16(bus, device, function, PCI_CONFIG_BRIDGE_IO_BASE_HIGH);
             io_limit_high = pci_read16(bus, device, function, PCI_CONFIG_BRIDGE_IO_LIMIT_HIGH);
@@ -360,8 +358,7 @@ static void pci_init_device(PCI_DEVICE_ADDRESS device_addr,
             pci_dev->bars[i].type = PCI_BAR_UNUSED;
     }
     else {
-        for(i = 0; i < PCI_MAX_BAR_NUMBER; i++)
-        {
+        for(i = 0; i < PCI_MAX_BAR_NUMBER; i++) {
             if (bar_offset > PCI_CONFIG_BAR_LAST_OFFSET) // total bar size is 0x10~0x24
                 pci_dev->bars[i].type = PCI_BAR_UNUSED;
             else
@@ -476,8 +473,7 @@ static void host_pci_print(void)
     VMM_LOG(mask_anonymous, level_trace,"[Bus]    [Dev]    [Func]    [Vendor ID]    [Dev ID]   [PCI-PCI Bridge]\r\n");
     //vmm_clear_screen();
     for(i = 0; i < PCI_MAX_NUM_FUNCTIONS; i++) {
-        if(PCI_DEV_INDEX_INVALID == pci_devices_lookup_table[i])
-        {
+        if(PCI_DEV_INDEX_INVALID == pci_devices_lookup_table[i]) {
             continue;
         }
 

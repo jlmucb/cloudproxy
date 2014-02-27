@@ -280,8 +280,7 @@ LOCAL_APIC_ERRNO local_apic_set_mode(LOCAL_APIC_MODE new_mode)
     LOCAL_APIC_PER_CPU_DATA*  data = GET_CPU_LAPIC();
     LOCAL_APIC_MODE  old_mode = data->lapic_mode;
 
-    switch (new_mode)
-    {
+    switch (new_mode) {
     case LOCAL_APIC_DISABLED:
     case LOCAL_APIC_ENABLED:
         if (NULL != lapic_mode_switch_transitions[old_mode][new_mode])
@@ -289,8 +288,7 @@ LOCAL_APIC_ERRNO local_apic_set_mode(LOCAL_APIC_MODE new_mode)
         break;
 
     case LOCAL_APIC_X2_ENABLED:
-        if (NULL != lapic_mode_switch_transitions[old_mode][new_mode])
-        {
+        if (NULL != lapic_mode_switch_transitions[old_mode][new_mode]) {
             if (TRUE == local_apic_is_x2apic_supported())
                 lapic_mode_switch_transitions[old_mode][new_mode]();
             else
@@ -312,8 +310,7 @@ static void lapic_fill_current_mode( LOCAL_APIC_PER_CPU_DATA* lapic_data )
 {
     lapic_data->lapic_mode = local_apic_discover_mode();
 
-    switch (lapic_data->lapic_mode)
-    {
+    switch (lapic_data->lapic_mode) {
         case LOCAL_APIC_X2_ENABLED:
             lapic_data->lapic_read_reg = lapic_read_reg_msr;
             lapic_data->lapic_write_reg = lapic_write_reg_msr;
@@ -454,45 +451,44 @@ LOCAL_APIC_ERRNO local_apic_access(
 BOOLEAN validate_APIC_BASE_change(UINT64 msr_value)
 {
     LOCAL_APIC_PER_CPU_DATA *lapic_data = GET_CPU_LAPIC();
-	UINT64 physical_address_size_mask = ~((((UINT64)1) << ((UINT8)hw_read_address_size()))-1);
-	UINT64 bit_9_mask = (UINT64)1 << 9;
-	UINT64 last_byte_mask = 0xff;
-	UINT64 reserved_bits_mask;
+    UINT64 physical_address_size_mask = ~((((UINT64)1) << ((UINT8)hw_read_address_size()))-1);
+    UINT64 bit_9_mask = (UINT64)1 << 9;
+    UINT64 last_byte_mask = 0xff;
+    UINT64 reserved_bits_mask;
 
-	if(local_apic_is_x2apic_supported())
-		reserved_bits_mask = bit_9_mask + last_byte_mask + ~((((UINT64)1) << 36)-1)
-			+ IA32_APIC_BASE_MSR_BSP;
-	else
-		reserved_bits_mask = physical_address_size_mask + bit_9_mask + last_byte_mask 
-			+ IA32_APIC_BASE_MSR_X2APIC_ENABLE + IA32_APIC_BASE_MSR_BSP;
+    if(local_apic_is_x2apic_supported())
+        reserved_bits_mask = bit_9_mask + last_byte_mask + ~((((UINT64)1) << 36)-1)
+                    + IA32_APIC_BASE_MSR_BSP;
+    else
+        reserved_bits_mask = physical_address_size_mask + bit_9_mask + last_byte_mask 
+                    + IA32_APIC_BASE_MSR_X2APIC_ENABLE + IA32_APIC_BASE_MSR_BSP;
 
-	//if reserved bits are being changed, return FALSE, so,the caller will inject gp.
-	if( (hw_read_msr(IA32_MSR_APIC_BASE) & reserved_bits_mask) !=
-		(msr_value & reserved_bits_mask) )
-			return FALSE;
+    //if reserved bits are being changed, return FALSE, so,the caller will inject gp.
+    if( (hw_read_msr(IA32_MSR_APIC_BASE) & reserved_bits_mask) != (msr_value & reserved_bits_mask) )
+        return FALSE;
 
-	//if the current mode is xAPIC, the legal target modes are xAPIC, x2APIC and disabled state.
-	//let's reject any change to disabled state since uVMM relies on xAPIC or x2APIC
+    //if the current mode is xAPIC, the legal target modes are xAPIC, x2APIC and disabled state.
+    //let's reject any change to disabled state since uVMM relies on xAPIC or x2APIC
 
-	//if the current mode is x2APIC, the legal target modes are x2APIC and disabled state.
-	//let's reject any change to disabled state for the same reason
-	if( lapic_data->lapic_mode == LOCAL_APIC_X2_ENABLED ) {
-		if( !(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_X2APIC_ENABLE)) ||
-			!(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_GLOBAL_ENABLE)) )
-			//VMM_DEADLOOP();
-			return FALSE; //inject gp instead of deadloop--recommended by validation guys
-	}
-	else {
-		if( lapic_data->lapic_mode != LOCAL_APIC_ENABLED )
-			//VMM_DEADLOOP();
-			return FALSE; //inject gp instead of deadloop--recommended by validation guys
+    //if the current mode is x2APIC, the legal target modes are x2APIC and disabled state.
+    //let's reject any change to disabled state for the same reason
+    if( lapic_data->lapic_mode == LOCAL_APIC_X2_ENABLED ) {
+        if( !(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_X2APIC_ENABLE)) ||
+            !(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_GLOBAL_ENABLE)) )
+            //VMM_DEADLOOP();
+            return FALSE; //inject gp instead of deadloop--recommended by validation guys
+    }
+    else {
+        if( lapic_data->lapic_mode != LOCAL_APIC_ENABLED )
+            //VMM_DEADLOOP();
+            return FALSE; //inject gp instead of deadloop--recommended by validation guys
 
-		if(!(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_GLOBAL_ENABLE)))
-			//VMM_DEADLOOP();
-			return FALSE; //inject gp instead of deadloop--recommended by validation guys
-	}
+        if(!(BITMAP_GET(msr_value, IA32_APIC_BASE_MSR_GLOBAL_ENABLE)))
+            //VMM_DEADLOOP();
+            return FALSE; //inject gp instead of deadloop--recommended by validation guys
+    }
 
-	return TRUE;
+        return TRUE;
 }
 
 void local_apic_setup_changed(void)
@@ -502,20 +498,17 @@ void local_apic_setup_changed(void)
 
     lapic_data->lapic_base_address_hpa = hw_read_msr(IA32_MSR_APIC_BASE);
     lapic_data->lapic_base_address_hpa =
-            ALIGN_BACKWARD(lapic_data->lapic_base_address_hpa, PAGE_4KB_SIZE);
+    ALIGN_BACKWARD(lapic_data->lapic_base_address_hpa, PAGE_4KB_SIZE);
 
     lapic_fill_current_mode( lapic_data );
-
-	if( lapic_data->lapic_mode != LOCAL_APIC_X2_ENABLED )
-	{
-		result = hmm_map_uc_physical_page(
-                             lapic_data->lapic_base_address_hpa,
+    if( lapic_data->lapic_mode != LOCAL_APIC_X2_ENABLED ) {
+        result = hmm_map_uc_physical_page( lapic_data->lapic_base_address_hpa,
                              TRUE /* writable */, FALSE /* not_executable */,
                              FALSE /* do synch with other CPUs to avoid loop back*/,
                              &(lapic_data->lapic_base_address_hva));
-		// BEFORE_VMLAUNCH. Critical check, keep it.
-		VMM_ASSERT(result);
-	}
+        // BEFORE_VMLAUNCH. Critical check, keep it.
+        VMM_ASSERT(result);
+    }
 
     VMM_LOG(mask_anonymous, level_trace,"CPU#%d: local apic base = %p\r\n", hw_cpu_id(), lapic_data->lapic_base_address_hpa);
 
@@ -551,9 +544,7 @@ BOOLEAN update_lapic_cpu_id(void)
 BOOLEAN local_apic_cpu_init(void)
 {
     local_apic_setup_changed();
-
     update_lapic_cpu_id();
-
     return TRUE;
 }
 
@@ -573,7 +564,7 @@ BOOLEAN local_apic_init( UINT16 num_of_cpus )
 }
 
 /*
- *                       Specific IPI support
+ *      Specific IPI support
  */
 
 static void local_apic_wait_for_ipi_delivery( LOCAL_APIC_PER_CPU_DATA* lapic_data )
@@ -683,8 +674,8 @@ local_apic_send_ipi(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
         icr.hi_dword.bits.destination = dst;
     }
 
-	if( lapic_data->lapic_mode == LOCAL_APIC_X2_ENABLED )
-		icr.hi_dword.uint32 = (UINT32)icr.hi_dword.bits.destination;
+        if( lapic_data->lapic_mode == LOCAL_APIC_X2_ENABLED )
+                icr.hi_dword.uint32 = (UINT32)icr.hi_dword.bits.destination;
 
     icr.lo_dword.uint32 = 0;
     icr.lo_dword.bits.destination_shorthand = dst_shorthand;
@@ -737,11 +728,11 @@ UINT8 local_apic_get_current_id( void )
                                 LOCAL_APIC_ID_REG,
                                 &local_apic_id,
                                 sizeof(local_apic_id));
-	
-	if( lapic_data->lapic_mode != LOCAL_APIC_X2_ENABLED )
-		return (UINT8)(local_apic_id >> LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT);
-	else
-		return (UINT8)(local_apic_id);
+        
+        if( lapic_data->lapic_mode != LOCAL_APIC_X2_ENABLED )
+                return (UINT8)(local_apic_id >> LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT);
+        else
+                return (UINT8)(local_apic_id);
 }
 #ifdef INCLUDE_UNUSED_CODE
 void local_apic_send_init_to_self( void )

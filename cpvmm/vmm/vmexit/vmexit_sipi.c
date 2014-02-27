@@ -51,8 +51,7 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
     do {    // single-execution loop
 
         // Check if this is IPC SIPI signal.
-        if (ipc_sipi_vmexit_handler(gcpu))
-        {
+        if (ipc_sipi_vmexit_handler(gcpu)) {
             // We're already in Wait for SIPI state. Nothing to do
             ret_status = VMEXIT_HANDLED;
             break;
@@ -61,8 +60,7 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
 
 #ifdef SIPI_LAYERED_IS_SUPPORTED
 
-        if (gcpu_is_vmcs_layered(gcpu))
-        {
+        if (gcpu_is_vmcs_layered(gcpu)) {
             break;  // level-1 must handle
         }
 #endif
@@ -110,12 +108,8 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
         real_mode_segment = (UINT16) qualification.Sipi.Vector << 8;
 
-        gcpu_set_segment_reg(gcpu,
-                            IA32_SEG_CS,
-                            real_mode_segment,
-                            real_mode_segment << 4,
-                            0xFFFF,
-                            0x9B);
+        gcpu_set_segment_reg(gcpu, IA32_SEG_CS, real_mode_segment,
+                            real_mode_segment << 4, 0xFFFF, 0x9B);
 
         // Attribute set bits: Present, R/W, Accessed
         gcpu_set_segment_reg(gcpu, IA32_SEG_DS, 0, 0, 0xFFFF, 0x93);

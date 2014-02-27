@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_C)
@@ -213,13 +213,10 @@ void vmexit_initialize(void)
     GUEST_ECONTEXT guest_ctx;
 
     vmm_memset( &vmexit_global_state, 0, sizeof(vmexit_global_state) );
-
     list_init(vmexit_global_state.guest_vmexit_controls);
     io_vmexit_initialize();
     vmcall_intialize();
-
-    for( guest = guest_first( &guest_ctx ); guest; guest = guest_next( &guest_ctx ))
-    {
+    for( guest = guest_first( &guest_ctx ); guest; guest = guest_next( &guest_ctx )) {
         vmexit_guest_initialize(guest_get_id(guest));
     }
 }
@@ -243,12 +240,10 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     VMM_ASSERT(guest_vmexit_control);
 
     guest_vmexit_control->guest_id = guest_id;
-
     list_add(vmexit_global_state.guest_vmexit_controls, guest_vmexit_control->list);
 
     // install default handlers
-    for (i = 0; i < Ia32VmxExitBasicReasonCount; ++i)
-    {
+    for (i = 0; i < Ia32VmxExitBasicReasonCount; ++i) {
         guest_vmexit_control->vmexit_handlers[i] = vmexit_handler_default;
     }
 
@@ -759,12 +754,10 @@ VMM_STATUS vmexit_install_handler(
     // BEFORE_VMLAUNCH
     VMM_ASSERT(guest_vmexit_control);
 
-    if (reason < Ia32VmxExitBasicReasonCount)
-    {
+    if (reason < Ia32VmxExitBasicReasonCount) {
         guest_vmexit_control->vmexit_handlers[reason] = handler;
     }
-    else
-    {
+    else {
         VMM_LOG(mask_uvmm, level_error,
                 "CPU%d: Error: VMEXIT Reason(%d) exceeds supported limit\n",
                 hw_cpu_id(), reason);
@@ -800,15 +793,14 @@ void vmexit_common_handler(void)
     // This is required since GCPU and VMCS cache has not yet been flushed and might have stale values from previous VMExit
     vmcs_sw_shadow_disable[hw_cpu_id()] = TRUE;
 
-	if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) )
-	{
-		REPORT_VMM_LOG_EVENT_DATA vmm_log_event_data;
-		
-		vmm_log_event_data.vector = gcpu->trigger_log_event - 1;
-		gcpu->trigger_log_event = 0;
-		report_uvmm_event(UVMM_EVENT_LOG, (VMM_IDENTIFICATION_DATA)gcpu, 
-			(const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_log_event_data);
-	}
+    if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) ) {
+        REPORT_VMM_LOG_EVENT_DATA vmm_log_event_data;
+                
+        vmm_log_event_data.vector = gcpu->trigger_log_event - 1;
+        gcpu->trigger_log_event = 0;
+        report_uvmm_event(UVMM_EVENT_LOG, (VMM_IDENTIFICATION_DATA)gcpu, 
+                    (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_log_event_data);
+    }
 
     // OPTIMIZATION: Check if current VMExit is MTF VMExit after MTF was turned on for EPT violation
     initial_vmexit_check_data.current_cpu_rip = gcpu_read_guestrip();
@@ -850,7 +842,7 @@ void vmexit_common_handler(void)
 #ifdef FAST_VIEW_SWITCH
     if (fvs_is_fvs_enabled(gcpu)) {
         if (fvs_is_eptp_switching_supported())
-        	report_uvmm_event(UVMM_EVENT_UPDATE_ACTIVE_VIEW, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
+                report_uvmm_event(UVMM_EVENT_UPDATE_ACTIVE_VIEW, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
     }
 #endif
 
@@ -870,8 +862,7 @@ void vmexit_common_handler(void)
 
     next_gcpu = gcpu_call_vmexit_function(gcpu, reason.Bits.BasicReason);
 
-    if (NULL == next_gcpu)
-    {
+    if (NULL == next_gcpu) {
         // call reason-specific VMEXIT handler
         vmexit_handler_invoke(gcpu, reason.Bits.BasicReason);
         if (legacy_scheduling_enabled)
@@ -879,8 +870,7 @@ void vmexit_common_handler(void)
         else
             next_gcpu = gcpu;   // in layered vmresume
     }
-    else
-    {
+    else {
         scheduler_schedule_gcpu(next_gcpu);
     }
 
@@ -899,11 +889,9 @@ GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id)
     LIST_ELEMENT *iter = NULL;
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
 
-    LIST_FOR_EACH(vmexit_global_state.guest_vmexit_controls, iter)
-    {
+    LIST_FOR_EACH(vmexit_global_state.guest_vmexit_controls, iter) {
         guest_vmexit_control = LIST_ENTRY(iter, GUEST_VMEXIT_CONTROL, list);
-        if(guest_vmexit_control->guest_id == guest_id)
-        {
+        if(guest_vmexit_control->guest_id == guest_id) {
             return guest_vmexit_control;
         }
     }
@@ -923,8 +911,7 @@ void vmexit_direct_call_handler(GUEST_CPU_HANDLE gcpu)
     reason.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
     vmexit_id = reason.Bits.BasicReason;
 
-    if (vmexit_id < Ia32VmxExitBasicReasonCount)
-    {
+    if (vmexit_id < Ia32VmxExitBasicReasonCount) {
         GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
         GUEST_ID        guest_id = guest_get_id(guest);
         GUEST_VMEXIT_CONTROL *guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
@@ -932,12 +919,10 @@ void vmexit_direct_call_handler(GUEST_CPU_HANDLE gcpu)
         VMM_ASSERT(guest_vmexit_control);
 
         // Call top-down common handler
-        if (vmexit_classification_func[vmexit_id] == vmexit_top_down_common_handler)
-        {
+        if (vmexit_classification_func[vmexit_id] == vmexit_top_down_common_handler) {
             guest_vmexit_control->vmexit_handlers[vmexit_id](gcpu);
         }
-        else
-        {
+        else {
             // XuModel didn't handle bottom up vmexit
             VMM_ASSERT(Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi == vmexit_id);
             gcpu_vmexit_exception_reflect(gcpu);

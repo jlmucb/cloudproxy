@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_bootstrap_utils.h"
 #include "policy_manager.h"
@@ -38,17 +38,15 @@ void start_addons( UINT32 num_of_cpus,
 {
     VMM_LOG(mask_anonymous, level_trace,"start addons\r\n");
 #ifdef VTLB_IS_SUPPORTED
-    if (global_policy_uses_vtlb())
-    {
+    if (global_policy_uses_vtlb()) {
         init_vtlb_addon( num_of_cpus );
     } 
 	else
 #endif
-    if (global_policy_uses_ept()){
+    if (global_policy_uses_ept()) {
         init_ept_addon( num_of_cpus );
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_error,"No supported addons\r\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();

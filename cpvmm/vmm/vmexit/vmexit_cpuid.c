@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_CPUID_C)
@@ -49,9 +49,7 @@ void vmexit_cpuid_filter_install(
     CPUID_FILTER_DESCRIPTOR *p_filter_desc = vmm_malloc(sizeof(*p_filter_desc));
 
     VMM_ASSERT(NULL != p_filter_desc);
-
-    if (NULL != p_filter_desc)
-    {
+    if (NULL != p_filter_desc) {
         p_filter_desc->cpuid   = cpuid;
         p_filter_desc->handler = handler;
         list_add(filter_desc_list, &p_filter_desc->list);
@@ -78,11 +76,9 @@ VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     hw_cpuid(&cpuid_params);
 
     // pass to filters for virtualization
-    LIST_FOR_EACH(filter_desc_list, list_iterator)
-    {
+    LIST_FOR_EACH(filter_desc_list, list_iterator) {
         p_filter_desc = LIST_ENTRY(list_iterator, CPUID_FILTER_DESCRIPTOR, list);
-        if (p_filter_desc->cpuid == req_id)
-        {
+        if (p_filter_desc->cpuid == req_id) {
             p_filter_desc->handler(gcpu, &cpuid_params);
         }
     }
@@ -92,7 +88,6 @@ VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RBX, cpuid_params.m_rbx);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RCX, cpuid_params.m_rcx);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RDX, cpuid_params.m_rdx);
-
 
     // increment IP to skip executed CPUID instruction
     gcpu_skip_guest_instruction(gcpu);
@@ -127,8 +122,6 @@ void cpuid_leaf_3h_filter(
     // use PSN index 3 to indicate whether eVmm is running or not.
     p_cpuid->m_rcx = EVMM_RUNNING_SIGNATURE_VMM;   //"EVMM"
     p_cpuid->m_rdx = EVMM_RUNNING_SIGNATURE_CORP;  //"INTC"
-
-
 }
 
 
@@ -141,9 +134,7 @@ void cpuid_leaf_ext_1h_filter(
     UINT64 guest_cs_ar= vmcs_read(vmcs, VMCS_GUEST_CS_AR);
 
     VMM_ASSERT(p_cpuid);
-
-    if (BITMAP_GET(guest_cs_ar,DESCRIPTOR_L_BIT) == 0) 
-    {
+    if (BITMAP_GET(guest_cs_ar,DESCRIPTOR_L_BIT) == 0) {
         //Guest is not in 64 bit mode, the bit 11 of EDX should be 
         //cleared since this bit indicates syscall/sysret available
         //in 64 bit mode. See the Intel Software Programmer Manual vol 2A 
@@ -151,7 +142,6 @@ void cpuid_leaf_ext_1h_filter(
 
         BIT_CLR64(p_cpuid->m_rdx, CPUID_EXT_LEAF_1H_EDX_SYSCALL_SYSRET);
     }
-
 }
 
 
@@ -164,16 +154,12 @@ void vmexit_cpuid_guest_intialize( GUEST_ID  guest_id)
     GUEST_HANDLE guest = guest_handle(guest_id);
 
     VMM_ASSERT(guest);
-    
     // install CPUID vmexit handler
-    vmexit_install_handler(
-                guest_id,
-                vmexit_cpuid_instruction,
+    vmexit_install_handler( guest_id, vmexit_cpuid_instruction,
                 Ia32VmxExitBasicReasonCpuidInstruction);
 
     // register cpuid(leaf 0x1) filter handler
     vmexit_cpuid_filter_install(guest, CPUID_LEAF_1H,cpuid_leaf_1h_filter);
-
 
     // register cpuid(leaf 0x3) filter handler
     vmexit_cpuid_filter_install(guest, CPUID_LEAF_3H,cpuid_leaf_3h_filter);

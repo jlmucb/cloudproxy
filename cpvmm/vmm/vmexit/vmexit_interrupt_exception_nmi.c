@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 //#include "vmcs_object.h"
@@ -63,15 +63,11 @@ BOOLEAN page_fault( GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vmcs )
 
 void vmexit_nmi_exception_handlers_install(GUEST_ID guest_id)
 {
-    vmexit_install_handler(
-        guest_id,
-        vmexit_software_interrupt_exception_nmi,
+    vmexit_install_handler( guest_id, vmexit_software_interrupt_exception_nmi,
         Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi);
 
 
-    vmexit_install_handler(
-        guest_id,
-        nmi_window_vmexit_handler,
+    vmexit_install_handler( guest_id, nmi_window_vmexit_handler,
         Ia32VmxExitNmiWindow);
 }
 
@@ -133,8 +129,7 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
                 cr0.Uint64 = gcpu_get_guest_visible_control_reg( gcpu, IA32_CTRL_CR0 );
 
 #ifdef ENABLE_EMULATOR
-                if (cr0.Bits.PG == 0)
-                {
+                if (cr0.Bits.PG == 0) {
                     // page fault without paging in guest ? it's our
                     gcpu_perform_single_step( gcpu );
                     handled_exception = TRUE;
@@ -165,15 +160,12 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
         break;
     }
 
-
-    if (TRUE == unsupported_exception)
-    {
+    if (TRUE == unsupported_exception) {
         VMM_LOG(mask_anonymous, level_trace,"Unsupported interrupt/exception (%d) in ", vmexit_exception_info.Bits.Vector);
         PRINT_GCPU_IDENTITY(gcpu);
         VMM_LOG(mask_anonymous, level_trace," Running %s emulator\n", emulator_is_running_as_guest() ? "inside" : "outside");
         VMM_DEADLOOP();
     }
-
     return handled_exception ? VMEXIT_HANDLED : VMEXIT_NOT_HANDLED;
 }
 

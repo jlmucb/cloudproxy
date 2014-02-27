@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_bootstrap_utils.h"
 #include "libc.h"
@@ -25,12 +25,10 @@
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(COPY_INPUT_STRUCTS_C, __condition)
 
 
-//******************************************************************************
-//*
-//* Copy input params into heap before changing host virtual memory mapping
-//* Required in order to avoid input parameters disrupting
-//*
-//******************************************************************************
+//
+// Copy input params into heap before changing host virtual memory mapping
+// Required in order to avoid input parameters disrupting
+//
 
 INLINE
 void vmm_copy_gcpu_startup_state(VMM_GUEST_CPU_STARTUP_STATE* state_to, const VMM_GUEST_CPU_STARTUP_STATE* state_from) {
@@ -64,9 +62,7 @@ BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, const VMM_GU
     }
 
     guest_startup_to->cpu_states_array = 0;
-
-    if (size_of_array > 0)
-    {
+    if (size_of_array > 0) {
         array = vmm_memory_alloc(size_of_array);
         if (array == NULL) {
             return FALSE;
@@ -94,8 +90,7 @@ BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, const VMM_GU
 
     guest_startup_to->devices_array = 0;
 
-    if (size_of_array > 0)
-    {
+    if (size_of_array > 0) {
         array = vmm_memory_alloc(size_of_array);
         if (array == NULL) {
             return FALSE;
@@ -491,17 +486,14 @@ void print_guest_startup_struct(const VMM_GUEST_STARTUP* startup_struct,
 
     VMM_LOG(mask_anonymous, level_trace,"\n  ----------------- VMM_GUEST_STARTUP ----------------------\n\n");
 
-    if (guest_idx == (UINT32)-1)
-    {
+    if (guest_idx == (UINT32)-1) {
         VMM_LOG(mask_anonymous, level_trace,"   =========> The PRIMARY guest\n");
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"   =========> Secondary guest #%d\n", guest_idx );
     }
 
-    if (startup_struct == NULL)
-    {
+    if (startup_struct == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"  VMM_GUEST_STARTUP is NULL\n");
         goto end;
     }
@@ -521,16 +513,12 @@ void print_guest_startup_struct(const VMM_GUEST_STARTUP* startup_struct,
     PRINT_STARTUP_FIELD64( prefix, startup_struct, devices_array );
 
     gcpu = (const VMM_GUEST_CPU_STARTUP_STATE*)(startup_struct->cpu_states_array);
-
-    for (i = 0; i < startup_struct->cpu_states_count; ++i)
-    {
+    for (i = 0; i < startup_struct->cpu_states_count; ++i) {
         print_guest_cpu_startup_struct( gcpu + i, i );
     }
 
     dev = (const VMM_GUEST_DEVICE*)(startup_struct->devices_array);
-
-    for (i = 0; i < startup_struct->devices_count; ++i)
-    {
+    for (i = 0; i < startup_struct->devices_count; ++i) {
         print_guest_device_struct( dev + i, i );
     }
 
@@ -549,8 +537,7 @@ void print_startup_struct(const VMM_STARTUP_STRUCT* startup_struct)
     UINT16  idx;
 
     VMM_LOG(mask_anonymous, level_trace,"\n----------------- VMM_STARTUP_STRUCT ----------------------\n\n");
-    if (startup_struct == NULL)
-    {
+    if (startup_struct == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"VMM_STARTUP_STRUCT is NULL\n");
         goto end;
     }

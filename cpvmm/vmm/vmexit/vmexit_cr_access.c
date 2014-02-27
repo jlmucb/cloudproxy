@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "guest_cpu.h"
@@ -116,8 +116,7 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
 
     VMM_ASSERT(gcpu != NULL);
     cr0.Uint64 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
-    if ((cr0.Bits.PG && (!cr0.Bits.PE)) ||
-        (cr0.Bits.NW && (!cr0.Bits.CD))) {
+    if ((cr0.Bits.PG && (!cr0.Bits.PE)) || (cr0.Bits.NW && (!cr0.Bits.CD))) {
         return TRUE;
     }
 
@@ -128,7 +127,7 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
         return TRUE;
     }
 
-	if ( cr4.Bits.OSXSAVE && !is_cr4_osxsave_supported() ){
+    if ( cr4.Bits.OSXSAVE && !is_cr4_osxsave_supported() ) {
         return TRUE;
     }
 
@@ -200,24 +199,21 @@ RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE            gcpu,
     RAISE_EVENT_RETVAL result = EVENT_NO_HANDLERS_REGISTERED;
 
     if(reg_id >= IA32_CTRL_COUNT)
-    	return result;
+        return result;
 
     event = lkup_write_event[ reg_id ];
-    if (event != EVENTS_COUNT)
-    {
+    if (event != EVENTS_COUNT) {
         event_data.new_guest_visible_value = new_value;
-        if(TRUE == event_raise( event, gcpu, &event_data )){
+        if(TRUE == event_raise( event, gcpu, &event_data )) {
             result = EVENT_HANDLED;
-        }else{
+        } else {
             result = EVENT_NOT_HANDLED;
         }
     }
-
     return result;
 }
 
-BOOLEAN cr_guest_update(
-    GUEST_CPU_HANDLE            gcpu,
+BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu,
     VMM_IA32_CONTROL_REGISTERS  reg_id,
     ADDRESS                     bits_to_update,
     IA32_VMX_EXIT_QUALIFICATION qualification)
@@ -278,7 +274,7 @@ BOOLEAN cr_guest_write(
     RAISE_EVENT_RETVAL cr_update_event;
     UINT64 old_visible_reg_value;
 
-	const VIRTUAL_CPU_ID* vcpu_id = NULL;
+        const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_STATE *ept_guest = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
 
@@ -297,33 +293,30 @@ BOOLEAN cr_guest_write(
         return FALSE;
     }
 
-	if( is_unrestricted_guest_supported() ) 
-	{
-		vcpu_id = guest_vcpu( gcpu );
-		VMM_ASSERT(vcpu_id);        
-		ept_guest = ept_find_guest_state(vcpu_id->guest_id);
-		VMM_ASSERT(ept_guest);
-		ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
+    if( is_unrestricted_guest_supported() ) {
+        vcpu_id = guest_vcpu( gcpu );
+        VMM_ASSERT(vcpu_id);        
+        ept_guest = ept_find_guest_state(vcpu_id->guest_id);
+        VMM_ASSERT(ept_guest);
+        ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
 
-		ept_guest_cpu->cr0 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR0, VMCS_MERGED);
-		ept_guest_cpu->cr4 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR4, VMCS_MERGED);
-	}
+        ept_guest_cpu->cr0 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR0, VMCS_MERGED);
+        ept_guest_cpu->cr4 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR4, VMCS_MERGED);
+    }
 
     gcpu_set_control_reg_layered(gcpu, reg_id, value, VMCS_MERGED);
 
     cr_update_event = cr_raise_write_events( gcpu, reg_id, value );
     VMM_ASSERT(cr_update_event != EVENT_NOT_HANDLED);
 
-	if ( (reg_id == IA32_CTRL_CR4) && is_cr4_osxsave_supported() )
-	{
-		EM64T_CR4 cr4_mask;
-		
-		cr4_mask.Uint64 = 0;
-		cr4_mask.Bits.OSXSAVE = 1;
-		vmcs_write(gcpu_get_vmcs(gcpu), VMCS_HOST_CR4, (vmcs_read(gcpu_get_vmcs(gcpu),VMCS_HOST_CR4) 
-			& ~cr4_mask.Uint64) | (value & cr4_mask.Uint64) );
-	}
-
+    if ( (reg_id == IA32_CTRL_CR4) && is_cr4_osxsave_supported() ) {
+        EM64T_CR4 cr4_mask;
+                
+        cr4_mask.Uint64 = 0;
+        cr4_mask.Bits.OSXSAVE = 1;
+        vmcs_write(gcpu_get_vmcs(gcpu), VMCS_HOST_CR4, (vmcs_read(gcpu_get_vmcs(gcpu),VMCS_HOST_CR4) 
+                        & ~cr4_mask.Uint64) | (value & cr4_mask.Uint64) );
+    }
     return TRUE;
 }
 
@@ -351,8 +344,7 @@ BOOLEAN cr_mov(
     VMM_ASSERT(qualification.CrAccess.MoveGpr < NELEMENTS(lkup_operand));
     operand = lkup_operand[qualification.CrAccess.MoveGpr];
 
-    switch (qualification.CrAccess.AccessType)
-    {
+    switch (qualification.CrAccess.AccessType) {
     case 0: // move to CR
         cr_value = gcpu_get_gp_reg(gcpu, operand);
         status = cr_guest_write(gcpu, cr_id, cr_value);
@@ -360,7 +352,7 @@ BOOLEAN cr_mov(
 
     case 1: // move from CR
         cr_value = gcpu_get_guest_visible_control_reg(gcpu, cr_id);
-		// VMM_LOG(mask_anonymous, level_trace, "move from CR")	;
+                // VMM_LOG(mask_anonymous, level_trace, "move from CR") ;
         gcpu_set_gp_reg(gcpu, operand, cr_value);
         break;
 
@@ -369,19 +361,18 @@ BOOLEAN cr_mov(
         break;
     }
 
-	return status;
+        return status;
 }
 
 VMEXIT_HANDLING_STATUS vmexit_cr_access(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT                *vmcs = gcpu_get_vmcs(gcpu);
     IA32_VMX_EXIT_QUALIFICATION qualification;
-	BOOLEAN status = TRUE;
+    BOOLEAN status = TRUE;
 
     qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
 
-    switch (qualification.CrAccess.AccessType)
-    {
+    switch (qualification.CrAccess.AccessType) {
     case 0: // move to CR
     case 1: // move from CR
         status = cr_mov(gcpu, qualification);
@@ -398,10 +389,9 @@ VMEXIT_HANDLING_STATUS vmexit_cr_access(GUEST_CPU_HANDLE gcpu)
         break;
     }
 
-	if (TRUE == status) {
-		gcpu_skip_guest_instruction(gcpu);
-	}
-
+    if (TRUE == status) {
+        gcpu_skip_guest_instruction(gcpu);
+    }
     return VMEXIT_HANDLED;
 }
 
@@ -409,10 +399,8 @@ VMM_IA32_CONTROL_REGISTERS vmexit_cr_access_get_cr_from_qualification(UINT64 qua
     IA32_VMX_EXIT_QUALIFICATION qualification_tmp;
 
     qualification_tmp.Uint64 = qualification;
-
     if(qualification_tmp.CrAccess.Number >= IA32_CR_COUNT)
-    	return UNSUPPORTED_CR;
-
+        return UNSUPPORTED_CR;
     return lkup_cr[qualification_tmp.CrAccess.Number];
 }
 

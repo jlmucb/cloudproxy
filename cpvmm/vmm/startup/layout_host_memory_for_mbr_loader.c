@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(LAYOUT_HOST_MEMORY_FOR_MBR_LOADER_C)
@@ -27,14 +27,12 @@
 #define FOUR_GIGABYTE 0x100000000
 
 
-//******************************************************************************
-//*
-//* Read input data structure and create all guests
-//*
-//* NOTE: current implementation is valid only for MBR loader. For
-//*       driver-loading scenario it should be changed
-//*
-//******************************************************************************
+// 
+//  Read input data structure and create all guests
+// 
+//  NOTE: current implementation is valid only for MBR loader. For
+//        driver-loading scenario it should be changed
+// 
 
 // -------------------------- types -----------------------------------------
 // ---------------------------- globals -------------------------------------
@@ -75,11 +73,11 @@ BOOLEAN init_memory_layout_from_mbr(
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(e820_abstraction_is_initialized());
 
-	if (global_policy_uses_vtlb()) {
-		mam_rwx_attrs.uint32 = 0x5;
-		mam_rw_attrs.uint32 = 0x1;
-		mam_ro_attrs.uint32= 0x0;
-	}
+    if (global_policy_uses_vtlb()) {
+	mam_rwx_attrs.uint32 = 0x5;
+	mam_rw_attrs.uint32 = 0x1;
+	mam_ro_attrs.uint32= 0x0;
+     }
 
     // 1. first map 0-4G host region to primary guest
     ok = gpm_add_mapping( primary_guest_gpm, 0, 0, FOUR_GIGABYTE, mam_rwx_attrs );
@@ -92,8 +90,7 @@ BOOLEAN init_memory_layout_from_mbr(
     // if in the post launch mode skip it
 	for (e820_iter = e820_abstraction_iterator_get_first(E820_ORIGINAL_MAP);
 	 e820_iter != E820_ABSTRACTION_NULL_ITERATOR;
-	 e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter))
-	{
+	 e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter)) {
 		e820_entry = e820_abstraction_iterator_get_range_details(e820_iter);
 
 		range_start = e820_entry->basic_entry.base_address;
@@ -106,8 +103,7 @@ BOOLEAN init_memory_layout_from_mbr(
 		range_end   = ALIGN_BACKWARD(range_end, PAGE_4KB_SIZE);
 
 		VMM_DEBUG_CODE({
-			if (range_start != e820_entry->basic_entry.base_address)
-			{
+			if (range_start != e820_entry->basic_entry.base_address) {
 				VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: aligning E820 range start from %P to %P\n",
 							e820_entry->basic_entry.base_address, range_start);
 			}
@@ -120,8 +116,7 @@ BOOLEAN init_memory_layout_from_mbr(
 			}
 		})
 
-		if (range_end <= range_start)
-		{
+		if (range_end <= range_start) {
 			// after alignment the range became invalid
 			VMM_LOG(mask_anonymous, level_trace,"init_memory_layout_from_mbr WARNING: skipping invalid E820 memory range FROM %P to %P\n",
 					 range_start, range_end);
@@ -131,13 +126,11 @@ BOOLEAN init_memory_layout_from_mbr(
 		// add memory to the "memory layout object" if this is a real memory
 		// lower 4G
 		if (are_secondary_guests_exist && (range_start < FOUR_GIGABYTE) &&
-			range_attr.Bits.enabled && (!range_attr.Bits.non_volatile))
-		{
+			range_attr.Bits.enabled && (!range_attr.Bits.non_volatile)) {
 			UINT64 top = (range_end < FOUR_GIGABYTE) ? range_end : FOUR_GIGABYTE;
 
 			if ((range_type == INT15_E820_ADDRESS_RANGE_TYPE_MEMORY) ||
-				(range_type == INT15_E820_ADDRESS_RANGE_TYPE_ACPI))
-			{
+				(range_type == INT15_E820_ADDRESS_RANGE_TYPE_ACPI)) {
 				// here we need to all a call to the "memory layout object"
 				// to fill is with the range_start-top range
 
@@ -147,12 +140,10 @@ BOOLEAN init_memory_layout_from_mbr(
 		}
 
 		// add memory to the primary guest if this is a memory above 4G
-		if (range_end > FOUR_GIGABYTE)
-		{
+		if (range_end > FOUR_GIGABYTE) {
 			UINT64 bottom = (range_start < FOUR_GIGABYTE) ? FOUR_GIGABYTE : range_start;
 
-			if (bottom < range_end)
-			{
+			if (bottom < range_end) {
 				VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: add memory above 4GB base %p size %p\r\n",
 					bottom,
 					range_end - bottom);

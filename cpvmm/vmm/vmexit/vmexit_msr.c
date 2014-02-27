@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_MSR_C)
@@ -59,8 +59,8 @@
  * read/write outside 0x00000000 to 0x00001FFF and  0xC0000000 to 0xC0001FFF
  */
 
-#define HYPER_V_MSR_MIN	0x40000000
-#define HYPER_V_MSR_MAX	0x400000F0
+#define HYPER_V_MSR_MIN 0x40000000
+#define HYPER_V_MSR_MAX 0x400000F0
 
 #define LOW_BITS_32_MASK    ((UINT64)UINT32_ALL_ONES)
 
@@ -106,7 +106,7 @@ static BOOLEAN    msr_feature_control_read_handler(GUEST_CPU_HANDLE gcpu, MSR_ID
 static BOOLEAN    msr_feature_control_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, UINT64 *msr_value, void *context);
 static BOOLEAN    msr_mtrr_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, UINT64 *msr_value, void *context);
 static BOOLEAN    msr_vmcs_resident_default_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, RW_ACCESS access, UINT64 *msr_value);
-static BOOLEAN 	  msr_misc_enable_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, UINT64 *msr_value, void *context);
+static BOOLEAN    msr_misc_enable_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, UINT64 *msr_value, void *context);
 
 
 
@@ -151,41 +151,33 @@ VMM_STATUS msr_vmexit_bits_config(
     MSR_ID      bitno;
     RW_ACCESS   access_index;
 
-    for (access_index = WRITE_ACCESS; access_index <= READ_ACCESS; ++access_index)
-    {
+    for (access_index = WRITE_ACCESS; access_index <= READ_ACCESS; ++access_index) {
         if (access_index & access)  // is access of iterest ?
         {
-            if (msr_id <= MSR_LOW_LAST)
-            {
+            if (msr_id <= MSR_LOW_LAST) {
                 bitno = msr_id;
                 p_bitarray = READ_ACCESS == access_index ?
                     &p_bitmap[MSR_READ_LOW_OFFSET] :
                     &p_bitmap[MSR_WRITE_LOW_OFFSET];
             }
-            else if (MSR_HIGH_FIRST <= msr_id && msr_id <= MSR_HIGH_LAST)
-            {
+            else if (MSR_HIGH_FIRST <= msr_id && msr_id <= MSR_HIGH_LAST) {
                 bitno = msr_id - MSR_HIGH_FIRST;
                 p_bitarray = READ_ACCESS == access_index ?
                     &p_bitmap[MSR_READ_HIGH_OFFSET] :
                     &p_bitmap[MSR_WRITE_HIGH_OFFSET];
             }
-            else
-            {
+            else {
                 VMM_ASSERT(0);  // wrong MSR ID
                 return VMM_ERROR;
             }
 
-            if (set)
-            {
+            if (set) {
                 BITARRAY_SET(p_bitarray, bitno);
             }
-            else
-            {
+            else {
                 BITARRAY_CLR(p_bitarray, bitno);
             }
         }
-
-
     }
     return VMM_OK;
 }
@@ -199,11 +191,9 @@ MSR_VMEXIT_DESCRIPTOR * msr_descriptor_lookup(
     MSR_VMEXIT_DESCRIPTOR   *p_msr_desc;
     LIST_ELEMENT            *list_iterator;
 
-    LIST_FOR_EACH(msr_list, list_iterator)
-    {
+    LIST_FOR_EACH(msr_list, list_iterator) {
         p_msr_desc = LIST_ENTRY(list_iterator, MSR_VMEXIT_DESCRIPTOR, msr_list);
-        if (p_msr_desc->msr_id == msr_id)
-        {
+        if (p_msr_desc->msr_id == msr_id) {
             return p_msr_desc;  // found
         }
     }
@@ -215,120 +205,60 @@ void msr_vmexit_register_mtrr_accesses_handler(GUEST_HANDLE guest) {
 
     UINT32 i,msr_addr;
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRRCAP_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRRCAP_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_DEF_TYPE_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_DEF_TYPE_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX64K_00000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX64K_00000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX16K_80000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX16K_80000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX16K_A0000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX16K_A0000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_C0000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_C0000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_C8000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_C8000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_D0000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_D0000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_D8000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_D8000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_E0000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_E0000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_E8000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_E8000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_F0000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_F0000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MTRR_FIX4K_F8000_ADDR,
-        msr_mtrr_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MTRR_FIX4K_F8000_ADDR, msr_mtrr_write_handler,
+        WRITE_ACCESS, NULL);
 
     // all other MTRR registers are sequential
     for (msr_addr = IA32_MTRR_PHYSBASE0_ADDR, i=0; i < mtrrs_abstraction_get_num_of_variable_range_regs(); msr_addr += 2, i++) {
 
-    	if(msr_addr > IA32_MTRR_MAX_PHYSMASK_ADDR ) {
-    		VMM_LOG(mask_uvmm, level_error, "Error: No. of Variable MTRRs is incorrect\n");
-    		VMM_DEADLOOP();
-    	}
+        if(msr_addr > IA32_MTRR_MAX_PHYSMASK_ADDR ) {
+                VMM_LOG(mask_uvmm, level_error, "Error: No. of Variable MTRRs is incorrect\n");
+                VMM_DEADLOOP();
+        }
 
-    	/* Register all MTRR PHYSBASE */
-    	msr_vmexit_handler_register(
-            guest,
-            msr_addr,
-            msr_mtrr_write_handler,
-            WRITE_ACCESS,
-            NULL);
+        /* Register all MTRR PHYSBASE */
+        msr_vmexit_handler_register( guest, msr_addr, msr_mtrr_write_handler,
+            WRITE_ACCESS, NULL);
 
-    	/* Register all MTRR PHYSMASK*/
-        msr_vmexit_handler_register(
-            guest,
-            msr_addr + 1,
-            msr_mtrr_write_handler,
-            WRITE_ACCESS,
-            NULL);
+        /* Register all MTRR PHYSMASK*/
+        msr_vmexit_handler_register( guest, msr_addr + 1, msr_mtrr_write_handler,
+            WRITE_ACCESS, NULL);
 
     }
 }
@@ -360,56 +290,28 @@ void msr_vmexit_guest_setup(GUEST_HANDLE guest)
     vmexit_install_handler(guest_get_id(guest), vmexit_msr_read,  Ia32VmxExitBasicReasonMsrRead);
     vmexit_install_handler(guest_get_id(guest), vmexit_msr_write, Ia32VmxExitBasicReasonMsrWrite);
 
-    for (msr_id = IA32_MSR_VMX_FIRST; msr_id <= IA32_MSR_VMX_LAST; ++msr_id)
-    {
+    for (msr_id = IA32_MSR_VMX_FIRST; msr_id <= IA32_MSR_VMX_LAST; ++msr_id) {
         msr_guest_access_inhibit(guest, msr_id);
     }
 
-	if( !is_unrestricted_guest_supported() ) 
-	{	
-		msr_vmexit_handler_register(
-			guest,
-			IA32_MSR_EFER,
-			msr_efer_write_handler,
-			WRITE_ACCESS,
-			NULL);
-	
+    if( !is_unrestricted_guest_supported() ) {      
+            msr_vmexit_handler_register( guest, IA32_MSR_EFER,
+                    msr_efer_write_handler, WRITE_ACCESS, NULL);
+            msr_vmexit_handler_register( guest, IA32_MSR_EFER,
+                    msr_efer_read_handler, READ_ACCESS, NULL);
+    }
 
-		msr_vmexit_handler_register(
-			guest,
-			IA32_MSR_EFER,
-			msr_efer_read_handler,
-			READ_ACCESS,
-			NULL);
-	}
+    msr_vmexit_handler_register( guest, IA32_MSR_APIC_BASE,
+        msr_lapic_base_write_handler, WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MSR_APIC_BASE,
-        msr_lapic_base_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MSR_FEATURE_CONTROL,
+        msr_feature_control_read_handler, READ_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MSR_FEATURE_CONTROL,
-        msr_feature_control_read_handler,
-        READ_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MSR_FEATURE_CONTROL,
+        msr_feature_control_write_handler, WRITE_ACCESS, NULL);
 
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MSR_FEATURE_CONTROL,
-        msr_feature_control_write_handler,
-        WRITE_ACCESS,
-        NULL);
-
-    msr_vmexit_handler_register(
-        guest,
-        IA32_MSR_MISC_ENABLE,
-        msr_misc_enable_write_handler,
-        WRITE_ACCESS,
-        NULL);
+    msr_vmexit_handler_register( guest, IA32_MSR_MISC_ENABLE,
+        msr_misc_enable_write_handler, WRITE_ACCESS, NULL);
     
     msr_vmexit_register_mtrr_accesses_handler(guest);
 }
@@ -439,9 +341,8 @@ void msr_vmexit_activate(GUEST_CPU_HANDLE gcpu)
 
     msr_vmexit_on_all(gcpu, FALSE);
 
-    if (NULL != p_msr_ctrl->msr_bitmap)
-    {
-    	hmm_hva_to_hpa(msr_bitmap, &msr_bitmap);
+    if (NULL != p_msr_ctrl->msr_bitmap) {
+        hmm_hva_to_hpa(msr_bitmap, &msr_bitmap);
         vmcs_write(vmcs, VMCS_MSR_BITMAP_ADDRESS, msr_bitmap);
     }
 }
@@ -470,39 +371,32 @@ VMM_STATUS msr_vmexit_handler_register(
     // check first if it already registered
     p_desc = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
 
-    if (NULL == p_desc)
-    {
+    if (NULL == p_desc) {
         // allocate new descriptor and chain it to the list
-        p_desc = vmm_malloc(sizeof(*p_desc));
-        if (NULL != p_desc)
+        p_desc = vmm_malloc(sizeof(*p_desc)); if (NULL != p_desc)
         {
             vmm_memset(p_desc, 0, sizeof(*p_desc));
             list_add(p_msr_ctrl->msr_list, &p_desc->msr_list);
         }
     }
-    else
-    {
-    	VMM_LOG(mask_uvmm, level_trace,"MSR(%p) handler already registered. Update...\n", msr_id);
+    else {
+        VMM_LOG(mask_uvmm, level_trace,"MSR(%p) handler already registered. Update...\n", msr_id);
     }
 
-    if (NULL != p_desc)
-    {
+    if (NULL != p_desc) {
         status = msr_vmexit_bits_config(p_msr_ctrl->msr_bitmap, msr_id, access, TRUE);
-        if (VMM_OK == status)
-        {
-            p_desc->msr_id      = msr_id;
+        if (VMM_OK == status) {
+            p_desc->msr_id = msr_id;
             if (access & WRITE_ACCESS) p_desc->msr_write_handler = msr_handler;
             if (access & READ_ACCESS)  p_desc->msr_read_handler = msr_handler;
             p_desc->msr_context = context;
-			// VMM_LOG(mask_uvmm, level_trace,"%s: [msr] Handler(%P) Registered\n", __FUNCTION__, msr_id);
+                        // VMM_LOG(mask_uvmm, level_trace,"%s: [msr] Handler(%P) Registered\n", __FUNCTION__, msr_id);
         }
-        else
-        {
+        else {
             VMM_LOG(mask_uvmm, level_trace,"MSR(%p) handler registration failed to bad ID\n", msr_id);
         }
     }
-    else
-    {
+    else {
         status = VMM_ERROR;
         VMM_LOG(mask_uvmm, level_trace,"MSR(%p) handler registration failed due to lack of space\n", msr_id);
     }
@@ -528,25 +422,18 @@ VMM_STATUS msr_vmexit_handler_unregister(
 
     p_desc = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
 
-    if (NULL == p_desc)
-    {
+    if (NULL == p_desc) {
         status = VMM_ERROR;
         VMM_LOG(mask_uvmm, level_trace,"MSR(%p) handler is not registered\n", msr_id);
     }
-    else
-    {
-        msr_vmexit_bits_config(
-            p_msr_ctrl->msr_bitmap,
-            msr_id,
-            access,
-            FALSE);
+    else {
+        msr_vmexit_bits_config( p_msr_ctrl->msr_bitmap, msr_id,
+            access, FALSE);
 
         if (access & WRITE_ACCESS) p_desc->msr_write_handler = NULL;
         if (access & READ_ACCESS)  p_desc->msr_read_handler = NULL;
 
-        if (NULL == p_desc->msr_write_handler &&
-            NULL == p_desc->msr_read_handler)
-        {
+        if (NULL == p_desc->msr_write_handler && NULL == p_desc->msr_read_handler) {
             list_remove(&p_desc->msr_list);
             vmm_mfree(p_desc);
         }
@@ -567,14 +454,12 @@ VMEXIT_HANDLING_STATUS vmexit_msr_read(GUEST_CPU_HANDLE gcpu)
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
 
     /* hypervisor synthenic MSR is not hardware MSR, inject GP to guest */
-	if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX))
-	{
-		gcpu_inject_gp0(gcpu);
-		return VMEXIT_HANDLED;
-	}
+    if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX)) {
+        gcpu_inject_gp0(gcpu);
+        return VMEXIT_HANDLED;
+    }
 
-    if (TRUE == msr_common_vmexit_handler(gcpu, READ_ACCESS, &msr_value))
-    {
+    if (TRUE == msr_common_vmexit_handler(gcpu, READ_ACCESS, &msr_value)) {
         // write back to the guest. store MSR value in EDX:EAX
         gcpu_set_native_gp_reg(gcpu, IA32_REG_RDX, msr_value >> 32);
         gcpu_set_native_gp_reg(gcpu, IA32_REG_RAX, msr_value & LOW_BITS_32_MASK);
@@ -595,11 +480,11 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
 
     /* hypervisor synthenic MSR is not hardware MSR, inject GP to guest */
- 	if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX))
-	{
-		gcpu_inject_gp0(gcpu);
-		return VMEXIT_HANDLED;
-	}
+        if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX))
+        {
+                gcpu_inject_gp0(gcpu);
+                return VMEXIT_HANDLED;
+        }
 
     msr_value = (gcpu_get_native_gp_reg(gcpu, IA32_REG_RDX) << 32);
     msr_value |= gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX) & LOW_BITS_32_MASK;
@@ -637,31 +522,27 @@ BOOLEAN msr_common_vmexit_handler(
     
     msr_descriptor = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
 
-    if (NULL != msr_descriptor)
-    {
-		// VMM_LOG(mask_uvmm, level_trace,"%s: msr_descriptor is NOT NULL.\n", __FUNCTION__);
+    if (NULL != msr_descriptor) {
+                // VMM_LOG(mask_uvmm, level_trace,"%s: msr_descriptor is NOT NULL.\n", __FUNCTION__);
         if (access & WRITE_ACCESS)
             msr_handler = msr_descriptor->msr_write_handler;
         else if (access & READ_ACCESS)
             msr_handler = msr_descriptor->msr_read_handler;
     }
 
-    if (NULL == msr_handler)
-    {
-		// VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NULL.\n", __FUNCTION__);
+    if (NULL == msr_handler) {
+                // VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NULL.\n", __FUNCTION__);
         instruction_was_executed =
             msr_vmcs_resident_default_handler(gcpu, msr_id, access, msr_value) ||
             msr_trial_access(gcpu, msr_id, access, msr_value);
     }
-    else
-    {
-		// VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NOT NULL.\n", __FUNCTION__);
+    else {
+                // VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NOT NULL.\n", __FUNCTION__);
         instruction_was_executed =
             msr_handler(gcpu, msr_id, msr_value, msr_descriptor->msr_context);
     }
 
-    if (TRUE == instruction_was_executed)
-    {
+    if (TRUE == instruction_was_executed) {
         gcpu_skip_guest_instruction(gcpu);
     }
     return instruction_was_executed;
@@ -702,8 +583,7 @@ BOOLEAN msr_trial_access(
         return FALSE;
     }
 
-    if (FALSE == msr_implemented)
-    {
+    if (FALSE == msr_implemented) {
         // inject GP into guest
         VMENTER_EVENT  exception;
         UINT16 inst_length = (UINT16) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
@@ -735,39 +615,31 @@ BOOLEAN msr_vmcs_resident_default_handler(
     unsigned int i;
 
     // check if it is MSR which resides in Guest part of VMCS
-    for (i = 0; i < NELEMENTS(vmcs_resident_guest_msrs); ++i)
-    {
-        if (vmcs_resident_guest_msrs[i].msr_id == msr_id)
-        {
+    for (i = 0; i < NELEMENTS(vmcs_resident_guest_msrs); ++i) {
+        if (vmcs_resident_guest_msrs[i].msr_id == msr_id) {
             VM_ENTRY_CONTROLS   vmenter_controls;
 
-            if (IA32_MSR_DEBUGCTL == msr_id)
-            {
+            if (IA32_MSR_DEBUGCTL == msr_id) {
                 vmenter_controls.Uint32 = (UINT32)vmcs_read(vmcs, VMCS_ENTER_CONTROL_VECTOR);
-                if (vmenter_controls.Bits.LoadDebugControls)
-                {
+                if (vmenter_controls.Bits.LoadDebugControls) {
                     found = TRUE;
                 }
             }
-            else if (IA32_MSR_PERF_GLOBAL_CTRL == msr_id)
-            {
+            else if (IA32_MSR_PERF_GLOBAL_CTRL == msr_id) {
                 vmenter_controls.Uint32 = (UINT32)vmcs_read(vmcs, VMCS_ENTER_CONTROL_VECTOR);
                 if (vmenter_controls.Bits.Load_IA32_PERF_GLOBAL_CTRL &&
-                    vmcs_field_is_supported(vmcs_resident_guest_msrs[i].vmcs_field_id))
-                {
+                    vmcs_field_is_supported(vmcs_resident_guest_msrs[i].vmcs_field_id)) {
                     found = TRUE;
                 }
             }
-            else
-            {
+            else {
                 found = TRUE;
             }
             break;
         }
     }
 
-    if (found)
-    {
+    if (found) {
         vmcs_field_id = vmcs_resident_guest_msrs[i].vmcs_field_id;
 
         switch (access)
@@ -989,12 +861,10 @@ BOOLEAN msr_lapic_base_write_handler(
     if (!report_uvmm_event(UVMM_EVENT_MSR_WRITE_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), &msr_write_access_data))
         return FALSE;
 
-	if( !validate_APIC_BASE_change(*msr_value))
-	{
-		gcpu_inject_gp0(gcpu);
-		return FALSE;
-	}
-
+    if( !validate_APIC_BASE_change(*msr_value)) {
+        gcpu_inject_gp0(gcpu);
+        return FALSE;
+    }
     hw_write_msr(IA32_MSR_APIC_BASE, *msr_value);
     local_apic_setup_changed();
     return TRUE;
@@ -1010,11 +880,8 @@ BOOLEAN msr_lapic_base_write_handler(
 *           : UINT64           *msr_value
 *  RETURNS  : TRUE, which means that instruction was executed.
 *----------------------------------------------------------------------------*/
-BOOLEAN msr_feature_control_read_handler(
-	GUEST_CPU_HANDLE	gcpu,
-	MSR_ID				msr_id,
-	UINT64			   *msr_value,
-	void			   *context UNUSED)
+BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
+        MSR_ID  msr_id, UINT64  *msr_value, void   *context UNUSED)
 {
     VMM_ASSERT(IA32_MSR_FEATURE_CONTROL == msr_id);
     // IA32 spec V2, 5.3,  GETSEC[SENTER]
@@ -1036,10 +903,10 @@ BOOLEAN msr_feature_control_read_handler(
 *----------------------------------------------------------------------------*/
 
 BOOLEAN msr_feature_control_write_handler(
-	GUEST_CPU_HANDLE	gcpu,
-	MSR_ID				msr_id,
-	UINT64			   *msr_value,
-	void			   *context UNUSED)
+        GUEST_CPU_HANDLE        gcpu,
+        MSR_ID                          msr_id,
+        UINT64                     *msr_value,
+        void                       *context UNUSED)
 {
     VMM_ASSERT(IA32_MSR_FEATURE_CONTROL == msr_id);
     // IA32 spec V2, 5.3,  GETSEC[SENTER]
@@ -1061,10 +928,10 @@ BOOLEAN msr_feature_control_write_handler(
 *----------------------------------------------------------------------------*/
 
 BOOLEAN msr_misc_enable_write_handler(
-	GUEST_CPU_HANDLE	gcpu,
-	MSR_ID				msr_id,
-	UINT64			   *msr_value,
-	void			   *context UNUSED)
+        GUEST_CPU_HANDLE        gcpu,
+        MSR_ID                          msr_id,
+        UINT64                     *msr_value,
+        void                       *context UNUSED)
 {
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
 
@@ -1072,12 +939,10 @@ BOOLEAN msr_misc_enable_write_handler(
 
     msr_write_access_data.msr_id = msr_id;
     if (!report_uvmm_event(UVMM_EVENT_MSR_WRITE_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), &msr_write_access_data))
-    	return FALSE;
+        return FALSE;
 
     BIT_CLR64(*msr_value, 22);   //Limit CPUID MAXVAL
-
     hw_write_msr(IA32_MSR_MISC_ENABLE, *msr_value);
-
     return TRUE;
 }
 
@@ -1094,12 +959,8 @@ VMM_STATUS msr_guest_access_inhibit(
     GUEST_HANDLE    guest,
     MSR_ID          msr_id)
 {
-    return msr_vmexit_handler_register(
-                guest,
-                msr_id,
-                msr_unsupported_access_handler,
-                READ_WRITE_ACCESS,
-                NULL);
+    return msr_vmexit_handler_register( guest, msr_id, msr_unsupported_access_handler,
+                READ_WRITE_ACCESS, NULL);
 }
 
 #pragma warning( push )
@@ -1107,8 +968,8 @@ VMM_STATUS msr_guest_access_inhibit(
 VMEXIT_HANDLING_STATUS  msr_failed_vmenter_loading_handler(GUEST_CPU_HANDLE gcpu USED_IN_DEBUG_ONLY) {
 
 #ifndef DEBUG
-	EM64T_RFLAGS rflags;
-	IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY    interruptibility;
+        EM64T_RFLAGS rflags;
+        IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY    interruptibility;
 #endif
 
     VMM_LOG(mask_uvmm, level_trace,"%s: VMENTER failed\n", __FUNCTION__);
@@ -1120,65 +981,48 @@ VMEXIT_HANDLING_STATUS  msr_failed_vmenter_loading_handler(GUEST_CPU_HANDLE gcpu
     }
     VMM_DEADLOOP();
 #else
-	vmm_deadloop_internal(VMEXIT_MSR_C, __LINE__, gcpu);
+    vmm_deadloop_internal(VMEXIT_MSR_C, __LINE__, gcpu);
 
-	// clear interrupt flag
-	rflags.Uint64 = gcpu_get_gp_reg(gcpu, IA32_REG_RFLAGS);
-	rflags.Bits.IFL = 0;
-	gcpu_set_gp_reg(gcpu, IA32_REG_RFLAGS, rflags.Uint64);
+    // clear interrupt flag
+    rflags.Uint64 = gcpu_get_gp_reg(gcpu, IA32_REG_RFLAGS);
+    rflags.Bits.IFL = 0;
+    gcpu_set_gp_reg(gcpu, IA32_REG_RFLAGS, rflags.Uint64);
 
-	interruptibility.Uint32 = gcpu_get_interruptibility_state(gcpu);
-	interruptibility.Bits.BlockNextInstruction = 0;
-	gcpu_set_interruptibility_state(gcpu, interruptibility.Uint32);
+    interruptibility.Uint32 = gcpu_get_interruptibility_state(gcpu);
+    interruptibility.Bits.BlockNextInstruction = 0;
+    gcpu_set_interruptibility_state(gcpu, interruptibility.Uint32);
 
-	gcpu_inject_gp0(gcpu);
-	gcpu_resume(gcpu);
+    gcpu_inject_gp0(gcpu);
+    gcpu_resume(gcpu);
 #endif
 
     return VMEXIT_NOT_HANDLED;
 }
 #pragma warning( pop )
 
-BOOLEAN vmexit_register_unregister_for_efer(
-    GUEST_HANDLE    guest,
-    MSR_ID          msr_id,
-    RW_ACCESS       access,
-	BOOLEAN			reg_dereg)
+BOOLEAN vmexit_register_unregister_for_efer( GUEST_HANDLE    guest,
+    MSR_ID msr_id,
+    RW_ACCESS access, BOOLEAN  reg_dereg)
 {
 
-	if( !is_unrestricted_guest_supported() )
-		return FALSE;
+    if( !is_unrestricted_guest_supported() )
+        return FALSE;
 
-	if ( (msr_id == IA32_MSR_EFER) && reg_dereg )
-		if ( access == WRITE_ACCESS )
-		{
-			msr_vmexit_handler_register(
-				guest,
-				IA32_MSR_EFER,
-				msr_efer_write_handler,
-				WRITE_ACCESS,
-				NULL);
-			return TRUE;
-		}
-		else
-		{
-			msr_vmexit_handler_register(
-				guest,
-				IA32_MSR_EFER,
-				msr_efer_read_handler,
-				READ_ACCESS,
-				NULL);
-			return TRUE;
-		}
+    if ( (msr_id == IA32_MSR_EFER) && reg_dereg )
+        if ( access == WRITE_ACCESS ) {
+            msr_vmexit_handler_register( guest, IA32_MSR_EFER,
+                                msr_efer_write_handler, WRITE_ACCESS, NULL);
+                return TRUE;
+        }
+        else {
+            msr_vmexit_handler_register( guest, IA32_MSR_EFER,
+                                msr_efer_read_handler, READ_ACCESS, NULL);
+            return TRUE;
+        }
 
-	if ( (msr_id == IA32_MSR_EFER) && !reg_dereg )
-	{
-		msr_vmexit_handler_unregister(
-			guest,
-			msr_id,
-			access);
-		return TRUE;
-	}
-
-	return FALSE;
+    if ( (msr_id == IA32_MSR_EFER) && !reg_dereg ) {
+        msr_vmexit_handler_unregister( guest, msr_id, access);
+        return TRUE;
+    }
+    return FALSE;
 }

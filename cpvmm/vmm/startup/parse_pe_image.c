@@ -1,23 +1,21 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 /*
-
     Implements both PE32 and PE32+ image parsing
-
 */
 
 #include "file_codes.h"
@@ -52,13 +50,10 @@ void fill_sections_info( const char* image_base_address,
 
 
     // 2. now copy the sections
-    for (section_index = 0; section_index < info.number_of_sections; ++section_index)
-    {
+    for (section_index = 0; section_index < info.number_of_sections; ++section_index) {
         p_section_header = &(info.section_table[section_index]);
 
-        if (!p_section_header->VirtualAddress ||
-            !p_section_header->Misc.VirtualSize)
-        {
+        if (!p_section_header->VirtualAddress || !p_section_header->Misc.VirtualSize) {
             // empty section
             continue;
         }
@@ -77,7 +72,6 @@ void fill_sections_info( const char* image_base_address,
                 (BITMAP_GET( p_section_header->Characteristics, IMAGE_SCN_MEM_EXECUTE) != 0);
 
     }
-
 }
 
 static
@@ -95,9 +89,7 @@ SECTION_TABLE_INFO find_section_table(
     VMM_ASSERT( p_dos_header->e_magic == IMAGE_DOS_SIGNATURE );
 
     nt_header_offset = p_dos_header->e_lfanew;
-
-    p_nt_header_32 = (IMAGE_NT_HEADERS32*)
-                ((char*)p_dos_header + nt_header_offset);
+    p_nt_header_32 = (IMAGE_NT_HEADERS32*) ((char*)p_dos_header + nt_header_offset);
 
     // both PE32 and PE32+ have the same first 2 fields in the
     // IMAGE_NT_HEADERS32 structure: Signature and FileHeader
@@ -111,7 +103,6 @@ SECTION_TABLE_INFO find_section_table(
             p_nt_header_32->FileHeader.SizeOfOptionalHeader);
 
     info.number_of_sections = p_nt_header_32->FileHeader.NumberOfSections;
-
     return info;
 }
 
@@ -122,18 +113,12 @@ void build_section_info_arr( const void* image, UINT32 image_size )
 
     VMM_ASSERT( image );
     VMM_ASSERT( image_size );
-
     info = find_section_table( image, image_size );
-
     VMM_ASSERT( info.section_table && info.number_of_sections );
-
     g_section_info_arr = (EXEC_IMAGE_SECTION_INFO*)
         vmm_memory_alloc( sizeof(EXEC_IMAGE_SECTION_INFO)* info.number_of_sections );
-
     VMM_ASSERT( g_section_info_arr );
-
     fill_sections_info( image, info );
-
     VMM_ASSERT( g_section_info_size );
 }
 
@@ -141,9 +126,7 @@ static
 void destroy_section_info_arr( void )
 {
     VMM_ASSERT( g_section_info_arr );
-
     vmm_memory_free( g_section_info_arr );
-
     g_section_info_arr = NULL;
     g_section_info_size = 0;
 }
@@ -169,18 +152,13 @@ exec_image_section_first( const void* image, UINT32 image_size,
 
     build_section_info_arr( image, image_size );
 
-    info = ARRAY_ITERATOR_FIRST( EXEC_IMAGE_SECTION_INFO,
-                                 g_section_info_arr,
-                                 g_section_info_size,
-                                 ctx );
-
-    if (! info)
-    {
+    info = ARRAY_ITERATOR_FIRST( EXEC_IMAGE_SECTION_INFO, g_section_info_arr,
+                                 g_section_info_size, ctx );
+    if (! info) {
         destroy_section_info_arr();
         g_is_locked = FALSE;
         lock_release( &g_section_lock );
     }
-
     return info;
 }
 
@@ -188,13 +166,9 @@ const EXEC_IMAGE_SECTION_INFO*
 exec_image_section_next( EXEC_IMAGE_SECTION_ITERATOR* ctx )
 {
     EXEC_IMAGE_SECTION_INFO* info = NULL;
-
     VMM_ASSERT( g_is_locked == TRUE );
-
     info = ARRAY_ITERATOR_NEXT( EXEC_IMAGE_SECTION_INFO, ctx );
-
-    if (! info)
-    {
+    if (! info) {
         destroy_section_info_arr();
         g_is_locked = FALSE;
         lock_release( &g_section_lock );

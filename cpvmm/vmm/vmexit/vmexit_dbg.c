@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <vmm_defs.h>
 #include <guest_cpu.h>
@@ -48,10 +48,8 @@ static char monitor_request_keys[REQUEST_COUNT] = {
 int monitor_was_requested(char key)
 {
     size_t i;
-    for (i = 0; i < NELEMENTS(monitor_request_keys); ++i)
-    {
-        if (key == monitor_request_keys[i])
-        {
+    for (i = 0; i < NELEMENTS(monitor_request_keys); ++i) {
+        if (key == monitor_request_keys[i]) {
             return (int)i;
         }
     }
@@ -65,8 +63,7 @@ void vmexit_check_keystroke(GUEST_CPU_HANDLE gcpu)
     UINT8 key = vmm_getc();
     int monitor_cpu;
 
-    switch (key)
-    {
+    switch (key) {
     case 0: // optimization
         //gdb_check_halt(gcpu);
         break;
@@ -89,12 +86,10 @@ void vmexit_check_keystroke(GUEST_CPU_HANDLE gcpu)
 #endif
     default:
         monitor_cpu = monitor_was_requested(key);
-        if (monitor_cpu != -1)
-        {
+        if (monitor_cpu != -1) {
             monitor_requested[monitor_cpu] = 1;
         }
-        if (monitor_requested[hw_cpu_id()] != 0)
-        {
+        if (monitor_requested[hw_cpu_id()] != 0) {
             monitor_requested[hw_cpu_id()] = 0;
             VMM_DEADLOOP();
         }

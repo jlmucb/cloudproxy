@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_IO_C)
@@ -181,22 +181,19 @@ void io_vmexit_activate(GUEST_CPU_HANDLE gcpu)
     io_ctrl = io_vmexit_find_guest_io_control(guest_id);
 
     VMM_ASSERT(io_ctrl);
-	
+        
     vmm_memset(&exec_controls, 0, sizeof(exec_controls));
     vmm_memset(&vmexit_request, 0, sizeof(vmexit_request));
 
-    if (NULL == io_ctrl->io_bitmap)
-    {
+    if (NULL == io_ctrl->io_bitmap) {
         VMM_LOG(mask_anonymous, level_trace,"IO bitmap for guest %d is not allocated\n", guest_id);
         VMM_DEADLOOP();
         return;
     }
 
     // first load bitmap addresses, and if OK, enable bitmap based IO VMEXITs
-    for (i = 0; i < 2; ++i)
-    {
-        if (FALSE == hmm_hva_to_hpa((HVA) &io_ctrl->io_bitmap[PAGE_4KB_SIZE * i], &hpa[i]))
-        {
+    for (i = 0; i < 2; ++i) {
+        if (FALSE == hmm_hva_to_hpa((HVA) &io_ctrl->io_bitmap[PAGE_4KB_SIZE * i], &hpa[i])) {
             VMM_LOG(mask_anonymous, level_trace,"IO bitmap page for guest %d is invalid\n", guest_id);
             VMM_DEADLOOP();
             return;
@@ -227,17 +224,13 @@ IO_VMEXIT_DESCRIPTOR * io_port_lookup(
     unsigned i;
 
     io_ctrl = io_vmexit_find_guest_io_control(guest_id);
+    if(NULL == io_ctrl) {
+        return NULL;
+    }
 
-	if(NULL == io_ctrl)
-	{
-		return NULL;
-	}
-
-    for (i = 0; i < NELEMENTS(io_ctrl->io_descriptors); ++i)
-    {
+    for (i = 0; i < NELEMENTS(io_ctrl->io_descriptors); ++i) {
         if (io_ctrl->io_descriptors[i].io_port == port_id
-        &&  io_ctrl->io_descriptors[i].io_handler != NULL)
-        {
+        &&  io_ctrl->io_descriptors[i].io_handler != NULL) {
             return &io_ctrl->io_descriptors[i];
         }
     }
@@ -256,16 +249,12 @@ IO_VMEXIT_DESCRIPTOR * io_free_port_lookup(GUEST_ID guest_id)
     unsigned i;
 
     io_ctrl = io_vmexit_find_guest_io_control(guest_id);
+    if(NULL == io_ctrl) {
+        return NULL;
+    }
 
-	if(NULL == io_ctrl)
-	{
-		return NULL;
-	}
-
-    for (i = 0; i < NELEMENTS(io_ctrl->io_descriptors); ++i)
-    {
-        if (NULL == io_ctrl->io_descriptors[i].io_handler)
-        {
+    for (i = 0; i < NELEMENTS(io_ctrl->io_descriptors); ++i) {
+        if (NULL == io_ctrl->io_descriptors[i].io_handler) {
             return &io_ctrl->io_descriptors[i];
         }
     }
@@ -446,32 +435,27 @@ VMM_STATUS io_vmexit_handler_register(
     VMM_ASSERT(io_ctrl);
     VMM_ASSERT(handler);
 
-    if (NULL != p_desc)
-    {
+    if (NULL != p_desc) {
         VMM_LOG(mask_anonymous, level_trace,"IO Handler for Guest(%d) Port(%d) is already regitered. Update...\n",
             guest_id, port_id);
     }
-    else
-    {
+    else {
         p_desc = io_free_port_lookup(guest_id);
     }
 
-    if (NULL != p_desc)
-    {
+    if (NULL != p_desc) {
         BITARRAY_SET(io_ctrl->io_bitmap, port_id);
         p_desc->io_port    = port_id;
         p_desc->io_handler = handler;
         p_desc->io_handler_context = context;
         status = VMM_OK;
     }
-    else
-    {
+    else {
         // if reach the MAX number (IO_VMEXIT_MAX_COUNT) of ports, 
         // return ERROR, but not deadloop.
         status = VMM_ERROR;
         VMM_LOG(mask_anonymous, level_trace,"Not enough space to register IO handler\n");
     }
-
     return status;
 }
 
@@ -494,15 +478,13 @@ VMM_STATUS io_vmexit_handler_unregister(
 
     VMM_ASSERT(io_ctrl);
 
-    if (NULL != p_desc)
-    {
+    if (NULL != p_desc) {
         BITARRAY_CLR(io_ctrl->io_bitmap, port_id);
         p_desc->io_handler = NULL;
         p_desc->io_handler_context = NULL;
         status = VMM_OK;
     }
-    else
-    {
+    else {
         // if not registered before, still return SUCCESS!
         status = VMM_OK;
         VMM_LOG(mask_anonymous, level_trace,"IO Handler for Guest(%d) Port(%d) is not regitered\n",
@@ -526,8 +508,7 @@ VMM_STATUS io_vmexit_handler_unregister(
 // Hence, if those fault/exception above happens,inject back to guest.
 static
 BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
-                                IA32_VMX_EXIT_QUALIFICATION *qualification
-                                )
+                                IA32_VMX_EXIT_QUALIFICATION *qualification)
 {
     VMCS_OBJECT     *vmcs     = gcpu_get_vmcs(gcpu);
     IA32_VMX_VMCS_VM_EXIT_INFO_INSTRUCTION_INFO ios_instr_info;
@@ -823,8 +804,7 @@ void io_vmexit_block_port(
     VMM_ASSERT(io_ctrl);
 
     // unregister handler in case it was installed before
-    for (i = port_from; i <= port_to; ++i)
-    {
+    for (i = port_from; i <= port_to; ++i) {
         io_vmexit_handler_unregister(guest_id, (IO_PORT_ID)i);
         BITARRAY_SET(io_ctrl->io_bitmap, i);
     }
@@ -836,11 +816,9 @@ GUEST_IO_VMEXIT_CONTROL* io_vmexit_find_guest_io_control(GUEST_ID guest_id)
     LIST_ELEMENT *iter = NULL;
     GUEST_IO_VMEXIT_CONTROL *io_ctrl = NULL;
 
-    LIST_FOR_EACH(io_vmexit_global_state.guest_io_vmexit_controls, iter)
-    {
+    LIST_FOR_EACH(io_vmexit_global_state.guest_io_vmexit_controls, iter) {
         io_ctrl = LIST_ENTRY(iter, GUEST_IO_VMEXIT_CONTROL, list);
-        if(io_ctrl->guest_id == guest_id)
-        {
+        if(io_ctrl->guest_id == guest_id) {
             return io_ctrl;
         }
     }

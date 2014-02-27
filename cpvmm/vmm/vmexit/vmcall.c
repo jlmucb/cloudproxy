@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCALL_C)
@@ -195,42 +195,33 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
 #endif
 
     vmcall_id = (VMCALL_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
-
-    if (VMM_NATIVE_VMCALL_SIGNATURE == gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX))
-    {
+    if (VMM_NATIVE_VMCALL_SIGNATURE == gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX)) {
         vmcall_entry = vmcall_get_vmcall_entry(guest_id, vmcall_id);
     }
 
-    if (NULL != vmcall_entry)
-    {
+    if (NULL != vmcall_entry) {
         VMM_ASSERT( vmcall_entry->vmcall_id == vmcall_id );
 
         vmcall_function = vmcall_entry->vmcall_handler;
         is_vmcall_special = vmcall_entry->vmcall_special;
     }
-    else
-    {
-        if (GUEST_LEVEL_2 == gcpu_get_guest_level(gcpu))
-        {
+    else {
+        if (GUEST_LEVEL_2 == gcpu_get_guest_level(gcpu)) {
             // VMCALL will be delivered to level#1 VMM for processing
             vmcall_function = NULL;
         }
-        else
-        {
+        else {
             VMM_LOG(mask_uvmm, level_trace,"ERROR: vmcall %d is not implemented\n", vmcall_id);
             vmcall_function = vmcall_unimplemented;
             is_vmcall_special = FALSE;
         }
     }
 
-    if (NULL != vmcall_function)
-    {
-        if (TRUE == is_vmcall_special)
-        {
+    if (NULL != vmcall_function) {
+        if (TRUE == is_vmcall_special) {
             vmcall_function(gcpu, NULL, NULL, NULL);
         }
-        else
-        {
+        else {
             arg1      = gcpu_get_native_gp_reg(gcpu, IA32_REG_RDX);
             arg2      = gcpu_get_native_gp_reg(gcpu, IA32_REG_RDI);
             arg3      = gcpu_get_native_gp_reg(gcpu, IA32_REG_RSI);
@@ -250,10 +241,8 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
         }
         handle_status = VMEXIT_HANDLED;
     }
-    else
-    {
-		VMM_LOG(mask_uvmm, level_error,
-				"CPU%d: %s: Error: VMEXIT_NOT_HANDLED\n",
+    else {
+		VMM_LOG(mask_uvmm, level_error, "CPU%d: %s: Error: VMEXIT_NOT_HANDLED\n",
 				hw_cpu_id(), __FUNCTION__);
         handle_status = VMEXIT_NOT_HANDLED;
     }
@@ -302,17 +291,14 @@ VMM_STATUS vmcall_print_string(
         guest_phy_memory = gcpu_get_current_gpm(guest_handle);
         VMM_ASSERT(guest_phy_memory);
 
-        if (FALSE == gpm_gpa_to_hva(guest_phy_memory, string_gpa, &string_hva))
-        {
+        if (FALSE == gpm_gpa_to_hva(guest_phy_memory, string_gpa, &string_hva)) {
             VMM_LOG(mask_uvmm, level_trace,"Bad VM Print\n");
         }
-        else
-        {
+        else {
             VMM_LOG(mask_uvmm, level_trace,"%s", (char *) string_hva);
         }
     }
-    else
-    {
+    else {
         // it is a Host memory space, so GVA == HVA
         VMM_LOG(mask_uvmm, level_trace,"%s", (char *) *string_gva);
     }
@@ -329,11 +315,9 @@ GUEST_VMCALL_ENTRIES* vmcall_find_guest_vmcalls(GUEST_ID guest_id)
     LIST_ELEMENT *iter = NULL;
     GUEST_VMCALL_ENTRIES *guest_vmcalls = NULL;
 
-    LIST_FOR_EACH(vmcall_global_state.guest_vmcall_entries, iter)
-    {
+    LIST_FOR_EACH(vmcall_global_state.guest_vmcall_entries, iter) {
         guest_vmcalls = LIST_ENTRY(iter, GUEST_VMCALL_ENTRIES, list);
-        if(guest_vmcalls->guest_id == guest_id)
-        {
+        if(guest_vmcalls->guest_id == guest_id) {
             return guest_vmcalls;
         }
     }
@@ -346,14 +330,11 @@ VMCALL_ENTRY* find_guest_vmcall_entry( GUEST_VMCALL_ENTRIES* guest_vmcalls,
 {
     UINT32 idx;
 
-    for (idx = 0; idx < MAX_ACTIVE_VMCALLS_PER_GUEST; ++idx)
-    {
-        if (guest_vmcalls->vmcall_table[idx].vmcall_id == call_id)
-        {
+    for (idx = 0; idx < MAX_ACTIVE_VMCALLS_PER_GUEST; ++idx) {
+        if (guest_vmcalls->vmcall_table[idx].vmcall_id == call_id) {
             return &(guest_vmcalls->vmcall_table[idx]);
         }
     }
-
     return NULL;
 }
 
@@ -365,14 +346,11 @@ VMCALL_ENTRY* vmcall_get_vmcall_entry(GUEST_ID     guest_id,
     VMCALL_ENTRY *vmcall_entry;
 
     guest_vmcalls = vmcall_find_guest_vmcalls(guest_id);
-    if(NULL == guest_vmcalls)
-    {
+    if(NULL == guest_vmcalls) {
         VMM_ASSERT(0);
         return NULL;
     }
-
     vmcall_entry = find_guest_vmcall_entry(guest_vmcalls,vmcall_id);
-
     return vmcall_entry;
 }
 

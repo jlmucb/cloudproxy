@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <vmm_defs.h>
 #include <gpm_api.h>
@@ -31,8 +31,8 @@
 
 
 typedef struct GPM_S {
-	MAM_HANDLE gpa_to_hpa;
-	MAM_HANDLE hpa_to_gpa;
+        MAM_HANDLE gpa_to_hpa;
+        MAM_HANDLE hpa_to_gpa;
 } GPM;
 
 static
@@ -71,37 +71,37 @@ BOOLEAN gpm_get_range_details_and_advance_mam_iterator(IN MAM_HANDLE mam_handle,
 
 // static
 BOOLEAN gpm_remove_all_relevant_hpa_to_gpa_mapping(GPM* gpm, GPA gpa, UINT64 size) {
-	MAM_HANDLE gpa_to_hpa;
-	MAM_HANDLE hpa_to_gpa;
-	UINT64 gpa_tmp;
+        MAM_HANDLE gpa_to_hpa;
+        MAM_HANDLE hpa_to_gpa;
+        UINT64 gpa_tmp;
 
-	gpa_to_hpa = gpm->gpa_to_hpa;
+        gpa_to_hpa = gpm->gpa_to_hpa;
     hpa_to_gpa = gpm->hpa_to_gpa;
 
     // Remove all hpa mappings
     for (gpa_tmp = gpa; gpa_tmp < gpa + size; gpa_tmp += PAGE_4KB_SIZE) {
-    	UINT64 hpa;
-    	MAM_ATTRIBUTES attrs;
+        UINT64 hpa;
+        MAM_ATTRIBUTES attrs;
 
-    	if (mam_get_mapping(gpa_to_hpa, gpa_tmp, &hpa, &attrs) == MAM_MAPPING_SUCCESSFUL) {
-	    	if (!mam_insert_not_existing_range(hpa_to_gpa, hpa, PAGE_4KB_SIZE, GPM_INVALID_MAPPING)) {
-	    		return FALSE;
-	    	}
-	    }
+        if (mam_get_mapping(gpa_to_hpa, gpa_tmp, &hpa, &attrs) == MAM_MAPPING_SUCCESSFUL) {
+                if (!mam_insert_not_existing_range(hpa_to_gpa, hpa, PAGE_4KB_SIZE, GPM_INVALID_MAPPING)) {
+                        return FALSE;
+                }
+            }
     }
 
     return TRUE;
 }
 
 GPM_HANDLE gpm_create_mapping(void) {
-	GPM* gpm;
+        GPM* gpm;
     MAM_HANDLE gpa_to_hpa;
     MAM_HANDLE hpa_to_gpa;
 
     gpm = (GPM*)vmm_memory_alloc(sizeof(GPM));
     if (gpm == NULL) {
-		goto failed_to_allocated_gpm;
-	}
+                goto failed_to_allocated_gpm;
+        }
 
     gpa_to_hpa = mam_create_mapping(MAM_NO_ATTRIBUTES);
     if (gpa_to_hpa == MAM_INVALID_HANDLE) {
@@ -118,15 +118,15 @@ GPM_HANDLE gpm_create_mapping(void) {
     return (GPM_HANDLE)gpm;
 
 failed_to_allocate_hpa_to_gpa_mapping:
-	mam_destroy_mapping(gpa_to_hpa);
+        mam_destroy_mapping(gpa_to_hpa);
 failed_to_allocate_gpa_to_hpa_mapping:
-	vmm_memory_free(gpm);
+        vmm_memory_free(gpm);
 failed_to_allocated_gpm:
-	return GPM_INVALID_HANDLE;
+        return GPM_INVALID_HANDLE;
 }
 
 BOOLEAN gpm_add_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN HPA hpa, IN UINT64 size, MAM_ATTRIBUTES attrs) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     MAM_HANDLE hpa_to_gpa;
 
@@ -138,19 +138,19 @@ BOOLEAN gpm_add_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN HPA hpa, IN UIN
     hpa_to_gpa = gpm->hpa_to_gpa;
 
     if (!mam_insert_range(gpa_to_hpa, (UINT64)gpa, (UINT64)hpa, size, attrs)) {
-    	return FALSE;
+        return FALSE;
     }
 
 #ifdef USE_HPA_TO_GPA
     if (!mam_insert_range(hpa_to_gpa, (UINT64)hpa, (UINT64)gpa, size, attrs)) {
-    	return FALSE;
+        return FALSE;
     }
 #endif
     return TRUE;
 }
 
 BOOLEAN gpm_remove_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
 
     if (gpm_handle == GPM_INVALID_HANDLE) {
@@ -160,7 +160,7 @@ BOOLEAN gpm_remove_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 #ifdef USE_HPA_TO_GPA
     // Remove all hpa mappings
     if (!gpm_remove_all_relevant_hpa_to_gpa_mapping(gpm, gpa, size)) {
-    	return FALSE;
+        return FALSE;
     }
 #endif
 
@@ -169,7 +169,7 @@ BOOLEAN gpm_remove_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 }
 
 BOOLEAN gpm_add_mmio_range(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
 
     if (gpm_handle == GPM_INVALID_HANDLE) {
@@ -179,7 +179,7 @@ BOOLEAN gpm_add_mmio_range(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 #ifdef USE_HPA_TO_GPA
     // Remove all hpa mappings
     if (!gpm_remove_all_relevant_hpa_to_gpa_mapping(gpm, gpa, size)) {
-    	return FALSE;
+        return FALSE;
     }
 #endif
 
@@ -191,7 +191,7 @@ BOOLEAN gpm_add_mmio_range(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 }
 
 BOOLEAN gpm_is_mmio_address(IN GPM_HANDLE gpm_handle, IN GPA gpa) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     UINT64 hpa_tmp;
     MAM_MAPPING_RESULT res;
@@ -211,7 +211,7 @@ BOOLEAN gpm_is_mmio_address(IN GPM_HANDLE gpm_handle, IN GPA gpa) {
 
 
 BOOLEAN gpm_gpa_to_hpa(IN GPM_HANDLE gpm_handle, IN GPA gpa, OUT HPA* hpa, OUT MAM_ATTRIBUTES *hpa_attrs) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     UINT64 hpa_tmp;
     MAM_MAPPING_RESULT res;
@@ -228,12 +228,12 @@ BOOLEAN gpm_gpa_to_hpa(IN GPM_HANDLE gpm_handle, IN GPA gpa, OUT HPA* hpa, OUT M
     }
 
     *hpa = *((HPA*)(&hpa_tmp));
-	*hpa_attrs = *((MAM_ATTRIBUTES*)(&attrs));
+        *hpa_attrs = *((MAM_ATTRIBUTES*)(&attrs));
     return TRUE;
 }
 
 BOOLEAN gpm_gpa_to_hva(IN GPM_HANDLE gpm_handle, IN GPA gpa, OUT HVA* hva) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     UINT64 hpa_tmp;
     UINT64 hva_tmp;
@@ -263,7 +263,7 @@ BOOLEAN gpm_gpa_to_hva(IN GPM_HANDLE gpm_handle, IN GPA gpa, OUT HVA* hva) {
 }
 
 BOOLEAN gpm_hpa_to_gpa(IN GPM_HANDLE gpm_handle, IN HPA hpa, OUT GPA* gpa) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE hpa_to_gpa;
     UINT64 gpa_tmp;
     MAM_MAPPING_RESULT res;
@@ -285,7 +285,7 @@ BOOLEAN gpm_hpa_to_gpa(IN GPM_HANDLE gpm_handle, IN HPA hpa, OUT GPA* gpa) {
 
 BOOLEAN gpm_create_e820_map(IN GPM_HANDLE gpm_handle,
                             OUT E820_HANDLE* e820_handle) {
-	GPM* gpm = (GPM*)gpm_handle;
+    GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     E820_HANDLE e820_map;
     E820_ABSTRACTION_RANGE_ITERATOR e820_iter;
@@ -317,7 +317,6 @@ BOOLEAN gpm_create_e820_map(IN GPM_HANDLE gpm_handle,
         // No appropriate ranges exist
         return FALSE;
     }
-
 
     while (e820_iter != E820_ABSTRACTION_NULL_ITERATOR) {
         const INT15_E820_MEMORY_MAP_ENTRY_EXT* orig_map_entry = e820_abstraction_iterator_get_range_details(e820_iter);
@@ -445,7 +444,7 @@ MAM_MEMORY_RANGES_ITERATOR gpm_advance_mam_iterator_to_appropriate_range(MAM_HAN
 }
 
 GPM_RANGES_ITERATOR gpm_get_ranges_iterator(IN GPM_HANDLE gpm_handle) {
-	GPM* gpm = (GPM*)gpm_handle;
+        GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     MAM_MEMORY_RANGES_ITERATOR iter;
 
@@ -474,8 +473,8 @@ GPM_RANGES_ITERATOR gpm_get_range_details_from_iterator(IN GPM_HANDLE gpm_handle
                                                         OUT GPA* gpa_out,
                                                         OUT UINT64* size_out) {
 
-	GPM* gpm = (GPM*)gpm_handle;
-	MAM_HANDLE gpa_to_hpa;
+        GPM* gpm = (GPM*)gpm_handle;
+        MAM_HANDLE gpa_to_hpa;
     MAM_MEMORY_RANGES_ITERATOR mam_iter = (MAM_MEMORY_RANGES_ITERATOR)iter;
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -511,7 +510,7 @@ VMM_DEBUG_CODE(
     GPA guest_range_addr = 0;
     UINT64 guest_range_size = 0;
     HPA host_range_addr = 0;
-	MAM_ATTRIBUTES attrs;
+        MAM_ATTRIBUTES attrs;
 
     VMM_LOG(mask_anonymous, level_trace,"GPM ranges:\r\n");
     gpm_iter = gpm_get_ranges_iterator(gpm_handle);
@@ -544,7 +543,7 @@ BOOLEAN gpm_copy(GPM_HANDLE src, GPM_HANDLE dst, BOOLEAN override_attrs, MAM_ATT
     UINT64 guest_range_size = 0;
     HPA host_range_addr = 0;
     BOOLEAN status = FALSE;
-	MAM_ATTRIBUTES attrs;
+        MAM_ATTRIBUTES attrs;
 
     src_iter = gpm_get_ranges_iterator(src);
 
@@ -571,12 +570,12 @@ BOOLEAN gpm_copy(GPM_HANDLE src, GPM_HANDLE dst, BOOLEAN override_attrs, MAM_ATT
         }
         else
         {
-			if (override_attrs) {
-	            status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, set_attrs);
-			}
-			else {
-	            status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, attrs);
-			}
+                        if (override_attrs) {
+                    status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, set_attrs);
+                        }
+                        else {
+                    status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, attrs);
+                        }
             if(FALSE == status)
             {
                 goto failure;

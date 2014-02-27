@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(FLAT_PAGE_TABLES_C)
@@ -223,7 +223,6 @@ BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(UINT64 highest_address)
         return FALSE;
     }
 
-
     attrs_full_perm.uint32 = 0;
     attrs_full_perm.paging_attr.writable   = 1;
     attrs_full_perm.paging_attr.user       = 1;
@@ -238,7 +237,6 @@ BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(UINT64 highest_address)
     }
 
     fpt->mapping = flat_tables;
-
 
     // align to the 4K
     max_physical_addr = ALIGN_FORWARD(max_physical_addr, PAGE_4KB_SIZE);
@@ -267,9 +265,6 @@ BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(UINT64 highest_address)
     //cache them
     save_fpt_32         = fpt;
     save_first_table_32 = first_table_tmp;
-
-    
-
     return TRUE;
 
 failed_to_get_hardware_compliant_tables:
@@ -315,14 +310,12 @@ BOOLEAN fpt_create_64_bit_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
 }
 
 
-
 BOOLEAN fpt_destroy_flat_page_tables(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle) {
 
     if (flat_page_tables_handle == FPT_INVALID_HANDLE) {
         VMM_LOG(mask_anonymous, level_trace,"%s: Invalid handle, returning FALSE\n", __FUNCTION__);
         return FALSE;
     }
-
 
     // do not destroy the FPTs, cache those page tables
     // to support S3 resume on NHM machine with x64 OS installed.
@@ -447,7 +440,6 @@ BOOLEAN fpt_clear_writable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handl
         return FALSE;
     }
 
-
     attrs.uint32 = 0;
     attrs.paging_attr.writable = 1;
     return mam_remove_permissions_from_existing_mapping(flat_tables_mapping, src_addr, size, attrs);
@@ -472,7 +464,6 @@ BOOLEAN fpt_set_executable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handl
         VMM_ASSERT(0);
         return FALSE;
     }
-
 
     attrs.uint32 = 0;
     attrs.paging_attr.executable = 1;
@@ -499,11 +490,12 @@ BOOLEAN fpt_clear_executable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_han
         return FALSE;
     }
 
-
     attrs.uint32 = 0;
     attrs.paging_attr.executable = 1;
     return mam_remove_permissions_from_existing_mapping(flat_tables_mapping, src_addr, size, attrs);
 }
+
+
 BOOLEAN fpt_is_mapped(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
                       IN UINT64 src_addr,
                       OUT BOOLEAN* is_writable) {

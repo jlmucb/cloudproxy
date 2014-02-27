@@ -266,9 +266,9 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
 
   struct addrinfo *addrs = nullptr;
   int info_err = getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
-  if (info_err == -1) {
-    PLOG(ERROR) << "Could not get address information for " << host << ":"
-                << port;
+  if (info_err != 0) {
+    LOG(ERROR) << "Could not get address information for " << host << ":"
+               << port;
     return false;
   }
 

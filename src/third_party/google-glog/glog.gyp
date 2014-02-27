@@ -28,6 +28,8 @@
       'target_name': 'glog',
       'type': 'static_library',
       'sources': [
+        '<(src)/config_ia32.h',
+        '<(src)/config_x64.h',
         '<(src)/config.h',
         '<(src)/demangle.cc',
         '<(src)/demangle.h',

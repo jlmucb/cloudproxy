@@ -71,8 +71,7 @@ ARRAY_LIST_HANDLE array_list_init(char *buffer, UINT32 buffer_size, UINT32 eleme
     ARRAY_LIST_ELEMENT *entry = NULL;
     LIST_ELEMENT *free_list = NULL;
 
-    if(required_buffer_size > buffer_size)
-    {
+    if(required_buffer_size > buffer_size) {
         return NULL;
     }
 

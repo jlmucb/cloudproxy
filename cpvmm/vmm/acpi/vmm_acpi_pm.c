@@ -274,8 +274,8 @@ static BOOLEAN vmm_acpi_pm1x_handler(
     UINT16            port_id,
     unsigned          port_size,
     RW_ACCESS         access,
-    BOOLEAN           string_intr,	// ins/outs
-    BOOLEAN           rep_prefix,	// rep 
+    BOOLEAN           string_intr,      // ins/outs
+    BOOLEAN           rep_prefix,       // rep 
     UINT32            rep_count,
     void             *p_value,
     void             *context
@@ -477,14 +477,10 @@ void vmm_acpi_pm_initialize(GUEST_ID guest_id)
 }
 
 BOOLEAN vmm_acpi_pm1x_handler( GUEST_CPU_HANDLE  gcpu,
-        UINT16            port_id,
-        unsigned          port_size,
-        RW_ACCESS         access,
-        BOOLEAN           string_intr,	// ins/outs
-        BOOLEAN           rep_prefix,	// rep 
-        UINT32            rep_count,      
-        void             *p_value,
-        void             *context UNUSED)
+        UINT16  port_id, unsigned port_size, RW_ACCESS access,
+        BOOLEAN   string_intr,  // ins/outs
+        BOOLEAN   rep_prefix,   // rep 
+        UINT32 rep_count,      void   *p_value, void   *context UNUSED)
 {
     unsigned pm_reg_id;
     unsigned sleep_state;
@@ -563,7 +559,7 @@ void vmm_acpi_prepare_cpu_for_s3(CPU_ID from UNUSED, void *unused UNUSED)
 
     VMM_LOG(mask_anonymous, level_trace,"[ACPI] CPU(%d) going to go to S3\n", cpu_id);
 
-	vmm_startup_data.cpu_local_apic_ids[hw_cpu_id()] = local_apic_get_current_id();
+    vmm_startup_data.cpu_local_apic_ids[hw_cpu_id()] = local_apic_get_current_id();
 
     // deactivate active gcpu
     gcpu = scheduler_current_gcpu();
@@ -571,7 +567,7 @@ void vmm_acpi_prepare_cpu_for_s3(CPU_ID from UNUSED, void *unused UNUSED)
 
     SET_CACHED_ACTIVITY_STATE(gcpu, Ia32VmxVmcsGuestSleepStateWaitForSipi);
 
-	report_uvmm_event(UVMM_EVENT_SINGLE_STEPPING_CHECK, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
+    report_uvmm_event(UVMM_EVENT_SINGLE_STEPPING_CHECK, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
 
     gcpu_swap_out(gcpu);
 

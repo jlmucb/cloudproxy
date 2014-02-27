@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 /*
    Trace mechanism
@@ -110,8 +110,7 @@ trace_init(
     }
     trace_state = vmm_memory_alloc(sizeof(TRACE_STATE) +
         max_num_guests * max_num_guest_cpus * MAX_TRACE_BUFFERS * sizeof(TRACE_BUFFER) - 1); // trace_state already includes one buffer
-    if(NULL == trace_state)
-    {
+    if(NULL == trace_state) {
         return FALSE;
     }
 
@@ -127,10 +126,7 @@ trace_init(
 }
 
 static void
-add_record(
-           TRACE_BUFFER      *buffer,
-           TRACE_RECORD_DATA *data
-           )
+add_record( TRACE_BUFFER *buffer, TRACE_RECORD_DATA *data)
 {
     TRACE_RECORD *record = &buffer->records[buffer->next_record_index];
 
@@ -149,12 +145,8 @@ add_record(
 }
 
 BOOLEAN
-trace_add_record(
-                 IN  UINT32  vm_index,
-                 IN  UINT32  cpu_index,
-                 IN  UINT32  buffer_index,
-                 IN  TRACE_RECORD_DATA *data
-                 )
+trace_add_record( IN  UINT32  vm_index, IN  UINT32  cpu_index,
+                 IN  UINT32  buffer_index, IN  TRACE_RECORD_DATA *data)
 {
     if (!trace_initialized || trace_state->locked || data == NULL
         || vm_index >= trace_state->max_num_guests || cpu_index >= trace_state->max_num_guest_cpus
@@ -168,21 +160,15 @@ trace_add_record(
 }
 
 static void
-remove_record(
-              TRACE_RECORD *record
-              )
+remove_record( TRACE_RECORD *record)
 {
     record->valid = FALSE;
     CYCLIC_INCREMENT(record->buffer->next_record_index);
 }
 
 static void
-set_buffer_pointer_to_oldest_record(
-                                    UINT32  vm_index,
-                                    UINT32  cpu_index,
-                                    UINT32  buffer_index,
-                                    void*     param UNUSED
-                                    )
+set_buffer_pointer_to_oldest_record( UINT32  vm_index, UINT32  cpu_index,
+                                    UINT32  buffer_index, void* param UNUSED)
 {
     TRACE_BUFFER *buffer = GET_BUFFER(vm_index, cpu_index, buffer_index);
 
@@ -199,12 +185,8 @@ set_buffer_pointer_to_oldest_record(
 }
 
 static void
-find_buffer_with_oldest_record(
-                               UINT32  vm_index,
-                               UINT32  cpu_index,
-                               UINT32  buffer_index,
-                               void   *param
-                               )
+find_buffer_with_oldest_record( UINT32  vm_index, UINT32  cpu_index,
+                               UINT32  buffer_index, void   *param)
 {
     TRACE_RECORD **oldest_record_ptr = (TRACE_RECORD **)param;
     TRACE_BUFFER  *buffer = GET_BUFFER(vm_index, cpu_index, buffer_index);
@@ -220,9 +202,7 @@ find_buffer_with_oldest_record(
 }
 
 static TRACE_RECORD *
-find_oldest_record(
-                   void
-                   )
+find_oldest_record( void)
 {
     TRACE_RECORD *oldest_record = NULL;
 
@@ -235,14 +215,9 @@ find_oldest_record(
     return oldest_record;
 }
 
-BOOLEAN
-trace_remove_oldest_record(
-                           OUT UINT32            *vm_index,
-                           OUT UINT32            *cpu_index,
-                           OUT UINT32            *buffer_index,
-                           OUT UINT32            *record_index,
-                           OUT TRACE_RECORD_DATA *data
-                           )
+BOOLEAN trace_remove_oldest_record( OUT UINT32 *vm_index, OUT UINT32 *cpu_index,
+                           OUT UINT32 *buffer_index, OUT UINT32 *record_index,
+                           OUT TRACE_RECORD_DATA *data)
 {
     TRACE_RECORD *oldest_record;
 
@@ -271,10 +246,7 @@ trace_remove_oldest_record(
     return TRUE;
 }
 
-BOOLEAN
-trace_lock(
-           void
-           )
+BOOLEAN trace_lock( void)
 {
     if (!trace_initialized || trace_state->locked) {
         return FALSE;
@@ -283,10 +255,7 @@ trace_lock(
     return TRUE;
 }
 
-BOOLEAN
-trace_unlock(
-             void
-             )
+BOOLEAN trace_unlock( void)
 {
     if (!trace_initialized || !trace_state->locked) {
         return FALSE;

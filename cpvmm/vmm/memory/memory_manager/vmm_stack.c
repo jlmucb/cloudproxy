@@ -120,8 +120,7 @@ BOOLEAN vmm_stack_is_initialized(void) {
     return vmm_stacks_is_initialized(g_stacks_infos);
 }
 
-BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id,
-                                            OUT HVA* stack_pointer) {
+BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id, OUT HVA* stack_pointer) {
     UINT64 vmm_stack_base_address;
     UINT32 vmm_stack_size_per_cpu;
     UINT64 stack_pointer_tmp;
@@ -141,8 +140,7 @@ BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id,
     return TRUE;
 }
 
-void vmm_stacks_get_details(OUT HVA* lowest_addr_used,
-                            OUT UINT32* size) {
+void vmm_stacks_get_details(OUT HVA* lowest_addr_used, OUT UINT32* size) {
     UINT64 base;
     UINT32 single_size;
     UINT32 num_of_cpus;
@@ -161,8 +159,7 @@ void vmm_stacks_get_details(OUT HVA* lowest_addr_used,
  * Parameters: Validation for cpu_id is performed by caller function. Function assumes valid input.
  */
 BOOLEAN vmm_stacks_get_exception_stack_for_cpu(IN CPU_ID cpu_id,
-                                               IN UINT32 stack_num,
-                                               OUT HVA* page_addr) {
+                                               IN UINT32 stack_num, OUT HVA* page_addr) {
     UINT64 base;
     UINT32 single_size;
 

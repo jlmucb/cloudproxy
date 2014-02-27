@@ -292,18 +292,15 @@ VMM_STATUS hw_gdt_parse_entry(
 
     default:    // Task Switch Segment
         if (selector > TSS_ENTRY_OFFSET(gdt_number_of_cpus-1) ||    // exceeds limit or
-            0 != (selector & 0xF))                                  // not aligned on 16 bytes
-        {
+            0 != (selector & 0xF)) {                                // not aligned on 16 bytes
             status = VMM_ERROR;
         }
-        else
-        {
+        else {
             *p_base = p_entry[2];
             *p_base <<= 32;
-            *p_base |=  (p_entry[1]         & 0xFF000000) |
-                        ((p_entry[1] << 16) & 0x00FF0000) |
+            *p_base |=  (p_entry[1] & 0xFF000000) | ((p_entry[1] << 16) & 0x00FF0000) |
                         ((p_entry[0] >> 16) & 0x0000FFFF);
-            *p_limit      = (p_entry[0] & 0xFFFF) | (p_entry[1] & 0x000F0000);
+            *p_limit = (p_entry[0] & 0xFFFF) | (p_entry[1] & 0x000F0000);
             *p_attributes = (p_entry[1] >> 8) & 0xF0FF;
         }
         break;

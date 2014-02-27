@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * limitations under the License.
+ */
 
 #include "vt100.h"
 #include "vmm_defs.h"
@@ -87,8 +87,7 @@ char read_dec_number(unsigned *number)
     unsigned num = 0;
     char key;
 
-    for (key = vt100_getch_raw(); key >= '0' && key <= '9'; key = vt100_getch_raw())
-    {
+    for (key = vt100_getch_raw(); key >= '0' && key <= '9'; key = vt100_getch_raw()) {
         num = num * 10 + key - '0';
     }
     *number = num;
@@ -145,8 +144,7 @@ LKUP_STATUS strncmp_local(char *string1, char *string2, int len2)
     {
     int i;
 
-    for (i = 0; i < len2; ++i)
-        {
+    for (i = 0; i < len2; ++i) {
         if (string1[i] != string2[i])
             return LKUP_NOT_FOUND;
         }
@@ -160,16 +158,13 @@ LKUP_STATUS lkup_escape_cmd(char *esc_cmd, unsigned esc_cmd_len, char *key)
     LKUP_STATUS cmp = LKUP_NOT_FOUND;
 
     // Limit the esc_cmd_len to 7 since the max size of supported_esq_cmds[i].esc_cmd is 7. 
-    if (esc_cmd_len > MAX_ESC_CMD-1)
-    { 
+    if (esc_cmd_len > MAX_ESC_CMD-1) { 
         esc_cmd_len = MAX_ESC_CMD-1;
     }
 
-    for (i = 0; i < NELEMENTS(supported_esq_cmds); ++i)
-        {
+    for (i = 0; i < NELEMENTS(supported_esq_cmds); ++i) {
         cmp = strncmp_local(supported_esq_cmds[i].esc_cmd, esc_cmd, esc_cmd_len);
-        if (LKUP_NOT_FOUND != cmp)
-            {
+        if (LKUP_NOT_FOUND != cmp) {
             *key = supported_esq_cmds[i].vt100_key;
             break;
             }
@@ -183,34 +178,27 @@ char vt100_getch(void)
     BOOLEAN quit = FALSE;
     unsigned i;
 
-    if (input_buffer_length > 0)
-    {
+    if (input_buffer_length > 0) {
         input_buffer_length--;
         return input_buffer[input_buffer_length];
     }
 
 
-    while ( ! quit)
-        {
+    while ( ! quit) {
         key = vt100_getch_raw();
 
-        if (0 == input_buffer_length)
-            {
-            if (ASCII_ESCAPE == key)
-                {
+        if (0 == input_buffer_length) {
+            if (ASCII_ESCAPE == key) {
                 input_buffer_length = 1;
                 }
-            else
-                {
+            else {
                 quit = TRUE;
                 }
             }
-        else
-            {
+        else {
             input_buffer[input_buffer_length-1] = key;
 
-            switch (lkup_escape_cmd(input_buffer, input_buffer_length, &key))
-                {
+            switch (lkup_escape_cmd(input_buffer, input_buffer_length, &key)) {
                 case LKUP_FOUND:
                     quit = TRUE;
                     input_buffer_length = 0;

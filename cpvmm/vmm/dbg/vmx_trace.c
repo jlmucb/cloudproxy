@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmx_trace.h"
 #include "trace.h"
@@ -46,8 +46,7 @@ BOOLEAN vmm_trace_init( UINT32 max_num_guests, UINT32 max_num_guest_cpus)
 
 void vmm_trace_state_set(VMM_TRACE_STATE state)
 {
-    switch (state)
-    {
+    switch (state) {
         case VMM_TRACE_DISABLED:
         case VMM_TRACE_ENABLED_RECYCLED:
         case VMM_TRACE_ENABLED_NON_RECYCLED:
@@ -60,17 +59,13 @@ void vmm_trace_state_set(VMM_TRACE_STATE state)
 }
 
 
-static size_t vmm_trace_print_string(
-                       const char    *format,
-                       va_list		   marker,
-                       char    *string
-                       )
+static size_t vmm_trace_print_string( const char *format,
+                       va_list marker, char *string)
 {
     char formatted_string[MAX_STRING_LENGTH];
     size_t max_index, length;
 
-    if (VMM_TRACE_DISABLED == vmm_trace_state)
-    {
+    if (VMM_TRACE_DISABLED == vmm_trace_state) {
         return 0;
     }
 
@@ -83,21 +78,15 @@ static size_t vmm_trace_print_string(
     formatted_string[max_index] = '\0';
 
     length = vmm_vsprintf_s(string, MAX_STRING_LENGTH, formatted_string, marker);
-    if (length > MAX_STRING_LENGTH)
-    {
+    if (length > MAX_STRING_LENGTH) {
         VMM_DEADLOOP();
     }
-
     return length;
 }
 
 
-BOOLEAN vmm_trace_buffer(
-                 GUEST_CPU_HANDLE   guest_cpu,
-                 UINT8              buffer_index,
-                 const char         *format,
-                 ...
-                 )
+BOOLEAN vmm_trace_buffer(GUEST_CPU_HANDLE   guest_cpu, UINT8  buffer_index,
+                 const char *format, ...)
 {
     va_list                    marker;
     TRACE_RECORD_DATA	       data;
@@ -106,8 +95,7 @@ BOOLEAN vmm_trace_buffer(
     GUEST_ID                   guest_id = 0;
     CPU_ID                     gcpu_id = 0;
 
-    if (VMM_TRACE_DISABLED == vmm_trace_state)
-    {
+    if (VMM_TRACE_DISABLED == vmm_trace_state) {
         return FALSE;
     }
 
@@ -126,15 +114,13 @@ BOOLEAN vmm_trace_buffer(
     vmcs_obj = gcpu_get_vmcs(guest_cpu);
     virtual_cpu_id = guest_vcpu(guest_cpu);
 
-    if(vmcs_obj != NULL)
-    {
+    if(vmcs_obj != NULL) {
         data.exit_reason = vmcs_read(vmcs_obj, VMCS_EXIT_INFO_REASON);
         data.guest_eip   = vmcs_read(vmcs_obj, VMCS_GUEST_RIP);
     }
     data.tsc        = (buffer_index == (MAX_TRACE_BUFFERS - 1))? hw_rdtsc(): 0;
 
-    if(virtual_cpu_id != NULL)
-    {
+    if(virtual_cpu_id != NULL) {
         guest_id = virtual_cpu_id->guest_id;
         gcpu_id = virtual_cpu_id->guest_cpu_id;
     }
@@ -144,11 +130,8 @@ BOOLEAN vmm_trace_buffer(
 
 
 BOOLEAN
-vmm_trace(
-          GUEST_CPU_HANDLE  guest_cpu,
-          const char       *format,
-          ...
-          )
+vmm_trace( GUEST_CPU_HANDLE  guest_cpu, const char       *format,
+          ...)
 {
     va_list                 marker;
     TRACE_RECORD_DATA       data;
@@ -177,16 +160,14 @@ vmm_trace(
     vmcs_obj = gcpu_get_vmcs(guest_cpu);
     virtual_cpu_id = guest_vcpu(guest_cpu);
 
-    if(vmcs_obj != NULL)
-    {
+    if(vmcs_obj != NULL) {
         data.exit_reason = vmcs_read(vmcs_obj, VMCS_EXIT_INFO_REASON);
         data.guest_eip   = vmcs_read(vmcs_obj, VMCS_GUEST_RIP);
         data.tsc         = 0;
 //        data.tsc         = hw_rdtsc();
     }
 
-    if(virtual_cpu_id != NULL)
-    {
+    if(virtual_cpu_id != NULL) {
         guest_id = virtual_cpu_id->guest_id;
         gcpu_id = virtual_cpu_id->guest_cpu_id;
     }
@@ -202,8 +183,7 @@ vmm_trace_print_all(UINT32 guest_num, char *guest_names[])
     int cnt = 0;
 
 
-    if (VMM_TRACE_DISABLED == vmm_trace_state)
-    {
+    if (VMM_TRACE_DISABLED == vmm_trace_state) {
         return FALSE;
     }
     trace_lock();
@@ -221,13 +201,11 @@ vmm_trace_print_all(UINT32 guest_num, char *guest_names[])
                 "-----------------------------+---------------------------------+---------------------\n");
         }
 
-        if (vm_index < guest_num)
-        {
+        if (vm_index < guest_num) {
             vm_name = guest_names[vm_index];
 
         }
-        else
-        {
+        else {
             vmm_sprintf_s(buffer, sizeof(buffer), "%4d", vm_index);
             vm_name = buffer;
         }

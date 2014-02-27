@@ -35,35 +35,24 @@ void vmm_acpi_print_header(ACPI_TABLE_HEADER *pTableHeader)
 {
     VMM_LOG(mask_anonymous, level_trace,"==============Header===============\n");
     VMM_LOG(mask_anonymous, level_trace,"Signature     = %c%c%c%c\n",
-        pTableHeader->Signature[0],
-        pTableHeader->Signature[1],
-        pTableHeader->Signature[2],
-        pTableHeader->Signature[3]);
+        pTableHeader->Signature[0], pTableHeader->Signature[1],
+        pTableHeader->Signature[2], pTableHeader->Signature[3]);
     VMM_LOG(mask_anonymous, level_trace,"Length        = 0x%x\n", pTableHeader->Length);
     VMM_LOG(mask_anonymous, level_trace,"Revision      = %d\n", pTableHeader->Revision);
     VMM_LOG(mask_anonymous, level_trace,"Checksum      = 0x%x\n", pTableHeader->Checksum);
     VMM_LOG(mask_anonymous, level_trace,"OemId         = %c%c%c%c%c%c\n",
-        pTableHeader->OemId[0],
-        pTableHeader->OemId[1],
-        pTableHeader->OemId[2],
-        pTableHeader->OemId[3],
-        pTableHeader->OemId[4],
-        pTableHeader->OemId[5]);
+        pTableHeader->OemId[0], pTableHeader->OemId[1],
+        pTableHeader->OemId[2], pTableHeader->OemId[3],
+        pTableHeader->OemId[4], pTableHeader->OemId[5]);
     VMM_LOG(mask_anonymous, level_trace,"OemTableId    = %c%c%c%c%c%c%c%c\n",
-        pTableHeader->OemTableId[0],
-        pTableHeader->OemTableId[1],
-        pTableHeader->OemTableId[2],
-        pTableHeader->OemTableId[3],
-        pTableHeader->OemTableId[4],
-        pTableHeader->OemTableId[5],
-        pTableHeader->OemTableId[6],
-        pTableHeader->OemTableId[7]);
+        pTableHeader->OemTableId[0], pTableHeader->OemTableId[1],
+        pTableHeader->OemTableId[2], pTableHeader->OemTableId[3],
+        pTableHeader->OemTableId[4], pTableHeader->OemTableId[5],
+        pTableHeader->OemTableId[6], pTableHeader->OemTableId[7]);
     VMM_LOG(mask_anonymous, level_trace,"OemRevision   = %d\n", pTableHeader->OemRevision);
     VMM_LOG(mask_anonymous, level_trace,"AslCompilerId = %c%c%c%c\n",
-        pTableHeader->AslCompilerId[0],
-        pTableHeader->AslCompilerId[1],
-        pTableHeader->AslCompilerId[2],
-        pTableHeader->AslCompilerId[3]);
+        pTableHeader->AslCompilerId[0], pTableHeader->AslCompilerId[1],
+        pTableHeader->AslCompilerId[2], pTableHeader->AslCompilerId[3]);
     VMM_LOG(mask_anonymous, level_trace,"AslCompilerRevision= %d\n", pTableHeader->AslCompilerRevision);
     VMM_LOG(mask_anonymous, level_trace,"-----------------------------------\n");
 }
@@ -147,10 +136,10 @@ void vmm_acpi_print_facs(ACPI_TABLE_FACS *facs)
 INLINE
 VOID *acpi_map_memory(UINT64 where)
 {
-        HVA hva;
+    HVA hva;
         
-        hmm_hpa_to_hva((HPA) where, &hva);
-        return (void*) hva;
+    hmm_hpa_to_hva((HPA) where, &hva);
+    return (void*) hva;
 }
 
 /* Calculate acpi table checksum */
@@ -286,28 +275,28 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
 
 ACPI_TABLE_HEADER * vmm_acpi_locate_table(char *sig)
 {
-        ACPI_TABLE_RSDP *rsdp = NULL;
-        void *table = NULL;
+    ACPI_TABLE_RSDP *rsdp = NULL;
+    void *table = NULL;
         
-        /* Try 0x0 first for getting rsdp table */
-        rsdp = scan_for_rsdp(acpi_map_memory(0), 0x400);
-        if (NULL == rsdp) {
-            /* Try 0xE0000 */
-            VMM_LOG(mask_anonymous, level_trace,"Try 0xE0000 for ACPI RSDP table\n");
-            rsdp = scan_for_rsdp(acpi_map_memory(0xE0000), 0x1FFFF);
-        }
+    /* Try 0x0 first for getting rsdp table */
+    rsdp = scan_for_rsdp(acpi_map_memory(0), 0x400);
+    if (NULL == rsdp) {
+        /* Try 0xE0000 */
+        VMM_LOG(mask_anonymous, level_trace,"Try 0xE0000 for ACPI RSDP table\n");
+        rsdp = scan_for_rsdp(acpi_map_memory(0xE0000), 0x1FFFF);
+    }
 
-        if (NULL == rsdp) {
-            VMM_LOG(mask_anonymous, level_error,"Could not find the rsdp table\n");
-            return NULL;
-        }
+    if (NULL == rsdp) {
+        VMM_LOG(mask_anonymous, level_error,"Could not find the rsdp table\n");
+        return NULL;
+    }
 
-        VMM_LOG(mask_anonymous, level_trace,"rsdp address %p\n", rsdp);
+    VMM_LOG(mask_anonymous, level_trace,"rsdp address %p\n", rsdp);
 
-        /* Get the specified table from rsdp */
-        table = get_acpi_table_from_rsdp(rsdp, sig);
+    /* Get the specified table from rsdp */
+    table = get_acpi_table_from_rsdp(rsdp, sig);
 
-        return table;
+    return table;
 }
 
 //
@@ -347,13 +336,13 @@ void vmm_acpi_retrieve_sleep_states(void)
     ACPI_TABLE_HEADER *dsdt;
         char *aml_ptr;
     UINT8 sstate;
-        UINT32 i;
+    UINT32 i;
 
     dsdt =  acpi_map_memory((UINT64) fadt.Dsdt);
-        if (!dsdt) {
-                VMM_LOG(mask_anonymous, level_error,"[ACPI] DSDT not found\n");
-                return;
-        }
+    if (!dsdt) {
+        VMM_LOG(mask_anonymous, level_error,"[ACPI] DSDT not found\n");
+        return;
+    }
 
     VMM_LOG(mask_anonymous, level_trace,"SleepState | SleepTypeA | SleepTypeB\n");
     VMM_LOG(mask_anonymous, level_trace,"------------------------------------\n");

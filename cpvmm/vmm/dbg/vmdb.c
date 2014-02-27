@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMDB_C)
@@ -224,12 +224,10 @@ VMDB_THREAD_CONTEXT * vmdb_thread_context_create(void)
     {
     VMDB_THREAD_CONTEXT *vmdb = vmm_malloc(sizeof(*vmdb));
 
-    if (NULL != vmdb)
-        {
+    if (NULL != vmdb) {
         vmdb->dr7 = DR7_MUST_ONE_BITS;
         }
-    else
-        {
+    else {
         VMDB_LOG(level_error,"[vmdb] %s failed due to memory lack %d\n", __FUNCTION__);
         }
 
@@ -238,8 +236,7 @@ VMDB_THREAD_CONTEXT * vmdb_thread_context_create(void)
 
 void vmdb_thread_context_destroy(VMDB_THREAD_CONTEXT *vmdb)
     {
-    if (NULL != vmdb)
-        {
+    if (NULL != vmdb) {
         // remove existing breakpoint. TBD
         vmm_mfree(vmdb);
         }
@@ -255,12 +252,8 @@ void vmdb_thread_context_destroy(VMDB_THREAD_CONTEXT *vmdb)
 */
 VMM_STATUS vmdb_guest_initialize(GUEST_ID guest_id)
     {
-    return vmexit_install_handler
-        (
-        guest_id,
-        vmdb_dr_access_vmexit_handler,
-        Ia32VmxExitBasicReasonDrAccess
-        );
+    return vmexit_install_handler ( guest_id, vmdb_dr_access_vmexit_handler,
+        Ia32VmxExitBasicReasonDrAccess);
     }
 
 /*-----------------------------------------------------------------------------*
@@ -270,22 +263,19 @@ VMM_STATUS vmdb_guest_initialize(GUEST_ID guest_id)
 *  Returns  : VMM_STATUS
 */
 VMM_STATUS vmdb_thread_attach(GUEST_CPU_HANDLE gcpu)
-    {
+{
     VMM_STATUS status = VMM_ERROR;
     VMDB_THREAD_CONTEXT  *vmdb = gcpu_get_vmdb(gcpu);
     VMEXIT_CONTROL       vmexit_request;
 
-    do  // one-shot loop
-        {
-        if (NULL != vmdb)
-            {
+    do  { // one-shot loop
+        if (NULL != vmdb) {
             vmdb_thread_log(gcpu, "VMDB already attached to thread", __FUNCTION__);
             break;
             }
 
         vmdb = vmdb_thread_context_create();
-        if (NULL == vmdb)
-            {
+        if (NULL == vmdb) {
             vmdb_thread_log(gcpu, "VMDB failed to create context for thread", __FUNCTION__);
             break;
             }
@@ -314,13 +304,11 @@ VMM_STATUS vmdb_thread_detach(GUEST_CPU_HANDLE gcpu)
     VMDB_THREAD_CONTEXT *vmdb = gcpu_get_vmdb(gcpu);
     VMEXIT_CONTROL      vmexit_request;
 
-    do  // one-shot loop
-        {
-        if (NULL == vmdb)
-            {
+    do  {  // one-shot loop
+        if (NULL == vmdb) {
             vmdb_thread_log(gcpu, "VMDB already detached from thread", __FUNCTION__);
             break;
-            }
+        }
 
         vmdb_fill_vmexit_request(&vmexit_request, FALSE);
         gcpu_control_setup(gcpu, &vmexit_request);
@@ -335,7 +323,6 @@ VMM_STATUS vmdb_thread_detach(GUEST_CPU_HANDLE gcpu)
         } while (0);
 
     return status;
-
     }
 
 
@@ -349,11 +336,7 @@ VMM_STATUS vmdb_thread_detach(GUEST_CPU_HANDLE gcpu)
 *           : BOOLEAN enable/disable
 *  Returns  : void
 */
-void vmdb_fill_vmexit_request
-    (
-    OUT VMEXIT_CONTROL *vmexit_request,
-    BOOLEAN             enable
-    )
+void vmdb_fill_vmexit_request ( OUT VMEXIT_CONTROL *vmexit_request, BOOLEAN enable)
     {
     IA32_VMCS_EXCEPTION_BITMAP            exceptions_mask;
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS exec_controls_mask;
@@ -397,13 +380,11 @@ VMM_STATUS vmdb_single_step_enable(GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
 
     VMM_ASSERT(gcpu);
 
-    if (NULL != (vmdb = gcpu_get_vmdb(gcpu)))
-        {
+    if (NULL != (vmdb = gcpu_get_vmdb(gcpu))) {
         vmdb->sstep = enable;
         status = VMM_OK;
         }
-    else
-        {
+    else {
         vmdb_thread_log(gcpu, "gDB is not attached to thread", __FUNCTION__);
         status = VMM_ERROR;
         }
@@ -417,15 +398,12 @@ VMM_STATUS  vmdb_single_step_info(GUEST_CPU_HANDLE gcpu, BOOLEAN *enable)
     VMM_STATUS          status;
 
     VMM_ASSERT(gcpu);
-
-    if (NULL != (vmdb = gcpu_get_vmdb(gcpu)))
-        {
+    if (NULL != (vmdb = gcpu_get_vmdb(gcpu))) {
         if (enable != NULL)
             *enable = vmdb->sstep;
         status = VMM_OK;
         }
-    else
-        {
+    else {
         vmdb_thread_log(gcpu, "gDB is not attached to thread", __FUNCTION__);
         status = VMM_ERROR;
         }
@@ -439,17 +417,11 @@ VMM_STATUS  vmdb_single_step_info(GUEST_CPU_HANDLE gcpu, BOOLEAN *enable)
 *           : ADDRESS            bp_address  - what to look for
 *  Returns  : Breakpoint ID if found, -1 if not
 */
-int vmdb_breakpoint_lookup
-    (
-    VMDB_THREAD_CONTEXT *vmdb_context,
-    ADDRESS            bp_address
-    )
+int vmdb_breakpoint_lookup ( VMDB_THREAD_CONTEXT *vmdb_context, ADDRESS  bp_address)
     {
     int i;
-    for (i = 0; i < NUMBER_OF_HW_BREAKPOINTS; ++i)
-        {
-        if (bp_address == vmdb_context->dr[i])
-            {
+    for (i = 0; i < NUMBER_OF_HW_BREAKPOINTS; ++i) {
+        if (bp_address == vmdb_context->dr[i]) {
             return i;   // found
             }
         }
@@ -473,15 +445,11 @@ int vmdb_free_breakpoint_lookup(VMDB_THREAD_CONTEXT *vmdb_context)
 *  Arguments: GUEST_CPU_HANDLE gcpu
 *  Returns  : void
 */
-void vmdb_settings_apply_to_hw
-    (
-    GUEST_CPU_HANDLE gcpu
-    )
+void vmdb_settings_apply_to_hw ( GUEST_CPU_HANDLE gcpu)
     {
     VMDB_THREAD_CONTEXT *vmdb = gcpu_get_vmdb(gcpu);
 
-    if (NULL != vmdb)
-        {
+    if (NULL != vmdb) {
         UINT64      rflags;
         VMCS_OBJECT *vmcs = gcpu_get_vmcs(gcpu);
 
@@ -508,30 +476,20 @@ void vmdb_settings_apply_to_hw
 *  Arguments: self-descriptive
 *  Returns  : VMM_STATUS
 */
-VMM_STATUS vmdb_breakpoint_info
-    (
-    GUEST_CPU_HANDLE       gcpu,
-    UINT32                 bp_id,
-    ADDRESS                *linear_address,
-    VMDB_BREAKPOINT_TYPE   *bp_type,
-    VMDB_BREAK_LENGTH_TYPE *bp_len,
-    UINT16                 *skip_counter
-    )
-    {
+VMM_STATUS vmdb_breakpoint_info ( GUEST_CPU_HANDLE gcpu, UINT32 bp_id,
+    ADDRESS *linear_address, VMDB_BREAKPOINT_TYPE *bp_type, VMDB_BREAK_LENGTH_TYPE *bp_len,
+    UINT16 *skip_counter)
+{
     VMDB_THREAD_CONTEXT     *vmdb;
     VMM_STATUS              status = VMM_ERROR;
 
-
-    do  // one-shot loop
-        {
-        if (NULL == gcpu)
-            {
+    do  { // one-shot loop
+        if (NULL == gcpu) {
             break;
             }
 
         vmdb = gcpu_get_vmdb(gcpu);
-        if (NULL == vmdb)
-            {
+        if (NULL == vmdb) {
             vmdb_thread_log(gcpu, "gDB is not attached to thread", __FUNCTION__);
             break;
             }
@@ -561,47 +519,36 @@ VMM_STATUS vmdb_breakpoint_info
 *  Arguments: self-descriptive
 *  Returns  : VMM_STATUS
 */
-VMM_STATUS vmdb_breakpoint_add
-    (
-    GUEST_CPU_HANDLE        gcpu,
-    ADDRESS                 linear_address,
-    VMDB_BREAKPOINT_TYPE    bp_type,
-    VMDB_BREAK_LENGTH_TYPE  bp_len,
-    UINT16                  skip_counter
-    )
+VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
+    ADDRESS  linear_address, VMDB_BREAKPOINT_TYPE    bp_type,
+    VMDB_BREAK_LENGTH_TYPE  bp_len, UINT16   skip_counter)
     {
     int                     bp_id;
     VMDB_THREAD_CONTEXT     *vmdb;
     VMM_STATUS              status = VMM_ERROR;
 
 
-    do  // one-shot loop
-        {
-        if (NULL == gcpu)
-            {
+    do  { // one-shot loop
+        if (NULL == gcpu) {
             break;
             }
 
         vmdb = gcpu_get_vmdb(gcpu);
-        if (NULL == vmdb)
-            {
+        if (NULL == vmdb) {
             vmdb_thread_log(gcpu, "gDB is not attached to thread", __FUNCTION__);
             break;
             }
 
-        if (bp_type < VMDB_BREAK_TYPE_FIRST || bp_type > VMDB_BREAK_TYPE_LAST)
-            {
+        if (bp_type < VMDB_BREAK_TYPE_FIRST || bp_type > VMDB_BREAK_TYPE_LAST) {
             VMDB_LOG(level_warning,"[vmdb] Invalid break type(%d)\n", bp_type);
             break;
             }
 
-        if (VMDB_BREAK_ON_EXE == bp_type)
-            {
+        if (VMDB_BREAK_ON_EXE == bp_type) {
             bp_len = VMDB_BREAK_LENGTH_1;
             }
 
-        if (bp_len < VMDB_BREAK_LENGTH_FIRST || bp_len > VMDB_BREAK_LENGTH_LAST)
-            {
+        if (bp_len < VMDB_BREAK_LENGTH_FIRST || bp_len > VMDB_BREAK_LENGTH_LAST) {
             VMDB_LOG(level_warning,"[vmdb] Invalid break length(%d)\n", bp_len);
             break;
             }
@@ -637,11 +584,7 @@ VMM_STATUS vmdb_breakpoint_add
 *           : if equal -1, then remove all breakpoints for this guest
 *  Returns  : VMM_STATUS
 */
-VMM_STATUS vmdb_breakpoint_delete
-    (
-    GUEST_CPU_HANDLE    gcpu,
-    ADDRESS             linear_address
-    )
+VMM_STATUS vmdb_breakpoint_delete ( GUEST_CPU_HANDLE gcpu, ADDRESS  linear_address)
     {
     VMDB_THREAD_CONTEXT *vmdb;
     int                 bp_id;
@@ -649,39 +592,32 @@ VMM_STATUS vmdb_breakpoint_delete
     int                 bp_to;
     VMM_STATUS          status = VMM_ERROR;
 
-    do  // one-shot loop
-        {
-        if (NULL == gcpu)
-            {
+    do {  // one-shot loop
+        if (NULL == gcpu) {
             break;
             }
 
         vmdb = gcpu_get_vmdb(gcpu);
-        if (NULL == vmdb)
-            {
+        if (NULL == vmdb) {
             vmdb_thread_log(gcpu, "VMDB is not attached to thread", __FUNCTION__);
             break;
             }
 
-        if ((ADDRESS) -1 == linear_address)
-            {
+        if ((ADDRESS) -1 == linear_address) {
             bp_from = 0;
             bp_to = NUMBER_OF_HW_BREAKPOINTS-1;
             }
-        else
-            {
+        else {
             bp_from = vmdb_breakpoint_lookup(vmdb, linear_address);
             bp_to = bp_from;
             }
 
-        if ( ! BREAKPOINT_ID_IS_VALID(bp_from))
-            {
+        if ( ! BREAKPOINT_ID_IS_VALID(bp_from)) {
             vmdb_thread_log(gcpu, "VMDB did not find breakpoint on thread", __FUNCTION__);
             break;
             }
 
-        for (bp_id = bp_from; bp_id <= bp_to; ++bp_id)
-            {
+        for (bp_id = bp_from; bp_id <= bp_to; ++bp_id) {
             vmdb->dr[bp_id] = 0;
             DR7_LOCAL_CLR (vmdb->dr7, bp_id);
             DR7_GLOBAL_CLR(vmdb->dr7, bp_id);
@@ -715,32 +651,25 @@ BOOLEAN vmdb_exception_handler(GUEST_CPU_HANDLE gcpu)
 
     qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
 
-    if (qualification.DbgException.DbgRegAccess)
-        {
+    if (qualification.DbgException.DbgRegAccess) {
         VMDB_LOG(level_print_always,"[vmdb] Debug Registers Access is NOT supported\n");
         }
 
-    if (qualification.DbgException.SingleStep)
-        {
+    if (qualification.DbgException.SingleStep) {
         vmdb_thread_log(gcpu, "VMDB Single Step Break occurred on thread", __FUNCTION__);
 
-        if (FALSE == event_raise(EVENT_GUEST_CPU_BREAKPOINT, gcpu, 0))
-            {
+        if (FALSE == event_raise(EVENT_GUEST_CPU_BREAKPOINT, gcpu, 0)) {
             VMM_DEADLOOP();
             }
         }
-    else
-        {
-            for (i = 0; i < NUMBER_OF_HW_BREAKPOINTS; ++i)
-                {
-                if (BIT_GET64(qualification.DbgException.BreakPoints, i))
-                    {
+    else {
+            for (i = 0; i < NUMBER_OF_HW_BREAKPOINTS; ++i) {
+                if (BIT_GET64(qualification.DbgException.BreakPoints, i)) {
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
                     UINT32 db_type = (UINT32) DR7_RW_GET(vmdb->dr7, i);
 #endif
 
-                    if (0 != vmdb->skip_counter[i])
-                        {
+                    if (0 != vmdb->skip_counter[i]) {
                         vmdb->skip_counter[i];
                         continue;
                         }
@@ -750,8 +679,7 @@ BOOLEAN vmdb_exception_handler(GUEST_CPU_HANDLE gcpu)
                         vcpu->guest_id, vcpu->guest_id);
 
                     // If it is breakpoint for the VMDB STUB, then propagate it.
-                    if (FALSE == event_raise(EVENT_GUEST_CPU_SINGLE_STEP, gcpu, 0))
-                        {
+                    if (FALSE == event_raise(EVENT_GUEST_CPU_SINGLE_STEP, gcpu, 0)) {
                         VMM_DEADLOOP();
                         }
                     }
@@ -781,18 +709,15 @@ VMEXIT_HANDLING_STATUS vmdb_dr_access_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     if (6 == dbreg_id) dbreg_id = IA32_REG_DR6;
     if (7 == dbreg_id) dbreg_id = IA32_REG_DR7;
 
-    if  (0 == qualification.DrAccess.Direction)
-        {
+    if  (0 == qualification.DrAccess.Direction) {
         // do nothing
         }
-    else
-        {
+    else {
         UINT64 reg_value = gcpu_get_debug_reg(gcpu, (VMM_IA32_DEBUG_REGISTERS)dbreg_id);
         gcpu_set_native_gp_reg(gcpu, gpreg_id, reg_value);
         }
 
     gcpu_skip_guest_instruction(gcpu);
-
     return VMEXIT_HANDLED;
     }
 
@@ -801,33 +726,26 @@ VMEXIT_HANDLING_STATUS vmdb_dr_access_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 **                          VMDB Remote functions
 *-----------------------------------------------------------------------------*/
 
-void vmdb_remote_handler
-    (
-    CPU_ID from UNUSED,
-    VMDB_REMOTE_PARAMS *params
-    )
+void vmdb_remote_handler (CPU_ID from UNUSED, VMDB_REMOTE_PARAMS *params)
 {
     VIRTUAL_CPU_ID      vcpu;
     GUEST_CPU_HANDLE    gcpu;
 
     do  {
-        if (NULL == params)
-            {
+        if (NULL == params) {
             VMDB_LOG(level_error,"%s called wit NULL argument\n", __FUNCTION__);
             break;
             }
 
         vcpu.guest_id     = params->guest_id;
         vcpu.guest_cpu_id = hw_cpu_id();
-        if (NULL == (gcpu = gcpu_state(&vcpu)))
-            {
+        if (NULL == (gcpu = gcpu_state(&vcpu))) {
             VMDB_LOG(level_error,"%s GCPU(%d,%d) is not found\n",
                 __FUNCTION__, vcpu.guest_id, vcpu.guest_cpu_id);
             break;
             }
 
-        switch (params->function_id)
-            {
+        switch (params->function_id) {
             case VMDB_IPC_ATTACH:
                 vmdb_thread_attach(gcpu);
                 break;
@@ -835,14 +753,9 @@ void vmdb_remote_handler
                 vmdb_thread_detach(gcpu);
                 break;
             case VMDB_IPC_ADD_BP:
-                vmdb_breakpoint_add
-                    (
-                    gcpu,
-                    params->u.add_bp.linear_address,
-                    params->u.add_bp.bp_type,
-                    params->u.add_bp.bp_len,
-                    params->u.add_bp.skip_counter
-                    );
+                vmdb_breakpoint_add ( gcpu, params->u.add_bp.linear_address,
+                    params->u.add_bp.bp_type, params->u.add_bp.bp_len,
+                    params->u.add_bp.skip_counter);
                 break;
             case VMDB_IPC_DEL_BP:
                 vmdb_breakpoint_delete(gcpu, params->u.del_bp.linear_address);
@@ -861,24 +774,18 @@ void vmdb_remote_handler
 #pragma warning ( pop )
 
 
-void vmdb_remote_execute
-    (
-    GUEST_CPU_HANDLE gcpu,
-    VMDB_REMOTE_PARAMS *params
-    )
+void vmdb_remote_execute ( GUEST_CPU_HANDLE gcpu, VMDB_REMOTE_PARAMS *params)
     {
     const VIRTUAL_CPU_ID   *vcpu = guest_vcpu(gcpu);
 
-    if (NULL != vcpu)
-        {
+    if (NULL != vcpu) {
         IPC_DESTINATION dst;
 
         dst.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
         params->guest_id = vcpu->guest_id;
         ipc_execute_handler(dst, (IPC_HANDLER_FN) vmdb_remote_handler, params);
         }
-    else
-        {
+    else {
         VMDB_LOG(level_error,"%s Failed to locate VCPU\n", __FUNCTION__);
         }
     }
@@ -899,14 +806,9 @@ void vmdb_remote_thread_detach(GUEST_CPU_HANDLE gcpu)
     vmdb_remote_execute(gcpu, &params);
     }
 
-void vmdb_remote_breakpoint_add
-    (
-    GUEST_CPU_HANDLE        gcpu,
-    ADDRESS                 linear_address,
-    VMDB_BREAKPOINT_TYPE    bp_type,
-    VMDB_BREAK_LENGTH_TYPE  bp_len,
-    UINT16                  skip_counter
-    )
+void vmdb_remote_breakpoint_add ( GUEST_CPU_HANDLE gcpu, ADDRESS  linear_address,
+    VMDB_BREAKPOINT_TYPE  bp_type, VMDB_BREAK_LENGTH_TYPE  bp_len,
+    UINT16 skip_counter)
     {
     VMDB_REMOTE_PARAMS params;
 
@@ -918,11 +820,7 @@ void vmdb_remote_breakpoint_add
     vmdb_remote_execute(gcpu, &params);
     }
 
-void vmdb_remote_breakpoint_delete
-    (
-    GUEST_CPU_HANDLE    gcpu,
-    ADDRESS             linear_address
-    )
+void vmdb_remote_breakpoint_delete ( GUEST_CPU_HANDLE  gcpu, ADDRESS linear_address)
     {
     VMDB_REMOTE_PARAMS params;
 
@@ -931,11 +829,7 @@ void vmdb_remote_breakpoint_delete
     vmdb_remote_execute(gcpu, &params);
     }
 
-void vmdb_remote_single_step_enable
-    (
-    GUEST_CPU_HANDLE gcpu,
-    BOOLEAN enable
-    )
+void vmdb_remote_single_step_enable ( GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
     {
     VMDB_REMOTE_PARAMS params;
 
@@ -954,15 +848,12 @@ GUEST_CPU_HANDLE vmdb_cli_locate_gcpu(char *string, BOOLEAN *apply_to_all)
     {
     VIRTUAL_CPU_ID vcpu;
 
-    if (NULL != apply_to_all)
-        {
-        if ('*' == string[0])
-            {
+    if (NULL != apply_to_all) {
+        if ('*' == string[0]) {
             *apply_to_all = TRUE;
             string++;   // skip '*' symbol
             }
-        else
-            {
+        else {
             apply_to_all = FALSE;
             }
         }
@@ -986,16 +877,14 @@ int vmdb_cli_breakpoint_add(unsigned argc, char *args[])
     if (argc < 5) return -1;
 
     gcpu = vmdb_cli_locate_gcpu(args[1], &apply_to_all);
-    if (NULL == gcpu)
-        {
+    if (NULL == gcpu) {
         CLI_PRINT("Invalid Guest %s\n", args[1]);
         return -1;
         }
 
     linear_address = CLI_ATOL64(args[2]);
 
-    switch (args[3][0])
-        {
+    switch (args[3][0]) {
         case 'e': bp_type = VMDB_BREAK_ON_EXE; break;
         case 'w': bp_type = VMDB_BREAK_ON_WO;  break;
         case 'i': bp_type = VMDB_BREAK_ON_IO;  break;
@@ -1003,8 +892,7 @@ int vmdb_cli_breakpoint_add(unsigned argc, char *args[])
         default: return -1;
         }
 
-    switch (args[4][0])
-        {
+    switch (args[4][0]) {
         case '1': bp_len = VMDB_BREAK_LENGTH_1; break;
         case '2': bp_len = VMDB_BREAK_LENGTH_2; break;
         case '4': bp_len = VMDB_BREAK_LENGTH_4; break;
@@ -1012,30 +900,17 @@ int vmdb_cli_breakpoint_add(unsigned argc, char *args[])
         default: return -1;
         }
 
-    if (argc > 5)
-        {
+    if (argc > 5) {
         skip_counter = CLI_ATOL(args[5]);
         }
 
-    vmdb_breakpoint_add
-        (
-        gcpu,
-        linear_address,
-        bp_type,
-        bp_len,
-        (UINT16) skip_counter
-        );
+    vmdb_breakpoint_add ( gcpu, linear_address, bp_type,
+        bp_len, (UINT16) skip_counter);
 
     if (apply_to_all)
         {
-        vmdb_remote_breakpoint_add
-            (
-            gcpu,
-            linear_address,
-            bp_type,
-            bp_len,
-            (UINT16) skip_counter
-            );
+        vmdb_remote_breakpoint_add ( gcpu, linear_address,
+            bp_type, bp_len, (UINT16) skip_counter);
         }
 
     return 0;
@@ -1050,25 +925,21 @@ int vmdb_cli_breakpoint_delete(unsigned argc, char *args[])
     if (argc < 3) return -1;
 
     gcpu = vmdb_cli_locate_gcpu(args[1], &apply_to_all);
-    if (NULL == gcpu)
-        {
+    if (NULL == gcpu) {
         CLI_PRINT("Invalid Guest %s\n", args[1]);
         return -1;
         }
 
-    if (0 == CLI_STRCMP("all", args[2]))
-        {
+    if (0 == CLI_STRCMP("all", args[2])) {
         linear_address = (ADDRESS)-1;
         }
-    else
-        {
+    else {
         linear_address = CLI_ATOL64(args[2]);
         }
 
     vmdb_breakpoint_delete(gcpu, linear_address);
 
-    if (apply_to_all)
-        {
+    if (apply_to_all) {
         vmdb_remote_breakpoint_delete(gcpu, linear_address);
         }
 
@@ -1086,15 +957,13 @@ int vmdb_cli_breakpoint_show(unsigned argc, char *args[])
 
     gcpu = vmdb_cli_locate_gcpu(args[1], NULL);
 
-    if (NULL == gcpu)
-        {
+    if (NULL == gcpu) {
         CLI_PRINT("Invalid Guest %s\n", args[1]);
         return -1;
         }
 
     vmdb = gcpu_get_vmdb(gcpu);
-    if (NULL == vmdb)
-        {
+    if (NULL == vmdb) {
         CLI_PRINT("VMDB is not attached to thread %s,%d\n", args[1], hw_cpu_id());
         return -1;
         }
@@ -1105,26 +974,18 @@ int vmdb_cli_breakpoint_show(unsigned argc, char *args[])
     CLI_PRINT("BP  linear address  type  len  counter\n");
     CLI_PRINT("======================================\n");
 
-    for (i = 0; i < NUMBER_OF_HW_BREAKPOINTS; ++i)
-        {
+    for (i = 0; i < NUMBER_OF_HW_BREAKPOINTS; ++i) {
         CLI_PRINT("%d: ", i);
 
         bp_address = vmdb->dr[i];
 
-        if (0 != bp_address && DR7_GLOBAL_GET(vmdb->dr7, i))
-            {
+        if (0 != bp_address && DR7_GLOBAL_GET(vmdb->dr7, i)) {
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
             VMDB_BREAKPOINT_TYPE     bp_type = (VMDB_BREAKPOINT_TYPE)DR7_RW_GET(vmdb->dr7, i);
             VMDB_BREAK_LENGTH_TYPE   bp_len = (VMDB_BREAK_LENGTH_TYPE)DR7_LEN_GET(vmdb->dr7, i);
 #endif
-            CLI_PRINT
-                (
-                "%16P %5s   %d   %d",
-                bp_address,
-                bp_type_name[bp_type],
-                bp_actual_length[bp_len],
-                vmdb->skip_counter[i]
-                );
+            CLI_PRINT ( "%16P %5s   %d   %d", bp_address, bp_type_name[bp_type],
+                bp_actual_length[bp_len], vmdb->skip_counter[i]);
             }
         CLI_PRINT("\n");
         }
@@ -1137,35 +998,29 @@ int vmdb_cli_single_step_enable(unsigned argc, char *args[])
     BOOLEAN             enable;
     BOOLEAN             apply_to_all;
 
-    if (argc < 3)
-        {
+    if (argc < 3) {
         return -1;
         }
 
     gcpu = vmdb_cli_locate_gcpu(args[1], &apply_to_all);
-    if (NULL == gcpu)
-        {
+    if (NULL == gcpu) {
         CLI_PRINT("Invalid Guest %s\n", args[1]);
         return -1;
         }
 
-    if (CLI_IS_SUBSTR("enable", args[2]))
-        {
+    if (CLI_IS_SUBSTR("enable", args[2])) {
         enable = TRUE;
         }
-    else if (CLI_IS_SUBSTR("disable", args[2]))
-        {
+    else if (CLI_IS_SUBSTR("disable", args[2])) {
         enable = FALSE;
         }
-    else
-        {
+    else {
         return -1;
         }
 
     vmdb_single_step_enable(gcpu, enable);
 
-    if (apply_to_all)
-        {
+    if (apply_to_all) {
         vmdb_remote_single_step_enable(gcpu, enable);
         }
 
@@ -1178,25 +1033,20 @@ int vmdb_cli_debug_attach(unsigned argc, char *args[])
     BOOLEAN             apply_to_all;
     GUEST_ID            guest_id;
 
-    if (argc < 2)
-        {
+    if (argc < 2) {
         return -1;
         }
 
     gcpu = vmdb_cli_locate_gcpu(args[1], &apply_to_all);
-    if (NULL == gcpu)
-        {
+    if (NULL == gcpu) {
         CLI_PRINT("Invalid Guest %s\n", args[1]);
         return -1;
         }
 
     guest_id = guest_vcpu(gcpu)->guest_id;
-
     vmdb_guest_initialize(guest_id);
-
     vmdb_thread_attach(gcpu);
-    if (apply_to_all)
-        {
+    if (apply_to_all) {
             vmdb_remote_thread_attach(gcpu);
         }
 
@@ -1209,21 +1059,18 @@ int vmdb_cli_debug_detach(unsigned argc, char *args[])
         GUEST_CPU_HANDLE    gcpu;
         BOOLEAN             apply_to_all;
 
-        if (argc < 2)
-            {
+        if (argc < 2) {
             return -1;
             }
 
         gcpu = vmdb_cli_locate_gcpu(args[1], &apply_to_all);
-        if (NULL == gcpu)
-            {
+        if (NULL == gcpu) {
             CLI_PRINT("Invalid Guest %s\n", args[1]);
             return -1;
             }
 
         vmdb_thread_detach(gcpu);
-        if (apply_to_all)
-            {
+        if (apply_to_all) {
                 vmdb_remote_thread_detach(gcpu);
             }
 
@@ -1233,54 +1080,23 @@ int vmdb_cli_debug_detach(unsigned argc, char *args[])
 
 void vmdb_cli_init(void)
     {
-    CLI_AddCommand
-        (
-        vmdb_cli_breakpoint_add,
-        "dbg breakpoint add",
+    CLI_AddCommand ( vmdb_cli_breakpoint_add, "dbg breakpoint add",
         "add breakpoint in guest",
         "<[*]guest> <lin addr> <e(xe)|w(rite)|i(o)|r(w)> <len> [skip count]",
-        CLI_ACCESS_LEVEL_USER
-        );
-    CLI_AddCommand
-        (
-        vmdb_cli_breakpoint_delete,
-        "dbg breakpoint delete",
-        "delete breakpoint in guest",
-        "<[*]guest> <lin addr>",
-        CLI_ACCESS_LEVEL_USER
-        );
-    CLI_AddCommand
-        (
-        vmdb_cli_single_step_enable,
-        "dbg singlestep",
-        "guest single step on/off",
-        "<[*]guest> <enable/disable>",
-        CLI_ACCESS_LEVEL_USER
-        );
-    CLI_AddCommand
-        (
-        vmdb_cli_breakpoint_show,
-        "dbg show",
-        "show breakpoints set for the guest",
-        "<guest>",
-        CLI_ACCESS_LEVEL_USER
-        );
-    CLI_AddCommand
-        (
-        vmdb_cli_debug_attach,
-        "dbg attach",
-        "guest debuger attach",
-        "<[*]guest>",
-        CLI_ACCESS_LEVEL_USER
-        );
-    CLI_AddCommand
-        (
-        vmdb_cli_debug_detach,
-        "dbg detach",
-        "guest debuger detach",
-        "<[*]guest>",
-        CLI_ACCESS_LEVEL_USER
-        );
+        CLI_ACCESS_LEVEL_USER);
+    CLI_AddCommand ( vmdb_cli_breakpoint_delete,
+        "dbg breakpoint delete", "delete breakpoint in guest",
+        "<[*]guest> <lin addr>", CLI_ACCESS_LEVEL_USER);
+    CLI_AddCommand ( vmdb_cli_single_step_enable, "dbg singlestep",
+        "guest single step on/off", "<[*]guest> <enable/disable>",
+        CLI_ACCESS_LEVEL_USER);
+    CLI_AddCommand ( vmdb_cli_breakpoint_show, "dbg show",
+        "show breakpoints set for the guest", "<guest>",
+        CLI_ACCESS_LEVEL_USER);
+    CLI_AddCommand ( vmdb_cli_debug_attach, "dbg attach", "guest debuger attach",
+        "<[*]guest>", CLI_ACCESS_LEVEL_USER);
+    CLI_AddCommand ( vmdb_cli_debug_detach, "dbg detach", "guest debuger detach",
+        "<[*]guest>", CLI_ACCESS_LEVEL_USER);
     }
 
 #endif // DEBUG

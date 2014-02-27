@@ -192,8 +192,7 @@ ADDRESS vmm_heap_extend( IN ADDRESS ex_heap_buffer_address,
     heap_array[ex_heap_start_page].in_use = 1;
     heap_array[ex_heap_start_page].number_of_pages = 1;
 
-    for (i = ex_heap_start_page + 1; i < heap_total_pages ; ++i)
-    {
+    for (i = ex_heap_start_page + 1; i < heap_total_pages ; ++i) {
         heap_array[i].in_use = 0;
         heap_array[i].number_of_pages = (heap_total_pages - i);
     }

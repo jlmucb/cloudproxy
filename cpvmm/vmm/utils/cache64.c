@@ -128,10 +128,8 @@ BOOLEAN cache64_read(CACHE64_OBJECT cache, UINT64 *p_value, UINT32 entry_no)
     VMM_ASSERT(entry_no < cache->num_of_entries);
     VMM_ASSERT(p_value);
 
-    if (entry_no < cache->num_of_entries)
-    {
-        if (CACHE_FIELD_IS_VALID(cache, entry_no))
-        {
+    if (entry_no < cache->num_of_entries) {
+        if (CACHE_FIELD_IS_VALID(cache, entry_no)) {
             *p_value = cache->table[entry_no];
             is_valid = TRUE;
         }
@@ -192,8 +190,7 @@ void cache64_flush_dirty(
         // flush specific entry
         if (CACHE_FIELD_IS_DIRTY(cache, entry_no)) {
             CACHE_FIELD_CLR_DIRTY(cache, entry_no);
-            if (NULL != function)
-            {
+            if (NULL != function) {
                 function(entry_no, arg);
             }
         }

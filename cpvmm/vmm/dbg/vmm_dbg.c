@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "guest_cpu.h"
 #include "scheduler.h"
@@ -33,10 +33,8 @@ UINT64  g_initial_vmcs[VMM_MAX_CPU_SUPPORTED] = {0};
 ISR_PARAMETERS_ON_STACK *g_exception_stack = NULL;
 VMM_GP_REGISTERS g_exception_gpr = {0};
 
-extern BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu,
-                                          void* gpa,
-                                          UINT32 size,
-                                          void* hva);
+extern BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu, void* gpa,
+                                          UINT32 size, void* hva);
 
 int CLI_active(void)
 {

@@ -40,8 +40,7 @@ ZeroMem(
   UINT8* Source;
 
   Source = (UINT8*)Address;
-  while (Size--)
-  {
+  while (Size--) {
     *Source++ = 0;
   }
 }
@@ -50,15 +49,11 @@ ZeroMem(
   AllocateMemory():
     Simple memory allocation routine
 */
-VOID*
-AllocateMemory(
-  UINT32 size_request
-  )
+VOID* AllocateMemory( UINT32 size_request)
 {
   UINT32 Address;
 
-  if (heap_current + size_request > heap_tops)
-  {
+  if (heap_current + size_request > heap_tops) {
       VMM_LOG(mask_uvmm, level_error, "Allocation request exceeds heap's size\r\n");
       VMM_LOG(mask_uvmm, level_error, "Heap current = 0x", heap_current);
       VMM_LOG(mask_uvmm, level_error, "Requested size =0x", size_request);
@@ -76,10 +71,7 @@ AllocateMemory(
   PrintE820BiosMemoryMap():
     Routine to print the E820 BIOS memory map
 */
-VOID
-PrintE820BiosMemoryMap(
-  //INT15_E820_MEMORY_MAP *BiosMemoryMap
-  )
+VOID PrintE820BiosMemoryMap() //INT15_E820_MEMORY_MAP *BiosMemoryMap
 {
 #if 0
   UINT32                        NumberOfMemoryEntries;
@@ -101,46 +93,29 @@ PrintE820BiosMemoryMap(
 #endif
 }
 
-VOID
-InitializeMemoryManager(
-    UINT64 *    HeapBaseAddress,
-    UINT64 *    HeapBytes
-  )
+VOID InitializeMemoryManager( UINT64 *HeapBaseAddress, UINT64 *HeapBytes)
 {
   heap_current = heap_base = *(UINT32*)HeapBaseAddress;
   heap_tops = heap_base + *(UINT32*)HeapBytes;
 }
 
-VOID
-CopyMem(
-  VOID *Dest,
-  VOID *Source,
-  UINT32 Size
-  )
+VOID CopyMem( VOID *Dest, VOID *Source, UINT32 Size)
 {
   UINT8 *d = (UINT8*)Dest;
   UINT8 *s = (UINT8*)Source;
 
-  while (Size--)
-  {
+  while (Size--) {
     *d++ = *s++;
   }
 }
 
-BOOLEAN
-CompareMem(
-  VOID *Source1,
-  VOID *Source2,
-  UINT32 Size
-  )
+BOOLEAN CompareMem( VOID *Source1, VOID *Source2, UINT32 Size)
 {
   UINT8 *s1 = (UINT8*)Source1;
   UINT8 *s2 = (UINT8*)Source2;
 
-  while (Size--)
-  {
-    if (*s1++ != *s2++)
-    {
+  while (Size--) {
+    if (*s1++ != *s2++) {
       VMM_LOG(mask_uvmm, level_error, "Compare mem failed\n");
       return FALSE;
     }

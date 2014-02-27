@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EPT_C)
@@ -166,10 +166,10 @@ void dbg_print_ept_violation(GUEST_CPU_HANDLE gcpu, EPTP eptp, EVENT_GCPU_EPT_VI
 #endif
 
 // EPT vmexits
-/**************************************************************
-*  Function name: ept_violation_vmexit
-*  Parameters: Function does not validate gcpu. Assumes valid.
-***************************************************************/
+/*
+ *  Function name: ept_violation_vmexit
+ *  Parameters: Function does not validate gcpu. Assumes valid.
+ */
 BOOLEAN ept_violation_vmexit(GUEST_CPU_HANDLE gcpu, void *pv)
 {
     REPORT_EPT_VIOLATION_DATA violation_data;
@@ -550,7 +550,7 @@ BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
 
     ept_release_lock();
 
-//    EPT_LOG("EPT CPU#%d: ept_cr4_update %p\r\n", hw_cpu_id(), ept_guest_cpu->cr4);
+    // EPT_LOG("EPT CPU#%d: ept_cr4_update %p\r\n", hw_cpu_id(), ept_guest_cpu->cr4);
     return TRUE;
 }
 
@@ -561,9 +561,8 @@ BOOLEAN ept_emulator_enter(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
     EPT_GUEST_STATE *ept_guest_state = NULL;
 
-//    EPT_LOG("EPT CPU#%d: emulator enter\r\n", hw_cpu_id());
-
-//    ept_acquire_lock();
+    //    EPT_LOG("EPT CPU#%d: emulator enter\r\n", hw_cpu_id());
+    //    ept_acquire_lock();
 
     vcpu_id = guest_vcpu( gcpu );
     VMM_ASSERT(vcpu_id);
@@ -580,7 +579,7 @@ BOOLEAN ept_emulator_enter(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
         ept_disable(gcpu);
     }
 
-//    ept_release_lock();
+    //    ept_release_lock();
     return TRUE;
 }
 
@@ -601,7 +600,7 @@ BOOLEAN ept_emulator_exit(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
 
-//    EPT_LOG("EPT CPU#%d: emulator exit\r\n", hw_cpu_id());
+    //    EPT_LOG("EPT CPU#%d: emulator exit\r\n", hw_cpu_id());
 
     if(ept_guest_cpu->ept_enabled_save) {
         ept_enable(gcpu);

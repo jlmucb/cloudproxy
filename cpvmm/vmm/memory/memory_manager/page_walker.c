@@ -858,18 +858,8 @@ PW_RETVAL pw_perform_page_walk(IN GUEST_CPU_HANDLE gcpu,
         }
 
         if (set_ad_bits) {
-            pw_update_ad_bits(pml4te_ptr,
-                              &pml4te_val,
-                              pdpte_ptr,
-                              &pdpte_val,
-                              pde_ptr,
-                              &pde_val,
-                              NULL,
-                              NULL,
-                              is_write,
-                              is_lme,
-                              is_pae,
-                              is_pse);
+            pw_update_ad_bits(pml4te_ptr, &pml4te_val, pdpte_ptr, &pdpte_val, pde_ptr,
+                              &pde_val, NULL, NULL, is_write, is_lme, is_pae, is_pse);
         }
 
         retval = PW_RETVAL_SUCCESS;
@@ -928,18 +918,8 @@ PW_RETVAL pw_perform_page_walk(IN GUEST_CPU_HANDLE gcpu,
     }
 
     if (set_ad_bits) {
-        pw_update_ad_bits(pml4te_ptr,
-                          &pml4te_val,
-                          pdpte_ptr,
-                          &pdpte_val,
-                          pde_ptr,
-                          &pde_val,
-                          pte_ptr,
-                          &pte_val,
-                          is_write,
-                          is_lme,
-                          is_pae,
-                          is_pse);
+        pw_update_ad_bits(pml4te_ptr, &pml4te_val, pdpte_ptr, &pdpte_val, pde_ptr, &pde_val,
+                          pte_ptr, &pte_val, is_write, is_lme, is_pae, is_pse);
     }
 
     gpa |= (virt_addr & PAGE_4KB_MASK); // add offset

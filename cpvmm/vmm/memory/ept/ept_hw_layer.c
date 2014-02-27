@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "vmcs_init.h"
@@ -24,7 +24,7 @@
 #include "vmm_phys_mem_types.h"
 #include "libc.h"
 #include "scheduler.h"
-//#include "..\..\guest\guest_cpu\guest_cpu_internal.h"
+//#include "guest_cpu_internal.h"
 #include "guest_cpu_internal.h"
 #include "file_codes.h"
 
@@ -69,24 +69,19 @@ void ept_hw_get_pdtprs(GUEST_CPU_HANDLE gcpu, UINT64 pdptr[])
 UINT32 ept_hw_get_guest_address_width(UINT32 actual_gaw)
 {
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
-    if(actual_gaw <= 21 && hw_constraints->ept_vpid_capabilities.Bits.GAW_21_bit)
-    {
+    if(actual_gaw <= 21 && hw_constraints->ept_vpid_capabilities.Bits.GAW_21_bit) {
         return 21;
     }
-    if(actual_gaw <= 30 && hw_constraints->ept_vpid_capabilities.Bits.GAW_30_bit)
-    {
+    if(actual_gaw <= 30 && hw_constraints->ept_vpid_capabilities.Bits.GAW_30_bit) {
         return 30;
     }
-    if(actual_gaw <= 39 && hw_constraints->ept_vpid_capabilities.Bits.GAW_39_bit)
-    {
+    if(actual_gaw <= 39 && hw_constraints->ept_vpid_capabilities.Bits.GAW_39_bit) {
         return 39;
     }
-    if(actual_gaw <= 48 && hw_constraints->ept_vpid_capabilities.Bits.GAW_48_bit)
-    {
+    if(actual_gaw <= 48 && hw_constraints->ept_vpid_capabilities.Bits.GAW_48_bit) {
         return 48;
     }
-    if(actual_gaw <= 57 && hw_constraints->ept_vpid_capabilities.Bits.GAW_57_bit)
-    {
+    if(actual_gaw <= 57 && hw_constraints->ept_vpid_capabilities.Bits.GAW_57_bit) {
         return 57;
     }
     // BEFORE_VMLAUNCH. This case should not occur.
@@ -99,11 +94,7 @@ UINT32 ept_hw_get_guest_address_width_encoding(UINT32 width)
     UINT32 gaw_encoding = (UINT32) -1;
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-    VMM_ASSERT(width == 21
-               || width == 30
-               || width == 39
-               || width == 48
-               || width == 57);
+    VMM_ASSERT(width == 21 || width == 30 || width == 39 || width == 48 || width == 57);
 
     gaw_encoding = (width - 21) / 9;
 
@@ -121,24 +112,19 @@ VMM_PHYS_MEM_TYPE ept_hw_get_ept_memory_type(void)
 {
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
 
-    if(hw_constraints->ept_vpid_capabilities.Bits.WB)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.WB) {
         return VMM_PHYS_MEM_WRITE_BACK;
     }
-    if(hw_constraints->ept_vpid_capabilities.Bits.WP)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.WP) {
         return VMM_PHYS_MEM_WRITE_PROTECTED;
     }
-    if(hw_constraints->ept_vpid_capabilities.Bits.WT)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.WT) {
         return VMM_PHYS_MEM_WRITE_THROUGH;
     }
-    if(hw_constraints->ept_vpid_capabilities.Bits.WC)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.WC) {
         return VMM_PHYS_MEM_WRITE_COMBINING;
     }
-    if(hw_constraints->ept_vpid_capabilities.Bits.UC)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.UC) {
         return VMM_PHYS_MEM_UNCACHABLE;
     }
     // BEFORE_VMLAUNCH. This case should not happen.
@@ -154,8 +140,7 @@ UINT64 ept_hw_get_eptp(GUEST_CPU_HANDLE gcpu)
     VMM_ASSERT(gcpu);
     CHECK_EXECUTION_ON_LOCAL_HOST_CPU(gcpu);
 
-    if(! ept_hw_is_ept_supported())
-    {
+    if(! ept_hw_is_ept_supported()) {
         return eptp;
     }
 
@@ -174,15 +159,12 @@ BOOLEAN ept_hw_set_eptp(GUEST_CPU_HANDLE gcpu, HPA ept_root_hpa, UINT32 gaw)
     VMM_ASSERT(vmcs);
     CHECK_EXECUTION_ON_LOCAL_HOST_CPU(gcpu);
 
-    if(! ept_hw_is_ept_supported()
-       || ept_root_hpa == 0)
-    {
+    if(! ept_hw_is_ept_supported() || ept_root_hpa == 0) {
         return FALSE;
     }
 
     ept_gaw = ept_hw_get_guest_address_width(gaw);
-    if(ept_gaw == (UINT32) -1)
-    {
+    if(ept_gaw == (UINT32) -1) {
         return FALSE;
     }
 
@@ -201,7 +183,6 @@ BOOLEAN ept_hw_is_ept_enabled(GUEST_CPU_HANDLE gcpu)
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS2 proc_ctrls2;
 
     CHECK_EXECUTION_ON_LOCAL_HOST_CPU(gcpu);
-
     proc_ctrls2.Uint32 = (UINT32) vmcs_read(gcpu_get_vmcs(gcpu), VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS);
 
     return proc_ctrls2.Bits.EnableEPT;
@@ -212,8 +193,7 @@ BOOLEAN ept_hw_is_invept_supported(void)
 {
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
 
-    if(ept_hw_is_ept_supported() && hw_constraints->ept_vpid_capabilities.Bits.InveptSupported)
-    {
+    if(ept_hw_is_ept_supported() && hw_constraints->ept_vpid_capabilities.Bits.InveptSupported) {
         return TRUE;
     }
 
@@ -225,8 +205,7 @@ BOOLEAN ept_hw_is_invvpid_supported(void)
 {
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
 
-    if(ept_hw_is_ept_supported() && hw_constraints->ept_vpid_capabilities.Bits.InvvpidSupported)
-    {
+    if(ept_hw_is_ept_supported() && hw_constraints->ept_vpid_capabilities.Bits.InvvpidSupported) {
         return TRUE;
     }
 
@@ -240,18 +219,15 @@ BOOLEAN ept_hw_invept_all_contexts(void)
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invept_supported())
-    {
+    if(! ept_hw_is_invept_supported()) {
         return TRUE;
     }
 
     vmm_zeromem(&arg, sizeof(arg));
-    if(hw_constraints->ept_vpid_capabilities.Bits.InveptAllContexts)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.InveptAllContexts) {
         vmm_asm_invept(&arg, INVEPT_ALL_CONTEXTS, &rflags);
         status = ((rflags & 0x8d5) == 0);
-        if(! status)
-        {
+        if(! status) {
             VMM_LOG(mask_anonymous, level_trace,"ept_hw_invept_all_contexts ERROR: rflags = %p\r\n", rflags);
         }
     }
@@ -266,8 +242,7 @@ BOOLEAN ept_hw_invept_context(UINT64 eptp)
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invept_supported())
-    {
+    if(! ept_hw_is_invept_supported()) {
         return TRUE;
     }
 
@@ -276,8 +251,7 @@ BOOLEAN ept_hw_invept_context(UINT64 eptp)
     VMM_ASSERT(eptp != 0);
     arg.eptp = eptp;
 
-    if(hw_constraints->ept_vpid_capabilities.Bits.InveptContextWide)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.InveptContextWide) {
         vmm_asm_invept(&arg, INVEPT_CONTEXT_WIDE, &rflags);
         status = ((rflags & 0x8d5) == 0);
         if(! status)
@@ -285,8 +259,7 @@ BOOLEAN ept_hw_invept_context(UINT64 eptp)
             VMM_LOG(mask_anonymous, level_trace,"ept_hw_invept_context ERROR: eptp = %p rflags = %p\r\n", eptp, rflags);
         }
     }
-    else
-    {
+    else {
         ept_hw_invept_all_contexts();
     }
 
@@ -300,8 +273,7 @@ BOOLEAN ept_hw_invept_individual_address(UINT64 eptp, ADDRESS gpa)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invept_supported())
-    {
+    if(! ept_hw_is_invept_supported()) {
         return TRUE;
     }
 
@@ -311,17 +283,14 @@ BOOLEAN ept_hw_invept_individual_address(UINT64 eptp, ADDRESS gpa)
     arg.eptp = eptp;
     arg.gpa = gpa;
 
-    if(hw_constraints->ept_vpid_capabilities.Bits.InveptIndividualAddress)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.InveptIndividualAddress) {
         vmm_asm_invept(&arg, INVEPT_INDIVIDUAL_ADDRESS, &rflags);
         status = ((rflags & 0x8d5) == 0);
-        if(! status)
-        {
+        if(! status) {
             VMM_LOG(mask_anonymous, level_trace,"ept_hw_invept_individual_address ERROR: eptp = %p gpa = %p rflags = %p\r\n", eptp, gpa, rflags);
         }
     }
-    else
-    {
+    else {
         ept_hw_invept_context(eptp);
     }
 
@@ -335,23 +304,21 @@ BOOLEAN ept_hw_invvpid_individual_address(UINT64 vpid, ADDRESS gva)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invvpid_supported())
-    {
-		VMM_ASSERT(0);
+    if(! ept_hw_is_invvpid_supported()) {
+                VMM_ASSERT(0);
         return TRUE;
     }
 
-	arg.vpid = vpid;
-	arg.gva = gva;
+        arg.vpid = vpid;
+        arg.gva = gva;
 
-    if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidIndividualAddress)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidIndividualAddress) {
         vmm_asm_invvpid(&arg, INVVPID_INDIVIDUAL_ADDRESS, &rflags);
         status = ((rflags & 0x8d5) == 0);
         if(! status)
         {
             VMM_LOG(mask_anonymous, level_trace,"ept_hw_invvpid_individual_address ERROR: vpid = %d gva = %p rflags = %p\r\n", vpid, gva, rflags);
-			VMM_ASSERT(0);
+                        VMM_ASSERT(0);
         }
     }
 
@@ -365,23 +332,20 @@ BOOLEAN ept_hw_invvpid_all_contexts(void)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invvpid_supported())
-    {
-		VMM_ASSERT(0);
+    if(! ept_hw_is_invvpid_supported()) {
+                VMM_ASSERT(0);
         return TRUE;
     }
 
-	arg.vpid = 0;// vpid;
-	//arg.gva = gva;
+        arg.vpid = 0;// vpid;
+        //arg.gva = gva;
 
-    if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidAllContexts)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidAllContexts) {
         vmm_asm_invvpid(&arg, INVVPID_ALL_CONTEXTS, &rflags);
         status = ((rflags & 0x8d5) == 0);
-        if(! status)
-        {
+        if(! status) {
             VMM_LOG(mask_anonymous, level_trace,"ept_hw_invvpid_all_contexts ERROR: rflags = %p\r\n", rflags);
-			VMM_ASSERT(0);
+                        VMM_ASSERT(0);
         }
     }
 
@@ -394,22 +358,19 @@ BOOLEAN ept_hw_invvpid_single_context(UINT64 vpid)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invvpid_supported())
-    {
-		VMM_ASSERT(0);
+    if(! ept_hw_is_invvpid_supported()) {
+        VMM_ASSERT(0);
         return TRUE;
     }
 
-	arg.vpid = vpid;
+        arg.vpid = vpid;
 
-    if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidContextWide)
-    {
+    if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidContextWide) {
         vmm_asm_invvpid(&arg, INVVPID_SINGLE_CONTEXT, &rflags);
         status = ((rflags & 0x8d5) == 0);
-        if(! status)
-        {
+        if(! status) {
             VMM_LOG(mask_anonymous, level_trace,"ept_hw_invvpid_all_contexts ERROR: rflags = %p\r\n", rflags);
-			VMM_ASSERT(0);
+                        VMM_ASSERT(0);
         }
     }
 
@@ -426,8 +387,7 @@ BOOLEAN ept_hw_enable_ept(GUEST_CPU_HANDLE gcpu)
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu);
 
-    if(! ept_hw_is_ept_supported())
-    {
+    if(! ept_hw_is_ept_supported()) {
         return FALSE;
     }
 
@@ -461,8 +421,8 @@ void ept_hw_disable_ept(GUEST_CPU_HANDLE gcpu)
 
     proc_ctrls2.Bits.EnableEPT = 1;
 #ifdef ENABLE_VPID
-	proc_ctrls2.Bits.EnableVPID = 1;
-	vmcs_write(gcpu_get_vmcs(gcpu), VMCS_VPID, 0);
+    proc_ctrls2.Bits.EnableVPID = 1;
+    vmcs_write(gcpu_get_vmcs(gcpu), VMCS_VPID, 0);
 #endif
     vmexit_request.proc_ctrls2.bit_mask    = proc_ctrls2.Uint32;
     vmexit_request.proc_ctrls2.bit_request = 0;

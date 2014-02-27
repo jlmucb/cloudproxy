@@ -57,19 +57,15 @@ BOOLEAN fpt_create_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
     FPT* fpt = NULL;
     
 
-    if (is_32_bit)
-    {
-        if (save_fpt_32 != NULL)
-        {
+    if (is_32_bit) {
+        if (save_fpt_32 != NULL) {
             *flat_tables_handle = save_fpt_32;
             *first_table = save_first_table_32;
             return TRUE;
         }
     }
-    else
-    {
-        if (save_fpt_64 != NULL)
-        {
+    else {
+        if (save_fpt_64 != NULL) {
             *flat_tables_handle = save_fpt_64;
             *first_table        = save_first_table_64;
             return TRUE;
@@ -329,16 +325,14 @@ BOOLEAN fpt_destroy_flat_page_tables_cpu0(void) {
 
     VMM_LOG(mask_anonymous, level_trace,"%s\n", __FUNCTION__);
 
-    if ((save_fpt_32 != NULL) && (save_fpt_32->mapping != MAM_INVALID_HANDLE))
-    {
+    if ((save_fpt_32 != NULL) && (save_fpt_32->mapping != MAM_INVALID_HANDLE)) {
         mam_destroy_mapping(save_fpt_32->mapping);
         vmm_mfree(save_fpt_32);
         save_fpt_32 = NULL;
         save_first_table_32 = 0;
     }
 
-    if ((save_fpt_64 != NULL) && (save_fpt_64->mapping != MAM_INVALID_HANDLE))
-    {
+    if ((save_fpt_64 != NULL) && (save_fpt_64->mapping != MAM_INVALID_HANDLE)) {
         mam_destroy_mapping(save_fpt_64->mapping);
         vmm_mfree(save_fpt_64);
         save_fpt_64 = NULL;

@@ -250,24 +250,24 @@ extern CPU_ID ASM_FUNCTION hw_cpu_id(void);
 
 INLINE 
 MAM_ENTRY_TYPE get_mam_entry_type(IN MAM_ENTRY* entry) {
-	MAM_ENTRY_TYPE entry_type = (MAM_ENTRY_TYPE)0;
+        MAM_ENTRY_TYPE entry_type = (MAM_ENTRY_TYPE)0;
 
-	//get inner MAM entry type	
-	entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl & MAM_INNER_ENTRY_TYPE_MASK); 
-	if (entry_type != MAM_VTDPT_ENTRY) {
-		entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl);
-	}
-	else {
-		entry_type = (MAM_ENTRY_TYPE)(entry_type|(entry->vtdpt_entry.avl_1 << 2));
-	}
-	return (entry_type);
+        //get inner MAM entry type      
+        entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl & MAM_INNER_ENTRY_TYPE_MASK); 
+        if (entry_type != MAM_VTDPT_ENTRY) {
+                entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl);
+        }
+        else {
+                entry_type = (MAM_ENTRY_TYPE)(entry_type|(entry->vtdpt_entry.avl_1 << 2));
+        }
+        return (entry_type);
 }
 
 
 INLINE 
 BOOLEAN mam_entry_type_is_leaf_entry(IN MAM_ENTRY* entry) {
-	MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
-	return (((entry_type) & MAM_LEAF_ENTRY_TYPE_MASK) != 0);
+        MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
+        return (((entry_type) & MAM_LEAF_ENTRY_TYPE_MASK) != 0);
 }
 
 INLINE
@@ -315,7 +315,7 @@ void mam_invalidate_entry(IN MAM_ENTRY* entry,
 
 INLINE
 BOOLEAN mam_is_leaf_entry(IN MAM_ENTRY* entry) {
-	return mam_entry_type_is_leaf_entry(entry);
+        return mam_entry_type_is_leaf_entry(entry);
 }
 
 INLINE
@@ -590,7 +590,7 @@ void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry,
     entry->ept_entry.writable = attr.ept_attr.writable;
     entry->ept_entry.executable = attr.ept_attr.executable;
 
-	//VMM_LOG(mask_anonymous, level_trace,"Updating leaf ept entry %P \n", entry->uint64);
+        //VMM_LOG(mask_anonymous, level_trace,"Updating leaf ept entry %P \n", entry->uint64);
     VMM_ASSERT(mam_is_ept_entry_present(entry));
 }
 
@@ -604,13 +604,12 @@ void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry,
 
     entry->vtdpt_entry.avl_2 = MAM_VTDPT_ENTRY;
     entry->vtdpt_entry.avl_1 = MAM_LEAF_ENTRY_TYPE_MASK >> 2;
-	
+        
     //address
     mam_set_address_in_any_entry(entry, addr);
 
     //attributes
-    if(level_ops != MAM_LEVEL1_OPS)
-    {
+    if(level_ops != MAM_LEVEL1_OPS) {
         entry->vtdpt_entry.sp = 1;
     }
 
@@ -620,7 +619,7 @@ void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry,
     entry->vtdpt_entry.snoop = attr.vtdpt_attr.snoop;
     entry->vtdpt_entry.tm = attr.vtdpt_attr.tm;
 
-	//VMM_LOG(mask_anonymous, level_trace,"Updating leaf vtdpt entry %P \n", entry->uint64);
+        //VMM_LOG(mask_anonymous, level_trace,"Updating leaf vtdpt entry %P \n", entry->uint64);
     VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
@@ -679,9 +678,9 @@ MAM_ATTRIBUTES mam_get_attributes_from_ept_entry(IN MAM_ENTRY* entry, IN const M
     attrs.ept_attr.emt = (UINT32)entry->ept_entry.emt;
     attrs.ept_attr.suppress_ve = (UINT32)entry->ept_entry.suppress_ve;
 
-	if ((entry->any_entry.avl == MAM_INNER_EPT_ENTRY) && (attrs.ept_attr.igmt==1)) {
-		VMM_ASSERT(0);
-	}
+        if ((entry->any_entry.avl == MAM_INNER_EPT_ENTRY) && (attrs.ept_attr.igmt==1)) {
+                VMM_ASSERT(0);
+        }
     return attrs;
 }
 
@@ -696,7 +695,7 @@ MAM_ATTRIBUTES mam_get_attributes_from_vtdpt_entry(IN MAM_ENTRY* entry, IN const
     attrs.vtdpt_attr.writable = (UINT32)entry->vtdpt_entry.writable;
     attrs.vtdpt_attr.snoop = (UINT32)entry->vtdpt_entry.snoop;
     attrs.vtdpt_attr.tm = (UINT32)entry->vtdpt_entry.tm;
-	return attrs;
+        return attrs;
 }
 
 static
@@ -739,9 +738,7 @@ MAM_HVA mam_get_table_pointed_by_vtdpt_entry(IN MAM_ENTRY* entry) {
 
     VMM_ASSERT(get_mam_entry_type(entry) == MAM_INNER_VTDPT_ENTRY);
     table_hpa = mam_get_address_from_any_entry(entry);
-
     table_hva = mam_hpa_to_hva(table_hpa);
-
     return table_hva;
 }
 
@@ -775,8 +772,7 @@ BOOLEAN mam_is_vtdpt_entry_present(IN MAM_ENTRY* entry) {
 
     VMM_ASSERT((get_mam_entry_type(entry) == MAM_INNER_VTDPT_ENTRY) || (get_mam_entry_type(entry) == MAM_LEAF_VTDPT_ENTRY));
 
-    return ((entry->vtdpt_entry.readable != 0) ||
-            (entry->vtdpt_entry.writable != 0));
+    return ((entry->vtdpt_entry.readable != 0) || (entry->vtdpt_entry.writable != 0));
 }
 
 static
@@ -831,7 +827,7 @@ BOOLEAN mam_can_be_leaf_ept_entry(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops
 
     if (level_ops == MAM_LEVEL2_OPS) {
         if ((!(mam->ept_supper_page_support & MAM_EPT_SUPPORT_2MB_PAGE)) ||
-        	((tgt_addr & PAGE_2MB_MASK) != 0)) {
+                ((tgt_addr & PAGE_2MB_MASK) != 0)) {
             return FALSE;
         }
 
@@ -870,7 +866,7 @@ BOOLEAN mam_can_be_leaf_vtdpt_entry(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
 
     if (level_ops == MAM_LEVEL2_OPS) {
         if ((!(mam->vtdpt_supper_page_support & MAM_VTDPT_SUPPORT_2MB_PAGE)) ||
-        	((tgt_addr & PAGE_2MB_MASK) != 0)) {
+                ((tgt_addr & PAGE_2MB_MASK) != 0)) {
             return FALSE;
         }
 
@@ -894,6 +890,7 @@ BOOLEAN mam_can_be_leaf_vtdpt_entry(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
 
     return TRUE;
 }
+
 static
 void mam_update_inner_internal_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_table, const MAM_LEVEL_OPS* level_ops UNUSED) {
     MAM_ATTRIBUTES attrs = mam->inner_level_attributes;
@@ -967,10 +964,10 @@ void mam_update_inner_ept_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_table, 
     entry->ept_entry.executable = attrs.ept_attr.executable;
     entry->ept_entry.suppress_ve = attrs.ept_attr.suppress_ve;
 
-	if (entry->any_entry.avl == MAM_INNER_EPT_ENTRY) {
-		VMM_ASSERT(((entry->uint64) & EPT_INNER_ENTRY_RESERVED)==0);
-	}
-	VMM_ASSERT(mam_is_ept_entry_present(entry));
+        if (entry->any_entry.avl == MAM_INNER_EPT_ENTRY) {
+                VMM_ASSERT(((entry->uint64) & EPT_INNER_ENTRY_RESERVED)==0);
+        }
+        VMM_ASSERT(mam_is_ept_entry_present(entry));
 }
 
 static
@@ -992,7 +989,7 @@ void mam_update_inner_vtdpt_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_table
     entry->vtdpt_entry.readable = attrs.vtdpt_attr.readable;
     entry->vtdpt_entry.writable = attrs.vtdpt_attr.writable;
 
-	VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
+        VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
 static
@@ -1039,8 +1036,7 @@ void mam_update_attributes_in_leaf_ept_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES at
     entry->ept_entry.igmt = attrs.ept_attr.igmt;
     entry->ept_entry.emt = attrs.ept_attr.emt;
     entry->ept_entry.suppress_ve = attrs.ept_attr.suppress_ve;
-    if(level_ops != MAM_LEVEL1_OPS)
-    {
+    if(level_ops != MAM_LEVEL1_OPS) {
         entry->ept_entry.sp = 1;
     }
 
@@ -1058,7 +1054,7 @@ void mam_update_attributes_in_leaf_vtdpt_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES 
         entry->vtdpt_entry.sp = 1;
     }
 
-	VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
+        VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
 static
@@ -1367,13 +1363,13 @@ const MAM_LEVEL_OPS* mam_get_level4_ops(void) {
 
 static
 const MAM_ENTRY_OPS* mam_get_entry_ops(IN MAM_ENTRY* entry) {
-	UINT32 entry_type = get_mam_entry_type(entry);
+        UINT32 entry_type = get_mam_entry_type(entry);
 
-	switch(entry_type) {
+        switch(entry_type) {
 
     case MAM_INNER_INTERNAL_ENTRY:
     case MAM_LEAF_INTERNAL_ENTRY:
-    	return MAM_INTERNAL_ENTRY_OPS;
+        return MAM_INTERNAL_ENTRY_OPS;
 
     case MAM_INNER_PAGE_TABLE_ENTRY:
     case MAM_LEAF_PAGE_TABLE_ENTRY:
@@ -1595,7 +1591,6 @@ BOOLEAN mam_update_table(IN MAM* mam,
                 // Non leaf entry
                 BOOLEAN res;
 
-
                 // BEFORE_VMLAUNCH.
                 VMM_ASSERT(lower_level_ops != NULL);
 
@@ -1678,14 +1673,14 @@ BOOLEAN mam_update_table(IN MAM* mam,
                         attrs_are_updated = (new_attrs.uint32 == curr_entry_attrs.uint32);
 
                     }
-					else if (update_op == MAM_OVERWRITE_ATTRS) {
-						new_attrs.uint32 = curr_entry_attrs.uint32;
-						new_attrs.ept_attr.readable = attrs.ept_attr.readable;
-						new_attrs.ept_attr.writable = attrs.ept_attr.writable;
-						new_attrs.ept_attr.executable = attrs.ept_attr.executable;
-						new_attrs.ept_attr.suppress_ve = attrs.ept_attr.suppress_ve;
-						attrs_are_updated = (new_attrs.uint32 == curr_entry_attrs.uint32);
-					}
+                    else if (update_op == MAM_OVERWRITE_ATTRS) {
+                        new_attrs.uint32 = curr_entry_attrs.uint32;
+                        new_attrs.ept_attr.readable = attrs.ept_attr.readable;
+                        new_attrs.ept_attr.writable = attrs.ept_attr.writable;
+                        new_attrs.ept_attr.executable = attrs.ept_attr.executable;
+                        new_attrs.ept_attr.suppress_ve = attrs.ept_attr.suppress_ve;
+                        attrs_are_updated = (new_attrs.uint32 == curr_entry_attrs.uint32);
+                    }
 
                     else {
                         // BEFORE_VMLAUNCH.
@@ -1771,18 +1766,18 @@ BOOLEAN mam_update_table(IN MAM* mam,
 
 
 /* Function: mam_remove_range_from_table
-*  Description: The function recursively finds the entries that must
-*               be updated and updates it according to provided information
-*  Input:
-*         mam - main MAM structure
-*         level_ops - virtual table for relevant table operations
-*         table - HVA of the table to update
-*         first_mapped_address - first source address that is mapped through this table
-*         src_addr - source address of range to remove
-*         size - size of range
-*         reason - reason of removal
-* Ret. value - TRUE in case of success, FALSE in case of insufficient memory
-*/
+ *  Description: The function recursively finds the entries that must
+ *               be updated and updates it according to provided information
+ *  Input:
+ *         mam - main MAM structure
+ *         level_ops - virtual table for relevant table operations
+ *         table - HVA of the table to update
+ *         first_mapped_address - first source address that is mapped through this table
+ *         src_addr - source address of range to remove
+ *         size - size of range
+ *         reason - reason of removal
+ * Ret. value - TRUE in case of success, FALSE in case of insufficient memory
+ */
 static
 BOOLEAN mam_remove_range_from_table(IN MAM* mam,
                                     IN const MAM_LEVEL_OPS* level_ops,
@@ -1856,7 +1851,6 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam,
         else {
             // Non leaf entry
             BOOLEAN res;
-
 
             // BEFORE_VMLAUNCH
             VMM_ASSERT(lower_level_ops != NULL);
@@ -1986,7 +1980,7 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam,
 
                 // suppress #VE for not present memory in Hardware #VE supported system
                 if (new_entry_ops == MAM_EPT_ENTRY_OPS) {
-                	entry->invalid_entry.high_part.suppress_ve = mam->ept_hw_ve_support;
+                        entry->invalid_entry.high_part.suppress_ve = mam->ept_hw_ve_support;
                 }
 
                 mam_invalidate_entry(entry, reason, new_entry_type);
@@ -2000,10 +1994,10 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam,
                 tgt_addr = mam_get_address_from_leaf_entry(entry, level_ops, curr_entry_ops); // virtual call
                 attr = mam_get_attributes_from_entry(entry, level_ops, curr_entry_ops); // virtual call
 
-				if (new_entry_ops == MAM_VTDPT_ENTRY_OPS) {
-					attr.vtdpt_attr.snoop = mam->vtdpt_snoop_behavior;
-					attr.vtdpt_attr.tm = mam->vtdpt_trans_mapping;
-				}
+                                if (new_entry_ops == MAM_VTDPT_ENTRY_OPS) {
+                                        attr.vtdpt_attr.snoop = mam->vtdpt_snoop_behavior;
+                                        attr.vtdpt_attr.tm = mam->vtdpt_trans_mapping;
+                                }
 
                 // Check whether entry of new type can remain leaf
                 if (mam_can_be_leaf_entry(mam, level_ops, size_covered_by_entry, tgt_addr, new_entry_ops)) {
@@ -2526,16 +2520,9 @@ BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle,
         goto out;
     }
 
-
-    res = mam_update_table(mam,
-                           first_table_ops,
-                           first_table,
-                           0,
-                           src_addr,
-                           MAM_INVALID_ADDRESS,
-                           size,
-                           attrs,
-                           MAM_SET_ATTRS);
+    res = mam_update_table(mam, first_table_ops, first_table,
+                           0, src_addr, MAM_INVALID_ADDRESS,
+                           size, attrs, MAM_SET_ATTRS);
 
 out:
     mam->update_counter++; // second update (becomes even number);
@@ -2573,15 +2560,9 @@ BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle,
         goto out;
     }
 
-    res = mam_update_table(mam,
-                           first_table_ops,
-                           first_table,
-                           0,
-                           src_addr,
-                           MAM_INVALID_ADDRESS,
-                           size,
-                           attrs,
-                           MAM_CLEAR_ATTRS);
+    res = mam_update_table(mam, first_table_ops, first_table, 0, src_addr,
+                           MAM_INVALID_ADDRESS, size, attrs, MAM_CLEAR_ATTRS);
+
 out:
     mam->update_counter++; // second update (becomes even number);
     // BEFORE_VMLAUNCH. PARANOID check.
@@ -2616,16 +2597,9 @@ BOOLEAN mam_overwrite_permissions_in_existing_mapping(IN MAM_HANDLE mam_handle,
         res = FALSE;
         goto out;
     }
-	
-    res = mam_update_table(mam,
-                           first_table_ops,
-                           first_table,
-                           0,
-                           src_addr,
-                           MAM_INVALID_ADDRESS,
-                           size,
-                           attrs,
-                           MAM_OVERWRITE_ATTRS);
+        
+    res = mam_update_table(mam, first_table_ops, first_table, 0, src_addr,
+                           MAM_INVALID_ADDRESS, size, attrs, MAM_OVERWRITE_ATTRS);
 out:
     mam->update_counter++; // second update (becomes even number);
     VMM_ASSERT((mam->update_counter & 0x1) == 0);
@@ -2897,8 +2871,8 @@ out:
 
 BOOLEAN mam_convert_to_vtdpt(IN MAM_HANDLE mam_handle,
                            IN MAM_VTDPT_SUPER_PAGE_SUPPORT vtdpt_super_page_support,
-						   IN MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior,
-						   IN MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping,
+                                                   IN MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior,
+                                                   IN MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping,
                            IN UINT32 sagaw_bit_index,
                            OUT UINT64* first_table_hpa) {
     MAM* mam = (MAM*)mam_handle;
@@ -2916,8 +2890,7 @@ BOOLEAN mam_convert_to_vtdpt(IN MAM_HANDLE mam_handle,
     mam->update_counter++; // first update (becomes odd number)
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
-    switch(vtdpt_level)
-    {
+    switch(vtdpt_level) {
         case MAM_VTDPT_LEVEL_2:
             requested_size = (UINT64)mam_get_size_covered_by_table(MAM_LEVEL2_OPS);
             required_level_ops = MAM_LEVEL2_OPS;

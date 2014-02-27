@@ -400,7 +400,6 @@ void pool_split_page_to_elements(POOL_LIST_HEAD* list_head,
 }
 
 
-
 static
 UINT32 pool_hash_func(UINT64 key, UINT32 size) {
     UINT32 hash_mask = (size - 1);
@@ -799,8 +798,7 @@ POOL_HANDLE pool_create_internal(UINT32 size_of_single_element, BOOLEAN  mutex_f
     UINT32 final_size_of_hash_element;
     HASH64_HANDLE hash;
 
-    if (pool == NULL)
-    {
+    if (pool == NULL) {
         return POOL_INVALID_HANDLE;
     }
 
@@ -818,20 +816,13 @@ POOL_HANDLE pool_create_internal(UINT32 size_of_single_element, BOOLEAN  mutex_f
     pool_set_size_of_hash_element(pool, final_size_of_hash_element);
     pool_set_num_of_hash_elements_per_page(pool, PAGE_4KB_SIZE / final_size_of_hash_element);
 
-    hash = hash64_create_hash(pool_hash_func,
-                              NULL,
-                              NULL,
-                              pool_allocate_hash_node,
-                              pool_free_hash_node,
-                              pool,
-                              POOL_HASH_NUM_OF_CELLS);
-    if (hash == HASH64_INVALID_HANDLE)
-    {
+    hash = hash64_create_hash(pool_hash_func, NULL, NULL, pool_allocate_hash_node,
+                              pool_free_hash_node, pool, POOL_HASH_NUM_OF_CELLS);
+    if (hash == HASH64_INVALID_HANDLE) {
         vmm_memory_free(pool);
         pool = (POOL *) POOL_INVALID_HANDLE;
     }
-    else
-    {
+    else {
         pool->mutex_flag = mutex_flag;;
         if (mutex_flag)
             lock_initialize(&pool->access_lock);

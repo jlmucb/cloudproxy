@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifdef FAST_VIEW_SWITCH
 #include "file_codes.h"
@@ -129,8 +129,7 @@ BOOLEAN fvs_add_entry_to_eptp_list(GUEST_HANDLE guest,
 
     VMM_ASSERT(guest->fvs_desc);
     
-    if ( index < MAX_EPTP_ENTRIES )
-    {
+    if ( index < MAX_EPTP_ENTRIES ) {
         ept_gaw =  ept_hw_get_guest_address_width(gaw);
         if(ept_gaw == (UINT32) -1)
         {
@@ -143,13 +142,11 @@ BOOLEAN fvs_add_entry_to_eptp_list(GUEST_HANDLE guest,
         VMM_LOG(mask_anonymous, level_trace,
             "adding eptp entry eptp=0x%016lX index=%d\n", eptp.Uint64, index);
     }
-    else
-    {
+    else {
     	return FALSE;
     }
 
-    for(i = 0; i < guest->fvs_desc->num_of_cpus; i++)
-    {
+    for(i = 0; i < guest->fvs_desc->num_of_cpus; i++) {
         hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[i];
         *(hva + index) = eptp.Uint64;
     }
@@ -163,18 +160,15 @@ BOOLEAN fvs_delete_entry_from_eptp_list(GUEST_HANDLE guest, UINT64 index)
 
     VMM_ASSERT(guest->fvs_desc);
 
-    if ( index < MAX_EPTP_ENTRIES )
-    {
+    if ( index < MAX_EPTP_ENTRIES ) {
         VMM_LOG(mask_anonymous, level_trace,
     	    "deleting eptp entry at index=%d\n", index);
     }
-    else
-    {
+    else {
     	return FALSE;
     }
 
-    for(i = 0; i < guest->fvs_desc->num_of_cpus; i++)
-    {
+    for(i = 0; i < guest->fvs_desc->num_of_cpus; i++) {
         hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[i];
         *(hva + index) = 0;
     }
@@ -208,8 +202,7 @@ void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg)
                     scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     
-    if ( fvs_is_eptp_switching_supported() )
-    {
+    if ( fvs_is_eptp_switching_supported() ) {
         value = vmcs_read(vmcs, VMCS_VMFUNC_CONTROL);
         BIT_SET(value, EPTP_SWITCHING_BIT);
         vmcs_write(vmcs, VMCS_VMFUNC_CONTROL, value);
@@ -232,8 +225,7 @@ void fvs_disable_eptp_switching(CPU_ID from UNUSED,void* arg)
                        scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     
-    if ( fvs_is_eptp_switching_supported() )
-    {    
+    if ( fvs_is_eptp_switching_supported() ) {    
         value = vmcs_read(vmcs, VMCS_VMFUNC_CONTROL);
         BIT_CLR(value, EPTP_SWITCHING_BIT);
         vmcs_write(vmcs, VMCS_VMFUNC_CONTROL, value);
@@ -302,8 +294,7 @@ UINT64 fvs_get_eptp_entry(GUEST_CPU_HANDLE gcpu, UINT64 index)
     VMM_ASSERT(vcpuid);
     hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[vcpuid->guest_cpu_id];
 
-    if ( index < MAX_EPTP_ENTRIES )
-    {
+    if ( index < MAX_EPTP_ENTRIES ) {
          return(*(hva + index));
     } else {
         return(0);
@@ -395,8 +386,7 @@ void fvs_print_eptp_list(GUEST_CPU_HANDLE gcpu)
     hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[vcpuid->guest_cpu_id];
 
     VMM_LOG(mask_anonymous, level_print_always,"\n");
-    for(index=0;index<TOTAL_NUM_VIEWS;index++)
-    {
+    for(index=0;index<TOTAL_NUM_VIEWS;index++) {
         VMM_LOG(mask_anonymous, 
            level_print_always,"entry at index %d = 0x%016lX\n", 
            index, *(hva + index));

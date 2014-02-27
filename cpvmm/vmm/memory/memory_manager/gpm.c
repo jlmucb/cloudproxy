@@ -71,11 +71,10 @@ BOOLEAN gpm_get_range_details_and_advance_mam_iterator(IN MAM_HANDLE mam_handle,
 
 // static
 BOOLEAN gpm_remove_all_relevant_hpa_to_gpa_mapping(GPM* gpm, GPA gpa, UINT64 size) {
-        MAM_HANDLE gpa_to_hpa;
-        MAM_HANDLE hpa_to_gpa;
-        UINT64 gpa_tmp;
-
-        gpa_to_hpa = gpm->gpa_to_hpa;
+    MAM_HANDLE gpa_to_hpa;
+    MAM_HANDLE hpa_to_gpa;
+    UINT64 gpa_tmp;
+    gpa_to_hpa = gpm->gpa_to_hpa;
     hpa_to_gpa = gpm->hpa_to_gpa;
 
     // Remove all hpa mappings
@@ -84,17 +83,17 @@ BOOLEAN gpm_remove_all_relevant_hpa_to_gpa_mapping(GPM* gpm, GPA gpa, UINT64 siz
         MAM_ATTRIBUTES attrs;
 
         if (mam_get_mapping(gpa_to_hpa, gpa_tmp, &hpa, &attrs) == MAM_MAPPING_SUCCESSFUL) {
-                if (!mam_insert_not_existing_range(hpa_to_gpa, hpa, PAGE_4KB_SIZE, GPM_INVALID_MAPPING)) {
-                        return FALSE;
-                }
+            if (!mam_insert_not_existing_range(hpa_to_gpa, hpa, PAGE_4KB_SIZE, GPM_INVALID_MAPPING)) {
+                return FALSE;
             }
+        }
     }
 
     return TRUE;
 }
 
 GPM_HANDLE gpm_create_mapping(void) {
-        GPM* gpm;
+    GPM* gpm;
     MAM_HANDLE gpa_to_hpa;
     MAM_HANDLE hpa_to_gpa;
 
@@ -169,7 +168,7 @@ BOOLEAN gpm_remove_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 }
 
 BOOLEAN gpm_add_mmio_range(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size) {
-        GPM* gpm = (GPM*)gpm_handle;
+    GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
 
     if (gpm_handle == GPM_INVALID_HANDLE) {
@@ -191,7 +190,7 @@ BOOLEAN gpm_add_mmio_range(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 }
 
 BOOLEAN gpm_is_mmio_address(IN GPM_HANDLE gpm_handle, IN GPA gpa) {
-        GPM* gpm = (GPM*)gpm_handle;
+    GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     UINT64 hpa_tmp;
     MAM_MAPPING_RESULT res;
@@ -211,7 +210,7 @@ BOOLEAN gpm_is_mmio_address(IN GPM_HANDLE gpm_handle, IN GPA gpa) {
 
 
 BOOLEAN gpm_gpa_to_hpa(IN GPM_HANDLE gpm_handle, IN GPA gpa, OUT HPA* hpa, OUT MAM_ATTRIBUTES *hpa_attrs) {
-        GPM* gpm = (GPM*)gpm_handle;
+    GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     UINT64 hpa_tmp;
     MAM_MAPPING_RESULT res;
@@ -294,7 +293,6 @@ BOOLEAN gpm_create_e820_map(IN GPM_HANDLE gpm_handle,
     UINT64 range_size;
     GPA addr;
     UINT64 size;
-
 
     if (gpm_handle == GPM_INVALID_HANDLE) {
         return FALSE;
@@ -444,7 +442,7 @@ MAM_MEMORY_RANGES_ITERATOR gpm_advance_mam_iterator_to_appropriate_range(MAM_HAN
 }
 
 GPM_RANGES_ITERATOR gpm_get_ranges_iterator(IN GPM_HANDLE gpm_handle) {
-        GPM* gpm = (GPM*)gpm_handle;
+    GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     MAM_MEMORY_RANGES_ITERATOR iter;
 
@@ -472,9 +470,8 @@ GPM_RANGES_ITERATOR gpm_get_range_details_from_iterator(IN GPM_HANDLE gpm_handle
                                                         IN GPM_RANGES_ITERATOR iter,
                                                         OUT GPA* gpa_out,
                                                         OUT UINT64* size_out) {
-
-        GPM* gpm = (GPM*)gpm_handle;
-        MAM_HANDLE gpa_to_hpa;
+    GPM* gpm = (GPM*)gpm_handle;
+    MAM_HANDLE gpa_to_hpa;
     MAM_MEMORY_RANGES_ITERATOR mam_iter = (MAM_MEMORY_RANGES_ITERATOR)iter;
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -514,19 +511,16 @@ VMM_DEBUG_CODE(
 
     VMM_LOG(mask_anonymous, level_trace,"GPM ranges:\r\n");
     gpm_iter = gpm_get_ranges_iterator(gpm_handle);
-    while(GPM_INVALID_RANGES_ITERATOR != gpm_iter)
-    {
+    while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) {
         gpm_iter = gpm_get_range_details_from_iterator(gpm_handle,
                                                        gpm_iter,
                                                        &guest_range_addr,
                                                        &guest_range_size);
         status = gpm_gpa_to_hpa(gpm_handle, guest_range_addr, &host_range_addr, &attrs);
-        if(FALSE == status)
-        {
+        if(FALSE == status) {
             VMM_LOG(mask_anonymous, level_trace,"GPM no mapping for gpa %p\r\n", guest_range_addr);
         }
-        else
-        {
+        else {
             VMM_LOG(mask_anonymous, level_trace,"  base %p size %p\r\n", guest_range_addr, guest_range_size);
         }
     }
@@ -543,41 +537,36 @@ BOOLEAN gpm_copy(GPM_HANDLE src, GPM_HANDLE dst, BOOLEAN override_attrs, MAM_ATT
     UINT64 guest_range_size = 0;
     HPA host_range_addr = 0;
     BOOLEAN status = FALSE;
-        MAM_ATTRIBUTES attrs;
+    MAM_ATTRIBUTES attrs;
 
     src_iter = gpm_get_ranges_iterator(src);
 
-    while(GPM_INVALID_RANGES_ITERATOR != src_iter)
-    {
+    while(GPM_INVALID_RANGES_ITERATOR != src_iter) {
         src_iter = gpm_get_range_details_from_iterator(src,
                                                        src_iter,
                                                        &guest_range_addr,
                                                        &guest_range_size);
         status = gpm_gpa_to_hpa(src, guest_range_addr, &host_range_addr, &attrs);
-        if(FALSE == status)
-        {// no mapping - is it mmio?
+        if(FALSE == status) {  // no mapping - is it mmio?
             if(gpm_is_mmio_address(src, guest_range_addr)){
                 status = gpm_add_mmio_range(dst, guest_range_addr, guest_range_size);
-                if(FALSE == status)
-                {
+                if(FALSE == status) {
                     goto failure;
                 }
             }
-            else{
+            else {
                 // normal memory - should not fail the mapping translation
                 goto failure;
             }
         }
-        else
-        {
-                        if (override_attrs) {
-                    status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, set_attrs);
-                        }
-                        else {
-                    status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, attrs);
-                        }
-            if(FALSE == status)
-            {
+        else {
+            if (override_attrs) {
+                status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, set_attrs);
+            }
+            else {
+                status = gpm_add_mapping(dst, guest_range_addr, host_range_addr, guest_range_size, attrs);
+            }
+            if(FALSE == status) {
                 goto failure;
             }
         }

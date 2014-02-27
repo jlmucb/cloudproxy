@@ -37,12 +37,10 @@ namespace tao {
 /// guest.
 class KvmUnixTaoChannel : public UnixFdTaoChannel {
  public:
-  /// Construct a KvmUnixTaoChannel with a process creation socket at a given
-  /// path.
-  /// @param socket_path The filename that will be used as a Unix domain socket.
-  /// @param stop_socket_path The filename that will be used for a socket that
-  /// takes messages to stop the channel.
-  KvmUnixTaoChannel(const string &socket_path, const string &stop_socket_path);
+  /// Construct a KvmUnixTaoChannel.
+  /// @param socket_path Location to create a Unix domain socket for handling
+  /// administrative requests.
+  explicit KvmUnixTaoChannel(const string &socket_path);
   virtual ~KvmUnixTaoChannel();
 
   /// Add a new child and gets back the parameters

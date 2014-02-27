@@ -116,6 +116,8 @@
 				'tao_domain.h',
 				'tpm_tao_child_channel.cc',
 				'tpm_tao_child_channel.h',
+				'unix_domain_socket_tao_child_channel.cc',
+				'unix_domain_socket_tao_child_channel.h',
 				'unix_fd_tao_channel.cc',
 				'unix_fd_tao_channel.h',
 				'unix_fd_tao_child_channel.cc',

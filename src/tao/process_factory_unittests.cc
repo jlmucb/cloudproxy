@@ -42,10 +42,9 @@ class ProcessFactoryTest : public ::testing::Test {
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("process_factory_test", &temp_dir_));
 
-    creation_socket_ = *temp_dir_ + string("/creation_socket");
-    stop_socket_ = *temp_dir_ + string("/stop_socket");
+    string domain_socket = *temp_dir_ + "/domain_socket";
 
-    channel_.reset(new PipeTaoChannel(creation_socket_, stop_socket_));
+    channel_.reset(new PipeTaoChannel(domain_socket));
 
     child_hash_ = "Fake hash";
     ASSERT_TRUE(channel_->AddChildChannel(child_hash_, &params_))
@@ -60,8 +59,6 @@ class ProcessFactoryTest : public ::testing::Test {
   scoped_ptr<PipeTaoChannel> channel_;
   scoped_ptr<ProcessFactory> factory_;
   ScopedTempDir temp_dir_;
-  string creation_socket_;
-  string stop_socket_;
   string params_;
   string encoded_params_;
   string child_hash_;

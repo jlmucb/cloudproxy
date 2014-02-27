@@ -1,8 +1,7 @@
 //  File: stop_service.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A program that sends a message to a stop channel (e.g., to stop
-//  linux_tao_service)
+//  Description: A program that requests a host Tao be shut down.
 //
 //  Copyright (c) 2014, Google Inc.  All rights reserved.
 //
@@ -23,30 +22,23 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "tao/unix_domain_socket_tao_child_channel.h"
 #include "tao/util.h"
 
-using tao::ConnectToUnixDomainSocket;
 using tao::InitializeApp;
-using tao::ScopedFd;
+using tao::UnixDomainSocketTaoChildChannel;
 
-DEFINE_string(socket, "_linux_tao_stop_socket",
-              "The unix domain socket to use to stop the LinuxTaoService");
+DEFINE_string(domain_socket, "_linux_tao_socket",
+              "The unix domain socket to use to contact the LinuxTaoService");
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, true);
 
-  ScopedFd sock(new int(-1));
-  CHECK(ConnectToUnixDomainSocket(FLAGS_socket, sock.get()))
-      << "Could not connect to the stop socket";
-
-  // It doesn't matter what message we write to the stop socket. Any message
-  // on this socket causes it to stop. It doesn't even read the message.
-  int msg = 0;
-  ssize_t bytes_written = write(*sock, &msg, sizeof(msg));
-  if (bytes_written != sizeof(msg)) {
-    PLOG(ERROR) << "Could not write a message to the stop socket";
-    return 1;
-  }
+  scoped_ptr<UnixDomainSocketTaoChildChannel> chan(
+      new UnixDomainSocketTaoChildChannel(FLAGS_domain_socket));
+  CHECK(chan->Init()) << "Could not open a socket for communication";
+  CHECK(chan->Shutdown()) << "Failed to shut down the host Tao";
+  CHECK(chan->Destroy()) << "Could not destroy socket";
 
   return 0;
 }

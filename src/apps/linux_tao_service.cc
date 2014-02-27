@@ -46,10 +46,8 @@ using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(keys_path, "linux_tao_keys", "Location of linux tao keys");
-DEFINE_string(program_socket, "_linux_tao_socket",
-              "File socket for incoming program creation requests");
-DEFINE_string(stop_socket, "_linux_tao_stop_socket",
-              "File socket for stopping the server");
+DEFINE_string(domain_socket, "_linux_tao_socket",
+              "File socket for incoming administrative requests");
 
 DEFINE_string(aik_blob, "tpm/aikblob", "The AIK blob from the TPM");
 DEFINE_string(aik_attestation, "tpm/aik.attest",
@@ -100,10 +98,9 @@ int main(int argc, char **argv) {
 
   CHECK(child_channel->Init()) << "Could not init the TPM";
 
-  // The Channels to use for hosted programs and the way to create hosted
-  // programs.
+  // Create channels for hosted programs and administrative requests.
   scoped_ptr<PipeTaoChannel> pipe_channel(
-      new PipeTaoChannel(FLAGS_program_socket, FLAGS_stop_socket));
+      new PipeTaoChannel(FLAGS_domain_socket));
   CHECK(pipe_channel->Init()) << "Could not initialize the pipe channel";
   scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
   CHECK(process_factory->Init()) << "Could not initialize the process factory";

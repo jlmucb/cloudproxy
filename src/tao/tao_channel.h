@@ -34,29 +34,22 @@ using std::string;
 
 namespace tao {
 
-/// An RPC class that communicates with a remote Tao server. It takes the input
-/// parameters, bundles them up, and sends them along a channel (details of the
-/// channel depend on the implementation). The difference between the Tao and
-/// the TaoChannel is that the Tao takes information about the child hash making
-/// the request, whereas the TaoChannel is the interface the child uses to
-/// communicate with the Tao, and the child program is not allowed to choose an
-/// arbitrary hash to use. So, this hash is added by the channel infrastructure.
-///
-/// TaoChannel also contains an interface for operations to do with creating
-/// hosted programs and communicating with them.
+/// An RPC server class that handles communication with a set of remote
+/// TaoChildChannel clients.
 class TaoChannel {
  public:
   TaoChannel() {}
   virtual ~TaoChannel() {}
 
-  /// Start listening for messages from this child.
+  /// Initialize the server, opening ports and allocating resources as needed.
+  virtual bool Init() = 0;
+
+  /// Listen for and process messages from child channels until a shutdown is
+  /// initiated.
   /// @param tao The Tao implementation that will handle received messages.
   virtual bool Listen(Tao *tao) = 0;
 
-  /// Initialize the channel.
-  virtual bool Init() = 0;
-
-  /// Release any resources used by the channel.
+  /// Close ports and release any resources used by the server.
   virtual bool Destroy() = 0;
 
   /// Add a child to this channel and return the string that will let the child

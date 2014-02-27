@@ -1,8 +1,7 @@
 //  File: pipe_tao_channel.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: PipeTaoChannel implements Tao communication over file
-//  descriptors
+//  Description: PipeTaoChannel implements Tao communication over pipes.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -36,8 +35,10 @@ namespace tao {
 /// set up with pipe(2) and listens to multiple connections with select.
 class PipeTaoChannel : public UnixFdTaoChannel {
  public:
-  /// Create a PipeTaoChannel with a process creation socket at a given path.
-  PipeTaoChannel(const string &socket_path, const string &stop_socket_path);
+  /// Construct a PipeTaoChannel.
+  /// @param socket_path Location to create a Unix domain socket for handling
+  /// administrative requests.
+  explicit PipeTaoChannel(const string &socket_path);
   virtual ~PipeTaoChannel();
 
   /// Serialize the child_fds into a PipeTaoChannelParams protobuf.
@@ -59,7 +60,7 @@ class PipeTaoChannel : public UnixFdTaoChannel {
 
  private:
   // A set of child descriptors that haven't been cleaned up yet.
-  map<string, pair<int, int>> child_descriptors_;
+  std::map<string, std::pair<int, int>> child_descriptors_;
 
   DISALLOW_COPY_AND_ASSIGN(PipeTaoChannel);
 };

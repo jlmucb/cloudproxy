@@ -54,6 +54,7 @@
 #include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"
 
+using std::lock_guard;
 using std::mutex;
 using std::shared_ptr;
 using std::stringstream;
@@ -237,6 +238,91 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   return InitializeOpenSSL();
 }
 
+// TODO(kwalsh) handle interaction between multi-threading and signals
+static mutex selfPipeMutex;
+static int selfPipe[2] = {-1, -1};
+static int selfPipeSignum;
+static struct sigaction selfPipeSavedAction;
+
+static void SelfPipeHandler(int signum) {
+  int savedErrno = errno;
+  char b = static_cast<char>(signum);
+  write(selfPipe[1], &b, 1);
+  errno = savedErrno;
+}
+
+static bool SetFdFlags(int fd, int flags) {
+  int f = fcntl(fd, F_GETFL);
+  if (f == -1) {
+    LOG(ERROR) << "Could not get flags for fd " << fd;
+    return false;
+  }
+  if (fcntl(fd, F_SETFL, f | flags) == -1) {
+    LOG(ERROR) << "Could not set flags for fd " << fd;
+    return false;
+  }
+  return true;
+}
+
+// TODO(kwalsh) Take multiple signums if needed.
+int GetSelfPipeSignalFd(int signum) {
+  {
+    lock_guard<mutex> l(selfPipeMutex);
+    if (selfPipe[0] != -1) {
+      LOG(ERROR) << "Self-pipe already opened";
+      return -1;
+    }
+    if (pipe(selfPipe) == -1) {
+      LOG(ERROR) << "Could not create self-pipe";
+      return -1;
+    }
+    if (!SetFdFlags(selfPipe[0], O_NONBLOCK) ||
+        !SetFdFlags(selfPipe[1], O_NONBLOCK)) {
+      PLOG(ERROR) << "Could not set self-pipe disposition";
+      close(selfPipe[0]);
+      close(selfPipe[1]);
+      selfPipe[0] = selfPipe[1] = -1;
+      return -1;
+    }
+    struct sigaction act;
+    memset(&act, 0, sizeof(struct sigaction));
+    act.sa_handler = SelfPipeHandler;
+    selfPipeSignum = signum;
+    if (sigaction(signum, &act, &selfPipeSavedAction) < 0) {
+      PLOG(ERROR) << "Could not set self-pipe handler";
+      close(selfPipe[0]);
+      close(selfPipe[1]);
+      selfPipe[0] = selfPipe[1] = -1;
+      return false;
+    }
+    return selfPipe[0];
+  }
+}
+
+bool ReleaseSelfPipeSignalFd(int fd) {
+  lock_guard<mutex> l(selfPipeMutex);
+  if (fd == -1 || selfPipe[0] != fd) {
+    LOG(ERROR) << "Incorrect self-pipe fd " << fd;
+    return false;
+  }
+  if (sigaction(selfPipeSignum, &selfPipeSavedAction, nullptr) < 0) {
+    PLOG(ERROR) << "Could not restore the old signal handler.";
+  }
+  close(selfPipe[0]);
+  close(selfPipe[1]);
+  selfPipe[0] = selfPipe[1] = -1;
+  return true;
+}
+
+void selfpipe_release(int *fd) {
+  if (fd && *fd >= 0) {
+    if (!ReleaseSelfPipeSignalFd(*fd)) {
+      PLOG(ERROR) << "Could not close self-pipe fd " << *fd;
+    }
+    delete fd;
+  }
+}
+
 bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   if (sock == nullptr) {
     LOG(ERROR) << "null socket parameter";
@@ -369,7 +455,7 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
 }
 
 bool SendMessageTo(int fd, const google::protobuf::Message &m,
-                   struct ::sockaddr *addr, socklen_t addr_len) {
+                   const struct sockaddr *addr, socklen_t addr_len) {
   // send the length then the serialized message
   string serialized;
   if (!m.SerializeToString(&serialized)) {
@@ -395,6 +481,7 @@ bool SendMessageTo(int fd, const google::protobuf::Message &m,
 
 bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
                         struct sockaddr *addr, socklen_t *addr_len) {
+  // TODO(kwalsh) better handling of addr, addrlen, and recvfrom
   if (m == nullptr) {
     LOG(ERROR) << "null message";
     return false;
@@ -511,7 +598,7 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
 
 bool OpenUnixDomainSocket(const string &path, int *sock) {
   // The unix domain socket is used to listen for CreateHostedProgram requests.
-  *sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  *sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (*sock == -1) {
     LOG(ERROR) << "Could not create unix domain socket to listen for messages";
     return false;
@@ -548,6 +635,12 @@ bool OpenUnixDomainSocket(const string &path, int *sock) {
     return false;
   }
 
+  int listen_err = listen(*sock, 128 /* max completed connections */);
+  if (listen_err == -1) {
+    PLOG(ERROR) << "Could not set the socket up for listening";
+    return false;
+  }
+
   return true;
 }
 
@@ -557,7 +650,7 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock) {
     return false;
   }
 
-  *sock = socket(PF_UNIX, SOCK_DGRAM, 0);
+  *sock = socket(PF_UNIX, SOCK_STREAM, 0);
   if (*sock == -1) {
     PLOG(ERROR) << "Could not create a unix domain socket";
     return false;

@@ -20,10 +20,10 @@
 
 #include <fcntl.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <termios.h>
 
+#include <list>
+#include <string>
 #include <thread>
 
 #include <glog/logging.h>
@@ -33,19 +33,20 @@
 #include "tao/fake_tao.h"
 #include "tao/tao.h"
 #include "tao/tao_channel_rpc.pb.h"
+#include "tao/unix_domain_socket_tao_child_channel.h"
 #include "tao/unix_fd_tao_child_channel.h"
 #include "tao/util.h"
 
+using std::list;
+using std::string;
 using std::thread;
 
-using tao::ConnectToUnixDomainSocket;
 using tao::CreateTempDir;
 using tao::FakeTao;
 using tao::KvmUnixTaoChannel;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
-using tao::StartHostedProgramArgs;
-using tao::TaoChannelRPC;
+using tao::UnixDomainSocketTaoChildChannel;
 using tao::UnixFdTaoChildChannel;
 
 class KvmUnixTaoChannelTest : public ::testing::Test {
@@ -53,8 +54,7 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("kvm_unix_tao_test", &temp_dir_));
 
-    creation_socket_ = *temp_dir_ + string("/creation_socket");
-    stop_socket_ = *temp_dir_ + string("/stop_socket");
+    domain_socket_ = *temp_dir_ + "/domain_socket";
 
     // Pass the channel a /dev/pts entry that you can talk to and pretend to be
     // the Tao communicating with it.
@@ -77,8 +77,8 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
 
     string child_pts(child_path);
 
-    tao_channel_.reset(new KvmUnixTaoChannel(creation_socket_, stop_socket_));
-    ASSERT_TRUE(tao_channel_->Init()) << "Could not set up the sockets";
+    tao_channel_.reset(new KvmUnixTaoChannel(domain_socket_));
+    ASSERT_TRUE(tao_channel_->Init()) << "Could not set up the channel";
 
     tao_.reset(new FakeTao());
     ASSERT_TRUE(tao_->InitTemporaryTPM()) << "Could not initialize the Tao";
@@ -98,18 +98,10 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
   }
 
   virtual void TearDown() {
-    ScopedFd sock(new int(-1));
-    ASSERT_TRUE(ConnectToUnixDomainSocket(stop_socket_, sock.get()));
-
-    // It doesn't matter what message we write to the stop socket. Any message
-    // on this socket causes it to stop. It doesn't even read the message.
-    int msg = 0;
-    ssize_t bytes_written = write(*sock, &msg, sizeof(msg));
-    if (bytes_written != sizeof(msg)) {
-      PLOG(ERROR) << "Could not write a message to the stop socket";
-      return;
-    }
-
+    scoped_ptr<UnixDomainSocketTaoChildChannel> chan(
+        new UnixDomainSocketTaoChildChannel(domain_socket_));
+    ASSERT_TRUE(chan->Init());
+    ASSERT_TRUE(chan->Shutdown());
     if (listener_->joinable()) {
       listener_->join();
     }
@@ -120,23 +112,18 @@ class KvmUnixTaoChannelTest : public ::testing::Test {
   scoped_ptr<FakeTao> tao_;
   scoped_ptr<KvmUnixTaoChannel> tao_channel_;
   scoped_ptr<thread> listener_;
-  string creation_socket_;
-  string stop_socket_;
+  string domain_socket_;
   scoped_ptr<UnixFdTaoChildChannel> child_channel_;
 };
 
 TEST_F(KvmUnixTaoChannelTest, CreationTest) {
-  // Pass a process creation message to the channel.
-  ScopedFd sock(new int(-1));
-  EXPECT_TRUE(ConnectToUnixDomainSocket(creation_socket_, sock.get()))
-      << "Could not connect to the socket " << creation_socket_;
-
-  TaoChannelRPC rpc;
-  rpc.set_rpc(tao::START_HOSTED_PROGRAM);
-  StartHostedProgramArgs *shpa = rpc.mutable_start();
-  shpa->set_path("Fake Program");
-  EXPECT_TRUE(SendMessage(*sock, rpc))
-      << "Could not send the message to the socket";
+  scoped_ptr<UnixDomainSocketTaoChildChannel> chan(
+      new UnixDomainSocketTaoChildChannel(domain_socket_));
+  ASSERT_TRUE(chan->Init());
+  string path = "/fake/program";
+  list<string> args;
+  string identifier;
+  ASSERT_TRUE(chan->StartHostedProgram(path, args, &identifier));
 }
 
 TEST_F(KvmUnixTaoChannelTest, RandomTest) {

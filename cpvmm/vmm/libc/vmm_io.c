@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "vmm_dbg.h"
@@ -74,8 +74,7 @@ void raw_lock(volatile UINT32 *p_lock_var)
     UINT32 old_value;
 
 
-    for (;;)
-    {
+    for (;;) {
         // Loop until the successfully incremented the lock variable
         // from 0 to 1 (i.e., we are the only lockers
 
@@ -93,11 +92,8 @@ void raw_force_lock(volatile UINT32 *p_lock_var)
 {
     INT32 old_value;
 
-
-    for (;;)
-    {
+    for (;;) {
         // Loop until successfully incremented the lock variable
-
         old_value = *p_lock_var;
         if (old_value ==
                 hw_interlocked_compare_exchange((INT32 *)p_lock_var,
@@ -113,9 +109,7 @@ void raw_unlock(volatile UINT32 *p_lock_var)
 {
     INT32 old_value;
 
-
-    for (;;)
-    {
+    for (;;) {
         // Loop until successfully decremented the lock variable
 
         old_value = *p_lock_var;
@@ -154,24 +148,20 @@ BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
     BOOLEAN err = FALSE;
     UINT16  debug_port_io_base = VMM_DEBUG_PORT_SERIAL_IO_BASE_DEFAULT;
 
-
     debug_port_handle = NULL;
     debug_port_type = VMM_DEBUG_PORT_SERIAL;
     debug_port_virt_mode = VMM_DEBUG_PORT_VIRT_HIDE;
 
-    if (p_params)
-    {
+    if (p_params) {
         // Valid parameters structure, use it
 
         // Only a serial debug port is currently supported.  Furtheremore,
         // only I/O-based serial port is supported.
 
-        if (p_params->type == VMM_DEBUG_PORT_SERIAL)
-        {
+        if (p_params->type == VMM_DEBUG_PORT_SERIAL) {
             debug_port_type = (VMM_DEBUG_PORT_TYPE)p_params->type;
 
-            switch (p_params->ident_type)
-            {
+            switch (p_params->ident_type) {
                 case VMM_DEBUG_PORT_IDENT_IO:
                     debug_port_io_base = p_params->ident.io_base;
                     break;
@@ -188,8 +178,7 @@ BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
             debug_port_virt_mode = (VMM_DEBUG_PORT_VIRT_MODE)p_params->virt_mode;
         }
 
-        else
-        {
+        else {
             // No debug port
 
             debug_port_type = VMM_DEBUG_PORT_NONE;
@@ -252,7 +241,6 @@ vmm_debug_port_get_io_base(void)
     UINT16 io_base = 0;
     UINT16 io_end = 0;
 
-
     if (debug_port_type == VMM_DEBUG_PORT_SERIAL)
         vmm_serial_get_io_range(debug_port_handle, &io_base, &io_end);
 
@@ -285,7 +273,6 @@ UINT8 vmm_debug_port_getc(void)
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
         return vmm_serial_getc(debug_port_handle);
-
     else
         return 0;
 }
@@ -295,7 +282,6 @@ UINT8 vmm_debug_port_putc_nolock( UINT8 Char )
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
         return vmm_serial_putc_nolock(debug_port_handle, Char);
-
     else
         return Char;
 }
@@ -315,18 +301,12 @@ int vmm_debug_port_puts_direct(BOOLEAN is_locked, const char *string)
 {
     int ret = 1;
 
-
-    if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
-    {
-        if (is_locked)
-        {
+    if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL) {
+        if (is_locked) {
             // Print using the regular function
-
             ret = vmm_serial_puts(debug_port_handle, string);
         }
-
-        else
-        {
+        else {
             // Force lock, so that regular (locked) prints will not interfere
             // until we're done.  Note that here we may interfere with ongoing
             // regular prints - but this is the nature of "nolock".
@@ -386,13 +366,9 @@ VMM_STATUS vmm_io_vmcall_puts_handler(
 {
     const char *string = (const char *)*arg1;
 
-
     raw_lock(&printf_lock);
-
     vmm_debug_port_puts_direct(TRUE, string);
-
     raw_unlock(&printf_lock);
-
     return VMM_OK;
 }
 #pragma warning(pop)
@@ -419,24 +395,16 @@ int vmm_printf_int(BOOLEAN     use_lock,
 {
     UINT32  printed_size = 0;
 
-
-    if (use_lock)
-    {
+    if (use_lock) {
         raw_lock(&printf_lock);
     }
-
     printed_size = vmm_vsprintf_s (buffer, buffer_size, format, args);
-
-    if (printed_size && (printed_size != UINT32_ALL_ONES))
-    {
+    if (printed_size && (printed_size != UINT32_ALL_ONES)) {
         printed_size = vmm_debug_port_puts(use_lock, buffer);
     }
-
-    if (use_lock)
-    {
+    if (use_lock) {
         raw_unlock(&printf_lock);
     }
-
     return printed_size;
 }
 
@@ -462,21 +430,17 @@ void vmm_printf_screen_int(char* buffer,
     raw_lock(&printf_lock);
     printed_size = vmm_vsprintf_s (buffer, buffer_size, format, args);
 
-    if (printed_size && (printed_size != UINT32_ALL_ONES))
-    {
+    if (printed_size && (printed_size != UINT32_ALL_ONES)) {
         UINT32 i;
-        for (i = 0 ; buffer[i] != 0 ; i++)
-        {
-            if (buffer[i] == '\n')
-            {
+        for (i = 0 ; buffer[i] != 0 ; i++) {
+            if (buffer[i] == '\n') {
                 UINT64 line_number;
 
                 line_number = ((UINT64)screen_cursor - SCREEN_VGA_BASE_ADDRESS) / (SCREEN_MAX_COLOUMNS*2);
                 line_number++;
                 screen_cursor = (UINT8*)(line_number * SCREEN_MAX_COLOUMNS * 2) + SCREEN_VGA_BASE_ADDRESS;
             }
-            else
-            {
+            else {
                 *screen_cursor = buffer[i];
                 screen_cursor += 2;
             }
@@ -494,7 +458,6 @@ void vmm_printf_screen_int(char* buffer,
 void vmm_io_init( void )
 {
     vmm_debug_port_init();
-
     printf_init();
 }
 
@@ -502,14 +465,10 @@ int vmm_puts_nolock(const char *string )
 {
     int ret = 1;
 
-
     ret = vmm_debug_port_puts(FALSE, string);
-
     // According to the spec, puts always ends with new line
-
     if (ret != EOF)
         vmm_debug_port_puts(FALSE,  "\n\r");
-
     return ret;
 }
 
@@ -518,34 +477,27 @@ int vmm_puts(const char *string )
 {
     int ret = 1;
 
-
     raw_lock(&printf_lock);
-
     ret = vmm_debug_port_puts(TRUE, string);
-
     // According to the spec, puts always ends with new line
-
     if (ret != EOF)
         vmm_debug_port_puts(TRUE,  "\n\r");
-
     raw_unlock(&printf_lock);
-
     return ret;
 }
 
 
 UINT8 vmm_getc(void)
 {
-	if (CLI_active())
-	    return vmm_debug_port_getc();
-	else
-		return 0;
+    if (CLI_active())
+        return vmm_debug_port_getc();
+    else
+        return 0;
 }
 
 UINT8 vmm_putc_nolock( UINT8 Char )
 {
     Char = vmm_debug_port_putc_nolock(Char);
-
     return Char;
 }
 
@@ -553,11 +505,8 @@ UINT8 vmm_putc_nolock( UINT8 Char )
 UINT8 vmm_putc( UINT8 Char )
 {
     raw_lock(&printf_lock);
-
     Char = vmm_debug_port_putc(Char);
-
     raw_unlock(&printf_lock);
-
     return Char;
 }
 
@@ -565,19 +514,16 @@ UINT8 vmm_putc( UINT8 Char )
 int CDECL vmm_vprintf(const char *format, va_list args)
 {
     // use static buffer to save stack space
-
     static char buffer[PRINTF_BUFFER_SIZE];
 
-    if (emulator_is_running_as_guest())
-    {
+    if (emulator_is_running_as_guest()) {
         // To avoid deadlocks use nolock version in guest environment.
         // This will eventually do a VMCALL that will use the locked
         // printf.
 
         return vmm_printf_nolock_alloc_buffer(format, args);
     }
-    else
-    {
+    else {
         return vmm_printf_int(TRUE, buffer, PRINTF_BUFFER_SIZE, format, args);
     }
 }
@@ -586,7 +532,6 @@ int CDECL vmm_vprintf(const char *format, va_list args)
 int CDECL vmm_printf( const char *format, ... )
 {
     va_list args;
-
     va_start (args, format);
 
     return vmm_vprintf(format, args);
@@ -597,7 +542,6 @@ int CDECL vmm_printf( const char *format, ... )
 int CDECL vmm_printf_nolock(const char *format, ...)
 {
     va_list args;
-
     va_start (args, format);
 
     return vmm_printf_nolock_alloc_buffer(format, args);
@@ -605,10 +549,8 @@ int CDECL vmm_printf_nolock(const char *format, ...)
 
 void vmm_io_emulator_register( GUEST_ID guest_id )
 {
-    vmcall_register( guest_id,
-                     VMCALL_EMULATOR_PUTS,
-                     (VMCALL_HANDLER)vmm_io_vmcall_puts_handler,
-                     FALSE );
+    vmcall_register( guest_id, VMCALL_EMULATOR_PUTS,
+                     (VMCALL_HANDLER)vmm_io_vmcall_puts_handler, FALSE );
 }
 #endif
 
@@ -630,8 +572,7 @@ void CDECL vmm_clear_screen(void)
     UINT32 i;
     for (screen_cursor = (UINT8*)SCREEN_VGA_BASE_ADDRESS, i = 0;
          i < SCREEN_MAX_COLOUMNS*SCREEN_MAX_ROWS;
-         screen_cursor+=2, i++)
-    {
+         screen_cursor+=2, i++) {
         *screen_cursor = ' ';
     }
     screen_cursor = (UINT8*) SCREEN_VGA_BASE_ADDRESS;
@@ -651,10 +592,8 @@ void vmm_print_test(UINT32 id UNUSED)
     UINT32 i;
 
 
-    for (i = 0; i < 200; i++)
-    {
-        switch (((hw_rdtsc() / 31) + id) & 0x7)
-        {
+    for (i = 0; i < 200; i++) {
+        switch (((hw_rdtsc() / 31) + id) & 0x7) {
             case 0:
                 vmm_printf(       "[%02d] %06d 0 l\n", id, i);   // Short, should fit in Tx FIFO
                 break;

@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "vmm_serial.h"
@@ -168,21 +168,17 @@ update_avg(UINT32 *p_avg,   // Running average, as UINT16.UINT16
 {
     UINT64       avg;
 
-
     // Extend to 64 bits to prevent overflow during calculation
-
     avg = (UINT64)(*p_avg);
 
     // Do the IIR.  The formula is:
     //    avg = (1 - f) * avg + f * counter
     // Here the calculation is factored to UINT48.UINT16 representation
-
     avg = ((((1 << 16) - avg_factor) *                   avg) +
            (             avg_factor  * ((UINT64)count << 16))
           ) >> 16;
 
     // Assign back, taking care of overflows
-
     if (avg > (UINT32)-1)
         *p_avg = (UINT32)-1;
     else
@@ -219,17 +215,14 @@ is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
     UART_MSR msr;               // Modem Status Register image
     BOOLEAN  hw_handshake_go;   // Flags transmit "go" by h/w handshake
 
-
     if ((p_device->handshake_mode == UART_HANDSHAKE_AUTO) ||
-        (p_device->handshake_mode == UART_HANDSHAKE_HW))
-    {
+        (p_device->handshake_mode == UART_HANDSHAKE_HW)) {
         // Read the h/w handshake signals
 
         msr.data = hw_read_port_8(p_device->io_base + UART_REGISTER_MSR);
         hw_handshake_go = (msr.bits.CTS == 1) && (msr.bits.DSR == 1);
 
-        if (hw_handshake_go)
-        {
+        if (hw_handshake_go) {
             // Other side set h/w handshake to "go".  Reset the counter.
 
             update_avg(&p_device->hw_handshake_stopped_count_avg,
@@ -237,21 +230,16 @@ is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
             p_device->hw_handshake_stopped_count = 0;
         }
 
-        else if (p_device->hw_handshake_stopped_count >=
-                                                    hw_handshake_stopped_limit)
-        {
+        else if (p_device->hw_handshake_stopped_count >= hw_handshake_stopped_limit) {
             // Other side has indicated h/w handshake "stop" for too long.
 
-            if (p_device->handshake_mode == UART_HANDSHAKE_AUTO)
-            {
+            if (p_device->handshake_mode == UART_HANDSHAKE_AUTO) {
                 // In auto mode, assume the h/w handshake is stuck and force
                 // the status to "go"
 
                 hw_handshake_go = TRUE;
                 p_device->num_chars_hw_handshake_auto_go++;
-                if (p_device->hw_handshake_stopped_count ==
-                                                    hw_handshake_stopped_limit)
-                {
+                if (p_device->hw_handshake_stopped_count == hw_handshake_stopped_limit) {
                     // Update the statistic only on the first character
                     // we decided to auto-go
 
@@ -262,12 +250,10 @@ is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
             }
         }
 
-        else
-        {
+        else {
             // Increment the stop count and update the statistics
 
-            if (p_device->hw_handshake_stopped_count == 0)
-            {
+            if (p_device->hw_handshake_stopped_count == 0) {
                 // We just stopped, increment the stops statistics counter
 
                 p_device->num_chars_hw_handshake_stopped++;
@@ -280,10 +266,8 @@ is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
         }
     }
 
-    else
-    {
+    else {
         // No h/w handshake, always "go"
-
         hw_handshake_go = TRUE;
     }
 
@@ -302,7 +286,6 @@ int
 cli_display_serial_info(unsigned argc UNUSED, char *args[] UNUSED)
 {
     UINT32 i;
-
 
     CLI_PRINT("Serial Device #                :");
     for (i = 0; i < initialized_serial_devices; i++)
@@ -349,18 +332,14 @@ cli_display_serial_info(unsigned argc UNUSED, char *args[] UNUSED)
                   serial_tx_stall_usec);
 
     CLI_PRINT("\nTx H/S Mode                    :");
-    for (i = 0; i < initialized_serial_devices; i++)
-    {
-        switch (serial_devices[i].handshake_mode)
-        {
+    for (i = 0; i < initialized_serial_devices; i++) {
+        switch (serial_devices[i].handshake_mode) {
             case UART_HANDSHAKE_AUTO:
                 if (serial_devices[i].hw_handshake_stopped_count <
-                                           hw_handshake_stopped_limit)
-                {
+                                           hw_handshake_stopped_limit) {
                     CLI_PRINT("     Auto-H/W ");
                 }
-                else
-                {
+                else {
                     CLI_PRINT("     Auto-None");
                 }
                 break;
@@ -377,7 +356,6 @@ cli_display_serial_info(unsigned argc UNUSED, char *args[] UNUSED)
                 CLI_PRINT(" ?????????????");
         }
     }
-
 
     CLI_PRINT("\nTx H/S Stopped Chars           :");
     for (i = 0; i < initialized_serial_devices; i++)
@@ -677,11 +655,9 @@ vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
                        num_wait_for_tx_ready);
 
     // Now write the output character
-
     hw_write_port_8(p_device->io_base + UART_REGISTER_THR, c);
 
     // Update the statistics
-
     p_device->num_tx_chars_nolock++;
 
     // Loop again until the Tx FIFO is empty and h/w handshake is OK
@@ -689,14 +665,10 @@ vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
     // have interrupted can safely resume.
 
     num_wait_for_tx_ready = 0;
-    do
-    {
+    do {
         lsr.data = hw_read_port_8(p_device->io_base + UART_REGISTER_LSR);
-
         is_ready = is_hw_tx_handshake_go(p_device) && (lsr.bits.THRE == 1);
-
-        if (! is_ready)
-        {
+        if (! is_ready) {
             hw_stall_using_tsc(serial_tx_stall_usec);
             num_wait_for_tx_ready++;
         }
@@ -738,7 +710,6 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
     UINT32             num_wait_for_tx_ready;
     UINT32             num_wait_for_tx_fifo_empty;
 
-
     p_device = h_device;
 
     VMM_ASSERT(p_device->is_initialized);
@@ -749,33 +720,28 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
     num_wait_for_tx_ready = 0;
     num_wait_for_tx_fifo_empty = 0;
 
-    do
-    {
+    do {
         lsr.data = hw_read_port_8(p_device->io_base + UART_REGISTER_LSR);
         if (lsr.bits.THRE == 1)        // The Tx FIFO is empty
             p_device->chars_in_tx_fifo = 0;
 
         is_ready = is_hw_tx_handshake_go(p_device);
 
-        if (is_ready)
-        {
-            if (p_device->chars_in_tx_fifo >= p_device->hw_fifo_size)
-            {
+        if (is_ready) {
+            if (p_device->chars_in_tx_fifo >= p_device->hw_fifo_size) {
                 is_ready = FALSE;
                 num_wait_for_tx_fifo_empty++;
             }
         }
 
-        if (is_ready && p_device->puts_lock)
-        {
+        if (is_ready && p_device->puts_lock) {
             // There's an on going string print by vmm_serial_puts_nolock()
 
             is_ready = FALSE;
             locked_out = TRUE;
         }
 
-        if (! is_ready)
-        {
+        if (! is_ready) {
             hw_stall_using_tsc(serial_tx_stall_usec);
             num_wait_for_tx_ready++;
         }
@@ -789,13 +755,10 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
                        num_wait_for_tx_fifo_empty);
 
     // Now write the output character
-
     hw_write_port_8(p_device->io_base + UART_REGISTER_THR, c);
-
     p_device->chars_in_tx_fifo++;
 
     // Update the statistics
-
     p_device->num_tx_chars_lock++;
     if (locked_out)
         p_device->num_putc_blocked_by_puts_nolock++;
@@ -817,7 +780,6 @@ vmm_serial_puts_nolock(void       *h_device,   // In:  Handle of the device
 {
     VMM_SERIAL_DEVICE *p_device;
     UINT32             i;
-
 
     p_device = h_device;
 
@@ -852,17 +814,13 @@ vmm_serial_puts(void       *h_device,   // In:  Handle of the device
     VMM_SERIAL_DEVICE *p_device;
     UINT32 i;
 
-
     p_device = h_device;
 
-    for (i = 0; string[i] != 0; i++)
-    {
+    for (i = 0; string[i] != 0; i++) {
         vmm_serial_putc(h_device, string[i]);
         p_device->in_puts = TRUE;
     }
-
     p_device->in_puts = FALSE;
-
     return 1;   // return any nonnegative value
 }
 
@@ -880,7 +838,6 @@ vmm_serial_getc(void *h_device)   // In:  Handle of the device
     VMM_SERIAL_DEVICE *p_device;
     UART_LSR           lsr;
     char               c;
-
 
     p_device = h_device;
 

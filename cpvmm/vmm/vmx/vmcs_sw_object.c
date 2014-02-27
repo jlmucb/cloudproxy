@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_SW_OBJECT_C)
@@ -93,20 +93,17 @@ void vmcs_0_take_msr_list_from_merged(VMCS_SOFTWARE_OBJECT *vmcs_0,
     UINT64 addr_hva;
     UINT64 count_value;
 
-    if (VMCS_INVALID_ADDRESS == addr_hpa)
-    {
+    if (VMCS_INVALID_ADDRESS == addr_hpa) {
         addr_hva = VMCS_INVALID_ADDRESS;
         count_value = 0;
     }
-    else if ( !hmm_hpa_to_hva(addr_hpa, &addr_hva))
-    {
+    else if ( !hmm_hpa_to_hva(addr_hpa, &addr_hva)) {
         VMM_LOG(mask_anonymous, level_trace,"%s: Failed translate HPA(%P) to HVA\n", __FUNCTION__);
         VMM_DEADLOOP();
         addr_hva = VMCS_INVALID_ADDRESS;
         count_value = 0;
     }
-    else
-    {
+    else {
         count_value = vmcs_read(merged_vmcs, count_field);
         VMM_ASSERT(addr_hva == ALIGN_BACKWARD(addr_hva, sizeof(IA32_VMX_MSR_ENTRY)));
     }
@@ -124,15 +121,13 @@ struct _VMCS_OBJECT * vmcs_0_create(struct _VMCS_OBJECT *vmcs_origin)
     VMCS_FIELD              field_id;
 
     vmcs_clone = vmm_malloc(sizeof(*vmcs_clone));
-    if (NULL == vmcs_clone)
-    {
+    if (NULL == vmcs_clone) {
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
 
     vmcs_clone->cache = cache64_create(VMCS_FIELD_COUNT);
-    if (NULL == vmcs_clone->cache)
-    {
+    if (NULL == vmcs_clone->cache) {
         vmm_mfree(vmcs_clone);
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
@@ -143,10 +138,8 @@ struct _VMCS_OBJECT * vmcs_0_create(struct _VMCS_OBJECT *vmcs_origin)
     // translation HVA->HPA is not necessary, since
     // these pages are never applied to hardware
 
-    if (NULL == (io_a_page = vmm_page_alloc(1))
-    ||  NULL == (io_b_page = vmm_page_alloc(1))
-    ||  NULL == (msr_page = vmm_page_alloc(1)))
-    {
+    if (NULL == (io_a_page = vmm_page_alloc(1)) ||  NULL == (io_b_page = vmm_page_alloc(1))
+          ||  NULL == (msr_page = vmm_page_alloc(1))) {
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation of extra pages failed\n", __FUNCTION__);
         if (NULL != io_a_page)              vmm_page_free(io_a_page);
         if (NULL != io_b_page)              vmm_page_free(io_b_page);
@@ -183,14 +176,11 @@ struct _VMCS_OBJECT * vmcs_0_create(struct _VMCS_OBJECT *vmcs_origin)
     vmcs_clone->vmcs_base->skip_access_checking   = FALSE;
     vmcs_clone->vmcs_base->signature              = VMCS_SIGNATURE;
 
-
     vmcs_init_all_msr_lists(vmcs_clone->vmcs_base);
 
     // copy all fields as is
-    for (field_id = (VMCS_FIELD)0; field_id < VMCS_FIELD_COUNT; (VMCS_FIELD)++field_id)
-    {
-        if (vmcs_field_is_supported(field_id))
-        {
+    for (field_id = (VMCS_FIELD)0; field_id < VMCS_FIELD_COUNT; (VMCS_FIELD)++field_id) {
+        if (vmcs_field_is_supported(field_id)) {
             UINT64 value = vmcs_read(vmcs_origin, field_id);
             vmcs_write_nocheck(vmcs_clone->vmcs_base, field_id, value);
         }
@@ -248,12 +238,10 @@ void vmcs_copy_extra_buffer(
     ADDRESS hpa, hva;
 
     hpa = vmcs_read(vmcs_src, field);
-    if (TRUE == hmm_hpa_to_hva(hpa, &hva))
-    {
+    if (TRUE == hmm_hpa_to_hva(hpa, &hva)) {
         vmm_memcpy(dst, (void *) hva, bytes_to_copy);
     }
-    else
-    {
+    else {
         vmm_memset(dst, 0, PAGE_4KB_SIZE);
     }
 }
@@ -276,7 +264,6 @@ void vmcs_0_destroy(struct _VMCS_OBJECT *vmcs)
     if (NULL != page) vmm_page_free(page);
 
     vmcs_destroy_all_msr_lists_internal(vmcs, FALSE);
-
     cache64_destroy(p_vmcs->cache);
 }
 
@@ -302,8 +289,7 @@ struct _VMCS_OBJECT * vmcs_1_create(GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
     if (0 != gpa)   // gpa==0 means that VMCS-1 creation was requested for emulated guest
     {
         // validate alignment
-        if (0 != (gpa & PAGE_4KB_MASK))
-        {
+        if (0 != (gpa & PAGE_4KB_MASK)) {
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: GPA is NOT 4K aligned\n", __FUNCTION__);
             return NULL;
         }
@@ -311,8 +297,7 @@ struct _VMCS_OBJECT * vmcs_1_create(GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
         // map to host address space
         status = gpm_gpa_to_hva(gcpu_get_current_gpm(guest), gpa, &hva);
 
-        if (TRUE != status)
-        {
+        if (TRUE != status) {
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Failed to translate GPA to HVA\n", __FUNCTION__);
             return NULL;
         }
@@ -323,15 +308,13 @@ struct _VMCS_OBJECT * vmcs_1_create(GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
 
 
     p_vmcs = vmm_malloc(sizeof(*p_vmcs));
-    if (NULL == p_vmcs)
-    {
+    if (NULL == p_vmcs) {
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
 
     p_vmcs->cache = cache64_create(VMCS_FIELD_COUNT);
-    if (NULL == p_vmcs->cache)
-    {
+    if (NULL == p_vmcs->cache) {
         vmm_mfree(p_vmcs);
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
@@ -380,21 +363,18 @@ void vmcs_1_flush_to_memory(struct _VMCS_OBJECT *vmcs)
         ADDRESS      hva;
         BOOLEAN      status;
 
-        if (0 == p_vmcs->gpa)
-        {
+        if (0 == p_vmcs->gpa) {
             break;  // nothing to do. It's an emulated guest
         }
 
-        if (NULL == p_vmcs->gcpu)
-        {
+        if (NULL == p_vmcs->gcpu) {
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: GCPU is NULL\n", __FUNCTION__);
 	    VMM_ASSERT(p_vmcs->gcpu);
             break;
         }
 
         guest = gcpu_guest_handle(p_vmcs->gcpu);
-        if (NULL == guest)
-        {
+        if (NULL == guest) {
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Guest is NULL\n", __FUNCTION__);
 	    VMM_ASSERT(guest);
             break;
@@ -406,12 +386,10 @@ void vmcs_1_flush_to_memory(struct _VMCS_OBJECT *vmcs)
         VMM_ASSERT(p_vmcs->gpa & PAGE_4KB_MASK);
 
         // check memory type TBD
-        if (TRUE == status && 0 == (p_vmcs->gpa & PAGE_4KB_MASK))
-        {
+        if (TRUE == status && 0 == (p_vmcs->gpa & PAGE_4KB_MASK)) {
             cache64_flush_to_memory(p_vmcs->cache, (void *)hva, PAGE_4KB_SIZE);
         }
-        else
-        {
+        else {
             VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Failed to map GPA to HVA\n", __FUNCTION__);
         }
 

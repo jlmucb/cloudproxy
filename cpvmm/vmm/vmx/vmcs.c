@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "vmm_dbg.h"
@@ -455,16 +455,12 @@ UINT64 vmcs_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
     VMM_ASSERT(vmcs);
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
     VMM_ASSERT(FIELD_IS_READABLE(field_id));
-    if (field_id < VMCS_FIELD_COUNT &&
-        (vmcs->skip_access_checking || FIELD_IS_READABLE(field_id)))
-    {
+    if (field_id < VMCS_FIELD_COUNT && (vmcs->skip_access_checking || FIELD_IS_READABLE(field_id))) {
         value = vmcs->vmcs_read(vmcs, field_id);
     }
-    else
-    {
+    else {
         value = UINT64_ALL_ONES;
     }
-
     return value;
 }
 
@@ -493,10 +489,8 @@ vmcs_copy(struct _VMCS_OBJECT *vmcs_dst, const struct _VMCS_OBJECT *vmcs_src)
 
     VMM_ASSERT(vmcs_dst->level != VMCS_MERGED);
 
-    for (field_id = 0; field_id < VMCS_FIELD_COUNT; ++field_id)
-    {
-        if (FIELD_IS_READABLE(field_id))
-        {
+    for (field_id = 0; field_id < VMCS_FIELD_COUNT; ++field_id) {
+        if (FIELD_IS_READABLE(field_id)) {
             value = vmcs_read(vmcs_src, field_id);
             vmcs_write_nocheck(vmcs_dst, field_id, value);
         }
@@ -506,10 +500,8 @@ void vmcs_store(struct _VMCS_OBJECT *vmcs, UINT64 *buffer)
 {
     VMCS_FIELD field_id;
 
-    for (field_id = 0; field_id < VMCS_FIELD_COUNT; ++field_id)
-    {
-        if (FIELD_IS_READABLE(field_id))
-        {
+    for (field_id = 0; field_id < VMCS_FIELD_COUNT; ++field_id) {
+        if (FIELD_IS_READABLE(field_id)) {
             buffer[field_id] = vmcs_read(vmcs, field_id);
         }
     }
@@ -520,10 +512,8 @@ void vmcs_load(struct _VMCS_OBJECT *vmcs, UINT64 *buffer)
 {
     VMCS_FIELD field_id;
 
-    for (field_id = 0; field_id < VMCS_FIELD_COUNT; ++field_id)
-    {
-        if (FIELD_IS_WRITEABLE(field_id))
-        {
+    for (field_id = 0; field_id < VMCS_FIELD_COUNT; ++field_id) {
+        if (FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, buffer[field_id]);
         }
     }
@@ -532,14 +522,11 @@ void vmcs_load(struct _VMCS_OBJECT *vmcs, UINT64 *buffer)
 
 UINT32 vmcs_get_field_encoding(VMCS_FIELD field_id, RW_ACCESS *p_access)
 {
-    if (field_id < VMCS_FIELD_COUNT)
-    {
+    if (field_id < VMCS_FIELD_COUNT) {
         if (NULL != p_access)
             *p_access = (RW_ACCESS)g_field_data[field_id].access;
-
         return g_field_data[field_id].encoding;
     }
-
     return VMCS_NO_COMPONENT;
 }
 
@@ -560,8 +547,7 @@ void vmcs_manager_init(void)
 //
 void enable_vmcs_2_0_fields( const VMCS_HW_CONSTRAINTS* constraints )
 {
-    if (constraints->ept_supported)
-    {
+    if (constraints->ept_supported) {
         g_field_data[VMCS_EPTP_ADDRESS].access = WRITABLE;
         g_field_data[VMCS_EXIT_INFO_GUEST_PHYSICAL_ADDRESS].access = READONLY;
         g_field_data[VMCS_GUEST_PDPTR0].access = WRITABLE;
@@ -570,50 +556,41 @@ void enable_vmcs_2_0_fields( const VMCS_HW_CONSTRAINTS* constraints )
         g_field_data[VMCS_GUEST_PDPTR3].access = WRITABLE;
     }
 
-    if (constraints->vpid_supported)
-    {
+    if (constraints->vpid_supported) {
         g_field_data[VMCS_VPID].access = WRITABLE;
     }
 
     if ((1 == constraints->may1_vm_entry_ctrl.Bits.LoadEfer) ||
-        (1 == constraints->may1_vm_exit_ctrl.Bits.SaveEfer))
-    {
+        (1 == constraints->may1_vm_exit_ctrl.Bits.SaveEfer)) {
         g_field_data[VMCS_GUEST_EFER].access = WRITABLE;
     }
 
     if ((1 == constraints->may1_vm_entry_ctrl.Bits.LoadPat) ||
-        (1 == constraints->may1_vm_exit_ctrl.Bits.SavePat))
-    {
+        (1 == constraints->may1_vm_exit_ctrl.Bits.SavePat)) {
         g_field_data[VMCS_GUEST_PAT].access = WRITABLE;
     }
 
-    if (1 == constraints->may1_pin_based_exec_ctrl.Bits.VmxTimer)
-    {
+    if (1 == constraints->may1_pin_based_exec_ctrl.Bits.VmxTimer) {
         g_field_data[VMCS_PREEMPTION_TIMER].access = WRITABLE;
     }
 
-    if (1 == constraints->may1_vm_exit_ctrl.Bits.LoadEfer)
-    {
+    if (1 == constraints->may1_vm_exit_ctrl.Bits.LoadEfer) {
         g_field_data[VMCS_HOST_EFER].access = WRITABLE;
     }
 
-    if (1 == constraints->may1_vm_exit_ctrl.Bits.LoadPat)
-    {
+    if (1 == constraints->may1_vm_exit_ctrl.Bits.LoadPat) {
         g_field_data[VMCS_HOST_PAT].access = WRITABLE;
     }
 
-    if (1 == constraints->may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL)
-    {
+    if (1 == constraints->may1_vm_exit_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL) {
         g_field_data[VMCS_GUEST_IA32_PERF_GLOBAL_CTRL].access = WRITABLE;
     }
 
-    if (1 == constraints->may1_vm_entry_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL)
-    {
+    if (1 == constraints->may1_vm_entry_ctrl.Bits.Load_IA32_PERF_GLOBAL_CTRL) {
         g_field_data[VMCS_HOST_IA32_PERF_GLOBAL_CTRL].access = WRITABLE;
     }
 #ifdef FAST_VIEW_SWITCH
-    if (constraints->vmfunc_supported)
-    {
+    if (constraints->vmfunc_supported) {
         g_field_data[VMCS_VMFUNC_CONTROL].access = WRITABLE;
         g_field_data[VMCS_VMFUNC_EPTP_LIST_ADDRESS].access = WRITABLE;
     }
@@ -631,21 +608,18 @@ static BOOLEAN get_enc_2_field_entry( UINT32 encoding, ENC_2_FIELD_ENTRY** entry
 
     VMM_ASSERT( NULL != entry );
 
-    if ((encoding & ENC_MUST_BE_ZERO_BITS) != 0)
-    {
+    if ((encoding & ENC_MUST_BE_ZERO_BITS) != 0) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P contains bits that assumed to be 0\n", encoding);
         return FALSE;
     }
 
-    if (enc_type >= NUMBER_OF_ENCODING_TYPES)
-    {
+    if (enc_type >= NUMBER_OF_ENCODING_TYPES) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P means that need more encoding types %P>=%P\n",
                     encoding, enc_type, NUMBER_OF_ENCODING_TYPES);
         return FALSE;
     }
 
-    if (entry_idx >= MAX_ENCODINGS_OF_SAME_TYPE)
-    {
+    if (entry_idx >= MAX_ENCODINGS_OF_SAME_TYPE) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P means that need more entries per type %P>=%P\n",
                     encoding, entry_idx, MAX_ENCODINGS_OF_SAME_TYPE);
         return FALSE;
@@ -666,12 +640,10 @@ static void init_enc_2_field_tables(void)
     vmm_memset( g_enc_2_field, 0, sizeof(g_enc_2_field) );
 
     // loop though all supported fields and fill the enc->field table
-    for (cur_field = (VMCS_FIELD)0; cur_field < VMCS_FIELD_COUNT; ++cur_field)
-    {
+    for (cur_field = (VMCS_FIELD)0; cur_field < VMCS_FIELD_COUNT; ++cur_field) {
         enc = g_field_data + (UINT32)cur_field;
 
-        if (NO_EXIST == enc->access)
-        {
+        if (NO_EXIST == enc->access) {
             continue;
         }
 
@@ -695,26 +667,22 @@ VMCS_FIELD vmcs_get_field_id_by_encoding( UINT32 encoding, OPTIONAL BOOLEAN* is_
 
     found = get_enc_2_field_entry( encoding, &enc_2_field_entry );
 
-    if ((!found) || (!enc_2_field_entry->valid))
-    {
+    if ((!found) || (!enc_2_field_entry->valid)) {
 //        VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P is unknown\n", encoding);
         return VMCS_FIELD_COUNT;
     }
 
     field = enc_2_field_entry->field_id;
-
-    if (IS_ENCODING_HIGH_TYPE(encoding))
+if (IS_ENCODING_HIGH_TYPE(encoding))
     {
-        if (SUPP_HIGH_ENC != g_field_data[field].supports_high_encoding)
-        {
+        if (SUPP_HIGH_ENC != g_field_data[field].supports_high_encoding) {
             VMM_LOG(mask_anonymous, level_trace,"ERROR: VMCS Encoding %P does not map to a known HIGH type encoding\n",
                         encoding);
             return VMCS_FIELD_COUNT;
         }
     }
 
-    if (is_HIGH_part)
-    {
+    if (is_HIGH_part) {
         *is_HIGH_part = IS_ENCODING_HIGH_TYPE(encoding);
     }
 
@@ -728,14 +696,11 @@ void vmcs_print_group( const struct _VMCS_OBJECT* obj, const VMCS_FIELD* fields_
     UINT64 value;
     const VMCS_ENCODING* field_desc;
 
-    for (i = 0; i < count; ++i)
-    {
+    for (i = 0; i < count; ++i) {
         field_desc = &g_field_data[fields_to_print[i]];
-        if (field_desc->access == NO_EXIST)
-        {
+        if (field_desc->access == NO_EXIST) {
             continue;
         }
-
         value = vmcs_read(obj, fields_to_print[i]);
         CLI_PRINT("%40s (0x%04X) = %P\n", field_desc->name, field_desc->encoding, value );
     }
@@ -747,15 +712,12 @@ BOOLEAN string_is_substring(const char *bigstring, const char *smallstring)
     BOOLEAN match = TRUE;
     int ib, is;
 
-    for (ib = 0, is = 0; bigstring[ib] != 0 && smallstring[is] != 0; ++ib)
-    {
-        if (bigstring[ib] == smallstring[is])
-        {
+    for (ib = 0, is = 0; bigstring[ib] != 0 && smallstring[is] != 0; ++ib) {
+        if (bigstring[ib] == smallstring[is]) {
             is++;
             match = TRUE;
         }
-        else
-        {
+        else {
             is = 0;
             match = FALSE;
         }
@@ -770,10 +732,8 @@ BOOLEAN string_is_substring(const char *bigstring, const char *smallstring)
 BOOLEAN strings_are_substrings(const char *bigstring, UINT32 num_of_smallstrings, char *smallstring[])
 {
     UINT32 i;
-    for (i = 0; i < num_of_smallstrings; ++i)
-    {
-        if (FALSE == string_is_substring(bigstring, smallstring[i]))
-        {
+    for (i = 0; i < num_of_smallstrings; ++i) {
+        if (FALSE == string_is_substring(bigstring, smallstring[i])) {
             return FALSE;
         }
     }
@@ -787,16 +747,13 @@ void vmcs_print_all_filtered(
     UINT64 value;
     const VMCS_ENCODING *field_desc;
 
-    for (i = 0; i < NELEMENTS(g_field_data); ++i)
-    {
+    for (i = 0; i < NELEMENTS(g_field_data); ++i) {
         field_desc = &g_field_data[i];
-        if (field_desc->access == NO_EXIST)
-        {
+        if (field_desc->access == NO_EXIST) {
             continue;
         }
 
-        if (strings_are_substrings(field_desc->name, num_of_filters, filters))
-        {
+        if (strings_are_substrings(field_desc->name, num_of_filters, filters)) {
             value = vmcs_read(obj, (VMCS_FIELD)i);
             CLI_PRINT("%40s (0x%04X) = %P\n", field_desc->name, field_desc->encoding, value );
         }
@@ -837,12 +794,10 @@ const char* vmcs_get_field_name( VMCS_FIELD field_id )
     const char* name;
     const VMCS_ENCODING* enc = (field_id < VMCS_FIELD_COUNT) ? &g_field_data[field_id] : NULL;
 
-    if (enc)
-    {
+    if (enc) {
         name = enc->name;
     }
-    else
-    {
+    else {
         name = "UNKNOWN VMCS FIELD";
     }
 
@@ -949,20 +904,16 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs,
     UINT32               i;
 
     // Retrieve pointer to a MSR list.
-    if (msr_list_addr != VMCS_INVALID_ADDRESS)
-    {
+    if (msr_list_addr != VMCS_INVALID_ADDRESS) {
         // Get pointer to MSR list
-        if (is_addres_hpa)
-        {
+        if (is_addres_hpa) {
             // Address that is written in VMCS is HPA, convert it to pointer
-            if (!hmm_hpa_to_hva((HPA)msr_list_addr, (HVA*)&msr_list_addr_ptr))
-            {
+            if (!hmm_hpa_to_hva((HPA)msr_list_addr, (HVA*)&msr_list_addr_ptr)) {
                 VMM_LOG(mask_anonymous, level_trace,"%s: Failed to retrieve HVA of MSR list from HPA=%P\n", __FUNCTION__, msr_list_addr);
                 VMM_DEADLOOP();
             }
         }
-        else
-        {
+        else {
             // Address that is written in VMCS is HVA
             msr_list_addr_ptr = (IA32_VMX_MSR_ENTRY*)msr_list_addr;
         }
@@ -978,11 +929,9 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs,
         if ((new_msr_ptr != NULL) && (new_msr_ptr->MsrIndex == msr_index))
             break;
 
-    if (i >= msr_list_count)
-    {
+    if (i >= msr_list_count) {
         // Check if a MSR list should be re/allocated.
-        if (msr_list_count >= *max_msrs_counter)
-        {
+        if (msr_list_count >= *max_msrs_counter) {
             // The list is full or not allocated, expand it
             IA32_VMX_MSR_ENTRY*  new_msr_list_addr_ptr = NULL;
             UINT32               new_max_counter;
@@ -993,27 +942,23 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs,
             vmcs_alloc_msr_list(msr_list_count + 1, (void**)&new_msr_list_addr_ptr, &new_max_counter);
             VMM_ASSERT(new_msr_list_addr_ptr != NULL);
 
-            if (msr_list_count != 0)
-            {
+            if (msr_list_count != 0) {
                 vmcs_copy_msr_list(new_msr_list_addr_ptr, msr_list_addr_ptr, msr_list_count);
                 vmm_mfree(msr_list_addr_ptr);
             }
 
             msr_list_addr_ptr = new_msr_list_addr_ptr;
 
-            if (is_addres_hpa)
-            {
+            if (is_addres_hpa) {
                 UINT64  msr_list_addr_hpa;
 
-                if (!hmm_hva_to_hpa((UINT64)msr_list_addr_ptr, &msr_list_addr_hpa))
-                {
+                if (!hmm_hva_to_hpa((UINT64)msr_list_addr_ptr, &msr_list_addr_hpa)) {
                     VMM_LOG(mask_anonymous, level_trace,"%s: Failed to retrieve HPA of MSR list\n", __FUNCTION__);
                     VMM_DEADLOOP();
                 }
                 vmcs_write(vmcs, list_address, msr_list_addr_hpa);
             }
-            else
-            {
+            else {
                 vmcs_write(vmcs, list_address, (UINT64)msr_list_addr_ptr);
             }
 
@@ -1025,8 +970,7 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs,
         vmcs_write(vmcs, list_count, msr_list_count + 1);
     }
 
-    if (new_msr_ptr != NULL)
-    {
+    if (new_msr_ptr != NULL) {
 	    new_msr_ptr->MsrIndex = msr_index;
             new_msr_ptr->Reserved = 0;
             new_msr_ptr->MsrData = value;
@@ -1046,11 +990,9 @@ void vmcs_delete_msr_from_list(struct _VMCS_OBJECT*  vmcs,
     IA32_VMX_MSR_ENTRY*  msr_ptr;
     UINT32               i;
 
-    if (msr_list_count != 0 && msr_list_addr != VMCS_INVALID_ADDRESS)
-    {
+    if (msr_list_count != 0 && msr_list_addr != VMCS_INVALID_ADDRESS) {
         // Get pointer to MSR list
-        if (is_addres_hpa)
-        {
+        if (is_addres_hpa) {
             // Address that is written in VMCS is HPA, convert it to pointer
             if (!hmm_hpa_to_hva((HPA) msr_list_addr, (HVA *) &msr_list_addr_ptr))
             {
@@ -1058,8 +1000,7 @@ void vmcs_delete_msr_from_list(struct _VMCS_OBJECT*  vmcs,
                 VMM_DEADLOOP();
             }
         }
-        else
-        {
+        else {
             // Address that is written in VMCS is HVA
             msr_list_addr_ptr = (IA32_VMX_MSR_ENTRY*)msr_list_addr;
         }
@@ -1068,10 +1009,8 @@ void vmcs_delete_msr_from_list(struct _VMCS_OBJECT*  vmcs,
         VMM_ASSERT(ALIGN_BACKWARD((UINT64) msr_list_addr_ptr, sizeof(IA32_VMX_MSR_ENTRY)) == (UINT64) msr_list_addr_ptr);
 
         // Look for that MSR in a list.
-        for (i = 0, msr_ptr = msr_list_addr_ptr; i < msr_list_count; i++, msr_ptr++)
-        {
-            if (msr_ptr->MsrIndex == msr_index)
-            {
+        for (i = 0, msr_ptr = msr_list_addr_ptr; i < msr_list_count; i++, msr_ptr++) {
+            if (msr_ptr->MsrIndex == msr_index) {
                 // Shift the rest of a list by one up.
                 UINT32  msrs_to_copy = msr_list_count - i - 1;
 
@@ -1094,9 +1033,7 @@ void vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists_internal(struct _VMCS_O
     UINT64 vmexit_store_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
     UINT64 vmenter_load_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
 
-    if ((vmexit_store_addr != vmenter_load_addr) &&
-        (vmenter_load_addr != VMCS_INVALID_ADDRESS)) {
-
+    if ((vmexit_store_addr != vmenter_load_addr) && (vmenter_load_addr != VMCS_INVALID_ADDRESS)) {
         vmcs_add_msr_to_vmexit_store_list_internal(vmcs, msr_index, value, is_msr_list_addr_hpa);
         vmcs_add_msr_to_vmenter_load_list_internal(vmcs, msr_index, value, is_msr_list_addr_hpa);
     }
@@ -1112,19 +1049,17 @@ void vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists_internal(struct _VMCS_O
 }
 
 void vmcs_delete_msr_from_vmexit_store_and_vmenter_load_lists_internal(struct _VMCS_OBJECT*  vmcs,
-                                                                       UINT32                msr_index,
-                                                                       BOOLEAN               is_msr_list_addr_hpa)
+                                                 UINT32 msr_index,
+                                                 BOOLEAN is_msr_list_addr_hpa)
 {
     UINT64 vmexit_store_addr = vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS);
     UINT64 vmenter_load_addr = vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS);
 
-    if (vmexit_store_addr != vmenter_load_addr)
-    {
+    if (vmexit_store_addr != vmenter_load_addr) {
         vmcs_delete_msr_from_vmexit_store_list_internal(vmcs, msr_index, is_msr_list_addr_hpa);
         vmcs_delete_msr_from_vmenter_load_list_internal(vmcs, msr_index, is_msr_list_addr_hpa);
     }
-    else if (vmenter_load_addr != VMCS_INVALID_ADDRESS)
-    {
+    else if (vmenter_load_addr != VMCS_INVALID_ADDRESS) {
         vmcs_delete_msr_from_vmexit_store_list_internal(vmcs, msr_index, is_msr_list_addr_hpa);
 
         vmcs_write(vmcs, VMCS_ENTER_MSR_LOAD_COUNT, vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_COUNT));
@@ -1454,43 +1389,34 @@ BOOLEAN vmm_get_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, VMM_GUEST_STATE GuestSta
 	if (((UINT32) GuestStateId) > ((UINT32)(NUM_OF_VMM_GUEST_STATE - 1)))
 			return FALSE;
 
-	if (GuestStateId < VMM_GUEST_CR0)
-	{
+	if (GuestStateId < VMM_GUEST_CR0) {
 		value->value = gcpu_get_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)GuestStateId);
 	}
-	else if (GuestStateId == VMM_GUEST_RIP)
-	{
+	else if (GuestStateId == VMM_GUEST_RIP) {
 		value->value = gcpu_get_gp_reg(gcpu, IA32_REG_RIP);
 	}
-	else if (GuestStateId == VMM_GUEST_PAT)
-	{
+	else if (GuestStateId == VMM_GUEST_PAT) {
 		value->value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_PAT);
 	}
-	else if (GuestStateId == VMM_GUEST_EFER)
-	{
+	else if (GuestStateId == VMM_GUEST_EFER) {
 		value->value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER);
 	}
-	else if (GuestStateId == VMM_GUEST_CR8)
-	{
+	else if (GuestStateId == VMM_GUEST_CR8) {
 		value->value = gcpu_get_control_reg(gcpu, IA32_CTRL_CR8);
 	}
-	else if (GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL)
-	{
+	else if (GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL) {
 		vmentry_control.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_ENTER_CONTROL_VECTOR);
-		if(vmentry_control.Bits.Load_IA32_PERF_GLOBAL_CTRL)
-		{
+		if(vmentry_control.Bits.Load_IA32_PERF_GLOBAL_CTRL) {
 			value->value = vmcs_read(vmcs, VMCS_GUEST_IA32_PERF_GLOBAL_CTRL);
 		}
-		else{
+		else {
 			value->value = UINT64_ALL_ONES;
 		}
 	}
-	else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY)
-	{
+	else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY) {
 		value->value = gcpu_get_interruptibility_state(gcpu);
 	}
-	else
-	{
+	else {
 		if ((GuestStateId == VMM_GUEST_PREEMPTION_TIMER) && ept_is_ept_supported())
 			vmcs_field_id = VMCS_PREEMPTION_TIMER;
 		else if ((GuestStateId >= VMM_GUEST_CR0) && (GuestStateId <= VMM_GUEST_SYSENTER_EIP))
@@ -1518,36 +1444,29 @@ BOOLEAN vmm_set_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, VMM_GUEST_STATE GuestSta
 	if (((UINT32) GuestStateId) > ((UINT32)(NUM_OF_VMM_GUEST_STATE - 1)))
 			return FALSE;
 
-	if (GuestStateId < VMM_GUEST_CR0)
-	{
+	if (GuestStateId < VMM_GUEST_CR0) {
 		gcpu_set_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)GuestStateId, value.value);
 	}
-	else if (GuestStateId == VMM_GUEST_PAT)
-	{
+	else if (GuestStateId == VMM_GUEST_PAT) {
 		gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, value.value);
 	}
-	else if (GuestStateId == VMM_GUEST_EFER)
-	{
+	else if (GuestStateId == VMM_GUEST_EFER) {
 		gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, value.value);
 	}
-	else if (GuestStateId == VMM_GUEST_CR0 || GuestStateId == VMM_GUEST_CR4 || GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL)
-	{
+	else if (GuestStateId == VMM_GUEST_CR0 || GuestStateId == VMM_GUEST_CR4 || GuestStateId == VMM_GUEST_IA32_PERF_GLOBAL_CTRL) {
 		//TBD;New functionality,needs to be implemented if required in future
 		return FALSE;
 	}
-	else if(GuestStateId == VMM_GUEST_RIP)
-	{
+	else if(GuestStateId == VMM_GUEST_RIP) {
 		if(TRUE == value.skip_rip)
 			gcpu_skip_guest_instruction(gcpu);
 		else
 			vmcs_write(vmcs, VMCS_GUEST_RIP, value.value);
 	}
-	else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY)
-	{
+	else if(GuestStateId == VMM_GUEST_INTERRUPTIBILITY) {
 		gcpu_set_interruptibility_state(gcpu, (UINT32)value.value);
 	}
-	else
-	{
+	else {
 		if ((GuestStateId == VMM_GUEST_PREEMPTION_TIMER) && ept_is_ept_supported())
 			vmcs_field_id = VMCS_PREEMPTION_TIMER;
 		else if ((GuestStateId >= VMM_GUEST_CR0) && (GuestStateId <= VMM_GUEST_SYSENTER_EIP))

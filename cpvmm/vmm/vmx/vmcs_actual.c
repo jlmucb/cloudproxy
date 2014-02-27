@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_ACTUAL_C)
@@ -252,15 +252,13 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
     struct _VMCS_ACTUAL_OBJECT *p_vmcs;
 
     p_vmcs = vmm_malloc(sizeof(*p_vmcs));
-    if (NULL == p_vmcs)
-    {
+    if (NULL == p_vmcs) {
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
 
     p_vmcs->cache = cache64_create(VMCS_FIELD_COUNT);
-    if (NULL == p_vmcs->cache)
-    {
+    if (NULL == p_vmcs->cache) {
         vmm_mfree(p_vmcs);
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
@@ -318,7 +316,7 @@ void vmcs_act_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value
     VMM_ASSERT(p_vmcs);
     if (!vmcs_sw_shadow_disable[hw_cpu_id()])
 		cache64_write(p_vmcs->cache, value, (UINT32 )field_id);
-	else
+    else
 		vmcs_act_write_to_hardware(p_vmcs, field_id, value);
 }
 
@@ -331,12 +329,10 @@ UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
     VMM_ASSERT(p_vmcs);
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
 
-    if (TRUE != cache64_read(p_vmcs->cache, &value, (UINT32) field_id))
-    {
+    if (TRUE != cache64_read(p_vmcs->cache, &value, (UINT32) field_id)) {
         // special case - if hw VMCS was never filled, there is nothing to read
         // from HW
-        if (GET_NEVER_ACTIVATED_FLAG(p_vmcs))
-        {
+        if (GET_NEVER_ACTIVATED_FLAG(p_vmcs)) {
             // assume the init was with all 0
             cache64_write(p_vmcs->cache, 0, (UINT32) field_id);
             return 0;
@@ -358,8 +354,7 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
 
     VMM_DEBUG_CODE(
         if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) &&
-            (p_vmcs->owning_host_cpu != hw_cpu_id()))
-        {
+            (p_vmcs->owning_host_cpu != hw_cpu_id())) {
             VMM_LOG(mask_anonymous, level_trace,"Trying to access VMCS, used on another CPU\n");
             VMM_DEADLOOP();
         }
@@ -369,38 +364,27 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
     VMM_ASSERT(encoding != VMCS_NO_COMPONENT);
 
     // if VMCS is not "current" now, make it current temporary
-    if (0 == GET_ACTIVATED_FLAG(p_vmcs))
-    {
+    if (0 == GET_ACTIVATED_FLAG(p_vmcs)) {
         previous_vmcs = temp_replace_vmcs_ptr(p_vmcs->hpa);
     }
 
     ret_val = hw_vmx_read_current_vmcs(encoding, &value);
 
-    if (ret_val != HW_VMX_SUCCESS)
-    {
-        error_processing(p_vmcs->hpa,
-                         ret_val,
-                         "hw_vmx_read_current_vmcs",
-                         field_id);
+    if (ret_val != HW_VMX_SUCCESS) {
+        error_processing(p_vmcs->hpa, ret_val, "hw_vmx_read_current_vmcs", field_id);
     }
 
     // flush current VMCS if it was never used on this CPU
-    if (p_vmcs->owning_host_cpu == CPU_NEVER_USED)
-    {
+    if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
 
-        if (ret_val != HW_VMX_SUCCESS)
-        {
-            error_processing(p_vmcs->hpa,
-                             ret_val,
-                             "hw_vmx_flush_current_vmcs",
-                             VMCS_FIELD_COUNT);
+        if (ret_val != HW_VMX_SUCCESS) {
+            error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
         }
     }
 
     // restore the previous "current" VMCS
-    if (0 != previous_vmcs)
-    {
+    if (0 != previous_vmcs) {
         restore_previous_vmcs_ptr( previous_vmcs );
     }
 
@@ -426,15 +410,13 @@ void vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id,
     encoding = vmcs_get_field_encoding( field_id, &access_type);
     VMM_ASSERT(encoding != VMCS_NO_COMPONENT);
 
-    if (0 == FIELD_IS_HW_WRITABLE(access_type))
-    {
+    if (0 == FIELD_IS_HW_WRITABLE(access_type)) {
         return;
     }
 
     ret_val = hw_vmx_write_current_vmcs(encoding, value);
 
-    if (ret_val != HW_VMX_SUCCESS)
-    {
+    if (ret_val != HW_VMX_SUCCESS) {
         error_processing(p_vmcs->hpa,
                          ret_val,
                          "hw_vmx_write_current_vmcs",
@@ -454,15 +436,13 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
     /* in case the guest was re-scheduled, NMI Window is set in other VMCS
     ** To speed the handling up, set NMI-Window in current VMCS if needed.
     */
-    if (nmi_window_is_requested())
-    {
+    if (nmi_window_is_requested()) {
         vmcs_update((struct _VMCS_OBJECT *)vmcs,
             VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS,
             UINT64_ALL_ONES, BIT_VALUE64(NMI_WINDOW_BIT));
     }
 
-    if (cache64_is_dirty(p_vmcs->cache))
-    {
+    if (cache64_is_dirty(p_vmcs->cache)) {
         cache64_flush_dirty(
             p_vmcs->cache,
             CACHE_ALL_ENTRIES,
@@ -476,17 +456,15 @@ void vmcs_act_flush_field_to_cpu(UINT32 field_id, VMCS_ACTUAL_OBJECT *p_vmcs)
 {
     UINT64 value;
 
-    if(FALSE == cache64_read(p_vmcs->cache, &value, field_id)){
+    if(FALSE == cache64_read(p_vmcs->cache, &value, field_id)) {
         VMM_LOG(mask_anonymous, level_trace,"Read field %d from cache failed.\n", field_id);
         return;
     }
 
-    if (VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS != field_id)
-    {
+    if (VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS != field_id) {
         vmcs_act_write_to_hardware(p_vmcs, (VMCS_FIELD)field_id, value);
     }
-    else
-    {
+    else {
         vmcs_act_flush_nmi_depended_field_to_cpu(p_vmcs, value);
     }
 }
@@ -496,12 +474,10 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
 {
     BOOLEAN success = FALSE;
 
-    while (FALSE == success)
-    {
+    while (FALSE == success) {
         p_vmcs->update_status = UPDATE_SUCCEEDED;
 
-        if (nmi_window_is_requested())
-        {
+        if (nmi_window_is_requested()) {
             BIT_SET64(value, NMI_WINDOW_BIT);
         }
 
@@ -531,8 +507,7 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
 
     VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs) == 0);
 
-    if (p_vmcs->owning_host_cpu == CPU_NEVER_USED)
-    {
+    if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         return;
     }
 
@@ -549,12 +524,8 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
     // now flush from hardware
     ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
 
-    if (ret_val != HW_VMX_SUCCESS)
-    {
-        error_processing(p_vmcs->hpa,
-                         ret_val,
-                         "hw_vmx_flush_current_vmcs",
-                         VMCS_FIELD_COUNT);
+    if (ret_val != HW_VMX_SUCCESS) {
+        error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
     }
 
     vmcs_deactivate(vmcs);
@@ -595,12 +566,8 @@ UINT64 temp_replace_vmcs_ptr( UINT64 new_ptr ) // return previous ptr
 
     ret_val = hw_vmx_set_current_vmcs( &new_ptr );
 
-    if (ret_val != HW_VMX_SUCCESS)
-    {
-        error_processing(new_ptr,
-                     ret_val,
-                     "hw_vmx_set_current_vmcs",
-                     VMCS_FIELD_COUNT);
+    if (ret_val != HW_VMX_SUCCESS) {
+        error_processing(new_ptr, ret_val, "hw_vmx_set_current_vmcs", VMCS_FIELD_COUNT);
     }
 
     return previous_vmcs;
@@ -613,29 +580,24 @@ void restore_previous_vmcs_ptr( UINT64 ptr_to_restore )
     UINT64           temp_vmcs_ptr;
 
     // restore previous VMCS pointer
-    if (ptr_to_restore != HW_VMCS_IS_EMPTY)
-    {
+    if (ptr_to_restore != HW_VMCS_IS_EMPTY) {
         ret_val = hw_vmx_set_current_vmcs( &ptr_to_restore );
 
-        if (ret_val != HW_VMX_SUCCESS)
-        {
+        if (ret_val != HW_VMX_SUCCESS) {
             error_processing(ptr_to_restore,
                              ret_val,
                              "hw_vmx_set_current_vmcs",
                              VMCS_FIELD_COUNT);
         }
     }
-    else
-    {
+    else {
         // reset hw VMCS pointer
         hw_vmx_get_current_vmcs( &temp_vmcs_ptr );
 
-        if (temp_vmcs_ptr != HW_VMCS_IS_EMPTY)
-        {
+        if (temp_vmcs_ptr != HW_VMCS_IS_EMPTY) {
             ret_val = hw_vmx_flush_current_vmcs( &temp_vmcs_ptr );
 
-            if (ret_val != HW_VMX_SUCCESS)
-            {
+            if (ret_val != HW_VMX_SUCCESS) {
                 error_processing(temp_vmcs_ptr,
                                  ret_val,
                                  "hw_vmx_flush_current_vmcs",
@@ -674,9 +636,7 @@ void vmcs_activate( VMCS_OBJECT* obj )
     VMM_ASSERT( GET_ACTIVATED_FLAG(p_vmcs) == 0 );
 
     VMM_DEBUG_CODE(
-        if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) &&
-            (p_vmcs->owning_host_cpu != this_cpu))
-        {
+        if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) && (p_vmcs->owning_host_cpu != this_cpu)) {
             VMM_LOG(mask_anonymous, level_trace,"Trying to activate VMCS, used on another CPU\n");
             VMM_DEADLOOP();
         }
@@ -684,27 +644,18 @@ void vmcs_activate( VMCS_OBJECT* obj )
 
     // special case - if VMCS is still in the initialization state (first load)
     // init the hw before activating it
-    if (GET_NEVER_ACTIVATED_FLAG(p_vmcs))
-    {
+    if (GET_NEVER_ACTIVATED_FLAG(p_vmcs)) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
 
-        if (ret_val != HW_VMX_SUCCESS)
-        {
-            error_processing(p_vmcs->hpa,
-                             ret_val,
-                             "hw_vmx_flush_current_vmcs",
-                             VMCS_FIELD_COUNT);
+        if (ret_val != HW_VMX_SUCCESS) {
+            error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
         }
     }
 
     ret_val = hw_vmx_set_current_vmcs(&p_vmcs->hpa);
 
-    if (ret_val != HW_VMX_SUCCESS)
-    {
-        error_processing(p_vmcs->hpa,
-                         ret_val,
-                         "hw_vmx_set_current_vmcs",
-                         VMCS_FIELD_COUNT);
+    if (ret_val != HW_VMX_SUCCESS) {
+        error_processing(p_vmcs->hpa, ret_val, "hw_vmx_set_current_vmcs", VMCS_FIELD_COUNT);
     }
 
     p_vmcs->owning_host_cpu = this_cpu;
@@ -770,8 +721,7 @@ VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(
 {
     UINT32 err = (UINT32)vmcs_read( obj, VMCS_EXIT_INFO_INSTRUCTION_ERROR_CODE );
 
-    if (error_message)
-    {
+    if (error_message) {
         *error_message = (err <= VMCS_INSTR_BAD_ERROR_CODE) ?
             g_instr_error_message[err] : "UNKNOWN VMCS_EXIT_INFO_INSTRUCTION_ERROR_CODE";
     }
@@ -791,8 +741,7 @@ void error_processing(UINT64 vmcs,
     UINT64      err           = 0;
     HW_VMX_RET_VALUE my_err;
 
-    switch (ret_val)
-    {
+    switch (ret_val) {
         case HW_VMX_SUCCESS:
             return;
 
@@ -801,8 +750,7 @@ void error_processing(UINT64 vmcs,
                 VM_EXIT_INFO_INSTRUCTION_ERROR_CODE,   // use hard-coded encoding
                 &err);
 
-            if (my_err == HW_VMX_SUCCESS)
-            {
+            if (my_err == HW_VMX_SUCCESS) {
                 error_message = g_instr_error_message[(UINT32)err];
                 break;
             }
@@ -814,14 +762,12 @@ void error_processing(UINT64 vmcs,
             error_message = "operation FAILED";
     }
 
-    if (field == VMCS_FIELD_COUNT)
-    {
+    if (field == VMCS_FIELD_COUNT) {
         VMM_LOG(mask_anonymous, level_trace,"%s( %P ) failed with the error: %s\n",
                  operation, vmcs,
                  error_message ? error_message : "unknown error");
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"%s( %P, %s ) failed with the error: %s\n",
                  operation,
                  vmcs,

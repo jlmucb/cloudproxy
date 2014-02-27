@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 // need these defines for guest.h -> array_iterators.h
@@ -151,8 +151,7 @@ BOOLEAN nmi_is_pending(CPU_ID cpu_id)
 void nmi_raise_this(void)
 {
 	CPU_ID cpu_id=hw_cpu_id();
-	if(cpu_id>=nmi_num_of_cores)
-	{
+	if(cpu_id>=nmi_num_of_cores) {
 		VMM_LOG(mask_anonymous, level_error, "Error: invalid cpu_id.\n");
 		return;
 	}
@@ -161,9 +160,9 @@ void nmi_raise_this(void)
 
 void nmi_clear_this(void)
 {
-	CPU_ID cpu_id=hw_cpu_id();
-    if(cpu_id>=nmi_num_of_cores)
-    {
+    CPU_ID cpu_id=hw_cpu_id();
+
+    if(cpu_id>=nmi_num_of_cores) {
         VMM_LOG(mask_anonymous, level_error, "Error: invalid cpu_id.\n");
         return;
     }
@@ -172,9 +171,8 @@ void nmi_clear_this(void)
 
 BOOLEAN nmi_is_pending_this(void)
 {
-	CPU_ID cpu_id=hw_cpu_id();
-    if(cpu_id>=nmi_num_of_cores)
-    {
+    CPU_ID cpu_id=hw_cpu_id();
+    if(cpu_id>=nmi_num_of_cores) {
         VMM_LOG(mask_anonymous, level_error, "Error: invalid cpu_id.\n");
         return FALSE;
     }
@@ -192,8 +190,7 @@ BOOLEAN nmi_is_pending_this(void)
 *-----------------------------------------------------------------------------*/
 void nmi_resume_handler(GUEST_CPU_HANDLE gcpu)
 {
-    if (NMI_EXISTS_ON_GCPU(gcpu))
-    {
+    if (NMI_EXISTS_ON_GCPU(gcpu)) {
         gcpu_set_pending_nmi(gcpu, TRUE);
     }
 }
@@ -233,8 +230,7 @@ VMEXIT_HANDLING_STATUS nmi_process_translated_reason(
 {
     VMEXIT_HANDLING_STATUS status;
 
-    switch (xlat_reason)
-    {
+    switch (xlat_reason) {
     case Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi:
         status = nmi_propagate_nmi(gcpu);
         break;
@@ -263,16 +259,12 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu)
 
     do {
 
-        if (gcpu_is_vmcs_layered(gcpu))
-        {
+        if (gcpu_is_vmcs_layered(gcpu)) {
             // if upper layer requested NMI VMEXIT, emulate NMI VMEXIT into it
             VMCS_OBJECT *vmcs1 = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_1);
             PIN_BASED_VM_EXECUTION_CONTROLS pin_based_vmexit_ctrls;
-
             pin_based_vmexit_ctrls.Uint32 = (UINT32) vmcs_read(vmcs1, VMCS_CONTROL_VECTOR_PIN_EVENTS);
-
-            if (pin_based_vmexit_ctrls.Bits.Nmi)
-            {
+            if (pin_based_vmexit_ctrls.Bits.Nmi) {
                 nmi_emulate_nmi_vmexit(gcpu);
                 nmi_clear_this();
                 status = VMEXIT_NOT_HANDLED;
@@ -281,15 +273,12 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu)
         }
 
         // here is non-layered case, or level.1 did not request NMI VMEXIT
-        if (gcpu_inject_nmi(gcpu))
-        {
+        if (gcpu_inject_nmi(gcpu)) {
             nmi_clear_this();
         }
 
         // do not deliver to upper level even if NMI was not really injected
         status = VMEXIT_HANDLED;
-
-
     } while (0);
 
     return status;
@@ -310,15 +299,13 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi_window(GUEST_CPU_HANDLE gcpu)
 
     do {
 
-        if (gcpu_is_vmcs_layered(gcpu))
-        {
+        if (gcpu_is_vmcs_layered(gcpu)) {
             // if upper layer requested NMI VMEXIT, emulate NMI VMEXIT into it
             VMCS_OBJECT *vmcs1 = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_1);
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
             ctrls.Uint32 = (UINT32)vmcs_read(vmcs1, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
-            if (ctrls.Bits.NmiWindow)
-            {
+            if (ctrls.Bits.NmiWindow) {
                 nmi_emulate_nmi_window_vmexit(gcpu);
                 status = VMEXIT_NOT_HANDLED;
                 break;

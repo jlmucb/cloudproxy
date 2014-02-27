@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "list.h"
 
@@ -90,8 +90,7 @@ ARRAY_LIST_HANDLE array_list_init(char *buffer, UINT32 buffer_size, UINT32 eleme
 
     free_list = &alist->free_list;
 
-    for(i = 0; i < num_of_elements; i++)
-    {
+    for(i = 0; i < num_of_elements; i++) {
         entry = ARRAY_LIST_ELEMENT_BY_INDEX(alist, i);
         list_add(free_list, &entry->list);
         free_list = free_list->next;
@@ -105,8 +104,7 @@ BOOLEAN array_list_add(ARRAY_LIST_HANDLE alist, void* data)
     LIST_ELEMENT *free_element = NULL;
     ARRAY_LIST_ELEMENT *free_list_entry = NULL;
 
-    if(list_is_empty(&alist->free_list) || alist == NULL || data == NULL)
-    {
+    if(list_is_empty(&alist->free_list) || alist == NULL || data == NULL) {
         return FALSE;
     }
 
@@ -116,7 +114,6 @@ BOOLEAN array_list_add(ARRAY_LIST_HANDLE alist, void* data)
     alist->num_of_used_elements++;
 
     free_list_entry = LIST_ENTRY(free_element, ARRAY_LIST_ELEMENT, list);
-
     vmm_memcpy(free_list_entry->data, data, alist->element_size);
 
     return TRUE;
@@ -126,8 +123,7 @@ BOOLEAN array_list_remove(ARRAY_LIST_HANDLE alist, void *data)
 {
     ARRAY_LIST_ELEMENT *element;
 
-    if(list_is_empty(&alist->used_list) || alist == NULL || data == NULL)
-    {
+    if(list_is_empty(&alist->used_list) || alist == NULL || data == NULL) {
         return FALSE;
     }
 
@@ -138,21 +134,21 @@ BOOLEAN array_list_remove(ARRAY_LIST_HANDLE alist, void *data)
 
     return TRUE;
 }
+
+
 char *array_list_first(ARRAY_LIST_HANDLE alist, ARRAY_LIST_ITERATOR *iter)
 {
     ARRAY_LIST_ELEMENT *element;
     char* data;
 
-    if(list_is_empty(&alist->used_list))
-    {
+    if(list_is_empty(&alist->used_list)) {
         return NULL;
     }
 
     element = LIST_ENTRY(alist->used_list.next, ARRAY_LIST_ELEMENT, list);
     data = element->data;
 
-    if(iter != NULL)
-    {
+    if(iter != NULL) {
         iter->alist = alist;
         iter->element = element;
     }
@@ -162,13 +158,11 @@ char *array_list_first(ARRAY_LIST_HANDLE alist, ARRAY_LIST_ITERATOR *iter)
 #ifdef INCLUDE_UNUSED_CODE
 char *array_list_next(ARRAY_LIST_ITERATOR *iter)
 {
-    if(iter == NULL || iter->element->list.next == &iter->alist->used_list)
-    {
+    if(iter == NULL || iter->element->list.next == &iter->alist->used_list) {
         return NULL;
     }
 
     iter->element = LIST_ENTRY(iter->element->list.next, ARRAY_LIST_ELEMENT, list);
-
     return iter->element->data;
 }
 #endif

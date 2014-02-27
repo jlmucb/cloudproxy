@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(IPC_API_C)
@@ -193,18 +193,16 @@ void stop_cpu_handler(CPU_ID from, void* arg)
 {
     STOP_CPU_CONTEXT *context = (STOP_CPU_CONTEXT *) arg;
 
-    if (context->is_destination(context->is_destination_arg))
-    {
+    if (context->is_destination(context->is_destination_arg)) {
         // check the timestamp in order not to miss "edge" of context->stop
-        while (context->stop && context->timestamp == context->current_timestamp)
-        {
+        while (context->stop && context->timestamp == context->current_timestamp) {
             hw_pause();
             ipc_process_one_ipc();
         }
 
-		// Check if on START handler should be performed.
-		if (context->on_start_handler != NULL)
-			context->on_start_handler(from, (void *) context->on_start_handler_arg);
+        // Check if on START handler should be performed.
+        if (context->on_start_handler != NULL)
+            context->on_start_handler(from, (void *) context->on_start_handler_arg);
     }
 }
 
@@ -220,14 +218,11 @@ static BOOLEAN execute_stop(STOP_CPU_CONTEXT *context, is_destination_fn is_dest
     IPC_DESTINATION dst;
 
     VMM_ASSERT( context != NULL );
-
     vmm_zeromem(&dst, sizeof(dst));
-
     interruptible_lock_acquire(ipc_start_stop_context.stop_lock);
 
-    if (context->stop)
-    {
-		// already stopped - should not be here
+    if (context->stop) {
+                // already stopped - should not be here
         VMM_ASSERT( FALSE == context->stop );
         lock_release(ipc_start_stop_context.stop_lock);
         return FALSE;
@@ -239,11 +234,8 @@ static BOOLEAN execute_stop(STOP_CPU_CONTEXT *context, is_destination_fn is_dest
     context->is_destination_arg = is_destination_arg;
 
     dst.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
-
     context->num_stopped_cpus = ipc_send_message(dst, IPC_TYPE_STOP, stop_cpu_handler, context);
-
     lock_release(ipc_start_stop_context.stop_lock);
-
     return TRUE;
 }
 
@@ -257,14 +249,10 @@ static UINT32 execute_start(STOP_CPU_CONTEXT *context, IPC_HANDLER_FN handler, v
     IPC_DESTINATION dst;
 
     VMM_ASSERT( context != NULL );
-
     vmm_zeromem(&dst, sizeof(dst));
-
     interruptible_lock_acquire(ipc_start_stop_context.stop_lock);
-
-    if (FALSE == context->stop)
-    {
-		// not stopped - should not be here
+    if (FALSE == context->stop) {
+                // not stopped - should not be here
         VMM_ASSERT( TRUE == context->stop );
         lock_release(ipc_start_stop_context.stop_lock);
         return FALSE;
@@ -279,11 +267,8 @@ static UINT32 execute_start(STOP_CPU_CONTEXT *context, IPC_HANDLER_FN handler, v
     context->stop = FALSE;
 
     dst.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
-
     ipc_send_message(dst, IPC_TYPE_START, NULL, NULL);
-
     lock_release(ipc_start_stop_context.stop_lock);
-
     return context->num_stopped_cpus;
 }
 
@@ -312,13 +297,10 @@ BOOLEAN ipc_initialize(UINT16 number_of_host_processors)
     // BEFORE_VMLAUNCH. NOT_USED. OLD_IPC is not defined.
     VMM_ASSERT(stop_all_context);
     vmm_zeromem(stop_all_context, sizeof(STOP_CPU_CONTEXT));
-
     stop_all_context->guest_id = INVALID_GUEST_ID;
-
     list_add(ipc_start_stop_context.ipc_stop_context, stop_all_context->list);
 
-    for(guest = guest_first(&context); guest != NULL; guest = guest_next(&context))
-    {
+    for(guest = guest_first(&context); guest != NULL; guest = guest_next(&context)) {
         guest_id = guest_get_id(guest);
         ipc_guest_initialize(guest_id);
     }
@@ -342,11 +324,8 @@ BOOLEAN ipc_guest_initialize(GUEST_ID guest_id)
     // BEFORE_VMLAUNCH. NOT_USED. OLD_IPC is not defined.
     VMM_ASSERT(stop_guest_cpus_context);
     vmm_zeromem(stop_guest_cpus_context, sizeof(STOP_CPU_CONTEXT));
-
     stop_guest_cpus_context->guest_id = guest_id;
-
     list_add(ipc_start_stop_context.ipc_stop_context, stop_guest_cpus_context->list);
-
     return TRUE;
 }
 
@@ -356,11 +335,9 @@ STOP_CPU_CONTEXT *ipc_find_stop_guest_cpus_context(GUEST_ID guest_id)
     LIST_ELEMENT *iter = NULL;
     STOP_CPU_CONTEXT *stop_cpu_context = NULL;
 
-    LIST_FOR_EACH(ipc_start_stop_context.ipc_stop_context, iter)
-    {
+    LIST_FOR_EACH(ipc_start_stop_context.ipc_stop_context, iter) {
         stop_cpu_context = LIST_ENTRY(iter, STOP_CPU_CONTEXT, list);
-        if(stop_cpu_context->guest_id == guest_id)
-        {
+        if(stop_cpu_context->guest_id == guest_id) {
             return stop_cpu_context;
         }
     }

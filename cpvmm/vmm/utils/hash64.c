@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <vmm_defs.h>
 #include <heap.h>
@@ -226,42 +226,42 @@ hash_allocation_failed:
 static
 void hash64_destroy_hash_internal(HASH64_TABLE* hash) {
     HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func;
-	HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func;
+    HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func;
     HASH64_NODE** array;
-	UINT32 i;
+    UINT32 i;
 
     array = hash64_get_array(hash);
     mem_dealloc_func = hash64_get_mem_dealloc_func(hash);
-	node_dealloc_func = hash64_get_node_dealloc_func(hash);
-	for (i = 0; i < hash64_get_hash_size(hash); i++) {
-		HASH64_NODE* node = array[i];
+    node_dealloc_func = hash64_get_node_dealloc_func(hash);
+    for (i = 0; i < hash64_get_hash_size(hash); i++) {
+        HASH64_NODE* node = array[i];
 
-		if (hash64_get_element_count(hash) == 0) {
-			VMM_ASSERT(node == NULL);
-			break;
-		}
+        if (hash64_get_element_count(hash) == 0) {
+            VMM_ASSERT(node == NULL);
+            break;
+        }
 
-		while (node != NULL) {
-			HASH64_NODE* next_node = hash64_node_get_next(node);
+        while (node != NULL) {
+            HASH64_NODE* next_node = hash64_node_get_next(node);
 
-			VMM_ASSERT(hash64_get_element_count(hash) != 0);
+            VMM_ASSERT(hash64_get_element_count(hash) != 0);
 
-			if (hash64_is_multiple_values_hash(hash)) {
-				UINT64 node_value = hash64_node_get_value(node);
-				HASH64_NODE* internal_node = (HASH64_NODE*)hash64_uint64_to_ptr(node_value);
-				while (internal_node != NULL) {
-					HASH64_NODE* next_internal_node = hash64_node_get_next(internal_node);
-					node_dealloc_func(hash64_get_allocation_deallocation_context(hash), internal_node);
-					internal_node = next_internal_node;
-				}
-			}
-			node_dealloc_func(hash64_get_allocation_deallocation_context(hash), node);
-			hash64_dec_element_count(hash);
-			node = next_node;
-		}
-	}
+            if (hash64_is_multiple_values_hash(hash)) {
+                UINT64 node_value = hash64_node_get_value(node);
+                HASH64_NODE* internal_node = (HASH64_NODE*)hash64_uint64_to_ptr(node_value);
+                while (internal_node != NULL) {
+                    HASH64_NODE* next_internal_node = hash64_node_get_next(internal_node);
+                    node_dealloc_func(hash64_get_allocation_deallocation_context(hash), internal_node);
+                    internal_node = next_internal_node;
+                }
+            }
+            node_dealloc_func(hash64_get_allocation_deallocation_context(hash), node);
+            hash64_dec_element_count(hash);
+            node = next_node;
+        }
+    }
 
-	VMM_ASSERT(hash64_get_element_count(hash) == 0);
+    VMM_ASSERT(hash64_get_element_count(hash) == 0);
 
     if (mem_dealloc_func == NULL) {
         vmm_memory_free(array);
@@ -286,20 +286,15 @@ HASH64_HANDLE hash64_create_hash(HASH64_FUNC hash_func,
                                  HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
                                  void* node_allocation_deallocation_context,
                                  UINT32 hash_size) {
-    return hash64_create_hash_internal(hash_func,
-                                       mem_alloc_func,
-                                       mem_dealloc_func,
-                                       node_alloc_func,
-                                       node_dealloc_func,
-                                       node_allocation_deallocation_context,
-                                       hash_size,
-                                       FALSE);
+    return hash64_create_hash_internal(hash_func, mem_alloc_func, mem_dealloc_func,
+                                       node_alloc_func, node_dealloc_func,
+                                       node_allocation_deallocation_context, hash_size, FALSE);
 }
 
 void hash64_destroy_hash(HASH64_HANDLE hash_handle) {
-	HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
+    HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
 
-	VMM_ASSERT(!hash64_is_multiple_values_hash(hash));
+    VMM_ASSERT(!hash64_is_multiple_values_hash(hash));
     hash64_destroy_hash_internal(hash);
 }
 
@@ -326,18 +321,12 @@ void hash64_default_node_dealloc_func(void* context UNUSED, void* data)
 
 HASH64_HANDLE hash64_create_default_hash(UINT32 hash_size)
 {
-    return hash64_create_hash(hash64_default_hash_func,
-                              NULL,
-                              NULL,
-                              hash64_default_node_alloc_func,
-                              hash64_default_node_dealloc_func,
-                              NULL,
-                              hash_size);
+    return hash64_create_hash(hash64_default_hash_func, NULL, NULL,
+                              hash64_default_node_alloc_func, hash64_default_node_dealloc_func,
+                              NULL, hash_size);
 }
 
-BOOLEAN hash64_lookup(HASH64_HANDLE hash_handle,
-                     UINT64 key,
-                     UINT64* value) {
+BOOLEAN hash64_lookup(HASH64_HANDLE hash_handle, UINT64 key, UINT64* value) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
     HASH64_NODE* node;
 
@@ -503,22 +492,17 @@ HASH64_HANDLE hash64_create_multiple_values_hash(HASH64_FUNC hash_func,
                                                  HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
                                                  void* node_allocation_deallocation_context,
                                                  UINT32 hash_size) {
-    return hash64_create_hash_internal(hash_func,
-                                       mem_alloc_func,
-                                       mem_dealloc_func,
-                                       node_alloc_func,
-                                       node_dealloc_func,
-                                       node_allocation_deallocation_context,
-                                       hash_size,
-                                       TRUE);
+    return hash64_create_hash_internal(hash_func, mem_alloc_func, mem_dealloc_func, node_alloc_func,
+                                       node_dealloc_func, node_allocation_deallocation_context,
+                                       hash_size, TRUE);
 }
 #endif
 
 
 void hash64_destroy_multiple_values_hash(HASH64_HANDLE hash_handle) {
-	HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
+        HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
 
-	VMM_ASSERT(hash64_is_multiple_values_hash(hash));
+        VMM_ASSERT(hash64_is_multiple_values_hash(hash));
     hash64_destroy_hash_internal(hash);
 }
 
@@ -543,7 +527,6 @@ BOOLEAN hash64_lookup_in_multiple_values_hash(HASH64_HANDLE hash_handle,
     }
 
     top_node_value = hash64_node_get_value(top_node);
-
     *iter = (HASH64_MULTIPLE_VALUES_HASH_ITERATOR)hash64_uint64_to_ptr(top_node_value);
 
     return TRUE;

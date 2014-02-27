@@ -64,11 +64,7 @@ CACHE64_OBJECT cache64_create(UINT32 num_of_entries)
     dirty_bits = vmm_malloc(bitmap_size);
     valid_bits = vmm_malloc(bitmap_size);
 
-    if (NULL != cache       &&
-        NULL != table       &&
-        NULL != dirty_bits  &&
-        NULL != valid_bits)
-    {
+    if (NULL != cache && NULL != table && NULL != dirty_bits && NULL != valid_bits) {
         // everything is OK. fill the fields
         cache->num_of_entries = num_of_entries;
         cache->bitmap_size    = bitmap_size;
@@ -81,23 +77,18 @@ CACHE64_OBJECT cache64_create(UINT32 num_of_entries)
         vmm_memset(dirty_bits, 0, bitmap_size);
         vmm_memset(valid_bits, 0, bitmap_size);
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"[cache64] %s: Allocation failed\n", __FUNCTION__);
-        if (NULL != cache)
-        {
+        if (NULL != cache) {
             vmm_mfree(cache);
         }
-        if (NULL != table)
-        {
+        if (NULL != table) {
             vmm_mfree(table);
         }
-        if (NULL != dirty_bits)
-        {
+        if (NULL != dirty_bits) {
             vmm_mfree(dirty_bits);
         }
-        if (NULL != valid_bits)
-        {
+        if (NULL != valid_bits) {
             vmm_mfree(valid_bits);
         }
         cache = NULL;
@@ -110,15 +101,13 @@ extern BOOLEAN vmcs_sw_shadow_disable[];
 void cache64_write(CACHE64_OBJECT cache, UINT64 value, UINT32 entry_no)
 {
     if (vmcs_sw_shadow_disable[hw_cpu_id()])
-		return;
-	
-	VMM_ASSERT(cache);
+        return;
+        
+    VMM_ASSERT(cache);
     VMM_ASSERT(entry_no < cache->num_of_entries);
 
-    if (entry_no < cache->num_of_entries)
-    {
-        if ( ! (cache->table[entry_no] == value && CACHE_FIELD_IS_VALID(cache, entry_no)))
-        {
+    if (entry_no < cache->num_of_entries) {
+        if ( ! (cache->table[entry_no] == value && CACHE_FIELD_IS_VALID(cache, entry_no))) {
             cache->table[entry_no] = value;
             CACHE_FIELD_SET_DIRTY(cache, entry_no);
             CACHE_FIELD_SET_VALID(cache, entry_no);
@@ -133,7 +122,7 @@ BOOLEAN cache64_read(CACHE64_OBJECT cache, UINT64 *p_value, UINT32 entry_no)
     BOOLEAN is_valid = FALSE;
 
     if (vmcs_sw_shadow_disable[hw_cpu_id()])
-		return FALSE;
+                return FALSE;
 
     VMM_ASSERT(cache);
     VMM_ASSERT(entry_no < cache->num_of_entries);
@@ -159,14 +148,11 @@ UINT32 cache64_read_raw(CACHE64_OBJECT cache, UINT64 *p_value, UINT32 entry_no)
     VMM_ASSERT(entry_no < cache->num_of_entries);
     VMM_ASSERT(p_value);
 
-    if (entry_no < cache->num_of_entries)
-    {
-        if (CACHE_FIELD_IS_VALID(cache, entry_no))
-        {
+    if (entry_no < cache->num_of_entries) {
+        if (CACHE_FIELD_IS_VALID(cache, entry_no)) {
             *p_value = cache->table[entry_no];
             cache_flags = CACHE_VALID_FLAG;
-            if (CACHE_FIELD_IS_DIRTY(cache, entry_no))
-            {
+            if (CACHE_FIELD_IS_DIRTY(cache, entry_no)) {
                 cache_flags |= CACHE_DIRTY_FLAG;
             }
         }
@@ -180,13 +166,11 @@ void cache64_invalidate(CACHE64_OBJECT cache, UINT32 entry_no)
 {
     VMM_ASSERT(cache);
 
-    if (entry_no < cache->num_of_entries)
-    {
+    if (entry_no < cache->num_of_entries) {
         // invalidate specific entry
         CACHE_FIELD_CLR_VALID(cache, entry_no);
     }
-    else
-    {
+    else {
         // invalidate all entries
         BITMAP_CLR(cache->flags, CACHE_VALID_FLAG);
         vmm_memset(cache->valid_bits, 0, cache->bitmap_size);
@@ -204,11 +188,9 @@ void cache64_flush_dirty(
 {
     VMM_ASSERT(cache);
 
-    if (entry_no < cache->num_of_entries)
-    {
+    if (entry_no < cache->num_of_entries) {
         // flush specific entry
-        if (CACHE_FIELD_IS_DIRTY(cache, entry_no))
-        {
+        if (CACHE_FIELD_IS_DIRTY(cache, entry_no)) {
             CACHE_FIELD_CLR_DIRTY(cache, entry_no);
             if (NULL != function)
             {
@@ -216,17 +198,14 @@ void cache64_flush_dirty(
             }
         }
     }
-    else
-    {
+    else {
         // flush all entries
         BITMAP_CLR(cache->flags, CACHE_DIRTY_FLAG);
 
-        if (NULL != function)
-        {
+        if (NULL != function) {
             ENUMERATE_DIRTY_ENTRIES(cache, function, arg);
         }
-        else
-        {
+        else {
             vmm_memset(cache->dirty_bits, 0, cache->bitmap_size);
         }
     }
@@ -236,12 +215,10 @@ void cache64_flush_dirty(
 void cache64_flush_to_memory(CACHE64_OBJECT cache, void *p_dest, UINT32 max_bytes)
 {
     UINT32 cache_size = sizeof(*cache->table) * cache->num_of_entries;
-
     VMM_ASSERT(cache);
     VMM_ASSERT(p_dest);
 
-    if (cache_size > max_bytes)
-    {
+    if (cache_size > max_bytes) {
         VMM_LOG(mask_anonymous, level_trace,"[cache64] %s: Warning!!! Destination size less then required\n", __FUNCTION__);
         cache_size = max_bytes;
     }

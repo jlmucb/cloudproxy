@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "common_libc.h"
@@ -109,7 +109,7 @@ ADDRESS vmm_heap_initialize(
 
     // calculate how many unaligned pages we can support
     number_of_pages = (HEAP_PAGE_INT) ((heap_buffer_size + (g_heap_pa_num * PAGE_4KB_SIZE))
-        		      / (PAGE_4KB_SIZE + sizeof(HEAP_PAGE_DESCRIPTOR)));
+                              / (PAGE_4KB_SIZE + sizeof(HEAP_PAGE_DESCRIPTOR)));
     ex_heap_start_page = number_of_pages + 1;
     VMM_LOG(mask_anonymous, level_trace,"HEAP INIT: number_of_pages = %d\n", number_of_pages);
 
@@ -134,16 +134,13 @@ ADDRESS vmm_heap_initialize(
     // ASSERT for now.
     VMM_ASSERT(heap_total_pages > 0);
 
-    for (i = 0; i < heap_total_pages ; ++i)
-    {
+    for (i = 0; i < heap_total_pages ; ++i) {
         heap_array[i].in_use = 0;
         heap_array[i].number_of_pages = (heap_total_pages - i);
     }
 
     //VMM_DEBUG_CODE(vmm_heap_show());
-
     lock_initialize(&heap_lock);
-
     return heap_base + (heap_total_pages * PAGE_4KB_SIZE);
 
 }
@@ -151,13 +148,12 @@ ADDRESS vmm_heap_initialize(
 /*-------------------------------------------------------*
 *  FUNCTION : vmm_heap_extend()
 *  PURPOSE  : Extend the heap to an additional memory block 
-*			: update actual number of pages.
+*                       : update actual number of pages.
 *  ARGUMENTS:IN ADDRESS ex_heap_base_address - address at which the heap is located
 *           : size_t    ex_heap_size - in bytes
 *  RETURNS  : Last occupied address
 *-------------------------------------------------------*/
-ADDRESS vmm_heap_extend(
-    IN ADDRESS ex_heap_buffer_address,
+ADDRESS vmm_heap_extend( IN ADDRESS ex_heap_buffer_address,
     IN size_t  ex_heap_buffer_size)
 {
     size_t  heap_buffer_size;
@@ -226,16 +222,12 @@ static void * page_alloc_unprotected(
     HEAP_PAGE_INT allocated_page_no;
     void *p_buffer = NULL;
 
-    if (number_of_pages == 0)
-    {
+    if (number_of_pages == 0) {
         return NULL;
     }
 
-    for (i = 0; i < heap_total_pages ; ++i)
-    {
-        if ((0 == heap_array[i].in_use) &&
-            (number_of_pages <= heap_array[i].number_of_pages))
-        {
+    for (i = 0; i < heap_total_pages ; ++i) {
+        if ((0 == heap_array[i].in_use) && (number_of_pages <= heap_array[i].number_of_pages)) {
             VMM_ASSERT((i + heap_array[i].number_of_pages) <= heap_total_pages); // validity check
 
             // found the suitable buffer
@@ -250,8 +242,7 @@ static void * page_alloc_unprotected(
             //VMM_LOG(mask_anonymous, level_trace,"HEAP: Successfully allocated %d pages at %P\n", number_of_pages, p_buffer);
             //VMM_LOG(mask_anonymous, level_trace,"HEAP page_alloc_unprotected: i=%d, heap_array[i].in_use=%d heap_array[i].number_of_pages=%d\n", i, heap_array[i].in_use, heap_array[i].number_of_pages);
             // mark next number_of_pages-1 pages as in_use
-            for (i = allocated_page_no + 1; i < (allocated_page_no + number_of_pages); ++i)
-            {
+            for (i = allocated_page_no + 1; i < (allocated_page_no + number_of_pages); ++i) {
                 heap_array[i].in_use = 1;
                 heap_array[i].number_of_pages = 0;
             }
@@ -323,16 +314,14 @@ HEAP_PAGE_INT vmm_page_allocate_scattered(
 
     lock_acquire(&heap_lock);
 
-    for (i = 0; i < number_of_pages; ++i)
-    {
+    for (i = 0; i < number_of_pages; ++i) {
         p_page_array[i] = page_alloc_unprotected(
             #ifdef DEBUG
                                                 file_name,
                                                 line_number,
             #endif
                                                 1);
-        if (NULL == p_page_array[i])
-        {
+        if (NULL == p_page_array[i]) {
             VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Failed to allocate pages %d..%d\n", __FILE__, __LINE__, i+1, number_of_pages);
             break;    // leave the loop
         }
@@ -342,8 +331,7 @@ HEAP_PAGE_INT vmm_page_allocate_scattered(
     number_of_allocated_pages = i;
 
     // fill the pages which failed to be allocated with NULLs
-    for ( ; i < number_of_pages; ++i)
-    {
+    for ( ; i < number_of_pages; ++i) {
         p_page_array[i] = NULL;
     }
     return number_of_allocated_pages;
@@ -357,8 +345,7 @@ static void vmm_mark_pages_free(
 {
     HEAP_PAGE_INT i;
 
-    for (i = page_from; i < page_to; ++i)
-    {
+    for (i = page_from; i < page_to; ++i) {
         heap_array[i].in_use = 0;
         heap_array[i].number_of_pages = pages_to_release - (i - page_from);
     }
@@ -395,8 +382,7 @@ void vmm_page_free(IN void *p_buffer)
     //VMM_LOG(mask_anonymous, level_trace,"HEAP: trying to free page_id %d\n", release_from_page_id);
 
     if (0 == heap_array[release_from_page_id].in_use ||
-        0 == heap_array[release_from_page_id].number_of_pages)
-    {
+        0 == heap_array[release_from_page_id].number_of_pages) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Page %d is not in use\n", __FILE__, __LINE__, release_from_page_id);
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
@@ -410,16 +396,15 @@ void vmm_page_free(IN void *p_buffer)
 
     release_to_page_id = release_from_page_id + pages_to_release;
 
-    if (release_to_page_id < heap_total_pages       &&
+    if (release_to_page_id < heap_total_pages &&
         0 == heap_array[release_to_page_id].in_use  &&
-        (release_to_page_id + heap_array[release_to_page_id].number_of_pages) <= heap_total_pages)
-    {
+        (release_to_page_id + heap_array[release_to_page_id].number_of_pages) <= heap_total_pages) {
         pages_to_release += heap_array[release_to_page_id].number_of_pages;
     }
 
 
     // move backward, to grab all free pages, trying to prevent fragmentation
-    while (release_from_page_id > 0                         &&
+    while (release_from_page_id > 0  &&
            0 == heap_array[release_from_page_id - 1].in_use &&
            0 != heap_array[release_from_page_id - 1].number_of_pages) // 3rd check is for sanity only
     {
@@ -450,8 +435,7 @@ UINT32 vmm_page_buff_size(IN void *p_buffer)
 
     if (!(CHECK_ADDRESS_IN_RANGE(address, heap_base, heap_pages * PAGE_4KB_SIZE) ||
          CHECK_ADDRESS_IN_RANGE(address, ex_heap_base, ex_heap_pages * PAGE_4KB_SIZE)) ||
-        (address & PAGE_4KB_MASK) != 0)
-    {
+        (address & PAGE_4KB_MASK) != 0) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Buffer %p is out of heap space\n", __FILE__, __LINE__, p_buffer);
         VMM_DEADLOOP();
         return 0;
@@ -462,15 +446,14 @@ UINT32 vmm_page_buff_size(IN void *p_buffer)
     //VMM_LOG(mask_anonymous, level_trace,"HEAP: trying to free page_id %d\n", release_from_page_id);
 
     if (0 == heap_array[release_from_page_id].in_use ||
-        0 == heap_array[release_from_page_id].number_of_pages)
-    {
+        0 == heap_array[release_from_page_id].number_of_pages) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Page %d is not in use\n", __FILE__, __LINE__, release_from_page_id);
         VMM_DEADLOOP();
         return 0;
     }
 
     num_pages = (UINT32) heap_array[release_from_page_id].number_of_pages;
-	return num_pages;
+    return num_pages;
 }
 
 /*-------------------------------------------------------*
@@ -488,8 +471,7 @@ void* vmm_memory_allocate(
 {
     void *p_buffer = NULL;
 
-    if (size == 0)
-    {
+    if (size == 0) {
         return NULL;
     }
 
@@ -501,8 +483,7 @@ void* vmm_memory_allocate(
 #endif
                             (HEAP_PAGE_INT) (size / PAGE_4KB_SIZE));
 
-    if (NULL != p_buffer)
-    {
+    if (NULL != p_buffer) {
         vmm_memset(p_buffer, 0, size);
     }
 
@@ -574,20 +555,15 @@ void vmm_heap_show(void)
     VMM_LOG(mask_anonymous, level_trace,"Heap Show: total_pages=%d\n", heap_total_pages);
     VMM_LOG(mask_anonymous, level_trace,"---------------------\n");
 
-    for (i = 0; i < heap_total_pages; )
-    {
+    for (i = 0; i < heap_total_pages; ) {
         VMM_LOG(mask_anonymous, level_trace,"Pages %d..%d ", i, i + heap_array[i].number_of_pages - 1);
 
-        if (heap_array[i].in_use)
-        {
+        if (heap_array[i].in_use) {
             VMM_LOG(mask_anonymous, level_trace,"allocated in %s line=%d\n", heap_array[i].file_name, heap_array[i].line_number);
         }
-        else
-        {
+        else {
             VMM_LOG(mask_anonymous, level_trace,"free\n");
         }
-
-
 
         i += heap_array[i].number_of_pages;
     }

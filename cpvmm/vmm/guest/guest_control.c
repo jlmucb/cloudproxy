@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CONTROL_C)
@@ -24,13 +24,12 @@
 #include "ipc.h"
 #include "scheduler.h"
 
-//******************************************************************************
-//*
-//* Main implementatuion idea:
-//*    at boot stage just iterate through all gcpus and immediately apply
-//*    at run stage use IPC to apply
-//*
-//******************************************************************************
+//
+//
+// Main implementatuion idea:
+//    at boot stage just iterate through all gcpus and immediately apply
+//    at run stage use IPC to apply
+//
 
 // -------------------------- types -----------------------------------------
 typedef struct _IPC_COMM_GUEST_STRUCT {
@@ -59,10 +58,8 @@ void apply_vmexit_config(CPU_ID from UNUSED, void* arg)
 
     VMM_ASSERT( guest );
 
-    for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx ))
-    {
-        if (this_hcpu_id == scheduler_get_host_cpu_id( gcpu ))
-        {
+    for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx )) {
+        if (this_hcpu_id == scheduler_get_host_cpu_id( gcpu )) {
             gcpu_control_apply_only( gcpu );
         }
     }
@@ -84,27 +81,23 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
     VMM_ASSERT( guest );
 
     // setup vmexit requests without applying
-    for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx ))
-    {
+    for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx )) {
         gcpu_control_setup_only( gcpu, request );
     }
 
     // now apply
     vmm_state = vmm_get_state();
 
-    if (VMM_STATE_BOOT == vmm_state)
-    {
+    if (VMM_STATE_BOOT == vmm_state) {
         // may be run on BSP only
         VMM_ASSERT( 0 == this_hcpu_id );
 
         // single thread mode with all APs yet not init
-        for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx ))
-        {
+        for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx )) {
             gcpu_control_apply_only( gcpu );
         }
     }
-    else if (VMM_STATE_RUN == vmm_state)
-    {
+    else if (VMM_STATE_RUN == vmm_state) {
         IPC_COMM_GUEST_STRUCT ipc;
         UINT32                wait_for_ipc_count = 0;
         IPC_DESTINATION       ipc_dst;
@@ -128,15 +121,13 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
         wait_for_ipc_count = ipc_execute_handler( ipc_dst, apply_vmexit_config, &ipc );
 
         // wait for execution finish
-        while (wait_for_ipc_count != ipc.executed)
-        {
+        while (wait_for_ipc_count != ipc.executed) {
             // avoid deadlock - process one IPC if exist
             ipc_process_one_ipc();
             hw_pause();
         }
     }
-    else
-    {
+    else {
         // not supported mode
         VMM_LOG(mask_anonymous, level_trace,"Unsupported global vmm_state=%d in guest_request_vmexit_on()\n", vmm_state);
         VMM_DEADLOOP();

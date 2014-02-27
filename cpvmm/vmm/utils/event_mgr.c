@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 /*++
 Module Name:
@@ -201,8 +201,7 @@ EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)
                         (UINT64) (p_vcpu->guest_id << (8 * sizeof(GUEST_ID)) | p_vcpu->guest_cpu_id),
                         (UINT64 *) &p_cpu_events);
 
-    if(p_cpu_events != NULL)
-    {
+    if(p_cpu_events != NULL) {
         p_event = &(p_cpu_events->event[e]);
     }
     return p_event;
@@ -215,12 +214,10 @@ EVENT_ENTRY * get_guest_observers(UVMM_EVENT_INTERNAL e, GUEST_HANDLE guest)
     GUEST_ID        guest_id = guest_get_id(guest);
     LIST_ELEMENT    *iter = NULL;
 
-    LIST_FOR_EACH(&event_mgr.guest_events, iter)
-    {
+    LIST_FOR_EACH(&event_mgr.guest_events, iter) {
         GUEST_EVENTS *p_guest_events;
         p_guest_events = LIST_ENTRY(iter, GUEST_EVENTS, link);
-        if(p_guest_events->guest_id == guest_id)
-        {
+        if(p_guest_events->guest_id == guest_id) {
             p_event = &p_guest_events->event[e];
             break;
         }
@@ -245,12 +242,10 @@ UINT32  event_observers_limit (UVMM_EVENT_INTERNAL e)
      *  See if event has specific observers limits. (If none, we'll use the array
      *  boundry limits).
      */
-    if (events_characteristics[e].specific_observers_limits == NO_EVENT_SPECIFIC_LIMIT)
-    {
+    if (events_characteristics[e].specific_observers_limits == NO_EVENT_SPECIFIC_LIMIT) {
         observers_limits = OBSERVERS_LIMIT;
     }
-    else
-    {
+    else {
         observers_limits = (UINT32)events_characteristics[e].specific_observers_limits;
         VMM_ASSERT(observers_limits <= OBSERVERS_LIMIT);
     }
@@ -276,27 +271,22 @@ UINT32 event_manager_initialize(UINT32 num_of_host_cpus)
     VMM_ASSERT(ARRAY_SIZE(events_characteristics) == EVENTS_COUNT);
 
     host_physical_cpus = num_of_host_cpus;
-
     vmm_memset( &event_mgr, 0, sizeof( event_mgr ));
-
     event_mgr.gcpu_events = hash64_create_default_hash(host_physical_cpus * host_physical_cpus);
 
-    for(i = 0; i < EVENTS_COUNT; i++)
-    {
+    for(i = 0; i < EVENTS_COUNT; i++) {
         general_event = &(event_mgr.general_event[i]);
         lock_initialize_read_write_lock(&(general_event->lock));
     }
 
     list_init(&event_mgr.guest_events);
 
-    for(guest = guest_first(&context); guest != NULL; guest = guest_next(&context))
-    {
+    for(guest = guest_first(&context); guest != NULL; guest = guest_next(&context)) {
         guest_id = guest_get_id(guest);
         event_manager_guest_initialize(guest_id);
     }
 
     event_global_register(EVENT_GCPU_ADD, event_manager_add_gcpu);
-
     return 0;
 }
 
@@ -314,8 +304,7 @@ UINT32 event_manager_guest_initialize(GUEST_ID guest_id)
     vmm_memset(p_new_guest_events, 0, sizeof(*p_new_guest_events));
 
     // init lock for each event
-    for(i = 0; i < EVENTS_COUNT; i++)
-    {
+    for(i = 0; i < EVENTS_COUNT; i++) {
         event = &(p_new_guest_events->event[i]);
         lock_initialize_read_write_lock(&(event->lock));
     }
@@ -323,11 +312,9 @@ UINT32 event_manager_guest_initialize(GUEST_ID guest_id)
     p_new_guest_events->guest_id = guest_id;
 
     /* for each guest/cpu we keep the event (callbacks) array */
-    for( gcpu = guest_gcpu_first(guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context))
-    {
+    for( gcpu = guest_gcpu_first(guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context)) {
         event_manager_gcpu_initialize(gcpu);
     }
-
     list_add(&event_mgr.guest_events, &p_new_guest_events->link);
 
     return 0;
@@ -364,8 +351,7 @@ UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu)
                   (UINT64) gcpu_events);
 
     // init lock for each event
-    for(i = 0; i < EVENTS_COUNT; i++)
-    {
+    for(i = 0; i < EVENTS_COUNT; i++) {
         event = &(gcpu_events->event[i]);
         lock_initialize_read_write_lock(&(event->lock));
     }
@@ -391,7 +377,6 @@ BOOLEAN event_register_internal(
     BOOLEAN registered = FALSE;
 
     observers_limits = event_observers_limit(e);
-
     lock_acquire_writelock(&p_event->lock);
 
     /*
@@ -400,13 +385,11 @@ BOOLEAN event_register_internal(
     while (i < observers_limits && p_event->call[i])
         ++i;
 
-    if (i < observers_limits)
-    {
+    if (i < observers_limits) {
         p_event->call[i] = call;
         registered = TRUE;
     }
-    else
-    {
+    else {
         /*
          *  Exceeding allowed observers count
          */
@@ -448,8 +431,7 @@ BOOLEAN event_guest_register(
     if (0 == (events_characteristics[e].scope & EVENT_GUEST_SCOPE)) return FALSE;
 
     list = get_guest_observers(e, guest);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         registered = event_register_internal(list, e, call);
     }
 
@@ -490,20 +472,16 @@ BOOLEAN event_unregister_internal(
     BOOLEAN         unregistered = FALSE;
 
     observers_limits = event_observers_limit(e);
-
     lock_acquire_writelock(&p_event->lock);
 
-    while (i < observers_limits && p_event->call[i])
-    {
-        if (p_event->call[i] == call)
-        {
+    while (i < observers_limits && p_event->call[i]) {
+        if (p_event->call[i] == call) {
             unregistered = TRUE;
 
             /*
              *  Match. Delete entry (promote the following entries, one entry forward)
              */
-            while ((i+1) < observers_limits && p_event->call[i+1])
-            {
+            while ((i+1) < observers_limits && p_event->call[i+1]) {
                 p_event->call[i] = p_event->call[i+1];
                 ++i;
             }
@@ -531,15 +509,13 @@ BOOLEAN event_global_unregister(
     if (e >= EVENTS_COUNT) return FALSE;
 
     list = get_global_observers(e);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         unregistered = event_unregister_internal(list, e, call);
     }
     return unregistered;
 }
 
-BOOLEAN event_guest_unregister(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+BOOLEAN event_guest_unregister( UVMM_EVENT_INTERNAL  e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to unregister from event e
     )
@@ -573,8 +549,7 @@ BOOLEAN event_gcpu_unregister(
     if (e >= EVENTS_COUNT) return FALSE;
 
     list = get_gcpu_observers(e, gcpu);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         unregistered = event_unregister_internal(list, e, call);
     }
     return unregistered;
@@ -600,8 +575,7 @@ BOOLEAN event_raise_internal(
     vmm_memcpy(call, p_event->call, sizeof(call));
     lock_release_readlock(&p_event->lock);
 
-    while (i < observers_limits && call[i])
-    {
+    while (i < observers_limits && call[i]) {
         call[i](gcpu, p);
         event_is_handled = TRUE;
         ++i;
@@ -611,8 +585,7 @@ BOOLEAN event_raise_internal(
 }
 
 
-BOOLEAN event_global_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
+BOOLEAN event_global_raise( UVMM_EVENT_INTERNAL e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     )
@@ -638,8 +611,7 @@ BOOLEAN event_guest_raise(
     guest = gcpu_guest_handle(gcpu);
     VMM_ASSERT(guest);
     list = get_guest_observers(e, guest);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         event_handled = event_raise_internal(list, e, gcpu, p);
     }
     return event_handled;
@@ -656,8 +628,7 @@ BOOLEAN event_gcpu_raise(
     BOOLEAN         event_handled = FALSE;
 
     list = get_gcpu_observers(e, gcpu);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         event_handled = event_raise_internal(list, e, gcpu, p);
     }
 
@@ -675,8 +646,7 @@ BOOLEAN event_raise(
 
     VMM_ASSERT(e < EVENTS_COUNT);
 
-    if (e < EVENTS_COUNT)
-    {
+    if (e < EVENTS_COUNT) {
         if (NULL != gcpu)                                   // try to raise GCPU-scope event
             raised = event_gcpu_raise(e, gcpu, p);
 
@@ -709,16 +679,13 @@ BOOLEAN event_is_registered(
         return FALSE;
 
     observers_limits = event_observers_limit(e);
-
     lock_acquire_readlock(&list->lock);
 
     /*
      *  Find free observer slot
      */
-    while (i < observers_limits && list->call[i])
-    {
-        if (list->call[i] == call)
-        {
+    while (i < observers_limits && list->call[i]) {
+        if (list->call[i] == call) {
             res = TRUE;
             break;
         }

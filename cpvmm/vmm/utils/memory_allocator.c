@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "memory_allocator.h"
 #include "pool_api.h"
@@ -43,15 +43,12 @@ static UINT32 buffer_size_to_pool_index(UINT32 size)
     UINT32 pool_element_size = 0;
 
     VMM_ASSERT(size != 0);
-
     hw_scan_bit_backward((UINT32 *)&pool_index, size);
     pool_element_size = 1 << pool_index;
-    if(pool_element_size < size)
-    {
+    if(pool_element_size < size) {
         pool_element_size = pool_element_size << 1;
         pool_index++;
     }
-
     return pool_index;
 }
 
@@ -73,10 +70,7 @@ void* vmm_mem_allocate_internal(
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 size_to_request;
 
-
-    if(size > ((2 KILOBYTE) - sizeof(MEM_ALLOCATION_INFO)))
-    {// starting from 2KB+1 need a full page
-
+    if(size > ((2 KILOBYTE) - sizeof(MEM_ALLOCATION_INFO))) { // starting from 2KB+1 need a full page
         VMM_LOG(mask_anonymous, level_trace,"%s: WARNING: Memory allocator supports allocations of sizes up to 2040 bytes (requested size = 0x%x from %s:%d)\n", __FUNCTION__, size, file_name, line_number);
         VMM_ASSERT(0); // remove when encountered, make sure to treat this case in the caller
         return NULL;
@@ -105,16 +99,14 @@ void* vmm_mem_allocate_internal(
 
     lock_acquire(&lock);
     pool = pools[pool_index];
-    if(NULL == pool)
-    {
+    if(NULL == pool) {
         pool = pools[pool_index] = assync_pool_create((UINT32)pool_element_size);
         VMM_ASSERT(pool);
     }
 
     ptr = pool_allocate(pool);
     lock_release(&lock);
-    if(NULL == ptr)
-    {
+    if(NULL == ptr) {
         return NULL;
     }
 
@@ -144,11 +136,8 @@ void* vmm_mem_allocate(
     INT32   line_number,
     IN UINT32 size)
 {
-    return vmm_mem_allocate_internal(
-            file_name,
-            line_number,
-            size,
-            sizeof(MEM_ALLOCATION_INFO));
+    return vmm_mem_allocate_internal( file_name, line_number,
+            size, sizeof(MEM_ALLOCATION_INFO));
 }
 
 void vmm_mem_free(
@@ -162,8 +151,7 @@ void vmm_mem_free(
     UINT32 pool_index = 0;
     POOL_HANDLE pool = NULL;
 
-    if (buff == NULL)
-    {
+    if (buff == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"In %s#%d try to free NULL\n", file_name, line_number);
         return;
     }
@@ -193,12 +181,7 @@ void* vmm_mem_allocate_aligned(
         VMM_LOG(mask_anonymous, level_trace,"%s: WARNING: Requested alignment is not power of 2\n", __FUNCTION__);
         return NULL;
     }
-
-    return vmm_mem_allocate_internal(
-            file_name,
-            line_number,
-            size,
-            alignment);
+    return vmm_mem_allocate_internal( file_name, line_number, size, alignment);
 }
 
 UINT32 vmm_mem_buff_size(
@@ -209,17 +192,14 @@ UINT32 vmm_mem_buff_size(
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 pool_element_size = 0;
 
-    if (buff == NULL)
-    {
+    if (buff == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"In %s#%d try to access NULL\n", file_name, line_number);
         return 0;
     }
-
     alloc_info = (MEM_ALLOCATION_INFO*)((UINT64)buff - sizeof(MEM_ALLOCATION_INFO));
     pool_element_size = alloc_info->size;
     VMM_ASSERT(IS_POW_OF_2(pool_element_size));
-
-	return pool_element_size;
+    return pool_element_size;
 }
 
 static
@@ -244,7 +224,7 @@ UINT32 vmm_mem_pool_size_internal(
 
     pool_index = buffer_size_to_pool_index(size_to_request);
     pool_element_size = 1 << pool_index;
-	return pool_element_size;
+        return pool_element_size;
 }
 
 UINT32 vmm_mem_pool_size(
@@ -252,11 +232,8 @@ UINT32 vmm_mem_pool_size(
       INT32   line_number,
       IN UINT32 size)
 {
-    return vmm_mem_pool_size_internal(
-            file_name,
-            line_number,
-            size,
-            sizeof(MEM_ALLOCATION_INFO));
+    return vmm_mem_pool_size_internal( file_name, line_number,
+            size, sizeof(MEM_ALLOCATION_INFO));
 }
 
 #pragma warning (pop)
@@ -266,14 +243,11 @@ void memory_allocator_print(void)
 {
     UINT32 i;
 
-    for(i = 0; i < NUMBER_OF_POOLS; i++)
-    {
-        if(POOL_INVALID_HANDLE == pools[i])
-        {
+    for(i = 0; i < NUMBER_OF_POOLS; i++) {
+        if(POOL_INVALID_HANDLE == pools[i]) {
             VMM_LOG(mask_anonymous, level_trace,"\r\nPool #%d nor int use\r\n", i);
         }
-        else
-        {
+        else {
             pool_print(pools[i]);
         }
     }

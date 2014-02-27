@@ -451,7 +451,7 @@ void* ms_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs,
     UINT64 addr_value = vmcs_read(vmcs, field);
     UINT64 addr_hpa;
     UINT64 addr_hva;
-	MAM_ATTRIBUTES attrs;
+    MAM_ATTRIBUTES attrs;
 
     if (mem_type == MS_HVA) {
         return (void*)addr_value;
@@ -503,10 +503,8 @@ void ms_merge_bitmaps(IN void* bitmap0,
 }
 
 static
-BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list,
-                          IN UINT32 msr_index,
-                          IN UINT32 count,
-                          OUT UINT64* value) {
+BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list, IN UINT32 msr_index,
+                          IN UINT32 count, OUT UINT64* value) {
     UINT32 i;
 
     for (i = count; i > 0; i--) {
@@ -521,14 +519,10 @@ BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list,
 }
 
 static
-void ms_merge_msr_list(IN GUEST_CPU_HANDLE gcpu,
-                       IN VMCS_OBJECT* merged_vmcs,
-                       IN IA32_VMX_MSR_ENTRY* first_list,
-                       IN IA32_VMX_MSR_ENTRY* second_list,
-                       IN UINT32 first_list_count,
-                       IN UINT32 second_list_count,
-                       IN MSR_LIST_COPY_MODE copy_mode,
-                       IN VMCS_ADD_MSR_FUNC add_msr_func,
+void ms_merge_msr_list(IN GUEST_CPU_HANDLE gcpu, IN VMCS_OBJECT* merged_vmcs,
+                       IN IA32_VMX_MSR_ENTRY* first_list, IN IA32_VMX_MSR_ENTRY* second_list,
+                       IN UINT32 first_list_count, IN UINT32 second_list_count,
+                       IN MSR_LIST_COPY_MODE copy_mode, IN VMCS_ADD_MSR_FUNC add_msr_func,
                        IN VMCS_CLEAR_MSR_LIST_FUNC clear_list_func,
                        IN VMCS_IS_MSR_IN_LIST_FUNC is_msr_in_list_func,
                        IN VMCS_FIELD msr_list_addr_field,
@@ -567,8 +561,7 @@ void ms_merge_msr_list(IN GUEST_CPU_HANDLE gcpu,
 }
 
 static
-void ms_split_msr_lists(IN GUEST_CPU_HANDLE gcpu,
-                        IN IA32_VMX_MSR_ENTRY* merged_list,
+void ms_split_msr_lists(IN GUEST_CPU_HANDLE gcpu, IN IA32_VMX_MSR_ENTRY* merged_list,
                         IN UINT32 merged_list_count) {
     UINT32 i;
 
@@ -613,8 +606,7 @@ void ms_perform_cr_split(IN GUEST_CPU_HANDLE gcpu,
     gcpu_set_control_reg_layered(gcpu, reg, level1_reg, VMCS_LEVEL_1);
 }
 
-void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu,
-                        IN BOOLEAN merge_only_dirty) {
+void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN merge_only_dirty) {
     // TODO: merge only dirty
     VMCS_HIERARCHY* hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
     VMCS_OBJECT* level0_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_LEVEL_0);
@@ -1011,17 +1003,10 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu,
             VMM_DEADLOOP();
         }
 
-        ms_merge_msr_list(gcpu,
-                          merged_vmcs,
-                          level1_list,
-                          level0_list,
-                          level1_list_count,
-                          level0_list_count,
-                          MSR_LIST_COPY_NO_CHANGE,
-                          vmcs_add_msr_to_vmexit_store_list,
-                          vmcs_clear_vmexit_store_list,
-                          vmcs_is_msr_in_vmexit_store_list,
-                          VMCS_EXIT_MSR_STORE_ADDRESS,
+        ms_merge_msr_list(gcpu, merged_vmcs, level1_list, level0_list, level1_list_count,
+                          level0_list_count, MSR_LIST_COPY_NO_CHANGE,
+                          vmcs_add_msr_to_vmexit_store_list, vmcs_clear_vmexit_store_list,
+                          vmcs_is_msr_in_vmexit_store_list, VMCS_EXIT_MSR_STORE_ADDRESS,
                           VMCS_EXIT_MSR_STORE_COUNT);
     }
 
@@ -1035,18 +1020,10 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu,
             VMM_DEADLOOP();
         }
 
-        ms_merge_msr_list(gcpu,
-                          merged_vmcs,
-                          level0_list,
-                          NULL,
-                          level0_list_count,
-                          0,
-                          MSR_LIST_COPY_NO_CHANGE,
-                          vmcs_add_msr_to_vmexit_load_list,
-                          vmcs_clear_vmexit_load_list,
-                          vmcs_is_msr_in_vmexit_load_list,
-                          VMCS_EXIT_MSR_LOAD_ADDRESS,
-                          VMCS_EXIT_MSR_LOAD_COUNT);
+        ms_merge_msr_list(gcpu, merged_vmcs, level0_list, NULL, level0_list_count, 0,
+                          MSR_LIST_COPY_NO_CHANGE, vmcs_add_msr_to_vmexit_load_list,
+                          vmcs_clear_vmexit_load_list, vmcs_is_msr_in_vmexit_load_list,
+                          VMCS_EXIT_MSR_LOAD_ADDRESS, VMCS_EXIT_MSR_LOAD_COUNT);
     }
 
     // VMEnter MSR-load address and count
@@ -1121,8 +1098,7 @@ void ms_split_from_level2(IN GUEST_CPU_HANDLE gcpu) {
     // -----------DATA FIELDS OF LEVEL1 VMCS-----------
     ms_copy_data_fields(level1_vmcs, merged_vmcs);
 
-    if (vmcs_field_is_supported(VMCS_PREEMPTION_TIMER))
-    {
+    if (vmcs_field_is_supported(VMCS_PREEMPTION_TIMER)) {
         ms_split_timer_from_level2(
             vmcs_hierarchy_get_vmcs(hierarchy, VMCS_LEVEL_1),
             level1_vmcs, merged_vmcs);
@@ -1570,18 +1546,10 @@ void ms_merge_to_level1(IN GUEST_CPU_HANDLE gcpu,
             VMM_DEADLOOP();
         }
 
-        ms_merge_msr_list(gcpu,
-                          merged_vmcs,
-                          level0_list,
-                          NULL,
-                          level0_list_count,
-                          0,
-                          MSR_LIST_COPY_NO_CHANGE,
-                          vmcs_add_msr_to_vmexit_store_list,
-                          vmcs_clear_vmexit_store_list,
-                          vmcs_is_msr_in_vmexit_store_list,
-                          VMCS_EXIT_MSR_STORE_ADDRESS,
-                          VMCS_EXIT_MSR_STORE_COUNT);
+        ms_merge_msr_list(gcpu, merged_vmcs, level0_list, NULL, level0_list_count,
+                          0, MSR_LIST_COPY_NO_CHANGE, vmcs_add_msr_to_vmexit_store_list,
+                          vmcs_clear_vmexit_store_list, vmcs_is_msr_in_vmexit_store_list,
+                          VMCS_EXIT_MSR_STORE_ADDRESS, VMCS_EXIT_MSR_STORE_COUNT);
     }
 
     // VMExit MSR-load address and count
@@ -1594,18 +1562,10 @@ void ms_merge_to_level1(IN GUEST_CPU_HANDLE gcpu,
             VMM_DEADLOOP();
         }
 
-        ms_merge_msr_list(gcpu,
-                          merged_vmcs,
-                          level0_list,
-                          NULL,
-                          level0_list_count,
-                          0,
-                          MSR_LIST_COPY_NO_CHANGE,
-                          vmcs_add_msr_to_vmexit_load_list,
-                          vmcs_clear_vmexit_load_list,
-                          vmcs_is_msr_in_vmexit_load_list,
-                          VMCS_EXIT_MSR_LOAD_ADDRESS,
-                          VMCS_EXIT_MSR_LOAD_COUNT);
+        ms_merge_msr_list(gcpu, merged_vmcs, level0_list, NULL, level0_list_count, 0,
+                          MSR_LIST_COPY_NO_CHANGE, vmcs_add_msr_to_vmexit_load_list,
+                          vmcs_clear_vmexit_load_list, vmcs_is_msr_in_vmexit_load_list,
+                          VMCS_EXIT_MSR_LOAD_ADDRESS, VMCS_EXIT_MSR_LOAD_COUNT);
     }
 
     // VMEnter MSR-load address and count
@@ -1630,18 +1590,10 @@ void ms_merge_to_level1(IN GUEST_CPU_HANDLE gcpu,
             copy_mode = MSR_LIST_COPY_AND_SET_32_BIT_MODE_IN_EFER | MSR_LIST_COPY_UPDATE_GCPU;
         }
 
-        ms_merge_msr_list(gcpu,
-                          merged_vmcs,
-                          level1_list,
-                          level0_list,
-                          level1_list_count,
-                          level0_list_count,
-                          copy_mode,
-                          vmcs_add_msr_to_vmenter_load_list,
-                          vmcs_clear_vmenter_load_list,
-                          vmcs_is_msr_in_vmenter_load_list,
-                          VMCS_ENTER_MSR_LOAD_ADDRESS,
-                          VMCS_ENTER_MSR_LOAD_COUNT);
+        ms_merge_msr_list(gcpu, merged_vmcs, level1_list, level0_list, level1_list_count,
+                          level0_list_count, copy_mode, vmcs_add_msr_to_vmenter_load_list,
+                          vmcs_clear_vmenter_load_list, vmcs_is_msr_in_vmenter_load_list,
+                          VMCS_ENTER_MSR_LOAD_ADDRESS, VMCS_ENTER_MSR_LOAD_COUNT);
     }
 
     // ------------------HOST_STATE------------------
@@ -1690,33 +1642,28 @@ void ms_merge_timer_to_level2(VMCS_OBJECT *vmcs_0, VMCS_OBJECT *vmcs_1, VMCS_OBJ
 
     merged_pin_exec.Bits.VmxTimer = pin_exec[0].Bits.VmxTimer || pin_exec[1].Bits.VmxTimer;
 
-    if (0 == merged_pin_exec.Bits.VmxTimer)
-    {
+    if (0 == merged_pin_exec.Bits.VmxTimer) {
         // VMX Timer disabled
         merged_vmexit_ctrls.Bits.SaveVmxTimer = 0;
         merged_counter_value = 0;
     }
-    else
-    {
+    else {
         VM_EXIT_CONTROLS vmexit_ctrls;
 
         // VMX Timer enabled at least in one VMCS
-        if (0 == pin_exec[1].Bits.VmxTimer)
-        {
+        if (0 == pin_exec[1].Bits.VmxTimer) {
             // copy from vmcs#0
             vmexit_ctrls.Uint32 = (UINT32) vmcs_read(vmcs_0, VMCS_EXIT_CONTROL_VECTOR);
             merged_vmexit_ctrls.Bits.SaveVmxTimer = vmexit_ctrls.Bits.SaveVmxTimer;
             merged_counter_value = (UINT32) vmcs_read(vmcs_0, VMCS_PREEMPTION_TIMER);
         }
-        else if (0 == pin_exec[0].Bits.VmxTimer)
-        {
+        else if (0 == pin_exec[0].Bits.VmxTimer) {
             // copy from vmcs#1
             vmexit_ctrls.Uint32 = (UINT32) vmcs_read(vmcs_1, VMCS_EXIT_CONTROL_VECTOR);
             merged_vmexit_ctrls.Bits.SaveVmxTimer = vmexit_ctrls.Bits.SaveVmxTimer;
             merged_counter_value = (UINT32) vmcs_read(vmcs_1, VMCS_PREEMPTION_TIMER);
         }
-        else
-        {
+        else {
             // VMX Timer enabled at least in one VMCS
             // so doing real merge here
             merged_vmexit_ctrls.Bits.SaveVmxTimer = 1;
@@ -1745,23 +1692,16 @@ void ms_split_timer_from_level2(VMCS_OBJECT *vmcs_0, VMCS_OBJECT *vmcs_1, VMCS_O
     old_counter[0]         = (UINT32) vmcs_read(vmcs_0, VMCS_PREEMPTION_TIMER);
     old_counter[1]         = (UINT32) vmcs_read(vmcs_1, VMCS_PREEMPTION_TIMER);
 
-    for (i = 0; i < 2; ++i)
-    {
-        if (1 == pin_exec[i].Bits.VmxTimer &&
-            1 == vmexit_ctrls[i].Bits.SaveVmxTimer)
-        {
-            if (0 == pin_exec[1 - i].Bits.VmxTimer)
-            {
+    for (i = 0; i < 2; ++i) {
+        if (1 == pin_exec[i].Bits.VmxTimer && 1 == vmexit_ctrls[i].Bits.SaveVmxTimer) {
+            if (0 == pin_exec[1 - i].Bits.VmxTimer) {
                 new_counter = old_counter[i];
             }
-            else
-            {
-                if (old_counter[i] <= old_counter[1 - i])
-                {
+            else {
+                if (old_counter[i] <= old_counter[1 - i]) {
                     new_counter = (UINT32) vmcs_read(vmcs_m, VMCS_PREEMPTION_TIMER);
                 }
-                else
-                {
+                else {
                     new_counter = (UINT32) vmcs_read(vmcs_m, VMCS_PREEMPTION_TIMER)
                         + (old_counter[i] - old_counter[1 - i]);
                 }

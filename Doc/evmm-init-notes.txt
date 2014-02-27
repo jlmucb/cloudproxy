@@ -391,7 +391,7 @@ by tboot for 32-bit protected mode needs no further modication.
 
 Bootstrap creates initial page tables to enter vmm_main in 64 
 bit protected mode.  This initial map is the identity map page table 
-structure.
+structure.  64 bit evmm redoes them mostly.
 
 
 Multiprocessor rendezvous for evmm

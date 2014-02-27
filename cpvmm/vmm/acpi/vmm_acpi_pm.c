@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "vmm_dbg.h"
@@ -455,34 +455,28 @@ void vmm_acpi_pm_initialize(GUEST_ID guest_id)
     acpi_initialized = TRUE;
 
     vmm_memset(&s3_resume_bsp_gcpu_initial_state, 0, sizeof(VMM_GUEST_CPU_STARTUP_STATE));
-
     port_size = vmm_acpi_pm_port_size();
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(2 == port_size || 4 == port_size);
 
-    if (2 == port_size || 4 == port_size)
-    {
+    if (2 == port_size || 4 == port_size) {
         pm_port[0] = (IO_PORT_ID) vmm_acpi_pm_port_a();
         pm_port[1] = (IO_PORT_ID) vmm_acpi_pm_port_b();
 
-        for (i = 0; i < NELEMENTS(pm_port); ++i)
-        {
-            if (0 != pm_port[i])
-            {
+        for (i = 0; i < NELEMENTS(pm_port); ++i) {
+            if (0 != pm_port[i]) {
                 VMM_LOG(mask_anonymous, level_trace,"[ACPI] Install handler at Pm1%cControlBlock(%P)\n", 'a'+i, pm_port[i]);
                 io_vmexit_handler_register(guest_id, pm_port[i], vmm_acpi_pm1x_handler, NULL);
             }
         }
     }
-    else
-    {
+    else {
         VMM_LOG(mask_anonymous, level_trace,"[ACPI] Failed to intitalize due to bad port size(%d)\n", port_size);
     }
 }
 
-BOOLEAN vmm_acpi_pm1x_handler(
-        GUEST_CPU_HANDLE  gcpu,
+BOOLEAN vmm_acpi_pm1x_handler( GUEST_CPU_HANDLE  gcpu,
         UINT16            port_id,
         unsigned          port_size,
         RW_ACCESS         access,
@@ -499,27 +493,21 @@ BOOLEAN vmm_acpi_pm1x_handler(
 
     // validate arguments
 
-    if (WRITE_ACCESS            != access  ||
-        vmm_acpi_pm_port_size() != port_size)
-    {
+    if (WRITE_ACCESS != access  || vmm_acpi_pm_port_size() != port_size) {
         goto pass_transparently;
     }
 
-    if (port_id == pm_port[ACPI_PM1_CNTRL_REG_A])
-    {
+    if (port_id == pm_port[ACPI_PM1_CNTRL_REG_A]) {
         pm_reg_id = ACPI_PM1_CNTRL_REG_A;
     }
-    else if (port_id == pm_port[ACPI_PM1_CNTRL_REG_B])
-    {
+    else if (port_id == pm_port[ACPI_PM1_CNTRL_REG_B]) {
         pm_reg_id = ACPI_PM1_CNTRL_REG_B;
     }
-    else
-    {
+    else {
         goto pass_transparently;
     }
 
-    switch (port_size)
-    {
+    switch (port_size) {
     case 2:
         value = *(UINT16 *) p_value;
         break;
@@ -534,20 +522,17 @@ BOOLEAN vmm_acpi_pm1x_handler(
     sleep_enable = SLP_EN(value);
 
     // System enters sleep state only if "sleep enable" bit is set
-    if(sleep_enable)
-    {
+    if(sleep_enable) {
         VMM_LOG(mask_anonymous, level_trace,"[ACPI] SleepState(%d) requested at pm_reg_id(%c) port_id(%P) port_size(%d) access(%d)\n",
                 sleep_state, pm_reg_id + 'A', port_id, port_size, access);
 
-        switch (sleep_state)
-            {
+        switch (sleep_state) {
             case 1:
                 break;
             case 2:
                 break;
             case 3: // standby
-                if (VMM_OK != vmm_acpi_prepare_for_s3(gcpu))
-                {
+                if (VMM_OK != vmm_acpi_prepare_for_s3(gcpu)) {
                     VMM_LOG(mask_anonymous, level_error,"[acpi] vmm_acpi_prepare_for_s3() failed\n");
                 }
                 break;
@@ -592,9 +577,7 @@ void vmm_acpi_prepare_cpu_for_s3(CPU_ID from UNUSED, void *unused UNUSED)
 
     // for all GCPUs on this CPU do:
     for (gcpu = scheduler_same_host_cpu_gcpu_first(&iterator, cpu_id);
-         gcpu != NULL;
-         gcpu = scheduler_same_host_cpu_gcpu_next(&iterator))
-    {
+         gcpu != NULL; gcpu = scheduler_same_host_cpu_gcpu_next(&iterator)) {
         VMCS_OBJECT *vmcs = gcpu_get_vmcs(gcpu);
         VMM_ASSERT(vmcs);
 
@@ -612,8 +595,7 @@ void vmm_acpi_prepare_cpu_for_s3(CPU_ID from UNUSED, void *unused UNUSED)
     // Invalidate caches
     hw_wbinvd();
 
-    if (0 != cpu_id)
-    {
+    if (0 != cpu_id) {
         hw_halt(); // halt
     }
 }
@@ -632,8 +614,7 @@ VMM_STATUS vmm_acpi_prepare_for_s3(GUEST_CPU_HANDLE gcpu UNUSED)
 
     // 1. Get original waking vector code
     if (0 != vmm_acpi_waking_vector(&waking_vector, &extended_waking_vector) ||
-        (0 == waking_vector && 0 == extended_waking_vector))
-    {
+        (0 == waking_vector && 0 == extended_waking_vector)) {
         VMM_LOG(mask_anonymous, level_trace,"[ACPI] Waking Vector is NULL. S3 is not supported by the platform\n");
         return VMM_ERROR;
     }
@@ -665,8 +646,7 @@ VMM_STATUS vmm_acpi_prepare_for_s3(GUEST_CPU_HANDLE gcpu UNUSED)
     //    Patch VMM start up code with running environment values
 
 
-    if (0 != extended_waking_vector)
-    {
+    if (0 != extended_waking_vector) {
         // save original code
         p_waking_vector = (void *) extended_waking_vector;
         vmm_acpi_save_original_waking_code(p_waking_vector);
@@ -676,8 +656,7 @@ VMM_STATUS vmm_acpi_prepare_for_s3(GUEST_CPU_HANDLE gcpu UNUSED)
 
         vmm_acpi_build_s3_resume_protected_layout(p_waking_vector);
     }
-    else
-    {
+    else {
         // save original code
         p_waking_vector = (void *) (size_t) waking_vector;
         vmm_acpi_save_original_waking_code(p_waking_vector);
@@ -743,8 +722,7 @@ void vmm_acpi_prepare_init32_data(UINT32 low_memory_page_address)
 {
 
     // if there are Application Processors
-    if (vmm_startup_data.number_of_processors_at_boot_time > 1)
-    {
+    if (vmm_startup_data.number_of_processors_at_boot_time > 1) {
         UINT16 i;
         UINT16 num_of_aps = vmm_startup_data.number_of_processors_at_boot_time - 1;
         
@@ -754,12 +732,10 @@ void vmm_acpi_prepare_init32_data(UINT32 low_memory_page_address)
         init32_data_p->i32_low_memory_page = low_memory_page_address;
         init32_data_p->i32_num_of_aps      = num_of_aps;
 
-        for (i = 0; i < num_of_aps; ++i)
-        {
+        for (i = 0; i < num_of_aps; ++i) {
             HVA stack_pointer;
             BOOLEAN success = vmm_stack_get_stack_pointer_for_cpu(i + 1, &stack_pointer);
-            if (! success)
-            {
+            if (! success) {
                 VMM_LOG(mask_anonymous, level_trace,"[acpi] Failed to allocate stacks for APs. Run as a single core\n");
                 vmm_memory_free(init32_data_p);
                 init32_data_p = NULL;
@@ -869,8 +845,7 @@ BOOLEAN vmm_acpi_register_platform_suspend_callback(vmm_acpi_callback suspend_cb
 {
     static int available_index = 0;
 
-    if(available_index >= MAX_ACPI_CALLBACKS)
-    {
+    if(available_index >= MAX_ACPI_CALLBACKS) {
         VMM_LOG(mask_anonymous, level_trace,"acpi-pm: too many registrations for suspend callback\r\n");
         return FALSE;
     }
@@ -882,10 +857,8 @@ static void vmm_acpi_notify_on_platform_suspend(void)
 {
     int i;
 
-    for(i = 0; i < MAX_ACPI_CALLBACKS; i++)
-    {
-        if(NULL != suspend_callbacks[i])
-        {
+    for(i = 0; i < MAX_ACPI_CALLBACKS; i++) {
+        if(NULL != suspend_callbacks[i]) {
             suspend_callbacks[i]();
         }
     }
@@ -895,8 +868,7 @@ BOOLEAN vmm_acpi_register_platform_resume_callback(vmm_acpi_callback resume_cb)
 {
     static int available_index = 0;
 
-    if(available_index >= MAX_ACPI_CALLBACKS)
-    {
+    if(available_index >= MAX_ACPI_CALLBACKS) {
         VMM_LOG(mask_anonymous, level_trace,"acpi-pm: too many registrations for resume callback\r\n");
         return FALSE;
     }
@@ -908,10 +880,8 @@ static void vmm_acpi_notify_on_platform_resume(void)
 {
     int i;
 
-    for(i = 0; i < MAX_ACPI_CALLBACKS; i++)
-    {
-        if(NULL != resume_callbacks[i])
-        {
+    for(i = 0; i < MAX_ACPI_CALLBACKS; i++) {
+        if(NULL != resume_callbacks[i]) {
             resume_callbacks[i]();
         }
     }

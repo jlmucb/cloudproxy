@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "vmm_defs.h"
 #include "vmm_dbg.h"
@@ -147,11 +147,10 @@ void vmm_acpi_print_facs(ACPI_TABLE_FACS *facs)
 INLINE
 VOID *acpi_map_memory(UINT64 where)
 {
-	HVA hva;
-	
-	hmm_hpa_to_hva((HPA) where, &hva);
-
-	return (void*) hva;
+        HVA hva;
+        
+        hmm_hpa_to_hva((HPA) where, &hva);
+        return (void*) hva;
 }
 
 /* Calculate acpi table checksum */
@@ -179,11 +178,9 @@ ACPI_TABLE_RSDP *scan_for_rsdp(void *addr, UINT32 length)
     end = begin + length;
 
     /* Search from given start address for the requested length */
-    for (i = begin; i < end; i += ACPI_RSDP_SCAN_STEP)
-    {
+    for (i = begin; i < end; i += ACPI_RSDP_SCAN_STEP) {
         /* The signature and checksum must both be correct */
-        if (vmm_memcmp((char *)i, "RSD PTR ", 8))
-        {
+        if (vmm_memcmp((char *)i, "RSD PTR ", 8)) {
             continue;
         }
 
@@ -193,8 +190,7 @@ ACPI_TABLE_RSDP *scan_for_rsdp(void *addr, UINT32 length)
         /* Signature matches, check the appropriate checksum */
         if (!checksum((unsigned char *)rsdp, (rsdp->Revision < 2) ?
                       ACPI_RSDP_CHECKSUM_LENGTH :
-                      ACPI_RSDP_XCHECKSUM_LENGTH))
-        {
+                      ACPI_RSDP_XCHECKSUM_LENGTH)) {
             /* Checksum valid, we have found a valid RSDP */
             VMM_LOG(mask_anonymous, level_trace,"Found acpi rsdp table\n");
             result = rsdp;
@@ -218,32 +214,28 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
     char *offset;
 
     /* Get xsdt pointer */
-    if (rsdp->Revision > 1 && rsdp->XsdtPhysicalAddress)
-    {
+    if (rsdp->Revision > 1 && rsdp->XsdtPhysicalAddress) {
         VMM_LOG(mask_anonymous, level_trace,"rsdp->xsdt_physical_address %lx\n", 
                 rsdp->XsdtPhysicalAddress);
-		sdt = acpi_map_memory(rsdp->XsdtPhysicalAddress);
+                sdt = acpi_map_memory(rsdp->XsdtPhysicalAddress);
     }
 
     /* Or get rsdt */
-    if (!sdt && rsdp->RsdtPhysicalAddress)
-    {
+    if (!sdt && rsdp->RsdtPhysicalAddress) {
         xsdt = 0;
         VMM_LOG(mask_anonymous, level_trace,"rsdp->rsdt_physical_address  = %x\n", 
                 rsdp->RsdtPhysicalAddress);
-		sdt = acpi_map_memory(rsdp->RsdtPhysicalAddress);
+                sdt = acpi_map_memory(rsdp->RsdtPhysicalAddress);
     }
 
     /* Check if the rsdt/xsdt table pointer is NULL */
-    if (NULL == sdt)
-    {
+    if (NULL == sdt) {
         VMM_LOG(mask_anonymous, level_error,"Map rsdt/xsdt error\n");
         return NULL;
     }
 
     /* Make sure the table checksum is correct */
-    if (checksum((unsigned char *)sdt, sdt->Length))
-    {
+    if (checksum((unsigned char *)sdt, sdt->Length)) {
         VMM_LOG(mask_anonymous, level_error,"Wrong checksum in %s!\n", (xsdt)?"XSDT":"RSDT");
         return NULL;
     }
@@ -261,16 +253,12 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
     offset = (char *)sdt + sizeof(ACPI_TABLE_HEADER);
 
     /* Traverse the pointer list to get the desired acpi table */
-    for (i = 0; 
-         i < num; 
-         ++i, offset += ((xsdt) ? sizeof(UINT64) : sizeof(UINT32)))
-    {
+    for (i = 0; i < num; ++i, offset += ((xsdt) ? sizeof(UINT64) : sizeof(UINT32))) {
         /* Get the address from the pointer entry */
         tbl= acpi_map_memory((UINT64) ((xsdt) ? (*(UINT64 *)offset):(*(UINT32 *)offset)));
 
         /* Make sure address is valid */
-        if (!tbl)
-        {
+        if (!tbl) {
             continue;
         }
 
@@ -283,12 +271,11 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
 
         /* Verify table signature & table checksum */
         if ((0 == vmm_memcmp(tbl->Signature, sig, 4)) &&
-            !checksum((unsigned char *)tbl, tbl->Length))
-        {
+            !checksum((unsigned char *)tbl, tbl->Length)) {
             /* Found the table with matched signature */
             VMM_LOG(mask_anonymous, level_trace,"Found the table %s address = %p length = %x\n", sig, tbl, tbl->Length);
 
-			return tbl;
+                        return tbl;
         }
     }
 
@@ -299,30 +286,28 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
 
 ACPI_TABLE_HEADER * vmm_acpi_locate_table(char *sig)
 {
-	ACPI_TABLE_RSDP *rsdp = NULL;
-	void *table = NULL;
-	
-	/* Try 0x0 first for getting rsdp table */
-	rsdp = scan_for_rsdp(acpi_map_memory(0), 0x400);
-	if (NULL == rsdp)
-	{
-		/* Try 0xE0000 */
-		VMM_LOG(mask_anonymous, level_trace,"Try 0xE0000 for ACPI RSDP table\n");
-		rsdp = scan_for_rsdp(acpi_map_memory(0xE0000), 0x1FFFF);
-	}
+        ACPI_TABLE_RSDP *rsdp = NULL;
+        void *table = NULL;
+        
+        /* Try 0x0 first for getting rsdp table */
+        rsdp = scan_for_rsdp(acpi_map_memory(0), 0x400);
+        if (NULL == rsdp) {
+            /* Try 0xE0000 */
+            VMM_LOG(mask_anonymous, level_trace,"Try 0xE0000 for ACPI RSDP table\n");
+            rsdp = scan_for_rsdp(acpi_map_memory(0xE0000), 0x1FFFF);
+        }
 
-	if (NULL == rsdp)
-	{
-		VMM_LOG(mask_anonymous, level_error,"Could not find the rsdp table\n");
-		return NULL;
-	}
+        if (NULL == rsdp) {
+            VMM_LOG(mask_anonymous, level_error,"Could not find the rsdp table\n");
+            return NULL;
+        }
 
-	VMM_LOG(mask_anonymous, level_trace,"rsdp address %p\n", rsdp);
+        VMM_LOG(mask_anonymous, level_trace,"rsdp address %p\n", rsdp);
 
-	/* Get the specified table from rsdp */
-	table = get_acpi_table_from_rsdp(rsdp, sig);
+        /* Get the specified table from rsdp */
+        table = get_acpi_table_from_rsdp(rsdp, sig);
 
-	return table;
+        return table;
 }
 
 //
@@ -360,65 +345,65 @@ ACPI_TABLE_HEADER * vmm_acpi_locate_table(char *sig)
 void vmm_acpi_retrieve_sleep_states(void)
 {
     ACPI_TABLE_HEADER *dsdt;
-	char *aml_ptr;
+        char *aml_ptr;
     UINT8 sstate;
-	UINT32 i;
+        UINT32 i;
 
     dsdt =  acpi_map_memory((UINT64) fadt.Dsdt);
-	if (!dsdt) {
-		VMM_LOG(mask_anonymous, level_error,"[ACPI] DSDT not found\n");
-		return;
-	}
+        if (!dsdt) {
+                VMM_LOG(mask_anonymous, level_error,"[ACPI] DSDT not found\n");
+                return;
+        }
 
     VMM_LOG(mask_anonymous, level_trace,"SleepState | SleepTypeA | SleepTypeB\n");
     VMM_LOG(mask_anonymous, level_trace,"------------------------------------\n");
-	
+        
     for (sstate = ACPI_STATE_S0; sstate < ACPI_S_STATE_COUNT; ++sstate) {
-		aml_ptr = (char *) (dsdt + sizeof(ACPI_TABLE_HEADER));	
-		
-		sleep_conversion_table[ACPI_PM1_CNTRL_REG_A][sstate] = 0xff;
-		sleep_conversion_table[ACPI_PM1_CNTRL_REG_B][sstate] = 0xff;
-		
-		//Search  for '_SX_' string where 'X' is the sleep state e.g. '_S3_' 
-		for (i = 0; i < dsdt->Length - 8; i++) {
-			if (aml_ptr[0] == '_' && aml_ptr[1] == 'S' && aml_ptr[2] == ('0' + sstate) && aml_ptr[3] == '_')
-				break;
-			aml_ptr++;
-		}
-		if (i < dsdt->Length - 8) {
-			//Skip '_SX_' and Package Op
-			aml_ptr += 5;
+        aml_ptr = (char *) (dsdt + sizeof(ACPI_TABLE_HEADER));  
+                
+        sleep_conversion_table[ACPI_PM1_CNTRL_REG_A][sstate] = 0xff;
+        sleep_conversion_table[ACPI_PM1_CNTRL_REG_B][sstate] = 0xff;
+                
+        //Search  for '_SX_' string where 'X' is the sleep state e.g. '_S3_' 
+        for (i = 0; i < dsdt->Length - 8; i++) {
+            if (aml_ptr[0] == '_' && aml_ptr[1] == 'S' && aml_ptr[2] == ('0' + sstate) && aml_ptr[3] == '_')
+                break;
+            aml_ptr++;
+        }
+        if (i < dsdt->Length - 8) {
+            //Skip '_SX_' and Package Op
+            aml_ptr += 5;
 
-			//Skip 'Package Length' bytes indicated by the 2 high bits of 'Package Lead' byte
-			aml_ptr += (*aml_ptr >> 6);
+            //Skip 'Package Length' bytes indicated by the 2 high bits of 'Package Lead' byte
+            aml_ptr += (*aml_ptr >> 6);
 
-			//Skip 'Package Lead' byte
-			aml_ptr++;
+            //Skip 'Package Lead' byte
+            aml_ptr++;
 
-			//Skip 'Number of Elements' byte
-			aml_ptr++;
+            //Skip 'Number of Elements' byte
+            aml_ptr++;
 
-			//Skip 'Byte Prefix' if found
-			if (*aml_ptr == 0x0a)
-				aml_ptr++;
-			
-			//This should be SLP_TYP value for PM1A_CNT_BLK
-			sleep_conversion_table[ACPI_PM1_CNTRL_REG_A][sstate] = *aml_ptr;
-			aml_ptr++;
+            //Skip 'Byte Prefix' if found
+            if (*aml_ptr == 0x0a)
+                aml_ptr++;
+                        
+            //This should be SLP_TYP value for PM1A_CNT_BLK
+            sleep_conversion_table[ACPI_PM1_CNTRL_REG_A][sstate] = *aml_ptr;
+            aml_ptr++;
 
-			//Skip 'Byte Prefix' if found
-			if (*aml_ptr == 0x0a)
-				aml_ptr++;
-			
-			//This should be SLP_TYP value for PM1B_CNT_BLK
-			sleep_conversion_table[ACPI_PM1_CNTRL_REG_B][sstate] = *aml_ptr;
-		}
-		
+            //Skip 'Byte Prefix' if found
+            if (*aml_ptr == 0x0a)
+                aml_ptr++;
+                        
+            //This should be SLP_TYP value for PM1B_CNT_BLK
+            sleep_conversion_table[ACPI_PM1_CNTRL_REG_B][sstate] = *aml_ptr;
+        }
+                
         VMM_LOG(mask_anonymous, level_trace,"    %3d    |    %3d     |    %3d\n",
                     sstate,
                     sleep_conversion_table[ACPI_PM1_CNTRL_REG_A][sstate],
                     sleep_conversion_table[ACPI_PM1_CNTRL_REG_B][sstate]);
-   	}
+        }
 }
 
 int vmm_acpi_init(HVA fadt_hva)
@@ -427,9 +412,8 @@ int vmm_acpi_init(HVA fadt_hva)
 
     pTable = (ACPI_TABLE_HEADER *)fadt_hva;
 
-    if (NULL != pTable)
-    {
-    	//Keep a local copy of fadt to avoid losing the tables if OS reuses acpi memory
+    if (NULL != pTable) {
+        //Keep a local copy of fadt to avoid losing the tables if OS reuses acpi memory
         fadt = *(ACPI_TABLE_FADT *) pTable;
         vmm_acpi_print_fadt((ACPI_TABLE_FADT *) pTable);
     }
@@ -466,24 +450,21 @@ unsigned vmm_acpi_sleep_type_to_state(unsigned pm_reg_id, unsigned sleep_type)
 {
     int sstate;
 
-    if (pm_reg_id >= ACPI_PM1_CNTRL_REG_COUNT)
-    {
+    if (pm_reg_id >= ACPI_PM1_CNTRL_REG_COUNT) {
         VMM_LOG(mask_anonymous, level_error,"[ACPI] got bad input. pm_reg_id(%d) sleep_type(%d)\n",
             pm_reg_id, sleep_type);
         return 0;
     }
 
-    for (sstate = ACPI_STATE_S0; sstate < ACPI_S_STATE_COUNT; ++sstate)
-    {
-        if (sleep_conversion_table[pm_reg_id][sstate] == (char) sleep_type)
-        {
+    for (sstate = ACPI_STATE_S0; sstate < ACPI_S_STATE_COUNT; ++sstate) {
+        if (sleep_conversion_table[pm_reg_id][sstate] == (char) sleep_type) {
             return sstate;  // found
         }
     }
 
     VMM_LOG(mask_anonymous, level_error,"[ACPI] got bad input. pm_reg_id(%d) sleep_type(%d)\n",
             pm_reg_id, sleep_type);
-	
+        
     return 0;   // sleep_type not recognized
 }
 
@@ -492,13 +473,11 @@ int vmm_acpi_waking_vector(UINT32 *p_waking_vector, UINT64 *p_extended_waking_ve
     ACPI_TABLE_FACS *p_facs;
 
     p_facs = (ACPI_TABLE_FACS *) (size_t) fadt.Facs;
-    if (NULL == p_facs)
-    {
+    if (NULL == p_facs) {
         p_facs = (ACPI_TABLE_FACS *) fadt.XFacs;
     }
 
-    if (NULL == p_facs)
-    {
+    if (NULL == p_facs) {
         VMM_LOG(mask_anonymous, level_error,"[acpi] FACS is not detected. S3 is not supported by the platform\n");
         return -1;  // error
     }
@@ -515,15 +494,15 @@ int vmm_acpi_waking_vector(UINT32 *p_waking_vector, UINT64 *p_extended_waking_ve
 #else
 UINT16 vmm_acpi_smi_cmd_port(void)
 {
-	//return (UINT16) fadt.SmiCommand;
-	
-	//ACPI is gone, we can only support late launch.
-	// it should never come here. Let's put a 
-	// deadloop. The whole function is just to make
-	//compiler happy.
-	VMM_DEADLOOP();
-	
-	return 0;
+    //return (UINT16) fadt.SmiCommand;
+    
+    //ACPI is gone, we can only support late launch.
+    // it should never come here. Let's put a 
+    // deadloop. The whole function is just to make
+    //compiler happy.
+    VMM_DEADLOOP();
+        
+    return 0;
 }
 
 #endif //USE_ACPI

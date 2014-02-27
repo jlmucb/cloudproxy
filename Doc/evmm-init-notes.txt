@@ -249,9 +249,13 @@ typedef struct _VMM_STARTUP_STRUCT {
     // used to verify correctness of the bootstrap process
     UINT16   number_of_processors_at_install_time;
 
+RNB3: number of cores in the system.
+
     // number of processors/cores as was discovered by vmm loader
     // used to verify correctness of the bootstrap process
     UINT16   number_of_processors_at_boot_time;
+
+RNB3: number of cores on which evmm will be run.
 
     /* 64-bit aligned */
     // number of secondary Guests
@@ -273,17 +277,27 @@ typedef struct _VMM_STARTUP_STRUCT {
     // that were not assigned to any guest
     UINT32   default_device_owner;
 
+RNB3: magic number of the evmm, since we for now evmm is the default owner.
+
     /* 64-bit aligned */
     // magic number of the guest, that serves as OSPM.
     // SMM code is executed in the context of this guest
     UINT32   acpi_owner;
 
+RNB3: magic number of the evmm, since we decided that evmm will be the acpi
+owner (for now).
+
     // magic number of the guest, that process platform NMIs.
     UINT32   nmi_owner;
+
+RNB3: magic number of the evmm, since we decided that evmm will handle nmi.
 
     /* 64-bit aligned */
     // vmm memory layout
     VMM_MEMORY_LAYOUT           vmm_memory_layout[uvmm_images_count];
+
+RNB3: This struct contains the VMM size, base address where it should be
+loaded, and the address of the entry_point.
 
     // pointer to the int 15 E820 BIOS table
     //  INT15_E820_MEMORY_MAP*
@@ -292,16 +306,24 @@ typedef struct _VMM_STARTUP_STRUCT {
     // the extended attributes should be set to 0x1.
     UINT64   physical_memory_layout_E820;
 
+RNB3: e820 memory layout (received from BIOS), and converted to extended format.
+loaded, and the address of the entry_point.
+
     /* 64-bit aligned */
     // pointer to the primary guest state
     //   VMM_GUEST_STARTUP*
     UINT64   primary_guest_startup_state;
+
+RNB3:  Guest startup state. For our case (pre_os), the guest state would be the
+same as if tboot was starting the guest.
 
     /* 64-bit aligned */
     // pointer to the array of secondary guest states
     // size of array is number_of_secondary_guests
     //   VMM_GUEST_STARTUP*
     UINT64   secondary_guests_startup_state_array;
+
+RNB3: Not applicable for now.
 
     /* 64-bit aligned */
     // Debug parameters
@@ -310,6 +332,9 @@ typedef struct _VMM_STARTUP_STRUCT {
     /* 64-bit aligned */
     // Active cpu local apic ids
     UINT8    cpu_local_apic_ids[ALIGN_FORWARD(VMM_MAX_CPU_SUPPORTED, 8)];
+
+RNB3: Local apic (processor) ids of all cpus.
+
 }PACKED VMM_STARTUP_STRUCT;
 
 
@@ -350,6 +375,8 @@ typedef struct _VMM_GUEST_CPU_STARTUP_STATE
     VMM_MODEL_SPECIFIC_REGISTERS    msr;
 }PACKED VMM_GUEST_CPU_STARTUP_STATE;
 
+RNB3: the guest state for pre os has to be the state that we had at evmm entry
+point, or however, we choose to start the guest (either linux/windows).
 
 REKHA3:  Now what remains is mapping the information from tboot to these data 
 values.  Thats what you have to describe since that's what we have to set up.
@@ -367,6 +394,9 @@ bootstrap should copy and modify the e820 table to protect it's
 memory region.
 REKHA3: I think the only thing remaining is a decription of what you change in
 the e820 table passed by tboot to accomplish this.
+
+RNB3: we update the size of the e820 slot which evmm uses to not be available
+to the guest.
 
 
 Stack setup
@@ -428,6 +458,8 @@ Linux never accesses BIOS.  evmm can host Windows "out of the box."
 can you get (low prioity) the information we need to start windows,
 i.e.- the setup of the parameters to vmm_main that accomplish it.]
 
+RNB3: Yes, the first statements is true, and the second is potentially true.  I
+have never ran the evmm we have.
 
 Notes 
 -----

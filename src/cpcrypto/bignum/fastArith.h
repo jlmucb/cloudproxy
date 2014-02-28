@@ -21,15 +21,19 @@
 
 #include "common.h"
 
-u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
-u64 longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn);
-u64 longsubstep(u64* puOut, u64 uIn1, u64 uIn2, u64 uBorrowIn);
-u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy);
+u64 longaddwithcarry(u64* out, u64 op1, u64 op2, u64 carry_in);
+u64 longmultiplystep(u64* out, u64 op1, u64 op2, u64 carry_in);
+u64 longsubstep(u64* out, u64 op1, u64 op2, u64 borrow_digit);
+u64 longdivstep(u64* quotient, u64 hi_digit, u64 low_digit, 
+                u64 divisor);
 
-u64 mpUAddLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
-u64 mpUSubLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR, u64 uBorrow);
-void mpUMultLoop(i32 lA, u64* pA, i32 lB, u64* pB, u64* pR);
-u64 mpUMultByLoop(i32 lA, u64* pA, u64 uB);
-bool mpSingleUDivLoop(i32 lA, u64* pA, u64 uB, u64* pR);
+u64 mpUAddLoop(i32 size_op1, u64* op1, i32 size_op2, u64* op2, 
+               u64* result);
+u64 mpUSubLoop(i32 size_op1, u64* op1, i32 size_op2, u64* op2, 
+               u64* result, u64 borrow_digit);
+void mpUMultLoop(i32 size_op1, u64* op1, i32 size_op2, u64* op2, 
+                 u64* result);
+u64 mpUMultByLoop(i32 size_op1, u64* op1, u64 uB);
+bool mpSingleUDivLoop(i32 size_op1, u64* op1, u64 uB, u64* result);
 
 // -----------------------------------------------------------------

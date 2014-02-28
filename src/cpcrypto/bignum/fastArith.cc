@@ -22,8 +22,8 @@
 
 // -----------------------------------------------------------------
 
-u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn) {
-  u64 uCarryOut = 0ULL;
+u64 longaddwithcarry(u64* out, u64 op1, u64 op2, u64 carry_in) {
+  u64 carry_out = 0ULL;
 
   asm volatile("\tmovq    %[op1], %%rax\n"
                "\taddq    %[carryin], %%rax\n"
@@ -35,16 +35,16 @@ u64 longaddwithcarry(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn) {
                "2:\n"
                "\tmovq    %[outaddress], %%rcx\n"
                "\tmovq    %%rax, (%%rcx)\n"
-               : [carryout] "=m"(uCarryOut)
-               : [outaddress] "m"(puOut), [op1] "m"(uIn1), [op2] "m"(uIn2),
-                 [carryin] "m"(uCarryIn)
+               : [carryout] "=m"(carry_out)
+               : [outaddress] "m"(out), [op1] "m"(op1), [op2] "m"(op2),
+                 [carryin] "m"(carry_in)
                : "%rax", "%rcx");
 
-  return uCarryOut;
+  return carry_out;
 }
 
-u64 longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn) {
-  u64 uCarryOut = 0ULL;
+u64 longmultiplystep(u64* out, u64 op1, u64 op2, u64 carry_in) {
+  u64 carry_out = 0ULL;
 
   // result of mulq is in %rdx:%rax
   asm volatile("\tmovq    %[op1], %%rax\n"
@@ -54,38 +54,38 @@ u64 longmultiplystep(u64* puOut, u64 uIn1, u64 uIn2, u64 uCarryIn) {
                "\tmovq    %%rdx,%[carryout]\n"
                "\tmovq    %[outaddress],%%rcx\n"
                "\tmovq    %%rax,(%%rcx)\n"
-               : [carryout] "=m"(uCarryOut)
-               : [outaddress] "m"(puOut), [op1] "m"(uIn1), [op2] "m"(uIn2),
-                 [carryin] "m"(uCarryIn)
+               : [carryout] "=m"(carry_out)
+               : [outaddress] "m"(out), [op1] "m"(op1), [op2] "m"(op2),
+                 [carryin] "m"(carry_in)
                : "%rax", "%rcx", "%rdx");
 
-  return uCarryOut;
+  return carry_out;
 }
 
 const u64 longradixminus1 = 0xffffffffffffffffULL;
 
-u64 longsubstep(u64* puOut, u64 uIn1, u64 uIn2, u64 uBorrowIn) {
-  if (uBorrowIn == 0) {
-    if (uIn1 >= uIn2) {
-      *puOut = uIn1 - uIn2;
+u64 longsubstep(u64* out, u64 op1, u64 op2, u64 borrow_in) {
+  if (borrow_in == 0) {
+    if (op1 >= op2) {
+      *out = op1 - op2;
       return 0ULL;
     } else {
-      *puOut = (longradixminus1 - uIn2) + uIn1 + 1;
+      *out = (longradixminus1 - op2) + op1 + 1;
       return 1ULL;
     }
   } else {
-    if (uIn1 > uIn2) {
-      *puOut = uIn1 - uIn2 - 1;
+    if (op1 > op2) {
+      *out = op1 - op2 - 1;
       return 0ULL;
     } else {
-      *puOut = (longradixminus1 - uIn2) + uIn1;
+      *out = (longradixminus1 - op2) + op1;
       return 1ULL;
     }
   }
 }
 
-u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy) {
-  u64 uRem = 0ULL;
+u64 longdivstep(u64* quotient, u64 div_hi_digit, u64 div_low_digit, u64 divisor) {
+  u64 remainder = 0ULL;
 
   // %rdx:%rax contains numerator
   asm volatile("\tmovq    %[op1], %%rdx\n"
@@ -94,36 +94,36 @@ u64 longdivstep(u64* puQ, u64 uDivHi, u64 uDivLo, u64 uDivBy) {
                "\tmovq    %%rdx,%[rem]\n"
                "\tmovq    %[outaddress],%%rcx\n"
                "\tmovq    %%rax,(%%rcx)\n"
-               : [rem] "=m"(uRem)
-               : [outaddress] "m"(puQ), [op1] "m"(uDivHi), [op2] "m"(uDivLo),
-                 [divisor] "m"(uDivBy)
+               : [rem] "=m"(remainder)
+               : [outaddress] "m"(quotient), [op1] "m"(div_hi_digit), 
+                 [op2] "m"(div_low_digit), [divisor] "m"(divisor)
                : "%rax", "%rcx", "%rdx");
 
-  return uRem;
+  return remainder;
 }
 
 #define ALLASSEMBLER
 
 //  Function: u64 mpUAddLoop
-//      Caller guarentees lA>=lB, lR>=lA
-u64 mpUAddLoop(int lA, u64* pA, int lB, u64* pB, u64* pR) {
-  u64 uCarry = 0;
+//      Caller guarentees size_op1>=size_op2, size_result>=size_op1
+u64 mpUAddLoop(int size_op1, u64* op1, int size_op2, u64* op2, u64* result) {
+  u64 carry = 0;
 
 #ifdef ALLASSEMBLER
   asm volatile(
       // esi is j
-      // rbx is pA
-      // rcx is pB
-      // rdx is pR
+      // rbx is op1
+      // rcx is op2
+      // rdx is result
       // carry is in r12
       "xorl     %%esi, %%esi\n"
-      "\tmovq   %[pR], %%rdx\n"
-      "\tmovq   %[pA], %%rbx\n"
-      "\tmovq   %[pB], %%rcx\n"
+      "\tmovq   %[result], %%rdx\n"
+      "\tmovq   %[op1], %%rbx\n"
+      "\tmovq   %[op2], %%rcx\n"
       "\txorq   %%r12, %%r12\n"
       ".balign 16\n"
       "1:\n"
-      "\tcmpl   %%esi, %[lB]\n"
+      "\tcmpl   %%esi, %[size_op2]\n"
       "\tjle    4f\n"
       "\tmovq   (%%rbx), %%rax\n"
       "\taddq   %%r12, %%rax\n"
@@ -145,7 +145,7 @@ u64 mpUAddLoop(int lA, u64* pA, int lB, u64* pB, u64* pR) {
       "\tjmp    1b\n"
       ".balign 16\n"
       "4:\n"
-      "\tcmpl   %%esi, %[lA]\n"
+      "\tcmpl   %%esi, %[size_op1]\n"
       "\tjle    6f\n"
       "\tmovq   (%%rbx), %%rax\n"
       "\taddq   %%r12, %%rax\n"
@@ -161,54 +161,56 @@ u64 mpUAddLoop(int lA, u64* pA, int lB, u64* pB, u64* pR) {
       "\tjmp    4b\n"
       ".balign 16\n"
       "6:\n"
-      "\tmovq  %%r12, %[uCarry]\n"
-      : [uCarry] "=m"(uCarry)
-      : [pR] "m"(pR), [lA] "m"(lA), [pA] "m"(pA), [lB] "m"(lB), [pB] "m"(pB)
+      "\tmovq  %%r12, %[carry]\n"
+      : [carry] "=m"(carry)
+      : [result] "m"(result), [size_op1] "m"(size_op1), [op1] "m"(op1), 
+        [size_op2] "m"(size_op2), [op2] "m"(op2)
       : "%rax", "%rbx", "%rcx", "%rdx", "%esi", "%r12");
 #else
   int j;
 
-  for (j = 0; j < lB; j++) {
-    uCarry = longaddwithcarry(pR, *pA, *pB, uCarry);
-    pA++;
-    pB++;
-    pR++;
+  for (j = 0; j < size_op2; j++) {
+    carry = longaddwithcarry(result, *op1, *op2, carry);
+    op1++;
+    op2++;
+    result++;
   }
-  for (j = lB; j < lA; j++) {
-    uCarry = longaddwithcarry(pR, *pA, 0ULL, uCarry);
-    pA++;
-    pB++;
-    pR++;
+  for (j = size_op2; j < size_op1; j++) {
+    carry = longaddwithcarry(result, *op1, 0ULL, carry);
+    op1++;
+    op2++;
+    result++;
   }
 #endif
-  return uCarry;
+  return carry;
 }
 
 //  Function: u64 mpUSubLoop
-u64 mpUSubLoop(int lA, u64* pA, int lB, u64* pB, u64* pR, u64 uBorrow)
-    //      Caller guarentees lA>=lB, lR>=lA
+u64 mpUSubLoop(int size_op1, u64* op1, int size_op2, u64* op2, u64* result, 
+               u64 borrow_digit)
+    //      Caller guarentees size_op1>=size_op2, size_result>=size_op1
     {
   int j;
-  for (j = 0; j < lB; j++) {
-    uBorrow = longsubstep(pR, *pA, *pB, uBorrow);
-    pA++;
-    pB++;
-    pR++;
+  for (j = 0; j < size_op2; j++) {
+    borrow_digit = longsubstep(result, *op1, *op2, borrow_digit);
+    op1++;
+    op2++;
+    result++;
   }
 
-  for (j = lB; j < lA; j++) {
-    uBorrow = longsubstep(pR, *pA, 0ULL, uBorrow);
-    pA++;
-    pB++;
-    pR++;
+  for (j = size_op2; j < size_op1; j++) {
+    borrow_digit = longsubstep(result, *op1, 0ULL, borrow_digit);
+    op1++;
+    op2++;
+    result++;
   }
   return 0ULL;
 }
 
 /*inline*/
-void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uToAdd,
-                    u64 uCarry)
-    // (*pCarry, *pResult)= uIn1*uIn2 + uToAdd + uCarry
+void mpMultiplyStep(u64* hi_result, u64* lo_result, u64 op1, u64 op2, u64 carry1,
+                    u64 carry2)
+    // (*hi_result, *lo_result)= op1*op2 + carry1 + carry2
     {
 #ifdef ALLASSEMBLER
   //  mulq    op:     rdx:rax= rax*op
@@ -218,42 +220,42 @@ void mpMultiplyStep(u64* pCarry, u64* pResult, u64 uIn1, u64 uIn2, u64 uToAdd,
                "\tadcq    $0, %%rdx\n"
                "\taddq    %[uA], %%rax\n"
                "\tadcq    $0, %%rdx\n"
-               "\tmovq    %[pR], %%rcx\n"
+               "\tmovq    %[result], %%rcx\n"
                "\tmovq    %%rax, (%%rcx)\n"
                "\tmovq    %[pC], %%rcx\n"
-               "\tmovq    %%rdx, (%%rcx)\n" ::[pC] "m"(pCarry),
-               [pR] "m"(pResult), [op1] "m"(uIn1), [op2] "m"(uIn2),
-               [uA] "m"(uToAdd), [uC] "m"(uCarry)
+               "\tmovq    %%rdx, (%%rcx)\n" ::[pC] "m"(hi_result),
+               [result] "m"(lo_result), [op1] "m"(op1), [op2] "m"(op2),
+               [uA] "m"(carry1), [uC] "m"(carry2)
                : "%rax", "%rcx", "%rdx");
 #else
-  u64 mCarry;
-  u64 aCarry;
-  u64 mResult;
+  u64 mult_carry;
+  u64 add_carry;
+  u64 result_digit;
 
-  mCarry = longmultiplystep(&mResult, uIn1, uIn2, uCarry);
-  aCarry = longaddwithcarry(pResult, mResult, uToAdd, 0ULL);
-  *pCarry = mCarry + aCarry;  // should never have further carry
+  mult_carry = longmultiplystep(&result_digit, op1, op2, carry2);
+  add_carry = longaddwithcarry(lo_result, result_digit, carry1, 0ULL);
+  *hi_result = mult_carry + add_carry;  // should never have further carry
 #endif
 }
 
 //  Function: bool mpUMultByLoop
-u64 mpUMultByLoop(int lA, u64* pA, u64 uB) {
-  u64 uCarry = 0ULL;
+u64 mpUMultByLoop(int size_op1, u64* op1, u64 multiply_digit) {
+  u64 carry = 0ULL;
 #ifdef ALLASSEMBLER
-  u64 ulA = (u64)lA;
+  u64 usize_op1 = (u64)size_op1;
   //  mulq    op:     rdx:rax= rax*op
   //  r8:  i
-  //  r9: uB
-  //  rbx: pA
-  //  r13: uCarry
+  //  r9: multiply_digit
+  //  rbx: op1
+  //  r13: carry
   //  cmp a,b:  jge succeeds if b>=a
-  asm volatile("\tmovq    %[pA], %%rbx\n"
+  asm volatile("\tmovq    %[op1], %%rbx\n"
                "\txorq    %%r8, %%r8\n"
-               "\tmovq    %[uB], %%r9\n"
+               "\tmovq    %[multiply_digit], %%r9\n"
                "\txorq    %%r13, %%r13\n"
                ".balign 16\n"
                "1:\n"
-               "\tcmpq    %%r8, %[ulA]\n"
+               "\tcmpq    %%r8, %[usize_op1]\n"
                "\tjle     2f\n"
                "\tmovq    (%%rbx, %%r8, 0x8), %%rax\n"
                "\tmulq    %%r9\n"
@@ -265,49 +267,50 @@ u64 mpUMultByLoop(int lA, u64* pA, u64 uB) {
                "\tjmp     1b\n"
                ".balign 16\n"
                "2:\n"
-               "\tmovq    %%r13, %[uC]\n" ::[pA] "m"(pA),
-               [uB] "m"(uB), [ulA] "m"(ulA), [uC] "m"(uCarry)
+               "\tmovq    %%r13, %[uC]\n" 
+               ::[op1] "m"(op1), [multiply_digit] "m"(multiply_digit), 
+                 [usize_op1] "m"(usize_op1), [uC] "m"(carry)
                : "%rax", "%rbx", "%rdx", "%r8", "%r9", "%r13");
 #else
   int i;
-  for (i = 0; i < lA; i++) {
-    uCarry = longmultiplystep(&pA[i], pA[i], uB, uCarry);
+  for (i = 0; i < size_op1; i++) {
+    carry = longmultiplystep(&op1[i], op1[i], multiply_digit, carry);
   }
 #endif
-  return uCarry;
+  return carry;
 }
 
 //  Function: bool mpUMultLoop
-//      Caller guarentees lA>=lB, lR>=lA+lB
-void mpUMultLoop(int ilA, u64* pA, int ilB, u64* pB, u64* pR) {
-  i64 lA = (i64)ilA;
-  i64 lB = (i64)ilB;
+//      Caller guarentees size_op1>=size_op2, size_result>=size_op1+size_op2
+void mpUMultLoop(int isize_op1, u64* op1, int isize_op2, u64* op2, u64* result) {
+  i64 size_op1 = (i64)isize_op1;
+  i64 size_op2 = (i64)isize_op2;
 
 #ifdef ALLASSEMBLER
   //  mulq    op:     rdx:rax= rax*op
   //  r8:  i
   //  r9:  j
   //  r12: i+j
-  //  rbx: pA
-  //  rcx: pB
-  //  r14: pR
-  //  r13: uCarry
+  //  rbx: op1
+  //  rcx: op2
+  //  r14: result
+  //  r13: carry
   //  cmp a,b:  jge succeeds if b>=a
   asm volatile(
-      "\tmovq    %[pA], %%rbx\n"
-      "\tmovq    %[pB], %%rcx\n"
-      "\tmovq    %[pR], %%r14\n"
+      "\tmovq    %[op1], %%rbx\n"
+      "\tmovq    %[op2], %%rcx\n"
+      "\tmovq    %[result], %%r14\n"
       "\txorq    %%r8, %%r8\n"
       ".balign 16\n"
       "1:\n"
-      "\tcmpq    %%r8, %[lA]\n"
+      "\tcmpq    %%r8, %[size_op1]\n"
       "\tjle     4f\n"
       "\txorq    %%r9, %%r9\n"
       "\txorq    %%r13, %%r13\n"
       "\tmovq    %%r8, %%r12\n"
       ".balign 16\n"
       "2:\n"
-      "\tcmpq    %%r9, %[lB]\n"
+      "\tcmpq    %%r9, %[size_op2]\n"
       "\tjle     3f\n"
       "\tmovq    (%%rbx, %%r8, 0x8), %%rax\n"
       "\tmulq    (%%rcx, %%r9, 0x8)\n"
@@ -327,31 +330,32 @@ void mpUMultLoop(int ilA, u64* pA, int ilB, u64* pB, u64* pR) {
       "\tjmp     1b\n"
       "4:\n"
       :
-      : [lA] "m"(lA), [pA] "m"(pA), [lB] "m"(lB), [pB] "m"(pB), [pR] "m"(pR)
+      : [size_op1] "m"(size_op1), [op1] "m"(op1), [size_op2] "m"(size_op2), [op2] "m"(op2), [result] "m"(result)
       : "%rax", "rbx", "%rcx", "%rdx", "%r8", "%r9", "%r12", "%r13", "%r14");
 #else
   int i, j;
-  u64 uCarry = 0ULL;
+  u64 carry = 0ULL;
 
-  for (i = 0; i < lA; i++) {
-    uCarry = 0ULL;
-    for (j = 0; j < lB; j++)
-      mpMultiplyStep(&uCarry, &pR[i + j], pA[i], pB[j], pR[i + j], uCarry);
-    pR[i + j] = uCarry;
+  for (i = 0; i < size_op1; i++) {
+    carry = 0ULL;
+    for (j = 0; j < size_op2; j++)
+      mpMultiplyStep(&carry, &result[i + j], op1[i], op2[j], result[i + j], carry);
+    result[i + j] = carry;
   }
 #endif
   return;
 }
 
 //  Function: bool mpSingleUDivLoop
-bool mpSingleUDivLoop(int lA, u64* pA, u64 uB, u64* pR) {
+bool mpSingleUDivLoop(int size_op1, u64* op1, u64 divisor_digit, u64* result) {
   int i;
-  u64 uRem = 0ULL;
-  u64 uOut = 0ULL;
+  u64 remainder = 0ULL;
+  u64 quotient_digit = 0ULL;
 
-  for (i = (lA - 1); i >= 0; i--) uRem = longdivstep(&uOut, uRem, pA[i], uB);
+  for (i = (size_op1 - 1); i >= 0; i--) 
+    remainder = longdivstep(&quotient_digit, remainder, op1[i], divisor_digit);
 
-  *pR = uRem;
+  *result = remainder;
   return true;
 }
 

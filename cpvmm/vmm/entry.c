@@ -36,6 +36,7 @@ typedef unsigned char u8;
 #include "ia32_defs.h"
 #include "ia32_low_level.h"
 #include "x32_init64.h"
+#include "vmm_startup.h"
 
 #define PSE_BIT     0x10
 #define PAE_BIT     0x20
@@ -48,6 +49,12 @@ UINT32  heap_tops;
 
 // Rekha to put globals she needs here
 
+typedef struct VMM_INPUT_PARAMS_S {
+    UINT64 local_apic_id;
+    UINT64 startup_struct;
+    UINT64 application_params_struct; // change name
+} VMM_INPUT_PARAMS;
+
 static VMM_INPUT_PARAMS  input_params;
 static VMM_INPUT_PARAMS  *pointer_to_input_params= &input_params;
 
@@ -56,6 +63,8 @@ static VMM_STARTUP_STRUCT *pointer_to_startup_struct= &startup_struct;
 
 multiboot_info_t *g_mbi= NULL;
 
+
+typedef void (*tboot_printk)(const char *fmt, ...);
 
 
 void ia32_write_gdtr(IA32_GDTR *p_descriptor)

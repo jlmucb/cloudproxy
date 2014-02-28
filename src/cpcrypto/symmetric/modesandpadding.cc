@@ -344,7 +344,6 @@ bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig) {
 
 /*
  *  CBC
-* 
  *      C[0]= IV, C[i]= E_K(C[i-1] xor P[i])
  */
 

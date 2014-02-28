@@ -65,33 +65,33 @@ const u32 Sha256::K[SHA256_BLOCKSIZE_BYTES] = {
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-void Sha256::littleEndian(byte* buf, int size) {
-  byte* pU = buf;
+void Sha256::LittleEndian(byte* buf, int size) {
+  byte* current = buf;
   byte t;
 
   while (size >= (int)sizeof(u32)) {
-    t = pU[0];
-    pU[0] = pU[3];
-    pU[3] = t;
-    t = pU[1];
-    pU[1] = pU[2];
-    pU[2] = t;
+    t = current[0];
+    current[0] = current[3];
+    current[3] = t;
+    t = current[1];
+    current[1] = current[2];
+    current[2] = t;
     size -= sizeof(u32);
-    pU += sizeof(u32);
+    current += sizeof(u32);
   }
 }
 
 void Sha256::Init() {
-  m_rgH[0] = 0x6a09e667;
-  m_rgH[1] = 0xbb67ae85;
-  m_rgH[2] = 0x3c6ef372;
-  m_rgH[3] = 0xa54ff53a;
-  m_rgH[4] = 0x510e527f;
-  m_rgH[5] = 0x9b05688c;
-  m_rgH[6] = 0x1f83d9ab;
-  m_rgH[7] = 0x5be0cd19;
-  m_uLen = 0ULL;
-  m_iBLen = 0;
+  state_[0] = 0x6a09e667;
+  state_[1] = 0xbb67ae85;
+  state_[2] = 0x3c6ef372;
+  state_[3] = 0xa54ff53a;
+  state_[4] = 0x510e527f;
+  state_[5] = 0x9b05688c;
+  state_[6] = 0x1f83d9ab;
+  state_[7] = 0x5be0cd19;
+  total_processed_length_ = 0ULL;
+  partial_block_length_ = 0;
 }
 
 #define blk0(i) (W[i] = data[i])
@@ -124,7 +124,7 @@ h(i) += S0(a(i)) + Maj(a(i), b(i), c(i))
 
 #ifdef CRYPTOTEST2
   LOG(INFO)<<"\nState     in:  ";
-  printW(m_rgH, 8);
+  printW(state_, 8);
   LOG(INFO)<<"Data      in:  ";
   printW(data, 16);
 #endif
@@ -152,17 +152,17 @@ h(i) += S0(a(i)) + Maj(a(i), b(i), c(i))
   LOG(INFO)<<"W:  ";
   printW(W, 16);
 #endif
-  m_rgH[0] += a(0);
-  m_rgH[1] += b(0);
-  m_rgH[2] += c(0);
-  m_rgH[3] += d(0);
-  m_rgH[4] += e(0);
-  m_rgH[5] += f(0);
-  m_rgH[6] += g(0);
-  m_rgH[7] += h(0);
+  state_[0] += a(0);
+  state_[1] += b(0);
+  state_[2] += c(0);
+  state_[3] += d(0);
+  state_[4] += e(0);
+  state_[5] += f(0);
+  state_[6] += g(0);
+  state_[7] += h(0);
 #ifdef CRYPTOTEST2
   LOG(INFO)<<"Transform out: ";
-  printW(m_rgH, 8);
+  printW(state_, 8);
 #endif
   memset(W, 0, sizeof(W));
   memset(T, 0, sizeof(T));
@@ -171,48 +171,48 @@ h(i) += S0(a(i)) + Maj(a(i), b(i), c(i))
 void Sha256::Update(const byte* data, int size)
     // size in bytes
     {
-  const byte* pCurData = data;
+  const byte* next_block = data;
   int processed = 0;
   int left = size;
   int n;
 
   // partial block?
-  if (m_iBLen > 0) {
-    if (left < (SHA256_BLOCKSIZE_BYTES - m_iBLen)) {
-      memcpy(&m_rgB[m_iBLen], data, left);
-      m_iBLen += left;
+  if (partial_block_length_ > 0) {
+    if (left < (SHA256_BLOCKSIZE_BYTES - partial_block_length_)) {
+      memcpy(&current_block_[partial_block_length_], data, left);
+      partial_block_length_ += left;
       return;
     }
-    n = SHA256_BLOCKSIZE_BYTES - m_iBLen;
-    memcpy(&m_rgB[m_iBLen], pCurData, n);
+    n = SHA256_BLOCKSIZE_BYTES - partial_block_length_;
+    memcpy(&current_block_[partial_block_length_], next_block, n);
 #ifdef LITTLE_ENDIAN
-    littleEndian(m_rgB, SHA256_BLOCKSIZE_BYTES);
+    LittleEndian(current_block_, SHA256_BLOCKSIZE_BYTES);
 #endif
-    Transform(m_rgH, (u32*)m_rgB);
-    m_iBLen = 0;
+    Transform(state_, (u32*)current_block_);
+    partial_block_length_ = 0;
     left -= n;
-    pCurData += n;
+    next_block += n;
     processed += SHA256_BLOCKSIZE_BYTES;
   }
 
   while (left >= SHA256_BLOCKSIZE_BYTES) {
-    memcpy(m_rgB, pCurData, SHA256_BLOCKSIZE_BYTES);
+    memcpy(current_block_, next_block, SHA256_BLOCKSIZE_BYTES);
 #ifdef LITTLE_ENDIAN
-    littleEndian(m_rgB, SHA256_BLOCKSIZE_BYTES);
+    LittleEndian(current_block_, SHA256_BLOCKSIZE_BYTES);
 #endif
     // Transform each 512 bit block
-    Transform(m_rgH, (u32*)m_rgB);
+    Transform(state_, (u32*)current_block_);
     left -= SHA256_BLOCKSIZE_BYTES;
-    pCurData += SHA256_BLOCKSIZE_BYTES;
+    next_block += SHA256_BLOCKSIZE_BYTES;
     processed += SHA256_BLOCKSIZE_BYTES;
   }
 
   // save any partial 512 bit block
   if (left > 0) {
-    memcpy(m_rgB, pCurData, left);
-    m_iBLen = left;
+    memcpy(current_block_, next_block, left);
+    partial_block_length_ = left;
   }
-  m_uLen += processed;
+  total_processed_length_ += processed;
 }
 
 /*
@@ -223,42 +223,42 @@ void Sha256::Update(const byte* data, int size)
 void Sha256::Final() {
   int n;
 
-  if (m_iBLen > 0) m_uLen += m_iBLen;
+  if (partial_block_length_ > 0) total_processed_length_ += partial_block_length_;
   // append 1
-  m_rgB[m_iBLen++] = 0x80;
+  current_block_[partial_block_length_++] = 0x80;
 
   // zero fill if no room for size
-  if ((SHA256_BLOCKSIZE_BYTES - m_iBLen) < (int)sizeof(u64)) {
-    memset(&m_rgB[m_iBLen], 0, SHA256_BLOCKSIZE_BYTES - m_iBLen);
-    m_iBLen = SHA256_BLOCKSIZE_BYTES;
+  if ((SHA256_BLOCKSIZE_BYTES - partial_block_length_) < (int)sizeof(u64)) {
+    memset(&current_block_[partial_block_length_], 0, SHA256_BLOCKSIZE_BYTES - partial_block_length_);
+    partial_block_length_ = SHA256_BLOCKSIZE_BYTES;
 #ifdef LITTLE_ENDIAN
-    littleEndian(m_rgB, SHA256_BLOCKSIZE_BYTES);
+    LittleEndian(current_block_, SHA256_BLOCKSIZE_BYTES);
 #endif
-    Transform(m_rgH, (u32*)m_rgB);
-    m_iBLen = 0;
+    Transform(state_, (u32*)current_block_);
+    partial_block_length_ = 0;
   }
 
   // Final Block
-  m_uLen *= 8ULL;  // length is in bits for padding
-  n = SHA256_BLOCKSIZE_BYTES - m_iBLen;
-  memset(&m_rgB[m_iBLen], 0, n);
-  memcpy(&m_rgB[56], ((byte*)&m_uLen) + sizeof(u32), sizeof(u32));
-  memcpy(&m_rgB[60], (byte*)&m_uLen,
+  total_processed_length_ *= 8ULL;  // length is in bits for padding
+  n = SHA256_BLOCKSIZE_BYTES - partial_block_length_;
+  memset(&current_block_[partial_block_length_], 0, n);
+  memcpy(&current_block_[56], ((byte*)&total_processed_length_) + sizeof(u32), sizeof(u32));
+  memcpy(&current_block_[60], (byte*)&total_processed_length_,
          sizeof(u32));  // final 8 already little Endian
 #ifdef LITTLE_ENDIAN
-  littleEndian(m_rgB, SHA256_BLOCKSIZE_BYTES - sizeof(u64));
+  LittleEndian(current_block_, SHA256_BLOCKSIZE_BYTES - sizeof(u64));
 #endif
-  Transform(m_rgH, (u32*)m_rgB);
-  m_iBLen = 0;
+  Transform(state_, (u32*)current_block_);
+  partial_block_length_ = 0;
 
-  memcpy(m_rgFinalHash, m_rgH, SHA256_DIGESTSIZE_BYTES);
+  memcpy(final_hash_, state_, SHA256_DIGESTSIZE_BYTES);
 }
 
 void Sha256::GetDigest(byte* rgHash) {
-  memcpy(rgHash, m_rgFinalHash, SHA256_DIGESTSIZE_BYTES);
+  memcpy(rgHash, final_hash_, SHA256_DIGESTSIZE_BYTES);
 #ifndef FAKESHA256
 #ifdef LITTLE_ENDIAN
-  littleEndian(rgHash, SHA256_DIGESTSIZE_BYTES);
+  LittleEndian(rgHash, SHA256_DIGESTSIZE_BYTES);
 #endif
 #endif
 }

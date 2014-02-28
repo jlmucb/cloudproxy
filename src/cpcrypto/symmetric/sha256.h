@@ -38,15 +38,15 @@ class Sha256 {
     DIGESTSIZE = 32,
     BLOCKSIZE = 64
   };
-  u64 m_uLen;
+  u64 total_processed_length_;
   const static u32 K[SHA256_BLOCKSIZE_BYTES];
-  u32 m_rgH[SHA256_DIGESTSIZE_BYTES / sizeof(u32)];
-  byte m_rgFinalHash[SHA256_DIGESTSIZE_BYTES];
-  int m_iBLen;
-  byte m_rgB[SHA256_BLOCKSIZE_BYTES];
+  u32 state_[SHA256_DIGESTSIZE_BYTES / sizeof(u32)];
+  byte final_hash_[SHA256_DIGESTSIZE_BYTES];
+  int partial_block_length_;
+  byte current_block_[SHA256_BLOCKSIZE_BYTES];
 
   void Init();
-  void littleEndian(byte* buf, int size);
+  void LittleEndian(byte* buf, int size);
   void Transform(u32* state, u32* data);
   void Update(const byte*, int);
   void Final();

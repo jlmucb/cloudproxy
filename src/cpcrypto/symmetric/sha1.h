@@ -45,10 +45,10 @@ class Sha1 {
     BLOCKSIZE = 64
   };
 
-  u32 m_rgState[DIGESTSIZE / sizeof(u32)];
-  u64 m_uLen;
-  int m_iBLen;
-  byte m_rgB[BLOCKSIZE];
+  u32 state_[DIGESTSIZE / sizeof(u32)];
+  u64 total_processed_length_;
+  int partial_block_len_;
+  byte current_block_[BLOCKSIZE];
 #ifdef LITTLE_ENDIAN
   void littleEndian(byte* buf, int size);
 #endif
@@ -56,7 +56,7 @@ class Sha1 {
   bool Transform(u32*);
   void Update(const byte*, const u32 long);
   void Final();
-  void getDigest(byte* rgOut);
+  void getDigest(byte* out);
 };
 
 #endif

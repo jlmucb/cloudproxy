@@ -184,8 +184,6 @@ void printNumberToConsole(bnum& bnA, bool fFull = false) {
 
 // ----------------------------------------------------------------------------
 
-// ----------------------------------------------------------------------------
-
 //  Data:
 //      Bignum representations of 0, 1 and 2
 bnum g_bnZero(1);

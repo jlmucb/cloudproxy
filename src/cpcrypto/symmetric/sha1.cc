@@ -27,7 +27,7 @@
 #include <stdio.h>
 #endif
 
-// --------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 void Sha1::littleEndian(byte* buf, int size) {
   byte* pU = buf;
@@ -46,97 +46,97 @@ void Sha1::littleEndian(byte* buf, int size) {
 }
 
 void Sha1::Init() {
-  m_rgState[0] = IV1;
-  m_rgState[1] = IV2;
-  m_rgState[2] = IV3;
-  m_rgState[3] = IV4;
-  m_rgState[4] = IV5;
-  m_uLen = 0ULL;
-  m_iBLen = 0;
+  state_[0] = IV1;
+  state_[1] = IV2;
+  state_[2] = IV3;
+  state_[3] = IV4;
+  state_[4] = IV5;
+  total_processed_length_ = 0ULL;
+  partial_block_len_ = 0;
 }
 
 void Sha1::Update(const byte* data, const u32 long size) {
-  const byte* pCurData = data;
+  const byte* next_block = data;
   int processed = 0;
   int left = size;
   int n;
 
   // partial block?
-  if (m_iBLen > 0) {
-    if (left < (BLOCKSIZE - m_iBLen)) {
-      memcpy(&m_rgB[m_iBLen], data, left);
-      m_iBLen += left;
+  if (partial_block_len_ > 0) {
+    if (left < (BLOCKSIZE - partial_block_len_)) {
+      memcpy(&current_block_[partial_block_len_], data, left);
+      partial_block_len_ += left;
       return;
     }
-    n = BLOCKSIZE - m_iBLen;
-    memcpy(&m_rgB[m_iBLen], pCurData, n);
+    n = BLOCKSIZE - partial_block_len_;
+    memcpy(&current_block_[partial_block_len_], next_block, n);
 #ifdef LITTLE_ENDIAN
-    littleEndian(m_rgB, BLOCKSIZE);
+    littleEndian(current_block_, BLOCKSIZE);
 #endif
-    Transform((u32*)m_rgB);
-    m_iBLen = 0;
+    Transform((u32*)current_block_);
+    partial_block_len_ = 0;
     left -= n;
-    pCurData += n;
+    next_block += n;
     processed += BLOCKSIZE;
   }
 
   while (left > BLOCKSIZE) {
-    memcpy(m_rgB, pCurData, BLOCKSIZE);
+    memcpy(current_block_, next_block, BLOCKSIZE);
 #ifdef LITTLE_ENDIAN
-    littleEndian(m_rgB, BLOCKSIZE);
+    littleEndian(current_block_, BLOCKSIZE);
 #endif
     // Transform each 512 bit block
-    Transform((u32*)m_rgB);
+    Transform((u32*)current_block_);
     left -= BLOCKSIZE;
-    pCurData += BLOCKSIZE;
+    next_block += BLOCKSIZE;
     processed += BLOCKSIZE;
   }
 
   // save any partial 512 bit block
   if (left > 0) {
-    memcpy(m_rgB, pCurData, left);
-    m_iBLen = left;
+    memcpy(current_block_, next_block, left);
+    partial_block_len_ = left;
   }
-  m_uLen += processed;
+  total_processed_length_ += processed;
 }
 
-void Sha1::Final()
+void Sha1::Final() {
     //  length is l bits.  Append the bit “1” followed by k zero bits,
-    {
   int n;
 
-  if (m_iBLen > 0) m_uLen += m_iBLen;
+  if (partial_block_len_ > 0) total_processed_length_ += partial_block_len_;
 
   // append 1
-  m_rgB[m_iBLen++] = 0x80;
+  current_block_[partial_block_len_++] = 0x80;
 
   // zero fill if no room for size
-  if ((BLOCKSIZE - m_iBLen) < (int)sizeof(u64)) {
-    memset(&m_rgB[m_iBLen], 0, BLOCKSIZE - m_iBLen);
-    m_iBLen = BLOCKSIZE;
+  if ((BLOCKSIZE - partial_block_len_) < (int)sizeof(u64)) {
+    memset(&current_block_[partial_block_len_], 0, BLOCKSIZE - partial_block_len_);
+    partial_block_len_ = BLOCKSIZE;
 #ifdef LITTLE_ENDIAN
-    littleEndian(m_rgB, BLOCKSIZE);
+    littleEndian(current_block_, BLOCKSIZE);
 #endif
-    Transform((u32*)m_rgB);
-    m_iBLen = 0;
+    Transform((u32*)current_block_);
+    partial_block_len_ = 0;
   }
 
   // Final Block
-  m_uLen *= 8ULL;  // length is in bits for padding
-  n = BLOCKSIZE - m_iBLen;
-  memset(&m_rgB[m_iBLen], 0, n);
-  memcpy(&m_rgB[56], ((byte*)&m_uLen) + sizeof(u32), sizeof(u32));
-  memcpy(&m_rgB[60], (byte*)&m_uLen, sizeof(u32));
+  total_processed_length_ *= 8ULL;  // length is in bits for padding
+  n = BLOCKSIZE - partial_block_len_;
+  memset(&current_block_[partial_block_len_], 0, n);
+  memcpy(&current_block_[56], ((byte*)&total_processed_length_) + sizeof(u32), 
+         sizeof(u32));
+  memcpy(&current_block_[60], (byte*)&total_processed_length_, sizeof(u32));
 #ifdef LITTLE_ENDIAN
-  littleEndian(m_rgB, BLOCKSIZE - 8);  // last 8 bytes already little endian
+  littleEndian(current_block_, BLOCKSIZE - 8);  // last 8 bytes already little endian
 #endif
-  Transform((u32*)m_rgB);
-  m_iBLen = 0;
+  Transform((u32*)current_block_);
+  partial_block_len_ = 0;
 }
 
-void Sha1::getDigest(byte* rgOut) {
-  memcpy(rgOut, (byte*)m_rgState, DIGESTSIZE);
-  littleEndian(rgOut, DIGESTSIZE);
+void Sha1::getDigest(byte* out) {
+  memcpy(out, (byte*)state_, DIGESTSIZE);
+  littleEndian(out, DIGESTSIZE);
 }
 
 // ------------------------------------------------------------------------------
@@ -186,11 +186,11 @@ inline T rotlFixed(T x, u32 y) {
 bool Sha1::Transform(u32* data) {
   u32 W[16];
 
-  u32 a = m_rgState[0];
-  u32 b = m_rgState[1];
-  u32 c = m_rgState[2];
-  u32 d = m_rgState[3];
-  u32 e = m_rgState[4];
+  u32 a = state_[0];
+  u32 b = state_[1];
+  u32 c = state_[2];
+  u32 d = state_[3];
+  u32 e = state_[4];
 
 #ifdef CRYPTOTEST
   PrintBytes("Transform\n", (byte*)data, BLOCKSIZE);
@@ -277,11 +277,11 @@ bool Sha1::Transform(u32* data) {
   R4(c, d, e, a, b, 78);
   R4(b, c, d, e, a, 79);
 
-  m_rgState[0] += a;
-  m_rgState[1] += b;
-  m_rgState[2] += c;
-  m_rgState[3] += d;
-  m_rgState[4] += e;
+  state_[0] += a;
+  state_[1] += b;
+  state_[2] += c;
+  state_[3] += d;
+  state_[4] += e;
 
   return true;
 }

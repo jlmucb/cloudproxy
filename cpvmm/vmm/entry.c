@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+
+// this is all 32 bit code
+
 #include "vmm_defs.h"
 typedef long long unsigned uint64_t;
 typedef unsigned uint32_t;
@@ -22,22 +25,34 @@ typedef unsigned char uint8_t;
 typedef int bool;
 typedef short unsigned u16;
 typedef unsigned char u8;
+
 #include "multiboot.h"
 #include "elf_defns.h"
 #include "tboot.h"
 #include "e820.h"
 #include "linux_defns.h"
 
-// this is all 32 bit code
-
-// implement transition to 64-bit execution mode
-
+#include "em64t_defs.h"
+#include "ia32_defs.h"
 #include "ia32_low_level.h"
 #include "x32_init64.h"
 
 #define PSE_BIT     0x10
 #define PAE_BIT     0x20
 
+#define PAGE_SIZE (1024 * 4)
+UINT32  heap_base;
+UINT32  heap_current;
+UINT32  heap_tops;
+
+
+// Rekha to put globals she needs here
+
+static VMM_INPUT_PARAMS  input_params;
+static VMM_INPUT_PARAMS  *pointer_to_input_params= &input_params;
+
+static VMM_STARTUP_STRUCT startup_struct;
+static VMM_STARTUP_STRUCT *pointer_to_startup_struct= &startup_struct;
 
 multiboot_info_t *g_mbi= NULL;
 
@@ -48,9 +63,9 @@ void ia32_write_gdtr(IA32_GDTR *p_descriptor)
     asm volatile (
         "\tmovl  %[p_descriptor], %%edx\n"
         "\tlgdt  (%%edx)\n"
-        : 
-        : [p_descriptor] "m" (p_descriptor)
-        : "%edx");
+    : 
+    : [p_descriptor] "m" (p_descriptor)
+    : "%edx");
 }
 
 
@@ -59,9 +74,9 @@ void ia32_write_cr3(UINT32 value)
     asm volatile (
         "\tmovl   %[value], %%eax\n"
         "\tmovl   %%eax, %%eax\n"
-        : 
-        : [value] "m" (value)
-        : "%eax");
+    : 
+    : [value] "m" (value)
+    : "%eax");
 }
 
 UINT32 ia32_read_cr4(void)
@@ -71,9 +86,9 @@ UINT32 ia32_read_cr4(void)
         "\t.byte( 0x20)\n"
         // mov eax, cr4
         "\t.byte( 0xE0)\n"
-        : 
-        :
-        : "%eax");
+    : 
+    :
+    : "%eax");
 }
 
 void ia32_write_cr4(UINT32 value)
@@ -84,9 +99,9 @@ void ia32_write_cr4(UINT32 value)
         "\t.byte( 0x22)\n"
         // mov cr4, eax
         "\t.byte( 0xE0)\n"
-        : 
-        : [value] "m" (value)
-        : "%eax");
+    : 
+    : [value] "m" (value)
+    : "%eax");
 }
 
 void ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
@@ -98,21 +113,174 @@ void ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         "\tmovl    %[msr_id], %%ecx\n"
         // write from EDX:EAX into MSR[ECX]
         "\twrmsr \n"
-        : 
-        : [msr_id] "m" (msr_id),  [p_value] "m" (p_value)
-        : "%eax", "%ecx", "%edx");
+    : 
+    : [msr_id] "m" (msr_id),  [p_value] "m" (p_value)
+    : "%eax", "%ecx", "%edx");
+}
+
+//REK: START
+VOID ZeroMem( VOID*   Address, UINT32  Size)
+{
+  UINT8* Source;
+
+  Source = (UINT8*)Address;
+  while (Size--) {
+    *Source++ = 0;
+  }
+}
+
+VOID* AllocateMemory( UINT32 size_request)
+{
+  UINT32 Address;
+
+  if (heap_current + size_request > heap_tops) {
+        /*
+      printk("Allocation request exceeds heap's size\r\n");
+      printk("Heap current = 0x", heap_current);
+      printk("Requested size =0x", size_request);
+      printk("Heap tops = 0x", heap_tops);
+        */
+
+    return NULL;
+  }
+  Address = heap_current;
+  heap_current+=size_request;
+  ZeroMem((VOID*)Address, size_request);
+  return (VOID*)Address;
 }
 
 
-#if 0
-#include "vmm_defs.h"
-#include "ia32_low_level.h"
-#include "em64t_defs.h"
-#include "x32_pt64.h"
+VOID InitializeMemoryManager(UINT64 * HeapBaseAddress, UINT64 *    HeapBytes)
+{
+  heap_current = heap_base = *(UINT32*)HeapBaseAddress;
+  heap_tops = heap_base + *(UINT32*)HeapBytes;
+}
 
-extern void *  __cdecl vmm_memset(void *buffer, int filler, unsigned howmany);
-extern void * __cdecl vmm_page_alloc(UINT32 pages);
+VOID CopyMem( VOID *Dest, VOID *Source, UINT32 Size)
+{
+  UINT8 *d = (UINT8*)Dest;
+  UINT8 *s = (UINT8*)Source;
 
+  while (Size--) {
+    *d++ = *s++;
+  }
+}
+
+BOOLEAN CompareMem( VOID *Source1, VOID *Source2, UINT32 Size)
+{
+  UINT8 *s1 = (UINT8*)Source1;
+  UINT8 *s2 = (UINT8*)Source2;
+
+  while (Size--) {
+    if (*s1++ != *s2++) {
+    //      printk("Compare mem failed\n");
+      return FALSE;
+    }
+  }
+  return TRUE;
+}
+
+void * evmm_page_alloc(UINT32 pages)
+{
+    UINT32 address;
+    UINT32 size = pages * PAGE_SIZE;
+
+    address = ALIGN_FORWARD(heap_current, PAGE_SIZE);
+    heap_current = address + size;
+    ZeroMem((void*)address, size);
+    return (void*)address;
+}
+
+static IA32_GDTR        gdtr_32;
+static IA32_GDTR        gdtr_64;  // still in 32-bit mode
+static UINT16           cs_64;
+
+void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
+{
+    asm volatile(
+        "\n movl %[p_descriptor], %%edx"
+        "\n\t sgdt (%%edx)"
+    :[p_descriptor] "=g" (p_descriptor)
+    :: "%edx");
+}
+
+void x32_gdt64_setup(void)
+{
+    EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
+    UINT32 last_index;
+
+    // allocate page for 64-bit GDT
+    p_gdt_64 = evmm_page_alloc(1);  // 1 page should be sufficient ???
+    // vmm_memset(p_gdt_64, 0, PAGE_4KB_SIZE);
+    memset(p_gdt_64, 0, PAGE_4KB_SIZE);
+
+    // read 32-bit GDTR
+    ia32_read_gdtr(&gdtr_32);
+
+    // clone it to the new 64-bit GDT
+    // vmm_memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
+    memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
+
+    // build and append to GDT 64-bit mode code-segment entry
+    // check if the last entry is zero, and if so, substitute it
+
+    last_index = gdtr_32.limit / sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
+
+    if (*(UINT64 *) &p_gdt_64[last_index] != 0) {
+        last_index++;
+    }
+
+    // code segment for eVmm code
+    p_gdt_64[last_index].hi.accessed = 0;
+    p_gdt_64[last_index].hi.readable = 1;
+    p_gdt_64[last_index].hi.conforming = 1;
+    p_gdt_64[last_index].hi.mbo_11 = 1;
+    p_gdt_64[last_index].hi.mbo_12 = 1;
+    p_gdt_64[last_index].hi.dpl = 0;
+    p_gdt_64[last_index].hi.present = 1;
+    p_gdt_64[last_index].hi.long_mode = 1;    // important !!!
+    p_gdt_64[last_index].hi.default_size= 0;        // important !!!
+    p_gdt_64[last_index].hi.granularity= 1;
+
+    // data segment for eVmm stacks
+    p_gdt_64[last_index + 1].hi.accessed = 0;
+    p_gdt_64[last_index + 1].hi.readable = 1;
+    p_gdt_64[last_index + 1].hi.conforming = 0;
+    p_gdt_64[last_index + 1].hi.mbo_11 = 0;
+    p_gdt_64[last_index + 1].hi.mbo_12 = 1;
+    p_gdt_64[last_index + 1].hi.dpl = 0;
+    p_gdt_64[last_index + 1].hi.present = 1;
+    p_gdt_64[last_index + 1].hi.long_mode = 1;    // important !!!
+    p_gdt_64[last_index + 1].hi.default_size= 0;    // important !!!
+    p_gdt_64[last_index + 1].hi.granularity= 1;
+
+    // prepare GDTR
+    gdtr_64.base  = (UINT32) p_gdt_64;
+    gdtr_64.limit = gdtr_32.limit + sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) * 2; // !!! TBD !!! will be extended by TSS
+    cs_64 = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
+}
+
+void x32_gdt64_load(void)
+{
+    // ClearScreen();
+    //print_gdt(0,0);
+    //PrintString("\n======================\n");
+
+    ia32_write_gdtr(&gdtr_64);
+
+    //print_gdt(0,0);
+    //PrintString("CS_64= "); PrintValue((UINT16) cs_64); PrintString("\n");
+}
+
+UINT16 x32_gdt64_get_cs(void)
+{
+    return cs_64;
+}
+
+void x32_gdt64_get_gdtr(IA32_GDTR *p_gdtr)
+{
+    *p_gdtr = gdtr_64;
+}
 
 static EM64T_CR3 cr3_for_x64 = { 0 };
 
@@ -127,98 +295,91 @@ static EM64T_CR3 cr3_for_x64 = { 0 };
 *---------------------------------------------------------*/
 void x32_pt64_setup_paging(UINT64 memory_size)
 {
-        EM64T_PML4              *pml4_table;
-        EM64T_PDPE              *pdp_table;
-        EM64T_PDE_2MB   *pd_table;
+    EM64T_PML4      *pml4_table;
+    EM64T_PDPE      *pdp_table;
+    EM64T_PDE_2MB   *pd_table;
 
-        UINT32 pdpt_entry_id;
-        UINT32 pdt_entry_id;
-        UINT32 address = 0;
+    UINT32 pdpt_entry_id;
+    UINT32 pdt_entry_id;
+    UINT32 address = 0;
 
-        if (memory_size >= 0x100000000)
-                memory_size = 0x100000000;
+    if (memory_size >= 0x100000000)
+        memory_size = 0x100000000;
 
-        /*
-                To cover 4G-byte addrerss space the minimum set is
-                PML4    - 1entry
-                PDPT    - 4 entries
-                PDT             - 2048 entries
-        */
+    // To cover 4G-byte addrerss space the minimum set is
+    // PML4    - 1entry
+    // PDPT    - 4 entries
+    // PDT             - 2048 entries
 
-        pml4_table = (EM64T_PML4 *) vmm_page_alloc(1);
-        vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
+    pml4_table = (EM64T_PML4 *) evmm_page_alloc(1);
+    // vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
+    memset(pml4_table, 0, PAGE_4KB_SIZE);
 
-        pdp_table = (EM64T_PDPE *) vmm_page_alloc(1);
-        vmm_memset(pdp_table, 0, PAGE_4KB_SIZE);
+    pdp_table = (EM64T_PDPE *) evmm_page_alloc(1);
+    // vmm_memset(pdp_table, 0, PAGE_4KB_SIZE);
+    memset(pdp_table, 0, PAGE_4KB_SIZE);
 
+    // only one  entry is enough in PML4 table
+    pml4_table[0].lo.base_address_lo = (UINT32) pdp_table >> 12;
+    pml4_table[0].lo.present = 1;
+    pml4_table[0].lo.rw = 1;
+    pml4_table[0].lo.us = 0;
+    pml4_table[0].lo.pwt = 0;
+    pml4_table[0].lo.pcd = 0;
+    pml4_table[0].lo.accessed = 0;
+    pml4_table[0].lo.ignored = 0;
+    pml4_table[0].lo.zeroes = 0;
+    pml4_table[0].lo.avl = 0;
 
-        // only one  entry is enough in PML4 table
-        pml4_table[0].lo.base_address_lo = (UINT32) pdp_table >> 12;
-        pml4_table[0].lo.present        = 1;
-        pml4_table[0].lo.rw                     = 1;
-        pml4_table[0].lo.us                     = 0;
-        pml4_table[0].lo.pwt            = 0;
-        pml4_table[0].lo.pcd            = 0;
-        pml4_table[0].lo.accessed       = 0;
-        pml4_table[0].lo.ignored        = 0;
-        pml4_table[0].lo.zeroes         = 0;
-        pml4_table[0].lo.avl            = 0;
+    // 4  entries is enough in PDPT
+    for (pdpt_entry_id = 0; pdpt_entry_id < 4; ++pdpt_entry_id) {
+        pdp_table[pdpt_entry_id].lo.present = 1;
+        pdp_table[pdpt_entry_id].lo.rw = 1;
+        pdp_table[pdpt_entry_id].lo.us = 0;
+        pdp_table[pdpt_entry_id].lo.pwt = 0;
+        pdp_table[pdpt_entry_id].lo.pcd = 0;
+        pdp_table[pdpt_entry_id].lo.accessed = 0;
+        pdp_table[pdpt_entry_id].lo.ignored = 0;
+        pdp_table[pdpt_entry_id].lo.zeroes = 0;
+        pdp_table[pdpt_entry_id].lo.avl = 0;
 
-        // 4  entries is enough in PDPT
-        for (pdpt_entry_id = 0; pdpt_entry_id < 4; ++pdpt_entry_id)
-        {
-                pdp_table[pdpt_entry_id].lo.present     = 1;
-                pdp_table[pdpt_entry_id].lo.rw          = 1;
-                pdp_table[pdpt_entry_id].lo.us          = 0;
-                pdp_table[pdpt_entry_id].lo.pwt         = 0;
-                pdp_table[pdpt_entry_id].lo.pcd         = 0;
-                pdp_table[pdpt_entry_id].lo.accessed= 0;
-                pdp_table[pdpt_entry_id].lo.ignored     = 0;
-                pdp_table[pdpt_entry_id].lo.zeroes      = 0;
-                pdp_table[pdpt_entry_id].lo.avl         = 0;
+        pd_table = (EM64T_PDE_2MB *) evmm_page_alloc(1);
+        // vmm_memset(pd_table, 0, PAGE_4KB_SIZE);
+        memset(pd_table, 0, PAGE_4KB_SIZE);
+        pdp_table[pdpt_entry_id].lo.base_address_lo = (UINT32) pd_table >> 12;
 
-                pd_table = (EM64T_PDE_2MB *) vmm_page_alloc(1);
-                vmm_memset(pd_table, 0, PAGE_4KB_SIZE);
-                pdp_table[pdpt_entry_id].lo.base_address_lo = (UINT32) pd_table >> 12;
-
-
-                for (pdt_entry_id = 0; pdt_entry_id < 512; ++pdt_entry_id, address += PAGE_2MB_SIZE)
-                {
-                        pd_table[pdt_entry_id].lo.present       = 1;
-                        pd_table[pdt_entry_id].lo.rw            = 1;
-                        pd_table[pdt_entry_id].lo.us            = 0;
-                        pd_table[pdt_entry_id].lo.pwt           = 0;
-                        pd_table[pdt_entry_id].lo.pcd           = 0;
-                        pd_table[pdt_entry_id].lo.accessed  = 0;
-                        pd_table[pdt_entry_id].lo.dirty         = 0;
-                        pd_table[pdt_entry_id].lo.pse           = 1;
-                        pd_table[pdt_entry_id].lo.global        = 0;
-                        pd_table[pdt_entry_id].lo.avl           = 0;
-                        pd_table[pdt_entry_id].lo.pat           = 0;     //????
-                        pd_table[pdt_entry_id].lo.zeroes        = 0;
-                        pd_table[pdt_entry_id].lo.base_address_lo = address >> 21;
-                }
+        for (pdt_entry_id = 0; pdt_entry_id < 512; ++pdt_entry_id, address += PAGE_2MB_SIZE) {
+            pd_table[pdt_entry_id].lo.present       = 1;
+            pd_table[pdt_entry_id].lo.rw            = 1;
+            pd_table[pdt_entry_id].lo.us            = 0;
+            pd_table[pdt_entry_id].lo.pwt           = 0;
+            pd_table[pdt_entry_id].lo.pcd           = 0;
+            pd_table[pdt_entry_id].lo.accessed  = 0;
+            pd_table[pdt_entry_id].lo.dirty         = 0;
+            pd_table[pdt_entry_id].lo.pse           = 1;
+            pd_table[pdt_entry_id].lo.global        = 0;
+            pd_table[pdt_entry_id].lo.avl           = 0;
+            pd_table[pdt_entry_id].lo.pat           = 0;     //????
+            pd_table[pdt_entry_id].lo.zeroes        = 0;
+            pd_table[pdt_entry_id].lo.base_address_lo = address >> 21;
         }
+    }
 
-        cr3_for_x64.lo.pwt = 0;
-        cr3_for_x64.lo.pcd = 0;
-        cr3_for_x64.lo.base_address_lo = ((UINT32) pml4_table) >> 12;
-
+    cr3_for_x64.lo.pwt = 0;
+    cr3_for_x64.lo.pcd = 0;
+    cr3_for_x64.lo.base_address_lo = ((UINT32) pml4_table) >> 12;
 }
 
 void x32_pt64_load_cr3(void)
 {
-        ia32_write_cr3(*((UINT32*) &(cr3_for_x64.lo)));
+    ia32_write_cr3(*((UINT32*) &(cr3_for_x64.lo)));
 
 }
 
 UINT32 x32_pt64_get_cr3(void)
 {
-        return *((UINT32*) &(cr3_for_x64.lo));
+    return *((UINT32*) &(cr3_for_x64.lo));
 }
-#endif
-
-
 int jump_evmm_image(void *entry_point)
 {
     __asm__ __volatile__ (
@@ -228,9 +389,10 @@ int jump_evmm_image(void *entry_point)
 
     return 1;
 }
+//REK: END
 
 
-// void __cdecl start_64bit_mode(
+// void start_64bit_mode(
 //      address MUST BE 32-bit wide, because it delivered to 64-bit code 
 //      using 32-bit push/retf commands
 //      __attribute__((cdecl)) 
@@ -305,6 +467,7 @@ void start_64bit_mode(UINT32 address, UINT32 segment, UINT32* arg1,
         "\tsub    0x18, %%esp\n"
         // in 64bit this is actually
         "\tcall   %%ebx\n"
+
         : 
         : [arg1] "m" (arg1), [arg2] "m" (arg2), [arg3] "m" (arg3), [arg4] "m" (arg4), 
           [address] "m" (address), [segment] "m" (segment)
@@ -325,10 +488,6 @@ void x32_init64_start( INIT64_STRUCT *p_init64_data, UINT32 address_of_64bit_cod
     ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
     start_64bit_mode(address_of_64bit_code, p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 }
-
-
-typedef void (*tboot_printk)(const char *fmt, ...);
-
 
 
 void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
@@ -512,203 +671,4 @@ int main(int an, char** av) {
     // int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
     // jump_evmm_image(void *entry_point)
 }
-
-
-#if 0
-
-typedef struct
-{
-    INIT32_STRUCT s;
-    UINT32 data[32];
-} INIT32_STRUCT_SAFE;
-
-
-#define get_e820_table get_e820_table_from_multiboot
-
-static int decompress(void *inb, UINT32 insize, void **outb)
-{
-    UINT32 r;
-    UINT32 outsize;
-
-    r = Decompress_GetInfo(inb, insize, &outsize);
-
-    if (r == UNEXPECTED_ERROR)
-        return -1;
-
-    *outb = AllocateMemory(outsize);
-
-    if (*outb == NULL)
-        return -1;
-
-    r = Decompress_Decompress(inb, insize, *outb, outsize);
-
-    if (r == UNEXPECTED_ERROR)
-        return -1;
-
-    return 0;
-}
-
-
-static VMM_STARTUP_STRUCT
-*setup_env(EVMM_DESC *td, PE_IMAGE_INFO *thunk, PE_IMAGE_INFO *evmm)
-{
-    static __declspec(align(8)) VMM_STARTUP_STRUCT env;
-    static __declspec(align(8)) VMM_GUEST_STARTUP g0;
-    VMM_MEMORY_LAYOUT *vmem;
-
-    memcpy(
-        &g0,
-        (void *)((UINT32)td + td->guest1_start * 512),
-        sizeof(g0)
-        );
-
-    g0.cpu_states_array = STATES0_BASE(td);
-    g0.cpu_states_count = 1;
-    g0.devices_array    = 0;
-
-    memcpy(
-        (void *)&env,
-        (void *)((UINT32)td + td->startup_start * 512),
-        sizeof(env)
-        );
-
-    env.primary_guest_startup_state = (UINT64)(UINT32)&g0;
-
-    vmem = env.vmm_memory_layout;
-    vmem[thunk_image].base_address = THUNK_BASE(td);
-    vmem[thunk_image].total_size   = THUNK_SIZE;
-    vmem[thunk_image].image_size   = UVMM_PAGE_ALIGN_4K(thunk->load_size);
-    vmem[uvmm_image].base_address  = EVMM_BASE(td);
-    vmem[uvmm_image].total_size    = EVMM_SIZE(td);
-    vmem[uvmm_image].image_size    = UVMM_PAGE_ALIGN_4K(evmm->load_size);
-
-    return &env;
-}
-
-
-void evmmh(EVMM_DESC *td)
-{
-    static INIT64_STRUCT init64;
-    static INIT32_STRUCT_SAFE init32;
-
-    GET_PE_IMAGE_INFO_STATUS pe_ok;
-    PE_IMAGE_INFO thunk_hdr;
-    PE_IMAGE_INFO evmm_hdr;
-
-    VMM_STARTUP_STRUCT *vmm_env;
-    STARTAP_IMAGE_ENTRY_POINT call_thunk_entry;
-        UINT64 call_thunk;
-    UINT64 call_evmm;
-
-    UINT32 heap_base;
-    UINT32 heap_size;
-
-    UINT64 e820_addr;
-    void *p_evmm;
-    void *p_low_mem = (void*)0x8000; // find 20 KB below 640 K
-
-    int info[4] = {0, 0, 0, 0};
-    int num_of_aps;
-    BOOLEAN ok;
-    int r;
-    int i;
-
-    // (1) Init loader heap, run-time space, and idt.
-
-    heap_base = HEAP_BASE(td);
-    heap_size = HEAP_SIZE;
-
-    InitializeMemoryManager((UINT64 *)&heap_base, (UINT64 *)&heap_size);
-    SetupIDT();
-
-    // (2) Build E820 table.
-
-    if (get_e820_table(td, &e820_addr) != 0)
-        return;
-
-    // (3) Read evmm and thunk header.
-
-    r = decompress(
-            (void *)((UINT32)td + td->evmm_start * 512),
-            td->evmm_count * 512,
-            &p_evmm
-            );
-
-    if (r != 0)
-        return;
-
-    pe_ok = get_PE_image_info(p_evmm, &evmm_hdr);
-
-    if ((pe_ok != GET_PE_IMAGE_INFO_OK) ||
-        (evmm_hdr.machine_type != PE_IMAGE_MACHINE_EM64T) ||
-        (evmm_hdr.load_size == 0))
-        return;
-
-    pe_ok = get_PE_image_info(
-        (void*)((UINT32)td + td->startap_start * 512),
-        &thunk_hdr
-        );
-
-    if ((pe_ok != GET_PE_IMAGE_INFO_OK) ||
-        (thunk_hdr.machine_type != PE_IMAGE_MACHINE_X86) ||
-        (thunk_hdr.load_size == 0))
-        return;
-
-    // (4) Load evmm, thunk, and tee.
-    ok = load_PE_image(
-            (void *)((UINT32)td + td->startap_start * 512),
-            (void *)THUNK_BASE(td),
-            THUNK_SIZE,
-            (UINT64 *)&call_thunk
-            );
-
-    if (!ok)
-        return;
-
-    vmm_env = setup_env(td, &thunk_hdr, &evmm_hdr);
-    vmm_env->physical_memory_layout_E820 = e820_addr;
-
-    // (5) Setup init32.
-
-    __cpuid(info, 1);
-    num_of_aps = ((info[1] >> 16) & 0xff) - 1;
-
-    if (num_of_aps < 0)
-        num_of_aps = 0;
-
-    init32.s.i32_low_memory_page = (UINT32)p_low_mem;
-    init32.s.i32_num_of_aps = num_of_aps;
-
-    for (i = 0; i < num_of_aps; i ++)
-    {
-        UINT8 *buf = vmm_page_alloc(2);
-
-        if (buf == NULL)
-            return;
-
-        init32.s.i32_esp[i] = (UINT32)&buf[PAGE_4KB_SIZE * 2];
-    }
-
-    // (6) Setup init64.
-
-    x32_gdt64_setup();
-    x32_gdt64_get_gdtr(&init64.i64_gdtr);
-    x32_pt64_setup_paging(((UINT64)1024 * 4) * 0x100000);
-    init64.i64_cr3 = x32_pt64_get_cr3();
-    init64.i64_cs = x32_gdt64_get_cs();
-    init64.i64_efer = 0;
-
-    // (7) Call thunk.
-
-        call_thunk_entry = (STARTAP_IMAGE_ENTRY_POINT)call_thunk;
-    call_thunk_entry(
-        (num_of_aps != 0) ? &init32.s : 0,
-        &init64,
-        vmm_env,
-        (UINT32)call_evmm
-        );
-
-    while (1) ;
-}
-#endif 
 

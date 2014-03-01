@@ -41,10 +41,10 @@
 #define _MODESANDPADDING__H
 
 #define MAXAUTHSIZE 32
-bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig);
-bool emsapkcsverify(int hashType, byte* rgHash, int iSigSize, byte* rgSig);
-bool pkcsmessagepad(int sizeIn, byte* rgMsg, int sigSize, byte* rgSig);
-bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig);
+bool EmsapkcsPad(int hashType, byte* rgHash, int sigSize, byte* rgSig);
+bool EmsapkcsVerify(int hashType, byte* rgHash, int iSigSize, byte* rgSig);
+bool PkcsmessagePad(int sizeIn, byte* rgMsg, int sigSize, byte* rgSig);
+bool PkcsmessageExtract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig);
 
 class cbc {
  public:

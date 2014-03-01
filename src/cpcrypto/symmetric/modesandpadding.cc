@@ -35,19 +35,19 @@
 //
 //  Headers with DER encoding
 //
-byte rgMD5Hdr[] = {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86,
-                   0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10};
-byte rgSHA1Hdr[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02,
-                    0x1a, 0x05, 0x00, 0x04, 0x14};
-byte rgSHA256Hdr[] = {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
+byte md5_header[] = {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86,
+                     0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10};
+byte sha1_header[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02,
+                      0x1a, 0x05, 0x00, 0x04, 0x14};
+byte sha256_header[] = {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
                       0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04,
                       0x20};
-byte rgSHA384Hdr[] = {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
-                      0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04,
-                      0x30};
-byte rgSHA512Hdr[] = {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
-                      0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04,
-                      0x40};
+byte sha384_header[] = {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
+                        0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04,
+                        0x30};
+byte sha512_header[] = {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
+                        0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04,
+                        0x40};
 
 // ---------------------------------------------------------------------------------
 
@@ -75,29 +75,30 @@ byte rgSHA512Hdr[] = {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
 //  SHA-384:  (0x)30 41 30 0d 06 09 60 86 48 01 65 03 04 02 02 05 00 04 30 || H.
 //  SHA-512:  (0x)30 51 30 0d 06 09 60 86 48 01 65 03 04 02 03 05 00 04 40 || H.
 
-bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
-  int n = 0;
-  int hashLen = 0;
-  int hdrLen = 0;
-  int psLen = 0;
-  int minsigSize = 0;
-  byte* pHdr = NULL;
+bool EmsapkcsPad(int hash_type, byte* hash_block, 
+                    int sig_size, byte* sig_block) {
+  int     n = 0;
+  int     hash_len = 0;
+  int     header_len = 0;
+  int     pad_len = 0;
+  int     minsig_size = 0;
+  byte*   header = NULL;
 
-  switch (hashType) {
+  switch (hash_type) {
     case SHA256HASH:
-      hashLen = SHA256DIGESTBYTESIZE;
-      hdrLen = sizeof(rgSHA256Hdr);
-      pHdr = rgSHA256Hdr;
+      hash_len = SHA256DIGESTBYTESIZE;
+      header_len = sizeof(sha256_header);
+      header = sha256_header;
       break;
     case SHA1HASH:
-      hashLen = SHA1DIGESTBYTESIZE;
-      hdrLen = sizeof(rgSHA1Hdr);
-      pHdr = rgSHA1Hdr;
+      hash_len = SHA1DIGESTBYTESIZE;
+      header_len = sizeof(sha1_header);
+      header = sha1_header;
       break;
     case SHA512HASH:
-      hashLen = SHA512DIGESTBYTESIZE;
-      hdrLen = sizeof(rgSHA512Hdr);
-      pHdr = rgSHA512Hdr;
+      hash_len = SHA512DIGESTBYTESIZE;
+      header_len = sizeof(sha512_header);
+      header = sha512_header;
       break;
     case SHA384HASH:
     case MD5HASH:
@@ -106,66 +107,67 @@ bool emsapkcspad(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
       return false;
   }
 
-  minsigSize = 11 + hashLen + hdrLen;
-  if (minsigSize > sigSize) {
+  minsig_size = 11 + hash_len + header_len;
+  if (minsig_size > sig_size) {
     LOG(ERROR) <<"padded output buffer too small\n";
     return false;
   }
 
   // 2 byte header
-  rgSig[n++] = 0x00;
-  rgSig[n++] = 0x01;
+  sig_block[n++] = 0x00;
+  sig_block[n++] = 0x01;
 
   // PS
-  psLen = sigSize - 3 - hashLen - hdrLen;
-  memset(&rgSig[n], 0xff, psLen);
-  n += psLen;
+  pad_len = sig_size - 3 - hash_len - header_len;
+  memset(&sig_block[n], 0xff, pad_len);
+  n += pad_len;
 
   // 0
-  rgSig[n++] = 0x00;
+  sig_block[n++] = 0x00;
 
   // header
-  memcpy(&rgSig[n], pHdr, hdrLen);
-  n += hdrLen;
+  memcpy(&sig_block[n], header, header_len);
+  n += header_len;
 
   // hash
-  memcpy(&rgSig[n], rgHash, hashLen);
+  memcpy(&sig_block[n], hash_block, hash_len);
 
 #ifdef CRYPTOTEST
-  PrintBytes("Padded block\n", rgSig, sigSize);
+  PrintBytes("Padded block\n", sig_block, sig_size);
 #endif
   return true;
 }
 
-bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
+bool EmsapkcsVerify(int hash_type, byte* hash_block, 
+                      int sig_size, byte* sig_block) {
   int n = 0;
-  int hashLen = 0;
-  int hdrLen = 0;
-  int psLen = 0;
-  int minsigSize = 0;
-  byte* pHdr = NULL;
-  byte rgPre[2] = {0x00, 0x01};
+  int hash_len = 0;
+  int header_len = 0;
+  int pad_len = 0;
+  int minsig_size = 0;
+  byte* header = NULL;
+  byte prefix[2] = {0x00, 0x01};
 
 #ifdef CRYPTOTEST
-  LOG(INFO) << "emsapkcsverify, hash type " << hashType << "blocksize "<< sigSize <<"\n";
-  PrintBytes("Padded block\n", rgSig, sigSize);
-  PrintBytes("Hash\n", rgHash, 32);
+  LOG(INFO) << "EmsapkcsVerify, hash type " << hash_type << "blocksize "<< sig_size <<"\n";
+  PrintBytes("Padded block\n", sig_block, sig_size);
+  PrintBytes("Hash\n", hash_block, 32);
 #endif
-  switch (hashType) {
+  switch (hash_type) {
     case SHA256HASH:
-      hashLen = SHA256DIGESTBYTESIZE;
-      hdrLen = sizeof(rgSHA256Hdr);
-      pHdr = rgSHA256Hdr;
+      hash_len = SHA256DIGESTBYTESIZE;
+      header_len = sizeof(sha256_header);
+      header = sha256_header;
       break;
     case SHA1HASH:
-      hashLen = SHA1DIGESTBYTESIZE;
-      hdrLen = sizeof(rgSHA1Hdr);
-      pHdr = rgSHA1Hdr;
+      hash_len = SHA1DIGESTBYTESIZE;
+      header_len = sizeof(sha1_header);
+      header = sha1_header;
       break;
     case SHA512HASH:
-      hashLen = SHA512DIGESTBYTESIZE;
-      hdrLen = sizeof(rgSHA512Hdr);
-      pHdr = rgSHA512Hdr;
+      hash_len = SHA512DIGESTBYTESIZE;
+      header_len = sizeof(sha512_header);
+      header = sha512_header;
       break;
     case SHA384HASH:
     case MD5HASH:
@@ -174,57 +176,57 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
       return false;
   }
 
-  minsigSize = 11 + hashLen + hdrLen;
-  if (minsigSize > sigSize) {
-    LOG(ERROR)<< "padded input buffer too small " << minsigSize << " " << sigSize <<"\n";
+  minsig_size = 11 + hash_len + header_len;
+  if (minsig_size > sig_size) {
+    LOG(ERROR)<< "padded input buffer too small " << minsig_size << " " << sig_size <<"\n";
     return false;
   }
 
   // preamble
-  if (memcmp(&rgSig[n], rgPre, 2) != 0) {
+  if (memcmp(&sig_block[n], prefix, 2) != 0) {
     LOG(ERROR)<< "Bad preamble\n";
     return false;
   }
   n += 2;
 
   // PS
-  psLen = sigSize - 3 - hashLen - hdrLen;
-  for (int i = n; i < (n + psLen); i++) {
-    if (rgSig[i] != 0xff) {
+  pad_len = sig_size - 3 - hash_len - header_len;
+  for (int i = n; i < (n + pad_len); i++) {
+    if (sig_block[i] != 0xff) {
       LOG(ERROR) << "PS wrong at "<< i <<"\n";
-      LOG(ERROR) <<"fflen: " << psLen << "\n";
-      LOG(ERROR)<< "sigsize: " << sigSize<<"\n";
-      LOG(ERROR)<< "hashLen: "<< hashLen<<"\n";
-      LOG(ERROR) << "hdrLen: "<< hdrLen << "\n";
+      LOG(ERROR) <<"fflen: " << pad_len << "\n";
+      LOG(ERROR)<< "sigsize: " << sig_size<<"\n";
+      LOG(ERROR)<< "hash_len: "<< hash_len<<"\n";
+      LOG(ERROR) << "header_len: "<< header_len << "\n";
       return false;
     }
   }
-  n += psLen;
+  n += pad_len;
 
   // 0 byte
-  if (rgSig[n] != 0x00) {
-    LOG(ERROR)<< "verify off in byte " << n << rgSig[n] << "\n";
+  if (sig_block[n] != 0x00) {
+    LOG(ERROR)<< "verify off in byte " << n << sig_block[n] << "\n";
     return false;
   }
   n++;
 
   // Header
-  if (memcmp(&rgSig[n], pHdr, hdrLen) != 0) {
+  if (memcmp(&sig_block[n], header, header_len) != 0) {
     LOG(ERROR)<<"Bad header\n";
     return false;
   }
-  n += hdrLen;
+  n += header_len;
 
   // Hash
-  if (memcmp(&rgSig[n], rgHash, hashLen) != 0) {
+  if (memcmp(&sig_block[n], hash_block, hash_len) != 0) {
     LOG(ERROR) << "Bad hash\n";
 #ifdef CRYPTOTEST
-    PrintBytes("decoded hash\n", &rgSig[n], hashLen);
-    PrintBytes("computed hash\n", rgHash, hashLen);
+    PrintBytes("decoded hash\n", &sig_block[n], hash_len);
+    PrintBytes("computed hash\n", hash_block, hash_len);
 #endif
     return false;
   }
-  n += hdrLen;
+  n += header_len;
 
   return true;
 }
@@ -244,98 +246,100 @@ bool emsapkcsverify(int hashType, byte* rgHash, int sigSize, byte* rgSig) {
 //  "decryption error" and stop.
 
 #define NORANDPKCSPAD
-bool pkcsmessagepad(int sizeIn, byte* rgMsg, int sigSize, byte* rgSig) {
+bool PkcsmessagePad(int input_size, byte* message_block, 
+                      int sig_size, byte* sig_block) {
   int n = 0;
-  int psLen = sigSize - 3 - sizeIn;
+  int pad_len = sig_size - 3 - input_size;
 
 #ifdef CRYPTOTEST
-  LOG(INFO) << "pkcsmessagepad, insize "  << sizeIn << " sig size " <<sigSize<<"\n";
+  LOG(INFO) << "PkcsmessagePad, insize "  << input_size << " sig size " <<sig_size<<"\n";
 #endif
 
   // 2 byte header
-  rgSig[n++] = 0x00;
-  rgSig[n++] = 0x02;
+  sig_block[n++] = 0x00;
+  sig_block[n++] = 0x02;
 
 // get non-zero bytes
 #ifdef NORANDPKCSPAD
-  memset(&rgSig[n], 0xff, psLen);
-  n += psLen;
+  memset(&sig_block[n], 0xff, pad_len);
+  n += pad_len;
 #else
-  int padEnd = 2 + psLen;
+  int pad_end = 2 + pad_len;
   int k = 0;
-  while (n < padEnd) {
-    if (!getCryptoRandom(sigSize - n, &rgSig[n])) {
-      LOG(ERROR) <<"pkcsmessagepad: can't get random bits\n";
+  while (n < pad_end) {
+    if (!getCryptoRandom(sig_size - n, &sig_block[n])) {
+      LOG(ERROR) <<"PkcsmessagePad: can't get random bits\n";
       return false;
     }
-    while (rgSig[n] != 0x00 && n < padEnd) n++;
-    if (n >= padEnd) break;
+    while (sig_block[n] != 0x00 && n < pad_end) n++;
+    if (n >= pad_end) break;
     k = n + 1;
-    while (n < padEnd && k < sigSize) {
-      if (rgSig[k] != 0x00) rgSig[n++] = rgSig[k];
+    while (n < pad_end && k < sig_size) {
+      if (sig_block[k] != 0x00) sig_block[n++] = sig_block[k];
       k++;
     }
   }
 #endif
 
   // single 0x00 byte
-  rgSig[n++] = 0x00;
+  sig_block[n++] = 0x00;
 
   // copy message
-  memcpy(&rgSig[n], rgMsg, sizeIn);
+  memcpy(&sig_block[n], message_block, input_size);
 
 #ifdef CRYPTOTEST
-  PrintBytes("pkcsmessagepad: Padded block\n", rgSig, sigSize);
+  PrintBytes("PkcsmessagePad: Padded block\n", sig_block, sig_size);
 #endif
   return true;
 }
 
-bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig) {
+bool PkcsmessageExtract(int* out_size, byte* out_block, 
+                          int sig_size, byte* sig_block) {
   int n = 0;
   int m = 0;
   int i = 0;
-  byte rgPre[2] = {0x00, 0x02};
+  byte prefix[2] = {0x00, 0x02};
 
 #ifdef CRYPTOTEST
-  LOG(INFO) << "pkcsmessageextract, sigsize " << sigSize << "\n";
+  LOG(INFO) << "PkcsmessageExtract, sigsize " << sig_size << "\n";
 #endif
 
   // preamble wrong?
-  if (memcmp(&rgSig[n], rgPre, 2) != 0) {
-    LOG(ERROR) << "pkcsmessageextract: Bad preamble\n";
+  if (memcmp(&sig_block[n], prefix, 2) != 0) {
+    LOG(ERROR) << "PkcsmessageExtract: Bad preamble\n";
     return false;
   }
   n += 2;
 
   // PS
-  for (i = n; i < sigSize; i++) {
-    if (rgSig[i] == 0x00) break;
+  for (i = n; i < sig_size; i++) {
+    if (sig_block[i] == 0x00) break;
   }
 
   // overflow?
-  if (i >= sigSize) {
-    LOG(ERROR) << "pkcsmessageextract: no zero bytes\n";
+  if (i >= sig_size) {
+    LOG(ERROR) << "PkcsmessageExtract: no zero bytes\n";
     return false;
   }
 
   // 0 byte
-  if (rgSig[i] != 0x00) {
-    LOG(ERROR) << "pkcsmessageextract: no zero byte\n";
+  if (sig_block[i] != 0x00) {
+    LOG(ERROR) << "PkcsmessageExtract: no zero byte\n";
     return false;
   }
   i++;
   n = i;
 
-  m = sigSize - n;
-  if (m > *psizeOut) {
-    LOG(ERROR) << "pkcsmessageextract: output buffer too small\n";
+  m = sig_size - n;
+  if (m > *out_size) {
+    LOG(ERROR) << "PkcsmessageExtract: output buffer too small\n";
     return false;
   }
-  *psizeOut = m;
-  memcpy(rgOut, &rgSig[n], m);
+  *out_size = m;
+  memcpy(out_block, &sig_block[n], m);
 
 #ifdef CRYPTOTEST
-  LOG(INFO) << "pkcsmessageextract, output size is "<< *psizeOut << "\n";
+  LOG(INFO) << "PkcsmessageExtract, output size is "<< *out_size << "\n";
 #endif
   return true;
 }
@@ -443,14 +447,6 @@ void printCBCState(cbc* pMode) {
   LOG(INFO) << "\tEnc: "<< pMode->encrypt_alg_;
   LOG(INFO) << ", mac: " << pMode->mac_alg_;
   LOG(INFO) << ", pad: " << pMode->pad_alg_ << "\n";
-
-  // iv_block_;
-  // last_block_;
-  // first_block_;
-  // last_blocks_;
-  // computed_hmac_;
-  // received_hmac_;
-  // integrity_key_;
 }
 #endif
 
@@ -518,76 +514,74 @@ bool cbc::Init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key,
   return true;
 }
 
-int cbc::GetMac(int size, byte* puMac) {
+int cbc::GetMac(int size, byte* mac) {
 #ifdef CRYPTOTEST
   LOG(INFO)<<"cbc::GetMac\n";
 #endif
-  memcpy(puMac, computed_hmac_, SHA256_DIGESTSIZE_BYTES);
+  memcpy(mac, computed_hmac_, SHA256_DIGESTSIZE_BYTES);
   return SHA256_DIGESTSIZE_BYTES;
 }
 
-void cbc::NextMac(byte* puA)
-    // always full block at a time
-    {
+void cbc::NextMac(byte* block)  { // always full block at a time
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::NextMac: ", puA, block_size_);
+  PrintBytes("cbc::NextMac: ", block, block_size_);
 #endif
-  hmac_.Update(puA, block_size_);
+  hmac_.Update(block, block_size_);
 }
 
-bool cbc::NextPlainBlockIn(byte* puIn, byte* puOut) {
+bool cbc::NextPlainBlockIn(byte* in, byte* out) {
   byte oldX[GLOBALMAXSYMKEYSIZE];
 
 #ifdef CRYPTOTEST
   LOG(INFO) <<"cbc::NextPlainBlockIn\n";
-  PrintBytes("In: ", puIn, 16);
+  PrintBytes("In: ", in, 16);
 #endif
-  inlineXor(oldX, last_block_, puIn, block_size_);
-  aesencrypt_.Encrypt(oldX, puOut);
-  memcpy(last_block_, puOut, block_size_);
+  inlineXor(oldX, last_block_, in, block_size_);
+  aesencrypt_.Encrypt(oldX, out);
+  memcpy(last_block_, out, block_size_);
 #ifdef MACTHENENCRYPT  // should never do this
-  NextMac(puIn);
+  NextMac(in);
 #else
-  NextMac(puOut);
+  NextMac(out);
 #endif
   return true;
 }
 
-bool cbc::NextCipherBlockIn(byte* puIn, byte* puOut) {
+bool cbc::NextCipherBlockIn(byte* in, byte* out) {
   byte oldX[GLOBALMAXSYMKEYSIZE];
 
 #ifdef CRYPTOTEST
   LOG(INFO) <<"cbc::NextCipherBlockIn\n";
-  PrintBytes("In: ", puIn, 16);
+  PrintBytes("In: ", in, 16);
 #endif
-  aesdecrypt_.Decrypt(puIn, oldX);
-  inlineXor(puOut, last_block_, oldX, block_size_);
-  memcpy(last_block_, puIn, block_size_);
+  aesdecrypt_.Decrypt(in, oldX);
+  inlineXor(out, last_block_, oldX, block_size_);
+  memcpy(last_block_, in, block_size_);
 #ifdef MACTHENENCRYPT  // should never do this
-  NextMac(puOut);
+  NextMac(out);
 #else
-  NextMac(puIn);
+  NextMac(in);
 #endif
   return true;
 }
 
-bool cbc::FirstCipherBlockIn(byte* puIn) {
+bool cbc::FirstCipherBlockIn(byte* in) {
 #ifdef CRYPTOTEST
   LOG(INFO)<<"cbc::FirstCipherBlockIn\n";
-  PrintBytes("IV: ", puIn, block_size_);
+  PrintBytes("IV: ", in, block_size_);
 #endif
-  memcpy(first_block_, puIn, block_size_);
-  memcpy(last_block_, puIn, block_size_);
+  memcpy(first_block_, in, block_size_);
+  memcpy(last_block_, in, block_size_);
   iv_valid_ = true;
   return true;
 }
 
-bool cbc::FirstCipherBlockOut(byte* puOut) {
+bool cbc::FirstCipherBlockOut(byte* out) {
 #ifdef CRYPTOTEST
   LOG(INFO) <<"cbc::FirstCipherBlockOut\n";
   PrintBytes("IV: ", last_block_, block_size_);
 #endif
-  memcpy(puOut, last_block_, block_size_);
+  memcpy(out, last_block_, block_size_);
   return true;
 }
 
@@ -598,31 +592,31 @@ bool cbc::ValidateMac() {
   return isEqual(computed_hmac_, received_hmac_, SHA256_DIGESTSIZE_BYTES);
 }
 
-int cbc::LastPlainBlockIn(int size, byte* puIn, byte* puOut) {
+int cbc::LastPlainBlockIn(int size, byte* in, byte* out) {
   int num = 0;
   int i;
 
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::LastPlainBlockIn\n", puIn, size);
+  PrintBytes("cbc::LastPlainBlockIn\n", in, size);
 #endif
-  memcpy(last_blocks_, puIn, size);
+  memcpy(last_blocks_, in, size);
   // pad
   if (size == block_size_) {
     last_blocks_[block_size_] = 0x80;
     for (i = 1; i < block_size_; i++) 
       last_blocks_[block_size_+ i] = 0x00;
     num = 2;
-    NextPlainBlockIn(last_blocks_, puOut);
-    NextPlainBlockIn(last_blocks_ + block_size_, puOut +block_size_);
+    NextPlainBlockIn(last_blocks_, out);
+    NextPlainBlockIn(last_blocks_ + block_size_, out +block_size_);
     hmac_.Final(computed_hmac_);
   } else {
     last_blocks_[size] = 0x80;
     for (i = (size + 1); i < block_size_; i++) last_blocks_[i] = 0x00;
     num = 1;
-    NextPlainBlockIn(last_blocks_, puOut);
+    NextPlainBlockIn(last_blocks_, out);
     hmac_.Final(computed_hmac_);
   }
-  memcpy(puOut + num * block_size_, computed_hmac_,
+  memcpy(out + num * block_size_, computed_hmac_,
          SHA256_DIGESTSIZE_BYTES);
   num += 2;
 
@@ -635,14 +629,14 @@ int cbc::LastPlainBlockIn(int size, byte* puIn, byte* puOut) {
   return block_size_ * num;
 }
 
-int cbc::LastCipherBlockIn(int size, byte* puIn, byte* puOut)
+int cbc::LastCipherBlockIn(int size, byte* in, byte* out)
     // last three or four blocks
     {
   int residue = 0;
   int expectedsize = SHA256_DIGESTSIZE_BYTES + block_size_;
 
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::LastCipherBlockIn: ", puIn, size);
+  PrintBytes("cbc::LastCipherBlockIn: ", in, size);
 #endif
 
   if (!iv_valid_) {
@@ -656,8 +650,8 @@ int cbc::LastCipherBlockIn(int size, byte* puIn, byte* puOut)
   }
 
   // decrypt pad block
-  NextCipherBlockIn(puIn, last_blocks_);
-  puIn += block_size_;
+  NextCipherBlockIn(in, last_blocks_);
+  in += block_size_;
   hmac_.Final(computed_hmac_);
 
 #ifdef CRYPTOTEST
@@ -668,18 +662,18 @@ int cbc::LastCipherBlockIn(int size, byte* puIn, byte* puOut)
   // decrypt Mac
   byte oldX[GLOBALMAXSYMKEYSIZE];
 
-  aesdecrypt_.Decrypt(puIn, oldX);
+  aesdecrypt_.Decrypt(in, oldX);
   inlineXor(received_hmac_, last_block_, oldX, block_size_);
-  memcpy(last_block_, puIn, block_size_);
-  puIn += block_size_;
-  aesdecrypt_.Decrypt(puIn, oldX);
+  memcpy(last_block_, in, block_size_);
+  in += block_size_;
+  aesdecrypt_.Decrypt(in, oldX);
   inlineXor(received_hmac_ + block_size_, last_block_, oldX,
             block_size_);
-  memcpy(last_block_, puIn, block_size_);
-  puIn += block_size_;
+  memcpy(last_block_, in, block_size_);
+  in += block_size_;
 #else
   // Copy mac
-  memcpy(received_hmac_, puIn, SHA256DIGESTBYTESIZE);
+  memcpy(received_hmac_, in, SHA256DIGESTBYTESIZE);
 #endif
 
   // depad
@@ -700,7 +694,7 @@ int cbc::LastCipherBlockIn(int size, byte* puIn, byte* puOut)
   LOG(INFO)<<"cbc::LastCipherBlockIn, residue: " << residue<<"\n";
 #endif
   num_plain_bytes_ += residue;
-  memcpy(puOut, last_blocks_, residue);
+  memcpy(out, last_blocks_, residue);
   return residue;
 }
 

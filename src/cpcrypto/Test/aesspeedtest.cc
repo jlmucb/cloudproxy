@@ -155,22 +155,22 @@ bool EncryptCBCTest(int numBlocks) {
   memset(bufIn, 0, BYTEBLOCKSIZE);
 
   // init
-  if (!oCBC.initEnc(AES128, SYMPAD, HMACSHA256, BYTEKEYSIZE, enckey,
+  if (!oCBC.InitEnc(AES128, SYMPAD, HMACSHA256, BYTEKEYSIZE, enckey,
                     BYTEKEYSIZE, intkey, numBlocks * BYTEBLOCKSIZE,
                     BYTEBLOCKSIZE, iv))
     return false;
 
   time(&start);
   // get and send first cipher block
-  oCBC.firstCipherBlockOut(bufOut);
+  oCBC.FirstCipherBlockOut(bufOut);
 
   // read, encrypt, and copy bytes
   while (--togo > 0) {
-    oCBC.nextPlainBlockIn(bufIn, bufOut);
+    oCBC.NextPlainBlockIn(bufIn, bufOut);
   }
 
   // final block
-  int n = oCBC.lastPlainBlockIn(BYTEBLOCKSIZE, bufIn, bufOut);
+  int n = oCBC.LastPlainBlockIn(BYTEBLOCKSIZE, bufIn, bufOut);
   if (n < 0) return false;
   time(&finish);
   elapsedseconds = difftime(finish, start);

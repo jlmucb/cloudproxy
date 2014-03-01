@@ -105,7 +105,7 @@ bool RSASign(RSAKey& key, int hashType, byte* hash, int* psizeout, byte* out) {
     LOG(ERROR)<<"RSASign: output buffer too small\n";
     return false;
   }
-  if (!emsapkcspad(hashType, hash, key.m_iByteSizeM, padded)) {
+  if (!EmsapkcsPad(hashType, hash, key.m_iByteSizeM, padded)) {
     LOG(ERROR)<<"RSASign: padding failed\n";
     return false;
   }
@@ -138,7 +138,7 @@ bool RSAVerify(RSAKey& key, int hashType, byte* hash, byte* in) {
   LOG(INFO)<<"RSAVerify modulus size "<< key.m_iByteSizeM <<"\n";
   PrintBytes((char*)"RSAVerify decrypted: ", padded, key.m_iByteSizeM);
 #endif
-  if (!emsapkcsverify(hashType, hash, key.m_iByteSizeM, padded)) return false;
+  if (!EmsapkcsVerify(hashType, hash, key.m_iByteSizeM, padded)) return false;
 #ifdef TEST1
   LOG(INFO)<<"RSAVerify returns true\n";
 #endif
@@ -152,7 +152,7 @@ bool RSASeal(RSAKey& key, u32 keyuse, int sizein, byte* in, int* psizeout,
 #ifdef TEST1
   PrintBytes((char*)"RSASeal in: ", in, sizein);
 #endif
-  if (!pkcsmessagepad(sizein, in, key.m_iByteSizeM, padded)) {
+  if (!PkcsmessagePad(sizein, in, key.m_iByteSizeM, padded)) {
     LOG(ERROR)<<"RSASeal: padding failed\n";
     return false;
   }
@@ -219,7 +219,7 @@ bool RSAUnseal(RSAKey& key, u32 keyuse, int sizein, byte* in, int* psizeout,
 #ifdef TEST1
   PrintBytes((char*)"RSAUnseal decrypted: ", padded, key.m_iByteSizeM);
 #endif
-  if (!pkcsmessageextract(psizeout, out, key.m_iByteSizeM, padded)) {
+  if (!PkcsmessageExtract(psizeout, out, key.m_iByteSizeM, padded)) {
     LOG(ERROR)<<"RSAUnseal: padding failed\n";
     return false;
   }

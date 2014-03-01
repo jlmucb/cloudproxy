@@ -48,61 +48,61 @@ bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig);
 
 class cbc {
  public:
-  int m_iBlockSize;
-  int m_iNumPlainBytes;
-  int m_iNumCipherBytes;
-  int m_iKeySize;
-  int m_iIntKeySize;
+  int block_size_;
+  int num_plain_bytes_;
+  int num_cipher_bytes_;
+  int encrypt_key_size_;
+  int integrity_key_size_;
 
-  bool m_fIVValid;
+  bool iv_valid_;
 
-  u32 m_uEncAlg;
-  u32 m_uMacAlg;
-  u32 m_uPadAlg;
+  u32 encrypt_alg_;
+  u32 mac_alg_;
+  u32 pad_alg_;
 
 #ifdef NOAESNI
-  aes m_oAESEnc;
-  aes m_oAESDec;
+  aes aesencrypt_;
+  aes aesdecrypt_;
 #else
-  aesni m_oAESEnc;
-  aesni m_oAESDec;
+  aesni aesencrypt_;
+  aesni aesdecrypt_;
 #endif
-  hmacsha256 m_ohMac;
+  hmacsha256 hmac_;
 
-  byte* m_rguIV;
-  byte* m_rgLastBlock;
-  byte* m_rguFirstBlock;
-  byte* m_rguLastBlocks;
-  byte* m_rguHMACComputed;
-  byte* m_rguHMACReceived;
-  byte* m_rguIntKey;
+  byte* iv_block_;
+  byte* last_block_;
+  byte* first_block_;
+  byte* last_blocks_;
+  byte* computed_hmac_;
+  byte* received_hmac_;
+  byte* integrity_key_;
 
   cbc();
   ~cbc();
 
-  bool computePlainLen();
-  bool computeCipherLen();
+  bool ComputePlainLen();
+  bool ComputeCipherLen();
 
-  bool init(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
+  bool Init(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
             int intkeysize, byte* intkey);
-  bool initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
-               int intkeysize, byte* intkey, int plainLen, int ivSize,
+  bool InitEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
+               int intkeysize, byte* intkey, int plainLen, int iv_size,
                byte* iv);
-  bool initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
-               int intkeysize, byte* intkey, int cipherLen);
+  bool InitDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
+               int intkeysize, byte* intkey, int cipher_size);
 
-  void nextMac(byte* puMac);
-  int getMac(int bufSize, byte* puMac);
+  void NextMac(byte* puMac);
+  int  GetMac(int bufSize, byte* puMac);
 
-  bool firstCipherBlockIn(byte* puIn);
-  bool nextPlainBlockIn(byte* puIn, byte* puOut);
-  int lastPlainBlockIn(int size, byte* puIn, byte* puOut);
+  bool FirstCipherBlockIn(byte* in);
+  bool NextPlainBlockIn(byte* in, byte* out);
+  int  LastPlainBlockIn(int size, byte* in, byte* out);
 
-  bool firstCipherBlockOut(byte* puOut);
-  bool nextCipherBlockIn(byte* puIn, byte* puOut);
-  int lastCipherBlockIn(int size, byte* puIn, byte* puOut);
+  bool FirstCipherBlockOut(byte* out);
+  bool NextCipherBlockIn(byte* in, byte* out);
+  int  LastCipherBlockIn(int size, byte* in, byte* out);
 
-  bool validateMac();
+  bool ValidateMac();
 };
 
 

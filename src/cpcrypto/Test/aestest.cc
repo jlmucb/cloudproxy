@@ -347,7 +347,7 @@ int main(int an, char** av) {
     PrintBytes("CBC128 int key : ", intKey, 16);
     PrintBytes("CBC128 IV      : ", aes128CBCTestIV1, 16);
     PrintBytes("CBC128 Plain   : ", aes128SanityPlain, psize);
-    if (!oCBCEnc.initEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1, 16,
+    if (!oCBCEnc.InitEnc(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1, 16,
                          intKey, psize, 16, aes128CBCTestIV1)) {
       printf("CBC encrypt init %d bytes failed\n", psize);
       fAllTest = false;
@@ -357,30 +357,30 @@ int main(int an, char** av) {
     pin = aes128SanityPlain;
     pout = out;
     insize = psize;
-    memcpy(pout, aes128CBCTestIV1, oCBCEnc.m_iBlockSize);
-    pout += oCBCEnc.m_iBlockSize;
+    memcpy(pout, aes128CBCTestIV1, oCBCEnc.block_size_);
+    pout += oCBCEnc.block_size_;
 
-    while (insize > oCBCEnc.m_iBlockSize) {
-      oCBCEnc.nextPlainBlockIn(pin, pout);
-      pin += oCBCEnc.m_iBlockSize;
-      pout += oCBCEnc.m_iBlockSize;
-      insize -= oCBCEnc.m_iBlockSize;
+    while (insize > oCBCEnc.block_size_) {
+      oCBCEnc.NextPlainBlockIn(pin, pout);
+      pin += oCBCEnc.block_size_;
+      pout += oCBCEnc.block_size_;
+      insize -= oCBCEnc.block_size_;
     }
-    size = oCBCEnc.lastPlainBlockIn(insize, pin, pout);
+    size = oCBCEnc.LastPlainBlockIn(insize, pin, pout);
     if (size < 0) {
       printf("CBC encrypt %d bytes failed\n", psize);
       fAllTest = false;
       continue;
     }
 
-    csize = oCBCEnc.m_iNumCipherBytes;
+    csize = oCBCEnc.num_cipher_bytes_;
     printf("CBC encrypted %d plain bytes produced %d cipherbytes\n",
-            oCBCEnc.m_iNumPlainBytes, oCBCEnc.m_iNumCipherBytes);
+            oCBCEnc.num_plain_bytes_, oCBCEnc.num_cipher_bytes_);
 
     PrintBytes("CBC128 Plain:   ", aes128SanityPlain, psize);
     PrintBytes("CBC128 Cipher:  ", out, csize);
 
-    if (!oCBCDec.initDec(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1, 16,
+    if (!oCBCDec.InitDec(AES128, SYMPAD, HMACSHA256, 16, aes128CBCTestKey1, 16,
                          intKey, csize)) {
       printf("CBC decrypt init %d bytes failed\n", psize);
       fAllTest = false;
@@ -390,25 +390,25 @@ int main(int an, char** av) {
     insize = csize;
     pin = out;
     pout = check;
-    oCBCDec.firstCipherBlockIn(pin);
-    insize -= oCBCDec.m_iBlockSize;
-    pin += oCBCDec.m_iBlockSize;
-    while (insize > 3 * oCBCDec.m_iBlockSize) {
-      oCBCDec.nextCipherBlockIn(pin, pout);
-      pin += oCBCDec.m_iBlockSize;
-      pout += oCBCDec.m_iBlockSize;
-      insize -= oCBCDec.m_iBlockSize;
+    oCBCDec.FirstCipherBlockIn(pin);
+    insize -= oCBCDec.block_size_;
+    pin += oCBCDec.block_size_;
+    while (insize > 3 * oCBCDec.block_size_) {
+      oCBCDec.NextCipherBlockIn(pin, pout);
+      pin += oCBCDec.block_size_;
+      pout += oCBCDec.block_size_;
+      insize -= oCBCDec.block_size_;
     }
-    size = oCBCDec.lastCipherBlockIn(insize, pin, pout);
+    size = oCBCDec.LastCipherBlockIn(insize, pin, pout);
     if (size < 0) {
       printf("CBC decrypt %d bytes failed\n", psize);
       fAllTest = false;
       continue;
     }
     printf("CBC decrypt %d cipherbytes produced %d plainbytes\n",
-            oCBCDec.m_iNumCipherBytes, oCBCDec.m_iNumPlainBytes);
-    PrintBytes("CBC128 Decrypt: ", check, oCBCDec.m_iNumPlainBytes);
-    if (psize == oCBCDec.m_iNumPlainBytes &&
+            oCBCDec.num_cipher_bytes_, oCBCDec.num_plain_bytes_);
+    PrintBytes("CBC128 Decrypt: ", check, oCBCDec.num_plain_bytes_);
+    if (psize == oCBCDec.num_plain_bytes_ &&
         memcmp(check, aes128SanityPlain, psize) == 0) {
       printf("CBC %d bytes sanity PASSED\n", psize);
     } else {

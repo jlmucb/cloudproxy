@@ -348,80 +348,80 @@ bool pkcsmessageextract(int* psizeOut, byte* rgOut, int sigSize, byte* rgSig) {
  */
 
 cbc::cbc() {
-  m_iBlockSize = 0;
-  m_iNumPlainBytes = 0;
-  m_iNumCipherBytes = 0;
-  m_iKeySize = 0;
-  m_iIntKeySize = 0;
-  m_fIVValid = false;
-  m_uEncAlg = 0;
-  m_rgLastBlock = NULL;
-  m_rguFirstBlock = NULL;
-  m_rguLastBlocks = NULL;
-  m_rguHMACComputed = NULL;
-  m_rguHMACReceived = NULL;
-  m_rguIntKey = NULL;
+  block_size_ = 0;
+  num_plain_bytes_ = 0;
+  num_cipher_bytes_ = 0;
+  encrypt_key_size_ = 0;
+  integrity_key_size_ = 0;
+  iv_valid_ = false;
+  encrypt_alg_ = 0;
+  last_block_ = NULL;
+  first_block_ = NULL;
+  last_blocks_ = NULL;
+  computed_hmac_ = NULL;
+  received_hmac_ = NULL;
+  integrity_key_ = NULL;
 }
 
 cbc::~cbc() {
-  m_oAESEnc.CleanKeys();
-  m_oAESDec.CleanKeys();
-  memset(m_rguIntKey, 0, m_iIntKeySize);
-  if (m_rguFirstBlock != NULL) {
-    free(m_rguFirstBlock);
-    m_rguFirstBlock = NULL;
+  aesencrypt_.CleanKeys();
+  aesdecrypt_.CleanKeys();
+  memset(integrity_key_, 0, integrity_key_size_);
+  if (first_block_ != NULL) {
+    free(first_block_);
+    first_block_ = NULL;
   }
-  if (m_rgLastBlock != NULL) {
-    free(m_rgLastBlock);
-    m_rgLastBlock = NULL;
+  if (last_block_ != NULL) {
+    free(last_block_);
+    last_block_ = NULL;
   }
-  if (m_rguLastBlocks != NULL) {
-    free(m_rguLastBlocks);
-    m_rguLastBlocks = NULL;
+  if (last_blocks_ != NULL) {
+    free(last_blocks_);
+    last_blocks_ = NULL;
   }
-  if (m_rguHMACComputed != NULL) {
-    free(m_rguHMACComputed);
-    m_rguHMACComputed = NULL;
+  if (computed_hmac_ != NULL) {
+    free(computed_hmac_);
+    computed_hmac_ = NULL;
   }
-  if (m_rguHMACReceived != NULL) {
-    free(m_rguHMACReceived);
-    m_rguHMACReceived = NULL;
+  if (received_hmac_ != NULL) {
+    free(received_hmac_);
+    received_hmac_ = NULL;
   }
-  if (m_rguIntKey != NULL) {
-    free(m_rguIntKey);
-    m_rguIntKey = NULL;
+  if (integrity_key_ != NULL) {
+    free(integrity_key_);
+    integrity_key_ = NULL;
   }
 }
 
-bool cbc::computePlainLen() {
-  m_iNumPlainBytes =
-      m_iNumCipherBytes - 2 * m_iBlockSize - SHA256_DIGESTSIZE_BYTES;
+bool cbc::ComputePlainLen() {
+  num_plain_bytes_ =
+      num_cipher_bytes_ - 2 * block_size_ - SHA256_DIGESTSIZE_BYTES;
   return true;
 }
 
-bool cbc::computeCipherLen() {
+bool cbc::ComputeCipherLen() {
   int k;
 
-  if ((m_iNumPlainBytes % m_iBlockSize) == 0) {
-    m_iNumCipherBytes =
-        m_iNumPlainBytes + 2 * m_iBlockSize + SHA256_DIGESTSIZE_BYTES;
+  if ((num_plain_bytes_ % block_size_) == 0) {
+    num_cipher_bytes_ =
+        num_plain_bytes_ + 2 * block_size_ + SHA256_DIGESTSIZE_BYTES;
   } else {
-    k = (m_iNumPlainBytes + m_iBlockSize - 1) / m_iBlockSize;
-    m_iNumCipherBytes =
-        k * m_iBlockSize + m_iBlockSize + SHA256_DIGESTSIZE_BYTES;
+    k = (num_plain_bytes_ + block_size_ - 1) /block_size_;
+    num_cipher_bytes_ =
+        k * block_size_ +block_size_ + SHA256_DIGESTSIZE_BYTES;
   }
   return true;
 }
 
-bool cbc::initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
+bool cbc::InitDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
                   int intkeysize, byte* intkey, int cipherLen) {
 #ifdef CRYPTOTEST
-  LOG(INFO)<<"cbc::initDec\n";
+  LOG(INFO)<<"cbc::InitDec\n";
 #endif
-  if (!init(alg, pad, hashalg, keysize, key, intkeysize, intkey)) return false;
-  m_iNumCipherBytes = cipherLen;
-  computePlainLen();
-  if (m_oAESDec.KeySetupDec(key, keysize * NBITSINBYTE) < 0) {
+  if (!Init(alg, pad, hashalg, keysize, key, intkeysize, intkey)) return false;
+  num_cipher_bytes_ = cipherLen;
+  ComputePlainLen();
+  if (aesdecrypt_.KeySetupDec(key, keysize * NBITSINBYTE) < 0) {
     return false;
   }
   return true;
@@ -430,276 +430,277 @@ bool cbc::initDec(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
 #ifdef CRYPTOTEST
 void printCBCState(cbc* pMode) {
   LOG(INFO)<< "CBC State:\n";
-  LOG(INFO)<<"\tBlock size: "<< pMode->m_iBlockSize<<"\n";
-  LOG(INFO)<<"\tPlain bytes: "<< pMode->m_iNumPlainBytes<<"\n";
-  LOG(INFO)<<"\tCipher bytes: "<< pMode->m_iNumCipherBytes<<"\n";
-  LOG(INFO) << "\tKey size: " << pMode->m_iKeySize;
-  LOG(INFO) << ", integrity key size: " << pMode->m_iIntKeySize << "\n";
+  LOG(INFO)<<"\tBlock size: "<< pMode->block_size_<<"\n";
+  LOG(INFO)<<"\tPlain bytes: "<< pMode->num_plain_bytes_<<"\n";
+  LOG(INFO)<<"\tCipher bytes: "<< pMode->num_cipher_bytes_<<"\n";
+  LOG(INFO) << "\tKey size: " << pMode->encrypt_key_size_;
+  LOG(INFO) << ", integrity key size: " << pMode->integrity_key_size_ << "\n";
 
-  if (pMode->m_fIVValid)
+  if (pMode->iv_valid_)
     LOG(INFO) << "\tIV valid\n";
   else
     LOG(ERROR) << "\tIV invalid\n";
-  LOG(INFO) << "\tEnc: "<< pMode->m_uEncAlg;
-  LOG(INFO) << ", mac: " << pMode->m_uMacAlg;
-  LOG(INFO) << ", pad: " << pMode->m_uPadAlg << "\n";
+  LOG(INFO) << "\tEnc: "<< pMode->encrypt_alg_;
+  LOG(INFO) << ", mac: " << pMode->mac_alg_;
+  LOG(INFO) << ", pad: " << pMode->pad_alg_ << "\n";
 
-  // m_rguIV;
-  // m_rgLastBlock;
-  // m_rguFirstBlock;
-  // m_rguLastBlocks;
-  // m_rguHMACComputed;
-  // m_rguHMACReceived;
-  // m_rguIntKey;
+  // iv_block_;
+  // last_block_;
+  // first_block_;
+  // last_blocks_;
+  // computed_hmac_;
+  // received_hmac_;
+  // integrity_key_;
 }
 #endif
 
-bool cbc::initEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
+bool cbc::InitEnc(u32 alg, u32 pad, u32 hashalg, int keysize, byte* key,
                   int intkeysize, byte* intkey, int plainLen, int ivSize,
                   byte* iv) {
 #ifdef CRYPTOTEST
-  LOG(INFO)<<"cbc::initEnc\n";
+  LOG(INFO)<<"cbc::InitEnc\n";
 #endif
-  if (!init(alg, pad, hashalg, keysize, key, intkeysize, intkey)) return false;
+  if (!Init(alg, pad, hashalg, keysize, key, intkeysize, intkey)) return false;
   if (iv != NULL) {
-    memcpy(m_rguFirstBlock, iv, m_iBlockSize);
-    memcpy(m_rgLastBlock, iv, m_iBlockSize);
-    m_fIVValid = true;
+    memcpy(first_block_, iv, block_size_);
+    memcpy(last_block_, iv, block_size_);
+    iv_valid_ = true;
   }
-  m_iNumPlainBytes = plainLen;
-  computeCipherLen();
-  if (m_oAESEnc.KeySetupEnc(key, keysize * NBITSINBYTE) < 0) {
+  num_plain_bytes_ = plainLen;
+  ComputeCipherLen();
+  if (aesencrypt_.KeySetupEnc(key, keysize * NBITSINBYTE) < 0) {
     return false;
   }
   return true;
 }
 
-bool cbc::init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key,
+bool cbc::Init(u32 alg, u32 pad, u32 macalg, int keysize, byte* key,
                int intkeysize, byte* intkey) {
-  m_iNumPlainBytes = 0;
-  m_iNumCipherBytes = 0;
-  m_fIVValid = false;
+  num_plain_bytes_ = 0;
+  num_cipher_bytes_ = 0;
+  iv_valid_ = false;
 
   if (alg != AES128) return false;
-  m_uEncAlg = alg;
-  m_iBlockSize = 16;
+  encrypt_alg_ = alg;
+  block_size_ = 16;
 
   if (macalg != HMACSHA256) return false;
-  m_uMacAlg = macalg;
+  mac_alg_ = macalg;
 
   if (pad != SYMPAD) return false;
-  m_uPadAlg = pad;
+  pad_alg_ = pad;
 
-  if (m_rguFirstBlock == NULL) m_rguFirstBlock = (byte*)malloc(m_iBlockSize);
-  if (m_rguLastBlocks == NULL)
-    m_rguLastBlocks = (byte*)malloc(4 * m_iBlockSize);
-  if (m_rgLastBlock == NULL) m_rgLastBlock = (byte*)malloc(m_iBlockSize);
-  if (m_rguHMACComputed == NULL)
-    m_rguHMACComputed = (byte*)malloc(SHA256_DIGESTSIZE_BYTES);
-  if (m_rguHMACReceived == NULL)
-    m_rguHMACReceived = (byte*)malloc(SHA256_DIGESTSIZE_BYTES);
-  if (m_rguIntKey != NULL) {
-    if (m_iIntKeySize != intkeysize) {
-      free(m_rguIntKey);
-      m_rguIntKey = NULL;
+  if (first_block_ == NULL) first_block_ = (byte*)malloc(block_size_);
+  if (last_blocks_ == NULL)
+    last_blocks_ = (byte*)malloc(4 * block_size_);
+  if (last_block_ == NULL) last_block_ = (byte*)malloc(block_size_);
+  if (computed_hmac_ == NULL)
+    computed_hmac_ = (byte*)malloc(SHA256_DIGESTSIZE_BYTES);
+  if (received_hmac_ == NULL)
+    received_hmac_ = (byte*)malloc(SHA256_DIGESTSIZE_BYTES);
+  if (integrity_key_ != NULL) {
+    if (integrity_key_size_ != intkeysize) {
+      free(integrity_key_);
+      integrity_key_ = NULL;
     }
   }
-  m_iIntKeySize = intkeysize;
-  if (m_rguIntKey == NULL) m_rguIntKey = (byte*)malloc(m_iIntKeySize);
+  integrity_key_size_ = intkeysize;
+  if (integrity_key_ == NULL) integrity_key_ = (byte*)malloc(integrity_key_size_);
 
-  if (m_rguFirstBlock == NULL || m_rguLastBlocks == NULL ||
-      m_rgLastBlock == NULL || m_rguHMACComputed == NULL ||
-      m_rguHMACReceived == NULL || m_rguIntKey == NULL)
+  if (first_block_ == NULL || last_blocks_ == NULL ||
+      last_block_ == NULL || computed_hmac_ == NULL ||
+      received_hmac_ == NULL || integrity_key_ == NULL)
     return false;
 
-  memcpy(m_rguIntKey, intkey, m_iKeySize);
-  m_ohMac.Init(intkey, intkeysize);
+  memcpy(integrity_key_, intkey, encrypt_key_size_);
+  hmac_.Init(intkey, intkeysize);
 
   return true;
 }
 
-int cbc::getMac(int size, byte* puMac) {
+int cbc::GetMac(int size, byte* puMac) {
 #ifdef CRYPTOTEST
-  LOG(INFO)<<"cbc::getMac\n";
+  LOG(INFO)<<"cbc::GetMac\n";
 #endif
-  memcpy(puMac, m_rguHMACComputed, SHA256_DIGESTSIZE_BYTES);
+  memcpy(puMac, computed_hmac_, SHA256_DIGESTSIZE_BYTES);
   return SHA256_DIGESTSIZE_BYTES;
 }
 
-void cbc::nextMac(byte* puA)
+void cbc::NextMac(byte* puA)
     // always full block at a time
     {
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::nextMac: ", puA, m_iBlockSize);
+  PrintBytes("cbc::NextMac: ", puA, block_size_);
 #endif
-  m_ohMac.Update(puA, m_iBlockSize);
+  hmac_.Update(puA, block_size_);
 }
 
-bool cbc::nextPlainBlockIn(byte* puIn, byte* puOut) {
+bool cbc::NextPlainBlockIn(byte* puIn, byte* puOut) {
   byte oldX[GLOBALMAXSYMKEYSIZE];
 
 #ifdef CRYPTOTEST
-  LOG(INFO) <<"cbc::nextPlainBlockIn\n";
+  LOG(INFO) <<"cbc::NextPlainBlockIn\n";
   PrintBytes("In: ", puIn, 16);
 #endif
-  inlineXor(oldX, m_rgLastBlock, puIn, m_iBlockSize);
-  m_oAESEnc.Encrypt(oldX, puOut);
-  memcpy(m_rgLastBlock, puOut, m_iBlockSize);
+  inlineXor(oldX, last_block_, puIn, block_size_);
+  aesencrypt_.Encrypt(oldX, puOut);
+  memcpy(last_block_, puOut, block_size_);
 #ifdef MACTHENENCRYPT  // should never do this
-  nextMac(puIn);
+  NextMac(puIn);
 #else
-  nextMac(puOut);
+  NextMac(puOut);
 #endif
   return true;
 }
 
-bool cbc::nextCipherBlockIn(byte* puIn, byte* puOut) {
+bool cbc::NextCipherBlockIn(byte* puIn, byte* puOut) {
   byte oldX[GLOBALMAXSYMKEYSIZE];
 
 #ifdef CRYPTOTEST
-  LOG(INFO) <<"cbc::nextCipherBlockIn\n";
+  LOG(INFO) <<"cbc::NextCipherBlockIn\n";
   PrintBytes("In: ", puIn, 16);
 #endif
-  m_oAESDec.Decrypt(puIn, oldX);
-  inlineXor(puOut, m_rgLastBlock, oldX, m_iBlockSize);
-  memcpy(m_rgLastBlock, puIn, m_iBlockSize);
+  aesdecrypt_.Decrypt(puIn, oldX);
+  inlineXor(puOut, last_block_, oldX, block_size_);
+  memcpy(last_block_, puIn, block_size_);
 #ifdef MACTHENENCRYPT  // should never do this
-  nextMac(puOut);
+  NextMac(puOut);
 #else
-  nextMac(puIn);
+  NextMac(puIn);
 #endif
   return true;
 }
 
-bool cbc::firstCipherBlockIn(byte* puIn) {
+bool cbc::FirstCipherBlockIn(byte* puIn) {
 #ifdef CRYPTOTEST
-  LOG(INFO)<<"cbc::firstCipherBlockIn\n";
-  PrintBytes("IV: ", puIn, m_iBlockSize);
+  LOG(INFO)<<"cbc::FirstCipherBlockIn\n";
+  PrintBytes("IV: ", puIn, block_size_);
 #endif
-  memcpy(m_rguFirstBlock, puIn, m_iBlockSize);
-  memcpy(m_rgLastBlock, puIn, m_iBlockSize);
-  m_fIVValid = true;
+  memcpy(first_block_, puIn, block_size_);
+  memcpy(last_block_, puIn, block_size_);
+  iv_valid_ = true;
   return true;
 }
 
-bool cbc::firstCipherBlockOut(byte* puOut) {
+bool cbc::FirstCipherBlockOut(byte* puOut) {
 #ifdef CRYPTOTEST
-  LOG(INFO) <<"cbc::firstCipherBlockOut\n";
-  PrintBytes("IV: ", m_rgLastBlock, m_iBlockSize);
+  LOG(INFO) <<"cbc::FirstCipherBlockOut\n";
+  PrintBytes("IV: ", last_block_, block_size_);
 #endif
-  memcpy(puOut, m_rgLastBlock, m_iBlockSize);
+  memcpy(puOut, last_block_, block_size_);
   return true;
 }
 
-bool cbc::validateMac() {
+bool cbc::ValidateMac() {
 #ifdef CRYPTOTEST
-  LOG(INFO) <<"cbc::validateMac\n";
+  LOG(INFO) <<"cbc::ValidateMac\n";
 #endif
-  return isEqual(m_rguHMACComputed, m_rguHMACReceived, SHA256_DIGESTSIZE_BYTES);
+  return isEqual(computed_hmac_, received_hmac_, SHA256_DIGESTSIZE_BYTES);
 }
 
-int cbc::lastPlainBlockIn(int size, byte* puIn, byte* puOut) {
+int cbc::LastPlainBlockIn(int size, byte* puIn, byte* puOut) {
   int num = 0;
   int i;
 
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::lastPlainBlockIn\n", puIn, size);
+  PrintBytes("cbc::LastPlainBlockIn\n", puIn, size);
 #endif
-  memcpy(m_rguLastBlocks, puIn, size);
+  memcpy(last_blocks_, puIn, size);
   // pad
-  if (size == m_iBlockSize) {
-    m_rguLastBlocks[m_iBlockSize] = 0x80;
-    for (i = 1; i < m_iBlockSize; i++) m_rguLastBlocks[m_iBlockSize + i] = 0x00;
+  if (size == block_size_) {
+    last_blocks_[block_size_] = 0x80;
+    for (i = 1; i < block_size_; i++) 
+      last_blocks_[block_size_+ i] = 0x00;
     num = 2;
-    nextPlainBlockIn(m_rguLastBlocks, puOut);
-    nextPlainBlockIn(m_rguLastBlocks + m_iBlockSize, puOut + m_iBlockSize);
-    m_ohMac.Final(m_rguHMACComputed);
+    NextPlainBlockIn(last_blocks_, puOut);
+    NextPlainBlockIn(last_blocks_ + block_size_, puOut +block_size_);
+    hmac_.Final(computed_hmac_);
   } else {
-    m_rguLastBlocks[size] = 0x80;
-    for (i = (size + 1); i < m_iBlockSize; i++) m_rguLastBlocks[i] = 0x00;
+    last_blocks_[size] = 0x80;
+    for (i = (size + 1); i < block_size_; i++) last_blocks_[i] = 0x00;
     num = 1;
-    nextPlainBlockIn(m_rguLastBlocks, puOut);
-    m_ohMac.Final(m_rguHMACComputed);
+    NextPlainBlockIn(last_blocks_, puOut);
+    hmac_.Final(computed_hmac_);
   }
-  memcpy(puOut + num * m_iBlockSize, m_rguHMACComputed,
+  memcpy(puOut + num * block_size_, computed_hmac_,
          SHA256_DIGESTSIZE_BYTES);
   num += 2;
 
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::lastPlainBlockIn, mac: \n", m_rguHMACComputed,
+  PrintBytes("cbc::LastPlainBlockIn, mac: \n", computed_hmac_,
              SHA256_DIGESTSIZE_BYTES);
 #endif
   // Note that the HMAC (whether encrypted or not) is returned as part of cipher
   // stream
-  return m_iBlockSize * num;
+  return block_size_ * num;
 }
 
-int cbc::lastCipherBlockIn(int size, byte* puIn, byte* puOut)
+int cbc::LastCipherBlockIn(int size, byte* puIn, byte* puOut)
     // last three or four blocks
     {
   int residue = 0;
-  int expectedsize = SHA256_DIGESTSIZE_BYTES + m_iBlockSize;
+  int expectedsize = SHA256_DIGESTSIZE_BYTES + block_size_;
 
 #ifdef CRYPTOTEST
-  PrintBytes("cbc::lastCipherBlockIn: ", puIn, size);
+  PrintBytes("cbc::LastCipherBlockIn: ", puIn, size);
 #endif
 
-  if (!m_fIVValid) {
-    LOG(ERROR)<<"cbc::lastCipherBlockIn: first cipherblock was not processed\n";
+  if (!iv_valid_) {
+    LOG(ERROR)<<"cbc::LastCipherBlockIn: first cipherblock was not processed\n";
     return -1;
   }
 
   if (size != expectedsize) {
-    LOG(ERROR)<<"cbc::lastCipherBlockIn: wrong lastBlock size, got " << size << " bytes\n";
+    LOG(ERROR)<<"cbc::LastCipherBlockIn: wrong lastBlock size, got " << size << " bytes\n";
     return -1;
   }
 
   // decrypt pad block
-  nextCipherBlockIn(puIn, m_rguLastBlocks);
-  puIn += m_iBlockSize;
-  m_ohMac.Final(m_rguHMACComputed);
+  NextCipherBlockIn(puIn, last_blocks_);
+  puIn += block_size_;
+  hmac_.Final(computed_hmac_);
 
 #ifdef CRYPTOTEST
-  PrintBytes("last cipher block decoded: ", m_rguLastBlocks, m_iBlockSize);
+  PrintBytes("last cipher block decoded: ", last_blocks_, block_size_);
 #endif
 
 #ifdef MACTHENENCRYPT  // should never do this
   // decrypt Mac
   byte oldX[GLOBALMAXSYMKEYSIZE];
 
-  m_oAESDec.Decrypt(puIn, oldX);
-  inlineXor(m_rguHMACReceived, m_rgLastBlock, oldX, m_iBlockSize);
-  memcpy(m_rgLastBlock, puIn, m_iBlockSize);
-  puIn += m_iBlockSize;
-  m_oAESDec.Decrypt(puIn, oldX);
-  inlineXor(m_rguHMACReceived + m_iBlockSize, m_rgLastBlock, oldX,
-            m_iBlockSize);
-  memcpy(m_rgLastBlock, puIn, m_iBlockSize);
-  puIn += m_iBlockSize;
+  aesdecrypt_.Decrypt(puIn, oldX);
+  inlineXor(received_hmac_, last_block_, oldX, block_size_);
+  memcpy(last_block_, puIn, block_size_);
+  puIn += block_size_;
+  aesdecrypt_.Decrypt(puIn, oldX);
+  inlineXor(received_hmac_ + block_size_, last_block_, oldX,
+            block_size_);
+  memcpy(last_block_, puIn, block_size_);
+  puIn += block_size_;
 #else
   // Copy mac
-  memcpy(m_rguHMACReceived, puIn, SHA256DIGESTBYTESIZE);
+  memcpy(received_hmac_, puIn, SHA256DIGESTBYTESIZE);
 #endif
 
   // depad
-  for (residue = m_iBlockSize - 1; residue >= 0; residue--) {
-    if (m_rguLastBlocks[residue] != 0) {
-      if (m_rguLastBlocks[residue] != 0x80) {
-        LOG(ERROR)<< "cbc::lastCipherBlockIn: bad pad error\n";
+  for (residue = block_size_ - 1; residue >= 0; residue--) {
+    if (last_blocks_[residue] != 0) {
+      if (last_blocks_[residue] != 0x80) {
+        LOG(ERROR)<< "cbc::LastCipherBlockIn: bad pad error\n";
         return -1;
       }
       break;
     }
   }
   if (residue < 0) {
-   LOG(ERROR)<<"cbc::lastCipherBlockIn: CBC bad pad error\n";
+   LOG(ERROR)<<"cbc::LastCipherBlockIn: CBC bad pad error\n";
     return -1;
   }
 #ifdef CRYPTOTEST
-  LOG(INFO)<<"cbc::lastCipherBlockIn, residue: " << residue<<"\n";
+  LOG(INFO)<<"cbc::LastCipherBlockIn, residue: " << residue<<"\n";
 #endif
-  m_iNumPlainBytes += residue;
-  memcpy(puOut, m_rguLastBlocks, residue);
+  num_plain_bytes_ += residue;
+  memcpy(puOut, last_blocks_, residue);
   return residue;
 }
 

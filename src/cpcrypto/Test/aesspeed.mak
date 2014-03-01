@@ -41,3 +41,7 @@ $(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cc $(S)/support/jlmcrypto.h
 
 $(B)/logging.o: $(S)/support/logging.cc $(S)/support/logging.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc
+
+clean:
+	rm $(B)/*.o
+	rm $(E)/aesspeedtest.exe

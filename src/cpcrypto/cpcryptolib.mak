@@ -63,7 +63,7 @@ $(B)/modesandpadding.o: $(S)/symmetric/modesandpadding.cc
 $(B)/aes.o: $(S)/symmetric/aes.cc
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aes.o $(S)/symmetric/aes.cc
 
-$(B)/aesni.o: $(S)/symmetric/aes.cc
+$(B)/aesni.o: $(S)/symmetric/aesni.cc
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/aesni.o $(S)/symmetric/aesni.cc
 
 $(B)/hmacsha256.o: $(S)/symmetric/hmacsha256.cc
@@ -96,3 +96,6 @@ $(B)/ecccrypt.o: $(S)/ecc/ecccrypt.cc
 $(B)/nist.o: $(S)/ecc/nist.cc
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/nist.o $(S)/ecc/nist.cc
 
+clean:
+	rm $(B)/*.o
+	rm $(E)/cpcryptolib.a

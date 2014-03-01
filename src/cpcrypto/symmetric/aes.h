@@ -69,8 +69,8 @@
 
 class aes {
  private:
-  int m_Nr;                       // number of rounds (10 only for now)
-  u32 m_rk[4 * (MAXNR + 1) + 1];  // round keys
+  int num_rounds_;                       // number of rounds (10 only for now)
+  u32 rounk_keys_[4 * (MAXNR + 1) + 1];  // round keys
  public:
   aes();
   aes(int nr);

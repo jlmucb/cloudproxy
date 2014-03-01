@@ -32,8 +32,8 @@
 
 class aesni {
  private:
-  int m_Nr;                       // number of rounds (10 only for now)
-  u32 m_rk[4 * (MAXNR + 1) + 1];  // round keys
+  int num_rounds_;                       // number of rounds (10 only for now)
+  u32 round_keys_[4 * (MAXNR + 1) + 1];  // round keys
  public:
   aesni();
   ~aesni();

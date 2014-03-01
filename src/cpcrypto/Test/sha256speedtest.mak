@@ -38,3 +38,6 @@ $(E)/sha256speedtest.exe: $(dobjs) $(E)/cpcryptolib.a
 $(B)/sha256speedtest.o: sha256speedtest.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256speedtest.o sha256speedtest.cc
 
+clean:
+	rm $(B)/*.o
+	rm $(E)/sha256speedtest.exe

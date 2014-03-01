@@ -47,9 +47,9 @@ void callcpuid(u32 arg, u32 out[4]) {
   out[3] = a4;
 }
 
-void inline genAES128EncRoundKeys(byte* pKey, byte* pExpandedKey) {
-  //  rdi --- pKey
-  //  rsi --- pExpandedKey
+void inline GenAES128EncRoundKeys(byte* key, byte* expanded_key) {
+  //  rdi --- key
+  //  rsi --- expanded_key
   asm volatile("\tjmp                  2f\n"
                "1: \n"
                "\tpshufd              $255, %%xmm2, %%xmm2\n"
@@ -63,8 +63,8 @@ void inline genAES128EncRoundKeys(byte* pKey, byte* pExpandedKey) {
                "\tpxor                %%xmm2, %%xmm1\n"
                "\tret\n"
                "2:\n"
-               "\tmovq                %[pKey], %%rdi\n"
-               "\tmovq                %[pExpandedKey], %%rsi\n"
+               "\tmovq                %[key], %%rdi\n"
+               "\tmovq                %[expanded_key], %%rsi\n"
                "\tmovdqu              (%%rdi), %%xmm1 \n"
                "\tmovdqu              %%xmm1, (%%rsi)\n"
                "\taeskeygenassist     $1, %%xmm1, %%xmm2\n"
@@ -98,11 +98,11 @@ void inline genAES128EncRoundKeys(byte* pKey, byte* pExpandedKey) {
                "\tcall                1b\n"
                "\tmovdqu              %%xmm1, 160(%%rsi)\n"
                :
-               : [pKey] "m"(pKey), [pExpandedKey] "m"(pExpandedKey)
+               : [key] "m"(key), [expanded_key] "m"(expanded_key)
                : "%rdi", "%rsi", "%xmm1", "%xmm2", "%xmm3");
 }
 
-void inline fixAES128DecRoundKeys(byte* ks) {
+void inline FixAES128DecRoundKeys(byte* ks) {
   asm volatile("\tmovq          %[ks], %%rdi\n"
                "\tmovdqu        (%%rdi), %%xmm1\n"
                "\taesimc        %%xmm1, %%xmm1\n"
@@ -120,31 +120,31 @@ bool supportsni() {
 }
 
 aesni::aesni() {
-  m_Nr = 10;  // AES128 only, 10 rounds
+  num_rounds_ = 10;  // AES128 only, 10 rounds
 }
 
-aesni::~aesni() { memset(m_rk, 0, 4 * (MAXNR + 1)); }
+aesni::~aesni() { memset(round_keys_, 0, 4 * (MAXNR + 1)); }
 
-void aesni::CleanKeys() { memset(m_rk, 0, 4 * (MAXNR + 1)); }
+void aesni::CleanKeys() { memset(round_keys_, 0, 4 * (MAXNR + 1)); }
 
-int aesni::KeySetupEnc(const byte* pbKey, int iNumKeyBits) {
-  if (iNumKeyBits != 128) return 0;
-  m_Nr = 10;
-  genAES128EncRoundKeys((byte*)pbKey, (byte*)m_rk);
-  return m_Nr;
+int aesni::KeySetupEnc(const byte* key, int num_key_bits) {
+  if (num_key_bits != 128) return 0;
+  num_rounds_ = 10;
+  GenAES128EncRoundKeys((byte*)key, (byte*)round_keys_);
+  return num_rounds_;
 }
 
-int aesni::KeySetupDec(const byte* pbKey, int iNumKeyBits) {
+int aesni::KeySetupDec(const byte* key, int num_key_bits) {
   int i;
-  if (iNumKeyBits != 128) return 0;
-  genAES128EncRoundKeys((byte*)pbKey, (byte*)m_rk);
-  for (i = 1; i < 10; i++) fixAES128DecRoundKeys((byte*)&m_rk[4 * i]);
-  m_Nr = 10;
-  return m_Nr;
+  if (num_key_bits != 128) return 0;
+  GenAES128EncRoundKeys((byte*)key, (byte*)round_keys_);
+  for (i = 1; i < 10; i++) FixAES128DecRoundKeys((byte*)&round_keys_[4 * i]);
+  num_rounds_ = 10;
+  return num_rounds_;
 }
 
 void aesni::Encrypt(const byte pt[16], byte ct[16]) {
-  byte* ks = (byte*)m_rk;
+  byte* ks = (byte*)round_keys_;
   asm volatile("\tmovq         %[ks], %%r8\n"
                "\tmovq         %[pt], %%rdi\n"
                "\tmovq         %[ct], %%rsi\n"
@@ -178,7 +178,7 @@ void aesni::Encrypt(const byte pt[16], byte ct[16]) {
 }
 
 void aesni::Decrypt(const byte ct[16], byte pt[16]) {
-  byte* ks = (byte*)m_rk;
+  byte* ks = (byte*)round_keys_;
   asm volatile("\tmovq         %[ks], %%r8\n"
                "\tmovq         %[pt], %%rdi\n"
                "\tmovq         %[ct], %%rsi\n"

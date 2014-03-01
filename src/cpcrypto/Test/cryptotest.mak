@@ -55,4 +55,8 @@ $(B)/shatest.o: shatest.cc
 $(B)/sha256test.o: sha256test.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256test.o sha256test.cc
 
-
+clean:
+	rm $(B)/*.o
+	rm $(E)/aestest.exe
+	rm $(E)/shatest.exe
+	rm $(E)/sha256test.exe

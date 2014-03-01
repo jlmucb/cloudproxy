@@ -64,3 +64,6 @@ $(B)/jlmcrypto.o: $(S)/support/jlmcrypto.cc
 $(B)/logging.o: $(S)/support/logging.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc
 
+clean:
+	rm $(B)/*.o
+	rm $(E)/rsaspeedtest.exe

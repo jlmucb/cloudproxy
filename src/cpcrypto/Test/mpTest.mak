@@ -71,3 +71,7 @@ $(B)/tinystr.o : $(S)/support/tinystr.cc
 
 $(B)/logging.o: $(S)/support/logging.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc
+
+clean:
+	rm $(B)/*.o
+	rm $(E)/mpTest.exe

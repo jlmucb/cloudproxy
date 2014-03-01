@@ -522,19 +522,19 @@ static const u32 rcon[] = {0x01000000, 0x02000000, 0x04000000, 0x08000000,
 // ------------------------------------------------------------------------
 
 aes::aes() {
-  m_Nr = 10;  // AES128 only, 10 rounds
+  num_rounds_ = 10;  // AES128 only, 10 rounds
 }
 
-aes::aes(int nr) { m_Nr = nr; }
+aes::aes(int nr) { num_rounds_ = nr; }
 
-aes::~aes() { memset(m_rk, 0, 4 * (MAXNR + 1)); }
+aes::~aes() { memset(rounk_keys_, 0, 4 * (MAXNR + 1)); }
 
-void aes::CleanKeys() { memset(m_rk, 0, 4 * (MAXNR + 1)); }
+void aes::CleanKeys() { memset(rounk_keys_, 0, 4 * (MAXNR + 1)); }
 
 int aes::KeySetupEnc(const byte* pbKey, int iNumKeyBits) {
   int i = 0;
   u32 temp;
-  u32* rk = m_rk;
+  u32* rk = rounk_keys_;
 
   rk[0] = GETU32(pbKey);
   rk[1] = GETU32(pbKey + 4);
@@ -552,7 +552,7 @@ int aes::KeySetupEnc(const byte* pbKey, int iNumKeyBits) {
       rk[6] = rk[2] ^ rk[5];
       rk[7] = rk[3] ^ rk[6];
       if (++i == 10) {
-        return (m_Nr = 10);
+        return (num_rounds_ = 10);
       }
       rk += 4;
     }
@@ -570,7 +570,7 @@ int aes::KeySetupEnc(const byte* pbKey, int iNumKeyBits) {
       rk[8] = rk[2] ^ rk[7];
       rk[9] = rk[3] ^ rk[8];
       if (++i == 8) {
-        return (m_Nr = 12);
+        return (num_rounds_ = 12);
       }
       rk[10] = rk[4] ^ rk[9];
       rk[11] = rk[5] ^ rk[10];
@@ -590,7 +590,7 @@ int aes::KeySetupEnc(const byte* pbKey, int iNumKeyBits) {
       rk[10] = rk[2] ^ rk[9];
       rk[11] = rk[3] ^ rk[10];
       if (++i == 7) {
-        return (m_Nr = 14);
+        return (num_rounds_ = 14);
       }
       temp = rk[11];
       rk[12] = rk[4] ^ (Te4[(temp >> 24)] & 0xff000000) ^
@@ -604,19 +604,19 @@ int aes::KeySetupEnc(const byte* pbKey, int iNumKeyBits) {
       rk += 8;
     }
   }
-  return (m_Nr);
+  return (num_rounds_);
 }
 
 int aes::KeySetupDec(const byte* pbKey, int iNumKeyBits) {
-  int Nr, i, j;
+  int num_of_rounds, i, j;
   u32 temp;
-  u32* rk = m_rk;
+  u32* rk = rounk_keys_;
 
   // expand the cipher key
-  m_Nr = Nr = KeySetupEnc(pbKey, iNumKeyBits);
+  num_rounds_ = num_of_rounds = KeySetupEnc(pbKey, iNumKeyBits);
 
   // invert the order of the round keys
-  for (i = 0, j = 4 * Nr; i < j; i += 4, j -= 4) {
+  for (i = 0, j = 4 * num_of_rounds; i < j; i += 4, j -= 4) {
     temp = rk[i];
     rk[i] = rk[j];
     rk[j] = temp;
@@ -633,7 +633,7 @@ int aes::KeySetupDec(const byte* pbKey, int iNumKeyBits) {
 
   // apply the inverse MixColumn transform to all round keys but the first and
   // the last
-  for (i = 1; i < Nr; i++) {
+  for (i = 1; i < num_of_rounds; i++) {
     rk += 4;
     rk[0] =
         Td0[Te4[(rk[0] >> 24)] & 0xff] ^ Td1[Te4[(rk[0] >> 16) & 0xff] & 0xff] ^
@@ -649,14 +649,14 @@ int aes::KeySetupDec(const byte* pbKey, int iNumKeyBits) {
         Td2[Te4[(rk[3] >> 8) & 0xff] & 0xff] ^ Td3[Te4[(rk[3]) & 0xff] & 0xff];
   }
 
-  m_Nr = Nr;
-  return Nr;
+  num_rounds_ = num_of_rounds;
+  return num_of_rounds;
 }
 
 void aes::Encrypt(const byte pt[16], byte ct[16]) {
   u32 s0, s1, s2, s3, t0, t1, t2, t3;
-  u32* rk = m_rk;
-  int Nr = m_Nr;
+  u32* rk = rounk_keys_;
+  int num_of_rounds = num_rounds_;
 #ifndef FULL_UNROLL
   int r;
 #endif
@@ -747,7 +747,7 @@ void aes::Encrypt(const byte pt[16], byte ct[16]) {
        Te3[s1 & 0xff] ^ rk[38];
   t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
        Te3[s2 & 0xff] ^ rk[39];
-  if (Nr > 10) {
+  if (num_of_rounds > 10) {
     // round 10
     s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
          Te3[t3 & 0xff] ^ rk[40];
@@ -766,7 +766,7 @@ void aes::Encrypt(const byte pt[16], byte ct[16]) {
          Te3[s1 & 0xff] ^ rk[46];
     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
          Te3[s2 & 0xff] ^ rk[47];
-    if (Nr > 12) {
+    if (num_of_rounds > 12) {
       // round 12
       s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
            Te3[t3 & 0xff] ^ rk[48];
@@ -787,10 +787,10 @@ void aes::Encrypt(const byte pt[16], byte ct[16]) {
            Te3[s2 & 0xff] ^ rk[55];
     }
   }
-  rk += Nr << 2;
+  rk += num_of_rounds << 2;
 #else
-  // Nr - 1 full rounds:
-  r = Nr >> 1;
+  // num_of_rounds - 1 full rounds:
+  r = num_of_rounds >> 1;
   for (;;) {
     t0 = Te0[(s0 >> 24)] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
          Te3[(s3) & 0xff] ^ rk[4];
@@ -836,8 +836,8 @@ void aes::Encrypt(const byte pt[16], byte ct[16]) {
 
 void aes::Decrypt(const byte ct[16], byte pt[16]) {
   u32 s0, s1, s2, s3, t0, t1, t2, t3;
-  u32* rk = m_rk;
-  int Nr = m_Nr;
+  u32* rk = rounk_keys_;
+  int num_of_rounds = num_rounds_;
 #ifndef FULL_UNROLL
   int r;
 #endif
@@ -929,7 +929,7 @@ void aes::Decrypt(const byte ct[16], byte pt[16]) {
        Td3[s3 & 0xff] ^ rk[38];
   t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >> 8) & 0xff] ^
        Td3[s0 & 0xff] ^ rk[39];
-  if (Nr > 10) {
+  if (num_of_rounds > 10) {
     /* round 10: */
     s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >> 8) & 0xff] ^
          Td3[t1 & 0xff] ^ rk[40];
@@ -948,7 +948,7 @@ void aes::Decrypt(const byte ct[16], byte pt[16]) {
          Td3[s3 & 0xff] ^ rk[46];
     t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >> 8) & 0xff] ^
          Td3[s0 & 0xff] ^ rk[47];
-    if (Nr > 12) {
+    if (num_of_rounds > 12) {
       /* round 12: */
       s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >> 8) & 0xff] ^
            Td3[t1 & 0xff] ^ rk[48];
@@ -969,11 +969,11 @@ void aes::Decrypt(const byte ct[16], byte pt[16]) {
            Td3[s0 & 0xff] ^ rk[55];
     }
   }
-  rk += Nr << 2;
+  rk += num_of_rounds << 2;
 #else
 
-  // Nr-1 full rounds:
-  r = Nr >> 1;
+  // num_of_rounds-1 full rounds:
+  r = num_of_rounds >> 1;
   for (;;) {
     t0 = Td0[(s0 >> 24)] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >> 8) & 0xff] ^
          Td3[(s1) & 0xff] ^ rk[4];

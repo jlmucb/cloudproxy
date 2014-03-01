@@ -30,16 +30,16 @@
 
 class hmacsha256 {
  public:
-  Sha256 oHash;
-  byte rguipad[SHA256_DIGESTSIZE_BYTES];
-  byte rguopad[SHA256_DIGESTSIZE_BYTES];
-  byte rguNewKey[SHA256_DIGESTSIZE_BYTES];
+  Sha256 local_hash_;
+  byte   in_pad_[SHA256_DIGESTSIZE_BYTES];
+  byte   out_pad_[SHA256_DIGESTSIZE_BYTES];
+  byte   new_key_[SHA256_DIGESTSIZE_BYTES];
 
   hmacsha256();
   ~hmacsha256();
-  void Init(byte* rguKey, int iKeyLen);
-  void Update(const byte* rguMsg, int iInLen);
-  void Final(byte* rguDigest);
+  void Init(byte* key, int key_len);
+  void Update(const byte* message, int in_len);
+  void Final(byte* digest);
 };
 
 #endif

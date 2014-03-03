@@ -175,18 +175,30 @@ and populate the IDT with the appropriate handlers (in evmm or guest).
 The input arguments which must be prepared by bootstrap are set
 forth below.
 
-JLM: I guess I'm a little confused.  I would have thought that evmm
-protects guests from each other and the evmm from guest usinf EPT.  Do
-you mean that in addition to that, the e820 map changes insure that
-NO guest can ever touch tboot, evmm memory?  If that's the case,
-I understand.  [REHKA3: Comment]
-
 
 Details of bootstrap initialization
 -----------------------------------
 
 The remainder of this document describes in detail the environment provided 
 to evmm by bootstrap.
+
+
+Memory layout when bootstrap main is called
+-------------------------------------------
+
+REHKA3
+Where is bootstrap?
+Where is 64-bit vmm?
+Where is is Linux image and initram?
+
+
+Required memory setup when vmm_main is called
+---------------------------------------------
+
+REHKA3
+Where have we relocated 64-bit vmm?
+Where have we relocated Linux image and initram?
+
 
 
 vmm_main call

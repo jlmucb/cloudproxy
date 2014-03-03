@@ -211,8 +211,8 @@ Tboot header                                            <-- 0x00800000
 Tboot start (boot.S)                                    <-- 0x00804000
   Tboot ends at ~                                           0x00972e88
 Evmm package
-   bootstrap code                                       <-- 0x00100000
-   64bit evmm image (uncompressed)                      <-- 0x00100000+bootstrap
+   bootstrap code                                       <-- 0x0804a317
+   64bit evmm image (uncompressed)                      <-- 
 Linux image package                         who decompressed this?
   linux file (uncompressed real mode execution header)
   compressed linux file
@@ -234,8 +234,8 @@ Partition table                                         <-- 0x000007be -->7ff
 Command line buffer                                     <-- 0x00002000 -->7ff
 GRUB Stage 0                                            <-- 0x00007c00 -->7dff
 GRUB Stage 1                                            <-- 0x00008000
-tboot code (real and PE)                                <-- 
-bootstrap code                                          <--
+tboot code (real and PE)                                <-- 0x00800000
+bootstrap code                                          <-- 0x0804a317
 32 bit scratch space
 EMPTY
 Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000

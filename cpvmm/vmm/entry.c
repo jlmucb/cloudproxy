@@ -1038,6 +1038,7 @@ int main(int an, char** av) {
         entry_offset += entry->size + sizeof(entry->size);
     }
     tprintk("%d total\n", l);
+    tprintk("bootstap main is at %08x\n", main);
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;

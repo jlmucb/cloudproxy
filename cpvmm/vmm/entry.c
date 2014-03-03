@@ -41,13 +41,96 @@ typedef unsigned char u8;
 #define PSE_BIT     0x10
 #define PAE_BIT     0x20
 
-#define PAGE_SIZE (1024 * 4)
-UINT32  heap_base;
-UINT32  heap_current;
-UINT32  heap_tops;
+#define PAGE_SIZE (1024 * 4) 
 
+UINT32  heap_base; 
+UINT32  heap_current; 
+UINT32  heap_tops;
+UINT32  heap_size;
 
 // Rekha to put globals she needs here
+
+// IA-32 Interrupt Descriptor Table - Gate Descriptor 
+
+typedef struct { 
+        UINT32  OffsetLow:16;   // Offset bits 15..0 
+        UINT32  Selector:16;    // Selector 
+        UINT32  Reserved_0:8;   // Reserved
+  UINT32  GateType:8;     // Gate Type.  See #defines above
+  UINT32  OffsetHigh:16;  // Offset bits 31..16
+} IA32_IDT_GATE_DESCRIPTOR;
+
+//
+// Descriptor for the Global Descriptor Table(GDT) and Interrupt Descriptor Table(IDT)
+//
+typedef struct {
+  UINT16  Limit;
+  UINT32  Base;
+} IA32_DESCRIPTOR;
+
+typedef struct {
+        INIT32_STRUCT s;
+        UINT32 data[32];
+} INIT32_STRUCT_SAFE;
+
+typedef enum {
+  Ia32ExceptionVectorDivideError,
+  Ia32ExceptionVectorDebugBreakPoint,
+  Ia32ExceptionVectorNmi,
+  Ia32ExceptionVectorBreakPoint,
+  Ia32ExceptionVectorOverflow,
+  Ia32ExceptionVectorBoundRangeExceeded,
+  Ia32ExceptionVectorUndefinedOpcode,
+  Ia32ExceptionVectorNoMathCoprocessor,
+  Ia32ExceptionVectorDoubleFault,
+  Ia32ExceptionVectorReserved0x09,
+  Ia32ExceptionVectorInvalidTaskSegmentSelector,
+  Ia32ExceptionVectorSegmentNotPresent,
+  Ia32ExceptionVectorStackSegmentFault,
+  Ia32ExceptionVectorGeneralProtectionFault,
+  Ia32ExceptionVectorPageFault,
+  Ia32ExceptionVectorReserved0x0F,
+  Ia32ExceptionVectorMathFault,
+  Ia32ExceptionVectorAlignmentCheck,
+  Ia32ExceptionVectorMachineCheck,
+  Ia32ExceptionVectorSimdFloatingPointNumericError,
+  Ia32ExceptionVectorReservedSimdFloatingPointNumericError,
+  Ia32ExceptionVectorReserved0x14,
+  Ia32ExceptionVectorReserved0x15,
+  Ia32ExceptionVectorReserved0x16,
+  Ia32ExceptionVectorReserved0x17,
+  Ia32ExceptionVectorReserved0x18,
+  Ia32ExceptionVectorReserved0x19,
+  Ia32ExceptionVectorReserved0x1A,
+  Ia32ExceptionVectorReserved0x1B,
+  Ia32ExceptionVectorReserved0x1C,
+  Ia32ExceptionVectorReserved0x1D,
+  Ia32ExceptionVectorReserved0x1E,
+  Ia32ExceptionVectorReserved0x1F
+} IA32_EXCEPTION_VECTORS;
+
+//
+//
+// Ring 0 Interrupt Descriptor Table - Gate Types
+//
+#define IA32_IDT_GATE_TYPE_TASK          0x85
+#define IA32_IDT_GATE_TYPE_INTERRUPT_16  0x86
+#define IA32_IDT_GATE_TYPE_TRAP_16       0x87
+#define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
+#define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
+#define HEAP_BASE 0X0 /* Need to set to an address (possibly base) in e820 slot used for evmm */
+#define HEAP_SIZE 0X100000
+#define TOTAL_MEM 0x100000000 // max of 4G because we start in 32-bit mode
+#define IDT_VECTOR_COUNT 256
+#define LVMM_CS_SELECTOR 0x10
+
+
+IA32_IDT_GATE_DESCRIPTOR LvmmIdt[IDT_VECTOR_COUNT];
+IA32_DESCRIPTOR IdtDescriptor;
+
+static IA32_GDTR        gdtr_32;
+static IA32_GDTR        gdtr_64;  // still in 32-bit mode
+static UINT16           cs_64;
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
@@ -65,70 +148,37 @@ multiboot_info_t *g_mbi= NULL;
 
 
 typedef void (*tboot_printk)(const char *fmt, ...);
+tboot_printk tprintk = (tboot_printk)(0x80d660);
 
-
-void ia32_write_gdtr(IA32_GDTR *p_descriptor)
+void *vmm_memset(void *dest, int val, UINT32 count)
 {
-    asm volatile (
-        "\tmovl  %[p_descriptor], %%edx\n"
-        "\tlgdt  (%%edx)\n"
-    : 
-    : [p_descriptor] "m" (p_descriptor)
-    : "%edx");
+    asm volatile(
+        "\n movl %[dest], %%edi"
+        "\n\t movl %[val], %%eax"
+        "\n\t movl %[count], %%ecx"
+        "\n\t cld"
+        "\n\t rep stosb"
+        :[dest] "+g" (dest)
+        :[val] "g" (val), [count] "g" (count)
+        :);
+        return dest;
 }
 
-
-void ia32_write_cr3(UINT32 value)
+void *vmm_memcpy(void *dest, const void* src, UINT32 count)
 {
-    asm volatile (
-        "\tmovl   %[value], %%eax\n"
-        "\tmovl   %%eax, %%eax\n"
-    : 
-    : [value] "m" (value)
-    : "%eax");
+    asm volatile(
+        "\n movl %[src], %%esi"
+        "\n movl %[dest], %%edi"
+        "\n\t movl %[count], %%ecx"
+        "\n\t cld"
+        "\n\t rep stosb"
+        :[dest] "+g" (dest)
+        :[src] "g" (src), [count] "g" (count)
+        :);
+        return dest;
 }
 
-UINT32 ia32_read_cr4(void)
-{
-    asm volatile (
-        "\t.byte( 0x0F)\n"
-        "\t.byte( 0x20)\n"
-        // mov eax, cr4
-        "\t.byte( 0xE0)\n"
-    : 
-    :
-    : "%eax");
-}
-
-void ia32_write_cr4(UINT32 value)
-{
-    asm volatile (
-        "\tmovl    %[value],%%eax\n"
-        "\t.byte( 0x0F)\n"
-        "\t.byte( 0x22)\n"
-        // mov cr4, eax
-        "\t.byte( 0xE0)\n"
-    : 
-    : [value] "m" (value)
-    : "%eax");
-}
-
-void ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
-{
-    asm volatile (
-        "\tmovl    %[p_value], %%ecx\n"
-        "\tmovl    (%%ecx), %%eax\n"
-        "\tmovl    4(%%ecx), %%edx\n"
-        "\tmovl    %[msr_id], %%ecx\n"
-        // write from EDX:EAX into MSR[ECX]
-        "\twrmsr \n"
-    : 
-    : [msr_id] "m" (msr_id),  [p_value] "m" (p_value)
-    : "%eax", "%ecx", "%edx");
-}
-
-//REK: START
-VOID ZeroMem( VOID*   Address, UINT32  Size)
+void ZeroMem(void *Address, UINT32  Size)
 {
   UINT8* Source;
 
@@ -136,53 +186,79 @@ VOID ZeroMem( VOID*   Address, UINT32  Size)
   while (Size--) {
     *Source++ = 0;
   }
-}
+}//end ZeroMem
 
-VOID* AllocateMemory( UINT32 size_request)
+void* AllocateMemory(UINT32 size_request)
 {
   UINT32 Address;
 
   if (heap_current + size_request > heap_tops) {
-        /*
-      printk("Allocation request exceeds heap's size\r\n");
-      printk("Heap current = 0x", heap_current);
-      printk("Requested size =0x", size_request);
-      printk("Heap tops = 0x", heap_tops);
-        */
+      tprintk("Allocation request exceeds heap's size\r\n");
+      tprintk("Heap current = %X", heap_current);
+      tprintk("Requested size = %X", size_request);
+      tprintk("Heap tops = %X", heap_tops);
 
     return NULL;
   }
   Address = heap_current;
   heap_current+=size_request;
-  ZeroMem((VOID*)Address, size_request);
-  return (VOID*)Address;
+  ZeroMem((void*)Address, size_request);
+  return (void*)Address;
+}//end AllocateMemory
+
+/*
+  PrintE820BiosMemoryMap():
+    Routine to print the E820 BIOS memory map
+*/
+void
+PrintE820BiosMemoryMap()
+// INT15_E820_MEMORY_MAP *BiosMemoryMap
+{
+#if 0
+  UINT32                        NumberOfMemoryEntries;
+  UINT32                        Index;
+
+  NumberOfMemoryEntries = BiosMemoryMap->MemoryMapSize / sizeof(INT15_E820_MEMORY_MAP_ENTRY);
+  tprintk_AND_VALUE("NumberOfMemoryEntries = 0x", NumberOfMemoryEntries);
+
+  for (Index = 0 ; Index < NumberOfMemoryEntries ; Index++)
+  {
+    tprintk("BaseAddress = 0x");
+    PRINT_VALUE((UINT32)BiosMemoryMap->MemoryMapEntry[Index].BaseAddress);
+    tprintk(" Length = 0x");
+    PRINT_VALUE((UINT32)BiosMemoryMap->MemoryMapEntry[Index].Length);
+    tprintk(" Type = 0x");
+    PRINT_VALUE(BiosMemoryMap->MemoryMapEntry[Index].AddressRangeType);
+    tprintk("\n");
+  }
+#endif
 }
 
-
-VOID InitializeMemoryManager(UINT64 * HeapBaseAddress, UINT64 *    HeapBytes)
+void InitializeMemoryManager(UINT64 *HeapBaseAddress, UINT64 *HeapBytes)
 {
   heap_current = heap_base = *(UINT32*)HeapBaseAddress;
   heap_tops = heap_base + *(UINT32*)HeapBytes;
 }
 
-VOID CopyMem( VOID *Dest, VOID *Source, UINT32 Size)
+void CopyMem(void *Dest, void *Source, UINT32 Size)
 {
   UINT8 *d = (UINT8*)Dest;
   UINT8 *s = (UINT8*)Source;
 
-  while (Size--) {
+  while (Size--)
+  {
     *d++ = *s++;
   }
 }
 
-BOOLEAN CompareMem( VOID *Source1, VOID *Source2, UINT32 Size)
+BOOLEAN CompareMem(void *Source1, void *Source2, UINT32 Size)
 {
   UINT8 *s1 = (UINT8*)Source1;
   UINT8 *s2 = (UINT8*)Source2;
 
   while (Size--) {
     if (*s1++ != *s2++) {
-    //      printk("Compare mem failed\n");
+      tprintk("Compare mem failed\n");
       return FALSE;
     }
   }
@@ -191,44 +267,336 @@ BOOLEAN CompareMem( VOID *Source1, VOID *Source2, UINT32 Size)
 
 void * evmm_page_alloc(UINT32 pages)
 {
-    UINT32 address;
-    UINT32 size = pages * PAGE_SIZE;
+        UINT32 address;
+        UINT32 size = pages * PAGE_SIZE;
 
-    address = ALIGN_FORWARD(heap_current, PAGE_SIZE);
-    heap_current = address + size;
-    ZeroMem((void*)address, size);
-    return (void*)address;
+        address = ALIGN_FORWARD(heap_current, PAGE_SIZE);
+        heap_current = address + size;
+        ZeroMem((void*)address, size);
+        return (void*)address;
 }
 
-static IA32_GDTR        gdtr_32;
-static IA32_GDTR        gdtr_64;  // still in 32-bit mode
-static UINT16           cs_64;
+void ExceptionHandlerReserved(UINT32 Cs, UINT32 Eip)
+{
+//    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Reserved exception\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerDivideError(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Divide error\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerDebugBreakPoint(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Debug breakpoint\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerNmi(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("NMI\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerBreakPoint(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Breakpoint\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerOverflow(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Overflow\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerBoundRangeExceeded(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Bound range exceeded\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerUndefinedOpcode(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Undefined opcode\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerNoMathCoprocessor(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("No math coprocessor\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerDoubleFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Double fault\n");
+
+    //
+    // No need to print error code here because it is always zero
+    //
+
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerInvalidTaskSegmentSelector(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Invalid task segment selector\n");
+    //PrintErrorCodeGeneric(ErrorCode);
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerSegmentNotPresent(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Segment not present\n");
+    //PrintErrorCodeGeneric(ErrorCode);
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerStackSegmentFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Stack segment fault\n");
+    //PrintErrorCodeGeneric(ErrorCode);
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerGeneralProtectionFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("General protection fault\n");
+    //PrintErrorCodeGeneric(ErrorCode);
+    VMM_UP_BREAKPOINT();
+}
+
+//
+// The next pragma is to avoid compiler warning when debug prints are disabled
+//
+#pragma warning (disable:4101)
+void ExceptionHandlerPageFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
+{
+    UINT32 Cr2;
+
+    asm volatile(
+        "\npush %%eax"
+        "\n\tmovl %%cr2, %%eax"
+        "\n\tmovl %%eax, %[Cr2]"
+        "\n\tpop %%eax"
+        :[Cr2] "=g" (Cr2)
+        ::"%eax");
+        //PrintExceptionHeader(Cs, Eip);
+    tprintk("Page fault\n");
+    tprintk("Faulting address %x",Cr2);
+    tprintk("\n");
+
+    // TODO: need a specific error code print function here
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerMathFault(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Math fault\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerAlignmentCheck(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Alignment check\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerMachineCheck(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Machine check\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerSimdFloatingPointNumericError(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("SIMD floating point numeric error\n");
+    VMM_UP_BREAKPOINT();
+}
+
+void ExceptionHandlerReservedSimdFloatingPointNumericError(UINT32 Cs, UINT32 Eip)
+{
+    //PrintExceptionHeader(Cs, Eip);
+    tprintk("Reserved SIMD floating point numeric error\n");
+    VMM_UP_BREAKPOINT();
+}
+
+
+void InstallExceptionHandler(UINT32 ExceptionIndex, UINT32 HandlerAddr)
+{
+    LvmmIdt[ExceptionIndex].OffsetLow  = HandlerAddr & 0xFFFF;
+    LvmmIdt[ExceptionIndex].OffsetHigh = HandlerAddr >> 16;
+}
+
+void SetupIDT()
+{
+    int i;
+
+    UINT32  pIdtDescriptor;
+
+    tprintk("SetupIdt called\n");
+    ZeroMem(&LvmmIdt, sizeof(LvmmIdt));
+
+    for (i = 0 ; i < 32 ; i++) {
+        LvmmIdt[i].GateType = IA32_IDT_GATE_TYPE_INTERRUPT_32;
+        LvmmIdt[i].Selector = LVMM_CS_SELECTOR;
+        LvmmIdt[i].Reserved_0 = 0;
+        InstallExceptionHandler(i, (UINT32)(ExceptionHandlerReserved));
+    }
+
+    InstallExceptionHandler(Ia32ExceptionVectorDivideError,
+                            (UINT32)ExceptionHandlerDivideError);
+    InstallExceptionHandler(Ia32ExceptionVectorDebugBreakPoint,
+                            (UINT32)ExceptionHandlerDebugBreakPoint);
+    InstallExceptionHandler(Ia32ExceptionVectorNmi,
+                            (UINT32)ExceptionHandlerNmi);
+    InstallExceptionHandler(Ia32ExceptionVectorBreakPoint,
+                            (UINT32)ExceptionHandlerBreakPoint);
+    InstallExceptionHandler(Ia32ExceptionVectorOverflow,
+                            (UINT32)ExceptionHandlerOverflow);
+    InstallExceptionHandler(Ia32ExceptionVectorBoundRangeExceeded,
+                            (UINT32)ExceptionHandlerBoundRangeExceeded);
+    InstallExceptionHandler(Ia32ExceptionVectorUndefinedOpcode,
+                            (UINT32)ExceptionHandlerUndefinedOpcode);
+    InstallExceptionHandler(Ia32ExceptionVectorNoMathCoprocessor,
+                            (UINT32)ExceptionHandlerNoMathCoprocessor);
+    InstallExceptionHandler(Ia32ExceptionVectorDoubleFault,
+                            (UINT32)ExceptionHandlerDoubleFault);
+    InstallExceptionHandler(Ia32ExceptionVectorInvalidTaskSegmentSelector,
+                            (UINT32)ExceptionHandlerInvalidTaskSegmentSelector);
+    InstallExceptionHandler(Ia32ExceptionVectorSegmentNotPresent,
+                            (UINT32)ExceptionHandlerSegmentNotPresent);
+    InstallExceptionHandler(Ia32ExceptionVectorStackSegmentFault,
+                            (UINT32)ExceptionHandlerStackSegmentFault);
+    InstallExceptionHandler(Ia32ExceptionVectorStackSegmentFault,
+                            (UINT32)ExceptionHandlerStackSegmentFault);
+    InstallExceptionHandler(Ia32ExceptionVectorGeneralProtectionFault,
+                            (UINT32)ExceptionHandlerGeneralProtectionFault);
+    InstallExceptionHandler(Ia32ExceptionVectorPageFault,
+                            (UINT32)ExceptionHandlerPageFault);
+    InstallExceptionHandler(Ia32ExceptionVectorMathFault,
+                            (UINT32)ExceptionHandlerMathFault);
+    InstallExceptionHandler(Ia32ExceptionVectorAlignmentCheck,
+                            (UINT32)ExceptionHandlerAlignmentCheck);
+    InstallExceptionHandler(Ia32ExceptionVectorMachineCheck,
+                            (UINT32)ExceptionHandlerMachineCheck);
+    InstallExceptionHandler(Ia32ExceptionVectorSimdFloatingPointNumericError,
+                            (UINT32)ExceptionHandlerSimdFloatingPointNumericError);
+    InstallExceptionHandler(Ia32ExceptionVectorReservedSimdFloatingPointNumericError,
+                            (UINT32)ExceptionHandlerReservedSimdFloatingPointNumericError);
+
+    IdtDescriptor.Base = (UINT32)(LvmmIdt);
+    IdtDescriptor.Limit = sizeof(IA32_IDT_GATE_DESCRIPTOR) * 32 - 1;
+
+    pIdtDescriptor = (UINT32)&IdtDescriptor;
+    asm volatile(
+      "\nmovl   %%eax, %[pIdtDescriptor]"
+      "\n\tlidt  (%%edx)"
+                        :[pIdtDescriptor] "+g" (pIdtDescriptor)
+                        :: "edx"
+                );
+} // end SetupIDT
 
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
     asm volatile(
         "\n movl %[p_descriptor], %%edx"
         "\n\t sgdt (%%edx)"
-    :[p_descriptor] "=g" (p_descriptor)
-    :: "%edx");
+        :[p_descriptor] "=g" (p_descriptor)
+        :: "%edx");
+}
+
+void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
+{
+    asm volatile(
+        "\n movl %[p_descriptor], %%edx"
+        "\n\t lgdt  (%%edx)"
+        ::[p_descriptor] "g" (p_descriptor) 
+        :"%edx");
+}
+
+void  ia32_write_cr3(UINT32 value)
+{
+        asm volatile(
+                "\n movl %[value], %%eax \n\t"
+                "\n\t movl %%eax, %%cr3"
+                ::[value] "m" (value)
+                : "%eax", "cc"
+        );
+}
+
+UINT32  ia32_read_cr4(void)
+{
+    UINT32 ret;
+    asm volatile(
+        "\n .byte 0x0F"
+        "\n\t .byte 0x20"
+        "\n\t .byte 0xE0"       //mov eax, cr4
+        "\n\t movl %%eax, %[ret]"
+        :[ret] "=m" (ret) 
+        :: "%eax");
+    return ret;
+}
+
+void  ia32_write_cr4(UINT32 value)
+{
+    asm volatile(
+        "\n movl %[value], %%eax"
+        "\n\t .byte 0x0F"
+        "\n\t .byte 0x22"
+        "\n\t .byte 0xE0"       //mov cr4, eax
+        ::[value] "m" (value)
+        :"%eax");
+}
+
+void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
+{
+    asm volatile(
+        "\n movl %[p_value], %%ecx"
+        "\n\t movl (%%ecx), %%eax"
+        "\n\t movl 4(%%ecx), %%edx"
+        "\n\t movl %[msr_id], %%ecx"
+        "\n\t wrmsr"        //write from EDX:EAX into MSR[ECX]
+                ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
+                :"%eax", "%ecx", "%edx");
 }
 
 void x32_gdt64_setup(void)
 {
     EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
     UINT32 last_index;
+    p_gdt_64 = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc(1);
 
-    // allocate page for 64-bit GDT
-    p_gdt_64 = evmm_page_alloc(1);  // 1 page should be sufficient ???
-    // vmm_memset(p_gdt_64, 0, PAGE_4KB_SIZE);
-    memset(p_gdt_64, 0, PAGE_4KB_SIZE);
+    vmm_memset(p_gdt_64, 0, PAGE_SIZE);
+    //memset(p_gdt_64, 0, PAGE_SIZE);
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
 
     // clone it to the new 64-bit GDT
-    // vmm_memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
-    memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
+     vmm_memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
+    //memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
 
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
@@ -321,12 +689,12 @@ void x32_pt64_setup_paging(UINT64 memory_size)
     // PDT             - 2048 entries
 
     pml4_table = (EM64T_PML4 *) evmm_page_alloc(1);
-    // vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
-    memset(pml4_table, 0, PAGE_4KB_SIZE);
+    vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
+    //memset(pml4_table, 0, PAGE_4KB_SIZE);
 
     pdp_table = (EM64T_PDPE *) evmm_page_alloc(1);
-    // vmm_memset(pdp_table, 0, PAGE_4KB_SIZE);
-    memset(pdp_table, 0, PAGE_4KB_SIZE);
+    vmm_memset(pdp_table, 0, PAGE_4KB_SIZE);
+    //memset(pdp_table, 0, PAGE_4KB_SIZE);
 
     // only one  entry is enough in PML4 table
     pml4_table[0].lo.base_address_lo = (UINT32) pdp_table >> 12;
@@ -353,8 +721,8 @@ void x32_pt64_setup_paging(UINT64 memory_size)
         pdp_table[pdpt_entry_id].lo.avl = 0;
 
         pd_table = (EM64T_PDE_2MB *) evmm_page_alloc(1);
-        // vmm_memset(pd_table, 0, PAGE_4KB_SIZE);
-        memset(pd_table, 0, PAGE_4KB_SIZE);
+        vmm_memset(pd_table, 0, PAGE_4KB_SIZE);
+        //memset(pd_table, 0, PAGE_4KB_SIZE);
         pdp_table[pdpt_entry_id].lo.base_address_lo = (UINT32) pd_table >> 12;
 
         for (pdt_entry_id = 0; pdt_entry_id < 512; ++pdt_entry_id, address += PAGE_2MB_SIZE) {
@@ -522,7 +890,7 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
     if ( mbi->flags & MBI_CMDLINE ) {
 # define CHUNK_SIZE 72 
         /* Break the command line up into 72 byte chunks */
-        int   cmdlen = strlen(mbi->cmdline);
+        int   cmdlen = strlen((char*)mbi->cmdline);
         char *cmdptr = (char *)mbi->cmdline;
         char  chunk[CHUNK_SIZE+1];
         myprintk("\t cmdline@0x%x: ", mbi->cmdline);
@@ -606,21 +974,30 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
 //uint64_t tboot_shared_page = 0;
 // tboot jumps in here
 int main(int an, char** av) {
+    static INIT64_STRUCT init64;
+    static INIT32_STRUCT_SAFE init32;
+    int info[4] = {0, 0, 0, 0};
+
+    // JLM: the following two variables were not declared and are currently
+    // not initialized
+    int     num_of_aps= 0;
+    UINT32  p_low_mem = 0;
+
     int i;
 
     // john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
     tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
     // john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
-    multiboot_info_t * my_mbi= 0x10000;
+    multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
 
     // john's boot_params boot_params_t *my_boot_params= 0x94200
-    boot_params_t *my_boot_params= 0x94200;
+    boot_params_t *my_boot_params= (boot_params_t *)0x94200;
 
 
     // toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
     // john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
-    tboot_printk tprintk = (tboot_printk)(0x80d660);
+    //tboot_printk tprintk = (tboot_printk)(0x80d660);
 
     tprintk("<3>Testing printf\n");
     tprintk("<3>evmm entry %d arguments\n", an);
@@ -664,13 +1041,34 @@ int main(int an, char** av) {
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;
 
+    __cpuid(info,1);
+    num_of_aps = ((info[1] >> 16) & 0xff) - 1;
+
+    if (num_of_aps < 0)
+        num_of_aps = 0;
+
+    init32.s.i32_low_memory_page = (UINT32)p_low_mem;
+    init32.s.i32_num_of_aps = num_of_aps;
+
+    // set up evmm heap
+    // JLM: Whay are we initializing the heap?
+    heap_base = HEAP_BASE;
+    heap_size = HEAP_SIZE;
+    InitializeMemoryManager((UINT64 *)&heap_base, (UINT64 *)&heap_size);
+
+    SetupIDT();
+
     // setup gdt? (for 64-bit)
+    x32_gdt64_setup();
+    x32_gdt64_get_gdtr(&init64.i64_gdtr);
+    x32_pt64_setup_paging(TOTAL_MEM);
+    init64.i64_cr3 = x32_pt64_get_cr3();
+    init64.i64_cs = x32_gdt64_get_cs();
+    init64.i64_efer = 0;
 
     // flip into 64 bit mode
 
     // set up evmm stack 
-
-    // set up evmm heap
 
     // set up evmm_main call stack
 

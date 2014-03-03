@@ -51,13 +51,12 @@ UINT32  heap_size;
 // Rekha to put globals she needs here
 
 // IA-32 Interrupt Descriptor Table - Gate Descriptor 
-
 typedef struct { 
-        UINT32  OffsetLow:16;   // Offset bits 15..0 
-        UINT32  Selector:16;    // Selector 
-        UINT32  Reserved_0:8;   // Reserved
-  UINT32  GateType:8;     // Gate Type.  See #defines above
-  UINT32  OffsetHigh:16;  // Offset bits 31..16
+    UINT32  OffsetLow:16;   // Offset bits 15..0 
+    UINT32  Selector:16;    // Selector 
+    UINT32  Reserved_0:8;   // Reserved
+    UINT32  GateType:8;     // Gate Type.  See #defines above
+    UINT32  OffsetHigh:16;  // Offset bits 31..16
 } IA32_IDT_GATE_DESCRIPTOR;
 
 //
@@ -150,6 +149,7 @@ multiboot_info_t *g_mbi= NULL;
 typedef void (*tboot_printk)(const char *fmt, ...);
 tboot_printk tprintk = (tboot_printk)(0x80d660);
 
+
 void *vmm_memset(void *dest, int val, UINT32 count)
 {
     asm volatile(
@@ -236,44 +236,43 @@ PrintE820BiosMemoryMap()
 
 void InitializeMemoryManager(UINT64 *HeapBaseAddress, UINT64 *HeapBytes)
 {
-  heap_current = heap_base = *(UINT32*)HeapBaseAddress;
-  heap_tops = heap_base + *(UINT32*)HeapBytes;
+    heap_current = heap_base = *(UINT32*)HeapBaseAddress;
+    heap_tops = heap_base + *(UINT32*)HeapBytes;
 }
 
 void CopyMem(void *Dest, void *Source, UINT32 Size)
 {
-  UINT8 *d = (UINT8*)Dest;
-  UINT8 *s = (UINT8*)Source;
+    UINT8 *d = (UINT8*)Dest;
+    UINT8 *s = (UINT8*)Source;
 
-  while (Size--)
-  {
-    *d++ = *s++;
-  }
+    while (Size--) {
+        *d++ = *s++;
+    }
 }
 
 BOOLEAN CompareMem(void *Source1, void *Source2, UINT32 Size)
 {
-  UINT8 *s1 = (UINT8*)Source1;
-  UINT8 *s2 = (UINT8*)Source2;
+    UINT8 *s1 = (UINT8*)Source1;
+    UINT8 *s2 = (UINT8*)Source2;
 
-  while (Size--) {
-    if (*s1++ != *s2++) {
-      tprintk("Compare mem failed\n");
-      return FALSE;
+    while (Size--) {
+        if (*s1++ != *s2++) {
+        tprintk("Compare mem failed\n");
+        return FALSE;
+        }
     }
-  }
-  return TRUE;
+    return TRUE;
 }
 
 void * evmm_page_alloc(UINT32 pages)
 {
-        UINT32 address;
-        UINT32 size = pages * PAGE_SIZE;
+    UINT32 address;
+    UINT32 size = pages * PAGE_SIZE;
 
-        address = ALIGN_FORWARD(heap_current, PAGE_SIZE);
-        heap_current = address + size;
-        ZeroMem((void*)address, size);
-        return (void*)address;
+    address = ALIGN_FORWARD(heap_current, PAGE_SIZE);
+    heap_current = address + size;
+    ZeroMem((void*)address, size);
+    return (void*)address;
 }
 
 void ExceptionHandlerReserved(UINT32 Cs, UINT32 Eip)
@@ -686,7 +685,7 @@ void x32_pt64_setup_paging(UINT64 memory_size)
     // To cover 4G-byte addrerss space the minimum set is
     // PML4    - 1entry
     // PDPT    - 4 entries
-    // PDT             - 2048 entries
+    // PDT     - 2048 entries
 
     pml4_table = (EM64T_PML4 *) evmm_page_alloc(1);
     vmm_memset(pml4_table, 0, PAGE_4KB_SIZE);
@@ -1058,7 +1057,7 @@ int main(int an, char** av) {
 
     SetupIDT();
 
-    // setup gdt? (for 64-bit)
+    // setup gdt for 64-bit
     x32_gdt64_setup();
     x32_gdt64_get_gdtr(&init64.i64_gdtr);
     x32_pt64_setup_paging(TOTAL_MEM);

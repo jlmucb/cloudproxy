@@ -183,22 +183,48 @@ The remainder of this document describes in detail the environment provided
 to evmm by bootstrap.
 
 
-Memory layout when bootstrap main is called
+Memory layout when bootstrap main is called for single Linux guest
 -------------------------------------------
 
-REHKA3
-Where is bootstrap?
-Where is 64-bit vmm?
-Where is is Linux image and initram?
+Tboot calls main of bootstrap in 32 bit protected mode.  The memory layout
+at the time of this call is:
+
+IVT                                                     <-- 0x00000000
+RDBA (Bios data memory)                                 <-- 0x00000400
+Partition table                                         <-- 0x000007be -->7ff
+Command line buffer                                     <-- 0x00002000 -->7ff
+GRUB Stage 0                                            <-- 0x00007c00 -->7dff
+GRUB Stage 1                                            <-- 0x00008000
+bootstrap code                                          <--
+32 bit scratch space
+EMPTY
+Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
+Evmm package
+   bootstrap code                                       <-- 0x00100000
+   64bit evmm image (uncompressed)                      <-- 0x00100000+bootstrap
+Linux image package
+  linux file (uncompressed real mode execution header)
+  compressed linux file
+Compressed initramfs
 
 
 Required memory setup when vmm_main is called
 ---------------------------------------------
 
-REHKA3
-Where have we relocated 64-bit vmm?
-Where have we relocated Linux image and initram?
-
+IVT                                                     <-- 0x00000000
+RDBA (Bios data memory)                                 <-- 0x00000400
+Partition table                                         <-- 0x000007be -->7ff
+Command line buffer                                     <-- 0x00002000 -->7ff
+GRUB Stage 0                                            <-- 0x00007c00 -->7dff
+GRUB Stage 1                                            <-- 0x00008000
+tboot code (real and PE)                                <-- 
+bootstrap code                                          <--
+32 bit scratch space
+EMPTY
+Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
+64bit evmm image (uncompressed)                         <-- 0x40000000 (?)
+Linux (uncompressed)                                    <-- ?
+initramfs (decompressed)                                <--
 
 
 vmm_main call

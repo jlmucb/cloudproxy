@@ -1069,12 +1069,12 @@ int main(int an, char** av) {
 
     // set up evmm stack 
 
-    // set up evmm_main call stack
+    // set up vmm_main call stack by preparing arguments
+    // vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 application_params_struct_u, 
+    //          UINT64 reserved UNUSED)
 
-    // get evmm_main entry point
+    // get vmm_main entry point
 
-    // jump to evmm_main
-    // int evmm_main (multiboot_info_t *evmm_mbi, const void *elf_image, int size) 
-    // jump_evmm_image(void *entry_point)
+    // set up thunk for vmm_main call
 }
 

@@ -971,6 +971,8 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
+
+
 // tboot jumps in here
 int main(int an, char** av) {
     static INIT64_STRUCT init64;

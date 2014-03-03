@@ -209,13 +209,20 @@ EMPTY
 Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
 Tboot header                                            <-- 0x00800000
 Tboot start (boot.S)                                    <-- 0x00804000
+  Tboot ends at ~                                           0x00972e88
 Evmm package
    bootstrap code                                       <-- 0x00100000
    64bit evmm image (uncompressed)                      <-- 0x00100000+bootstrap
-Linux image package
+Linux image package                         who decompressed this?
   linux file (uncompressed real mode execution header)
   compressed linux file
 Compressed initramfs
+
+TBOOT: Initrd from 0x1fb5a000 to 0x1ffff200
+TBOOT: Kernel (protected mode) from 0x1000000 to 0x195eb20
+TBOOT: Kernel (real mode) from 0x90000 to 0x94200
+TBOOT: transfering control to kernel @0x1000000...
+
 
 
 Required memory setup when vmm_main is called

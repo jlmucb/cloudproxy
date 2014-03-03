@@ -971,6 +971,8 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
+
+
 // tboot jumps in here
 int main(int an, char** av) {
     static INIT64_STRUCT init64;
@@ -1040,7 +1042,16 @@ int main(int an, char** av) {
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;
 
-    __cpuid(info,1);
+    // read 64-bit evm header
+
+    // relocate 64-bit evmm?
+
+    // read linux headers
+
+    // relocate linux?
+
+    // get CPU info
+    __cpuid(info,1);    // JLM: where is this defined?
     num_of_aps = ((info[1] >> 16) & 0xff) - 1;
 
     if (num_of_aps < 0)
@@ -1070,7 +1081,8 @@ int main(int an, char** av) {
     // set up evmm stack 
 
     // set up vmm_main call stack by preparing arguments
-    // vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 application_params_struct_u, 
+    // vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
+    //          UINT64 application_params_struct_u, 
     //          UINT64 reserved UNUSED)
 
     // get vmm_main entry point

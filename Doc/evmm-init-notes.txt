@@ -86,6 +86,9 @@ Memory layout to linux is 4GB limit, 4K page size.
     #define TBOOT_START              0x0804000
     // start address of tboot MLE page table, beginning of tboot memory
     #define TBOOT_BASE_ADDR          0x0800000
+Tboot stack
+    #define BSP_STACK_SIZE              4096
+    #define AP_STACK_SIZE               1024
 
 
 
@@ -186,6 +189,12 @@ to evmm by bootstrap.
 Memory layout when bootstrap main is called for single Linux guest
 -------------------------------------------
 
+    #define TBOOT_START              0x0804000
+    // start address of tboot MLE page table, beginning of tboot memory
+    #define TBOOT_BASE_ADDR          0x0800000
+Tboot stack
+    #define BSP_STACK_SIZE              4096
+    #define AP_STACK_SIZE               1024
 Tboot calls main of bootstrap in 32 bit protected mode.  The memory layout
 at the time of this call is:
 
@@ -195,10 +204,11 @@ Partition table                                         <-- 0x000007be -->7ff
 Command line buffer                                     <-- 0x00002000 -->7ff
 GRUB Stage 0                                            <-- 0x00007c00 -->7dff
 GRUB Stage 1                                            <-- 0x00008000
-bootstrap code                                          <--
 32 bit scratch space
 EMPTY
 Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
+Tboot header                                            <-- 0x00800000
+Tboot start (boot.S)                                    <-- 0x00804000
 Evmm package
    bootstrap code                                       <-- 0x00100000
    64bit evmm image (uncompressed)                      <-- 0x00100000+bootstrap

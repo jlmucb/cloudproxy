@@ -218,11 +218,15 @@ Linux image package                         who decompressed this?
   compressed linux file
 Compressed initramfs
 
-TBOOT: Initrd from 0x1fb5a000 to 0x1ffff200
-TBOOT: Kernel (protected mode) from 0x1000000 to 0x195eb20
-TBOOT: Kernel (real mode) from 0x90000 to 0x94200
-TBOOT: transfering control to kernel @0x1000000...
-
+For my linux 3.5.7.20, the linux image (what you get when you gunzip the linux
+kernel file --- meaning the protected mode portion is still compressed, is
+layed out by grub from 0x0973000 to 0x12d5d20 and the uncompressed initram
+lies between 0x01390000 and 0x01835200.  The compressed initram here is
+2120688 bytes.  Tboot relocates these in the normal Linux boot to
+    TBOOT: Initrd from 0x1fb5a000 to 0x1ffff200
+    TBOOT: Kernel (protected mode) from 0x1000000 to 0x195eb20
+    TBOOT: Kernel (real mode) from 0x90000 to 0x94200 is 2120688 bytes.
+    TBOOT: transfering control to kernel @0x1000000...
 
 
 Required memory setup when vmm_main is called
@@ -253,6 +257,8 @@ Linux (uncompressed)                                    <-- ?
       void *initrd_image = (void *)m->mod_start;
       size_t initrd_size = m->mod_end - m->mod_start;
 initramfs (decompressed)                                <--
+
+evmm was based byt the original loader at 0xa0000000.
 
 
 vmm_main call

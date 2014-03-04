@@ -969,7 +969,6 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
 }
 
 
-#if 0
 module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 {
     if ( mbi == NULL ) {
@@ -984,7 +983,6 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 
     return (module_t *)(mbi->mods_addr + i * sizeof(module_t));
 }
-#endif
 
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
@@ -1058,15 +1056,13 @@ int main(int an, char** av) {
     tprintk("%d total\n", l);
     tprintk("bootstap main is at %08x\n", main);
 
-#if 0
     tprintk("%d mbi modules\n", my_mbi->mods_count);
     tprintk("\tmod_start  mod_end   string\n");
     for(i=0; i<my_mbi->mods_count; i++) {
-        module_t m= *get_module(my_mbi, (unsigned int) i);
+        module_t* m= get_module(my_mbi, (unsigned int) i);
         tprintk("\t%08x %08x %08x\n", m->mod_start, 
                 m->mod_end, m->string);
     }
-#endif
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;

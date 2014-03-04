@@ -241,6 +241,17 @@ EMPTY
 Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
 64bit evmm image (uncompressed)                         <-- 0x40000000 (?)
 Linux (uncompressed)                                    <-- ?
+    kernel_image = remove_module(g_mbi, NULL);
+    module_t *m = (module_t *)g_mbi->mods_addr;
+    void *kernel_image = (void *)m->mod_start;
+    size_t kernel_size = m->mod_end - m->mod_start;
+  real mode: LEGACY_REAL_START; (0x90000)
+  linux_image+KERNEL_HEADER_OFFSET (0x1f1);
+  Protected mode base:  BZIMAGE_PROTECTED_START
+  initrd_base= max_ram_base+max_ram_size-initrd_size;
+      m = (module_t *)g_mbi->mods_addr;
+      void *initrd_image = (void *)m->mod_start;
+      size_t initrd_size = m->mod_end - m->mod_start;
 initramfs (decompressed)                                <--
 
 

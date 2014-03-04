@@ -212,8 +212,8 @@ Tboot start (boot.S)                                    <-- 0x00804000
   Tboot ends at ~                                           0x00972e88
 Evmm package
    bootstrap code                                       <-- 0x0804a317
-   64bit evmm image (uncompressed)                      <-- 
-Linux image package                         who decompressed this?
+   64bit evmm image (uncompressed)                      <-- get_evmm_image(base, size)
+Linux image package 
   linux file (uncompressed real mode execution header)
   compressed linux file
 Compressed initramfs

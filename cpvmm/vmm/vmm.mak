@@ -141,7 +141,7 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 
 dobjs=      $(BINDIR)/vmm.o # $(BINDIR)/evmm.o  
 
-all: $(E)/evmm.bin  $(E)/bootstrap.bin
+all: $(E)/bootstrap.bin $(E)/evmm.bin  
  
 $(E)/evmm.bin: $(dobjs)
 	@echo "evmm.bin"
@@ -170,10 +170,10 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
 $(E)/bootstrap.bin: $(BINDIR)/entry.o
-	$(LINK) -m32 -static -e main -o $(E)/bootstrap.bin $(BINDIR)/entry.o
+	$(LINK) -m32 -static -fno-stack-protector -nostdlib -e main -o $(E)/bootstrap.bin $(BINDIR)/entry.o
 
 $(BINDIR)/entry.o: $(mainsrc)/entry.c
-	$(CC) $(INCLUDES) -m32 -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
+	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
 
 #$(BINDIR)/evmm.o: $(mainsrc)/evmm.c
 #	echo "evmm.o" 

@@ -893,6 +893,7 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
         char *cmdptr = (char *)mbi->cmdline;
         char  chunk[CHUNK_SIZE+1];
         myprintk("\t cmdline@0x%x: ", mbi->cmdline);
+#if 0
         chunk[CHUNK_SIZE] = '\0';
         while (cmdlen > 0) {
             strncpy(chunk, cmdptr, CHUNK_SIZE); 
@@ -900,6 +901,7 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
             cmdptr += CHUNK_SIZE;
             cmdlen -= CHUNK_SIZE;
         }
+#endif
         myprintk("\n");
     }
 

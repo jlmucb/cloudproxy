@@ -989,6 +989,9 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 //uint64_t tboot_shared_page = 0;
 
 
+#define JLMDEBUG
+
+
 // tboot jumps in here
 int main(int an, char** av) {
     static INIT64_STRUCT init64;
@@ -1012,10 +1015,22 @@ int main(int an, char** av) {
     boot_params_t *my_boot_params= (boot_params_t *)0x94200;
 
 
+    // 
+    // we assume the standard grub layout with three modules
+    // after bootstrap: 64-bit evmm, the linux image
+    // and initram fs.
+    // everything is decompressed EXCEPT the protected mode portion of
+    // linux
+    module_t* m;
+    int l= my_mbi->mmap_length/sizeof(memory_map_t);
+
+    if(l<3) {
+        tprintk("bootstrap error: wrong number of modules\n");
+    }
+#ifdef JLMDEBUG
     // toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
     // john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
     //tboot_printk tprintk = (tboot_printk)(0x80d660);
-
     tprintk("<3>Testing printf\n");
     tprintk("<3>evmm entry %d arguments\n", an);
     if(an<10) {
@@ -1041,7 +1056,6 @@ int main(int an, char** av) {
     // mbi
     PrintMbi(my_mbi, tprintk);
     // my_mbi->mmap_addr; my_mbi->mmap_length;
-    int l= my_mbi->mmap_length/sizeof(memory_map_t);
     tprintk("%d e820 entries\n", l);
     uint32_t entry_offset = 0;
     i= 0;
@@ -1059,10 +1073,35 @@ int main(int an, char** av) {
     tprintk("%d mbi modules\n", my_mbi->mods_count);
     tprintk("\tmod_start  mod_end   string\n");
     for(i=0; i<my_mbi->mods_count; i++) {
-        module_t* m= get_module(my_mbi, (unsigned int) i);
+        m= get_module(my_mbi, (unsigned int) i);
         tprintk("\t%08x %08x %08x\n", m->mod_start, 
                 m->mod_end, m->string);
     }
+#endif
+
+    uint64_t evmm_start= 0ULL;
+    uint64_t evmm_end= 0ULL;
+
+    m= get_module(my_mbi, 0);
+    evmm_start= (uint64_t)m->mod_start;
+    evmm_end= (uint64_t)m->mod_end;
+
+    uint64_t linux_start= 0ULL;
+    uint64_t linux_end= 0ULL;
+
+    m= get_module(my_mbi, 1);
+    linux_start= (uint64_t)m->mod_start;
+    linux_end= (uint64_t)m->mod_end;
+
+    uint64_t initram_start= 0ULL;
+    uint64_t initram_end= 0ULL;
+
+    m= get_module(my_mbi, 2);
+    initram_start= (uint64_t)m->mod_start;
+    initram_end= (uint64_t)m->mod_end;
+
+    // Note to Rekha: the 64-bit elf header is at evmm_start but it has a different
+    // size and layout than the 32 bit elf format format in elf_defns.h
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;

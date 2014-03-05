@@ -1,6 +1,6 @@
-#define EI_NIDENT 16
-
-struct Elf64_hdr {
+#ifndef ELF64_H_
+#define ELF64_H_
+struct elf64_hdr {
     unsigned char e_ident[EI_NIDENT];
     uint16_t    e_type;
     uint16_t    e_machine;
@@ -16,3 +16,6 @@ struct Elf64_hdr {
     uint16_t    e_shnum;
     uint16_t    e_shstrndx;
 };
+
+typedef struct elf64_hdr elf64_hdr;
+#endif

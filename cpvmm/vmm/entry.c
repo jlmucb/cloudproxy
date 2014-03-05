@@ -997,8 +997,8 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 
 uint64_t entryOffset(uint64_t base)
 {
-    Elf64_hdr* elf= (Elf64_hdr*) base;
-    return elr->e_entry;
+    elf64_hdr* elf= (elf64_hdr*) base;
+    return elf->e_entry;
 }
 
 

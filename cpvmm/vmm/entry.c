@@ -1111,9 +1111,11 @@ int main(int an, char** av) {
     uint64_t initram_start= 0ULL;
     uint64_t initram_end= 0ULL;
 
-    m= get_module(my_mbi, 2);
-    initram_start= (uint64_t)m->mod_start;
-    initram_end= (uint64_t)m->mod_end;
+    if(l>2) {
+        m= get_module(my_mbi, 2);
+        initram_start= (uint64_t)m->mod_start;
+        initram_end= (uint64_t)m->mod_end;
+    }
 
     // Note to Rekha: the 64-bit elf header is at evmm_start but it has a different
     // size and layout than the 32 bit elf format format in elf_defns.h

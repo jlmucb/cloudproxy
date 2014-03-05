@@ -985,8 +985,21 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 }
 
 
+#include "elf64.h"
+
+
+
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
+
+
+#include "elf64.h"
+
+uint64_t entryOffset(uint64_t base)
+{
+    Elf64_hdr* elf= (Elf64_hdr*) base;
+    return elr->e_entry;
+}
 
 
 #define JLMDEBUG
@@ -1102,6 +1115,8 @@ int main(int an, char** av) {
 
     // Note to Rekha: the 64-bit elf header is at evmm_start but it has a different
     // size and layout than the 32 bit elf format format in elf_defns.h
+    uint64_t entry= entryOffset(evmm_start);
+    // the actual entry address will be entry+base_of_evmm
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;

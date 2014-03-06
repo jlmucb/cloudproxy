@@ -10,39 +10,40 @@ using tboot.  This document describes that process, which we refer to as
 "TBooting evmm with a single Linux Guest".
 
 TBooting evmm with a single Linux Guest is accomplished using multiboot.  Tboot 
-is the initial booted program but it loads four modules as specified below.
-[JLM:  The figure below says "bootstrap.bin" but this will change to evmm.gz, 
- just like linux.]
+is the initial booted program but it loads six modules as indicated in the
+grub.cfg file below.
+
+submenu "bootstrap.bin" "Tboot 1.7.0"{
+menuentry 'Ubuntu GNU/Linux, with bootstrap.bin, Tboot 1.7.0 and Linux 3.5.7.20' --class ubuntu --class gnu-linux --class gnu --class os {
+        insmod part_msdos
+        insmod ext2
+        set root='(hd0,msdos1)'
+        search --no-floppy --fs-uuid --set=root a1edf4f7-94e1-4c47-8573-0e3f54821ed3
+        echo    'Loading Tboot 1.7.0 ...'
+        multiboot       /boot/tboot.gz /boot/tboot.gz logging=serial,vga,memory
+        echo    'Loading bootstrap.bin ...'
+        module  /boot/bootstrap.bin /boot/bootstrap.bin placeholder   iommu=force
+        echo    'Loading evmm.bin ...'
+        module  /boot/evmm.bin /boot/evmm.bin placeholder   iommu=force
+        echo    'Loading Linux 3.5.7.20 ...'
+        module  /boot/vmlinuz-3.5.7.20 /boot/vmlinuz-3.5.7.20 placeholder root=UUID=a1edf4f7-94e1-4c47-8573-0e3f54821ed3 ro  quiet splash
+        echo    'Loading initial ramdisk ...'
+        module  /boot/initrd.img-3.5.7.20 /boot/initrd.img-3.5.7.20
+        echo    'Loading sinit SINIT_67.BIN ...'
+        module  /boot/SINIT_67.BIN /boot/SINIT_67.BIN
+}
 
 
-   submenu "Evmm bootstrap.bin" "Tboot 1.7.0"{
-    menuentry 'Ubuntu GNU/Linux, with evmm bootstrap.bin, Tboot 1.7.0 and 
-               Linux 3.5.7.20' --class ubuntu --class gnu-linux --class gnu 
-               --class os {
-            insmod part_msdos
-            insmod ext2
-            set root='(hd0,msdos1)'
-            search --no-floppy --fs-uuid --set=root 
-                a1edf4f7-94e1-4c47-8573-0e3f54821ed3
-            echo    'Loading Tboot 1.7.0 ...'
-            multiboot       /boot/tboot.gz /boot/tboot.gz 
-                logging=serial,vga,memory
-            echo    'Loading Evmm bootstrap.bin ...'
-            module  /boot/bootstrap.bin /boot/bootstrap.bin placeholder   
-                iommu=force
-            echo    'Loading Linux 3.5.7.20 ...'
-            module  /boot/vmlinuz-3.5.7.20 /boot/vmlinuz-3.5.7.20 placeholder 
-              root=UUID=a1edf4f7-94e1-4c47-8573-0e3f54821ed3 ro  quiet splash
-            echo    'Loading initial ramdisk ...'
-            module  /boot/initrd.img-3.5.7.20 /boot/initrd.img-3.5.7.20
-            echo    'Loading sinit SINIT_67.BIN ...'
-            module  /boot/SINIT_67.BIN /boot/SINIT_67.BIN
-    }
-
-As is evident, tboot loads 4 modules:
+As is evident, tboot loads 5 modules:
     SINIT_67.BIN, which authenticates SMM handlers, checks configuration 
         information and prepares the machine for SMX(ENTER).
-    evmm.gz, which is the evmm image.  The evmm image consists of three 
+    bootstrap.bin is a 32-bit protected mode loader which loads evmm.bin,
+        sets up a 64-bit environment for it, prepares arguments allowing
+        evmm.bin to load and host under vmx, the linux image, prepares
+        the AP's (using the SIPI initialization protocol), jumps to
+        evmm's main routing, "vmm_main" and ensures that the AP's "wake up"
+        in code that puts them in 64 bit mode running evmm.
+    evmm.bin, which is the evmm image.  The evmm image consists of three 
         parts: a 32-bit protected mode loader called bootstrap.bin, a 
         header and the 64-bit evmm image.
     linux.gz, which is the linux image.  The linux image consists of 
@@ -210,23 +211,16 @@ Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
 Tboot header                                            <-- 0x00800000
 Tboot start (boot.S)                                    <-- 0x00804000
   Tboot ends at ~                                           0x00972e88
-Evmm package
-   bootstrap code                                       <-- 0x0804a317
-   64bit evmm image (uncompressed)                      <-- get_evmm_image(base, size)
+Bootstrap.bin
+  This is loaded just after Tboot, main is at 0x0804a317 on John's
+  machine
+Evmm.bin
+   This is loaded from 0x12da000 and 0x01333247 on John's machine.
 Linux image package 
   linux file (uncompressed real mode execution header)
-  compressed linux file
-Compressed initramfs
-
-For my linux 3.5.7.20, the linux image (what you get when you gunzip the linux
-kernel file --- meaning the protected mode portion is still compressed, is
-layed out by grub from 0x0973000 to 0x12d5d20 and the uncompressed initram
-lies between 0x01390000 and 0x01835200.  The compressed initram here is
-2120688 bytes.  Tboot relocates these in the normal Linux boot to
-    TBOOT: Initrd from 0x1fb5a000 to 0x1ffff200
-    TBOOT: Kernel (protected mode) from 0x1000000 to 0x195eb20
-    TBOOT: Kernel (real mode) from 0x90000 to 0x94200 is 2120688 bytes.
-    TBOOT: transfering control to kernel @0x1000000...
+  This is loaded between 0x0097300 and 0x012d5d20 on John's machine.
+The uncompressed initramfs
+  This is loaded between 0x01334000 and 0x017d9200 on John's machine.
 
 
 Required memory setup when vmm_main is called

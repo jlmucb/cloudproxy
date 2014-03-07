@@ -1193,5 +1193,8 @@ int main(int an, char** av) {
           [cs_64] "m" (cs_64),
           [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
+
+    // CHECK: what happens when evmm returns?
+    return 0;
 }
 

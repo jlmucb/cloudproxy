@@ -48,8 +48,6 @@ UINT32  heap_current;
 UINT32  heap_tops;
 UINT32  heap_size;
 
-// Rekha to put globals she needs here
-
 // IA-32 Interrupt Descriptor Table - Gate Descriptor 
 typedef struct { 
     UINT32  OffsetLow:16;   // Offset bits 15..0 
@@ -59,9 +57,7 @@ typedef struct {
     UINT32  OffsetHigh:16;  // Offset bits 31..16
 } IA32_IDT_GATE_DESCRIPTOR;
 
-//
 // Descriptor for the Global Descriptor Table(GDT) and Interrupt Descriptor Table(IDT)
-//
 typedef struct {
   UINT16  Limit;
   UINT32  Base;
@@ -130,29 +126,18 @@ typedef struct {
     UINT32 guest1_start;
     UINT32 guest1_count;
 } EVMM_DESC;
-//
-//
+
 // Ring 0 Interrupt Descriptor Table - Gate Types
-//
 #define IA32_IDT_GATE_TYPE_TASK          0x85
 #define IA32_IDT_GATE_TYPE_INTERRUPT_16  0x86
 #define IA32_IDT_GATE_TYPE_TRAP_16       0x87
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
-#define HEAP_BASE 0X0 /* Need to set to an address (possibly base) in e820 slot used for evmm */
+#define HEAP_BASE 0X0 // FIX: Need to set to an address in e820 slot used for evmm 
 #define HEAP_SIZE 0X100000
 #define TOTAL_MEM 0x100000000 // max of 4G because we start in 32-bit mode
 #define IDT_VECTOR_COUNT 256
 #define LVMM_CS_SELECTOR 0x10
-
-
-IA32_IDT_GATE_DESCRIPTOR LvmmIdt[IDT_VECTOR_COUNT];
-IA32_DESCRIPTOR IdtDescriptor;
-
-static IA32_GDTR        gdtr_32;
-static IA32_GDTR        gdtr_64;  // still in 32-bit mode
-static UINT16           cs_64;
-static UINT32 p_cr4;
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
@@ -160,17 +145,26 @@ typedef struct VMM_INPUT_PARAMS_S {
     UINT64 guest_params_struct; // change name
 } VMM_INPUT_PARAMS;
 
+//  Globals
+IA32_IDT_GATE_DESCRIPTOR LvmmIdt[IDT_VECTOR_COUNT];
+IA32_DESCRIPTOR IdtDescriptor;
+
+static IA32_GDTR        gdtr_32;
+static IA32_GDTR        gdtr_64;  // still in 32-bit mode
+static UINT16           cs_64;
+static UINT32           p_cr4;
+
 static VMM_INPUT_PARAMS  input_params;
 static VMM_INPUT_PARAMS  *pointer_to_input_params= &input_params;
-
-static UINT32 reserved = 0;
-static UINT32 local_apic_id = 0;
+static UINT32           reserved = 0;
+static UINT32           local_apic_id = 0;
 static VMM_STARTUP_STRUCT startup_struct;
 static VMM_STARTUP_STRUCT *p_startup_struct = &startup_struct;
-EVMM_DESC ed;
-void *entry_point;
+static EVMM_DESC          ed;
 
-multiboot_info_t *g_mbi= NULL;
+void *                  entry_point;      // address of vmm_main
+multiboot_info_t *      g_mbi= NULL;
+
 
 
 typedef void (*tboot_printk)(const char *fmt, ...);
@@ -188,7 +182,7 @@ void *vmm_memset(void *dest, int val, UINT32 count)
         :[dest] "+g" (dest)
         :[val] "g" (val), [count] "g" (count)
         :);
-        return dest;
+    return dest;
 }
 
 void *vmm_memcpy(void *dest, const void* src, UINT32 count)
@@ -202,7 +196,7 @@ void *vmm_memcpy(void *dest, const void* src, UINT32 count)
         :[dest] "+g" (dest)
         :[src] "g" (src), [count] "g" (count)
         :);
-        return dest;
+    return dest;
 }
 
 void ZeroMem(void *Address, UINT32  Size)
@@ -224,8 +218,7 @@ void* AllocateMemory(UINT32 size_request)
       tprintk("Heap current = %X", heap_current);
       tprintk("Requested size = %X", size_request);
       tprintk("Heap tops = %X", heap_tops);
-
-    return NULL;
+      return NULL;
   }
   Address = heap_current;
   heap_current+=size_request;
@@ -435,7 +428,6 @@ void ExceptionHandlerReservedSimdFloatingPointNumericError(UINT32 Cs, UINT32 Eip
     VMM_UP_BREAKPOINT();
 }
 
-
 void InstallExceptionHandler(UINT32 ExceptionIndex, UINT32 HandlerAddr)
 {
     LvmmIdt[ExceptionIndex].OffsetLow  = HandlerAddr & 0xFFFF;
@@ -504,11 +496,10 @@ void SetupIDT()
 
     pIdtDescriptor = (UINT32)&IdtDescriptor;
     asm volatile(
-      "\nmovl   %%eax, %[pIdtDescriptor]"
-      "\n\tlidt  (%%edx)"
-                        :[pIdtDescriptor] "+g" (pIdtDescriptor)
-                        :: "edx"
-                );
+        "\nmovl   %%eax, %[pIdtDescriptor]"
+        "\n\tlidt  (%%edx)"
+        :[pIdtDescriptor] "+g" (pIdtDescriptor)
+        :: "%edx");
 } // end SetupIDT
 
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
@@ -531,12 +522,11 @@ void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 
 void  ia32_write_cr3(UINT32 value)
 {
-        asm volatile(
-                "\n movl %[value], %%eax \n\t"
-                "\n\t movl %%eax, %%cr3"
-                ::[value] "m" (value)
-                : "%eax", "cc"
-        );
+    asm volatile(
+        "\n movl %[value], %%eax \n\t"
+        "\n\t movl %%eax, %%cr3"
+        ::[value] "m" (value)
+        : "%eax", "cc");
 }
 
 UINT32  ia32_read_cr4(void)
@@ -571,8 +561,8 @@ void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         "\n\t movl 4(%%ecx), %%edx"
         "\n\t movl %[msr_id], %%ecx"
         "\n\t wrmsr"        //write from EDX:EAX into MSR[ECX]
-                ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
-                :"%eax", "%ecx", "%edx");
+        ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
+        :"%eax", "%ecx", "%edx");
 }
 
 void x32_gdt64_setup(void)
@@ -654,14 +644,11 @@ void x32_gdt64_get_gdtr(IA32_GDTR *p_gdtr)
 static EM64T_CR3 cr3_for_x64 = { 0 };
 
 
-/*---------------------------------------------------------*
-*  FUNCTION             : x32_pt64_setup_paging
-*  PURPOSE              : establish paging tables for x64 -bit mode, 2MB pages
-*                               : while running in 32-bit mode.
-*                               : It should scope full 32-bit space, i.e. 4G
-*  ARGUMENTS    :
-*  RETURNS              : void
-*---------------------------------------------------------*/
+/*
+ *  x32_pt64_setup_paging: establish paging tables for x64 -bit mode, 
+ *     2MB pages while running in 32-bit mode.
+ *     It should scope full 32-bit space, i.e. 4G
+ */
 void x32_pt64_setup_paging(UINT64 memory_size)
 {
     EM64T_PML4      *pml4_table;
@@ -717,19 +704,20 @@ void x32_pt64_setup_paging(UINT64 memory_size)
         //memset(pd_table, 0, PAGE_4KB_SIZE);
         pdp_table[pdpt_entry_id].lo.base_address_lo = (UINT32) pd_table >> 12;
 
-        for (pdt_entry_id = 0; pdt_entry_id < 512; ++pdt_entry_id, address += PAGE_2MB_SIZE) {
-            pd_table[pdt_entry_id].lo.present       = 1;
-            pd_table[pdt_entry_id].lo.rw            = 1;
-            pd_table[pdt_entry_id].lo.us            = 0;
-            pd_table[pdt_entry_id].lo.pwt           = 0;
-            pd_table[pdt_entry_id].lo.pcd           = 0;
+        for (pdt_entry_id = 0; pdt_entry_id < 512; 
+                ++pdt_entry_id, address += PAGE_2MB_SIZE) {
+            pd_table[pdt_entry_id].lo.present = 1;
+            pd_table[pdt_entry_id].lo.rw = 1;
+            pd_table[pdt_entry_id].lo.us = 0;
+            pd_table[pdt_entry_id].lo.pwt = 0;
+            pd_table[pdt_entry_id].lo.pcd = 0;
             pd_table[pdt_entry_id].lo.accessed  = 0;
-            pd_table[pdt_entry_id].lo.dirty         = 0;
-            pd_table[pdt_entry_id].lo.pse           = 1;
-            pd_table[pdt_entry_id].lo.global        = 0;
-            pd_table[pdt_entry_id].lo.avl           = 0;
-            pd_table[pdt_entry_id].lo.pat           = 0;     //????
-            pd_table[pdt_entry_id].lo.zeroes        = 0;
+            pd_table[pdt_entry_id].lo.dirty = 0;
+            pd_table[pdt_entry_id].lo.pse = 1;
+            pd_table[pdt_entry_id].lo.global = 0;
+            pd_table[pdt_entry_id].lo.avl = 0;
+            pd_table[pdt_entry_id].lo.pat = 0;     //????
+            pd_table[pdt_entry_id].lo.zeroes = 0;
             pd_table[pdt_entry_id].lo.base_address_lo = address >> 21;
         }
     }
@@ -742,14 +730,12 @@ void x32_pt64_setup_paging(UINT64 memory_size)
 void x32_pt64_load_cr3(void)
 {
     ia32_write_cr3(*((UINT32*) &(cr3_for_x64.lo)));
-
 }
 
 UINT32 x32_pt64_get_cr3(void)
 {
     return *((UINT32*) &(cr3_for_x64.lo));
 }
-//REK: END
 
 
 void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
@@ -856,7 +842,6 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
     }
 }
 
-
 module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 {
     if ( mbi == NULL ) {
@@ -872,27 +857,22 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
     return (module_t *)(mbi->mods_addr + i * sizeof(module_t));
 }
 
-uint32_t get_elf_version() {
-
-//TODO(JLM): could you please add the code to return approrpiate field from elf header?
-        uint32_t ret = 0;
-        return ret;
-} 
-uint32_t get_evmm_uuid() {
-//TODO(JLM): could you please add the code to return approrpiate field from elf header?
-        uint32_t ret = 0;
-        return ret;
-}
-
 #include "elf64.h"
 
 
+uint32_t get_elf_version(elf64_hdr* evmm_elf) {
+    return evmm_elf->e_version;
+} 
+
+uint32_t get_evmm_uuid(elf64_hdr* evmm_elf) 
+{
+    // FIX: there is no uuid in the elf header
+    uint32_t ret = 0;
+    return ret;
+}
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
-
-
-#include "elf64.h"
 
 uint64_t entryOffset(uint64_t base)
 {
@@ -901,25 +881,23 @@ uint64_t entryOffset(uint64_t base)
 }
 
 uint64_t sizeOfHdr() {
-        return sizeof(elf64_hdr);
+    return sizeof(elf64_hdr);
 }
 
 #define JLMDEBUG
 
-
 // tboot jumps in here
-int main(int an, char** av) {
-    static INIT64_STRUCT init64;
-    static INIT64_STRUCT *p_init64_data = &init64;
+int main(int an, char** av) 
+{
+    static INIT64_STRUCT    init64;
+    static INIT64_STRUCT *  p_init64_data = &init64;
     static INIT32_STRUCT_SAFE init32;
-    int info[4] = {0, 0, 0, 0};
-
-    int num_of_aps= 0;
-    void* p_low_mem = (void *)0x8000;
-    VMM_GUEST_STARTUP g0;
-    VMM_GUEST_STARTUP *p_g0 = &g0;
-    VMM_MEMORY_LAYOUT *vmem;
-
+    int                     info[4] = {0, 0, 0, 0};
+    int                     num_of_aps= 0;
+    void*                   p_low_mem = (void *)0x8000;
+    VMM_GUEST_STARTUP       g0;
+    VMM_GUEST_STARTUP *     p_g0 = &g0;
+    VMM_MEMORY_LAYOUT *     vmem;
     int i;
 
     // john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
@@ -931,15 +909,15 @@ int main(int an, char** av) {
     // john's boot_params boot_params_t *my_boot_params= 0x94200
     boot_params_t *my_boot_params= (boot_params_t *)0x94200;
 
-    // we assume the standard grub layout with three modules
+    // We assume the standard grub layout with three modules
     // after bootstrap: 64-bit evmm, the linux image
     // and initram fs.
-    // everything is decompressed EXCEPT the protected mode portion of
+    // Everything is decompressed EXCEPT the protected mode portion of
     // linux
     module_t* m;
     int l= my_mbi->mmap_length/sizeof(memory_map_t);
 
-    if(l<3) {
+    if (l<3) {
         tprintk("bootstrap error: wrong number of modules\n");
     }
 #ifdef JLMDEBUG
@@ -1000,6 +978,7 @@ int main(int an, char** av) {
     m= get_module(my_mbi, 0);
     evmm_start= (uint64_t)m->mod_start;
     evmm_end= (uint64_t)m->mod_end;
+    elf64_hdr* evmm_elf= (elf64_hdr*)evmm_start;
 
     uint64_t linux_start= 0ULL;
     uint64_t linux_end= 0ULL;
@@ -1017,15 +996,12 @@ int main(int an, char** av) {
         initram_end= (uint64_t)m->mod_end;
     }
 
-    // Note to Rekha: the 64-bit elf header is at evmm_start but it has a different
-    // size and layout than the 32 bit elf format format in elf_defns.h
-    // the actual entry address will be entry+base_of_evmm
     uint64_t entry= entryOffset(evmm_start);
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;
 
-    // IMPORTANT:  
+    // FIX:  
     //      You hand evmm the linux image which is still partially
     //      compressed.  Is this right?   You said evmm boots linux
     //      the way tboot (or kvm).
@@ -1037,6 +1013,7 @@ int main(int an, char** av) {
     // read 64-bit evm header
     ed.version = 0;     // CHECK: evmm version?
     ed.size_in_sectors = get_size() / 512; 
+    // FIX: size of what?
     //assumption: sector_size = 512; size = size of bootstrap + evmm
     ed.umbr_size = 0;   // CHECK: not sure what it is
     ed.evmm_mem_in_mb = (evmm_end - evmm_start) / (1024 *1024);
@@ -1048,21 +1025,20 @@ int main(int an, char** av) {
     ed.evmmh_start = evmm_start; // start address of evmm header
     ed.evmmh_count= sizeOfHdr()/512; // CHECK
     ed.evmm_start= evmm_start; 
+    // FIX: I think this calculation is wrong.  +511 below?
     ed.evmm_count= (evmm_end - evmm_start)/512; //number of sectors in evmm
-    ed.startup_start = 0; //TODO: not sure what this is 
-    ed.startup_count= 0; //TODO: not sure what this is 
+    ed.startup_start = 0; // CHECK: not sure what this is 
+    ed.startup_count= 0; // CHECK: not sure what this is 
     ed.guest1_start = linux_start;
 
-    // relocate 64-bit evmm?
-    // read linux headers
-    // relocate linux?
+    // FIX: relocate 64-bit evmm?
+    // FIX: relocate linux?
 
     // get CPU info
     __cpuid(info,1);    // JLM: where is this defined?
     num_of_aps = ((info[1] >> 16) & 0xff) - 1;
-
     if (num_of_aps < 0)
-        num_of_aps = 0;
+        num_of_aps = 0; // CHECK: this should be 0 until we have AP's, right?
 
     init32.s.i32_low_memory_page = (UINT32)p_low_mem;
     init32.s.i32_num_of_aps = num_of_aps;
@@ -1075,12 +1051,12 @@ int main(int an, char** av) {
     SetupIDT();
 
     vmm_memcpy(&g0, (const void *) (ed.guest1_start), sizeof(g0));
-    g0.cpu_states_array = ed.guest1_start; //TODO: not sure
+    g0.cpu_states_array = ed.guest1_start; // FIX: not sure
     g0.cpu_states_count = 1;
     g0.devices_array = 0;
-    p_startup_struct->version_of_this_struct = get_elf_version();   //Most likely not needed
-    p_startup_struct->number_of_processors_at_install_time = 1;     //only BSP for now
-    p_startup_struct->number_of_processors_at_boot_time = 1;        //only BSP for now
+    p_startup_struct->version_of_this_struct = get_elf_version();   // Most likely not needed
+    p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
+    p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
     p_startup_struct->number_of_secondary_guests = 0; 
     p_startup_struct->size_of_vmm_stack = 0; 
     p_startup_struct->unsupported_vendor_id = 0; 
@@ -1101,7 +1077,7 @@ int main(int an, char** av) {
     x32_gdt64_get_gdtr(&init64.i64_gdtr);
     ia32_write_gdtr(&init64.i64_gdtr);
 
-    //setup paging, control registers and flags
+    // setup paging, control registers and flags
     x32_pt64_setup_paging(TOTAL_MEM);
     init64.i64_cr3 = x32_pt64_get_cr3();
     ia32_write_cr3(init64.i64_cr3);
@@ -1114,10 +1090,13 @@ int main(int an, char** av) {
 
     UINT16 p_cr3 = init64.i64_cr3;
 
+    // FIX: Allocate stack and set esp
+
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
-    //  vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
-    //          UINT64 application_params_struct_u, 
-    //          UINT64 reserved UNUSED)
+    //  vmm_main call:
+    //      vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
+    //               UINT64 application_params_struct_u, 
+    //               UINT64 reserved UNUSED)
     asm volatile (
         // prepare arguments for 64-bit mode
         // there are 3 arguments
@@ -1182,16 +1161,14 @@ int main(int an, char** av) {
         "\t subl 0x18, %%esp\n"
         // in 64bit this is actually
         // "\t call %%ebx\n"
-        "\t jmp (%[entry_point])"
-              "\t ud2"
+        "\t jmp (%[entry_point])\n"
+        "\t ud2\n"
         : 
         : [local_apic_id] "m" (local_apic_id), 
           [p_startup_struct] "m" (p_startup_struct), 
-          [p_g0] "m" (p_g0), 
-          [reserved] "m" (reserved), 
+          [p_g0] "m" (p_g0), [reserved] "m" (reserved), 
           [entry_point] "m" (entry_point), 
-          [cs_64] "m" (cs_64),
-          [p_cr3] "m" (p_cr3)
+          [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 
     // CHECK: what happens when evmm returns?

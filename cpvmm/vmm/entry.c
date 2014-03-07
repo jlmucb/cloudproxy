@@ -1068,7 +1068,6 @@ int main(int an, char** av) {
     init32.s.i32_num_of_aps = num_of_aps;
 
     // set up evmm heap
-    // JLM: Whay are we initializing the heap?
     heap_base = HEAP_BASE;
     heap_size = HEAP_SIZE;
     InitializeMemoryManager((UINT64 *)&heap_base, (UINT64 *)&heap_size);
@@ -1102,7 +1101,7 @@ int main(int an, char** av) {
     x32_gdt64_get_gdtr(&init64.i64_gdtr);
     ia32_write_gdtr(&init64.i64_gdtr);
 
-                //setup paging, control registers and flags
+    //setup paging, control registers and flags
     x32_pt64_setup_paging(TOTAL_MEM);
     init64.i64_cr3 = x32_pt64_get_cr3();
     ia32_write_cr3(init64.i64_cr3);

@@ -38,8 +38,9 @@ B=		$(E)/vmmobjects
 BINDIR=	        $(B)/vmm
 INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
-		-I$(S)/loader/pre_os/starter -I$(S)/common/include/platform \
+		-I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
+#		-I$(S)/loader/pre_os/starter 
 
 DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs
 RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs
@@ -201,9 +202,10 @@ clobber:
 	rm -f $(E)/vmmobjects/host/*.o
 	rm -f $(E)/vmmobjects/dbg/*.o
 	rm -f $(E)/vmmobjects/memory/memory_manager/*.o
+	rm -f $(E)/vmmobjects/memory/ept/*.o
 	rm -f $(E)/vmmobjects/arch/*.o
 	rm -f $(E)/vmmobjects/guest/*.o
-	rm -f $(E)/vmmobjects/guest/*.o
+	rm -f $(E)/vmmobjects/guest/guest_cpu/*.o
 	rm -f $(E)/vmmobjects/guest/scheduler/*.o
 	rm -f $(E)/vmmobjects/startup/*.o
 	rm -f $(E)/vmmobjects/vmexit/*.o

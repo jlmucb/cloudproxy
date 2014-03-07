@@ -1070,7 +1070,10 @@ int main(int an, char** av)
     p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
 
     // get e820 layout
+    // FIX: Do you need to remove the heap and stack from this map or reserve them?
+    //      where is this defined?
     p_startup_struct->physical_memory_layout_E820 = get_e820_layout();
+
     // get vmm_main entry point
     entry_point = (void *) (entry + evmm_start);
 

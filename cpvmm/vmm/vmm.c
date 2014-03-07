@@ -74,7 +74,6 @@
 
 
 BOOLEAN vmcs_sw_shadow_disable[VMM_MAX_CPU_SUPPORTED];
-#pragma warning( disable : 4100 ) // enables non-referenced formal parameter
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;

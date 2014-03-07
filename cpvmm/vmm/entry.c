@@ -371,8 +371,6 @@ void ExceptionHandlerGeneralProtectionFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorC
     VMM_UP_BREAKPOINT();
 }
 
-// The next pragma is to avoid compiler warning when debug prints are disabled
-#pragma warning (disable:4101)
 void ExceptionHandlerPageFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
 {
     UINT32 Cr2;
@@ -1074,7 +1072,7 @@ int main(int an, char** av)
     // get e820 layout
     p_startup_struct->physical_memory_layout_E820 = get_e820_layout();
     // get vmm_main entry point
-    entry_point = (void *) entry + evmm_start;
+    entry_point = (void *) (entry + evmm_start);
 
     // setup gdt for 64-bit
     x32_gdt64_setup();

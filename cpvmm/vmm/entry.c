@@ -864,11 +864,10 @@ uint32_t get_elf_version(elf64_hdr* evmm_elf) {
     return evmm_elf->e_version;
 } 
 
-uint32_t get_evmm_uuid(elf64_hdr* evmm_elf) 
+uint32_t get_evmm_uuid() 
 {
     // FIX: there is no uuid in the elf header
-    uint32_t ret = 0;
-    return ret;
+    return 0;
 }
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
@@ -1054,7 +1053,7 @@ int main(int an, char** av)
     g0.cpu_states_array = ed.guest1_start; // FIX: not sure
     g0.cpu_states_count = 1;
     g0.devices_array = 0;
-    p_startup_struct->version_of_this_struct = get_elf_version();   // Most likely not needed
+    p_startup_struct->version_of_this_struct = get_elf_version(evmm_elf);   // Most likely not needed
     p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
     p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
     p_startup_struct->number_of_secondary_guests = 0; 

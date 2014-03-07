@@ -1029,7 +1029,7 @@ int main(int an, char** av)
     ed.evmm_count= (evmm_end - evmm_start)/512; //number of sectors in evmm
     ed.startup_start = 0; // CHECK: not sure what this is 
     ed.startup_count= 0; // CHECK: not sure what this is 
-    ed.guest1_start = linux_start;
+    ed.guest1_start = linux_start;   // FIX: This should be the relocated value
 
     // FIX: relocate 64-bit evmm?
     //      I recommend relocating it to 0x300000000.
@@ -1127,7 +1127,7 @@ int main(int an, char** av)
 
         "\t movl %[p_cr3], %%eax \n"
         // initialize CR3 with PML4 base
-        //      "\tmovl 4(%%esp), %%eax\n"
+        // "\tmovl 4(%%esp), %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
 
         // enable 64-bit mode

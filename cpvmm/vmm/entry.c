@@ -1034,7 +1034,9 @@ int main(int an, char** av)
     ed.guest1_start = linux_start;
 
     // FIX: relocate 64-bit evmm?
-    // FIX: relocate linux?
+    //      I recommend relocating it to 0x300000000.
+    //      You have to move it anyway, it's not aligned
+    // FIX: relocate linux?  You may not have to do this.
 
     // get CPU info
     __cpuid(info,1);    // JLM: where is this defined?

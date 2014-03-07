@@ -1025,26 +1025,33 @@ int main(int an, char** av) {
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;
 
+    // IMPORTANT:  
+    //      You hand evmm the linux image which is still partially
+    //      compressed.  Is this right?   You said evmm boots linux
+    //      the way tboot (or kvm).
+    //      You do not pass evmm the initram starting address at all.  
+    //      How does the guest Linux it know where it is?  Does it
+    //      get it from the mbi header passed in?  if so, are your sure it's
+    //      passed in on launch?
+
     // read 64-bit evm header
-                //REK: verify the assumptions
-                ed.version = 0; //evmm version I suppose
-                ed.size_in_sectors = get_size() / 512; 
-//assumption: sector_size = 512; size = size of bootstrap + evmm
-                ed.umbr_size = 0;   // TODO:not sure what it is
-                ed.evmm_mem_in_mb = (evmm_end - evmm_start) / (1024 *1024);
-                ed.guest_count = 1; // TODO: should be a function call to figure out #guests
-                ed.evmml_start = 0; // CHECK: this is loader start address
-                ed.evmml_count= 0;  // CHECK: this is size of the loader
-                ed.starter_start = 0; // CHECK: this is startap start address
-                ed.starter_count= 0;  // CHECK: size of the startap code 
-                ed.evmmh_start = evmm_start; // start address of evmm header
-                ed.evmmh_count= sizeOfHdr()/512; // CHECK
-                // CHECK(JLM):should we exclude the header from the size?
-                ed.evmm_start= evmm_start; 
-                ed.evmm_count= (evmm_end - evmm_start)/512; //number of sectors in evmm
-                ed.startup_start = 0; //TODO: not sure what this is 
-                ed.startup_count= 0; //TODO: not sure what this is 
-                ed.guest1_start = linux_start;
+    ed.version = 0;     // CHECK: evmm version?
+    ed.size_in_sectors = get_size() / 512; 
+    //assumption: sector_size = 512; size = size of bootstrap + evmm
+    ed.umbr_size = 0;   // CHECK: not sure what it is
+    ed.evmm_mem_in_mb = (evmm_end - evmm_start) / (1024 *1024);
+    ed.guest_count = 1; // CHECK: should be a function call to figure out #guests
+    ed.evmml_start = 0; // CHECK: this is loader start address
+    ed.evmml_count= 0;  // CHECK: this is size of the loader
+    ed.starter_start = 0; // CHECK: this is startap start address
+    ed.starter_count= 0;  // CHECK: size of the startap code 
+    ed.evmmh_start = evmm_start; // start address of evmm header
+    ed.evmmh_count= sizeOfHdr()/512; // CHECK
+    ed.evmm_start= evmm_start; 
+    ed.evmm_count= (evmm_end - evmm_start)/512; //number of sectors in evmm
+    ed.startup_start = 0; //TODO: not sure what this is 
+    ed.startup_count= 0; //TODO: not sure what this is 
+    ed.guest1_start = linux_start;
 
     // relocate 64-bit evmm?
     // read linux headers

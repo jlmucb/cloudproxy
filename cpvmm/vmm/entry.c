@@ -868,6 +868,7 @@ uint32_t get_evmm_uuid()
 {
     // FIX: there is no uuid in the elf header
     // tboot root is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
+    // Linux root uuid is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
     // is this what you want?
     return 0;
 }

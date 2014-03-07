@@ -1014,8 +1014,8 @@ int main(int an, char** av)
 
     // read 64-bit evm header
     ed.version = 0;     // CHECK: evmm version?
-    ed.size_in_sectors = get_size() / 512; 
-    // FIX: size of what?
+    ed.size_in_sectors = get_size() / 512;   
+    // FIX: size of what?  Where is get_size() defined?
     //assumption: sector_size = 512; size = size of bootstrap + evmm
     ed.umbr_size = 0;   // CHECK: not sure what it is
     ed.evmm_mem_in_mb = (evmm_end - evmm_start) / (1024 *1024);

@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _EM64T_DEFS_H_
 #define _EM64T_DEFS_H_
@@ -21,9 +21,7 @@
 
 #pragma PACK_ON
 
-//
 // IA-32 EFLAGS Register
-//
 typedef union {
   struct {
     UINT32  CF:1;           // Carry Flag
@@ -53,9 +51,8 @@ typedef union {
   UINT64  Uint64;
 } EM64T_RFLAGS;
 
-//
+
 // IA-32 Control Register #0 (CR0)
-//
 #define CR0_PE                    0x00000001
 #define CR0_MP                    0x00000002
 #define CR0_EM                    0x00000004
@@ -92,9 +89,8 @@ typedef union _EM64T_CR0 {
 #define EM64T_CR1_ReservedBits( Cr1 )                                           \
    ((Cr1).Bits.Reserved_0 && (Cr1).Bits.Reserved_1 && (Cr1).Bits.Reserved_2 && (Cr1).Bits.Reserved_3)
 
-//
+
 // IA-32 Control Register #3 (CR3)
-//
 typedef struct _EM64T_CR3 {
     struct {
         UINT32 reserved_0_2         :3;
@@ -110,9 +106,7 @@ typedef struct _EM64T_CR3 {
     } hi;
 } EM64T_CR3;
 
-//
 // IA-32 Control Register #4 (CR4)
-//
 #define CR4_VME         0x00000001
 #define CR4_PVI         0x00000002
 #define CR4_TSD         0x00000004
@@ -160,9 +154,7 @@ typedef union _EM64T_CR4 {
 #define EM64T_CR4_ReservedBits( Cr4 )                                           \
    ((Cr4).Bits.Reserved_0 && (Cr4).Bits.Reserved_1 && (Cr4).Bits.Reserved_2)
 
-//
 // IA-32 Control Register #8 (CR8)
-//
 typedef union _EM64T_CR8 {
   struct {
     UINT32  TPR:4;          // Reflect APIC.TPR[7:4] bits
@@ -174,10 +166,7 @@ typedef union _EM64T_CR8 {
 
 #define EM64T_CR8_VALID_BITS_MASK ((UINT64)0x0F)
 
-//
 // Descriptor for the Global Descriptor Table(GDT) and Interrupt Descriptor Table(IDT)
-//
-
 typedef struct _EM64T_GDTR {
     UINT16  limit;
     UINT64  base;
@@ -185,9 +174,7 @@ typedef struct _EM64T_GDTR {
 
 #define EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE 0x10000
 
-//
 // Code Segment Entry in Global Descriptor Table(GDT)
-//
 typedef struct _EM64T_CODE_SEGMENT_DESCRIPTOR {
     UINT32    reserved;
     struct {
@@ -211,9 +198,7 @@ typedef struct _EM64T_CODE_SEGMENT_DESCRIPTOR {
 #define CS_SELECTOR_CPL_BIT 0x3
 
 
-//
 // TSS Entry in Global Descriptor Table(GDT)
-//
 typedef struct _EM64T_TSS_SEGMENT_DESCRIPTOR {
     struct {
         UINT32  segment_limit_00_15 :16;
@@ -249,9 +234,8 @@ typedef struct _EM64T_TASK_STATE_SEGMENT {
     UINT8   pad[7];
 } PACKED EM64T_TASK_STATE_SEGMENT;
 
-//
+
 // Page-Map Level-4 and Ptr Directory Page Table
-//
 typedef struct _EM64T_PML4 {
     struct {
         UINT32 present              :1;
@@ -273,9 +257,7 @@ typedef struct _EM64T_PML4 {
 } EM64T_PML4, EM64T_PDPE;
 
 
-//
 // Page Table Entry for 2MB pages
-//
 typedef struct _EM64T_PDE_2MB {
     struct {
         UINT32 present              :1;
@@ -299,9 +281,8 @@ typedef struct _EM64T_PDE_2MB {
     } hi;
 } EM64T_PDE_2MB;
 
-//
+
 // EM64T Interrupt Descriptor Table - Gate Descriptor
-//
 typedef struct _EM64T_IDT_GATE_DESCRIPTOR {
     // offset 0
     UINT32  offset_0_15     :16;    // Offset bits 15..0
@@ -330,9 +311,7 @@ typedef struct _EM64T_IDT_DESCRIPTOR {
     UINT64    base;
 } PACKED EM64T_IDT_DESCRIPTOR;
 
-//
 // IA32_MISC_ENABLE_MSR
-//
 typedef union _IA32_MISC_ENABLE_MSR {
   struct {
     UINT32  FastStringEnable:1;
@@ -359,9 +338,7 @@ typedef union _IA32_MISC_ENABLE_MSR {
   UINT64  Uint64;
 } IA32_MISC_ENABLE_MSR;
 
-//
 // IA-32 MSR Register EFER (0xC0000080)
-//
 #define EFER_SCE 0x00000001
 #define EFER_LME 0x00000100
 #define EFER_LMA 0x00000400
@@ -394,9 +371,8 @@ typedef union _IA32_EFER_S {
 #define IA32_SIZE_OF_WRMSR_INST              2
 
 
-//
+
 // Yonah/Merom specific MSRs
-//
 //#define IA32_PMG_IO_CAPTURE_INDEX  0xE4
 
 typedef union _IA32_PMG_IO_CAPTURE_MSR {

@@ -27,33 +27,26 @@
 #define FOUR_GIGABYTE 0x100000000
 
 
-// 
 //  Read input data structure and create all guests
 // 
 //  NOTE: current implementation is valid only for MBR loader. For
 //        driver-loading scenario it should be changed
 // 
 
-// -------------------------- types -----------------------------------------
-// ---------------------------- globals -------------------------------------
 extern UINT32 g_is_post_launch;
-// ---------------------------- internal functions --------------------------
-// ---------------------------- APIs    -------------------------------------
 
-//
 // init memory layout
 // This function should perform init of "memory layout object" and
 // init the primary guest memory layout.
 // In the case of no secondary guests, memory layout object is not required
 //
 // For primary guest:
-//   - All memory upto 4G is mapped, except of VMM and secondary guest areas
+//   - All memory upto 4G is mapped, except for VMM and secondary guest areas
 //   - Only specified memory above 4G is mapped. Mapping in the >4G region for primary
 //     guest should be added by demand
 //
 // For secondary guests:
 //   - All secondary guests are loaded lower than 4G
-//
 BOOLEAN init_memory_layout_from_mbr(
                     const VMM_MEMORY_LAYOUT* vmm_memory_layout,
                     GPM_HANDLE               primary_guest_gpm,

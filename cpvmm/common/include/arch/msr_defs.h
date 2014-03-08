@@ -1,33 +1,29 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _MSR_DEFS_H_
 #define _MSR_DEFS_H_
 
 
-//
 // Performance Counter MSR Indexes
-//
 #define IA32_MSR_CRU_ESCR1      0x3B9
 #define IA32_MSR_IQ_CCCR2       0x36E
 #define IA32_MSR_IQ_COUNTER2    0x30E
 
-//
 // Standard MSR Indexes
-//
 #define IA32_INVALID_MSR_INDEX          (UINT32)0xffffffff
 #define IA32_MSR_TIME_STAMP_COUNTER     (UINT32)0x010
 #define IA32_MSR_APIC_BASE              0x01B
@@ -84,9 +80,7 @@
 #define IA32_MSR_FS_BASE                (UINT32)0xC0000100
 #define IA32_MSR_GS_BASE                (UINT32)0xC0000101
 
-//
 // MTRR MSR Indexes
-//
 #define IA32_MSR_MTRRCAP               0xFE
 #define IA32_MSR_MTRR_DEF_TYPE         0x2FF
 #define IA32_MSR_VARIABLE_MTRR         0x200
@@ -102,15 +96,11 @@
 #define IA32_MSR_FIXED_MTRR_4K_F0000   0x26E
 #define IA32_MSR_FIXED_MTRR_4K_F8000   0x26F
 
-//
 // Microcode Update MSR Indexs
-//
 #define IA32_MSR_BIOS_SIGNATURE      0x8B
 #define IA32_MSR_BIOS_UPDATE_TRIGGER 0x79
 
-//
 // Yonah/Merom specific MSRs
-//
 #define IA32_MSR_PMG_IO_CAPTURE      0xE4
 
 

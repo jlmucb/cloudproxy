@@ -46,98 +46,9 @@
 extern void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors);
 #endif
 
-// -------------------------- types -----------------------------------------
-// ---------------------------- globals -------------------------------------
-// ---------------------------- internal functions --------------------------
-static void raise_guest_create_event(GUEST_ID guest_id);
-/*--------- Moved to guest.c
-static
-BOOLEAN vmm_get_struct_host_ptr(GUEST_CPU_HANDLE gcpu,
-                                void* guest_ptr,
-                                VMCALL_ID expected_vmcall_id,
-                                UINT32 size_of_struct,
-                                void** host_ptr) {
-    UINT64 gva = (UINT64)guest_ptr;
-    UINT64 hva;
-    void* host_ptr_tmp;
+static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 
-    if (!gcpu_gva_to_hva(gcpu, gva, &hva)) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Invalid Parameter Struct Address %P\n", __FUNCTION__, gva);
-        return FALSE;
-    }
-
-    host_ptr_tmp = (void*)hva;
-    if (*((VMCALL_ID*)host_ptr_tmp) != expected_vmcall_id) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Invalid first field (vmcall_id) of the struct: %d instead of %d\n", __FUNCTION__, *((VMCALL_ID*)host_ptr_tmp), expected_vmcall_id);
-        return FALSE;
-    }
-
-    if ((ALIGN_FORWARD(gva, PAGE_4KB_SIZE) - gva) < size_of_struct) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Parameters Struct crosses the page boundary. gva = %P, size_of_struct = 0x%x\n", __FUNCTION__, gva, size_of_struct);
-        return FALSE;
-    }
-
-    *host_ptr = host_ptr_tmp;
-    return TRUE;
-}
-
-#pragma warning( push )
-#pragma warning (disable : 4100) // disable non-referenced formal parameters
-
-static
-VMM_STATUS is_uvmm_running(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1, ADDRESS *arg2, ADDRESS *arg3) {
-    void** is_vmm_running_params_guest_ptr = (void**)arg1;
-    VMM_IS_UVMM_RUNNING_PARAMS* is_vmm_running_params;
-
-    if (!vmm_get_struct_host_ptr(gcpu,
-                                 *is_vmm_running_params_guest_ptr,
-                                 VMCALL_IS_UVMM_RUNNING,
-                                 sizeof(VMM_IS_UVMM_RUNNING_PARAMS),
-                                 (void**)&is_vmm_running_params)) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Error - could not retrieve pointer to parameters\n", __FUNCTION__);
-        VMM_DEADLOOP();
-        return VMM_ERROR;
-    }
-
-    VMM_LOG(mask_anonymous, level_trace,"%s: Notifying driver that uVMM is running\n", __FUNCTION__);
-
-    is_vmm_running_params->version = 0;
-
-    return VMM_OK;
-}
-
-static
-VMM_STATUS print_debug_message_service(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1, ADDRESS *arg2, ADDRESS *arg3)
-{
-    void** print_debug_message_params_guest_ptr = (void**)arg1;
-    VMM_PRINT_DEBUG_MESSAGE_PARAMS* print_debug_message_params;
-
-    if (!vmm_get_struct_host_ptr(gcpu,
-                                 *print_debug_message_params_guest_ptr,
-                                 VMCALL_PRINT_DEBUG_MESSAGE,
-                                 sizeof(VMM_PRINT_DEBUG_MESSAGE_PARAMS),
-                                 (void**)&print_debug_message_params)) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Error - could not retrieve pointer to parameters\n", __FUNCTION__);
-        return VMM_ERROR;
-    }
-
-    VMM_LOG(mask_anonymous, level_trace,"%s\n", print_debug_message_params->message);
-    return VMM_OK;
-}
-
-#pragma warning( pop )
-
-static
-void register_vmcall_services(GUEST_HANDLE guest)
-{
-    GUEST_ID guest_id = guest_get_id(guest);
-    vmcall_register(guest_id, VMCALL_IS_UVMM_RUNNING, is_uvmm_running, FALSE);
-    vmcall_register(guest_id, VMCALL_PRINT_DEBUG_MESSAGE, print_debug_message_service, FALSE);
-}
-*/
-//
 // Add CPU to guest
-//
 void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
                        GUEST_HANDLE             guest,
                        CPU_ID                   host_cpu_to_allocate,
@@ -173,10 +84,8 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
     // host part will be initialized later
 }
 
-//
-// Init guest except of guest memory
+// Init guest except for guest memory
 // Return NULL on error
-//
 static
 GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
                                 const VMM_GUEST_STARTUP* gstartup,
@@ -273,17 +182,11 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 }
 
 
-// ---------------------------- APIs    -------------------------------------
-
-//------------------------------------------------------------------------------
-//
-// Preform initialization of guests and guest CPUs
+// Perform initialization of guests and guest CPUs
 //
 // Should be called on BSP only while all APs are stopped
 //
 // Return TRUE for success
-//
-//------------------------------------------------------------------------------
 BOOLEAN initialize_all_guests(
                     UINT32 number_of_host_processors,
                     const VMM_MEMORY_LAYOUT* vmm_memory_layout,
@@ -353,27 +256,9 @@ BITMAP_SET(((VMM_GUEST_STARTUP*)primary_guest_startup_state)->flags, VMM_GUEST_F
     return TRUE;
 }
 
-/*
-static void raise_guest_create_event(GUEST_ID guest_id)
-{
-    EVENT_GUEST_CREATE_DATA guest_create_event_data = {0};
-
-    gpci_guest_initialize(guest_id);
-    ipc_guest_initialize(guest_id);
-    gdb_guest_initialize(guest_id);
-    event_manager_guest_initialize(guest_id);
-
-    guest_create_event_data.guest_id = guest_id;
-    event_raise(EVENT_GUEST_CREATE, NULL, &guest_create_event_data);
-}
-*/
-//------------------------------------------------------------------------------
-//
-// Preform initialization of host cpu parts of all guest CPUs that run on specified
+// Perform initialization of host cpu parts of all guest CPUs that run on specified
 // host CPU.
-//
 // Should be called on the target host CPU
-//------------------------------------------------------------------------------
 void initialize_host_vmcs_regions( CPU_ID current_cpu_id )
 {
     GUEST_CPU_HANDLE        gcpu;

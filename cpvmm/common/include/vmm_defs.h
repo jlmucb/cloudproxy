@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VMM_DEFS_H_
 #define _VMM_DEFS_H_
@@ -225,7 +225,7 @@ extern UINT32 align_forward_to_power_of_2(UINT64 number);
 #define BITMAP_ARRAY64_SET(__bitarray64, __bitno)  BITMAP_SET64(__bitarray64[BITMAP_ARRAY64_BYTE(__bitno)], (UINT64)1 << (__bitno % 64))
 #define BITMAP_ARRAY64_GET(__bitarray64, __bitno)  BITMAP_GET64(__bitarray64[BITMAP_ARRAY64_BYTE(__bitno)], (UINT64)1 << (__bitno % 64))
 
-/*------------------------------------------------------* 
+/*
  * PURPOSE  : Set bit vectors for all the bits which are 
  *            lower than threshold.  Clear all upper  
  *            bits as ZERO.
@@ -236,7 +236,7 @@ extern UINT32 align_forward_to_power_of_2(UINT64 number);
  *                        than threshold, then set it;
  *                        if bit vector position is higher 
  *                        than threshold, then clear it;
- *------------------------------------------------------*/
+ */
 #define  BITMAP_ARRAY_ASSIGN(array_64, len, threshold) \
 {                                                           \
     UINT32   idx;                                           \
@@ -257,14 +257,14 @@ extern UINT32 align_forward_to_power_of_2(UINT64 number);
     }                                                         \
 }
 
-/*------------------------------------------------------* 
+/*
  * PURPOSE  : Check if all bits of bitmap array are reset 
  * ARGUMENTS: array_64  - an UINT64 array, pointer to
  *                        array_64[0],array_64[1],... 
  *            len       - the length of array_64
  *	      ret -	  1 if all bits are cleared,
  *                        0 otherwise 
- *------------------------------------------------------*/
+  */
 #define  BITMAP_ARRAY64_CHECKBITS_ALLZERO(array_64, len, ret) \
 {                                                           \
     UINT32   idx;                                           \
@@ -279,14 +279,14 @@ extern UINT32 align_forward_to_power_of_2(UINT64 number);
     }                                                       \
 }
 
-/*------------------------------------------------------* 
+/*
  * PURPOSE  : Check if all bits of bitmap array are set 
  * ARGUMENTS: array_64  - an UINT64 array, pointer to
  *                        array_64[0],array_64[1],... 
  *            len       - the length of array_64
  *	      ret -	  1 if all bits are set,
  *                        0 otherwise 
- *------------------------------------------------------*/
+  */
 #define  BITMAP_ARRAY64_CHECKBITS_ALLONE(array_64, len, ret) \
 {                                                           \
     UINT32   idx;                                           \
@@ -301,7 +301,7 @@ extern UINT32 align_forward_to_power_of_2(UINT64 number);
     }                                                       \
 }
                                           		     
-/*------------------------------------------------------* 
+/*
  * PURPOSE  : Returns index of the highest bit set in the 
  *            bitmap array 
  * ARGUMENTS: array_64  - an UINT64 array, pointer to
@@ -310,7 +310,7 @@ extern UINT32 align_forward_to_power_of_2(UINT64 number);
  *            bit_index - index of the highest bit set,
  *                        set to -1 if no bit is set in
  *                        the bitmap array 
- *------------------------------------------------------*/
+ */
 #define BITMAP_ARRAY64_HIGHESTINDEX(array_64, len, bit_index) \
 {										\
     INT32 i;                                                                    \
@@ -372,43 +372,35 @@ extern void bitarray_enumerate_bits( UINT8* bitarray, UINT32 bitarray_size_in_bi
 #endif
 
 /*
- *
  *  Pages
- *
  */
 
-/*
- *  The following definitions and macros will be used to perform alignment
- */
+//  The following definitions and macros will be used to perform alignment
+ 
 #define PAGE_4KB_SIZE       (4 KILOBYTES)
 #define PAGE_4KB_MASK       (PAGE_4KB_SIZE - 1)
 #define PAGE_ALIGN_4K(x)    ALIGN_FORWARD( x, PAGE_4KB_SIZE )
-/*
- *  returns TRUE if the structure occupies the single page
- */
+//  returns TRUE if the structure occupies the single page
 #define IS_ON_THE_SAME_4K_PAGE( address, size )                               \
     ALIGN_BACKWARD( address, PAGE_4KB_SIZE ) == ALIGN_BACKWARD( address + PAGE_4KB_SIZE )
 
 
-/*Returns number of pages (4KB) required to accomdate x bytes */
+// Returns number of pages (4KB) required to accomdate x bytes 
 #define PAGE_ROUNDUP(x)  (PAGE_ALIGN_4K(x) / PAGE_4KB_SIZE)
-
 
 #define PAGE_2MB_SIZE       (2 MEGABYTES)
 #define PAGE_2MB_MASK       (PAGE_2MB_SIZE - 1)
 #define PAGE_ALIGN_2M(x)    ALIGN_FORWARD( x, PAGE_2MB_SIZE )
-/*
- *  returns TRUE if the structure occupies the single page
- */
+
+//  returns TRUE if the structure occupies the single page
 #define IS_ON_THE_SAME_2M_PAGE( address, size )                               \
     ALIGN_BACKWARD( address, PAGE_2MB_SIZE ) == ALIGN_BACKWARD( address + PAGE_2MB_SIZE )
 
 #define PAGE_4MB_SIZE       (4 MEGABYTES)
 #define PAGE_4MB_MASK       (PAGE_4MB_SIZE - 1)
 #define PAGE_ALIGN_4M(x)    ALIGN_FORWARD( x, PAGE_4MB_SIZE )
-/*
- *  returns TRUE if the structure occupies the single page
- */
+
+//  returns TRUE if the structure occupies the single page
 #define IS_ON_THE_SAME_4M_PAGE( address, size )                               \
     ALIGN_BACKWARD( address, PAGE_4MB_SIZE ) == ALIGN_BACKWARD( address + PAGE_4MB_SIZE )
 
@@ -428,9 +420,7 @@ extern void bitarray_enumerate_bits( UINT8* bitarray, UINT32 bitarray_size_in_bi
 
 
 /*
- *
  *  Calling conventions
- *
  */
 
 #ifdef __GNUC__
@@ -498,14 +488,10 @@ extern void bitarray_enumerate_bits( UINT8* bitarray, UINT32 bitarray_size_in_bi
 #endif
 
 /*
- *
  *  varags
- *
  */
 
-/*
- *  find size of parameter aligned on the native integer size
- */
+//  find size of parameter aligned on the native integer size
 #define _VMM_INT_SIZE_OF(n)  ( (sizeof(n) + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1) )
 
 #ifndef va_start

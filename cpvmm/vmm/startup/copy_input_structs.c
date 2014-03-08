@@ -25,11 +25,8 @@
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(COPY_INPUT_STRUCTS_C, __condition)
 
 
-//
 // Copy input params into heap before changing host virtual memory mapping
 // Required in order to avoid input parameters disrupting
-//
-
 INLINE
 void vmm_copy_gcpu_startup_state(VMM_GUEST_CPU_STARTUP_STATE* state_to, const VMM_GUEST_CPU_STARTUP_STATE* state_from) {
     vmm_memcpy(state_to, state_from, state_from->size_of_this_struct);

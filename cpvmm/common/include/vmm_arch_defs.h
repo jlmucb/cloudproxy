@@ -1,36 +1,32 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _UVMM_ARCH_DEFS_H_
 #define _UVMM_ARCH_DEFS_H_
 
 #include "vmm_defs.h"
 
-//****************************************************************************
-//
 // This file contains unified architecture-related structures, defined by uVMM
-//
-//****************************************************************************
+
 //#if _MSC_VER >= 1400
 #pragma PACK_ON
 //#endif
 
-//
+
 // Standard E820 BIOS map
-//
 typedef enum _INT15_E820_RANGE_TYPE {
     INT15_E820_ADDRESS_RANGE_TYPE_MEMORY    = 1,
     INT15_E820_ADDRESS_RANGE_TYPE_RESERVED  = 2,
@@ -59,12 +55,10 @@ typedef struct _INT15_E820_MEMORY_MAP_ENTRY_EXT {
     INT15_E820_MEMORY_MAP_EXT_ATTRIBUTES    extended_attributes;
 } PACKED INT15_E820_MEMORY_MAP_ENTRY_EXT, *PINT15_E820_MEMORY_MAP_ENTRY_EXT;
 
-//
 // The memory_map_entry may be either INT15_E820_MEMORY_MAP_ENTRY_EXT (24 bytes)
 // or INT15_E820_MEMORY_MAP_ENTRY (20 bytes). The returned value size depends on
 // the caller-passed buffer - if caller passed 24 bytes or more, the extended entry
 // is returned. The minimum buffer size must be 20 bytes.
-//
 typedef struct _INT15_E820_MEMORY_MAP {
     UINT32                           memory_map_size;    // size in bytes of all entries,
                                                          // not including the size field itself

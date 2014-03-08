@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VMCALL_API_H_
 #define _VMCALL_API_H_
@@ -29,15 +29,15 @@ typedef enum _VMCALL_ID {
     VMCALL_DEVICE_DRIVER_IOCTL,
     VMCALL_DEVICE_DRIVER_ACK_NOTIFICATION,
     VMCALL_PRINT_DEBUG_MESSAGE,
-	VMCALL_ADD_SHARED_MEM,
-	VMCALL_REMOVE_SHARED_MEM,
-	VMCALL_WRITE_STRING,
-	VMCALL_TMSL,
+    VMCALL_ADD_SHARED_MEM,
+    VMCALL_REMOVE_SHARED_MEM,
+    VMCALL_WRITE_STRING,
+    VMCALL_TMSL,
 
-	VMCALL_UPDATE_LVT,        // Temporary for TSC deadline debugging
+    VMCALL_UPDATE_LVT,        // Temporary for TSC deadline debugging
 
 #ifdef ENABLE_TMSL_PROFILING
-	 VMCALL_TMSL_PROFILING = 1022,  // for tmsl profiling.
+         VMCALL_TMSL_PROFILING = 1022,  // for tmsl profiling.
 #endif
 
     VMCALL_LAST_USED_INTERNAL = 1024  // must be the last
@@ -212,28 +212,28 @@ typedef struct VMM_PRINT_DEBUG_MESSAGE_PARAMS_S {
   for testing the driver.
 ***********************************************************************/
 typedef struct VMM_ADD_SHARED_MEM_PARAMS{
-	VMCALL_ID vmcall_id;
-	UINT8 padding[4];
-	UINT64 GuestVirtualAddress;
-	UINT32 BufSize;
-	int uVMMMemHandle;
-	VMM_STATUS status;
-	UINT8 padding2[4];
+        VMCALL_ID vmcall_id;
+        UINT8 padding[4];
+        UINT64 GuestVirtualAddress;
+        UINT32 BufSize;
+        int uVMMMemHandle;
+        VMM_STATUS status;
+        UINT8 padding2[4];
 } VMM_ADD_SHARED_MEM_PARAMS;
 
 typedef struct VMM_REMOVE_SHARED_MEM_PARAMS{
-	VMCALL_ID vmcall_id;
-	int uVMMMemHandle;
-	VMM_STATUS status;
+        VMCALL_ID vmcall_id;
+        int uVMMMemHandle;
+        VMM_STATUS status;
 
 } VMM_REMOVE_SHARED_MEM_PARAMS;
 
 typedef struct VMM_WRITE_STRING_PARAMS{
-	VMCALL_ID vmcall_id;
-	int uVMMMemHandle;
-	char  buf[100];
-	UINT32 len;
-	VMM_STATUS status;
+        VMCALL_ID vmcall_id;
+        int uVMMMemHandle;
+        char  buf[100];
+        UINT32 len;
+        VMM_STATUS status;
 
 } VMM_WRITE_STRING_PARAMS;
 

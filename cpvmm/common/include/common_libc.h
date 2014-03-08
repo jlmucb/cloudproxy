@@ -1,29 +1,26 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _UVMM_COMMON_CRT_H_
 #define _UVMM_COMMON_CRT_H_
 
 #include "vmm_defs.h"
 
-////////////////////////////////////////////////////////////////////////////////
-//
+
 // Subset of CRT-like routines to be used in VMM and loader environments
-//
-////////////////////////////////////////////////////////////////////////////////
 
 void *  CDECL vmm_memset(void *dest, int filler, size_t count);
 void *  CDECL vmm_memcpy(void *dest, const void* src, size_t count);
@@ -40,7 +37,7 @@ int CDECL vmm_memcmp(const void* mem1, const void* mem2, size_t count);
 
 // sprintf_s() - secure sprintf. Includes size of input buffer
 
-//--------------------------------------------------------------------------------
+
 //
 // Format specification
 //
@@ -77,8 +74,8 @@ int CDECL vmm_memcmp(const void* mem1, const void* mem2, size_t count);
 //      '0' - print leading zeroes
 //      positive_number - field width
 //
-//
-//--------------------------------------------------------------------------------
+
+
 int CDECL vmm_sprintf_s( char *buffer, size_t size_of_buffer, const char *format, ...);
 int CDECL vmm_vsprintf_s( char *buffer, size_t size_of_buffer, const char *format, va_list argptr );
 

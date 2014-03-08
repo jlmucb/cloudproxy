@@ -1,23 +1,23 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 /*
-  Event delivery mechanism
-  Based on the 'Observer' pattern
-*/
+ *  Event delivery mechanism
+ *  Based on the 'Observer' pattern
+ */
 
 #pragma once
 #include "vmm_startup.h"
@@ -133,36 +133,36 @@ UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu);
 void event_cleanup_event_manger(void);
 
 BOOLEAN event_global_register(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+    UVMM_EVENT_INTERNAL e,      //  in: event
     event_callback      call    //  in: callback to register on event e
     );
 
 BOOLEAN event_guest_register(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+    UVMM_EVENT_INTERNAL e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to register on event e
     );
 
 BOOLEAN event_gcpu_register(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+    UVMM_EVENT_INTERNAL e,      //  in: event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     event_callback      call    //  in: callback to register on event e
     );
 
 
 BOOLEAN event_global_unregister(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+    UVMM_EVENT_INTERNAL e,      //  in: event
     event_callback      call    //  in: callback to unregister from event e
     );
 
 BOOLEAN event_guest_unregister(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+    UVMM_EVENT_INTERNAL e,      //  in: event
     GUEST_HANDLE        guest,  // in:  guest handle
     event_callback      call    //  in: callback to unregister from event e
     );
 
 BOOLEAN event_gcpu_unregister(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
+    UVMM_EVENT_INTERNAL e,      //  in: event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     event_callback      call    //  in: callback to unregister from event e
     );
@@ -175,13 +175,13 @@ typedef enum {
 
 // returns counter of executed observers
 BOOLEAN event_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
+    UVMM_EVENT_INTERNAL e,      // in:  event
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void                *p      // in:  pointer to event specific structure
     );
 
 BOOLEAN event_is_registered(
-        UVMM_EVENT_INTERNAL          e,      // in:  event
+        UVMM_EVENT_INTERNAL e,      // in:  event
         GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
         event_callback      call    // in:  callback to check
         );

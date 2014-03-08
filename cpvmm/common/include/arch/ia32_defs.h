@@ -1,27 +1,25 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _IA32_DEFS_H_
 #define _IA32_DEFS_H_
 
 #pragma PACK_ON
 
-//------------------------------
 // Segment Selector Definitions
-//------------------------------
 
 #define IA32_SELECTOR_INDEX_MASK 0xFFF8
 
@@ -45,108 +43,106 @@ typedef union
     UINT32  dummy;
 } PACKED IA32_SELECTOR;
 
-//------------------------
-// Descriptor Definitions
-//------------------------
 
+// Descriptor Definitions
 typedef struct {
-	UINT16  limit;
-	UINT32  base;
+        UINT16  limit;
+        UINT32  base;
 } PACKED IA32_GDTR, IA32_IDTR;
 
 typedef struct {
-	struct {
-		UINT32	limit_15_00			: 16;
-		UINT32	base_address_15_00	: 16;
-	} lo;
-	struct {
-		UINT32	base_address_23_16	: 8;
-		UINT32	accessed			: 1;
-		UINT32	writable			: 1;
-		UINT32	expansion_direction	: 1;
-		UINT32	mbz_11				: 1;	// Must Be Zero
-		UINT32	mbo_12				: 1;	// Must Be One
-		UINT32	dpl					: 2;	// Descriptor Privilege Level
-		UINT32	present				: 1;
-		UINT32	limit_19_16			: 4;
-		UINT32	avl					: 1;	// Available to software
-		UINT32	mbz_21				: 1;	// Must Be Zero
-		UINT32	big					: 1;
-		UINT32	granularity			: 1;
-		UINT32	base_address_31_24	: 8;
-	} hi;
+        struct {
+                UINT32  limit_15_00             : 16;
+                UINT32  base_address_15_00      : 16;
+        } lo;
+        struct {
+                UINT32  base_address_23_16      : 8;
+                UINT32  accessed                : 1;
+                UINT32  writable                : 1;
+                UINT32  expansion_direction     : 1;
+                UINT32  mbz_11                  : 1;    // Must Be Zero
+                UINT32  mbo_12                  : 1;    // Must Be One
+                UINT32  dpl                     : 2;    // Descriptor Privilege Level
+                UINT32  present                 : 1;
+                UINT32  limit_19_16             : 4;
+                UINT32  avl                     : 1;    // Available to software
+                UINT32  mbz_21                  : 1;    // Must Be Zero
+                UINT32  big                     : 1;
+                UINT32  granularity             : 1;
+                UINT32  base_address_31_24      : 8;
+        } hi;
 } PACKED IA32_DATA_SEGMENT_DESCRIPTOR;
 
 typedef struct {
-	struct {
-		UINT32	limit_15_00			: 16;
-		UINT32	base_address_15_00	: 16;
-	} lo;
-	struct {
-		UINT32	base_address_23_16	: 8;
-		UINT32	accessed			: 1;
-		UINT32	readable			: 1;
-		UINT32	conforming			: 1;
-		UINT32	mbo_11				: 1;	// Must Be One
-		UINT32	mbo_12				: 1;	// Must Be One
-		UINT32	dpl					: 2;	// Descriptor Privilege Level
-		UINT32	present				: 1;
-		UINT32	limit_19_16			: 4;
-		UINT32	avl					: 1;	// Available to software
-		UINT32	mbz_21				: 1;	// Must Be Zero
-		UINT32	default_size		: 1;    // 0 = 16-bit segment; 1 = 32-bit segment
-		UINT32	granularity 		: 1;
-		UINT32	base_address_31_24	: 8;
-	} hi;
+        struct {
+                UINT32  limit_15_00             : 16;
+                UINT32  base_address_15_00      : 16;
+        } lo;
+        struct {
+                UINT32  base_address_23_16      : 8;
+                UINT32  accessed                : 1;
+                UINT32  readable                : 1;
+                UINT32  conforming              : 1;
+                UINT32  mbo_11                  : 1;    // Must Be One
+                UINT32  mbo_12                  : 1;    // Must Be One
+                UINT32  dpl                     : 2;    // Descriptor Privilege Level
+                UINT32  present                 : 1;
+                UINT32  limit_19_16             : 4;
+                UINT32  avl                     : 1;    // Available to software
+                UINT32  mbz_21                  : 1;    // Must Be Zero
+                UINT32  default_size            : 1;    // 0 = 16-bit segment; 1 = 32-bit segment
+                UINT32  granularity             : 1;
+                UINT32  base_address_31_24      : 8;
+        } hi;
 } PACKED IA32_CODE_SEGMENT_DESCRIPTOR;
 
 typedef struct {
-	struct {
-		UINT32	limit_15_00			: 16;
-		UINT32	base_address_15_00	: 16;
-	} lo;
-	struct {
-		UINT32	base_address_23_16	: 8;
-		UINT32	type    			: 4;
-		UINT32	s			  	    : 1;	// 0 = system; 1 = code or data 
-		UINT32	dpl					: 2;	// Descriptor Privilege Level
-		UINT32	present				: 1;
-		UINT32	limit_19_16			: 4;
-		UINT32	avl					: 1;	// Available to software
-		UINT32	mbz_21				: 1;	// Must Be Zero
-		UINT32	default_size		: 1;    // 0 = 16-bit segment; 1 = 32-bit segment
-		UINT32	granularity 		: 1;
-		UINT32	base_address_31_24	: 8;
-	} hi;
+        struct {
+                UINT32  limit_15_00             : 16;
+                UINT32  base_address_15_00      : 16;
+        } lo;
+        struct {
+                UINT32  base_address_23_16      : 8;
+                UINT32  type                    : 4;
+                UINT32  s                       : 1;    // 0 = system; 1 = code or data 
+                UINT32  dpl                     : 2;    // Descriptor Privilege Level
+                UINT32  present                 : 1;
+                UINT32  limit_19_16             : 4;
+                UINT32  avl                     : 1;    // Available to software
+                UINT32  mbz_21                  : 1;    // Must Be Zero
+                UINT32  default_size            : 1;    // 0 = 16-bit segment; 1 = 32-bit segment
+                UINT32  granularity             : 1;
+                UINT32  base_address_31_24      : 8;
+        } hi;
 } PACKED IA32_GENERIC_SEGMENT_DESCRIPTOR;
 
 typedef struct {
-	struct {
-		UINT32	limit_15_00			: 16;
-		UINT32	base_address_15_00	: 16;
-	} lo;
-	struct {
-		UINT32	base_address_23_16	: 8;
-		UINT32	mbo_8			       : 1; // Must Be One
-		UINT32	busy			       : 1;
-		UINT32	mbz_10			       : 1; // Must Be Zero
-		UINT32	mbo_11				: 1;	// Must Be One
-		UINT32	mbz_12				: 1;	// Must Be Zero
-		UINT32	dpl					: 2;	// Descriptor Privilege Level
-		UINT32	present				: 1;
-		UINT32	limit_19_16			: 4;
-		UINT32	avl					: 1;	// Available to software
-		UINT32	mbz_21				: 1;	// Must Be Zero
-		UINT32	mbz_22	                	: 1;  // Must Be Zero
-		UINT32	granularity 		       : 1;
-		UINT32	base_address_31_24	: 8;
-	} hi;
+        struct {
+                UINT32  limit_15_00             : 16;
+                UINT32  base_address_15_00      : 16;
+        } lo;
+        struct {
+                UINT32  base_address_23_16      : 8;
+                UINT32  mbo_8                   : 1; // Must Be One
+                UINT32  busy                    : 1;
+                UINT32  mbz_10                  : 1; // Must Be Zero
+                UINT32  mbo_11                  : 1;    // Must Be One
+                UINT32  mbz_12                  : 1;    // Must Be Zero
+                UINT32  dpl                     : 2;    // Descriptor Privilege Level
+                UINT32  present                 : 1;
+                UINT32  limit_19_16             : 4;
+                UINT32  avl                     : 1;    // Available to software
+                UINT32  mbz_21                  : 1;    // Must Be Zero
+                UINT32  mbz_22                  : 1;  // Must Be Zero
+                UINT32  granularity             : 1;
+                UINT32  base_address_31_24      : 8;
+        } hi;
 } PACKED IA32_STACK_SEGMENT_DESCRIPTOR;
 
 typedef struct {
-	UINT16	limit_15_00;
-	UINT16	base_address_15_00;
-    UINT8	base_address_23_16;
+        UINT16  limit_15_00;
+        UINT16  base_address_15_00;
+    UINT8       base_address_23_16;
     UINT16  attributes;
     UINT8   base_address_31_24;
 } PACKED IA32_GENERIC_SEGMENT_DESCRIPTOR_ATTR;
@@ -159,8 +155,7 @@ typedef union
     IA32_CODE_SEGMENT_DESCRIPTOR          cs;
     IA32_STACK_SEGMENT_DESCRIPTOR         tss;
     // TODO: add system segment descriptor
-    struct
-    {
+    struct {
         UINT32 lo;
         UINT32 hi;
     }                                     desc32;
@@ -176,32 +171,29 @@ typedef union
 typedef union
 {
     struct {
-    	UINT32	type    		: 4;
-	    UINT32	s			  	: 1;	// 0 = system; 1 = code or data 
-		UINT32	dpl				: 2;	// Descriptor Privilege Level
-    	UINT32	present			: 1;
-	    UINT32	limit_19_16		: 4;
-		UINT32	avl				: 1;	// Available to software
-    	UINT32	mbz_21			: 1;	// Must Be Zero
-	    UINT32	default_size	: 1;    // 0 = 16-bit segment; 1 = 32-bit segment
-	    UINT32	granularity 	: 1;
-        UINT32  dummy           : 16;   // Fill up to 32 bits.  Actual attributes
+        UINT32      type            : 4;
+        UINT32      s               : 1;    // 0 = system; 1 = code or data 
+        UINT32      dpl             : 2;    // Descriptor Privilege Level
+        UINT32      present         : 1;
+        UINT32      limit_19_16     : 4;
+        UINT32      avl             : 1;    // Available to software
+        UINT32      mbz_21          : 1;    // Must Be Zero
+        UINT32      default_size    : 1;    // 0 = 16-bit segment; 1 = 32-bit segment
+        UINT32      granularity     : 1;
+        UINT32      dummy           : 16;   // Fill up to 32 bits.  Actual attributes
                                         // are 16 bits.
     }      bits;
     UINT16 attr16;
     UINT32 dummy;   // Fill up to 32 bits.  Actual attributes are 16 bits.
 } PACKED IA32_SEGMENT_DESCRIPTOR_ATTR;
 
-//-----------------
 // ICR Definitions
-//-----------------
-
 typedef union {
     struct {
         UINT32      reserved_1              : 24;
         UINT32      destination             : 8;
-    }                             bits;
-    UINT32                        uint32;
+    } bits;
+    UINT32          uint32;
 } IA32_ICR_HIGH;
 
 typedef union {
@@ -225,10 +217,8 @@ typedef struct {
     IA32_ICR_HIGH hi_dword;
 } IA32_ICR;
 
-//-----------------------------------------------
-// Local APIC Memory Mapped I/O register offsets
-//-----------------------------------------------
 
+// Local APIC Memory Mapped I/O register offsets
 #define LOCAL_APIC_IDENTIFICATION_OFFSET                    0x020
 #define LOCAL_APIC_IDENTIFICATION_OFFSET_HIGH               LOCAL_APIC_IDENTIFICATION_OFFSET + 0x3
 #define LOCAL_APIC_VERSION_OFFSET                           0x030

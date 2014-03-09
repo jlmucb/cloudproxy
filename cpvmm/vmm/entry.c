@@ -967,7 +967,7 @@ int main(int an, char** av)
     tprintk("\tmod_start  mod_end   string\n");
     for(i=0; i<my_mbi->mods_count; i++) {
         m= get_module(my_mbi, (unsigned int) i);
-        tprintk("\t%08x %08x %08x\n", m->mod_start, 
+        tprintk("\t%08x %08x %s\n", m->mod_start, 
                 m->mod_end, m->string);
     }
 #endif

@@ -223,6 +223,7 @@ The uncompressed initramfs
   This is loaded between 0x01334000 and 0x017d9200 on John's machine.
 
 mystart: 0x080480f8, end: 0x0804ca6c, main: 0x0804933f
+Linux start BZIMAGE_PROTECTED_START 0x100000
 
 
 Required memory setup when vmm_main is called
@@ -254,7 +255,7 @@ Linux (uncompressed)                                    <-- ?
       size_t initrd_size = m->mod_end - m->mod_start;
 initramfs (decompressed)                                <--
 
-evmm was based byt the original loader at 0xa0000000.
+evmm was based byt the original loader at 0xa00000.
 
 
 vmm_main call

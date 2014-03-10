@@ -222,6 +222,8 @@ Linux image package
 The uncompressed initramfs
   This is loaded between 0x01334000 and 0x017d9200 on John's machine.
 
+mystart: 0x080480f8, end: 0x0804ca6c, main: 0x0804933f
+
 
 Required memory setup when vmm_main is called
 ---------------------------------------------

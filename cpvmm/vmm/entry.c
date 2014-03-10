@@ -43,6 +43,11 @@ typedef unsigned char u8;
 
 #define PAGE_SIZE (1024 * 4) 
 
+
+void _mystart()
+{
+}
+
 UINT32  heap_base; 
 UINT32  heap_current; 
 UINT32  heap_tops;
@@ -970,6 +975,8 @@ int main(int an, char** av)
         tprintk("\t%08x %08x %s\n", m->mod_start, 
                 m->mod_end, m->string);
     }
+
+    tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
 #endif
 
     uint64_t evmm_start= 0ULL;

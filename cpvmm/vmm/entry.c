@@ -158,8 +158,7 @@ static EVMM_DESC          ed;
 
 #define EVMM_START_ADDR 0xa0000000 
 
-// QUESTION:  Why is the heapsize so large.  It is used for very little.
-#define HEAP_SIZE 0X100000
+#define HEAP_SIZE 0X200000
 #define HEAP_BASE 0Xa0000000 - HEAP_SIZE
 
 // TOTAL_MEM is a  max of 4G because we start in 32-bit mode
@@ -199,6 +198,7 @@ static UINT32           local_apic_id = 0;
 static VMM_STARTUP_STRUCT startup_struct;
 static VMM_STARTUP_STRUCT *p_startup_struct = &startup_struct;
 static EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
+// QUESTION:  I don't think this is a DESCRIPTOR, I think its a regular old affress
 static EM64T_CODE_SEGMENT_DESCRIPTOR *p_evmm_stack;
 static EM64T_PML4 *pml4_table;
 static EM64T_PDPE *pdp_table;

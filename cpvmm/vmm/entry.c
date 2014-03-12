@@ -22,9 +22,9 @@ typedef long long unsigned uint64_t;
 typedef unsigned uint32_t;
 typedef short unsigned uint16_t;
 typedef unsigned char uint8_t;
-typedef int bool;
 typedef short unsigned u16;
 typedef unsigned char u8;
+typedef int bool;
 
 #include "multiboot.h"
 #include "elf_defns.h"
@@ -43,15 +43,9 @@ typedef unsigned char u8;
 
 #define PAGE_SIZE (1024 * 4) 
 
-
 void _mystart()
 {
 }
-
-UINT32  heap_base; 
-UINT32  heap_current; 
-UINT32  heap_tops;
-UINT32  heap_size;
 
 // IA-32 Interrupt Descriptor Table - Gate Descriptor 
 typedef struct { 
@@ -69,8 +63,8 @@ typedef struct {
 } IA32_DESCRIPTOR;
 
 typedef struct {
-        INIT32_STRUCT s;
-        UINT32 data[32];
+    INIT32_STRUCT s;
+    UINT32 data[32];
 } INIT32_STRUCT_SAFE;
 
 typedef enum {
@@ -109,6 +103,7 @@ typedef enum {
   Ia32ExceptionVectorReserved0x1F
 } IA32_EXCEPTION_VECTORS;
 
+#if 0
 typedef struct {
     UINT32 struct_size;
     UINT32 version;
@@ -132,17 +127,55 @@ typedef struct {
     UINT32 guest1_count;
 } EVMM_DESC;
 
+static EVMM_DESC          ed;
+    // read 64-bit evm header
+    //assumption: sector_size = 512; size = size of bootstrap + evmm
+    ed.version = 0x00002000; //RNB-CHECK: version info from the loader start script
+    ed.size_in_sectors = 1;   
+                //FIX: size of what?  Where is get_size() defined?
+    ed.umbr_size = 0;   // CHECK: not sure what it is
+    ed.evmm_mem_in_mb = ((evmm_end - evmm_start) + (1024 * 1024) - 1)/(1024 *1024);
+    ed.guest_count = 1; // RNB-CHECK: Evmm loader code says 0 for this, even though they set the guest1_start
+    ed.evmml_start = 0; // CHECK: this is loader start address
+    ed.evmml_count= 0;  // CHECK: this is size of the loader
+    ed.starter_start = 0; // CHECK: this is startap start address
+    ed.starter_count= 0;  // CHECK: size of the startap code 
+    ed.evmmh_start = evmm_start; // start address of evmm header
+    ed.evmmh_count= (sizeOfHdr() + 511)/512; // CHECK
+    ed.evmm_start= evmm_start; 
+    ed.evmm_count= ((evmm_end - evmm_start) + 511) /512; //number of sectors in evmm
+    ed.startup_start = 0; //RNB-CHECK: not using startup code, so don't need this.
+    ed.startup_count= 0; //RNB-CHECK: not using startup code, so don't need this.
+    ed.guest1_start = linux_start;   //RNB-FIX: This is the start value passed as the command line.  Therefore, it is the start of the linux (not the relocated/uncompressed value)
+#endif
+
 // Ring 0 Interrupt Descriptor Table - Gate Types
 #define IA32_IDT_GATE_TYPE_TASK          0x85
 #define IA32_IDT_GATE_TYPE_INTERRUPT_16  0x86
 #define IA32_IDT_GATE_TYPE_TRAP_16       0x87
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
-#define HEAP_BASE 0X0 // FIX: Need to set to an address in e820 slot used for evmm 
+
+#define EVMM_START_ADDR 0xa0000000 
+
+// QUESTION:  Why is the heapsize so large.  It is used for very little.
 #define HEAP_SIZE 0X100000
-#define TOTAL_MEM 0x100000000 // max of 4G because we start in 32-bit mode
+#define HEAP_BASE 0Xa0000000 - HEAP_SIZE
+
+// TOTAL_MEM is a  max of 4G because we start in 32-bit mode
+#define TOTAL_MEM 0x100000000 
 #define IDT_VECTOR_COUNT 256
 #define LVMM_CS_SELECTOR 0x10
+
+#define LINUX_DEFAULT_LOAD_ADDRESS 0xC0000000
+
+
+UINT32  heap_base; 
+UINT32  heap_current; 
+UINT32  heap_tops;
+UINT32  heap_size;
+UINT32  evmm_start_address;
+
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
@@ -165,16 +198,27 @@ static UINT32           reserved = 0;
 static UINT32           local_apic_id = 0;
 static VMM_STARTUP_STRUCT startup_struct;
 static VMM_STARTUP_STRUCT *p_startup_struct = &startup_struct;
-static EVMM_DESC          ed;
+static EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
+static EM64T_CODE_SEGMENT_DESCRIPTOR *p_evmm_stack;
+static EM64T_PML4 *pml4_table;
+static EM64T_PDPE *pdp_table;
+static EM64T_PDE_2MB *pd_table;
 
-void *                  entry_point;      // address of vmm_main
+static INIT64_STRUCT    init64;
+static INIT64_STRUCT *  p_init64_data = &init64;
+static INIT32_STRUCT_SAFE init32;
+int                     info[4] = {0, 0, 0, 0};
+int                     num_of_aps= 0;
+void*                   p_low_mem = (void *)0x8000;
+VMM_GUEST_STARTUP       g0;
+VMM_GUEST_STARTUP *     p_g0 = &g0;
+VMM_MEMORY_LAYOUT      *vmem;
+
+void *                  vmm_main_entry_point;      // address of vmm_main
 multiboot_info_t *      g_mbi= NULL;
-
-
 
 typedef void (*tboot_printk)(const char *fmt, ...);
 tboot_printk tprintk = (tboot_printk)(0x80d660);
-
 
 void *vmm_memset(void *dest, int val, UINT32 count)
 {
@@ -261,7 +305,7 @@ BOOLEAN CompareMem(void *Source1, void *Source2, UINT32 Size)
     return TRUE;
 }
 
-void * evmm_page_alloc(UINT32 pages)
+void *evmm_page_alloc(UINT32 pages)
 {
     UINT32 address;
     UINT32 size = pages * PAGE_SIZE;
@@ -568,13 +612,38 @@ void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         :"%eax", "%ecx", "%edx");
 }
 
+// QUESTION: I moved this code, make sure it's correct
+void setup_evmm_stack()
+{
+    EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_gdt_64 = p_gdt_64;
+    int i;
+
+    // data segment for eVmm stacks
+    for (i = 1; i < UVMM_DEFAULT_STACK_SIZE_PAGES+1; i++) {
+        tmp_gdt_64 = p_gdt_64 + (i * PAGE_4KB_SIZE);
+        (* tmp_gdt_64).hi.readable = 1;
+        (* tmp_gdt_64).hi.conforming = 0;
+        (* tmp_gdt_64).hi.mbo_11 = 0;
+        (* tmp_gdt_64).hi.mbo_12 = 1;
+        (* tmp_gdt_64).hi.dpl = 0;
+        (* tmp_gdt_64).hi.present = 1;
+        (* tmp_gdt_64).hi.long_mode = 1;      // important !!!
+        (* tmp_gdt_64).hi.default_size= 0;    // important !!!
+        (* tmp_gdt_64).hi.granularity= 1;
+     }
+
+    p_evmm_stack = p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+}
+
 void x32_gdt64_setup(void)
 {
-    EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
     UINT32 last_index;
-    p_gdt_64 = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc(1);
+    // RNB: 1 page for code segment, and the rest for stack
+    // QUESTION:  What about the AP stacks?
+    p_gdt_64 = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
+                        UVMM_DEFAULT_STACK_SIZE_PAGES);
 
-    vmm_memset(p_gdt_64, 0, PAGE_SIZE);
+    vmm_memset(p_gdt_64, 0, PAGE_4KB_SIZE);
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
@@ -602,18 +671,6 @@ void x32_gdt64_setup(void)
     p_gdt_64[last_index].hi.long_mode = 1;    // important !!!
     p_gdt_64[last_index].hi.default_size= 0;  // important !!!
     p_gdt_64[last_index].hi.granularity= 1;
-
-    // data segment for eVmm stacks
-    p_gdt_64[last_index + 1].hi.accessed = 0;
-    p_gdt_64[last_index + 1].hi.readable = 1;
-    p_gdt_64[last_index + 1].hi.conforming = 0;
-    p_gdt_64[last_index + 1].hi.mbo_11 = 0;
-    p_gdt_64[last_index + 1].hi.mbo_12 = 1;
-    p_gdt_64[last_index + 1].hi.dpl = 0;
-    p_gdt_64[last_index + 1].hi.present = 1;
-    p_gdt_64[last_index + 1].hi.long_mode = 1;      // important !!!
-    p_gdt_64[last_index + 1].hi.default_size= 0;    // important !!!
-    p_gdt_64[last_index + 1].hi.granularity= 1;
 
     // prepare GDTR
     gdtr_64.base  = (UINT32) p_gdt_64;
@@ -646,7 +703,6 @@ void x32_gdt64_get_gdtr(IA32_GDTR *p_gdtr)
 
 static EM64T_CR3 cr3_for_x64 = { 0 };
 
-
 /*
  *  x32_pt64_setup_paging: establish paging tables for x64 -bit mode, 
  *     2MB pages while running in 32-bit mode.
@@ -654,10 +710,6 @@ static EM64T_CR3 cr3_for_x64 = { 0 };
  */
 void x32_pt64_setup_paging(UINT64 memory_size)
 {
-    EM64T_PML4      *pml4_table;
-    EM64T_PDPE      *pdp_table;
-    EM64T_PDE_2MB   *pd_table;
-
     UINT32 pdpt_entry_id;
     UINT32 pdt_entry_id;
     UINT32 address = 0;
@@ -863,46 +915,58 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 #include "elf64.h"
 
 
-uint32_t get_elf_version(elf64_hdr* evmm_elf) {
-    return evmm_elf->e_version;
-} 
-
-uint32_t get_evmm_uuid() 
+get_e820_table(const multiboot_info_t *mbi) 
 {
-    // FIX: there is no uuid in the elf header
-    // tboot root is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
-    // Linux root uuid is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
-    // is this what you want?
-    return 0;
+    //RNB-FIX: I will implement this function alongwith the relocation code,
+    //because then I will have the actual address that i need to protect/exclude
+    //from the guest.
+    // QUESTION:  You have it.  The (relocated) evmm image, heap and stack.
+
+/*
+        uint32_t entry_offset = 0;
+        int i= 0;
+        INT15_E820_MEMORY_MAP *e820;
+
+        e820 = evmm_page_alloc(1);
+        if (e820 ==NULL)
+                return -1;
+
+        while ( entry_offset < my_mbi->mmap_length ) {
+                memory_map_t *entry = (memory_map_t *) (my_mbi->mmap_addr + entry_offset);
+                        tprintk("entry %02d: size: %08x, addr_low: %08x, addr_high: %08x\n  len_low: %08x, len_high: %08x, type: %08x\n",
+                        i, entry->size, entry->base_addr_low, entry->base_addr_high,
+                entry->length_low, entry->length_high, entry->type);
+        i++;
+        entry_offset += entry->size + sizeof(entry->size);
+    }
+*/
 }
+
+// FIX: there is no uuid in the elf header
+// tboot root is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
+// Linux root uuid is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
+// is this what you want?
+int getuuid(char* uuid_string, uint8_t* uuid)
+{
+    return 1;
+}
+
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
 
-uint64_t entryOffset(uint64_t base)
+uint32_t entryOffset(uint32_t base)
 {
     elf64_hdr* elf= (elf64_hdr*) base;
     return elf->e_entry;
 }
 
-uint64_t sizeOfHdr() {
-    return sizeof(elf64_hdr);
-}
 
 #define JLMDEBUG
 
 // tboot jumps in here
 int main(int an, char** av) 
 {
-    static INIT64_STRUCT    init64;
-    static INIT64_STRUCT *  p_init64_data = &init64;
-    static INIT32_STRUCT_SAFE init32;
-    int                     info[4] = {0, 0, 0, 0};
-    int                     num_of_aps= 0;
-    void*                   p_low_mem = (void *)0x8000;
-    VMM_GUEST_STARTUP       g0;
-    VMM_GUEST_STARTUP *     p_g0 = &g0;
-    VMM_MEMORY_LAYOUT *     vmem;
     int i;
 
     // john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
@@ -979,72 +1043,36 @@ int main(int an, char** av)
     tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
 #endif
 
-    uint64_t evmm_start= 0ULL;
-    uint64_t evmm_end= 0ULL;
+    uint32_t evmm_start= 0ULL;
+    uint32_t evmm_end= 0ULL;
 
     m= get_module(my_mbi, 0);
-    evmm_start= (uint64_t)m->mod_start;
-    evmm_end= (uint64_t)m->mod_end;
+    evmm_start= (uint32_t)m->mod_start;
+    evmm_end= (uint32_t)m->mod_end;
     elf64_hdr* evmm_elf= (elf64_hdr*)evmm_start;
 
-    uint64_t linux_start= 0ULL;
-    uint64_t linux_end= 0ULL;
+    uint32_t linux_start= 0ULL;
+    uint32_t linux_end= 0ULL;
 
     m= get_module(my_mbi, 1);
-    linux_start= (uint64_t)m->mod_start;
-    linux_end= (uint64_t)m->mod_end;
+    linux_start= (uint32_t)m->mod_start;
+    linux_end= (uint32_t)m->mod_end;
 
-    uint64_t initram_start= 0ULL;
-    uint64_t initram_end= 0ULL;
+    uint32_t initram_start= 0ULL;
+    uint32_t initram_end= 0ULL;
 
     if(l>2) {
         m= get_module(my_mbi, 2);
-        initram_start= (uint64_t)m->mod_start;
-        initram_end= (uint64_t)m->mod_end;
+        initram_start= (uint32_t)m->mod_start;
+        initram_end= (uint32_t)m->mod_end;
     }
 
-    uint64_t entry= entryOffset(evmm_start);
 
     // TODO(tmroeder): remove this debugging while loop later
     while(1) ;
 
-    // FIX:  
-    //      You hand evmm the linux image which is still partially
-    //      compressed.  Is this right?   You said evmm boots linux
-    //      the way tboot (or kvm).
-    //      You do not pass evmm the initram starting address at all.  
-    //      How does the guest Linux it know where it is?  Does it
-    //      get it from the mbi header passed in?  if so, are your sure it's
-    //      passed in on launch?
-
-    // read 64-bit evm header
-    ed.version = 0;     // CHECK: evmm version?
-    ed.size_in_sectors = get_size() / 512;   
-    // FIX: size of what?  Where is get_size() defined?
-    //assumption: sector_size = 512; size = size of bootstrap + evmm
-    ed.umbr_size = 0;   // CHECK: not sure what it is
-    ed.evmm_mem_in_mb = (evmm_end - evmm_start) / (1024 *1024);
-    ed.guest_count = 1; // CHECK: should be a function call to figure out #guests
-    ed.evmml_start = 0; // CHECK: this is loader start address
-    ed.evmml_count= 0;  // CHECK: this is size of the loader
-    ed.starter_start = 0; // CHECK: this is startap start address
-    ed.starter_count= 0;  // CHECK: size of the startap code 
-    ed.evmmh_start = evmm_start; // start address of evmm header
-    ed.evmmh_count= sizeOfHdr()/512; // CHECK
-    ed.evmm_start= evmm_start; 
-    // FIX: I think this calculation is wrong.  +511 below?
-    ed.evmm_count= (evmm_end - evmm_start)/512; //number of sectors in evmm
-    ed.startup_start = 0; // CHECK: not sure what this is 
-    ed.startup_count= 0; // CHECK: not sure what this is 
-    ed.guest1_start = linux_start;   // FIX: This should be the relocated value
-
-    // FIX: relocate 64-bit evmm?
-    //      I recommend relocating it to 0x300000000.
-    //      You have to move it anyway, it's not aligned
-    // FIX: relocate linux?  You may not have to do this.
-
     // get CPU info
-    __cpuid(info,1);    // JLM: where is this defined?
+    __cpuid(info,1);    // JLM: where is this defined? //RNB: It is defined in ia32_low_level.h 
     num_of_aps = ((info[1] >> 16) & 0xff) - 1;
     if (num_of_aps < 0)
         num_of_aps = 0; // CHECK: this should be 0 until we have AP's, right?
@@ -1058,31 +1086,6 @@ int main(int an, char** av)
     InitializeMemoryManager((UINT64 *)&heap_base, (UINT64 *)&heap_size);
 
     SetupIDT();
-
-    vmm_memcpy(&g0, (const void *) (ed.guest1_start), sizeof(g0));
-    g0.cpu_states_array = ed.guest1_start; // FIX: not sure
-    g0.cpu_states_count = 1;
-    g0.devices_array = 0;
-    p_startup_struct->version_of_this_struct = get_elf_version(evmm_elf);   // Most likely not needed
-    p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
-    p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
-    p_startup_struct->number_of_secondary_guests = 0; 
-    p_startup_struct->size_of_vmm_stack = 0; 
-    p_startup_struct->unsupported_vendor_id = 0; 
-    p_startup_struct->unsupported_device_id = 0; 
-    p_startup_struct->flags = 0; 
-    p_startup_struct->default_device_owner= get_evmm_uuid(); 
-    p_startup_struct->acpi_owner= get_evmm_uuid(); 
-    p_startup_struct->nmi_owner= get_evmm_uuid(); 
-    p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
-
-    // get e820 layout
-    // FIX: Do you need to remove the heap and stack from this map or reserve them?
-    //      where is this defined?
-    p_startup_struct->physical_memory_layout_E820 = get_e820_layout();
-
-    // get vmm_main entry point
-    entry_point = (void *) (entry + evmm_start);
 
     // setup gdt for 64-bit
     x32_gdt64_setup();
@@ -1102,7 +1105,84 @@ int main(int an, char** av)
 
     UINT16 p_cr3 = init64.i64_cr3;
 
-    // FIX: Allocate stack and set esp
+    // get vmm_main entry point
+    uint32_t entry= entryOffset(evmm_start);
+
+    // Relocate evmm_image from evmm_start to evmm_start_address
+    // QUESTION:  Rekha should check
+    evmm_start_address= EVMM_START_ADDR;
+    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, (UINT32) (evmm_end-evmm_start));
+    // QUESTION: This was wrong, you had entry+evmm_start 
+    vmm_main_entry_point = (void *) (entry + evmm_start_address);
+
+    // Allocate stack and set esp
+    setup_evmm_stack();
+
+    char* uuid_string= "a1edf4f7-94e1-4c47-8573-0e3f54821ed3";
+    UINT32 uuid =0;
+
+    // Guest state initialization
+    g0.size_of_this_struct = sizeof(g0);
+    g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
+    g0.flags = 0;               //FIX: need to put the correct guest flags
+    g0.guest_magic_number = 0;  //FIX: needs to be unique id of the guest
+    g0.cpu_affinity = -1;
+    g0.cpu_states_count = 1;    // CHECK: number of VMM_GUEST_STARTUP structs
+    g0.devices_count = 0;       // CHECK: 0 implies guest is devices less
+    g0.image_size = linux_end - linux_start;
+                
+    // FIX: This is the start address,  the offset from the
+    // compressed linux.  Currently, evmm_main does't understand elf
+    // (uncompressed or otherwise).
+    g0.image_address= linux_start;
+    g0.image_offset_in_guest_physical_memory = LINUX_DEFAULT_LOAD_ADDRESS;
+    g0.physical_memory_size = 1024 * 1024 * 512; //CHECK: 512MB for now
+    g0.cpu_states_array = NULL; 
+
+    // FIX: the start address of the array of initial cpu states for guest cpus.
+    //     This pointer makes sense only if the devices_count > 0
+    g0.devices_array = NULL;
+
+    // Startup struct initialization
+    p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
+    p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
+    p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
+    p_startup_struct->number_of_secondary_guests = 0; 
+    p_startup_struct->size_of_vmm_stack = UVMM_DEFAULT_STACK_SIZE_PAGES; 
+    p_startup_struct->unsupported_vendor_id = 0; 
+    p_startup_struct->unsupported_device_id = 0; 
+    p_startup_struct->flags = 0; 
+    // QUESTION:  I'm pretty sure the line below is wrong since the uuid is NOT a 32 bit nunfer
+    //            please correct.  You can use getuuid(uuid_string, uuid)
+    p_startup_struct->default_device_owner= uuid;
+    p_startup_struct->acpi_owner= uuid; 
+    p_startup_struct->nmi_owner= uuid; 
+    p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
+
+    // FIX: vmm_memory_layout is suppose to contain the start/end/size of
+    // each image that is part of evmm (e.g. evmm, linux+initrd
+    vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
+    (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + heap_size + p_startup_struct->size_of_vmm_stack;
+    (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
+
+    // QUESTION:  You had evmm_start instead of evmm_start_address, check this.
+    (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
+    (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
+
+    (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
+    (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
+    (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
+    // QUESTION:  Check the line below.  It is only right if linux has a 64 bit elf header
+    (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_start + entryOffset(linux_start);
+
+    (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
+    (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
+    (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
+    // FIX:  This is wrong, intiram does not have an entry point
+    (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
+
+    // FIX: get the correct e820 layout
+    p_startup_struct->physical_memory_layout_E820 = get_e820_layout();
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
     //  vmm_main call:
@@ -1110,6 +1190,8 @@ int main(int an, char** av)
     //               UINT64 application_params_struct_u, 
     //               UINT64 reserved UNUSED)
     asm volatile (
+        //RNB: p_evmm_stack points to the start of the stack
+        "movl %[p_evmm_stack], %%esp\n"
         // prepare arguments for 64-bit mode
         // there are 3 arguments
         // align stack and push them on 8-byte alignment
@@ -1130,7 +1212,7 @@ int main(int an, char** av)
 
         // for following retf
         "\tpush 1f\n"
-        "\tmovl %[entry_point], %%ebx\n"
+        "\tmovl %[vmm_main_entry_point], %%ebx\n"
 
         "\t movl %[p_cr3], %%eax \n"
         // initialize CR3 with PML4 base
@@ -1173,13 +1255,14 @@ int main(int an, char** av)
         "\t subl 0x18, %%esp\n"
         // in 64bit this is actually
         // "\t call %%ebx\n"
-        "\t jmp (%[entry_point])\n"
+        "\t jmp (%[vmm_main_entry_point])\n"
         "\t ud2\n"
         : 
         : [local_apic_id] "m" (local_apic_id), 
           [p_startup_struct] "m" (p_startup_struct), 
           [p_g0] "m" (p_g0), [reserved] "m" (reserved), 
-          [entry_point] "m" (entry_point), 
+          [vmm_main_entry_point] "m" (vmm_main_entry_point), 
+          [p_evmm_stack] "m" (p_evmm_stack), 
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 

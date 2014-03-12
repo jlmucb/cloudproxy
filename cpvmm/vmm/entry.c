@@ -1113,7 +1113,7 @@ int main(int an, char** av)
     // QUESTION: This was wrong, you had entry+evmm_start 
     vmm_main_entry_point = (void *) (entry + evmm_start_address);
 
-    // Allocate stack and set esp
+    // Allocate stack and set rsp (esp)
     setup_evmm_stack();
 
     // JLM:  string hardcoded for now but it's defined above

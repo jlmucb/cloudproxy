@@ -942,11 +942,8 @@ get_e820_table(const multiboot_info_t *mbi)
 */
 }
 
-// FIX: there is no uuid in the elf header
-// tboot root is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
-// Linux root uuid is a1edf4f7-94e1-4c47-8573-0e3f54821ed3 on john's machine
-// is this what you want?
-int getuuid(char* uuid_string, uint8_t* uuid)
+
+int getuuid(char* uuid_str, uint8_t* uuid)
 {
     return 1;
 }
@@ -1057,6 +1054,7 @@ int main(int an, char** av)
     m= get_module(my_mbi, 1);
     linux_start= (uint32_t)m->mod_start;
     linux_end= (uint32_t)m->mod_end;
+    // char* uuid_string= m->string;
 
     uint32_t initram_start= 0ULL;
     uint32_t initram_end= 0ULL;
@@ -1072,7 +1070,7 @@ int main(int an, char** av)
     while(1) ;
 
     // get CPU info
-    __cpuid(info,1);    // JLM: where is this defined? //RNB: It is defined in ia32_low_level.h 
+    __cpuid(info,1);
     num_of_aps = ((info[1] >> 16) & 0xff) - 1;
     if (num_of_aps < 0)
         num_of_aps = 0; // CHECK: this should be 0 until we have AP's, right?
@@ -1118,7 +1116,10 @@ int main(int an, char** av)
     // Allocate stack and set esp
     setup_evmm_stack();
 
+    // JLM:  string hardcoded for now but it's defined above
+    //    Remove this definition when Rekha figures out what uuid should be
     char* uuid_string= "a1edf4f7-94e1-4c47-8573-0e3f54821ed3";
+    // QUESTION:  This doesn't seem right.  See my mail.
     UINT32 uuid =0;
 
     // Guest state initialization

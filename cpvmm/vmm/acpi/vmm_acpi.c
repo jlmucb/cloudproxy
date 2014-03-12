@@ -264,7 +264,7 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
             /* Found the table with matched signature */
             VMM_LOG(mask_anonymous, level_trace,"Found the table %s address = %p length = %x\n", sig, tbl, tbl->Length);
 
-                        return tbl;
+            return tbl;
         }
     }
 

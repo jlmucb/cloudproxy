@@ -108,7 +108,6 @@ static void*    g_any_data_for_user_func = 0;
 static          UINT8 ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};  // 1 in i position means CPU[i] exists
 
 
-
 //
 // Low memory page layout
 //
@@ -186,9 +185,7 @@ static void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
 
 //      internal functions
 
-//
 // Setup AP low memory startup code
-//
 static void setup_low_memory_ap_code(UINT32 temp_low_memory_4K)
 {
     UINT8*      code_to_patch = (UINT8*)temp_low_memory_4K;
@@ -201,23 +198,22 @@ static void setup_low_memory_ap_code(UINT32 temp_low_memory_4K)
     UINT16      ss_value;
     IA32_GDTR*  new_gdtr_32;
 
-#if 0
-    //
     // Copy the Startup code to the beginning of the page
-    //
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
     // get current segments
-    __asm mov cs_value, cs
-    __asm mov ds_value, ds
-    __asm mov es_value, es
-    __asm mov gs_value, gs
-    __asm mov fs_value, fs
-    __asm mov ss_value, ss
+    asm volatile (
+    "\tmov %%cs, #[cs_value]\n"
+    "\tmov %%ds, #[ds_value]\n"
+    "\tmov %%es, #[es_value]\n"
+    "\tmov %%gs, #[gs_value]\n"
+    "\tmov %%fs, #[fs_value]\n"
+    mov %%ss, ss_value
+    : [cs_value] "=m" (cs_value), [ds_value] "=m" (ds_value), [es_value] "=m" (es_value),
+      [gs_value] "=m" (gs_value), [fs_value] "=m" (fs_value), [ss_value] "=m" (ss_value)
+    ::);
 
-    //
     // Patch the startup code
-    //
     *((UINT16*)(code_to_patch + AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
                                             (UINT16)(temp_low_memory_4K >> 4);
 
@@ -226,7 +222,6 @@ static void setup_low_memory_ap_code(UINT32 temp_low_memory_4K)
 
     *((UINT32*)(code_to_patch + CONT16_IN_CODE_OFFSET)) =
                                             (UINT32)code_to_patch + CONT16_VALUE_OFFSET;
-
 
     *((UINT16*)(code_to_patch + CS_IN_CODE_OFFSET)) = cs_value;
     *((UINT16*)(code_to_patch + DS_IN_CODE_OFFSET)) = ds_value;
@@ -238,138 +233,139 @@ static void setup_low_memory_ap_code(UINT32 temp_low_memory_4K)
     *((UINT32*)(code_to_patch + AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
                                             (UINT32)(ap_continue_wakeup_code);
 
-    //
     // Copy the GDT table to its place
-    //
 
     // get GDTR from BSP
-    __asm sgdt gdtr_32
+    asm volatile (
+        "\tsgdt gdtr_32\n"
+    :
+    : [gdtr_32] "m" (gdtr_32)
+    :);
 
     // copy GDT from bsp to its place. gdtr_32.limit is an address of the last byte
     // assume that there is sufficient place for this
     vmm_memcpy(code_to_patch + GDT_OFFSET_IN_PAGE,
                (UINT8*)gdtr_32.base, gdtr_32.limit + 1 );
 
-    //
+    
     //    Patch the GDT base address in memory
-    //
     new_gdtr_32 = (IA32_GDTR *)(code_to_patch + GDTR_OFFSET_IN_PAGE);
     new_gdtr_32->base = (UINT32)code_to_patch + GDT_OFFSET_IN_PAGE;
-#endif
     return;
 }
 
-//
+
 // Asm-level initial AP setup in protected mode
-//
-// __attribute((cdecl))
-// __attribute((naked))
 static void ap_continue_wakeup_code(void)
 {
-#if 0
-    __asm {
-          cli
+    asm volatile (
+        "\tcli\n"
 
-; get the Local APIC ID
-          mov  ecx, IA32_MSR_APIC_BASE
-          rdmsr
-          and  eax, LOCAL_APIC_BASE_MSR_MASK
-          mov  ecx, dword ptr [eax + LOCAL_APIC_IDENTIFICATION_OFFSET]
-          shr  ecx, LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT ; ecx = LocalApicID
+        // get the Local APIC ID
+        "\tmovl  IA32_MSR_APIC_BASE, %%ecx\n"
+        "\trdmsr\n"
+        "\tand  LOCAL_APIC_BASE_MSR_MASK, %%eax\n"
+        "\tmovl   LOCAL_APIC_IDENTIFICATION_OFFSET(%%eax), %%ecx\n"
+        "\tshrl  ecx, LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT, %%ecx\n"
 
-          lea  edx, ap_presence_array   ;; edx <- address of presence array
-          add  edx, ecx                 ;; edx <- address of AP CPU presence location
-          mov  byte ptr [edx], 1        ;; mark current CPU as present
+        // edx <- address of presence array
+        "\tleal  #[ap_presence_array], %%edx\n"
+        // edx <- address of AP CPU presence location
+        "\taddl  %%ecx, %%edx\n"
+        // mark current CPU as present
+        "\tmovl  $1, (%edx)\n"
 
+        // wait until BSP will init stacks, GDT, IDT, etc
+"Wait_Lock1:\n"
+        "\tcmpl    MP_BOOTSTRAP_STATE_APS_ENUMERATED, #[mp_bootstrap_state]\n"
+        "\tje      Stage2\n"
+        "\tpause\n"
+        "\tjmp Wait_Lock1\n"
 
-; wait until BSP will init stacks, GDT, IDT, etc
-Wait_Lock1:
-          cmp mp_bootstrap_state, MP_BOOTSTRAP_STATE_APS_ENUMERATED
-          je Stage2
-          pause
-          jmp Wait_Lock1
+        // stage 2 - setup the stack, GDT, IDT and jump to "C"
+"Stage2:\n"
 
-; stage 2 - setup the stack, GDT, IDT and jump to "C"
-Stage2:
+        // find my stack. My stack offset is in the array g_stacks_arr[LocalApicID-1]
+        // now ap_presence_array[ecx] (and also [edx]) contains CPU ID
+        "\txor     %%ecx,  %%ecx\n"
+        // now ecx contains AP ordered ID [1..Max]
+        "\tmov     (%%edx), %%cl\n"
+        "\tmovl    %%ecx, %%eax\n"
+        //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
+        "\tdecl    %% eax\n"
+        // eax = 4*eax (8 == sizeof(UINT32))
+        "\tleal    (4*%%eax), %%eax\n"
+        "\tmovl    #[gp_init32_data], %%edx\n"
+        // now edx points to gp_init32_data->i32_esp
+        "\taddl    $8, %%edx \n"
+        // now edx points to gp_init32_data->i32_esp[eax]
+        "\taddl     %%eax, %%edx\n"
+        "\tmovl    (%%edx), %%esp\n"
 
-; find my stack. My stack offset is in the array g_stacks_arr[LocalApicID-1]
-; now ap_presence_array[ecx] (and also [edx]) contains CPU ID
-          xor ecx, ecx
-          mov  cl, byte ptr [edx]       ;; now ecx contains AP ordered ID [1..Max]
-          mov  eax, ecx
-          dec eax                        ; AP starts from 1, so subtract one to get proper index in g_stacks_arr
-          lea eax, dword ptr [(TYPE UINT32)*eax]     ; eax = 4*eax (8 == sizeof(UINT32))
-          mov edx, gp_init32_data
-          add edx, 8    ;; now edx points to gp_init32_data->i32_esp
-          add edx, eax  ;; now edx points to gp_init32_data->i32_esp[eax]
-          mov esp, dword ptr [edx]
+        // setup GDT
+        "\tlgdt #[gp_GDT]\n"
 
-; setup GDT
-          lgdt fword ptr gp_GDT
+        // setup IDT
+        "\tlidt #[gp_IDT]\n"
 
-; setup IDT
-          lidt fword ptr gp_IDT
-
-; enter "C" function
-          push ecx                       ; push  AP ordered ID
-          call  ap_continue_wakeup_code_C ; should never return
-    }
-#endif
+        // enter "C" function
+        //  push  AP ordered ID
+        "\tpushl    %%ecx\n"
+        // should never return
+        "\tcall  ap_continue_wakeup_code_C\n"
+    : [mp_bootstrap_state] "=m" (mp_bootstrap_state)
+    : [ap_continue_wakeup_code_C] "m" (ap_continue_wakeup_code_C),
+      [gp_init32_data] "m" (gp_init32_data),
+      [gp_GDT] "m" (gp_GDT), [gp_IDT] "m" (gp_IDT)
+    :"%eax", "%ecx", "%edx");
 }
 
 
-// __attribute((cdecl))
 static UINT64 read_msr(UINT32 msr_index)
 {
-#if 0
-    __asm {
-          mov  ecx, msr_index
-          rdmsr
-    }
-#endif
+    asm volatile (
+          "\tmov  #[msr_index], %%ecx\n"
+          "\trdmsr\n"
+    :
+    : [msr_index] "m" (msr_index)
+    :);
     return 0;
 }
 
-//
+
 // Initial AP setup in protected mode - should never return
 //  End of Stage 2
-//
-// __attribute((cdecl))
 static void ap_continue_wakeup_code_C( UINT32 local_apic_id )
 {
     // mark that the command was accepted
-#if 0
-    __asm lock inc g_ready_counter
-#endif
+    asm volatile (
+        "\tlock inc #[g_ready_counter]\n"
+    : [g_ready_counter] "=m" (g_ready_counter)
+    ::);
 
     // user_func now contains address of the function to be called
     g_user_func( local_apic_id, g_any_data_for_user_func );
     return;
 }
 
-//-------------------------------------------------------------------
-//
+
 // read 8-bit port
-//
-//--------------------------------------------------------------------
-// __attribute((cdecl))
 static UINT8 read_port_8( UINT32 port )
 {
-#if 0
-    __asm lock inc g_ready_counter
-    __asm {
-        mov     edx, port    ; edx = port
-        xor    eax, eax      ; eax = 0
-        in    al, dx         ; eax = *port
-    }
-#endif
+    asm volatile (
+        "\tlock inc #[g_ready_counter]\n"
+        "\tmov     #[port],%%edx\n"
+        "\txor    %%eax, %%eax\n"
+        "\tin    %%dx, %%al\n"
+    : [g_ready_counter] "=m" (g_ready_counter)
+    : [port] "m" (port)
+    :);
     return 0;
 }
 
+
 /*
- *
  *            START: REPLACING STALL() WITH RDTSC()
- *
  */
 
 //      startap_stall()
@@ -387,8 +383,6 @@ void startap_stall(UINT32 stall_usec)
     return;
 }
 
-//======================= startap_calibrate_tsc_ticks_per_msec() =================
-//
 // Calibrate the internal variable holding the number of TSC ticks pers second.
 // Should only be called at initialization, as it relies on startap_stall()
 
@@ -405,8 +399,7 @@ void startap_calibrate_tsc_ticks_per_msec(void)
     return;
 }
 
-//========================== startap_stall_using_tsc() =============================
-//
+
 // Stall (busy loop) for a given time, using the CPU TSC register.
 // Note that, depending on the CPU and ASCI modes, the stall accuracy may be
 // rough.
@@ -428,13 +421,10 @@ static void startap_stall_using_tsc(UINT32 stall_usec)
         }
 
     while (start_tsc < end_tsc) {
-#if 0
-                __asm
-                {
-                        pause
-                }
-#endif
-                start_tsc = (UINT32) startap_rdtsc();
+        asm volatile (
+            "\tpause\n"
+        :::);
+        start_tsc = (UINT32) startap_rdtsc();
     }
     return;
 }
@@ -445,12 +435,10 @@ static void startap_stall_using_tsc(UINT32 stall_usec)
  *
  */
 
-//
+
 // send IPI
-//
 static void send_ipi_to_all_excluding_self(UINT32 vector_number, UINT32 delivery_mode)
 {
-#if 0
     IA32_ICR_LOW           icr_low = {0};
     IA32_ICR_LOW           icr_low_status = {0};
     IA32_ICR_HIGH          icr_high = {0};
@@ -484,14 +472,12 @@ static void send_ipi_to_all_excluding_self(UINT32 vector_number, UINT32 delivery
         icr_low_status.uint32 = *(UINT32 *)(UINT32)(apic_base + LOCAL_APIC_ICR_OFFSET);
 
     } while (icr_low_status.bits.delivery_status != 0);
-#endif
     return;
 }
 
 
 static void send_ipi_to_specific_cpu (UINT32 vector_number, UINT32 delivery_mode, UINT8 dst)
 {
-#if 0
     IA32_ICR_LOW           icr_low = {0};
     IA32_ICR_LOW           icr_low_status = {0};
     IA32_ICR_HIGH          icr_high = {0};
@@ -525,7 +511,6 @@ static void send_ipi_to_specific_cpu (UINT32 vector_number, UINT32 delivery_mode
         icr_low_status.uint32 = *(UINT32 *)(UINT32)(apic_base + LOCAL_APIC_ICR_OFFSET);
 
     } while (icr_low_status.bits.delivery_status != 0);
-#endif
     return;
 }
 
@@ -540,9 +525,8 @@ static void send_sipi_ipi( void* code_start )
     send_ipi_to_all_excluding_self(((UINT32)code_start) >> 12, LOCAL_APIC_DELIVERY_MODE_SIPI);
 }
 
-//
+
 // Send INIT IPI - SIPI to all APs in broadcast mode
-//
 static void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
 {
     send_init_ipi();
@@ -557,9 +541,7 @@ static void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
 }
 
 
-//
 // Send INIT IPI - SIPI to all active APs
-//
 static void send_targeted_init_sipi(INIT32_STRUCT *p_init32_data,
                                     VMM_STARTUP_STRUCT  *p_startup)
 {
@@ -600,13 +582,13 @@ static void send_targeted_init_sipi(INIT32_STRUCT *p_init32_data,
 //  Return:
 //    number of processors that were init (not including BSP)
 //    or -1 on errors
-//
-//----------------------------------------------------------------------------
+
 struct _INIT32_STRUCT       *p_init32_data;
 struct VMM_STARTUP_STRUCT  *p_startup;
 
 
-UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, struct VMM_STARTUP_STRUCT  *p_startup)
+UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, 
+                        struct VMM_STARTUP_STRUCT *p_startup)
 {
     if (NULL == p_init32_data || 0 == p_init32_data->i32_low_memory_page) {
         return (UINT32)(-1);
@@ -617,22 +599,21 @@ UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, struct VMM_STARTUP
     gp_init32_data = p_init32_data; // store in global var, to ease access to it from asm code
 
     // save IDT and GDT
-#if 0
-    __asm {
-        sgdt gp_GDT
-        sidt gp_IDT
-    }
-#endif
+    asm volatile (
+        "\tsgdt #[gp_GDT]\n"
+        "\tsidt #[gp_IDT]\n"
+    : [gp_GDT] "=m" (gp_GDT), [gp_IDT] "=m" (gp_IDT)
+    ::);
 
     // create AP startup code in low memory
-        setup_low_memory_ap_code( p_init32_data->i32_low_memory_page );
+    setup_low_memory_ap_code( p_init32_data->i32_low_memory_page );
 
-        if (BITMAP_GET(p_startup->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) == 0) {
-                send_broadcast_init_sipi(p_init32_data);
-        }
-        else {
-                send_targeted_init_sipi(p_init32_data, p_startup);
-        }
+    if (BITMAP_GET(p_startup->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) == 0) {
+        send_broadcast_init_sipi(p_init32_data);
+    }
+    else {
+        send_targeted_init_sipi(p_init32_data, p_startup);
+    }
 
     // wait for predefined timeout
     startap_stall_using_tsc(  INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS );
@@ -644,7 +625,6 @@ UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, struct VMM_STARTUP
 }
 
 
-//----------------------------------------------------------------------------
 // Run user specified function on all APs.
 // If user function returns it should return in the protected 32bit mode. In this
 // case APs enter the wait state once more.
@@ -657,7 +637,6 @@ UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, struct VMM_STARTUP
 //  Return:
 //    void or never returns - depending on continue_ap_boot_func
 //
-//----------------------------------------------------------------------------
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
     g_user_func = continue_ap_boot_func;
@@ -668,22 +647,21 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 
     // wait until all APs will accept this
     while (g_ready_counter != g_aps_counter) {
-#if 0
-        __asm pause
-#endif
-    }
+        asm volatile (
+            "\tpause\n"
+        :::);
     return;
 }
 
 
-/*---------------------------------------------------------------------*
-* Function  : bsp_enumerate_aps
-* Purpose   : Walk through ap_presence_array and counts discovered APs.
-*           : In addition modifies array thus it will contain AP IDs,
-*           : and not just 1/0.
-* Return    : Total number of APs, discovered till now.
-* Notes     : Should be called on BSP
-*---------------------------------------------------------------------*/
+/*
+ * Function  : bsp_enumerate_aps
+ * Purpose   : Walk through ap_presence_array and counts discovered APs.
+ *           : In addition modifies array thus it will contain AP IDs,
+ *           : and not just 1/0.
+ * Return    : Total number of APs, discovered till now.
+ * Notes     : Should be called on BSP
+ */
 UINT8 bsp_enumerate_aps(void)
 {
     int     i;
@@ -708,11 +686,12 @@ void ap_intialize_environment(void)
 
 void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
-#if 0
-    __asm   push    eax
-    __asm   mov     eax, new_state
-    __asm   lock    xchg mp_bootstrap_state, eax
-    __asm   pop     eax
-#endif
+    asm volatile (
+        "\tpush    %%eax\n"
+        "\tmov     #[new_state], %%eax\n"
+        "\tlock xchg %%eax, #[mp_bootstrap_state]\n"
+        "\tpop     %%eax\n"
+    : [mp_bootstrap_state] "=m" (mp_bootstrap_state), [new_state] "=m" (new_state)
+    ::);
 }
 

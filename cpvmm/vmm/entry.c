@@ -1041,8 +1041,8 @@ int main(int an, char** av)
 #endif
 
     // QUESTION: Need to remove bootstrap region from e820 also?
-    uint32_t bootstrap_start= 0ULL;
-    uint32_t bootstrap_end= 0ULL;
+    uint32_t bootstrap_start= _mystart;
+    uint32_t bootstrap_end= _end;
 
     uint32_t evmm_start= 0ULL;
     uint32_t evmm_end= 0ULL;

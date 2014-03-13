@@ -198,7 +198,7 @@ static UINT32           local_apic_id = 0;
 static VMM_STARTUP_STRUCT startup_struct;
 static VMM_STARTUP_STRUCT *p_startup_struct = &startup_struct;
 static EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
-// QUESTION:  I don't think this is a DESCRIPTOR, I think its a regular old affress
+// QUESTION:  I don't think this is a DESCRIPTOR, I think its a regular old address
 static EM64T_CODE_SEGMENT_DESCRIPTOR *p_evmm_stack;
 static EM64T_PML4 *pml4_table;
 static EM64T_PDPE *pdp_table;
@@ -1039,6 +1039,10 @@ int main(int an, char** av)
 
     tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
 #endif
+
+    // QUESTION: Need to remove bootstrap region from e820 also?
+    uint32_t bootstrap_start= 0ULL;
+    uint32_t bootstrap_end= 0ULL;
 
     uint32_t evmm_start= 0ULL;
     uint32_t evmm_end= 0ULL;

@@ -42,6 +42,7 @@ typedef int bool;
 #define PAE_BIT     0x20
 
 #define PAGE_SIZE (1024 * 4) 
+#define MAX_E820_ENTRIES 3 //CHECK: 1 for each tboot, evmm, and primary guest
 
 void _mystart()
 {
@@ -158,7 +159,7 @@ static EVMM_DESC          ed;
 
 #define EVMM_START_ADDR 0xa0000000 
 
-#define HEAP_SIZE 0X200000
+#define HEAP_SIZE 0X100000
 #define HEAP_BASE 0Xa0000000 - HEAP_SIZE
 
 // TOTAL_MEM is a  max of 4G because we start in 32-bit mode
@@ -174,7 +175,8 @@ UINT32  heap_current;
 UINT32  heap_tops;
 UINT32  heap_size;
 UINT32  evmm_start_address;
-
+INT15_E820_MEMORY_MAP *e820;
+UINT64 *start_of_e820_table;
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
@@ -198,8 +200,7 @@ static UINT32           local_apic_id = 0;
 static VMM_STARTUP_STRUCT startup_struct;
 static VMM_STARTUP_STRUCT *p_startup_struct = &startup_struct;
 static EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
-// QUESTION:  I don't think this is a DESCRIPTOR, I think its a regular old address
-static EM64T_CODE_SEGMENT_DESCRIPTOR *p_evmm_stack;
+static UINT32 *p_evmm_stack;
 static EM64T_PML4 *pml4_table;
 static EM64T_PDPE *pdp_table;
 static EM64T_PDE_2MB *pd_table;
@@ -631,15 +632,13 @@ void setup_evmm_stack()
         (* tmp_gdt_64).hi.default_size= 0;    // important !!!
         (* tmp_gdt_64).hi.granularity= 1;
      }
-
-    p_evmm_stack = p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+    p_evmm_stack = (UINT32 *) p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
 }
 
 void x32_gdt64_setup(void)
 {
     UINT32 last_index;
     // RNB: 1 page for code segment, and the rest for stack
-    // QUESTION:  What about the AP stacks?
     p_gdt_64 = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
                         UVMM_DEFAULT_STACK_SIZE_PAGES);
 
@@ -915,31 +914,160 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 #include "elf64.h"
 
 
-get_e820_table(const multiboot_info_t *mbi) 
+static UINT64 *get_e820_table(const multiboot_info_t *mbi) 
 {
-    //RNB-FIX: I will implement this function alongwith the relocation code,
-    //because then I will have the actual address that i need to protect/exclude
-    //from the guest.
-    // QUESTION:  You have it.  The (relocated) evmm image, heap and stack.
+    uint32_t entry_offset = 0;
+    int i= 0;
 
-/*
-        uint32_t entry_offset = 0;
-        int i= 0;
-        INT15_E820_MEMORY_MAP *e820;
+    e820 = (INT15_E820_MEMORY_MAP *)evmm_page_alloc(1);
+    if (e820 ==NULL)
+        return -1;
 
-        e820 = evmm_page_alloc(1);
-        if (e820 ==NULL)
-                return -1;
-
-        while ( entry_offset < my_mbi->mmap_length ) {
-                memory_map_t *entry = (memory_map_t *) (my_mbi->mmap_addr + entry_offset);
-                        tprintk("entry %02d: size: %08x, addr_low: %08x, addr_high: %08x\n  len_low: %08x, len_high: %08x, type: %08x\n",
-                        i, entry->size, entry->base_addr_low, entry->base_addr_high,
-                entry->length_low, entry->length_high, entry->type);
+    while ( entry_offset < mbi->mmap_length ) {
+        memory_map_t *entry = (memory_map_t *) (mbi->mmap_addr + entry_offset);
+        e820->memory_map_entry[i].basic_entry.base_address = 
+                            (entry->base_addr_high << 32) + entry->base_addr_low;
+        e820->memory_map_entry[i].basic_entry.length = 
+                            (entry->length_high << 32) + entry->length_low;
+        e820->memory_map_entry[i].basic_entry.address_range_type= entry->type;
+            e820->memory_map_entry[i].extended_attributes.uint32 = 1;
         i++;
-        entry_offset += entry->size + sizeof(entry->size);
+       entry_offset += entry->size + sizeof(entry->size);
     }
-*/
+    e820->memory_map_size = i * sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
+    start_of_e820_table = (UINT64)(UINT32)e820;
+
+    return start_of_e820_table;
+}
+
+static void remove_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
+                          unsigned int pos)
+{
+    unsigned int i = 0;
+    /* shift (copy) everything down one entry */
+    for ( i = pos; i < *nr_map - 1; i++)
+        e820map[i] = e820map[i+1];
+
+    (*nr_map)--;
+}
+
+static BOOLEAN insert_after_region(INT15_E820_MEMORY_MAP *e820map, 
+                unsigned int pos, uint64_t addr, uint64_t size, uint32_t type)
+{
+    unsigned int i = 0;
+
+    // no more room
+    if ( *nr_map + 1 > MAX_E820_ENTRIES )
+        return FALSE;
+    // shift (copy) everything up one entry
+    for ( i = *nr_map - 1; i > pos; i--)
+        e820map[i+1] = e820map[i];
+    // now add our entry
+    e820map->memory_map_entry[i].basic_entry.base_address = addr;
+    e820map->memory_map_entry[pos+1].basic_entry.length = size;
+    e820map->memory_map_entry[pos+1].basic_entry.address_range_type = type;
+    e820map->memory_map_size = sizeof(e820map) - 
+    sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
+    (*nr_map)++;
+    return TRUE;
+}
+
+static BOOLEAN protect_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
+                           uint64_t new_addr, uint64_t new_size, uint32_t new_type)
+{
+    uint64_t addr, tmp_addr, size, tmp_size;
+    uint32_t type;
+    unsigned int i;
+
+    if ( new_size == 0 )
+        return TRUE;
+    // check for wrap
+    if ( new_addr + new_size < new_addr )
+        return FALSE;
+
+    /* find where our region belongs in the table and insert it */
+    for ( i = 0; i < *nr_map; i++ ) {
+        addr = e820map->memory_map_entry[i].basic_entry.base_address;
+        size = e820map->memory_map_entry[i].basic_entry.length;
+        type = e820map->memory_map_entry[i].basic_entry.length;
+        /* is our region at the beginning of the current map region? */
+        if ( new_addr == addr ) {
+            if ( !insert_after_region(e820map, nr_map, i-1, new_addr, new_size,
+                                      new_type) )
+                return FALSE;
+            break;
+        }
+        /* are we w/in the current map region? */
+        else if ( new_addr > addr && new_addr < (addr + size) ) {
+            if ( !insert_after_region(e820map, nr_map, i, new_addr, new_size,
+                                      new_type) )
+                return FALSE;
+            /* fixup current region */
+            tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
+            i++;   /* adjust to always be that of our region */
+            /* insert a copy of current region (before adj) after us so */
+            /* that rest of code can be common with previous case */
+            if ( !insert_after_region(e820map, nr_map, i, addr, size, type) )
+                return FALSE;
+            break;
+        }
+        /* is our region in a gap in the map? */
+        else if ( addr > new_addr ) {
+            if ( !insert_after_region(e820map, nr_map, i-1, new_addr, new_size,
+                                      new_type) )
+                return FALSE;
+            break;
+        }
+    }
+    /* if we reached the end of the map without finding an overlapping */
+    /* region, insert us at the end (note that this test won't trigger */
+    /* for the second case above because the insert() will have incremented */
+    /* nr_map and so i++ will still be less) */
+    if ( i == *nr_map ) {
+        if ( !insert_after_region(e820map, nr_map, i-1, new_addr, new_size,
+                                  new_type) )
+            return FALSE;
+        return TRUE;
+    }
+
+    i++;     /* move to entry after our inserted one (we're not at end yet) */
+
+    tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
+    tmp_size = e820map->memory_map_entry[i].basic_entry.length;
+
+    /* did we split the (formerly) previous region? */
+    if ((new_addr >= tmp_addr) &&
+         ((new_addr + new_size) < (tmp_addr + tmp_size)) ) {
+        /* then adjust the current region (adj size first) */
+        e820map->memory_map_entry[i].basic_entry.length = 
+            (tmp_addr + tmp_size) - (new_addr + new_size);
+        e820map->memory_map_entry[i].basic_entry.base_address = 
+            (new_addr + new_size);
+        return TRUE;
+    }
+
+    /* if our region completely covers any existing regions, delete them */
+    while ( (i < *nr_map) && ((new_addr + new_size) >=
+                              (tmp_addr + tmp_size)) ) {
+        remove_region(e820map, nr_map, i);
+        tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
+        tmp_size = e820map->memory_map_entry[i].basic_entry.length;
+    }
+
+    /* finally, if our region partially overlaps an existing region, */
+    /* then truncate the existing region */
+    if ( i < *nr_map ) {
+        tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
+        tmp_size = e820map->memory_map_entry[i].basic_entry.length;
+        if ( (new_addr + new_size) > tmp_addr ) {
+            e820map->memory_map_entry[i].basic_entry.length = 
+                                    (tmp_addr + tmp_size) - (new_addr + new_size);
+            e820map->memory_map_entry[i].basic_entry.base_address = 
+                                            (new_addr + new_size);
+        }
+    }
+
+    return TRUE;
 }
 
 
@@ -1141,7 +1269,7 @@ int main(int an, char** av)
     // (uncompressed or otherwise).
     g0.image_address= linux_start;
     g0.image_offset_in_guest_physical_memory = LINUX_DEFAULT_LOAD_ADDRESS;
-    g0.physical_memory_size = 1024 * 1024 * 512; //CHECK: 512MB for now
+    g0.physical_memory_size = 0; //CHECK: notes inside evmm say it should be 0 for primary. 
     g0.cpu_states_array = NULL; 
 
     // FIX: the start address of the array of initial cpu states for guest cpus.
@@ -1157,8 +1285,8 @@ int main(int an, char** av)
     p_startup_struct->unsupported_vendor_id = 0; 
     p_startup_struct->unsupported_device_id = 0; 
     p_startup_struct->flags = 0; 
-    // QUESTION:  I'm pretty sure the line below is wrong since the uuid is NOT a 32 bit nunfer
-    //            please correct.  You can use getuuid(uuid_string, uuid)
+    // QUESTION:  I'm pretty sure the line below is wrong since the uuid is NOT a 32 
+    // bit nunber please correct.  You can use getuuid(uuid_string, uuid)
     p_startup_struct->default_device_owner= uuid;
     p_startup_struct->acpi_owner= uuid; 
     p_startup_struct->nmi_owner= uuid; 
@@ -1167,7 +1295,8 @@ int main(int an, char** av)
     // FIX: vmm_memory_layout is suppose to contain the start/end/size of
     // each image that is part of evmm (e.g. evmm, linux+initrd
     vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
-    (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + heap_size + p_startup_struct->size_of_vmm_stack;
+    (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
+            heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
 
     // QUESTION:  You had evmm_start instead of evmm_start_address, check this.

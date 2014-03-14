@@ -613,7 +613,6 @@ void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         :"%eax", "%ecx", "%edx");
 }
 
-// QUESTION: I moved this code, make sure it's correct
 void setup_evmm_stack()
 {
     EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_gdt_64 = p_gdt_64;
@@ -913,7 +912,6 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 
 #include "elf64.h"
 
-
 static UINT64 *get_e820_table(const multiboot_info_t *mbi) 
 {
     uint32_t entry_offset = 0;
@@ -939,6 +937,8 @@ static UINT64 *get_e820_table(const multiboot_info_t *mbi)
 
     return start_of_e820_table;
 }
+
+#if 0
 
 static void remove_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
                           unsigned int pos)
@@ -1069,6 +1069,7 @@ static BOOLEAN protect_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_m
 
     return TRUE;
 }
+#endif
 
 
 int getuuid(char* uuid_str, uint8_t* uuid)
@@ -1168,7 +1169,6 @@ int main(int an, char** av)
     tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
 #endif
 
-    // QUESTION: Need to remove bootstrap region from e820 also?
     uint32_t bootstrap_start= _mystart;
     uint32_t bootstrap_end= _end;
 
@@ -1239,7 +1239,6 @@ int main(int an, char** av)
     uint32_t entry= entryOffset(evmm_start);
 
     // Relocate evmm_image from evmm_start to evmm_start_address
-    // QUESTION:  Rekha should check
     evmm_start_address= EVMM_START_ADDR;
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, (UINT32) (evmm_end-evmm_start));
     // QUESTION: This was wrong, you had entry+evmm_start 
@@ -1299,7 +1298,6 @@ int main(int an, char** av)
             heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
 
-    // QUESTION:  You had evmm_start instead of evmm_start_address, check this.
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
 
@@ -1315,7 +1313,7 @@ int main(int an, char** av)
     // FIX:  This is wrong, intiram does not have an entry point
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
 
-    // FIX: get the correct e820 layout
+    // QUESTION: where is get_e820_layout defined?
     p_startup_struct->physical_memory_layout_E820 = get_e820_layout();
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
@@ -1324,7 +1322,6 @@ int main(int an, char** av)
     //               UINT64 application_params_struct_u, 
     //               UINT64 reserved UNUSED)
     asm volatile (
-        //RNB: p_evmm_stack points to the start of the stack
         "movl %[p_evmm_stack], %%esp\n"
         // prepare arguments for 64-bit mode
         // there are 3 arguments

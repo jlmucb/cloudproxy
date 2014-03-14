@@ -42,7 +42,8 @@ typedef int bool;
 #define PAE_BIT     0x20
 
 #define PAGE_SIZE (1024 * 4) 
-#define MAX_E820_ENTRIES 0x4000/sizeof(INT15_E820_MEMORY_MAP)
+#define MAX_E820_ENTRIES PAGE_SIZE/sizeof(INT15_E820_MEMORY_MAP)
+#define UUID 0x1badb002
 
 void _mystart()
 {
@@ -616,7 +617,6 @@ void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         :"%eax", "%ecx", "%edx");
 }
 
-// QUESTION: I moved this code, make sure it's correct
 void setup_evmm_stack()
 {
     EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_gdt_64 = p_gdt_64;
@@ -655,7 +655,6 @@ void x32_gdt64_setup(void)
 
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
-
     last_index = gdtr_32.limit / sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
 
     if (*(UINT64 *) &p_gdt_64[last_index] != 0) {
@@ -923,7 +922,7 @@ static UINT64 *get_e820_table(const multiboot_info_t *mbi)
     int i= 0;
 
     e820 = (INT15_E820_MEMORY_MAP *)evmm_page_alloc(1);
-    if (e820 ==NULL)
+    if (e820 == NULL)
         return -1;
 
     while ( entry_offset < mbi->mmap_length ) {
@@ -1053,12 +1052,6 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
     return TRUE;
 }
 
-int getuuid(char* uuid_str, uint8_t* uuid)
-{
-    return 1;
-}
-
-
 // TODO(tmroeder): this should be the real base, but I want it to compile.
 //uint64_t tboot_shared_page = 0;
 
@@ -1150,7 +1143,6 @@ int main(int an, char** av)
     tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
 #endif
 
-    // QUESTION: Need to remove bootstrap region from e820 also?
     uint32_t bootstrap_start= _mystart;
     uint32_t bootstrap_end= _end;
 
@@ -1168,7 +1160,6 @@ int main(int an, char** av)
     m= get_module(my_mbi, 1);
     linux_start= (uint32_t)m->mod_start;
     linux_end= (uint32_t)m->mod_end;
-    // char* uuid_string= m->string;
 
     uint32_t initram_start= 0ULL;
     uint32_t initram_end= 0ULL;
@@ -1221,20 +1212,12 @@ int main(int an, char** av)
     uint32_t entry= entryOffset(evmm_start);
 
     // Relocate evmm_image from evmm_start to evmm_start_address
-    // QUESTION:  Rekha should check
     evmm_start_address= EVMM_START_ADDR;
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, (UINT32) (evmm_end-evmm_start));
-    // QUESTION: This was wrong, you had entry+evmm_start 
     vmm_main_entry_point = (void *) (entry + evmm_start_address);
 
     // Allocate stack and set rsp (esp)
     setup_evmm_stack();
-
-    // JLM:  string hardcoded for now but it's defined above
-    //    Remove this definition when Rekha figures out what uuid should be
-    char* uuid_string= "a1edf4f7-94e1-4c47-8573-0e3f54821ed3";
-    // QUESTION:  This doesn't seem right.  See my mail.
-    UINT32 uuid =0;
 
     // Guest state initialization
     g0.size_of_this_struct = sizeof(g0);
@@ -1267,21 +1250,19 @@ int main(int an, char** av)
     p_startup_struct->unsupported_vendor_id = 0; 
     p_startup_struct->unsupported_device_id = 0; 
     p_startup_struct->flags = 0; 
-    // QUESTION:  I'm pretty sure the line below is wrong since the uuid is NOT a 32 
-    // bit nunber please correct.  You can use getuuid(uuid_string, uuid)
-    p_startup_struct->default_device_owner= uuid;
-    p_startup_struct->acpi_owner= uuid; 
-    p_startup_struct->nmi_owner= uuid; 
+    
+    p_startup_struct->default_device_owner= UUID;
+    p_startup_struct->acpi_owner= UUID; 
+    p_startup_struct->nmi_owner= UUID; 
     p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
 
     // FIX: vmm_memory_layout is suppose to contain the start/end/size of
-    // each image that is part of evmm (e.g. evmm, linux+initrd
+    // each image that is part of evmm (e.g. evmm, linux+initrd)
     vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
             heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
 
-    // QUESTION:  You had evmm_start instead of evmm_start_address, check this.
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
 
@@ -1294,11 +1275,16 @@ int main(int an, char** av)
     (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
-    // FIX:  This is wrong, intiram does not have an entry point
+ 
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
 
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
-                
+
+    if (p_startup_struct->physical_memory_layout_E820 == -1) {
+        tprintk("Error getting e820 table\r\n");
+        LOOP_FOREVER
+    }
+
     if ( !e820_reserve_region(e820, HEAP_BASE, (HEAP_SIZE + (evmm_end - evmm_start)))) {
         tprintk("Unable to reserve evmm region in e820 table\r\n");
         LOOP_FOREVER

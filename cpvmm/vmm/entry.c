@@ -42,7 +42,7 @@ typedef int bool;
 #define PAE_BIT     0x20
 
 #define PAGE_SIZE (1024 * 4) 
-#define MAX_E820_ENTRIES 3 //CHECK: 1 for each tboot, evmm, and primary guest
+#define MAX_E820_ENTRIES 0x4000/sizeof(INT15_E820_MEMORY_MAP)
 
 void _mystart()
 {
@@ -169,6 +169,8 @@ static EVMM_DESC          ed;
 
 #define LINUX_DEFAULT_LOAD_ADDRESS 0xC0000000
 
+#define LOOP_FOREVER while(1);
+
 
 UINT32  heap_base; 
 UINT32  heap_current; 
@@ -177,6 +179,7 @@ UINT32  heap_size;
 UINT32  evmm_start_address;
 INT15_E820_MEMORY_MAP *e820;
 UINT64 *start_of_e820_table;
+static unsigned int g_num_e820_entries = 0;
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
@@ -613,6 +616,7 @@ void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         :"%eax", "%ecx", "%edx");
 }
 
+// QUESTION: I moved this code, make sure it's correct
 void setup_evmm_stack()
 {
     EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_gdt_64 = p_gdt_64;
@@ -912,6 +916,7 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 
 #include "elf64.h"
 
+
 static UINT64 *get_e820_table(const multiboot_info_t *mbi) 
 {
     uint32_t entry_offset = 0;
@@ -932,32 +937,32 @@ static UINT64 *get_e820_table(const multiboot_info_t *mbi)
         i++;
        entry_offset += entry->size + sizeof(entry->size);
     }
+    g_num_e820_entries = i;
+
     e820->memory_map_size = i * sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
     start_of_e820_table = (UINT64)(UINT32)e820;
 
     return start_of_e820_table;
 }
 
-#if 0
-
 static void remove_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
                           unsigned int pos)
 {
     unsigned int i = 0;
-    /* shift (copy) everything down one entry */
+    // shift (copy) everything down one entry 
     for ( i = pos; i < *nr_map - 1; i++)
         e820map[i] = e820map[i+1];
-
     (*nr_map)--;
 }
 
 static BOOLEAN insert_after_region(INT15_E820_MEMORY_MAP *e820map, 
-                unsigned int pos, uint64_t addr, uint64_t size, uint32_t type)
+                                   unsigned int *nr_map, unsigned int pos, uint64_t addr, 
+                                   uint64_t size, uint32_t type)
 {
     unsigned int i = 0;
 
     // no more room
-    if ( *nr_map + 1 > MAX_E820_ENTRIES )
+    if ( (*nr_map + 1) > MAX_E820_ENTRIES )
         return FALSE;
     // shift (copy) everything up one entry
     for ( i = *nr_map - 1; i > pos; i--)
@@ -972,105 +977,81 @@ static BOOLEAN insert_after_region(INT15_E820_MEMORY_MAP *e820map,
     return TRUE;
 }
 
-static BOOLEAN protect_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
-                           uint64_t new_addr, uint64_t new_size, uint32_t new_type)
+BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base, 
+                            uint64_t length)
 {
-    uint64_t addr, tmp_addr, size, tmp_size;
-    uint32_t type;
-    unsigned int i;
+    INT15_E820_MEMORY_MAP_ENTRY_EXT *e820entry;
+    uint64_t e820_base, e820_length, e820_end;
+    uint64_t end;
+    unsigned int i =0;
 
-    if ( new_size == 0 )
+    if (length == 0) {
         return TRUE;
-    // check for wrap
-    if ( new_addr + new_size < new_addr )
-        return FALSE;
-
-    /* find where our region belongs in the table and insert it */
-    for ( i = 0; i < *nr_map; i++ ) {
-        addr = e820map->memory_map_entry[i].basic_entry.base_address;
-        size = e820map->memory_map_entry[i].basic_entry.length;
-        type = e820map->memory_map_entry[i].basic_entry.length;
-        /* is our region at the beginning of the current map region? */
-        if ( new_addr == addr ) {
-            if ( !insert_after_region(e820map, nr_map, i-1, new_addr, new_size,
-                                      new_type) )
-                return FALSE;
-            break;
-        }
-        /* are we w/in the current map region? */
-        else if ( new_addr > addr && new_addr < (addr + size) ) {
-            if ( !insert_after_region(e820map, nr_map, i, new_addr, new_size,
-                                      new_type) )
-                return FALSE;
-            /* fixup current region */
-            tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
-            i++;   /* adjust to always be that of our region */
-            /* insert a copy of current region (before adj) after us so */
-            /* that rest of code can be common with previous case */
-            if ( !insert_after_region(e820map, nr_map, i, addr, size, type) )
-                return FALSE;
-            break;
-        }
-        /* is our region in a gap in the map? */
-        else if ( addr > new_addr ) {
-            if ( !insert_after_region(e820map, nr_map, i-1, new_addr, new_size,
-                                      new_type) )
-                return FALSE;
-            break;
-        }
     }
-    /* if we reached the end of the map without finding an overlapping */
-    /* region, insert us at the end (note that this test won't trigger */
-    /* for the second case above because the insert() will have incremented */
-    /* nr_map and so i++ will still be less) */
-    if ( i == *nr_map ) {
-        if ( !insert_after_region(e820map, nr_map, i-1, new_addr, new_size,
-                                  new_type) )
+
+    end = base + length;
+
+    for (; i < g_num_e820_entries; i++) {
+        e820entry = &e820map->memory_map_entry[i];
+        e820_base = e820map->memory_map_entry[i].basic_entry.base_address;
+        e820_length = e820map->memory_map_entry[i].basic_entry.length;
+        e820_end = e820_base + e820_length;
+
+        if ( (end <= e820_base) || (base >= e820_end) )
+            continue;
+                
+        if ( (base <= e820_base) && (e820_end <= end) ) {
+            //Requested region is bigger than the current range
+            e820map->memory_map_entry[i].basic_entry.address_range_type =
+                                    E820_RESERVED;
+        } else if ( (e820_base >= base) && (end < e820_base) &&
+                                           (e820_end > end) ) {
+            //Overlapping region
+
+            //Split the current range
+            if (!insert_after_region(e820map, &g_num_e820_entries, i-1, e820_base,
+                                     (end - e820_base), E820_RESERVED) )
+                return FALSE;
+
+            i++;
+            //Update the current region base and length     
+            e820map->memory_map_entry[i].basic_entry.base_address = end;
+            e820map->memory_map_entry[i].basic_entry.length = e820_end - end;
+            break;
+        } else  if ((base > e820_base) && (e820_end > base) &&
+                                          (end >= e820_end) ) {
+            //Overlapping region
+
+            //Update the current region length      
+            e820map->memory_map_entry[i].basic_entry.length = base - e820_base;
+            //Split the current range
+            if (!insert_after_region(e820map, &g_num_e820_entries, i, base, 
+                                    (e820_end - base), E820_RESERVED) )
+                return FALSE;
+            i++;
+        } else if ( (base > e820_base) && (e820_end > end) ) {
+            //the region is within the current range
+
+            //Update the current region length      
+            e820map->memory_map_entry[i].basic_entry.length = (base - e820_base);
+            //Split the current region      
+            if ( !insert_after_region(e820map, &g_num_e820_entries, i, base, 
+                                      length, E820_RESERVED) )
+                return FALSE;
+            //Update the rest of the range
+            if ( !insert_after_region(e820map, &g_num_e820_entries, i, end, 
+                 (e820_end - end), e820entry->basic_entry.address_range_type))
+                return FALSE;
+            i++;
+            break;
+        } else {
+            //ERROR
             return FALSE;
-        return TRUE;
-    }
-
-    i++;     /* move to entry after our inserted one (we're not at end yet) */
-
-    tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
-    tmp_size = e820map->memory_map_entry[i].basic_entry.length;
-
-    /* did we split the (formerly) previous region? */
-    if ((new_addr >= tmp_addr) &&
-         ((new_addr + new_size) < (tmp_addr + tmp_size)) ) {
-        /* then adjust the current region (adj size first) */
-        e820map->memory_map_entry[i].basic_entry.length = 
-            (tmp_addr + tmp_size) - (new_addr + new_size);
-        e820map->memory_map_entry[i].basic_entry.base_address = 
-            (new_addr + new_size);
-        return TRUE;
-    }
-
-    /* if our region completely covers any existing regions, delete them */
-    while ( (i < *nr_map) && ((new_addr + new_size) >=
-                              (tmp_addr + tmp_size)) ) {
-        remove_region(e820map, nr_map, i);
-        tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
-        tmp_size = e820map->memory_map_entry[i].basic_entry.length;
-    }
-
-    /* finally, if our region partially overlaps an existing region, */
-    /* then truncate the existing region */
-    if ( i < *nr_map ) {
-        tmp_addr = e820map->memory_map_entry[i].basic_entry.base_address;
-        tmp_size = e820map->memory_map_entry[i].basic_entry.length;
-        if ( (new_addr + new_size) > tmp_addr ) {
-            e820map->memory_map_entry[i].basic_entry.length = 
-                                    (tmp_addr + tmp_size) - (new_addr + new_size);
-            e820map->memory_map_entry[i].basic_entry.base_address = 
-                                            (new_addr + new_size);
         }
-    }
+    }       
 
     return TRUE;
 }
-#endif
-
 
 int getuuid(char* uuid_str, uint8_t* uuid)
 {
@@ -1169,6 +1150,7 @@ int main(int an, char** av)
     tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
 #endif
 
+    // QUESTION: Need to remove bootstrap region from e820 also?
     uint32_t bootstrap_start= _mystart;
     uint32_t bootstrap_end= _end;
 
@@ -1199,7 +1181,7 @@ int main(int an, char** av)
 
 
     // TODO(tmroeder): remove this debugging while loop later
-    while(1) ;
+    LOOP_FOREVER
 
     // get CPU info
     __cpuid(info,1);
@@ -1239,6 +1221,7 @@ int main(int an, char** av)
     uint32_t entry= entryOffset(evmm_start);
 
     // Relocate evmm_image from evmm_start to evmm_start_address
+    // QUESTION:  Rekha should check
     evmm_start_address= EVMM_START_ADDR;
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, (UINT32) (evmm_end-evmm_start));
     // QUESTION: This was wrong, you had entry+evmm_start 
@@ -1298,6 +1281,7 @@ int main(int an, char** av)
             heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
 
+    // QUESTION:  You had evmm_start instead of evmm_start_address, check this.
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
 
@@ -1313,8 +1297,17 @@ int main(int an, char** av)
     // FIX:  This is wrong, intiram does not have an entry point
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
 
-    // QUESTION: where is get_e820_layout defined?
-    p_startup_struct->physical_memory_layout_E820 = get_e820_layout();
+    p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
+                
+    if ( !e820_reserve_region(e820, HEAP_BASE, (HEAP_SIZE + (evmm_end - evmm_start)))) {
+        tprintk("Unable to reserve evmm region in e820 table\r\n");
+        LOOP_FOREVER
+    }
+                
+    if (!e820_reserve_region(e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
+      tprintk("Unable to reserve bootstrap region in e820 table\r\n");
+        LOOP_FOREVER
+    }
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
     //  vmm_main call:
@@ -1322,6 +1315,7 @@ int main(int an, char** av)
     //               UINT64 application_params_struct_u, 
     //               UINT64 reserved UNUSED)
     asm volatile (
+        // p_evmm_stack points to the start of the stack
         "movl %[p_evmm_stack], %%esp\n"
         // prepare arguments for 64-bit mode
         // there are 3 arguments

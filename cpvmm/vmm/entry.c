@@ -1283,6 +1283,7 @@ int main(int an, char** av)
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
 
     // application parameters
+    // FIX
     a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
     a0.number_of_params = 1;
     a0.session_id = 1;

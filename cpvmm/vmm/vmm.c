@@ -215,7 +215,8 @@ void vmm_main_continue(VMM_INPUT_PARAMS* vmm_input_params)
     VMM_BREAKPOINT();
 }
 
-void CDECL vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 application_params_struct_u, UINT64 reserved UNUSED)
+void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
+              UINT64 application_params_struct_u, UINT64 reserved UNUSED)
 {
     const VMM_STARTUP_STRUCT* startup_struct = (const VMM_STARTUP_STRUCT*)startup_struct_u;
     HVA                       new_stack_pointer = 0;

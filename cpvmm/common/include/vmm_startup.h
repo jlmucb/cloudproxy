@@ -219,22 +219,22 @@ typedef struct _VMM_GUEST_STARTUP {
 
     /* 64-bit aligned */
 
-        // guest unique id in the current application.
-        UINT32                  guest_magic_number;
+    // guest unique id in the current application.
+    UINT32                  guest_magic_number;
 
-        // set bit to 1 for each physical CPU, where GuestCPU should run.
-        // Guest should have num_of_virtual_CPUs == num of 1-bits in the mask
-        // ex. 0x3 means that guest has 2 CPUs that run on physical-0 and
-        // physical-1 CPUs
-        //
-        // if -1 - run on all available CPUs
-        //
-        // if number of 1 bits is more than cpu_states_count, all other guest
-        // CPUs will be initialized in the Wait-for-SIPI state.
-        //
-        // if 1 is set for bit-number greater than physically available CPU count,
-        // the whole guest is discarded. The only exception is -1.
-        UINT32                  cpu_affinity;
+    // set bit to 1 for each physical CPU, where GuestCPU should run.
+    // Guest should have num_of_virtual_CPUs == num of 1-bits in the mask
+    // ex. 0x3 means that guest has 2 CPUs that run on physical-0 and
+    // physical-1 CPUs
+    //
+    // if -1 - run on all available CPUs
+    //
+    // if number of 1 bits is more than cpu_states_count, all other guest
+    // CPUs will be initialized in the Wait-for-SIPI state.
+    //
+    // if 1 is set for bit-number greater than physically available CPU count,
+    // the whole guest is discarded. The only exception is -1.
+    UINT32                  cpu_affinity;
 
     /* 64-bit aligned */
 
@@ -246,10 +246,10 @@ typedef struct _VMM_GUEST_STARTUP {
 
     /* 64-bit aligned */
 
-        // number of virtualized or hidden devices for specific guest
-        // if count == 0 - guest is deviceless,
-        // except the case that the guest is also signed as default_device_owner
-        UINT32                  devices_count;
+    // number of virtualized or hidden devices for specific guest
+    // if count == 0 - guest is deviceless,
+    // except the case that the guest is also signed as default_device_owner
+    UINT32                  devices_count;
 
     // guest image as loaded by the loader
     //  For primary guest it must be zeroed
@@ -531,22 +531,19 @@ typedef struct _VMM_STARTUP_STRUCT {
 #define VMM_APPLICATION_PARAMS_STRUCT_VERSION   1
 
 typedef struct _VMM_APPLICATION_PARAMS_STRUCT {
-        UINT32                      size_of_this_struct; // overall, including all params
-        UINT32                      number_of_params;    // number of params that will follow
-
+    UINT32                      size_of_this_struct; // overall, including all params
+    UINT32                      number_of_params;    // number of params that will follow
 
     // random generated id to avoid vmm shutdown by others
     UINT64                      session_id;
     // page entry list for the additional heap
     UINT64                      address_entry_list;
     UINT64                      entry_number;
-        // this is per parameter
-        // VMM_GUID                 guid_of_param1;
-        // struct                   param1;
-        //
-        // VMM_GUID                 guid_of_param2;
-        // struct                   param2;
-        //
+    // this is per parameter
+    // VMM_GUID                 guid_of_param1;
+    // struct                   param1;
+    // VMM_GUID                 guid_of_param2;
+    // struct                   param2;
 #ifdef USE_ACPI
     UINT64                      fadt_gpa;
 #ifdef ENABLE_VTD

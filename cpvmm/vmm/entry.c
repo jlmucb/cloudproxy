@@ -218,6 +218,8 @@ void*                   p_low_mem = (void *)0x8000;
 VMM_GUEST_STARTUP       g0;
 VMM_GUEST_STARTUP *     p_g0 = &g0;
 VMM_MEMORY_LAYOUT      *vmem;
+VMM_APPLICATION_PARAMS_STRUCT a0;
+VMM_APPLICATION_PARAMS_STRUCT* p_a0= &a0;
 
 void *                  vmm_main_entry_point;      // address of vmm_main
 multiboot_info_t *      g_mbi= NULL;
@@ -1280,6 +1282,17 @@ int main(int an, char** av)
 
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
 
+    // application parameters
+    a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
+    a0.number_of_params = 1;
+    a0.session_id = 1;
+    a0.address_entry_list = NULL;
+    a0.entry_number = 0;
+#if 0
+    a0.fadt_gpa = NULL;
+    a0.dmar_gpa = NULL;
+#endif
+
     if (p_startup_struct->physical_memory_layout_E820 == -1) {
         tprintk("Error getting e820 table\r\n");
         LOOP_FOREVER
@@ -1311,7 +1324,7 @@ int main(int an, char** av)
         "\tpush %%eax\n"
         "\tpush %[reserved]\n"
         "\tpush %%eax\n"
-        "\tpush %[p_g0]\n"
+        "\tpush %[p_a0]\n"
         "\tpush %%eax\n"
         "\tpush %[p_startup_struct]\n"
         "\tpush %%eax\n"
@@ -1371,7 +1384,7 @@ int main(int an, char** av)
         : 
         : [local_apic_id] "m" (local_apic_id), 
           [p_startup_struct] "m" (p_startup_struct), 
-          [p_g0] "m" (p_g0), [reserved] "m" (reserved), 
+          [p_a0] "m" (p_a0), [reserved] "m" (reserved), 
           [vmm_main_entry_point] "m" (vmm_main_entry_point), 
           [p_evmm_stack] "m" (p_evmm_stack), 
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)

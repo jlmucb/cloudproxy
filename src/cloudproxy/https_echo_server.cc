@@ -34,7 +34,7 @@
 #include "cloudproxy/https_echo_server.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
-#include "tao/tao_ca.pb.h"
+#include "tao/tao_ca.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
@@ -42,17 +42,16 @@ using std::string;
 using std::stringstream;
 using std::thread;
 
-using google::protobuf::TextFormat;
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
 
-using tao::ConnectToTCPServer;
 using tao::Keys;
 using tao::OpenSSLSuccess;
 using tao::OpenTCPSocket;
 using tao::ScopedFd;
 using tao::ScopedX509;
 using tao::SerializeX509;
+using tao::TaoCA;
 using tao::TaoChildChannel;
 using tao::TaoDomain;
 
@@ -264,55 +263,24 @@ bool HttpsEchoServer::HandleHttpsRequest(
   return true;
 }
 
-// TODO(kwalsh) Move this method to tao::Keys or some future TaoCA class
 bool HttpsEchoServer::GetTaoCAX509Chain(const string &details_text) {
-  // The TCCA will convert our attestation into a new attestation signed by the
-  // policy key.
-  tao::TaoCARequest req;
-  req.set_type(tao::TAO_CA_REQUEST_ATTESTATION);
-  string serialized_attestation;
-  if (!ReadFileToString(keys_->AttestationPath(), &serialized_attestation)) {
-    LOG(ERROR) << "Could not load the self-signed attestation";
+  string intermediate_attestation;
+  if (!ReadFileToString(keys_->AttestationPath(), &intermediate_attestation)) {
+    LOG(ERROR) << "Could not load the intermediate attestation";
     return false;
   }
-  if (!req.mutable_attestation()->ParseFromString(serialized_attestation)) {
-    LOG(ERROR) << "Could not deserialize the attestation to our key";
+  TaoCA ca(admin_.get());
+  string root_attestation;
+  string pem_cert;
+  if (!ca.GetX509Chain(intermediate_attestation, details_text,
+                       &root_attestation, &pem_cert)) {
+    LOG(ERROR) << "Could not get root attestation";
     return false;
   }
-  string host = admin_->GetTaoCAHost();
-  string port = admin_->GetTaoCAPort();
-  ScopedFd sock(new int(-1));
-  if (!ConnectToTCPServer(host, port, sock.get())) {
-    LOG(ERROR) << "Could not connect to tcca";
+  if (!WriteStringToFile(keys_->AttestationPath(), root_attestation)) {
+    LOG(ERROR) << "Could not store the root attestation";
     return false;
   }
-  if (!TextFormat::ParseFromString(details_text, req.mutable_x509details())) {
-    LOG(ERROR) << "Could not parse x509 details";
-    return false;
-  }
-
-  if (!tao::SendMessage(*sock, req)) {
-    LOG(ERROR) << "Could not send request to the TCCA";
-    return false;
-  }
-
-  tao::TaoCAResponse resp;
-  if (!tao::ReceiveMessage(*sock, &resp)) {
-    LOG(ERROR) << "Could not get response from the TCCA";
-    return false;
-  }
-  if (resp.type() != tao::TAO_CA_RESPONSE_SUCCESS) {
-    LOG(ERROR) << "TCCA returned error: " << resp.reason();
-    return false;
-  }
-  if (!resp.has_x509chain()) {
-    LOG(ERROR) << "Missing x509 chain in TCCA response";
-    return false;
-  }
-  string pem_cert = resp.x509chain();
-
-  // TODO(kwalsh) validate the certificate chain here
-
   if (!WriteStringToFile(keys_->SigningX509CertificatePath(), pem_cert)) {
     LOG(ERROR) << "Could not store the x509 for our signing key";
     return false;

@@ -50,9 +50,8 @@ static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 
 // Add CPU to guest
 void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
-                       GUEST_HANDLE             guest,
-                       CPU_ID                   host_cpu_to_allocate,
-                       BOOLEAN                  ready_to_run )
+                       GUEST_HANDLE guest, CPU_ID host_cpu_to_allocate,
+                       BOOLEAN ready_to_run )
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
@@ -74,7 +73,6 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
 
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT( cpus_arr );
-
         VMM_LOG(mask_anonymous, level_trace,"Setting up initial state for the newly created Guest CPU\n");
         gcpu_initialize( gcpu, &(cpus_arr[vcpu->guest_cpu_id]) );
     }
@@ -99,8 +97,7 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     if ((gstartup->size_of_this_struct != sizeof( VMM_GUEST_STARTUP )) ||
         (gstartup->version_of_this_struct != VMM_GUEST_STARTUP_VERSION )) {
         VMM_LOG(mask_anonymous, level_trace,"ASSERT: unknown guest struct: size: %#x version %d\n",
-                  gstartup->size_of_this_struct,
-                  gstartup->version_of_this_struct );
+                gstartup->size_of_this_struct, gstartup->version_of_this_struct );
         return NULL;
     }
 
@@ -166,26 +163,24 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 
     ready_to_run = (BITMAP_GET( gstartup->flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY ) != 0);
     if (cpu_affinity == (UINT32)-1) {
-    	// special case - run on all existing CPUs
-		for(bit_number = 0; bit_number < number_of_host_processors; bit_number++) {
-			add_cpu_to_guest( gstartup, guest, (CPU_ID)bit_number, ready_to_run );
-			VMM_LOG(mask_anonymous, level_trace,"CPU #%d added successfully to the current guest\n", bit_number);
-		}
+        // special case - run on all existing CPUs
+        for(bit_number = 0; bit_number < number_of_host_processors; bit_number++) {
+            add_cpu_to_guest( gstartup, guest, (CPU_ID)bit_number, ready_to_run );
+            VMM_LOG(mask_anonymous, level_trace,
+                    "CPU #%d added successfully to the current guest\n", bit_number);
+        }
     }
 
 #ifdef DEBUG
     //register_vmcall_services(guest);
     guest_register_vmcall_services(guest);
 #endif
-
     return guest;
 }
 
 
 // Perform initialization of guests and guest CPUs
-//
 // Should be called on BSP only while all APs are stopped
-//
 // Return TRUE for success
 BOOLEAN initialize_all_guests(
                     UINT32 number_of_host_processors,
@@ -226,12 +221,13 @@ BOOLEAN initialize_all_guests(
     // first init primary guest
     VMM_LOG(mask_anonymous, level_trace,"Init primary guest\n");
 
-// BUGBUG: This is a workaround until loader will not do this!!!
-BITMAP_SET(((VMM_GUEST_STARTUP*)primary_guest_startup_state)->flags, VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE|VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
+    // BUGBUG: This is a workaround until loader will not do this!!!
+    BITMAP_SET(((VMM_GUEST_STARTUP*)primary_guest_startup_state)->flags, 
+            VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE|VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
 
-    primary_guest = init_single_guest(number_of_host_processors,
-                                      primary_guest_startup_state,
-                                      NULL);                       // TODO: Uses global policym but should be part of VMM_GUEST_STARTUP structure.
+    // TODO: Uses global policym but should be part of VMM_GUEST_STARTUP structure.
+    primary_guest = init_single_guest(number_of_host_processors, primary_guest_startup_state,
+                                      NULL);  
     if (!primary_guest) {
         VMM_LOG(mask_anonymous, level_trace,"initialize_all_guests: Cannot init primary guest\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -250,9 +246,7 @@ BITMAP_SET(((VMM_GUEST_STARTUP*)primary_guest_startup_state)->flags, VMM_GUEST_F
     for(gcpu = guest_gcpu_first(primary_guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context)) {
         gcpu_set_current_gpm(gcpu, primary_guest_startup_gpm);
     }
-
     VMM_LOG(mask_anonymous, level_trace,"Primary guest initialized successfully\n");
-
     return TRUE;
 }
 

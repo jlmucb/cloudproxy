@@ -83,17 +83,10 @@ typedef struct VMM_INPUT_PARAMS_S {
 
 //      globals
 VMM_STARTUP_STRUCT vmm_startup_data;
-
 CPU_ID g_num_of_cpus = 0;
-
-static
-volatile UINT32 g_application_procs_may_be_launched = FALSE;
-
-static
-volatile UINT32 g_application_procs_launch_the_guest = 0;
-
+static volatile UINT32 g_application_procs_may_be_launched = FALSE;
+static volatile UINT32 g_application_procs_launch_the_guest = 0;
 VMM_PAGING_POLICY g_pg_policy;
-
 UINT32 g_is_post_launch = 0;
 
 extern UINT64 g_debug_gpa;
@@ -121,15 +114,12 @@ extern BOOLEAN build_extend_heap_hpa_to_hva(void);
 //      forward declaration
 
 // main for BSP - should never return.  local_apic_id is always 0
-void vmm_bsp_proc_main(UINT32 local_apic_id,
-                       const VMM_STARTUP_STRUCT* startup_struct,
+void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_struct,
                        const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct);
 
 // main for APs - should never return
 void vmm_application_procs_main(UINT32 local_apic_id);
-
 int cli_show_memory_layout(unsigned argc, char *args[]);
-
 void make_guest_state_compliant(GUEST_CPU_HANDLE gcpu);
 
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
@@ -172,10 +162,8 @@ INLINE void enable_ept_during_launch(GUEST_CPU_HANDLE initial_gcpu)
     ept_release_lock();
 }
 
-//
 // Per CPU type policy setup
 // Sets policies depending on host CPU features. Should be called on BSP only
-//
 void vmm_setup_cpu_specific_policies( VMM_POLICY* p_policy )
 {
     CPUID_INFO_STRUCT   info;
@@ -208,13 +196,9 @@ void vmm_setup_cpu_specific_policies( VMM_POLICY* p_policy )
 
 extern void ASM_FUNCTION ITP_JMP_DEADLOOP(void);
 
-//
-// THE MAIN !!!!
-//
+// MAIN
 // Started in parallel for all available processors
-//
 // Should never return!
-//
 void vmm_main_continue(VMM_INPUT_PARAMS* vmm_input_params)
 {
     const VMM_STARTUP_STRUCT* startup_struct = (const VMM_STARTUP_STRUCT*)vmm_input_params->startup_struct;
@@ -228,8 +212,7 @@ void vmm_main_continue(VMM_INPUT_PARAMS* vmm_input_params)
     else {
         vmm_application_procs_main(local_apic_id);
     }
-
-        VMM_BREAKPOINT();
+    VMM_BREAKPOINT();
 }
 
 void CDECL vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 application_params_struct_u, UINT64 reserved UNUSED)
@@ -273,14 +256,9 @@ void CDECL vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, UINT64 applic
     VMM_BREAKPOINT();
 }
 
-//
 // The Boot Strap Processor main routine
-//
 // Should never return!
-//
-
-void vmm_bsp_proc_main(UINT32 local_apic_id,
-                       const VMM_STARTUP_STRUCT* startup_struct,
+void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_struct,
                        const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct)
 {
     HVA lowest_stacks_addr = 0;
@@ -312,14 +290,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #endif
 #endif
 
-        // save number of CPUs
-        g_num_of_cpus = num_of_cpus;
+    // save number of CPUs
+    g_num_of_cpus = num_of_cpus;
 
-        // get post launch status
-        g_is_post_launch = (BITMAP_GET(startup_struct->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) != 0);
-
+    // get post launch status
+    g_is_post_launch = (BITMAP_GET(startup_struct->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) != 0);
     hw_calibrate_tsc_ticks_per_second();
-
 
     // Init the debug port.  If the version is too low, there's no debug parameters.  Use
     // the defaults and later on assert.
@@ -342,7 +318,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
         VMM_DEADLOOP();
     };
 
-
     if(g_is_post_launch) {
         if(application_params_struct) {
             if (application_params_struct->size_of_this_struct != sizeof(VMM_APPLICATION_PARAMS_STRUCT)) {
@@ -354,11 +329,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
             
             g_session_id = application_params_struct->session_id;
                         g_heap_pa_num = (UINT32)(application_params_struct->entry_number);
-                g_additional_heap_pa = application_params_struct->address_entry_list;
+            g_additional_heap_pa = application_params_struct->address_entry_list;
         }
         else
             g_session_id = 0;
-        
     }
         
     // Print global version message
@@ -367,7 +341,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].entry_point);
 
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Initializing all data structures...\n");
-
     VMM_LOG(mask_uvmm, level_trace,"\n\nBSP: Alive.  Local APIC ID=%P\n", lapic_id());
 
     // check input structure
@@ -422,7 +395,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     CliMonitorInit();   // must be called after heap initialization.
 
     vmdb_initialize();
-
     vmm_serial_cli_init();
 
 #ifdef DEBUG
@@ -456,10 +428,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     }
     application_params_struct = application_params_heap; // overwrite the parameter
 
-
     // Initialize GDT for all cpus
     hw_gdt_setup(num_of_cpus);
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: GDT setup is finished.\n");
+
     // Load GDT for BSP
     hw_gdt_load(cpu_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: GDT is loaded.\n");
@@ -467,16 +439,17 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     // Initialize IDT for all cpus
     isr_setup();
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: ISR setup is finished. \n");
+
     // Load IDT for BSP
     isr_handling_start();
     VMM_LOG(mask_uvmm, level_trace,"BSP: ISR handling started. \n");
 
-        // Store information about e820
-        if (!e820_abstraction_initialize((const INT15_E820_MEMORY_MAP*)startup_struct->physical_memory_layout_E820)) {
-                VMM_LOG(mask_uvmm, level_error, "BSP FAILURE: there is no proper e820 map\n");
+    // Store information about e820
+    if (!e820_abstraction_initialize((const INT15_E820_MEMORY_MAP*)startup_struct->physical_memory_layout_E820)) {
+        VMM_LOG(mask_uvmm, level_error, "BSP FAILURE: there is no proper e820 map\n");
         // BEFORE_VMLAUNCH. Should not fail.
-                VMM_DEADLOOP();
-        }
+        VMM_DEADLOOP();
+    }
 
     if (!mtrrs_abstraction_bsp_initialize()) {
         VMM_LOG(mask_uvmm, level_error, "BSP FAILURE: failed to cache mtrrs\n");
@@ -514,7 +487,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     setup_data_for_s3();
 #endif
     if (g_is_post_launch) {
-
         // To create [0~4G] identity mapping
         // on NO UG machines (NHM), FPT will be used to handle guest non-paged protected mode.
         // aka. CR0.PE = 1, CR0.PG = 0 
@@ -522,32 +494,25 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
         // assume that GPA-HPA mapping won't be changed. 
         // those page tables are cached.
         if( !is_unrestricted_guest_supported()){
-
             BOOLEAN  fpt_32bit_ok = 
                       fpt_create_32_bit_flat_page_tables_under_4G((UINT64) 4 GIGABYTES - 1 ); 
-    
             VMM_ASSERT(fpt_32bit_ok);
-
             VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully created 32bit FPT tables and cached them\n");    
         }   
-
-
         
         init_teardown_lock();
         VMM_LOG(mask_uvmm, level_trace,"VMM: Image and stack used %dKB memory.\n",
             ((UINT64)heap_address - startup_struct->vmm_memory_layout[uvmm_image].base_address)/(1024));
 
         // BEFORE_VMLAUNCH. Should not fail.
-                VMM_ASSERT(g_additional_heap_base != 0);
-        heap_last_occupied_address = vmm_heap_extend(
-                                        g_additional_heap_base, 
+        VMM_ASSERT(g_additional_heap_base != 0);
+        heap_last_occupied_address = vmm_heap_extend( g_additional_heap_base, 
                                         g_heap_pa_num * PAGE_4KB_SIZE);
 
         //VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully rebuilt: \n");
         //VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", heap_last_occupied_address);
-                
-                if (g_additional_heap_pa)
-                        build_extend_heap_hpa_to_hva();
+        if (g_additional_heap_pa)
+            build_extend_heap_hpa_to_hva();
     }
 
     VMM_DEBUG_CODE ( vmm_trace_init(VMM_MAX_GUESTS_SUPPORTED, num_of_cpus) );
@@ -561,13 +526,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
     // init CR0/CR4 to the VMX compatible values
     hw_write_cr0(  vmcs_hw_make_compliant_cr0( hw_read_cr0() ) );
-        if(g_is_post_launch)
-        {
-            // clear TS bit, since we need to operate on XMM registers.
+    if(g_is_post_launch) {
+        // clear TS bit, since we need to operate on XMM registers.
         enable_fx_ops();
-        }
+    }
     hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
-
     num_of_guests = startup_struct->number_of_secondary_guests + 1;
 
     // TODO: remove the compile time policy
@@ -589,9 +552,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #endif
 
     vmm_setup_cpu_specific_policies( &policy );
-
     global_policy_setup(&policy);
-
     scheduler_init( (UINT16)num_of_cpus );
     host_cpu_manager_init( num_of_cpus );
     guest_manager_init( (UINT16)num_of_cpus, (UINT16)num_of_cpus );
@@ -629,12 +590,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT((num_of_guests == 1) || (secondary_guests_array != 0));
 
-    if (! initialize_all_guests(num_of_cpus,
-                                &(startup_struct->vmm_memory_layout[uvmm_image]),
-                                primary_guest_startup,
-                                num_of_guests - 1,
-                                secondary_guests_array,
-                                application_params_heap)) {
+    if (! initialize_all_guests(num_of_cpus, &(startup_struct->vmm_memory_layout[uvmm_image]),
+                                primary_guest_startup, num_of_guests - 1,
+                                secondary_guests_array, application_params_heap)) {
         VMM_LOG(mask_uvmm, level_error,"BSP: Error initializing guests. Halt.\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
@@ -646,8 +604,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     vmm_set_state(VMM_STATE_BOOT);
 
     // get important guest ids
-    nmi_owner_guest            = guest_handle_by_magic_number(startup_struct->nmi_owner);
-    acpi_owner_guest           = guest_handle_by_magic_number(startup_struct->acpi_owner);
+    nmi_owner_guest = guest_handle_by_magic_number(startup_struct->nmi_owner);
+    acpi_owner_guest = guest_handle_by_magic_number(startup_struct->acpi_owner);
     device_default_owner_guest = guest_handle_by_magic_number(startup_struct->default_device_owner);
 
     // BEFORE_VMLAUNCH. PARANOID check as we have only one guest.
@@ -662,13 +620,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     guest_set_default_device_owner(device_default_owner_guest);
 
     VMM_LOG(mask_uvmm, level_trace,"BSP: NMI owning guest ID=%d \tMagic Number = %#x\n",
-                        guest_get_id(nmi_owner_guest),
-                        guest_magic_number(nmi_owner_guest));
-
+                        guest_get_id(nmi_owner_guest), guest_magic_number(nmi_owner_guest));
     VMM_LOG(mask_uvmm, level_trace,"BSP: ACPI owning guest ID=%d \tMagic Number = %#x\n",
-                        guest_get_id(acpi_owner_guest),
-                        guest_magic_number(acpi_owner_guest));
-
+                        guest_get_id(acpi_owner_guest), guest_magic_number(acpi_owner_guest));
     VMM_LOG(mask_uvmm, level_trace,"BSP: Default device owning guest ID=%d \tMagic Number = %#x\n",
                         guest_get_id(device_default_owner_guest),
                         guest_magic_number(device_default_owner_guest));
@@ -690,21 +644,19 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
-        for(i=0; i < VMM_MAX_CPU_SUPPORTED; i++)
-                vmcs_sw_shadow_disable[i] = FALSE;
+    for(i=0; i < VMM_MAX_CPU_SUPPORTED; i++)
+        vmcs_sw_shadow_disable[i] = FALSE;
 
     if(g_is_post_launch) {
 #ifdef USE_ACPI  
         if (INVALID_PHYSICAL_ADDRESS == application_params_struct->fadt_gpa ||
-            !gpm_gpa_to_hva(gcpu_get_current_gpm(acpi_owner_guest), 
-                            (GPA)(application_params_struct->fadt_gpa), 
-                            &fadt_hva))
+                !gpm_gpa_to_hva(gcpu_get_current_gpm(acpi_owner_guest), 
+                (GPA)(application_params_struct->fadt_gpa), &fadt_hva))
             fadt_hva = 0;
 #ifdef ENABLE_VTD
         if (INVALID_PHYSICAL_ADDRESS == application_params_struct->dmar_gpa || 
-            !gpm_gpa_to_hva(gcpu_get_current_gpm(acpi_owner_guest), 
-                            (GPA)(application_params_struct->dmar_gpa),
-                            &dmar_hva))
+                !gpm_gpa_to_hva(gcpu_get_current_gpm(acpi_owner_guest), 
+                (GPA)(application_params_struct->dmar_gpa), &dmar_hva))
             dmar_hva = 0;
 #endif
 #endif
@@ -736,7 +688,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
     // Initialize guest data
     initialization_data.num_of_cpus = (UINT16) num_of_cpus;
-    for (i = 0; i < VMM_MAX_GUESTS_SUPPORTED; i++){
+    for (i = 0; i < VMM_MAX_GUESTS_SUPPORTED; i++) {
         initialization_data.guest_data[i].guest_id = INVALID_GUEST_ID;
         initialization_data.guest_data[i].primary_guest = FALSE;
     }
@@ -750,65 +702,58 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
             }
         }
     }
-    if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_BEFORE_APS_STARTED, NULL, NULL, (void *)&initialization_data)) {
+    if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_BEFORE_APS_STARTED, NULL, NULL, 
+                            (void *)&initialization_data)) {
         VMM_LOG(mask_uvmm, level_trace, "report_initialization failed before the APs have started\n");
     }
-
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished single-core initializations\n");
 
     vmm_set_state(VMM_STATE_WAIT_FOR_APs);
-
     LAUNCH_APPLICATION_PROCS();
-
     initialize_host_vmcs_regions(cpu_id);
-
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished initializations\n");
-
     vmcs_hw_vmx_on();
     VMM_LOG(mask_uvmm, level_trace,"BSP: VMXON\n");
 
     // schedule first gcpu
     initial_gcpu = scheduler_select_initial_gcpu();
+
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(initial_gcpu != NULL);
     VMM_LOG(mask_uvmm, level_trace,"BSP: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
-              guest_vcpu( initial_gcpu )->guest_id,
-              guest_vcpu( initial_gcpu )->guest_cpu_id );
+            guest_vcpu( initial_gcpu )->guest_id, guest_vcpu( initial_gcpu )->guest_cpu_id );
 
     ipc_change_state_to_active(initial_gcpu);
-
     vmm_print_test(local_apic_id);
-
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
-
     WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST( num_of_cpus - 1 );
 
     // Assumption: initialization_data was not changed
-    if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_AFTER_APS_STARTED, (VMM_IDENTIFICATION_DATA)initial_gcpu, (const GUEST_VCPU*)guest_vcpu(initial_gcpu), (void *)&initialization_data)) {
+    if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_AFTER_APS_STARTED, 
+                     (VMM_IDENTIFICATION_DATA)initial_gcpu, (const GUEST_VCPU*)guest_vcpu(initial_gcpu), 
+                     (void *)&initialization_data)) {
         VMM_LOG(mask_uvmm, level_trace, "report_initialization failed after the APs have launched the guest\n");
     }
 
     vmm_set_state(VMM_STATE_RUN);
-
     VMM_LOG(mask_uvmm, level_trace,"BSP: Resuming the first Guest CPU\n");
-
     event_raise(EVENT_GUEST_LAUNCH, initial_gcpu, &local_apic_id);
 
     // enable unrestricted guest support in early boot
     // make guest state compliant for code execution
     // On systems w/o UG, emulator takes care of it
-        if(is_unrestricted_guest_supported()) {
+    if(is_unrestricted_guest_supported()) {
         make_guest_state_compliant(initial_gcpu);
-                unrestricted_guest_enable(initial_gcpu);
+        unrestricted_guest_enable(initial_gcpu);
         //make_guest_state_compliant(initial_gcpu);
-        } else {
-                // For non-UG systems enable EPT, if guest is in paging mode
-            EM64T_CR0 guest_cr0;
-            guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
-                if (guest_cr0.Bits.PG) {
-                        enable_ept_during_launch(initial_gcpu);
-                }
+    } else {
+        // For non-UG systems enable EPT, if guest is in paging mode
+        EM64T_CR0 guest_cr0;
+        guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
+        if (guest_cr0.Bits.PG) {
+            enable_ept_during_launch(initial_gcpu);
         }
+    }
 #ifdef FAST_VIEW_SWITCH
     if(fvs_is_eptp_switching_supported()) {
         fvs_guest_vmfunc_enable(initial_gcpu);
@@ -818,18 +763,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
     vmcs_store_initial(initial_gcpu, cpu_id);
     gcpu_resume( initial_gcpu );
-
     VMM_LOG(mask_uvmm, level_error,"BSP: Resume initial guest cpu failed\n", cpu_id);
     VMM_DEADLOOP();
 }
 
-
-//
 // The Application Processor main routine
-//
 // Should never return!
-//
-
 void vmm_application_procs_main(UINT32 local_apic_id)
 {
     CPU_ID cpu_id = (CPU_ID)local_apic_id;
@@ -837,8 +776,6 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     GUEST_CPU_HANDLE initial_gcpu = NULL;
 
     WAIT_FOR_APPLICATION_PROCS_LAUNCH();
-
-
     VMM_LOG(mask_uvmm, level_trace,"\n\nAP%d: Alive.  Local APIC ID=%P\n", cpu_id, lapic_id());
 
     // Load GDT/IDT
@@ -866,11 +803,10 @@ void vmm_application_procs_main(UINT32 local_apic_id)
 
     // init CR0/CR4 to the VMX compatible values
     hw_write_cr0(  vmcs_hw_make_compliant_cr0( hw_read_cr0() ) );
-        if(g_is_post_launch)
-        {
-           // clear TS bit, since we need to operate on XMM registers.
+    if(g_is_post_launch) {
+       // clear TS bit, since we need to operate on XMM registers.
        enable_fx_ops();
-        }
+    }
     hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
 
     // init current host CPU
@@ -892,34 +828,30 @@ void vmm_application_procs_main(UINT32 local_apic_id)
               guest_vcpu( initial_gcpu )->guest_cpu_id );
 
     ipc_change_state_to_active( initial_gcpu );
-
     vmm_print_test(local_apic_id);
-
     APPLICATION_PROC_LAUNCHING_THE_GUEST();
-
     VMM_LOG(mask_uvmm, level_trace,"AP%d: Resuming the first Guest CPU\n", cpu_id);
-
     //VMM_DEADLOOP();
 
     event_raise(EVENT_GUEST_LAUNCH, initial_gcpu, &local_apic_id);
-        // enable unrestricted guest support in early boot
+
+    // enable unrestricted guest support in early boot
     // make guest state compliant for code execution
     // On systems w/o UG, emulator takes care of it
-        if(is_unrestricted_guest_supported()) {
+    if(is_unrestricted_guest_supported()) {
         make_guest_state_compliant(initial_gcpu);
-                unrestricted_guest_enable(initial_gcpu);
+        unrestricted_guest_enable(initial_gcpu);
         //make_guest_state_compliant(initial_gcpu);
-        } else {
-                // For non-UG systems enable EPT, if guest is in paging mode
-            EM64T_CR0 guest_cr0;
-            guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
-                if (guest_cr0.Bits.PG) {
-                        enable_ept_during_launch(initial_gcpu);
-                }
+    } else {
+        // For non-UG systems enable EPT, if guest is in paging mode
+        EM64T_CR0 guest_cr0;
+        guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
+        if (guest_cr0.Bits.PG) {
+            enable_ept_during_launch(initial_gcpu);
         }
+    }
 #ifdef FAST_VIEW_SWITCH
-    if ( fvs_is_eptp_switching_supported() )
-    {
+    if ( fvs_is_eptp_switching_supported() ) {
         fvs_guest_vmfunc_enable(initial_gcpu);
         fvs_vmfunc_vmcs_init(initial_gcpu);
     }
@@ -927,7 +859,6 @@ void vmm_application_procs_main(UINT32 local_apic_id)
 
     vmcs_store_initial(initial_gcpu, cpu_id);
     gcpu_resume( initial_gcpu );
-
     VMM_LOG(mask_uvmm, level_error,"AP%d: Resume initial guest cpu failed\n", cpu_id);
     VMM_DEADLOOP();
 }
@@ -950,8 +881,8 @@ void make_guest_state_compliant(GUEST_CPU_HANDLE initial_gcpu)
             gcpu_get_segment_reg(initial_gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, &selector, &base, &limit, &attr);
             make_segreg_hw_real_mode_compliant(initial_gcpu, selector, base, limit, attr, (VMM_IA32_SEGMENT_REGISTERS)idx);
         }
-                VMM_LOG(mask_uvmm, level_info,"BSP: guest compliant in real mode  for UG early boot.\n");
-        }
+        VMM_LOG(mask_uvmm, level_info,"BSP: guest compliant in real mode  for UG early boot.\n");
+    }
 }
 
 #ifdef DEBUG

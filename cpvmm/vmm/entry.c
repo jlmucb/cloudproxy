@@ -38,6 +38,8 @@ typedef int bool;
 #include "x32_init64.h"
 #include "vmm_startup.h"
 
+#define JLMDEBUG
+
 #define PSE_BIT     0x10
 #define PAE_BIT     0x20
 
@@ -105,52 +107,6 @@ typedef enum {
   Ia32ExceptionVectorReserved0x1F
 } IA32_EXCEPTION_VECTORS;
 
-#if 0
-typedef struct {
-    UINT32 struct_size;
-    UINT32 version;
-    UINT32 size_in_sectors;
-    UINT32 umbr_size;
-    UINT32 evmm_mem_in_mb;
-    UINT32 guest_count;
-    UINT32 evmml_start;
-    UINT32 evmml_count;
-    UINT32 starter_start;
-    UINT32 starter_count;
-    UINT32 evmmh_start;
-    UINT32 evmmh_count;
-    UINT32 startap_start;
-    UINT32 startap_count;
-    UINT32 evmm_start;
-    UINT32 evmm_count;
-    UINT32 startup_start;
-    UINT32 startup_count;
-    UINT32 guest1_start;
-    UINT32 guest1_count;
-} EVMM_DESC;
-
-static EVMM_DESC          ed;
-    // read 64-bit evm header
-    //assumption: sector_size = 512; size = size of bootstrap + evmm
-    ed.version = 0x00002000; //RNB-CHECK: version info from the loader start script
-    ed.size_in_sectors = 1;   
-                //FIX: size of what?  Where is get_size() defined?
-    ed.umbr_size = 0;   // CHECK: not sure what it is
-    ed.evmm_mem_in_mb = ((evmm_end - evmm_start) + (1024 * 1024) - 1)/(1024 *1024);
-    ed.guest_count = 1; // RNB-CHECK: Evmm loader code says 0 for this, even though they set the guest1_start
-    ed.evmml_start = 0; // CHECK: this is loader start address
-    ed.evmml_count= 0;  // CHECK: this is size of the loader
-    ed.starter_start = 0; // CHECK: this is startap start address
-    ed.starter_count= 0;  // CHECK: size of the startap code 
-    ed.evmmh_start = evmm_start; // start address of evmm header
-    ed.evmmh_count= (sizeOfHdr() + 511)/512; // CHECK
-    ed.evmm_start= evmm_start; 
-    ed.evmm_count= ((evmm_end - evmm_start) + 511) /512; //number of sectors in evmm
-    ed.startup_start = 0; //RNB-CHECK: not using startup code, so don't need this.
-    ed.startup_count= 0; //RNB-CHECK: not using startup code, so don't need this.
-    ed.guest1_start = linux_start;   //RNB-FIX: This is the start value passed as the command line.  Therefore, it is the start of the linux (not the relocated/uncompressed value)
-#endif
-
 // Ring 0 Interrupt Descriptor Table - Gate Types
 #define IA32_IDT_GATE_TYPE_TASK          0x85
 #define IA32_IDT_GATE_TYPE_INTERRUPT_16  0x86
@@ -171,7 +127,6 @@ static EVMM_DESC          ed;
 #define LINUX_DEFAULT_LOAD_ADDRESS 0xC0000000
 
 #define LOOP_FOREVER while(1);
-
 
 UINT32  heap_base; 
 UINT32  heap_current; 
@@ -263,7 +218,7 @@ void ZeroMem(void *Address, UINT32  Size)
   while (Size--) {
     *Source++ = 0;
   }
-}//end ZeroMem
+}
 
 void* AllocateMemory(UINT32 size_request)
 {
@@ -280,7 +235,7 @@ void* AllocateMemory(UINT32 size_request)
   heap_current+=size_request;
   ZeroMem((void*)Address, size_request);
   return (void*)Address;
-}//end AllocateMemory
+}
 
 void InitializeMemoryManager(UINT64 *HeapBaseAddress, UINT64 *HeapBytes)
 {
@@ -796,6 +751,7 @@ UINT32 x32_pt64_get_cr3(void)
 }
 
 
+#ifdef JLMDEBUG
 void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
 {
     /* print mbi for debug */
@@ -899,6 +855,7 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
               );
     }
 }
+#endif
 
 module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 {
@@ -1064,7 +1021,6 @@ uint32_t entryOffset(uint32_t base)
 }
 
 
-#define JLMDEBUG
 
 // tboot jumps in here
 int main(int an, char** av) 

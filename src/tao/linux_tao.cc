@@ -33,7 +33,7 @@
 #include "tao/hosted_programs.pb.h"
 #include "tao/sealed_data.pb.h"
 #include "tao/tao_auth.h"
-#include "tao/tao_ca.pb.h"
+#include "tao/tao_ca.h"
 #include "tao/tao_channel.h"
 #include "tao/tao_child_channel.h"
 #include "tao/util.h"
@@ -59,7 +59,7 @@ bool LinuxTao::Init() {
   }
   if (keys_->HasFreshKeys() && !admin_->GetTaoCAHost().empty()) {
     if (!GetTaoCAAttestation()) {
-      LOG(ERROR) << "Could not trade self-signed for Tao CA attestation";
+      LOG(ERROR) << "Could not trade intermediate for root attestation";
       return false;
     }
   }
@@ -259,84 +259,21 @@ bool LinuxTao::Listen() {
   return child_channel_->Listen(this);
 }
 
-// TODO(kwalsh) Move this method to tao::Keys or some future TaoCA class
 bool LinuxTao::GetTaoCAAttestation() {
-  // The TCCA will convert our attestation into a new attestation signed by the
-  // policy key.
-  TaoCARequest req;
-  req.set_type(TAO_CA_REQUEST_ATTESTATION);
-
-  string serialized_attestation;
-  if (!ReadFileToString(keys_->AttestationPath(), &serialized_attestation)) {
-    LOG(ERROR) << "Could not load the self-signed attestation";
+  // Use TaoCA to convert intermediate attestation into a root one.
+  string intermediate_attestation;
+  if (!ReadFileToString(keys_->AttestationPath(), &intermediate_attestation)) {
+    LOG(ERROR) << "Could not load the intermediate attestation";
     return false;
   }
-  // Check the existing attestation
-  string key_data;
-  if (!admin_->VerifyAttestation(serialized_attestation, &key_data)) {
-    LOG(ERROR) << "The original attestation did not pass verification";
+  TaoCA ca(admin_.get());
+  string root_attestation;
+  if (!ca.GetAttestation(intermediate_attestation, &root_attestation)) {
+    LOG(ERROR) << "Could not get root attestation";
     return false;
   }
-  Attestation *attest = req.mutable_attestation();
-  if (!attest->ParseFromString(serialized_attestation)) {
-    LOG(ERROR) << "Could not deserialize the attestation to our key";
-    return false;
-  }
-
-  string host = admin_->GetTaoCAHost();
-  string port = admin_->GetTaoCAPort();
-  ScopedFd sock(new int(-1));
-  if (!ConnectToTCPServer(host, port, sock.get())) {
-    LOG(ERROR) << "Could not connect to tcca";
-    return false;
-  }
-
-  if (!tao::SendMessage(*sock, req)) {
-    LOG(ERROR) << "Could not send request to the TCCA";
-    return false;
-  }
-
-  TaoCAResponse resp;
-  if (!tao::ReceiveMessage(*sock, &resp)) {
-    LOG(ERROR) << "Could not get response from the TCCA";
-    return false;
-  }
-  if (resp.type() != TAO_CA_RESPONSE_SUCCESS) {
-    LOG(ERROR) << "TCCA returned error: " << resp.reason();
-    return false;
-  }
-  if (!resp.has_attestation()) {
-    LOG(ERROR) << "Missing attestation in TCCA response";
-    return false;
-  }
-  const Attestation &new_attest = resp.attestation();
-
-  VLOG(0) << "Got new attestation " << new_attest.DebugString();
-
-  // Check the attestation to make sure it passes verification.
-  if (new_attest.type() != ROOT) {
-    LOG(ERROR) << "Expected a Root attestation from TCCA";
-    return false;
-  }
-
-  string serialized;
-  if (!new_attest.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the new attestation";
-    return false;
-  }
-
-  string resp_key_data;
-  if (!admin_->VerifyAttestation(serialized, &resp_key_data)) {
-    LOG(ERROR) << "The new attestation did not pass verification";
-    return false;
-  }
-
-  if (resp_key_data != key_data) {
-    LOG(ERROR) << "The key in the new attestation doesn't match original key";
-    return false;
-  }
-  if (!WriteStringToFile(keys_->AttestationPath(), serialized)) {
-    LOG(ERROR) << "Could not store the attestation for our signing key";
+  if (!WriteStringToFile(keys_->AttestationPath(), root_attestation)) {
+    LOG(ERROR) << "Could not store the root attestation";
     return false;
   }
   return true;

@@ -233,7 +233,7 @@ function startsvcs()
 	if pgrep -x `shortname tcca` >/dev/null; then
 		echo "TCCA service already running";
 	else
-		bin/tcca &
+		bin/tcca $ADMIN_ARGS &
 		sleep 1
 		echo "TCCA service now running"
 	fi

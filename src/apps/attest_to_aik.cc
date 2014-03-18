@@ -48,7 +48,7 @@ using tao::Statement;
 using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
-DEFINE_string(policy_pass, "cppolicy", "A password for the policy private key");
+DEFINE_string(policy_pass, "", "A password for the policy private key");
 DEFINE_string(
     aik_blob_file, "tpm/aikblob",
     "A file containing an AIK blob that has been loaded into the TPM");

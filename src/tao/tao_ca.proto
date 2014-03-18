@@ -25,6 +25,7 @@ import "keys.proto";  // for X509Details
 enum TaoCARequestType {
   TAO_CA_REQUEST_UNKNOWN = 0;
   TAO_CA_REQUEST_ATTESTATION = 1;  // request Attestation and/or x509 chain
+  TAO_CA_REQUEST_SHUTDOWN = 2;  // request server shutdown
 }
 
 message TaoCARequest {

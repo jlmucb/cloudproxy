@@ -136,10 +136,10 @@ INLINE UINT8 lapic_id(void)
 INLINE void enable_fx_ops(void)
 {
     UINT64 CR0_Value = hw_read_cr0();
-        BITMAP_CLR64(CR0_Value,CR0_TS);
+    BITMAP_CLR64(CR0_Value,CR0_TS);
           
-        BITMAP_CLR64(CR0_Value,CR0_MP);
-        hw_write_cr0(CR0_Value);
+    BITMAP_CLR64(CR0_Value,CR0_MP);
+    hw_write_cr0(CR0_Value);
 }
 
 INLINE void enable_ept_during_launch(GUEST_CPU_HANDLE initial_gcpu)
@@ -823,9 +823,7 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     initial_gcpu = scheduler_select_initial_gcpu();
     VMM_ASSERT( initial_gcpu != NULL );
     VMM_LOG(mask_uvmm, level_trace,"AP%d: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
-              cpu_id,
-              guest_vcpu( initial_gcpu )->guest_id,
-              guest_vcpu( initial_gcpu )->guest_cpu_id );
+            cpu_id, guest_vcpu( initial_gcpu )->guest_id, guest_vcpu( initial_gcpu )->guest_cpu_id );
 
     ipc_change_state_to_active( initial_gcpu );
     vmm_print_test(local_apic_id);

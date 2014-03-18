@@ -138,13 +138,9 @@ UINT64 pw_retrieve_table_from_cr3(UINT64 cr3,
 }
 
 static
-void pw_retrieve_indices(IN UINT64 virtual_address,
-                         IN BOOLEAN is_pae,
-                         IN BOOLEAN is_lme,
-                         OUT UINT32* pml4te_index,
-                         OUT UINT32* pdpte_index,
-                         OUT UINT32* pde_index,
-                         OUT UINT32* pte_index) {
+void pw_retrieve_indices(IN UINT64 virtual_address, IN BOOLEAN is_pae, IN BOOLEAN is_lme,
+                         OUT UINT32* pml4te_index, OUT UINT32* pdpte_index,
+                         OUT UINT32* pde_index, OUT UINT32* pte_index) {
 
     UINT32 virtual_address_low_32_bit = (UINT32)virtual_address;
 
@@ -175,11 +171,8 @@ void pw_retrieve_indices(IN UINT64 virtual_address,
 }
 
 static
-PW_PAGE_ENTRY* pw_retrieve_table_entry(GPM_HANDLE gpm_handle,
-                                       UINT64 table_gpa,
-                                       UINT32 entry_index,
-                                       BOOLEAN is_pae,
-                                       BOOLEAN use_host_page_tables) {
+PW_PAGE_ENTRY* pw_retrieve_table_entry(GPM_HANDLE gpm_handle, UINT64 table_gpa, UINT32 entry_index,
+                                       BOOLEAN is_pae, BOOLEAN use_host_page_tables) {
     UINT64 entry_hpa;
     UINT64 entry_hva;
     UINT64 table_hpa;
@@ -205,9 +198,7 @@ PW_PAGE_ENTRY* pw_retrieve_table_entry(GPM_HANDLE gpm_handle,
 }
 
 static
-void pw_read_entry_value(PW_PAGE_ENTRY* fill_to,
-                         PW_PAGE_ENTRY* fill_from,
-                         BOOLEAN is_pae) {
+void pw_read_entry_value(PW_PAGE_ENTRY* fill_to, PW_PAGE_ENTRY* fill_from, BOOLEAN is_pae) {
 
     if (is_pae) {
         volatile UINT64* original_value_ptr = (volatile UINT64*)fill_from;
@@ -228,10 +219,7 @@ void pw_read_entry_value(PW_PAGE_ENTRY* fill_to,
 }
 
 static
-BOOLEAN pw_is_big_page_pde(PW_PAGE_ENTRY* entry,
-                           BOOLEAN is_lme,
-                           BOOLEAN is_pae,
-                           BOOLEAN is_pse) {
+BOOLEAN pw_is_big_page_pde(PW_PAGE_ENTRY* entry, BOOLEAN is_lme, BOOLEAN is_pae, BOOLEAN is_pse) {
     if (!entry->non_pae_entry.bits.page_size) { // doesn't matter which type "non_pae" or "pae_lme"
         return FALSE;
     }
@@ -239,7 +227,6 @@ BOOLEAN pw_is_big_page_pde(PW_PAGE_ENTRY* entry,
     if (is_lme || is_pae) { // ignore pse bit in these cases
         return TRUE;
     }
-
     return is_pse;
 }
 
@@ -249,8 +236,7 @@ BOOLEAN pw_is_1gb_page_pdpte(PW_PAGE_ENTRY* entry) {
 }
 
 static
-BOOLEAN pw_are_reserved_bits_in_pml4te_cleared(PW_PAGE_ENTRY* entry,
-                                               BOOLEAN is_nxe) {
+BOOLEAN pw_are_reserved_bits_in_pml4te_cleared(PW_PAGE_ENTRY* entry, BOOLEAN is_nxe) {
     if (entry->pae_lme_entry.bits.addr_base_high & pw_reserved_bits_high_mask) {
         return FALSE;
     }
@@ -262,9 +248,7 @@ BOOLEAN pw_are_reserved_bits_in_pml4te_cleared(PW_PAGE_ENTRY* entry,
 }
 
 static
-BOOLEAN pw_are_reserved_bits_in_pdpte_cleared(PW_PAGE_ENTRY* entry,
-                                               BOOLEAN is_nxe,
-                                               BOOLEAN is_lme) {
+BOOLEAN pw_are_reserved_bits_in_pdpte_cleared(PW_PAGE_ENTRY* entry, BOOLEAN is_nxe, BOOLEAN is_lme) {
     if (entry->pae_lme_entry.bits.addr_base_high & pw_reserved_bits_high_mask) {
         return FALSE;
     }
@@ -291,11 +275,8 @@ BOOLEAN pw_are_reserved_bits_in_pdpte_cleared(PW_PAGE_ENTRY* entry,
 }
 
 static
-BOOLEAN pw_are_reserved_bits_in_pde_cleared(PW_PAGE_ENTRY* entry,
-                                            BOOLEAN is_nxe,
-                                            BOOLEAN is_lme,
-                                            BOOLEAN is_pae,
-                                            BOOLEAN is_pse) {
+BOOLEAN pw_are_reserved_bits_in_pde_cleared(PW_PAGE_ENTRY* entry, BOOLEAN is_nxe,
+                                            BOOLEAN is_lme, BOOLEAN is_pae, BOOLEAN is_pse) {
 
     if (is_pae) {
         if (entry->pae_lme_entry.bits.addr_base_high & pw_reserved_bits_high_mask) {
@@ -327,9 +308,7 @@ BOOLEAN pw_are_reserved_bits_in_pde_cleared(PW_PAGE_ENTRY* entry,
 }
 
 static
-BOOLEAN pw_are_reserved_bits_in_pte_cleared(PW_PAGE_ENTRY* pte,
-                                            BOOLEAN is_nxe,
-                                            BOOLEAN is_lme,
+BOOLEAN pw_are_reserved_bits_in_pte_cleared(PW_PAGE_ENTRY* pte, BOOLEAN is_nxe, BOOLEAN is_lme,
                                             BOOLEAN is_pae) {
     if (!is_pae) {
         return TRUE;
@@ -351,16 +330,9 @@ BOOLEAN pw_are_reserved_bits_in_pte_cleared(PW_PAGE_ENTRY* pte,
 }
 
 static
-BOOLEAN pw_is_write_access_permitted(PW_PAGE_ENTRY* pml4te,
-                                     PW_PAGE_ENTRY* pdpte,
-                                     PW_PAGE_ENTRY* pde,
-                                     PW_PAGE_ENTRY* pte,
-                                     BOOLEAN is_user,
-                                     BOOLEAN is_wp,
-                                     BOOLEAN is_lme,
-                                     BOOLEAN is_pae,
-                                     BOOLEAN is_pse) {
-
+BOOLEAN pw_is_write_access_permitted(PW_PAGE_ENTRY* pml4te, PW_PAGE_ENTRY* pdpte, PW_PAGE_ENTRY* pde,
+                                     PW_PAGE_ENTRY* pte, BOOLEAN is_user, BOOLEAN is_wp, BOOLEAN is_lme,
+                                     BOOLEAN is_pae, BOOLEAN is_pse) {
 
     if ((!is_user) && (!is_wp)) {
         return TRUE;
@@ -398,14 +370,8 @@ BOOLEAN pw_is_write_access_permitted(PW_PAGE_ENTRY* pml4te,
 }
 
 static
-BOOLEAN pw_is_user_access_permitted(PW_PAGE_ENTRY* pml4te,
-                                    PW_PAGE_ENTRY* pdpte,
-                                    PW_PAGE_ENTRY* pde,
-                                    PW_PAGE_ENTRY* pte,
-                                    BOOLEAN is_lme,
-                                    BOOLEAN is_pae,
-                                    BOOLEAN is_pse) {
-
+BOOLEAN pw_is_user_access_permitted(PW_PAGE_ENTRY* pml4te, PW_PAGE_ENTRY* pdpte, PW_PAGE_ENTRY* pde,
+                                    PW_PAGE_ENTRY* pte, BOOLEAN is_lme, BOOLEAN is_pae, BOOLEAN is_pse) {
     if (is_lme) {
         VMM_ASSERT(pml4te != NULL);
         VMM_ASSERT(pdpte != NULL);
@@ -439,14 +405,8 @@ BOOLEAN pw_is_user_access_permitted(PW_PAGE_ENTRY* pml4te,
 }
 
 static
-BOOLEAN pw_is_fetch_access_permitted(PW_PAGE_ENTRY* pml4te,
-                                     PW_PAGE_ENTRY* pdpte,
-                                     PW_PAGE_ENTRY* pde,
-                                     PW_PAGE_ENTRY* pte,
-                                     BOOLEAN is_lme,
-                                     BOOLEAN is_pae,
-                                     BOOLEAN is_pse) {
-
+BOOLEAN pw_is_fetch_access_permitted(PW_PAGE_ENTRY* pml4te, PW_PAGE_ENTRY* pdpte, PW_PAGE_ENTRY* pde, PW_PAGE_ENTRY* pte,
+                                     BOOLEAN is_lme, BOOLEAN is_pae, BOOLEAN is_pse) {
     if (is_lme) {
         VMM_ASSERT(pml4te != NULL);
         VMM_ASSERT(pdpte != NULL);
@@ -480,8 +440,7 @@ BOOLEAN pw_is_fetch_access_permitted(PW_PAGE_ENTRY* pml4te,
 }
 
 static
-UINT64 pw_retrieve_phys_addr(PW_PAGE_ENTRY* entry,
-                             BOOLEAN is_pae) {
+UINT64 pw_retrieve_phys_addr(PW_PAGE_ENTRY* entry, BOOLEAN is_pae) {
     VMM_ASSERT(entry->non_pae_entry.bits.present);
     if (is_pae) {
         UINT32 addr_low = entry->pae_lme_entry.bits.addr_base_low << PW_TABLE_SHIFT;
@@ -494,9 +453,7 @@ UINT64 pw_retrieve_phys_addr(PW_PAGE_ENTRY* entry,
 }
 
 static
-UINT64 pw_retrieve_big_page_phys_addr(PW_PAGE_ENTRY* entry,
-                                      BOOLEAN is_pae,
-                                      BOOLEAN is_1gb) {
+UINT64 pw_retrieve_big_page_phys_addr(PW_PAGE_ENTRY* entry, BOOLEAN is_pae, BOOLEAN is_1gb) {
     UINT64 base = pw_retrieve_phys_addr(entry, is_pae);
 
     // Clean offset bits
@@ -512,9 +469,7 @@ UINT64 pw_retrieve_big_page_phys_addr(PW_PAGE_ENTRY* entry,
 }
 
 static
-UINT32 pw_get_big_page_offset(UINT64 virtual_address,
-                              BOOLEAN is_pae,
-                              BOOLEAN is_1gb) {
+UINT32 pw_get_big_page_offset(UINT64 virtual_address, BOOLEAN is_pae, BOOLEAN is_1gb) {
     if (is_pae) {
         if (is_1gb) {
             // Take only 30 LSBs
@@ -548,18 +503,10 @@ void pw_update_ad_bits_in_entry(PW_PAGE_ENTRY* native_entry,
 }
 
 static
-void pw_update_ad_bits(PW_PAGE_ENTRY* guest_space_pml4te,
-                       PW_PAGE_ENTRY* pml4te,
-                       PW_PAGE_ENTRY* guest_space_pdpte,
-                       PW_PAGE_ENTRY* pdpte,
-                       PW_PAGE_ENTRY* guest_space_pde,
-                       PW_PAGE_ENTRY* pde,
-                       PW_PAGE_ENTRY* guest_space_pte,
-                       PW_PAGE_ENTRY* pte,
-                       BOOLEAN is_write_access,
-                       BOOLEAN is_lme,
-                       BOOLEAN is_pae,
-                       BOOLEAN is_pse) {
+void pw_update_ad_bits(PW_PAGE_ENTRY* guest_space_pml4te, PW_PAGE_ENTRY* pml4te, PW_PAGE_ENTRY* guest_space_pdpte,
+                       PW_PAGE_ENTRY* pdpte, PW_PAGE_ENTRY* guest_space_pde, PW_PAGE_ENTRY* pde,
+                       PW_PAGE_ENTRY* guest_space_pte, PW_PAGE_ENTRY* pte, BOOLEAN is_write_access,
+                       BOOLEAN is_lme, BOOLEAN is_pae, BOOLEAN is_pse) {
     PW_PAGE_ENTRY pde_before_update;
     PW_PAGE_ENTRY pte_before_update;
 
@@ -628,14 +575,9 @@ void pw_update_ad_bits(PW_PAGE_ENTRY* guest_space_pml4te,
     pw_update_ad_bits_in_entry(guest_space_pte, &pte_before_update, pte);
 }
 
-PW_RETVAL pw_perform_page_walk(IN GUEST_CPU_HANDLE gcpu,
-                               IN UINT64 virt_addr,
-                               IN BOOLEAN is_write,
-                               IN BOOLEAN is_user,
-                               IN BOOLEAN is_fetch,
-                               IN BOOLEAN set_ad_bits,
-                               OUT UINT64* gpa_out,
-                               OUT UINT64* pfec_out) {
+PW_RETVAL pw_perform_page_walk(IN GUEST_CPU_HANDLE gcpu, IN UINT64 virt_addr,
+                               IN BOOLEAN is_write, IN BOOLEAN is_user, IN BOOLEAN is_fetch,
+                               IN BOOLEAN set_ad_bits, OUT UINT64* gpa_out, OUT UINT64* pfec_out) {
     PW_RETVAL retval = PW_RETVAL_SUCCESS;
     PW_PFEC native_pfec;
     GUEST_HANDLE guest_handle = gcpu_guest_handle(gcpu);
@@ -779,18 +721,8 @@ PW_RETVAL pw_perform_page_walk(IN GUEST_CPU_HANDLE gcpu,
         }
 
         if (set_ad_bits) {
-            pw_update_ad_bits(pml4te_ptr,
-                              &pml4te_val,
-                              pdpte_ptr,
-                              &pdpte_val,
-                              NULL,
-                              NULL,
-                              NULL,
-                              NULL,
-                              is_write,
-                              is_lme,
-                              is_pae,
-                              is_pse);
+            pw_update_ad_bits(pml4te_ptr, &pml4te_val, pdpte_ptr, &pdpte_val, NULL, NULL,
+                              NULL, NULL, is_write, is_lme, is_pae, is_pse);
         }
 
         retval = PW_RETVAL_SUCCESS;
@@ -937,8 +869,7 @@ out:
     return retval;
 }
 
-BOOLEAN pw_is_pdpt_in_32_bit_pae_mode_valid(IN GUEST_CPU_HANDLE gcpu,
-                                            IN void* pdpt_ptr) {
+BOOLEAN pw_is_pdpt_in_32_bit_pae_mode_valid(IN GUEST_CPU_HANDLE gcpu, IN void* pdpt_ptr) {
     UINT64 efer_value;
     BOOLEAN is_nxe;
     BOOLEAN is_lme;

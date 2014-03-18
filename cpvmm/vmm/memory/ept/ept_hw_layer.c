@@ -337,8 +337,8 @@ BOOLEAN ept_hw_invvpid_all_contexts(void)
         return TRUE;
     }
 
-        arg.vpid = 0;// vpid;
-        //arg.gva = gva;
+    arg.vpid = 0;// vpid;
+    //arg.gva = gva;
 
     if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidAllContexts) {
         vmm_asm_invvpid(&arg, INVVPID_ALL_CONTEXTS, &rflags);
@@ -363,7 +363,7 @@ BOOLEAN ept_hw_invvpid_single_context(UINT64 vpid)
         return TRUE;
     }
 
-        arg.vpid = vpid;
+    arg.vpid = vpid;
 
     if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidContextWide) {
         vmm_asm_invvpid(&arg, INVVPID_SINGLE_CONTEXT, &rflags);

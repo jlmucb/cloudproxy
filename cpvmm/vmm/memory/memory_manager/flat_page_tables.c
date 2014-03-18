@@ -275,8 +275,6 @@ failed_to_create_flat_page_tables:
 }
 
 
-   
-
 BOOLEAN fpt_create_32_bit_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
                                            OUT FPT_FLAT_PAGE_TABLES_HANDLE* flat_page_tables_handle,
                                            OUT UINT32* pdpt) {
@@ -316,7 +314,6 @@ BOOLEAN fpt_destroy_flat_page_tables(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_ta
     // do not destroy the FPTs, cache those page tables
     // to support S3 resume on NHM machine with x64 OS installed.
     return TRUE;
-
 }
 
 #ifdef INCLUDE_UNUSED_CODE
@@ -408,12 +405,11 @@ BOOLEAN fpt_set_writable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
         VMM_ASSERT(0);
         return FALSE;
     }
-
-
     attrs.uint32 = 0;
     attrs.paging_attr.writable = 1;
     return mam_add_permissions_to_existing_mapping(flat_tables_mapping, src_addr, size, attrs);
 }
+
 BOOLEAN fpt_clear_writable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
                            IN UINT64 src_addr,
                            IN UINT64 size) {
@@ -465,8 +461,7 @@ BOOLEAN fpt_set_executable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handl
 }
 
 BOOLEAN fpt_clear_executable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
-                           IN UINT64 src_addr,
-                           IN UINT64 size) {
+                           IN UINT64 src_addr, IN UINT64 size) {
     FPT* fpt = (FPT*)flat_page_tables_handle;
     MAM_HANDLE flat_tables_mapping;
     MAM_ATTRIBUTES attrs;
@@ -491,8 +486,7 @@ BOOLEAN fpt_clear_executable(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_han
 
 
 BOOLEAN fpt_is_mapped(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
-                      IN UINT64 src_addr,
-                      OUT BOOLEAN* is_writable) {
+                      IN UINT64 src_addr, OUT BOOLEAN* is_writable) {
     FPT* fpt = (FPT*)flat_page_tables_handle;
     MAM_HANDLE flat_tables_mapping;
     UINT64 tgt_addr;

@@ -19,43 +19,42 @@
 
 void vmm_asm_invept (INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 {
-	asm volatile(
-		"\tmovq %[arg], %%rcx\n" 
-		"\tmovq %[modifier], %%rdx\n" 
-		"\tmovq %[rflags], %%r8\n" 
-		"\tmov %%rcx, %%rax \n"
-		"\tmov %%rdx, %%rcx \n"
-		"\tinvept (%%rax), %%rcx\n" 
-		"\tpushfq\n"
-		"\tpop (%%r8) \n"
-		: 
-		: [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
-		: "rax", "rcx", "rdx", "r8"
-	);
-	return;
+    asm volatile(
+        "\tmovq %[arg], %%rcx\n" 
+        "\tmovq %[modifier], %%rdx\n" 
+        "\tmovq %[rflags], %%r8\n" 
+        "\tmov %%rcx, %%rax \n"
+        "\tmov %%rdx, %%rcx \n"
+        "\tinvept (%%rax), %%rcx\n" 
+        "\tpushfq\n"
+        "\tpop (%%r8) \n"
+    : 
+    : [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
+    : "rax", "rcx", "rdx", "r8");
+        return;
 }
+
 /*
  * VOID
  * vmm_asm_invvpid (
- *    INVEPT_ARG   *arg,		;rcx
- *    UINT32       modifier	;rdx
- *    UINT64       *rflags	;r8
+ *    INVEPT_ARG   *arg,                ;rcx
+ *    UINT32       modifier     ;rdx
+ *    UINT64       *rflags      ;r8
  *    )
  */
 void vmm_asm_invvpid (INVVPID_ARG *arg, UINT32 modifier, UINT64 *rflags) 
 {
-	asm volatile(
-		"\tmovq %[arg], %%rcx\n" 
-		"\tmovq %[modifier], %%rdx\n" 
-		"\tmovq %[rflags], %%r8\n" 
-		"\tmovq %%rcx, %%rax \n"
-		"\tmovq %%rdx, %%rcx \n"
-		"\tinvvpid (%%rax), %%rcx\n" 
-		"\tpushfq \n"
-		"\tpop (%%r8) \n"
-		:
-		: [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
-		: "rax", "rcx", "rdx", "r8"
-	);
-	return;
+    asm volatile(
+        "\tmovq %[arg], %%rcx\n" 
+        "\tmovq %[modifier], %%rdx\n" 
+        "\tmovq %[rflags], %%r8\n" 
+        "\tmovq %%rcx, %%rax \n"
+        "\tmovq %%rdx, %%rcx \n"
+        "\tinvvpid (%%rax), %%rcx\n" 
+        "\tpushfq \n"
+        "\tpop (%%r8) \n"
+    :
+    : [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
+    : "rax", "rcx", "rdx", "r8");
+    return;
 }

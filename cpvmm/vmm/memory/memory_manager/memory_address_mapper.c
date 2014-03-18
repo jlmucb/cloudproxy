@@ -508,8 +508,7 @@ UINT64 mam_get_address_from_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN const MAM_L
 }
 
 static
-void mam_update_leaf_internal_entry(IN MAM_ENTRY* entry,
-                                    IN UINT64 addr,
+void mam_update_leaf_internal_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                     IN MAM_ATTRIBUTES attr,
                                     IN const MAM_LEVEL_OPS* level_ops UNUSED) {
     VMM_ASSERT(ALIGN_BACKWARD(addr, PAGE_4KB_SIZE) == addr);
@@ -523,8 +522,7 @@ void mam_update_leaf_internal_entry(IN MAM_ENTRY* entry,
 }
 
 static
-void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry,
-                                      IN UINT64 addr,
+void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                       IN MAM_ATTRIBUTES attr,
                                       IN const MAM_LEVEL_OPS* level_ops) {
     UINT32 pwt_bit, pcd_bit, pat_bit;
@@ -565,8 +563,7 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry,
 }
 
 static
-void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry,
-                               IN UINT64 addr,
+void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                IN MAM_ATTRIBUTES attr,
                                IN const MAM_LEVEL_OPS* level_ops) {
     entry->uint64 = 0;
@@ -595,8 +592,7 @@ void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry,
 }
 
 static
-void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry,
-                               IN UINT64 addr,
+void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                IN MAM_ATTRIBUTES attr,
                                IN const MAM_LEVEL_OPS* level_ops) {
     entry->uint64 = 0;
@@ -1126,11 +1122,8 @@ MAM_HVA mam_create_table(IN MAM_MAPPING_RESULT unmapped_reason, IN MAM_ENTRY_TYP
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory.
 */
 static
-BOOLEAN mam_expand_leaf_entry(IN MAM* mam,
-                              IN MAM_ENTRY* entry,
-                              IN const MAM_LEVEL_OPS* level_ops,
-                              IN const MAM_ENTRY_OPS* entry_ops,
-                              OUT MAM_HVA* table) {
+BOOLEAN mam_expand_leaf_entry(IN MAM* mam, IN MAM_ENTRY* entry, IN const MAM_LEVEL_OPS* level_ops,
+                              IN const MAM_ENTRY_OPS* entry_ops, OUT MAM_HVA* table) {
     MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
     UINT64 tgt_addr = mam_get_address_from_leaf_entry(entry, level_ops, entry_ops); // virtual call
     MAM_ATTRIBUTES attrs = mam_get_attributes_from_entry(entry, level_ops, entry_ops); // virtual call
@@ -1176,10 +1169,8 @@ BOOLEAN mam_expand_leaf_entry(IN MAM* mam,
 *         entry_ops - virtual table for relevant (according to type) entry operations
 */
 static
-void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam,
-                                            IN MAM_ENTRY* entry_to_retract,
-                                            IN const MAM_LEVEL_OPS* level_ops,
-                                            IN const MAM_ENTRY_OPS* entry_ops) {
+void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_retract,
+                                            IN const MAM_LEVEL_OPS* level_ops, IN const MAM_ENTRY_OPS* entry_ops) {
 
     MAM_HVA table_pointed_by_entry;
     MAM_HVA entry_hva;
@@ -1392,10 +1383,8 @@ const MAM_ENTRY_OPS* mam_get_entry_ops(IN MAM_ENTRY* entry) {
 }
 
 static
-MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops,
-                                              IN MAM_HVA table,
-                                              IN UINT64 src_addr,
-                                              OUT UINT64* tgt_addr_out,
+MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops, IN MAM_HVA table,
+                                              IN UINT64 src_addr, OUT UINT64* tgt_addr_out,
                                               OUT MAM_ATTRIBUTES* attributes_out) {
     UINT32 entry_index;
     MAM_HVA entry_addr;
@@ -1403,7 +1392,6 @@ MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops,
     const MAM_ENTRY_OPS* entry_ops;
     MAM_HVA lower_level_table;
     const MAM_LEVEL_OPS* lower_level_ops;
-
 
     // Call to virtual function that calculates the entry index within the table
     // out of requested source address
@@ -1508,15 +1496,10 @@ void mam_destroy_table(IN MAM_HVA table) {
 * Ret. value - TRUE in case of success, FALSE in case of insufficient memory
 */
 static
-BOOLEAN mam_update_table(IN MAM* mam,
-                         IN const MAM_LEVEL_OPS* level_ops,
-                         IN MAM_HVA table,
-                         IN UINT64 first_mapped_address,
-                         IN UINT64 src_addr,
-                         IN UINT64 tgt_addr,
-                         IN UINT64 size,
-                         IN MAM_ATTRIBUTES attrs,
-                         IN MAM_UPDATE_OP update_op) {
+BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
+                         IN MAM_HVA table, IN UINT64 first_mapped_address,
+                         IN UINT64 src_addr, IN UINT64 tgt_addr,
+                         IN UINT64 size, IN MAM_ATTRIBUTES attrs, IN MAM_UPDATE_OP update_op) {
 
     UINT32 curr_entry_index;
     UINT32 final_entry_index;
@@ -1779,14 +1762,9 @@ BOOLEAN mam_update_table(IN MAM* mam,
  * Ret. value - TRUE in case of success, FALSE in case of insufficient memory
  */
 static
-BOOLEAN mam_remove_range_from_table(IN MAM* mam,
-                                    IN const MAM_LEVEL_OPS* level_ops,
-                                    IN MAM_HVA table,
-                                    IN UINT64 first_mapped_address,
-                                    IN UINT64 src_addr,
-                                    IN UINT64 size,
-                                    IN MAM_MAPPING_RESULT reason) {
-
+BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops, IN MAM_HVA table,
+                                    IN UINT64 first_mapped_address, IN UINT64 src_addr,
+                                    IN UINT64 size, IN MAM_MAPPING_RESULT reason) {
     UINT32 curr_entry_index;
     UINT32 final_entry_index;
     UINT64 curr_entry_first_mapped_address;
@@ -1794,7 +1772,6 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam,
     UINT64 remaining_size;
     const MAM_ENTRY_OPS* entry_ops;
     const MAM_LEVEL_OPS* lower_level_ops = mam_get_lower_level_ops(level_ops); // virtual call
-
 
     // Internal checks
     // BEFORE_VMLAUNCH
@@ -1954,11 +1931,8 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam,
 * Ret. value - TRUE in case of success, FALSE in case of failure
 */
 static
-BOOLEAN mam_convert_entries_in_table(IN MAM* mam,
-                                     IN MAM_HVA table,
-                                     IN const MAM_LEVEL_OPS* level_ops,
+BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, IN const MAM_LEVEL_OPS* level_ops,
                                      IN const MAM_ENTRY_OPS* new_entry_ops) {
-
     MAM_HVA entry_hva;
     UINT64 size_covered_by_entry = mam_get_size_covered_by_entry(level_ops); // virtual call
 
@@ -1994,10 +1968,10 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam,
                 tgt_addr = mam_get_address_from_leaf_entry(entry, level_ops, curr_entry_ops); // virtual call
                 attr = mam_get_attributes_from_entry(entry, level_ops, curr_entry_ops); // virtual call
 
-                                if (new_entry_ops == MAM_VTDPT_ENTRY_OPS) {
-                                        attr.vtdpt_attr.snoop = mam->vtdpt_snoop_behavior;
-                                        attr.vtdpt_attr.tm = mam->vtdpt_trans_mapping;
-                                }
+                if (new_entry_ops == MAM_VTDPT_ENTRY_OPS) {
+                    attr.vtdpt_attr.snoop = mam->vtdpt_snoop_behavior;
+                    attr.vtdpt_attr.tm = mam->vtdpt_trans_mapping;
+                }
 
                 // Check whether entry of new type can remain leaf
                 if (mam_can_be_leaf_entry(mam, level_ops, size_covered_by_entry, tgt_addr, new_entry_ops)) {
@@ -2066,9 +2040,7 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam,
 *         size - size of the range
 */
 static
-void mam_update_first_table_to_cover_requested_range(IN MAM* mam,
-                                                     IN UINT64 src_addr,
-                                                     IN UINT64 size) {
+void mam_update_first_table_to_cover_requested_range(IN MAM* mam, IN UINT64 src_addr, IN UINT64 size) {
     const MAM_ENTRY_OPS* entry_ops;
     MAM_HVA curr_first_table;
 
@@ -2133,10 +2105,8 @@ void mam_update_first_table_to_cover_requested_range(IN MAM* mam,
 *         size - size of the range
 */
 static
-void mam_get_size_of_range(IN UINT64 src_addr,
-                           IN const MAM_LEVEL_OPS* level_ops,
-                           IN MAM_HVA table,
-                           OUT UINT64* size) {
+void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops,
+                           IN MAM_HVA table, OUT UINT64* size) {
     UINT32 start_index = mam_get_entry_index(level_ops, src_addr); // virtual call
     MAM_HVA entry_hva = table + (start_index * sizeof(MAM_ENTRY));
     MAM_ENTRY* first_entry = mam_hva_to_ptr(entry_hva);
@@ -2295,10 +2265,8 @@ void mam_destroy_mapping(IN MAM_HANDLE mam_handle) {
 }
 
 
-MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle,
-                                   IN UINT64 src_addr,
-                                   OUT UINT64* tgt_addr,
-                                   OUT MAM_ATTRIBUTES* attrs) {
+MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
+                                   OUT UINT64* tgt_addr, OUT MAM_ATTRIBUTES* attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops;
     UINT64 first_table;
@@ -2327,11 +2295,8 @@ MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle,
         update_counter1 = mam->update_counter;
 
         // Retrieve the mapping
-        res = mam_get_mapping_from_table(first_table_ops,
-                                         first_table,
-                                         src_addr,
-                                         tgt_addr,
-                                         attrs);
+        res = mam_get_mapping_from_table(first_table_ops, first_table, src_addr,
+                                         tgt_addr, attrs);
         update_counter2 = mam->update_counter;
 
     } while ((update_counter1 != update_counter2) ||
@@ -2341,11 +2306,8 @@ MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle,
     return res;
 }
 
-BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle,
-                         IN UINT64 src_addr,
-                         IN UINT64 tgt_addr,
-                         IN UINT64 size,
-                         IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr, IN UINT64 tgt_addr,
+                         IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = NULL;
     MAM_HVA first_table = 0;
@@ -2394,15 +2356,8 @@ BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle,
 
     // BEFORE_VMLAUNCH.
     VMM_ASSERT(first_table_ops != NULL);
-    res = mam_update_table(mam,
-                           first_table_ops,
-                           first_table,
-                           0,
-                           src_addr,
-                           tgt_addr,
-                           size,
-                           attrs,
-                           MAM_OVERWRITE_ADDR_AND_ATTRS);
+    res = mam_update_table(mam, first_table_ops, first_table, 0, src_addr, tgt_addr,
+                           size, attrs, MAM_OVERWRITE_ADDR_AND_ATTRS);
 
     VMM_DEBUG_CODE(
         if (!res) {
@@ -2420,10 +2375,8 @@ out:
 }
 
 
-BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle,
-                                      IN UINT64 src_addr,
-                                      IN UINT64 size,
-                                      IN MAM_MAPPING_RESULT reason) {
+BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
+                                      IN UINT64 size, IN MAM_MAPPING_RESULT reason) {
 
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = NULL;
@@ -2476,13 +2429,8 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle,
         goto out;
     }
 
-    res = mam_remove_range_from_table(mam,
-                                      first_table_ops,
-                                      first_table,
-                                      0,
-                                      src_addr,
-                                      size,
-                                      reason);
+    res = mam_remove_range_from_table(mam, first_table_ops, first_table, 0, src_addr,
+                                      size, reason);
 
 out:
     mam->update_counter++; // second update (becomes even number);
@@ -2493,10 +2441,8 @@ out:
     return res;
 }
 
-BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle,
-                                                IN UINT64 src_addr,
-                                                IN UINT64 size,
-                                                IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
+                                                IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2533,10 +2479,8 @@ out:
     return res;
 }
 
-BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle,
-                                                     IN UINT64 src_addr,
-                                                     IN UINT64 size,
-                                                     IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
+                                                     IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2572,10 +2516,8 @@ out:
     return res;
 }
 
-BOOLEAN mam_overwrite_permissions_in_existing_mapping(IN MAM_HANDLE mam_handle,
-                                                     IN UINT64 src_addr,
-                                                     IN UINT64 size,
-                                                     IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_overwrite_permissions_in_existing_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
+                                                     IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2608,8 +2550,7 @@ out:
     return res;
 }
 
-BOOLEAN mam_convert_to_64bit_page_tables(IN MAM_HANDLE mam_handle,
-                                         OUT UINT64* pml4t_hpa) {
+BOOLEAN mam_convert_to_64bit_page_tables(IN MAM_HANDLE mam_handle, OUT UINT64* pml4t_hpa) {
     MAM* mam = (MAM*)mam_handle;
     MAM_HPA first_table_hpa;
     BOOLEAN res;
@@ -2652,8 +2593,7 @@ out:
     return res;
 }
 
-BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle,
-                                             OUT UINT32* pdpt_hpa) {
+BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle, OUT UINT32* pdpt_hpa) {
     MAM* mam = (MAM*)mam_handle;
     MAM_HPA first_table_hpa;
     BOOLEAN res;
@@ -2719,8 +2659,7 @@ MAM_MEMORY_RANGES_ITERATOR mam_get_memory_ranges_iterator(IN MAM_HANDLE mam_hand
 
 MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(IN MAM_HANDLE mam_handle,
                                                                IN MAM_MEMORY_RANGES_ITERATOR iter,
-                                                               OUT UINT64* src_addr,
-                                                               OUT UINT64* size) {
+                                                               OUT UINT64* src_addr, OUT UINT64* size) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2869,12 +2808,10 @@ out:
     return res;
 }
 
-BOOLEAN mam_convert_to_vtdpt(IN MAM_HANDLE mam_handle,
-                           IN MAM_VTDPT_SUPER_PAGE_SUPPORT vtdpt_super_page_support,
-                                                   IN MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior,
-                                                   IN MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping,
-                           IN UINT32 sagaw_bit_index,
-                           OUT UINT64* first_table_hpa) {
+BOOLEAN mam_convert_to_vtdpt(IN MAM_HANDLE mam_handle, IN MAM_VTDPT_SUPER_PAGE_SUPPORT vtdpt_super_page_support,
+                          IN MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior,
+                          IN MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping,
+                           IN UINT32 sagaw_bit_index, OUT UINT64* first_table_hpa) {
     MAM* mam = (MAM*)mam_handle;
     UINT64 requested_size = 0;
     const MAM_LEVEL_OPS* required_level_ops = NULL;

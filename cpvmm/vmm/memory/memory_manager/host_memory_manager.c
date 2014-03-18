@@ -830,7 +830,6 @@ BOOLEAN hmm_alloc_continuous_wb_virtual_buffer_for_pages(IN UINT64* hpas_array,
     return hmm_map_continuous_virtual_buffer_for_pages_internal(hpas_array, num_of_pages, TRUE, attrs, FALSE, hva);
 }
 
-/*-----------------------------------------------------------*/
 
 #pragma warning(disable : 4710)
 BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
@@ -1136,20 +1135,14 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
             BOOLEAN ret;
             
             //hmm_remap_physical_pages_to_continuous_wb_virtal_addr(
-                        ret = hmm_alloc_continuous_wb_virtual_buffer_for_pages(
-                (UINT64 *)g_additional_heap_pa,
-                g_heap_pa_num,
-                TRUE,
-                FALSE,
-                &g_additional_heap_base);
+            ret = hmm_alloc_continuous_wb_virtual_buffer_for_pages( (UINT64 *)g_additional_heap_pa,
+                    g_heap_pa_num, TRUE, FALSE, &g_additional_heap_base);
             VMM_LOG(mask_anonymous, level_trace,"HMM: Additional heap is mapped to VA = %p\n", 
                        (void *)g_additional_heap_base);
             if ((!ret) || (g_additional_heap_base == 0))
                 VMM_DEADLOOP();
-            
-
-                        if (!remove_initial_hva_to_hpa_mapping_for_extended_heap())
-                                VMM_DEADLOOP();
+            if (!remove_initial_hva_to_hpa_mapping_for_extended_heap())
+                VMM_DEADLOOP();
         }
     }
 
@@ -1605,13 +1598,8 @@ BOOLEAN hmm_remap_virtual_memory_no_attr_change(HVA from_hva, HVA to_hva, UINT32
     return hmm_remap_virtual_memory_internal(from_hva, to_hva, size, FALSE, MAM_NO_ATTRIBUTES, flash_tlbs);
 }
 
-BOOLEAN hmm_remap_virtual_memory(HVA from_hva,
-                                 HVA to_hva,
-                                 UINT32 size,
-                                 BOOLEAN is_writable,
-                                 BOOLEAN is_executable,
-                                 UINT32 pat_index,
-                                 BOOLEAN flash_tlbs) {
+BOOLEAN hmm_remap_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, BOOLEAN is_writable,
+                                 BOOLEAN is_executable, UINT32 pat_index, BOOLEAN flash_tlbs) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1621,12 +1609,8 @@ BOOLEAN hmm_remap_virtual_memory(HVA from_hva,
     return hmm_remap_virtual_memory_internal(from_hva, to_hva, size, TRUE, attrs, flash_tlbs);
 }
 
-BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva,
-                                    HVA to_hva,
-                                    UINT32 size,
-                                    BOOLEAN is_writable,
-                                    BOOLEAN is_executable,
-                                    BOOLEAN flash_tlbs) {
+BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, BOOLEAN is_writable,
+                                    BOOLEAN is_executable, BOOLEAN flash_tlbs) {
     UINT32 wb_index = hmm_get_wb_pat_index(g_hmm);
     return hmm_remap_virtual_memory(from_hva, to_hva, size, is_writable, is_executable, wb_index, flash_tlbs);
 }
@@ -1651,10 +1635,8 @@ BOOLEAN hmm_alloc_additional_continuous_virtual_buffer(IN UINT64 current_hva, IN
     return hmm_alloc_additional_continuous_virtual_buffer_internal(current_hva, additional_hva, num_of_pages, TRUE, attrs);
 }
 
-BOOLEAN hmm_alloc_additional_continuous_wb_virtual_buffer(IN UINT64 current_hva,
-                                                          IN UINT64 additional_hva,
-                                                          IN UINT32 num_of_pages,
-                                                          IN BOOLEAN is_writable,
+BOOLEAN hmm_alloc_additional_continuous_wb_virtual_buffer(IN UINT64 current_hva, IN UINT64 additional_hva,
+                                                          IN UINT32 num_of_pages, IN BOOLEAN is_writable,
                                                           IN BOOLEAN is_executable) {
     UINT32 wb_index = hmm_get_wb_pat_index(g_hmm);
     return hmm_alloc_additional_continuous_virtual_buffer(current_hva, additional_hva, num_of_pages, is_writable, is_executable, wb_index);

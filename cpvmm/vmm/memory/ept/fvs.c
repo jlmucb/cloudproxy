@@ -131,8 +131,7 @@ BOOLEAN fvs_add_entry_to_eptp_list(GUEST_HANDLE guest,
     
     if ( index < MAX_EPTP_ENTRIES ) {
         ept_gaw =  ept_hw_get_guest_address_width(gaw);
-        if(ept_gaw == (UINT32) -1)
-        {
+        if(ept_gaw == (UINT32) -1) {
             return FALSE;
         }
         eptp.Uint64 = ept_root_hpa;

@@ -185,15 +185,13 @@ BOOLEAN ept_violation_vmexit(GUEST_CPU_HANDLE gcpu, void *pv)
     violation_data.guest_physical_address = data->guest_physical_address;
 
     ept_violation_qualification.Uint64 = violation_data.qualification;
-    if( ept_violation_qualification.EptViolation.NMIunblocking )
-    {
+    if( ept_violation_qualification.EptViolation.NMIunblocking ) {
         VMCS_OBJECT *vmcs = gcpu_get_vmcs(gcpu);
         IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
 
         idt_vectoring_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_EXIT_INFO_IDT_VECTORING);
 
-        if(!idt_vectoring_info.Bits.Valid)
-        {
+        if(!idt_vectoring_info.Bits.Valid) {
             IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY guest_interruptibility;
 
             guest_interruptibility.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_GUEST_INTERRUPTIBILITY);
@@ -239,13 +237,11 @@ MAM_EPT_SUPER_PAGE_SUPPORT ept_get_mam_super_page_support(void)
     MAM_EPT_SUPER_PAGE_SUPPORT sp_support = MAM_EPT_NO_SUPER_PAGE_SUPPORT;
 
 //Currently we support 2MB pages in implementation
-    if(ept_cap.Bits.SP_21_bit)
-    {
+    if(ept_cap.Bits.SP_21_bit) {
         sp_support |= MAM_EPT_SUPPORT_2MB_PAGE;
     }
 #if 0
-    if(ept_cap.Bits.SP_30_bit)
-    {
+    if(ept_cap.Bits.SP_30_bit) {
         sp_support |= MAM_EPT_SUPPORT_1GB_PAGE;
     }
     if(ept_cap.Bits.SP_39_bit)
@@ -328,10 +324,8 @@ void ept_create_default_ept(GUEST_HANDLE guest, GPM_HANDLE gpm)
     VMM_ASSERT(ept_guest->gaw != (UINT32) -1);
 
     ept_guest->address_space = ept_create_guest_address_space(gpm, TRUE);
-    VMM_ASSERT(mam_convert_to_ept(ept_guest->address_space,
-                                  ept_get_mam_super_page_support(),
-                                  ept_get_mam_supported_gaw(ept_guest->gaw),
-                                  ve_is_hw_supported(),
+    VMM_ASSERT(mam_convert_to_ept(ept_guest->address_space, ept_get_mam_super_page_support(),
+                                  ept_get_mam_supported_gaw(ept_guest->gaw), ve_is_hw_supported(),
                                   &(ept_guest->ept_root_table_hpa)));
 }
 
@@ -573,8 +567,7 @@ BOOLEAN ept_emulator_enter(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
     ept_guest_cpu->cr0 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
     ept_guest_cpu->cr4 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4);
     ept_guest_cpu->ept_enabled_save = FALSE;
-    if(ept_is_ept_enabled(gcpu))
-    {
+    if(ept_is_ept_enabled(gcpu)) {
         ept_guest_cpu->ept_enabled_save = TRUE;
         ept_disable(gcpu);
     }
@@ -681,23 +674,16 @@ UINT32 ept_get_guest_address_width(GPM_HANDLE gpm)
 
     gpm_iter = gpm_get_ranges_iterator(gpm);
 
-    while(GPM_INVALID_RANGES_ITERATOR != gpm_iter)
-    {// for each range in GPM
-        gpm_iter = gpm_get_range_details_from_iterator(gpm,
-                                                       gpm_iter,
-                                                       &guest_range_addr,
-                                                       &guest_range_size);
-        if(guest_range_addr > guest_highest_range_addr)
-        {
+    while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) { // for each range in GPM
+        gpm_iter = gpm_get_range_details_from_iterator(gpm, gpm_iter,
+                                                       &guest_range_addr, &guest_range_size);
+        if(guest_range_addr > guest_highest_range_addr) {
             guest_highest_range_addr = guest_range_addr;
             guest_highest_range_size = guest_range_size;
         }
     }
-
     guest_address_limit = guest_highest_range_addr + guest_highest_range_size;
-
     hw_scan_bit_backward64(&guest_address_limit_msb_index, guest_address_limit);
-
     return guest_address_limit_msb_index + 1;
 }
 
@@ -722,14 +708,9 @@ MAM_HANDLE ept_create_guest_address_space(GPM_HANDLE gpm, BOOLEAN original_perms
 
     address_space = mam_create_mapping(attributes);
     VMM_ASSERT(address_space);
-
     gpm_iter = gpm_get_ranges_iterator(gpm);
-
-    while(GPM_INVALID_RANGES_ITERATOR != gpm_iter)
-    {// for each range in GPM
-        gpm_iter = gpm_get_range_details_from_iterator(gpm,
-                                                       gpm_iter,
-                                                       &guest_range_addr,
+    while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) { // for each range in GPM
+        gpm_iter = gpm_get_range_details_from_iterator(gpm, gpm_iter, &guest_range_addr,
                                                        &guest_range_size);
         status = gpm_gpa_to_hpa(gpm, guest_range_addr, &host_range_addr, &hpa_attrs);
 
@@ -745,24 +726,20 @@ MAM_HANDLE ept_create_guest_address_space(GPM_HANDLE gpm, BOOLEAN original_perms
             attributes.ept_attr.executable = hpa_attrs.ept_attr.executable;
         }
 
-        if(status)
-        {
+        if(status) {
             covered_guest_range_size = 0;
-            do
-            {// add separate mapping per memory type
+            do { // add separate mapping per memory type
                 mem_type = mtrrs_abstraction_get_range_memory_type(host_range_addr + covered_guest_range_size, &same_memory_type_range_size,guest_range_size - covered_guest_range_size);
 
-                if (VMM_PHYS_MEM_UNDEFINED == mem_type)
-                {
+                if (VMM_PHYS_MEM_UNDEFINED == mem_type) {
                     EPT_LOG("  EPT %s:  Undefined mem-type for region %P. Use Uncached\n",
-                        guest_range_addr + covered_guest_range_size);
+                    guest_range_addr + covered_guest_range_size);
                     mem_type = VMM_PHYS_MEM_UNCACHED;
                 }
 
                 attributes.ept_attr.emt = mem_type;
 
-                if(covered_guest_range_size + same_memory_type_range_size > guest_range_size)
-                {// normalize
+                if(covered_guest_range_size + same_memory_type_range_size > guest_range_size) { // normalize
                     same_memory_type_range_size = guest_range_size - covered_guest_range_size;
                 }
                 /*
@@ -774,10 +751,8 @@ MAM_HANDLE ept_create_guest_address_space(GPM_HANDLE gpm, BOOLEAN original_perms
                     mem_type);
                 */
 
-                mam_insert_range(address_space,
-                                 guest_range_addr + covered_guest_range_size,
-                                 host_range_addr + covered_guest_range_size,
-                                 same_memory_type_range_size,
+                mam_insert_range(address_space, guest_range_addr + covered_guest_range_size,
+                                 host_range_addr + covered_guest_range_size, same_memory_type_range_size,
                                  attributes);
 
                 covered_guest_range_size += same_memory_type_range_size;
@@ -922,14 +897,12 @@ EPT_GUEST_STATE *ept_find_guest_state(GUEST_ID guest_id)
     LIST_FOR_EACH(ept.guest_state, iter)
     {
         ept_guest_state = LIST_ENTRY(iter, EPT_GUEST_STATE, list);
-        if(ept_guest_state->guest_id == guest_id)
-        {
+        if(ept_guest_state->guest_id == guest_id) {
             found = TRUE;
             break;
         }
     }
-    if(found)
-    {
+    if(found) {
         return ept_guest_state;
     }
     return NULL;
@@ -1078,11 +1051,9 @@ BOOLEAN ept_add_dynamic_guest(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
     policy_status = get_paging_policy(guest_policy(guest), &pg_policy);
     VMM_ASSERT(POL_RETVAL_SUCCESS == policy_status);
 
-    if (POL_PG_EPT == pg_policy)
-    {
+    if (POL_PG_EPT == pg_policy) {
         ept_guest_initialize(guest_handle(guest_create_event_data->guest_id));
     }
-
     return TRUE;
 }
 
@@ -1091,8 +1062,7 @@ void init_ept_addon(UINT32 num_of_cpus)
     GUEST_HANDLE   guest;
     GUEST_ECONTEXT guest_ctx;
 
-    if (!global_policy_uses_ept())
-    {
+    if (!global_policy_uses_ept()) {
         return;
     }
 
@@ -1107,8 +1077,7 @@ void init_ept_addon(UINT32 num_of_cpus)
     event_global_register(EVENT_GUEST_CREATE, ept_add_dynamic_guest);
     event_global_register(EVENT_GCPU_ADD, (event_callback) ept_add_gcpu);
 
-    for(guest = guest_first(&guest_ctx); guest; guest = guest_next(&guest_ctx))
-    {
+    for(guest = guest_first(&guest_ctx); guest; guest = guest_next(&guest_ctx)) {
         ept_add_static_guest(guest);
     }
 }
@@ -1119,21 +1088,18 @@ BOOLEAN ept_page_walk(UINT64 first_table, UINT64 addr, UINT32 gaw)
     UINT64 *entry = NULL;
 
     EPT_LOG("EPT page walk addr %p\r\n", addr);
-    if(gaw > 39)
-    {
+    if(gaw > 39) {
         entry = &table[(addr & 0xFF8000000000) >> 39];
         EPT_LOG("Level 4: table %p entry %p\r\n", table, *entry);
         table = (UINT64 *) ((*entry) & ~0xfff);
-        if(((*entry) & 0x1) == 0)
-        {
+        if(((*entry) & 0x1) == 0) {
             EPT_LOG("Entry not present\r\n");
             return FALSE;
         }
     }
     entry = &table[(addr & 0x7fc0000000) >> 30];
     EPT_LOG("Level 3: table %p entry %p\r\n", table, *entry);
-    if(((*entry) & 0x1) == 0)
-    {
+    if(((*entry) & 0x1) == 0) {
         EPT_LOG("Entry not present\r\n");
         return FALSE;
     }
@@ -1141,8 +1107,7 @@ BOOLEAN ept_page_walk(UINT64 first_table, UINT64 addr, UINT32 gaw)
     entry = &table[(addr & 0x3FE00000) >> 21];
     EPT_LOG("Level 2: table %p entry %p\r\n", table, *entry);
     table = (UINT64 *) ((*entry) & ~0xfff);
-    if(((*entry) & 0x1) == 0)
-    {
+    if(((*entry) & 0x1) == 0) {
         EPT_LOG("Entry not present\r\n");
         return FALSE;
     }
@@ -1164,10 +1129,8 @@ void ept_print(IN GUEST_HANDLE guest, IN MAM_HANDLE address_space)
         UINT64 curr_size;
         HPA curr_hpa;
         MAM_ATTRIBUTES attrs;
-        iter = mam_get_range_details_from_iterator(address_space,
-                                                   iter,
-                                                   (UINT64*)&curr_gpa,
-                                                   &curr_size);
+        iter = mam_get_range_details_from_iterator(address_space, iter,
+                                                   (UINT64*)&curr_gpa, &curr_size);
         VMM_ASSERT(curr_size != 0);
 
         res = mam_get_mapping(address_space, curr_gpa, &curr_hpa, &attrs);
@@ -1187,8 +1150,7 @@ void ept_reset_initiate(GUEST_HANDLE guest)
     VMM_ASSERT(guest);
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
 
-    if(gcpu != NULL && ept_is_ept_enabled(gcpu))
-    {
+    if(gcpu != NULL && ept_is_ept_enabled(gcpu)) {
         ept_disable(gcpu);
         ept_enable(gcpu);
     }
@@ -1248,14 +1210,10 @@ void ept_invalidate_guest_ept_on_all_cpus(IN GUEST_HANDLE guest)
     UINT64 eptp = 0;
 
     ept_acquire_lock();
-
     eptp = ept_compute_eptp(guest);
-
     ept_exec_invept(ANY_CPU_ID, INVEPT_CONTEXT_WIDE, eptp, 0);
-
     EPT_LOG("Invalidate eptp %p on CPU#%d\r\n", eptp, hw_cpu_id());
     ept_hw_invept_context(eptp);
-
     ept_release_lock();
 }
 
@@ -1264,16 +1222,13 @@ BOOLEAN ept_invept_all_contexts(IN CPU_ID host_cpu_id)
     BOOLEAN res = FALSE;
 
     ept_acquire_lock();
-    if(host_cpu_id == hw_cpu_id())
-    {
+    if(host_cpu_id == hw_cpu_id()) {
         res = ept_hw_invept_all_contexts();
     }
-    else
-    {
+    else {
         ept_exec_invept(ANY_CPU_ID, INVEPT_ALL_CONTEXTS, 0, 0);
     }
     ept_release_lock();
-
     return res;
 }
 
@@ -1282,16 +1237,13 @@ BOOLEAN ept_invept_context(IN CPU_ID host_cpu_id, UINT64 eptp)
     BOOLEAN res = FALSE;
 
     ept_acquire_lock();
-    if(host_cpu_id == hw_cpu_id())
-    {
+    if(host_cpu_id == hw_cpu_id()) {
         res = ept_hw_invept_context(eptp);
     }
-    else
-    {
+    else {
         ept_exec_invept(ANY_CPU_ID, INVEPT_CONTEXT_WIDE, eptp, 0);
     }
     ept_release_lock();
-
     return res;
 }
 
@@ -1300,28 +1252,20 @@ BOOLEAN ept_invept_individual_address(IN CPU_ID host_cpu_id, UINT64 eptp, ADDRES
     BOOLEAN res = FALSE;
 
     ept_acquire_lock();
-    if(host_cpu_id == hw_cpu_id())
-    {
+    if(host_cpu_id == hw_cpu_id()) {
         res = ept_hw_invept_individual_address(eptp, gpa);
     }
-    else
-    {
+    else {
         ept_exec_invept(ANY_CPU_ID, INVEPT_INDIVIDUAL_ADDRESS, eptp, gpa);
     }
     ept_release_lock();
-
     return res;
 }
 #endif
 
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN ept_add_mapping(IN GUEST_HANDLE guest,
-                        IN GPA src,
-                        IN HPA dest,
-                        IN UINT64 size,
-                        IN BOOLEAN readable,
-                        IN BOOLEAN writable,
-                        IN BOOLEAN executable)
+BOOLEAN ept_add_mapping(IN GUEST_HANDLE guest, IN GPA src, IN HPA dest, IN UINT64 size,
+                        IN BOOLEAN readable, IN BOOLEAN writable, IN BOOLEAN executable)
 {
     EPT_GUEST_STATE *ept_guest = NULL;
     UINT64 eptp = 0;
@@ -1360,10 +1304,8 @@ BOOLEAN ept_add_mapping(IN GUEST_HANDLE guest,
     return status;
 }
 
-BOOLEAN ept_remove_mapping(IN GUEST_HANDLE guest,
-                           IN GPA src,
-                           IN UINT64 size,
-                           IN MAM_MAPPING_RESULT reason)
+BOOLEAN ept_remove_mapping(IN GUEST_HANDLE guest, IN GPA src,
+                           IN UINT64 size, IN MAM_MAPPING_RESULT reason)
 {
     EPT_GUEST_STATE *ept_guest = NULL;
     UINT64 eptp = 0;
@@ -1394,10 +1336,8 @@ BOOLEAN ept_remove_mapping(IN GUEST_HANDLE guest,
     return status;
 }
 
-MAM_MAPPING_RESULT ept_get_mapping(IN GUEST_HANDLE guest,
-                                   IN GPA src,
-                                   OUT HPA *dest,
-                                   OUT MAM_ATTRIBUTES *attrs)
+MAM_MAPPING_RESULT ept_get_mapping(IN GUEST_HANDLE guest, IN GPA src,
+                                   OUT HPA *dest, OUT MAM_ATTRIBUTES *attrs)
 {
     EPT_GUEST_STATE *ept_guest = NULL;
     GUEST_ID guest_id = guest_get_id(guest);
@@ -1437,21 +1377,18 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     attributes.ept_attr.readable = 1;
     attributes.ept_attr.writable = 1;
 
-    while(covered_heap_range_size < heap_size)
-    {
+    while(covered_heap_range_size < heap_size) {
         mem_type = mtrrs_abstraction_get_range_memory_type(heap_base_hpa + covered_heap_range_size,
                                                            &same_memory_type_range_size);
         attributes.ept_attr.emt = mem_type;
         EPT_LOG("  EPT add uvmm heap range: gpa %p -> hpa %p; size %p; mem_type %d\r\n",
             heap_base_hpa, heap_base_hpa, same_memory_type_range_size, mem_type);
 
-        if(covered_heap_range_size + same_memory_type_range_size > heap_size)
-        {// normalize
+        if(covered_heap_range_size + same_memory_type_range_size > heap_size) { // normalize
             same_memory_type_range_size = heap_size - covered_heap_range_size;
         }
 
-        ept_add_mapping(guest,
-            heap_base_hpa + covered_heap_range_size,
+        ept_add_mapping(guest, heap_base_hpa + covered_heap_range_size,
             heap_base_hpa + covered_heap_range_size,
             same_memory_type_range_size,
             TRUE, // readable
@@ -1460,12 +1397,10 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
             );
 
         covered_heap_range_size += same_memory_type_range_size;
-        if(covered_heap_range_size > heap_size)
-        {// normalize
+        if(covered_heap_range_size > heap_size) { // normalize
             covered_heap_range_size = heap_size;
         }
     }
-
     return TRUE;
 }
 
@@ -1488,12 +1423,10 @@ BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
 
-    for(i = 0; i < ept.num_of_cpus; i++)
-    {
+    for(i = 0; i < ept.num_of_cpus; i++) {
         ept_guest_cpu = ept_guest->gcpu_state[i];
         if(ept_guest_cpu->is_initialized
-           && (ept_guest_cpu->cr0 & CR0_PG) == 0)
-        {// cannot deny access - another gcpu not paged and uses flat page tables
+           && (ept_guest_cpu->cr0 & CR0_PG) == 0) { // cannot deny access - another gcpu not paged and uses flat page tables
             return FALSE;
         }
     }

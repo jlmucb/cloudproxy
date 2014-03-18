@@ -30,7 +30,6 @@ static VMM_STACKS_INFO g_stacks_infos_s;
 static VMM_STACKS_INFO* const g_stacks_infos = &g_stacks_infos_s;
 
 
-/*-----------------------------------------------------------*/
 
 INLINE
 UINT32 vmm_stack_get_stack_size_per_cpu(UINT32 num_of_requested_pages) {

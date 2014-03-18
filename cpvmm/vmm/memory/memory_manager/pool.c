@@ -432,8 +432,7 @@ void pool_allocate_single_page_from_heap_with_must_succeed(POOL* pool) {
 }
 
 static
-void pool_try_to_free_unused_page_from_elements_list(POOL* pool,
-                                                     BOOLEAN full_clean) {
+void pool_try_to_free_unused_page_from_elements_list(POOL* pool, BOOLEAN full_clean) {
     POOL_LIST_HEAD* free_pages_list = pool_get_free_pages_list(pool);
     POOL_LIST_HEAD* free_pool_elements_list = pool_get_free_pool_elements_list(pool);
     HASH64_HANDLE hash = pool_get_hash(pool);
@@ -560,7 +559,6 @@ void* pool_allocate_hash_node(void* context) {
         // number of elements currently in the list
         num_of_hash_elements = pool_list_head_get_num_of_elements(hash_elements_list_head);
         VMM_ASSERT(num_of_hash_elements > 2);
-
 
         // Allocating 2 elements: first in order to record current page and second
         // in order to return the requested element
@@ -739,7 +737,7 @@ void* pool_allocate_internal(POOL* pool) {
     }
 
     page = (void*)pool_allocate_node_from_list(free_pages_list);
-	pool_inc_num_of_pages_used_for_pool_elements(pool);
+    pool_inc_num_of_pages_used_for_pool_elements(pool);
 
     page_addr = (UINT64)page;
     VMM_ASSERT(page != NULL);

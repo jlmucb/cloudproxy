@@ -50,8 +50,7 @@ static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 
 // Add CPU to guest
 void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
-                       GUEST_HANDLE guest, CPU_ID host_cpu_to_allocate,
-                       BOOLEAN ready_to_run )
+                       GUEST_HANDLE guest, CPU_ID host_cpu_to_allocate, BOOLEAN ready_to_run )
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
@@ -86,8 +85,7 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
 // Return NULL on error
 static
 GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
-                                const VMM_GUEST_STARTUP* gstartup,
-                                const VMM_POLICY  *guest_policy)
+                                const VMM_GUEST_STARTUP* gstartup, const VMM_POLICY  *guest_policy)
 {
     GUEST_HANDLE  guest;
     UINT32        cpu_affinity = 0;
@@ -182,8 +180,7 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 // Perform initialization of guests and guest CPUs
 // Should be called on BSP only while all APs are stopped
 // Return TRUE for success
-BOOLEAN initialize_all_guests(
-                    UINT32 number_of_host_processors,
+BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
                     const VMM_MEMORY_LAYOUT* vmm_memory_layout,
                     const VMM_GUEST_STARTUP* primary_guest_startup_state,
                     UINT32 number_of_secondary_guests,

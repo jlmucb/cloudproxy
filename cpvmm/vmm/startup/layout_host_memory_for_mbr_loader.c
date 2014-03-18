@@ -28,10 +28,9 @@
 
 
 //  Read input data structure and create all guests
-// 
 //  NOTE: current implementation is valid only for MBR loader. For
 //        driver-loading scenario it should be changed
-// 
+
 
 extern UINT32 g_is_post_launch;
 
@@ -47,10 +46,8 @@ extern UINT32 g_is_post_launch;
 //
 // For secondary guests:
 //   - All secondary guests are loaded lower than 4G
-BOOLEAN init_memory_layout_from_mbr(
-                    const VMM_MEMORY_LAYOUT* vmm_memory_layout,
-                    GPM_HANDLE               primary_guest_gpm,
-                    BOOLEAN                  are_secondary_guests_exist,
+BOOLEAN init_memory_layout_from_mbr(const VMM_MEMORY_LAYOUT* vmm_memory_layout,
+                    GPM_HANDLE primary_guest_gpm, BOOLEAN are_secondary_guests_exist,
                     const VMM_APPLICATION_PARAMS_STRUCT* application_params)
 {
     E820_ABSTRACTION_RANGE_ITERATOR         e820_iter;
@@ -82,8 +79,8 @@ BOOLEAN init_memory_layout_from_mbr(
     //    if this memory range is above 4G
     // if in the post launch mode skip it
     for (e820_iter = e820_abstraction_iterator_get_first(E820_ORIGINAL_MAP);
-            e820_iter != E820_ABSTRACTION_NULL_ITERATOR;
-            e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter)) {
+        e820_iter != E820_ABSTRACTION_NULL_ITERATOR;
+        e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter)) {
         e820_entry = e820_abstraction_iterator_get_range_details(e820_iter);
 
         range_start = e820_entry->basic_entry.base_address;
@@ -145,8 +142,7 @@ BOOLEAN init_memory_layout_from_mbr(
     }
 
     // now remove the VMM area from the primary guest
-    ok = gpm_remove_mapping( primary_guest_gpm,
-                             vmm_memory_layout[uvmm_image].base_address,
+    ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[uvmm_image].base_address,
                              vmm_memory_layout[uvmm_image].total_size );
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove uvmm image base %p size 0x%x\r\n", 
     vmm_memory_layout[uvmm_image].base_address,
@@ -158,8 +154,7 @@ BOOLEAN init_memory_layout_from_mbr(
     ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[thunk_image].base_address,
                              vmm_memory_layout[thunk_image].total_size );
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove thunk image base %p size 0x%x\r\n", 
-        vmm_memory_layout[thunk_image].base_address,
-        vmm_memory_layout[thunk_image].total_size);
+        vmm_memory_layout[thunk_image].base_address, vmm_memory_layout[thunk_image].total_size);
 
     if (g_is_post_launch) {
         VMM_ASSERT (application_params != NULL);

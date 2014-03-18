@@ -1184,15 +1184,14 @@ int main(int an, char** av)
     g0.guest_magic_number = 0;  //FIX: needs to be unique id of the guest
     g0.cpu_affinity = -1;
     g0.cpu_states_count = 1;    // CHECK: number of VMM_GUEST_STARTUP structs
-    g0.devices_count = 0;       // CHECK: 0 implies guest is devices less
+    g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
     g0.image_size = linux_end - linux_start;
                 
-    // FIX: This is the start address,  the offset from the
-    // compressed linux.  Currently, evmm_main does't understand elf
-    // (uncompressed or otherwise).
+    // FIX: This is the image address.  Check to see it is properly aligned.
     g0.image_address= linux_start;
     g0.image_offset_in_guest_physical_memory = LINUX_DEFAULT_LOAD_ADDRESS;
-    g0.physical_memory_size = 0; //CHECK: notes inside evmm say it should be 0 for primary. 
+    g0.physical_memory_size = 0; // CHECK: Should be 0 for primary guest
+    // FIX:  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
     g0.cpu_states_array = NULL; 
 
     // FIX: the start address of the array of initial cpu states for guest cpus.
@@ -1214,7 +1213,8 @@ int main(int an, char** av)
     p_startup_struct->nmi_owner= UUID; 
     p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
 
-    // FIX: vmm_memory_layout is suppose to contain the start/end/size of
+    // FIX:  For a single guest, this is wrong.  see the initialization code.
+    // vmm_memory_layout is suppose to contain the start/end/size of
     // each image that is part of evmm (e.g. evmm, linux+initrd)
     vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
@@ -1237,6 +1237,8 @@ int main(int an, char** av)
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
 
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
+
+    // FIX: The current evmm REQUIRES a thunk area.  We need to define one or remove it from evmm
 
     // application parameters
     // FIX
@@ -1347,7 +1349,8 @@ int main(int an, char** av)
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 
-    // CHECK: what happens when evmm returns?
+    // FIX: what happens when evmm returns?
+    // This was originally where the thunk was set up.
     return 0;
 }
 

@@ -39,7 +39,7 @@ static UINT32                   g_section_info_size = 0; // in entries
 static VMM_LOCK                 g_section_lock;
 static BOOLEAN                  g_is_locked;
 
-//------------------------ Internal -----------------------------------
+
 static
 void fill_sections_info( const char* image_base_address,
                          SECTION_TABLE_INFO info )
@@ -58,7 +58,7 @@ void fill_sections_info( const char* image_base_address,
             continue;
         }
 
-        p_info           = g_section_info_arr + g_section_info_size;
+        p_info = g_section_info_arr + g_section_info_size;
         ++g_section_info_size;
 
         p_info->name  = (const char*)p_section_header->Name;
@@ -75,9 +75,7 @@ void fill_sections_info( const char* image_base_address,
 }
 
 static
-SECTION_TABLE_INFO find_section_table(
-                    const void* image,
-                    UINT32      image_size )
+SECTION_TABLE_INFO find_section_table( const void* image, UINT32 image_size )
 {
     IMAGE_DOS_HEADER*   p_dos_header = (IMAGE_DOS_HEADER*)image;
     UINT32              nt_header_offset = 0;
@@ -131,7 +129,6 @@ void destroy_section_info_arr( void )
     g_section_info_size = 0;
 }
 
-//------------------------- Interface ----------------------------------
 
 void exec_image_initialize( void )
 {

@@ -28,13 +28,12 @@
 #pragma PACK_ON
 
 
-// uVMM Sturtup Constants
+// uVMM Startup Constants
 //
 // Note:  Constants that are related to specific structures below are defined
 //        near their respective structures.
-
 // Default size for uVMM footprint in memory, that should be
-// allocated by the loader.  Includes the uVMM executable image and work work
+// allocated by the loader.  Includes the uVMM executable image and work
 // area, but not the 32bit-to-64bit Thunk image.
 
 #define UVMM_DEFAULT_FOOTPRINT          75 MEGABYTES
@@ -90,11 +89,9 @@
 //
 // VMM bounding box - vmm memory layout as it was built by loader
 // Data about sizes is part of installer info
-//
 // Vmm image occupies area [base_address .. base_address+image_size]
 // Area [base_address+image_size .. base_address+total_size] is used for
 // vmm heaps and stacks
-
 typedef struct _VMM_MEMORY_LAYOUT
 {
     UINT32      total_size;

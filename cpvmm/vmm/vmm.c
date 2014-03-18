@@ -327,9 +327,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
                 // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
                 VMM_DEADLOOP();
             };
-            
             g_session_id = application_params_struct->session_id;
-                        g_heap_pa_num = (UINT32)(application_params_struct->entry_number);
+            g_heap_pa_num = (UINT32)(application_params_struct->entry_number);
             g_additional_heap_pa = application_params_struct->address_entry_list;
         }
         else

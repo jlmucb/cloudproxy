@@ -28,7 +28,8 @@
 // Copy input params into heap before changing host virtual memory mapping
 // Required in order to avoid input parameters disrupting
 INLINE
-void vmm_copy_gcpu_startup_state(VMM_GUEST_CPU_STARTUP_STATE* state_to, const VMM_GUEST_CPU_STARTUP_STATE* state_from) {
+void vmm_copy_gcpu_startup_state(VMM_GUEST_CPU_STARTUP_STATE* state_to, 
+                                 const VMM_GUEST_CPU_STARTUP_STATE* state_from) {
     vmm_memcpy(state_to, state_from, state_from->size_of_this_struct);
 }
 
@@ -75,7 +76,6 @@ BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, const VMM_GU
         }
     }
 
-
     // Create copy of VMM_GUEST_DEVICE array
     size_of_array = 0;
     for (i = 0; i < guest_startup_from->devices_count; i++) {
@@ -117,7 +117,6 @@ BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, const VMM_GU
         guest_startup_to->image_address = (UINT64)image_heap_addr;
     }
 
-
     return TRUE;
 }
 
@@ -131,11 +130,9 @@ const VMM_GUEST_STARTUP* vmm_create_guest_startup_copy(const VMM_GUEST_STARTUP* 
     if (guest_startup_heap == NULL) {
         return NULL;
     }
-
     if (!vmm_copy_guest_startup(guest_startup_heap, guest_startup_stack)) {
         return NULL;
     }
-
     return (const VMM_GUEST_STARTUP*)guest_startup_heap;
 }
 
@@ -209,22 +206,17 @@ const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(const VMM_STARTUP_STRUC
 
         for (i = 0; i < startup_struct_stack->number_of_secondary_guests; i++) {
             UINT64 addr_of_guest_struct = startup_struct_stack->secondary_guests_startup_state_array + size_of_array;
-
             curr_guest_struct = (const VMM_GUEST_STARTUP*)addr_of_guest_struct;
-
             // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
             VMM_ASSERT(ALIGN_BACKWARD(addr_of_guest_struct, VMM_GUEST_STARTUP_ALIGNMENT) == addr_of_guest_struct);
-
             size_of_array += curr_guest_struct->size_of_this_struct;
         }
-
 
         secondary_guests_array = vmm_memory_alloc(size_of_array);
         if (secondary_guests_array == NULL) {
             return NULL;
         }
         startup_struct_heap->secondary_guests_startup_state_array = (UINT64)secondary_guests_array;
-
         curr_guest_struct = (const VMM_GUEST_STARTUP*)startup_struct_stack->secondary_guests_startup_state_array;
         curr_guest_struct_heap = (VMM_GUEST_STARTUP*)secondary_guests_array;
 
@@ -321,8 +313,7 @@ void print_guest_device_struct(const VMM_GUEST_DEVICE* startup_struct,
 
     VMM_LOG(mask_anonymous, level_trace,"     =========> Guest device #%d\n", dev_idx );
 
-    if (startup_struct == NULL)
-    {
+    if (startup_struct == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"    VMM_GUEST_DEVICE is NULL\n");
         goto end;
     }

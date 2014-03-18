@@ -69,6 +69,11 @@ void file_close(FILE *file);
 /// @param dir The path to the directory.
 void temp_file_cleaner(string *dir);
 
+/// Close a self-pipe and ignore the return value. This is used by
+/// the definition of ScopedSelfPipeFd.
+/// @param fd A pointer to the self-pipe file descriptor.
+void selfpipe_release(int *fd);
+
 /// A pointer to a managed file descriptor that gets closed when this wrapper is
 /// deleted.
 typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<int, fd_close>>
@@ -86,6 +91,24 @@ typedef scoped_ptr_malloc<
 
 typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<
                                       string, temp_file_cleaner>> ScopedTempDir;
+
+/// A pointer to a self-pipe that gets cleaned up when this wrapper is deleted.
+typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<
+                                   int, selfpipe_release>> ScopedSelfPipeFd;
+
+/// Create a self-pipe for a signal. A signal handler is installed that writes
+/// the signal number (cast to a byte) to the pipe. Callers can use the returned
+/// file descriptor as part of a select() call. When a byte is available on the
+/// file descriptor, it means that that signal has been received. An error is
+/// returned if another self-pipe already exists (this limitation stems from the
+/// need for global variables).
+/// @param signum The signal to catch.
+/// @return A file descriptor suitable for select() and read(), or -1 on error.
+int GetSelfPipeSignalFd(int signum);
+
+/// Destroy a self-pipe, restoring any previous signal handler.
+/// @param fd The file descriptor returned from GetSelfPipeSignalFd().
+bool ReleaseSelfPipeSignalFd(int fd);
 
 /// Set the disposition of SIGCHLD to prevent child zombification.
 bool LetChildProcsDie();
@@ -167,6 +190,14 @@ bool GenerateAttestation(const Keys &key, const string &cert,
 bool GenerateAttestation(const Keys &key, const string &cert,
                          Statement *statement, string *attestation);
 
+/// Generate a pretty-printed representation of an Attestation.
+/// @param a The attestation to pretty-print.
+string DebugString(const Attestation &a);
+
+/// Generate a pretty-printed representation of a Statement.
+/// @param stmt The statement to pretty-print.
+string DebugString(const Statement &stmt);
+
 /// Generate and save a random secret, sealed against the host Tao.
 /// @param t The channel to access the host Tao.
 /// @param path The location to store the sealed secret.
@@ -217,7 +248,7 @@ bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
 /// @param addr The address to send the message to.
 /// @param addr_len The length of the address to send the message to.
 bool SendMessageTo(int fd, const google::protobuf::Message &m,
-                   struct sockaddr *addr, socklen_t addr_len);
+                   const struct sockaddr *addr, socklen_t addr_len);
 
 /// Opens a Unix domain socket at a given path.
 /// @param path The path for the new Unix domain socket.

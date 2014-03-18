@@ -23,7 +23,6 @@
 
 #include <keyczar/base/scoped_ptr.h>
 
-#include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/tao_auth.h"
 
@@ -32,12 +31,16 @@ using std::string;
 class DictionaryValue;
 
 namespace keyczar {
+class Crypter;
 class Signer;
 class Verifier;
-class Crypter;
 }  // namespace keyczar
 
 namespace tao {
+class Attestation;
+class Keys;
+class Statement;
+
 /// A TaoDomain stores and manages a set of configuration parameters for a
 /// single administrative domain, including a policy key pair, the host:port
 /// location to access a Tao CA (if available). Classes that implement TaoDomain

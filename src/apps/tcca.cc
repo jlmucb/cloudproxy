@@ -29,6 +29,7 @@
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/tao.h"
+#include "tao/tao_ca.pb.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
@@ -83,9 +84,13 @@ bool HandleRequestAttestation(const TaoDomain *admin, const TaoCARequest &req,
     return false;
   }
 
-  // Create a new attestation to the same statement, but using the policy key
+  // Create a new attestation to same key as orig_statement, signed with policy
+  // key
   Statement root_statement;
-  root_statement.CopyFrom(orig_statement);
+  // root_statement.CopyFrom(orig_statement);
+  root_statement.set_time(orig_statement.time());
+  root_statement.set_expiration(orig_statement.expiration());
+  root_statement.set_data(orig_statement.data());
 
   if (!admin->AttestByRoot(&root_statement, resp->mutable_attestation())) {
     LOG(ERROR) << "Could not sign a new root attestation";

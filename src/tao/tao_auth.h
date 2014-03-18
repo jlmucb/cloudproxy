@@ -77,7 +77,7 @@ class TaoAuth {
   virtual bool Forbid(const string &name) = 0;
 
   /// Get a string suitable for showing users authorization info.
-  virtual string DebugString() = 0;
+  virtual string DebugString() const = 0;
 };
 }  // namespace tao
 

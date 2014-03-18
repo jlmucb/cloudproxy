@@ -14,10 +14,34 @@
 
 {
   'product_dir': '<(PRODUCT_DIR)/bin',
+  # One third_party package, google-glog, has platform dependent config.
+  # Use gyp -Dtarget_arch=x64 for 64 bit config.
+  # Use gyp -target_Darch=ia32 for 32 bit config.
+  # Default is defined here.
+  'variables': {
+    'target_arch%': "x64",
+  },
+  'conditions': [
+    [ 'target_arch == "ia32"', {
+      'cflags': [
+        '-m32',
+      ],
+      'defines': [
+        'TARGET_ARCH_IA32',
+      ],
+    }, { # else target_arch == "x64"
+      'cflags': [
+        '-m64',
+      ],
+      'defines': [
+        'TARGET_ARCH_X64',
+      ],
+    }],
+  ],
   'configurations': {
     'Release': {
       'cflags': [
-	      '-O2',
+        '-O2',
       ],
     },
     'Debug': {

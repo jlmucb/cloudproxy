@@ -32,26 +32,56 @@ using std::string;
 
 namespace tao {
 /// An interface that hosted programs use to communicate with a host Tao. It
-/// implements the Tao but without the child_hash parameter, since the host
-/// TaoChannel that will receive the message adds this parameter itself to the
-/// call. See the Tao for the semantics of the Tao methods implemented by
-/// TaoChildChannel.
+/// implements an interface similar to the Tao but without the child_hash
+/// parameter in cases where it is implicit. Other parameters are bundled
+/// up and sent in a message along the channel. The details of this message
+/// passing depend on the specific implementation). The host TaoChannel RPC
+/// server will, upon receiving a message, add the appropriate child_hash
+/// parameter. In this way, a hosted program is not free to use an arbitrary
+/// hash.
 class TaoChildChannel {
  public:
   TaoChildChannel() {}
   virtual ~TaoChildChannel() {}
 
-  // Tao interface methods without the child hash parameter. See the Tao
-  // interface for the semantics of these calls.
+  /// Initialize by opening ports and acquiring resources as needed.
   virtual bool Init() { return true; }
+
+  /// Disconnect ports and release resources acquired during Init().
   virtual bool Destroy() { return true; }
+
+  /// Methods that invoke the administrative interfaces of the host Tao.
+  /// @{
+
+  /// Request that the host Tao be shut down.
+  virtual bool Shutdown() const;
+
+  /// Request that the host Tao start a new program. See Tao for semantics.
   virtual bool StartHostedProgram(const string &path, const list<string> &args,
-                                  string *identifier);
-  virtual bool RemoveHostedProgram(const string &child_hash);
+                                  string *identifier) const;
+
+  /// Request that the host Tao remove a program. See Tao for semantics.
+  virtual bool RemoveHostedProgram(const string &child_hash) const;
+
+  /// @}
+
+  /// Methods that invoke the hosted-program interfaces of the host Tao.
+  /// These methods omit the child_hash parameter since it is implicit.
+  /// @{
+
+  /// Get random bytes. See Tao for semantics.
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
+
+  /// Seal data. See Tao for semantics.
   virtual bool Seal(const string &data, string *sealed) const;
+
+  /// Unseal data. See Tao for semantics.
   virtual bool Unseal(const string &sealed, string *data) const;
+
+  /// Generate attestation. See Tao for semantics.
   virtual bool Attest(const string &data, string *attestation) const;
+
+  /// @}
 
  protected:
   /// Receive a protobuf on the channel from a host. Subclasses implement this

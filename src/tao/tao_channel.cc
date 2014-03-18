@@ -25,6 +25,8 @@
 
 namespace tao {
 
+// This version of HandleRPC() only handles hosted-program methods,
+// not administrative methods.
 bool TaoChannel::HandleRPC(Tao &tao, const string &hash,  // NOLINT
                            const TaoChannelRPC &rpc) const {
   // switch on the type of RPC and pass it to the tao function
@@ -34,44 +36,37 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,  // NOLINT
   string result_data;
   bool result = false;
   switch (rpc.rpc()) {
-    case DESTROY:
-      result = tao.Destroy();
+    case TAO_CHANNEL_RPC_SHUTDOWN:
+    case TAO_CHANNEL_RPC_START_HOSTED_PROGRAM:
+    case TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM:
+      // These administrative RPCs are handled by subclasses.
+      return false;
       break;
-    case START_HOSTED_PROGRAM:
-      // This is not processed by this channel; See e.g., HandleProgramCreation
-      // for how it can be processed by the child channel types.
-      break;
-    case REMOVE_HOSTED_PROGRAM:
-      // This is not meant to be sent on TaoChannels for now.
-      break;
-    case GET_RANDOM_BYTES:
+    case TAO_CHANNEL_RPC_GET_RANDOM_BYTES:
       if (!rpc.has_random()) {
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
         break;
       }
-
       result = tao.GetRandomBytes(rpc.random().size(), &result_data);
       resp.set_data(result_data);
       break;
-    case SEAL:
+    case TAO_CHANNEL_RPC_SEAL:
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply data for Seal";
         break;
       }
-
       result = tao.Seal(hash, rpc.data(), &result_data);
       resp.set_data(result_data);
       break;
-    case UNSEAL:
+    case TAO_CHANNEL_RPC_UNSEAL:
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
         break;
       }
-
       result = tao.Unseal(hash, rpc.data(), &result_data);
       resp.set_data(result_data);
       break;
-    case ATTEST:
+    case TAO_CHANNEL_RPC_ATTEST:
       result = tao.Attest(hash, rpc.data(), &result_data);
       resp.set_data(result_data);
       break;

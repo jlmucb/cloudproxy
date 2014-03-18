@@ -28,6 +28,8 @@
 #include <keyczar/base/values.h>
 #include <keyczar/keyczar.h>
 
+#include "tao/attestation.pb.h"
+#include "tao/keys.pb.h"
 #include "tao/root_auth.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"

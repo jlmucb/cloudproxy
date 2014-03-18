@@ -23,11 +23,20 @@
 #include <glog/logging.h>
 
 namespace tao {
+bool TaoChildChannel::Shutdown() const {
+  TaoChannelRPC rpc;
+  rpc.set_rpc(TAO_CHANNEL_RPC_SHUTDOWN);
+  SendRPC(rpc);
+  TaoChannelResponse resp;
+  GetResponse(&resp);
+  return resp.success();
+}
+
 bool TaoChildChannel::StartHostedProgram(const string &path,
                                          const list<string> &args,
-                                         string *identifier) {
+                                         string *identifier) const {
   TaoChannelRPC rpc;
-  rpc.set_rpc(START_HOSTED_PROGRAM);
+  rpc.set_rpc(TAO_CHANNEL_RPC_START_HOSTED_PROGRAM);
 
   StartHostedProgramArgs *shpa = rpc.mutable_start();
   shpa->set_path(path);
@@ -54,9 +63,9 @@ bool TaoChildChannel::StartHostedProgram(const string &path,
   return resp.success();
 }
 
-bool TaoChildChannel::RemoveHostedProgram(const string &child_hash) {
+bool TaoChildChannel::RemoveHostedProgram(const string &child_hash) const {
   TaoChannelRPC rpc;
-  rpc.set_rpc(REMOVE_HOSTED_PROGRAM);
+  rpc.set_rpc(TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM);
   rpc.set_data(child_hash);
 
   SendRPC(rpc);
@@ -69,7 +78,7 @@ bool TaoChildChannel::RemoveHostedProgram(const string &child_hash) {
 
 bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
   TaoChannelRPC rpc;
-  rpc.set_rpc(GET_RANDOM_BYTES);
+  rpc.set_rpc(TAO_CHANNEL_RPC_GET_RANDOM_BYTES);
   GetRandomBytesArgs *grba = rpc.mutable_random();
   grba->set_size(size);
 
@@ -117,16 +126,16 @@ bool TaoChildChannel::SendAndReceiveData(const string &in, string *out,
 }
 
 bool TaoChildChannel::Seal(const string &data, string *sealed) const {
-  return SendAndReceiveData(data, sealed, SEAL);
+  return SendAndReceiveData(data, sealed, TAO_CHANNEL_RPC_SEAL);
 }
 
 bool TaoChildChannel::Unseal(const string &sealed, string *data) const {
-  return SendAndReceiveData(sealed, data, UNSEAL);
+  return SendAndReceiveData(sealed, data, TAO_CHANNEL_RPC_UNSEAL);
 }
 
 bool TaoChildChannel::Attest(const string &data, string *attestation) const {
   TaoChannelRPC rpc;
-  rpc.set_rpc(ATTEST);
+  rpc.set_rpc(TAO_CHANNEL_RPC_ATTEST);
   rpc.set_data(data);
   SendRPC(rpc);
 

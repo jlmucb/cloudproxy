@@ -21,9 +21,19 @@
 package tao;
 
 enum RPC {
-  INIT = 0; DESTROY = 1; START_HOSTED_PROGRAM = 2; REMOVE_HOSTED_PROGRAM = 3;
-      GET_RANDOM_BYTES = 4; SEAL = 5; UNSEAL = 6; ATTEST = 7;
-} message TaoChannelRPC {
+  TAO_CHANNEL_RPC_UNKNOWN = 0;  // unused
+  // Administrative RPCs
+  TAO_CHANNEL_RPC_SHUTDOWN = 1;
+  TAO_CHANNEL_RPC_START_HOSTED_PROGRAM = 2;
+  TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM = 3;
+  // Hosted-program RPCs
+  TAO_CHANNEL_RPC_GET_RANDOM_BYTES = 4;
+  TAO_CHANNEL_RPC_SEAL = 5;
+  TAO_CHANNEL_RPC_UNSEAL = 6;
+  TAO_CHANNEL_RPC_ATTEST = 7;
+}
+
+message TaoChannelRPC {
   required RPC rpc = 1;
   optional bytes data = 2;
   optional bytes signature = 3;
@@ -42,4 +52,6 @@ message StartHostedProgramArgs {
   repeated string args = 2;
 }
 
-message GetRandomBytesArgs { required int32 size = 1; }
+message GetRandomBytesArgs {
+  required int32 size = 1;
+}

@@ -35,7 +35,6 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/hosted_programs.pb.h"
-#include "tao/keyczar_public_key.pb.h"
 #include "tao/util.h"
 
 using keyczar::Verifier;
@@ -53,7 +52,8 @@ bool WhitelistAuth::IsAuthorized(const string &hash, const string &alg,
       return true;
   }
   LOG(WARNING) << "The principal " << hash << ":" << alg << ":" << name
-               << " was not found on the whitelist";
+               << "\nwas not found on the whitelist, which contains:\n"
+               << DebugString() << "\n";
   return false;
 }
 
@@ -67,7 +67,8 @@ bool WhitelistAuth::IsAuthorized(const string &hash, const string &alg,
     }
   }
   LOG(WARNING) << "The principal " << hash << ":" << alg << ":*"
-               << " was not found on the whitelist";
+               << "\nwas not found on the whitelist, which contains:\n"
+               << DebugString() << "\n";
   return false;
 }
 
@@ -116,7 +117,8 @@ bool WhitelistAuth::VerifyAttestation(const string &attestation,
 
   data->assign(s.data().data(), s.data().size());
 
-  VLOG(1) << "The attestation passed verification";
+  VLOG(1) << "The attestation passed verification.";
+  VLOG(3) << "Attestation: " << tao::DebugString(a);
 
   return true;
 }
@@ -342,7 +344,7 @@ bool WhitelistAuth::Forbid(const string &name) {
   return found;
 }
 
-string WhitelistAuth::DebugString() {
+string WhitelistAuth::DebugString() const {
   std::stringstream out;
   out << "Whitelist of " << whitelist_.programs_size() << " authorizations";
   for (int i = 0; i < whitelist_.programs_size(); i++) {

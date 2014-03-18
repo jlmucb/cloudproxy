@@ -31,9 +31,9 @@
 #include "tao/attestation.pb.h"
 #include "tao/hosted_program_factory.h"
 #include "tao/hosted_programs.pb.h"
-#include "tao/keyczar_public_key.pb.h"
 #include "tao/sealed_data.pb.h"
 #include "tao/tao_auth.h"
+#include "tao/tao_ca.pb.h"
 #include "tao/tao_channel.h"
 #include "tao/tao_child_channel.h"
 #include "tao/util.h"
@@ -271,11 +271,18 @@ bool LinuxTao::GetTaoCAAttestation() {
     LOG(ERROR) << "Could not load the self-signed attestation";
     return false;
   }
+  // Check the existing attestation
+  string key_data;
+  if (!admin_->VerifyAttestation(serialized_attestation, &key_data)) {
+    LOG(ERROR) << "The original attestation did not pass verification";
+    return false;
+  }
   Attestation *attest = req.mutable_attestation();
   if (!attest->ParseFromString(serialized_attestation)) {
     LOG(ERROR) << "Could not deserialize the attestation to our key";
     return false;
   }
+
   string host = admin_->GetTaoCAHost();
   string port = admin_->GetTaoCAPort();
   ScopedFd sock(new int(-1));
@@ -304,6 +311,8 @@ bool LinuxTao::GetTaoCAAttestation() {
   }
   const Attestation &new_attest = resp.attestation();
 
+  VLOG(0) << "Got new attestation " << new_attest.DebugString();
+
   // Check the attestation to make sure it passes verification.
   if (new_attest.type() != ROOT) {
     LOG(ERROR) << "Expected a Root attestation from TCCA";
@@ -316,15 +325,14 @@ bool LinuxTao::GetTaoCAAttestation() {
     return false;
   }
 
-  string dummy_data;
-  if (!admin_->VerifyAttestation(serialized, &dummy_data)) {
-    LOG(ERROR) << "The attestation did not pass verification";
+  string resp_key_data;
+  if (!admin_->VerifyAttestation(serialized, &resp_key_data)) {
+    LOG(ERROR) << "The new attestation did not pass verification";
     return false;
   }
 
-  if (new_attest.serialized_statement() != attest->serialized_statement()) {
-    LOG(ERROR) << "The statement in the new attestation doesn't match our "
-                  "original statement";
+  if (resp_key_data != key_data) {
+    LOG(ERROR) << "The key in the new attestation doesn't match original key";
     return false;
   }
   if (!WriteStringToFile(keys_->AttestationPath(), serialized)) {

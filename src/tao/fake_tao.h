@@ -41,6 +41,9 @@ class FakeTao : public Tao {
   FakeTao() {}
   virtual ~FakeTao() {}
 
+  /// Init is not appropriate for FakeTao. Use one of the init methods below.
+  virtual bool Init() { return false; }
+
   /// Use temporary keys for signing and sealing. This version stands in for a
   /// hardware TPM, but no attestation will be generated.
   virtual bool InitTemporaryTPM();

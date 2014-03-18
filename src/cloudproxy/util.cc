@@ -30,7 +30,6 @@
 #include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/file_server.h"
 #include "cloudproxy/util.h"
-#include "tao/keyczar_public_key.pb.h"
 #include "tao/keys.h"
 #include "tao/tao_auth.h"
 #include "tao/util.h"

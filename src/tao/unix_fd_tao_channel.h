@@ -21,6 +21,7 @@
 #ifndef TAO_UNIX_FD_TAO_CHANNEL_H_
 #define TAO_UNIX_FD_TAO_CHANNEL_H_
 
+#include <list>
 #include <map>
 #include <mutex>
 #include <string>
@@ -31,62 +32,67 @@
 #include "tao/tao_channel.h"
 #include "tao/util.h"
 
-using std::map;
-using std::mutex;
-using std::pair;
-
 namespace tao {
-/// A TaoChannel that communicates over file descriptors
-/// set up with pipe(2) and listens to multiple connections with select. This
+/// A TaoChannel that communicates over file descriptors set up with pipe(2) or
+/// libvirt and listens to multiple connections with select. This
 /// class does not implementation all the TaoChannel methods; it contains all
 /// the file descriptor listening logic, and subclasses add methods for creating
 /// and managing specific kinds of channels.
 class UnixFdTaoChannel : public TaoChannel {
  public:
-  /// Construct a UnixFdTaoChannel with a process creation socket at a given
-  /// path.
-  /// @param socket_path A path at which to create a Unix domain socket.
-  /// @param stop_socket_path A path at which to create a Unix domain socket
-  /// used to stop the channel.
-  UnixFdTaoChannel(const string &socket_path, const string &stop_socket_path);
+  /// Construct a UnixFdTaoChannel.
+  /// @param socket_path Location to create a Unix domain socket for handling
+  /// administrative requests.
+  explicit UnixFdTaoChannel(const string &socket_path);
   virtual ~UnixFdTaoChannel();
-
-  /// Listen on all open channels and the Unix domain socket for hosted-program
-  /// creation requests and RPCs from hosted programs.
-  /// @param tao The Tao to handle RPCs.
-  virtual bool Listen(Tao *tao);
 
   /// Create the sockets specified by the constructor.
   virtual bool Init();
 
-  /// Remove the sockets created in init.
+  /// Listen on all open channels and on the Unix domain socket for RPCs from
+  /// hosted or administrative programs. This method returns when
+  /// either a SIGTERM signal is received or when a SHUTDOWN request is
+  /// received from a child.
+  /// @param tao The Tao to handle hosted-program RPCs.
+  virtual bool Listen(Tao *tao);
+
+  /// Close the sockets created in Init.
   virtual bool Destroy();
 
  protected:
-  // A mutex for protecting access to descriptors.
-  mutable mutex data_m_;
+  /// A mutex for protecting access to descriptors.
+  mutable std::mutex data_m_;
 
-  // A mutex for setting up and removing the sockets.
-  mutex socket_m_;
+  /// A mutex for setting up and removing the sockets.
+  std::mutex socket_m_;
 
-  // The path to the Unix domain socket that manages requests to stop.
-  string stop_socket_path_;
-
-  // The open file descriptor for the Unix domain socket that receives
-  // requests to stop the listen operation.
-  ScopedFd stop_socket_;
-
-  // The path to the Unix domain socket that manages program creation requests.
+  /// The path to the Unix domain socket for administrative requests.
   string domain_socket_path_;
 
-  // The open file descriptor for the Unix domain socket that receives
-  // hosted-program creation requests.
+  /// The open file descriptor for the Unix domain socket that accepts
+  /// connections over which administrative requests will be received.
   ScopedFd domain_socket_;
 
-  // A map from a child hash to a pair of file descriptors. The first file
-  // descriptor is the read descriptor, and the second descriptor is the write
-  // descriptor. These can be the same descriptor.
-  map<string, pair<int, int>> descriptors_;
+  /// A list of file descriptors accepted from domain_socket_.
+  std::list<int> domain_descriptors_;
+
+  /// A map from a child hash to a pair of file descriptors. The first file
+  /// descriptor is the read descriptor, and the second descriptor is the write
+  /// descriptor. These can be the same descriptor.
+  std::map<string, std::pair<int, int>> descriptors_;
+
+  /// Handle incoming messages on the channel.
+  /// @param tao The Tao implementation that handles the message.
+  /// @param hash The hash of the hosted program that sent the message,
+  /// or emptystring for the administrative channel.
+  /// @param fd The file descriptor to send the reply to if hash is emptystring,
+  /// ignored otherwise.
+  /// @param rpc The RPC containing the received message.
+  /// @param[out] request_shutdown Set to true on shutdown request.
+  /// @param[out] remove_child_hash Hash of a child to be removed by caller.
+  virtual bool HandleRPC(Tao &tao, const string &hash,  // NOLINT
+                         int fd, const TaoChannelRPC &rpc,
+                         bool *requests_shutdown);
 
   /// Receive a message by performing a read() on a file descriptor.
   /// @param[out] m The received message
@@ -106,13 +112,17 @@ class UnixFdTaoChannel : public TaoChannel {
  private:
   /// Receive a datagram message on a unix socket and uses this information to
   /// create a hosted program through the Tao.
-  bool HandleProgramCreation(Tao *tao, int sock, string *identifier,
-                             struct sockaddr *addr, socklen_t *addr_len);
+  /// @param rpc The message containing program start parameters.
+  /// @param tao The host tao.
+  /// @param[out] identifier The identifier of the new host program.
+  bool HandleProgramCreation(const TaoChannelRPC &rpc, Tao *tao,
+                             string *identifier);
 
-  /// Handle messages from a hosted program.
-  /// @param tao The Tao implementation that will handle the message.
-  /// @param child_hash The hosted program that send the message.
-  bool MessageHandler(Tao *tao, const string &child_hash);
+  /// Remove from descriptors_ any programs that have encountered errors.
+  bool CleanErasedPrograms();
+
+  /// Programs that have encountered errors and need to be cleaned up.
+  std::list<string> programs_to_erase_;
 
   DISALLOW_COPY_AND_ASSIGN(UnixFdTaoChannel);
 };

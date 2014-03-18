@@ -31,10 +31,12 @@
 
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <google/protobuf/text_format.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
@@ -43,6 +45,7 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
+#include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/kvm_unix_tao_child_channel.h"
 #include "tao/pipe_tao_child_channel.h"
@@ -51,10 +54,15 @@
 #include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"
 
+using std::lock_guard;
 using std::mutex;
 using std::shared_ptr;
+using std::stringstream;
 using std::vector;
 
+using google::protobuf::Descriptor;
+using google::protobuf::FieldDescriptor;
+using google::protobuf::TextFormat;
 using keyczar::CryptoFactory;
 using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
@@ -230,6 +238,91 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   return InitializeOpenSSL();
 }
 
+// TODO(kwalsh) handle interaction between multi-threading and signals
+static mutex selfPipeMutex;
+static int selfPipe[2] = {-1, -1};
+static int selfPipeSignum;
+static struct sigaction selfPipeSavedAction;
+
+static void SelfPipeHandler(int signum) {
+  int savedErrno = errno;
+  char b = static_cast<char>(signum);
+  write(selfPipe[1], &b, 1);
+  errno = savedErrno;
+}
+
+static bool SetFdFlags(int fd, int flags) {
+  int f = fcntl(fd, F_GETFL);
+  if (f == -1) {
+    LOG(ERROR) << "Could not get flags for fd " << fd;
+    return false;
+  }
+  if (fcntl(fd, F_SETFL, f | flags) == -1) {
+    LOG(ERROR) << "Could not set flags for fd " << fd;
+    return false;
+  }
+  return true;
+}
+
+// TODO(kwalsh) Take multiple signums if needed.
+int GetSelfPipeSignalFd(int signum) {
+  {
+    lock_guard<mutex> l(selfPipeMutex);
+    if (selfPipe[0] != -1) {
+      LOG(ERROR) << "Self-pipe already opened";
+      return -1;
+    }
+    if (pipe(selfPipe) == -1) {
+      LOG(ERROR) << "Could not create self-pipe";
+      return -1;
+    }
+    if (!SetFdFlags(selfPipe[0], O_NONBLOCK) ||
+        !SetFdFlags(selfPipe[1], O_NONBLOCK)) {
+      PLOG(ERROR) << "Could not set self-pipe disposition";
+      close(selfPipe[0]);
+      close(selfPipe[1]);
+      selfPipe[0] = selfPipe[1] = -1;
+      return -1;
+    }
+    struct sigaction act;
+    memset(&act, 0, sizeof(struct sigaction));
+    act.sa_handler = SelfPipeHandler;
+    selfPipeSignum = signum;
+    if (sigaction(signum, &act, &selfPipeSavedAction) < 0) {
+      PLOG(ERROR) << "Could not set self-pipe handler";
+      close(selfPipe[0]);
+      close(selfPipe[1]);
+      selfPipe[0] = selfPipe[1] = -1;
+      return false;
+    }
+    return selfPipe[0];
+  }
+}
+
+bool ReleaseSelfPipeSignalFd(int fd) {
+  lock_guard<mutex> l(selfPipeMutex);
+  if (fd == -1 || selfPipe[0] != fd) {
+    LOG(ERROR) << "Incorrect self-pipe fd " << fd;
+    return false;
+  }
+  if (sigaction(selfPipeSignum, &selfPipeSavedAction, nullptr) < 0) {
+    PLOG(ERROR) << "Could not restore the old signal handler.";
+  }
+  close(selfPipe[0]);
+  close(selfPipe[1]);
+  selfPipe[0] = selfPipe[1] = -1;
+  return true;
+}
+
+void selfpipe_release(int *fd) {
+  if (fd && *fd >= 0) {
+    if (!ReleaseSelfPipeSignalFd(*fd)) {
+      PLOG(ERROR) << "Could not close self-pipe fd " << *fd;
+    }
+    delete fd;
+  }
+}
+
 bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   if (sock == nullptr) {
     LOG(ERROR) << "null socket parameter";
@@ -259,9 +352,9 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
 
   struct addrinfo *addrs = nullptr;
   int info_err = getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
-  if (info_err == -1) {
-    PLOG(ERROR) << "Could not get address information for " << host << ":"
-                << port;
+  if (info_err != 0) {
+    LOG(ERROR) << "Could not get address information for " << host << ":"
+               << port;
     return false;
   }
 
@@ -362,7 +455,7 @@ bool SendMessage(int fd, const google::protobuf::Message &m) {
 }
 
 bool SendMessageTo(int fd, const google::protobuf::Message &m,
-                   struct ::sockaddr *addr, socklen_t addr_len) {
+                   const struct sockaddr *addr, socklen_t addr_len) {
   // send the length then the serialized message
   string serialized;
   if (!m.SerializeToString(&serialized)) {
@@ -388,6 +481,7 @@ bool SendMessageTo(int fd, const google::protobuf::Message &m,
 
 bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
                         struct sockaddr *addr, socklen_t *addr_len) {
+  // TODO(kwalsh) better handling of addr, addrlen, and recvfrom
   if (m == nullptr) {
     LOG(ERROR) << "null message";
     return false;
@@ -504,7 +598,7 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
 
 bool OpenUnixDomainSocket(const string &path, int *sock) {
   // The unix domain socket is used to listen for CreateHostedProgram requests.
-  *sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  *sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (*sock == -1) {
     LOG(ERROR) << "Could not create unix domain socket to listen for messages";
     return false;
@@ -541,6 +635,12 @@ bool OpenUnixDomainSocket(const string &path, int *sock) {
     return false;
   }
 
+  int listen_err = listen(*sock, 128 /* max completed connections */);
+  if (listen_err == -1) {
+    PLOG(ERROR) << "Could not set the socket up for listening";
+    return false;
+  }
+
   return true;
 }
 
@@ -550,7 +650,7 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock) {
     return false;
   }
 
-  *sock = socket(PF_UNIX, SOCK_DGRAM, 0);
+  *sock = socket(PF_UNIX, SOCK_STREAM, 0);
   if (*sock == -1) {
     PLOG(ERROR) << "Could not create a unix domain socket";
     return false;
@@ -638,11 +738,9 @@ bool GenerateAttestation(const Keys &key, const string &cert,
   }
 
   VLOG(5) << "Generated " << (cert.empty() ? "ROOT" : "INTERMEDIATE")
-          << "attestation\n"
-          << "  with key named " << key.Name() << "\n"
-          << "  with Attestation = " << attestation->DebugString() << "\n"
-          << "  with Statement = " << statement->DebugString() << "\n"
-          << "  with cert = " << cert;
+          << " attestation\n"
+          << " with key named " << key.Name() << "\n"
+          << " and Attestation " << DebugString(*attestation) << "\n";
 
   return true;
 }
@@ -657,6 +755,115 @@ bool GenerateAttestation(const Keys &key, const string &cert,
     return false;
   }
   return true;
+}
+
+/// Indent each line of a string after the first line.
+/// @param prefix The prefix to put after each newline.
+/// @param s The string to be indented.
+string Indent(const string &prefix, const string &s) {
+  stringstream out;
+  for (unsigned int i = 0; i < s.size(); i++) {
+    out << s[i];
+    if (s[i] == '\n') out << prefix;
+  }
+  return out.str();
+}
+
+/// Pretty-print a timestamp in "ddd yyyy-mm-dd hh:mm:ss zzz" format.
+/// @param t The 64-bit unix time to be pretty-printed.
+string DebugString(time_t t) {
+  char buf[80];
+  struct tm ts;
+  localtime_r(&t, &ts);
+  strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
+  return string(buf);
+}
+
+string DebugString(const Attestation &a) {
+  stringstream out;
+  string s;
+  Statement stmt;
+  Attestation cert;
+  const Descriptor *desc = a.GetDescriptor();
+  const FieldDescriptor *fType =
+      desc->FindFieldByNumber(Attestation::kTypeFieldNumber);
+  const FieldDescriptor *fSignature =
+      desc->FindFieldByNumber(Attestation::kSignatureFieldNumber);
+  const FieldDescriptor *fQuote =
+      desc->FindFieldByNumber(Attestation::kQuoteFieldNumber);
+
+  // type
+  TextFormat::PrintFieldValueToString(a, fType, -1, &s);
+  out << "type: " << s << "\n";
+
+  // statement
+  if (!a.has_serialized_statement())
+    s = "(none)";
+  else if (!stmt.ParseFromString(a.serialized_statement()))
+    s = "(unparsable)";
+  else
+    s = Indent("  ", DebugString(stmt));
+  out << "statement: " << s << "\n";
+
+  // signature
+  if (!a.has_signature())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(a, fSignature, -1, &s);
+  out << "signature: " << s << "\n";
+
+  // quote
+  if (a.has_quote())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(a, fQuote, -1, &s);
+  out << "quote: " << s << "\n";
+
+  // cert
+  if (!a.has_cert())
+    s = "(none)";
+  else if (!cert.ParseFromString(a.cert()))
+    s = "(unparsable)";
+  else
+    s = Indent("  ", DebugString(cert));
+  out << "cert: " << s << "\n";
+
+  return "{\n  " + Indent("  ", out.str()) + "}";
+}
+
+string DebugString(const Statement &stmt) {
+  stringstream out;
+  string s;
+  const Descriptor *desc = stmt.GetDescriptor();
+  const FieldDescriptor *fData =
+      desc->FindFieldByNumber(Statement::kDataFieldNumber);
+  const FieldDescriptor *fHash =
+      desc->FindFieldByNumber(Statement::kHashFieldNumber);
+  const FieldDescriptor *fHashAlg =
+      desc->FindFieldByNumber(Statement::kHashAlgFieldNumber);
+
+  s = DebugString(static_cast<time_t>(stmt.time()));
+  out << "time: " << s << "\n";
+
+  s = DebugString(static_cast<time_t>(stmt.expiration()));
+  out << "expiration: " << s << "\n";
+
+  TextFormat::PrintFieldValueToString(stmt, fData, -1, &s);
+  out << "data: " << s << "\n";
+
+  if (!stmt.has_hash_alg())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(stmt, fHashAlg, -1, &s);
+  out << "hash_alg: " << s << "\n";
+
+  if (!stmt.has_hash())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(stmt, fHash, -1, &s);
+  out << "hash: " << s << "\n";
+
+  return "{\n  " + Indent("  ", out.str()) + "}";
 }
 
 bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,

@@ -46,9 +46,7 @@ using tao::TaoDomain;
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(keys_path, "linux_tao_keys", "Location of linux tao keys");
 DEFINE_string(program_socket, "_linux_tao_socket",
-              "File socket for incoming program creation requests");
-DEFINE_string(stop_socket, "_linux_tao_stop_socket",
-              "File socket for stopping the server");
+              "File socket for incoming administrative requests");
 DEFINE_string(aik_blob, "tpm/aikblob", "The AIK blob from the TPM");
 DEFINE_string(aik_attestation, "tpm/aik.attest",
               "The attestation to the AIK by the policy key");
@@ -76,7 +74,7 @@ int main(int argc, char **argv) {
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
   scoped_ptr<KvmUnixTaoChannel> kvm_channel(
-      new KvmUnixTaoChannel(FLAGS_program_socket, FLAGS_stop_socket));
+      new KvmUnixTaoChannel(FLAGS_program_socket));
   CHECK(kvm_channel->Init()) << "Could not init the TaoChannel";
   scoped_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
   CHECK(vm_factory->Init()) << "Could not initialize the VM factory";

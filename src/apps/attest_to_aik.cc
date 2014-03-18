@@ -144,7 +144,10 @@ int main(int argc, char **argv) {
 
   // sign this serialized data with policy key
   string attestation;
-  if (admin->AttestByRoot(&s, &attestation)) return 1;
+  if (!admin->AttestByRoot(&s, &attestation)) {
+    LOG(ERROR) << "Could not attest using policy key";
+    return 1;
+  }
 
   // save to file
   if (!WriteStringToFile(FLAGS_aik_attest_file, attestation)) {

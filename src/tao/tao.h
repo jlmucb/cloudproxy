@@ -65,6 +65,9 @@ class Tao {
   Tao() {}
   virtual ~Tao() {}
 
+  /// Initialize and acquire resources.
+  virtual bool Init() = 0;
+
   /// Clean up an resources that were allocated in Init().
   virtual bool Destroy() = 0;
 

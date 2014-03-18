@@ -46,10 +46,9 @@ class KvmVmFactoryTest : public ::testing::Test {
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("kvm_unix_tao_test", &temp_dir_));
 
-    creation_socket_ = *temp_dir_ + string("/creation_socket");
-    stop_socket_ = *temp_dir_ + string("/stop_socket");
+    string domain_socket = *temp_dir_ + "/domain_socket";
 
-    channel_.reset(new KvmUnixTaoChannel(creation_socket_, stop_socket_));
+    channel_.reset(new KvmUnixTaoChannel(domain_socket));
 
     child_hash_ = "Fake hash";
     ASSERT_TRUE(channel_->AddChildChannel(child_hash_, &params_))
@@ -65,8 +64,6 @@ class KvmVmFactoryTest : public ::testing::Test {
   scoped_ptr<KvmUnixTaoChannel> channel_;
   scoped_ptr<KvmVmFactory> factory_;
   ScopedTempDir temp_dir_;
-  string creation_socket_;
-  string stop_socket_;
   string params_;
   string encoded_params_;
   string child_hash_;

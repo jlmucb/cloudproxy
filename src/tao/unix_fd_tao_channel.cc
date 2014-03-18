@@ -160,7 +160,6 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       break;  // Abnormal termination.
     }
 
-    // Check
     if (FD_ISSET(*stop_fd, &read_fds)) {
       char b;
       if (read(*stop_fd, &b, 1) < 0) {
@@ -175,16 +174,18 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
 
     list<int> sockets_to_close;
     for (int fd : domain_descriptors_) {
-      TaoChannelRPC rpc;
-      if (!tao::ReceiveMessage(fd, &rpc)) {
-        LOG(ERROR) << "Could not receive RPC on an admin channel";
-        sockets_to_close.push_back(fd);
-        continue;
-      }
-      if (!HandleRPC(*tao, "" /* no hash */, fd, rpc, &graceful_shutdown)) {
-        LOG(WARNING) << "RPC failed";
-        sockets_to_close.push_back(fd);
-        continue;
+      if (FD_ISSET(fd, &read_fds)) {
+        TaoChannelRPC rpc;
+        if (!tao::ReceiveMessage(fd, &rpc)) {
+          LOG(ERROR) << "Could not receive RPC on an admin channel";
+          sockets_to_close.push_back(fd);
+          continue;
+        }
+        if (!HandleRPC(*tao, "" /* no hash */, fd, rpc, &graceful_shutdown)) {
+          LOG(WARNING) << "RPC failed";
+          sockets_to_close.push_back(fd);
+          continue;
+        }
       }
     }
     for (int fd : sockets_to_close) {

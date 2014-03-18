@@ -98,7 +98,7 @@ ln -s $root_dir/src/out/$test_ver/bin bin
 mkdir -p logs
 cat <<END
 Done installing. 
-  $test_dir/bin               # Link to out/$test_rel/bin.
+  $test_dir/bin               # Link to out/$test_ver/bin.
   $test_dir/logs              # Log files.
   $test_dir/scripts           # Useful scripts.
 Typical next steps:
@@ -198,23 +198,28 @@ function setup()
 	mkdir -p logs
 
 	$admin -init ${ROOT}/run/tao-default.config -name testing 
-	if [ "$USE_TPM" -eq "yes" ]; then
+	if [ "$USE_TPM" == "yes" ]; then
+		echo "Creating and attesting a new TPM AIK."
 		mkdir -p tpm
-		bin/make_aik --aik_blob_file tpm/aikblob
-		bin/make_aik $ADMIN_ARGS --aik_blob_file tpm/aikblob \
+		bin/make_aik -alsologtostderr=1 --aik_blob_file tpm/aikblob
+		bin/attest_to_aik $ADMIN_ARGS --aik_blob_file tpm/aikblob \
 			--aik_attest_file tpm/aik.attest
 		PCRS=`bin/get_pcrs`
 	    $admin -whitelist "${PCRS}:PCR_SHA1:Linux"
 	else
+		echo "Creating and attesting a new fake TPM key."
 		$admin -make_fake_tpm fake_tpm
 		$admin -whitelist "FAKE_TPM:FAKE_HASH:BogusTPM"
 		# fixme: this should be FAKE_HASH, not SHA256, but the channels
 		# don't yet support hash_alg parameter
 		$admin -whitelist "FAKE_PCRS:SHA256:Linux"
-		$admin -whitelist ${HOSTED_PROGRAMS// /,}
 	fi
+	$admin -whitelist ${HOSTED_PROGRAMS// /,}
 	$admin -newusers tmroeder,jlm
 	$admin -signacl ${ROOT}/run/acls.ascii -acl_sig_path acls_sig
+	mkdir -p file_client_files
+	mkdir -p file_server_files
+	mkdir -p file_server_meta
 	echo "Tao configuration is ready"
 }
 
@@ -290,6 +295,10 @@ function testpgm()
 			kill $server_tail_pid $client_tail_pid 2>/dev/null
 			;;
 		file|fclient|fserver)
+			echo "Clean cloudproxy file server data..."
+			rm -f file_server_files/* file_server_meta/* file_client_files/*
+			# make some test data too
+			echo "test data $RANDOM" >> file_client_files/test
 			echo "Starting cloudproxy file server..."
 			server_pid=`$start_hosted  bin/fserver -- --v=2`
 			sleep 2

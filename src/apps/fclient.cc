@@ -50,7 +50,7 @@ using tao::TaoDomain;
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(file_path, "file_client_files",
               "The path used by the file server to store files");
-DEFINE_string(client_keys, "./client_keys",
+DEFINE_string(client_keys, "./fclient_keys",
               "Directory for client keys and TLS files");
 DEFINE_string(user, "tmroeder", "Name of user to authenticate");
 DEFINE_string(user_keys, "./user_keys", "Location of user keys");

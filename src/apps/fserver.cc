@@ -48,7 +48,7 @@ DEFINE_string(file_path, "file_server_files",
               "The path used by the file server to store files");
 DEFINE_string(meta_path, "file_server_meta",
               "The path used by the file server to store metadata");
-DEFINE_string(server_keys, "./fserver_key",
+DEFINE_string(server_keys, "./fserver_keys",
               "Directory for server keys and TLS files");
 DEFINE_string(acls, "./acls_sig",
               "A file containing a SignedACL signed by"

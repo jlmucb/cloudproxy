@@ -31,10 +31,12 @@
 
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <google/protobuf/text_format.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
@@ -53,8 +55,12 @@
 
 using std::mutex;
 using std::shared_ptr;
+using std::stringstream;
 using std::vector;
 
+using google::protobuf::Descriptor;
+using google::protobuf::FieldDescriptor;
+using google::protobuf::TextFormat;
 using keyczar::CryptoFactory;
 using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
@@ -638,11 +644,9 @@ bool GenerateAttestation(const Keys &key, const string &cert,
   }
 
   VLOG(5) << "Generated " << (cert.empty() ? "ROOT" : "INTERMEDIATE")
-          << "attestation\n"
-          << "  with key named " << key.Name() << "\n"
-          << "  with Attestation = " << attestation->DebugString() << "\n"
-          << "  with Statement = " << statement->DebugString() << "\n"
-          << "  with cert = " << cert;
+          << " attestation\n"
+          << " with key named " << key.Name() << "\n"
+          << " and Attestation " << DebugString(*attestation) << "\n";
 
   return true;
 }
@@ -657,6 +661,115 @@ bool GenerateAttestation(const Keys &key, const string &cert,
     return false;
   }
   return true;
+}
+
+/// Indent each line of a string after the first line.
+/// @param prefix The prefix to put after each newline.
+/// @param s The string to be indented.
+string Indent(const string &prefix, const string &s) {
+  stringstream out;
+  for (unsigned int i = 0; i < s.size(); i++) {
+    out << s[i];
+    if (s[i] == '\n') out << prefix;
+  }
+  return out.str();
+}
+
+/// Pretty-print a timestamp in "ddd yyyy-mm-dd hh:mm:ss zzz" format.
+/// @param t The 64-bit unix time to be pretty-printed.
+string DebugString(time_t t) {
+  char buf[80];
+  struct tm ts;
+  localtime_r(&t, &ts);
+  strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
+  return string(buf);
+}
+
+string DebugString(const Attestation &a) {
+  stringstream out;
+  string s;
+  Statement stmt;
+  Attestation cert;
+  const Descriptor *desc = a.GetDescriptor();
+  const FieldDescriptor *fType =
+      desc->FindFieldByNumber(Attestation::kTypeFieldNumber);
+  const FieldDescriptor *fSignature =
+      desc->FindFieldByNumber(Attestation::kSignatureFieldNumber);
+  const FieldDescriptor *fQuote =
+      desc->FindFieldByNumber(Attestation::kQuoteFieldNumber);
+
+  // type
+  TextFormat::PrintFieldValueToString(a, fType, -1, &s);
+  out << "type: " << s << "\n";
+
+  // statement
+  if (!a.has_serialized_statement())
+    s = "(none)";
+  else if (!stmt.ParseFromString(a.serialized_statement()))
+    s = "(unparsable)";
+  else
+    s = Indent("  ", DebugString(stmt));
+  out << "statement: " << s << "\n";
+
+  // signature
+  if (!a.has_signature())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(a, fSignature, -1, &s);
+  out << "signature: " << s << "\n";
+
+  // quote
+  if (a.has_quote())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(a, fQuote, -1, &s);
+  out << "quote: " << s << "\n";
+
+  // cert
+  if (!a.has_cert())
+    s = "(none)";
+  else if (!cert.ParseFromString(a.cert()))
+    s = "(unparsable)";
+  else
+    s = Indent("  ", DebugString(cert));
+  out << "cert: " << s << "\n";
+
+  return "{\n  " + Indent("  ", out.str()) + "}";
+}
+
+string DebugString(const Statement &stmt) {
+  stringstream out;
+  string s;
+  const Descriptor *desc = stmt.GetDescriptor();
+  const FieldDescriptor *fData =
+      desc->FindFieldByNumber(Statement::kDataFieldNumber);
+  const FieldDescriptor *fHash =
+      desc->FindFieldByNumber(Statement::kHashFieldNumber);
+  const FieldDescriptor *fHashAlg =
+      desc->FindFieldByNumber(Statement::kHashAlgFieldNumber);
+
+  s = DebugString(static_cast<time_t>(stmt.time()));
+  out << "time: " << s << "\n";
+
+  s = DebugString(static_cast<time_t>(stmt.expiration()));
+  out << "expiration: " << s << "\n";
+
+  TextFormat::PrintFieldValueToString(stmt, fData, -1, &s);
+  out << "data: " << s << "\n";
+
+  if (!stmt.has_hash_alg())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(stmt, fHashAlg, -1, &s);
+  out << "hash_alg: " << s << "\n";
+
+  if (!stmt.has_hash())
+    s = "(none)";
+  else
+    TextFormat::PrintFieldValueToString(stmt, fHash, -1, &s);
+  out << "hash: " << s << "\n";
+
+  return "{\n  " + Indent("  ", out.str()) + "}";
 }
 
 bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,

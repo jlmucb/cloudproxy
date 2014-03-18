@@ -167,6 +167,14 @@ bool GenerateAttestation(const Keys &key, const string &cert,
 bool GenerateAttestation(const Keys &key, const string &cert,
                          Statement *statement, string *attestation);
 
+/// Generate a pretty-printed representation of an Attestation.
+/// @param a The attestation to pretty-print.
+string DebugString(const Attestation &a);
+
+/// Generate a pretty-printed representation of a Statement.
+/// @param stmt The statement to pretty-print.
+string DebugString(const Statement &stmt);
+
 /// Generate and save a random secret, sealed against the host Tao.
 /// @param t The channel to access the host Tao.
 /// @param path The location to store the sealed secret.

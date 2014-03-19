@@ -1,0 +1,254 @@
+Authorization in CloudProxy
+===========================
+
+Current Authorization Mechanisms
+--------------------------------
+
+The current authorization mechanisms in the cloudproxy implementation are
+ad-hoc. Most are trivial identity-based policies. One can be though of as a
+approximation of a capability-based approach.
+
+### LinuxTao Execution Policy
+
+An "administrative domain" is a set of cloudproxy nodes executing various
+programs, with the nodes and programs are governed by a single domain-wide
+policy key K_pol. Authorization for a program to execute within the
+administrative domain is controlled by a set of signed attestations rooted in
+K_pol. Actually, the policy is simple in practice: A LinuxTao instance will only
+execute a program with hash H_prog if H_prog is found on the whitelist signed by
+K_pol. Essentially, the presence of H_prog on the whitelist is an attestation:
+
+   < K_pol signs attestation for H_prog >
+
+However, note that a (trusted or untrusted) TPM platform will execute any
+kernel+initrd combination.
+
+### Sealing/Unsealing Policy
+
+LinuxTao (and presumably other Tao implementations) allow any hosted program,
+e.g. with hash H_prog, to seal data. Only a hosted program with an identical
+hash H_prog, running on the same platform, is authorized to unseal the data.
+
+### CloudProxy File Server User and Access Policies
+
+The cloudproxy user manager binds each user key K_user to a user name N_user. Each binding must be
+signed directly by K_pol:
+
+  < K_pol signs binding for K_user, N_user >
+
+The cloudproxy file server implements ACLs binding user names to access rights.
+It uses a challenge/response to ensure the remote file client has the private
+half of K_user.
+
+### CloudProxy Client/Server Connection Policies
+
+Cloudproxy clients and servers communicate over TLS network connections but need
+to mutually authenticate the remote endpoint to ensure they are both part of the
+same administrative domain. To authenticate the remote endpoint requires a chain
+of attestations rooted in K_pol. Specifically, for a well-formed chain:
+ * All keys used form a simple chain rooted in K_pol,
+ * and all of the hashes mentioned appear on the whitelist signed by K_pol
+
+Currently, the whitelist signed by K_pol contains:
+* H_os for each trusted kernel+initrd (to be run on a trusted TPM platform)
+* H_prog for each trusted program (to be run on trusted kernel+initrd and TPM)
+
+We have these attestations created during setup:
+
+0. For each Fake Tao that is trusted:
+   < K_pol signs attestation for K_fake >
+
+1. For each trusted TPM platform:
+   < K_pol signs attestation for K_aik >
+
+A trusted TPM platform will execute any kernel+initrd with hash H_os and key
+K_os, but upon doing so it will issue an attestation:
+
+2. For any running kernel+initrd on this platform:
+   < K_aik signs attestation for K_os and H_os >
+
+LinuxTao only executes a program with hash H_prog and key K_prog if it is on the
+whitelist signed by K_pol, and upon doing so it will issue an attestation:
+
+3. For each authorized program running on this os:
+   < K_os signs attestation for K_prog and H_prog >
+
+Such a program can then form the chain (1)+(2)+(3)
+   < K_pol signs attestation for K_aik >
+   < K_aik signs attestation for K_os and H_os >
+   < K_os signs attestation for K_prog and H_prog >
+
+Functionally, this mechanism emulates a transferrable capability C, where "The
+owner of key K (e.g. program P) holds capability C" is interepreted as "there is
+a well-formed attestation chain for K, rooted in the policy key and with all
+hashes on the signed whitelist".  Note that any program holding C can
+arbitrarily transfer C to any other key. For example, the program above with
+hash H_prog and key K_prog could issue this attestation:
+
+4. < K_prog signs attestation for K and H_prog >
+
+Then the chain (1)+(2)+(3)+(4) is well formed. This works regardless of whether
+or not key K is actually owned by a program with hash H_prog.
+
+Program P can also issue variations of (1) as well, essentially designating new
+TPM platforms as trusted by the administrative domain:
+
+5. < K_prog signs attestation for K_aik' >
+6. < K_aik' signs attestation for K_os' and H_os >
+7. < K_os' signs attestation for K' and H_prog >
+
+Now, the chain (1)+(2)+(3)+(5)+(6)+(7) is well formed.
+
+In fact, except for H_os, the hashes mentioned in these chains serve little
+purpose. H_os is needed because TPM platforms will hand out attestations like
+(2) for any kernel+initrd without regard to whether they are on the whitelist.
+But LinuxTao is trusted to give out (3) only after having checked the whitelist.
+Presumably other intermediate principals like program P can be trusted to do the
+same since, in both cases, they are trusted not to lie about the hash anyway.
+
+### Condensed Attestation Chains
+
+TaoCA (tcca) provides a service which condenses any well-formed attestation
+chain down to a single attestation. For example, chain (1)+(2)+(3):
+
+   < K_pol signs attestation for K_aik >
+   < K_aik signs attestation for K_os and H_os >
+   < K_os signs attestation for K_prog and H_prog >
+
+would be condensed to:
+
+   < K_pol signs attestation for K_prog and H_prog >
+
+I do not see any particuarly strong motivation for doing this at this time.
+
+### Location of Authorization Mechanisms
+
+* Execution policy is implemented by LinuxTao (and a little in WhiteListAuth).
+* Seal/unseal policy is implemented by LinuxTao.
+* File server policies are implemented by FileServer and CloudUserManager.
+* Cloudproxy client/server connection policies are implemented in CloudServer
+  and (mostly) in WhitelistAuth.
+
+Open Issues
+-----------
+
+* Policy granularity is inconsistent. Seal/unseal policy is fine-grained (the
+  program hash must match exactly, and program must be running on the same host
+  platform). Cloudproxy client/server connection policy is very coarse-grained
+  (a transferrable capability, essentially). The LinuxTao execution policy is
+  somewhere in the middle. Why do they not all use the same policy?
+
+* Policy is implicit in code. To figure out what the policy is requires digging
+  through a lot of code.
+
+* Policy is rigid. Except for the ACLs implemented by file server and the
+  whitelist signed by K_pol, there is very little flexibility in chosing
+  policies. And changing a policy in any significant way requires changing and
+  redeploying code.
+
+* Policy checking is expensive. Even though all of these platforms are trusted
+  and communicate over secure channels, we still do a lot of asymmetric key
+  operations. These keys are big and are expensive to generate and use.
+
+Proposals
+---------
+
+### Symmetric and Identity-Based (ID) Cryptography
+
+Where possible, we should be using symmetric cryptography. But for many
+principals, we should ideally use some form of ID-based cryptography. For
+example, assuming LinuxTao has a symmetric or asymmetric key, we should leverage
+that to generate ID-based keys for each hosted program, where the ID is an
+encoding of the program hash, name, and other parameters. This would essentially
+make explicit that hosted programs are sub-principals of LinuxTao. 
+
+Note: Macaroons are, essentially, one way of doing ID-based symmetric keys. By
+creating a sub-token and giving it to some other principal, you are essentially
+creating a new sub-key, the bearer of which acts on behalf of the corresponding
+sub-principal. There are plenty of other ID-based crypto schemes, though.
+
+### Explicit Logic-based and Proof-Based Authorization
+
+Already the Attestation, Statement, and SignedSpeaksFor objects in the code are
+becoming unwieldy. It is not at all clear what the semantics of these objects
+are, what the various combinations of optional fields mean, etc. And this is
+only enough to support the very limited policies that are currently implemented.
+Leaving aside questions of where to implement various functionality, it seems
+clear that we should explicitly define a logic -- the semantics and encoding of
+formulas and proofs -- to be used within the implementation. Statements and
+SignedSpeaksFor objects would become encoded formulas. Attestation chains would
+be Proofs.
+
+### Location of Authorization Mechanisms: Macaroons
+
+The most difficult question is where to locate the mechanisms. 
+
+Macaroons has one answer:
+* Servers have some built-in functionality that is sufficient for checking a
+  variety of simple policies. Each server can implement different conditions.
+* More complex policies are pushed to external, third-party verifiers. 
+* Clients (recipients of tokens) do varying amounts of work, depending on the
+  policy.
+
+In the simplest cases, recipients of macaroon tokens do not need much mechanism.
+The token is, essentially, a proof that the bearer is authorized, so they simply
+send the token with a request and hope that it is sufficient. If a principal has
+many tokens avaialable, it isn't clear how to decide which to send (since the
+principal can't necessarily check or even understand the various conditions
+embedded in the tokens). And if the token contains third-party caveats, then the
+client must obtain the necessary tokens out-of-band and send these together with
+the original token, all using unspecified client-side mechanisms.
+
+Macaroon delegation in the simplest cases is trivial: just forward a token to
+another principal. In more complex cases, unspecified client-side mechanisms are
+used to decide which conditions to embed within sub-tokens before forwarding
+them to other principals.
+
+### Location of Authorization Mechanisms: Code modules
+
+Presumably, within an authorization domain, a checker can be some external code
+module, with certain parameters, run on any of the trusted platforms within the
+domain. If we have id-based crypto, then fitting this into the macaroon
+framework is simple as well, we just add a condition that uses the checker's
+keys, and encodes the parameters into the statement the checker must make.
+
+Question: Should servers run these automatically on behalf of themselves? Or on
+behalf of clients? Or should clients run these to obtain a token, which is
+passed to the server.  It seems that the principal adding the condition should
+be responsible for running the module.
+
+### Notes on Macaroons
+
+Macaroons proposes, essentially, a proof carrying authorization with 
+a. unique, random goal formulas for each policy,
+b. a very limited, built-in proof system,
+c. and an extensibility mechanism based on external third-party proof checkers.
+
+The goal formula is always of the form
+  K says OK
+where K is a random symmetric key. K is then given out to one or more
+principals. Those principals can send back < K says OK > at any time, or they
+can generate an attestation:
+  K says (conditions imply (K2 speaks for K))
+and hand out K2 to one or more other principals. Eventually we get a chain:
+  K says (conditions imply (K2 speaks for K))
+  K2 says (conditions2 imply (K3 speaks for K2))
+  K3 says (conditions3 imply (K4 speaks for K3))
+  K4 says OK
+
+The proof system only has says, speaksfor, and conditions. The conditions are
+simple and are directly checkable by the server that is checking the policy (and
+not necessarily checkable by others).
+
+External third-party proof checkers are made using a condition of the form "Ke
+says OK" where Ke is a key held by the third-party. In this case, to use e.g.
+  K3 says ((Ke says OK) imply (K4 speaks for K3))
+We would need a second chain rooted in Ke, e.g.
+  Ke says (conditions' imply (Ke2 speaks for Ke))
+  Ke2 says (conditions2' imply (Ke3 speaks for Ke2))
+  Ke3 says OK
+Note that here, conditions' and conditions2' are still relative the original
+first-party server that is checking the policy. However, Ke3 would presumably
+only issue (Ke3 says OK) after having checked some proof.
+
+

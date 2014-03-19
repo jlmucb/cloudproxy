@@ -251,4 +251,54 @@ Note that here, conditions' and conditions2' are still relative the original
 first-party server that is checking the policy. However, Ke3 would presumably
 only issue (Ke3 says OK) after having checked some proof.
 
+Notes on 19-3-2014 Discussion with kwalsh, tmroeder
+---------------------------------------------------
+
+Tom relays John's desire to use a simple, flat namespace where possible, rather
+than hierarchical names. Kevin agrees, except that the flat names should either
+be semantically meaningful (or, failing that, completely opaque).  The current
+scheme is neither really meaninful nor opaque: tcca keeps the hashes at the
+lowest level of the name (e.g. the program hash) but discards all hashes above
+that, then tcca uses the policy key to attest to this flat, truncated name.
+
+Tom relays Google engineer's desire for a Hardware Key Management module
+replacement implemented in cloudproxy. A simple service would be trivial to
+implement. Making it robust at scale would be the challenge.
+
+Tom prefers symmetric keys (ala Macaroons) wherever possible, though mutual
+authentication as done by cloudserver/cloudproxy may be more complex because
+only the originator can verify a macaroon.
+
+Kevin proposes use of ID-based crypto, if possible, using either symmetric or
+symmetric keys, where the sub-keys are semantically  meaningful. Perhaps allow
+multiple namespaces rooted in different keys to get different levels of
+granularity: For each hosted program, generate a platform-specific subkey, and
+if desired also obtain a domain subkey and one or more group subkeys. Then, we
+can name, e.g. K_os.H_prog, K_pol.H_prog, or K_grp.H_prog.
+
+Tom points out that many (asymmetric) IBE schemes use exotic and expensive
+cryptographic primitives. Kevin proposes that cloudproxy may be able to use
+a simpler scheme by allowing for centralized communication during both
+private-key and public-key generation, whereas other schemes strive for offline
+public-key generation.
+
+In the macaroons approach, tokens authorize the bearer. We should insist that
+tokens are never shared. Instead sub-tokens are always used when sharing tokens,
+where the sub-tokens should identify the principal to which it will be given.
+This way, tokens become more like identifiers (or secret keys) for principals,
+and the token chain becomes an audit trail. The assumptions here are no worse
+than the no-key-sharing assumptions in a scheme using private keys.
+
+It was agreed:
+* Extensibility within the logic needs to be a first-class notion. One mistake
+  of NAL experience was putting too much into the logic so that we never gained
+  much experience with policies that required third parties.
+* The logic itself should be explicit, rich enough for at least basic
+  policies, with a clear semantics. On the other hand, we should not try to
+  formalize everything -- we should alllow third parties to encode predicates in
+  abitrary formats, for example. We need, at minimum, says, speaks-for (and/or
+  speaks-on-for), conjunction, disjunction, and implication.
+* The ability to name code modules in policies is important. If we do
+  the ID-based keys correctly, then we can hopefully leverage that into natural
+  support via Macaroon-style third party caveats.
 

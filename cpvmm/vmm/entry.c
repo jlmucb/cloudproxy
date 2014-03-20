@@ -133,6 +133,7 @@ UINT32  heap_current;
 UINT32  heap_tops;
 UINT32  heap_size;
 UINT32  evmm_start_address;
+UINT32  linux_start_address;
 INT15_E820_MEMORY_MAP *e820;
 UINT64 *start_of_e820_table;
 static unsigned int g_num_e820_entries = 0;
@@ -177,6 +178,7 @@ VMM_APPLICATION_PARAMS_STRUCT a0;
 VMM_APPLICATION_PARAMS_STRUCT* p_a0= &a0;
 
 void *                  vmm_main_entry_point;      // address of vmm_main
+void *                  linux_main_entry_point;      // address of linux_main
 multiboot_info_t *      g_mbi= NULL;
 
 typedef void (*tboot_printk)(const char *fmt, ...);
@@ -1128,7 +1130,6 @@ int main(int an, char** av)
         initram_end= (uint32_t)m->mod_end;
     }
 
-
     // TODO(tmroeder): remove this debugging while loop later
     LOOP_FOREVER
 
@@ -1171,8 +1172,25 @@ int main(int an, char** av)
 
     // Relocate evmm_image from evmm_start to evmm_start_address
     evmm_start_address= EVMM_START_ADDR;
-    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, (UINT32) (evmm_end-evmm_start));
+    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
+               (UINT32) (evmm_end-evmm_start));
+    // FIX: linker so the next line is right
     vmm_main_entry_point = (void *) (entry + evmm_start_address);
+
+    // Relocate linux_image from linux_start to LINUX_DEFAULT_LOAD_ADDRESS
+    entry= entryOffset(linux_start);
+    // FIX:  this is wrong, the default load address is 0x100000, also
+    //     Linux has two seperate pieces: real mode linux and protected
+    //     mode linux.  protected mode is at 0x100000.  real mode is
+    //     in low memory.  Finally, if the location of linux overlaps
+    //     its final destination, this will be erroneous.  Note that
+    //     for the  evmm image above we are guarenteed no overlap.
+    // FIX: put correct memory address for initram in linux header
+    linux_start_address= LINUX_DEFAULT_LOAD_ADDRESS;
+    vmm_memcpy((void *)linux_start_address, (const void*) linux_start, 
+               (UINT32) (linux_end-linux_start));
+    // FIX: JLM to correct the calculation.
+    linux_main_entry_point = (void *) (entry + linux_start_address);
 
     // Allocate stack and set rsp (esp)
     setup_evmm_stack();
@@ -1187,11 +1205,15 @@ int main(int an, char** av)
     g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
     g0.image_size = linux_end - linux_start;
                 
-    // FIX: This is the image address.  Check to see it is properly aligned.
-    g0.image_address= linux_start;
+    g0.image_address= linux_start_address;
     g0.image_offset_in_guest_physical_memory = LINUX_DEFAULT_LOAD_ADDRESS;
-    g0.physical_memory_size = 0; // CHECK: Should be 0 for primary guest
+    g0.physical_memory_size = 0; 
+
     // FIX:  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
+    // FIX: fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
+    // FIX: set aside reserved area for input arguments to guest, this includes old
+    // style 20 bit entry e820.  The GP registers should be correctly filled with 
+    // input args for code32_start.
     g0.cpu_states_array = NULL; 
 
     // FIX: the start address of the array of initial cpu states for guest cpus.
@@ -1224,6 +1246,7 @@ int main(int an, char** av)
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
 
+    // FIX: memory maps should NOT include linux or initram according to SC guys
     (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
     (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
     (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
@@ -1265,7 +1288,13 @@ int main(int an, char** av)
     if (!e820_reserve_region(e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
       tprintk("Unable to reserve bootstrap region in e820 table\r\n");
         LOOP_FOREVER
-    }
+    } 
+
+    // FIX:  put APs in 64 bit mode
+    // FIX:  add reserved area for linux guest startup arguments
+    // FIX:  in evmm, exclude tboot and bootstrap areas from primary
+    //       space
+    // FIX:  allocate  debug area for return from evmm print and print it.
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
     //  vmm_main call:
@@ -1349,7 +1378,8 @@ int main(int an, char** av)
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 
-    // FIX: what happens when evmm returns?
+    // FIX: ass thunk code.  This will make thigs OK when we return for
+    // a debug print as well as for secondary guests.
     // This was originally where the thunk was set up.
     return 0;
 }

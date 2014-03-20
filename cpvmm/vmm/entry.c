@@ -1213,7 +1213,9 @@ int main(int an, char** av)
     // FIX: fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
     // FIX: set aside reserved area for input arguments to guest, this includes old
     // style 20 bit entry e820.  The GP registers should be correctly filled with 
-    // input args for code32_start.
+    // input args for code32_start.  Note that the boot parameters are already
+    // in the current address space so we only need to reserve memory and copy
+    // them.
     g0.cpu_states_array = NULL; 
 
     // FIX: the start address of the array of initial cpu states for guest cpus.
@@ -1261,13 +1263,12 @@ int main(int an, char** av)
 
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
 
-    // FIX: The current evmm REQUIRES a thunk area.  We need to define one or remove it from evmm
-
+    // FIX: The current evmm REQUIRES a thunk area.  We need to define one.
     // application parameters
-    // FIX
+    // FIX:  This structure is not used so the setting is probably OK.
     a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
-    a0.number_of_params = 1;
-    a0.session_id = 1;
+    a0.number_of_params = 0;
+    a0.session_id = 0;
     a0.address_entry_list = NULL;
     a0.entry_number = 0;
 #if 0
@@ -1290,7 +1291,7 @@ int main(int an, char** av)
         LOOP_FOREVER
     } 
 
-    // FIX:  put APs in 64 bit mode
+    // FIX:  put APs in 64 bit mode with stack.
     // FIX:  add reserved area for linux guest startup arguments
     // FIX:  in evmm, exclude tboot and bootstrap areas from primary
     //       space
@@ -1378,7 +1379,7 @@ int main(int an, char** av)
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 
-    // FIX: ass thunk code.  This will make thigs OK when we return for
+    // FIX: add thunk code.  This will make thigs OK when we return for
     // a debug print as well as for secondary guests.
     // This was originally where the thunk was set up.
     return 0;

@@ -147,7 +147,7 @@ bool HashVM(const string &vm_template_path, const string &name,
 
   string name_hash;
   if (!CryptoFactory::SHA256()->Digest(name, &name_hash)) {
-    LOG(ERROR) << "Could not compute the has of the name";
+    LOG(ERROR) << "Could not compute the hash of the name";
     return false;
   }
 

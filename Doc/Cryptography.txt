@@ -1,0 +1,241 @@
+
+In this document I outline and compare three possible approaches to implementing
+authentication and authorization mechanisms.
+
+1. Authentication and Authorization using Asymmetric Cryptography
+-----------------------------------------------------------------
+
+One approach to implementing authentication and authorization mechanisms relies
+on associating each principal A with an asymmetric key pair (k_A, K_A).
+
+### Authentication
+
+In a completely flat namespace, A can authenticate to B as follows:
+
+  A <-- B : nonce
+  A       : s = sign(k_A, nonce)
+  A --> B : s
+        B : if verify(K_A, nonce, s) then authenticated
+
+This protocol relies on B having prior knowledge of A's public key K_A.
+
+Suppose there is a natural hierarchy of principals, such that there is some root
+principal R, and each other principal can be named by some path
+R/A1/A2/A3/.../AN, and a principal A fully trusts a principal B whenever
+B's name is a prefix of A's name. That is to say, all principals fully trust R,
+and R/A1/A2/A3 trusts R/A1/A2, which in turn trusts R/A1.
+
+We can construct a tree of key certificates as follows: The root principal R
+issues a certificate for each of its direct sub-principals, i.e. each principal
+having a name the form R/A1:
+
+  cert_{R/A1} = sign(k_R, "A1" || K_{R/A1})
+
+Similarly, R/A1 issues a certificate for each of its direct sub-principals, i.e.
+each principal having a name of the form R/A1/A2:
+
+  cert_{R/A1/A2} = sign(k_{R/A1}, "A2" || K_{R/A1/A2})
+
+This process continues at each level of the hierarchy. Now a principal
+R/A1/A2/.../AN can authenticate to some other principal B as follows:
+
+  R/A1/A2/.../AN <-- B : nonce
+  R/A1/A2/.../AN       : s = sign(k_{R/A1/A2/.../AN}, nonce)
+  R/A1/A2/.../AN --> B : s, "R/A1/A2/.../AN"
+                         K_{R/A1/A2/.../AN}, cert_{R/A1/A2/.../AN},
+						 ...,
+						 K_{R/A1}, cert_{R/A1}
+                     B : if verify(K_{R/A1/A2/.../AN}, nonce, s) and
+					        verify(K_{R/A1/A2/...},
+							       "AN" || K_{R/A1/A2/.../AN},
+							       cert_{R/A1/A2/.../AN}) and
+					        ... and
+							verify(K_R,
+							       "A1" || K_{R/A1},
+							       cert_{R/A1})
+					     then authenticated
+
+This protocol relies only on B having prior knowledge of the root principal R's
+public key K_R.
+
+### Authorization
+
+Suppose the system uses credentials-based authorization, where a policy is
+some goal formula G, and an operation by some client C is authorized if the
+client can provide sufficient credentials to prove F. Here, principal C and
+other principals can issue credentials by signing them with their private keys.
+For example, suppose goal formula G for reading some file owned by A is 
+
+   A says Read
+
+Principal A can issue a credential delegating to B:
+
+  cred_A = sign(k_A, "A says (B speaks Read for A)")
+
+Principal B can similarly issue a request-like credential:
+
+  cred_B = sign(k_B, "B says Read")
+
+Any principal can verify cred_A and cred_B given the public keys for A and B,
+then use deduction to conclude A says Read.
+
+
+2. Authentication and Authorization without using Cryptography
+--------------------------------------------------------------
+
+A second approach to implementing authentication and authorization mechanisms
+does not rely on cryptography at all, but instead relies on a trusted
+intermediary, e.g. an operating system, to facilitate communication between
+principals. This was the approach taken in Nexus.
+
+### Authentication
+
+Suppose A and B are processes executing on the same operating system R, and they
+are communicating over some channel. Either process can make a system call to R
+to obtain the names of the principals representing the channel endpoints. This
+could be done at the time of channel creation or in separate system calls.
+
+If the operating system does not provide such authenticated channels, the
+operating system could instead provide other means to authenticate, e.g.:
+
+  A <-- B : nonce
+  A       : handle = syscall(authenticate_request, nonce)
+  A --> B : handle
+        B : if syscall(authenticate_check, handle, nonce, A) then authenticated
+
+Here, the operating system maintains a table of authentication requests that
+bind nonces to principal names:
+
+  syscall(authenticate_request, nonce):
+    Enter (caller, nonce) into table, return handle to table entry.
+
+  syscall(authenticate_check, handle, nonce, A):
+    Check if (A, nonce) is in the table entry given by handle.
+
+Presumably other system calls would be provided to delete table entries, etc.
+
+### Authorization
+
+The operating system can facilitate credentials-based authorization by providing
+system calls to access a table of credentials, e.g.:
+
+  syscall(say, F):
+    Enter (caller, F) into table, return handle to table entry. The meaning of
+	the table entry is "caller says F", where F is some formula in the logic.
+
+  syscall(check, handle, A, F)
+    check if (A, F) is in the table entry given by handle.
+
+Presumably other system calls would be provided to delete table entries, etc.
+
+Note: The system calls suggested here for authorization are functionally
+identical to those suggested above for authentication.
+
+
+3. Authentication and Authorization using Symmetric Cryptography
+----------------------------------------------------------------
+
+Macaroons proposed an authorization mechanism using symmetric cryptography. In
+this section I describe a variation of Macaroons for authorization and a related
+mechanism for authentication, both using HMACs. The approach provides a
+symmetric key k_A for each principal A.
+
+### Authentication
+
+As above, suppose there is a natural hierarchy of principals, such that there is
+some root principal R, and each other principal can be named by some path
+R/A1/A2/A3/.../AN, and a principal A fully trusts a principal B whenever B's
+name is a prefix of A's name. 
+
+Suppose also that R has a symmetric key k_R known only to itself. We can
+construct symmetric keys for all other principals as follows:
+The root principal R derives and distributes a subkey for each of its direct
+sub-principals, i.e. each principal having a name the form R/A1:
+
+  k_{R/A1} = HMAC(k_R, "A1")
+
+Similarly, R/A1 issues a key to each of its direct sub-principals, i.e.
+each principal having a name of the form R/A1/A2:
+
+  k_{R/A1/A2} = HMAC(k_{R/A1}, "A2")
+
+This process continues at each level of the hierarchy. Now a principal
+R/A1/...AI/.../AN can authenticate to some other principal R/A1/.../AI/B1/.../BM as
+follows:
+  
+  R/A1/...AI/.../AN <-- R/A1/.../AI/B1/.../BM : nonce
+  R/A1/...AI/.../AN                           : s = HMAC(k_{R/A1/.../AN}, nonce)
+  R/A1/...AI/.../AN --> R/A1/.../AI/B1/.../BM : s, "R/A1/.../AN"
+         R/A1/...AI <-- R/A1/.../AI/B1/.../BM : authenticate_check s, "R/A1/.../AN"
+         R/A1/...AI --> R/A1/.../AI/B1/.../BM : if HMAC(
+												    HMAC(
+													 HMAC(
+													  HMAC(k_{R/A1/.../AI},
+													    "AI+1"), 
+													   "AI+2"),
+													   ...,
+													  "AN"), 
+													 nonce) == s
+												  then authenticated else fail
+This protocol relies on A and B having some principal as a common ancestor, and
+B being able to query this common ancestor to verify the nonce signature s.
+
+Note that it is possible to reorder the operations: first, B contacts the common
+ancestor to obtain a signature and matching nonce chosen by the common ancestor;
+then B sends the nonce to A and obtains in response signed nonce s'; finally, B
+compares s and s'.
+
+### Authorization
+
+A principal issues a credential by simply signing it, as above for asymmetric
+keys. For example, principal A can issue a credential delegating to B:
+
+  cred_A = HMAC(k_A, "A says (B speaks Read for A)")
+
+Principal B can similarly issue:
+
+  cred_B = HMAC(k_B, "B says Read")
+
+Only an ancestor of A can verify cred_A, and similarly only an ancestor of B can
+verify cred_B. A common ancestor of A and B can verify both credentials and then
+use deduction to conclude A says Read.
+
+
+4. Comparison of Approaches
+---------------------------
+
+The attached diagram [Cryptography.{dia,png}] illustrates both authentication
+and authorization, with one root principal R and two direct sub-principals A and
+B.
+
+Asymmetric keys are more computationally and storage expensive than symmetric
+keys, which in turn is more computationally and storage expensive than the
+non-cryptographic approach. The costs (at least, the computational costs) are
+orders of magnitude in difference.
+
+The setup costs for the asymmetric case are large, because new asymmetric keys
+are generated and signed by the root key. The setup costs for the symmetric and
+non-cryptographic cases are small.
+
+Leaving aside setup costs, performing authentication or authorization in the
+symmetric key case can be done independent of the root principal R, and minimal
+communication (i.e. single message between A and B for credentials or a
+round-trip for challenge-response). Both the non-cryptographic case and the
+symmetric key case require the root principal R to be online during
+authentication and credential-checking. In the former case, both A and B need to
+contact R, in the latter case only B needs to contact R. The cost of contacting
+the root principal for the non-cryptographic and symmetric-cryptography cases is
+unclear, but it appears the symmetric key case may be a nice midpoint of sorts.
+
+The non-cryptographic case also requires R to maintain a table of authentication
+nonces and credentials. Managing this resource would make R much more complex
+(and recall that R is completely trusted by all these principals, so complexity
+is particurly undesirable here): who gets to read from the table? do the entries
+expire? are there limits to how much can be written? 
+
+Bottom line: the symmetric key case appears to be a sort of midpoint between the
+asymmetric and the non-cryptographic approaches:
+ Con: R must be online (like the non-cryptographic approach)
+ Mid: Requires only modest computational power
+ Pro: R is simple (like the asymmetric key approach)
+

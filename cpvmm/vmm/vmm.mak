@@ -171,7 +171,7 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
 $(E)/bootstrap.bin: $(BINDIR)/entry.o
-	$(LINK) -m32 -static -fno-stack-protector -nostdlib -e main -o $(E)/bootstrap.bin $(BINDIR)/entry.o
+	$(LINK) -m32 -static -fno-stack-protector -nostdlib -e start32_evmm -o $(E)/bootstrap.bin $(BINDIR)/entry.o
 
 $(BINDIR)/entry.o: $(mainsrc)/entry.c
 	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 

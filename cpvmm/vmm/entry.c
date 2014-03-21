@@ -28,6 +28,7 @@ typedef int bool;
 
 #include "multiboot.h"
 #include "elf_defns.h"
+#include "elf64.h"
 #include "tboot.h"
 #include "e820.h"
 #include "linux_defns.h"
@@ -124,7 +125,7 @@ typedef enum {
 #define IDT_VECTOR_COUNT 256
 #define LVMM_CS_SELECTOR 0x10
 
-#define LINUX_DEFAULT_LOAD_ADDRESS 0xC0000000
+#define LINUX_DEFAULT_LOAD_ADDRESS 0x100000
 
 #define LOOP_FOREVER while(1);
 
@@ -132,8 +133,6 @@ UINT32  heap_base;
 UINT32  heap_current; 
 UINT32  heap_tops;
 UINT32  heap_size;
-UINT32  evmm_start_address;
-UINT32  linux_start_address;
 INT15_E820_MEMORY_MAP *e820;
 UINT64 *start_of_e820_table;
 static unsigned int g_num_e820_entries = 0;
@@ -874,8 +873,6 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
     return (module_t *)(mbi->mods_addr + i * sizeof(module_t));
 }
 
-#include "elf64.h"
-
 
 static UINT64 *get_e820_table(const multiboot_info_t *mbi) 
 {
@@ -1014,7 +1011,35 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
 }
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
-//uint64_t tboot_shared_page = 0;
+
+
+// Hack!  Temporary  hacked info
+// toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
+// john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
+//tboot_printk tprintk = (tboot_printk)(0x80d660);
+// john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+// john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
+// multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
+// john's boot_params boot_params_t *my_boot_params= 0x94200
+boot_params_t *my_boot_params= (boot_params_t *)0x94200;
+
+
+// Memory layout on start32_evmm
+uint32_t bootstrap_start= 0;
+uint32_t bootstrap_end= 0;
+uint32_t evmm_start= 0;
+uint32_t evmm_end= 0;
+uint32_t linux_start= 0;
+uint32_t linux_end= 0;
+uint32_t initram_start= 0;
+uint32_t initram_end= 0;
+
+// Post relocation adderesses
+uint32_t evmm_start_address;
+uint32_t linux_start_address;
+uint32_t initram_start_address;
+
 
 uint32_t entryOffset(uint32_t base)
 {
@@ -1022,11 +1047,86 @@ uint32_t entryOffset(uint32_t base)
     return elf->e_entry;
 }
 
+// relocate and setup variables for evmm entry
+int prepare_linux_image_for_evmm()
+{
 #if 0
+
+    // Relocate linux_image from linux_start to LINUX_DEFAULT_LOAD_ADDRESS
+    entry= entryOffset(linux_start);
+    // FIX:  this is wrong, the default load address is 0x100000, also
+    //     Linux has two seperate pieces: real mode linux and protected
+    //     mode linux.  protected mode is at 0x100000.  real mode is
+    //     in low memory.  Finally, if the location of linux overlaps
+    //     its final destination, this will be erroneous.  Note that
+    //     for the  evmm image above we are guarenteed no overlap.
+    // FIX: put correct memory address for initram in linux header
+    linux_start_address= LINUX_DEFAULT_LOAD_ADDRESS;
+    vmm_memcpy((void *)linux_start_address, (const void*) linux_start, 
+               (UINT32) (linux_end-linux_start));
+    // FIX: JLM to correct the calculation.
+    linux_main_entry_point = (void *) (entry + linux_start_address);
 // this fragment will be used to set up the guest
 
 extern tboot_shared_t _tboot_shared;
 static boot_params_t *boot_params;
+
+ if ( is_elf_image(kernel_image, kernel_size) ) {
+        printk("kernel is ELF format\n");
+        kernel_type = ELF;
+        /* fix for GRUB2, which may load modules into memory before tboot */
+        move_modules(&g_mbi);
+    }
+    else {
+        printk("assuming kernel is Linux format\n");
+        kernel_type = LINUX;
+    }
+
+    /* print_mbi(g_mbi); */
+
+    kernel_image = remove_module(g_mbi, NULL);
+    if ( kernel_image == NULL )
+        return false;
+
+    if ( kernel_type == ELF ) {
+        if ( is_measured_launch )
+            adjust_kernel_cmdline(g_mbi, &_tboot_shared);
+        if ( !expand_elf_image((elf_header_t *)kernel_image,
+                               &kernel_entry_point) )
+            return false;
+        printk("transfering control to kernel @%p...\n", kernel_entry_point);
+        /* (optionally) pause when transferring to kernel */
+        if ( g_vga_delay > 0 )
+            delay(g_vga_delay * 1000);
+        printk(TBOOT_INFO"printk= %p\n", printk);
+        printk(TBOOT_INFO"&_tboot_shared= %p\n", &_tboot_shared);
+        printk(TBOOT_INFO"boot_params= %p\n", boot_params);
+        printk(TBOOT_INFO"g_mbi= %p\n", g_mbi);
+
+        return jump_elf_image(kernel_entry_point);
+    }
+        else if ( kernel_type == LINUX ) {
+        m = (module_t *)g_mbi->mods_addr;
+        void *initrd_image = (void *)m->mod_start;
+        size_t initrd_size = m->mod_end - m->mod_start;
+
+        expand_linux_image(kernel_image, kernel_size,
+                           initrd_image, initrd_size,
+                           &kernel_entry_point, is_measured_launch);
+        printk("transfering control to kernel @%p...\n", kernel_entry_point);
+        /* (optionally) pause when transferring to kernel */
+        if ( g_vga_delay > 0 )
+            delay(g_vga_delay * 1000);
+        printk(TBOOT_INFO"printk= %p\n", printk);
+        printk(TBOOT_INFO"&_tboot_shared= %p\n", &_tboot_shared);
+        printk(TBOOT_INFO"boot_params= %p\n", boot_params);
+        printk(TBOOT_INFO"g_mbi= %p\n", g_mbi);
+        return jump_linux_image(kernel_entry_point);
+    }
+
+    printk("unknown kernel type\n");
+    return false;
+
 
 //  ELF arguments: MB_MAGIC, mbi, entry_point
 //  in GCC the args are in edi, esi, edx, ecx
@@ -1239,50 +1339,33 @@ static boot_params_t *boot_params;
         *(uint64_t *)&boot_params->tboot_shared_addr = (uintptr_t)&_tboot_shared;
 
     *entry_point = (void *)hdr->code32_start;
-
-
 #endif
-
+    return 0;
+}
 
 
 // tboot jumps in here
-int main(int an, char** av) 
+int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 {
     int i;
 
-    // john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
-    tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+#ifdef JLMDEBUG
+    tprintk("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
+            mbi, initial_entry, magic);
+#endif
 
-    // john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
-    multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
-
-    // john's boot_params boot_params_t *my_boot_params= 0x94200
-    boot_params_t *my_boot_params= (boot_params_t *)0x94200;
-
-    // We assume the standard grub layout with three modules
-    // after bootstrap: 64-bit evmm, the linux image
-    // and initram fs.
-    // Everything is decompressed EXCEPT the protected mode portion of
-    // linux
-    module_t* m;
-    int l= my_mbi->mmap_length/sizeof(memory_map_t);
-
+    // We assume the standard grub layout with three modules after bootstrap: 
+    //    64-bit evmm, the linux image and initram fs.
+    // Everything is decompressed EXCEPT the protected mode portion of linux
+    int l= mbi->mmap_length/sizeof(memory_map_t);
     if (l<3) {
         tprintk("bootstrap error: wrong number of modules\n");
+        LOOP_FOREVER
     }
 #ifdef JLMDEBUG
-    // toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
-    // john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
-    //tboot_printk tprintk = (tboot_printk)(0x80d660);
-    tprintk("<3>Testing printf\n");
-    tprintk("<3>evmm entry %d arguments\n", an);
-    if(an<10) {
-        // this only works for the lunux type, not elf
-        for(i=0; i<an; i++) {
-            tprintk("av[%d]= %d\n", av[i]);
-        }
-    }
-    
+    // mbi
+    tprintk("%d e820 entries\n", l);
+
     // shared page
     tprintk("shared_page data:\n");
     tprintk("\t version: %d\n", shared_page->version);
@@ -1295,70 +1378,59 @@ int main(int an, char** av)
     tprintk("\t flags: 0x%8.8x\n", shared_page->flags);
     tprintk("\t ap_wake_addr: 0x%08x\n", (uint32_t)shared_page->ap_wake_addr);
     tprintk("\t ap_wake_trigger: %u\n", shared_page->ap_wake_trigger);
+#endif // JLMDEBUG
 
-    // mbi
-    PrintMbi(my_mbi, tprintk);
-    // my_mbi->mmap_addr; my_mbi->mmap_length;
-    tprintk("%d e820 entries\n", l);
-    uint32_t entry_offset = 0;
-    i= 0;
-    while ( entry_offset < my_mbi->mmap_length ) {
-        memory_map_t *entry = (memory_map_t *) (my_mbi->mmap_addr + entry_offset);
-        tprintk("entry %02d: size: %08x, addr_low: %08x, addr_high: %08x\n  len_low: %08x, len_high: %08x, type: %08x\n",
-                i, entry->size, entry->base_addr_low, entry->base_addr_high,
-                entry->length_low, entry->length_high, entry->type);
-        i++;
-        entry_offset += entry->size + sizeof(entry->size);
-    }
-    tprintk("%d total\n", l);
-    tprintk("bootstap main is at %08x\n", main);
+    // get initial layout information for images
+    module_t* m;
 
-    tprintk("%d mbi modules\n", my_mbi->mods_count);
-    tprintk("\tmod_start  mod_end   string\n");
-    for(i=0; i<my_mbi->mods_count; i++) {
-        m= get_module(my_mbi, (unsigned int) i);
-        tprintk("\t%08x %08x %s\n", m->mod_start, 
-                m->mod_end, m->string);
-    }
+    bootstrap_start= _mystart;
+    bootstrap_end= _end;
 
-    tprintk("\t_start: %08x, _end: %08x\n", _mystart, _end);
-#endif
-
-    uint32_t bootstrap_start= _mystart;
-    uint32_t bootstrap_end= _end;
-
-    uint32_t evmm_start= 0ULL;
-    uint32_t evmm_end= 0ULL;
-
-    m= get_module(my_mbi, 0);
+    m= get_module(mbi, 0);
     evmm_start= (uint32_t)m->mod_start;
     evmm_end= (uint32_t)m->mod_end;
-    elf64_hdr* evmm_elf= (elf64_hdr*)evmm_start;
 
-    uint32_t linux_start= 0ULL;
-    uint32_t linux_end= 0ULL;
+    linux_start= 0ULL;
+    linux_end= 0ULL;
 
-    m= get_module(my_mbi, 1);
+    m= get_module(mbi, 1);
     linux_start= (uint32_t)m->mod_start;
     linux_end= (uint32_t)m->mod_end;
 
-    uint32_t initram_start= 0ULL;
-    uint32_t initram_end= 0ULL;
+    initram_start= 0ULL;
+    initram_end= 0ULL;
 
     if(l>2) {
-        m= get_module(my_mbi, 2);
+        m= get_module(mbi, 2);
         initram_start= (uint32_t)m->mod_start;
         initram_end= (uint32_t)m->mod_end;
     }
 
-    // TODO(tmroeder): remove this debugging while loop later
-    LOOP_FOREVER
-
     // get CPU info
-    __cpuid(info,1);
-    num_of_aps = ((info[1] >> 16) & 0xff) - 1;
+    uint32_t info;
+    // FIX: returns hyperthreaded # what does evmm want?
+    asm volatile (
+        "\tmovl    $1, %%eax\n"
+	"\tcpuid\n"
+	"\tmovl    %%ebx, %[info]\n"
+    : [info] "=m" (info)
+    : 
+    : "%eax", "%ebx", "%ecx", "%edx");
+    num_of_aps = ((info>>16)&0xff)-1;
     if (num_of_aps < 0)
-        num_of_aps = 0; // CHECK: this should be 0 until we have AP's, right?
+        num_of_aps = 0; 
+
+#ifdef JLMDEBUG
+    tprintk("Memory map pre relocation\n");
+    tprintk("\tstart32_evmm is at %08x\n", start32_evmm);
+    tprintk("\tbootstrap_start: %08x, bootstrap_end: %08x\n", bootstrap_start, bootstrap_end);
+    tprintk("\tevmm_start: %08x, evmm_end: %08x\n", evmm_start, evmm_end);
+    tprintk("\tlinux_start: %08x, linux_end: %08x\n", linux_start, linux_end);
+    tprintk("\tinitram_start: %08x, initram_end: %08x\n", initram_start, initram_end);
+    tprintk("\t%d APs, %08x\n", num_of_aps, info);
+#endif
+    num_of_aps = 0;  // BSP only for now
+    LOOP_FOREVER
 
     init32.s.i32_low_memory_page = (UINT32)p_low_mem;
     init32.s.i32_num_of_aps = num_of_aps;
@@ -1370,12 +1442,12 @@ int main(int an, char** av)
 
     SetupIDT();
 
-    // setup gdt for 64-bit
+    // setup gdt for 64-bit on BSP
     x32_gdt64_setup();
     x32_gdt64_get_gdtr(&init64.i64_gdtr);
     ia32_write_gdtr(&init64.i64_gdtr);
 
-    // setup paging, control registers and flags
+    // setup paging, control registers and flags on BSP
     x32_pt64_setup_paging(TOTAL_MEM);
     init64.i64_cr3 = x32_pt64_get_cr3();
     ia32_write_cr3(init64.i64_cr3);
@@ -1388,35 +1460,28 @@ int main(int an, char** av)
 
     UINT16 p_cr3 = init64.i64_cr3;
 
-    // get vmm_main entry point
-    uint32_t entry= entryOffset(evmm_start);
+    // Allocate stack and set rsp (esp)
+    setup_evmm_stack();
 
     // Relocate evmm_image from evmm_start to evmm_start_address
     evmm_start_address= EVMM_START_ADDR;
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
                (UINT32) (evmm_end-evmm_start));
+
     // FIX: linker so the next line is right
+    uint32_t entry= entryOffset(evmm_start);
     vmm_main_entry_point = (void *) (entry + evmm_start_address);
+#ifdef JLMDEBUG
+    tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
+            vmm_main_entry_point);
+#endif
 
-    // Relocate linux_image from linux_start to LINUX_DEFAULT_LOAD_ADDRESS
-    entry= entryOffset(linux_start);
-    // FIX:  this is wrong, the default load address is 0x100000, also
-    //     Linux has two seperate pieces: real mode linux and protected
-    //     mode linux.  protected mode is at 0x100000.  real mode is
-    //     in low memory.  Finally, if the location of linux overlaps
-    //     its final destination, this will be erroneous.  Note that
-    //     for the  evmm image above we are guarenteed no overlap.
-    // FIX: put correct memory address for initram in linux header
-    linux_start_address= LINUX_DEFAULT_LOAD_ADDRESS;
-    vmm_memcpy((void *)linux_start_address, (const void*) linux_start, 
-               (UINT32) (linux_end-linux_start));
-    // FIX: JLM to correct the calculation.
-    linux_main_entry_point = (void *) (entry + linux_start_address);
+    if(prepare_linux_image_for_evmm()) {
+        tprintk("Cant prepare linux image\n");
+        LOOP_FOREVER
+    }
 
-    // Allocate stack and set rsp (esp)
-    setup_evmm_stack();
-
-    // Guest state initialization
+    // Guest state initialization for relocated inage
     g0.size_of_this_struct = sizeof(g0);
     g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
     g0.flags = 0;               //FIX: need to put the correct guest flags
@@ -1427,7 +1492,7 @@ int main(int an, char** av)
     g0.image_size = linux_end - linux_start;
                 
     g0.image_address= linux_start_address;
-    g0.image_offset_in_guest_physical_memory = LINUX_DEFAULT_LOAD_ADDRESS;
+    g0.image_offset_in_guest_physical_memory = linux_start_address;
     g0.physical_memory_size = 0; 
 
     // FIX:  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
@@ -1482,7 +1547,7 @@ int main(int an, char** av)
  
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
 
-    p_startup_struct->physical_memory_layout_E820 = get_e820_table(my_mbi);
+    p_startup_struct->physical_memory_layout_E820 = get_e820_table(mbi);
 
     // FIX: The current evmm REQUIRES a thunk area.  We need to define one.
     // application parameters

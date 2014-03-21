@@ -239,3 +239,26 @@ asymmetric and the non-cryptographic approaches:
  Mid: Requires only modest computational power
  Pro: R is simple (like the asymmetric key approach)
 
+5. Open Issues
+--------------
+
+A big issue not addressed above is the case where principals are distributed
+over multiple machines, i.e. they don't have convenient secure authenticated
+channels provided by the operating system to each other or to some common
+ancenstor.
+
+In the asymmetric case, it may still makes sense to use a single root key that
+signs the key for each machine, as is currently implemented in CloudProxy. But
+even using multiple root keys works naturally. These multiple roots could be
+anchored at each machine, or even at various levels of the software stack. In
+any case, TLS channels can be set up using the asymmetric keys.
+
+The non-cryptographic case doesn't have an obvious natural way to support
+multiple machines. Presumably a separate set of asymmetric keys (e.g. one per
+machine) would be be used to establish TLS connections between machines, and the
+operating system could facilitate processes using those to to authenticate
+across machines. In Nexus, a hybrid of the asymmetric and non-cryptographic
+approaches was used: the operating system key was used to "export" entries from
+the credential table, such that within-machine operations were non-cryptographic
+and between-machine operations used the asymmetric approach.
+

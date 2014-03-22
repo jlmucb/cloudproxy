@@ -44,7 +44,9 @@ typedef int bool;
 #define PSE_BIT     0x10
 #define PAE_BIT     0x20
 
-#define PAGE_SIZE (1024 * 4) 
+#define PAGE_SIZE   (1024 * 4) 
+#define PAGE_MASK   (~(PAGE_SIZE-1))
+
 #define MAX_E820_ENTRIES PAGE_SIZE/sizeof(INT15_E820_MEMORY_MAP)
 #define UUID 0x1badb002
 
@@ -210,6 +212,17 @@ void *vmm_memcpy(void *dest, const void* src, UINT32 count)
         :);
     return dest;
 }
+
+UINT32 vmm_strlen(const char* p)
+{
+    UINT32 count= 0;
+    if(p==NULL)
+        return 0;
+    while(*p!=0)
+        count++;
+    return count;
+}
+
 
 void ZeroMem(void *Address, UINT32  Size)
 {
@@ -881,14 +894,14 @@ static UINT64 *get_e820_table(const multiboot_info_t *mbi)
 
     e820 = (INT15_E820_MEMORY_MAP *)evmm_page_alloc(1);
     if (e820 == NULL)
-        return -1;
+        return (UINT64*)-1;
 
     while ( entry_offset < mbi->mmap_length ) {
         memory_map_t *entry = (memory_map_t *) (mbi->mmap_addr + entry_offset);
         e820->memory_map_entry[i].basic_entry.base_address = 
-                            (entry->base_addr_high << 32) + entry->base_addr_low;
+                            (((UINT64)entry->base_addr_high)<< 32) + entry->base_addr_low;
         e820->memory_map_entry[i].basic_entry.length = 
-                            (entry->length_high << 32) + entry->length_low;
+                            (((UINT64)entry->length_high)<< 32) + entry->length_low;
         e820->memory_map_entry[i].basic_entry.address_range_type= entry->type;
             e820->memory_map_entry[i].extended_attributes.uint32 = 1;
         i++;
@@ -897,7 +910,7 @@ static UINT64 *get_e820_table(const multiboot_info_t *mbi)
     g_num_e820_entries = i;
 
     e820->memory_map_size = i * sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
-    start_of_e820_table = (UINT64)(UINT32)e820;
+    start_of_e820_table = (UINT64*)e820;
 
     return start_of_e820_table;
 }
@@ -1049,10 +1062,233 @@ uint32_t entryOffset(uint32_t base)
     return elf->e_entry;
 }
 
+
+typedef struct {
+    const char *name;          /* set to NULL for last item in list */
+    const char *def_val;
+} cmdline_option_t;
+
+#define MAX_VALUE_LEN 64
+
+
+static void cmdline_parse(const char *cmdline, const cmdline_option_t *options,
+                          char vals[][MAX_VALUE_LEN])
+{
 #if 0
+    const char *p = cmdline;
+    int i;
+
+    /* copy default values to vals[] */
+    for ( i = 0; options[i].name != NULL; i++ ) {
+        strncpy(vals[i], options[i].def_val, MAX_VALUE_LEN-1);
+        vals[i][MAX_VALUE_LEN-1] = '\0';
+    }
+
+    if ( p == NULL )
+        return;
+
+    /* parse options */
+    while ( 1 )
+    {
+        /* skip whitespace */
+        while ( isspace(*p) )
+            p++;
+        if ( *p == '\0' )
+            break;
+
+        /* find end of current option */
+        const char *opt_start = p;
+        const char *opt_end = strchr(opt_start, ' ');
+        if ( opt_end == NULL )
+            opt_end = opt_start + strlen(opt_start);
+        p = opt_end;
+
+        /* find value part; if no value found, use default and continue */
+        const char *val_start = strchr(opt_start, '=');
+        if ( val_start == NULL || val_start > opt_end )
+            continue;
+        val_start++;
+
+        unsigned int opt_name_size = val_start - opt_start - 1;
+        unsigned int copy_size = opt_end - val_start;
+        if ( copy_size > MAX_VALUE_LEN - 1 )
+            copy_size = MAX_VALUE_LEN - 1;
+        if ( opt_name_size == 0 || copy_size == 0 )
+            continue;
+
+        /* value found, so copy it */
+        for ( i = 0; options[i].name != NULL; i++ ) {
+            if ( strncmp(options[i].name, opt_start, opt_name_size ) == 0 ) {
+                strncpy(vals[i], val_start, copy_size);
+                vals[i][copy_size] = '\0'; /* add '\0' to the end of string */
+                break;
+            }
+        }
+    }
+#endif
+}
+
+
+
+void linux_parse_cmdline(const char *cmdline)
+{
+    // cmdline_parse(cmdline, g_linux_cmdline_options, g_linux_param_values);
+}
+
+
+int get_linux_vga(int *vid_mode)
+{
+#if 0
+    const char *vga = get_option_val(g_linux_cmdline_options,
+                                     g_linux_param_values, "vga");
+    if ( vga == NULL || vid_mode == NULL )
+        return false;
+
+    if ( strcmp(vga, "normal") == 0 )
+        *vid_mode = 0xFFFF;
+    else if ( strcmp(vga, "ext") == 0 )
+        *vid_mode = 0xFFFE;
+    else if ( strcmp(vga, "ask") == 0 )
+        *vid_mode = 0xFFFD;
+    else
+        *vid_mode = strtoul(vga, NULL, 0);
+#endif
+    return 0;
+}
+
+void get_linux_mem(uint64_t *max_mem)
+{
+    *max_mem= 0x100000000;
+}
+
+const char *skip_filename(const char *cmdline)
+{
+#if 0
+    if ( cmdline == NULL || *cmdline == '\0' )
+        return cmdline;
+
+    /* strip leading spaces, file name, then any spaces until the next
+     non-space char (e.g. "  /foo/bar   baz" -> "baz"; "/foo/bar" -> "")*/
+    while ( *cmdline != '\0' && isspace(*cmdline) )
+        cmdline++;
+    while ( *cmdline != '\0' && !isspace(*cmdline) )
+        cmdline++;
+    while ( *cmdline != '\0' && isspace(*cmdline) )
+        cmdline++;
+#endif
+    return cmdline;
+}
+
+
+void get_highest_sized_ram(uint64_t size, uint64_t limit,
+                           uint64_t *ram_base, uint64_t *ram_size)
+{
+#if 0
+    uint64_t last_fit_base = 0, last_fit_size = 0;
+    unsigned int i;
+
+    if ( ram_base == NULL || ram_size == NULL )
+        return;
+
+    for ( i = 0; i < g_nr_map; i++ ) {
+        memory_map_t *entry = &g_copy_e820_map[i];
+
+        if ( entry->type == E820_RAM ) {
+            uint64_t base = e820_base_64(entry);
+            uint64_t length = e820_length_64(entry);
+
+            /* over 4GB so use the last region that fit */
+            if ( base + length > limit )
+                break;
+            if ( size <= length ) {
+                last_fit_base = base;
+                last_fit_size = length;
+            }
+        }
+    }
+
+    *ram_base = last_fit_base;
+    *ram_size = last_fit_size;
+#endif
+}
+
+
+unsigned long get_tboot_mem_end(void)
+{
+#if 0
+    return PAGE_UP((unsigned long)&_end);
+#else
+    return 0;
+#endif
+}
+
+
+unsigned long max(unsigned long a, unsigned long b)
+{
+    if(b>a)
+        return b;
+    return a;
+}
+
+
+#define PAGE_UP(a) ((a+(PAGE_SIZE-1))&PAGE_MASK)
+
+
+unsigned long get_mbi_mem_end(const multiboot_info_t *mbi)
+{
+    unsigned long end = (unsigned long)(mbi + 1);
+
+    if ( mbi->flags & MBI_CMDLINE )
+        end = max(end, mbi->cmdline + vmm_strlen((char *)mbi->cmdline) + 1);
+    if ( mbi->flags & MBI_MODULES ) {
+        end = max(end, mbi->mods_addr + mbi->mods_count * sizeof(module_t));
+        unsigned int i;
+        for ( i = 0; i < mbi->mods_count; i++ ) {
+            module_t *p = get_module(mbi, i);
+            end = max(end, p->string + vmm_strlen((char *)p->string) + 1);
+        }
+    }
+    if ( mbi->flags & MBI_AOUT ) {
+        const aout_t *p = &(mbi->syms.aout_image);
+        end = max(end, p->addr + p->tabsize
+                       + sizeof(unsigned long) + p->strsize);
+    }
+    if ( mbi->flags & MBI_ELF ) {
+        const elf_t *p = &(mbi->syms.elf_image);
+        end = max(end, p->addr + p->num * p->size);
+    }
+    if ( mbi->flags & MBI_MEMMAP )
+        end = max(end, mbi->mmap_addr + mbi->mmap_length);
+    if ( mbi->flags & MBI_DRIVES )
+        end = max(end, mbi->drives_addr + mbi->drives_length);
+    /* mbi->config_table field should contain */
+    /*  "the address of the rom configuration table returned by the */
+    /*  GET CONFIGURATION bios call", so skip it */
+    if ( mbi->flags & MBI_BTLDNAME )
+        end = max(end, mbi->boot_loader_name
+                       + vmm_strlen((char *)mbi->boot_loader_name) + 1);
+    if ( mbi->flags & MBI_APM )
+        /* per Grub-multiboot-Main Part2 Rev94-Structures, apm size is 20 */
+        end = max(end, mbi->apm_table + 20);
+    if ( mbi->flags & MBI_VBE ) {
+        /* VBE2.0, VBE Function 00 return 512 bytes*/
+        end = max(end, mbi->vbe_control_info + 512);
+        /* VBE2.0, VBE Function 01 return 256 bytes*/
+        end = max(end, mbi->vbe_mode_info + 256);
+    }
+
+    return PAGE_UP(end);
+}
+
+
+static inline bool plus_overflow_u32(uint32_t x, uint32_t y)
+{
+    return ((((uint32_t)(~0)) - x) < y);
+}
+
 
 // expand linux kernel with kernel image and initrd image 
-bool expand_linux_image( multiboot_info_t* mbi,
+int expand_linux_image( multiboot_info_t* mbi,
                         const void *linux_image, size_t linux_size,
                         const void *initrd_image, size_t initrd_size,
                         void **entry_point, bool is_measured_launch)
@@ -1063,28 +1299,29 @@ bool expand_linux_image( multiboot_info_t* mbi,
     // Note: real_mode_size + protected_mode_size = linux_size 
     uint32_t initrd_base;
     int vid_mode = 0;
+    boot_params_t*  boot_params;
 
     // sanity check
     if ( linux_image == NULL ) {
         tprintk("Error: Linux kernel image is zero.\n");
-        return false;
+        return 1;
     }
     if ( linux_size == 0 ) {
         tprintk("Error: Linux kernel size is zero.\n");
-        return false;
+        return 1;
     }
     if ( linux_size < sizeof(linux_kernel_header_t) ) {
         tprintk("Error: Linux kernel size is too small.\n");
-        return false;
+        return 1;
     }
     hdr = (linux_kernel_header_t *)(linux_image + KERNEL_HEADER_OFFSET);
     if ( hdr == NULL ) {
         tprintk("Error: Linux kernel header is zero.\n");
-        return false;
+        return 1;
     }
     if ( entry_point == NULL ) {
         tprintk("Error: Output pointer is zero.\n");
-        return false;
+        return 1;
     }
 
     // recommended layout
@@ -1098,7 +1335,7 @@ bool expand_linux_image( multiboot_info_t* mbi,
     if ( hdr->setup_sects > MAX_SECTOR_NUM ) {
         tprintk("Error: Linux setup sectors %d exceed maximum limitation 64.\n",
                 hdr->setup_sects);
-        return false;
+        return 1;
     }
     // set vid_mode
     linux_parse_cmdline((char *)mbi->cmdline);
@@ -1107,12 +1344,12 @@ bool expand_linux_image( multiboot_info_t* mbi,
 
     // compare to the magic number 
     if ( hdr->header != HDRS_MAGIC ) {
-        printk("Error: Old kernel (< 2.6.20) is not supported by tboot.\n");
-        return false;
+        tprintk("Error: Old kernel (< 2.6.20) is not supported by tboot.\n");
+        return 1;
     }
     if ( hdr->version < 0x0205 ) {
-        printk("Error: Old kernel (<2.6.20) is not supported by tboot.\n");
-        return false;
+        tprintk("Error: Old kernel (<2.6.20) is not supported by tboot.\n");
+        return 1;
     }
     // boot loader is grub, set type_of_loader to 0x7
     hdr->type_of_loader = LOADER_TYPE_GRUB;
@@ -1135,15 +1372,15 @@ bool expand_linux_image( multiboot_info_t* mbi,
                           &max_ram_base, &max_ram_size);
     if ( max_ram_size == 0 ) {
         tprintk("not enough RAM for initrd\n");
-        return false;
+        return 1;
     }
     if ( initrd_size > max_ram_size ) {
         tprintk("initrd_size is too large\n");
-        return false;
+        return 1;
     }
     if ( max_ram_base > ((uint64_t)(uint32_t)(~0)) ) {
         tprintk("max_ram_base is too high\n");
-        return false;
+        return 1;
     }
     initrd_base = (max_ram_base + max_ram_size - initrd_size) & PAGE_MASK;
 
@@ -1151,14 +1388,14 @@ bool expand_linux_image( multiboot_info_t* mbi,
     if ( (initrd_base + initrd_size) > hdr->initrd_addr_max ) {
         if ( hdr->initrd_addr_max < initrd_size ) {
             tprintk("initrd_addr_max is too small\n");
-            return false;
+            return 1;
         }
         initrd_base = hdr->initrd_addr_max - initrd_size;
         initrd_base = initrd_base & PAGE_MASK;
     }
 
     vmm_memcpy ((void *)initrd_base, initrd_image, initrd_size);
-    printk("Initrd from 0x%lx to 0x%lx\n",
+    tprintk("Initrd from 0x%lx to 0x%lx\n",
            (unsigned long)initrd_base,
            (unsigned long)(initrd_base + initrd_size));
 
@@ -1177,8 +1414,8 @@ bool expand_linux_image( multiboot_info_t* mbi,
         real_mode_base = LEGACY_REAL_START;
     real_mode_size = (hdr->setup_sects + 1) * SECTOR_SIZE;
     if ( real_mode_size + sizeof(boot_params_t) > KERNEL_CMDLINE_OFFSET ) {
-        printk("realmode data is too large\n");
-        return false;
+        tprintk("realmode data is too large\n");
+        return 1;
     }
 
     // calc location of protected mode part
@@ -1197,8 +1434,8 @@ bool expand_linux_image( multiboot_info_t* mbi,
         /* overflow? */
         if ( plus_overflow_u32(protected_mode_base,
                  hdr->kernel_alignment - 1) ) {
-            printk("protected_mode_base overflows\n");
-            return false;
+            tprintk("protected_mode_base overflows\n");
+            return 1;
         }
         /* round it up to kernel alignment */
         protected_mode_base = (protected_mode_base + hdr->kernel_alignment - 1)
@@ -1208,8 +1445,8 @@ bool expand_linux_image( multiboot_info_t* mbi,
     else if ( hdr->loadflags & FLAG_LOAD_HIGH ) {
         protected_mode_base =  LINUX_DEFAULT_LOAD_ADDRESS; // bzImage:0x100000 
         if ( plus_overflow_u32(protected_mode_base, protected_mode_size) ) {
-            printk("protected_mode_base plus protected_mode_size overflows\n");
-            return false;
+            tprintk("protected_mode_base plus protected_mode_size overflows\n");
+            return 1;
         }
         // Check: protected mode part cannot exceed mem_upper 
         if ( mbi->flags & MBI_MEMLIMITS )
@@ -1221,12 +1458,12 @@ bool expand_linux_image( multiboot_info_t* mbi,
                        (unsigned long)(protected_mode_base + protected_mode_size),
                        (unsigned long)0x100000,
                        (unsigned long)((mbi->mem_upper << 10) + 0x100000));
-                return false;
+                return 1;
             }
     }
     else {
         tprintk("Error: Linux protected mode not loaded high\n");
-        return false;
+        return 1;
     }
 
     // set cmd_line_ptr 
@@ -1247,11 +1484,12 @@ bool expand_linux_image( multiboot_info_t* mbi,
 
     // copy cmdline 
     const char *kernel_cmdline = skip_filename((const char *)mbi->cmdline);
-    vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, strlen(kernel_cmdline));
+    vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, 
+               vmm_strlen((const char*)kernel_cmdline));
 
     // need to put boot_params in real mode area so it gets mapped 
     boot_params = (boot_params_t *)(real_mode_base + real_mode_size);
-    memset(boot_params, 0, sizeof(*boot_params));
+    vmm_memset(boot_params, 0, sizeof(*boot_params));
     vmm_memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
 
     // detect e820 table 
@@ -1280,14 +1518,15 @@ bool expand_linux_image( multiboot_info_t* mbi,
                                           of screen */
 
     // set address of tboot shared page 
+#if 0
     if ( is_measured_launch )
         *(uint64_t *)&boot_params->tboot_shared_addr =
-                                             (uintptr_t)&_tboot_shared;
+                                             (uint64_t)&_tboot_shared;
+#endif
     *entry_point = (void *)hdr->code32_start;
-    return true;
+    return 0;
 }
 
-#endif
 
 // relocate and setup variables for evmm entry
 bool prepare_linux_image_for_evmm()
@@ -1312,7 +1551,7 @@ bool prepare_linux_image_for_evmm()
         expand_linux_image(linux_image, linux_size,
                            initrd_image, initrd_size,
                            &linux_entry_address, is_measured_launch);
-        printk("Linux kernel @%p...\n", linux_entry_address);
+        tprintk("Linux kernel @%p...\n", linux_entry_address);
     }
 #endif
     return 0;
@@ -1358,8 +1597,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // get initial layout information for images
     module_t* m;
 
-    bootstrap_start= _mystart;
-    bootstrap_end= _end;
+    bootstrap_start= (UINT32)_mystart;
+    bootstrap_end= (UINT32)_end;
 
     m= get_module(mbi, 0);
     evmm_start= (uint32_t)m->mod_start;
@@ -1386,8 +1625,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // FIX: returns hyperthreaded # what does evmm want?
     asm volatile (
         "\tmovl    $1, %%eax\n"
-	"\tcpuid\n"
-	"\tmovl    %%ebx, %[info]\n"
+        "\tcpuid\n"
+        "\tmovl    %%ebx, %[info]\n"
     : [info] "=m" (info)
     : 
     : "%eax", "%ebx", "%ecx", "%edx");

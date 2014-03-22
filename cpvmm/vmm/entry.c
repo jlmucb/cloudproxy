@@ -1771,8 +1771,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
     // FIX:  put APs in 64 bit mode with stack.
     // FIX:  add reserved area for linux guest startup arguments
-    // FIX:  in evmm, exclude tboot and bootstrap areas from primary
-    //       space
+    // FIX:  in evmm, exclude tboot and bootstrap areas from primary space
     // FIX:  allocate  debug area for return from evmm print and print it.
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode

@@ -55,6 +55,7 @@ static const int SessionIDSize = 20;
 
 void ecleanup(EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_cleanup(ctx); }
 
+// TODO(kwalsh) use keyczar HMACImpl instead of openssl, it has nicer api
 void hcleanup(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
 
 void ssl_cleanup(SSL *ssl) {
@@ -614,6 +615,7 @@ bool ReceiveAndEncryptStreamData(
   // scoped values that clean up the EVP_CIPHER_CTX and HMAC_CTX before going
   // out of scope. These do not attempt to delete their pointers but instead
   // call cleanup functions on them.
+  // TODO(kwalsh) semantics of these is nonsensical
   ScopedCipherCtx aes_cleanup(&aes);
   ScopedHmacCtx hmac_cleanup(&hmac);
 

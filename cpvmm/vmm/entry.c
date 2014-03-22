@@ -1213,13 +1213,12 @@ void get_highest_sized_ram(uint64_t size, uint64_t limit,
 }
 
 
+#define PAGE_UP(a) ((a+(PAGE_SIZE-1))&PAGE_MASK)
+
+
 unsigned long get_tboot_mem_end(void)
 {
-#if 0
     return PAGE_UP((unsigned long)&_end);
-#else
-    return 0;
-#endif
 }
 
 
@@ -1229,9 +1228,6 @@ unsigned long max(unsigned long a, unsigned long b)
         return b;
     return a;
 }
-
-
-#define PAGE_UP(a) ((a+(PAGE_SIZE-1))&PAGE_MASK)
 
 
 unsigned long get_mbi_mem_end(const multiboot_info_t *mbi)

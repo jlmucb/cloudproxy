@@ -178,8 +178,8 @@ VMM_MEMORY_LAYOUT      *vmem;
 VMM_APPLICATION_PARAMS_STRUCT a0;
 VMM_APPLICATION_PARAMS_STRUCT* p_a0= &a0;
 
-void *                  vmm_main_entry_point;      // address of vmm_main
-void *                  linux_main_entry_point;      // address of linux_main
+UINT32                  vmm_main_entry_point;      // address of vmm_main
+UINT32                  linux_main_entry_point;      // address of linux_main
 multiboot_info_t *      g_mbi= NULL;
 
 typedef void (*tboot_printk)(const char *fmt, ...);
@@ -1156,10 +1156,6 @@ int get_linux_vga(int *vid_mode)
     return 0;
 }
 
-void get_linux_mem(uint64_t *max_mem)
-{
-    *max_mem= 0x100000000;
-}
 
 const char *skip_filename(const char *cmdline)
 {
@@ -1216,7 +1212,7 @@ void get_highest_sized_ram(uint64_t size, uint64_t limit,
 #define PAGE_UP(a) ((a+(PAGE_SIZE-1))&PAGE_MASK)
 
 
-unsigned long get_tboot_mem_end(void)
+unsigned long get_bootstrap_mem_end(void)
 {
     return PAGE_UP((unsigned long)&_end);
 }
@@ -1285,9 +1281,9 @@ static inline bool plus_overflow_u32(uint32_t x, uint32_t y)
 
 // expand linux kernel with kernel image and initrd image 
 int expand_linux_image( multiboot_info_t* mbi,
-                        const void *linux_image, size_t linux_size,
-                        const void *initrd_image, size_t initrd_size,
-                        void **entry_point, bool is_measured_launch)
+                        UINT32 linux_image, UINT32 linux_size,
+                        UINT32 initrd_image, UINT32 initrd_size,
+                        UINT32* entry_point, int is_measured_launch)
 {
     linux_kernel_header_t *hdr;
     uint32_t real_mode_base, protected_mode_base;
@@ -1298,7 +1294,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     boot_params_t*  boot_params;
 
     // sanity check
-    if ( linux_image == NULL ) {
+    if ( linux_image == 0) {
         tprintk("Error: Linux kernel image is zero.\n");
         return 1;
     }
@@ -1358,10 +1354,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     // The initrd should typically be located as high in memory as
     //   possible, as it may otherwise get overwritten by the early
     //   kernel initialization sequence. 
-    uint64_t mem_limit;
-    get_linux_mem(&mem_limit);
-    if ( mem_limit > 0x100000000ULL || mem_limit == 0 )
-        mem_limit = 0x100000000ULL;
+    uint64_t mem_limit = 0x100000000ULL;
 
     uint64_t max_ram_base, max_ram_size;
     get_highest_sized_ram(initrd_size, mem_limit,
@@ -1390,7 +1383,7 @@ int expand_linux_image( multiboot_info_t* mbi,
         initrd_base = initrd_base & PAGE_MASK;
     }
 
-    vmm_memcpy ((void *)initrd_base, initrd_image, initrd_size);
+    vmm_memcpy ((void *)initrd_base, (void*)initrd_image, initrd_size);
     tprintk("Initrd from 0x%lx to 0x%lx\n",
            (unsigned long)initrd_base,
            (unsigned long)(initrd_base + initrd_size));
@@ -1399,6 +1392,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     hdr->ramdisk_size = initrd_size;
 
     // calc location of real mode part 
+    // FIX TBOOT defines
     real_mode_base = LEGACY_REAL_START;
     if ( mbi->flags & MBI_MEMLIMITS )
         real_mode_base = (mbi->mem_lower << 10) - REAL_MODE_SIZE;
@@ -1420,7 +1414,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     // if kernel is relocatable then move it above tboot 
     // else it may expand over top of tboot 
     if ( hdr->relocatable_kernel ) {
-        protected_mode_base = (uint32_t)get_tboot_mem_end();
+        protected_mode_base = (uint32_t)get_bootstrap_mem_end();
         /* fix possible mbi overwrite in grub2 case */
         /* assuming grub2 only used for relocatable kernel */
         /* assuming mbi & components are contiguous */
@@ -1466,14 +1460,14 @@ int expand_linux_image( multiboot_info_t* mbi,
     hdr->cmd_line_ptr = real_mode_base + KERNEL_CMDLINE_OFFSET;
 
     // load protected-mode part 
-    vmm_memcpy((void *)protected_mode_base, linux_image + real_mode_size,
+    vmm_memcpy((void *)protected_mode_base, (void*)(linux_image + real_mode_size),
             protected_mode_size);
     tprintk("Kernel (protected mode) from 0x%lx to 0x%lx\n",
            (unsigned long)protected_mode_base,
            (unsigned long)(protected_mode_base + protected_mode_size));
 
     // load real-mode part 
-    vmm_memcpy((void *)real_mode_base, linux_image, real_mode_size);
+    vmm_memcpy((void *)real_mode_base, (void*)linux_image, real_mode_size);
     tprintk("Kernel (real mode) from 0x%lx to 0x%lx\n",
            (unsigned long)real_mode_base,
            (unsigned long)(real_mode_base + real_mode_size));
@@ -1519,37 +1513,25 @@ int expand_linux_image( multiboot_info_t* mbi,
         *(uint64_t *)&boot_params->tboot_shared_addr =
                                              (uint64_t)&_tboot_shared;
 #endif
-    *entry_point = (void *)hdr->code32_start;
+    *entry_point = hdr->code32_start;
     return 0;
 }
 
 
 // relocate and setup variables for evmm entry
-bool prepare_linux_image_for_evmm()
+int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 {
     boot_params_t *new_boot_params;
-#if 0
-    if ( linux_image == NULL )
-        return false;
+    if ( linux_start== 0)
+        return 1;
 
-    if ( linux_type == ELF ) {
-        if ( is_measured_launch )
-            adjust_kernel_cmdline(g_mbi, &_tboot_shared);
-        if ( !expand_elf_image((elf_header_t *)linux_image,
-                               &linux_entry_address) )
-            return false;
-        tprintk("transfering control to kernel @%p...\n", linux_entry_address);
-    }
-    else if ( kernel_type == LINUX ) {
-        m = (module_t *)mbi->mods_addr;
-        void *initrd_image = (void *)m->mod_start;
-        size_t initrd_size = m->mod_end - m->mod_start;
-        expand_linux_image(linux_image, linux_size,
-                           initrd_image, initrd_size,
-                           &linux_entry_address, is_measured_launch);
-        tprintk("Linux kernel @%p...\n", linux_entry_address);
-    }
-#endif
+    module_t* m = (module_t *)mbi->mods_addr;
+    UINT32 initrd_image = (UINT32)m->mod_start;
+    UINT32 initrd_size = m->mod_end - m->mod_start;
+    expand_linux_image(mbi, linux_start, linux_end-linux_start,
+                       initrd_image, initrd_size,
+                       &linux_entry_address, 1);
+    tprintk("Linux kernel @%p...\n", linux_entry_address);
     return 0;
 }
 
@@ -1686,7 +1668,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
             vmm_main_entry_point);
 #endif
 
-    if(prepare_linux_image_for_evmm()) {
+    if(prepare_linux_image_for_evmm(mbi)) {
         tprintk("Cant prepare linux image\n");
         LOOP_FOREVER
     }

@@ -766,24 +766,24 @@ UINT32 x32_pt64_get_cr3(void)
 
 
 #ifdef JLMDEBUG
-void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
+void PrintMbi(const multiboot_info_t *mbi)
 {
     /* print mbi for debug */
     unsigned int i;
 
-    myprintk("print mbi@%p ...\n", mbi);
-    myprintk("\t flags: 0x%x\n", mbi->flags);
+    tprintk("print mbi@%p ...\n", mbi);
+    tprintk("\t flags: 0x%x\n", mbi->flags);
     if ( mbi->flags & MBI_MEMLIMITS )
-        myprintk("\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
+        tprintk("\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
                mbi->mem_upper);
     if ( mbi->flags & MBI_BOOTDEV ) {
-        myprintk("\t boot_device.bios_driver: 0x%x\n",
+        tprintk("\t boot_device.bios_driver: 0x%x\n",
                mbi->boot_device.bios_driver);
-        myprintk("\t boot_device.top_level_partition: 0x%x\n",
+        tprintk("\t boot_device.top_level_partition: 0x%x\n",
                mbi->boot_device.top_level_partition);
-        myprintk("\t boot_device.sub_partition: 0x%x\n",
+        tprintk("\t boot_device.sub_partition: 0x%x\n",
                mbi->boot_device.sub_partition);
-        myprintk("\t boot_device.third_partition: 0x%x\n",
+        tprintk("\t boot_device.third_partition: 0x%x\n",
                mbi->boot_device.third_partition);
     }
     if ( mbi->flags & MBI_CMDLINE ) {
@@ -793,68 +793,68 @@ void PrintMbi(const multiboot_info_t *mbi, tboot_printk myprintk)
         int   cmdlen = strlen((char*)mbi->cmdline);
         char *cmdptr = (char *)mbi->cmdline;
         char  chunk[CHUNK_SIZE+1];
-        myprintk("\t cmdline@0x%x: ", mbi->cmdline);
+        tprintk("\t cmdline@0x%x: ", mbi->cmdline);
         chunk[CHUNK_SIZE] = '\0';
         while (cmdlen > 0) {
             strncpy(chunk, cmdptr, CHUNK_SIZE); 
-            myprintk("\n\t\"%s\"", chunk);
+            tprintk("\n\t\"%s\"", chunk);
             cmdptr += CHUNK_SIZE;
             cmdlen -= CHUNK_SIZE;
         }
 #endif
-        myprintk("\n");
+        tprintk("\n");
     }
 
     if ( mbi->flags & MBI_MODULES ) {
-        myprintk("\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
+        tprintk("\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
                mbi->mods_addr);
         for ( i = 0; i < mbi->mods_count; i++ ) {
             module_t *p = (module_t *)(mbi->mods_addr + i*sizeof(module_t));
-            myprintk("\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
+            tprintk("\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
                    p->mod_start, p->mod_end);
-            myprintk("\t         string (@0x%x): \"%s\"\n", p->string,
+            tprintk("\t         string (@0x%x): \"%s\"\n", p->string,
                    (char *)p->string);
         }
     }
     if ( mbi->flags & MBI_AOUT ) {
         const aout_t *p = &(mbi->syms.aout_image);
-        myprintk("\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
+        tprintk("\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
                p->tabsize, p->strsize, p->addr);
     }
     if ( mbi->flags & MBI_ELF ) {
         const elf_t *p = &(mbi->syms.elf_image);
-        myprintk("\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
+        tprintk("\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
                p->num, p->size, p->addr, p->shndx);
     }
     if ( mbi->flags & MBI_MEMMAP ) {
         memory_map_t *p;
-        myprintk("\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
+        tprintk("\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
                mbi->mmap_addr);
         for ( p = (memory_map_t *)mbi->mmap_addr;
               (uint32_t)p < mbi->mmap_addr + mbi->mmap_length;
               p=(memory_map_t *)((uint32_t)p + p->size + sizeof(p->size)) ) {
-                myprintk("\t     size: 0x%x, base_addr: 0x%04x%04x, "
+                tprintk("\t     size: 0x%x, base_addr: 0x%04x%04x, "
                    "length: 0x%04x%04x, type: %u\n", p->size,
                    p->base_addr_high, p->base_addr_low,
                    p->length_high, p->length_low, p->type);
         }
     }
     if ( mbi->flags & MBI_DRIVES ) {
-        myprintk("\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
+        tprintk("\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
                mbi->drives_addr);
     }
     if ( mbi->flags & MBI_CONFIG ) {
-        myprintk("\t config_table: 0x%x\n", mbi->config_table);
+        tprintk("\t config_table: 0x%x\n", mbi->config_table);
     }
     if ( mbi->flags & MBI_BTLDNAME ) {
-        myprintk("\t boot_loader_name@0x%x: %s\n",
+        tprintk("\t boot_loader_name@0x%x: %s\n",
                mbi->boot_loader_name, (char *)mbi->boot_loader_name);
     }
     if ( mbi->flags & MBI_APM ) {
-        myprintk("\t apm_table: 0x%x\n", mbi->apm_table);
+        tprintk("\t apm_table: 0x%x\n", mbi->apm_table);
     }
     if ( mbi->flags & MBI_VBE ) {
-        myprintk("\t vbe_control_info: 0x%x\n"
+        tprintk("\t vbe_control_info: 0x%x\n"
                "\t vbe_mode_info: 0x%x\n"
                "\t vbe_mode: 0x%x\n"
                "\t vbe_interface_seg: 0x%x\n"

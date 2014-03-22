@@ -1056,6 +1056,10 @@ uint32_t initram_start_address;
 // linux entry address
 uint32_t linux_entry_address;
 
+// new boot parameters for linux guest
+boot_params_t*  new_boot_params= NULL;
+
+
 uint32_t entryOffset(uint32_t base)
 {
     elf64_hdr* elf= (elf64_hdr*) base;
@@ -1064,7 +1068,7 @@ uint32_t entryOffset(uint32_t base)
 
 
 typedef struct {
-    const char *name;          /* set to NULL for last item in list */
+    const char *name;          // set to NULL for last item in list
     const char *def_val;
 } cmdline_option_t;
 
@@ -1521,7 +1525,6 @@ int expand_linux_image( multiboot_info_t* mbi,
 // relocate and setup variables for evmm entry
 int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 {
-    boot_params_t *new_boot_params;
     if ( linux_start== 0)
         return 1;
 
@@ -1575,6 +1578,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // get initial layout information for images
     module_t* m;
 
+    // FIX: mystart is wrong
     bootstrap_start= (UINT32)_mystart;
     bootstrap_end= (UINT32)_end;
 

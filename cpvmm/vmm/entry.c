@@ -1035,11 +1035,13 @@ uint32_t linux_end= 0;
 uint32_t initram_start= 0;
 uint32_t initram_end= 0;
 
-// Post relocation adderesses
+// Post relocation addresses
 uint32_t evmm_start_address;
 uint32_t linux_start_address;
 uint32_t initram_start_address;
 
+// linux entry address
+uint32_t linux_entry_address;
 
 uint32_t entryOffset(uint32_t base)
 {
@@ -1047,136 +1049,82 @@ uint32_t entryOffset(uint32_t base)
     return elf->e_entry;
 }
 
-// relocate and setup variables for evmm entry
-int prepare_linux_image_for_evmm()
-{
 #if 0
 
-    // Relocate linux_image from linux_start to LINUX_DEFAULT_LOAD_ADDRESS
-    entry= entryOffset(linux_start);
-    // FIX:  this is wrong, the default load address is 0x100000, also
-    //     Linux has two seperate pieces: real mode linux and protected
-    //     mode linux.  protected mode is at 0x100000.  real mode is
-    //     in low memory.  Finally, if the location of linux overlaps
-    //     its final destination, this will be erroneous.  Note that
-    //     for the  evmm image above we are guarenteed no overlap.
-    // FIX: put correct memory address for initram in linux header
-    linux_start_address= LINUX_DEFAULT_LOAD_ADDRESS;
-    vmm_memcpy((void *)linux_start_address, (const void*) linux_start, 
-               (UINT32) (linux_end-linux_start));
-    // FIX: JLM to correct the calculation.
-    linux_main_entry_point = (void *) (entry + linux_start_address);
-// this fragment will be used to set up the guest
-
-extern tboot_shared_t _tboot_shared;
-static boot_params_t *boot_params;
-
- if ( is_elf_image(kernel_image, kernel_size) ) {
-        printk("kernel is ELF format\n");
-        kernel_type = ELF;
-        /* fix for GRUB2, which may load modules into memory before tboot */
-        move_modules(&g_mbi);
-    }
-    else {
-        printk("assuming kernel is Linux format\n");
-        kernel_type = LINUX;
-    }
-
-    /* print_mbi(g_mbi); */
-
-    kernel_image = remove_module(g_mbi, NULL);
-    if ( kernel_image == NULL )
-        return false;
-
-    if ( kernel_type == ELF ) {
-        if ( is_measured_launch )
-            adjust_kernel_cmdline(g_mbi, &_tboot_shared);
-        if ( !expand_elf_image((elf_header_t *)kernel_image,
-                               &kernel_entry_point) )
-            return false;
-        printk("transfering control to kernel @%p...\n", kernel_entry_point);
-        /* (optionally) pause when transferring to kernel */
-        if ( g_vga_delay > 0 )
-            delay(g_vga_delay * 1000);
-        printk(TBOOT_INFO"printk= %p\n", printk);
-        printk(TBOOT_INFO"&_tboot_shared= %p\n", &_tboot_shared);
-        printk(TBOOT_INFO"boot_params= %p\n", boot_params);
-        printk(TBOOT_INFO"g_mbi= %p\n", g_mbi);
-
-        return jump_elf_image(kernel_entry_point);
-    }
-        else if ( kernel_type == LINUX ) {
-        m = (module_t *)g_mbi->mods_addr;
-        void *initrd_image = (void *)m->mod_start;
-        size_t initrd_size = m->mod_end - m->mod_start;
-
-        expand_linux_image(kernel_image, kernel_size,
-                           initrd_image, initrd_size,
-                           &kernel_entry_point, is_measured_launch);
-        printk("transfering control to kernel @%p...\n", kernel_entry_point);
-        /* (optionally) pause when transferring to kernel */
-        if ( g_vga_delay > 0 )
-            delay(g_vga_delay * 1000);
-        printk(TBOOT_INFO"printk= %p\n", printk);
-        printk(TBOOT_INFO"&_tboot_shared= %p\n", &_tboot_shared);
-        printk(TBOOT_INFO"boot_params= %p\n", boot_params);
-        printk(TBOOT_INFO"g_mbi= %p\n", g_mbi);
-        return jump_linux_image(kernel_entry_point);
-    }
-
-    printk("unknown kernel type\n");
-    return false;
-
-
-//  ELF arguments: MB_MAGIC, mbi, entry_point
-//  in GCC the args are in edi, esi, edx, ecx
-
-    multiboot_info_t* mbi;
-    UINT32  magic;
-    void*   linux_entry_point;
-
-    asm volatile(
-        "\tmovl   %%edi, #[magic]\n"
-        "\tmovl   %%esi, #[mbi]\n"
-        "\tmovl   %%edx, #[linux_entry_point]\n"
-        : [mbi] "=m" (mbi), [magic] "=m" (magic), [linux_entry_point] "=m" (linux_entry_point)
-        ::);
-    
+// expand linux kernel with kernel image and initrd image 
+bool expand_linux_image( multiboot_info_t* mbi,
+                        const void *linux_image, size_t linux_size,
+                        const void *initrd_image, size_t initrd_size,
+                        void **entry_point, bool is_measured_launch)
+{
     linux_kernel_header_t *hdr;
+    uint32_t real_mode_base, protected_mode_base;
     unsigned long real_mode_size, protected_mode_size;
+    // Note: real_mode_size + protected_mode_size = linux_size 
     uint32_t initrd_base;
     int vid_mode = 0;
 
+    // sanity check
+    if ( linux_image == NULL ) {
+        tprintk("Error: Linux kernel image is zero.\n");
+        return false;
+    }
+    if ( linux_size == 0 ) {
+        tprintk("Error: Linux kernel size is zero.\n");
+        return false;
+    }
+    if ( linux_size < sizeof(linux_kernel_header_t) ) {
+        tprintk("Error: Linux kernel size is too small.\n");
+        return false;
+    }
     hdr = (linux_kernel_header_t *)(linux_image + KERNEL_HEADER_OFFSET);
-    if ( hdr->setup_sects == 0 )
-        hdr->setup_sects = DEFAULT_SECTOR_NUM;
-    if ( hdr->setup_sects > MAX_SECTOR_NUM ) {
-        printk(TBOOT_ERR"Error: Linux setup sectors %d exceed maximum limitation 64.\n",
-                hdr->setup_sects);
+    if ( hdr == NULL ) {
+        tprintk("Error: Linux kernel header is zero.\n");
+        return false;
+    }
+    if ( entry_point == NULL ) {
+        tprintk("Error: Output pointer is zero.\n");
         return false;
     }
 
-    linux_parse_cmdline((char *)g_mbi->cmdline);
+    // recommended layout
+    //    0x0000 - 0x7FFF     Real mode kernel
+    //    0x8000 - 0x8FFF     Stack and heap
+    //    0x9000 - 0x90FF     Kernel command line
+
+    // if setup_sects is zero, set to default value 4 
+    if ( hdr->setup_sects == 0 )
+        hdr->setup_sects = DEFAULT_SECTOR_NUM;
+    if ( hdr->setup_sects > MAX_SECTOR_NUM ) {
+        tprintk("Error: Linux setup sectors %d exceed maximum limitation 64.\n",
+                hdr->setup_sects);
+        return false;
+    }
+    // set vid_mode
+    linux_parse_cmdline((char *)mbi->cmdline);
     if ( get_linux_vga(&vid_mode) )
         hdr->vid_mode = vid_mode;
+
     // compare to the magic number 
     if ( hdr->header != HDRS_MAGIC ) {
-        /* old kernel */
-        printk(TBOOT_ERR"Error: Old kernel (< 2.6.20) is not supported by tboot.\n");
+        printk("Error: Old kernel (< 2.6.20) is not supported by tboot.\n");
         return false;
     }
     if ( hdr->version < 0x0205 ) {
-        printk(TBOOT_ERR"Error: Old kernel (<2.6.20) is not supported by tboot.\n");
+        printk("Error: Old kernel (<2.6.20) is not supported by tboot.\n");
         return false;
     }
-    // boot loader is grub, set type_of_loader to 0x7 
+    // boot loader is grub, set type_of_loader to 0x7
     hdr->type_of_loader = LOADER_TYPE_GRUB;
 
     // set loadflags and heap_end_ptr 
     hdr->loadflags |= FLAG_CAN_USE_HEAP;         /* can use heap */
     hdr->heap_end_ptr = KERNEL_CMDLINE_OFFSET - BOOT_SECTOR_OFFSET;
 
-    // check if Linux command line explicitly specified a memory limit 
+    // load initrd and set ramdisk_image and ramdisk_size 
+    // The initrd should typically be located as high in memory as
+    //   possible, as it may otherwise get overwritten by the early
+    //   kernel initialization sequence. 
     uint64_t mem_limit;
     get_linux_mem(&mem_limit);
     if ( mem_limit > 0x100000000ULL || mem_limit == 0 )
@@ -1186,36 +1134,31 @@ static boot_params_t *boot_params;
     get_highest_sized_ram(initrd_size, mem_limit,
                           &max_ram_base, &max_ram_size);
     if ( max_ram_size == 0 ) {
-        printk(TBOOT_ERR"not enough RAM for initrd\n");
+        tprintk("not enough RAM for initrd\n");
         return false;
     }
     if ( initrd_size > max_ram_size ) {
-        printk(TBOOT_ERR"initrd_size is too large\n");
+        tprintk("initrd_size is too large\n");
         return false;
     }
     if ( max_ram_base > ((uint64_t)(uint32_t)(~0)) ) {
-        printk(TBOOT_ERR"max_ram_base is too high\n");
-        return false;
-    }
-    if ( plus_overflow_u32((uint32_t)max_ram_base,
-             (uint32_t)(max_ram_size - initrd_size)) ) {
-        printk(TBOOT_ERR"max_ram overflows\n");
+        tprintk("max_ram_base is too high\n");
         return false;
     }
     initrd_base = (max_ram_base + max_ram_size - initrd_size) & PAGE_MASK;
 
     // should not exceed initrd_addr_max 
-    if ( initrd_base + initrd_size > hdr->initrd_addr_max ) {
+    if ( (initrd_base + initrd_size) > hdr->initrd_addr_max ) {
         if ( hdr->initrd_addr_max < initrd_size ) {
-            printk(TBOOT_ERR"initrd_addr_max is too small\n");
+            tprintk("initrd_addr_max is too small\n");
             return false;
         }
         initrd_base = hdr->initrd_addr_max - initrd_size;
         initrd_base = initrd_base & PAGE_MASK;
     }
 
-    memmove((void *)initrd_base, initrd_image, initrd_size);
-    printk(TBOOT_DETA"Initrd from 0x%lx to 0x%lx\n",
+    vmm_memcpy ((void *)initrd_base, initrd_image, initrd_size);
+    printk("Initrd from 0x%lx to 0x%lx\n",
            (unsigned long)initrd_base,
            (unsigned long)(initrd_base + initrd_size));
 
@@ -1224,98 +1167,99 @@ static boot_params_t *boot_params;
 
     // calc location of real mode part 
     real_mode_base = LEGACY_REAL_START;
-    if ( g_mbi->flags & MBI_MEMLIMITS )
-        real_mode_base = (g_mbi->mem_lower << 10) - REAL_MODE_SIZE;
-    if ( real_mode_base < TBOOT_KERNEL_CMDLINE_ADDR + TBOOT_KERNEL_CMDLINE_SIZE )
-        real_mode_base = TBOOT_KERNEL_CMDLINE_ADDR + TBOOT_KERNEL_CMDLINE_SIZE;
+    if ( mbi->flags & MBI_MEMLIMITS )
+        real_mode_base = (mbi->mem_lower << 10) - REAL_MODE_SIZE;
+    if ( real_mode_base < TBOOT_KERNEL_CMDLINE_ADDR +
+         TBOOT_KERNEL_CMDLINE_SIZE )
+        real_mode_base = TBOOT_KERNEL_CMDLINE_ADDR +
+            TBOOT_KERNEL_CMDLINE_SIZE;
     if ( real_mode_base > LEGACY_REAL_START )
         real_mode_base = LEGACY_REAL_START;
-
     real_mode_size = (hdr->setup_sects + 1) * SECTOR_SIZE;
     if ( real_mode_size + sizeof(boot_params_t) > KERNEL_CMDLINE_OFFSET ) {
-        printk(TBOOT_ERR"realmode data is too large\n");
+        printk("realmode data is too large\n");
         return false;
     }
 
-    // calc location of protected mode part 
+    // calc location of protected mode part
     protected_mode_size = linux_size - real_mode_size;
 
     // if kernel is relocatable then move it above tboot 
+    // else it may expand over top of tboot 
     if ( hdr->relocatable_kernel ) {
         protected_mode_base = (uint32_t)get_tboot_mem_end();
         /* fix possible mbi overwrite in grub2 case */
         /* assuming grub2 only used for relocatable kernel */
         /* assuming mbi & components are contiguous */
-        unsigned long mbi_end = get_mbi_mem_end(g_mbi);
+        unsigned long mbi_end = get_mbi_mem_end(mbi);
         if ( mbi_end > protected_mode_base )
             protected_mode_base = mbi_end;
-        // overflow?
+        /* overflow? */
         if ( plus_overflow_u32(protected_mode_base,
                  hdr->kernel_alignment - 1) ) {
-            printk(TBOOT_ERR"protected_mode_base overflows\n");
+            printk("protected_mode_base overflows\n");
             return false;
         }
-        // round it up to kernel alignment
+        /* round it up to kernel alignment */
         protected_mode_base = (protected_mode_base + hdr->kernel_alignment - 1)
                               & ~(hdr->kernel_alignment-1);
         hdr->code32_start = protected_mode_base;
     }
     else if ( hdr->loadflags & FLAG_LOAD_HIGH ) {
-        protected_mode_base = BZIMAGE_PROTECTED_START;
-        // bzImage:0x100000 
+        protected_mode_base =  LINUX_DEFAULT_LOAD_ADDRESS; // bzImage:0x100000 
         if ( plus_overflow_u32(protected_mode_base, protected_mode_size) ) {
-            printk(TBOOT_ERR"protected_mode_base plus protected_mode_size overflows\n");
+            printk("protected_mode_base plus protected_mode_size overflows\n");
             return false;
         }
-        // Check: protected mode part cannot exceed mem_upper
-        if ( g_mbi->flags & MBI_MEMLIMITS )
+        // Check: protected mode part cannot exceed mem_upper 
+        if ( mbi->flags & MBI_MEMLIMITS )
             if ( (protected_mode_base + protected_mode_size)
-                    > ((g_mbi->mem_upper << 10) + 0x100000) ) {
-                printk(TBOOT_ERR"Error: Linux protected mode part (0x%lx ~ 0x%lx) "
+                    > ((mbi->mem_upper << 10) + 0x100000) ) {
+                tprintk("Error: Linux protected mode part (0x%lx ~ 0x%lx) "
                        "exceeds mem_upper (0x%lx ~ 0x%lx).\n",
                        (unsigned long)protected_mode_base,
                        (unsigned long)(protected_mode_base + protected_mode_size),
                        (unsigned long)0x100000,
-                       (unsigned long)((g_mbi->mem_upper << 10) + 0x100000));
+                       (unsigned long)((mbi->mem_upper << 10) + 0x100000));
                 return false;
             }
     }
     else {
-        printk(TBOOT_ERR"Error: Linux protected mode not loaded high\n");
+        tprintk("Error: Linux protected mode not loaded high\n");
         return false;
     }
 
-    // set cmd_line_ptr
+    // set cmd_line_ptr 
     hdr->cmd_line_ptr = real_mode_base + KERNEL_CMDLINE_OFFSET;
 
-    // load protected-mode part
-    memmove((void *)protected_mode_base, linux_image + real_mode_size,
+    // load protected-mode part 
+    vmm_memcpy((void *)protected_mode_base, linux_image + real_mode_size,
             protected_mode_size);
-    printk(TBOOT_DETA"Kernel (protected mode) from 0x%lx to 0x%lx\n",
+    tprintk("Kernel (protected mode) from 0x%lx to 0x%lx\n",
            (unsigned long)protected_mode_base,
            (unsigned long)(protected_mode_base + protected_mode_size));
 
-    / load real-mode part
-    memmove((void *)real_mode_base, linux_image, real_mode_size);
-    printk(TBOOT_DETA"Kernel (real mode) from 0x%lx to 0x%lx\n",
+    // load real-mode part 
+    vmm_memcpy((void *)real_mode_base, linux_image, real_mode_size);
+    tprintk("Kernel (real mode) from 0x%lx to 0x%lx\n",
            (unsigned long)real_mode_base,
            (unsigned long)(real_mode_base + real_mode_size));
 
-    // copy cmdline
-    const char *kernel_cmdline = skip_filename((const char *)g_mbi->cmdline);
-    memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, strlen(kernel_cmdline));
+    // copy cmdline 
+    const char *kernel_cmdline = skip_filename((const char *)mbi->cmdline);
+    vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, strlen(kernel_cmdline));
 
-    // need to put boot_params where they aare mapped
+    // need to put boot_params in real mode area so it gets mapped 
     boot_params = (boot_params_t *)(real_mode_base + real_mode_size);
     memset(boot_params, 0, sizeof(*boot_params));
-    memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
+    vmm_memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
 
-    // detect e820 table
-    if ( g_mbi->flags & MBI_MEMMAP ) {
+    // detect e820 table 
+    if ( mbi->flags & MBI_MEMMAP ) {
         int i;
 
-        memory_map_t *p = (memory_map_t *)g_mbi->mmap_addr;
-        for ( i = 0; (uint32_t)p < g_mbi->mmap_addr + g_mbi->mmap_length; i++ ) {
+        memory_map_t *p = (memory_map_t *)mbi->mmap_addr;
+        for ( i = 0; (uint32_t)p < mbi->mmap_addr + mbi->mmap_length; i++ ) {
             boot_params->e820_map[i].addr = ((uint64_t)p->base_addr_high << 32)
                                             | (uint64_t)p->base_addr_low;
             boot_params->e820_map[i].size = ((uint64_t)p->length_high << 32)
@@ -1327,18 +1271,49 @@ static boot_params_t *boot_params;
     }
 
     screen_info_t *screen = (screen_info_t *)&boot_params->screen_info;
-    screen->orig_video_mode = 3;
+    screen->orig_video_mode = 3;       /* BIOS 80*25 text mode */
     screen->orig_video_lines = 25;
     screen->orig_video_cols = 80;
-    screen->orig_video_points = 16;
-    screen->orig_video_isVGA = 1; 
-    screen->orig_y = 24;
+    screen->orig_video_points = 16;    /* set font height to 16 pixels */
+    screen->orig_video_isVGA = 1;      /* use VGA text screen setups */
+    screen->orig_y = 24;               /* start display text in the last line
+                                          of screen */
 
     // set address of tboot shared page 
     if ( is_measured_launch )
-        *(uint64_t *)&boot_params->tboot_shared_addr = (uintptr_t)&_tboot_shared;
-
+        *(uint64_t *)&boot_params->tboot_shared_addr =
+                                             (uintptr_t)&_tboot_shared;
     *entry_point = (void *)hdr->code32_start;
+    return true;
+}
+
+#endif
+
+// relocate and setup variables for evmm entry
+bool prepare_linux_image_for_evmm()
+{
+    boot_params_t *new_boot_params;
+#if 0
+    if ( linux_image == NULL )
+        return false;
+
+    if ( linux_type == ELF ) {
+        if ( is_measured_launch )
+            adjust_kernel_cmdline(g_mbi, &_tboot_shared);
+        if ( !expand_elf_image((elf_header_t *)linux_image,
+                               &linux_entry_address) )
+            return false;
+        tprintk("transfering control to kernel @%p...\n", linux_entry_address);
+    }
+    else if ( kernel_type == LINUX ) {
+        m = (module_t *)mbi->mods_addr;
+        void *initrd_image = (void *)m->mod_start;
+        size_t initrd_size = m->mod_end - m->mod_start;
+        expand_linux_image(linux_image, linux_size,
+                           initrd_image, initrd_size,
+                           &linux_entry_address, is_measured_launch);
+        printk("Linux kernel @%p...\n", linux_entry_address);
+    }
 #endif
     return 0;
 }

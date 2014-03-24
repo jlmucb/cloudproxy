@@ -150,7 +150,7 @@ static UINT32                           p_cr4= 0;
 
 static VMM_INPUT_PARAMS                 input_params;
 static VMM_INPUT_PARAMS*                pointer_to_input_params= &input_params;
-static UINT64                           reserved = 0;
+static UINT64                           evmm_reserved = 0;
 static UINT32                           local_apic_id = 0;
 static VMM_STARTUP_STRUCT               startup_struct;
 static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
@@ -160,16 +160,16 @@ static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
 
+int                                     num_of_aps= 0;
+void*                                   p_low_mem = (void *)0x8000;
+
 static INIT64_STRUCT                    init64;
 static INIT64_STRUCT *                  p_init64_data = &init64;
 static INIT32_STRUCT_SAFE               init32;
-int                                     num_of_aps= 0;
-void*                                   p_low_mem = (void *)0x8000;
-VMM_GUEST_STARTUP                       g0;
-VMM_GUEST_STARTUP *                     p_g0 = &g0;
-VMM_MEMORY_LAYOUT *                     vmem;
-VMM_APPLICATION_PARAMS_STRUCT           a0;
-VMM_APPLICATION_PARAMS_STRUCT*          p_a0= &a0;
+VMM_GUEST_STARTUP                       evmm_g0;
+VMM_MEMORY_LAYOUT *                     evmm_vmem= NULL;
+VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
+VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
 
 
 // Hack!  Temporary  hacked info
@@ -1057,8 +1057,6 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
     return TRUE;
 }
 
-// TODO(tmroeder): this should be the real base, but I want it to compile.
-
 
 uint32_t entryOffset(uint32_t base)
 {
@@ -1696,18 +1694,18 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     }
 
     // Guest state initialization for relocated inage
-    g0.size_of_this_struct = sizeof(g0);
-    g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
-    g0.flags = 0;               //FIX(RNB): need to put the correct guest flags
-    g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
-    g0.cpu_affinity = -1;
-    g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
-    g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
-    g0.image_size = linux_end - linux_start;
+    evmm_g0.size_of_this_struct = sizeof(evmm_g0);
+    evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
+    evmm_g0.flags = 0;               //FIX(RNB): need to put the correct guest flags
+    evmm_g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
+    evmm_g0.cpu_affinity = -1;
+    evmm_g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
+    evmm_g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
+    evmm_g0.image_size = linux_end - linux_start;
                 
-    g0.image_address= linux_start_address;
-    g0.image_offset_in_guest_physical_memory = linux_start_address;
-    g0.physical_memory_size = 0; 
+    evmm_g0.image_address= linux_start_address;
+    evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
+    evmm_g0.physical_memory_size = 0; 
 
     // FIX(RNB):  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
     // FIX(RNB): fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
@@ -1716,11 +1714,11 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // input args for code32_start.  Note that the boot parameters are already
     // in the current address space so we only need to reserve memory and copy
     // them.
-    g0.cpu_states_array = 0; 
+    evmm_g0.cpu_states_array = 0; 
 
     // FIX(RNB): the start address of the array of initial cpu states for guest cpus.
     //     This pointer makes sense only if the devices_count > 0
-    g0.devices_array = 0;
+    evmm_g0.devices_array = 0;
 
     // Startup struct initialization
     p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
@@ -1735,12 +1733,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     p_startup_struct->default_device_owner= UUID;
     p_startup_struct->acpi_owner= UUID; 
     p_startup_struct->nmi_owner= UUID; 
-    p_startup_struct->primary_guest_startup_state = (UINT64)(UINT32)&g0;
+    p_startup_struct->primary_guest_startup_state = (UINT64)(UINT32)&evmm_g0;
 
     // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
     // vmm_memory_layout is suppose to contain the start/end/size of
     // each image that is part of evmm (e.g. evmm, linux+initrd)
-    vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
+    evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
+    // FIX (RNB) test for failure
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
             evmm_heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
@@ -1766,14 +1765,14 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // FIX(RNB): The current evmm REQUIRES a thunk area.  We need to define one.
     // application parameters
     // FIX(RNB):  This structure is not used so the setting is probably OK.
-    a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
-    a0.number_of_params = 0;
-    a0.session_id = 0;
-    a0.address_entry_list = 0;
-    a0.entry_number = 0;
+    evmm_a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
+    evmm_a0.number_of_params = 0;
+    evmm_a0.session_id = 0;
+    evmm_a0.address_entry_list = 0;
+    evmm_a0.entry_number = 0;
 #if 0
-    a0.fadt_gpa = NULL;
-    a0.dmar_gpa = NULL;
+    evmm_a0.fadt_gpa = NULL;
+    evmm_a0.dmar_gpa = NULL;
 #endif
 
     if (p_startup_struct->physical_memory_layout_E820 == -1) {
@@ -1810,9 +1809,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         "\txor %%eax, %%eax\n"
         "\tand $7, %%esp\n"
         "\tpush %%eax\n"
-        "\tpush %[reserved]\n"
+        "\tpush %[evmm_reserved]\n"
         "\tpush %%eax\n"
-        "\tpush %[p_a0]\n"
+        "\tpush %[evmm_p_a0]\n"
         "\tpush %%eax\n"
         "\tpush %[p_startup_struct]\n"
         "\tpush %%eax\n"
@@ -1872,7 +1871,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         : 
         : [local_apic_id] "m" (local_apic_id), 
           [p_startup_struct] "m" (p_startup_struct), 
-          [p_a0] "m" (p_a0), [reserved] "m" (reserved), 
+          [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
           [vmm_main_entry_point] "m" (vmm_main_entry_point), 
           [p_evmm_stack] "m" (p_evmm_stack), 
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)

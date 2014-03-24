@@ -160,7 +160,7 @@ static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
 
-int                                     num_of_aps= 0;
+int                                     evmm_num_of_aps= 0;
 void*                                   p_low_mem = (void *)0x8000;
 
 static INIT64_STRUCT                    init64;
@@ -214,9 +214,8 @@ uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to t
 uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
 uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
 
-
 // new boot parameters for linux guest
-boot_params_t*  new_boot_params= NULL;
+uint32_t linux_boot_params= 0;
 
 void *vmm_memset(void *dest, int val, UINT32 count)
 {
@@ -1285,7 +1284,7 @@ static inline bool plus_overflow_u32(uint32_t x, uint32_t y)
 int expand_linux_image( multiboot_info_t* mbi,
                         UINT32 linux_image, UINT32 linux_size,
                         UINT32 initrd_image, UINT32 initrd_size,
-                        UINT32* entry_point, int is_measured_launch)
+                        UINT32* entry_point)
 {
     linux_kernel_header_t *hdr;
     uint32_t real_mode_base, protected_mode_base;
@@ -1484,9 +1483,6 @@ int expand_linux_image( multiboot_info_t* mbi,
     vmm_memset(boot_params, 0, sizeof(*boot_params));
     vmm_memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
 
-    // FIX(JLM)
-    linux_esi_register= (uint32_t) boot_params;
-
     // detect e820 table 
     if ( mbi->flags & MBI_MEMMAP ) {
         int i;
@@ -1511,10 +1507,6 @@ int expand_linux_image( multiboot_info_t* mbi,
     screen->orig_video_isVGA = 1;      /* use VGA text screen setups */
     screen->orig_y = 24;               /* start display text in the last line
                                           of screen */
-
-    // set address of tboot shared page 
-    if ( is_measured_launch )
-        vmm_memcpy((void*)boot_params->tboot_shared_addr, (void*)&shared_page, sizeof(shared_page));
     *entry_point = hdr->code32_start;
     return 0;
 }
@@ -1524,6 +1516,24 @@ int expand_linux_image( multiboot_info_t* mbi,
 
 int prepare_primary_guest_args()
 {
+
+    // put arguments one page prior to guest esp (which is normally one page before evmm heap)
+    if(linux_esp_register==0) {
+        return 1;
+    }
+
+    linux_boot_params= (linux_esp_register+PAGE_SIZE-1)&PAGE_MASK;
+    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
+
+    // FIX: copy arguments
+
+    // set address of copied tboot shared page 
+    vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, sizeof(shared_page));
+
+    // FIX: remove bootstrap, stack page and arguments page from linux e820
+
+    // set esi register
+    linux_esi_register= linux_boot_params;
     return 0;
 }
 
@@ -1537,17 +1547,9 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     UINT32 initrd_image = (UINT32)m->mod_start;
     UINT32 initrd_size = m->mod_end - m->mod_start;
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
-                       initrd_image, initrd_size, &linux_entry_address, 1);
+                       initrd_image, initrd_size, &linux_entry_address);
 
-    // put arguments one page prior to guest esp (which is normally one page before evmm heap)
-    if(linux_esp_register==0) {
-    }
-
-    // copy arguments
-
-    // set esi register
-
-    // CHECK
+    // CHECK(JLM)
     linux_start_address= linux_entry_address;
     tprintk("Linux kernel @%p...\n", linux_entry_address);
     return 0;
@@ -1627,9 +1629,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     : [info] "=m" (info)
     : 
     : "%eax", "%ebx", "%ecx", "%edx");
-    num_of_aps = ((info>>16)&0xff)-1;
-    if (num_of_aps < 0)
-        num_of_aps = 0; 
+    evmm_num_of_aps = ((info>>16)&0xff)-1;
+    if (evmm_num_of_aps < 0)
+        evmm_num_of_aps = 0; 
 
 #ifdef JLMDEBUG
     tprintk("Memory map pre relocation\n");
@@ -1638,13 +1640,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     tprintk("\tevmm_start: %08x, evmm_end: %08x\n", evmm_start, evmm_end);
     tprintk("\tlinux_start: %08x, linux_end: %08x\n", linux_start, linux_end);
     tprintk("\tinitram_start: %08x, initram_end: %08x\n", initram_start, initram_end);
-    tprintk("\t%d APs, %08x\n", num_of_aps, info);
+    tprintk("\t%d APs, %08x\n", evmm_num_of_aps, info);
 #endif
-    num_of_aps = 0;  // BSP only for now
+    evmm_num_of_aps = 0;  // BSP only for now
     LOOP_FOREVER
 
     init32.s.i32_low_memory_page = (UINT32)p_low_mem;
-    init32.s.i32_num_of_aps = num_of_aps;
+    init32.s.i32_num_of_aps = evmm_num_of_aps;
 
     // set up evmm heap
     evmm_heap_base = HEAP_BASE;

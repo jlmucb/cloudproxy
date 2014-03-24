@@ -10,8 +10,8 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-* limitations under the License.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include "vmm_defs.h"
@@ -31,7 +31,7 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_VMENTER_EVENT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GUEST_CPU_VMENTER_EVENT_C, __condition)
 
-/*----------------------- Local Types and Variables --------------------------*/
+
 /*
 #define PRINT_GCPU_IDENTITY(__gcpu)                                            \
 VMM_DEBUG_CODE(                                                                \
@@ -68,7 +68,6 @@ static IDT_RESOLUTION_ACTION idt_resolution_table[4][4] =
     { TEAR_DOWN_GUEST     , TEAR_DOWN_GUEST     , TEAR_DOWN_GUEST     , TEAR_DOWN_GUEST }
 };
 
-/*-------------- Forward declarations for local functions --------------------*/
 
 static EXCEPTION_CLASS vector_to_exception_class(VECTOR_ID vector_id
     );
@@ -90,18 +89,13 @@ INLINE void copy_exception_to_vmenter_exception(
     vmenter_exception->Bits.Reserved = 0;
 }
 
-/*------------------------------- Code Starts Here ---------------------------*/
-
 
 #ifdef INCLUDE_UNUSED_CODE
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_nmi_injection_allowed
-*  PURPOSE  : Checks if NMI injection is allowed for the guest CPU
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : TRUE if event injection allowed
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_nmi_injection_allowed(
-    const GUEST_CPU_HANDLE gcpu)
+// FUNCTION : gcpu_nmi_injection_allowed
+// PURPOSE  : Checks if NMI injection is allowed for the guest CPU
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : TRUE if event injection allowed
+BOOLEAN gcpu_nmi_injection_allowed( const GUEST_CPU_HANDLE gcpu)
 {
     IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
     BOOLEAN                                     injection_allowed = TRUE;
@@ -109,9 +103,7 @@ BOOLEAN gcpu_nmi_injection_allowed(
 
     VMM_ASSERT(gcpu);
     VMM_ASSERT(0 == GET_EXCEPTION_RESOLUTION_REQUIRED_FLAG(gcpu));
-
     vmcs = gcpu_get_vmcs(gcpu);
-
     idt_vectoring_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
 
     if (1 == idt_vectoring_info.Bits.Valid) {
@@ -131,9 +123,7 @@ BOOLEAN gcpu_nmi_injection_allowed(
 #endif
 
 #ifdef ENABLE_VTLB
-void gcpu_update_current_exception_error_code(
-    GUEST_CPU_HANDLE    gcpu,
-    UINT32 error_code)
+void gcpu_update_current_exception_error_code( GUEST_CPU_HANDLE gcpu, UINT32 error_code)
 {
     VMCS_HIERARCHY* vmcs_hierarchy =  gcpu_get_vmcs_hierarchy(gcpu);
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_MERGED);
@@ -143,19 +133,14 @@ void gcpu_update_current_exception_error_code(
 #endif
 
 
-
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmentry_inject_event
-*  PURPOSE  : Inject interrupt/exception into guest if allowed, otherwise
-*           : set NMI/Interrupt window
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*           : VMENTER_EVENT  *p_event, function assumes valid input,
-*  RETURNS  : TRUE if event was injected, FALSE
-*  NOTES    : no checkings are done for event validity
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_event(
-    GUEST_CPU_HANDLE    gcpu,
-    VMENTER_EVENT      *p_event)
+// FUNCTION : vmentry_inject_event
+// PURPOSE  : Inject interrupt/exception into guest if allowed, otherwise
+//          : set NMI/Interrupt window
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+//          : VMENTER_EVENT  *p_event, function assumes valid input,
+// RETURNS  : TRUE if event was injected, FALSE
+// NOTES    : no checkings are done for event validity
+BOOLEAN gcpu_inject_event( GUEST_CPU_HANDLE gcpu, VMENTER_EVENT *p_event)
 {
     VMCS_OBJECT                                 *vmcs;
     IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
@@ -175,8 +160,7 @@ BOOLEAN gcpu_inject_event(
         IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY guest_interruptibility;
         guest_interruptibility.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_GUEST_INTERRUPTIBILITY);
 
-        switch (p_event->interrupt_info.Bits.InterruptType)
-        {
+        switch (p_event->interrupt_info.Bits.InterruptType) {
         case VmEnterInterruptTypeExternalInterrupt:
             if (1 == guest_interruptibility.Bits.BlockNextInstruction ||
                 1 == guest_interruptibility.Bits.BlockStackSegment) {
@@ -209,7 +193,6 @@ BOOLEAN gcpu_inject_event(
             VMM_DEADLOOP();
             break;
         }
-
     }
 
     if (TRUE == injection_allowed) {
@@ -219,9 +202,7 @@ BOOLEAN gcpu_inject_event(
         case VmEnterInterruptTypeSoftwareInterrupt:
         case VmEnterInterruptTypePrivilegedSoftwareInterrupt:
         case VmEnterInterruptTypeSoftwareException:
-            //
             // Write the Instruction Length field if this is any type of software interrupt
-            //
             vmcs_write(vmcs, VMCS_ENTER_INSTRUCTION_LENGTH, (UINT64) p_event->instruction_length);
             break;
 
@@ -245,15 +226,14 @@ BOOLEAN gcpu_inject_event(
         }
 
         // to be on a safe side
-        p_event->interrupt_info.Bits.Valid      = 1;
-        p_event->interrupt_info.Bits.Reserved   = 0;
+        p_event->interrupt_info.Bits.Valid = 1;
+        p_event->interrupt_info.Bits.Reserved = 0;
 
         vmcs_write(vmcs, VMCS_ENTER_INTERRUPT_INFO, (UINT64) (p_event->interrupt_info.Uint32));
     }
     else {
         // there are conditions which prevent injection of new event,
         // therefore NMI/interrupt window is established
-
         if (VmEnterInterruptTypeNmi == p_event->interrupt_info.Bits.InterruptType) {
             // NMI event cannot be injected, so set NMI-windowing
             gcpu_set_pending_nmi(gcpu, TRUE);   // vmcs_write_nmi_window_bit(vmcs, TRUE);
@@ -271,78 +251,64 @@ BOOLEAN gcpu_inject_event(
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_native_pf
-*  PURPOSE  : Inject native PF
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*           : UINT64 pf_address - gva
-*           : UINT64 pfec - error code
-*  RETURNS  : TRUE if event was injected, FALSE
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_native_pf(GUEST_CPU_HANDLE    gcpu,
-                              UINT64 pf_address,
-                              UINT64 pfec)
+// FUNCTION : gcpu_inject_native_pf
+// PURPOSE  : Inject native PF
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+//          : UINT64 pf_address - gva
+//          : UINT64 pfec - error code
+// RETURNS  : TRUE if event was injected, FALSE
+BOOLEAN gcpu_inject_native_pf(GUEST_CPU_HANDLE gcpu, UINT64 pf_address, UINT64 pfec)
 {
     VMENTER_EVENT pf_exception;
     VMCS_OBJECT *vmcs       = gcpu_get_vmcs(gcpu);
-
 
     VMM_ASSERT(gcpu);
 
     vmm_memset( &pf_exception, 0, sizeof(pf_exception) );
     gcpu_set_control_reg(gcpu, IA32_CTRL_CR2, pf_address);
 
-    pf_exception.interrupt_info.Bits.Valid         = 1;
-    pf_exception.interrupt_info.Bits.Vector        = IA32_EXCEPTION_VECTOR_PAGE_FAULT;
+    pf_exception.interrupt_info.Bits.Valid = 1;
+    pf_exception.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_PAGE_FAULT;
     pf_exception.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
     pf_exception.interrupt_info.Bits.DeliverCode   = 1;
-    pf_exception.instruction_length                = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
-    pf_exception.error_code                        = pfec;
+    pf_exception.instruction_length = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
+    pf_exception.error_code = pfec;
 
     return gcpu_inject_event(gcpu, &pf_exception);
 }
 #endif
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_gp0
-*  PURPOSE  : Inject GP with error code 0
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : TRUE if event was injected, FALSE
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_gp0(
-    GUEST_CPU_HANDLE    gcpu)
+// FUNCTION : gcpu_inject_gp0
+// PURPOSE  : Inject GP with error code 0
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : TRUE if event was injected, FALSE
+BOOLEAN gcpu_inject_gp0( GUEST_CPU_HANDLE    gcpu)
 {
     VMENTER_EVENT gp_exception;
     VMCS_OBJECT   *vmcs;
 
     VMM_ASSERT(gcpu);
-
     vmm_memset( &gp_exception, 0, sizeof(gp_exception) );
-
     vmcs = gcpu_get_vmcs(gcpu);
 
-    gp_exception.interrupt_info.Bits.Valid         = 1;
-    gp_exception.interrupt_info.Bits.Vector        = IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT;
+    gp_exception.interrupt_info.Bits.Valid = 1;
+    gp_exception.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT;
     gp_exception.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
     gp_exception.interrupt_info.Bits.DeliverCode   = 1;
-    gp_exception.instruction_length                = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
-    gp_exception.error_code                        = 0;
+    gp_exception.instruction_length = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
+    gp_exception.error_code = 0;
 
     return gcpu_inject_event(gcpu, &gp_exception);
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_fault
-*  PURPOSE  : Inject a fault to guest CPU
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-              int vec               - fault vector
-              UINT32 code           - error code pushed on guest stack
-*  RETURNS  : TRUE if event was injected, FALSE
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_fault(
-    GUEST_CPU_HANDLE gcpu,
-    int vec,
-    UINT32 code)
+
+// FUNCTION : gcpu_inject_fault
+// PURPOSE  : Inject a fault to guest CPU
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+//            int vec               - fault vector
+//            UINT32 code           - error code pushed on guest stack
+// RETURNS  : TRUE if event was injected, FALSE
+BOOLEAN gcpu_inject_fault( GUEST_CPU_HANDLE gcpu, int vec, UINT32 code)
 {
     VMCS_OBJECT *vmcs;
     VMENTER_EVENT e;
@@ -354,10 +320,7 @@ BOOLEAN gcpu_inject_fault(
 
     e.interrupt_info.Bits.Valid = 1;
     e.interrupt_info.Bits.Vector = vec;
-
-    e.interrupt_info.Bits.InterruptType = 
-        VmEnterInterruptTypeHardwareException;
-
+    e.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
     e.instruction_length = 
         (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
 
@@ -374,40 +337,32 @@ BOOLEAN gcpu_inject_fault(
     return gcpu_inject_event(gcpu, &e);
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_nmi
-*  PURPOSE  : Inject NMI into guest if allowed, otherwise set NMI window
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : TRUE if event was injected, FALSE
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_nmi(
-    GUEST_CPU_HANDLE    gcpu)
+// FUNCTION : gcpu_inject_nmi
+// PURPOSE  : Inject NMI into guest if allowed, otherwise set NMI window
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : TRUE if event was injected, FALSE
+BOOLEAN gcpu_inject_nmi( GUEST_CPU_HANDLE    gcpu)
 {
     VMENTER_EVENT nmi_event;
 
     VMM_ASSERT(gcpu);
-
     vmm_memset( &nmi_event, 0, sizeof(nmi_event) );
 
-    nmi_event.interrupt_info.Bits.Valid           = 1;
-    nmi_event.interrupt_info.Bits.Vector          = IA32_EXCEPTION_VECTOR_NMI;
-    nmi_event.interrupt_info.Bits.InterruptType   = VmEnterInterruptTypeNmi;
-    nmi_event.interrupt_info.Bits.DeliverCode     = 0;    // no error code delivered
+    nmi_event.interrupt_info.Bits.Valid = 1;
+    nmi_event.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_NMI;
+    nmi_event.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeNmi;
+    nmi_event.interrupt_info.Bits.DeliverCode = 0;    // no error code delivered
     return gcpu_inject_event(gcpu, &nmi_event);
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_external_interrupt
-*  PURPOSE  : Inject external interrupt into guest if allowed,
-*           :  otherwise set Interruption window
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*           : VECTOR_ID vector_id
-*  RETURNS  : TRUE if event was injected, FALSE
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_external_interrupt(
-    GUEST_CPU_HANDLE    gcpu,
-    VECTOR_ID       vector_id)
+// FUNCTION : gcpu_inject_external_interrupt
+// PURPOSE  : Inject external interrupt into guest if allowed,
+//          :  otherwise set Interruption window
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+//          : VECTOR_ID vector_id
+// RETURNS  : TRUE if event was injected, FALSE
+BOOLEAN gcpu_inject_external_interrupt( GUEST_CPU_HANDLE gcpu, VECTOR_ID vector_id)
 {
     VMENTER_EVENT interrupt_event;
 
@@ -423,15 +378,12 @@ BOOLEAN gcpu_inject_external_interrupt(
 }
 #endif
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_double_fault
-*  PURPOSE  : Inject Double Fault exception into guest if allowed,
-*           :  otherwise set Interruption window
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : TRUE if event was injected, FALSE
-*-----------------------------------------------------------------------------*/
-BOOLEAN gcpu_inject_double_fault(
-    GUEST_CPU_HANDLE    gcpu)
+// FUNCTION : gcpu_inject_double_fault
+// PURPOSE  : Inject Double Fault exception into guest if allowed,
+//          :  otherwise set Interruption window
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : TRUE if event was injected, FALSE
+BOOLEAN gcpu_inject_double_fault( GUEST_CPU_HANDLE    gcpu)
 {
     VMENTER_EVENT double_fault_event;
 
@@ -449,17 +401,12 @@ BOOLEAN gcpu_inject_double_fault(
 }
 
 
-
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_set_pending_nmi
-*  PURPOSE  : Cause NMI VMEXIT be invoked immediately when NMI blocking finished
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*           : BOOLEAN value
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
-void gcpu_set_pending_nmi(
-    GUEST_CPU_HANDLE        gcpu,
-    BOOLEAN                 value)
+// FUNCTION : gcpu_set_pending_nmi
+// PURPOSE  : Cause NMI VMEXIT be invoked immediately when NMI blocking finished
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+//          : BOOLEAN value
+// RETURNS  : void
+void gcpu_set_pending_nmi( GUEST_CPU_HANDLE gcpu, BOOLEAN value)
 {
     VMCS_OBJECT   *vmcs;
 
@@ -472,37 +419,31 @@ void gcpu_set_pending_nmi(
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_get_pending_nmi
-*  PURPOSE  : Get NMI pending state
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : BOOLEAN - TRUE if NMI is pended
-*-----------------------------------------------------------------------------*/
+// FUNCTION : gcpu_get_pending_nmi
+// PURPOSE  : Get NMI pending state
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : BOOLEAN - TRUE if NMI is pended
 BOOLEAN gcpu_get_pending_nmi(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT   *vmcs;
 
     // same for native and under emulator
     VMM_ASSERT(gcpu);
-
     vmcs = gcpu_get_vmcs(gcpu);
     return vmcs_read_nmi_window_bit(vmcs);
 }
 #endif
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vector_to_exception_class
-*  PURPOSE  : Translate vector ID to exception "co-existence" class
-*  ARGUMENTS: VECTOR_ID vector_id
-*  RETURNS  : EXCEPTION_CLASS
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vector_to_exception_class
+// PURPOSE  : Translate vector ID to exception "co-existence" class
+// ARGUMENTS: VECTOR_ID vector_id
+// RETURNS  : EXCEPTION_CLASS
 EXCEPTION_CLASS vector_to_exception_class(
     VECTOR_ID vector_id)
 {
     EXCEPTION_CLASS ex_class;
 
-    switch (vector_id)
-    {
+    switch (vector_id) {
     case IA32_EXCEPTION_VECTOR_PAGE_FAULT:
         ex_class = EXCEPTION_CLASS_PAGE_FAULT;
         break;
@@ -516,7 +457,6 @@ EXCEPTION_CLASS vector_to_exception_class(
         break;
 
     case IA32_EXCEPTION_VECTOR_DOUBLE_FAULT:
-
         VMM_LOG(mask_anonymous, level_trace,"FATAL ERROR: Tripple Fault Occured\n");
         ex_class = EXCEPTION_CLASS_TRIPLE_FAULT; // have to tear down the guest
         VMM_DEADLOOP();
@@ -530,17 +470,14 @@ EXCEPTION_CLASS vector_to_exception_class(
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_reinject_vmexit_exception
-*  PURPOSE  : Reinject VMEXIT exception and optionally errcode, instruction length
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU . Argument is assumed valid.
-*             Caller function validates.
-*           : IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO   vmexit_exception_info
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
-void gcpu_reinject_vmexit_exception(
-    GUEST_CPU_HANDLE                            gcpu,
-    IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO   vmexit_exception_info)
+// FUNCTION : gcpu_reinject_vmexit_exception
+// PURPOSE  : Reinject VMEXIT exception and optionally errcode, instruction length
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU . Argument is assumed valid.
+//            Caller function validates.
+//          : IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO   vmexit_exception_info
+// RETURNS  : void
+void gcpu_reinject_vmexit_exception( GUEST_CPU_HANDLE gcpu,
+                  IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO vmexit_exception_info)
 {
     VMENTER_EVENT event;
     VMCS_OBJECT   *vmcs = gcpu_get_vmcs(gcpu);
@@ -559,16 +496,13 @@ void gcpu_reinject_vmexit_exception(
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_reinject_idt_exception
-*  PURPOSE  : Reinject IDT Vectoring exception and optionally errcode, instruction length
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*           : IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING idt_vectoring_info
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
-void gcpu_reinject_idt_exception(
-    GUEST_CPU_HANDLE                            gcpu,
-    IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info)
+// FUNCTION : gcpu_reinject_idt_exception
+// PURPOSE  : Reinject IDT Vectoring exception and optionally errcode, instruction length
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+//          : IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING idt_vectoring_info
+// RETURNS  : void
+void gcpu_reinject_idt_exception( GUEST_CPU_HANDLE gcpu,
+    IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING idt_vectoring_info)
 {
     VMENTER_EVENT event;
     VMCS_OBJECT   *vmcs = gcpu_get_vmcs(gcpu);
@@ -599,22 +533,18 @@ void gcpu_reinject_idt_exception(
     gcpu_inject_event(gcpu, &event);
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_vmexit_exception_resolve
-*  PURPOSE  : Called if exception, caused VMEXIT was resolved by VMM code
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
-void gcpu_vmexit_exception_resolve(
-    GUEST_CPU_HANDLE gcpu)
+
+// FUNCTION : gcpu_vmexit_exception_resolve
+// PURPOSE  : Called if exception, caused VMEXIT was resolved by VMM code
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : void
+void gcpu_vmexit_exception_resolve( GUEST_CPU_HANDLE gcpu)
 {
     IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
     VMCS_OBJECT                                 *vmcs;
 
     VMM_ASSERT(gcpu);
-
     vmcs = gcpu_get_vmcs(gcpu);
-
     CLR_EXCEPTION_RESOLUTION_REQUIRED_FLAG(gcpu);
 
     idt_vectoring_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
@@ -639,13 +569,11 @@ void gcpu_vmexit_exception_resolve(
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_vmexit_exception_reflect
-*  PURPOSE  : Reflect exception to guest.
-*           : Called if exception, caused VMEXIT was caused by Guest SW
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : gcpu_vmexit_exception_reflect
+// PURPOSE  : Reflect exception to guest.
+//          : Called if exception, caused VMEXIT was caused by Guest SW
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : void
 void gcpu_vmexit_exception_reflect(
     GUEST_CPU_HANDLE gcpu)
 {
@@ -660,9 +588,7 @@ void gcpu_vmexit_exception_reflect(
     VMM_ASSERT(gcpu);
 
     vmcs = gcpu_get_vmcs(gcpu);
-
     CLR_EXCEPTION_RESOLUTION_REQUIRED_FLAG(gcpu);
-
     idt_vectoring_info.Uint32   = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
     vmexit_exception_info.Uint32= (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_EXCEPTION_INFO);
 
@@ -708,12 +634,11 @@ void gcpu_vmexit_exception_reflect(
     }
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : gcpu_inject_invalid_opcode_exception
-*  PURPOSE  : Inject invalid opcode exception
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
-*  RETURNS  : TRUE if event was injected, FALSE if event was not injected.
-*-----------------------------------------------------------------------------*/
+
+// FUNCTION : gcpu_inject_invalid_opcode_exception
+// PURPOSE  : Inject invalid opcode exception
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu - guest CPU
+// RETURNS  : TRUE if event was injected, FALSE if event was not injected.
 BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu)
 {
     VMENTER_EVENT ud_exception;
@@ -721,15 +646,13 @@ BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu)
     BOOLEAN inject_allowed;
 
     VMM_ASSERT(gcpu);
-
     vmm_memset( &ud_exception, 0, sizeof(ud_exception) );
-
-    ud_exception.interrupt_info.Bits.Valid         = 1;
-    ud_exception.interrupt_info.Bits.Vector        = IA32_EXCEPTION_VECTOR_UNDEFINED_OPCODE;
+    ud_exception.interrupt_info.Bits.Valid = 1;
+    ud_exception.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_UNDEFINED_OPCODE;
     ud_exception.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
     ud_exception.interrupt_info.Bits.DeliverCode   = 0;
-    ud_exception.instruction_length                = 0;
-    ud_exception.error_code                        = 0;
+    ud_exception.instruction_length = 0;
+    ud_exception.error_code = 0;
 
     inject_allowed = gcpu_inject_event(gcpu, &ud_exception);
     if (inject_allowed) {

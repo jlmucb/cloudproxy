@@ -1038,9 +1038,9 @@ tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 boot_params_t *my_boot_params= (boot_params_t *)0x94200;
 
 
-// Memory layout on start32_evmm
-uint32_t bootstrap_start= 0;
-uint32_t bootstrap_end= 0;
+// Memory layout on start32_evmm entry
+uint32_t bootstrap_start= 0;    // this is the bootstrap image start address
+uint32_t bootstrap_end= 0;      // this is the bootstrap image end address
 uint32_t evmm_start= 0;
 uint32_t evmm_end= 0;
 uint32_t linux_start= 0;
@@ -1049,12 +1049,17 @@ uint32_t initram_start= 0;
 uint32_t initram_end= 0;
 
 // Post relocation addresses
-uint32_t evmm_start_address;
-uint32_t linux_start_address;
-uint32_t initram_start_address;
+uint32_t evmm_start_address;    // this is the address of evmm after relocation (0x0e00...)
+uint32_t linux_start_address;   // this is the address of the linux protected mode image
+uint32_t initram_start_address; // this is the address of the initram for linux
 
 // linux entry address
-uint32_t linux_entry_address;
+uint32_t linux_entry_address;   // this is the address of the eip in the guest
+uint32_t linux_esi_register;    // this is the value of the esi register on guest entry
+uint32_t linux_esp_register;    // this is the value of the esp on entry to the guest linux
+uint32_t linux_stack_base;      // this is the base of the stack on entry to linux
+uint32_t linux_stack_size;      // this is the size of the stack that the linux guest has
+
 
 // new boot parameters for linux guest
 boot_params_t*  new_boot_params= NULL;

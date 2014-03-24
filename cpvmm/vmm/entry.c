@@ -117,8 +117,6 @@ typedef enum {
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
 
-#define EVMM_START_ADDR 0xa0000000 
-
 #define HEAP_SIZE 0X100000
 #define HEAP_BASE 0Xa0000000 - HEAP_SIZE
 
@@ -127,17 +125,10 @@ typedef enum {
 #define IDT_VECTOR_COUNT 256
 #define LVMM_CS_SELECTOR 0x10
 
+#define EVMM_DEFAULT_START_ADDR 0xa0000000 
 #define LINUX_DEFAULT_LOAD_ADDRESS 0x100000
 
 #define LOOP_FOREVER while(1);
-
-UINT32  heap_base; 
-UINT32  heap_current; 
-UINT32  heap_tops;
-UINT32  heap_size;
-INT15_E820_MEMORY_MAP *e820;
-UINT64 *start_of_e820_table;
-static unsigned int g_num_e820_entries = 0;
 
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
@@ -145,44 +136,87 @@ typedef struct VMM_INPUT_PARAMS_S {
     UINT64 guest_params_struct; // change name
 } VMM_INPUT_PARAMS;
 
+
+
 //  Globals
-IA32_IDT_GATE_DESCRIPTOR LvmmIdt[IDT_VECTOR_COUNT];
-IA32_DESCRIPTOR IdtDescriptor;
 
-static IA32_GDTR        gdtr_32;
-static IA32_GDTR        gdtr_64;  // still in 32-bit mode
-static UINT16           cs_64;
-static UINT32           p_cr4;
+IA32_IDT_GATE_DESCRIPTOR                LvmmIdt[IDT_VECTOR_COUNT];
+IA32_DESCRIPTOR                         IdtDescriptor;
 
-static VMM_INPUT_PARAMS  input_params;
-static VMM_INPUT_PARAMS  *pointer_to_input_params= &input_params;
-static UINT32           reserved = 0;
-static UINT32           local_apic_id = 0;
-static VMM_STARTUP_STRUCT startup_struct;
-static VMM_STARTUP_STRUCT *p_startup_struct = &startup_struct;
-static EM64T_CODE_SEGMENT_DESCRIPTOR *p_gdt_64;
-static UINT32 *p_evmm_stack;
-static EM64T_PML4 *pml4_table;
-static EM64T_PDPE *pdp_table;
-static EM64T_PDE_2MB *pd_table;
+static IA32_GDTR                        gdtr_32;
+static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
+static UINT16                           cs_64= 0;
+static UINT32                           p_cr4= 0;
 
-static INIT64_STRUCT    init64;
-static INIT64_STRUCT *  p_init64_data = &init64;
-static INIT32_STRUCT_SAFE init32;
-int                     info[4] = {0, 0, 0, 0};
-int                     num_of_aps= 0;
-void*                   p_low_mem = (void *)0x8000;
-VMM_GUEST_STARTUP       g0;
-VMM_GUEST_STARTUP *     p_g0 = &g0;
-VMM_MEMORY_LAYOUT      *vmem;
-VMM_APPLICATION_PARAMS_STRUCT a0;
-VMM_APPLICATION_PARAMS_STRUCT* p_a0= &a0;
+static VMM_INPUT_PARAMS                 input_params;
+static VMM_INPUT_PARAMS*                pointer_to_input_params= &input_params;
+static UINT64                           reserved = 0;
+static UINT32                           local_apic_id = 0;
+static VMM_STARTUP_STRUCT               startup_struct;
+static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
+static EM64T_CODE_SEGMENT_DESCRIPTOR*   p_gdt_64= NULL;
+static UINT32*                          p_evmm_stack= NULL;
+static EM64T_PML4 *                     pml4_table= NULL;
+static EM64T_PDPE *                     pdp_table= NULL;
+static EM64T_PDE_2MB *                  pd_table= NULL;
 
-UINT32                  vmm_main_entry_point;      // address of vmm_main
-multiboot_info_t *      g_mbi= NULL;
+static INIT64_STRUCT                    init64;
+static INIT64_STRUCT *                  p_init64_data = &init64;
+static INIT32_STRUCT_SAFE               init32;
+int                                     num_of_aps= 0;
+void*                                   p_low_mem = (void *)0x8000;
+VMM_GUEST_STARTUP                       g0;
+VMM_GUEST_STARTUP *                     p_g0 = &g0;
+VMM_MEMORY_LAYOUT *                     vmem;
+VMM_APPLICATION_PARAMS_STRUCT           a0;
+VMM_APPLICATION_PARAMS_STRUCT*          p_a0= &a0;
 
+
+// Hack!  Temporary  hacked info
+// john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
+// tboot_printk tprintk = (tboot_printk)(0x80d660);
+// john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+// john's boot_params boot_params_t *my_boot_params= 0x94200
+// boot_params_t *my_boot_params= (boot_params_t *)0x94200;
+// john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
+// multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
 typedef void (*tboot_printk)(const char *fmt, ...);
 tboot_printk tprintk = (tboot_printk)(0x80d660);
+tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+
+// Memory layout on start32_evmm entry
+uint32_t bootstrap_start= 0;    // this is the bootstrap image start address
+uint32_t bootstrap_end= 0;      // this is the bootstrap image end address
+uint32_t evmm_start= 0;         // location of evmm start
+uint32_t evmm_end= 0;           // location of evmm image start
+uint32_t linux_start= 0;        // location of linux imag start
+uint32_t linux_end= 0;          // location of evmm start
+uint32_t initram_start= 0;      // location of initram image start
+uint32_t initram_end= 0;        // location of initram image end
+
+// Post relocation addresses
+uint32_t evmm_start_address= 0;         // this is the address of evmm after relocation (0x0e00...)
+uint32_t vmm_main_entry_point= 0;       // address of vmm_main
+uint32_t evmm_heap_base= 0;             // start of initial evmm heap
+uint32_t evmm_heap_current= 0; 
+uint32_t evmm_heap_tops= 0;
+uint32_t evmm_heap_size= 0;             // size of initial evmm heap
+
+static unsigned int     evmm_num_e820_entries = 0;
+INT15_E820_MEMORY_MAP * evmm_e820= NULL;                // address of expanded e820 table for evmm
+UINT64                  evmm_start_of_e820_table= 0ULL; // same but 64 bits
+
+uint32_t linux_start_address= 0;   // this is the address of the linux protected mode image
+uint32_t initram_start_address= 0; // this is the address of the initram for linux
+uint32_t linux_entry_address= 0;   // this is the address of the eip in the guest
+uint32_t linux_esi_register= 0;    // this is the value of the esi register on guest entry
+uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to the guest linux
+uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
+uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
+
+
+// new boot parameters for linux guest
+boot_params_t*  new_boot_params= NULL;
 
 void *vmm_memset(void *dest, int val, UINT32 count)
 {
@@ -237,23 +271,23 @@ void* AllocateMemory(UINT32 size_request)
 {
   UINT32 Address;
 
-  if (heap_current + size_request > heap_tops) {
-      tprintk("Allocation request exceeds heap's size\r\n");
-      tprintk("Heap current = %X", heap_current);
+  if (evmm_heap_current + size_request > evmm_heap_tops) {
+      tprintk("Allocation request exceeds heap's size\n");
+      tprintk("Heap current = %X", evmm_heap_current);
       tprintk("Requested size = %X", size_request);
-      tprintk("Heap tops = %X", heap_tops);
+      tprintk("Heap tops = %X", evmm_heap_tops);
       return NULL;
   }
-  Address = heap_current;
-  heap_current+=size_request;
+  Address = evmm_heap_current;
+  evmm_heap_current+=size_request;
   ZeroMem((void*)Address, size_request);
   return (void*)Address;
 }
 
 void InitializeMemoryManager(UINT64 *HeapBaseAddress, UINT64 *HeapBytes)
 {
-    heap_current = heap_base = *(UINT32*)HeapBaseAddress;
-    heap_tops = heap_base + *(UINT32*)HeapBytes;
+    evmm_heap_current = evmm_heap_base = (UINT32)HeapBaseAddress;
+    evmm_heap_tops = evmm_heap_base + (UINT32)HeapBytes;
 }
 
 void CopyMem(void *Dest, void *Source, UINT32 Size)
@@ -285,8 +319,8 @@ void *evmm_page_alloc(UINT32 pages)
     UINT32 address;
     UINT32 size = pages * PAGE_SIZE;
 
-    address = ALIGN_FORWARD(heap_current, PAGE_SIZE);
-    heap_current = address + size;
+    address = ALIGN_FORWARD(evmm_heap_current, PAGE_SIZE);
+    evmm_heap_current = address + size;
     ZeroMem((void*)address, size);
     return (void*)address;
 }
@@ -887,32 +921,32 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 }
 
 
-static UINT64 *get_e820_table(const multiboot_info_t *mbi) 
+static UINT64 get_e820_table(const multiboot_info_t *mbi) 
 {
     uint32_t entry_offset = 0;
     int i= 0;
 
-    e820 = (INT15_E820_MEMORY_MAP *)evmm_page_alloc(1);
-    if (e820 == NULL)
-        return (UINT64*)-1;
+    evmm_e820 = (INT15_E820_MEMORY_MAP *)evmm_page_alloc(1);
+    if (evmm_e820 == NULL)
+        return (UINT64)-1;
 
     while ( entry_offset < mbi->mmap_length ) {
         memory_map_t *entry = (memory_map_t *) (mbi->mmap_addr + entry_offset);
-        e820->memory_map_entry[i].basic_entry.base_address = 
+        evmm_e820->memory_map_entry[i].basic_entry.base_address = 
                             (((UINT64)entry->base_addr_high)<< 32) + entry->base_addr_low;
-        e820->memory_map_entry[i].basic_entry.length = 
+        evmm_e820->memory_map_entry[i].basic_entry.length = 
                             (((UINT64)entry->length_high)<< 32) + entry->length_low;
-        e820->memory_map_entry[i].basic_entry.address_range_type= entry->type;
-            e820->memory_map_entry[i].extended_attributes.uint32 = 1;
+        evmm_e820->memory_map_entry[i].basic_entry.address_range_type= entry->type;
+            evmm_e820->memory_map_entry[i].extended_attributes.uint32 = 1;
         i++;
        entry_offset += entry->size + sizeof(entry->size);
     }
-    g_num_e820_entries = i;
+    evmm_num_e820_entries = i;
 
-    e820->memory_map_size = i * sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
-    start_of_e820_table = (UINT64*)e820;
+    evmm_e820->memory_map_size = i * sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
+    evmm_start_of_e820_table = (UINT64)(UINT32)evmm_e820;
 
-    return start_of_e820_table;
+    return evmm_start_of_e820_table;
 }
 
 static void remove_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
@@ -961,7 +995,7 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
 
     end = base + length;
 
-    for (; i < g_num_e820_entries; i++) {
+    for (; i < evmm_num_e820_entries; i++) {
         e820entry = &e820map->memory_map_entry[i];
         e820_base = e820map->memory_map_entry[i].basic_entry.base_address;
         e820_length = e820map->memory_map_entry[i].basic_entry.length;
@@ -979,7 +1013,7 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
             //Overlapping region
 
             //Split the current range
-            if (!insert_after_region(e820map, &g_num_e820_entries, i-1, e820_base,
+            if (!insert_after_region(e820map, &evmm_num_e820_entries, i-1, e820_base,
                                      (end - e820_base), E820_RESERVED) )
                 return FALSE;
 
@@ -995,7 +1029,7 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
             //Update the current region length      
             e820map->memory_map_entry[i].basic_entry.length = base - e820_base;
             //Split the current range
-            if (!insert_after_region(e820map, &g_num_e820_entries, i, base, 
+            if (!insert_after_region(e820map, &evmm_num_e820_entries, i, base, 
                                     (e820_end - base), E820_RESERVED) )
                 return FALSE;
             i++;
@@ -1005,11 +1039,11 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
             //Update the current region length      
             e820map->memory_map_entry[i].basic_entry.length = (base - e820_base);
             //Split the current region      
-            if ( !insert_after_region(e820map, &g_num_e820_entries, i, base, 
+            if ( !insert_after_region(e820map, &evmm_num_e820_entries, i, base, 
                                       length, E820_RESERVED) )
                 return FALSE;
             //Update the rest of the range
-            if ( !insert_after_region(e820map, &g_num_e820_entries, i, end, 
+            if ( !insert_after_region(e820map, &evmm_num_e820_entries, i, end, 
                  (e820_end - end), e820entry->basic_entry.address_range_type))
                 return FALSE;
             i++;
@@ -1024,44 +1058,6 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
 }
 
 // TODO(tmroeder): this should be the real base, but I want it to compile.
-
-
-// Hack!  Temporary  hacked info
-// toms: tboot_printk tprintk = (tboot_printk)(0x80d7f0);
-// john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
-//tboot_printk tprintk = (tboot_printk)(0x80d660);
-// john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
-tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
-// john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
-// multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
-// john's boot_params boot_params_t *my_boot_params= 0x94200
-boot_params_t *my_boot_params= (boot_params_t *)0x94200;
-
-
-// Memory layout on start32_evmm entry
-uint32_t bootstrap_start= 0;    // this is the bootstrap image start address
-uint32_t bootstrap_end= 0;      // this is the bootstrap image end address
-uint32_t evmm_start= 0;
-uint32_t evmm_end= 0;
-uint32_t linux_start= 0;
-uint32_t linux_end= 0;
-uint32_t initram_start= 0;
-uint32_t initram_end= 0;
-
-// Post relocation addresses
-uint32_t evmm_start_address;    // this is the address of evmm after relocation (0x0e00...)
-uint32_t vmm_main_entry_point;  // address of vmm_main
-uint32_t linux_start_address;   // this is the address of the linux protected mode image
-uint32_t initram_start_address; // this is the address of the initram for linux
-uint32_t linux_entry_address;   // this is the address of the eip in the guest
-uint32_t linux_esi_register;    // this is the value of the esi register on guest entry
-uint32_t linux_esp_register;    // this is the value of the esp on entry to the guest linux
-uint32_t linux_stack_base;      // this is the base of the stack on entry to linux
-uint32_t linux_stack_size;      // this is the size of the stack that the linux guest has
-
-
-// new boot parameters for linux guest
-boot_params_t*  new_boot_params= NULL;
 
 
 uint32_t entryOffset(uint32_t base)
@@ -1527,6 +1523,13 @@ int expand_linux_image( multiboot_info_t* mbi,
 
 
 // relocate and setup variables for evmm entry
+
+int prepare_primary_guest_args()
+{
+    return 0;
+}
+
+
 int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 {
     if ( linux_start== 0)
@@ -1537,6 +1540,15 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     UINT32 initrd_size = m->mod_end - m->mod_start;
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
                        initrd_image, initrd_size, &linux_entry_address, 1);
+
+    // put arguments one page prior to guest esp (which is normally one page before evmm heap)
+    if(linux_esp_register==0) {
+    }
+
+    // copy arguments
+
+    // set esi register
+
     // CHECK
     linux_start_address= linux_entry_address;
     tprintk("Linux kernel @%p...\n", linux_entry_address);
@@ -1637,9 +1649,10 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     init32.s.i32_num_of_aps = num_of_aps;
 
     // set up evmm heap
-    heap_base = HEAP_BASE;
-    heap_size = HEAP_SIZE;
-    InitializeMemoryManager((UINT64 *)&heap_base, (UINT64 *)&heap_size);
+    evmm_heap_base = HEAP_BASE;
+    evmm_heap_size = HEAP_SIZE;
+    // NOTE: first argument was &heap_base which was wrong
+    InitializeMemoryManager((UINT64 *)evmm_heap_base, (UINT64 *)&evmm_heap_size);
 
     SetupIDT();
 
@@ -1665,13 +1678,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     setup_evmm_stack();
 
     // Relocate evmm_image from evmm_start to evmm_start_address
-    evmm_start_address= EVMM_START_ADDR;
+    evmm_start_address= EVMM_DEFAULT_START_ADDR;
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
                (UINT32) (evmm_end-evmm_start));
 
     // FIX(JLM): linker so the next line is right
     uint32_t entry= entryOffset(evmm_start);
-    vmm_main_entry_point = (void *) (entry + evmm_start_address);
+    vmm_main_entry_point =  (entry + evmm_start_address);
 #ifdef JLMDEBUG
     tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
             vmm_main_entry_point);
@@ -1703,11 +1716,11 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // input args for code32_start.  Note that the boot parameters are already
     // in the current address space so we only need to reserve memory and copy
     // them.
-    g0.cpu_states_array = NULL; 
+    g0.cpu_states_array = 0; 
 
     // FIX(RNB): the start address of the array of initial cpu states for guest cpus.
     //     This pointer makes sense only if the devices_count > 0
-    g0.devices_array = NULL;
+    g0.devices_array = 0;
 
     // Startup struct initialization
     p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
@@ -1722,14 +1735,14 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     p_startup_struct->default_device_owner= UUID;
     p_startup_struct->acpi_owner= UUID; 
     p_startup_struct->nmi_owner= UUID; 
-    p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
+    p_startup_struct->primary_guest_startup_state = (UINT64)(UINT32)&g0;
 
     // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
     // vmm_memory_layout is suppose to contain the start/end/size of
     // each image that is part of evmm (e.g. evmm, linux+initrd)
     vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
-            heap_size + p_startup_struct->size_of_vmm_stack;
+            evmm_heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
 
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
@@ -1756,7 +1769,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
     a0.number_of_params = 0;
     a0.session_id = 0;
-    a0.address_entry_list = NULL;
+    a0.address_entry_list = 0;
     a0.entry_number = 0;
 #if 0
     a0.fadt_gpa = NULL;
@@ -1768,12 +1781,12 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-    if ( !e820_reserve_region(e820, HEAP_BASE, (HEAP_SIZE + (evmm_end - evmm_start)))) {
+    if ( !e820_reserve_region(evmm_e820, HEAP_BASE, (HEAP_SIZE + (evmm_end - evmm_start)))) {
         tprintk("Unable to reserve evmm region in e820 table\r\n");
         LOOP_FOREVER
     }
                 
-    if (!e820_reserve_region(e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
+    if (!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
       tprintk("Unable to reserve bootstrap region in e820 table\r\n");
         LOOP_FOREVER
     } 

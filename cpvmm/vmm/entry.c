@@ -179,7 +179,6 @@ VMM_APPLICATION_PARAMS_STRUCT a0;
 VMM_APPLICATION_PARAMS_STRUCT* p_a0= &a0;
 
 UINT32                  vmm_main_entry_point;      // address of vmm_main
-UINT32                  linux_main_entry_point;      // address of linux_main
 multiboot_info_t *      g_mbi= NULL;
 
 typedef void (*tboot_printk)(const char *fmt, ...);
@@ -523,7 +522,8 @@ void SetupIDT()
         "\n\tlidt  (%%edx)"
         :[pIdtDescriptor] "+g" (pIdtDescriptor)
         :: "%edx");
-} // end SetupIDT
+}
+
 
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
@@ -1050,10 +1050,9 @@ uint32_t initram_end= 0;
 
 // Post relocation addresses
 uint32_t evmm_start_address;    // this is the address of evmm after relocation (0x0e00...)
+uint32_t vmm_main_entry_point;  // address of vmm_main
 uint32_t linux_start_address;   // this is the address of the linux protected mode image
 uint32_t initram_start_address; // this is the address of the initram for linux
-
-// linux entry address
 uint32_t linux_entry_address;   // this is the address of the eip in the guest
 uint32_t linux_esi_register;    // this is the value of the esi register on guest entry
 uint32_t linux_esp_register;    // this is the value of the esp on entry to the guest linux
@@ -1401,7 +1400,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     hdr->ramdisk_size = initrd_size;
 
     // calc location of real mode part 
-    // FIX TBOOT defines
+    // FIX (JLM) TBOOT defines
     real_mode_base = LEGACY_REAL_START;
     if ( mbi->flags & MBI_MEMLIMITS )
         real_mode_base = (mbi->mem_lower << 10) - REAL_MODE_SIZE;
@@ -1491,6 +1490,9 @@ int expand_linux_image( multiboot_info_t* mbi,
     vmm_memset(boot_params, 0, sizeof(*boot_params));
     vmm_memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
 
+    // FIX(JLM)
+    linux_esi_register= (uint32_t) boot_params;
+
     // detect e820 table 
     if ( mbi->flags & MBI_MEMMAP ) {
         int i;
@@ -1517,11 +1519,8 @@ int expand_linux_image( multiboot_info_t* mbi,
                                           of screen */
 
     // set address of tboot shared page 
-#if 0
     if ( is_measured_launch )
-        *(uint64_t *)&boot_params->tboot_shared_addr =
-                                             (uint64_t)&_tboot_shared;
-#endif
+        boot_params->tboot_shared_addr = shared_page;
     *entry_point = hdr->code32_start;
     return 0;
 }
@@ -1537,8 +1536,9 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     UINT32 initrd_image = (UINT32)m->mod_start;
     UINT32 initrd_size = m->mod_end - m->mod_start;
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
-                       initrd_image, initrd_size,
-                       &linux_entry_address, 1);
+                       initrd_image, initrd_size, &linux_entry_address, 1);
+    // CHECK
+    linux_start_address= linux_entry_address;
     tprintk("Linux kernel @%p...\n", linux_entry_address);
     return 0;
 }
@@ -1583,7 +1583,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // get initial layout information for images
     module_t* m;
 
-    // FIX: mystart is wrong
+    // FIX(JLM): mystart is wrong
     bootstrap_start= (UINT32)_mystart;
     bootstrap_end= (UINT32)_end;
 
@@ -1609,7 +1609,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
     // get CPU info
     uint32_t info;
-    // FIX: returns hyperthreaded # what does evmm want?
+    // FIX(JLM): returns hyperthreaded # what does evmm want?
     asm volatile (
         "\tmovl    $1, %%eax\n"
         "\tcpuid\n"
@@ -1669,7 +1669,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
                (UINT32) (evmm_end-evmm_start));
 
-    // FIX: linker so the next line is right
+    // FIX(JLM): linker so the next line is right
     uint32_t entry= entryOffset(evmm_start);
     vmm_main_entry_point = (void *) (entry + evmm_start_address);
 #ifdef JLMDEBUG
@@ -1685,10 +1685,10 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // Guest state initialization for relocated inage
     g0.size_of_this_struct = sizeof(g0);
     g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
-    g0.flags = 0;               //FIX: need to put the correct guest flags
-    g0.guest_magic_number = 0;  //FIX: needs to be unique id of the guest
+    g0.flags = 0;               //FIX(RNB): need to put the correct guest flags
+    g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
     g0.cpu_affinity = -1;
-    g0.cpu_states_count = 1;    // CHECK: number of VMM_GUEST_STARTUP structs
+    g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
     g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
     g0.image_size = linux_end - linux_start;
                 
@@ -1696,16 +1696,16 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     g0.image_offset_in_guest_physical_memory = linux_start_address;
     g0.physical_memory_size = 0; 
 
-    // FIX:  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
-    // FIX: fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
-    // FIX: set aside reserved area for input arguments to guest, this includes old
+    // FIX(RNB):  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
+    // FIX(RNB): fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
+    // FIX(RNB): set aside reserved area for input arguments to guest, this includes old
     // style 20 bit entry e820.  The GP registers should be correctly filled with 
     // input args for code32_start.  Note that the boot parameters are already
     // in the current address space so we only need to reserve memory and copy
     // them.
     g0.cpu_states_array = NULL; 
 
-    // FIX: the start address of the array of initial cpu states for guest cpus.
+    // FIX(RNB): the start address of the array of initial cpu states for guest cpus.
     //     This pointer makes sense only if the devices_count > 0
     g0.devices_array = NULL;
 
@@ -1724,7 +1724,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     p_startup_struct->nmi_owner= UUID; 
     p_startup_struct->primary_guest_startup_state = (UINT64)&g0;
 
-    // FIX:  For a single guest, this is wrong.  see the initialization code.
+    // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
     // vmm_memory_layout is suppose to contain the start/end/size of
     // each image that is part of evmm (e.g. evmm, linux+initrd)
     vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
@@ -1735,11 +1735,11 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
 
-    // FIX: memory maps should NOT include linux or initram according to SC guys
+    // FIX(RNB): memory maps should NOT include linux or initram according to SC guys
     (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
     (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
     (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
-    // QUESTION:  Check the line below.  It is only right if linux has a 64 bit elf header
+    // QUESTION (JLM):  Check the line below.  It is only right if linux has a 64 bit elf header
     (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_start + entryOffset(linux_start);
 
     (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
@@ -1750,9 +1750,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(mbi);
 
-    // FIX: The current evmm REQUIRES a thunk area.  We need to define one.
+    // FIX(RNB): The current evmm REQUIRES a thunk area.  We need to define one.
     // application parameters
-    // FIX:  This structure is not used so the setting is probably OK.
+    // FIX(RNB):  This structure is not used so the setting is probably OK.
     a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
     a0.number_of_params = 0;
     a0.session_id = 0;
@@ -1778,10 +1778,10 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     } 
 
-    // FIX:  put APs in 64 bit mode with stack.
-    // FIX:  add reserved area for linux guest startup arguments
-    // FIX:  in evmm, exclude tboot and bootstrap areas from primary space
-    // FIX:  allocate  debug area for return from evmm print and print it.
+    // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
+    // FIX (JLM):  add reserved area for linux guest startup arguments
+    // FIX (JLM):  in evmm, exclude tboot and bootstrap areas from primary space
+    // FIX(JLM):  allocate  debug area for return from evmm print and print it.
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
     //  vmm_main call:
@@ -1865,7 +1865,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
           [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 
-    // FIX: add thunk code.  This will make thigs OK when we return for
+    // FIX(RNB): add thunk code.  This will make thigs OK when we return for
     // a debug print as well as for secondary guests.
     // This was originally where the thunk was set up.
     return 0;

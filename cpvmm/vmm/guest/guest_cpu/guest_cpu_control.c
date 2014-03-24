@@ -37,15 +37,10 @@ extern VMM_PAGING_POLICY g_pg_policy;
 extern void disable_vmcs_load_save_for_msr (MSR_ID msr_index);
 extern BOOLEAN is_cr4_osxsave_supported(void);
 
-//******************************************************************************
-//*
-//* Main implementatuion idea:
-//*   Count requests for each VmExit control bit. Require VmExit if at least
-//*   one request is outstanding.
-//*
-//*
-//*
-//******************************************************************************
+//  Main implementation idea:
+//    Count requests for each VmExit control bit. Require VmExit if at least
+//    one request is outstanding.
+
 
 // global static vars that indicate host CPU support for extra controls
 static BOOLEAN g_init_done = FALSE;
@@ -94,8 +89,6 @@ typedef enum _EXCEPTIONS_POLICY_TYPE {
                            & (gcpu)->vmexit_setup.field.minimal_0_settings)
 
 
-/*----------------- Forward Declarations for Local Functions -----------------*/
-
 static void gcpu_exceptions_settings_enforce_on_hw(GUEST_CPU_HANDLE  gcpu, UINT32 zeroes, UINT32 ones);
 static void gcpu_exceptions_settings_restore_on_hw(GUEST_CPU_HANDLE  gcpu);
 static void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT32 zeroes, UINT32 ones);
@@ -107,9 +100,6 @@ static void gcpu_set_enter_ctrls_for_addons( GUEST_CPU_HANDLE gcpu, UINT32 value
 //static void gcpu_guest_cpu_mode_restore_on_hw(GUEST_CPU_HANDLE gcpu);
 
 
-
-
-// ---------------------------- internal funcs  -----------------------------
 
 static void set_minimal_cr0_reg_mask( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* field )
 {
@@ -250,7 +240,6 @@ static void set_minimal_processor_ctrls2( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* fi
     GET_MINIMAL_VALUE( proc_ctrl2.Uint32,
                     vmcs_hw_make_compliant_processor_based_exec_ctrl2 );
 
-    //
     // enable rdtscp instruction if CPUID.80000001H.EDX[27] reports it is supported
     // if "Enable RDTSCP" is 0, execution of RDTSCP in non-root mode will trigger #UD
     // Notes:
@@ -260,7 +249,6 @@ static void set_minimal_processor_ctrls2( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* fi
     //      Besides, vmm doesn't use/modify IA32_TSC_AUX.
     //   3. If we want to add virtual TSC and support, and virtualization of IA32_TSC_AUX, 
     //      current settings must be changed per request.
-    //
     if(proc_ctrl2.Bits.EnableRDTSCP == 0) {
         
         // set EnableRDTSCP bit if rdtscp is supported        
@@ -615,12 +603,10 @@ UINT32 calculate_processor_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 
 {
     UINT32 final_mask;
 
-    final_mask = (UINT32)gcpu_update_control_counters(
-                            request,
-                            bitmask,
-                            &(gcpu->vmexit_setup.processor_ctrls));
+    final_mask = (UINT32)gcpu_update_control_counters( request,
+                            bitmask, &(gcpu->vmexit_setup.processor_ctrls));
 
-//VMM_LOG(mask_anonymous, level_trace,"calculate_processor_ctrls: final_mask=%P\n", final_mask);
+    //VMM_LOG(mask_anonymous, level_trace,"calculate_processor_ctrls: final_mask=%P\n", final_mask);
     return (UINT32)GET_FINAL_SETTINGS( gcpu, processor_ctrls, final_mask );
 }
 
@@ -679,9 +665,7 @@ UINT64 gcpu_get_processor_ctrls2_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL leve
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
-
     VMM_ASSERT( g_processor_ctrls2_supported == TRUE );
-
     return vmcs_read( vmcs, VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS );
 }
 
@@ -692,10 +676,8 @@ UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 b
     IA32_VMCS_EXCEPTION_BITMAP exceptions;
 
     VMM_ASSERT( pf_policy );
-
     exceptions.Uint32 = (UINT32)gcpu_update_control_counters( request,
                                 bitmask, &(gcpu->vmexit_setup.exceptions_ctrls));
-
     *pf_policy = (exceptions.Bits.PF) ?
             EXCEPTIONS_POLICY_CATCH_ALL : EXCEPTIONS_POLICY_CATCH_NOTHING;
 
@@ -894,9 +876,7 @@ void update_pfs_setup( GUEST_CPU_HANDLE gcpu, EXCEPTIONS_POLICY_TYPE policy )
 }
 
 static
-void request_vmexit_on_exceptions(GUEST_CPU_HANDLE gcpu,
-                                  UINT32       bit_request,
-                                  UINT32       bit_mask )
+void request_vmexit_on_exceptions(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32                  except_map;
     EXCEPTIONS_POLICY_TYPE  pf_policy;
@@ -908,8 +888,7 @@ void request_vmexit_on_exceptions(GUEST_CPU_HANDLE gcpu,
 
 static
 void request_vmexit_on_pin_ctrls( GUEST_CPU_HANDLE gcpu,
-                                  UINT32       bit_request,
-                                  UINT32       bit_mask )
+                                  UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              pin_ctrls;
 
@@ -918,9 +897,7 @@ void request_vmexit_on_pin_ctrls( GUEST_CPU_HANDLE gcpu,
 }
 
 static
-void request_vmexit_on_proc_ctrls(GUEST_CPU_HANDLE gcpu,
-                                  UINT32       bit_request,
-                                  UINT32       bit_mask )
+void request_vmexit_on_proc_ctrls(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              proc_ctrls;
 
@@ -930,8 +907,7 @@ void request_vmexit_on_proc_ctrls(GUEST_CPU_HANDLE gcpu,
 
 static
 void request_vmexit_on_proc_ctrls2(GUEST_CPU_HANDLE gcpu,
-                                  UINT32       bit_request,
-                                  UINT32       bit_mask )
+                                  UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              proc_ctrls2;
 
@@ -948,8 +924,7 @@ void request_vmexit_on_vm_enter_ctrls(GUEST_CPU_HANDLE gcpu,
     UINT32            vm_enter_ctrls;
     VM_ENTRY_CONTROLS dont_touch;
 
-    /* Do not change IA32e Guest mode here. It is changed as part of EFER!!!!!
-    */
+    // Do not change IA32e Guest mode here. It is changed as part of EFER!!!!!
     dont_touch.Uint32 = 0;
     dont_touch.Bits.Ia32eModeGuest = 1;
 
@@ -987,9 +962,7 @@ void gcpu_apply_all( GUEST_CPU_HANDLE gcpu )
     request_vmexit_on_cr4( gcpu, 0, 0 );
 }
 
-//
 // Setup minimal controls for Guest CPU
-//
 static
 void gcpu_minimal_controls( GUEST_CPU_HANDLE gcpu )
 {
@@ -998,24 +971,17 @@ void gcpu_minimal_controls( GUEST_CPU_HANDLE gcpu )
     const VMCS_HW_CONSTRAINTS* vmx_constraints = vmcs_hw_get_vmx_constraints();
 
     VMM_ASSERT( vmcs );
-
     init_minimal_controls( gcpu );
     gcpu_apply_all( gcpu );
 
-    //
     // Disable CR3 Target Values by setting the count to 0
-    //
-    //
     // Disable CR3 Target Values by setting the count to 0 and all the values to 0xFFFFFFFF
-    //
     vmcs_write( vmcs, VMCS_CR3_TARGET_COUNT, 0);
     for (idx = 0; idx < vmx_constraints->number_of_cr3_target_values; ++idx) {
         vmcs_write(vmcs, (VMCS_FIELD)VMCS_CR3_TARGET_VALUE(idx), UINT64_ALL_ONES);
     }
 
-    //
     // Set additional required fields
-    //
     vmcs_write( vmcs, VMCS_GUEST_WORKING_VMCS_PTR, UINT64_ALL_ONES );
 
     vmcs_write(vmcs, VMCS_GUEST_SYSENTER_CS, hw_read_msr(IA32_MSR_SYSENTER_CS));
@@ -1024,13 +990,8 @@ void gcpu_minimal_controls( GUEST_CPU_HANDLE gcpu )
     vmcs_write(vmcs, VMCS_GUEST_IA32_PERF_GLOBAL_CTRL, hw_read_msr(IA32_MSR_PERF_GLOBAL_CTRL));
 }
 
-// ---------------------------- APIs  ---------------------------------------
 
-//----------------------------------------------------------------------------
-//
 // Apply default policy to gcpu
-//
-//----------------------------------------------------------------------------
 void guest_cpu_control_setup( GUEST_CPU_HANDLE gcpu )
 {
     //VMM_ASSERT( 0 == hw_cpu_id() );
@@ -1044,8 +1005,7 @@ void guest_cpu_control_setup( GUEST_CPU_HANDLE gcpu )
     io_vmexit_activate(gcpu);
 }
 
-void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu,
-                                 GCPU_TEMP_EXCEPTIONS_SETUP action )
+void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu, GCPU_TEMP_EXCEPTIONS_SETUP action )
 {
     // TODO: Rewrite!!!
     // TODO: THIS WILL NOT WORK
@@ -1172,13 +1132,11 @@ BOOLEAN gcpu_cr3_virtualized( GUEST_CPU_HANDLE gcpu )
 }
 
 
-////////////////////////////////////////////////////
-////////////////////////////////////////////////////
 
 /*
-*   Enforce settings on hardware VMCS only
-*   these changes are not reflected in vmcs#0
-*/
+ *   Enforce settings on hardware VMCS only
+ *   these changes are not reflected in vmcs#0
+ */
 void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE  gcpu,
         GCPU_TEMP_EXCEPTIONS_SETUP  action)
 {
@@ -1241,11 +1199,7 @@ void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE  gcpu,
 }
 
 static
-void gcpu_exceptions_settings_enforce_on_hw(
-        GUEST_CPU_HANDLE  gcpu,
-        UINT32            zeroes,
-        UINT32            ones
-        )
+void gcpu_exceptions_settings_enforce_on_hw( GUEST_CPU_HANDLE gcpu, UINT32 zeroes, UINT32 ones)
 {
     IA32_VMCS_EXCEPTION_BITMAP exceptions;
     exceptions.Uint32 = (UINT32)gcpu_get_exceptions_map_layered( gcpu, VMCS_MERGED);
@@ -1268,8 +1222,7 @@ void gcpu_exceptions_settings_restore_on_hw(GUEST_CPU_HANDLE  gcpu)
 }
 
 static
-void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE   gcpu,
-                                   UINT32 zeroes, UINT32 ones)
+void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT32 zeroes, UINT32 ones)
 {
     UINT32 proc_ctrls = (UINT32)gcpu_get_processor_ctrls_layered(gcpu, VMCS_MERGED);
     proc_ctrls = APPLY_ZEROES_AND_ONES(proc_ctrls, zeroes, ones);
@@ -1288,9 +1241,7 @@ void gcpu_proc_ctrls_restore_on_hw(GUEST_CPU_HANDLE   gcpu)
 }
 
 static
-void gcpu_cr0_mask_enforce_on_hw(GUEST_CPU_HANDLE   gcpu,
-                                 UINT64             zeroes,
-                                 UINT64             ones)
+void gcpu_cr0_mask_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT64 zeroes, UINT64 ones)
 {
     UINT64 cr0_mask = gcpu_get_cr0_reg_mask_layered(gcpu, VMCS_MERGED);
     cr0_mask = APPLY_ZEROES_AND_ONES(cr0_mask, zeroes, ones);
@@ -1306,12 +1257,9 @@ BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE Cont
 {
 	VMCS_OBJECT* vmcs;
 	VMCS_FIELD vmcs_field_id;
-
 	VMM_ASSERT(gcpu);
-
 	vmcs = gcpu_get_vmcs(gcpu);
 	VMM_ASSERT(vmcs);
-
 	if(!value || (UINT32)ControlStateId > (UINT32)NUM_OF_VMM_CONTROL_STATE - 1)
 		return FALSE;
 
@@ -1360,7 +1308,8 @@ BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE Cont
 	return TRUE;
 }
 
-BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value)
+BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, 
+                                   VMM_CONTROLS* value)
 {
 	VMCS_OBJECT* vmcs;
 	VMCS_FIELD vmcs_field_id;

@@ -27,17 +27,14 @@
 #include "lock.h"
 
 
-//
+
 // Guest Scheduler
-//
+
 // Principles:
-//
 // 1. Scheduler works independently on each host CPU
 // 2. Scheduler on different host CPUs may communicate to make common decision
-//
 
 
-//---------------------- types and globals -------------------------------------
 
 // scheduler vCPU object
 typedef struct _SCHEDULER_VCPU_OBJECT {
@@ -86,7 +83,7 @@ static SCHEDULER_CPU_STATE* g_scheduler_state = 0;
 // lock to support guest addition while performing scheduling operations
 static VMM_READ_WRITE_LOCK g_registration_lock[1];
 
-// --------------------------- internal functions -----------------------------
+
 static
 SCHEDULER_VCPU_OBJECT* gcpu_2_vcpu_obj( GUEST_CPU_HANDLE gcpu )
 {
@@ -110,8 +107,6 @@ void add_to_per_cpu_list( SCHEDULER_VCPU_OBJECT* vcpu_obj )
     state->vcpu_obj_list = vcpu_obj;
 }
 
-
-// ----------------------- interface functions --------------------------------
 
 // init
 void scheduler_init( UINT16 number_of_host_cpus )
@@ -227,9 +222,8 @@ scheduler_same_host_cpu_gcpu_first( SCHEDULER_GCPU_ITERATOR* ctx,
     return (vcpu_obj ? vcpu_obj->gcpu : NULL);
 }
 
-//
+
 // scheduler
-//
 GUEST_CPU_HANDLE scheduler_select_initial_gcpu( void )
 {
     CPU_ID                 host_cpu = hw_cpu_id();

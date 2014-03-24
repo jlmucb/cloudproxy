@@ -45,11 +45,8 @@ extern BOOLEAN is_ib_registered(void);
 // do not report warning on unused params
 #pragma warning( disable: 4100 )
 
-// -------------------------- types -----------------------------------------
 
-//
 // Decide on important events
-//
 typedef enum _GCPU_RESUME_EMULATOR_ACTION {
     GCPU_RESUME_EMULATOR_ACTION_DO_NOTHING = 0,
     GCPU_RESUME_EMULATOR_ACTION_START_EMULATOR
@@ -80,12 +77,9 @@ static VMM_STATUS gcpu_remove_hw_enforcement(GUEST_CPU_HANDLE gcpu, VMCS_HW_ENFO
 static void       gcpu_apply_hw_enforcements(GUEST_CPU_HANDLE gcpu);
 #define gcpu_hw_enforcement_is_active( gcpu, enforcement) (((gcpu)->hw_enforcements & enforcement) != 0)
 
-// ---------------------------- globals -------------------------------------
-// ---------------------------- internal funcs  -----------------------------
 
 static
-void gcpu_cache_disabled_support( const GUEST_CPU_HANDLE  gcpu,
-                                  BOOLEAN   CD_value_requested)
+void gcpu_cache_disabled_support( const GUEST_CPU_HANDLE  gcpu, BOOLEAN CD_value_requested)
 {
     if (1 == CD_value_requested) { // cache disabled - WSM does not support this!
         if (!gcpu_hw_enforcement_is_active(gcpu, VMCS_HW_ENFORCE_CACHE_DISABLED)) {
@@ -105,15 +99,12 @@ void gcpu_cache_disabled_support( const GUEST_CPU_HANDLE  gcpu,
     }
 }
 
-//
 // Receives cr0 and efer guest-visible values
 // returns TRUE is something should be done + description of what should be
 // done
 static
-BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu,
-                                       UINT64 cr0_value,
-                                       UINT64 efer_value,
-                                       GCPU_RESUME_ACTION* action )
+BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu, UINT64 cr0_value,
+                                       UINT64 efer_value, GCPU_RESUME_ACTION* action )
 {
     EM64T_CR0          cr0;
     IA32_EFER_S        efer;
@@ -262,15 +253,12 @@ void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_ty
 {
     BOOLEAN    gpm_flat_page_tables_ok = FALSE;
 
-    if (IS_FLAT_PT_INSTALLED(gcpu))
-    {
+    if (IS_FLAT_PT_INSTALLED(gcpu)) {
         fpt_destroy_flat_page_tables( gcpu->active_flat_pt_handle );
     }
-    else
-    {
+    else {
         // first time install - save current user CR3
-        if (INVALID_CR3_SAVED_VALUE == gcpu->save_area.gp.reg[CR3_SAVE_AREA])
-        {
+        if (INVALID_CR3_SAVED_VALUE == gcpu->save_area.gp.reg[CR3_SAVE_AREA]) {
             gcpu->save_area.gp.reg[CR3_SAVE_AREA] = gcpu_get_control_reg( gcpu, IA32_CTRL_CR3 );
         }
     }
@@ -293,8 +281,7 @@ void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_ty
         //VMM_LOG(mask_anonymous, level_trace,"gcpu_install_64bit_flat_memory()\n");
 
         gpm_flat_page_tables_ok =
-             fpt_create_64_bit_flat_page_tables(gcpu,
-                                                &(gcpu->active_flat_pt_handle),
+             fpt_create_64_bit_flat_page_tables(gcpu, &(gcpu->active_flat_pt_handle),
                                                 &(gcpu->active_flat_pt_hpa) );
         CLR_FLAT_PAGES_TABLES_32_FLAG(gcpu);
         SET_FLAT_PAGES_TABLES_64_FLAG(gcpu);
@@ -358,15 +345,13 @@ void gcpu_physical_memory_modified( GUEST_CPU_HANDLE gcpu )
         UINT32     cr3_hpa;
 
         gpm_flat_page_tables_ok =
-             fpt_create_32_bit_flat_page_tables(gcpu,
-                                                &(gcpu->active_flat_pt_handle),
+             fpt_create_32_bit_flat_page_tables(gcpu, &(gcpu->active_flat_pt_handle),
                                                 &cr3_hpa );
         gcpu->active_flat_pt_hpa = cr3_hpa;
     }
     else if (GET_FLAT_PAGES_TABLES_64_FLAG(gcpu)) {
         gpm_flat_page_tables_ok =
-             fpt_create_64_bit_flat_page_tables(gcpu,
-                                                &(gcpu->active_flat_pt_handle),
+             fpt_create_64_bit_flat_page_tables(gcpu, &(gcpu->active_flat_pt_handle),
                                                 &(gcpu->active_flat_pt_hpa) );
     }
     else {
@@ -429,13 +414,9 @@ void gcpu_perform_resume_actions( GUEST_CPU* gcpu,
 
 }
 
-// ---------------------------- APIs ----------------------------------------
 
-//------------------------------------------------------------------------------
-//
 // Context switching
-//
-//------------------------------------------------------------------------------
+
 
 // perform full state save before switching to another guest
 void gcpu_swap_out( GUEST_CPU_HANDLE gcpu )
@@ -463,12 +444,9 @@ void gcpu_swap_in( const GUEST_CPU_HANDLE gcpu )
     SET_ALL_MODIFIED(gcpu);
 }
 
-//------------------------------------------------------------------------------
-//
+
 // Initialize gcpu environment for each VMEXIT
 // Must be the first gcpu call in each VMEXIT
-//
-//------------------------------------------------------------------------------
 void gcpu_vmexit_start( const GUEST_CPU_HANDLE gcpu )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
@@ -629,12 +607,9 @@ gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
     CLR_ACTIVITY_STATE_CHANGED_FLAG(gcpu);
 }
 
-//------------------------------------------------------------------------------
-//
+
 // Resume execution.
 // never returns.
-//
-//------------------------------------------------------------------------------
 void gcpu_resume( GUEST_CPU_HANDLE gcpu )
 {
     VMCS_OBJECT* vmcs;
@@ -643,7 +618,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
         gcpu = gcpu->resume_func(gcpu);    // layered specific resume
         gcpu->last_guest_level = gcpu->next_guest_level;
 
-//        nmi_resume_handler(gcpu);   // process platform NMI if any
+        //        nmi_resume_handler(gcpu);   // process platform NMI if any
     }
 
     vmcs = gcpu_get_vmcs(gcpu);
@@ -675,8 +650,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     }
 
     // support for active CR3
-    if (IS_MODE_NATIVE(gcpu))
-    {
+    if (IS_MODE_NATIVE(gcpu)) {
         if (IS_FLAT_PT_INSTALLED( gcpu )) {
             // gcpu_enforce_flat_memory_setup( gcpu ); VTDBG
         }
@@ -793,11 +767,8 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
 }
 
 #ifdef ENABLE_EMULATOR
-//------------------------------------------------------------------------------
-//
+
 // Perform single step.
-//
-//------------------------------------------------------------------------------
 BOOLEAN gcpu_perform_single_step( const GUEST_CPU_HANDLE gcpu )
 {
     return emul_run_single_instruction(gcpu->emulator_handle);
@@ -811,11 +782,8 @@ void gcpu_run_emulator( const GUEST_CPU_HANDLE gcpu )
     SET_IMPORTANT_EVENT_OCCURED_FLAG( gcpu );
 }
 
-//------------------------------------------------------------------------------
-//
+
 // Change execution mode - switch to native execution mode
-//
-//------------------------------------------------------------------------------
 VMM_STATUS gcpu_return_to_native_execution( GUEST_CPU_HANDLE gcpu,
                                             ADDRESS* arg1 UNUSED,
                                             ADDRESS* arg2 UNUSED,

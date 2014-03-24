@@ -107,11 +107,8 @@ const UINT32 g_msr_2_index[] = {
 // ---------------------------- internal funcs  -----------------------------
 // ---------------------------- APIs ----------------------------------------
 
-//------------------------------------------------------------------------------
-//
 // Getters/setters
-//
-//------------------------------------------------------------------------------
+
 BOOLEAN gcpu_is_native_execution( GUEST_CPU_HANDLE gcpu )
 {
     return IS_MODE_NATIVE(gcpu);
@@ -165,7 +162,7 @@ void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE       gcpu,
 
 #ifdef INCLUDE_UNUSED_CODE
 void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
-                                    UINT64                 *GPreg )
+                                    UINT64 *GPreg )
 {
     VMM_ASSERT(gcpu);
 
@@ -189,9 +186,9 @@ void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
 }
 #endif
 
-UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE         gcpu,
-                                VMM_IA32_GP_REGISTERS          reg,
-                                VMCS_LEVEL                     level )
+UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
+                                VMM_IA32_GP_REGISTERS reg,
+                                VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu);
 
@@ -199,7 +196,7 @@ UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE         gcpu,
 }
 
 void gcpu_set_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
-                                    UINT64                 *GPReg )
+                                    UINT64 *GPReg )
 {
         gcpu->save_area.gp.reg[IA32_REG_RAX] = *GPReg;
         gcpu->save_area.gp.reg[IA32_REG_RBX] = *(GPReg + 1);
@@ -218,10 +215,8 @@ void gcpu_set_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
         gcpu->save_area.gp.reg[IA32_REG_R15] = *(GPReg + 15);
 }
 
-void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE               gcpu,
-                             VMM_IA32_GP_REGISTERS          reg,
-                             UINT64                         value,
-                             VMCS_LEVEL                     level )
+void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_GP_REGISTERS reg,
+                             UINT64 value, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu);
 
@@ -229,8 +224,8 @@ void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE               gcpu,
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-UINT128 gcpu_get_xmm_reg( const GUEST_CPU_HANDLE       gcpu,
-                               VMM_IA32_XMM_REGISTERS       reg )
+UINT128 gcpu_get_xmm_reg( const GUEST_CPU_HANDLE gcpu,
+                               VMM_IA32_XMM_REGISTERS reg )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     VMM_ASSERT(reg < IA32_REG_XMM_COUNT);
@@ -238,23 +233,18 @@ UINT128 gcpu_get_xmm_reg( const GUEST_CPU_HANDLE       gcpu,
 }
 #endif
 
-void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE              gcpu,
-                              VMM_IA32_XMM_REGISTERS        reg,
-                              UINT128                       value )
+void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE gcpu, VMM_IA32_XMM_REGISTERS reg,
+                              UINT128 value )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     VMM_ASSERT(reg < IA32_REG_XMM_COUNT);
     gcpu->save_area.xmm.reg[reg] = value;
 }
 
-void   gcpu_get_segment_reg_layered(
-                              const GUEST_CPU_HANDLE       gcpu,
-                              VMM_IA32_SEGMENT_REGISTERS   reg,
-                              UINT16*                      selector,
-                              UINT64*                      base,
-                              UINT32*                      limit,
-                              UINT32*                      attributes,
-                              VMCS_LEVEL                   level )
+void   gcpu_get_segment_reg_layered( const GUEST_CPU_HANDLE gcpu,
+                              VMM_IA32_SEGMENT_REGISTERS reg,
+                              UINT16* selector, UINT64* base, UINT32* limit,
+                              UINT32* attributes, VMCS_LEVEL level )
 {
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
@@ -432,11 +422,9 @@ UINT64 gcpu_get_guest_visible_control_reg_layered(
 }
 
 // valid only for CR0, CR3 and CR4
-void gcpu_set_guest_visible_control_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              UINT64                        value,
-                              VMCS_LEVEL                    level )
+void gcpu_set_guest_visible_control_reg_layered( const GUEST_CPU_HANDLE gcpu,
+                              VMM_IA32_CONTROL_REGISTERS reg,
+                              UINT64 value, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -457,11 +445,8 @@ void gcpu_set_guest_visible_control_reg_layered(
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-void   gcpu_get_tr_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64*                        base,
-                             UINT32*                        limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_get_tr_reg_layered( const GUEST_CPU_HANDLE gcpu, UINT64* base,
+                             UINT32* limit, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -527,18 +512,13 @@ void   gcpu_set_gdt_reg_layered(const GUEST_CPU_HANDLE gcpu, UINT64 base,
                                 UINT32 limit, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
-
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-
     vmcs_write( vmcs, VMCS_GUEST_GDTR_BASE, base );
     vmcs_write( vmcs, VMCS_GUEST_GDTR_LIMIT, limit );
 }
 
-void   gcpu_get_idt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64*                        base,
-                             UINT32*                        limit,
-                             VMCS_LEVEL                     level )
+void   gcpu_get_idt_reg_layered( const GUEST_CPU_HANDLE gcpu,
+                             UINT64* base, UINT32* limit, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -595,18 +575,15 @@ void gcpu_set_debug_reg_layered(const GUEST_CPU_HANDLE gcpu, VMM_IA32_DEBUG_REGI
     }
 }
 
-UINT32 gcpu_get_interruptibility_state_layered(const GUEST_CPU_HANDLE gcpu,
-                                VMCS_LEVEL level)
+UINT32 gcpu_get_interruptibility_state_layered(const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
     return (UINT32)vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_INTERRUPTIBILITY );
 }
 
-void gcpu_set_interruptibility_state_layered(
-                                const GUEST_CPU_HANDLE        gcpu,
-                                UINT32                        value,
-                                VMCS_LEVEL                    level)
+void gcpu_set_interruptibility_state_layered( const GUEST_CPU_HANDLE gcpu,
+                                UINT32 value, VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -614,35 +591,29 @@ void gcpu_set_interruptibility_state_layered(
 }
 
 IA32_VMX_VMCS_GUEST_SLEEP_STATE
-    gcpu_get_activity_state_layered(
-                                const GUEST_CPU_HANDLE        gcpu,
-                                VMCS_LEVEL                    level)
+    gcpu_get_activity_state_layered( const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-
     return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_SLEEP_STATE );
 }
 
-void gcpu_set_activity_state_layered(
-                                GUEST_CPU_HANDLE        gcpu,
+void gcpu_set_activity_state_layered( GUEST_CPU_HANDLE gcpu,
                                 IA32_VMX_VMCS_GUEST_SLEEP_STATE  value,
-                                VMCS_LEVEL                    level)
+                                VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
     vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_SLEEP_STATE, value );
 
     if ((value != GET_CACHED_ACTIVITY_STATE(gcpu)) &&
-        (!gcpu_is_vmcs_layered(gcpu) || (VMCS_MERGED == level)))
-    {
+        (!gcpu_is_vmcs_layered(gcpu) || (VMCS_MERGED == level))) {
         SET_ACTIVITY_STATE_CHANGED_FLAG(gcpu);
         SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
     }
 }
 
-UINT64 gcpu_get_pending_debug_exceptions_layered(
-                                const GUEST_CPU_HANDLE        gcpu,
-                                VMCS_LEVEL                    level)
+UINT64 gcpu_get_pending_debug_exceptions_layered( const GUEST_CPU_HANDLE gcpu,
+                                VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -1333,12 +1304,8 @@ static void arch_make_segreg_real_mode_compliant(
     }
 }
 
-void make_segreg_hw_real_mode_compliant(
-    GUEST_CPU_HANDLE             gcpu ,
-    UINT16              selector,
-    UINT64              base,
-    UINT32              limit,
-    UINT32              attr,
+void make_segreg_hw_real_mode_compliant( GUEST_CPU_HANDLE gcpu ,
+    UINT16 selector, UINT64 base, UINT32 limit, UINT32 attr,
     VMM_IA32_SEGMENT_REGISTERS  reg_id)
 {
     seg_reg64_t      segreg;

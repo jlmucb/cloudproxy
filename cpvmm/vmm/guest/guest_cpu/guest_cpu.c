@@ -37,7 +37,6 @@
 
 #pragma warning( disable: 4100 )
 
-//******************************************************************************
 //
 // Guest CPU
 //
@@ -45,10 +44,7 @@
 //    16 mode - run under emulator
 //    any other mode - run native
 //
-//******************************************************************************
 
-// -------------------------- types -----------------------------------------
-// ---------------------------- globals -------------------------------------
 
 static GUEST_CPU_HANDLE     g_gcpus       = NULL;// list of all guest cpus
 
@@ -57,8 +53,6 @@ GUEST_CPU_SAVE_AREA** g_guest_regs_save_area = NULL;
 static UINT32        g_host_cpu_count       = 0;
 
 CLI_CODE( static void gcpu_install_show_service(void);)
-
-// ---------------------------- internal funcs  -----------------------------
 
 //
 // Global gcpu iterator
@@ -209,7 +203,7 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     vmcs_set_launch_required( vmcs );
 }
 
-// ---------------------------- APIs ----------------------------------------
+
 void gcpu_manager_init( UINT16 host_cpu_count )
 {
     // BEFORE_VMLAUNCH
@@ -219,7 +213,6 @@ void gcpu_manager_init( UINT16 host_cpu_count )
     g_guest_regs_save_area = vmm_memory_alloc( sizeof(GUEST_CPU_SAVE_AREA*) * host_cpu_count );
     // BEFORE_VMLAUNCH
     VMM_ASSERT( g_guest_regs_save_area );
-
 
     // init subcomponents
     vmcs_hw_init();
@@ -284,12 +277,9 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     return gcpu;
 }
 
-//------------------------------------------------------------------------------
-//
 // Get Guest CPU state by VIRTUAL_CPU_ID
 //
 // Return NULL if no such guest cpu
-//------------------------------------------------------------------------------
 GUEST_CPU_HANDLE gcpu_state( const VIRTUAL_CPU_ID* vcpu )
 {
     GUEST_CPU_HANDLE gcpu = NULL;
@@ -363,11 +353,7 @@ void gcpu_do_use_host_page_tables(GUEST_CPU_HANDLE gcpu, BOOLEAN use)
     gcpu->use_host_page_tables = (UINT8) use;
 }
 
-//------------------------------------------------------------------------------
-//
 // Get VIRTUAL_CPU_ID by Guest CPU
-//
-//------------------------------------------------------------------------------
 const VIRTUAL_CPU_ID* guest_vcpu( const GUEST_CPU_HANDLE gcpu )
 {
     if(gcpu == NULL) {
@@ -376,11 +362,7 @@ const VIRTUAL_CPU_ID* guest_vcpu( const GUEST_CPU_HANDLE gcpu )
     return &gcpu->vcpu;
 }
 
-//------------------------------------------------------------------------------
-//
 // Get Guest Handle by Guest CPU
-//
-//------------------------------------------------------------------------------
 GUEST_HANDLE gcpu_guest_handle( const GUEST_CPU_HANDLE gcpu )
 {
     if(gcpu == NULL) {
@@ -390,11 +372,7 @@ GUEST_HANDLE gcpu_guest_handle( const GUEST_CPU_HANDLE gcpu )
 }
 
 #ifdef ENABLE_EMULATOR
-//------------------------------------------------------------------------------
-//
 // Emulator-related
-//
-//------------------------------------------------------------------------------
 EMULATOR_HANDLE gcpu_emulator_handle( GUEST_CPU_HANDLE gcpu )
 {
     if(gcpu == NULL) {
@@ -430,12 +408,9 @@ BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
 }
 #endif
 
-//------------------------------------------------------------------------------
-//
+
 // Initialize guest CPU
-//
 // Should be called only if initial GCPU state is not Wait-For-Sipi
-//------------------------------------------------------------------------------
 void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
                       const VMM_GUEST_CPU_STARTUP_STATE* initial_state )
 {
@@ -466,7 +441,7 @@ void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
         return;
     }
 
-//    vmcs_set_launch_required( gcpu->vmcs );
+    //    vmcs_set_launch_required( gcpu->vmcs );
     vmcs_set_launch_required( gcpu_get_vmcs(gcpu) );
 
     // init gp registers

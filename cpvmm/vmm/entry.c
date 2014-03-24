@@ -1520,7 +1520,7 @@ int expand_linux_image( multiboot_info_t* mbi,
 
     // set address of tboot shared page 
     if ( is_measured_launch )
-        boot_params->tboot_shared_addr = shared_page;
+        vmm_memcpy((void*)boot_params->tboot_shared_addr, (void*)&shared_page, sizeof(shared_page));
     *entry_point = hdr->code32_start;
     return 0;
 }

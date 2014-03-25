@@ -170,15 +170,14 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTOBJ) $(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
-$(E)/bootstrap.bin: $(BINDIR)/entry.o
-	$(LINK) -m32 -static -fno-stack-protector -nostdlib -e start32_evmm -o $(E)/bootstrap.bin $(BINDIR)/entry.o
+$(E)/bootstrap.bin: $(BINDIR)/entry.o $(BINDIR)/e820.o
+	$(LINK) -m32 -static -fno-stack-protector -nostdlib -e start32_evmm -o $(E)/bootstrap.bin $(BINDIR)/entry.o $(BINDIR)/e820.o
 
 $(BINDIR)/entry.o: $(mainsrc)/entry.c
 	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
 
-#$(BINDIR)/evmm.o: $(mainsrc)/evmm.c
-#	echo "evmm.o" 
-#	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/evmm.o $(mainsrc)/evmm.c 
+$(BINDIR)/e820.o: $(mainsrc)/e820.c
+	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/e820.o $(mainsrc)/e820.c 
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 

@@ -1095,39 +1095,6 @@ const char *skip_filename(const char *cmdline)
 }
 
 
-void get_highest_sized_ram(uint64_t size, uint64_t limit,
-                           uint64_t *ram_base, uint64_t *ram_size)
-{
-#if 0
-    uint64_t last_fit_base = 0, last_fit_size = 0;
-    unsigned int i;
-
-    if ( ram_base == NULL || ram_size == NULL )
-        return;
-
-    for ( i = 0; i < g_nr_map; i++ ) {
-        memory_map_t *entry = &g_copy_e820_map[i];
-
-        if ( entry->type == E820_RAM ) {
-            uint64_t base = e820_base_64(entry);
-            uint64_t length = e820_length_64(entry);
-
-            /* over 4GB so use the last region that fit */
-            if ( base + length > limit )
-                break;
-            if ( size <= length ) {
-                last_fit_base = base;
-                last_fit_size = length;
-            }
-        }
-    }
-
-    *ram_base = last_fit_base;
-    *ram_size = last_fit_size;
-#endif
-}
-
-
 #define PAGE_UP(a) ((a+(PAGE_SIZE-1))&PAGE_MASK)
 
 

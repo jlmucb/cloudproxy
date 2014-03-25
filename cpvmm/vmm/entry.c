@@ -1558,6 +1558,7 @@ int prepare_primary_guest_args()
 
     // set esi register
     linux_esi_register= linux_boot_params;
+
     return 0;
 }
 

@@ -545,8 +545,8 @@ void  ia32_write_msr(UINT32 msr_id, UINT64 *p_value)
         "\n\t movl 4(%%ecx), %%edx"
         "\n\t movl %[msr_id], %%ecx"
         "\n\t wrmsr"        //write from EDX:EAX into MSR[ECX]
-        ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
-        :"%eax", "%ecx", "%edx");
+    ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
+    :"%eax", "%ecx", "%edx");
 }
 
 void setup_evmm_stack()

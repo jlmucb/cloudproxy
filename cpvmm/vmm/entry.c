@@ -840,8 +840,10 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
     return (module_t *)(mbi->mods_addr + i * sizeof(module_t));
 }
 
-
-static UINT64 get_e820_table(const multiboot_info_t *mbi) 
+//
+// This builds the 24 byte extended 8820 table
+//
+static UINT64 evmm_get_e820_table(const multiboot_info_t *mbi) 
 {
     uint32_t entry_offset = 0;
     int i= 0;
@@ -867,114 +869,6 @@ static UINT64 get_e820_table(const multiboot_info_t *mbi)
     evmm_start_of_e820_table = (UINT64)(UINT32)evmm_e820;
 
     return evmm_start_of_e820_table;
-}
-
-static void remove_region(INT15_E820_MEMORY_MAP *e820map, unsigned int *nr_map,
-                          unsigned int pos)
-{
-    unsigned int i = 0;
-    // shift (copy) everything down one entry 
-    for ( i = pos; i < *nr_map - 1; i++)
-        e820map[i] = e820map[i+1];
-    (*nr_map)--;
-}
-
-static BOOLEAN insert_after_region(INT15_E820_MEMORY_MAP *e820map, 
-                                   unsigned int *nr_map, unsigned int pos, uint64_t addr, 
-                                   uint64_t size, uint32_t type)
-{
-    unsigned int i = 0;
-
-    // no more room
-    if ( (*nr_map + 1) > MAX_E820_ENTRIES )
-        return FALSE;
-    // shift (copy) everything up one entry
-    for ( i = *nr_map - 1; i > pos; i--)
-        e820map[i+1] = e820map[i];
-    // now add our entry
-    e820map->memory_map_entry[i].basic_entry.base_address = addr;
-    e820map->memory_map_entry[pos+1].basic_entry.length = size;
-    e820map->memory_map_entry[pos+1].basic_entry.address_range_type = type;
-    e820map->memory_map_size = sizeof(e820map) - 
-    sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
-    (*nr_map)++;
-    return TRUE;
-}
-
-BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base, 
-                            uint64_t length)
-{
-    INT15_E820_MEMORY_MAP_ENTRY_EXT *e820entry;
-    uint64_t e820_base, e820_length, e820_end;
-    uint64_t end;
-    unsigned int i =0;
-
-    if (length == 0) {
-        return TRUE;
-    }
-
-    end = base + length;
-
-    for (; i < evmm_num_e820_entries; i++) {
-        e820entry = &e820map->memory_map_entry[i];
-        e820_base = e820map->memory_map_entry[i].basic_entry.base_address;
-        e820_length = e820map->memory_map_entry[i].basic_entry.length;
-        e820_end = e820_base + e820_length;
-
-        if ( (end <= e820_base) || (base >= e820_end) )
-            continue;
-                
-        if ( (base <= e820_base) && (e820_end <= end) ) {
-            //Requested region is bigger than the current range
-            e820map->memory_map_entry[i].basic_entry.address_range_type =
-                                    E820_RESERVED;
-        } else if ( (e820_base >= base) && (end < e820_base) &&
-                                           (e820_end > end) ) {
-            //Overlapping region
-
-            //Split the current range
-            if (!insert_after_region(e820map, &evmm_num_e820_entries, i-1, e820_base,
-                                     (end - e820_base), E820_RESERVED) )
-                return FALSE;
-
-            i++;
-            //Update the current region base and length     
-            e820map->memory_map_entry[i].basic_entry.base_address = end;
-            e820map->memory_map_entry[i].basic_entry.length = e820_end - end;
-            break;
-        } else  if ((base > e820_base) && (e820_end > base) &&
-                                          (end >= e820_end) ) {
-            //Overlapping region
-
-            //Update the current region length      
-            e820map->memory_map_entry[i].basic_entry.length = base - e820_base;
-            //Split the current range
-            if (!insert_after_region(e820map, &evmm_num_e820_entries, i, base, 
-                                    (e820_end - base), E820_RESERVED) )
-                return FALSE;
-            i++;
-        } else if ( (base > e820_base) && (e820_end > end) ) {
-            //the region is within the current range
-
-            //Update the current region length      
-            e820map->memory_map_entry[i].basic_entry.length = (base - e820_base);
-            //Split the current region      
-            if ( !insert_after_region(e820map, &evmm_num_e820_entries, i, base, 
-                                      length, E820_RESERVED) )
-                return FALSE;
-            //Update the rest of the range
-            if ( !insert_after_region(e820map, &evmm_num_e820_entries, i, end, 
-                 (e820_end - end), e820entry->basic_entry.address_range_type))
-                return FALSE;
-            i++;
-            break;
-        } else {
-            //ERROR
-            return FALSE;
-        }
-    }       
-
-    return TRUE;
 }
 
 
@@ -1784,7 +1678,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
  
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
 
-    p_startup_struct->physical_memory_layout_E820 = get_e820_table(mbi);
+    p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
 
     // application parameters
     // CHECK(RNB):  This structure is not used so the setting is probably OK.

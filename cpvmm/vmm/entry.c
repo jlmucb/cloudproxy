@@ -1734,17 +1734,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 
 
-    // FIX(RNB):  This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
-    // FIX(RNB): fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
-    // FIX(RNB): set aside reserved area for input arguments to guest, this includes old
-    // style 20 bit entry e820.  The GP registers should be correctly filled with 
-    // input args for code32_start.  Note that the boot parameters are already
-    // in the current address space so we only need to reserve memory and copy
-    // them.
+    // This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
+    // fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
+    // The GP registers should be correctly filled with 
+    // input args for code32_start. 
     linux_setup();          // setups gdt table, GPRs and CS/DS for guest(linux)
     evmm_g0.cpu_states_array = (UINT32)&linux_state;
 
-    // FIX(RNB): the start address of the array of initial cpu states for guest cpus.
     //     This pointer makes sense only if the devices_count > 0
     evmm_g0.devices_array = 0;
 
@@ -1790,9 +1786,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
     p_startup_struct->physical_memory_layout_E820 = get_e820_table(mbi);
 
-    // FIX(RNB): The current evmm REQUIRES a thunk area.  We need to define one.
     // application parameters
-    // FIX(RNB):  This structure is not used so the setting is probably OK.
+    // CHECK(RNB):  This structure is not used so the setting is probably OK.
     evmm_a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
     evmm_a0.number_of_params = 0;
     evmm_a0.session_id = 0;
@@ -1819,8 +1814,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     } 
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
-    // FIX (JLM):  add reserved area for linux guest startup arguments
-    // FIX (JLM):  in evmm, exclude tboot and bootstrap areas from primary space
+    // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
     // FIX(JLM):  allocate  debug area for return from evmm print and print it.
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode

@@ -117,8 +117,8 @@ typedef enum {
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
 
-#define HEAP_SIZE 0X100000
-#define HEAP_BASE 0Xa0000000 - HEAP_SIZE
+#define EVMM_HEAP_SIZE 0X100000
+#define EVMM_HEAP_BASE 0Xa0000000 - EVMM_HEAP_SIZE
 
 // TOTAL_MEM is a  max of 4G because we start in 32-bit mode
 #define TOTAL_MEM 0x100000000 
@@ -1565,8 +1565,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     init32.s.i32_num_of_aps = evmm_num_of_aps;
 
     // set up evmm heap
-    evmm_heap_base = HEAP_BASE;
-    evmm_heap_size = HEAP_SIZE;
+    evmm_heap_base = EVMM_HEAP_BASE;
+    evmm_heap_size = EVMM_HEAP_SIZE;
     // NOTE: first argument was &heap_base which was wrong
     InitializeMemoryManager(evmm_heap_base, evmm_heap_size);
 
@@ -1698,7 +1698,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-    if ( !e820_reserve_region(evmm_e820, HEAP_BASE, (HEAP_SIZE + (evmm_end - evmm_start)))) {
+    if ( !e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size + (evmm_end - evmm_start)))) {
         tprintk("Unable to reserve evmm region in e820 table\r\n");
         LOOP_FOREVER
     }

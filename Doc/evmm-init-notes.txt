@@ -97,7 +97,22 @@ Bootstrap.bin
 -------------
 
 The bootstrap program uses information from tboot to call vmm_main 
-after decompressing the 64-bit evmm image and relocating it to TTTT.
+after decompressing the 64-bit evmm image and relocating it to 
+evmm_start_address.  TODO: Change where Bootstrap gets loaded and
+put that information here.  bootstrap_start is the starting location of
+bootstrap and bootstrap_end is the end location.  These are selected
+by tboot.
+
+Bootstrap prepares the arguments for evmm and the primary linux guest.
+This include the 64 bit control and segment registers for evmm, an initial
+stack and heap and page tables in the case of evmm.  In the case of the 
+primary Linux guest, this includes the control and general purpose registers,
+and the the entry parameters as well as a stack.  Bootstrap ensures that all 
+prior code is removed from the copy of the e820 table received by the linux guest.
+Bootstrap also constructs a new e820 table which is included in the startup structure.
+
+TODO:  Currently, evmm protects itself by removing its code, heap and stack from the
+primary guest's ept table.  We need to also remove tboot and bootstrap.
 
 vmm_main is called in 64-bit protected mode with all the information 
 vmm_main needs to complete 64-bit initialization.
@@ -118,10 +133,6 @@ modify the e820 tables to make the tboot/bootstrap memory, and its memory not
 accessbile from the guest.
 
 The initialized 64-bit GDT and IDT should have the following properties:
-REKHA2: I am not sure, I believe it depends on the e820 table slot that is
-chosen for evmm.  Does Linux have a specific location?  
-JLM: I'll find out.  
-REKHA3: Meanwhile, just say what we do here.
 
 2. Information obtained from BIOS (e820 map) and additional information
 from tboot including memory size, base address of tboot, the combined size of
@@ -147,37 +158,13 @@ evmm does not require the fpu to be initialized prior to entry.
 
 Upon exit, evmm clears all sensitive data [JLM: unsure, low priority for now.]
 
-If there is ANYTHING else bootstrap should do before calling vmm_main, 
-
-The original loader does the following
-    (1) Init loader heap, run-time space, and idt.
-    (2) Build E820 table.
-    (3) Read evmm and thunk header.   The Thunk header is image meta-data: 
-        image type and image size.
-    (4) Load evmm, thunk, and tee.  (replace 3 and 4 with read 64-bit read 
-            elf header)
-    (5) Setup init32. 
-        This is the 32-bit code that runs just before switching to
-        64-bit.  It is responsible for translating the machine state (for
-        e.g., copying registers from 32-bit to 64-bit) to 64-bit before the
-        switch.
-    (6) Setup init64. [I plan to do in main of entry.c]
-    (7) Call thunk.
-
 
 vmm_main
 --------
 
 vmm_main completes evmm's initialization by allocating its heap 
-and setting up the Linux guest.  The details on how it sets up 
-the Linux guest is below.  It ensures the guest cannot access system 
-memory including bios, tboot, bootstrap ore evmm code or data. 
-evmm assigns all interrupts, except for NMI, to the linux guest. 
-As explained above, evmm should update the e820 map to prevent
-the guest from accessing the tboot/bootstrap and evmm memory regions
-and populate the IDT with the appropriate handlers (in evmm or guest).
-The input arguments which must be prepared by bootstrap are set
-forth below.
+and setting up the primary Linux guest.  The details on how it sets up 
+the Linux guest is below.  
 
 
 Details of bootstrap initialization
@@ -212,8 +199,7 @@ Tboot header                                            <-- 0x00800000
 Tboot start (boot.S)                                    <-- 0x00804000
   Tboot ends at ~                                           0x00972e88
 Bootstrap.bin
-  This is loaded just after Tboot, main is at 0x0804a317 on John's
-  machine
+  This is currently loaded at 0x0804a317 on John's machine
 Evmm.bin
    This is loaded from 0x12da000 and 0x01333247 on John's machine.
 Linux image package 
@@ -243,7 +229,10 @@ Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
 64 evmm heap/stack                                      <-- 0xe00000-HEAPSIZE
 64bit evmm image (uncompressed)                         <-- 0xe00000 (?)
 
-TODO: Linux and initram have not been moved (yet)
+Bootstrap has relocated evmm to evmm_start_address and has also
+relocated the primary linux guest image and initram to linux_start_address
+and initram_start_address.  The linux header has been adjusted to contain
+the new intiram address and linux entry points.
 
 
 vmm_main call
@@ -256,14 +245,8 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
               UINT64 reserved UNUSED)
 On entry, startup_struct_u is cast to VMM_STARTUP_STRUCT* type and
 application_params_struct_u is (eventually) interpreted as a pointer
-to a structure of type VMM_INPUT_PARAMS_S.  [REHKA3: what is the 
-local_apic_id and what do we get from the shared page to fill it in.]
-
-    typedef struct VMM_INPUT_PARAMS_S {
-        UINT64 local_apic_id;
-        UINT64 startup_struct;
-        UINT64 application_params_struct; // change name
-    } VMM_INPUT_PARAMS;
+to a structure of type VMM_INPUT_PARAMS_S.  This second structure
+is not used for the primary guest.
 
 These structures are used both in 32-bit and 64-bit modes, therefore:
 - Structure sizes are 64-bit aligned
@@ -275,6 +258,8 @@ These structures are used both in 32-bit and 64-bit modes, therefore:
 The Primary guest is the guest that owns the platform and platform was
 booted originally to run this guest. The secondary guest is a guest that 
 is used to perform some dedicated tasks on behalf of the primary guest.
+The primary guest gets all memory except for the evmm area now.  Later
+we should remove tboot and bootstrap too.
 
 Here is the structure hierarchy (---> denotes a pointer) of these
 input structures to vmm_main.
@@ -306,13 +291,13 @@ typedef struct _VMM_STARTUP_STRUCT {
     // used to verify correctness of the bootstrap process
     UINT16   number_of_processors_at_install_time;
 
-RNB3: number of cores in the system.
+    number of cores in the system.
 
     // number of processors/cores as was discovered by vmm loader
     // used to verify correctness of the bootstrap process
     UINT16   number_of_processors_at_boot_time;
 
-RNB3: number of cores on which evmm will be run.
+    //number of cores on which evmm will be run.
 
     /* 64-bit aligned */
     // number of secondary Guests
@@ -334,27 +319,19 @@ RNB3: number of cores on which evmm will be run.
     // that were not assigned to any guest
     UINT32   default_device_owner;
 
-RNB3: magic number of the evmm, since we for now evmm is the default owner.
 
     /* 64-bit aligned */
     // magic number of the guest, that serves as OSPM.
     // SMM code is executed in the context of this guest
     UINT32   acpi_owner;
 
-RNB3: magic number of the evmm, since we decided that evmm will be the acpi
-owner (for now).
 
     // magic number of the guest, that process platform NMIs.
     UINT32   nmi_owner;
 
-RNB3: magic number of the evmm, since we decided that evmm will handle nmi.
-
     /* 64-bit aligned */
     // vmm memory layout
     VMM_MEMORY_LAYOUT           vmm_memory_layout[uvmm_images_count];
-
-RNB3: This struct contains the VMM size, base address where it should be
-loaded, and the address of the entry_point.
 
     // pointer to the int 15 E820 BIOS table
     //  INT15_E820_MEMORY_MAP*
@@ -363,24 +340,16 @@ loaded, and the address of the entry_point.
     // the extended attributes should be set to 0x1.
     UINT64   physical_memory_layout_E820;
 
-RNB3: e820 memory layout (received from BIOS), and converted to extended format.
-loaded, and the address of the entry_point.
-
     /* 64-bit aligned */
     // pointer to the primary guest state
     //   VMM_GUEST_STARTUP*
     UINT64   primary_guest_startup_state;
-
-RNB3:  Guest startup state. For our case (pre_os), the guest state would be the
-same as if tboot was starting the guest.
 
     /* 64-bit aligned */
     // pointer to the array of secondary guest states
     // size of array is number_of_secondary_guests
     //   VMM_GUEST_STARTUP*
     UINT64   secondary_guests_startup_state_array;
-
-RNB3: Not applicable for now.
 
     /* 64-bit aligned */
     // Debug parameters
@@ -389,8 +358,6 @@ RNB3: Not applicable for now.
     /* 64-bit aligned */
     // Active cpu local apic ids
     UINT8    cpu_local_apic_ids[ALIGN_FORWARD(VMM_MAX_CPU_SUPPORTED, 8)];
-
-RNB3: Local apic (processor) ids of all cpus.
 
 }PACKED VMM_STARTUP_STRUCT;
 
@@ -432,14 +399,6 @@ typedef struct _VMM_GUEST_CPU_STARTUP_STATE
     VMM_MODEL_SPECIFIC_REGISTERS    msr;
 }PACKED VMM_GUEST_CPU_STARTUP_STATE;
 
-RNB3: the guest state for pre os has to be the state that we had at evmm entry
-point, or however, we choose to start the guest (either linux/windows).
-
-REKHA3:  Now what remains is mapping the information from tboot to these data 
-values.  Thats what you have to describe since that's what we have to set up.
-I believe we need to understand this (and document the understanding) before
-checking in code purporting to carry this out.  You should do this if you can.
-
 
 Setup of e820 tables by bootstrap
 ---------------------------------
@@ -452,25 +411,21 @@ memory region.
 REKHA3: I think the only thing remaining is a decription of what you change in
 the e820 table passed by tboot to accomplish this.
 
-RNB3: we update the size of the e820 slot which evmm uses to not be available
-to the guest.
 
 
 Stack setup
 -----------
 
 Bootstrap.bin prepares a 64K stack for 64-bit evmm.  The 64K stack is 
-based at WWWWW.
-[REKHA3: Fill in WWWW (or whatever we need to do to pick WWWW ourselves.
-Should we up a larger than 64H stack?]
+based at EVMM_HEAP_BASE by default.
 
 
 Heap setup
 ----------
 
-The 64-bit heap initialization is done in 64 bit evmm.  The heap prepared
-by tboot for 32-bit protected mode needs no further modication.
-[REKHA3: Update this when you have the info.]
+The inital heap for evmm is done by bootstrap.  This contains evvm's initial
+stacks and page tables.  The final 64-bit heap initialization for evmm is done 
+in 64 bit evmm.  
 
 
 64-bit address translation
@@ -490,33 +445,22 @@ at an what they expect to have happened.  Clarify the purpose, and what
 code the BSP and AP's should wake up at after.
 
 
-Call thunk
-----------
-
-The thunk mechanism allows bootstrap to "switch back" into evmm, which 
-is applicable only in the post launch case, because a)evmm has to work 
-with whatever memory it has available; b) handle the case of restoring 
-the native OS if something goes wrong and it can't recover.  In the pre 
-os case, we crash and reboot to start over again.  The thunk arranges the 
-jump (in 64-bit mode to vmm_main, whose address is calculated for the 
-64-bit header information.
-
-
-Linux Guest initialization
+Linux Primary Guest initialization
 --------------------------
 
 Evmm sets up its Linux guest so that at startup, the Linux wakes up 
-in the call to main in 32 bit protected mode just as it would after 
+in the call to code32_start in 32 bit protected mode just as it would after 
 TBOOT.  All information used to configure the Linux guest is
-passed in the parameters to vmm_main documented above.
+passed in the parameters to vmm_main documented above.  
+
+The startup structure passed to evmm ensures that its general registers and control
+registers are set so that linux has a small stack (at linux_stack_address).
+The argument to code32_start is in edi and points to a copy of the original
+boot information.  Prior to the setup of the startup structure, bootstrap relocates
+linux and initram as tboot would have.
 
 Linux never accesses BIOS.  evmm can host Windows "out of the box."
-[REKHA3: can you confirm these last two statements and, if true,
-can you get (low prioity) the information we need to start windows,
-i.e.- the setup of the parameters to vmm_main that accomplish it.]
 
-RNB3: Yes, the first statements is true, and the second is potentially true.  I
-have never ran the evmm we have.
 
 Notes 
 -----

@@ -1438,7 +1438,7 @@ int prepare_primary_guest_args()
         return 1;
     }
 
-    linux_boot_params= (linux_esp_register+PAGE_SIZE-1)&PAGE_MASK;
+    linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
 
     // FIX: copy arguments

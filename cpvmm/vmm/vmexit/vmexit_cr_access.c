@@ -202,7 +202,7 @@ RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE            gcpu,
         return result;
 
     event = lkup_write_event[ reg_id ];
-    if (event != EVENTS_COUNT) {
+    if (event != (UVMM_EVENT)EVENTS_COUNT) {
         event_data.new_guest_visible_value = new_value;
         if(TRUE == event_raise( event, gcpu, &event_data )) {
             result = EVENT_HANDLED;
@@ -266,10 +266,8 @@ BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu,
     return TRUE;
 }
 
-BOOLEAN cr_guest_write(
-    GUEST_CPU_HANDLE            gcpu,
-    VMM_IA32_CONTROL_REGISTERS  reg_id,
-    ADDRESS                     value)
+BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS  reg_id,
+                        ADDRESS value)
 {
     RAISE_EVENT_RETVAL cr_update_event;
     UINT64 old_visible_reg_value;
@@ -320,9 +318,7 @@ BOOLEAN cr_guest_write(
     return TRUE;
 }
 
-BOOLEAN cr_mov(
-    GUEST_CPU_HANDLE gcpu,
-    IA32_VMX_EXIT_QUALIFICATION qualification)
+BOOLEAN cr_mov( GUEST_CPU_HANDLE gcpu, IA32_VMX_EXIT_QUALIFICATION qualification)
 
 {
     VMM_IA32_CONTROL_REGISTERS  cr_id;

@@ -244,7 +244,8 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
         gcpu_set_current_gpm(gcpu, primary_guest_startup_gpm);
     }
     VMM_LOG(mask_anonymous, level_trace,"Primary guest initialized successfully\n");
-    return TRUE;
+    // JLM: used to be TRUE
+    return ok;
 }
 
 // Perform initialization of host cpu parts of all guest CPUs that run on specified

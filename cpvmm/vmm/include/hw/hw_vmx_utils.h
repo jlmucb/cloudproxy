@@ -1,18 +1,18 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _HW_VMX_UTILS_H_
 #define _HW_VMX_UTILS_H_
@@ -20,11 +20,9 @@
 
 #include "vmm_defs.h"
 
-//*****************************************************************************
 //
 // wrappers for VMX instructions
 //
-//*****************************************************************************
 
 #ifdef __GNUC__
 
@@ -58,8 +56,8 @@ extern void          __vmx_off( void );
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-//
+
+
 // General note: all functions that return value return the same values
 //
 // 0 - The operation succeeded.
@@ -67,15 +65,14 @@ extern void          __vmx_off( void );
 //     VM-instruction error field of the current VMCS.
 // 2 - The operation failed without status available.
 //
-////////////////////////////////////////////////////////////////////////////////
+
 typedef enum _HW_VMX_RET_VALUE {
     HW_VMX_SUCCESS            = 0,
     HW_VMX_FAILED_WITH_STATUS = 1,
     HW_VMX_FAILED             = 2
 } HW_VMX_RET_VALUE;
 
-//------------------------------------------------------------------------------
-//
+
 // VMX ON/OFF
 //
 // HW_VMX_RET_VALUE hw_vmx_on( UINT64* vmx_on_region_physical_address_ptr )
@@ -84,8 +81,7 @@ typedef enum _HW_VMX_RET_VALUE {
 // vmx_on_region_physical_address_ptr is a POINTER TO the VMXON region POINTER.
 // The VMXON region POINTER must be 4K page aligned. Size of the
 // region is the same as VMCS region size and may be found in IA32_VMX_BASIC MSR
-//
-//------------------------------------------------------------------------------
+
 #ifdef __GNUC__
 #define hw_vmx_on( _vmx_on_region_physical_address_ptr )                        \
                      (HW_VMX_RET_VALUE)vmx_on(_vmx_on_region_physical_address_ptr)
@@ -96,8 +92,8 @@ typedef enum _HW_VMX_RET_VALUE {
                      (HW_VMX_RET_VALUE)__vmx_on(_vmx_on_region_physical_address_ptr)
 #define hw_vmx_off()                   __vmx_off()
 #endif
-//------------------------------------------------------------------------------
-//
+
+
 // Read/write current VMCS pointer
 //
 // HW_VMX_RET_VALUE hw_vmx_set_current_vmcs( UINT64* vmcs_region_physical_address_ptr )
@@ -106,8 +102,8 @@ typedef enum _HW_VMX_RET_VALUE {
 // vmcs_region_physical_address_ptr is a POINTER TO the VMCS region POINTER.
 // The VMCS region POINTER must be 4K page aligned. Size of the
 // region is the same as VMCS region size and may be found in IA32_VMX_BASIC MSR
-//
-//------------------------------------------------------------------------------
+
+
 #ifdef __GNUC__
 #define hw_vmx_set_current_vmcs( _vmcs_region_physical_address_ptr )            \
                      (HW_VMX_RET_VALUE)vmx_vmptrld(_vmcs_region_physical_address_ptr)
@@ -121,8 +117,8 @@ typedef enum _HW_VMX_RET_VALUE {
 
 #define hw_vmx_get_current_vmcs( _vmcs_region_physical_address_ptr )            \
 #endif
-//------------------------------------------------------------------------------
-//
+
+
 // Flush current VMCS data + Invalidate current VMCS pointer + Set VMCS launch state
 // to the "clear" value (VMLAUNCH required)
 //
@@ -137,8 +133,7 @@ typedef enum _HW_VMX_RET_VALUE {
 // vmcs_region_physical_address_ptr is a POINTER TO the VMCS region POINTER.
 // The VMCS region POINTER must be 4K page aligned. Size of the
 // region is the same as VMCS region size and may be found in IA32_VMX_BASIC MSR
-//
-//------------------------------------------------------------------------------
+
 
 #ifdef __GNUC__
 
@@ -150,7 +145,7 @@ HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs( UINT64 *address);
                      (HW_VMX_RET_VALUE)__vmx_vmclear(vmcs_region_physical_address_ptr)
 
 #endif
-//------------------------------------------------------------------------------
+
 //
 // Launch/resume guest using "current VMCS pointer".
 //
@@ -160,7 +155,7 @@ HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs( UINT64 *address);
 //
 // Subsequent guest resumes on the current core should be done using hw_vmx_launch()
 //
-//------------------------------------------------------------------------------
+
 #ifdef __GNUC__
 
 #define hw_vmx_launch_guest()     (HW_VMX_RET_VALUE)vmx_vmlaunch()
@@ -173,14 +168,13 @@ HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs( UINT64 *address);
 
 #endif
 
-//------------------------------------------------------------------------------
-//
+
 // Read/write some field in the "current VMCS"
 //
 // HW_VMX_RET_VALUE hw_vmx_write_current_vmcs( size_t field_id, size_t value  )
 // HW_VMX_RET_VALUE hw_vmx_read_current_vmcs ( size_t field_id, size_t* value )
-//
-//------------------------------------------------------------------------------
+
+
 #ifdef __GNUC__
 
 HW_VMX_RET_VALUE hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 *value );                          

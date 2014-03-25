@@ -32,6 +32,8 @@
 #include "vmx_nmi.h"
 #include "hw_includes.h"
 
+extern UINT64 hw_interlocked_increment64(INT64* p_counter);
+
 
 #pragma warning( disable : 4100)        // unreferenced formal parameter
 

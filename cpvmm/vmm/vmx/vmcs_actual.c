@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_ACTUAL_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_ACTUAL_C, __condition)
@@ -340,6 +341,10 @@ UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
     }
     return value;
 }
+
+
+// JLM:added
+extern HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
 
 
 UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id)

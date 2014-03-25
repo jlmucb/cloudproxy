@@ -1008,7 +1008,7 @@ BOOLEAN vmexit_register_unregister_for_efer( GUEST_HANDLE    guest,
     if( !is_unrestricted_guest_supported() )
         return FALSE;
 
-    if ( (msr_id == IA32_MSR_EFER) && reg_dereg )
+    if ( (msr_id == IA32_MSR_EFER) && reg_dereg ) {
         if ( access == WRITE_ACCESS ) {
             msr_vmexit_handler_register( guest, IA32_MSR_EFER,
                                 msr_efer_write_handler, WRITE_ACCESS, NULL);
@@ -1019,6 +1019,7 @@ BOOLEAN vmexit_register_unregister_for_efer( GUEST_HANDLE    guest,
                                 msr_efer_read_handler, READ_ACCESS, NULL);
             return TRUE;
         }
+    }
 
     if ( (msr_id == IA32_MSR_EFER) && !reg_dereg ) {
         msr_vmexit_handler_unregister( guest, msr_id, access);

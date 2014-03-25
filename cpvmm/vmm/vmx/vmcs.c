@@ -629,7 +629,7 @@ static void init_enc_2_field_tables(void)
 {
     VMCS_FIELD          cur_field;
     VMCS_ENCODING*      enc;
-    ENC_2_FIELD_ENTRY*  enc_2_field_entry;
+    ENC_2_FIELD_ENTRY*  enc_2_field_entry= NULL;
     BOOLEAN             ok;
 
     vmm_memset( g_enc_2_field, 0, sizeof(g_enc_2_field) );

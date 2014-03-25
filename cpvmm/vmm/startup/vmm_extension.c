@@ -62,6 +62,9 @@ BOOLEAN report_uvmm_event(UVMM_EVENT event, VMM_IDENTIFICATION_DATA gcpu, const 
             break;
         case UVMM_EVENT_LOG:
             break;
+        // JLM: added
+        default:
+            break;
     }
 
     return status;

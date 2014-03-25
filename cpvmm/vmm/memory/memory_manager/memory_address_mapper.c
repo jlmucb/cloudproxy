@@ -250,24 +250,24 @@ extern CPU_ID ASM_FUNCTION hw_cpu_id(void);
 
 INLINE 
 MAM_ENTRY_TYPE get_mam_entry_type(IN MAM_ENTRY* entry) {
-        MAM_ENTRY_TYPE entry_type = (MAM_ENTRY_TYPE)0;
+    MAM_ENTRY_TYPE entry_type = (MAM_ENTRY_TYPE)0;
 
-        //get inner MAM entry type      
-        entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl & MAM_INNER_ENTRY_TYPE_MASK); 
-        if (entry_type != MAM_VTDPT_ENTRY) {
-                entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl);
-        }
-        else {
-                entry_type = (MAM_ENTRY_TYPE)(entry_type|(entry->vtdpt_entry.avl_1 << 2));
-        }
-        return (entry_type);
+    //get inner MAM entry type      
+    entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl & MAM_INNER_ENTRY_TYPE_MASK); 
+    if ((MAM_ENTRY_TYPE)entry_type != MAM_VTDPT_ENTRY) {
+        entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl);
+    }
+    else {
+        entry_type = (MAM_ENTRY_TYPE)(entry_type|(entry->vtdpt_entry.avl_1 << 2));
+    }
+    return (entry_type);
 }
 
 
 INLINE 
 BOOLEAN mam_entry_type_is_leaf_entry(IN MAM_ENTRY* entry) {
-        MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
-        return (((entry_type) & MAM_LEAF_ENTRY_TYPE_MASK) != 0);
+    MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
+    return (((entry_type) & MAM_LEAF_ENTRY_TYPE_MASK) != 0);
 }
 
 INLINE

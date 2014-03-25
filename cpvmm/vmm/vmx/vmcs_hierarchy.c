@@ -34,7 +34,7 @@ typedef struct {
 
 
 
-static VMCS_1_DESCRIPTOR *vmcs_hierarchy_vmcs1_lkup(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs);
+VMCS_1_DESCRIPTOR *vmcs_hierarchy_vmcs1_lkup(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs);
 
 
 VMM_STATUS vmcs_hierarchy_create(

@@ -16,6 +16,7 @@
 
 //#include <types.h>
 #include "vmm_defs.h"
+#include "common_libc.h"
 
 /*
  *  force compiler intrinsics to use our code

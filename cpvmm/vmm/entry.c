@@ -1742,7 +1742,6 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // input args for code32_start.  Note that the boot parameters are already
     // in the current address space so we only need to reserve memory and copy
     // them.
-    setup_linux_stack();    //Sets aside a page before eVMM's heap.
     linux_setup();          // setups gdt table, GPRs and CS/DS for guest(linux)
     evmm_g0.cpu_states_array = (UINT32)&linux_state;
 

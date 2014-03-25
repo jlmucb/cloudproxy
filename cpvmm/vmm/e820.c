@@ -60,7 +60,7 @@ extern tboot_printk tprintk;
  * copy of bootloader/BIOS e820 table with adjusted entries
  * this version will replace original in mbi
  */
-#define MAX_E820_ENTRIES      (TBOOT_E820_COPY_SIZE / sizeof(memory_map_t))
+static unsigned int max_e820_entries= 0;
 static unsigned int g_nr_map;
 static memory_map_t *g_copy_e820_map = NULL;
 
@@ -86,9 +86,10 @@ static inline uint64_t e820_length_64(memory_map_t *entry)
 }
 
 
-void set_e820_copy_location(uint32_t place)
+void set_e820_copy_location(uint32_t place, uint32_t num)
 {
     g_copy_e820_map = (memory_map_t *) place;
+    max_e820_entries= num;
 }
 
 
@@ -120,7 +121,7 @@ static bool insert_after_region(memory_map_t *e820map, unsigned int *nr_map,
     unsigned int i;
 
     /* no more room */
-    if ( *nr_map + 1 > MAX_E820_ENTRIES )
+    if ( *nr_map + 1 > max_e820_entries)
         return false;
 
     /* shift (copy) everything up one entry */
@@ -299,7 +300,7 @@ bool copy_e820_map(const multiboot_info_t *mbi)
         uint32_t entry_offset = 0;
 
         while ( entry_offset < mbi->mmap_length &&
-                g_nr_map < MAX_E820_ENTRIES ) {
+                g_nr_map < max_e820_entries) {
             memory_map_t *entry = (memory_map_t *)
                                        (mbi->mmap_addr + entry_offset);
 
@@ -312,7 +313,7 @@ bool copy_e820_map(const multiboot_info_t *mbi)
                 return false;
             entry_offset += entry->size + sizeof(entry->size);
         }
-        if ( g_nr_map == MAX_E820_ENTRIES ) {
+        if ( g_nr_map == max_e820_entries) {
             tprintk("Too many e820 entries\n");
             return false;
         }
@@ -468,9 +469,7 @@ uint32_t e820_check_region(uint64_t base, uint64_t length)
 
 /*
  * e820_reserve_ram
- *
  * Given the range, any ram range in e820 is in it, change type to reserved.
- *
  * return:  false = error
  */
 bool e820_reserve_ram(uint64_t base, uint64_t length)

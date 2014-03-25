@@ -1397,9 +1397,44 @@ int expand_linux_image( multiboot_info_t* mbi,
 }
 
 
+/*
+  boot_params
+    uint8_t               screen_info[0x040-0x000];                 
+    uint8_t               apm_bios_info[0x054-0x040];               
+    uint8_t               _pad2[4];                                 
+    uint8_t               tboot_shared_addr[8];                     
+    uint8_t               ist_info[0x070-0x060];                    
+    uint8_t               _pad3[16];                                
+    uint8_t               hd0_info[16];     
+    uint8_t               hd1_info[16];     
+    uint8_t               sys_desc_table[0x0b0-0x0a0];              
+    uint8_t               _pad4[144];                               
+    uint8_t               edid_info[0x1c0-0x140];                   
+    uint8_t               efi_info[0x1e0-0x1c0];                    
+    uint8_t               alt_mem_k[0x1e4-0x1e0];                   
+    uint8_t               scratch[0x1e8-0x1e4];                     
+    uint8_t               e820_entries;                             
+    uint8_t               eddbuf_entries;                           
+    uint8_t               edd_mbr_sig_buf_entries;                  
+    uint8_t               _pad6[6];                                 
+    linux_kernel_header_t hdr;    
+    uint8_t               _pad7[0x290-0x1f1-sizeof(linux_kernel_header_t)];
+    uint8_t               edd_mbr_sig_buffer[0x2d0-0x290];          
+    e820entry_t           e820_map[E820MAX];                        
+    uint8_t               _pad8[48];                                
+    uint8_t               eddbuf[0xeec-0xd00];                      
+    uint8_t               _pad9[276];                               
+*/
+
+#ifndef false
+#define false 0
+#define true 1
+#endif
+
+
 // relocate and setup variables for evmm entry
 
-int prepare_primary_guest_args()
+int prepare_primary_guest_args(multiboot_info_t *mbi)
 {
 
     // put arguments one page prior to guest esp (which is normally one page before evmm heap)
@@ -1410,12 +1445,26 @@ int prepare_primary_guest_args()
     linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
 
-    // FIX: copy arguments
+    uint32_t linux_e820_table= linux_boot_params+ sizeof(boot_params_t);
+    set_e820_copy_location(linux_e820_table, E820MAX);
 
     // set address of copied tboot shared page 
     vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, sizeof(shared_page));
 
-    // FIX: remove bootstrap, stack page and arguments page from linux e820
+    // Remove bootstrap, stack page and arguments page from linux e820
+    if(copy_e820_map(mbi)==false) {
+        return 1;
+    }
+
+    // arguments (maybe it's ok to leave these)
+    if(e820_reserve_ram(linux_boot_params, 3*PAGE_SIZE)==false) {
+        return 1;
+    }
+
+    // bootstrap
+    if(e820_reserve_ram(bootstrap_start, bootstrap_end-bootstrap_start)==false) {
+        return 1;
+    }
 
     // set esi register
     linux_esi_register= linux_boot_params;
@@ -1434,6 +1483,8 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     UINT32 initrd_size = m->mod_end - m->mod_start;
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
                        initrd_image, initrd_size, &linux_entry_address);
+    if(prepare_primary_guest_args(mbi)!=0) {
+    }
 
     // CHECK(JLM)
     linux_start_address= linux_entry_address;
@@ -1497,7 +1548,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     linux_end= (uint32_t)m->mod_end;
 
     initram_start= 0ULL;
-    initram_end= 0ULL;
+    
 
     if(l>2) {
         m= get_module(mbi, 2);

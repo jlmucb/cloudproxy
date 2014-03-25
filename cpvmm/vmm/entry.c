@@ -50,6 +50,11 @@ typedef int bool;
 #define MAX_E820_ENTRIES PAGE_SIZE/sizeof(INT15_E820_MEMORY_MAP)
 #define UUID 0x1badb002
 
+// for linux primary guest
+#define LINUX_BOOT_CS 0x10
+#define LINUX_BOOT_DS 0x18
+
+
 void _mystart()
 {
 }
@@ -206,6 +211,8 @@ static unsigned int     evmm_num_e820_entries = 0;
 INT15_E820_MEMORY_MAP * evmm_e820= NULL;                // address of expanded e820 table for evmm
 UINT64                  evmm_start_of_e820_table= 0ULL; // same but 64 bits
 
+
+// linux guest
 uint32_t linux_start_address= 0;   // this is the address of the linux protected mode image
 uint32_t initram_start_address= 0; // this is the address of the initram for linux
 uint32_t linux_entry_address= 0;   // this is the address of the eip in the guest
@@ -216,7 +223,6 @@ uint32_t linux_stack_size= 0;      // this is the size of the stack that the lin
 
 // new boot parameters for linux guest
 uint32_t linux_boot_params= 0;
-
 
 
 void *vmm_memset(void *dest, int val, UINT32 count)
@@ -973,6 +979,110 @@ BOOLEAN e820_reserve_region(INT15_E820_MEMORY_MAP *e820map, uint64_t base,
 }
 
 
+// initial GDT table for linux guest
+static const uint64_t gdt_table[] __attribute__ ((aligned(16))) = {
+    0,
+    0,
+    0x00c09b000000ffff, /* cs */
+    0x00c093000000ffff  /* ds */
+};
+
+static struct __packed {
+        uint16_t length;
+        uint16_t table;
+} linux_gdt_desc;
+
+
+// state of primary linux guest on startup
+VMM_GUEST_CPU_STARTUP_STATE linux_state;
+
+
+uint32_t alloc_linux_stack(UINT32 pages)
+{
+    if (pages > 1)
+        return 0;   // error
+
+    UINT32 address;
+    UINT32 size = pages * PAGE_SIZE;
+
+    linux_stack_base = evmm_heap_base - PAGE_SIZE;
+    linux_stack_size= size;
+    address = ALIGN_FORWARD(linux_stack_base, PAGE_SIZE);
+    vmm_memset((void*)address, 0, size);
+    return address;
+}
+
+
+void setup_linux_stack()
+{
+    EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_ptr = 
+            (EM64T_CODE_SEGMENT_DESCRIPTOR *)alloc_linux_stack(1);
+    int i;
+
+    // data segment for guest stack
+    (* tmp_ptr).hi.readable = 1;
+    (* tmp_ptr).hi.conforming = 0;
+    (* tmp_ptr).hi.mbo_11 = 0;
+    (* tmp_ptr).hi.mbo_12 = 1;
+    (* tmp_ptr).hi.dpl = 0;
+    (* tmp_ptr).hi.present = 1;
+    (* tmp_ptr).hi.long_mode = 1;      // important !!!
+    (* tmp_ptr).hi.default_size= 0;    // important !!!
+    (* tmp_ptr).hi.granularity= 1;
+    linux_esp_register= ((uint32_t)tmp_ptr) + PAGE_SIZE;
+}
+
+
+int linux_setup(void)
+{
+    uint32_t i;
+
+    setup_linux_stack();
+    linux_gdt_desc.length = (uint16_t)sizeof(gdt_table);
+    // FIX (RNB): Is this right, table is a 16 bit quantity receiving a 32 bit address
+    linux_gdt_desc.table = &gdt_table;
+    linux_state.size_of_this_struct = sizeof(linux_state);
+    linux_state.version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
+    linux_state.reserved_1 = 0;
+
+    //RNB: Zero out all the registers.  Then update the ones that linuxexpects.
+    for (i = 0; i < IA32_REG_GP_COUNT; i++) {
+        linux_state.gp.reg[i] = (UINT64) 0;
+    }
+    linux_state.gp.reg[IA32_REG_RIP] = (UINT64) linux_entry_address;
+    linux_state.gp.reg[IA32_REG_RSI] = (UINT64) linux_esi_register;
+    linux_state.gp.reg[IA32_REG_RSP] = (UINT64) linux_esp_register;
+    for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
+        linux_state.xmm.reg[i].uint64[0] = (UINT64)0;
+        linux_state.xmm.reg[i].uint64[1] = (UINT64)0;
+    }
+    linux_state.msr.msr_debugctl = 0;
+    linux_state.msr.msr_efer = 0;
+    linux_state.msr.msr_pat = 0;
+    linux_state.msr.msr_sysenter_esp = 0;
+    linux_state.msr.msr_sysenter_eip = 0;
+    linux_state.msr.pending_exceptions = 0;
+    linux_state.msr.msr_sysenter_cs = 0;
+    linux_state.msr.interruptibility_state = 0;
+    linux_state.msr.activity_state = 0;
+    linux_state.msr.smbase = 0;
+    for (i = 0; i < IA32_CTRL_COUNT; i++) {
+        linux_state.control.cr[i] = 0;
+    }
+    linux_state.control.gdtr.base = (UINT64)(UINT32)&gdt_table;
+    linux_state.control.gdtr.limit = (UINT64)(UINT32)gdt_table + sizeof(gdt_table);
+
+    for (i = 0; i < IA32_SEG_COUNT; i++) {
+        linux_state.seg.segment[i].base = 0;
+        linux_state.seg.segment[i].limit = 0;
+    }
+    //RNB: I got the base address from tboot.  I am not sure about the limits of these segments/attributes.
+    linux_state.seg.segment[IA32_SEG_CS].base = (UINT64) LINUX_BOOT_CS;
+    linux_state.seg.segment[IA32_SEG_DS].base = (UINT64) LINUX_BOOT_DS;
+    return 0;
+}
+
+
 uint32_t entryOffset(uint32_t base)
 {
     elf64_hdr* elf= (elf64_hdr*) base;
@@ -1632,7 +1742,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // input args for code32_start.  Note that the boot parameters are already
     // in the current address space so we only need to reserve memory and copy
     // them.
-    evmm_g0.cpu_states_array = 0; 
+    setup_linux_stack();    //Sets aside a page before eVMM's heap.
+    linux_setup();          // setups gdt table, GPRs and CS/DS for guest(linux)
+    evmm_g0.cpu_states_array = (UINT32)&linux_state;
 
     // FIX(RNB): the start address of the array of initial cpu states for guest cpus.
     //     This pointer makes sense only if the devices_count > 0

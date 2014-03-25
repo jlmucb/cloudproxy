@@ -211,7 +211,6 @@ static unsigned int     evmm_num_e820_entries = 0;
 INT15_E820_MEMORY_MAP * evmm_e820= NULL;                // address of expanded e820 table for evmm
 UINT64                  evmm_start_of_e820_table= 0ULL; // same but 64 bits
 
-
 // linux guest
 uint32_t linux_start_address= 0;   // this is the address of the linux protected mode image
 uint32_t initram_start_address= 0; // this is the address of the initram for linux
@@ -989,7 +988,7 @@ static const uint64_t gdt_table[] __attribute__ ((aligned(16))) = {
 
 static struct __packed {
         uint16_t length;
-        uint16_t table;
+        uint32_t table;
 } linux_gdt_desc;
 
 
@@ -1038,14 +1037,13 @@ int linux_setup(void)
     uint32_t i;
 
     setup_linux_stack();
-    linux_gdt_desc.length = (uint16_t)sizeof(gdt_table);
-    // FIX (RNB): Is this right, table is a 16 bit quantity receiving a 32 bit address
-    linux_gdt_desc.table = &gdt_table;
+    linux_gdt_desc.length = (uint16_t)sizeof(gdt_table)-1;
+    linux_gdt_desc.table = (uint32_t)&gdt_table;
     linux_state.size_of_this_struct = sizeof(linux_state);
     linux_state.version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
     linux_state.reserved_1 = 0;
 
-    //RNB: Zero out all the registers.  Then update the ones that linuxexpects.
+    //Zero out all the registers.  Then set the ones that linux expects.
     for (i = 0; i < IA32_REG_GP_COUNT; i++) {
         linux_state.gp.reg[i] = (UINT64) 0;
     }
@@ -1070,13 +1068,13 @@ int linux_setup(void)
         linux_state.control.cr[i] = 0;
     }
     linux_state.control.gdtr.base = (UINT64)(UINT32)&gdt_table;
-    linux_state.control.gdtr.limit = (UINT64)(UINT32)gdt_table + sizeof(gdt_table);
+    linux_state.control.gdtr.limit = (UINT64)(UINT32)gdt_table + sizeof(gdt_table) -1;
 
     for (i = 0; i < IA32_SEG_COUNT; i++) {
         linux_state.seg.segment[i].base = 0;
         linux_state.seg.segment[i].limit = 0;
     }
-    //RNB: I got the base address from tboot.  I am not sure about the limits of these segments/attributes.
+    //CHECK: I got the base address from tboot, not sure about the limits of these segments/attributes.
     linux_state.seg.segment[IA32_SEG_CS].base = (UINT64) LINUX_BOOT_CS;
     linux_state.seg.segment[IA32_SEG_DS].base = (UINT64) LINUX_BOOT_DS;
     return 0;

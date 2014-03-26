@@ -1,46 +1,6 @@
 Todo
-
-
-Get start/end of bootstrap
 Get correct offset of Linux image
-Get correct entry point of evmm
 Get command-line arguments for linux and parse them
-
 Print entry args
 set an, av
 
-
-
-Memory
-
-                                                                   Hex            Decimal
-IVT                                                     <-- 0x00000000
-RDBA (Bios data memory)                                 <-- 0x00000400               1024
-Partition table                                         <-- 0x000007be -->7ff        1982-->2047
-Command line buffer                                     <-- 0x00002000 -->7ff        8192-->10239
-GRUB Stage 0                                            <-- 0x00007c00 -->7dff       31744-->32225
-GRUB Stage 1                                            <-- 0x00008000               32768
-Kernel Cmd                                              <-- 0x00009000               36864
-Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000              655360
-1 Meg                                                   <---0x00100000             1048576
-4 Meg                                                   <---0x00400000             4194304
-8 Meg                                                   <---0x00800000             
-Tboot header                                            <-- 0x00800000             8388608
-Tboot start (boot.S)                                    <-- 0x00804000             8404992
-  Tboot ends at ~                                           0x00972e88             9907848
-Linux start (real)                                      <--- 0x0097300              619264
-16 Meg                                                  <---0x01000000            16777216
-Linux protected                                         <---0x012d5d20            19750176 
-Linux end                                               <---0x01333247            20132423
-initram start                                           <---0x01334000            20135936
-initram end                                             <---0x017d9200            25006592
-32 Meg                                                  <---0x02000000            33554432
-Bootstrap.bin                                           <---0x080480f8           134512888
-512 Meg                                                 <---0x20000000           536870912
-1 Gig                                                   <---0x40000000          1073741824
-linux arguments                                         <---0x9fefc000          2683289600
-Initial initial linux stack                             <---0x9fefe000          2683297792
-Evmm heap                                               <-- 0x9ff00000          2683305984
-Evmm.bin                                                <---0xa0000000          2684354560
-4 Gig                                                   <--0x100000000          4294967296
-8 Gig                                                   <--0x200000000          8589934592

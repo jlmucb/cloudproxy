@@ -996,6 +996,18 @@ uint32_t entryOffset(uint32_t base)
 }
 
 
+#define _XA     0x00    /* extra alphabetic - not supported */
+#define _XS     0x40    /* extra space */
+#define _BB     0x00    /* BEL, BS, etc. - not supported */
+#define _CN     0x20    /* CR, FF, HT, NL, VT */
+#define _DI     0x04    /* ''-'9' */
+#define _LO     0x02    /* 'a'-'z' */
+#define _PU     0x10    /* punctuation */
+#define _SP     0x08    /* space */
+#define _UP     0x01    /* 'A'-'Z' */
+#define _XD     0x80    /* ''-'9', 'A'-'F', 'a'-'f' */
+
+
 const uint8_t _ctype[257] = {
     _CN,            /* 0x0      0.     */
     _CN,            /* 0x1      1.     */
@@ -1135,18 +1147,6 @@ const uint8_t _ctype[257] = {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0xE0 to 0xEF    */
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* 0xF0 to 0x100   */
 };
-
-
-#define _XA     0x00    /* extra alphabetic - not supported */
-#define _XS     0x40    /* extra space */
-#define _BB     0x00    /* BEL, BS, etc. - not supported */
-#define _CN     0x20    /* CR, FF, HT, NL, VT */
-#define _DI     0x04    /* ''-'9' */
-#define _LO     0x02    /* 'a'-'z' */
-#define _PU     0x10    /* punctuation */
-#define _SP     0x08    /* space */
-#define _UP     0x01    /* 'A'-'Z' */
-#define _XD     0x80    /* ''-'9', 'A'-'F', 'a'-'f' */
 
 static  bool isdigit(int c)
 {

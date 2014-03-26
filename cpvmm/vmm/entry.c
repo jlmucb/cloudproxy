@@ -1883,9 +1883,10 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
     evmm_g0.cpu_affinity = -1;
     evmm_g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
+    // FIX(RNB): our guest has ALL the devices.  How can it be deviceless?
     evmm_g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
     evmm_g0.image_size = linux_end - linux_start;
-                
+    //FIX(RNB): is this the start of the PROTECTED mode portion of linux            
     evmm_g0.image_address= linux_start_address;
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 

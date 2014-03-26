@@ -166,7 +166,6 @@ static UINT32                           local_apic_id = 0;
 static VMM_STARTUP_STRUCT               startup_struct;
 static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 static EM64T_CODE_SEGMENT_DESCRIPTOR*   p_gdt_64= NULL;
-static UINT32*                          p_evmm_stack= NULL;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
@@ -195,6 +194,7 @@ typedef void (*tboot_printk)(const char *fmt, ...);
 tboot_printk tprintk = (tboot_printk)(0x80d660);
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
+
 // Memory layout on start32_evmm entry
 uint32_t bootstrap_start= 0;    // this is the bootstrap image start address
 uint32_t bootstrap_end= 0;      // this is the bootstrap image end address
@@ -212,6 +212,7 @@ uint32_t evmm_heap_base= 0;             // start of initial evmm heap
 uint32_t evmm_heap_current= 0; 
 uint32_t evmm_heap_top= 0;
 uint32_t evmm_heap_size= 0;             // size of initial evmm heap
+uint32_t evmm_initial_stack= 0;         // initial evmm stack
 
 // expanded e820 table used be evmm
 static unsigned int     evmm_num_e820_entries = 0;
@@ -512,8 +513,7 @@ void InstallExceptionHandler(UINT32 ExceptionIndex, UINT32 HandlerAddr)
 
 void SetupIDT()
 {
-    int i;
-
+    int     i;
     UINT32  pIdtDescriptor;
 
     tprintk("SetupIdt called\n");
@@ -660,8 +660,9 @@ void setup_evmm_stack()
         (* tmp_gdt_64).hi.default_size= 0;    // important !!!
         (* tmp_gdt_64).hi.granularity= 1;
      }
-    p_evmm_stack = (UINT32 *) p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+    evmm_initial_stack = (UINT32 *) p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
 }
+
 
 void x32_gdt64_setup(void)
 {
@@ -705,22 +706,26 @@ void x32_gdt64_setup(void)
     cs_64 = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
 }
 
+
 void x32_gdt64_load(void)
 {
     ia32_write_gdtr(&gdtr_64);
 }
+
 
 UINT16 x32_gdt64_get_cs(void)
 {
     return cs_64;
 }
 
+
 void x32_gdt64_get_gdtr(IA32_GDTR *p_gdtr)
 {
     *p_gdtr = gdtr_64;
 }
 
-static EM64T_CR3 cr3_for_x64 = { 0 };
+
+static EM64T_CR3 cr3_for_x64 = {0};
 
 //  x32_pt64_setup_paging: establish paging tables for x64 -bit mode, 
 //     2MB pages while running in 32-bit mode.
@@ -796,10 +801,12 @@ void x32_pt64_setup_paging(UINT64 memory_size)
     cr3_for_x64.lo.base_address_lo = ((UINT32) pml4_table) >> 12;
 }
 
+
 void x32_pt64_load_cr3(void)
 {
     ia32_write_cr3(*((UINT32*) &(cr3_for_x64.lo)));
 }
+
 
 UINT32 x32_pt64_get_cr3(void)
 {
@@ -928,9 +935,8 @@ module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
     return (module_t *)(mbi->mods_addr + i * sizeof(module_t));
 }
 
-//
+
 // This builds the 24 byte extended 8820 table
-//
 static UINT64 evmm_get_e820_table(const multiboot_info_t *mbi) 
 {
     uint32_t entry_offset = 0;
@@ -964,8 +970,8 @@ static UINT64 evmm_get_e820_table(const multiboot_info_t *mbi)
 static const uint64_t gdt_table[] __attribute__ ((aligned(16))) = {
     0,
     0,
-    0x00c09b000000ffff, /* cs */
-    0x00c093000000ffff  /* ds */
+    0x00c09b000000ffff, // cs
+    0x00c093000000ffff  // ds
 };
 
 static struct __packed {
@@ -1056,7 +1062,7 @@ int linux_setup(void)
         linux_state.seg.segment[i].base = 0;
         linux_state.seg.segment[i].limit = 0;
     }
-    //CHECK: I got the base address from tboot, not sure about the limits of these segments/attributes.
+    //CHECK: got the base address from tboot, not sure about the limits of these segments/attributes.
     linux_state.seg.segment[IA32_SEG_CS].base = (UINT64) LINUX_BOOT_CS;
     linux_state.seg.segment[IA32_SEG_DS].base = (UINT64) LINUX_BOOT_DS;
     return 0;
@@ -1671,7 +1677,6 @@ int expand_linux_image( multiboot_info_t* mbi,
 
 int prepare_primary_guest_args(multiboot_info_t *mbi)
 {
-
     // put arguments one page prior to guest esp (which is normally one page before evmm heap)
     if(linux_esp_register==0) {
         return 1;
@@ -1930,13 +1935,12 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
     // QUESTION (JLM):  Check the line below.  It is only right if linux has a 64 bit elf header
     (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_start + entryOffset(linux_start);
-
     (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
- 
-    (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start + entryOffset(initram_start);
+    (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start+entryOffset(initram_start);
 
+    // set up evmm e820 table
     p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
 
     // application parameters
@@ -1956,15 +1960,17 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-    if ( !e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size + (evmm_end - evmm_start)))) {
+    // I don't think this is necessary
+#if 0
+    if (!e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
         tprintk("Unable to reserve evmm region in e820 table\r\n");
         LOOP_FOREVER
     }
-                
-    if (!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
+    if(!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
       tprintk("Unable to reserve bootstrap region in e820 table\r\n");
         LOOP_FOREVER
     } 
+#endif
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
@@ -1976,13 +1982,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     //               UINT64 application_params_struct_u, 
     //               UINT64 reserved UNUSED)
     asm volatile (
-        // p_evmm_stack points to the start of the stack
-        "movl %[p_evmm_stack], %%esp\n"
+        // evmm_initial_stack points to the start of the stack
+        "movl   %[evmm_initial_stack], %%esp\n"
         // prepare arguments for 64-bit mode
         // there are 3 arguments
         // align stack and push them on 8-byte alignment
-        "\txor %%eax, %%eax\n"
-        "\tand $7, %%esp\n"
+        "\txor  %%eax, %%eax\n"
+        "\tand  $7, %%esp\n"
         "\tpush %%eax\n"
         "\tpush %[evmm_reserved]\n"
         "\tpush %%eax\n"
@@ -1994,13 +2000,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
         "\tcli\n"
         // push segment and offset
-        "\tpush   %[cs_64]\n"
+        "\tpush  %[cs_64]\n"
 
         // for following retf
         "\tpush 1f\n"
         "\tmovl %[vmm_main_entry_point], %%ebx\n"
 
-        "\t movl %[p_cr3], %%eax \n"
+        "\tmovl %[p_cr3], %%eax\n"
         // initialize CR3 with PML4 base
         // "\tmovl 4(%%esp), %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
@@ -2017,7 +2023,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"
-        "\tbts $31, %%eax\n"
+        "\tbts  $31, %%eax\n"
         "\tmovl %%eax, %%cr0\n"
 
         // at this point we are in 32-bit compatibility mode
@@ -2027,26 +2033,26 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
 "1:\n"
         // in 64bit this is actually pop rcx
-        "\t pop %%ecx\n"
+        "\tpop %%ecx\n"
         // in 64bit this is actually pop rdx
-        "\t pop %%edx\n"
-        "\t .byte 0x41\n"
+        "\tpop %%edx\n"
+        "\t.byte 0x41\n"
         // pop r8
-        "\t .byte 0x58\n"
-        "\t .byte 0x41\n"
+        "\t.byte 0x58\n"
+        "\t.byte 0x41\n"
         // pop r9
-        "\t .byte 0x59\n"
+        "\t.byte 0x59\n"
         // in 64bit this is actually sub  0x18, %%rsp
         "\t.byte 0x48\n"
-        "\t subl 0x18, %%esp\n"
+        "\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
         // "\t call %%ebx\n"
-        "\t jmp (%[vmm_main_entry_point])\n"
-        "\t ud2\n"
+        "\tjmp (%[vmm_main_entry_point])\n"
+        "\tud2\n"
     : 
     : [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
       [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
-      [vmm_main_entry_point] "m" (vmm_main_entry_point), [p_evmm_stack] "m" (p_evmm_stack), 
+      [vmm_main_entry_point] "m" (vmm_main_entry_point), [evmm_initial_stack] "m" (evmm_initial_stack), 
       [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
     : "%eax", "%ebx", "%ecx", "%edx");
 

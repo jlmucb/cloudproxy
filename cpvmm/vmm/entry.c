@@ -238,6 +238,74 @@ static const cmdline_option_t linux_cmdline_options[] = {
 static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN];
 
 
+char* vmm_strncpy(char *dest, const char *src, size_t n)
+{
+    char* out= dest;
+
+    while(n>0 && *src!='\0') {
+        *(dest++)= *(src++);
+        n--;
+    }
+    *dest= 0;
+    return out;
+}
+
+
+char* vmm_strcpy(char *dest, const char *src)
+{
+    char* out= dest;
+
+    while(*src!='\0') {
+        *(dest++)= *(src++);
+    }
+    *dest= 0;
+    return out;
+}
+
+
+char* vmm_strchr (const char * str, int character)
+{
+    const char* p= str;
+
+    while(1) {
+        if(*p==character)
+            return (char*) p;
+        if(*p=='\0')
+            break;
+        p++;
+    }
+    return NULL;
+}
+
+
+int vmm_strcmp (const char * str1, const char * str2)
+{
+    while(*str1!='\0' && *str2!='\0') {
+        if(*str1>*str2)
+            return 1;
+        if(*str1<*str2)
+            return -1;
+        str1++; str2++;
+    }
+    return 0;
+}
+
+
+int vmm_strncmp (const char * str1, const char * str2, size_t n)
+{
+
+    while(n>=0 && *str1!='\0' && *str2!='\0') {
+        if(*str1>*str2)
+            return 1;
+        if(*str1<*str2)
+            return -1;
+        str1++; str2++;
+        n--;
+    }
+    return 0;
+}
+
+
 void *vmm_memset(void *dest, int val, UINT32 count)
 {
     asm volatile(
@@ -272,6 +340,12 @@ UINT32 vmm_strlen(const char* p)
     while(*p!=0)
         count++;
     return count;
+}
+
+
+unsigned long int vmm_strtoul (const char* str, char** endptr, int base)
+{
+    return 0;
 }
 
 
@@ -764,7 +838,7 @@ void PrintMbi(const multiboot_info_t *mbi)
         tprintk("\t cmdline@0x%x: ", mbi->cmdline);
         chunk[CHUNK_SIZE] = '\0';
         while (cmdlen > 0) {
-            strncpy(chunk, cmdptr, CHUNK_SIZE); 
+            vmm_strncpy(chunk, cmdptr, CHUNK_SIZE); 
             tprintk("\n\t\"%s\"", chunk);
             cmdptr += CHUNK_SIZE;
             cmdlen -= CHUNK_SIZE;
@@ -1178,16 +1252,27 @@ static  bool isalpha(int c)
     return (_ctype[(unsigned char)(c)] & (_LO | _UP));
 }
 
+static const char* get_option_val(const cmdline_option_t *options,
+                              char vals[][MAX_VALUE_LEN], const char *opt_name)
+{
+    int i;
+    for (i = 0; options[i].name != NULL; i++ ) {
+        if ( vmm_strcmp(options[i].name, opt_name) == 0 )
+            return vals[i];
+    }
+    tprintk("requested unknown option: %s\n", opt_name);
+    return NULL;
+}
+
 static void cmdline_parse(const char *cmdline, const cmdline_option_t *options,
                           char vals[][MAX_VALUE_LEN])
 {
-#if 0
     const char *p = cmdline;
     int i;
 
     /* copy default values to vals[] */
     for ( i = 0; options[i].name != NULL; i++ ) {
-        strncpy(vals[i], options[i].def_val, MAX_VALUE_LEN-1);
+        vmm_strncpy(vals[i], options[i].def_val, MAX_VALUE_LEN-1);
         vals[i][MAX_VALUE_LEN-1] = '\0';
     }
 
@@ -1195,8 +1280,7 @@ static void cmdline_parse(const char *cmdline, const cmdline_option_t *options,
         return;
 
     /* parse options */
-    while ( 1 )
-    {
+    while ( 1 ) {
         /* skip whitespace */
         while ( isspace(*p) )
             p++;
@@ -1205,13 +1289,13 @@ static void cmdline_parse(const char *cmdline, const cmdline_option_t *options,
 
         /* find end of current option */
         const char *opt_start = p;
-        const char *opt_end = strchr(opt_start, ' ');
+        const char *opt_end = (const char*)vmm_strchr(opt_start, ' ');
         if ( opt_end == NULL )
-            opt_end = opt_start + strlen(opt_start);
+            opt_end = opt_start + vmm_strlen(opt_start);
         p = opt_end;
 
         /* find value part; if no value found, use default and continue */
-        const char *val_start = strchr(opt_start, '=');
+        const char *val_start = vmm_strchr(opt_start, '=');
         if ( val_start == NULL || val_start > opt_end )
             continue;
         val_start++;
@@ -1225,48 +1309,43 @@ static void cmdline_parse(const char *cmdline, const cmdline_option_t *options,
 
         /* value found, so copy it */
         for ( i = 0; options[i].name != NULL; i++ ) {
-            if ( strncmp(options[i].name, opt_start, opt_name_size ) == 0 ) {
-                strncpy(vals[i], val_start, copy_size);
+            if ( vmm_strncmp(options[i].name, opt_start, opt_name_size ) == 0 ) {
+                vmm_strncpy(vals[i], val_start, copy_size);
                 vals[i][copy_size] = '\0'; /* add '\0' to the end of string */
                 break;
             }
         }
     }
-#endif
 }
-
 
 
 void linux_parse_cmdline(const char *cmdline)
 {
-    // cmdline_parse(cmdline, g_linux_cmdline_options, g_linux_param_values);
+    cmdline_parse(cmdline, linux_cmdline_options, linux_param_values);
 }
 
 
 int get_linux_vga(int *vid_mode)
 {
-#if 0
-    const char *vga = get_option_val(g_linux_cmdline_options,
-                                     g_linux_param_values, "vga");
+    const char *vga = get_option_val(linux_cmdline_options,
+                                     linux_param_values, "vga");
     if ( vga == NULL || vid_mode == NULL )
-        return false;
+        return 1;
 
-    if ( strcmp(vga, "normal") == 0 )
+    if ( vmm_strcmp(vga, "normal") == 0 )
         *vid_mode = 0xFFFF;
-    else if ( strcmp(vga, "ext") == 0 )
+    else if ( vmm_strcmp(vga, "ext") == 0 )
         *vid_mode = 0xFFFE;
-    else if ( strcmp(vga, "ask") == 0 )
+    else if ( vmm_strcmp(vga, "ask") == 0 )
         *vid_mode = 0xFFFD;
     else
-        *vid_mode = strtoul(vga, NULL, 0);
-#endif
+        *vid_mode = vmm_strtoul(vga, NULL, 0);
     return 0;
 }
 
 
 const char *skip_filename(const char *cmdline)
 {
-#if 0
     if ( cmdline == NULL || *cmdline == '\0' )
         return cmdline;
 
@@ -1278,7 +1357,6 @@ const char *skip_filename(const char *cmdline)
         cmdline++;
     while ( *cmdline != '\0' && isspace(*cmdline) )
         cmdline++;
-#endif
     return cmdline;
 }
 
@@ -1334,12 +1412,9 @@ unsigned long get_mbi_mem_end(const multiboot_info_t *mbi)
         end = max(end, mbi->boot_loader_name
                        + vmm_strlen((char *)mbi->boot_loader_name) + 1);
     if ( mbi->flags & MBI_APM )
-        /* per Grub-multiboot-Main Part2 Rev94-Structures, apm size is 20 */
         end = max(end, mbi->apm_table + 20);
     if ( mbi->flags & MBI_VBE ) {
-        /* VBE2.0, VBE Function 00 return 512 bytes*/
         end = max(end, mbi->vbe_control_info + 512);
-        /* VBE2.0, VBE Function 01 return 256 bytes*/
         end = max(end, mbi->vbe_mode_info + 256);
     }
 
@@ -1585,35 +1660,6 @@ int expand_linux_image( multiboot_info_t* mbi,
     return 0;
 }
 
-
-/*
-  boot_params
-    uint8_t               screen_info[0x040-0x000];                 
-    uint8_t               apm_bios_info[0x054-0x040];               
-    uint8_t               _pad2[4];                                 
-    uint8_t               tboot_shared_addr[8];                     
-    uint8_t               ist_info[0x070-0x060];                    
-    uint8_t               _pad3[16];                                
-    uint8_t               hd0_info[16];     
-    uint8_t               hd1_info[16];     
-    uint8_t               sys_desc_table[0x0b0-0x0a0];              
-    uint8_t               _pad4[144];                               
-    uint8_t               edid_info[0x1c0-0x140];                   
-    uint8_t               efi_info[0x1e0-0x1c0];                    
-    uint8_t               alt_mem_k[0x1e4-0x1e0];                   
-    uint8_t               scratch[0x1e8-0x1e4];                     
-    uint8_t               e820_entries;                             
-    uint8_t               eddbuf_entries;                           
-    uint8_t               edd_mbr_sig_buf_entries;                  
-    uint8_t               _pad6[6];                                 
-    linux_kernel_header_t hdr;    
-    uint8_t               _pad7[0x290-0x1f1-sizeof(linux_kernel_header_t)];
-    uint8_t               edd_mbr_sig_buffer[0x2d0-0x290];          
-    e820entry_t           e820_map[E820MAX];                        
-    uint8_t               _pad8[48];                                
-    uint8_t               eddbuf[0xeec-0xd00];                      
-    uint8_t               _pad9[276];                               
-*/
 
 #ifndef false
 #define false 0

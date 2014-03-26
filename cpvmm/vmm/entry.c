@@ -1864,6 +1864,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
                (UINT32) (evmm_end-evmm_start));
 
     // FIX(JLM): linker so the next line is right
+    // FIX(JLM): the correct address is 
+    //  vmm_main_entry_point= (original entry point -original text start)+location of new test
     uint32_t entry= OriginalEntryAddress(evmm_start);
     vmm_main_entry_point =  (entry + evmm_start_address);
 #ifdef JLMDEBUG

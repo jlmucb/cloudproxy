@@ -1067,7 +1067,7 @@ int linux_setup(void)
 }
 
 
-uint32_t entryOffset(uint32_t base)
+uint32_t OriginalEntryAddress(uint32_t base)
 {
     elf64_hdr* elf= (elf64_hdr*) base;
     return elf->e_entry;
@@ -1864,7 +1864,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
                (UINT32) (evmm_end-evmm_start));
 
     // FIX(JLM): linker so the next line is right
-    uint32_t entry= entryOffset(evmm_start);
+    uint32_t entry= OriginalEntryAddress(evmm_start);
     vmm_main_entry_point =  (entry + evmm_start_address);
 #ifdef JLMDEBUG
     tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
@@ -1918,15 +1918,18 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
     // vmm_memory_layout is suppose to contain the start/end/size of
     // each image that is part of evmm (e.g. evmm, linux+initrd)
+    // FIX(RNB): I think the memory layout is not needed for the primary
+    // Also, note that the image size includes the heap.  Should the base_address
+    // be the start of the evmm image or the evmm heap?
     evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
     // FIX (RNB) test for failure
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
             evmm_heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
-
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
 
+#if 0
     // FIX(RNB): memory maps should NOT include linux or initram according to SC guys
     (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
     (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
@@ -1937,6 +1940,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
     (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start+entryOffset(initram_start);
+#endif
 
     // set up evmm e820 table
     p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);

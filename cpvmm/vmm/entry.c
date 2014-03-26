@@ -62,9 +62,7 @@ typedef struct {
 #define MAX_VALUE_LEN 64
 
 
-void _mystart()
-{
-}
+extern uint32_t _start_bootstrap, _end_bootstrap;
 
 // IA-32 Interrupt Descriptor Table - Gate Descriptor 
 typedef struct { 
@@ -660,7 +658,7 @@ void setup_evmm_stack()
         (* tmp_gdt_64).hi.default_size= 0;    // important !!!
         (* tmp_gdt_64).hi.granularity= 1;
      }
-    evmm_initial_stack = (UINT32 *) p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+    evmm_initial_stack = (UINT32) p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
 }
 
 
@@ -1372,7 +1370,7 @@ const char *skip_filename(const char *cmdline)
 
 unsigned long get_bootstrap_mem_end(void)
 {
-    return PAGE_UP((unsigned long)&_end);
+    return PAGE_UP(bootstrap_end);
 }
 
 
@@ -1779,8 +1777,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     module_t* m;
 
     // FIX(JLM): mystart is wrong
-    bootstrap_start= (UINT32)_mystart;
-    bootstrap_end= (UINT32)_end;
+    bootstrap_start= _start_bootstrap;
+    bootstrap_end= _end_bootstrap;
 
     m= get_module(mbi, 0);
     evmm_start= (uint32_t)m->mod_start;

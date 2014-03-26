@@ -1,0 +1,8 @@
+SECTIONS
+{
+  _start_bootstrap = .;
+  .text : { *(.text) }
+  .data : { *(.data) }
+  .bss : { *(.bss) }
+  _end_bootstrap = .;
+}

@@ -127,16 +127,16 @@ typedef enum {
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
 
-#define EVMM_HEAP_SIZE 0X100000
-#define EVMM_HEAP_BASE 0Xa0000000 - EVMM_HEAP_SIZE
-
 // TOTAL_MEM is a  max of 4G because we start in 32-bit mode
 #define TOTAL_MEM 0x100000000 
 #define IDT_VECTOR_COUNT 256
 #define LVMM_CS_SELECTOR 0x10
 
-#define EVMM_DEFAULT_START_ADDR 0xa0000000 
+#define EVMM_DEFAULT_START_ADDR 0x70000000 
 #define LINUX_DEFAULT_LOAD_ADDRESS 0x100000
+
+#define EVMM_HEAP_SIZE 0x100000
+#define EVMM_HEAP_BASE (EVMM_DEFAULT_START_ADDR- EVMM_HEAP_SIZE)
 
 #define LOOP_FOREVER while(1);
 
@@ -1866,8 +1866,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // FIX(JLM): linker so the next line is right
     // FIX(JLM): the correct address is 
     //  vmm_main_entry_point= (original entry point -original text start)+location of new test
-    uint32_t entry= OriginalEntryAddress(evmm_start);
-    vmm_main_entry_point =  (entry + evmm_start_address);
+    // NOTE(JLM): This assumes that evmm can be relocated to our preferred relocation address
+    vmm_main_entry_point =  OriginalEntryAddress(evmm_start);
 #ifdef JLMDEBUG
     tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
             vmm_main_entry_point);

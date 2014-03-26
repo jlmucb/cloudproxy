@@ -240,10 +240,10 @@ initram end                                     <---0x017d9200            250065
 Bootstrap.bin                                   <---0x080480f8           134512888
 512 Meg                                         <---0x20000000           536870912
 1 Gig                                           <---0x40000000          1073741824
-linux arguments                                 <---0x9fefc000          2683289600
-Initial initial linux stack                     <---0x9fefe000          2683297792
-Evmm heap                                       <-- 0x9ff00000          2683305984
-Evmm.bin                                        <---0xa0000000          2684354560
+linux arguments                                 <---0x6fefc000          1877983232
+Initial initial linux stack                     <---0x6fefe000          1877991424
+Evmm heap                                       <-- 0x6ff00000          1877999616
+Evmm.bin                                        <---0x70000000          1879048192
 4 Gig                                           <--0x100000000          4294967296
 8 Gig                                           <--0x200000000          8589934592
 

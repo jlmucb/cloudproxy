@@ -42,8 +42,8 @@ INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
 #		-I$(S)/loader/pre_os/starter 
 
-DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIC
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIC
+DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
+RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 VM_LIBS       = $(E)/libacpi.a $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \
@@ -163,7 +163,7 @@ $(E)/evmm.bin: $(dobjs)
 	make -f $(S)/vmm/vmexit/vmexit.mak
 	make -f $(S)/vmm/ipc/ipc.mak
 	make -f $(S)/vmm/memory/ept/ept.mak
-	$(LINK) -o $(E)/evmm.bin -nostdlib -fPIC -e vmm_main \
+	$(LINK) -o $(E)/evmm.bin -nostdlib -T evmm.script -fPIE -e vmm_main \
 		$(ACPIOBJ) $(ARCHOBJ) $(DBGOBJ) $(EMTOBJ) \
 		$(GUESTOBJ) $(GUESTCPUOBJ) $(GUESTSCHEDOBJ) \
 		$(IPCOBJ) $(LIBCOBJ) $(EPTOBJ) $(MEMMGROBJ) \

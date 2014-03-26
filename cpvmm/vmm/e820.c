@@ -61,7 +61,7 @@ extern tboot_printk tprintk;
  * this version will replace original in mbi
  */
 static unsigned int max_e820_entries= 0;
-static unsigned int g_nr_map;
+static unsigned int g_nr_map= 0;
 static memory_map_t *g_copy_e820_map = NULL;
 
 static inline void split64b(uint64_t val, uint32_t *val_lo, uint32_t *val_hi)
@@ -90,6 +90,11 @@ void set_e820_copy_location(uint32_t place, uint32_t num)
 {
     g_copy_e820_map = (memory_map_t *) place;
     max_e820_entries= num;
+}
+
+uint32_t get_num_e820_ents()
+{
+    return g_nr_map;
 }
 
 

@@ -79,6 +79,7 @@ extern bool get_ram_ranges(uint64_t *min_lo_ram, uint64_t *max_lo_ram,
 extern void get_highest_sized_ram(uint64_t size, uint64_t limit,
                                   uint64_t *ram_base, uint64_t *ram_size);
 extern void set_e820_copy_location(uint32_t place, uint32_t num);
+extern uint32_t get_num_e820_ents();
 
 #endif    /* __E820_H__ */
 

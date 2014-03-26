@@ -220,7 +220,8 @@ uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to t
 uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
 uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
 
-// new boot parameters for linux guest
+// boot parameters for linux guest
+uint32_t linux_original_boot_parameters= 0;
 uint32_t linux_boot_params= 0;
 
 
@@ -1392,6 +1393,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     screen->orig_video_isVGA = 1;      /* use VGA text screen setups */
     screen->orig_y = 24;               /* start display text in the last line
                                           of screen */
+    linux_original_boot_parameters= (uint32_t) boot_params;
     *entry_point = hdr->code32_start;
     return 0;
 }
@@ -1445,6 +1447,8 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
 
+    vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, sizeof(boot_params_t));
+
     uint32_t linux_e820_table= linux_boot_params+ sizeof(boot_params_t);
     set_e820_copy_location(linux_e820_table, E820MAX);
 
@@ -1465,6 +1469,9 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     if(e820_reserve_ram(bootstrap_start, bootstrap_end-bootstrap_start)==false) {
         return 1;
     }
+
+    // set number of e820 entries
+    new_boot_params->e820_entries= get_num_e820_ents();
 
     // set esi register
     linux_esi_register= linux_boot_params;

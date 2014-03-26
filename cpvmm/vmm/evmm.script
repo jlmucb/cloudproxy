@@ -1,0 +1,8 @@
+SECTIONS
+{
+  _start_evmm_text= .;
+  .text : { *(.text) }
+  .data : { *(.data) }
+  .bss : { *(.bss) }
+  _end_evmm_bss= .;
+}

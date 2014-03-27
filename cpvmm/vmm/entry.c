@@ -1816,6 +1816,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     if (evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
+#ifdef JLMDEBUG
+    tprintk("\t%d APs, %08x, reset to 0\n", evmm_num_of_aps, info);
+#endif
     evmm_num_of_aps = 0;  // BSP only for now
 
     init32.s.i32_low_memory_page = low_mem;
@@ -1825,10 +1828,17 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_heap_base = EVMM_HEAP_BASE;
     evmm_heap_size = EVMM_HEAP_SIZE;
 
+    // Relocate evmm_image 
+    evmm_start_address= EVMM_DEFAULT_START_ADDR;
+    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
+               (UINT32) (evmm_end-evmm_start));
+    // NOTE(JLM): This assumes that evmm can be relocated to our preferred relocation address
+    vmm_main_entry_point =  OriginalEntryAddress(evmm_start);
 #ifdef JLMDEBUG
-    tprintk("\t%d APs, %08x\n", evmm_num_of_aps, info);
     tprintk("\tevmm_heap_base evmm_heap_size: %08x %08x\n", 
             evmm_heap_base, evmm_heap_size);
+    tprintk("\trelocated evmm_start_address: %08x, vmm_main_entry_point\n", 
+            evmm_start_address, vmm_main_entry_point);
 #endif
     LOOP_FOREVER
     InitializeMemoryManager(evmm_heap_base, evmm_heap_size);
@@ -1855,17 +1865,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 
     // Allocate stack and set rsp (esp)
     setup_evmm_stack();
-
-    // Relocate evmm_image from evmm_start to evmm_start_address
-    evmm_start_address= EVMM_DEFAULT_START_ADDR;
-    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
-               (UINT32) (evmm_end-evmm_start));
-
-    // FIX(JLM): linker so the next line is right
-    // FIX(JLM): the correct address is 
-    //  vmm_main_entry_point= (original entry point -original text start)+location of new test
-    // NOTE(JLM): This assumes that evmm can be relocated to our preferred relocation address
-    vmm_main_entry_point =  OriginalEntryAddress(evmm_start);
+#ifdef JLMDEBUG
+    tprintk("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
+#endif
 #ifdef JLMDEBUG
     tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
             vmm_main_entry_point);

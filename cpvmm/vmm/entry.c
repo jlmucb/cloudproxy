@@ -825,8 +825,8 @@ void HexDump(uint8_t* start, uint8_t* end)
         tprintk("0x%08x: ", p);
         i= 0;
         while(p<=end) {
-            tprintk("0x%08x ", *p);
-            p++;
+            tprintk("0x%08x ", *(uint32_t*)p);
+            p+= 4;
             i++;
             if(i>3)
                 break;
@@ -1090,9 +1090,12 @@ int linux_setup(void)
 }
 
 
-uint32_t OriginalEntryAddress(uint32_t base)
+#define EM_X86_64 62
+uint64_t OriginalEntryAddress(uint32_t base)
 {
     elf64_hdr* elf= (elf64_hdr*) base;
+    if(elf->e_machine!=EM_X86_64)
+        return 0ULL;
     return elf->e_entry;
 }
 
@@ -1854,7 +1857,12 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
                (UINT32) (evmm_end-evmm_start));
     // NOTE(JLM): This assumes that evmm can be relocated to our preferred relocation address
-    vmm_main_entry_point =  OriginalEntryAddress(evmm_start);
+    vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
+    if(vmm_main_entry_point==0) {
+#ifdef JLMDEBUG
+    tprintk("OriginalEntryAddress: bad elf format\n");
+#endif
+    }
 #ifdef JLMDEBUG
     tprintk("\tevmm_heap_base evmm_heap_size: 0x%08x 0x%08x\n", 
             evmm_heap_base, evmm_heap_size);

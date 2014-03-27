@@ -1,7 +1,7 @@
 #ifndef ELF64_H_
 #define ELF64_H_
 struct elf64_hdr {
-    unsigned char e_ident[EI_NIDENT];
+    unsigned char e_ident[16];
     uint16_t    e_type;
     uint16_t    e_machine;
     uint32_t    e_version;

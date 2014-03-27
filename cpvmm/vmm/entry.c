@@ -815,6 +815,27 @@ UINT32 x32_pt64_get_cr3(void)
 
 
 #ifdef JLMDEBUG
+void HexDump(uint8_t* start, uint8_t* end)
+{
+    uint8_t* p= start;
+    int      i;
+
+    tprintk("\n");
+    while(p<=end) {
+        tprintk("0x%08x: ", p);
+        i= 0;
+        while(p<=end) {
+            tprintk("0x%08x ", *p);
+            p++;
+            i++;
+            if(i>=3)
+                break;
+        } 
+        tprintk("\n");
+    }
+    tprintk("\n");
+}
+
 void PrintMbi(const multiboot_info_t *mbi)
 {
     /* print mbi for debug */
@@ -1839,6 +1860,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
             evmm_heap_base, evmm_heap_size);
     tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
+    HexDump((uint8_t*)evmm_start, (uint8_t*)evmm_start+80);
 #endif
     LOOP_FOREVER
     InitializeMemoryManager(evmm_heap_base, evmm_heap_size);

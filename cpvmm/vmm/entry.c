@@ -1757,28 +1757,10 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         tprintk("bootstrap error: wrong number of modules\n");
         LOOP_FOREVER
     }
-#ifdef JLMDEBUG
-    // mbi
-    tprintk("%d e820 entries\n", l);
-
-    // shared page
-    tprintk("shared_page data:\n");
-    tprintk("\t version: %d\n", shared_page->version);
-    tprintk("\t log_addr: 0x%08x\n", shared_page->log_addr);
-    tprintk("\t shutdown_entry: 0x%08x\n", shared_page->shutdown_entry);
-    tprintk("\t shutdown_type: %d\n", shared_page->shutdown_type);
-    tprintk("\t tboot_base: 0x%08x\n", shared_page->tboot_base);
-    tprintk("\t tboot_size: 0x%x\n", shared_page->tboot_size);
-    tprintk("\t num_in_wfs: %u\n", shared_page->num_in_wfs);
-    tprintk("\t flags: 0x%8.8x\n", shared_page->flags);
-    tprintk("\t ap_wake_addr: 0x%08x\n", (uint32_t)shared_page->ap_wake_addr);
-    tprintk("\t ap_wake_trigger: %u\n", shared_page->ap_wake_trigger);
-#endif // JLMDEBUG
 
     // get initial layout information for images
     module_t* m;
 
-    // FIX(JLM): mystart is wrong
     bootstrap_start= _start_bootstrap;
     bootstrap_end= _end_bootstrap;
 
@@ -1786,9 +1768,6 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_start= (uint32_t)m->mod_start;
     evmm_end= (uint32_t)m->mod_end;
     evmm_command_line= (char*)m->string;
-
-    linux_start= 0ULL;
-    linux_end= 0ULL;
 
     m= get_module(mbi, 1);
     linux_start= (uint32_t)m->mod_start;
@@ -1800,6 +1779,27 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         initram_start= (uint32_t)m->mod_start;
         initram_end= (uint32_t)m->mod_end;
     }
+#ifdef JLMDEBUG
+    // shared page
+    tprintk("shared_page data:\n");
+    tprintk("\t tboot_base: 0x%08x\n", shared_page->tboot_base);
+    tprintk("\t tboot_size: 0x%x\n", shared_page->tboot_size);
+    
+    // image info
+    tprintk("bootstrap_start, bootstrap_end: 0x%08x 0x%08x\n", 
+            bootstrap_start, bootstrap_end);
+    tprintk("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
+    if(evmm_command_line==0)
+        tprintk("evmm command line is NULL\n");
+    else
+        tprintk("evmm command line: %s\n", evmm_command_line);
+    tprintk("linux_start, linux_end: 0x%08x 0x%08x\n", linux_start, linux_end);
+    if(linux_command_line==0)
+        tprintk("linux command line is NULL\n");
+    else
+        tprintk("linux command line: %s\n", linux_command_line);
+    tprintk("initram_start, initram_end: 0x%08x 0x%08x\n", initram_start, initram_end);
+#endif // JLMDEBUG
 
     // get CPU info
     uint32_t info;
@@ -1811,17 +1811,12 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     : [info] "=m" (info)
     : 
     : "%eax", "%ebx", "%ecx", "%edx");
-    evmm_num_of_aps = ((info>>16)&0xff)-1;
+    // NOTE: changed shift form 16 to 18 to get the right answer
+    evmm_num_of_aps = ((info>>18)&0xff)-1;
     if (evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
 #ifdef JLMDEBUG
-    tprintk("Memory map pre relocation\n");
-    tprintk("\tstart32_evmm is at %08x\n", start32_evmm);
-    tprintk("\tbootstrap_start: %08x, bootstrap_end: %08x\n", bootstrap_start, bootstrap_end);
-    tprintk("\tevmm_start: %08x, evmm_end: %08x\n", evmm_start, evmm_end);
-    tprintk("\tlinux_start: %08x, linux_end: %08x\n", linux_start, linux_end);
-    tprintk("\tinitram_start: %08x, initram_end: %08x\n", initram_start, initram_end);
     tprintk("\t%d APs, %08x\n", evmm_num_of_aps, info);
 #endif
     evmm_num_of_aps = 0;  // BSP only for now

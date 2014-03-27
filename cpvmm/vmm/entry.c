@@ -1795,9 +1795,6 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     linux_end= (uint32_t)m->mod_end;
     linux_command_line= (char*)m->string;
 
-    initram_start= 0ULL;
-    
-
     if(l>2) {
         m= get_module(mbi, 2);
         initram_start= (uint32_t)m->mod_start;

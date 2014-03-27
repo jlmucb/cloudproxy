@@ -5,13 +5,13 @@ Tboot of evmm and Linux single guest stack
 Introduction
 ------------
 
-In order to provide authenticated boot, required by cloudProxy, we boot evmm 
-using tboot.  This document describes that process, which we refer to as 
-"TBooting evmm with a single Linux Guest".
+In order to provide authenticated boot, required by cloudProxy, we boot 
+evmm using tboot.  This document describes that process, which we refer 
+to as "TBooting evmm with a single Linux Guest".
 
-TBooting evmm with a single Linux Guest is accomplished using multiboot.  Tboot 
-is the initial booted program but it loads six modules as indicated in the
-grub.cfg file below.
+TBooting evmm with a single Linux Guest is accomplished using multiboot.  
+Tboot is the initial booted program but it loads six modules as indicated 
+in the grub.cfg file below.
 
 submenu "bootstrap.bin" "Tboot 1.7.0"{
 menuentry 'Ubuntu GNU/Linux, with bootstrap.bin, Tboot 1.7.0 and Linux 3.5.7.20' --class ubuntu --class gnu-linux --class gnu --class os {
@@ -74,8 +74,8 @@ Upon entry, tboot provided bootstrap with:
         idt descriptor is in idt_descr.
         heap size is in heap_size.
     3. An initialized GDT and IDT for 32 bit protected mode.
-    4. Information obtained from BIOS including memory size, base address of 
-        tboot, size of tboot.
+    4. Information obtained from BIOS including memory size, base address
+        of tboot, size of tboot.
     5. e820 memory and apic information.
     6. the multiboot headers.
     
@@ -106,13 +106,15 @@ by tboot.
 Bootstrap prepares the arguments for evmm and the primary linux guest.
 This include the 64 bit control and segment registers for evmm, an initial
 stack and heap and page tables in the case of evmm.  In the case of the 
-primary Linux guest, this includes the control and general purpose registers,
-and the the entry parameters as well as a stack.  Bootstrap ensures that all 
-prior code is removed from the copy of the e820 table received by the linux guest.
-Bootstrap also constructs a new e820 table which is included in the startup structure.
+primary Linux guest, this includes the control and general purpose 
+registers, and the the entry parameters as well as a stack.  Bootstrap 
+ensures that all prior code is removed from the copy of the e820 table 
+received by the linux guest.  Bootstrap also constructs a new e820 table 
+which is included in the startup structure.
 
-TODO:  Currently, evmm protects itself by removing its code, heap and stack from the
-primary guest's ept table.  We need to also remove tboot and bootstrap.
+TODO:  Currently, evmm protects itself by removing its code, heap and 
+stack from the primary guest's ept table.  We need to also remove tboot 
+and bootstrap.
 
 vmm_main is called in 64-bit protected mode with all the information 
 vmm_main needs to complete 64-bit initialization.
@@ -120,24 +122,25 @@ vmm_main needs to complete 64-bit initialization.
 Upon entry, vmm_main has
 
 1. A protected mode 64 bit environment with a 64K stack, 64-bit gdt and
-idt, have been initialized, and 64 bit identity mapped page tables are present.
-Boostrap calls vmm_main with a proper 64-bit call frame with with arguments 
-properly set.  These arguments provide the information cited below.  
-Bootstrap's 64 bit memory layout will include the address space of tboot and 
-bootstrap since vmm_main must interact with that data.  However, evmm must 
-ensure that it never corrupts that area and it never maps that area into a 
-guest VM.  The 64-bit heap is prepared by evmm in 64 bit mode.  Bootstrap code 
-should translate the 32-bit GDT and IDT before jumping into vmm_main.  
-While tboot/bootstrap memory is visible to vmm_main, but it should
-modify the e820 tables to make the tboot/bootstrap memory, and its memory not
-accessbile from the guest.
+idt, have been initialized, and 64 bit identity mapped page tables are 
+present.  Boostrap calls vmm_main with a proper 64-bit call frame 
+with arguments properly set.  These arguments provide the information 
+cited below.  Bootstrap's 64 bit memory layout will include the address 
+space of tboot and bootstrap since vmm_main must interact with that data.  
+However, evmm must ensure that it never corrupts that area and it never 
+maps that area into a guest VM.  The 64-bit heap is prepared by evmm in 
+64 bit mode.  Bootstrap code should translate the 32-bit GDT and IDT 
+before jumping into vmm_main.  While tboot/bootstrap memory is visible 
+to vmm_main, but it should modify the e820 tables to make the 
+tboot/bootstrap memory, and its memory not accessbile from the guest.
 
 The initialized 64-bit GDT and IDT should have the following properties:
 
 2. Information obtained from BIOS (e820 map) and additional information
-from tboot including memory size, base address of tboot, the combined size of
-tboot itself along with header information describing the size and location of
-the bootstrap program so vmm_main can determine what memory is available to it.
+from tboot including memory size, base address of tboot, the combined 
+size of tboot itself along with header information describing the size 
+and location of the bootstrap program so vmm_main can determine what memory 
+is available to it.
 
 3. Gets apic information, guest and memory map information in it's calling
 parameters.
@@ -145,18 +148,19 @@ parameters.
 4. Gets the multiboot header for linux module and information
 required to obtain the 32 bit linux stub as well as 64 bit linux code.  
 
-5. Enters with correct PCR values in the TPM have been properly extended for 
-evmm by bootstrap.  [JLM to check this out.] 
+5. Enters with correct PCR values in the TPM have been properly extended 
+for evmm by bootstrap.  [JLM to check this out.] 
 
 6. [LATER: SIPI initialization and call of AP's.]
 
-The NMI interrupt trap and the timer trap is handled by evmm.  For single guest
-Linux, the timer trap is injected back into the Linux guest and
+The NMI interrupt trap and the timer trap is handled by evmm.  For single 
+guest Linux, the timer trap is injected back into the Linux guest and
 all other interrupts are handled by the Linux guest.
 
 evmm does not require the fpu to be initialized prior to entry.  
 
-Upon exit, evmm clears all sensitive data [JLM: unsure, low priority for now.]
+Upon exit, evmm clears all sensitive data 
+[JLM: unsure, low priority for now.]
 
 
 vmm_main
@@ -186,18 +190,18 @@ Tboot stack
 Tboot calls main of bootstrap in 32 bit protected mode.  The memory layout
 at the time of this call is:
 
-IVT                                                     <-- 0x00000000
-RDBA (Bios data memory)                                 <-- 0x00000400
-Partition table                                         <-- 0x000007be -->7ff
-Command line buffer                                     <-- 0x00002000 -->7ff
-GRUB Stage 0                                            <-- 0x00007c00 -->7dff
-GRUB Stage 1                                            <-- 0x00008000
+IVT                                             <-- 0x00000000
+RDBA (Bios data memory)                         <-- 0x00000400
+Partition table                                 <-- 0x000007be -->7ff
+Command line buffer                             <-- 0x00002000 -->7ff
+GRUB Stage 0                                    <-- 0x00007c00 -->7dff
+GRUB Stage 1                                    <-- 0x00008000
 32 bit scratch space
 EMPTY
-Extended BIOS, vram, video ROM and ROM BIOS             <-- 0x000a0000
-Tboot header                                            <-- 0x00800000
-Tboot start (boot.S)                                    <-- 0x00804000
-  Tboot ends at ~                                           0x00972e88
+Extended BIOS, vram, video ROM and ROM BIOS     <-- 0x000a0000
+Tboot header                                    <-- 0x00800000
+Tboot start (boot.S)                            <-- 0x00804000
+  Tboot ends at ~                                   0x00972e88
 Bootstrap.bin
   This is currently loaded at 0x0804a317 on John's machine
 Evmm.bin
@@ -215,37 +219,37 @@ Linux start BZIMAGE_PROTECTED_START 0x100000
 Required memory setup when vmm_main is called (John's machine)
 --------------------------------------------------------------
 
-                                                           Hex            Decimal
-IVT                                             <-- 0x00000000
-RDBA (Bios data memory)                         <-- 0x00000400               1024
-Partition table                                 <-- 0x000007be -->7ff        1982-->2047
-Command line buffer                             <-- 0x00002000 -->7ff        8192-->10239
-GRUB Stage 0                                    <-- 0x00007c00 -->7dff       31744-->32225
-GRUB Stage 1                                    <-- 0x00008000               32768
-Kernel command line                             <-- 0x00009000               36864
-Extended BIOS, vram, video ROM and ROM BIOS     <-- 0x000a0000              655360
-1 Meg                                           <---0x00100000             1048576
-4 Meg                                           <---0x00400000             4194304
-8 Meg                                           <---0x00800000             
-Tboot header                                    <-- 0x00800000             8388608
-Tboot start (boot.S)                            <-- 0x00804000             8404992
-  Tboot ends at ~                                   0x00972e88             9907848
-Linux start (real)                              <--- 0x0097300              619264
-16 Meg                                          <---0x01000000            16777216
-Linux protected                                 <---0x012d5d20            19750176
-Linux end                                       <---0x01333247            20132423
-initram start                                   <---0x01334000            20135936
-initram end                                     <---0x017d9200            25006592
-32 Meg                                          <---0x02000000            33554432
-Bootstrap.bin                                   <---0x080480f8           134512888
-512 Meg                                         <---0x20000000           536870912
-1 Gig                                           <---0x40000000          1073741824
-linux arguments                                 <---0x6fefc000          1877983232
-Initial initial linux stack                     <---0x6fefe000          1877991424
-Evmm heap                                       <-- 0x6ff00000          1877999616
-Evmm.bin                                        <---0x70000000          1879048192
-4 Gig                                           <--0x100000000          4294967296
-8 Gig                                           <--0x200000000          8589934592
+                                                  Hex        Decimal
+IVT                                    <-- 0x00000000
+RDBA (Bios data memory)                <-- 0x00000400           1024
+Partition table                        <-- 0x000007be    1982-->2047
+Command line buffer                    <-- 0x00002000   8192-->10239
+GRUB Stage 0                           <-- 0x00007c00  31744-->32225
+GRUB Stage 1                           <-- 0x00008000          32768
+Kernel command line                    <-- 0x00009000          36864
+Extended BIOS,vram, video and ROM BIOS <-- 0x000a0000         655360
+1 Meg                                  <---0x00100000        1048576
+4 Meg                                  <---0x00400000        4194304
+8 Meg                                  <---0x00800000             
+Tboot header                           <-- 0x00800000        8388608
+Tboot start (boot.S)                   <-- 0x00804000        8404992
+  Tboot ends at ~                      0x00972e88            9907848
+Linux start (real)                     <--- 0x0097300         619264
+16 Meg                                 <---0x01000000       16777216
+Linux protected                        <---0x012d5d20       19750176
+Linux end                              <---0x01333247       20132423
+initram start                          <---0x01334000       20135936
+initram end                            <---0x017d9200       25006592
+32 Meg                                 <---0x02000000       33554432
+Bootstrap.bin                          <---0x080480f8      134512888
+512 Meg                                <---0x20000000      536870912
+1 Gig                                  <---0x40000000     1073741824
+linux arguments                        <---0x6fefc000     1877983232
+Initial initial linux stack            <---0x6fefe000     1877991424
+Evmm heap                              <-- 0x6ff00000     1877999616
+Evmm.bin                               <---0x70000000     1879048192
+4 Gig                                  <--0x100000000     4294967296
+8 Gig                                  <--0x200000000     8589934592
 
 Bootstrap has relocated evmm to evmm_start_address and has also
 relocated the primary linux guest image and initram to linux_start_address
@@ -268,9 +272,9 @@ is not used for the primary guest.
 
 These structures are used both in 32-bit and 64-bit modes, therefore:
 - Structure sizes are 64-bit aligned
-- All pointers are defined as 64-bit, and must be set so their higher 32 bits
-  are 0 (< 4GB).  This ensures their usability in both 32-bit and 64-bit
-  modes.
+- All pointers are defined as 64-bit, and must be set so their higher 
+  32 bits are 0 (< 4GB).  This ensures their usability in both 32-bit 
+  and 64-bit modes.
 - All pointers are in a loader virtual memory space (if applicable).
 
 The Primary guest is the guest that owns the platform and platform was
@@ -421,14 +425,11 @@ typedef struct _VMM_GUEST_CPU_STARTUP_STATE
 Setup of e820 tables by bootstrap
 ---------------------------------
 
-e820 is the facility by which the BIOS reports the memory map to the operating 
-system and boot loader.  The E820 table has range of address and types. The 
-table is part of vmm_memory_layout struct passed to vmm_main by bootstrap. 
-bootstrap should copy and modify the e820 table to protect it's 
-memory region.
-REKHA3: I think the only thing remaining is a decription of what you change in
-the e820 table passed by tboot to accomplish this.
-
+e820 is the facility by which the BIOS reports the memory map to the 
+operating system and boot loader.  The E820 table has range of address 
+and types. The table is part of vmm_memory_layout struct passed to 
+vmm_main by bootstrap.  bootstrap should copy and modify the e820 table 
+to protect it's memory region.
 
 
 Stack setup
@@ -441,9 +442,9 @@ based at EVMM_HEAP_BASE by default.
 Heap setup
 ----------
 
-The inital heap for evmm is done by bootstrap.  This contains evvm's initial
-stacks and page tables.  The final 64-bit heap initialization for evmm is done 
-in 64 bit evmm.  
+The inital heap for evmm is done by bootstrap.  This contains evvm's 
+initial stacks and page tables.  The final 64-bit heap initialization 
+for evmm is done in 64 bit evmm.  
 
 
 64-bit address translation
@@ -467,15 +468,16 @@ Linux Primary Guest initialization
 --------------------------
 
 Evmm sets up its Linux guest so that at startup, the Linux wakes up 
-in the call to code32_start in 32 bit protected mode just as it would after 
-TBOOT.  All information used to configure the Linux guest is
+in the call to code32_start in 32 bit protected mode just as it would 
+after TBOOT.  All information used to configure the Linux guest is
 passed in the parameters to vmm_main documented above.  
 
-The startup structure passed to evmm ensures that its general registers and control
-registers are set so that linux has a small stack (at linux_stack_address).
-The argument to code32_start is in edi and points to a copy of the original
-boot information.  Prior to the setup of the startup structure, bootstrap relocates
-linux and initram as tboot would have.
+The startup structure passed to evmm ensures that its general registers 
+and control registers are set so that linux has a small stack (at 
+linux_stack_address).  The argument to code32_start is in edi and points 
+to a copy of the original boot information.  Prior to the setup of the 
+startup structure, bootstrap relocates linux and initram as tboot would 
+have.
 
 Linux never accesses BIOS.  evmm can host Windows "out of the box."
 

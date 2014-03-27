@@ -1761,8 +1761,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // get initial layout information for images
     module_t* m;
 
-    bootstrap_start= _start_bootstrap;
-    bootstrap_end= _end_bootstrap;
+    bootstrap_start= (uint32_t)&_start_bootstrap;
+    bootstrap_end= (uint32_t)&_end_bootstrap;
 
     m= get_module(mbi, 0);
     evmm_start= (uint32_t)m->mod_start;
@@ -1816,11 +1816,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     if (evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
-#ifdef JLMDEBUG
-    tprintk("\t%d APs, %08x\n", evmm_num_of_aps, info);
-#endif
     evmm_num_of_aps = 0;  // BSP only for now
-    LOOP_FOREVER
 
     init32.s.i32_low_memory_page = low_mem;
     init32.s.i32_num_of_aps = evmm_num_of_aps;
@@ -1828,7 +1824,13 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // set up evmm heap
     evmm_heap_base = EVMM_HEAP_BASE;
     evmm_heap_size = EVMM_HEAP_SIZE;
-    // NOTE: first argument was &heap_base which was wrong
+
+#ifdef JLMDEBUG
+    tprintk("\t%d APs, %08x\n", evmm_num_of_aps, info);
+    tprintk("\tevmm_heap_base evmm_heap_size: %08x %08x\n", 
+            evmm_heap_base, evmm_heap_size);
+#endif
+    LOOP_FOREVER
     InitializeMemoryManager(evmm_heap_base, evmm_heap_size);
 
     SetupIDT();

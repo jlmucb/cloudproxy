@@ -828,7 +828,7 @@ void HexDump(uint8_t* start, uint8_t* end)
             tprintk("0x%08x ", *p);
             p++;
             i++;
-            if(i>=3)
+            if(i>3)
                 break;
         } 
         tprintk("\n");
@@ -1860,7 +1860,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
             evmm_heap_base, evmm_heap_size);
     tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    HexDump((uint8_t*)evmm_start, (uint8_t*)evmm_start+80);
+    HexDump((uint8_t*)evmm_start, (uint8_t*)evmm_start+64);
 #endif
     LOOP_FOREVER
     InitializeMemoryManager(evmm_heap_base, evmm_heap_size);

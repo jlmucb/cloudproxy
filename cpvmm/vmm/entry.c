@@ -1810,8 +1810,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     tprintk("\t tboot_size: 0x%x\n", shared_page->tboot_size);
     
     // image info
-    tprintk("bootstrap_start, bootstrap_end: 0x%08x 0x%08x\n", 
-            bootstrap_start, bootstrap_end);
+    tprintk("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
+            bootstrap_start, bootstrap_end, bootstrap_end-bootstrap_start);
+    HexDump((uint8_t*) bootstrap_start, (uint8_t*)bootstrap_end+31);
     tprintk("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
     if(evmm_command_line==0)
         tprintk("evmm command line is NULL\n");
@@ -1860,19 +1861,22 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
     if(vmm_main_entry_point==0) {
 #ifdef JLMDEBUG
-    tprintk("OriginalEntryAddress: bad elf format\n");
+        tprintk("OriginalEntryAddress: bad elf format\n");
 #endif
+        LOOP_FOREVER
     }
 #ifdef JLMDEBUG
     tprintk("\tevmm_heap_base evmm_heap_size: 0x%08x 0x%08x\n", 
             evmm_heap_base, evmm_heap_size);
     tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    HexDump((uint8_t*)evmm_start, (uint8_t*)evmm_start+64);
+    // HexDump((uint8_t*)evmm_start, (uint8_t*)evmm_start+64);
 #endif
     LOOP_FOREVER
-    InitializeMemoryManager(evmm_heap_base, evmm_heap_size);
 
+    // Initialize evmm heap
+    InitializeMemoryManager(evmm_heap_base, evmm_heap_size);
+    // Set up evmm IDT Note(JLM): Is this necessary?
     SetupIDT();
 
     // setup gdt for 64-bit on BSP
@@ -1899,8 +1903,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     tprintk("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
 #ifdef JLMDEBUG
-    tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
-            vmm_main_entry_point);
+    tprintk("evmm relocated to %08x, entry point: %08x\n",
+            evmm_start_address, vmm_main_entry_point);
 #endif
 
     multiboot_info_t* linux_mbi= NULL;

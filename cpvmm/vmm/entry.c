@@ -1817,7 +1817,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         evmm_num_of_aps = 0; 
 
 #ifdef JLMDEBUG
-    tprintk("\t%d APs, %08x, reset to 0\n", evmm_num_of_aps, info);
+    tprintk("\t%d APs, %d, reset to 0\n", evmm_num_of_aps, info);
 #endif
     evmm_num_of_aps = 0;  // BSP only for now
 
@@ -1835,9 +1835,9 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // NOTE(JLM): This assumes that evmm can be relocated to our preferred relocation address
     vmm_main_entry_point =  OriginalEntryAddress(evmm_start);
 #ifdef JLMDEBUG
-    tprintk("\tevmm_heap_base evmm_heap_size: %08x %08x\n", 
+    tprintk("\tevmm_heap_base evmm_heap_size: 0x%08x 0x%08x\n", 
             evmm_heap_base, evmm_heap_size);
-    tprintk("\trelocated evmm_start_address: %08x, vmm_main_entry_point\n", 
+    tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
 #endif
     LOOP_FOREVER

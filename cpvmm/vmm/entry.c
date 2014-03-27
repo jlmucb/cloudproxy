@@ -211,6 +211,7 @@ uint32_t evmm_heap_current= 0;
 uint32_t evmm_heap_top= 0;
 uint32_t evmm_heap_size= 0;             // size of initial evmm heap
 uint32_t evmm_initial_stack= 0;         // initial evmm stack
+char*    evmm_command_line= NULL;
 
 // expanded e820 table used be evmm
 static unsigned int     evmm_num_e820_entries = 0;
@@ -225,6 +226,7 @@ uint32_t linux_esi_register= 0;    // this is the value of the esi register on g
 uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to the guest linux
 uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
 uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
+char*    linux_command_line= NULL;
 
 // boot parameters for linux guest
 uint32_t linux_original_boot_parameters= 0;
@@ -1685,7 +1687,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 
     vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, sizeof(boot_params_t));
 
-    uint32_t linux_e820_table= linux_boot_params+ sizeof(boot_params_t);
+    uint32_t linux_e820_table= linux_boot_params + sizeof(boot_params_t);
     set_e820_copy_location(linux_e820_table, E820MAX);
 
     // set address of copied tboot shared page 
@@ -1721,7 +1723,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     if ( linux_start== 0)
         return 1;
 
-    module_t* m = (module_t *)mbi->mods_addr;
+    module_t* m = get_module(mbi, 2);
     UINT32 initrd_image = (UINT32)m->mod_start;
     UINT32 initrd_size = m->mod_end - m->mod_start;
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
@@ -1783,6 +1785,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     m= get_module(mbi, 0);
     evmm_start= (uint32_t)m->mod_start;
     evmm_end= (uint32_t)m->mod_end;
+    evmm_command_line= (char*)m->string;
 
     linux_start= 0ULL;
     linux_end= 0ULL;
@@ -1790,6 +1793,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     m= get_module(mbi, 1);
     linux_start= (uint32_t)m->mod_start;
     linux_end= (uint32_t)m->mod_end;
+    linux_command_line= (char*)m->string;
 
     initram_start= 0ULL;
     
@@ -1872,6 +1876,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     tprintk("evmm relocated to %08x, entry point: %08x\n", evmm_start_address,
             vmm_main_entry_point);
 #endif
+
+    multiboot_info_t* linux_mbi= NULL;
 
     if(prepare_linux_image_for_evmm(mbi)) {
         tprintk("Cant prepare linux image\n");

@@ -1276,32 +1276,32 @@ const uint8_t _ctype[257] = {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* 0xF0 to 0x100   */
 };
 
-static  bool isdigit(int c)
+bool isdigit(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_DI));
 }
-static  bool isspace(int c)
+bool isspace(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_SP));
 }
-static  bool isxdigit(int c)
+bool isxdigit(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_XD));
 }
-static  bool isupper(int c)
+bool isupper(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_UP));
 }
-static  bool islower(int c)
+bool islower(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_LO));
 }
-static  bool isprint(int c)
+bool isprint(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_LO | _UP | _DI |
                                           _SP | _PU));
 }
-static  bool isalpha(int c)
+bool isalpha(int c)
 {
     return (_ctype[(unsigned char)(c)] & (_LO | _UP));
 }

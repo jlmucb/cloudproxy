@@ -45,9 +45,17 @@ extern void *   vmm_memset(void *dest, int val, uint32_t count);
 extern uint32_t vmm_strlen(const char* p);
 extern void *   vmm_memset(void *dest, int val, uint32_t count);
 
+extern bool isdigit(int c);
+extern bool isspace(int c);
+extern bool isxdigit(int c);
+extern bool isupper(int c);
+extern bool islower(int c);
+extern bool isprint(int c);
+extern bool isalpha(int c);
+
 static inline void outb(uint16_t port, uint8_t data)
 {
-        __asm __volatile("outb %0, %w1" : : "a" (data), "Nd" (port));
+    __asm __volatile("outb %0, %w1" : : "a" (data), "Nd" (port));
 }
 
 #define readb(va)       (*(volatile uint8_t *) (va))
@@ -61,6 +69,8 @@ static inline void outb(uint16_t port, uint8_t data)
 
 #define __data     __attribute__ ((__section__ (".data")))
 #define VGA_BASE                    0xb8000
+#define ULONG_MAX     0xFFFFFFFFUL
+
 
 static uint16_t * const screen = (uint16_t * const)VGA_BASE;
 static __data uint8_t cursor_x, cursor_y;
@@ -70,8 +80,57 @@ uint8_t g_vga_delay = 0;       /* default to no delay */
 
 unsigned long strtoul(const char *nptr, char **endptr, int base)
 {
-    // Parses the C-string , unsigned long int.
-    return 0;
+    const char *s = nptr;
+    unsigned long acc;
+    unsigned char c;
+    unsigned long cutoff;
+    int neg = 0, any, cutlim;
+
+        /*
+         * See strtol for comments as to the logic used.
+         */
+    do {
+        c = *s++;
+    } while (isspace(c));
+    if (c == '-') {
+        neg = 1;
+        c = *s++;
+    } else if (c == '+')
+        c = *s++;
+    if ((base == 0 || base == 16) &&
+            c == '0' && (*s == 'x' || *s == 'X')) {
+        c = s[1];
+        s += 2;
+        base = 16;
+    }
+        if (base == 0)
+                base = c == '0' ? 8 : 10;
+    cutoff = (unsigned long)ULONG_MAX / (unsigned long)base;
+    cutlim = (unsigned long)ULONG_MAX % (unsigned long)base;
+    for (acc = 0, any = 0;; c = *s++) {
+        if (isdigit(c))
+            c -= '0';
+        else if (isalpha(c))
+            c -= isupper(c) ? 'A' - 10 : 'a' - 10;
+        else
+            break;
+        if (c >= base)
+            break;
+        if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
+            any = -1;
+        else {
+            any = 1;
+            acc *= base;
+            acc += c;
+        }
+    }
+    if (any < 0) {
+        acc = ULONG_MAX;
+    } else if (neg)
+        acc = -acc;
+    if (endptr != 0)
+        *((const char **)endptr) = any ? s - 1 : nptr;
+        return (acc);
 }
 
 

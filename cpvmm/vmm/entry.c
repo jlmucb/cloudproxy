@@ -1091,6 +1091,22 @@ int linux_setup(void)
 }
 
 
+elf64_phdr* get_program_load_header(uint32_t image)
+{
+    elf64_hdr*  hdr = (elf64_hdr*) image;
+    elf64_phdr* prog_header= NULL;
+    int         i;
+
+    for(i=0; i<(int)hdr->e_phnum;i++) {
+        prog_header= (elf64_phdr*)((uint32_t)hdr->e_phoff+i*((uint32_t)hdr->e_phentsize));
+        if(prog_header->p_type==ELF64_PT_LOAD) {
+            return prog_header;
+        }
+    }
+    return NULL;
+}
+
+
 #define EM_X86_64 62
 uint64_t OriginalEntryAddress(uint32_t base)
 {
@@ -1854,12 +1870,35 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_heap_size = EVMM_HEAP_SIZE;
 
     // Relocate evmm_image 
-    // FIX(JLM): got to program header offset, look for LOAD type segment
-    //           copy segment size starting at Offset to evmm_start_address
     evmm_start_address= EVMM_DEFAULT_START_ADDR;
-    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
-               (UINT32) (evmm_end-evmm_start));
-    // NOTE(JLM): This assumes that evmm can be relocated to our preferred relocation address
+    elf64_phdr* prog_header=  get_program_load_header(evmm_start);
+    if(prog_header==NULL) {
+#ifdef JLMDEBUG
+        tprintk("Cant find load program header\n");
+#endif
+        LOOP_FOREVER
+    }
+
+    uint32_t evmm_start_load_segment= 0;
+    uint32_t evmm_load_segment_size= 0;
+
+    evmm_start_load_segment= evmm_start+((uint32_t)prog_header->p_offset);
+    evmm_load_segment_size= (uint32_t) prog_header->p_memsz;
+
+    if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
+#ifdef JLMDEBUG
+        tprintk("evmm load address is not default default: 0x%08x, actual: 0x%08x\n",
+                evmm_start_address, evmm_start_load_segment);
+#endif
+        LOOP_FOREVER
+    }
+
+    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start_load_segment,
+               (uint32_t) (prog_header->p_filesz));
+    vmm_memset((void *)(evmm_start_load_segment+(uint32_t)(prog_header->p_filesz)),0,
+               (uint32_t)(prog_header->p_memsz-prog_header->p_filesz));
+
+    // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
     if(vmm_main_entry_point==0) {
 #ifdef JLMDEBUG
@@ -1867,12 +1906,15 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 #endif
         LOOP_FOREVER
     }
+
 #ifdef JLMDEBUG
     tprintk("\tevmm_heap_base evmm_heap_size: 0x%08x 0x%08x\n", 
             evmm_heap_base, evmm_heap_size);
     tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    // HexDump((uint8_t*)evmm_start, (uint8_t*)evmm_start+64);
+    tprintk("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n",
+            (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
+    HexDump((uint8_t*)evmm_start_load_segment, (uint8_t*)evmm_start_load_segment+31);
 #endif
     LOOP_FOREVER
 

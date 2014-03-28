@@ -18,4 +18,21 @@ struct elf64_hdr {
 };
 
 typedef struct elf64_hdr elf64_hdr;
+
+
+#define ELF64_PT_LOAD 1
+
+struct elf64_phdr {
+    uint32_t    p_type;
+    uint32_t    p_flags;
+    uint64_t    p_offset;
+    uint64_t    p_vaddr;
+    uint64_t    p_paddr;
+    uint64_t    p_filesz;
+    uint64_t    p_memsz;
+    uint64_t    p_align;
+    
+};
+typedef struct elf64_phdr elf64_phdr;
+
 #endif

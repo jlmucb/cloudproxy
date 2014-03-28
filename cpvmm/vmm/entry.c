@@ -17,7 +17,6 @@
 
 // this is all 32 bit code
 
-#include "vmm_defs.h"
 typedef long long unsigned uint64_t;
 typedef unsigned uint32_t;
 typedef short unsigned uint16_t;
@@ -26,6 +25,7 @@ typedef short unsigned u16;
 typedef unsigned char u8;
 typedef int bool;
 
+#include "vmm_defs.h"
 #include "multiboot.h"
 #include "elf_defns.h"
 #include "elf64.h"
@@ -175,6 +175,8 @@ UINT32                                  low_mem = 0x8000;
 static INIT64_STRUCT                    init64;
 static INIT64_STRUCT *                  p_init64_data = &init64;
 static INIT32_STRUCT_SAFE               init32;
+UINT16                                  p_cr3 = 0;
+
 VMM_GUEST_STARTUP                       evmm_g0;
 VMM_MEMORY_LAYOUT *                     evmm_vmem= NULL;
 VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
@@ -321,6 +323,7 @@ void *vmm_memset(void *dest, int val, UINT32 count)
     return dest;
 }
 
+
 void *vmm_memcpy(void *dest, const void* src, UINT32 count)
 {
     asm volatile(
@@ -333,6 +336,7 @@ void *vmm_memcpy(void *dest, const void* src, UINT32 count)
     :[src] "g" (src), [count] "g" (count) :);
     return dest;
 }
+
 
 UINT32 vmm_strlen(const char* p)
 {
@@ -1484,6 +1488,30 @@ static inline bool plus_overflow_u32(uint32_t x, uint32_t y)
 }
 
 
+int setup_64bit_paging()
+{
+
+    // setup gdt for 64-bit on BSP
+    x32_gdt64_setup();
+    x32_gdt64_get_gdtr(&init64.i64_gdtr);
+    ia32_write_gdtr(&init64.i64_gdtr);
+
+    // setup paging, control registers and flags on BSP
+    x32_pt64_setup_paging(TOTAL_MEM);
+    init64.i64_cr3 = x32_pt64_get_cr3();
+    ia32_write_cr3(init64.i64_cr3);
+    p_cr4 = ia32_read_cr4();
+    BITMAP_SET(p_cr4, PAE_BIT | PSE_BIT);
+    ia32_write_cr4(p_cr4);
+    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
+    init64.i64_cs = cs_64;
+    init64.i64_efer = 0;
+
+    p_cr3 = init64.i64_cr3;
+    return 0;
+}
+
+
 // expand linux kernel with kernel image and initrd image 
 int expand_linux_image( multiboot_info_t* mbi,
                         UINT32 linux_image, UINT32 linux_size,
@@ -1789,6 +1817,98 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 }
 
 
+int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
+{
+    // Guest state initialization for relocated inage
+    evmm_g0.size_of_this_struct = sizeof(evmm_g0);
+    evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
+    evmm_g0.flags = 0;               //FIX(RNB): need to put the correct guest flags
+    evmm_g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
+    evmm_g0.cpu_affinity = -1;
+    evmm_g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
+    // FIX(RNB): our guest has ALL the devices.  How can it be deviceless?
+    evmm_g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
+    evmm_g0.image_size = linux_end - linux_start;
+    //FIX(RNB): is this the start of the PROTECTED mode portion of linux            
+    evmm_g0.image_address= linux_start_address;
+    evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
+    evmm_g0.physical_memory_size = 0; 
+
+    // This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
+    // fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
+    // The GP registers should be correctly filled with 
+    // input args for code32_start. 
+    linux_setup();          // setups gdt table, GPRs and CS/DS for guest(linux)
+    evmm_g0.cpu_states_array = (UINT32)&linux_state;
+
+    //     This pointer makes sense only if the devices_count > 0
+    evmm_g0.devices_array = 0;
+
+    // Startup struct initialization
+    p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
+    p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
+    p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
+    p_startup_struct->number_of_secondary_guests = 0; 
+    p_startup_struct->size_of_vmm_stack = UVMM_DEFAULT_STACK_SIZE_PAGES; 
+    p_startup_struct->unsupported_vendor_id = 0; 
+    p_startup_struct->unsupported_device_id = 0; 
+    p_startup_struct->flags = 0; 
+    
+    p_startup_struct->default_device_owner= UUID;
+    p_startup_struct->acpi_owner= UUID; 
+    p_startup_struct->nmi_owner= UUID; 
+    p_startup_struct->primary_guest_startup_state = (UINT64)(UINT32)&evmm_g0;
+
+    // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
+    // vmm_memory_layout is suppose to contain the start/end/size of
+    // each image that is part of evmm (e.g. evmm, linux+initrd)
+    // FIX(RNB): I think the memory layout is not needed for the primary
+    // Also, note that the image size includes the heap.  Should the base_address
+    // be the start of the evmm image or the evmm heap?
+    evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
+    // FIX (RNB) test for failure
+    (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
+            evmm_heap_size + p_startup_struct->size_of_vmm_stack;
+    (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
+    (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
+    (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
+
+#if 0
+    // FIX(RNB): memory maps should NOT include linux or initram according to SC guys
+    (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
+    (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
+    (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
+    // QUESTION (JLM):  Check the line below.  It is only right if linux has a 64 bit elf header
+    (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_start + entryOffset(linux_start);
+    (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
+    (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
+    (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
+    (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start+entryOffset(initram_start);
+#endif
+
+    // set up evmm e820 table
+    p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
+
+    // application parameters
+    // CHECK(RNB):  This structure is not used so the setting is probably OK.
+    evmm_a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
+    evmm_a0.number_of_params = 0;
+    evmm_a0.session_id = 0;
+    evmm_a0.address_entry_list = 0;
+    evmm_a0.entry_number = 0;
+#if 0
+    evmm_a0.fadt_gpa = NULL;
+    evmm_a0.dmar_gpa = NULL;
+#endif
+
+    if (p_startup_struct->physical_memory_layout_E820 == -1) {
+        tprintk("Error getting e820 table\r\n");
+        return 1;
+    }
+    return 0;
+}
+
+
 // tboot jumps in here
 int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
 {
@@ -1882,9 +2002,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_start_address= EVMM_DEFAULT_START_ADDR;
     elf64_phdr* prog_header=  get_program_load_header(evmm_start);
     if(prog_header==NULL) {
-#ifdef JLMDEBUG
         tprintk("Cant find load program header\n");
-#endif
         LOOP_FOREVER
     }
 
@@ -1895,10 +2013,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_load_segment_size= (uint32_t) prog_header->p_memsz;
 
     if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
-#ifdef JLMDEBUG
         tprintk("evmm load address is not default default: 0x%08x, actual: 0x%08x\n",
                 evmm_start_address, evmm_start_load_segment);
-#endif
         LOOP_FOREVER
     }
 
@@ -1910,9 +2026,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
     if(vmm_main_entry_point==0) {
-#ifdef JLMDEBUG
         tprintk("OriginalEntryAddress: bad elf format\n");
-#endif
         LOOP_FOREVER
     }
 
@@ -1932,29 +2046,16 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     SetupIDT();
 
     // setup gdt for 64-bit on BSP
-    x32_gdt64_setup();
-    x32_gdt64_get_gdtr(&init64.i64_gdtr);
-    ia32_write_gdtr(&init64.i64_gdtr);
-
-    // setup paging, control registers and flags on BSP
-    x32_pt64_setup_paging(TOTAL_MEM);
-    init64.i64_cr3 = x32_pt64_get_cr3();
-    ia32_write_cr3(init64.i64_cr3);
-    p_cr4 = ia32_read_cr4();
-    BITMAP_SET(p_cr4, PAE_BIT | PSE_BIT);
-    ia32_write_cr4(p_cr4);
-    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
-    init64.i64_cs = cs_64;
-    init64.i64_efer = 0;
-
-    UINT16 p_cr3 = init64.i64_cr3;
+    if(setup_64bit_paging()!=0) {
+      tprintk("Unable to setup 64 bit paging\n");
+      LOOP_FOREVER
+    }
 
     // Allocate stack and set rsp (esp)
     setup_evmm_stack();
+
 #ifdef JLMDEBUG
     tprintk("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
-#endif
-#ifdef JLMDEBUG
     tprintk("evmm relocated to %08x, entry point: %08x\n",
             evmm_start_address, vmm_main_entry_point);
 #endif
@@ -1966,104 +2067,22 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-    // Guest state initialization for relocated inage
-    evmm_g0.size_of_this_struct = sizeof(evmm_g0);
-    evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
-    evmm_g0.flags = 0;               //FIX(RNB): need to put the correct guest flags
-    evmm_g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
-    evmm_g0.cpu_affinity = -1;
-    evmm_g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
-    // FIX(RNB): our guest has ALL the devices.  How can it be deviceless?
-    evmm_g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
-    evmm_g0.image_size = linux_end - linux_start;
-    //FIX(RNB): is this the start of the PROTECTED mode portion of linux            
-    evmm_g0.image_address= linux_start_address;
-    evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
-    evmm_g0.physical_memory_size = 0; 
-
-    // This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
-    // fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
-    // The GP registers should be correctly filled with 
-    // input args for code32_start. 
-    linux_setup();          // setups gdt table, GPRs and CS/DS for guest(linux)
-    evmm_g0.cpu_states_array = (UINT32)&linux_state;
-
-    //     This pointer makes sense only if the devices_count > 0
-    evmm_g0.devices_array = 0;
-
-    // Startup struct initialization
-    p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
-    p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
-    p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
-    p_startup_struct->number_of_secondary_guests = 0; 
-    p_startup_struct->size_of_vmm_stack = UVMM_DEFAULT_STACK_SIZE_PAGES; 
-    p_startup_struct->unsupported_vendor_id = 0; 
-    p_startup_struct->unsupported_device_id = 0; 
-    p_startup_struct->flags = 0; 
-    
-    p_startup_struct->default_device_owner= UUID;
-    p_startup_struct->acpi_owner= UUID; 
-    p_startup_struct->nmi_owner= UUID; 
-    p_startup_struct->primary_guest_startup_state = (UINT64)(UINT32)&evmm_g0;
-
-    // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
-    // vmm_memory_layout is suppose to contain the start/end/size of
-    // each image that is part of evmm (e.g. evmm, linux+initrd)
-    // FIX(RNB): I think the memory layout is not needed for the primary
-    // Also, note that the image size includes the heap.  Should the base_address
-    // be the start of the evmm image or the evmm heap?
-    evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
-    // FIX (RNB) test for failure
-    (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
-            evmm_heap_size + p_startup_struct->size_of_vmm_stack;
-    (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
-    (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
-    (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
-
+    if(!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
+      tprintk("Unable to reserve bootstrap region in e820 table\r\n");
+      LOOP_FOREVER
+    } 
 #if 0
-    // FIX(RNB): memory maps should NOT include linux or initram according to SC guys
-    (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
-    (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
-    (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
-    // QUESTION (JLM):  Check the line below.  It is only right if linux has a 64 bit elf header
-    (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_start + entryOffset(linux_start);
-    (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
-    (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
-    (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
-    (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start+entryOffset(initram_start);
-#endif
-
-    // set up evmm e820 table
-    p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
-
-    // application parameters
-    // CHECK(RNB):  This structure is not used so the setting is probably OK.
-    evmm_a0.size_of_this_struct = sizeof(VMM_APPLICATION_PARAMS_STRUCT); 
-    evmm_a0.number_of_params = 0;
-    evmm_a0.session_id = 0;
-    evmm_a0.address_entry_list = 0;
-    evmm_a0.entry_number = 0;
-#if 0
-    evmm_a0.fadt_gpa = NULL;
-    evmm_a0.dmar_gpa = NULL;
-#endif
-
-    if (p_startup_struct->physical_memory_layout_E820 == -1) {
-        tprintk("Error getting e820 table\r\n");
-        LOOP_FOREVER
-    }
-
     // I don't think this is necessary
-#if 0
     if (!e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
         tprintk("Unable to reserve evmm region in e820 table\r\n");
         LOOP_FOREVER
     }
-    if(!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
-      tprintk("Unable to reserve bootstrap region in e820 table\r\n");
-        LOOP_FOREVER
-    } 
 #endif
+
+    if(prepare_evmm_startup_arguments(mbi)!=0) {
+        tprintk("Error setting up evmm startup arguments\n");
+        LOOP_FOREVER
+    }
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space

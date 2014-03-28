@@ -142,7 +142,7 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 
 dobjs=      $(BINDIR)/vmm.o # $(BINDIR)/evmm.o  
 
-all: $(E)/bootstrap.bin $(E)/evmm.bin  
+all: $(E)/bootstrap.bin $(E)/evmm.bin
  
 $(E)/evmm.bin: $(dobjs)
 	@echo "evmm.bin"
@@ -170,11 +170,13 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTOBJ) $(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
-$(E)/bootstrap.bin: $(BINDIR)/entry.o $(BINDIR)/e820.o
-	$(LINK) -m32 -static -T bootstrap.script -fno-stack-protector -nostdlib -e start32_evmm -o $(E)/bootstrap.bin $(BINDIR)/entry.o $(BINDIR)/e820.o
+$(E)/bootstrap.bin: $(BINDIR)/entry.o $(BINDIR)/e820.o $(BINDIR)/bprint.o
+	$(LINK) -m32 -static -T bootstrap.script -fno-stack-protector -nostdlib -e start32_evmm -o $(E)/bootstrap.bin $(BINDIR)/entry.o $(BINDIR)/e820.o $(BINDIR)/bprint.o
 
 $(BINDIR)/entry.o: $(mainsrc)/entry.c
 	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
+$(BINDIR)/bprint.o: $(mainsrc)/bprint.c
+	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/bprint.o $(mainsrc)/bprint.c 
 
 $(BINDIR)/e820.o: $(mainsrc)/e820.c
 	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/e820.o $(mainsrc)/e820.c 

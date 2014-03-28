@@ -33,27 +33,70 @@
  *
  */
 
-#include <types.h>
-#include <stdbool.h>
-#include <string.h>
-#include <misc.h>
-#include <compiler.h>
+#include <bootstrap_types.h>
+#include <bprint.h>
 #include <stdarg.h>
-#include <mutex.h>
-#include <misc.h>
-#include <printk.h>
-#include <cmdline.h>
-#include <io.h>
-#include <vga.h>
+
+#ifndef size_t
+typedef unsigned long       size_t;
+#endif
+
+extern void *   vmm_memset(void *dest, int val, uint32_t count);
+extern uint32_t vmm_strlen(const char* p);
+extern void *   vmm_memset(void *dest, int val, uint32_t count);
+
+static inline void outb(uint16_t port, uint8_t data)
+{
+        __asm __volatile("outb %0, %w1" : : "a" (data), "Nd" (port));
+}
+
+#define readb(va)       (*(volatile uint8_t *) (va))
+#define readw(va)       (*(volatile uint16_t *) (va))
+#define readl(va)       (*(volatile uint32_t *) (va))
+
+#define writeb(va, d)   (*(volatile uint8_t *) (va) = (d))
+#define writew(va, d)   (*(volatile uint16_t *) (va) = (d))
+#define writel(va, d)   (*(volatile uint32_t *) (va) = (d))
+
+
+#define __data     __attribute__ ((__section__ (".data")))
+#define VGA_BASE                    0xb8000
 
 static uint16_t * const screen = (uint16_t * const)VGA_BASE;
 static __data uint8_t cursor_x, cursor_y;
 static __data unsigned int num_lines;
 uint8_t g_vga_delay = 0;       /* default to no delay */
 
+
+unsigned long strtoul(const char *nptr, char **endptr, int base)
+{
+    // Parses the C-string , unsigned long int.
+    return 0;
+}
+
+
+void delay(int millisecs)
+{
+    if ( millisecs <= 0 )
+        return;
+
+#if 0
+    calibrate_tsc();
+
+    uint64_t rtc = rdtsc();
+
+    uint64_t end_ticks = rtc + millisecs * g_ticks_per_millisec;
+    while ( rtc < end_ticks ) {
+        cpu_relax();
+        rtc = rdtsc();
+    }
+#endif
+}
+
+
 static inline void reset_screen(void)
 {
-    memset(screen, 0, SCREEN_BUFFER);
+    vmm_memset(screen, 0, SCREEN_BUFFER);
     cursor_x = 0;
     cursor_y = 0;
     num_lines = 0;
@@ -66,12 +109,14 @@ static inline void reset_screen(void)
 
 static void scroll_screen(void)
 {
-    for ( int y = 1; y < MAX_LINES; y++ ) {
-        for ( int x = 0; x < MAX_COLS; x++ )
+    int x;
+    int y;
+    for ( y = 1; y < MAX_LINES; y++ ) {
+        for ( x = 0; x < MAX_COLS; x++ )
             writew(VGA_ADDR(x, y-1), readw(VGA_ADDR(x, y)));
     }
     /* clear last line */
-    for ( int x = 0; x < MAX_COLS; x++ )
+    for ( x = 0; x < MAX_COLS; x++ )
         writew(VGA_ADDR(x, MAX_LINES-1), 0x720);
 }
 
@@ -147,7 +192,7 @@ static bool div64(uint64_t num, uint32_t base, uint64_t *quot, uint32_t *rem)
         *rem = low % base;
     }
     else {
-        uint64_t hquo = high / base;			\
+        uint64_t hquo = high / base;                    \
         uint32_t hrem = high % base;
         uint32_t lquo;
         /*
@@ -183,7 +228,8 @@ static unsigned long write_pads_to_buffer(char *buf, size_t buf_len,
                                           unsigned long buf_pos, char pad,
                                           size_t pad_len)
 {
-    for ( unsigned int i = 0; i < pad_len; i++ )
+    unsigned int i;
+    for ( i = 0; i < pad_len; i++ )
         buf_pos = write_char_to_buffer(buf, buf_len, buf_pos, pad);
 
     return buf_pos;
@@ -345,7 +391,7 @@ int vscnprintf(char *buf, size_t size, const char *fmt, va_list ap)
     if ( fmt == NULL )
         return 0;
 
-    memset(&mods, 0, sizeof(mods));
+    vmm_memset(&mods, 0, sizeof(mods));
 
     while ( buf_pos < size ) {
         bool success;
@@ -465,7 +511,7 @@ handle_width:
                 str[0] = (char)va_arg(ap, int);
                 mods.digit = false;
                 buf_pos = write_string_to_buffer(
-                              buf, size, buf_pos, str, strlen(str), &mods);
+                              buf, size, buf_pos, str, vmm_strlen(str), &mods);
                 break;
             }
         case 's':
@@ -475,7 +521,7 @@ handle_width:
                 str = va_arg(ap, char *);
                 mods.digit = false;
                 buf_pos = write_string_to_buffer(
-                              buf, size, buf_pos, str, strlen(str), &mods);
+                              buf, size, buf_pos, str, vmm_strlen(str), &mods);
                 break;
             }
         case 'o':
@@ -536,24 +582,23 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     int count = vscnprintf(buf, size, fmt, ap);
-	va_end(ap);
+        va_end(ap);
     return count;
 }
 
 uint8_t g_log_level = TBOOT_LOG_LEVEL_ALL;
 uint8_t g_log_targets = TBOOT_LOG_TARGET_SERIAL | TBOOT_LOG_TARGET_VGA;
 
-static struct mutex print_lock;
+// static struct mutex print_lock;  // JLM FIX
 
 
-void printk_init(void)
+void bprint_init(void)
 {
-    mtx_init(&print_lock);
+    // mtx_init(&print_lock);
 
-    /* parse loglvl from string to int */
-    get_tboot_loglvl();
+    // get_tboot_loglvl();
     vga_init();
-    get_tboot_vga_delay(); 
+    // get_tboot_vga_delay(); 
 }
 
 #define WRITE_LOGS(s, n) \
@@ -564,7 +609,7 @@ void printk_init(void)
     } while (0)
 
 
-void printk(const char *fmt, ...)
+void bprint(const char *fmt, ...)
 {
     char buf[256];
     char *pbuf = buf;
@@ -573,13 +618,13 @@ void printk(const char *fmt, ...)
     uint8_t log_level;
     static bool last_line_cr = true;
 
-    memset(buf, '\0', sizeof(buf));
+    vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
-    mtx_enter(&print_lock);
+    // mtx_enter(&print_lock);  //JLM FIX
     last_line_cr = (n > 0 && (*(pbuf+n-1) == '\n'));
     vga_write(pbuf, n);
-    mtx_leave(&print_lock);
+    // mtx_leave(&print_lock);  //JLM FIX
 
 exit:
     va_end(ap);

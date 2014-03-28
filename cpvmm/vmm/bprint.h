@@ -85,6 +85,7 @@ void vga_puts(const char *s, unsigned int cnt);
 #define TBOOT_LOG_TARGET_SERIAL 0x02
 #define TBOOT_LOG_TARGET_MEMORY 0x04
 
+/*
 extern uint8_t g_log_level;
 extern uint8_t g_log_targets;
 extern uint8_t g_vga_delay;
@@ -92,6 +93,7 @@ extern serial_port_t g_com_port;
 
 #define serial_init()         comc_init()
 #define serial_write(s, n)    comc_puts(s, n)
+*/
 
 #define vga_write(s,n)        vga_puts(s, n)
 

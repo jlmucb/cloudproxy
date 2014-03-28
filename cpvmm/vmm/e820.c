@@ -33,25 +33,10 @@
  *
  */
 
-typedef long long unsigned uint64_t;
-typedef unsigned uint32_t;
-typedef short unsigned uint16_t;
-typedef unsigned char uint8_t;
-typedef short unsigned u16;
-typedef unsigned char u8;
-typedef int bool;
-
+#include "bootstrap_types.h"
 #include "multiboot.h"
 #include <e820.h>
 
-#ifndef false
-#define false 0
-#define true 1
-#endif
-
-#ifndef NULL
-#define NULL 0
-#endif
 
 typedef void (*tboot_printk)(const char *fmt, ...);
 extern tboot_printk tprintk;

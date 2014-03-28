@@ -1097,13 +1097,13 @@ elf64_phdr* get_program_load_header(uint32_t image)
     elf64_phdr* prog_header= NULL;
     int         i;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     tprintk("get_program_load_header: %d segments, entry size is %d, offset: 0x%08x\n",
             (int)hdr->e_phnum, (uint32_t)hdr->e_phentsize, (uint32_t)hdr->e_phoff);
 #endif
     for(i=0; i<(int)hdr->e_phnum;i++) {
         prog_header= (elf64_phdr*)(image+(uint32_t)hdr->e_phoff+i*((uint32_t)hdr->e_phentsize));
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         tprintk("segment entry: %d 0x%08x, offset: 0x%08x\n",
                 (int)prog_header->p_type, (uint32_t)prog_header->p_vaddr,
                 (uint32_t)prog_header->p_offset);
@@ -1923,7 +1923,6 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
             evmm_start_address, vmm_main_entry_point);
     tprintk("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n",
             (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
-    HexDump((uint8_t*)evmm_start_load_segment, (uint8_t*)evmm_start_load_segment+31);
 #endif
     LOOP_FOREVER
 

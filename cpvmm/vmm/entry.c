@@ -1102,7 +1102,7 @@ elf64_phdr* get_program_load_header(uint32_t image)
             (int)hdr->e_phnum, (uint32_t)hdr->e_phentsize, (uint32_t)hdr->e_phoff);
 #endif
     for(i=0; i<(int)hdr->e_phnum;i++) {
-        prog_header= (elf64_phdr*)((uint32_t)hdr->e_phoff+i*((uint32_t)hdr->e_phentsize));
+        prog_header= (elf64_phdr*)(image+(uint32_t)hdr->e_phoff+i*((uint32_t)hdr->e_phentsize));
 #ifdef JLMDEBUG
         tprintk("segment entry: %d 0x%08x, offset: 0x%08x\n",
                 (int)prog_header->p_type, (uint32_t)prog_header->p_vaddr,

@@ -1812,7 +1812,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // image info
     tprintk("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
             bootstrap_start, bootstrap_end, bootstrap_end-bootstrap_start);
-    HexDump((uint8_t*) bootstrap_start, (uint8_t*)bootstrap_end+31);
+    HexDump((uint8_t*) bootstrap_start, (uint8_t*)bootstrap_start+63);
     tprintk("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
     if(evmm_command_line==0)
         tprintk("evmm command line is NULL\n");

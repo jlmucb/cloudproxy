@@ -26,3 +26,4 @@ initram_start, initram_end:     0x012d6000 0x0177b200
 evmm_heap_base, evmm_heap_size: 0x6ff00000 0x00100000
 relocated evmm_start_address: 0x70000000
 vmm_main_entry_point:         0x70038af0
+

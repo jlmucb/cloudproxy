@@ -62,6 +62,7 @@ typedef struct {
 #define MAX_VALUE_LEN 64
 
 
+
 extern uint32_t _start_bootstrap, _end_bootstrap;
 
 // IA-32 Interrupt Descriptor Table - Gate Descriptor 
@@ -1812,7 +1813,6 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     // image info
     tprintk("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
             bootstrap_start, bootstrap_end, bootstrap_end-bootstrap_start);
-    HexDump((uint8_t*) bootstrap_start, (uint8_t*)bootstrap_start+63);
     tprintk("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
     if(evmm_command_line==0)
         tprintk("evmm command line is NULL\n");
@@ -1854,6 +1854,8 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     evmm_heap_size = EVMM_HEAP_SIZE;
 
     // Relocate evmm_image 
+    // FIX(JLM): got to program header offset, look for LOAD type segment
+    //           copy segment size starting at Offset to evmm_start_address
     evmm_start_address= EVMM_DEFAULT_START_ADDR;
     vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start, 
                (UINT32) (evmm_end-evmm_start));

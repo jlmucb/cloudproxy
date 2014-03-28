@@ -1865,7 +1865,7 @@ int start32_evmm(UINT32 magic, UINT32 initial_entry, multiboot_info_t* mbi)
     init32.s.i32_low_memory_page = low_mem;
     init32.s.i32_num_of_aps = evmm_num_of_aps;
 
-    // set up evmm heap
+    // set up evmm heap addresses and range
     evmm_heap_base = EVMM_HEAP_BASE;
     evmm_heap_size = EVMM_HEAP_SIZE;
 

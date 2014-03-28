@@ -378,87 +378,87 @@ void ExceptionHandlerReserved(UINT32 Cs, UINT32 Eip)
 {
     // PrintExceptionHeader(Cs, Eip);
     tprintk("Reserved exception\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerDivideError(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Divide error\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerDebugBreakPoint(UINT32 Cs, UINT32 Eip)
 {
     // PrintExceptionHeader(Cs, Eip);
     tprintk("Debug breakpoint\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerNmi(UINT32 Cs, UINT32 Eip)
 {
     tprintk("NMI\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerBreakPoint(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Breakpoint\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerOverflow(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Overflow\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerBoundRangeExceeded(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Bound range exceeded\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerUndefinedOpcode(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Undefined opcode\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerNoMathCoprocessor(UINT32 Cs, UINT32 Eip)
 {
     tprintk("No math coprocessor\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerDoubleFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
 {
     tprintk("Double fault\n");
     // No need to print error code here because it is always zero
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerInvalidTaskSegmentSelector(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
 {
     tprintk("Invalid task segment selector\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerSegmentNotPresent(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
 {
     tprintk("Segment not present\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerStackSegmentFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
 {
     tprintk("Stack segment fault\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerGeneralProtectionFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
 {
     tprintk("General protection fault\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerPageFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
@@ -477,37 +477,37 @@ void ExceptionHandlerPageFault(UINT32 Cs, UINT32 Eip, UINT32 ErrorCode)
     tprintk("\n");
 
     // TODO: need a specific error code print function here
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerMathFault(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Math fault\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerAlignmentCheck(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Alignment check\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerMachineCheck(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Machine check\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerSimdFloatingPointNumericError(UINT32 Cs, UINT32 Eip)
 {
     tprintk("SIMD floating point numeric error\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void ExceptionHandlerReservedSimdFloatingPointNumericError(UINT32 Cs, UINT32 Eip)
 {
     tprintk("Reserved SIMD floating point numeric error\n");
-    VMM_UP_BREAKPOINT();
+    LOOP_FOREVER
 }
 
 void InstallExceptionHandler(UINT32 ExceptionIndex, UINT32 HandlerAddr)

@@ -1904,14 +1904,14 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
 
 void screen_test()
 {
-    extern void partial_reset_screen();
+    extern void bootstrap_partial_reset();
     extern void vga_puts(const char *s, unsigned int cnt);
     extern void __putc(uint8_t x, uint8_t y, int c);
     extern void vga_putc(int c);
     const char * t1= "bprint print\n";
     uint16_t star= (uint16_t)'*'; 
+    bootstrap_partial_reset();
     /*
-    partial_reset_screen();
     vga_puts(t1, vmm_strlen(t1));
     vga_puts(t1, vmm_strlen(t1));
     vga_puts(t1, vmm_strlen(t1));

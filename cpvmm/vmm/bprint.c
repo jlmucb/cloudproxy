@@ -151,11 +151,11 @@ void delay(int millisecs)
 }
 
 
-void partial_reset_screen(void)
+void bootstrap_partial_reset(void)
 {
     cursor_x = 0;
-    cursor_y = 0;
-    num_lines = 0;
+    cursor_y = MAX_LINES-1;
+    num_lines = MAX_LINES;
 }
 
 

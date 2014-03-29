@@ -1818,11 +1818,11 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
     BIT_SET(evmm_g0.flags, GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG);
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;
-    evmm_g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
+    evmm_g0.cpu_states_count = 1;
     // FIX(RNB): our guest has ALL the devices.  How can it be deviceless?
     // RNB-ANS: Setting the guest as default_device_owner should fix this issue.
-    // FIX(RNB):  I didn't understand this answer, set what where?
-    evmm_g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
+    // FIX(RNB):  I didn't understand this answer, set what where?  Do you mean setting the flags above
+    evmm_g0.devices_count = 0;
     evmm_g0.image_size = linux_end - linux_start;
     //FIX(RNB): is this the start of the PROTECTED mode portion of linux
     //RNB-ANS: It is the address that needs to be passed

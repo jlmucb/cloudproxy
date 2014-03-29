@@ -1897,8 +1897,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     tprintk("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
             mbi, initial_entry, magic);
-    bprint_init();
-    bprint("bprint works!\n");
 #endif
 
     // We assume the standard grub layout with three modules after bootstrap: 
@@ -2019,6 +2017,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     tprintk("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n",
             (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
 #endif
+#if 0
+    bprint_init();
+#endif
+    bprint("bprint works!\n");
+    tprintk("bprint doesn't work\n");
     LOOP_FOREVER
 
     // Set up evmm IDT Note(JLM): Is this necessary?

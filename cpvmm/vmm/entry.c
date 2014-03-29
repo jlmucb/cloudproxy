@@ -238,6 +238,17 @@ static const cmdline_option_t linux_cmdline_options[] = {
 static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN];
 
 
+#define MIN_ANONYMOUS_GUEST_ID  30000
+typedef enum _GUEST_FLAGS {
+       GUEST_IS_PRIMARY_FLAG = 0,
+       GUEST_IS_NMI_OWNER_FLAG,
+       GUEST_IS_ACPI_OWNER_FLAG,
+       GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG,
+       GUEST_BIOS_ACCESS_ENABLED_FLAG,
+       GUEST_SAVED_IMAGE_IS_COMPRESSED_FLAG
+} GUEST_FLAGS;
+
+
 char* vmm_strncpy(char *dest, const char *src, size_t n)
 {
     char* out= dest;
@@ -1802,14 +1813,22 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
     // Guest state initialization for relocated inage
     evmm_g0.size_of_this_struct = sizeof(evmm_g0);
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
-    evmm_g0.flags = 0;               //FIX(RNB): need to put the correct guest flags
-    evmm_g0.guest_magic_number = 0;  //FIX(RNB): needs to be unique id of the guest
+    evmm_g0.flags = 0;
+    BITMAP_SET(evmm_g0.flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
+    BIT_SET(evmm_g0.flags, GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG);
+    evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;
     evmm_g0.cpu_states_count = 1;    // CHECK(RNB): number of VMM_GUEST_STARTUP structs
     // FIX(RNB): our guest has ALL the devices.  How can it be deviceless?
+    // RNB-ANS: Setting the guest as default_device_owner should fix this issue.
+    // FIX(RNB):  I didn't understand this answer, set what where?
     evmm_g0.devices_count = 0;       // CHECK: 0 implies guest is deviceless
     evmm_g0.image_size = linux_end - linux_start;
-    //FIX(RNB): is this the start of the PROTECTED mode portion of linux            
+    //FIX(RNB): is this the start of the PROTECTED mode portion of linux
+    //RNB-ANS: It is the address that needs to be passed
+    //FIX:  What does this answer mean?  My question is WHAT address needs to be
+    // passed:  the address of protected mode Linux or ALL of linux,  Does it
+    // include the EVMM HEAP area
     evmm_g0.image_address= linux_start_address;
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 
@@ -1839,22 +1858,19 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
     p_startup_struct->nmi_owner= UUID; 
     p_startup_struct->primary_guest_startup_state = (uint64_t)(uint32_t)&evmm_g0;
 
-    // FIX(RNB):  For a single guest, this is wrong.  see the initialization code.
-    // vmm_memory_layout is suppose to contain the start/end/size of
-    // each image that is part of evmm (e.g. evmm, linux+initrd)
     // FIX(RNB): I think the memory layout is not needed for the primary
     // Also, note that the image size includes the heap.  Should the base_address
     // be the start of the evmm image or the evmm heap?
+    // RNB-ANS: From the code, I believe they put all the info for the evmm in 
+    //  the memory layout including the heap/stack size.
+    // FIX(RNB): You didn't answer whether the heap/stack should be in the image argument
     evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
-    // FIX (RNB) test for failure
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
             evmm_heap_size + p_startup_struct->size_of_vmm_stack;
     (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
     (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
-
 #if 0
-    // FIX(RNB): memory maps should NOT include linux or initram according to SC guys
     (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
     (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
     (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
@@ -1953,7 +1969,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
     // get CPU info
     uint32_t info;
-    // FIX(JLM): returns hyperthreaded # what does evmm want?
     asm volatile (
         "\tmovl    $1, %%eax\n"
         "\tcpuid\n"

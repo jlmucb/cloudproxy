@@ -349,7 +349,7 @@ unsigned long int vmm_strtoul (const char* str, char** endptr, int base)
 }
 
 
-void InitializeMemoryManager(uint32_t heap_base_address, uint32_t heap_bytes)
+void setup_evmm_heap(uint32_t heap_base_address, uint32_t heap_bytes)
 {
     evmm_heap_current = evmm_heap_base = heap_base_address;
     evmm_heap_top = evmm_heap_base + heap_bytes;
@@ -1739,12 +1739,6 @@ int expand_linux_image( multiboot_info_t* mbi,
 }
 
 
-#ifndef false
-#define false 0
-#define true 1
-#endif
-
-
 // relocate and setup variables for evmm entry
 
 int prepare_primary_guest_args(multiboot_info_t *mbi)
@@ -1767,16 +1761,6 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 
     // Remove bootstrap, stack page and arguments page from linux e820
     if(copy_e820_map(mbi)==false) {
-        return 1;
-    }
-
-    // arguments (maybe it's ok to leave these)
-    if(e820_reserve_ram(linux_boot_params, 3*PAGE_SIZE)==false) {
-        return 1;
-    }
-
-    // bootstrap
-    if(e820_reserve_ram(bootstrap_start, bootstrap_end-bootstrap_start)==false) {
         return 1;
     }
 
@@ -1896,7 +1880,7 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
 #endif
 
     if (p_startup_struct->physical_memory_layout_E820 == -1) {
-        tprintk("Error getting e820 table\r\n");
+        tprintk("Error getting e820 table\n");
         return 1;
     }
     return 0;
@@ -1989,8 +1973,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     init32.s.i32_num_of_aps = evmm_num_of_aps;
 
     // set up evmm heap addresses and range
-    evmm_heap_base = EVMM_HEAP_BASE;
-    evmm_heap_size = EVMM_HEAP_SIZE;
+    setup_evmm_heap(EVMM_HEAP_BASE, EVMM_HEAP_SIZE);
 
     // Relocate evmm_image 
     evmm_start_address= EVMM_DEFAULT_START_ADDR;
@@ -2034,8 +2017,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
     LOOP_FOREVER
 
-    // Initialize evmm heap
-    InitializeMemoryManager(evmm_heap_base, evmm_heap_size);
     // Set up evmm IDT Note(JLM): Is this necessary?
     SetupIDT();
 
@@ -2061,14 +2042,20 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
+    // reserve bootstrap
     if(!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
-      tprintk("Unable to reserve bootstrap region in e820 table\r\n");
+      tprintk("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    } 
+    // reserve linux arguments and stack
+    if(!e820_reserve_region(evmm_e820, linux_boot_params, evmm_heap_base-linux_boot_params)) {
+      tprintk("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
 #if 0
     // I don't think this is necessary
     if (!e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
-        tprintk("Unable to reserve evmm region in e820 table\r\n");
+        tprintk("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
 #endif

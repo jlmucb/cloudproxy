@@ -68,7 +68,7 @@ static inline void outb(uint16_t port, uint8_t data)
 
 
 #define __data     __attribute__ ((__section__ (".data")))
-#define VGA_BASE                    0xb8000
+#define VGA_BASE         0xb8000
 #define ULONG_MAX     0xFFFFFFFFUL
 
 
@@ -86,9 +86,7 @@ unsigned long strtoul(const char *nptr, char **endptr, int base)
     unsigned long cutoff;
     int neg = 0, any, cutlim;
 
-        /*
-         * See strtol for comments as to the logic used.
-         */
+    // See strtol for comments as to the logic used.
     do {
         c = *s++;
     } while (isspace(c));
@@ -225,10 +223,12 @@ static void vga_putc(int c)
     }
 }
 
+
 void vga_init(void)
 {
     reset_screen();
 }
+
 
 void vga_puts(const char *s, unsigned int cnt)
 {
@@ -237,6 +237,7 @@ void vga_puts(const char *s, unsigned int cnt)
         s++;
     }
 }
+
 
 static bool div64(uint64_t num, uint32_t base, uint64_t *quot, uint32_t *rem)
 {
@@ -645,8 +646,6 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
     return count;
 }
 
-uint8_t g_log_level = TBOOT_LOG_LEVEL_ALL;
-uint8_t g_log_targets = TBOOT_LOG_TARGET_SERIAL | TBOOT_LOG_TARGET_VGA;
 
 // static struct mutex print_lock;  // JLM FIX
 
@@ -654,18 +653,8 @@ uint8_t g_log_targets = TBOOT_LOG_TARGET_SERIAL | TBOOT_LOG_TARGET_VGA;
 void bprint_init(void)
 {
     // mtx_init(&print_lock);
-
-    // get_tboot_loglvl();
     vga_init();
-    // get_tboot_vga_delay(); 
 }
-
-#define WRITE_LOGS(s, n) \
-    do {                                                                 \
-        if (g_log_targets & TBOOT_LOG_TARGET_MEMORY) memlog_write(s, n); \
-        if (g_log_targets & TBOOT_LOG_TARGET_SERIAL) serial_write(s, n); \
-        if (g_log_targets & TBOOT_LOG_TARGET_VGA) vga_write(s, n);       \
-    } while (0)
 
 
 void bprint(const char *fmt, ...)
@@ -674,7 +663,6 @@ void bprint(const char *fmt, ...)
     char *pbuf = buf;
     int n;
     va_list ap;
-    uint8_t log_level;
     static bool last_line_cr = true;
 
     vmm_memset(buf, '\0', sizeof(buf));

@@ -73,6 +73,7 @@ void vga_init(void);
 void vga_puts(const char *s, unsigned int cnt);
 
 
+/*
 #define TBOOT_LOG_LEVEL_NONE    0x00
 #define TBOOT_LOG_LEVEL_ERR     0x01
 #define TBOOT_LOG_LEVEL_WARN    0x02
@@ -84,21 +85,13 @@ void vga_puts(const char *s, unsigned int cnt);
 #define TBOOT_LOG_TARGET_VGA    0x01
 #define TBOOT_LOG_TARGET_SERIAL 0x02
 #define TBOOT_LOG_TARGET_MEMORY 0x04
-
-/*
-extern uint8_t g_log_level;
-extern uint8_t g_log_targets;
-extern uint8_t g_vga_delay;
-extern serial_port_t g_com_port;
-
-#define serial_init()         comc_init()
-#define serial_write(s, n)    comc_puts(s, n)
 */
+
 
 #define vga_write(s,n)        vga_puts(s, n)
 
-extern void printk_init(void);
-extern void printk(const char *fmt, ...)
+extern void bprintk_init(void);
+extern void bprintk(const char *fmt, ...)
                          __attribute__ ((format (printf, 1, 2)));
 
 #endif

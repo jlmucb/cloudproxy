@@ -32,6 +32,8 @@
 #include "x32_init64.h"
 #include "vmm_startup.h"
 
+#include "bprint.h"
+
 #define JLMDEBUG
 
 #define PSE_BIT     0x10
@@ -1895,6 +1897,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     tprintk("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
             mbi, initial_entry, magic);
+    bprint_init();
+    bprint("bprint works!\n");
 #endif
 
     // We assume the standard grub layout with three modules after bootstrap: 

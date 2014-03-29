@@ -36,10 +36,9 @@
 #include "bootstrap_types.h"
 #include "multiboot.h"
 #include <e820.h>
+#include <bprint.h>
 
 
-typedef void (*tboot_printk)(const char *fmt, ...);
-extern tboot_printk tprintk;
 
 /*
  * copy of bootloader/BIOS e820 table with adjusted entries
@@ -97,7 +96,7 @@ static void print_map(memory_map_t *e820, int nr_map)
         base_addr = e820_base_64(entry);
         length = e820_length_64(entry);
 
-        tprintk("\t%016Lx - %016Lx  (%d)\n",
+        bprint("\t%016Lx - %016Lx  (%d)\n",
                (unsigned long long)base_addr,
                (unsigned long long)(base_addr + length),
                entry->type);
@@ -283,7 +282,7 @@ bool copy_e820_map(const multiboot_info_t *mbi)
     g_nr_map = 0;
 
     if ( mbi->flags & MBI_MEMMAP ) {
-        tprintk("original e820 map:\n");
+        bprint("original e820 map:\n");
         print_map((memory_map_t *)mbi->mmap_addr,
                   mbi->mmap_length/sizeof(memory_map_t));
 
@@ -304,12 +303,12 @@ bool copy_e820_map(const multiboot_info_t *mbi)
             entry_offset += entry->size + sizeof(entry->size);
         }
         if ( g_nr_map == max_e820_entries) {
-            tprintk("Too many e820 entries\n");
+            bprint("Too many e820 entries\n");
             return false;
         }
     }
     else if ( mbi->flags & MBI_MEMLIMITS ) {
-        tprintk("no e820 map, mem_lower=%x, mem_upper=%x\n",
+        bprint("no e820 map, mem_lower=%x, mem_upper=%x\n",
                mbi->mem_lower, mbi->mem_upper);
 
         /* lower limit is 0x00000000 - <mem_lower>*0x400 (i.e. in kb) */
@@ -332,7 +331,7 @@ bool copy_e820_map(const multiboot_info_t *mbi)
         g_nr_map = 2;
     }
     else {
-        tprintk("no e820 map nor memory limits provided\n");
+        bprint("no e820 map nor memory limits provided\n");
         return false;
     }
 
@@ -434,24 +433,24 @@ uint32_t e820_check_region(uint64_t base, uint64_t length)
         ret = E820_GAP;
 
     /* print the result */
-    tprintk(" (range from %016Lx to %016Lx is in ", base, base + length);
+    bprint(" (range from %016Lx to %016Lx is in ", base, base + length);
     switch (ret) {
         case E820_RAM:
-            tprintk("E820_RAM)\n"); break;
+            bprint("E820_RAM)\n"); break;
         case E820_RESERVED:
-            tprintk("E820_RESERVED)\n"); break;
+            bprint("E820_RESERVED)\n"); break;
         case E820_ACPI:
-            tprintk("E820_ACPI)\n"); break;
+            bprint("E820_ACPI)\n"); break;
         case E820_NVS:
-            tprintk("E820_NVS)\n"); break;
+            bprint("E820_NVS)\n"); break;
         case E820_UNUSABLE:
-            tprintk("E820_UNUSABLE)\n"); break;
+            bprint("E820_UNUSABLE)\n"); break;
         case E820_GAP:
-            tprintk("E820_GAP)\n"); break;
+            bprint("E820_GAP)\n"); break;
         case E820_MIXED:
-            tprintk("E820_MIXED)\n"); break;
+            bprint("E820_MIXED)\n"); break;
         default:
-            tprintk("UNKNOWN)\n");
+            bprint("UNKNOWN)\n");
     }
 
     return ret;
@@ -547,7 +546,7 @@ bool e820_reserve_ram(uint64_t base, uint64_t length)
             break;
         }
         else {
-            tprintk("we should never get here\n");
+            bprint("we should never get here\n");
             return false;
         }
     }
@@ -580,7 +579,7 @@ bool get_ram_ranges(uint64_t *min_lo_ram, uint64_t *max_lo_ram,
         if ( entry->type == E820_RAM ) {
             /* if range straddles 4GB boundary, that is an error */
             if ( base < 0x100000000ULL && limit > 0x100000000ULL ) {
-                tprintk("e820 memory range straddles 4GB boundary\n");
+                bprint("e820 memory range straddles 4GB boundary\n");
                 return false;
             }
 
@@ -597,7 +596,7 @@ bool get_ram_ranges(uint64_t *min_lo_ram, uint64_t *max_lo_ram,
             }
             else {     /* need to reserve low RAM above reserved regions */
                 if ( base < 0x100000000ULL ) {
-                    tprintk("discarding RAM above reserved regions: 0x%Lx - 0x%Lx\n", base, limit);
+                    bprint("discarding RAM above reserved regions: 0x%Lx - 0x%Lx\n", base, limit);
                     if ( !e820_reserve_ram(base, limit - base) )
                         return false;
                 }
@@ -619,7 +618,7 @@ bool get_ram_ranges(uint64_t *min_lo_ram, uint64_t *max_lo_ram,
 
     /* no low RAM found */
     if ( *min_lo_ram >= *max_lo_ram ) {
-        tprintk("no low ram in e820 map\n");
+        bprint("no low ram in e820 map\n");
         return false;
     }
     /* no high RAM found */

@@ -179,10 +179,11 @@ VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
 VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
 
 
-// Hack!  Temporary  hacked info
+// Tom's excellent hack to give us printin early
+// superceeded by our very own bprint.
 // boot_params_t *my_boot_params= (boot_params_t *)0x94200;
 // multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
-#if 1
+#if 0
 typedef void (*tboot_printk)(const char *fmt, ...);
 tboot_printk tprintk = (tboot_printk)(0x80d660);
 #endif
@@ -383,87 +384,87 @@ void *evmm_page_alloc(uint32_t pages)
 void ExceptionHandlerReserved(uint32_t Cs, uint32_t Eip)
 {
     // PrintExceptionHeader(Cs, Eip);
-    tprintk("Reserved exception\n");
+    bprint("Reserved exception\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerDivideError(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Divide error\n");
+    bprint("Divide error\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerDebugBreakPoint(uint32_t Cs, uint32_t Eip)
 {
     // PrintExceptionHeader(Cs, Eip);
-    tprintk("Debug breakpoint\n");
+    bprint("Debug breakpoint\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerNmi(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("NMI\n");
+    bprint("NMI\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerBreakPoint(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Breakpoint\n");
+    bprint("Breakpoint\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerOverflow(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Overflow\n");
+    bprint("Overflow\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerBoundRangeExceeded(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Bound range exceeded\n");
+    bprint("Bound range exceeded\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerUndefinedOpcode(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Undefined opcode\n");
+    bprint("Undefined opcode\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerNoMathCoprocessor(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("No math coprocessor\n");
+    bprint("No math coprocessor\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerDoubleFault(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
 {
-    tprintk("Double fault\n");
+    bprint("Double fault\n");
     // No need to print error code here because it is always zero
     LOOP_FOREVER
 }
 
 void ExceptionHandlerInvalidTaskSegmentSelector(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
 {
-    tprintk("Invalid task segment selector\n");
+    bprint("Invalid task segment selector\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerSegmentNotPresent(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
 {
-    tprintk("Segment not present\n");
+    bprint("Segment not present\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerStackSegmentFault(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
 {
-    tprintk("Stack segment fault\n");
+    bprint("Stack segment fault\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerGeneralProtectionFault(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
 {
-    tprintk("General protection fault\n");
+    bprint("General protection fault\n");
     LOOP_FOREVER
 }
 
@@ -478,9 +479,9 @@ void ExceptionHandlerPageFault(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
         "\n\tpop %%eax"
     :[Cr2] "=g" (Cr2)
     ::"%eax");
-    tprintk("Page fault\n");
-    tprintk("Faulting address %x",Cr2);
-    tprintk("\n");
+    bprint("Page fault\n");
+    bprint("Faulting address %x",Cr2);
+    bprint("\n");
 
     // TODO: need a specific error code print function here
     LOOP_FOREVER
@@ -488,31 +489,31 @@ void ExceptionHandlerPageFault(uint32_t Cs, uint32_t Eip, uint32_t ErrorCode)
 
 void ExceptionHandlerMathFault(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Math fault\n");
+    bprint("Math fault\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerAlignmentCheck(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Alignment check\n");
+    bprint("Alignment check\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerMachineCheck(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Machine check\n");
+    bprint("Machine check\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerSimdFloatingPointNumericError(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("SIMD floating point numeric error\n");
+    bprint("SIMD floating point numeric error\n");
     LOOP_FOREVER
 }
 
 void ExceptionHandlerReservedSimdFloatingPointNumericError(uint32_t Cs, uint32_t Eip)
 {
-    tprintk("Reserved SIMD floating point numeric error\n");
+    bprint("Reserved SIMD floating point numeric error\n");
     LOOP_FOREVER
 }
 
@@ -527,7 +528,7 @@ void SetupIDT()
     int     i;
     uint32_t  pIdtDescriptor;
 
-    tprintk("SetupIdt called\n");
+    bprint("SetupIdt called\n");
     vmm_memset(&LvmmIdt, 0, sizeof(LvmmIdt));
 
     for (i = 0 ; i < 32 ; i++) {
@@ -831,20 +832,20 @@ void HexDump(uint8_t* start, uint8_t* end)
     uint8_t* p= start;
     int      i;
 
-    tprintk("\n");
+    bprint("\n");
     while(p<=end) {
-        tprintk("0x%08x: ", p);
+        bprint("0x%08x: ", p);
         i= 0;
         while(p<=end) {
-            tprintk("0x%08x ", *(uint32_t*)p);
+            bprint("0x%08x ", *(uint32_t*)p);
             p+= 4;
             i++;
             if(i>3)
                 break;
         } 
-        tprintk("\n");
+        bprint("\n");
     }
-    tprintk("\n");
+    bprint("\n");
 }
 
 void PrintMbi(const multiboot_info_t *mbi)
@@ -852,19 +853,19 @@ void PrintMbi(const multiboot_info_t *mbi)
     /* print mbi for debug */
     unsigned int i;
 
-    tprintk("print mbi@%p ...\n", mbi);
-    tprintk("\t flags: 0x%x\n", mbi->flags);
+    bprint("print mbi@%p ...\n", mbi);
+    bprint("\t flags: 0x%x\n", mbi->flags);
     if ( mbi->flags & MBI_MEMLIMITS )
-        tprintk("\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
+        bprint("\t mem_lower: %uKB, mem_upper: %uKB\n", mbi->mem_lower,
                mbi->mem_upper);
     if ( mbi->flags & MBI_BOOTDEV ) {
-        tprintk("\t boot_device.bios_driver: 0x%x\n",
+        bprint("\t boot_device.bios_driver: 0x%x\n",
                mbi->boot_device.bios_driver);
-        tprintk("\t boot_device.top_level_partition: 0x%x\n",
+        bprint("\t boot_device.top_level_partition: 0x%x\n",
                mbi->boot_device.top_level_partition);
-        tprintk("\t boot_device.sub_partition: 0x%x\n",
+        bprint("\t boot_device.sub_partition: 0x%x\n",
                mbi->boot_device.sub_partition);
-        tprintk("\t boot_device.third_partition: 0x%x\n",
+        bprint("\t boot_device.third_partition: 0x%x\n",
                mbi->boot_device.third_partition);
     }
     if ( mbi->flags & MBI_CMDLINE ) {
@@ -874,68 +875,68 @@ void PrintMbi(const multiboot_info_t *mbi)
         int   cmdlen = strlen((char*)mbi->cmdline);
         char *cmdptr = (char *)mbi->cmdline;
         char  chunk[CHUNK_SIZE+1];
-        tprintk("\t cmdline@0x%x: ", mbi->cmdline);
+        bprint("\t cmdline@0x%x: ", mbi->cmdline);
         chunk[CHUNK_SIZE] = '\0';
         while (cmdlen > 0) {
             vmm_strncpy(chunk, cmdptr, CHUNK_SIZE); 
-            tprintk("\n\t\"%s\"", chunk);
+            bprint("\n\t\"%s\"", chunk);
             cmdptr += CHUNK_SIZE;
             cmdlen -= CHUNK_SIZE;
         }
 #endif
-        tprintk("\n");
+        bprint("\n");
     }
 
     if ( mbi->flags & MBI_MODULES ) {
-        tprintk("\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
+        bprint("\t mods_count: %u, mods_addr: 0x%x\n", mbi->mods_count,
                mbi->mods_addr);
         for ( i = 0; i < mbi->mods_count; i++ ) {
             module_t *p = (module_t *)(mbi->mods_addr + i*sizeof(module_t));
-            tprintk("\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
+            bprint("\t     %d : mod_start: 0x%x, mod_end: 0x%x\n", i,
                    p->mod_start, p->mod_end);
-            tprintk("\t         string (@0x%x): \"%s\"\n", p->string,
+            bprint("\t         string (@0x%x): \"%s\"\n", p->string,
                    (char *)p->string);
         }
     }
     if ( mbi->flags & MBI_AOUT ) {
         const aout_t *p = &(mbi->syms.aout_image);
-        tprintk("\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
+        bprint("\t aout :: tabsize: 0x%x, strsize: 0x%x, addr: 0x%x\n",
                p->tabsize, p->strsize, p->addr);
     }
     if ( mbi->flags & MBI_ELF ) {
         const elf_t *p = &(mbi->syms.elf_image);
-        tprintk("\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
+        bprint("\t elf :: num: %u, size: 0x%x, addr: 0x%x, shndx: 0x%x\n",
                p->num, p->size, p->addr, p->shndx);
     }
     if ( mbi->flags & MBI_MEMMAP ) {
         memory_map_t *p;
-        tprintk("\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
+        bprint("\t mmap_length: 0x%x, mmap_addr: 0x%x\n", mbi->mmap_length,
                mbi->mmap_addr);
         for ( p = (memory_map_t *)mbi->mmap_addr;
               (uint32_t)p < mbi->mmap_addr + mbi->mmap_length;
               p=(memory_map_t *)((uint32_t)p + p->size + sizeof(p->size)) ) {
-                tprintk("\t     size: 0x%x, base_addr: 0x%04x%04x, "
+                bprint("\t     size: 0x%x, base_addr: 0x%04x%04x, "
                    "length: 0x%04x%04x, type: %u\n", p->size,
                    p->base_addr_high, p->base_addr_low,
                    p->length_high, p->length_low, p->type);
         }
     }
     if ( mbi->flags & MBI_DRIVES ) {
-        tprintk("\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
+        bprint("\t drives_length: %u, drives_addr: 0x%x\n", mbi->drives_length,
                mbi->drives_addr);
     }
     if ( mbi->flags & MBI_CONFIG ) {
-        tprintk("\t config_table: 0x%x\n", mbi->config_table);
+        bprint("\t config_table: 0x%x\n", mbi->config_table);
     }
     if ( mbi->flags & MBI_BTLDNAME ) {
-        tprintk("\t boot_loader_name@0x%x: %s\n",
+        bprint("\t boot_loader_name@0x%x: %s\n",
                mbi->boot_loader_name, (char *)mbi->boot_loader_name);
     }
     if ( mbi->flags & MBI_APM ) {
-        tprintk("\t apm_table: 0x%x\n", mbi->apm_table);
+        bprint("\t apm_table: 0x%x\n", mbi->apm_table);
     }
     if ( mbi->flags & MBI_VBE ) {
-        tprintk("\t vbe_control_info: 0x%x\n"
+        bprint("\t vbe_control_info: 0x%x\n"
                "\t vbe_mode_info: 0x%x\n"
                "\t vbe_mode: 0x%x\n"
                "\t vbe_interface_seg: 0x%x\n"
@@ -955,12 +956,12 @@ void PrintMbi(const multiboot_info_t *mbi)
 module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
 {
     if ( mbi == NULL ) {
-        tprintk("Error: mbi pointer is zero.\n");
+        bprint("Error: mbi pointer is zero.\n");
         return NULL;
     }
 
     if ( i >= mbi->mods_count ) {
-        tprintk("invalid module #\n");
+        bprint("invalid module #\n");
         return NULL;
     }
 
@@ -1108,13 +1109,13 @@ elf64_phdr* get_program_load_header(uint32_t image)
     int         i;
 
 #ifdef JLMDEBUG1
-    tprintk("get_program_load_header: %d segments, entry size is %d, offset: 0x%08x\n",
+    bprint("get_program_load_header: %d segments, entry size is %d, offset: 0x%08x\n",
             (int)hdr->e_phnum, (uint32_t)hdr->e_phentsize, (uint32_t)hdr->e_phoff);
 #endif
     for(i=0; i<(int)hdr->e_phnum;i++) {
         prog_header= (elf64_phdr*)(image+(uint32_t)hdr->e_phoff+i*((uint32_t)hdr->e_phentsize));
 #ifdef JLMDEBUG1
-        tprintk("segment entry: %d 0x%08x, offset: 0x%08x\n",
+        bprint("segment entry: %d 0x%08x, offset: 0x%08x\n",
                 (int)prog_header->p_type, (uint32_t)prog_header->p_vaddr,
                 (uint32_t)prog_header->p_offset);
 #endif
@@ -1325,7 +1326,7 @@ static const char* get_option_val(const cmdline_option_t *options,
         if ( vmm_strcmp(options[i].name, opt_name) == 0 )
             return vals[i];
     }
-    tprintk("requested unknown option: %s\n", opt_name);
+    bprint("requested unknown option: %s\n", opt_name);
     return NULL;
 }
 
@@ -1533,24 +1534,24 @@ int expand_linux_image( multiboot_info_t* mbi,
 
     // sanity check
     if ( linux_image == 0) {
-        tprintk("Error: Linux kernel image is zero.\n");
+        bprint("Error: Linux kernel image is zero.\n");
         return 1;
     }
     if ( linux_size == 0 ) {
-        tprintk("Error: Linux kernel size is zero.\n");
+        bprint("Error: Linux kernel size is zero.\n");
         return 1;
     }
     if ( linux_size < sizeof(linux_kernel_header_t) ) {
-        tprintk("Error: Linux kernel size is too small.\n");
+        bprint("Error: Linux kernel size is too small.\n");
         return 1;
     }
     hdr = (linux_kernel_header_t *)(linux_image + KERNEL_HEADER_OFFSET);
     if ( hdr == NULL ) {
-        tprintk("Error: Linux kernel header is zero.\n");
+        bprint("Error: Linux kernel header is zero.\n");
         return 1;
     }
     if ( entry_point == NULL ) {
-        tprintk("Error: Output pointer is zero.\n");
+        bprint("Error: Output pointer is zero.\n");
         return 1;
     }
 
@@ -1563,7 +1564,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     if ( hdr->setup_sects == 0 )
         hdr->setup_sects = DEFAULT_SECTOR_NUM;
     if ( hdr->setup_sects > MAX_SECTOR_NUM ) {
-        tprintk("Error: Linux setup sectors %d exceed maximum limitation 64.\n",
+        bprint("Error: Linux setup sectors %d exceed maximum limitation 64.\n",
                 hdr->setup_sects);
         return 1;
     }
@@ -1574,11 +1575,11 @@ int expand_linux_image( multiboot_info_t* mbi,
 
     // compare to the magic number 
     if ( hdr->header != HDRS_MAGIC ) {
-        tprintk("Error: Old kernel (< 2.6.20) is not supported by tboot.\n");
+        bprint("Error: Old kernel (< 2.6.20) is not supported by tboot.\n");
         return 1;
     }
     if ( hdr->version < 0x0205 ) {
-        tprintk("Error: Old kernel (<2.6.20) is not supported by tboot.\n");
+        bprint("Error: Old kernel (<2.6.20) is not supported by tboot.\n");
         return 1;
     }
     // boot loader is grub, set type_of_loader to 0x7
@@ -1598,15 +1599,15 @@ int expand_linux_image( multiboot_info_t* mbi,
     get_highest_sized_ram(initrd_size, mem_limit,
                           &max_ram_base, &max_ram_size);
     if ( max_ram_size == 0 ) {
-        tprintk("not enough RAM for initrd\n");
+        bprint("not enough RAM for initrd\n");
         return 1;
     }
     if ( initrd_size > max_ram_size ) {
-        tprintk("initrd_size is too large\n");
+        bprint("initrd_size is too large\n");
         return 1;
     }
     if ( max_ram_base > ((uint64_t)(uint32_t)(~0)) ) {
-        tprintk("max_ram_base is too high\n");
+        bprint("max_ram_base is too high\n");
         return 1;
     }
     initrd_base = (max_ram_base + max_ram_size - initrd_size) & PAGE_MASK;
@@ -1614,7 +1615,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     // should not exceed initrd_addr_max 
     if ( (initrd_base + initrd_size) > hdr->initrd_addr_max ) {
         if ( hdr->initrd_addr_max < initrd_size ) {
-            tprintk("initrd_addr_max is too small\n");
+            bprint("initrd_addr_max is too small\n");
             return 1;
         }
         initrd_base = hdr->initrd_addr_max - initrd_size;
@@ -1622,7 +1623,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     }
 
     vmm_memcpy ((void *)initrd_base, (void*)initrd_image, initrd_size);
-    tprintk("Initrd from 0x%lx to 0x%lx\n",
+    bprint("Initrd from 0x%lx to 0x%lx\n",
            (unsigned long)initrd_base,
            (unsigned long)(initrd_base + initrd_size));
 
@@ -1642,7 +1643,7 @@ int expand_linux_image( multiboot_info_t* mbi,
         real_mode_base = LEGACY_REAL_START;
     real_mode_size = (hdr->setup_sects + 1) * SECTOR_SIZE;
     if ( real_mode_size + sizeof(boot_params_t) > KERNEL_CMDLINE_OFFSET ) {
-        tprintk("realmode data is too large\n");
+        bprint("realmode data is too large\n");
         return 1;
     }
 
@@ -1662,7 +1663,7 @@ int expand_linux_image( multiboot_info_t* mbi,
         /* overflow? */
         if ( plus_overflow_u32(protected_mode_base,
                  hdr->kernel_alignment - 1) ) {
-            tprintk("protected_mode_base overflows\n");
+            bprint("protected_mode_base overflows\n");
             return 1;
         }
         /* round it up to kernel alignment */
@@ -1673,14 +1674,14 @@ int expand_linux_image( multiboot_info_t* mbi,
     else if ( hdr->loadflags & FLAG_LOAD_HIGH ) {
         protected_mode_base =  LINUX_DEFAULT_LOAD_ADDRESS; // bzImage:0x100000 
         if ( plus_overflow_u32(protected_mode_base, protected_mode_size) ) {
-            tprintk("protected_mode_base plus protected_mode_size overflows\n");
+            bprint("protected_mode_base plus protected_mode_size overflows\n");
             return 1;
         }
         // Check: protected mode part cannot exceed mem_upper 
         if ( mbi->flags & MBI_MEMLIMITS )
             if ( (protected_mode_base + protected_mode_size)
                     > ((mbi->mem_upper << 10) + 0x100000) ) {
-                tprintk("Error: Linux protected mode part (0x%lx ~ 0x%lx) "
+                bprint("Error: Linux protected mode part (0x%lx ~ 0x%lx) "
                        "exceeds mem_upper (0x%lx ~ 0x%lx).\n",
                        (unsigned long)protected_mode_base,
                        (unsigned long)(protected_mode_base + protected_mode_size),
@@ -1690,7 +1691,7 @@ int expand_linux_image( multiboot_info_t* mbi,
             }
     }
     else {
-        tprintk("Error: Linux protected mode not loaded high\n");
+        bprint("Error: Linux protected mode not loaded high\n");
         return 1;
     }
 
@@ -1700,13 +1701,13 @@ int expand_linux_image( multiboot_info_t* mbi,
     // load protected-mode part 
     vmm_memcpy((void *)protected_mode_base, (void*)(linux_image + real_mode_size),
             protected_mode_size);
-    tprintk("Kernel (protected mode) from 0x%lx to 0x%lx\n",
+    bprint("Kernel (protected mode) from 0x%lx to 0x%lx\n",
            (unsigned long)protected_mode_base,
            (unsigned long)(protected_mode_base + protected_mode_size));
 
     // load real-mode part 
     vmm_memcpy((void *)real_mode_base, (void*)linux_image, real_mode_size);
-    tprintk("Kernel (real mode) from 0x%lx to 0x%lx\n",
+    bprint("Kernel (real mode) from 0x%lx to 0x%lx\n",
            (unsigned long)real_mode_base,
            (unsigned long)(real_mode_base + real_mode_size));
 
@@ -1801,7 +1802,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 
     // CHECK(JLM)
     linux_start_address= linux_entry_address;
-    tprintk("Linux kernel @%p...\n", linux_entry_address);
+    bprint("Linux kernel @%p...\n", linux_entry_address);
     return 0;
 }
 
@@ -1893,13 +1894,15 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
 #endif
 
     if (p_startup_struct->physical_memory_layout_E820 == -1) {
-        tprintk("Error getting e820 table\n");
+        bprint("Error getting e820 table\n");
         return 1;
     }
     return 0;
 }
 
 
+#if 0
+// test routines to debug printing
 void screen_test()
 {
     // reset printing
@@ -1955,6 +1958,7 @@ void screen_test()
     : "%ebx", "%ecx");
 #endif
 }
+#endif
 
 
 // tboot jumps in here
@@ -1965,7 +1969,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     // reinitialize screen printing
     bootstrap_partial_reset();
 #ifdef JLMDEBUG
-    tprintk("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
+    bprint("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
             mbi, initial_entry, magic);
 #endif
 
@@ -1974,7 +1978,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     // Everything is decompressed EXCEPT the protected mode portion of linux
     int l= mbi->mmap_length/sizeof(memory_map_t);
     if (l<3) {
-        tprintk("bootstrap error: wrong number of modules\n");
+        bprint("bootstrap error: wrong number of modules\n");
         LOOP_FOREVER
     }
 
@@ -2001,24 +2005,24 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
 #ifdef JLMDEBUG
     // shared page
-    tprintk("shared_page data:\n");
-    tprintk("\t tboot_base: 0x%08x\n", shared_page->tboot_base);
-    tprintk("\t tboot_size: 0x%x\n", shared_page->tboot_size);
+    bprint("shared_page data:\n");
+    bprint("\t tboot_base: 0x%08x\n", shared_page->tboot_base);
+    bprint("\t tboot_size: 0x%x\n", shared_page->tboot_size);
     
     // image info
-    tprintk("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
+    bprint("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
             bootstrap_start, bootstrap_end, bootstrap_end-bootstrap_start);
-    tprintk("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
+    bprint("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
     if(evmm_command_line==0)
-        tprintk("evmm command line is NULL\n");
+        bprint("evmm command line is NULL\n");
     else
-        tprintk("evmm command line: %s\n", evmm_command_line);
-    tprintk("linux_start, linux_end: 0x%08x 0x%08x\n", linux_start, linux_end);
+        bprint("evmm command line: %s\n", evmm_command_line);
+    bprint("linux_start, linux_end: 0x%08x 0x%08x\n", linux_start, linux_end);
     if(linux_command_line==0)
-        tprintk("linux command line is NULL\n");
+        bprint("linux command line is NULL\n");
     else
-        tprintk("linux command line: %s\n", linux_command_line);
-    tprintk("initram_start, initram_end: 0x%08x 0x%08x\n", initram_start, initram_end);
+        bprint("linux command line: %s\n", linux_command_line);
+    bprint("initram_start, initram_end: 0x%08x 0x%08x\n", initram_start, initram_end);
 #endif // JLMDEBUG
 
     // get CPU info
@@ -2036,7 +2040,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         evmm_num_of_aps = 0; 
 
 #ifdef JLMDEBUG
-    tprintk("\t%d APs, %d, reset to 0\n", evmm_num_of_aps, info);
+    bprint("\t%d APs, %d, reset to 0\n", evmm_num_of_aps, info);
 #endif
     evmm_num_of_aps = 0;  // BSP only for now
 
@@ -2050,7 +2054,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     evmm_start_address= EVMM_DEFAULT_START_ADDR;
     elf64_phdr* prog_header=  get_program_load_header(evmm_start);
     if(prog_header==NULL) {
-        tprintk("Cant find load program header\n");
+        bprint("Cant find load program header\n");
         LOOP_FOREVER
     }
 
@@ -2061,7 +2065,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     evmm_load_segment_size= (uint32_t) prog_header->p_memsz;
 
     if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
-        tprintk("evmm load address is not default default: 0x%08x, actual: 0x%08x\n",
+        bprint("evmm load address is not default default: 0x%08x, actual: 0x%08x\n",
                 evmm_start_address, evmm_start_load_segment);
         LOOP_FOREVER
     }
@@ -2074,19 +2078,18 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
     if(vmm_main_entry_point==0) {
-        tprintk("OriginalEntryAddress: bad elf format\n");
+        bprint("OriginalEntryAddress: bad elf format\n");
         LOOP_FOREVER
     }
 
 #ifdef JLMDEBUG
-    tprintk("\tevmm_heap_base evmm_heap_size: 0x%08x 0x%08x\n", 
+    bprint("\tevmm_heap_base evmm_heap_size: 0x%08x 0x%08x\n", 
             evmm_heap_base, evmm_heap_size);
-    tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
+    bprint("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    tprintk("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n\n",
+    bprint("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n\n",
             (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
 #endif
-    screen_test();
     LOOP_FOREVER
 
     // Set up evmm IDT Note(JLM): Is this necessary?
@@ -2094,7 +2097,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
     // setup gdt for 64-bit on BSP
     if(setup_64bit_paging()!=0) {
-      tprintk("Unable to setup 64 bit paging\n");
+      bprint("Unable to setup 64 bit paging\n");
       LOOP_FOREVER
     }
 
@@ -2102,38 +2105,38 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     setup_evmm_stack();
 
 #ifdef JLMDEBUG
-    tprintk("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
-    tprintk("evmm relocated to %08x, entry point: %08x\n",
+    bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
+    bprint("evmm relocated to %08x, entry point: %08x\n",
             evmm_start_address, vmm_main_entry_point);
 #endif
 
     multiboot_info_t* linux_mbi= NULL;
 
     if(prepare_linux_image_for_evmm(mbi)) {
-        tprintk("Cant prepare linux image\n");
+        bprint("Cant prepare linux image\n");
         LOOP_FOREVER
     }
 
     // reserve bootstrap
     if(!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
-      tprintk("Unable to reserve bootstrap region in e820 table\n");
+      bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
     // reserve linux arguments and stack
     if(!e820_reserve_region(evmm_e820, linux_boot_params, evmm_heap_base-linux_boot_params)) {
-      tprintk("Unable to reserve bootstrap region in e820 table\n");
+      bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
 #if 0
     // I don't think this is necessary
     if (!e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
-        tprintk("Unable to reserve evmm region in e820 table\n");
+        bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
 #endif
 
     if(prepare_evmm_startup_arguments(mbi)!=0) {
-        tprintk("Error setting up evmm startup arguments\n");
+        bprint("Error setting up evmm startup arguments\n");
         LOOP_FOREVER
     }
 

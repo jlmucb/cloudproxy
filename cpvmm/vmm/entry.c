@@ -1833,11 +1833,8 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 
 
-    // This is an array of VMM_GUEST_CPU_STARTUP_STATE and must be filled
-    // fill for protected mode.  rip should be 0x100000, CS, DS, 32 bit stack.
-    // The GP registers should be correctly filled with 
-    // input args for code32_start. 
-    linux_setup();          // setups gdt table, GPRs and CS/DS for guest(linux)
+    // setup the registers (control and GP) that will be put in VMCS to init guest
+    linux_setup(); 
     evmm_g0.cpu_states_array = (uint32_t)&linux_state;
 
     //     This pointer makes sense only if the devices_count > 0

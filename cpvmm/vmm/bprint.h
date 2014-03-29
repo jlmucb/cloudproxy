@@ -90,8 +90,9 @@ void vga_puts(const char *s, unsigned int cnt);
 
 #define vga_write(s,n)        vga_puts(s, n)
 
-extern void bprintk_init(void);
-extern void bprintk(const char *fmt, ...)
+extern void bprint_init(void);
+extern void bprint(const char *fmt, ...)
                          __attribute__ ((format (printf, 1, 2)));
+extern void bootstrap_partial_reset(void);
 
 #endif

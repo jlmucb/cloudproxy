@@ -180,15 +180,12 @@ VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
 
 
 // Hack!  Temporary  hacked info
-// john's: tboot_printk tprintk = (tboot_printk)(0x80d660);
-// tboot_printk tprintk = (tboot_printk)(0x80d660);
-// john's tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
-// john's boot_params boot_params_t *my_boot_params= 0x94200
 // boot_params_t *my_boot_params= (boot_params_t *)0x94200;
-// john's g_mbi,  multiboot_info_t * my_mbi= 0x10000;
 // multiboot_info_t * my_mbi= (multiboot_info_t *)0x10000;
+#if 1
 typedef void (*tboot_printk)(const char *fmt, ...);
 tboot_printk tprintk = (tboot_printk)(0x80d660);
+#endif
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
 
@@ -348,6 +345,7 @@ void *vmm_memcpy(void *dest, const void* src, uint32_t count)
 uint32_t vmm_strlen(const char* p)
 {
     uint32_t count= 0;
+
     if(p==NULL)
         return 0;
     while(*(p++)!=0) {
@@ -1279,15 +1277,14 @@ const uint8_t _ctype[257] = {
     _PU,            /* 0x7D   125. '}' */
     _PU,            /* 0x7E   126. '~' */
     _CN,            /* 0x7F   127.     */
-
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0x80 to 0x8F    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0x90 to 0x9F    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0xA0 to 0xAF    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0xB0 to 0xBF    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0xC0 to 0xCF    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0xD0 to 0xDF    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  /* 0xE0 to 0xEF    */
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 /* 0xF0 to 0x100   */
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0x80 to 0x8F
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0x90 to 0x9F
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0xA0 to 0xAF
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0xB0 to 0xBF
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0xC0 to 0xCF
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0xD0 to 0xDF
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 0xE0 to 0xEF
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 // 0xF0 to 0x100
 };
 
 bool isdigit(int c)
@@ -1905,14 +1902,14 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
 
 void screen_test()
 {
-    extern void bootstrap_partial_reset();
+    // reset printing
+    bootstrap_partial_reset();
+#if 0
     extern void vga_puts(const char *s, unsigned int cnt);
     extern void __putc(uint8_t x, uint8_t y, int c);
     extern void vga_putc(int c);
-    const char * t1= "bprint print\n";
+    const char * t1= "bprint print";
     uint16_t star= (uint16_t)'*'; 
-    bootstrap_partial_reset();
-    /*
     vga_puts(t1, vmm_strlen(t1));
     vga_puts(t1, vmm_strlen(t1));
     vga_puts(t1, vmm_strlen(t1));
@@ -1924,7 +1921,6 @@ void screen_test()
     vga_puts(t1, vmm_strlen(t1));
     vga_puts(t1, vmm_strlen(t1));
     vga_puts(t1, vmm_strlen(t1));
-    */
     int i, j;
     for(i=0;i<10;i++) {
        for(j=0;j<40;j++) {
@@ -1935,9 +1931,17 @@ void screen_test()
         __putc(j,i,(int)' ');
     }
     for(j=0;j<vmm_strlen(t1);j++) {
-        __putc(j,i,(int)t1[i]);
+        __putc(j,i,(int)t1[j]);
     }
-/*
+#endif
+    int k= 25;
+    char* s= "\tString test\n";
+    bprint("\nbprint test\n");
+    bprint("\nAnother bprint test\n");
+    bprint("k=25 (10), decimal: %d, hex: 0x%08x\n", k,k);
+    bprint("String test: %s\n", s);
+#if 0
+    // this is the basic write sequence for vga
     asm volatile(
         "\tmovl   $0xb8000, %%ecx\n"
         "\tmovw   $0x0731, %%bx\n"
@@ -1949,9 +1953,7 @@ void screen_test()
     :
     : [star] "m" (star)
     : "%ebx", "%ecx");
-*/
- 
-    //tprintk("bprint doesn't work\n");
+#endif
 }
 
 
@@ -1960,6 +1962,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 {
     int i;
 
+    // reinitialize screen printing
+    bootstrap_partial_reset();
 #ifdef JLMDEBUG
     tprintk("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
             mbi, initial_entry, magic);

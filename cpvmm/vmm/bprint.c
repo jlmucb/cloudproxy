@@ -154,7 +154,7 @@ void delay(int millisecs)
 void bootstrap_partial_reset(void)
 {
     cursor_x = 0;
-    cursor_y = MAX_LINES-2;
+    cursor_y = MAX_LINES-1;
     num_lines = MAX_LINES;
 }
 

@@ -151,6 +151,14 @@ void delay(int millisecs)
 }
 
 
+void partial_reset_screen(void)
+{
+    cursor_x = 0;
+    cursor_y = 0;
+    num_lines = 0;
+}
+
+
 static inline void reset_screen(void)
 {
     vmm_memset(screen, 0, SCREEN_BUFFER);
@@ -177,12 +185,12 @@ static void scroll_screen(void)
         writew(VGA_ADDR(x, MAX_LINES-1), 0x720);
 }
 
-static void __putc(uint8_t x, uint8_t y, int c)
+void __putc(uint8_t x, uint8_t y, int c)
 {
     screen[(y * MAX_COLS) + x] = (COLOR << 8) | c;
 }
 
-static void vga_putc(int c)
+void vga_putc(int c)
 {
     bool new_row = false;
 
@@ -216,10 +224,9 @@ static void vga_putc(int c)
             scroll_screen();
             cursor_y--;
         }
-
-        /* (optionally) pause after every screenful */
-        if ( (num_lines % (MAX_LINES - 1)) == 0 && g_vga_delay > 0 )
-            delay(g_vga_delay * 1000);
+        // (optionally) pause after every screenful 
+        // if ( (num_lines % (MAX_LINES - 1)) == 0 && g_vga_delay > 0 )
+        //     delay(g_vga_delay * 1000);
     }
 }
 

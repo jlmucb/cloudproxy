@@ -1902,6 +1902,40 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
 }
 
 
+void screen_test()
+{
+    extern void vga_puts(const char *s, unsigned int cnt);
+    extern void __putc(uint8_t x, uint8_t y, int c);
+    extern void vga_putc(int c);
+    const char * t1= "bprint print";
+    uint16_t star= (uint16_t)'*';
+    // __putc(0,0,(int)'*');
+    // __putc(1,0,(int)'*');
+    // __putc(2,0,(int)'*');
+    //vga_puts(t1, vmm_strlen(t1));
+    //uint16_t * const tscreen = (uint16_t * const)0xb800;
+    //tscreen[0]= (int) '*';
+    //tscreen[1]= (int) '*';
+    //tscreen[2]= (int) '*';
+    //tscreen[320]= (int) '*';
+    //tscreen[321]= (int) '*';
+    //tscreen[322]= (int) '*';
+    asm volatile(
+        "\tmovl   $0xb8000, %%ecx\n"
+        "\tmovw   $0x0731, %%bx\n"
+        "\tmovw   %%bx, (%%ecx)\n"
+        "\taddl   $2, %%ecx\n"
+        "\tmovw   %%bx, (%%ecx)\n"
+        "\taddl   $2, %%ecx\n"
+        "\tmovw   %%bx, (%%ecx)\n"
+    :
+    : [star] "m" (star)
+    : "%ebx", "%ecx");
+ 
+    //tprintk("bprint doesn't work\n");
+}
+
+
 // tboot jumps in here
 int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 {
@@ -2026,14 +2060,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             evmm_heap_base, evmm_heap_size);
     tprintk("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    tprintk("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n",
+    tprintk("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n\n",
             (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
 #endif
-#if 0
-    bprint_init();
-#endif
-    bprint("bprint works!\n");
-    tprintk("bprint doesn't work\n");
+    screen_test();
     LOOP_FOREVER
 
     // Set up evmm IDT Note(JLM): Is this necessary?

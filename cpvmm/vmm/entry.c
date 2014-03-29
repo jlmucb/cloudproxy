@@ -1904,22 +1904,33 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
 
 void screen_test()
 {
+    extern void partial_reset_screen();
     extern void vga_puts(const char *s, unsigned int cnt);
     extern void __putc(uint8_t x, uint8_t y, int c);
     extern void vga_putc(int c);
-    const char * t1= "bprint print";
-    uint16_t star= (uint16_t)'*';
-    // __putc(0,0,(int)'*');
-    // __putc(1,0,(int)'*');
-    // __putc(2,0,(int)'*');
-    //vga_puts(t1, vmm_strlen(t1));
-    //uint16_t * const tscreen = (uint16_t * const)0xb800;
-    //tscreen[0]= (int) '*';
-    //tscreen[1]= (int) '*';
-    //tscreen[2]= (int) '*';
-    //tscreen[320]= (int) '*';
-    //tscreen[321]= (int) '*';
-    //tscreen[322]= (int) '*';
+    const char * t1= "bprint print\n";
+    uint16_t star= (uint16_t)'*'; 
+    /*
+    partial_reset_screen();
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    vga_puts(t1, vmm_strlen(t1));
+    */
+    int i, j;
+    for(i=0;i<20;i++) {
+       for(j=0;j<40;j++) {
+            __putc(j,i,star);
+        }
+    }
+/*
     asm volatile(
         "\tmovl   $0xb8000, %%ecx\n"
         "\tmovw   $0x0731, %%bx\n"
@@ -1931,6 +1942,7 @@ void screen_test()
     :
     : [star] "m" (star)
     : "%ebx", "%ecx");
+*/
  
     //tprintk("bprint doesn't work\n");
 }

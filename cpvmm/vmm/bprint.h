@@ -1,5 +1,5 @@
 /*
- * bprintk.h: printk to vga for bootstrap
+ * bprintk.h: print to vga for bootstrap
  *
  * Copyright (c) 2006-2010, Intel Corporation
  *

@@ -350,8 +350,9 @@ uint32_t vmm_strlen(const char* p)
     uint32_t count= 0;
     if(p==NULL)
         return 0;
-    while(*p!=0)
+    while(*(p++)!=0) {
         count++;
+    }
     return count;
 }
 
@@ -1925,10 +1926,16 @@ void screen_test()
     vga_puts(t1, vmm_strlen(t1));
     */
     int i, j;
-    for(i=0;i<20;i++) {
+    for(i=0;i<10;i++) {
        for(j=0;j<40;j++) {
             __putc(j,i,star);
         }
+    }
+    for(j=0;j<80;j++) {
+        __putc(j,i,(int)' ');
+    }
+    for(j=0;j<vmm_strlen(t1);j++) {
+        __putc(j,i,(int)t1[i]);
     }
 /*
     asm volatile(

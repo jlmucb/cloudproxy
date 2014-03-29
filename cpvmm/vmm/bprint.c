@@ -154,7 +154,7 @@ void delay(int millisecs)
 void bootstrap_partial_reset(void)
 {
     cursor_x = 0;
-    cursor_y = MAX_LINES-1;
+    cursor_y = MAX_LINES-2;
     num_lines = MAX_LINES;
 }
 
@@ -185,10 +185,12 @@ static void scroll_screen(void)
         writew(VGA_ADDR(x, MAX_LINES-1), 0x720);
 }
 
+
 void __putc(uint8_t x, uint8_t y, int c)
 {
     screen[(y * MAX_COLS) + x] = (COLOR << 8) | c;
 }
+
 
 void vga_putc(int c)
 {

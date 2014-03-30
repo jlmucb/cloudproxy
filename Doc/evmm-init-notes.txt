@@ -483,6 +483,109 @@ have.
 Linux never accesses BIOS.  evmm can host Windows "out of the box."
 
 
+Bootstrap control flow
+----------------------
+
+Tboot jumps to start32_evmm (which is Bootstrap's "main" program in 
+bootstrap_entry.c) in 32 bit protected mode.
+
+start32_evmm
+     1. Initializes VGA printing by calling bootstrap_partial_reset().
+        Print routines are in bootstrap_print and the init routine
+        ensures continuous scrolling of existin TBOOT VGA output.
+     2. Initializes bootstrap's start (load) address in bootstrap_start
+        and its end address in bootstrap_end.  As noted above,
+        bootstrap is loaded at 0x60000000.
+     3. Checks the mbi passed by tboot.  The mbi should have 3
+        module entries, of not, bootstrap halts. The 3 modules, 
+        are: (1) the 64-bit evmm image, (2) the linux kernel image and,
+        (3) theinitramfs image.  These image's have been loaded into 
+        memory and start32_evmm collects their image start and end addresses
+        as well as command line arguments from the mbi module entries.
+        These are:
+            For evmm: evmm_start, evmm_end and evmm_command_line.
+            For evmm: evmm_start, evmm_end and evmm_command_line.
+            For initram: initram_start and initram_end (initram has no command line).
+     4. Determines the number of real processors and stores the number of
+        Application Processors (total number of processors minus 1) in 
+        evmm_num_of_aps.
+     5. Sets the low_memory_page (at low_mem = 0x8000).  QUESTION: What for?
+     6. Set ups evmm's initial  heap.  The heap is located at evmm_heap_base.
+        It has size evmm_heap_size.  The heap is located where the evmm 
+        executable will be relocated minus its size.  The load address of 
+        the relocated evmm is at evmm_start_address and is typically 0x70000000.
+     7. Relocates evmm to evmm_start_address and gets the entry point for
+        evmm which is stored in vmm_main_entry_point.
+     8. Sets up an IDT by calling SetupIDT.  QUESTION: Why?  Hasn't tboot done this?
+     9. Sets up 64 bit mode by calling setup_64bit_paging().  This procedure
+        is described below.
+    10. Sets up an initial stack of 64KB (located in evmm's heap) by calling
+        setup_evmm_stack().
+    11. Relocates the linux image and initram as if it were the designated
+        system software by calling prepare_linux_image_for_evmm(mbi).  This 
+        procedure is described below.
+    12. Copies the e820 table from mbi and reserves the memory bootstrap itself,
+        linux parameters, the initial linux stack and the initial evmm heap
+        are located at.
+    13. Prepares the environment for evmm's primary guest and builds
+        the data structures passed to vmm_main to describe the primary guest 
+        (the startup structure and application structure) by calling 
+        prepare_primary_guest_environment(mbi).
+        prepare_primary_guest_environment must build the environment (control
+        registers, stack, initial heap and argument list for the primary
+        guest whose image was prepared by prepare_linux_image_for_evmm.
+    14. Prepares the 64 bit stack for evmm entry, puts the arguments to evmm
+        in the expected registers, sets cr0 and cr3 to enable paging for 64 bit mode
+        and does a retf into vmm_main_entry_point.
+
+
+
+setup_64bit_paging
+    x32_gdt64_setup();
+    x32_gdt64_get_gdtr(&init64.i64_gdtr);
+    ia32_write_gdtr(&init64.i64_gdtr);
+
+    // setup paging, control registers and flags on BSP
+    x32_pt64_setup_paging(TOTAL_MEM);
+    init64.i64_cr3 = x32_pt64_get_cr3();
+    ia32_write_cr3(init64.i64_cr3);
+    p_cr4 = ia32_read_cr4();
+    BITMAP_SET(p_cr4, PAE_BIT | PSE_BIT);
+    ia32_write_cr4(p_cr4);
+    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
+    init64.i64_cs = cs_64;
+    init64.i64_efer = 0;
+
+    p_cr3 = init64.i64_cr3;
+
+
+prepare_linux_image_for_evmm(mbi).
+    expand_linux_image(mbi, linux_start, linux_end-linux_start,
+                       initrd_start, initrd_end-initram_start,&linux_entry_address);
+    prepare_primary_guest_args(mbi)!=0) 
+        return 1;
+    linux_start_address= linux_entry_address;
+
+
+expand_linux_image
+
+prepare_primary_guest_environment(mbi)
+    linux_setup
+    sets arguments
+
+prepare_primary_guest_args(multiboot_info_t *mbi)
+    
+    check linux_esp_register==0) {
+    linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
+    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
+    set_e820_copy_location(linux_e820_table, E820MAX);
+    set new_boot_params-
+    copy 820 pages for linux [copy_e820_map(mbi)]
+    get_num_e820_ents();
+    linux_esi_register= linux_boot_params;
+
+
+
 Notes 
 -----
 

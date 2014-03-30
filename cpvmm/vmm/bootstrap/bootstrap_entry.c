@@ -147,6 +147,8 @@ static uint32_t                         p_cr4= 0;
 
 static uint64_t                         evmm_reserved = 0;
 static uint32_t                         local_apic_id = 0;
+
+// location of page in evmm heap that holds 64 bit descriptor table
 static EM64T_CODE_SEGMENT_DESCRIPTOR*   p_gdt_64= NULL;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
@@ -722,7 +724,7 @@ int linux_setup(void)
     linux_state.version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
     linux_state.reserved_1 = 0;
 
-    //Zero out all the registers.  Then set the ones that linux expects.
+    // Zero out all the registers.  Then set the ones that linux expects.
     for (i = 0; i < IA32_REG_GP_COUNT; i++) {
         linux_state.gp.reg[i] = (uint64_t) 0;
     }
@@ -851,7 +853,8 @@ int expand_linux_image( multiboot_info_t* mbi,
         bprint("Error: Linux kernel size is zero.\n");
         return 1;
     }
-    if ( linux_size < sizeof(linux_kernel_header_t) ) {
+    
+if ( linux_size < sizeof(linux_kernel_header_t) ) {
         bprint("Error: Linux kernel size is too small.\n");
         return 1;
     }
@@ -1097,14 +1100,16 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 
 int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 {
-    if ( linux_start== 0)
+    if (linux_start==0 || initrd_start==0)
         return 1;
-
+#if 0
     module_t* m = get_module(mbi, 2);
     uint32_t initrd_image = (uint32_t)m->mod_start;
     uint32_t initrd_size = m->mod_end - m->mod_start;
+#endif
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
-                       initrd_image, initrd_size, &linux_entry_address);
+                       initrd_start, initrd_end-initram_start, 
+                       &linux_entry_address);
     if(prepare_primary_guest_args(mbi)!=0) {
         return 1;
     }
@@ -1127,8 +1132,13 @@ typedef enum _GUEST_FLAGS {
 } GUEST_FLAGS;
 
 
-int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
+int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 {
+    // setup stack ,control and gp registers for VMCS to init guest
+    // Guest wakes up in 32 bit protected mode with arguments in
+    // esi
+    linux_setup(); 
+
     // Guest state initialization for relocated inage
     evmm_g0.size_of_this_struct = sizeof(evmm_g0);
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
@@ -1147,8 +1157,7 @@ int prepare_evmm_startup_arguments(const multiboot_info_t *mbi)
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 
 
-    // setup the registers (control and GP) that will be put in VMCS to init guest
-    linux_setup(); 
+    // linux state was prepared by linux_setup
     evmm_g0.cpu_states_array = (uint32_t)&linux_state;
 
     //     This pointer makes sense only if the devices_count > 0
@@ -1261,8 +1270,9 @@ uint64_t OriginalEntryAddress(uint32_t base)
 //     tboot jumps in here
 int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 {
-    extern void SetupIDT();
-    int i;
+    extern void SetupIDT(); // this may not be needed
+    int         i;
+    module_t*   m;
 
     // reinitialize screen printing
     bootstrap_partial_reset();
@@ -1271,20 +1281,18 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             (uint32_t)mbi, initial_entry, magic);
 #endif
 
-    // We assume the standard grub layout with three modules after bootstrap: 
+    // bootstrap's start (load) address and its end address
+    bootstrap_start= (uint32_t)&_start_bootstrap;
+    bootstrap_end= (uint32_t)&_end_bootstrap;
+
+    // We assume the standard with three modules after bootstrap: 
     //    64-bit evmm, the linux image and initram fs.
     // Everything is decompressed EXCEPT the protected mode portion of linux
     int l= mbi->mmap_length/sizeof(memory_map_t);
-    if (l<3) {
+    if (l!=3) {
         bprint("bootstrap error: wrong number of modules\n");
         LOOP_FOREVER
     }
-
-    // get initial layout information for images
-    module_t* m;
-
-    bootstrap_start= (uint32_t)&_start_bootstrap;
-    bootstrap_end= (uint32_t)&_end_bootstrap;
 
     m= get_module(mbi, 0);
     evmm_start= (uint32_t)m->mod_start;
@@ -1431,7 +1439,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
 #endif
 
-    if(prepare_evmm_startup_arguments(mbi)!=0) {
+    if(prepare_primary_guest_environment(mbi)!=0) {
         bprint("Error setting up evmm startup arguments\n");
         LOOP_FOREVER
     }

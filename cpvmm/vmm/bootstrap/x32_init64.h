@@ -1,25 +1,18 @@
 /*
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
-/*---------------------------------------------------*
-*
-* file      : x32_init64.h
-* purpose   : jump to 64-bit execution mode
-*
-*----------------------------------------------------*/
 
 #ifndef _X32_INIT64_H_
 #define _X32_INIT64_H_
@@ -27,10 +20,10 @@
 #include "ia32_defs.h"
 
 typedef struct _INIT32_STRUCT {
-    UINT32      i32_low_memory_page;// address of page in low memory, used for AP bootstrap
-    UINT16      i32_num_of_aps;     // number of detected APs (Application Processors)
+    UINT32      i32_low_memory_page;   // address of page for AP bootstrap
+    UINT16      i32_num_of_aps;        // number of APs
     UINT16      i32_pad;
-    UINT32      i32_esp[1];          // array of 32-bit SPs (SP - top of the stack)
+    UINT32      i32_esp[1];            // array of 32-bit SPs 
 } INIT32_STRUCT;
 
 typedef struct _INIT64_STRUCT {

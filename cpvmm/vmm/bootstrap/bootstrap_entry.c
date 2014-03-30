@@ -146,12 +146,13 @@ static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
 static uint16_t                         evmm64_cs= 0;
 static uint32_t                         evmm64_cr4= 0;
 static uint16_t                         evmm64_cr3 = 0;
+static EM64T_CR3 			evmm_cr3_for_x64 = {0};
 
 static uint64_t                         evmm_reserved = 0;
 static uint32_t                         local_apic_id = 0;
 
 // location of page in evmm heap that holds 64 bit descriptor table
-static EM64T_CODE_SEGMENT_DESCRIPTOR*   gdt64_descriptor_table= NULL;
+static EM64T_CODE_SEGMENT_DESCRIPTOR*   evmm_descriptor_table= NULL;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
@@ -244,7 +245,7 @@ void setup_evmm_stack()
     // data segment for eVmm stacks
     for (i = 1; i < UVMM_DEFAULT_STACK_SIZE_PAGES+1; i++) {
         gdt64= (EM64T_CODE_SEGMENT_DESCRIPTOR *)
-                  ((uint32_t) gdt64_descriptor_table + (i*PAGE_4KB_SIZE));
+                  ((uint32_t) evmm_descriptor_table + (i*PAGE_4KB_SIZE));
         gdt64->hi.readable = 1;
         gdt64->hi.conforming = 0;
         gdt64->hi.mbo_11 = 0;
@@ -255,8 +256,9 @@ void setup_evmm_stack()
         gdt64->hi.default_size= 0;    // important !!!
         gdt64->hi.granularity= 1;
      }
+    // the stack is one page after the descriptor table
     evmm_initial_stack = 
-        (uint32_t) gdt64_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+        (uint32_t) evmm_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
 }
 
 
@@ -264,39 +266,39 @@ void x32_gdt64_setup(void)
 {
     uint32_t last_index;
     // 1 page for code segment, and the rest for stack
-    gdt64_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
+    evmm_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
                         UVMM_DEFAULT_STACK_SIZE_PAGES);
     // zero gdt
-    vmm_memset(gdt64_descriptor_table, 0, PAGE_4KB_SIZE);
+    vmm_memset(evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
 
     // clone it to the new 64-bit GDT
-     vmm_memcpy(gdt64_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
+    vmm_memcpy(evmm_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
 
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
     last_index = gdtr_32.limit / sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
 
-    if (*(uint64_t *) &gdt64_descriptor_table[last_index] != 0) {
+    if (*(uint64_t *) &evmm_descriptor_table[last_index] != 0) {
         last_index++;
     }
 
     // code segment for eVmm code
-    gdt64_descriptor_table[last_index].hi.accessed = 0;
-    gdt64_descriptor_table[last_index].hi.readable = 1;
-    gdt64_descriptor_table[last_index].hi.conforming = 1;
-    gdt64_descriptor_table[last_index].hi.mbo_11 = 1;
-    gdt64_descriptor_table[last_index].hi.mbo_12 = 1;
-    gdt64_descriptor_table[last_index].hi.dpl = 0;
-    gdt64_descriptor_table[last_index].hi.present = 1;
-    gdt64_descriptor_table[last_index].hi.long_mode = 1;    // important !!!
-    gdt64_descriptor_table[last_index].hi.default_size= 0;  // important !!!
-    gdt64_descriptor_table[last_index].hi.granularity= 1;
+    evmm_descriptor_table[last_index].hi.accessed = 0;
+    evmm_descriptor_table[last_index].hi.readable = 1;
+    evmm_descriptor_table[last_index].hi.conforming = 1;
+    evmm_descriptor_table[last_index].hi.mbo_11 = 1;
+    evmm_descriptor_table[last_index].hi.mbo_12 = 1;
+    evmm_descriptor_table[last_index].hi.dpl = 0;
+    evmm_descriptor_table[last_index].hi.present = 1;
+    evmm_descriptor_table[last_index].hi.long_mode = 1;    // important !!!
+    evmm_descriptor_table[last_index].hi.default_size= 0;  // important !!!
+    evmm_descriptor_table[last_index].hi.granularity= 1;
 
     // prepare GDTR
-    gdtr_64.base  = (uint32_t) gdt64_descriptor_table;
+    gdtr_64.base  = (uint32_t) evmm_descriptor_table;
     // !!! TBD !!! will be extended by TSS
     gdtr_64.limit = gdtr_32.limit + sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) * 2; 
     evmm64_cs = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
@@ -319,9 +321,6 @@ void x32_gdt64_get_gdtr(IA32_GDTR *p_gdtr)
 {
     *p_gdtr = gdtr_64;
 }
-
-
-static EM64T_CR3 cr3_for_x64 = {0};
 
 //  x32_pt64_setup_paging: establish paging tables for x64 -bit mode, 
 //     2MB pages while running in 32-bit mode.
@@ -391,21 +390,21 @@ void x32_pt64_setup_paging(uint64_t memory_size)
         }
     }
 
-    cr3_for_x64.lo.pwt = 0;
-    cr3_for_x64.lo.pcd = 0;
-    cr3_for_x64.lo.base_address_lo = ((uint32_t) pml4_table) >> 12;
+    evmm_cr3_for_x64.lo.pwt = 0;
+    evmm_cr3_for_x64.lo.pcd = 0;
+    evmm_cr3_for_x64.lo.base_address_lo = ((uint32_t) pml4_table) >> 12;
 }
 
 
 void x32_pt64_load_cr3(void)
 {
-    ia32_write_cr3(*((uint32_t*) &(cr3_for_x64.lo)));
+    ia32_write_cr3(*((uint32_t*) &(evmm_cr3_for_x64.lo)));
 }
 
 
 uint32_t x32_pt64_get_cr3(void)
 {
-    return *((uint32_t*) &(cr3_for_x64.lo));
+    return *((uint32_t*) &(evmm_cr3_for_x64.lo));
 }
 
 

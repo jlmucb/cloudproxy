@@ -33,8 +33,8 @@ typedef struct {
 
 // Descriptor for the Global Descriptor Table(GDT) and Interrupt Descriptor Table(IDT)
 typedef struct {
-  uint16_t  Limit;
-  uint32_t  Base;
+    uint16_t  Limit;
+    uint32_t  Base;
 } IA32_DESCRIPTOR;
 
 

@@ -146,10 +146,7 @@ static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
 static uint16_t                         evmm64_cs= 0;
 static uint32_t                         evmm64_cr4= 0;
 static uint16_t                         evmm64_cr3 = 0;
-static EM64T_CR3 			evmm_cr3_for_x64 = {0};
-
-static uint64_t                         evmm_reserved = 0;
-static uint32_t                         local_apic_id = 0;
+static EM64T_CR3                        evmm_cr3_for_x64 = {0};
 
 // location of page in evmm heap that holds 64 bit descriptor table
 static EM64T_CODE_SEGMENT_DESCRIPTOR*   evmm_descriptor_table= NULL;
@@ -161,8 +158,10 @@ static INIT64_STRUCT                    init64;
 static INIT64_STRUCT *                  p_init64_data = &init64;
 static INIT32_STRUCT_SAFE               init32;
 
-int                                     evmm_num_of_aps= 0;
 uint32_t                                low_mem = 0x8000;
+int                                     evmm_num_of_aps= 0;
+static uint64_t                         evmm_reserved = 0;
+static uint32_t                         local_apic_id = 0;
 
 
 // -------------------------------------------------------------------------
@@ -174,8 +173,8 @@ uint32_t                                low_mem = 0x8000;
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
     asm volatile(
-        "\n movl %[p_descriptor], %%edx"
-        "\n\t sgdt (%%edx)"
+        "\tmovl %[p_descriptor], %%edx\n"
+        "\tsgdt (%%edx)\n"
     :[p_descriptor] "=g" (p_descriptor)
     :: "%edx");
 }
@@ -184,8 +183,8 @@ void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 {
     asm volatile(
-        "\n movl %[p_descriptor], %%edx"
-        "\n\t lgdt  (%%edx)"
+        "\tmovl   %[p_descriptor], %%edx\n"
+        "\t lgdt  (%%edx)\n"
     ::[p_descriptor] "g" (p_descriptor) 
     :"%edx");
 }
@@ -194,8 +193,8 @@ void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 void  ia32_write_cr3(uint32_t value)
 {
     asm volatile(
-        "\n movl %[value], %%eax \n\t"
-        "\n\t movl %%eax, %%cr3"
+        "\tmovl     %[value], %%eax\n"
+        "\t movl    %%eax, %%cr3\n"
     ::[value] "m" (value)
     : "%eax", "cc");
 }
@@ -205,10 +204,10 @@ uint32_t  ia32_read_cr4(void)
 {
     uint32_t ret;
     asm volatile(
-        "\n .byte 0x0F"
-        "\n\t .byte 0x20"
-        "\n\t .byte 0xE0"       //mov eax, cr4
-        "\n\t movl %%eax, %[ret]"
+        "\t.byte 0x0f\n"
+        "\t.byte 0x20\n"
+        "\t.byte 0xe0\n" //mov eax, cr4
+        "\t movl %%eax, %[ret]\n"
     :[ret] "=m" (ret) 
     :: "%eax");
     return ret;
@@ -217,10 +216,10 @@ uint32_t  ia32_read_cr4(void)
 void  ia32_write_cr4(uint32_t value)
 {
     asm volatile(
-        "\n movl %[value], %%eax"
-        "\n\t .byte 0x0F"
-        "\n\t .byte 0x22"
-        "\n\t .byte 0xE0"       //mov cr4, eax
+        "\tmovl %[value], %%eax\n"
+        "\t.byte 0x0f\n"
+        "\t.byte 0x22\n"
+        "\t.byte 0xe0\n"       //mov cr4, eax
     ::[value] "m" (value)
     :"%eax");
 }
@@ -228,14 +227,15 @@ void  ia32_write_cr4(uint32_t value)
 void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 {
     asm volatile(
-        "\n movl %[p_value], %%ecx"
-        "\n\t movl (%%ecx), %%eax"
-        "\n\t movl 4(%%ecx), %%edx"
-        "\n\t movl %[msr_id], %%ecx"
-        "\n\t wrmsr"        //write from EDX:EAX into MSR[ECX]
+        "\tmovl %[p_value], %%ecx\n"
+        "\tmovl (%%ecx), %%eax\n"
+        "\tmovl 4(%%ecx), %%edx\n"
+        "\tmovl %[msr_id], %%ecx\n"
+        "\twrmsr"        //write from EDX:EAX into MSR[ECX]
     ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
     :"%eax", "%ecx", "%edx");
 }
+
 
 void setup_evmm_stack()
 {
@@ -423,10 +423,9 @@ int setup_64bit_paging()
     evmm64_cr4 = ia32_read_cr4();
     BITMAP_SET(evmm64_cr4, PAE_BIT | PSE_BIT);
     ia32_write_cr4(evmm64_cr4);
-    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
+    ia32_write_msr(0xc0000080, &p_init64_data->i64_efer);
     init64.i64_cs = evmm64_cs;
     init64.i64_efer = 0;
-
     evmm64_cr3 = init64.i64_cr3;
     return 0;
 }

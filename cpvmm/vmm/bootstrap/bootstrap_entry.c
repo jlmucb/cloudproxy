@@ -142,14 +142,16 @@ typedef struct {
 
 static IA32_GDTR                        gdtr_32;
 static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
-static uint16_t                         cs_64= 0;
-static uint32_t                         p_cr4= 0;
+
+static uint16_t                         evmm64_cs= 0;
+static uint32_t                         evmm64_cr4= 0;
+static uint16_t                         evmm64_cr3 = 0;
 
 static uint64_t                         evmm_reserved = 0;
 static uint32_t                         local_apic_id = 0;
 
 // location of page in evmm heap that holds 64 bit descriptor table
-static EM64T_CODE_SEGMENT_DESCRIPTOR*   p_gdt_64= NULL;
+static EM64T_CODE_SEGMENT_DESCRIPTOR*   gdt64_descriptor_table= NULL;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
@@ -157,7 +159,6 @@ static EM64T_PDE_2MB *                  pd_table= NULL;
 static INIT64_STRUCT                    init64;
 static INIT64_STRUCT *                  p_init64_data = &init64;
 static INIT32_STRUCT_SAFE               init32;
-uint16_t                                p_cr3 = 0;
 
 int                                     evmm_num_of_aps= 0;
 uint32_t                                low_mem = 0x8000;
@@ -237,23 +238,25 @@ void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 
 void setup_evmm_stack()
 {
-    EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_gdt_64 = p_gdt_64;
+    EM64T_CODE_SEGMENT_DESCRIPTOR *gdt64 = NULL;
     int i;
 
     // data segment for eVmm stacks
     for (i = 1; i < UVMM_DEFAULT_STACK_SIZE_PAGES+1; i++) {
-        tmp_gdt_64 = p_gdt_64 + (i * PAGE_4KB_SIZE);
-        (* tmp_gdt_64).hi.readable = 1;
-        (* tmp_gdt_64).hi.conforming = 0;
-        (* tmp_gdt_64).hi.mbo_11 = 0;
-        (* tmp_gdt_64).hi.mbo_12 = 1;
-        (* tmp_gdt_64).hi.dpl = 0;
-        (* tmp_gdt_64).hi.present = 1;
-        (* tmp_gdt_64).hi.long_mode = 1;      // important !!!
-        (* tmp_gdt_64).hi.default_size= 0;    // important !!!
-        (* tmp_gdt_64).hi.granularity= 1;
+        gdt64= (EM64T_CODE_SEGMENT_DESCRIPTOR *)
+                  ((uint32_t) gdt64_descriptor_table + (i*PAGE_4KB_SIZE));
+        gdt64->hi.readable = 1;
+        gdt64->hi.conforming = 0;
+        gdt64->hi.mbo_11 = 0;
+        gdt64->hi.mbo_12 = 1;
+        gdt64->hi.dpl = 0;
+        gdt64->hi.present = 1;
+        gdt64->hi.long_mode = 1;      // important !!!
+        gdt64->hi.default_size= 0;    // important !!!
+        gdt64->hi.granularity= 1;
      }
-    evmm_initial_stack = (uint32_t) p_gdt_64 + (UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+    evmm_initial_stack = 
+        (uint32_t) gdt64_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
 }
 
 
@@ -261,42 +264,42 @@ void x32_gdt64_setup(void)
 {
     uint32_t last_index;
     // 1 page for code segment, and the rest for stack
-    p_gdt_64 = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
+    gdt64_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
                         UVMM_DEFAULT_STACK_SIZE_PAGES);
     // zero gdt
-    vmm_memset(p_gdt_64, 0, PAGE_4KB_SIZE);
+    vmm_memset(gdt64_descriptor_table, 0, PAGE_4KB_SIZE);
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
 
     // clone it to the new 64-bit GDT
-     vmm_memcpy(p_gdt_64, (void *) gdtr_32.base, gdtr_32.limit+1);
+     vmm_memcpy(gdt64_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
 
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
     last_index = gdtr_32.limit / sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
 
-    if (*(uint64_t *) &p_gdt_64[last_index] != 0) {
+    if (*(uint64_t *) &gdt64_descriptor_table[last_index] != 0) {
         last_index++;
     }
 
     // code segment for eVmm code
-    p_gdt_64[last_index].hi.accessed = 0;
-    p_gdt_64[last_index].hi.readable = 1;
-    p_gdt_64[last_index].hi.conforming = 1;
-    p_gdt_64[last_index].hi.mbo_11 = 1;
-    p_gdt_64[last_index].hi.mbo_12 = 1;
-    p_gdt_64[last_index].hi.dpl = 0;
-    p_gdt_64[last_index].hi.present = 1;
-    p_gdt_64[last_index].hi.long_mode = 1;    // important !!!
-    p_gdt_64[last_index].hi.default_size= 0;  // important !!!
-    p_gdt_64[last_index].hi.granularity= 1;
+    gdt64_descriptor_table[last_index].hi.accessed = 0;
+    gdt64_descriptor_table[last_index].hi.readable = 1;
+    gdt64_descriptor_table[last_index].hi.conforming = 1;
+    gdt64_descriptor_table[last_index].hi.mbo_11 = 1;
+    gdt64_descriptor_table[last_index].hi.mbo_12 = 1;
+    gdt64_descriptor_table[last_index].hi.dpl = 0;
+    gdt64_descriptor_table[last_index].hi.present = 1;
+    gdt64_descriptor_table[last_index].hi.long_mode = 1;    // important !!!
+    gdt64_descriptor_table[last_index].hi.default_size= 0;  // important !!!
+    gdt64_descriptor_table[last_index].hi.granularity= 1;
 
     // prepare GDTR
-    gdtr_64.base  = (uint32_t) p_gdt_64;
+    gdtr_64.base  = (uint32_t) gdt64_descriptor_table;
     // !!! TBD !!! will be extended by TSS
     gdtr_64.limit = gdtr_32.limit + sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) * 2; 
-    cs_64 = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
+    evmm64_cs = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
 }
 
 
@@ -308,7 +311,7 @@ void x32_gdt64_load(void)
 
 uint16_t x32_gdt64_get_cs(void)
 {
-    return cs_64;
+    return evmm64_cs;
 }
 
 
@@ -418,14 +421,14 @@ int setup_64bit_paging()
     x32_pt64_setup_paging(TOTAL_MEM);
     init64.i64_cr3 = x32_pt64_get_cr3();
     ia32_write_cr3(init64.i64_cr3);
-    p_cr4 = ia32_read_cr4();
-    BITMAP_SET(p_cr4, PAE_BIT | PSE_BIT);
-    ia32_write_cr4(p_cr4);
+    evmm64_cr4 = ia32_read_cr4();
+    BITMAP_SET(evmm64_cr4, PAE_BIT | PSE_BIT);
+    ia32_write_cr4(evmm64_cr4);
     ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
-    init64.i64_cs = cs_64;
+    init64.i64_cs = evmm64_cs;
     init64.i64_efer = 0;
 
-    p_cr3 = init64.i64_cr3;
+    evmm64_cr3 = init64.i64_cr3;
     return 0;
 }
 
@@ -1100,17 +1103,16 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 
 int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 {
-    if (linux_start==0 || initrd_start==0)
+    if (linux_start==0 || initram_start==0)
         return 1;
-#if 0
-    module_t* m = get_module(mbi, 2);
-    uint32_t initrd_image = (uint32_t)m->mod_start;
-    uint32_t initrd_size = m->mod_end - m->mod_start;
-#endif
-    expand_linux_image(mbi, linux_start, linux_end-linux_start,
-                       initrd_start, initrd_end-initram_start, 
-                       &linux_entry_address);
+    if(expand_linux_image(mbi, linux_start, linux_end-linux_start,
+                       initram_start, initram_end-initram_start, 
+                       &linux_entry_address)!=0) {
+        bprint("cannot expand linux image\n");
+        return 1;
+    }
     if(prepare_primary_guest_args(mbi)!=0) {
+        bprint("cannot prepare_primary_guest_args\n");
         return 1;
     }
 
@@ -1472,13 +1474,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
         "\tcli\n"
         // push segment and offset
-        "\tpush  %[cs_64]\n"
+        "\tpush  %[evmm64_cs]\n"
 
         // for following retf
         "\tpush 1f\n"
         "\tmovl %[vmm_main_entry_point], %%ebx\n"
 
-        "\tmovl %[p_cr3], %%eax\n"
+        "\tmovl %[evmm64_cr3], %%eax\n"
         // initialize CR3 with PML4 base
         // "\tmovl 4(%%esp), %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
@@ -1524,7 +1526,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
        [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
        [vmm_main_entry_point] "m" (vmm_main_entry_point), [evmm_initial_stack] "m" (evmm_initial_stack), 
-       [cs_64] "m" (cs_64), [p_cr3] "m" (p_cr3)
+       [evmm64_cs] "m" (evmm64_cs), [evmm64_cr3] "m" (evmm64_cr3)
     : "%eax", "%ebx", "%ecx", "%edx");
 
     return 0;

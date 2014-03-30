@@ -4,7 +4,6 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,19 +31,6 @@ typedef struct _INIT64_STRUCT {
     UINT64      i64_efer;       // EFER minimal required value
     UINT32      i64_cr3;        // 32-bit value of CR3
 } INIT64_STRUCT;
-
-
-
-
-void x32_init64_setup(void);
-
-void x32_init64_start(
-    INIT64_STRUCT *p_init64_data,
-    UINT32 address_of_64bit_code,
-    void * arg1,
-    void * arg2,
-    void * arg3,
-    void * arg4);
 
 
 #endif // _X32_INIT64_H_

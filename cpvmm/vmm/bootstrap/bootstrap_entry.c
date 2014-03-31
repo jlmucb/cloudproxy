@@ -1090,9 +1090,12 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
         return 1;
     }
 
+    if(linux_original_boot_parameters==0) {
+        bprint("original boot parameters not set\n");
+        return 1;
+    }
     linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
-
     vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, sizeof(boot_params_t));
 
     uint32_t linux_e820_table= linux_boot_params + sizeof(boot_params_t);
@@ -1132,7 +1135,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         bprint("cannot expand linux image\n");
         return 1;
     }
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("linux_real_mode_start, linux_real_mode_size: 0x%08x %d\n",
             linux_real_mode_start, linux_real_mode_size);
     bprint("linux_protected_mode_start, linux_protected_mode_size: 0x%08x %d\n",
@@ -1146,39 +1149,19 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     }
     linux_start_address= linux_protected_mode_start;
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     // print header
-    linux_kernel_header_t * hdr = (linux_kernel_header_t *)(linux_start + KERNEL_HEADER_OFFSET);
-    /*
-    uint8_t  setup_sects;
-    uint16_t root_flags;
-    uint32_t syssize;  
-    uint16_t ram_size;
-    uint16_t vid_mode;
-    uint16_t root_dev;
-    uint16_t boot_flag;
-    uint16_t jump;
-    uint32_t header;
-    uint16_t version;
-    uint32_t realmode_swtch;
-    uint16_t start_sys;
-    uint16_t kernel_version;
-    uint8_t  type_of_loader;
-    uint8_t  loadflags;
-    uint16_t setup_move_size;
-    uint32_t code32_start;
-    uint32_t ramdisk_image;
-    uint32_t ramdisk_size;
-    uint16_t heap_end_ptr;
-    uint32_t cmd_line_ptr;
-    uint32_t initrd_addr_max;
-    uint32_t kernel_alignment;
-    uint8_t  relocatable_kernel;
-    uint32_t cmdline_size;      
-    uint32_t payload_offset;
-    uint32_t payload_length;
-    uint64_t setup_data;
-     */
+    linux_kernel_header_t* hdr = (linux_kernel_header_t*)
+                (linux_start + KERNEL_HEADER_OFFSET);
+    bprint("linux header\n");
+    bprint("setup_sects 0x%02x, code32_start 0x%08x\n", 
+        hdr->setup_sects, hdr->code32_start);
+    bprint("payload offset 0x%08x, payload length 0x%08x\n",
+        hdr->payload_offset, hdr->payload_length);
+    bprint("heap_end_ptr 0x%08x, command line: 0x%08x\n", 
+        hdr->heap_end_ptr, hdr->cmd_line_ptr);
+    bprint("ramdisk image 0x%08x, ramdisk size 0x%08x\n", 
+        hdr->ramdisk_image, hdr->ramdisk_size);
 #endif
     bprint("Linux kernel @%p...\n", (void*)linux_entry_address);
     return 0;
@@ -1488,26 +1471,32 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
+    //FIX(JLM): wrong!
+    extern unsigned int max_e820_entries;
+    extern unsigned int g_nr_map;
+    extern memory_map_t *g_copy_e820_map;
+    //bool copy_e820_map(const multiboot_info_t *mbi)
+
     // reserve bootstrap
-    if(!e820_reserve_region(evmm_e820, bootstrap_start, (bootstrap_end - bootstrap_start))) {
+    if(!reserve_region(g_copy_e820_map, bootstrap_start, (bootstrap_end - bootstrap_start))) {
       bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
     // reserve linux arguments and stack
-    if(!e820_reserve_region(evmm_e820, linux_boot_params, evmm_heap_base-linux_boot_params)) {
+    if(!reserve_region(g_copy_e820_map, linux_boot_params, evmm_heap_base-linux_boot_params)) {
       bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
 #if 0
     // I don't think this is necessary
-    if (!e820_reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
+    if (!reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
 #endif
 
-#ifdef JLMDEBUG1
-    // FIX(JLM): print e820 map
+#ifdef JLMDEBUG
+    print_map(g_copy_e820_map, g_nr_map);
 #endif
 
     if(prepare_primary_guest_environment(mbi)!=0) {

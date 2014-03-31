@@ -41,13 +41,10 @@
 #include "multiboot.h"
 #include "e820.h"
 
+unsigned int max_e820_entries= 0;
+
 
 // copy of bootloader/BIOS e820 table with adjusted entries
-
- 
-static unsigned int max_e820_entries= 0;
-static unsigned int g_nr_map= 0;
-static memory_map_t *g_copy_e820_map = NULL;
 
 
 static inline void split64b(uint64_t val, uint32_t *val_lo, uint32_t *val_hi)
@@ -69,19 +66,6 @@ static inline uint64_t e820_base_64(memory_map_t *entry)
 static inline uint64_t e820_length_64(memory_map_t *entry)
 {
     return combine64b(entry->length_low, entry->length_high);
-}
-
-
-void set_e820_copy_location(uint32_t place, uint32_t num)
-{
-    g_copy_e820_map = (memory_map_t *) place;
-    max_e820_entries= num;
-}
-
-
-uint32_t get_num_e820_ents()
-{
-    return g_nr_map;
 }
 
 
@@ -273,6 +257,13 @@ static bool is_overlapped(uint64_t base, uint64_t end, uint64_t e820_base,
 
     return false;
 }
+
+
+// --------------------------------------------------------------------------------
+
+ 
+unsigned int g_nr_map= 0;
+memory_map_t *g_copy_e820_map = NULL;
 
 
 // copy_e820_map
@@ -630,6 +621,20 @@ bool get_ram_ranges(uint64_t *min_lo_ram, uint64_t *max_lo_ram,
 
     return true;
 }
+
+
+void set_e820_copy_location(uint32_t place, uint32_t num)
+{
+    g_copy_e820_map = (memory_map_t *) place;
+    max_e820_entries= num;
+}
+
+
+uint32_t get_num_e820_ents()
+{
+    return g_nr_map;
+}
+
 
 /* find highest (< <limit>) RAM region of at least <size> bytes */
 void get_highest_sized_ram(uint64_t size, uint64_t limit,

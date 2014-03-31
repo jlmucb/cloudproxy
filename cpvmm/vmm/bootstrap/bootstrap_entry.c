@@ -1313,8 +1313,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //    64-bit evmm, the linux image and initram fs.
     // Everything is decompressed EXCEPT the protected mode portion of linux
     int l= mbi->mmap_length/sizeof(memory_map_t);
-    if (l!=3) {
-        bprint("bootstrap error: wrong number of modules\n");
+    bprint("%d modules loaded\n", l);
+    if (l<3) {
+        bprint("bootstrap error: wrong number of modules %d\n", l);
         LOOP_FOREVER
     }
 

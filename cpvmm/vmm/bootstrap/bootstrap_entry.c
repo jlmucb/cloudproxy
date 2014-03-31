@@ -410,7 +410,6 @@ uint32_t x32_pt64_get_cr3(void)
 
 int setup_64bit_paging()
 {
-
     // setup gdt for 64-bit on BSP
     x32_gdt64_setup();
     x32_gdt64_get_gdtr(&init64.i64_gdtr);
@@ -1504,21 +1503,18 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tretf\n"
 
 "1:\n"
-        // in 64bit this is actually pop rcx
-        "\tpop %%ecx\n"
-        // in 64bit this is actually pop rdx
+        // in 64 bit this is actually pop rdi (local apic)
+        "\tpop %%edi\n"
+        // in 64 bit this is actually pop rsi (startup struct)
+        "\tpop %%esi\n"
+        // in 64 bit this is actually pop rdx (application struct)
         "\tpop %%edx\n"
-        "\t.byte 0x41\n"
-        // pop r8
-        "\t.byte 0x58\n"
-        "\t.byte 0x41\n"
-        // pop r9
-        "\t.byte 0x59\n"
+        // in 64 bit this is actually pop rcx (reserved)
+        "\tpop %%edx\n"
         // in 64bit this is actually sub  0x18, %%rsp
         "\t.byte 0x48\n"
         "\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
-        // "\t call %%ebx\n"
         "\tjmp (%[vmm_main_entry_point])\n"
         "\tud2\n"
     :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 

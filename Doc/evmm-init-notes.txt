@@ -539,24 +539,24 @@ start32_evmm
         and does a retf into vmm_main_entry_point.
 
 
-
 setup_64bit_paging
-    x32_gdt64_setup();
-    x32_gdt64_get_gdtr(&init64.i64_gdtr);
-    ia32_write_gdtr(&init64.i64_gdtr);
+    mallocs page (in evmm_heap) for the segment descriptors (evmm_descriptor_table)
+          and zeros page (mallocs and additional page for BSP stack)
+    reads the existing (32 bit) gdtr
+    copies the exiting gdtr table starting at .base into evmm_descriptor_table
+    sets up the 64 bit code segment at the end of the 32 bit descriptor table
+    sets gdtr_64.base to evmm_descriptor_table
+    resets the gdtr table extent to reflect new entry
+    writes the new table descriptor extent into evmm64_cs
 
-    // setup paging, control registers and flags on BSP
-    x32_pt64_setup_paging(TOTAL_MEM);
-    init64.i64_cr3 = x32_pt64_get_cr3();
-    ia32_write_cr3(init64.i64_cr3);
-    p_cr4 = ia32_read_cr4();
-    BITMAP_SET(p_cr4, PAE_BIT | PSE_BIT);
-    ia32_write_cr4(p_cr4);
-    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
-    init64.i64_cs = cs_64;
-    init64.i64_efer = 0;
-
-    p_cr3 = init64.i64_cr3;
+    copies the 32 bit gdtr to init64.i64_gdtr
+    sets up an identity map from 0 to TOTAL_MEM for 64 bit paging.
+    copies the 32 bit cr3 to init64.i64_cr3 ans writes it again
+    reads cr4 and resets it with PAE and PSE bits enabled
+    writes p_init64_data->i64_efer into msr 0xC0000080
+    writes evmm64_cs (end of code segment descriptor) into init64.i64_cs
+    resets init64.i64_efer to 0
+    saves init64.i64_cr3 into evmm64_cr3
 
 
 prepare_linux_image_for_evmm(mbi).

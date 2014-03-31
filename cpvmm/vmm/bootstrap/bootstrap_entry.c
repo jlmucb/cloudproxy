@@ -88,13 +88,18 @@ uint32_t evmm_initial_stack= 0;         // initial evmm stack
 char*    evmm_command_line= NULL;       // evmm command line
 
 //      linux guest
-uint32_t linux_start_address= 0;   // this is the address of the linux protected mode image
+uint32_t linux_real_mode_start= 0;      // address of linux real mode
+uint32_t linux_real_mode_size= 0;       // address of linux real mode size
+uint32_t linux_protected_mode_start= 0; // address of linux real mode
+uint32_t linux_protected_mode_size= 0;  // address of linux real mode
+uint32_t linux_start_address= 0;        // this is the address of the linux protected mode image
 uint32_t initram_start_address= 0; // this is the address of the initram for linux
 uint32_t linux_entry_address= 0;   // this is the address of the eip in the guest
 uint32_t linux_esi_register= 0;    // this is the value of the esi register on guest entry
 uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to the guest linux
 uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
 uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
+char*    linux_original_command_line= NULL;
 char*    linux_command_line= NULL;
 
 // boot parameters for linux guest
@@ -134,7 +139,7 @@ void *evmm_page_alloc(uint32_t pages)
 //  Machine state and mode transition data structures
 
 
-#define TOTAL_MEM 0x100000000 
+#define TOTAL_MEM 0x100000000ULL
 typedef struct {
     INIT32_STRUCT s;
     uint32_t data[32];
@@ -908,6 +913,7 @@ if ( linux_size < sizeof(linux_kernel_header_t) ) {
         return 1;
     }
     // set vid_mode
+    linux_original_command_line= (char *)mbi->cmdline;
     linux_parse_cmdline((char *)mbi->cmdline);
     if ( get_linux_vga(&vid_mode) )
         hdr->vid_mode = vid_mode;
@@ -932,7 +938,7 @@ if ( linux_size < sizeof(linux_kernel_header_t) ) {
     // The initrd should typically be located as high in memory as
     //   possible, as it may otherwise get overwritten by the early
     //   kernel initialization sequence. 
-    uint64_t mem_limit = 0x100000000ULL;
+    uint64_t mem_limit = TOTAL_MEM;
 
     uint64_t max_ram_base, max_ram_size;
     get_highest_sized_ram(initrd_size, mem_limit,
@@ -1085,6 +1091,11 @@ if ( linux_size < sizeof(linux_kernel_header_t) ) {
     screen->orig_y = 24;               /* start display text in the last line
                                           of screen */
     linux_original_boot_parameters= (uint32_t) boot_params;
+    linux_real_mode_start= real_mode_base;
+    linux_real_mode_size= real_mode_size;
+    linux_protected_mode_start= protected_mode_base;
+    linux_protected_mode_size= protected_mode_size;
+    initram_start_address= initrd_base;
     *entry_point = hdr->code32_start;
     return 0;
 }
@@ -1139,8 +1150,9 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         return 1;
     }
 
-    // CHECK(JLM)
-    linux_start_address= linux_entry_address;
+    linux_start_address= linux_protected_mode_start;
+    // FIX: print all the nre addresses and sizes and the linux
+    // kernel header
     bprint("Linux kernel @%p...\n", (void*)linux_entry_address);
     return 0;
 }

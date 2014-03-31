@@ -273,9 +273,11 @@ bool copy_e820_map(const multiboot_info_t *mbi)
     g_nr_map = 0;
 
     if ( mbi->flags & MBI_MEMMAP ) {
+#ifdef JLMDEBUG1
         bprint("original e820 map:\n");
         print_map((memory_map_t *)mbi->mmap_addr,
                   mbi->mmap_length/sizeof(memory_map_t));
+#endif
 
         uint32_t entry_offset = 0;
 

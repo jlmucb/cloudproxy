@@ -1461,6 +1461,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
+#ifdef JLMDEBUG
+    bprint("%d e820 entries after copy, original had %d\n", 
+            g_nr_map, mbi->mmap_length/sizeof(memory_map_t));
+#endif
+
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
       bprint("Unable to reserve bootstrap region in e820 table\n");
@@ -1480,6 +1485,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
 #ifdef JLMDEBUG
+    bprint("%d e820 entries after new reservations\n", g_nr_map);
+#endif
+
+#ifdef JLMDEBUG1
     print_e820_map();
 #endif
     LOOP_FOREVER

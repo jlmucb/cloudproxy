@@ -42,6 +42,8 @@
 #include "e820.h"
 
 unsigned int max_e820_entries= 0;
+unsigned int g_nr_map= 0;
+memory_map_t *g_copy_e820_map = NULL;
 
 
 // copy of bootloader/BIOS e820 table with adjusted entries
@@ -261,9 +263,6 @@ static bool is_overlapped(uint64_t base, uint64_t end, uint64_t e820_base,
 
 // --------------------------------------------------------------------------------
 
- 
-unsigned int g_nr_map= 0;
-memory_map_t *g_copy_e820_map = NULL;
 
 
 // copy_e820_map
@@ -620,13 +619,6 @@ bool get_ram_ranges(uint64_t *min_lo_ram, uint64_t *max_lo_ram,
         *min_hi_ram = *max_hi_ram = 0;
 
     return true;
-}
-
-
-void set_e820_copy_location(uint32_t place, uint32_t num)
-{
-    g_copy_e820_map = (memory_map_t *) place;
-    max_e820_entries= num;
 }
 
 

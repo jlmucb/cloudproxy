@@ -87,7 +87,12 @@ uint32_t evmm_heap_size= 0;             // size of initial evmm heap
 uint32_t evmm_initial_stack= 0;         // initial evmm stack
 char*    evmm_command_line= NULL;       // evmm command line
 
-multiboot_info_t  linux_mbi;
+multiboot_info_t  linux_mbi;            // mbi for linux
+
+extern unsigned int max_e820_entries;   // copied e820 globals
+extern unsigned int g_nr_map;           // copied e820 globals
+extern memory_map_t *g_copy_e820_map;   // copied e820 globals
+memory_map_t bootstrap_e820[E820MAX];   // our e820 map
 
 //      linux guest
 uint32_t linux_real_mode_start= 0;      // address of linux real mode
@@ -760,7 +765,10 @@ int linux_setup(void)
     }
     linux_state.control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
     linux_state.control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + sizeof(gdt_table) -1;
-    //FIX(RNB): what about cr0, cr3, etc?
+    linux_state.control.cr[IA32_CTRL_CR0]= 0x33;
+    //NOTE:Paging is disabled, so cr3 is irrelevant
+    linux_state.control.cr[IA32_CTRL_CR3] = 0x0; 
+    linux_state.control.cr[IA32_CTRL_CR4]= 0x4240;
 
     for (i = 0; i < IA32_SEG_COUNT; i++) {
         linux_state.seg.segment[i].base = 0;
@@ -1086,30 +1094,27 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 {
     // put arguments one page prior to guest esp (which is normally one page before evmm heap)
     if(linux_esp_register==0) {
-        bprint("cant set linux esp\n");
+        bprint("invalid linux esp\n");
         return 1;
     }
-
     if(linux_original_boot_parameters==0) {
         bprint("original boot parameters not set\n");
         return 1;
     }
     linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
-    vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, sizeof(boot_params_t));
-
-    uint32_t linux_e820_table= linux_boot_params + sizeof(boot_params_t);
-    set_e820_copy_location(linux_e820_table, E820MAX);
+    vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, 
+                sizeof(boot_params_t));
 
     // set address of copied tboot shared page 
-    vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, sizeof(shared_page));
+    vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, 
+                sizeof(shared_page));
 
-    // copy e820 entries for linux
-    if(copy_e820_map(mbi)==false) {
-        bprint("cant copy e820 table\n");
-        return 1;
-    }
-    new_boot_params->e820_entries= get_num_e820_ents();
+    new_boot_params->e820_entries= g_nr_map;
+    vmm_memcpy((void*)new_boot_params->e820_map, (void*)g_copy_e820_map, 
+                g_nr_map*sizeof(memory_map_t));
+    vmm_memset((void*)&new_boot_params->e820_map[g_nr_map], 0,
+                E820MAX-g_nr_map);
 
     // set esi register
     linux_esi_register= linux_boot_params;
@@ -1446,6 +1451,37 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n\n",
             (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
 #endif
+
+    // setup our e820 table (20 byte format)
+    max_e820_entries= E820MAX;   // copied e820 globals
+    g_nr_map= 0;
+    g_copy_e820_map= bootstrap_e820;
+    if(copy_e820_map(mbi)!=true) {
+        bprint("cant copy e820 map\n");
+        LOOP_FOREVER
+    }
+
+    // reserve bootstrap
+    if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
+      bprint("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    } 
+    // reserve linux arguments and stack
+    if(!e820_reserve_ram(linux_boot_params, evmm_heap_base-linux_boot_params)) {
+      bprint("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    } 
+#if 0
+    // I don't think this is necessary
+    if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
+        bprint("Unable to reserve evmm region in e820 table\n");
+        LOOP_FOREVER
+    }
+#endif
+
+#ifdef JLMDEBUG
+    print_e820_map();
+#endif
     LOOP_FOREVER
 
     // Set up evmm IDT.  CHECK(JLM): Is this necessary?
@@ -1470,34 +1506,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         bprint("Cant prepare linux image\n");
         LOOP_FOREVER
     }
-
-    //FIX(JLM): wrong!
-    extern unsigned int max_e820_entries;
-    extern unsigned int g_nr_map;
-    extern memory_map_t *g_copy_e820_map;
-    //bool copy_e820_map(const multiboot_info_t *mbi)
-
-    // reserve bootstrap
-    if(!reserve_region(g_copy_e820_map, bootstrap_start, (bootstrap_end - bootstrap_start))) {
-      bprint("Unable to reserve bootstrap region in e820 table\n");
-      LOOP_FOREVER
-    } 
-    // reserve linux arguments and stack
-    if(!reserve_region(g_copy_e820_map, linux_boot_params, evmm_heap_base-linux_boot_params)) {
-      bprint("Unable to reserve bootstrap region in e820 table\n");
-      LOOP_FOREVER
-    } 
-#if 0
-    // I don't think this is necessary
-    if (!reserve_region(evmm_e820, evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
-        bprint("Unable to reserve evmm region in e820 table\n");
-        LOOP_FOREVER
-    }
-#endif
-
-#ifdef JLMDEBUG
-    print_map(g_copy_e820_map, g_nr_map);
-#endif
 
     if(prepare_primary_guest_environment(mbi)!=0) {
         bprint("Error setting up evmm startup arguments\n");

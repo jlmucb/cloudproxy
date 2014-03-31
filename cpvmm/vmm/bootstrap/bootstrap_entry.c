@@ -239,6 +239,11 @@ void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 
 void setup_evmm_stack()
 {
+
+#if 1
+    evmm_initial_stack = 
+        (uint32_t) evmm_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+#else
     EM64T_CODE_SEGMENT_DESCRIPTOR *gdt64 = NULL;
     int i;
 
@@ -256,9 +261,9 @@ void setup_evmm_stack()
         gdt64->hi.default_size= 0;    // important !!!
         gdt64->hi.granularity= 1;
      }
-    // the stack is one page after the descriptor table
     evmm_initial_stack = 
         (uint32_t) evmm_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+#endif
 }
 
 
@@ -296,6 +301,22 @@ void x32_gdt64_setup(void)
     evmm_descriptor_table[last_index].hi.long_mode = 1;    // important !!!
     evmm_descriptor_table[last_index].hi.default_size= 0;  // important !!!
     evmm_descriptor_table[last_index].hi.granularity= 1;
+
+#if 1
+    // FIX:  I think reka forgot to include this and mistakenly put it
+    // in the stack allocator
+    // data segment for eVmm stacks
+    evmm_descriptor_table[last_index + 1].hi.accessed = 0;
+    evmm_descriptor_table[last_index + 1].hi.readable = 1;
+    evmm_descriptor_table[last_index + 1].hi.conforming  = 0;
+    evmm_descriptor_table[last_index + 1].hi.mbo_11 = 0;
+    evmm_descriptor_table[last_index + 1].hi.mbo_12 = 1;
+    evmm_descriptor_table[last_index + 1].hi.dpl = 0;
+    evmm_descriptor_table[last_index + 1].hi.present = 1;
+    evmm_descriptor_table[last_index + 1].hi.long_mode = 1;    // important !!!
+    evmm_descriptor_table[last_index + 1].hi.default_size = 0;    // important !!!
+    evmm_descriptor_table[last_index + 1].hi.granularity= 1;
+#endif
 
     // prepare GDTR
     gdtr_64.base  = (uint32_t) evmm_descriptor_table;

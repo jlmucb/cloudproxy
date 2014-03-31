@@ -703,6 +703,7 @@ static const cmdline_option_t linux_cmdline_options[] = {
 static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN];
 
 
+#if 0
 uint32_t alloc_linux_stack(uint32_t pages)
 {
     if (pages > 1)
@@ -717,6 +718,7 @@ uint32_t alloc_linux_stack(uint32_t pages)
     vmm_memset((void*)address, 0, size);
     return address;
 }
+#endif
 
 
 // -------------------------------------------------------------------------
@@ -725,6 +727,8 @@ uint32_t alloc_linux_stack(uint32_t pages)
 // linux guest setup
 
 
+#if 0
+// this is wrong
 void setup_linux_stack()
 {
     EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_ptr = 
@@ -743,13 +747,23 @@ void setup_linux_stack()
     (* tmp_ptr).hi.granularity= 1;
     linux_esp_register= ((uint32_t)tmp_ptr) + PAGE_SIZE;
 }
+#endif
 
 
 int linux_setup(void)
 {
     uint32_t i;
 
+    // setup linux stack
+#if 0
     setup_linux_stack();
+#endif
+    linux_stack_base = evmm_heap_base - PAGE_SIZE;
+    linux_stack_size= PAGE_SIZE;
+    vmm_memset((void*)linux_stack_base, 0, PAGE_SIZE); 
+    //stack grows down
+    linux_esp_register= linux_stack_base+PAGE_SIZE;
+
     linux_gdt_desc.length = (uint16_t)sizeof(gdt_table)-1;
     linux_gdt_desc.table = (uint32_t)&gdt_table;
     linux_state.size_of_this_struct = sizeof(linux_state);

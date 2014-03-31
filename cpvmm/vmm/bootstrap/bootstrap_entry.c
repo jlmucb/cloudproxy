@@ -1483,14 +1483,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
       LOOP_FOREVER
     } 
     // I don't think this is necessary
-    if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
+    if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+evmm_load_segment_size))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
 
 #ifdef JLMDEBUG
-    bprint("%d e820 entries after new reservations, linux boot params: 0x%08x\n", 
-           g_nr_map, linux_boot_params);
+    bprint("%d e820 entries after new reservations\n", g_nr_map);
 #endif
 
 #ifdef JLMDEBUG1

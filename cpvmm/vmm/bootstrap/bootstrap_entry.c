@@ -1492,10 +1492,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG1
     print_e820_map();
 #endif
-    LOOP_FOREVER
 
     // Set up evmm IDT.  CHECK(JLM): Is this necessary?
+#ifdef TESTLATER
     SetupIDT();
+#endif
 
     // setup gdt for 64-bit on BSP
     if(setup_64bit_paging()!=0) {
@@ -1509,6 +1510,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
+    LOOP_FOREVER
 
     // prepare linux 
     if(prepare_linux_image_for_evmm(mbi)) {

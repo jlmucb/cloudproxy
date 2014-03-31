@@ -504,8 +504,9 @@ start32_evmm
         as well as command line arguments from the mbi module entries.
         These are:
             For evmm: evmm_start, evmm_end and evmm_command_line.
-            For evmm: evmm_start, evmm_end and evmm_command_line.
-            For initram: initram_start and initram_end (initram has no command line).
+            For linux: linux_start, linux_end and linux_command_line.
+            For initram: initram_start and initram_end  
+                 (initram has no command line).
      4. Determines the number of real processors and stores the number of
         Application Processors (total number of processors minus 1) in 
         evmm_num_of_aps.

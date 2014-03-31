@@ -1137,8 +1137,11 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 
 int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 {
-    if (linux_start==0 || initram_start==0)
+    if (linux_start==0 || initram_start==0) {
+        bprint("bad linux image or initram image\n");
         return 1;
+    }
+    //FIX(JLM): this should be linux's mbi not emmv's 
     if(expand_linux_image(mbi, linux_start, linux_end-linux_start,
                        initram_start, initram_end-initram_start, 
                        &linux_entry_address)!=0) {

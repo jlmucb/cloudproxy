@@ -772,6 +772,7 @@ int linux_setup(void)
     }
     linux_state.control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
     linux_state.control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + sizeof(gdt_table) -1;
+    //FIX(RNB): what about cr0, cr3, etc?
 
     for (i = 0; i < IA32_SEG_COUNT; i++) {
         linux_state.seg.segment[i].base = 0;

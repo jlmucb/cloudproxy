@@ -562,9 +562,7 @@ setup_64bit_paging
 prepare_linux_image_for_evmm(mbi).
     expand_linux_image(mbi, linux_start, linux_end-linux_start,
                        initrd_start, initrd_end-initram_start,&linux_entry_address);
-    prepare_primary_guest_args(mbi)!=0) 
-        return 1;
-    linux_start_address= linux_entry_address;
+    prepare_primary_guest_args
 
 
 expand_linux_image
@@ -573,8 +571,16 @@ prepare_primary_guest_environment(mbi)
     linux_setup
     sets arguments
 
+linux_setup
+    sets guest's gdt table 
+    sets up guests control registers MISSING
+    allocates and sets up linux stack (is ss properly set?)
+    sets up 32 bit descriptors for guest
+    sets RIP so that guest wakes up in code32_start
+    sets guests stack pointer (esp)
+    set's guest entry argument pointer (esi)
+
 prepare_primary_guest_args(multiboot_info_t *mbi)
-    
     check linux_esp_register==0) {
     linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;

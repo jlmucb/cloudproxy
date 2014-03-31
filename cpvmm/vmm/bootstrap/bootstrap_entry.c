@@ -87,6 +87,8 @@ uint32_t evmm_heap_size= 0;             // size of initial evmm heap
 uint32_t evmm_initial_stack= 0;         // initial evmm stack
 char*    evmm_command_line= NULL;       // evmm command line
 
+multiboot_info_t  linux_mbi;
+
 //      linux guest
 uint32_t linux_real_mode_start= 0;      // address of linux real mode
 uint32_t linux_real_mode_size= 0;       // address of linux real mode size
@@ -1121,7 +1123,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     // set address of copied tboot shared page 
     vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, sizeof(shared_page));
 
-    // copy 820 pages for linux
+    // copy e820 entries for linux
     if(copy_e820_map(mbi)==false) {
         bprint("cant copy e820 table\n");
         return 1;
@@ -1141,21 +1143,65 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         bprint("bad linux image or initram image\n");
         return 1;
     }
-    //FIX(JLM): this should be linux's mbi not emmv's 
-    if(expand_linux_image(mbi, linux_start, linux_end-linux_start,
+
+   // make linux mbi 
+    vmm_memcpy((void*) &linux_mbi, (void*)mbi, sizeof(multiboot_info_t));
+    linux_mbi.mods_count--;
+    linux_mbi.mods_addr+= sizeof(module_t);
+    if(expand_linux_image(&linux_mbi, linux_start, linux_end-linux_start,
                        initram_start, initram_end-initram_start, 
                        &linux_entry_address)!=0) {
         bprint("cannot expand linux image\n");
         return 1;
     }
+#ifdef JLMDEBUG1
+    bprint("linux_real_mode_start, linux_real_mode_size: 0x%08x %d\n",
+            linux_real_mode_start, linux_real_mode_size);
+    bprint("linux_protected_mode_start, linux_protected_mode_size: 0x%08x %d\n",
+            linux_protected_mode_start, linux_protected_mode_size);
+    bprint("initram_start_address: 0x%08x\n", initram_start_address);
+    bprint("linux_original_command_line: %s\n", linux_original_command_line);
+#endif
     if(prepare_primary_guest_args(mbi)!=0) {
         bprint("cannot prepare_primary_guest_args\n");
         return 1;
     }
-
     linux_start_address= linux_protected_mode_start;
-    // FIX: print all the nre addresses and sizes and the linux
-    // kernel header
+
+#ifdef JLMDEBUG1
+    // print header
+    linux_kernel_header_t * hdr = (linux_kernel_header_t *)(linux_start + KERNEL_HEADER_OFFSET);
+    /*
+    uint8_t  setup_sects;
+    uint16_t root_flags;
+    uint32_t syssize;  
+    uint16_t ram_size;
+    uint16_t vid_mode;
+    uint16_t root_dev;
+    uint16_t boot_flag;
+    uint16_t jump;
+    uint32_t header;
+    uint16_t version;
+    uint32_t realmode_swtch;
+    uint16_t start_sys;
+    uint16_t kernel_version;
+    uint8_t  type_of_loader;
+    uint8_t  loadflags;
+    uint16_t setup_move_size;
+    uint32_t code32_start;
+    uint32_t ramdisk_image;
+    uint32_t ramdisk_size;
+    uint16_t heap_end_ptr;
+    uint32_t cmd_line_ptr;
+    uint32_t initrd_addr_max;
+    uint32_t kernel_alignment;
+    uint8_t  relocatable_kernel;
+    uint32_t cmdline_size;      
+    uint32_t payload_offset;
+    uint32_t payload_length;
+    uint64_t setup_data;
+     */
+#endif
     bprint("Linux kernel @%p...\n", (void*)linux_entry_address);
     return 0;
 }
@@ -1190,9 +1236,6 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.cpu_states_count = 1;
     evmm_g0.devices_count = 0;
     evmm_g0.image_size = linux_end - linux_start;
-    //FIX:  What does this answer mean?  My question is WHAT address needs to be
-    // passed:  the address of protected mode Linux or ALL of linux,  Does it
-    // include the EVMM HEAP area
     evmm_g0.image_address= linux_start_address;
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 
@@ -1219,8 +1262,6 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     p_startup_struct->primary_guest_startup_state = (uint64_t)(uint32_t)&evmm_g0;
 
     // FIX: I think the memory layout is not needed for the primary
-    // Also, note that the image size includes the heap.  Should the base_address
-    // be the start of the evmm image or the evmm heap?
     evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
     (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
             evmm_heap_size + p_startup_struct->size_of_vmm_stack;
@@ -1438,7 +1479,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
     LOOP_FOREVER
 
-    // Set up evmm IDT Note(JLM): Is this necessary?
+    // Set up evmm IDT.  CHECK(JLM): Is this necessary?
     SetupIDT();
 
     // setup gdt for 64-bit on BSP
@@ -1477,6 +1518,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
+#endif
+
+#ifdef JLMDEBUG1
+    // FIX(JLM): print e820 map
 #endif
 
     if(prepare_primary_guest_environment(mbi)!=0) {

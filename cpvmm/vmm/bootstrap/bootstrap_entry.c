@@ -112,6 +112,7 @@ void setup_evmm_heap(uint32_t heap_base_address, uint32_t heap_bytes)
 {
     evmm_heap_current = evmm_heap_base = heap_base_address;
     evmm_heap_top = evmm_heap_base + heap_bytes;
+    evmm_heap_size= heap_bytes;
 }
 
 

@@ -1102,9 +1102,20 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
         return 1;
     }
     linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
+    if(linux_boot_params==0) {
+      bprint("linux boot parameter area fails\n");
+      LOOP_FOREVER
+    }
+
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
     vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, 
                 sizeof(boot_params_t));
+
+    // reserve linux arguments and stack
+    if(!e820_reserve_ram(linux_boot_params, evmm_heap_base-linux_boot_params)) {
+      bprint("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    } 
 
     // set address of copied tboot shared page 
     vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, 
@@ -1471,18 +1482,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
       bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
-    // reserve linux arguments and stack
-    if(!e820_reserve_ram(linux_boot_params, evmm_heap_base-linux_boot_params)) {
-      bprint("Unable to reserve bootstrap region in e820 table\n");
-      LOOP_FOREVER
-    } 
-#if 0
     // I don't think this is necessary
     if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+(evmm_end-evmm_start)))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
-#endif
 
 #ifdef JLMDEBUG
     bprint("%d e820 entries after new reservations, linux boot params: 0x%08x\n", 

@@ -140,9 +140,9 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 		$(B)/utils/event_mgr.o  $(B)/utils/heap.o \
 		$(B)/utils/math_utils.o  $(B)/utils/utils_asm.o
 
-dobjs=      $(BINDIR)/vmm.o # $(BINDIR)/evmm.o  
+dobjs=      $(BINDIR)/vmm.o
 
-all: $(E)/bootstrap.bin $(E)/evmm.bin
+all: $(E)/evmm.bin
  
 $(E)/evmm.bin: $(dobjs)
 	@echo "evmm.bin"
@@ -170,17 +170,6 @@ $(E)/evmm.bin: $(dobjs)
 		$(HOSTOBJ) $(STARTOBJ) $(VMEXITOBJ) $(VMXOBJ) \
 		$(HOSTHW) $(UTILOBJ) $(dobjs) 
 
-$(E)/bootstrap.bin: $(BINDIR)/entry.o $(BINDIR)/e820.o $(BINDIR)/bprint.o
-	$(LINK) -m32 -static -T bootstrap.script -fno-stack-protector -nostdlib -e start32_evmm -o $(E)/bootstrap.bin $(BINDIR)/entry.o $(BINDIR)/e820.o $(BINDIR)/bprint.o
-
-$(BINDIR)/entry.o: $(mainsrc)/entry.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/entry.o $(mainsrc)/entry.c 
-$(BINDIR)/bprint.o: $(mainsrc)/bprint.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/bprint.o $(mainsrc)/bprint.c 
-
-$(BINDIR)/e820.o: $(mainsrc)/e820.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(BINDIR)/e820.o $(mainsrc)/e820.c 
-
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c 
@@ -192,8 +181,8 @@ $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 #         OTHER_MAKEFILE += ./samples/guest_create_addon/guest_create_addon.mak
 # endif
 clean:
-	rm -f $(E)/evmm.bin $(E)/bootstrap.bin
-clobber: 
+	rm -f $(E)/evmm.bin 
+	rm -f $(E)/vmmobjects/vmm.o
 	rm -f $(E)/vmmobjects/acpi/*.o
 	rm -f $(E)/vmmobjects/vmx/*.o
 	rm -f $(E)/vmmobjects/libc/*.o
@@ -211,5 +200,3 @@ clobber:
 	rm -f $(E)/vmmobjects/startup/*.o
 	rm -f $(E)/vmmobjects/vmexit/*.o
 	rm -f $(E)/vmmobjects/ipc/*.o
-	rm -f $(E)/evmm.bin
-	rm -f $(E)/bootstrap.bin

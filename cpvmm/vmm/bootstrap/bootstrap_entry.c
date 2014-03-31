@@ -241,8 +241,9 @@ void setup_evmm_stack()
 {
 
 #if 1
-    evmm_initial_stack = 
-        (uint32_t) evmm_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
+    // Note: the stack grows down so the stack pointer starts at high memory
+    evmm_initial_stack = (uint32_t) evmm_descriptor_table+
+                            ((UVMM_DEFAULT_STACK_SIZE_PAGES+1)*PAGE_4KB_SIZE);
 #else
     EM64T_CODE_SEGMENT_DESCRIPTOR *gdt64 = NULL;
     int i;

@@ -208,6 +208,40 @@ void  ia32_write_cr3(uint32_t value)
 }
 
 
+void read_cr0(uint32_t* ret)
+{
+    asm volatile(
+        "\tmovl  %[ret],%%ebx\n"
+        "\tmovl  %%cr0,%%eax\n"
+        "\tmovl %%eax, (%%ebx)\n"
+    ::[ret] "p" (ret) 
+    : "%eax","%ebx");
+}
+
+
+void read_cr3(uint32_t* ret)
+{
+    asm volatile(
+        "\tmovl  %[ret],%%ebx\n"
+        "\tmovl  %%cr3,%%eax\n"
+        "\tmovl %%eax, (%%ebx)\n"
+    ::[ret] "p" (ret) 
+    : "%eax","%ebx");
+}
+
+
+void read_cr4(uint32_t* ret)
+{
+    asm volatile(
+        "\tmovl  %[ret],%%ebx\n"
+        "\tmovl  %%cr4,%%eax\n"
+        "\tmovl %%eax, (%%ebx)\n"
+    ::[ret] "p" (ret) 
+    : "%eax","%ebx");
+}
+
+
+//FIX(JLM): what are the bytecodes for?
 uint32_t  ia32_read_cr4(void)
 {
     uint32_t ret;
@@ -220,6 +254,7 @@ uint32_t  ia32_read_cr4(void)
     :: "%eax");
     return ret;
 }
+
 
 void  ia32_write_cr4(uint32_t value)
 {
@@ -247,34 +282,11 @@ void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 
 void setup_evmm_stack()
 {
-
-#if 1
     // Note: the stack grows down so the stack pointer starts at high memory
     // clear stack memory first
     vmm_memset((void*)((uint32_t) evmm_descriptor_table+PAGE_4KB_SIZE), 0, PAGE_4KB_SIZE);
     evmm_initial_stack = (uint32_t) evmm_descriptor_table+
                             ((UVMM_DEFAULT_STACK_SIZE_PAGES+1)*PAGE_4KB_SIZE);
-#else
-    EM64T_CODE_SEGMENT_DESCRIPTOR *gdt64 = NULL;
-    int i;
-
-    // data segment for eVmm stacks
-    for (i = 1; i < UVMM_DEFAULT_STACK_SIZE_PAGES+1; i++) {
-        gdt64= (EM64T_CODE_SEGMENT_DESCRIPTOR *)
-                  ((uint32_t) evmm_descriptor_table + (i*PAGE_4KB_SIZE));
-        gdt64->hi.readable = 1;
-        gdt64->hi.conforming = 0;
-        gdt64->hi.mbo_11 = 0;
-        gdt64->hi.mbo_12 = 1;
-        gdt64->hi.dpl = 0;
-        gdt64->hi.present = 1;
-        gdt64->hi.long_mode = 1;      // important !!!
-        gdt64->hi.default_size= 0;    // important !!!
-        gdt64->hi.granularity= 1;
-     }
-    evmm_initial_stack = 
-        (uint32_t) evmm_descriptor_table+(UVMM_DEFAULT_STACK_SIZE_PAGES * PAGE_4KB_SIZE);
-#endif
 }
 
 
@@ -313,9 +325,6 @@ void x32_gdt64_setup(void)
     evmm_descriptor_table[last_index].hi.default_size= 0;  // important !!!
     evmm_descriptor_table[last_index].hi.granularity= 1;
 
-#if 1
-    // FIX:  I think reka forgot to include this and mistakenly put it
-    // in the stack allocator
     // data segment for eVmm stacks
     evmm_descriptor_table[last_index + 1].hi.accessed = 0;
     evmm_descriptor_table[last_index + 1].hi.readable = 1;
@@ -327,7 +336,6 @@ void x32_gdt64_setup(void)
     evmm_descriptor_table[last_index + 1].hi.long_mode = 1;    // important !!!
     evmm_descriptor_table[last_index + 1].hi.default_size = 0;    // important !!!
     evmm_descriptor_table[last_index + 1].hi.granularity= 1;
-#endif
 
     // prepare GDTR
     gdtr_64.base  = (uint32_t) evmm_descriptor_table;
@@ -703,51 +711,10 @@ static const cmdline_option_t linux_cmdline_options[] = {
 static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN];
 
 
-#if 0
-uint32_t alloc_linux_stack(uint32_t pages)
-{
-    if (pages > 1)
-        return 0;   // error
-
-    uint32_t address;
-    uint32_t size = pages * PAGE_SIZE;
-
-    linux_stack_base = evmm_heap_base - PAGE_SIZE;
-    linux_stack_size= size;
-    address = ALIGN_FORWARD(linux_stack_base, PAGE_SIZE);
-    vmm_memset((void*)address, 0, size);
-    return address;
-}
-#endif
-
-
 // -------------------------------------------------------------------------
 
 
 // linux guest setup
-
-
-#if 0
-// this is wrong
-void setup_linux_stack()
-{
-    EM64T_CODE_SEGMENT_DESCRIPTOR *tmp_ptr = 
-            (EM64T_CODE_SEGMENT_DESCRIPTOR *)alloc_linux_stack(1);
-    int i;
-
-    // data segment for guest stack
-    (* tmp_ptr).hi.readable = 1;
-    (* tmp_ptr).hi.conforming = 0;
-    (* tmp_ptr).hi.mbo_11 = 0;
-    (* tmp_ptr).hi.mbo_12 = 1;
-    (* tmp_ptr).hi.dpl = 0;
-    (* tmp_ptr).hi.present = 1;
-    (* tmp_ptr).hi.long_mode = 1;      // important !!!
-    (* tmp_ptr).hi.default_size= 0;    // important !!!
-    (* tmp_ptr).hi.granularity= 1;
-    linux_esp_register= ((uint32_t)tmp_ptr) + PAGE_SIZE;
-}
-#endif
 
 
 int linux_setup(void)
@@ -755,9 +722,6 @@ int linux_setup(void)
     uint32_t i;
 
     // setup linux stack
-#if 0
-    setup_linux_stack();
-#endif
     linux_stack_base = evmm_heap_base - PAGE_SIZE;
     linux_stack_size= PAGE_SIZE;
     vmm_memset((void*)linux_stack_base, 0, PAGE_SIZE); 
@@ -1442,6 +1406,14 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
 #ifdef JLMDEBUG
     bprint("\t%d APs, %d, reset to 0\n", evmm_num_of_aps, info);
+    uint32_t   tcr0, tcr3, tcr4;
+    IA32_GDTR tdesc;
+    ia32_read_gdtr(&tdesc);
+    read_cr0(&tcr0);
+    read_cr3(&tcr3);
+    read_cr4(&tcr4);
+    bprint("cr0: 0x%08x, cr3: 0x%0x, cr4: 0x%08x\n", tcr0, tcr3, tcr4);
+    bprint("GTDT base/limit: 0x%08x, %04x\n", tdesc.base, tdesc.limit);
 #endif
     evmm_num_of_aps = 0;  // BSP only for now
 

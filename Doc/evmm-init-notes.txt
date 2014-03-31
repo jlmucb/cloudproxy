@@ -604,4 +604,12 @@ prepare_primary_guest_args(multiboot_info_t *mbi)
 Notes 
 -----
 
+bootstrap control registers
+
+cr0: 0x00000033
+cr3: 0xb9f1f000
+cr4:   00004240
+gdtr: 0x00805000, 003f
+
+
 TODO: Get interrupt code and vt-d code the evmm team offered.

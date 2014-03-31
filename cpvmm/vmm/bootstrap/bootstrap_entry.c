@@ -1485,7 +1485,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
 #ifdef JLMDEBUG
-    bprint("%d e820 entries after new reservations\n", g_nr_map);
+    bprint("%d e820 entries after new reservations, linux boot params: 0x%08x\n", 
+           g_nr_map, linux_boot_params);
 #endif
 
 #ifdef JLMDEBUG1
@@ -1507,10 +1508,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
 #ifdef JLMDEBUG
     bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
-    bprint("evmm relocated to %08x, entry point: %08x\n",
-            evmm_start_address, vmm_main_entry_point);
 #endif
 
+    // prepare linux 
     if(prepare_linux_image_for_evmm(mbi)) {
         bprint("Cant prepare linux image\n");
         LOOP_FOREVER

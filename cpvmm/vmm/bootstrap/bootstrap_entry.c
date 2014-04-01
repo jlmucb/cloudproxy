@@ -1043,6 +1043,10 @@ int expand_linux_image( multiboot_info_t* mbi,
            (unsigned long)real_mode_base,
            (unsigned long)(real_mode_base + real_mode_size));
 
+#ifdef JLMDEBUG
+    bprint("expand_linux_image position 1\n");
+#endif
+    LOOP_FOREVER
     // copy cmdline 
     const char *kernel_cmdline = skip_filename((const char *)mbi->cmdline);
     vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, 
@@ -1053,6 +1057,9 @@ int expand_linux_image( multiboot_info_t* mbi,
     vmm_memset(boot_params, 0, sizeof(*boot_params));
     vmm_memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
 
+#ifdef JLMDEBUG
+    bprint("expand_linux_image position 2\n");
+#endif
     // detect e820 table 
     if ( mbi->flags & MBI_MEMMAP ) {
         int i;
@@ -1069,6 +1076,9 @@ int expand_linux_image( multiboot_info_t* mbi,
         boot_params->e820_entries = i;
     }
 
+#ifdef JLMDEBUG
+    bprint("expand_linux_image position 3\n");
+#endif
     screen_info_t *screen = (screen_info_t *)&boot_params->screen_info;
     screen->orig_video_mode = 3;       /* BIOS 80*25 text mode */
     screen->orig_video_lines = 25;

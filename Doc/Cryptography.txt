@@ -2,6 +2,70 @@
 In this document I outline and compare three possible approaches to implementing
 authentication and authorization mechanisms.
 
+0. Summary
+----------
+
+Roughly, the three approaches I outline are this:
+
+1. Use asymmetric keys for both authentication and authorization. Every
+principal generates its own key; principals can use their keys to produce
+"delegation" credentials that certify the keys of other principals; and using
+those delegation credentials any principal can authenticate any other principal
+or generate and verify more fine-grained credentials to authorize operations.
+
+2. Don't use cryptography at all, but instead rely on a trusted third party,
+e.g. a trusted operating system, hypervisor, or Tao. The third party provides
+authenticated channels (e.g. pipes), other authentication primitives (e.g.
+process uid/gid), and  primitives for authorization (e.g. ACLs, unforgeable
+capabilities or cookies)
+
+3. Use symmetric keys. Principals either generate their own symmetric key, or ask
+some trusted "parent" to provide a key. Keys have public names that reveal the
+parent-child relationship, but the key material is obviously private. A parent
+can sign things on behalf of its descendants (whose keys are derived from the
+parent's key), and a parent can similarly verify things signed by its
+descendants. Two siblings can't directly authenticate to each other -- one of
+them will have to contact the common ancestor to either sign or verify
+credentials during channel setup.
+
+I will argue that 3 is a nice midpoint between 1 and 2. However, I think we
+should really be using a combination of 1 and 3, where 1 is used when there is
+no clear chain of trust and no existing secure channels (e.g. across machines),
+and 3 is used whenever there is a clear chain of trust from parents to children
+and parents and children are connected by existing secure channels (e.g. between
+processes hosted directly or indirectly by the same tao). Something like
+macaroons might still be useful where authentication and audit isn't important
+(e.g. for short-lived semi-anonymous clients making requests to a tao-based
+service).
+
+0.1 Trust
+---------
+
+In macaroons, when A gives a macaroon to B, we normally think that A is
+delegating to B and that A trusts B (to some extent). B might also need to trust
+A, but only in so far as A might interfere with B's use of the macaroon or the
+service/operation associated with the macaroon. This is how trust flows for
+authorization.
+
+For authentication, the reverse is true. When A gives B a credential that B will
+use for authentication (or when A gives B a symmetric key, or when A gives out
+some pid, uid or other identity to B), then B is trusting A. A could give the
+same credential (or key or pid or uid) to some other principal allowing that
+other principal to impersonate B.  And the parent A can also impersonate B. A
+doesn't necessarily trust B at all, except in so far as A (or some other
+principal) delegates authority to the identity given to B (e.g. B's uid appears
+on some ACL) or attaches some semantics to the identity (e.g. uid 0).
+
+0.2 Nonces and Man-in-the-middle Attacks
+----------------------------------------
+
+All of the protocols outlined below are trivially susceptible to
+man-in-the-middle attacks. A correct approach would use a diffie-hellman
+exchange followed by a (mutual) authentication phase bound to the shared channel
+keys. In practice, when using symmetric keys, TLS-PSK (pre-shared key
+authentication), or something very close to it, might work.
+
+
 1. Authentication and Authorization using Asymmetric Cryptography
 -----------------------------------------------------------------
 
@@ -86,7 +150,10 @@ then use deduction to conclude A says Read.
 A second approach to implementing authentication and authorization mechanisms
 does not rely on cryptography at all, but instead relies on a trusted
 intermediary, e.g. an operating system, to facilitate communication between
-principals. This was the approach taken in Nexus.
+principals. This was the approach taken in Nexus. One might just have the
+intermediary provide secure, authenticated communications channels. Or the
+channels might be un-authenticated with a separate authentication mechanism.
+This section outlines the latter approach.
 
 ### Authentication
 
@@ -230,7 +297,7 @@ unclear, but it appears the symmetric key case may be a nice midpoint of sorts.
 The non-cryptographic case also requires R to maintain a table of authentication
 nonces and credentials. Managing this resource would make R much more complex
 (and recall that R is completely trusted by all these principals, so complexity
-is particurly undesirable here): who gets to read from the table? do the entries
+is particularly undesirable here): who gets to read from the table? do the entries
 expire? are there limits to how much can be written? 
 
 Bottom line: the symmetric key case appears to be a sort of midpoint between the
@@ -239,26 +306,239 @@ asymmetric and the non-cryptographic approaches:
  Mid: Requires only modest computational power
  Pro: R is simple (like the asymmetric key approach)
 
-5. Open Issues
---------------
+5. Multiple Machines
+--------------------
 
-A big issue not addressed above is the case where principals are distributed
-over multiple machines, i.e. they don't have convenient secure authenticated
-channels provided by the operating system to each other or to some common
-ancenstor.
+Consider the case where principals are distributed over multiple machines and so
+don't have convenient secure authenticated channels provided by the operating
+system to each other or to some common ancestor.
 
 In the asymmetric case, it may still makes sense to use a single root key that
-signs the key for each machine, as is currently implemented in CloudProxy. But
-even using multiple root keys works naturally. These multiple roots could be
+certifies the key for each machine, as is currently implemented in CloudProxy.
+But even using multiple root keys works naturally. These multiple roots could be
 anchored at each machine, or even at various levels of the software stack. In
 any case, TLS channels can be set up using the asymmetric keys.
 
 The non-cryptographic case doesn't have an obvious natural way to support
 multiple machines. Presumably a separate set of asymmetric keys (e.g. one per
 machine) would be be used to establish TLS connections between machines, and the
-operating system could facilitate processes using those to to authenticate
-across machines. In Nexus, a hybrid of the asymmetric and non-cryptographic
-approaches was used: the operating system key was used to "export" entries from
-the credential table, such that within-machine operations were non-cryptographic
-and between-machine operations used the asymmetric approach.
+operating system could then facilitate processes using those existing channels
+to to authenticate across machines. In Nexus, a hybrid of the asymmetric and
+non-cryptographic approaches was used: the operating system key was used to
+"export" entries from the credential table, such that within-machine operations
+were non-cryptographic and between-machine operations used the asymmetric
+approach.
+
+For symmetric keys, something similar to the existing CloudProxy policy key
+might be feasible: the policy key would be symmetric, and would hand and derived
+keys for each machine. Those derived keys would then be used to provide keys for
+hosted processes, as before. To bootstrap this, however, secure channels from
+the policy server to each machine need to exist to distribute the symmetric
+machine keys, and a secure channel needs to exist in the other direction so that
+verification (or signing) using the policy key can take place. We already assume
+fast and robust (available) channels exist between all machines (i.e. this is a
+cloud environment), but assuming secure channels is a bit much.
+
+In the symmetric case, Bootstrapping could be done using TLS and asymmetric keys
+for each machine and for the policy server. If each machine has an asymmetric
+and a symmetric key, then operations could use either on a case-by-case basis.
+E.g. cross-machine authentication between hosted programs might use the
+asymmetric keys, while within-machine authentication can use the symmetric keys.
+
+6. Preliminary Implementation Details
+-------------------------------------
+
+6.1 Naming Keys
+---------------
+
+Identifying keys by name is easy with asymmetric keys. The public key itself can
+serve as the key name. Or, a certificate chain (or a self-signed certificate in
+the base case) can serve as the name of the key.
+
+We can then write policies (or formulas in an authorization logic, or audit
+logs) in terms of the names. Assuming the keys are unique, then so are the
+names. And if some program claims to hold a key with a given name, any other
+program can verify that claim by requesting a signature (ala TLS
+authentication).
+
+With symmetric keys, a different approach is needed. [Todo: literature search...
+I know little about this topic] One simple approach is to just use a hash of the
+key (possibly with some salt or other data) as the name of a key. For derived
+keys, a name is made by concatenating the root key name together with a list of
+suffixes that were used to derive the chain of subkeys. 
+The result is an url-like path:
+   id@location/subname/subname/.../subname
+where id is base64w-encoded opaque data (derived from the hash of the key and
+possibly other data), and both location and subnames contain only chars from
+this some legal subset, e.g. any printable ascii except '/' or '|', which are
+used as separators in various places. 
+
+More precisely, here is one naming scheme:
+
+For a root (i.e. non-derived) symmetric key K, held by some principal located at
+L, we first take the hash:
+  H = sha256("tao key" | L | K)
+Then we use use as the public name of the key:
+  K_name = base64w(H) | "@" | L
+Here, "tao key" is simply context for the hash operation. 
+Location L is intended to
+be some hint for how to contact this principal, in the same way that an x509
+certificate would include location and/or identity information. The hash of the
+context, location, and key is base64w-encoded, then joined with the location.
+Note that the location L is publicly visible. The name is also unique (because
+it includes the hash of K, which is assumed to be unique). We can write policies
+and audit logs in terms of these names, just as with asymmetric keys.
+Unfortunately, if some program claims to hold a key with the above name, no
+other program can verify this claim. (This limits what we can do, but doesn't
+completely negate the reason for having names.)
+
+For a symmetric key K' derived from K using the names A1, A2, ..., AN, we can use
+K's name together with the list A1, A2, ..., AN as the name of the derived key:
+  K'_name =  K_name | "/" | A1 | "/" | ... | "/" | AN
+This has better properties than K_name: it is unique; it can be used in policies
+and audit logs; and, if some program claims to hold a key with this name, any
+ancestor of K' can verify that claim (since the ancestors also know --- or can
+derive --- K').
+
+6.2 Credentials
+---------------
+
+[The code here and below is simplified for presentation, leaving off C++ cruft.]
+
+message Credential {
+  required string issuer;  // Name of principal creating this credential
+  required string signer;  // Name of key used to generate (and verify) sig
+  required string prin;    // Name of principal attesting to stmt
+  required string context; // Arbitrary data
+  required string stmt;    // Arbitrary data
+  optional bytes sig;      // sign(k_signer, issuer|prin|context|stmt)
+}
+
+To explain the reason for three principal names (issuer, signer, prin), consider
+this example. When OS.progA asks OS to sign a credential so that OS.progB can
+verify it, OS will (optionally?) generate a key known to OS.progB and sign using
+that. To keep a complete audit trail, we record all of these principals, i.e.:
+  prin = OS.progA    - This is the principal attesting to stmt
+  issuer = OS        - OS generated the credential on behalf of prin
+  signer = OS.progB  - issuer signed using the key named OS.progB
+In an authorization logic, the semantics of a valid credential are:
+  signer says (issuer says (prin says stmt))
+And because issuer speaks for both signer and prin, we get either:
+  signer says (signer says (prin says stmt))
+or:
+  signer says (prin says (prin says stmt))
+In either case, we then get:
+  signer says (prin says stmt)
+In the example above, this means the recipient (OS.progB), and any of its
+descendants, believe that prin attested to stmt, which is exactly the intended
+effect of the credential.
+
+Note that in the above, there is no independent evidence of either:
+  prin says stmt
+or:
+  issuer says (prin say stmt)
+In fact, signer could be lying about the identity of issuer or of prin. This
+isn't surprising.
+
+As a second example, suppose OS.progA signs the credential directly and gives it
+to OS.progB. In this case:
+ prin = OS.progA    - This is the principal attesting to stmt
+ issuer = OS.progA  - prin generated the credential directly
+ signer = OS.progA  - prin signed using its own key
+Again, the semantics are
+ signer says (issuer says (prin says stmt))
+But because signer == issuer == prin, this reduces directly to:
+ signer says stmt
+This credential can't be verified by OS.progB since OS.progB doesn't share
+a key with the signer. Instead, OS.progB can ask OS to verify, and a successful
+return value from OS would convey:
+ OS says (OS.progA says stmt)
+And OS.progB's receipt of that return value could be encoded as:
+ OS.progB says (OS says (OS.progA says stmt))
+Thus the return value from OS's Verify function conveys the same meaning as the
+credential conveyed in the previous example.
+ 
+Note: issuer must be an ancestor of (or equal to) prin and signer. If issuer is
+not an ancestor of (or equal to) prin, then the above proofs do not work (though
+there could be a different proof if there is available some other justification
+that issuer speaks for prin). If issuer is not an ancestor of signer, then
+issuer has no business holding signer's key and this credential should not
+exist.
+
+6.3. Symmetric Key Class
+------------------------
+
+A class that for performing symmetric key operations might look as follows:
+class SymmetricKey {
+  // Generate a fresh key named for a given location.
+  static SymmetricKey *Generate(string location);
+
+  // Derive a subkey by extending the name with string A, which can't contain
+  // any slashes.
+  SymmetricKey *DeriveKey(string A)
+
+  string GetName(); // get name, e.g. "<base64wtext>@<location>/<A1>/<A2>/..."
+  string GetKey(); // get key material
+
+  // Check if this key is an ancestor of some other named key.
+  bool IsAncestorOf(string othername);
+
+  // Check if this key is a descendant of some other named key.
+  bool IsDescendantOf(string othername);
+
+  // Check if this key and some other named key share any ancestors.
+  bool IsRelatedTo(string othername);
+
+  // Generate a credential signed by this key. This key's name will be used
+  // as cred->signer.
+  // @param issuer The name of the principal purported to be issuing the
+  // credential. The name should be an ancestor of this key, otherwise
+  // recipients will reject the credential.
+  // @param prin The name of the principal purported to be attesting to stmt.
+  // The name should be a descendant of issuer, otherwise recipients will reject
+  // the credential.
+  // @param context Arbitrary string for the signing context.
+  // @param stmt A statement in the authorization logic.
+  // @param[out] cred The resulting signed credential.
+  Credential *Sign(string issuer, string prin, string context, string stmt);
+
+  // Verify a signed credential, which must have been signed with a key
+  // that is a descendant of this key.
+  bool Verify(Credential cred);
+
+  // Additional methods to support TLS-PSK or similar authentication
+}
+
+6.3. Tao Extensions
+-------------------
+
+The Tao class (and associated channel classes) get a few new methods.
+
+class Tao {
+  // Child can call this to get a key derived from the Tao's symmetric key.
+  SymmetricKey *GetKey(string child_hash);
+
+  // Child can call this to request the Tao sign a statement on behalf of prin,
+  // which must be a descendant of (or equal to0 the child. The result is a
+  // signed credential. The Tao will select a signing key most suitable for
+  // verification by peer, either its own symmetric key (if peer is an ancestor
+  // of Tao), or the peer's key (if peer is a descendant of Tao), or a key from
+  // one of Tao's ancestors (if peer is related to Tao but neither a descendant
+  // or ancestor), or Tao's asymmetric key (if peer is unrelated to this Tao). 
+  // In the ancestor case, Tao will use it's own host_channel to pass the
+  // Attest call up the layers of Tao.
+  Credential *Attest(string child_hash, string peer, string prin, string stmt);
+
+  // Verify a credential that was signed with some key available to this Tao. If
+  // needed, Tao will use it's own host_channel to pass the Verify call up the
+  // layers of Tao.
+  bool Verify(Credential cred);
+
+  // Additional methods to support TLS-PSK or similar authentication
+}
+
+6.4 Authentication Logic
+------------------------
+
+To be determined.
 

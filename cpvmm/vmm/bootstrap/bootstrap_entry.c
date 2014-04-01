@@ -1491,9 +1491,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("%d e820 entries after new reservations\n", g_nr_map);
 #endif
-
-#ifdef JLMDEBUG1
-    print_e820_map();
+#ifdef JLMDEBUG
+    print_map(&g_copy_e820_map[3], 8);
 #endif
 
     // Set up evmm IDT.  CHECK(JLM): Is this necessary?

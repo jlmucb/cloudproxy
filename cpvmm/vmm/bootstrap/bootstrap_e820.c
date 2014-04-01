@@ -73,7 +73,7 @@ static inline uint64_t e820_length_64(memory_map_t *entry)
 
 // print_e820_map
 // Prints copied e820 map w/o any header (i.e. just entries, indented by a tab)
-static void print_map(memory_map_t *e820, int nr_map)
+void print_map(memory_map_t *e820, int nr_map)
 {
     int i;
     for ( i = 0; i < nr_map; i++ ) {

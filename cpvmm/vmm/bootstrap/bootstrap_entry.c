@@ -106,7 +106,6 @@ uint32_t linux_esi_register= 0;    // this is the value of the esi register on g
 uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to the guest linux
 uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
 uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
-char*    linux_original_command_line= NULL;
 char*    linux_command_line= NULL;
 
 // boot parameters for linux guest
@@ -900,10 +899,10 @@ int expand_linux_image( multiboot_info_t* mbi,
                 hdr->setup_sects);
         return 1;
     }
+
     // set vid_mode
-    linux_original_command_line= (char *)mbi->cmdline;
-    linux_parse_cmdline((char *)mbi->cmdline);
-    if ( get_linux_vga(&vid_mode) )
+    linux_parse_cmdline(linux_command_line);
+    if (get_linux_vga(&vid_mode))
         hdr->vid_mode = vid_mode;
 
     // compare to the magic number 
@@ -1085,6 +1084,9 @@ int expand_linux_image( multiboot_info_t* mbi,
     linux_protected_mode_size= protected_mode_size;
     initram_start_address= initrd_base;
     *entry_point = hdr->code32_start;
+#ifdef JLMDEBUG
+    bprint("expand_linux_image completes successfully\n");
+#endif
     return 0;
 }
 
@@ -1140,6 +1142,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     vmm_memcpy((void*) &linux_mbi, (void*)mbi, sizeof(multiboot_info_t));
     linux_mbi.mods_count--;
     linux_mbi.mods_addr+= sizeof(module_t);
+    //FIX(JLM): linux_mbi
     if(expand_linux_image(&linux_mbi, linux_start, linux_end-linux_start,
                        initram_start, initram_end-initram_start, 
                        &linux_entry_address)!=0) {
@@ -1152,7 +1155,6 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     bprint("linux_protected_mode_start, linux_protected_mode_size: 0x%08x %d\n",
             linux_protected_mode_start, linux_protected_mode_size);
     bprint("initram_start_address: 0x%08x\n", initram_start_address);
-    bprint("linux_original_command_line: 0x%08x\n", (uint32_t)linux_original_command_line);
 #endif
     if(prepare_primary_guest_args(mbi)!=0) {
         bprint("cannot prepare_primary_guest_args\n");

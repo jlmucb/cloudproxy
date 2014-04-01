@@ -873,7 +873,7 @@ int expand_linux_image( multiboot_info_t* mbi,
         return 1;
     }
     
-if ( linux_size < sizeof(linux_kernel_header_t) ) {
+    if ( linux_size < sizeof(linux_kernel_header_t) ) {
         bprint("Error: Linux kernel size is too small.\n");
         return 1;
     }
@@ -1092,11 +1092,6 @@ if ( linux_size < sizeof(linux_kernel_header_t) ) {
 // relocate and setup variables for evmm entry
 int prepare_primary_guest_args(multiboot_info_t *mbi)
 {
-    // put arguments one page prior to guest esp (which is normally one page before evmm heap)
-    if(linux_esp_register==0) {
-        bprint("invalid linux esp\n");
-        return 1;
-    }
     if(linux_original_boot_parameters==0) {
         bprint("original boot parameters not set\n");
         return 1;
@@ -1157,7 +1152,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     bprint("linux_protected_mode_start, linux_protected_mode_size: 0x%08x %d\n",
             linux_protected_mode_start, linux_protected_mode_size);
     bprint("initram_start_address: 0x%08x\n", initram_start_address);
-    bprint("linux_original_command_line: %s\n", linux_original_command_line);
+    bprint("linux_original_command_line: 0x%08x\n", (uint32_t)linux_original_command_line);
 #endif
     if(prepare_primary_guest_args(mbi)!=0) {
         bprint("cannot prepare_primary_guest_args\n");
@@ -1490,9 +1485,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
 #ifdef JLMDEBUG
     bprint("%d e820 entries after new reservations\n", g_nr_map);
-#endif
-#ifdef JLMDEBUG
-    print_map(&g_copy_e820_map[3], 8);
+    bprint("e820_reserve_ram(0x%08x, 0x%08x)\n", evmm_heap_base, 
+           (evmm_heap_size+evmm_load_segment_size));
+    print_map(&g_copy_e820_map[7], 8);
 #endif
 
     // Set up evmm IDT.  CHECK(JLM): Is this necessary?
@@ -1512,13 +1507,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
-    LOOP_FOREVER
 
     // prepare linux 
     if(prepare_linux_image_for_evmm(mbi)) {
         bprint("Cant prepare linux image\n");
         LOOP_FOREVER
     }
+    LOOP_FOREVER
 
     if(prepare_primary_guest_environment(mbi)!=0) {
         bprint("Error setting up evmm startup arguments\n");

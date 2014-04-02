@@ -110,7 +110,7 @@ char*    linux_command_line= NULL;
 
 // boot parameters for linux guest
 uint32_t linux_original_boot_parameters= 0;
-uint32_t linux_boot_params= 0;
+uint32_t linux_boot_parameters= 0;
 
 
 // -------------------------------------------------------------------------
@@ -740,7 +740,7 @@ int allocate_linux_data()
     vmm_memset((void*)linux_stack_base, 0, PAGE_SIZE); 
 
     // linux data area
-    linux_boot_params= (linux_stack_base-linux_stack_size-2*PAGE_SIZE);
+    linux_boot_parameters= (linux_stack_base-linux_stack_size-2*PAGE_SIZE);
     vmm_memset((void*)linux_boot_parameters, 0, 2*PAGE_SIZE); 
     return 0;
 }
@@ -1133,13 +1133,13 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
         bprint("original boot parameters not set\n");
         return 1;
     }
-    if(linux_boot_params==0) {
+    if(linux_boot_parameters==0) {
       bprint("linux boot parameter area fails\n");
       LOOP_FOREVER
     }
 
-    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
-    vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters,
+    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_parameters;
+    vmm_memcpy((void*)linux_boot_parameters, (void*)linux_original_boot_parameters,
                sizeof(boot_params_t));
 
     // reserve linux arguments and stack
@@ -1156,7 +1156,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
                 E820MAX-g_nr_map);
 
     // set esi register
-    linux_esi_register= linux_boot_params;
+    linux_esi_register= linux_boot_parameters;
 
     return 0;
 }
@@ -1182,17 +1182,17 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 #endif
     if(linux_command_line!=0) {
         mbi->flags|= MBI_CMDLINE;
-        mbi->cmdline= linux_command_line;
+        mbi->cmdline= (uint32_t)linux_command_line;
     }
     linux_mbi.mods_count--;
     linux_mbi.mods_addr+= sizeof(module_t);
-    mbi->mmap_addr= g_copy_e820_map;
+    mbi->mmap_addr= (uint32_t)g_copy_e820_map;
     mbi->mmap_length= g_nr_map*sizeof(memory_map_t);
     LOOP_FOREVER
 
 #ifdef JLMDEBUG
     bprint("linux mbi\n");
-    PrintMbi(linux_mbi);
+    PrintMbi(&linux_mbi);
 #endif
 
     if(expand_linux_image(&linux_mbi, linux_start, linux_end-linux_start,
@@ -1572,7 +1572,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
 
     // mark linux data area as reserved
-    if(!e820_reserve_ram(linux_boot_params, evmm_heap_base-linux_boot_params)) {
+    if(!e820_reserve_ram(linux_boot_parameters, 
+                         evmm_heap_base-linux_boot_parameters)) {
       bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 

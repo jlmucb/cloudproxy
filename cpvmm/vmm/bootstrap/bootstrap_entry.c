@@ -39,7 +39,7 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
-// Remove this soon
+// FIX(JLM): Remove this soon
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
 
@@ -461,11 +461,13 @@ int setup_64bit_paging()
 
     // setup paging, control registers and flags on BSP
     x32_pt64_setup_paging(TOTAL_MEM);
+
     init64.i64_cr3 = x32_pt64_get_cr3();
     ia32_write_cr3(init64.i64_cr3);
     evmm64_cr4 = ia32_read_cr4();
     BITMAP_SET(evmm64_cr4, PAE_BIT | PSE_BIT);
     ia32_write_cr4(evmm64_cr4);
+    // Extended Feature Enable Register (EFER)
     ia32_write_msr(0xc0000080, &p_init64_data->i64_efer);
     init64.i64_cs = evmm64_cs;
     init64.i64_efer = 0;
@@ -518,6 +520,9 @@ void PrintMbi(const multiboot_info_t *mbi)
         }
 #endif
         bprint("\n");
+    }
+    else {
+        bprint("no command line\n");
     }
 
     if ( mbi->flags & MBI_MODULES ) {
@@ -638,9 +643,9 @@ unsigned long get_mbi_mem_end(const multiboot_info_t *mbi)
         end = max(end, mbi->mmap_addr + mbi->mmap_length);
     if ( mbi->flags & MBI_DRIVES )
         end = max(end, mbi->drives_addr + mbi->drives_length);
-    /* mbi->config_table field should contain */
-    /*  "the address of the rom configuration table returned by the */
-    /*  GET CONFIGURATION bios call", so skip it */
+    // mbi->config_table field should contain
+    //  "the address of the rom configuration table returned by the
+    //  GET CONFIGURATION bios call", so skip it 
     if ( mbi->flags & MBI_BTLDNAME )
         end = max(end, mbi->boot_loader_name
                        + vmm_strlen((char *)mbi->boot_loader_name) + 1);
@@ -718,17 +723,33 @@ static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN]
 // -------------------------------------------------------------------------
 
 
-// linux guest setup
+// linux memory initialization and guest setup
+
+
+//  Linux data layout
+//      Start of linux data area    <-- evmm_heap_base - 3*PAGE_SIZE
+//          boot_parameters               <- offset 0
+//          command line                  <- offset sizeof(boot_params_t)
+//      4K stack                    <-- evmm_heap_base - PAGE_SIZE
+//      evmm_heap_base              <-- where linux_esp_register will point
+int allocate_linux_data()
+{
+    // setup linux stack
+    linux_stack_base = evmm_heap_base-PAGE_SIZE;
+    linux_stack_size= PAGE_SIZE;
+    vmm_memset((void*)linux_stack_base, 0, PAGE_SIZE); 
+
+    // linux data area
+    linux_boot_params= (linux_stack_base-linux_stack_size-2*PAGE_SIZE);
+    vmm_memset((void*)linux_boot_parameters, 0, 2*PAGE_SIZE); 
+    return 0;
+}
 
 
 int linux_setup(void)
 {
     uint32_t i;
 
-    // setup linux stack
-    linux_stack_base = evmm_heap_base - PAGE_SIZE;
-    linux_stack_size= PAGE_SIZE;
-    vmm_memset((void*)linux_stack_base, 0, PAGE_SIZE); 
     //stack grows down
     linux_esp_register= linux_stack_base+PAGE_SIZE;
 
@@ -773,7 +794,7 @@ int linux_setup(void)
         linux_state.seg.segment[i].base = 0;
         linux_state.seg.segment[i].limit = 0;
     }
-    //CHECK: got the base address from tboot, not sure about the limits of these segments/attributes.
+    //CHECK: got base address from tboot, not sure about the limits of these segments/attributes.
     linux_state.seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     linux_state.seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
     return 0;
@@ -808,7 +829,6 @@ static uint64_t evmm_get_e820_table(const multiboot_info_t *mbi)
 
     return evmm_start_of_e820_table;
 }
-
 
 
 void linux_parse_cmdline(const char *cmdline)
@@ -985,6 +1005,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     // if kernel is relocatable then move it above tboot 
     // else it may expand over top of tboot 
     if ( hdr->relocatable_kernel ) {
+        bprint("relocatable kernel\n");
         protected_mode_base = (uint32_t)get_bootstrap_mem_end();
         /* fix possible mbi overwrite in grub2 case */
         /* assuming grub2 only used for relocatable kernel */
@@ -992,13 +1013,13 @@ int expand_linux_image( multiboot_info_t* mbi,
         unsigned long mbi_end = get_mbi_mem_end(mbi);
         if ( mbi_end > protected_mode_base )
             protected_mode_base = mbi_end;
-        /* overflow? */
+        // overflow? 
         if ( plus_overflow_u32(protected_mode_base,
                  hdr->kernel_alignment - 1) ) {
             bprint("protected_mode_base overflows\n");
             return 1;
         }
-        /* round it up to kernel alignment */
+        // round it up to kernel alignment
         protected_mode_base = (protected_mode_base + hdr->kernel_alignment - 1)
                               & ~(hdr->kernel_alignment-1);
         hdr->code32_start = protected_mode_base;
@@ -1048,9 +1069,12 @@ int expand_linux_image( multiboot_info_t* mbi,
 #endif
     LOOP_FOREVER
     // copy cmdline 
-    const char *kernel_cmdline = skip_filename((const char *)mbi->cmdline);
-    vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, 
+    // FIX(JLM) check to see if there is a non empty command line
+    if ( mbi->flags & MBI_CMDLINE ) {
+        const char *kernel_cmdline = skip_filename((const char *)mbi->cmdline);
+        vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, 
                vmm_strlen((const char*)kernel_cmdline));
+    }
 
     // need to put boot_params in real mode area so it gets mapped 
     boot_params = (boot_params_t *)(real_mode_base + real_mode_size);
@@ -1060,7 +1084,7 @@ int expand_linux_image( multiboot_info_t* mbi,
 #ifdef JLMDEBUG
     bprint("expand_linux_image position 2\n");
 #endif
-    // detect e820 table 
+    // copy e820 table to boot parameters
     if ( mbi->flags & MBI_MEMMAP ) {
         int i;
 
@@ -1095,7 +1119,8 @@ int expand_linux_image( multiboot_info_t* mbi,
     initram_start_address= initrd_base;
     *entry_point = hdr->code32_start;
 #ifdef JLMDEBUG
-    bprint("expand_linux_image completes successfully\n");
+    bprint("expand_linux_image completes successfully, %d e820 entries\n",
+           boot_params->e820_entries);
 #endif
     return 0;
 }
@@ -1108,21 +1133,17 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
         bprint("original boot parameters not set\n");
         return 1;
     }
-    linux_boot_params= (linux_esp_register-2*PAGE_SIZE);
     if(linux_boot_params==0) {
       bprint("linux boot parameter area fails\n");
       LOOP_FOREVER
     }
 
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_params;
-    vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters, 
-                sizeof(boot_params_t));
+    vmm_memcpy((void*)linux_boot_params, (void*)linux_original_boot_parameters,
+               sizeof(boot_params_t));
 
     // reserve linux arguments and stack
-    if(!e820_reserve_ram(linux_boot_params, evmm_heap_base-linux_boot_params)) {
-      bprint("Unable to reserve bootstrap region in e820 table\n");
-      LOOP_FOREVER
-    } 
+    // FIX(JLM): fix in the correct mbi
 
     // set address of copied tboot shared page 
     vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, 
@@ -1148,11 +1169,32 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         return 1;
     }
 
-   // make linux mbi 
+    // make linux mbi 
+    // get correct command line and correct mbi
     vmm_memcpy((void*) &linux_mbi, (void*)mbi, sizeof(multiboot_info_t));
+#ifdef JLMDEBUG
+    if ( mbi->flags & MBI_CMDLINE ) {
+        bprint("copied mbi has a command line\n");
+    }
+    else {
+        bprint("copied mbi does not have a command line\n");
+    }
+#endif
+    if(linux_command_line!=0) {
+        mbi->flags|= MBI_CMDLINE;
+        mbi->cmdline= linux_command_line;
+    }
     linux_mbi.mods_count--;
     linux_mbi.mods_addr+= sizeof(module_t);
-    //FIX(JLM): linux_mbi
+    mbi->mmap_addr= g_copy_e820_map;
+    mbi->mmap_length= g_nr_map*sizeof(memory_map_t);
+    LOOP_FOREVER
+
+#ifdef JLMDEBUG
+    bprint("linux mbi\n");
+    PrintMbi(linux_mbi);
+#endif
+
     if(expand_linux_image(&linux_mbi, linux_start, linux_end-linux_start,
                        initram_start, initram_end-initram_start, 
                        &linux_entry_address)!=0) {
@@ -1170,6 +1212,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         bprint("cannot prepare_primary_guest_args\n");
         return 1;
     }
+    // CHECK
     linux_start_address= linux_protected_mode_start;
 
 #ifdef JLMDEBUG
@@ -1489,7 +1532,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
       bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
     } 
-    // I don't think this is necessary
+
+    // reserve evmm area
+    // I don't think this is necessary---evmm should do this
     if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+evmm_load_segment_size))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
@@ -1520,13 +1565,26 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
 
-    // prepare linux 
+    // We need to allocate this before guest setup
+    if(allocate_linux_data()!=0) {
+      bprint("Cant allocate data area for primary linux guest\n");
+      LOOP_FOREVER
+    }
+
+    // mark linux data area as reserved
+    if(!e820_reserve_ram(linux_boot_params, evmm_heap_base-linux_boot_params)) {
+      bprint("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    } 
+
+    // prepare linux for evmm
     if(prepare_linux_image_for_evmm(mbi)) {
         bprint("Cant prepare linux image\n");
         LOOP_FOREVER
     }
     LOOP_FOREVER
 
+    // copy linux data that is passed to linux in call
     if(prepare_primary_guest_environment(mbi)!=0) {
         bprint("Error setting up evmm startup arguments\n");
         LOOP_FOREVER

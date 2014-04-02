@@ -152,13 +152,3 @@ extern unsigned long get_mbi_mem_end(const multiboot_info_t *mbi);
 
 #endif /* __MULTIBOOT_H__ */
 
-
-/*
- * Local variables:
- * mode: C
- * c-set-style: "BSD"
- * c-basic-offset: 4
- * tab-width: 4
- * indent-tabs-mode: nil
- * End:
- */

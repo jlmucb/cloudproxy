@@ -1064,12 +1064,7 @@ int expand_linux_image( multiboot_info_t* mbi,
            (unsigned long)real_mode_base,
            (unsigned long)(real_mode_base + real_mode_size));
 
-#ifdef JLMDEBUG
-    bprint("expand_linux_image position 1\n");
-#endif
-    LOOP_FOREVER
     // copy cmdline 
-    // FIX(JLM) check to see if there is a non empty command line
     if ( mbi->flags & MBI_CMDLINE ) {
         const char *kernel_cmdline = skip_filename((const char *)mbi->cmdline);
         vmm_memcpy((void *)hdr->cmd_line_ptr, kernel_cmdline, 
@@ -1081,9 +1076,6 @@ int expand_linux_image( multiboot_info_t* mbi,
     vmm_memset(boot_params, 0, sizeof(*boot_params));
     vmm_memcpy(&boot_params->hdr, hdr, sizeof(*hdr));
 
-#ifdef JLMDEBUG
-    bprint("expand_linux_image position 2\n");
-#endif
     // copy e820 table to boot parameters
     if ( mbi->flags & MBI_MEMMAP ) {
         int i;
@@ -1100,9 +1092,6 @@ int expand_linux_image( multiboot_info_t* mbi,
         boot_params->e820_entries = i;
     }
 
-#ifdef JLMDEBUG
-    bprint("expand_linux_image position 3\n");
-#endif
     screen_info_t *screen = (screen_info_t *)&boot_params->screen_info;
     screen->orig_video_mode = 3;       /* BIOS 80*25 text mode */
     screen->orig_video_lines = 25;
@@ -1118,10 +1107,6 @@ int expand_linux_image( multiboot_info_t* mbi,
     linux_protected_mode_size= protected_mode_size;
     initram_start_address= initrd_base;
     *entry_point = hdr->code32_start;
-#ifdef JLMDEBUG
-    bprint("expand_linux_image completes successfully, %d e820 entries\n",
-           boot_params->e820_entries);
-#endif
     return 0;
 }
 
@@ -1142,18 +1127,14 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     vmm_memcpy((void*)linux_boot_parameters, (void*)linux_original_boot_parameters,
                sizeof(boot_params_t));
 
-    // reserve linux arguments and stack
-    // FIX(JLM): fix in the correct mbi
-
     // set address of copied tboot shared page 
     vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, 
                 sizeof(shared_page));
 
-    new_boot_params->e820_entries= g_nr_map;
-    vmm_memcpy((void*)new_boot_params->e820_map, (void*)g_copy_e820_map, 
-                g_nr_map*sizeof(memory_map_t));
-    vmm_memset((void*)&new_boot_params->e820_map[g_nr_map], 0,
-                E820MAX-g_nr_map);
+    // copy command line after boot parameters
+    //FIX(JLM): make sure all references point here
+    vmm_memcpy((void*)linux_boot_parameters+sizeof(boot_params_t),
+               (void*)linux_command_line, strlen((const char*)linux_command_line)+1);
 
     // set esi register
     linux_esi_register= linux_boot_parameters;
@@ -1182,9 +1163,6 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     }
     bprint("original mbi, %d modules, size %d\n", 
            mbi->mods_count, sizeof(multiboot_info_t));
-    HexDump((uint8_t*) mbi , (uint8_t*) mbi+sizeof(multiboot_info_t));
-    bprint("copied\n");
-    HexDump((uint8_t*)&linux_mbi, (uint8_t*)&linux_mbi+sizeof(multiboot_info_t));
 #endif
     if(linux_command_line!=0) {
         mbi->flags|= MBI_CMDLINE;
@@ -1197,9 +1175,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 
 #ifdef JLMDEBUG
     bprint("linux mbi, %d modules\n", linux_mbi.mods_count);
-    // PrintMbi(&linux_mbi);
 #endif
-    LOOP_FOREVER
 
     if(expand_linux_image(&linux_mbi, linux_start, linux_end-linux_start,
                        initram_start, initram_end-initram_start, 
@@ -1214,7 +1190,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
             linux_protected_mode_start, linux_protected_mode_size);
     bprint("initram_start_address: 0x%08x\n", initram_start_address);
 #endif
-    if(prepare_primary_guest_args(mbi)!=0) {
+    if(prepare_primary_guest_args(&linux_mbi)!=0) {
         bprint("cannot prepare_primary_guest_args\n");
         return 1;
     }

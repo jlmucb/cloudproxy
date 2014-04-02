@@ -16,17 +16,16 @@
 
 #include "vmm_defs.h"
 
-//RNB:If a variable/arg is in memory, what are the effects of indicating "memory" in the clobber list
+
 void hw_fnstsw (UINT16* loc) {
 // Read FPU status word
 //   this doesnt seem to be called
     asm volatile(
-        "\tmovq %[loc], %%rax \n\t" 
-        "\tfnstsw (%%rax)\n\t"
-			:
-    	: [loc] "m"(loc)
-    	:"%rax"
-		);
+        "\tmovq %[loc], %%rax\n" 
+        "\tfnstsw (%%rax)\n"
+        :
+        : [loc] "m"(loc)
+        :"%rax");
     return;
 }
 
@@ -35,12 +34,11 @@ void hw_fnstcw ( UINT16 * loc )
 // Read FPU control word
 {
     asm volatile(
-        "\tmovq %[loc], %%rax \n\t"
-        "\tfnstcw (%%rax) \n\t"
-    	:
-    	: [loc] "m"(loc)
-	    :"%rax"
-		);
+        "\tmovq %[loc], %%rax\n"
+        "\tfnstcw (%%rax)\n"
+        :
+        : [loc] "m"(loc)
+        :"%rax");
     return;
 }
 
@@ -49,9 +47,8 @@ void hw_fninit()
 // Init FP Unit
 {
     asm volatile(
-	"fninit \n\t"
-    	:::
-	);
+        "fninit \n\t"
+        :::);
     return;
 }
 

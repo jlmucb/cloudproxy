@@ -91,28 +91,19 @@ int vmm_strncmp (const char * str1, const char * str2, int n)
 
 void *vmm_memset(void *dest, int val, uint32_t count)
 {
-    asm volatile(
-        "\n movl %[dest], %%edi"
-        "\n\t movl %[val], %%eax"
-        "\n\t movl %[count], %%ecx"
-        "\n\t cld"
-        "\n\t rep stosb"
-    :[dest] "+g" (dest)
-    :[val] "g" (val), [count] "g" (count) :);
+    uint8_t* p= (uint8_t*) dest;
+    while(count-->0)
+	*(p++)= (uint8_t) val;
     return dest;
 }
 
 
 void *vmm_memcpy(void *dest, const void* src, uint32_t count)
 {
-    asm volatile(
-        "\n movl %[src], %%esi"
-        "\n movl %[dest], %%edi"
-        "\n\t movl %[count], %%ecx"
-        "\n\t cld"
-        "\n\t rep stosb"
-    :[dest] "+g" (dest)
-    :[src] "g" (src), [count] "g" (count) :);
+    uint8_t* p= (uint8_t*) dest;
+    uint8_t* q= (uint8_t*) src;
+    while(count-->0)
+	*(p++)= *(q++);
     return dest;
 }
 
@@ -136,7 +127,6 @@ uint64_t vmm_strtoul (const char* str, char** endptr, int base)
 }
 
 
-#ifdef JLMDEBUG
 void HexDump(uint8_t* start, uint8_t* end)
 {
     uint8_t* p= start;
@@ -157,7 +147,7 @@ void HexDump(uint8_t* start, uint8_t* end)
     }
     bprint("\n");
 }
-#endif // JLMDEBUG
+
 
 
 #define _XA     0x00    /* extra alphabetic - not supported */

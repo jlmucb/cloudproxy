@@ -1171,6 +1171,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 
     // make linux mbi 
     // get correct command line and correct mbi
+    vmm_memset((void*) &linux_mbi, 0, sizeof(multiboot_info_t));
     vmm_memcpy((void*) &linux_mbi, (void*)mbi, sizeof(multiboot_info_t));
 #ifdef JLMDEBUG
     if ( mbi->flags & MBI_CMDLINE ) {
@@ -1179,6 +1180,11 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     else {
         bprint("copied mbi does not have a command line\n");
     }
+    bprint("original mbi, %d modules, size %d\n", 
+           mbi->mods_count, sizeof(multiboot_info_t));
+    HexDump((uint8_t*) mbi , (uint8_t*) mbi+sizeof(multiboot_info_t));
+    bprint("copied\n");
+    HexDump((uint8_t*)&linux_mbi, (uint8_t*)&linux_mbi+sizeof(multiboot_info_t));
 #endif
     if(linux_command_line!=0) {
         mbi->flags|= MBI_CMDLINE;
@@ -1188,12 +1194,12 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     linux_mbi.mods_addr+= sizeof(module_t);
     mbi->mmap_addr= (uint32_t)g_copy_e820_map;
     mbi->mmap_length= g_nr_map*sizeof(memory_map_t);
-    LOOP_FOREVER
 
 #ifdef JLMDEBUG
-    bprint("linux mbi\n");
-    PrintMbi(&linux_mbi);
+    bprint("linux mbi, %d modules\n", linux_mbi.mods_count);
+    // PrintMbi(&linux_mbi);
 #endif
+    LOOP_FOREVER
 
     if(expand_linux_image(&linux_mbi, linux_start, linux_end-linux_start,
                        initram_start, initram_end-initram_start, 
@@ -1534,7 +1540,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     } 
 
     // reserve evmm area
-    // I don't think this is necessary---evmm should do this
+    // CHECK: I don't think this is necessary---evmm should do this
     if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+evmm_load_segment_size))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER

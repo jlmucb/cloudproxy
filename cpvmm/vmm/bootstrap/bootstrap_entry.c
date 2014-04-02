@@ -60,7 +60,7 @@ tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 extern uint32_t _start_bootstrap, _end_bootstrap;
 
 
-#define EVMM_DEFAULT_START_ADDR 0x70000000 
+#define EVMM_DEFAULT_START_ADDR  0x70000000 
 #define LINUX_DEFAULT_LOAD_ADDRESS 0x100000
 #define EVMM_HEAP_SIZE 0x100000
 #define EVMM_HEAP_BASE (EVMM_DEFAULT_START_ADDR- EVMM_HEAP_SIZE)
@@ -1134,7 +1134,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     // copy command line after boot parameters
     char* new_cmd_line= (char*)(linux_boot_parameters+sizeof(boot_params_t));
     vmm_memcpy((void*)new_cmd_line, (void*)linux_command_line, 
-               (size_t)strlen((const char*)linux_command_line)+1);
+               vmm_strlen((const char*)linux_command_line)+1);
 
     // adjust pointers to point to new command line
     if(new_boot_params->eddbuf_entries<=0) {
@@ -1142,6 +1142,8 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
       LOOP_FOREVER
     }
     new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmd_line;
+    *(uint64_t *)&new_boot_params->tboot_shared_addr =
+                                             (uint32_t*)shared_page;
 
     // set esi register
     linux_esi_register= linux_boot_parameters;

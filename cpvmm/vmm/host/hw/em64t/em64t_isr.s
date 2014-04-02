@@ -12,28 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
+
 
 .intel_syntax
 .text
 
 # Calling conventions
-#
 # THIS IS WRONG FOR GCC FIX
-#
 # Floating : First 4 parameters – XMM0 through XMM3. Others passed on stack.
-#
 # Integer  : First 4 parameters – RCX, RDX, R8, R9. Others passed on stack.
-#
 # Aggregates (8, 16, 32, or 64 bits) and __m64:
 #              First 4 parameters – RCX, RDX, R8, R9. Others passed on stack.
-#
 # Aggregates (other):
 #            By pointer. First 4 parameters passed as pointers in RCX, RDX, R8, and R9
-#
 # __m128   : By pointer. First 4 parameters passed as pointers in RCX, RDX, R8, and R9
-#
-#
 #
 # Return values that can fit into 64-bits are returned through RAX (including __m64 types),
 # except for __m128, __m128i, __m128d, floats, and doubles, which are returned in XMM0.
@@ -42,20 +34,17 @@
 # arguments are then shifted one argument to the right. That same pointer must be returned
 # by the callee in RAX. User defined types to be returned must be 1, 2, 4, 8, 16, 32, or 64
 # bits in length.
-#
-#
 #.include       ia32_registers.equ
 #.include "vmm_arch_defs.h"
+
 .extern VMM_GP_REGISTERS
-#
-#
+
+
 # Register usage
-#
 # Caller-saved and scratch:
 #        RAX, RCX, RDX, R8, R9, R10, R11
 # Callee-saved
 #        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
-#
 
 .extern g_exception_gpr
 .extern exception_class
@@ -68,20 +57,13 @@
 
 .text
 
-#
-#  UINT8 __stdcall
-#  hw_isr (
-#          void
-#  );
-#
+
+#  UINT8 __stdcall hw_isr ( void);
 #  ISR handler. Pushes hardcoded CPU ID onto stack and jumps to vector routine
-#
 #  Stack offsets on entry:
-#
 #  eax register will contain result         Bits 7-0: #Physical Address Bits
 #                                Bits 15-8: #Virtual Address Bits
 #                                Bits 31-16: Reserved =
-#
 
 .macro isr_entry_macro vector
         push vector
@@ -144,21 +126,19 @@ hw_isr_c_wrapper:
         # [[   errcode      ]]    optionally
         # [    vector ID     ] <= RSP
         #
-        # ---------------------------
         #   The following code was removed, its is MSVC specific and wrong for gcc
         # in gcc %rdi is used for parameter passing, not rcx
         # push    %rcx             # save RCX which used for argument passing
         # mov     %rcx, %rsp
         # add     %rcx, 0x8         # now RCX points to the location of vector ID
-        # ---------------------------
+        
         # the following is the substitute code for gcc, note that %rdi, %rsi and %rcx are pushed
-        # ---------------------------
         push    %rdi             # save RDI which used for argument passing
         mov     %rdi, %rsp
         add     %rdi, 0x8         # now RDI points to the location of vector ID
         push    %rsi            # just in case
         push    %rcx            # just in case
-        # ---------------------------
+        
         push    %rdx
         push    %rax
         push    %r8
@@ -178,16 +158,15 @@ hw_isr_c_wrapper:
         pop     %r8
         pop     %rax
         pop     %rdx
-        # ---------------------------
+        
         # the following is the substitute code for gcc
-        # ---------------------------
         pop     %rcx    # just in case
         pop     %rsi    # just in case
         pop     %rdi    # restored from parameter passing
-        # ---------------------------
+        
         # this is the old msvc code
         # pop     %rcx
-        # ---------------------------
+
         pop     %rsp             # isr_c_handler replaces vector ID with pointer to the
                                 # RIP. Just pop the pointer to the RIP into RSP.
         iretq

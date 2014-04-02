@@ -47,7 +47,6 @@ LDFLAGS=
 
 CC=         gcc
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
 dobjs=      $(B)/guest.o $(B)/guest_control.o $(B)/guest_pci_configuration.o

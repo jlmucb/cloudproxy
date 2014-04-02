@@ -18,27 +18,30 @@
 #include "vmm_defs.h"
 #include "common_libc.h"
 
-/*
- *  force compiler intrinsics to use our code
- */
 
+//  force compiler intrinsics to use our code
 void memset (void *str, int c, int n) {
-        vmm_memset (str, c, n);
-        return;
+    vmm_memset (str, c, n);
+    return;
 }
+
 
 void memcpy(void *str1, void *str2, int n) {
-        vmm_memcpy(str1, str2, n);
-        return; 
+    vmm_memcpy(str1, str2, n);
+    return; 
 }
+
 
 int strlen (const char *str) {
-        return vmm_strlen(str);
+    return vmm_strlen(str);
 }
 
+
 void *memmove(void *dest, const void *src, int n) {
-        return vmm_memmove(dest, src, n);
+    return vmm_memmove(dest, src, n);
 }
+
+
 void vmm_lock_xchg_qword (UINT64 *dst, //rcx
                           UINT64 *src)  //rdx
 {

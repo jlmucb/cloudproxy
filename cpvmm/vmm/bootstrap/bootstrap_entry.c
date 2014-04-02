@@ -99,13 +99,13 @@ uint32_t linux_real_mode_start= 0;      // address of linux real mode
 uint32_t linux_real_mode_size= 0;       // address of linux real mode size
 uint32_t linux_protected_mode_start= 0; // address of linux real mode
 uint32_t linux_protected_mode_size= 0;  // address of linux real mode
-uint32_t linux_start_address= 0;        // this is the address of the linux protected mode image
-uint32_t initram_start_address= 0; // this is the address of the initram for linux
-uint32_t linux_entry_address= 0;   // this is the address of the eip in the guest
-uint32_t linux_esi_register= 0;    // this is the value of the esi register on guest entry
-uint32_t linux_esp_register= 0;    // this is the value of the esp on entry to the guest linux
-uint32_t linux_stack_base= 0;      // this is the base of the stack on entry to linux
-uint32_t linux_stack_size= 0;      // this is the size of the stack that the linux guest has
+uint32_t linux_start_address= 0;        // address of the linux protected mode image
+uint32_t initram_start_address= 0; // address of the initram for linux
+uint32_t linux_entry_address= 0;   // address of the eip in the guest
+uint32_t linux_esi_register= 0;    // value of the esi register on guest entry
+uint32_t linux_esp_register= 0;    // value of the esp on entry to the guest linux
+uint32_t linux_stack_base= 0;      // base of the stack on entry to linux
+uint32_t linux_stack_size= 0;      // size of the stack that the linux guest has
 char*    linux_command_line= NULL;
 
 // boot parameters for linux guest
@@ -689,10 +689,10 @@ static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 #define MAX_E820_ENTRIES PAGE_SIZE/sizeof(INT15_E820_MEMORY_MAP)
 #define UUID 0x1badb002
 
-// expanded e820 table used be evmm
+// expanded e820 table used by evmm
 static unsigned int     evmm_num_e820_entries = 0;
-INT15_E820_MEMORY_MAP*  evmm_e820= NULL;                // address of expanded e820 table for evmm
-uint64_t                evmm_start_of_e820_table= 0ULL; // same but 64 bits
+INT15_E820_MEMORY_MAP*  evmm_e820= NULL;      // expanded e820 table for evmm
+uint64_t                evmm_start_of_e820_table= 0ULL; // 64 bits version
 
 // for linux primary guest
 #define LINUX_BOOT_CS 0x10
@@ -1132,9 +1132,16 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
                 sizeof(shared_page));
 
     // copy command line after boot parameters
-    //FIX(JLM): make sure all references point here
-    vmm_memcpy((void*)linux_boot_parameters+sizeof(boot_params_t),
-               (void*)linux_command_line, strlen((const char*)linux_command_line)+1);
+    char* new_cmd_line= (char*)(linux_boot_parameters+sizeof(boot_params_t));
+    vmm_memcpy((void*)new_cmd_line, (void*)linux_command_line, 
+               strlen((const char*)linux_command_line)+1);
+    // adjust pointers to point to new command line
+    if(new_boot_params->eddbuf_entries<=0) {
+      bprint("adjusted e820 has no entries, expecting two\n");
+      LOOP_FOREVER
+    }
+    new_boot_params->hdr->cmd_line_ptr= (uint32_t) new_cmd_line;
+    new_boot_params->e820_map[0]->string= (uint32_t) new_cmd_line;
 
     // set esi register
     linux_esi_register= linux_boot_parameters;
@@ -1280,9 +1287,9 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 #if 0
     (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
     (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
-    (p_startup_struct->vmm_memory_layout[1]).base_address = linux_start;
+    (p_startup_struct->vmm_memory_layout[1]).base_address = linux_protected_mode_start;
     // QUESTION (JLM):  Check the line below.  It is only right if linux has a 64 bit elf header
-    (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_start + entryOffset(linux_start);
+    (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_protected_mode_start;
     (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
     (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;

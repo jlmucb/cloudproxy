@@ -35,12 +35,10 @@ void vmm_asm_invept (INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 }
 
 /*
- * VOID
- * vmm_asm_invvpid (
+ * VOID vmm_asm_invvpid (
  *    INVEPT_ARG   *arg,                ;rcx
  *    UINT32       modifier     ;rdx
- *    UINT64       *rflags      ;r8
- *    )
+ *    UINT64       *rflags)     ;r8
  */
 void vmm_asm_invvpid (INVVPID_ARG *arg, UINT32 modifier, UINT64 *rflags) 
 {
@@ -55,6 +53,6 @@ void vmm_asm_invvpid (INVVPID_ARG *arg, UINT32 modifier, UINT64 *rflags)
         "\tpop (%%r8) \n"
     :
     : [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
-    : "rax", "rcx", "rdx", "r8");
+    : "%rax", "%rcx", "%rdx", "%r8");
     return;
 }

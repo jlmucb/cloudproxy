@@ -67,8 +67,7 @@ dobjs=      $(BINDIR)/vmexit.o $(BINDIR)/vmexit_io.o \
 	    $(BINDIR)/vmexit_invd.o $(BINDIR)/vmexit_dbg.o \
 	    $(BINDIR)/vmexit_dtr_tr_access.o $(BINDIR)/vmexit_vmx.o \
 	    $(BINDIR)/vmexit_vmx.o $(BINDIR)/vmx_teardown.o \
-			$(BINDIR)/teardown_thunk2.o \
-			$(BINDIR)/vmexit_analysis.o \
+	    $(BINDIR)/teardown_thunk2.o $(BINDIR)/vmexit_analysis.o \
 	    $(BINDIR)/vmexit_cr_access.o \
 	    $(BINDIR)/vmexit_msr.o \
 	    $(BINDIR)/vmexit_ept.o 
@@ -79,10 +78,6 @@ $(E)/libvmexit.a: $(dobjs)
 	@echo "libvmexit.a"
 	#$(LIBMAKER) -static -o $(E)/libvmexit.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libvmexit.a $(dobjs)
-
-#$(BINDIR)/teardown_thunk.o: $(mainsrc)/teardown_thunk.s
-#	echo "teardown_thunk.o"
-#	$(AS) -o $(BINDIR)/teardown_thunk.o $(mainsrc)/teardown_thunk.s
 
 $(BINDIR)/teardown_thunk2.o: $(mainsrc)/teardown_thunk2.c
 	echo "teardown_thunk2.o"

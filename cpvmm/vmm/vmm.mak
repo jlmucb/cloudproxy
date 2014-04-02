@@ -40,7 +40,6 @@ INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
-#		-I$(S)/loader/pre_os/starter 
 
 DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
 RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE

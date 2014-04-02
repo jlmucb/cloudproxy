@@ -1134,14 +1134,14 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     // copy command line after boot parameters
     char* new_cmd_line= (char*)(linux_boot_parameters+sizeof(boot_params_t));
     vmm_memcpy((void*)new_cmd_line, (void*)linux_command_line, 
-               strlen((const char*)linux_command_line)+1);
+               (size_t)strlen((const char*)linux_command_line)+1);
+
     // adjust pointers to point to new command line
     if(new_boot_params->eddbuf_entries<=0) {
       bprint("adjusted e820 has no entries, expecting two\n");
       LOOP_FOREVER
     }
-    new_boot_params->hdr->cmd_line_ptr= (uint32_t) new_cmd_line;
-    new_boot_params->e820_map[0]->string= (uint32_t) new_cmd_line;
+    new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmd_line;
 
     // set esi register
     linux_esi_register= linux_boot_parameters;

@@ -1,0 +1,119 @@
+In other documents, the details of how Tao can support the creation of
+authenticated channels is left unspecified. Here are some ideas.
+
+1. TLS PSK (Pre-Shared Keys) and OpenSSL
+----------------------------------------
+
+There are TLS suites defined that use symmetric keys for authentication, where
+both endpoints have some shared key in common.
+
+For example, openssl already supports:
+  TLS_PSK_WITH_AES_128_CBC_SHA
+Ideally, to get perfect forward secrecy and GCM we could use one of:
+  TLS_DHE_PSK_WITH_AES_128_GCM_SHA256    = {0x00,0xAA};
+  TLS_DHE_PSK_WITH_AES_256_GCM_SHA384    = {0x00,0xAB};
+Sadly, these aren't supported in openssl yet.
+
+I'm going to assume that support could be easily added for these, that we could
+find a different tls package with support for these, or that the existing PSK
+support in openssl is good enough.
+
+2. OpenSSL invokes Tao?
+-----------------------
+
+In the symmetric key outline elsewhere, two hosted programs don't necessarily
+share any keys in common. Instead, there is some common ancestor Tao that is
+trusted by both endpoints and which was ultimately responsible for generating
+the symmetric keys for each endpoint. That common ancestor Tao can do some of
+the symmetric key operations (signing and/or verification) on behalf of one (or
+both) endpoint programs in a way that allows the two programs to verify each
+other's symmetric-key signatures without directly sharing a key in common. That
+is to say, TLS-PSK isn't quite applicable. 
+
+One approach is to hack openssl (or somehow install hooks, support for which I
+don't believe currently exist in openssl) so it talks to Tao. The idea would be
+that that one or both endpoint programs invokes the underlying Tao during TLS
+key exchange to do the necessary symmetric key operations. To make this actually
+secure, however, the Tao probably needs to be involved in generating material
+for the TLS pre-master secrets, generating and/or verifying the conversation
+hashes, etc.  The Tao API would be complex, very TLS-specific, and the security
+properties of the resulting protocol would not be obvious. 
+
+3. Design a TLS-PSK-like protocol?
+----------------------------------
+
+Borrowing heavily from TLS_DHE_PSK_WITH_AES_128_GCM_SHA256, we could implement a
+protocol that uses Tao symmetric keys rather than pre-shared keys, does ECDHE
+exchange, etc. My guess is that this would lead to a slightly less ugly Tao API
+than simply hacking TLS, but the API would still be complex and not obviously
+correct or credible. 
+
+4. Pass file descriptors (and TLS state) over pipes?
+----------------------------------------------------
+
+The current linux_tao_service uses pipes to connect hosted programs and the Tao.
+It is possible to pass an open file descriptor over a pipe.  Suppose two hosted
+programs, A/path1 and A/path2, both deriving from some common Tao ancestor A, are
+attempting to establish a TLS connection. After opening the network connection,
+both programs could pass their open file descriptors to Tao A. Tao A could then
+just call the regular openssl TLS-PSK initialization routines with its own
+symmetric key, followed by a short exchange of path1 and path2 to provide each
+endpoint with the full name of its peer. Tao A would then send the open file
+descriptors back to the hosted programs. Unfortunately, Tao A would also need to
+somehow transfer the TLS state to each hosted program as well. I do not know if
+that is feasible or simple in OpenSSL. Moreover, it is a little silly to even be
+doing TLS (ECDHE, PSK signatures, etc.) here, since the same program (Tao A)
+fully controls both endpoints of the connection -- Tao A could just skip the
+entire handshake, pick a premaster secret and be done with it.
+
+5. Don't use TLS, rely on OS-secured channels.
+----------------------------------------------
+
+Within a single machine, TLS isn't actually necessary if we have some other
+means of establishing secure channels. Linux pipes are one possibility. I think
+this is a non-starter: it complicates support for Tao-based virtual machines,
+for example.
+
+6. Have Tao common ancestors perform shared key distribution?
+-------------------------------------------------------------
+
+Tao can serve as the trusted third party in a session key distribution protocol,
+ala kerberos, 3PKD (http://seclab.cs.ucdavis.edu/papers/Rogaway/3pkd.pdf), etc.
+
+As a simplified example, suppose hosted programs A/path1 and A/path2 would would
+like to communicate, and both share a common ancestor Tao A. Then Tao A can
+generate a shared symmetric key for the two programs roughly as follows.
+  Programs A/path1 and A/path2 connect and exchange their full names.
+  Each program now has both key names, A/path1 and A/path2.
+  Each program invokes some common ancestor A, giving it the two paths.
+  Tao A verifies that the invoking program is one of the two paths.
+  Tao A computes the longest common prefix of the two paths.
+  Tao A generates the key corresponding to A/prefix
+  Tao A generates the key corresponding to A/prefix/merge
+    where merge is computed based on the two suffixes of path1 and path2,
+    e.g. Hash(join(sort([path1suffix, path2suffix]))).
+  Tao A returns the computed key to both A/path1 and A/path2.
+  The two hosted programs can then use TLS-PSK with that common key.
+  After the TLS handshake, both programs know they must be talking to the
+    opposite program, since Tao A gave the key only to A/path1 and A/path2.
+
+Another way to think of this is that Tao is providing "group" shared symmetric
+keys, similar to how Tao can provide per-program shared symmetric keys. In this
+view, a hosted program can invoke the Tao with a list of group members; if the
+calling program is among the group members, then the Tao will return a symmetric
+key that corresponds to that group. A caveat is that the Tao so invoked must be
+a common ancestor (hence trusted) by all members of the group. In the TLS
+example above, the group is always 2 members: the invoking program plus the peer
+to which it is trying to establish a secure channel.
+
+7. Long-Lived vs. Short-Lived Keys
+----------------------------------
+
+We don't currently specify how keys can be revoked, rotated, etc. And although
+we are careful to use DHE-based TLS because it has perfect forward secrecy, we
+don't have any provisions for dealing with a compromised policy key, tao key,
+program key, etc. Session key distribution protocols do a much better job of
+this, distinguishing short-lived session keys, long-lived user keys (password),
+and expiration/rotation of both kinds of keys.
+
+

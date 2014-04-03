@@ -1112,6 +1112,7 @@ int expand_linux_image( multiboot_info_t* mbi,
 }
 
 
+#ifdef INCLUDETBOOTCMDLINE
 int adjust_kernel_cmdline(multiboot_info_t *mbi,
                           const void *tboot_shared_addr)
 {
@@ -1131,6 +1132,7 @@ int adjust_kernel_cmdline(multiboot_info_t *mbi,
 
     return 0;
 }
+#endif
 
 
 // relocate and setup variables for evmm entry
@@ -1157,10 +1159,20 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     new_cmdline= (char*)(linux_boot_parameters+sizeof(boot_params_t));
     *(uint64_t *)&new_boot_params->tboot_shared_addr =
                                       (uint64_t)(uint32_t)shared_page;
+#ifdef INCLUDETBOOTCMDLINE
     if(adjust_kernel_cmdline(mbi, (const void*)new_boot_params->tboot_shared_addr)!=0) {
       bprint("cant adjust linux command line\n");
       LOOP_FOREVER
     }
+#else
+    if( linux_command_line!=0) {
+    	vmm_memcpy((void*)new_cmdline, (void*) linux_command_line,
+               vmm_strlen((char*)linux_command_line)+1);
+    }
+    else {
+        new_cmdline= NULL;
+    }
+#endif
     new_boot_params->hdr.cmdline_size= vmm_strlen(new_cmdline)+1;
     new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmdline;
 

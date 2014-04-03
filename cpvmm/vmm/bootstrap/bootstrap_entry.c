@@ -1646,11 +1646,12 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     asm volatile (
         // evmm_initial_stack points to the start of the stack
         "movl   %[evmm_initial_stack], %%esp\n"
+
         // prepare arguments for 64-bit mode
-        // there are 3 arguments
+        // there are 4 arguments (including reserved)
         // align stack and push them on 8-byte alignment
-        "\txor  %%eax, %%eax\n"
         "\tand  $7, %%esp\n"
+        "\txor  %%eax, %%eax\n"
         "\tpush %%eax\n"
         "\tpush %[evmm_reserved]\n"
         "\tpush %%eax\n"

@@ -537,6 +537,10 @@ class Tao {
   // Additional methods to support TLS-PSK or similar authentication
 }
 
+Also, Tao::GetKey() probably obviates the need for Tao::Seal() and
+Tao::Unseal(), since the same properties can be had by just having the hosted
+programs do GetKey() then encrypt and decrypt data themselves.
+
 6.4 Authentication Logic
 ------------------------
 

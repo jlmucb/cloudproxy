@@ -1161,12 +1161,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
       bprint("cant adjust linux command line\n");
       LOOP_FOREVER
     }
-
-    // adjust pointers to point to new command line
-    if(new_boot_params->eddbuf_entries<=0) {
-      bprint("adjusted e820 has no entries, expecting two\n");
-      LOOP_FOREVER
-    }
+    new_boot_params->hdr.cmdline_size= vmm_strlen(new_cmdline)+1;
     new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmdline;
 
     // set esi register
@@ -1598,13 +1593,34 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         bprint("Cant prepare linux image\n");
         LOOP_FOREVER
     }
-    LOOP_FOREVER
 
     // copy linux data that is passed to linux in call
-    if(prepare_primary_guest_environment(mbi)!=0) {
+    if(prepare_primary_guest_environment(&linux_mbi)!=0) {
         bprint("Error setting up evmm startup arguments\n");
         LOOP_FOREVER
     }
+
+#ifdef JLMDEBUG
+    // Print final parameters for linux
+    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_parameters;
+    bprint("Final Linux parameters\n");
+    bprint("\tShared page address: 0x%016lx %d e820 entries\n", 
+           (long unsigned int)*(uint64_t*)new_boot_params->tboot_shared_addr,
+           new_boot_params->e820_entries);
+    // e820_entries;     e820_map[E820MAX];
+    bprint("\tCode32_start: 0x08x, ramdisk: 0x%08x, ramdisk size: %d\n",
+           new_boot_params->hdr.code32_start,
+           new_boot_params->hdr.ramdisk_image,
+           new_boot_params->hdr.ramdisk_size);
+    char* s= (char*) new_boot_params->hdr.cmd_line_ptr;
+    if(s!=NULL || vmm_strlen(s)<100) {
+        bprint("\tcommand line: %s\n", s);
+    }
+    else {
+        bprint("\tinvalid command line\n");
+    }
+#endif
+    LOOP_FOREVER
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space

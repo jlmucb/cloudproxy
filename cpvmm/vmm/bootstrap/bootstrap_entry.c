@@ -1166,7 +1166,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     }
 #else
     if( linux_command_line!=0) {
-    	vmm_memcpy((void*)new_cmdline, (void*) linux_command_line,
+        vmm_memcpy((void*)new_cmdline, (void*) linux_command_line,
                vmm_strlen((char*)linux_command_line)+1);
     }
     else {
@@ -1643,6 +1643,26 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //      vmm_main(uint32_t local_apic_id, uint64_t startup_struct_u, 
     //               uint64_t application_params_struct_u, 
     //               uint64_t reserved UNUSED)
+
+    // From the architecture manual (3A):
+    //    CR3 — Contains the physical address of the base of the 
+    //    paging-structure hierarchy and two flags (PCD and PWT). 
+    //    Only the most-significant bits (less the lower 12 bits) 
+    //    of the base address are specified; the lower 12 bits
+    //    of the address are assumed to be 0. The first paging structure 
+    //    must thus be aligned to a page (4-KByte) boundary. The PCD and 
+    //    PWT flags control caching of that paging structure in the 
+    //    processor’s internal data caches (they do not control TLB 
+    //    caching of page-directory information).  When using the physical 
+    //    address extension, the CR3 register contains the base address 
+    //    of the page-directory-pointer table In IA-32e mode, the CR3 
+    //    register contains the base address of the PML4 table.
+
+    //    When we jump, we're in 64 bit mode, make sure the top bits
+    //    are 0.
+    uint64_t vmm_main_entry64= 0ULL;
+    vmm_main_entry64= (uint32_t) vmm_main_entry_point;
+
     asm volatile (
         // evmm_initial_stack points to the start of the stack
         "movl   %[evmm_initial_stack], %%esp\n"
@@ -1704,11 +1724,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         //"\t.byte 0x48\n"
         //"\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
-        "\tjmp %[vmm_main_entry_point]\n"
+        "\tjmp %[vmm_main_entry64]\n"
         "\tud2\n"
     :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
        [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
-       [vmm_main_entry_point] "m" (vmm_main_entry_point), 
+       [vmm_main_entry64] "m" (vmm_main_entry64), 
        [evmm_initial_stack] "m" (evmm_initial_stack), 
        [evmm64_cs] "m" (evmm64_cs), [evmm64_cr3] "m" (evmm64_cr3)
     : "%eax", "%ebx", "%ecx", "%edx");

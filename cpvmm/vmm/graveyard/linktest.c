@@ -18,6 +18,7 @@
 
 #include "stdio.h"
 #include "string.h"
+#include <stdlib.h>
 
 
 typedef unsigned char      uint8_t;
@@ -33,7 +34,7 @@ void vmm_main(uint32_t local_apic_id, uint64_t startup_struct_u,
     printf("\tlocal_apic_id: %d, startup_struct_u: %ld\n", local_apic_id, (long int)startup_struct_u);
     printf("\tapplication_params_struct_u: %ld, reserved: %ld\n",
            (long int)application_params_struct_u, (long int)reserved);
-    return;
+    exit(0);
 }
 
 
@@ -49,28 +50,23 @@ int main(int an, char* av)
            (long unsigned int) vmm_main_entry_point, (long unsigned int)vmm_main);
 
     asm volatile (
-        "\txor      %%eax, %%eax\n"
-        //"\tpushl    %%eax\n"
-        //"\tpushl    %[evmm_reserved]\n"
-        //"\tpushl    %%eax\n"
-        //"\tpushl    %[application_params_struct]\n"
-        //"\tpushl    %%eax\n"
-        //"\tpushl    %[p_startup_struct]\n"
-        //"\tpushl    %%eax\n"
-        //"\tpushl    %[local_apic_id]\n"
+        // "\tpushq    $1f\n"
+        "\tpushq    %[evmm_reserved]\n"
+        "\tpushq    %[application_params_struct]\n"
+        "\tpushq    %[p_startup_struct]\n"
+        "\tpushq    %[local_apic_id]\n"
 
         // for following retf
-        //"\tpushq 1f\n"
-        "\tmovq %[vmm_main_entry_point], %%rbx\n"
-        //"\tret\n"
-
+        // "\tjmp 1f\n"
+        "\tpush $1f\n"
+        "\tret\n"
 "1:\n"
-        //"\tpopq %%rdi\n"
-        //"\tpopq %%rsi\n"
-        //"\tpopq %%rdx\n"
-        //"\tpopq %%rdx\n"
-        "\tjmpq   0(%%rbx)\n"
-        //"\tud2\n"
+        "\tpopq %%rdi\n"
+        "\tpopq %%rsi\n"
+        "\tpopq %%rdx\n"
+        "\tpopq %%rcx\n"
+        "\tjmpq   %[vmm_main_entry_point]\n"
+        "\tud2\n"
     :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
        [application_params_struct] "m" (application_params_struct), [evmm_reserved] "m" (evmm_reserved), 
        [vmm_main_entry_point] "m" (vmm_main_entry_point)

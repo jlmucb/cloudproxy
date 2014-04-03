@@ -1661,16 +1661,14 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tpush %[local_apic_id]\n"
 
         "\tcli\n"
-        // push segment and offset
+
+        // push segment and offset for retf
         "\tpush  %[evmm64_cs]\n"
-
         // for following retf
-        "\tpush 1f\n"
-        "\tmovl %[vmm_main_entry_point], %%ebx\n"
+        "\tpush $1f\n"
 
-        "\tmovl %[evmm64_cr3], %%eax\n"
         // initialize CR3 with PML4 base
-        // "\tmovl 4(%%esp), %%eax\n"
+        "\tmovl %[evmm64_cr3], %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
 
         // enable 64-bit mode
@@ -1701,12 +1699,12 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // in 64 bit this is actually pop rdx (application struct)
         "\tpop %%edx\n"
         // in 64 bit this is actually pop rcx (reserved)
-        "\tpop %%edx\n"
+        "\tpop %%ecx\n"
         // in 64bit this is actually sub  0x18, %%rsp
-        "\t.byte 0x48\n"
-        "\tsubl 0x18, %%esp\n"
+        //"\t.byte 0x48\n"
+        //"\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
-        "\tjmp (%[vmm_main_entry_point])\n"
+        "\tjmp %[vmm_main_entry_point]\n"
         "\tud2\n"
     :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
        [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 

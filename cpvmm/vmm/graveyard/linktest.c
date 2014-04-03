@@ -41,7 +41,7 @@ void vmm_main(uint32_t local_apic_id, uint64_t startup_struct_u,
 int main(int an, char* av)
 {
     uint64_t vmm_main_entry_point= (uint64_t) vmm_main;
-    uint32_t local_apic_id= 1ULL;
+    uint32_t local_apic_id= 1;
     uint64_t p_startup_struct= 2ULL;
     uint64_t application_params_struct= 3ULL;
     uint64_t evmm_reserved= 4ULL;
@@ -50,7 +50,6 @@ int main(int an, char* av)
            (long unsigned int) vmm_main_entry_point, (long unsigned int)vmm_main);
 
     asm volatile (
-        // "\tpushq    $1f\n"
         "\tpushq    %[evmm_reserved]\n"
         "\tpushq    %[application_params_struct]\n"
         "\tpushq    %[p_startup_struct]\n"

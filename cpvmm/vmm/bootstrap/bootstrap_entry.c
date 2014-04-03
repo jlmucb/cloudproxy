@@ -1664,7 +1664,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
         // push segment and offset for retf
         "\tpush  %[evmm64_cs]\n"
-        // for following retf
         "\tpush $1f\n"
 
         // initialize CR3 with PML4 base
@@ -1708,7 +1707,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tud2\n"
     :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
        [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
-       [vmm_main_entry_point] "m" (vmm_main_entry_point), [evmm_initial_stack] "m" (evmm_initial_stack), 
+       [vmm_main_entry_point] "m" (vmm_main_entry_point), 
+       [evmm_initial_stack] "m" (evmm_initial_stack), 
        [evmm64_cs] "m" (evmm64_cs), [evmm64_cr3] "m" (evmm64_cr3)
     : "%eax", "%ebx", "%ecx", "%edx");
 

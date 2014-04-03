@@ -107,6 +107,7 @@ uint32_t linux_esp_register= 0;    // value of the esp on entry to the guest lin
 uint32_t linux_stack_base= 0;      // base of the stack on entry to linux
 uint32_t linux_stack_size= 0;      // size of the stack that the linux guest has
 char*    linux_command_line= NULL;
+char*    new_cmdline= NULL;        // new command line with tboot shared page
 
 // boot parameters for linux guest
 uint32_t linux_original_boot_parameters= 0;
@@ -1111,6 +1112,27 @@ int expand_linux_image( multiboot_info_t* mbi,
 }
 
 
+int adjust_kernel_cmdline(multiboot_info_t *mbi,
+                          const void *tboot_shared_addr)
+{
+    const char *old_cmdline;
+
+    if ( mbi->flags & MBI_CMDLINE && mbi->cmdline != 0 )
+        old_cmdline = (const char *)mbi->cmdline;
+    else
+        old_cmdline = "";
+
+    vscnprintf(new_cmdline, TBOOT_KERNEL_CMDLINE_SIZE, "%s tboot=%p",
+             old_cmdline, tboot_shared_addr);
+    new_cmdline[TBOOT_KERNEL_CMDLINE_SIZE - 1] = '\0';
+
+    mbi->cmdline = (u32)new_cmdline;
+    mbi->flags |= MBI_CMDLINE;
+
+    return 0;
+}
+
+
 // relocate and setup variables for evmm entry
 int prepare_primary_guest_args(multiboot_info_t *mbi)
 {
@@ -1132,18 +1154,20 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
                 sizeof(shared_page));
 
     // copy command line after boot parameters
-    char* new_cmd_line= (char*)(linux_boot_parameters+sizeof(boot_params_t));
-    vmm_memcpy((void*)new_cmd_line, (void*)linux_command_line, 
-               vmm_strlen((const char*)linux_command_line)+1);
+    new_cmdline= (char*)(linux_boot_parameters+sizeof(boot_params_t));
+    *(uint64_t *)&new_boot_params->tboot_shared_addr =
+                                      (uint64_t)(uint32_t)shared_page;
+    if(adjust_kernel_cmdline(mbi, (const void*)new_boot_params->tboot_shared_addr)!=0) {
+      bprint("cant adjust linux command line\n");
+      LOOP_FOREVER
+    }
 
     // adjust pointers to point to new command line
     if(new_boot_params->eddbuf_entries<=0) {
       bprint("adjusted e820 has no entries, expecting two\n");
       LOOP_FOREVER
     }
-    new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmd_line;
-    *(uint64_t *)&new_boot_params->tboot_shared_addr =
-                                             (uint32_t*)shared_page;
+    new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmdline;
 
     // set esi register
     linux_esi_register= linux_boot_parameters;

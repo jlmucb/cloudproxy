@@ -67,8 +67,10 @@ extern uint32_t _start_bootstrap, _end_bootstrap;
 
 
 //      Memory layout on start32_evmm entry
-uint32_t bootstrap_start= 0;    // this is the bootstrap image start address
-uint32_t bootstrap_end= 0;      // this is the bootstrap image end address
+uint32_t tboot_start= 0;        // tboot image start address
+uint32_t tboot_end= 0;          // tboot image end address
+uint32_t bootstrap_start= 0;    // bootstrap image start address
+uint32_t bootstrap_end= 0;      // bootstrap image end address
 uint32_t evmm_start= 0;         // location of evmm start
 uint32_t evmm_end= 0;           // location of evmm image start
 uint32_t linux_start= 0;        // location of linux imag start
@@ -1411,6 +1413,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             (uint32_t)mbi, initial_entry, magic);
 #endif
 
+    // tboot start/end, this is the only data from the shared
+    // page we use
+    tboot_start= shared_page->tboot_base;
+    tboot_end= shared_page->tboot_base+shared_page->tboot_size;
+
     // bootstrap's start (load) address and its end address
     bootstrap_start= (uint32_t)&_start_bootstrap;
     bootstrap_end= (uint32_t)&_end_bootstrap;
@@ -1441,11 +1448,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
 #ifdef JLMDEBUG
     // shared page
-    bprint("shared_page data:\n");
-    bprint("\t tboot_base: 0x%08x\n", shared_page->tboot_base);
-    bprint("\t tboot_size: 0x%x\n", shared_page->tboot_size);
-    
-    // image info
+    bprint("\ttboot_start: 0x%08x\n", tboot_start);
+    bprint("\ttboot_end: 0x%x\n", tboot_end);
     bprint("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
             bootstrap_start, bootstrap_end, bootstrap_end-bootstrap_start);
     bprint("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
@@ -1631,6 +1635,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     else {
         bprint("\tinvalid command line\n");
     }
+    bprint("code at evmm start\n");
+    HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
 #endif
     LOOP_FOREVER
 

@@ -1248,7 +1248,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         hdr->payload_offset, hdr->payload_length);
     bprint("heap_end_ptr 0x%08x, command line: 0x%08x\n", 
         hdr->heap_end_ptr, hdr->cmd_line_ptr);
-    bprint("ramdisk image 0x%08x, ramdisk size 0x%08x\n", 
+    bprint("ramdisk image 0x%08x, ramdisk size %d\n", 
         hdr->ramdisk_image, hdr->ramdisk_size);
 #endif
     bprint("Linux kernel @%p...\n", (void*)linux_entry_address);
@@ -1620,7 +1620,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
            (long unsigned int)*(uint64_t*)new_boot_params->tboot_shared_addr,
            new_boot_params->e820_entries);
     // e820_entries;     e820_map[E820MAX];
-    bprint("\tCode32_start: 0x08x, ramdisk: 0x%08x, ramdisk size: %d\n",
+    bprint("\tCode32_start: 0x%08x, ramdisk: 0x%08x, ramdisk size: %d\n",
            new_boot_params->hdr.code32_start,
            new_boot_params->hdr.ramdisk_image,
            new_boot_params->hdr.ramdisk_size);

@@ -61,10 +61,6 @@ $(E)/libept.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libept.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libept.a $(dobjs)
 
-$(B)/invept.o: $(mainsrc)/invept.s
-	echo "invept.o"
-	$(AS) -o $(B)/invept.o $(mainsrc)/invept.s
-
 $(B)/invept2.o: $(mainsrc)/invept2.c
 	echo "invept2.o"
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/invept2.o $(mainsrc)/invept2.c

@@ -1654,7 +1654,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
     HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
-    LOOP_FOREVER
+    // LOOP_FOREVER
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space

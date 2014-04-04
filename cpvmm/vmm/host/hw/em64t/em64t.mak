@@ -53,12 +53,9 @@ AS=         as
 LINK=       gcc
 LIBMAKER=   ar
 
-dobjs=      $(B)/em64t_gcpu_regs_save_restore.o \
-	    $(B)/em64t_idt.o $(B)/em64t_gdt.o \
-            $(B)/em64t_fpu.o $(B)/em64t_fpu2.o \
-	    $(B)/em64t_setjmp.o $(B)/em64t_vmx2.o \
-            $(B)/em64t_interlocked.o $(B)/em64t_interlocked2.o \
-            $(B)/em64t_isr.o  $(B)/em64t_utils2.o
+dobjs=      $(B)/em64t_gcpu_regs_save_restore.o $(B)/em64t_idt.o $(B)/em64t_gdt.o \
+            $(B)/em64t_fpu2.o $(B)/em64t_setjmp.o $(B)/em64t_vmx2.o \
+            $(B)/em64t_interlocked2.o $(B)/em64t_isr.o  $(B)/em64t_utils2.o
 
 all: $(E)/libhw.a
  
@@ -75,10 +72,6 @@ $(B)/em64t_gdt.o: $(mainsrc)/em64t_gdt.c
 	echo "em64t_gdt.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/em64t_gdt.o $(mainsrc)/em64t_gdt.c
 
-$(B)/em64t_fpu.o: $(mainsrc)/em64t_fpu.s
-	echo "em64t_fpu.o"
-	$(AS) -o $(B)/em64t_fpu.o $(mainsrc)/em64t_fpu.s
-
 $(B)/em64t_fpu2.o: $(mainsrc)/em64t_fpu2.c
 	echo "em64t_fpu2.o"
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/em64t_fpu2.o $(mainsrc)/em64t_fpu2.c
@@ -86,10 +79,6 @@ $(B)/em64t_fpu2.o: $(mainsrc)/em64t_fpu2.c
 $(B)/em64t_gcpu_regs_save_restore.o: $(mainsrc)/em64t_gcpu_regs_save_restore.c
 	echo "em64t_gcpu_regs_save_restore.o" 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/em64t_gcpu_regs_save_restore.o $(mainsrc)/em64t_gcpu_regs_save_restore.c
-
-$(B)/em64t_interlocked.o: $(mainsrc)/em64t_interlocked.s
-	echo "em64t_interlocked.o"
-	$(AS) -o $(B)/em64t_interlocked.o $(mainsrc)/em64t_interlocked.s
 
 $(B)/em64t_interlocked2.o: $(mainsrc)/em64t_interlocked2.c
 	echo "em64t_interlocked.o"

@@ -1643,7 +1643,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
     bprint("code at evmm start\n");
     HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
-    HexDump((uint8_t*)linux_start_address-12, (uint8_t*)linux_start_address+10);
+    HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
     LOOP_FOREVER
 

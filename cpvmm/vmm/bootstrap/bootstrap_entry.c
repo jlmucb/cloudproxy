@@ -1558,6 +1558,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             g_nr_map, mbi->mmap_length/sizeof(memory_map_t));
 #endif
 
+    // tboot reserves the region: 0x40005000 - 0xb88f3000
+    //      because some legacy bios's put USB buffers there
+    //      which causes problems if they are DMA protected
+    //      we're going to ignore this because we want to
+    //      put bootstrap and evmm here.
+    // unreserve the region.
+
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
       bprint("Unable to reserve bootstrap region in e820 table\n");

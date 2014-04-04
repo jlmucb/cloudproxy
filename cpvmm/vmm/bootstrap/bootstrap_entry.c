@@ -80,8 +80,8 @@ uint32_t initram_end= 0;        // location of initram image end
 
 
 //      Post relocation addresses
-uint32_t evmm_start_address= 0;         // this is the address of evmm after relocation (0x0e00...)
-uint32_t vmm_main_entry_point= 0;       // address of vmm_main
+uint32_t evmm_start_address= 0;         // address of evmm after relocation
+uint32_t vmm_main_entry_point= 0;       // address of vmm_main after relocation
 uint32_t evmm_heap_base= 0;             // start of initial evmm heap
 uint32_t evmm_heap_current= 0; 
 uint32_t evmm_heap_top= 0;
@@ -1558,12 +1558,14 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             g_nr_map, mbi->mmap_length/sizeof(memory_map_t));
 #endif
 
-    // tboot reserves the region: 0x40005000 - 0xb88f3000
+    // tboot reserves the regions:
+    // discarding RAM above reserved regions: 0x20200000 - 0x40004000,
+    //      0x40005000 - 0xb88f3000, 0xb9bff000 - 0xb9c00000
     //      because some legacy bios's put USB buffers there
-    //      which causes problems if they are DMA protected
+    //      which causes problems if they are DMA protected.
     //      we're going to ignore this because we want to
     //      put bootstrap and evmm here.
-    // unreserve the region.
+    // unreserve the region.  CHECK: what BIOS's have this problem?
 
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {

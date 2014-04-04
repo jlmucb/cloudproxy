@@ -604,6 +604,8 @@ prepare_primary_guest_args(multiboot_info_t *mbi)
 Notes 
 -----
 
+tboot:  min_hi_ram: 0x100000000, max_hi_ram: 0x33ee00000
+
 bootstrap control registers
 
 cr0: 0x00000033

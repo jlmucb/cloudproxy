@@ -615,6 +615,7 @@ Final relocation
 code32_start: 0x61000000
 initrd:       0x1fb5a000, size: 4870656
 headers correct
+linux protected mode contents: 0x1186f6fc 40000002 0xb8fa0c75
 
 
 TODO: Get interrupt code and vt-d code the evmm team offered.

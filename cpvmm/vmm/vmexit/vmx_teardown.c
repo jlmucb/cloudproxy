@@ -23,9 +23,8 @@
 #include "guest_cpu.h"
 #include "vmm_callback.h"
 
-/*
- * Following defintions are based on uVMM operated in 64 bits PAE mode
- */
+
+// Following defintions are based on uVMM operated in 64 bits PAE mode
 
 #define VMAM_PAE_NUM_OF_TABLE_ENTRIES 512
 #define VMAM_PAE_ENTRY_INCREMENT 8
@@ -66,7 +65,6 @@ typedef union VMAM_PAE_LME_ENTRY_U {
         UINT64 raw;                             /* whole entry */
 } VMAM_PAE_LME_ENTRY;
 
-///---- globals ---- //
 
 // should be assigned during the initializtion stage.
 UINT64  g_session_id = 0;
@@ -77,7 +75,6 @@ void read_vmcs_to_get_guest_states(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_GUEST_STA
 static BOOLEAN is_params_ok(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p, UINT64 *state_hva);
 static BOOLEAN map_thunk_pages(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *teardown);
 
-///---- static functions ---- //
 static 
 UINT64 vmam_get_pml4_base_from_cr3(UINT64 cr3);
  
@@ -92,7 +89,6 @@ static
 void vmam_get_indices(IN UINT64 virtual_address, OUT UINT32* pml4te_index,
                       OUT UINT32* pdpte_index, OUT UINT32* pde_index,
                       OUT UINT32* pte_index);
-
 static
 VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa, UINT32 entry_index);
  
@@ -121,7 +117,6 @@ BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4,
                                         IN UINT64 efer_value, IN UINT64 start_hva,
                                         IN UINT64 start_hpa);
 
-// ---- externs ---- //
 extern void ITP_JMP_DEADLOOP(void);
 
 BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_teardown_params)
@@ -211,9 +206,8 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
     return TRUE;
 }
 
-/*
- * copy current vmm cs entry in vmm gdt to guest cs entry in vmm gdt
- */
+
+// copy current vmm cs entry in vmm gdt to guest cs entry in vmm gdt
 static
 void read_vmcs_to_get_guest_states(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_GUEST_STATES *guest_states)
 {
@@ -272,7 +266,7 @@ void read_vmcs_to_get_guest_states(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_GUEST_STA
     guest_states->IA32_IDTR_BASE     = vmcs_read(vmcs, VMCS_GUEST_IDTR_BASE);
     guest_states->IA32_IDTR_LIMIT    = vmcs_read(vmcs, VMCS_GUEST_IDTR_LIMIT);
 
-        // msrs
+    // msrs
 
     guest_states->IA32_MSR_DEBUG_CTL = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_DEBUGCTL);
     if(vmentry_control.Bits.LoadDebugControls) {

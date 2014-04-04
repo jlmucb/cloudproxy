@@ -27,13 +27,12 @@
 #include "vmm_events_data.h"
 
 
-/*-------------------------------------------------------------------------*
-*  FUNCTION : vmexit_init_event()
-*  PURPOSE  : reset CPU
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : void
-*  NOTE     : Propagate INIT signal from primary guest to CPU
-*-------------------------------------------------------------------------*/
+
+// FUNCTION : vmexit_init_event()
+// PURPOSE  : reset CPU
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : void
+// NOTE     : Propagate INIT signal from primary guest to CPU
 VMEXIT_HANDLING_STATUS vmexit_init_event(GUEST_CPU_HANDLE gcpu)
 {
     CPU_ID  cpu_id = hw_cpu_id();
@@ -45,7 +44,7 @@ VMEXIT_HANDLING_STATUS vmexit_init_event(GUEST_CPU_HANDLE gcpu)
 
     if (cpu_id == 0) { // If cpu is BSP
         VMM_LOG(mask_anonymous, level_trace,"[%d] Perform global reset\n", cpu_id);
-        hw_reset_platform();                                                    // then preform cold reset.
+        hw_reset_platform();   // then preform cold reset.
         VMM_DEADLOOP();
     }
     else {

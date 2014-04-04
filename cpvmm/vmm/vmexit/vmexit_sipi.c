@@ -27,19 +27,17 @@
 UINT32 g_guest_num_of_cpus=1; //BSP Core
 extern UINT32 g_s3_resume_flag;
 
-/*-------------------------------------------------------------------------*
-*  FUNCTION : vmexit_sipi_event()
-*  PURPOSE  : Configure VMCS register-state with CPU Real Mode state.
-*           : and launch emulator.
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : void
-*  NOTE     : The hard-coded values used for VMCS-registers initialization
-*           : are the values CPU sets its registers with after RESET.
-*           : See Intel® 64 and IA-32 Architectures Software Developer’s Manual
-*           : Volume 3A: System Programming Guide, Part 1
-*           : Table 9-1. IA-32 Processor States Following Power-up, Reset, or INIT
-*-------------------------------------------------------------------------*/
 
+// FUNCTION : vmexit_sipi_event()
+// PURPOSE  : Configure VMCS register-state with CPU Real Mode state.
+//          : and launch emulator.
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : void
+// NOTE     : The hard-coded values used for VMCS-registers initialization
+//          : are the values CPU sets its registers with after RESET.
+//          : See Intel® 64 and IA-32 Architectures Software Developer’s Manual
+//          : Volume 3A: System Programming Guide, Part 1
+//          : Table 9-1. IA-32 Processor States Following Power-up, Reset, or INIT
 VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT                *vmcs = gcpu_get_vmcs(gcpu);
@@ -47,9 +45,7 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
     UINT16                      real_mode_segment;
     VMEXIT_HANDLING_STATUS      ret_status = VMEXIT_NOT_HANDLED;
 
-
     do {    // single-execution loop
-
         // Check if this is IPC SIPI signal.
         if (ipc_sipi_vmexit_handler(gcpu)) {
             // We're already in Wait for SIPI state. Nothing to do
@@ -57,9 +53,7 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
             break;
         }
 
-
 #ifdef SIPI_LAYERED_IS_SUPPORTED
-
         if (gcpu_is_vmcs_layered(gcpu)) {
             break;  // level-1 must handle
         }
@@ -88,8 +82,6 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
          * those values, CPU sets to registers after RESET, though we never launch guest in that way
          */
 
-        /*------------------ Set Control Registers ------------------*/
-
         gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR0, 0x60000010);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR0, 0x60000010);
 
@@ -102,8 +94,6 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR2, 0);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR8, 0);
 
-
-        /*------------------ Set Segment Registers ------------------*/
 
         qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
         real_mode_segment = (UINT16) qualification.Sipi.Vector << 8;
@@ -118,24 +108,17 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         gcpu_set_segment_reg(gcpu, IA32_SEG_GS, 0, 0, 0xFFFF, 0x93);
         gcpu_set_segment_reg(gcpu, IA32_SEG_SS, 0, 0, 0xFFFF, 0x93);
 
-		/* IA Manual 3B: 23.3.1.2 
-		  For TR Bits 3:0 (Type).
-		  — If the guest will not be IA-32e mode, the Type must be 3 or 11
-		  — If the guest will be IA-32e mode, the Type must be 11 
-		  Using Type 11 here
-		*/
+	/* IA Manual 3B: 23.3.1.2 
+	  For TR Bits 3:0 (Type).
+	  — If the guest will not be IA-32e mode, the Type must be 3 or 11
+	  — If the guest will be IA-32e mode, the Type must be 11 
+	  Using Type 11 here
+	*/
         gcpu_set_segment_reg(gcpu, IA32_SEG_TR  , 0, 0, 0xFFFF, 0x8B); // CIRT uses 8Bh
         gcpu_set_segment_reg(gcpu, IA32_SEG_LDTR, 0, 0, 0xFFFF, 0x82); // CIRT uses 10082h
 
-
-
-        /*------------------ Set Memory Mgmt Registers ------------------*/
-
         gcpu_set_gdt_reg(gcpu, 0, 0xFFFF);
         gcpu_set_idt_reg(gcpu, 0, 0xFFFF);
-
-
-        /*------------------ Set Debug Registers ------------------*/
 
         gcpu_set_debug_reg(gcpu, IA32_REG_DR0, 0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR1, 0);
@@ -144,8 +127,6 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         gcpu_set_debug_reg(gcpu, IA32_REG_DR6, 0xFFFF0FF0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR7, 0x00000400);
 
-
-        /*------------------ Set General Purpose Registers ------------------*/
         gcpu_set_gp_reg(gcpu, IA32_REG_RAX, 0);
         gcpu_set_gp_reg(gcpu, IA32_REG_RBX, 0);
         gcpu_set_gp_reg(gcpu, IA32_REG_RCX, 0);

@@ -246,7 +246,6 @@ copy_from_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
     return 0;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 
 static int
 copy_to_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
@@ -698,7 +697,6 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     cr0.value =
         (UINT32) gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Find new tr & tss.
 
     get_task_info(gcpu, &inst_type, &(new_tr.selector), vec_info);
@@ -867,20 +865,16 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR0, cr0.value);
     gcpu_set_control_reg(gcpu, IA32_CTRL_CR0, cr0.value);
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new ldtr.
 
-    if (tss.ldtr != old_ldtr.selector)
-    {
+    if (tss.ldtr != old_ldtr.selector) {
         if (set_guest_ldtr(gcpu, &gdtr, &new_ldtr, &tss) != 0)
             return -1;
     }
 
-    //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     // Load new seg regs.
 
-    if (((eflags_t *)&(tss.eflags))->bits.v86_mode == 1)
-    {
+    if (((eflags_t *)&(tss.eflags))->bits.v86_mode == 1) {
         UINT16 es = (UINT16)tss.es;
         UINT16 cs = (UINT16)tss.cs;
         UINT16 ss = (UINT16)tss.ss;
@@ -1003,5 +997,5 @@ VMEXIT_HANDLING_STATUS vmexit_task_switch(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_HANDLED;
 }
 
-// End of file
+
 

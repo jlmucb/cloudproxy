@@ -36,8 +36,6 @@
 #include "guest_cpu_vmenter_event.h"
 
 
-/*-----------------Local Types and Macros Definitions----------------*/
-
 #define IO_VMEXIT_MAX_COUNT   64
 
 typedef struct {
@@ -63,13 +61,8 @@ typedef struct {
 } IO_VMEXIT_GLOBAL_STATE;
 
 
-/*-----------------Local Variables----------------*/
-
 static IO_VMEXIT_GLOBAL_STATE io_vmexit_global_state;
 
-
-
-/*-----------------Forward Declarations for Local Functions----------------*/
 
 static VMEXIT_HANDLING_STATUS io_vmexit_handler(GUEST_CPU_HANDLE gcpu);
 static IO_VMEXIT_DESCRIPTOR * io_port_lookup(GUEST_ID guest_id, IO_PORT_ID port_id);
@@ -114,31 +107,27 @@ static GUEST_IO_VMEXIT_CONTROL* io_vmexit_find_guest_io_control(
     );
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_vmexit_setup()
-*  PURPOSE  : Allocate and initialize IO VMEXITs related data structures,
-*           : common for all guests
-*  ARGUMENTS: GUEST_ID    num_of_guests
-*  RETURNS  : void
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_vmexit_setup()
+// PURPOSE  : Allocate and initialize IO VMEXITs related data structures,
+//          : common for all guests
+// ARGUMENTS: GUEST_ID    num_of_guests
+// RETURNS  : void
 void io_vmexit_initialize(void)
 {
     vmm_memset( &io_vmexit_global_state, 0, sizeof(io_vmexit_global_state) );
-
     list_init(io_vmexit_global_state.guest_io_vmexit_controls);
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_vmexit_guest_setup()
-*  PURPOSE  : Allocate and initialize IO VMEXITs related data structures for
-*           : specific guest
-*  ARGUMENTS: GUEST_ID    guest_id
-*  RETURNS  : void
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_vmexit_guest_setup()
+// PURPOSE  : Allocate and initialize IO VMEXITs related data structures for
+//          : specific guest
+// ARGUMENTS: GUEST_ID    guest_id
+// RETURNS  : void
 void io_vmexit_guest_initialize(GUEST_ID guest_id)
 {
     GUEST_IO_VMEXIT_CONTROL *io_ctrl;
-
     VMM_LOG(mask_anonymous, level_trace,"io_vmexit_guest_initialize start\r\n");
 
     io_ctrl = (GUEST_IO_VMEXIT_CONTROL *) vmm_malloc(sizeof(GUEST_IO_VMEXIT_CONTROL));
@@ -155,17 +144,16 @@ void io_vmexit_guest_initialize(GUEST_ID guest_id)
 
     VMM_LOG(mask_anonymous, level_trace,"io_vmexit_guest_initialize end\r\n");
 
-///// TTTTT    vmm_memset(io_ctrl->io_bitmap, 0xFF, 2 * PAGE_4KB_SIZE);
+    ///// TTTTT    vmm_memset(io_ctrl->io_bitmap, 0xFF, 2 * PAGE_4KB_SIZE);
 
     vmexit_install_handler(guest_id, io_vmexit_handler, Ia32VmxExitBasicReasonIoInstruction);
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_vmexit_activate()
-*  PURPOSE  : enables in HW IO VMEXITs for specific guest on given CPU
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : void
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_vmexit_activate()
+// PURPOSE  : enables in HW IO VMEXITs for specific guest on given CPU
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : void
 void io_vmexit_activate(GUEST_CPU_HANDLE gcpu)
 {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS exec_controls;
@@ -209,13 +197,12 @@ void io_vmexit_activate(GUEST_CPU_HANDLE gcpu)
     gcpu_control_setup( gcpu, &vmexit_request );
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_port_lookup()
-*  PURPOSE  : Look for descriptor for specified port
-*  ARGUMENTS: GUEST_ID    guest_id
-*           : UINT16      port_id
-*  RETURNS  : Pointer to the descriptor, NULL if not found
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_port_lookup()
+// PURPOSE  : Look for descriptor for specified port
+// ARGUMENTS: GUEST_ID    guest_id
+//          : UINT16      port_id
+// RETURNS  : Pointer to the descriptor, NULL if not found
 IO_VMEXIT_DESCRIPTOR * io_port_lookup(
     GUEST_ID    guest_id,
     IO_PORT_ID  port_id)
@@ -237,12 +224,11 @@ IO_VMEXIT_DESCRIPTOR * io_port_lookup(
     return NULL;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_free_port_lookup()
-*  PURPOSE  : Look for unallocated descriptor
-*  ARGUMENTS: GUEST_ID    guest_id
-*  RETURNS  : Pointer to the descriptor, NULL if not found
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_free_port_lookup()
+// PURPOSE  : Look for unallocated descriptor
+// ARGUMENTS: GUEST_ID    guest_id
+// RETURNS  : Pointer to the descriptor, NULL if not found
 IO_VMEXIT_DESCRIPTOR * io_free_port_lookup(GUEST_ID guest_id)
 {
     GUEST_IO_VMEXIT_CONTROL *io_ctrl = NULL;
@@ -293,29 +279,20 @@ void io_blocking_write_handler(
 {
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_blocking_handler()
-*  PURPOSE  : Used as default handler when no IO handler is registered,
-*           : but port configured as caused VMEXIT.
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu,
-*           : IO_PORT_ID       port_id,
-*           : unsigned         port_size,
-*           : RW_ACCESS        access,
-*           : void             *p_value
-*  RETURNS  : void
-*----------------------------------------------------------------------------*/
-BOOLEAN
-io_blocking_handler(
-    GUEST_CPU_HANDLE gcpu,
-    IO_PORT_ID       port_id,
-    unsigned         port_size,
-    RW_ACCESS        access,
-    BOOLEAN          string_intr,  // ins/outs
-    BOOLEAN          rep_prefix,   // rep 
-    UINT32           rep_count,
-    void             *p_value,
-    void             *context UNUSED
-    )
+
+// FUNCTION : io_blocking_handler()
+// PURPOSE  : Used as default handler when no IO handler is registered,
+//          : but port configured as caused VMEXIT.
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu,
+//          : IO_PORT_ID       port_id,
+//          : unsigned         port_size,
+//          : RW_ACCESS        access,
+//          : void             *p_value
+// RETURNS  : void
+BOOLEAN io_blocking_handler( GUEST_CPU_HANDLE gcpu, IO_PORT_ID  port_id,
+    unsigned  port_size, RW_ACCESS access, BOOLEAN string_intr, 
+    BOOLEAN  rep_prefix, UINT32 rep_count, void *p_value,
+    void *context UNUSED)
 {
     switch (access)
     {
@@ -412,14 +389,13 @@ void io_vmexit_transparent_handler(
 
 #pragma warning( pop )
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_vmexit_handler_register()
-*  PURPOSE  : Register/update IO handler for spec port/guest pair.
-*  ARGUMENTS: GUEST_ID            guest_id
-*           : IO_PORT_ID          port_id
-*           : IO_ACCESS_HANDLER   handler
-*  RETURNS  : status
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_vmexit_handler_register()
+// PURPOSE  : Register/update IO handler for spec port/guest pair.
+// ARGUMENTS: GUEST_ID            guest_id
+//          : IO_PORT_ID          port_id
+//          : IO_ACCESS_HANDLER   handler
+// RETURNS  : status
 VMM_STATUS io_vmexit_handler_register(
     GUEST_ID            guest_id,
     IO_PORT_ID          port_id,
@@ -459,13 +435,12 @@ VMM_STATUS io_vmexit_handler_register(
     return status;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_vmexit_handler_unregister()
-*  PURPOSE  : Unregister IO handler for spec port/guest pair.
-*  ARGUMENTS: GUEST_ID            guest_id
-*           : IO_PORT_ID          port_id
-*  RETURNS  : status
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_vmexit_handler_unregister()
+// PURPOSE  : Unregister IO handler for spec port/guest pair.
+// ARGUMENTS: GUEST_ID            guest_id
+//          : IO_PORT_ID          port_id
+// RETURNS  : status
 VMM_STATUS io_vmexit_handler_unregister(
     GUEST_ID    guest_id,
     IO_PORT_ID  port_id)
@@ -493,8 +468,6 @@ VMM_STATUS io_vmexit_handler_unregister(
 
     return status;
 }
-
-
 
 //
 // VM exits caused by execution of the INS and OUTS instructions 
@@ -782,15 +755,14 @@ VMEXIT_HANDLING_STATUS io_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_HANDLED;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : io_vmexit_block_port()
-*  PURPOSE  : Enable VMEXIT on port without installing handler.
-*           : Blocking_handler will be used for such cases.
-*  ARGUMENTS: GUEST_ID            guest_id
-*           : IO_PORT_ID          port_from
-*           : IO_PORT_ID          port_to
-*  RETURNS  : void
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : io_vmexit_block_port()
+// PURPOSE  : Enable VMEXIT on port without installing handler.
+//          : Blocking_handler will be used for such cases.
+// ARGUMENTS: GUEST_ID            guest_id
+//          : IO_PORT_ID          port_from
+//          : IO_PORT_ID          port_to
+// RETURNS  : void
 void io_vmexit_block_port(
     GUEST_ID    guest_id,
     IO_PORT_ID  port_from,

@@ -74,7 +74,6 @@ typedef struct {
 } MSR_VMEXIT_DESCRIPTOR;
 
 
-/*---------------------------------Local Data---------------------------------*/
 static struct {
     UINT32      msr_id;
     VMCS_FIELD  vmcs_field_id;
@@ -88,8 +87,6 @@ static struct {
     { IA32_MSR_GS_BASE,         VMCS_GUEST_GS_BASE }
 };
 
-
-/*------------------------------Forward Declarations--------------------------*/
 
 static MSR_VMEXIT_DESCRIPTOR *msr_descriptor_lookup(LIST_ELEMENT *msr_list, MSR_ID msr_id);
 /*static*/ VMM_STATUS msr_vmexit_bits_config(UINT8 *p_bitmap, MSR_ID msr_id, RW_ACCESS access, BOOLEAN set);
@@ -110,15 +107,11 @@ static BOOLEAN    msr_misc_enable_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID ms
 
 
 
-/*--------------------------------Code Starts Here----------------------------*/
-
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_vmexit_on_all()
-*  PURPOSE  : Turns VMEXIT on all ON/OFF
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*           : BOOLEAN enable
-*  RETURNS  : none, must succeed.
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_vmexit_on_all()
+// PURPOSE  : Turns VMEXIT on all ON/OFF
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+//          : BOOLEAN enable
+// RETURNS  : none, must succeed.
 void msr_vmexit_on_all(GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
 {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS exec_controls_mask;
@@ -263,14 +256,13 @@ void msr_vmexit_register_mtrr_accesses_handler(GUEST_HANDLE guest) {
     }
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_vmexit_guest_setup()
-*  PURPOSE  : Allocates structures for MSR virtualization
-*           : Must be called prior any other function from the package on this gcpu,
-*           : but after gcpu VMCS was loaded
-*  ARGUMENTS: GUEST_HANDLE guest
-*  RETURNS  : none, must succeed.
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : msr_vmexit_guest_setup()
+// PURPOSE  : Allocates structures for MSR virtualization
+//          : Must be called prior any other function from the package on this gcpu,
+//          : but after gcpu VMCS was loaded
+// ARGUMENTS: GUEST_HANDLE guest
+// RETURNS  : none, must succeed.
 void msr_vmexit_guest_setup(GUEST_HANDLE guest)
 {
     MSR_VMEXIT_CONTROL *p_msr_ctrl;
@@ -317,12 +309,10 @@ void msr_vmexit_guest_setup(GUEST_HANDLE guest)
 }
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_vmexit_activate()
-*  PURPOSE  : Register MSR related structures with HW (VMCS)
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : none, must succeed.
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_vmexit_activate()
+// PURPOSE  : Register MSR related structures with HW (VMCS)
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : none, must succeed.
 void msr_vmexit_activate(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT                          *vmcs = gcpu_get_vmcs(gcpu);
@@ -331,7 +321,6 @@ void msr_vmexit_activate(GUEST_CPU_HANDLE gcpu)
     UINT64 msr_bitmap;
 
     VMM_ASSERT(gcpu);
-
     VMM_LOG(mask_uvmm, level_trace,"[msr] Activated on GCPU\n");
 
     guest = gcpu_guest_handle(gcpu);
@@ -348,15 +337,13 @@ void msr_vmexit_activate(GUEST_CPU_HANDLE gcpu)
 }
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_vmexit_handler_register()
-*  PURPOSE  : Register specific MSR handler with VMEXIT
-*  ARGUMENTS: GUEST_HANDLE        guest
-*           : MSR_ID              msr_id
-*           : MSR_ACCESS_HANDLER  msr_handler,
-*           : RW_ACCESS           access
-*  RETURNS  : VMM_OK if succeeded
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_vmexit_handler_register()
+// PURPOSE  : Register specific MSR handler with VMEXIT
+// ARGUMENTS: GUEST_HANDLE        guest
+//          : MSR_ID              msr_id
+//          : MSR_ACCESS_HANDLER  msr_handler,
+//          : RW_ACCESS           access
+// RETURNS  : VMM_OK if succeeded
 VMM_STATUS msr_vmexit_handler_register(
     GUEST_HANDLE        guest,
     MSR_ID              msr_id,
@@ -404,13 +391,11 @@ VMM_STATUS msr_vmexit_handler_register(
 }
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_vmexit_handler_unregister()
-*  PURPOSE  : Unregister specific MSR VMEXIT handler
-*  ARGUMENTS: GUEST_HANDLE  guest
-*           : MSR_ID        msr_id
-*  RETURNS  : VMM_OK if succeeded, VMM_ERROR if no descriptor for MSR
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_vmexit_handler_unregister()
+// PURPOSE  : Unregister specific MSR VMEXIT handler
+// ARGUMENTS: GUEST_HANDLE  guest
+//          : MSR_ID        msr_id
+// RETURNS  : VMM_OK if succeeded, VMM_ERROR if no descriptor for MSR
 VMM_STATUS msr_vmexit_handler_unregister(
     GUEST_HANDLE    guest,
     MSR_ID          msr_id,
@@ -441,13 +426,12 @@ VMM_STATUS msr_vmexit_handler_unregister(
     return status;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_msr_read()
-*  PURPOSE  : Read handler which calls upon VMEXITs resulting from MSR read access
-*           : Read MSR value from HW and if OK, stores the result in EDX:EAX
-*  ARGUMENTS: GUEST_CPU_HANDLE gcp
-*  RETURNS  :
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : vmexit_msr_read()
+// PURPOSE  : Read handler which calls upon VMEXITs resulting from MSR read access
+//          : Read MSR value from HW and if OK, stores the result in EDX:EAX
+// ARGUMENTS: GUEST_CPU_HANDLE gcp
+// RETURNS  :
 VMEXIT_HANDLING_STATUS vmexit_msr_read(GUEST_CPU_HANDLE gcpu)
 {
     UINT64 msr_value = 0;
@@ -467,13 +451,12 @@ VMEXIT_HANDLING_STATUS vmexit_msr_read(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_HANDLED;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_msr_write()
-*  PURPOSE  : Write handler which calls upon VMEXITs resulting from MSR write access
-*           : Read MSR value from guest EDX:EAX and call registered write handler
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  :
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : vmexit_msr_write()
+// PURPOSE  : Write handler which calls upon VMEXITs resulting from MSR write access
+//          : Read MSR value from guest EDX:EAX and call registered write handler
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  :
 VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
 {
     UINT64 msr_value;
@@ -493,20 +476,17 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_HANDLED;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_common_vmexit_handler()
-*  PURPOSE  : If MSR handler is registered, call it, otherwise executes default
-*           : MSR handler. If MSR R/W instruction was executed successfully
-*           : from the Guest point of view, Guest IP is moved forward on instruction
-*           : length, otherwise exception is injected into Guest CPU.
-*  ARGUMENTS: GUEST_CPU_HANDLE    gcpu
-*           : RW_ACCESS           access
-*  RETURNS  : TRUE if instruction was executed, FALSE otherwise (fault occured)
-*----------------------------------------------------------------------------*/
-BOOLEAN msr_common_vmexit_handler(
-    GUEST_CPU_HANDLE    gcpu,
-    RW_ACCESS           access,
-    UINT64             *msr_value)
+
+// FUNCTION : msr_common_vmexit_handler()
+// PURPOSE  : If MSR handler is registered, call it, otherwise executes default
+//          : MSR handler. If MSR R/W instruction was executed successfully
+//          : from the Guest point of view, Guest IP is moved forward on instruction
+//          : length, otherwise exception is injected into Guest CPU.
+// ARGUMENTS: GUEST_CPU_HANDLE    gcpu
+//          : RW_ACCESS           access
+// RETURNS  : TRUE if instruction was executed, FALSE otherwise (fault occured)
+BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
+    RW_ACCESS access, UINT64 *msr_value)
 {
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
     GUEST_HANDLE guest = NULL;
@@ -549,15 +529,13 @@ BOOLEAN msr_common_vmexit_handler(
 }
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_trial_access()
-*  PURPOSE  : Try to execute real MSR read/write
-*           : If exception was generated, inject it into guest
-*  ARGUMENTS: GUEST_CPU_HANDLE    gcpu
-*           : MSR_ID              msr_id
-*           : RW_ACCESS           access
-*  RETURNS  : TRUE if instruction was executed, FALSE otherwise (fault occured)
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_trial_access()
+// PURPOSE  : Try to execute real MSR read/write
+//          : If exception was generated, inject it into guest
+// ARGUMENTS: GUEST_CPU_HANDLE    gcpu
+//          : MSR_ID              msr_id
+//          : RW_ACCESS           access
+// RETURNS  : TRUE if instruction was executed, FALSE otherwise (fault occured)
 BOOLEAN msr_trial_access(
     GUEST_CPU_HANDLE    gcpu,
     MSR_ID              msr_id,
@@ -570,8 +548,7 @@ BOOLEAN msr_trial_access(
     VMCS_OBJECT *vmcs       = gcpu_get_vmcs(gcpu);
 
 
-    switch (access)
-    {
+    switch (access) {
     case READ_ACCESS:
         msr_implemented = hw_rdmsr_safe(msr_id, msr_value, &fault_vector, &error_code);
         break;
@@ -660,17 +637,13 @@ BOOLEAN msr_vmcs_resident_default_handler(
 }
 
 
-
-
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_unsupported_access_handler()
-*  PURPOSE  : Inject General Protection /fault event into the GCPU
-*           : Used for both read and write accesses
-*  ARGUMENTS: GUEST_CPU_HANDLE  gcpu
-*           : MSR_ID            msr_id - not used
-*           : UINT64           *value - not used
-*  RETURNS  : FALSE, which means that instruction caused GP fault.
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_unsupported_access_handler()
+// PURPOSE  : Inject General Protection /fault event into the GCPU
+//          : Used for both read and write accesses
+// ARGUMENTS: GUEST_CPU_HANDLE  gcpu
+//          : MSR_ID            msr_id - not used
+//          : UINT64           *value - not used
+// RETURNS  : FALSE, which means that instruction caused GP fault.
 #pragma warning( push )
 #pragma warning (disable : 4100)  // Supress warnings about unreferenced formal parameter
 
@@ -695,20 +668,16 @@ BOOLEAN msr_unsupported_access_handler(
 #pragma warning( pop )
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_efer_update_is_gpf0()
-*  PURPOSE  : Handle guest access to EFER. Update guest visible value.
-*  ARGUMENTS: GUEST_CPU_HANDLE  gcpu
-*           : MSR_ID            msr_id
-*           : UINT64           *msr_value
-*  RETURNS  : TRUE, which means that instruction was executed.
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_efer_update_is_gpf0()
+// PURPOSE  : Handle guest access to EFER. Update guest visible value.
+// ARGUMENTS: GUEST_CPU_HANDLE  gcpu
+//          : MSR_ID            msr_id
+//          : UINT64           *msr_value
+// RETURNS  : TRUE, which means that instruction was executed.
 #pragma warning( push )
 #pragma warning (disable : 4100)  // Supress warnings about unreferenced formal parameter
-
 static
-BOOLEAN msr_efer_update_is_gpf0(GUEST_CPU_HANDLE    gcpu,
-                                UINT64 new_value) {
+BOOLEAN msr_efer_update_is_gpf0(GUEST_CPU_HANDLE gcpu, UINT64 new_value) {
     IA32_EFER_S efer;
     efer.Uint64 = new_value;
 
@@ -724,11 +693,8 @@ BOOLEAN msr_efer_update_is_gpf0(GUEST_CPU_HANDLE    gcpu,
     return FALSE;
 }
 
-BOOLEAN msr_efer_write_handler(
-    GUEST_CPU_HANDLE    gcpu,
-    MSR_ID              msr_id,
-    UINT64             *msr_value,
-    void               *context UNUSED)
+BOOLEAN msr_efer_write_handler( GUEST_CPU_HANDLE gcpu,
+    MSR_ID msr_id, UINT64 *msr_value, void *context UNUSED)
 {
     EVENT_GCPU_GUEST_MSR_WRITE_DATA data;
     RAISE_EVENT_RETVAL event_retval;
@@ -756,14 +722,9 @@ BOOLEAN msr_efer_write_handler(
     return TRUE;
 }
 
-BOOLEAN msr_efer_read_handler(
-    GUEST_CPU_HANDLE    gcpu,
-    MSR_ID              msr_id UNUSED,
-    UINT64             *msr_value,
-    void               *context UNUSED)
+BOOLEAN msr_efer_read_handler( GUEST_CPU_HANDLE gcpu,
+    MSR_ID msr_id UNUSED, UINT64 *msr_value, void  *context UNUSED)
 {
-////    VMM_LOG(mask_uvmm, level_trace,"ERROR: VMEXIT on Read Access to IA32_MSR_EFER occured\n");
-////    VMM_DEADLOOP();
 #ifdef USE_MTF_FOR_CR_MSR_AS_WELL
     //if( is_unrestricted_guest_supported() )
     {
@@ -840,14 +801,13 @@ BOOLEAN msr_mtrr_write_handler(
     return TRUE;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_lapic_base_write_handler()
-*  PURPOSE  : Track Guest writes to Loacal APIC Base Register
-*  ARGUMENTS: GUEST_CPU_HANDLE  gcpu
-*           : MSR_ID            msr_id
-*           : UINT64           *msr_value
-*  RETURNS  : TRUE, which means that instruction was executed.
-*----------------------------------------------------------------------------*/
+
+// FUNCTION : msr_lapic_base_write_handler()
+// PURPOSE  : Track Guest writes to Loacal APIC Base Register
+// ARGUMENTS: GUEST_CPU_HANDLE  gcpu
+//          : MSR_ID            msr_id
+//          : UINT64           *msr_value
+// RETURNS  : TRUE, which means that instruction was executed.
 BOOLEAN msr_lapic_base_write_handler(
     GUEST_CPU_HANDLE    gcpu,
     MSR_ID              msr_id,
@@ -871,15 +831,13 @@ BOOLEAN msr_lapic_base_write_handler(
 }
 
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_feature_control_read_handler()
-*  PURPOSE  : Handles MSR reads on FEATURE_CONTROL MSR (0x3A). 
-*             Virtualizes VMX enable bit(bit 2).
-*  ARGUMENTS: GUEST_CPU_HANDLE  gcpu
-*           : MSR_ID            msr_id
-*           : UINT64           *msr_value
-*  RETURNS  : TRUE, which means that instruction was executed.
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_feature_control_read_handler()
+// PURPOSE  : Handles MSR reads on FEATURE_CONTROL MSR (0x3A). 
+//            Virtualizes VMX enable bit(bit 2).
+// ARGUMENTS: GUEST_CPU_HANDLE  gcpu
+//          : MSR_ID            msr_id
+//          : UINT64           *msr_value
+// RETURNS  : TRUE, which means that instruction was executed.
 BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
         MSR_ID  msr_id, UINT64  *msr_value, void   *context UNUSED)
 {
@@ -892,16 +850,14 @@ BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
     return TRUE;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_feature_control_write_handler()
-*  PURPOSE  : Handles writes to FEATURE_CONTROL MSR (0x3A). 
-*             Induces GP(0) exception.
-*  ARGUMENTS: GUEST_CPU_HANDLE  gcpu
-*           : MSR_ID            msr_id
-*           : UINT64           *msr_value
-*  RETURNS  : TRUE, which means that instruction was executed.
-*----------------------------------------------------------------------------*/
 
+// FUNCTION : msr_feature_control_write_handler()
+// PURPOSE  : Handles writes to FEATURE_CONTROL MSR (0x3A). 
+//            Induces GP(0) exception.
+// ARGUMENTS: GUEST_CPU_HANDLE  gcpu
+//          : MSR_ID            msr_id
+//          : UINT64           *msr_value
+// RETURNS  : TRUE, which means that instruction was executed.
 BOOLEAN msr_feature_control_write_handler(
         GUEST_CPU_HANDLE        gcpu,
         MSR_ID                          msr_id,
@@ -917,16 +873,14 @@ BOOLEAN msr_feature_control_write_handler(
     return TRUE;
 }
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_misc_enable_write_handler()
-*  PURPOSE  : Handles writes to MISC_ENABLE MSR (0x1A0).
-*             Blocks writes to bits that can impact TMSL behavior
-*  ARGUMENTS: GUEST_CPU_HANDLE  gcpu
-*           : MSR_ID            msr_id
-*           : UINT64           *msr_value
-*  RETURNS  : TRUE, which means that instruction was executed.
-*----------------------------------------------------------------------------*/
 
+// FUNCTION : msr_misc_enable_write_handler()
+// PURPOSE  : Handles writes to MISC_ENABLE MSR (0x1A0).
+//            Blocks writes to bits that can impact TMSL behavior
+// ARGUMENTS: GUEST_CPU_HANDLE  gcpu
+//          : MSR_ID            msr_id
+//          : UINT64           *msr_value
+// RETURNS  : TRUE, which means that instruction was executed.
 BOOLEAN msr_misc_enable_write_handler(
         GUEST_CPU_HANDLE        gcpu,
         MSR_ID                          msr_id,
@@ -934,7 +888,6 @@ BOOLEAN msr_misc_enable_write_handler(
         void                       *context UNUSED)
 {
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
-
     VMM_ASSERT(IA32_MSR_MISC_ENABLE == msr_id);
 
     msr_write_access_data.msr_id = msr_id;
@@ -948,13 +901,11 @@ BOOLEAN msr_misc_enable_write_handler(
 
 #pragma warning( pop )
 
-/*----------------------------------------------------------------------------*
-*  FUNCTION : msr_guest_access_inhibit()
-*  PURPOSE  : Install VMEXIT handler which prevents access to MSR from the guest
-*  ARGUMENTS: GUEST_HANDLE    guest
-*           : MSR_ID      msr_id
-*  RETURNS  : VMM_OK if succeeded
-*----------------------------------------------------------------------------*/
+// FUNCTION : msr_guest_access_inhibit()
+// PURPOSE  : Install VMEXIT handler which prevents access to MSR from the guest
+// ARGUMENTS: GUEST_HANDLE    guest
+//          : MSR_ID      msr_id
+// RETURNS  : VMM_OK if succeeded
 VMM_STATUS msr_guest_access_inhibit(
     GUEST_HANDLE    guest,
     MSR_ID          msr_id)

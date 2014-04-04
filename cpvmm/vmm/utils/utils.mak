@@ -64,9 +64,9 @@ $(E)/libutils.a: $(dobjs)
 	@echo "libutils.a"
 	$(LIBMAKER) -r $(E)/libutils.a $(dobjs)
 
-$(B)/utils_asm.o: $(mainsrc)/utils_asm.s
+$(B)/utils_asm.o: $(mainsrc)/utils_asm2.c
 	echo "utils_asm.o" 
-	$(AS) -o $(B)/utils_asm.o $(mainsrc)/utils_asm.s
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/utils_asm.o $(mainsrc)/utils_asm2.c
 
 $(B)/heap.o: $(mainsrc)/heap.c
 	echo "heap.o" 

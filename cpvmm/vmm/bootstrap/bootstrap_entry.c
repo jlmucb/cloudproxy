@@ -97,19 +97,19 @@ extern memory_map_t *g_copy_e820_map;   // copied e820 globals
 memory_map_t bootstrap_e820[E820MAX];   // our e820 map
 
 //      linux guest
-uint32_t linux_real_mode_start= 0;      // address of linux real mode
-uint32_t linux_real_mode_size= 0;       // address of linux real mode size
-uint32_t linux_protected_mode_start= 0; // address of linux real mode
-uint32_t linux_protected_mode_size= 0;  // address of linux real mode
-uint32_t linux_start_address= 0;        // address of the linux protected mode image
-uint32_t initram_start_address= 0; // address of the initram for linux
-uint32_t linux_entry_address= 0;   // address of the eip in the guest
-uint32_t linux_esi_register= 0;    // value of the esi register on guest entry
-uint32_t linux_esp_register= 0;    // value of the esp on entry to the guest linux
-uint32_t linux_stack_base= 0;      // base of the stack on entry to linux
-uint32_t linux_stack_size= 0;      // size of the stack that the linux guest has
-char*    linux_command_line= NULL;
-char*    new_cmdline= NULL;        // new command line with tboot shared page
+uint32_t linux_real_mode_start= 0;      // address of real mode
+uint32_t linux_real_mode_size= 0;       // size of real mode size
+uint32_t linux_protected_mode_start= 0; // address of protected mode
+uint32_t linux_protected_mode_size= 0;  // size of protected mode
+uint32_t linux_start_address= 0;        // start address of image
+uint32_t initram_start_address= 0; // address of the initram 
+uint32_t linux_entry_address= 0;   // address of the eip guest entry
+uint32_t linux_esi_register= 0;    // esi register on guest entry
+uint32_t linux_esp_register= 0;    // esp on guest entry
+uint32_t linux_stack_base= 0;      // base of the stack on entry
+uint32_t linux_stack_size= 0;      // stack size on guest entry
+char*    linux_command_line= NULL; // old command line
+char*    new_cmdline= NULL;        // new command line
 
 // boot parameters for linux guest
 uint32_t linux_original_boot_parameters= 0;
@@ -300,9 +300,11 @@ void setup_evmm_stack()
 void x32_gdt64_setup(void)
 {
     uint32_t last_index;
+
     // 1 page for code segment, and the rest for stack
-    evmm_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)evmm_page_alloc (1 + 
-                        UVMM_DEFAULT_STACK_SIZE_PAGES);
+    evmm_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)
+                    evmm_page_alloc(1+UVMM_DEFAULT_STACK_SIZE_PAGES);
+
     // zero gdt
     vmm_memset(evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
@@ -347,7 +349,7 @@ void x32_gdt64_setup(void)
     // prepare GDTR
     gdtr_64.base  = (uint32_t) evmm_descriptor_table;
     // !!! TBD !!! will be extended by TSS
-    gdtr_64.limit = gdtr_32.limit + sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) * 2; 
+    gdtr_64.limit = gdtr_32.limit + sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR)*2; 
     evmm64_cs = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
 }
 
@@ -671,7 +673,7 @@ unsigned long get_mbi_mem_end(const multiboot_info_t *mbi)
 typedef struct VMM_INPUT_PARAMS_S {
     uint64_t local_apic_id;
     uint64_t startup_struct;
-    uint64_t guest_params_struct; // change name
+    uint64_t guest_params_struct;
 } VMM_INPUT_PARAMS;
 
 
@@ -694,7 +696,7 @@ static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 
 // expanded e820 table used by evmm
 static unsigned int     evmm_num_e820_entries = 0;
-INT15_E820_MEMORY_MAP*  evmm_e820= NULL;      // expanded e820 table for evmm
+INT15_E820_MEMORY_MAP*  evmm_e820= NULL;
 uint64_t                evmm_start_of_e820_table= 0ULL; // 64 bits version
 
 // for linux primary guest
@@ -787,7 +789,8 @@ int linux_setup(void)
         linux_state.control.cr[i] = 0;
     }
     linux_state.control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
-    linux_state.control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + sizeof(gdt_table) -1;
+    linux_state.control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
+                                     sizeof(gdt_table) -1;
     linux_state.control.cr[IA32_CTRL_CR0]= 0x33;
     //NOTE:Paging is disabled, so cr3 is irrelevant
     linux_state.control.cr[IA32_CTRL_CR3] = 0x0; 
@@ -815,19 +818,20 @@ static uint64_t evmm_get_e820_table(const multiboot_info_t *mbi)
         return (uint64_t)-1;
 
     while ( entry_offset < mbi->mmap_length ) {
-        memory_map_t *entry = (memory_map_t *) (mbi->mmap_addr + entry_offset);
+        memory_map_t *entry = (memory_map_t *) 
+                    (mbi->mmap_addr + entry_offset);
         evmm_e820->memory_map_entry[i].basic_entry.base_address = 
-                            (((uint64_t)entry->base_addr_high)<< 32) + entry->base_addr_low;
+                    (((uint64_t)entry->base_addr_high)<<32)+entry->base_addr_low;
         evmm_e820->memory_map_entry[i].basic_entry.length = 
-                            (((uint64_t)entry->length_high)<< 32) + entry->length_low;
-        evmm_e820->memory_map_entry[i].basic_entry.address_range_type= entry->type;
-            evmm_e820->memory_map_entry[i].extended_attributes.uint32 = 1;
+                    (((uint64_t)entry->length_high)<<32)+entry->length_low;
+        evmm_e820->memory_map_entry[i].basic_entry.address_range_type= 
+                    entry->type;
+        evmm_e820->memory_map_entry[i].extended_attributes.uint32 = 1;
         i++;
        entry_offset += entry->size + sizeof(entry->size);
     }
     evmm_num_e820_entries = i;
-
-    evmm_e820->memory_map_size = i * sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
+    evmm_e820->memory_map_size = i*sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
     evmm_start_of_e820_table = (uint64_t)(uint32_t)evmm_e820;
 
     return evmm_start_of_e820_table;
@@ -941,7 +945,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     hdr->type_of_loader = LOADER_TYPE_GRUB;
 
     // set loadflags and heap_end_ptr 
-    hdr->loadflags |= FLAG_CAN_USE_HEAP;         /* can use heap */
+    hdr->loadflags |= FLAG_CAN_USE_HEAP;         // can use heap
     hdr->heap_end_ptr = KERNEL_CMDLINE_OFFSET - BOOT_SECTOR_OFFSET;
 
     // load initrd and set ramdisk_image and ramdisk_size 
@@ -1023,14 +1027,14 @@ int expand_linux_image( multiboot_info_t* mbi,
             return 1;
         }
         // round it up to kernel alignment
-        protected_mode_base = (protected_mode_base + hdr->kernel_alignment - 1)
+        protected_mode_base= (protected_mode_base+hdr->kernel_alignment-1)
                               & ~(hdr->kernel_alignment-1);
         hdr->code32_start = protected_mode_base;
     }
     else if ( hdr->loadflags & FLAG_LOAD_HIGH ) {
         protected_mode_base =  LINUX_DEFAULT_LOAD_ADDRESS; // bzImage:0x100000 
         if ( plus_overflow_u32(protected_mode_base, protected_mode_size) ) {
-            bprint("protected_mode_base plus protected_mode_size overflows\n");
+            bprint("protected_mode_base+protected_mode_size overflows\n");
             return 1;
         }
         // Check: protected mode part cannot exceed mem_upper 
@@ -1055,8 +1059,9 @@ int expand_linux_image( multiboot_info_t* mbi,
     hdr->cmd_line_ptr = real_mode_base + KERNEL_CMDLINE_OFFSET;
 
     // load protected-mode part 
-    vmm_memcpy((void *)protected_mode_base, (void*)(linux_image + real_mode_size),
-            protected_mode_size);
+    vmm_memcpy((void *)protected_mode_base, 
+               (void*)(linux_image + real_mode_size),
+               protected_mode_size);
     bprint("Kernel (protected mode) from 0x%lx to 0x%lx\n",
            (unsigned long)protected_mode_base,
            (unsigned long)(protected_mode_base + protected_mode_size));
@@ -1096,13 +1101,12 @@ int expand_linux_image( multiboot_info_t* mbi,
     }
 
     screen_info_t *screen = (screen_info_t *)&boot_params->screen_info;
-    screen->orig_video_mode = 3;       /* BIOS 80*25 text mode */
+    screen->orig_video_mode = 3;       // BIOS 80*25 text mode
     screen->orig_video_lines = 25;
     screen->orig_video_cols = 80;
-    screen->orig_video_points = 16;    /* set font height to 16 pixels */
-    screen->orig_video_isVGA = 1;      /* use VGA text screen setups */
-    screen->orig_y = 24;               /* start display text in the last line
-                                          of screen */
+    screen->orig_video_points = 16;    // set font height to 16 pixels
+    screen->orig_video_isVGA = 1;      // use VGA text screen setups 
+    screen->orig_y = 24;               // last line of screen 
     linux_original_boot_parameters= (uint32_t) boot_params;
     linux_real_mode_start= real_mode_base;
     linux_real_mode_size= real_mode_size;
@@ -1154,8 +1158,9 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
                sizeof(boot_params_t));
 
     // set address of copied tboot shared page 
-    vmm_memcpy((void*)new_boot_params->tboot_shared_addr, (void*)&shared_page, 
-                sizeof(shared_page));
+    vmm_memcpy((void*)new_boot_params->tboot_shared_addr, 
+               (void*)&shared_page, 
+               sizeof(shared_page));
 
     // copy command line after boot parameters
     new_cmdline= (char*)(linux_boot_parameters+sizeof(boot_params_t));
@@ -1402,14 +1407,13 @@ uint64_t OriginalEntryAddress(uint32_t base)
 //     tboot jumps in here
 int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 {
-    extern void SetupIDT(); // this may not be needed
     int         i;
     module_t*   m;
 
     // reinitialize screen printing
     bootstrap_partial_reset();
 #ifdef JLMDEBUG
-    bprint("start32_evmm entry, mbi: %08x, initial_entry: %08x, magic: %08x\n",
+    bprint("start32_evmm, mbi: %08x, initial_entry: %08x, magic: %08x\n",
             (uint32_t)mbi, initial_entry, magic);
 #endif
 
@@ -1474,7 +1478,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     : [info] "=m" (info)
     : 
     : "%eax", "%ebx", "%ecx", "%edx");
-    // NOTE: changed shift form 16 to 18 to get the right answer
+    // NOTE: changed shift from 16 to 18 to get the right answer
     evmm_num_of_aps = ((info>>18)&0xff)-1;
     if (evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
@@ -1513,15 +1517,16 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     evmm_load_segment_size= (uint32_t) prog_header->p_memsz;
 
     if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
-        bprint("evmm load address is not default default: 0x%08x, actual: 0x%08x\n",
+        bprint("evmm load address is not default: 0x%08x, actual: 0x%08x\n",
                 evmm_start_address, evmm_start_load_segment);
         LOOP_FOREVER
     }
 
-    vmm_memcpy((void *)evmm_start_address, (const void*) evmm_start_load_segment,
+    vmm_memcpy((void *)evmm_start_address, 
+               (const void*) evmm_start_load_segment,
                (uint32_t) (prog_header->p_filesz));
-    vmm_memset((void *)(evmm_start_load_segment+(uint32_t)(prog_header->p_filesz)),0,
-               (uint32_t)(prog_header->p_memsz-prog_header->p_filesz));
+    vmm_memset((void *)(evmm_start_load_segment+(uint32_t)(prog_header->p_filesz)),
+               0, (uint32_t)(prog_header->p_memsz-prog_header->p_filesz));
 
     // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
@@ -1535,7 +1540,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             evmm_heap_base, evmm_heap_size);
     bprint("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    bprint("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n\n",
+    bprint("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n",
             (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
 #endif
 
@@ -1574,7 +1579,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
     // Set up evmm IDT.  CHECK(JLM): Is this necessary?
-#ifdef TESTLATER
+#ifdef SETUPIDT
+    extern void SetupIDT(); // this may not be needed
     SetupIDT();
 #endif
 
@@ -1637,12 +1643,12 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
     bprint("code at evmm start\n");
     HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
+    HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
     LOOP_FOREVER
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
-    // FIX(JLM):  allocate  debug area for return from evmm print and print it.
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
     //  vmm_main call:

@@ -153,6 +153,8 @@ void *evmm_page_alloc(uint32_t pages)
 
 static uint32_t                         evmm64_cs_selector= 0;
 static uint32_t                         evmm64_ds_selector= 0;
+static uint32_t                         evmm64_call_selector= 0;
+
 static uint32_t                         evmm64_cr4= 0;
 static uint32_t                         evmm64_cr3 = 0;
 
@@ -319,6 +321,7 @@ void setup_64bit_descriptors(void)
     // copy it to the new 64-bit GDT
     vmm_memcpy(evmm_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
 
+#if 0
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
     last_index = gdtr_32.limit/sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
@@ -356,6 +359,32 @@ void setup_64bit_descriptors(void)
     gdtr_64.limit = gdtr_32.limit + 2*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR); 
     evmm64_cs_selector = last_index*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
     evmm64_ds_selector = (last_index+1)*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
+    ia32_write_gdtr(&gdtr_64);
+#else
+    uint64_t* end_of_desciptor_table= (uint64_t*) (gdtr_32.base+gdtr_32.limit+1);
+    // cs descriptor
+    end_of_desciptor_table[0]= 0x0000000000000000ULL;
+    end_of_desciptor_table[1]= 0x00209a0000000000ULL;
+    // ds descriptor
+    end_of_desciptor_table[3]= 0x0000000000000000ULL;
+    end_of_desciptor_table[4]= 0x0020920000000000ULL;
+    // call gate selector
+    end_of_desciptor_table[5]= 0x0000000000000000ULL;
+    end_of_desciptor_table[6]= 0x0020920000000000ULL;
+
+    // selectors
+    evmm64_cs_selector = (uint32_t) (&end_of_desciptor_table[0]) - gdtr_64.base;
+    evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[3]) - gdtr_64.base;
+    evmm64_call_selector = (uint32_t) (&end_of_desciptor_table[5]) - gdtr_64.base;
+
+    // set 64 bit
+    gdtr_64.base= (uint32_t) evmm_descriptor_table;
+    gdtr_64.limit = gdtr_32.limit + 
+        (uint32_t)(&end_of_desciptor_table[7])-(uint32_t)(&end_of_desciptor_table[0]);
+
+    // load gdtr
+    ia32_write_gdtr(&gdtr_64);
+#endif
 }
 
 
@@ -434,7 +463,6 @@ int setup_64bit()
 {
     // setup_64 bit for 64-bit on BSP
     setup_64bit_descriptors();
-    ia32_write_gdtr(&gdtr_64);
 
     // setup paging, control registers and flags on BSP
     setup_64bit_paging(TOTAL_MEM);
@@ -1651,12 +1679,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     // need to stash these away since the stack will not
     // point to local variables when we push them
     // these are in the order pushed
-    uint32_t   args[5];
+    uint32_t   args[4];
     args[0]= (uint32_t)evmm_reserved;
     args[1]= (uint32_t)evmm_p_a0;
     args[2]= (uint32_t)p_startup_struct;
     args[3]= (uint32_t)local_apic_id;
-    args[4]= (uint32_t)evmm64_cs_selector;
 #ifdef JLMDEBUG
     bprint("selector: 0x%08x, descriptor: 0x%08x\n",
            args[4], (uint32_t)evmm_descriptor_table);
@@ -1698,7 +1725,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\taddl $4, %%edx\n"
         "\tpush %%eax\n"
         "\tpush (%%edx)\n"
-        "\taddl $4, %%edx\n"
 
         // enable 64-bit mode
         // EFER MSR register
@@ -1716,18 +1742,28 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tbts  $31, %%eax\n"
         "\tmovl %%eax, %%cr0\n"
 
-        "\t2: jmp       2b\n"
-
         // at this point we are in 32-bit compatibility mode
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.
 
+#if 0
         // push segment and offset for retf
         "\tpush  (%%edx)\n"
         "\tpush $1f\n"
         "\tretf\n"
+#else
+        // cs selector
+        // "ljmp  %[evmm64_cs_selector], $1f\n"
+        "ljmp     $8, $1f\n"
+#endif
 
 "1:\n"
+        "\t2: jmp       2b\n"
+
+        // ds selector
+        "movl   %[evmm64_ds_selector], %%edx\n"
+        "movw   %%dx, %%ds\n"
+
         // in 64 bit this is actually pop rdi (local apic)
         "\tpop %%edi\n"
         // in 64 bit this is actually pop rsi (startup struct)
@@ -1743,7 +1779,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tjmp %%ebx\n"
         "\tud2\n"
     :: [args] "p" (args), [vmm_main_entry_point] "m" (vmm_main_entry_point), 
-       [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3) 
+       [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3),
+       [evmm64_cs_selector] "m" (evmm64_cs_selector),
+       [evmm64_ds_selector] "m" (evmm64_ds_selector)
     :);
 
     return 0;

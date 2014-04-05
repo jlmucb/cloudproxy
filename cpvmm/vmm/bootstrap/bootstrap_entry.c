@@ -1672,11 +1672,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     args[2]= (uint32_t)p_startup_struct;
     args[3]= (uint32_t)local_apic_id;
     args[4]= (uint32_t)evmm64_cs_selector;
-    LOOP_FOREVER
 
     asm volatile (
 
-        "\t2: jmp       2b\n"
         "\tcli\n"
 
         // move entry point to ebx for jump
@@ -1714,6 +1712,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tmovl 0x0c0000080, %%ecx\n"
         // read EFER into EAX
         "\trdmsr\n"
+
+        "\t2: jmp       2b\n"
+
         // set EFER.LME=1
         "\tbts $8, %%eax\n"
         // write EFER
@@ -1723,6 +1724,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
         "\tmovl %%eax, %%cr0\n"
+
         // at this point we are in 32-bit compatibility mode
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.

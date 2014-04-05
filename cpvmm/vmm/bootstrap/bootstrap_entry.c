@@ -1707,13 +1707,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tpush (%%edx)\n"
         "\taddl $4, %%edx\n"
 
+        "\t2: jmp       2b\n"
+
         // enable 64-bit mode
         // EFER MSR register
         "\tmovl 0x0c0000080, %%ecx\n"
         // read EFER into EAX
         "\trdmsr\n"
-
-        "\t2: jmp       2b\n"
 
         // set EFER.LME=1
         "\tbts $8, %%eax\n"

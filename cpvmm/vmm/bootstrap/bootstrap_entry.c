@@ -1672,6 +1672,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     args[2]= (uint32_t)p_startup_struct;
     args[3]= (uint32_t)local_apic_id;
     args[4]= (uint32_t)evmm64_cs_selector;
+#ifdef JLMDEBUG
+    bprint("selector: 0x%08x\n", args[4]);
+    HexDump((uint8_t*)+evmm64_cs_selector+(uint32_t)evmm_descriptor_table, 
+            (uint8_t*)+evmm64_cs_selector+(uint32_t)evmm_descriptor_table+10);
+#endif
 
     asm volatile (
 
@@ -1707,11 +1712,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tpush (%%edx)\n"
         "\taddl $4, %%edx\n"
 
-        "\t2: jmp       2b\n"
-
         // enable 64-bit mode
         // EFER MSR register
-        "\tmovl 0x0c0000080, %%ecx\n"
+        "\tmovl $0x0c0000080, %%ecx\n"
         // read EFER into EAX
         "\trdmsr\n"
 
@@ -1719,6 +1722,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tbts $8, %%eax\n"
         // write EFER
         "\twrmsr\n"
+
+        "\t2: jmp       2b\n"
 
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"

@@ -30,7 +30,11 @@ typedef long long unsigned uint64_t;
 void vmm_main(uint32_t local_apic_id, uint64_t startup_struct_u, 
               uint64_t application_params_struct_u, uint64_t reserved)
 {
-    printf("In vmm_main\n");
+#if 0
+    printf("In vmm_main (1)\n");
+#else
+    printf("In vmm_main (2)\n");
+#endif
     printf("\tlocal_apic_id: %d, startup_struct_u: %ld\n", local_apic_id, (long int)startup_struct_u);
     printf("\tapplication_params_struct_u: %ld, reserved: %ld\n",
            (long int)application_params_struct_u, (long int)reserved);
@@ -49,11 +53,30 @@ int main(int an, char* av)
     printf("vmm_main: 0x%016lx, vmm_main: 0x%016lx\n", 
            (long unsigned int) vmm_main_entry_point, (long unsigned int)vmm_main);
 
+
+    uint64_t args[4];
+
+    args[0]= evmm_reserved;
+    args[1]= application_params_struct;
+    args[2]= p_startup_struct;
+    args[3]= local_apic_id;
     asm volatile (
+#if 0
         "\tpushq    %[evmm_reserved]\n"
         "\tpushq    %[application_params_struct]\n"
         "\tpushq    %[p_startup_struct]\n"
         "\tpushq    %[local_apic_id]\n"
+#else
+        "\tmovq     %[args], %%rbx\n"
+        "\tpushq    (%%rbx)\n"
+        "\taddq     $8, %%rbx\n"
+        "\tpushq    (%%rbx)\n"
+        "\taddq     $8, %%rbx\n"
+        "\tpushq    (%%rbx)\n"
+        "\taddq     $8, %%rbx\n"
+        "\tpushq    (%%rbx)\n"
+        "\tmovq     %[vmm_main_entry_point], %%rbx\n"
+#endif
 
         // for following retf
         // "\tjmp 1f\n"
@@ -64,10 +87,20 @@ int main(int an, char* av)
         "\tpopq %%rsi\n"
         "\tpopq %%rdx\n"
         "\tpopq %%rcx\n"
+#if 0
         "\tjmpq   %[vmm_main_entry_point]\n"
+#else
+        "\tjmpq   %%rbx\n"
+#endif
         "\tud2\n"
-    :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
-       [application_params_struct] "m" (application_params_struct), [evmm_reserved] "m" (evmm_reserved), 
+    :: 
+#if 0
+        [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
+        [application_params_struct] "m" (application_params_struct), 
+        [evmm_reserved] "m" (evmm_reserved),
+#else
+    [args] "p" (args),
+#endif
        [vmm_main_entry_point] "m" (vmm_main_entry_point)
     : "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi");
 

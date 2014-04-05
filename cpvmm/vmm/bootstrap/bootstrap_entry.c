@@ -207,16 +207,6 @@ void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 }
 
 
-void  ia32_write_cr3(uint32_t value)
-{
-    asm volatile(
-        "\tmovl     %[value], %%eax\n"
-        "\t movl    %%eax, %%cr3\n"
-    ::[value] "m" (value)
-    : "%eax", "cc");
-}
-
-
 void read_cr0(uint32_t* ret)
 {
     asm volatile(
@@ -239,6 +229,16 @@ void read_cr3(uint32_t* ret)
 }
 
 
+void  write_cr3(uint32_t value)
+{
+    asm volatile(
+        "\tmovl     %[value], %%eax\n"
+        "\t movl    %%eax, %%cr3\n"
+    ::[value] "m" (value)
+    : "%eax", "cc");
+}
+
+
 void read_cr4(uint32_t* ret)
 {
     asm volatile(
@@ -250,31 +250,15 @@ void read_cr4(uint32_t* ret)
 }
 
 
-//FIX(JLM): what are the bytecodes for?
-uint32_t  ia32_read_cr4(void)
-{
-    uint32_t ret;
-    asm volatile(
-        "\t.byte 0x0f\n"
-        "\t.byte 0x20\n"
-        "\t.byte 0xe0\n" //mov eax, cr4
-        "\t movl %%eax, %[ret]\n"
-    :[ret] "=m" (ret) 
-    :: "%eax");
-    return ret;
-}
-
-
-void  ia32_write_cr4(uint32_t value)
+void write_cr4(uint32_t val)
 {
     asm volatile(
-        "\tmovl %[value], %%eax\n"
-        "\t.byte 0x0f\n"
-        "\t.byte 0x22\n"
-        "\t.byte 0xe0\n"       //mov cr4, eax
-    ::[value] "m" (value)
-    :"%eax");
+        "\tmovl  %[val],%%eax\n"
+        "\tmovl  %%eax, %%cr4\n"
+    ::[val] "p" (val) 
+    : "%eax","%ebx");
 }
+
 
 void  ia32_read_msr(uint32_t msr_id, uint64_t *p_value)
 {
@@ -456,10 +440,11 @@ int setup_64bit()
     setup_64bit_paging(TOTAL_MEM);
 
     // set cr3 and cr4
-    ia32_write_cr3(evmm64_cr3);
-    evmm64_cr4 = ia32_read_cr4();
-    BITMAP_SET(evmm64_cr4, PAE_BIT | PSE_BIT);
-    ia32_write_cr4(evmm64_cr4);
+    write_cr3(evmm64_cr3);
+    read_cr4(&evmm64_cr4);
+    // evmm64_cr4 = ia32_read_cr4();
+    BITMAP_SET(evmm64_cr4, PAE_BIT|PSE_BIT);
+    write_cr4(evmm64_cr4);
 
     // Extended Feature Enable Register (EFER)
     // JLM: ERROR

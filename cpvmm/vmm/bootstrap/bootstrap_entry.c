@@ -1755,10 +1755,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         //"\t.byte 0x48\n"
         //"\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
-        "\tjmp *(%%ebx)\n"
+        "\tjmp %%ebx\n"
         "\tud2\n"
     :: [args] "p" (args), [vmm_main_entry_point] "m" (vmm_main_entry_point), 
-       [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3) :);
+       [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3) 
+    :);
 
     return 0;
 }

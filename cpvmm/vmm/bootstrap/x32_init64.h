@@ -26,7 +26,7 @@ typedef struct _INIT32_STRUCT {
 } INIT32_STRUCT;
 
 typedef struct _INIT64_STRUCT {
-    UINT16      i64_cs;         // 64-bit code segment selector
+    UINT32      i64_cs;         // 64-bit code segment selector
     IA32_GDTR   i64_gdtr;       // still in 32-bit format
     UINT64      i64_efer;       // EFER minimal required value
     UINT32      i64_cr3;        // 32-bit value of CR3

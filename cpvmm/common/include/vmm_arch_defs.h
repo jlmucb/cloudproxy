@@ -242,7 +242,7 @@ typedef struct _VMM_CONTROL_REGISTERS {
     UINT32                reserved_1;
 
     // IDT
-	VMM_IA32_IDT_REGISTER idtr;
+    VMM_IA32_IDT_REGISTER idtr;
 
     UINT32                reserved_2;
 

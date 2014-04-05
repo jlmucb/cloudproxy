@@ -86,6 +86,7 @@ uint32_t evmm_heap_base= 0;             // start of initial evmm heap
 uint32_t evmm_heap_current= 0; 
 uint32_t evmm_heap_top= 0;
 uint32_t evmm_heap_size= 0;             // size of initial evmm heap
+uint32_t evmm_initial_stack_base= 0;    // low address where stack is allocated
 uint32_t evmm_initial_stack= 0;         // initial evmm stack
 char*    evmm_command_line= NULL;       // evmm command line
 
@@ -149,6 +150,12 @@ void *evmm_page_alloc(uint32_t pages)
 
 
 #define TOTAL_MEM 0x100000000ULL
+
+static uint32_t				evmm64_cs_selector= 0;
+static uint32_t				evmm64_ds_selector= 0;
+static uint32_t                         evmm64_cr4= 0;
+static uint32_t                         evmm64_cr3 = 0;
+
 typedef struct {
     INIT32_STRUCT s;
     uint32_t data[32];
@@ -158,19 +165,14 @@ typedef struct {
 static IA32_GDTR                        gdtr_32;
 static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
 
-static uint16_t                         evmm64_cs= 0;
-static uint32_t                         evmm64_cr4= 0;
-static uint16_t                         evmm64_cr3 = 0;
-static EM64T_CR3                        evmm_cr3_for_x64 = {0};
-
 // location of page in evmm heap that holds 64 bit descriptor table
+static int                              num_64bit_descriptors= 0;
 static EM64T_CODE_SEGMENT_DESCRIPTOR*   evmm_descriptor_table= NULL;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
 
 static INIT64_STRUCT                    init64;
-static INIT64_STRUCT *                  p_init64_data = &init64;
 static INIT32_STRUCT_SAFE               init32;
 
 uint32_t                                low_mem = 0x8000;
@@ -274,6 +276,18 @@ void  ia32_write_cr4(uint32_t value)
     :"%eax");
 }
 
+void  ia32_read_msr(uint32_t msr_id, uint64_t *p_value)
+{
+    asm volatile(
+        "\tmovl %[msr_id], %%ecx\n"
+        "\trdmsr\n"        //write from EDX:EAX into MSR[ECX]
+        "\tmovl %[p_value], %%ecx\n"
+        "\tmovl %%eax, (%%ecx)\n"
+        "\tmovl %%edx, 4(%%ecx)\n"
+    ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
+    :"%eax", "%ecx", "%edx");
+}
+
 void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 {
     asm volatile(
@@ -291,33 +305,34 @@ void setup_evmm_stack()
 {
     // Note: the stack grows down so the stack pointer starts at high memory
     // clear stack memory first
-    vmm_memset((void*)((uint32_t) evmm_descriptor_table+PAGE_4KB_SIZE), 0, PAGE_4KB_SIZE);
-    evmm_initial_stack = (uint32_t) evmm_descriptor_table+
-                            ((UVMM_DEFAULT_STACK_SIZE_PAGES+1)*PAGE_4KB_SIZE);
+    evmm_initial_stack_base= (uint32_t) 
+                evmm_page_alloc(UVMM_DEFAULT_STACK_SIZE_PAGES);
+    vmm_memset((void*)evmm_initial_stack_base, 0, 
+    // stack grows down
+    evmm_initial_stack= evmm_initial_stack_base+
+                        PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES);
 }
 
 
-void x32_gdt64_setup(void)
+void setup_64bit_descriptors(void)
 {
     uint32_t last_index;
 
-    // 1 page for code segment, and the rest for stack
+    // 1 page for segment descriptors
     evmm_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)
-                    evmm_page_alloc(1+UVMM_DEFAULT_STACK_SIZE_PAGES);
-
+                    evmm_page_alloc(1);
     // zero gdt
     vmm_memset(evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
 
-    // clone it to the new 64-bit GDT
+    // copy it to the new 64-bit GDT
     vmm_memcpy(evmm_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
 
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
     last_index = gdtr_32.limit / sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
-
     if (*(uint64_t *) &evmm_descriptor_table[last_index] != 0) {
         last_index++;
     }
@@ -347,29 +362,13 @@ void x32_gdt64_setup(void)
     evmm_descriptor_table[last_index + 1].hi.granularity= 1;
 
     // prepare GDTR
-    gdtr_64.base  = (uint32_t) evmm_descriptor_table;
+    gdtr_64.base= (uint32_t) evmm_descriptor_table;
     // !!! TBD !!! will be extended by TSS
-    gdtr_64.limit = gdtr_32.limit + sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR)*2; 
-    evmm64_cs = last_index * sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR) ;
+    gdtr_64.limit = gdtr_32.limit + 2*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR); 
+    evmm64_cs_selector = last_index*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
+    evmm64_ds_selector = (last_index+1)*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
 }
 
-
-void x32_gdt64_load(void)
-{
-    ia32_write_gdtr(&gdtr_64);
-}
-
-
-uint16_t x32_gdt64_get_cs(void)
-{
-    return evmm64_cs;
-}
-
-
-void x32_gdt64_get_gdtr(IA32_GDTR *p_gdtr)
-{
-    *p_gdtr = gdtr_64;
-}
 
 //  x32_pt64_setup_paging: establish paging tables for x64 -bit mode, 
 //     2MB pages while running in 32-bit mode.
@@ -439,44 +438,38 @@ void x32_pt64_setup_paging(uint64_t memory_size)
         }
     }
 
-    evmm_cr3_for_x64.lo.pwt = 0;
-    evmm_cr3_for_x64.lo.pcd = 0;
-    evmm_cr3_for_x64.lo.base_address_lo = ((uint32_t) pml4_table) >> 12;
+    evmm64_cr3= ((uint32_t) pml4_table) >> 12;
 }
 
 
-void x32_pt64_load_cr3(void)
+int setup_64bit()
 {
-    ia32_write_cr3(*((uint32_t*) &(evmm_cr3_for_x64.lo)));
-}
-
-
-uint32_t x32_pt64_get_cr3(void)
-{
-    return *((uint32_t*) &(evmm_cr3_for_x64.lo));
-}
-
-
-int setup_64bit_paging()
-{
-    // setup gdt for 64-bit on BSP
-    x32_gdt64_setup();
-    x32_gdt64_get_gdtr(&init64.i64_gdtr);
-    ia32_write_gdtr(&init64.i64_gdtr);
+    // setup_64 bit for 64-bit on BSP
+    setup_64bit_descriptors();
+    ia32_write_gdtr(&gdtr_64);
 
     // setup paging, control registers and flags on BSP
     x32_pt64_setup_paging(TOTAL_MEM);
 
-    init64.i64_cr3 = x32_pt64_get_cr3();
-    ia32_write_cr3(init64.i64_cr3);
+    // set cr3 and cr4
+    ia32_write_cr3(evmm64_cr3);
     evmm64_cr4 = ia32_read_cr4();
     BITMAP_SET(evmm64_cr4, PAE_BIT | PSE_BIT);
     ia32_write_cr4(evmm64_cr4);
+
     // Extended Feature Enable Register (EFER)
-    ia32_write_msr(0xc0000080, &p_init64_data->i64_efer);
-    init64.i64_cs = evmm64_cs;
+    // JLM: ERROR
+    //     init64.i64_efer was never set but it is being written into the msr
+    //     ia32_read_msr(0xc0000080, &init64.i64_efer);
+    //     init64.i64_efer|= EFER_LME; // EFER_SCE EFER_LMA EFER_NXE
+    ia32_write_msr(0xc0000080, &init64.i64_efer);
+
+    // we don't really use this structure
+    init64.i64_gdtr= gdtr_64;
+    init64.i64_cr3= evmm64_cr3;  // note we dont use the structure
+    init64.i64_cs = evmm64_cs_selector;
     init64.i64_efer = 0;
-    evmm64_cr3 = init64.i64_cr3;
+
     return 0;
 }
 
@@ -1594,7 +1587,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
     // setup gdt for 64-bit on BSP
-    if(setup_64bit_paging()!=0) {
+    if(setup_64bit()!=0) {
       bprint("Unable to setup 64 bit paging\n");
       LOOP_FOREVER
     }
@@ -1691,7 +1684,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // prepare arguments for 64-bit mode
         // there are 4 arguments (including reserved)
         // align stack and push them on 8-byte alignment
-        "\tand  $7, %%esp\n"
+        "\tandl  0xfffffff8, %%esp\n"
         "\txor  %%eax, %%eax\n"
         "\tpush %%eax\n"
         "\tpush %[evmm_reserved]\n"
@@ -1705,7 +1698,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tcli\n"
 
         // push segment and offset for retf
-        "\tpush  %[evmm64_cs]\n"
+        "\tpush  %[evmm64_cs_selector]\n"
         "\tpush $1f\n"
 
         // initialize CR3 with PML4 base
@@ -1714,7 +1707,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
         // enable 64-bit mode
         // EFER MSR register
-        "\tmovl 0x0C0000080, %%ecx\n"
+        "\tmovl 0x0c0000080, %%ecx\n"
         // read EFER into EAX
         "\trdmsr\n"
         // set EFER.LME=1
@@ -1751,7 +1744,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
        [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
        [vmm_main_entry64] "m" (vmm_main_entry64), 
        [evmm_initial_stack] "m" (evmm_initial_stack), 
-       [evmm64_cs] "m" (evmm64_cs), [evmm64_cr3] "m" (evmm64_cr3)
+       [evmm64_cs_selector] "m" (evmm64_cs_selector), [evmm64_cr3] "m" (evmm64_cr3)
     : "%eax", "%ebx", "%ecx", "%edx");
 
     return 0;

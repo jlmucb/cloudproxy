@@ -151,8 +151,8 @@ void *evmm_page_alloc(uint32_t pages)
 
 #define TOTAL_MEM 0x100000000ULL
 
-static uint32_t				evmm64_cs_selector= 0;
-static uint32_t				evmm64_ds_selector= 0;
+static uint32_t                         evmm64_cs_selector= 0;
+static uint32_t                         evmm64_ds_selector= 0;
 static uint32_t                         evmm64_cr4= 0;
 static uint32_t                         evmm64_cr3 = 0;
 
@@ -1646,7 +1646,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
     HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
-    // LOOP_FOREVER
+    LOOP_FOREVER
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
@@ -1657,52 +1657,50 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //               uint64_t application_params_struct_u, 
     //               uint64_t reserved UNUSED)
 
-    // From the architecture manual (3A):
-    //    CR3 — Contains the physical address of the base of the 
-    //    paging-structure hierarchy and two flags (PCD and PWT). 
-    //    Only the most-significant bits (less the lower 12 bits) 
-    //    of the base address are specified; the lower 12 bits
-    //    of the address are assumed to be 0. The first paging structure 
-    //    must thus be aligned to a page (4-KByte) boundary. The PCD and 
-    //    PWT flags control caching of that paging structure in the 
-    //    processor’s internal data caches (they do not control TLB 
-    //    caching of page-directory information).  When using the physical 
-    //    address extension, the CR3 register contains the base address 
-    //    of the page-directory-pointer table In IA-32e mode, the CR3 
-    //    register contains the base address of the PML4 table.
-
-    //    When we jump, we're in 64 bit mode, make sure the top bits
-    //    are 0.
-    uint64_t vmm_main_entry64= 0ULL;
-    vmm_main_entry64= (uint32_t) vmm_main_entry_point;
+    // need to stash these away since the stack will not
+    // point to local variables when we push them
+    // these are in the order pushed
+    uint32_t   args[5];
+    args[0]= (uint32_t)evmm_reserved;
+    args[1]= (uint32_t)evmm_p_a0;
+    args[2]= (uint32_t)p_startup_struct;
+    args[3]= (uint32_t)local_apic_id;
+    args[4]= (uint32_t)evmm64_cs_selector;
 
     asm volatile (
-        // evmm_initial_stack points to the start of the stack
-        "movl   %[evmm_initial_stack], %%esp\n"
 
-        // prepare arguments for 64-bit mode
-        // there are 4 arguments (including reserved)
-        // align stack and push them on 8-byte alignment
-        "\tandl  0xfffffff8, %%esp\n"
-        "\txor  %%eax, %%eax\n"
-        "\tpush %%eax\n"
-        "\tpush %[evmm_reserved]\n"
-        "\tpush %%eax\n"
-        "\tpush %[evmm_p_a0]\n"
-        "\tpush %%eax\n"
-        "\tpush %[p_startup_struct]\n"
-        "\tpush %%eax\n"
-        "\tpush %[local_apic_id]\n"
-
+        "\t2: jmp	2b\n"
         "\tcli\n"
 
-        // push segment and offset for retf
-        "\tpush  %[evmm64_cs_selector]\n"
-        "\tpush $1f\n"
+        // move entry point to ebx for jump
+        "\tmovl %[vmm_main_entry_point], %%ebx\n"
 
         // initialize CR3 with PML4 base
         "\tmovl %[evmm64_cr3], %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
+
+        // point %%edx to our arguments
+        "\tmovl %[args], %%edx\n"
+
+        // evmm_initial_stack points to the start of the stack
+        "movl   %[evmm_initial_stack], %%esp\n"
+        "\tandl  $0xfffffff8, %%esp\n"
+
+        // prepare arguments for 64-bit mode
+        // there are 4 arguments (including reserved)
+        "\txor  %%eax, %%eax\n"
+        "\tpush %%eax\n"
+        "\tpush (%%edx)\n"
+        "\taddl $4, %%edx\n"
+        "\tpush %%eax\n"
+        "\tpush (%%edx)\n"
+        "\taddl $4, %%edx\n"
+        "\tpush %%eax\n"
+        "\tpush (%%edx)\n"
+        "\taddl $4, %%edx\n"
+        "\tpush %%eax\n"
+        "\tpush (%%edx)\n"
+        "\taddl $4, %%edx\n"
 
         // enable 64-bit mode
         // EFER MSR register
@@ -1718,10 +1716,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
         "\tmovl %%eax, %%cr0\n"
-
         // at this point we are in 32-bit compatibility mode
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.
+
+        // push segment and offset for retf
+        "\tpush  (%%edx)\n"
+        "\tpush $1f\n"
         "\tretf\n"
 
 "1:\n"
@@ -1737,14 +1738,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         //"\t.byte 0x48\n"
         //"\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
-        "\tjmp %[vmm_main_entry64]\n"
+        "\tjmp *(%%ebx)\n"
         "\tud2\n"
-    :: [local_apic_id] "m" (local_apic_id), [p_startup_struct] "m" (p_startup_struct), 
-       [evmm_p_a0] "m" (evmm_p_a0), [evmm_reserved] "m" (evmm_reserved), 
-       [vmm_main_entry64] "m" (vmm_main_entry64), 
-       [evmm_initial_stack] "m" (evmm_initial_stack), 
-       [evmm64_cs_selector] "m" (evmm64_cs_selector), [evmm64_cr3] "m" (evmm64_cr3)
-    : "%eax", "%ebx", "%ecx", "%edx");
+    :: [args] "p" (args), [vmm_main_entry_point] "m" (vmm_main_entry_point), 
+       [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3) :);
+    LOOP_FOREVER
 
     return 0;
 }

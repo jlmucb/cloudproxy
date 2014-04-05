@@ -1677,8 +1677,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
            args[4], (uint32_t)evmm_descriptor_table);
     bprint("stack base: 0x%08x, stack: 0x%08x\n", 
            evmm_initial_stack_base, evmm_initial_stack);
-    HexDump((uint8_t*)+evmm64_cs_selector+(uint32_t)evmm_descriptor_table, 
-            (uint8_t*)+evmm64_cs_selector+(uint32_t)evmm_descriptor_table+10);
+    HexDump((uint8_t*)evmm_descriptor_table, 
+            (uint8_t*)evmm_descriptor_table+24);
 #endif
 
     asm volatile (

@@ -1,4 +1,4 @@
-/*
+	/*
  * File: bootstrap_entry.c
  * Description: Get tbooted and boot 64 bit evmm
  * Author: John Manferdelli
@@ -364,10 +364,10 @@ void setup_64bit_descriptors(void)
     uint64_t* end_of_desciptor_table= (uint64_t*) (gdtr_32.base+gdtr_32.limit+1);
     // cs descriptor
     end_of_desciptor_table[0]= 0x0000000000000000ULL;
-    end_of_desciptor_table[1]= 0x00209a0000000000ULL;
+    end_of_desciptor_table[1]= 0x00a09e0000000000ULL;
     // ds descriptor
     end_of_desciptor_table[2]= 0x0000000000000000ULL;
-    end_of_desciptor_table[3]= 0x0020920000000000ULL;
+    end_of_desciptor_table[3]= 0x00a0920000000000ULL;
     // call gate selector
     end_of_desciptor_table[4]= 0x0000000000000000ULL;
     end_of_desciptor_table[5]= 0x0020920000000000ULL;
@@ -455,7 +455,7 @@ void setup_64bit_paging(uint64_t memory_size)
         }
     }
 
-    evmm64_cr3= ((uint32_t) pml4_table) >> 12;
+    evmm64_cr3= (((uint32_t) pml4_table) & 0xfffff000);
 }
 
 

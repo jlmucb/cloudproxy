@@ -366,16 +366,16 @@ void setup_64bit_descriptors(void)
     end_of_desciptor_table[0]= 0x0000000000000000ULL;
     end_of_desciptor_table[1]= 0x00209a0000000000ULL;
     // ds descriptor
-    end_of_desciptor_table[3]= 0x0000000000000000ULL;
-    end_of_desciptor_table[4]= 0x0020920000000000ULL;
+    end_of_desciptor_table[2]= 0x0000000000000000ULL;
+    end_of_desciptor_table[3]= 0x0020920000000000ULL;
     // call gate selector
-    end_of_desciptor_table[5]= 0x0000000000000000ULL;
-    end_of_desciptor_table[6]= 0x0020920000000000ULL;
+    end_of_desciptor_table[4]= 0x0000000000000000ULL;
+    end_of_desciptor_table[5]= 0x0020920000000000ULL;
 
     // selectors
     evmm64_cs_selector = (uint32_t) (&end_of_desciptor_table[0]) - gdtr_64.base;
-    evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[3]) - gdtr_64.base;
-    evmm64_call_selector = (uint32_t) (&end_of_desciptor_table[5]) - gdtr_64.base;
+    evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[2]) - gdtr_64.base;
+    evmm64_call_selector = (uint32_t) (&end_of_desciptor_table[6]) - gdtr_64.base;
 
     // set 64 bit
     gdtr_64.base= (uint32_t) evmm_descriptor_table;
@@ -1752,9 +1752,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tpush $1f\n"
         "\tretf\n"
 #else
-        // cs selector
-        // "ljmp  %[evmm64_cs_selector], $1f\n"
-        "ljmp     $8, $1f\n"
+        // mode switch
+        // "\tmovl %[evmm64_cs_selector], %%edx\n"
+        "movw   %%dx, %%cs\n"
+        // "ljmp  *%%cs:1f\n"
 #endif
 
 "1:\n"

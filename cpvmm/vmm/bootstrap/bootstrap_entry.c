@@ -370,10 +370,9 @@ void setup_64bit_descriptors(void)
 }
 
 
-//  x32_pt64_setup_paging: establish paging tables for x64 -bit mode, 
 //     2MB pages while running in 32-bit mode.
 //     It should scope full 32-bit space, i.e. 4G
-void x32_pt64_setup_paging(uint64_t memory_size)
+void setup_64bit_paging(uint64_t memory_size)
 {
     uint32_t pdpt_entry_id;
     uint32_t pdt_entry_id;
@@ -449,7 +448,7 @@ int setup_64bit()
     ia32_write_gdtr(&gdtr_64);
 
     // setup paging, control registers and flags on BSP
-    x32_pt64_setup_paging(TOTAL_MEM);
+    setup_64bit_paging(TOTAL_MEM);
 
     // set cr3 and cr4
     ia32_write_cr3(evmm64_cr3);
@@ -462,7 +461,7 @@ int setup_64bit()
     //     init64.i64_efer was never set but it is being written into the msr
     //     ia32_read_msr(0xc0000080, &init64.i64_efer);
     //     init64.i64_efer|= EFER_LME; // EFER_SCE EFER_LMA EFER_NXE
-    ia32_write_msr(0xc0000080, &init64.i64_efer);
+    // ia32_write_msr(0xc0000080, &init64.i64_efer);
 
     // we don't really use this structure
     init64.i64_gdtr= gdtr_64;

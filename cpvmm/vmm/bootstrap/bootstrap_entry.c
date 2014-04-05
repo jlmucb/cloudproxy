@@ -301,16 +301,21 @@ void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 }
 
 
-void setup_evmm_stack()
+int setup_evmm_stack()
 {
     // Note: the stack grows down so the stack pointer starts at high memory
     // clear stack memory first
     evmm_initial_stack_base= (uint32_t) 
                 evmm_page_alloc(UVMM_DEFAULT_STACK_SIZE_PAGES);
+    if(evmm_initial_stack_base==0) {
+        return 1;
+    }
     vmm_memset((void*)evmm_initial_stack_base, 0, 
+               PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES);
     // stack grows down
     evmm_initial_stack= evmm_initial_stack_base+
-                        PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES);
+                        PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES;
+    return 0;
 }
 
 
@@ -323,8 +328,6 @@ void setup_64bit_descriptors(void)
                     evmm_page_alloc(1);
     // zero gdt
     vmm_memset(evmm_descriptor_table, 0, PAGE_4KB_SIZE);
-
-    return;    //FIX
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
@@ -447,7 +450,6 @@ int setup_64bit()
 {
     // setup_64 bit for 64-bit on BSP
     setup_64bit_descriptors();
-    return 0;  //FIX
     ia32_write_gdtr(&gdtr_64);
 
     // setup paging, control registers and flags on BSP
@@ -1592,13 +1594,15 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
       bprint("Unable to setup 64 bit paging\n");
       LOOP_FOREVER
     }
-    LOOP_FOREVER
 
     // Allocate stack and set rsp (esp)
-    setup_evmm_stack();
+    if(setup_evmm_stack()!=0) {
+      bprint("can't allocate stack\n");
+      LOOP_FOREVER
+    }
 
 #ifdef JLMDEBUG
-    bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
+    bprint("evmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
     LOOP_FOREVER
 
@@ -1673,7 +1677,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
     asm volatile (
 
-        "\t2: jmp	2b\n"
+        "\t2: jmp       2b\n"
         "\tcli\n"
 
         // move entry point to ebx for jump

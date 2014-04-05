@@ -468,7 +468,6 @@ int setup_64bit()
     init64.i64_cr3= evmm64_cr3;  // note we dont use the structure
     init64.i64_cs = evmm64_cs_selector;
     init64.i64_efer = 0;
-
     return 0;
 }
 
@@ -1558,6 +1557,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //      we're going to ignore this because we want to
     //      put bootstrap and evmm here.
     // unreserve the region.  CHECK: what BIOS's have this problem?
+    LOOP_FOREVER
 
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
@@ -1584,6 +1584,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     extern void SetupIDT(); // this may not be needed
     SetupIDT();
 #endif
+    LOOP_FOREVER
 
     // setup gdt for 64-bit on BSP
     if(setup_64bit()!=0) {
@@ -1742,7 +1743,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tud2\n"
     :: [args] "p" (args), [vmm_main_entry_point] "m" (vmm_main_entry_point), 
        [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3) :);
-    LOOP_FOREVER
 
     return 0;
 }

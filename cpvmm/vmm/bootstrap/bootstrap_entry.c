@@ -1604,7 +1604,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("evmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
-    LOOP_FOREVER
 
     // We need to allocate this before guest setup
     if(allocate_linux_data()!=0) {

@@ -1711,12 +1711,12 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // write EFER
         "\twrmsr\n"
 
-        "\t2: jmp       2b\n"
-
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
         "\tmovl %%eax, %%cr0\n"
+
+        "\t2: jmp       2b\n"
 
         // at this point we are in 32-bit compatibility mode
         // LMA=1, CS.L=0, CS.D=1

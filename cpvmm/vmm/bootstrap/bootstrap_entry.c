@@ -324,6 +324,8 @@ void setup_64bit_descriptors(void)
     // zero gdt
     vmm_memset(evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
+    return;    //FIX
+
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
 
@@ -332,7 +334,7 @@ void setup_64bit_descriptors(void)
 
     // build and append to GDT 64-bit mode code-segment entry
     // check if the last entry is zero, and if so, substitute it
-    last_index = gdtr_32.limit / sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
+    last_index = gdtr_32.limit/sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
     if (*(uint64_t *) &evmm_descriptor_table[last_index] != 0) {
         last_index++;
     }
@@ -445,6 +447,7 @@ int setup_64bit()
 {
     // setup_64 bit for 64-bit on BSP
     setup_64bit_descriptors();
+    return 0;  //FIX
     ia32_write_gdtr(&gdtr_64);
 
     // setup paging, control registers and flags on BSP
@@ -1557,7 +1560,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //      we're going to ignore this because we want to
     //      put bootstrap and evmm here.
     // unreserve the region.  CHECK: what BIOS's have this problem?
-    LOOP_FOREVER
 
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
@@ -1584,13 +1586,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     extern void SetupIDT(); // this may not be needed
     SetupIDT();
 #endif
-    LOOP_FOREVER
 
     // setup gdt for 64-bit on BSP
     if(setup_64bit()!=0) {
       bprint("Unable to setup 64 bit paging\n");
       LOOP_FOREVER
     }
+    LOOP_FOREVER
 
     // Allocate stack and set rsp (esp)
     setup_evmm_stack();
@@ -1598,6 +1600,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("\tevmm_initial_stack: 0x%08x\n", evmm_initial_stack);
 #endif
+    LOOP_FOREVER
 
     // We need to allocate this before guest setup
     if(allocate_linux_data()!=0) {
@@ -1647,7 +1650,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
     HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
-    LOOP_FOREVER
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
@@ -1667,6 +1669,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     args[2]= (uint32_t)p_startup_struct;
     args[3]= (uint32_t)local_apic_id;
     args[4]= (uint32_t)evmm64_cs_selector;
+    LOOP_FOREVER
 
     asm volatile (
 

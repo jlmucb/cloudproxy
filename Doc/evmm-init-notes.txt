@@ -621,6 +621,11 @@ linux protected mode contents: 0x1186f6fc 40000002 0xb8fa0c75
 
 selector: 0x00000008
 (selector): 0x00000000 0x00a09e00
+stack base: 0x6ff07000 stack top: 0x6ff11000
+
+50000000 00000080
+00000000 00a09e00
+00000000 00a09200
 
 
 TODO: Get interrupt code and vt-d code the evmm team offered.

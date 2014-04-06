@@ -39,7 +39,7 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
-// FIX(JLM): Remove this soon
+// FIX(JLM): Remove this soon 
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
 
@@ -272,6 +272,7 @@ void  ia32_read_msr(uint32_t msr_id, uint64_t *p_value)
     ::[msr_id] "g" (msr_id), [p_value] "p" (p_value)
     :"%eax", "%ecx", "%edx");
 }
+
 
 void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 {
@@ -1627,6 +1628,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
     // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
+    // CHECK (JLM):  check that everything is measured (bootstrap, evmm)
 
     // set up evmm stack for vmm_main call and flip tp 64 bit mode
     //  vmm_main call:
@@ -1634,21 +1636,20 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //               uint64_t application_params_struct_u, 
     //               uint64_t reserved UNUSED)
 
-    // need to stash these away since the stack will not
-    // point to local variables when we push them
-    // these are in the order pushed
-    uint32_t   args[4];
-    args[0]= (uint32_t)evmm_reserved;
-    args[1]= (uint32_t)evmm_p_a0;
-    args[2]= (uint32_t)p_startup_struct;
-    args[3]= (uint32_t)local_apic_id;
 #ifdef JLMDEBUG
     bprint("cs selector: 0x%08x, cr3: 0x%08x\n", 
-           evmm64_cs_selector, evmm64_cr3);
+           (uint32_t) evmm64_cs_selector, (uint32_t) evmm64_cr3);
     bprint("stack base: 0x%08x, stack: 0x%08x\n", 
            evmm_initial_stack_base, evmm_initial_stack);
     HexDump((uint8_t*)evmm_descriptor_table, 
             (uint8_t*)evmm_descriptor_table+40);
+    bprint("stack base: 0x%08x, stack: 0x%08x\n", 
+           evmm_initial_stack_base, evmm_initial_stack);
+    bprint("arguments to vmm_main:\n");
+    bprint("\tapic %d, p_startup_struct, 0x%08x\n",
+       (int) local_apic_id, (int) p_startup_struct);
+    bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
+           (int)evmm_p_a0, (int)evmm_reserved);
 #endif
 
     asm volatile (
@@ -1662,9 +1663,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tmovl %[evmm64_cr3], %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
 
-        // point %%edx to our arguments
-        "\tmovl %[args], %%edx\n"
-
         // evmm_initial_stack points to the start of the stack
         "movl   %[evmm_initial_stack], %%esp\n"
         "\tandl  $0xfffffff8, %%esp\n"
@@ -1673,16 +1671,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // there are 4 arguments (including reserved)
         "\txor  %%eax, %%eax\n"
         "\tpush %%eax\n"
-        "\tpush (%%edx)\n"
-        "\taddl $4, %%edx\n"
+        "\tpush %[evmm_reserved]\n"
         "\tpush %%eax\n"
-        "\tpush (%%edx)\n"
-        "\taddl $4, %%edx\n"
+        "\tpush %[evmm_p_a0]\n"
         "\tpush %%eax\n"
-        "\tpush (%%edx)\n"
-        "\taddl $4, %%edx\n"
+        "\tpush %[p_startup_struct]\n"
         "\tpush %%eax\n"
-        "\tpush (%%edx)\n"
+        "\tpush %[local_apic_id]\n"
 
         // enable 64-bit mode
         // EFER MSR register
@@ -1704,19 +1699,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.
 
-#if 0
-        // push segment and offset for retf
-        "\tpush  (%%edx)\n"
-        "\tpush $1f\n"
-        "\tretf\n"
-#else
         // mode switch
         "ljmp   $16, $1f\n"
-        // "\tlret\n"
-#endif
 
 "1:\n"
-
         // in 64 bit this is actually pop rdi (local apic)
         "\tpop %%edi\n"
         // in 64 bit this is actually pop rsi (startup struct)
@@ -1732,10 +1718,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
         "\tjmp %%ebx\n"
         "\tud2\n"
-    :: [args] "p" (args), [vmm_main_entry_point] "m" (vmm_main_entry_point), 
+    :: [vmm_main_entry_point] "m" (vmm_main_entry_point), 
        [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3),
-       [evmm64_cs_selector] "m" (evmm64_cs_selector),
-       [evmm64_ds_selector] "m" (evmm64_ds_selector)
+       [evmm64_cs_selector] "m" (evmm64_cs_selector), [evmm_reserved] "m" (evmm_reserved),
+       [evmm_p_a0] "m" (evmm_p_a0), [p_startup_struct] "m" (p_startup_struct),
+       [local_apic_id] "m" (local_apic_id)
     :);
 
     return 0;

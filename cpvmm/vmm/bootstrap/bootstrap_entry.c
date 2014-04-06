@@ -1,4 +1,4 @@
-	/*
+        /*
  * File: bootstrap_entry.c
  * Description: Get tbooted and boot 64 bit evmm
  * Author: John Manferdelli
@@ -153,7 +153,6 @@ void *evmm_page_alloc(uint32_t pages)
 
 static uint32_t                         evmm64_cs_selector= 0;
 static uint32_t                         evmm64_ds_selector= 0;
-static uint32_t                         evmm64_call_selector= 0;
 
 static uint32_t                         evmm64_cr4= 0;
 static uint32_t                         evmm64_cr3 = 0;
@@ -169,7 +168,7 @@ static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
 
 // location of page in evmm heap that holds 64 bit descriptor table
 static int                              num_64bit_descriptors= 0;
-static EM64T_CODE_SEGMENT_DESCRIPTOR*   evmm_descriptor_table= NULL;
+static uint32_t                         evmm_descriptor_table= 0;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
@@ -310,57 +309,16 @@ void setup_64bit_descriptors(void)
     uint32_t last_index;
 
     // 1 page for segment descriptors
-    evmm_descriptor_table = (EM64T_CODE_SEGMENT_DESCRIPTOR *)
-                    evmm_page_alloc(1);
+    evmm_descriptor_table = (uint32_t) evmm_page_alloc(1);
     // zero gdt
-    vmm_memset(evmm_descriptor_table, 0, PAGE_4KB_SIZE);
+    vmm_memset((void*)evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
     // read 32-bit GDTR
     ia32_read_gdtr(&gdtr_32);
 
     // copy it to the new 64-bit GDT
-    vmm_memcpy(evmm_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
+    vmm_memcpy((void*)evmm_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
 
-#if 0
-    // build and append to GDT 64-bit mode code-segment entry
-    // check if the last entry is zero, and if so, substitute it
-    last_index = gdtr_32.limit/sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
-    if (*(uint64_t *) &evmm_descriptor_table[last_index] != 0) {
-        last_index++;
-    }
-
-    // code segment for eVmm code
-    evmm_descriptor_table[last_index].hi.accessed = 0;
-    evmm_descriptor_table[last_index].hi.readable = 1;
-    evmm_descriptor_table[last_index].hi.conforming = 1;
-    evmm_descriptor_table[last_index].hi.mbo_11 = 1;
-    evmm_descriptor_table[last_index].hi.mbo_12 = 1;
-    evmm_descriptor_table[last_index].hi.dpl = 0;
-    evmm_descriptor_table[last_index].hi.present = 1;
-    evmm_descriptor_table[last_index].hi.long_mode = 1;    // important !!!
-    evmm_descriptor_table[last_index].hi.default_size= 0;  // important !!!
-    evmm_descriptor_table[last_index].hi.granularity= 1;
-
-    // data segment for eVmm stacks
-    evmm_descriptor_table[last_index + 1].hi.accessed = 0;
-    evmm_descriptor_table[last_index + 1].hi.readable = 1;
-    evmm_descriptor_table[last_index + 1].hi.conforming  = 0;
-    evmm_descriptor_table[last_index + 1].hi.mbo_11 = 0;
-    evmm_descriptor_table[last_index + 1].hi.mbo_12 = 1;
-    evmm_descriptor_table[last_index + 1].hi.dpl = 0;
-    evmm_descriptor_table[last_index + 1].hi.present = 1;
-    evmm_descriptor_table[last_index + 1].hi.long_mode = 1;    // important !!!
-    evmm_descriptor_table[last_index + 1].hi.default_size = 0;    // important !!!
-    evmm_descriptor_table[last_index + 1].hi.granularity= 1;
-
-    // prepare GDTR
-    gdtr_64.base= (uint32_t) evmm_descriptor_table;
-    // !!! TBD !!! will be extended by TSS
-    gdtr_64.limit = gdtr_32.limit + 2*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR); 
-    evmm64_cs_selector = last_index*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
-    evmm64_ds_selector = (last_index+1)*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
-    ia32_write_gdtr(&gdtr_64);
-#else
     uint32_t  descriptor_base= ((uint32_t)evmm_descriptor_table+gdtr_32.limit+1);
 
     // 16 byte aligned
@@ -373,23 +331,18 @@ void setup_64bit_descriptors(void)
     // ds descriptor
     end_of_desciptor_table[2]= 0x00a0920000000000ULL;
     end_of_desciptor_table[3]= 0x0000000000000000ULL;
-    // call gate selector
-    end_of_desciptor_table[4]= 0x0000000000000000ULL;
-    end_of_desciptor_table[5]= 0x0020920000000000ULL;
 
     // selectors
     evmm64_cs_selector = (uint32_t) (&end_of_desciptor_table[0]) - (uint32_t) evmm_descriptor_table;
     evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[2]) - (uint32_t) evmm_descriptor_table;
-    evmm64_call_selector = (uint32_t) (&end_of_desciptor_table[6]) - (uint32_t) evmm_descriptor_table;
 
     // set 64 bit
     gdtr_64.base= (uint32_t) evmm_descriptor_table;
     gdtr_64.limit = gdtr_32.limit + 
-        (uint32_t)(&end_of_desciptor_table[7])-(uint32_t)(&end_of_desciptor_table[0]);
+        (uint32_t)(&end_of_desciptor_table[4])-(uint32_t)(&end_of_desciptor_table[0]);
 
     // load gdtr
     ia32_write_gdtr(&gdtr_64);
-#endif
 }
 
 
@@ -1742,8 +1695,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // write EFER
         "\twrmsr\n"
 
-        "\t2: jmp       2b\n"
-
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
@@ -1765,6 +1716,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
 "1:\n"
+
+        "\t2: jmp       2b\n"
 
         // ds selector
         "movl   %[evmm64_ds_selector], %%edx\n"

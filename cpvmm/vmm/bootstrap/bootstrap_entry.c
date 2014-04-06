@@ -361,13 +361,17 @@ void setup_64bit_descriptors(void)
     evmm64_ds_selector = (last_index+1)*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
     ia32_write_gdtr(&gdtr_64);
 #else
-    uint64_t* end_of_desciptor_table= (uint64_t*) (gdtr_32.base+gdtr_32.limit+1);
+    uint32_t  descriptor_base= (gdtr_32.base+gdtr_32.limit+1);
+    // 16 byte aligned
+    if((descriptor_base)%16!=0)
+        descriptor_base+= 8;
+    uint64_t* end_of_desciptor_table= (uint64_t*) descriptor_base;
     // cs descriptor
-    end_of_desciptor_table[0]= 0x0000000000000000ULL;
-    end_of_desciptor_table[1]= 0x00a09e0000000000ULL;
+    end_of_desciptor_table[0]= 0x00a09a0000000000ULL;
+    end_of_desciptor_table[1]= 0x0000000000000000ULL;
     // ds descriptor
-    end_of_desciptor_table[2]= 0x0000000000000000ULL;
-    end_of_desciptor_table[3]= 0x00a0920000000000ULL;
+    end_of_desciptor_table[2]= 0x00a0920000000000ULL;
+    end_of_desciptor_table[3]= 0x0000000000000000ULL;
     // call gate selector
     end_of_desciptor_table[4]= 0x0000000000000000ULL;
     end_of_desciptor_table[5]= 0x0020920000000000ULL;
@@ -1685,12 +1689,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     args[2]= (uint32_t)p_startup_struct;
     args[3]= (uint32_t)local_apic_id;
 #ifdef JLMDEBUG
-    bprint("selector: 0x%08x, descriptor: 0x%08x\n",
-           args[4], (uint32_t)evmm_descriptor_table);
+    bprint("selector: 0x%08x\n", evmm64_cs_descriptor);
     bprint("stack base: 0x%08x, stack: 0x%08x\n", 
            evmm_initial_stack_base, evmm_initial_stack);
     HexDump((uint8_t*)evmm_descriptor_table, 
-            (uint8_t*)evmm_descriptor_table+24);
+            (uint8_t*)evmm_descriptor_table+40);
 #endif
 
     asm volatile (
@@ -1737,6 +1740,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // write EFER
         "\twrmsr\n"
 
+        "\t2: jmp       2b\n"
+
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
@@ -1753,13 +1758,11 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tretf\n"
 #else
         // mode switch
-        // "\tmovl %[evmm64_cs_selector], %%edx\n"
-        "movw   %%dx, %%cs\n"
-        // "ljmp  *%%cs:1f\n"
+        "ljmp   $16, $1f\n"
+        // "\tlret\n"
 #endif
 
 "1:\n"
-        "\t2: jmp       2b\n"
 
         // ds selector
         "movl   %[evmm64_ds_selector], %%edx\n"

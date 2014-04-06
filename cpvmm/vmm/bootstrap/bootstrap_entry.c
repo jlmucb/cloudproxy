@@ -361,10 +361,11 @@ void setup_64bit_descriptors(void)
     evmm64_ds_selector = (last_index+1)*sizeof(EM64T_CODE_SEGMENT_DESCRIPTOR);
     ia32_write_gdtr(&gdtr_64);
 #else
-    uint32_t  descriptor_base= (gdtr_32.base+gdtr_32.limit+1);
+    uint32_t  descriptor_base= ((uint32_t)evmm_descriptor_table+gdtr_32.limit+1);
+
     // 16 byte aligned
-    if((descriptor_base)%16!=0)
-        descriptor_base+= 8;
+    descriptor_base= (descriptor_base+15)&(~0xf);
+
     uint64_t* end_of_desciptor_table= (uint64_t*) descriptor_base;
     // cs descriptor
     end_of_desciptor_table[0]= 0x00a09a0000000000ULL;
@@ -377,9 +378,9 @@ void setup_64bit_descriptors(void)
     end_of_desciptor_table[5]= 0x0020920000000000ULL;
 
     // selectors
-    evmm64_cs_selector = (uint32_t) (&end_of_desciptor_table[0]) - gdtr_64.base;
-    evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[2]) - gdtr_64.base;
-    evmm64_call_selector = (uint32_t) (&end_of_desciptor_table[6]) - gdtr_64.base;
+    evmm64_cs_selector = (uint32_t) (&end_of_desciptor_table[0]) - (uint32_t) evmm_descriptor_table;
+    evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[2]) - (uint32_t) evmm_descriptor_table;
+    evmm64_call_selector = (uint32_t) (&end_of_desciptor_table[6]) - (uint32_t) evmm_descriptor_table;
 
     // set 64 bit
     gdtr_64.base= (uint32_t) evmm_descriptor_table;
@@ -1689,7 +1690,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     args[2]= (uint32_t)p_startup_struct;
     args[3]= (uint32_t)local_apic_id;
 #ifdef JLMDEBUG
-    bprint("selector: 0x%08x\n", evmm64_cs_descriptor);
+    bprint("cs selector: 0x%08x, cr3: 0x%08x\n", 
+           evmm64_cs_selector, evmm64_cr3);
     bprint("stack base: 0x%08x, stack: 0x%08x\n", 
            evmm_initial_stack_base, evmm_initial_stack);
     HexDump((uint8_t*)evmm_descriptor_table, 

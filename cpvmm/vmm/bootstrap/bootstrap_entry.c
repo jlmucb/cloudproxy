@@ -1730,12 +1730,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         //"\tsubl 0x18, %%esp\n"
         // in 64bit this is actually
 
-        "\t2: jmp       2b\n"
-
-        // ds selector
-        "movl   %[evmm64_ds_selector], %%edx\n"
-        "movw   %%dx, %%ds\n"
-
         "\tjmp %%ebx\n"
         "\tud2\n"
     :: [args] "p" (args), [vmm_main_entry_point] "m" (vmm_main_entry_point), 

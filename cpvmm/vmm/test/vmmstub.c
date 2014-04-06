@@ -29,7 +29,6 @@ typedef struct VMM_INPUT_PARAMS_S {
 void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
               UINT64 application_params_struct_u, UINT64 reserved UNUSED)
 {
-    LOOP_FOREVER
     bootstrap_partial_reset();
     bprint("***********************\n");
     bprint("vmm_main in 64 bit mode\n");

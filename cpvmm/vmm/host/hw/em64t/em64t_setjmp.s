@@ -43,9 +43,9 @@
 
 .text
 .align 4
-.globl setjmp
+.globl _setjmp
 
-setjmp:
+_setjmp:
         movq    %rdi,%rcx
         movq    0(%rsp),%rdx            /* retval */
         movq    %rdx, 0(%rcx)           /* 0; retval */
@@ -60,7 +60,11 @@ setjmp:
         ret
 
 
-longjmp:
+.text
+.align 4
+.globl _longjmp
+
+_longjmp:
         movq    %rdi,%rdx
         movq    %rsi,%rax       /* retval */
         movq    0(%rdx),%rcx

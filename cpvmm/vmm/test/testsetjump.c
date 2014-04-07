@@ -3,6 +3,9 @@
 
 jmp_buf buf;
 
+extern int setjmp(jmp_buf);
+extern void longjmp(jmp_buf, int);
+
 
 void ProgramB()
 {

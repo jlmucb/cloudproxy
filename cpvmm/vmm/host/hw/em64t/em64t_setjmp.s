@@ -44,7 +44,6 @@
 .text
 .align 4
 .globl setjmp
-.type setjmp, @function
 
 setjmp:
         movq    %rdi,%rcx
@@ -59,7 +58,6 @@ setjmp:
         movq    %r15,56(%rcx)           /* 7; r15 */
         xorq    %rax,%rax
         ret
-.size setjmp,.-setjmp
 
 
 longjmp:
@@ -75,7 +73,6 @@ longjmp:
         movq    56(%rdx),%r15
         movq    %rcx,0(%rsp)
         ret
-.size longjmp,.-longjmp
 
 
 .globl  hw_exception_post_handler

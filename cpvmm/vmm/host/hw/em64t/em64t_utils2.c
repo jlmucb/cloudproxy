@@ -101,8 +101,7 @@ void hw_write_cs (UINT16 i) {
 }
 
 /*  
- *  UINT16 
- *  hw_read_ds ( void);
+ *  UINT16 hw_read_ds ( void);
  *  Read Data Segment Selector
  *  Stack offsets on entry:
  *  ax register will contain result
@@ -553,12 +552,12 @@ compat_code:                    ;; compatibility mode starts right here
 */
 void hw_perform_asm_iret () {
     asm volatile(
-        "\tsub 0x20, %%rsp\n"     //prepare space for "interrupt stack"
+        "\tsubq $0x20, %%rsp\n"     //prepare space for "interrupt stack"
         "\tpush %%rax\n"                               //save scratch registers
         "\tpush %%rbx\n"
         "\tpush %%rcx\n"
         "\tpush %%rdx\n"
-        "\taddq 0x40, %%rsp\n"   // get rsp back to RIP
+        "\taddq $0x40, %%rsp\n"   // get rsp back to RIP
         "\tpop %%rax\n"          //RIP -> RAX
         "\tmovq %%cs, %%rbx\n"   //CS  -> RBX
         "\tmovq %%rsp, %%rcx\n"  //good RSP -> RCX
@@ -569,7 +568,7 @@ void hw_perform_asm_iret () {
         "\tpush %%rbx\n"         //[       CS         ]
         "\tpush %%rax\n"         //[       RIP        ]
 
-        "\tsubq 0x20, %%rsp\n"   //restore scratch registers
+        "\tsubq $0x20, %%rsp\n"   //restore scratch registers
         "\tpop %%rdx\n"
         "\tpop %%rcx\n"
         "\tpop %%rbx\n"

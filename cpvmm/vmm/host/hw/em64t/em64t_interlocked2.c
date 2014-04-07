@@ -28,10 +28,6 @@ void hw_pause( void ) {
 void hw_monitor( void* addr, UINT32 extension, UINT32 hint) {
     // Execute assembler 'monitor' instruction
     asm volatile(
-        //on entry
-        //  RCX contains addr
-        //  RDX contains extension
-        //  R8  contains hint
         "\tmovq %[addr], %%rcx\n" 
         "\tmovq %[extension], %%rdx\n" 
         "\tmovq %[hint], %%r8\n" 

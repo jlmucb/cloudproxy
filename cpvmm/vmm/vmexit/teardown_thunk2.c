@@ -25,8 +25,8 @@
 #include "vmm_defs.h"
 
 int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
-		UINT16 compatibility_cs, UINT64 teardown_thunk_entry_phy_addr,
-		UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
+                UINT16 compatibility_cs, UINT64 teardown_thunk_entry_phy_addr,
+                UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
 {
     UINT64 result = 0;
 
@@ -39,7 +39,7 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         "\tmovq    %%rcx, %%rsi\n"
         // save cr3_td_sm_32 to rdi temporarily
         "\tmovq    %%r9, %%rdi\n"
-				"\tmovq    0x28(%%rsp), %%rcx \n"
+        "\tmovq    0x28(%%rsp), %%rcx \n"
         "\tvmxoff\n"
         // clear cr4.vmx, must be after vmx off. otherwise #GP fault
         "\tmovq    %%cr4, %%rax\n"
@@ -62,7 +62,7 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         // compatibility mode starts right here, below code is running on
         // 32bit mode.
         "\tlret \n"
-				"1: \n"
+                                "1: \n"
         "\tmovq     %%cr0, %%rax\n"
         "\tbtcl     $31, %%eax \n"
         "\tmovq     %%rax, %%cr0\n"
@@ -82,8 +82,8 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         // translated correctly in 32bit mode (not 64bit opcodes).
         // Byte code below is equivalent to "mov eax, cr4".
         "\t.byte 0x0f \n"
-				"\t.byte 0x20 \n"
-				"\t.byte 0xe0 \n"
+        "\t.byte 0x20 \n"
+                                "\t.byte 0xe0 \n"
         "\tcmpl $0x1, %%ecx\n"
         "\tjz 2f\n"
         // set PSE bit of cr4 - non PAE mode
@@ -118,22 +118,21 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
         // teardown_shared_memory's gva and gpa, except those 3
         // pages of shared memory, other are 1:1 mapping (va = pa)
         // for 32-bit mode
-				"\tmovq  %%cr0, %%rax\n"
-				//; enable IA32 paging (32-bits)
-				"\tbts  $31, %%eax\n"
-				"\tmovq  %%rax, %%cr0 \n"
-				// finally, call teardownthunk entry in guest space. and never returns.  
-				"\tjmp  %%rbx\n"
-				"\tmovq %%rax, %[result]\n"
+        "\tmovq  %%cr0, %%rax\n"
+        //; enable IA32 paging (32-bits)
+        "\tbts  $31, %%eax\n"
+        "\tmovq  %%rax, %%cr0 \n"
+        // finally, call teardownthunk entry in guest space. and never returns.  
+        "\tjmp  %%rbx\n"
+        "\tmovq %%rax, %[result]\n"
     : [result]"=g" (result)
     : [current_guest_states_phy_addr] "g" (current_guest_states_phy_addr), 
       [compatibility_cs] "g" (compatibility_cs), 
       [teardown_thunk_entry_phy_addr] "g" (teardown_thunk_entry_phy_addr), 
       [cr3_td_sm_32] "g" (cr3_td_sm_32), 
       [cr4_pae_is_on] "g" (cr4_pae_is_on)
-    :"%rax", "%r8", "cc"
-	);
-	return result;
+    :"%rax", "%r8", "cc");
+    return result;
 }
 
 
@@ -147,8 +146,8 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
 int call_teardown_thunk64(UINT32 current_cpu_idx,
                           UINT64 current_guest_states_hva, UINT64 teardown_thunk_entry_hva)
 {
-	int result = 0;
-	/*
+        int result = 0;
+        /*
   asm volatile(
         "\tmovl    %[current_cpu_idx], %%rcx\n"
         "\tmovq    %[current_guest_states_hvu], %%rdx\n"
@@ -161,7 +160,7 @@ int call_teardown_thunk64(UINT32 current_cpu_idx,
       [current_guest_states_hvu] "g" (current_guest_states_hva), 
       [teardown_thunk_entry_hva] "g" (teardown_thunk_entry_hva)
     :"%rax", "%r8"
-	);
+        );
 */
   return result;
 }

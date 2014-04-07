@@ -42,8 +42,7 @@ void *memmove(void *dest, const void *src, int n) {
 }
 
 
-void vmm_lock_xchg_qword (UINT64 *dst, //rcx
-                          UINT64 *src)  //rdx
+void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src) 
 {
     asm volatile(
         "\tmovq %[src], %%r8\n"
@@ -57,8 +56,7 @@ void vmm_lock_xchg_qword (UINT64 *dst, //rcx
 }
 
 
-void vmm_lock_xchg_byte (UINT8 *dst, //rcx
-                         UINT8 *src)  //rdx
+void vmm_lock_xchg_byte (UINT8 *dst, UINT8 *src) 
 {
     asm volatile(
         "\tmovq %[src], %%rdx\n"

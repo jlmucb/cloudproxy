@@ -21,7 +21,7 @@ void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
     asm volatile(
         "\tmovq       %[mem_loc], %%rcx\n"
         "\tmovq       %[new_data], %%rdx\n"
-        "\txchgq    (%%rcx),%%rdx\n"
+        "\tlock; xchgq (%%rcx),%%rdx\n"
     :
     : [mem_loc] "m"(mem_loc), [new_data] "m"(new_data)
     :"%rcx", "%rdx");

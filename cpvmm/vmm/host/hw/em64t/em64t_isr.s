@@ -35,8 +35,6 @@
 .extern isr_c_handler
 
 .set    VECTOR_19, 19
-
-# enum EXCEPTION_CLASS_ENUM in uVmm\vmm\host\isr.c
 .set    FAULT_CLASS, 2
 
 .text
@@ -45,9 +43,10 @@
 #  UINT8 __stdcall hw_isr ( void);
 #  ISR handler. Pushes hardcoded CPU ID onto stack and jumps to vector routine
 #  Stack offsets on entry:
-#  eax register will contain result         Bits 7-0: #Physical Address Bits
-#                                Bits 15-8: #Virtual Address Bits
-#                                Bits 31-16: Reserved =
+#        eax register will contain result         
+#              Bits 7-0: #Physical Address Bits
+#              Bits 15-8: #Virtual Address Bits
+#              Bits 31-16: Reserved =
 
 .macro isr_entry_macro vector
         push vector
@@ -101,7 +100,6 @@ hw_isr_c_wrapper:
 
         # save context and prepare stack for C-function
         # at this point stack contains
-        #..................................
         # [       SS         ]
         # [       RSP        ]
         # [      RFLAGS      ]
@@ -109,14 +107,7 @@ hw_isr_c_wrapper:
         # [       RIP        ] <= here RSP should point prior iret
         # [[   errcode      ]]    optionally
         # [    vector ID     ] <= RSP
-        #
-        #   The following code was removed, its is MSVC specific and wrong for gcc
-        # in gcc %rdi is used for parameter passing, not rcx
-        # push    %rcx             # save RCX which used for argument passing
-        # mov     %rcx, %rsp
-        # add     %rcx, 0x8         # now RCX points to the location of vector ID
         
-        # the following is the substitute code for gcc, note that %rdi, %rsi and %rcx are pushed
         push    %rdi             # save RDI which used for argument passing
         mov     %rdi, %rsp
         add     %rdi, 0x8         # now RDI points to the location of vector ID
@@ -148,9 +139,6 @@ hw_isr_c_wrapper:
         pop     %rsi    # just in case
         pop     %rdi    # restored from parameter passing
         
-        # this is the old msvc code
-        # pop     %rcx
-
         pop     %rsp             # isr_c_handler replaces vector ID with pointer to the
                                 # RIP. Just pop the pointer to the RIP into RSP.
         iretq

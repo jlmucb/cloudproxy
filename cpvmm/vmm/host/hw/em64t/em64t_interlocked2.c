@@ -21,7 +21,7 @@
 void hw_pause( void ) {
 // Execute assembler 'pause' instruction
     asm volatile(
-        "pause\n"
+        "\tpause\n"
         :::);
     return;
 }

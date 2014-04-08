@@ -146,7 +146,7 @@ const UINT8 APStartUpCode[] =
     0x66, 0x8E, 0xD0,              // 61: mov  ss,ax
     0xB8, 0x00, 0x00, 0x00, 0x00,  // 64: mov  eax,AP_CONTINUE_WAKEUP_CODE
     0xFF, 0xE0,                    // 69: jmp  eax
-////    0x00                           // 71: 32 bytes alignment
+////    0x00                       // 71: 32 bytes alignment
 };
 
 #ifdef BREAK_IN_AP_STARTUP
@@ -173,9 +173,7 @@ const UINT8 APStartUpCode[] =
 
 
 //      forward declarations
-// __attribute((cdecl))
 static void     ap_continue_wakeup_code( void );
-// __attribute((cdecl))
 static void     ap_continue_wakeup_code_C(UINT32 local_apic_id);
 
 static UINT8    bsp_enumerate_aps(void);
@@ -203,11 +201,11 @@ static void setup_low_memory_ap_code(UINT32 temp_low_memory_4K)
 
     // get current segments
     asm volatile (
-    "\tmov %%cs, #[cs_value]\n"
-    "\tmov %%ds, #[ds_value]\n"
-    "\tmov %%es, #[es_value]\n"
-    "\tmov %%gs, #[gs_value]\n"
-    "\tmov %%fs, #[fs_value]\n"
+    "\tmov %%cs, %[cs_value]\n"
+    "\tmov %%ds, %[ds_value]\n"
+    "\tmov %%es, %[es_value]\n"
+    "\tmov %%gs, %[gs_value]\n"
+    "\tmov %%fs, %[fs_value]\n"
     mov %%ss, ss_value
     : [cs_value] "=m" (cs_value), [ds_value] "=m" (ds_value), [es_value] "=m" (es_value),
       [gs_value] "=m" (gs_value), [fs_value] "=m" (fs_value), [ss_value] "=m" (ss_value)
@@ -269,7 +267,7 @@ static void ap_continue_wakeup_code(void)
         "\tshrl  ecx, LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT, %%ecx\n"
 
         // edx <- address of presence array
-        "\tleal  #[ap_presence_array], %%edx\n"
+        "\tleal  %[ap_presence_array], %%edx\n"
         // edx <- address of AP CPU presence location
         "\taddl  %%ecx, %%edx\n"
         // mark current CPU as present
@@ -277,7 +275,7 @@ static void ap_continue_wakeup_code(void)
 
         // wait until BSP will init stacks, GDT, IDT, etc
 "Wait_Lock1:\n"
-        "\tcmpl    MP_BOOTSTRAP_STATE_APS_ENUMERATED, #[mp_bootstrap_state]\n"
+        "\tcmpl    MP_BOOTSTRAP_STATE_APS_ENUMERATED, %[mp_bootstrap_state]\n"
         "\tje      Stage2\n"
         "\tpause\n"
         "\tjmp Wait_Lock1\n"
@@ -295,7 +293,7 @@ static void ap_continue_wakeup_code(void)
         "\tdecl    %% eax\n"
         // eax = 4*eax (8 == sizeof(UINT32))
         "\tleal    (4*%%eax), %%eax\n"
-        "\tmovl    #[gp_init32_data], %%edx\n"
+        "\tmovl    %[gp_init32_data], %%edx\n"
         // now edx points to gp_init32_data->i32_esp
         "\taddl    $8, %%edx \n"
         // now edx points to gp_init32_data->i32_esp[eax]
@@ -303,10 +301,10 @@ static void ap_continue_wakeup_code(void)
         "\tmovl    (%%edx), %%esp\n"
 
         // setup GDT
-        "\tlgdt #[gp_GDT]\n"
+        "\tlgdt %[gp_GDT]\n"
 
         // setup IDT
-        "\tlidt #[gp_IDT]\n"
+        "\tlidt %[gp_IDT]\n"
 
         // enter "C" function
         //  push  AP ordered ID
@@ -324,7 +322,7 @@ static void ap_continue_wakeup_code(void)
 static UINT64 read_msr(UINT32 msr_index)
 {
     asm volatile (
-          "\tmov  #[msr_index], %%ecx\n"
+          "\tmov  %[msr_index], %%ecx\n"
           "\trdmsr\n"
     :
     : [msr_index] "m" (msr_index)
@@ -339,7 +337,7 @@ static void ap_continue_wakeup_code_C( UINT32 local_apic_id )
 {
     // mark that the command was accepted
     asm volatile (
-        "\tlock inc #[g_ready_counter]\n"
+        "\tlock inc %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
 
@@ -353,8 +351,8 @@ static void ap_continue_wakeup_code_C( UINT32 local_apic_id )
 static UINT8 read_port_8( UINT32 port )
 {
     asm volatile (
-        "\tlock inc #[g_ready_counter]\n"
-        "\tmov     #[port],%%edx\n"
+        "\tlock inc %[g_ready_counter]\n"
+        "\tmov     %[port],%%edx\n"
         "\txor    %%eax, %%eax\n"
         "\tin    %%dx, %%al\n"
     : [g_ready_counter] "=m" (g_ready_counter)
@@ -600,8 +598,8 @@ UINT32 ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // save IDT and GDT
     asm volatile (
-        "\tsgdt #[gp_GDT]\n"
-        "\tsidt #[gp_IDT]\n"
+        "\tsgdt %[gp_GDT]\n"
+        "\tsidt %[gp_IDT]\n"
     : [gp_GDT] "=m" (gp_GDT), [gp_IDT] "=m" (gp_IDT)
     ::);
 
@@ -675,6 +673,7 @@ UINT8 bsp_enumerate_aps(void)
     return ap_num;
 }
 
+
 void ap_intialize_environment(void)
 {
     mp_bootstrap_state = MP_BOOTSTRAP_STATE_INIT;
@@ -688,8 +687,8 @@ void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
     asm volatile (
         "\tpush    %%eax\n"
-        "\tmov     #[new_state], %%eax\n"
-        "\tlock xchg %%eax, #[mp_bootstrap_state]\n"
+        "\tmov     %[new_state], %%eax\n"
+        "\tlock xchg %%eax, %[mp_bootstrap_state]\n"
         "\tpop     %%eax\n"
     : [mp_bootstrap_state] "=m" (mp_bootstrap_state), [new_state] "=m" (new_state)
     ::);

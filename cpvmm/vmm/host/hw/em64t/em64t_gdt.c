@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #include "vmm_defs.h"
 #include "common_libc.h"
 #include "heap.h"
@@ -138,16 +139,16 @@ static void setup_tss_with_descriptor(
 }
 
 
-/*-------------------------------------------------------*
-*  FUNCTION     : hw_gdt_setup()
-*  PURPOSE      : Setup GDT for all CPUs. Including entries for:
-*               : 64-bit code segment
-*               : 32-bit code segment (for compatibility mode)
-*               : 32-bit data segment (in compatibility mode, for both data and stack)
-*               : one 64-bit for FS, which limit is used like index CPU ID
-*  ARGUMENTS    : IN CPU_ID number_of_cpus - number of CPUs in the system
-*  RETURNS      : void
-*-------------------------------------------------------*/
+/*
+ *  FUNCTION     : hw_gdt_setup()
+ *  PURPOSE      : Setup GDT for all CPUs. Including entries for:
+ *               : 64-bit code segment
+ *               : 32-bit code segment (for compatibility mode)
+ *               : 32-bit data segment (in compatibility mode, for both data and stack)
+ *               : one 64-bit for FS, which limit is used like index CPU ID
+ *  ARGUMENTS    : IN CPU_ID number_of_cpus - number of CPUs in the system
+ *  RETURNS      : void
+ */
 void hw_gdt_setup(IN CPU_ID number_of_cpus)
 {
     CPU_ID cpu_id;
@@ -199,12 +200,12 @@ void gdt_show(void)
 }
 #endif
 
-/*-------------------------------------------------------*
-*  FUNCTION     : hw_gdt_load()
-*  PURPOSE      : Load GDT on given CPU
-*  ARGUMENTS    : IN CPU_ID cpu_id
-*  RETURNS      : void
-*-------------------------------------------------------*/
+/*
+ *  FUNCTION     : hw_gdt_load()
+ *  PURPOSE      : Load GDT on given CPU
+ *  ARGUMENTS    : IN CPU_ID cpu_id
+ *  RETURNS      : void
+ */
 void hw_gdt_load(IN CPU_ID cpu_id)
 {
     EM64T_GDTR gdtr;
@@ -217,11 +218,7 @@ void hw_gdt_load(IN CPU_ID cpu_id)
     gdtr.limit = gdt_size - 1;
     gdtr.base  = (UINT64) gdt;
 
-//    VMM_LOG(mask_anonymous, level_trace,"GDT BEFORE\n");
-//    gdt_show();
     hw_lgdt(&gdtr);
-//    VMM_LOG(mask_anonymous, level_trace,"GDT AFTER\n");
-//    gdt_show();
 
     hw_write_ds(DATA32_GDT_ENTRY_OFFSET);
     hw_write_ss(DATA32_GDT_ENTRY_OFFSET);
@@ -235,17 +232,16 @@ void hw_gdt_load(IN CPU_ID cpu_id)
     hw_write_es(0);
     hw_write_fs(0);
     hw_write_gs(0);
-
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION     : hw_gdt_set_ist_pointer()
-*  PURPOSE      : Assign address to specified IST
-*  ARGUMENTS    : CPU_ID cpu_id
-*               : UINT8 ist_no - in range [0..7]
-*               : ADDRESS address - of specified Interrupt Stack
-*  RETURNS      : void
-*-------------------------------------------------------*/
+/*
+ *  FUNCTION     : hw_gdt_set_ist_pointer()
+ *  PURPOSE      : Assign address to specified IST
+ *  ARGUMENTS    : CPU_ID cpu_id
+ *               : UINT8 ist_no - in range [0..7]
+ *               : ADDRESS address - of specified Interrupt Stack
+ *  RETURNS      : void
+ */
 void hw_gdt_set_ist_pointer(CPU_ID cpu_id, UINT8 ist_no, ADDRESS address)
 {
     // BEFORE_VMLAUNCH
@@ -292,7 +288,7 @@ VMM_STATUS hw_gdt_parse_entry(
 
     default:    // Task Switch Segment
         if (selector > TSS_ENTRY_OFFSET(gdt_number_of_cpus-1) ||    // exceeds limit or
-            0 != (selector & 0xF)) {                                // not aligned on 16 bytes
+            0 != (selector & 0xF)) {            // not aligned on 16 bytes
             status = VMM_ERROR;
         }
         else {

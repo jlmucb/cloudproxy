@@ -15,6 +15,7 @@
  *  limitations under the License.
  */
 
+
 #include "guest_cpu_internal.h"
 #include "vmm_defs.h"
 
@@ -106,12 +107,12 @@ void gcpu_restore_registers(void)
         "\tmovaps 168(%%rbx), %%xmm3\n"
         "\tmovaps 176(%%rbx), %%xmm4\n"
         "\tmovaps 182(%%rbx), %%xmm5\n"
-        // RNB: rbx is restored at the end
+        // rbx is restored at the end
         "\tmovq   16(%%rbx), %%rcx\n"
         "\tmovq   24(%%rbx), %%rdx\n"
         "\tmovq   32(%%rbx), %%rdi\n"
         "\tmovq   40(%%rbx),%%rsi\n"
-        // RNB: rsp is not restored
+        // rsp is not restored
         "\tmovq   64(%%rbx), %%r8\n"
         "\tmovq   72(%%rbx), %%r9\n"
         "\tmovq   80(%%rbx), %%r10\n"

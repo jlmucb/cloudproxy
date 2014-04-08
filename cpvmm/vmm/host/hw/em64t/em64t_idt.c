@@ -318,14 +318,13 @@ static void init_isr_handler_table() {
     isr_handler_table[255] = (ADDRESS)(isr_entry_ff);
 }
 
-//{
+
 //    (ADDRESS) isr_entry_fa,
 //    (ADDRESS) isr_entry_fb,
 //    (ADDRESS) isr_entry_fc,
 //    (ADDRESS) isr_entry_fd,
 //    (ADDRESS) isr_entry_fe,
 //    (ADDRESS) isr_entry_ff
-//};
 
 
 // FUNCTION     : hw_idt_register_handler()

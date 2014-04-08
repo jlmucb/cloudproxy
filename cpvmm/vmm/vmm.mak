@@ -46,11 +46,6 @@ RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCL
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
-#VM_LIBS       = $(E)/libacpi.a $(E)/libvmx.a $(E)/libc.a $(E)/libhwcommon.a $(E)/libhw.a \
-#	        $(E)/libutils.a  $(E)/libhost.a $(E)/libdbg.a $(E)/libmem.a \
-#		$(E)/libarch.a $(E)/libguest.a $(E)/libguest_cpu.a $(E)/libscheduler.a \
-#		$(E)/libstartup.a $(E)/libvmexit.a $(E)/libipc.a $(E)/libept.a 
-
 CC=         gcc
 LINK=       gcc
 LIBMAKER=   ar

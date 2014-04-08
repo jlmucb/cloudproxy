@@ -21,13 +21,13 @@
 .extern VMM_GP_REGISTERS
 
 #   This code was originally written for the Microsoft calling convention.
-#   The first fer arguments were passed in rcx, rdx,r8 and r9, floating
+#   The first few arguments were passed in rcx, rdx,r8 and r9, floating
 #   point in xmm0-3 and the caller was responsible for stack cleanup;
 #   further, MS specifies a 32 byte shadow buffer where arguments can be 
 #   spilled.
 #   By contrast, gcc (and most other compilers) pass the first few arguments
 #   in rdi, rsi, rdx, rcx, r8, r9  and the callee is responsible for stack
-#   cleanup.   FP returns are still in xmm0-xmm3
+#   cleanup.   FP returns are still in xmm0-xmm3.
 
 
 .extern g_exception_gpr

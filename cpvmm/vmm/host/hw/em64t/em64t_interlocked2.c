@@ -16,6 +16,8 @@
 
 #include "vmm_defs.h"
 
+
+// CHECK(JLM)
 void hw_pause( void ) {
 // Execute assembler 'pause' instruction
     asm volatile(
@@ -43,12 +45,10 @@ void hw_monitor( void* addr, UINT32 extension, UINT32 hint) {
 // Execute assembler 'mwait' instruction
 void hw_mwait( UINT32 extension, UINT32 hint ) {
     asm volatile(
-        //   RCX contains extension
-        //   RDX  contains hint
         "\tmovq %[extension], %%rcx\n"
         "\tmovq %[hint], %%rdx\n"
         "\tmovq %%rdx, %%rax\n"
-//RNB: changed the macro .byte... to mwait instruction for better portability.
+        // changed the macro .byte... to mwait instruction for better portability.
         "\tmwait %%rax, %%rcx\n"
     : : [extension] "m" (extension), [hint] "m" (hint)
     :"rax", "rbx", "rcx", "rdx");

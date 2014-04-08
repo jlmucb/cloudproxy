@@ -15,16 +15,11 @@
  *  limitations under the License.
  */
 
-//RNB: Adding header for GUEST_CPU_SAVE_AREA and hw_cpu_id().
 #include "guest_cpu_internal.h"
 #include "vmm_defs.h"
 
-// Assumption - hw_cpu_id() uses RAX only and returns host cpu id in ax
-
 // pointer to the array of pointers to the GUEST_CPU_SAVE_AREA_PREFIX
 extern GUEST_CPU_SAVE_AREA** g_guest_regs_save_area;
-
-// include       ia32_registers.equ
 
 // Define initial part of GUEST_CPU_SAVE_AREA structure
 typedef struct {
@@ -32,26 +27,21 @@ typedef struct {
     VMM_XMM_REGISTERS xmm;
 } PACKED GUEST_CPU_SAVE_AREA_PREFIX; 
 
+
 /*
-* This functions are part of the GUEST_CPU class.  They are called by
-* assembler-lever VmExit/VmResume functions to save all registers that are not
-* saved in VMCS but may be used immediately by C-language VMM code.
-# The following registers are NOT saved here
-#
-#   RIP            part of VMCS RSP            part of VMCS RFLAGS         part
-#   of VMCS segment regs   part of VMCS control regs   saved in C-code later
-#   debug regs     saved in C-code later FP/MMX regs    saved in C-code later
-#
-# Assumptions: No free registers except of RSP/RFLAGS FS contains host CPU id
-# (should be calculated)
-#
-#   RNB: Why FS should have CPU id, and how do those functions ensure.  AFAI
-#   can tell the cpu id is %rax register
-#
-#
-# Assumption - no free registers on entry, all are saved on exit
-#
-*/
+ * This functions are part of the GUEST_CPU class.  They are called by
+ * assembler-lever VmExit/VmResume functions to save all registers that are not
+ * saved in VMCS but may be used immediately by C-language VMM code.
+ * The following registers are NOT saved here
+ *   RIP            part of VMCS RSP            part of VMCS RFLAGS         part
+ *   of VMCS segment regs   part of VMCS control regs   saved in C-code later
+ *   debug regs     saved in C-code later FP/MMX regs    saved in C-code later
+ * Assumptions: No free registers except of RSP/RFLAGS FS contains host CPU id
+ * (should be calculated)
+ *   can tell the cpu id is %rax register
+ * Assumption - no free registers on entry, all are saved on exit
+ */
+// CHECK(JLM)
 void gcpu_save_registers(void) 
 {
     UINT64                  cpuid= 0;
@@ -80,7 +70,6 @@ void gcpu_save_registers(void)
         "\tmovq   %%r13, 104(%%rbx)\n"
         "\tmovq   %%r14, 112(%%rbx)\n"
         "\tmovq   %%r15, 120(%%rbx)\n"
-        //RNB: used 144...182 as offset instead of IA32_REG_GP_COUNT*8
         // JLM: how does %rsp get set?
         "\tmovaps %%xmm0, 144(%%rbx)\n"
         "\tmovaps %%xmm1, 152(%%rbx)\n"
@@ -98,9 +87,8 @@ void gcpu_save_registers(void)
 }
 
 
-/*
- * Assumption - all free registers on entry, no free registers on exit
-*/
+
+// Assumption - all free registers on entry, no free registers on exit
 void gcpu_restore_registers(void) 
 {
     UINT64                  cpuid= 0;

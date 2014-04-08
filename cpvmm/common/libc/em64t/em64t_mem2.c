@@ -44,6 +44,7 @@ void *memmove(void *dest, const void *src, int n) {
 
 void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src) 
 {
+    // CHECK(JLM)
     asm volatile(
         "\tmovq %[src], %%r8\n"
         "\tmovq %[src], %%rdx\n"

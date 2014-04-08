@@ -17,6 +17,7 @@
 #include "vmm_defs.h"
 #include "ept_hw_layer.h"
 
+// CHECK(JLM)
 void vmm_asm_invept (INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 {
     asm volatile(

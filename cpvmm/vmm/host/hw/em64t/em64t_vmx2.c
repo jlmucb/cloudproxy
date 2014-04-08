@@ -97,14 +97,10 @@ void vmentry_func(UINT32 firsttime)
 }
 
 
+// CHECK(JLM)
 UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 // Function:    VMCALL
 // uVMM expects the following:
-//     vmcall_id in RCX
-//     arg1      in RDX
-//     arg2      in RDI
-//     arg3      in RSI
-// return value in RAX
 {
     UINT64  result;
 

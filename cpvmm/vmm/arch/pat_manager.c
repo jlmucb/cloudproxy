@@ -99,8 +99,8 @@ UINT32 pat_mngr_retrieve_current_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TY
             default:
                 result = PAT_MNGR_INVALID_PAT_INDEX;
                 VMM_LOG(mask_uvmm, level_error,
-    		                        "CPU%d: %s: Error: mem type(%d) currently not supported\n",
-    		                        hw_cpu_id(), __FUNCTION__, mem_type);
+                        "CPU%d: %s: Error: mem type(%d) currently not supported\n",
+                        hw_cpu_id(), __FUNCTION__, mem_type);
                 VMM_DEBUG_CODE(VMM_DEADLOOP();)
                 break; 
         }
@@ -109,7 +109,6 @@ UINT32 pat_mngr_retrieve_current_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TY
         result = pat_mngr_get_earliest_pat_index_for_mem_type(mem_type, pat_msr_value);
     }
     
-
     return result;
 }
 #ifdef INCLUDE_UNUSED_CODE
@@ -120,7 +119,6 @@ VMM_PHYS_MEM_TYPE pat_mngr_retrieve_current_pat_mem_type(UINT32 pat_index) {
         VMM_ASSERT(0);
         return VMM_PHYS_MEM_UNDEFINED;
     }
-
     return pat_mngr_get_memory_type(pat_msr_value, pat_index);
 }
 #endif
@@ -130,9 +128,8 @@ BOOLEAN pat_mngr_get_pat_information(GUEST_CPU_HANDLE gcpu,
                                      UINT64* guest_pat,
                                      UINT64* actual_pat) {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
-
-	*guest_pat = gcpu_get_msr_reg(gcpu,IA32_VMM_MSR_PAT);
-	*actual_pat = vmcs_read(vmcs, VMCS_HOST_PAT);
-	return TRUE;
+    *guest_pat = gcpu_get_msr_reg(gcpu,IA32_VMM_MSR_PAT);
+    *actual_pat = vmcs_read(vmcs, VMCS_HOST_PAT);
+    return TRUE;
 }
 #endif

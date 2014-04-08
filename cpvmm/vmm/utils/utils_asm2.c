@@ -120,6 +120,7 @@ UINT32 vmexit_check_ept_violation(void)
 }
 
 
+// CHECK(JLM)
 void vmm_vmcs_guest_state_read(void)
 {
     UINT64  result;

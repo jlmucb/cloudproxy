@@ -15,21 +15,6 @@
  */
 
 
-/*
- * Register usage
- *
- * Caller-saved and scratch:
- *        RAX, RCX, RDX, R8, R9, R10, R11
- *
- * Callee-saved
- *        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
- *
- *  void 
- *  hw_lgdt ( void * gdtr);
- *
- *  Load GDTR (from buffer pointed by RCX)
-*/
-
 #include "hw_utils.h"
 #include "vmm_defs.h"
 
@@ -87,15 +72,15 @@ UINT16 hw_read_cs () {
 void hw_write_cs (UINT16 i) { 
     // push segment selector
     asm volatile (
-        "xor %%rax, %%rax \n\t"
-        "movw %[i], %%ax \n\t"
-        "shlq $32, %%rax \n\t"
-        "lea L_CONT_WITH_NEW_CS, %%rdx \n\t"
-        "add %%rdx, %%rax \n\t"
-        "push %%rax \n\t"
-        "lret \n\t" //brings IP to CONT_WITH_NEW_CS
-        "L_CONT_WITH_NEW_CS: \n\t"
-        "ret"
+        "\txor %%rax, %%rax\n"
+        "\tmovw %[i], %%ax\n"
+        "\tshlq $32, %%rax\n"
+        "\tlea L_CONT_WITH_NEW_CS, %%rdx\n"
+        "\tadd %%rdx, %%rax\n"
+        "\tpush %%rax\n"
+        "\tlret\n" //brings IP to CONT_WITH_NEW_CS
+        "\tL_CONT_WITH_NEW_CS:\n"
+        "\tret\n"
     : :[i] "m" (i)
     :"rax", "rdx");
 }
@@ -123,7 +108,7 @@ UINT16 hw_read_ds () {
 //  Write to Data Segment Selector
 void hw_write_ds(UINT16 i) {
     asm volatile(
-        "movw %[i], %%ds \n\t"
+        "\tmovw %[i], %%ds\n"
     :
     :[i] "g" (i) :);
     return;
@@ -151,9 +136,8 @@ UINT16 hw_read_es() {
 //  void hw_write_es ( UINT16);
 //  Write to ES Segment Selector
 void hw_write_es (UINT16 i) { 
-
     asm volatile(
-        "movw %[i], %%es"
+        "\tmovw %[i], %%es\n"
     :
     :[i] "g" (i)
     :);
@@ -286,16 +270,14 @@ void hw_write_to_smi_port(
         "\tmovq %%r8, 16(%%r15)\n"
         "\tmovq %%r9, 24(%%r15)\n"
         //copy emulator registers into CPU
-        // RNB: this code can be shortened to just 1 mov for each register
-        //    mov (%%r15), %%rax, mov 8(%%r15), %%rbx, and so on
         "\tmovq (%%r15), %%r8\n"
-        "\tmovq (%%r8), %%rax\n\t"
+        "\tmovq (%%r8), %%rax\n"
         "\tmovq 8(%%r15), %%r8\n"
         "\tmovq (%%r8), %%rbx\n"
-        "\tmovq 16(%%r15), %%r8\n\t"
+        "\tmovq 16(%%r15), %%r8\n"
         "\tmovq (%%r8), %%rcx\n"
-        "\tmovq 24(%%r15), %%r8\n\t"
-        "\tmovq (%%r8), %%rdx\n\t"
+        "\tmovq 24(%%r15), %%r8\n"
+        "\tmovq (%%r8), %%rdx\n"
         "\tmovq 32(%%r15), %%r8\n"
         "\tmovq (%%r8), %%rsi\n"
         "\tmovq 40(%%r15), %%r8\n"
@@ -317,11 +299,11 @@ void hw_write_to_smi_port(
         "\tmovq %%rax, (%%r8)\n"
         "\tmovq 8(%%r15), %%r8\n"
         "\tmovq %%rbx, (%%r8)\n"
-        "\tmovq 16(%%r15), %%r8\n\t"
+        "\tmovq 16(%%r15), %%r8\n"
         "\tmovq %%rcx, (%%r8)\n"
         "\tmovq 24(%%r15), %%r8\n"
         "\tmovq %%rdx, (%%r8)\n"
-        "\tmovq 32(%%r15), %%r8\n\t"
+        "\tmovq 32(%%r15), %%r8\n"
         "\tmovq %%rsi, (%%r8)\n"
         "\tmovq 40(%%r15), %%r8\n"
         "\tmovq %%rdi, (%%r8)\n"
@@ -337,7 +319,6 @@ void hw_write_to_smi_port(
         "\tpop %%rdi\n"
         "\tpop %%rbx\n"
         "\tpop %%rbp\n"
-        //  "ret \n\t"
     :::);
     return;
 }
@@ -536,20 +517,20 @@ compat_code:                    ;; compatibility mode starts right here
 
 
 /*
-;  void
-;  hw_perform_asm_iret(void);
-; Transforms stack from entry to regular procedure: 
-;
-; [       RIP        ] <= RSP
-;
-; To stack  to perform iret instruction:
-; 
-; [       SS         ]
-; [       RSP        ]
-; [      RFLAGS      ]
-; [       CS         ]
-; [       RIP        ] <= RSP should point prior iret
-*/
+ *  void
+ *  hw_perform_asm_iret(void);
+ * Transforms stack from entry to regular procedure: 
+ *
+ * [       RIP        ] <= RSP
+ *
+ * To stack  to perform iret instruction:
+ * 
+ * [       SS         ]
+ * [       RSP        ]
+ * [      RFLAGS      ]
+ * [       CS         ]
+ * [       RIP        ] <= RSP should point prior iret
+ */
 void hw_perform_asm_iret () {
     asm volatile(
         "\tsubq $0x20, %%rsp\n"     //prepare space for "interrupt stack"
@@ -578,6 +559,7 @@ void hw_perform_asm_iret () {
 } 
 
 
+// CHECK(JLM)
 void hw_set_stack_pointer (HVA new_stack_pointer, main_continue_fn func, void *params) 
 {
     asm volatile(

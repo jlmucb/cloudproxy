@@ -17,6 +17,7 @@
 .intel_syntax
 .text
 
+# CHECK(JLM)
 # Calling conventions
 # THIS IS WRONG FOR GCC FIX
 # Floating : First 4 parameters – XMM0 through XMM3. Others passed on stack.

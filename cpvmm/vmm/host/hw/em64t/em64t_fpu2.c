@@ -18,13 +18,12 @@
 
 
 void hw_fnstsw (UINT16* loc) {
-// Read FPU status word
-//   this doesnt seem to be called
+    // Read FPU status word, this doesnt seem to be called
+    // CHECK(JLM)
     asm volatile(
         "\tmovq %[loc], %%rax\n" 
         "\tfnstsw (%%rax)\n"
-        :
-        : [loc] "m"(loc)
+        : : [loc] "m"(loc)
         :"%rax");
     return;
 }
@@ -47,7 +46,7 @@ void hw_fninit()
 // Init FP Unit
 {
     asm volatile(
-        "fninit \n\t"
+        "\tfninit\n"
         :::);
     return;
 }

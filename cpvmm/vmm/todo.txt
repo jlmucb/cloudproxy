@@ -1,29 +1,10 @@
 Todo
-Get command-line arguments for linux and parse them
-Print entry args
-set an, av
 
-Entry prints
+1. Get start/end of tboot
+2. get correct offset of Linux image
+3. Unreserve area tboot reserved for a rainy day
+4. Check isr routines
+5. Extent TPM measurement
+6. Try Linux boot from bootstrap
 
-printk= 0x82900
-bootparams= 0
-
-start32_entry, mbi: 0x00010000, initial entry: 0x600028b8, magic: 0x8b157
-
-shared page data
-    tboot_base: 0x00804000
-    tboot_size: 0x0016ee88
-
-bootstrap_start, bootstrap_end: 0x60000000 0x60006f80
-evmm_start, evmm_end:           0x01785000 0x019ddde6
-evmm command line: /boot/evmm.bin placeholder iommu=force
-linux_start, linux_end:         0x00973000 0x012d5d20
-linux command line:  /boot/vmlinuz-3.5.7.20 placeholder \
-  root=UUID=1aedf4f7-94e1-4c47-8573-0e3f54821ef3 ro quiet splash
-initram_start, initram_end:     0x012d6000 0x0177b200
-
-    3 APs
-evmm_heap_base, evmm_heap_size: 0x6ff00000 0x00100000
-relocated evmm_start_address: 0x70000000
-vmm_main_entry_point:         0x70038af0
 

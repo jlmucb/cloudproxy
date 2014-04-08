@@ -1,4 +1,4 @@
-        /*
+/*
  * File: bootstrap_entry.c
  * Description: Get tbooted and boot 64 bit evmm
  * Author: John Manferdelli
@@ -413,7 +413,7 @@ void setup_64bit_paging(uint64_t memory_size)
             pd_table[pdt_entry_id].lo.base_address_lo = address >> 21;
         }
     }
-
+    // FIX(JLM): add flags here to set caching
     evmm64_cr3= (((uint32_t) pml4_table) & 0xfffff000);
 }
 
@@ -659,7 +659,6 @@ VMM_GUEST_CPU_STARTUP_STATE             linux_state;
 static VMM_STARTUP_STRUCT               startup_struct;
 static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 
-#define MAX_E820_ENTRIES PAGE_SIZE/sizeof(INT15_E820_MEMORY_MAP)
 #define UUID 0x1badb002
 
 // expanded e820 table used by evmm
@@ -768,7 +767,7 @@ int linux_setup(void)
         linux_state.seg.segment[i].base = 0;
         linux_state.seg.segment[i].limit = 0;
     }
-    //CHECK: got base address from tboot, not sure about the limits of these segments/attributes.
+    //CHECK: got base address from tboot
     linux_state.seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     linux_state.seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
     return 0;
@@ -818,7 +817,6 @@ int get_linux_vga(int *vid_mode)
                                      linux_param_values, "vga");
     if ( vga == NULL || vid_mode == NULL )
         return 1;
-
     if ( vmm_strcmp(vga, "normal") == 0 )
         *vid_mode = 0xFFFF;
     else if ( vmm_strcmp(vga, "ext") == 0 )
@@ -1245,8 +1243,7 @@ typedef enum _GUEST_FLAGS {
 int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 {
     // setup stack ,control and gp registers for VMCS to init guest
-    // Guest wakes up in 32 bit protected mode with arguments in
-    // esi
+    // Guest wakes up in 32 bit protected mode with arguments in esi
     linux_setup(); 
 
     // Guest state initialization for relocated inage
@@ -1526,14 +1523,17 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             g_nr_map, mbi->mmap_length/sizeof(memory_map_t));
 #endif
 
-    // tboot reserves the regions:
-    // discarding RAM above reserved regions: 0x20200000 - 0x40004000,
+    // tboot reserves the region were putting stuff in (see below)
+    // FIX(JLM): we should unreserve them.
+    // CHECK: what BIOS's have this problem?
+    
+    // Tboot's explaination
+    //      Tboot reserves the following regions: 0x20200000 - 0x40004000,
     //      0x40005000 - 0xb88f3000, 0xb9bff000 - 0xb9c00000
     //      because some legacy bios's put USB buffers there
     //      which causes problems if they are DMA protected.
     //      we're going to ignore this because we want to
     //      put bootstrap and evmm here.
-    // unreserve the region.  CHECK: what BIOS's have this problem?
 
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
@@ -1711,10 +1711,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tpop %%edx\n"
         // in 64 bit this is actually pop rcx (reserved)
         "\tpop %%ecx\n"
-        // in 64bit this is actually sub  0x18, %%rsp
-        //"\t.byte 0x48\n"
-        //"\tsubl 0x18, %%esp\n"
-        // in 64bit this is actually
 
         "\tjmp %%ebx\n"
         "\tud2\n"

@@ -17,35 +17,18 @@
 .intel_syntax
 .text
 
-# CHECK(JLM)
-# Calling conventions
-# THIS IS WRONG FOR GCC FIX
-# Floating : First 4 parameters – XMM0 through XMM3. Others passed on stack.
-# Integer  : First 4 parameters – RCX, RDX, R8, R9. Others passed on stack.
-# Aggregates (8, 16, 32, or 64 bits) and __m64:
-#              First 4 parameters – RCX, RDX, R8, R9. Others passed on stack.
-# Aggregates (other):
-#            By pointer. First 4 parameters passed as pointers in RCX, RDX, R8, and R9
-# __m128   : By pointer. First 4 parameters passed as pointers in RCX, RDX, R8, and R9
-#
-# Return values that can fit into 64-bits are returned through RAX (including __m64 types),
-# except for __m128, __m128i, __m128d, floats, and doubles, which are returned in XMM0.
-# If the return value does not fit within 64 bits, then the caller assumes the responsibility
-# of allocating and passing a pointer for the return value as the first argument. Subsequent
-# arguments are then shifted one argument to the right. That same pointer must be returned
-# by the callee in RAX. User defined types to be returned must be 1, 2, 4, 8, 16, 32, or 64
-# bits in length.
-#.include       ia32_registers.equ
-#.include "vmm_arch_defs.h"
 
 .extern VMM_GP_REGISTERS
 
+#   This code was originally written for the Microsoft calling convention.
+#   The first fer arguments were passed in rcx, rdx,r8 and r9, floating
+#   point in xmm0-3 and the caller was responsible for stack cleanup;
+#   further, MS specifies a 32 byte shadow buffer where arguments can be 
+#   spilled.
+#   By contrast, gcc (and most other compilers) pass the first few arguments
+#   in rdi, rsi, rdx, rcx, r8, r9  and the callee is responsible for stack
+#   cleanup.   FP returns are still in xmm0-xmm3
 
-# Register usage
-# Caller-saved and scratch:
-#        RAX, RCX, RDX, R8, R9, R10, R11
-# Callee-saved
-#        RBX, RBP, RDI, RSI, R12, R13, R14, and R15
 
 .extern g_exception_gpr
 .extern exception_class

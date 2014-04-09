@@ -304,7 +304,7 @@ static void ap_continue_wakeup_code(void)
         //  %ecx is an arg to C function
         //  push  AP ordered ID
         // "\tpushl    %%ecx\n"
-        "\tmovl    %%ecx, %%rdi\n"
+        "\tmovl    %%ecx, %%edi\n"
 
         // should never return
         "\tcall  ap_continue_wakeup_code_C\n"

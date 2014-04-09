@@ -451,7 +451,7 @@ extern void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point);
 
 
-void start_64bit_mode(uint32_t address, uint32_t segment, uint32_t* arg1, 
+void start_64bit_mode_on_aps(uint32_t address, uint32_t segment, uint32_t* arg1, 
                       uint32_t* arg2, uint32_t* arg3, uint32_t* arg4)
 {
     asm volatile (
@@ -536,7 +536,7 @@ void x32_init64_start( INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_c
     BITMAP_SET(cr4, PAE_BIT | PSE_BIT);
     write_cr4(cr4);
     ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
-    start_64bit_mode(address_of_64bit_code, p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
+    start_64bit_mode_on_aps(address_of_64bit_code, p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 }
 
 

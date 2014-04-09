@@ -573,8 +573,8 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     // create AP startup code in low memory
     setup_low_memory_ap_code( p_init32_data->i32_low_memory_page );
 
-                // This call is valid only in the pre_os launch case.
-          send_targeted_init_sipi(p_init32_data, p_startup);
+    // This call is valid only in the pre_os launch case.
+    send_targeted_init_sipi(p_init32_data, p_startup);
 
     // wait for predefined timeout
     startap_stall_using_tsc(  INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS );

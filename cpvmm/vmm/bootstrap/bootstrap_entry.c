@@ -50,6 +50,7 @@ tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 #define PAGE_SIZE   (1024 * 4) 
 #define PAGE_MASK   (~(PAGE_SIZE-1))
 #define PAGE_UP(a) ((a+(PAGE_SIZE-1))&PAGE_MASK)
+#define MAXPROCESSORS 64
 
 
 // -------------------------------------------------------------------------
@@ -88,8 +89,9 @@ uint32_t evmm_heap_base= 0;             // start of initial evmm heap
 uint32_t evmm_heap_current= 0; 
 uint32_t evmm_heap_top= 0;
 uint32_t evmm_heap_size= 0;             // size of initial evmm heap
-uint32_t evmm_initial_stack_base= 0;    // low address where stack is allocated
-uint32_t evmm_initial_stack= 0;         // initial evmm stack
+uint32_t evmm_bsp_stack_base= 0;        // low address where stack is allocated
+uint32_t evmm_bsp_stack= 0;             // initial bsp evmm stack
+uint32_t evmm_stack_pointers_array[MAXPROCESSORS];
 char*    evmm_command_line= NULL;       // evmm command line
 
 multiboot_info_t  linux_mbi;            // mbi for linux
@@ -289,20 +291,37 @@ void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 }
 
 
-int setup_evmm_stack()
+int setup_evmm_stacks()
 {
-    // Note: the stack grows down so the stack pointer starts at high memory
-    // clear stack memory first
-    evmm_initial_stack_base= (uint32_t) 
+    // bsp stack
+    evmm_bsp_stack_base= (uint32_t) 
                 evmm_page_alloc(UVMM_DEFAULT_STACK_SIZE_PAGES);
-    if(evmm_initial_stack_base==0) {
+    if(evmm_bsp_stack_base==0) {
         return 1;
     }
-    vmm_memset((void*)evmm_initial_stack_base, 0, 
+    vmm_memset((void*)evmm_bsp_stack_base, 0, 
                PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES);
     // stack grows down
-    evmm_initial_stack= evmm_initial_stack_base+
+    evmm_bsp_stack= evmm_bsp_stack_base+
                         PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES;
+    evmm_stack_pointers_array[0]= evmm_bsp_stack;
+
+    // ap stacks
+    uint32_t evmm_ap_stack_base= 0;
+    uint32_t evmm_ap_stack= 0;
+    int i;
+    for(i=0; i<evmm_num_of_aps;i++) {
+        evmm_ap_stack_base= (uint32_t) 
+                evmm_page_alloc(UVMM_DEFAULT_STACK_SIZE_PAGES);
+        if(evmm_ap_stack_base==0) {
+            return 1;
+        }
+        // stack grows down
+        evmm_ap_stack= evmm_ap_stack_base+
+                        PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES;
+        evmm_stack_pointers_array[i+1]= evmm_ap_stack;
+    }
+
     return 0;
 }
 
@@ -451,7 +470,7 @@ extern void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point);
 
 
-void start_64bit_mode_on_aps(uint32_t address, uint32_t segment, uint32_t* arg1, 
+void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t address, uint32_t segment, uint32_t* arg1, 
                       uint32_t* arg2, uint32_t* arg3, uint32_t* arg4)
 {
     asm volatile (
@@ -467,8 +486,8 @@ void start_64bit_mode_on_aps(uint32_t address, uint32_t segment, uint32_t* arg1,
 
         // evmm_initial_stack points to the start of the stack
         // JLM(FIX): load correct stack
-        // "movl   %[evmm_initial_stack], %%esp\n"
-        // "\tandl  $0xfffffff8, %%esp\n"
+        "movl   %[stack_pointer], %%esp\n"
+        "\tandl  $0xfffffff8, %%esp\n"
 
         // prepare arguments for 64-bit mode
         // there are 4 arguments (including reserved)
@@ -519,13 +538,13 @@ void start_64bit_mode_on_aps(uint32_t address, uint32_t segment, uint32_t* arg1,
         "\tud2\n"
         :
         : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
-          [address] "g" (address), [segment] "g" (segment),
+          [address] "g" (address), [segment] "g" (segment), [stack_pointer] "m" (stack_pointer),
           [evmm64_cr3] "m" (evmm64_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 }
 
 
-void x32_init64_start(INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_code,
+void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_code,
                       void * arg1, void * arg2, void * arg3, void * arg4)
 {
     uint32_t cr4;
@@ -536,7 +555,8 @@ void x32_init64_start(INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_co
     BITMAP_SET(cr4, PAE_BIT | PSE_BIT);
     write_cr4(cr4);
     ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
-    start_64bit_mode_on_aps(address_of_64bit_code, p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
+    start_64bit_mode_on_aps(stack_pointer, address_of_64bit_code, 
+                   p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 }
 
 
@@ -1525,6 +1545,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("initram_start, initram_end: 0x%08x 0x%08x\n", initram_start, initram_end);
 #endif // JLMDEBUG
 
+    // initialize stack array
+    for(i=0;i<MAXPROCESSORS;i++)
+        evmm_stack_pointers_array[i]=  0;
+
     // get CPU info
     uint32_t info;
     asm volatile (
@@ -1552,6 +1576,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
 #ifdef MULTIAPS_ENABLED
+    if(evmm_num_of_aps>=MAXPROCESSORS) {
+        bprint("Too many aps (%d), resetting to %d\n", evmm_num_of_aps, MAXPROCESSORS);
+        evmm_num_of_aps = MAXPROCESSORS-1; 
+    }
     if (evmm_num_of_aps > 0) {
         p_startup_struct->number_of_processors_at_install_time = evmm_num_of_aps;
         p_startup_struct->number_of_processors_at_boot_time = evmm_num_of_aps;
@@ -1667,13 +1695,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
 
     // Allocate stack and set rsp (esp)
-    if(setup_evmm_stack()!=0) {
+    if(setup_evmm_stacks()!=0) {
       bprint("can't allocate stack\n");
       LOOP_FOREVER
     }
 
 #ifdef JLMDEBUG
-    bprint("evmm_initial_stack: 0x%08x\n", evmm_initial_stack);
+    bprint("evmm_bsp_stack: 0x%08x\n", evmm_bsp_stack);
 #endif
 
     // We need to allocate this before guest setup
@@ -1727,7 +1755,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
 #ifdef MULTIAPS_ENABLED
     if (evmm_num_of_aps > 0) {
-        startap_main(&init32, &init64, &p_startup_struct, vmm_main_entry_point);
+        startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }
 #endif
 
@@ -1743,12 +1771,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("cs selector: 0x%08x, cr3: 0x%08x\n", 
            (uint32_t) evmm64_cs_selector, (uint32_t) evmm64_cr3);
-    bprint("stack base: 0x%08x, stack: 0x%08x\n", 
-           evmm_initial_stack_base, evmm_initial_stack);
+    bprint("bsp stack base: 0x%08x, bsp stack: 0x%08x\n", 
+           evmm_bsp_stack_base, evmm_bsp_stack);
     HexDump((uint8_t*)evmm_descriptor_table, 
             (uint8_t*)evmm_descriptor_table+40);
-    bprint("stack base: 0x%08x, stack: 0x%08x\n", 
-           evmm_initial_stack_base, evmm_initial_stack);
     bprint("arguments to vmm_main:\n");
     bprint("\tapic %d, p_startup_struct, 0x%08x\n",
        (int) local_apic_id, (int) p_startup_struct);
@@ -1768,7 +1794,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tmovl %%eax, %%cr3 \n"
 
         // evmm_initial_stack points to the start of the stack
-        "movl   %[evmm_initial_stack], %%esp\n"
+        "movl   %[evmm_bsp_stack], %%esp\n"
         "\tandl  $0xfffffff8, %%esp\n"
 
         // prepare arguments for 64-bit mode
@@ -1819,7 +1845,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tjmp %%ebx\n"
         "\tud2\n"
     :: [vmm_main_entry_point] "m" (vmm_main_entry_point), 
-       [evmm_initial_stack] "m" (evmm_initial_stack), [evmm64_cr3] "m" (evmm64_cr3),
+       [evmm_bsp_stack] "m" (evmm_bsp_stack), [evmm64_cr3] "m" (evmm64_cr3),
        [evmm64_cs_selector] "m" (evmm64_cs_selector), [evmm_reserved] "m" (evmm_reserved),
        [evmm_p_a0] "m" (evmm_p_a0), [p_startup_struct] "m" (p_startup_struct),
        [local_apic_id] "m" (local_apic_id)

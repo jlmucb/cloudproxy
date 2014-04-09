@@ -38,7 +38,7 @@ static INIT64_STRUCT *gp_init64;
 static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params);
 
 
-void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
+void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point)
 {
     uint32_t application_procesors;
@@ -72,18 +72,23 @@ void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
         ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
     }
     // and then launch application on BSP
-    start_application(0, &application_params);
+    // this is already done in bootstrap
+    // start_application(0, &application_params);
 }
 
 
-static void start_application ( uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
+extern uint32_t evmm_stack_pointers_array[];
+static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
 {
+    // FIX(JLM)
+    uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];
+
     if (NULL == gp_init64) {
         ((LVMM_IMAGE_ENTRY_POINT)((uint32_t)params->ep))
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);
     }
     else {
-        x32_init64_start( gp_init64, (uint32_t)params->ep, (void *) cpu_id,
+        init64_on_aps(stack_pointer, gp_init64, (uint32_t)params->ep, (void *) cpu_id,
             params->any_data1, params->any_data2, params->any_data3);
     }
 }

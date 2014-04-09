@@ -1754,12 +1754,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
 
-#ifdef MULTIAPS_ENABLED
-    if (evmm_num_of_aps > 0) {
-        startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
-    }
-#endif
-
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
     // CHECK (JLM):  check that everything is measured (bootstrap, evmm)
 
@@ -1781,6 +1775,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
        (int) local_apic_id, (int) p_startup_struct);
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
+#endif
+
+
+#ifdef MULTIAPS_ENABLED
+    if (evmm_num_of_aps > 0) {
+        startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
+    }
 #endif
 
     asm volatile (

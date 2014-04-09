@@ -51,11 +51,9 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     else {
         application_procesors = 0;
     }
-
 #ifdef UNIPROC
     application_procesors = 0;
 #endif
-
     gp_init64 = p_init64;
 
     if (BITMAP_GET(p_startup->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) == 0) {
@@ -72,8 +70,8 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     if (application_procesors > 0) {
         ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
     }
-    // and then launch application on BSP
-    // this is already done in bootstrap
+    // launch application on BSP
+    // JLM: this is already done in bootstrap_entry
     // start_application(0, &application_params);
 }
 

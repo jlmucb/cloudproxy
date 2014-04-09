@@ -93,7 +93,6 @@ static          uint8_t ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};
 //   APStartUpCode
 //   GdtTable
 
-
 // Uncomment the following line to deadloop in AP startup
 //#define BREAK_IN_AP_STARTUP
 const uint8_t APStartUpCode[] =
@@ -150,8 +149,6 @@ const uint8_t APStartUpCode[] =
 #define GDTR_OFFSET_IN_PAGE  ((sizeof(APStartUpCode) + 7) & ~7)
 #define GDT_OFFSET_IN_PAGE   (GDTR_OFFSET_IN_PAGE + 8)
 
-
-//      forward declarations
 static void     ap_continue_wakeup_code( void );
 static void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
 
@@ -219,7 +216,7 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     vmm_memcpy(code_to_patch + GDT_OFFSET_IN_PAGE,
                (uint8_t*)gdtr_32.base, gdtr_32.limit + 1 );
     
-    //    Patch the GDT base address in memory
+    // Patch the GDT base address in memory
     new_gdtr_32 = (IA32_GDTR *)(code_to_patch + GDTR_OFFSET_IN_PAGE);
     new_gdtr_32->base = (uint32_t)code_to_patch + GDT_OFFSET_IN_PAGE;
     return;
@@ -402,9 +399,9 @@ static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t deli
     icr_low.bits.vector = vector_number;
     icr_low.bits.delivery_mode = delivery_mode;
 
-    //    level is set to 1 (except for INIT_DEASSERT, 
-    //              which is not supported in P3 and P4)
-    //    trigger mode is set to 0 (except for INIT_DEASSERT)
+    // level is set to 1 (except for INIT_DEASSERT, 
+    //         which is not supported in P3 and P4)
+    // trigger mode is set to 0 (except for INIT_DEASSERT)
     icr_low.bits.level = 1;
     icr_low.bits.trigger_mode = 0;
 
@@ -422,7 +419,7 @@ static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t deli
     } while (icr_low_status.bits.delivery_status != 0);
 
     *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
-    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;;
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;
 
     do {
         startap_stall_using_tsc(10);
@@ -473,7 +470,6 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
 }
 
 
-
 static void send_init_ipi( void )
 {
     send_ipi_to_all_excluding_self( 0, LOCAL_APIC_DELIVERY_MODE_INIT );
@@ -484,7 +480,7 @@ static void send_sipi_ipi( void* code_start )
 {
     // SIPI message contains address of the code, shifted right to 12 bits
     send_ipi_to_all_excluding_self(
-            ((uint32_t)code_start) >> 12, LOCAL_APIC_DELIVERY_MODE_SIPI);
+            ((uint32_t)code_start)>>12, LOCAL_APIC_DELIVERY_MODE_SIPI);
 }
 
 
@@ -511,7 +507,7 @@ static void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
         
     for (i = 0; i < p_startup->number_of_processors_at_boot_time - 1; i++) {
         send_ipi_to_specific_cpu(0, LOCAL_APIC_DELIVERY_MODE_INIT, 
-                                     p_startup->cpu_local_apic_ids[i+1]);
+                                 p_startup->cpu_local_apic_ids[i+1]);
     }
     startap_stall_using_tsc( 10000 ); // timeout - 10 miliseconds
 
@@ -537,12 +533,12 @@ static void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
 // Processors are left in the state were they wait for continuation signal
 //    p_init32_data - contains pointer to the free low memory page to be used
 //                    for bootstap. After the return this memory is free
-//    p_startup - contains local apic ids of active cpus to be used in post-os launch
+//    p_startup - local apic ids of active cpus used post-os launch
 //  Return:
 //    number of processors that were init (not including BSP)
 //    or -1 on errors
 uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, 
-                        VMM_STARTUP_STRUCT *p_startup)
+                          VMM_STARTUP_STRUCT *p_startup)
 {
     if(NULL==p_init32_data || 0 == p_init32_data->i32_low_memory_page) {
         return (uint32_t)(-1);
@@ -587,12 +583,10 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 
     // signal to APs to pass to the next stage
     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE_APS_ENUMERATED);
-
     // wait until all APs will accept this
     while (g_ready_counter != g_aps_counter) {
         asm volatile (
-            "\tpause\n"
-        :::);
+            "\tpause\n" :::);
     }
     return;
 }
@@ -630,11 +624,12 @@ void ap_intialize_environment(void)
 void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
     asm volatile (
-        "\tpush %%eax\n"
-        "\tmovl %[new_state], %%eax\n"
+        "\tpush  %%eax\n"
+        "\tmovl  %[new_state], %%eax\n"
         "\tlock; xchgl %%eax, %[mp_bootstrap_state]\n"
-        "\tpop %%eax\n"
-    : [mp_bootstrap_state] "=m" (mp_bootstrap_state), [new_state] "=m" (new_state)
+        "\tpopl  %%eax\n"
+    : [mp_bootstrap_state] "=m" (mp_bootstrap_state), 
+      [new_state] "=m" (new_state)
     : : "%eax");
     return;
 }

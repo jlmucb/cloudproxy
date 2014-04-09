@@ -12,6 +12,7 @@
  * limitations under the License.
  */
 
+
 #include "bootstrap_types.h"
 #include "vmm_defs.h"
 #include "x32_init64.h"
@@ -19,9 +20,8 @@
 #include "vmm_startup.h"
 
 
-typedef void (*LVMM_IMAGE_ENTRY_POINT) (
-    uint32_t local_apic_id, void* any_data1, void* any_data2,
-    void* any_data3); 
+typedef void (*LVMM_IMAGE_ENTRY_POINT) (uint32_t local_apic_id, 
+                   void* any_data1, void* any_data2, void* any_data3); 
 
 
 typedef struct {
@@ -62,9 +62,9 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     }
 
     application_params.ep = entry_point;
-    application_params.any_data1  = (void*) p_startup;
-    application_params.any_data2  = NULL;
-    application_params.any_data3  = NULL;
+    application_params.any_data1 = (void*) p_startup;
+    application_params.any_data2 = NULL;
+    application_params.any_data3 = NULL;
 
     // first launch application on AP cores
     if (application_procesors > 0) {
@@ -78,7 +78,7 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 
 static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
 {
-    // FIX(JLM)
+    // FIX(JLM): stack pointers seem to be set elsewhere
     uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];
 
     if (NULL == gp_init64) {

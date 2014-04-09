@@ -433,13 +433,6 @@ int setup_64bit()
     BITMAP_SET(evmm64_cr4, PAE_BIT|PSE_BIT);
     write_cr4(evmm64_cr4);
 
-    // Extended Feature Enable Register (EFER)
-    // JLM: ERROR
-    //     init64.i64_efer was never set but it is being written into the msr
-    //     ia32_read_msr(0xc0000080, &init64.i64_efer);
-    //     init64.i64_efer|= EFER_LME; // EFER_SCE EFER_LMA EFER_NXE
-    // ia32_write_msr(0xc0000080, &init64.i64_efer);
-
     // we don't really use this structure
     init64.i64_gdtr= gdtr_64;
     init64.i64_cr3= evmm64_cr3;  // note we dont use the structure
@@ -447,6 +440,108 @@ int setup_64bit()
     init64.i64_efer = 0;
     return 0;
 }
+
+
+// -------------------------------------------------------------------------
+
+
+#ifdef MULTIAPS_ENABLED
+extern void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
+                   VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point);
+
+
+void start_64bit_mode(uint32_t address, uint32_t segment, uint32_t* arg1, 
+                      uint32_t* arg2, uint32_t* arg3, uint32_t* arg4)
+{
+    asm volatile (
+
+        "\tcli\n"
+
+        // move start address to ebx for jump
+        "\tmovl %[address], %%ebx\n"
+
+        // initialize CR3 with PML4 base
+        "\tmovl %[evmm64_cr3], %%eax\n"
+        "\tmovl %%eax, %%cr3 \n"
+
+        // evmm_initial_stack points to the start of the stack
+        "movl   %[evmm_initial_stack], %%esp\n"
+        "\tandl  $0xfffffff8, %%esp\n"
+
+        // prepare arguments for 64-bit mode
+        // there are 4 arguments (including reserved)
+        "\txor  %%eax, %%eax\n"
+        "\tpush %%eax\n"
+        "\tpush %[arg4]\n"
+        "\tpush %%eax\n"
+        "\tpush %[arg3]\n"
+        "\tpush %%eax\n"
+        "\tpush %[arg2]\n"
+        "\tpush %%eax\n"
+        "\tpush %[arg1]\n"
+
+        // evmm_initial_stack points to the start of the stack
+        // JLM(FIX)
+        "movl   %[evmm_initial_stack], %%esp\n"
+        "\tandl  $0xfffffff8, %%esp\n"
+
+        // enable 64-bit mode
+        // EFER MSR register
+        "\tmovl $0x0c0000080, %%ecx\n"
+        // read EFER into EAX
+        "\trdmsr\n"
+
+        // set EFER.LME=1
+        "\tbts $8, %%eax\n"
+        // write EFER
+        "\twrmsr\n"
+
+        // enable paging CR0.PG=1
+        "\tmovl %%cr0, %%eax\n"
+        "\tbts  $31, %%eax\n"
+        "\tmovl %%eax, %%cr0\n"
+
+        // at this point we are in 32-bit compatibility mode
+        // LMA=1, CS.L=0, CS.D=1
+        // jump from 32bit compatibility mode into 64bit mode.
+
+        // mode switch
+        "ljmp   $16, $1f\n"
+
+"1:\n"
+        // in 64 bit this is actually pop rdi (arg1)
+        "\tpop %%edi\n"
+        // in 64 bit this is actually pop rsi (arg2)
+        "\tpop %%esi\n"
+        // in 64 bit this is actually pop rdx (arg3)
+        "\tpop %%edx\n"
+        // in 64 bit this is actually pop rcx (arg4)
+        "\tpop %%ecx\n"
+
+        "\tjmp %%ebx\n"
+        "\tud2\n"
+
+        :
+        : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
+          [address] "g" (address), [segment] "g" (segment)
+        : "%eax", "%ebx", "%ecx", "%edx");
+}
+
+
+void x32_init64_start( INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_code,
+                      void * arg1, void * arg2, void * arg3, void * arg4)
+{
+    uint32_t cr4;
+
+    ia32_write_gdtr(&p_init64_data->i64_gdtr);
+    write_cr3(p_init64_data->i64_cr3);
+    read_cr4(&cr4);
+    BITMAP_SET(cr4, PAE_BIT | PSE_BIT);
+    write_cr4(cr4);
+    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
+    start_64bit_mode(address_of_64bit_code, p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
+}
+#endif
 
 
 // -------------------------------------------------------------------------
@@ -1459,7 +1554,15 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("cr0: 0x%08x, cr3: 0x%0x, cr4: 0x%08x\n", tcr0, tcr3, tcr4);
     bprint("GTDT base/limit: 0x%08x, %04x\n", tdesc.base, tdesc.limit);
 #endif
+
+#ifdef MULTIAPS_ENABLED
+    if (evmm_num_of_aps > 0) {
+        p_startup_struct->number_of_processors_at_install_time = evmm_num_of_aps;
+        p_startup_struct->number_of_processors_at_boot_time = evmm_num_of_aps;
+    }
+#else
     evmm_num_of_aps = 0;  // BSP only for now
+#endif
 
     init32.s.i32_low_memory_page = low_mem;
     init32.s.i32_num_of_aps = evmm_num_of_aps;
@@ -1626,7 +1729,12 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
 #endif
 
-    // FIX(RNB):  put APs in 64 bit mode with stack.  (In ifdefed code)
+#ifdef MULTIAPS_ENABLED
+    if (evmm_num_of_aps > 0) {
+        startap_main(&init32,&init64, &p_startup_struct, vmm_main_entry_point);
+    }
+#endif
+
     // FIX (JLM):  In evmm, exclude tboot and bootstrap areas from primary space
     // CHECK (JLM):  check that everything is measured (bootstrap, evmm)
 

@@ -1,0 +1,64 @@
+Notes on authentication using symmetric keys
+--------------------------------------------
+
+Openssl TLS cipher suites
+...
+
+
+
+
+https://tools.ietf.org/html/rfc4279
+DHE_PSK 
+ - have perfect forward secrecy
+ - protect against passive dictionary attaches
+
+
+      Client                                               Server
+      ------                                               ------
+
+      ClientHello
+      - version number desired
+      - client random
+	    - 4 bytes
+		- date, time, 28bit strong random
+      - session id (optional, for resume)
+      - cipher suites available
+      - compression algs available
+      ClientHello                  -------->
+                                                ServerHello
+                                                - version number chosen
+                                                - version number chosen
+												- server random
+												  - 4 bytes
+												  - date, time, 28bit strong random
+												- session id
+												- cipher suite chosen
+												- compression alg chosen
+												ServerCertificate *
+												- x509 for server w/ pub key
+												  - client will use to encrypt premaster
+												ClientCertificateRequest *
+												- type requested (rsa or dss)
+												- acceptable CAs
+                                                ServerKeyExchange (includes dh params and optional psk hint)
+												- temporary key? for client to use later
+												- only used if pub cert doesn't contain suitable pub key
+												  or if ephemeral key exchange, or if using DSS cert for server
+                                   <--------    ServerHelloDone
+	  [ generate 48byte premaster secret = f(client random | server random | ?) ]
+	  ClientCertificate *
+	  - x509 for client
+      ClientKeyExchange (includes psk identity and dh params)
+	  - encrypted(K_serverpub, premaster), version number
+	  CertificateVerifyMessage
+	  - sign(K_clientpriv, hash of all previous msgs with both md5 and sha1)
+      ChangeCipherSpec
+	  [ generate master secret = f(premaster secret), start using it) ]
+      Finished                     -------->
+                                                 ChangeCipherSpec
+                                   <--------             Finished
+      Application Data             <------->     Application Data
+	
+	 master secret = PRF(premaster | "master secret" | client random | server random)
+	 all other keys = PRF(master secret)
+

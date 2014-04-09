@@ -116,4 +116,280 @@ program key, etc. Session key distribution protocols do a much better job of
 this, distinguishing short-lived session keys, long-lived user keys (password),
 and expiration/rotation of both kinds of keys.
 
+Ideal:
+* The (public) names used in policies, audit logs, etc. are long lived,
+  even if corresponding keys aren't. 
+* Most/all keys can be expired, revoked, and/or rotated.
+* Exposure of a single key should have limited impact. Larger impact should
+  correspond to better protected.
+
+
+Current:
+* Policy key pair (long lived)
+* AIK for each machine (long lived)
+* keys for each linux tao service (long lived)
+* Policy mentions AIK_pub, Tao_pub directly
+* Sealed data contains program hash (long lived)
+* Keys for each hosted program ID, sealed by Tao (long lived)
+
+Problem:
+- If we have a whole structure of sym keys, if we change the root one, we lose
+the ability to generate or verify any signatures. So put the version numbers in
+the names, introduce the new key version, start using the new keys and new
+names, and slowly expire the old key.
+
+Proposal: 
+* Most everything is done online, with the exception of a single long-lived
+  policy root key pair:
+    PolicyRoot
+  And a globally-unique name for this key, 
+    PolicyRootName = f(PolicyRoot_pub) // maybe just base64-encode, maybe hash for compactness, etc.
+* PolicyRoot signs a series of policy keys and (possibly overlapping) validity
+  periods:
+    Policy_1, Policy_2, ...
+    Policy_Epoch_1, Policy_Epoch_2, ...
+	Policy_Cert_i = Sign(PolicyRoot_priv, i | Policy_i | Policy_Epoch_i | ...)
+  We might use as a name for each key:
+    PolicyRootName_i = f(Policy_i_pub)
+  But then we can't predict the names without the keys already generated, and we
+  can't quantify over the names since they aren't related and have no structure.
+  An alternative public long-lived name for each policy key is:
+    PolicyRootName_i = (PolicyRootName, i)
+  Here we can quantify over i to get all the future and past names.
+* Each machine generates a new M_AIK_j periodically, gets it certified
+  M_AIKCert_j by the current Policy_i key with a validity period M_AIK_Epoch_j
+  that is a subset of Policy_Epoch_i, generates a corresponding sym key M_Sym_j
+  to use as a sym key generator, seals that under the same PCRs. As a name for
+  this machine, we can use
+    MName_j = f(M_AIK_j_pub)
+  or better:
+    MName_j = (PolicyRootName, i) | (m, j)
+  where m is a per-machine name added to M_AIK_Cert_j.
+* To implement TPM::GetSymKey(ver=v), use M_Sym_j to generate a key, and name it
+    LinuxName = (PolicyRootName, i) | (m, j) | (OS, v)
+* Each linux_tao_service periodically asks TPM for a new SymKey, then uses it
+  to generate signing, sealing, and derivative keys.
+* Each program does LinuxTao::GetKey(ver=k) and has the name:
+    ProgName = (PolicyRootName, i) | (m, j) | (linux, v) | (prog, k)
+
+Policies can be written with quantifications for the version numbers if desired.
+Maybe even have creation times, epoch numbers, etc., encoded into version
+numbers, so we can quantify over epoch so compromised older keys can't issue
+currently-useful certificates. Also, expiration encoded into names of sym keys
+lets us do intersection of expirations at all levels.
+
+Q: Can tpm implement GetKey()? Use AIK to quote some string, e.g. "get my key",
+hash the resulting signature and use the result as AES key material. (Or use a
+TPM-based encryption key to encrypt the same string.) Nobody without AIK w/
+proper pcrs  can know sig unless we tell them (otherwise they could forge AIK
+signature). Nobody can guess hash without sig. Unfortunately TPM signatures are
+not deterministic, nor are encryptions. When we generate an AIK, we could also
+generate an AES key in software, seal it under the same PCRs as the AIK, then
+use it for future key generation.
+
+Q: If we are goint to use sym keys for sealing long-term data, that data needs
+to be migrated upwards when we re-key. How?
+  - for online services with short term or active data, just use sym key and
+  re-encrypt as needed during rekey operations
+  - for long term, idle data maybe use a service that seals to a policy? This is
+  what seal should be about --> seal is resistant to rekeying.
+  But how can evey tao provide this service... either need a long-term
+  encryption key (maybe a separate one just for sealing? but why have 2 keys...)
+  ... or reseal during key regen (requires resource accounting at tao)... or
+  better use per-seal-op keys, escrowed somehow with long-term keys?
+    this sounds like a network svc, not a primitive offered by each Tao
+  cTPM suggests using a "cloud srk"
+
+Global Audit Log (see http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.123.2142&rep=rep1&type=pdf)
+* Goal is to simply provide a one-way audit log.
+* Rekey on each log update (or on interval)
+* Forward secrecy is actually backwards, in a sense, from what I am worried
+  about with rekeying and expiration. If current key is exposed, attacker is
+  prevented from messing with historical stuff. I'm more worried about if old
+  keys are compromised, attacker can mess with current stuff.
+
+
+8. Hierarchy: Tao vs CloudProxy
+-------------------------------
+
+Q: Is the root Tao on a machine part of only a single policy domain?
+A: Likely not, esp. with evmm. Instead, evmm has policies for launching guest
+OS+tao, which may each be part of a different cloud-policy domain.
+
+Q: May a Tao have more than one host Tao?
+Disucssion: Maybe these two should be the same:
+  M1/EVMM(pcrs)/Guest(linux_i)
+  CloudPolicy/Platform_j
+i.e. the guest has two hosts, one local and one remote.
+And maybe the set of policies this guest can enforce is a function of the hosts
+it has. So M1 and M1/EVMM(pcrs) can't do cloud policies, but guest can b/c it is
+part of cloud.
+Conclusion: Tao and CloudProxy (CloudTao?) are different. Tao layers form a
+subprin relationship based on hardware roots of trust, with full and unavoidable
+trust between layers. CloudTao on the other hand have a trust relationship (esp.
+when it comes to authentication), but it isn't full trust, and you can imagine
+guest maintaining secrets that are safe even from the cloud policy. CloudTao
+layers are not subprins, and they aren't necessarily even layered. Communication
+certainly doesn't primarily happen up/down in cloud layers, it might happen
+mostly sideways. 
+
+Conclusion: Tao api should be concerned with things that relate to subprin
+relationship, things only the parent can do. Attestation of child properties,
+for example. Maybe secrets (sealing/unsealing) bound to specific
+children/descendents. Maybe communication between children/descendents. But
+cloud-related stuff should be done by CloudTao, which provides other services
+and a different trust relationship. Cross-machine authentication is a CloudTao
+service, not a Tao service.
+
+Observation: StartHostedProgram (and kill) is not Tao generic. Every Tao has
+children, but they are spawned in completely different ways. We have 3 Tao
+layers (TPM, EVMM/KVM, Linux) and can imagine more (Chrome, Java, Python, etc.).
+None of them have much similarity in the spawning or initialization of hosted
+programs.
+
+9. Next Steps
+-------------
+
+Start defining useful cloud services, see what we need from each layer?
+ - useful seal/unseal
+ - append-only log
+ - key rotation service
+ - authentication/kdf/pkd service
+
+Logger
+ - connect via network (i.e. TLS)
+ - connect via local pipe?
+ - client authentication (as src of log messages)
+ - optional server authentication (confidentiality of log messages)
+
+AuditLog
+ - same as logger, but specialized for authorization decisions
+ - configurable in what info it keeps about each decision, e.g. statistics only,
+   or full evidence, etc.
+
+Rendezvous
+ - Given a fully qualified service name, get a network location
+ - register services
+ - policy for who can claim to be what
+
+Key epoch manager or time service or something?
+ - coordinates/facilitates key rotation, expiration, etc.
+
+CloudStorage
+ - seal/unseal abstraction
+ - flexible, cross-machine policies
+ - maybe versioning, timestamping, etc.
+ - maybe monotonic counters
+
+CloudCounter
+ - monotonic counters
+ - for cert serial number generation, boot counters, etc.
+ - integer based, hash based, etc.
+ - automatic logging?
+
+HttpsCertificateManager
+ - hands out x509 certificates
+   - uses
+   - policy to decide pcr/hash -> name:port mappings
+ - https public interface with audit log of all certs it has ever given out
+
+App ideas: FileProxy? Nah.
+
+App ideas: TimeCapsule service
+ - think: password protected zip, but with policy instead of password
+ - web facing
+ - client wants to encrypt data indefinitely (e.g. escrow)
+ - client specifies data
+ - client specifies policy, e.g.:
+    - after date x, reveal key to anyone that asks
+	- with consent of threshold parties
+	- policies that depend on date, etc.
+	- multiple passwords
+ - audit log of open attemps and successes
+ - try not to link data and key so svc is trusted a little bit less (e.g. it
+   never sees the data)
+ - Q: Can we effectively *freeze* the policy? Somehow guarantee disclosure?
+
+App ideas: Witness/NotaryPublic
+ - web-facing 
+ - timestamps and signs anything you submit
+ - public audit log?
+ - linked for sequencing?
+
+App ideas: WebWitness
+ - think: proof that web page existed
+ - like witness, but given a URL, fetches page, renders, takes
+ screenshot, signs screenshot and full html
+
+App idea: xkcd password generator
+
+App ideas: Key Distribution Server (see tom)
+App ideas: Key-value store
+
+Q: How to do x509 for https?
+TPM is expert on pcrs, pcrs are expert on proghash, etc.
+Each layer attests the next.
+So we get full tao (non-x509) chain of sigs:
+  tpmkey -> pcrs -> proghash -> ...
+To get x509, we have to use:
+  httpsroot -> ... -> witness.com
+But then we lose the tpmkey, pcrs, proghash, etc.
+So who holds httpsroot priv key? CA-prog, for which there is a tao chain.
+
+So run CA-prog, which gets a tao chain for tao key, generates httpsroot, seals
+priv, attests to httpsroot using its own tao key, and we now have full tao chain
+  tpmkey -> pcrs -> proghash -> taokey -> httpsroot
+publish that tao chain. Anyone who cares can look at that tao
+chain to be convinced that httpsroot is held by a legit CA-prog (configured with
+reasonable name policy). 
+
+CA-prog + naming policy then generates x509 cert for witnesskey @ witness.com:80
+after having been convinced by witness-prog tao chain:
+  tpmkey -> pcrs -> proghash -> taokey -> witnesskey
+
+So user sees x509 chain:
+  httpsroot -> witness.com
+  And if they care, they can click on link to get tao chains
+  tpmkey -> pcrs -> proghash -> taokey -> httpsroot
+  tpmkey -> pcrs -> proghash -> taokey -> witnesskey
+
+ 
+(1) Witness
+ Goal: client connects to witness.com
+    with https secure pubkey witness_pub
+	     certified for witness.com:80,
+		 details friendly name is http-witness
+		 details full name prog_hash+os_hash+pcrs+tpm_key
+		         (this program is trustworthy for being a witness)
+		 expiration ...
+		 by Google(Witness)TaoHttpsCertManager
+		    certfied for CA
+			details friendly name is tao-https-certifier
+			details full name prog_hash+os_hash+pcrs+tpm_key
+		            (this program is trustworthy on pcr<-->dns bindings)
+		            (and also trustworthy on friendly name)
+		            (and also trustworthy on hash/os/pcr/tpmkey)
+			expiration ...
+			by Google(Witness)PolicyMgr
+		            (and also trustworthy on friendly name)
+		            (and also trustworthy on hash/os/pcr/tpmkey)
+				by Google(Witness)Tao
+						(and also trustworthy on hash/os/pcr/tpmkey)
+ - above is trouble...
+ - GoogleTao HTTPS ca key, offline?
+ - Generate Witness HTTPS ca cert, self signed?
+ - Generate domain policy key
+ - offline sign policy that says
+	[machine and OS setup]
+    - any of the following machines (tpm aik) is okay
+	- any of the following os (evmm and/or linux hash) is okay
+	- only the following progs can run
+	[some named groups]
+	- any of the following prog speak for <policy.httpcert>
+	[https cert policy]
+	- policy.httpcert can mint x509 certs under
+ - Generate HttpsCertificateManager key, certify it offline with policy key,
+   seal private under a policy that says:
+ - depends on HttpsCertificateManager service
+
 

@@ -546,3 +546,12 @@ programs do GetKey() then encrypt and decrypt data themselves.
 
 To be determined.
 
+7. Related Work
+---------------
+
+There is a lot of interesting (and sometiems exotic) work on hierarchical and
+non-interactive identity-based cryptosystems. These use EC, bilinear
+diffie-hellman, pairings, trusted third parties w/ escrow, etc. Applications
+include PKD (private key distribution), sensor networks (tiny os
+authentication), hierarchical access control classes, and much more.
+

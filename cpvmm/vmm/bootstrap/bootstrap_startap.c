@@ -36,6 +36,7 @@ static APPLICATION_PARAMS_STRUCT application_params;
 static INIT64_STRUCT *gp_init64;
 
 static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params);
+extern uint32_t evmm_stack_pointers_array[];  // stack pointers
 
 
 void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
@@ -77,7 +78,6 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 }
 
 
-extern uint32_t evmm_stack_pointers_array[];
 static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
 {
     // FIX(JLM)

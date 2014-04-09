@@ -470,22 +470,22 @@ extern void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point);
 
 
-void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t address, uint32_t segment, uint32_t* arg1, 
-                      uint32_t* arg2, uint32_t* arg3, uint32_t* arg4)
+void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address, 
+                uint32_t segment, uint32_t* arg1, uint32_t* arg2, 
+                uint32_t* arg3, uint32_t* arg4)
 {
     asm volatile (
 
         "\tcli\n"
 
         // move start address to ebx for jump
-        "\tmovl %[address], %%ebx\n"
+        "\tmovl %[start_address], %%ebx\n"
 
         // initialize CR3 with PML4 base
         "\tmovl %[evmm64_cr3], %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
 
         // evmm_initial_stack points to the start of the stack
-        // JLM(FIX): load correct stack
         "movl   %[stack_pointer], %%esp\n"
         "\tandl  $0xfffffff8, %%esp\n"
 
@@ -538,24 +538,25 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t address, uint32_t 
         "\tud2\n"
         :
         : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
-          [address] "g" (address), [segment] "g" (segment), [stack_pointer] "m" (stack_pointer),
-          [evmm64_cr3] "m" (evmm64_cr3)
+          [start_address] "g" (start_address), [segment] "g" (segment), 
+          [stack_pointer] "m" (stack_pointer), [evmm64_cr3] "m" (evmm64_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 }
 
 
-void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_code,
-                      void * arg1, void * arg2, void * arg3, void * arg4)
+void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 
+                    uint32_t start_address, void * arg1, void * arg2, 
+                    void * arg3, void * arg4)
 {
     uint32_t cr4;
 
+    // CHECK(JLM): is this right (cr4)?
     ia32_write_gdtr(&p_init64_data->i64_gdtr);
     write_cr3(p_init64_data->i64_cr3);
     read_cr4(&cr4);
-    BITMAP_SET(cr4, PAE_BIT | PSE_BIT);
+    BITMAP_SET(cr4, PAE_BIT|PSE_BIT);
     write_cr4(cr4);
-    ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
-    start_64bit_mode_on_aps(stack_pointer, address_of_64bit_code, 
+    start_64bit_mode_on_aps(stack_pointer, start_address, 
                    p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 }
 

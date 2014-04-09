@@ -34,7 +34,6 @@
 #include "host_memory_manager_api.h"
 #include "pat_manager.h"
 #include "host_cpu.h"
-#include "startap.h"
 #include "vmm_stack_api.h"
 #include "vmm_bootstrap_utils.h"
 #include "event_mgr.h"
@@ -255,7 +254,7 @@ static UINT8 s3_resume_protected_code_2[] =
     0xFF, 0xD1                      // 69: call        dword ptr [ecx]
 };
 
-/*------------------------------Local Variables-------------------------------*/
+
 static IO_PORT_ID pm_port[ACPI_PM1_CNTRL_REG_COUNT];
 static INIT32_STRUCT *init32_data_p = NULL;   // set as NULL, it is only useful in MP mode (StartAP uses it) and set by setup_data_for_s3() when boot processor > 1;
 static INIT64_STRUCT init64_data;
@@ -268,7 +267,7 @@ static CPU_SNAPSHOT_S cpu_saved_state;
 static vmm_acpi_callback suspend_callbacks[MAX_ACPI_CALLBACKS] = {0};
 static vmm_acpi_callback resume_callbacks[MAX_ACPI_CALLBACKS] = {0};
 
-/*------------------Forward Declarations for Local Functions------------------*/
+
 static BOOLEAN vmm_acpi_pm1x_handler(
     GUEST_CPU_HANDLE  gcpu,
     UINT16            port_id,
@@ -301,8 +300,6 @@ static void vmm_acpi_fill_bsp_gcpu_initial_state(GUEST_CPU_HANDLE gcpu);
 static void vmm_acpi_notify_on_platform_suspend(void);
 static void vmm_acpi_notify_on_platform_resume(void);
 
-
-/*-----------------------------C-Code Starts Here-----------------------------*/
 
 void vmm_acpi_save_original_waking_code(void *p_waking_vector)
 {

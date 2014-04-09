@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
+#include "bootstrap_types.h"
 #include "vmm_defs.h"
 #include "x32_init64.h"
-#include "ap_procs_init.h"
+#include "bootstrap_ap_procs_init.h"
 #include "vmm_startup.h"
 
 
 typedef void (*LVMM_IMAGE_ENTRY_POINT) (
-    UINT32 local_apic_id, void* any_data1, void* any_data2,
+    uint32_t local_apic_id, void* any_data1, void* any_data2,
     void* any_data3); 
 
 
@@ -36,13 +37,13 @@ typedef struct {
 static APPLICATION_PARAMS_STRUCT application_params;
 static INIT64_STRUCT *gp_init64;
 
-static void start_application(UINT32 cpu_id, const APPLICATION_PARAMS_STRUCT *params);
+static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params);
 
 
 void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
-                   VMM_STARTUP_STRUCT *p_startup, UINT32 entry_point)
+                   VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point)
 {
-    UINT32 application_procesors;
+    uint32_t application_procesors;
     
     if (NULL != p_init32) {
         //wakeup APs
@@ -77,14 +78,14 @@ void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 }
 
 
-static void start_application ( UINT32 cpu_id, const APPLICATION_PARAMS_STRUCT *params)
+static void start_application ( uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
 {
     if (NULL == gp_init64) {
-        ((LVMM_IMAGE_ENTRY_POINT)((UINT32)params->ep))
+        ((LVMM_IMAGE_ENTRY_POINT)((uint32_t)params->ep))
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);
     }
     else {
-        x32_init64_start ( gp_init64, (UINT32)params->ep, (void *) cpu_id,
+        x32_init64_start ( gp_init64, (uint32_t)params->ep, (void *) cpu_id,
             params->any_data1, params->any_data2, params->any_data3);
     }
 }

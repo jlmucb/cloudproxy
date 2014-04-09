@@ -19,7 +19,7 @@
 #include "bootstrap_types.h"
 #include "vmm_defs.h"
 #include "vmm_startup.h"
-#include "ap_procs_init.h"
+#include "bootstrap_ap_procs_init.h"
 #include "common_libc.h"
 #include "ia32_defs.h"
 #include "x32_init64.h"
@@ -291,7 +291,7 @@ static void ap_continue_wakeup_code(void)
         "\tdecl %%eax\n"
         // eax = 4*eax 
         // FIX(JLM): this seems wrong
-        "\tleal (%%eax,4), %%eax\n"
+        "\tleal (%%eax,%%edx, 4), %%eax\n"
         "\tmovl %[gp_init32_data], %%edx\n"
         // now edx points to gp_init32_data->i32_esp
         "\taddl $8, %%edx \n"
@@ -432,8 +432,8 @@ static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t deli
 
     } while (icr_low_status.bits.delivery_status != 0);
 
-    *(uint32_t *)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
-    *(uint32_t *)(apic_base + LOCAL_APIC_ICR_OFFSET)      = icr_low.uint32;;
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET)      = icr_low.uint32;;
 
     do {
         startap_stall_using_tsc(10);
@@ -472,8 +472,8 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
         icr_low_status.uint32 = *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status != 0);
 
-    *(uint32_t *)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
-    *(uint32_t *)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;;
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;;
 
     do {
         startap_stall_using_tsc(10);

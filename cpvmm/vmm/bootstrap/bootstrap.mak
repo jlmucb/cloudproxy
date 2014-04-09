@@ -76,9 +76,9 @@ $(B)/bootstrap_idt.o: $(bootsrc)/bootstrap_idt.c
 	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_idt.o $(bootsrc)/bootstrap_idt.c 
 
 $(B)/bootstrap_startap.o: $(bootsrc)/bootstrap_startap.c
-        $(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_startap.o $(bootsrc)/bootstrap_startap.c
+	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_startap.o $(bootsrc)/bootstrap_startap.c
 
 $(B)/bootstrap_ap_procs_init.o: $(bootsrc)/bootstrap_ap_procs_init.c
-        $(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_ap_procs_init.o $(bootsrc)/bootstrap_ap_procs_init.c
+	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_ap_procs_init.o $(bootsrc)/bootstrap_ap_procs_init.c
 
 

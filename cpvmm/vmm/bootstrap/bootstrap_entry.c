@@ -39,6 +39,8 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
+// #define MULTIAPS_ENABLED
+
 // FIX(JLM): Remove this soon 
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 
@@ -445,7 +447,6 @@ int setup_64bit()
 // -------------------------------------------------------------------------
 
 
-#ifdef MULTIAPS_ENABLED
 extern void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point);
 
@@ -465,8 +466,9 @@ void start_64bit_mode(uint32_t address, uint32_t segment, uint32_t* arg1,
         "\tmovl %%eax, %%cr3 \n"
 
         // evmm_initial_stack points to the start of the stack
-        "movl   %[evmm_initial_stack], %%esp\n"
-        "\tandl  $0xfffffff8, %%esp\n"
+        // JLM(FIX): load correct stack
+        // "movl   %[evmm_initial_stack], %%esp\n"
+        // "\tandl  $0xfffffff8, %%esp\n"
 
         // prepare arguments for 64-bit mode
         // there are 4 arguments (including reserved)
@@ -479,11 +481,6 @@ void start_64bit_mode(uint32_t address, uint32_t segment, uint32_t* arg1,
         "\tpush %[arg2]\n"
         "\tpush %%eax\n"
         "\tpush %[arg1]\n"
-
-        // evmm_initial_stack points to the start of the stack
-        // JLM(FIX)
-        "movl   %[evmm_initial_stack], %%esp\n"
-        "\tandl  $0xfffffff8, %%esp\n"
 
         // enable 64-bit mode
         // EFER MSR register
@@ -520,10 +517,10 @@ void start_64bit_mode(uint32_t address, uint32_t segment, uint32_t* arg1,
 
         "\tjmp %%ebx\n"
         "\tud2\n"
-
         :
         : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
-          [address] "g" (address), [segment] "g" (segment)
+          [address] "g" (address), [segment] "g" (segment),
+          [evmm64_cr3] "m" (evmm64_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 }
 
@@ -541,7 +538,6 @@ void x32_init64_start( INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_c
     ia32_write_msr(0xC0000080, &p_init64_data->i64_efer);
     start_64bit_mode(address_of_64bit_code, p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 }
-#endif
 
 
 // -------------------------------------------------------------------------
@@ -1731,7 +1727,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
 #ifdef MULTIAPS_ENABLED
     if (evmm_num_of_aps > 0) {
-        startap_main(&init32,&init64, &p_startup_struct, vmm_main_entry_point);
+        startap_main(&init32, &init64, &p_startup_struct, vmm_main_entry_point);
     }
 #endif
 

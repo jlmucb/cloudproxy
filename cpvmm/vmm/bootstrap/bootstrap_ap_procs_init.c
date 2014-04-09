@@ -82,8 +82,8 @@ static uint32_t  g_aps_counter = 0;
 
 // stage 2
 
-static UINT8   gp_GDT[6] = {0};  // xx:xxxx
-static UINT8   gp_IDT[6] = {0};  // xx:xxxx
+static uint8_t   gp_GDT[6] = {0};  // xx:xxxx
+static uint8_t   gp_IDT[6] = {0};  // xx:xxxx
 
 static volatile uint32_t  g_ready_counter = 0;
 
@@ -91,7 +91,7 @@ static          FUNC_CONTINUE_AP_BOOT g_user_func = 0;
 static void*    g_any_data_for_user_func = 0;
 
 // 1 in i position means CPU[i] exists
-static          UINT8 ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};  
+static          uint8_t ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};  
 
 
 // Low memory page layout
@@ -101,7 +101,7 @@ static          UINT8 ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};
 
 // Uncomment the following line to deadloop in AP startup
 //#define BREAK_IN_AP_STARTUP
-const UINT8 APStartUpCode[] =
+const uint8_t APStartUpCode[] =
 {
 #ifdef BREAK_IN_AP_STARTUP
     0xEB, 0xFE,                    // jmp $

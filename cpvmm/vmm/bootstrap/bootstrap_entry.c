@@ -447,7 +447,7 @@ int setup_64bit()
 // -------------------------------------------------------------------------
 
 
-extern void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
+extern void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point);
 
 
@@ -525,7 +525,7 @@ void start_64bit_mode_on_aps(uint32_t address, uint32_t segment, uint32_t* arg1,
 }
 
 
-void x32_init64_start( INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_code,
+void x32_init64_start(INIT64_STRUCT *p_init64_data, uint32_t address_of_64bit_code,
                       void * arg1, void * arg2, void * arg3, void * arg4)
 {
     uint32_t cr4;

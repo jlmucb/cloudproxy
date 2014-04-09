@@ -52,7 +52,7 @@ void startap_main (INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     }
 
 #ifdef UNIPROC
-         application_procesors = 0;
+    application_procesors = 0;
 #endif
 
     gp_init64 = p_init64;
@@ -83,7 +83,7 @@ static void start_application ( uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);
     }
     else {
-        x32_init64_start ( gp_init64, (uint32_t)params->ep, (void *) cpu_id,
+        x32_init64_start( gp_init64, (uint32_t)params->ep, (void *) cpu_id,
             params->any_data1, params->any_data2, params->any_data3);
     }
 }

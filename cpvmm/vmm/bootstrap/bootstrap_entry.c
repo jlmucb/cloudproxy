@@ -39,7 +39,7 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
-// #define MULTIAPS_ENABLED
+//#define MULTIAPS_ENABLED
 
 // FIX(JLM): Remove this soon 
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;

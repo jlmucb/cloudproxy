@@ -1708,6 +1708,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #endif
 
     // this is used by the wakup code in sipi init
+    // CHECK(JLM): maybe this should be  &evmm_stack_pointers_array[1]
     init32.i32_esp= evmm_stack_pointers_array;
 #ifndef MULTIAPS_ENABLED
     evmm_num_of_aps = 0;  // BSP only for now

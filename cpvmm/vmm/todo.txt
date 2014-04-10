@@ -11,17 +11,106 @@ Todo
 SIPI
 
 
+typedef struct {
+    void*           any_data1;
+    void*           any_data2;
+    void*           any_data3;
+    UINT64          ep;
+} APPLICATION_PARAMS_STRUCT;
 typedef struct _INIT32_STRUCT {
     UINT32      i32_low_memory_page;   // address of page for AP bootstrap
     UINT16      i32_num_of_aps;        // number of APs
     UINT16      i32_pad;
     UINT32      i32_esp[1];            // array of 32-bit SPs 
 } INIT32_STRUCT;
-
-
 esp is never set in this structure
+
 
 start32_evmm
     startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
+        application_procesors = ap_procs_startup(p_init32, p_startup);
+        gp_init64 = p_init64;
+        if (BITMAP_GET(p_startup->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) == 0) 
+                // update the number of processors in VMM_STARTUP_STRUCT for pre os launch
+                p_startup->number_of_processors_at_boot_time = application_procesors + 1;
+    application_params.ep = entry_point;
+    application_params.any_data1 = (void*) p_startup;
+    ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
 
+
+start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
+    stack_pointer= evmm_stack_pointers_array[cpu_id];
+    init64_on_aps(stack_pointer, gp_init64, (uint32_t)params->ep, (void *) cpu_id,
+            params->any_data1, params->any_data2, params->any_data3);
+
+// AP startup algorithm
+//  Stage 1
+//   BSP:
+//      1. Copy APStartUpCode + GDT to low memory page
+//      2. Clear APs counter
+//      3. Send SIPI to all processors excluding self
+//      4. Wait timeout
+//   APs on SIPI receive:
+//      1. Switch to protected mode
+//      2. lock inc APs counter + remember my AP number
+//      3. Loop on wait_lock1 until it changes zero
+// Stage 2
+//   BSP after timeout:
+//      5. Read number of APs and allocate memory for stacks
+//      6. Save GDT and IDT in global array
+//      7. Clear ready_counter count
+//      8. Set wait_lock1 to 1
+//      9. Loop on ready_counter until it will be equal to number of APs
+//   APs on wait_1_lock set
+//      4. Set stack in a right way
+//      5. Set right GDT and IDT
+//      6. Enter "C" code
+//      7. Increment ready_counter
+//      8. Loop on wait_lock2 until it changes from zero
+// Stage 3
+//   BSP after ready_counter becomes == APs number
+//      10. Return to user
+
+APStartUpCode defined
+    put processor in protected mode
+    call AP_CONTINUE_WAKEUP_CODE
+
+ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, VMM_STARTUP_STRUCT *p_startup) 
+    ap_initialize_environment( );
+        mp_bootstrap_state = MP_BOOTSTRAP_STATE_INIT;
+        g_ready_counter = 0;
+        g_user_func = 0;
+        g_any_data_for_user_func = 0;
+    gp_init32_data = p_init32_data;
+    setup_low_memory_ap_code( p_init32_data->i32_low_memory_page );
+        copy APStartUpCode
+        get segment registers
+        patch it
+        get gdtr_32
+        copy gdtr into patched code
+    send_targeted_init_sipi(p_init32_data, p_startup);
+        foreach(i)
+            send_ipi_to_specific_cpu(0, LOCAL_APIC_DELIVERY_MODE_INIT, p_startup->cpu_local_apic_ids[i+1]);
+        startap_stall_using_tsc(  INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS );
+        Do twice:
+            send_ipi_to_specific_cpu( ((uint32_t)p_init32_data->i32_low_memory_page)>>12,
+                                      LOCAL_APIC_DELIVERY_MODE_SIPI, p_startup->cpu_local_apic_ids[i+1]);
+            startap_stall_using_tsc(  200000 );
+    return g_aps_counter = bsp_enumerate_aps();
+
+
+ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
+    g_user_func = continue_ap_boot_func;
+    g_any_data_for_user_func = any_data;
+    mp_set_bootstrap_state(MP_BOOTSTRAP_STATE_APS_ENUMERATED);
+    while (g_ready_counter != g_aps_counter) 
+        pause
+
+
+bsp_enumerate_aps(void)
+    ap_num = 0;
+    for (i = 1; i<NELEMENTS(ap_presence_array); ++i) 
+        if (0 != ap_presence_array[i]) 
+            ap_presence_array[i] = ++ap_num;
+    return ap_num;
 

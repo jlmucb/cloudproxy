@@ -23,7 +23,6 @@
 typedef void (*LVMM_IMAGE_ENTRY_POINT) (uint32_t local_apic_id, 
                    void* any_data1, void* any_data2, void* any_data3); 
 
-
 typedef struct {
     void*           any_data1;
     void*           any_data2;
@@ -31,9 +30,8 @@ typedef struct {
     UINT64          ep;
 } APPLICATION_PARAMS_STRUCT;
 
-
 static APPLICATION_PARAMS_STRUCT application_params;
-static INIT64_STRUCT *gp_init64;
+static INIT64_STRUCT *gp_init64= NULL;
 
 static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params);
 extern uint32_t evmm_stack_pointers_array[];  // stack pointers

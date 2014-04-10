@@ -86,7 +86,7 @@ static FUNC_CONTINUE_AP_BOOT    g_user_func = 0;
 static void*                    g_any_data_for_user_func = 0;
 
 // 1 in i position means CPU[i] exists
-static          uint8_t ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};  
+static uint8_t ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};  
 
 
 // Low memory page layout
@@ -151,9 +151,8 @@ const uint8_t APStartUpCode[] =
 
 static void     ap_continue_wakeup_code( void );
 static void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
-
 static uint8_t  bsp_enumerate_aps(void);
-static void     ap_intialize_environment(void);
+static void     ap_initialize_environment(void);
 static void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
 
 
@@ -545,7 +544,7 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     }
 
     // Stage 1 
-    ap_intialize_environment( );
+    ap_initialize_environment( );
     gp_init32_data = p_init32_data; // store in global var, to ease access to it from asm code
 
     // save IDT and GDT
@@ -612,7 +611,7 @@ uint8_t bsp_enumerate_aps(void)
 }
 
 
-void ap_intialize_environment(void)
+void ap_initialize_environment(void)
 {
     mp_bootstrap_state = MP_BOOTSTRAP_STATE_INIT;
     g_ready_counter = 0;

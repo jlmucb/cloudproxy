@@ -77,6 +77,8 @@ for example.
 6. Have Tao common ancestors perform shared key distribution?
 -------------------------------------------------------------
 
+(I like this idea best.)
+
 Tao can serve as the trusted third party in a session key distribution protocol,
 ala kerberos, 3PKD (http://seclab.cs.ucdavis.edu/papers/Rogaway/3pkd.pdf), etc.
 
@@ -105,6 +107,7 @@ key that corresponds to that group. A caveat is that the Tao so invoked must be
 a common ancestor (hence trusted) by all members of the group. In the TLS
 example above, the group is always 2 members: the invoking program plus the peer
 to which it is trying to establish a secure channel.
+
 
 7. Long-Lived vs. Short-Lived Keys
 ----------------------------------

@@ -39,7 +39,7 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
-//#define MULTIAPS_ENABLED
+#define MULTIAPS_ENABLED
 
 // FIX(JLM): Remove this soon 
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
@@ -1707,6 +1707,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("\n");
 #endif
 
+    // this is used by the wakup code in sipi init
+    init32.i32_esp= evmm_stack_pointers_array;
 #ifndef MULTIAPS_ENABLED
     evmm_num_of_aps = 0;  // BSP only for now
 #endif

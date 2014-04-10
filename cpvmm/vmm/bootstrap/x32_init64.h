@@ -22,7 +22,7 @@ typedef struct _INIT32_STRUCT {
     UINT32      i32_low_memory_page;   // address of page for AP bootstrap
     UINT16      i32_num_of_aps;        // number of APs
     UINT16      i32_pad;
-    UINT32      i32_esp[1];            // array of 32-bit SPs 
+    UINT32*     i32_esp;               // array of 32-bit SPs 
 } INIT32_STRUCT;
 
 typedef struct _INIT64_STRUCT {

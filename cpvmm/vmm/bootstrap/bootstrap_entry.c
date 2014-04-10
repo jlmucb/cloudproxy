@@ -161,12 +161,6 @@ static uint32_t                         evmm64_ds_selector= 0;
 static uint32_t                         evmm64_cr4= 0;
 static uint32_t                         evmm64_cr3 = 0;
 
-typedef struct {
-    INIT32_STRUCT s;
-    uint32_t data[32];
-} INIT32_STRUCT_SAFE;
-
-
 static IA32_GDTR                        gdtr_32;
 static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
 
@@ -178,7 +172,7 @@ static EM64T_PDPE *                     pdp_table= NULL;
 static EM64T_PDE_2MB *                  pd_table= NULL;
 
 static INIT64_STRUCT                    init64;
-static INIT32_STRUCT_SAFE               init32;
+static INIT32_STRUCT                    init32;
 
 uint32_t                                low_mem = 0x8000;
 int                                     evmm_num_of_aps= 0;
@@ -1279,7 +1273,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     // get correct command line and correct mbi
     vmm_memset((void*) &linux_mbi, 0, sizeof(multiboot_info_t));
     vmm_memcpy((void*) &linux_mbi, (void*)mbi, sizeof(multiboot_info_t));
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if ( mbi->flags & MBI_CMDLINE ) {
         bprint("copied mbi has a command line\n");
     }
@@ -1298,7 +1292,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     mbi->mmap_addr= (uint32_t)g_copy_e820_map;
     mbi->mmap_length= g_nr_map*sizeof(memory_map_t);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("linux mbi, %d modules\n", linux_mbi.mods_count);
 #endif
 
@@ -1308,7 +1302,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
         bprint("cannot expand linux image\n");
         return 1;
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("linux_real_mode_start, linux_real_mode_size: 0x%08x %d\n",
             linux_real_mode_start, linux_real_mode_size);
     bprint("linux_protected_mode_start, linux_protected_mode_size: 0x%08x %d\n",
@@ -1322,7 +1316,7 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     // CHECK
     linux_start_address= linux_protected_mode_start;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     // print header
     linux_kernel_header_t* hdr = (linux_kernel_header_t*)
                 (linux_start + KERNEL_HEADER_OFFSET);
@@ -1527,10 +1521,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         initram_start= (uint32_t)m->mod_start;
         initram_end= (uint32_t)m->mod_end;
     }
+
 #ifdef JLMDEBUG
     // shared page
-    bprint("\ttboot_start: 0x%08x\n", tboot_start);
-    bprint("\ttboot_end: 0x%x\n", tboot_end);
+    bprint("tboot_start, tboot_end: 0x%08x 0x%08x\n", tboot_start, tboot_end);
     bprint("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
             bootstrap_start, bootstrap_end, bootstrap_end-bootstrap_start);
     bprint("evmm_start, evmm_end: 0x%08x 0x%08x\n", evmm_start, evmm_end);
@@ -1544,7 +1538,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     else
         bprint("linux command line: %s\n", linux_command_line);
     bprint("initram_start, initram_end: 0x%08x 0x%08x\n", initram_start, initram_end);
-#endif // JLMDEBUG
+#endif
 
     // initialize stack array
     for(i=0;i<MAXPROCESSORS;i++)
@@ -1565,7 +1559,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         evmm_num_of_aps = 0; 
 
 #ifdef JLMDEBUG
-    bprint("\t%d APs, %d, reset to 0\n", evmm_num_of_aps, info);
     uint32_t   tcr0, tcr3, tcr4;
     IA32_GDTR tdesc;
     ia32_read_gdtr(&tdesc);
@@ -1576,7 +1569,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("GTDT base/limit: 0x%08x, %04x\n", tdesc.base, tdesc.limit);
 #endif
 
-#ifdef MULTIAPS_ENABLED
     if(evmm_num_of_aps>=MAXPROCESSORS) {
         bprint("Too many aps (%d), resetting to %d\n", evmm_num_of_aps, MAXPROCESSORS);
         evmm_num_of_aps = MAXPROCESSORS-1; 
@@ -1585,12 +1577,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         p_startup_struct->number_of_processors_at_install_time = evmm_num_of_aps;
         p_startup_struct->number_of_processors_at_boot_time = evmm_num_of_aps;
     }
-#else
-    evmm_num_of_aps = 0;  // BSP only for now
-#endif
 
-    init32.s.i32_low_memory_page = low_mem;
-    init32.s.i32_num_of_aps = evmm_num_of_aps;
+    init32.i32_low_memory_page = low_mem;
+    init32.i32_num_of_aps = evmm_num_of_aps;
 
     // set up evmm heap addresses and range
     setup_evmm_heap(EVMM_HEAP_BASE, EVMM_HEAP_SIZE);
@@ -1646,15 +1635,12 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("%d e820 entries after copy, original had %d\n", 
             g_nr_map, mbi->mmap_length/sizeof(memory_map_t));
 #endif
 
     // tboot reserves the region were putting stuff in (see below)
-    // FIX(JLM): we should unreserve them.
-    // CHECK: what BIOS's have this problem?
-    
     // Tboot's explaination
     //      Tboot reserves the following regions: 0x20200000 - 0x40004000,
     //      0x40005000 - 0xb88f3000, 0xb9bff000 - 0xb9c00000
@@ -1662,6 +1648,17 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     //      which causes problems if they are DMA protected.
     //      we're going to ignore this because we want to
     //      put bootstrap and evmm here.
+    // What BIOS's have this problem?
+    // Answer:
+    // Both igfx & legacy USB support might reserve small chunks of memory 
+    // (0x20000000~0x20200000 is for igfx, 0x40004000~0x40005000 is for usb). 
+    // Even in latest Lenovo laptop these memory holes is still existing.
+    // Tboot added a min_ram=0xXXXXXXXX option to get the usable memory 
+    // back if the size exceeds the number in this option, but the side 
+    // effect is the device memory before the reenabled usabled ram will 
+    // be DMA protected.
+
+    // FIX(JLM): we should unreserve them.
 
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {
@@ -1676,7 +1673,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("%d e820 entries after new reservations\n", g_nr_map);
     bprint("e820_reserve_ram(0x%08x, 0x%08x)\n", evmm_heap_base, 
            (evmm_heap_size+evmm_load_segment_size));
@@ -1703,6 +1700,15 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
 #ifdef JLMDEBUG
     bprint("evmm_bsp_stack: 0x%08x\n", evmm_bsp_stack);
+    bprint("%d processors, stacks:\n", 1+evmm_num_of_aps);
+    for(i=0; i<=evmm_num_of_aps;i++) {
+        bprint("%08x ", evmm_stack_pointers_array[i]);
+    }
+    bprint("\n");
+#endif
+
+#ifndef MULTIAPS_ENABLED
+    evmm_num_of_aps = 0;  // BSP only for now
 #endif
 
     // We need to allocate this before guest setup
@@ -1730,14 +1736,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         LOOP_FOREVER
     }
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     // Print final parameters for linux
     boot_params_t* new_boot_params= (boot_params_t*)linux_boot_parameters;
     bprint("Final Linux parameters\n");
     bprint("\tShared page address: 0x%016lx %d e820 entries\n", 
            (long unsigned int)*(uint64_t*)new_boot_params->tboot_shared_addr,
            new_boot_params->e820_entries);
-    // e820_entries;     e820_map[E820MAX];
     bprint("\tCode32_start: 0x%08x, ramdisk: 0x%08x, ramdisk size: %d\n",
            new_boot_params->hdr.code32_start,
            new_boot_params->hdr.ramdisk_image,
@@ -1749,6 +1754,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     else {
         bprint("\tinvalid command line\n");
     }
+#endif
+#ifdef JLMDEBUG1
     bprint("code at evmm start\n");
     HexDump((uint8_t*)evmm_start_address, (uint8_t*)evmm_start_address+10);
     HexDump((uint8_t*)linux_start_address, (uint8_t*)linux_start_address+10);
@@ -1766,10 +1773,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("cs selector: 0x%08x, cr3: 0x%08x\n", 
            (uint32_t) evmm64_cs_selector, (uint32_t) evmm64_cr3);
-    bprint("bsp stack base: 0x%08x, bsp stack: 0x%08x\n", 
-           evmm_bsp_stack_base, evmm_bsp_stack);
     HexDump((uint8_t*)evmm_descriptor_table, 
-            (uint8_t*)evmm_descriptor_table+40);
+            (uint8_t*)evmm_descriptor_table+24);
     bprint("arguments to vmm_main:\n");
     bprint("\tapic %d, p_startup_struct, 0x%08x\n",
        (int) local_apic_id, (int) p_startup_struct);
@@ -1777,12 +1782,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
            (int)evmm_p_a0, (int)evmm_reserved);
 #endif
 
-
-#ifdef MULTIAPS_ENABLED
     if (evmm_num_of_aps > 0) {
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }
-#endif
 
     asm volatile (
 

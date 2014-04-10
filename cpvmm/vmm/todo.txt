@@ -8,3 +8,20 @@ Todo
 6. Try Linux boot from bootstrap
 
 
+SIPI
+
+
+typedef struct _INIT32_STRUCT {
+    UINT32      i32_low_memory_page;   // address of page for AP bootstrap
+    UINT16      i32_num_of_aps;        // number of APs
+    UINT16      i32_pad;
+    UINT32      i32_esp[1];            // array of 32-bit SPs 
+} INIT32_STRUCT;
+
+
+esp is never set in this structure
+
+start32_evmm
+    startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
+
+

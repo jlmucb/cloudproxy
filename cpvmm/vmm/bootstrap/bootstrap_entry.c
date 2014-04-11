@@ -764,7 +764,7 @@ VMM_GUEST_CPU_STARTUP_STATE             linux_state;
 static VMM_STARTUP_STRUCT               startup_struct;
 static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 
-#define UUID 0x1badb002
+#define UUID 0x0
 
 // expanded e820 table used by evmm
 static unsigned int     evmm_num_e820_entries = 0;
@@ -1359,7 +1359,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     BIT_SET(evmm_g0.flags, GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG);
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;
-    evmm_g0.cpu_states_count = 1;
+    evmm_g0.cpu_states_count = 1;   // ANSWER: this should total # of procs including BSP
     evmm_g0.devices_count = 0;
     evmm_g0.image_size = linux_end - linux_start;
     evmm_g0.image_address= linux_start_address;

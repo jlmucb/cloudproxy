@@ -33,6 +33,7 @@
 // allocated by the loader.  Includes the uVMM executable image and work
 // area, but not the 32bit-to-64bit Thunk image.
 
+// JLM: add this for total memory
 #define UVMM_DEFAULT_FOOTPRINT          75 MEGABYTES
 
 // Default size for uVMM stack, in pages

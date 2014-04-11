@@ -280,14 +280,12 @@ static void ap_continue_wakeup_code(void)
         //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
         "\tdecl %%eax\n"
 
-        "\tleal (%%eax,%%edx, 4), %%eax\n"
+        // point edx to gp_init32_data->i32_esp for this ap
         "\tmovl %[gp_init32_data], %%edx\n"
-
-        // JLM(FIX): fix esp reference
-        // now edx points to gp_init32_data->i32_esp
+        "\tleal (%%eax, %%edx, 4), %%eax\n"
+        // point edx to gp_init32_data->i32_esp[eax]
         "\taddl $8, %%edx \n"
-        // now edx points to gp_init32_data->i32_esp[eax]
-        "\taddl %%eax, %%edx\n"
+        // "\taddl %%eax, %%edx\n"
         "\tmovl (%%edx), %%esp\n"
 
         // setup GDT
@@ -295,7 +293,7 @@ static void ap_continue_wakeup_code(void)
         "\tlgdt (%%eax) \n"
 
         // setup IDT
-        "\t movl %[gp_IDT], %%eax\n"
+        "\tmovl %[gp_IDT], %%eax\n"
         "\tlidt (%%eax)\n"
 
         // enter "C" function

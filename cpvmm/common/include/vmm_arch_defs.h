@@ -21,9 +21,7 @@
 
 // This file contains unified architecture-related structures, defined by uVMM
 
-//#if _MSC_VER >= 1400
 #pragma PACK_ON
-//#endif
 
 
 // Standard E820 BIOS map
@@ -210,10 +208,10 @@ typedef union
 } PACKED VMM_SEGMENT_ATTRIBUTES;
 
 typedef struct _VMM_SEGMENT_STRUCT {
-    UINT64 base;       // for real mode it should be selector << 4
+    UINT64 base;            // for real mode it should be selector << 4
     UINT32 limit;
-    UINT32 attributes;   // TODO: modify this to use VMM_SEGMENT_ATTRIBUTES
-    UINT16 selector;   // for real mode this is the segment value
+    UINT32 attributes;      // TODO: modify this to use VMM_SEGMENT_ATTRIBUTES
+    UINT16 selector;        // for real mode this is the segment value
     UINT16 reserved[3];
 } PACKED VMM_SEGMENT_STRUCT;
 
@@ -222,7 +220,7 @@ typedef struct _VMM_SEGMENTS {
 } VMM_SEGMENTS;
 
 typedef struct _VMM_IA32_GDT_REGISTER {
-	UINT64          base;
+        UINT64          base;
     UINT32          limit;
 } PACKED VMM_IA32_GDT_REGISTER;
 
@@ -235,17 +233,12 @@ typedef struct _VMM_DEBUG_REGISTERS {
 typedef struct _VMM_CONTROL_REGISTERS {
     // Control registers
     UINT64                cr[IA32_CTRL_COUNT];
-
     // GDT
-	VMM_IA32_GDT_REGISTER gdtr;
-
+        VMM_IA32_GDT_REGISTER gdtr;
     UINT32                reserved_1;
-
     // IDT
     VMM_IA32_IDT_REGISTER idtr;
-
     UINT32                reserved_2;
-
 } VMM_CONTROL_REGISTERS;
 
 typedef struct _VMM_MODEL_SPECIFIC_REGISTERS {
@@ -265,11 +258,7 @@ typedef struct _VMM_MODEL_SPECIFIC_REGISTERS {
     UINT32 smbase;
 } VMM_MODEL_SPECIFIC_REGISTERS;
 
-
-
-//#if _MSC_VER >= 1400
 #pragma PACK_OFF
-//#endif
 
 #endif // _UVMM_ARCH_DEFS_H_
 

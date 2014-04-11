@@ -315,7 +315,6 @@ int setup_evmm_stacks()
                         PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES;
         evmm_stack_pointers_array[i+1]= evmm_ap_stack;
     }
-
     return 0;
 }
 
@@ -1712,6 +1711,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     init32.i32_esp= evmm_stack_pointers_array;
 #ifndef MULTIAPS_ENABLED
     evmm_num_of_aps = 0;  // BSP only for now
+    p_startup_struct->number_of_processors_at_install_time = evmm_num_of_aps;
+    p_startup_struct->number_of_processors_at_boot_time = evmm_num_of_aps;
 #endif
 
     // We need to allocate this before guest setup

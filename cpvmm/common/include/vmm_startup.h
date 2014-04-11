@@ -6,7 +6,6 @@
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +17,6 @@
 #define _UVMM_STARTUP_H_
 
 // uVMM Startup Definitions
-//
 // This files contains definitions of the interaction between the uVMM and its
 // loader.
 
@@ -29,7 +27,6 @@
 
 
 // uVMM Startup Constants
-//
 // Note:  Constants that are related to specific structures below are defined
 //        near their respective structures.
 // Default size for uVMM footprint in memory, that should be
@@ -43,29 +40,18 @@
 #define UVMM_DEFAULT_STACK_SIZE_PAGES   10
 
 
-//
 // uVMM Startup Structure Types
-//
-// Notes:
-//
 // These structures are used both in 32-bit and 64-bit modes, therefore:
-// 
-// - Structure sizes are 64-bit aligned
-// - All pointers are defined as 64-bit, and must be set so their higher 32 bits
-//   are 0 (< 4GB).  This ensures their usability in both 32-bit and 64-bit
-//   modes.
-// - All pointers are in a loader virtual memory space (if applicable).
-//
+//      - Structure sizes are 64-bit aligned
+//      - All pointers are defined as 64-bit, and must be set so their higher 32 bits
+//      are 0 (< 4GB).  This ensures their usability in both 32-bit and 64-bit modes.
+//      - All pointers are in a loader virtual memory space (if applicable).
 // Major terms:
-//
 // Primary guest   - the guest that owns the platform and platform was
 //                   booted originally to run this guest
-//
 // Secondary guest - the guest that is used to perform some dedicated tasks
 //                   on behalf of the primary guest
-//
 // Following is the structure hierarchy (---> denotes a pointer):
-//
 // VMM_STARTUP_STRUCT
 // +---- VMM_MEMORY_LAYOUT     vmm_memory_layout[]
 // +---> INT15_E820_MEMORY_MAP physical_memory_layout_E820
@@ -82,11 +68,9 @@
 // +---- VMM_DEBUG_PARAMS      debug_params
 //       +---- VMM_DEBUG_PORT_PARAMS       port
 // VMM_APPLICATION_PARAMS_STRUCT
-//
 
 
 // VMM_MEMORY_LAYOUT
-//
 // VMM bounding box - vmm memory layout as it was built by loader
 // Data about sizes is part of installer info
 // Vmm image occupies area [base_address .. base_address+image_size]
@@ -102,21 +86,16 @@ typedef struct _VMM_MEMORY_LAYOUT
 
 
 // VMM_GUEST_CPU_STARTUP_STATE: Initial Guest CPU State
-//
 // Specified per each active CPU for each guest, and will be put into Guest VMCS
 // at guest launch time. All addresses are absolute values that should be put in
 // VMCS.
-//
 // If for some guest CPU VMM_GUEST_CPU_STARTUP_STATE is not specified,
 // this guest CPU is put into the Wait-for-SIPI state.
 // VMM_GUEST_CPU_STARTUP_STATE must be specified for at least first processor
 // (BSP) of each guest.
-//
 // Guest initial entry point should be set as the CS:RIP pair:
-//
-// - CS is specified in the seg[IA32_SEG_CS].selector value
-// - RIP is specified in the gp[IA32_REG_RIP] value
-//
+//      - CS is specified in the seg[IA32_SEG_CS].selector value
+//      - RIP is specified in the gp[IA32_REG_RIP] value
 // These values are specified as:
 //
 //  1. If guest paging is active CS:RIP is in the GVA notation
@@ -138,7 +117,6 @@ typedef struct _VMM_GUEST_CPU_STARTUP_STATE
     UINT32                          reserved_1;
 
     /* 64-bit aligned */
-
     // there are additional registers in the CPU that are not passed here.
     // it is assumed that for the new guest the state of such registers is
     // the same, as it was at the VMM entry point.
@@ -152,16 +130,13 @@ typedef struct _VMM_GUEST_CPU_STARTUP_STATE
 
 
 // VMM_GUEST_DEVICE: Guest Devices
-//
 // Describes virtualized, hidden or attached device
-//
 // If device is assinged to this guest is may be exposed using its real
 // id or virtualized id.
 // If the same real_vendor_id/real_device_id is specified for
 // number of guests, this device will be exposed to each of this guests.
 // If VT-d is active, this device will be hidden from all other guests.
 // If VT-d is not active, it will be exposed using "unsupported vendor/device id"
-//
 // *** THIS FEATURE IS NOT CURRENTLY SUPPORTED ***
 
 #define VMM_GUEST_DEVICE_VERSION                  1
@@ -173,12 +148,10 @@ typedef struct _VMM_GUEST_DEVICE
     UINT32              reserved_1;
 
     // Real device data
-    
     UINT16              real_vendor_id;
     UINT16              real_device_id;
     
     // Virtual device data
-    
     UINT16              virtual_vendor_id;
     UINT16              virtual_device_id;
 } PACKED  VMM_GUEST_DEVICE;
@@ -278,9 +251,7 @@ typedef struct _VMM_GUEST_STARTUP {
 
 
 // VMM_DEBUG_PARAMS: Debug Parameters
-//
 // Controls various parameters for VMM debug
-//
 // Note: There are no 'size' and 'version' fields in VMM_DEBUG_PARAMS, since
 //       this strucure is included in VMM_STURTUP_STRUCT.  Set the version
 //       there!
@@ -378,7 +349,6 @@ typedef struct _VMM_DEBUG_PARAMS
     // 3 : In addition to the above, informational messages are printed
     // 4 : In addition to the above, trace messages are printed
     UINT8                 verbosity;         
-
     UINT8                 reserved[7];
 
     /* 64-bit aligned */
@@ -410,11 +380,9 @@ typedef struct _VMM_DEBUG_PARAMS
 
 
 // VMM_STARTUP_STRUCT: Startup Parameters
-//
 // Top level structure that describes VMM layout, guests, etc.
 // Passed to VMM entry point.
-//
-//------------------------------------------------------------------------------
+
 
 #define VMM_STARTUP_STRUCT_VERSION                5
 
@@ -553,14 +521,12 @@ typedef struct _VMM_APPLICATION_PARAMS_STRUCT {
 // VMM entry point itself. Must be called by VMM loader once for each
 // processor/core in the platform. Parameters to the entry point are different
 // for BSP (boot strap processor) and for each AP (application processor)
-//
 // The order of the calls between processors is not defined, assuming that
 // this function will be called on all number_of_processors defined in the
 // VMM_STARTUP_STRUCT.
-//
 // Never returns.
 
-void CDECL vmm_main(
+void vmm_main(
     // logical local apic ID of the current processor
      // 0 - BSP, != 0 - AP
     UINT32                                 local_apic_id,

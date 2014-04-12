@@ -72,7 +72,6 @@ typedef enum {
 } MP_BOOTSTRAP_STATE;
 
 static volatile MP_BOOTSTRAP_STATE mp_bootstrap_state;
-static          INIT32_STRUCT *gp_init32_data;
 
 // stage 1
 static uint32_t  g_aps_counter = 0;
@@ -279,13 +278,9 @@ static void ap_continue_wakeup_code(void)
         //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
         "\tdecl %%eax\n"
 
-        // point edx to gp_init32_data->i32_esp for this ap
-        // FIX(JLM)
-        "\tmovl %[gp_init32_data], %%edx\n"
+        // point edx to right stack
+        "\tmovl %[evmm_stack_pointers_array], %%edx\n"
         "\tleal (%%eax, %%edx, 4), %%eax\n"
-        // point edx to gp_init32_data->i32_esp[eax]
-        "\taddl $8, %%edx \n"
-        // "\taddl %%eax, %%edx\n"
         "\tmovl (%%edx), %%esp\n"
 
         // setup GDT
@@ -309,7 +304,7 @@ static void ap_continue_wakeup_code(void)
     : [ap_continue_wakeup_code_C] "g" (ap_continue_wakeup_code_C),
       [mp_bootstrap_state] "g" (mp_bootstrap_state),
       [ap_presence_array] "r" (ap_presence_array),
-      [gp_init32_data] "g" (gp_init32_data),
+      [evmm_stack_pointers_array] "p" (evmm_stack_pointers_array),
       [gp_GDT] "g" (gp_GDT), [gp_IDT] "g" (gp_IDT)
     :"%eax", "%ebx", "%ecx", "%edx", "memory");
 }
@@ -543,7 +538,6 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // Stage 1 
     ap_initialize_environment( );
-    gp_init32_data = p_init32_data; // store in global var, to ease access to it from asm code
 
     // save IDT and GDT
     asm volatile (

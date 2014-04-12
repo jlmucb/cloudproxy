@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+
 #include "bootstrap_types.h"
 #include "bootstrap_string.h"
 #include "bootstrap_print.h"
@@ -83,8 +84,10 @@ uint32_t initram_start= 0;      // location of initram image start
 uint32_t initram_end= 0;        // location of initram image end
 
 
-//      Post relocation addresses
+// Post relocation addresses
 uint32_t evmm_start_address= 0;         // address of evmm after relocation
+uint32_t evmm_image_size= 0;         
+uint32_t evmm_total_size= 0;         
 uint32_t vmm_main_entry_point= 0;       // address of vmm_main after relocation
 uint32_t evmm_heap_base= 0;             // start of initial evmm heap
 uint32_t evmm_heap_current= 0; 
@@ -102,7 +105,7 @@ extern unsigned int g_nr_map;           // copied e820 globals
 extern memory_map_t *g_copy_e820_map;   // copied e820 globals
 memory_map_t bootstrap_e820[E820MAX];   // our e820 map
 
-//      linux guest
+// linux guest
 uint32_t linux_real_mode_start= 0;      // address of real mode
 uint32_t linux_real_mode_size= 0;       // size of real mode size
 uint32_t linux_protected_mode_start= 0; // address of protected mode
@@ -166,7 +169,6 @@ static IA32_GDTR                        gdtr_32;
 static IA32_GDTR                        gdtr_64;  // still in 32-bit mode
 
 // location of page in evmm heap that holds 64 bit descriptor table
-static int                              num_64bit_descriptors= 0;
 static uint32_t                         evmm_descriptor_table= 0;
 static EM64T_PML4 *                     pml4_table= NULL;
 static EM64T_PDPE *                     pdp_table= NULL;
@@ -326,6 +328,7 @@ void setup_64bit_descriptors(void)
 
     // 1 page for segment descriptors
     evmm_descriptor_table = (uint32_t) evmm_page_alloc(1);
+
     // zero gdt
     vmm_memset((void*)evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
@@ -349,13 +352,15 @@ void setup_64bit_descriptors(void)
     end_of_desciptor_table[3]= 0x0000000000000000ULL;
 
     // selectors
-    evmm64_cs_selector = (uint32_t) (&end_of_desciptor_table[0]) - (uint32_t) evmm_descriptor_table;
-    evmm64_ds_selector = (uint32_t) (&end_of_desciptor_table[2]) - (uint32_t) evmm_descriptor_table;
+    evmm64_cs_selector = (uint32_t)(&end_of_desciptor_table[0]) - 
+                         (uint32_t)evmm_descriptor_table;
+    evmm64_ds_selector = (uint32_t)(&end_of_desciptor_table[2]) - 
+                         (uint32_t)evmm_descriptor_table;
 
     // set 64 bit
     gdtr_64.base= (uint32_t) evmm_descriptor_table;
-    gdtr_64.limit = gdtr_32.limit + 
-        (uint32_t)(&end_of_desciptor_table[4])-(uint32_t)(&end_of_desciptor_table[0]);
+    gdtr_64.limit = gdtr_32.limit + (uint32_t)(&end_of_desciptor_table[4])-
+                    (uint32_t)(&end_of_desciptor_table[0]);
 
     // load gdtr
     ia32_write_gdtr(&gdtr_64);
@@ -514,7 +519,6 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // at this point we are in 32-bit compatibility mode
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.
-
         // mode switch
         "ljmp   $16, $1f\n"
 
@@ -668,7 +672,7 @@ void PrintMbi(const multiboot_info_t *mbi)
               );
     }
 }
-#endif // JLMDEBUG
+#endif
 
 
 module_t *get_module(const multiboot_info_t *mbi, unsigned int i)
@@ -755,12 +759,9 @@ VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
 VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
 
 // state of primary linux guest on startup
-VMM_GUEST_CPU_STARTUP_STATE             guest_processor_state[MAXPROCESSORS];
-
-static VMM_STARTUP_STRUCT               startup_struct;
-static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
-
-static VMM_INPUT_PARAMS                 input_params;
+VMM_GUEST_CPU_STARTUP_STATE      guest_processor_state[MAXPROCESSORS];
+VMM_STARTUP_STRUCT               startup_struct;
+VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 
 #define UUID 0x0
 
@@ -825,21 +826,24 @@ int linux_setup(void)
 {
     uint32_t i;
 
-    //stack grows down
+    // stack grows down, BSP only
     linux_esp_register= linux_stack_base+PAGE_SIZE;
 
     linux_gdt_desc.length = (uint16_t)sizeof(gdt_table)-1;
     linux_gdt_desc.table = (uint32_t)&gdt_table;
 
-    // Base processor
-    guest_processor_state[0].size_of_this_struct = sizeof(VMM_GUEST_CPU_STARTUP_STATE);
-    guest_processor_state[0].version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
+    // base processor
+    guest_processor_state[0].size_of_this_struct = 
+                        sizeof(VMM_GUEST_CPU_STARTUP_STATE);
+    guest_processor_state[0].version_of_this_struct = 
+                        VMM_GUEST_CPU_STARTUP_STATE_VERSION;
     guest_processor_state[0].reserved_1 = 0;
 
-    // Zero out all the registers.  Then set the ones that linux expects.
+    // zero out all the registers.  Then set the ones that linux expects.
     for (i = 0; i < IA32_REG_GP_COUNT; i++) {
         guest_processor_state[0].gp.reg[i] = (uint64_t) 0;
     }
+
     guest_processor_state[0].gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
     guest_processor_state[0].gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
     guest_processor_state[0].gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
@@ -1372,7 +1376,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     // linux state was prepared by linux_setup
     evmm_g0.cpu_states_array = (uint32_t)guest_processor_state;
 
-    //     This pointer makes sense only if the devices_count > 0
+    // This pointer makes sense only if the devices_count > 0
     evmm_g0.devices_array = 0;
 
     // Startup struct initialization
@@ -1395,9 +1399,9 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     p_startup_struct->num_excluded_regions= 4;
     // remove evmm from ept
     (p_startup_struct->vmm_memory_layout[0]).image_size = 
-                        (evmm_end - evmm_start);
-    (p_startup_struct->vmm_memory_layout[0]).total_size = UVMM_DEFAULT_HEAP+
-                        (p_startup_struct->vmm_memory_layout[0]).image_size;
+                        evmm_image_size;
+    (p_startup_struct->vmm_memory_layout[0]).total_size = 
+                        evmm_total_size;
     (p_startup_struct->vmm_memory_layout[0]).base_address = 
                         evmm_start_address;
     (p_startup_struct->vmm_memory_layout[0]).entry_point =  
@@ -1574,11 +1578,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tcpuid\n"
         "\tmovl    %%ebx, %[info]\n"
     : [info] "=m" (info)
-    : 
-    : "%eax", "%ebx", "%ecx", "%edx");
+    : : "%eax", "%ebx", "%ecx", "%edx");
     // NOTE: changed shift from 16 to 18 to get the right answer
     evmm_num_of_aps = ((info>>18)&0xff)-1;
-    if (evmm_num_of_aps < 0)
+    if(evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
 #ifdef JLMDEBUG
@@ -1615,10 +1618,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     }
 
     uint32_t evmm_start_load_segment= 0;
-    uint32_t evmm_load_segment_size= 0;
-
     evmm_start_load_segment= evmm_start+((uint32_t)prog_header->p_offset);
-    evmm_load_segment_size= (uint32_t) prog_header->p_memsz;
+    evmm_image_size= (uint32_t) prog_header->p_memsz;
+    evmm_total_size= evmm_image_size+UVMM_DEFAULT_HEAP;         
 
     if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
         bprint("evmm load address is not default: 0x%08x, actual: 0x%08x\n",
@@ -1628,9 +1630,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 
     vmm_memcpy((void *)evmm_start_address, 
                (const void*) evmm_start_load_segment,
-               (uint32_t) (prog_header->p_filesz));
-    vmm_memset((void *)(evmm_start_load_segment+(uint32_t)(prog_header->p_filesz)),
-               0, (uint32_t)(prog_header->p_memsz-prog_header->p_filesz));
+               evmm_image_size);
+    vmm_memset((void *)(evmm_start_load_segment+evmm_image_size),
+               0, evmm_total_size-evmm_image_size);
 
     // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
@@ -1644,8 +1646,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             evmm_heap_base, evmm_heap_size);
     bprint("\trelocated evmm_start_address: 0x%08x\nvmm_main_entry_point: 0x%08x\n", 
             evmm_start_address, vmm_main_entry_point);
-    bprint("\tprogram header load address: 0x%08x, load segment size: 0x%08x\n",
-            (uint32_t)(prog_header->p_vaddr), evmm_load_segment_size);
+    bprint("\tprogram header load address: 0x%08x, image size: 0x%08x, total size: 0x%08x\n",
+            (uint32_t)(prog_header->p_vaddr), evmm_image_size, evmm_total_size);
 #endif
 
     // setup our e820 table (20 byte format)
@@ -1689,11 +1691,13 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     } 
 
     // reserve evmm area
-    // CHECK: I don't think this is necessary---evmm should do this
+#if 0
+    // need to include additional heap too
     if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+evmm_load_segment_size))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
+#endif
 
 #ifdef JLMDEBUG1
     bprint("%d e820 entries after new reservations\n", g_nr_map);
@@ -1872,7 +1876,8 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tud2\n"
     :: [vmm_main_entry_point] "m" (vmm_main_entry_point), 
        [evmm_bsp_stack] "m" (evmm_bsp_stack), [evmm64_cr3] "m" (evmm64_cr3),
-       [evmm64_cs_selector] "m" (evmm64_cs_selector), [evmm_reserved] "m" (evmm_reserved),
+       [evmm64_cs_selector] "m" (evmm64_cs_selector), 
+       [evmm_reserved] "m" (evmm_reserved), 
        [evmm_p_a0] "m" (evmm_p_a0), [p_startup_struct] "m" (p_startup_struct),
        [local_apic_id] "m" (local_apic_id)
     :);

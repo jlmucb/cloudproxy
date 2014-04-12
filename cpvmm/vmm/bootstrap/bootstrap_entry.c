@@ -882,6 +882,9 @@ int linux_setup(void)
 
     // FIX(JLM): APs
     // AP's are in real mode waiting for sipi (halt state)
+    // Perhaps if we set the VMCS GUEST ACTIVITY STATE in the VMCS Guest State Area
+    // to "halted" it will be OK.
+
     int k;
     for(k=1; k<=evmm_num_of_aps; k++) {
         guest_processor_state[k].size_of_this_struct = 

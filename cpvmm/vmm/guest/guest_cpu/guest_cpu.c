@@ -6,7 +6,6 @@
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -411,7 +410,7 @@ BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
 
 // Initialize guest CPU
 // Should be called only if initial GCPU state is not Wait-For-Sipi
-void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
+void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
                       const VMM_GUEST_CPU_STARTUP_STATE* initial_state )
 {
     UINT32 idx;

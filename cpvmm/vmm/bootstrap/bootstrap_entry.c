@@ -822,6 +822,12 @@ int allocate_linux_data()
 }
 
 
+#ifndef  Ia32VmxVmcsGuestSleepStateWaitForSipi
+// defined in vmx_vmcs.h
+#define  Ia32VmxVmcsGuestSleepStateWaitForSipi 3
+#endif
+
+
 int linux_setup(void)
 {
     uint32_t i;

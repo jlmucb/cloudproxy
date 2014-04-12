@@ -65,8 +65,6 @@ static void ipc_cli_register(void);
 static INT32                   debug_not_resend = 0;
 
 
-// ***************************** Local Utilities ***********************************************
-
 static UINT32 ipc_get_max_pending_messages(UINT32 number_of_host_processors)
 {
     // the max ipc message queue length for each processor.

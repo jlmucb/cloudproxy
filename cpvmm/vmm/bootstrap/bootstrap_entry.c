@@ -880,7 +880,59 @@ int linux_setup(void)
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
 
-    //FIX(JLM): Do the APs
+    // FIX(JLM): APsa
+    // AP's are in real mode waiting for sipi
+    int k;
+    for(k=1; k<=evmm_num_of_aps; k++) {
+        guest_processor_state[k].size_of_this_struct = 
+                        sizeof(VMM_GUEST_CPU_STARTUP_STATE);
+        guest_processor_state[k].version_of_this_struct = 
+                        VMM_GUEST_CPU_STARTUP_STATE_VERSION;
+        guest_processor_state[k].reserved_1 = 0;
+
+        // zero out all the registers.  Then set the ones that linux expects.
+        for (i = 0; i < IA32_REG_GP_COUNT; i++) {
+            guest_processor_state[k].gp.reg[i] = (uint64_t) 0;
+        }
+
+        guest_processor_state[k].gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
+        guest_processor_state[k].gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
+        guest_processor_state[k].gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
+        for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
+            guest_processor_state[0].xmm.reg[i].uint64[0] = (uint64_t)0;
+            guest_processor_state[0].xmm.reg[i].uint64[1] = (uint64_t)0;
+        }
+        guest_processor_state[k].msr.msr_debugctl = 0;
+        guest_processor_state[k].msr.msr_efer = 0;
+        guest_processor_state[k].msr.msr_pat = 0;
+        guest_processor_state[k].msr.msr_sysenter_esp = 0;
+        guest_processor_state[k].msr.msr_sysenter_eip = 0;
+        guest_processor_state[k].msr.pending_exceptions = 0;
+        guest_processor_state[k].msr.msr_sysenter_cs = 0;
+        guest_processor_state[k].msr.interruptibility_state = 0;
+        guest_processor_state[k].msr.activity_state = 0;
+        guest_processor_state[k].msr.smbase = 0;
+        for (i = 0; i < IA32_CTRL_COUNT; i++) {
+            guest_processor_state[k].control.cr[i] = 0;
+        }
+        guest_processor_state[k].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
+        guest_processor_state[k].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
+                                     sizeof(gdt_table) -1;
+        // FIX(JLM)
+        guest_processor_state[k].control.cr[IA32_CTRL_CR0]= 0x33;
+        guest_processor_state[k].control.cr[IA32_CTRL_CR3] = 0x0; 
+        guest_processor_state[k].control.cr[IA32_CTRL_CR4]= 0x4240;
+
+        for (i = 0; i < IA32_SEG_COUNT; i++) {
+            guest_processor_state[k].seg.segment[i].base = 0;
+            guest_processor_state[k].seg.segment[i].limit = 0;
+        }
+    
+        guest_processor_state[k].seg.segment[IA32_SEG_CS].base = 
+                (uint64_t) LINUX_BOOT_CS;
+        guest_processor_state[k].seg.segment[IA32_SEG_DS].base = 
+                (uint64_t) LINUX_BOOT_DS;
+    }
 
     return 0;
 }

@@ -1,18 +1,17 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _GUEST_CPU_INTERNAL_H
 #define _GUEST_CPU_INTERNAL_H
@@ -28,23 +27,12 @@
 #include "flat_page_tables.h"
 
 
-//******************************************************************************
-//
 // Guest CPU
-//
 // Guest CPU may be in 2 different modes:
 //    16 mode - run under emulator
 //    any other mode - run native
-//
-//******************************************************************************
 
-// -------------------------- types -----------------------------------------
-
-//*****************************************************************************
-//
 // Defines save area for guest registers, not saved in VMCS
-//
-//*****************************************************************************
 //
 // Data structure to access IA-32 General Purpose Registers referenced by VM Exit Handlers
 // This is also the structure used to save/restore general purpose registers in assembly code

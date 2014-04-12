@@ -67,6 +67,7 @@ extern uint32_t _start_bootstrap, _end_bootstrap;
 #define LINUX_DEFAULT_LOAD_ADDRESS 0x100000
 #define EVMM_HEAP_SIZE 0x100000
 #define EVMM_HEAP_BASE (EVMM_DEFAULT_START_ADDR- EVMM_HEAP_SIZE)
+#define UVMM_DEFAULT_HEAP 75000000
 
 
 //      Memory layout on start32_evmm entry
@@ -754,12 +755,11 @@ static VMM_INPUT_PARAMS                 input_params;
 static VMM_INPUT_PARAMS*                pointer_to_input_params= &input_params;
 
 VMM_GUEST_STARTUP                       evmm_g0;
-VMM_MEMORY_LAYOUT *                     evmm_vmem= NULL;
 VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
 VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
 
 // state of primary linux guest on startup
-VMM_GUEST_CPU_STARTUP_STATE             linux_state;
+VMM_GUEST_CPU_STARTUP_STATE             guest_processor_state[MAXPROCESSORS];
 
 static VMM_STARTUP_STRUCT               startup_struct;
 static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
@@ -832,49 +832,54 @@ int linux_setup(void)
 
     linux_gdt_desc.length = (uint16_t)sizeof(gdt_table)-1;
     linux_gdt_desc.table = (uint32_t)&gdt_table;
-    linux_state.size_of_this_struct = sizeof(linux_state);
-    linux_state.version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
-    linux_state.reserved_1 = 0;
+
+    // Base processor
+    guest_processor_state[0].size_of_this_struct = sizeof(VMM_GUEST_CPU_STARTUP_STATE);
+    guest_processor_state[0].version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
+    guest_processor_state[0].reserved_1 = 0;
 
     // Zero out all the registers.  Then set the ones that linux expects.
     for (i = 0; i < IA32_REG_GP_COUNT; i++) {
-        linux_state.gp.reg[i] = (uint64_t) 0;
+        guest_processor_state[0].gp.reg[i] = (uint64_t) 0;
     }
-    linux_state.gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
-    linux_state.gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
-    linux_state.gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
+    guest_processor_state[0].gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
+    guest_processor_state[0].gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
+    guest_processor_state[0].gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
     for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
-        linux_state.xmm.reg[i].uint64[0] = (uint64_t)0;
-        linux_state.xmm.reg[i].uint64[1] = (uint64_t)0;
+        guest_processor_state[0].xmm.reg[i].uint64[0] = (uint64_t)0;
+        guest_processor_state[0].xmm.reg[i].uint64[1] = (uint64_t)0;
     }
-    linux_state.msr.msr_debugctl = 0;
-    linux_state.msr.msr_efer = 0;
-    linux_state.msr.msr_pat = 0;
-    linux_state.msr.msr_sysenter_esp = 0;
-    linux_state.msr.msr_sysenter_eip = 0;
-    linux_state.msr.pending_exceptions = 0;
-    linux_state.msr.msr_sysenter_cs = 0;
-    linux_state.msr.interruptibility_state = 0;
-    linux_state.msr.activity_state = 0;
-    linux_state.msr.smbase = 0;
+    guest_processor_state[0].msr.msr_debugctl = 0;
+    guest_processor_state[0].msr.msr_efer = 0;
+    guest_processor_state[0].msr.msr_pat = 0;
+    guest_processor_state[0].msr.msr_sysenter_esp = 0;
+    guest_processor_state[0].msr.msr_sysenter_eip = 0;
+    guest_processor_state[0].msr.pending_exceptions = 0;
+    guest_processor_state[0].msr.msr_sysenter_cs = 0;
+    guest_processor_state[0].msr.interruptibility_state = 0;
+    guest_processor_state[0].msr.activity_state = 0;
+    guest_processor_state[0].msr.smbase = 0;
     for (i = 0; i < IA32_CTRL_COUNT; i++) {
-        linux_state.control.cr[i] = 0;
+        guest_processor_state[0].control.cr[i] = 0;
     }
-    linux_state.control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
-    linux_state.control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
                                      sizeof(gdt_table) -1;
-    linux_state.control.cr[IA32_CTRL_CR0]= 0x33;
-    //NOTE:Paging is disabled, so cr3 is irrelevant
-    linux_state.control.cr[IA32_CTRL_CR3] = 0x0; 
-    linux_state.control.cr[IA32_CTRL_CR4]= 0x4240;
+    guest_processor_state[0].control.cr[IA32_CTRL_CR0]= 0x33;
+
+    guest_processor_state[0].control.cr[IA32_CTRL_CR3] = 0x0; 
+    guest_processor_state[0].control.cr[IA32_CTRL_CR4]= 0x4240;
 
     for (i = 0; i < IA32_SEG_COUNT; i++) {
-        linux_state.seg.segment[i].base = 0;
-        linux_state.seg.segment[i].limit = 0;
+        guest_processor_state[0].seg.segment[i].base = 0;
+        guest_processor_state[0].seg.segment[i].limit = 0;
     }
-    //CHECK: got base address from tboot
-    linux_state.seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
-    linux_state.seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
+    
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
+
+    //FIX(JLM): Do the APs
+
     return 0;
 }
 
@@ -1359,7 +1364,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     BIT_SET(evmm_g0.flags, GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG);
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;
-    evmm_g0.cpu_states_count = 1;   // ANSWER: this should total # of procs including BSP
+    evmm_g0.cpu_states_count = 1+evmm_num_of_aps;
     evmm_g0.devices_count = 0;
     evmm_g0.image_size = linux_end - linux_start;
     evmm_g0.image_address= linux_start_address;
@@ -1367,15 +1372,16 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.physical_memory_size = 0; 
 
     // linux state was prepared by linux_setup
-    evmm_g0.cpu_states_array = (uint32_t)&linux_state;
+    // WRONG!
+    evmm_g0.cpu_states_array = (uint32_t)guest_processor_state;
 
     //     This pointer makes sense only if the devices_count > 0
     evmm_g0.devices_array = 0;
 
     // Startup struct initialization
     p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
-    p_startup_struct->number_of_processors_at_install_time = 1;     // only BSP for now
-    p_startup_struct->number_of_processors_at_boot_time = 1;        // only BSP for now
+    p_startup_struct->number_of_processors_at_install_time = 1+evmm_num_of_aps;
+    p_startup_struct->number_of_processors_at_boot_time = 1+evmm_num_of_aps;
     p_startup_struct->number_of_secondary_guests = 0; 
     p_startup_struct->size_of_vmm_stack = UVMM_DEFAULT_STACK_SIZE_PAGES; 
     p_startup_struct->unsupported_vendor_id = 0; 
@@ -1385,26 +1391,47 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     p_startup_struct->default_device_owner= UUID;
     p_startup_struct->acpi_owner= UUID; 
     p_startup_struct->nmi_owner= UUID; 
-    p_startup_struct->primary_guest_startup_state = (uint64_t)(uint32_t)&evmm_g0;
+    p_startup_struct->primary_guest_startup_state = 
+                                (uint64_t)(uint32_t)&evmm_g0;
 
-    // FIX: I think the memory layout is not needed for the primary
-    evmm_vmem = (VMM_MEMORY_LAYOUT *) evmm_page_alloc(1);
-    (p_startup_struct->vmm_memory_layout[0]).total_size = (evmm_end - evmm_start) + 
-            evmm_heap_size + p_startup_struct->size_of_vmm_stack;
-    (p_startup_struct->vmm_memory_layout[0]).image_size = (evmm_end - evmm_start);
-    (p_startup_struct->vmm_memory_layout[0]).base_address = evmm_start_address;
-    (p_startup_struct->vmm_memory_layout[0]).entry_point =  vmm_main_entry_point;
-#if 0
-    (p_startup_struct->vmm_memory_layout[1]).total_size = (linux_end - linux_start); //+linux's heap and stack size
-    (p_startup_struct->vmm_memory_layout[1]).image_size = (linux_end - linux_start);
-    (p_startup_struct->vmm_memory_layout[1]).base_address = linux_protected_mode_start;
-    // QUESTION (JLM):  Check the line below.  It is only right if linux has a 64 bit elf header
-    (p_startup_struct->vmm_memory_layout[1]).entry_point = linux_protected_mode_start;
-    (p_startup_struct->vmm_memory_layout[2]).total_size = (initram_end - initram_start);
-    (p_startup_struct->vmm_memory_layout[2]).image_size = (initram_end - initram_start);
-    (p_startup_struct->vmm_memory_layout[2]).base_address = initram_start;
-    (p_startup_struct->vmm_memory_layout[2]).entry_point = initram_start+entryOffset(initram_start);
-#endif
+    // excluded regions
+    p_startup_struct->num_excluded_regions= 4;
+    // remove evmm from ept
+    (p_startup_struct->vmm_memory_layout[0]).image_size = 
+                        (evmm_end - evmm_start);
+    (p_startup_struct->vmm_memory_layout[0]).total_size = UVMM_DEFAULT_HEAP+
+                        (p_startup_struct->vmm_memory_layout[0]).image_size;
+    (p_startup_struct->vmm_memory_layout[0]).base_address = 
+                        evmm_start_address;
+    (p_startup_struct->vmm_memory_layout[0]).entry_point =  
+                        vmm_main_entry_point;
+    // remove evmm initial data from ept
+    (p_startup_struct->vmm_memory_layout[1]).image_size = 
+                        evmm_heap_size;
+    (p_startup_struct->vmm_memory_layout[1]).total_size =  
+                        evmm_heap_size;
+    (p_startup_struct->vmm_memory_layout[1]).base_address =  
+                        evmm_heap_base;
+    (p_startup_struct->vmm_memory_layout[1]).entry_point =  
+                        evmm_heap_base;
+    // remove tboot from ept
+    (p_startup_struct->vmm_memory_layout[2]).image_size = 
+                        tboot_end-tboot_start;
+    (p_startup_struct->vmm_memory_layout[2]).total_size =  
+                        tboot_end-tboot_start;
+    (p_startup_struct->vmm_memory_layout[2]).base_address =  
+                        tboot_start;
+    (p_startup_struct->vmm_memory_layout[2]).entry_point =  
+                        tboot_start;
+    // remove bootstrap from ept
+    (p_startup_struct->vmm_memory_layout[3]).image_size = 
+                        bootstrap_end-bootstrap_start;
+    (p_startup_struct->vmm_memory_layout[3]).total_size = 
+                        bootstrap_end-bootstrap_start;
+    (p_startup_struct->vmm_memory_layout[3]).base_address =  
+                        bootstrap_start;
+    (p_startup_struct->vmm_memory_layout[3]).entry_point =  
+                        bootstrap_start;
 
     // set up evmm e820 table
     p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
@@ -1572,10 +1599,9 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         bprint("Too many aps (%d), resetting to %d\n", evmm_num_of_aps, MAXPROCESSORS);
         evmm_num_of_aps = MAXPROCESSORS-1; 
     }
-    if (evmm_num_of_aps > 0) {
-        p_startup_struct->number_of_processors_at_install_time = evmm_num_of_aps;
-        p_startup_struct->number_of_processors_at_boot_time = evmm_num_of_aps;
-    }
+#ifndef MULTIAPS_ENABLED
+    evmm_num_of_aps = 0;
+#endif
 
     init32.i32_low_memory_page = low_mem;
     init32.i32_num_of_aps = evmm_num_of_aps;
@@ -1700,7 +1726,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
 #ifdef JLMDEBUG
     bprint("evmm_bsp_stack: 0x%08x\n", evmm_bsp_stack);
     bprint("%d processors, stacks:\n", 1+evmm_num_of_aps);
-    for(i=0; i<=evmm_num_of_aps;i++) {
+    for(i=0; i<=evmm_num_of_aps; i++) {
         bprint("%08x ", evmm_stack_pointers_array[i]);
     }
     bprint("\n");
@@ -1709,11 +1735,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     // this is used by the wakup code in sipi init
     // CHECK(JLM): maybe this should be  &evmm_stack_pointers_array[1]
     init32.i32_esp= evmm_stack_pointers_array;
-#ifndef MULTIAPS_ENABLED
-    evmm_num_of_aps = 0;  // BSP only for now
-    p_startup_struct->number_of_processors_at_install_time = evmm_num_of_aps;
-    p_startup_struct->number_of_processors_at_boot_time = evmm_num_of_aps;
-#endif
 
     // We need to allocate this before guest setup
     if(allocate_linux_data()!=0) {

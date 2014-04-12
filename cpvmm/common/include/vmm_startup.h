@@ -4,7 +4,6 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -179,7 +178,7 @@ typedef struct _VMM_GUEST_DEVICE
 
 // This structure should be aligned on 8 bytes
 #define VMM_GUEST_STARTUP_ALIGNMENT               8
-
+#define MAXEXCLUDEDREGIONS	32
 typedef struct _VMM_GUEST_STARTUP {
     UINT16                  size_of_this_struct;
     UINT16                  version_of_this_struct;
@@ -402,7 +401,6 @@ typedef struct _VMM_DEBUG_PARAMS
 #define VMM_STARTUP_POST_OS_LAUNCH_MODE           BIT_VALUE(1)
 
 // Images used by uVMM
-
 typedef enum _UVMM_IMAGE_INDEX
 {
     uvmm_image = 0,
@@ -459,7 +457,8 @@ typedef struct _VMM_STARTUP_STRUCT {
     /* 64-bit aligned */
 
     // vmm memory layout
-    VMM_MEMORY_LAYOUT           vmm_memory_layout[uvmm_images_count];
+    UINT64			num_excluded_regions;
+    VMM_MEMORY_LAYOUT           vmm_memory_layout[MAXEXCLUDEDREGIONS];
 
     // pointer to the int 15 E820 BIOS table
     //  INT15_E820_MEMORY_MAP*

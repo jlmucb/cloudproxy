@@ -86,6 +86,7 @@ static void*                    g_any_data_for_user_func = 0;
 
 // 1 in i position means CPU[i] exists
 static uint8_t ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};  
+extern uint32_t evmm_stack_pointers_array[];
 
 
 // Low memory page layout

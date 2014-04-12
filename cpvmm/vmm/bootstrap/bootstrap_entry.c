@@ -880,8 +880,8 @@ int linux_setup(void)
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
 
-    // FIX(JLM): APsa
-    // AP's are in real mode waiting for sipi
+    // FIX(JLM): APs
+    // AP's are in real mode waiting for sipi (halt state)
     int k;
     for(k=1; k<=evmm_num_of_aps; k++) {
         guest_processor_state[k].size_of_this_struct = 

@@ -271,8 +271,7 @@ static void ap_continue_wakeup_code(void)
         // stage 2 - setup the stack, GDT, IDT and jump to "C"
 "2:\n"
         // find my stack. My stack offset is in the array 
-        // g_stacks_arr[LocalApicID-1]
-        // now ap_presence_array[ecx].  edx contains CPU ID
+        // edx contains CPU ID
         "\txorl %%ecx,  %%ecx\n"
         // now ecx contains AP ordered ID [1..Max]
         "\tmovb (%%edx), %%cl\n"
@@ -281,6 +280,7 @@ static void ap_continue_wakeup_code(void)
         "\tdecl %%eax\n"
 
         // point edx to gp_init32_data->i32_esp for this ap
+        // FIX(JLM)
         "\tmovl %[gp_init32_data], %%edx\n"
         "\tleal (%%eax, %%edx, 4), %%eax\n"
         // point edx to gp_init32_data->i32_esp[eax]

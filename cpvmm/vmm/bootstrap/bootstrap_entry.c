@@ -750,10 +750,6 @@ typedef struct VMM_INPUT_PARAMS_S {
     uint64_t guest_params_struct;
 } VMM_INPUT_PARAMS;
 
-
-static VMM_INPUT_PARAMS                 input_params;
-static VMM_INPUT_PARAMS*                pointer_to_input_params= &input_params;
-
 VMM_GUEST_STARTUP                       evmm_g0;
 VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
 VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
@@ -763,6 +759,8 @@ VMM_GUEST_CPU_STARTUP_STATE             guest_processor_state[MAXPROCESSORS];
 
 static VMM_STARTUP_STRUCT               startup_struct;
 static VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
+
+static VMM_INPUT_PARAMS                 input_params;
 
 #define UUID 0x0
 
@@ -1357,7 +1355,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     linux_setup(); 
 
     // Guest state initialization for relocated inage
-    evmm_g0.size_of_this_struct = sizeof(evmm_g0);
+    evmm_g0.size_of_this_struct = sizeof(VMM_GUEST_STARTUP);
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
     evmm_g0.flags = 0;
     BITMAP_SET(evmm_g0.flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
@@ -1372,7 +1370,6 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.physical_memory_size = 0; 
 
     // linux state was prepared by linux_setup
-    // WRONG!
     evmm_g0.cpu_states_array = (uint32_t)guest_processor_state;
 
     //     This pointer makes sense only if the devices_count > 0
@@ -1435,6 +1432,10 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 
     // set up evmm e820 table
     p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
+    if (p_startup_struct->physical_memory_layout_E820 == -1) {
+        bprint("Error getting e820 table\n");
+        return 1;
+    }
 
     // application parameters
     // This structure is not used so the setting is probably OK.
@@ -1448,10 +1449,6 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_a0.dmar_gpa = NULL;
 #endif
 
-    if (p_startup_struct->physical_memory_layout_E820 == -1) {
-        bprint("Error getting e820 table\n");
-        return 1;
-    }
     return 0;
 }
 

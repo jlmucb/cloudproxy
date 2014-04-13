@@ -30,6 +30,9 @@
 // This function should perform init of "memory layout object" and
 // init the primary guest memory layout.
 BOOLEAN init_memory_layout_from_mbr(
+#if 0
+                    int num_excluded,
+#endif
                     const VMM_MEMORY_LAYOUT* vmm_memory_layout,
                     GPM_HANDLE               primary_guest_gpm,
                     BOOLEAN                  are_secondary_guests_exist,

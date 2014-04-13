@@ -46,7 +46,12 @@ extern UINT32 g_is_post_launch;
 //
 // For secondary guests:
 //   - All secondary guests are loaded lower than 4G
-BOOLEAN init_memory_layout_from_mbr(const VMM_MEMORY_LAYOUT* vmm_memory_layout,
+BOOLEAN init_memory_layout_from_mbr(
+#if 0
+                    // JLM(FIX)
+                    int num_excluded
+#endif
+                    const VMM_MEMORY_LAYOUT* vmm_memory_layout,
                     GPM_HANDLE primary_guest_gpm, BOOLEAN are_secondary_guests_exist,
                     const VMM_APPLICATION_PARAMS_STRUCT* application_params)
 {
@@ -141,6 +146,8 @@ BOOLEAN init_memory_layout_from_mbr(const VMM_MEMORY_LAYOUT* vmm_memory_layout,
         }
     }
 
+#if 1
+    // JLM(FIX)
     // now remove the VMM area from the primary guest
     ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[uvmm_image].base_address,
                              vmm_memory_layout[uvmm_image].total_size );
@@ -165,6 +172,13 @@ BOOLEAN init_memory_layout_from_mbr(const VMM_MEMORY_LAYOUT* vmm_memory_layout,
             //VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove heap page base %p 4K size\r\n", (GPA)entry_list[page_index]);
         }
     }
+#else
+    int i;
+    for(i=0; i<num_excluded; i++) {
+        ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[i].base_address,
+                             vmm_memory_layout[i].total_size );
+    }
+#endif
 
     //gpm_print(primary_guest_gpm);
 

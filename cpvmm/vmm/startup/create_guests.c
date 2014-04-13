@@ -181,6 +181,9 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 // Should be called on BSP only while all APs are stopped
 // Return TRUE for success
 BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
+#if 0
+                    int num_excluded,
+#endif
                     const VMM_MEMORY_LAYOUT* vmm_memory_layout,
                     const VMM_GUEST_STARTUP* primary_guest_startup_state,
                     UINT32 number_of_secondary_guests,
@@ -236,8 +239,14 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     primary_guest_startup_gpm = guest_get_startup_gpm(primary_guest);
 
     // init memory layout in the startup gpm
+    // JLM(FIX) change this call
+#if 1
     ok = init_memory_layout(vmm_memory_layout, primary_guest_startup_gpm,
                             number_of_secondary_guests > 0, application_params);
+#else
+    ok = init_memory_layout_from_mbr( num_excluded, vmm_memory_layout, primary_guest_startup_gpm,
+                            number_of_secondary_guests > 0, application_params);
+#endif
 
     // Set active_gpm to startup gpm
     for(gcpu = guest_gcpu_first(primary_guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context)) {

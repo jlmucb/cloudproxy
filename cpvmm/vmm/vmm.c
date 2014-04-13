@@ -604,7 +604,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT((num_of_guests == 1) || (secondary_guests_array != 0));
 
-    if (! initialize_all_guests(num_of_cpus, &(startup_struct->vmm_memory_layout[uvmm_image]),
+    if (! initialize_all_guests(num_of_cpus, 
+#if 0
+                                (int) startup_struct->num_excluded_regions, startup_struct->vmm_memory_layout,
+#else
+                                &(startup_struct->vmm_memory_layout[uvmm_image]),
+#endif
                                 primary_guest_startup, num_of_guests - 1,
                                 secondary_guests_array, application_params_heap)) {
         VMM_LOG(mask_uvmm, level_error,"BSP: Error initializing guests. Halt.\n");

@@ -41,6 +41,8 @@ INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 		-I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
 
+JLMDEBUG= -I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(mainsrc)/bootstrap -D INVMM -D JLMDEBUG
+
 DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
 RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
 CFLAGS=     	$(RELEASE_CFLAGS) 
@@ -132,7 +134,7 @@ UTILOBJ=	$(B)/utils/address.o $(B)/utils/cache64.o \
 		$(B)/utils/event_mgr.o  $(B)/utils/heap.o \
 		$(B)/utils/math_utils.o  $(B)/utils/utils_asm.o
 
-dobjs=      $(BINDIR)/vmm.o
+dobjs=      $(BINDIR)/vmm.o $(BINDIR)/bootstrap_string.o $(BINDIR)/bootstrap_print.o 
 
 all: $(E)/evmm.bin
  
@@ -164,7 +166,15 @@ $(E)/evmm.bin: $(dobjs)
 
 $(BINDIR)/vmm.o: $(mainsrc)/vmm.c
 	echo "vmm.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c 
+	$(CC) $(CFLAGS) $(INCLUDES) $(JLMDEBUG) -c -o $(BINDIR)/vmm.o $(mainsrc)/vmm.c 
+
+$(BINDIR)/bootstrap_string.o: $(mainsrc)/bootstrap/bootstrap_string.c
+	echo "bootstrap_string.o" 
+	$(CC) $(CFLAGS) $(JLMDEBUG) -c -o $(BINDIR)/bootstrap_string.o $(mainsrc)/bootstrap/bootstrap_string.c 
+
+$(BINDIR)/bootstrap_print.o: $(mainsrc)/bootstrap/bootstrap_print.c
+	echo "bootstrap_print.o" 
+	$(CC) $(CFLAGS) $(JLMDEBUG) -c -o $(BINDIR)/bootstrap_print.o $(mainsrc)/bootstrap/bootstrap_print.c 
 
 #  vmm.c
 #  output: evmm.bin,  ENTRY:vmm_main

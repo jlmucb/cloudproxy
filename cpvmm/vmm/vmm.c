@@ -72,6 +72,10 @@
 #define __builtin_stdarg_start(a,b)
 #define __builtin_va_arg(a,p) 0
 
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 BOOLEAN vmcs_sw_shadow_disable[VMM_MAX_CPU_SUPPORTED];
 
@@ -218,7 +222,17 @@ void vmm_main_continue(VMM_INPUT_PARAMS* vmm_input_params)
 void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
               UINT64 application_params_struct_u, UINT64 reserved UNUSED)
 {
-    const VMM_STARTUP_STRUCT* startup_struct = (const VMM_STARTUP_STRUCT*)startup_struct_u;
+#ifdef JLMDEBUG
+    bootstrap_partial_reset();
+     bprint("***********************\n");
+    bprint("vmm_main in 64 bit mode\n");
+    bprint("local_apic_id %d, startup_struct_u %016lx\n", local_apic_id, startup_struct_u);
+    bprint("application_params_struct_u %016lx, reserved  %016lx\n",
+            application_params_struct_u, reserved);
+    LOOP_FOREVER
+#endif
+    const VMM_STARTUP_STRUCT* startup_struct = 
+                (const VMM_STARTUP_STRUCT*)startup_struct_u;
     HVA                       new_stack_pointer = 0;
     VMM_INPUT_PARAMS          input_params;
     CPU_ID                    cpu_id = (CPU_ID)local_apic_id;

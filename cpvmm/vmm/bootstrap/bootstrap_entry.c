@@ -532,7 +532,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // in 64 bit this is actually pop rcx (arg4)
         "\tpop %%ecx\n"
 
-        "\tjmp %%ebx\n"
+        "\tjmp *%%ebx\n"
         "\tud2\n"
         :
         : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
@@ -1564,7 +1564,7 @@ uint64_t OriginalEntryAddress(uint32_t base)
 
 // main
 //     tboot jumps in here
-int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
+int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry) 
 {
     int         i;
     module_t*   m;
@@ -1576,6 +1576,10 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
             (uint32_t)mbi, initial_entry, magic);
 #endif
 
+    // print out the registers
+    // set mbi to 0x10000
+    bprint("shared_page = %p\n", shared_page);
+    mbi = (multiboot_info_t*)0x10000;
     // tboot start/end, this is the only data from the shared
     // page we use
     tboot_start= shared_page->tboot_base;
@@ -1868,7 +1872,6 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
 #endif
-
     if (evmm_num_of_aps > 0) {
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }
@@ -1885,7 +1888,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         "\tmovl %%eax, %%cr3 \n"
 
         // evmm_initial_stack points to the start of the stack
-        "movl   %[evmm_bsp_stack], %%esp\n"
+        "\tmovl   %[evmm_bsp_stack], %%esp\n"
         "\tandl  $0xfffffff8, %%esp\n"
 
         // prepare arguments for 64-bit mode
@@ -1933,7 +1936,7 @@ int start32_evmm(uint32_t magic, uint32_t initial_entry, multiboot_info_t* mbi)
         // in 64 bit this is actually pop rcx (reserved)
         "\tpop %%ecx\n"
 
-        "\tjmp %%ebx\n"
+        "\tjmp *%%ebx\n"
         "\tud2\n"
     :: [vmm_main_entry_point] "m" (vmm_main_entry_point), 
        [evmm_bsp_stack] "m" (evmm_bsp_stack), [evmm64_cr3] "m" (evmm64_cr3),

@@ -375,13 +375,15 @@ void hw_write_cr2 (UINT64 value) {
 //  Read TR and calculate cpu_id
 //  ax register will contain result
 //  IMPORTANT NOTE: only RAX regsiter may be used here !!!!
-//                  This assumption is used in gcpu_regs_save_restore.asm
+//  This assumption is used in gcpu_regs_save_restore.asm
 #define CPU_LOCATOR_GDT_ENTRY_OFFSET 32
 #define TSS_ENTRY_SIZE_SHIFT 4
 
 UINT16 hw_cpu_id () {
     UINT16 ret = 0;
 
+    //JLM(FIX)
+#if 0
     asm volatile(
         "\txor %%rax, %%rax\n"
         "\tstr %%ax\n"
@@ -390,6 +392,7 @@ UINT16 hw_cpu_id () {
         "\tmovw %%ax, %[ret]\n"
     :[ret] "=g" (ret)
     : :"%rax");
+#endif
     return ret;
 }
 

@@ -433,7 +433,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 9\n");
-    // LOOP_FOREVER  //reached here
 #endif
 
     // BEFORE_VMLAUNCH. Redundant check as above if condition already ensures
@@ -447,8 +446,17 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // Initialize Heap
     heap_address = lowest_stacks_addr + stacks_size;
-    heap_size = (UINT32)((startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size) - heap_address);
+    heap_size = (UINT32)
+                ((startup_struct->vmm_memory_layout[0].base_address + 
+                startup_struct->vmm_memory_layout[0].total_size) - heap_address);
     heap_last_occupied_address = vmm_heap_initialize(heap_address, heap_size);
+#ifdef JLMDEBUG
+    bprint("stack initialized %d\n", vmm_stack_is_initialized());
+    bprint("heap_address, heap_size, heap_last_occupied_address: 0x%016lx, %ld, 0x%016lx\n", 
+           heap_address, heap_size, heap_last_occupied_address);
+    bprint("heap assert %d\n", 
+           heap_last_occupied_address <= (startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
+#endif
 
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully initialized: \n");
     VMM_LOG(mask_uvmm, level_trace,"\theap base address = %P \n", heap_address);
@@ -462,7 +470,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 10\n");
-    LOOP_FOREVER  //reached here
 #endif
     
     //  Initialize CLI monitor
@@ -478,7 +485,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 12\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER  //reached here
 #endif
 
 #ifdef DEBUG
@@ -488,6 +495,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         "Print overall memory layout", "",
         CLI_ACCESS_LEVEL_USER);
 #endif
+    bprint("DEBUG is not defined\n");
+    LOOP_FOREVER
     VMM_LOG(mask_uvmm, level_trace,"BSP: Original VMM_STARTUP_STRUCT dump\n");
     VMM_DEBUG_CODE(
         print_startup_struct( startup_struct );
@@ -504,6 +513,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 13\n");
+    LOOP_FOREVER
 #endif
 
 
@@ -551,6 +561,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 18\n");
+    LOOP_FOREVER
 #endif
 
     // Store information about e820

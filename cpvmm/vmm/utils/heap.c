@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -66,26 +64,24 @@ HEAP_PAGE_INT vmm_heap_get_total_pages(void)
     return heap_total_pages;
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_heap_get_max_used_pages()
-*  PURPOSE  : Returns the max amount of uVmm heap pages used
-*             from post-launch vmm
-*  ARGUMENTS:
-*  RETURNS  : HEAP max heap used in pages
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_heap_get_max_used_pages()
+// PURPOSE  : Returns the max amount of uVmm heap pages used
+//            from post-launch vmm
+// ARGUMENTS:
+// RETURNS  : HEAP max heap used in pages
 HEAP_PAGE_INT vmm_heap_get_max_used_pages(void)
 {
     return max_used_pages;
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_heap_initialize()
-*  PURPOSE  : Partition memory for memory allocation / free services.
-*           : Calculate actual number of pages.
-*  ARGUMENTS: IN ADDRESS heap_buffer_address - address at which the heap is located
-*           : IN size_t    heap_buffer_size - in bytes
-*  RETURNS  : Last occupied address
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_heap_initialize()
+// PURPOSE  : Partition memory for memory allocation / free services.
+//          : Calculate actual number of pages.
+// ARGUMENTS: IN ADDRESS heap_buffer_address - address at which the heap is located
+//          : IN size_t    heap_buffer_size - in bytes
+// RETURNS  : Last occupied address
 ADDRESS vmm_heap_initialize(
     IN ADDRESS heap_buffer_address,
     IN size_t  heap_buffer_size)
@@ -93,8 +89,6 @@ ADDRESS vmm_heap_initialize(
     ADDRESS unaligned_heap_base;
     HEAP_PAGE_INT number_of_pages;
     HEAP_PAGE_INT i;
-
-    //VMM_LOG(mask_anonymous, level_trace,"HEAP INIT: heap_buffer_address = %P heap_buffer_size = %d\n", heap_buffer_address, heap_buffer_size);
 
     // to be on the safe side
     heap_buffer_address = ALIGN_FORWARD(heap_buffer_address, sizeof(ADDRESS));
@@ -104,8 +98,6 @@ ADDRESS vmm_heap_initialize(
 
     // heap descriptors placed at the beginning
     heap_array = (HEAP_PAGE_DESCRIPTOR *) heap_buffer_address;
-
-    //VMM_LOG(mask_anonymous, level_trace,"HEAP INIT: heap_array is at %P\n", heap_array);
 
     // calculate how many unaligned pages we can support
     number_of_pages = (HEAP_PAGE_INT) ((heap_buffer_size + (g_heap_pa_num * PAGE_4KB_SIZE))
@@ -145,14 +137,13 @@ ADDRESS vmm_heap_initialize(
 
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_heap_extend()
-*  PURPOSE  : Extend the heap to an additional memory block 
-*                       : update actual number of pages.
-*  ARGUMENTS:IN ADDRESS ex_heap_base_address - address at which the heap is located
-*           : size_t    ex_heap_size - in bytes
-*  RETURNS  : Last occupied address
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_heap_extend()
+// PURPOSE  : Extend the heap to an additional memory block 
+//                      : update actual number of pages.
+// ARGUMENTS:IN ADDRESS ex_heap_base_address - address at which the heap is located
+//          : size_t    ex_heap_size - in bytes
+// RETURNS  : Last occupied address
 ADDRESS vmm_heap_extend( IN ADDRESS ex_heap_buffer_address,
     IN size_t  ex_heap_buffer_size)
 {
@@ -172,10 +163,9 @@ ADDRESS vmm_heap_extend( IN ADDRESS ex_heap_buffer_address,
     // BEFORE_VMLAUNCH
     VMM_ASSERT(!CHECK_ADDRESS_IN_RANGE(heap_array, ex_heap_buffer_address, ex_heap_buffer_size));
 
-
-    //VMM_DEBUG_CODE(vmm_heap_show());
     ex_heap_base = ALIGN_FORWARD(ex_heap_buffer_address, sizeof(ADDRESS));
-     // record total size of whole heap area
+
+    // record total size of whole heap area
     heap_total_size += (UINT32)ALIGN_FORWARD(ex_heap_buffer_size, PAGE_4KB_SIZE);
 
     heap_buffer_size = ex_heap_buffer_size - (ex_heap_base - ex_heap_buffer_address);
@@ -198,7 +188,6 @@ ADDRESS vmm_heap_extend( IN ADDRESS ex_heap_buffer_address,
     }
     
     lock_release(&heap_lock);
-
     return ex_heap_base + (ex_heap_pages * PAGE_4KB_SIZE);
 
 }
@@ -238,8 +227,6 @@ static void * page_alloc_unprotected(
             heap_array[i].file_name = file_name;
             heap_array[i].line_number = line_number;
 #endif
-            //VMM_LOG(mask_anonymous, level_trace,"HEAP: Successfully allocated %d pages at %P\n", number_of_pages, p_buffer);
-            //VMM_LOG(mask_anonymous, level_trace,"HEAP page_alloc_unprotected: i=%d, heap_array[i].in_use=%d heap_array[i].number_of_pages=%d\n", i, heap_array[i].in_use, heap_array[i].number_of_pages);
             // mark next number_of_pages-1 pages as in_use
             for (i = allocated_page_no + 1; i < (allocated_page_no + number_of_pages); ++i) {
                 heap_array[i].in_use = 1;
@@ -248,9 +235,6 @@ static void * page_alloc_unprotected(
            
             if (max_used_pages < (allocated_page_no + number_of_pages))  
                 max_used_pages = allocated_page_no + number_of_pages;
-            //VMM_LOG(mask_anonymous, level_trace,"HEAP next free: i=%d, heap_array[i].in_use=%d heap_array[i].number_of_pages=%d\n", i, heap_array[i].in_use, heap_array[i].number_of_pages);
-
-            //VMM_DEBUG_CODE(vmm_heap_show());
             break;    // leave the outer loop
         }
     }
@@ -265,12 +249,10 @@ static void * page_alloc_unprotected(
 }
 
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_page_allocate()
-*  PURPOSE  : Allocates contiguous buffer of given size, and fill it with zeroes
-*  ARGUMENTS: IN HEAP_PAGE_INT number_of_pages - size of the buffer in 4K pages
-*  RETURNS  : void*  address of allocted buffer if OK, NULL if failed
-*-------------------------------------------------------*/
+// FUNCTION : vmm_page_allocate()
+// PURPOSE  : Allocates contiguous buffer of given size, and fill it with zeroes
+// ARGUMENTS: IN HEAP_PAGE_INT number_of_pages - size of the buffer in 4K pages
+// RETURNS  : void*  address of allocted buffer if OK, NULL if failed
 void* vmm_page_allocate(
 #ifdef DEBUG
     char    *file_name,
@@ -288,18 +270,15 @@ void* vmm_page_allocate(
 #endif
                                     number_of_pages);
     lock_release(&heap_lock);
-
     return p_buffer;
 }
 
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_page_allocate_scattered()
-*  PURPOSE  : Fills given array with addresses of allocated 4K pages
-*  ARGUMENTS: IN HEAP_PAGE_INT number_of_pages - number of 4K pages
-*           : OUT void * p_page_array[] - contains the addresses of allocated pages
-*  RETURNS  : number of successfully allocated pages
-*-------------------------------------------------------*/
+// FUNCTION : vmm_page_allocate_scattered()
+// PURPOSE  : Fills given array with addresses of allocated 4K pages
+// ARGUMENTS: IN HEAP_PAGE_INT number_of_pages - number of 4K pages
+//          : OUT void * p_page_array[] - contains the addresses of allocated pages
+// RETURNS  : number of successfully allocated pages
 HEAP_PAGE_INT vmm_page_allocate_scattered(
 #ifdef DEBUG
     char    *file_name,
@@ -350,12 +329,11 @@ static void vmm_mark_pages_free(
     }
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_page_free()
-*  PURPOSE  : Release previously allocated buffer
-*  ARGUMENTS: IN void *p_buffer - buffer to be released
-*  RETURNS  : void
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_page_free()
+// PURPOSE  : Release previously allocated buffer
+// ARGUMENTS: IN void *p_buffer - buffer to be released
+// RETURNS  : void
 void vmm_page_free(IN void *p_buffer)
 {
     HEAP_PAGE_INT release_from_page_id;    // first page to release
@@ -401,7 +379,6 @@ void vmm_page_free(IN void *p_buffer)
         pages_to_release += heap_array[release_to_page_id].number_of_pages;
     }
 
-
     // move backward, to grab all free pages, trying to prevent fragmentation
     while (release_from_page_id > 0  &&
            0 == heap_array[release_from_page_id - 1].in_use &&
@@ -413,17 +390,14 @@ void vmm_page_free(IN void *p_buffer)
 
     vmm_mark_pages_free(release_from_page_id, release_to_page_id, pages_to_release);
 
-
     lock_release(&heap_lock);
     TMSL_PROFILING_MEMORY_FREE((UINT64)p_buffer, PROF_MEM_CONTEXT_TMSL);
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_page_buff_size()
-*  PURPOSE  : Identify number of pages in previously allocated buffer
-*  ARGUMENTS: IN void *p_buffer - the buffer
-*  RETURNS  : UINT32 - Num pages this buffer is using
-*-------------------------------------------------------*/
+// FUNCTION : vmm_page_buff_size()
+// PURPOSE  : Identify number of pages in previously allocated buffer
+// ARGUMENTS: IN void *p_buffer - the buffer
+// RETURNS  : UINT32 - Num pages this buffer is using
 UINT32 vmm_page_buff_size(IN void *p_buffer)
 {
     HEAP_PAGE_INT release_from_page_id;    // first page to release
@@ -455,12 +429,11 @@ UINT32 vmm_page_buff_size(IN void *p_buffer)
     return num_pages;
 }
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_memory_allocate()
-*  PURPOSE  : Allocates contiguous buffer of given size, filled with zeroes
-*  ARGUMENTS: IN UINT32 size - size of the buffer in bytes
-*  RETURNS  : void*  address of allocted buffer if OK, NULL if failed
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_memory_allocate()
+// PURPOSE  : Allocates contiguous buffer of given size, filled with zeroes
+// ARGUMENTS: IN UINT32 size - size of the buffer in bytes
+// RETURNS  : void*  address of allocted buffer if OK, NULL if failed
 void* vmm_memory_allocate(
 #ifdef DEBUG
     char    *file_name,
@@ -485,7 +458,6 @@ void* vmm_memory_allocate(
     if (NULL != p_buffer) {
         vmm_memset(p_buffer, 0, size);
     }
-
     return p_buffer;
 }
 

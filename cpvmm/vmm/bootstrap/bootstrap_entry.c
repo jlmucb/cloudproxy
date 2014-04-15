@@ -86,8 +86,9 @@ uint32_t initram_end= 0;        // location of initram image end
 
 // Post relocation addresses
 uint32_t evmm_start_address= 0;         // address of evmm after relocation
-uint32_t evmm_image_size= 0;         
-uint32_t evmm_total_size= 0;         
+uint32_t evmm_image_size= 0;            // image size
+uint32_t evmm_mem_size= 0;              // memory size (rounded up)
+uint32_t evmm_total_size= 0;            // total size (includes heap)
 uint32_t vmm_main_entry_point= 0;       // address of vmm_main after relocation
 uint32_t evmm_heap_base= 0;             // start of initial evmm heap
 uint32_t evmm_heap_current= 0; 
@@ -1684,8 +1685,9 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
 
     uint32_t evmm_start_load_segment= 0;
     evmm_start_load_segment= evmm_start+((uint32_t)prog_header->p_offset);
-    evmm_image_size= (uint32_t) prog_header->p_memsz;
-    evmm_total_size= evmm_image_size+UVMM_DEFAULT_HEAP;         
+    evmm_image_size= (uint32_t) prog_header->p_filesz;
+    evmm_mem_size= (uint32_t) prog_header->p_memsz;
+    evmm_total_size= evmm_mem_size+UVMM_DEFAULT_HEAP;         
 
     if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
         bprint("evmm load address is not default: 0x%08x, actual: 0x%08x\n",
@@ -1697,7 +1699,9 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
                (const void*) evmm_start_load_segment,
                evmm_image_size);
     vmm_memset((void *)(evmm_start_load_segment+evmm_image_size),
-               0, evmm_total_size-evmm_image_size);
+               0, evmm_mem_size-evmm_image_size);
+    vmm_memset((void *)(evmm_start_load_segment+evmm_mem_size),
+               0, evmm_total_size-evmm_mem_size);
 
     // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);

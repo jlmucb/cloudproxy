@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
- 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +21,7 @@
 extern void vmm_lock_xchg_byte(UINT8 *dst, UINT8 *src);
 
 #pragma optimize( "", off )
-void *  CDECL vmm_memset(void *dest, int filler, size_t count)
+void *  vmm_memset(void *dest, int filler, size_t count)
 {
     size_t i = 0, j, cnt_64bit;
     UINT64 filler_64;
@@ -55,7 +53,7 @@ void *  CDECL vmm_memset(void *dest, int filler, size_t count)
 }
 #pragma optimize( "", on )
 
-void *  CDECL vmm_memcpy_ascending(void *dest, const void* src, size_t count)
+void *  vmm_memcpy_ascending(void *dest, const void* src, size_t count)
 {
     size_t i = 0, j, cnt_64bit;
     UINT64 *d = (UINT64 *)dest;
@@ -74,7 +72,7 @@ void *  CDECL vmm_memcpy_ascending(void *dest, const void* src, size_t count)
     return dest;
 }
 
-void *  CDECL vmm_memcpy_descending(void *dest, const void* src, size_t count)
+void *  vmm_memcpy_descending(void *dest, const void* src, size_t count)
 {
     size_t i, cnt, rem;
     VMM_LONG *d = (VMM_LONG*)dest;
@@ -94,7 +92,7 @@ void *  CDECL vmm_memcpy_descending(void *dest, const void* src, size_t count)
     return dest;
 }
 
-void *  CDECL vmm_memcpy(void *dest, const void* src, size_t count)
+void *  vmm_memcpy(void *dest, const void* src, size_t count)
 {
     if (dest >= src) {
         return vmm_memcpy_descending(dest, src, count);
@@ -104,7 +102,7 @@ void *  CDECL vmm_memcpy(void *dest, const void* src, size_t count)
     }
 }
 
-void *  CDECL vmm_memmove(void *dest, const void* src, int count)
+void *  vmm_memmove(void *dest, const void* src, int count)
 {
     if (dest == src) {
         return dest;
@@ -117,7 +115,7 @@ void *  CDECL vmm_memmove(void *dest, const void* src, int count)
     }
 }
 
-size_t  CDECL vmm_strlen(const char* string)
+size_t  vmm_strlen(const char* string)
 {
     size_t len = 0;
     const char* next = string;
@@ -131,7 +129,7 @@ size_t  CDECL vmm_strlen(const char* string)
     return len;
 }
 
-char*  CDECL vmm_strcpy(char* dst, const char* src)
+char*  vmm_strcpy(char* dst, const char* src)
 {
     if (! src || ! dst) {
         return NULL;
@@ -141,7 +139,7 @@ char*  CDECL vmm_strcpy(char* dst, const char* src)
     return dst;
 }
 
-char*  CDECL vmm_strcpy_s(char* dst, size_t dst_length, const char* src)
+char*  vmm_strcpy_s(char* dst, size_t dst_length, const char* src)
 {
     size_t src_length = vmm_strlen(src);
     const char* s = src;
@@ -156,7 +154,7 @@ char*  CDECL vmm_strcpy_s(char* dst, size_t dst_length, const char* src)
     return dst;
 }
 
-UINT32  CDECL vmm_strcmp(const char* string1, const char* string2)
+UINT32  vmm_strcmp(const char* string1, const char* string2)
 {
     const char* str1 = string1;
     const char* str2 = string2;
@@ -180,7 +178,7 @@ UINT32  CDECL vmm_strcmp(const char* string1, const char* string2)
     return *str1 - *str2;
 }
 
-int CDECL vmm_memcmp(const void* mem1, const void* mem2, size_t count)
+int vmm_memcmp(const void* mem1, const void* mem2, size_t count)
 {
     const char *m1 = mem1;
     const char *m2 = mem2;
@@ -193,7 +191,7 @@ int CDECL vmm_memcmp(const void* mem1, const void* mem2, size_t count)
     return (m1[count] - m2[count]);
 }
 
-void CDECL vmm_memcpy_assuming_mmio( UINT8 *dst, UINT8 *src, INT32 count)
+void vmm_memcpy_assuming_mmio( UINT8 *dst, UINT8 *src, INT32 count)
 {
     switch (count) {
     case 0:
@@ -237,7 +235,7 @@ void CDECL vmm_memcpy_assuming_mmio( UINT8 *dst, UINT8 *src, INT32 count)
  * This copy only ensures that at DWORD level there are no synchronization
  * issues.
  */
-void *  CDECL vmm_lock_memcpy_ascending(void *dest, const void* src, size_t count)
+void *  vmm_lock_memcpy_ascending(void *dest, const void* src, size_t count)
 {
     size_t i = 0, j, cnt;
     VMM_LONG *d = (VMM_LONG *)dest;
@@ -256,7 +254,7 @@ void *  CDECL vmm_lock_memcpy_ascending(void *dest, const void* src, size_t coun
     return dest;
 }
 
-void *  CDECL vmm_lock_memcpy_descending(void *dest, const void* src, size_t count)
+void *  vmm_lock_memcpy_descending(void *dest, const void* src, size_t count)
 {
     size_t i, cnt, rem;
     VMM_LONG *d = (VMM_LONG*)dest;
@@ -280,7 +278,7 @@ void *  CDECL vmm_lock_memcpy_descending(void *dest, const void* src, size_t cou
 /*
  * NOTE: READ THE NOTE AT BEGINNING OF Locked Versions of functions.
  */
-void *  CDECL vmm_lock_memcpy(void *dest, const void* src, size_t count)
+void *  vmm_lock_memcpy(void *dest, const void* src, size_t count)
 {
     if (dest >= src) {
         return vmm_lock_memcpy_descending(dest, src, count);

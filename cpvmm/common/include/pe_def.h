@@ -1,12 +1,9 @@
 /*
  * Copyright (c) 2013 Intel Corporation
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,25 +11,9 @@
  * limitations under the License.
  */
 
-/*++ BUILD Version: 0066     Increment this if a change has global effects
-
-Copyright (c) Microsoft Corporation. All rights reserved.
-
-Module Name:
-
-    winnt.h
-
-Abstract:
-
-    This module defines the 32-Bit Windows types and constants that are
-    defined by NT, but exposed through the Win32 API.
-
-Revision History:
-
-*/
 /* This file was derived based on WinNT.h from VC version 8. The original 
  * license header was copied above.
-*/
+ */
 
 #ifndef _PE_DEF_H_
 #define _PE_DEF_H_
@@ -46,10 +27,7 @@ Revision History:
 #define ULONGLONG UINT64
 
 
-//
 // Image Format
-//
-
 #pragma pack(push,1)
 
 #define IMAGE_DOS_SIGNATURE                 0x5A4D      // MZ
@@ -80,9 +58,8 @@ typedef struct _IMAGE_DOS_HEADER {      // DOS .EXE header
     LONG   e_lfanew;                    // File address of new exe header
   } IMAGE_DOS_HEADER, *PIMAGE_DOS_HEADER;
 
-//
+
 // File header format.
-//
 
 typedef struct _IMAGE_FILE_HEADER {
     WORD    Machine;
@@ -143,9 +120,7 @@ typedef struct _IMAGE_FILE_HEADER {
 #define IMAGE_FILE_MACHINE_M32R              0x9041  // M32R little-endian
 #define IMAGE_FILE_MACHINE_CEE               0xC0EE
 
-//
 // Directory format.
-//
 
 typedef struct _IMAGE_DATA_DIRECTORY {
     DWORD   VirtualAddress;
@@ -154,15 +129,10 @@ typedef struct _IMAGE_DATA_DIRECTORY {
 
 #define IMAGE_NUMBEROF_DIRECTORY_ENTRIES    16
 
-//
 // Optional header format.
-//
 
 typedef struct _IMAGE_OPTIONAL_HEADER {
-    //
     // Standard fields.
-    //
-
     WORD    Magic;
     BYTE    MajorLinkerVersion;
     BYTE    MinorLinkerVersion;
@@ -173,10 +143,7 @@ typedef struct _IMAGE_OPTIONAL_HEADER {
     DWORD   BaseOfCode;
     DWORD   BaseOfData;
 
-    //
     // NT additional fields.
-    //
-
     DWORD   ImageBase;
     DWORD   SectionAlignment;
     DWORD   FileAlignment;

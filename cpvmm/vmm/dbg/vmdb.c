@@ -6,7 +6,6 @@
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -131,8 +130,6 @@ typedef struct _VMDB_REMOTE_PARAMS {
 #define DR6_BT              (1 << 15)
 
 
-/*---------------------------------Local Variables----------------------------*/
-
 static char * bp_type_name[] = { "exe", "write", "io", "rw" };
 static UINT8 bp_actual_length[] = { 1, 2, 8, 4 };
 static VMM_IA32_GP_REGISTERS lkup_operand[] =
@@ -155,9 +152,7 @@ static VMM_IA32_GP_REGISTERS lkup_operand[] =
     IA32_REG_R15
     };
 
-/*----------------------------------------------------------------------------*
-**                      Forward Declarations for Local Functions
-*-----------------------------------------------------------------------------*/
+
 static VMDB_THREAD_CONTEXT * vmdb_thread_context_create(void);
 static void vmdb_thread_context_destroy(VMDB_THREAD_CONTEXT *vmdb);
 static int  vmdb_breakpoint_lookup(VMDB_THREAD_CONTEXT *vmdb_context, ADDRESS bp_address);
@@ -191,11 +186,6 @@ static void vmdb_remote_breakpoint_delete(GUEST_CPU_HANDLE gcpu, ADDRESS linear_
 static void vmdb_remote_single_step_enable(GUEST_CPU_HANDLE gcpu, BOOLEAN enable);
 
 
-
-/*----------------------------------------------------------------------------*
-**                          VMDB Helper functions
-*-----------------------------------------------------------------------------*/
-
 // Disabling unreferenced formal parameter warnings
 #pragma warning ( push )
 #pragma warning ( disable : 4100 )
@@ -209,10 +199,6 @@ void vmdb_thread_log(GUEST_CPU_HANDLE gcpu, const char *msg, const char *functio
         function_name, msg, vcpu->guest_id, vcpu->guest_cpu_id);
 
     }
-
-/*----------------------------------------------------------------------------*
-**                          VMDB Initialization functions
-*-----------------------------------------------------------------------------*/
 
 
 void vmdb_initialize(void)
@@ -242,26 +228,23 @@ void vmdb_thread_context_destroy(VMDB_THREAD_CONTEXT *vmdb)
         }
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_guest_initialize
-*  Purpose  : Initialize CLI interface for vmdb.
-*           : Creates VMDB control structure at the guest and
-*           : install VMDB VMEXIT handler on INT1.
-*  Arguments: GUEST_ID
-*  Returns  : VMM_STATUS
-*/
+
+// Function : vmdb_guest_initialize
+// Purpose  : Initialize CLI interface for vmdb.
+//          : Creates VMDB control structure at the guest and
+//          : install VMDB VMEXIT handler on INT1.
+// Arguments: GUEST_ID
+// Returns  : VMM_STATUS
 VMM_STATUS vmdb_guest_initialize(GUEST_ID guest_id)
     {
     return vmexit_install_handler ( guest_id, vmdb_dr_access_vmexit_handler,
         Ia32VmxExitBasicReasonDrAccess);
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_thread_attach
-*  Purpose  : Enables VMDB on all given GCPU
-*  Arguments: GUEST_CPU_HANDLE
-*  Returns  : VMM_STATUS
-*/
+// Function : vmdb_thread_attach
+// Purpose  : Enables VMDB on all given GCPU
+// Arguments: GUEST_CPU_HANDLE
+// Returns  : VMM_STATUS
 VMM_STATUS vmdb_thread_attach(GUEST_CPU_HANDLE gcpu)
 {
     VMM_STATUS status = VMM_ERROR;
@@ -292,12 +275,11 @@ VMM_STATUS vmdb_thread_attach(GUEST_CPU_HANDLE gcpu)
     return status;
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_thread_detach
-*  Purpose  : Disables VMDB on all given GCPU
-*  Arguments: GUEST_CPU_HANDLE
-*  Returns  : VMM_STATUS
-*/
+
+// Function : vmdb_thread_detach
+// Purpose  : Disables VMDB on all given GCPU
+// Arguments: GUEST_CPU_HANDLE
+// Returns  : VMM_STATUS
 VMM_STATUS vmdb_thread_detach(GUEST_CPU_HANDLE gcpu)
     {
     VMM_STATUS          status = VMM_ERROR;
@@ -326,16 +308,14 @@ VMM_STATUS vmdb_thread_detach(GUEST_CPU_HANDLE gcpu)
     }
 
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_fill_vmexit_request
-*  Purpose  : Configures VMDB-related VTx controls, depending on enble value
-*           :   DR-access
-*           :   Save/Load DR
-*           :   Exception on INT1
-*  Arguments: VMEXIT_CONTROL *vmexit_request
-*           : BOOLEAN enable/disable
-*  Returns  : void
-*/
+// Function : vmdb_fill_vmexit_request
+// Purpose  : Configures VMDB-related VTx controls, depending on enble value
+//          :   DR-access
+//          :   Save/Load DR
+//          :   Exception on INT1
+// Arguments: VMEXIT_CONTROL *vmexit_request
+//          : BOOLEAN enable/disable
+// Returns  : void
 void vmdb_fill_vmexit_request ( OUT VMEXIT_CONTROL *vmexit_request, BOOLEAN enable)
     {
     IA32_VMCS_EXCEPTION_BITMAP            exceptions_mask;
@@ -368,10 +348,6 @@ void vmdb_fill_vmexit_request ( OUT VMEXIT_CONTROL *vmexit_request, BOOLEAN enab
 
     }
 
-
-/*----------------------------------------------------------------------------*
-**                          VMDB breakpoint functions
-*-----------------------------------------------------------------------------*/
 
 VMM_STATUS vmdb_single_step_enable(GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
     {
@@ -410,13 +386,11 @@ VMM_STATUS  vmdb_single_step_info(GUEST_CPU_HANDLE gcpu, BOOLEAN *enable)
     return status;
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_breakpoint_lookup
-*  Purpose  : Look for breakpoint equal to given address
-*  Arguments: VMDB_THREAD_CONTEXT *vmdb_context - where to search
-*           : ADDRESS            bp_address  - what to look for
-*  Returns  : Breakpoint ID if found, -1 if not
-*/
+// Function : vmdb_breakpoint_lookup
+// Purpose  : Look for breakpoint equal to given address
+// Arguments: VMDB_THREAD_CONTEXT *vmdb_context - where to search
+//          : ADDRESS            bp_address  - what to look for
+// Returns  : Breakpoint ID if found, -1 if not
 int vmdb_breakpoint_lookup ( VMDB_THREAD_CONTEXT *vmdb_context, ADDRESS  bp_address)
     {
     int i;
@@ -428,23 +402,21 @@ int vmdb_breakpoint_lookup ( VMDB_THREAD_CONTEXT *vmdb_context, ADDRESS  bp_addr
     return -1;  // not found
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_free_breakpoint_lookup
-*  Purpose  : Look for free (not used) breakpoint. Wrapper upon vmdb_breakpoint_lookup.
-*  Arguments: VMDB_THREAD_CONTEXT *vmdb_context - where to search
-*  Returns  : Breakpoint ID if found, -1 if not
-*/
+
+// Function : vmdb_free_breakpoint_lookup
+// Purpose  : Look for free (not used) breakpoint. Wrapper upon vmdb_breakpoint_lookup.
+// Arguments: VMDB_THREAD_CONTEXT *vmdb_context - where to search
+// Returns  : Breakpoint ID if found, -1 if not
 int vmdb_free_breakpoint_lookup(VMDB_THREAD_CONTEXT *vmdb_context)
     {
     return vmdb_breakpoint_lookup(vmdb_context, 0);
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_settings_apply_to_hw
-*  Purpose  : Update GCPU DRs from its guest's VMDB context
-*  Arguments: GUEST_CPU_HANDLE gcpu
-*  Returns  : void
-*/
+
+// Function : vmdb_settings_apply_to_hw
+// Purpose  : Update GCPU DRs from its guest's VMDB context
+// Arguments: GUEST_CPU_HANDLE gcpu
+// Returns  : void
 void vmdb_settings_apply_to_hw ( GUEST_CPU_HANDLE gcpu)
     {
     VMDB_THREAD_CONTEXT *vmdb = gcpu_get_vmdb(gcpu);
@@ -469,13 +441,10 @@ void vmdb_settings_apply_to_hw ( GUEST_CPU_HANDLE gcpu)
     }
 
 
-
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_breakpoint_info
-*  Purpose  : Gets guests breakpont info.
-*  Arguments: self-descriptive
-*  Returns  : VMM_STATUS
-*/
+// Function : vmdb_breakpoint_info
+// Purpose  : Gets guests breakpont info.
+// Arguments: self-descriptive
+// Returns  : VMM_STATUS
 VMM_STATUS vmdb_breakpoint_info ( GUEST_CPU_HANDLE gcpu, UINT32 bp_id,
     ADDRESS *linear_address, VMDB_BREAKPOINT_TYPE *bp_type, VMDB_BREAK_LENGTH_TYPE *bp_len,
     UINT16 *skip_counter)
@@ -513,12 +482,11 @@ VMM_STATUS vmdb_breakpoint_info ( GUEST_CPU_HANDLE gcpu, UINT32 bp_id,
     return status;
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_breakpoint_add
-*  Purpose  : Add breakpont to guest, and propagate it to all guest's GCPUs
-*  Arguments: self-descriptive
-*  Returns  : VMM_STATUS
-*/
+
+// Function : vmdb_breakpoint_add
+// Purpose  : Add breakpont to guest, and propagate it to all guest's GCPUs
+// Arguments: self-descriptive
+// Returns  : VMM_STATUS
 VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
     ADDRESS  linear_address, VMDB_BREAKPOINT_TYPE    bp_type,
     VMDB_BREAK_LENGTH_TYPE  bp_len, UINT16   skip_counter)
@@ -526,7 +494,6 @@ VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
     int                     bp_id;
     VMDB_THREAD_CONTEXT     *vmdb;
     VMM_STATUS              status = VMM_ERROR;
-
 
     do  { // one-shot loop
         if (NULL == gcpu) {
@@ -576,14 +543,13 @@ VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
     return status;
     }
 
-/*-----------------------------------------------------------------------------*
-*  Function : vmdb_breakpoint_delete
-*  Purpose  : Delete breakpont at guest context and from all its GCPUs
-*  Arguments: GUEST_HANDLE  guest
-*           : ADDRESS linear_address - address of breakpoint to delete
-*           : if equal -1, then remove all breakpoints for this guest
-*  Returns  : VMM_STATUS
-*/
+
+// Function : vmdb_breakpoint_delete
+// Purpose  : Delete breakpont at guest context and from all its GCPUs
+// Arguments: GUEST_HANDLE  guest
+//          : ADDRESS linear_address - address of breakpoint to delete
+//          : if equal -1, then remove all breakpoints for this guest
+// Returns  : VMM_STATUS
 VMM_STATUS vmdb_breakpoint_delete ( GUEST_CPU_HANDLE gcpu, ADDRESS  linear_address)
     {
     VMDB_THREAD_CONTEXT *vmdb;
@@ -722,10 +688,6 @@ VMEXIT_HANDLING_STATUS vmdb_dr_access_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     }
 
 
-/*----------------------------------------------------------------------------*
-**                          VMDB Remote functions
-*-----------------------------------------------------------------------------*/
-
 void vmdb_remote_handler (CPU_ID from UNUSED, VMDB_REMOTE_PARAMS *params)
 {
     VIRTUAL_CPU_ID      vcpu;
@@ -838,11 +800,6 @@ void vmdb_remote_single_step_enable ( GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
     vmdb_remote_execute(gcpu, &params);
     }
 
-
-
-/*----------------------------------------------------------------------------*
-**                          VMDB CLI functions
-*-----------------------------------------------------------------------------*/
 
 GUEST_CPU_HANDLE vmdb_cli_locate_gcpu(char *string, BOOLEAN *apply_to_all)
     {

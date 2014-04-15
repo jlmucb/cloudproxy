@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,8 +19,7 @@
 typedef INT32 (*ASCII_TO_DIGIT)(char);
 
 
-int
-CLI_strcmp( char *string1, char *string2)
+int CLI_strcmp( char *string1, char *string2)
 {
     while ((*string1 == *string2) && (0 != *string1)) {
         string1++;
@@ -31,8 +28,7 @@ CLI_strcmp( char *string1, char *string2)
     return (*string1 - *string2);
 }
 
-int
-CLI_strncmp( char *string1, char *string2, size_t n)
+int CLI_strncmp( char *string1, char *string2, size_t n)
 {
     size_t i;
 
@@ -52,16 +48,14 @@ int CLI_is_substr( char *bigstring, char *smallstring)
     return (0 == *smallstring);
 }
 
-INT32
-asciiToDecDigit( char ch)
+INT32 asciiToDecDigit( char ch)
 {
     if (ch >= '0' && ch <= '9')
         return ch - '0';
     return -1;
 }
 
-INT32
-asciiToHexDigit(
+INT32 asciiToHexDigit(
                 char ch)
 {
     if (ch >= '0' && ch <= '9')
@@ -73,8 +67,7 @@ asciiToHexDigit(
     return -1;
 }
 
-UINT64
-CLI_atol64(
+UINT64 CLI_atol64(
          char *string, unsigned base, int *perror)
 {
     UINT64 value = 0;
@@ -116,8 +109,7 @@ CLI_atol64(
 }
 
 
-UINT32
-CLI_atol32( char *string, unsigned base, int *error)
+UINT32 CLI_atol32( char *string, unsigned base, int *error)
 {
     return (UINT32) CLI_atol64(string, base, error);
 }

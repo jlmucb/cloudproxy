@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,16 +24,13 @@
 #define UNEXPECTED_ERROR        -1
 
 
-
 //  MEMORY_PTR
-//
-//  Dummy tyoedef: supports for easy change of memory addressing in 
+//  Dummy typedef: supports for easy change of memory addressing in 
 //  IMAGE_MEM_INFO_STRUC struct.
 typedef ADDRESS  MEMORY_PTR;
 
 
 //  struct _IMAGE_MEM_INFO_STRUC
-//
 //  This struct contains information about the images loaded by loader
 //  for use by the uVMM
 typedef struct _IMAGE_MEM_INFO_STRUC
@@ -56,7 +51,6 @@ typedef struct _IMAGE_MEM_INFO_STRUC
 #define image_index_sos1_env        7
 
 //  struct _MEMORY_INFO
-//
 //  This struct contains all the information that uVMM-LP requires for 
 //  its own operation, or is required to hand over to uVMM-H
 //

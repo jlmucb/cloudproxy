@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -57,29 +55,17 @@ static const char low_hex[] = {'0','1','2','3','4','5','6','7','8','9','a','b','
 static const char decimal[] = {'0','1','2','3','4','5','6','7','8','9'};
 
 
-// ----------------------------- internal -----------------------------------------
-
-static
-UINT32 safe_guid_to_string ( VMM_GUID* guid, char* buffer, size_t buffer_size )
 /*++
-
 Routine Description:
-
   prints an VMM_GUID.
-
 Arguments:
-
   Guid       - Pointer to GUID to print.
-
   Buffer     - Buffe to print Guid into.
-
   BufferSize - Size of Buffer.
-
 Returns:
-
   Number of characters printed.
-
 --*/
+static UINT32 safe_guid_to_string ( VMM_GUID* guid, char* buffer, size_t buffer_size )
 {
     UINT32 size;
 
@@ -101,7 +87,6 @@ static
 UINT32 safe_value_to_string ( char* buffer, UINT32  buffer_limits, /*total space in out buff*/
                     INT64  value, UINT32 flags, UINT32 width, UINT32 base, const char* chars)
 /*++
-
 Routine Description:
   worker function that prints a Value as a based number in Buffer
 Arguments:
@@ -109,11 +94,8 @@ Arguments:
   Value  - value to convert to a string in Buffer.
   Flags  - Flags to use in printing decimal string, see file header for details.
   Width  - Width of value.
-
 Returns:
-
   Number of characters printed.
-
 --*/
 {
     char    temp_buffer[MAX_NUMBER_CHARS];
@@ -376,8 +358,8 @@ Returns:
 }
 
 
-//------------------------- interface ----------------------------------------------
-int CDECL vmm_vsprintf_s( char*  start_of_buffer, size_t size_of_buffer,
+
+int vmm_vsprintf_s( char*  start_of_buffer, size_t size_of_buffer,
                             const char* format_string, va_list  argptr )
 /*++
 Routine Description:
@@ -576,7 +558,7 @@ Returns:
     return index;
 }
 
-int CDECL vmm_sprintf_s( char *buffer, size_t size_of_buffer, const char *format, ...)
+int vmm_sprintf_s( char *buffer, size_t size_of_buffer, const char *format, ...)
 {
     va_list marker;
 

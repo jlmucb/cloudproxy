@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,43 +22,32 @@
 
 //
 // Generic array iterator
-//
 // Usage:
-//
 //  Provider:
-//
 //      typedef GENERIC_ARRAY_ITERATOR MY_OBJ_ITERATOR;
-//
 //      static MY_OBJ g_my_obj_array[size];
-//
 //      // forward iterator
-//
 //      MY_OBJ* my_obj_iterator_first( <params>, MY_OBJ_ITERATOR* ctx )
 //      {
 //          < some logic >
 //          return ARRAY_ITERATOR_FIRST( MY_OBJ, g_my_obj_array, size, ctx );
 //      }
-//
 //      MY_OBJ* my_obj_iterator_next( MY_OBJ_ITERATOR* ctx )
 //      {
 //          return ARRAY_ITERATOR_NEXT( MY_OBJ, ctx );
 //      }
 //
 //      // backward iterator
-//
 //      MY_OBJ* my_obj_reverse_iterator_first( <params>, MY_OBJ_ITERATOR* ctx )
 //      {
 //          < some logic >
 //          return ARRAY_REVERSE_ITERATOR_FIRST( MY_OBJ, g_my_obj_array, size, ctx );
 //      }
-//
 //      MY_OBJ* my_obj_reverse_iterator_next( MY_OBJ_ITERATOR* ctx )
 //      {
 //          return ARRAY_REVERSE_ITERATOR_NEXT( MY_OBJ, ctx );
 //      }
-//
 //  Consumer:
-//
 //      MY_OBJ_ITERATOR ctx;
 //      MY_OBJ*         obj;
 //

@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,9 +37,9 @@ extern BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu, void* gpa,
 int CLI_active(void)
 {
 #ifdef CLI_INCLUDE
-	return (VMM_MASK_CHECK(mask_cli)) ? 1 : 0;
+        return (VMM_MASK_CHECK(mask_cli)) ? 1 : 0;
 #else
-	return 0;
+        return 0;
 #endif
 }
 
@@ -67,7 +65,7 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
 
     cpu_id = hw_cpu_id();
     if (cpu_id >= MAX_CPUS)
-    	return;
+        return;
 
     vmm_sprintf_s(err_msg, 128, "CPU%d: %s: Error: Could not copy deadloop message back to guest\n",
             cpu_id, __FUNCTION__);
@@ -85,7 +83,7 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
                                    size,
                                    (void*)buffer)) {
         VMM_LOG(mask_uvmm, level_error, err_msg);
-	}
+        }
 
     // only copy signature, VERSION, cpu_id, exception info, vmcs to guest
     // buffer once
@@ -109,11 +107,11 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
 
         // copy exception info to guest buffer
         if (g_exception_stack != NULL) {
-        	vmm_memcpy((void *)&header.exception_stack, g_exception_stack, sizeof(ISR_PARAMETERS_ON_STACK));
-        	header.base_address = vmm_startup_data.vmm_memory_layout[uvmm_image].base_address;
+                vmm_memcpy((void *)&header.exception_stack, g_exception_stack, sizeof(ISR_PARAMETERS_ON_STACK));
+                header.base_address = vmm_startup_data.vmm_memory_layout[uvmm_image].base_address;
 
             if (g_exception_stack->a.vector_id == IA32_EXCEPTION_VECTOR_PAGE_FAULT)
-            	header.cr2 = hw_read_cr2();
+                header.cr2 = hw_read_cr2();
 
             // copy exception info to guest buffer
             if (!vmm_copy_to_guest_phy_addr(gcpu,
@@ -123,8 +121,8 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
                 VMM_LOG(mask_uvmm, level_error, err_msg);
             }
 
-    		// copy GPRs to guest buffer
-    		if (!vmm_copy_to_guest_phy_addr(gcpu,
+                // copy GPRs to guest buffer
+                if (!vmm_copy_to_guest_phy_addr(gcpu,
                                            (void*)(g_debug_gpa+OFFSET_GPR),
                                            sizeof(VMM_GP_REGISTERS),
                                            (void*)&g_exception_gpr)) {
@@ -133,8 +131,8 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
 
             // copy stack to guest buffer
             rsp = isr_error_code_required((VECTOR_ID)g_exception_stack->a.vector_id) ?
-            		g_exception_stack->u.errcode_exception.sp :
-            		g_exception_stack->u.exception.sp;
+                        g_exception_stack->u.errcode_exception.sp :
+                        g_exception_stack->u.exception.sp;
 
             vmm_stack_get_stack_pointer_for_cpu(cpu_id, &stack_base);
 
@@ -145,7 +143,7 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
             if (!vmm_copy_to_guest_phy_addr(gcpu,
                                            (void*)(g_debug_gpa+OFFSET_STACK),
                                            size,
-            		                       (void*)rsp)) {
+                                               (void*)rsp)) {
                 VMM_LOG(mask_uvmm, level_error, err_msg);
             }
         } else {
@@ -173,14 +171,14 @@ void vmm_deadloop_dump(UINT32 file_code, UINT32 line_num)
 
     gcpu = scheduler_current_gcpu();
     if(!gcpu)
-    	VMM_UP_BREAKPOINT();
+        VMM_UP_BREAKPOINT();
 
     report_uvmm_event(UVMM_EVENT_VMM_ASSERT, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
 
     // send debug info to serial port and guest buffer
     vmm_deadloop_internal(file_code, line_num, gcpu);
 
-	// clear interrupt flag
+        // clear interrupt flag
     rflags.Uint64 = gcpu_get_gp_reg(gcpu, IA32_REG_RFLAGS);
     rflags.Bits.IFL = 0;
     gcpu_set_gp_reg(gcpu, IA32_REG_RFLAGS, rflags.Uint64);
@@ -195,10 +193,7 @@ void vmm_deadloop_dump(UINT32 file_code, UINT32 line_num)
 }
 
 
-//
 // Generic debug helper function
-//
-// returns TRUE 
 
 #pragma warning( push )
 #pragma warning (disable : 4100)  // Supress warnings about unreferenced formal parameter
@@ -207,7 +202,7 @@ BOOLEAN DeadloopHelper( const char* assert_condition,
                         const char* func_name,
                         const char* file_name,
                         UINT32      line_num,
-                        UINT32		access_level)
+                        UINT32      access_level)
 {
     if (!assert_condition)
     {

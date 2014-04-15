@@ -1,12 +1,9 @@
 /*
  * Copyright (c) 2013 Intel Corporation
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,47 +39,26 @@ typedef struct _PE_IMAGE_INFO {
 } PE_IMAGE_INFO;
 
 
-//----------------------------------------------------------------------
-//
 // Get info required for image loading
-//
 // Input:
 //  void* file_mapped_into_memory - file directly read or mapped in RAM
-//
 // Output:
 //  PE_IMAGE_INFO - fills the structure
-//
 //  Return value - GET_PE_IMAGE_INFO_STATUS
-//----------------------------------------------------------------------
-GET_PE_IMAGE_INFO_STATUS
-get_PE_image_info(
-    const void*     file_mapped_into_memory,
-    PE_IMAGE_INFO*  p_image_info
-    );
+GET_PE_IMAGE_INFO_STATUS get_PE_image_info(
+    const void* file_mapped_into_memory, PE_IMAGE_INFO* p_image_info);
 
-//----------------------------------------------------------------------
-//
+
 // load PE image into memory
-//
 // Input:
 //  void* file_mapped_into_memory - file directly read or mapped in RAM
 //  void* image_base_address      - load image to this address. Must be alined
-//                                  on 4K.
 //  UINT32 allocated_size         - buffer size for image
 //  UINT64* p_entry_point_address - address of the UINT64 that will be filled
-//                                  with the address of image entry point if
-//                                  all is ok
-//
 // Output:
 //  Return value - FALSE on any error
-//----------------------------------------------------------------------
-BOOLEAN
-load_PE_image(
-    const void*  file_mapped_into_memory,
-    void*        image_base_address,
-    UINT32       allocated_size,
-    UINT64*      p_entry_point_address
-    );
+BOOLEAN load_PE_image( const void*  file_mapped_into_memory, void* image_base_address,
+    UINT32 allocated_size, UINT64* p_entry_point_address);
 
 #endif // _PE_LOADER_H_
 

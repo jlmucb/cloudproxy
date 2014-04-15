@@ -374,13 +374,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 6\n");
-    // LOOP_FOREVER  // reached here
 #endif
 
-#if 0
-    VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].entry_point);
+#if 1
+    VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[0].base_address, startup_struct->vmm_memory_layout[0].entry_point);
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Initializing all data structures...\n");
-    VMM_LOG(mask_uvmm, level_trace,"\n\nBSP: Alive.  Local APIC ID=%P\n", lapic_id());
+    //VMM_LOG(mask_uvmm, level_trace,"\n\nBSP: Alive.  Local APIC ID=%P\n", lapic_id());
 #endif
 
     // check input structure
@@ -434,7 +433,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 9\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER  //reached here
 #endif
 
     // BEFORE_VMLAUNCH. Redundant check as above if condition already ensures
@@ -448,18 +447,22 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // Initialize Heap
     heap_address = lowest_stacks_addr + stacks_size;
-    heap_size = (UINT32)((startup_struct->vmm_memory_layout[uvmm_image].base_address + startup_struct->vmm_memory_layout[uvmm_image].total_size) - heap_address);
+    heap_size = (UINT32)((startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size) - heap_address);
     heap_last_occupied_address = vmm_heap_initialize(heap_address, heap_size);
+
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully initialized: \n");
     VMM_LOG(mask_uvmm, level_trace,"\theap base address = %P \n", heap_address);
-    VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", heap_last_occupied_address);
-    VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", heap_last_occupied_address - heap_address, heap_size);
+    VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", 
+                heap_last_occupied_address);
+    VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", 
+            heap_last_occupied_address - heap_address, heap_size);
     // BEFORE_VMLAUNCH. Can't hit this condition in POSTLAUNCH. Keep the
     // ASSERT for now. 
-    VMM_ASSERT(heap_last_occupied_address <= (startup_struct->vmm_memory_layout[uvmm_image].base_address + startup_struct->vmm_memory_layout[uvmm_image].total_size));
+    VMM_ASSERT(heap_last_occupied_address <= (startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
 
 #ifdef JLMDEBUG
     bprint("evmm position 10\n");
+    LOOP_FOREVER  //reached here
 #endif
     
     //  Initialize CLI monitor

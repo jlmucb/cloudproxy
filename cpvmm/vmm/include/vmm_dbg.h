@@ -104,7 +104,8 @@ enum msg_level
 #define VMM_DEADLOOP_HELPER DeadloopHelper
 #endif
 
-
+//JLM(FIX)
+#if 0
 #ifdef DEBUG
 #define VMM_DEADLOOP_LOG(FILE_CODE)                                             \
 {                                                                               \
@@ -115,6 +116,9 @@ enum msg_level
 }
 #else 
 #define VMM_DEADLOOP_LOG(FILE_CODE)	vmm_deadloop_dump(FILE_CODE, __LINE__);
+#endif
+#else
+#define VMM_DEADLOOP_LOG(FILE_CODE)
 #endif
 
 
@@ -149,6 +153,8 @@ enum msg_level
 #endif
 #define VMM_LOG_NOLOCK(...)  VMM_DEBUG_CODE(vmm_printf_nolock(__VA_ARGS__))
 
+//JLM(FIX)
+#if 0
 #ifdef DEBUG
 #define VMM_ASSERT_LOG(FILE_CODE, __condition)                                  \
 {                                                                               \
@@ -168,6 +174,9 @@ enum msg_level
 		vmm_deadloop_dump(FILE_CODE, __LINE__);                                 \
 	}                                                                           \
 }
+#endif
+#else
+#define VMM_ASSERT_LOG(FILE_CODE, __condition)
 #endif
 
 #define VMM_ASSERT_NOLOCK_LOG(FILE_CODE, __condition)    VMM_ASSERT_LOG(FILE_CODE, __condition)

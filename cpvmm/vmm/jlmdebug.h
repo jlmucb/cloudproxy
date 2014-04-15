@@ -4,4 +4,7 @@
 #include "bootstrap_types.h"
 #include "bootstrap_string.h"
 #include "bootstrap_print.h"
+
+#define UNUSEDVAR(x) ((void)x)
+
 #endif

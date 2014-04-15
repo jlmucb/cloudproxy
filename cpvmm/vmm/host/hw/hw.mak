@@ -37,11 +37,11 @@ endif
 mainsrc=    $(S)/vmm/host/hw
 
 B=		$(E)/vmmobjects/host/hw
-INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
+INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept -I$(S)/vmm/vmx
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept -I$(S)/vmm/vmx -I$(S)/vmm/bootstrap
+DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INVMM
+RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INVMM
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

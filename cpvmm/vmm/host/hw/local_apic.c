@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +19,7 @@
 #include "host_memory_manager_api.h"
 #include "memory_allocator.h"
 #include "file_codes.h"
+#include "jlmdebug.h"
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(LOCAL_APIC_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(LOCAL_APIC_C, __condition)
@@ -495,6 +494,8 @@ void local_apic_setup_changed(void)
 {
     LOCAL_APIC_PER_CPU_DATA *lapic_data = GET_CPU_LAPIC();
     BOOLEAN                  result;
+
+    UNUSEDVAR(result);
 
     lapic_data->lapic_base_address_hpa = hw_read_msr(IA32_MSR_APIC_BASE);
     lapic_data->lapic_base_address_hpa =

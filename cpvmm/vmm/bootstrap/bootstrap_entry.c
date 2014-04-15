@@ -948,7 +948,7 @@ int linux_setup(void)
 }
 
 
-// This builds the 24 byte extended 8820 table
+// This builds the 24 byte extended e820 table
 static uint64_t evmm_get_e820_table(const multiboot_info_t *mbi) 
 {
     uint32_t entry_offset = 0;

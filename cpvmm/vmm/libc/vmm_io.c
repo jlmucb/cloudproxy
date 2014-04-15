@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +15,6 @@
 #include "vmm_defs.h"
 #include "vmm_dbg.h"
 #include "libc_internal.h"
-//#include "hw_utils.h"
 #include "hw_interlocked.h"
 #include "vmcall.h"
 #include "emulator_if.h"
@@ -31,13 +28,9 @@
 #define __builtin_va_arg(a,p) 0
 
 
-
 extern int CLI_active(void);
-////////////////////////////////////////////////////////////////////////////////
-//
+
 // C-written CRT routines should be put here
-//
-////////////////////////////////////////////////////////////////////////////////
 
 #define PRINTF_BUFFER_SIZE  512
 
@@ -55,21 +48,11 @@ static UINT32  printf_lock = 0;   // Used to guard the print function.
                                   // 1 or more : locked
 
 
-//
-//-------------- Internal functions ----------------------
-//
-
-
-//===================== raw_lock(), raw_unlock() ===============================
-//
 // These functions are used for doing lock/unlock
 // without CPU identification/validation
 // The reason is to have the lock facility at the stage when cpu ID is unknown
 // e.g. for LOGs at the bootstrap time
-//
-//==============================================================================
-static
-void raw_lock(volatile UINT32 *p_lock_var)
+static void raw_lock(volatile UINT32 *p_lock_var)
 {
     UINT32 old_value;
 
@@ -87,8 +70,8 @@ void raw_lock(volatile UINT32 *p_lock_var)
     }
 }
 
-static
-void raw_force_lock(volatile UINT32 *p_lock_var)
+
+static void raw_force_lock(volatile UINT32 *p_lock_var)
 {
     INT32 old_value;
 
@@ -123,24 +106,11 @@ void raw_unlock(volatile UINT32 *p_lock_var)
 }
 
 
-//==============================================================================
-//
-// Generic Debug Port Static Variables
-//
-//==============================================================================
-
 static VMM_DEBUG_PORT_TYPE       debug_port_type = VMM_DEBUG_PORT_NONE;
 static VMM_DEBUG_PORT_VIRT_MODE  debug_port_virt_mode = VMM_DEBUG_PORT_VIRT_NONE;
 static void                     *debug_port_handle = NULL;
 
 
-//=============================================================================
-//
-// Generic Debug Port Functions
-//
-//=============================================================================
-
-//=============================================================================
 
 BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
 
@@ -195,8 +165,6 @@ BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
 }
 
 
-//=============================================================================
-
 static
 void vmm_debug_port_init(void)
 {
@@ -214,14 +182,7 @@ void vmm_debug_port_clear(void)
 }
 
 
-//=============================================================================
-//
-// Debug port info accessors
-//
-//=============================================================================
-
-static
-VMM_DEBUG_PORT_TYPE vmm_debug_port_get_type(void)
+static VMM_DEBUG_PORT_TYPE vmm_debug_port_get_type(void)
 
 {
     return debug_port_type;
@@ -233,9 +194,10 @@ VMM_DEBUG_PORT_VIRT_MODE vmm_debug_port_get_virt_mode(void)
     return debug_port_virt_mode;
 }
 
-UINT16   // If the debug port uses an I/O range, returns its base address.
-         // Otherwise, returns 0
-vmm_debug_port_get_io_base(void)
+
+// If the debug port uses an I/O range, returns its base address.
+// Otherwise, returns 0
+UINT16 vmm_debug_port_get_io_base(void)
 
 {
     UINT16 io_base = 0;
@@ -243,7 +205,6 @@ vmm_debug_port_get_io_base(void)
 
     if (debug_port_type == VMM_DEBUG_PORT_SERIAL)
         vmm_serial_get_io_range(debug_port_handle, &io_base, &io_end);
-
     return io_base;
 }
 
@@ -263,13 +224,9 @@ vmm_debug_port_get_io_end(void)
 }
 
 
-//======================= vmm_debug_port_*_mux() ================================
-//
 // Multiplexers to debug port, according to its type (none, serial etc.).
-//
 
-static
-UINT8 vmm_debug_port_getc(void)
+static UINT8 vmm_debug_port_getc(void)
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
         return vmm_serial_getc(debug_port_handle);
@@ -277,8 +234,8 @@ UINT8 vmm_debug_port_getc(void)
         return 0;
 }
 
-static
-UINT8 vmm_debug_port_putc_nolock( UINT8 Char )
+
+static UINT8 vmm_debug_port_putc_nolock( UINT8 Char )
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
         return vmm_serial_putc_nolock(debug_port_handle, Char);
@@ -286,8 +243,7 @@ UINT8 vmm_debug_port_putc_nolock( UINT8 Char )
         return Char;
 }
 
-static
-UINT8 vmm_debug_port_putc( UINT8 Char )
+static UINT8 vmm_debug_port_putc( UINT8 Char )
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
         return vmm_serial_putc(debug_port_handle, Char);
@@ -296,8 +252,7 @@ UINT8 vmm_debug_port_putc( UINT8 Char )
         return Char;
 }
 
-static
-int vmm_debug_port_puts_direct(BOOLEAN is_locked, const char *string)
+static int vmm_debug_port_puts_direct(BOOLEAN is_locked, const char *string)
 {
     int ret = 1;
 
@@ -327,33 +282,22 @@ int vmm_debug_port_puts_direct(BOOLEAN is_locked, const char *string)
 }
 
 
-//======================= vmm_debug_port_puts() ================================
-//
 // Writes a string to the debug port, according to its type (none, serial etc.).
 // Takes care of the case where running as guest
-//
-
-static
-int vmm_debug_port_puts(BOOLEAN is_locked, const char *string)
+static int vmm_debug_port_puts(BOOLEAN is_locked, const char *string)
 {
     int ret = 1;
 
-
     if (emulator_is_running_as_guest())
         hw_vmcall(VMCALL_EMULATOR_PUTS, (void*)string, 0, 0);
-
     else
         ret = vmm_debug_port_puts_direct(is_locked, string);
-
     return ret;
 }
 
 
-//==============================================================================
-//
 // Emulator debug support functions
-//
-//==============================================================================
+
 #ifdef DEBUG
 #pragma warning(push)
 #pragma warning(disable : 4100)  // Supress warnings about unreferenced formal parameter
@@ -374,24 +318,14 @@ VMM_STATUS vmm_io_vmcall_puts_handler(
 #pragma warning(pop)
 #endif
 
-//==============================================================================
-//
-// Generic I/O Functions
-//
-//==============================================================================
 
-static
-void printf_init( void )
+static void printf_init( void )
 {
 }
 
 
-static
-int vmm_printf_int(BOOLEAN     use_lock,
-                   char       *buffer,
-                   UINT32      buffer_size,
-                   const char *format,
-                   va_list     args )
+static int vmm_printf_int(BOOLEAN  use_lock, char *buffer, UINT32 buffer_size,
+                   const char *format, va_list  args )
 {
     UINT32  printed_size = 0;
 
@@ -409,8 +343,7 @@ int vmm_printf_int(BOOLEAN     use_lock,
 }
 
 
-static
-int CDECL vmm_printf_nolock_alloc_buffer(const char *format, va_list args)
+static int vmm_printf_nolock_alloc_buffer(const char *format, va_list args)
 {
     // use buffer on the stack
     char buffer[PRINTF_BUFFER_SIZE];
@@ -420,11 +353,8 @@ int CDECL vmm_printf_nolock_alloc_buffer(const char *format, va_list args)
 
 
 #ifdef VMM_DEBUG_SCREEN
-static
-void vmm_printf_screen_int(char* buffer,
-                           UINT32 buffer_size,
-                           const char *format,
-                           va_list args) {
+static void vmm_printf_screen_int(char* buffer, UINT32 buffer_size, 
+                                  const char *format, va_list args) {
     UINT32  printed_size = 0;
 
     raw_lock(&printf_lock);
@@ -450,10 +380,6 @@ void vmm_printf_screen_int(char* buffer,
 }
 #endif
 
-
-//
-//-------------- Interface functions ----------------------
-//
 
 void vmm_io_init( void )
 {
@@ -511,7 +437,7 @@ UINT8 vmm_putc( UINT8 Char )
 }
 
 
-int CDECL vmm_vprintf(const char *format, va_list args)
+int vmm_vprintf(const char *format, va_list args)
 {
     // use static buffer to save stack space
     static char buffer[PRINTF_BUFFER_SIZE];
@@ -529,7 +455,7 @@ int CDECL vmm_vprintf(const char *format, va_list args)
 }
 
 
-int CDECL vmm_printf( const char *format, ... )
+int vmm_printf( const char *format, ... )
 {
     va_list args;
     va_start (args, format);
@@ -539,7 +465,7 @@ int CDECL vmm_printf( const char *format, ... )
 
 #ifdef DEBUG
 // printf without taking any locks - use from NMI handlers
-int CDECL vmm_printf_nolock(const char *format, ...)
+int vmm_printf_nolock(const char *format, ...)
 {
     va_list args;
     va_start (args, format);
@@ -555,7 +481,7 @@ void vmm_io_emulator_register( GUEST_ID guest_id )
 #endif
 
 #ifdef VMM_DEBUG_SCREEN
-void CDECL vmm_printf_screen( const char *format, ... )
+void vmm_printf_screen( const char *format, ... )
 {
     static char buffer[PRINTF_BUFFER_SIZE];
 
@@ -567,7 +493,7 @@ void CDECL vmm_printf_screen( const char *format, ... )
 }
 
 
-void CDECL vmm_clear_screen(void)
+void vmm_clear_screen(void)
 {
     UINT32 i;
     for (screen_cursor = (UINT8*)SCREEN_VGA_BASE_ADDRESS, i = 0;
@@ -579,8 +505,6 @@ void CDECL vmm_clear_screen(void)
 }
 #endif
 
-//------------------------------------------------------------------------------
-//
 // Test function, active only if #ifdef'ed in
 
 #pragma warning(push)

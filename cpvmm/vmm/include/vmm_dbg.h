@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 #ifndef _VMM_DBG_H_
@@ -23,12 +21,6 @@
 #include "cli_monitor.h"
 
 
-
-////////////////////////////////////////////////////////////
-//
-//  externs
-//
-////////////////////////////////////////////////////////////
 extern CPU_ID hw_cpu_id();
 extern void ipc_set_no_resend_flag(BOOLEAN val);
 extern BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params);
@@ -138,10 +130,15 @@ enum msg_level
 #define VMM_LEVEL_CHECK(LEVEL)		(LEVEL <= VMM_DEFAULT_LOG_LEVEL)
 #endif
 
+//JLM(FIX)
+#if 0
 #if defined ENABLE_RELEASE_VMM_LOG && !defined DEBUG
 #define VMM_LOG(MASK,LEVEL,...) ((((LEVEL==level_print_always) || (LEVEL==level_error)) && (VMM_MASK_CHECK(MASK) && VMM_LEVEL_CHECK(LEVEL))) && (vmm_printf(__VA_ARGS__)))
 #else
 #define VMM_LOG(MASK,LEVEL,...) VMM_DEBUG_CODE(((LEVEL==level_print_always) || (LEVEL==level_error) || ((VMM_MASK_CHECK(MASK) && VMM_LEVEL_CHECK(LEVEL)))) && (vmm_printf(__VA_ARGS__)))
+#endif
+#else
+#define VMM_LOG(MASK,LEVEL,...)
 #endif
 
 

@@ -377,7 +377,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // LOOP_FOREVER  // reached here
 #endif
 
+#if 0
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].entry_point);
+#endif
 
 #ifdef JLMDEBUG
     bprint("evmm position 6.5\n");

@@ -22,6 +22,9 @@
 #include "gdt.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EM64T_GDT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(EM64T_GDT_C, __condition)
@@ -146,7 +149,14 @@ void hw_gdt_setup(IN CPU_ID number_of_cpus)
 {
     CPU_ID cpu_id;
 
+#ifdef JLMDEBUG
+    bprint("at hw_gdt_setup(%d, %d)\n",
+           number_of_cpus, TSS_ENTRY_OFFSET(number_of_cpus));
+#endif
     if (NULL == gdt) {
+#ifdef JLMDEBUG
+        bprint("hw_gdt_setup NULL case\n");
+#endif
         // Offset of next after last entry will give us the size
         gdt_size = TSS_ENTRY_OFFSET(number_of_cpus);
         gdt = vmm_memory_alloc(gdt_size);
@@ -160,10 +170,17 @@ void hw_gdt_setup(IN CPU_ID number_of_cpus)
 
     gdt_number_of_cpus = number_of_cpus;
 
+#ifdef JLMDEBUG
+    bprint("hw_gdt_setup about to setup segment descriptors\n");
+    LOOP_FOREVER
+#endif
     setup_data32_segment_descriptor();
     setup_code32_segment_descriptor();
     setup_code64_segment_descriptor();
 
+#ifdef JLMDEBUG
+    bprint("hw_gdt_setup about to setup tss descriptor\n");
+#endif
     for (cpu_id = 0; cpu_id < number_of_cpus; ++cpu_id) {
         setup_tss_with_descriptor(cpu_id);
     }

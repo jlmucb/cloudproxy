@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _HW_INTERLOCKED_H_
 #define _HW_INTERLOCKED_H_
@@ -62,7 +60,7 @@ extern void __faststorefence(void);
 //     INT32           new_value
 //    );
 //------------------------------------------------------------------------------
-#ifdef __GNUC__
+#if 0
 INT32    gcc_interlocked_compare_exchange(
             INT32 volatile * destination,
             INT32 exchange,
@@ -73,8 +71,6 @@ INT32    gcc_interlocked_compare_exchange(
             (INT32 volatile*)(p_number),                                        \
             (INT32)(new_value),                                                 \
             (INT32)(expected_value))
-
-#else
 
 #define hw_interlocked_compare_exchange( p_number, expected_value, new_value )  \
     (INT32)_InterlockedCompareExchange(                                         \
@@ -104,13 +100,13 @@ INT64   gcc_interlocked_compare_exchange_8(
             INT64 exchange,
             INT64 comperand );
 
-#define hw_interlocked_compare_exchange_8( p_number, expected_value, new_value )\
+#define hw_interlocked_compare_exchange( p_number, expected_value, new_value )\
     (INT64)gcc_interlocked_compare_exchange_8(                                \
             (INT64 volatile*)(p_number),                                      \
             (INT64)(new_value),                                               \
             (INT64)(expected_value) )
 #else
-#define hw_interlocked_compare_exchange_8( p_number, expected_value, new_value )\
+#define hw_interlocked_compare_exchange( p_number, expected_value, new_value )\
     (INT64)_InterlockedCompareExchange64(                                     \
             (INT64 volatile*)(p_number),                                      \
             (INT64)(new_value),                                               \

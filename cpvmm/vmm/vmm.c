@@ -343,6 +343,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 5\n");
+    LOOP_FOREVER // reached here
 #endif
 
     // Now we have a functional debug output
@@ -399,6 +400,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 7\n");
+    LOOP_FOREVER
 #endif
 
     addr_setup_address_space();
@@ -458,6 +460,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 12\n");
+    LOOP_FOREVER
 #endif
 
 #ifdef DEBUG

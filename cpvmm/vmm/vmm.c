@@ -524,6 +524,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 14\n");
+    bprint("num of cpus: %d\n", num_of_cpus);
+    LOOP_FOREVER 
 #endif
 
     // Initialize GDT for all cpus
@@ -532,7 +534,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 15\n");
-    LOOP_FOREVER 
 #endif
 
     // Load GDT for BSP

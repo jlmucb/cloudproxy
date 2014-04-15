@@ -343,7 +343,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 5\n");
-    // LOOP_FOREVER // reached here
 #endif
 
     // Now we have a functional debug output
@@ -353,10 +352,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         // BEFORE_VMLAUNCH. It will not happen in final Release mode
         VMM_DEADLOOP();
     };
-
-#ifdef JLMDEBUG
-    bprint("evmm position 5.5\n");
-#endif
 
     if(g_is_post_launch) {
         if(application_params_struct) {
@@ -374,20 +369,20 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             g_session_id = 0;
     }
 
-#ifdef JLMDEBUG
-    bprint("evmm position 5.6\n");
-    LOOP_FOREVER
-#endif
-        
     // Print global version message
     vmm_version_print();
 
 #ifdef JLMDEBUG
     bprint("evmm position 6\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER  // reached here
 #endif
 
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].entry_point);
+
+#ifdef JLMDEBUG
+    bprint("evmm position 6.5\n");
+    LOOP_FOREVER
+#endif
 
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Initializing all data structures...\n");
     VMM_LOG(mask_uvmm, level_trace,"\n\nBSP: Alive.  Local APIC ID=%P\n", lapic_id());

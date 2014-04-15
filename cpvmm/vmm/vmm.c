@@ -255,7 +255,6 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
 
 #ifdef JLMDEBUG
     bprint("evmm position 1\n");
-    //LOOP_FOREVER
 #endif
 
     host_cpu_enable_usage_of_xmm_regs();
@@ -272,7 +271,6 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
 
 #ifdef JLMDEBUG
     bprint("evmm position 2\n");
-    //LOOP_FOREVER
 #endif
 
 
@@ -317,7 +315,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 3\n");
-    LOOP_FOREVER
 #endif
 
     // save number of CPUs
@@ -337,8 +334,16 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         debug_port_params_error = vmm_debug_port_init_params(NULL);
     }
 
+#ifdef JLMDEBUG
+    bprint("evmm position 4\n");
+#endif
+
     // init the LIBC library
     vmm_libc_init();
+
+#ifdef JLMDEBUG
+    bprint("evmm position 5\n");
+#endif
 
     // Now we have a functional debug output
     if (debug_port_params_error) {
@@ -367,6 +372,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // Print global version message
     vmm_version_print();
 
+#ifdef JLMDEBUG
+    bprint("evmm position 6\n");
+#endif
+
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].entry_point);
 
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Initializing all data structures...\n");
@@ -388,7 +397,15 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         VMM_DEADLOOP();
     };
 
+#ifdef JLMDEBUG
+    bprint("evmm position 7\n");
+#endif
+
     addr_setup_address_space();
+
+#ifdef JLMDEBUG
+    bprint("evmm position 8\n");
+#endif
 
     // Initialize stack
     if (!vmm_stack_initialize(startup_struct)) {
@@ -398,6 +415,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         // occur with POSTLAUNCH.
         VMM_DEADLOOP();
     }
+
+#ifdef JLMDEBUG
+    bprint("evmm position 9\n");
+#endif
 
     // BEFORE_VMLAUNCH. Redundant check as above if condition already ensures
     // this does not happen. Keep the Deadloop for now.
@@ -419,12 +440,25 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // BEFORE_VMLAUNCH. Can't hit this condition in POSTLAUNCH. Keep the
     // ASSERT for now. 
     VMM_ASSERT(heap_last_occupied_address <= (startup_struct->vmm_memory_layout[uvmm_image].base_address + startup_struct->vmm_memory_layout[uvmm_image].total_size));
+
+#ifdef JLMDEBUG
+    bprint("evmm position 10\n");
+#endif
     
     //  Initialize CLI monitor
     CliMonitorInit();   // must be called after heap initialization.
 
+#ifdef JLMDEBUG
+    bprint("evmm position 11\n");
+#endif
+    
+
     vmdb_initialize();
     vmm_serial_cli_init();
+
+#ifdef JLMDEBUG
+    bprint("evmm position 12\n");
+#endif
 
 #ifdef DEBUG
     CLI_AddCommand(
@@ -447,6 +481,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         VMM_DEADLOOP();
     }
 
+#ifdef JLMDEBUG
+    bprint("evmm position 13\n");
+#endif
+
+
     //VMM_LOG(mask_uvmm, level_trace,"BSP: Copied VMM_STARTUP_STRUCT dump\n");
     //VMM_DEBUG_CODE( print_startup_struct( startup_struct ); )
 
@@ -457,21 +496,41 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
     application_params_struct = application_params_heap; // overwrite the parameter
 
+#ifdef JLMDEBUG
+    bprint("evmm position 14\n");
+#endif
+
     // Initialize GDT for all cpus
     hw_gdt_setup(num_of_cpus);
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: GDT setup is finished.\n");
+
+#ifdef JLMDEBUG
+    bprint("evmm position 15\n");
+#endif
 
     // Load GDT for BSP
     hw_gdt_load(cpu_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: GDT is loaded.\n");
 
+#ifdef JLMDEBUG
+    bprint("evmm position 16\n");
+#endif
+
     // Initialize IDT for all cpus
     isr_setup();
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: ISR setup is finished. \n");
 
+#ifdef JLMDEBUG
+    bprint("evmm position 17\n");
+#endif
+
     // Load IDT for BSP
     isr_handling_start();
     VMM_LOG(mask_uvmm, level_trace,"BSP: ISR handling started. \n");
+
+#ifdef JLMDEBUG
+    bprint("evmm position 18\n");
+#endif
 
     // Store information about e820
     if (!e820_abstraction_initialize((const INT15_E820_MEMORY_MAP*)startup_struct->physical_memory_layout_E820)) {
@@ -480,6 +539,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         VMM_DEADLOOP();
     }
 
+#ifdef JLMDEBUG
+    bprint("evmm position 19\n");
+#endif
+
     if (!mtrrs_abstraction_bsp_initialize()) {
         VMM_LOG(mask_uvmm, level_error, "BSP FAILURE: failed to cache mtrrs\n");
         // BEFORE_VMLAUNCH. Should not fail.
@@ -487,8 +550,16 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: MTRRs were successfully cached.\n");
 
+#ifdef JLMDEBUG
+    bprint("evmm position 20\n");
+#endif
+
     // init uVMM image parser
     exec_image_initialize();
+
+#ifdef JLMDEBUG
+    bprint("evmm position 21\n");
+#endif
 
     // Initialize Host Memory Manager
     if (!hmm_initialize(startup_struct)) {
@@ -497,6 +568,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         VMM_DEADLOOP();
     }
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Host Memory Manager was successfully initialized. \n");
+
+#ifdef JLMDEBUG
+    bprint("evmm position 22\n");
+#endif
 
     hmm_set_required_values_to_control_registers();
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
@@ -507,6 +582,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully updated CR3 to new value\n");
     // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
     VMM_ASSERT(hw_read_cr3() == new_cr3);
+
+#ifdef JLMDEBUG
+    bprint("evmm position 32\n");
+#endif
 
     // Allocates memory from heap for s3 resume structure on AP's
     // This should be called before calling vmm_heap_extend() in order to
@@ -528,27 +607,47 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             VMM_ASSERT(fpt_32bit_ok);
             VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully created 32bit FPT tables and cached them\n");    
         }   
+
+#ifdef JLMDEBUG
+    bprint("evmm position 24\n");
+#endif
         
         init_teardown_lock();
         VMM_LOG(mask_uvmm, level_trace,"VMM: Image and stack used %dKB memory.\n",
             ((UINT64)heap_address - startup_struct->vmm_memory_layout[uvmm_image].base_address)/(1024));
+
+#ifdef JLMDEBUG
+    bprint("evmm position 25\n");
+#endif
 
         // BEFORE_VMLAUNCH. Should not fail.
         VMM_ASSERT(g_additional_heap_base != 0);
         heap_last_occupied_address = vmm_heap_extend( g_additional_heap_base, 
                                         g_heap_pa_num * PAGE_4KB_SIZE);
 
+#ifdef JLMDEBUG
+    bprint("evmm position 26\n");
+#endif
+
         //VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully rebuilt: \n");
         //VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", heap_last_occupied_address);
         if (g_additional_heap_pa)
             build_extend_heap_hpa_to_hva();
     }
-
     VMM_DEBUG_CODE ( vmm_trace_init(VMM_MAX_GUESTS_SUPPORTED, num_of_cpus) );
+
+#ifdef JLMDEBUG
+    bprint("evmm position 27\n");
+#endif
+
 #ifdef PCI_SCAN
     host_pci_initialize();
 #endif
     vmcs_hw_init();
+
+#ifdef JLMDEBUG
+    bprint("evmm position 28\n");
+#endif
 
     // BEFORE_VMLAUNCH. REDUNDANT as this check is already done in POSTLAUNCH.
     VMM_ASSERT( vmcs_hw_is_cpu_vmx_capable() );
@@ -559,11 +658,23 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         // clear TS bit, since we need to operate on XMM registers.
         enable_fx_ops();
     }
+
+#ifdef JLMDEBUG
+    bprint("evmm position 29\n");
+#endif
     hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
     num_of_guests = startup_struct->number_of_secondary_guests + 1;
 
+#ifdef JLMDEBUG
+    bprint("evmm position 30\n");
+#endif
+
     // TODO: remove the compile time policy
     clear_policy(&policy);
+
+#ifdef JLMDEBUG
+    bprint("evmm position 31\n");
+#endif
 
 #ifdef VTLB_IS_SUPPORTED
     set_paging_policy(&policy, ept_is_ept_supported() ? POL_PG_EPT: POL_PG_VTLB);
@@ -580,12 +691,31 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
 #endif
 
+#ifdef JLMDEBUG
+    bprint("evmm position 32\n");
+#endif
+
     vmm_setup_cpu_specific_policies( &policy );
     global_policy_setup(&policy);
+#ifdef JLMDEBUG
+    bprint("evmm position 33\n");
+#endif
     scheduler_init( (UINT16)num_of_cpus );
+#ifdef JLMDEBUG
+    bprint("evmm position 34\n");
+#endif
     host_cpu_manager_init( num_of_cpus );
+#ifdef JLMDEBUG
+    bprint("evmm position 35\n");
+#endif
     guest_manager_init( (UINT16)num_of_cpus, (UINT16)num_of_cpus );
+#ifdef JLMDEBUG
+    bprint("evmm position 36\n");
+#endif
     local_apic_init( (UINT16)num_of_cpus );
+#ifdef JLMDEBUG
+    bprint("evmm position 37\n");
+#endif
 
     // tmsl profiling
     TMSL_PROFILING_INIT((UINT16)num_of_cpus );
@@ -593,9 +723,18 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // create VMEXIT-related data
     vmexit_initialize();
 
+#ifdef JLMDEBUG
+    bprint("evmm position 38\n");
+#endif
     // init current host CPU
     host_cpu_init();
+#ifdef JLMDEBUG
+    bprint("evmm position 39\n");
+#endif
     local_apic_cpu_init();
+#ifdef JLMDEBUG
+    bprint("evmm position 40\n");
+#endif
 
 #ifdef ENABLE_PREEMPTION_TIMER
     vmx_timer_hw_setup();   // called on every CPU
@@ -607,6 +746,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
     // create guests
     VMM_LOG(mask_uvmm, level_trace,"BSP: Create guests\n");
+#ifdef JLMDEBUG
+    bprint("evmm position 41\n");
+    LOOP_FOREVER
+#endif
 
     primary_guest_startup =
         (const VMM_GUEST_STARTUP*)startup_struct->primary_guest_startup_state;

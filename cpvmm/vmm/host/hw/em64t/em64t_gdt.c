@@ -241,8 +241,8 @@ void hw_gdt_set_ist_pointer(CPU_ID cpu_id, UINT8 ist_no, ADDRESS address)
 }
 
 
-VMM_STATUS hw_gdt_parse_entry( IN UINT8 *p_gdt, IN UINT16selector,
-       OUT ADDRESS *p_base, OUT UINT32 *p_limit, OUT UINT3  *p_attributes)
+VMM_STATUS hw_gdt_parse_entry( IN UINT8 *p_gdt, IN UINT16 selector,
+       OUT ADDRESS *p_base, OUT UINT32 *p_limit, OUT UINT32  *p_attributes)
 {
     UINT32 *p_entry = (UINT32 *) &p_gdt[selector];
     VMM_STATUS status = VMM_OK;

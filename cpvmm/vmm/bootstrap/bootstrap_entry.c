@@ -1443,6 +1443,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 
     // Startup struct initialization
     p_startup_struct->version_of_this_struct = VMM_STARTUP_STRUCT_VERSION;
+    p_startup_struct->size_of_this_struct = sizeof(VMM_STARTUP_STRUCT);
     p_startup_struct->number_of_processors_at_install_time = 1+evmm_num_of_aps;
     p_startup_struct->number_of_processors_at_boot_time = 1+evmm_num_of_aps;
     p_startup_struct->number_of_secondary_guests = 0; 

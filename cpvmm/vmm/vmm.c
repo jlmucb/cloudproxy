@@ -383,26 +383,37 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 6.5\n");
-    LOOP_FOREVER
 #endif
 
+#if 0
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Initializing all data structures...\n");
     VMM_LOG(mask_uvmm, level_trace,"\n\nBSP: Alive.  Local APIC ID=%P\n", lapic_id());
+#endif
 
     // check input structure
     if (startup_struct->version_of_this_struct != VMM_STARTUP_STRUCT_VERSION) {
+#if 0
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Loader-VMM version mismatch (init structure version mismatch)\n");
         // BEFORE_VMLAUNCH. This condition can't happen with the current
         // version. Keep the Deadloop for now.
         VMM_DEADLOOP();
+#else
+        bprint("startup struct wrong version\n");
+#endif
     };
     if (startup_struct->size_of_this_struct != sizeof(VMM_STARTUP_STRUCT)) {
+#if 0
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Loader-VMM version mismatch (init structure size mismatch)\n");
         // BEFORE_VMLAUNCH. This condition can't happen with the current
         // version. Keep the Deadloop for now.
         VMM_DEADLOOP();
+#else
+        bprint("startup struct wrong size %d %d\n",  
+               sizeof(VMM_STARTUP_STRUCT),
+               startup_struct->size_of_this_struct);
+#endif
     };
 
 #ifdef JLMDEBUG

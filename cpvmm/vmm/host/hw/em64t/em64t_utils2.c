@@ -379,11 +379,24 @@ void hw_write_cr2 (UINT64 value) {
 #define CPU_LOCATOR_GDT_ENTRY_OFFSET 32
 #define TSS_ENTRY_SIZE_SHIFT 4
 
+asm(
+".globl hw_cpu_id\n"
+".type hw_cpu_id,@function\n"
+"hw_cpu_id:\n"
+	"\txor %rax, %rax\n"
+	"\tstr %ax\n"
+	"\tsubw $32, %ax\n" // CPU_LOCATOR_GDT_ENTRY_OFFSET == 32
+	"\tshrw $4, %ax\n" // TSS_ENTRY_SIZE_SHIFT == 4
+	"\tret\n"
+);
+
+// See asm definition above. This function has highly specialized assumptions,
+// and it's better to write it in pure assembly rather than depending on the
+// compiler to get it right.
+#if 0
 UINT16 hw_cpu_id () {
     UINT16 ret = 0;
 
-    //JLM(FIX)
-#if 0
     asm volatile(
         "\txor %%rax, %%rax\n"
         "\tstr %%ax\n"
@@ -392,9 +405,9 @@ UINT16 hw_cpu_id () {
         "\tmovw %%ax, %[ret]\n"
     :[ret] "=g" (ret)
     : :"%rax");
-#endif
     return ret;
 }
+#endif
 
 
 // UINT16 hw_read_tr ( void);

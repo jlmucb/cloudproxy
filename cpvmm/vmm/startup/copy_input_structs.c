@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +18,9 @@
 #include "vmm_dbg.h"
 #include "vmm_startup.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(COPY_INPUT_STRUCTS_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(COPY_INPUT_STRUCTS_C, __condition)
@@ -27,19 +28,20 @@
 
 // Copy input params into heap before changing host virtual memory mapping
 // Required in order to avoid input parameters disrupting
-INLINE
-void vmm_copy_gcpu_startup_state(VMM_GUEST_CPU_STARTUP_STATE* state_to, 
+INLINE void vmm_copy_gcpu_startup_state(VMM_GUEST_CPU_STARTUP_STATE* state_to, 
                                  const VMM_GUEST_CPU_STARTUP_STATE* state_from) {
     vmm_memcpy(state_to, state_from, state_from->size_of_this_struct);
 }
 
-INLINE
-void vmm_copy_guest_device(VMM_GUEST_DEVICE* guest_device_to, const VMM_GUEST_DEVICE* guest_device_from) {
-    vmm_memcpy(guest_device_to, guest_device_from, guest_device_from->size_of_this_struct);
+INLINE void vmm_copy_guest_device(VMM_GUEST_DEVICE* guest_device_to, 
+                                  const VMM_GUEST_DEVICE* guest_device_from) {
+    vmm_memcpy(guest_device_to, guest_device_from, 
+               guest_device_from->size_of_this_struct);
 }
 
-static
-BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, const VMM_GUEST_STARTUP* guest_startup_from) {
+
+static BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, 
+                            const VMM_GUEST_STARTUP* guest_startup_from) {
     UINT32 size_of_array = 0;
     UINT32 i;
     void* array;
@@ -120,8 +122,8 @@ BOOLEAN vmm_copy_guest_startup(VMM_GUEST_STARTUP* guest_startup_to, const VMM_GU
     return TRUE;
 }
 
-static
-const VMM_GUEST_STARTUP* vmm_create_guest_startup_copy(const VMM_GUEST_STARTUP* guest_startup_stack) {
+
+static const VMM_GUEST_STARTUP* vmm_create_guest_startup_copy(const VMM_GUEST_STARTUP* guest_startup_stack) {
     VMM_GUEST_STARTUP* guest_startup_heap = NULL;
 
     // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
@@ -136,8 +138,8 @@ const VMM_GUEST_STARTUP* vmm_create_guest_startup_copy(const VMM_GUEST_STARTUP* 
     return (const VMM_GUEST_STARTUP*)guest_startup_heap;
 }
 
-static
-void vmm_destroy_guest_startup_struct(const VMM_GUEST_STARTUP* guest_startup) {
+
+static void vmm_destroy_guest_startup_struct(const VMM_GUEST_STARTUP* guest_startup) {
 
     if (guest_startup == NULL) {
         return;
@@ -162,7 +164,8 @@ void vmm_destroy_guest_startup_struct(const VMM_GUEST_STARTUP* guest_startup) {
     }
 }
 
-const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(const VMM_STARTUP_STRUCT* startup_struct_stack) {
+const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(
+        const VMM_STARTUP_STRUCT* startup_struct_stack) {
     VMM_STARTUP_STRUCT* startup_struct_heap = NULL;
     const VMM_GUEST_STARTUP* guest_startup_heap = NULL;
     void* secondary_guests_array;
@@ -178,7 +181,8 @@ const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(const VMM_STARTUP_STRUC
     VMM_ASSERT(startup_struct_stack->size_of_this_struct >= sizeof(VMM_STARTUP_STRUCT));
     // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
     VMM_ASSERT(ALIGN_BACKWARD((UINT64)startup_struct_stack, VMM_STARTUP_STRUCT_ALIGNMENT) == (UINT64)startup_struct_stack);
-    startup_struct_heap = (VMM_STARTUP_STRUCT*)vmm_memory_alloc(startup_struct_stack->size_of_this_struct);
+    startup_struct_heap = (VMM_STARTUP_STRUCT*)
+               vmm_memory_alloc(startup_struct_stack->size_of_this_struct);
     if (startup_struct_heap == NULL) {
         return NULL;
     }
@@ -190,7 +194,8 @@ const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(const VMM_STARTUP_STRUC
     if (startup_struct_stack->primary_guest_startup_state != 0) {
         // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
         VMM_ASSERT(ALIGN_BACKWARD(startup_struct_stack->primary_guest_startup_state, VMM_GUEST_STARTUP_ALIGNMENT) == startup_struct_stack->primary_guest_startup_state);
-        guest_startup_heap = vmm_create_guest_startup_copy((const VMM_GUEST_STARTUP*)startup_struct_stack->primary_guest_startup_state);
+        guest_startup_heap = vmm_create_guest_startup_copy(
+                 (const VMM_GUEST_STARTUP*)startup_struct_stack->primary_guest_startup_state);
         if (guest_startup_heap == NULL) {
             return NULL;
         }
@@ -205,7 +210,8 @@ const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(const VMM_STARTUP_STRUC
         VMM_GUEST_STARTUP* curr_guest_struct_heap = NULL;
 
         for (i = 0; i < startup_struct_stack->number_of_secondary_guests; i++) {
-            UINT64 addr_of_guest_struct = startup_struct_stack->secondary_guests_startup_state_array + size_of_array;
+            UINT64 addr_of_guest_struct = 
+                   startup_struct_stack->secondary_guests_startup_state_array + size_of_array;
             curr_guest_struct = (const VMM_GUEST_STARTUP*)addr_of_guest_struct;
             // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
             VMM_ASSERT(ALIGN_BACKWARD(addr_of_guest_struct, VMM_GUEST_STARTUP_ALIGNMENT) == addr_of_guest_struct);
@@ -225,8 +231,10 @@ const VMM_STARTUP_STRUCT* vmm_create_startup_struct_copy(const VMM_STARTUP_STRUC
                 return NULL;
             }
 
-            curr_guest_struct = (const VMM_GUEST_STARTUP*)((UINT64)curr_guest_struct + curr_guest_struct->size_of_this_struct);
-            curr_guest_struct_heap = (VMM_GUEST_STARTUP*)((UINT64)curr_guest_struct_heap + curr_guest_struct_heap->size_of_this_struct);
+            curr_guest_struct = (const VMM_GUEST_STARTUP*)
+                    ((UINT64)curr_guest_struct + curr_guest_struct->size_of_this_struct);
+            curr_guest_struct_heap = (VMM_GUEST_STARTUP*)
+                    ((UINT64)curr_guest_struct_heap + curr_guest_struct_heap->size_of_this_struct);
         }
     }
 
@@ -262,18 +270,21 @@ void vmm_destroy_startup_struct(const VMM_STARTUP_STRUCT* startup_struct) {
     vmm_memory_free((void*)startup_struct);
 }
 
-const VMM_APPLICATION_PARAMS_STRUCT* vmm_create_application_params_struct_copy(const VMM_APPLICATION_PARAMS_STRUCT* application_params_stack) {
+const VMM_APPLICATION_PARAMS_STRUCT* vmm_create_application_params_struct_copy(
+                const VMM_APPLICATION_PARAMS_STRUCT* application_params_stack) {
     VMM_APPLICATION_PARAMS_STRUCT* application_params_heap;
 
     if (application_params_stack == NULL) {
         return NULL;
     }
 
-    application_params_heap = (VMM_APPLICATION_PARAMS_STRUCT*)vmm_memory_alloc(application_params_stack->size_of_this_struct);
+    application_params_heap = (VMM_APPLICATION_PARAMS_STRUCT*)
+                vmm_memory_alloc(application_params_stack->size_of_this_struct);
     if (application_params_heap == NULL) {
         return NULL;
     }
-    vmm_memcpy(application_params_heap, application_params_stack, application_params_stack->size_of_this_struct);
+    vmm_memcpy(application_params_heap, application_params_stack, 
+               application_params_stack->size_of_this_struct);
     return (VMM_APPLICATION_PARAMS_STRUCT*)application_params_heap;
 }
 
@@ -512,6 +523,8 @@ void print_guest_startup_struct(const VMM_GUEST_STARTUP* startup_struct,
 end:
     VMM_LOG(mask_anonymous, level_trace,"\n  ----------------- END of VMM_GUEST_STARTUP ---------------\n\n");
 }
+
+
 #pragma warning(default : 4189)
 
 //pragma is needed because in "release" VMM_LOG translates to nothing

@@ -32,10 +32,12 @@ endif
 
 B=		$(E)/vmmobjects/utils
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
+		-I$(S)/vmm -I$(S)/vmm/bootstrap
 
-DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INCLUDE_LAYERING
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INCLUDE_LAYERING
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INCLUDE_LAYERING -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INCLUDE_LAYERING -D INVMM -D JLMDEBUG
+
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

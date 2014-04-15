@@ -118,8 +118,9 @@ extern BOOLEAN build_extend_heap_hpa_to_hva(void);
 //      forward declaration
 
 // main for BSP - should never return.  local_apic_id is always 0
-void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_struct,
-                       const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct);
+void vmm_bsp_proc_main(UINT32 local_apic_id, 
+       const VMM_STARTUP_STRUCT* startup_struct,
+       const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct);
 
 // main for APs - should never return
 void vmm_application_procs_main(UINT32 local_apic_id);
@@ -324,8 +325,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     g_is_post_launch = (BITMAP_GET(startup_struct->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) != 0);
     hw_calibrate_tsc_ticks_per_second();
 
-    // Init the debug port.  If the version is too low, there's no debug parameters.  Use
-    // the defaults and later on assert.
+    // Init the debug port.  If the version is too low, there's no debug parameters.
+    // Use the defaults and later on assert.
 
     if (startup_struct->version_of_this_struct >= VMM_STARTUP_STRUCT_MIN_VERSION_WITH_DEBUG) {
         debug_port_params_error = vmm_debug_port_init_params(&startup_struct->debug_params.port);
@@ -454,8 +455,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     bprint("stack initialized %d\n", vmm_stack_is_initialized());
     bprint("heap_address, heap_size, heap_last_occupied_address: 0x%016lx, %ld, 0x%016lx\n", 
            heap_address, heap_size, heap_last_occupied_address);
-    bprint("heap assert %d\n", 
-           heap_last_occupied_address <= (startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
 #endif
 
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully initialized: \n");
@@ -485,7 +484,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 12\n");
-    // LOOP_FOREVER  //reached here
 #endif
 
 #ifdef DEBUG
@@ -495,8 +493,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         "Print overall memory layout", "",
         CLI_ACCESS_LEVEL_USER);
 #endif
-    bprint("DEBUG is not defined\n");
-    LOOP_FOREVER
     VMM_LOG(mask_uvmm, level_trace,"BSP: Original VMM_STARTUP_STRUCT dump\n");
     VMM_DEBUG_CODE(
         print_startup_struct( startup_struct );
@@ -513,12 +509,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 13\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER // reached here
 #endif
 
-
-    //VMM_LOG(mask_uvmm, level_trace,"BSP: Copied VMM_STARTUP_STRUCT dump\n");
-    //VMM_DEBUG_CODE( print_startup_struct( startup_struct ); )
+    VMM_LOG(mask_uvmm, level_trace,"BSP: Copied VMM_STARTUP_STRUCT dump\n");
+    VMM_DEBUG_CODE( print_startup_struct( startup_struct ); )
 
     application_params_heap = vmm_create_application_params_struct_copy(application_params_struct);
     if ((application_params_struct != NULL) && (application_params_heap == NULL)) {
@@ -537,6 +532,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 15\n");
+    LOOP_FOREVER 
 #endif
 
     // Load GDT for BSP

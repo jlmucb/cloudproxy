@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *           
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,11 +47,10 @@ void hw_sgdt (void * gdtr) {
         return;
 }
 
-/*  
- *  Read Command Segment Selector
- *  Stack offsets on entry:
- *  ax register will contain result
- */
+
+//  Read Command Segment Selector
+//  Stack offsets on entry:
+//  ax register will contain result
 UINT16 hw_read_cs () {
                 
     UINT16 ret = 0;
@@ -68,6 +65,7 @@ UINT16 hw_read_cs () {
     return ret;
 }
 
+
 //RNB: I am not 100% sure about "jumping to a label" part.
 void hw_write_cs (UINT16 i) { 
     // push segment selector
@@ -79,18 +77,17 @@ void hw_write_cs (UINT16 i) {
         "\tadd %%rdx, %%rax\n"
         "\tpush %%rax\n"
         "\tlret\n" //brings IP to CONT_WITH_NEW_CS
-        "\tL_CONT_WITH_NEW_CS:\n"
+        "L_CONT_WITH_NEW_CS:\n"
         "\tret\n"
     : :[i] "m" (i)
     :"rax", "rdx");
 }
 
-/*  
- *  UINT16 hw_read_ds ( void);
- *  Read Data Segment Selector
- *  Stack offsets on entry:
- *  ax register will contain result
- */
+
+//  UINT16 hw_read_ds ( void);
+//  Read Data Segment Selector
+//  Stack offsets on entry:
+//  ax register will contain result
 UINT16 hw_read_ds () {
     UINT16 ret = 0;
 
@@ -103,7 +100,7 @@ UINT16 hw_read_ds () {
     return ret;
 }
 
-//
+
 //  void hw_write_ds ( UINT16);
 //  Write to Data Segment Selector
 void hw_write_ds(UINT16 i) {
@@ -114,7 +111,7 @@ void hw_write_ds(UINT16 i) {
     return;
 }
 
-//
+
 //  UINT16 hw_read_es ( void);
 //  Read ES Segment Selector
 //  Stack offsets on entry:
@@ -143,7 +140,8 @@ void hw_write_es (UINT16 i) {
     :);
     return;
 }
-//
+
+
 //  UINT16 hw_read_ss ( void);
 //  Read Stack Segment Selector
 //  ax register will contain result
@@ -159,7 +157,7 @@ UINT16 hw_read_ss() {
     return ret;
 }
 
-//
+
 //  void hw_write_ss ( UINT16);
 //  Write to Stack Segment Selector
 void hw_write_ss (UINT16 i) { 
@@ -171,7 +169,6 @@ void hw_write_ss (UINT16 i) {
 }
 
 
-//
 //  UINT16 hw_read_fs ( void);
 //  Read FS
 //  ax register will contain result
@@ -188,7 +185,7 @@ UINT16 hw_read_fs() {
     return ret;
 }
 
-//
+
 //  void hw_write_fs ( UINT16);
 //  Write to FS
 void hw_write_fs (UINT16 i) { 
@@ -323,22 +320,19 @@ void hw_write_to_smi_port(
     return;
 }
 
-//  void 
-//  hw_enable_interrupts (void);
+//  void hw_enable_interrupts (void);
 void hw_enable_interrupts () {
     asm volatile("\tsti\n");
     return;
 }
 
-//  void 
-//  hw_disable_interrupts (void);
+//  void hw_disable_interrupts (void);
 void hw_disable_interrupts () {
     asm volatile("\tcli\n");
     return;
 }
 
-//  void 
-//  hw_fxsave (void* buffer);
+//  void hw_fxsave (void* buffer);
 void hw_fxsave (void *buffer) {
     asm volatile(
         "\tfxsave %[buffer]\n"
@@ -348,8 +342,7 @@ void hw_fxsave (void *buffer) {
 }
 
 
-//  void 
-//  hw_fxrestore (void* buffer);
+//  void hw_fxrestore (void* buffer);
 void hw_fxrestore (void *buffer) {
     asm volatile(
         "\tfxrstor %[buffer]\n"
@@ -360,8 +353,7 @@ void hw_fxrestore (void *buffer) {
 }
 
 
-//  void 
-//  hw_write_cr2 (UINT64 value);
+//  void hw_write_cr2 (UINT64 value);
 void hw_write_cr2 (UINT64 value) {
     asm volatile(
         "\tmovq %%cr2, %[value]\n"
@@ -382,8 +374,6 @@ void hw_write_cr2 (UINT64 value) {
 UINT16 hw_cpu_id () {
     UINT16 ret = 0;
 
-    //JLM(FIX)
-#if 0
     asm volatile(
         "\txor %%rax, %%rax\n"
         "\tstr %%ax\n"
@@ -392,7 +382,6 @@ UINT16 hw_cpu_id () {
         "\tmovw %%ax, %[ret]\n"
     :[ret] "=g" (ret)
     : :"%rax");
-#endif
     return ret;
 }
 

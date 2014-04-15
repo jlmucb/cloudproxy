@@ -12,6 +12,7 @@
  * limitations under the License.
  */
 
+
 #include "vmm_defs.h"
 #include "common_libc.h"
 #include "lock.h"
@@ -19,6 +20,9 @@
 #include "vmm_dbg.h"
 #include "file_codes.h"
 #include "profiling.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HEAP_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HEAP_C, __condition)
@@ -239,8 +243,7 @@ static void * page_alloc_unprotected(
         }
     }
 
-    if (NULL == p_buffer)
-    {
+    if (NULL == p_buffer) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Failed to allocate %d pages\n", __FILE__, __LINE__, number_of_pages );
     }
 
@@ -265,10 +268,9 @@ void* vmm_page_allocate(
     lock_acquire(&heap_lock);
     p_buffer = page_alloc_unprotected(
 #ifdef DEBUG
-                                    file_name,
-                                    line_number,
+                     file_name, line_number,
 #endif
-                                    number_of_pages);
+                     number_of_pages);
     lock_release(&heap_lock);
     return p_buffer;
 }
@@ -295,10 +297,9 @@ HEAP_PAGE_INT vmm_page_allocate_scattered(
     for (i = 0; i < number_of_pages; ++i) {
         p_page_array[i] = page_alloc_unprotected(
             #ifdef DEBUG
-                                                file_name,
-                                                line_number,
+                                     file_name, line_number,
             #endif
-                                                1);
+                                     1);
         if (NULL == p_page_array[i]) {
             VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Failed to allocate pages %d..%d\n", __FILE__, __LINE__, i+1, number_of_pages);
             break;    // leave the loop
@@ -446,7 +447,6 @@ void* vmm_memory_allocate(
     if (size == 0) {
         return NULL;
     }
-
     size = (UINT32) ALIGN_FORWARD(size, PAGE_4KB_SIZE);
     p_buffer = vmm_page_allocate(
 #ifdef DEBUG
@@ -454,7 +454,6 @@ void* vmm_memory_allocate(
                             line_number,
 #endif
                             (HEAP_PAGE_INT) (size / PAGE_4KB_SIZE));
-
     if (NULL != p_buffer) {
         vmm_memset(p_buffer, 0, size);
     }

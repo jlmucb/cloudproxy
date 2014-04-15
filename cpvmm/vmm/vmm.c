@@ -229,7 +229,6 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
     bprint("local_apic_id %d, startup_struct_u %016lx\n", local_apic_id, startup_struct_u);
     bprint("application_params_struct_u %016lx, reserved  %016lx\n",
             application_params_struct_u, reserved);
-    LOOP_FOREVER
 #endif
     const VMM_STARTUP_STRUCT* startup_struct = 
                 (const VMM_STARTUP_STRUCT*)startup_struct_u;
@@ -254,6 +253,11 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
         }
     }
 
+#ifdef JLMDEBUG
+    bprint("evmm position 1\n");
+    //LOOP_FOREVER
+#endif
+
     host_cpu_enable_usage_of_xmm_regs();
 
     // setup stack
@@ -265,6 +269,12 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
     input_params.local_apic_id = local_apic_id;
     input_params.startup_struct = startup_struct_u;
     input_params.application_params_struct = application_params_struct_u;
+
+#ifdef JLMDEBUG
+    bprint("evmm position 2\n");
+    //LOOP_FOREVER
+#endif
+
 
     hw_set_stack_pointer(new_stack_pointer, (main_continue_fn)vmm_main_continue, &input_params);
     // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
@@ -303,6 +313,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #ifdef ENABLE_VTD
     HVA dmar_hva = 0;
 #endif
+#endif
+
+#ifdef JLMDEBUG
+    bprint("evmm position 3\n");
+    LOOP_FOREVER
 #endif
 
     // save number of CPUs

@@ -379,13 +379,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #if 0
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: uVMM image base address = %P, entry point address = %P\n", startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].entry_point);
-#endif
-
-#ifdef JLMDEBUG
-    bprint("evmm position 6.5\n");
-#endif
-
-#if 0
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Initializing all data structures...\n");
     VMM_LOG(mask_uvmm, level_trace,"\n\nBSP: Alive.  Local APIC ID=%P\n", lapic_id());
 #endif
@@ -418,7 +411,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 7\n");
-    LOOP_FOREVER
 #endif
 
     addr_setup_address_space();
@@ -429,15 +421,20 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // Initialize stack
     if (!vmm_stack_initialize(startup_struct)) {
+#if 0
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Stack initialization failed\n");
         // BEFORE_VMLAUNCH. Keep the Deadloop as this condition will not
         // occur with POSTLAUNCH.
         VMM_DEADLOOP();
+#else
+        bprint("Cant initialize stack\n");
+#endif
     }
 
 #ifdef JLMDEBUG
     bprint("evmm position 9\n");
+    LOOP_FOREVER
 #endif
 
     // BEFORE_VMLAUNCH. Redundant check as above if condition already ensures

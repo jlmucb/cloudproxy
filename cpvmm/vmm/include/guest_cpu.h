@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _GUEST_CPU_H_
 #define _GUEST_CPU_H_
@@ -42,20 +40,11 @@ VMM_DEBUG_CODE( 															   \
 // forward declaration
 // %VT% typedef struct _VMM_GUEST_CPU_STARTUP_STATE VMM_GUEST_CPU_STARTUP_STATE;
 
-//****************************************************************************
-//
 // Define guest-related global structures
-//
-//****************************************************************************
 
-///////////////////////////////////////////////////////////////////////////////
-//
 // guest cpu state
-//
-///////////////////////////////////////////////////////////////////////////////
-//
+
 // define single guest virtual cpu
-//
 typedef struct _VIRTUAL_CPU_ID
 {
     GUEST_ID guest_id;
@@ -246,33 +235,21 @@ UINT64 gcpu_get_msr_reg_by_index_layered(
                               VMCS_LEVEL                        level);
 
 
-//------------------------------------------------------------------------------
-//
 // Get Guest CPU state by VIRTUAL_CPU_ID
 //
 // Return NULL if no such guest cpu
-//------------------------------------------------------------------------------
 GUEST_CPU_HANDLE gcpu_state( const VIRTUAL_CPU_ID* vcpu );
 
-//------------------------------------------------------------------------------
-//
+
 // Get VIRTUAL_CPU_ID by Guest CPU
-//
-//------------------------------------------------------------------------------
 const VIRTUAL_CPU_ID* guest_vcpu( const GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
+
 // Get Guest Handle by Guest CPU
-//
-//------------------------------------------------------------------------------
 GUEST_HANDLE gcpu_guest_handle( const GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
+
 // Context switching
-//
-//------------------------------------------------------------------------------
 
 // perform full state save before switching to another guest
 void gcpu_swap_out( GUEST_CPU_HANDLE gcpu );
@@ -280,86 +257,55 @@ void gcpu_swap_out( GUEST_CPU_HANDLE gcpu );
 // perform state restore after switching from another guest
 void gcpu_swap_in( const GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
+
 // Change execution mode - switch to native execution mode
-//
 // This function should be called by appropriate VMCALL handler to end
 // non-native execution mode.
 // Current usage: terminate guest emulation
-//
 // Note: arguments arg1, arg2 and arg3 are not used. Added because this
 // function is registered as VMCALL handler
-//------------------------------------------------------------------------------
 VMM_STATUS gcpu_return_to_native_execution( GUEST_CPU_HANDLE gcpu,
                                             ADDRESS*, ADDRESS*, ADDRESS* );
 
-//------------------------------------------------------------------------------
-//
 // return TRUE if running in native (non-emulator) mode
-//
-//------------------------------------------------------------------------------
 BOOLEAN gcpu_is_native_execution( GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
 // switch to emulator. Should be used only on non-implemented events,
 // like hardware task switch.
-//
-//------------------------------------------------------------------------------
 void gcpu_run_emulator( const GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
 // Initialize gcpu environment for each VMEXIT
 // Must be the first gcpu call in each VMEXIT
-//
-//------------------------------------------------------------------------------
 void gcpu_vmexit_start( const GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
 // Resume execution.
 // never returns.
-//
-//------------------------------------------------------------------------------
 void gcpu_resume( GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
 // Perform single step.
-//
-//------------------------------------------------------------------------------
 BOOLEAN gcpu_perform_single_step( const GUEST_CPU_HANDLE gcpu );
 
-//------------------------------------------------------------------------------
-//
 // Initialize guest CPU
-//
 // Should be called only if initial GCPU state is not Wait-For-Sipi
-//------------------------------------------------------------------------------
-void gcpu_initialize( GUEST_CPU_HANDLE                   gcpu,
+void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
                       const VMM_GUEST_CPU_STARTUP_STATE* initial_state );
 
 UINT32 gcpu_get_interruptibility_state_layered(
                          const GUEST_CPU_HANDLE         gcpu,
-                         VMCS_LEVEL                    level);
+                         VMCS_LEVEL level);
 
 void gcpu_set_interruptibility_state_layered(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         UINT32                         value,
-                         VMCS_LEVEL                    level);
+                         const GUEST_CPU_HANDLE gcpu,
+                         UINT32 value, VMCS_LEVEL  level);
 
-INLINE
-UINT32 gcpu_get_interruptibility_state(
-                         const GUEST_CPU_HANDLE         gcpu) {
+INLINE UINT32 gcpu_get_interruptibility_state(
+                     const GUEST_CPU_HANDLE gcpu) {
     return gcpu_get_interruptibility_state_layered(gcpu, VMCS_MERGED);
 }
 
-INLINE
-void gcpu_set_interruptibility_state(
+INLINE void gcpu_set_interruptibility_state(
                          const GUEST_CPU_HANDLE         gcpu,
-                         UINT32                         value) {
+                         UINT32 value) {
     gcpu_set_interruptibility_state_layered(gcpu, value, VMCS_MERGED);
 }
 
@@ -421,16 +367,14 @@ void gcpu_set_vmenter_control(
 }
 
 
-//------------------------------------------------------------------------------
+
 // Guest CPU vmexits control
-//
 // request vmexits for given guest CPU
-//
 // Receives 2 bitmasks:
 //    For each 1bit in mask check the corresponding request bit. If request bit
 //    is 1 - request the vmexit on this bit change, else - remove the
 //    previous request for this bit.
-//------------------------------------------------------------------------------
+
 
 // setup vmexit requests without applying - for guest.c
 void gcpu_control_setup_only( GUEST_CPU_HANDLE gcpu, const VMEXIT_CONTROL* request );
@@ -489,11 +433,8 @@ void gcpu_manager_init(UINT16 host_cpu_count);
 GUEST_CPU_HANDLE gcpu_allocate(VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest);
 void gcpu_physical_memory_modified(GUEST_CPU_HANDLE gcpu);
 
-///////////////////////////////////////////////////////////////////////////////
-//
+
 // MSRs to be autoswapped at each vmexit/vmentry
-//
-///////////////////////////////////////////////////////////////////////////////
 
 
 // guest MSRs that are saved automatically at vmexit and loaded at vmentry
@@ -530,13 +471,9 @@ void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE              gcpu,
 */
 
 
-//------------------------------------------------------------------------------
-//
 // get/set native GP regardless of exection mode (emulator/native/etc)
 // if guest is not running natively (ex. under emulator) this will return/set
 // emulator registers and not real guest registers
-//
-//------------------------------------------------------------------------------
 INLINE UINT64 gcpu_get_native_gp_reg(
                         const GUEST_CPU_HANDLE         gcpu,
                         VMM_IA32_GP_REGISTERS          reg ) {
@@ -550,11 +487,8 @@ INLINE void   gcpu_set_native_gp_reg(
     gcpu_set_native_gp_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 
-//------------------------------------------------------------------------------
-//
+
 // Get/Set register value
-//
-//------------------------------------------------------------------------------
 #ifdef INCLUDE_UNUSED_CODE
 INLINE void gcpu_get_all_gp_regs( const GUEST_CPU_HANDLE gcpu,
                                   UINT64                 *GPreg ) {

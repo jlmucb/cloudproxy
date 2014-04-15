@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _HEAP_H_
 #define _HEAP_H_
@@ -37,33 +35,30 @@ typedef struct {
 #endif
 } HEAP_PAGE_DESCRIPTOR;
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_heap_get_max_used_pages()
-*  PURPOSE  : Returns the max amount of uVmm heap pages used
-*             from post-launch vmm
-*  ARGUMENTS:
-*  RETURNS  : HEAP max heap used in pages
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_heap_get_max_used_pages()
+// PURPOSE  : Returns the max amount of uVmm heap pages used
+//            from post-launch vmm
+// ARGUMENTS:
+// RETURNS  : HEAP max heap used in pages
 HEAP_PAGE_INT vmm_heap_get_max_used_pages(void);
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_heap_initialize()
-*  PURPOSE  : Format memory block for memory allocation / free services.
-*           : Calculate actual number of pages.
-*  ARGUMENTS:IN ADDRESS heap_base_address - address at which the heap is located
-*           : size_t    heap_size - in bytes
-*  RETURNS  : Last occupied address
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_heap_initialize()
+// PURPOSE  : Format memory block for memory allocation / free services.
+//          : Calculate actual number of pages.
+// ARGUMENTS:IN ADDRESS heap_base_address - address at which the heap is located
+//          : size_t    heap_size - in bytes
+// RETURNS  : Last occupied address
 ADDRESS vmm_heap_initialize(IN ADDRESS heap_base_address, IN size_t heap_size);
 
-/*-------------------------------------------------------*
-*  FUNCTION : vmm_heap_extend()
-*  PURPOSE  : Extend the heap to an additional memory block 
-*			: update actual number of pages.
-*  ARGUMENTS:IN ADDRESS ex_heap_base_address - address at which the heap is located
-*           : size_t    ex_heap_size - in bytes
-*  RETURNS  : Last occupied address
-*-------------------------------------------------------*/
+
+// FUNCTION : vmm_heap_extend()
+// PURPOSE  : Extend the heap to an additional memory block 
+//		: update actual number of pages.
+// ARGUMENTS:IN ADDRESS ex_heap_base_address - address at which the heap is located
+//          : size_t    ex_heap_size - in bytes
+// RETURNS  : Last occupied address
 ADDRESS vmm_heap_extend(IN ADDRESS ex_heap_buffer_address, IN size_t  ex_heap_buffer_size);
 
 

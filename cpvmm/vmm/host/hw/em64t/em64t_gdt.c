@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -40,8 +38,7 @@ typedef struct {
 } UINT64_EMULATED;
 
 
-static void setup_data32_segment_descriptor(
-    void)
+static void setup_data32_segment_descriptor( void)
 {
     IA32_DATA_SEGMENT_DESCRIPTOR *p_data32 = (IA32_DATA_SEGMENT_DESCRIPTOR *) &gdt[DATA32_GDT_ENTRY_OFFSET];
 
@@ -66,8 +63,7 @@ static void setup_data32_segment_descriptor(
 }
 
 
-static void setup_code32_segment_descriptor(
-    void)
+static void setup_code32_segment_descriptor( void)
 {
     IA32_CODE_SEGMENT_DESCRIPTOR *p_code32 = (IA32_CODE_SEGMENT_DESCRIPTOR *) &gdt[CODE32_GDT_ENTRY_OFFSET];
     p_code32->lo.limit_15_00           = 0xFFFF;
@@ -139,22 +135,18 @@ static void setup_tss_with_descriptor(
 }
 
 
-/*
- *  FUNCTION     : hw_gdt_setup()
- *  PURPOSE      : Setup GDT for all CPUs. Including entries for:
- *               : 64-bit code segment
- *               : 32-bit code segment (for compatibility mode)
- *               : 32-bit data segment (in compatibility mode, for both data and stack)
- *               : one 64-bit for FS, which limit is used like index CPU ID
- *  ARGUMENTS    : IN CPU_ID number_of_cpus - number of CPUs in the system
- *  RETURNS      : void
- */
+//  FUNCTION   : hw_gdt_setup()
+//  PURPOSE    : Setup GDT for all CPUs. Including entries for:
+//             : 64-bit code segment
+//             : 32-bit code segment (for compatibility mode)
+//             : 32-bit data segment (in compatibility mode, for both data and stack)
+//             : one 64-bit for FS, which limit is used like index CPU ID
+//  ARGUMENTS  : IN CPU_ID number_of_cpus - number of CPUs in the system
 void hw_gdt_setup(IN CPU_ID number_of_cpus)
 {
     CPU_ID cpu_id;
 
-    if (NULL == gdt)
-    {
+    if (NULL == gdt) {
         // Offset of next after last entry will give us the size
         gdt_size = TSS_ENTRY_OFFSET(number_of_cpus);
         gdt = vmm_memory_alloc(gdt_size);
@@ -172,13 +164,12 @@ void hw_gdt_setup(IN CPU_ID number_of_cpus)
     setup_code32_segment_descriptor();
     setup_code64_segment_descriptor();
 
-
-    for (cpu_id = 0; cpu_id < number_of_cpus; ++cpu_id)
-    {
+    for (cpu_id = 0; cpu_id < number_of_cpus; ++cpu_id) {
         setup_tss_with_descriptor(cpu_id);
     }
-
 }
+
+
 #ifdef DEBUG
 void gdt_show(void)
 {
@@ -193,19 +184,17 @@ void gdt_show(void)
 
     VMM_LOG(mask_anonymous, level_trace,"Limit = %04X\n", gdtr.limit);
 
-    for (i = 0; i < (gdtr.limit + 1) / sizeof(UINT64_EMULATED); ++i)
-    {
+    for (i = 0; i < (gdtr.limit + 1) / sizeof(UINT64_EMULATED); ++i) {
         VMM_LOG(mask_anonymous, level_trace,"%02X %08X %08X\n", i, p_base[i].lo, p_base[i].hi);
     }
 }
 #endif
 
-/*
- *  FUNCTION     : hw_gdt_load()
- *  PURPOSE      : Load GDT on given CPU
- *  ARGUMENTS    : IN CPU_ID cpu_id
- *  RETURNS      : void
- */
+
+//  FUNCTION     : hw_gdt_load()
+//  PURPOSE      : Load GDT on given CPU
+//  ARGUMENTS    : IN CPU_ID cpu_id
+//  RETURNS      : void
 void hw_gdt_load(IN CPU_ID cpu_id)
 {
     EM64T_GDTR gdtr;
@@ -234,14 +223,12 @@ void hw_gdt_load(IN CPU_ID cpu_id)
     hw_write_gs(0);
 }
 
-/*
- *  FUNCTION     : hw_gdt_set_ist_pointer()
- *  PURPOSE      : Assign address to specified IST
- *  ARGUMENTS    : CPU_ID cpu_id
- *               : UINT8 ist_no - in range [0..7]
- *               : ADDRESS address - of specified Interrupt Stack
- *  RETURNS      : void
- */
+
+//  FUNCTION     : hw_gdt_set_ist_pointer()
+//  PURPOSE      : Assign address to specified IST
+//  ARGUMENTS    : CPU_ID cpu_id
+//               : UINT8 ist_no - in range [0..7]
+//               : ADDRESS address - of specified Interrupt Stack
 void hw_gdt_set_ist_pointer(CPU_ID cpu_id, UINT8 ist_no, ADDRESS address)
 {
     // BEFORE_VMLAUNCH
@@ -253,18 +240,14 @@ void hw_gdt_set_ist_pointer(CPU_ID cpu_id, UINT8 ist_no, ADDRESS address)
     p_tss[cpu_id].ist[ist_no] = address;
 }
 
-VMM_STATUS hw_gdt_parse_entry(
-    IN UINT8    *p_gdt,
-    IN UINT16   selector,
-    OUT ADDRESS *p_base,
-    OUT UINT32  *p_limit,
-    OUT UINT32  *p_attributes)
+
+VMM_STATUS hw_gdt_parse_entry( IN UINT8 *p_gdt, IN UINT16selector,
+       OUT ADDRESS *p_base, OUT UINT32 *p_limit, OUT UINT3  *p_attributes)
 {
     UINT32 *p_entry = (UINT32 *) &p_gdt[selector];
     VMM_STATUS status = VMM_OK;
 
-    switch (selector)
-    {
+    switch (selector) {
     case NULL_GDT_ENTRY_OFFSET:
         *p_base       = 0;
         *p_limit      = 0;

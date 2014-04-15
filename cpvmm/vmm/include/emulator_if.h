@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _EMULATOR_IF_H_
 #define _EMULATOR_IF_H_
@@ -74,19 +72,14 @@ void    emul_register_mmio_handler(
             );
 
 
-/*-------------------------------------------------------*
-*  FUNCTION : emulator_is_running_as_guest()
-*  PURPOSE  : Used in interrupt handler
-*  ARGUMENTS: void
-*  RETURNS  : TRUE if guest runs emulator
-*-------------------------------------------------------*/
+// FUNCTION : emulator_is_running_as_guest()
+// PURPOSE  : Used in interrupt handler
+// ARGUMENTS: void
+// RETURNS  : TRUE if guest runs emulator
 INLINE BOOLEAN emulator_is_running_as_guest(void)
 {
     return ((vmm_get_state() == VMM_STATE_RUN) && (0 != hw_read_gs()));
 }
-
-
-
 
 #endif // _EMULATOR_IF_H_
 

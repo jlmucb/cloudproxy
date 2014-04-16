@@ -1028,7 +1028,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     }
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 8\n");
-    LOOP_FOREVER 
+    // LOOP_FOREVER  // reached
 #endif
 
     if (!mam_insert_not_existing_range(hva_to_hpa, 0, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
@@ -1175,7 +1175,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 10\n");
-    // LOOP_FOREVER // reached
+    // LOOP_FOREVER  //reached
 #endif
     // For late launch support additional heap 
     // Patch the MAM to build non-contiguous pa memory to a contiguous va for the heap
@@ -1203,7 +1203,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 11\n");
-    // LOOP_FOREVER // reached
+    // LOOP_FOREVER  // reached
 #endif
     hmm_set_current_vmm_page_tables(g_hmm, vmm_page_tables_hpa);
 

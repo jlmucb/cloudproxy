@@ -280,10 +280,12 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
     VMM_BREAKPOINT();
 }
 
+
 // The Boot Strap Processor main routine
 // Should never return!
-void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_struct,
-                       const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct)
+void vmm_bsp_proc_main(UINT32 local_apic_id, 
+                  const VMM_STARTUP_STRUCT* startup_struct,
+                  const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct)
 {
     HVA lowest_stacks_addr = 0;
     UINT32 stacks_size = 0;
@@ -609,14 +611,20 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
 #ifdef JLMDEBUG
-    bprint("evmm position 22.6\n");
-    LOOP_FOREVER
+    bprint("evmm position 22.6, new cr3: 0x%016x\n", new_cr3);
+    // LOOP_FOREVER  //reached
 #endif
 
     // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
     VMM_ASSERT(new_cr3 != HMM_INVALID_VMM_PAGE_TABLES);
     VMM_LOG(mask_uvmm, level_trace,"BSP: New cr3=%P. \n", new_cr3);
+
     hw_write_cr3(new_cr3);
+#ifdef JLMDEBUG
+    bprint("evmm position 22.7\n");
+    LOOP_FOREVER
+#endif
+
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully updated CR3 to new value\n");
     // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
     VMM_ASSERT(hw_read_cr3() == new_cr3);

@@ -1209,7 +1209,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
     return TRUE;
 
-
 destroy_hpa_to_hva_mapping_exit:
     mam_destroy_mapping(hpa_to_hva);
 destroy_hva_to_hpa_mapping_exit:
@@ -1217,6 +1216,7 @@ destroy_hva_to_hpa_mapping_exit:
 no_destroy_exit:
     return FALSE;
 }
+
 #pragma warning(default : 4710)
 
 HPA hmm_get_vmm_page_tables(void) {
@@ -1226,14 +1226,15 @@ HPA hmm_get_vmm_page_tables(void) {
     return *((HPA*)(&curr_page_tables));
 }
 
+
 BOOLEAN hmm_hva_to_hpa(IN HVA hva, OUT HPA* hpa) {
     MAM_HANDLE hva_to_hpa = hmm_get_hva_to_hpa_mapping(g_hmm);
     UINT64 hpa_tmp;
     MAM_ATTRIBUTES attrs_tmp;
     UINT64 hva_tmp = (UINT64)hva;
 
-        //Before hpa/hva mapping is setup, assume 1:1 mapping
-        if (hva_to_hpa == MAM_INVALID_HANDLE) {
+    //Before hpa/hva mapping is setup, assume 1:1 mapping
+    if (hva_to_hpa == MAM_INVALID_HANDLE) {
         *hpa = (HPA) hva;
         return TRUE;
         }
@@ -1331,7 +1332,6 @@ BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
     }
 
 out:
-
     lock_release(hmm_get_update_lock(g_hmm));
     return result;
 }
@@ -1341,6 +1341,7 @@ VMM_PHYS_MEM_TYPE hmm_get_hpa_type(IN HPA hpa) {
     return mtrrs_abstraction_get_memory_type(hpa);
 }
 
+
 BOOLEAN hmm_does_memory_range_have_specified_memory_type(IN HPA start_hpa, IN UINT64 size, VMM_PHYS_MEM_TYPE mem_type) {
     UINT64 checked_size = 0;
     HPA curr_hpa = ALIGN_BACKWARD(start_hpa, PAGE_4KB_SIZE);
@@ -1348,7 +1349,6 @@ BOOLEAN hmm_does_memory_range_have_specified_memory_type(IN HPA start_hpa, IN UI
     if (mem_type == VMM_PHYS_MEM_UNDEFINED) {
         return FALSE;
     }
-
     while ((curr_hpa + checked_size) < (start_hpa + size)) {
         if (hmm_get_hpa_type(curr_hpa) != mem_type) {
             return FALSE;
@@ -1356,7 +1356,6 @@ BOOLEAN hmm_does_memory_range_have_specified_memory_type(IN HPA start_hpa, IN UI
         curr_hpa += PAGE_4KB_SIZE;
         checked_size += PAGE_4KB_SIZE;
     }
-
     return TRUE;
 }
 

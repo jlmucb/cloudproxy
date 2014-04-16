@@ -610,9 +610,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #endif
 
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
+    UINT64 old_cr3= hw_read_cr3();
 #ifdef JLMDEBUG
-    bprint("evmm position 22.6, new cr3: 0x%016x\n", new_cr3);
-    // LOOP_FOREVER  //reached
+    bprint("evmm position 22.6, new cr3: 0x%016x, old cr3: 0x%016x\n",
+            new_cr3, old_cr3);
+    HexDump((UINT8*)new_cr3, (UINT8*)new_cr3+40);
+    //LOOP_FOREVER  //reached
 #endif
 
     // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
@@ -622,7 +625,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     hw_write_cr3(new_cr3);
 #ifdef JLMDEBUG
     bprint("evmm position 22.7\n");
-    LOOP_FOREVER
 #endif
 
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully updated CR3 to new value\n");
@@ -631,6 +633,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 23\n");
+    LOOP_FOREVER
 #endif
 
     // Allocates memory from heap for s3 resume structure on AP's

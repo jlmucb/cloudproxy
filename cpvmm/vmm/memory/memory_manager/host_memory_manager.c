@@ -862,7 +862,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 2\n");
-    LOOP_FOREVER
 #endif
 
     // Get the index of Write Back caching policy
@@ -878,11 +877,15 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         goto no_destroy_exit;
     }
 
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 2.5\n");
+    LOOP_FOREVER
+#endif
+
     inner_mapping_attrs.uint32 = 0;
     inner_mapping_attrs.paging_attr.writable = 1;
     inner_mapping_attrs.paging_attr.executable = 1;
     inner_mapping_attrs.paging_attr.pat_index = curr_wb_index;
-
 
     // Create HVA -> HPA mapping
     hva_to_hpa = mam_create_mapping(inner_mapping_attrs);

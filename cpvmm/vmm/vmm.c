@@ -509,7 +509,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 13\n");
-    // LOOP_FOREVER // reached here
 #endif
 
     VMM_LOG(mask_uvmm, level_trace,"BSP: Copied VMM_STARTUP_STRUCT dump\n");
@@ -543,7 +542,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 16\n");
-    // LOOP_FOREVER   //reached
 #endif
 
     // Initialize IDT for all cpus
@@ -560,7 +558,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 18\n");
-    LOOP_FOREVER
 #endif
 
     // Store information about e820
@@ -590,6 +587,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 21\n");
+    LOOP_FOREVER   // reached
 #endif
 
     // Initialize Host Memory Manager
@@ -649,6 +647,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 25\n");
+    LOOP_FOREVER  
 #endif
 
         // BEFORE_VMLAUNCH. Should not fail.
@@ -660,8 +659,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     bprint("evmm position 26\n");
 #endif
 
-        //VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully rebuilt: \n");
-        //VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", heap_last_occupied_address);
         if (g_additional_heap_pa)
             build_extend_heap_hpa_to_hva();
     }
@@ -669,6 +666,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 27\n");
+    LOOP_FOREVER
 #endif
 
 #ifdef PCI_SCAN

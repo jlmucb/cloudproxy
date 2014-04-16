@@ -162,6 +162,9 @@ void hw_gdt_setup(IN CPU_ID number_of_cpus)
         gdt = vmm_memory_alloc(gdt_size);
         // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
         VMM_ASSERT(NULL != gdt);
+#ifdef JLMDEBUG
+        bprint("gdt right after alloc 0x%016x\n", gdt);
+#endif
 
         p_tss = vmm_memory_alloc(sizeof(EM64T_TASK_STATE_SEGMENT) * number_of_cpus);
         // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
@@ -171,7 +174,8 @@ void hw_gdt_setup(IN CPU_ID number_of_cpus)
     gdt_number_of_cpus = number_of_cpus;
 
 #ifdef JLMDEBUG
-    bprint("hw_gdt_setup about to setup segment descriptors\n");
+    bprint("hw_gdt_setup about to setup segment descriptors, gdt= 0x%016x\n",
+           gdt);
     LOOP_FOREVER
 #endif
     setup_data32_segment_descriptor();

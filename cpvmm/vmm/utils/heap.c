@@ -215,9 +215,6 @@ static void * page_alloc_unprotected(
     void *p_buffer = NULL;
 
     if (number_of_pages == 0) {
-#ifdef JLMDEBUG
-        bprint("No more pages\n");
-#endif
         return NULL;
     }
 
@@ -250,13 +247,7 @@ static void * page_alloc_unprotected(
         VMM_LOG(mask_anonymous, level_trace,"ERROR: (%s %d)  Failed to allocate %d pages\n", __FILE__, __LINE__, number_of_pages );
     }
 
-#ifdef JLMDEBUG
-    bprint("p_buffer before = %p\n", p_buffer);
-#endif
     TMSL_PROFILING_MEMORY_ALLOC((UINT64)p_buffer, number_of_pages * PAGE_4KB_SIZE, PROF_MEM_CONTEXT_TMSL);
-#ifdef JLMDEBUG
-    bprint("p_buffer after = %p\n", p_buffer);
-#endif
     return p_buffer;
 }
 
@@ -457,22 +448,13 @@ void* vmm_memory_allocate(
         return NULL;
     }
     size = (UINT32) ALIGN_FORWARD(size, PAGE_4KB_SIZE);
-#ifdef JLMDEBUG
-    bprint("Got size %u\n", size);
-#endif
     p_buffer = vmm_page_allocate(
 #ifdef DEBUG
                             file_name,
                             line_number,
 #endif
                             (HEAP_PAGE_INT) (size / PAGE_4KB_SIZE));
-#ifdef JLMDEBUG
-    bprint("p_buffer = %p\n", p_buffer);
-#endif
     if (NULL != p_buffer) {
-#ifdef JLMDEBUG
-        bprint("setting p_buffer to 0\n");
-#endif
         vmm_memset(p_buffer, 0, size);
     }
     return p_buffer;

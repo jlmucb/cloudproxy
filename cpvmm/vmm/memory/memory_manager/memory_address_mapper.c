@@ -523,7 +523,9 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
     entry->page_table_entry.writable = attr.paging_attr.writable;
     entry->page_table_entry.user = attr.paging_attr.user;
     entry->page_table_entry.global = attr.paging_attr.global;
+#if 0
     entry->page_table_entry.exb = (attr.paging_attr.executable) ? 0 : 1;
+#endif
     mam_calculate_caching_attributes_from_pat_index(
                 attr.paging_attr.pat_index, &pwt_bit, &pcd_bit, &pat_bit);
     entry->page_table_entry.pwt = pwt_bit;
@@ -918,7 +920,9 @@ void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_
         entry->page_table_entry.writable = attrs.paging_attr.writable;
         entry->page_table_entry.user = attrs.paging_attr.user;
         entry->page_table_entry.global = attrs.paging_attr.global;
+#if 0
         entry->page_table_entry.exb = (attrs.paging_attr.executable) ? 0 : 1;
+#endif
     }
 
     mam_calculate_caching_attributes_from_pat_index(attrs.paging_attr.pat_index, &pwt_bit, &pcd_bit, &pat_bit);
@@ -1010,7 +1014,9 @@ void mam_update_attributes_in_leaf_page_table_entry(MAM_ENTRY* entry, MAM_ATTRIB
 
     entry->page_table_entry.writable = attrs.paging_attr.writable;
     entry->page_table_entry.user = attrs.paging_attr.user;
+#if 0
     entry->page_table_entry.exb = (attrs.paging_attr.executable) ? 0 : 1;
+#endif
     entry->page_table_entry.global = attrs.paging_attr.global;
     mam_calculate_caching_attributes_from_pat_index(attrs.paging_attr.pat_index, &pwt_bit, &pcd_bit, &pat_bit);
     entry->page_table_entry.pwt = pwt_bit;
@@ -1059,23 +1065,19 @@ void mam_update_attributes_in_leaf_vtdpt_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES 
         VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
-static
-MAM_ENTRY_TYPE mam_get_leaf_internal_entry_type(void) {
+static MAM_ENTRY_TYPE mam_get_leaf_internal_entry_type(void) {
     return MAM_LEAF_INTERNAL_ENTRY;
 }
 
-static
-MAM_ENTRY_TYPE mam_get_leaf_page_table_entry_type(void) {
+static MAM_ENTRY_TYPE mam_get_leaf_page_table_entry_type(void) {
     return MAM_LEAF_PAGE_TABLE_ENTRY;
 }
 
-static
-MAM_ENTRY_TYPE mam_get_leaf_ept_entry_type(void) {
+static MAM_ENTRY_TYPE mam_get_leaf_ept_entry_type(void) {
     return MAM_LEAF_EPT_ENTRY;
 }
 
-static
-MAM_ENTRY_TYPE mam_get_leaf_vtdpt_entry_type(void) {
+static MAM_ENTRY_TYPE mam_get_leaf_vtdpt_entry_type(void) {
     return MAM_LEAF_VTDPT_ENTRY;
 }
 

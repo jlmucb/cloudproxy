@@ -587,7 +587,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 21\n");
-    // LOOP_FOREVER   // reached
 #endif
 
     // Initialize Host Memory Manager
@@ -600,11 +599,20 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 22\n");
-    LOOP_FOREVER
 #endif
 
     hmm_set_required_values_to_control_registers();
+#ifdef JLMDEBUG
+    bprint("evmm position 22.5\n");
+    // LOOP_FOREVER  // reached
+#endif
+
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
+#ifdef JLMDEBUG
+    bprint("evmm position 22.6\n");
+    LOOP_FOREVER
+#endif
+
     // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
     VMM_ASSERT(new_cr3 != HMM_INVALID_VMM_PAGE_TABLES);
     VMM_LOG(mask_uvmm, level_trace,"BSP: New cr3=%P. \n", new_cr3);
@@ -614,7 +622,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_ASSERT(hw_read_cr3() == new_cr3);
 
 #ifdef JLMDEBUG
-    bprint("evmm position 32\n");
+    bprint("evmm position 23\n");
 #endif
 
     // Allocates memory from heap for s3 resume structure on AP's
@@ -640,6 +648,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 24\n");
+    LOOP_FOREVER
 #endif
         
         init_teardown_lock();

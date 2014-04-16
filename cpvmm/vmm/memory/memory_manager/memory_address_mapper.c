@@ -1081,11 +1081,18 @@ static void mam_invalidate_all_entries_in_table(IN MAM_HVA table,
  *         entry_type      - type of each entry
  *  Output: HVA of created table.
  */
-static
-MAM_HVA mam_create_table(IN MAM_MAPPING_RESULT unmapped_reason, IN MAM_ENTRY_TYPE entry_type) {
+static MAM_HVA mam_create_table(IN MAM_MAPPING_RESULT unmapped_reason, 
+          IN MAM_ENTRY_TYPE entry_type) {
+#ifdef JLMDEBUG
+   bprint("mam_create_table\n");
+#endif
     void* allocated_table_ptr = vmm_page_alloc(1); // allocate single page
     MAM_HVA allocated_table_hva = mam_ptr_to_hva(allocated_table_ptr);
 
+#ifdef JLMDEBUG
+   bprint("mam_create_table about to invalidate\n");
+   LOOP_FOREVER
+#endif
     if (allocated_table_ptr != NULL) {
         mam_invalidate_all_entries_in_table(allocated_table_hva, unmapped_reason, entry_type);
     }
@@ -2210,7 +2217,6 @@ MAM_HANDLE mam_create_mapping(MAM_ATTRIBUTES inner_level_attributes) {
 
 #ifdef JLMDEBUG
    bprint("mam_create_mapping\n");
-   LOOP_FOREVER
 #endif
     // Consistency checks
     VMM_ASSERT(sizeof(MAM_ATTRIBUTES) == sizeof(inner_level_attributes.uint32));
@@ -2223,6 +2229,10 @@ MAM_HANDLE mam_create_mapping(MAM_ATTRIBUTES inner_level_attributes) {
     if (first_table == mam_ptr_to_hva(NULL)) {
         goto deallocate_mam;
     }
+#ifdef JLMDEBUG
+   bprint("after mam_create_table\n");
+   LOOP_FOREVER
+#endif
 
     mam->first_table = first_table;
     mam->first_table_ops = (MAM_LEVEL_OPS*)MAM_LEVEL1_OPS; // No mapping exists

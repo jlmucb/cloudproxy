@@ -77,6 +77,45 @@
 #endif
 
 
+#ifdef JLMDEBUG
+UINT64 getphysical(UINT64 cr3, UINT64 virt)
+{
+    UINT64 i1, i2, i3, i4, i5;
+    UINT64 *b1, *b2, *b3, *b4;
+    UINT64 c0, c1, c2, c3, c4;
+    UINT64  phys;
+
+    c0= cr3;
+    c0&= (UINT64)~0xfff;   // pml4
+
+    i1= virt>>39;
+    i2= (virt>>30)&(UINT64)0x1ff;
+    i3= (virt>>21)&(UINT64)0x01ff;
+    i4= (virt>>12)&(UINT64)0x01ff;
+    i5= virt&(UINT64)0x0fff;
+
+    b1= (UINT64*) (c0+sizeof(UINT64)*i1);
+    if((*b1&0x1)==0)
+        return (UINT64)-1;
+    c1= *b1&~(UINT64)0xfff;
+    b2= (UINT64*) (c1+sizeof(UINT64)*i2);
+    if((*b2&0x1)==0)
+        return (UINT64)-1;
+    c2= *b2&~(UINT64)0xfff;
+    b3= (UINT64*)(c2+sizeof(UINT64)*i3);
+    if((*b3&0x1)==0)
+        return (UINT64)-1;
+    c3= *b3&~(UINT64)0xfff;
+    b4= (UINT64*)(c3+sizeof(UINT64)*i4);
+    if((*b4&0x1)==0)
+        return (UINT64)-1;
+    c4= *b4&~(UINT64)0xfff;
+    phys= c4|i5;
+    return phys;
+}
+#endif
+
+
 BOOLEAN vmcs_sw_shadow_disable[VMM_MAX_CPU_SUPPORTED];
 
 typedef struct VMM_INPUT_PARAMS_S {
@@ -611,11 +650,20 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
     UINT64 old_cr3= hw_read_cr3();
+    UINT64 old_cr4= hw_read_cr4();
 #ifdef JLMDEBUG
     bprint("evmm position 22.6, new cr3: 0x%016x, old cr3: 0x%016x\n",
             new_cr3, old_cr3);
+    bprint("old cr4: 0x%016lx\n", old_cr4);
     HexDump((UINT8*)new_cr3, (UINT8*)new_cr3+40);
-    //LOOP_FOREVER  //reached
+    bprint("resetting cr3\n");
+    hw_write_cr3(old_cr3);
+    bprint("that worked\n");
+    UINT64 tvirt= 0x70000000ULL;
+    UINT64 tphys= 0ULL;
+    tphys= getphysical(new_cr3, tvirt);
+    bprint("virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    LOOP_FOREVER  //reached
 #endif
 
     // BEFORE_VMLAUNCH. PARANOID check. Should not fail.

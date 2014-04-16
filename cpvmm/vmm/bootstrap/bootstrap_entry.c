@@ -1760,20 +1760,19 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
       LOOP_FOREVER
     } 
 
+    // JLM(FIX):the start and end should be at page boundries
     // reserve evmm area
-#if 0
-    // need to include additional heap too
-    if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_size+evmm_load_segment_size))) {
+    // need to include additional heap too evmm_total_size
+    if (!e820_reserve_ram(evmm_heap_base, (evmm_heap_base+evmm_heap_size+evmm_total_size))) {
         bprint("Unable to reserve evmm region in e820 table\n");
         LOOP_FOREVER
     }
-#endif
 
 #ifdef JLMDEBUG1
+    bprint("start of evmm exclusion: 0x%08x, end of exclusion: 0x%08lx\n",
+           evmm_heap_base, evmm_heap_base+evmm_heap_size+evmm_total_size);
     bprint("%d e820 entries after new reservations\n", g_nr_map);
-    bprint("e820_reserve_ram(0x%08x, 0x%08x)\n", evmm_heap_base, 
-           (evmm_heap_size+evmm_load_segment_size));
-    print_map(&g_copy_e820_map[7], 8);
+    print_map(&g_copy_e820_map[5], 10);
 #endif
 
     // Set up evmm IDT.  CHECK(JLM): Is this necessary?

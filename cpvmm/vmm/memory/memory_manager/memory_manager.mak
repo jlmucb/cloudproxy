@@ -40,15 +40,15 @@ mainsrc=    	$(S)/vmm/memory/memory_manager
 B=		$(E)/vmmobjects/memory/memory_manager
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
-		-I$(S)/common/include/platform -I$(mainsrc)
-DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+		-I$(S)/common/include/platform -I$(mainsrc) \
+		-I$(S)/vmm -I$(S)/vmm/bootstrap
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
-#LIBMAKER=   libtool
 LIBMAKER=   ar
 
 dobjs=      $(B)/host_memory_manager.o $(B)/vmm_stack.o $(B)/gpm.o \

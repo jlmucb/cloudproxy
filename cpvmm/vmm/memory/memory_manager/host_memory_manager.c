@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,6 +33,9 @@
 #include <lock.h>
 #include <ipc.h>
 #include "host_memory_manager.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning (disable : 4100)
 #pragma warning (disable : 4101 4189)
@@ -53,7 +54,7 @@ extern UINT32 g_heap_pa_num;
 extern UINT64 g_additional_heap_base;
 extern UINT32 g_is_post_launch;
 
-/*-----------------------------------------------------------*/
+
 
 #ifdef INCLUDE_UNUSED_CODE
 INLINE
@@ -302,13 +303,15 @@ BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
     return TRUE;
 }
 
-static
-void hmm_initalize_memory_types_table(void) {
+
+static void hmm_initalize_memory_types_table(void) {
     UINT32 mtrr_type_index;
     UINT32 pat_type_index;
 
-    for (mtrr_type_index = 0; mtrr_type_index <= VMM_PHYS_MEM_LAST_TYPE; mtrr_type_index++) {
-        for (pat_type_index = 0; pat_type_index <= VMM_PHYS_MEM_LAST_TYPE; pat_type_index++) {
+    for (mtrr_type_index = 0; mtrr_type_index <= VMM_PHYS_MEM_LAST_TYPE; 
+                              mtrr_type_index++) {
+        for (pat_type_index = 0; pat_type_index <= VMM_PHYS_MEM_LAST_TYPE; 
+                                 pat_type_index++) {
             g_hmm->mem_types_table[mtrr_type_index][pat_type_index] = VMM_PHYS_MEM_UNDEFINED;
         }
     }
@@ -350,8 +353,8 @@ void hmm_initalize_memory_types_table(void) {
     g_hmm->mem_types_table[VMM_PHYS_MEM_WRITE_BACK][VMM_PHYS_MEM_WRITE_PROTECTED] = VMM_PHYS_MEM_WRITE_PROTECTED;
 }
 
-static
-void hmm_flash_tlb_callback(CPU_ID from UNUSED, void* arg UNUSED) {
+
+static void hmm_flash_tlb_callback(CPU_ID from UNUSED, void* arg UNUSED) {
     hw_flash_tlb();
 }
 
@@ -366,7 +369,7 @@ void hmm_invlpg_callback(CPU_ID from UNUSED, void* arg) {
 #pragma warning(disable : 4710)
 static
 BOOLEAN hmm_map_phys_page_full_attrs(IN HPA page_hpa, IN MAM_ATTRIBUTES attrs,
-                                     IN BOOLEAN flash_all_tlbs_if_needed, OUT HVA* page_hva) {
+                           IN BOOLEAN flash_all_tlbs_if_needed, OUT HVA* page_hva) {
     MAM_HANDLE hva_to_hpa = hmm_get_hva_to_hpa_mapping(g_hmm);
     MAM_HANDLE hpa_to_hva = hmm_get_hpa_to_hva_mapping(g_hmm);
     MAM_ATTRIBUTES attrs_tmp;
@@ -848,11 +851,19 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     const EXEC_IMAGE_SECTION_INFO* image_section_info;
 
     VMM_LOG(mask_anonymous, level_trace,"\nHMM: Initializing...\n");
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 1\n");
+#endif
 
     lock_initialize(hmm_get_update_lock(g_hmm));
 
     // Initialize table of MTRR X PAT types
     hmm_initalize_memory_types_table();
+
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 2\n");
+    LOOP_FOREVER
+#endif
 
     // Get the index of Write Back caching policy
     curr_wb_index = pat_mngr_retrieve_current_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_WRITE_BACK);
@@ -879,6 +890,11 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to create HVA -> HPA mapping\n");
         goto no_destroy_exit;
     }
+
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 3\n");
+    LOOP_FOREVER
+#endif
 
     /// Create HPA -> HVA mapping
     hpa_to_hva = mam_create_mapping(MAM_NO_ATTRIBUTES);

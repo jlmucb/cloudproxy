@@ -587,7 +587,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 21\n");
-    LOOP_FOREVER   // reached
+    // LOOP_FOREVER   // reached
 #endif
 
     // Initialize Host Memory Manager
@@ -600,6 +600,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm position 22\n");
+    LOOP_FOREVER
 #endif
 
     hmm_set_required_values_to_control_registers();

@@ -138,6 +138,9 @@ Concise algorithm description and code walkthrough:
 #include "memory_address_mapper.h"
 #include "mam_forward_declarations.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(MEMORY_ADDRESS_MAPPER_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(MEMORY_ADDRESS_MAPPER_C, __condition)
@@ -151,6 +154,7 @@ const MAM_ATTRIBUTES mam_no_attributes = {0};
 MAM_ATTRIBUTES mam_rwx_attrs = {0x7};
 MAM_ATTRIBUTES mam_rw_attrs = {0x3};
 MAM_ATTRIBUTES mam_ro_attrs = {0x1};
+
 
 //---------------------------------------------------------------------
 
@@ -298,8 +302,7 @@ MAM_HPA mam_hva_to_hpa(IN MAM_HVA hva) {
     return (MAM_HPA)hpa;
 }
 
-INLINE
-void mam_invalidate_entry(IN MAM_ENTRY* entry,
+INLINE void mam_invalidate_entry(IN MAM_ENTRY* entry,
                           IN MAM_MAPPING_RESULT reason,
                           IN MAM_ENTRY_TYPE entry_type) {
 
@@ -313,8 +316,7 @@ void mam_invalidate_entry(IN MAM_ENTRY* entry,
     entry->invalid_entry.high_part.reason = reason;
 }
 
-INLINE
-BOOLEAN mam_is_leaf_entry(IN MAM_ENTRY* entry) {
+INLINE BOOLEAN mam_is_leaf_entry(IN MAM_ENTRY* entry) {
         return mam_entry_type_is_leaf_entry(entry);
 }
 

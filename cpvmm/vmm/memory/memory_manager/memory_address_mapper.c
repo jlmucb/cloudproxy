@@ -294,14 +294,16 @@ INLINE MAM_HPA mam_hva_to_hpa(IN MAM_HVA hva) {
 }
 
 INLINE void mam_invalidate_entry(IN MAM_ENTRY* entry,
-                          IN MAM_MAPPING_RESULT reason,
-                          IN MAM_ENTRY_TYPE entry_type) {
+                IN MAM_MAPPING_RESULT reason, IN MAM_ENTRY_TYPE entry_type) {
 
     // When invalidating the entry, the reason for invalidation
     // resides in high part of the entry when "avl" bits in low entry
     // should still contain the correct type of the entry
     entry->invalid_entry.low_part.must_be_zero0 = 0;
+    // JLM(FIX)
+#if 0
     hw_store_fence(); // make sure that clearing present bits are visible for every cpu;
+#endif
     entry->invalid_entry.low_part.must_be_zero1 = 0;
     entry->invalid_entry.low_part.avl = (UINT32)entry_type;
     entry->invalid_entry.high_part.reason = reason;
@@ -1060,8 +1062,7 @@ MAM_ENTRY_TYPE mam_get_leaf_vtdpt_entry_type(void) {
 
 
 static void mam_invalidate_all_entries_in_table(IN MAM_HVA table,
-                                         IN MAM_MAPPING_RESULT reason,
-                                         IN MAM_ENTRY_TYPE entry_type) {
+                 IN MAM_MAPPING_RESULT reason, IN MAM_ENTRY_TYPE entry_type) {
     UINT64 entry_increment = sizeof(MAM_ENTRY);
     MAM_HVA entry_hva;
 
@@ -1091,7 +1092,6 @@ static MAM_HVA mam_create_table(IN MAM_MAPPING_RESULT unmapped_reason,
 
 #ifdef JLMDEBUG
    bprint("mam_create_table about to invalidate\n");
-   LOOP_FOREVER
 #endif
     if (allocated_table_ptr != NULL) {
         mam_invalidate_all_entries_in_table(allocated_table_hva, unmapped_reason, entry_type);
@@ -2231,7 +2231,6 @@ MAM_HANDLE mam_create_mapping(MAM_ATTRIBUTES inner_level_attributes) {
     }
 #ifdef JLMDEBUG
    bprint("after mam_create_table\n");
-   LOOP_FOREVER
 #endif
 
     mam->first_table = first_table;
@@ -2250,7 +2249,6 @@ MAM_HANDLE mam_create_mapping(MAM_ATTRIBUTES inner_level_attributes) {
 deallocate_mam:
 #ifdef JLMDEBUG
    bprint("mam_create_mapping, about to deallocate\n");
-   LOOP_FOREVER
 #endif
     vmm_memory_free(mam);
 return_null:

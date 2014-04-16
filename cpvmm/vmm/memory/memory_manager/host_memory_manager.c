@@ -896,7 +896,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 3\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER // reached
 #endif
 
     /// Create HPA -> HVA mapping
@@ -916,6 +916,11 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
     VMM_LOG(mask_anonymous, level_trace,"HMM: Successfully created HVA <--> HPA mappings\n");
 
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 4\n");
+    // LOOP_FOREVER // reached
+#endif
+
     // Fill HPA <-> HVA mappings with initial data
     final_mapping_attrs.uint32 = 0;
     final_mapping_attrs.paging_attr.writable = 1;
@@ -933,6 +938,10 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
     // Update permissions for VMM image
     VMM_LOG(mask_anonymous, level_trace,"HMM: Updating permissions to VMM image:\n");
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 5\n");
+    // LOOP_FOREVER // reached
+#endif
     image_section_info = exec_image_section_first((const void*)startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].image_size, &image_iter);
     while (image_section_info != NULL) {
         UINT64 section_start = (UINT64)image_section_info->start;
@@ -943,6 +952,10 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         // TODO: check whether HPA->HVA conversion
         VMM_ASSERT(ALIGN_BACKWARD(section_start, PAGE_4KB_SIZE) == section_start);
 
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 6\n");
+    // LOOP_FOREVER // reached
+#endif
         if (!image_section_info->writable) {
 
             MAM_ATTRIBUTES attributes_to_remove;
@@ -972,10 +985,14 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
         image_section_info = exec_image_section_next(&image_iter);
     }
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 7\n");
+    // LOOP_FOREVER // reached
+#endif
 
+#if 0
     // update permissions for the thunk image
-    if (startup_struct->vmm_memory_layout[thunk_image].image_size != 0)
-    {
+    if (startup_struct->vmm_memory_layout[thunk_image].image_size != 0) {
         MAM_ATTRIBUTES attributes_to_remove;
         MAM_ATTRIBUTES attributes_to_add;
         MAM_ATTRIBUTES attr_tmp;
@@ -1002,12 +1019,17 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
                 goto destroy_hpa_to_hva_mapping_exit;
         }
     }
+#endif
 
     // Remap the first virtual page
     if (mam_get_mapping(hva_to_hpa, 0, &first_page_hpa, &attrs_tmp) != MAM_MAPPING_SUCCESSFUL) {
         VMM_ASSERT(0);
         goto destroy_hpa_to_hva_mapping_exit;
     }
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 8\n");
+    LOOP_FOREVER 
+#endif
 
     if (!mam_insert_not_existing_range(hva_to_hpa, 0, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
         VMM_LOG(mask_anonymous, level_trace,"Failed to remove mapping of first page\n");
@@ -1037,6 +1059,10 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     VMM_ASSERT(vmm_stack_is_initialized());
     VMM_LOG(mask_anonymous, level_trace,"HMM: Remapping the exception stacks:\n");
 
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 9\n");
+    // LOOP_FOREVER // reached
+#endif
     for (i = 0; i < startup_struct->number_of_processors_at_boot_time; i++) {
         HVA page;
         HPA page_hpa;
@@ -1147,6 +1173,10 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         }
     }
 
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 10\n");
+    // LOOP_FOREVER // reached
+#endif
     // For late launch support additional heap 
     // Patch the MAM to build non-contiguous pa memory to a contiguous va for the heap
     if (g_is_post_launch) {
@@ -1171,6 +1201,10 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         goto destroy_hpa_to_hva_mapping_exit;
     }
 
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 11\n");
+    // LOOP_FOREVER // reached
+#endif
     hmm_set_current_vmm_page_tables(g_hmm, vmm_page_tables_hpa);
 
     return TRUE;

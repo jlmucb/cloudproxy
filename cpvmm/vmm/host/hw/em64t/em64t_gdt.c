@@ -147,7 +147,8 @@ static void setup_tss_with_descriptor(
 //  ARGUMENTS  : IN CPU_ID number_of_cpus - number of CPUs in the system
 void hw_gdt_setup(IN CPU_ID number_of_cpus)
 {
-    CPU_ID cpu_id;
+    CPU_ID cpu_id= 0;
+    gdt= NULL;
 
 #ifdef JLMDEBUG
     bprint("at hw_gdt_setup(%d, %d)\n",
@@ -176,7 +177,6 @@ void hw_gdt_setup(IN CPU_ID number_of_cpus)
 #ifdef JLMDEBUG
     bprint("hw_gdt_setup about to setup segment descriptors, gdt= 0x%016x\n",
            gdt);
-    LOOP_FOREVER
 #endif
     setup_data32_segment_descriptor();
     setup_code32_segment_descriptor();

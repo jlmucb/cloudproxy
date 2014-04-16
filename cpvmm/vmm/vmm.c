@@ -78,6 +78,8 @@
 
 
 #ifdef JLMDEBUG
+
+#define PS 0x00000080ULL
 UINT64 getphysical(UINT64 cr3, UINT64 virt)
 {
     UINT64 i1, i2, i3, i4, i5;
@@ -91,8 +93,6 @@ UINT64 getphysical(UINT64 cr3, UINT64 virt)
     i1= virt>>39;
     i2= (virt>>30)&(UINT64)0x1ff;
     i3= (virt>>21)&(UINT64)0x01ff;
-    i4= (virt>>12)&(UINT64)0x01ff;
-    i5= virt&(UINT64)0x0fff;
 
     b1= (UINT64*) (c0+sizeof(UINT64)*i1);
     if((*b1&0x1)==0)
@@ -105,6 +105,14 @@ UINT64 getphysical(UINT64 cr3, UINT64 virt)
     b3= (UINT64*)(c2+sizeof(UINT64)*i3);
     if((*b3&0x1)==0)
         return (UINT64)-1;
+    if((*b3&PS)!=0) {
+    	i4= virt&(UINT64)0x01fffff;
+	c3= *b3;
+        c3&= ~0x01fffff;
+	return c3|i4;
+    }
+    i4= (virt>>12)&(UINT64)0x01ff;
+    i5= virt&(UINT64)0x0fff;
     c3= *b3&~(UINT64)0xfff;
     b4= (UINT64*)(c3+sizeof(UINT64)*i4);
     if((*b4&0x1)==0)
@@ -659,10 +667,28 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     bprint("resetting cr3\n");
     hw_write_cr3(old_cr3);
     bprint("that worked\n");
+    bprint("new map\n");
     UINT64 tvirt= 0x70000000ULL;
     UINT64 tphys= 0ULL;
     tphys= getphysical(new_cr3, tvirt);
     bprint("virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    tvirt= (UINT64) vmm_bsp_proc_main;
+    tphys= getphysical(new_cr3, tvirt);
+    bprint("(bsp)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    tvirt= (UINT64) bprint;
+    tphys= getphysical(new_cr3, tvirt);
+    bprint("(bprint)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("old map\n");
+    tvirt= 0x70000000ULL;
+    tphys= 0ULL;
+    tphys= getphysical(old_cr3, tvirt);
+    bprint("virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    tvirt= (UINT64) vmm_bsp_proc_main;
+    tphys= getphysical(old_cr3, tvirt);
+    bprint("(bsp)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    tvirt= (UINT64) bprint;
+    tphys= getphysical(old_cr3, tvirt);
+    bprint("(bprint)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
     LOOP_FOREVER  //reached
 #endif
 

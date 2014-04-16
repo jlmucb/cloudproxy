@@ -426,8 +426,7 @@ INLINE void mam_update_attributes_in_leaf_entry(MAM_ENTRY* entry,
 }
 
 
-static
-UINT64 mam_get_address_from_any_entry(IN MAM_ENTRY* entry) {
+static UINT64 mam_get_address_from_any_entry(IN MAM_ENTRY* entry) {
     UINT32 addr_low;
     UINT32 addr_high;
     UINT64 addr;
@@ -454,8 +453,7 @@ static UINT64 mam_get_address_from_leaf_internal_entry(IN MAM_ENTRY* entry,
     return mam_get_address_from_any_entry(entry);
 }
 
-static
-UINT64 mam_get_address_from_leaf_page_table_entry(IN MAM_ENTRY* entry, 
+static UINT64 mam_get_address_from_leaf_page_table_entry(IN MAM_ENTRY* entry, 
                      IN const MAM_LEVEL_OPS* level_ops) {
     UINT64 addr;
 
@@ -526,7 +524,8 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
     entry->page_table_entry.user = attr.paging_attr.user;
     entry->page_table_entry.global = attr.paging_attr.global;
     entry->page_table_entry.exb = (attr.paging_attr.executable) ? 0 : 1;
-    mam_calculate_caching_attributes_from_pat_index(attr.paging_attr.pat_index, &pwt_bit, &pcd_bit, &pat_bit);
+    mam_calculate_caching_attributes_from_pat_index(
+                attr.paging_attr.pat_index, &pwt_bit, &pcd_bit, &pat_bit);
     entry->page_table_entry.pwt = pwt_bit;
     entry->page_table_entry.pcd = pcd_bit;
     if (level_ops == MAM_LEVEL1_OPS) {
@@ -615,8 +614,8 @@ void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
 }
 
 
-static
-MAM_ATTRIBUTES mam_get_attributes_from_internal_entry(IN MAM_ENTRY* entry, IN const MAM_LEVEL_OPS* level_ops UNUSED) {
+static MAM_ATTRIBUTES mam_get_attributes_from_internal_entry(IN MAM_ENTRY* entry, 
+	IN const MAM_LEVEL_OPS* level_ops UNUSED) {
     MAM_ATTRIBUTES attrs;
 
     VMM_ASSERT((entry->any_entry.avl == MAM_INNER_INTERNAL_ENTRY) || (entry->any_entry.avl == MAM_LEAF_INTERNAL_ENTRY));
@@ -675,8 +674,8 @@ MAM_ATTRIBUTES mam_get_attributes_from_ept_entry(IN MAM_ENTRY* entry, IN const M
     return attrs;
 }
 
-static
-MAM_ATTRIBUTES mam_get_attributes_from_vtdpt_entry(IN MAM_ENTRY* entry, IN const MAM_LEVEL_OPS* level_ops UNUSED) {
+static MAM_ATTRIBUTES mam_get_attributes_from_vtdpt_entry(IN MAM_ENTRY* entry, 
+       IN const MAM_LEVEL_OPS* level_ops UNUSED) {
     MAM_ATTRIBUTES attrs;
 
     VMM_ASSERT((get_mam_entry_type(entry) == MAM_INNER_VTDPT_ENTRY) || (get_mam_entry_type(entry) == MAM_LEAF_VTDPT_ENTRY));
@@ -686,44 +685,36 @@ MAM_ATTRIBUTES mam_get_attributes_from_vtdpt_entry(IN MAM_ENTRY* entry, IN const
     attrs.vtdpt_attr.writable = (UINT32)entry->vtdpt_entry.writable;
     attrs.vtdpt_attr.snoop = (UINT32)entry->vtdpt_entry.snoop;
     attrs.vtdpt_attr.tm = (UINT32)entry->vtdpt_entry.tm;
-        return attrs;
+    return attrs;
 }
 
-static
-MAM_HVA mam_get_table_pointed_by_internal_enty(IN MAM_ENTRY* entry) {
+static MAM_HVA mam_get_table_pointed_by_internal_enty(IN MAM_ENTRY* entry) {
 
     VMM_ASSERT(entry->any_entry.avl == MAM_INNER_INTERNAL_ENTRY);
     return mam_get_address_from_any_entry(entry);
 }
 
-static
-MAM_HVA mam_get_table_pointed_by_page_table_entry(IN MAM_ENTRY* entry) {
+static MAM_HVA mam_get_table_pointed_by_page_table_entry(IN MAM_ENTRY* entry) {
     MAM_HPA table_hpa;
     MAM_HVA table_hva;
 
     VMM_ASSERT(entry->any_entry.avl == MAM_INNER_PAGE_TABLE_ENTRY);
     table_hpa = mam_get_address_from_any_entry(entry);
-
     table_hva = mam_hpa_to_hva(table_hpa);
-
     return table_hva;
 }
 
-static
-MAM_HVA mam_get_table_pointed_by_ept_entry(IN MAM_ENTRY* entry) {
+static MAM_HVA mam_get_table_pointed_by_ept_entry(IN MAM_ENTRY* entry) {
     MAM_HPA table_hpa;
     MAM_HVA table_hva;
 
     VMM_ASSERT(entry->any_entry.avl == MAM_INNER_EPT_ENTRY);
     table_hpa = mam_get_address_from_any_entry(entry);
-
     table_hva = mam_hpa_to_hva(table_hpa);
-
     return table_hva;
 }
 
-static
-MAM_HVA mam_get_table_pointed_by_vtdpt_entry(IN MAM_ENTRY* entry) {
+static MAM_HVA mam_get_table_pointed_by_vtdpt_entry(IN MAM_ENTRY* entry) {
     MAM_HPA table_hpa;
     MAM_HVA table_hva;
 
@@ -733,23 +724,20 @@ MAM_HVA mam_get_table_pointed_by_vtdpt_entry(IN MAM_ENTRY* entry) {
     return table_hva;
 }
 
-static
-BOOLEAN mam_is_internal_entry_present(IN MAM_ENTRY* entry) {
+static BOOLEAN mam_is_internal_entry_present(IN MAM_ENTRY* entry) {
     VMM_ASSERT((entry->any_entry.avl == MAM_INNER_INTERNAL_ENTRY) || (entry->any_entry.avl == MAM_LEAF_INTERNAL_ENTRY));
 
     return (entry->mam_internal_entry.present != 0);
 }
 
-static
-BOOLEAN mam_is_page_table_entry_present(IN MAM_ENTRY* entry) {
+static BOOLEAN mam_is_page_table_entry_present(IN MAM_ENTRY* entry) {
 
     VMM_ASSERT((entry->any_entry.avl == MAM_INNER_PAGE_TABLE_ENTRY) || (entry->any_entry.avl == MAM_LEAF_PAGE_TABLE_ENTRY));
 
     return (entry->page_table_entry.present != 0);
 }
 
-static
-BOOLEAN mam_is_ept_entry_present(IN MAM_ENTRY* entry) {
+static BOOLEAN mam_is_ept_entry_present(IN MAM_ENTRY* entry) {
 
     VMM_ASSERT((entry->any_entry.avl == MAM_INNER_EPT_ENTRY) || (entry->any_entry.avl == MAM_LEAF_EPT_ENTRY));
 
@@ -758,8 +746,8 @@ BOOLEAN mam_is_ept_entry_present(IN MAM_ENTRY* entry) {
             (entry->ept_entry.executable != 0));
 }
 
-static
-BOOLEAN mam_is_vtdpt_entry_present(IN MAM_ENTRY* entry) {
+
+static BOOLEAN mam_is_vtdpt_entry_present(IN MAM_ENTRY* entry) {
 
     VMM_ASSERT((get_mam_entry_type(entry) == MAM_INNER_VTDPT_ENTRY) || (get_mam_entry_type(entry) == MAM_LEAF_VTDPT_ENTRY));
 
@@ -808,9 +796,8 @@ static BOOLEAN mam_can_be_leaf_page_table_entry(IN MAM* mam UNUSED,
 }
 
 
-static
-BOOLEAN mam_can_be_leaf_ept_entry(IN MAM* mam, 
- IN const MAM_LEVEL_OPS* level_ops, UINT64 requested_size, UINT64 tgt_addr) {
+static BOOLEAN mam_can_be_leaf_ept_entry(IN MAM* mam, 
+            IN const MAM_LEVEL_OPS* level_ops, UINT64 requested_size, UINT64 tgt_addr) {
 
     if (mam_get_size_covered_by_entry(level_ops) != requested_size) {
         // The size doesn't fit
@@ -849,7 +836,7 @@ BOOLEAN mam_can_be_leaf_ept_entry(IN MAM* mam,
 }
 
 static BOOLEAN mam_can_be_leaf_vtdpt_entry(IN MAM* mam, 
-  IN const MAM_LEVEL_OPS* level_ops, UINT64 requested_size, UINT64 tgt_addr) {
+      IN const MAM_LEVEL_OPS* level_ops, UINT64 requested_size, UINT64 tgt_addr) {
 
     if (mam_get_size_covered_by_entry(level_ops) != requested_size) {
         // The size doesn't fit
@@ -2220,8 +2207,8 @@ void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops
     *size = size_tmp;
 }
 
-static
-void mam_clear_reserved_bits_in_pdpte(IN MAM_ENTRY* pdpte) {
+
+static void mam_clear_reserved_bits_in_pdpte(IN MAM_ENTRY* pdpte) {
     pdpte->page_table_entry.writable = 0;
     pdpte->page_table_entry.user = 0;
     pdpte->page_table_entry.ps_or_pat = 0;
@@ -2229,8 +2216,8 @@ void mam_clear_reserved_bits_in_pdpte(IN MAM_ENTRY* pdpte) {
     pdpte->page_table_entry.exb = 0;
 }
 
-static
-void mam_clear_reserved_bits_in_pdpt(IN MAM_HVA pdpt) {
+
+static void mam_clear_reserved_bits_in_pdpt(IN MAM_HVA pdpt) {
     UINT32 i;
 
     for (i = 0; i < MAM_NUM_OF_PDPTES_IN_32_BIT_MODE; i++) {
@@ -2435,8 +2422,7 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle, IN UINT64 src_ad
         goto out;
     }
 
-    if ((reason == MAM_MAPPING_SUCCESSFUL) ||
-        (reason == MAM_UNKNOWN_MAPPING)) {
+    if ((reason == MAM_MAPPING_SUCCESSFUL) || (reason == MAM_UNKNOWN_MAPPING)) {
         res = FALSE;
         goto out;
     }

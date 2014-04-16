@@ -879,7 +879,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 2.5\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER // reached
 #endif
 
     inner_mapping_attrs.uint32 = 0;

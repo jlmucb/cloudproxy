@@ -1461,8 +1461,9 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     // excluded regions
     p_startup_struct->num_excluded_regions= 4;
     // remove evmm from ept
+    // tmroeder: switched from evmm_image_size to evmm_mem_size
     (p_startup_struct->vmm_memory_layout[0]).image_size = 
-                        evmm_image_size;
+                        evmm_mem_size;
     (p_startup_struct->vmm_memory_layout[0]).total_size = 
                         evmm_total_size;
     (p_startup_struct->vmm_memory_layout[0]).base_address = 

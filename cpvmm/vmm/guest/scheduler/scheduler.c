@@ -25,7 +25,9 @@
 #include "list.h"
 #include "memory_allocator.h"
 #include "lock.h"
-
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 // Guest Scheduler
@@ -113,6 +115,9 @@ void scheduler_init( UINT16 number_of_host_cpus )
 {
     UINT32 memory_for_state     = 0;
 
+#ifdef JLMDEBUG
+    bprint("g_registration_lock = %p\n", g_registration_lock);
+#endif
     vmm_memset(g_registration_lock, 0, sizeof(g_registration_lock));
     g_host_cpus_count = number_of_host_cpus;
 
@@ -121,10 +126,17 @@ void scheduler_init( UINT16 number_of_host_cpus )
 
     // count needed memory amount
     memory_for_state = sizeof(SCHEDULER_CPU_STATE) * g_host_cpus_count;
-
+#ifdef JLMDEBUG
+    bprint("Did vmm_memset, memory for state: %d\n", memory_for_state);
+#endif
+#if 0
     lock_initialize_read_write_lock(g_registration_lock);
-
+#endif
     g_scheduler_state = (SCHEDULER_CPU_STATE*) vmm_malloc(memory_for_state);
+    if(g_scheduler_state ==0) {
+        bprint("Cant allocate scheduler state\n");
+        LOOP_FOREVER
+    }
 
     // BEFORE_VMLAUNCH. MALLOC should not fail.
     VMM_ASSERT( g_scheduler_state != 0 );

@@ -40,9 +40,10 @@ B=		$(E)/vmmobjects/guest/scheduler
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
-		-I$(S)/common/include/platform -I$(mainsrc)
-DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib -nodefaultlibs 
+		-I$(S)/common/include/platform -I$(mainsrc) \
+		-I$(S)/vmm/bootstrap -I$(S)/vmm
+DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -DJLMDEBUG -DINVMM
+RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib -nodefaultlibs -DJLMDEBUG -DINVMM
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

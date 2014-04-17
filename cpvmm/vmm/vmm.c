@@ -804,7 +804,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 29\n");
-    LOOP_FOREVER
 #endif
     hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
     num_of_guests = startup_struct->number_of_secondary_guests + 1;
@@ -847,6 +846,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     scheduler_init( (UINT16)num_of_cpus );
 #ifdef JLMDEBUG
     bprint("evmm position 34\n");
+    LOOP_FOREVER
 #endif
     host_cpu_manager_init( num_of_cpus );
 #ifdef JLMDEBUG

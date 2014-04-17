@@ -2412,6 +2412,12 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle, IN UINT64 src_ad
 
     lock_acquire(&(mam->update_lock));
 
+#ifdef JLMDEBUG
+    if (src_addr <= 0x700418c0 && 0x700418c0 <= src_addr + size) {
+      bprint("Unmapping %p to %p\n", src_addr, src_addr + size);
+    }
+#endif
+
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
     // BEFORE_VMLAUNCH. PARANOID check.

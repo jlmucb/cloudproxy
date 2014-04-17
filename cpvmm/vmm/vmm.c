@@ -95,16 +95,22 @@ UINT64 getphysical(UINT64 cr3, UINT64 virt)
     i3= (virt>>21)&(UINT64)0x01ff;
 
     b1= (UINT64*) (c0+sizeof(UINT64)*i1);
-    if((*b1&0x1)==0)
+    if((*b1&0x1)==0) {
+	bprint("Mapping failed for b1\n");
         return (UINT64)-1;
+    }
     c1= *b1&~(UINT64)0xfff;
     b2= (UINT64*) (c1+sizeof(UINT64)*i2);
-    if((*b2&0x1)==0)
+    if((*b2&0x1)==0) {
+	bprint("Mapping failed for b2\n");
         return (UINT64)-1;
+    }
     c2= *b2&~(UINT64)0xfff;
     b3= (UINT64*)(c2+sizeof(UINT64)*i3);
-    if((*b3&0x1)==0)
+    if((*b3&0x1)==0) {
+ 	bprint("Mapping failed for b3\n");
         return (UINT64)-1;
+    }
     if((*b3&PS)!=0) {
     	i4= virt&(UINT64)0x01fffff;
 	c3= *b3;
@@ -115,8 +121,10 @@ UINT64 getphysical(UINT64 cr3, UINT64 virt)
     i5= virt&(UINT64)0x0fff;
     c3= *b3&~(UINT64)0xfff;
     b4= (UINT64*)(c3+sizeof(UINT64)*i4);
-    if((*b4&0x1)==0)
+    if((*b4&0x1)==0) {
+	bprint("Mapping failed for b4\n");
         return (UINT64)-1;
+    }
     c4= *b4&~(UINT64)0xfff;
     phys= c4|i5;
     return phys;
@@ -140,6 +148,7 @@ static volatile UINT32 g_application_procs_launch_the_guest = 0;
 VMM_PAGING_POLICY g_pg_policy;
 UINT32 g_is_post_launch = 0;
 
+extern void *g_vmx_capabilities_ptr;
 extern UINT64 g_debug_gpa;
 extern UINT64 g_session_id;
 extern void setup_data_for_s3(void);
@@ -371,7 +380,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     g_num_of_cpus = num_of_cpus;
 
     // get post launch status
+#if 0
     g_is_post_launch = (BITMAP_GET(startup_struct->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) != 0);
+#else
+    g_is_post_launch = 0;
+#endif
     hw_calibrate_tsc_ticks_per_second();
 
     // Init the debug port.  If the version is too low, there's no debug parameters.
@@ -765,6 +778,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #ifdef JLMDEBUG
     UINT64 m1=  hw_read_msr(IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX);
     bprint("evmm position 27, msr: 0x%016lx\n", m1);
+    uint16_t cpuid2= hw_cpu_id();
+    bprint("from hw_cpu_id: %04x\n", cpuid2);
+    bprint("Phys addr for virtual %p is %p\n", g_vmx_capabilities_ptr, getphysical(new_cr3, g_vmx_capabilities_ptr));
+    LOOP_FOREVER
 #endif
     vmcs_hw_init();
 

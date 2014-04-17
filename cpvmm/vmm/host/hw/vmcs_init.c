@@ -39,6 +39,7 @@
 
 
 static IA32_VMX_CAPABILITIES g_vmx_capabilities;
+void* g_vmx_capabilities_ptr = &g_vmx_capabilities;
 static VMCS_HW_CONSTRAINTS   g_vmx_constraints;
 static VMCS_HW_FIXED         g_vmx_fixed;
 VMCS_HW_FIXED* gp_vmx_fixed = &g_vmx_fixed;
@@ -469,10 +470,13 @@ void vmcs_hw_init( void )
         return;
     }
 #ifdef JLMDEBUG
-    bprint("vmcs_hw_init returning\n");
-    LOOP_FOREVER
+    bprint("vmcs_hw_init NOT returning\n");
 #endif
     vmm_memset(&g_vmx_capabilities, 0, sizeof(g_vmx_capabilities));
+#ifdef JLMDEBUG
+    bprint("vmcs_hw_init after vmm_memset\n");
+    LOOP_FOREVER
+#endif
     vmm_memset(&g_vmx_constraints, 0, sizeof(g_vmx_constraints));
     vmm_memset(&g_vmx_fixed, 0, sizeof(g_vmx_fixed));
     g_init_done = TRUE;

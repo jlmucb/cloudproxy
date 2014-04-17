@@ -23,6 +23,11 @@ extern void vmm_lock_xchg_byte(UINT8 *dst, UINT8 *src);
 #pragma optimize( "", off )
 void *  vmm_memset(void *dest, int filler, size_t count)
 {
+    UINT8* p= (UINT8*) dest;
+    while(count-->0)
+	*(p++)= (UINT8) filler;
+    return dest;
+#if 0
     size_t i = 0, j, cnt_64bit;
     UINT64 filler_64;
     UINT64 *fill = &filler_64;
@@ -50,6 +55,7 @@ void *  vmm_memset(void *dest, int filler, size_t count)
         ((UINT8*) dest)[j] = (UINT8)filler;
     }
     return dest;
+#endif
 }
 #pragma optimize( "", on )
 

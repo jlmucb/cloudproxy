@@ -199,6 +199,9 @@ BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
             virt_range_size = 0;
         }
     }
+#if JLMDEBUG
+    bprint("First range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
+#endif
 
     if (!hmm_get_next_non_existent_range(hpa_to_hva, &phys_ranges_iter, &last_covered_phys_addr, &phys_range_start, &phys_range_size)) {
         phys_range_start = last_covered_phys_addr;
@@ -209,6 +212,10 @@ BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
             phys_range_size = 0;
         }
     }
+
+#if JLMDEBUG
+    bprint("second range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
+#endif
 
     do {
         UINT64 actual_size;
@@ -248,6 +255,9 @@ BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
                     }
                 }
             }
+#if JLMDEBUG
+    bprint("inner first range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
+#endif
 
             if (phys_range_size == 0) {
                 if (!hmm_get_next_non_existent_range(hpa_to_hva, &phys_ranges_iter, &last_covered_phys_addr, &phys_range_start, &phys_range_size)) {
@@ -261,9 +271,15 @@ BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
                 }
             }
 
+#if JLMDEBUG
+    bprint("inner second range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
+#endif
         }
     } while (last_covered_phys_addr < size_4G);
 
+#if JLMDEBUG
+    bprint("After the while loop\n");
+#endif
     // BEFORE_VMLAUNCH
     VMM_ASSERT(last_covered_virt_addr <= last_covered_phys_addr);
     hmm_set_final_mapped_virt_address(g_hmm, last_covered_virt_addr);
@@ -629,6 +645,10 @@ out:
 
 BOOLEAN remove_initial_hva_to_hpa_mapping_for_extended_heap(void)
 {
+#ifdef JLMDEBUG
+    bprint("Entered remove_initial_hva_to_hpw_mapping_for_extended_heap\n");
+    LOOP_FOREVER
+#endif
     BOOLEAN result = TRUE;
     UINT32 i;
     MAM_HANDLE hva_to_hpa = hmm_get_hva_to_hpa_mapping(g_hmm);
@@ -942,7 +962,14 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     bprint("hmm_initialize position 5\n");
     // LOOP_FOREVER // reached
 #endif
+#if 0
     image_section_info = exec_image_section_first((const void*)startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].image_size, &image_iter);
+#else
+    image_section_info = NULL;
+#endif
+#ifdef JLMDEBUG
+    bprint("hmm_initialize position 5.1\n");
+#endif
     while (image_section_info != NULL) {
         UINT64 section_start = (UINT64)image_section_info->start;
         UINT64 section_end = ALIGN_FORWARD(section_start + image_section_info->size, PAGE_4KB_SIZE);

@@ -777,13 +777,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     uint16_t cpuid2= hw_cpu_id();
     bprint("from hw_cpu_id: %04x\n", cpuid2);
     bprint("Phys addr for virtual %p is %p\n", g_vmx_capabilities_ptr, getphysical(new_cr3, g_vmx_capabilities_ptr));
-    LOOP_FOREVER
 #endif
     vmcs_hw_init();
 
 #ifdef JLMDEBUG
     bprint("evmm position 28\n");
-    LOOP_FOREVER
 #endif
 
     // BEFORE_VMLAUNCH. REDUNDANT as this check is already done in POSTLAUNCH.
@@ -798,6 +796,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 29\n");
+    LOOP_FOREVER
 #endif
     hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
     num_of_guests = startup_struct->number_of_secondary_guests + 1;

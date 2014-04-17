@@ -82,15 +82,13 @@ static void fill_vmx_capabilities( void )
 {
 #ifdef JLMDEBUG
     bprint("At fill_vmx_capabilities\n");
-    LOOP_FOREVER
 #endif
     g_vmx_capabilities.VmcsRevisionIdentifier.Uint64 = hw_read_msr(IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX);
     g_vmx_capabilities.PinBasedVmExecutionControls.Uint64 = hw_read_msr(IA32_MSR_PIN_BASED_VM_EXECUTION_CONTROLS_INDEX);
     g_vmx_capabilities.ProcessorBasedVmExecutionControls.Uint64 = hw_read_msr(IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS_INDEX);
     g_vmx_capabilities.EptVpidCapabilities.Uint64 = 0;
 
-    if (g_vmx_capabilities.ProcessorBasedVmExecutionControls.Bits.MayBeSetToOne.Bits.SecondaryControls)
-    {
+    if (g_vmx_capabilities.ProcessorBasedVmExecutionControls.Bits.MayBeSetToOne.Bits.SecondaryControls) {
         g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Uint64= hw_read_msr(IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS2_INDEX);
 
         if (g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.EnableEPT
@@ -475,7 +473,6 @@ void vmcs_hw_init( void )
     vmm_memset(&g_vmx_capabilities, 0, sizeof(g_vmx_capabilities));
 #ifdef JLMDEBUG
     bprint("vmcs_hw_init after vmm_memset\n");
-    LOOP_FOREVER
 #endif
     vmm_memset(&g_vmx_constraints, 0, sizeof(g_vmx_constraints));
     vmm_memset(&g_vmx_fixed, 0, sizeof(g_vmx_fixed));

@@ -664,10 +664,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #endif
 
     hmm_set_required_values_to_control_registers();
-#ifdef JLMDEBUG
-    bprint("evmm position 22.5\n");
-    // LOOP_FOREVER  // reached
-#endif
 
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
     UINT64 old_cr3= hw_read_cr3();

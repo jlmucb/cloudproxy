@@ -647,7 +647,6 @@ BOOLEAN remove_initial_hva_to_hpa_mapping_for_extended_heap(void)
 {
 #ifdef JLMDEBUG
     bprint("Entered remove_initial_hva_to_hpw_mapping_for_extended_heap\n");
-    LOOP_FOREVER
 #endif
     BOOLEAN result = TRUE;
     UINT32 i;
@@ -871,18 +870,11 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     const EXEC_IMAGE_SECTION_INFO* image_section_info;
 
     VMM_LOG(mask_anonymous, level_trace,"\nHMM: Initializing...\n");
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 1\n");
-#endif
 
     lock_initialize(hmm_get_update_lock(g_hmm));
 
     // Initialize table of MTRR X PAT types
     hmm_initalize_memory_types_table();
-
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 2\n");
-#endif
 
     // Get the index of Write Back caching policy
     curr_wb_index = pat_mngr_retrieve_current_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_WRITE_BACK);
@@ -897,11 +889,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         goto no_destroy_exit;
     }
 
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 2.5\n");
-    // LOOP_FOREVER // reached
-#endif
-
     inner_mapping_attrs.uint32 = 0;
     inner_mapping_attrs.paging_attr.writable = 1;
     inner_mapping_attrs.paging_attr.executable = 1;
@@ -913,11 +900,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to create HVA -> HPA mapping\n");
         goto no_destroy_exit;
     }
-
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 3\n");
-    // LOOP_FOREVER // reached
-#endif
 
     /// Create HPA -> HVA mapping
     hpa_to_hva = mam_create_mapping(MAM_NO_ATTRIBUTES);
@@ -936,11 +918,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
     VMM_LOG(mask_anonymous, level_trace,"HMM: Successfully created HVA <--> HPA mappings\n");
 
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 4\n");
-    // LOOP_FOREVER // reached
-#endif
-
     // Fill HPA <-> HVA mappings with initial data
     final_mapping_attrs.uint32 = 0;
     final_mapping_attrs.paging_attr.writable = 1;
@@ -958,18 +935,13 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
     // Update permissions for VMM image
     VMM_LOG(mask_anonymous, level_trace,"HMM: Updating permissions to VMM image:\n");
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 5\n");
-    // LOOP_FOREVER // reached
-#endif
+    
 #if 0
     image_section_info = exec_image_section_first((const void*)startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].image_size, &image_iter);
 #else
     image_section_info = NULL;
 #endif
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 5.1\n");
-#endif
+
     while (image_section_info != NULL) {
         UINT64 section_start = (UINT64)image_section_info->start;
         UINT64 section_end = ALIGN_FORWARD(section_start + image_section_info->size, PAGE_4KB_SIZE);
@@ -979,10 +951,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         // TODO: check whether HPA->HVA conversion
         VMM_ASSERT(ALIGN_BACKWARD(section_start, PAGE_4KB_SIZE) == section_start);
 
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 6\n");
-    // LOOP_FOREVER // reached
-#endif
         if (!image_section_info->writable) {
 
             MAM_ATTRIBUTES attributes_to_remove;
@@ -1012,10 +980,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
         image_section_info = exec_image_section_next(&image_iter);
     }
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 7\n");
-    // LOOP_FOREVER // reached
-#endif
 
 #if 0
     // update permissions for the thunk image
@@ -1053,10 +1017,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         VMM_ASSERT(0);
         goto destroy_hpa_to_hva_mapping_exit;
     }
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 8\n");
-    // LOOP_FOREVER  // reached
-#endif
 
     if (!mam_insert_not_existing_range(hva_to_hpa, 0, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
         VMM_LOG(mask_anonymous, level_trace,"Failed to remove mapping of first page\n");
@@ -1088,7 +1048,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 9\n");
-    // LOOP_FOREVER // reached
 #endif
     for (i = 0; i < startup_struct->number_of_processors_at_boot_time; i++) {
         HVA page;
@@ -1098,8 +1057,10 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
         HVA page_hva_tmp;
         HPA page_hpa_tmp;
-
-        for (exception_stack_index = 0; exception_stack_index < idt_get_extra_stacks_required(); exception_stack_index++) {
+        // JLM (FIX) fix addresses so we can have stack guard
+#if 0
+        for (exception_stack_index = 0; exception_stack_index < idt_get_extra_stacks_required(); 
+                 exception_stack_index++) {
             UINT64 current_extra_stack_hva;
 
             if (!vmm_stacks_get_exception_stack_for_cpu(i, exception_stack_index, &page)) {
@@ -1146,7 +1107,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
                 VMM_ASSERT(0);
                 goto destroy_hpa_to_hva_mapping_exit;
             }
-
 
             // Make sure the mapping for pages doesn't exist
             // BEFORE_VMLAUNCH
@@ -1198,11 +1158,11 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
             VMM_LOG(mask_anonymous, level_trace,"\tPage %P (HVA) is set as exception stack#%d for cpu %d.\n", page_to_assign_hva, exception_stack_index, i);
             VMM_LOG(mask_anonymous, level_trace,"\tPages %P and %P (HVA) remain unmapped - protecting exception stack#%d of cpu %d from overflow and underflow.\n", page_to_assign_hva - PAGE_4KB_SIZE, page_to_assign_hva + PAGE_4KB_SIZE, exception_stack_index, i);
         }
+#endif
     }
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 10\n");
-    // LOOP_FOREVER  //reached
 #endif
     // For late launch support additional heap 
     // Patch the MAM to build non-contiguous pa memory to a contiguous va for the heap
@@ -1230,7 +1190,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
 #ifdef JLMDEBUG
     bprint("hmm_initialize position 11\n");
-    // LOOP_FOREVER  // reached
 #endif
     hmm_set_current_vmm_page_tables(g_hmm, vmm_page_tables_hpa);
 

@@ -1105,13 +1105,10 @@ static void mam_invalidate_all_entries_in_table(IN MAM_HVA table,
  */
 static MAM_HVA mam_create_table(IN MAM_MAPPING_RESULT unmapped_reason, 
           IN MAM_ENTRY_TYPE entry_type) {
-#ifdef JLMDEBUG
-   bprint("mam_create_table\n");
-#endif
     void* allocated_table_ptr = vmm_page_alloc(1); // allocate single page
     MAM_HVA allocated_table_hva = mam_ptr_to_hva(allocated_table_ptr);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
    bprint("mam_create_table about to invalidate\n");
 #endif
     if (allocated_table_ptr != NULL) {

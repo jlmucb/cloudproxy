@@ -22,6 +22,10 @@
 #include "vmm_dbg.h"
 #include <libc.h>
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMM_STACK_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_STACK_C, __condition)
@@ -106,6 +110,10 @@ BOOLEAN vmm_stack_initialize(IN const VMM_STARTUP_STRUCT* startup_struct) {
     vmm_stack_base_address = vmm_stacks_retrieve_stacks_base_addr_from_startup_struct(startup_struct);
     vmm_stack_size_per_cpu = vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(startup_struct);
     vmm_max_allowed_cpus = vmm_stack_retrieve_max_allowed_cpus_from_startup_struct(startup_struct);
+#ifdef JLMDEBUG
+    bprint("stack_base: 0x%016lx, stack size per cpu: 0x%016lx\n",
+           vmm_stack_base_address,vmm_stack_size_per_cpu);
+#endif
 
     vmm_stacks_info_set_stacks_base(g_stacks_infos, vmm_stack_base_address);
     vmm_stacks_info_set_size_of_single_stack(g_stacks_infos, vmm_stack_size_per_cpu);

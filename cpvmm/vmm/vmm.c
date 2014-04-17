@@ -776,7 +776,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     bprint("evmm position 27, msr: 0x%016lx\n", m1);
     uint16_t cpuid2= hw_cpu_id();
     bprint("from hw_cpu_id: %04x\n", cpuid2);
-    bprint("Phys addr for virtual %p is %p\n", g_vmx_capabilities_ptr, getphysical(new_cr3, g_vmx_capabilities_ptr));
+    bprint("Phys addr for virtual %p is %p\n", 
+           (UINT64)g_vmx_capabilities_ptr, 
+           getphysical(new_cr3, g_vmx_capabilities_ptr));
 #endif
     vmcs_hw_init();
 
@@ -788,7 +790,13 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     VMM_ASSERT( vmcs_hw_is_cpu_vmx_capable() );
 
     // init CR0/CR4 to the VMX compatible values
-    hw_write_cr0(  vmcs_hw_make_compliant_cr0( hw_read_cr0() ) );
+    UINT64 old_cr0= hw_read_cr0();
+    UINT64 new_cr0= vmcs_hw_make_compliant_cr0(old_cr0);
+#ifdef JLMDEBUG
+    bprint("evmm position 28, old_cr0: 0x%016lx, new_cr0: 0x%016lx\n",
+           old_cr0, new_cr0);
+#endif
+    hw_write_cr0(new_cr0);  
     if(g_is_post_launch) {
         // clear TS bit, since we need to operate on XMM registers.
         enable_fx_ops();

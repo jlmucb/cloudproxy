@@ -98,13 +98,13 @@ static void fill_vmx_capabilities( void )
         }
     }
 
-    g_vmx_capabilities.VmExitControls.Uint64                    = hw_read_msr(IA32_MSR_VM_EXIT_CONTROLS_INDEX);
-    g_vmx_capabilities.VmEntryControls.Uint64                   = hw_read_msr(IA32_MSR_VM_ENTRY_CONTROLS_INDEX);
-    g_vmx_capabilities.MiscellaneousData.Uint64                 = hw_read_msr(IA32_MSR_MISCELLANEOUS_DATA_INDEX);
-    g_vmx_capabilities.Cr0MayBeSetToZero.Uint64                 = hw_read_msr(IA32_MSR_CR0_ALLOWED_ZERO_INDEX);
-    g_vmx_capabilities.Cr0MayBeSetToOne.Uint64                  = hw_read_msr(IA32_MSR_CR0_ALLOWED_ONE_INDEX);
-    g_vmx_capabilities.Cr4MayBeSetToZero.Uint64                 = hw_read_msr(IA32_MSR_CR4_ALLOWED_ZERO_INDEX);
-    g_vmx_capabilities.Cr4MayBeSetToOne.Uint64                  = hw_read_msr(IA32_MSR_CR4_ALLOWED_ONE_INDEX);
+    g_vmx_capabilities.VmExitControls.Uint64 = hw_read_msr(IA32_MSR_VM_EXIT_CONTROLS_INDEX);
+    g_vmx_capabilities.VmEntryControls.Uint64 = hw_read_msr(IA32_MSR_VM_ENTRY_CONTROLS_INDEX);
+    g_vmx_capabilities.MiscellaneousData.Uint64 = hw_read_msr(IA32_MSR_MISCELLANEOUS_DATA_INDEX);
+    g_vmx_capabilities.Cr0MayBeSetToZero.Uint64 = hw_read_msr(IA32_MSR_CR0_ALLOWED_ZERO_INDEX);
+    g_vmx_capabilities.Cr0MayBeSetToOne.Uint64  = hw_read_msr(IA32_MSR_CR0_ALLOWED_ONE_INDEX);
+    g_vmx_capabilities.Cr4MayBeSetToZero.Uint64 = hw_read_msr(IA32_MSR_CR4_ALLOWED_ZERO_INDEX);
+    g_vmx_capabilities.Cr4MayBeSetToOne.Uint64  = hw_read_msr(IA32_MSR_CR4_ALLOWED_ONE_INDEX);
 
     VMM_ASSERT( VMCS_REGION_SIZE != 0 );
 
@@ -129,38 +129,37 @@ static void fill_vmx_capabilities( void )
     g_vmx_constraints.may1_cr4.Uint64 = g_vmx_capabilities.Cr4MayBeSetToOne.Uint64;
     g_vmx_constraints.may0_cr4.Uint64 = g_vmx_capabilities.Cr4MayBeSetToZero.Uint64;
 
-    g_vmx_constraints.number_of_cr3_target_values               = g_vmx_capabilities.MiscellaneousData.Bits.NumberOfCr3TargetValues;
-    g_vmx_constraints.max_msr_lists_size_in_bytes               = VMCS_MAX_SIZE_OF_MSR_LISTS;
-    g_vmx_constraints.vmx_timer_length                          = g_vmx_capabilities.MiscellaneousData.Bits.PreemptionTimerLength;
-    g_vmx_constraints.vmcs_revision                             = VMCS_REVISION;
-    g_vmx_constraints.mseg_revision_id                          = g_vmx_capabilities.MiscellaneousData.Bits.MsegRevisionIdentifier;
-    g_vmx_constraints.vm_entry_in_halt_state_supported          = g_vmx_capabilities.MiscellaneousData.Bits.EntryInHaltStateSupported;
-    g_vmx_constraints.vm_entry_in_shutdown_state_supported      = g_vmx_capabilities.MiscellaneousData.Bits.EntryInShutdownStateSupported;
+    g_vmx_constraints.number_of_cr3_target_values = g_vmx_capabilities.MiscellaneousData.Bits.NumberOfCr3TargetValues;
+    g_vmx_constraints.max_msr_lists_size_in_bytes= VMCS_MAX_SIZE_OF_MSR_LISTS;
+    g_vmx_constraints.vmx_timer_length  = g_vmx_capabilities.MiscellaneousData.Bits.PreemptionTimerLength;
+    g_vmx_constraints.vmcs_revision  = VMCS_REVISION;
+    g_vmx_constraints.mseg_revision_id = g_vmx_capabilities.MiscellaneousData.Bits.MsegRevisionIdentifier;
+    g_vmx_constraints.vm_entry_in_halt_state_supported = g_vmx_capabilities.MiscellaneousData.Bits.EntryInHaltStateSupported;
+    g_vmx_constraints.vm_entry_in_shutdown_state_supported  = g_vmx_capabilities.MiscellaneousData.Bits.EntryInShutdownStateSupported;
     g_vmx_constraints.vm_entry_in_wait_for_sipi_state_supported = g_vmx_capabilities.MiscellaneousData.Bits.EntryInWaitForSipiStateSupported;
-    g_vmx_constraints.processor_based_exec_ctrl2_supported      = g_vmx_capabilities.ProcessorBasedVmExecutionControls.Bits.MayBeSetToOne.Bits.SecondaryControls;
-    g_vmx_constraints.ept_supported                             = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
-                                                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.EnableEPT;
-    g_vmx_constraints.unrestricted_guest_supported              = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
-                                                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.UnrestrictedGuest;
-    g_vmx_constraints.vpid_supported                            = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
-                                                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.EnableVPID;
+    g_vmx_constraints.processor_based_exec_ctrl2_supported = g_vmx_capabilities.ProcessorBasedVmExecutionControls.Bits.MayBeSetToOne.Bits.SecondaryControls;
+    g_vmx_constraints.ept_supported  = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
+                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.EnableEPT;
+    g_vmx_constraints.unrestricted_guest_supported = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
+                                                     g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.UnrestrictedGuest;
+    g_vmx_constraints.vpid_supported = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
+                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.EnableVPID;
 #ifdef FAST_VIEW_SWITCH
-    g_vmx_constraints.vmfunc_supported                            = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
-                                                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.Vmfunc;
+    g_vmx_constraints.vmfunc_supported  = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
+                                          g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.Vmfunc;
     if ( g_vmx_constraints.vmfunc_supported )
     {
-        g_vmx_capabilities.VmFuncControls.Uint64                 = hw_read_msr(IA32_MSR_VMX_VMFUNC_CTRL);
+        g_vmx_capabilities.VmFuncControls.Uint64 = hw_read_msr(IA32_MSR_VMX_VMFUNC_CTRL);
         VMM_LOG(mask_anonymous, level_trace,"VmFuncCtrl                                   = %18P\n",g_vmx_capabilities.VmFuncControls.Uint64);
-        if( g_vmx_capabilities.VmFuncControls.Bits.EptpSwitching )
-        {
+        if( g_vmx_capabilities.VmFuncControls.Bits.EptpSwitching ) {
             g_vmx_constraints.eptp_switching_supported = g_vmx_constraints.vmfunc_supported && g_vmx_capabilities.VmFuncControls.Bits.EptpSwitching ;
             VMM_LOG(mask_anonymous, level_trace,"EPTP switching supported...");
         }
 
     }
 #endif
-    g_vmx_constraints.ve_supported                            = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
-                                                                        g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.VE;
+    g_vmx_constraints.ve_supported  = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
+                                      g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.VE;
     if (g_vmx_constraints.ve_supported) {
     	VMM_LOG(mask_anonymous, level_trace,"VE supported...\n");
     }
@@ -201,17 +200,23 @@ static void fill_vmx_capabilities( void )
 
     g_vmx_fixed.fixed_1_cr0.Uint64          = g_vmx_constraints.may0_cr0.Uint64 &
                                               g_vmx_constraints.may1_cr0.Uint64;
-	/* Is unrestricted guest is supported than FIXED1 value should not have PG and PE */
-	if (g_vmx_constraints.unrestricted_guest_supported){
+    /* Is unrestricted guest is supported than FIXED1 value should not have PG and PE */
+    if (g_vmx_constraints.unrestricted_guest_supported){
     	g_vmx_fixed.fixed_1_cr0.Uint64 &= MASK_PE_PG_OFF_UNRESTRICTED_GUEST;
     }
-    g_vmx_fixed.fixed_0_cr0.Uint64          = g_vmx_constraints.may0_cr0.Uint64 |
-                                              g_vmx_constraints.may1_cr0.Uint64;
+    g_vmx_fixed.fixed_0_cr0.Uint64  = g_vmx_constraints.may0_cr0.Uint64 |
+                                      g_vmx_constraints.may1_cr0.Uint64;
 
-    g_vmx_fixed.fixed_1_cr4.Uint64          = g_vmx_constraints.may0_cr4.Uint64 &
+    g_vmx_fixed.fixed_1_cr4.Uint64 = g_vmx_constraints.may0_cr4.Uint64 &
                                               g_vmx_constraints.may1_cr4.Uint64;
-    g_vmx_fixed.fixed_0_cr4.Uint64          = g_vmx_constraints.may0_cr4.Uint64 |
-                                              g_vmx_constraints.may1_cr4.Uint64;
+    g_vmx_fixed.fixed_0_cr4.Uint64 = g_vmx_constraints.may0_cr4.Uint64 |
+                                     g_vmx_constraints.may1_cr4.Uint64;
+#ifdef JLMDEBUG
+   bprint(" fixed_0_cr0 fixed_1_cr0 fixed_0_cr4 fixed_1_cr4: 0x%016lx 0x%016lx 0x%016lx 0x%016lx\n",
+         g_vmx_fixed.fixed_0_cr0.Uint64, g_vmx_fixed.fixed_1_cr0.Uint64,
+         g_vmx_fixed.fixed_0_cr4.Uint64, g_vmx_fixed.fixed_1_cr4.Uint64);
+   bprint("gp_vmx_fixed: 0x%016lx\n", gp_vmx_fixed);
+#endif
 
     VMM_DEBUG_CODE( print_vmx_capabilities() );
 
@@ -461,6 +466,10 @@ static void print_vmx_capabilities( void )
 
 void vmcs_hw_init( void )
 {
+// JLM (FIX)
+#if 1
+    g_init_done= FALSE;
+#endif
     if (g_init_done) {
 #ifdef JLMDEBUG
         bprint("vmcs_hw_init returning\n");

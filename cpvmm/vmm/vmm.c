@@ -709,6 +709,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     bprint("evmm position 23\n");
 #endif
 
+#if 0
     // Allocates memory from heap for s3 resume structure on AP's
     // This should be called before calling vmm_heap_extend() in order to
     // ensure identity mapped memory within 4GB for post-OS launch.
@@ -755,19 +756,21 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
             build_extend_heap_hpa_to_hva();
     }
     VMM_DEBUG_CODE ( vmm_trace_init(VMM_MAX_GUESTS_SUPPORTED, num_of_cpus) );
-
-#ifdef JLMDEBUG
-    bprint("evmm position 27\n");
-    LOOP_FOREVER
 #endif
 
 #ifdef PCI_SCAN
     host_pci_initialize();
 #endif
+
+#ifdef JLMDEBUG
+    UINT64 m1=  hw_read_msr(IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX);
+    bprint("evmm position 27, msr: 0x%016lx\n", m1);
+#endif
     vmcs_hw_init();
 
 #ifdef JLMDEBUG
     bprint("evmm position 28\n");
+    LOOP_FOREVER
 #endif
 
     // BEFORE_VMLAUNCH. REDUNDANT as this check is already done in POSTLAUNCH.

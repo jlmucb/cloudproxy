@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +25,9 @@
 #include "hw_vmx_utils.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_INIT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_INIT_C, __condition)
@@ -34,9 +35,7 @@
 #define MAX_32BIT_NUMBER 0x0FFFFFFFF
 #define MASK_PE_PG_OFF_UNRESTRICTED_GUEST 0xFFFFFFFF7FFFFFFE
 
-//
 // Initialization of the VMCS
-//
 
 
 static IA32_VMX_CAPABILITIES g_vmx_capabilities;
@@ -49,7 +48,7 @@ static BOOLEAN g_init_done = FALSE;
 
 void print_vmx_capabilities( void );
 
-//------------------------------ macros            -----------------------------
+
 #define VMCS_REGION_SIZE                                                        \
     (g_vmx_capabilities.VmcsRevisionIdentifier.Bits.VmcsRegionSize)
 
@@ -77,11 +76,15 @@ INLINE char fx_bit_2_char( UINT32 mb0, UINT32 mb1 )
 
 #define CAP_BIT_TO_CHAR( field_name, bit_name ) ((g_vmx_capabilities.field_name).Bits.bit_name + '0')
 
-//------------------------------ internal functions-----------------------------
+
 static void fill_vmx_capabilities( void )
 {
-    g_vmx_capabilities.VmcsRevisionIdentifier.Uint64            = hw_read_msr(IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX);
-    g_vmx_capabilities.PinBasedVmExecutionControls.Uint64       = hw_read_msr(IA32_MSR_PIN_BASED_VM_EXECUTION_CONTROLS_INDEX);
+#ifdef JLMDEBUG
+    bprint("At fill_vmx_capabilities\n");
+    LOOP_FOREVER
+#endif
+    g_vmx_capabilities.VmcsRevisionIdentifier.Uint64 = hw_read_msr(IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX);
+    g_vmx_capabilities.PinBasedVmExecutionControls.Uint64 = hw_read_msr(IA32_MSR_PIN_BASED_VM_EXECUTION_CONTROLS_INDEX);
     g_vmx_capabilities.ProcessorBasedVmExecutionControls.Uint64 = hw_read_msr(IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS_INDEX);
     g_vmx_capabilities.EptVpidCapabilities.Uint64 = 0;
 
@@ -215,8 +218,7 @@ static void fill_vmx_capabilities( void )
 
 }
 
-INLINE
-VMM_PHYS_MEM_TYPE vmcs_memory_type( void )
+INLINE VMM_PHYS_MEM_TYPE vmcs_memory_type( void )
 {
     switch (g_vmx_capabilities.VmcsRevisionIdentifier.Bits.VmcsMemoryType)
     {
@@ -461,21 +463,24 @@ static void print_vmx_capabilities( void )
 void vmcs_hw_init( void )
 {
     if (g_init_done) {
+#ifdef JLMDEBUG
+        bprint("vmcs_hw_init returning\n");
+#endif
         return;
     }
-
+#ifdef JLMDEBUG
+    bprint("vmcs_hw_init returning\n");
+    LOOP_FOREVER
+#endif
     vmm_memset(&g_vmx_capabilities, 0, sizeof(g_vmx_capabilities));
     vmm_memset(&g_vmx_constraints, 0, sizeof(g_vmx_constraints));
     vmm_memset(&g_vmx_fixed, 0, sizeof(g_vmx_fixed));
-
     g_init_done = TRUE;
-
     fill_vmx_capabilities();
 }
 
-//
+
 // Allocate VMCS region
-//
 HVA vmcs_hw_allocate_region( HPA* hpa )
 {
     HVA             hva = 0;
@@ -557,9 +562,7 @@ const VMCS_HW_CONSTRAINTS* vmcs_hw_get_vmx_constraints( void )
 }
 
 
-//
 // Check that current CPU is VMX-capable
-//
 BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
 {
     CPUID_INFO_STRUCT cpuid_info;
@@ -591,7 +594,6 @@ BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
     })
 
     return ok;
-
 }
 
 

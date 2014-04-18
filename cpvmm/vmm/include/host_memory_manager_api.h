@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef HOST_MEMORY_MANAGER_API_H
 #define HOST_MEMORY_MANAGER_API_H
@@ -66,11 +64,8 @@ BOOLEAN hmm_hva_to_hpa(IN HVA hva, OUT HPA* hpa);
 *          pat_index-
 *  Return Value: TRUE in case the mapping successful (it exists).
 */
-BOOLEAN hmm_hva_to_hpa_with_attr(IN HVA hva,
-                                 OUT HPA* hpa,
-                                 OUT BOOLEAN* is_writable,
-                                 OUT BOOLEAN* is_executable,
-                                 OUT UINT32* pat_index);
+BOOLEAN hmm_hva_to_hpa_with_attr(IN HVA hva, OUT HPA* hpa, OUT BOOLEAN* is_writable,
+                                 OUT BOOLEAN* is_executable, OUT UINT32* pat_index);
 #endif
 
 
@@ -174,22 +169,17 @@ BOOLEAN hmm_enable_update_of_page(HVA page);
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory
 *              In case of failure the state of internal mappings may be inconsistent.
 */
-BOOLEAN hmm_map_physical_page(IN HPA page_hpa,
-                              IN BOOLEAN is_writable,
-                              IN BOOLEAN is_executable,
-                              IN UINT32 pat_index,
-                              IN BOOLEAN flash_all_tlbs_if_needed,
-                              OUT HVA* page_hva);
+BOOLEAN hmm_map_physical_page(IN HPA page_hpa, IN BOOLEAN is_writable,
+                     IN BOOLEAN is_executable, IN UINT32 pat_index,
+                     IN BOOLEAN flash_all_tlbs_if_needed, OUT HVA* page_hva);
 /* Function: hmm_map_physical_page
 *  Description: Maps "write back" physical page to VMM page tables
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory
 *              In case of failure the state of internal mappings may be inconsistent.
 */
-BOOLEAN hmm_map_wb_physical_page(IN HPA page_hpa,
-                                 IN BOOLEAN is_writable,
-                                 IN BOOLEAN is_executable,
-                                 IN BOOLEAN flash_all_tlbs_if_needed,
-                                 OUT HVA* page_hva);
+BOOLEAN hmm_map_wb_physical_page(IN HPA page_hpa, IN BOOLEAN is_writable,
+                     IN BOOLEAN is_executable, IN BOOLEAN flash_all_tlbs_if_needed,
+                     OUT HVA* page_hva);
 #endif
 
 /* Function: hmm_map_physical_page
@@ -197,11 +187,9 @@ BOOLEAN hmm_map_wb_physical_page(IN HPA page_hpa,
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory
 *              In case of failure the state of internal mappings may be inconsistent.
 */
-BOOLEAN hmm_map_uc_physical_page(IN HPA page_hpa,
-                                 IN BOOLEAN is_writable,
-                                 IN BOOLEAN is_executable,
-                                 IN BOOLEAN flash_all_tlbs_if_needed,
-                                 OUT HVA* page_hva);
+BOOLEAN hmm_map_uc_physical_page(IN HPA page_hpa, IN BOOLEAN is_writable,
+                     IN BOOLEAN is_executable, IN BOOLEAN flash_all_tlbs_if_needed,
+                     OUT HVA* page_hva);
 
 #ifdef INCLUDE_UNUSED_CODE
 /* Function: hmm_alloc_continuous_virtual_buffer_for_pages
@@ -213,25 +201,24 @@ BOOLEAN hmm_map_uc_physical_page(IN HPA page_hpa,
 *              In case of failure the state of internal mappings may be inconsistent.
 */
 BOOLEAN hmm_alloc_continuous_virtual_buffer_for_pages(IN UINT64* hpas_array,
-                                                      IN UINT32 num_of_pages,
-                                                      IN BOOLEAN is_writable,
-                                                      IN BOOLEAN is_executable,
-                                                      IN UINT32 pat_index,
-                                                      OUT UINT64* hva);
+                     IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+                     IN BOOLEAN is_executable, IN UINT32 pat_index,
+                     OUT UINT64* hva);
 
 /* Function: hmm_alloc_continuous_wb_virtual_buffer_for_pages
-*  Description: Temporary maps continuous virtual buffer for the given array of HPAs with WB caching attributes.
-*               Note, that the existing HPA <-> HVA mapping for the given tables are not updated,
+*  Description: Temporary maps continuous virtual buffer for the given 
+*               array of HPAs with WB caching attributes.
+*               Note, that the existing HPA <-> HVA mapping for the 
+*                given tables are not updated,
 *               just new mapping of HVA->HPA is added to virtual tables of HMM
-*               In order to remove this temporary mapping use "hmm_free_continuous_virtual_buffer" function
+*               In order to remove this temporary mapping 
+*               use "hmm_free_continuous_virtual_buffer" function
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory
 *              In case of failure the state of internal mappings may be inconsistent.
 */
 BOOLEAN hmm_alloc_continuous_wb_virtual_buffer_for_pages(IN UINT64* hpas_array,
-                                                         IN UINT32 num_of_pages,
-                                                         IN BOOLEAN is_writable,
-                                                         IN BOOLEAN is_executable,
-                                                         OUT UINT64* hva);
+                     IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+                     IN BOOLEAN is_executable, OUT UINT64* hva);
 
 /* Function: hmm_alloc_additional_continuous_virtual_buffer_no_attr_change
 *  Description: Maps additional TEMPORARY virtual buffer to existing physical pages, the
@@ -246,9 +233,9 @@ BOOLEAN hmm_alloc_continuous_wb_virtual_buffer_for_pages(IN UINT64* hpas_array,
 *  Ret. value: TRUE in case of success. FALSE in case when mapping is impossible.
 *  Remark: In case of insufficient memory internal DEADLOOP will occur.
 */
-BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_no_attr_change(IN UINT64 current_hva,
-                                                                      IN UINT64 additional_hva,
-                                                                      IN UINT32 num_of_pages);
+BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_no_attr_change(
+               IN UINT64 current_hva, IN UINT64 additional_hva,
+               IN UINT32 num_of_pages);
 
 #endif
 /* Function: hmm_alloc_additional_continuous_virtual_buffer
@@ -267,11 +254,9 @@ BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_no_attr_change(IN UINT64 
 *  Remark: In case of insufficient memory internal DEADLOOP will occur.
 */
 BOOLEAN hmm_alloc_additional_continuous_virtual_buffer(IN UINT64 current_hva,
-                                                       IN UINT64 additional_hva,
-                                                       IN UINT32 num_of_pages,
-                                                       IN BOOLEAN is_writable,
-                                                       IN BOOLEAN is_executable,
-                                                       IN UINT32 pat_index);
+               IN UINT64 additional_hva, IN UINT32 num_of_pages,
+               IN BOOLEAN is_writable, IN BOOLEAN is_executable,
+               IN UINT32 pat_index);
 
 #ifdef INCLUDE_UNUSED_CODE
 /* Function: hmm_alloc_additional_continuous_wb_virtual_buffer
@@ -290,10 +275,8 @@ BOOLEAN hmm_alloc_additional_continuous_virtual_buffer(IN UINT64 current_hva,
 *  Remark: In case of insufficient memory internal DEADLOOP will occur.
 */
 BOOLEAN hmm_alloc_additional_continuous_wb_virtual_buffer(IN UINT64 current_hva,
-                                                          IN UINT64 additional_hva,
-                                                          IN UINT32 num_of_pages,
-                                                          IN BOOLEAN is_writable,
-                                                          IN BOOLEAN is_executable);
+               IN UINT64 additional_hva, IN UINT32 num_of_pages,
+               IN BOOLEAN is_writable, IN BOOLEAN is_executable);
 #endif
 
 /* Function: hmm_free_continuous_virtual_buffer
@@ -301,8 +284,7 @@ BOOLEAN hmm_alloc_additional_continuous_wb_virtual_buffer(IN UINT64 current_hva,
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory
 *              In case of failure the state of internal mappings may be inconsistent.
 */
-BOOLEAN hmm_free_continuous_virtual_buffer(UINT64 buffer_hva,
-                                           UINT32 num_of_pages);
+BOOLEAN hmm_free_continuous_virtual_buffer(UINT64 buffer_hva, UINT32 num_of_pages);
 
 
 /* Function: hmm_make_phys_page_uncachable
@@ -324,9 +306,7 @@ BOOLEAN hmm_make_phys_page_uncachable(UINT64 page_hpa);
 *  Remark: In case of insufficient memory internal DEADLOOP will occur.
 */
 BOOLEAN hmm_remap_virtual_memory_no_attr_change(HVA from_hva,
-                                                HVA to_hva,
-                                                UINT32 size,
-                                                BOOLEAN flash_tlbs);
+               HVA to_hva, UINT32 size, BOOLEAN flash_tlbs);
 #endif
 
 /* Function: hmm_remap_virtual_memory
@@ -342,13 +322,9 @@ BOOLEAN hmm_remap_virtual_memory_no_attr_change(HVA from_hva,
 *  Ret. value: TRUE in case of success. FALSE in case when mapping is impossible.
 *  Remark: In case of insufficient memory internal DEADLOOP will occur.
 */
-BOOLEAN hmm_remap_virtual_memory(HVA from_hva,
-                                 HVA to_hva,
-                                 UINT32 size,
-                                 BOOLEAN is_writable,
-                                 BOOLEAN is_executable,
-                                 UINT32 pat_index,
-                                 BOOLEAN flash_tlbs);
+BOOLEAN hmm_remap_virtual_memory(HVA from_hva, HVA to_hva,
+               UINT32 size, BOOLEAN is_writable, BOOLEAN is_executable,
+               UINT32 pat_index, BOOLEAN flash_tlbs);
 
 #ifdef INCLUDE_UNUSED_CODE
 /* Function: hmm_remap_wb_virtual_memory
@@ -363,12 +339,9 @@ BOOLEAN hmm_remap_virtual_memory(HVA from_hva,
 *  Ret. value: TRUE in case of success. FALSE in case when mapping is impossible.
 *  Remark: In case of insufficient memory internal DEADLOOP will occur.
 */
-BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva,
-                                    HVA to_hva,
-                                    UINT32 size,
-                                    BOOLEAN is_writable,
-                                    BOOLEAN is_executable,
-                                    BOOLEAN flash_tlbs);
+BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva, HVA to_hva,
+               UINT32 size, BOOLEAN is_writable, BOOLEAN is_executable,
+               BOOLEAN flash_tlbs);
 
 
 /* Function: hmm_remap_physical_pages_to_continuous_virtal_addr_copy_attrs
@@ -383,9 +356,10 @@ BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva,
 *  Ret. value: TRUE in case of success. FALSE in case when mapping is impossible.
 *  Remark: In case of insufficient memory internal ASSERT will occur.
 */
-BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr_copy_attrs(IN UINT64* hpas_array,
-                                                                      IN UINT32 num_of_pages,
-                                                                      OUT UINT64* hva);
+BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr_copy_attrs(
+               IN UINT64* hpas_array,
+               IN UINT32 num_of_pages,
+               OUT UINT64* hva);
 /* Function: hmm_remap_physical_pages_to_continuous_virtal_addr
 *  Description: Remaps given physical pages to new continuous virtual buffer with HPA->HVA mapping udpate.
 *  Arguments:
@@ -400,11 +374,8 @@ BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr_copy_attrs(IN UINT64*
 *  Remark: In case of insufficient memory internal ASSERT will occur.
 */
 BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr(IN UINT64* hpas_array,
-                                                           IN UINT32 num_of_pages,
-                                                           IN BOOLEAN is_writable,
-                                                           IN BOOLEAN is_executable,
-                                                           IN UINT32 pat_index,
-                                                           OUT UINT64* hva);
+               IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+               IN BOOLEAN is_executable, IN UINT32 pat_index, OUT UINT64* hva);
 #endif
 
 
@@ -422,8 +393,6 @@ BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr(IN UINT64* hpas_array
 *  Remark: In case of insufficient memory internal ASSERT will occur.
 */
 BOOLEAN hmm_remap_physical_pages_to_continuous_wb_virtal_addr(IN UINT64* hpas_array,
-                                                              IN UINT32 num_of_pages,
-                                                              IN BOOLEAN is_writable,
-                                                              IN BOOLEAN is_executable,
-                                                              OUT UINT64* hva);
+               IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+               IN BOOLEAN is_executable, OUT UINT64* hva);
 #endif

@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VMM_API_H
 #define _VMM_API_H
@@ -37,8 +35,8 @@ typedef enum {
     VMM_EPTP_INDEX,
     VMM_CONTROL_VECTOR_PIN_EVENTS,
     VMM_CONTROL_VECTOR_PROCESSOR_EVENTS, // Special case - NmiWindow cannot be updated
-                                         // using this value. Use special APIs to update
-                                         // NmiWindow setting
+                                     // using this value. Use special APIs to update
+                                     // NmiWindow setting
     VMM_CONTROL2_VECTOR_PROCESSOR_EVENTS,
     VMM_EXCEPTION_BITMAP,
     VMM_CR3_TARGET_COUNT,
@@ -247,65 +245,58 @@ typedef struct _VMM_GUEST_STATE_VALUE {
 	UINT64  value;
 } VMM_GUEST_STATE_VALUE;
 
-/*-------------------------------------------------------*
-*  PURPOSE  : Get the value of given Guest State ID
-*  ARGUMENTS: gcpu        (IN) -- Guest CPU Handle
-*             GuestStateId(IN) -- Guest State ID
-*             value       (OUT)-- Pointer of the Guest
-*                                 State value
-*  RETURNS  : TRUE
-*             FALSE
-*-------------------------------------------------------*/
-BOOLEAN vmm_get_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, VMM_GUEST_STATE GuestStateId, VMM_GUEST_STATE_VALUE *value);
+// PURPOSE  : Get the value of given Guest State ID
+// ARGUMENTS: gcpu        (IN) -- Guest CPU Handle
+//            GuestStateId(IN) -- Guest State ID
+//            value       (OUT)-- Pointer of the Guest
+//                                State value
+// RETURNS  : TRUE
+//            FALSE
+BOOLEAN vmm_get_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, 
+            VMM_GUEST_STATE GuestStateId, VMM_GUEST_STATE_VALUE *value);
+
+// PURPOSE  : Set the value of given Guest State ID to the
+//            given value
+// ARGUMENTS: gcpu        (IN) -- Guest CPU Handle
+//            GuestStateId(IN) -- Guest State ID
+//            value       (IN) -- Given Guest State value
+// RETURNS  : TRUE
+//            FALSE
+BOOLEAN vmm_set_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, 
+            VMM_GUEST_STATE GuestStateId, VMM_GUEST_STATE_VALUE value);
 
 
-/*-------------------------------------------------------*
-*  PURPOSE  : Set the value of given Guest State ID to the
-*             given value
-*  ARGUMENTS: gcpu        (IN) -- Guest CPU Handle
-*             GuestStateId(IN) -- Guest State ID
-*             value       (IN) -- Given Guest State value
-*  RETURNS  : TRUE
-*             FALSE
-*-------------------------------------------------------*/
-BOOLEAN vmm_set_vmcs_guest_state(GUEST_CPU_HANDLE gcpu, VMM_GUEST_STATE GuestStateId, VMM_GUEST_STATE_VALUE value);
+// PURPOSE  : Get the value of given Control State ID
+// ARGUMENTS: gcpu          (IN) -- Guest CPU Handle
+//            ControlStateId(IN) -- Control State ID
+//            value         (IN) -- Pointer of the Given
+//                                  Control State value
+// RETURNS  : TRUE
+//            FALSE
+BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, 
+            VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value);
 
 
-/*-------------------------------------------------------*
-*  PURPOSE  : Get the value of given Control State ID
-*  ARGUMENTS: gcpu          (IN) -- Guest CPU Handle
-*             ControlStateId(IN) -- Control State ID
-*             value         (IN) -- Pointer of the Given
-*                                   Control State value
-*  RETURNS  : TRUE
-*             FALSE
-*-------------------------------------------------------*/
-BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value);
+// PURPOSE  : Set the value of given Control State ID to
+//            the given value
+// ARGUMENTS: gcpu          (IN) -- Guest CPU Handle
+//            ControlStateId(IN) -- Control State ID
+//            value         (IN) -- Pointer of the Given
+//                                  Control State value
+// RETURNS  : TRUE
+//            FALSE
+BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, 
+            VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value);
 
 
-/*-------------------------------------------------------*
-*  PURPOSE  : Set the value of given Control State ID to
-*             the given value
-*  ARGUMENTS: gcpu          (IN) -- Guest CPU Handle
-*             ControlStateId(IN) -- Control State ID
-*             value         (IN) -- Pointer of the Given
-*                                   Control State value
-*  RETURNS  : TRUE
-*             FALSE
-*-------------------------------------------------------*/
-BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value);
-
-
-/*-------------------------------------------------------*
-*  PURPOSE  : Copy the given memory from given gva to
-*             given hva
-*  ARGUMENTS: gcpu(IN) -- Guest CPU Handle
-*             gva (IN) -- Guest Virtual Address
-*             size(IN) -- size of the range from gva
-*             hva (IN) -- Pointer of Host Virtual Address
-*  RETURNS  : 0 if successful
-*-------------------------------------------------------*/
+// PURPOSE  : Copy the given memory from given gva to
+//            given hva
+// ARGUMENTS: gcpu(IN) -- Guest CPU Handle
+//            gva (IN) -- Guest Virtual Address
+//            size(IN) -- size of the range from gva
+//            hva (IN) -- Pointer of Host Virtual Address
+// RETURNS  : 0 if successful
 int copy_from_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, int size, UINT64 hva);
 
-
 #endif //_VMM_API_H
+

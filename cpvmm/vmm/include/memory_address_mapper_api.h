@@ -1,24 +1,19 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
-
 /*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-  API description of Memory Address Mapper
 
-*/
+//   API description of Memory Address Mapper
 
 #ifndef MEMORY_ADDRESS_MAPPER_API_H
 #define MEMORY_ADDRESS_MAPPER_API_H
@@ -43,8 +38,8 @@ typedef union MAM_ATTRIBUTES_U {
         executable :1,
         global     :1,
         pat_index  :3,
-        tmsl	   :1,
-		noaccess   :1,
+        tmsl       :1,
+                noaccess   :1,
         reserved   :23; // must be zero
     } paging_attr;
 
@@ -133,9 +128,8 @@ MAM_HANDLE mam_clone(IN MAM_HANDLE mam_handle);
 *          - attrs    - attributes of mapped address when "Return Value" is MAM_MAPPING_SUCCESSFUL
 */
 MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle,
-                                   IN UINT64 src_addr,
-                                   OUT UINT64* tgt_addr,
-                                   OUT MAM_ATTRIBUTES* attrs);
+                       IN UINT64 src_addr, OUT UINT64* tgt_addr,
+                       OUT MAM_ATTRIBUTES* attrs);
 
 
 /* Function: mam_insert_range
@@ -158,10 +152,8 @@ MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle,
 *                  mapping may be partial, i.e. only part of the requested range will be mapped,
 *                  and the remaining part will remain with previous information.
 */
-BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle,
-                         IN UINT64 src_addr,
-                         IN UINT64 tgt_addr,
-                         IN UINT64 size,
+BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
+                         IN UINT64 tgt_addr, IN UINT64 size,
                          IN MAM_ATTRIBUTES attrs);
 
 
@@ -185,9 +177,8 @@ BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle,
 *                  and the remaining part will remain with previous information.
 */
 BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle,
-                                      IN UINT64 src_addr,
-                                      IN UINT64 size,
-                                      IN MAM_MAPPING_RESULT reason);
+                         IN UINT64 src_addr, IN UINT64 size,
+                         IN MAM_MAPPING_RESULT reason);
 
 
 /* Function: mam_add_permissions_to_existing_mapping
@@ -203,9 +194,8 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle,
 *                - FALSE in case of insufficient memory.
 */
 BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle,
-                                                IN UINT64 src_addr,
-                                                IN UINT64 size,
-                                                IN MAM_ATTRIBUTES attrs);
+                         IN UINT64 src_addr, IN UINT64 size,
+                         IN MAM_ATTRIBUTES attrs);
 
 
 /* Function: mam_remove_permissions_from_existing_mapping
@@ -222,9 +212,8 @@ BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle,
 *                - FALSE in case of insufficient memory.
 */
 BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle,
-                                                     IN UINT64 src_addr,
-                                                     IN UINT64 size,
-                                                     IN MAM_ATTRIBUTES attrs);
+                         IN UINT64 src_addr, IN UINT64 size,
+                         IN MAM_ATTRIBUTES attrs);
 
 /* Function: mam_convert_to_64bit_page_tables
 *  Description: This functions converts internal optimized mapping to 64 bits page Tables.
@@ -270,10 +259,10 @@ MAM_MEMORY_RANGES_ITERATOR mam_get_memory_ranges_iterator(IN MAM_HANDLE mam_hand
 *                     value, size will be 0.
 *  Ret value: - new iterator.
 */
-MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(IN MAM_HANDLE mam_handle,
-                                                               IN MAM_MEMORY_RANGES_ITERATOR iter,
-                                                               OUT UINT64* src_addr,
-                                                               OUT UINT64* size);
+MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(
+                         IN MAM_HANDLE mam_handle,
+                         IN MAM_MEMORY_RANGES_ITERATOR iter,
+                         OUT UINT64* src_addr, OUT UINT64* size);
 #ifdef INCLUDE_UNUSED_CODE
 /* Function: mam_iterator_get_next
 *  Description: Use this function in order to advance iterator to the next range.
@@ -282,7 +271,7 @@ MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(IN MAM_HANDLE mam
 *  Ret value: - new iterator.
 */
 MAM_MEMORY_RANGES_ITERATOR mam_iterator_get_next(IN MAM_HANDLE mam_handle,
-                                                 IN MAM_MEMORY_RANGES_ITERATOR iter);
+                          MAM_MEMORY_RANGES_ITERATOR iter);
 #endif
 
 /* Function: mam_get_range_start_address_from_iterator
@@ -293,7 +282,7 @@ MAM_MEMORY_RANGES_ITERATOR mam_iterator_get_next(IN MAM_HANDLE mam_handle,
 *               returned.
 */
 UINT64 mam_get_range_start_address_from_iterator(IN MAM_HANDLE mam_handle,
-                                                 IN MAM_MEMORY_RANGES_ITERATOR iter);
+                          MAM_MEMORY_RANGES_ITERATOR iter);
 
 typedef UINT32 MAM_EPT_SUPER_PAGE_SUPPORT;
 #define MAM_EPT_NO_SUPER_PAGE_SUPPORT 0x0
@@ -324,10 +313,9 @@ typedef enum {
 *                - FALSE in case of insufficient memory.
 */
 BOOLEAN mam_convert_to_ept(IN MAM_HANDLE mam_handle,
-                           IN MAM_EPT_SUPER_PAGE_SUPPORT ept_super_page_support,
-                           IN MAM_EPT_SUPPORTED_GAW ept_supported_gaw,
-                           IN BOOLEAN ept_hw_ve_support,
-                           OUT UINT64* first_table_hpa);
+                    IN MAM_EPT_SUPER_PAGE_SUPPORT ept_super_page_support,
+                    IN MAM_EPT_SUPPORTED_GAW ept_supported_gaw,
+                    IN BOOLEAN ept_hw_ve_support, OUT UINT64* first_table_hpa);
 
 typedef UINT8 MAM_VTDPT_SUPER_PAGE_SUPPORT;
 #define MAM_VTDPT_SUPPORT_2MB_PAGE 0x1
@@ -365,10 +353,9 @@ typedef enum {
 */
 BOOLEAN mam_convert_to_vtdpt(IN MAM_HANDLE mam_handle,
                            IN MAM_VTDPT_SUPER_PAGE_SUPPORT vtdpt_super_page_support,
-						   IN MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior,
-						   IN MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping,
-                           IN UINT32 sagaw_index_bit,
-                           OUT UINT64* first_table_hpa);
+                           IN MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior,
+                           IN MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping,
+                           IN UINT32 sagaw_index_bit, OUT UINT64* first_table_hpa);
 
 void mam_print_page_usage(IN MAM_HANDLE mam_handle);
 

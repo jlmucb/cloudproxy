@@ -74,22 +74,17 @@ BOOLEAN gpci_initialize(void);
 
 BOOLEAN gpci_guest_initialize(GUEST_ID guest_id);
 
-BOOLEAN gpci_register_device(GUEST_ID                      guest_id,
-                             GUEST_DEVICE_VIRTUALIZATION_TYPE type,                     
-                             HOST_PCI_DEVICE               *host_pci_device,
-                             UINT8*                        config_space,
-                             GUEST_PCI_READ_HANDLER        pci_read,
-                             GUEST_PCI_WRITE_HANDLER       pci_write);
+BOOLEAN gpci_register_device(GUEST_ID  guest_id,
+          GUEST_DEVICE_VIRTUALIZATION_TYPE type, HOST_PCI_DEVICE *host_pci_device,
+          UINT8*  config_space, GUEST_PCI_READ_HANDLER pci_read,
+          GUEST_PCI_WRITE_HANDLER pci_write);
 
 #ifdef INCLUDE_UNUSED_CODE
-void gpci_unregister_device(GUEST_ID guest_id, 
-                            UINT16   bus, 
-                            UINT16   device, 
-                            UINT16   function);
+void gpci_unregister_device(GUEST_ID guest_id, UINT16 bus, 
+                            UINT16 device, UINT16 function);
 #endif
 
-GUEST_ID gpci_get_device_guest_id(UINT16   bus, 
-                                  UINT16   device, 
-                                  UINT16   function);
+GUEST_ID gpci_get_device_guest_id(UINT16 bus, UINT16 device, 
+                                  UINT16 function);
 
 #endif

@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef PAGE_WALKER_H
 
@@ -62,13 +60,9 @@ typedef enum {
  *       "is_user" and "is_fetch" varables.
  */
 PW_RETVAL pw_perform_page_walk(IN GUEST_CPU_HANDLE gcpu,
-                               IN UINT64 virt_addr,
-                               IN BOOLEAN is_write,
-                               IN BOOLEAN is_user,
-                               IN BOOLEAN is_fetch,
-                               IN BOOLEAN set_ad_bits,
-                               OUT UINT64* gpa,
-                               OUT UINT64* pfec);
+                 IN UINT64 virt_addr, IN BOOLEAN is_write,
+                 IN BOOLEAN is_user, IN BOOLEAN is_fetch,
+                 IN BOOLEAN set_ad_bits, OUT UINT64* gpa, OUT UINT64* pfec);
 
 /* Function: pw_is_pdpt_in_32_bit_pae_mode_valid
  * Description: The function performes page walk over guest page tables

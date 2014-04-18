@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VMM_ACPI_H_
 #define _VMM_ACPI_H_
@@ -77,25 +75,25 @@
  * portable, so do not use any other bitfield types.
  */
 
-/*******************************************************************************
+/*
  *
  * ACPI Table Header. This common header is used by all tables except the
  * RSDP and FACS. The define is used for direct inclusion of header into
  * other ACPI tables
  *
- ******************************************************************************/
+ */
 
 typedef struct acpi_table_header
 {
-    char                    Signature[ACPI_NAME_SIZE];          /* ASCII table signature */
-    UINT32                  Length;                             /* Length of table in bytes, including this header */
-    UINT8                   Revision;                           /* ACPI Specification minor version # */
-    UINT8                   Checksum;                           /* To make sum of entire table == 0 */
-    char                    OemId[ACPI_OEM_ID_SIZE];            /* ASCII OEM identification */
-    char                    OemTableId[ACPI_OEM_TABLE_ID_SIZE]; /* ASCII OEM table identification */
-    UINT32                  OemRevision;                        /* OEM revision number */
-    char                    AslCompilerId[ACPI_NAME_SIZE];      /* ASCII ASL compiler vendor ID */
-    UINT32                  AslCompilerRevision;                /* ASL compiler version */
+    char      Signature[ACPI_NAME_SIZE];          /* ASCII table signature */
+    UINT32    Length;        /* Length of table in bytes, including this header */
+    UINT8     Revision;      /* ACPI Specification minor version # */
+    UINT8     Checksum;      /* To make sum of entire table == 0 */
+    char      OemId[ACPI_OEM_ID_SIZE];            /* ASCII OEM identification */
+    char      OemTableId[ACPI_OEM_TABLE_ID_SIZE]; /* ASCII OEM table identification */
+    UINT32    OemRevision;                        /* OEM revision number */
+    char      AslCompilerId[ACPI_NAME_SIZE];      /* ASCII ASL compiler vendor ID */
+    UINT32    AslCompilerRevision;                /* ASL compiler version */
 
 } ACPI_TABLE_HEADER;
 
@@ -109,61 +107,54 @@ typedef struct acpi_table_header
  */
 typedef struct acpi_generic_address
 {
-    UINT8                   SpaceId;                /* Address space where struct or register exists */
-    UINT8                   BitWidth;               /* Size in bits of given register */
-    UINT8                   BitOffset;              /* Bit offset within the register */
-    UINT8                   AccessWidth;            /* Minimum Access size (ACPI 3.0) */
-    UINT64                  Address;                /* 64-bit address of struct or register */
-
+    UINT8   SpaceId;                /* Address space where struct or register exists */
+    UINT8   BitWidth;               /* Size in bits of given register */
+    UINT8   BitOffset;              /* Bit offset within the register */
+    UINT8   AccessWidth;            /* Minimum Access size (ACPI 3.0) */
+    UINT64  Address;                /* 64-bit address of struct or register */
 } ACPI_GENERIC_ADDRESS;
 
 
-/*******************************************************************************
- *
+/*
  * RSDP - Root System Description Pointer (Signature is "RSD PTR ")
- *
- ******************************************************************************/
+ */
+ 
 
 typedef struct acpi_table_rsdp
 {
-    char                    Signature[8];               /* ACPI signature, contains "RSD PTR " */
-    UINT8                   Checksum;                   /* ACPI 1.0 checksum */
-    char                    OemId[ACPI_OEM_ID_SIZE];    /* OEM identification */
-    UINT8                   Revision;                   /* Must be (0) for ACPI 1.0 or (2) for ACPI 2.0+ */
-    UINT32                  RsdtPhysicalAddress;        /* 32-bit physical address of the RSDT */
-    UINT32                  Length;                     /* Table length in bytes, including header (ACPI 2.0+) */
-    UINT64                  XsdtPhysicalAddress;        /* 64-bit physical address of the XSDT (ACPI 2.0+) */
-    UINT8                   ExtendedChecksum;           /* Checksum of entire table (ACPI 2.0+) */
-    UINT8                   Reserved[3];                /* Reserved, must be zero */
+    char   Signature[8];               /* ACPI signature, contains "RSD PTR " */
+    UINT8  Checksum;                   /* ACPI 1.0 checksum */
+    char   OemId[ACPI_OEM_ID_SIZE];    /* OEM identification */
+    UINT8  Revision;    /* Must be (0) for ACPI 1.0 or (2) for ACPI 2.0+ */
+    UINT32 RsdtPhysicalAddress;        /* 32-bit physical address of the RSDT */
+    UINT32 Length;      /* Table length in bytes, including header (ACPI 2.0+) */
+    UINT64 XsdtPhysicalAddress;   /* 64-bit physical address of the XSDT (ACPI 2.0+) */
+    UINT8  ExtendedChecksum;           /* Checksum of entire table (ACPI 2.0+) */
+    UINT8  Reserved[3];                /* Reserved, must be zero */
 
 } ACPI_TABLE_RSDP;
 
-/*******************************************************************************
- *
+/*
  * FACS - Firmware ACPI Control Structure (FACS)
- *
- ******************************************************************************/
+ */
 
 typedef struct acpi_table_facs
 {
-    char                    Signature[4];           /* ASCII table signature */
-    UINT32                  Length;                 /* Length of structure, in bytes */
-    UINT32                  HardwareSignature;      /* Hardware configuration signature */
-    UINT32                  FirmwareWakingVector;   /* 32-bit physical address of the Firmware Waking Vector */
-    UINT32                  GlobalLock;             /* Global Lock for shared hardware resources */
-    UINT32                  Flags;
-    UINT64                  XFirmwareWakingVector;  /* 64-bit version of the Firmware Waking Vector (ACPI 2.0+) */
-    UINT8                   Version;                /* Version of this table (ACPI 2.0+) */
-    UINT8                   Reserved[31];           /* Reserved, must be zero */
-
+    char     Signature[4];           /* ASCII table signature */
+    UINT32   Length;                 /* Length of structure, in bytes */
+    UINT32   HardwareSignature;      /* Hardware configuration signature */
+    UINT32   FirmwareWakingVector;   /* 32-bit physical address of the Firmware Waking Vector */
+    UINT32   GlobalLock;             /* Global Lock for shared hardware resources */
+    UINT32   Flags;
+    UINT64   XFirmwareWakingVector;  /* 64-bit version of the Firmware Waking Vector (ACPI 2.0+) */
+    UINT8    Version;                /* Version of this table (ACPI 2.0+) */
+    UINT8    Reserved[31];           /* Reserved, must be zero */
 } ACPI_TABLE_FACS;
 
 
-/*******************************************************************************
- *
+/*
  * FADT - Fixed ACPI Description Table (Signature "FACP")
- *
- ******************************************************************************/
+ */
 
 /* Fields common to all versions of the FADT */
 

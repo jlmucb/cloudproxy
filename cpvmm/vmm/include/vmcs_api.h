@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VMCS_API_H_
 #define _VMCS_API_H_
@@ -30,8 +28,8 @@ typedef enum _VMCS_FIELD {
     VMCS_EPTP_INDEX,
     VMCS_CONTROL_VECTOR_PIN_EVENTS,
     VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS, // Special case - NmiWindow cannot be updated
-                                          // using this value. Use special APIs to update
-                                          // NmiWindow setting
+                                 // using this value. Use special APIs to update
+                                 // NmiWindow setting
     VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS,
     VMCS_EXCEPTION_BITMAP,
     VMCS_CR3_TARGET_COUNT,
@@ -294,12 +292,10 @@ INLINE void vmcs_delete_msr_from_vmexit_store_and_vmenter_load_lists(struct _VMC
 #endif
 
 void vmcs_assign_vmexit_msr_load_list(struct _VMCS_OBJECT* vmcs,
-                                      UINT64 address_value,
-                                      UINT64 count_value);
+                            UINT64 address_value, UINT64 count_value);
 
 void vmcs_assign_vmexit_msr_load_list(struct _VMCS_OBJECT* vmcs,
-                                      UINT64 address_value,
-                                      UINT64 count_value);
+                            UINT64 address_value, UINT64 count_value);
 INLINE void vmcs_clear_vmexit_store_list(struct _VMCS_OBJECT* vmcs) {
     vmcs_write(vmcs, VMCS_EXIT_MSR_STORE_COUNT, 0);
 }
@@ -324,15 +320,8 @@ VMCS_FIELD vmcs_get_field_id_by_encoding( UINT32 encoding, OPTIONAL BOOLEAN* is_
 BOOLEAN vmcs_is_msr_in_vmexit_store_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index);
 
 BOOLEAN vmcs_is_msr_in_vmexit_load_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index);
-
 BOOLEAN vmcs_is_msr_in_vmenter_load_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index);
 
-//VMM_DEBUG_CODE(
-//------------------------------------------------------------------------------
-//
-// Print VMCS fields
-//
-//------------------------------------------------------------------------------
 #ifdef CLI_INCLUDE
 void vmcs_print_guest_state( const struct _VMCS_OBJECT* obj );
 void vmcs_print_host_state( const struct _VMCS_OBJECT* obj );
@@ -344,7 +333,6 @@ const struct _VMCS_OBJECT* obj, UINT32 num_of_filters, char *filters[]);
 const char * vmcs_get_field_name( VMCS_FIELD field_id );
 void vmcs_print_vmenter_msr_load_list(struct _VMCS_OBJECT* vmcs);
 void vmcs_print_vmexit_msr_store_list(struct _VMCS_OBJECT* vmcs);
-//)
 
 // dump vmcs to guest buffer
 void vmcs_store_initial(GUEST_CPU_HANDLE gcpu, CPU_ID cpu_id);

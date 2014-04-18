@@ -187,12 +187,11 @@ UINT32 hash64_get_current_size(HASH64_HANDLE hash_handle);
  *                In case of failure, HASH64_INVALID_HANDLE will be returned.
  */
 HASH64_HANDLE hash64_create_multiple_values_hash(HASH64_FUNC hash_func,
-                                                 HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
-                                                 HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
-                                                 HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
-                                                 HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
-                                                 void* node_allocation_deallocation_context,
-                                                 UINT32 hash_size);
+                HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
+                HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
+                HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
+                HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
+                void* node_allocation_deallocation_context, UINT32 hash_size);
 
 
 /* Function: hash64_destroy_multiple_values_hash
@@ -212,8 +211,7 @@ void hash64_destroy_multiple_values_hash(HASH64_HANDLE hash_handle);
  *  Return value: TRUE in case when at least one value exists.
  */
 BOOLEAN hash64_lookup_in_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                             UINT64 key,
-                                             HASH64_MULTIPLE_VALUES_HASH_ITERATOR* iter);
+              UINT64 key, HASH64_MULTIPLE_VALUES_HASH_ITERATOR* iter);
 
 
 /* Function: hash64_multiple_values_hash_iterator_get_next
@@ -269,8 +267,7 @@ BOOLEAN hash64_remove_from_multiple_values_hash(HASH64_HANDLE hash_handle,
  *  Return value: TRUE in case the value exists.
  */
 BOOLEAN hash64_is_value_in_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                               UINT64 key,
-                                               UINT64 value);
+                                               UINT64 key, UINT64 value);
 
 
 /* Function: hash64_remove_range_from_multiple_values_hash
@@ -283,9 +280,7 @@ BOOLEAN hash64_is_value_in_multiple_values_hash(HASH64_HANDLE hash_handle,
  *  Return value: TRUE in case the operation is successful.
  */
 BOOLEAN hash64_remove_range_from_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                                     UINT64 key,
-                                                     UINT64 value_from,
-                                                     UINT64 value_to);
+                                 UINT64 key, UINT64 value_from, UINT64 value_to);
 
 
 /* Function: hash64_multiple_values_is_empty

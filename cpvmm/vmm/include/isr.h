@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _ISR_H_
 #define _ISR_H_
@@ -91,56 +89,38 @@ typedef enum {
 } HW_APIC_EXCEPTION_VECTORS;
 
 
-/*-------------------------------------------------------*
-*  FUNCTION     : isr_c_handler()
-*  PURPOSE      : Generic ISR handler which calls registered
-*               : vector specific handlers.
-*               : Clear FLAGS.IF
-*  ARGUMENTS    : IN ISR_PARAMETERS_ON_STACK *p_stack - points
-*               : to the stack, where FLAGS register stored
-*               : as a part of return from interrupt cycle
-*  RETURNS      : void
-*-------------------------------------------------------*/
-void isr_c_handler(
-    IN OUT ISR_PARAMETERS_ON_STACK *p_stack
-    );
+// FUNCTION     : isr_c_handler()
+// PURPOSE      : Generic ISR handler which calls registered
+//              : vector specific handlers.
+//              : Clear FLAGS.IF
+// ARGUMENTS    : IN ISR_PARAMETERS_ON_STACK *p_stack - points
+//              : to the stack, where FLAGS register stored
+//              : as a part of return from interrupt cycle
+void isr_c_handler( IN OUT ISR_PARAMETERS_ON_STACK *p_stack);
 
-/*-------------------------------------------------------*
-*  FUNCTION     : isr_register_handler()
-*  PURPOSE      : Registers ISR handler
-*  ARGUMENTS    : VMM_ISR_HANDLER handler - is called
-*               : when vector interrupt/exception occurs
-*               : VECTOR_ID vector_id
-*  RETURNS      : void
-*-------------------------------------------------------*/
-void isr_register_handler(
-    IN VMM_ISR_HANDLER  handler,
-    IN VECTOR_ID        vector_id
-    );
 
-/*----------------------------------------------------*
-*  FUNCTION     : isr_setup()
-*  PURPOSE      : Builds ISR wrappers, IDT tables and
-*               : default high level ISR handlers for all CPUs.
-*  ARGUMENTS    : IN UINT8 number_of_cpus
-*  RETURNS      : void
-*-------------------------------------------------------*/
+// FUNCTION     : isr_register_handler()
+// PURPOSE      : Registers ISR handler
+// ARGUMENTS    : VMM_ISR_HANDLER handler - is called
+//              : when vector interrupt/exception occurs
+//              : VECTOR_ID vector_id
+// RETURNS      : void
+void isr_register_handler( IN VMM_ISR_HANDLER  handler, IN VECTOR_ID vector_id);
+
+
+// FUNCTION     : isr_setup()
+// PURPOSE      : Builds ISR wrappers, IDT tables and
+//              : default high level ISR handlers for all CPUs.
+// ARGUMENTS    : IN UINT8 number_of_cpus
 void isr_setup(void);
 
 void isr_handling_start(void);
 
-/*----------------------------------------------------*
-*  FUNCTION     : isr_error_code_required()
-*  PURPOSE      : Check if CPU pushes error code onto stack for given vector ID
-*  ARGUMENTS    : IN UINT8 number_of_cpus
-*  RETURNS      : BOOLEAN if error code is pushed
-*-------------------------------------------------------*/
-BOOLEAN isr_error_code_required(
-    VECTOR_ID vector_id
-    );
-
-
-
+// FUNCTION     : isr_error_code_required()
+// PURPOSE      : Check if CPU pushes error code onto stack for given vector ID
+// ARGUMENTS    : IN UINT8 number_of_cpus
+// RETURNS      : BOOLEAN if error code is pushed
+BOOLEAN isr_error_code_required( VECTOR_ID vector_id);
 #endif // _ISR_H_
 
 

@@ -27,39 +27,42 @@ typedef void* FPT_FLAT_PAGE_TABLES_HANDLE;
  *               with full write/user/execute permissions and WB caching.
  *  The following bits must be set in the control registers: CR4.PAE, CR4.PSE, CR0.PG
  *  Input:
- *        gpm_handle - handle received from "gpm_create_mapping"
+ *    gpm_handle - handle received from "gpm_create_mapping"
  *  Output:
- *        flat_page_table_handle - handle with which the destroying of flat tables will be possible
- *        pdpt - host physical address of created flat page tables
+ *    flat_page_table_handle - handle with which the destroying of 
+ *    flat tables will be possible
+ *    pdpt - host physical address of created flat page tables
  *  Return Value: TRUE when creation is successful
- *                FALSE when creation has failed
+ *    FALSE when creation has failed
  */
 BOOLEAN fpt_create_32_bit_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
                           OUT FPT_FLAT_PAGE_TABLES_HANDLE* flat_page_tables_handle,
                           OUT UINT32* pdpt);
+
 /* Function: fpt_create_32_bit_flat_page_tables_under_4G
  *  Description: create page tables for at most highest_address or 4G.
- *     and the memory which holds those page tables is located under 4G physical RAM.
+ *  and the memory which holds those page tables is located under 4G physical RAM.
  */
 BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(IN UINT64 highest_address);
 
 /* Function: fpt_create_64_bit_flat_page_tables
  *  Description: create 64 bit flat page tables for guest
- *               according to information recording in GPM
- *               with full write/user/execute permissions and WB caching.
- *  following bits must be set in the control registers: CR4.PAE, EFER.LME, CR0.PG
+ *    according to information recording in GPM
+ *    with full write/user/execute permissions and WB caching.
+ *    following bits must be set in the control registers: 
+ *      CR4.PAE, EFER.LME, CR0.PG
  *  Input:
- *        gpm_handle - handle received from "gpm_create_mapping"
+ *    gpm_handle - handle received from "gpm_create_mapping"
  *  Output:
- *        flat_page_table_handle - handle with which the destroying of flat tables will be possible
- *        pml4t - host physical address of created flat page tables
+ *    flat_page_table_handle - handle with which the destroying of flat 
+ *    tables will be possible
+ *    pml4t - host physical address of created flat page tables
  *  Return Value: TRUE when creation is successful
- *                FALSE when creation has failed
+ *    FALSE when creation has failed
  */
 BOOLEAN fpt_create_64_bit_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
-                                           OUT FPT_FLAT_PAGE_TABLES_HANDLE* flat_page_tables_handle,
-                                           OUT UINT64* pml4t);
-
+                    OUT FPT_FLAT_PAGE_TABLES_HANDLE* flat_page_tables_handle,
+                    OUT UINT64* pml4t);
 
 
 /* Function: fpt_destroy_flat_page_tables
@@ -211,7 +214,7 @@ BOOLEAN fpt_iterator_get_range(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_h
  *         iter - iterator
  *  Ret value: - new iterator. In case there is no more ranges, FPT_INVALID_ITERAROR is returned
  */
-FPT_RANGES_ITERATOR fpt_iterator_get_next(IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
-                                          IN FPT_RANGES_ITERATOR iter);
-
+FPT_RANGES_ITERATOR fpt_iterator_get_next(
+            IN FPT_FLAT_PAGE_TABLES_HANDLE flat_page_tables_handle,
+            IN FPT_RANGES_ITERATOR iter);
 #endif

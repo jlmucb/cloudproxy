@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VMCS_HW_OBJECT_H_
 #define _VMCS_HW_OBJECT_H_
@@ -58,10 +56,8 @@ typedef enum _VMCS_INSTRUCTION_ERROR {
 
 struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu);
 
-/*
-*  Functions which are not a part ofg general VMCS API,
-*  but are specific to VMCS applied to real hardware
-*/
+// Functions which are not a part ofg general VMCS API,
+// but are specific to VMCS applied to real hardware
 void    vmcs_clear_cache( VMCS_OBJECT *);
 void    vmcs_activate(VMCS_OBJECT *);
 void    vmcs_deactivate(VMCS_OBJECT *);
@@ -74,10 +70,7 @@ BOOLEAN vmcs_read_nmi_window_bit(struct _VMCS_OBJECT *vmcs);
 
 void nmi_window_update_before_vmresume(struct _VMCS_OBJECT *vmcs);
 VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(
-                                const VMCS_OBJECT* obj,
-                                const char** error_message
-                                );
-
+               const VMCS_OBJECT* obj, const char** error_message);
 
 #endif // _VMCS_HW_OBJECT_H_
 

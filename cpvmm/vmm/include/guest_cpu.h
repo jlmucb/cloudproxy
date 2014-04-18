@@ -60,70 +60,43 @@ typedef enum {
 
 
 UINT64 gcpu_get_native_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
-                               VMM_IA32_GP_REGISTERS          reg,
-                               VMCS_LEVEL                     level
-                               );
+          VMM_IA32_GP_REGISTERS reg, VMCS_LEVEL level);
+
 void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE       gcpu,
-                               VMM_IA32_GP_REGISTERS          reg,
-                               UINT64                         value,
-                               VMCS_LEVEL                     level
-                               );
+          VMM_IA32_GP_REGISTERS reg, UINT64 value,
+          VMCS_LEVEL level);
 #ifdef INCLUDE_UNUSED_CODE
 void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
-                                    UINT64                 *GPreg 
-                                  );
+                                    UINT64 *GPreg );
 #endif
-UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE         gcpu,
-                                VMM_IA32_GP_REGISTERS          reg,
-                                VMCS_LEVEL                     level
-                                );
+UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
+                VMM_IA32_GP_REGISTERS reg, VMCS_LEVEL level);
+
 void gcpu_set_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
                                     UINT64                 *GPReg );
-void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE               gcpu,
-                             VMM_IA32_GP_REGISTERS          reg,
-                             UINT64                         value,
-                             VMCS_LEVEL                     level
-                             );
+void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE gcpu,
+              VMM_IA32_GP_REGISTERS reg, UINT64  value,
+              VMCS_LEVEL level);
 void   gcpu_get_segment_reg_layered(
-                              const GUEST_CPU_HANDLE       gcpu,
-                              VMM_IA32_SEGMENT_REGISTERS   reg,
-                              UINT16*                      selector,
-                              UINT64*                      base,
-                              UINT32*                      limit,
-                              UINT32*                      attributes,
-                              VMCS_LEVEL                   level
-                              );
+              const GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REGISTERS reg,
+              UINT16* selector, UINT64* base, UINT32* limit,
+              UINT32* attributes, VMCS_LEVEL level);
 void   gcpu_set_segment_reg_layered(
-                              GUEST_CPU_HANDLE             gcpu,
-                              VMM_IA32_SEGMENT_REGISTERS   reg,
-                              UINT16                       selector,
-                              UINT64                       base,
-                              UINT32                       limit,
-                              UINT32                       attributes,
-                              VMCS_LEVEL                   level
-                              );
+              GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REGISTERS reg,
+              UINT16  selector, UINT64 base, UINT32 limit,
+              UINT32  attributes, VMCS_LEVEL level);
 UINT64 gcpu_get_control_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              VMCS_LEVEL                   level
-                              );
+              const GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg,
+              VMCS_LEVEL level);
 void   gcpu_set_control_reg_layered(
-                              GUEST_CPU_HANDLE              gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              UINT64                        value,
-                              VMCS_LEVEL                    level
-                              );
+              GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg,
+              UINT64 value, VMCS_LEVEL level);
 UINT64 gcpu_get_guest_visible_control_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              VMCS_LEVEL                    level
-                              );
+              const GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg,
+              VMCS_LEVEL level);
 void gcpu_set_guest_visible_control_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              UINT64                        value,
-                              VMCS_LEVEL                    level
-                              );
+              const GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg,
+              UINT64 value, VMCS_LEVEL level);
 
 void    gcpu_set_cr0_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT64 value );
 UINT64  gcpu_get_cr0_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level);
@@ -145,24 +118,12 @@ void gcpu_get_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, VMCS_L
 void gcpu_set_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT32 pf_mask, UINT32 pf_match);
 
 #ifdef INCLUDE_UNUSED_CODE
-void   gcpu_get_ldt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64*                        base,
-                             UINT32*                        limit,
-                             VMCS_LEVEL                     level
-                             );
-void   gcpu_set_ldt_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64                         base,
-                             UINT32                         limit,
-                             VMCS_LEVEL                     level
-                             );
-void   gcpu_get_tr_reg_layered(
-                             const GUEST_CPU_HANDLE         gcpu,
-                             UINT64*                        base,
-                             UINT32*                        limit,
-                             VMCS_LEVEL                     level
-                             );
+void   gcpu_get_ldt_reg_layered( const GUEST_CPU_HANDLE gcpu,
+              UINT64* base, UINT32* limit, VMCS_LEVEL level);
+void   gcpu_set_ldt_reg_layered( const GUEST_CPU_HANDLE gcpu,
+              UINT64 base, UINT32 limit, VMCS_LEVEL level);
+void   gcpu_get_tr_reg_layered( const GUEST_CPU_HANDLE gcpu,
+              UINT64* base, UINT32* limit, VMCS_LEVEL level);
 void   gcpu_set_tr_reg_layered(
                              const GUEST_CPU_HANDLE         gcpu,
                              UINT64                         base,
@@ -298,71 +259,58 @@ void gcpu_set_interruptibility_state_layered(
                          const GUEST_CPU_HANDLE gcpu,
                          UINT32 value, VMCS_LEVEL  level);
 
-INLINE UINT32 gcpu_get_interruptibility_state(
-                     const GUEST_CPU_HANDLE gcpu) {
+INLINE UINT32 gcpu_get_interruptibility_state(const GUEST_CPU_HANDLE gcpu) {
     return gcpu_get_interruptibility_state_layered(gcpu, VMCS_MERGED);
 }
 
 INLINE void gcpu_set_interruptibility_state(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         UINT32 value) {
+                         const GUEST_CPU_HANDLE  gcpu, UINT32 value) {
     gcpu_set_interruptibility_state_layered(gcpu, value, VMCS_MERGED);
 }
 
 IA32_VMX_VMCS_GUEST_SLEEP_STATE
-    gcpu_get_activity_state_layered(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         VMCS_LEVEL                    level);
+    gcpu_get_activity_state_layered( const GUEST_CPU_HANDLE gcpu,
+                         VMCS_LEVEL level);
 
-void gcpu_set_activity_state_layered(
-                         GUEST_CPU_HANDLE               gcpu,
+void gcpu_set_activity_state_layered( GUEST_CPU_HANDLE gcpu,
                          IA32_VMX_VMCS_GUEST_SLEEP_STATE value,
-                         VMCS_LEVEL                    level);
+                         VMCS_LEVEL level);
 
 INLINE
 IA32_VMX_VMCS_GUEST_SLEEP_STATE
-    gcpu_get_activity_state(
-                         const GUEST_CPU_HANDLE         gcpu) {
+    gcpu_get_activity_state( const GUEST_CPU_HANDLE gcpu) {
     return gcpu_get_activity_state_layered(gcpu, VMCS_MERGED);
 }
 
-INLINE
-void gcpu_set_activity_state(
-                         GUEST_CPU_HANDLE               gcpu,
+INLINE void gcpu_set_activity_state( GUEST_CPU_HANDLE gcpu,
                          IA32_VMX_VMCS_GUEST_SLEEP_STATE value) {
     gcpu_set_activity_state_layered(gcpu, value, VMCS_MERGED);
 }
 
 UINT64 gcpu_get_pending_debug_exceptions_layered(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         VMCS_LEVEL                    level);
+                         const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level);
 
 void gcpu_set_pending_debug_exceptions_layered(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         UINT64                         value,
-                         VMCS_LEVEL                    level);
+                         const GUEST_CPU_HANDLE gcpu,
+                         UINT64 value, VMCS_LEVEL level);
 
-void gcpu_set_vmenter_control_layered(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         VMCS_LEVEL                    level);
+void gcpu_set_vmenter_control_layered( const GUEST_CPU_HANDLE gcpu,
+                         VMCS_LEVEL level);
 #ifdef INCLUDE_UNUSED_CODE
 INLINE
-UINT64 gcpu_get_pending_debug_exceptions(
-                         const GUEST_CPU_HANDLE         gcpu) {
+UINT64 gcpu_get_pending_debug_exceptions( const GUEST_CPU_HANDLE gcpu) {
     return gcpu_get_pending_debug_exceptions_layered(gcpu, VMCS_MERGED);
 }
 #endif
 
 INLINE
 void gcpu_set_pending_debug_exceptions(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         UINT64                         value) {
+                         const GUEST_CPU_HANDLE  gcpu, UINT64 value) {
     gcpu_set_pending_debug_exceptions_layered(gcpu, value, VMCS_MERGED);
 }
 
 INLINE
-void gcpu_set_vmenter_control(
-                         const GUEST_CPU_HANDLE         gcpu) {
+void gcpu_set_vmenter_control( const GUEST_CPU_HANDLE gcpu) {
     gcpu_set_vmenter_control_layered(gcpu, VMCS_MERGED);
 }
 
@@ -397,7 +345,7 @@ INLINE void gcpu_control2_setup( GUEST_CPU_HANDLE gcpu, const VMEXIT_CONTROL* re
 }
 
 // get VMCS object to work directly
-VMCS_OBJECT* gcpu_get_vmcs( GUEST_CPU_HANDLE                 gcpu );
+VMCS_OBJECT* gcpu_get_vmcs( GUEST_CPU_HANDLE gcpu );
 
 VMCS_HIERARCHY * gcpu_get_vmcs_hierarchy( GUEST_CPU_HANDLE  gcpu );
 
@@ -455,13 +403,12 @@ GUEST_LEVEL_ENUM gcpu_get_next_guest_level(GUEST_CPU_HANDLE gcpu);
 void gcpu_set_next_guest_level(GUEST_CPU_HANDLE gcpu, GUEST_LEVEL_ENUM level);
 
 #ifdef INCLUDE_UNUSED_CODE
-UINT128 gcpu_get_xmm_reg( const GUEST_CPU_HANDLE       gcpu,
-                          VMM_IA32_XMM_REGISTERS       reg );
+UINT128 gcpu_get_xmm_reg( const GUEST_CPU_HANDLE gcpu,
+                          VMM_IA32_XMM_REGISTERS reg );
 #endif
 
-void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE              gcpu,
-                         VMM_IA32_XMM_REGISTERS        reg,
-                         UINT128                       value );
+void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE gcpu,
+                         VMM_IA32_XMM_REGISTERS reg, UINT128 value );
 
 
 
@@ -474,16 +421,13 @@ void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE              gcpu,
 // get/set native GP regardless of exection mode (emulator/native/etc)
 // if guest is not running natively (ex. under emulator) this will return/set
 // emulator registers and not real guest registers
-INLINE UINT64 gcpu_get_native_gp_reg(
-                        const GUEST_CPU_HANDLE         gcpu,
-                        VMM_IA32_GP_REGISTERS          reg ) {
+INLINE UINT64 gcpu_get_native_gp_reg( const GUEST_CPU_HANDLE gcpu,
+                        VMM_IA32_GP_REGISTERS  reg ) {
     return gcpu_get_native_gp_reg_layered( gcpu, reg, VMCS_MERGED );
 }
 
-INLINE void   gcpu_set_native_gp_reg(
-                        GUEST_CPU_HANDLE               gcpu,
-                        VMM_IA32_GP_REGISTERS          reg,
-                        UINT64                         value ) {
+INLINE void   gcpu_set_native_gp_reg( GUEST_CPU_HANDLE gcpu,
+                        VMM_IA32_GP_REGISTERS reg, UINT64 value ) {
     gcpu_set_native_gp_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 
@@ -491,57 +435,46 @@ INLINE void   gcpu_set_native_gp_reg(
 // Get/Set register value
 #ifdef INCLUDE_UNUSED_CODE
 INLINE void gcpu_get_all_gp_regs( const GUEST_CPU_HANDLE gcpu,
-                                  UINT64                 *GPreg ) {
+                                  UINT64 *GPreg ) {
     gcpu_get_all_gp_regs_internal(gcpu, GPreg);
 }
 #endif
 INLINE UINT64 gcpu_get_gp_reg( const GUEST_CPU_HANDLE  gcpu,
-                        VMM_IA32_GP_REGISTERS          reg ) {
+                        VMM_IA32_GP_REGISTERS reg ) {
     return gcpu_get_gp_reg_layered(gcpu, reg, VMCS_MERGED);
 }
 
-INLINE void gcpu_set_all_gp_regs( GUEST_CPU_HANDLE          gcpu,
-                                  UINT64                    *GPReg ) {
+INLINE void gcpu_set_all_gp_regs( GUEST_CPU_HANDLE gcpu, UINT64 *GPReg ) {
     gcpu_set_all_gp_regs_internal(gcpu, GPReg);
 }
 
-INLINE void gcpu_set_gp_reg( GUEST_CPU_HANDLE          gcpu,
-                        VMM_IA32_GP_REGISTERS          reg,
-                        UINT64                         value ) {
+INLINE void gcpu_set_gp_reg( GUEST_CPU_HANDLE gcpu,
+                        VMM_IA32_GP_REGISTERS reg, UINT64 value ) {
     gcpu_set_gp_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 
 // all result pointers are optional
-INLINE void   gcpu_get_segment_reg(
-                          const GUEST_CPU_HANDLE       gcpu,
-                          VMM_IA32_SEGMENT_REGISTERS   reg,
-                          UINT16*                      selector,
-                          UINT64*                      base,
-                          UINT32*                      limit,
-                          UINT32*                      attributes ) {
+INLINE void   gcpu_get_segment_reg( const GUEST_CPU_HANDLE gcpu,
+                          VMM_IA32_SEGMENT_REGISTERS reg,
+                          UINT16* selector, UINT64* base,
+                          UINT32* limit, UINT32* attributes ) {
     gcpu_get_segment_reg_layered(gcpu, reg, selector, base, limit, attributes, VMCS_MERGED);
 }
 
-INLINE void   gcpu_set_segment_reg(
-                          GUEST_CPU_HANDLE             gcpu,
+INLINE void   gcpu_set_segment_reg( GUEST_CPU_HANDLE gcpu,
                           VMM_IA32_SEGMENT_REGISTERS   reg,
-                          UINT16                       selector,
-                          UINT64                       base,
-                          UINT32                       limit,
-                          UINT32                       attributes ) {
+                          UINT16 selector, UINT64 base,
+                          UINT32 limit, UINT32 attributes ) {
     gcpu_set_segment_reg_layered(gcpu, reg, selector, base, limit, attributes, VMCS_MERGED);
 }
 
-INLINE UINT64 gcpu_get_control_reg(
-                          const GUEST_CPU_HANDLE        gcpu,
-                          VMM_IA32_CONTROL_REGISTERS    reg ) {
+INLINE UINT64 gcpu_get_control_reg( const GUEST_CPU_HANDLE gcpu,
+                          VMM_IA32_CONTROL_REGISTERS reg ) {
     return gcpu_get_control_reg_layered(gcpu, reg, VMCS_MERGED);
 }
 
-INLINE void   gcpu_set_control_reg(
-                          GUEST_CPU_HANDLE              gcpu,
-                          VMM_IA32_CONTROL_REGISTERS    reg,
-                          UINT64                        value ) {
+INLINE void   gcpu_set_control_reg( GUEST_CPU_HANDLE gcpu,
+                          VMM_IA32_CONTROL_REGISTERS reg, UINT64 value ) {
     gcpu_set_control_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 
@@ -550,54 +483,45 @@ INLINE void   gcpu_set_control_reg(
 // all other registers return the same value as gcpu_get_control_reg()
 // Valid for CR0, CR3, CR4
 INLINE UINT64 gcpu_get_guest_visible_control_reg(
-                          const GUEST_CPU_HANDLE        gcpu,
-                          VMM_IA32_CONTROL_REGISTERS    reg ) {
+                          const GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg ) {
     return gcpu_get_guest_visible_control_reg_layered(gcpu, reg, VMCS_MERGED);
 }
 
 // valid only for CR0, CR3 and CR4
 // Contains faked values for the bits that have 1 in the mask. Those bits are
 // returned to the guest upon reading the register instead real bits
-INLINE void gcpu_set_guest_visible_control_reg(
-                          const GUEST_CPU_HANDLE        gcpu,
-                          VMM_IA32_CONTROL_REGISTERS    reg,
-                          UINT64                        value ) {
+INLINE void gcpu_set_guest_visible_control_reg( const GUEST_CPU_HANDLE gcpu,
+                          VMM_IA32_CONTROL_REGISTERS reg, UINT64 value ) {
      gcpu_set_guest_visible_control_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 #ifdef INCLUDE_UNUSED_CODE
 INLINE void   gcpu_get_ldt_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64*                        base,
-                         UINT32*                        limit ) {
+                         UINT64* base, UINT32* limit ) {
     gcpu_get_ldt_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 INLINE void   gcpu_set_ldt_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64                         base,
-                         UINT32                         limit ) {
+                         UINT64 base, UINT32 limit ) {
     gcpu_set_ldt_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 INLINE void   gcpu_get_tr_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64*                        base,
-                         UINT32*                        limit ) {
+                         UINT64* base, UINT32* limit ) {
     gcpu_get_tr_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 
 INLINE void   gcpu_set_tr_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64                         base,
-                         UINT32                         limit ) {
+                         UINT64 base, UINT32 limit ) {
     gcpu_set_tr_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 #endif
 
 // all result pointers are optional
 INLINE void   gcpu_get_gdt_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64*                        base,
-                         UINT32*                        limit ) {
+                         UINT64* base, UINT32* limit ) {
     gcpu_get_gdt_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 
 INLINE void   gcpu_set_gdt_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64                         base,
-                         UINT32                         limit ) {
+                         UINT64  base, UINT32  limit ) {
     gcpu_set_gdt_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 
@@ -605,52 +529,41 @@ void gcpu_skip_guest_instruction( GUEST_CPU_HANDLE gcpu );
 
 // all result pointers are optional
 INLINE void   gcpu_get_idt_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64*                        base,
-                         UINT32*                        limit ) {
+                         UINT64* base, UINT32* limit ) {
     gcpu_get_idt_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 
 INLINE void   gcpu_set_idt_reg( const GUEST_CPU_HANDLE  gcpu,
-                         UINT64                         base,
-                         UINT32                         limit ) {
+                         UINT64  base, UINT32  limit ) {
     gcpu_set_idt_reg_layered(gcpu, base, limit, VMCS_MERGED);
 }
 
-INLINE UINT64 gcpu_get_debug_reg(
-                         const GUEST_CPU_HANDLE         gcpu,
-                         VMM_IA32_DEBUG_REGISTERS       reg ){
-    return gcpu_get_debug_reg_layered(gcpu, reg, VMCS_MERGED);
-
-}
+INLINE UINT64 gcpu_get_debug_reg( const GUEST_CPU_HANDLE gcpu,
+                         VMM_IA32_DEBUG_REGISTERS reg )
+    { return gcpu_get_debug_reg_layered(gcpu, reg, VMCS_MERGED); }
 
 INLINE void gcpu_set_debug_reg( const GUEST_CPU_HANDLE  gcpu,
-                         VMM_IA32_DEBUG_REGISTERS       reg,
-                         UINT64                         value ) {
+                         VMM_IA32_DEBUG_REGISTERS reg, UINT64  value ) {
     gcpu_set_debug_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 
-INLINE UINT64 gcpu_get_msr_reg( const GUEST_CPU_HANDLE         gcpu,
+INLINE UINT64 gcpu_get_msr_reg( const GUEST_CPU_HANDLE gcpu,
                          VMM_IA32_MODEL_SPECIFIC_REGISTERS reg ) {
     return gcpu_get_msr_reg_layered(gcpu, reg, VMCS_MERGED);
 }
 
-INLINE void   gcpu_set_msr_reg( GUEST_CPU_HANDLE               gcpu,
-                         VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                         UINT64                         value ) {
+INLINE void   gcpu_set_msr_reg( GUEST_CPU_HANDLE gcpu,
+                         VMM_IA32_MODEL_SPECIFIC_REGISTERS reg, UINT64  value ) {
     gcpu_set_msr_reg_layered(gcpu, reg, value, VMCS_MERGED);
 }
 
-INLINE void gcpu_set_msr_reg_by_index(
-	GUEST_CPU_HANDLE      gcpu,
-	UINT32                msr_index,
-	UINT64                value)
+INLINE void gcpu_set_msr_reg_by_index( GUEST_CPU_HANDLE gcpu,
+	UINT32 msr_index, UINT64 value)
 {
     gcpu_set_msr_reg_by_index_layered(gcpu, msr_index, value, VMCS_MERGED);
 }
 
-INLINE UINT64 gcpu_get_msr_reg_by_index(
-	GUEST_CPU_HANDLE      gcpu,
-	UINT32                msr_index)
+INLINE UINT64 gcpu_get_msr_reg_by_index(GUEST_CPU_HANDLE gcpu, UINT32 msr_index)
 {
     return gcpu_get_msr_reg_by_index_layered(gcpu, msr_index, VMCS_MERGED);
 }
@@ -689,11 +602,8 @@ void gcpu_change_level0_vmexit_msr_load_list(GUEST_CPU_HANDLE gcpu, IA32_VMX_MSR
 BOOLEAN gcpu_is_mode_native(GUEST_CPU_HANDLE gcpu);
 
 
-void gcpu_load_segment_reg_from_gdt(
-    GUEST_CPU_HANDLE    guest_cpu,
-    UINT64              gdt_base,
-    UINT16              selector,
-    VMM_IA32_SEGMENT_REGISTERS  reg_id);
+void gcpu_load_segment_reg_from_gdt( GUEST_CPU_HANDLE guest_cpu,
+    UINT64 gdt_base, UINT16 selector, VMM_IA32_SEGMENT_REGISTERS reg_id);
 
 void *gcpu_get_vmdb(GUEST_CPU_HANDLE gcpu);
 void gcpu_set_vmdb(GUEST_CPU_HANDLE gcpu, void * vmdb);

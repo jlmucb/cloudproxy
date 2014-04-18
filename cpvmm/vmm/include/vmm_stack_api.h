@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef VMM_STACK_API_H
 #define VMM_STACK_API_H
@@ -32,8 +30,7 @@
 *  Return Value: TRUE in case the calculation is successful.
 */
 BOOLEAN vmm_stack_caclulate_stack_pointer(IN const VMM_STARTUP_STRUCT* startup_struct, 
-                                          IN CPU_ID cpu_id,
-                                          OUT HVA* stack_pointer);
+                            IN CPU_ID cpu_id, OUT HVA* stack_pointer);
 
 
 /* Function: vmm_stack_initialize
@@ -63,8 +60,7 @@ BOOLEAN vmm_stack_is_initialized(void);
 *                FALSE will be returned when the component wasn't initialized or
 *                      cpu_id has invalid value.
 */
-BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id,
-                                            OUT HVA* stack_pointer);
+BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id, OUT HVA* stack_pointer);
 
 /* Function: vmm_stacks_get_details
 *  Description: This function return details of allocated memory for stacks.
@@ -73,8 +69,7 @@ BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id,
 *          size - size allocated for all stacks;
 *  Return Value: Host Virtual Address (pointer) of the address
 */
-void vmm_stacks_get_details(OUT HVA* lowest_addr_used,
-                            OUT UINT32* size);
+void vmm_stacks_get_details(OUT HVA* lowest_addr_used, OUT UINT32* size);
 
 
 /* Function: vmm_stacks_get_exception_stack_for_cpu
@@ -89,9 +84,7 @@ void vmm_stacks_get_details(OUT HVA* lowest_addr_used,
 *                FALSE will be returned in cpu_id has invalid value
 */
 BOOLEAN vmm_stacks_get_exception_stack_for_cpu(IN CPU_ID cpu_id,
-                                               IN UINT32 stack_num,
-                                               OUT HVA* page_addr);
-
+                             IN UINT32 stack_num, OUT HVA* page_addr);
 
 #ifdef DEBUG
 /* Function: vmm_stacks_print

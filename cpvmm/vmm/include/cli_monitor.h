@@ -24,40 +24,34 @@ void CliMonitorInit(void);
 BOOLEAN CliMonitor( const char* title, UINT32 access_level );
 
 BOOLEAN Cli_DeadloopHelper( const char* assert_condition,
-                            const char* func_name,
-                            const char* file_name,
-                            UINT32      line_num,
-                            UINT32		access_level);
+             const char* func_name, const char* file_name,
+             UINT32 line_num, UINT32 access_level);
 
 // returns TRUE if VMM_BREAKPOINT is required
 void Cli_HandleError( const char* assert_condition,
-                      const char* func_name,
-                      const char* file_name,
-                      UINT32      line_num,
-                      UINT32      error_level);
+             const char* func_name, const char* file_name,
+             UINT32 line_num, UINT32 error_level);
 #else // ! CLI_INCLUDE
 
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
 INLINE void CliMonitorInit(void){}
-INLINE BOOLEAN CliMonitor( const char* title, UINT32 access_level ){ return FALSE; }
+INLINE BOOLEAN CliMonitor( const char* title, UINT32 access_level )
+        { return FALSE; }
 INLINE BOOLEAN Cli_DeadloopHelper( const char* assert_condition,
-                            const char* func_name,
-                            const char* file_name,
-                            UINT32      line_num,
-                            UINT32		access_level) { return TRUE; }
+                const char* func_name, const char* file_name,
+                UINT32 line_num, UINT32 access_level) 
+        { return TRUE; }
 
 INLINE void Cli_HandleError( const char* assert_condition,
-                             const char* func_name,
-                             const char* file_name,
-                             UINT32      line_num,
-                             UINT32      error_level) { VMM_UP_BREAKPOINT(); }
+                const char* func_name, const char* file_name,
+                UINT32 line_num, UINT32 error_level) 
+        { VMM_UP_BREAKPOINT(); }
 
 #pragma warning( pop )
 
 #endif // CLI_INCLUDE
-
 
 #endif // _CLI_MONITOR_H_
 

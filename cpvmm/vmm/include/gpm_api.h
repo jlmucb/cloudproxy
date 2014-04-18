@@ -54,7 +54,8 @@ GPM_HANDLE gpm_create_mapping(void);
  *        hpa - target host physical address (must be aligned on page)
  *        size - size of the inserted range (must be aligned on page)
  *  Return Value: TRUE in case of success
- *                FALSE in case of failure. In this case the state of the remainging mapping is undefined;
+ *                FALSE in case of failure. In this case the state of 
+ *                        the remainging mapping is undefined;
 */
 BOOLEAN gpm_add_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN HPA hpa, IN UINT64 size, MAM_ATTRIBUTES attrs);
 
@@ -68,7 +69,8 @@ BOOLEAN gpm_add_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN HPA hpa, IN UIN
 *        gpa - guest physical address (must be aligned on page)
 *        size - size of the removed range (must be aligned on page)
 *  Return Value: TRUE in case of success
-*                FALSE in case of failure. In this case the state of the remainging mapping is undefined;
+*                FALSE in case of failure. In this case the state of the 
+*                   remainging mapping is undefined;
 */
 BOOLEAN gpm_remove_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size);
 
@@ -145,13 +147,13 @@ BOOLEAN gpm_hpa_to_gpa(IN GPM_HANDLE gpm_handle, IN HPA hpa, OUT GPA* gpa);
  *  Input:
  *        gpm_handle - handle received upon creation
  *  Output:
- *        e820_handle - e820 handle. It may be used as parameter for e820_abstraction module.
+ *        e820_handle - e820 handle. It may be used as parameter for 
+ *          e820_abstraction module.
  *  Return Value: TRUE when operation is successful
- *                FALSE when operation has failed
+ *         FALSE when operation has failed
  */
 BOOLEAN gpm_create_e820_map(IN GPM_HANDLE gpm_handle,
                             OUT E820_HANDLE* e820_handle);
-
 
 
 /* Function: gpm_destroy_e820_map
@@ -179,17 +181,18 @@ GPM_RANGES_ITERATOR gpm_get_ranges_iterator(IN GPM_HANDLE gpm_handle);
  *  Output: src_addr - source address of the existing mapping range. In case
  *         the "iter" has GPM_INVALID_RANGES_ITERATOR value, src_addr will
  *         have 0xfffffffffffffff value.
- *          size     - size of the range. In case the "iter" has GPM_INVALID_RANGES_ITERATOR
+ *          size - size of the range. In case the "iter" has 
+ *              GPM_INVALID_RANGES_ITERATOR
  *         value, size will be 0.
- *  Ret value: - next iterator. Note that this is the only way to get next iterator value.
+ *  Ret value: - next iterator. 
+ *      Note that this is the only way to get next iterator value.
  */
 GPM_RANGES_ITERATOR gpm_get_range_details_from_iterator(IN GPM_HANDLE gpm_handle,
-                                                        IN GPM_RANGES_ITERATOR iter,
-                                                        OUT GPA* gpa,
-                                                        OUT UINT64* size);
+                           IN GPM_RANGES_ITERATOR iter, OUT GPA* gpa,
+                           OUT UINT64* size);
 
 void gpm_print(GPM_HANDLE gpm_handle);
 
-BOOLEAN gpm_copy(GPM_HANDLE src, GPM_HANDLE dst, BOOLEAN override_attrs, MAM_ATTRIBUTES set_attrs);
-
+BOOLEAN gpm_copy(GPM_HANDLE src, GPM_HANDLE dst, BOOLEAN override_attrs, 
+                           MAM_ATTRIBUTES set_attrs);
 #endif

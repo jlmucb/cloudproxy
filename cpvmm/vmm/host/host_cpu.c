@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,10 +40,7 @@
 
 #pragma PACK_ON
 
-
-//
 // Minimum size of allocated MSR list
-//
 #define MIN_SIZE_OF_MSR_LIST  4
 
 
@@ -99,10 +94,9 @@ static void sysenter_func( void )
 }
 #endif
 
-//--------------------------------- external funcs ----------------------------
+
 extern BOOLEAN is_cr4_osxsave_supported(void);
 
-//----------------------------------- interface -------------------------------
 void host_cpu_manager_init( UINT16 max_host_cpus )
 {
     // BEFORE_VMLAUNCH. PARANOID check.
@@ -326,9 +320,7 @@ void host_cpu_init( void )
     }
 }
 
-//
 // Init VMCS host cpu are for the target cpu. May be executed on any other CPU
-//
 void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
 {
     HPA                     host_msr_load_addr = 0;
@@ -362,9 +354,7 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( vmcs );
 
-    /*
-     *  Control Registers
-     */
+    //  Control Registers
     vmcs_write(vmcs, VMCS_HOST_CR0, vmcs_hw_make_compliant_cr0(hw_read_cr0()));
     vmcs_write(vmcs, VMCS_HOST_CR3, hw_read_cr3());
 
@@ -468,9 +458,8 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
         vmcs_assign_vmexit_msr_load_list(vmcs, host_msr_load_addr, g_host_cpus[cpu].vmexit_msr_load_count);
 }
 
-//
+
 // Set/Get VMXON Region pointer for the current CPU
-//
 void host_cpu_set_vmxon_region( HVA hva, HPA hpa, CPU_ID my_cpu_id)
 {
     HOST_CPU_SAVE_AREA* hcpu = NULL;

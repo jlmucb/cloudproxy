@@ -810,6 +810,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 30\n");
+    LOOP_FOREVER
 #endif
 
     // TODO: remove the compile time policy

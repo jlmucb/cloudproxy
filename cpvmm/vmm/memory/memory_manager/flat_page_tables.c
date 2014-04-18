@@ -41,10 +41,8 @@ UINT64  save_first_table_64 = 0;
 
 static
 BOOLEAN fpt_create_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
-                                    IN BOOLEAN is_32_bit,
-                                    IN VMM_PHYS_MEM_TYPE mem_type,
-                                    OUT FPT** flat_tables_handle,
-                                    OUT UINT64* first_table) {
+                  IN BOOLEAN is_32_bit, IN VMM_PHYS_MEM_TYPE mem_type,
+                  OUT FPT** flat_tables_handle, OUT UINT64* first_table) {
     GUEST_HANDLE guest;
     GPM_HANDLE gpm;
     GPM_RANGES_ITERATOR iter;
@@ -54,7 +52,6 @@ BOOLEAN fpt_create_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
     UINT32 pat_index;
     FPT* fpt = NULL;
     
-
     if (is_32_bit) {
         if (save_fpt_32 != NULL) {
             *flat_tables_handle = save_fpt_32;
@@ -69,7 +66,6 @@ BOOLEAN fpt_create_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
             return TRUE;
         }
     }    
-
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu != NULL);
@@ -98,8 +94,6 @@ BOOLEAN fpt_create_flat_page_tables(IN GUEST_CPU_HANDLE gcpu,
         VMM_DEADLOOP();
         goto failed_to_retrieve_pat_index;
     }
-
-    //VMM_LOG(mask_anonymous, level_trace,"%s: Created flat page tables with pat_index=%d\n", __FUNCTION__, pat_index);
 
     attrs_full_perm.uint32 = 0;
     attrs_full_perm.paging_attr.writable = 1;
@@ -201,7 +195,6 @@ failed_to_retrieve_pat_index:
 // 3) we also assume all the processors use the same 32bit FPT tables.
 BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(UINT64 highest_address)
 {
-
     MAM_HANDLE flat_tables;
     MAM_ATTRIBUTES attrs_full_perm;
     FPT* fpt = NULL;
@@ -210,7 +203,6 @@ BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(UINT64 highest_address)
     UINT64 curr_size;
     HPA    curr_hpa;
     GPA    max_physical_addr = highest_address < (UINT64) 4 GIGABYTES ? highest_address : (UINT64)4 GIGABYTES ;
-
 
     fpt = (FPT*)vmm_memory_alloc(sizeof(FPT));
     if (fpt == NULL) {
@@ -245,9 +237,8 @@ BOOLEAN fpt_create_32_bit_flat_page_tables_under_4G(UINT64 highest_address)
     // we cannot use gpa_to_hpa() function since its mapping structure is not ready at this time.
     curr_hpa = curr_gpa;
 
-    
     if (!mam_insert_range(flat_tables, curr_gpa, curr_hpa, curr_size, attrs_full_perm)) {
-            goto inset_to_flat_tables_failed;
+        goto inset_to_flat_tables_failed;
     }  
 
     

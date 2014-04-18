@@ -34,42 +34,38 @@ static VMM_STACKS_INFO g_stacks_infos_s;
 static VMM_STACKS_INFO* const g_stacks_infos = &g_stacks_infos_s;
 
 
-
-INLINE
-UINT32 vmm_stack_get_stack_size_per_cpu(UINT32 num_of_requested_pages) {
+INLINE UINT32 vmm_stack_get_stack_size_per_cpu(UINT32 num_of_requested_pages) {
     // adding one more page for exceptions stack
     return ((num_of_requested_pages + idt_get_extra_stacks_required()) * PAGE_4KB_SIZE);
 }
 
-INLINE
-UINT64 vmm_stack_caclulate_stack_pointer_for_cpu(UINT64 vmm_stack_base_address,
-                                                 UINT32 vmm_stack_size_per_cpu,
-                                                 CPU_ID cpu_id) {
+INLINE UINT64 vmm_stack_caclulate_stack_pointer_for_cpu(
+                    UINT64 vmm_stack_base_address,
+                    UINT32 vmm_stack_size_per_cpu, CPU_ID cpu_id) {
     UINT64 end_of_block = vmm_stack_base_address + (vmm_stack_size_per_cpu * (cpu_id + 1));
     return  (end_of_block - PAGE_4KB_SIZE); // leave one page to protect from underflow
 }
 
-INLINE
-UINT64 vmm_stack_get_stacks_base(UINT64 vmm_base_address,
+INLINE UINT64 vmm_stack_get_stacks_base(UINT64 vmm_base_address,
                                  UINT32 vmm_size) {
     return ((vmm_base_address + vmm_size) + PAGE_4KB_SIZE - 1) & (~((UINT64)PAGE_4KB_MASK));
 }
 
-INLINE
-UINT64 vmm_stacks_retrieve_stacks_base_addr_from_startup_struct(const VMM_STARTUP_STRUCT* startup_struct) {
+INLINE UINT64 vmm_stacks_retrieve_stacks_base_addr_from_startup_struct(
+                const VMM_STARTUP_STRUCT* startup_struct) {
     UINT64 vmm_base_address = startup_struct->vmm_memory_layout[uvmm_image].base_address;
     UINT32 vmm_size = startup_struct->vmm_memory_layout[uvmm_image].image_size;
 
     return vmm_stack_get_stacks_base(vmm_base_address, vmm_size);
 }
 
-INLINE
-UINT32 vmm_stack_retrieve_max_allowed_cpus_from_startup_struct(const VMM_STARTUP_STRUCT* startup_struct) {
+INLINE UINT32 vmm_stack_retrieve_max_allowed_cpus_from_startup_struct(
+                const VMM_STARTUP_STRUCT* startup_struct) {
     return startup_struct->number_of_processors_at_boot_time;
 }
 
-INLINE
-UINT32 vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(const VMM_STARTUP_STRUCT* startup_struct) {
+INLINE UINT32 vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(
+                const VMM_STARTUP_STRUCT* startup_struct) {
     return vmm_stack_get_stack_size_per_cpu(startup_struct->size_of_vmm_stack);
 }
 
@@ -78,9 +74,9 @@ UINT32 vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(const VMM_STAR
  * Parameters: Input validation for startup_struct is performed in caller functions. 
  * Function assumes valid input.
  */
-BOOLEAN vmm_stack_caclulate_stack_pointer(IN const VMM_STARTUP_STRUCT* startup_struct,
-                                          IN CPU_ID cpu_id,
-                                          OUT HVA* stack_pointer) {
+BOOLEAN vmm_stack_caclulate_stack_pointer(
+                IN const VMM_STARTUP_STRUCT* startup_struct,
+                IN CPU_ID cpu_id, OUT HVA* stack_pointer) {
     UINT64 vmm_stack_base_address = vmm_stacks_retrieve_stacks_base_addr_from_startup_struct(startup_struct);
     UINT32 vmm_stack_size_per_cpu = vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(startup_struct);
     UINT32 vmm_max_allowed_cpus = vmm_stack_retrieve_max_allowed_cpus_from_startup_struct(startup_struct);
@@ -166,7 +162,7 @@ void vmm_stacks_get_details(OUT HVA* lowest_addr_used, OUT UINT32* size) {
  * Parameters: Validation for cpu_id is performed by caller function. Function assumes valid input.
  */
 BOOLEAN vmm_stacks_get_exception_stack_for_cpu(IN CPU_ID cpu_id,
-                                               IN UINT32 stack_num, OUT HVA* page_addr) {
+                                   IN UINT32 stack_num, OUT HVA* page_addr) {
     UINT64 base;
     UINT32 single_size;
 

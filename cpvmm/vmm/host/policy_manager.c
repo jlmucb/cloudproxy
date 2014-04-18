@@ -44,14 +44,9 @@ extern VMM_PAGING_POLICY g_pg_policy;
 // Policy Manager
 //
 
-// ---------------------------- Global Policy APIs  --------------------------
 
-//
 // Setup the global policy.
-//
 // Called by BSP main() before any initializations to setup the uVMM policy.
-//
-
 POL_RETVAL global_policy_setup(const VMM_POLICY  *policy)
 {
     if (!g_init_done) {
@@ -96,8 +91,6 @@ BOOLEAN global_policy_is_cache_dis_virtualized(void)
 
 
 //      Policy Manipulation APIs 
-
-
 POL_RETVAL clear_policy(VMM_POLICY  *policy)
 {
     *policy = 0;

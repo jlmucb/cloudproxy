@@ -48,33 +48,28 @@ static
 void pool_insert_node_into_list(POOL_LIST_HEAD* list_head, POOL_LIST_ELEMENT* element);
 
 
-INLINE
-UINT64 pool_ptr_to_uint64(void* ptr) {
+INLINE UINT64 pool_ptr_to_uint64(void* ptr) {
     return (UINT64)ptr;
 }
 
-INLINE
-void* pool_uint64_to_ptr(UINT64 value) {
+INLINE void* pool_uint64_to_ptr(UINT64 value) {
     return (void*)value;
 }
 
-INLINE
-void pool_init_list_head(POOL_LIST_HEAD* list_head) {
+INLINE void pool_init_list_head(POOL_LIST_HEAD* list_head) {
     pool_list_head_set_first_element(list_head, NULL);
     pool_list_head_set_last_element(list_head, NULL);
     pool_list_head_set_num_of_elements(list_head, 0);
 }
 
-INLINE
-BOOLEAN pool_is_list_empty(const POOL_LIST_HEAD* list_head) {
+INLINE BOOLEAN pool_is_list_empty(const POOL_LIST_HEAD* list_head) {
     BOOLEAN res = (pool_list_head_get_num_of_elements(list_head) == 0);
     VMM_ASSERT((!res) || (pool_list_head_get_first_element(list_head) == NULL));
     VMM_ASSERT((!res) || (pool_list_head_get_last_element(list_head) == NULL));
     return res;
 }
 
-INLINE
-void pool_allocate_single_page_from_heap(POOL* pool) {
+INLINE void pool_allocate_single_page_from_heap(POOL* pool) {
     void* page = vmm_page_alloc(1);
     UINT32 num_of_allocated_pages = pool_get_num_of_allocated_pages(pool);
     POOL_LIST_HEAD* free_pages_list = pool_get_free_pages_list(pool);
@@ -98,8 +93,7 @@ UINT32 pool_calculate_number_of_free_pages_to_keep(POOL* pool) {
     return num;
 } */
 
-INLINE
-UINT32 pool_calculate_number_of_new_pages_to_allocate(POOL* pool) {
+INLINE UINT32 pool_calculate_number_of_new_pages_to_allocate(POOL* pool) {
     UINT32 num_of_allocated_pages = pool_get_num_of_allocated_pages(pool);
     UINT32 num = (num_of_allocated_pages / POOL_PAGES_TO_ALLOCATE_THRESHOLD);
 
@@ -130,8 +124,7 @@ BOOLEAN pool_is_element_in_list(POOL_LIST_HEAD* list_head, POOL_LIST_ELEMENT* el
     return FALSE;
 }
 
-static
-BOOLEAN pool_is_list_consistent(POOL_LIST_HEAD* list_head) {
+static BOOLEAN pool_is_list_consistent(POOL_LIST_HEAD* list_head) {
     UINT32 counter = 0;
     POOL_LIST_ELEMENT* element = pool_list_head_get_first_element(list_head);
     BOOLEAN all_remaining_must_be_aligned = FALSE;
@@ -154,13 +147,12 @@ BOOLEAN pool_is_list_consistent(POOL_LIST_HEAD* list_head) {
 }
 #endif
 
-static
-BOOLEAN pool_is_allocation_counters_ok(POOL* pool) {
-	UINT32 allocated_num;
-	allocated_num = pool_get_num_of_pages_used_for_hash_nodes(pool) +
-					pool_get_num_of_pages_used_for_pool_elements(pool) +
-					pool_list_head_get_num_of_elements(pool_get_free_pages_list(pool));
-	return (pool_get_num_of_allocated_pages(pool) == allocated_num);
+static BOOLEAN pool_is_allocation_counters_ok(POOL* pool) {
+        UINT32 allocated_num;
+        allocated_num = pool_get_num_of_pages_used_for_hash_nodes(pool) +
+                        pool_get_num_of_pages_used_for_pool_elements(pool) +
+                        pool_list_head_get_num_of_elements(pool_get_free_pages_list(pool));
+        return (pool_get_num_of_allocated_pages(pool) == allocated_num);
 }
 
 
@@ -284,10 +276,8 @@ void pool_remove_element_from_the_list(POOL_LIST_HEAD* list_head,
     //VMM_ASSERT(pool_is_list_consistent(list_head));
 }
 
-static
-void pool_free_nodes_in_page_from_list(POOL_LIST_HEAD* list_head,
-                                       UINT32 size_of_element,
-                                       void* page) {
+static void pool_free_nodes_in_page_from_list(POOL_LIST_HEAD* list_head,
+                        UINT32 size_of_element, void* page) {
     UINT64 page_addr = (UINT64)page;
     UINT32 covered_size;
     UINT32 counter = 0;
@@ -297,14 +287,12 @@ void pool_free_nodes_in_page_from_list(POOL_LIST_HEAD* list_head,
         POOL_LIST_ELEMENT* element = (POOL_LIST_ELEMENT*)pool_uint64_to_ptr(curr_element_addr);
 
         pool_remove_element_from_the_list(list_head, element);
-
         counter++;
     }
     VMM_ASSERT(counter == (PAGE_4KB_SIZE / size_of_element));
 }
 
-static
-void pool_allocate_several_pages_from_heap(POOL* pool) {
+static void pool_allocate_several_pages_from_heap(POOL* pool) {
     void* pages[POOL_MAX_NUM_OF_PAGES_TO_ALLOCATE];
     POOL_LIST_HEAD* free_pages_list = pool_get_free_pages_list(pool);
     UINT32 i;
@@ -348,17 +336,14 @@ void pool_free_several_pages_into_heap(POOL* pool, UINT32 num_of_pages_to_free) 
     pool_set_num_of_allocated_pages(pool, num_of_allocated_pages);
 }
 
-static
-BOOLEAN pool_is_power_of_2(UINT32 value)
+static BOOLEAN pool_is_power_of_2(UINT32 value)
 {
     return (value > 1 && IS_POW_OF_2(value)) ? TRUE : FALSE;
 }
 
 
-static
-void pool_split_page_to_elements(POOL_LIST_HEAD* list_head,
-                                 UINT32 size_of_element,
-                                 void* page) {
+static void pool_split_page_to_elements(POOL_LIST_HEAD* list_head,
+                     UINT32 size_of_element, void* page) {
     UINT32 covered_size = size_of_element; // start from the second element
     UINT32 num_of_elements = PAGE_4KB_SIZE / size_of_element;
     UINT64 page_addr = (UINT64)page;
@@ -398,8 +383,7 @@ void pool_split_page_to_elements(POOL_LIST_HEAD* list_head,
 }
 
 
-static
-UINT32 pool_hash_func(UINT64 key, UINT32 size) {
+static UINT32 pool_hash_func(UINT64 key, UINT32 size) {
     UINT32 hash_mask = (size - 1);
     UINT64 index_tmp;
 
@@ -412,11 +396,11 @@ UINT32 pool_hash_func(UINT64 key, UINT32 size) {
 
 static
 void pool_allocate_single_page_from_heap_with_must_succeed(POOL* pool) {
-	void* page;
-	UINT32 num_of_allocated_pages;
-	POOL_LIST_HEAD* free_pages_list = pool_get_free_pages_list(pool);
+        void* page;
+        UINT32 num_of_allocated_pages;
+        POOL_LIST_HEAD* free_pages_list = pool_get_free_pages_list(pool);
 
-	page = vmm_memory_alloc_must_succeed(pool_get_must_succeed_alloc_handle(pool), PAGE_4KB_SIZE);
+        page = vmm_memory_alloc_must_succeed(pool_get_must_succeed_alloc_handle(pool), PAGE_4KB_SIZE);
     if (page == NULL) {
         VMM_ASSERT(0);
         return;
@@ -472,8 +456,7 @@ void pool_try_to_free_unused_page_from_elements_list(POOL* pool, BOOLEAN full_cl
     }
 }
 
-static
-void* pool_allocate_hash_node(void* context) {
+static void* pool_allocate_hash_node(void* context) {
     POOL* pool = (POOL*)context;
     HASH64_HANDLE hash = pool_get_hash(pool);
     POOL_LIST_HEAD* hash_elements_list_head = pool_get_free_hash_elements_list(pool);
@@ -534,8 +517,8 @@ void* pool_allocate_hash_node(void* context) {
 
                     pool_allocate_single_page_from_heap_with_must_succeed(pool);
                     if (pool_is_list_empty(free_pages_list_head)) {
-                    	VMM_ASSERT(0);
-                    	return NULL;
+                        VMM_ASSERT(0);
+                        return NULL;
                     }
                 }
             }
@@ -589,8 +572,7 @@ void* pool_allocate_hash_node(void* context) {
     }
 }
 
-static
-void pool_free_hash_node(void* context, void* element) {
+static void pool_free_hash_node(void* context, void* element) {
     POOL* pool = (POOL*)context;
     HASH64_HANDLE hash = pool_get_hash(pool);
     POOL_LIST_HEAD* hash_elements_list_head = pool_get_free_hash_elements_list(pool);
@@ -638,8 +620,7 @@ void pool_free_hash_node(void* context, void* element) {
     VMM_ASSERT(pool_is_allocation_counters_ok(pool));
 }
 
-static
-UINT32 pool_get_num_of_pages_to_free_to_heap(POOL* pool) {
+static UINT32 pool_get_num_of_pages_to_free_to_heap(POOL* pool) {
     UINT32 num_of_allocated_pages = pool_get_num_of_allocated_pages(pool);
     POOL_LIST_HEAD* free_pages_list = pool_get_free_pages_list(pool);
     UINT32 num_of_free_pages = pool_list_head_get_num_of_elements(free_pages_list);
@@ -679,8 +660,7 @@ void pool_report_alloc_free_op(POOL* pool) {
     }
 }
 
-static
-void* pool_allocate_internal(POOL* pool) {
+static void* pool_allocate_internal(POOL* pool) {
     HASH64_HANDLE hash = pool_get_hash(pool);
     POOL_LIST_HEAD* free_pool_elements_list = pool_get_free_pool_elements_list(pool);
     POOL_LIST_HEAD* free_pages_list;
@@ -729,8 +709,8 @@ void* pool_allocate_internal(POOL* pool) {
         pool_allocate_single_page_from_heap_with_must_succeed(pool);
 
         if (pool_is_list_empty(free_pages_list)) {
-        	VMM_ASSERT(0);
-        	return NULL;
+                VMM_ASSERT(0);
+                return NULL;
         }
     }
 
@@ -989,15 +969,9 @@ void pool_free(POOL_HANDLE pool_handle, void* data) {
 
     res = (BOOLEAN)hash64_update(hash, page_addr, num_of_elements);
     VMM_ASSERT(res);
-
-    /*if (pool_must_free_pages(pool)) {
-        pool_free_several_pages_into_heap(pool);
-    }*/
-
     VMM_ASSERT(pool_is_allocation_counters_ok(pool));
 
     pool_report_alloc_free_op(pool);
-
     POOL_RELEASE_LOCK(pool);
 }
 

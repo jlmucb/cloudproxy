@@ -368,48 +368,44 @@ INLINE void mam_calculate_caching_attributes_from_pat_index(UINT32 pat_index, UI
 }
 
 INLINE UINT64 mam_get_address_from_leaf_entry(IN MAM_ENTRY* entry,
-                                       IN const MAM_LEVEL_OPS* level_ops,
-                                       IN const MAM_ENTRY_OPS* entry_ops) {
+                  IN const MAM_LEVEL_OPS* level_ops,
+                  IN const MAM_ENTRY_OPS* entry_ops) {
     return entry_ops->mam_get_address_from_leaf_entry_fn(entry, level_ops);
 }
 
 INLINE MAM_ATTRIBUTES mam_get_attributes_from_entry(IN MAM_ENTRY* entry,
-                                             IN const MAM_LEVEL_OPS* level_ops,
-                                             IN const MAM_ENTRY_OPS* entry_ops) {
+                  IN const MAM_LEVEL_OPS* level_ops,
+                  IN const MAM_ENTRY_OPS* entry_ops) {
     return entry_ops->mam_get_attributes_from_entry_fn(entry, level_ops);
 }
 
 INLINE MAM_HVA mam_get_table_pointed_by_entry(IN MAM_ENTRY* entry,
-                                       IN const MAM_ENTRY_OPS* entry_ops) {
+                  IN const MAM_ENTRY_OPS* entry_ops) {
     return entry_ops->mam_get_table_pointed_by_entry_fn(entry);
 }
 
 INLINE BOOLEAN mam_is_entry_present(IN MAM_ENTRY* entry,
-                             IN const MAM_ENTRY_OPS* entry_ops) {
+                  IN const MAM_ENTRY_OPS* entry_ops) {
     return entry_ops->mam_is_entry_present_fn(entry);
 }
 
 INLINE BOOLEAN mam_can_be_leaf_entry(IN MAM* mam,
-                              IN const MAM_LEVEL_OPS* level_ops,
-                              IN UINT64 requested_size,
-                              IN UINT64 tgt_addr,
-                              IN const MAM_ENTRY_OPS* entry_ops) {
+                  IN const MAM_LEVEL_OPS* level_ops, IN UINT64 requested_size,
+                  IN UINT64 tgt_addr, IN const MAM_ENTRY_OPS* entry_ops) {
     return entry_ops->mam_can_be_leaf_entry_fn(mam, level_ops, requested_size, tgt_addr);
 }
 
 INLINE void mam_update_leaf_entry(IN MAM_ENTRY* entry,
-                           IN UINT64 addr,
-                           IN MAM_ATTRIBUTES attr,
+                           IN UINT64 addr, IN MAM_ATTRIBUTES attr,
                            IN const MAM_LEVEL_OPS* level_ops,
                            IN const MAM_ENTRY_OPS* entry_ops) {
     entry_ops->mam_update_leaf_entry_fn(entry, addr, attr, level_ops);
 }
 
 INLINE void mam_update_inner_level_entry(IN MAM* mam,
-                                  IN MAM_ENTRY* entry,
-                                  IN MAM_HVA next_table,
-                                  IN const MAM_LEVEL_OPS* level_ops,
-                                  IN const MAM_ENTRY_OPS* entry_ops) {
+                           IN MAM_ENTRY* entry, IN MAM_HVA next_table,
+                           IN const MAM_LEVEL_OPS* level_ops,
+                           IN const MAM_ENTRY_OPS* entry_ops) {
     entry_ops->mam_update_inner_level_entry_fn(mam, entry, next_table, level_ops);
 }
 
@@ -419,9 +415,8 @@ MAM_ENTRY_TYPE mam_get_leaf_entry_type(const MAM_ENTRY_OPS* entry_ops) {
 }
 
 INLINE void mam_update_attributes_in_leaf_entry(MAM_ENTRY* entry,
-                                         MAM_ATTRIBUTES attrs,
-                                         const MAM_LEVEL_OPS* level_ops,
-                                         const MAM_ENTRY_OPS* entry_ops) {
+                           MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops,
+                           const MAM_ENTRY_OPS* entry_ops) {
     entry_ops->mam_update_attributes_in_leaf_entry_fn(entry, attrs, level_ops);
 }
 
@@ -1081,7 +1076,6 @@ static MAM_ENTRY_TYPE mam_get_leaf_vtdpt_entry_type(void) {
     return MAM_LEAF_VTDPT_ENTRY;
 }
 
-
 static void mam_invalidate_all_entries_in_table(IN MAM_HVA table,
                  IN MAM_MAPPING_RESULT reason, IN MAM_ENTRY_TYPE entry_type) {
     UINT64 entry_increment = sizeof(MAM_ENTRY);
@@ -1265,8 +1259,8 @@ void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_
         }
         else {
             MAM_MAPPING_RESULT curr_reason = entry->invalid_entry.high_part.reason;
-
-            // If the entry is not present check whether the reason is the same as for first entry
+            // If the entry is not present check whether the reason 
+            //  is the same as for first entry
             if (curr_reason != reason) {
                 return;
             }
@@ -1393,9 +1387,9 @@ const MAM_ENTRY_OPS* mam_get_entry_ops(IN MAM_ENTRY* entry) {
 }
 
 static
-MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops, IN MAM_HVA table,
-                                              IN UINT64 src_addr, OUT UINT64* tgt_addr_out,
-                                              OUT MAM_ATTRIBUTES* attributes_out) {
+MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops, 
+                        IN MAM_HVA table, IN UINT64 src_addr, 
+                        OUT UINT64* tgt_addr_out, OUT MAM_ATTRIBUTES* attributes_out) {
     UINT32 entry_index;
     MAM_HVA entry_addr;
     MAM_ENTRY* entry;

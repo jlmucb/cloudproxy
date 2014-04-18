@@ -184,9 +184,7 @@ BOOLEAN gpm_add_mmio_range(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN UINT64 size)
 
     gpa_to_hpa = gpm->gpa_to_hpa;
     return (BOOLEAN)mam_insert_not_existing_range(gpa_to_hpa,
-                                                  (UINT64)gpa,
-                                                  size,
-                                                  GPM_MMIO);
+                          (UINT64)gpa, size, GPM_MMIO);
 }
 
 BOOLEAN gpm_is_mmio_address(IN GPM_HANDLE gpm_handle, IN GPA gpa) {
@@ -467,9 +465,8 @@ GPM_RANGES_ITERATOR gpm_get_ranges_iterator(IN GPM_HANDLE gpm_handle) {
 }
 
 GPM_RANGES_ITERATOR gpm_get_range_details_from_iterator(IN GPM_HANDLE gpm_handle,
-                                                        IN GPM_RANGES_ITERATOR iter,
-                                                        OUT GPA* gpa_out,
-                                                        OUT UINT64* size_out) {
+                                 IN GPM_RANGES_ITERATOR iter, OUT GPA* gpa_out,
+                                 OUT UINT64* size_out) {
     GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
     MAM_MEMORY_RANGES_ITERATOR mam_iter = (MAM_MEMORY_RANGES_ITERATOR)iter;
@@ -513,9 +510,7 @@ VMM_DEBUG_CODE(
     gpm_iter = gpm_get_ranges_iterator(gpm_handle);
     while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) {
         gpm_iter = gpm_get_range_details_from_iterator(gpm_handle,
-                                                       gpm_iter,
-                                                       &guest_range_addr,
-                                                       &guest_range_size);
+                                 gpm_iter, &guest_range_addr, &guest_range_size);
         status = gpm_gpa_to_hpa(gpm_handle, guest_range_addr, &host_range_addr, &attrs);
         if(FALSE == status) {
             VMM_LOG(mask_anonymous, level_trace,"GPM no mapping for gpa %p\r\n", guest_range_addr);
@@ -543,9 +538,8 @@ BOOLEAN gpm_copy(GPM_HANDLE src, GPM_HANDLE dst, BOOLEAN override_attrs, MAM_ATT
 
     while(GPM_INVALID_RANGES_ITERATOR != src_iter) {
         src_iter = gpm_get_range_details_from_iterator(src,
-                                                       src_iter,
-                                                       &guest_range_addr,
-                                                       &guest_range_size);
+                                 src_iter, &guest_range_addr,
+                                 &guest_range_size);
         status = gpm_gpa_to_hpa(src, guest_range_addr, &host_range_addr, &attrs);
         if(FALSE == status) {  // no mapping - is it mmio?
             if(gpm_is_mmio_address(src, guest_range_addr)){

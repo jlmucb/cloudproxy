@@ -32,7 +32,6 @@
 
 extern ISR_PARAMETERS_ON_STACK *g_exception_stack;
 
-//------------ local macro definitions ------------//
 
 #define INTERRUPT_COUNT_VECTORS 256
 #define EXCEPTION_COUNT_VECTORS 32
@@ -52,7 +51,6 @@ typedef enum {
 } EXCEPTION_CLASS_ENUM;
 
 
-//---------------- local variables ------------------//
 
 static VMM_ISR_HANDLER isr_table[INTERRUPT_COUNT_VECTORS];
 
@@ -342,7 +340,6 @@ static void isr_install_default_handlers(void)
  *  ARGUMENTS    : void
  *  RETURNS      : void
  */
-
 void isr_setup(void)
 {
     hw_idt_setup();

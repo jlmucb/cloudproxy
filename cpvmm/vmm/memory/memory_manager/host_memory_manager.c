@@ -57,14 +57,12 @@ extern UINT32 g_is_post_launch;
 
 
 #ifdef INCLUDE_UNUSED_CODE
-INLINE
-BOOLEAN hmm_were_page_tables_created(void) {
+INLINE BOOLEAN hmm_were_page_tables_created(void) {
     return (hmm_get_current_vmm_page_tables(g_hmm) != HMM_INVALID_VMM_PAGE_TABLES);
 }
 #endif
 
-INLINE
-BOOLEAN hmm_is_page_available_for_allocation(MAM_MAPPING_RESULT result) {
+INLINE BOOLEAN hmm_is_page_available_for_allocation(MAM_MAPPING_RESULT result) {
     return ((result == MAM_UNKNOWN_MAPPING) || (result == HMM_INVALID_MEMORY_TYPE));
 }
 
@@ -136,10 +134,9 @@ BOOLEAN hmm_allocate_free_virtual_page(UINT64* hva) {
 
 static
 BOOLEAN hmm_get_next_non_existent_range(IN MAM_HANDLE mam_handle,
-                                        IN OUT MAM_MEMORY_RANGES_ITERATOR* iter,
-                                        IN OUT UINT64 *last_covered_address,
-                                        OUT UINT64* range_start,
-                                        OUT UINT64* range_size) {
+                IN OUT MAM_MEMORY_RANGES_ITERATOR* iter,
+                IN OUT UINT64 *last_covered_address,
+                OUT UINT64* range_start, OUT UINT64* range_size) {
     MAM_MAPPING_RESULT res = MAM_MAPPING_SUCCESSFUL;
     UINT64 tgt_addr;
     MAM_ATTRIBUTES attrs;
@@ -568,12 +565,10 @@ out:
     return result;
 }
 
-static
-BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_internal(IN UINT64 current_hva,
-                                                                IN UINT64 additional_hva,
-                                                                IN UINT32 num_of_pages,
-                                                                IN BOOLEAN change_attributes,
-                                                                IN MAM_ATTRIBUTES new_attrs) {
+static BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_internal(
+            IN UINT64 current_hva, IN UINT64 additional_hva,
+            IN UINT32 num_of_pages, IN BOOLEAN change_attributes,
+            IN MAM_ATTRIBUTES new_attrs) {
     MAM_HANDLE hva_to_hpa = hmm_get_hva_to_hpa_mapping(g_hmm);
     const UINT32 size = num_of_pages * PAGE_4KB_SIZE;
     HVA curr_from_hva = current_hva;
@@ -712,13 +707,12 @@ BOOLEAN build_extend_heap_hpa_to_hva(void)
     lock_release(hmm_get_update_lock(g_hmm));
     return result;
 }
-static
-BOOLEAN hmm_map_continuous_virtual_buffer_for_pages_internal(IN UINT64* hpas_array,
-                                                             IN UINT32 num_of_pages,
-                                                             IN BOOLEAN change_attributes,
-                                                             IN MAM_ATTRIBUTES new_attrs,
-                                                             IN BOOLEAN remap_hpa,
-                                                             OUT UINT64* hva) {
+
+
+static BOOLEAN hmm_map_continuous_virtual_buffer_for_pages_internal(
+                IN UINT64* hpas_array, IN UINT32 num_of_pages,
+                IN BOOLEAN change_attributes, IN MAM_ATTRIBUTES new_attrs,
+                IN BOOLEAN remap_hpa, OUT UINT64* hva) {
     UINT64 buffer_hva;
     BOOLEAN result = TRUE;
     UINT32 i;
@@ -838,10 +832,8 @@ out:
 }
 
 BOOLEAN hmm_alloc_continuous_wb_virtual_buffer_for_pages(IN UINT64* hpas_array,
-                                                         IN UINT32 num_of_pages,
-                                                         IN BOOLEAN is_writable,
-                                                         IN BOOLEAN is_executable,
-                                                         OUT UINT64* hva) {
+                IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+                IN BOOLEAN is_executable, OUT UINT64* hva) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1518,11 +1510,9 @@ BOOLEAN hmm_map_wb_physical_page(IN HPA page_hpa, IN BOOLEAN is_writable, IN BOO
 }
 
 BOOLEAN hmm_map_physical_page(IN HPA page_hpa,
-                              IN BOOLEAN is_writable,
-                              IN BOOLEAN is_executable,
-                              IN UINT32 pat_index,
-                              IN BOOLEAN flash_all_tlbs_if_needed,
-                              OUT HVA* page_hva) {
+            IN BOOLEAN is_writable, IN BOOLEAN is_executable,
+            IN UINT32 pat_index, IN BOOLEAN flash_all_tlbs_if_needed,
+            OUT HVA* page_hva) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1533,9 +1523,10 @@ BOOLEAN hmm_map_physical_page(IN HPA page_hpa,
     return hmm_map_phys_page_full_attrs(page_hpa, attrs, flash_all_tlbs_if_needed, page_hva);
 }
 
-BOOLEAN hmm_alloc_continuous_virtual_buffer_for_pages(IN UINT64* hpas_array, IN UINT32 num_of_pages,
-                                                      IN BOOLEAN is_writable, IN BOOLEAN is_executable,
-                                                      IN UINT32 pat_index, OUT UINT64* hva) {
+BOOLEAN hmm_alloc_continuous_virtual_buffer_for_pages(
+            IN UINT64* hpas_array, IN UINT32 num_of_pages,
+           IN BOOLEAN is_writable, IN BOOLEAN is_executable,
+           IN UINT32 pat_index, OUT UINT64* hva) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1631,13 +1622,15 @@ out:
     return result;
 }
 
-BOOLEAN hmm_remap_virtual_memory_no_attr_change(HVA from_hva, HVA to_hva, UINT32 size,
-                                                BOOLEAN flash_tlbs) {
-    return hmm_remap_virtual_memory_internal(from_hva, to_hva, size, FALSE, MAM_NO_ATTRIBUTES, flash_tlbs);
+BOOLEAN hmm_remap_virtual_memory_no_attr_change(HVA from_hva, HVA to_hva, 
+                    UINT32 size, BOOLEAN flash_tlbs) {
+    return hmm_remap_virtual_memory_internal(from_hva, to_hva, size, 
+                                FALSE, MAM_NO_ATTRIBUTES, flash_tlbs);
 }
 
-BOOLEAN hmm_remap_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, BOOLEAN is_writable,
-                                 BOOLEAN is_executable, UINT32 pat_index, BOOLEAN flash_tlbs) {
+BOOLEAN hmm_remap_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, 
+                BOOLEAN is_writable, BOOLEAN is_executable, UINT32 pat_index, 
+                BOOLEAN flash_tlbs) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1647,22 +1640,23 @@ BOOLEAN hmm_remap_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, BOOLEAN 
     return hmm_remap_virtual_memory_internal(from_hva, to_hva, size, TRUE, attrs, flash_tlbs);
 }
 
-BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, BOOLEAN is_writable,
-                                    BOOLEAN is_executable, BOOLEAN flash_tlbs) {
+BOOLEAN hmm_remap_wb_virtual_memory(HVA from_hva, HVA to_hva, UINT32 size, 
+                    BOOLEAN is_writable, BOOLEAN is_executable, BOOLEAN flash_tlbs) {
     UINT32 wb_index = hmm_get_wb_pat_index(g_hmm);
     return hmm_remap_virtual_memory(from_hva, to_hva, size, is_writable, is_executable, wb_index, flash_tlbs);
 }
 
-BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_no_attr_change(IN UINT64 current_hva,
-                                                                      IN UINT64 additional_hva,
-                                                                      IN UINT32 num_of_pages) {
+BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_no_attr_change(
+                    IN UINT64 current_hva, IN UINT64 additional_hva,
+                    IN UINT32 num_of_pages) {
 
     return hmm_alloc_additional_continuous_virtual_buffer_internal(current_hva, additional_hva, num_of_pages, FALSE, MAM_NO_ATTRIBUTES);
 }
 
-BOOLEAN hmm_alloc_additional_continuous_virtual_buffer(IN UINT64 current_hva, IN UINT64 additional_hva,
-                                                       IN UINT32 num_of_pages, IN BOOLEAN is_writable,
-                                                       IN BOOLEAN is_executable, IN UINT32 pat_index) {
+BOOLEAN hmm_alloc_additional_continuous_virtual_buffer(
+                    IN UINT64 current_hva, IN UINT64 additional_hva,
+                    IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+                    IN BOOLEAN is_executable, IN UINT32 pat_index) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1673,9 +1667,10 @@ BOOLEAN hmm_alloc_additional_continuous_virtual_buffer(IN UINT64 current_hva, IN
     return hmm_alloc_additional_continuous_virtual_buffer_internal(current_hva, additional_hva, num_of_pages, TRUE, attrs);
 }
 
-BOOLEAN hmm_alloc_additional_continuous_wb_virtual_buffer(IN UINT64 current_hva, IN UINT64 additional_hva,
-                                                          IN UINT32 num_of_pages, IN BOOLEAN is_writable,
-                                                          IN BOOLEAN is_executable) {
+BOOLEAN hmm_alloc_additional_continuous_wb_virtual_buffer(
+                    IN UINT64 current_hva, IN UINT64 additional_hva,
+                    IN UINT32 num_of_pages, IN BOOLEAN is_writable,
+                    IN BOOLEAN is_executable) {
     UINT32 wb_index = hmm_get_wb_pat_index(g_hmm);
     return hmm_alloc_additional_continuous_virtual_buffer(current_hva, additional_hva, num_of_pages, is_writable, is_executable, wb_index);
 }
@@ -1698,18 +1693,19 @@ BOOLEAN hmm_hva_to_hpa_with_attr(IN HVA hva, OUT HPA* hpa, OUT BOOLEAN* is_writa
     return FALSE;
 }
 
-BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr_copy_attrs(IN UINT64* hpas_array,
-                                                                      IN UINT32 num_of_pages,
-                                                                      OUT UINT64* hva) {
+BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr_copy_attrs(
+                   IN UINT64* hpas_array, IN UINT32 num_of_pages,
+                   OUT UINT64* hva) {
     return hmm_map_continuous_virtual_buffer_for_pages_internal(hpas_array, num_of_pages,
-                                                                FALSE, /* do not change attributes */
-                                                                MAM_NO_ATTRIBUTES, TRUE, /* remap hpa */
-                                                                hva);
+                              FALSE, /* do not change attributes */
+                              MAM_NO_ATTRIBUTES, TRUE, /* remap hpa */
+                              hva);
 }
 
-BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr(IN UINT64* hpas_array, IN UINT32 num_of_pages,
-                                                           IN BOOLEAN is_writable, IN BOOLEAN is_executable,
-                                                           IN UINT32 pat_index, OUT UINT64* hva) {
+BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr(
+            IN UINT64* hpas_array, IN UINT32 num_of_pages,
+           IN BOOLEAN is_writable, IN BOOLEAN is_executable,
+           IN UINT32 pat_index, OUT UINT64* hva) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1723,9 +1719,9 @@ BOOLEAN hmm_remap_physical_pages_to_continuous_virtal_addr(IN UINT64* hpas_array
 }
 #endif
 
-BOOLEAN hmm_remap_physical_pages_to_continuous_wb_virtal_addr(IN UINT64* hpas_array, IN UINT32 num_of_pages,
-                                                              IN BOOLEAN is_writable, IN BOOLEAN is_executable,
-                                                              OUT UINT64* hva) {
+BOOLEAN hmm_remap_physical_pages_to_continuous_wb_virtal_addr(
+               IN UINT64* hpas_array, IN UINT32 num_of_pages,
+               IN BOOLEAN is_writable, IN BOOLEAN is_executable, OUT UINT64* hva) {
     MAM_ATTRIBUTES attrs;
 
     attrs.uint32 = 0;
@@ -1734,8 +1730,8 @@ BOOLEAN hmm_remap_physical_pages_to_continuous_wb_virtal_addr(IN UINT64* hpas_ar
     attrs.paging_attr.pat_index = hmm_get_wb_pat_index(g_hmm);
 
     return hmm_map_continuous_virtual_buffer_for_pages_internal(hpas_array, num_of_pages,
-                                                                TRUE, /* change attributes */
-                                                                attrs, TRUE, /* remap hpa */ hva);
+                                        TRUE, /* change attributes */
+                                        attrs, TRUE, /* remap hpa */ hva);
 }
 
 #ifdef INCLUDE_UNUSED_CODE

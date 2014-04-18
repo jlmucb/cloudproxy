@@ -823,7 +823,6 @@ POOL_HANDLE pool_create_internal(UINT32 size_of_single_element, BOOLEAN  mutex_f
 
 }
 
-/*----------------------------------------------*/
 
 #ifdef INCLUDE_UNUSED_CODE
 // Create regular pool with mutual exclussion guard.

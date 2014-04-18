@@ -86,9 +86,7 @@ HEAP_PAGE_INT vmm_heap_get_max_used_pages(void)
 // ARGUMENTS: IN ADDRESS heap_buffer_address - address at which the heap is located
 //          : IN size_t    heap_buffer_size - in bytes
 // RETURNS  : Last occupied address
-ADDRESS vmm_heap_initialize(
-    IN ADDRESS heap_buffer_address,
-    IN size_t  heap_buffer_size)
+ADDRESS vmm_heap_initialize( IN ADDRESS heap_buffer_address, IN size_t  heap_buffer_size)
 {
     ADDRESS unaligned_heap_base;
     HEAP_PAGE_INT number_of_pages;

@@ -53,12 +53,8 @@ static UINT32 buffer_size_to_pool_index(UINT32 size)
 #pragma warning (push)
 #pragma warning (disable : 4100)
 
-static
-void* vmm_mem_allocate_internal(
-    char    *file_name,
-    INT32   line_number,
-    IN UINT32 size,
-    IN UINT32 alignment)
+static void* vmm_mem_allocate_internal( char *file_name,
+            INT32   line_number, IN UINT32 size, IN UINT32 alignment)
 {
     POOL_HANDLE pool = NULL;
     UINT32 pool_index = 0;
@@ -128,10 +124,7 @@ void* vmm_mem_allocate_internal(
 *  buffer for differentiating between vmm_malloc allocation() and vmm_page_alloc(). 
 */
 
-void* vmm_mem_allocate(
-    char    *file_name,
-    INT32   line_number,
-    IN UINT32 size)
+void* vmm_mem_allocate( char *file_name, INT32 line_number, IN UINT32 size)
 {
     return vmm_mem_allocate_internal( file_name, line_number,
             size, sizeof(MEM_ALLOCATION_INFO));
@@ -168,11 +161,8 @@ void vmm_mem_free(
     lock_release(&lock);
 }
 
-void* vmm_mem_allocate_aligned(
-    char    *file_name,
-    INT32   line_number,
-    IN UINT32 size,
-    IN UINT32 alignment) {
+void* vmm_mem_allocate_aligned( char *file_name, INT32 line_number,
+    IN UINT32 size, IN UINT32 alignment) {
 
     if (!IS_POW_OF_2(alignment)) {
         VMM_LOG(mask_anonymous, level_trace,"%s: WARNING: Requested alignment is not power of 2\n", __FUNCTION__);
@@ -181,10 +171,7 @@ void* vmm_mem_allocate_aligned(
     return vmm_mem_allocate_internal( file_name, line_number, size, alignment);
 }
 
-UINT32 vmm_mem_buff_size(
-      char    *file_name,
-      INT32   line_number,
-      IN void *buff)
+UINT32 vmm_mem_buff_size( char *file_name, INT32 line_number, IN void *buff)
 {
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 pool_element_size = 0;
@@ -199,12 +186,8 @@ UINT32 vmm_mem_buff_size(
     return pool_element_size;
 }
 
-static
-UINT32 vmm_mem_pool_size_internal(
-    char    *file_name,
-    INT32   line_number,
-    IN UINT32 size,
-    IN UINT32 alignment)
+static UINT32 vmm_mem_pool_size_internal( char *file_name, INT32 line_number,
+    IN UINT32 size, IN UINT32 alignment)
 {
     UINT32 pool_index = 0;
     UINT32 pool_element_size = 0;
@@ -221,13 +204,10 @@ UINT32 vmm_mem_pool_size_internal(
 
     pool_index = buffer_size_to_pool_index(size_to_request);
     pool_element_size = 1 << pool_index;
-        return pool_element_size;
+    return pool_element_size;
 }
 
-UINT32 vmm_mem_pool_size(
-      char    *file_name,
-      INT32   line_number,
-      IN UINT32 size)
+UINT32 vmm_mem_pool_size( char *file_name, INT32 line_number, IN UINT32 size)
 {
     return vmm_mem_pool_size_internal( file_name, line_number,
             size, sizeof(MEM_ALLOCATION_INFO));

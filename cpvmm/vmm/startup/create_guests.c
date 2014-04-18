@@ -101,6 +101,10 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
                 gstartup->size_of_this_struct, gstartup->version_of_this_struct );
         return NULL;
     }
+#ifdef JLMDEBUG
+    bprint("about to init_single_guest\n");
+    LOOP_FOREVER
+#endif
 
     // create guest
     guest = guest_register( gstartup->guest_magic_number, gstartup->physical_memory_size,

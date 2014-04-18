@@ -37,6 +37,9 @@
 #include "guest_pci_configuration.h"
 #include "ipc.h"
 #include "pat_manager.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 //
 // Read input data structure and create all guests
@@ -118,7 +121,10 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 #ifdef FAST_VIEW_SWITCH
     fvs_initialize(guest, number_of_host_processors);
 #endif
-
+#ifdef JLMDEBUG
+    bprint("initialize_single_guest, %d CPUs\n", guest_get_id(guest));
+    LOOP_FOREVER
+#endif
     vmexit_guest_initialize(guest_get_id(guest));
     if (gstartup->devices_count != 0) {
         VMM_LOG(mask_anonymous, level_trace,"ASSERT: devices virtualization is not supported yet\n"
@@ -225,9 +231,12 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     BITMAP_SET(((VMM_GUEST_STARTUP*)primary_guest_startup_state)->flags, 
             VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE|VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
 
+#ifdef JLMDEBUG
+    bprint("initialize_all_guests, %d CPUs\n", number_of_host_processors);
+#endif
     // TODO: Uses global policym but should be part of VMM_GUEST_STARTUP structure.
-    primary_guest = init_single_guest(number_of_host_processors, primary_guest_startup_state,
-                                      NULL);  
+    primary_guest = init_single_guest(number_of_host_processors, 
+                                      primary_guest_startup_state, NULL);  
     if (!primary_guest) {
         VMM_LOG(mask_anonymous, level_trace,"initialize_all_guests: Cannot init primary guest\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.

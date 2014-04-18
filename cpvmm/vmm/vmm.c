@@ -876,7 +876,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     host_cpu_init();
 #ifdef JLMDEBUG
     bprint("evmm position 39\n");
-    LOOP_FOREVER
 #endif
     local_apic_cpu_init();
 #ifdef JLMDEBUG
@@ -895,7 +894,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     VMM_LOG(mask_uvmm, level_trace,"BSP: Create guests\n");
 #ifdef JLMDEBUG
     bprint("evmm position 41\n");
-    LOOP_FOREVER
 #endif
 
     primary_guest_startup =
@@ -913,7 +911,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #if 0
                                 (int) startup_struct->num_excluded_regions, startup_struct->vmm_memory_layout,
 #else
-                                &(startup_struct->vmm_memory_layout[uvmm_image]),
+                                &(startup_struct->vmm_memory_layout[0]),
 #endif
                                 primary_guest_startup, num_of_guests - 1,
                                 secondary_guests_array, application_params_heap)) {
@@ -921,6 +919,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
+#ifdef JLMDEBUG
+    bprint("evmm position 42\n");
+    LOOP_FOREVER
+#endif
 
     VMM_LOG(mask_uvmm, level_trace,"BSP: Guests created succefully. Number of guests: %d\n", guest_count());
 
